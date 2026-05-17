@@ -16,7 +16,7 @@
   "filter": {
     "filter-calendars": "Filter kalender",
     "sources": "Sumber",
-    "memry-items": "Barang Memry",
+    "memry-items": "Barang memrynote",
     "imported-calendars": "Kalender yang diimpor",
     "event-types": "Jenis acara",
     "google-calendars": "Kalender Google",
@@ -60,27 +60,27 @@
     "target-calendar": "Kalender sasaran",
     "use-default-calendar": "Gunakan kalender default",
     "use-default-calendar-with-name": "Gunakan bawaan ({calendar})",
-    "use-memry-calendar-default": "Gunakan kalender Memry (default)",
+    "use-memry-calendar-default": "Gunakan kalender memrynote (default)",
     "primary-suffix": "utama"
   },
   "delete-dialog": {
     "title": "Hapus acara?",
     "local-description": "\"{title}\" akan dihapus secara permanen. Tindakan ini tidak dapat dibatalkan.",
-    "google-bound-description": "\"{title}\" akan dihapus dari Memry dan Google Kalender. Tindakan ini tidak dapat dibatalkan.",
+    "google-bound-description": "\"{title}\" akan dihapus dari memrynote dan Google Kalender. Tindakan ini tidak dapat dibatalkan.",
     "context-menu-delete-label": "Hapus acara"
   },
   "promote-dialog": {
     "aria": "Edit acara kalender eksternal",
-    "title": "Edit acara ini di Memry?",
-    "body": "Mengedit acara ini akan membuat salinan tertaut di Memry sehingga perubahan disinkronkan ke dua arah. Lanjutkan?",
+    "title": "Edit acara ini di memrynote?",
+    "body": "Mengedit acara ini akan membuat salinan tertaut di memrynote sehingga perubahan disinkronkan ke dua arah. Lanjutkan?",
     "do-not-ask-again": "Jangan bertanya lagi",
-    "confirm-label": "Edit di Memry"
+    "confirm-label": "Edit di memrynote"
   },
   "onboarding-dialog": {
     "aria": "Pilih kalender Google default Anda",
-    "title": "Kalender mana yang harus dikunjungi acara Memry baru?",
-    "body": "Pilih kalender Google yang seharusnya digunakan Memry secara default. Anda masih dapat menggantinya per acara.",
-    "default-calendar-label": "Gunakan kalender yang dikelola Memry",
+    "title": "Kalender mana yang harus dikunjungi acara memrynote baru?",
+    "body": "Pilih kalender Google yang seharusnya digunakan memrynote secara default. Anda masih dapat menggantinya per acara.",
+    "default-calendar-label": "Gunakan kalender yang dikelola memrynote",
     "skip": "Lewati",
     "use-this-calendar": "Gunakan kalender ini"
   },

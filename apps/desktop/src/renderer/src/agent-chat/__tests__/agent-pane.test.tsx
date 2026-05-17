@@ -86,7 +86,7 @@ describe('AgentPane', () => {
 
     render(<AgentPane />)
 
-    expect(screen.getByText('Enable Memry Agent')).toBeInTheDocument()
+    expect(screen.getByText('Enable memrynote Agent')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Enable Agent chat' }))
 
@@ -99,7 +99,7 @@ describe('AgentPane', () => {
     render(<AgentPane />)
 
     expect(screen.getByRole('textbox')).toHaveAccessibleName(
-      'Ask Memry anything. @ to use mention file'
+      'Ask memrynote anything. @ to use mention file'
     )
     expect(screen.queryByText('Start chatting with your vault')).not.toBeInTheDocument()
     expect(screen.queryByText(/claude .*detected and ready/)).not.toBeInTheDocument()
@@ -135,7 +135,7 @@ describe('AgentPane', () => {
     render(<AgentPane />)
 
     expect(screen.getByRole('textbox')).toHaveAccessibleName(
-      'Ask Memry anything. @ to use mention file'
+      'Ask memrynote anything. @ to use mention file'
     )
     expect(screen.queryByText(/claude not found/)).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'New conversation' })).not.toBeInTheDocument()

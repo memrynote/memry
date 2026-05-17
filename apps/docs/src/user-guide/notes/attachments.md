@@ -31,7 +31,7 @@ PDFs render in an embedded scrollable viewer right in the editor. Useful for rea
 The preview honors:
 
 - Zoom (browser zoom or per-block scale)
-- Find-in-page (the embedded viewer's find, not Memry's)
+- Find-in-page (the embedded viewer's find, not memrynote's)
 - Multi-page scrolling
 
 ## Audio Attachments

@@ -61,7 +61,7 @@
     "deviceRevoked": "Toto zařízení bylo odebráno z vašeho účtu.",
     "rateLimited": "Příliš mnoho požadavků. Synchronizace bude brzy obnovena.",
     "cryptoFailure": "Nepodařilo se zašifrovat nebo dešifrovat synchronizovaná data. Zkuste se odhlásit a znovu přihlásit.",
-    "versionIncompatible": "Tato verze Memry již není podporována. Aktualizujte prosím.",
+    "versionIncompatible": "Tato verze memrynote již není podporována. Aktualizujte prosím.",
     "storageQuotaExceeded": "Vaše úložiště synchronizace je plné. Uvolněte místo nebo upgradujte svůj plán.",
     "certificatePinFailed": "Zabezpečené připojení se nezdařilo. Zkontrolujte připojení k síti.",
     "unknown": "Došlo k neočekávané chybě synchronizace. Automaticky se pokusí znovu.",

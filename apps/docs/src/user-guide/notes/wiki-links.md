@@ -1,6 +1,6 @@
 # Wiki Links & Backlinks
 
-Connect notes with `[[wiki links]]`. Memry tracks links bidirectionally, so every note knows what points to it.
+Connect notes with `[[wiki links]]`. memrynote tracks links bidirectionally, so every note knows what points to it.
 
 <!-- screenshot: wiki link autocomplete in the editor -->
 
@@ -47,7 +47,7 @@ Renaming a note:
 - Preserves the **link target** (stable ID)
 - Updates search and the backlinks panel immediately
 
-You don't need to find-and-replace `[[Old title]]` references — Memry rewires display text everywhere.
+You don't need to find-and-replace `[[Old title]]` references — memrynote rewires display text everywhere.
 
 ## Deleting a Linked Note
 

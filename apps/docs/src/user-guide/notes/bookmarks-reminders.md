@@ -23,7 +23,7 @@ Open the reminder picker from the note toolbar. Pick a date and time:
 
 Selecting text in the editor does not open a separate reminder action; reminders are set at the note level.
 
-When the reminder fires, Memry shows an in-app toast with:
+When the reminder fires, memrynote shows an in-app toast with:
 
 - The note title
 - A snippet of context
@@ -51,7 +51,7 @@ Notes with upcoming reminders show a small bell badge in the sidebar and tab bar
 
 ## Persistence
 
-Reminders are stored in the data DB and sync end-to-end encrypted. If Memry isn't running when a reminder fires, the toast appears the next time the app opens.
+Reminders are stored in the data DB and sync end-to-end encrypted. If memrynote isn't running when a reminder fires, the toast appears the next time the app opens.
 
 ## See Also
 

@@ -46,7 +46,7 @@
     "startup": {
       "launchAtLogin": {
         "label": "Starta vid inloggning",
-        "description": "Starta Memry när du loggar in",
+        "description": "Starta memrynote när du loggar in",
         "error": "Misslyckades med att uppdatera start vid systemstart"
       }
     },
@@ -55,15 +55,15 @@
       "installedVersion": "Installerad version {version}",
       "availableVersion": "Tillgänglig version {version}",
       "unsupported": "Paketbyggda versioner kan kontrollera, ladda ner och installera uppdateringar från GitHub Releases",
-      "available": "Memry {version} finns tillgänglig för nedladdning",
+      "available": "memrynote {version} finns tillgänglig för nedladdning",
       "downloadingLatest": "Laddar ner den senaste versionen",
       "downloadingLatestPercent": "Laddar ner den senaste versionen ({percent}%)",
-      "downloaded": "Memry {version} är redo att installeras",
+      "downloaded": "memrynote {version} är redo att installeras",
       "upToDate": "Denna installation är på den senaste publicerade versionen",
       "checking": "Kontrollerar GitHub Releases efter en nyare version",
       "idle": "Kontrollera nya versioner och installera dem utan att lämna appen",
       "unsupportedToast": "Automatiska uppdateringar är endast tillgängliga i paketerade versioner",
-      "upToDateToast": "Memry {version} är uppdaterad",
+      "upToDateToast": "memrynote {version} är uppdaterad",
       "actionFailed": "Uppdateringsåtgärd misslyckades",
       "actions": {
         "checking": "Kontrollerar...",
@@ -540,7 +540,7 @@
       "pendingSuccess": "Enhet kopplad framgångsrikt",
       "goBack": "Gå tillbaka",
       "waitingTitle": "Väntar på godkännande",
-      "waitingDescription": "Öppna Memry på din andra enhet och godkänn länkförfrågan.",
+      "waitingDescription": "Öppna memrynote på din andra enhet och godkänn länkförfrågan.",
       "verificationCode": "Verifieringskod",
       "confirmCode": "Bekräfta att detta matchar koden på din andra enhet"
     }
@@ -778,7 +778,7 @@
     "connect": "Anslut",
     "googleCalendar": {
       "name": "Google Kalender",
-      "description": "Tvåvägssynkronisering för Memry-händelser och importerade Google-kalendrar.",
+      "description": "Tvåvägssynkronisering för memrynote-händelser och importerade Google-kalendrar.",
       "statuses": {
         "connected": "Ansluten",
         "notConnected": "Inte ansluten",
@@ -810,7 +810,7 @@
     "registry": {
       "googleCalendar": {
         "name": "Google Kalender",
-        "description": "Tvåvägssynkronisering för Memry händelser, uppgifter, påminnelser och importerade kalendrar"
+        "description": "Tvåvägssynkronisering för memrynote händelser, uppgifter, påminnelser och importerade kalendrar"
       },
       "appleCalendar": {
         "name": "Apple Kalender",
@@ -963,7 +963,7 @@
       "description": "Fånga en anteckning från var som helst",
       "permissionNeeded": "Behörighet behövs",
       "active": "Aktiv",
-      "permissionHint": "Globala genvägar kräver åtkomstbehörighet. Gå till Systeminställningar → Integritet → Tillgänglighet och aktivera Memry."
+      "permissionHint": "Globala genvägar kräver åtkomstbehörighet. Gå till Systeminställningar → Integritet → Tillgänglighet och aktivera memrynote."
     },
     "toasts": {
       "saveGlobalFailed": "Misslyckades med att spara global fångstgenväg",

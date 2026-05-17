@@ -34,7 +34,7 @@ interface KeyboardShortcutsDialogProps {
 }
 
 const DIALOG_DESCRIPTION =
-  'Fast paths for moving around Memry, capturing thoughts, and processing work.'
+  'Fast paths for moving around memrynote, capturing thoughts, and processing work.'
 const COMBO_OR_LABEL = 'or'
 const SEQUENCE_THEN_LABEL = 'then'
 

@@ -165,7 +165,7 @@ describe('calendar-handlers', () => {
     expect(handleCalls.length).toBe(Object.values(CalendarChannels.invoke).length)
   })
 
-  it('creates, updates, deletes, and lists Memry events', async () => {
+  it('creates, updates, deletes, and lists memrynote events', async () => {
     registerCalendarHandlers()
 
     const created = await invokeHandler(CalendarChannels.invoke.CREATE_EVENT, {
@@ -298,7 +298,7 @@ describe('calendar-handlers', () => {
     })
   })
 
-  it('returns projected range items for Memry and imported provider events', async () => {
+  it('returns projected range items for memrynote and imported provider events', async () => {
     registerCalendarHandlers()
 
     db.run(sql`
@@ -699,7 +699,7 @@ describe('calendar-handlers', () => {
     expect(unsignedRefresh).toEqual(
       expect.objectContaining({
         success: false,
-        error: 'Sign in to Memry before refreshing Google Calendar'
+        error: 'Sign in to memrynote before refreshing Google Calendar'
       })
     )
 

@@ -46,7 +46,7 @@
     "startup": {
       "launchAtLogin": {
         "label": "Uruchom po zalogowaniu",
-        "description": "Uruchom Memry po zalogowaniu",
+        "description": "Uruchom memrynote po zalogowaniu",
         "error": "Nie udało się zaktualizować startu przy uruchomieniu"
       }
     },
@@ -55,15 +55,15 @@
       "installedVersion": "Zainstalowana wersja {version}",
       "availableVersion": "Dostępna wersja {version}",
       "unsupported": "Kompilacje spakowane umożliwiają sprawdzanie, pobieranie i instalowanie aktualizacji z wydań GitHub",
-      "available": "Memry {version} jest dostępny do pobrania",
+      "available": "memrynote {version} jest dostępny do pobrania",
       "downloadingLatest": "Pobieranie najnowszej wersji",
       "downloadingLatestPercent": "Pobieranie najnowszej wersji ({percent}%)",
-      "downloaded": "Memry {version} jest gotowy do instalacji",
+      "downloaded": "memrynote {version} jest gotowy do instalacji",
       "upToDate": "Ta instalacja dotyczy najnowszej opublikowanej wersji",
       "checking": "Sprawdzanie wydań GitHub pod kątem nowszej wersji",
       "idle": "Sprawdź dostępność nowych wersji i zainstaluj je bez opuszczania aplikacji",
       "unsupportedToast": "Automatyczne aktualizacje są dostępne tylko w wersjach pakietowych",
-      "upToDateToast": "Memry {version} jest aktualny",
+      "upToDateToast": "memrynote {version} jest aktualny",
       "actionFailed": "Akcja aktualizacji nie powiodła się",
       "actions": {
         "checking": "Sprawdzam...",
@@ -540,7 +540,7 @@
       "pendingSuccess": "Urządzenie zostało pomyślnie połączone",
       "goBack": "Wróć",
       "waitingTitle": "Oczekiwanie na zatwierdzenie",
-      "waitingDescription": "Otwórz Memry na drugim urządzeniu i zatwierdź prośbę o połączenie.",
+      "waitingDescription": "Otwórz memrynote na drugim urządzeniu i zatwierdź prośbę o połączenie.",
       "verificationCode": "Kod weryfikacyjny",
       "confirmCode": "Potwierdź, że pasuje to do kodu na Twoim drugim urządzeniu"
     }
@@ -778,7 +778,7 @@
     "connect": "Połącz",
     "googleCalendar": {
       "name": "Kalendarz Google",
-      "description": "Dwukierunkowa synchronizacja wydarzeń Memry i importowanych kalendarzy Google.",
+      "description": "Dwukierunkowa synchronizacja wydarzeń memrynote i importowanych kalendarzy Google.",
       "statuses": {
         "connected": "Połączono",
         "notConnected": "Brak połączenia",
@@ -810,7 +810,7 @@
     "registry": {
       "googleCalendar": {
         "name": "Kalendarz Google",
-        "description": "Dwukierunkowa synchronizacja wydarzeń, zadań, przypomnień i zaimportowanych kalendarzy Memry"
+        "description": "Dwukierunkowa synchronizacja wydarzeń, zadań, przypomnień i zaimportowanych kalendarzy memrynote"
       },
       "appleCalendar": {
         "name": "Kalendarz Apple",
@@ -963,7 +963,7 @@
       "description": "Przechwytuj notatki z dowolnego miejsca",
       "permissionNeeded": "Potrzebne pozwolenie",
       "active": "Aktywny",
-      "permissionHint": "Skróty globalne wymagają uprawnień Dostępność. Przejdź do Ustawienia systemu → Prywatność → Dostępność i włącz Memry."
+      "permissionHint": "Skróty globalne wymagają uprawnień Dostępność. Przejdź do Ustawienia systemu → Prywatność → Dostępność i włącz memrynote."
     },
     "toasts": {
       "saveGlobalFailed": "Nie udało się zapisać globalnego skrótu do przechwytywania",

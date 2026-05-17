@@ -16,7 +16,7 @@
   "filter": {
     "filter-calendars": "カレンダーのフィルタリング",
     "sources": "情報源",
-    "memry-items": "Memry アイテム",
+    "memry-items": "memrynote アイテム",
     "imported-calendars": "インポートされたカレンダー",
     "event-types": "イベントの種類",
     "google-calendars": "Googleカレンダー",
@@ -60,27 +60,27 @@
     "target-calendar": "ターゲットカレンダー",
     "use-default-calendar": "デフォルトのカレンダーを使用する",
     "use-default-calendar-with-name": "デフォルト ({calendar}) を使用します",
-    "use-memry-calendar-default": "Memry カレンダーを使用する (デフォルト)",
+    "use-memry-calendar-default": "memrynote カレンダーを使用する (デフォルト)",
     "primary-suffix": "プライマリー"
   },
   "delete-dialog": {
     "title": "イベントを削除しますか?",
     "local-description": "「{title}」は完全に削除されます。この操作は元に戻すことができません。",
-    "google-bound-description": "「{title}」はMemryおよびGoogleカレンダーから削除されます。この操作は元に戻すことができません。",
+    "google-bound-description": "「{title}」はmemrynoteおよびGoogleカレンダーから削除されます。この操作は元に戻すことができません。",
     "context-menu-delete-label": "イベントの削除"
   },
   "promote-dialog": {
     "aria": "外部カレンダーイベントを編集する",
-    "title": "このイベントを Memry で編集しますか?",
-    "body": "このイベントを編集すると、Memry にリンクされたコピーが作成されるため、変更は双方向で同期されます。続けますか？",
+    "title": "このイベントを memrynote で編集しますか?",
+    "body": "このイベントを編集すると、memrynote にリンクされたコピーが作成されるため、変更は双方向で同期されます。続けますか？",
     "do-not-ask-again": "二度と聞かないでください",
-    "confirm-label": "Memry で編集する"
+    "confirm-label": "memrynote で編集する"
   },
   "onboarding-dialog": {
     "aria": "デフォルトの Google カレンダーを選択してください",
-    "title": "新しい Memry イベントはどのカレンダーに移動する必要がありますか?",
-    "body": "Memry がデフォルトで使用する Google カレンダーを選択します。イベントごとにオーバーライドすることもできます。",
-    "default-calendar-label": "Memry 管理のカレンダーを使用する",
+    "title": "新しい memrynote イベントはどのカレンダーに移動する必要がありますか?",
+    "body": "memrynote がデフォルトで使用する Google カレンダーを選択します。イベントごとにオーバーライドすることもできます。",
+    "default-calendar-label": "memrynote 管理のカレンダーを使用する",
     "skip": "スキップ",
     "use-this-calendar": "このカレンダーを使用してください"
   },

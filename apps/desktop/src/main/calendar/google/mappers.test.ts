@@ -149,7 +149,7 @@ describe('mapGoogleEventToCalendarEventChanges', () => {
     // #when
     const changes = mapGoogleEventToCalendarEventChanges(exception)
 
-    // #then the Memry row can be resolved as "exception of <series>"
+    // #then the memrynote row can be resolved as "exception of <series>"
     expect(changes.parentEventId).toBe('google-evt-1')
     expect(changes.originalStartTime).toBe('2026-05-10T09:00:00.000Z')
   })

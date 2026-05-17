@@ -477,7 +477,7 @@ export function registerTestHooks(): void {
           VALUES (
             ${'calendar-e2e-memry-overlap'},
             ${input.overlapMemryTitle},
-            ${'Seeded overlap Memry event'},
+            ${'Seeded overlap memrynote event'},
             ${toLocalIso(input.day, 9, 0)},
             ${toLocalIso(input.day, 10, 0)},
             ${timezone},
@@ -701,7 +701,7 @@ export function registerTestHooks(): void {
       // Inserts a minimal calendar_events row that pushSourceToGoogleCalendar will
       // pick up via its 'event' source-type branch. targetCalendarId is set so the
       // push resolver routes to the user's primary calendar instead of falling
-      // through to ensureMemryCalendarSource (which would auto-create a "Memry"
+      // through to ensureMemryCalendarSource (which would auto-create a "memrynote"
       // calendar on the test Google account — extra state to clean up).
       const db = getDatabase()
       const sourceId = `calendar-writeback-e2e:${Date.now()}:${Math.random().toString(36).slice(2, 10)}`

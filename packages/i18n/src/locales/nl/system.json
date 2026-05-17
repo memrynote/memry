@@ -19,13 +19,13 @@
     "exportCancelled": "Exporteren geannuleerd",
     "update": {
       "availableTitle": "Update beschikbaar",
-      "availableMessage": "Memry {version} is beschikbaar.",
+      "availableMessage": "memrynote {version} is beschikbaar.",
       "availableDetailFallback": "De update nu downloaden?",
       "buttonDownload": "Downloaden",
       "buttonLater": "Later",
       "readyTitle": "Update gereed",
-      "readyMessage": "Memry {version} is gedownload.",
-      "readyDetailFallback": "Start Memry opnieuw om de installatie van de update te voltooien.",
+      "readyMessage": "memrynote {version} is gedownload.",
+      "readyDetailFallback": "Start memrynote opnieuw om de installatie van de update te voltooien.",
       "buttonRestartNow": "Start nu opnieuw op",
       "releaseNotesLabel": "Release-opmerkingen:"
     }

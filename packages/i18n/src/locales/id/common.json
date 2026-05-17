@@ -94,7 +94,7 @@
     },
     "componentsFirstRunOnboarding": {
       "skipOnboarding": "Lewati orientasi",
-      "welcomeToMemry": "Selamat datang di Memry",
+      "welcomeToMemry": "Selamat datang di memrynote",
       "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Basis pengetahuan pribadi Anda. Mari kita luangkan waktu 2 menit untuk memulai.",
       "getStarted": "Mulailah ",
       "createYourFirstNote": "Buat catatan pertama Anda",
@@ -289,7 +289,7 @@
       "dragToResizeDoubleClickToReset": "Seret untuk mengubah ukuran · Klik dua kali untuk mengatur ulang"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Selamat datang di Memry",
+      "welcomeToMemry": "Selamat datang di memrynote",
       "yourPersonalKnowledgeManagementSystem": "Sistem manajemen pengetahuan pribadi Anda.",
       "selectAFolderToStoreYourNotesAndTasks": "Pilih folder untuk menyimpan catatan dan tugas Anda.",
       "opening": "Pembukaan...",
@@ -341,9 +341,9 @@
     "stop": "Berhenti",
     "thinking": "Agent sedang berpikir",
     "enable": {
-      "title": "Aktifkan Memry Agent",
-      "description": "Memry Agent menggunakan agen lokal pilihan Anda CLI untuk mengobrol tentang brankas Anda. Claude mengirimkan giliran ke Anthropic; Codex mengirimkan giliran ke OpenAI.",
-      "remote": "Memry mengenkripsi riwayat obrolan lokal dan tersinkronisasi Anda, namun inferensi model terjadi pada penyedia yang dipilih.",
+      "title": "Aktifkan memrynote Agent",
+      "description": "memrynote Agent menggunakan agen lokal pilihan Anda CLI untuk mengobrol tentang brankas Anda. Claude mengirimkan giliran ke Anthropic; Codex mengirimkan giliran ke OpenAI.",
+      "remote": "memrynote mengenkripsi riwayat obrolan lokal dan tersinkronisasi Anda, namun inferensi model terjadi pada penyedia yang dipilih.",
       "readTools": "Alat baca berjalan secara otomatis.",
       "writeTools": "Membuat dan memperbarui alat memerlukan persetujuan.",
       "diff": "Alat pembaruan menampilkan perbedaan atau pratinjau.",
@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "Catatan terkini",
       "removeAttachment": "Hapus {label}",
-      "placeholder": "Tanyakan apa saja kepada Memry. @ untuk menyebut file",
+      "placeholder": "Tanyakan apa saja kepada memrynote. @ untuk menyebut file",
       "send": "Kirim",
       "providerLabel": "Penyedia Agent: {provider}",
       "settingsSummary": "{reasoning}",

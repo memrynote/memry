@@ -46,7 +46,7 @@
     "startup": {
       "launchAtLogin": {
         "label": "开机启动",
-        "description": "登录时启动 Memry",
+        "description": "登录时启动 memrynote",
         "error": "启动时更新失败"
       }
     },
@@ -55,15 +55,15 @@
       "installedVersion": "已安装版本 {version}",
       "availableVersion": "可用版本 {version}",
       "unsupported": "打包构建可从 GitHub Releases 检查、下载并安装更新",
-      "available": "Memry {version} 可供下载",
+      "available": "memrynote {version} 可供下载",
       "downloadingLatest": "正在下载最新版本",
       "downloadingLatestPercent": "正在下载最新版本 ({percent}%)",
-      "downloaded": "Memry {version} 已准备好安装",
+      "downloaded": "memrynote {version} 已准备好安装",
       "upToDate": "此安装已是最新发布版本",
       "checking": "正在 GitHub Releases 检查新版本",
       "idle": "检查新版本并在不离开应用的情况下安装",
       "unsupportedToast": "自动更新仅在打包版本中提供",
-      "upToDateToast": "Memry {version} 已是最新",
+      "upToDateToast": "memrynote {version} 已是最新",
       "actionFailed": "更新操作失败",
       "actions": {
         "checking": "正在检查...",
@@ -540,7 +540,7 @@
       "pendingSuccess": "设备已成功关联",
       "goBack": "返回",
       "waitingTitle": "等待批准",
-      "waitingDescription": "在您的其他设备上打开Memry并批准关联请求。",
+      "waitingDescription": "在您的其他设备上打开memrynote并批准关联请求。",
       "verificationCode": "验证码",
       "confirmCode": "确认此码与您其他设备上的代码匹配"
     }
@@ -778,7 +778,7 @@
     "connect": "连接",
     "googleCalendar": {
       "name": "Google 日历",
-      "description": "Memry 活动和导入的 Google 日历的双向同步。",
+      "description": "memrynote 活动和导入的 Google 日历的双向同步。",
       "statuses": {
         "connected": "已连接",
         "notConnected": "未连接",
@@ -810,7 +810,7 @@
     "registry": {
       "googleCalendar": {
         "name": "Google 日历",
-        "description": "Memry 的事件、任务、提醒和导入日历的双向同步"
+        "description": "memrynote 的事件、任务、提醒和导入日历的双向同步"
       },
       "appleCalendar": {
         "name": "Apple 日历",
@@ -963,7 +963,7 @@
       "description": "随时随地捕捉笔记",
       "permissionNeeded": "需要权限",
       "active": "活跃",
-      "permissionHint": "全局快捷键需要辅助功能权限。前往系统设置 → 隐私 → 辅助功能并启用 Memry。"
+      "permissionHint": "全局快捷键需要辅助功能权限。前往系统设置 → 隐私 → 辅助功能并启用 memrynote。"
     },
     "toasts": {
       "saveGlobalFailed": "无法保存全局捕获快捷键",

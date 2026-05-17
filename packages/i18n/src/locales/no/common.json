@@ -94,7 +94,7 @@
     },
     "componentsFirstRunOnboarding": {
       "skipOnboarding": "Hopp over ombordstigning",
-      "welcomeToMemry": "Velkommen til Memry",
+      "welcomeToMemry": "Velkommen til memrynote",
       "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Din personlige kunnskapsbase. La oss bruke 2 minutter på å komme i gang.",
       "getStarted": "Kom i gang ",
       "createYourFirstNote": "Lag ditt første notat",
@@ -289,7 +289,7 @@
       "dragToResizeDoubleClickToReset": "Dra for å endre størrelse · Dobbeltklikk for å tilbakestille"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Velkommen til Memry",
+      "welcomeToMemry": "Velkommen til memrynote",
       "yourPersonalKnowledgeManagementSystem": "Ditt personlige kunnskapsstyringssystem.",
       "selectAFolderToStoreYourNotesAndTasks": "Velg en mappe for å lagre notatene og oppgavene dine.",
       "opening": "Åpner...",
@@ -341,9 +341,9 @@
     "stop": "Stopp",
     "thinking": "Agent tenker",
     "enable": {
-      "title": "Aktiver Memry Agent",
-      "description": "Memry Agent bruker den valgte lokale agenten CLI for å chatte om hvelvet ditt. Claude sender svinger til Anthropic; Codex sender svinger til OpenAI.",
-      "remote": "Memry krypterer din lokale og synkroniserte chat-historikk, men modellslutning skjer med den valgte leverandøren.",
+      "title": "Aktiver memrynote Agent",
+      "description": "memrynote Agent bruker den valgte lokale agenten CLI for å chatte om hvelvet ditt. Claude sender svinger til Anthropic; Codex sender svinger til OpenAI.",
+      "remote": "memrynote krypterer din lokale og synkroniserte chat-historikk, men modellslutning skjer med den valgte leverandøren.",
       "readTools": "Leseverktøy kjøres automatisk.",
       "writeTools": "Oppretting og oppdatering av verktøy krever godkjenning.",
       "diff": "Oppdateringsverktøy viser en diff eller forhåndsvisning.",
@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "Gjeldende merknad",
       "removeAttachment": "Fjern {label}",
-      "placeholder": "Spør Memry om hva som helst. @ for å nevne en fil",
+      "placeholder": "Spør memrynote om hva som helst. @ for å nevne en fil",
       "send": "Sende",
       "providerLabel": "Agent-leverandør: {provider}",
       "settingsSummary": "{reasoning}",

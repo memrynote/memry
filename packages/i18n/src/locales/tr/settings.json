@@ -46,7 +46,7 @@
     "startup": {
       "launchAtLogin": {
         "label": "Girişte Başlat",
-        "description": "Giriş yaptığınızda Memry'i başlatın",
+        "description": "Giriş yaptığınızda memrynote'i başlatın",
         "error": "Önyüklemede başlatma güncellenemedi"
       }
     },
@@ -55,15 +55,15 @@
       "installedVersion": "Yüklü sürüm {version}",
       "availableVersion": "Mevcut sürüm {version}",
       "unsupported": "Paketlenmiş derlemeler GitHub Sürümlerinden güncellemeleri kontrol edebilir, indirebilir ve yükleyebilir",
-      "available": "Memry {version} indirilebilir",
+      "available": "memrynote {version} indirilebilir",
       "downloadingLatest": "En son sürümün indirilmesi",
       "downloadingLatestPercent": "En son sürümün indirilmesi ({percent}%)",
-      "downloaded": "Memry {version} kuruluma hazır",
+      "downloaded": "memrynote {version} kuruluma hazır",
       "upToDate": "Bu kurulum en son yayınlanan sürümdedir",
       "checking": "Daha yeni bir sürüm için GitHub Sürümlerini kontrol etme",
       "idle": "Yeni sürümleri kontrol edin ve uygulamadan çıkmadan bunları yükleyin",
       "unsupportedToast": "Otomatik güncellemeler yalnızca paket sürümlerde mevcuttur",
-      "upToDateToast": "Memry {version} güncel",
+      "upToDateToast": "memrynote {version} güncel",
       "actionFailed": "Güncelleme eylemi başarısız oldu",
       "actions": {
         "checking": "Kontrol ediliyor...",
@@ -540,7 +540,7 @@
       "pendingSuccess": "Cihaz başarıyla bağlandı",
       "goBack": "Geri dön",
       "waitingTitle": "Onay bekleniyor",
-      "waitingDescription": "Diğer cihazınızda Memry'i açın ve bağlantı isteğini onaylayın.",
+      "waitingDescription": "Diğer cihazınızda memrynote'i açın ve bağlantı isteğini onaylayın.",
       "verificationCode": "Doğrulama kodu",
       "confirmCode": "Bunun diğer cihazınızdaki kodla eşleştiğini doğrulayın"
     }
@@ -778,7 +778,7 @@
     "connect": "Bağlan",
     "googleCalendar": {
       "name": "Google Calendar",
-      "description": "Memry etkinlikleri ve içe aktarılan Google takvimleri için iki yönlü senkronizasyon.",
+      "description": "memrynote etkinlikleri ve içe aktarılan Google takvimleri için iki yönlü senkronizasyon.",
       "statuses": {
         "connected": "Bağlı",
         "notConnected": "Bağlı Değil",
@@ -810,7 +810,7 @@
     "registry": {
       "googleCalendar": {
         "name": "Google Calendar",
-        "description": "Memry etkinlikleri, görevleri, hatırlatıcıları ve içe aktarılan takvimler için iki yönlü senkronizasyon"
+        "description": "memrynote etkinlikleri, görevleri, hatırlatıcıları ve içe aktarılan takvimler için iki yönlü senkronizasyon"
       },
       "appleCalendar": {
         "name": "Apple Takvim",

@@ -19,13 +19,13 @@
     "exportCancelled": "匯出已取消",
     "update": {
       "availableTitle": "有更新可用",
-      "availableMessage": "Memry {version} 可用。",
+      "availableMessage": "memrynote {version} 可用。",
       "availableDetailFallback": "現在下載更新嗎？",
       "buttonDownload": "下載",
       "buttonLater": "稍後",
       "readyTitle": "更新已就緒",
-      "readyMessage": "Memry {version} 已下載完成。",
-      "readyDetailFallback": "重新啟動 Memry 以完成更新安裝。",
+      "readyMessage": "memrynote {version} 已下載完成。",
+      "readyDetailFallback": "重新啟動 memrynote 以完成更新安裝。",
       "buttonRestartNow": "立即重新啟動",
       "releaseNotesLabel": "版本更新說明："
     }

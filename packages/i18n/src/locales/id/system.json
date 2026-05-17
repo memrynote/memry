@@ -19,13 +19,13 @@
     "exportCancelled": "Ekspor dibatalkan",
     "update": {
       "availableTitle": "Pembaruan tersedia",
-      "availableMessage": "Memry {version} tersedia.",
+      "availableMessage": "memrynote {version} tersedia.",
       "availableDetailFallback": "Unduh pembaruan sekarang?",
       "buttonDownload": "Unduh",
       "buttonLater": "Nanti",
       "readyTitle": "Pembaruan siap",
-      "readyMessage": "Memry {version} telah diunduh.",
-      "readyDetailFallback": "Mulai ulang Memry untuk menyelesaikan instalasi pembaruan.",
+      "readyMessage": "memrynote {version} telah diunduh.",
+      "readyDetailFallback": "Mulai ulang memrynote untuk menyelesaikan instalasi pembaruan.",
       "buttonRestartNow": "Mulai ulang sekarang",
       "releaseNotesLabel": "Catatan rilis:"
     }

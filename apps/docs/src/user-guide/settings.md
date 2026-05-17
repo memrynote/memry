@@ -1,10 +1,10 @@
 # Settings Reference
 
-Every panel in the Memry settings modal, in one searchable page. Open with <kbd>Cmd</kbd>+<kbd>,</kbd> or from the sidebar menu.
+Every panel in the memrynote settings modal, in one searchable page. Open with <kbd>Cmd</kbd>+<kbd>,</kbd> or from the sidebar menu.
 
 Settings are organized into four groups:
 
-- **Workspace** — how Memry behaves day-to-day (Account, General, Templates, Editor, Journal, Tasks, Calendar)
+- **Workspace** — how memrynote behaves day-to-day (Account, General, Templates, Editor, Journal, Tasks, Calendar)
 - **Preferences** — your personal taste (Appearance, Keyboard Shortcuts)
 - **Services** — external integrations and AI (AI Assistant, Integrations)
 - **Data** — what's on disk and metadata (Vault, Tags, Properties)
@@ -37,7 +37,7 @@ A list of devices that have been linked to your account. Rename or revoke from t
 - **Rotate Keys** — re-encrypt the vault key with a new master key and reseal it for each linked device
 - **Sign Out** — clears the session (with a confirmation dialog)
 
-The Account page footer links to the Memry GitHub repository and issue tracker for starring the
+The Account page footer links to the memrynote GitHub repository and issue tracker for starring the
 project or sending product feedback.
 
 ---
@@ -46,7 +46,7 @@ project or sending product feedback.
 
 ### Startup
 
-**Launch at Login** auto-starts Memry when you log in.
+**Launch at Login** auto-starts memrynote when you log in.
 
 ### Updates
 
@@ -76,7 +76,7 @@ Shows the installed version. If a newer version is available, a button lets you 
 
 ### Built-in Templates
 
-Memry-provided templates. Read-only; duplicate to make an editable copy.
+memrynote-provided templates. Read-only; duplicate to make an editable copy.
 
 ### My Templates
 
@@ -171,7 +171,7 @@ Eight presets — indigo, amber, emerald, red, violet, cyan, pink, orange — pl
 
 ### Global Capture
 
-Set a system-wide hotkey to focus the Memry window from anywhere. macOS requires Accessibility permission.
+Set a system-wide hotkey to focus the memrynote window from anywhere. macOS requires Accessibility permission.
 
 ### Shortcut List
 
@@ -189,8 +189,8 @@ For the full default list see [Keyboard Shortcuts](/user-guide/keyboard-shortcut
 
 ### Enable
 
-A master toggle for AI features. Off by default — Memry never reaches out to AI services until you turn this on.
-When off, Memry also hides AI entry points in the app: inline editor AI, Agent Chat in the right
+A master toggle for AI features. Off by default — memrynote never reaches out to AI services until you turn this on.
+When off, memrynote also hides AI entry points in the app: inline editor AI, Agent Chat in the right
 sidebar, AI tag/folder/note suggestions, journal AI connections, voice recording/transcription
 controls, and quick-capture voice capture.
 
@@ -233,7 +233,7 @@ machine-local and are not synced between devices.
 - **Probe Tools** — verifies tool-call emission and tool-result continuation before vault tools are enabled
 
 The Agent Chat prompt bar can override access for one turn and can enable web search when the active
-backend supports it. Vault-only turns keep the CLI backend constrained to Memry tools; computer
+backend supports it. Vault-only turns keep the CLI backend constrained to memrynote tools; computer
 access turns grant broader local CLI access for that turn.
 
 Loopback endpoints are treated as local. Custom non-loopback endpoints require an explicit

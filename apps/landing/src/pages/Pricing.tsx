@@ -196,7 +196,7 @@ function TierGrid({
             Plans
           </span>
           <h2 className="mt-3 font-serif text-4xl font-normal leading-tight text-ink md:text-5xl">
-            Choose your Memry plan
+            Choose your memrynote plan
           </h2>
         </motion.div>
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4 xl:items-stretch xl:gap-5">
@@ -492,7 +492,7 @@ function BelieverNarrative() {
               <h2 className="font-serif text-4xl font-normal leading-tight text-ink-inverted md:text-5xl">
                 Pay <span className="italic text-terracotta">$500 once.</span>
                 <br />
-                Keep Memry independent.
+                Keep memrynote independent.
               </h2>
               <p className="text-lg leading-relaxed text-dark-muted">
                 Believer is a supporter package: everything in Plus, more encrypted storage,
@@ -512,8 +512,8 @@ function BelieverNarrative() {
               <blockquote className="font-serif text-xl leading-relaxed text-ink-inverted/90 md:text-2xl">
                 <span className="font-serif text-4xl text-terracotta leading-none">“</span>
                 Indie software lives or dies on the people who back it early. Believers aren&apos;t
-                just buying storage — they&apos;re helping keep Memry independent while we build the
-                next ten years.
+                just buying storage — they&apos;re helping keep memrynote independent while we build
+                the next ten years.
               </blockquote>
               <figcaption className="mt-6 flex items-center gap-3 text-sm font-mono-accent uppercase tracking-[0.18em] text-dark-muted">
                 <span className="h-px w-8 bg-terracotta/60" aria-hidden />

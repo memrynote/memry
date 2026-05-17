@@ -94,7 +94,7 @@
     },
     "componentsFirstRunOnboarding": {
       "skipOnboarding": "Пропустити введення",
-      "welcomeToMemry": "Ласкаво просимо до Memry",
+      "welcomeToMemry": "Ласкаво просимо до memrynote",
       "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Ваша персональна база знань. Давайте витратимо 2 хвилини, щоб почати.",
       "getStarted": "Почати ",
       "createYourFirstNote": "Створіть свою першу замітку",
@@ -289,7 +289,7 @@
       "dragToResizeDoubleClickToReset": "Перетягніть, щоб змінити розмір · Подвійний клік для скидання"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Ласкаво просимо до Memry",
+      "welcomeToMemry": "Ласкаво просимо до memrynote",
       "yourPersonalKnowledgeManagementSystem": "Ваша персональна система керування знаннями.",
       "selectAFolderToStoreYourNotesAndTasks": "Виберіть папку для збереження нотаток і завдань.",
       "opening": "Відкривається...",
@@ -341,9 +341,9 @@
     "stop": "Стоп",
     "thinking": "Agent думає",
     "enable": {
-      "title": "Увімкнути Memry Agent",
-      "description": "Memry Agent використовує вибраного вами місцевого агента CLI для спілкування про ваше сховище. Claude надсилає черги до Anthropic; Codex надсилає черги до OpenAI.",
-      "remote": "Memry шифрує вашу локальну та синхронізовану історію чату, але вибір моделі відбувається з вибраним постачальником.",
+      "title": "Увімкнути memrynote Agent",
+      "description": "memrynote Agent використовує вибраного вами місцевого агента CLI для спілкування про ваше сховище. Claude надсилає черги до Anthropic; Codex надсилає черги до OpenAI.",
+      "remote": "memrynote шифрує вашу локальну та синхронізовану історію чату, але вибір моделі відбувається з вибраним постачальником.",
       "readTools": "Інструменти читання запускаються автоматично.",
       "writeTools": "Інструменти створення та оновлення потребують схвалення.",
       "diff": "Інструменти оновлення показують різницю або попередній перегляд.",
@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "Актуальна примітка",
       "removeAttachment": "Видалити {label}",
-      "placeholder": "Запитайте Memry про що завгодно. @, щоб згадати файл",
+      "placeholder": "Запитайте memrynote про що завгодно. @, щоб згадати файл",
       "send": "Надіслати",
       "providerLabel": "Постачальник Agent: {provider}",
       "settingsSummary": "{reasoning}",

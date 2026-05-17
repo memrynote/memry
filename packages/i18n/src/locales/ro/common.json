@@ -94,7 +94,7 @@
     },
     "componentsFirstRunOnboarding": {
       "skipOnboarding": "Omite la îmbarcare",
-      "welcomeToMemry": "Bun venit la Memry",
+      "welcomeToMemry": "Bun venit la memrynote",
       "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Baza ta de cunoștințe personale. Să luăm 2 minute pentru a începe.",
       "getStarted": "Începeți ",
       "createYourFirstNote": "Creați prima notă",
@@ -289,7 +289,7 @@
       "dragToResizeDoubleClickToReset": "Trageți pentru a redimensiona · Faceți dublu clic pentru a reseta"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Bun venit la Memry",
+      "welcomeToMemry": "Bun venit la memrynote",
       "yourPersonalKnowledgeManagementSystem": "Sistemul dvs. personal de management al cunoștințelor.",
       "selectAFolderToStoreYourNotesAndTasks": "Selectați un dosar pentru a vă stoca notele și sarcinile.",
       "opening": "Deschidere...",
@@ -341,9 +341,9 @@
     "stop": "Opriți",
     "thinking": "Agent se gândește",
     "enable": {
-      "title": "Activați Memry Agent",
-      "description": "Memry Agent folosește agentul local selectat de dvs. CLI pentru a discuta despre seiful dvs. Claude trimite ture către Anthropic; Codex trimite ture către OpenAI.",
-      "remote": "Memry criptează istoricul dvs. de chat local și sincronizat, dar deducerea modelului are loc cu furnizorul selectat.",
+      "title": "Activați memrynote Agent",
+      "description": "memrynote Agent folosește agentul local selectat de dvs. CLI pentru a discuta despre seiful dvs. Claude trimite ture către Anthropic; Codex trimite ture către OpenAI.",
+      "remote": "memrynote criptează istoricul dvs. de chat local și sincronizat, dar deducerea modelului are loc cu furnizorul selectat.",
       "readTools": "Instrumentele de citire rulează automat.",
       "writeTools": "Crearea și actualizarea instrumentelor necesită aprobare.",
       "diff": "Instrumentele de actualizare arată o diferență sau o previzualizare.",
@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "Notă curentă",
       "removeAttachment": "Eliminați {label}",
-      "placeholder": "Întreabă Memry orice. @ pentru a menționa un fișier",
+      "placeholder": "Întreabă memrynote orice. @ pentru a menționa un fișier",
       "send": "Trimite",
       "providerLabel": "Furnizor Agent: {provider}",
       "settingsSummary": "{reasoning}",

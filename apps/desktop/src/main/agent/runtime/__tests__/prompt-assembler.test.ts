@@ -29,7 +29,7 @@ describe('Prompt assembler', () => {
     expect(out.startsWith(SYSTEM_PROMPT_HEADER)).toBe(true)
   })
 
-  it('instructs the agent to use provided Memry refs as exact markdown links', () => {
+  it('instructs the agent to use provided memrynote refs as exact markdown links', () => {
     expect(SYSTEM_PROMPT_HEADER).toContain('use the exact markdown link')
     expect(SYSTEM_PROMPT_HEADER).toContain('Do not invent memry:// links')
   })
@@ -272,10 +272,10 @@ describe('Prompt assembler', () => {
     expect(out).toContain('System (context_attached): {"refId":"note-1"}')
   })
 
-  it('includes Identity, Tool Use, Memry Objects, Workflows, Links, Style, and Ambiguity sections in the system header', () => {
+  it('includes Identity, Tool Use, memrynote Objects, Workflows, Links, Style, and Ambiguity sections in the system header', () => {
     expect(SYSTEM_PROMPT_HEADER).toContain('# Identity')
     expect(SYSTEM_PROMPT_HEADER).toContain('# Tool Use')
-    expect(SYSTEM_PROMPT_HEADER).toContain('# Memry Objects')
+    expect(SYSTEM_PROMPT_HEADER).toContain('# memrynote Objects')
     expect(SYSTEM_PROMPT_HEADER).toContain('# Workflows')
     expect(SYSTEM_PROMPT_HEADER).toContain('# Links')
     expect(SYSTEM_PROMPT_HEADER).toContain('# Style')

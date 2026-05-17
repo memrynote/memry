@@ -16,7 +16,7 @@
   "filter": {
     "filter-calendars": "I-filter ang mga kalendaryo",
     "sources": "Mga pinagmumulan",
-    "memry-items": "Memry item",
+    "memry-items": "memrynote item",
     "imported-calendars": "Mga na-import na kalendaryo",
     "event-types": "Mga uri ng kaganapan",
     "google-calendars": "Mga kalendaryo ng Google",
@@ -60,27 +60,27 @@
     "target-calendar": "Target na kalendaryo",
     "use-default-calendar": "Gamitin ang default na kalendaryo",
     "use-default-calendar-with-name": "Gamitin ang default ({calendar})",
-    "use-memry-calendar-default": "Gamitin ang Memry na kalendaryo (default)",
+    "use-memry-calendar-default": "Gamitin ang memrynote na kalendaryo (default)",
     "primary-suffix": "pangunahin"
   },
   "delete-dialog": {
     "title": "Tanggalin ang kaganapan?",
     "local-description": "Ang \"{title}\" ay permanenteng tatanggalin. Ang pagkilos na ito ay hindi maaaring i-undo.",
-    "google-bound-description": "Aalisin ang \"{title}\" sa Memry at Google Calendar. Ang pagkilos na ito ay hindi maaaring i-undo.",
+    "google-bound-description": "Aalisin ang \"{title}\" sa memrynote at Google Calendar. Ang pagkilos na ito ay hindi maaaring i-undo.",
     "context-menu-delete-label": "Tanggalin ang kaganapan"
   },
   "promote-dialog": {
     "aria": "I-edit ang panlabas na kaganapan sa kalendaryo",
-    "title": "I-edit ang kaganapang ito sa Memry?",
-    "body": "Ang pag-edit sa kaganapang ito ay lilikha ng naka-link na kopya sa Memry kaya ang mga pagbabago ay nagsi-sync sa parehong paraan. Magpatuloy?",
+    "title": "I-edit ang kaganapang ito sa memrynote?",
+    "body": "Ang pag-edit sa kaganapang ito ay lilikha ng naka-link na kopya sa memrynote kaya ang mga pagbabago ay nagsi-sync sa parehong paraan. Magpatuloy?",
     "do-not-ask-again": "Wag ka nang magtanong ulit",
-    "confirm-label": "I-edit sa Memry"
+    "confirm-label": "I-edit sa memrynote"
   },
   "onboarding-dialog": {
     "aria": "Piliin ang iyong default na kalendaryo ng Google",
-    "title": "Aling kalendaryo dapat pumunta sa mga bagong kaganapan sa Memry?",
-    "body": "Piliin ang Google calendar na dapat gamitin ng Memry bilang default. Maaari mo pa rin itong i-override sa bawat kaganapan.",
-    "default-calendar-label": "Gamitin ang Memry na pinamamahalaang kalendaryo",
+    "title": "Aling kalendaryo dapat pumunta sa mga bagong kaganapan sa memrynote?",
+    "body": "Piliin ang Google calendar na dapat gamitin ng memrynote bilang default. Maaari mo pa rin itong i-override sa bawat kaganapan.",
+    "default-calendar-label": "Gamitin ang memrynote na pinamamahalaang kalendaryo",
     "skip": "Laktawan",
     "use-this-calendar": "Gamitin ang kalendaryong ito"
   },

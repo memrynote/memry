@@ -128,7 +128,7 @@ const SAMPLE_ITEMS: CalendarProjectionItem[] = [
     source: {
       provider: null,
       calendarSourceId: null,
-      title: 'Memry',
+      title: 'memrynote',
       color: null,
       kind: null,
       isMemryManaged: true
@@ -150,7 +150,7 @@ const SAMPLE_ITEMS: CalendarProjectionItem[] = [
     source: {
       provider: null,
       calendarSourceId: null,
-      title: 'Memry Tasks',
+      title: 'memrynote Tasks',
       color: null,
       kind: null,
       isMemryManaged: true
@@ -172,7 +172,7 @@ const SAMPLE_ITEMS: CalendarProjectionItem[] = [
     source: {
       provider: null,
       calendarSourceId: null,
-      title: 'Memry Reminders',
+      title: 'memrynote Reminders',
       color: null,
       kind: null,
       isMemryManaged: true
@@ -194,7 +194,7 @@ const SAMPLE_ITEMS: CalendarProjectionItem[] = [
     source: {
       provider: null,
       calendarSourceId: null,
-      title: 'Memry Inbox',
+      title: 'memrynote Inbox',
       color: null,
       kind: null,
       isMemryManaged: true
@@ -329,7 +329,7 @@ describe('CalendarPage', () => {
     expect(mockUseCalendarRange).toHaveBeenCalled()
   })
 
-  it('filters imported Google calendars separately from Memry items', async () => {
+  it('filters imported Google calendars separately from memrynote items', async () => {
     const user = userEvent.setup()
     renderWithProviders(<CalendarPage />)
 
@@ -344,7 +344,7 @@ describe('CalendarPage', () => {
     expect(screen.queryByText('Customer call')).not.toBeInTheDocument()
     expect(screen.getByText('Planning block')).toBeInTheDocument()
 
-    await user.click(screen.getByLabelText('Memry items'))
+    await user.click(screen.getByLabelText('memrynote items'))
     expect(screen.queryByText('Planning block')).not.toBeInTheDocument()
 
     await user.click(screen.getByLabelText('Imported calendars'))
@@ -524,7 +524,7 @@ describe('CalendarPage', () => {
     expect(await screen.findByRole('dialog', { name: 'Edit calendar event' })).toBeInTheDocument()
   })
 
-  it('deletes a Memry-native event via the right-click menu without Google wording', async () => {
+  it('deletes a memrynote-native event via the right-click menu without Google wording', async () => {
     const showContextMenu = vi.mocked(window.api.showContextMenu)
     showContextMenu.mockResolvedValueOnce('delete')
 

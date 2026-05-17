@@ -6,7 +6,7 @@ const { buildFromTemplate } = vi.hoisted(() => ({
 }))
 
 vi.mock('electron', () => ({
-  app: { name: 'Memry' },
+  app: { name: 'Memrynote' },
   BrowserWindow: { getFocusedWindow: vi.fn() },
   Menu: { buildFromTemplate }
 }))

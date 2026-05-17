@@ -37,7 +37,7 @@ Useful for: today's journal, your "now" note, the shared project.
 
 ## Opening Items
 
-Single-clicking a note, view, search result, or sidebar item opens a permanent tab. If that item is already open, Memry focuses the existing tab instead of creating another copy.
+Single-clicking a note, view, search result, or sidebar item opens a permanent tab. If that item is already open, memrynote focuses the existing tab instead of creating another copy.
 
 ## Mouse Navigation
 
@@ -95,7 +95,7 @@ If **Restore Session** is on, the entire tab and split layout restores on app la
 
 ## Modified Indicator
 
-A small dot appears on a tab title when there are unsaved changes (rare — Memry auto-saves). Closing a modified tab triggers a flush before close.
+A small dot appears on a tab title when there are unsaved changes (rare — memrynote auto-saves). Closing a modified tab triggers a flush before close.
 
 ## See Also
 

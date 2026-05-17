@@ -129,7 +129,7 @@ function AIAgentHero() {
             <span className="italic text-terracotta">On your device.</span>
           </h1>
           <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-muted md:text-lg">
-            An AI agent that lives inside Memry. Local-first, BYOK, MCP-native. Your vault never
+            An AI agent that lives inside memrynote. Local-first, BYOK, MCP-native. Your vault never
             leaves your machine with local models, and every write needs your nod.
           </p>
 
@@ -171,7 +171,7 @@ function HeroChatMock() {
   return (
     <FeatureHeroScreenshot
       src="/screenshots/ai-agent.png"
-      alt="Memry AI agent panel reading a note and creating a treadmill walking program in the vault"
+      alt="memrynote AI agent panel reading a note and creating a treadmill walking program in the vault"
       width={1756}
       height={1004}
     />
@@ -200,7 +200,7 @@ const ANCHOR_CARDS: { icon: LucideIcon; title: string; body: string; comingSoon?
   {
     icon: Server,
     title: 'MCP-native vault',
-    body: 'One localhost Vault MCP server runs in Memry. External MCP clients can read it. Writes still need you.'
+    body: 'One localhost Vault MCP server runs in memrynote. External MCP clients can read it. Writes still need you.'
   }
 ]
 
@@ -364,7 +364,7 @@ function MCPServerCard() {
     <ShowcaseCard
       label="Vault MCP server"
       title="One server. Many clients."
-      body="Memry runs a localhost MCP server. Claude CLI, Codex CLI, and your own tools can connect."
+      body="memrynote runs a localhost MCP server. Claude CLI, Codex CLI, and your own tools can connect."
     >
       <div className="rounded-xl border border-border/60 bg-paper p-4">
         <div className="flex items-center justify-between">
@@ -396,8 +396,8 @@ function MCPServerCard() {
         </ul>
       </div>
       <p className="mt-5 text-[12px] text-muted">
-        External MCP clients are read-only by default. Writes route through an active Memry Agent
-        conversation.
+        External MCP clients are read-only by default. Writes route through an active memrynote
+        Agent conversation.
       </p>
     </ShowcaseCard>
   )
@@ -407,7 +407,7 @@ const AUDIT_LOG = [
   { time: '14:02', who: 'Claude CLI', action: 'read', target: '[[summary-2026]]', tone: 'sage' },
   {
     time: '14:02',
-    who: 'Memry Agent',
+    who: 'memrynote Agent',
     action: 'wrote',
     target: '[[summary-2026]]',
     tone: 'terracotta'
@@ -416,7 +416,7 @@ const AUDIT_LOG = [
   { time: '13:51', who: 'You', action: 'declined', target: 'delete [[draft-old]]', tone: 'amber' },
   {
     time: '13:44',
-    who: 'Memry Agent',
+    who: 'memrynote Agent',
     action: 'read',
     target: '[[journal/2026-05-15]]',
     tone: 'sage'
@@ -669,8 +669,8 @@ function LocalOnlyMode() {
               <span className="italic text-terracotta">Vault never leaves your machine.</span>
             </h2>
             <p className="mt-5 max-w-md text-lg leading-relaxed text-muted">
-              Pair Memry with Ollama, llama.cpp, MLX, or vLLM. Switch one toggle and the agent stops
-              talking to any network. Inference is yours.
+              Pair memrynote with Ollama, llama.cpp, MLX, or vLLM. Switch one toggle and the agent
+              stops talking to any network. Inference is yours.
             </p>
             <div className="mt-7 flex flex-wrap gap-2">
               {['Ollama', 'llama.cpp', 'MLX', 'vLLM'].map((name) => (
@@ -712,7 +712,7 @@ function LocalOnlyMode() {
                 <p className="font-mono-accent text-[10px] uppercase tracking-[0.18em] text-muted">
                   Vault
                 </p>
-                <p className="mt-2 font-mono-accent text-[13px] text-ink">~/Memry/Vault</p>
+                <p className="mt-2 font-mono-accent text-[13px] text-ink">~/memrynote/Vault</p>
                 <p className="mt-1 text-[12px] text-sage">on-device only</p>
               </div>
             </div>
@@ -747,7 +747,7 @@ const STRUCTURE_CARDS: { icon: LucideIcon; title: string; body: string; comingSo
   {
     icon: Lock,
     title: 'Read-only by default',
-    body: 'External MCP clients get read access only. Writes require an active Memry Agent conversation and your approval.'
+    body: 'External MCP clients get read access only. Writes require an active memrynote Agent conversation and your approval.'
   },
   {
     icon: ScrollText,
@@ -839,7 +839,7 @@ function WorksWithRest() {
         <motion.div {...fadeUp} className="mx-auto max-w-2xl text-center">
           <Eyebrow>One workspace</Eyebrow>
           <h2 className="mt-3 font-serif text-3xl font-normal leading-tight text-ink md:text-5xl">
-            Works with the rest of Memry.
+            Works with the rest of memrynote.
           </h2>
           <p className="mt-5 text-lg leading-relaxed text-muted">
             The agent is not a separate app. It is a layer over the same vault that powers your
@@ -1014,7 +1014,7 @@ const AGENT_FAQ = [
   {
     question: 'Do I need an API key?',
     answer:
-      'Only if you want to use a hosted provider like Claude or Codex. Bring your own key and Memry stores it in your OS keychain. Or skip the keys entirely and run a local model with Ollama, llama.cpp, MLX, or vLLM.'
+      'Only if you want to use a hosted provider like Claude or Codex. Bring your own key and memrynote stores it in your OS keychain. Or skip the keys entirely and run a local model with Ollama, llama.cpp, MLX, or vLLM.'
   },
   {
     question: 'Is my vault sent to the cloud?',
@@ -1029,7 +1029,7 @@ const AGENT_FAQ = [
   {
     question: 'How do MCP clients work?',
     answer:
-      'Memry runs one localhost Vault MCP server. Any compliant MCP client — Claude CLI, Codex CLI, your own tools — can connect, list capabilities, and read. External clients are read-only by default. Writes route through an active Memry Agent conversation and your approval.'
+      'memrynote runs one localhost Vault MCP server. Any compliant MCP client — Claude CLI, Codex CLI, your own tools — can connect, list capabilities, and read. External clients are read-only by default. Writes route through an active memrynote Agent conversation and your approval.'
   }
 ]
 

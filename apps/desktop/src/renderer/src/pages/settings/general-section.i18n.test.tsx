@@ -228,7 +228,7 @@ describe('GeneralSettings i18n', () => {
     })
 
     const available = renderGeneral(i18n)
-    await screen.findByText('Memry v2026-05-06.2 is available to download')
+    await screen.findByText('memrynote v2026-05-06.2 is available to download')
     await user.click(screen.getByRole('button', { name: 'Download Update' }))
     await waitFor(() => expect(api.updater.downloadUpdate).toHaveBeenCalled())
     available.unmount()
@@ -250,7 +250,7 @@ describe('GeneralSettings i18n', () => {
     await screen.findByText('Check for new releases and install them without leaving the app')
     await user.click(screen.getByRole('button', { name: 'Check for Updates' }))
     await waitFor(() =>
-      expect(toast.success).toHaveBeenCalledWith('Memry v2026-05-06 is up to date')
+      expect(toast.success).toHaveBeenCalledWith('memrynote v2026-05-06 is up to date')
     )
   })
 })

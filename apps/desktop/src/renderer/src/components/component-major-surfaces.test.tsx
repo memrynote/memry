@@ -250,7 +250,7 @@ describe('social card surfaces', () => {
         processingStatus="completed"
         metadata={{
           platform: 'twitter',
-          authorName: 'Memry Team',
+          authorName: 'memrynote Team',
           authorHandle: '@memry',
           authorAvatar: null,
           postContent: 'Full post',
@@ -259,7 +259,7 @@ describe('social card surfaces', () => {
         }}
       />
     )
-    expect(screen.getByText('Memry Team')).toBeInTheDocument()
+    expect(screen.getByText('memrynote Team')).toBeInTheDocument()
     expect(screen.getByText('Full post')).toBeInTheDocument()
     expect(screen.getByRole('link')).toHaveTextContent('phaseF.componentsSocialCard.viewOn')
 

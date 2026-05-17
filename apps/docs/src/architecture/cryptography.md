@@ -1,6 +1,6 @@
 # Cryptography
 
-Memry's threat model treats the device as the trusted boundary. The server stores ciphertext only, with no access to keys.
+memrynote's threat model treats the device as the trusted boundary. The server stores ciphertext only, with no access to keys.
 
 ## Primitives (libsodium)
 
@@ -28,7 +28,7 @@ passphrase ──Argon2id(salt)──▶ wrapping key
 
 **Per-vault salt** is stored alongside the vault and is unique to that user. **Per-device sealing**: when a device links, the vault key is sealed for its X25519 public key — revoking that device cuts access without rotating the vault.
 
-Local-only development vaults can create a device master key without sign-in. Memry stores a
+Local-only development vaults can create a device master key without sign-in. memrynote stores a
 non-secret verifier in the local settings table so the SQLite vault stays bound to the keychain
 master key that produced it. If that verifier exists and the keychain key is missing or produces a
 different vault key, encrypted surfaces fail closed instead of silently creating a replacement key.
@@ -63,7 +63,7 @@ The `deleted_at` field is included in the Ed25519-signed payload metadata. A hos
 
 ## Argon2id Parameters
 
-The spec called for `parallelism = 4`. libsodium pins parallelism to `1` and Memry documents `1` as canonical. `memory_cost` and `time_cost` are tuned for interactive sign-in latency on the slowest supported hardware.
+The spec called for `parallelism = 4`. libsodium pins parallelism to `1` and memrynote documents `1` as canonical. `memory_cost` and `time_cost` are tuned for interactive sign-in latency on the slowest supported hardware.
 
 ## Recovery Phrase
 

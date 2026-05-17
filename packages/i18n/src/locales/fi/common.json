@@ -94,7 +94,7 @@
     },
     "componentsFirstRunOnboarding": {
       "skipOnboarding": "Ohita perehdytys",
-      "welcomeToMemry": "Tervetuloa Memry:ään",
+      "welcomeToMemry": "Tervetuloa memrynote:ään",
       "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Henkilökohtainen tietopohjasi. Käytetään 2 minuuttia, jotta pääset alkuun.",
       "getStarted": "Aloita ",
       "createYourFirstNote": "Luo ensimmäinen muistiinpanosi",
@@ -289,7 +289,7 @@
       "dragToResizeDoubleClickToReset": "Muuta kokoa vetämällä · Nollaa kaksoisnapsauttamalla"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Tervetuloa Memry:ään",
+      "welcomeToMemry": "Tervetuloa memrynote:ään",
       "yourPersonalKnowledgeManagementSystem": "Henkilökohtainen tiedonhallintajärjestelmäsi.",
       "selectAFolderToStoreYourNotesAndTasks": "Valitse kansio muistiinpanojen ja tehtävien tallentamiseen.",
       "opening": "Avataan...",
@@ -341,9 +341,9 @@
     "stop": "Pysähdy",
     "thinking": "Agent ajattelee",
     "enable": {
-      "title": "Ota Memry Agent käyttöön",
-      "description": "Memry Agent käyttää valitsemaasi paikallista agenttia CLI keskustellakseen holvistasi. Claude lähettää vuoroja Anthropic; Codex lähettää vuoroja OpenAI:lle.",
-      "remote": "Memry salaa paikallisen ja synkronoidun chat-historiasi, mutta mallin päättely tapahtuu valitun palveluntarjoajan kanssa.",
+      "title": "Ota memrynote Agent käyttöön",
+      "description": "memrynote Agent käyttää valitsemaasi paikallista agenttia CLI keskustellakseen holvistasi. Claude lähettää vuoroja Anthropic; Codex lähettää vuoroja OpenAI:lle.",
+      "remote": "memrynote salaa paikallisen ja synkronoidun chat-historiasi, mutta mallin päättely tapahtuu valitun palveluntarjoajan kanssa.",
       "readTools": "Lukutyökalut toimivat automaattisesti.",
       "writeTools": "Työkalujen luonti ja päivitys vaatii hyväksynnän.",
       "diff": "Päivitystyökalut näyttävät eron tai esikatselun.",

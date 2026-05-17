@@ -94,7 +94,7 @@
     },
     "componentsFirstRunOnboarding": {
       "skipOnboarding": "Langkau onboarding",
-      "welcomeToMemry": "Selamat datang ke Memry",
+      "welcomeToMemry": "Selamat datang ke memrynote",
       "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Pangkalan pengetahuan peribadi anda. Mari luangkan masa 2 minit untuk anda bermula.",
       "getStarted": "Mulakan ",
       "createYourFirstNote": "Buat nota pertama anda",
@@ -289,7 +289,7 @@
       "dragToResizeDoubleClickToReset": "Seret untuk mengubah saiz · Klik dua kali untuk menetapkan semula"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Selamat datang ke Memry",
+      "welcomeToMemry": "Selamat datang ke memrynote",
       "yourPersonalKnowledgeManagementSystem": "Sistem pengurusan pengetahuan peribadi anda.",
       "selectAFolderToStoreYourNotesAndTasks": "Pilih folder untuk menyimpan nota dan tugasan anda.",
       "opening": "Membuka...",
@@ -341,9 +341,9 @@
     "stop": "Berhenti",
     "thinking": "Agent sedang berfikir",
     "enable": {
-      "title": "Dayakan Memry Agent",
-      "description": "Memry Agent menggunakan ejen tempatan pilihan anda CLI untuk bersembang tentang peti besi anda. Claude menghantar giliran kepada Anthropic; Codex menghantar giliran ke OpenAI.",
-      "remote": "Memry menyulitkan sejarah sembang setempat dan disegerakkan anda, tetapi inferens model berlaku dengan pembekal yang dipilih.",
+      "title": "Dayakan memrynote Agent",
+      "description": "memrynote Agent menggunakan ejen tempatan pilihan anda CLI untuk bersembang tentang peti besi anda. Claude menghantar giliran kepada Anthropic; Codex menghantar giliran ke OpenAI.",
+      "remote": "memrynote menyulitkan sejarah sembang setempat dan disegerakkan anda, tetapi inferens model berlaku dengan pembekal yang dipilih.",
       "readTools": "Alat baca berjalan secara automatik.",
       "writeTools": "Buat dan kemas kini alatan memerlukan kelulusan.",
       "diff": "Alat kemas kini menunjukkan perbezaan atau pratonton.",
@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "Nota semasa",
       "removeAttachment": "Alih keluar {label}",
-      "placeholder": "Tanya Memry apa-apa sahaja. @ untuk menyebut fail",
+      "placeholder": "Tanya memrynote apa-apa sahaja. @ untuk menyebut fail",
       "send": "Hantar",
       "providerLabel": "Pembekal Agent: {provider}",
       "settingsSummary": "{reasoning}",

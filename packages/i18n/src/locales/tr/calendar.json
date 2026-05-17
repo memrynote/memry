@@ -16,7 +16,7 @@
   "filter": {
     "filter-calendars": "Takvimleri filtrele",
     "sources": "Kaynaklar",
-    "memry-items": "Memry öğeleri",
+    "memry-items": "memrynote öğeleri",
     "imported-calendars": "İçe aktarılan takvimler",
     "event-types": "Etkinlik türleri",
     "google-calendars": "Google takvimleri",
@@ -60,27 +60,27 @@
     "target-calendar": "Hedef takvim",
     "use-default-calendar": "Varsayılan takvimi kullan",
     "use-default-calendar-with-name": "Varsayılanı kullan ({calendar})",
-    "use-memry-calendar-default": "Memry takvimini kullan (varsayılan)",
+    "use-memry-calendar-default": "memrynote takvimini kullan (varsayılan)",
     "primary-suffix": "birincil"
   },
   "delete-dialog": {
     "title": "Etkinlik silinsin mi?",
     "local-description": "\"{title}\" kalıcı olarak silinecek. Bu işlem geri alınamaz.",
-    "google-bound-description": "\"{title}\" Memry ve Google Calendar'dan kaldırılacak. Bu eylem geri alınamaz.",
+    "google-bound-description": "\"{title}\" memrynote ve Google Calendar'dan kaldırılacak. Bu eylem geri alınamaz.",
     "context-menu-delete-label": "Etkinliği sil"
   },
   "promote-dialog": {
     "aria": "Harici takvim etkinliğini düzenle",
-    "title": "Bu etkinlik Memry'te düzenlensin mi?",
-    "body": "Bu etkinliği düzenlemek Memry'de bağlantılı bir kopya oluşturur; değişiklikler iki yönde de senkronize edilir. Devam edilsin mi?",
+    "title": "Bu etkinlik memrynote'te düzenlensin mi?",
+    "body": "Bu etkinliği düzenlemek memrynote'de bağlantılı bir kopya oluşturur; değişiklikler iki yönde de senkronize edilir. Devam edilsin mi?",
     "do-not-ask-again": "Bir daha sorma",
-    "confirm-label": "Memry'de düzenle"
+    "confirm-label": "memrynote'de düzenle"
   },
   "onboarding-dialog": {
     "aria": "Varsayılan Google takviminizi seçin",
-    "title": "Yeni Memry etkinlikleri hangi takvime gitmeli?",
-    "body": "Memry'nin varsayılan olarak kullanacağı Google takvimini seçin. Bunu etkinlik bazında yine de geçersiz kılabilirsiniz.",
-    "default-calendar-label": "Memry tarafından yönetilen takvimi kullan",
+    "title": "Yeni memrynote etkinlikleri hangi takvime gitmeli?",
+    "body": "memrynote'nin varsayılan olarak kullanacağı Google takvimini seçin. Bunu etkinlik bazında yine de geçersiz kılabilirsiniz.",
+    "default-calendar-label": "memrynote tarafından yönetilen takvimi kullan",
     "skip": "Atla",
     "use-this-calendar": "Bu takvimi kullan"
   },

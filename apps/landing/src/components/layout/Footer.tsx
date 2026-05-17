@@ -58,7 +58,7 @@ export function Footer() {
               onClick={() => trackLandingEvent('landing_nav_click', 'footer:logo')}
             >
               <span className="font-serif text-3xl font-medium text-ink group-hover:text-terracotta transition-colors">
-                memry
+                memrynote
               </span>
             </Link>
             <p className="text-lg text-muted font-sans leading-relaxed max-w-sm">
@@ -118,7 +118,7 @@ export function Footer() {
 
         <div className="pt-8 border-t border-border flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-sm text-muted/60 font-mono-accent">
-            © {currentYear} Memry. All rights reserved.
+            © {currentYear} memrynote. All rights reserved.
           </p>
           <p className="text-sm text-muted/60 font-mono-accent">
             An indie project by{' '}

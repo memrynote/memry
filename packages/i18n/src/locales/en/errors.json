@@ -61,7 +61,7 @@
     "deviceRevoked": "This device has been removed from your account.",
     "rateLimited": "Too many requests. Syncing will resume shortly.",
     "cryptoFailure": "Failed to encrypt or decrypt sync data. Try signing out and back in.",
-    "versionIncompatible": "This version of Memry is no longer supported. Please update.",
+    "versionIncompatible": "This version of memrynote is no longer supported. Please update.",
     "storageQuotaExceeded": "Your sync storage is full. Free up space or upgrade your plan.",
     "certificatePinFailed": "Secure connection failed. Check your network connection.",
     "unknown": "An unexpected sync error occurred. Will retry automatically.",

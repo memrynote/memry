@@ -94,7 +94,7 @@
     },
     "componentsFirstRunOnboarding": {
       "skipOnboarding": "Saltar incorporación",
-      "welcomeToMemry": "Bienvenido a Memry",
+      "welcomeToMemry": "Bienvenido a memrynote",
       "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Su base de conocimientos personales. Tomemos 2 minutos para comenzar.",
       "getStarted": "empezar ",
       "createYourFirstNote": "Crea tu primera nota",
@@ -289,7 +289,7 @@
       "dragToResizeDoubleClickToReset": "Arrastre para cambiar el tamaño · Haga doble clic para restablecer"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Bienvenido a Memry",
+      "welcomeToMemry": "Bienvenido a memrynote",
       "yourPersonalKnowledgeManagementSystem": "Su sistema personal de gestión del conocimiento.",
       "selectAFolderToStoreYourNotesAndTasks": "Seleccione una carpeta para almacenar sus notas y tareas.",
       "opening": "Abriendo...",
@@ -341,9 +341,9 @@
     "stop": "Detener",
     "thinking": "Agent está pensando",
     "enable": {
-      "title": "Habilitar Memry Agent",
-      "description": "Memry Agent utiliza su agente local seleccionado CLI para conversar sobre su bóveda. Claude envía giros a Anthropic; Codex envía giros a OpenAI.",
-      "remote": "Memry cifra su historial de chat local y sincronizado, pero la inferencia del modelo ocurre con el proveedor seleccionado.",
+      "title": "Habilitar memrynote Agent",
+      "description": "memrynote Agent utiliza su agente local seleccionado CLI para conversar sobre su bóveda. Claude envía giros a Anthropic; Codex envía giros a OpenAI.",
+      "remote": "memrynote cifra su historial de chat local y sincronizado, pero la inferencia del modelo ocurre con el proveedor seleccionado.",
       "readTools": "Las herramientas de lectura se ejecutan automáticamente.",
       "writeTools": "Crear y actualizar herramientas requieren aprobación.",
       "diff": "Las herramientas de actualización muestran una diferencia o una vista previa.",
@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "Nota actual",
       "removeAttachment": "Eliminar {label}",
-      "placeholder": "Pregunta cualquier cosa a Memry. @ para mencionar un archivo",
+      "placeholder": "Pregunta cualquier cosa a memrynote. @ para mencionar un archivo",
       "send": "Enviar",
       "providerLabel": "Proveedor Agent: {provider}",
       "settingsSummary": "{reasoning}",

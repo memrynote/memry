@@ -3,12 +3,12 @@
   "version": "1.0.0",
   "private": true,
   "license": "GPL-3.0",
-  "description": "Memry desktop app",
+  "description": "memrynote desktop app",
   "main": "./out/main/index.js",
   "engines": {
     "node": "24.x"
   },
-  "author": "Memry",
+  "author": "memrynote",
   "homepage": "https://github.com/memrynote/memry",
   "repository": {
     "type": "git",

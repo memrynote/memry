@@ -27,7 +27,7 @@ export async function invokeDesktopApiFromWindow(
   if (!win) {
     throw new AgentToolError(
       'VALIDATION',
-      'Desktop API operation could not find the Memry window.',
+      'Desktop API operation could not find the memrynote window.',
       {
         windowId
       }

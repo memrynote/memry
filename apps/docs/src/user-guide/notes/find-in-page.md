@@ -15,11 +15,11 @@ Press <kbd>⌘</kbd>+<kbd>F</kbd> while focused on a note. A floating bar appear
 
 ## Navigating Matches
 
-| Action | Shortcut |
-| --- | --- |
-| Next match | <kbd>Enter</kbd> or down arrow |
+| Action         | Shortcut                                  |
+| -------------- | ----------------------------------------- |
+| Next match     | <kbd>Enter</kbd> or down arrow            |
 | Previous match | <kbd>⇧</kbd>+<kbd>Enter</kbd> or up arrow |
-| Close | <kbd>Esc</kbd> |
+| Close          | <kbd>Esc</kbd>                            |
 
 Matches are highlighted inline; the active match scrolls into view.
 
@@ -37,7 +37,7 @@ Find-in-page is **local to the current note**. To search across notes, journals,
 
 ## Inside Embedded PDF Previews
 
-PDF previews use their own embedded find — Memry's find bar doesn't reach into them. Click into the PDF and use the embedded viewer's controls.
+PDF previews use their own embedded find — memrynote's find bar doesn't reach into them. Click into the PDF and use the embedded viewer's controls.
 
 ## Performance
 

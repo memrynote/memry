@@ -16,7 +16,7 @@
   "filter": {
     "filter-calendars": "تصفية التقويمات",
     "sources": "المصادر",
-    "memry-items": "عناصر Memry",
+    "memry-items": "عناصر memrynote",
     "imported-calendars": "التقويمات المستوردة",
     "event-types": "أنواع الأحداث",
     "google-calendars": "تقاويم جوجل",
@@ -60,27 +60,27 @@
     "target-calendar": "التقويم المستهدف",
     "use-default-calendar": "استخدم التقويم الافتراضي",
     "use-default-calendar-with-name": "استخدم الافتراضي ({calendar})",
-    "use-memry-calendar-default": "استخدم تقويم Memry (افتراضي)",
+    "use-memry-calendar-default": "استخدم تقويم memrynote (افتراضي)",
     "primary-suffix": "الابتدائي"
   },
   "delete-dialog": {
     "title": "هل تريد حذف الحدث؟",
     "local-description": "سيتم حذف \"{title}\" نهائيًا. لا يمكن التراجع عن هذا الإجراء.",
-    "google-bound-description": "ستتم إزالة \"{title}\" من Memry وتقويم Google. لا يمكن التراجع عن هذا الإجراء.",
+    "google-bound-description": "ستتم إزالة \"{title}\" من memrynote وتقويم Google. لا يمكن التراجع عن هذا الإجراء.",
     "context-menu-delete-label": "حذف الحدث"
   },
   "promote-dialog": {
     "aria": "تحرير حدث التقويم الخارجي",
-    "title": "هل تريد تحرير هذا الحدث في Memry؟",
-    "body": "سيؤدي تحرير هذا الحدث إلى إنشاء نسخة مرتبطة في Memry بحيث تتم مزامنة التغييرات في كلا الاتجاهين. هل تريد المتابعة؟",
+    "title": "هل تريد تحرير هذا الحدث في memrynote؟",
+    "body": "سيؤدي تحرير هذا الحدث إلى إنشاء نسخة مرتبطة في memrynote بحيث تتم مزامنة التغييرات في كلا الاتجاهين. هل تريد المتابعة؟",
     "do-not-ask-again": "لا تسأل مرة أخرى",
-    "confirm-label": "تحرير في Memry"
+    "confirm-label": "تحرير في memrynote"
   },
   "onboarding-dialog": {
     "aria": "اختر تقويم Google الافتراضي الخاص بك",
-    "title": "ما التقويم الذي يجب أن تنتقل إليه أحداث Memry الجديدة؟",
-    "body": "اختر تقويم Google الذي يجب أن يستخدمه Memry افتراضيًا. لا يزال بإمكانك تجاوزه لكل حدث.",
-    "default-calendar-label": "استخدم التقويم المُدار بواسطة Memry",
+    "title": "ما التقويم الذي يجب أن تنتقل إليه أحداث memrynote الجديدة؟",
+    "body": "اختر تقويم Google الذي يجب أن يستخدمه memrynote افتراضيًا. لا يزال بإمكانك تجاوزه لكل حدث.",
+    "default-calendar-label": "استخدم التقويم المُدار بواسطة memrynote",
     "skip": "تخطي",
     "use-this-calendar": "استخدم هذا التقويم"
   },

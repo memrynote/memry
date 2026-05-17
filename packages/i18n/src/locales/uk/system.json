@@ -19,13 +19,13 @@
     "exportCancelled": "Експорт скасовано",
     "update": {
       "availableTitle": "Доступне оновлення",
-      "availableMessage": "Доступне Memry {version}.",
+      "availableMessage": "Доступне memrynote {version}.",
       "availableDetailFallback": "Завантажити оновлення зараз?",
       "buttonDownload": "Завантажити",
       "buttonLater": "Пізніше",
       "readyTitle": "Оновлення готове",
-      "readyMessage": "Memry {version} було завантажено.",
-      "readyDetailFallback": "Перезапустіть Memry, щоб завершити встановлення оновлення.",
+      "readyMessage": "memrynote {version} було завантажено.",
+      "readyDetailFallback": "Перезапустіть memrynote, щоб завершити встановлення оновлення.",
       "buttonRestartNow": "Перезапустити зараз",
       "releaseNotesLabel": "Примітки до версії:"
     }

@@ -94,7 +94,7 @@
     },
     "componentsFirstRunOnboarding": {
       "skipOnboarding": "Preskoči ukrcavanje",
-      "welcomeToMemry": "Dobrodošli u Memry",
+      "welcomeToMemry": "Dobrodošli u memrynote",
       "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Vaša osobna baza znanja. Uzmimo 2 minute da započnemo.",
       "getStarted": "Započnite ",
       "createYourFirstNote": "Napravite svoju prvu bilješku",
@@ -289,7 +289,7 @@
       "dragToResizeDoubleClickToReset": "Povucite za promjenu veličine · Dvaput kliknite za poništavanje"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Dobrodošli u Memry",
+      "welcomeToMemry": "Dobrodošli u memrynote",
       "yourPersonalKnowledgeManagementSystem": "Vaš osobni sustav upravljanja znanjem.",
       "selectAFolderToStoreYourNotesAndTasks": "Odaberite mapu za pohranjivanje bilješki i zadataka.",
       "opening": "Otvaranje...",
@@ -341,9 +341,9 @@
     "stop": "Stani",
     "thinking": "Agent razmišlja",
     "enable": {
-      "title": "Omogući Memry Agent",
-      "description": "Memry Agent koristi vašeg odabranog lokalnog agenta CLI za razgovor o vašem trezoru. Claude šalje skretanja na Anthropic; Codex šalje skretanje na OpenAI.",
-      "remote": "Memry kriptira vašu lokalnu i sinkroniziranu povijest razgovora, ali zaključivanje modela događa se s odabranim pružateljem usluga.",
+      "title": "Omogući memrynote Agent",
+      "description": "memrynote Agent koristi vašeg odabranog lokalnog agenta CLI za razgovor o vašem trezoru. Claude šalje skretanja na Anthropic; Codex šalje skretanje na OpenAI.",
+      "remote": "memrynote kriptira vašu lokalnu i sinkroniziranu povijest razgovora, ali zaključivanje modela događa se s odabranim pružateljem usluga.",
       "readTools": "Alati za čitanje pokreću se automatski.",
       "writeTools": "Alati za izradu i ažuriranje zahtijevaju odobrenje.",
       "diff": "Alati za ažuriranje prikazuju razliku ili pregled.",
@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "Trenutna bilješka",
       "removeAttachment": "Ukloni {label}",
-      "placeholder": "Pitajte Memry bilo što. @ za spominjanje datoteke",
+      "placeholder": "Pitajte memrynote bilo što. @ za spominjanje datoteke",
       "send": "Pošalji",
       "providerLabel": "Agent pružatelj: {provider}",
       "settingsSummary": "{reasoning}",

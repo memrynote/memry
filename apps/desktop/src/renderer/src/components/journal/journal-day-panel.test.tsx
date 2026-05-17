@@ -96,7 +96,7 @@ const SAMPLE_ITEMS: CalendarProjectionItem[] = [
     source: {
       provider: null,
       calendarSourceId: null,
-      title: 'Memry Reminders',
+      title: 'memrynote Reminders',
       color: null,
       kind: null,
       isMemryManaged: true

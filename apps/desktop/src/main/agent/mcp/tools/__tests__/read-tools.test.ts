@@ -62,8 +62,8 @@ function fake(): VaultServiceHandles {
       removeTag: async () => {}
     },
     projects: {
-      list: async () => [{ id: 'p1', name: 'Memry', status: 'active', task_count: 5 }],
-      get: async (id) => (id === 'p1' ? { id, name: 'Memry' } : null),
+      list: async () => [{ id: 'p1', name: 'memrynote', status: 'active', task_count: 5 }],
+      get: async (id) => (id === 'p1' ? { id, name: 'memrynote' } : null),
       create: async () => ({ id: 'unused' }),
       update: async ({ id }) => ({ id }),
       delete: async (id) => ({ id }),
@@ -174,7 +174,7 @@ describe('Read tools', () => {
     const out = await tools
       .find((t) => t.name === 'vault_get_project')!
       .handler({ id: 'p1' }, { conversationId: null, windowId: null })
-    expect(out).toMatchObject({ id: 'p1', name: 'Memry' })
+    expect(out).toMatchObject({ id: 'p1', name: 'memrynote' })
   })
 
   it('vault_list_statuses returns project statuses', async () => {

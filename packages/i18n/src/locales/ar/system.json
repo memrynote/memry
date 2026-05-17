@@ -19,13 +19,13 @@
     "exportCancelled": "تم إلغاء التصدير",
     "update": {
       "availableTitle": "التحديث متاح",
-      "availableMessage": "Memry {version} متاح.",
+      "availableMessage": "memrynote {version} متاح.",
       "availableDetailFallback": "تنزيل التحديث الآن؟",
       "buttonDownload": "تحميل",
       "buttonLater": "في وقت لاحق",
       "readyTitle": "التحديث جاهز",
-      "readyMessage": "تم تنزيل Memry {version}.",
-      "readyDetailFallback": "أعد تشغيل Memry لإنهاء تثبيت التحديث.",
+      "readyMessage": "تم تنزيل memrynote {version}.",
+      "readyDetailFallback": "أعد تشغيل memrynote لإنهاء تثبيت التحديث.",
       "buttonRestartNow": "أعد التشغيل الآن",
       "releaseNotesLabel": "ملاحظات الإصدار:"
     }

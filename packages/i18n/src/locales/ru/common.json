@@ -94,7 +94,7 @@
     },
     "componentsFirstRunOnboarding": {
       "skipOnboarding": "Пропустить регистрацию",
-      "welcomeToMemry": "Добро пожаловать в Memry",
+      "welcomeToMemry": "Добро пожаловать в memrynote",
       "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Ваша личная база знаний. Давайте уделим 2 минуты, чтобы вы начали.",
       "getStarted": "Начать ",
       "createYourFirstNote": "Создайте свою первую заметку",
@@ -289,7 +289,7 @@
       "dragToResizeDoubleClickToReset": "Перетащите, чтобы изменить размер · Дважды щелкните, чтобы сбросить настройки"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Добро пожаловать в Memry",
+      "welcomeToMemry": "Добро пожаловать в memrynote",
       "yourPersonalKnowledgeManagementSystem": "Ваша персональная система управления знаниями.",
       "selectAFolderToStoreYourNotesAndTasks": "Выберите папку для хранения ваших заметок и задач.",
       "opening": "Открытие...",
@@ -341,9 +341,9 @@
     "stop": "Стоп",
     "thinking": "Agent думает",
     "enable": {
-      "title": "Включить Memry Agent",
-      "description": "Memry Agent использует выбранного вами местного агента CLI для общения о вашем хранилище. Claude отправляет ходы на Anthropic; Codex отправляет ходы OpenAI.",
-      "remote": "Memry шифрует вашу локальную и синхронизированную историю чата, но вывод модели происходит с выбранным провайдером.",
+      "title": "Включить memrynote Agent",
+      "description": "memrynote Agent использует выбранного вами местного агента CLI для общения о вашем хранилище. Claude отправляет ходы на Anthropic; Codex отправляет ходы OpenAI.",
+      "remote": "memrynote шифрует вашу локальную и синхронизированную историю чата, но вывод модели происходит с выбранным провайдером.",
       "readTools": "Инструменты чтения запускаются автоматически.",
       "writeTools": "Инструменты создания и обновления требуют одобрения.",
       "diff": "Инструменты обновления показывают разницу или предварительный просмотр.",
@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "Текущая заметка",
       "removeAttachment": "Удалить {label}",
-      "placeholder": "Спросите Memry о чем угодно. @, чтобы упомянуть файл",
+      "placeholder": "Спросите memrynote о чем угодно. @, чтобы упомянуть файл",
       "send": "Отправить",
       "providerLabel": "Поставщик Agent: {provider}",
       "settingsSummary": "{reasoning}",

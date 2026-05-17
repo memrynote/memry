@@ -46,7 +46,7 @@
     "startup": {
       "launchAtLogin": {
         "label": "إطلاق عند تسجيل الدخول",
-        "description": "ابدأ تشغيل Memry عند تسجيل الدخول",
+        "description": "ابدأ تشغيل memrynote عند تسجيل الدخول",
         "error": "فشل تحديث البداية عند التمهيد"
       }
     },
@@ -55,15 +55,15 @@
       "installedVersion": "النسخة المثبتة {version}",
       "availableVersion": "الإصدار المتاح {version}",
       "unsupported": "يمكن للإصدارات المجمعة التحقق من التحديثات وتنزيلها وتثبيتها من إصدارات GitHub",
-      "available": "Memry {version} متاح للتنزيل",
+      "available": "memrynote {version} متاح للتنزيل",
       "downloadingLatest": "تنزيل أحدث إصدار",
       "downloadingLatestPercent": "تنزيل الإصدار الأخير ({percent}%)",
-      "downloaded": "Memry {version} جاهز للتثبيت",
+      "downloaded": "memrynote {version} جاهز للتثبيت",
       "upToDate": "هذا التثبيت موجود على أحدث إصدار منشور",
       "checking": "التحقق من إصدارات GitHub للحصول على إصدار أحدث",
       "idle": "تحقق من وجود إصدارات جديدة وقم بتثبيتها دون مغادرة التطبيق",
       "unsupportedToast": "تتوفر التحديثات التلقائية في الإصدارات المجمعة فقط",
-      "upToDateToast": "Memry {version} محدث",
+      "upToDateToast": "memrynote {version} محدث",
       "actionFailed": "فشل إجراء التحديث",
       "actions": {
         "checking": "جارٍ التحقق...",
@@ -540,7 +540,7 @@
       "pendingSuccess": "تم ربط الجهاز بنجاح",
       "goBack": "ارجع",
       "waitingTitle": "في انتظار الموافقة",
-      "waitingDescription": "افتح Memry على جهازك الآخر وقم بالموافقة على طلب الربط.",
+      "waitingDescription": "افتح memrynote على جهازك الآخر وقم بالموافقة على طلب الربط.",
       "verificationCode": "رمز التحقق",
       "confirmCode": "تأكد من أن هذا يطابق الرمز الموجود على جهازك الآخر"
     }
@@ -778,7 +778,7 @@
     "connect": "الاتصال",
     "googleCalendar": {
       "name": "تقويم جوجل",
-      "description": "مزامنة ثنائية الاتجاه لأحداث Memry وتقويمات Google المستوردة.",
+      "description": "مزامنة ثنائية الاتجاه لأحداث memrynote وتقويمات Google المستوردة.",
       "statuses": {
         "connected": "متصل",
         "notConnected": "غير متصل",
@@ -810,7 +810,7 @@
     "registry": {
       "googleCalendar": {
         "name": "تقويم جوجل",
-        "description": "مزامنة ثنائية الاتجاه لأحداث ومهام وتذكيرات Memry والتقويمات المستوردة"
+        "description": "مزامنة ثنائية الاتجاه لأحداث ومهام وتذكيرات memrynote والتقويمات المستوردة"
       },
       "appleCalendar": {
         "name": "تقويم أبل",
@@ -963,7 +963,7 @@
       "description": "التقط ملاحظة من أي مكان",
       "permissionNeeded": "الإذن مطلوب",
       "active": "نشط",
-      "permissionHint": "تتطلب الاختصارات العامة إذن الوصول. انتقل إلى إعدادات النظام → الخصوصية → إمكانية الوصول وقم بتمكين Memry."
+      "permissionHint": "تتطلب الاختصارات العامة إذن الوصول. انتقل إلى إعدادات النظام → الخصوصية → إمكانية الوصول وقم بتمكين memrynote."
     },
     "toasts": {
       "saveGlobalFailed": "فشل في حفظ اختصار الالتقاط الشامل",

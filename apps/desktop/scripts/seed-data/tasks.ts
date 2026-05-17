@@ -39,7 +39,7 @@ const STATUS_IDS = {
   istanbulBooked: generateId(),
   istanbulToday: generateId(),
   istanbulDone: generateId(),
-  // Memry
+  // memrynote
   memryBacklog: generateId(),
   memryDoing: generateId(),
   memryReview: generateId(),
@@ -78,8 +78,8 @@ export const PROJECTS: SeedProject[] = [
   },
   {
     id: PROJECT_IDS.memry,
-    name: 'Memry Launch',
-    description: 'Ship Memry v0.1 to ~50 friends + IndieHackers.',
+    name: 'memrynote Launch',
+    description: 'Ship memrynote v0.1 to ~50 friends + IndieHackers.',
     color: '#6366f1',
     icon: '🚀',
     position: 2
@@ -171,7 +171,7 @@ export const STATUSES: SeedStatus[] = [
     position: 3,
     isDone: true
   },
-  // Memry
+  // memrynote
   {
     id: STATUS_IDS.memryBacklog,
     projectId: PROJECT_IDS.memry,
@@ -489,7 +489,7 @@ const TASK_BUILDERS: TaskBuilder[] = [
   },
 
   // ========================================================================
-  // Memry Launch
+  // memrynote Launch
   // ========================================================================
   {
     key: 'memry-mobile-readonly',

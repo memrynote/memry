@@ -151,7 +151,7 @@ function HeroEditorMock() {
   return (
     <FeatureHeroScreenshot
       screenshot="notes"
-      alt="Memry notes page showing an Istanbul travel note with properties, tasks, and the AI agent panel"
+      alt="memrynote notes page showing an Istanbul travel note with properties, tasks, and the AI agent panel"
       width={1648}
       height={1020}
     />
@@ -365,7 +365,7 @@ function BubbleMenuMock() {
     >
       <div className="relative rounded-xl border border-border/60 bg-paper p-5">
         <p className="text-[15px] leading-relaxed text-ink/85">
-          Memry connects every idea with{' '}
+          memrynote connects every idea with{' '}
           <span className="relative inline-block">
             <span className="rounded bg-terracotta/15 px-1.5 py-0.5 text-ink">
               wiki-links and backlinks
@@ -481,7 +481,7 @@ function WikiLinkMock() {
         <span className="rounded-md bg-terracotta/15 px-2 py-1 font-mono-accent text-xl text-terracotta">
           [[
         </span>
-        . Memry finishes the thought.
+        . memrynote finishes the thought.
       </h3>
       <p className="mt-3 max-w-md text-sm leading-relaxed text-muted">
         Autocomplete matches titles, aliases, and tags. Hit enter — the connection sticks, no matter
@@ -642,7 +642,7 @@ function PropertiesSection() {
           >
             <div className="flex items-center gap-3 border-b border-border/40 pb-3">
               <span className="text-2xl">🛠️</span>
-              <h3 className="font-serif text-xl text-ink">Project · Memry launch</h3>
+              <h3 className="font-serif text-xl text-ink">Project · memrynote launch</h3>
             </div>
             <div className="mt-4 space-y-2 text-[14px]">
               <PropertyRow icon={Type} label="Status" value="On track" tone="sage" />
@@ -777,7 +777,7 @@ function WorksWithRest() {
         <motion.div {...fadeUp} className="mx-auto max-w-2xl text-center">
           <Eyebrow>One workspace</Eyebrow>
           <h2 className="mt-3 font-serif text-3xl font-normal leading-tight text-ink md:text-5xl">
-            Works with the rest of Memry.
+            Works with the rest of memrynote.
           </h2>
           <p className="mt-5 text-lg leading-relaxed text-muted">
             Notes don&apos;t live in a silo. They connect to your inbox, your journal, and your
@@ -873,7 +873,7 @@ function NotesUseCases() {
 
 const MORE_FEATURES = [
   { icon: Star, title: 'Emoji icons', body: 'Pin a visual identifier to every note.' },
-  { icon: FileCode, title: 'PDF & Markdown export', body: 'One click to share outside Memry.' },
+  { icon: FileCode, title: 'PDF & Markdown export', body: 'One click to share outside memrynote.' },
   {
     icon: Layers,
     title: 'Aliases',
@@ -940,12 +940,12 @@ const NOTES_FAQ = [
   {
     question: 'Do wiki-links break if I rename a note?',
     answer:
-      'No. Memry tracks links by identity, not by filename. Rename a note and every [[wiki-link]] in your vault updates automatically — including the ones inside journal entries and task descriptions.'
+      'No. memrynote tracks links by identity, not by filename. Rename a note and every [[wiki-link]] in your vault updates automatically — including the ones inside journal entries and task descriptions.'
   },
   {
     question: 'How does version history work?',
     answer:
-      'Memry snapshots every save automatically. You can also pin a manual checkpoint before a big edit. Side-by-side diffs let you roll back any change — and every snapshot stays local.'
+      'memrynote snapshots every save automatically. You can also pin a manual checkpoint before a big edit. Side-by-side diffs let you roll back any change — and every snapshot stays local.'
   },
   {
     question: 'Can I import from Obsidian or Notion?',

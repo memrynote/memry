@@ -1,6 +1,6 @@
 # Features Overview
 
-A high-level map of what Memry does. Each section links to dedicated pages in the [User Guide](/user-guide/notes/editing).
+A high-level map of what memrynote does. Each section links to dedicated pages in the [User Guide](/user-guide/notes/editing).
 
 ## Notes
 

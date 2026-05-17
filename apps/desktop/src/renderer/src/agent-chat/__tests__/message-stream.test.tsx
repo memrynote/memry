@@ -225,7 +225,7 @@ describe('MessageStream', () => {
     expect(screen.getByText('Create the task')).toBeInTheDocument()
   })
 
-  it('renders assistant Memry refs as clickable links with a sources footer', () => {
+  it('renders assistant memrynote refs as clickable links with a sources footer', () => {
     render(
       <MessageStream
         messages={[
@@ -285,7 +285,7 @@ describe('MessageStream', () => {
     ).not.toBeNull()
   })
 
-  it('repaints live Memry links when source metadata arrives after the text', () => {
+  it('repaints live memrynote links when source metadata arrives after the text', () => {
     const assistantWithoutSources = message({
       id: 'assistant-1',
       role: 'assistant',
@@ -361,7 +361,7 @@ describe('MessageStream', () => {
     expect(link.querySelector('[data-agent-link-label]')).toHaveTextContent('Movies')
   })
 
-  it('renders item-type icons for non-note Memry links', () => {
+  it('renders item-type icons for non-note memrynote links', () => {
     render(
       <MessageStream
         messages={[
@@ -446,7 +446,7 @@ describe('MessageStream', () => {
     ).not.toBeNull()
   })
 
-  it('opens non-note Memry links in the matching workspace surface', () => {
+  it('opens non-note memrynote links in the matching workspace surface', () => {
     render(
       <MessageStream
         messages={[
@@ -538,7 +538,7 @@ describe('MessageStream', () => {
     )
   })
 
-  it('does not open workspace tabs for external or malformed Memry links', () => {
+  it('does not open workspace tabs for external or malformed memrynote links', () => {
     render(
       <MessageStream
         messages={[
@@ -565,7 +565,7 @@ describe('MessageStream', () => {
     expect(mockOpenTab).not.toHaveBeenCalled()
   })
 
-  it('omits the assistant sources footer when no Memry refs exist', () => {
+  it('omits the assistant sources footer when no memrynote refs exist', () => {
     render(
       <MessageStream
         messages={[

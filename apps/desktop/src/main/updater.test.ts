@@ -166,7 +166,7 @@ describe('updater', () => {
     updater.initializeUpdater()
     mocks.autoUpdater.emit('update-available', {
       version: '1.2.4',
-      releaseName: 'Memry 1.2.4',
+      releaseName: 'Memrynote 1.2.4',
       releaseDate: '2026-05-10',
       releaseNotes: [{ version: '1.2.4', note: 'Desktop sync fixes' }, { note: 'Calendar fixes' }]
     })
@@ -181,7 +181,7 @@ describe('updater', () => {
     expect(mocks.autoUpdater.downloadUpdate).toHaveBeenCalledTimes(1)
     expect(updater.getUpdateState()).toMatchObject({
       availableVersion: 'v1.2.4',
-      releaseName: 'Memry 1.2.4',
+      releaseName: 'Memrynote 1.2.4',
       releaseDate: '2026-05-10',
       error: null
     })

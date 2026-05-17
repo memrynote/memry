@@ -1,16 +1,16 @@
 # Conflict & Health
 
-How Memry handles conflicting edits across devices, and where to see sync health.
+How memrynote handles conflicting edits across devices, and where to see sync health.
 
 <!-- screenshot: sync history panel showing recent activity -->
 
 ## Conflict Resolution
 
-| Domain | Strategy |
-| --- | --- |
-| Notes & journal entries | **CRDT (Yjs)** — concurrent edits merge automatically |
-| Tasks & projects | **Field-level vector clocks** — non-overlapping edits merge cleanly; same-field collisions resolve last-writer-wins by tick-sum |
-| Inbox items, templates, settings | **Doc-level vector clocks** — last writer wins on conflict |
+| Domain                           | Strategy                                                                                                                        |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Notes & journal entries          | **CRDT (Yjs)** — concurrent edits merge automatically                                                                           |
+| Tasks & projects                 | **Field-level vector clocks** — non-overlapping edits merge cleanly; same-field collisions resolve last-writer-wins by tick-sum |
+| Inbox items, templates, settings | **Doc-level vector clocks** — last writer wins on conflict                                                                      |
 
 ### CRDT Merging (Notes / Journals)
 
@@ -29,11 +29,11 @@ This is much friendlier than naive last-writer-wins on the whole record.
 
 ### Doc-Level Conflicts
 
-For inbox items, templates, and other lower-frequency types, a same-record concurrent change resolves with a single doc-level vector clock. Memry surfaces a banner if a true unresolvable case occurs (rare).
+For inbox items, templates, and other lower-frequency types, a same-record concurrent change resolves with a single doc-level vector clock. memrynote surfaces a banner if a true unresolvable case occurs (rare).
 
 ## Conflict Indicators
 
-When a conflict requires your attention (very rare given the strategies above), Memry:
+When a conflict requires your attention (very rare given the strategies above), memrynote:
 
 - Shows a yellow banner on the affected item
 - Adds an entry to **Sync History**
@@ -63,14 +63,14 @@ This is the actionable punch list — fix everything here and sync should be cle
 
 ## Common Sync Errors
 
-| Error | Likely cause | Fix |
-| --- | --- | --- |
-| "Authentication expired" | Refresh token expired | Sign in again |
-| "Quota exceeded" | Vault size hit storage limit | Upgrade plan or clean attachments |
-| "Network unreachable" | Offline | Reconnect; sync auto-resumes |
-| "Server temporarily unavailable" | Cloudflare hiccup | Wait; backoff retries automatically |
-| "Blob hash mismatch" | Corruption (rare) | Push the affected item again from the source device |
-| "Crypto version mismatch" | Sync server behind a desktop release | Wait for server to update or downgrade desktop |
+| Error                            | Likely cause                         | Fix                                                 |
+| -------------------------------- | ------------------------------------ | --------------------------------------------------- |
+| "Authentication expired"         | Refresh token expired                | Sign in again                                       |
+| "Quota exceeded"                 | Vault size hit storage limit         | Upgrade plan or clean attachments                   |
+| "Network unreachable"            | Offline                              | Reconnect; sync auto-resumes                        |
+| "Server temporarily unavailable" | Cloudflare hiccup                    | Wait; backoff retries automatically                 |
+| "Blob hash mismatch"             | Corruption (rare)                    | Push the affected item again from the source device |
+| "Crypto version mismatch"        | Sync server behind a desktop release | Wait for server to update or downgrade desktop      |
 
 ## Resolving a Conflict Manually
 
@@ -83,9 +83,9 @@ If the rare manual-conflict banner appears on a non-CRDT item:
 
 For CRDT items (notes / journals), there's no manual conflict step — the merge always succeeds.
 
-## What Memry Won't Do
+## What memrynote Won't Do
 
-Memry doesn't auto-merge **across record types** — e.g. it won't combine two competing project structures. The vector clock comparison stays within a single record.
+memrynote doesn't auto-merge **across record types** — e.g. it won't combine two competing project structures. The vector clock comparison stays within a single record.
 
 It also doesn't store a permanent "conflict log" — once resolved, the conflict is gone. Sync History keeps the metadata for a few weeks for debugging.
 

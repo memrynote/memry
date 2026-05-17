@@ -66,7 +66,7 @@ export function WaitlistForm({ variant = 'hero', className }: WaitlistFormProps)
         </div>
         <div>
           <p className="font-serif font-medium text-ink">You're on the list!</p>
-          <p className="text-sm text-muted">We'll notify you when Memry is ready.</p>
+          <p className="text-sm text-muted">We'll notify you when memrynote is ready.</p>
         </div>
       </motion.div>
     )

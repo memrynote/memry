@@ -46,7 +46,7 @@
     "startup": {
       "launchAtLogin": {
         "label": "Start ved login",
-        "description": "Start Memry, når du logger ind",
+        "description": "Start memrynote, når du logger ind",
         "error": "Kunne ikke opdatere start ved opstart"
       }
     },
@@ -55,15 +55,15 @@
       "installedVersion": "Installeret version {version}",
       "availableVersion": "Tilgængelig version {version}",
       "unsupported": "Pakkede builds kan tjekke, downloade og installere opdateringer fra GitHub-udgivelser",
-      "available": "Memry {version} er tilgængelig til download",
+      "available": "memrynote {version} er tilgængelig til download",
       "downloadingLatest": "Downloader den seneste udgivelse",
       "downloadingLatestPercent": "Downloader den seneste udgivelse ({percent}%)",
-      "downloaded": "Memry {version} er klar til installation",
+      "downloaded": "memrynote {version} er klar til installation",
       "upToDate": "Denne installation er på den seneste offentliggjorte udgivelse",
       "checking": "Kontrollerer GitHub-udgivelser for en nyere version",
       "idle": "Se efter nye udgivelser, og installer dem uden at forlade appen",
       "unsupportedToast": "Automatiske opdateringer er kun tilgængelige i pakkede udgivelser",
-      "upToDateToast": "Memry {version} er opdateret",
+      "upToDateToast": "memrynote {version} er opdateret",
       "actionFailed": "Opdateringshandling mislykkedes",
       "actions": {
         "checking": "Tjekker...",
@@ -540,7 +540,7 @@
       "pendingSuccess": "Enheden blev linket",
       "goBack": "Gå tilbage",
       "waitingTitle": "Venter på godkendelse",
-      "waitingDescription": "Åbn Memry på din anden enhed og godkend linkningsanmodningen.",
+      "waitingDescription": "Åbn memrynote på din anden enhed og godkend linkningsanmodningen.",
       "verificationCode": "Bekræftelseskode",
       "confirmCode": "Bekræft, at dette stemmer overens med koden på din anden enhed"
     }
@@ -778,7 +778,7 @@
     "connect": "Forbind",
     "googleCalendar": {
       "name": "Google Kalender",
-      "description": "Tovejssynkronisering til Memry-begivenheder og importerede Google-kalendere.",
+      "description": "Tovejssynkronisering til memrynote-begivenheder og importerede Google-kalendere.",
       "statuses": {
         "connected": "Forbundet",
         "notConnected": "Ikke forbundet",
@@ -810,7 +810,7 @@
     "registry": {
       "googleCalendar": {
         "name": "Google Kalender",
-        "description": "Tovejs synkronisering til Memry begivenheder, opgaver, påmindelser og importerede kalendere"
+        "description": "Tovejs synkronisering til memrynote begivenheder, opgaver, påmindelser og importerede kalendere"
       },
       "appleCalendar": {
         "name": "Æble kalender",
@@ -963,7 +963,7 @@
       "description": "Fang en note fra hvor som helst",
       "permissionNeeded": "Tilladelse nødvendig",
       "active": "Aktiv",
-      "permissionHint": "Globale genveje kræver tilgængelighedstilladelse. Gå til Systemindstillinger → Privatliv → Tilgængelighed og aktiver Memry."
+      "permissionHint": "Globale genveje kræver tilgængelighedstilladelse. Gå til Systemindstillinger → Privatliv → Tilgængelighed og aktiver memrynote."
     },
     "toasts": {
       "saveGlobalFailed": "Den globale genvej til optagelse kunne ikke gemmes",

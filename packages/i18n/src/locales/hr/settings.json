@@ -46,7 +46,7 @@
     "startup": {
       "launchAtLogin": {
         "label": "Pokreni prilikom prijave",
-        "description": "Pokrenite Memry kada se prijavite",
+        "description": "Pokrenite memrynote kada se prijavite",
         "error": "Nije uspjelo ažuriranje početka pri pokretanju"
       }
     },
@@ -55,15 +55,15 @@
       "installedVersion": "Instalirana verzija {version}",
       "availableVersion": "Dostupna verzija {version}",
       "unsupported": "Zapakirane verzije mogu provjeriti, preuzeti i instalirati ažuriranja s GitHub Releases",
-      "available": "Memry {version} je dostupan za preuzimanje",
+      "available": "memrynote {version} je dostupan za preuzimanje",
       "downloadingLatest": "Preuzimanje najnovijeg izdanja",
       "downloadingLatestPercent": "Preuzimanje najnovijeg izdanja ({percent}%)",
-      "downloaded": "Memry {version} je spreman za instalaciju",
+      "downloaded": "memrynote {version} je spreman za instalaciju",
       "upToDate": "Ova instalacija nalazi se na posljednjem izdanju",
       "checking": "Provjera GitHub izdanja za noviju verziju",
       "idle": "Provjerite nova izdanja i instalirajte ih bez napuštanja aplikacije",
       "unsupportedToast": "Automatska ažuriranja dostupna su samo u pakiranim izdanjima",
-      "upToDateToast": "Memry {version} je ažuran",
+      "upToDateToast": "memrynote {version} je ažuran",
       "actionFailed": "Akcija ažuriranja nije uspjela",
       "actions": {
         "checking": "Provjera...",
@@ -540,7 +540,7 @@
       "pendingSuccess": "Uređaj je uspješno povezan",
       "goBack": "Idi natrag",
       "waitingTitle": "Čeka se odobrenje",
-      "waitingDescription": "Otvorite Memry na svom drugom uređaju i odobrite zahtjev za povezivanje.",
+      "waitingDescription": "Otvorite memrynote na svom drugom uređaju i odobrite zahtjev za povezivanje.",
       "verificationCode": "Kontrolni kod",
       "confirmCode": "Provjerite odgovara li kod na vašem drugom uređaju"
     }
@@ -778,7 +778,7 @@
     "connect": "Poveži se",
     "googleCalendar": {
       "name": "Google kalendar",
-      "description": "Dvosmjerna sinkronizacija za Memry događaje i uvezene Google kalendare.",
+      "description": "Dvosmjerna sinkronizacija za memrynote događaje i uvezene Google kalendare.",
       "statuses": {
         "connected": "Povezan",
         "notConnected": "Nije povezano",
@@ -810,7 +810,7 @@
     "registry": {
       "googleCalendar": {
         "name": "Google kalendar",
-        "description": "Dvosmjerna sinkronizacija za Memry događaje, zadatke, podsjetnike i uvezene kalendare"
+        "description": "Dvosmjerna sinkronizacija za memrynote događaje, zadatke, podsjetnike i uvezene kalendare"
       },
       "appleCalendar": {
         "name": "Apple kalendar",
@@ -963,7 +963,7 @@
       "description": "Snimite bilješku s bilo kojeg mjesta",
       "permissionNeeded": "Potrebno dopuštenje",
       "active": "Aktivno",
-      "permissionHint": "Za globalne prečace potrebna je dozvola pristupačnosti. Idite na Postavke sustava → Privatnost → Pristupačnost i omogućite Memry."
+      "permissionHint": "Za globalne prečace potrebna je dozvola pristupačnosti. Idite na Postavke sustava → Privatnost → Pristupačnost i omogućite memrynote."
     },
     "toasts": {
       "saveGlobalFailed": "Spremanje globalnog prečaca za snimanje nije uspjelo",

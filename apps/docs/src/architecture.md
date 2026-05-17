@@ -1,6 +1,6 @@
 # Architecture
 
-Memry is a pnpm + Turborepo monorepo with an Electron desktop app, a Cloudflare Workers sync server, and shared TypeScript packages.
+memrynote is a pnpm + Turborepo monorepo with an Electron desktop app, a Cloudflare Workers sync server, and shared TypeScript packages.
 
 ## Top-Level Map
 
