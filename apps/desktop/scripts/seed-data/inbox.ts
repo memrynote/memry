@@ -1,80 +1,74 @@
 import { generateId } from '../../src/main/lib/id'
 import type { SeedFilingHistory, SeedInboxItem } from '../seed-vault/db-writer'
-
-const TODAY = new Date('2026-05-08T12:00:00.000Z')
+import { seedDateOnly, seedPastISOAt } from './date'
 
 const offsetISO = (days: number, hours = 11): string => {
-  const d = new Date(TODAY)
-  d.setUTCDate(d.getUTCDate() + days)
-  d.setUTCHours(hours, 17, 0, 0)
-  return d.toISOString()
+  return seedPastISOAt(days, hours, 17)
 }
 
 const id = (prefix: string): string => `inbox_${prefix}_${generateId().slice(0, 12)}`
 
 export const INBOX_ITEMS: SeedInboxItem[] = [
   // ========================================================================
-  // Unfiled link — today
+  // YouTube video — today
   // ========================================================================
   {
     id: id('lnk'),
     type: 'link',
-    title: 'How (and why) we built a CRDT for our editor',
-    content:
-      'Engineering blog post on building a CRDT-backed editor. Worth reading before the next CRDT review.',
-    sourceUrl: 'https://example.com/crdt-editor-deep-dive',
-    sourceTitle: 'How (and why) we built a CRDT for our editor — Engineering Blog',
+    title: 'YouTube — 20-minute weeknight ramen',
+    content: 'Dinner idea for this week. Save the tare shortcut and grocery list.',
+    sourceUrl: 'https://www.youtube.com/watch?v=weeknight-ramen',
+    sourceTitle: '20-minute weeknight ramen — YouTube',
     captureSource: 'browser-extension',
     metadata: {
-      author: 'Mira S.',
-      publisher: 'Engineering Blog',
-      image: 'https://example.com/og/crdt-editor.png',
-      readingTime: 14
+      channel: 'Kitchen Stories',
+      publisher: 'YouTube',
+      duration: '12:44',
+      image: 'https://img.youtube.com/vi/weeknight-ramen/maxresdefault.jpg'
     },
     createdAt: offsetISO(0, 8),
     modifiedAt: offsetISO(0, 8),
-    tags: ['research', 'tech/sync']
+    tags: ['projects/personal', 'food']
   },
 
   // ========================================================================
-  // GitHub repo — yjs/yjs
+  // Travel guide link
   // ========================================================================
   {
     id: id('lnk'),
     type: 'link',
-    title: 'yjs/yjs — Shared data types for collaborative apps',
-    content:
-      'Repo I keep referring back to. Star count grew 4× since 2023. Maintained by Kevin Jahns.',
-    sourceUrl: 'https://github.com/yjs/yjs',
-    sourceTitle: 'yjs/yjs — GitHub',
+    title: 'Lisbon weekend guide from a local',
+    content: 'Good breakfast spots, viewpoints, and one bookstore to check before the trip.',
+    sourceUrl: 'https://example.com/lisbon-weekend-guide',
+    sourceTitle: 'A local weekend in Lisbon',
     captureSource: 'browser-extension',
     metadata: {
-      publisher: 'GitHub',
-      stars: 17400,
-      language: 'JavaScript',
-      lastCommit: '2026-05-06'
+      publisher: 'Travel Notes',
+      author: 'Marta Alves',
+      readingTime: 9,
+      updatedAt: seedDateOnly(-2)
     },
     createdAt: offsetISO(-1, 14),
     modifiedAt: offsetISO(-1, 14),
-    tags: ['tech/sync', 'reference']
+    tags: ['travel/europe', 'weekend']
   },
 
   // ========================================================================
-  // Snoozed link — Twitter/X thread
+  // Snoozed Twitter/X thread
   // ========================================================================
   {
     id: id('lnk'),
     type: 'link',
-    title: 'Thread on E2EE key rotation in messaging apps',
-    content: 'Long thread, want to read with full attention.',
-    sourceUrl: 'https://x.com/example/status/1234567890',
+    title: 'Twitter/X thread — carry-on packing tips',
+    content: 'Useful replies with charger, shoe, and toiletry tips. Read before packing.',
+    sourceUrl: 'https://x.com/travelnotes/status/1234567890',
     captureSource: 'quick-capture',
     snoozedUntil: offsetISO(1, 9),
-    snoozeReason: 'Read tomorrow with coffee, not while scrolling',
-    metadata: { platform: 'x', authorHandle: '@cryptodev' },
+    snoozeReason: 'Review tomorrow before starting the packing list',
+    metadata: { platform: 'x', authorHandle: '@travelnotes' },
     createdAt: offsetISO(-2, 22),
     modifiedAt: offsetISO(-2, 22),
-    tags: ['tech/security']
+    tags: ['travel/asia', 'packing']
   },
 
   // ========================================================================
@@ -83,13 +77,12 @@ export const INBOX_ITEMS: SeedInboxItem[] = [
   {
     id: id('nt'),
     type: 'note',
-    title: 'Try Bun for the build pipeline',
-    content:
-      'Could replace tsx + esbuild on the dev path. Worth a 30-minute spike before the next quarter.',
+    title: 'Buy basil, lemons, and sparkling water',
+    content: 'For Sunday dinner. Check the fridge first so we do not double-buy herbs.',
     captureSource: 'quick-capture',
     createdAt: offsetISO(0, 7),
     modifiedAt: offsetISO(0, 7),
-    tags: ['idea', 'tech/build']
+    tags: ['projects/personal', 'errands']
   },
 
   // ========================================================================
@@ -98,16 +91,16 @@ export const INBOX_ITEMS: SeedInboxItem[] = [
   {
     id: id('vcr'),
     type: 'voice',
-    title: 'Voice memo — 2026-05-07 22:14',
+    title: `Voice memo — ${seedDateOnly(-1)} 22:14`,
     content: 'Transcription pending review',
     transcription:
-      'OK so the inbox suggestion thing — the model is too eager about the "linked" action. Need a confidence threshold of 0.7 minimum before we offer it as the default. Right now anything above 0.4 wins which is too low. Also Manny suggested we add a "no, just inbox" rejection bucket for training. Worth doing. Reminder me on Monday.',
+      'Remember to book the dog sitter before we confirm the cabin weekend. Also check whether the place has a fenced yard and late checkout. Send Mina the two options in the morning.',
     transcriptionStatus: 'complete',
     captureSource: 'quick-capture',
-    attachmentPath: 'attachments/inbox/voice-2026-05-07.m4a',
+    attachmentPath: `attachments/inbox/voice-${seedDateOnly(-1)}.m4a`,
     createdAt: offsetISO(-1, 22),
     modifiedAt: offsetISO(-1, 22),
-    tags: ['projects/memry', 'inbox', 'ai']
+    tags: ['projects/personal', 'travel']
   },
 
   // ========================================================================
@@ -116,66 +109,64 @@ export const INBOX_ITEMS: SeedInboxItem[] = [
   {
     id: id('vcr'),
     type: 'voice',
-    title: 'Voice memo — Idea for Memry export',
+    title: 'Voice memo — birthday dinner idea',
     transcription:
-      'For the v0.1 launch, we should let people export their entire vault as a zip with a pretty index.html. Not for sync, just for "I am leaving." That story matters more than the import story.',
+      'For Dad birthday dinner, maybe make the lemon chicken from last summer and ask everyone to bring one photo from the year. Need to reserve the bigger table if we go out instead.',
     transcriptionStatus: 'complete',
     captureSource: 'quick-capture',
-    attachmentPath: 'attachments/inbox/voice-2026-05-05.m4a',
+    attachmentPath: `attachments/inbox/voice-${seedDateOnly(-3)}.m4a`,
     createdAt: offsetISO(-3, 21),
     modifiedAt: offsetISO(-3, 21),
-    tags: ['projects/memry', 'export']
+    tags: ['projects/personal', 'family']
   },
 
   // ========================================================================
-  // Image — screenshot from extension
+  // Image — shopping screenshot
   // ========================================================================
   {
     id: id('img'),
     type: 'image',
-    title: 'Screenshot — calendar grid bug',
-    content: 'All-day events overflow on Mondays when the week wraps. See if the gap is a tz issue.',
+    title: 'Screenshot — sofa color options',
+    content: 'Cream vs olive swatches for the living room. Compare against the rug photo.',
     captureSource: 'browser-extension',
-    attachmentPath: 'attachments/inbox/screenshot-cal-bug.png',
-    thumbnailPath: 'attachments/inbox/screenshot-cal-bug.thumb.png',
+    attachmentPath: 'attachments/inbox/sofa-color-options.png',
+    thumbnailPath: 'attachments/inbox/sofa-color-options.thumb.png',
     metadata: { width: 1840, height: 1080 },
     createdAt: offsetISO(0, 9),
     modifiedAt: offsetISO(0, 9),
-    tags: ['projects/memry', 'bug']
+    tags: ['projects/home', 'shopping']
   },
 
   // ========================================================================
-  // Research PDF
+  // PDF
   // ========================================================================
   {
     id: id('pdf'),
     type: 'pdf',
-    title: 'Local-First Software (Kleppmann et al, 2019)',
-    content:
-      "The paper that named the movement. Worth re-reading before the conference talk.",
-    sourceUrl: 'https://www.inkandswitch.com/local-first/',
+    title: 'Apartment lease renewal packet',
+    content: 'Read before Friday. Check pet clause, parking fee, and renewal date.',
+    sourceUrl: 'https://example.com/docs/lease-renewal.pdf',
     captureSource: 'browser-extension',
-    attachmentPath: 'attachments/inbox/local-first-software.pdf',
-    metadata: { pages: 28, fileSize: 1830000 },
+    attachmentPath: 'attachments/inbox/lease-renewal.pdf',
+    metadata: { pages: 12, fileSize: 840000 },
     createdAt: offsetISO(-4, 13),
     modifiedAt: offsetISO(-4, 13),
-    tags: ['research', 'projects/memry']
+    tags: ['projects/home', 'admin']
   },
 
   // ========================================================================
-  // Reminder — re-read item
+  // Reminder
   // ========================================================================
   {
     id: id('rmd'),
     type: 'reminder',
-    title: 'Re-read Dune Chapter 3',
-    content:
-      'The Bene Gesserit "litany against fear" passage. The opening sequence. Want to see how Herbert structures the world-building.',
+    title: 'Water the balcony herbs',
+    content: 'Basil is drooping again. Move the mint out of direct sun if it is still yellow.',
     captureSource: 'reminder',
-    metadata: { sourceNoteId: 'reference-to-dune-note' },
+    metadata: { sourceNoteId: 'balcony-garden-note' },
     createdAt: offsetISO(-5, 9),
     modifiedAt: offsetISO(-5, 9),
-    tags: ['reading', 'reminders']
+    tags: ['projects/home', 'reminders']
   },
 
   // ========================================================================
@@ -184,34 +175,34 @@ export const INBOX_ITEMS: SeedInboxItem[] = [
   {
     id: id('clp'),
     type: 'clip',
-    title: 'Excerpt: "Productivity is the wrong god."',
+    title: 'Excerpt: "The best trips leave room for wandering."',
     content:
-      'Excerpt from an essay on Four Thousand Weeks. The line about "the productivity stack as denial of mortality" — worth pulling into [[Four Thousand Weeks]].',
-    sourceUrl: 'https://example.com/essay/productivity-wrong-god',
-    sourceTitle: 'Productivity is the wrong god — Substack',
+      'Save this paragraph for the Lisbon planning note. Nice reminder not to over-schedule every meal.',
+    sourceUrl: 'https://example.com/essay/slow-travel-lisbon',
+    sourceTitle: 'Slow mornings in Lisbon — Substack',
     captureSource: 'browser-extension',
-    metadata: { publisher: 'Substack', author: 'A. Banner' },
+    metadata: { publisher: 'Substack', author: 'Nora Lane' },
     createdAt: offsetISO(-2, 15),
     modifiedAt: offsetISO(-2, 15),
-    tags: ['reading', 'reflection']
+    tags: ['travel/europe', 'reflection']
   },
 
   // ========================================================================
-  // Filed link (filedAt set) — example of a processed item
+  // Filed recipe link
   // ========================================================================
   {
     id: id('lnk'),
     type: 'link',
-    title: 'Drizzle: Better SQL through stricter types',
-    sourceUrl: 'https://example.com/drizzle-typed-sql',
+    title: 'Recipe — lemon ricotta pancakes',
+    sourceUrl: 'https://example.com/recipes/lemon-ricotta-pancakes',
     captureSource: 'browser-extension',
     filedAt: offsetISO(-3, 16),
-    filedTo: 'notes/tech/Drizzle ORM.md',
+    filedTo: 'notes/food/Lemon Ricotta Pancakes.md',
     filedAction: 'note',
-    metadata: { publisher: 'Engineering blog', readingTime: 8 },
+    metadata: { publisher: 'Kitchen Journal', readingTime: 6 },
     createdAt: offsetISO(-4, 11),
     modifiedAt: offsetISO(-3, 16),
-    tags: ['tech/sql', 'reference']
+    tags: ['projects/personal', 'food']
   },
 
   // ========================================================================
@@ -220,15 +211,14 @@ export const INBOX_ITEMS: SeedInboxItem[] = [
   {
     id: id('nt'),
     type: 'note',
-    title: 'Look into Astro view transitions',
-    content:
-      'Could use this in the [[Blog Redesign]] migration. View transitions API + Astro.',
+    title: 'Pick a birthday gift for Dad',
+    content: 'Maybe the cast-iron pan, a framed photo, or tickets to the jazz night.',
     captureSource: 'quick-capture',
     snoozedUntil: offsetISO(7, 9),
-    snoozeReason: 'Pick up after the [[Memry Launch]] hits a quieter week',
+    snoozeReason: 'Decide next week so there is time for shipping',
     createdAt: offsetISO(-1, 11),
     modifiedAt: offsetISO(-1, 11),
-    tags: ['idea', 'web']
+    tags: ['projects/personal', 'family']
   },
 
   // ========================================================================
@@ -237,34 +227,33 @@ export const INBOX_ITEMS: SeedInboxItem[] = [
   {
     id: id('soc'),
     type: 'social',
-    title: 'Reddit — what programming book changed your career?',
+    title: 'Reddit — which carry-on suitcase actually lasts?',
     content:
-      'Long thread. Skimming for candidates beyond [[On Writing]] and [[Atomic Habits]] which I already have.',
-    sourceUrl: 'https://reddit.com/r/programming/comments/abcdefg/',
-    sourceTitle: 'r/programming — what programming book changed your career?',
+      'Long thread with real owner photos. Compare Away, Monos, and Travelpro before buying.',
+    sourceUrl: 'https://reddit.com/r/BuyItForLife/comments/carry_on_luggage/',
+    sourceTitle: 'r/BuyItForLife — which carry-on suitcase actually lasts?',
     captureSource: 'browser-extension',
     metadata: { platform: 'reddit', upvotes: 1820, comments: 432 },
     createdAt: offsetISO(0, 12),
     modifiedAt: offsetISO(0, 12),
-    tags: ['reading', 'idea']
+    tags: ['travel/asia', 'shopping']
   },
 
   // ========================================================================
-  // Article link — long content excerpt
+  // Article link
   // ========================================================================
   {
     id: id('lnk'),
     type: 'link',
-    title: 'On the Use and Misuse of Synthetic Data',
-    content:
-      'Long-form piece on training-data ethics. Worth keeping for the [[Memry GTM]] conversation around what we do (and don\'t) collect.',
-    sourceUrl: 'https://example.com/synthetic-data-essay',
-    sourceTitle: 'On the Use and Misuse of Synthetic Data',
+    title: 'Best farmers markets in Istanbul this spring',
+    content: 'Save for a weekend walk. The Kadikoy section has three stalls to try.',
+    sourceUrl: 'https://example.com/istanbul-farmers-markets',
+    sourceTitle: 'Best farmers markets in Istanbul this spring',
     captureSource: 'browser-extension',
-    metadata: { author: 'L. Yu', readingTime: 22 },
+    metadata: { author: 'Leyla Demir', readingTime: 7 },
     createdAt: offsetISO(-2, 9),
     modifiedAt: offsetISO(-2, 9),
-    tags: ['tech/ai', 'ethics']
+    tags: ['projects/personal', 'food']
   },
 
   // ========================================================================
@@ -273,13 +262,13 @@ export const INBOX_ITEMS: SeedInboxItem[] = [
   {
     id: id('nt'),
     type: 'note',
-    title: 'Old idea — meeting cost calculator',
-    content: 'Did this already, didn\'t ship. Archived.',
+    title: 'Old note — try candle-making class',
+    content: 'Archived because the weekend filled up.',
     captureSource: 'quick-capture',
     archivedAt: offsetISO(-95, 18),
     createdAt: offsetISO(-180, 11),
     modifiedAt: offsetISO(-95, 18),
-    tags: ['idea']
+    tags: ['projects/personal']
   }
 ]
 
@@ -287,28 +276,28 @@ export const FILING_HISTORY_ROWS: SeedFilingHistory[] = [
   {
     id: generateId(),
     itemType: 'link',
-    itemContent: 'Drizzle: Better SQL through stricter types — engineering blog post on type-safe ORM',
-    filedTo: 'notes/tech/Drizzle ORM.md',
+    itemContent: 'Recipe: lemon ricotta pancakes — weekend breakfast idea',
+    filedTo: 'notes/food/Lemon Ricotta Pancakes.md',
     filedAction: 'note',
-    tags: ['tech/sql', 'reference'],
+    tags: ['projects/personal', 'food'],
     filedAt: offsetISO(-3, 16)
   },
   {
     id: generateId(),
     itemType: 'link',
-    itemContent: 'Yjs deep dive — collaborative editing internals',
-    filedTo: 'notes/tech/CRDT Architecture.md',
+    itemContent: 'Weekend hike in Marin — trail map and picnic stop',
+    filedTo: 'notes/travel/Marin Weekend.md',
     filedAction: 'note',
-    tags: ['tech/sync', 'reference'],
+    tags: ['projects/personal', 'fitness'],
     filedAt: offsetISO(-9, 14)
   },
   {
     id: generateId(),
     itemType: 'note',
-    itemContent: 'Idea: lazy-load graph view past 500 nodes',
-    filedTo: 'notes/projects/Memry Launch.md',
+    itemContent: 'Birthday dinner ideas for Dad',
+    filedTo: 'notes/life/Birthday Plans.md',
     filedAction: 'note',
-    tags: ['projects/memry', 'perf'],
+    tags: ['projects/personal', 'family'],
     filedAt: offsetISO(-15, 11)
   }
 ]

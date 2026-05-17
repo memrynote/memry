@@ -1,34 +1,22 @@
 import { generateId } from '../../src/main/lib/id'
 import type { SeedCalendarEvent, SeedCalendarSource } from '../seed-vault/db-writer'
-
-const TODAY = new Date('2026-05-08T12:00:00.000Z')
+import { seedISOAt } from './date'
 
 const isoDateAt = (days: number, hour: number, minute = 0): string => {
-  const d = new Date(TODAY)
-  d.setUTCDate(d.getUTCDate() + days)
-  d.setUTCHours(hour, minute, 0, 0)
-  return d.toISOString()
+  return seedISOAt(days, hour, minute)
 }
 
 const allDayStart = (days: number): string => {
-  const d = new Date(TODAY)
-  d.setUTCDate(d.getUTCDate() + days)
-  d.setUTCHours(0, 0, 0, 0)
-  return d.toISOString()
+  return seedISOAt(days, 0)
 }
 
 const allDayEnd = (days: number): string => {
-  const d = new Date(TODAY)
-  d.setUTCDate(d.getUTCDate() + days + 1)
-  d.setUTCHours(0, 0, 0, 0)
-  return d.toISOString()
+  return seedISOAt(days + 1, 0)
 }
 
 const TOKYO_OFFSET_MS = 9 * 60 * 60 * 1000
 const tokyoLocalAt = (days: number, hour: number, minute = 0): string => {
-  const d = new Date(TODAY)
-  d.setUTCDate(d.getUTCDate() + days)
-  d.setUTCHours(hour, minute, 0, 0)
+  const d = new Date(seedISOAt(days, hour, minute))
   d.setTime(d.getTime() - TOKYO_OFFSET_MS)
   return d.toISOString()
 }
@@ -141,7 +129,7 @@ export const CALENDAR_EVENTS: SeedCalendarEvent[] = [
   {
     id: generateId(),
     title: 'Monthly review',
-    description: 'Pull up [[Year in Review 2025]] template. What worked, what didn\'t.',
+    description: "Pull up [[Year in Review 2025]] template. What worked, what didn't.",
     startAt: isoDateAt(-3, 16),
     endAt: isoDateAt(-3, 17),
     timezone: 'America/Los_Angeles',
