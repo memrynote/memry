@@ -4,7 +4,7 @@ import type { PushItemInput, VectorClock } from '@memry/contracts/sync-api'
 import { AppError, ErrorCodes } from '../lib/errors'
 
 vi.mock('./blob', () => ({
-  generateBlobKey: vi.fn().mockReturnValue('user-1/items/item-1'),
+  generateBlobKey: vi.fn().mockReturnValue('user-1/vaults/default/items/item-1'),
   putBlob: vi.fn().mockResolvedValue({ etag: 'etag-1' }),
   getBlob: vi.fn()
 }))
@@ -14,15 +14,13 @@ vi.mock('./cursor', () => ({
 }))
 
 vi.mock('./quota', () => ({
-  checkQuota: vi.fn().mockResolvedValue(undefined)
+  adjustStorageUsed: vi.fn().mockResolvedValue(undefined),
+  checkQuota: vi.fn().mockResolvedValue(undefined),
+  reserveStorage: vi.fn().mockResolvedValue(undefined)
 }))
 
 vi.mock('./device', () => ({
   getDevice: vi.fn()
-}))
-
-vi.mock('./user', () => ({
-  getUserById: vi.fn()
 }))
 
 vi.mock('../lib/encoding', () => ({
@@ -57,9 +55,8 @@ import {
   processPushItem
 } from './sync'
 import { getDevice } from './device'
-import { getUserById } from './user'
 import { getBlob } from './blob'
-import { checkQuota } from './quota'
+import { reserveStorage, checkQuota } from './quota'
 import { getNextCursor } from './cursor'
 
 const mockedSafeBase64Decode = vi.mocked(safeBase64Decode)
@@ -67,6 +64,7 @@ const mockedVerifyEd25519 = vi.mocked(verifyEd25519)
 const mockedGetDevice = vi.mocked(getDevice)
 const mockedEncodeSignaturePayload = vi.mocked(encodeSignaturePayload)
 const mockedCheckQuota = vi.mocked(checkQuota)
+const mockedReserveStorage = vi.mocked(reserveStorage)
 const mockedGetNextCursor = vi.mocked(getNextCursor)
 
 // ============================================================================
@@ -931,7 +929,7 @@ describe('pullItems', () => {
         {
           item_id: 'item-1',
           item_type: 'task',
-          blob_key: 'user-1/items/item-1',
+          blob_key: 'user-1/vaults/default/items/item-1',
           crypto_version: 1,
           operation: 'delete',
           signer_device_id: 'device-1',
@@ -980,7 +978,7 @@ describe('pullItems', () => {
         {
           item_id: 'item-2',
           item_type: 'note',
-          blob_key: 'user-1/items/item-2',
+          blob_key: 'user-1/vaults/default/items/item-2',
           crypto_version: 1,
           operation: 'create',
           signer_device_id: 'device-1',
@@ -1019,7 +1017,7 @@ describe('pullItems', () => {
         {
           item_id: 'item-note',
           item_type: 'note',
-          blob_key: 'user-1/items/item-note',
+          blob_key: 'user-1/vaults/default/items/item-note',
           crypto_version: 1,
           operation: 'update',
           signer_device_id: 'device-1',
@@ -1032,7 +1030,7 @@ describe('pullItems', () => {
         {
           item_id: 'item-attachment',
           item_type: 'attachment',
-          blob_key: 'user-1/items/item-attachment',
+          blob_key: 'user-1/vaults/default/items/item-attachment',
           crypto_version: 1,
           operation: 'update',
           signer_device_id: 'device-1',
@@ -1327,6 +1325,7 @@ describe('processRecordPushBatch', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockedCheckQuota.mockResolvedValue(undefined)
+    mockedReserveStorage.mockResolvedValue(undefined)
     mockedGetDevice.mockResolvedValue({
       id: 'device-1',
       user_id: 'user-1',
@@ -1341,20 +1340,6 @@ describe('processRecordPushBatch', () => {
       created_at: 1000,
       updated_at: 1000
     })
-    vi.mocked(getUserById).mockResolvedValue({
-      id: 'user-1',
-      email: 'test@test.com',
-      email_verified: 1,
-      auth_method: 'email',
-      auth_provider: null,
-      auth_provider_id: null,
-      kdf_salt: null,
-      key_verifier: null,
-      storage_used: 0,
-      storage_limit: 1_000_000,
-      created_at: 1000,
-      updated_at: 1000
-    })
   })
 
   it('should aggregate accepted and rejected item outcomes', async () => {
@@ -1362,7 +1347,6 @@ describe('processRecordPushBatch', () => {
     const acceptedSelect = createMockStatement()
     acceptedSelect.first.mockResolvedValue(null)
     const acceptedUpsert = createMockStatement()
-    const acceptedStorageUpdate = createMockStatement()
     const rejectedSelect = createMockStatement()
     rejectedSelect.first.mockResolvedValue({
       version: 1,
@@ -1375,7 +1359,6 @@ describe('processRecordPushBatch', () => {
     db.prepare
       .mockReturnValueOnce(acceptedSelect)
       .mockReturnValueOnce(acceptedUpsert)
-      .mockReturnValueOnce(acceptedStorageUpdate)
       .mockReturnValueOnce(rejectedSelect)
 
     // #when
@@ -1419,12 +1402,8 @@ describe('processRecordPushBatch', () => {
     const acceptedSelect = createMockStatement()
     acceptedSelect.first.mockResolvedValue(null)
     const acceptedUpsert = createMockStatement()
-    const acceptedStorageUpdate = createMockStatement()
     const db = createMockDb()
-    db.prepare
-      .mockReturnValueOnce(acceptedSelect)
-      .mockReturnValueOnce(acceptedUpsert)
-      .mockReturnValueOnce(acceptedStorageUpdate)
+    db.prepare.mockReturnValueOnce(acceptedSelect).mockReturnValueOnce(acceptedUpsert)
 
     // #when
     const result = await processRecordPushBatch(
@@ -1471,11 +1450,11 @@ describe('updateDeviceCursor', () => {
 
 describe('processPushItem', () => {
   const mockedGetDevice = vi.mocked(getDevice)
-  const mockedGetUserById = vi.mocked(getUserById)
 
   beforeEach(() => {
     vi.clearAllMocks()
     mockedGetNextCursor.mockResolvedValue(42)
+    mockedReserveStorage.mockResolvedValue(undefined)
     mockedGetDevice.mockResolvedValue({
       id: 'device-1',
       user_id: 'user-1',
@@ -1493,21 +1472,9 @@ describe('processPushItem', () => {
   })
 
   it('should reject push when storage quota would be exceeded', async () => {
-    // #given — user at 99% of 1KB quota
-    mockedGetUserById.mockResolvedValue({
-      id: 'user-1',
-      email: 'test@test.com',
-      email_verified: 1,
-      auth_method: 'email',
-      auth_provider: null,
-      auth_provider_id: null,
-      kdf_salt: null,
-      key_verifier: null,
-      storage_used: 990,
-      storage_limit: 1000,
-      created_at: 1000,
-      updated_at: 1000
-    })
+    mockedReserveStorage.mockRejectedValue(
+      new AppError(ErrorCodes.STORAGE_QUOTA_EXCEEDED, 'Storage quota exceeded', 413)
+    )
 
     const selectStmt = createMockStatement()
     selectStmt.first.mockResolvedValue(null)
@@ -1563,9 +1530,9 @@ describe('processPushItem', () => {
       createValidPushItem({ clock: { 'device-1': 2 } })
     )
 
-    // #then — accepted without ever checking getUserById
+    // #then — accepted without reserving extra storage
     expect(result.accepted).toBe(true)
-    expect(mockedGetUserById).not.toHaveBeenCalled()
+    expect(mockedReserveStorage).not.toHaveBeenCalled()
   })
 
   it('should preserve existing created_at when upserting an existing row', async () => {
@@ -1578,12 +1545,8 @@ describe('processPushItem', () => {
     })
 
     const upsertStmt = createMockStatement()
-    const updateStmt = createMockStatement()
     const db = createMockDb()
-    db.prepare
-      .mockReturnValueOnce(selectStmt)
-      .mockReturnValueOnce(upsertStmt)
-      .mockReturnValueOnce(updateStmt)
+    db.prepare.mockReturnValueOnce(selectStmt).mockReturnValueOnce(upsertStmt)
 
     const storage = {
       put: vi.fn().mockResolvedValue({ etag: 'etag-1' })
@@ -1640,21 +1603,6 @@ describe('processPushItem', () => {
   })
 
   it('should accept settings updates without top-level clock even if legacy rows have a stored clock', async () => {
-    mockedGetUserById.mockResolvedValue({
-      id: 'user-1',
-      email: 'test@test.com',
-      email_verified: 1,
-      auth_method: 'email',
-      auth_provider: null,
-      auth_provider_id: null,
-      kdf_salt: null,
-      key_verifier: null,
-      storage_used: 0,
-      storage_limit: 1000,
-      created_at: 1000,
-      updated_at: 1000
-    })
-
     const selectStmt = createMockStatement()
     selectStmt.first.mockResolvedValue({
       version: 1,
@@ -1664,12 +1612,8 @@ describe('processPushItem', () => {
     })
 
     const upsertStmt = createMockStatement()
-    const updateStmt = createMockStatement()
     const db = createMockDb()
-    db.prepare
-      .mockReturnValueOnce(selectStmt)
-      .mockReturnValueOnce(upsertStmt)
-      .mockReturnValueOnce(updateStmt)
+    db.prepare.mockReturnValueOnce(selectStmt).mockReturnValueOnce(upsertStmt)
 
     const storage = {
       put: vi.fn().mockResolvedValue({ etag: 'etag-1' })
@@ -1721,8 +1665,10 @@ describe('processPushItem', () => {
     ).resolves.toEqual({ accepted: false, reason: ErrorCodes.VALIDATION_ERROR })
   })
 
-  it('should reject when a growing payload belongs to a missing user', async () => {
-    mockedGetUserById.mockResolvedValue(null)
+  it('should reject when reserving storage fails for a growing payload', async () => {
+    mockedReserveStorage.mockRejectedValue(
+      new AppError(ErrorCodes.AUTH_INVALID_TOKEN, 'Invalid token', 401)
+    )
     const selectStmt = createMockStatement()
     selectStmt.first.mockResolvedValue(null)
     const db = createMockDb()
@@ -1740,20 +1686,6 @@ describe('processPushItem', () => {
   })
 
   it('should accept existing object clocks and existing rows without size metadata', async () => {
-    mockedGetUserById.mockResolvedValue({
-      id: 'user-1',
-      email: 'test@test.com',
-      email_verified: 1,
-      auth_method: 'email',
-      auth_provider: null,
-      auth_provider_id: null,
-      kdf_salt: null,
-      key_verifier: null,
-      storage_used: 0,
-      storage_limit: 1_000_000,
-      created_at: 1000,
-      updated_at: 1000
-    })
     const selectStmt = createMockStatement()
     selectStmt.first.mockResolvedValue({
       version: 1,
@@ -1761,12 +1693,8 @@ describe('processPushItem', () => {
       createdAt: 987
     })
     const upsertStmt = createMockStatement()
-    const updateStmt = createMockStatement()
     const db = createMockDb()
-    db.prepare
-      .mockReturnValueOnce(selectStmt)
-      .mockReturnValueOnce(upsertStmt)
-      .mockReturnValueOnce(updateStmt)
+    db.prepare.mockReturnValueOnce(selectStmt).mockReturnValueOnce(upsertStmt)
 
     const result = await processPushItem(
       db as unknown as D1Database,
@@ -1784,26 +1712,8 @@ describe('processPushItem', () => {
     const selectStmt = createMockStatement()
     selectStmt.first.mockResolvedValue(null)
     const upsertStmt = createMockStatement()
-    const updateStmt = createMockStatement()
     const db = createMockDb()
-    db.prepare
-      .mockReturnValueOnce(selectStmt)
-      .mockReturnValueOnce(upsertStmt)
-      .mockReturnValueOnce(updateStmt)
-    mockedGetUserById.mockResolvedValue({
-      id: 'user-1',
-      email: 'test@test.com',
-      email_verified: 1,
-      auth_method: 'email',
-      auth_provider: null,
-      auth_provider_id: null,
-      kdf_salt: null,
-      key_verifier: null,
-      storage_used: 0,
-      storage_limit: 1_000_000,
-      created_at: 1000,
-      updated_at: 1000
-    })
+    db.prepare.mockReturnValueOnce(selectStmt).mockReturnValueOnce(upsertStmt)
 
     const result = await processPushItem(
       db as unknown as D1Database,

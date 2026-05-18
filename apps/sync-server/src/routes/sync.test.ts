@@ -85,10 +85,6 @@ vi.mock('../middleware/rate-limit', () => ({
   )
 }))
 
-vi.mock('../services/quota', () => ({
-  checkQuota: vi.fn().mockResolvedValue(undefined)
-}))
-
 vi.mock('../services/storage', () => ({
   getStorageBreakdown: vi.fn().mockResolvedValue({
     usedBytes: 10,
@@ -117,7 +113,6 @@ import {
 } from '../services/crdt'
 import { authMiddleware } from '../middleware/auth'
 import { updateDevice } from '../services/device'
-import { checkQuota } from '../services/quota'
 import { getStorageBreakdown } from '../services/storage'
 
 // ============================================================================
@@ -1082,7 +1077,7 @@ describe('sync routes', () => {
     })
 
     it('logs and returns quota errors for CRDT update and snapshot writes', async () => {
-      vi.mocked(checkQuota).mockRejectedValueOnce(
+      vi.mocked(storeUpdates).mockRejectedValueOnce(
         new AppError(ErrorCodes.STORAGE_QUOTA_EXCEEDED, 'Storage quota exceeded', 413)
       )
 
@@ -1093,9 +1088,9 @@ describe('sync routes', () => {
         executionCtx
       )
       expect(res.status).toBe(413)
-      expect(storeUpdates).not.toHaveBeenCalled()
+      expect(storeUpdates).toHaveBeenCalled()
 
-      vi.mocked(checkQuota).mockRejectedValueOnce(
+      vi.mocked(storeSnapshot).mockRejectedValueOnce(
         new AppError(ErrorCodes.STORAGE_QUOTA_EXCEEDED, 'Storage quota exceeded', 413)
       )
 
@@ -1106,7 +1101,7 @@ describe('sync routes', () => {
         executionCtx
       )
       expect(res.status).toBe(413)
-      expect(storeSnapshot).not.toHaveBeenCalled()
+      expect(storeSnapshot).toHaveBeenCalled()
     })
 
     it('returns null when no CRDT snapshot exists', async () => {

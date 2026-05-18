@@ -189,6 +189,10 @@ function createD1Database(): D1Database {
             return { meta: { changes: before - updates.length } }
           }
 
+          if (sql.includes('UPDATE users') && sql.includes('storage_used')) {
+            return { meta: { changes: 1 } }
+          }
+
           return { meta: { changes: 0 } }
         }
       }
@@ -411,7 +415,7 @@ describe('CRDT storage accounting', () => {
     ])
 
     const usageUpdate = statements.find((entry) => entry.sql.includes('UPDATE users'))
-    expect(usageUpdate?.bindings).toEqual([3, expect.any(Number), 'user-1'])
+    expect(usageUpdate?.bindings).toEqual([3, expect.any(Number), 'user-1', 3, expect.any(Number)])
   })
 
   it('adjusts storage usage by the snapshot replacement delta', async () => {
@@ -431,7 +435,7 @@ describe('CRDT storage accounting', () => {
 
     expect(storage.put).toHaveBeenCalledWith('user-1/vaults/vault-1/crdt/note-1/snapshot', snapshot)
     const usageUpdate = statements.find((entry) => entry.sql.includes('UPDATE users'))
-    expect(usageUpdate?.bindings).toEqual([7, expect.any(Number), 'user-1'])
+    expect(usageUpdate?.bindings).toEqual([7, expect.any(Number), 'user-1', 7, expect.any(Number)])
   })
 
   it('subtracts pruned update bytes from storage usage', async () => {
@@ -447,7 +451,7 @@ describe('CRDT storage accounting', () => {
     await expect(pruneUpdatesBeforeSnapshot(db, 'user-1', 'vault-1', 'note-1')).resolves.toBe(2)
 
     const usageUpdate = statements.find((entry) => entry.sql.includes('UPDATE users'))
-    expect(usageUpdate?.sql).toContain('MAX(0, storage_used - ?)')
-    expect(usageUpdate?.bindings).toEqual([8, expect.any(Number), 'user-1'])
+    expect(usageUpdate?.sql).toContain('MAX(0, storage_used + ?)')
+    expect(usageUpdate?.bindings).toEqual([-8, expect.any(Number), 'user-1'])
   })
 })
