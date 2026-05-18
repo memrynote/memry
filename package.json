@@ -77,7 +77,7 @@
       "tar": ">=7.5.10",
       "rollup": ">=4.59.0",
       "hono": ">=4.12.18",
-      "@hono/node-server": ">=1.19.13",
+      "@hono/node-server": ">=1.19.14",
       "esbuild": ">=0.25.0",
       "express-rate-limit": ">=8.2.2",
       "minimatch@<4": "3.1.4",
