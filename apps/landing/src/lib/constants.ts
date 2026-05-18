@@ -36,7 +36,6 @@ export const GITHUB_STARS = 18
 export const REDDIT_URL = 'https://www.reddit.com/r/MemryNote/'
 export const DOCS_URL = 'https://docs.memrynote.com'
 export const TWITTER_DEV_URL = 'https://x.com/h4yfans'
-export const CHANGELOG_URL = GITHUB_RELEASES_URL
 
 export const NAV_LINKS = [
   { label: 'Use Cases', href: '/use-cases' },
@@ -137,8 +136,8 @@ export const DOWNLOAD_NAV_ITEMS: readonly LandingDropdownItem[] = [
 ] as const
 
 export const DIRECT_NAV_LINKS = [
-  { label: 'Changelog', href: CHANGELOG_URL },
-  { label: 'Pricing', href: '/pricing' }
+  { label: 'Pricing', href: '/pricing' },
+  { label: 'Roadmap', href: '/roadmap' }
 ] as const
 
 export const FOOTER_LINKS = {
