@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mockFetch = vi.fn()
+const mockDb = { name: 'db' }
+const mockGetDatabase = vi.fn()
+const mockGetOrCreateVaultUuid = vi.fn()
 
 vi.stubEnv('SYNC_SERVER_URL', 'http://localhost:8787')
 
@@ -8,6 +11,14 @@ vi.mock('electron', () => ({
   net: {
     fetch: (...args: unknown[]) => mockFetch(...args)
   }
+}))
+
+vi.mock('../database', () => ({
+  getDatabase: () => mockGetDatabase()
+}))
+
+vi.mock('../agent/storage/vault-id', () => ({
+  getOrCreateVaultUuid: (...args: unknown[]) => mockGetOrCreateVaultUuid(...args)
 }))
 
 import {
@@ -38,6 +49,8 @@ const createJsonResponse = (
 describe('http-client', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockGetDatabase.mockReturnValue(mockDb)
+    mockGetOrCreateVaultUuid.mockResolvedValue('vault-1')
   })
 
   describe('syncFetch', () => {
@@ -90,6 +103,25 @@ describe('http-client', () => {
         expect.objectContaining({
           headers: expect.objectContaining({
             Authorization: 'Bearer my-token-123'
+          })
+        })
+      )
+    })
+
+    it('includes the active vault identity when token provided', async () => {
+      // #given
+      mockFetch.mockResolvedValue(createJsonResponse({ success: true }))
+
+      // #when
+      await syncFetch('GET', '/sync/changes', undefined, 'my-token-123')
+
+      // #then
+      expect(mockGetOrCreateVaultUuid).toHaveBeenCalledWith(mockDb)
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'X-Memry-Vault-Id': 'vault-1'
           })
         })
       )

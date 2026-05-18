@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { Sparkles, FileText, CheckSquare, RefreshCw, ArrowRight, X } from '@/lib/icons'
+import { Sparkles, FileText, CheckSquare, ArrowRight, X } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { notesService } from '@/services/notes-service'
@@ -13,9 +13,9 @@ interface FirstRunOnboardingProps {
   onComplete: () => void
 }
 
-type Step = 'welcome' | 'note' | 'task' | 'sync'
+type Step = 'welcome' | 'note' | 'task'
 
-const STEPS: Step[] = ['welcome', 'note', 'task', 'sync']
+const STEPS: Step[] = ['welcome', 'note', 'task']
 
 export function FirstRunOnboarding({ onComplete }: FirstRunOnboardingProps): React.JSX.Element {
   const { t: tPhaseF } = useT('common')
@@ -87,7 +87,7 @@ export function FirstRunOnboarding({ onComplete }: FirstRunOnboardingProps): Rea
         {/* Skip / close */}
         <button
           onClick={onComplete}
-          className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors"
+          className="absolute top-4 end-4 text-muted-foreground hover:text-foreground transition-colors"
           aria-label={tPhaseF('phaseF.componentsFirstRunOnboarding.skipOnboarding')}
         >
           <X className="w-4 h-4" />
@@ -113,7 +113,6 @@ export function FirstRunOnboarding({ onComplete }: FirstRunOnboardingProps): Rea
               isSubmitting={isSubmitting}
             />
           )}
-          {step === 'sync' && <SyncStep onNext={onComplete} onSkip={onComplete} />}
         </div>
 
         {/* Step dots */}
@@ -155,7 +154,7 @@ function WelcomeStep({ onNext }: { onNext: () => void }): React.JSX.Element {
       </div>
       <Button onClick={onNext} className="w-full bg-indigo-500 hover:bg-indigo-600 text-white">
         {tPhaseF('phaseF.componentsFirstRunOnboarding.getStarted')}
-        <ArrowRight className="w-4 h-4 ml-2" />
+        <ArrowRight className="w-4 h-4 ms-2" />
       </Button>
     </div>
   )
@@ -209,7 +208,7 @@ function NoteStep({
           className="flex-1 bg-indigo-500 hover:bg-indigo-600 text-white"
         >
           {tPhaseF('phaseF.componentsFirstRunOnboarding.createNote')}
-          <ArrowRight className="w-4 h-4 ml-2" />
+          <ArrowRight className="w-4 h-4 ms-2" />
         </Button>
       </div>
     </div>
@@ -266,48 +265,7 @@ function TaskStep({
           className="flex-1 bg-indigo-500 hover:bg-indigo-600 text-white"
         >
           {tPhaseF('phaseF.componentsFirstRunOnboarding.createTask')}
-          <ArrowRight className="w-4 h-4 ml-2" />
-        </Button>
-      </div>
-    </div>
-  )
-}
-
-function SyncStep({
-  onNext,
-  onSkip
-}: {
-  onNext: () => void
-  onSkip: () => void
-}): React.JSX.Element {
-  const { t: tPhaseF } = useT('common')
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-violet-500/10 text-violet-500 shrink-0">
-          <RefreshCw className="w-5 h-5" />
-        </div>
-        <div>
-          <h2 className="text-base font-semibold">
-            {tPhaseF('phaseF.componentsFirstRunOnboarding.syncAcrossDevices')}
-          </h2>
-          <p className="text-xs text-muted-foreground">
-            End-to-end encrypted. Set up later in Settings → Sync.
-          </p>
-        </div>
-      </div>
-      <p className="text-sm text-muted-foreground">
-        {tPhaseF(
-          'phaseF.componentsFirstRunOnboarding.keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw'
-        )}
-      </p>
-      <div className="flex gap-2">
-        <Button variant="ghost" size="sm" onClick={onSkip} className="text-muted-foreground">
-          {tPhaseF('phaseF.componentsFirstRunOnboarding.skipForNow')}
-        </Button>
-        <Button onClick={onNext} className="flex-1 bg-indigo-500 hover:bg-indigo-600 text-white">
-          {tPhaseF('phaseF.componentsFirstRunOnboarding.doneLetSGo')}
-          <Sparkles className="w-4 h-4 ml-2" />
+          <ArrowRight className="w-4 h-4 ms-2" />
         </Button>
       </div>
     </div>

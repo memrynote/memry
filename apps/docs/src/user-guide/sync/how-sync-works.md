@@ -10,18 +10,31 @@ memrynote sync is **end-to-end encrypted**. The server stores ciphertext and nev
 - Recover after a device loss (with your recovery phrase)
 - Persist a backup off-device that you control via passphrase
 
-Sync is **opt-in**. If you never sign in, nothing leaves your device.
+Sync is **opt-in** and requires a paid sync plan. If you never sign in, nothing leaves your
+device. If you sign in without an active paid plan, the app stays local-only until the plan is
+active.
+
+## Paid Sync Plans
+
+| Plan         | Encrypted storage | Synced vaults | File limit | Version history |
+| ------------ | ----------------- | ------------- | ---------- | --------------- |
+| **Plus**     | 1 GB              | 1             | 5 MB       | 30 days         |
+| **Pro**      | 10 GB             | 10            | 200 MB     | 365 days        |
+| **Believer** | 50 GB             | Unlimited     | 200 MB     | 365 days        |
+
+All record sync, CRDT sync, WebSocket sync notifications, and encrypted blob uploads are gated by
+the active plan on the sync server. The server still stores only ciphertext.
 
 ## Status Indicator
 
 A small indicator in the app chrome shows the current state:
 
-| Color  | Meaning                                           |
-| ------ | ------------------------------------------------- |
-| Green  | Idle, in sync                                     |
-| Blue   | Syncing right now                                 |
-| Yellow | Paused, retrying with backoff, or temporary error |
-| Red    | Authentication or quota issue requiring action    |
+| Color  | Meaning                                                  |
+| ------ | -------------------------------------------------------- |
+| Green  | Idle, in sync                                            |
+| Blue   | Syncing right now                                        |
+| Yellow | Paused, retrying with backoff, or temporary error        |
+| Red    | Authentication, billing, or quota issue requiring action |
 
 Click the indicator for details, recent activity, and a pause toggle.
 

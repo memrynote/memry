@@ -63,6 +63,7 @@
     "cryptoFailure": "Senkronizasyon verileri şifrelenemedi veya şifreleri çözülemedi. Oturumu kapatıp tekrar açmayı deneyin.",
     "versionIncompatible": "memrynote'in bu sürümü artık desteklenmiyor. Lütfen güncelleyin.",
     "storageQuotaExceeded": "Senkronizasyon depolama alanınız dolu. Yer açın veya planınızı yükseltin.",
+    "paymentRequired": "Barındırılan şifreli senkronizasyon için ücretli bir Sync planı gerekir.",
     "certificatePinFailed": "Güvenli bağlantı başarısız oldu. Ağ bağlantınızı kontrol edin.",
     "unknown": "Beklenmeyen bir senkronizasyon hatası oluştu. Otomatik olarak yeniden deneyecektir.",
     "statusFetchFailed": "Senkronizasyon durumu getirilemedi",

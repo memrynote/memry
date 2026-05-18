@@ -16,6 +16,8 @@ export type Bindings = {
   MIN_APP_VERSION: string
   RECOVERY_DUMMY_SECRET: string
   WEBHOOK_HMAC_KEY: string
+  PADDLE_WEBHOOK_SECRET: string
+  PADDLE_CHECKOUT_TOKEN_SECRET: string
   TELEMETRY_HMAC_KEY: string
 }
 
@@ -26,5 +28,7 @@ export type AppContext = {
     deviceId?: string
     tokenJti?: string
     sessionNonce?: string
+    vaultId?: string
+    syncEntitlement?: import('./services/entitlements').SyncEntitlement
   }
 }

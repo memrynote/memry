@@ -54,6 +54,7 @@ describe('getUserErrorMessage', () => {
     expect(getUserErrorMessage('device_revoked')).toContain('removed')
     expect(getUserErrorMessage('rate_limited')).toContain('Too many requests')
     expect(getUserErrorMessage('storage_quota_exceeded')).toContain('full')
+    expect(getUserErrorMessage('sync_payment_required')).toContain('paid Sync plan')
     expect(getUserErrorMessage('certificate_pin_failed')).toContain('connection')
   })
 
@@ -81,6 +82,7 @@ describe('getSyncErrorMessage', () => {
     expect(getSyncErrorMessage('crypto_failure')).toBeTruthy()
     expect(getSyncErrorMessage('version_incompatible')).toBeTruthy()
     expect(getSyncErrorMessage('storage_quota_exceeded')).toBeTruthy()
+    expect(getSyncErrorMessage('sync_payment_required')).toBeTruthy()
     expect(getSyncErrorMessage('certificate_pin_failed')).toBeTruthy()
     expect(getSyncErrorMessage('unknown')).toBeTruthy()
   })

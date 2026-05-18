@@ -18,6 +18,10 @@ function createEnv(overrides?: Partial<Record<string, unknown>>) {
     RESEND_API_KEY: '',
     OTP_HMAC_KEY: '',
     RECOVERY_DUMMY_SECRET: '',
+    WEBHOOK_HMAC_KEY: '',
+    PADDLE_WEBHOOK_SECRET: '',
+    PADDLE_CHECKOUT_TOKEN_SECRET: '',
+    TELEMETRY_HMAC_KEY: '',
     ...overrides
   }
 }
@@ -72,6 +76,8 @@ describe('sync-server app entry point', () => {
         OTP_HMAC_KEY: 'test-hmac-key',
         RECOVERY_DUMMY_SECRET: 'test-dummy-secret',
         WEBHOOK_HMAC_KEY: 'test-webhook-hmac-key',
+        PADDLE_WEBHOOK_SECRET: 'test-paddle-webhook-secret',
+        PADDLE_CHECKOUT_TOKEN_SECRET: 'test-checkout-token-secret',
         TELEMETRY_HMAC_KEY: 'test-telemetry-hmac-key',
         ALLOWED_ORIGIN: 'https://app.memry.test'
       })
@@ -97,6 +103,8 @@ describe('sync-server app entry point', () => {
         OTP_HMAC_KEY: 'test-hmac-key',
         RECOVERY_DUMMY_SECRET: 'test-dummy-secret',
         WEBHOOK_HMAC_KEY: 'test-webhook-hmac-key',
+        PADDLE_WEBHOOK_SECRET: 'test-paddle-webhook-secret',
+        PADDLE_CHECKOUT_TOKEN_SECRET: 'test-checkout-token-secret',
         TELEMETRY_HMAC_KEY: ''
       })
     )

@@ -3,6 +3,7 @@ import { EventEmitter } from 'events'
 import { z } from 'zod'
 import { createLogger } from '../lib/logger'
 import { createPinnedAgent, CertificatePinningError } from './certificate-pinning'
+import { getSyncVaultHeaders } from './http-client'
 
 const log = createLogger('WebSocket')
 
@@ -92,11 +93,13 @@ export class WebSocketManager extends EventEmitter {
     }
 
     const wsUrl = this.deps.serverUrl.replace(/^http/, 'ws') + '/sync/ws'
+    const vaultHeaders = await getSyncVaultHeaders()
 
     const ws = new WebSocket(wsUrl, {
       headers: {
         Authorization: `Bearer ${token}`,
-        'X-App-Version': this.deps.getAppVersion()
+        'X-App-Version': this.deps.getAppVersion(),
+        ...vaultHeaders
       },
       agent: wsUrl.startsWith('wss://') ? createPinnedAgent() : undefined
     })

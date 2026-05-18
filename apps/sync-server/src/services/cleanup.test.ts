@@ -55,29 +55,62 @@ describe('cleanup services', () => {
     expect(bind).toHaveBeenCalledWith(1_700_000_000)
   })
 
-  it('cleans up expired upload sessions and aborts multipart uploads', async () => {
+  it('cleans up expired upload sessions, chunks, and reserved storage', async () => {
     // #given
     const abortFn = vi.fn().mockResolvedValue(undefined)
     const storage = {
+      delete: vi.fn().mockResolvedValue(undefined),
       resumeMultipartUpload: vi.fn().mockReturnValue({ abort: abortFn })
     } as unknown as R2Bucket
 
     const selectAll = vi.fn().mockResolvedValue({
       results: [
-        { id: 's1', r2_upload_id: 'up1', r2_key: 'k1' },
-        { id: 's2', r2_upload_id: '', r2_key: '' }
+        {
+          id: 's1',
+          user_id: 'user-1',
+          vault_id: 'vault-1',
+          total_size: 10,
+          uploaded_chunks: JSON.stringify([{ i: 0, h: 'hash-0', b: 10 }]),
+          r2_upload_id: 'up1',
+          r2_key: 'k1'
+        },
+        {
+          id: 's2',
+          user_id: 'user-2',
+          vault_id: 'vault-2',
+          total_size: 20,
+          uploaded_chunks: '[]',
+          r2_upload_id: '',
+          r2_key: ''
+        }
       ]
     })
     const selectBind = vi.fn().mockReturnValue({ all: selectAll })
 
-    const deleteRun = vi.fn().mockResolvedValue({ meta: { changes: 2 } })
+    const chunkFirst = vi.fn().mockResolvedValue({
+      id: 'chunk-1',
+      ref_count: 1,
+      r2_key: 'user-1/vaults/vault-1/chunks/hash-0'
+    })
+    const chunkBind = vi.fn().mockReturnValue({ first: chunkFirst })
+    const deleteChunkRun = vi.fn().mockResolvedValue({ meta: { changes: 1 } })
+    const deleteChunkBind = vi.fn().mockReturnValue({ run: deleteChunkRun })
+
+    const deleteRun = vi.fn().mockResolvedValue({ meta: { changes: 1 } })
     const deleteBind = vi.fn().mockReturnValue({ run: deleteRun })
+    const releaseRun = vi.fn().mockResolvedValue({ meta: { changes: 1 } })
+    const releaseBind = vi.fn().mockReturnValue({ run: releaseRun })
 
     const db = {
       prepare: vi
         .fn()
         .mockReturnValueOnce({ bind: selectBind })
+        .mockReturnValueOnce({ bind: chunkBind })
+        .mockReturnValueOnce({ bind: deleteChunkBind })
         .mockReturnValueOnce({ bind: deleteBind })
+        .mockReturnValueOnce({ bind: releaseBind })
+        .mockReturnValueOnce({ bind: deleteBind })
+        .mockReturnValueOnce({ bind: releaseBind })
     } as unknown as D1Database
 
     // #when
@@ -86,9 +119,17 @@ describe('cleanup services', () => {
     // #then
     expect(result).toBe(2)
     expect(db.prepare).toHaveBeenCalledWith(
-      'SELECT id, r2_upload_id, r2_key FROM upload_sessions WHERE expires_at < ?'
+      expect.stringContaining('SELECT id, user_id, vault_id, total_size, uploaded_chunks')
     )
-    expect(db.prepare).toHaveBeenCalledWith('DELETE FROM upload_sessions WHERE expires_at < ?')
+    expect(db.prepare).toHaveBeenCalledWith(
+      'SELECT id, ref_count, r2_key FROM blob_chunks WHERE user_id = ? AND vault_id = ? AND hash = ?'
+    )
+    expect(storage.delete).toHaveBeenCalledWith('user-1/vaults/vault-1/chunks/hash-0')
+    expect(db.prepare).toHaveBeenCalledWith(
+      'DELETE FROM upload_sessions WHERE id = ? AND user_id = ? AND vault_id = ?'
+    )
+    expect(releaseBind).toHaveBeenCalledWith(-10, expect.any(Number), 'user-1')
+    expect(releaseBind).toHaveBeenCalledWith(-20, expect.any(Number), 'user-2')
     expect(storage.resumeMultipartUpload).toHaveBeenCalledWith('k1', 'up1')
     expect(abortFn).toHaveBeenCalledOnce()
   })
@@ -97,11 +138,22 @@ describe('cleanup services', () => {
     // #given
     const abortFn = vi.fn().mockRejectedValue(new Error('already gone'))
     const storage = {
+      delete: vi.fn(),
       resumeMultipartUpload: vi.fn().mockReturnValue({ abort: abortFn })
     } as unknown as R2Bucket
 
     const selectAll = vi.fn().mockResolvedValue({
-      results: [{ id: 's1', r2_upload_id: 'up1', r2_key: 'k1' }]
+      results: [
+        {
+          id: 's1',
+          user_id: 'user-1',
+          vault_id: 'vault-1',
+          total_size: 10,
+          uploaded_chunks: '[]',
+          r2_upload_id: 'up1',
+          r2_key: 'k1'
+        }
+      ]
     })
     const selectBind = vi.fn().mockReturnValue({ all: selectAll })
 
@@ -166,28 +218,29 @@ describe('cleanup services', () => {
   })
 
   describe('cleanupExpiredTombstones', () => {
-    const NINETY_DAYS = 90 * 24 * 60 * 60
-
     it('deletes R2 blobs and D1 rows for expired tombstones', async () => {
       // #given
       const storage = { delete: vi.fn().mockResolvedValue(undefined) } as unknown as R2Bucket
 
       const selectAll = vi.fn().mockResolvedValue({
         results: [
-          { id: 't1', blob_key: 'blob/t1' },
-          { id: 't2', blob_key: 'blob/t2' }
+          { id: 't1', blob_key: 'blob/t1', user_id: 'user-1', size_bytes: 10 },
+          { id: 't2', blob_key: 'blob/t2', user_id: 'user-1', size_bytes: 5 }
         ]
       })
       const selectBind = vi.fn().mockReturnValue({ all: selectAll })
 
       const deleteRun = vi.fn().mockResolvedValue({ meta: { changes: 2 } })
       const deleteBind = vi.fn().mockReturnValue({ run: deleteRun })
+      const updateRun = vi.fn().mockResolvedValue({ meta: { changes: 1 } })
+      const updateBind = vi.fn().mockReturnValue({ run: updateRun })
 
       const db = {
         prepare: vi
           .fn()
           .mockReturnValueOnce({ bind: selectBind })
           .mockReturnValueOnce({ bind: deleteBind })
+          .mockReturnValueOnce({ bind: updateBind })
       } as unknown as D1Database
 
       // #when
@@ -195,10 +248,15 @@ describe('cleanup services', () => {
 
       // #then
       expect(result).toBe(2)
-      expect(selectBind).toHaveBeenCalledWith(1_700_000_000 - NINETY_DAYS)
+      expect(selectBind).toHaveBeenCalledWith(1_700_000_000)
+      expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining('version_history_days'))
       expect(storage.delete).toHaveBeenCalledWith('blob/t1')
       expect(storage.delete).toHaveBeenCalledWith('blob/t2')
       expect(deleteBind).toHaveBeenCalledWith('t1', 't2')
+      expect(db.prepare).toHaveBeenCalledWith(
+        'UPDATE users SET storage_used = MAX(0, storage_used - ?), updated_at = ? WHERE id = ?'
+      )
+      expect(updateBind).toHaveBeenCalledWith(15, expect.any(Number), 'user-1')
     })
 
     it('returns 0 when D1 delete omits tombstone changes metadata', async () => {
@@ -206,7 +264,7 @@ describe('cleanup services', () => {
       const storage = { delete: vi.fn().mockResolvedValue(undefined) } as unknown as R2Bucket
 
       const selectAll = vi.fn().mockResolvedValue({
-        results: [{ id: 't1', blob_key: 'blob/t1' }]
+        results: [{ id: 't1', blob_key: 'blob/t1', user_id: 'user-1', size_bytes: 10 }]
       })
       const selectBind = vi.fn().mockReturnValue({ all: selectAll })
 
@@ -258,20 +316,23 @@ describe('cleanup services', () => {
 
       const selectAll = vi.fn().mockResolvedValue({
         results: [
-          { id: 't1', blob_key: 'blob/t1' },
-          { id: 't2', blob_key: 'blob/t2' }
+          { id: 't1', blob_key: 'blob/t1', user_id: 'user-1', size_bytes: 10 },
+          { id: 't2', blob_key: 'blob/t2', user_id: 'user-2', size_bytes: 15 }
         ]
       })
       const selectBind = vi.fn().mockReturnValue({ all: selectAll })
 
       const deleteRun = vi.fn().mockResolvedValue({ meta: { changes: 2 } })
       const deleteBind = vi.fn().mockReturnValue({ run: deleteRun })
+      const updateRun = vi.fn().mockResolvedValue({ meta: { changes: 1 } })
+      const updateBind = vi.fn().mockReturnValue({ run: updateRun })
 
       const db = {
         prepare: vi
           .fn()
           .mockReturnValueOnce({ bind: selectBind })
           .mockReturnValueOnce({ bind: deleteBind })
+          .mockReturnValue({ bind: updateBind })
       } as unknown as D1Database
 
       // #when
@@ -280,9 +341,11 @@ describe('cleanup services', () => {
       // #then
       expect(result).toBe(2)
       expect(deleteBind).toHaveBeenCalledWith('t1', 't2')
+      expect(updateBind).toHaveBeenCalledWith(10, expect.any(Number), 'user-1')
+      expect(updateBind).toHaveBeenCalledWith(15, expect.any(Number), 'user-2')
     })
 
-    it('uses correct 90-day cutoff in epoch seconds', async () => {
+    it('uses the user plan version-history window for tombstone expiry', async () => {
       // #given
       const storage = { delete: vi.fn() } as unknown as R2Bucket
 
@@ -297,7 +360,9 @@ describe('cleanup services', () => {
       await cleanupExpiredTombstones(db, storage)
 
       // #then
-      expect(selectBind).toHaveBeenCalledWith(1_700_000_000 - 7_776_000)
+      expect(selectBind).toHaveBeenCalledWith(1_700_000_000)
+      expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining('sync_entitlements'))
+      expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining('version_history_days'))
     })
   })
 

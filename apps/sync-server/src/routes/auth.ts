@@ -35,12 +35,14 @@ import {
   hasPendingOtp
 } from '../services/otp'
 import { getOrCreateUserByEmail, getUserByEmail, getUserById, updateUser } from '../services/user'
+import { signCheckoutToken, type CheckoutCadence } from '../services/checkout-token'
 import type { AppContext } from '../types'
 
 const logger = createLogger('Auth')
 
 const OTP_EXPIRY_MINUTES = 10
 const DEVICE_TEXT_UNSAFE_CHARS = /[\u0000-\u001F\u007F<>"'`&]/g
+const CHECKOUT_TOKEN_TTL_SECONDS = 10 * 60
 
 const sanitizeDeviceText = (value: string, maxLength: number): string =>
   value.replace(DEVICE_TEXT_UNSAFE_CHARS, '').trim().slice(0, maxLength)
@@ -355,13 +357,15 @@ auth.post('/devices', setupAuthMiddleware, async (c) => {
     authPublicKey,
     challengeSignature,
     challengeNonce,
-    sessionNonce
+    sessionNonce,
+    vaultId
   } = parsed.data
 
   const sanitizedName = sanitizeDeviceText(name, 255)
   const sanitizedPlatform = sanitizeDeviceText(platform, 32)
+  const sanitizedVaultId = sanitizeDeviceText(vaultId ?? 'default', 128)
 
-  if (!sanitizedName || !sanitizedPlatform) {
+  if (!sanitizedName || !sanitizedPlatform || !sanitizedVaultId) {
     throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid device metadata', 400)
   }
 
@@ -380,13 +384,14 @@ auth.post('/devices', setupAuthMiddleware, async (c) => {
   const now = Math.floor(Date.now() / 1000)
 
   const { results } = await c.env.DB.prepare(
-    `INSERT INTO devices (id, user_id, name, platform, os_version, app_version, auth_public_key, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO devices (id, user_id, name, platform, os_version, app_version, auth_public_key, vault_id, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(user_id, auth_public_key) DO UPDATE SET
        name = excluded.name,
        platform = excluded.platform,
        os_version = excluded.os_version,
        app_version = excluded.app_version,
+       vault_id = excluded.vault_id,
        updated_at = excluded.updated_at
      RETURNING id`
   )
@@ -398,6 +403,7 @@ auth.post('/devices', setupAuthMiddleware, async (c) => {
       osVersion ?? null,
       appVersion,
       authPublicKey,
+      sanitizedVaultId,
       now,
       now
     )
@@ -440,6 +446,10 @@ auth.get('/recovery-info', setupAuthMiddleware, async (c) => {
 })
 
 const RecoveryQuerySchema = z.object({ email: z.string().email() })
+const CheckoutTokenSchema = z.object({
+  plan: z.enum(['plus', 'pro', 'believer']),
+  cadence: z.enum(['monthly', 'annual', 'lifetime'])
+})
 
 async function generateDummyRecoveryData(
   email: string,
@@ -535,6 +545,31 @@ auth.get('/devices', authMiddleware, devicesRateLimit, async (c) => {
   })
 })
 
+auth.post('/checkout-token', authMiddleware, async (c) => {
+  const body = await c.req.json()
+  const parsed = CheckoutTokenSchema.safeParse(body)
+  if (!parsed.success) {
+    throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid checkout request', 400)
+  }
+
+  const { plan } = parsed.data
+  const cadence: CheckoutCadence = plan === 'believer' ? 'lifetime' : parsed.data.cadence
+  if (plan !== 'believer' && cadence === 'lifetime') {
+    throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid checkout cadence', 400)
+  }
+
+  const userId = c.get('userId')!
+  const expiresAt = Math.floor(Date.now() / 1000) + CHECKOUT_TOKEN_TTL_SECONDS
+  const checkoutToken = await signCheckoutToken(c.env.PADDLE_CHECKOUT_TOKEN_SECRET, {
+    userId,
+    plan,
+    cadence,
+    exp: expiresAt
+  })
+
+  return c.json({ checkoutToken, expiresAt })
+})
+
 // POST /refresh
 auth.post('/refresh', refreshRateLimit, async (c) => {
   const body = await c.req.json()
@@ -587,7 +622,10 @@ auth.post('/logout', authMiddleware, async (c) => {
   try {
     await revokeDeviceTokens(c.env.DB, deviceId)
   } catch (err) {
-    logger.error('Failed to revoke tokens during logout', { deviceId, error: err instanceof Error ? err.message : String(err) })
+    logger.error('Failed to revoke tokens during logout', {
+      deviceId,
+      error: err instanceof Error ? err.message : String(err)
+    })
   }
 
   return c.json({ success: true })

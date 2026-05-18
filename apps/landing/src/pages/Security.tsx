@@ -89,11 +89,11 @@ const SECURITY_SECTIONS: SecuritySection[] = [
     icon: RefreshCw,
     title: 'Encrypted sync',
     description:
-      'Multi-device sync uses CRDTs for conflict-free merging. Link devices with a QR code — no account passwords to leak.',
+      'Paid multi-device sync uses CRDTs for conflict-free merging. Devices approve each other with QR codes, and vault keys stay off the server.',
     details: [
       'CRDT-based sync via Yjs',
       'Conflict-free, deterministic merging',
-      'QR code device linking — no passwords',
+      'QR code device linking',
       'Incremental sync with per-field vector clocks'
     ]
   },
@@ -201,8 +201,8 @@ export function SecurityPage() {
             />
             <Principle
               icon={QrCode}
-              title="No passwords to leak"
-              text="Devices link via QR code. No central account, no credential database."
+              title="Sync without vault-key custody"
+              text="Sync accounts manage billing and devices. Vault keys stay on your devices."
             />
           </motion.div>
         </Container>

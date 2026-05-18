@@ -60,11 +60,20 @@ export async function readCheckoutResponse(response: Response): Promise<Checkout
   }
 }
 
-export async function openPaddleCheckout(plan: SyncPlanId, cadence: PaddleCheckoutCadence) {
+export async function openPaddleCheckout(
+  plan: SyncPlanId,
+  cadence: PaddleCheckoutCadence,
+  checkoutToken?: string
+) {
+  const normalizedCheckoutToken = checkoutToken?.trim()
+  if (!normalizedCheckoutToken) {
+    throw new Error('Open Memry and sign in from Account to start hosted sync.')
+  }
+
   const response = await fetch('/api/paddle-checkout', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ plan, cadence })
+    body: JSON.stringify({ plan, cadence, checkoutToken: normalizedCheckoutToken })
   })
   const checkout = await readCheckoutResponse(response)
   const paddle = await getPaddleClient()

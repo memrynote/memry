@@ -63,6 +63,7 @@
     "cryptoFailure": "Failed to encrypt or decrypt sync data. Try signing out and back in.",
     "versionIncompatible": "This version of memrynote is no longer supported. Please update.",
     "storageQuotaExceeded": "Your sync storage is full. Free up space or upgrade your plan.",
+    "paymentRequired": "A paid Sync plan is required to use hosted encrypted sync.",
     "certificatePinFailed": "Secure connection failed. Check your network connection.",
     "unknown": "An unexpected sync error occurred. Will retry automatically.",
     "statusFetchFailed": "Failed to fetch sync status",

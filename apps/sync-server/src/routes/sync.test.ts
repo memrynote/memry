@@ -66,6 +66,13 @@ vi.mock('../middleware/auth', () => ({
   authMiddleware: vi.fn().mockImplementation(async (c: any, next: any) => {
     c.set('userId', 'user-1')
     c.set('deviceId', 'device-1')
+    c.set('vaultId', 'vault-1')
+    await next()
+  })
+}))
+
+vi.mock('../middleware/paid-sync', () => ({
+  paidSyncMiddleware: vi.fn().mockImplementation(async (_c: any, next: any) => {
     await next()
   })
 }))
@@ -76,10 +83,6 @@ vi.mock('../middleware/rate-limit', () => ({
       await next()
     })
   )
-}))
-
-vi.mock('../services/quota', () => ({
-  checkQuota: vi.fn().mockResolvedValue(undefined)
 }))
 
 vi.mock('../services/storage', () => ({
@@ -110,7 +113,6 @@ import {
 } from '../services/crdt'
 import { authMiddleware } from '../middleware/auth'
 import { updateDevice } from '../services/device'
-import { checkQuota } from '../services/quota'
 import { getStorageBreakdown } from '../services/storage'
 
 // ============================================================================
@@ -248,7 +250,7 @@ describe('sync routes', () => {
       await app.request('/sync/status', { method: 'GET' }, env, executionCtx)
 
       // #then
-      expect(getSyncStatus).toHaveBeenCalledWith(env.DB, 'user-1', 'device-1')
+      expect(getSyncStatus).toHaveBeenCalledWith(env.DB, 'user-1', 'device-1', 'vault-1')
     })
   })
 
@@ -310,7 +312,7 @@ describe('sync routes', () => {
       await app.request('/sync/manifest', { method: 'GET' }, env, executionCtx)
 
       // #then
-      expect(getManifest).toHaveBeenCalledWith(env.DB, 'user-1')
+      expect(getManifest).toHaveBeenCalledWith(env.DB, 'user-1', 'vault-1')
     })
   })
 
@@ -334,7 +336,7 @@ describe('sync routes', () => {
       await app.request('/sync/changes?cursor=5&limit=10', { method: 'GET' }, env, executionCtx)
 
       // #then
-      expect(getChanges).toHaveBeenCalledWith(env.DB, 'user-1', 5, 10)
+      expect(getChanges).toHaveBeenCalledWith(env.DB, 'user-1', 5, 10, 'vault-1')
     })
 
     it('should default cursor to 0 when omitted', async () => {
@@ -342,7 +344,7 @@ describe('sync routes', () => {
       await app.request('/sync/changes', { method: 'GET' }, env, executionCtx)
 
       // #then
-      expect(getChanges).toHaveBeenCalledWith(env.DB, 'user-1', 0, undefined)
+      expect(getChanges).toHaveBeenCalledWith(env.DB, 'user-1', 0, undefined, 'vault-1')
     })
 
     it('should return 400 for non-numeric cursor', async () => {
@@ -393,7 +395,7 @@ describe('sync routes', () => {
       await app.request('/sync/changes', { method: 'GET' }, env, executionCtx)
 
       // #then
-      expect(updateDeviceCursor).toHaveBeenCalledWith(env.DB, 'device-1', 'user-1', 5)
+      expect(updateDeviceCursor).toHaveBeenCalledWith(env.DB, 'device-1', 'user-1', 5, 'vault-1')
     })
 
     it('should not update device cursor when no changes', async () => {
@@ -506,7 +508,7 @@ describe('sync routes', () => {
       )
 
       // #then
-      expect(updateDeviceCursor).toHaveBeenCalledWith(env.DB, 'device-1', 'user-1', 1)
+      expect(updateDeviceCursor).toHaveBeenCalledWith(env.DB, 'device-1', 'user-1', 1, 'vault-1')
     })
 
     it('should return 400 for empty items array', async () => {
@@ -643,7 +645,8 @@ describe('sync routes', () => {
         env.STORAGE,
         'user-1',
         'device-1',
-        [makePushItem()]
+        [makePushItem()],
+        'vault-1'
       )
     })
 
@@ -701,7 +704,8 @@ describe('sync routes', () => {
         env.STORAGE,
         'user-1',
         'device-1',
-        [makePushItem({ type: 'settings', clock: undefined })]
+        [makePushItem({ type: 'settings', clock: undefined })],
+        'vault-1'
       )
     })
 
@@ -759,7 +763,7 @@ describe('sync routes', () => {
       )
 
       // #then
-      expect(pullItems).toHaveBeenCalledWith(env.DB, env.STORAGE, 'user-1', [VALID_UUID])
+      expect(pullItems).toHaveBeenCalledWith(env.DB, env.STORAGE, 'user-1', [VALID_UUID], 'vault-1')
     })
 
     it('should return 400 for empty itemIds', async () => {
@@ -828,7 +832,7 @@ describe('sync routes', () => {
       await app.request(`/sync/items/${VALID_UUID}`, { method: 'GET' }, env, executionCtx)
 
       // #then
-      expect(getItem).toHaveBeenCalledWith(env.DB, env.STORAGE, 'user-1', VALID_UUID)
+      expect(getItem).toHaveBeenCalledWith(env.DB, env.STORAGE, 'user-1', VALID_UUID, 'vault-1')
     })
 
     it('should return 400 for non-UUID id', async () => {
@@ -859,7 +863,8 @@ describe('sync routes', () => {
         env.STORAGE,
         'user-1',
         'device-1',
-        [makePushItem()]
+        [makePushItem()],
+        'vault-1'
       )
     })
 
@@ -874,7 +879,7 @@ describe('sync routes', () => {
       )
 
       expect(res.status).toBe(200)
-      expect(pullItems).toHaveBeenCalledWith(env.DB, env.STORAGE, 'user-1', [VALID_UUID])
+      expect(pullItems).toHaveBeenCalledWith(env.DB, env.STORAGE, 'user-1', [VALID_UUID], 'vault-1')
     })
   })
 
@@ -913,6 +918,7 @@ describe('sync routes', () => {
           {
             id: 'update-7',
             user_id: 'user-1',
+            vault_id: 'vault-1',
             note_id: 'note_1',
             sequence_num: 7,
             update_data: bytes('hello'),
@@ -942,7 +948,7 @@ describe('sync routes', () => {
         ],
         hasMore: true
       })
-      expect(getUpdates).toHaveBeenCalledWith(env.DB, 'user-1', 'note_1', 3, 500)
+      expect(getUpdates).toHaveBeenCalledWith(env.DB, 'user-1', 'vault-1', 'note_1', 3, 500)
     })
 
     it('validates CRDT update query params', async () => {
@@ -978,6 +984,7 @@ describe('sync routes', () => {
             {
               id: 'update-8',
               user_id: 'user-1',
+              vault_id: 'vault-1',
               note_id: 'note_1',
               sequence_num: 8,
               update_data: bytes('batch'),
@@ -1018,6 +1025,7 @@ describe('sync routes', () => {
       expect(getBatchUpdates).toHaveBeenCalledWith(
         env.DB,
         'user-1',
+        'vault-1',
         [{ noteId: 'note_1', since: 4 }],
         10
       )
@@ -1060,15 +1068,16 @@ describe('sync routes', () => {
         env.DB,
         env.STORAGE,
         'user-1',
+        'vault-1',
         'note_1',
         'device-1',
         expect.any(ArrayBuffer)
       )
-      expect(pruneUpdatesBeforeSnapshot).toHaveBeenCalledWith(env.DB, 'user-1', 'note_1')
+      expect(pruneUpdatesBeforeSnapshot).toHaveBeenCalledWith(env.DB, 'user-1', 'vault-1', 'note_1')
     })
 
     it('logs and returns quota errors for CRDT update and snapshot writes', async () => {
-      vi.mocked(checkQuota).mockRejectedValueOnce(
+      vi.mocked(storeUpdates).mockRejectedValueOnce(
         new AppError(ErrorCodes.STORAGE_QUOTA_EXCEEDED, 'Storage quota exceeded', 413)
       )
 
@@ -1079,9 +1088,9 @@ describe('sync routes', () => {
         executionCtx
       )
       expect(res.status).toBe(413)
-      expect(storeUpdates).not.toHaveBeenCalled()
+      expect(storeUpdates).toHaveBeenCalled()
 
-      vi.mocked(checkQuota).mockRejectedValueOnce(
+      vi.mocked(storeSnapshot).mockRejectedValueOnce(
         new AppError(ErrorCodes.STORAGE_QUOTA_EXCEEDED, 'Storage quota exceeded', 413)
       )
 
@@ -1092,7 +1101,7 @@ describe('sync routes', () => {
         executionCtx
       )
       expect(res.status).toBe(413)
-      expect(storeSnapshot).not.toHaveBeenCalled()
+      expect(storeSnapshot).toHaveBeenCalled()
     })
 
     it('returns null when no CRDT snapshot exists', async () => {

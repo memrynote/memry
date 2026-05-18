@@ -18,7 +18,7 @@ CREATE TABLE users (
   kdf_salt TEXT,
   key_verifier TEXT,
   storage_used INTEGER NOT NULL DEFAULT 0,
-  storage_limit INTEGER NOT NULL DEFAULT 5368709120,
+  storage_limit INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
 );
@@ -78,6 +78,7 @@ CREATE TABLE devices (
   os_version TEXT,
   app_version TEXT NOT NULL,
   auth_public_key TEXT NOT NULL,
+  vault_id TEXT,
   push_token TEXT,
   last_sync_at INTEGER,
   revoked_at INTEGER,
@@ -88,6 +89,47 @@ CREATE TABLE devices (
 
 CREATE INDEX idx_devices_user ON devices(user_id);
 CREATE INDEX idx_devices_user_active ON devices(user_id) WHERE revoked_at IS NULL;
+CREATE INDEX idx_devices_user_vault ON devices(user_id, vault_id);
+
+-- ============================================================================
+-- T015a: Paid sync entitlements and synced vault limits
+-- ============================================================================
+
+CREATE TABLE sync_entitlements (
+  user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  plan TEXT NOT NULL DEFAULT 'free',
+  status TEXT NOT NULL DEFAULT 'inactive',
+  source TEXT NOT NULL DEFAULT 'none',
+  storage_limit INTEGER NOT NULL DEFAULT 0,
+  max_file_size INTEGER NOT NULL DEFAULT 0,
+  max_vaults INTEGER,
+  version_history_days INTEGER NOT NULL DEFAULT 0,
+  paddle_customer_id TEXT,
+  paddle_subscription_id TEXT,
+  paddle_transaction_id TEXT,
+  expires_at INTEGER,
+  updated_at INTEGER NOT NULL
+);
+
+CREATE INDEX idx_sync_entitlements_subscription ON sync_entitlements(paddle_subscription_id);
+CREATE INDEX idx_sync_entitlements_customer ON sync_entitlements(paddle_customer_id);
+
+CREATE TABLE sync_vaults (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  vault_id TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  UNIQUE (user_id, vault_id)
+);
+
+CREATE INDEX idx_sync_vaults_user ON sync_vaults(user_id);
+
+CREATE TABLE paddle_webhook_events (
+  id TEXT PRIMARY KEY,
+  event_type TEXT NOT NULL,
+  processed_at INTEGER NOT NULL
+);
 
 -- ============================================================================
 -- T014b: Refresh tokens (now that devices exists)
@@ -144,6 +186,7 @@ CREATE INDEX idx_linking_status ON linking_sessions(status) WHERE status IN ('pe
 CREATE TABLE sync_items (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  vault_id TEXT NOT NULL DEFAULT 'default',
   item_type TEXT NOT NULL,
   item_id TEXT NOT NULL,
   blob_key TEXT NOT NULL,
@@ -160,12 +203,12 @@ CREATE TABLE sync_items (
   server_cursor INTEGER NOT NULL,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
-  UNIQUE (user_id, item_type, item_id)
+  UNIQUE (user_id, vault_id, item_type, item_id)
 );
 
-CREATE INDEX idx_sync_user_cursor ON sync_items(user_id, server_cursor);
-CREATE INDEX idx_sync_type ON sync_items(user_id, item_type);
-CREATE INDEX idx_sync_deleted ON sync_items(user_id, deleted_at);
+CREATE INDEX idx_sync_user_cursor ON sync_items(user_id, vault_id, server_cursor);
+CREATE INDEX idx_sync_type ON sync_items(user_id, vault_id, item_type);
+CREATE INDEX idx_sync_deleted ON sync_items(user_id, vault_id, deleted_at);
 
 -- ============================================================================
 -- T017a: Server cursor sequence (per-user monotonic cursor)
@@ -183,9 +226,10 @@ CREATE TABLE server_cursor_sequence (
 CREATE TABLE device_sync_state (
   device_id TEXT NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  vault_id TEXT NOT NULL DEFAULT 'default',
   last_cursor_seen INTEGER NOT NULL DEFAULT 0,
   updated_at INTEGER NOT NULL,
-  PRIMARY KEY (device_id, user_id)
+  PRIMARY KEY (device_id, user_id, vault_id)
 );
 
 -- ============================================================================
@@ -205,15 +249,16 @@ CREATE TABLE rate_limits (
 CREATE TABLE crdt_updates (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  vault_id TEXT NOT NULL DEFAULT 'default',
   note_id TEXT NOT NULL,
   update_data BLOB NOT NULL,
   sequence_num INTEGER NOT NULL,
   signer_device_id TEXT NOT NULL,
   created_at INTEGER NOT NULL,
-  UNIQUE (user_id, note_id, sequence_num)
+  UNIQUE (user_id, vault_id, note_id, sequence_num)
 );
 
-CREATE INDEX idx_crdt_updates_note ON crdt_updates(user_id, note_id, sequence_num);
+CREATE INDEX idx_crdt_updates_note ON crdt_updates(user_id, vault_id, note_id, sequence_num);
 
 -- ============================================================================
 -- T017f: CRDT snapshots
@@ -222,16 +267,17 @@ CREATE INDEX idx_crdt_updates_note ON crdt_updates(user_id, note_id, sequence_nu
 CREATE TABLE crdt_snapshots (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  vault_id TEXT NOT NULL DEFAULT 'default',
   note_id TEXT NOT NULL,
   blob_key TEXT NOT NULL,
   sequence_num INTEGER NOT NULL,
   size_bytes INTEGER NOT NULL,
   signer_device_id TEXT NOT NULL,
   created_at INTEGER NOT NULL,
-  UNIQUE (user_id, note_id)
+  UNIQUE (user_id, vault_id, note_id)
 );
 
-CREATE INDEX idx_crdt_snapshots_note ON crdt_snapshots(user_id, note_id);
+CREATE INDEX idx_crdt_snapshots_note ON crdt_snapshots(user_id, vault_id, note_id);
 
 -- ============================================================================
 -- T017h: Upload sessions (chunked upload tracking)
@@ -240,6 +286,7 @@ CREATE INDEX idx_crdt_snapshots_note ON crdt_snapshots(user_id, note_id);
 CREATE TABLE upload_sessions (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  vault_id TEXT NOT NULL DEFAULT 'default',
   attachment_id TEXT NOT NULL,
   filename TEXT NOT NULL,
   total_size INTEGER NOT NULL,
@@ -251,7 +298,7 @@ CREATE TABLE upload_sessions (
   created_at INTEGER NOT NULL
 );
 
-CREATE INDEX idx_upload_user ON upload_sessions(user_id);
+CREATE INDEX idx_upload_user ON upload_sessions(user_id, vault_id);
 CREATE INDEX idx_upload_expires ON upload_sessions(expires_at);
 
 -- ============================================================================
@@ -262,14 +309,15 @@ CREATE TABLE blob_chunks (
   id TEXT PRIMARY KEY,
   hash TEXT NOT NULL,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  vault_id TEXT NOT NULL DEFAULT 'default',
   r2_key TEXT NOT NULL,
   size_bytes INTEGER NOT NULL,
   ref_count INTEGER NOT NULL DEFAULT 1,
   created_at INTEGER NOT NULL,
-  UNIQUE (user_id, hash)
+  UNIQUE (user_id, vault_id, hash)
 );
 
-CREATE INDEX idx_blob_chunks_hash ON blob_chunks(hash);
+CREATE INDEX idx_blob_chunks_hash ON blob_chunks(user_id, vault_id, hash);
 
 -- ============================================================================
 -- Consumed setup tokens (single-use enforcement)
