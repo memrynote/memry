@@ -1,3 +1,5 @@
+import { adjustStorageUsed } from './quota'
+
 export const cleanupExpiredOtpCodes = async (db: D1Database): Promise<number> => {
   const now = Math.floor(Date.now() / 1000)
   const result = await db.prepare('DELETE FROM otp_codes WHERE expires_at < ?').bind(now).run()
@@ -20,10 +22,23 @@ export const cleanupExpiredUploadSessions = async (
   const now = Math.floor(Date.now() / 1000)
 
   const stale = await db
-    .prepare('SELECT id, r2_upload_id, r2_key FROM upload_sessions WHERE expires_at < ?')
+    .prepare(
+      `SELECT id, user_id, vault_id, total_size, uploaded_chunks, r2_upload_id, r2_key
+       FROM upload_sessions
+       WHERE expires_at < ?`
+    )
     .bind(now)
-    .all<{ id: string; r2_upload_id: string; r2_key: string }>()
+    .all<{
+      id: string
+      user_id: string
+      vault_id: string
+      total_size: number
+      uploaded_chunks: string
+      r2_upload_id: string | null
+      r2_key: string | null
+    }>()
 
+  let cleaned = 0
   for (const session of stale.results ?? []) {
     if (session.r2_upload_id && session.r2_key) {
       try {
@@ -32,13 +47,45 @@ export const cleanupExpiredUploadSessions = async (
         // Multipart upload may already be completed or expired
       }
     }
+
+    const uploadedChunks = parseUploadedChunkHashes(session.uploaded_chunks)
+    for (const hash of uploadedChunks) {
+      const chunk = await db
+        .prepare(
+          'SELECT id, ref_count, r2_key FROM blob_chunks WHERE user_id = ? AND vault_id = ? AND hash = ?'
+        )
+        .bind(session.user_id, session.vault_id, hash)
+        .first<{ id: string; ref_count: number; r2_key: string }>()
+
+      if (!chunk) continue
+
+      if (chunk.ref_count <= 1) {
+        try {
+          await storage.delete(chunk.r2_key)
+        } catch {
+          // R2 delete may fail if chunk already disappeared; proceed with D1 cleanup
+        }
+        await db.prepare('DELETE FROM blob_chunks WHERE id = ?').bind(chunk.id).run()
+      } else {
+        await db
+          .prepare('UPDATE blob_chunks SET ref_count = ref_count - 1 WHERE id = ?')
+          .bind(chunk.id)
+          .run()
+      }
+    }
+
+    const result = await db
+      .prepare('DELETE FROM upload_sessions WHERE id = ? AND user_id = ? AND vault_id = ?')
+      .bind(session.id, session.user_id, session.vault_id)
+      .run()
+
+    if ((result.meta.changes ?? 0) > 0) {
+      await adjustStorageUsed(db, session.user_id, -session.total_size)
+      cleaned += result.meta.changes ?? 0
+    }
   }
 
-  const result = await db
-    .prepare('DELETE FROM upload_sessions WHERE expires_at < ?')
-    .bind(now)
-    .run()
-  return result.meta.changes ?? 0
+  return cleaned
 }
 
 export const cleanupConsumedSetupTokens = async (db: D1Database): Promise<number> => {
@@ -156,4 +203,15 @@ export const cleanupOrphanedBlobChunks = async (
     .run()
 
   return result.meta.changes ?? 0
+}
+
+const parseUploadedChunkHashes = (value: string): Set<string> => {
+  try {
+    const parsed = JSON.parse(value) as Array<{ h?: unknown }>
+    if (!Array.isArray(parsed)) return new Set()
+    const hashes = parsed.flatMap((entry) => (typeof entry.h === 'string' ? [entry.h] : []))
+    return new Set(hashes)
+  } catch {
+    return new Set()
+  }
 }

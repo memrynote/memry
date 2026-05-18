@@ -5,6 +5,7 @@ import { AppError, ErrorCodes } from '../lib/errors'
 import {
   generateBlobKey,
   generateCrdtKey,
+  generateAttachmentManifestKey,
   generateAttachmentChunkKey,
   putBlob,
   getBlob,
@@ -40,21 +41,33 @@ const createMockStorage = () => ({
 // ============================================================================
 
 describe('generateBlobKey', () => {
-  it('should create user-scoped item key', () => {
-    expect(generateBlobKey('user-1', 'item-1')).toBe('user-1/items/item-1')
+  it('should create vault-scoped item key', () => {
+    expect(generateBlobKey('user-1', 'item-1', 'vault-1')).toBe(
+      'user-1/vaults/vault-1/items/item-1'
+    )
   })
 })
 
 describe('generateCrdtKey', () => {
-  it('should create user-scoped CRDT snapshot key', () => {
-    expect(generateCrdtKey('user-1', 'note-1')).toBe('user-1/crdt/note-1/snapshot')
+  it('should create vault-scoped CRDT snapshot key', () => {
+    expect(generateCrdtKey('user-1', 'note-1', 'vault-1')).toBe(
+      'user-1/vaults/vault-1/crdt/note-1/snapshot'
+    )
+  })
+})
+
+describe('generateAttachmentManifestKey', () => {
+  it('should create vault-scoped manifest key', () => {
+    expect(generateAttachmentManifestKey('user-1', 'att-1', 'vault-1')).toBe(
+      'user-1/vaults/vault-1/attachments/att-1/manifest'
+    )
   })
 })
 
 describe('generateAttachmentChunkKey', () => {
-  it('should create user-scoped chunk key with index', () => {
-    expect(generateAttachmentChunkKey('user-1', 'att-1', 3)).toBe(
-      'user-1/attachments/att-1/chunks/3'
+  it('should create vault-scoped chunk key with hash', () => {
+    expect(generateAttachmentChunkKey('user-1', 'vault-1', 'hash-1')).toBe(
+      'user-1/vaults/vault-1/chunks/hash-1'
     )
   })
 })

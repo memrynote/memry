@@ -173,10 +173,18 @@ describe('D1 schema', () => {
     const crdtSnapshotColumns = db.prepare('PRAGMA table_info(crdt_snapshots)').all() as Array<{
       name: string
     }>
+    const uploadSessionColumns = db.prepare('PRAGMA table_info(upload_sessions)').all() as Array<{
+      name: string
+    }>
+    const blobChunkColumns = db.prepare('PRAGMA table_info(blob_chunks)').all() as Array<{
+      name: string
+    }>
 
     expect(syncItemColumns.map((column) => column.name)).toContain('vault_id')
     expect(cursorColumns.map((column) => column.name)).toContain('vault_id')
     expect(crdtUpdateColumns.map((column) => column.name)).toContain('vault_id')
     expect(crdtSnapshotColumns.map((column) => column.name)).toContain('vault_id')
+    expect(uploadSessionColumns.map((column) => column.name)).toContain('vault_id')
+    expect(blobChunkColumns.map((column) => column.name)).toContain('vault_id')
   })
 })

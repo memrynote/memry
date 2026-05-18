@@ -6,11 +6,17 @@ export const generateBlobKey = (userId: string, itemId: string, vaultId = 'defau
 export const generateCrdtKey = (userId: string, noteId: string, vaultId = 'default'): string =>
   `${userId}/vaults/${vaultId}/crdt/${noteId}/snapshot`
 
-export const generateAttachmentChunkKey = (
+export const generateAttachmentManifestKey = (
   userId: string,
   attachmentId: string,
-  index: number
-): string => `${userId}/attachments/${attachmentId}/chunks/${index}`
+  vaultId = 'default'
+): string => `${userId}/vaults/${vaultId}/attachments/${attachmentId}/manifest`
+
+export const generateAttachmentChunkKey = (
+  userId: string,
+  vaultId: string,
+  chunkHash: string
+): string => `${userId}/vaults/${vaultId}/chunks/${chunkHash}`
 
 const assertKeyBelongsToUser = (key: string, userId: string): void => {
   if (!key.startsWith(`${userId}/`)) {

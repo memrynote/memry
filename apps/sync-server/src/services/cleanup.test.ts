@@ -55,29 +55,62 @@ describe('cleanup services', () => {
     expect(bind).toHaveBeenCalledWith(1_700_000_000)
   })
 
-  it('cleans up expired upload sessions and aborts multipart uploads', async () => {
+  it('cleans up expired upload sessions, chunks, and reserved storage', async () => {
     // #given
     const abortFn = vi.fn().mockResolvedValue(undefined)
     const storage = {
+      delete: vi.fn().mockResolvedValue(undefined),
       resumeMultipartUpload: vi.fn().mockReturnValue({ abort: abortFn })
     } as unknown as R2Bucket
 
     const selectAll = vi.fn().mockResolvedValue({
       results: [
-        { id: 's1', r2_upload_id: 'up1', r2_key: 'k1' },
-        { id: 's2', r2_upload_id: '', r2_key: '' }
+        {
+          id: 's1',
+          user_id: 'user-1',
+          vault_id: 'vault-1',
+          total_size: 10,
+          uploaded_chunks: JSON.stringify([{ i: 0, h: 'hash-0', b: 10 }]),
+          r2_upload_id: 'up1',
+          r2_key: 'k1'
+        },
+        {
+          id: 's2',
+          user_id: 'user-2',
+          vault_id: 'vault-2',
+          total_size: 20,
+          uploaded_chunks: '[]',
+          r2_upload_id: '',
+          r2_key: ''
+        }
       ]
     })
     const selectBind = vi.fn().mockReturnValue({ all: selectAll })
 
-    const deleteRun = vi.fn().mockResolvedValue({ meta: { changes: 2 } })
+    const chunkFirst = vi.fn().mockResolvedValue({
+      id: 'chunk-1',
+      ref_count: 1,
+      r2_key: 'user-1/vaults/vault-1/chunks/hash-0'
+    })
+    const chunkBind = vi.fn().mockReturnValue({ first: chunkFirst })
+    const deleteChunkRun = vi.fn().mockResolvedValue({ meta: { changes: 1 } })
+    const deleteChunkBind = vi.fn().mockReturnValue({ run: deleteChunkRun })
+
+    const deleteRun = vi.fn().mockResolvedValue({ meta: { changes: 1 } })
     const deleteBind = vi.fn().mockReturnValue({ run: deleteRun })
+    const releaseRun = vi.fn().mockResolvedValue({ meta: { changes: 1 } })
+    const releaseBind = vi.fn().mockReturnValue({ run: releaseRun })
 
     const db = {
       prepare: vi
         .fn()
         .mockReturnValueOnce({ bind: selectBind })
+        .mockReturnValueOnce({ bind: chunkBind })
+        .mockReturnValueOnce({ bind: deleteChunkBind })
         .mockReturnValueOnce({ bind: deleteBind })
+        .mockReturnValueOnce({ bind: releaseBind })
+        .mockReturnValueOnce({ bind: deleteBind })
+        .mockReturnValueOnce({ bind: releaseBind })
     } as unknown as D1Database
 
     // #when
@@ -86,9 +119,17 @@ describe('cleanup services', () => {
     // #then
     expect(result).toBe(2)
     expect(db.prepare).toHaveBeenCalledWith(
-      'SELECT id, r2_upload_id, r2_key FROM upload_sessions WHERE expires_at < ?'
+      expect.stringContaining('SELECT id, user_id, vault_id, total_size, uploaded_chunks')
     )
-    expect(db.prepare).toHaveBeenCalledWith('DELETE FROM upload_sessions WHERE expires_at < ?')
+    expect(db.prepare).toHaveBeenCalledWith(
+      'SELECT id, ref_count, r2_key FROM blob_chunks WHERE user_id = ? AND vault_id = ? AND hash = ?'
+    )
+    expect(storage.delete).toHaveBeenCalledWith('user-1/vaults/vault-1/chunks/hash-0')
+    expect(db.prepare).toHaveBeenCalledWith(
+      'DELETE FROM upload_sessions WHERE id = ? AND user_id = ? AND vault_id = ?'
+    )
+    expect(releaseBind).toHaveBeenCalledWith(-10, expect.any(Number), 'user-1')
+    expect(releaseBind).toHaveBeenCalledWith(-20, expect.any(Number), 'user-2')
     expect(storage.resumeMultipartUpload).toHaveBeenCalledWith('k1', 'up1')
     expect(abortFn).toHaveBeenCalledOnce()
   })
@@ -97,11 +138,22 @@ describe('cleanup services', () => {
     // #given
     const abortFn = vi.fn().mockRejectedValue(new Error('already gone'))
     const storage = {
+      delete: vi.fn(),
       resumeMultipartUpload: vi.fn().mockReturnValue({ abort: abortFn })
     } as unknown as R2Bucket
 
     const selectAll = vi.fn().mockResolvedValue({
-      results: [{ id: 's1', r2_upload_id: 'up1', r2_key: 'k1' }]
+      results: [
+        {
+          id: 's1',
+          user_id: 'user-1',
+          vault_id: 'vault-1',
+          total_size: 10,
+          uploaded_chunks: '[]',
+          r2_upload_id: 'up1',
+          r2_key: 'k1'
+        }
+      ]
     })
     const selectBind = vi.fn().mockReturnValue({ all: selectAll })
 
