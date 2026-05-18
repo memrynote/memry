@@ -66,6 +66,13 @@ vi.mock('../middleware/auth', () => ({
   authMiddleware: vi.fn().mockImplementation(async (c: any, next: any) => {
     c.set('userId', 'user-1')
     c.set('deviceId', 'device-1')
+    c.set('vaultId', 'vault-1')
+    await next()
+  })
+}))
+
+vi.mock('../middleware/paid-sync', () => ({
+  paidSyncMiddleware: vi.fn().mockImplementation(async (_c: any, next: any) => {
     await next()
   })
 }))

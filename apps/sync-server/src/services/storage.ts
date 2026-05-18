@@ -1,4 +1,4 @@
-import { AppError, ErrorCodes } from '../lib/errors'
+import { assertPaidSyncAccess } from './entitlements'
 
 export interface StorageBreakdown {
   used: number
@@ -15,12 +15,8 @@ export async function getStorageBreakdown(
   db: D1Database,
   userId: string
 ): Promise<StorageBreakdown> {
-  const [user, categories, crdtResult] = await Promise.all([
-    db
-      .prepare('SELECT storage_used, storage_limit FROM users WHERE id = ?')
-      .bind(userId)
-      .first<{ storage_used: number; storage_limit: number }>(),
-
+  const [entitlement, categories, crdtResult] = await Promise.all([
+    assertPaidSyncAccess(db, userId),
     db
       .prepare(
         'SELECT item_type, SUM(size_bytes) as total_bytes FROM sync_items WHERE user_id = ? AND deleted_at IS NULL GROUP BY item_type'
@@ -35,10 +31,6 @@ export async function getStorageBreakdown(
       .bind(userId)
       .first<{ total_bytes: number }>()
   ])
-
-  if (!user) {
-    throw new AppError(ErrorCodes.NOT_FOUND, 'User not found', 404)
-  }
 
   const breakdown = { notes: 0, attachments: 0, crdt: crdtResult?.total_bytes ?? 0, other: 0 }
 
@@ -56,5 +48,5 @@ export async function getStorageBreakdown(
     }
   }
 
-  return { used: user.storage_used, limit: user.storage_limit, breakdown }
+  return { used: entitlement.storage_used, limit: entitlement.storage_limit, breakdown }
 }

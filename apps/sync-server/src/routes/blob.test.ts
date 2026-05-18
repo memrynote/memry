@@ -14,10 +14,21 @@ vi.mock('../services/quota', () => ({
   checkQuota: vi.fn().mockResolvedValue(undefined)
 }))
 
+vi.mock('../services/entitlements', () => ({
+  assertFileSizeAllowed: vi.fn().mockResolvedValue(undefined)
+}))
+
 vi.mock('../middleware/auth', () => ({
   authMiddleware: vi.fn().mockImplementation(async (c: any, next: any) => {
     c.set('userId', 'user-1')
     c.set('deviceId', 'device-1')
+    c.set('vaultId', 'vault-1')
+    await next()
+  })
+}))
+
+vi.mock('../middleware/paid-sync', () => ({
+  paidSyncMiddleware: vi.fn().mockImplementation(async (_c: any, next: any) => {
     await next()
   })
 }))
@@ -32,6 +43,7 @@ vi.mock('../middleware/rate-limit', () => ({
 
 import { blob } from './blob'
 import { putBlob, getBlob, deleteBlob } from '../services/blob'
+import { assertFileSizeAllowed } from '../services/entitlements'
 import { checkQuota } from '../services/quota'
 
 interface MockDbState {
@@ -143,6 +155,7 @@ describe('blob routes', () => {
     vi.mocked(putBlob).mockResolvedValue({ etag: 'etag-1' } as any)
     vi.mocked(getBlob).mockResolvedValue(createR2Object() as any)
     vi.mocked(deleteBlob).mockResolvedValue(undefined)
+    vi.mocked(assertFileSizeAllowed).mockResolvedValue(undefined)
     vi.mocked(checkQuota).mockResolvedValue(undefined)
     app = createApp()
     state = {
@@ -159,6 +172,7 @@ describe('blob routes', () => {
 
     expect(res.status).toBe(200)
     expect(await res.json()).toEqual({ blob_key: 'blob-1', size: 5, etag: 'etag-1' })
+    expect(assertFileSizeAllowed).toHaveBeenCalledWith(env.DB, 'user-1', 5)
     expect(checkQuota).toHaveBeenCalledWith(env.DB, 'user-1', 5)
     expect(putBlob).toHaveBeenCalledWith(
       env.STORAGE,
@@ -260,6 +274,7 @@ describe('blob routes', () => {
       expiresAt: expect.any(Number)
     })
     expect(checkQuota).toHaveBeenCalledWith(env.DB, 'user-1', 10)
+    expect(assertFileSizeAllowed).toHaveBeenCalledWith(env.DB, 'user-1', 10)
   })
 
   it('rejects invalid upload initiation payloads', async () => {

@@ -18,7 +18,7 @@ CREATE TABLE users (
   kdf_salt TEXT,
   key_verifier TEXT,
   storage_used INTEGER NOT NULL DEFAULT 0,
-  storage_limit INTEGER NOT NULL DEFAULT 5368709120,
+  storage_limit INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
 );
@@ -78,6 +78,7 @@ CREATE TABLE devices (
   os_version TEXT,
   app_version TEXT NOT NULL,
   auth_public_key TEXT NOT NULL,
+  vault_id TEXT,
   push_token TEXT,
   last_sync_at INTEGER,
   revoked_at INTEGER,
@@ -88,6 +89,47 @@ CREATE TABLE devices (
 
 CREATE INDEX idx_devices_user ON devices(user_id);
 CREATE INDEX idx_devices_user_active ON devices(user_id) WHERE revoked_at IS NULL;
+CREATE INDEX idx_devices_user_vault ON devices(user_id, vault_id);
+
+-- ============================================================================
+-- T015a: Paid sync entitlements and synced vault limits
+-- ============================================================================
+
+CREATE TABLE sync_entitlements (
+  user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  plan TEXT NOT NULL DEFAULT 'free',
+  status TEXT NOT NULL DEFAULT 'inactive',
+  source TEXT NOT NULL DEFAULT 'none',
+  storage_limit INTEGER NOT NULL DEFAULT 0,
+  max_file_size INTEGER NOT NULL DEFAULT 0,
+  max_vaults INTEGER,
+  version_history_days INTEGER NOT NULL DEFAULT 0,
+  paddle_customer_id TEXT,
+  paddle_subscription_id TEXT,
+  paddle_transaction_id TEXT,
+  expires_at INTEGER,
+  updated_at INTEGER NOT NULL
+);
+
+CREATE INDEX idx_sync_entitlements_subscription ON sync_entitlements(paddle_subscription_id);
+CREATE INDEX idx_sync_entitlements_customer ON sync_entitlements(paddle_customer_id);
+
+CREATE TABLE sync_vaults (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  vault_id TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  UNIQUE (user_id, vault_id)
+);
+
+CREATE INDEX idx_sync_vaults_user ON sync_vaults(user_id);
+
+CREATE TABLE paddle_webhook_events (
+  id TEXT PRIMARY KEY,
+  event_type TEXT NOT NULL,
+  processed_at INTEGER NOT NULL
+);
 
 -- ============================================================================
 -- T014b: Refresh tokens (now that devices exists)

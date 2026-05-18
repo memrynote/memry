@@ -31,7 +31,8 @@ function createEnv(opts: {
   broadcastFetch?: ReturnType<typeof vi.fn>
 }) {
   const broadcastFetch =
-    opts.broadcastFetch ?? vi.fn(async () => new Response(JSON.stringify({ sent: 1 }), { status: 200 }))
+    opts.broadcastFetch ??
+    vi.fn(async () => new Response(JSON.stringify({ sent: 1 }), { status: 200 }))
 
   return {
     env: {
@@ -58,7 +59,8 @@ function createEnv(opts: {
       GOOGLE_REDIRECT_URI: 'http://localhost/callback',
       MIN_APP_VERSION: '1.0.0',
       RECOVERY_DUMMY_SECRET: 'mock-dummy-recovery-secret',
-      WEBHOOK_HMAC_KEY
+      WEBHOOK_HMAC_KEY,
+      PADDLE_WEBHOOK_SECRET: 'paddle-secret'
     },
     broadcastFetch
   }
@@ -201,7 +203,10 @@ describe('POST /webhooks/google-calendar', () => {
     // #given
     const hash = await hashChannelToken(WEBHOOK_HMAC_KEY, 'secret-token')
     const { env, broadcastFetch } = createEnv({
-      channelRow: makeChannelRow({ token_hash: hash, expires_at: Math.floor(Date.now() / 1000) - 10 })
+      channelRow: makeChannelRow({
+        token_hash: hash,
+        expires_at: Math.floor(Date.now() / 1000) - 10
+      })
     })
 
     // #when

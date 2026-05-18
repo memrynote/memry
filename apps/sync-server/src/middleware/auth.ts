@@ -34,10 +34,10 @@ export const authMiddleware: MiddlewareHandler<AppContext> = async (c, next) => 
   }
 
   const device = await c.env.DB.prepare(
-    'SELECT id, revoked_at FROM devices WHERE id = ? AND user_id = ?'
+    'SELECT id, revoked_at, vault_id FROM devices WHERE id = ? AND user_id = ?'
   )
     .bind(deviceId, userId)
-    .first<{ id: string; revoked_at: string | null }>()
+    .first<{ id: string; revoked_at: string | null; vault_id: string | null }>()
 
   if (!device) {
     throw new AppError(ErrorCodes.AUTH_DEVICE_NOT_FOUND, 'Device not registered', 401)
@@ -49,6 +49,7 @@ export const authMiddleware: MiddlewareHandler<AppContext> = async (c, next) => 
 
   c.set('userId', userId)
   c.set('deviceId', deviceId)
+  c.set('vaultId', device.vault_id ?? 'default')
 
   await next()
 }

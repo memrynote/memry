@@ -6,6 +6,7 @@ import { PullRequestSchema, RecordPushRequestSchema } from '@memry/contracts/syn
 import { safeBase64Decode } from '../lib/encoding'
 import { AppError, ErrorCodes } from '../lib/errors'
 import { authMiddleware } from '../middleware/auth'
+import { paidSyncMiddleware } from '../middleware/paid-sync'
 import { createRateLimiter } from '../middleware/rate-limit'
 import {
   getChanges,
@@ -38,6 +39,7 @@ import type { AppContext } from '../types'
 export const sync = new Hono<AppContext>()
 
 sync.use('*', authMiddleware)
+sync.use('*', paidSyncMiddleware)
 
 const MAX_UPDATE_BYTES = 5 * 1024 * 1024 // 5MB per individual update
 const BASE64_CHUNK_SIZE = 8192
@@ -536,7 +538,8 @@ const handleCrdtBatchPull = async (c: Context<AppContext>): Promise<Response> =>
     updateCount: Object.values(batchResult).reduce((sum, result) => sum + result.updates.length, 0),
     totalBytes: Object.values(batchResult).reduce(
       (sum, result) =>
-        sum + result.updates.reduce((noteSum, update) => noteSum + update.update_data.byteLength, 0),
+        sum +
+        result.updates.reduce((noteSum, update) => noteSum + update.update_data.byteLength, 0),
       0
     ),
     latencyMs: Date.now() - startedAt

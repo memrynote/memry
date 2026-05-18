@@ -355,13 +355,15 @@ auth.post('/devices', setupAuthMiddleware, async (c) => {
     authPublicKey,
     challengeSignature,
     challengeNonce,
-    sessionNonce
+    sessionNonce,
+    vaultId
   } = parsed.data
 
   const sanitizedName = sanitizeDeviceText(name, 255)
   const sanitizedPlatform = sanitizeDeviceText(platform, 32)
+  const sanitizedVaultId = sanitizeDeviceText(vaultId ?? 'default', 128)
 
-  if (!sanitizedName || !sanitizedPlatform) {
+  if (!sanitizedName || !sanitizedPlatform || !sanitizedVaultId) {
     throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid device metadata', 400)
   }
 
@@ -380,13 +382,14 @@ auth.post('/devices', setupAuthMiddleware, async (c) => {
   const now = Math.floor(Date.now() / 1000)
 
   const { results } = await c.env.DB.prepare(
-    `INSERT INTO devices (id, user_id, name, platform, os_version, app_version, auth_public_key, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO devices (id, user_id, name, platform, os_version, app_version, auth_public_key, vault_id, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(user_id, auth_public_key) DO UPDATE SET
        name = excluded.name,
        platform = excluded.platform,
        os_version = excluded.os_version,
        app_version = excluded.app_version,
+       vault_id = excluded.vault_id,
        updated_at = excluded.updated_at
      RETURNING id`
   )
@@ -398,6 +401,7 @@ auth.post('/devices', setupAuthMiddleware, async (c) => {
       osVersion ?? null,
       appVersion,
       authPublicKey,
+      sanitizedVaultId,
       now,
       now
     )
@@ -587,7 +591,10 @@ auth.post('/logout', authMiddleware, async (c) => {
   try {
     await revokeDeviceTokens(c.env.DB, deviceId)
   } catch (err) {
-    logger.error('Failed to revoke tokens during logout', { deviceId, error: err instanceof Error ? err.message : String(err) })
+    logger.error('Failed to revoke tokens during logout', {
+      deviceId,
+      error: err instanceof Error ? err.message : String(err)
+    })
   }
 
   return c.json({ success: true })

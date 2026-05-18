@@ -2,8 +2,10 @@ import { Hono } from 'hono'
 
 import { AppError, ErrorCodes } from '../lib/errors'
 import { authMiddleware } from '../middleware/auth'
+import { paidSyncMiddleware } from '../middleware/paid-sync'
 import { createRateLimiter } from '../middleware/rate-limit'
 import { putBlob, getBlob, deleteBlob } from '../services/blob'
+import { assertFileSizeAllowed } from '../services/entitlements'
 import { checkQuota } from '../services/quota'
 import { UploadInitRequestSchema } from '@memry/contracts/blob-api'
 import type { AppContext } from '../types'
@@ -11,6 +13,7 @@ import type { AppContext } from '../types'
 export const blob = new Hono<AppContext>()
 
 blob.use('*', authMiddleware)
+blob.use('*', paidSyncMiddleware)
 
 const MAX_FILE_SIZE = 500 * 1024 * 1024
 const UPLOAD_SESSION_TTL = 24 * 60 * 60
@@ -52,6 +55,7 @@ blob.put('/blob/:blob_key', blobUploadLimit, async (c) => {
     throw new AppError(ErrorCodes.VALIDATION_BODY_TOO_LARGE, 'Blob exceeds 500MB limit', 413)
   }
 
+  await assertFileSizeAllowed(c.env.DB, userId, body.byteLength)
   await checkQuota(c.env.DB, userId, body.byteLength)
 
   const key = `${userId}/items/${blobKey}`
@@ -156,6 +160,7 @@ blob.post('/attachments/upload/initiate', uploadSessionLimit, async (c) => {
     )
   }
 
+  await assertFileSizeAllowed(c.env.DB, userId, totalSize)
   await checkQuota(c.env.DB, userId, totalSize)
 
   const now = Math.floor(Date.now() / 1000)

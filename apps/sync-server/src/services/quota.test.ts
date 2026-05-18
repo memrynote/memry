@@ -30,7 +30,13 @@ describe('checkQuota', () => {
   it('should not throw when user is under quota', async () => {
     // #given
     const stmt = createMockStatement()
-    stmt.first.mockResolvedValue({ storage_used: 500, storage_limit: 1000 })
+    stmt.first.mockResolvedValue({
+      storage_used: 500,
+      storage_limit: 1000,
+      plan: 'plus',
+      status: 'active',
+      expires_at: null
+    })
     db.prepare.mockReturnValue(stmt)
 
     // #when / #then
@@ -40,7 +46,13 @@ describe('checkQuota', () => {
   it('should throw 413 when user exceeds quota', async () => {
     // #given
     const stmt = createMockStatement()
-    stmt.first.mockResolvedValue({ storage_used: 900, storage_limit: 1000 })
+    stmt.first.mockResolvedValue({
+      storage_used: 900,
+      storage_limit: 1000,
+      plan: 'plus',
+      status: 'active',
+      expires_at: null
+    })
     db.prepare.mockReturnValue(stmt)
 
     // #when / #then
@@ -56,7 +68,13 @@ describe('checkQuota', () => {
   it('should throw 413 when additional bytes exactly exceed limit', async () => {
     // #given
     const stmt = createMockStatement()
-    stmt.first.mockResolvedValue({ storage_used: 1000, storage_limit: 1000 })
+    stmt.first.mockResolvedValue({
+      storage_used: 1000,
+      storage_limit: 1000,
+      plan: 'plus',
+      status: 'active',
+      expires_at: null
+    })
     db.prepare.mockReturnValue(stmt)
 
     // #when / #then
@@ -66,7 +84,13 @@ describe('checkQuota', () => {
   it('should not throw when exactly at limit', async () => {
     // #given
     const stmt = createMockStatement()
-    stmt.first.mockResolvedValue({ storage_used: 500, storage_limit: 1000 })
+    stmt.first.mockResolvedValue({
+      storage_used: 500,
+      storage_limit: 1000,
+      plan: 'plus',
+      status: 'active',
+      expires_at: null
+    })
     db.prepare.mockReturnValue(stmt)
 
     // #when / #then
