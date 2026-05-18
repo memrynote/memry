@@ -36,7 +36,8 @@ export const PLATFORM_MAP: Record<string, string> = {
 
 const registerDevice = async (
   setupToken: string,
-  signingSecretKey: Uint8Array
+  signingSecretKey: Uint8Array,
+  vaultId: string
 ): Promise<DeviceRegisterResponse> => {
   await sodium.ready
 
@@ -59,7 +60,8 @@ const registerDevice = async (
       appVersion: app.getVersion(),
       authPublicKey: publicKeyBase64,
       challengeSignature: signatureBase64,
-      challengeNonce: nonce
+      challengeNonce: nonce,
+      vaultId
     },
     setupToken
   )
@@ -95,9 +97,12 @@ export const persistKeysAndRegisterDevice = async (
 ): Promise<string> => {
   await storeKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY, signingSecretKey)
 
+  const db = getDatabase()
+  const vaultId = getOrCreateVaultUuid(db)
+
   let deviceResponse: DeviceRegisterResponse & { deviceId: string }
   try {
-    const raw = await registerDevice(setupToken, signingSecretKey)
+    const raw = await registerDevice(setupToken, signingSecretKey, vaultId)
     deviceResponse = raw as DeviceRegisterResponse & { deviceId: string }
   } catch (err) {
     await deleteKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY).catch(() => {})
@@ -120,11 +125,9 @@ export const persistKeysAndRegisterDevice = async (
     }
   }
 
-  const db = getDatabase()
-
   try {
     await storeKey(KEYCHAIN_ENTRIES.MASTER_KEY, masterKey)
-    await bindLocalVaultToMasterKey(db, getOrCreateVaultUuid(db), masterKey)
+    await bindLocalVaultToMasterKey(db, vaultId, masterKey)
   } catch (keyPersistenceErr) {
     logger.error('Failed to store or bind master key after device registration', keyPersistenceErr)
 
