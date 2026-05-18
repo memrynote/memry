@@ -1,12 +1,39 @@
 import { Hono } from 'hono'
 
 import { createLogger } from '../lib/logger'
+import { applyPaddleWebhook, verifyPaddleWebhookSignature } from '../services/paddle-webhooks'
 import { lookupChannel, verifyChannelToken } from '../services/google-webhooks'
 import type { AppContext } from '../types'
 
 const log = createLogger('Webhooks')
 
 export const webhooks = new Hono<AppContext>()
+
+webhooks.post('/paddle', async (c) => {
+  const rawBody = await c.req.text()
+  const signature = c.req.header('Paddle-Signature') ?? c.req.header('paddle-signature')
+
+  try {
+    await verifyPaddleWebhookSignature({
+      rawBody,
+      header: signature,
+      secret: c.env.PADDLE_WEBHOOK_SECRET
+    })
+  } catch {
+    log.warn('Invalid Paddle webhook signature')
+    return c.json({ error: 'Invalid Paddle signature' }, 401)
+  }
+
+  let payload: unknown
+  try {
+    payload = JSON.parse(rawBody)
+  } catch {
+    return c.json({ error: 'Invalid JSON payload' }, 400)
+  }
+
+  const result = await applyPaddleWebhook(c.env.DB, payload as never)
+  return c.json({ success: true, ...result })
+})
 
 webhooks.post('/google-calendar', async (c) => {
   const channelId = c.req.header('x-goog-channel-id')

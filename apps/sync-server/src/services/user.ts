@@ -55,7 +55,7 @@ export const createUser = async (
     kdf_salt: null,
     key_verifier: null,
     storage_used: 0,
-    storage_limit: 5368709120,
+    storage_limit: 0,
     created_at: now,
     updated_at: now
   }

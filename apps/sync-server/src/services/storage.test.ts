@@ -38,7 +38,13 @@ function defaultStmts(overrides?: {
   const user =
     overrides?.user ??
     createMockStatement({
-      first: vi.fn().mockResolvedValue({ storage_used: 5000, storage_limit: 100_000 })
+      first: vi.fn().mockResolvedValue({
+        storage_used: 5000,
+        storage_limit: 100_000,
+        plan: 'plus',
+        status: 'active',
+        expires_at: null
+      })
     } as Partial<MockStatement>)
 
   const categories =
