@@ -35,12 +35,14 @@ import {
   hasPendingOtp
 } from '../services/otp'
 import { getOrCreateUserByEmail, getUserByEmail, getUserById, updateUser } from '../services/user'
+import { signCheckoutToken, type CheckoutCadence } from '../services/checkout-token'
 import type { AppContext } from '../types'
 
 const logger = createLogger('Auth')
 
 const OTP_EXPIRY_MINUTES = 10
 const DEVICE_TEXT_UNSAFE_CHARS = /[\u0000-\u001F\u007F<>"'`&]/g
+const CHECKOUT_TOKEN_TTL_SECONDS = 10 * 60
 
 const sanitizeDeviceText = (value: string, maxLength: number): string =>
   value.replace(DEVICE_TEXT_UNSAFE_CHARS, '').trim().slice(0, maxLength)
@@ -444,6 +446,10 @@ auth.get('/recovery-info', setupAuthMiddleware, async (c) => {
 })
 
 const RecoveryQuerySchema = z.object({ email: z.string().email() })
+const CheckoutTokenSchema = z.object({
+  plan: z.enum(['plus', 'pro', 'believer']),
+  cadence: z.enum(['monthly', 'annual', 'lifetime'])
+})
 
 async function generateDummyRecoveryData(
   email: string,
@@ -537,6 +543,31 @@ auth.get('/devices', authMiddleware, devicesRateLimit, async (c) => {
       revokedAt: d.revoked_at
     }))
   })
+})
+
+auth.post('/checkout-token', authMiddleware, async (c) => {
+  const body = await c.req.json()
+  const parsed = CheckoutTokenSchema.safeParse(body)
+  if (!parsed.success) {
+    throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid checkout request', 400)
+  }
+
+  const { plan } = parsed.data
+  const cadence: CheckoutCadence = plan === 'believer' ? 'lifetime' : parsed.data.cadence
+  if (plan !== 'believer' && cadence === 'lifetime') {
+    throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid checkout cadence', 400)
+  }
+
+  const userId = c.get('userId')!
+  const expiresAt = Math.floor(Date.now() / 1000) + CHECKOUT_TOKEN_TTL_SECONDS
+  const checkoutToken = await signCheckoutToken(c.env.PADDLE_CHECKOUT_TOKEN_SECRET, {
+    userId,
+    plan,
+    cadence,
+    exp: expiresAt
+  })
+
+  return c.json({ checkoutToken, expiresAt })
 })
 
 // POST /refresh

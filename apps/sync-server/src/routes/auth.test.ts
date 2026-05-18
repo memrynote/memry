@@ -161,10 +161,12 @@ const createEnv = () => ({
   JWT_PUBLIC_KEY: 'mock-public-key',
   JWT_PRIVATE_KEY: 'mock-private-key',
   RESEND_API_KEY: 'mock-resend-key',
+  OTP_HMAC_KEY: 'mock-otp-hmac-key',
   GOOGLE_CLIENT_ID: 'mock-google-client-id',
   GOOGLE_CLIENT_SECRET: 'mock-google-client-secret',
   GOOGLE_REDIRECT_URI: 'http://localhost/callback',
-  RECOVERY_DUMMY_SECRET: 'mock-dummy-recovery-secret'
+  RECOVERY_DUMMY_SECRET: 'mock-dummy-recovery-secret',
+  PADDLE_CHECKOUT_TOKEN_SECRET: 'mock-checkout-token-secret'
 })
 
 const jsonPost = (path: string, body: Record<string, unknown>) => ({
@@ -172,6 +174,13 @@ const jsonPost = (path: string, body: Record<string, unknown>) => ({
   body: JSON.stringify(body),
   headers: { 'Content-Type': 'application/json' }
 })
+
+function readCheckoutTokenPayload(token: string): Record<string, unknown> {
+  const [encodedPayload] = token.split('.')
+  const base64 = encodedPayload.replace(/-/g, '+').replace(/_/g, '/')
+  const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=')
+  return JSON.parse(atob(padded)) as Record<string, unknown>
+}
 
 // ============================================================================
 // Tests
@@ -991,6 +1000,38 @@ describe('auth routes', () => {
 
     it('should return 400 for invalid refresh bodies', async () => {
       const res = await app.request('/auth/refresh', jsonPost('/auth/refresh', {}), env)
+
+      expect(res.status).toBe(400)
+    })
+  })
+
+  describe('POST /auth/checkout-token', () => {
+    it('mints an account-bound checkout token for the authenticated sync account', async () => {
+      const res = await app.request(
+        '/auth/checkout-token',
+        jsonPost('/auth/checkout-token', { plan: 'pro', cadence: 'annual' }),
+        env
+      )
+
+      expect(res.status).toBe(200)
+      const json = (await res.json()) as { checkoutToken: string; expiresAt: number }
+      const payload = readCheckoutTokenPayload(json.checkoutToken)
+
+      expect(payload).toEqual({
+        userId: 'user-1',
+        plan: 'pro',
+        cadence: 'annual',
+        exp: json.expiresAt
+      })
+      expect(json.checkoutToken.split('.')).toHaveLength(2)
+    })
+
+    it('rejects lifetime checkout cadence for recurring plans', async () => {
+      const res = await app.request(
+        '/auth/checkout-token',
+        jsonPost('/auth/checkout-token', { plan: 'plus', cadence: 'lifetime' }),
+        env
+      )
 
       expect(res.status).toBe(400)
     })

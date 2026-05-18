@@ -7,6 +7,13 @@ export type PaddleCheckoutIntent = {
   userId: string
 }
 
+type CheckoutTokenPayload = {
+  plan?: unknown
+  cadence?: unknown
+  userId?: unknown
+  exp?: unknown
+}
+
 export type PaddleCheckoutConfig = {
   priceId: string
   customData: {
@@ -19,6 +26,7 @@ export type PaddleCheckoutConfig = {
 }
 
 type PaddleEnv = Record<string, string | undefined>
+const encoder = new TextEncoder()
 
 export function normalizePaddleApiKey(apiKey: string | undefined) {
   const value = apiKey?.trim()
@@ -57,16 +65,91 @@ function isCadence(value: unknown): value is PaddleCheckoutCadence {
   return value === 'monthly' || value === 'annual' || value === 'lifetime'
 }
 
-export function parsePaddleCheckoutIntent(input: unknown): PaddleCheckoutIntent | null {
+function base64UrlDecode(value: string): Uint8Array | null {
+  try {
+    const base64 = value.replace(/-/g, '+').replace(/_/g, '/')
+    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=')
+    return Uint8Array.from(atob(padded), (char) => char.charCodeAt(0))
+  } catch {
+    return null
+  }
+}
+
+function base64UrlEncode(value: Uint8Array): string {
+  let binary = ''
+  for (const byte of value) binary += String.fromCharCode(byte)
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '')
+}
+
+async function hmacSha256(secret: string, value: string): Promise<Uint8Array> {
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  )
+  const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(value))
+  return new Uint8Array(signature)
+}
+
+function timingSafeEqual(left: Uint8Array, right: Uint8Array): boolean {
+  if (left.byteLength !== right.byteLength) return false
+
+  let diff = 0
+  for (let index = 0; index < left.byteLength; index += 1) {
+    diff |= left[index] ^ right[index]
+  }
+  return diff === 0
+}
+
+async function verifyCheckoutToken(
+  token: string,
+  secret: string | undefined
+): Promise<CheckoutTokenPayload | null> {
+  if (!secret) return null
+
+  const [encodedPayload, encodedSignature, extra] = token.split('.')
+  if (!encodedPayload || !encodedSignature || extra !== undefined) return null
+
+  const signature = base64UrlDecode(encodedSignature)
+  if (!signature) return null
+
+  const expected = await hmacSha256(secret, encodedPayload)
+  if (!timingSafeEqual(signature, expected)) return null
+
+  const payloadBytes = base64UrlDecode(encodedPayload)
+  if (!payloadBytes) return null
+
+  try {
+    return JSON.parse(new TextDecoder().decode(payloadBytes)) as CheckoutTokenPayload
+  } catch {
+    return null
+  }
+}
+
+export async function parsePaddleCheckoutIntent(
+  input: unknown,
+  env: PaddleEnv,
+  nowSeconds = Math.floor(Date.now() / 1000)
+): Promise<PaddleCheckoutIntent | null> {
   if (!input || typeof input !== 'object') return null
 
-  const { plan, cadence, userId } = input as {
-    plan?: unknown
-    cadence?: unknown
-    userId?: unknown
+  const { checkoutToken } = input as {
+    checkoutToken?: unknown
   }
+  if (typeof checkoutToken !== 'string' || checkoutToken.trim().length === 0) return null
+
+  const tokenPayload = await verifyCheckoutToken(
+    checkoutToken.trim(),
+    env.PADDLE_CHECKOUT_TOKEN_SECRET
+  )
+  if (!tokenPayload) return null
+
+  const { plan, cadence, userId, exp } = tokenPayload
   if (!isPlan(plan) || !isCadence(cadence)) return null
   if (typeof userId !== 'string' || userId.trim().length === 0) return null
+  if (typeof exp !== 'number' || !Number.isFinite(exp) || exp <= nowSeconds) return null
 
   if (plan === 'believer') {
     return { plan, cadence: 'lifetime', userId: userId.trim() }
@@ -75,6 +158,15 @@ export function parsePaddleCheckoutIntent(input: unknown): PaddleCheckoutIntent 
   if (cadence === 'lifetime') return null
 
   return { plan, cadence, userId: userId.trim() }
+}
+
+export async function signPaddleCheckoutToken(
+  payload: PaddleCheckoutIntent & { exp: number },
+  secret: string
+): Promise<string> {
+  const encodedPayload = base64UrlEncode(encoder.encode(JSON.stringify(payload)))
+  const signature = await hmacSha256(secret, encodedPayload)
+  return `${encodedPayload}.${base64UrlEncode(signature)}`
 }
 
 export function getPaddleCheckoutConfig(

@@ -160,7 +160,6 @@ function readCustomData(data: Record<string, unknown>): Record<string, unknown> 
 
 function normalizePlan(value: unknown): SyncPlan | null {
   if (value === 'plus' || value === 'pro' || value === 'believer') return value
-  if (value === 'standard') return 'plus'
   return null
 }
 
