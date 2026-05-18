@@ -42,7 +42,7 @@ describe('FirstRunOnboarding', () => {
     mocks.listProjects.mockResolvedValue({ projects: [{ id: 'project-existing' }] })
   })
 
-  it('walks through note, task, and sync setup', async () => {
+  it('completes local onboarding after note and task setup without requiring sync signup', async () => {
     const onComplete = vi.fn()
     render(<FirstRunOnboarding onComplete={onComplete} />)
 
@@ -72,8 +72,12 @@ describe('FirstRunOnboarding', () => {
       })
     })
 
-    fireEvent.click(screen.getByText('phaseF.componentsFirstRunOnboarding.doneLetSGo'))
-    expect(onComplete).toHaveBeenCalled()
+    await waitFor(() => {
+      expect(onComplete).toHaveBeenCalled()
+    })
+    expect(
+      screen.queryByText('phaseF.componentsFirstRunOnboarding.syncAcrossDevices')
+    ).not.toBeInTheDocument()
   })
 
   it('creates a default project and completes even when setup calls fail', async () => {
@@ -103,7 +107,8 @@ describe('FirstRunOnboarding', () => {
       })
     })
 
-    fireEvent.click(screen.getByText('phaseF.componentsFirstRunOnboarding.skipForNow'))
-    expect(onComplete).toHaveBeenCalled()
+    await waitFor(() => {
+      expect(onComplete).toHaveBeenCalled()
+    })
   })
 })
