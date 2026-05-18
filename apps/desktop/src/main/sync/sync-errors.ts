@@ -40,6 +40,13 @@ export function classifyError(error: unknown): SyncErrorInfo {
         retryable: false
       }
     }
+    if (error.statusCode === 402 || error.serverError?.includes('SYNC_PAYMENT_REQUIRED')) {
+      return {
+        category: 'sync_payment_required',
+        message: 'A paid Sync plan is required',
+        retryable: false
+      }
+    }
     if (error.statusCode === 426) {
       return {
         category: 'version_incompatible',

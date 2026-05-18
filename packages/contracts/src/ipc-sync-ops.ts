@@ -35,6 +35,7 @@ export type SyncErrorCategory =
   | 'crypto_failure'
   | 'version_incompatible'
   | 'storage_quota_exceeded'
+  | 'sync_payment_required'
   | 'certificate_pin_failed'
   | 'unknown'
 
