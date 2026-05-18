@@ -36,6 +36,8 @@ export const GITHUB_STARS = 18
 export const REDDIT_URL = 'https://www.reddit.com/r/MemryNote/'
 export const DOCS_URL = 'https://docs.memrynote.com'
 export const TWITTER_DEV_URL = 'https://x.com/h4yfans'
+export const DESKTOP_RELEASE_TIMING = 'Coming at the end of June'
+export const CHECKOUT_RELEASE_TIMING = 'Purchases open at the end of June'
 
 export const NAV_LINKS = [
   { label: 'Use Cases', href: '/use-cases' },
@@ -122,9 +124,10 @@ export const DOWNLOAD_NAV_ITEMS: readonly LandingDropdownItem[] = [
   },
   {
     label: 'memrynote for Desktop',
-    description: 'macOS, Windows, and Linux',
-    href: '/download/desktop',
-    icon: Monitor
+    description: DESKTOP_RELEASE_TIMING,
+    href: '#',
+    icon: Monitor,
+    disabled: true
   },
   {
     label: 'memrynote CLI',
@@ -390,13 +393,13 @@ export const FAQ_ITEMS = [
   {
     question: 'When will memrynote launch?',
     answer:
-      'Early access opens late Q3 2026, with a full public release targeting late 2026. Waitlist members get first access and can help shape the product before launch.'
+      'The desktop app is coming at the end of June. Waitlist members get first access and can help shape the product before launch.'
   }
 ] as const
 
 export const ROADMAP_DATA = {
-  releaseDate: 'Late 2026',
-  earlyAccess: 'Early access opens late Q3 2026',
+  releaseDate: 'End of June 2026',
+  earlyAccess: 'Desktop app coming at the end of June',
   phases: [
     {
       status: 'done' as const,

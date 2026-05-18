@@ -64,9 +64,9 @@ export const PAGE_META: Record<string, PageMeta> = {
     path: '/features/ai-agent'
   },
   downloadDesktop: {
-    title: 'Download memrynote for Desktop — macOS, Windows, Linux',
+    title: 'memrynote for Desktop — Coming at the end of June',
     description:
-      'Download memrynote — a local-first PKM for macOS, Windows, and Linux. Plain Markdown vault, end-to-end encrypted sync, open source. Free forever for the local app.',
+      'memrynote desktop installers for macOS, Windows, and Linux are coming at the end of June. Plain Markdown vault, end-to-end encrypted sync, open source.',
     path: '/download/desktop'
   },
   useCases: {

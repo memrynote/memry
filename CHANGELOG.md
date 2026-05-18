@@ -5,6 +5,13 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-05-18 — Launch Copy and Checkout Gating
+
+### Changed
+
+- Replace public desktop download links with end-of-June coming-soon messaging across README and landing surfaces.
+- Keep landing pricing purchase CTAs disabled until checkout opens at the end of June.
+
 ## 2026-05-15 — Agent Chat Turn Permissions
 
 ### Added

@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion'
 import { Container } from '@/components/layout/Container'
 import { WaitlistForm } from '@/components/shared/WaitlistForm'
+import { DESKTOP_RELEASE_TIMING } from '@/lib/constants'
 
 export function FinalCTA() {
   return (
@@ -26,7 +27,7 @@ export function FinalCTA() {
             Join the waitlist
           </h2>
           <p className="text-xl text-dark-muted font-sans mb-12 max-w-lg mx-auto leading-relaxed">
-            Be the first to know when memrynote is ready.
+            Desktop app {DESKTOP_RELEASE_TIMING.toLowerCase()}.
           </p>
 
           <div className="conic-border rounded-xl overflow-hidden bg-dark-surface max-w-md mx-auto">
