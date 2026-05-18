@@ -33,7 +33,9 @@ Fill in your environment variables:
 | `RESEND_API_KEY`    | Yes      | API key from [Resend](https://resend.com) |
 | `RESEND_SEGMENT_ID` | No       | Segment ID to group waitlist contacts     |
 
-Paddle checkout uses a serverless function so the Paddle API key stays server-side.
+Paddle checkout uses a serverless function so the Paddle API key stays server-side. Checkout
+requests must include the signed-in memrynote user id so Paddle webhook custom data can grant the
+Sync entitlement to the correct account.
 
 | Variable                         | Required | Description                                                                        |
 | -------------------------------- | -------- | ---------------------------------------------------------------------------------- |

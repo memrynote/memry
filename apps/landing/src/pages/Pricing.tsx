@@ -68,7 +68,7 @@ export function PricingPage() {
       <main>
         <Hero cadence={cadence} setCadence={setCadence} />
         <TierGrid cadence={cadence} checkout={checkout} onCheckout={handleCheckout} />
-        <LimitMatrix cadence={cadence} checkout={checkout} onCheckout={handleCheckout} />
+        <LimitMatrix cadence={cadence} />
         <BelieverNarrative />
         <LifecycleTimeline />
         <PricingFaq />
@@ -495,7 +495,7 @@ function BelieverNarrative() {
                 Keep memrynote independent.
               </h2>
               <p className="text-lg leading-relaxed text-dark-muted">
-                Believer is a supporter package: everything in Plus, more encrypted storage,
+                Believer is a supporter package: everything in Pro, more encrypted storage,
                 unlimited vaults, early access, and a name in the credits.
               </p>
             </motion.div>
@@ -611,8 +611,8 @@ function LifecycleTimeline() {
         >
           <ShieldCheck className="h-5 w-5 text-terracotta shrink-0" aria-hidden />
           <p className="text-sm leading-relaxed text-ink">
-            <span className="font-medium">46-day recovery window.</span> Re-subscribe any time
-            before day 90 and your encrypted vaults restore exactly where they left off.
+            <span className="font-medium">Local-first fallback.</span> If billing stops, hosted sync
+            pauses immediately, but your local vault remains usable.
           </p>
         </motion.div>
       </Container>
@@ -620,15 +620,7 @@ function LifecycleTimeline() {
   )
 }
 
-function LimitMatrix({
-  cadence,
-  checkout,
-  onCheckout
-}: {
-  cadence: Cadence
-  checkout: CheckoutState
-  onCheckout: (tier: SyncPlanTier) => void
-}) {
+function LimitMatrix({ cadence }: { cadence: Cadence }) {
   const plans = PLAN_COMPARISON_MATRIX.plans.map((planId) => {
     const tier = SYNC_PLAN_TIERS.find((item) => item.id === planId)
     if (!tier) {
@@ -667,10 +659,6 @@ function LimitMatrix({
                 {plans.map(({ tier }) => {
                   const isRecommended = tier.emphasis === 'recommended'
                   const isFounding = tier.emphasis === 'founding'
-                  const isPending =
-                    !!tier.checkoutPlanId &&
-                    checkout.pendingKey ===
-                      getCheckoutKey(tier.checkoutPlanId, getCheckoutCadence(tier, cadence))
 
                   return (
                     <th
@@ -718,11 +706,10 @@ function LimitMatrix({
                           <Button
                             variant={isRecommended ? 'default' : 'outline'}
                             size="sm"
-                            disabled={isPending}
-                            onClick={() => onCheckout(tier)}
+                            disabled
                             className="h-8 rounded-full px-3 text-xs"
                           >
-                            {isPending ? 'Opening...' : 'Get started'}
+                            Coming soon
                           </Button>
                         )}
                       </div>

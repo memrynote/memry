@@ -4,6 +4,7 @@ export type PaddleCheckoutCadence = 'monthly' | 'annual' | 'lifetime'
 export type PaddleCheckoutIntent = {
   plan: PaddleCheckoutPlan
   cadence: PaddleCheckoutCadence
+  userId: string
 }
 
 export type PaddleCheckoutConfig = {
@@ -13,6 +14,7 @@ export type PaddleCheckoutConfig = {
     entitlement: 'sync'
     plan: PaddleCheckoutPlan
     cadence: PaddleCheckoutCadence
+    userId: string
   }
 }
 
@@ -58,16 +60,21 @@ function isCadence(value: unknown): value is PaddleCheckoutCadence {
 export function parsePaddleCheckoutIntent(input: unknown): PaddleCheckoutIntent | null {
   if (!input || typeof input !== 'object') return null
 
-  const { plan, cadence } = input as { plan?: unknown; cadence?: unknown }
+  const { plan, cadence, userId } = input as {
+    plan?: unknown
+    cadence?: unknown
+    userId?: unknown
+  }
   if (!isPlan(plan) || !isCadence(cadence)) return null
+  if (typeof userId !== 'string' || userId.trim().length === 0) return null
 
   if (plan === 'believer') {
-    return { plan, cadence: 'lifetime' }
+    return { plan, cadence: 'lifetime', userId: userId.trim() }
   }
 
   if (cadence === 'lifetime') return null
 
-  return { plan, cadence }
+  return { plan, cadence, userId: userId.trim() }
 }
 
 export function getPaddleCheckoutConfig(
@@ -94,7 +101,8 @@ export function getPaddleCheckoutConfig(
       app: 'memry',
       entitlement: 'sync',
       plan: intent.plan,
-      cadence: intent.cadence
+      cadence: intent.cadence,
+      userId: intent.userId
     }
   }
 }
