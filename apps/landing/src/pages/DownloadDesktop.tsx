@@ -10,7 +10,6 @@ import {
   ChevronRight,
   Cpu,
   Download,
-  ExternalLink,
   FileText,
   FolderOpen,
   Github,
@@ -36,7 +35,7 @@ import {
   AccordionItem,
   AccordionTrigger
 } from '@/components/ui/accordion'
-import { GITHUB_RELEASES_URL, GITHUB_URL } from '@/lib/constants'
+import { DESKTOP_RELEASE_TIMING, GITHUB_URL } from '@/lib/constants'
 import { BLUR_REVEAL_ANIMATE, BLUR_REVEAL_INITIAL, BLUR_REVEAL_TRANSITION } from '@/lib/motion'
 import { cn } from '@/lib/utils'
 import { trackLandingEvent } from '@/lib/analytics'
@@ -78,17 +77,13 @@ function useDetectedOS(): DetectedOS {
   return useSyncExternalStore(subscribeOS, detectOS, getServerOS)
 }
 
-function downloadTarget(label: string) {
-  return `download:${label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
-}
-
 export function DownloadDesktopPage() {
   const detected = useDetectedOS()
   return (
     <>
       <PageHead page="downloadDesktop" />
       <main>
-        <DesktopHero detected={detected} />
+        <DesktopHero />
         <PlatformGrid detected={detected} />
         <WhyDesktop />
         <InAction />
@@ -97,7 +92,7 @@ export function DownloadDesktopPage() {
         <InstallSteps />
         <ReleaseChannel />
         <DownloadFaq />
-        <DownloadFinalCta detected={detected} />
+        <DownloadFinalCta />
       </main>
     </>
   )
@@ -111,15 +106,7 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
   )
 }
 
-const OS_LABEL: Record<Exclude<DetectedOS, null>, string> = {
-  mac: 'macOS',
-  windows: 'Windows',
-  linux: 'Linux'
-}
-
-function DesktopHero({ detected }: { detected: DetectedOS }) {
-  const platform = detected ?? 'mac'
-  const label = OS_LABEL[platform]
+function DesktopHero() {
   return (
     <section className="relative overflow-hidden pt-32 pb-16 md:pt-40 md:pb-20">
       <div
@@ -135,27 +122,20 @@ function DesktopHero({ detected }: { detected: DetectedOS }) {
         >
           <span className="inline-flex items-center gap-2 font-mono-accent text-[11px] uppercase tracking-[0.28em] text-muted">
             <Download className="h-3 w-3" strokeWidth={2} />
-            Download · Desktop
+            Desktop app · Coming soon
           </span>
           <h1 className="mt-4 font-serif text-4xl font-normal leading-[1.05] text-ink text-balance md:text-6xl">
             memrynote for <span className="italic text-terracotta">Desktop.</span>
           </h1>
           <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-muted md:text-lg">
-            A local-first PKM that lives on your machine. Free forever for the local app. macOS,
-            Windows, and Linux.
+            A local-first PKM that lives on your machine. Desktop installers for macOS, Windows, and
+            Linux are coming at the end of June.
           </p>
 
           <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Button size="lg" className="rounded-full px-7" asChild>
-              <a
-                href={GITHUB_RELEASES_URL}
-                target="_blank"
-                rel="noreferrer"
-                onClick={() => trackLandingEvent('landing_download_click', downloadTarget(label))}
-              >
-                <Download className="h-4 w-4" />
-                {detected ? `Download for ${label}` : 'Download memrynote'}
-              </a>
+            <Button size="lg" className="rounded-full px-7" disabled>
+              <Download className="h-4 w-4" />
+              {DESKTOP_RELEASE_TIMING}
             </Button>
             <Button
               size="lg"
@@ -186,7 +166,7 @@ function DesktopHero({ detected }: { detected: DetectedOS }) {
             </span>
             <span className="inline-flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-              Preview release
+              End of June
             </span>
           </div>
         </motion.div>
@@ -425,7 +405,8 @@ function PlatformGrid({ detected }: { detected: DetectedOS }) {
             Three platforms. <span className="italic text-terracotta">One vault.</span>
           </h2>
           <p className="mt-5 text-lg leading-relaxed text-muted">
-            All builds are open source on GitHub. Pick the one for your machine.
+            Installers are coming at the end of June. Platform support is ready for the machines
+            below.
           </p>
         </motion.div>
 
@@ -442,7 +423,7 @@ function PlatformGrid({ detected }: { detected: DetectedOS }) {
         </motion.div>
 
         <p className="mt-8 text-center font-mono-accent text-[11px] uppercase tracking-[0.18em] text-muted/70">
-          Latest binaries land on GitHub Releases. Verify checksums before install.
+          Installer binaries land at the end of June. Source stays open on GitHub.
         </p>
       </Container>
     </section>
@@ -491,25 +472,16 @@ function PlatformCard({ platform, highlighted }: { platform: PlatformInfo; highl
         <Button
           size="lg"
           variant={highlighted ? 'default' : 'outline'}
+          disabled
           className={cn(
             'w-full rounded-full',
             highlighted
-              ? 'bg-terracotta text-white shadow-[0_16px_34px_-14px_rgba(255,103,26,0.7)] hover:bg-terracotta-dark'
-              : 'border-ink/15 bg-paper-alt/40 text-ink hover:bg-paper-alt'
+              ? 'bg-terracotta text-white shadow-[0_16px_34px_-14px_rgba(255,103,26,0.7)]'
+              : 'border-ink/15 bg-paper-alt/40 text-ink'
           )}
-          asChild
         >
-          <a
-            href={GITHUB_RELEASES_URL}
-            target="_blank"
-            rel="noreferrer"
-            onClick={() =>
-              trackLandingEvent('landing_download_click', downloadTarget(platform.label))
-            }
-          >
-            <Download className="h-4 w-4" />
-            Download for {platform.label}
-          </a>
+          <Download className="h-4 w-4" />
+          End of June
         </Button>
       </div>
     </motion.article>
@@ -780,8 +752,8 @@ function SystemRequirements() {
 const INSTALL_STEPS = [
   {
     number: '01',
-    title: 'Download',
-    body: 'Grab the installer for your platform from GitHub Releases. Verify the SHA-256 if you like.'
+    title: 'Waitlist',
+    body: 'Join the waitlist now. Desktop installers for every platform are coming at the end of June.'
   },
   {
     number: '02',
@@ -848,26 +820,15 @@ function ReleaseChannel() {
           <div>
             <Eyebrow>Release channel</Eyebrow>
             <h2 className="mt-3 font-serif text-3xl text-ink md:text-4xl">
-              Currently <span className="italic text-terracotta">in Preview.</span>
+              Coming <span className="italic text-terracotta">at the end of June.</span>
             </h2>
             <p className="mt-4 max-w-md text-sm leading-relaxed text-muted">
-              Releases land on GitHub. Pre-production app, no backward-compat constraints yet —
-              expect breaking changes between minor versions. Stable channel arrives with late 2026
-              launch.
+              Public installers are not live yet. The source is open now, and signed macOS, Windows,
+              and Linux builds arrive at the end of June.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
-              <Button variant="default" className="rounded-full px-5" asChild>
-                <a
-                  href={GITHUB_RELEASES_URL}
-                  target="_blank"
-                  rel="noreferrer"
-                  onClick={() =>
-                    trackLandingEvent('landing_download_click', 'download:latest-release')
-                  }
-                >
-                  Latest release
-                  <ExternalLink className="h-4 w-4" />
-                </a>
+              <Button variant="default" className="rounded-full px-5" disabled>
+                {DESKTOP_RELEASE_TIMING}
               </Button>
               <Button
                 variant="ghost"
@@ -892,8 +853,8 @@ function ReleaseChannel() {
             {[
               'Open issues against the public repo',
               'Submit PRs through the normal flow',
-              'CI builds tagged releases for every platform',
-              'CHANGELOG.md ships with every tag'
+              'Desktop installers target macOS, Windows, and Linux',
+              'Public builds arrive at the end of June'
             ].map((item) => (
               <li key={item} className="flex items-start gap-3">
                 <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-sage" strokeWidth={2} />
@@ -921,7 +882,7 @@ const DOWNLOAD_FAQ = [
   {
     question: 'How do I update memrynote?',
     answer:
-      'New versions land on GitHub Releases. Download the latest installer and run it. Your vault folder is untouched between updates.'
+      'Public installers are coming at the end of June. After launch, updates will ship as signed desktop releases and your vault folder stays untouched between updates.'
   },
   {
     question: 'Can I import from Obsidian or Notion?',
@@ -974,9 +935,7 @@ function DownloadFaq() {
   )
 }
 
-function DownloadFinalCta({ detected }: { detected: DetectedOS }) {
-  const platform = detected ?? 'mac'
-  const label = OS_LABEL[platform]
+function DownloadFinalCta() {
   return (
     <section className="relative overflow-hidden py-28">
       <div
@@ -986,28 +945,21 @@ function DownloadFinalCta({ detected }: { detected: DetectedOS }) {
       <Container size="md">
         <motion.div {...fadeUp} className="text-center">
           <h2 className="mx-auto max-w-2xl font-serif text-4xl font-normal leading-tight text-ink text-balance md:text-5xl">
-            Your vault is waiting. <span className="italic text-terracotta">Ready to start?</span>
+            Desktop app coming <span className="italic text-terracotta">at the end of June.</span>
           </h2>
           <p className="mx-auto mt-5 max-w-xl text-lg text-muted leading-relaxed">
-            Free, local, open source. Sync between your devices when you want it. Cancel any time.
+            Free, local, open source. Join the waitlist now; installers are not live yet.
           </p>
 
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Button size="lg" className="rounded-full px-8" asChild>
-              <a
-                href={GITHUB_RELEASES_URL}
-                target="_blank"
-                rel="noreferrer"
-                onClick={() =>
-                  trackLandingEvent(
-                    'landing_download_click',
-                    detected ? downloadTarget(label) : 'download:memry'
-                  )
-                }
+              <Link
+                to="/#waitlist"
+                onClick={() => trackLandingEvent('landing_nav_click', 'download:waitlist')}
               >
-                <Download className="h-4 w-4" />
-                {detected ? `Download for ${label}` : 'Download memrynote'}
-              </a>
+                Join waitlist
+                <ArrowRight className="h-4 w-4" />
+              </Link>
             </Button>
             <Button
               size="lg"

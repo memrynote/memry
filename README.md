@@ -16,7 +16,7 @@ Notes, tasks, projects, journal, calendar, and an AI agent that actually has con
 [![Electron](https://img.shields.io/badge/built%20with-Electron-47848F.svg)](https://www.electronjs.org/)
 [![React 19](https://img.shields.io/badge/React-19-61DAFB.svg)](https://react.dev/)
 
-[Website](https://memrynote.com) · [Docs](https://docs.memrynote.com) · [Download](https://memrynote.com/download/desktop)
+[Website](https://memrynote.com) · [Docs](https://docs.memrynote.com) · Desktop app coming at the end of June
 
 </div>
 
@@ -106,15 +106,11 @@ Optional, end-to-end encrypted, running on Cloudflare Workers + R2. Multi-device
 
 ## Install
 
-### Download
+### Desktop app
 
-Grab the latest desktop build for your platform:
+Desktop installers for macOS, Windows, and Linux are coming at the end of June.
 
-- **macOS** (Apple Silicon + Intel) → [memrynote.com/download/desktop](https://memrynote.com/download/desktop)
-- **Windows** → [memrynote.com/download/desktop](https://memrynote.com/download/desktop)
-- **Linux** (AppImage, deb) → [memrynote.com/download/desktop](https://memrynote.com/download/desktop)
-
-No signup. No telemetry-on-by-default. Open the app, pick a vault folder, start writing.
+When it lands: no signup, no telemetry-on-by-default. Open the app, pick a vault folder, start writing.
 
 ### Build from Source
 

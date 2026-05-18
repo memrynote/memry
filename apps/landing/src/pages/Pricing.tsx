@@ -16,6 +16,7 @@ import {
   PLAN_COMPARISON_MATRIX,
   LIFECYCLE_STAGES,
   PRICING_FAQ_ITEMS,
+  CHECKOUT_RELEASE_TIMING,
   type CheckoutPlanId,
   type PlanComparisonValue,
   type SyncPlanTier,
@@ -32,6 +33,8 @@ type CheckoutState = {
   error: string | null
 }
 
+const PURCHASES_ENABLED = false
+
 const fadeUp = {
   initial: { opacity: 0, y: 20 },
   whileInView: { opacity: 1, y: 0 },
@@ -44,7 +47,7 @@ export function PricingPage() {
   const [checkout, setCheckout] = useState<CheckoutState>({ pendingKey: null, error: null })
 
   const handleCheckout = async (tier: SyncPlanTier) => {
-    if (!tier.checkoutPlanId) return
+    if (!PURCHASES_ENABLED || !tier.checkoutPlanId) return
 
     const checkoutCadence = getCheckoutCadence(tier, cadence)
     const pendingKey = getCheckoutKey(tier.checkoutPlanId, checkoutCadence)
@@ -112,6 +115,9 @@ function Hero({ cadence, setCadence }: { cadence: Cadence; setCadence: (c: Caden
           <p className="mx-auto mt-5 max-w-lg text-base leading-relaxed text-muted text-balance md:text-lg">
             Your private productivity OS stays free on your device. Paid sync keeps it safely
             available everywhere — end-to-end encrypted before a single byte leaves.
+          </p>
+          <p className="mt-4 font-mono-accent text-[11px] uppercase tracking-[0.22em] text-terracotta">
+            {CHECKOUT_RELEASE_TIMING}
           </p>
 
           <div className="mt-7 flex justify-center">
@@ -213,6 +219,7 @@ function TierGrid({
                 tier={tier}
                 cadence={cadence}
                 isPending={
+                  PURCHASES_ENABLED &&
                   !!tier.checkoutPlanId &&
                   checkout.pendingKey ===
                     getCheckoutKey(tier.checkoutPlanId, getCheckoutCadence(tier, cadence))
@@ -231,7 +238,7 @@ function TierGrid({
           </p>
         )}
         <p className="mt-10 text-center font-mono-accent text-[11px] uppercase tracking-[0.18em] text-muted/70">
-          All prices in USD &nbsp;·&nbsp; VAT and sales tax handled at checkout
+          All prices in USD &nbsp;·&nbsp; Checkout opens at the end of June
         </p>
       </Container>
     </section>
@@ -251,8 +258,8 @@ function TierCard({
 }) {
   const isFounding = tier.emphasis === 'founding'
   const isRecommended = tier.emphasis === 'recommended'
-  const isCheckoutEnabled = !!tier.checkoutPlanId
-  const isCheckoutUnavailable = isCheckoutEnabled
+  const isCheckoutEnabled = PURCHASES_ENABLED && !!tier.checkoutPlanId
+  const isCheckoutUnavailable = !PURCHASES_ENABLED && !!tier.checkoutPlanId
   const ctaLabel = isPending ? 'Opening checkout...' : tier.cta
 
   return (
@@ -331,7 +338,7 @@ function TierCard({
             variant={isRecommended ? 'default' : 'outline'}
             size="lg"
             disabled
-            aria-label={`${tier.cta} coming soon`}
+            aria-label={`${tier.cta} ${CHECKOUT_RELEASE_TIMING.toLowerCase()}`}
             className={cn(
               'w-full rounded-full',
               isRecommended
@@ -339,7 +346,7 @@ function TierCard({
                 : 'border-ink/15 bg-paper-alt/40 text-ink'
             )}
           >
-            Coming soon
+            Coming at the end of June
           </Button>
         ) : !isCheckoutEnabled ? (
           <Button
@@ -709,7 +716,7 @@ function LimitMatrix({ cadence }: { cadence: Cadence }) {
                             disabled
                             className="h-8 rounded-full px-3 text-xs"
                           >
-                            Coming soon
+                            End of June
                           </Button>
                         )}
                       </div>
@@ -792,7 +799,7 @@ function PricingFaq() {
           <Accordion type="single" collapsible className="w-full">
             {PRICING_FAQ_ITEMS.map((item, i) => (
               <AccordionItem
-                key={i}
+                key={item.question}
                 value={`pricing-faq-${i}`}
                 className="rounded-none border-b border-border/55 bg-transparent px-0 last:border-0 data-[state=open]:bg-transparent"
               >

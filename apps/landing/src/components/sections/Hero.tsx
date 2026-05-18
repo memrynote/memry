@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import { motion, useInView } from 'framer-motion'
 import { Container } from '@/components/layout/Container'
 import { WaitlistForm } from '@/components/shared/WaitlistForm'
+import { DESKTOP_RELEASE_TIMING } from '@/lib/constants'
 import { BLUR_REVEAL_ANIMATE, BLUR_REVEAL_INITIAL, BLUR_REVEAL_TRANSITION } from '@/lib/motion'
 
 const BENEFITS = ['Open source', 'Own your data', 'No account required', 'End-to-end encrypted']
@@ -52,6 +53,9 @@ export function Hero() {
               <p className="hero-fora-copy mx-auto text-muted">
                 Your private productivity OS for inbox, notes, tasks & journal — synced safely.
                 Private by design, open at heart.
+              </p>
+              <p className="font-mono-accent text-[11px] uppercase tracking-[0.22em] text-terracotta">
+                Desktop app {DESKTOP_RELEASE_TIMING.toLowerCase()}
               </p>
             </motion.div>
 
