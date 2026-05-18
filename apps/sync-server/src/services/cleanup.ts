@@ -78,7 +78,7 @@ export const cleanupExpiredTombstones = async (
 
   const expired = await db
     .prepare(
-      `SELECT si.id, si.blob_key
+      `SELECT si.id, si.blob_key, si.user_id, si.size_bytes
        FROM sync_items si
        LEFT JOIN sync_entitlements e ON e.user_id = si.user_id
        WHERE si.deleted_at IS NOT NULL
@@ -86,7 +86,7 @@ export const cleanupExpiredTombstones = async (
        LIMIT ${CLEANUP_BATCH_SIZE}`
     )
     .bind(now)
-    .all<{ id: string; blob_key: string }>()
+    .all<{ id: string; blob_key: string; user_id: string; size_bytes: number }>()
 
   const rows = expired.results ?? []
   if (rows.length === 0) return 0
@@ -106,7 +106,27 @@ export const cleanupExpiredTombstones = async (
     .bind(...ids)
     .run()
 
-  return result.meta.changes ?? 0
+  const changes = result.meta.changes ?? 0
+  if (changes > 0) {
+    const bytesByUser = new Map<string, number>()
+    for (const row of rows) {
+      bytesByUser.set(row.user_id, (bytesByUser.get(row.user_id) ?? 0) + row.size_bytes)
+    }
+
+    const timestamp = Math.floor(Date.now() / 1000)
+    await Promise.all(
+      [...bytesByUser.entries()].map(([userId, bytes]) =>
+        db
+          .prepare(
+            'UPDATE users SET storage_used = MAX(0, storage_used - ?), updated_at = ? WHERE id = ?'
+          )
+          .bind(bytes, timestamp, userId)
+          .run()
+      )
+    )
+  }
+
+  return changes
 }
 
 export const cleanupOrphanedBlobChunks = async (

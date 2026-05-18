@@ -49,6 +49,7 @@ const uploadSessionLimit = createRateLimiter({
 blob.put('/blob/:blob_key', blobUploadLimit, async (c) => {
   const userId = c.get('userId')!
   const blobKey = c.req.param('blob_key')
+  const key = `${userId}/items/${blobKey}`
 
   const body = await c.req.arrayBuffer()
   if (body.byteLength > MAX_FILE_SIZE) {
@@ -56,12 +57,17 @@ blob.put('/blob/:blob_key', blobUploadLimit, async (c) => {
   }
 
   await assertFileSizeAllowed(c.env.DB, userId, body.byteLength)
-  await checkQuota(c.env.DB, userId, body.byteLength)
+  const existing = await c.env.STORAGE.head(key)
+  const deltaBytes = body.byteLength - (existing?.size ?? 0)
+  if (deltaBytes > 0) {
+    await checkQuota(c.env.DB, userId, deltaBytes)
+  }
 
-  const key = `${userId}/items/${blobKey}`
   const result = await putBlob(c.env.STORAGE, key, body, userId)
 
-  await updateStorageUsed(c.env.DB, userId, body.byteLength)
+  if (deltaBytes !== 0) {
+    await updateStorageUsed(c.env.DB, userId, deltaBytes)
+  }
 
   return c.json({
     blob_key: blobKey,
@@ -279,14 +285,32 @@ blob.post('/attachments/upload/:session_id/complete', chunkUploadLimit, async (c
   }
 
   const body: unknown = await c.req.json()
+  await assertFileSizeAllowed(c.env.DB, userId, session.total_size)
+  let manifestKey: string | null = null
+  let manifestBytes: Uint8Array | null = null
+  let manifestDeltaBytes = 0
+
   if (body && typeof body === 'object' && 'encryptedManifest' in body) {
-    const manifestKey = `${userId}/meta/${session.attachment_id}`
+    manifestKey = `${userId}/meta/${session.attachment_id}`
     const manifestData = JSON.stringify(body)
-    const manifestBytes = new TextEncoder().encode(manifestData)
+    manifestBytes = new TextEncoder().encode(manifestData)
+    await assertFileSizeAllowed(c.env.DB, userId, manifestBytes.byteLength)
+    const existingManifest = await c.env.STORAGE.head(manifestKey)
+    manifestDeltaBytes = manifestBytes.byteLength - (existingManifest?.size ?? 0)
+  }
+
+  const storageDeltaBytes = session.total_size + manifestDeltaBytes
+  if (storageDeltaBytes > 0) {
+    await checkQuota(c.env.DB, userId, storageDeltaBytes)
+  }
+
+  if (manifestKey && manifestBytes) {
     await putBlob(c.env.STORAGE, manifestKey, manifestBytes.buffer as ArrayBuffer, userId)
   }
 
-  await updateStorageUsed(c.env.DB, userId, session.total_size)
+  if (storageDeltaBytes !== 0) {
+    await updateStorageUsed(c.env.DB, userId, storageDeltaBytes)
+  }
 
   await c.env.DB.prepare('DELETE FROM upload_sessions WHERE id = ?').bind(sessionId).run()
 
@@ -421,7 +445,18 @@ blob.put('/attachments/:attachment_id/manifest', blobUploadLimit, async (c) => {
   const manifestKey = `${userId}/meta/${attachmentId}`
 
   const body = await c.req.arrayBuffer()
+  await assertFileSizeAllowed(c.env.DB, userId, body.byteLength)
+
+  const existing = await c.env.STORAGE.head(manifestKey)
+  const deltaBytes = body.byteLength - (existing?.size ?? 0)
+  if (deltaBytes > 0) {
+    await checkQuota(c.env.DB, userId, deltaBytes)
+  }
+
   await putBlob(c.env.STORAGE, manifestKey, body, userId)
+  if (deltaBytes !== 0) {
+    await updateStorageUsed(c.env.DB, userId, deltaBytes)
+  }
 
   return c.json({ manifest_key: manifestKey })
 })

@@ -172,20 +172,23 @@ describe('cleanup services', () => {
 
       const selectAll = vi.fn().mockResolvedValue({
         results: [
-          { id: 't1', blob_key: 'blob/t1' },
-          { id: 't2', blob_key: 'blob/t2' }
+          { id: 't1', blob_key: 'blob/t1', user_id: 'user-1', size_bytes: 10 },
+          { id: 't2', blob_key: 'blob/t2', user_id: 'user-1', size_bytes: 5 }
         ]
       })
       const selectBind = vi.fn().mockReturnValue({ all: selectAll })
 
       const deleteRun = vi.fn().mockResolvedValue({ meta: { changes: 2 } })
       const deleteBind = vi.fn().mockReturnValue({ run: deleteRun })
+      const updateRun = vi.fn().mockResolvedValue({ meta: { changes: 1 } })
+      const updateBind = vi.fn().mockReturnValue({ run: updateRun })
 
       const db = {
         prepare: vi
           .fn()
           .mockReturnValueOnce({ bind: selectBind })
           .mockReturnValueOnce({ bind: deleteBind })
+          .mockReturnValueOnce({ bind: updateBind })
       } as unknown as D1Database
 
       // #when
@@ -198,6 +201,10 @@ describe('cleanup services', () => {
       expect(storage.delete).toHaveBeenCalledWith('blob/t1')
       expect(storage.delete).toHaveBeenCalledWith('blob/t2')
       expect(deleteBind).toHaveBeenCalledWith('t1', 't2')
+      expect(db.prepare).toHaveBeenCalledWith(
+        'UPDATE users SET storage_used = MAX(0, storage_used - ?), updated_at = ? WHERE id = ?'
+      )
+      expect(updateBind).toHaveBeenCalledWith(15, expect.any(Number), 'user-1')
     })
 
     it('returns 0 when D1 delete omits tombstone changes metadata', async () => {
@@ -205,7 +212,7 @@ describe('cleanup services', () => {
       const storage = { delete: vi.fn().mockResolvedValue(undefined) } as unknown as R2Bucket
 
       const selectAll = vi.fn().mockResolvedValue({
-        results: [{ id: 't1', blob_key: 'blob/t1' }]
+        results: [{ id: 't1', blob_key: 'blob/t1', user_id: 'user-1', size_bytes: 10 }]
       })
       const selectBind = vi.fn().mockReturnValue({ all: selectAll })
 
@@ -257,20 +264,23 @@ describe('cleanup services', () => {
 
       const selectAll = vi.fn().mockResolvedValue({
         results: [
-          { id: 't1', blob_key: 'blob/t1' },
-          { id: 't2', blob_key: 'blob/t2' }
+          { id: 't1', blob_key: 'blob/t1', user_id: 'user-1', size_bytes: 10 },
+          { id: 't2', blob_key: 'blob/t2', user_id: 'user-2', size_bytes: 15 }
         ]
       })
       const selectBind = vi.fn().mockReturnValue({ all: selectAll })
 
       const deleteRun = vi.fn().mockResolvedValue({ meta: { changes: 2 } })
       const deleteBind = vi.fn().mockReturnValue({ run: deleteRun })
+      const updateRun = vi.fn().mockResolvedValue({ meta: { changes: 1 } })
+      const updateBind = vi.fn().mockReturnValue({ run: updateRun })
 
       const db = {
         prepare: vi
           .fn()
           .mockReturnValueOnce({ bind: selectBind })
           .mockReturnValueOnce({ bind: deleteBind })
+          .mockReturnValue({ bind: updateBind })
       } as unknown as D1Database
 
       // #when
@@ -279,6 +289,8 @@ describe('cleanup services', () => {
       // #then
       expect(result).toBe(2)
       expect(deleteBind).toHaveBeenCalledWith('t1', 't2')
+      expect(updateBind).toHaveBeenCalledWith(10, expect.any(Number), 'user-1')
+      expect(updateBind).toHaveBeenCalledWith(15, expect.any(Number), 'user-2')
     })
 
     it('uses the user plan version-history window for tombstone expiry', async () => {
