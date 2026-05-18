@@ -185,9 +185,8 @@ export function PrivacyPage() {
         <h2>10. How long we keep things</h2>
         <ul>
           <li>
-            <strong>Encrypted blobs:</strong> kept while your subscription is active. After a lapse,
-            kept in read-only mode for 30 days, then in cold storage until day 90, then physically
-            deleted.
+            <strong>Encrypted blobs:</strong> kept while your Sync account exists. Deleted-item
+            history follows your plan window: 30 days on Plus, 365 days on Pro and Believer.
           </li>
           <li>
             <strong>Account record:</strong> kept while your account exists. If you delete your

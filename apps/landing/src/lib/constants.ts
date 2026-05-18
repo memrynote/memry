@@ -356,7 +356,7 @@ export const FAQ_ITEMS = [
   {
     question: 'Is memrynote free?',
     answer:
-      'memrynote offers a generous free tier for personal use on desktop. Core features like notes, tasks, journal, and inbox are completely free with no limits. Pro features like publishing to web, real-time collaboration, and mobile sync require a subscription.'
+      'Yes. The desktop app is free for local use with no account required. Plus, Pro, and Believer are only for hosted encrypted sync.'
   },
   {
     question: 'Where is my data stored?',
@@ -366,12 +366,12 @@ export const FAQ_ITEMS = [
   {
     question: 'Is my data secure?',
     answer:
-      'Yes. Your data lives on your device — not our servers. When you use Pro features like sync, everything is encrypted end-to-end. Only you (and people you explicitly share with) can read your content. We literally cannot access it.'
+      'Yes. Your local vault stays on your device. When you use paid Sync, everything is encrypted end-to-end before upload. Only your devices can read your content.'
   },
   {
     question: 'Can I sync between devices?',
     answer:
-      "Absolutely! Since your vault is just a folder, you can use any sync service you prefer — memrynote Sync, iCloud, Dropbox, Google Drive, Syncthing, or even Git. We don't lock you into our own sync solution."
+      'Yes. Hosted memrynote Sync is paid and end-to-end encrypted. You can also keep the app local and use your own folder sync setup if that fits your workflow.'
   },
   {
     question: 'Is there a mobile app?',
@@ -896,31 +896,31 @@ export const LIFECYCLE_STAGES: readonly {
     tone: 'sage'
   },
   {
-    id: 'grace',
-    label: 'Grace',
-    days: '+ 14 days',
-    description: 'Sync keeps working. Time to fix the card or change your mind.',
+    id: 'paused',
+    label: 'Payment inactive',
+    days: 'Immediately',
+    description: 'Hosted sync pauses and returns 402. The desktop app keeps working locally.',
     tone: 'amber'
   },
   {
-    id: 'read-only',
-    label: 'Read-only',
-    days: '+ 30 days',
-    description: 'Pulls succeed, pushes blocked. Pull everything to local at your pace.',
+    id: 'local',
+    label: 'Local access',
+    days: 'Always',
+    description: 'Your vault remains usable on disk. Sign in again only when you want hosted sync.',
     tone: 'terracotta'
   },
   {
-    id: 'purged',
-    label: 'Purged status',
-    days: 'Day 44',
-    description: 'Server returns 402 on every request. Encrypted blobs untouched.',
+    id: 'history-plus',
+    label: 'Plus history',
+    days: '30 days',
+    description: 'Encrypted deleted-item history is retained for the Plus recovery window.',
     tone: 'terracotta-dim'
   },
   {
-    id: 'deleted',
-    label: 'Blobs deleted',
-    days: 'Day 90',
-    description: 'Encrypted blobs physically removed from R2. Recovery ends.',
+    id: 'history-pro',
+    label: 'Pro / Believer history',
+    days: '365 days',
+    description: 'Pro and Believer keep the encrypted history window for a full year.',
     tone: 'ink'
   }
 ] as const
@@ -934,7 +934,7 @@ export const PRICING_FAQ_ITEMS = [
   {
     question: 'What happens if my card fails or I cancel?',
     answer:
-      'You get 14 days of grace where sync keeps working, then 30 days of read-only mode where pulls still succeed. After day 44 your account is marked purged but encrypted blobs sit untouched on our servers until day 90 — re-subscribe before then and everything restores intact.'
+      'Hosted sync pauses immediately until billing is active again. The local app keeps working with no account requirement; re-activate Sync from the app when you want devices connected again.'
   },
   {
     question: 'You store my data, but you cannot read it. What does that actually mean?',
