@@ -68,20 +68,24 @@ export const cleanupStaleRateLimits = async (db: D1Database): Promise<number> =>
   return result.meta.changes ?? 0
 }
 
-const TOMBSTONE_RETENTION_SECONDS = 90 * 24 * 60 * 60
 const CLEANUP_BATCH_SIZE = 1000
 
 export const cleanupExpiredTombstones = async (
   db: D1Database,
   storage: R2Bucket
 ): Promise<number> => {
-  const cutoff = Math.floor(Date.now() / 1000) - TOMBSTONE_RETENTION_SECONDS
+  const now = Math.floor(Date.now() / 1000)
 
   const expired = await db
     .prepare(
-      `SELECT id, blob_key FROM sync_items WHERE deleted_at IS NOT NULL AND deleted_at < ? LIMIT ${CLEANUP_BATCH_SIZE}`
+      `SELECT si.id, si.blob_key
+       FROM sync_items si
+       LEFT JOIN sync_entitlements e ON e.user_id = si.user_id
+       WHERE si.deleted_at IS NOT NULL
+         AND si.deleted_at < ? - (COALESCE(e.version_history_days, 0) * 86400)
+       LIMIT ${CLEANUP_BATCH_SIZE}`
     )
-    .bind(cutoff)
+    .bind(now)
     .all<{ id: string; blob_key: string }>()
 
   const rows = expired.results ?? []

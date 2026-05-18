@@ -19,11 +19,11 @@ interface MockStatement {
   run: ReturnType<typeof vi.fn>
 }
 
-function statement(result: unknown = null): MockStatement {
+function statement(result: unknown = null, changes = 1): MockStatement {
   const stmt: MockStatement = {
     bind: vi.fn(),
     first: vi.fn().mockResolvedValue(result),
-    run: vi.fn().mockResolvedValue({ success: true, meta: { changes: 1 } })
+    run: vi.fn().mockResolvedValue({ success: true, meta: { changes } })
   }
   stmt.bind.mockReturnValue(stmt)
   return stmt
@@ -51,13 +51,24 @@ function entitlementDb(row: unknown) {
   } as unknown as D1Database
 }
 
-function vaultDb(options: { existing?: boolean; count?: number }) {
+function vaultDb(options: {
+  existing?: boolean | boolean[]
+  count?: number
+  insertChanges?: number
+}) {
   const statements: string[] = []
+  let existingReads = 0
   const db = {
     prepare: vi.fn((sql: string) => {
       statements.push(sql)
       if (sql.includes('FROM sync_vaults') && sql.includes('vault_id = ?')) {
-        return statement(options.existing ? { vault_id: 'vault-1' } : null)
+        const existing = Array.isArray(options.existing)
+          ? options.existing[existingReads++]
+          : options.existing
+        return statement(existing ? { vault_id: 'vault-1' } : null)
+      }
+      if (sql.includes('INSERT INTO sync_vaults')) {
+        return statement(null, options.insertChanges ?? 1)
       }
       if (sql.includes('COUNT(*)')) {
         return statement({ cnt: options.count ?? 0 })
@@ -154,6 +165,25 @@ describe('sync plan entitlements', () => {
         'vault-1000',
         entitlementRow({ plan: 'believer', max_vaults: null })
       )
+    ).resolves.toBeUndefined()
+  })
+
+  it('rejects a new vault when the guarded insert is blocked by a concurrent limit race', async () => {
+    const { db } = vaultDb({ existing: false, count: 0, insertChanges: 0 })
+
+    await expect(
+      ensureSyncVaultAllowed(db, 'user-1', 'vault-2', entitlementRow())
+    ).rejects.toMatchObject({
+      code: ErrorCodes.SYNC_VAULT_LIMIT_EXCEEDED,
+      statusCode: 402
+    })
+  })
+
+  it('allows the same vault when a concurrent request registered it before the count check', async () => {
+    const { db } = vaultDb({ existing: [false, true], count: 1 })
+
+    await expect(
+      ensureSyncVaultAllowed(db, 'user-1', 'vault-1', entitlementRow())
     ).resolves.toBeUndefined()
   })
 })

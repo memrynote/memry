@@ -20,6 +20,11 @@ interface VerifyPaddleWebhookSignatureParams {
   now?: number
 }
 
+interface EntitlementTarget {
+  userId: string
+  plan: SyncPlan
+}
+
 const SIGNATURE_TOLERANCE_SECONDS = 300
 const SUPPORTED_EVENTS = new Set([
   'transaction.completed',
@@ -89,19 +94,14 @@ export async function applyPaddleWebhook(
   }
 
   const data = event.data ?? {}
-  const userId = await resolveUserId(db, data)
-  if (!userId) {
-    return { processed: false }
-  }
-
-  const plan = normalizePlan(readCustomData(data).plan)
-  if (!plan) {
+  const target = await resolveEntitlementTarget(db, data)
+  if (!target) {
     return { processed: false }
   }
 
   await upsertSyncEntitlement(db, {
-    userId,
-    plan,
+    userId: target.userId,
+    plan: target.plan,
     status: normalizeStatus(eventType, asString(data.status)),
     source: 'paddle',
     paddleCustomerId: asString(data.customer_id ?? data.customerId),
@@ -120,27 +120,30 @@ export async function applyPaddleWebhook(
   return { processed: true }
 }
 
-async function resolveUserId(
+async function resolveEntitlementTarget(
   db: D1Database,
   data: Record<string, unknown>
-): Promise<string | null> {
+): Promise<EntitlementTarget | null> {
   const customData = readCustomData(data)
   const userId = asString(customData.userId ?? customData.user_id ?? customData.memryUserId)
-  if (userId) {
+  const customPlan = normalizePlan(customData.plan)
+
+  if (userId && customPlan) {
     const user = await db
       .prepare('SELECT id FROM users WHERE id = ?')
       .bind(userId)
       .first<{ id: string }>()
-    return user?.id ?? null
+    if (user) return { userId: user.id, plan: customPlan }
   }
 
   const subscriptionId = asString(data.subscription_id ?? data.subscriptionId ?? data.id)
   if (subscriptionId) {
     const entitlement = await db
-      .prepare('SELECT user_id FROM sync_entitlements WHERE paddle_subscription_id = ?')
+      .prepare('SELECT user_id, plan FROM sync_entitlements WHERE paddle_subscription_id = ?')
       .bind(subscriptionId)
-      .first<{ user_id: string }>()
-    if (entitlement) return entitlement.user_id
+      .first<{ user_id: string; plan: SyncPlan }>()
+    const plan = normalizePlan(entitlement?.plan)
+    if (entitlement && plan) return { userId: entitlement.user_id, plan }
   }
 
   return null

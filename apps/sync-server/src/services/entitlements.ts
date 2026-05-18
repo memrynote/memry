@@ -142,10 +142,13 @@ export async function ensureSyncVaultAllowed(
   vaultId: string,
   entitlement: SyncEntitlement
 ): Promise<void> {
-  const existing = await db
-    .prepare('SELECT vault_id FROM sync_vaults WHERE user_id = ? AND vault_id = ?')
-    .bind(userId, vaultId)
-    .first<{ vault_id: string }>()
+  const findExistingVault = () =>
+    db
+      .prepare('SELECT vault_id FROM sync_vaults WHERE user_id = ? AND vault_id = ?')
+      .bind(userId, vaultId)
+      .first<{ vault_id: string }>()
+
+  const existing = await findExistingVault()
 
   if (existing) return
 
@@ -156,6 +159,9 @@ export async function ensureSyncVaultAllowed(
       .first<{ cnt: number }>()
 
     if ((count?.cnt ?? 0) >= entitlement.max_vaults) {
+      const insertedByRace = await findExistingVault()
+      if (insertedByRace) return
+
       throw new AppError(
         ErrorCodes.SYNC_VAULT_LIMIT_EXCEEDED,
         `${entitlement.plan} allows ${entitlement.max_vaults} synced vaults`,
@@ -165,13 +171,40 @@ export async function ensureSyncVaultAllowed(
   }
 
   const now = Math.floor(Date.now() / 1000)
-  await db
-    .prepare(
-      `INSERT INTO sync_vaults (id, user_id, vault_id, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?)`
-    )
-    .bind(crypto.randomUUID(), userId, vaultId, now, now)
-    .run()
+  let insertResult: D1Result
+
+  if (entitlement.max_vaults === null) {
+    insertResult = await db
+      .prepare(
+        `INSERT INTO sync_vaults (id, user_id, vault_id, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?)
+         ON CONFLICT(user_id, vault_id) DO NOTHING`
+      )
+      .bind(crypto.randomUUID(), userId, vaultId, now, now)
+      .run()
+  } else {
+    insertResult = await db
+      .prepare(
+        `INSERT INTO sync_vaults (id, user_id, vault_id, created_at, updated_at)
+         SELECT ?, ?, ?, ?, ?
+         WHERE (SELECT COUNT(*) FROM sync_vaults WHERE user_id = ?) < ?
+         ON CONFLICT(user_id, vault_id) DO NOTHING`
+      )
+      .bind(crypto.randomUUID(), userId, vaultId, now, now, userId, entitlement.max_vaults)
+      .run()
+  }
+
+  if ((insertResult.meta.changes ?? 0) > 0) return
+
+  const insertedByRace = await findExistingVault()
+
+  if (insertedByRace) return
+
+  throw new AppError(
+    ErrorCodes.SYNC_VAULT_LIMIT_EXCEEDED,
+    `${entitlement.plan} allows ${entitlement.max_vaults} synced vaults`,
+    402
+  )
 }
 
 export async function upsertSyncEntitlement(

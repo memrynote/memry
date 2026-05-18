@@ -166,8 +166,6 @@ describe('cleanup services', () => {
   })
 
   describe('cleanupExpiredTombstones', () => {
-    const NINETY_DAYS = 90 * 24 * 60 * 60
-
     it('deletes R2 blobs and D1 rows for expired tombstones', async () => {
       // #given
       const storage = { delete: vi.fn().mockResolvedValue(undefined) } as unknown as R2Bucket
@@ -195,7 +193,8 @@ describe('cleanup services', () => {
 
       // #then
       expect(result).toBe(2)
-      expect(selectBind).toHaveBeenCalledWith(1_700_000_000 - NINETY_DAYS)
+      expect(selectBind).toHaveBeenCalledWith(1_700_000_000)
+      expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining('version_history_days'))
       expect(storage.delete).toHaveBeenCalledWith('blob/t1')
       expect(storage.delete).toHaveBeenCalledWith('blob/t2')
       expect(deleteBind).toHaveBeenCalledWith('t1', 't2')
@@ -282,7 +281,7 @@ describe('cleanup services', () => {
       expect(deleteBind).toHaveBeenCalledWith('t1', 't2')
     })
 
-    it('uses correct 90-day cutoff in epoch seconds', async () => {
+    it('uses the user plan version-history window for tombstone expiry', async () => {
       // #given
       const storage = { delete: vi.fn() } as unknown as R2Bucket
 
@@ -297,7 +296,9 @@ describe('cleanup services', () => {
       await cleanupExpiredTombstones(db, storage)
 
       // #then
-      expect(selectBind).toHaveBeenCalledWith(1_700_000_000 - 7_776_000)
+      expect(selectBind).toHaveBeenCalledWith(1_700_000_000)
+      expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining('sync_entitlements'))
+      expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining('version_history_days'))
     })
   })
 
