@@ -149,11 +149,14 @@ sync.get('/ws', wsRateLimit, async (c) => {
     throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Expected WebSocket upgrade', 426)
   }
   const userId = c.get('userId')!
+  const vaultId = c.get('vaultId')!
   const id = c.env.USER_SYNC_STATE.idFromName(userId)
   const stub = c.env.USER_SYNC_STATE.get(id)
+  const headers = new Headers(c.req.raw.headers)
+  headers.set('X-Memry-Vault-Id', vaultId)
   return stub.fetch(
     new Request(new URL('/connect', c.req.url), {
-      headers: c.req.raw.headers
+      headers
     })
   )
 })
@@ -173,19 +176,22 @@ sync.get('/storage', storageRateLimit, async (c) => {
 const handleRecordStatus = async (c: Context<AppContext>): Promise<Response> => {
   const userId = c.get('userId')!
   const deviceId = c.get('deviceId')!
-  const status = await getSyncStatus(c.env.DB, userId, deviceId)
+  const vaultId = c.get('vaultId')!
+  const status = await getSyncStatus(c.env.DB, userId, deviceId, vaultId)
   return c.json(status)
 }
 
 const handleRecordManifest = async (c: Context<AppContext>): Promise<Response> => {
   const userId = c.get('userId')!
-  const manifest = await getManifest(c.env.DB, userId)
+  const vaultId = c.get('vaultId')!
+  const manifest = await getManifest(c.env.DB, userId, vaultId)
   return c.json(manifest)
 }
 
 const handleRecordChanges = async (c: Context<AppContext>): Promise<Response> => {
   const userId = c.get('userId')!
   const deviceId = c.get('deviceId')!
+  const vaultId = c.get('vaultId')!
   const endpoint = getRequestPath(c)
   const startedAt = Date.now()
 
@@ -202,10 +208,10 @@ const handleRecordChanges = async (c: Context<AppContext>): Promise<Response> =>
     logQueryValidationFailure('record', endpoint, 'Invalid limit value')
   }
 
-  const changes = await getChanges(c.env.DB, userId, cursor, limit)
+  const changes = await getChanges(c.env.DB, userId, cursor, limit, vaultId)
 
   if (changes.items.length > 0 || changes.deleted.length > 0) {
-    await updateDeviceCursor(c.env.DB, deviceId, userId, changes.nextCursor)
+    await updateDeviceCursor(c.env.DB, deviceId, userId, changes.nextCursor, vaultId)
     await updateDevice(c.env.DB, deviceId, userId, {
       last_sync_at: Math.floor(Date.now() / 1000)
     })
@@ -225,6 +231,7 @@ const handleRecordChanges = async (c: Context<AppContext>): Promise<Response> =>
 const handleRecordPush = async (c: Context<AppContext>): Promise<Response> => {
   const userId = c.get('userId')!
   const deviceId = c.get('deviceId')!
+  const vaultId = c.get('vaultId')!
   const endpoint = getRequestPath(c)
   const startedAt = Date.now()
 
@@ -237,7 +244,14 @@ const handleRecordPush = async (c: Context<AppContext>): Promise<Response> => {
 
   let result
   try {
-    result = await processRecordPushBatch(c.env.DB, c.env.STORAGE, userId, deviceId, parsed.items)
+    result = await processRecordPushBatch(
+      c.env.DB,
+      c.env.STORAGE,
+      userId,
+      deviceId,
+      parsed.items,
+      vaultId
+    )
   } catch (error) {
     if (error instanceof AppError && error.code === ErrorCodes.STORAGE_QUOTA_EXCEEDED) {
       logRecordPushBatch({
@@ -255,7 +269,7 @@ const handleRecordPush = async (c: Context<AppContext>): Promise<Response> => {
   }
 
   if (result.maxCursor > 0) {
-    await updateDeviceCursor(c.env.DB, deviceId, userId, result.maxCursor)
+    await updateDeviceCursor(c.env.DB, deviceId, userId, result.maxCursor, vaultId)
   }
 
   if (result.accepted.length > 0) {
@@ -269,7 +283,7 @@ const handleRecordPush = async (c: Context<AppContext>): Promise<Response> => {
         new Request(new URL('/broadcast', c.req.url), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ excludeDeviceId: deviceId, cursor: result.maxCursor })
+          body: JSON.stringify({ excludeDeviceId: deviceId, cursor: result.maxCursor, vaultId })
         })
       )
     )
@@ -291,6 +305,7 @@ const handleRecordPush = async (c: Context<AppContext>): Promise<Response> => {
 
 const handleRecordPull = async (c: Context<AppContext>): Promise<Response> => {
   const userId = c.get('userId')!
+  const vaultId = c.get('vaultId')!
   const endpoint = getRequestPath(c)
   const startedAt = Date.now()
 
@@ -301,7 +316,7 @@ const handleRecordPull = async (c: Context<AppContext>): Promise<Response> => {
     label: 'pull request'
   })
 
-  const items = await pullItems(c.env.DB, c.env.STORAGE, userId, parsed.itemIds)
+  const items = await pullItems(c.env.DB, c.env.STORAGE, userId, parsed.itemIds, vaultId)
   logRecordQueryBatch({
     endpoint,
     operation: 'pull',
@@ -314,6 +329,7 @@ const handleRecordPull = async (c: Context<AppContext>): Promise<Response> => {
 
 const handleRecordItem = async (c: Context<AppContext>): Promise<Response> => {
   const userId = c.get('userId')!
+  const vaultId = c.get('vaultId')!
   const itemId = c.req.param('id')
 
   const parseResult = z.string().uuid().safeParse(itemId)
@@ -321,7 +337,7 @@ const handleRecordItem = async (c: Context<AppContext>): Promise<Response> => {
     throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid item ID format', 400)
   }
 
-  const item = await getItem(c.env.DB, c.env.STORAGE, userId, parseResult.data)
+  const item = await getItem(c.env.DB, c.env.STORAGE, userId, parseResult.data, vaultId)
   return c.json(item)
 }
 
@@ -400,6 +416,7 @@ const CrdtSnapshotPushSchema = z.object({
 const handleCrdtUpdatePush = async (c: Context<AppContext>): Promise<Response> => {
   const userId = c.get('userId')!
   const deviceId = c.get('deviceId')!
+  const vaultId = c.get('vaultId')!
   const endpoint = getRequestPath(c)
   const startedAt = Date.now()
   const body = await c.req.json()
@@ -431,7 +448,7 @@ const handleCrdtUpdatePush = async (c: Context<AppContext>): Promise<Response> =
     throw error
   }
 
-  const sequences = await storeUpdates(c.env.DB, userId, parsed.noteId, deviceId, buffers)
+  const sequences = await storeUpdates(c.env.DB, userId, vaultId, parsed.noteId, deviceId, buffers)
 
   const doId = c.env.USER_SYNC_STATE.idFromName(userId)
   const stub = c.env.USER_SYNC_STATE.get(doId)
@@ -442,6 +459,7 @@ const handleCrdtUpdatePush = async (c: Context<AppContext>): Promise<Response> =
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           excludeDeviceId: deviceId,
+          vaultId,
           type: 'crdt_updated',
           noteId: parsed.noteId
         })
@@ -463,6 +481,7 @@ const handleCrdtUpdatePush = async (c: Context<AppContext>): Promise<Response> =
 
 const handleCrdtUpdatePull = async (c: Context<AppContext>): Promise<Response> => {
   const userId = c.get('userId')!
+  const vaultId = c.get('vaultId')!
   const endpoint = getRequestPath(c)
   const startedAt = Date.now()
   const noteIdRaw = c.req.query('note_id')
@@ -484,7 +503,14 @@ const handleCrdtUpdatePull = async (c: Context<AppContext>): Promise<Response> =
     logQueryValidationFailure('crdt', endpoint, 'Invalid limit value')
   }
 
-  const result = await getUpdates(c.env.DB, userId, noteIdResult.data, since, Math.min(limit, 500))
+  const result = await getUpdates(
+    c.env.DB,
+    userId,
+    vaultId,
+    noteIdResult.data,
+    since,
+    Math.min(limit, 500)
+  )
 
   const encoded = result.updates.map((u) => ({
     sequenceNum: u.sequence_num,
@@ -507,6 +533,7 @@ const handleCrdtUpdatePull = async (c: Context<AppContext>): Promise<Response> =
 
 const handleCrdtBatchPull = async (c: Context<AppContext>): Promise<Response> => {
   const userId = c.get('userId')!
+  const vaultId = c.get('vaultId')!
   const endpoint = getRequestPath(c)
   const startedAt = Date.now()
   const body: unknown = await c.req.json()
@@ -516,7 +543,7 @@ const handleCrdtBatchPull = async (c: Context<AppContext>): Promise<Response> =>
     label: 'CRDT batch request'
   })
 
-  const batchResult = await getBatchUpdates(c.env.DB, userId, parsed.notes, parsed.limit)
+  const batchResult = await getBatchUpdates(c.env.DB, userId, vaultId, parsed.notes, parsed.limit)
 
   const response: Record<string, { updates: unknown[]; hasMore: boolean }> = {}
   for (const [noteId, result] of Object.entries(batchResult)) {
@@ -551,6 +578,7 @@ const handleCrdtBatchPull = async (c: Context<AppContext>): Promise<Response> =>
 const handleCrdtSnapshotPush = async (c: Context<AppContext>): Promise<Response> => {
   const userId = c.get('userId')!
   const deviceId = c.get('deviceId')!
+  const vaultId = c.get('vaultId')!
   const endpoint = getRequestPath(c)
   const startedAt = Date.now()
   const body = await c.req.json()
@@ -582,12 +610,13 @@ const handleCrdtSnapshotPush = async (c: Context<AppContext>): Promise<Response>
     c.env.DB,
     c.env.STORAGE,
     userId,
+    vaultId,
     parsed.noteId,
     deviceId,
     snapshotBytes
   )
 
-  await pruneUpdatesBeforeSnapshot(c.env.DB, userId, parsed.noteId)
+  await pruneUpdatesBeforeSnapshot(c.env.DB, userId, vaultId, parsed.noteId)
 
   logCrdtTraffic({
     endpoint,
@@ -603,6 +632,7 @@ const handleCrdtSnapshotPush = async (c: Context<AppContext>): Promise<Response>
 
 const handleCrdtSnapshotPull = async (c: Context<AppContext>): Promise<Response> => {
   const userId = c.get('userId')!
+  const vaultId = c.get('vaultId')!
   const endpoint = getRequestPath(c)
   const startedAt = Date.now()
   const noteIdRaw = c.req.param('noteId')
@@ -612,7 +642,7 @@ const handleCrdtSnapshotPull = async (c: Context<AppContext>): Promise<Response>
     logQueryValidationFailure('crdt', endpoint, 'Invalid noteId format')
   }
 
-  const result = await getSnapshot(c.env.DB, c.env.STORAGE, userId, noteIdResult.data)
+  const result = await getSnapshot(c.env.DB, c.env.STORAGE, userId, vaultId, noteIdResult.data)
   if (!result) {
     logCrdtTraffic({
       endpoint,

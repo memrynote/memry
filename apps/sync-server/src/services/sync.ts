@@ -10,10 +10,7 @@ import type {
   RecordSyncItemType,
   RecordSyncManifest
 } from '@memry/contracts/sync-api'
-import {
-  RECORD_CLOCK_REQUIRED_ITEM_TYPES,
-  RECORD_SYNC_ITEM_TYPES
-} from '@memry/contracts/sync-api'
+import { RECORD_CLOCK_REQUIRED_ITEM_TYPES, RECORD_SYNC_ITEM_TYPES } from '@memry/contracts/sync-api'
 import { encodeSignaturePayload } from '../lib/cbor'
 import { safeBase64Decode, verifyEd25519 } from '../lib/encoding'
 import { AppError, ErrorCodes } from '../lib/errors'
@@ -234,11 +231,7 @@ const readEncryptedPayload = async (
 ): Promise<EncryptedItemPayload> => {
   const blob = await getBlob(storage, blobKey, userId)
   if (!blob) {
-    throw new AppError(
-      ErrorCodes.STORAGE_BLOB_NOT_FOUND,
-      `Blob missing for item ${itemId}`,
-      404
-    )
+    throw new AppError(ErrorCodes.STORAGE_BLOB_NOT_FOUND, `Blob missing for item ${itemId}`, 404)
   }
 
   try {
@@ -288,7 +281,8 @@ export const processRecordPushBatch = async (
   storage: R2Bucket,
   userId: string,
   deviceId: string,
-  items: PushItemInput[]
+  items: PushItemInput[],
+  vaultId = 'default'
 ): Promise<RecordPushBatchResult> => {
   await checkQuota(db, userId, estimatePushBatchBytes(items))
 
@@ -298,7 +292,7 @@ export const processRecordPushBatch = async (
   let maxCursor = 0
 
   for (const item of items) {
-    const result = await processPushItem(db, storage, userId, deviceId, item)
+    const result = await processPushItem(db, storage, userId, deviceId, item, vaultId)
     outcomes.push({
       id: item.id,
       type: item.type,
@@ -332,7 +326,8 @@ export const processPushItem = async (
   storage: R2Bucket,
   userId: string,
   deviceId: string,
-  item: PushItemInput
+  item: PushItemInput,
+  vaultId = 'default'
 ): Promise<{ accepted: boolean; reason?: string; serverCursor?: number }> => {
   try {
     if (!isSupportedRecordSyncItemType(item.type)) {
@@ -349,8 +344,10 @@ export const processPushItem = async (
     await verifyItemSignature(db, item, userId)
 
     const existing = await db
-      .prepare('SELECT * FROM sync_items WHERE user_id = ? AND item_type = ? AND item_id = ?')
-      .bind(userId, item.type, item.id)
+      .prepare(
+        'SELECT * FROM sync_items WHERE user_id = ? AND vault_id = ? AND item_type = ? AND item_id = ?'
+      )
+      .bind(userId, vaultId, item.type, item.id)
       .first<ExistingSyncItemRow>()
 
     if (existing) {
@@ -387,7 +384,7 @@ export const processPushItem = async (
       }
     }
 
-    const blobKey = generateBlobKey(userId, item.id)
+    const blobKey = generateBlobKey(userId, item.id, vaultId)
     await putBlob(storage, blobKey, payloadBytes.slice().buffer, userId)
 
     const serverCursor = await getNextCursor(db, userId)
@@ -400,11 +397,11 @@ export const processPushItem = async (
     const upsertSyncItemStmt = db
       .prepare(
         `INSERT INTO sync_items (
-          id, user_id, item_type, item_id, blob_key, size_bytes, content_hash,
+          id, user_id, vault_id, item_type, item_id, blob_key, size_bytes, content_hash,
           version, crypto_version, operation, server_cursor, signer_device_id, signature,
           state_vector, clock, created_at, updated_at, deleted_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT (user_id, item_type, item_id) DO UPDATE SET
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT (user_id, vault_id, item_type, item_id) DO UPDATE SET
           blob_key = excluded.blob_key,
           size_bytes = excluded.size_bytes,
           content_hash = excluded.content_hash,
@@ -422,6 +419,7 @@ export const processPushItem = async (
       .bind(
         crypto.randomUUID(),
         userId,
+        vaultId,
         item.type,
         item.id,
         blobKey,
@@ -463,37 +461,41 @@ export const updateDeviceCursor = async (
   db: D1Database,
   deviceId: string,
   userId: string,
-  cursor: number
+  cursor: number,
+  vaultId = 'default'
 ): Promise<void> => {
   await db
     .prepare(
-      `INSERT INTO device_sync_state (device_id, user_id, last_cursor_seen, updated_at)
-       VALUES (?, ?, ?, ?)
-       ON CONFLICT (device_id, user_id) DO UPDATE SET
+      `INSERT INTO device_sync_state (device_id, user_id, vault_id, last_cursor_seen, updated_at)
+       VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT (device_id, user_id, vault_id) DO UPDATE SET
          last_cursor_seen = MAX(device_sync_state.last_cursor_seen, excluded.last_cursor_seen),
          updated_at = excluded.updated_at`
     )
-    .bind(deviceId, userId, cursor, Math.floor(Date.now() / 1000))
+    .bind(deviceId, userId, vaultId, cursor, Math.floor(Date.now() / 1000))
     .run()
 }
 
 export const getSyncStatus = async (
   db: D1Database,
   userId: string,
-  deviceId: string
+  deviceId: string,
+  vaultId = 'default'
 ): Promise<SyncStatus> => {
   const deviceState = await db
     .prepare(
-      'SELECT last_cursor_seen, updated_at FROM device_sync_state WHERE device_id = ? AND user_id = ?'
+      'SELECT last_cursor_seen, updated_at FROM device_sync_state WHERE device_id = ? AND user_id = ? AND vault_id = ?'
     )
-    .bind(deviceId, userId)
+    .bind(deviceId, userId, vaultId)
     .first<{ last_cursor_seen: number; updated_at: number }>()
 
   const lastCursor = deviceState?.last_cursor_seen ?? 0
 
   const pending = await db
-    .prepare('SELECT COUNT(*) as count FROM sync_items WHERE user_id = ? AND server_cursor > ?')
-    .bind(userId, lastCursor)
+    .prepare(
+      'SELECT COUNT(*) as count FROM sync_items WHERE user_id = ? AND vault_id = ? AND server_cursor > ?'
+    )
+    .bind(userId, vaultId, lastCursor)
     .first<{ count: number }>()
 
   return {
@@ -504,15 +506,19 @@ export const getSyncStatus = async (
   }
 }
 
-export const getManifest = async (db: D1Database, userId: string): Promise<RecordSyncManifest> => {
+export const getManifest = async (
+  db: D1Database,
+  userId: string,
+  vaultId = 'default'
+): Promise<RecordSyncManifest> => {
   const rows = await db
     .prepare(
       `SELECT item_id, item_type, version, updated_at, size_bytes, state_vector
        FROM sync_items
-       WHERE user_id = ? AND deleted_at IS NULL AND item_type IN (${RECORD_SYNC_ITEM_TYPE_PLACEHOLDERS})
+       WHERE user_id = ? AND vault_id = ? AND deleted_at IS NULL AND item_type IN (${RECORD_SYNC_ITEM_TYPE_PLACEHOLDERS})
        ORDER BY server_cursor ASC`
     )
-    .bind(userId, ...RECORD_SYNC_ITEM_TYPES)
+    .bind(userId, vaultId, ...RECORD_SYNC_ITEM_TYPES)
     .all<{
       item_id: string
       item_type: string
@@ -539,7 +545,8 @@ export const getChanges = async (
   db: D1Database,
   userId: string,
   cursor: number,
-  limit?: number
+  limit?: number,
+  vaultId = 'default'
 ): Promise<RecordChangesResponse> => {
   const effectiveLimit = Math.min(limit ?? DEFAULT_CHANGES_LIMIT, MAX_CHANGES_LIMIT)
 
@@ -547,11 +554,11 @@ export const getChanges = async (
     .prepare(
       `SELECT item_id, item_type, version, updated_at, size_bytes, state_vector, server_cursor, deleted_at
        FROM sync_items
-       WHERE user_id = ? AND server_cursor > ? AND item_type IN (${RECORD_SYNC_ITEM_TYPE_PLACEHOLDERS})
+       WHERE user_id = ? AND vault_id = ? AND server_cursor > ? AND item_type IN (${RECORD_SYNC_ITEM_TYPE_PLACEHOLDERS})
        ORDER BY server_cursor ASC
        LIMIT ?`
     )
-    .bind(userId, cursor, ...RECORD_SYNC_ITEM_TYPES, effectiveLimit + 1)
+    .bind(userId, vaultId, cursor, ...RECORD_SYNC_ITEM_TYPES, effectiveLimit + 1)
     .all<{
       item_id: string
       item_type: string
@@ -599,13 +606,14 @@ export const pullItems = async (
   db: D1Database,
   storage: R2Bucket,
   userId: string,
-  itemIds: string[]
+  itemIds: string[],
+  vaultId = 'default'
 ): Promise<RecordPullItemResponse[]> => {
   if (itemIds.length === 0) {
     return []
   }
 
-  const BATCH_SIZE = D1_MAX_BIND_PARAMS - 1 - RECORD_SYNC_ITEM_TYPES.length
+  const BATCH_SIZE = D1_MAX_BIND_PARAMS - 2 - RECORD_SYNC_ITEM_TYPES.length
 
   const allDbRows: StoredSyncItemPullRow[] = []
 
@@ -617,11 +625,11 @@ export const pullItems = async (
         `SELECT item_id, item_type, blob_key, crypto_version, operation, signer_device_id, signature,
                 state_vector, clock, deleted_at, server_cursor
          FROM sync_items
-         WHERE user_id = ? AND item_type IN (${RECORD_SYNC_ITEM_TYPE_PLACEHOLDERS})
+         WHERE user_id = ? AND vault_id = ? AND item_type IN (${RECORD_SYNC_ITEM_TYPE_PLACEHOLDERS})
            AND item_id IN (${placeholders})
          ORDER BY server_cursor ASC`
       )
-      .bind(userId, ...RECORD_SYNC_ITEM_TYPES, ...batch)
+      .bind(userId, vaultId, ...RECORD_SYNC_ITEM_TYPES, ...batch)
       .all<StoredSyncItemPullRow>()
     allDbRows.push(...(rows.results ?? []))
   }
@@ -644,7 +652,8 @@ export const getItem = async (
   db: D1Database,
   storage: R2Bucket,
   userId: string,
-  itemId: string
+  itemId: string,
+  vaultId = 'default'
 ): Promise<{
   itemId: string
   type: RecordSyncItemType
@@ -656,10 +665,10 @@ export const getItem = async (
     .prepare(
       `SELECT item_id, item_type, version, blob_key, server_cursor
        FROM sync_items
-       WHERE user_id = ? AND item_type IN (${RECORD_SYNC_ITEM_TYPE_PLACEHOLDERS})
+       WHERE user_id = ? AND vault_id = ? AND item_type IN (${RECORD_SYNC_ITEM_TYPE_PLACEHOLDERS})
          AND item_id = ? AND deleted_at IS NULL`
     )
-    .bind(userId, ...RECORD_SYNC_ITEM_TYPES, itemId)
+    .bind(userId, vaultId, ...RECORD_SYNC_ITEM_TYPES, itemId)
     .first<{
       item_id: string
       item_type: string

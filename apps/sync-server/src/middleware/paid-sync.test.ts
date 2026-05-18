@@ -87,6 +87,7 @@ describe('paid sync middleware', () => {
     await paidSyncMiddleware(context as never, next)
 
     expect(next).toHaveBeenCalledTimes(1)
+    expect(context.set).toHaveBeenCalledWith('vaultId', 'vault-from-request')
     expect(context.set).toHaveBeenCalledWith(
       'syncEntitlement',
       expect.objectContaining({ plan: 'plus' })

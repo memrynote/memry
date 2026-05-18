@@ -1,10 +1,10 @@
 import { AppError, ErrorCodes } from '../lib/errors'
 
-export const generateBlobKey = (userId: string, itemId: string): string =>
-  `${userId}/items/${itemId}`
+export const generateBlobKey = (userId: string, itemId: string, vaultId = 'default'): string =>
+  `${userId}/vaults/${vaultId}/items/${itemId}`
 
-export const generateCrdtKey = (userId: string, noteId: string): string =>
-  `${userId}/crdt/${noteId}/snapshot`
+export const generateCrdtKey = (userId: string, noteId: string, vaultId = 'default'): string =>
+  `${userId}/vaults/${vaultId}/crdt/${noteId}/snapshot`
 
 export const generateAttachmentChunkKey = (
   userId: string,

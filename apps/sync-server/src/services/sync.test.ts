@@ -640,6 +640,17 @@ describe('getManifest', () => {
     expect(result.items).toEqual([])
   })
 
+  it('should filter manifest rows by vault id', async () => {
+    const stmt = createMockStatement()
+    stmt.all.mockResolvedValue({ results: [] })
+    db.prepare.mockReturnValue(stmt)
+
+    await getManifest(db as unknown as D1Database, 'user-1', 'vault-2')
+
+    expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining('vault_id = ?'))
+    expect(stmt.bind.mock.calls[0][1]).toBe('vault-2')
+  })
+
   it('should keep manifest responses record-only and strip record stateVector metadata', async () => {
     // #given
     const stmt = createMockStatement()
@@ -1449,7 +1460,7 @@ describe('updateDeviceCursor', () => {
       expect.stringContaining('INSERT INTO device_sync_state')
     )
     expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining('ON CONFLICT'))
-    expect(stmt.bind).toHaveBeenCalledWith('device-1', 'user-1', 42, expect.any(Number))
+    expect(stmt.bind).toHaveBeenCalledWith('device-1', 'user-1', 'default', 42, expect.any(Number))
     expect(stmt.run).toHaveBeenCalled()
   })
 })
@@ -1589,7 +1600,7 @@ describe('processPushItem', () => {
     expect(result.accepted).toBe(true)
     expect(upsertStmt.bind).toHaveBeenCalled()
     const bindArgs = upsertStmt.bind.mock.calls[0]
-    expect(bindArgs[15]).toBe(123456)
+    expect(bindArgs[16]).toBe(123456)
   })
 
   it('should batch sync item upsert and storage usage update atomically', async () => {
@@ -1766,7 +1777,7 @@ describe('processPushItem', () => {
     )
 
     expect(result.accepted).toBe(true)
-    expect(upsertStmt.bind.mock.calls[0][15]).toBe(987)
+    expect(upsertStmt.bind.mock.calls[0][16]).toBe(987)
   })
 
   it('should write tombstones for delete operations', async () => {
@@ -1803,7 +1814,7 @@ describe('processPushItem', () => {
     )
 
     expect(result.accepted).toBe(true)
-    expect(upsertStmt.bind.mock.calls[0][17]).toEqual(expect.any(Number))
+    expect(upsertStmt.bind.mock.calls[0][18]).toEqual(expect.any(Number))
   })
 
   it('should return AppError and unknown error codes from failed processing', async () => {
