@@ -46,20 +46,21 @@ function getCtx(doObj: UserSyncState) {
   return (doObj as unknown as { ctx: UserSyncState['ctx'] }).ctx
 }
 
-function connectRequest(token = 'valid-token', appVersion = '1.0.0'): Request {
+function connectRequest(token = 'valid-token', appVersion = '1.0.0', vaultId?: string): Request {
   const headers: Record<string, string> = {
     Authorization: `Bearer ${token}`,
     Upgrade: 'websocket'
   }
   if (appVersion) headers['X-App-Version'] = appVersion
+  if (vaultId) headers['X-Memry-Vault-Id'] = vaultId
   return new Request('https://do.internal/connect', { headers })
 }
 
-function broadcastRequest(excludeDeviceId: string, cursor: number): Request {
+function broadcastRequest(excludeDeviceId: string, cursor: number, vaultId?: string): Request {
   return new Request('https://do.internal/broadcast', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ excludeDeviceId, cursor })
+    body: JSON.stringify({ excludeDeviceId, cursor, ...(vaultId ? { vaultId } : {}) })
   })
 }
 
@@ -209,6 +210,28 @@ describe('UserSyncState', () => {
 
       // #then
       expect(body.sent).toBe(0)
+    })
+
+    it('only broadcasts vault-scoped changes to sockets in the same vault', async () => {
+      const doObj = createDO()
+
+      hoisted.verifyAccessTokenMock.mockResolvedValueOnce({
+        userId: 'user-1',
+        deviceId: 'device-1',
+        exp: Math.floor(Date.now() / 1000) + 900
+      })
+      await doObj.fetch(connectRequest('token-1', '1.0.0', 'vault-a'))
+
+      hoisted.verifyAccessTokenMock.mockResolvedValueOnce({
+        userId: 'user-1',
+        deviceId: 'device-2',
+        exp: Math.floor(Date.now() / 1000) + 900
+      })
+      await doObj.fetch(connectRequest('token-2', '1.0.0', 'vault-b'))
+
+      const res = await doObj.fetch(broadcastRequest('device-1', 42, 'vault-a'))
+
+      expect(await res.json()).toEqual({ sent: 0 })
     })
 
     it('carries sourceId through to payload for calendar push fan-out', async () => {

@@ -6,7 +6,7 @@
 
 ## Summary
 
-Convert memry from a free-with-optional-sync app into a freemium product where local-only use stays free and sync requires a paid subscription. Three tiers — Sync Standard, Sync Plus, Believer — managed via Paddle Billing (merchant of record). Server-side hard enforcement of vault count, total storage, max file size, and version-history retention. Founder is located in Turkey, which dictates Paddle as the payment processor.
+Convert memry from a free local-first app into a freemium product where local-only use stays free and sync requires a paid subscription. Three paid tiers — Plus, Pro, Believer — managed via Paddle Billing (merchant of record). Server-side hard enforcement of vault count, total storage, max file size, and version-history retention. Founder is located in Turkey, which dictates Paddle as the payment processor.
 
 ## Goals
 
@@ -28,19 +28,19 @@ Convert memry from a free-with-optional-sync app into a freemium product where l
 
 ## Pricing Tiers (final)
 
-| Limit                | Sync Standard            | Sync Plus                | Believer         |
+| Limit                | Plus                     | Pro                      | Believer         |
 | -------------------- | ------------------------ | ------------------------ | ---------------- |
 | Monthly price        | $5 / mo                  | $10 / mo                 | —                |
 | Annual price         | $48 / yr ($4 / mo equiv) | $96 / yr ($8 / mo equiv) | —                |
 | Lifetime price       | —                        | —                        | $500 one-time    |
-| Synced vaults        | 1                        | 10                       | 10               |
-| Total storage        | 1 GiB                    | 10 GiB                   | 10 GiB           |
+| Synced vaults        | 1                        | 10                       | unlimited        |
+| Total storage        | 1 GiB                    | 10 GiB                   | 50 GiB           |
 | Max file size        | 5 MiB                    | 200 MiB                  | 200 MiB          |
 | Version history      | 30 days                  | 365 days                 | 365 days         |
 | Devices per account  | unlimited                | unlimited                | unlimited        |
 | Future paid features | per-tier                 | per-tier                 | included forever |
 
-Believer scope: lifetime Sync Plus parity + automatic inclusion in any future paid feature (AI, future tiers, etc.). Marketed as "pay once, sync forever — founding-supporter narrative."
+Believer scope: lifetime access with Pro-or-better limits + automatic inclusion in any future paid feature (AI, future tiers, etc.). Marketed as "pay once, sync forever — founding-supporter narrative."
 
 ## Decisions Log (from brainstorming)
 
@@ -49,8 +49,8 @@ Believer scope: lifetime Sync Plus parity + automatic inclusion in any future pa
 | 1   | Paddle Billing (modern API), MoR                                                                           | Stripe doesn't onboard Turkish business entities; Paddle handles VAT/sales tax in 60+ countries and pays out to a Turkish bank |
 | 2   | No free trial; 7-day money-back refund                                                                     | Simpler state machine, indie-friendly framing                                                                                  |
 | 3   | Lapse policy: 14 d grace → 30 d read-only → status `purged` at day 44; physical R2 blob deletion at day 90 | Mirrors Obsidian Sync; covers card-failure recovery; 46-day re-subscribe-and-recover window                                    |
-| 4   | Believer = lifetime Sync Plus + all future paid features                                                   | Founding-customer narrative; commercial commitment accepted                                                                    |
-| 5   | Pricing matrix: Standard $5/mo or $48/yr; Plus $10/mo or $96/yr; Believer $500 lifetime                    | "Save 20% annually" messaging                                                                                                  |
+| 4   | Believer = lifetime access with Pro-or-better limits + all future paid features                            | Founding-customer narrative; commercial commitment accepted                                                                    |
+| 5   | Pricing matrix: Plus $5/mo or $48/yr; Pro $10/mo or $96/yr; Believer $500 lifetime                         | "Save 20% annually" messaging                                                                                                  |
 | 6   | Server hard wall on all four limits                                                                        | E2E encryption doesn't preclude server enforcement of size + opaque vault IDs                                                  |
 | 7   | Unlimited devices per account                                                                              | Simpler UX; existing devices table already supports per-device tokens + revocation if abuse appears                            |
 | 8   | Approach A: D1 lookup per sync request                                                                     | Simplest; ~5–15 ms added latency; can migrate to KV cache later                                                                |
@@ -160,7 +160,7 @@ CREATE TABLE subscriptions (
   paddle_customer_id       TEXT NOT NULL,
   paddle_subscription_id   TEXT UNIQUE,        -- NULL for lifetime
   paddle_transaction_id    TEXT,               -- one-time txn id (lifetime), nullable
-  plan                     TEXT NOT NULL,      -- 'standard' | 'plus' | 'believer'
+  plan                     TEXT NOT NULL,      -- 'plus' | 'pro' | 'believer'
   status                   TEXT NOT NULL,      -- 'active' | 'grace' | 'read_only' | 'purged' | 'canceled'
   billing_cadence          TEXT NOT NULL,      -- 'monthly' | 'annual' | 'lifetime'
   current_period_start     INTEGER,            -- unix sec, NULL for lifetime
@@ -246,21 +246,21 @@ Single source of truth in `packages/contracts`, imported by both sync-server (en
 ```ts
 // packages/contracts/src/billing.ts
 export const PLAN_LIMITS = {
-  standard: {
+  plus: {
     maxVaults: 1,
     maxStorageBytes: 1_073_741_824, //   1 GiB
     maxFileSizeBytes: 5_242_880, //   5 MiB
     versionHistoryDays: 30
   },
-  plus: {
+  pro: {
     maxVaults: 10,
     maxStorageBytes: 10_737_418_240, //  10 GiB
     maxFileSizeBytes: 209_715_200, // 200 MiB
     versionHistoryDays: 365
   },
   believer: {
-    maxVaults: 10,
-    maxStorageBytes: 10_737_418_240,
+    maxVaults: null, // unlimited
+    maxStorageBytes: 53_687_091_200, //  50 GiB
     maxFileSizeBytes: 209_715_200,
     versionHistoryDays: 365
   }
@@ -377,8 +377,8 @@ RETURNING blob_key, size_bytes;
 ## Checkout Flow
 
 ```
-1. User clicks "Get Sync Standard" in PaywallDialog
-2. App → GET /billing/checkout?plan=standard&cadence=annual
+1. User clicks "Get Plus" in PaywallDialog
+2. App → GET /billing/checkout?plan=plus&cadence=annual
    Server creates Paddle transaction (POST /transactions on Paddle Billing API)
    Returns { checkoutToken }
 3. App opens Paddle.js inline overlay with that token
@@ -388,7 +388,7 @@ RETURNING blob_key, size_bytes;
    - subscription.created
 5. Webhook handler upserts subscriptions row, sets users.plan/status
 6. App polls GET /me every 2 s for ~30 s after Paddle's success callback
-   → eventually sees plan='standard', status='active'
+   → eventually sees plan='plus', status='active'
    → unblocks sync UI
 7. If polling times out → show "Payment received, activating..." with manual refresh button
    that calls POST /billing/reconcile (failsafe — fetches Paddle state, upserts)
@@ -526,8 +526,8 @@ export interface BillingApi {
 | User refunds outside 7-day window manually via email | Support agent uses Paddle dashboard; webhook fires; user state goes to `purged`                                                                                                               |
 | User has multiple subscriptions defensively          | UNIQUE constraint on `subscriptions.user_id`; webhook handler errors loudly if violated                                                                                                       |
 | Card declined mid-cycle                              | Paddle's dunning kicks in (4 retries over 14 d); we get `subscription.past_due` (no state change) → eventually `subscription.canceled` → grace                                                |
-| User upgrades Standard → Plus mid-cycle              | Paddle handles proration; webhook `subscription.updated` updates plan; new limits apply immediately                                                                                           |
-| User downgrades Plus → Standard with 5 vaults synced | Downgrade takes effect at `period_end` (Paddle default). At that point, server marks excess vaults as "over limit" — pulls still work, pushes to those vaults blocked. UI prompts to archive. |
+| User upgrades Plus → Pro mid-cycle                   | Paddle handles proration; webhook `subscription.updated` updates plan; new limits apply immediately                                                                                           |
+| User downgrades Pro → Plus with 5 vaults synced      | Downgrade takes effect at `period_end` (Paddle default). At that point, server marks excess vaults as "over limit" — pulls still work, pushes to those vaults blocked. UI prompts to archive. |
 | Believer wants to cancel                             | Paddle portal: refund within 7 days possible; outside that, no proration since one-time                                                                                                       |
 | Lifetime user, future big paid feature ships         | Per-feature flag check: `plan === 'believer'                                                                                                                                                  |     | feature_in_current_plan` |
 | Server clock drift vs Paddle webhook timestamps      | Use Paddle's timestamp for state transitions, not local clock                                                                                                                                 |

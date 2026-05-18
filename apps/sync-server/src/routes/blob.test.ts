@@ -5,19 +5,38 @@ import { ErrorCodes, errorHandler } from '../lib/errors'
 import type { AppContext } from '../types'
 
 vi.mock('../services/blob', () => ({
+  generateAttachmentChunkKey: (userId: string, vaultId: string, chunkHash: string) =>
+    `${userId}/vaults/${vaultId}/chunks/${chunkHash}`,
+  generateAttachmentManifestKey: (userId: string, attachmentId: string, vaultId: string) =>
+    `${userId}/vaults/${vaultId}/attachments/${attachmentId}/manifest`,
+  generateBlobKey: (userId: string, itemId: string, vaultId: string) =>
+    `${userId}/vaults/${vaultId}/items/${itemId}`,
   putBlob: vi.fn().mockResolvedValue({ etag: 'etag-1' }),
   getBlob: vi.fn(),
   deleteBlob: vi.fn().mockResolvedValue(undefined)
 }))
 
 vi.mock('../services/quota', () => ({
-  checkQuota: vi.fn().mockResolvedValue(undefined)
+  adjustStorageUsed: vi.fn().mockResolvedValue(undefined),
+  checkQuota: vi.fn().mockResolvedValue(undefined),
+  reserveStorage: vi.fn().mockResolvedValue(undefined)
+}))
+
+vi.mock('../services/entitlements', () => ({
+  assertFileSizeAllowed: vi.fn().mockResolvedValue(undefined)
 }))
 
 vi.mock('../middleware/auth', () => ({
   authMiddleware: vi.fn().mockImplementation(async (c: any, next: any) => {
     c.set('userId', 'user-1')
     c.set('deviceId', 'device-1')
+    c.set('vaultId', 'vault-1')
+    await next()
+  })
+}))
+
+vi.mock('../middleware/paid-sync', () => ({
+  paidSyncMiddleware: vi.fn().mockImplementation(async (_c: any, next: any) => {
     await next()
   })
 }))
@@ -32,7 +51,8 @@ vi.mock('../middleware/rate-limit', () => ({
 
 import { blob } from './blob'
 import { putBlob, getBlob, deleteBlob } from '../services/blob'
-import { checkQuota } from '../services/quota'
+import { assertFileSizeAllowed } from '../services/entitlements'
+import { adjustStorageUsed, reserveStorage } from '../services/quota'
 
 interface MockDbState {
   session?: Record<string, unknown> | null
@@ -103,8 +123,8 @@ const createSession = (overrides: Record<string, unknown> = {}) => ({
   total_size: 10,
   chunk_count: 2,
   uploaded_chunks: JSON.stringify([
-    { i: 0, h: 'hash-0' },
-    { i: 1, h: 'hash-1' }
+    { i: 0, h: 'hash-0', b: 5 },
+    { i: 1, h: 'hash-1', b: 5 }
   ]),
   expires_at: Math.floor(Date.now() / 1000) + 100,
   created_at: 1,
@@ -143,11 +163,18 @@ describe('blob routes', () => {
     vi.mocked(putBlob).mockResolvedValue({ etag: 'etag-1' } as any)
     vi.mocked(getBlob).mockResolvedValue(createR2Object() as any)
     vi.mocked(deleteBlob).mockResolvedValue(undefined)
-    vi.mocked(checkQuota).mockResolvedValue(undefined)
+    vi.mocked(assertFileSizeAllowed).mockResolvedValue(undefined)
+    vi.mocked(adjustStorageUsed).mockResolvedValue(undefined)
+    vi.mocked(reserveStorage).mockResolvedValue(undefined)
     app = createApp()
     state = {
       session: createSession(),
-      chunk: { id: 'chunk-1', r2_key: 'user-1/hash-0', size_bytes: 5, ref_count: 1 },
+      chunk: {
+        id: 'chunk-1',
+        r2_key: 'user-1/vaults/vault-1/chunks/hash-0',
+        size_bytes: 5,
+        ref_count: 1
+      },
       existingChunk: null,
       statements: []
     }
@@ -155,17 +182,29 @@ describe('blob routes', () => {
   })
 
   it('uploads a simple blob and records storage usage', async () => {
+    vi.mocked(env.STORAGE.head).mockResolvedValueOnce(null)
+
     const res = await app.request('/blob/blob-1', { method: 'PUT', body: 'hello' }, env)
 
     expect(res.status).toBe(200)
     expect(await res.json()).toEqual({ blob_key: 'blob-1', size: 5, etag: 'etag-1' })
-    expect(checkQuota).toHaveBeenCalledWith(env.DB, 'user-1', 5)
+    expect(assertFileSizeAllowed).toHaveBeenCalledWith(env.DB, 'user-1', 5)
+    expect(reserveStorage).toHaveBeenCalledWith(env.DB, 'user-1', 5)
     expect(putBlob).toHaveBeenCalledWith(
       env.STORAGE,
-      'user-1/items/blob-1',
+      'user-1/vaults/vault-1/items/blob-1',
       expect.any(ArrayBuffer),
       'user-1'
     )
+  })
+
+  it('accounts for only the overwrite delta when uploading a simple blob', async () => {
+    const res = await app.request('/blob/blob-1', { method: 'PUT', body: 'hi' }, env)
+
+    expect(res.status).toBe(200)
+    expect(assertFileSizeAllowed).toHaveBeenCalledWith(env.DB, 'user-1', 2)
+    expect(reserveStorage).not.toHaveBeenCalled()
+    expect(adjustStorageUsed).toHaveBeenCalledWith(env.DB, 'user-1', -3)
   })
 
   it('downloads a simple blob with content length headers', async () => {
@@ -175,7 +214,11 @@ describe('blob routes', () => {
 
     expect(res.status).toBe(200)
     expect(res.headers.get('Content-Length')).toBe('7')
-    expect(getBlob).toHaveBeenCalledWith(env.STORAGE, 'user-1/items/blob-1', 'user-1')
+    expect(getBlob).toHaveBeenCalledWith(
+      env.STORAGE,
+      'user-1/vaults/vault-1/items/blob-1',
+      'user-1'
+    )
   })
 
   it('downloads a byte range directly from R2', async () => {
@@ -187,7 +230,7 @@ describe('blob routes', () => {
 
     expect(res.status).toBe(206)
     expect(res.headers.get('Content-Range')).toBe('bytes 1-3/5')
-    expect(env.STORAGE.get).toHaveBeenCalledWith('user-1/items/blob-1', {
+    expect(env.STORAGE.get).toHaveBeenCalledWith('user-1/vaults/vault-1/items/blob-1', {
       range: { offset: 1, length: 3 }
     })
   })
@@ -206,12 +249,12 @@ describe('blob routes', () => {
 
   it('supports open-ended and invalid range headers through the parser fallback', async () => {
     await app.request('/blob/blob-1', { method: 'GET', headers: { Range: 'bytes=2-' } }, env)
-    expect(env.STORAGE.get).toHaveBeenCalledWith('user-1/items/blob-1', {
+    expect(env.STORAGE.get).toHaveBeenCalledWith('user-1/vaults/vault-1/items/blob-1', {
       range: { offset: 2 }
     })
 
     await app.request('/blob/blob-1', { method: 'GET', headers: { Range: 'bad-range' } }, env)
-    expect(env.STORAGE.get).toHaveBeenCalledWith('user-1/items/blob-1', {
+    expect(env.STORAGE.get).toHaveBeenCalledWith('user-1/vaults/vault-1/items/blob-1', {
       range: { offset: 0 }
     })
   })
@@ -231,8 +274,12 @@ describe('blob routes', () => {
     const res = await app.request('/blob/blob-1', { method: 'DELETE' }, env)
 
     expect(res.status).toBe(204)
-    expect(deleteBlob).toHaveBeenCalledWith(env.STORAGE, 'user-1/items/blob-1', 'user-1')
-    expect(state.statements.some((entry) => entry.bindings[0] === -5)).toBe(true)
+    expect(deleteBlob).toHaveBeenCalledWith(
+      env.STORAGE,
+      'user-1/vaults/vault-1/items/blob-1',
+      'user-1'
+    )
+    expect(adjustStorageUsed).toHaveBeenCalledWith(env.DB, 'user-1', -5)
   })
 
   it('returns 404 when deleting a missing simple blob', async () => {
@@ -259,7 +306,14 @@ describe('blob routes', () => {
       sessionId: expect.any(String),
       expiresAt: expect.any(Number)
     })
-    expect(checkQuota).toHaveBeenCalledWith(env.DB, 'user-1', 10)
+    expect(reserveStorage).toHaveBeenCalledWith(env.DB, 'user-1', 10)
+    expect(assertFileSizeAllowed).toHaveBeenCalledWith(env.DB, 'user-1', 10)
+    expect(
+      state.statements.some(
+        (entry) =>
+          entry.sql.includes('INSERT INTO upload_sessions') && entry.bindings.includes('vault-1')
+      )
+    ).toBe(true)
   })
 
   it('rejects invalid upload initiation payloads', async () => {
@@ -307,15 +361,36 @@ describe('blob routes', () => {
     expect(await res.json()).toEqual({ success: true, uploadedChunks: 1 })
     expect(putBlob).toHaveBeenCalledWith(
       env.STORAGE,
-      expect.stringMatching(/^user-1\/[a-f0-9]{64}$/),
+      expect.stringMatching(/^user-1\/vaults\/vault-1\/chunks\/[a-f0-9]{64}$/),
       expect.any(ArrayBuffer),
       'user-1'
     )
   })
 
+  it('rejects a chunk that would exceed the declared upload size', async () => {
+    state.session = createSession({
+      total_size: 10,
+      uploaded_chunks: JSON.stringify([{ i: 0, h: 'hash-0', b: 8 }])
+    })
+
+    const res = await app.request(
+      '/attachments/upload/session-1/chunk/1',
+      {
+        method: 'PUT',
+        body: 'abc'
+      },
+      env
+    )
+
+    expect(res.status).toBe(413)
+    expect(((await res.json()) as { error: { code: string } }).error.code).toBe(
+      ErrorCodes.STORAGE_FILE_TOO_LARGE
+    )
+  })
+
   it('increments ref_count instead of storing an already-known chunk', async () => {
     state.session = createSession({ uploaded_chunks: '[]' })
-    state.existingChunk = { id: 'existing-chunk', r2_key: 'user-1/hash' }
+    state.existingChunk = { id: 'existing-chunk', r2_key: 'user-1/vaults/vault-1/chunks/hash' }
 
     const res = await app.request(
       '/attachments/upload/session-1/chunk/0',
@@ -389,7 +464,37 @@ describe('blob routes', () => {
     expect(await res.json()).toEqual({ error: 'Missing chunks', missing_chunks: [1] })
   })
 
+  it('rejects completion when uploaded chunk bytes do not match the declared total size', async () => {
+    state.session = createSession({
+      total_size: 10,
+      uploaded_chunks: JSON.stringify([
+        { i: 0, h: 'hash-0', b: 4 },
+        { i: 1, h: 'hash-1', b: 4 }
+      ])
+    })
+
+    const res = await app.request(
+      '/attachments/upload/session-1/complete',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      },
+      env
+    )
+
+    expect(res.status).toBe(400)
+    expect(((await res.json()) as { error: { code: string } }).error.code).toBe(
+      ErrorCodes.UPLOAD_INCOMPLETE
+    )
+  })
+
   it('completes an upload, writes the encrypted manifest, and clears the session', async () => {
+    vi.mocked(env.STORAGE.head).mockResolvedValueOnce(null)
+    const manifestSize = new TextEncoder().encode(
+      JSON.stringify({ encryptedManifest: 'manifest' })
+    ).byteLength
+
     const res = await app.request(
       '/attachments/upload/session-1/complete',
       {
@@ -403,12 +508,15 @@ describe('blob routes', () => {
     expect(res.status).toBe(200)
     expect(await res.json()).toEqual({
       attachment_id: 'att-1',
-      manifest_key: 'user-1/meta/att-1',
+      manifest_key: 'user-1/vaults/vault-1/attachments/att-1/manifest',
       size: 10
     })
+    expect(assertFileSizeAllowed).toHaveBeenCalledWith(env.DB, 'user-1', 10)
+    expect(assertFileSizeAllowed).toHaveBeenCalledWith(env.DB, 'user-1', manifestSize)
+    expect(reserveStorage).toHaveBeenCalledWith(env.DB, 'user-1', manifestSize)
     expect(putBlob).toHaveBeenCalledWith(
       env.STORAGE,
-      'user-1/meta/att-1',
+      'user-1/vaults/vault-1/attachments/att-1/manifest',
       expect.any(ArrayBuffer),
       'user-1'
     )
@@ -427,6 +535,8 @@ describe('blob routes', () => {
 
     expect(res.status).toBe(200)
     expect(putBlob).not.toHaveBeenCalled()
+    expect(assertFileSizeAllowed).toHaveBeenCalledWith(env.DB, 'user-1', 10)
+    expect(reserveStorage).not.toHaveBeenCalledWith(env.DB, 'user-1', 10)
   })
 
   it('returns upload session progress', async () => {
@@ -444,24 +554,38 @@ describe('blob routes', () => {
   })
 
   it('cancels an upload and deletes single-reference chunks', async () => {
-    state.chunk = { id: 'chunk-1', ref_count: 1 }
+    state.chunk = {
+      id: 'chunk-1',
+      ref_count: 1,
+      r2_key: 'user-1/vaults/vault-1/chunks/hash-0'
+    }
 
     const res = await app.request('/attachments/upload/session-1', { method: 'DELETE' }, env)
 
     expect(res.status).toBe(204)
-    expect(deleteBlob).toHaveBeenCalledWith(env.STORAGE, 'user-1/hash-0', 'user-1')
+    expect(deleteBlob).toHaveBeenCalledWith(
+      env.STORAGE,
+      'user-1/vaults/vault-1/chunks/hash-0',
+      'user-1'
+    )
+    expect(adjustStorageUsed).toHaveBeenCalledWith(env.DB, 'user-1', -10)
     expect(
       state.statements.some((entry) => entry.sql.includes('DELETE FROM upload_sessions'))
     ).toBe(true)
   })
 
   it('cancels an upload by decrementing shared chunks', async () => {
-    state.chunk = { id: 'chunk-1', ref_count: 2 }
+    state.chunk = {
+      id: 'chunk-1',
+      ref_count: 2,
+      r2_key: 'user-1/vaults/vault-1/chunks/hash-0'
+    }
 
     const res = await app.request('/attachments/upload/session-1', { method: 'DELETE' }, env)
 
     expect(res.status).toBe(204)
     expect(deleteBlob).not.toHaveBeenCalled()
+    expect(adjustStorageUsed).toHaveBeenCalledWith(env.DB, 'user-1', -10)
     expect(state.statements.some((entry) => entry.sql.includes('ref_count = ref_count - 1'))).toBe(
       true
     )
@@ -485,7 +609,11 @@ describe('blob routes', () => {
 
     res = await app.request('/attachments/chunks/hash-0', { method: 'GET' }, env)
     expect(res.status).toBe(200)
-    expect(getBlob).toHaveBeenCalledWith(env.STORAGE, 'user-1/hash-0', 'user-1')
+    expect(getBlob).toHaveBeenCalledWith(
+      env.STORAGE,
+      'user-1/vaults/vault-1/chunks/hash-0',
+      'user-1'
+    )
   })
 
   it('returns 404 for missing chunk metadata or missing chunk data', async () => {
@@ -496,7 +624,7 @@ describe('blob routes', () => {
     res = await app.request('/attachments/chunks/missing', { method: 'GET' }, env)
     expect(res.status).toBe(404)
 
-    state.chunk = { r2_key: 'user-1/hash-0' }
+    state.chunk = { r2_key: 'user-1/vaults/vault-1/chunks/hash-0' }
     vi.mocked(getBlob).mockResolvedValueOnce(null)
     res = await app.request('/attachments/chunks/hash-0', { method: 'GET' }, env)
     expect(res.status).toBe(404)
@@ -509,13 +637,20 @@ describe('blob routes', () => {
 
     res = await app.request('/attachments/att-1/manifest', { method: 'PUT', body: 'manifest' }, env)
     expect(res.status).toBe(200)
-    expect(await res.json()).toEqual({ manifest_key: 'user-1/meta/att-1' })
+    expect(await res.json()).toEqual({
+      manifest_key: 'user-1/vaults/vault-1/attachments/att-1/manifest'
+    })
     expect(putBlob).toHaveBeenCalledWith(
       env.STORAGE,
-      'user-1/meta/att-1',
+      'user-1/vaults/vault-1/attachments/att-1/manifest',
       expect.any(ArrayBuffer),
       'user-1'
     )
+    expect(env.STORAGE.head).toHaveBeenCalledWith(
+      'user-1/vaults/vault-1/attachments/att-1/manifest'
+    )
+    expect(assertFileSizeAllowed).toHaveBeenCalledWith(env.DB, 'user-1', 8)
+    expect(reserveStorage).toHaveBeenCalledWith(env.DB, 'user-1', 3)
   })
 
   it('returns 404 when a manifest is missing', async () => {

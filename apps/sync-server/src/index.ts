@@ -129,6 +129,8 @@ app.use('*', async (c, next) => {
     'OTP_HMAC_KEY',
     'RECOVERY_DUMMY_SECRET',
     'WEBHOOK_HMAC_KEY',
+    'PADDLE_WEBHOOK_SECRET',
+    'PADDLE_CHECKOUT_TOKEN_SECRET',
     'TELEMETRY_HMAC_KEY'
   ] as const
 

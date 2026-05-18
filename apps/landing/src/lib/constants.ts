@@ -337,9 +337,11 @@ export const PRICING_TIERS = [
     period: 'paid once',
     description: 'Support memrynote.',
     features: [
-      'Everything in Plus',
+      'Everything in Pro',
       '50 GB encrypted sync storage',
       'Unlimited vaults',
+      '200 MB per file',
+      '365 days of version history',
       'Early access to new features',
       'Your name in the credits',
       'Help keep memrynote independent'
@@ -353,7 +355,7 @@ export const FAQ_ITEMS = [
   {
     question: 'Is memrynote free?',
     answer:
-      'memrynote offers a generous free tier for personal use on desktop. Core features like notes, tasks, journal, and inbox are completely free with no limits. Pro features like publishing to web, real-time collaboration, and mobile sync require a subscription.'
+      'Yes. The desktop app is free for local use with no account required. Plus, Pro, and Believer are only for hosted encrypted sync.'
   },
   {
     question: 'Where is my data stored?',
@@ -363,12 +365,12 @@ export const FAQ_ITEMS = [
   {
     question: 'Is my data secure?',
     answer:
-      'Yes. Your data lives on your device — not our servers. When you use Pro features like sync, everything is encrypted end-to-end. Only you (and people you explicitly share with) can read your content. We literally cannot access it.'
+      'Yes. Your local vault stays on your device. When you use paid Sync, everything is encrypted end-to-end before upload. Only your devices can read your content.'
   },
   {
     question: 'Can I sync between devices?',
     answer:
-      "Absolutely! Since your vault is just a folder, you can use any sync service you prefer — memrynote Sync, iCloud, Dropbox, Google Drive, Syncthing, or even Git. We don't lock you into our own sync solution."
+      'Yes. Hosted memrynote Sync is paid and end-to-end encrypted. You can also keep the app local and use your own folder sync setup if that fits your workflow.'
   },
   {
     question: 'Is there a mobile app?',
@@ -579,7 +581,7 @@ export const USE_CASES = [
   }
 ] as const
 
-export type CheckoutPlanId = 'standard' | 'plus' | 'believer'
+export type CheckoutPlanId = 'plus' | 'pro' | 'believer'
 export type SyncPlanId = 'free' | CheckoutPlanId
 
 export type SyncPlanEmphasis = 'standard' | 'recommended' | 'founding'
@@ -619,7 +621,7 @@ export const SYNC_PLAN_TIERS: readonly SyncPlanTier[] = [
     emphasis: 'standard'
   },
   {
-    id: 'standard',
+    id: 'plus',
     name: 'Plus',
     tagline: 'One vault, encrypted, everywhere.',
     monthlyPrice: 5,
@@ -639,10 +641,10 @@ export const SYNC_PLAN_TIERS: readonly SyncPlanTier[] = [
     ],
     cta: 'Get Plus',
     emphasis: 'standard',
-    checkoutPlanId: 'standard'
+    checkoutPlanId: 'plus'
   },
   {
-    id: 'plus',
+    id: 'pro',
     name: 'Pro',
     tagline: 'More room for serious sync.',
     monthlyPrice: 10,
@@ -659,7 +661,7 @@ export const SYNC_PLAN_TIERS: readonly SyncPlanTier[] = [
     ],
     cta: 'Get Pro',
     emphasis: 'recommended',
-    checkoutPlanId: 'plus',
+    checkoutPlanId: 'pro',
     ribbon: 'Most popular'
   },
   {
@@ -671,7 +673,7 @@ export const SYNC_PLAN_TIERS: readonly SyncPlanTier[] = [
     annualMonthlyEquivalent: null,
     lifetimePrice: 500,
     features: [
-      'Everything in Plus',
+      'Everything in Pro',
       '50 GB encrypted sync storage',
       'Unlimited vaults',
       '200 MB per file',
@@ -692,7 +694,7 @@ export const SYNC_PLAN_TIERS: readonly SyncPlanTier[] = [
 export type PlanComparisonValue = string | boolean
 
 export const PLAN_COMPARISON_MATRIX = {
-  plans: ['free', 'standard', 'plus', 'believer'] as const,
+  plans: ['free', 'plus', 'pro', 'believer'] as const,
   sections: [
     {
       title: 'Core features',
@@ -700,43 +702,43 @@ export const PLAN_COMPARISON_MATRIX = {
         {
           feature: 'Create notes, tasks, save links & files',
           free: true,
-          standard: true,
           plus: true,
+          pro: true,
           believer: true
         },
         {
           feature: 'Local-first desktop app',
           free: true,
-          standard: true,
           plus: true,
+          pro: true,
           believer: true
         },
         {
           feature: 'Full-text search',
           free: true,
-          standard: true,
           plus: true,
+          pro: true,
           believer: true
         },
         {
           feature: 'Sync across your devices',
           free: false,
-          standard: true,
           plus: true,
+          pro: true,
           believer: true
         },
         {
           feature: 'Cloud backup & end-to-end encryption',
           free: false,
-          standard: true,
           plus: true,
+          pro: true,
           believer: true
         },
         {
           feature: 'Version history',
           free: false,
-          standard: '30 days',
-          plus: '365 days',
+          plus: '30 days',
+          pro: '365 days',
           believer: '365 days'
         }
       ]
@@ -747,29 +749,29 @@ export const PLAN_COMPARISON_MATRIX = {
         {
           feature: 'Encrypted sync storage',
           free: 'Local only',
-          standard: '1 GB',
-          plus: '10 GB',
+          plus: '1 GB',
+          pro: '10 GB',
           believer: '50 GB'
         },
         {
           feature: 'File upload limit',
           free: 'Local only',
-          standard: '5 MB',
-          plus: '200 MB',
+          plus: '5 MB',
+          pro: '200 MB',
           believer: '200 MB'
         },
         {
           feature: 'Synced vaults',
           free: 'Local only',
-          standard: '1',
-          plus: '10',
+          plus: '1',
+          pro: '10',
           believer: 'Unlimited'
         },
         {
           feature: 'Devices',
           free: '1 device',
-          standard: 'Unlimited',
           plus: 'Unlimited',
+          pro: 'Unlimited',
           believer: 'Unlimited'
         }
       ]
@@ -780,29 +782,29 @@ export const PLAN_COMPARISON_MATRIX = {
         {
           feature: 'AI assistant',
           free: 'Coming soon',
-          standard: 'Coming soon',
           plus: 'Coming soon',
+          pro: 'Coming soon',
           believer: 'Early access'
         },
         {
           feature: 'AI search',
           free: 'Coming soon',
-          standard: 'Coming soon',
           plus: 'Coming soon',
+          pro: 'Coming soon',
           believer: 'Early access'
         },
         {
           feature: 'AI suggestions',
           free: 'Coming soon',
-          standard: 'Coming soon',
           plus: 'Coming soon',
+          pro: 'Coming soon',
           believer: 'Early access'
         },
         {
           feature: 'Latest AI models',
           free: false,
-          standard: false,
-          plus: 'Planned',
+          plus: false,
+          pro: 'Planned',
           believer: 'Early access'
         }
       ]
@@ -813,29 +815,29 @@ export const PLAN_COMPARISON_MATRIX = {
         {
           feature: 'Markdown export',
           free: true,
-          standard: true,
           plus: true,
+          pro: true,
           believer: true
         },
         {
           feature: 'Server never sees plaintext',
           free: 'Local only',
-          standard: true,
           plus: true,
+          pro: true,
           believer: true
         },
         {
           feature: 'Publishing',
           free: 'Planned',
-          standard: 'Planned',
           plus: 'Planned',
+          pro: 'Planned',
           believer: 'Early access'
         },
         {
           feature: 'Collaboration',
           free: 'Planned',
-          standard: 'Planned',
           plus: 'Planned',
+          pro: 'Planned',
           believer: 'Early access'
         }
       ]
@@ -846,29 +848,29 @@ export const PLAN_COMPARISON_MATRIX = {
         {
           feature: 'Priority support',
           free: false,
-          standard: false,
-          plus: true,
+          plus: false,
+          pro: true,
           believer: true
         },
         {
           feature: 'Priority access to new features',
           free: false,
-          standard: false,
           plus: false,
+          pro: false,
           believer: true
         },
         {
           feature: 'Name in the credits',
           free: false,
-          standard: false,
           plus: false,
+          pro: false,
           believer: true
         },
         {
           feature: 'Support independent software',
           free: true,
-          standard: true,
           plus: true,
+          pro: true,
           believer: true
         }
       ]
@@ -893,31 +895,31 @@ export const LIFECYCLE_STAGES: readonly {
     tone: 'sage'
   },
   {
-    id: 'grace',
-    label: 'Grace',
-    days: '+ 14 days',
-    description: 'Sync keeps working. Time to fix the card or change your mind.',
+    id: 'paused',
+    label: 'Payment inactive',
+    days: 'Immediately',
+    description: 'Hosted sync pauses and returns 402. The desktop app keeps working locally.',
     tone: 'amber'
   },
   {
-    id: 'read-only',
-    label: 'Read-only',
-    days: '+ 30 days',
-    description: 'Pulls succeed, pushes blocked. Pull everything to local at your pace.',
+    id: 'local',
+    label: 'Local access',
+    days: 'Always',
+    description: 'Your vault remains usable on disk. Sign in again only when you want hosted sync.',
     tone: 'terracotta'
   },
   {
-    id: 'purged',
-    label: 'Purged status',
-    days: 'Day 44',
-    description: 'Server returns 402 on every request. Encrypted blobs untouched.',
+    id: 'history-plus',
+    label: 'Plus history',
+    days: '30 days',
+    description: 'Encrypted deleted-item history is retained for the Plus recovery window.',
     tone: 'terracotta-dim'
   },
   {
-    id: 'deleted',
-    label: 'Blobs deleted',
-    days: 'Day 90',
-    description: 'Encrypted blobs physically removed from R2. Recovery ends.',
+    id: 'history-pro',
+    label: 'Pro / Believer history',
+    days: '365 days',
+    description: 'Pro and Believer keep the encrypted history window for a full year.',
     tone: 'ink'
   }
 ] as const
@@ -931,7 +933,7 @@ export const PRICING_FAQ_ITEMS = [
   {
     question: 'What happens if my card fails or I cancel?',
     answer:
-      'You get 14 days of grace where sync keeps working, then 30 days of read-only mode where pulls still succeed. After day 44 your account is marked purged but encrypted blobs sit untouched on our servers until day 90 — re-subscribe before then and everything restores intact.'
+      'Hosted sync pauses immediately until billing is active again. The local app keeps working with no account requirement; re-activate Sync from the app when you want devices connected again.'
   },
   {
     question: 'You store my data, but you cannot read it. What does that actually mean?',
@@ -946,7 +948,7 @@ export const PRICING_FAQ_ITEMS = [
   {
     question: 'What is the Believer tier really?',
     answer:
-      'A supporter package. You get everything in Plus, 50 GB of encrypted sync storage, unlimited vaults, early access to new features, your name in the credits, and the satisfaction of helping keep memrynote independent.'
+      'A supporter package. You get everything in Pro, 50 GB of encrypted sync storage, unlimited vaults, early access to new features, your name in the credits, and the satisfaction of helping keep memrynote independent.'
   },
   {
     question: 'Can I upgrade or downgrade later?',

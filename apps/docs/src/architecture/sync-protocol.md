@@ -11,6 +11,22 @@ Encrypted payloads move between devices through a Cloudflare Workers API backed 
 
 Splitting metadata from blob saves cost and lets the server reason about ordering without ever touching ciphertext.
 
+## Entitlement Gate
+
+Every `/sync/*` route is authenticated and paid-gated before record, CRDT, WebSocket, or blob
+logic runs. Paddle webhooks write the active `sync_entitlements` row for the user, and the server
+copies the plan limits into quota enforcement:
+
+| Plan     | Storage limit | Vault limit | File limit | Version history |
+| -------- | ------------- | ----------- | ---------- | --------------- |
+| Plus     | 1 GB          | 1           | 5 MB       | 30 days         |
+| Pro      | 10 GB         | 10          | 200 MB     | 365 days        |
+| Believer | 50 GB         | Unlimited   | 200 MB     | 365 days        |
+
+Inactive, past-due, paused, canceled, or expired entitlements return `SYNC_PAYMENT_REQUIRED` before
+sync data is read or written. Vault and file-size limits return `SYNC_VAULT_LIMIT_EXCEEDED` and
+`STORAGE_FILE_TOO_LARGE`.
+
 ## Sync Items
 
 Every domain object syncs as a `sync_item`. The server sees:
@@ -95,6 +111,7 @@ Deletions include `deleted_at` inside the **Ed25519-signed** payload — prevent
 | ------------------ | ---------------------------------------------------------- |
 | Offline            | Outbox queues; retry with backoff                          |
 | Auth expired       | Refresh token; if rotation failed, prompt sign-in          |
+| Payment required   | Sync stays local-only until a paid plan is active          |
 | Quota exceeded     | Surfaces in [Settings → Vault](/user-guide/settings#vault) |
 | Server unavailable | Exponential backoff; status indicator turns yellow         |
 | Blob hash mismatch | Reject the item; log; alert health view                    |

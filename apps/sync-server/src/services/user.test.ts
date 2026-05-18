@@ -144,7 +144,7 @@ describe('createUser', () => {
     expect(user.key_verifier).toBeNull()
   })
 
-  it('should default storage_used to 0 and storage_limit to 5GB', async () => {
+  it('should default storage_used to 0 and storage_limit to 0 until paid', async () => {
     // #when
     const user = await createUser(db as unknown as D1Database, {
       email: 'alice@example.com',
@@ -153,7 +153,7 @@ describe('createUser', () => {
 
     // #then
     expect(user.storage_used).toBe(0)
-    expect(user.storage_limit).toBe(5368709120)
+    expect(user.storage_limit).toBe(0)
   })
 
   it('should set created_at and updated_at to current unix timestamp', async () => {

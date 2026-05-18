@@ -2,15 +2,25 @@ import { Hono } from 'hono'
 
 import { AppError, ErrorCodes } from '../lib/errors'
 import { authMiddleware } from '../middleware/auth'
+import { paidSyncMiddleware } from '../middleware/paid-sync'
 import { createRateLimiter } from '../middleware/rate-limit'
-import { putBlob, getBlob, deleteBlob } from '../services/blob'
-import { checkQuota } from '../services/quota'
+import {
+  deleteBlob,
+  generateAttachmentChunkKey,
+  generateAttachmentManifestKey,
+  generateBlobKey,
+  getBlob,
+  putBlob
+} from '../services/blob'
+import { assertFileSizeAllowed } from '../services/entitlements'
+import { adjustStorageUsed, reserveStorage } from '../services/quota'
 import { UploadInitRequestSchema } from '@memry/contracts/blob-api'
 import type { AppContext } from '../types'
 
 export const blob = new Hono<AppContext>()
 
 blob.use('*', authMiddleware)
+blob.use('*', paidSyncMiddleware)
 
 const MAX_FILE_SIZE = 500 * 1024 * 1024
 const UPLOAD_SESSION_TTL = 24 * 60 * 60
@@ -45,19 +55,35 @@ const uploadSessionLimit = createRateLimiter({
 
 blob.put('/blob/:blob_key', blobUploadLimit, async (c) => {
   const userId = c.get('userId')!
+  const vaultId = c.get('vaultId')!
   const blobKey = c.req.param('blob_key')
+  const key = generateBlobKey(userId, blobKey, vaultId)
 
   const body = await c.req.arrayBuffer()
   if (body.byteLength > MAX_FILE_SIZE) {
     throw new AppError(ErrorCodes.VALIDATION_BODY_TOO_LARGE, 'Blob exceeds 500MB limit', 413)
   }
 
-  await checkQuota(c.env.DB, userId, body.byteLength)
+  await assertFileSizeAllowed(c.env.DB, userId, body.byteLength)
+  const existing = await c.env.STORAGE.head(key)
+  const deltaBytes = body.byteLength - (existing?.size ?? 0)
+  if (deltaBytes > 0) {
+    await reserveStorage(c.env.DB, userId, deltaBytes)
+  }
 
-  const key = `${userId}/items/${blobKey}`
-  const result = await putBlob(c.env.STORAGE, key, body, userId)
+  let result: R2Object
+  try {
+    result = await putBlob(c.env.STORAGE, key, body, userId)
+  } catch (error) {
+    if (deltaBytes > 0) {
+      await adjustStorageUsed(c.env.DB, userId, -deltaBytes)
+    }
+    throw error
+  }
 
-  await updateStorageUsed(c.env.DB, userId, body.byteLength)
+  if (deltaBytes < 0) {
+    await adjustStorageUsed(c.env.DB, userId, deltaBytes)
+  }
 
   return c.json({
     blob_key: blobKey,
@@ -68,8 +94,9 @@ blob.put('/blob/:blob_key', blobUploadLimit, async (c) => {
 
 blob.get('/blob/:blob_key', blobDownloadLimit, async (c) => {
   const userId = c.get('userId')!
+  const vaultId = c.get('vaultId')!
   const blobKey = c.req.param('blob_key')
-  const key = `${userId}/items/${blobKey}`
+  const key = generateBlobKey(userId, blobKey, vaultId)
 
   const rangeHeader = c.req.header('Range')
 
@@ -113,8 +140,9 @@ blob.get('/blob/:blob_key', blobDownloadLimit, async (c) => {
 
 blob.delete('/blob/:blob_key', blobUploadLimit, async (c) => {
   const userId = c.get('userId')!
+  const vaultId = c.get('vaultId')!
   const blobKey = c.req.param('blob_key')
-  const key = `${userId}/items/${blobKey}`
+  const key = generateBlobKey(userId, blobKey, vaultId)
 
   const existing = await c.env.STORAGE.head(key)
   if (!existing) {
@@ -124,7 +152,7 @@ blob.delete('/blob/:blob_key', blobUploadLimit, async (c) => {
 
   const size = existing.size
   await deleteBlob(c.env.STORAGE, key, userId)
-  await updateStorageUsed(c.env.DB, userId, -size)
+  await adjustStorageUsed(c.env.DB, userId, -size)
 
   return new Response(null, { status: 204 })
 })
@@ -135,6 +163,7 @@ blob.delete('/blob/:blob_key', blobUploadLimit, async (c) => {
 
 blob.post('/attachments/upload/initiate', uploadSessionLimit, async (c) => {
   const userId = c.get('userId')!
+  const vaultId = c.get('vaultId')!
 
   const body: unknown = await c.req.json()
   const parsed = UploadInitRequestSchema.safeParse(body)
@@ -156,24 +185,41 @@ blob.post('/attachments/upload/initiate', uploadSessionLimit, async (c) => {
     )
   }
 
-  await checkQuota(c.env.DB, userId, totalSize)
+  await assertFileSizeAllowed(c.env.DB, userId, totalSize)
+  await reserveStorage(c.env.DB, userId, totalSize)
 
   const now = Math.floor(Date.now() / 1000)
   const sessionId = crypto.randomUUID()
   const expiresAt = now + UPLOAD_SESSION_TTL
 
-  await c.env.DB.prepare(
-    `INSERT INTO upload_sessions (id, user_id, attachment_id, filename, total_size, chunk_count, uploaded_chunks, expires_at, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, '[]', ?, ?)`
-  )
-    .bind(sessionId, userId, attachmentId, filename, totalSize, chunkCount, expiresAt, now)
-    .run()
+  try {
+    await c.env.DB.prepare(
+      `INSERT INTO upload_sessions (id, user_id, vault_id, attachment_id, filename, total_size, chunk_count, uploaded_chunks, expires_at, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, '[]', ?, ?)`
+    )
+      .bind(
+        sessionId,
+        userId,
+        vaultId,
+        attachmentId,
+        filename,
+        totalSize,
+        chunkCount,
+        expiresAt,
+        now
+      )
+      .run()
+  } catch (error) {
+    await adjustStorageUsed(c.env.DB, userId, -totalSize)
+    throw error
+  }
 
   return c.json({ sessionId, expiresAt }, 201)
 })
 
 blob.put('/attachments/upload/:session_id/chunk/:chunk_index', chunkUploadLimit, async (c) => {
   const userId = c.get('userId')!
+  const vaultId = c.get('vaultId')!
   const sessionId = c.req.param('session_id')
   const chunkIndex = parseInt(c.req.param('chunk_index'), 10)
 
@@ -181,7 +227,7 @@ blob.put('/attachments/upload/:session_id/chunk/:chunk_index', chunkUploadLimit,
     throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid chunk_index', 400)
   }
 
-  const session = await getUploadSession(c.env.DB, sessionId, userId)
+  const session = await getUploadSession(c.env.DB, sessionId, userId, vaultId)
 
   if (chunkIndex >= session.chunk_count) {
     throw new AppError(
@@ -191,20 +237,29 @@ blob.put('/attachments/upload/:session_id/chunk/:chunk_index', chunkUploadLimit,
     )
   }
 
-  const uploadedChunks: Array<{ i: number; h: string }> = JSON.parse(session.uploaded_chunks)
+  const uploadedChunks = parseUploadedChunks(session.uploaded_chunks)
   if (uploadedChunks.some((c) => c.i === chunkIndex)) {
     throw new AppError(ErrorCodes.UPLOAD_CHUNK_CONFLICT, 'Chunk already uploaded', 409)
   }
 
   const chunkData = await c.req.arrayBuffer()
+  const uploadedBytes = getUploadedByteTotal(uploadedChunks)
+  if (uploadedBytes === null || uploadedBytes + chunkData.byteLength > session.total_size) {
+    throw new AppError(
+      ErrorCodes.STORAGE_FILE_TOO_LARGE,
+      'Uploaded chunks exceed declared file size',
+      413
+    )
+  }
+
   const chunkHash = await sha256Hex(chunkData)
 
-  const chunkR2Key = `${userId}/${chunkHash}`
+  const chunkR2Key = generateAttachmentChunkKey(userId, vaultId, chunkHash)
 
   const existingChunk = await c.env.DB.prepare(
-    'SELECT id, r2_key FROM blob_chunks WHERE user_id = ? AND hash = ?'
+    'SELECT id, r2_key FROM blob_chunks WHERE user_id = ? AND vault_id = ? AND hash = ?'
   )
-    .bind(userId, chunkHash)
+    .bind(userId, vaultId, chunkHash)
     .first<{ id: string; r2_key: string }>()
 
   if (existingChunk) {
@@ -216,16 +271,18 @@ blob.put('/attachments/upload/:session_id/chunk/:chunk_index', chunkUploadLimit,
 
     const now = Math.floor(Date.now() / 1000)
     await c.env.DB.prepare(
-      `INSERT INTO blob_chunks (id, hash, user_id, r2_key, size_bytes, ref_count, created_at)
-         VALUES (?, ?, ?, ?, ?, 1, ?)`
+      `INSERT INTO blob_chunks (id, hash, user_id, vault_id, r2_key, size_bytes, ref_count, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, 1, ?)`
     )
-      .bind(crypto.randomUUID(), chunkHash, userId, chunkR2Key, chunkData.byteLength, now)
+      .bind(crypto.randomUUID(), chunkHash, userId, vaultId, chunkR2Key, chunkData.byteLength, now)
       .run()
   }
 
-  uploadedChunks.push({ i: chunkIndex, h: chunkHash })
-  await c.env.DB.prepare('UPDATE upload_sessions SET uploaded_chunks = ? WHERE id = ?')
-    .bind(JSON.stringify(uploadedChunks), sessionId)
+  uploadedChunks.push({ i: chunkIndex, h: chunkHash, b: chunkData.byteLength })
+  await c.env.DB.prepare(
+    'UPDATE upload_sessions SET uploaded_chunks = ? WHERE id = ? AND user_id = ? AND vault_id = ?'
+  )
+    .bind(JSON.stringify(uploadedChunks), sessionId, userId, vaultId)
     .run()
 
   return c.json({
@@ -236,11 +293,12 @@ blob.put('/attachments/upload/:session_id/chunk/:chunk_index', chunkUploadLimit,
 
 blob.post('/attachments/upload/:session_id/complete', chunkUploadLimit, async (c) => {
   const userId = c.get('userId')!
+  const vaultId = c.get('vaultId')!
   const sessionId = c.req.param('session_id')
 
-  const session = await getUploadSession(c.env.DB, sessionId, userId)
+  const session = await getUploadSession(c.env.DB, sessionId, userId, vaultId)
 
-  const uploadedEntries: Array<{ i: number; h: string }> = JSON.parse(session.uploaded_chunks)
+  const uploadedEntries = parseUploadedChunks(session.uploaded_chunks)
   const uploadedIndices = new Set(uploadedEntries.map((e) => e.i))
   const expected = Array.from({ length: session.chunk_count }, (_, i) => i)
   const missing = expected.filter((i) => !uploadedIndices.has(i))
@@ -255,30 +313,68 @@ blob.post('/attachments/upload/:session_id/complete', chunkUploadLimit, async (c
     )
   }
 
-  const body: unknown = await c.req.json()
-  if (body && typeof body === 'object' && 'encryptedManifest' in body) {
-    const manifestKey = `${userId}/meta/${session.attachment_id}`
-    const manifestData = JSON.stringify(body)
-    const manifestBytes = new TextEncoder().encode(manifestData)
-    await putBlob(c.env.STORAGE, manifestKey, manifestBytes.buffer as ArrayBuffer, userId)
+  const actualBytes = getUploadedByteTotal(uploadedEntries)
+  if (actualBytes !== session.total_size) {
+    throw new AppError(
+      ErrorCodes.UPLOAD_INCOMPLETE,
+      'Uploaded chunks do not match declared file size',
+      400
+    )
   }
 
-  await updateStorageUsed(c.env.DB, userId, session.total_size)
+  const body: unknown = await c.req.json()
+  await assertFileSizeAllowed(c.env.DB, userId, session.total_size)
+  let manifestKey: string | null = null
+  let manifestBytes: Uint8Array | null = null
+  let manifestDeltaBytes = 0
 
-  await c.env.DB.prepare('DELETE FROM upload_sessions WHERE id = ?').bind(sessionId).run()
+  if (body && typeof body === 'object' && 'encryptedManifest' in body) {
+    manifestKey = generateAttachmentManifestKey(userId, session.attachment_id, vaultId)
+    const manifestData = JSON.stringify(body)
+    manifestBytes = new TextEncoder().encode(manifestData)
+    await assertFileSizeAllowed(c.env.DB, userId, manifestBytes.byteLength)
+    const existingManifest = await c.env.STORAGE.head(manifestKey)
+    manifestDeltaBytes = manifestBytes.byteLength - (existingManifest?.size ?? 0)
+  }
+
+  if (manifestDeltaBytes > 0) {
+    await reserveStorage(c.env.DB, userId, manifestDeltaBytes)
+  }
+
+  if (manifestKey && manifestBytes) {
+    try {
+      await putBlob(c.env.STORAGE, manifestKey, manifestBytes.buffer as ArrayBuffer, userId)
+    } catch (error) {
+      if (manifestDeltaBytes > 0) {
+        await adjustStorageUsed(c.env.DB, userId, -manifestDeltaBytes)
+      }
+      throw error
+    }
+  }
+
+  if (manifestDeltaBytes < 0) {
+    await adjustStorageUsed(c.env.DB, userId, manifestDeltaBytes)
+  }
+
+  await c.env.DB.prepare(
+    'DELETE FROM upload_sessions WHERE id = ? AND user_id = ? AND vault_id = ?'
+  )
+    .bind(sessionId, userId, vaultId)
+    .run()
 
   return c.json({
     attachment_id: session.attachment_id,
-    manifest_key: `${userId}/meta/${session.attachment_id}`,
+    manifest_key: generateAttachmentManifestKey(userId, session.attachment_id, vaultId),
     size: session.total_size
   })
 })
 
 blob.get('/attachments/upload/:session_id', uploadSessionLimit, async (c) => {
   const userId = c.get('userId')!
+  const vaultId = c.get('vaultId')!
   const sessionId = c.req.param('session_id')
 
-  const session = await getUploadSession(c.env.DB, sessionId, userId)
+  const session = await getUploadSession(c.env.DB, sessionId, userId, vaultId)
 
   const entries: Array<{ i: number }> = JSON.parse(session.uploaded_chunks)
   return c.json({
@@ -293,24 +389,25 @@ blob.get('/attachments/upload/:session_id', uploadSessionLimit, async (c) => {
 
 blob.delete('/attachments/upload/:session_id', uploadSessionLimit, async (c) => {
   const userId = c.get('userId')!
+  const vaultId = c.get('vaultId')!
   const sessionId = c.req.param('session_id')
 
-  const session = await getUploadSession(c.env.DB, sessionId, userId)
+  const session = await getUploadSession(c.env.DB, sessionId, userId, vaultId)
 
   const uploadedEntries: Array<{ i: number; h: string }> = JSON.parse(session.uploaded_chunks)
   const sessionHashes = new Set(uploadedEntries.map((e) => e.h))
 
   for (const hash of sessionHashes) {
     const chunk = await c.env.DB.prepare(
-      'SELECT id, ref_count FROM blob_chunks WHERE user_id = ? AND hash = ?'
+      'SELECT id, ref_count, r2_key FROM blob_chunks WHERE user_id = ? AND vault_id = ? AND hash = ?'
     )
-      .bind(userId, hash)
-      .first<{ id: string; ref_count: number }>()
+      .bind(userId, vaultId, hash)
+      .first<{ id: string; ref_count: number; r2_key: string }>()
 
     if (!chunk) continue
 
     if (chunk.ref_count <= 1) {
-      await deleteBlob(c.env.STORAGE, `${userId}/${hash}`, userId)
+      await deleteBlob(c.env.STORAGE, chunk.r2_key, userId)
       await c.env.DB.prepare('DELETE FROM blob_chunks WHERE id = ?').bind(chunk.id).run()
     } else {
       await c.env.DB.prepare('UPDATE blob_chunks SET ref_count = ref_count - 1 WHERE id = ?')
@@ -319,7 +416,14 @@ blob.delete('/attachments/upload/:session_id', uploadSessionLimit, async (c) => 
     }
   }
 
-  await c.env.DB.prepare('DELETE FROM upload_sessions WHERE id = ?').bind(sessionId).run()
+  const deleteResult = await c.env.DB.prepare(
+    'DELETE FROM upload_sessions WHERE id = ? AND user_id = ? AND vault_id = ?'
+  )
+    .bind(sessionId, userId, vaultId)
+    .run()
+  if ((deleteResult.meta.changes ?? 0) > 0) {
+    await adjustStorageUsed(c.env.DB, userId, -session.total_size)
+  }
 
   return new Response(null, { status: 204 })
 })
@@ -330,12 +434,13 @@ blob.delete('/attachments/upload/:session_id', uploadSessionLimit, async (c) => 
 
 blob.on('HEAD', '/attachments/chunks/:chunk_hash', blobDownloadLimit, async (c) => {
   const userId = c.get('userId')!
+  const vaultId = c.get('vaultId')!
   const chunkHash = c.req.param('chunk_hash')
 
   const chunk = await c.env.DB.prepare(
-    'SELECT size_bytes FROM blob_chunks WHERE user_id = ? AND hash = ?'
+    'SELECT size_bytes FROM blob_chunks WHERE user_id = ? AND vault_id = ? AND hash = ?'
   )
-    .bind(userId, chunkHash)
+    .bind(userId, vaultId, chunkHash)
     .first<{ size_bytes: number }>()
 
   if (!chunk) {
@@ -350,12 +455,13 @@ blob.on('HEAD', '/attachments/chunks/:chunk_hash', blobDownloadLimit, async (c) 
 
 blob.get('/attachments/chunks/:chunk_hash', blobDownloadLimit, async (c) => {
   const userId = c.get('userId')!
+  const vaultId = c.get('vaultId')!
   const chunkHash = c.req.param('chunk_hash')
 
   const chunk = await c.env.DB.prepare(
-    'SELECT r2_key FROM blob_chunks WHERE user_id = ? AND hash = ?'
+    'SELECT r2_key FROM blob_chunks WHERE user_id = ? AND vault_id = ? AND hash = ?'
   )
-    .bind(userId, chunkHash)
+    .bind(userId, vaultId, chunkHash)
     .first<{ r2_key: string }>()
 
   if (!chunk) {
@@ -380,8 +486,9 @@ blob.get('/attachments/chunks/:chunk_hash', blobDownloadLimit, async (c) => {
 
 blob.get('/attachments/:attachment_id/manifest', blobDownloadLimit, async (c) => {
   const userId = c.get('userId')!
+  const vaultId = c.get('vaultId')!
   const attachmentId = c.req.param('attachment_id')
-  const manifestKey = `${userId}/meta/${attachmentId}`
+  const manifestKey = generateAttachmentManifestKey(userId, attachmentId, vaultId)
 
   const obj = await getBlob(c.env.STORAGE, manifestKey, userId)
   if (!obj) {
@@ -394,11 +501,30 @@ blob.get('/attachments/:attachment_id/manifest', blobDownloadLimit, async (c) =>
 
 blob.put('/attachments/:attachment_id/manifest', blobUploadLimit, async (c) => {
   const userId = c.get('userId')!
+  const vaultId = c.get('vaultId')!
   const attachmentId = c.req.param('attachment_id')
-  const manifestKey = `${userId}/meta/${attachmentId}`
+  const manifestKey = generateAttachmentManifestKey(userId, attachmentId, vaultId)
 
   const body = await c.req.arrayBuffer()
-  await putBlob(c.env.STORAGE, manifestKey, body, userId)
+  await assertFileSizeAllowed(c.env.DB, userId, body.byteLength)
+
+  const existing = await c.env.STORAGE.head(manifestKey)
+  const deltaBytes = body.byteLength - (existing?.size ?? 0)
+  if (deltaBytes > 0) {
+    await reserveStorage(c.env.DB, userId, deltaBytes)
+  }
+
+  try {
+    await putBlob(c.env.STORAGE, manifestKey, body, userId)
+  } catch (error) {
+    if (deltaBytes > 0) {
+      await adjustStorageUsed(c.env.DB, userId, -deltaBytes)
+    }
+    throw error
+  }
+  if (deltaBytes < 0) {
+    await adjustStorageUsed(c.env.DB, userId, deltaBytes)
+  }
 
   return c.json({ manifest_key: manifestKey })
 })
@@ -410,6 +536,7 @@ blob.put('/attachments/:attachment_id/manifest', blobUploadLimit, async (c) => {
 interface UploadSessionRow {
   id: string
   user_id: string
+  vault_id: string
   attachment_id: string
   filename: string
   total_size: number
@@ -419,14 +546,36 @@ interface UploadSessionRow {
   created_at: number
 }
 
+interface UploadedChunkEntry {
+  i: number
+  h: string
+  b?: number
+}
+
+function parseUploadedChunks(value: string): UploadedChunkEntry[] {
+  const parsed = JSON.parse(value) as UploadedChunkEntry[]
+  return Array.isArray(parsed) ? parsed : []
+}
+
+function getUploadedByteTotal(entries: UploadedChunkEntry[]): number | null {
+  let total = 0
+  for (const entry of entries) {
+    const bytes = entry.b
+    if (typeof bytes !== 'number' || !Number.isInteger(bytes) || bytes < 0) return null
+    total += bytes
+  }
+  return total
+}
+
 async function getUploadSession(
   db: D1Database,
   sessionId: string,
-  userId: string
+  userId: string,
+  vaultId: string
 ): Promise<UploadSessionRow> {
   const session = await db
-    .prepare('SELECT * FROM upload_sessions WHERE id = ? AND user_id = ?')
-    .bind(sessionId, userId)
+    .prepare('SELECT * FROM upload_sessions WHERE id = ? AND user_id = ? AND vault_id = ?')
+    .bind(sessionId, userId, vaultId)
     .first<UploadSessionRow>()
 
   if (!session) {
@@ -440,20 +589,6 @@ async function getUploadSession(
 
   return session
 }
-
-async function updateStorageUsed(
-  db: D1Database,
-  userId: string,
-  deltaBytes: number
-): Promise<void> {
-  await db
-    .prepare(
-      `UPDATE users SET storage_used = MAX(0, storage_used + ?), updated_at = ? WHERE id = ?`
-    )
-    .bind(deltaBytes, Math.floor(Date.now() / 1000), userId)
-    .run()
-}
-
 function assertBlobOwner(key: string, userId: string): void {
   if (!key.startsWith(`${userId}/`)) {
     throw new AppError(ErrorCodes.STORAGE_UNAUTHORIZED, 'Blob access denied', 403)

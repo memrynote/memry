@@ -187,7 +187,7 @@ pnpm dev:landing
 
 Open the printed URL + `/pricing` in a browser. Resize the window to these viewports (use browser devtools' device toolbar):
 
-1. **1280 × 800** (13" laptop): the first row of tier cards (Standard, Plus, Believer) should be fully visible above the fold. The hero band should measure ~220px tall.
+1. **1280 × 800** (13" laptop): the first row of tier cards (Free, Plus, Pro, Believer) should be fully visible above the fold. The hero band should measure ~220px tall.
 2. **1920 × 1080** (15"+ desktop): full first tier-card row plus the top of "Compare every limit" matrix should be visible without scrolling.
 3. **375 × 667** (iPhone SE / mobile portrait): the hero should be ~340px tall. The hard `<br />` between "respects" and "your wallet." should wrap cleanly (no awkward line breaks mid-word).
 

@@ -24,6 +24,9 @@ describe('D1 schema', () => {
         'refresh_tokens',
         'user_identities',
         'devices',
+        'sync_entitlements',
+        'sync_vaults',
+        'paddle_webhook_events',
         'linking_sessions',
         'sync_items',
         'server_cursor_sequence',
@@ -51,6 +54,10 @@ describe('D1 schema', () => {
         'idx_identity_user',
         'idx_devices_user',
         'idx_devices_user_active',
+        'idx_devices_user_vault',
+        'idx_sync_entitlements_subscription',
+        'idx_sync_entitlements_customer',
+        'idx_sync_vaults_user',
         'idx_refresh_user',
         'idx_refresh_device',
         'idx_linking_user',
@@ -148,5 +155,36 @@ describe('D1 schema', () => {
         expect.objectContaining({ table: 'devices', from: 'signer_device_id', to: 'id' })
       ])
     )
+  })
+
+  it('stores sync records and cursors under a vault id', () => {
+    const db = new Database(':memory:')
+    db.exec(loadSchemaSql())
+
+    const syncItemColumns = db.prepare('PRAGMA table_info(sync_items)').all() as Array<{
+      name: string
+    }>
+    const cursorColumns = db.prepare('PRAGMA table_info(device_sync_state)').all() as Array<{
+      name: string
+    }>
+    const crdtUpdateColumns = db.prepare('PRAGMA table_info(crdt_updates)').all() as Array<{
+      name: string
+    }>
+    const crdtSnapshotColumns = db.prepare('PRAGMA table_info(crdt_snapshots)').all() as Array<{
+      name: string
+    }>
+    const uploadSessionColumns = db.prepare('PRAGMA table_info(upload_sessions)').all() as Array<{
+      name: string
+    }>
+    const blobChunkColumns = db.prepare('PRAGMA table_info(blob_chunks)').all() as Array<{
+      name: string
+    }>
+
+    expect(syncItemColumns.map((column) => column.name)).toContain('vault_id')
+    expect(cursorColumns.map((column) => column.name)).toContain('vault_id')
+    expect(crdtUpdateColumns.map((column) => column.name)).toContain('vault_id')
+    expect(crdtSnapshotColumns.map((column) => column.name)).toContain('vault_id')
+    expect(uploadSessionColumns.map((column) => column.name)).toContain('vault_id')
+    expect(blobChunkColumns.map((column) => column.name)).toContain('vault_id')
   })
 })

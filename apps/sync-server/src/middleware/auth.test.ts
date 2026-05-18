@@ -22,12 +22,14 @@ import { authMiddleware } from './auth'
 
 function createContext(options?: {
   authHeader?: string
-  device?: { id: string; revoked_at: string | null } | null
+  device?: { id: string; revoked_at: string | null; vault_id?: string | null } | null
   jwtPublicKey?: string
 }) {
   const authHeader = options?.authHeader ?? 'Bearer access-token'
   const device =
-    options && 'device' in options ? options.device : { id: 'device-1', revoked_at: null }
+    options && 'device' in options
+      ? options.device
+      : { id: 'device-1', revoked_at: null, vault_id: 'vault-1' }
   const jwtPublicKey = options?.jwtPublicKey ?? 'pem-key'
 
   const first = vi.fn(async () => device)
@@ -138,7 +140,7 @@ describe('auth middleware', () => {
     } satisfies Partial<AppError>)
 
     const revokedContext = createContext({
-      device: { id: 'device-1', revoked_at: '1700000000' }
+      device: { id: 'device-1', revoked_at: '1700000000', vault_id: 'vault-1' }
     }).context
 
     await expect(
@@ -161,5 +163,6 @@ describe('auth middleware', () => {
     expect(next).toHaveBeenCalledTimes(1)
     expect(setMap.get('userId')).toBe('user-1')
     expect(setMap.get('deviceId')).toBe('device-1')
+    expect(setMap.get('vaultId')).toBe('vault-1')
   })
 })

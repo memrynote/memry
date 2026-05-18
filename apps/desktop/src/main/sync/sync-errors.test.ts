@@ -55,6 +55,15 @@ describe('classifyError', () => {
     expect(result.retryable).toBe(false)
   })
 
+  it('#given SyncServerError 402 #then sync_payment_required, not retryable', () => {
+    const err = new SyncServerError('Payment required', 402, 'SYNC_PAYMENT_REQUIRED')
+    const result = classifyError(err)
+
+    expect(result.category).toBe('sync_payment_required')
+    expect(result.message).toBe('A paid Sync plan is required')
+    expect(result.retryable).toBe(false)
+  })
+
   it('#given SyncServerError 400 #then server_error, not retryable', () => {
     const err = new SyncServerError('Bad Request', 400, 'invalid payload')
     const result = classifyError(err)

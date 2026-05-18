@@ -22,7 +22,8 @@ export const DeviceRegisterRequestSchema = z.object({
   authPublicKey: z.string().min(1),
   challengeSignature: z.string().min(1),
   challengeNonce: z.string().min(1),
-  sessionNonce: z.string().min(1).optional()
+  sessionNonce: z.string().min(1).optional(),
+  vaultId: z.string().min(1).max(128).optional()
 })
 
 export const FirstDeviceSetupRequestSchema = z.object({
