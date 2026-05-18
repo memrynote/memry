@@ -110,8 +110,8 @@ function Hero({ cadence, setCadence }: { cadence: Cadence; setCadence: (c: Caden
             your <span className="italic text-terracotta">wallet.</span>
           </h1>
           <p className="mx-auto mt-5 max-w-lg text-base leading-relaxed text-muted text-balance md:text-lg">
-            The local app stays free, forever. Sync is paid — fair, predictable, and end-to-end
-            encrypted before a single byte leaves your device.
+            Your private productivity OS stays free on your device. Paid sync keeps it safely
+            available everywhere — end-to-end encrypted before a single byte leaves.
           </p>
 
           <div className="mt-7 flex justify-center">
