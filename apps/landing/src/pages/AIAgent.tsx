@@ -170,10 +170,10 @@ function AIAgentHero() {
 function HeroChatMock() {
   return (
     <FeatureHeroScreenshot
-      src="/screenshots/ai-agent.png"
-      alt="memrynote AI agent panel reading a note and creating a treadmill walking program in the vault"
-      width={1756}
-      height={1004}
+      screenshot="notes"
+      alt="memrynote notes page showing a markdown note with properties, linked context, and vault structure"
+      width={1232}
+      height={870}
     />
   )
 }
