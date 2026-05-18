@@ -16,11 +16,13 @@ Notes, tasks, projects, journal, calendar, and an AI agent that actually has con
 [![Electron](https://img.shields.io/badge/built%20with-Electron-47848F.svg)](https://www.electronjs.org/)
 [![React 19](https://img.shields.io/badge/React-19-61DAFB.svg)](https://react.dev/)
 
-[Website](https://memrynote.com) · [Docs](https://docs.memrynote.com) · Desktop app coming at the end of June
+[Website](https://memrynote.com) · [Docs](https://docs.memrynote.com) · [Join the waitlist](https://memrynote.com/#waitlist)
 
 </div>
 
 ---
+
+> **Release status:** Current GitHub releases are not stable and are not ready for daily use. Please do not expect Memry to be usable yet. Join the [waitlist](https://memrynote.com/#waitlist); I'll announce the public-ready build when it's ready. ETA: end of July.
 
 Hi — I'm **[Kaan](https://x.com/h4yfans)**, the developer behind Memry. For years I bounced between four apps just to get through the day — inbox in one, calendar in another, notes somewhere else, tasks in a fourth — and with ADHD that constant jumping around drained me before I'd even started working. I wanted one calm place that held all of it: inbox, notes, daily journal, tasks, projects, calendar, and an AI agent that actually knows what I'm working on. And because not everyone needs every piece, every feature is a toggle — don't use a calendar? Turn it off. Not into AI? Turn that off too. Memry is the app I wish I'd had years ago, so I shipped it myself.
 
@@ -108,9 +110,9 @@ Optional, end-to-end encrypted, running on Cloudflare Workers + R2. Multi-device
 
 ### Desktop app
 
-Desktop installers for macOS, Windows, and Linux are coming at the end of June.
+Public-ready desktop installers for macOS, Windows, and Linux are expected by the end of July.
 
-When it lands: no signup, no telemetry-on-by-default. Open the app, pick a vault folder, start writing.
+Current GitHub releases are unstable preview builds. Join the [waitlist](https://memrynote.com/#waitlist) for the launch announcement before using Memry as a daily workspace.
 
 ### Build from Source
 
