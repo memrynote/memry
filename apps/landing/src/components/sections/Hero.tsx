@@ -50,7 +50,8 @@ export function Hero() {
               </h1>
 
               <p className="hero-fora-copy mx-auto text-muted">
-                One app for inbox, notes, tasks & journal — private by design, open at heart.
+                Your private productivity OS for inbox, notes, tasks & journal — synced safely.
+                Private by design, open at heart.
               </p>
             </motion.div>
 
