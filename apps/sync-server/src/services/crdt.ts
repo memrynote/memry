@@ -1,6 +1,9 @@
+import { generateCrdtKey } from './blob'
+
 interface CrdtUpdate {
   id: string
   user_id: string
+  vault_id: string
   note_id: string
   update_data: ArrayBuffer
   sequence_num: number
@@ -11,6 +14,7 @@ interface CrdtUpdate {
 interface CrdtSnapshot {
   id: string
   user_id: string
+  vault_id: string
   note_id: string
   blob_key: string
   sequence_num: number
@@ -22,18 +26,19 @@ interface CrdtSnapshot {
 const getMaxSequenceNumber = async (
   db: D1Database,
   userId: string,
+  vaultId: string,
   noteId: string
 ): Promise<number> => {
   const row = await db
     .prepare(
       `SELECT COALESCE(MAX(sequence_num), 0) as max_seq
        FROM (
-         SELECT sequence_num FROM crdt_updates WHERE user_id = ? AND note_id = ?
+         SELECT sequence_num FROM crdt_updates WHERE user_id = ? AND vault_id = ? AND note_id = ?
          UNION ALL
-         SELECT sequence_num FROM crdt_snapshots WHERE user_id = ? AND note_id = ?
+         SELECT sequence_num FROM crdt_snapshots WHERE user_id = ? AND vault_id = ? AND note_id = ?
        )`
     )
-    .bind(userId, noteId, userId, noteId)
+    .bind(userId, vaultId, noteId, userId, vaultId, noteId)
     .first<{ max_seq: number | null }>()
 
   return row?.max_seq ?? 0
@@ -42,6 +47,7 @@ const getMaxSequenceNumber = async (
 export const storeUpdates = async (
   db: D1Database,
   userId: string,
+  vaultId: string,
   noteId: string,
   signerDeviceId: string,
   updates: ArrayBuffer[]
@@ -55,16 +61,30 @@ export const storeUpdates = async (
 
     const row = await db
       .prepare(
-        `INSERT INTO crdt_updates (id, user_id, note_id, update_data, sequence_num, signer_device_id, created_at)
-         SELECT ?, ?, ?, ?, COALESCE(MAX(sequence_num), 0) + 1, ?, ?
+        `INSERT INTO crdt_updates (id, user_id, vault_id, note_id, update_data, sequence_num, signer_device_id, created_at)
+         SELECT ?, ?, ?, ?, ?, COALESCE(MAX(sequence_num), 0) + 1, ?, ?
          FROM (
-           SELECT sequence_num FROM crdt_updates WHERE user_id = ? AND note_id = ?
+           SELECT sequence_num FROM crdt_updates WHERE user_id = ? AND vault_id = ? AND note_id = ?
            UNION ALL
-           SELECT sequence_num FROM crdt_snapshots WHERE user_id = ? AND note_id = ?
+           SELECT sequence_num FROM crdt_snapshots WHERE user_id = ? AND vault_id = ? AND note_id = ?
          )
          RETURNING sequence_num`
       )
-      .bind(id, userId, noteId, update, signerDeviceId, now, userId, noteId, userId, noteId)
+      .bind(
+        id,
+        userId,
+        vaultId,
+        noteId,
+        update,
+        signerDeviceId,
+        now,
+        userId,
+        vaultId,
+        noteId,
+        userId,
+        vaultId,
+        noteId
+      )
       .first<{ sequence_num: number }>()
 
     sequences.push(row!.sequence_num)
@@ -81,15 +101,16 @@ export const storeUpdates = async (
 export const getUpdates = async (
   db: D1Database,
   userId: string,
+  vaultId: string,
   noteId: string,
   sinceSequence: number,
   limit = 100
 ): Promise<{ updates: CrdtUpdate[]; hasMore: boolean }> => {
   const rows = await db
     .prepare(
-      'SELECT id, user_id, note_id, update_data, sequence_num, signer_device_id, created_at FROM crdt_updates WHERE user_id = ? AND note_id = ? AND sequence_num > ? ORDER BY sequence_num ASC LIMIT ?'
+      'SELECT id, user_id, vault_id, note_id, update_data, sequence_num, signer_device_id, created_at FROM crdt_updates WHERE user_id = ? AND vault_id = ? AND note_id = ? AND sequence_num > ? ORDER BY sequence_num ASC LIMIT ?'
     )
-    .bind(userId, noteId, sinceSequence, limit + 1)
+    .bind(userId, vaultId, noteId, sinceSequence, limit + 1)
     .all<CrdtUpdate>()
 
   const results = rows.results ?? []
@@ -104,6 +125,7 @@ export const getUpdates = async (
 export const getBatchUpdates = async (
   db: D1Database,
   userId: string,
+  vaultId: string,
   notes: Array<{ noteId: string; since: number }>,
   limitPerNote: number
 ): Promise<Record<string, { updates: CrdtUpdate[]; hasMore: boolean }>> => {
@@ -112,9 +134,9 @@ export const getBatchUpdates = async (
   const statements = notes.map((n) =>
     db
       .prepare(
-        'SELECT id, user_id, note_id, update_data, sequence_num, signer_device_id, created_at FROM crdt_updates WHERE user_id = ? AND note_id = ? AND sequence_num > ? ORDER BY sequence_num ASC LIMIT ?'
+        'SELECT id, user_id, vault_id, note_id, update_data, sequence_num, signer_device_id, created_at FROM crdt_updates WHERE user_id = ? AND vault_id = ? AND note_id = ? AND sequence_num > ? ORDER BY sequence_num ASC LIMIT ?'
       )
-      .bind(userId, n.noteId, n.since, limitPerNote + 1)
+      .bind(userId, vaultId, n.noteId, n.since, limitPerNote + 1)
   )
 
   const batchResults = await db.batch(statements)
@@ -134,19 +156,20 @@ export const storeSnapshot = async (
   db: D1Database,
   storage: R2Bucket,
   userId: string,
+  vaultId: string,
   noteId: string,
   signerDeviceId: string,
   snapshotData: ArrayBuffer
 ): Promise<{ sequenceNum: number }> => {
   const id = crypto.randomUUID()
   const now = Math.floor(Date.now() / 1000)
-  const blobKey = `${userId}/crdt/${noteId}/snapshot`
-  const currentSeq = await getMaxSequenceNumber(db, userId, noteId)
+  const blobKey = generateCrdtKey(userId, noteId, vaultId)
+  const currentSeq = await getMaxSequenceNumber(db, userId, vaultId, noteId)
   const existingSnapshot = await db
     .prepare(
-      'SELECT sequence_num, size_bytes FROM crdt_snapshots WHERE user_id = ? AND note_id = ?'
+      'SELECT sequence_num, size_bytes FROM crdt_snapshots WHERE user_id = ? AND vault_id = ? AND note_id = ?'
     )
-    .bind(userId, noteId)
+    .bind(userId, vaultId, noteId)
     .first<{ sequence_num: number; size_bytes: number }>()
   // Client-uploaded snapshots do not include causal metadata proving they already
   // contain every server update above the prior snapshot watermark. Keep the
@@ -157,12 +180,22 @@ export const storeSnapshot = async (
 
   await db
     .prepare(
-      `INSERT INTO crdt_snapshots (id, user_id, note_id, blob_key, sequence_num, size_bytes, signer_device_id, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT (user_id, note_id)
+      `INSERT INTO crdt_snapshots (id, user_id, vault_id, note_id, blob_key, sequence_num, size_bytes, signer_device_id, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT (user_id, vault_id, note_id)
        DO UPDATE SET blob_key = excluded.blob_key, sequence_num = excluded.sequence_num, size_bytes = excluded.size_bytes, signer_device_id = excluded.signer_device_id, created_at = excluded.created_at`
     )
-    .bind(id, userId, noteId, blobKey, sequenceNum, snapshotData.byteLength, signerDeviceId, now)
+    .bind(
+      id,
+      userId,
+      vaultId,
+      noteId,
+      blobKey,
+      sequenceNum,
+      snapshotData.byteLength,
+      signerDeviceId,
+      now
+    )
     .run()
 
   const deltaBytes = snapshotData.byteLength - (existingSnapshot?.size_bytes ?? 0)
@@ -177,13 +210,14 @@ export const getSnapshot = async (
   db: D1Database,
   storage: R2Bucket,
   userId: string,
+  vaultId: string,
   noteId: string
 ): Promise<{ snapshotData: ArrayBuffer; sequenceNum: number; signerDeviceId: string } | null> => {
   const row = await db
     .prepare(
-      'SELECT blob_key, sequence_num, signer_device_id FROM crdt_snapshots WHERE user_id = ? AND note_id = ?'
+      'SELECT blob_key, sequence_num, signer_device_id FROM crdt_snapshots WHERE user_id = ? AND vault_id = ? AND note_id = ?'
     )
-    .bind(userId, noteId)
+    .bind(userId, vaultId, noteId)
     .first<{ blob_key: string; sequence_num: number; signer_device_id: string }>()
 
   if (!row) return null
@@ -198,25 +232,30 @@ export const getSnapshot = async (
 export const pruneUpdatesBeforeSnapshot = async (
   db: D1Database,
   userId: string,
+  vaultId: string,
   noteId: string
 ): Promise<number> => {
   const snapshot = await db
-    .prepare('SELECT sequence_num FROM crdt_snapshots WHERE user_id = ? AND note_id = ?')
-    .bind(userId, noteId)
+    .prepare(
+      'SELECT sequence_num FROM crdt_snapshots WHERE user_id = ? AND vault_id = ? AND note_id = ?'
+    )
+    .bind(userId, vaultId, noteId)
     .first<{ sequence_num: number }>()
 
   if (!snapshot) return 0
 
   const bytes = await db
     .prepare(
-      'SELECT COALESCE(SUM(length(update_data)), 0) as total_bytes FROM crdt_updates WHERE user_id = ? AND note_id = ? AND sequence_num <= ?'
+      'SELECT COALESCE(SUM(length(update_data)), 0) as total_bytes FROM crdt_updates WHERE user_id = ? AND vault_id = ? AND note_id = ? AND sequence_num <= ?'
     )
-    .bind(userId, noteId, snapshot.sequence_num)
+    .bind(userId, vaultId, noteId, snapshot.sequence_num)
     .first<{ total_bytes: number }>()
 
   const result = await db
-    .prepare('DELETE FROM crdt_updates WHERE user_id = ? AND note_id = ? AND sequence_num <= ?')
-    .bind(userId, noteId, snapshot.sequence_num)
+    .prepare(
+      'DELETE FROM crdt_updates WHERE user_id = ? AND vault_id = ? AND note_id = ? AND sequence_num <= ?'
+    )
+    .bind(userId, vaultId, noteId, snapshot.sequence_num)
     .run()
 
   const changes = result.meta.changes ?? 0

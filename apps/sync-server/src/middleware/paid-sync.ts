@@ -20,6 +20,7 @@ export const paidSyncMiddleware: MiddlewareHandler<AppContext> = async (c, next)
 
   const entitlement = await assertPaidSyncAccess(c.env.DB, userId)
   await ensureSyncVaultAllowed(c.env.DB, userId, vaultId, entitlement)
+  c.set('vaultId', vaultId)
   c.set('syncEntitlement', entitlement as SyncEntitlement)
 
   await next()

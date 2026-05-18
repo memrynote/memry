@@ -186,6 +186,7 @@ CREATE INDEX idx_linking_status ON linking_sessions(status) WHERE status IN ('pe
 CREATE TABLE sync_items (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  vault_id TEXT NOT NULL DEFAULT 'default',
   item_type TEXT NOT NULL,
   item_id TEXT NOT NULL,
   blob_key TEXT NOT NULL,
@@ -202,12 +203,12 @@ CREATE TABLE sync_items (
   server_cursor INTEGER NOT NULL,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
-  UNIQUE (user_id, item_type, item_id)
+  UNIQUE (user_id, vault_id, item_type, item_id)
 );
 
-CREATE INDEX idx_sync_user_cursor ON sync_items(user_id, server_cursor);
-CREATE INDEX idx_sync_type ON sync_items(user_id, item_type);
-CREATE INDEX idx_sync_deleted ON sync_items(user_id, deleted_at);
+CREATE INDEX idx_sync_user_cursor ON sync_items(user_id, vault_id, server_cursor);
+CREATE INDEX idx_sync_type ON sync_items(user_id, vault_id, item_type);
+CREATE INDEX idx_sync_deleted ON sync_items(user_id, vault_id, deleted_at);
 
 -- ============================================================================
 -- T017a: Server cursor sequence (per-user monotonic cursor)
@@ -225,9 +226,10 @@ CREATE TABLE server_cursor_sequence (
 CREATE TABLE device_sync_state (
   device_id TEXT NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  vault_id TEXT NOT NULL DEFAULT 'default',
   last_cursor_seen INTEGER NOT NULL DEFAULT 0,
   updated_at INTEGER NOT NULL,
-  PRIMARY KEY (device_id, user_id)
+  PRIMARY KEY (device_id, user_id, vault_id)
 );
 
 -- ============================================================================
@@ -247,15 +249,16 @@ CREATE TABLE rate_limits (
 CREATE TABLE crdt_updates (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  vault_id TEXT NOT NULL DEFAULT 'default',
   note_id TEXT NOT NULL,
   update_data BLOB NOT NULL,
   sequence_num INTEGER NOT NULL,
   signer_device_id TEXT NOT NULL,
   created_at INTEGER NOT NULL,
-  UNIQUE (user_id, note_id, sequence_num)
+  UNIQUE (user_id, vault_id, note_id, sequence_num)
 );
 
-CREATE INDEX idx_crdt_updates_note ON crdt_updates(user_id, note_id, sequence_num);
+CREATE INDEX idx_crdt_updates_note ON crdt_updates(user_id, vault_id, note_id, sequence_num);
 
 -- ============================================================================
 -- T017f: CRDT snapshots
@@ -264,16 +267,17 @@ CREATE INDEX idx_crdt_updates_note ON crdt_updates(user_id, note_id, sequence_nu
 CREATE TABLE crdt_snapshots (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  vault_id TEXT NOT NULL DEFAULT 'default',
   note_id TEXT NOT NULL,
   blob_key TEXT NOT NULL,
   sequence_num INTEGER NOT NULL,
   size_bytes INTEGER NOT NULL,
   signer_device_id TEXT NOT NULL,
   created_at INTEGER NOT NULL,
-  UNIQUE (user_id, note_id)
+  UNIQUE (user_id, vault_id, note_id)
 );
 
-CREATE INDEX idx_crdt_snapshots_note ON crdt_snapshots(user_id, note_id);
+CREATE INDEX idx_crdt_snapshots_note ON crdt_snapshots(user_id, vault_id, note_id);
 
 -- ============================================================================
 -- T017h: Upload sessions (chunked upload tracking)

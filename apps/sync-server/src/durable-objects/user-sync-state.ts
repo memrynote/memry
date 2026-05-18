@@ -6,6 +6,7 @@ import type { Bindings } from '../types'
 
 interface WsAttachment {
   deviceId: string
+  vaultId: string
   tokenExp: number
   connectedAt: number
   rateLimitWindow: number
@@ -123,6 +124,7 @@ export class UserSyncState extends DurableObject<Bindings> {
 
     const attachment: WsAttachment = {
       deviceId: claims.deviceId,
+      vaultId: request.headers.get('X-Memry-Vault-Id') ?? 'default',
       tokenExp: claims.exp,
       connectedAt: Math.floor(Date.now() / 1000),
       rateLimitWindow: 0,
@@ -140,6 +142,7 @@ export class UserSyncState extends DurableObject<Bindings> {
   private async handleBroadcast(request: Request): Promise<Response> {
     const body: {
       excludeDeviceId: string
+      vaultId?: string
       cursor?: number
       type?: string
       noteId?: string
@@ -152,6 +155,7 @@ export class UserSyncState extends DurableObject<Bindings> {
     const msgType = body.type ?? 'changes_available'
     const payload: Record<string, unknown> = {}
     if (body.cursor !== undefined) payload.cursor = body.cursor
+    if (body.vaultId) payload.vaultId = body.vaultId
     if (body.noteId) payload.noteId = body.noteId
     if (body.sourceId) payload.sourceId = body.sourceId
 
@@ -160,6 +164,7 @@ export class UserSyncState extends DurableObject<Bindings> {
     for (const ws of allSockets) {
       const attachment = ws.deserializeAttachment() as WsAttachment | null
       if (attachment?.deviceId === body.excludeDeviceId) continue
+      if (body.vaultId && attachment?.vaultId !== body.vaultId) continue
 
       try {
         ws.send(message)
