@@ -52,6 +52,19 @@ export function parseRetryAfterHeader(header: string | null): number | undefined
   return undefined
 }
 
+export async function getSyncVaultHeaders(): Promise<Record<string, string>> {
+  try {
+    const [{ getDatabase }, { getOrCreateVaultUuid }] = await Promise.all([
+      import('../database'),
+      import('../agent/storage/vault-id')
+    ])
+    const vaultId = await getOrCreateVaultUuid(getDatabase())
+    return vaultId ? { 'X-Memry-Vault-Id': vaultId } : {}
+  } catch {
+    return {}
+  }
+}
+
 interface ServerErrorResponse {
   error?: string | { code: string; message: string }
   message?: string
@@ -74,6 +87,7 @@ export const syncFetch = async <T>(
 
   if (token) {
     headers['Authorization'] = `Bearer ${token}`
+    Object.assign(headers, await getSyncVaultHeaders())
   }
 
   let response: Response

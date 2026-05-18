@@ -18,6 +18,7 @@ import {
   SyncServerError,
   RateLimitError,
   parseRetryAfterHeader,
+  getSyncVaultHeaders,
   type FetchFn
 } from './http-client'
 import { withRetry } from './retry'
@@ -158,6 +159,7 @@ async function binaryFetch(
   const headers: Record<string, string> = {}
   if (token) {
     headers['Authorization'] = `Bearer ${token}`
+    Object.assign(headers, await getSyncVaultHeaders())
   }
   if (body instanceof Uint8Array) {
     headers['Content-Type'] = 'application/octet-stream'
