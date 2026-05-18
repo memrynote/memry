@@ -24,7 +24,6 @@ import {
   logSyncValidationFailure
 } from '../services/sync-telemetry'
 import { updateDevice } from '../services/device'
-import { checkQuota } from '../services/quota'
 import { getStorageBreakdown } from '../services/storage'
 import {
   storeUpdates,
@@ -431,8 +430,9 @@ const handleCrdtUpdatePush = async (c: Context<AppContext>): Promise<Response> =
   )
 
   const totalBytes = buffers.reduce((sum, buf) => sum + buf.byteLength, 0)
+  let sequences: number[]
   try {
-    await checkQuota(c.env.DB, userId, totalBytes)
+    sequences = await storeUpdates(c.env.DB, userId, vaultId, parsed.noteId, deviceId, buffers)
   } catch (error) {
     if (error instanceof AppError && error.code === ErrorCodes.STORAGE_QUOTA_EXCEEDED) {
       logCrdtTraffic({
@@ -447,8 +447,6 @@ const handleCrdtUpdatePush = async (c: Context<AppContext>): Promise<Response> =
     }
     throw error
   }
-
-  const sequences = await storeUpdates(c.env.DB, userId, vaultId, parsed.noteId, deviceId, buffers)
 
   const doId = c.env.USER_SYNC_STATE.idFromName(userId)
   const stub = c.env.USER_SYNC_STATE.get(doId)
@@ -590,8 +588,17 @@ const handleCrdtSnapshotPush = async (c: Context<AppContext>): Promise<Response>
 
   const snapshotBytes = decodeCrdtPayload(parsed.snapshot, endpoint, 'Snapshot exceeds 5MB limit')
 
+  let result: { sequenceNum: number }
   try {
-    await checkQuota(c.env.DB, userId, snapshotBytes.byteLength)
+    result = await storeSnapshot(
+      c.env.DB,
+      c.env.STORAGE,
+      userId,
+      vaultId,
+      parsed.noteId,
+      deviceId,
+      snapshotBytes
+    )
   } catch (error) {
     if (error instanceof AppError && error.code === ErrorCodes.STORAGE_QUOTA_EXCEEDED) {
       logCrdtTraffic({
@@ -605,16 +612,6 @@ const handleCrdtSnapshotPush = async (c: Context<AppContext>): Promise<Response>
     }
     throw error
   }
-
-  const result = await storeSnapshot(
-    c.env.DB,
-    c.env.STORAGE,
-    userId,
-    vaultId,
-    parsed.noteId,
-    deviceId,
-    snapshotBytes
-  )
 
   await pruneUpdatesBeforeSnapshot(c.env.DB, userId, vaultId, parsed.noteId)
 

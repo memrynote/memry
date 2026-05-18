@@ -1,4 +1,5 @@
 import { generateCrdtKey } from './blob'
+import { adjustStorageUsed, reserveStorage } from './quota'
 
 interface CrdtUpdate {
   id: string
@@ -53,46 +54,51 @@ export const storeUpdates = async (
   updates: ArrayBuffer[]
 ): Promise<number[]> => {
   const sequences: number[] = []
-  let totalBytes = 0
-
-  for (const update of updates) {
-    const id = crypto.randomUUID()
-    const now = Math.floor(Date.now() / 1000)
-
-    const row = await db
-      .prepare(
-        `INSERT INTO crdt_updates (id, user_id, vault_id, note_id, update_data, sequence_num, signer_device_id, created_at)
-         SELECT ?, ?, ?, ?, ?, COALESCE(MAX(sequence_num), 0) + 1, ?, ?
-         FROM (
-           SELECT sequence_num FROM crdt_updates WHERE user_id = ? AND vault_id = ? AND note_id = ?
-           UNION ALL
-           SELECT sequence_num FROM crdt_snapshots WHERE user_id = ? AND vault_id = ? AND note_id = ?
-         )
-         RETURNING sequence_num`
-      )
-      .bind(
-        id,
-        userId,
-        vaultId,
-        noteId,
-        update,
-        signerDeviceId,
-        now,
-        userId,
-        vaultId,
-        noteId,
-        userId,
-        vaultId,
-        noteId
-      )
-      .first<{ sequence_num: number }>()
-
-    sequences.push(row!.sequence_num)
-    totalBytes += update.byteLength
+  const totalBytes = updates.reduce((sum, update) => sum + update.byteLength, 0)
+  if (totalBytes > 0) {
+    await reserveStorage(db, userId, totalBytes)
   }
 
-  if (totalBytes > 0) {
-    await adjustStorageUsed(db, userId, totalBytes)
+  try {
+    for (const update of updates) {
+      const id = crypto.randomUUID()
+      const now = Math.floor(Date.now() / 1000)
+
+      const row = await db
+        .prepare(
+          `INSERT INTO crdt_updates (id, user_id, vault_id, note_id, update_data, sequence_num, signer_device_id, created_at)
+           SELECT ?, ?, ?, ?, ?, COALESCE(MAX(sequence_num), 0) + 1, ?, ?
+           FROM (
+             SELECT sequence_num FROM crdt_updates WHERE user_id = ? AND vault_id = ? AND note_id = ?
+             UNION ALL
+             SELECT sequence_num FROM crdt_snapshots WHERE user_id = ? AND vault_id = ? AND note_id = ?
+           )
+           RETURNING sequence_num`
+        )
+        .bind(
+          id,
+          userId,
+          vaultId,
+          noteId,
+          update,
+          signerDeviceId,
+          now,
+          userId,
+          vaultId,
+          noteId,
+          userId,
+          vaultId,
+          noteId
+        )
+        .first<{ sequence_num: number }>()
+
+      sequences.push(row!.sequence_num)
+    }
+  } catch (error) {
+    if (totalBytes > 0) {
+      await adjustStorageUsed(db, userId, -totalBytes)
+    }
+    throw error
   }
 
   return sequences
@@ -176,30 +182,41 @@ export const storeSnapshot = async (
   // watermark stable once a snapshot exists so later incrementals remain pullable.
   const sequenceNum = existingSnapshot?.sequence_num ?? currentSeq
 
-  await storage.put(blobKey, snapshotData)
-
-  await db
-    .prepare(
-      `INSERT INTO crdt_snapshots (id, user_id, vault_id, note_id, blob_key, sequence_num, size_bytes, signer_device_id, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT (user_id, vault_id, note_id)
-       DO UPDATE SET blob_key = excluded.blob_key, sequence_num = excluded.sequence_num, size_bytes = excluded.size_bytes, signer_device_id = excluded.signer_device_id, created_at = excluded.created_at`
-    )
-    .bind(
-      id,
-      userId,
-      vaultId,
-      noteId,
-      blobKey,
-      sequenceNum,
-      snapshotData.byteLength,
-      signerDeviceId,
-      now
-    )
-    .run()
-
   const deltaBytes = snapshotData.byteLength - (existingSnapshot?.size_bytes ?? 0)
-  if (deltaBytes !== 0) {
+  if (deltaBytes > 0) {
+    await reserveStorage(db, userId, deltaBytes)
+  }
+
+  try {
+    await storage.put(blobKey, snapshotData)
+
+    await db
+      .prepare(
+        `INSERT INTO crdt_snapshots (id, user_id, vault_id, note_id, blob_key, sequence_num, size_bytes, signer_device_id, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT (user_id, vault_id, note_id)
+         DO UPDATE SET blob_key = excluded.blob_key, sequence_num = excluded.sequence_num, size_bytes = excluded.size_bytes, signer_device_id = excluded.signer_device_id, created_at = excluded.created_at`
+      )
+      .bind(
+        id,
+        userId,
+        vaultId,
+        noteId,
+        blobKey,
+        sequenceNum,
+        snapshotData.byteLength,
+        signerDeviceId,
+        now
+      )
+      .run()
+  } catch (error) {
+    if (deltaBytes > 0) {
+      await adjustStorageUsed(db, userId, -deltaBytes)
+    }
+    throw error
+  }
+
+  if (deltaBytes < 0) {
     await adjustStorageUsed(db, userId, deltaBytes)
   }
 
@@ -265,26 +282,4 @@ export const pruneUpdatesBeforeSnapshot = async (
   }
 
   return changes
-}
-
-async function adjustStorageUsed(
-  db: D1Database,
-  userId: string,
-  deltaBytes: number
-): Promise<void> {
-  const now = Math.floor(Date.now() / 1000)
-  if (deltaBytes > 0) {
-    await db
-      .prepare('UPDATE users SET storage_used = storage_used + ?, updated_at = ? WHERE id = ?')
-      .bind(deltaBytes, now, userId)
-      .run()
-    return
-  }
-
-  await db
-    .prepare(
-      'UPDATE users SET storage_used = MAX(0, storage_used - ?), updated_at = ? WHERE id = ?'
-    )
-    .bind(Math.abs(deltaBytes), now, userId)
-    .run()
 }

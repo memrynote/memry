@@ -17,8 +17,7 @@ import { AppError, ErrorCodes } from '../lib/errors'
 import { generateBlobKey, getBlob, putBlob } from './blob'
 import { getNextCursor } from './cursor'
 import { getDevice } from './device'
-import { checkQuota } from './quota'
-import { getUserById } from './user'
+import { adjustStorageUsed, checkQuota, reserveStorage } from './quota'
 
 const MAX_ENCRYPTED_DATA_BYTES = 5 * 1024 * 1024
 const DEFAULT_CHANGES_LIMIT = 100
@@ -374,18 +373,21 @@ export const processPushItem = async (
     const existingSize = existing ? (existing.size_bytes ?? 0) : 0
     const sizeDelta = newSize - existingSize
 
+    let reservedBytes = 0
     if (sizeDelta > 0) {
-      const user = await getUserById(db, userId)
-      if (!user) {
-        return { accepted: false, reason: ErrorCodes.AUTH_INVALID_TOKEN }
-      }
-      if (user.storage_used + sizeDelta > user.storage_limit) {
-        return { accepted: false, reason: ErrorCodes.STORAGE_QUOTA_EXCEEDED }
-      }
+      await reserveStorage(db, userId, sizeDelta)
+      reservedBytes = sizeDelta
     }
 
     const blobKey = generateBlobKey(userId, item.id, vaultId)
-    await putBlob(storage, blobKey, payloadBytes.slice().buffer, userId)
+    try {
+      await putBlob(storage, blobKey, payloadBytes.slice().buffer, userId)
+    } catch (error) {
+      if (reservedBytes > 0) {
+        await adjustStorageUsed(db, userId, -reservedBytes)
+      }
+      throw error
+    }
 
     const serverCursor = await getNextCursor(db, userId)
     const now = Math.floor(Date.now() / 1000)
@@ -439,14 +441,21 @@ export const processPushItem = async (
       )
 
     const transactionalStatements = [upsertSyncItemStmt]
-    if (sizeDelta !== 0) {
+    if (sizeDelta < 0) {
       const updateStorageStmt = db
         .prepare('UPDATE users SET storage_used = MAX(0, storage_used + ?) WHERE id = ?')
         .bind(sizeDelta, userId)
       transactionalStatements.push(updateStorageStmt)
     }
 
-    await db.batch(transactionalStatements)
+    try {
+      await db.batch(transactionalStatements)
+    } catch (error) {
+      if (reservedBytes > 0) {
+        await adjustStorageUsed(db, userId, -reservedBytes)
+      }
+      throw error
+    }
 
     return { accepted: true, serverCursor }
   } catch (error) {
