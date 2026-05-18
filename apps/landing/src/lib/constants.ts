@@ -338,9 +338,11 @@ export const PRICING_TIERS = [
     period: 'paid once',
     description: 'Support memrynote.',
     features: [
-      'Everything in Plus',
+      'Everything in Pro',
       '50 GB encrypted sync storage',
       'Unlimited vaults',
+      '200 MB per file',
+      '365 days of version history',
       'Early access to new features',
       'Your name in the credits',
       'Help keep memrynote independent'
@@ -580,7 +582,7 @@ export const USE_CASES = [
   }
 ] as const
 
-export type CheckoutPlanId = 'standard' | 'plus' | 'believer'
+export type CheckoutPlanId = 'plus' | 'pro' | 'believer'
 export type SyncPlanId = 'free' | CheckoutPlanId
 
 export type SyncPlanEmphasis = 'standard' | 'recommended' | 'founding'
@@ -620,7 +622,7 @@ export const SYNC_PLAN_TIERS: readonly SyncPlanTier[] = [
     emphasis: 'standard'
   },
   {
-    id: 'standard',
+    id: 'plus',
     name: 'Plus',
     tagline: 'One vault, encrypted, everywhere.',
     monthlyPrice: 5,
@@ -640,10 +642,10 @@ export const SYNC_PLAN_TIERS: readonly SyncPlanTier[] = [
     ],
     cta: 'Get Plus',
     emphasis: 'standard',
-    checkoutPlanId: 'standard'
+    checkoutPlanId: 'plus'
   },
   {
-    id: 'plus',
+    id: 'pro',
     name: 'Pro',
     tagline: 'More room for serious sync.',
     monthlyPrice: 10,
@@ -660,7 +662,7 @@ export const SYNC_PLAN_TIERS: readonly SyncPlanTier[] = [
     ],
     cta: 'Get Pro',
     emphasis: 'recommended',
-    checkoutPlanId: 'plus',
+    checkoutPlanId: 'pro',
     ribbon: 'Most popular'
   },
   {
@@ -672,7 +674,7 @@ export const SYNC_PLAN_TIERS: readonly SyncPlanTier[] = [
     annualMonthlyEquivalent: null,
     lifetimePrice: 500,
     features: [
-      'Everything in Plus',
+      'Everything in Pro',
       '50 GB encrypted sync storage',
       'Unlimited vaults',
       '200 MB per file',
@@ -693,7 +695,7 @@ export const SYNC_PLAN_TIERS: readonly SyncPlanTier[] = [
 export type PlanComparisonValue = string | boolean
 
 export const PLAN_COMPARISON_MATRIX = {
-  plans: ['free', 'standard', 'plus', 'believer'] as const,
+  plans: ['free', 'plus', 'pro', 'believer'] as const,
   sections: [
     {
       title: 'Core features',
@@ -701,43 +703,43 @@ export const PLAN_COMPARISON_MATRIX = {
         {
           feature: 'Create notes, tasks, save links & files',
           free: true,
-          standard: true,
           plus: true,
+          pro: true,
           believer: true
         },
         {
           feature: 'Local-first desktop app',
           free: true,
-          standard: true,
           plus: true,
+          pro: true,
           believer: true
         },
         {
           feature: 'Full-text search',
           free: true,
-          standard: true,
           plus: true,
+          pro: true,
           believer: true
         },
         {
           feature: 'Sync across your devices',
           free: false,
-          standard: true,
           plus: true,
+          pro: true,
           believer: true
         },
         {
           feature: 'Cloud backup & end-to-end encryption',
           free: false,
-          standard: true,
           plus: true,
+          pro: true,
           believer: true
         },
         {
           feature: 'Version history',
           free: false,
-          standard: '30 days',
-          plus: '365 days',
+          plus: '30 days',
+          pro: '365 days',
           believer: '365 days'
         }
       ]
@@ -748,29 +750,29 @@ export const PLAN_COMPARISON_MATRIX = {
         {
           feature: 'Encrypted sync storage',
           free: 'Local only',
-          standard: '1 GB',
-          plus: '10 GB',
+          plus: '1 GB',
+          pro: '10 GB',
           believer: '50 GB'
         },
         {
           feature: 'File upload limit',
           free: 'Local only',
-          standard: '5 MB',
-          plus: '200 MB',
+          plus: '5 MB',
+          pro: '200 MB',
           believer: '200 MB'
         },
         {
           feature: 'Synced vaults',
           free: 'Local only',
-          standard: '1',
-          plus: '10',
+          plus: '1',
+          pro: '10',
           believer: 'Unlimited'
         },
         {
           feature: 'Devices',
           free: '1 device',
-          standard: 'Unlimited',
           plus: 'Unlimited',
+          pro: 'Unlimited',
           believer: 'Unlimited'
         }
       ]
@@ -781,29 +783,29 @@ export const PLAN_COMPARISON_MATRIX = {
         {
           feature: 'AI assistant',
           free: 'Coming soon',
-          standard: 'Coming soon',
           plus: 'Coming soon',
+          pro: 'Coming soon',
           believer: 'Early access'
         },
         {
           feature: 'AI search',
           free: 'Coming soon',
-          standard: 'Coming soon',
           plus: 'Coming soon',
+          pro: 'Coming soon',
           believer: 'Early access'
         },
         {
           feature: 'AI suggestions',
           free: 'Coming soon',
-          standard: 'Coming soon',
           plus: 'Coming soon',
+          pro: 'Coming soon',
           believer: 'Early access'
         },
         {
           feature: 'Latest AI models',
           free: false,
-          standard: false,
-          plus: 'Planned',
+          plus: false,
+          pro: 'Planned',
           believer: 'Early access'
         }
       ]
@@ -814,29 +816,29 @@ export const PLAN_COMPARISON_MATRIX = {
         {
           feature: 'Markdown export',
           free: true,
-          standard: true,
           plus: true,
+          pro: true,
           believer: true
         },
         {
           feature: 'Server never sees plaintext',
           free: 'Local only',
-          standard: true,
           plus: true,
+          pro: true,
           believer: true
         },
         {
           feature: 'Publishing',
           free: 'Planned',
-          standard: 'Planned',
           plus: 'Planned',
+          pro: 'Planned',
           believer: 'Early access'
         },
         {
           feature: 'Collaboration',
           free: 'Planned',
-          standard: 'Planned',
           plus: 'Planned',
+          pro: 'Planned',
           believer: 'Early access'
         }
       ]
@@ -847,29 +849,29 @@ export const PLAN_COMPARISON_MATRIX = {
         {
           feature: 'Priority support',
           free: false,
-          standard: false,
-          plus: true,
+          plus: false,
+          pro: true,
           believer: true
         },
         {
           feature: 'Priority access to new features',
           free: false,
-          standard: false,
           plus: false,
+          pro: false,
           believer: true
         },
         {
           feature: 'Name in the credits',
           free: false,
-          standard: false,
           plus: false,
+          pro: false,
           believer: true
         },
         {
           feature: 'Support independent software',
           free: true,
-          standard: true,
           plus: true,
+          pro: true,
           believer: true
         }
       ]
@@ -947,7 +949,7 @@ export const PRICING_FAQ_ITEMS = [
   {
     question: 'What is the Believer tier really?',
     answer:
-      'A supporter package. You get everything in Plus, 50 GB of encrypted sync storage, unlimited vaults, early access to new features, your name in the credits, and the satisfaction of helping keep memrynote independent.'
+      'A supporter package. You get everything in Pro, 50 GB of encrypted sync storage, unlimited vaults, early access to new features, your name in the credits, and the satisfaction of helping keep memrynote independent.'
   },
   {
     question: 'Can I upgrade or downgrade later?',

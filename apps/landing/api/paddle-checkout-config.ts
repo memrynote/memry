@@ -1,4 +1,4 @@
-export type PaddleCheckoutPlan = 'standard' | 'plus' | 'believer'
+export type PaddleCheckoutPlan = 'plus' | 'pro' | 'believer'
 export type PaddleCheckoutCadence = 'monthly' | 'annual' | 'lifetime'
 
 export type PaddleCheckoutIntent = {
@@ -30,14 +30,14 @@ export function normalizePaddleApiKey(apiKey: string | undefined) {
 }
 
 const PRICE_ENV_KEYS: Record<PaddleCheckoutPlan, Record<PaddleCheckoutCadence, string | null>> = {
-  standard: {
-    monthly: 'PADDLE_PRICE_STANDARD_MONTHLY',
-    annual: 'PADDLE_PRICE_STANDARD_ANNUAL',
-    lifetime: null
-  },
   plus: {
     monthly: 'PADDLE_PRICE_PLUS_MONTHLY',
     annual: 'PADDLE_PRICE_PLUS_ANNUAL',
+    lifetime: null
+  },
+  pro: {
+    monthly: 'PADDLE_PRICE_PRO_MONTHLY',
+    annual: 'PADDLE_PRICE_PRO_ANNUAL',
     lifetime: null
   },
   believer: {
@@ -48,7 +48,7 @@ const PRICE_ENV_KEYS: Record<PaddleCheckoutPlan, Record<PaddleCheckoutCadence, s
 }
 
 function isPlan(value: unknown): value is PaddleCheckoutPlan {
-  return value === 'standard' || value === 'plus' || value === 'believer'
+  return value === 'plus' || value === 'pro' || value === 'believer'
 }
 
 function isCadence(value: unknown): value is PaddleCheckoutCadence {
