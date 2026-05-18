@@ -35,8 +35,8 @@ importers:
         specifier: ^9.1.7
         version: 9.1.7
       lint-staged:
-        specifier: ^17.0.2
-        version: 17.0.2
+        specifier: ^17.0.5
+        version: 17.0.5
       prettier:
         specifier: ^3.8.1
         version: 3.8.1
@@ -7840,8 +7840,8 @@ packages:
   linkifyjs@4.3.2:
     resolution: {integrity: sha512-NT1CJtq3hHIreOianA8aSXn6Cw0JzYOuDQbOrSPe7gqFnCpKP++MQe3ODgO3oh2GJFORkAAdqredOa60z63GbA==}
 
-  lint-staged@17.0.2:
-    resolution: {integrity: sha512-Rbr6rdmbCn1fIDHBZpn0madg0hEkdlh+QwajnL3Qq0ZUq/icAJfLGj9BVBajAXi7657ZzKQ7kobGP9S5XOHYRw==}
+  lint-staged@17.0.5:
+    resolution: {integrity: sha512-d12yC+/e8RhBjZtaxZn71FyrgU/P5e+uAPifhCLwdosQZP/zamSdKRWDC30ocVIbzDKiFG1McHc/LUgB92GIPw==}
     engines: {node: '>=22.22.1'}
     hasBin: true
 
@@ -18448,7 +18448,7 @@ snapshots:
 
   linkifyjs@4.3.2: {}
 
-  lint-staged@17.0.2:
+  lint-staged@17.0.5:
     dependencies:
       listr2: 10.2.1
       picomatch: 4.0.4
