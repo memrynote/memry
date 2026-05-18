@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import {
   getBatchUpdates,
@@ -28,6 +28,11 @@ interface FakeSnapshotRow {
   size_bytes: number
   signer_device_id: string
   created_at: number
+}
+
+interface PreparedCall {
+  sql: string
+  bindings: unknown[]
 }
 
 function createD1Database(): D1Database {
@@ -81,6 +86,12 @@ function createD1Database(): D1Database {
             return { max_seq: maxSeq } as T
           }
 
+          if (sql.startsWith('SELECT sequence_num, size_bytes FROM crdt_snapshots')) {
+            const row = snapshots.get(snapshotKey(params[0] as string, params[1] as string))
+            if (!row) return null
+            return { sequence_num: row.sequence_num, size_bytes: row.size_bytes } as T
+          }
+
           if (sql.startsWith('SELECT sequence_num FROM crdt_snapshots')) {
             const row = snapshots.get(snapshotKey(params[0] as string, params[1] as string))
             if (!row) return null
@@ -97,6 +108,18 @@ function createD1Database(): D1Database {
               sequence_num: row.sequence_num,
               signer_device_id: row.signer_device_id
             } as T
+          }
+
+          if (sql.includes('SUM(length(update_data))')) {
+            const totalBytes = updates
+              .filter(
+                (row) =>
+                  row.user_id === params[0] &&
+                  row.note_id === params[1] &&
+                  row.sequence_num <= (params[2] as number)
+              )
+              .reduce((sum, row) => sum + row.update_data.byteLength, 0)
+            return { total_bytes: totalBytes } as T
           }
 
           return null
@@ -166,6 +189,31 @@ function createD1Database(): D1Database {
       return Promise.all(statements.map((statement) => statement.all()))
     }
   } as unknown as D1Database
+}
+
+function createRecordingDatabase(options: {
+  first?: (sql: string, bindings: unknown[]) => unknown
+  changes?: (sql: string) => number
+}) {
+  const statements: PreparedCall[] = []
+
+  const db = {
+    prepare: vi.fn((sql: string) => {
+      const stmt = {
+        bindings: [] as unknown[],
+        bind: vi.fn((...args: unknown[]) => {
+          stmt.bindings = args
+          statements.push({ sql, bindings: args })
+          return stmt
+        }),
+        first: vi.fn(async () => options.first?.(sql, stmt.bindings) ?? null),
+        run: vi.fn(async () => ({ meta: { changes: options.changes?.(sql) ?? 1 } }))
+      }
+      return stmt
+    })
+  }
+
+  return { db: db as unknown as D1Database, statements }
 }
 
 function createMemoryBucket(): R2Bucket {
@@ -302,5 +350,58 @@ describe('CRDT service sequencing', () => {
     await storeUpdates(db, 'user-1', 'note-1', 'device-a', [bytes('a1')])
 
     await expect(pruneUpdatesBeforeSnapshot(db, 'user-1', 'note-1')).resolves.toBe(0)
+  })
+})
+
+describe('CRDT storage accounting', () => {
+  it('increments storage usage by the actual stored update bytes', async () => {
+    const { db, statements } = createRecordingDatabase({
+      first: (sql) => (sql.includes('INSERT INTO crdt_updates') ? { sequence_num: 1 } : null)
+    })
+
+    await storeUpdates(db, 'user-1', 'note-1', 'device-1', [
+      new Uint8Array([1, 2]).buffer,
+      new Uint8Array([3]).buffer
+    ])
+
+    const usageUpdate = statements.find((entry) => entry.sql.includes('UPDATE users'))
+    expect(usageUpdate?.bindings).toEqual([3, expect.any(Number), 'user-1'])
+  })
+
+  it('adjusts storage usage by the snapshot replacement delta', async () => {
+    const { db, statements } = createRecordingDatabase({
+      first: (sql) => {
+        if (sql.includes('COALESCE(MAX(sequence_num)')) return { max_seq: 4 }
+        if (sql.includes('FROM crdt_snapshots')) {
+          return { sequence_num: 2, size_bytes: 3 }
+        }
+        return null
+      }
+    })
+    const storage = { put: vi.fn().mockResolvedValue(undefined) } as unknown as R2Bucket
+    const snapshot = new Uint8Array(10).buffer
+
+    await storeSnapshot(db, storage, 'user-1', 'note-1', 'device-1', snapshot)
+
+    expect(storage.put).toHaveBeenCalledWith('user-1/crdt/note-1/snapshot', snapshot)
+    const usageUpdate = statements.find((entry) => entry.sql.includes('UPDATE users'))
+    expect(usageUpdate?.bindings).toEqual([7, expect.any(Number), 'user-1'])
+  })
+
+  it('subtracts pruned update bytes from storage usage', async () => {
+    const { db, statements } = createRecordingDatabase({
+      first: (sql) => {
+        if (sql.includes('SELECT sequence_num FROM crdt_snapshots')) return { sequence_num: 5 }
+        if (sql.includes('SUM(length(update_data))')) return { total_bytes: 8 }
+        return null
+      },
+      changes: (sql) => (sql.includes('DELETE FROM crdt_updates') ? 2 : 1)
+    })
+
+    await expect(pruneUpdatesBeforeSnapshot(db, 'user-1', 'note-1')).resolves.toBe(2)
+
+    const usageUpdate = statements.find((entry) => entry.sql.includes('UPDATE users'))
+    expect(usageUpdate?.sql).toContain('MAX(0, storage_used - ?)')
+    expect(usageUpdate?.bindings).toEqual([8, expect.any(Number), 'user-1'])
   })
 })

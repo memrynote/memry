@@ -26,9 +26,18 @@ export async function getStorageBreakdown(
 
     db
       .prepare(
-        'SELECT COALESCE(SUM(size_bytes), 0) as total_bytes FROM crdt_snapshots WHERE user_id = ?'
+        `SELECT
+           (
+             SELECT COALESCE(SUM(size_bytes), 0)
+             FROM crdt_snapshots
+             WHERE user_id = ?
+           ) + (
+             SELECT COALESCE(SUM(length(update_data)), 0)
+             FROM crdt_updates
+             WHERE user_id = ?
+           ) as total_bytes`
       )
-      .bind(userId)
+      .bind(userId, userId)
       .first<{ total_bytes: number }>()
   ])
 
