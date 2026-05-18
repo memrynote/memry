@@ -47,6 +47,7 @@ export const storeUpdates = async (
   updates: ArrayBuffer[]
 ): Promise<number[]> => {
   const sequences: number[] = []
+  let totalBytes = 0
 
   for (const update of updates) {
     const id = crypto.randomUUID()
@@ -67,6 +68,11 @@ export const storeUpdates = async (
       .first<{ sequence_num: number }>()
 
     sequences.push(row!.sequence_num)
+    totalBytes += update.byteLength
+  }
+
+  if (totalBytes > 0) {
+    await adjustStorageUsed(db, userId, totalBytes)
   }
 
   return sequences
@@ -137,9 +143,11 @@ export const storeSnapshot = async (
   const blobKey = `${userId}/crdt/${noteId}/snapshot`
   const currentSeq = await getMaxSequenceNumber(db, userId, noteId)
   const existingSnapshot = await db
-    .prepare('SELECT sequence_num FROM crdt_snapshots WHERE user_id = ? AND note_id = ?')
+    .prepare(
+      'SELECT sequence_num, size_bytes FROM crdt_snapshots WHERE user_id = ? AND note_id = ?'
+    )
     .bind(userId, noteId)
-    .first<{ sequence_num: number }>()
+    .first<{ sequence_num: number; size_bytes: number }>()
   // Client-uploaded snapshots do not include causal metadata proving they already
   // contain every server update above the prior snapshot watermark. Keep the
   // watermark stable once a snapshot exists so later incrementals remain pullable.
@@ -156,6 +164,11 @@ export const storeSnapshot = async (
     )
     .bind(id, userId, noteId, blobKey, sequenceNum, snapshotData.byteLength, signerDeviceId, now)
     .run()
+
+  const deltaBytes = snapshotData.byteLength - (existingSnapshot?.size_bytes ?? 0)
+  if (deltaBytes !== 0) {
+    await adjustStorageUsed(db, userId, deltaBytes)
+  }
 
   return { sequenceNum }
 }
@@ -194,10 +207,45 @@ export const pruneUpdatesBeforeSnapshot = async (
 
   if (!snapshot) return 0
 
+  const bytes = await db
+    .prepare(
+      'SELECT COALESCE(SUM(length(update_data)), 0) as total_bytes FROM crdt_updates WHERE user_id = ? AND note_id = ? AND sequence_num <= ?'
+    )
+    .bind(userId, noteId, snapshot.sequence_num)
+    .first<{ total_bytes: number }>()
+
   const result = await db
     .prepare('DELETE FROM crdt_updates WHERE user_id = ? AND note_id = ? AND sequence_num <= ?')
     .bind(userId, noteId, snapshot.sequence_num)
     .run()
 
-  return result.meta.changes ?? 0
+  const changes = result.meta.changes ?? 0
+  const totalBytes = Number(bytes?.total_bytes ?? 0)
+  if (changes > 0 && totalBytes > 0) {
+    await adjustStorageUsed(db, userId, -totalBytes)
+  }
+
+  return changes
+}
+
+async function adjustStorageUsed(
+  db: D1Database,
+  userId: string,
+  deltaBytes: number
+): Promise<void> {
+  const now = Math.floor(Date.now() / 1000)
+  if (deltaBytes > 0) {
+    await db
+      .prepare('UPDATE users SET storage_used = storage_used + ?, updated_at = ? WHERE id = ?')
+      .bind(deltaBytes, now, userId)
+      .run()
+    return
+  }
+
+  await db
+    .prepare(
+      'UPDATE users SET storage_used = MAX(0, storage_used - ?), updated_at = ? WHERE id = ?'
+    )
+    .bind(Math.abs(deltaBytes), now, userId)
+    .run()
 }

@@ -196,12 +196,21 @@ blob.put('/attachments/upload/:session_id/chunk/:chunk_index', chunkUploadLimit,
     )
   }
 
-  const uploadedChunks: Array<{ i: number; h: string }> = JSON.parse(session.uploaded_chunks)
+  const uploadedChunks = parseUploadedChunks(session.uploaded_chunks)
   if (uploadedChunks.some((c) => c.i === chunkIndex)) {
     throw new AppError(ErrorCodes.UPLOAD_CHUNK_CONFLICT, 'Chunk already uploaded', 409)
   }
 
   const chunkData = await c.req.arrayBuffer()
+  const uploadedBytes = getUploadedByteTotal(uploadedChunks)
+  if (uploadedBytes === null || uploadedBytes + chunkData.byteLength > session.total_size) {
+    throw new AppError(
+      ErrorCodes.STORAGE_FILE_TOO_LARGE,
+      'Uploaded chunks exceed declared file size',
+      413
+    )
+  }
+
   const chunkHash = await sha256Hex(chunkData)
 
   const chunkR2Key = `${userId}/${chunkHash}`
@@ -228,7 +237,7 @@ blob.put('/attachments/upload/:session_id/chunk/:chunk_index', chunkUploadLimit,
       .run()
   }
 
-  uploadedChunks.push({ i: chunkIndex, h: chunkHash })
+  uploadedChunks.push({ i: chunkIndex, h: chunkHash, b: chunkData.byteLength })
   await c.env.DB.prepare('UPDATE upload_sessions SET uploaded_chunks = ? WHERE id = ?')
     .bind(JSON.stringify(uploadedChunks), sessionId)
     .run()
@@ -245,7 +254,7 @@ blob.post('/attachments/upload/:session_id/complete', chunkUploadLimit, async (c
 
   const session = await getUploadSession(c.env.DB, sessionId, userId)
 
-  const uploadedEntries: Array<{ i: number; h: string }> = JSON.parse(session.uploaded_chunks)
+  const uploadedEntries = parseUploadedChunks(session.uploaded_chunks)
   const uploadedIndices = new Set(uploadedEntries.map((e) => e.i))
   const expected = Array.from({ length: session.chunk_count }, (_, i) => i)
   const missing = expected.filter((i) => !uploadedIndices.has(i))
@@ -256,6 +265,15 @@ blob.post('/attachments/upload/:session_id/complete', chunkUploadLimit, async (c
         error: 'Missing chunks',
         missing_chunks: missing
       },
+      400
+    )
+  }
+
+  const actualBytes = getUploadedByteTotal(uploadedEntries)
+  if (actualBytes !== session.total_size) {
+    throw new AppError(
+      ErrorCodes.UPLOAD_INCOMPLETE,
+      'Uploaded chunks do not match declared file size',
       400
     )
   }
@@ -422,6 +440,27 @@ interface UploadSessionRow {
   uploaded_chunks: string
   expires_at: number
   created_at: number
+}
+
+interface UploadedChunkEntry {
+  i: number
+  h: string
+  b?: number
+}
+
+function parseUploadedChunks(value: string): UploadedChunkEntry[] {
+  const parsed = JSON.parse(value) as UploadedChunkEntry[]
+  return Array.isArray(parsed) ? parsed : []
+}
+
+function getUploadedByteTotal(entries: UploadedChunkEntry[]): number | null {
+  let total = 0
+  for (const entry of entries) {
+    const bytes = entry.b
+    if (typeof bytes !== 'number' || !Number.isInteger(bytes) || bytes < 0) return null
+    total += bytes
+  }
+  return total
 }
 
 async function getUploadSession(

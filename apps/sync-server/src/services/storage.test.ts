@@ -127,12 +127,13 @@ describe('getStorageBreakdown', () => {
     }
   })
 
-  it('should include crdt snapshots in crdt category', async () => {
+  it('should include crdt snapshots and updates in crdt category', async () => {
     // #given
+    const crdt = createMockStatement({
+      first: vi.fn().mockResolvedValue({ total_bytes: 4200 })
+    } as Partial<MockStatement>)
     const db = defaultStmts({
-      crdt: createMockStatement({
-        first: vi.fn().mockResolvedValue({ total_bytes: 4200 })
-      } as Partial<MockStatement>)
+      crdt
     })
 
     // #when
@@ -140,6 +141,10 @@ describe('getStorageBreakdown', () => {
 
     // #then
     expect(result.breakdown.crdt).toBe(4200)
+    const crdtSql = db.prepare.mock.calls.find(
+      (c: string[]) => typeof c[0] === 'string' && c[0].includes('crdt_snapshots')
+    )?.[0]
+    expect(crdtSql).toContain('crdt_updates')
   })
 
   it('should exclude deleted items via SQL WHERE clause', async () => {

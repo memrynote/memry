@@ -115,8 +115,8 @@ const createSession = (overrides: Record<string, unknown> = {}) => ({
   total_size: 10,
   chunk_count: 2,
   uploaded_chunks: JSON.stringify([
-    { i: 0, h: 'hash-0' },
-    { i: 1, h: 'hash-1' }
+    { i: 0, h: 'hash-0', b: 5 },
+    { i: 1, h: 'hash-1', b: 5 }
   ]),
   expires_at: Math.floor(Date.now() / 1000) + 100,
   created_at: 1,
@@ -328,6 +328,27 @@ describe('blob routes', () => {
     )
   })
 
+  it('rejects a chunk that would exceed the declared upload size', async () => {
+    state.session = createSession({
+      total_size: 10,
+      uploaded_chunks: JSON.stringify([{ i: 0, h: 'hash-0', b: 8 }])
+    })
+
+    const res = await app.request(
+      '/attachments/upload/session-1/chunk/1',
+      {
+        method: 'PUT',
+        body: 'abc'
+      },
+      env
+    )
+
+    expect(res.status).toBe(413)
+    expect(((await res.json()) as { error: { code: string } }).error.code).toBe(
+      ErrorCodes.STORAGE_FILE_TOO_LARGE
+    )
+  })
+
   it('increments ref_count instead of storing an already-known chunk', async () => {
     state.session = createSession({ uploaded_chunks: '[]' })
     state.existingChunk = { id: 'existing-chunk', r2_key: 'user-1/hash' }
@@ -402,6 +423,31 @@ describe('blob routes', () => {
 
     expect(res.status).toBe(400)
     expect(await res.json()).toEqual({ error: 'Missing chunks', missing_chunks: [1] })
+  })
+
+  it('rejects completion when uploaded chunk bytes do not match the declared total size', async () => {
+    state.session = createSession({
+      total_size: 10,
+      uploaded_chunks: JSON.stringify([
+        { i: 0, h: 'hash-0', b: 4 },
+        { i: 1, h: 'hash-1', b: 4 }
+      ])
+    })
+
+    const res = await app.request(
+      '/attachments/upload/session-1/complete',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      },
+      env
+    )
+
+    expect(res.status).toBe(400)
+    expect(((await res.json()) as { error: { code: string } }).error.code).toBe(
+      ErrorCodes.UPLOAD_INCOMPLETE
+    )
   })
 
   it('completes an upload, writes the encrypted manifest, and clears the session', async () => {
