@@ -15,7 +15,8 @@ const mocks = vi.hoisted(() => ({
   logout: vi.fn(),
   syncContext: {
     linkingRequest: null as unknown,
-    clearLinkingRequest: vi.fn()
+    clearLinkingRequest: vi.fn(),
+    triggerSync: vi.fn()
   },
   syncStatus: {
     status: 'idle',
@@ -83,7 +84,8 @@ vi.mock('@memry/i18n/renderer', () => ({
 vi.mock('sonner', () => ({
   toast: {
     success: vi.fn(),
-    error: vi.fn()
+    error: vi.fn(),
+    info: vi.fn()
   }
 }))
 
@@ -322,6 +324,41 @@ function installWindowApi() {
         breakdown: { notes: 1024, attachments: 256, crdt: 128, other: 128 }
       })
     },
+    account: {
+      getBillingStatus: vi.fn().mockResolvedValue({
+        plan: 'free',
+        status: 'inactive',
+        source: 'none',
+        limits: {
+          storageLimit: 0,
+          maxFileSize: 0,
+          maxVaults: 0,
+          versionHistoryDays: 0
+        },
+        usage: { storageUsed: 0 },
+        expiresAt: null,
+        canManageBilling: false
+      }),
+      refreshBillingStatus: vi.fn().mockResolvedValue({
+        plan: 'pro',
+        status: 'active',
+        source: 'paddle',
+        limits: {
+          storageLimit: 10 * 1024 * 1024 * 1024,
+          maxFileSize: 200 * 1024 * 1024,
+          maxVaults: 10,
+          versionHistoryDays: 365
+        },
+        usage: { storageUsed: 1536 },
+        expiresAt: null,
+        canManageBilling: true
+      }),
+      startCheckout: vi.fn().mockResolvedValue({ success: true, checkoutUrl: 'https://checkout' }),
+      openBillingPortal: vi.fn().mockResolvedValue({
+        success: true,
+        portalUrl: 'https://paddle.test/portal'
+      })
+    },
     settings: {
       ...window.api.settings,
       getTerminalCommandStatus: vi.fn().mockResolvedValue({
@@ -429,6 +466,7 @@ describe('settings section coverage', () => {
     installWindowApi()
     mocks.authState = { status: 'authenticated', email: 'kaan@example.com' }
     mocks.syncContext.linkingRequest = null
+    mocks.syncContext.triggerSync.mockResolvedValue(undefined)
     mocks.generalSettings.isLoading = false
     mocks.generalSettings.updateSettings.mockResolvedValue(true)
     mocks.calendarPreferences.isLoading = false
@@ -456,6 +494,7 @@ describe('settings section coverage', () => {
     mocks.syncContext.linkingRequest = { code: '123456' }
     rerender(<AccountSettings />)
     expect(await screen.findByText('kaan@example.com')).toBeInTheDocument()
+    expect(await screen.findByText('account.billing.plans.free')).toBeInTheDocument()
     expect(screen.getByText(/account.storage.used/)).toBeInTheDocument()
     expect(screen.getByText('account.community.prompt')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'account.community.star' })).toHaveAttribute(
@@ -482,6 +521,26 @@ describe('settings section coverage', () => {
     fireEvent.click(screen.getByText('approve link'))
     expect(mocks.syncContext.clearLinkingRequest).toHaveBeenCalled()
     expect(toast.success).toHaveBeenCalledWith('account.toasts.deviceLinked')
+  })
+
+  it('starts checkout, refreshes billing, and opens Paddle portal from account settings', async () => {
+    render(<AccountSettings />)
+    expect(await screen.findByText('account.billing.plans.free')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('account.billing.actions.upgrade'))
+    await waitFor(() =>
+      expect(window.api.account.startCheckout).toHaveBeenCalledWith({
+        plan: 'pro',
+        cadence: 'annual'
+      })
+    )
+
+    fireEvent.click(screen.getByText('account.billing.actions.refresh'))
+    await waitFor(() => expect(screen.getByText('account.billing.plans.pro')).toBeInTheDocument())
+    expect(mocks.syncContext.triggerSync).toHaveBeenCalled()
+
+    fireEvent.click(screen.getByText('account.billing.actions.manage'))
+    await waitFor(() => expect(window.api.account.openBillingPortal).toHaveBeenCalled())
   })
 
   it('renders setup while recovery confirmation is still pending', () => {

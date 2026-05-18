@@ -27,6 +27,25 @@ Inactive, past-due, paused, canceled, or expired entitlements return `SYNC_PAYME
 sync data is read or written. Vault and file-size limits return `SYNC_VAULT_LIMIT_EXCEEDED` and
 `STORAGE_FILE_TOO_LARGE`.
 
+Desktop checkout is account-owned. The app requests `/auth/checkout-token`, opens
+`memrynote.com/pricing` with the token in the URL fragment, and the landing page passes that token
+to the Paddle checkout transaction API. After payment, Paddle webhooks are the primary entitlement
+writer. Desktop can also call `/auth/billing/reconcile` with the returned transaction id; the server
+fetches the Paddle transaction, verifies the embedded memrynote user id, and provisions the
+entitlement only for completed transactions.
+
+Billing status and customer management stay on authenticated account routes:
+
+| Path                                | Purpose                                                         |
+| ----------------------------------- | --------------------------------------------------------------- |
+| `GET /auth/billing`                 | Return current plan, status, limits, usage, expiry, portal flag |
+| `POST /auth/billing/reconcile`      | Reconcile an optional Paddle transaction id into entitlement    |
+| `POST /auth/billing/portal-session` | Create a temporary Paddle customer portal URL                   |
+
+Portal URLs are temporary authenticated links from Paddle and are never cached. Refund and
+chargeback automation is intentionally out of scope; support handles those from email and the Paddle
+dashboard.
+
 ## Sync Items
 
 Every domain object syncs as a `sync_item`. The server sees:

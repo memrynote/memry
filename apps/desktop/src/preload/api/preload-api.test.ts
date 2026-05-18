@@ -664,6 +664,24 @@ describe('preload api wrappers', () => {
     await expectInvoke(() => accountApi.getInfo(), AccountChannels.invoke.GET_INFO)
     await expectInvoke(() => accountApi.signOut(), AccountChannels.invoke.SIGN_OUT)
     await expectInvoke(() => accountApi.getRecoveryKey(), AccountChannels.invoke.GET_RECOVERY_KEY)
+    await expectInvoke(
+      () => accountApi.startCheckout({ plan: 'pro', cadence: 'annual' }),
+      AccountChannels.invoke.START_CHECKOUT,
+      { plan: 'pro', cadence: 'annual' }
+    )
+    await expectInvoke(
+      () => accountApi.getBillingStatus(),
+      AccountChannels.invoke.GET_BILLING_STATUS
+    )
+    await expectInvoke(
+      () => accountApi.refreshBillingStatus({ transactionId: 'txn_1' }),
+      AccountChannels.invoke.REFRESH_BILLING_STATUS,
+      { transactionId: 'txn_1' }
+    )
+    await expectInvoke(
+      () => accountApi.openBillingPortal(),
+      AccountChannels.invoke.OPEN_BILLING_PORTAL
+    )
     await expectInvoke(() => syncDevices.getDevices(), SYNC_CHANNELS.GET_DEVICES)
     await expectInvoke(
       () => syncDevices.removeDevice({ deviceId: 'd1' }),

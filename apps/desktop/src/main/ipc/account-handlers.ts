@@ -19,6 +19,12 @@ import { store } from '../store'
 import { teardownSession } from '../sync/session-teardown'
 import { retrieveKey } from '../crypto'
 import { getValidAccessToken } from '../sync/token-manager'
+import {
+  getBillingStatus,
+  openBillingPortal,
+  refreshBillingStatus,
+  startBillingCheckout
+} from '../billing/paddle-billing'
 
 const log = createLogger('IPC:Account')
 
@@ -82,10 +88,34 @@ export function registerAccountHandlers(): void {
       return { success: false, error: 'Failed to retrieve recovery key' }
     }
   })
+
+  ipcMain.handle(AccountChannels.invoke.START_CHECKOUT, async (_event, input) => {
+    log.info('account:startCheckout requested')
+    return startBillingCheckout(input)
+  })
+
+  ipcMain.handle(AccountChannels.invoke.GET_BILLING_STATUS, async () => {
+    log.info('account:getBillingStatus requested')
+    return getBillingStatus()
+  })
+
+  ipcMain.handle(AccountChannels.invoke.REFRESH_BILLING_STATUS, async (_event, input) => {
+    log.info('account:refreshBillingStatus requested')
+    return refreshBillingStatus(input)
+  })
+
+  ipcMain.handle(AccountChannels.invoke.OPEN_BILLING_PORTAL, async () => {
+    log.info('account:openBillingPortal requested')
+    return openBillingPortal()
+  })
 }
 
 export function unregisterAccountHandlers(): void {
   ipcMain.removeHandler(AccountChannels.invoke.GET_INFO)
   ipcMain.removeHandler(AccountChannels.invoke.SIGN_OUT)
   ipcMain.removeHandler(AccountChannels.invoke.GET_RECOVERY_KEY)
+  ipcMain.removeHandler(AccountChannels.invoke.START_CHECKOUT)
+  ipcMain.removeHandler(AccountChannels.invoke.GET_BILLING_STATUS)
+  ipcMain.removeHandler(AccountChannels.invoke.REFRESH_BILLING_STATUS)
+  ipcMain.removeHandler(AccountChannels.invoke.OPEN_BILLING_PORTAL)
 }

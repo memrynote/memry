@@ -76,6 +76,8 @@ const getHeadlessCliArgsMock = vi.fn((argv: string[]) => {
   return cliIndex === -1 ? null : argv.slice(cliIndex + 1)
 })
 const runHeadlessCliMock = vi.fn(async () => undefined)
+const startBillingCheckoutMock = vi.fn(async () => ({ success: true }))
+const reconcileBillingAndSyncMock = vi.fn(async () => undefined)
 const browserWindows: Array<ReturnType<typeof createBrowserWindowMock>> = []
 
 function createBrowserWindowMock() {
@@ -243,6 +245,11 @@ vi.mock('./app-navigation-command', () => ({
 vi.mock('./cli/headless', () => ({
   getHeadlessCliArgs: getHeadlessCliArgsMock,
   runHeadlessCli: runHeadlessCliMock
+}))
+
+vi.mock('./billing/paddle-billing', () => ({
+  startBillingCheckout: startBillingCheckoutMock,
+  reconcileBillingAndSync: reconcileBillingAndSyncMock
 }))
 
 vi.mock('./lib/logger', () => {
@@ -899,6 +906,30 @@ describe('main index phase2 exports', () => {
     })
 
     expect(() => openUrlHandler({ preventDefault }, 'not a valid url')).not.toThrow()
+  })
+
+  it('routes billing deep links through checkout and reconciliation handlers', async () => {
+    whenReadyMock.mockResolvedValue(undefined)
+
+    await importMainModule()
+    await flushReadyWork()
+
+    const openUrlHandler = appOnMock.mock.calls.find(([event]) => event === 'open-url')?.[1] as (
+      event: { preventDefault: () => void },
+      url: string
+    ) => void
+    const preventDefault = vi.fn()
+
+    openUrlHandler({ preventDefault }, 'memry://billing/start?plan=plus&cadence=monthly')
+    expect(preventDefault).toHaveBeenCalled()
+    expect(browserWindows[0].webContents.send).toHaveBeenCalledWith(
+      SettingsChannels.events.OPEN_SECTION,
+      'account'
+    )
+    expect(startBillingCheckoutMock).toHaveBeenCalledWith({ plan: 'plus', cadence: 'monthly' })
+
+    openUrlHandler({ preventDefault }, 'memry://billing/complete?transactionId=txn_123')
+    expect(reconcileBillingAndSyncMock).toHaveBeenCalledWith({ transactionId: 'txn_123' })
   })
 
   it('handles window control IPC and native context menu resolution', async () => {
