@@ -168,6 +168,8 @@ describe('blob routes', () => {
   })
 
   it('uploads a simple blob and records storage usage', async () => {
+    vi.mocked(env.STORAGE.head).mockResolvedValueOnce(null)
+
     const res = await app.request('/blob/blob-1', { method: 'PUT', body: 'hello' }, env)
 
     expect(res.status).toBe(200)
@@ -180,6 +182,15 @@ describe('blob routes', () => {
       expect.any(ArrayBuffer),
       'user-1'
     )
+  })
+
+  it('accounts for only the overwrite delta when uploading a simple blob', async () => {
+    const res = await app.request('/blob/blob-1', { method: 'PUT', body: 'hi' }, env)
+
+    expect(res.status).toBe(200)
+    expect(assertFileSizeAllowed).toHaveBeenCalledWith(env.DB, 'user-1', 2)
+    expect(checkQuota).not.toHaveBeenCalled()
+    expect(state.statements.some((entry) => entry.bindings[0] === -3)).toBe(true)
   })
 
   it('downloads a simple blob with content length headers', async () => {
@@ -451,6 +462,11 @@ describe('blob routes', () => {
   })
 
   it('completes an upload, writes the encrypted manifest, and clears the session', async () => {
+    vi.mocked(env.STORAGE.head).mockResolvedValueOnce(null)
+    const manifestSize = new TextEncoder().encode(
+      JSON.stringify({ encryptedManifest: 'manifest' })
+    ).byteLength
+
     const res = await app.request(
       '/attachments/upload/session-1/complete',
       {
@@ -467,12 +483,16 @@ describe('blob routes', () => {
       manifest_key: 'user-1/meta/att-1',
       size: 10
     })
+    expect(assertFileSizeAllowed).toHaveBeenCalledWith(env.DB, 'user-1', 10)
+    expect(assertFileSizeAllowed).toHaveBeenCalledWith(env.DB, 'user-1', manifestSize)
+    expect(checkQuota).toHaveBeenCalledWith(env.DB, 'user-1', 10 + manifestSize)
     expect(putBlob).toHaveBeenCalledWith(
       env.STORAGE,
       'user-1/meta/att-1',
       expect.any(ArrayBuffer),
       'user-1'
     )
+    expect(state.statements.some((entry) => entry.bindings[0] === 10 + manifestSize)).toBe(true)
   })
 
   it('completes an upload without writing a manifest when encryptedManifest is absent', async () => {
@@ -488,6 +508,9 @@ describe('blob routes', () => {
 
     expect(res.status).toBe(200)
     expect(putBlob).not.toHaveBeenCalled()
+    expect(assertFileSizeAllowed).toHaveBeenCalledWith(env.DB, 'user-1', 10)
+    expect(checkQuota).toHaveBeenCalledWith(env.DB, 'user-1', 10)
+    expect(state.statements.some((entry) => entry.bindings[0] === 10)).toBe(true)
   })
 
   it('returns upload session progress', async () => {
@@ -577,6 +600,10 @@ describe('blob routes', () => {
       expect.any(ArrayBuffer),
       'user-1'
     )
+    expect(env.STORAGE.head).toHaveBeenCalledWith('user-1/meta/att-1')
+    expect(assertFileSizeAllowed).toHaveBeenCalledWith(env.DB, 'user-1', 8)
+    expect(checkQuota).toHaveBeenCalledWith(env.DB, 'user-1', 3)
+    expect(state.statements.some((entry) => entry.bindings[0] === 3)).toBe(true)
   })
 
   it('returns 404 when a manifest is missing', async () => {
