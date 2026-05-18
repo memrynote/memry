@@ -17,6 +17,7 @@ export type Bindings = {
   RECOVERY_DUMMY_SECRET: string
   WEBHOOK_HMAC_KEY: string
   PADDLE_WEBHOOK_SECRET: string
+  PADDLE_CHECKOUT_TOKEN_SECRET: string
   TELEMETRY_HMAC_KEY: string
 }
 

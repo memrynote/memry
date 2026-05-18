@@ -34,14 +34,15 @@ Fill in your environment variables:
 | `RESEND_SEGMENT_ID` | No       | Segment ID to group waitlist contacts     |
 
 Paddle checkout uses a serverless function so the Paddle API key stays server-side. Checkout
-requests must include the signed-in memrynote user id so Paddle webhook custom data can grant the
-Sync entitlement to the correct account.
+requests must include an account-bound checkout token minted by the sync server so Paddle webhook
+custom data can grant the Sync entitlement to the correct account.
 
 | Variable                         | Required | Description                                                                        |
 | -------------------------------- | -------- | ---------------------------------------------------------------------------------- |
 | `PADDLE_ENVIRONMENT`             | Yes      | `sandbox` locally; `production` for live Paddle                                    |
 | `PADDLE_SANDBOX_API_KEY`         | Yes      | Sandbox API key from Paddle developer tools                                        |
 | `PADDLE_API_KEY`                 | No       | Live API key, required when environment is production                              |
+| `PADDLE_CHECKOUT_TOKEN_SECRET`   | Yes      | Shared HMAC secret that verifies sync-server checkout tokens                       |
 | `PADDLE_PRICE_PLUS_MONTHLY`      | Yes      | Paddle price ID for Sync Plus monthly                                              |
 | `PADDLE_PRICE_PLUS_ANNUAL`       | Yes      | Paddle price ID for Sync Plus annual                                               |
 | `PADDLE_PRICE_PRO_MONTHLY`       | Yes      | Paddle price ID for Sync Pro monthly                                               |

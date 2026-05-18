@@ -43,7 +43,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: 'Paddle is not configured' })
   }
 
-  const intent = parsePaddleCheckoutIntent(getRequestBody(req))
+  const intent = await parsePaddleCheckoutIntent(getRequestBody(req), process.env)
   if (!intent) {
     return res.status(400).json({ error: 'Invalid checkout request' })
   }

@@ -60,7 +60,8 @@ function createEnv(opts: {
       MIN_APP_VERSION: '1.0.0',
       RECOVERY_DUMMY_SECRET: 'mock-dummy-recovery-secret',
       WEBHOOK_HMAC_KEY,
-      PADDLE_WEBHOOK_SECRET: 'paddle-secret'
+      PADDLE_WEBHOOK_SECRET: 'paddle-secret',
+      PADDLE_CHECKOUT_TOKEN_SECRET: 'checkout-secret'
     },
     broadcastFetch
   }

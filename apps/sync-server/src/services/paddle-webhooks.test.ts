@@ -216,4 +216,31 @@ describe('Paddle webhook support', () => {
       false
     )
   })
+
+  it('does not map stale Standard custom data to a paid entitlement', async () => {
+    const { db, statements } = createDb()
+
+    await expect(
+      applyPaddleWebhook(db, {
+        event_id: 'evt_standard',
+        event_type: 'transaction.completed',
+        data: {
+          id: 'txn_standard',
+          customer_id: 'ctm_1',
+          subscription_id: 'sub_standard',
+          status: 'completed',
+          custom_data: {
+            app: 'memry',
+            entitlement: 'sync',
+            plan: 'standard',
+            userId: 'user-1'
+          }
+        }
+      })
+    ).resolves.toEqual({ processed: false })
+
+    expect(statements.some((entry) => entry.sql.includes('INSERT INTO sync_entitlements'))).toBe(
+      false
+    )
+  })
 })
