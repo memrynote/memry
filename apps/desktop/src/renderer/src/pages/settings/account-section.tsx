@@ -13,7 +13,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Switch } from '@/components/ui/switch'
-import { RefreshCw } from '@/lib/icons'
+import { CreditCard, ExternalLink, RefreshCw } from '@/lib/icons'
 import { toast } from 'sonner'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useAuth } from '@/contexts/auth-context'
@@ -37,6 +37,26 @@ const MEMRY_REPOSITORY_URL = 'https://github.com/memrynote/memry'
 const MEMRY_ISSUES_URL =
   'https://github.com/memrynote/memry/issues?q=sort%3Aupdated-desc+is%3Aissue+is%3Aopen+'
 const MEMRY_ICON_SRC = new URL('../../../../../build/icon.png', import.meta.url).href
+const BILLING_SUPPORT_EMAIL = 'billing@memrynote.com'
+
+type BillingPlan = 'free' | 'plus' | 'pro' | 'believer'
+type BillingStatusValue = 'inactive' | 'active' | 'past_due' | 'paused' | 'canceled'
+
+interface BillingStatus {
+  plan: BillingPlan
+  status: BillingStatusValue
+  limits: {
+    storageLimit: number
+    maxFileSize: number
+    maxVaults: number | null
+    versionHistoryDays: number
+  }
+  usage: {
+    storageUsed: number
+  }
+  expiresAt: number | null
+  canManageBilling: boolean
+}
 
 function AccountCommunityFooter() {
   const { t } = useT('settings')
@@ -75,9 +95,21 @@ function AccountCommunityFooter() {
 }
 
 function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  const units = ['B', 'KB', 'MB', 'GB', 'TB']
+  let value = bytes
+  let unitIndex = 0
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024
+    unitIndex += 1
+  }
+  if (unitIndex === 0) return `${value} ${units[unitIndex]}`
+  return `${value >= 10 ? value.toFixed(0) : value.toFixed(1)} ${units[unitIndex]}`
+}
+
+function isBillingStatus(value: unknown): value is BillingStatus {
+  return Boolean(
+    value && typeof value === 'object' && 'plan' in value && 'status' in value && 'limits' in value
+  )
 }
 
 const STORAGE_COLORS: Record<string, string> = {
@@ -91,15 +123,22 @@ export function AccountSettings() {
   const { t } = useT('settings')
   const { t: tCommon } = useT('common')
   const { state, logout } = useAuth()
-  const { linkingRequest, clearLinkingRequest } = useSync()
+  const { linkingRequest, clearLinkingRequest, triggerSync } = useSync()
   const syncStatus = useSyncStatus()
   const [storage, setStorage] = useState<StorageBreakdownResult | null>(null)
+  const [billing, setBilling] = useState<BillingStatus | null>(null)
+  const [billingError, setBillingError] = useState<string | null>(null)
+  const [activationPending, setActivationPending] = useState(false)
   const [showSignOutDialog, setShowSignOutDialog] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
   const [showLinkingQr, setShowLinkingQr] = useState(false)
   const [showRotationWizard, setShowRotationWizard] = useState(false)
   const [showRecoveryKey, setShowRecoveryKey] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [isBillingRefreshing, setIsBillingRefreshing] = useState(false)
+  const [isCheckoutStarting, setIsCheckoutStarting] = useState(false)
+  const [isPortalOpening, setIsPortalOpening] = useState(false)
+  const billingLoadFailed = t('account.billing.toasts.loadFailed')
 
   const loadStorage = useCallback(async () => {
     if (state.status !== 'authenticated') return
@@ -118,6 +157,26 @@ export function AccountSettings() {
     void loadStorage()
   }, [loadStorage])
 
+  const loadBilling = useCallback(async () => {
+    if (state.status !== 'authenticated') return
+    setBillingError(null)
+    try {
+      const result = await window.api.account.getBillingStatus()
+      if (isBillingStatus(result)) {
+        setBilling(result)
+        setActivationPending(result.plan !== 'free' && result.status !== 'active')
+      } else {
+        setBillingError(result.error ?? billingLoadFailed)
+      }
+    } catch (error: unknown) {
+      setBillingError(extractErrorMessage(error, billingLoadFailed))
+    }
+  }, [billingLoadFailed, state.status])
+
+  useEffect(() => {
+    void loadBilling()
+  }, [loadBilling])
+
   const handleSignOut = useCallback(async () => {
     setSigningOut(true)
     try {
@@ -130,6 +189,66 @@ export function AccountSettings() {
       setShowSignOutDialog(false)
     }
   }, [logout, t])
+
+  const handleStartCheckout = useCallback(async () => {
+    setIsCheckoutStarting(true)
+    setActivationPending(true)
+    try {
+      const result = await window.api.account.startCheckout({ plan: 'pro', cadence: 'annual' })
+      if (!result.success) {
+        setActivationPending(false)
+        toast.error(result.error ?? t('account.billing.toasts.checkoutFailed'))
+        return
+      }
+      toast.success(t('account.billing.toasts.checkoutOpened'))
+    } catch (error: unknown) {
+      setActivationPending(false)
+      toast.error(extractErrorMessage(error, t('account.billing.toasts.checkoutFailed')))
+    } finally {
+      setIsCheckoutStarting(false)
+    }
+  }, [t])
+
+  const handleRefreshBilling = useCallback(async () => {
+    setIsBillingRefreshing(true)
+    setBillingError(null)
+    try {
+      const result = await window.api.account.refreshBillingStatus()
+      if (!isBillingStatus(result)) {
+        throw new Error(result.error ?? t('account.billing.toasts.refreshFailed'))
+      }
+      setBilling(result)
+      const isActive = result.status === 'active'
+      setActivationPending(result.plan !== 'free' && !isActive)
+      await loadStorage()
+      if (isActive) {
+        await triggerSync()
+        toast.success(t('account.billing.toasts.billingActive'))
+      } else {
+        toast.info(t('account.billing.toasts.activationPending'))
+      }
+    } catch (error: unknown) {
+      const message = extractErrorMessage(error, t('account.billing.toasts.refreshFailed'))
+      setBillingError(message)
+      toast.error(message)
+    } finally {
+      setIsBillingRefreshing(false)
+    }
+  }, [loadStorage, t, triggerSync])
+
+  const handleOpenBillingPortal = useCallback(async () => {
+    setIsPortalOpening(true)
+    try {
+      const result = await window.api.account.openBillingPortal()
+      if (!result.success) {
+        toast.error(result.error ?? t('account.billing.toasts.portalFailed'))
+      }
+    } catch (error: unknown) {
+      toast.error(extractErrorMessage(error, t('account.billing.toasts.portalFailed')))
+    } finally {
+      setIsPortalOpening(false)
+    }
+  }, [t])
 
   if (state.status === 'checking') {
     return (
@@ -201,6 +320,124 @@ export function AccountSettings() {
             onCheckedChange={(checked) => void (checked ? syncStatus.resume() : syncStatus.pause())}
             className={ACCENT_SWITCH}
           />
+        </div>
+      </SettingsGroup>
+
+      <SettingsGroup label={t('account.groups.billing')}>
+        <div className="space-y-3 px-4 py-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-2">
+              <CreditCard className="size-4 shrink-0 text-muted-foreground" />
+              <div className="min-w-0">
+                <div className="font-medium text-[13px]/4 text-foreground">
+                  {billing
+                    ? t(`account.billing.plans.${billing.plan}`)
+                    : t('account.billing.planStatus')}
+                </div>
+                <div className="text-xs/4 text-muted-foreground">
+                  {billing
+                    ? t(`account.billing.statuses.${billing.status}`)
+                    : t('account.billing.checking')}
+                </div>
+              </div>
+            </div>
+            {billing && (
+              <span
+                className={`shrink-0 rounded-full px-2 py-0.5 text-[11px]/4 font-medium ${
+                  billing.status === 'active'
+                    ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                    : 'bg-amber-500/10 text-amber-700 dark:text-amber-300'
+                }`}
+              >
+                {t(`account.billing.statuses.${billing.status}`)}
+              </span>
+            )}
+          </div>
+
+          {billing && (
+            <div className="grid gap-2 text-xs/4 text-muted-foreground sm:grid-cols-2">
+              <div>
+                <span className="font-medium text-foreground">
+                  {t('account.billing.labels.storage')}
+                </span>{' '}
+                {formatBytes(billing.usage.storageUsed)} /{' '}
+                {formatBytes(billing.limits.storageLimit)}
+              </div>
+              <div>
+                <span className="font-medium text-foreground">
+                  {t('account.billing.labels.maxFile')}
+                </span>{' '}
+                {formatBytes(billing.limits.maxFileSize)}
+              </div>
+              <div>
+                <span className="font-medium text-foreground">
+                  {t('account.billing.labels.vaults')}
+                </span>{' '}
+                {billing.limits.maxVaults ?? t('account.billing.unlimited')}
+              </div>
+              <div>
+                <span className="font-medium text-foreground">
+                  {t('account.billing.labels.history')}
+                </span>{' '}
+                {t('account.billing.historyDays', {
+                  days: billing.limits.versionHistoryDays
+                })}
+              </div>
+            </div>
+          )}
+
+          {(activationPending || billingError) && (
+            <div className="rounded-md border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs/4 text-amber-900 dark:text-amber-200">
+              {billingError ?? (
+                <>
+                  {t('account.billing.activationPendingPrefix')}{' '}
+                  <a
+                    className="font-medium underline underline-offset-2"
+                    href={`mailto:${BILLING_SUPPORT_EMAIL}`}
+                  >
+                    {BILLING_SUPPORT_EMAIL}
+                  </a>
+                  .
+                </>
+              )}
+            </div>
+          )}
+
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => void handleStartCheckout()}
+              disabled={isCheckoutStarting || billing?.status === 'active'}
+              className="h-7 px-3 text-xs/4"
+            >
+              {isCheckoutStarting
+                ? t('account.billing.actions.opening')
+                : t('account.billing.actions.upgrade')}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void handleRefreshBilling()}
+              disabled={isBillingRefreshing}
+              className="h-7 px-3 text-xs/4"
+            >
+              <RefreshCw
+                className={`me-1.5 size-3.5 ${isBillingRefreshing ? 'animate-spin' : ''}`}
+              />
+              {t('account.billing.actions.refresh')}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void handleOpenBillingPortal()}
+              disabled={isPortalOpening || !billing?.canManageBilling}
+              className="h-7 px-3 text-xs/4"
+            >
+              <ExternalLink className="me-1.5 size-3.5" />
+              {t('account.billing.actions.manage')}
+            </Button>
+          </div>
         </div>
       </SettingsGroup>
 

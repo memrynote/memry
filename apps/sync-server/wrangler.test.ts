@@ -24,11 +24,13 @@ describe('wrangler config', () => {
     expect(toml).toContain('name = "memry-sync-server-staging"')
     expect(toml).toContain('[env.staging.vars]')
     expect(toml).toContain('ENVIRONMENT = "staging"')
+    expect(toml).toContain('PADDLE_ENVIRONMENT = "sandbox"')
 
     expect(toml).toContain('[env.production]')
     expect(toml).toContain('name = "memry-sync-server-production"')
     expect(toml).toContain('[env.production.vars]')
     expect(toml).toContain('ENVIRONMENT = "production"')
+    expect(toml).toContain('PADDLE_ENVIRONMENT = "production"')
   })
 
   it('routes staging and production workers to separate sync hostnames', () => {

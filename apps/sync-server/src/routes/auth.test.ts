@@ -150,24 +150,38 @@ const createD1Statement = () => {
   return statement
 }
 
-const createEnv = () => ({
-  DB: {
-    prepare: vi.fn().mockReturnValue(createD1Statement())
-  } as unknown as D1Database,
-  STORAGE: {} as R2Bucket,
-  USER_SYNC_STATE: {} as DurableObjectNamespace,
-  LINKING_SESSION: {} as DurableObjectNamespace,
-  ENVIRONMENT: 'development',
-  JWT_PUBLIC_KEY: 'mock-public-key',
-  JWT_PRIVATE_KEY: 'mock-private-key',
-  RESEND_API_KEY: 'mock-resend-key',
-  OTP_HMAC_KEY: 'mock-otp-hmac-key',
-  GOOGLE_CLIENT_ID: 'mock-google-client-id',
-  GOOGLE_CLIENT_SECRET: 'mock-google-client-secret',
-  GOOGLE_REDIRECT_URI: 'http://localhost/callback',
-  RECOVERY_DUMMY_SECRET: 'mock-dummy-recovery-secret',
-  PADDLE_CHECKOUT_TOKEN_SECRET: 'mock-checkout-token-secret'
-})
+const createEnv = (options?: {
+  firstRows?: unknown[]
+  paddleFetch?: typeof fetch
+  paddleApiKey?: string
+}) => {
+  const firstRows = [...(options?.firstRows ?? [])]
+  return {
+    DB: {
+      prepare: vi.fn().mockImplementation(() => {
+        const statement = createD1Statement()
+        statement.first.mockImplementation(() => Promise.resolve(firstRows.shift() ?? null))
+        return statement
+      })
+    } as unknown as D1Database,
+    STORAGE: {} as R2Bucket,
+    USER_SYNC_STATE: {} as DurableObjectNamespace,
+    LINKING_SESSION: {} as DurableObjectNamespace,
+    ENVIRONMENT: 'development',
+    JWT_PUBLIC_KEY: 'mock-public-key',
+    JWT_PRIVATE_KEY: 'mock-private-key',
+    RESEND_API_KEY: 'mock-resend-key',
+    OTP_HMAC_KEY: 'mock-otp-hmac-key',
+    GOOGLE_CLIENT_ID: 'mock-google-client-id',
+    GOOGLE_CLIENT_SECRET: 'mock-google-client-secret',
+    GOOGLE_REDIRECT_URI: 'http://localhost/callback',
+    RECOVERY_DUMMY_SECRET: 'mock-dummy-recovery-secret',
+    PADDLE_CHECKOUT_TOKEN_SECRET: 'mock-checkout-token-secret',
+    PADDLE_API_KEY: options?.paddleApiKey ?? 'pdl_sandbox_key',
+    PADDLE_ENVIRONMENT: 'sandbox',
+    fetch: options?.paddleFetch
+  }
+}
 
 const jsonPost = (path: string, body: Record<string, unknown>) => ({
   method: 'POST' as const,
@@ -288,6 +302,208 @@ describe('auth routes', () => {
       expect(res.status).toBe(200)
       expect(await res.json()).toEqual({ success: true, expiresIn: 600 })
       expect(checkEmailRateLimit).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('billing routes', () => {
+    it('returns free billing status when no paid entitlement exists', async () => {
+      env = createEnv({
+        firstRows: [
+          {
+            user_id: 'user-1',
+            storage_used: 0,
+            plan: 'free',
+            status: 'inactive',
+            source: 'none',
+            storage_limit: 0,
+            max_file_size: 0,
+            max_vaults: 0,
+            version_history_days: 0,
+            paddle_customer_id: null,
+            paddle_subscription_id: null,
+            paddle_transaction_id: null,
+            expires_at: null
+          }
+        ]
+      })
+
+      const res = await app.request('/auth/billing', { method: 'GET' }, env)
+
+      expect(res.status).toBe(200)
+      await expect(res.json()).resolves.toMatchObject({
+        plan: 'free',
+        status: 'inactive',
+        limits: { storageLimit: 0 },
+        usage: { storageUsed: 0 },
+        canManageBilling: false
+      })
+    })
+
+    it('reconciles a completed Paddle transaction for the authenticated user', async () => {
+      const paddleFetch = vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            data: {
+              id: 'txn_1',
+              status: 'completed',
+              customer_id: 'ctm_1',
+              subscription_id: 'sub_1',
+              billing_period: { ends_at: '2026-06-01T00:00:00Z' },
+              custom_data: {
+                app: 'memry',
+                entitlement: 'sync',
+                plan: 'pro',
+                userId: 'user-1'
+              }
+            }
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        )
+      )
+      env = createEnv({
+        paddleFetch,
+        firstRows: [
+          {
+            user_id: 'user-1',
+            storage_used: 128,
+            plan: 'pro',
+            status: 'active',
+            source: 'paddle',
+            storage_limit: 10,
+            max_file_size: 5,
+            max_vaults: 10,
+            version_history_days: 365,
+            paddle_customer_id: 'ctm_1',
+            paddle_subscription_id: 'sub_1',
+            paddle_transaction_id: 'txn_1',
+            expires_at: 1_780_272_000
+          }
+        ]
+      })
+
+      const res = await app.request(
+        '/auth/billing/reconcile',
+        jsonPost('/auth/billing/reconcile', { transactionId: 'txn_1' }),
+        env
+      )
+
+      expect(res.status).toBe(200)
+      expect(paddleFetch).toHaveBeenCalledWith(
+        'https://sandbox-api.paddle.com/transactions/txn_1',
+        expect.objectContaining({
+          headers: expect.objectContaining({ Authorization: 'Bearer pdl_sandbox_key' })
+        })
+      )
+      await expect(res.json()).resolves.toMatchObject({
+        plan: 'pro',
+        status: 'active',
+        canManageBilling: true
+      })
+    })
+
+    it('rejects reconcile when transaction custom data belongs to another user', async () => {
+      const paddleFetch = vi.fn().mockResolvedValue(
+        Response.json({
+          data: {
+            id: 'txn_1',
+            status: 'completed',
+            customer_id: 'ctm_1',
+            custom_data: {
+              app: 'memry',
+              entitlement: 'sync',
+              plan: 'pro',
+              userId: 'user-2'
+            }
+          }
+        })
+      )
+      env = createEnv({ paddleFetch })
+
+      const res = await app.request(
+        '/auth/billing/reconcile',
+        jsonPost('/auth/billing/reconcile', { transactionId: 'txn_1' }),
+        env
+      )
+
+      expect(res.status).toBe(403)
+    })
+
+    it('rejects reconcile when transaction is not completed', async () => {
+      const paddleFetch = vi.fn().mockResolvedValue(
+        Response.json({
+          data: {
+            id: 'txn_1',
+            status: 'paid',
+            customer_id: 'ctm_1',
+            custom_data: {
+              app: 'memry',
+              entitlement: 'sync',
+              plan: 'pro',
+              userId: 'user-1'
+            }
+          }
+        })
+      )
+      env = createEnv({ paddleFetch })
+
+      const res = await app.request(
+        '/auth/billing/reconcile',
+        jsonPost('/auth/billing/reconcile', { transactionId: 'txn_1' }),
+        env
+      )
+
+      expect(res.status).toBe(409)
+    })
+
+    it('creates a temporary Paddle portal session when a customer exists', async () => {
+      const paddleFetch = vi.fn().mockResolvedValue(
+        Response.json(
+          {
+            data: {
+              urls: {
+                general: {
+                  overview: 'https://customer-portal.paddle.com/cpl_1?action=overview&token=tmp'
+                }
+              }
+            }
+          },
+          { status: 201 }
+        )
+      )
+      env = createEnv({
+        paddleFetch,
+        firstRows: [{ paddle_customer_id: 'ctm_1', paddle_subscription_id: 'sub_1' }]
+      })
+
+      const res = await app.request(
+        '/auth/billing/portal-session',
+        { method: 'POST', body: '{}', headers: { 'Content-Type': 'application/json' } },
+        env
+      )
+
+      expect(res.status).toBe(200)
+      expect(paddleFetch).toHaveBeenCalledWith(
+        'https://sandbox-api.paddle.com/customers/ctm_1/portal-sessions',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ subscription_ids: ['sub_1'] })
+        })
+      )
+      await expect(res.json()).resolves.toEqual({
+        portalUrl: 'https://customer-portal.paddle.com/cpl_1?action=overview&token=tmp'
+      })
+    })
+
+    it('returns 409 for portal sessions before Paddle customer creation', async () => {
+      env = createEnv({ firstRows: [{ paddle_customer_id: null, paddle_subscription_id: null }] })
+
+      const res = await app.request(
+        '/auth/billing/portal-session',
+        { method: 'POST', body: '{}', headers: { 'Content-Type': 'application/json' } },
+        env
+      )
+
+      expect(res.status).toBe(409)
     })
   })
 

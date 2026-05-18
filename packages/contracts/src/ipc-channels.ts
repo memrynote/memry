@@ -452,7 +452,15 @@ export const AccountChannels = {
     /** Sign out and clear local synced data */
     SIGN_OUT: 'account:signOut',
     /** Get recovery key (requires re-auth token) */
-    GET_RECOVERY_KEY: 'account:getRecoveryKey'
+    GET_RECOVERY_KEY: 'account:getRecoveryKey',
+    /** Start a signed Paddle checkout from the desktop app */
+    START_CHECKOUT: 'account:startCheckout',
+    /** Get current billing status */
+    GET_BILLING_STATUS: 'account:getBillingStatus',
+    /** Reconcile Paddle transaction and refresh billing status */
+    REFRESH_BILLING_STATUS: 'account:refreshBillingStatus',
+    /** Open Paddle customer portal */
+    OPEN_BILLING_PORTAL: 'account:openBillingPortal'
   }
 } as const
 

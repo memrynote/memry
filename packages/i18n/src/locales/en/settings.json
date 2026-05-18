@@ -389,6 +389,7 @@
     "groups": {
       "identity": "Identity",
       "sync": "Sync",
+      "billing": "Billing",
       "storage": "Storage",
       "devices": "Devices",
       "security": "Security"
@@ -413,6 +414,47 @@
         "changesPending": "{count, plural, one {# change pending} other {# changes pending}}",
         "offlinePending": "Offline ({count, plural, one {# change pending} other {# changes pending}})",
         "never": "Never"
+      }
+    },
+    "billing": {
+      "planStatus": "Plan status",
+      "checking": "Checking billing status",
+      "plans": {
+        "free": "Free plan",
+        "plus": "Plus plan",
+        "pro": "Pro plan",
+        "believer": "Believer plan"
+      },
+      "statuses": {
+        "inactive": "Inactive",
+        "active": "Active",
+        "past_due": "Past due",
+        "paused": "Paused",
+        "canceled": "Canceled"
+      },
+      "labels": {
+        "storage": "Storage",
+        "maxFile": "Max file",
+        "vaults": "Vaults",
+        "history": "History"
+      },
+      "unlimited": "Unlimited",
+      "historyDays": "{days} days",
+      "activationPendingPrefix": "Activation pending. Paddle can take a moment to confirm checkout. Refresh status or email",
+      "actions": {
+        "upgrade": "Upgrade",
+        "opening": "Opening...",
+        "refresh": "Refresh status",
+        "manage": "Manage billing"
+      },
+      "toasts": {
+        "loadFailed": "Could not load billing status",
+        "checkoutFailed": "Could not start checkout",
+        "checkoutOpened": "Checkout opened in your browser",
+        "refreshFailed": "Could not refresh billing status",
+        "billingActive": "Billing is active",
+        "activationPending": "Activation pending",
+        "portalFailed": "Could not open billing portal"
       }
     },
     "storage": {

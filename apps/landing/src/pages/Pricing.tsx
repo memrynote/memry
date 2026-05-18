@@ -1,7 +1,7 @@
-import { Fragment, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Check, ArrowRight, Sparkles, ShieldCheck, Heart } from 'lucide-react'
+import { Check, ArrowRight, Sparkles, ShieldCheck, Heart, ExternalLink } from 'lucide-react'
 import { Container } from '@/components/layout/Container'
 import { PageHead } from '@/components/shared/PageHead'
 import { Button } from '@/components/ui/button'
@@ -22,7 +22,13 @@ import {
   type SyncPlanTier,
   type LifecycleTone
 } from '@/lib/constants'
-import { openPaddleCheckout, type PaddleCheckoutCadence } from '@/lib/paddle-checkout'
+import {
+  buildMemryBillingCompleteUrl,
+  buildMemryBillingStartUrl,
+  openPaddleCheckout,
+  parseCheckoutHash,
+  type PaddleCheckoutCadence
+} from '@/lib/paddle-checkout'
 import { cn } from '@/lib/utils'
 import { BLUR_REVEAL_ANIMATE, BLUR_REVEAL_INITIAL, BLUR_REVEAL_TRANSITION } from '@/lib/motion'
 import { trackLandingEvent } from '@/lib/analytics'
@@ -31,7 +37,14 @@ type Cadence = 'monthly' | 'annual'
 type CheckoutState = {
   pendingKey: string | null
   error: string | null
+  notice: CheckoutNotice | null
 }
+type CheckoutNotice =
+  | { type: 'success'; transactionId: string | null }
+  | { type: 'pending'; transactionId: string | null }
+  | { type: 'failed' }
+  | { type: 'canceled' }
+  | { type: 'desktop'; url: string }
 
 const PURCHASES_ENABLED = false
 
@@ -44,25 +57,79 @@ const fadeUp = {
 
 export function PricingPage() {
   const [cadence, setCadence] = useState<Cadence>('annual')
-  const [checkout, setCheckout] = useState<CheckoutState>({ pendingKey: null, error: null })
+  const [checkout, setCheckout] = useState<CheckoutState>({
+    pendingKey: null,
+    error: null,
+    notice: null
+  })
+  const consumedCheckoutIntent = useRef(false)
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('checkout') === 'success') {
+      setCheckout({
+        pendingKey: null,
+        error: null,
+        notice: { type: 'success', transactionId: params.get('transactionId') }
+      })
+      return
+    }
+
+    if (consumedCheckoutIntent.current) return
+    const intent = parseCheckoutHash(window.location.hash)
+    if (!intent) return
+
+    consumedCheckoutIntent.current = true
+    window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`)
+    if (intent.cadence === 'monthly' || intent.cadence === 'annual') {
+      setCadence(intent.cadence)
+    }
+
+    const pendingKey = getCheckoutKey(intent.plan, intent.cadence)
+    setCheckout({ pendingKey, error: null, notice: null })
+    let checkoutTransactionId: string | null = null
+    let checkoutCompleted = false
+    void openPaddleCheckout(intent.plan, intent.cadence, intent.checkoutToken, (event) => {
+      if (event.name === 'checkout.completed') {
+        checkoutCompleted = true
+        setCheckout({
+          pendingKey: null,
+          error: null,
+          notice: { type: 'success', transactionId: checkoutTransactionId }
+        })
+      } else if (event.name === 'checkout.closed' && !checkoutCompleted) {
+        setCheckout({ pendingKey: null, error: null, notice: { type: 'canceled' } })
+      } else if (event.name === 'checkout.payment.failed') {
+        setCheckout({ pendingKey: null, error: null, notice: { type: 'failed' } })
+      }
+    })
+      .then((result) => {
+        checkoutTransactionId = result.transactionId
+      })
+      .catch((error) => {
+        setCheckout({
+          pendingKey: null,
+          error: error instanceof Error ? error.message : 'Could not start checkout',
+          notice: null
+        })
+      })
+  }, [])
 
   const handleCheckout = async (tier: SyncPlanTier) => {
     if (!PURCHASES_ENABLED || !tier.checkoutPlanId) return
 
     const checkoutCadence = getCheckoutCadence(tier, cadence)
     const pendingKey = getCheckoutKey(tier.checkoutPlanId, checkoutCadence)
+    const desktopUrl = buildMemryBillingStartUrl(tier.checkoutPlanId, checkoutCadence)
 
     trackLandingEvent('landing_pricing_cta_click', pricingTarget(tier.id, checkoutCadence))
-    setCheckout({ pendingKey, error: null })
-    try {
-      await openPaddleCheckout(tier.checkoutPlanId, checkoutCadence)
-      setCheckout({ pendingKey: null, error: null })
-    } catch (error) {
-      setCheckout({
-        pendingKey: null,
-        error: error instanceof Error ? error.message : 'Could not start checkout'
-      })
-    }
+    setCheckout({ pendingKey, error: null, notice: { type: 'desktop', url: desktopUrl } })
+    window.location.href = desktopUrl
+    window.setTimeout(() => {
+      setCheckout((current) =>
+        current.pendingKey === pendingKey ? { ...current, pendingKey: null } : current
+      )
+    }, 1000)
   }
 
   return (
@@ -70,8 +137,9 @@ export function PricingPage() {
       <PageHead page="pricing" />
       <main>
         <Hero cadence={cadence} setCadence={setCadence} />
+        <CheckoutNoticeBanner notice={checkout.notice} />
         <TierGrid cadence={cadence} checkout={checkout} onCheckout={handleCheckout} />
-        <LimitMatrix cadence={cadence} />
+        <LimitMatrix cadence={cadence} onCheckout={handleCheckout} />
         <BelieverNarrative />
         <LifecycleTimeline />
         <PricingFaq />
@@ -91,6 +159,77 @@ function getCheckoutKey(planId: CheckoutPlanId, cadence: PaddleCheckoutCadence) 
 
 function pricingTarget(tierId: string, cadence: string) {
   return `pricing:${tierId}:${cadence}`
+}
+
+function CheckoutNoticeBanner({ notice }: { notice: CheckoutNotice | null }) {
+  if (!notice) return null
+
+  const tone =
+    notice.type === 'failed'
+      ? 'border-terracotta/30 bg-terracotta/5 text-terracotta'
+      : notice.type === 'canceled'
+        ? 'border-amber-500/30 bg-amber-500/5 text-amber-700'
+        : 'border-sage/30 bg-sage/5 text-sage'
+
+  const title =
+    notice.type === 'success'
+      ? 'Purchase complete'
+      : notice.type === 'pending'
+        ? 'Activation pending'
+        : notice.type === 'failed'
+          ? 'Payment failed'
+          : notice.type === 'canceled'
+            ? 'Checkout canceled'
+            : 'Open Memry to continue'
+
+  const body =
+    notice.type === 'success'
+      ? 'Memry will activate hosted sync after Paddle confirms the transaction.'
+      : notice.type === 'pending'
+        ? 'Paddle is confirming the purchase. If Memry is open, refresh billing in Account.'
+        : notice.type === 'failed'
+          ? 'The payment was not completed. You can try again from Memry when ready.'
+          : notice.type === 'canceled'
+            ? 'No charge was made. Start again from Memry when you are ready.'
+            : 'Memry desktop signs the checkout request so the purchase lands on your account.'
+
+  const transactionId =
+    notice.type === 'success' || notice.type === 'pending' ? notice.transactionId : null
+  const openMemryUrl = transactionId ? buildMemryBillingCompleteUrl(transactionId) : 'memry://'
+
+  return (
+    <section className="pb-8">
+      <Container size="md">
+        <div
+          className={cn(
+            'flex flex-col gap-4 rounded-2xl border px-5 py-4 text-sm shadow-card sm:flex-row sm:items-center sm:justify-between',
+            tone
+          )}
+          role={notice.type === 'failed' ? 'alert' : 'status'}
+        >
+          <div>
+            <p className="font-mono-accent text-[11px] uppercase tracking-[0.18em]">{title}</p>
+            <p className="mt-1 text-ink/75">{body}</p>
+          </div>
+          {(notice.type === 'success' ||
+            notice.type === 'pending' ||
+            notice.type === 'desktop') && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="shrink-0 rounded-full border-ink/15 bg-paper-alt/40 text-ink hover:bg-paper-alt"
+              asChild
+            >
+              <a href={notice.type === 'desktop' ? notice.url : openMemryUrl}>
+                <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                Open Memry
+              </a>
+            </Button>
+          )}
+        </div>
+      </Container>
+    </section>
+  )
 }
 
 function Hero({ cadence, setCadence }: { cadence: Cadence; setCadence: (c: Cadence) => void }) {
@@ -627,7 +766,13 @@ function LifecycleTimeline() {
   )
 }
 
-function LimitMatrix({ cadence }: { cadence: Cadence }) {
+function LimitMatrix({
+  cadence,
+  onCheckout
+}: {
+  cadence: Cadence
+  onCheckout: (tier: SyncPlanTier) => void
+}) {
   const plans = PLAN_COMPARISON_MATRIX.plans.map((planId) => {
     const tier = SYNC_PLAN_TIERS.find((item) => item.id === planId)
     if (!tier) {
@@ -713,10 +858,11 @@ function LimitMatrix({ cadence }: { cadence: Cadence }) {
                           <Button
                             variant={isRecommended ? 'default' : 'outline'}
                             size="sm"
-                            disabled
+                            disabled={!PURCHASES_ENABLED}
+                            onClick={() => onCheckout(tier)}
                             className="h-8 rounded-full px-3 text-xs"
                           >
-                            End of June
+                            {PURCHASES_ENABLED ? tier.cta : 'End of June'}
                           </Button>
                         )}
                       </div>

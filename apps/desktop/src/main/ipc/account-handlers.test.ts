@@ -16,6 +16,9 @@ const mocks = vi.hoisted(() => ({
   teardownSession: vi.fn(),
   retrieveKey: vi.fn(),
   getValidAccessToken: vi.fn(),
+  getFromServer: vi.fn(),
+  postToServer: vi.fn(),
+  shellOpenExternal: vi.fn(),
   toBase64: vi.fn(),
   logger: {
     info: vi.fn(),
@@ -33,6 +36,9 @@ vi.mock('electron', () => ({
     removeHandler: vi.fn((channel: string) => {
       mockIpcMain.removeHandler(channel)
     })
+  },
+  shell: {
+    openExternal: (...args: unknown[]) => mocks.shellOpenExternal(...args)
   }
 }))
 
@@ -57,6 +63,15 @@ vi.mock('../crypto', () => ({
 
 vi.mock('../sync/token-manager', () => ({
   getValidAccessToken: (...args: unknown[]) => mocks.getValidAccessToken(...args)
+}))
+
+vi.mock('../sync/http-client', () => ({
+  getFromServer: (...args: unknown[]) => mocks.getFromServer(...args),
+  postToServer: (...args: unknown[]) => mocks.postToServer(...args)
+}))
+
+vi.mock('../sync/runtime', () => ({
+  getSyncEngine: vi.fn().mockReturnValue(null)
 }))
 
 vi.mock('../lib/logger', () => ({
@@ -85,6 +100,16 @@ describe('account-handlers', () => {
     mocks.storeGet.mockReturnValue({ email: 'kaan@example.com' })
     mocks.teardownSession.mockResolvedValue({ keychainFailures: [] })
     mocks.getValidAccessToken.mockResolvedValue('token-1')
+    mocks.postToServer.mockResolvedValue({ checkoutToken: 'checkout-token-1' })
+    mocks.getFromServer.mockResolvedValue({
+      plan: 'free',
+      status: 'inactive',
+      limits: { storageLimit: 0, maxFileSize: 0, maxVaults: 0, versionHistoryDays: 0 },
+      usage: { storageUsed: 0 },
+      expiresAt: null,
+      canManageBilling: false
+    })
+    mocks.shellOpenExternal.mockResolvedValue('')
     mocks.retrieveKey.mockResolvedValue(new Uint8Array([1, 2, 3]))
     mocks.toBase64.mockReturnValue('recovery-key')
     vi.mocked(isDatabaseInitialized).mockReturnValue(false)
@@ -159,6 +184,55 @@ describe('account-handlers', () => {
     expect(mocks.logger.error).toHaveBeenCalledWith(
       'Failed to retrieve recovery key',
       expect.any(Error)
+    )
+  })
+
+  it('starts checkout by minting a token and opening landing with a fragment', async () => {
+    registerAccountHandlers()
+
+    await expect(
+      invokeHandler(AccountChannels.invoke.START_CHECKOUT, { plan: 'pro', cadence: 'annual' })
+    ).resolves.toEqual({
+      success: true,
+      checkoutUrl:
+        'https://memrynote.com/pricing#checkout_plan=pro&checkout_cadence=annual&checkout_token=checkout-token-1'
+    })
+
+    expect(mocks.postToServer).toHaveBeenCalledWith(
+      '/auth/checkout-token',
+      { plan: 'pro', cadence: 'annual' },
+      'token-1'
+    )
+    expect(mocks.shellOpenExternal).toHaveBeenCalledWith(
+      'https://memrynote.com/pricing#checkout_plan=pro&checkout_cadence=annual&checkout_token=checkout-token-1'
+    )
+  })
+
+  it('rejects checkout start without an authenticated sync account', async () => {
+    mocks.getValidAccessToken.mockResolvedValueOnce(null)
+    registerAccountHandlers()
+
+    await expect(
+      invokeHandler(AccountChannels.invoke.START_CHECKOUT, { plan: 'pro', cadence: 'annual' })
+    ).resolves.toEqual({ success: false, error: 'Sign in to start checkout' })
+
+    expect(mocks.shellOpenExternal).not.toHaveBeenCalled()
+  })
+
+  it('opens a fresh Paddle portal URL from the sync server', async () => {
+    mocks.postToServer.mockResolvedValueOnce({
+      portalUrl: 'https://customer-portal.paddle.com/cpl_1?action=overview&token=tmp'
+    })
+    registerAccountHandlers()
+
+    await expect(invokeHandler(AccountChannels.invoke.OPEN_BILLING_PORTAL)).resolves.toEqual({
+      success: true,
+      portalUrl: 'https://customer-portal.paddle.com/cpl_1?action=overview&token=tmp'
+    })
+
+    expect(mocks.postToServer).toHaveBeenCalledWith('/auth/billing/portal-session', {}, 'token-1')
+    expect(mocks.shellOpenExternal).toHaveBeenCalledWith(
+      'https://customer-portal.paddle.com/cpl_1?action=overview&token=tmp'
     )
   })
 })
