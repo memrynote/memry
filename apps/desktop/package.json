@@ -250,7 +250,7 @@
     "cmdk": "^1.1.1",
     "cobe": "^0.6.5",
     "date-fns": "^4.1.0",
-    "drizzle-kit": "^0.31.8",
+    "drizzle-kit": "^0.31.10",
     "electron": "^39.8.6",
     "electron-builder": "^26.0.12",
     "electron-store": "^11.0.2",
