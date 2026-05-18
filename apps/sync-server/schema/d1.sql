@@ -286,6 +286,7 @@ CREATE INDEX idx_crdt_snapshots_note ON crdt_snapshots(user_id, vault_id, note_i
 CREATE TABLE upload_sessions (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  vault_id TEXT NOT NULL DEFAULT 'default',
   attachment_id TEXT NOT NULL,
   filename TEXT NOT NULL,
   total_size INTEGER NOT NULL,
@@ -297,7 +298,7 @@ CREATE TABLE upload_sessions (
   created_at INTEGER NOT NULL
 );
 
-CREATE INDEX idx_upload_user ON upload_sessions(user_id);
+CREATE INDEX idx_upload_user ON upload_sessions(user_id, vault_id);
 CREATE INDEX idx_upload_expires ON upload_sessions(expires_at);
 
 -- ============================================================================
@@ -308,14 +309,15 @@ CREATE TABLE blob_chunks (
   id TEXT PRIMARY KEY,
   hash TEXT NOT NULL,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  vault_id TEXT NOT NULL DEFAULT 'default',
   r2_key TEXT NOT NULL,
   size_bytes INTEGER NOT NULL,
   ref_count INTEGER NOT NULL DEFAULT 1,
   created_at INTEGER NOT NULL,
-  UNIQUE (user_id, hash)
+  UNIQUE (user_id, vault_id, hash)
 );
 
-CREATE INDEX idx_blob_chunks_hash ON blob_chunks(hash);
+CREATE INDEX idx_blob_chunks_hash ON blob_chunks(user_id, vault_id, hash);
 
 -- ============================================================================
 -- Consumed setup tokens (single-use enforcement)
