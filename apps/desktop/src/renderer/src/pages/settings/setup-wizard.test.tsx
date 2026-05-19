@@ -238,6 +238,7 @@ describe('SetupWizard', () => {
     await waitFor(() =>
       expect(auth.setWizardStep).toHaveBeenCalledWith('sign-in', { oauthState: 'oauth-state' })
     )
+    expect(auth.initOAuth).toHaveBeenCalledWith()
   })
 
   it('handles OTP verify, resend, and back paths', async () => {

@@ -299,7 +299,21 @@
       "syncAnywhere": "Συγχρονισμός οπουδήποτε",
       "useDropboxIcloudGit": "Χρησιμοποιήστε Dropbox, iCloud, Git",
       "recentVaults": "Πρόσφατα θησαυροφυλάκια",
-      "notesLastOpened": "σημειώσεις · Τελευταίο άνοιγμα"
+      "notesLastOpened": "σημειώσεις · Τελευταίο άνοιγμα",
+      "brandName": "Memry",
+      "preRelease": "Προέκδοση",
+      "createNewVault": "Δημιουργία νέου θησαυροφυλακίου",
+      "createNewVaultDesc": "Ξεκινήστε ένα νέο θησαυροφυλάκιο σε φάκελο της επιλογής σας.",
+      "openExistingVault": "Άνοιγμα υπάρχοντος θησαυροφυλακίου",
+      "openExistingVaultDesc": "Επιλέξτε έναν φάκελο με αρχεία Markdown που ήδη κρατάτε.",
+      "signInToSync": "Σύνδεση για συγχρονισμό",
+      "signInToSyncDesc": "Θησαυροφυλάκια με κρυπτογράφηση από άκρο σε άκρο σε όλες τις συσκευές σας.",
+      "create": "Δημιουργία",
+      "open": "Άνοιγμα",
+      "signIn": "Σύνδεση",
+      "helpAndDocs": "Βοήθεια & έγγραφα",
+      "signInRequiresVault": "Ανοίξτε ή δημιουργήστε πρώτα ένα θησαυροφυλάκιο για να ρυθμίσετε τον συγχρονισμό.",
+      "addVault": "Προσθήκη θησαυροφυλακίου"
     },
     "componentsVaultSwitcher": {
       "noVaultsYet": "Δεν υπάρχουν ακόμη θησαυροφυλάκια",

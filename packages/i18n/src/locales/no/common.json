@@ -299,7 +299,21 @@
       "syncAnywhere": "Synkroniser hvor som helst",
       "useDropboxIcloudGit": "Bruk Dropbox, iCloud, Git",
       "recentVaults": "Nylige hvelv",
-      "notesLastOpened": "notater · Sist åpnet"
+      "notesLastOpened": "notater · Sist åpnet",
+      "brandName": "Memry",
+      "preRelease": "Forhåndsversjon",
+      "createNewVault": "Opprett nytt hvelv",
+      "createNewVaultDesc": "Start et nytt hvelv i en mappe du velger.",
+      "openExistingVault": "Åpne eksisterende hvelv",
+      "openExistingVaultDesc": "Velg en mappe med Markdown-filer du allerede har.",
+      "signInToSync": "Logg inn for å synkronisere",
+      "signInToSyncDesc": "Ende-til-ende-krypterte hvelv på tvers av enhetene dine.",
+      "create": "Opprett",
+      "open": "Åpne",
+      "signIn": "Logg inn",
+      "helpAndDocs": "Hjelp og dokumentasjon",
+      "signInRequiresVault": "Åpne eller opprett et hvelv først for å konfigurere synkronisering.",
+      "addVault": "Legg til hvelv"
     },
     "componentsVaultSwitcher": {
       "noVaultsYet": "Ingen hvelv ennå",

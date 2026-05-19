@@ -299,7 +299,21 @@
       "syncAnywhere": "Synkronoi missä tahansa",
       "useDropboxIcloudGit": "Käytä Dropboxia, iCloudia, Gitiä",
       "recentVaults": "Viimeaikaiset holvit",
-      "notesLastOpened": "huomautukset · Viimeksi avattu"
+      "notesLastOpened": "huomautukset · Viimeksi avattu",
+      "brandName": "Memry",
+      "preRelease": "Ennakkoversio",
+      "createNewVault": "Luo uusi holvi",
+      "createNewVaultDesc": "Aloita uusi holvi valitsemaasi kansioon.",
+      "openExistingVault": "Avaa olemassa oleva holvi",
+      "openExistingVaultDesc": "Valitse kansio Markdown-tiedostoille, joita jo käytät.",
+      "signInToSync": "Kirjaudu sisään synkronointia varten",
+      "signInToSyncDesc": "Päästä päähän salatut holvit laitteidesi välillä.",
+      "create": "Luo",
+      "open": "Avaa",
+      "signIn": "Kirjaudu sisään",
+      "helpAndDocs": "Ohjeet ja dokumentaatio",
+      "signInRequiresVault": "Avaa tai luo ensin holvi, jotta voit määrittää synkronoinnin.",
+      "addVault": "Lisää holvi"
     },
     "componentsVaultSwitcher": {
       "noVaultsYet": "Ei vielä holveja",

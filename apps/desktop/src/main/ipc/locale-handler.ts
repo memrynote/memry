@@ -3,10 +3,10 @@ import { LocaleChannels } from '@memry/contracts/ipc-channels'
 import { LocaleSchema, SUPPORTED_LOCALES, type Locale } from '@memry/contracts/locale-api'
 import { GENERAL_SETTINGS_DEFAULTS, type GeneralSettings } from '@memry/contracts/settings-schemas'
 import type { I18nInstance } from '@memry/i18n/main'
-import { getDatabase } from '../database'
+import { getDatabase, type DataDb } from '../database'
 import { createLogger } from '../lib/logger'
 import { getSetting, setSetting } from '../settings/settings-store'
-import { getCurrentVaultPath } from '../store'
+import { getCurrentVaultPath, setStoredLocale } from '../store'
 import { writePreferences } from '../vault/vault-preferences'
 
 const logger = createLogger('Locale')
@@ -20,8 +20,8 @@ export function getActiveLocale(): Locale {
   return activeLocale
 }
 
-function readGeneralSettings(): GeneralSettings {
-  const raw = getSetting(getDatabase(), GENERAL_SETTINGS_KEY)
+function readGeneralSettings(db: DataDb): GeneralSettings {
+  const raw = getSetting(db, GENERAL_SETTINGS_KEY)
   if (!raw) return { ...GENERAL_SETTINGS_DEFAULTS }
 
   try {
@@ -32,9 +32,25 @@ function readGeneralSettings(): GeneralSettings {
   }
 }
 
+function getOptionalDatabase(): DataDb | null {
+  try {
+    return getDatabase()
+  } catch (err) {
+    if (err instanceof Error && err.message === 'Database not initialized') {
+      return null
+    }
+    throw err
+  }
+}
+
 function persistLocale(locale: Locale): void {
-  const settings = readGeneralSettings()
-  setSetting(getDatabase(), GENERAL_SETTINGS_KEY, JSON.stringify({ ...settings, language: locale }))
+  const db = getOptionalDatabase()
+  if (db) {
+    const settings = readGeneralSettings(db)
+    setSetting(db, GENERAL_SETTINGS_KEY, JSON.stringify({ ...settings, language: locale }))
+  }
+
+  setStoredLocale(locale)
 
   const vaultPath = getCurrentVaultPath()
   if (!vaultPath) return

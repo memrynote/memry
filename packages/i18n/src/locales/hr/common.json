@@ -299,7 +299,21 @@
       "syncAnywhere": "Sinkronizirajte bilo gdje",
       "useDropboxIcloudGit": "Koristite Dropbox, iCloud, Git",
       "recentVaults": "Nedavni trezori",
-      "notesLastOpened": "bilješke · Zadnje otvaranje"
+      "notesLastOpened": "bilješke · Zadnje otvaranje",
+      "brandName": "Memry",
+      "preRelease": "Predizdanje",
+      "createNewVault": "Stvori novi trezor",
+      "createNewVaultDesc": "Započni novi trezor u mapi po vlastitom izboru.",
+      "openExistingVault": "Otvori postojeći trezor",
+      "openExistingVaultDesc": "Odaberi mapu s Markdown datotekama koje već imaš.",
+      "signInToSync": "Prijavi se za sinkronizaciju",
+      "signInToSyncDesc": "Trezori šifrirani od kraja do kraja na svim tvojim uređajima.",
+      "create": "Stvori",
+      "open": "Otvori",
+      "signIn": "Prijavi se",
+      "helpAndDocs": "Pomoć i dokumentacija",
+      "signInRequiresVault": "Najprije otvori ili stvori trezor da bi postavio sinkronizaciju.",
+      "addVault": "Dodaj trezor"
     },
     "componentsVaultSwitcher": {
       "noVaultsYet": "Još nema trezora",

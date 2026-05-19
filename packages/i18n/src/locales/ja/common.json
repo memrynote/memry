@@ -299,7 +299,21 @@
       "syncAnywhere": "どこでも同期",
       "useDropboxIcloudGit": "Dropbox、iCloud、Git を使用する",
       "recentVaults": "最近の保管庫",
-      "notesLastOpened": "注記 · 最後に開いたもの"
+      "notesLastOpened": "注記 · 最後に開いたもの",
+      "brandName": "Memry",
+      "preRelease": "プレリリース",
+      "createNewVault": "新しい保管庫を作成",
+      "createNewVaultDesc": "選択したフォルダーに新しい保管庫を作成します。",
+      "openExistingVault": "既存の保管庫を開く",
+      "openExistingVaultDesc": "すでに管理している Markdown ファイルのフォルダーを選択します。",
+      "signInToSync": "同期するためにサインイン",
+      "signInToSyncDesc": "デバイス間でエンドツーエンド暗号化された保管庫。",
+      "create": "作成",
+      "open": "開く",
+      "signIn": "サインイン",
+      "helpAndDocs": "ヘルプとドキュメント",
+      "signInRequiresVault": "同期を設定するには、先に保管庫を開くか作成してください。",
+      "addVault": "保管庫を追加"
     },
     "componentsVaultSwitcher": {
       "noVaultsYet": "まだ保管庫はありません",

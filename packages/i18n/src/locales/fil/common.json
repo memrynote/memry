@@ -299,7 +299,21 @@
       "syncAnywhere": "I-sync Kahit Saan",
       "useDropboxIcloudGit": "Gumamit ng Dropbox, iCloud, Git",
       "recentVaults": "Mga Kamakailang Vault",
-      "notesLastOpened": "mga tala · Huling binuksan"
+      "notesLastOpened": "mga tala · Huling binuksan",
+      "brandName": "Memry",
+      "preRelease": "Pre-release",
+      "createNewVault": "Gumawa ng bagong vault",
+      "createNewVaultDesc": "Magsimula ng sariwang vault sa folder na pipiliin mo.",
+      "openExistingVault": "Buksan ang kasalukuyang vault",
+      "openExistingVaultDesc": "Pumili ng folder ng mga Markdown file na mayroon ka na.",
+      "signInToSync": "Mag-sign in para mag-sync",
+      "signInToSyncDesc": "End-to-end encrypted na mga vault sa lahat ng iyong device.",
+      "create": "Gumawa",
+      "open": "Buksan",
+      "signIn": "Mag-sign in",
+      "helpAndDocs": "Tulong at docs",
+      "signInRequiresVault": "Magbukas o gumawa muna ng vault para i-set up ang sync.",
+      "addVault": "Magdagdag ng vault"
     },
     "componentsVaultSwitcher": {
       "noVaultsYet": "Wala pang vault",

@@ -299,7 +299,21 @@
       "syncAnywhere": "Synchroniseer overal",
       "useDropboxIcloudGit": "Gebruik Dropbox, iCloud, Git",
       "recentVaults": "Recente kluizen",
-      "notesLastOpened": "opmerkingen · Laatst geopend"
+      "notesLastOpened": "opmerkingen · Laatst geopend",
+      "brandName": "Memry",
+      "preRelease": "Voorrelease",
+      "createNewVault": "Nieuwe kluis maken",
+      "createNewVaultDesc": "Start een nieuwe kluis in een map naar keuze.",
+      "openExistingVault": "Bestaande kluis openen",
+      "openExistingVaultDesc": "Kies een map met Markdown-bestanden die je al bewaart.",
+      "signInToSync": "Aanmelden om te synchroniseren",
+      "signInToSyncDesc": "End-to-end versleutelde kluizen op al je apparaten.",
+      "create": "Maken",
+      "open": "Openen",
+      "signIn": "Aanmelden",
+      "helpAndDocs": "Help en documentatie",
+      "signInRequiresVault": "Open of maak eerst een kluis om synchronisatie in te stellen.",
+      "addVault": "Kluis toevoegen"
     },
     "componentsVaultSwitcher": {
       "noVaultsYet": "Nog geen kluizen",

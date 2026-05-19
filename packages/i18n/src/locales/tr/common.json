@@ -299,7 +299,21 @@
       "syncAnywhere": "Her Yerde Senkronizasyon",
       "useDropboxIcloudGit": "Dropbox, iCloud, Git'i kullanın",
       "recentVaults": "Son Kasalar",
-      "notesLastOpened": "notlar · Son açılış"
+      "notesLastOpened": "notlar · Son açılış",
+      "brandName": "Memry",
+      "preRelease": "Ön sürüm",
+      "createNewVault": "Yeni kasa oluştur",
+      "createNewVaultDesc": "Seçtiğiniz bir klasörde yeni bir kasa başlatın.",
+      "openExistingVault": "Mevcut kasayı aç",
+      "openExistingVaultDesc": "Zaten tuttuğunuz Markdown dosyalarının bulunduğu bir klasör seçin.",
+      "signInToSync": "Senkronizasyon için oturum aç",
+      "signInToSyncDesc": "Cihazlarınız arasında uçtan uca şifreli kasalar.",
+      "create": "Oluştur",
+      "open": "Aç",
+      "signIn": "Oturum aç",
+      "helpAndDocs": "Yardım ve belgeler",
+      "signInRequiresVault": "Senkronizasyonu ayarlamak için önce bir kasa açın veya oluşturun.",
+      "addVault": "Kasa ekle"
     },
     "componentsVaultSwitcher": {
       "noVaultsYet": "Henüz kasa yok",

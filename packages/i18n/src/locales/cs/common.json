@@ -299,7 +299,21 @@
       "syncAnywhere": "Synchronizovat kdekoli",
       "useDropboxIcloudGit": "Použijte Dropbox, iCloud, Git",
       "recentVaults": "Nedávné trezory",
-      "notesLastOpened": "poznámky · Naposledy otevřeno"
+      "notesLastOpened": "poznámky · Naposledy otevřeno",
+      "brandName": "Memry",
+      "preRelease": "Předběžná verze",
+      "createNewVault": "Vytvořit nový trezor",
+      "createNewVaultDesc": "Začněte s novým trezorem ve složce podle svého výběru.",
+      "openExistingVault": "Otevřít existující trezor",
+      "openExistingVaultDesc": "Vyberte složku se soubory Markdown, které už máte.",
+      "signInToSync": "Přihlásit se pro synchronizaci",
+      "signInToSyncDesc": "Trezory šifrované end-to-end napříč vašimi zařízeními.",
+      "create": "Vytvořit",
+      "open": "Otevřít",
+      "signIn": "Přihlásit se",
+      "helpAndDocs": "Nápověda a dokumentace",
+      "signInRequiresVault": "Nejprve otevřete nebo vytvořte trezor, abyste mohli nastavit synchronizaci.",
+      "addVault": "Přidat trezor"
     },
     "componentsVaultSwitcher": {
       "noVaultsYet": "Zatím žádné trezory",

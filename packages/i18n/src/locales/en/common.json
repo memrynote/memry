@@ -428,7 +428,21 @@
       "syncAnywhere": "Sync Anywhere",
       "useDropboxIcloudGit": "Use Dropbox, iCloud, Git",
       "recentVaults": "Recent Vaults",
-      "notesLastOpened": "notes · Last opened"
+      "notesLastOpened": "notes · Last opened",
+      "preRelease": "Pre-release",
+      "createNewVault": "Create new vault",
+      "createNewVaultDesc": "Start a fresh vault in a folder of your choice.",
+      "openExistingVault": "Open existing vault",
+      "openExistingVaultDesc": "Pick a folder of Markdown files you already keep.",
+      "signInToSync": "Sign in to sync",
+      "signInToSyncDesc": "End-to-end encrypted vaults across your devices.",
+      "create": "Create",
+      "open": "Open",
+      "signIn": "Sign in",
+      "helpAndDocs": "Help & docs",
+      "signInRequiresVault": "Open or create a vault first to set up sync.",
+      "addVault": "Add vault",
+      "brandName": "Memry"
     },
     "componentsVaultSwitcher": {
       "noVaultsYet": "No vaults yet",

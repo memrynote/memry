@@ -299,7 +299,21 @@
       "syncAnywhere": "Szinkronizálás bárhol",
       "useDropboxIcloudGit": "Dropbox, iCloud, Git használata",
       "recentVaults": "Legutóbbi trezorok",
-      "notesLastOpened": "megjegyzések · Utoljára megnyitva"
+      "notesLastOpened": "megjegyzések · Utoljára megnyitva",
+      "brandName": "Memry",
+      "preRelease": "Előzetes kiadás",
+      "createNewVault": "Új tár létrehozása",
+      "createNewVaultDesc": "Indíts egy új tárat egy általad választott mappában.",
+      "openExistingVault": "Meglévő tár megnyitása",
+      "openExistingVaultDesc": "Válassz egy mappát a már meglévő Markdown-fájljaidhoz.",
+      "signInToSync": "Bejelentkezés szinkronizáláshoz",
+      "signInToSyncDesc": "Végponttól végpontig titkosított tárak az eszközeiden.",
+      "create": "Létrehozás",
+      "open": "Megnyitás",
+      "signIn": "Bejelentkezés",
+      "helpAndDocs": "Súgó és dokumentáció",
+      "signInRequiresVault": "A szinkronizálás beállításához előbb nyiss meg vagy hozz létre egy tárat.",
+      "addVault": "Tár hozzáadása"
     },
     "componentsVaultSwitcher": {
       "noVaultsYet": "Még nincsenek trezorok",

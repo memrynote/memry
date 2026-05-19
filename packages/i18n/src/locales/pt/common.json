@@ -299,7 +299,21 @@
       "syncAnywhere": "Sincronize em qualquer lugar",
       "useDropboxIcloudGit": "Use Dropbox, iCloud, Git",
       "recentVaults": "Cofres recentes",
-      "notesLastOpened": "notas · Última abertura"
+      "notesLastOpened": "notas · Última abertura",
+      "brandName": "Memry",
+      "preRelease": "Pré-lançamento",
+      "createNewVault": "Criar novo cofre",
+      "createNewVaultDesc": "Inicie um novo cofre em uma pasta de sua escolha.",
+      "openExistingVault": "Abrir cofre existente",
+      "openExistingVaultDesc": "Escolha uma pasta com arquivos Markdown que você já guarda.",
+      "signInToSync": "Entrar para sincronizar",
+      "signInToSyncDesc": "Cofres criptografados de ponta a ponta em seus dispositivos.",
+      "create": "Criar",
+      "open": "Abrir",
+      "signIn": "Entrar",
+      "helpAndDocs": "Ajuda e documentação",
+      "signInRequiresVault": "Abra ou crie um cofre primeiro para configurar a sincronização.",
+      "addVault": "Adicionar cofre"
     },
     "componentsVaultSwitcher": {
       "noVaultsYet": "Ainda não há cofres",

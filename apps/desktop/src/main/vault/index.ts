@@ -73,6 +73,14 @@ let currentStatus: VaultStatus = {
   error: null
 }
 let agentHandle: AgentHandle | null = null
+const statusListeners = new Set<(status: VaultStatus) => void>()
+
+export function onVaultStatusChanged(listener: (status: VaultStatus) => void): () => void {
+  statusListeners.add(listener)
+  return () => {
+    statusListeners.delete(listener)
+  }
+}
 
 /**
  * Show native folder picker dialog
@@ -152,6 +160,7 @@ export function updateStatus(updates: Partial<VaultStatus>): void {
  * Emit vault status changed event to all windows
  */
 function emitStatusChanged(): void {
+  statusListeners.forEach((listener) => listener(currentStatus))
   BrowserWindow.getAllWindows().forEach((win) => {
     win.webContents.send('vault:status-changed', currentStatus)
   })
