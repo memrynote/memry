@@ -1,4 +1,5 @@
 import { Environment, Paddle } from '@paddle/paddle-node-sdk'
+import { PostHog } from 'posthog-node'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
 import {
@@ -29,6 +30,13 @@ function getRequestBody(req: VercelRequest): unknown {
   } catch {
     return null
   }
+}
+
+function getPostHogClient(): PostHog | null {
+  const key = process.env.POSTHOG_API_KEY
+  const host = process.env.POSTHOG_HOST
+  if (!key || !host) return null
+  return new PostHog(key, { host })
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -65,6 +73,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       customData: checkoutConfig.customData,
       checkout: checkoutUrl ? { url: checkoutUrl } : undefined
     })
+
+    const posthog = getPostHogClient()
+    if (posthog) {
+      posthog.capture({
+        distinctId: transaction.id,
+        event: 'checkout_initiated',
+        properties: { plan: intent.plan, cadence: intent.cadence, transactionId: transaction.id }
+      })
+      await posthog.shutdown()
+    }
 
     return res.status(200).json({
       environment: paddleEnvironment,

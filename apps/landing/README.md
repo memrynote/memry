@@ -33,6 +33,16 @@ Fill in your environment variables:
 | `RESEND_API_KEY`    | Yes      | API key from [Resend](https://resend.com) |
 | `RESEND_SEGMENT_ID` | No       | Segment ID to group waitlist contacts     |
 
+PostHog analytics is optional in local development. Production should set the public project key
+and host so landing pageviews and explicit CTA/demo/waitlist events are captured.
+
+| Variable            | Required | Description                                         |
+| ------------------- | -------- | --------------------------------------------------- |
+| `VITE_POSTHOG_KEY`  | No       | Public PostHog project key; blank disables tracking |
+| `VITE_POSTHOG_HOST` | No       | PostHog ingestion host; blank disables tracking     |
+| `POSTHOG_API_KEY`   | No       | Server-side project key for API route events        |
+| `POSTHOG_HOST`      | No       | Server-side ingestion host                          |
+
 Paddle checkout uses a serverless function so the Paddle API key stays server-side. Checkout
 requests must include an account-bound checkout token minted by the sync server so Paddle webhook
 custom data can grant the Sync entitlement to the correct account.
