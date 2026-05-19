@@ -125,9 +125,8 @@ export const DOWNLOAD_NAV_ITEMS: readonly LandingDropdownItem[] = [
   {
     label: 'memrynote for Desktop',
     description: DESKTOP_RELEASE_TIMING,
-    href: '#',
-    icon: Monitor,
-    disabled: true
+    href: '/download/desktop',
+    icon: Monitor
   },
   {
     label: 'memrynote CLI',
@@ -140,13 +139,16 @@ export const DOWNLOAD_NAV_ITEMS: readonly LandingDropdownItem[] = [
 
 export const DIRECT_NAV_LINKS = [
   { label: 'Pricing', href: '/pricing' },
-  { label: 'Roadmap', href: '/roadmap' }
+  { label: 'Roadmap', href: '/roadmap' },
+  { label: 'Changelog', href: '/changelog' }
 ] as const
 
 export const FOOTER_LINKS = {
   product: [
-    { label: 'Features', href: '#features' },
+    { label: 'Features', href: '/features' },
+    { label: 'Download', href: '/download/desktop' },
     { label: 'Pricing', href: '/pricing' },
+    { label: 'Changelog', href: '/changelog' },
     { label: 'Security', href: '/security' }
   ],
   resources: [

@@ -1,5 +1,6 @@
 export const BASE_URL = 'https://memrynote.com'
 export const SITE_NAME = 'memrynote'
+export const ALTERNATE_SITE_NAMES = ['Memry Note', 'memrynote.com'] as const
 export const TWITTER_HANDLE = '@h4yfans'
 export const SOCIAL_IMAGE_PATH = '/og-image.png'
 export const SOCIAL_IMAGE_URL = `${BASE_URL}${SOCIAL_IMAGE_PATH}`
@@ -87,8 +88,14 @@ export const PAGE_META: Record<string, PageMeta> = {
       'Local-first stays free, forever. Plus adds 1 GB sync, Pro adds 10 GB and 10 vaults, and Believer supports independent software with 50 GB and unlimited vaults.',
     path: '/pricing'
   },
+  changelog: {
+    title: 'Changelog — memrynote',
+    description:
+      'Follow the latest memrynote product updates, release notes, fixes, and shipped features.',
+    path: '/changelog'
+  },
   roadmap: {
-    title: 'Roadmap — Memry',
+    title: 'Roadmap — memrynote',
     description:
       'What is shipping now, what is planned next, and what we have already launched. We update this page as we ship.',
     path: '/roadmap'
@@ -113,13 +120,29 @@ export const PAGE_META: Record<string, PageMeta> = {
   }
 }
 
+export const SITELINK_CANDIDATE_PATHS = [
+  '/',
+  '/features',
+  '/pricing',
+  '/download/desktop',
+  '/changelog',
+  '/roadmap'
+] as const
+
 export function getCanonicalUrl(path: string): string {
   return `${BASE_URL}${path}`
 }
 
-export function getJsonLd(): string {
-  return JSON.stringify({
-    '@context': 'https://schema.org',
+function getWebsiteJsonLdObject() {
+  return {
+    name: 'memrynote',
+    alternateName: ALTERNATE_SITE_NAMES,
+    url: `${BASE_URL}/`
+  }
+}
+
+function getSoftwareApplicationJsonLdObject() {
+  return {
     '@type': 'SoftwareApplication',
     name: 'memrynote',
     applicationCategory: 'ProductivityApplication',
@@ -157,5 +180,26 @@ export function getJsonLd(): string {
       name: 'memrynote',
       url: BASE_URL
     }
+  }
+}
+
+export function getWebsiteJsonLd(): string {
+  return JSON.stringify({
+    '@context': 'https://schema.org',
+    ...getWebsiteJsonLdObject(),
+    '@type': 'WebSite'
+  })
+}
+
+export function getJsonLd(): string {
+  return JSON.stringify({
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        ...getWebsiteJsonLdObject(),
+        '@type': 'WebSite'
+      },
+      getSoftwareApplicationJsonLdObject()
+    ]
   })
 }
