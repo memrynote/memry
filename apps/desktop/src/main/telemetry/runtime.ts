@@ -88,14 +88,9 @@ const resolveEndpoint = (override?: string, channel?: TelemetryBuildChannel): st
   return `${DEV_DEFAULT_SYNC_SERVER}/telemetry/batch`
 }
 
-const computeInitialEnabled = (
-  channel: TelemetryBuildChannel,
-  storedEnabled: boolean | undefined,
-  override?: boolean
-): boolean => {
+const computeInitialEnabled = (storedEnabled: boolean | undefined, override?: boolean): boolean => {
   if (typeof override === 'boolean') return override
   if (typeof storedEnabled === 'boolean') return storedEnabled
-  if (channel === 'production') return true
   return process.env.MEMRY_TELEMETRY_ENABLED === 'true'
 }
 
@@ -115,7 +110,7 @@ export const initializeTelemetryRuntime = (deps?: TelemetryRuntimeDeps): Telemet
   const sessionId = deps?.sessionId ?? randomUUID()
   const platform = detectPlatform(deps?.platform)
   const stored = readTelemetryConfig()
-  const initialEnabled = computeInitialEnabled(channel, stored.enabled, deps?.initialEnabled)
+  const initialEnabled = computeInitialEnabled(stored.enabled, deps?.initialEnabled)
   const endpoint = resolveEndpoint(deps?.endpoint, channel)
 
   const context: TelemetryClientContext = {

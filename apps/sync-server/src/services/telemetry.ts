@@ -134,6 +134,10 @@ export interface TelemetryEnv {
   ENVIRONMENT?: Bindings['ENVIRONMENT']
 }
 
+export interface TelemetryWriteOptions {
+  waitUntil?: (promise: Promise<unknown>) => void
+}
+
 const addStringProperty = (
   properties: Record<string, string | number>,
   key: string,
@@ -154,10 +158,17 @@ const addNumberProperty = (
   }
 }
 
+const safePostHogLabel = (value: string | undefined, fallback: string): string => {
+  if (!value) return fallback
+  return value.replace(/[^a-zA-Z0-9_.:-]/g, '_').slice(0, 80) || fallback
+}
+
+const desktopDistinctId = (batch: TelemetryBatch, environment?: string): string =>
+  `memry_desktop_${safePostHogLabel(environment ?? batch.buildChannel, 'unknown')}`
+
 export const toPostHogEvent = (
   batch: TelemetryBatch,
   event: TelemetryEvent,
-  hashes: BatchHashes,
   environment?: string
 ): PostHogEventPayload => {
   const dim = firstDimension(event.dimensions)
@@ -173,7 +184,6 @@ export const toPostHogEvent = (
     sync_state: batch.syncState,
     surface: event.surface,
     action: event.action,
-    telemetry_session_id: hashes.sessionHash,
     batch_size: batch.events.length
   }
 
@@ -196,7 +206,7 @@ export const toPostHogEvent = (
 
   return {
     event: event.name,
-    distinct_id: hashes.installHash,
+    distinct_id: desktopDistinctId(batch, environment),
     timestamp: event.occurredAt,
     properties
   }
@@ -205,27 +215,29 @@ export const toPostHogEvent = (
 export const toPostHogBatchPayload = (
   apiKey: string,
   batch: TelemetryBatch,
-  hashes: BatchHashes,
   environment?: string
 ): PostHogBatchPayload => ({
   api_key: apiKey,
-  batch: batch.events.map((event) => toPostHogEvent(batch, event, hashes, environment))
+  batch: batch.events.map((event) => toPostHogEvent(batch, event, environment))
 })
+
+const shouldMirrorTelemetryBatch = (env: TelemetryEnv): boolean =>
+  Boolean(env.POSTHOG_API_KEY && env.POSTHOG_HOST)
 
 const mirrorTelemetryBatchToPostHog = async (
   env: TelemetryEnv,
-  batch: TelemetryBatch,
-  hashes: BatchHashes
+  batch: TelemetryBatch
 ): Promise<void> => {
   if (!env.POSTHOG_API_KEY || !env.POSTHOG_HOST) return
 
-  const payload = toPostHogBatchPayload(env.POSTHOG_API_KEY, batch, hashes, env.ENVIRONMENT)
+  const payload = toPostHogBatchPayload(env.POSTHOG_API_KEY, batch, env.ENVIRONMENT)
   await sendPostHogBatch(env, payload.batch)
 }
 
 export const writeTelemetryBatch = async (
   env: TelemetryEnv,
-  batch: TelemetryBatch
+  batch: TelemetryBatch,
+  options: TelemetryWriteOptions = {}
 ): Promise<{ accepted: number }> => {
   const installHash = await hashTelemetryId(env.TELEMETRY_HMAC_KEY, batch.installId)
   const sessionHash = await hashTelemetryId(env.TELEMETRY_HMAC_KEY, batch.sessionId)
@@ -240,7 +252,14 @@ export const writeTelemetryBatch = async (
     })
   }
 
-  await mirrorTelemetryBatchToPostHog(env, batch, hashes)
+  if (shouldMirrorTelemetryBatch(env)) {
+    const mirrorPromise = mirrorTelemetryBatchToPostHog(env, batch)
+    if (options.waitUntil) {
+      options.waitUntil(mirrorPromise)
+    } else {
+      await mirrorPromise
+    }
+  }
 
   return { accepted: batch.events.length }
 }

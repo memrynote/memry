@@ -21,6 +21,8 @@ telemetry.post('/batch', async (c) => {
     throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid telemetry payload', 400)
   }
 
-  const result = await writeTelemetryBatch(c.env, parsed.data)
+  const result = await writeTelemetryBatch(c.env, parsed.data, {
+    waitUntil: (promise) => c.executionCtx.waitUntil(promise)
+  })
   return c.json(result, 202)
 })

@@ -21,7 +21,7 @@ export interface UseTelemetrySettingsReturn {
 }
 
 export function useTelemetrySettings(): UseTelemetrySettingsReturn {
-  const [enabled, setEnabledState] = useState(true)
+  const [enabled, setEnabledState] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -36,7 +36,7 @@ export function useTelemetrySettings(): UseTelemetrySettingsReturn {
         const result = await api.getSettings()
         if (mounted) setEnabledState(result.enabled)
       } catch (error) {
-        logger.warn('Failed to load telemetry settings; falling back to enabled', error)
+        logger.warn('Failed to load telemetry settings; falling back to disabled', error)
       } finally {
         if (mounted) setIsLoading(false)
       }

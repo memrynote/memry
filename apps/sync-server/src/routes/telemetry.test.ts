@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../middleware/rate-limit', () => ({
   createRateLimiter: vi.fn(() => async (_c: unknown, next: () => Promise<void>) => next())
@@ -34,6 +34,10 @@ const sampleBatch = {
   syncState: 'disabled',
   events: [sampleEvent]
 }
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
 
 function createDataset() {
   const writeDataPoint = vi.fn()
@@ -81,6 +85,50 @@ describe('POST /telemetry/batch', () => {
     const body = (await response.json()) as { accepted: number }
     expect(body.accepted).toBe(1)
     expect(writeDataPoint).toHaveBeenCalledTimes(1)
+  })
+
+  it('schedules PostHog mirroring in waitUntil without blocking the response', async () => {
+    // #given a PostHog mirror that has not resolved yet
+    const { env } = createEnv({
+      POSTHOG_API_KEY: 'phc_test_project',
+      POSTHOG_HOST: 'https://us.i.posthog.com'
+    })
+    let resolveFetch: (() => void) | undefined
+    const fetchPromise = new Promise<Response>((resolve) => {
+      resolveFetch = () => resolve(new Response(JSON.stringify({ status: 1 }), { status: 200 }))
+    })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => fetchPromise)
+    )
+
+    const waitUntilPromises: Promise<unknown>[] = []
+    const executionCtx = {
+      waitUntil: vi.fn((promise: Promise<unknown>) => {
+        waitUntilPromises.push(promise)
+      })
+    } as unknown as ExecutionContext
+    const request = new Request('http://localhost/telemetry/batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(sampleBatch)
+    })
+
+    // #when posting through the route
+    const responsePromise = Promise.resolve(app.request(request, {}, env, executionCtx))
+    const result = await Promise.race([
+      responsePromise,
+      new Promise<'timeout'>((resolve) => setTimeout(() => resolve('timeout'), 25))
+    ])
+    resolveFetch?.()
+    await responsePromise.catch(() => undefined)
+
+    // #then the request is accepted before PostHog finishes
+    expect(result).not.toBe('timeout')
+    expect((result as Response).status).toBe(202)
+    expect(executionCtx.waitUntil).toHaveBeenCalledWith(expect.any(Promise))
+    expect(waitUntilPromises).toHaveLength(1)
+    await Promise.all(waitUntilPromises)
   })
 
   it('does not require an Authorization header', async () => {
