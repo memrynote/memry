@@ -93,6 +93,47 @@ describe('TelemetryBatchSchema', () => {
       // #then it parses successfully
       expect(result.success).toBe(true)
     })
+
+    it('accepts launch, log, and error diagnostic events', () => {
+      // #given a batch with app diagnostics that use only enum-like metadata
+      const batch = {
+        ...baseBatch,
+        events: [
+          {
+            ...baseEvent,
+            name: 'app_launch_phase_completed',
+            action: 'renderer_ready',
+            source: 'renderer',
+            metrics: { durationMs: 42 }
+          },
+          {
+            ...baseEvent,
+            id: '550e8400-e29b-41d4-a716-446655440003',
+            name: 'app_log_recorded',
+            action: 'warn',
+            source: 'SyncRuntime',
+            objectType: 'log',
+            dimensions: { log_action: 'flush_failed' }
+          },
+          {
+            ...baseEvent,
+            id: '550e8400-e29b-41d4-a716-446655440004',
+            name: 'app_error_seen',
+            action: 'unhandled_rejection',
+            source: 'main_process',
+            objectType: 'exception',
+            result: 'failed',
+            errorCode: 'TypeError'
+          }
+        ]
+      }
+
+      // #when validating the batch
+      const result = TelemetryBatchSchema.safeParse(batch)
+
+      // #then diagnostic events stay inside the typed telemetry allowlist
+      expect(result.success).toBe(true)
+    })
   })
 
   describe('rejects unsafe event names', () => {

@@ -23,6 +23,7 @@ import {
   logRecordQueryBatch,
   logSyncValidationFailure
 } from '../services/sync-telemetry'
+import { waitUntilWithPostHog } from '../services/posthog'
 import { updateDevice } from '../services/device'
 import { getStorageBreakdown } from '../services/storage'
 import {
@@ -277,14 +278,16 @@ const handleRecordPush = async (c: Context<AppContext>): Promise<Response> => {
     })
     const doId = c.env.USER_SYNC_STATE.idFromName(userId)
     const stub = c.env.USER_SYNC_STATE.get(doId)
-    c.executionCtx.waitUntil(
+    waitUntilWithPostHog(
+      c,
       stub.fetch(
         new Request(new URL('/broadcast', c.req.url), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ excludeDeviceId: deviceId, cursor: result.maxCursor, vaultId })
         })
-      )
+      ),
+      { source: 'UserSyncState', action: 'record_push_broadcast_failed' }
     )
   }
 
@@ -450,7 +453,8 @@ const handleCrdtUpdatePush = async (c: Context<AppContext>): Promise<Response> =
 
   const doId = c.env.USER_SYNC_STATE.idFromName(userId)
   const stub = c.env.USER_SYNC_STATE.get(doId)
-  c.executionCtx.waitUntil(
+  waitUntilWithPostHog(
+    c,
     stub.fetch(
       new Request(new URL('/broadcast', c.req.url), {
         method: 'POST',
@@ -462,7 +466,8 @@ const handleCrdtUpdatePush = async (c: Context<AppContext>): Promise<Response> =
           noteId: parsed.noteId
         })
       })
-    )
+    ),
+    { source: 'UserSyncState', action: 'crdt_update_broadcast_failed' }
   )
 
   logCrdtTraffic({
