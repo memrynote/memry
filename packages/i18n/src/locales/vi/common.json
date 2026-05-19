@@ -299,7 +299,21 @@
       "syncAnywhere": "Đồng bộ ở bất cứ đâu",
       "useDropboxIcloudGit": "Sử dụng Dropbox, iCloud, Git",
       "recentVaults": "Các Kho dữ liệu Gần đây",
-      "notesLastOpened": "ghi chú · Mở lần cuối"
+      "notesLastOpened": "ghi chú · Mở lần cuối",
+      "brandName": "Memry",
+      "preRelease": "Bản phát hành sớm",
+      "createNewVault": "Tạo kho mới",
+      "createNewVaultDesc": "Bắt đầu một kho mới trong thư mục bạn chọn.",
+      "openExistingVault": "Mở kho hiện có",
+      "openExistingVaultDesc": "Chọn thư mục chứa các tệp Markdown bạn đã có.",
+      "signInToSync": "Đăng nhập để đồng bộ",
+      "signInToSyncDesc": "Kho được mã hóa đầu cuối trên các thiết bị của bạn.",
+      "create": "Tạo",
+      "open": "Mở",
+      "signIn": "Đăng nhập",
+      "helpAndDocs": "Trợ giúp & tài liệu",
+      "signInRequiresVault": "Hãy mở hoặc tạo một kho trước để thiết lập đồng bộ.",
+      "addVault": "Thêm kho"
     },
     "componentsVaultSwitcher": {
       "noVaultsYet": "Chưa có kho dữ liệu nào",

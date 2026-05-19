@@ -299,7 +299,21 @@
       "syncAnywhere": "Sincronizar en cualquier lugar",
       "useDropboxIcloudGit": "Utilice Dropbox, iCloud, Git",
       "recentVaults": "Bóvedas recientes",
-      "notesLastOpened": "notas · Última apertura"
+      "notesLastOpened": "notas · Última apertura",
+      "brandName": "Memry",
+      "preRelease": "Versión preliminar",
+      "createNewVault": "Crear nueva bóveda",
+      "createNewVaultDesc": "Inicia una bóveda nueva en una carpeta de tu elección.",
+      "openExistingVault": "Abrir bóveda existente",
+      "openExistingVaultDesc": "Elige una carpeta con archivos Markdown que ya tengas.",
+      "signInToSync": "Iniciar sesión para sincronizar",
+      "signInToSyncDesc": "Bóvedas cifradas de extremo a extremo en tus dispositivos.",
+      "create": "Crear",
+      "open": "Abrir",
+      "signIn": "Iniciar sesión",
+      "helpAndDocs": "Ayuda y documentación",
+      "signInRequiresVault": "Abre o crea una bóveda primero para configurar la sincronización.",
+      "addVault": "Añadir bóveda"
     },
     "componentsVaultSwitcher": {
       "noVaultsYet": "Aún no hay bóvedas",

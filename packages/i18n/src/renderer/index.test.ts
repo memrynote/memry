@@ -22,6 +22,17 @@ describe('createRendererI18n', () => {
     expect(i18n.t('tasks:task.add')).toBe('Görev Ekle')
   })
 
+  it('translates Turkish vault picker strings', async () => {
+    const i18n = await createRendererI18n({ locale: 'en' })
+
+    await i18n.changeLanguage('tr')
+
+    expect(i18n.t('common:phaseF.componentsVaultOnboarding.createNewVault')).toBe(
+      'Yeni kasa oluştur'
+    )
+    expect(i18n.t('common:phaseF.componentsVaultOnboarding.helpAndDocs')).toBe('Yardım ve belgeler')
+  })
+
   it('formats journal count labels with ICU placeholders', async () => {
     const i18n = await createRendererI18n({ locale: 'en' })
     expect(i18n.t('journal:count.overdue', { count: 3 })).toBe('3 overdue')

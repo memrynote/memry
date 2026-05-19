@@ -299,7 +299,21 @@
       "syncAnywhere": "סנכרן בכל מקום",
       "useDropboxIcloudGit": "השתמש ב-Dropbox, iCloud, Git",
       "recentVaults": "קמרונות אחרונים",
-      "notesLastOpened": "הערות · נפתח לאחרונה"
+      "notesLastOpened": "הערות · נפתח לאחרונה",
+      "brandName": "Memry",
+      "preRelease": "גרסת קדם-הפצה",
+      "createNewVault": "יצירת כספת חדשה",
+      "createNewVaultDesc": "התחילו כספת חדשה בתיקייה שתבחרו.",
+      "openExistingVault": "פתיחת כספת קיימת",
+      "openExistingVaultDesc": "בחרו תיקייה של קובצי Markdown שכבר יש לכם.",
+      "signInToSync": "התחברות לסנכרון",
+      "signInToSyncDesc": "כספות מוצפנות מקצה לקצה בכל המכשירים שלכם.",
+      "create": "יצירה",
+      "open": "פתיחה",
+      "signIn": "התחברות",
+      "helpAndDocs": "עזרה ותיעוד",
+      "signInRequiresVault": "פתחו או צרו כספת תחילה כדי להגדיר סנכרון.",
+      "addVault": "הוספת כספת"
     },
     "componentsVaultSwitcher": {
       "noVaultsYet": "עדיין אין כספות",

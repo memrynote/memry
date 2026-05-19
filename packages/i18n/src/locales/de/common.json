@@ -299,7 +299,21 @@
       "syncAnywhere": "Überall synchronisieren",
       "useDropboxIcloudGit": "Verwenden Sie Dropbox, iCloud, Git",
       "recentVaults": "Aktuelle Tresore",
-      "notesLastOpened": "Notizen · Zuletzt geöffnet"
+      "notesLastOpened": "Notizen · Zuletzt geöffnet",
+      "brandName": "Memry",
+      "preRelease": "Vorabversion",
+      "createNewVault": "Neuen Tresor erstellen",
+      "createNewVaultDesc": "Starte einen neuen Tresor in einem Ordner deiner Wahl.",
+      "openExistingVault": "Vorhandenen Tresor öffnen",
+      "openExistingVaultDesc": "Wähle einen Ordner mit Markdown-Dateien, die du bereits nutzt.",
+      "signInToSync": "Zum Synchronisieren anmelden",
+      "signInToSyncDesc": "Ende-zu-Ende-verschlüsselte Tresore auf all deinen Geräten.",
+      "create": "Erstellen",
+      "open": "Öffnen",
+      "signIn": "Anmelden",
+      "helpAndDocs": "Hilfe & Dokumentation",
+      "signInRequiresVault": "Öffne oder erstelle zuerst einen Tresor, um Sync einzurichten.",
+      "addVault": "Tresor hinzufügen"
     },
     "componentsVaultSwitcher": {
       "noVaultsYet": "Noch keine Tresore",

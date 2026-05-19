@@ -299,7 +299,21 @@
       "syncAnywhere": "Sincronizați oriunde",
       "useDropboxIcloudGit": "Utilizați Dropbox, iCloud, Git",
       "recentVaults": "Seifuri recente",
-      "notesLastOpened": "note · Ultima deschidere"
+      "notesLastOpened": "note · Ultima deschidere",
+      "brandName": "Memry",
+      "preRelease": "Pre-lansare",
+      "createNewVault": "Creează un seif nou",
+      "createNewVaultDesc": "Începe un seif nou într-un dosar ales de tine.",
+      "openExistingVault": "Deschide un seif existent",
+      "openExistingVaultDesc": "Alege un dosar cu fișiere Markdown pe care le ai deja.",
+      "signInToSync": "Conectează-te pentru sincronizare",
+      "signInToSyncDesc": "Seifuri criptate end-to-end pe dispozitivele tale.",
+      "create": "Creează",
+      "open": "Deschide",
+      "signIn": "Conectează-te",
+      "helpAndDocs": "Ajutor și documentație",
+      "signInRequiresVault": "Deschide sau creează mai întâi un seif pentru a configura sincronizarea.",
+      "addVault": "Adaugă seif"
     },
     "componentsVaultSwitcher": {
       "noVaultsYet": "Nu există încă seifuri",

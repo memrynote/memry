@@ -299,7 +299,21 @@
       "syncAnywhere": "Sinkronkan Di Mana Saja",
       "useDropboxIcloudGit": "Gunakan Dropbox, iCloud, Git",
       "recentVaults": "Vault Terbaru",
-      "notesLastOpened": "catatan · Terakhir dibuka"
+      "notesLastOpened": "catatan · Terakhir dibuka",
+      "brandName": "Memry",
+      "preRelease": "Pra-rilis",
+      "createNewVault": "Buat vault baru",
+      "createNewVaultDesc": "Mulai vault baru di folder pilihan Anda.",
+      "openExistingVault": "Buka vault yang ada",
+      "openExistingVaultDesc": "Pilih folder berisi file Markdown yang sudah Anda simpan.",
+      "signInToSync": "Masuk untuk sinkronisasi",
+      "signInToSyncDesc": "Vault terenkripsi end-to-end di seluruh perangkat Anda.",
+      "create": "Buat",
+      "open": "Buka",
+      "signIn": "Masuk",
+      "helpAndDocs": "Bantuan & dokumentasi",
+      "signInRequiresVault": "Buka atau buat vault terlebih dahulu untuk menyiapkan sinkronisasi.",
+      "addVault": "Tambah vault"
     },
     "componentsVaultSwitcher": {
       "noVaultsYet": "Belum ada brankas",

@@ -13,7 +13,7 @@ Two fix paths depending on the target:
 | **Node tests**         | `pnpm rebuild better-sqlite3` (or `bash apps/desktop/scripts/ensure-native.sh node`) |
 | **Electron app / E2E** | `bash apps/desktop/scripts/ensure-native.sh electron` (or `pnpm rebuild:electron`)   |
 
-> Using the Node fix for Electron leaves `autoOpenLastVault` silently failing with `ERR_DLOPEN_FAILED`. The app falls through to the "Welcome to memrynote" screen and every E2E test times out on `.bn-container` not visible.
+> Using the Node fix for Electron leaves `autoOpenLastVault` silently failing with `ERR_DLOPEN_FAILED`. The app never opens the test vault, and E2E waits for workspace surfaces time out.
 
 ## Zod v4
 

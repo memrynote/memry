@@ -299,7 +299,21 @@
       "syncAnywhere": "Synkronisera var som helst",
       "useDropboxIcloudGit": "Använd Dropbox, iCloud, Git",
       "recentVaults": "Senaste valven",
-      "notesLastOpened": "anteckningar · Senast öppnad"
+      "notesLastOpened": "anteckningar · Senast öppnad",
+      "brandName": "Memry",
+      "preRelease": "Förhandsversion",
+      "createNewVault": "Skapa nytt valv",
+      "createNewVaultDesc": "Starta ett nytt valv i en valfri mapp.",
+      "openExistingVault": "Öppna befintligt valv",
+      "openExistingVaultDesc": "Välj en mapp med Markdown-filer som du redan har.",
+      "signInToSync": "Logga in för att synkronisera",
+      "signInToSyncDesc": "End-to-end-krypterade valv på dina enheter.",
+      "create": "Skapa",
+      "open": "Öppna",
+      "signIn": "Logga in",
+      "helpAndDocs": "Hjälp och dokumentation",
+      "signInRequiresVault": "Öppna eller skapa ett valv först för att konfigurera synkronisering.",
+      "addVault": "Lägg till valv"
     },
     "componentsVaultSwitcher": {
       "noVaultsYet": "Inga valv ännu",

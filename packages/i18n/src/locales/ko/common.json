@@ -299,7 +299,21 @@
       "syncAnywhere": "어디서나 동기화",
       "useDropboxIcloudGit": "Dropbox, iCloud, Git 사용",
       "recentVaults": "최근 금고",
-      "notesLastOpened": "메모 · 마지막 열림"
+      "notesLastOpened": "메모 · 마지막 열림",
+      "brandName": "Memry",
+      "preRelease": "사전 출시",
+      "createNewVault": "새 보관함 만들기",
+      "createNewVaultDesc": "원하는 폴더에 새 보관함을 시작하세요.",
+      "openExistingVault": "기존 보관함 열기",
+      "openExistingVaultDesc": "이미 보관 중인 Markdown 파일 폴더를 선택하세요.",
+      "signInToSync": "동기화를 위해 로그인",
+      "signInToSyncDesc": "기기 간 종단 간 암호화된 보관함.",
+      "create": "만들기",
+      "open": "열기",
+      "signIn": "로그인",
+      "helpAndDocs": "도움말 및 문서",
+      "signInRequiresVault": "동기화를 설정하려면 먼저 보관함을 열거나 만드세요.",
+      "addVault": "보관함 추가"
     },
     "componentsVaultSwitcher": {
       "noVaultsYet": "아직 Vault가 없습니다.",
