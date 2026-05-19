@@ -9,7 +9,7 @@ export function PrivacyPage() {
         eyebrow="Legal · Privacy"
         title="Privacy Policy"
         intro="memrynote is built on a simple promise: your notes belong to you, and we cannot read them."
-        lastUpdated="May 9, 2026"
+        lastUpdated="May 19, 2026"
       >
         <h2>Summary in 30 seconds</h2>
         <ul>
@@ -112,9 +112,16 @@ export function PrivacyPage() {
 
         <h2>5. What the website collects</h2>
         <p>
-          memrynote.com uses minimal, privacy-respecting analytics to understand how people find the
-          site and which pages are useful. We do not use third-party advertising trackers and do not
-          sell visitor data.
+          memrynote.com uses minimal, privacy-respecting analytics and masked session replay to
+          understand how people find the site, which pages are useful, and where signup or checkout
+          flows break. We do not use third-party advertising trackers and do not sell visitor data.
+        </p>
+        <p>
+          Website replays are limited to the public marketing, onboarding, pricing, and checkout
+          surfaces. They mask all form inputs and on-page text, block elements marked as private,
+          and strip network request bodies, response bodies, headers, query strings, and hashes
+          before capture. They do not record note content, vault content, file paths, emails, or
+          desktop app activity.
         </p>
         <p>
           If you join the waitlist or contact us, we store the email address you submit so we can

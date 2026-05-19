@@ -34,16 +34,16 @@ Fill in your environment variables:
 | `RESEND_SEGMENT_ID` | No       | Segment ID to group waitlist contacts     |
 
 PostHog analytics is optional in local development. Production should set the public project key
-and use the `https://e.memrynote.com` managed reverse proxy so landing pageviews and explicit
-CTA/demo/waitlist events are captured without sending browser traffic directly to PostHog's
-ingestion domain.
+and host so landing pageviews, explicit CTA/demo/waitlist events, and privacy-masked session
+replays are captured. Replay masks all inputs and text, blocks private selectors, and strips network
+bodies/headers before capture.
 
 | Variable            | Required | Description                                         |
 | ------------------- | -------- | --------------------------------------------------- |
 | `VITE_POSTHOG_KEY`  | No       | Public PostHog project key; blank disables tracking |
-| `VITE_POSTHOG_HOST` | No       | Browser ingestion host; use the managed proxy       |
+| `VITE_POSTHOG_HOST` | No       | PostHog ingestion host; blank disables tracking     |
 | `POSTHOG_API_KEY`   | No       | Server-side project key for API route events        |
-| `POSTHOG_HOST`      | No       | Server-side PostHog ingestion host                  |
+| `POSTHOG_HOST`      | No       | Server-side ingestion host                          |
 
 Paddle checkout uses a serverless function so the Paddle API key stays server-side. Checkout
 requests must include an account-bound checkout token minted by the sync server so Paddle webhook
@@ -115,7 +115,6 @@ set the Vercel project Root Directory to `apps/landing` so Vercel reads this pac
 - `api/waitlist.ts` runs as a serverless function
 - SPA is served as static output from `vite build`
 - Domain redirects configured in `vercel.json` (www + .ai variants → memrynote.com)
-- PostHog browser analytics proxied through the managed `e.memrynote.com` subdomain
 
 ## Design Tokens
 
