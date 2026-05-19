@@ -2,6 +2,8 @@ import type { ContentfulStatusCode } from 'hono/utils/http-status'
 import type { Context } from 'hono'
 
 import { createLogger } from './logger'
+import { captureServerError } from '../services/posthog'
+import type { AppContext } from '../types'
 
 const logger = createLogger('ErrorHandler')
 
@@ -88,12 +90,55 @@ export const formatErrorResponse = (
   }
 })
 
-export const errorHandler = (err: Error, c: Context): Response => {
+const scheduleServerErrorCapture = (
+  err: Error,
+  c: Context<AppContext>,
+  metadata: {
+    statusCode: number
+    errorCode: string
+    handled: boolean
+  }
+): void => {
+  if (!c.env?.POSTHOG_API_KEY || !c.env.POSTHOG_HOST || !c.req) return
+
+  let executionCtx: { waitUntil?: (promise: Promise<unknown>) => void } | undefined
+  try {
+    executionCtx = c.executionCtx
+  } catch {
+    return
+  }
+  if (!executionCtx?.waitUntil) return
+
+  executionCtx.waitUntil(
+    captureServerError(c.env, {
+      error: err,
+      method: c.req.method,
+      path: c.req.path,
+      source: 'ErrorHandler',
+      action: 'request_failed',
+      statusCode: metadata.statusCode,
+      errorCode: metadata.errorCode,
+      handled: metadata.handled
+    })
+  )
+}
+
+export const errorHandler = (err: Error, c: Context<AppContext>): Response => {
   if (err instanceof AppError) {
+    scheduleServerErrorCapture(err, c, {
+      statusCode: err.statusCode,
+      errorCode: err.code,
+      handled: true
+    })
     return c.json(formatErrorResponse(err), { status: err.statusCode as ContentfulStatusCode })
   }
 
   logger.error(err.message, { code: 'UNHANDLED_ERROR', stack: err.stack })
+  scheduleServerErrorCapture(err, c, {
+    statusCode: 500,
+    errorCode: 'UNHANDLED_ERROR',
+    handled: false
+  })
   const fallback = new AppError(ErrorCodes.INTERNAL_ERROR, 'Internal server error', 500)
   return c.json(formatErrorResponse(fallback), 500)
 }

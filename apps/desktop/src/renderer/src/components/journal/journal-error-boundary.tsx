@@ -13,6 +13,7 @@ import { Translation } from 'react-i18next'
 import { AlertTriangle, RefreshCw, Calendar } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { createLogger } from '@/lib/logger'
+import { trackRendererError } from '@/lib/telemetry-diagnostics'
 
 const log = createLogger('Component:JournalErrorBoundary')
 
@@ -53,6 +54,7 @@ export class JournalErrorBoundary extends Component<
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
     log.error('Journal crash', error, errorInfo)
+    trackRendererError('journal_error_boundary', error)
     this.props.onError?.(error, errorInfo)
   }
 
@@ -114,7 +116,7 @@ export class JournalErrorBoundary extends Component<
                     <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
                       {t('section.technicalDetails')}
                     </summary>
-                    <code className="mt-2 block text-xs bg-muted p-2 rounded overflow-auto max-h-24 text-left">
+                    <code className="mt-2 block text-xs bg-muted p-2 rounded overflow-auto max-h-24 text-start">
                       {this.state.error.message}
                       {this.state.error.stack && (
                         <>
@@ -132,7 +134,7 @@ export class JournalErrorBoundary extends Component<
                     size="sm"
                     aria-label={t('action.reloadJournal')}
                   >
-                    <RefreshCw className="w-4 h-4 mr-2" aria-hidden="true" />
+                    <RefreshCw className="w-4 h-4 me-2" aria-hidden="true" />
                     {t('action.reloadJournal')}
                   </Button>
                   <Button
@@ -141,7 +143,7 @@ export class JournalErrorBoundary extends Component<
                     size="sm"
                     aria-label={t('action.goToToday')}
                   >
-                    <Calendar className="w-4 h-4 mr-2" aria-hidden="true" />
+                    <Calendar className="w-4 h-4 me-2" aria-hidden="true" />
                     {t('action.goToToday')}
                   </Button>
                 </div>

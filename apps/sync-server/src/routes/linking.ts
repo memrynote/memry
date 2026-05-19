@@ -11,6 +11,7 @@ import {
   transitionToApproved,
   transitionToCompleted
 } from '../services/linking'
+import { waitUntilWithPostHog } from '../services/posthog'
 import type { AppContext } from '../types'
 
 const linkingRateLimit = createRateLimiter({
@@ -124,7 +125,8 @@ linking.post('/scan', linkingRateLimit, async (c) => {
 
   const syncDoId = c.env.USER_SYNC_STATE.idFromName(userId)
   const syncStub = c.env.USER_SYNC_STATE.get(syncDoId)
-  c.executionCtx.waitUntil(
+  waitUntilWithPostHog(
+    c,
     syncStub.fetch(
       new Request(new URL('/notify-linking', c.req.url), {
         method: 'POST',
@@ -139,7 +141,8 @@ linking.post('/scan', linkingRateLimit, async (c) => {
           }
         })
       })
-    )
+    ),
+    { source: 'UserSyncState', action: 'linking_request_notify_failed' }
   )
 
   return c.json({ success: true, status: 'scanned' })
@@ -214,7 +217,8 @@ linking.post('/approve', authMiddleware, linkingRateLimit, async (c) => {
   if (session) {
     const syncDoId = c.env.USER_SYNC_STATE.idFromName(userId)
     const syncStub = c.env.USER_SYNC_STATE.get(syncDoId)
-    c.executionCtx.waitUntil(
+    waitUntilWithPostHog(
+      c,
       syncStub.fetch(
         new Request(new URL('/notify-linking', c.req.url), {
           method: 'POST',
@@ -225,7 +229,8 @@ linking.post('/approve', authMiddleware, linkingRateLimit, async (c) => {
             payload: { sessionId }
           })
         })
-      )
+      ),
+      { source: 'UserSyncState', action: 'linking_approved_notify_failed' }
     )
   }
 
