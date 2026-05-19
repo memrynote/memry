@@ -6,6 +6,30 @@ const ARCH_FLAGS = new Map([
   ['--universal', 'universal']
 ])
 
+function assertProductionSyncServerUrl(syncServerUrl) {
+  const value = syncServerUrl?.trim()
+  if (!value) {
+    throw new Error('production SYNC_SERVER_URL must be configured')
+  }
+
+  let parsed
+  try {
+    parsed = new URL(value)
+  } catch {
+    throw new Error('production SYNC_SERVER_URL must be a valid URL')
+  }
+
+  if (parsed.protocol !== 'https:') {
+    throw new Error('production SYNC_SERVER_URL must use HTTPS')
+  }
+
+  const hostname = parsed.hostname.toLowerCase()
+  const localHosts = new Set(['localhost', '127.0.0.1', '::1', '[::1]'])
+  if (localHosts.has(hostname) || hostname.includes('sync-staging')) {
+    throw new Error('production SYNC_SERVER_URL must point to the production sync host')
+  }
+}
+
 function resolveTargetArch(args, hostArch = process.arch) {
   const archs = []
 
@@ -47,5 +71,6 @@ function resolveTargetArch(args, hostArch = process.arch) {
 }
 
 module.exports = {
+  assertProductionSyncServerUrl,
   resolveTargetArch
 }

@@ -4,7 +4,7 @@ npmRebuild: true
 dmg:
   size: 3g
 extraResources:
-  - from: .env.staging
+  - from: .env.production
     to: .env
   - from: node_modules
     to: node_modules

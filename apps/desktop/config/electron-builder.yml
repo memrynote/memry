@@ -21,6 +21,9 @@ files:
 asarUnpack:
   - resources/**
 afterPack: scripts/prune-packaged-app.mjs
+extraResources:
+  - from: .env.production
+    to: .env
 win:
   executableName: Memrynote
 nsis:
