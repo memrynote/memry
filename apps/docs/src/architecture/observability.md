@@ -1,6 +1,6 @@
 # Observability & Telemetry
 
-Local logs for debugging plus an opt-in, content-free telemetry stream for product metrics,
+Local logs for debugging plus a switchable, content-free telemetry stream for product metrics,
 launch diagnostics, and sanitized errors.
 
 ## Logging
@@ -30,7 +30,8 @@ log.error('pull failed', err)
 
 ## Telemetry
 
-Telemetry is **opt-in** via [Settings → General → Privacy](/user-guide/settings#general). Off by default.
+Telemetry is enabled by default in production builds and off by default in development builds.
+Users can turn it off via [Settings → General → Privacy](/user-guide/settings#general).
 
 ### What Ships
 
@@ -101,7 +102,7 @@ Additional PostHog events:
 
 ## Error Reporting
 
-Desktop error reporting remains opt-in with product telemetry. Captured errors include process
+Desktop error reporting follows the same product telemetry setting. Captured errors include process
 area, component/source, action, phase, and stable error codes. They do not include note content,
 titles, file paths, search text, stack traces, or raw exception messages.
 

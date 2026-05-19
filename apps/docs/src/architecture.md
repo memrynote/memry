@@ -48,7 +48,7 @@ Shared Zod contracts in `packages/contracts`. Validated at typecheck time via `p
 
 ## Observability
 
-Local logging via electron-log; opt-in telemetry that ships only enums and surface names.
+Local logging via electron-log; switchable telemetry that ships only enums and surface names.
 
 → [Observability & Telemetry](/architecture/observability)
 

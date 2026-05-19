@@ -148,7 +148,7 @@ describe('initializeTelemetryRuntime', () => {
     expect(runtime.client.getQueueDepth()).toBe(0)
   })
 
-  it('disabled-by-default in production unless explicitly enabled', () => {
+  it('enabled-by-default in production unless explicitly disabled', () => {
     const { fetchMock } = createFetch()
 
     const runtime = initializeTelemetryRuntime({
@@ -157,8 +157,8 @@ describe('initializeTelemetryRuntime', () => {
       endpoint: 'https://example.test/telemetry/batch'
     })
 
-    expect(runtime.getSettings().enabled).toBe(false)
-    expect(runtime.client.getQueueDepth()).toBe(0)
+    expect(runtime.getSettings().enabled).toBe(true)
+    expect(runtime.client.getQueueDepth()).toBe(1)
   })
 
   it('respects the persisted disabled setting in production', () => {
