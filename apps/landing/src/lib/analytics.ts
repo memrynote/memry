@@ -37,6 +37,7 @@ export type LandingPageViewData = {
 
 const POSTHOG_KEY = import.meta.env?.VITE_POSTHOG_KEY
 const POSTHOG_HOST = import.meta.env?.VITE_POSTHOG_HOST
+const POSTHOG_UI_HOST = 'https://us.posthog.com'
 
 let posthogClient: Promise<typeof import('posthog-js').default | null> | null = null
 
@@ -64,6 +65,7 @@ function getPostHogClient(): Promise<typeof import('posthog-js').default | null>
     .then(({ default: posthog }) => {
       posthog.init(POSTHOG_KEY, {
         api_host: POSTHOG_HOST,
+        ui_host: POSTHOG_UI_HOST,
         advanced_disable_feature_flags: true,
         autocapture: false,
         capture_performance: false,
