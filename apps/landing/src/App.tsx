@@ -1,7 +1,6 @@
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { useEffect, useRef } from 'react'
 import { HelmetProvider } from 'react-helmet-async'
-import { Analytics } from '@vercel/analytics/react'
 import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
 import { SmoothScroll } from '@/components/layout/SmoothScroll'
@@ -23,7 +22,7 @@ import { PrivacyPage } from '@/pages/Privacy'
 import { RefundPage } from '@/pages/Refund'
 import { NotFound } from '@/pages/NotFound'
 import { scrollToLandingTarget } from '@/lib/smooth-scroll'
-import { trackLandingEvent, type LandingEventName } from '@/lib/analytics'
+import { trackLandingEvent, trackLandingPageView, type LandingEventName } from '@/lib/analytics'
 
 const SCROLL_DEPTH_EVENTS: readonly { depth: number; event: LandingEventName }[] = [
   { depth: 25, event: 'landing_scroll_25' },
@@ -97,11 +96,22 @@ function ScrollDepthAnalytics() {
   return null
 }
 
+function PageViewAnalytics() {
+  const { pathname } = useLocation()
+
+  useEffect(() => {
+    trackLandingPageView(pathname)
+  }, [pathname])
+
+  return null
+}
+
 function AppContent() {
   return (
     <div className="min-h-screen flex flex-col">
       <SmoothScroll />
       <ScrollToHash />
+      <PageViewAnalytics />
       <ScrollDepthAnalytics />
       <Header />
       <main className="flex-1">
@@ -135,7 +145,6 @@ export default function App() {
     <HelmetProvider>
       <BrowserRouter>
         <AppContent />
-        <Analytics />
       </BrowserRouter>
     </HelmetProvider>
   )
