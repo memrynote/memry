@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
-import { createLandingEventData } from './analytics.ts'
+import { createLandingEventData, createLandingPageViewData } from './analytics.ts'
 
 describe('landing analytics event data', () => {
-  it('keeps Vercel event data to page and target only', () => {
+  it('keeps landing event data to page and target only', () => {
     assert.deepEqual(createLandingEventData('pricing:plus', '/pricing'), {
       page: '/pricing',
       target: 'pricing:plus'
@@ -22,5 +22,11 @@ describe('landing analytics event data', () => {
         target: 'download:https://github.com/memrynote/memry/releases'
       }
     )
+  })
+
+  it('keeps pageview event data to page only', () => {
+    assert.deepEqual(createLandingPageViewData('/download/desktop?ref=launch#mac'), {
+      page: '/download/desktop'
+    })
   })
 })

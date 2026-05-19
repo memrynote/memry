@@ -1,3 +1,4 @@
+import { PostHog } from 'posthog-node'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
 function hasControlWhitespace(value: string): boolean {
@@ -10,17 +11,17 @@ function hasControlWhitespace(value: string): boolean {
   return false
 }
 
-function isValidEmail(email: string): boolean {
-  if (email.length > 254 || hasControlWhitespace(email)) {
+function isValidEmail(value: string): boolean {
+  if (value.length > 254 || hasControlWhitespace(value)) {
     return false
   }
 
-  const atIndex = email.indexOf('@')
-  if (atIndex <= 0 || atIndex !== email.lastIndexOf('@') || atIndex === email.length - 1) {
+  const atIndex = value.indexOf('@')
+  if (atIndex <= 0 || atIndex !== value.lastIndexOf('@') || atIndex === value.length - 1) {
     return false
   }
 
-  const domain = email.slice(atIndex + 1)
+  const domain = value.slice(atIndex + 1)
   if (!domain.includes('.') || domain.startsWith('.') || domain.endsWith('.')) {
     return false
   }
@@ -39,6 +40,21 @@ function getResendErrorMessage(data: unknown): string {
   }
 
   return 'Failed to add contact'
+}
+
+function getResendContactId(data: unknown): string | null {
+  if (data && typeof data === 'object' && 'id' in data && typeof data.id === 'string') {
+    return data.id
+  }
+
+  return null
+}
+
+function getPostHogClient(): PostHog | null {
+  const key = process.env.POSTHOG_API_KEY
+  const host = process.env.POSTHOG_HOST
+  if (!key || !host) return null
+  return new PostHog(key, { host })
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -88,17 +104,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
     }
 
-    if (RESEND_SEGMENT_ID && contactData.id) {
+    const contactId = getResendContactId(contactData)
+
+    if (RESEND_SEGMENT_ID && contactId) {
       await fetch(`https://api.resend.com/segments/${RESEND_SEGMENT_ID}/contacts`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ contact_ids: [contactData.id] })
+        body: JSON.stringify({ contact_ids: [contactId] })
       })
+    }
+
+    const posthog = getPostHogClient()
+    if (posthog && contactId) {
+      posthog.capture({ distinctId: contactId, event: 'waitlist_signup_success' })
+      await posthog.shutdown()
     }
 
     return res.status(200).json({
       success: true,
-      id: contactData.id
+      id: contactId
     })
   } catch (error) {
     console.error('[waitlist] request failed:', sanitizeLogValue(error))
