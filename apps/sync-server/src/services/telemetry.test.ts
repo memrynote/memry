@@ -68,6 +68,7 @@ function createEnv(
     TELEMETRY_HMAC_KEY: string
     POSTHOG_API_KEY?: string
     POSTHOG_HOST?: string
+    ENVIRONMENT?: string
   }
 }
 
@@ -312,7 +313,7 @@ describe('writeTelemetryBatch', () => {
     expect(blobsJoined.includes(HMAC_KEY)).toBe(false)
   })
 
-  it('mirrors accepted telemetry events into PostHog batch when configured', async () => {
+  it('mirrors accepted telemetry events into PostHog batch without stable client identifiers', async () => {
     // #given a configured PostHog project and a telemetry batch
     const { dataset } = createDataset()
     const fetchMock = vi.fn(async (_input: string | URL, _init?: RequestInit) => {
@@ -324,7 +325,8 @@ describe('writeTelemetryBatch', () => {
     await writeTelemetryBatch(
       createEnv(dataset, HMAC_KEY, {
         POSTHOG_API_KEY: 'phc_test_project',
-        POSTHOG_HOST: 'https://us.i.posthog.com'
+        POSTHOG_HOST: 'https://us.i.posthog.com',
+        ENVIRONMENT: 'development'
       }),
       baseBatch
     )
@@ -351,15 +353,17 @@ describe('writeTelemetryBatch', () => {
     expect(body.api_key).toBe('phc_test_project')
     expect(body.batch).toHaveLength(1)
     expect(body.batch[0].event).toBe('app_started')
-    expect(body.batch[0].distinct_id).toMatch(/^[0-9a-f]{64}$/)
+    expect(body.batch[0].distinct_id).toBe('memry_desktop_development')
     expect(body.batch[0].properties).toMatchObject({
       app_version: '0.1.0',
       build_channel: 'development',
+      environment: 'development',
       platform: 'darwin',
       surface: 'app',
       action: 'started',
       result: 'success'
     })
+    expect(body.batch[0].properties.telemetry_session_id).toBeUndefined()
     const payloadText = JSON.stringify(body)
     expect(payloadText.includes(VALID_INSTALL_ID)).toBe(false)
     expect(payloadText.includes(VALID_SESSION_ID)).toBe(false)

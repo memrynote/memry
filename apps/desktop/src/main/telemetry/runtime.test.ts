@@ -70,7 +70,8 @@ describe('initializeTelemetryRuntime', () => {
     const runtime = initializeTelemetryRuntime({
       fetch: fetchMock,
       buildChannel: 'production',
-      endpoint: 'https://example.test/telemetry/batch'
+      endpoint: 'https://example.test/telemetry/batch',
+      initialEnabled: true
     })
 
     expect(runtime.client.getQueueDepth()).toBe(1)
@@ -82,7 +83,8 @@ describe('initializeTelemetryRuntime', () => {
     const runtime = initializeTelemetryRuntime({
       fetch: fetchMock,
       buildChannel: 'production',
-      endpoint: 'https://example.test/telemetry/batch'
+      endpoint: 'https://example.test/telemetry/batch',
+      initialEnabled: true
     })
 
     await runtime.flush('manual')
@@ -97,7 +99,8 @@ describe('initializeTelemetryRuntime', () => {
     const runtime = initializeTelemetryRuntime({
       fetch: fetchMock,
       buildChannel: 'production',
-      endpoint: 'https://example.test/telemetry/batch'
+      endpoint: 'https://example.test/telemetry/batch',
+      initialEnabled: true
     })
 
     expect(runtime.client.getQueueDepth()).toBeGreaterThan(0)
@@ -145,6 +148,19 @@ describe('initializeTelemetryRuntime', () => {
     expect(runtime.client.getQueueDepth()).toBe(0)
   })
 
+  it('disabled-by-default in production unless explicitly enabled', () => {
+    const { fetchMock } = createFetch()
+
+    const runtime = initializeTelemetryRuntime({
+      fetch: fetchMock,
+      buildChannel: 'production',
+      endpoint: 'https://example.test/telemetry/batch'
+    })
+
+    expect(runtime.getSettings().enabled).toBe(false)
+    expect(runtime.client.getQueueDepth()).toBe(0)
+  })
+
   it('respects the persisted disabled setting in production', () => {
     fs.writeFileSync(
       path.join(tempDir, TELEMETRY_CONFIG_FILENAME),
@@ -170,7 +186,8 @@ describe('initializeTelemetryRuntime', () => {
     const runtime = initializeTelemetryRuntime({
       fetch: fetchMock,
       buildChannel: 'production',
-      endpoint: 'https://example.test/telemetry/batch'
+      endpoint: 'https://example.test/telemetry/batch',
+      initialEnabled: true
     })
 
     runtime.track({
