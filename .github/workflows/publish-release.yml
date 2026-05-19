@@ -180,7 +180,7 @@ jobs:
           {
             printf 'SYNC_SERVER_URL=%s\n' "$SYNC_SERVER_URL"
             printf 'GOOGLE_CALENDAR_CLIENT_ID=%s\n' "$GOOGLE_CALENDAR_CLIENT_ID"
-          } > apps/desktop/.env.staging
+          } > apps/desktop/.env.production
 
       - name: Build signed macOS artifacts
         env:
@@ -332,7 +332,7 @@ jobs:
           {
             printf 'SYNC_SERVER_URL=%s\n' "$SYNC_SERVER_URL"
             printf 'GOOGLE_CALENDAR_CLIENT_ID=%s\n' "$GOOGLE_CALENDAR_CLIENT_ID"
-          } > apps/desktop/.env.staging
+          } > apps/desktop/.env.production
 
       - name: Build Windows artifacts
         env:
@@ -440,7 +440,7 @@ jobs:
           {
             printf 'SYNC_SERVER_URL=%s\n' "$SYNC_SERVER_URL"
             printf 'GOOGLE_CALENDAR_CLIENT_ID=%s\n' "$GOOGLE_CALENDAR_CLIENT_ID"
-          } > apps/desktop/.env.staging
+          } > apps/desktop/.env.production
 
       - name: Build Linux artifacts
         env:

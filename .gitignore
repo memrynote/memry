@@ -67,3 +67,4 @@ opencode.jsonc
 
 
 agents/
+.env*.local

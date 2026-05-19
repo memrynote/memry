@@ -7,8 +7,7 @@ import { parse } from 'dotenv'
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 const appRoot = join(scriptDir, '..')
 const envPath = join(appRoot, 'electron-builder.env')
-const runtimeEnvPath = join(appRoot, '.env.staging')
-const defaultSyncServerUrl = 'https://sync-staging.memrynote.com'
+const runtimeEnvPath = join(appRoot, '.env.production')
 
 if (!existsSync(envPath)) {
   console.error('Missing apps/desktop/electron-builder.env')
@@ -19,7 +18,7 @@ if (!existsSync(envPath)) {
 }
 
 if (!existsSync(runtimeEnvPath)) {
-  console.error('Missing apps/desktop/.env.staging')
+  console.error('Missing apps/desktop/.env.production')
   console.error('Create it before building; it is copied into the signed app as Resources/.env.')
   process.exit(1)
 }
@@ -30,7 +29,7 @@ const buildEnv = {
   ...parsedEnv,
   CSC_IDENTITY_AUTO_DISCOVERY:
     parsedEnv.CSC_IDENTITY_AUTO_DISCOVERY ?? process.env.CSC_IDENTITY_AUTO_DISCOVERY ?? 'true',
-  SYNC_SERVER_URL: parsedEnv.SYNC_SERVER_URL || process.env.SYNC_SERVER_URL || defaultSyncServerUrl
+  MEMRY_ENV: 'production'
 }
 
 const requiredEnv = [
