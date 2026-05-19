@@ -26,11 +26,17 @@ memrynote is a pnpm + Turborepo monorepo. Apps live under `apps/`, reusable doma
 
 Reusable brand files live in `assets/brand/memry`. The desktop icon generator reads
 `assets/brand/memry/icon-color.png` and writes the packaged app icons under
-`apps/desktop/build/`. It also writes the depth-treated social profile PNGs under
+`apps/desktop/build/`; `pnpm --dir apps/desktop generate:icons` writes the default
+light icons, and `pnpm --dir apps/desktop generate:icons --dark` overwrites those same
+Electron icon files with the dark icon treatment. It also writes the depth-treated
+social profile PNGs under
 `assets/brand/memry/social/profile-image.png`,
 `assets/brand/memry/social/profile-square.png`, and
-`assets/brand/memry/social/profile-rectangle.png`, while landing and social surfaces should reuse
-the shared logo and icon sources instead of keeping app-local copies.
+`assets/brand/memry/social/profile-rectangle.png`, plus dark-theme variants at
+`assets/brand/memry/social/profile-image-dark.png`,
+`assets/brand/memry/social/profile-square-dark.png`, and
+`assets/brand/memry/social/profile-rectangle-dark.png`, while landing and social surfaces should
+reuse the shared logo and icon sources instead of keeping app-local copies.
 
 ## Tooling
 

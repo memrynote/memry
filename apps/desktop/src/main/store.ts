@@ -1,6 +1,7 @@
 import { app } from 'electron'
 import fs from 'fs'
 import path from 'path'
+import { LocaleSchema, type Locale } from '@memry/contracts/locale-api'
 import { createLogger } from './lib/logger'
 
 const logger = createLogger('Store')
@@ -41,6 +42,8 @@ export interface AgentStoreData {
  * Application store schema
  */
 interface StoreSchema {
+  /** App-level locale used before a vault is open */
+  locale: Locale | null
   /** Path to the currently open vault */
   currentVault: string | null
   /** List of known vaults */
@@ -54,6 +57,7 @@ interface StoreSchema {
 const CONFIG_FILE = 'memry-config.json'
 
 const defaultData: StoreSchema = {
+  locale: null,
   currentVault: null,
   vaults: [],
   sync: {},
@@ -134,6 +138,21 @@ export function getCurrentVaultPath(): string | null {
  */
 export function setCurrentVaultPath(path: string | null): void {
   store.set('currentVault', path)
+}
+
+/**
+ * Get the app-level locale used before a vault is open.
+ */
+export function getStoredLocale(): Locale | null {
+  const parsed = LocaleSchema.safeParse(store.get('locale'))
+  return parsed.success ? parsed.data : null
+}
+
+/**
+ * Persist the app-level locale used by shell surfaces such as the vault picker.
+ */
+export function setStoredLocale(locale: Locale): void {
+  store.set('locale', LocaleSchema.parse(locale))
 }
 
 /**

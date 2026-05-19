@@ -299,7 +299,21 @@
       "syncAnywhere": "Segerakkan Di Mana-mana",
       "useDropboxIcloudGit": "Gunakan Dropbox, iCloud, Git",
       "recentVaults": "Bilik Kebal Terkini",
-      "notesLastOpened": "nota · Terakhir dibuka"
+      "notesLastOpened": "nota · Terakhir dibuka",
+      "brandName": "Memry",
+      "preRelease": "Pra-keluaran",
+      "createNewVault": "Cipta peti baharu",
+      "createNewVaultDesc": "Mulakan peti baharu dalam folder pilihan anda.",
+      "openExistingVault": "Buka peti sedia ada",
+      "openExistingVaultDesc": "Pilih folder fail Markdown yang sudah anda simpan.",
+      "signInToSync": "Log masuk untuk menyegerak",
+      "signInToSyncDesc": "Peti disulitkan hujung ke hujung merentas peranti anda.",
+      "create": "Cipta",
+      "open": "Buka",
+      "signIn": "Log masuk",
+      "helpAndDocs": "Bantuan & dokumen",
+      "signInRequiresVault": "Buka atau cipta peti dahulu untuk menyediakan penyegerakan.",
+      "addVault": "Tambah peti"
     },
     "componentsVaultSwitcher": {
       "noVaultsYet": "Tiada peti besi lagi",

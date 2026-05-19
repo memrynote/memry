@@ -90,11 +90,6 @@ export const SELECTORS = {
   sidebarTrigger: '[data-testid="tab-pane"] button, [role="tablist"] button'
 }
 
-const FIRST_RUN_ONBOARDING = {
-  root: 'button[aria-label="Skip onboarding"]',
-  skipButton: 'button[aria-label="Skip onboarding"]'
-} as const
-
 /**
  * Keyboard shortcuts for common actions
  * Based on actual app implementation
@@ -189,31 +184,8 @@ export async function navigateTo(
   await page.waitForTimeout(300)
 }
 
-export async function dismissFirstRunOnboarding(page: Page, timeout = 3000): Promise<void> {
-  // Persist onboardingCompleted=true via IPC so the overlay cannot re-appear
-  // after settings finish loading. This race-proofs against the case where
-  // settings load AFTER waitForAppReady returns and the skip button isn't
-  // visible yet during the initial check.
-  await page
-    .evaluate(() => window.api.settings.setGeneralSettings({ onboardingCompleted: true }))
-    .catch(() => {
-      // window.api may not be available yet; fall through to the click path
-    })
-
-  const skipButton = page.locator(FIRST_RUN_ONBOARDING.skipButton).first()
-  const overlayVisible = await page
-    .locator(FIRST_RUN_ONBOARDING.root)
-    .first()
-    .isVisible({ timeout })
-    .catch(() => false)
-
-  if (!overlayVisible) {
-    return
-  }
-
-  await skipButton.click({ force: true })
-  await skipButton.waitFor({ state: 'hidden', timeout }).catch(() => {})
-  await page.waitForTimeout(300)
+export function dismissFirstRunOnboarding(_page: Page, _timeout = 3000): Promise<void> {
+  return Promise.resolve()
 }
 
 /**

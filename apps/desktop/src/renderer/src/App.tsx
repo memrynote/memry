@@ -52,9 +52,7 @@ import { useFlushOnQuit } from '@/hooks/use-flush-on-quit'
 import { tasksService, queueTaskReorder } from '@/services/tasks-service'
 import { notesService } from '@/services/notes-service'
 import { VaultOnboarding } from '@/components/vault-onboarding'
-import { FirstRunOnboarding } from '@/components/first-run-onboarding'
 import { useThemeSync } from '@/hooks/use-theme-sync'
-import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { trackTelemetry } from '@/lib/telemetry'
 import type { TelemetrySurface } from '@memry/contracts/telemetry-api'
 import { useActiveTab } from '@/contexts/tabs'
@@ -325,34 +323,6 @@ function App(): React.JSX.Element {
   const vaultPath = vaultStatus?.path ?? null
   const queryClient = useQueryClient()
 
-  // General settings — used to gate first-run onboarding
-  const {
-    settings: generalSettings,
-    isLoading: generalSettingsLoading,
-    updateSettings: updateGeneralSettings
-  } = useGeneralSettings()
-
-  const handleOnboardingComplete = useCallback(async () => {
-    await updateGeneralSettings({ onboardingCompleted: true })
-    void trackTelemetry('onboarding_completed', {
-      surface: 'onboarding',
-      action: 'completed',
-      result: 'success'
-    })
-  }, [updateGeneralSettings])
-
-  // Track onboarding_started exactly once when first-run onboarding is shown.
-  const onboardingStartedTrackedRef = useRef(false)
-  useEffect(() => {
-    if (generalSettingsLoading) return
-    if (generalSettings.onboardingCompleted) return
-    if (onboardingStartedTrackedRef.current) return
-    onboardingStartedTrackedRef.current = true
-    void trackTelemetry('onboarding_started', {
-      surface: 'onboarding',
-      action: 'started'
-    })
-  }, [generalSettingsLoading, generalSettings.onboardingCompleted])
   const prevVaultPathRef = useRef<string | null>(null)
 
   useEffect(() => {
@@ -556,10 +526,6 @@ function App(): React.JSX.Element {
               layer; a drag-region painted over no-drag children eats clicks). */}
           <WindowControls className="pointer-events-auto fixed top-0 start-0 z-[60] w-[var(--chrome-width)]" />
         </SidebarProvider>
-        {/* First-run onboarding overlay — shown until user completes or dismisses */}
-        {!generalSettingsLoading && !generalSettings.onboardingCompleted && (
-          <FirstRunOnboarding onComplete={() => void handleOnboardingComplete()} />
-        )}
         <Toaster />
       </ThemeSyncManager>
     </ThemeProvider>

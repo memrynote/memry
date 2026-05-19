@@ -57,8 +57,9 @@ Pick the right asset for the context instead of regenerating logos.
 
 The desktop app icon is generated from `assets/brand/memry/icon-color.png` by
 `apps/desktop/scripts/generate-icons.mjs`. The generator wraps the transparent
-brand mark in a rounded macOS-style tile, adds a warm off-white background, and
-applies subtle depth to the mark with highlight, shade, and shadow overlays.
+brand mark in a rounded macOS-style tile, adds a warm off-white background by
+default, and applies subtle depth to the mark with highlight, shade, and shadow
+overlays. Pass `--dark` to write flat-black dark-background Electron app icons instead.
 
 Generated outputs:
 
@@ -68,23 +69,30 @@ Generated outputs:
 - `assets/brand/memry/social/profile-image.png` — square Twitter/X and Reddit profile image.
 - `assets/brand/memry/social/profile-square.png` — explicit square Twitter/X and Reddit profile image.
 - `assets/brand/memry/social/profile-rectangle.png` — rectangular Twitter/X and Reddit profile banner image.
+- `assets/brand/memry/social/profile-image-dark.png` — dark-theme square profile image.
+- `assets/brand/memry/social/profile-square-dark.png` — dark-theme explicit square profile image.
+- `assets/brand/memry/social/profile-rectangle-dark.png` — dark-theme rectangular profile banner image.
 
 Regenerate after changing `icon-color.png`:
 
 ```bash
 pnpm --dir apps/desktop generate:icons
+pnpm --dir apps/desktop generate:icons --dark
 ```
 
 ### Platform-ready
 
-| File                           | What it is                        | When to use                                            |
-| ------------------------------ | --------------------------------- | ------------------------------------------------------ |
-| `favicon.ico`                  | ICO favicon                       | Drop into website root as `/favicon.ico`.              |
-| `social-icon.png`              | Icon on white background          | Profile picture when a light avatar reads best.        |
-| `inverse-avatar.png`           | Icon on brand-color background    | Profile picture when a colored avatar reads best.      |
-| `social/profile-image.png`     | Square image with depth mark      | Generated profile image for Twitter/X and Reddit.      |
-| `social/profile-square.png`    | Square image with depth mark      | Explicit square PNG for Twitter/X and Reddit profiles. |
-| `social/profile-rectangle.png` | Rectangular image with depth mark | Generated profile banner for Twitter/X and Reddit.     |
+| File                                | What it is                                    | When to use                                                 |
+| ----------------------------------- | --------------------------------------------- | ----------------------------------------------------------- |
+| `favicon.ico`                       | ICO favicon                                   | Drop into website root as `/favicon.ico`.                   |
+| `social-icon.png`                   | Icon on white background                      | Profile picture when a light avatar reads best.             |
+| `inverse-avatar.png`                | Icon on brand-color background                | Profile picture when a colored avatar reads best.           |
+| `social/profile-image.png`          | Square image with depth mark                  | Generated profile image for Twitter/X and Reddit.           |
+| `social/profile-square.png`         | Square image with depth mark                  | Explicit square PNG for Twitter/X and Reddit profiles.      |
+| `social/profile-rectangle.png`      | Rectangular image with depth mark             | Generated profile banner for Twitter/X and Reddit.          |
+| `social/profile-image-dark.png`     | Dark square image with orange depth mark      | Dark-theme profile image for Twitter/X and Reddit.          |
+| `social/profile-square-dark.png`    | Dark square image with orange depth mark      | Explicit dark square PNG for Twitter/X and Reddit profiles. |
+| `social/profile-rectangle-dark.png` | Dark rectangular image with orange depth mark | Dark-theme profile banner for Twitter/X and Reddit.         |
 
 ### Social assets
 
@@ -93,6 +101,7 @@ pnpm --dir apps/desktop generate:icons
 - Use `social/profile-image.png` for Twitter/X and Reddit profile images; it keeps the depth-treated mark on a full square background so profile platforms can crop it themselves.
 - Use `social/profile-square.png` when you need the explicit square PNG name.
 - Use `social/profile-rectangle.png` for Twitter/X and Reddit profile banners; it keeps the same depth-treated mark in a 1500x500 PNG.
+- Use `social/profile-image-dark.png`, `social/profile-square-dark.png`, and `social/profile-rectangle-dark.png` when the profile or cover placement needs the dark-theme background with the orange depth-treated mark.
 - Use `social/og-image.svg` as the source for the 1200x630 social preview.
 - Copy the generated `social/og-image.png` to `apps/landing/public/og-image.png` so both
   `og:image` and `twitter:image` resolve to the current brand preview.

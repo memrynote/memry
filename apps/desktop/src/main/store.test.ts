@@ -17,7 +17,9 @@ import {
   findVault,
   touchVault,
   getDefaultVaultPath,
-  setDefaultVaultPath
+  setDefaultVaultPath,
+  getStoredLocale,
+  setStoredLocale
 } from './store'
 
 describe('store', () => {
@@ -38,6 +40,7 @@ describe('store', () => {
   it('returns defaults when config is missing', () => {
     expect(getCurrentVaultPath()).toBeNull()
     expect(getVaults()).toEqual([])
+    expect(getStoredLocale()).toBeNull()
   })
 
   it('persists current vault path', () => {
@@ -50,6 +53,18 @@ describe('store', () => {
       currentVault: string | null
     }
     expect(stored.currentVault).toBe('/vaults/personal')
+  })
+
+  it('persists the app-level locale used before a vault opens', () => {
+    setStoredLocale('tr')
+
+    expect(getStoredLocale()).toBe('tr')
+
+    const configPath = path.join(tempDir, 'memry-config.json')
+    const stored = JSON.parse(fs.readFileSync(configPath, 'utf-8')) as {
+      locale: string
+    }
+    expect(stored.locale).toBe('tr')
   })
 
   it('upserts and finds vaults by path', () => {

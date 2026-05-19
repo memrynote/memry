@@ -24,9 +24,14 @@ import { LocaleSchema, FALLBACK_LOCALE, type Locale } from '@memry/contracts/loc
 import { createMainI18n, type I18nInstance } from '@memry/i18n/main'
 import { registerAllHandlers } from './ipc'
 import { applyGlobalCaptureShortcut } from './ipc/settings-handlers'
-import { autoOpenLastVault, closeVault, getStatus as getVaultStatus } from './vault'
+import {
+  autoOpenLastVault,
+  closeVault,
+  getStatus as getVaultStatus,
+  onVaultStatusChanged
+} from './vault'
 import { readPreferences } from './vault/vault-preferences'
-import { getCurrentVaultPath } from './store'
+import { getCurrentVaultPath, getStoredLocale } from './store'
 import { startSnoozeScheduler, stopSnoozeScheduler, checkDueItemsOnStartup } from './inbox/snooze'
 import { stopVoiceModel } from './inbox/voice-model'
 import { startReminderScheduler, stopReminderScheduler } from './lib/reminders'
@@ -108,7 +113,7 @@ if (headlessCliArgs) {
 }
 
 async function bootI18n(): Promise<I18nInstance> {
-  let initialLocale: Locale = FALLBACK_LOCALE
+  let initialLocale: Locale = getStoredLocale() ?? FALLBACK_LOCALE
 
   try {
     const vaultPath = getCurrentVaultPath()
@@ -314,11 +319,37 @@ function configureCertificatePinning(): void {
   certPinLog.info('Session certificate pinning configured')
 }
 
+const DEFAULT_MAIN_WINDOW_SIZE = { width: 1550, height: 900 } as const
+const VAULT_PICKER_WINDOW_SIZE = { width: 760, height: 560 } as const
+
+function getInitialMainWindowSize():
+  | typeof DEFAULT_MAIN_WINDOW_SIZE
+  | typeof VAULT_PICKER_WINDOW_SIZE {
+  return getCurrentVaultPath() ? DEFAULT_MAIN_WINDOW_SIZE : VAULT_PICKER_WINDOW_SIZE
+}
+
+function resizeWindowIfNeeded(
+  window: BrowserWindow,
+  size: typeof DEFAULT_MAIN_WINDOW_SIZE | typeof VAULT_PICKER_WINDOW_SIZE
+): void {
+  if (window.isDestroyed()) return
+
+  const [currentWidth, currentHeight] = window.getSize()
+  if (currentWidth === size.width && currentHeight === size.height) return
+
+  if (window.isMaximized()) {
+    window.unmaximize()
+  }
+  window.setSize(size.width, size.height)
+}
+
 function createWindow(): void {
+  const initialSize = getInitialMainWindowSize()
+
   // Create the browser window.
   const mainWindow = new BrowserWindow({
-    width: 1550,
-    height: 900,
+    width: initialSize.width,
+    height: initialSize.height,
     show: false,
     autoHideMenuBar: true,
     icon: join(__dirname, '../../build/icon.png'),
@@ -334,6 +365,14 @@ function createWindow(): void {
       sandbox: false
     }
   })
+
+  const unsubscribeVaultStatus = onVaultStatusChanged((status) => {
+    resizeWindowIfNeeded(
+      mainWindow,
+      status.isOpen ? DEFAULT_MAIN_WINDOW_SIZE : VAULT_PICKER_WINDOW_SIZE
+    )
+  })
+  mainWindow.on('closed', unsubscribeVaultStatus)
 
   mainWindow.on('ready-to-show', () => {
     // Zoom out once (equivalent to Cmd+-)

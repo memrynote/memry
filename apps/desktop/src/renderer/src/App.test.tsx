@@ -8,7 +8,6 @@ const queryClientClear = vi.fn()
 const openTab = vi.fn()
 const openSettings = vi.fn()
 const trackTelemetry = vi.fn()
-const updateGeneralSettings = vi.fn()
 const setProjects = vi.fn()
 const taskDragEnd = vi.fn()
 const updateSelectedTaskIds = vi.fn()
@@ -18,11 +17,6 @@ const createNote = vi.fn()
 let vaultState = {
   status: { isOpen: true, path: '/vault/a' },
   isLoading: false
-}
-let generalSettingsState = {
-  settings: { onboardingCompleted: true },
-  isLoading: false,
-  updateSettings: updateGeneralSettings
 }
 let activeTab: { type: string } | null = { type: 'inbox' }
 let tasks = [
@@ -140,10 +134,6 @@ vi.mock('@/hooks/use-flush-on-quit', () => ({
 
 vi.mock('@/hooks/use-theme-sync', () => ({
   useThemeSync: vi.fn()
-}))
-
-vi.mock('@/hooks/use-general-settings', () => ({
-  useGeneralSettings: () => generalSettingsState
 }))
 
 vi.mock('@/features/tasks/use-task-queries', () => ({
@@ -335,14 +325,6 @@ vi.mock('@/components/vault-onboarding', () => ({
   VaultOnboarding: () => <div data-testid="vault-onboarding" />
 }))
 
-vi.mock('@/components/first-run-onboarding', () => ({
-  FirstRunOnboarding: ({ onComplete }: { onComplete: () => void }) => (
-    <button type="button" onClick={onComplete}>
-      complete onboarding
-    </button>
-  )
-}))
-
 describe('App', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -350,11 +332,6 @@ describe('App', () => {
     vaultState = {
       status: { isOpen: true, path: '/vault/a' },
       isLoading: false
-    }
-    generalSettingsState = {
-      settings: { onboardingCompleted: true },
-      isLoading: false,
-      updateSettings: updateGeneralSettings
     }
     activeTab = { type: 'inbox' }
     tasks = [
@@ -381,7 +358,6 @@ describe('App', () => {
     ]
     settingsOpenListener = undefined
     newNoteShortcut = undefined
-    updateGeneralSettings.mockResolvedValue(undefined)
     createNote.mockResolvedValue({
       success: true,
       note: { id: 'note-1', title: 'Created note' }
@@ -420,13 +396,7 @@ describe('App', () => {
     expect(screen.getByTestId('toaster')).toBeInTheDocument()
   })
 
-  it('renders the app shell, tracks onboarding, and completes first-run onboarding', async () => {
-    generalSettingsState = {
-      settings: { onboardingCompleted: false },
-      isLoading: false,
-      updateSettings: updateGeneralSettings
-    }
-
+  it('renders the app shell without first-run onboarding', () => {
     render(<App />)
 
     expect(screen.getByTestId('app-sidebar')).toHaveTextContent('all:2')
@@ -436,19 +406,9 @@ describe('App', () => {
       surface: 'inbox',
       action: 'viewed'
     })
-    expect(trackTelemetry).toHaveBeenCalledWith('onboarding_started', {
-      surface: 'onboarding',
-      action: 'started'
-    })
-
-    await userEvent.click(screen.getByText('complete onboarding'))
-
-    expect(updateGeneralSettings).toHaveBeenCalledWith({ onboardingCompleted: true })
-    expect(trackTelemetry).toHaveBeenCalledWith('onboarding_completed', {
-      surface: 'onboarding',
-      action: 'completed',
-      result: 'success'
-    })
+    expect(screen.queryByText('complete onboarding')).not.toBeInTheDocument()
+    expect(trackTelemetry).not.toHaveBeenCalledWith('onboarding_started', expect.anything())
+    expect(trackTelemetry).not.toHaveBeenCalledWith('onboarding_completed', expect.anything())
   })
 
   it('handles global search, shortcut dialog, settings section, and new note events', async () => {
