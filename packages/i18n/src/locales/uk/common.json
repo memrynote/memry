@@ -299,7 +299,21 @@
       "syncAnywhere": "Синхронізація будь-де",
       "useDropboxIcloudGit": "Використовуйте Dropbox, iCloud, Git",
       "recentVaults": "Останні сховища",
-      "notesLastOpened": "нотатки · востаннє відкриті"
+      "notesLastOpened": "нотатки · востаннє відкриті",
+      "brandName": "Memry",
+      "preRelease": "Попередній випуск",
+      "createNewVault": "Створити нове сховище",
+      "createNewVaultDesc": "Почніть нове сховище у вибраній папці.",
+      "openExistingVault": "Відкрити наявне сховище",
+      "openExistingVaultDesc": "Виберіть папку з Markdown-файлами, які вже зберігаєте.",
+      "signInToSync": "Увійти для синхронізації",
+      "signInToSyncDesc": "Сховища з наскрізним шифруванням на всіх ваших пристроях.",
+      "create": "Створити",
+      "open": "Відкрити",
+      "signIn": "Увійти",
+      "helpAndDocs": "Довідка та документація",
+      "signInRequiresVault": "Спочатку відкрийте або створіть сховище, щоб налаштувати синхронізацію.",
+      "addVault": "Додати сховище"
     },
     "componentsVaultSwitcher": {
       "noVaultsYet": "Ще немає сховищ",

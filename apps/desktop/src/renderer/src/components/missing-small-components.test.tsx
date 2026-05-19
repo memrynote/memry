@@ -1,6 +1,7 @@
 import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { LOCALE_DISPLAY_NAMES, SUPPORTED_LOCALES } from '@memry/i18n/shared'
 
 import { AddSubtaskInput } from './tasks/add-subtask-input'
 import { VaultOnboarding } from './vault-onboarding'
@@ -21,13 +22,20 @@ const mocks = vi.hoisted(() => ({
   applyLayoutPreset: vi.fn(),
   onTagsChange: null as null | ((tags: string[]) => void),
   clipboardWrite: vi.fn(),
-  logError: vi.fn()
+  logError: vi.fn(),
+  localeSet: vi.fn(),
+  openWindow: vi.fn(),
+  i18n: {
+    language: 'en',
+    changeLanguage: vi.fn()
+  }
 }))
 
 vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({
     t: (key: string, values?: Record<string, unknown>) =>
-      values ? `${key} ${JSON.stringify(values)}` : key
+      values ? `${key} ${JSON.stringify(values)}` : key,
+    i18n: mocks.i18n
   })
 }))
 
@@ -173,8 +181,25 @@ describe('missing small component surfaces', () => {
     vi.clearAllMocks()
     vi.useRealTimers()
     mocks.onTagsChange = null
+    mocks.i18n.language = 'en'
+    mocks.i18n.changeLanguage.mockImplementation(async (locale: string) => {
+      mocks.i18n.language = locale
+    })
+    mocks.localeSet.mockResolvedValue(undefined)
     mocks.selectVault.mockResolvedValue(undefined)
     mocks.switchVault.mockResolvedValue(undefined)
+    if (!HTMLElement.prototype.hasPointerCapture) {
+      HTMLElement.prototype.hasPointerCapture = vi.fn(() => false)
+    }
+    if (!HTMLElement.prototype.setPointerCapture) {
+      HTMLElement.prototype.setPointerCapture = vi.fn()
+    }
+    if (!HTMLElement.prototype.releasePointerCapture) {
+      HTMLElement.prototype.releasePointerCapture = vi.fn()
+    }
+    if (!HTMLElement.prototype.scrollIntoView) {
+      HTMLElement.prototype.scrollIntoView = vi.fn()
+    }
     mocks.applyLayoutPreset.mockReturnValue({
       tabGroups: { next: { id: 'next', tabs: [] } },
       layout: { type: 'single' },
@@ -183,6 +208,15 @@ describe('missing small component surfaces', () => {
     Object.defineProperty(navigator, 'clipboard', {
       configurable: true,
       value: { writeText: mocks.clipboardWrite.mockResolvedValue(undefined) }
+    })
+    Object.assign(window.api, {
+      locale: {
+        set: mocks.localeSet
+      }
+    })
+    Object.defineProperty(window, 'open', {
+      configurable: true,
+      value: mocks.openWindow
     })
   })
 
@@ -209,12 +243,44 @@ describe('missing small component surfaces', () => {
     const user = userEvent.setup()
     render(<VaultOnboarding />)
 
-    await user.click(screen.getByRole('button', { name: /selectVaultFolder/ }))
+    expect(screen.queryByTestId('setup-wizard')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /signInToSync/ })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /createNewVault/ }))
     expect(mocks.selectVault).toHaveBeenCalled()
     expect(screen.getByText('Vault failed')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: /Work Vault/ }))
     expect(mocks.switchVault).toHaveBeenCalledWith('/vaults/work')
+  })
+
+  it('changes language from the vault picker supported-language dropdown', async () => {
+    const user = userEvent.setup()
+    render(<VaultOnboarding />)
+
+    await user.click(screen.getByRole('combobox'))
+
+    expect(await screen.findByRole('listbox')).toHaveAttribute('data-side', 'top')
+    expect(screen.getAllByRole('option')).toHaveLength(SUPPORTED_LOCALES.length)
+    expect(screen.getByRole('option', { name: LOCALE_DISPLAY_NAMES.en })).toBeInTheDocument()
+    await user.click(screen.getByRole('option', { name: LOCALE_DISPLAY_NAMES.tr }))
+
+    await waitFor(() => {
+      expect(mocks.localeSet).toHaveBeenCalledWith('tr')
+    })
+    expect(mocks.i18n.changeLanguage).toHaveBeenCalledWith('tr')
+  })
+
+  it('opens the public docs site from the vault picker help link', async () => {
+    const user = userEvent.setup()
+    render(<VaultOnboarding />)
+
+    await user.click(screen.getByRole('button', { name: /helpAndDocs/ }))
+
+    expect(mocks.openWindow).toHaveBeenCalledWith(
+      'https://docs.memrynote.com',
+      '_blank',
+      'noopener,noreferrer'
+    )
   })
 
   it('guards modified tab closes and renders unsaved changes actions', async () => {

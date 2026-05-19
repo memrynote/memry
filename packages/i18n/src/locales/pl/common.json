@@ -299,7 +299,21 @@
       "syncAnywhere": "Synchronizuj gdziekolwiek",
       "useDropboxIcloudGit": "Korzystaj z Dropbox, iCloud, Git",
       "recentVaults": "Najnowsze skarbce",
-      "notesLastOpened": "notatki · Ostatnio otwarte"
+      "notesLastOpened": "notatki · Ostatnio otwarte",
+      "brandName": "Memry",
+      "preRelease": "Wersja przedpremierowa",
+      "createNewVault": "Utwórz nowy sejf",
+      "createNewVaultDesc": "Rozpocznij nowy sejf w wybranym folderze.",
+      "openExistingVault": "Otwórz istniejący sejf",
+      "openExistingVaultDesc": "Wybierz folder z plikami Markdown, które już masz.",
+      "signInToSync": "Zaloguj się, aby synchronizować",
+      "signInToSyncDesc": "Sejfy szyfrowane end-to-end na Twoich urządzeniach.",
+      "create": "Utwórz",
+      "open": "Otwórz",
+      "signIn": "Zaloguj się",
+      "helpAndDocs": "Pomoc i dokumentacja",
+      "signInRequiresVault": "Najpierw otwórz lub utwórz sejf, aby skonfigurować synchronizację.",
+      "addVault": "Dodaj sejf"
     },
     "componentsVaultSwitcher": {
       "noVaultsYet": "Nie ma jeszcze skarbców",

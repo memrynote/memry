@@ -21,8 +21,8 @@ function verifyElectronAbi(): void {
   const message = [
     '',
     '✗ E2E precondition failed: better-sqlite3 is built for ABI "' + actual + '", not "electron".',
-    '  The app would boot to the "Welcome to Memry" onboarding screen instead of the test vault,',
-    '  because autoOpenLastVault fails silently with ERR_DLOPEN_FAILED.',
+    '  The app would fail to open the test vault because autoOpenLastVault fails silently',
+    '  with ERR_DLOPEN_FAILED.',
     '',
     '  Fix (pick one):',
     '    pnpm --filter @memry/desktop rebuild:electron',

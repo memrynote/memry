@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { SettingsChannels } from '@memry/contracts/ipc-channels'
+import type { VaultStatus } from '@memry/contracts/vault-api'
 
 const appOnMock = vi.fn()
 const whenReadyMock = vi.fn(() => new Promise<void>(() => {}))
@@ -11,12 +12,21 @@ const registerAllHandlersMock = vi.fn()
 const applyGlobalCaptureShortcutMock = vi.fn(() => ({ registered: true }))
 const autoOpenLastVaultMock = vi.fn(async () => undefined)
 const closeVaultMock = vi.fn(async () => undefined)
+const vaultStatusChangedListeners: Array<(status: VaultStatus) => void> = []
+const onVaultStatusChangedMock = vi.fn((listener: (status: VaultStatus) => void) => {
+  vaultStatusChangedListeners.push(listener)
+  return () => {
+    const index = vaultStatusChangedListeners.indexOf(listener)
+    if (index !== -1) vaultStatusChangedListeners.splice(index, 1)
+  }
+})
 const createMainI18nMock = vi.fn(async () => ({ t: (key: string) => key }))
 const setMainI18nMock = vi.fn()
 const buildAppMenuMock = vi.fn(() => ({ id: 'menu' }))
 const editableContextMenuPopupMock = vi.fn()
 const buildEditableTextContextMenuMock = vi.fn(() => ({ popup: editableContextMenuPopupMock }))
 const getCurrentVaultPathMock = vi.fn(() => null as string | null)
+const getStoredLocaleMock = vi.fn(() => null as string | null)
 const getVaultStatusMock = vi.fn(() => ({ path: null as string | null }))
 const readPreferencesMock = vi.fn(() => ({ language: 'en' }))
 const initializeTelemetryRuntimeMock = vi.fn()
@@ -131,11 +141,13 @@ vi.mock('./ipc/settings-handlers', () => ({
 vi.mock('./vault', () => ({
   autoOpenLastVault: autoOpenLastVaultMock,
   closeVault: closeVaultMock,
-  getStatus: getVaultStatusMock
+  getStatus: getVaultStatusMock,
+  onVaultStatusChanged: onVaultStatusChangedMock
 }))
 
 vi.mock('./store', () => ({
-  getCurrentVaultPath: getCurrentVaultPathMock
+  getCurrentVaultPath: getCurrentVaultPathMock,
+  getStoredLocale: getStoredLocaleMock
 }))
 
 vi.mock('./vault/vault-preferences', () => ({
@@ -348,11 +360,13 @@ describe('main index phase2 exports', () => {
     vi.resetModules()
     vi.clearAllMocks()
     browserWindows.length = 0
+    vaultStatusChangedListeners.length = 0
     getPathMock.mockImplementation((name: string) => `/mock/${name}`)
     whenReadyMock.mockImplementation(() => new Promise<void>(() => {}))
     requestSingleInstanceLockMock.mockReturnValue(true)
     applyGlobalCaptureShortcutMock.mockReturnValue({ registered: true })
     getCurrentVaultPathMock.mockReturnValue(null)
+    getStoredLocaleMock.mockReturnValue(null)
     getVaultStatusMock.mockReturnValue({ path: null })
     readPreferencesMock.mockReturnValue({ language: 'en' })
     isPinningDisabledMock.mockReturnValue(true)
@@ -469,6 +483,18 @@ describe('main index phase2 exports', () => {
     expect(menuSetApplicationMenuMock).toHaveBeenCalledWith({ id: 'menu' })
   })
 
+  it('boots i18n from stored app locale when no vault is open', async () => {
+    whenReadyMock.mockResolvedValue(undefined)
+    getCurrentVaultPathMock.mockReturnValue(null)
+    getStoredLocaleMock.mockReturnValue('tr')
+
+    await importMainModule()
+    await flushReadyWork()
+
+    expect(readPreferencesMock).not.toHaveBeenCalled()
+    expect(createMainI18nMock).toHaveBeenCalledWith({ locale: 'tr' })
+  })
+
   it('registerOAuthState schedules expiry cleanup at 10 minutes', async () => {
     vi.useFakeTimers()
 
@@ -502,8 +528,8 @@ describe('main index phase2 exports', () => {
     expect(applyGlobalCaptureShortcutMock).toHaveBeenCalled()
     expect(BrowserWindowMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        width: 1550,
-        height: 900,
+        width: 760,
+        height: 560,
         show: false
       })
     )
@@ -513,6 +539,75 @@ describe('main index phase2 exports', () => {
     const createdWindow = browserWindows[0]
     createdWindow.emitTestEvent('focus')
     expect(triggerGoogleCalendarSyncNowMock).toHaveBeenCalledWith('window-focus')
+  })
+
+  it('starts default-sized when a stored vault path exists', async () => {
+    whenReadyMock.mockResolvedValue(undefined)
+    getCurrentVaultPathMock.mockReturnValue('/vault')
+
+    await importMainModule()
+    await flushReadyWork()
+
+    expect(BrowserWindowMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        width: 1550,
+        height: 900,
+        show: false
+      })
+    )
+  })
+
+  it('resizes the compact picker window to the default app size after a vault opens', async () => {
+    whenReadyMock.mockResolvedValue(undefined)
+
+    await importMainModule()
+    await flushReadyWork()
+
+    const createdWindow = browserWindows[0]
+    createdWindow.getSize.mockReturnValue([760, 560])
+
+    vaultStatusChangedListeners[0]?.({
+      isOpen: true,
+      path: '/vault',
+      isIndexing: false,
+      indexProgress: 0,
+      error: null
+    })
+
+    expect(createdWindow.setSize).toHaveBeenCalledWith(1550, 900)
+
+    createdWindow.setSize.mockClear()
+    createdWindow.getSize.mockReturnValue([1550, 900])
+    vaultStatusChangedListeners[0]?.({
+      isOpen: true,
+      path: '/vault',
+      isIndexing: false,
+      indexProgress: 0,
+      error: null
+    })
+
+    expect(createdWindow.setSize).not.toHaveBeenCalled()
+  })
+
+  it('resizes the main window back to compact when the vault closes', async () => {
+    whenReadyMock.mockResolvedValue(undefined)
+    getCurrentVaultPathMock.mockReturnValue('/vault')
+
+    await importMainModule()
+    await flushReadyWork()
+
+    const createdWindow = browserWindows[0]
+    createdWindow.getSize.mockReturnValue([1550, 900])
+
+    vaultStatusChangedListeners[0]?.({
+      isOpen: false,
+      path: null,
+      isIndexing: false,
+      indexProgress: 0,
+      error: null
+    })
+
+    expect(createdWindow.setSize).toHaveBeenCalledWith(760, 560)
   })
 
   it('covers dev-only startup paths for CSP, renderer URL loading, and React DevTools', async () => {

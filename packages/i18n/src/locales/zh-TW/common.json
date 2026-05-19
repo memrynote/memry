@@ -299,7 +299,21 @@
       "syncAnywhere": "隨處同步",
       "useDropboxIcloudGit": "使用 Dropbox、iCloud、Git",
       "recentVaults": "最近的保險庫",
-      "notesLastOpened": "筆記 · 上次開啟"
+      "notesLastOpened": "筆記 · 上次開啟",
+      "brandName": "Memry",
+      "preRelease": "預發布",
+      "createNewVault": "建立新倉庫",
+      "createNewVaultDesc": "在你選擇的資料夾中開始一個新倉庫。",
+      "openExistingVault": "開啟現有倉庫",
+      "openExistingVaultDesc": "選擇一個已存放 Markdown 檔案的資料夾。",
+      "signInToSync": "登入以同步",
+      "signInToSyncDesc": "在你的裝置之間端對端加密的倉庫。",
+      "create": "建立",
+      "open": "開啟",
+      "signIn": "登入",
+      "helpAndDocs": "說明與文件",
+      "signInRequiresVault": "請先開啟或建立一個倉庫以設定同步。",
+      "addVault": "新增倉庫"
     },
     "componentsVaultSwitcher": {
       "noVaultsYet": "尚無保險庫",

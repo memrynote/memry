@@ -6,6 +6,7 @@ const hoisted = vi.hoisted(() => ({
   getSetting: vi.fn(() => null),
   setSetting: vi.fn(),
   getCurrentVaultPath: vi.fn(() => '/vault'),
+  setStoredLocale: vi.fn(),
   writePreferences: vi.fn()
 }))
 
@@ -29,7 +30,8 @@ vi.mock('../settings/settings-store', () => ({
 }))
 
 vi.mock('../store', () => ({
-  getCurrentVaultPath: hoisted.getCurrentVaultPath
+  getCurrentVaultPath: hoisted.getCurrentVaultPath,
+  setStoredLocale: hoisted.setStoredLocale
 }))
 
 vi.mock('../vault/vault-preferences', () => ({
@@ -84,6 +86,7 @@ describe('locale handler', () => {
 
     await setHandler({}, 'tr')
 
+    expect(hoisted.setStoredLocale).toHaveBeenCalledWith('tr')
     expect(hoisted.setSetting).toHaveBeenCalledTimes(1)
     expect(hoisted.setSetting.mock.calls[0][0]).toEqual({})
     expect(hoisted.setSetting.mock.calls[0][1]).toBe('general')
@@ -92,6 +95,35 @@ describe('locale handler', () => {
       language: 'tr'
     })
     expect(hoisted.writePreferences).toHaveBeenCalledWith('/vault', { language: 'tr' })
+    expect(mockI18n.changeLanguage).toHaveBeenCalledWith('tr')
+    expect(rebuildMenu).toHaveBeenCalledWith('tr')
+    expect(send).toHaveBeenCalledWith('locale:changed', 'tr')
+    expect(getHandler()).toBe('tr')
+  })
+
+  it('updates locale without a vault database for the vault picker window', async () => {
+    const send = vi.fn()
+    const mockI18n = { changeLanguage: vi.fn(), language: 'en' } as any
+    const rebuildMenu = vi.fn()
+    hoisted.windows = [{ webContents: { send } }]
+    hoisted.getCurrentVaultPath.mockReturnValue(null)
+    hoisted.getDatabase.mockImplementation(() => {
+      throw new Error('Database not initialized')
+    })
+
+    registerLocaleHandlers(mockI18n, rebuildMenu)
+    const getHandler = (ipcMain.handle as any).mock.calls.find(
+      ([channel]: [string]) => channel === 'locale:get'
+    )[1]
+    const setHandler = (ipcMain.handle as any).mock.calls.find(
+      ([channel]: [string]) => channel === 'locale:set'
+    )[1]
+
+    await setHandler({}, 'tr')
+
+    expect(hoisted.setStoredLocale).toHaveBeenCalledWith('tr')
+    expect(hoisted.setSetting).not.toHaveBeenCalled()
+    expect(hoisted.writePreferences).not.toHaveBeenCalled()
     expect(mockI18n.changeLanguage).toHaveBeenCalledWith('tr')
     expect(rebuildMenu).toHaveBeenCalledWith('tr')
     expect(send).toHaveBeenCalledWith('locale:changed', 'tr')

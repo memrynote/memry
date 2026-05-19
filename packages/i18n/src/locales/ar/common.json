@@ -299,7 +299,21 @@
       "syncAnywhere": "مزامنة في أي مكان",
       "useDropboxIcloudGit": "استخدم Dropbox، iCloud، Git",
       "recentVaults": "الخزائن الأخيرة",
-      "notesLastOpened": "ملاحظات · آخر فتح"
+      "notesLastOpened": "ملاحظات · آخر فتح",
+      "brandName": "Memry",
+      "preRelease": "إصدار تمهيدي",
+      "createNewVault": "إنشاء خزانة جديدة",
+      "createNewVaultDesc": "ابدأ خزانة جديدة في مجلد تختاره.",
+      "openExistingVault": "فتح خزانة موجودة",
+      "openExistingVaultDesc": "اختر مجلدًا لملفات Markdown التي تحتفظ بها بالفعل.",
+      "signInToSync": "تسجيل الدخول للمزامنة",
+      "signInToSyncDesc": "خزائن مشفرة من طرف إلى طرف عبر أجهزتك.",
+      "create": "إنشاء",
+      "open": "فتح",
+      "signIn": "تسجيل الدخول",
+      "helpAndDocs": "المساعدة والوثائق",
+      "signInRequiresVault": "افتح أو أنشئ خزانة أولًا لإعداد المزامنة.",
+      "addVault": "إضافة خزانة"
     },
     "componentsVaultSwitcher": {
       "noVaultsYet": "لا يوجد خزائن حتى الآن",

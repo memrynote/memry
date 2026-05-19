@@ -299,7 +299,21 @@
       "syncAnywhere": "ซิงค์ได้ทุกที่",
       "useDropboxIcloudGit": "ใช้ Dropbox, iCloud, Git",
       "recentVaults": "Vault ล่าสุด",
-      "notesLastOpened": "บันทึก · เปิดครั้งล่าสุด"
+      "notesLastOpened": "บันทึก · เปิดครั้งล่าสุด",
+      "brandName": "Memry",
+      "preRelease": "รุ่นก่อนเผยแพร่",
+      "createNewVault": "สร้างคลังใหม่",
+      "createNewVaultDesc": "เริ่มคลังใหม่ในโฟลเดอร์ที่คุณเลือก",
+      "openExistingVault": "เปิดคลังที่มีอยู่",
+      "openExistingVaultDesc": "เลือกโฟลเดอร์ของไฟล์ Markdown ที่คุณมีอยู่แล้ว",
+      "signInToSync": "เข้าสู่ระบบเพื่อซิงค์",
+      "signInToSyncDesc": "คลังที่เข้ารหัสแบบต้นทางถึงปลายทางบนอุปกรณ์ของคุณ",
+      "create": "สร้าง",
+      "open": "เปิด",
+      "signIn": "เข้าสู่ระบบ",
+      "helpAndDocs": "ความช่วยเหลือและเอกสาร",
+      "signInRequiresVault": "เปิดหรือสร้างคลังก่อนเพื่อตั้งค่าการซิงค์",
+      "addVault": "เพิ่มคลัง"
     },
     "componentsVaultSwitcher": {
       "noVaultsYet": "ยังไม่มี vault",
