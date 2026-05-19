@@ -136,11 +136,22 @@ for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   })
 }
 
-// Load .env file from project root (must be before any env access)
-// In development, load from project root; in production, from app resources
+type MemryEnvironment = 'development' | 'staging' | 'production'
+
+function resolveMemryEnvironment(): MemryEnvironment {
+  const requested = process.env.MEMRY_ENV?.trim()
+  if (requested === 'development' || requested === 'staging' || requested === 'production') {
+    return requested
+  }
+
+  return app.isPackaged ? 'production' : 'development'
+}
+
+// Load runtime env before any env access. Unpackaged builds use explicit
+// .env.<environment> files; packaged apps receive Resources/.env.
 const envPath = app.isPackaged
   ? join(process.resourcesPath, '.env')
-  : join(app.getAppPath(), '.env')
+  : join(app.getAppPath(), `.env.${resolveMemryEnvironment()}`)
 
 const envResult = config({ path: envPath, quiet: true })
 if (envResult.error) {

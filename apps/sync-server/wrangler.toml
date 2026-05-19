@@ -36,8 +36,12 @@ crons = ["0 */6 * * *"]
 name = "memry-sync-server-staging"
 [env.staging.vars]
 ENVIRONMENT = "staging"
-ALLOWED_ORIGIN = ""       # Desktop only
+ALLOWED_ORIGIN = "https://staging.memrynote.com"
 MIN_APP_VERSION = "0.1.0"
+
+[[env.staging.routes]]
+pattern = "sync-staging.memrynote.com/*"
+zone_name = "memrynote.com"
 
 [[env.staging.d1_databases]]
 binding = "DB"
@@ -62,13 +66,17 @@ bindings = [
 name = "memry-sync-server-production"
 [env.production.vars]
 ENVIRONMENT = "production"
-ALLOWED_ORIGIN = "TODO-production-origin"
+ALLOWED_ORIGIN = "https://memrynote.com"
 MIN_APP_VERSION = "0.1.0"
+
+[[env.production.routes]]
+pattern = "sync.memrynote.com/*"
+zone_name = "memrynote.com"
 
 [[env.production.d1_databases]]
 binding = "DB"
 database_name = "memry-sync-production"
-database_id = "TODO-create-d1-database-production"
+database_id = "9025e9bc-5058-4b61-9e0d-bd2f22616dc1"
 
 [[env.production.r2_buckets]]
 binding = "STORAGE"

@@ -51,6 +51,17 @@ custom data can grant the Sync entitlement to the correct account.
 | `VITE_PADDLE_CLIENT_TOKEN`       | Yes      | Client-side token for Paddle.js overlay checkout                                   |
 | `PADDLE_CHECKOUT_URL`            | No       | Payment-link URL fallback. Required if Paddle Checkout has no Default Payment Link |
 
+Use separate Vercel environment scopes:
+
+| Vercel scope    | Paddle env   | Checkout URL                            | Token secret                                    |
+| --------------- | ------------ | --------------------------------------- | ----------------------------------------------- |
+| Preview/Staging | `sandbox`    | `https://staging.memrynote.com/pricing` | Same value as Cloudflare sync staging secret    |
+| Production      | `production` | `https://memrynote.com/pricing`         | Same value as Cloudflare sync production secret |
+
+Staging must use Paddle sandbox API keys, client token, price IDs, and webhook secret. Production
+must use Paddle live API keys, client token, price IDs, and webhook secret. Never share
+`PADDLE_CHECKOUT_TOKEN_SECRET` between staging and production.
+
 ```bash
 pnpm dev:landing         # dev server on :5173
 pnpm build:landing       # type-check + production build
