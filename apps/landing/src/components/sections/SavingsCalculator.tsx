@@ -4,6 +4,7 @@ import { Check, ArrowRight } from 'lucide-react'
 import { Container } from '@/components/layout/Container'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { trackLandingEvent } from '@/lib/analytics'
 
 const BUNDLES = [
   {
@@ -124,7 +125,10 @@ export function SavingsCalculator() {
                 <button
                   key={bundle.id}
                   type="button"
-                  onClick={() => setSelectedId(bundle.id)}
+                  onClick={() => {
+                    setSelectedId(bundle.id)
+                    trackLandingEvent('landing_calculator_bundle_select', `calculator:${bundle.id}`)
+                  }}
                   className={cn(
                     'relative p-4 rounded-xl border-2 transition-all text-left',
                     isActive
