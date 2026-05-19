@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { TelemetryBatch } from '@memry/contracts/telemetry-api'
 
@@ -54,15 +54,26 @@ function createDataset(): { dataset: AnalyticsEngineDataset; calls: WriteCall[] 
   return { dataset, calls }
 }
 
-function createEnv(dataset: AnalyticsEngineDataset, hmacKey = HMAC_KEY) {
+function createEnv(
+  dataset: AnalyticsEngineDataset,
+  hmacKey = HMAC_KEY,
+  overrides: Record<string, unknown> = {}
+) {
   return {
     PRODUCT_TELEMETRY: dataset,
-    TELEMETRY_HMAC_KEY: hmacKey
+    TELEMETRY_HMAC_KEY: hmacKey,
+    ...overrides
   } as unknown as {
     PRODUCT_TELEMETRY: AnalyticsEngineDataset
     TELEMETRY_HMAC_KEY: string
+    POSTHOG_API_KEY?: string
+    POSTHOG_HOST?: string
   }
 }
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
 
 describe('hashTelemetryId', () => {
   it('returns a stable hex HMAC for the same input', async () => {
@@ -299,5 +310,59 @@ describe('writeTelemetryBatch', () => {
     expect(blobsJoined.includes(VALID_INSTALL_ID)).toBe(false)
     expect(blobsJoined.includes(VALID_SESSION_ID)).toBe(false)
     expect(blobsJoined.includes(HMAC_KEY)).toBe(false)
+  })
+
+  it('mirrors accepted telemetry events into PostHog batch when configured', async () => {
+    // #given a configured PostHog project and a telemetry batch
+    const { dataset } = createDataset()
+    const fetchMock = vi.fn(async (_input: string | URL, _init?: RequestInit) => {
+      return new Response(JSON.stringify({ status: 1 }), { status: 200 })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    // #when writing
+    await writeTelemetryBatch(
+      createEnv(dataset, HMAC_KEY, {
+        POSTHOG_API_KEY: 'phc_test_project',
+        POSTHOG_HOST: 'https://us.i.posthog.com'
+      }),
+      baseBatch
+    )
+
+    // #then the batch is mirrored to PostHog without raw local identifiers
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://us.i.posthog.com/batch/',
+      expect.objectContaining({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+    )
+    const init = fetchMock.mock.calls[0]?.[1]
+    expect(init).toBeDefined()
+    const body = JSON.parse((init as RequestInit).body as string) as {
+      api_key: string
+      batch: Array<{
+        event: string
+        distinct_id: string
+        properties: Record<string, unknown>
+      }>
+    }
+    expect(body.api_key).toBe('phc_test_project')
+    expect(body.batch).toHaveLength(1)
+    expect(body.batch[0].event).toBe('app_started')
+    expect(body.batch[0].distinct_id).toMatch(/^[0-9a-f]{64}$/)
+    expect(body.batch[0].properties).toMatchObject({
+      app_version: '0.1.0',
+      build_channel: 'development',
+      platform: 'darwin',
+      surface: 'app',
+      action: 'started',
+      result: 'success'
+    })
+    const payloadText = JSON.stringify(body)
+    expect(payloadText.includes(VALID_INSTALL_ID)).toBe(false)
+    expect(payloadText.includes(VALID_SESSION_ID)).toBe(false)
+    expect(payloadText.includes(HMAC_KEY)).toBe(false)
   })
 })

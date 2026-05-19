@@ -12,6 +12,7 @@ import { Component, type ErrorInfo, type ReactNode } from 'react'
 import { AlertTriangle, RefreshCw } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { createLogger } from '@/lib/logger'
+import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { useT } from '@memry/i18n/renderer'
 
 const log = createLogger('Component:EditorErrorBoundary')
@@ -59,6 +60,7 @@ class EditorErrorBoundaryImpl extends Component<
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
     log.error('Editor crash', error, errorInfo)
+    trackRendererError('editor_error_boundary', error)
     this.props.onError?.(error, errorInfo)
   }
 
@@ -91,7 +93,7 @@ class EditorErrorBoundaryImpl extends Component<
                 <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
                   {labels.technicalDetails}
                 </summary>
-                <code className="mt-2 block text-xs bg-muted p-2 rounded overflow-auto max-h-24 text-left">
+                <code className="mt-2 block text-xs bg-muted p-2 rounded overflow-auto max-h-24 text-start">
                   {this.state.error.message}
                   {this.state.error.stack && (
                     <>
@@ -109,7 +111,7 @@ class EditorErrorBoundaryImpl extends Component<
               className="mt-2"
               aria-label={labels.reloadAria}
             >
-              <RefreshCw className="w-4 h-4 mr-2" aria-hidden="true" />
+              <RefreshCw className="w-4 h-4 me-2" aria-hidden="true" />
               {labels.reload}
             </Button>
           </div>

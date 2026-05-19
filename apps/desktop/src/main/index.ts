@@ -37,6 +37,7 @@ import { stopVoiceModel } from './inbox/voice-model'
 import { startReminderScheduler, stopReminderScheduler } from './lib/reminders'
 import { disposeTelemetryRuntime, initializeTelemetryRuntime } from './telemetry/runtime'
 import { getTelemetryAuthState, getTelemetrySyncState } from './telemetry/state'
+import { trackLaunchPhase, trackMainError, trackMainLog } from './telemetry/diagnostics'
 import {
   startGoogleCalendarSyncRunner,
   stopGoogleCalendarSyncRunner,
@@ -88,6 +89,38 @@ function resolveDeviceId(): string | undefined {
 }
 
 const deviceId = resolveDeviceId()
+const launchStartedAt = Date.now()
+
+let mainDiagnosticsRegistered = false
+
+function registerMainDiagnostics(): void {
+  if (mainDiagnosticsRegistered) return
+  mainDiagnosticsRegistered = true
+
+  process.on('uncaughtException', (error) => {
+    trackMainError('main_process', 'uncaught_exception', error)
+  })
+
+  process.on('unhandledRejection', (reason) => {
+    trackMainError('main_process', 'unhandled_rejection', reason)
+  })
+
+  app.on('render-process-gone', (_event, _webContents, details) => {
+    trackMainLog('error', {
+      scope: 'Electron',
+      action: 'render_process_gone',
+      errorCode: details.reason
+    })
+  })
+
+  app.on('child-process-gone', (_event, details) => {
+    trackMainLog('error', {
+      scope: 'Electron',
+      action: 'child_process_gone',
+      errorCode: details.type
+    })
+  })
+}
 if (deviceId) {
   process.env.MEMRY_DEVICE = deviceId
   app.name = `memry-${deviceId}`
@@ -376,6 +409,7 @@ function createWindow(): void {
       sandbox: false
     }
   })
+  trackLaunchPhase('window_created', Date.now() - launchStartedAt)
 
   const unsubscribeVaultStatus = onVaultStatusChanged((status) => {
     resizeWindowIfNeeded(
@@ -389,6 +423,11 @@ function createWindow(): void {
     // Zoom out once (equivalent to Cmd+-)
     // mainWindow.webContents.setZoomLevel(-0.8)
     mainWindow.show()
+    trackLaunchPhase('window_ready_to_show', Date.now() - launchStartedAt)
+  })
+
+  mainWindow.webContents.on('did-finish-load', () => {
+    trackLaunchPhase('window_did_finish_load', Date.now() - launchStartedAt)
   })
 
   mainWindow.on('focus', () => {
@@ -660,6 +699,8 @@ void app.whenReady().then(async () => {
     authStateProvider: getTelemetryAuthState,
     syncStateProvider: getTelemetrySyncState
   })
+  registerMainDiagnostics()
+  trackLaunchPhase('app_ready', Date.now() - launchStartedAt)
 
   registerAllHandlers({ i18n: mainI18n, rebuildMenu })
 
@@ -846,17 +887,35 @@ void app.whenReady().then(async () => {
         startSnoozeScheduler()
       } catch (error) {
         mainLog.warn('snooze scheduler failed to start:', error)
+        trackMainLog('warn', {
+          scope: 'Startup',
+          action: 'snooze_scheduler_start_failed',
+          errorCode: error instanceof Error ? error.name : 'UnknownError'
+        })
       }
       try {
         startReminderScheduler()
       } catch (error) {
         mainLog.warn('reminder scheduler failed to start:', error)
+        trackMainLog('warn', {
+          scope: 'Startup',
+          action: 'reminder_scheduler_start_failed',
+          errorCode: error instanceof Error ? error.name : 'UnknownError'
+        })
       }
       void startGoogleCalendarSyncRunner().catch((error) => {
         mainLog.warn('Google Calendar sync runner failed to start:', error)
+        trackMainLog('warn', {
+          scope: 'Startup',
+          action: 'google_calendar_sync_start_failed',
+          errorCode: error instanceof Error ? error.name : 'UnknownError'
+        })
       })
     })
-    .catch((err) => mainLog.error('autoOpenLastVault failed:', err))
+    .catch((err) => {
+      mainLog.error('autoOpenLastVault failed:', err)
+      trackMainError('main_process', 'auto_open_last_vault_failed', err)
+    })
 
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the

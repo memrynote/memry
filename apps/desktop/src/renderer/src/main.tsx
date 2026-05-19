@@ -26,6 +26,13 @@ import { AuthProvider } from './contexts/auth-context'
 import { SyncProvider } from './contexts/sync-context'
 import { AISettingsProvider } from './contexts/ai-settings-context'
 import { getStartupTheme, THEME_STORAGE_KEY } from './lib/startup-theme'
+import { createLogger } from './lib/logger'
+import {
+  registerRendererDiagnostics,
+  trackRendererError,
+  trackRendererLog,
+  trackRendererReady
+} from './lib/telemetry-diagnostics'
 
 // Create a client with default options for the entire app
 const queryClient = new QueryClient({
@@ -42,6 +49,10 @@ const queryClient = new QueryClient({
     }
   }
 })
+
+const log = createLogger('RendererBoot')
+const rendererStartedAt = performance.now()
+registerRendererDiagnostics()
 
 // Sanitize a stale or corrupted theme value in localStorage before next-themes
 // reads it. A pre-existing bug elsewhere can write `[object Object]` here,
@@ -113,6 +124,11 @@ async function boot(): Promise<void> {
   )
 
   createRoot(document.getElementById('root')!).render(rootComponent)
+  trackRendererReady(performance.now() - rendererStartedAt)
 }
 
-void boot()
+void boot().catch((error) => {
+  log.error('Renderer boot failed', error)
+  trackRendererError('boot_failed', error)
+  trackRendererLog('error', 'boot_failed', 'RendererBoot')
+})

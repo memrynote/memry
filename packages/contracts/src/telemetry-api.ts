@@ -4,6 +4,8 @@ export const TelemetryEventNameSchema = z.enum([
   'app_started',
   'app_backgrounded',
   'app_active_heartbeat',
+  'app_launch_phase_completed',
+  'app_log_recorded',
   'onboarding_started',
   'onboarding_completed',
   'vault_created',
