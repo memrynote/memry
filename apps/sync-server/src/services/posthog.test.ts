@@ -11,9 +11,9 @@ const env = {
 const UUID = '550e8400-e29b-41d4-a716-446655440000'
 const DEVICE_ID = 'aabbccdd00112233aabbccdd00112233'
 
-const readPostHogBody = () => {
+const readPostHogBody = (callIndex = 0) => {
   const fetchMock = vi.mocked(fetch)
-  const init = fetchMock.mock.calls[0]?.[1] as RequestInit | undefined
+  const init = fetchMock.mock.calls[callIndex]?.[1] as RequestInit | undefined
   expect(init?.body).toBeDefined()
   return JSON.parse(init?.body as string) as {
     api_key: string
@@ -21,6 +21,26 @@ const readPostHogBody = () => {
       event: string
       distinct_id: string
       properties: Record<string, unknown>
+    }>
+  }
+}
+
+const readPostHogLogsBody = () => {
+  const fetchMock = vi.mocked(fetch)
+  const call = fetchMock.mock.calls.find(([input]) => String(input).includes('/i/v1/logs'))
+  expect(call).toBeDefined()
+  const init = call?.[1] as RequestInit | undefined
+  expect(init?.body).toBeDefined()
+  return JSON.parse(init?.body as string) as {
+    resourceLogs: Array<{
+      resource: { attributes: Array<{ key: string; value: Record<string, unknown> }> }
+      scopeLogs: Array<{
+        logRecords: Array<{
+          severityText: string
+          body: { stringValue: string }
+          attributes: Array<{ key: string; value: Record<string, unknown> }>
+        }>
+      }>
     }>
   }
 }
@@ -60,9 +80,16 @@ describe('sync-server PostHog capture', () => {
         headers: { 'Content-Type': 'application/json' }
       })
     )
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://us.i.posthog.com/i/v1/logs?token=phc_test_project',
+      expect.objectContaining({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+    )
     const body = readPostHogBody()
     expect(body.api_key).toBe('phc_test_project')
-    expect(body.batch).toHaveLength(1)
+    expect(body.batch).toHaveLength(2)
     expect(body.batch[0]).toMatchObject({
       event: 'server_error_seen',
       distinct_id: 'memry_sync_server_development'
@@ -81,10 +108,41 @@ describe('sync-server PostHog capture', () => {
       status_code: 507,
       handled: 0
     })
+    const exceptionEvent = body.batch.find((event) => event.event === '$exception')
+    expect(exceptionEvent).toBeDefined()
+    expect(exceptionEvent?.properties).toMatchObject({
+      service_name: 'memry-sync-server',
+      environment: 'development',
+      $exception_type: 'QuotaFailure',
+      $exception_message: 'memry-sync-server:ErrorHandler:request_failed:STORAGE_QUOTA_EXCEEDED'
+    })
+    expect(exceptionEvent?.properties.$exception_list).toEqual([
+      expect.objectContaining({
+        type: 'QuotaFailure',
+        value: 'memry-sync-server:ErrorHandler:request_failed:STORAGE_QUOTA_EXCEEDED'
+      })
+    ])
+    const logsBody = readPostHogLogsBody()
+    expect(logsBody.resourceLogs[0].resource.attributes).toEqual(
+      expect.arrayContaining([
+        { key: 'service.name', value: { stringValue: 'memry-sync-server' } },
+        { key: 'deployment.environment', value: { stringValue: 'development' } }
+      ])
+    )
+    expect(logsBody.resourceLogs[0].scopeLogs[0].logRecords[0]).toMatchObject({
+      severityText: 'ERROR',
+      body: {
+        stringValue: 'memry-sync-server:ErrorHandler:request_failed:STORAGE_QUOTA_EXCEEDED'
+      }
+    })
     const payloadText = JSON.stringify(body)
+    const logsPayloadText = JSON.stringify(logsBody)
     expect(payloadText).not.toContain(UUID)
     expect(payloadText).not.toContain('private-note-title')
     expect(payloadText).not.toContain('secret-token')
+    expect(logsPayloadText).not.toContain(UUID)
+    expect(logsPayloadText).not.toContain('private-note-title')
+    expect(logsPayloadText).not.toContain('secret-token')
   })
 
   it('redacts non-UUID path identifiers and file-shaped paths', async () => {
@@ -165,6 +223,11 @@ describe('sync-server PostHog capture', () => {
       source: 'GoogleWebhook',
       action: 'channel_token_mismatch',
       status_code: 401
+    })
+    const logsBody = readPostHogLogsBody()
+    expect(logsBody.resourceLogs[0].scopeLogs[0].logRecords[0]).toMatchObject({
+      severityText: 'WARN',
+      body: { stringValue: 'memry-sync-server:GoogleWebhook:channel_token_mismatch' }
     })
   })
 

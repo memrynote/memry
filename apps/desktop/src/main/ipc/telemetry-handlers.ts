@@ -37,9 +37,14 @@ export const registerTelemetryHandlers = (): void => {
 
   ipcMain.handle(TelemetryChannels.invoke.FLUSH, async () => {
     const runtime = getTelemetryRuntime()
-    if (!runtime) return { success: true }
+    if (!runtime) return { success: true, attempted: 0, accepted: 0 }
     const result = await runtime.flush('manual')
-    return { success: result.success, error: result.error }
+    return {
+      success: result.success,
+      attempted: result.attempted,
+      accepted: result.accepted,
+      error: result.error
+    }
   })
 
   ipcMain.handle(TelemetryChannels.invoke.GET_SETTINGS, async () => {

@@ -20,10 +20,7 @@ vi.mock('../telemetry/runtime', () => ({
 
 import { TelemetryChannels } from '@memry/contracts/ipc-channels'
 
-import {
-  registerTelemetryHandlers,
-  unregisterTelemetryHandlers
-} from './telemetry-handlers'
+import { registerTelemetryHandlers, unregisterTelemetryHandlers } from './telemetry-handlers'
 
 const VALID_EVENT = {
   id: '550e8400-e29b-41d4-a716-446655440002',
@@ -103,11 +100,16 @@ describe('telemetry IPC handlers', () => {
     const flushCall = mockElectron.ipcMain.handle.mock.calls.find(
       (call) => call[0] === TelemetryChannels.invoke.FLUSH
     )
-    const flushHandler = flushCall![1] as () => Promise<{ success: boolean }>
+    const flushHandler = flushCall![1] as () => Promise<{
+      success: boolean
+      attempted: number
+      accepted: number
+    }>
 
-    await flushHandler()
+    const result = await flushHandler()
 
     expect(runtimeMock.flush).toHaveBeenCalledWith('manual')
+    expect(result).toEqual({ success: true, attempted: 0, accepted: 0, error: undefined })
   })
 
   it('setEnabled handler delegates a boolean to runtime.setEnabled', async () => {

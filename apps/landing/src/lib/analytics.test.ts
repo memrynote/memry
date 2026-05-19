@@ -39,6 +39,9 @@ describe('landing analytics event data', () => {
   it('enables session replay with privacy-first masking', () => {
     const config = createLandingPostHogConfig()
 
+    assert.equal(config.capture_pageleave, true)
+    assert.equal(config.capture_pageview, false)
+    assert.equal(config.autocapture, false)
     assert.equal(config.disable_session_recording, false)
     assert.equal(config.disable_external_dependency_loading, true)
     assert.deepEqual(config.session_recording, {

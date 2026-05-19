@@ -11,3 +11,5 @@ WEBHOOK_HMAC_KEY=replace-me
 PADDLE_WEBHOOK_SECRET=replace-me
 PADDLE_CHECKOUT_TOKEN_SECRET=replace-me
 TELEMETRY_HMAC_KEY=replace-me
+# Optional PostHog mirroring:
+# POSTHOG_API_KEY=replace-with-posthog-project-token

@@ -87,7 +87,9 @@ export function sanitizeCapturedNetworkRequest<
   return request
 }
 
-export function sanitizePostHogEvent<T extends { properties?: Record<string, unknown> }>(event: T): T {
+export function sanitizePostHogEvent<T extends { properties?: Record<string, unknown> }>(
+  event: T
+): T {
   if (!event.properties) return event
 
   for (const key of URL_PROPERTY_KEYS) {
@@ -109,7 +111,7 @@ export function createLandingPostHogConfig(): PostHogConfig {
     },
     capture_performance: false,
     capture_pageview: false,
-    capture_pageleave: false,
+    capture_pageleave: true,
     disable_external_dependency_loading: true,
     disable_session_recording: false,
     disable_surveys: true,

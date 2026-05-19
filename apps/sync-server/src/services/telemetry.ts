@@ -2,10 +2,21 @@ import type { TelemetryBatch, TelemetryEvent } from '@memry/contracts/telemetry-
 
 import { AppError, ErrorCodes } from '../lib/errors'
 import type { Bindings } from '../types'
-import { sendPostHogBatch, type PostHogBatchPayload, type PostHogEventPayload } from './posthog'
+import {
+  sendPostHogBatch,
+  sendPostHogLogs,
+  toPostHogExceptionEvent,
+  type PostHogBatchPayload,
+  type PostHogEventPayload,
+  type PostHogLogAttributeValue,
+  type PostHogLogLevel,
+  type PostHogLogRecordInput,
+  type PostHogPropertyValue
+} from './posthog'
 
 const TELEMETRY_BLOB_COUNT = 20
 const TELEMETRY_DOUBLE_COUNT = 13
+const DESKTOP_SERVICE_NAME = 'memry-desktop'
 const requireHmacKey = (key: string): string => {
   if (typeof key !== 'string' || key.length === 0) {
     throw new AppError(ErrorCodes.INTERNAL_ERROR, 'Telemetry HMAC key is not configured', 500)
@@ -224,6 +235,79 @@ export const toPostHogBatchPayload = (
 const shouldMirrorTelemetryBatch = (env: TelemetryEnv): boolean =>
   Boolean(env.POSTHOG_API_KEY && env.POSTHOG_HOST)
 
+const getStringProperty = (
+  properties: Record<string, PostHogPropertyValue>,
+  key: string
+): string | undefined => {
+  const value = properties[key]
+  return typeof value === 'string' ? value : undefined
+}
+
+const toPrimitiveLogAttributes = (
+  event: PostHogEventPayload
+): Record<string, PostHogLogAttributeValue> => {
+  const attributes: Record<string, PostHogLogAttributeValue> = {
+    event_name: event.event
+  }
+
+  for (const [key, value] of Object.entries(event.properties)) {
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+      attributes[key] = value
+    }
+  }
+
+  return attributes
+}
+
+const normalizeDesktopLogLevel = (event: PostHogEventPayload): PostHogLogLevel => {
+  if (event.event === 'app_error_seen') return 'error'
+  const action = getStringProperty(event.properties, 'action')
+  if (action === 'debug' || action === 'info' || action === 'warn' || action === 'error') {
+    return action
+  }
+  return 'info'
+}
+
+const toDiagnosticBody = (event: PostHogEventPayload): string => {
+  const source = getStringProperty(event.properties, 'source') ?? 'desktop'
+  const action = getStringProperty(event.properties, 'action') ?? event.event
+  const errorCode = getStringProperty(event.properties, 'error_code')
+  return [DESKTOP_SERVICE_NAME, source, action, errorCode].filter(Boolean).join(':')
+}
+
+const toDesktopLogRecord = (event: PostHogEventPayload): PostHogLogRecordInput | null => {
+  if (event.event !== 'app_log_recorded' && event.event !== 'app_error_seen') return null
+  return {
+    serviceName: DESKTOP_SERVICE_NAME,
+    environment: getStringProperty(event.properties, 'environment'),
+    distinctId: event.distinct_id,
+    timestamp: event.timestamp,
+    level: normalizeDesktopLogLevel(event),
+    body: toDiagnosticBody(event),
+    attributes: toPrimitiveLogAttributes(event)
+  }
+}
+
+const toDesktopExceptionEvent = (event: PostHogEventPayload): PostHogEventPayload | null => {
+  if (event.event !== 'app_error_seen') return null
+  const source = getStringProperty(event.properties, 'source') ?? 'desktop'
+  const action = getStringProperty(event.properties, 'action') ?? 'error'
+  const errorCode = getStringProperty(event.properties, 'error_code') ?? 'DesktopError'
+  return toPostHogExceptionEvent({
+    distinctId: event.distinct_id,
+    timestamp: event.timestamp,
+    serviceName: DESKTOP_SERVICE_NAME,
+    environment: getStringProperty(event.properties, 'environment'),
+    type: errorCode,
+    message: `${DESKTOP_SERVICE_NAME}:${source}:${action}:${errorCode}`,
+    source,
+    action,
+    handled: true,
+    platform: source === 'renderer' ? 'web:javascript' : 'node:javascript',
+    properties: event.properties
+  })
+}
+
 const mirrorTelemetryBatchToPostHog = async (
   env: TelemetryEnv,
   batch: TelemetryBatch
@@ -231,7 +315,17 @@ const mirrorTelemetryBatchToPostHog = async (
   if (!env.POSTHOG_API_KEY || !env.POSTHOG_HOST) return
 
   const payload = toPostHogBatchPayload(env.POSTHOG_API_KEY, batch, env.ENVIRONMENT)
-  await sendPostHogBatch(env, payload.batch)
+  const exceptionEvents = payload.batch
+    .map(toDesktopExceptionEvent)
+    .filter((event): event is PostHogEventPayload => event !== null)
+  const logRecords = payload.batch
+    .map(toDesktopLogRecord)
+    .filter((record): record is PostHogLogRecordInput => record !== null)
+
+  await Promise.all([
+    sendPostHogBatch(env, [...payload.batch, ...exceptionEvents]),
+    sendPostHogLogs(env, logRecords)
+  ])
 }
 
 export const writeTelemetryBatch = async (

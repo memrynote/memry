@@ -40,6 +40,14 @@ type WriteCall = {
   indexes?: string[]
 }
 
+const readFetchJson = <T>(fetchMock: ReturnType<typeof vi.fn>, path: string): T => {
+  const call = fetchMock.mock.calls.find(([input]) => String(input).includes(path))
+  expect(call).toBeDefined()
+  const init = call?.[1] as RequestInit | undefined
+  expect(init?.body).toBeDefined()
+  return JSON.parse(init?.body as string) as T
+}
+
 function createDataset(): { dataset: AnalyticsEngineDataset; calls: WriteCall[] } {
   const calls: WriteCall[] = []
   const dataset: AnalyticsEngineDataset = {
@@ -365,6 +373,118 @@ describe('writeTelemetryBatch', () => {
     })
     expect(body.batch[0].properties.telemetry_session_id).toBeUndefined()
     const payloadText = JSON.stringify(body)
+    expect(payloadText.includes(VALID_INSTALL_ID)).toBe(false)
+    expect(payloadText.includes(VALID_SESSION_ID)).toBe(false)
+    expect(payloadText.includes(HMAC_KEY)).toBe(false)
+  })
+
+  it('mirrors desktop diagnostic events into PostHog logs and error tracking', async () => {
+    // #given a configured PostHog project and desktop diagnostic telemetry
+    const { dataset } = createDataset()
+    const fetchMock = vi.fn(async (_input: string | URL, _init?: RequestInit) => {
+      return new Response(JSON.stringify({ status: 1 }), { status: 200 })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const batch: TelemetryBatch = {
+      ...baseBatch,
+      events: [
+        {
+          id: VALID_EVENT_ID,
+          name: 'app_log_recorded',
+          occurredAt: VALID_TIMESTAMP,
+          surface: 'app',
+          action: 'warn',
+          objectType: 'log',
+          source: 'renderer',
+          result: 'failed',
+          dimensions: { log_action: 'manual_dev_log' }
+        },
+        {
+          id: '550e8400-e29b-41d4-a716-446655440003',
+          name: 'app_error_seen',
+          occurredAt: VALID_TIMESTAMP,
+          surface: 'app',
+          action: 'manual_dev_error',
+          objectType: 'exception',
+          source: 'renderer',
+          result: 'failed',
+          errorCode: 'ManualDevError'
+        }
+      ]
+    }
+
+    // #when writing
+    await writeTelemetryBatch(
+      createEnv(dataset, HMAC_KEY, {
+        POSTHOG_API_KEY: 'phc_test_project',
+        POSTHOG_HOST: 'https://us.i.posthog.com',
+        ENVIRONMENT: 'development'
+      }),
+      batch
+    )
+
+    // #then normal analytics, native logs, and a sanitized exception are exported
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    const postHogBatch = readFetchJson<{
+      api_key: string
+      batch: Array<{
+        event: string
+        distinct_id: string
+        properties: Record<string, unknown>
+      }>
+    }>(fetchMock, '/batch/')
+    expect(postHogBatch.api_key).toBe('phc_test_project')
+    expect(postHogBatch.batch.map((event) => event.event)).toEqual([
+      'app_log_recorded',
+      'app_error_seen',
+      '$exception'
+    ])
+    const exceptionEvent = postHogBatch.batch[2]
+    expect(exceptionEvent.distinct_id).toBe('memry_desktop_development')
+    expect(exceptionEvent.properties).toMatchObject({
+      service_name: 'memry-desktop',
+      environment: 'development',
+      source: 'renderer',
+      action: 'manual_dev_error',
+      error_code: 'ManualDevError',
+      $exception_type: 'ManualDevError',
+      $exception_message: 'memry-desktop:renderer:manual_dev_error:ManualDevError'
+    })
+    expect(exceptionEvent.properties.$exception_list).toEqual([
+      expect.objectContaining({
+        type: 'ManualDevError',
+        value: 'memry-desktop:renderer:manual_dev_error:ManualDevError'
+      })
+    ])
+
+    const logsBody = readFetchJson<{
+      resourceLogs: Array<{
+        resource: { attributes: Array<{ key: string; value: Record<string, unknown> }> }
+        scopeLogs: Array<{
+          logRecords: Array<{
+            severityText: string
+            body: { stringValue: string }
+          }>
+        }>
+      }>
+    }>(fetchMock, '/i/v1/logs')
+    expect(logsBody.resourceLogs[0].resource.attributes).toEqual(
+      expect.arrayContaining([
+        { key: 'service.name', value: { stringValue: 'memry-desktop' } },
+        { key: 'deployment.environment', value: { stringValue: 'development' } }
+      ])
+    )
+    expect(logsBody.resourceLogs[0].scopeLogs[0].logRecords).toEqual([
+      expect.objectContaining({
+        severityText: 'WARN',
+        body: { stringValue: 'memry-desktop:renderer:warn' }
+      }),
+      expect.objectContaining({
+        severityText: 'ERROR',
+        body: { stringValue: 'memry-desktop:renderer:manual_dev_error:ManualDevError' }
+      })
+    ])
+    const payloadText = JSON.stringify({ postHogBatch, logsBody })
     expect(payloadText.includes(VALID_INSTALL_ID)).toBe(false)
     expect(payloadText.includes(VALID_SESSION_ID)).toBe(false)
     expect(payloadText.includes(HMAC_KEY)).toBe(false)

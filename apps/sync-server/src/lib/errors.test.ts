@@ -88,8 +88,9 @@ describe('sync-server error utilities', () => {
     await scheduled[0]
 
     expect(response.status).toBe(500)
-    expect(fetchMock).toHaveBeenCalledTimes(1)
-    const init = fetchMock.mock.calls[0]?.[1]
+    const batchCall = fetchMock.mock.calls.find(([input]) => String(input).includes('/batch/'))
+    expect(batchCall).toBeDefined()
+    const init = batchCall?.[1]
     expect(init?.body).toBeDefined()
     const body = JSON.parse(init?.body as string) as {
       batch: Array<{ event: string; properties: Record<string, unknown> }>

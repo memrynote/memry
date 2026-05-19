@@ -7,6 +7,12 @@ export interface TelemetrySettings {
 }
 
 type SuccessResponse = Promise<{ success: boolean; error?: string }>
+type FlushResponse = Promise<{
+  success: boolean
+  attempted: number
+  accepted: number
+  error?: string
+}>
 
 export const telemetryRpc = defineDomain({
   name: 'telemetry',
@@ -15,7 +21,7 @@ export const telemetryRpc = defineDomain({
       channel: TelemetryChannels.invoke.TRACK,
       params: ['event']
     }),
-    flush: defineMethod<() => SuccessResponse>({
+    flush: defineMethod<() => FlushResponse>({
       channel: TelemetryChannels.invoke.FLUSH
     }),
     getSettings: defineMethod<() => Promise<TelemetrySettings>>({

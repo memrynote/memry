@@ -2,6 +2,9 @@ import { createLogger } from '../lib/logger'
 import type { Bindings } from '../types'
 
 const POSTHOG_BATCH_PATH = '/batch/'
+const POSTHOG_LOGS_PATH = '/i/v1/logs'
+const POSTHOG_BRIDGE_SCOPE_NAME = 'memry-posthog-bridge'
+const POSTHOG_BRIDGE_SCOPE_VERSION = '1.0.0'
 const SERVER_SERVICE_NAME = 'memry-sync-server'
 const STATIC_ROUTE_SEGMENTS = new Set([
   'approve',
@@ -62,11 +65,19 @@ export interface PostHogEnv {
   ENVIRONMENT?: Bindings['ENVIRONMENT']
 }
 
+export type PostHogPropertyValue =
+  | string
+  | number
+  | boolean
+  | null
+  | PostHogPropertyValue[]
+  | { [key: string]: PostHogPropertyValue }
+
 export interface PostHogEventPayload {
   event: string
   distinct_id: string
   timestamp?: string
-  properties: Record<string, string | number | boolean>
+  properties: Record<string, PostHogPropertyValue>
 }
 
 export interface PostHogBatchPayload {
@@ -92,6 +103,34 @@ export interface ServerLogCaptureInput {
   source: string
   action: string
   statusCode?: number
+}
+
+export type PostHogLogLevel = 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'fatal'
+export type PostHogLogAttributeValue = string | number | boolean
+export type PostHogExceptionPlatform = 'node:javascript' | 'web:javascript'
+
+export interface PostHogLogRecordInput {
+  serviceName: string
+  environment?: string
+  distinctId: string
+  timestamp?: string
+  level: PostHogLogLevel
+  body: string
+  attributes: Record<string, PostHogLogAttributeValue>
+}
+
+export interface PostHogExceptionInput {
+  distinctId: string
+  timestamp?: string
+  serviceName: string
+  environment?: string
+  type: string
+  message: string
+  source: string
+  action: string
+  handled: boolean
+  platform: PostHogExceptionPlatform
+  properties: Record<string, PostHogPropertyValue>
 }
 
 interface WaitUntilContext {
@@ -168,6 +207,99 @@ const getRequestPath = (req: WaitUntilContext['req']): string => req.path ?? req
 const serverDistinctId = (env: PostHogEnv): string =>
   `memry_sync_server_${safeLabel(env.ENVIRONMENT, 'unknown')}`
 
+const toDiagnosticBody = (...parts: Array<string | undefined>): string =>
+  parts.map((part) => safeLabel(part, 'unknown')).join(':')
+
+const toUnixNano = (timestamp: string | undefined): string => {
+  const millis = timestamp ? Date.parse(timestamp) : Date.now()
+  const safeMillis = Number.isFinite(millis) ? millis : Date.now()
+  return `${safeMillis}000000`
+}
+
+type OtlpAnyValue =
+  | { stringValue: string }
+  | { boolValue: boolean }
+  | { intValue: number }
+  | { doubleValue: number }
+
+interface OtlpKeyValue {
+  key: string
+  value: OtlpAnyValue
+}
+
+const OTLP_SEVERITY_MAP: Record<PostHogLogLevel, { text: string; number: number }> = {
+  trace: { text: 'TRACE', number: 1 },
+  debug: { text: 'DEBUG', number: 5 },
+  info: { text: 'INFO', number: 9 },
+  warn: { text: 'WARN', number: 13 },
+  error: { text: 'ERROR', number: 17 },
+  fatal: { text: 'FATAL', number: 21 }
+}
+
+const toOtlpAnyValue = (value: PostHogLogAttributeValue): OtlpAnyValue => {
+  if (typeof value === 'boolean') return { boolValue: value }
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) return { stringValue: String(value) }
+    if (Number.isInteger(value)) return { intValue: value }
+    return { doubleValue: value }
+  }
+  return { stringValue: value }
+}
+
+const toOtlpKeyValueList = (
+  attributes: Record<string, PostHogLogAttributeValue | undefined>
+): OtlpKeyValue[] =>
+  Object.entries(attributes)
+    .filter((entry): entry is [string, PostHogLogAttributeValue] => entry[1] !== undefined)
+    .map(([key, value]) => ({ key, value: toOtlpAnyValue(value) }))
+
+const toOtlpLogRecord = (record: PostHogLogRecordInput) => {
+  const severity = OTLP_SEVERITY_MAP[record.level] ?? OTLP_SEVERITY_MAP.info
+  const timeUnixNano = toUnixNano(record.timestamp)
+  return {
+    timeUnixNano,
+    observedTimeUnixNano: timeUnixNano,
+    severityNumber: severity.number,
+    severityText: severity.text,
+    body: { stringValue: safeLabel(record.body, 'memry_log') },
+    attributes: toOtlpKeyValueList({
+      posthogDistinctId: record.distinctId,
+      ...record.attributes
+    })
+  }
+}
+
+export const toPostHogLogsPayload = (records: PostHogLogRecordInput[]) => {
+  const groups = new Map<string, PostHogLogRecordInput[]>()
+  for (const record of records) {
+    const key = `${record.serviceName}|${record.environment ?? ''}`
+    groups.set(key, [...(groups.get(key) ?? []), record])
+  }
+
+  return {
+    resourceLogs: Array.from(groups.values()).map((group) => {
+      const first = group[0]
+      return {
+        resource: {
+          attributes: toOtlpKeyValueList({
+            'service.name': first.serviceName,
+            'deployment.environment': first.environment
+          })
+        },
+        scopeLogs: [
+          {
+            scope: {
+              name: POSTHOG_BRIDGE_SCOPE_NAME,
+              version: POSTHOG_BRIDGE_SCOPE_VERSION
+            },
+            logRecords: group.map(toOtlpLogRecord)
+          }
+        ]
+      }
+    })
+  }
+}
+
 export const toPostHogBatchPayload = (
   apiKey: string,
   batch: PostHogEventPayload[]
@@ -175,6 +307,49 @@ export const toPostHogBatchPayload = (
   api_key: apiKey,
   batch
 })
+
+export const toPostHogExceptionEvent = (input: PostHogExceptionInput): PostHogEventPayload => {
+  const exceptionType = safeLabel(input.type, 'Error')
+  const exceptionMessage = safeLabel(input.message, 'memry_error')
+  const source = safeLabel(input.source, 'diagnostics')
+  const action = safeLabel(input.action, 'error')
+
+  return {
+    event: '$exception',
+    distinct_id: input.distinctId,
+    timestamp: input.timestamp,
+    properties: {
+      ...input.properties,
+      service_name: input.serviceName,
+      ...(input.environment ? { environment: input.environment } : {}),
+      $exception_type: exceptionType,
+      $exception_message: exceptionMessage,
+      $exception_level: 'error',
+      $exception_list: [
+        {
+          type: exceptionType,
+          value: exceptionMessage,
+          mechanism: {
+            type: 'generic',
+            handled: input.handled
+          },
+          stacktrace: {
+            type: 'raw',
+            frames: [
+              {
+                platform: input.platform,
+                filename: input.serviceName,
+                module: source,
+                function: action,
+                in_app: true
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}
 
 export const sendPostHogBatch = async (
   env: PostHogEnv,
@@ -199,34 +374,109 @@ export const sendPostHogBatch = async (
   }
 }
 
+export const sendPostHogLogs = async (
+  env: PostHogEnv,
+  records: PostHogLogRecordInput[]
+): Promise<void> => {
+  if (!env.POSTHOG_API_KEY || !env.POSTHOG_HOST || records.length === 0) return
+
+  try {
+    const url = `${normalizePostHogHost(env.POSTHOG_HOST)}${POSTHOG_LOGS_PATH}?token=${encodeURIComponent(
+      env.POSTHOG_API_KEY
+    )}`
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(toPostHogLogsPayload(records))
+    })
+
+    if (!response.ok) {
+      logger.warn('PostHog logs rejected', { status: response.status })
+    }
+  } catch (error) {
+    logger.warn('PostHog logs failed', {
+      error: error instanceof Error ? error.message : String(error)
+    })
+  }
+}
+
 export const captureServerError = async (
   env: PostHogEnv,
   input: ServerErrorCaptureInput
 ): Promise<void> => {
   const path = normalizeServerPath(input.path)
-  await sendPostHogBatch(env, [
-    {
-      event: 'server_error_seen',
-      distinct_id: serverDistinctId(env),
-      timestamp: new Date().toISOString(),
-      properties: {
-        service_name: SERVER_SERVICE_NAME,
-        environment: safeLabel(env.ENVIRONMENT, 'unknown'),
-        method: safeLabel(input.method?.toUpperCase(), 'UNKNOWN'),
-        path,
-        route_area: getRouteArea(path),
-        source: safeLabel(input.source, 'server'),
-        action: safeLabel(input.action, 'error'),
-        level: 'error',
-        error_type: getErrorType(input.error),
-        error_code: safeLabel(
-          input.errorCode ?? getErrorCode(input.error, 'UNHANDLED_ERROR'),
-          'UNHANDLED_ERROR'
-        ),
-        status_code: input.statusCode ?? getStatusCode(input.error, 500),
-        handled: input.handled ? 1 : 0
-      }
+  const timestamp = new Date().toISOString()
+  const distinctId = serverDistinctId(env)
+  const properties: Record<string, PostHogPropertyValue> = {
+    service_name: SERVER_SERVICE_NAME,
+    environment: safeLabel(env.ENVIRONMENT, 'unknown'),
+    method: safeLabel(input.method?.toUpperCase(), 'UNKNOWN'),
+    path,
+    route_area: getRouteArea(path),
+    source: safeLabel(input.source, 'server'),
+    action: safeLabel(input.action, 'error'),
+    level: 'error',
+    error_type: getErrorType(input.error),
+    error_code: safeLabel(
+      input.errorCode ?? getErrorCode(input.error, 'UNHANDLED_ERROR'),
+      'UNHANDLED_ERROR'
+    ),
+    status_code: input.statusCode ?? getStatusCode(input.error, 500),
+    handled: input.handled ? 1 : 0
+  }
+  const event: PostHogEventPayload = {
+    event: 'server_error_seen',
+    distinct_id: distinctId,
+    timestamp,
+    properties
+  }
+  const exceptionEvent = toPostHogExceptionEvent({
+    distinctId,
+    timestamp,
+    serviceName: SERVER_SERVICE_NAME,
+    environment: safeLabel(env.ENVIRONMENT, 'unknown'),
+    type: String(properties.error_type),
+    message: toDiagnosticBody(
+      SERVER_SERVICE_NAME,
+      String(properties.source),
+      String(properties.action),
+      String(properties.error_code)
+    ),
+    source: String(properties.source),
+    action: String(properties.action),
+    handled: input.handled,
+    platform: 'node:javascript',
+    properties
+  })
+  const logRecord: PostHogLogRecordInput = {
+    serviceName: SERVER_SERVICE_NAME,
+    environment: safeLabel(env.ENVIRONMENT, 'unknown'),
+    distinctId,
+    timestamp,
+    level: 'error',
+    body: toDiagnosticBody(
+      SERVER_SERVICE_NAME,
+      String(properties.source),
+      String(properties.action),
+      String(properties.error_code)
+    ),
+    attributes: {
+      event_name: event.event,
+      method: String(properties.method),
+      path: String(properties.path),
+      route_area: String(properties.route_area),
+      source: String(properties.source),
+      action: String(properties.action),
+      error_type: String(properties.error_type),
+      error_code: String(properties.error_code),
+      status_code: Number(properties.status_code),
+      handled: input.handled
     }
+  }
+
+  await Promise.all([
+    sendPostHogBatch(env, [event, exceptionEvent]),
+    sendPostHogLogs(env, [logRecord])
   ])
 }
 
@@ -235,24 +485,49 @@ export const captureServerLog = async (
   input: ServerLogCaptureInput
 ): Promise<void> => {
   const path = normalizeServerPath(input.path)
-  await sendPostHogBatch(env, [
-    {
-      event: 'server_log_recorded',
-      distinct_id: serverDistinctId(env),
-      timestamp: new Date().toISOString(),
-      properties: {
-        service_name: SERVER_SERVICE_NAME,
-        environment: safeLabel(env.ENVIRONMENT, 'unknown'),
-        level: input.level,
-        method: safeLabel(input.method?.toUpperCase(), 'UNKNOWN'),
-        path,
-        route_area: getRouteArea(path),
-        source: safeLabel(input.source, 'server'),
-        action: safeLabel(input.action, 'log'),
-        ...(typeof input.statusCode === 'number' ? { status_code: input.statusCode } : {})
-      }
+  const timestamp = new Date().toISOString()
+  const distinctId = serverDistinctId(env)
+  const properties: Record<string, PostHogPropertyValue> = {
+    service_name: SERVER_SERVICE_NAME,
+    environment: safeLabel(env.ENVIRONMENT, 'unknown'),
+    level: input.level,
+    method: safeLabel(input.method?.toUpperCase(), 'UNKNOWN'),
+    path,
+    route_area: getRouteArea(path),
+    source: safeLabel(input.source, 'server'),
+    action: safeLabel(input.action, 'log'),
+    ...(typeof input.statusCode === 'number' ? { status_code: input.statusCode } : {})
+  }
+  const event: PostHogEventPayload = {
+    event: 'server_log_recorded',
+    distinct_id: distinctId,
+    timestamp,
+    properties
+  }
+  const logRecord: PostHogLogRecordInput = {
+    serviceName: SERVER_SERVICE_NAME,
+    environment: safeLabel(env.ENVIRONMENT, 'unknown'),
+    distinctId,
+    timestamp,
+    level: input.level,
+    body: toDiagnosticBody(
+      SERVER_SERVICE_NAME,
+      String(properties.source),
+      String(properties.action)
+    ),
+    attributes: {
+      event_name: event.event,
+      level: input.level,
+      method: String(properties.method),
+      path: String(properties.path),
+      route_area: String(properties.route_area),
+      source: String(properties.source),
+      action: String(properties.action),
+      ...(typeof input.statusCode === 'number' ? { status_code: input.statusCode } : {})
     }
-  ])
+  }
+
+  await Promise.all([sendPostHogBatch(env, [event]), sendPostHogLogs(env, [logRecord])])
 }
 
 export const waitUntilWithPostHog = (
