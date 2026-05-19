@@ -131,6 +131,7 @@ app.use('*', async (c, next) => {
     'WEBHOOK_HMAC_KEY',
     'PADDLE_WEBHOOK_SECRET',
     'PADDLE_CHECKOUT_TOKEN_SECRET',
+    'PADDLE_API_KEY',
     'TELEMETRY_HMAC_KEY'
   ] as const
 

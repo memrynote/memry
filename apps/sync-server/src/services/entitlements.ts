@@ -24,6 +24,9 @@ export interface SyncEntitlement {
   max_file_size: number
   max_vaults: number | null
   version_history_days: number
+  paddle_customer_id: string | null
+  paddle_subscription_id: string | null
+  paddle_transaction_id: string | null
   expires_at: number | null
 }
 
@@ -88,6 +91,9 @@ export async function getSyncEntitlement(db: D1Database, userId: string): Promis
          COALESCE(e.max_file_size, 0) as max_file_size,
          e.max_vaults,
          COALESCE(e.version_history_days, 0) as version_history_days,
+         e.paddle_customer_id,
+         e.paddle_subscription_id,
+         e.paddle_transaction_id,
          e.expires_at
        FROM users u
        LEFT JOIN sync_entitlements e ON e.user_id = u.id

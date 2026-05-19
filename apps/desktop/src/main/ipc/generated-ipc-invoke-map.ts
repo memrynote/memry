@@ -2,9 +2,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 export interface MainIpcInvokeHandlers {
+  "account:getBillingStatus": (...args: []) => Awaited<Promise<import("../billing/paddle-billing").BillingStatus | (import("../billing/paddle-billing").BillingActionResult & { status?: undefined; })>>
   "account:getInfo": (...args: []) => Awaited<import("./account-handlers").AccountInfo>
   "account:getRecoveryKey": (...args: []) => Awaited<Promise<{ success: boolean; error: string; key?: undefined; } | { success: boolean; key: string; error?: undefined; }>>
+  "account:openBillingPortal": (...args: []) => Awaited<Promise<import("../billing/paddle-billing").BillingActionResult & { portalUrl?: string | undefined; }>>
+  "account:refreshBillingStatus": (...args: [any]) => Awaited<Promise<import("../billing/paddle-billing").BillingStatus | (import("../billing/paddle-billing").BillingActionResult & { status?: undefined; })>>
   "account:signOut": (...args: []) => Awaited<Promise<{ keychainWarning?: string | undefined; success: boolean; }>>
+  "account:startCheckout": (...args: [any]) => Awaited<Promise<import("../billing/paddle-billing").BillingActionResult & { checkoutUrl?: string | undefined; }>>
   "agent_mcp:get_status": (...args: []) => Awaited<{ url: string | null; token: string | null; toolCount: number; }>
   "agent_mcp:rotate_token": (...args: []) => Awaited<{ url: string | null; token: string | null; toolCount: number; }>
   "agent:acceptDisclosure": (...args: []) => Awaited<import("../agent/runtime/disclosure-state").DisclosureState>

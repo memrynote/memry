@@ -18,9 +18,12 @@ export type Bindings = {
   WEBHOOK_HMAC_KEY: string
   PADDLE_WEBHOOK_SECRET: string
   PADDLE_CHECKOUT_TOKEN_SECRET: string
+  PADDLE_API_KEY?: string
+  PADDLE_ENVIRONMENT?: string
   TELEMETRY_HMAC_KEY: string
   POSTHOG_API_KEY?: string
   POSTHOG_HOST?: string
+  fetch?: typeof fetch
 }
 
 export type AppContext = {

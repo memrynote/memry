@@ -1,4 +1,5 @@
 import { BadgeCheck, Bell, ChevronsUpDown, CreditCard, LogOut, Sparkles } from '@/lib/icons'
+import { useState } from 'react'
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
@@ -17,6 +18,9 @@ import {
   SidebarMenuItem,
   useSidebar
 } from '@/components/ui/sidebar'
+import { useSettingsModal } from '@/contexts/settings-modal-context'
+import { extractErrorMessage } from '@/lib/ipc-error'
+import { toast } from 'sonner'
 
 export function NavUser({
   user
@@ -28,7 +32,26 @@ export function NavUser({
   }
 }) {
   const { t: tPhaseF } = useT('common')
+  const { t: tSettings } = useT('settings')
   const { isMobile } = useSidebar()
+  const { open: openSettings } = useSettingsModal()
+  const [isStartingCheckout, setIsStartingCheckout] = useState(false)
+
+  const handleUpgrade = async (): Promise<void> => {
+    setIsStartingCheckout(true)
+    try {
+      const result = await window.api.account.startCheckout({ plan: 'pro', cadence: 'annual' })
+      if (!result.success) {
+        toast.error(result.error ?? tSettings('account.billing.toasts.checkoutFailed'))
+        return
+      }
+      toast.success(tSettings('account.billing.toasts.checkoutOpened'))
+    } catch (error: unknown) {
+      toast.error(extractErrorMessage(error, tSettings('account.billing.toasts.checkoutFailed')))
+    } finally {
+      setIsStartingCheckout(false)
+    }
+  }
 
   return (
     <SidebarMenu>
@@ -45,11 +68,11 @@ export function NavUser({
                   {tPhaseF('phaseF.componentsNavUser.cn')}
                 </AvatarFallback>
               </Avatar>
-              <div className="grid flex-1 text-left text-sm leading-tight">
+              <div className="grid flex-1 text-start text-sm leading-tight">
                 <span className="truncate font-semibold">{user.name}</span>
                 <span className="truncate text-xs">{user.email}</span>
               </div>
-              <ChevronsUpDown className="ml-auto size-4" />
+              <ChevronsUpDown className="ms-auto size-4" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent
@@ -59,14 +82,14 @@ export function NavUser({
             sideOffset={4}
           >
             <DropdownMenuLabel className="p-0 font-normal">
-              <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
+              <div className="flex items-center gap-2 px-1 py-1.5 text-start text-sm">
                 <Avatar className="h-8 w-8 rounded-md">
                   <AvatarImage src={user.avatar} alt={user.name} />
                   <AvatarFallback className="rounded-md">
                     {tPhaseF('phaseF.componentsNavUser.cn2')}
                   </AvatarFallback>
                 </Avatar>
-                <div className="grid flex-1 text-left text-sm leading-tight">
+                <div className="grid flex-1 text-start text-sm leading-tight">
                   <span className="truncate font-semibold">{user.name}</span>
                   <span className="truncate text-xs">{user.email}</span>
                 </div>
@@ -74,7 +97,13 @@ export function NavUser({
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={isStartingCheckout}
+                onSelect={(event) => {
+                  event.preventDefault()
+                  void handleUpgrade()
+                }}
+              >
                 <Sparkles />
 
                 {tPhaseF('phaseF.componentsNavUser.upgradeToPro')}
@@ -82,12 +111,12 @@ export function NavUser({
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => openSettings('account')}>
                 <BadgeCheck />
 
                 {tPhaseF('phaseF.componentsNavUser.account')}
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => openSettings('account')}>
                 <CreditCard />
 
                 {tPhaseF('phaseF.componentsNavUser.billing')}

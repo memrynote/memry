@@ -69,6 +69,12 @@ import {
   type AppNavigationSwipeDirection
 } from './app-navigation-command'
 import { getHeadlessCliArgs, runHeadlessCli } from './cli/headless'
+import {
+  reconcileBillingAndSync,
+  startBillingCheckout,
+  type BillingCadence,
+  type BillingPlanId
+} from './billing/paddle-billing'
 
 if (process.type === 'browser') {
   log.initialize()
@@ -481,6 +487,20 @@ export const registerOAuthState = (state: string): void => {
   setTimeout(() => pendingOAuthStates.delete(state), 10 * 60 * 1000)
 }
 
+function parseBillingPlan(value: string | null): BillingPlanId {
+  if (value === 'plus' || value === 'pro' || value === 'believer') return value
+  return 'pro'
+}
+
+function parseBillingCadence(value: string | null, plan: BillingPlanId): BillingCadence {
+  if (value === 'monthly' || value === 'annual' || value === 'lifetime') return value
+  return plan === 'believer' ? 'lifetime' : 'annual'
+}
+
+function openAccountSettings(mainWindow: BrowserWindow): void {
+  mainWindow.webContents.send(SettingsChannels.events.OPEN_SECTION, 'account')
+}
+
 function handleDeepLink(url: string): void {
   try {
     const parsed = new URL(url)
@@ -488,6 +508,19 @@ function handleDeepLink(url: string): void {
 
     const mainWindow = BrowserWindow.getAllWindows()[0]
     if (!mainWindow) return
+
+    if (parsed.hostname === 'billing') {
+      if (parsed.pathname === '/start') {
+        const plan = parseBillingPlan(parsed.searchParams.get('plan'))
+        const cadence = parseBillingCadence(parsed.searchParams.get('cadence'), plan)
+        openAccountSettings(mainWindow)
+        void startBillingCheckout({ plan, cadence })
+      } else if (parsed.pathname === '/complete') {
+        const transactionId = parsed.searchParams.get('transactionId') ?? undefined
+        openAccountSettings(mainWindow)
+        void reconcileBillingAndSync({ transactionId })
+      }
+    }
 
     if (parsed.hostname === 'oauth' || parsed.pathname.startsWith('/oauth')) {
       const code = parsed.searchParams.get('code')

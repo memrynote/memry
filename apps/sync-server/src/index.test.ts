@@ -21,6 +21,7 @@ function createEnv(overrides?: Partial<Record<string, unknown>>) {
     WEBHOOK_HMAC_KEY: '',
     PADDLE_WEBHOOK_SECRET: '',
     PADDLE_CHECKOUT_TOKEN_SECRET: '',
+    PADDLE_API_KEY: '',
     TELEMETRY_HMAC_KEY: '',
     ...overrides
   }
@@ -78,6 +79,7 @@ describe('sync-server app entry point', () => {
         WEBHOOK_HMAC_KEY: 'test-webhook-hmac-key',
         PADDLE_WEBHOOK_SECRET: 'test-paddle-webhook-secret',
         PADDLE_CHECKOUT_TOKEN_SECRET: 'test-checkout-token-secret',
+        PADDLE_API_KEY: 'test-paddle-api-key',
         TELEMETRY_HMAC_KEY: 'test-telemetry-hmac-key',
         ALLOWED_ORIGIN: 'https://app.memry.test'
       })
@@ -105,6 +107,7 @@ describe('sync-server app entry point', () => {
         WEBHOOK_HMAC_KEY: 'test-webhook-hmac-key',
         PADDLE_WEBHOOK_SECRET: 'test-paddle-webhook-secret',
         PADDLE_CHECKOUT_TOKEN_SECRET: 'test-checkout-token-secret',
+        PADDLE_API_KEY: 'test-paddle-api-key',
         TELEMETRY_HMAC_KEY: ''
       })
     )

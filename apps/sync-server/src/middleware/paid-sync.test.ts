@@ -15,6 +15,9 @@ function entitlement(overrides: Partial<SyncEntitlement> = {}): SyncEntitlement 
     max_file_size: SYNC_PLAN_LIMITS.plus.maxFileSize,
     max_vaults: SYNC_PLAN_LIMITS.plus.maxVaults,
     version_history_days: SYNC_PLAN_LIMITS.plus.versionHistoryDays,
+    paddle_customer_id: null,
+    paddle_subscription_id: null,
+    paddle_transaction_id: null,
     expires_at: null,
     ...overrides
   }

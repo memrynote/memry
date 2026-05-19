@@ -6,6 +6,7 @@ compatibility_date = "2025-01-01"
 ENVIRONMENT = "development"
 MIN_APP_VERSION = "0.1.0"
 POSTHOG_HOST = "https://us.i.posthog.com"
+PADDLE_ENVIRONMENT = "sandbox"
 
 [[d1_databases]]
 binding = "DB"
@@ -40,6 +41,7 @@ ENVIRONMENT = "staging"
 ALLOWED_ORIGIN = "https://staging.memrynote.com"
 MIN_APP_VERSION = "0.1.0"
 POSTHOG_HOST = "https://us.i.posthog.com"
+PADDLE_ENVIRONMENT = "sandbox"
 
 [[env.staging.routes]]
 pattern = "sync-staging.memrynote.com/*"
@@ -71,6 +73,7 @@ ENVIRONMENT = "production"
 ALLOWED_ORIGIN = "https://memrynote.com"
 MIN_APP_VERSION = "0.1.0"
 POSTHOG_HOST = "https://us.i.posthog.com"
+PADDLE_ENVIRONMENT = "production"
 
 [[env.production.routes]]
 pattern = "sync.memrynote.com/*"

@@ -36,6 +36,11 @@ import {
 } from '../services/otp'
 import { getOrCreateUserByEmail, getUserByEmail, getUserById, updateUser } from '../services/user'
 import { signCheckoutToken, type CheckoutCadence } from '../services/checkout-token'
+import {
+  createPaddlePortalSession,
+  getBillingStatus,
+  reconcilePaddleTransaction
+} from '../services/paddle-billing'
 import type { AppContext } from '../types'
 
 const logger = createLogger('Auth')
@@ -450,6 +455,9 @@ const CheckoutTokenSchema = z.object({
   plan: z.enum(['plus', 'pro', 'believer']),
   cadence: z.enum(['monthly', 'annual', 'lifetime'])
 })
+const BillingReconcileSchema = z.object({
+  transactionId: z.string().trim().min(1).optional()
+})
 
 async function generateDummyRecoveryData(
   email: string,
@@ -568,6 +576,31 @@ auth.post('/checkout-token', authMiddleware, async (c) => {
   })
 
   return c.json({ checkoutToken, expiresAt })
+})
+
+auth.get('/billing', authMiddleware, async (c) => {
+  const userId = c.get('userId')!
+  return c.json(await getBillingStatus(c.env.DB, userId))
+})
+
+auth.post('/billing/reconcile', authMiddleware, async (c) => {
+  const body = await c.req.json()
+  const parsed = BillingReconcileSchema.safeParse(body)
+  if (!parsed.success) {
+    throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid billing reconcile request', 400)
+  }
+
+  const userId = c.get('userId')!
+  if (parsed.data.transactionId) {
+    await reconcilePaddleTransaction(c.env, userId, parsed.data.transactionId)
+  }
+
+  return c.json(await getBillingStatus(c.env.DB, userId))
+})
+
+auth.post('/billing/portal-session', authMiddleware, async (c) => {
+  const userId = c.get('userId')!
+  return c.json(await createPaddlePortalSession(c.env, userId))
 })
 
 // POST /refresh
