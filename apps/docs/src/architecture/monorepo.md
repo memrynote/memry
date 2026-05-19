@@ -44,9 +44,14 @@ the shared logo and icon sources instead of keeping app-local copies.
 ```bash
 # Dev
 pnpm dev                # desktop dev (electron-vite)
+pnpm staging            # desktop dev pointed at staging sync
 pnpm dev:desktop        # desktop dev (alias)
 pnpm dev:sync-server    # cloudflare worker dev
 pnpm test:cli           # app-core + CLI node tests
+
+# Deploy
+pnpm run deploy:sync:staging     # deploy staging sync worker
+pnpm run deploy:sync:production  # deploy production sync worker
 
 # Verify
 pnpm lint               # ESLint flat config
@@ -61,6 +66,19 @@ pnpm db:generate        # Drizzle schema → migration SQL
 pnpm db:push            # apply migrations
 pnpm db:studio          # Drizzle Studio GUI
 ```
+
+## Runtime Environments
+
+Desktop runtime config is selected with `MEMRY_ENV`:
+
+- `development` is the local desktop app talking to the local Wrangler sync server at
+  `http://localhost:8787`.
+- `staging` is the desktop staging command talking to Cloudflare staging at
+  `https://sync-staging.memrynote.com`.
+- `production` is reserved for packaged release builds and talks to `https://sync.memrynote.com`.
+
+Production desktop packaging must use the production sync URL only; release builds fail if the
+packaged runtime config is missing or points at localhost or staging.
 
 ## Why Turborepo
 
