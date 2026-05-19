@@ -28,7 +28,7 @@ Hi — I'm **[Kaan](https://x.com/h4yfans)**, the developer behind Memry. For ye
 
 > _Screenshot: Memry's main workspace — notes, sidebar, agent chat side-by-side._
 >
-> `<!-- TODO: drop screenshot here -->`
+> ![Memry main workspace in dark mode](apps/landing/public/screenshots/note_black.png)
 
 ## Table of Contents
 
@@ -88,23 +88,23 @@ Optional, end-to-end encrypted, running on Cloudflare Workers + R2. Multi-device
 
 > _Screenshot: Notes view with backlinks panel._
 >
-> `<!-- TODO: notes-view.png -->`
+> ![Memry notes view in dark mode](apps/landing/public/screenshots/note_black.png)
 
 > _Screenshot: Tasks board with calendar peek._
 >
-> `<!-- TODO: tasks-board.png -->`
+> ![Memry tasks board in dark mode](apps/landing/public/screenshots/task_black.png)
 
 > _Screenshot: Daily journal with templates._
 >
-> `<!-- TODO: journal.png -->`
+> ![Memry daily journal in dark mode](apps/landing/public/screenshots/journal_black.png)
 
 > _Screenshot: AI Agent chat with vault context and approval UI._
 >
-> `<!-- TODO: agent-chat.png -->`
+> ![Memry AI Agent chat in dark mode](apps/landing/public/screenshots/note_black.png)
 
 > _Screenshot: Calendar view with task time-blocking._
 >
-> `<!-- TODO: calendar.png -->`
+> ![Memry calendar view in dark mode](apps/landing/public/screenshots/calendar_black.png)
 
 ## Install
 
@@ -139,7 +139,6 @@ For the landing site, docs, or sync server, see [CLAUDE.md](CLAUDE.md).
 ## Community
 
 - **Twitter / X**: [@memrynote](https://twitter.com/memrynote)
-- **Discord**: [discord.gg/memry](https://discord.gg/memry)
 - **GitHub Issues**: bugs, feature requests, weird ideas
 - **Email**: hi@memrynote.com
 
