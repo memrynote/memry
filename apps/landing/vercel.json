@@ -11,18 +11,6 @@
       "has": [{ "type": "host", "value": "www.memrynote.com" }],
       "destination": "https://memrynote.com/:path",
       "permanent": true
-    },
-    {
-      "source": "/:path(.*)",
-      "has": [{ "type": "host", "value": "memrynote.ai" }],
-      "destination": "https://memrynote.com/:path",
-      "permanent": true
-    },
-    {
-      "source": "/:path(.*)",
-      "has": [{ "type": "host", "value": "www.memrynote.ai" }],
-      "destination": "https://memrynote.com/:path",
-      "permanent": true
     }
   ]
 }

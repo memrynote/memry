@@ -16,6 +16,7 @@ import { DownloadDesktopPage } from '@/pages/DownloadDesktop'
 import { UseCasesPage } from '@/pages/UseCases'
 import { SecurityPage } from '@/pages/Security'
 import { PricingPage } from '@/pages/Pricing'
+import { ChangelogPage } from '@/pages/Changelog'
 import { RoadmapPage } from '@/pages/Roadmap'
 import { TermsPage } from '@/pages/Terms'
 import { PrivacyPage } from '@/pages/Privacy'
@@ -34,6 +35,7 @@ const ROUTE_MAP: Record<string, () => ReactNode> = {
   '/use-cases': () => <UseCasesPage />,
   '/security': () => <SecurityPage />,
   '/pricing': () => <PricingPage />,
+  '/changelog': () => <ChangelogPage />,
   '/roadmap': () => <RoadmapPage />,
   '/terms': () => <TermsPage />,
   '/privacy': () => <PrivacyPage />,
