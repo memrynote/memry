@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createServer } from 'vite'
+import { buildRobotsTxt, buildSitemapXml } from '../src/lib/crawl-files.ts'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.resolve(__dirname, '..')
@@ -38,6 +39,10 @@ function stripSeoTags(html: string): string {
   return cleaned
 }
 
+function markHelmetManagedHeadTags(headTags: string): string {
+  return headTags.replace(/<(title|meta|link|script)\b(?![^>]*\bdata-rh=)/g, '<$1 data-rh="true"')
+}
+
 async function prerender() {
   const vite = await createServer({
     root: ROOT,
@@ -55,7 +60,8 @@ async function prerender() {
 
     for (const route of ROUTES as string[]) {
       const { html: appHtml } = render(route)
-      const { cleaned: cleanedAppHtml, headTags } = extractSeoTags(appHtml)
+      const { cleaned: cleanedAppHtml, headTags: embeddedHeadTags } = extractSeoTags(appHtml)
+      const headTags = markHelmetManagedHeadTags(embeddedHeadTags)
 
       let page = templateWithoutSeo.replace(
         '<div id="root"></div>',
@@ -73,8 +79,20 @@ async function prerender() {
         route === '/' ? path.resolve(DIST, 'index.html') : path.resolve(dir, 'index.html')
 
       fs.writeFileSync(outFile, page)
+
+      if (route !== '/') {
+        const flatOutFile = path.resolve(DIST, `${route.slice(1)}.html`)
+        fs.mkdirSync(path.dirname(flatOutFile), { recursive: true })
+        fs.writeFileSync(flatOutFile, page)
+      }
+
       console.log(`  prerendered: ${route} -> ${path.relative(ROOT, outFile)}`)
     }
+
+    fs.writeFileSync(path.resolve(DIST, 'sitemap.xml'), buildSitemapXml())
+    fs.writeFileSync(path.resolve(DIST, 'robots.txt'), buildRobotsTxt())
+    console.log('  wrote: dist/sitemap.xml')
+    console.log('  wrote: dist/robots.txt')
 
     console.log(`\n  ${ROUTES.length} routes prerendered.`)
   } finally {
