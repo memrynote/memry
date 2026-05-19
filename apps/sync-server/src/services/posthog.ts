@@ -3,8 +3,56 @@ import type { Bindings } from '../types'
 
 const POSTHOG_BATCH_PATH = '/batch/'
 const SERVER_SERVICE_NAME = 'memry-sync-server'
-const UUID_SEGMENT = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-const SAFE_SEGMENT = /^[a-z0-9_.:-]{1,32}$/i
+const STATIC_ROUTE_SEGMENTS = new Set([
+  'approve',
+  'attachments',
+  'auth',
+  'batch',
+  'blob',
+  'calendar',
+  'callback',
+  'channels',
+  'changes',
+  'checkout-token',
+  'chunk',
+  'chunks',
+  'complete',
+  'crdt',
+  'devices',
+  'github',
+  'google',
+  'google-calendar',
+  'health',
+  'initiate',
+  'items',
+  'linking',
+  'logout',
+  'manifest',
+  'oauth',
+  'otp',
+  'paddle',
+  'pull',
+  'push',
+  'records',
+  'recovery',
+  'recovery-info',
+  'refresh',
+  'request',
+  'resend',
+  'scan',
+  'session',
+  'setup',
+  'snapshot',
+  'status',
+  'storage',
+  'sync',
+  'telemetry',
+  'updates',
+  'upload',
+  'verify',
+  'webhooks',
+  'ws'
+])
 
 const logger = createLogger('PostHog')
 
@@ -65,12 +113,8 @@ const safeLabel = (value: string | undefined, fallback: string): string => {
   return value.replace(/[^a-zA-Z0-9_.:-]/g, '_').slice(0, 80) || fallback
 }
 
-const normalizePathSegment = (segment: string, index: number): string => {
-  if (index > 2 || UUID_SEGMENT.test(segment) || !SAFE_SEGMENT.test(segment)) {
-    return ':value'
-  }
-  return segment
-}
+const normalizePathSegment = (segment: string): string =>
+  STATIC_ROUTE_SEGMENTS.has(segment.toLowerCase()) ? segment.toLowerCase() : ':value'
 
 const normalizeServerPath = (path: string | undefined): string => {
   if (!path) return '/'
@@ -84,7 +128,7 @@ const normalizeServerPath = (path: string | undefined): string => {
   const segments = pathname
     .split('/')
     .filter(Boolean)
-    .map((segment, index) => normalizePathSegment(segment, index))
+    .map((segment) => normalizePathSegment(segment))
 
   return segments.length > 0 ? `/${segments.join('/')}` : '/'
 }

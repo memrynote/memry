@@ -30,7 +30,7 @@ describe('useTelemetrySettings', () => {
     expect(result.current.enabled).toBe(true)
   })
 
-  it('falls back to enabled = true if the runtime reports an error', async () => {
+  it('falls back to enabled = false if the runtime reports an error', async () => {
     const apiMock = window.api as unknown as {
       telemetry: { getSettings: ReturnType<typeof vi.fn>; setEnabled: ReturnType<typeof vi.fn> }
     }
@@ -41,7 +41,7 @@ describe('useTelemetrySettings', () => {
       expect(result.current.isLoading).toBe(false)
     })
 
-    expect(result.current.enabled).toBe(true)
+    expect(result.current.enabled).toBe(false)
   })
 
   it('toggles via setEnabled and forwards the new value to the runtime', async () => {

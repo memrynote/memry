@@ -42,7 +42,8 @@ trackTelemetry('page_viewed', { surface: 'notes', action: 'viewed' })
 
 Recognized surfaces (`TelemetrySurface` in `packages/contracts/telemetry-api`):
 
-`onboarding`, `notes`, `journal`, `tasks`, `inbox`, `calendar`, `search`, `graph`, `templates`, `settings`.
+`app`, `onboarding`, `vault`, `notes`, `journal`, `tasks`, `inbox`, `calendar`, `search`,
+`graph`, `settings`, `sync`, `ai`, `voice`, `updater`.
 
 ### What Never Ships
 
@@ -84,6 +85,10 @@ The sync server always writes accepted desktop telemetry batches to Cloudflare A
 When `POSTHOG_API_KEY` and `POSTHOG_HOST` are configured on the sync server, the same
 content-free events are mirrored to PostHog's batch endpoint.
 
+PostHog mirroring does not use install IDs, session IDs, or their hashes as person identifiers.
+Desktop telemetry is grouped under a server-level `memry_desktop_<environment>` distinct ID while
+filterable dimensions stay in event properties.
+
 Additional PostHog events:
 
 | Event                        | Source                                    |
@@ -117,4 +122,7 @@ Use `https://eu.i.posthog.com` for EU Cloud projects.
 
 ## Performance
 
-`trackTelemetry` is debounced and batched. Calls during the first second of startup are deferred until after the vault is open so they never delay first paint.
+`trackTelemetry` is debounced and batched. Calls during the first second of startup are deferred
+until after the vault is open so they never delay first paint. On the sync server, Analytics Engine
+writes finish before `/telemetry/batch` responds, while optional PostHog mirroring runs in
+`waitUntil` so third-party telemetry cannot block the request path.
