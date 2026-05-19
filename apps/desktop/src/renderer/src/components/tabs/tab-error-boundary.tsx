@@ -6,6 +6,7 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
 import { AlertTriangle, RefreshCw } from '@/lib/icons'
 import { createLogger } from '@/lib/logger'
+import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { useT } from '@memry/i18n/renderer'
 
 const log = createLogger('Component:TabErrorBoundary')
@@ -47,6 +48,7 @@ class TabErrorBoundaryImpl extends Component<
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
     log.error('Tab content error', error, errorInfo)
+    trackRendererError('tab_error_boundary', error)
     this.props.onError?.(error, errorInfo)
   }
 

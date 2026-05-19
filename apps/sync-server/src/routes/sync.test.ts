@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest'
 
 import { AppError, ErrorCodes, errorHandler } from '../lib/errors'
 import type { AppContext } from '../types'
@@ -214,6 +214,10 @@ describe('sync routes', () => {
     mockDoStub.fetch.mockResolvedValue(Response.json({ sent: 0 }))
     app = createApp()
     env = createEnv()
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
   })
 
   // ==========================================================================
@@ -724,6 +728,51 @@ describe('sync routes', () => {
       expect(res.status).toBe(413)
       expect(updateDeviceCursor).not.toHaveBeenCalled()
       expect(updateDevice).not.toHaveBeenCalled()
+    })
+
+    it('captures background broadcast failures without failing the push response', async () => {
+      const fetchMock = vi.fn(async (_input: string | URL | Request, _init?: RequestInit) => {
+        return new Response(JSON.stringify({ status: 1 }), { status: 200 })
+      })
+      vi.stubGlobal('fetch', fetchMock)
+      mockDoStub.fetch.mockRejectedValueOnce(new Error(`broadcast failed ${VALID_UUID}`))
+      const scheduled: Promise<unknown>[] = []
+      const localExecutionCtx = {
+        waitUntil: vi.fn((promise: Promise<unknown>) => {
+          scheduled.push(promise)
+        }),
+        passThroughOnException: vi.fn(),
+        props: {}
+      }
+      const localEnv = {
+        ...env,
+        POSTHOG_API_KEY: 'phc_test_project',
+        POSTHOG_HOST: 'https://us.i.posthog.com'
+      }
+
+      const res = await app.request(
+        'http://localhost/sync/push',
+        jsonPost('/sync/push', { items: [makePushItem()] }),
+        localEnv,
+        localExecutionCtx
+      )
+      await scheduled[0]
+
+      expect(res.status).toBe(200)
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+      const init = fetchMock.mock.calls[0]?.[1]
+      expect(init?.body).toBeDefined()
+      const body = JSON.parse(init?.body as string) as {
+        batch: Array<{ event: string; properties: Record<string, unknown> }>
+      }
+      expect(body.batch[0].event).toBe('server_error_seen')
+      expect(body.batch[0].properties).toMatchObject({
+        source: 'UserSyncState',
+        action: 'record_push_broadcast_failed',
+        path: '/sync/push',
+        error_code: 'WAIT_UNTIL_REJECTED'
+      })
+      expect(JSON.stringify(body)).not.toContain(VALID_UUID)
     })
   })
 

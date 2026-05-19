@@ -1,6 +1,10 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { AppError, ErrorCodes, errorHandler, formatErrorResponse } from './errors'
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
 
 describe('sync-server error utilities', () => {
   it('creates and formats AppError responses', () => {
@@ -51,5 +55,55 @@ describe('sync-server error utilities', () => {
       }
     })
     expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('"code":"UNHANDLED_ERROR"'))
+  })
+
+  it('schedules sanitized PostHog capture for unexpected request errors', async () => {
+    const fetchMock = vi.fn(async (_input: string | URL | Request, _init?: RequestInit) => {
+      return new Response(JSON.stringify({ status: 1 }), { status: 200 })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const scheduled: Promise<unknown>[] = []
+    const json = vi.fn(
+      (payload: unknown, init: number) => new Response(JSON.stringify(payload), { status: init })
+    )
+    const context = {
+      json,
+      env: {
+        POSTHOG_API_KEY: 'phc_test_project',
+        POSTHOG_HOST: 'https://us.i.posthog.com',
+        ENVIRONMENT: 'development'
+      },
+      req: {
+        method: 'POST',
+        path: '/sync/records/push/550e8400-e29b-41d4-a716-446655440000'
+      },
+      executionCtx: {
+        waitUntil: vi.fn((promise: Promise<unknown>) => {
+          scheduled.push(promise)
+        })
+      }
+    } as unknown as Parameters<typeof errorHandler>[1]
+
+    const response = errorHandler(new Error('private-note-title'), context)
+    await scheduled[0]
+
+    expect(response.status).toBe(500)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    const init = fetchMock.mock.calls[0]?.[1]
+    expect(init?.body).toBeDefined()
+    const body = JSON.parse(init?.body as string) as {
+      batch: Array<{ event: string; properties: Record<string, unknown> }>
+    }
+    expect(body.batch[0].event).toBe('server_error_seen')
+    expect(body.batch[0].properties).toMatchObject({
+      method: 'POST',
+      path: '/sync/records/push/:value',
+      error_code: 'UNHANDLED_ERROR',
+      status_code: 500,
+      handled: 0
+    })
+    const payloadText = JSON.stringify(body)
+    expect(payloadText).not.toContain('550e8400-e29b-41d4-a716-446655440000')
+    expect(payloadText).not.toContain('private-note-title')
   })
 })
