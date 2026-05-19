@@ -5,6 +5,20 @@
       "*": false
     }
   },
+  "rewrites": [
+    {
+      "source": "/mry/static/:path(.*)",
+      "destination": "https://us-assets.i.posthog.com/static/:path"
+    },
+    {
+      "source": "/mry/array/:path(.*)",
+      "destination": "https://us-assets.i.posthog.com/array/:path"
+    },
+    {
+      "source": "/mry/:path(.*)",
+      "destination": "https://us.i.posthog.com/:path"
+    }
+  ],
   "redirects": [
     {
       "source": "/:path(.*)",
