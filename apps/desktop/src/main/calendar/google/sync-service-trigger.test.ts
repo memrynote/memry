@@ -38,10 +38,12 @@ vi.mock('../../sync/auth-state', () => ({
   isMemryUserSignedIn: vi.fn(async () => true)
 }))
 
+const isDatabaseInitializedMock = vi.fn(() => true)
+
 vi.mock('../../database', () => ({
   requireDatabase: vi.fn(() => mockDbHolder.db),
   getDatabase: vi.fn(() => mockDbHolder.db),
-  isDatabaseInitialized: vi.fn(() => true)
+  isDatabaseInitialized: () => isDatabaseInitializedMock()
 }))
 
 vi.mock('./sync-service', async () => {
@@ -68,6 +70,8 @@ describe('triggerGoogleCalendarSyncNow (focus/resume/manual refresh)', () => {
     mockDbHolder.db = dbResult.db
     __resetTriggerForTests()
     syncNowMock.mockClear()
+    isDatabaseInitializedMock.mockClear()
+    isDatabaseInitializedMock.mockReturnValue(true)
     powerMonitorHolder.resumeHandlers.length = 0
     powerMonitorHolder.on.mockClear()
     powerMonitorHolder.removeListener.mockClear()
@@ -118,6 +122,18 @@ describe('triggerGoogleCalendarSyncNow (focus/resume/manual refresh)', () => {
     // #then a second sync fires
     expect(syncNowMock).toHaveBeenCalledTimes(2)
     vi.useRealTimers()
+  })
+
+  it('skips sync when no vault is open (vault selection window)', async () => {
+    // #given no vault has been opened yet
+    isDatabaseInitializedMock.mockReturnValue(false)
+
+    // #when the window-focus trigger fires on the vault selection screen
+    triggerGoogleCalendarSyncNow('window-focus')
+
+    // #then no sync is kicked off (no warn-level noise)
+    await Promise.resolve()
+    expect(syncNowMock).not.toHaveBeenCalled()
   })
 
   it('swallows sync errors so focus/resume handlers never crash', async () => {

@@ -1,6 +1,6 @@
 import { powerMonitor } from 'electron'
 import { createLogger } from '../../lib/logger'
-import { requireDatabase } from '../../database'
+import { requireDatabase, isDatabaseInitialized } from '../../database'
 import { isMemryUserSignedIn } from '../../sync/auth-state'
 import { hasGoogleCalendarConnection } from './oauth'
 import { listCalendarSources } from '../repositories/calendar-sources-repository'
@@ -29,6 +29,10 @@ function runPeriodicSync(): void {
 }
 
 export function triggerGoogleCalendarSyncNow(reason: string): void {
+  if (!isDatabaseInitialized()) {
+    log.debug('skipping Google Calendar sync trigger (no vault open)', { reason })
+    return
+  }
   const now = Date.now()
   if (now - lastTriggerAt < TRIGGER_COOLDOWN_MS) {
     log.debug('skipping Google Calendar sync trigger (cooldown)', { reason })
