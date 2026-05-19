@@ -31,6 +31,17 @@ describe('wrangler config', () => {
     expect(toml).toContain('ENVIRONMENT = "production"')
   })
 
+  it('routes staging and production workers to separate sync hostnames', () => {
+    const toml = readFileSync(resolve(__dirname, 'wrangler.toml'), 'utf8')
+
+    expect(toml).toMatch(
+      /\[\[env\.staging\.routes\]\][\s\S]*?pattern = "sync-staging\.memrynote\.com\/\*"[\s\S]*?zone_name = "memrynote\.com"/
+    )
+    expect(toml).toMatch(
+      /\[\[env\.production\.routes\]\][\s\S]*?pattern = "sync\.memrynote\.com\/\*"[\s\S]*?zone_name = "memrynote\.com"/
+    )
+  })
+
   it('binds the PRODUCT_TELEMETRY analytics engine dataset per environment', () => {
     const toml = readFileSync(resolve(__dirname, 'wrangler.toml'), 'utf8')
 

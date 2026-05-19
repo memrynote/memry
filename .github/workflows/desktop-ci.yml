@@ -289,6 +289,9 @@ jobs:
           SKIP_ELECTRON_REBUILD: 1
         run: pnpm install --frozen-lockfile
 
+      - name: Create production runtime environment
+        run: printf 'SYNC_SERVER_URL=https://sync.memrynote.com\n' > apps/desktop/.env.production
+
       - name: Build unpacked macOS app
         run: |
           pnpm --filter @memry/desktop exec electron-vite build

@@ -439,8 +439,20 @@ describe('main index phase2 exports', () => {
     await importMainModule()
 
     expect(setPathMock).toHaveBeenCalledWith('userData', '/mock/userData-B')
-    expect(dotenvConfigMock).toHaveBeenCalledWith({ path: '/mock/app/.env', quiet: true })
+    expect(dotenvConfigMock).toHaveBeenCalledWith({
+      path: '/mock/app/.env.development',
+      quiet: true
+    })
     expect(dotenvConfigMock).toHaveBeenCalledWith({ quiet: true })
+  })
+
+  it('loads the unpackaged runtime env selected by MEMRY_ENV', async () => {
+    process.env.MEMRY_ENV = 'staging'
+
+    await importMainModule()
+
+    expect(dotenvConfigMock).toHaveBeenCalledWith({ path: '/mock/app/.env.staging', quiet: true })
+    expect(dotenvConfigMock).not.toHaveBeenCalledWith({ path: '/mock/app/.env', quiet: true })
   })
 
   it('scopes the default dev profile by worktree path', async () => {

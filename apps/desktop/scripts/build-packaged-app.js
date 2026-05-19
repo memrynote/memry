@@ -11,13 +11,19 @@ const repoRoot = path.resolve(appRoot, '..', '..')
 const appRequire = createRequire(path.join(appRoot, 'package.json'))
 const electronBuilderCli = appRequire.resolve('electron-builder/cli.js')
 const electronVersion = appRequire('electron/package.json').version
-const { resolveTargetArch } = require('./build-packaged-app-utils.cjs')
+const { parse } = require('dotenv')
+const {
+  assertProductionSyncServerUrl,
+  resolveTargetArch
+} = require('./build-packaged-app-utils.cjs')
 const stageRoot =
   process.platform === 'win32' ? path.join(repoRoot, '.memry-desktop-package.tmp') : os.tmpdir()
 fs.mkdirSync(stageRoot, { recursive: true })
 const stageDir = fs.mkdtempSync(path.join(stageRoot, 'memry-desktop-package-'))
 const distDir = path.join(appRoot, 'dist')
 const defaultConfigPath = 'config/electron-builder.staged.yml'
+const runtimeEnvName = 'production'
+const runtimeEnvFile = `.env.${runtimeEnvName}`
 const nativeModules = ['better-sqlite3', 'classic-level', 'keytar']
 const generateIconsScript = path.join(appRoot, 'scripts', 'generate-icons.mjs')
 const osxSignWalkPatchScript = path.join(appRoot, 'scripts', 'patch-osx-sign-walk.js')
@@ -123,6 +129,17 @@ function syncIntoStage(relativePath, { optional = false } = {}) {
   })
 }
 
+function readRuntimeEnv() {
+  const runtimeEnvPath = path.join(appRoot, runtimeEnvFile)
+  if (!fs.existsSync(runtimeEnvPath)) {
+    throw new Error(`Missing apps/desktop/${runtimeEnvFile}`)
+  }
+
+  const runtimeEnv = parse(fs.readFileSync(runtimeEnvPath, 'utf8'))
+  assertProductionSyncServerUrl(runtimeEnv.SYNC_SERVER_URL)
+  return runtimeEnv
+}
+
 function relativizeInternalSymlinks(rootPath) {
   const entries = fs.readdirSync(rootPath, { withFileTypes: true })
 
@@ -193,6 +210,7 @@ function main() {
     )
   }
 
+  const runtimeEnv = readRuntimeEnv()
   const targetArch = resolveTargetArch(args)
 
   runPnpm(['--filter', '@memry/desktop', 'deploy', '--legacy', '--prod', getPnpmDeployTarget()], {
@@ -208,7 +226,7 @@ function main() {
   syncIntoStage('config')
   syncIntoStage('out')
   syncIntoStage('scripts')
-  syncIntoStage('.env.staging', { optional: true })
+  syncIntoStage(runtimeEnvFile)
   removePath(path.join(stageDir, 'node_modules', '@memry', 'desktop'))
   removePath(path.join(stageDir, 'electron-builder.env'))
   runPnpm(
@@ -237,6 +255,8 @@ function main() {
     cwd: stageDir,
     env: {
       ...process.env,
+      MEMRY_ENV: runtimeEnvName,
+      SYNC_SERVER_URL: runtimeEnv.SYNC_SERVER_URL,
       MEMRY_PACKAGED_STAGE_DIR: stageDir
     }
   })
