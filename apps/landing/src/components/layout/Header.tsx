@@ -82,7 +82,35 @@ function GitHubStarWidget({
   compact?: boolean
   onClick?: () => void
 }) {
-  const formattedStars = formatStarCount(GITHUB_STARS)
+  const [stars, setStars] = useState(GITHUB_STARS)
+  const formattedStars = formatStarCount(stars)
+
+  useEffect(() => {
+    let active = true
+
+    async function loadStars() {
+      try {
+        const response = await fetch('/api/github-stars')
+        if (!response.ok) return
+
+        const data: unknown = await response.json()
+        if (!data || typeof data !== 'object' || !('stars' in data)) return
+
+        const nextStars = data.stars
+        if (active && typeof nextStars === 'number' && Number.isFinite(nextStars)) {
+          setStars(nextStars)
+        }
+      } catch {
+        // Keep the build-time fallback when the cached GitHub count is unavailable.
+      }
+    }
+
+    void loadStars()
+
+    return () => {
+      active = false
+    }
+  }, [])
 
   return (
     <a

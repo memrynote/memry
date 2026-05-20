@@ -24,22 +24,29 @@ function apiDevProxy(): PluginOption {
           return
         }
 
-        if (req.method !== 'POST') {
-          res.statusCode = 405
-          res.end(JSON.stringify({ error: 'Method not allowed' }))
-          return
+        let body: unknown
+        if (req.method !== 'GET' && req.method !== 'HEAD') {
+          const chunks: Buffer[] = []
+          for await (const chunk of req) chunks.push(chunk as Buffer)
+
+          const rawBody = Buffer.concat(chunks).toString()
+          body = rawBody ? JSON.parse(rawBody) : undefined
         }
 
-        const chunks: Buffer[] = []
-        for await (const chunk of req) chunks.push(chunk as Buffer)
-        const body = JSON.parse(Buffer.concat(chunks).toString())
-
         const mod = await server.ssrLoadModule(`/api/${apiName}.ts`)
-        const vercelReq = { method: 'POST', body } as never
-        const result = { statusCode: 200, body: '' as string }
+        const vercelReq = { method: req.method, body } as never
+        const result = {
+          statusCode: 200,
+          body: '' as string,
+          headers: {} as Record<string, number | string | readonly string[]>
+        }
         const vercelRes = {
           status(code: number) {
             result.statusCode = code
+            return this
+          },
+          setHeader(name: string, value: number | string | readonly string[]) {
+            result.headers[name] = value
             return this
           },
           json(data: unknown) {
@@ -51,6 +58,9 @@ function apiDevProxy(): PluginOption {
         await mod.default(vercelReq, vercelRes)
 
         res.statusCode = result.statusCode
+        for (const [name, value] of Object.entries(result.headers)) {
+          res.setHeader(name, value)
+        }
         res.setHeader('Content-Type', 'application/json')
         res.end(result.body)
       })

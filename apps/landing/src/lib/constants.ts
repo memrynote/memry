@@ -32,7 +32,7 @@ import {
 
 export const GITHUB_URL = 'https://github.com/memrynote/memry'
 export const GITHUB_RELEASES_URL = `${GITHUB_URL}/releases`
-export const GITHUB_STARS = 18
+export const GITHUB_STARS = 21
 export const REDDIT_URL = 'https://www.reddit.com/r/MemryNote/'
 export const DOCS_URL = 'https://docs.memrynote.com'
 export const TWITTER_DEV_URL = 'https://x.com/h4yfans'

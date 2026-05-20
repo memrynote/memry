@@ -22,5 +22,5 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["vite.config.ts", "api/paddle*.ts"]
+  "include": ["vite.config.ts", "api/paddle*.ts", "api/github-stars.ts"]
 }
