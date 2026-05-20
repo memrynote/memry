@@ -9,6 +9,7 @@ const ATTRIBUTION_KEYS = [
   'utm_term'
 ] as const
 const ATTRIBUTION_VALUE_LIMIT = 120
+const RESEND_API_BASE_URL = 'https://api.resend.com'
 
 type WaitlistAttributionKey = (typeof ATTRIBUTION_KEYS)[number]
 type WaitlistAttribution = Partial<Record<WaitlistAttributionKey, string>>
@@ -54,12 +55,22 @@ function getResendErrorMessage(data: unknown): string {
   return 'Failed to add contact'
 }
 
+function isAlreadyExistsError(status: number, message: string): boolean {
+  return status === 409 && message.toLowerCase().includes('already')
+}
+
 function getResendContactId(data: unknown): string | null {
   if (data && typeof data === 'object' && 'id' in data && typeof data.id === 'string') {
     return data.id
   }
 
   return null
+}
+
+export function getResendSegmentContactUrl(contactIdOrEmail: string, segmentId: string): string {
+  return `${RESEND_API_BASE_URL}/contacts/${encodeURIComponent(
+    contactIdOrEmail
+  )}/segments/${encodeURIComponent(segmentId)}`
 }
 
 function getPostHogClient(): PostHog | null {
@@ -142,10 +153,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const RESEND_API_KEY = process.env.RESEND_API_KEY
-  const RESEND_SEGMENT_ID = process.env.RESEND_SEGMENT_ID
+  const RESEND_SEGMENT_ID = process.env.RESEND_SEGMENT_ID?.trim()
 
   if (!RESEND_API_KEY) {
     console.error('[waitlist] RESEND_API_KEY is not configured')
+    return res.status(500).json({ error: 'Server configuration error' })
+  }
+
+  if (!RESEND_SEGMENT_ID) {
+    console.error('[waitlist] RESEND_SEGMENT_ID is not configured')
     return res.status(500).json({ error: 'Server configuration error' })
   }
 
@@ -173,36 +189,47 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const contactRes = await fetch('https://api.resend.com/contacts', {
+    const contactRes = await fetch(`${RESEND_API_BASE_URL}/contacts`, {
       method: 'POST',
       headers,
       body: JSON.stringify({ email })
     })
 
     const contactData = await contactRes.json()
+    const contactError = getResendErrorMessage(contactData)
+
+    if (!contactRes.ok && !isAlreadyExistsError(contactRes.status, contactError)) {
+      console.error('[waitlist] Resend API error:', sanitizeLogValue(contactError))
+      return res.status(contactRes.status).json({
+        error: contactError
+      })
+    }
 
     if (!contactRes.ok) {
-      console.error(
-        '[waitlist] Resend API error:',
-        sanitizeLogValue(getResendErrorMessage(contactData))
-      )
-      return res.status(contactRes.status).json({
-        error: getResendErrorMessage(contactData)
-      })
+      console.info('[waitlist] Resend contact already exists; adding it to segment')
     }
 
     const contactId = getResendContactId(contactData)
+    const segmentContact = contactId ?? email
 
-    if (RESEND_SEGMENT_ID && contactId) {
-      await fetch(`https://api.resend.com/segments/${RESEND_SEGMENT_ID}/contacts`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ contact_ids: [contactId] })
-      })
+    const segmentRes = await fetch(getResendSegmentContactUrl(segmentContact, RESEND_SEGMENT_ID), {
+      method: 'POST',
+      headers
+    })
+
+    if (!segmentRes.ok) {
+      const segmentData = await segmentRes.json()
+      const segmentError = getResendErrorMessage(segmentData)
+
+      if (!isAlreadyExistsError(segmentRes.status, segmentError)) {
+        console.error('[waitlist] Resend segment API error:', sanitizeLogValue(segmentError))
+        return res.status(segmentRes.status).json({
+          error: segmentError
+        })
+      }
     }
 
-    if (contactId)
-      await captureWaitlistSignup(req, contactId, Boolean(RESEND_SEGMENT_ID), attribution)
+    if (contactId) await captureWaitlistSignup(req, contactId, true, attribution)
 
     return res.status(200).json({
       success: true,

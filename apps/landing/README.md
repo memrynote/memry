@@ -29,11 +29,11 @@ cp apps/landing/.env.example apps/landing/.env.local
 
 Fill in your environment variables:
 
-| Variable                | Required | Description                                      |
-| ----------------------- | -------- | ------------------------------------------------ |
-| `RESEND_API_KEY`        | Yes      | API key from [Resend](https://resend.com)        |
-| `RESEND_SEGMENT_ID`     | No       | Segment ID to group waitlist contacts            |
-| `RESEND_WEBHOOK_SECRET` | Yes      | Signing secret for Resend event webhook delivery |
+| Variable                | Required | Description                                         |
+| ----------------------- | -------- | --------------------------------------------------- |
+| `RESEND_API_KEY`        | Yes      | API key from [Resend](https://resend.com)           |
+| `RESEND_SEGMENT_ID`     | Yes      | Segment ID for the `memrywaitlsit` waitlist segment |
+| `RESEND_WEBHOOK_SECRET` | Yes      | Signing secret for Resend event webhook delivery    |
 
 PostHog analytics is optional in local development. Production should set the public project key
 and host so landing pageviews, explicit CTA/demo/waitlist events, UTM attribution, Resend webhook
