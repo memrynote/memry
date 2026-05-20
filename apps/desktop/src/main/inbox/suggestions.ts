@@ -502,11 +502,6 @@ export async function getSuggestions(itemId: string): Promise<FilingSuggestion[]
     return []
   }
 
-  // Check if model is loaded (don't block on loading)
-  if (!isModelLoaded()) {
-    log.debug('Model not loaded, returning history-based suggestions only')
-  }
-
   try {
     const db = requireDatabase()
     const item = db.select().from(inboxItems).where(eq(inboxItems.id, itemId)).get()
@@ -525,7 +520,7 @@ export async function getSuggestions(itemId: string): Promise<FilingSuggestion[]
     // 1. Find similar notes → suggest both folders AND direct note links
     const noteSuggestions: FilingSuggestion[] = []
 
-    if (isModelLoaded() && content.length >= MIN_CONTENT_LENGTH) {
+    if (content.length >= MIN_CONTENT_LENGTH) {
       const similarNotes = await findSimilarNotes(content, 8)
 
       for (const note of similarNotes) {
@@ -785,8 +780,8 @@ export async function getNoteFolderSuggestions(noteId: string): Promise<FolderSu
     // Build content for similarity search
     const content = [note.title, note.content].filter(Boolean).join('\n\n')
 
-    // 1. Find similar notes and suggest their folders (only if model is loaded)
-    if (isModelLoaded() && content.length >= MIN_CONTENT_LENGTH) {
+    // 1. Find similar notes and suggest their folders
+    if (content.length >= MIN_CONTENT_LENGTH) {
       const similarNotes = await findSimilarNotes(content, 10)
 
       for (const similar of similarNotes) {

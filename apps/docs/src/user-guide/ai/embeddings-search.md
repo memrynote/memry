@@ -35,6 +35,11 @@ The status line shows:
 
 You can **Unload** the model from settings to free memory; reload as needed.
 
+memrynote does not load the embedding model just because a vault opens. Semantic surfaces such as
+search, inbox linked-note suggestions, related notes, and reindexing start the local model on first
+use. The model runs in a separate utility process and shuts down after an idle period so regular note
+reading does not keep the embedding runtime resident forever.
+
 ## Model Size
 
 Models trade off accuracy vs disk and memory. The default is tuned for desktop hardware. The settings page shows dimensions and the current count of embedded notes.

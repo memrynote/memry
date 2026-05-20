@@ -1,35 +1,26 @@
 /**
  * Local Embedding Service
  *
- * Generates text embeddings locally using @huggingface/transformers
- * with the all-MiniLM-L6-v2 model (384 dimensions).
+ * Coordinates local text embeddings through an Electron utility process.
  *
  * Model is downloaded on first use (~23MB) and cached in app data directory.
  *
  * @module main/lib/embeddings
  */
 
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, utilityProcess } from 'electron'
 import path from 'path'
-import type { FeatureExtractionPipeline } from '@huggingface/transformers'
 import { SettingsChannels } from '@memry/contracts/ipc-channels'
+import type {
+  EmbeddingMainToWorkerMessage,
+  EmbeddingProgressMessage,
+  EmbeddingProgressPhase,
+  EmbeddingWorkerToMainMessage
+} from './embedding-model-protocol'
 import { EMBEDDING_DIMENSION } from './embeddings-constants'
 import { createLogger } from './logger'
 
 const logger = createLogger('Embeddings')
-
-// ============================================================================
-// Types
-// ============================================================================
-
-interface ModelProgress {
-  status: string
-  name?: string
-  file?: string
-  progress?: number
-  loaded?: number
-  total?: number
-}
 
 export interface ModelInfo {
   name: string
@@ -44,7 +35,7 @@ export interface ModelInfo {
 // ============================================================================
 
 /** Model to use for embeddings */
-const MODEL_NAME = 'Xenova/all-MiniLM-L6-v2'
+const MODEL_NAME = 'all-MiniLM-L6-v2'
 
 export { EMBEDDING_DIMENSION } from './embeddings-constants'
 
@@ -53,34 +44,25 @@ const MIN_CONTENT_LENGTH = 10
 
 /** Maximum characters for embedding input (~512 tokens) */
 const MAX_CONTENT_LENGTH = 2000
-
-// ============================================================================
-// State
-// ============================================================================
-
-let extractor: FeatureExtractionPipeline | null = null
-let isLoading = false
-let loadError: string | null = null
+const REQUEST_TIMEOUT_MS = 5 * 60_000
+const START_TIMEOUT_MS = 10_000
+const SHUTDOWN_TIMEOUT_MS = 3_000
+const IDLE_SHUTDOWN_MS = 30_000
 
 // ============================================================================
 // Helper Functions
 // ============================================================================
 
-/**
- * Get the cache directory for transformer models
- */
-function getModelCacheDir(): string {
-  return path.join(app.getPath('userData'), 'models', 'transformers')
+type PendingRequest = {
+  resolve: (value: EmbeddingWorkerToMainMessage) => void
+  reject: (error: Error) => void
+  timer: ReturnType<typeof setTimeout>
 }
 
 /**
  * Emit model loading progress to all renderer windows
  */
-function emitProgress(
-  phase: 'downloading' | 'loading' | 'ready' | 'error',
-  progress: number,
-  status: string
-): void {
+function emitProgress(phase: EmbeddingProgressPhase, progress: number, status: string): void {
   BrowserWindow.getAllWindows().forEach((win) => {
     win.webContents.send(SettingsChannels.events.EMBEDDING_PROGRESS, {
       phase,
@@ -90,6 +72,387 @@ function emitProgress(
   })
 }
 
+class EmbeddingModelBridge {
+  private process: ReturnType<typeof utilityProcess.fork> | null = null
+  private pendingRequests = new Map<string, PendingRequest>()
+  private readyPromise: Promise<void> | null = null
+  private requestCounter = 0
+  private loaded = false
+  private loading = false
+  private error: string | null = null
+  private shuttingDown = false
+  private idleShutdownTimer: ReturnType<typeof setTimeout> | null = null
+
+  get isLoaded(): boolean {
+    return this.loaded
+  }
+
+  get isLoading(): boolean {
+    return this.loading
+  }
+
+  get info(): ModelInfo {
+    return {
+      name: MODEL_NAME,
+      dimension: EMBEDDING_DIMENSION,
+      loaded: this.loaded,
+      loading: this.loading,
+      error: this.error
+    }
+  }
+
+  async loadModel(): Promise<boolean> {
+    try {
+      this.loading = !this.loaded
+      await this.start()
+      const requestId = this.nextRequestId()
+      const response = await this.sendRequest({
+        type: 'load-model',
+        requestId
+      })
+
+      if (response.type === 'error') {
+        this.error = response.error
+        this.loading = false
+        return false
+      }
+
+      if (response.type !== 'load-model-result') {
+        this.error = `Unexpected response type: ${response.type}`
+        this.loading = false
+        return false
+      }
+
+      this.loaded = true
+      this.loading = false
+      this.error = null
+      return true
+    } catch (error) {
+      this.loading = false
+      this.error = error instanceof Error ? error.message : String(error)
+      return false
+    }
+  }
+
+  async embed(text: string): Promise<Float32Array | null> {
+    try {
+      this.loading = !this.loaded
+      await this.start()
+      const requestId = this.nextRequestId()
+      const response = await this.sendRequest({
+        type: 'embed',
+        requestId,
+        text: text.substring(0, MAX_CONTENT_LENGTH)
+      })
+
+      if (response.type === 'error') {
+        this.error = response.error
+        this.loading = false
+        logger.warn('Embedding worker failed:', response.error)
+        return null
+      }
+
+      if (response.type !== 'embed-result') {
+        this.error = `Unexpected response type: ${response.type}`
+        this.loading = false
+        return null
+      }
+
+      const embedding = new Float32Array(response.embedding)
+      if (embedding.length !== EMBEDDING_DIMENSION) {
+        logger.error(`Unexpected dimension: ${embedding.length} (expected ${EMBEDDING_DIMENSION})`)
+        return null
+      }
+
+      this.loaded = true
+      this.loading = false
+      this.error = null
+      return embedding
+    } catch (error) {
+      this.loading = false
+      this.error = error instanceof Error ? error.message : String(error)
+      logger.error('Generation failed:', error)
+      return null
+    }
+  }
+
+  async stop(): Promise<void> {
+    this.clearIdleShutdown()
+
+    if (!this.process) {
+      this.readyPromise = null
+      this.loaded = false
+      this.loading = false
+      return
+    }
+
+    const activeProcess = this.process
+    this.shuttingDown = true
+    this.loaded = false
+    this.loading = false
+
+    activeProcess.postMessage({ type: 'shutdown' } satisfies EmbeddingMainToWorkerMessage)
+
+    await new Promise<void>((resolve) => {
+      const timeout = setTimeout(() => {
+        activeProcess.kill()
+        resolve()
+      }, SHUTDOWN_TIMEOUT_MS)
+
+      activeProcess.once('exit', () => {
+        clearTimeout(timeout)
+        resolve()
+      })
+    })
+
+    this.process = null
+    this.readyPromise = null
+    this.shuttingDown = false
+  }
+
+  reset(): void {
+    this.shuttingDown = true
+    this.clearIdleShutdown()
+    this.process?.kill()
+    this.process = null
+    this.readyPromise = null
+    this.rejectAll(new Error('Embedding utility reset'))
+    this.loaded = false
+    this.loading = false
+    this.error = null
+    this.shuttingDown = false
+  }
+
+  private async start(): Promise<void> {
+    this.clearIdleShutdown()
+
+    if (this.process) {
+      await this.readyPromise
+      return
+    }
+
+    const workerPath = path.join(__dirname, 'embedding-worker.js')
+    const child = utilityProcess.fork(workerPath, [], {
+      serviceName: 'Embeddings',
+      stdio: 'pipe',
+      env: {
+        ...process.env,
+        MEMRY_USER_DATA_PATH: app.getPath('userData')
+      },
+      allowLoadingUnsignedLibraries: process.platform === 'darwin'
+    })
+
+    this.process = child
+    child.stdout?.on('data', (chunk: Buffer | string) => {
+      const output = chunk.toString().trim()
+      if (output) {
+        logger.info(`Embedding utility stdout: ${output}`)
+      }
+    })
+    child.stderr?.on('data', (chunk: Buffer | string) => {
+      const output = chunk.toString().trim()
+      if (output) {
+        logger.error(`Embedding utility stderr: ${output}`)
+      }
+    })
+
+    this.readyPromise = new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        const error = new Error('Embedding utility failed to start within timeout')
+        logger.error('Embedding utility start timeout', {
+          workerPath,
+          pid: child.pid
+        })
+        this.failProcess(error)
+        reject(error)
+      }, START_TIMEOUT_MS)
+
+      const cleanup = (): void => {
+        clearTimeout(timeout)
+        child.off('message', onMessage)
+        child.off('error', onFatalError)
+        child.off('exit', onExitBeforeReady)
+      }
+
+      const onMessage = (message: EmbeddingWorkerToMainMessage): void => {
+        if (message.type !== 'ready') return
+
+        cleanup()
+        this.setupProcessHandlers(child)
+        logger.info('Embedding utility ready')
+        resolve()
+      }
+
+      const onFatalError = (type: string, location: string, report: string): void => {
+        cleanup()
+        const error = new Error(`Embedding utility fatal error: ${type} at ${location}`)
+        logger.error('Embedding utility fatal error', { type, location, report })
+        this.failProcess(error)
+        reject(error)
+      }
+
+      const onExitBeforeReady = (code: number): void => {
+        cleanup()
+        const error = new Error(`Embedding utility exited unexpectedly (code ${code})`)
+        this.failProcess(error)
+        reject(error)
+      }
+
+      child.on('message', onMessage)
+      child.on('error', onFatalError)
+      child.on('exit', onExitBeforeReady)
+    })
+
+    await this.readyPromise
+  }
+
+  private setupProcessHandlers(child: ReturnType<typeof utilityProcess.fork>): void {
+    child.on('message', (message: EmbeddingWorkerToMainMessage) => {
+      if (message.type === 'ready') {
+        return
+      }
+
+      if (message.type === 'progress') {
+        this.applyProgress(message)
+        return
+      }
+
+      if ('requestId' in message) {
+        const pending = this.pendingRequests.get(message.requestId)
+        if (!pending) {
+          return
+        }
+
+        clearTimeout(pending.timer)
+        this.pendingRequests.delete(message.requestId)
+
+        if (message.type === 'error') {
+          this.error = message.error
+          this.loading = false
+          this.scheduleIdleShutdown()
+          pending.resolve(message)
+          return
+        }
+
+        this.scheduleIdleShutdown()
+        pending.resolve(message)
+      }
+    })
+
+    child.on('error', (type: string, location: string, report: string) => {
+      const error = new Error(`Embedding utility fatal error: ${type} at ${location}`)
+      logger.error('Embedding utility fatal error', { type, location, report })
+      this.failProcess(error)
+    })
+
+    child.on('exit', (code: number) => {
+      if (this.shuttingDown && code === 0) {
+        this.process = null
+        this.readyPromise = null
+        return
+      }
+
+      const error = new Error(`Embedding utility exited unexpectedly (code ${code})`)
+      this.failProcess(error)
+    })
+  }
+
+  private applyProgress(message: EmbeddingProgressMessage): void {
+    if (message.phase === 'ready') {
+      this.loaded = true
+      this.loading = false
+      this.error = null
+    } else if (message.phase === 'error') {
+      this.loaded = false
+      this.loading = false
+      this.error = message.status
+    } else {
+      this.loading = true
+      this.error = null
+    }
+
+    emitProgress(message.phase, message.progress, message.status)
+  }
+
+  private sendRequest(
+    message: Extract<EmbeddingMainToWorkerMessage, { requestId: string }>
+  ): Promise<EmbeddingWorkerToMainMessage> {
+    if (!this.process) {
+      return Promise.reject(new Error('Embedding utility is not running'))
+    }
+
+    this.clearIdleShutdown()
+
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        this.pendingRequests.delete(message.requestId)
+        this.scheduleIdleShutdown()
+        reject(new Error(`Embedding request timed out: ${message.type}`))
+      }, REQUEST_TIMEOUT_MS)
+
+      this.pendingRequests.set(message.requestId, { resolve, reject, timer })
+      this.process!.postMessage(message)
+    })
+  }
+
+  private nextRequestId(): string {
+    this.requestCounter += 1
+    return `embedding_${this.requestCounter}_${Date.now()}`
+  }
+
+  private failProcess(error: Error): void {
+    this.clearIdleShutdown()
+    if (this.process) {
+      this.process = null
+    }
+    this.readyPromise = null
+    this.loaded = false
+    this.loading = false
+    this.error = error.message
+    this.rejectAll(error)
+  }
+
+  private rejectAll(error: Error): void {
+    for (const [requestId, pending] of this.pendingRequests) {
+      clearTimeout(pending.timer)
+      pending.reject(error)
+      this.pendingRequests.delete(requestId)
+    }
+  }
+
+  private scheduleIdleShutdown(): void {
+    this.clearIdleShutdown()
+
+    if (!this.process || this.pendingRequests.size > 0 || this.shuttingDown) {
+      return
+    }
+
+    this.idleShutdownTimer = setTimeout(() => {
+      this.idleShutdownTimer = null
+      if (!this.process || this.pendingRequests.size > 0 || this.shuttingDown) {
+        return
+      }
+
+      void this.stop().catch((error) => {
+        logger.warn('Embedding utility idle shutdown failed', {
+          error: error instanceof Error ? error.message : String(error)
+        })
+      })
+    }, IDLE_SHUTDOWN_MS)
+  }
+
+  private clearIdleShutdown(): void {
+    if (!this.idleShutdownTimer) {
+      return
+    }
+
+    clearTimeout(this.idleShutdownTimer)
+    this.idleShutdownTimer = null
+  }
+}
+
+const bridge = new EmbeddingModelBridge()
+
 // ============================================================================
 // Public API
 // ============================================================================
@@ -97,68 +460,11 @@ function emitProgress(
 /**
  * Initialize the embedding model.
  * Downloads the model on first use (~23MB).
- * Should be called when vault opens for background loading.
  *
  * @returns true if model loaded successfully
  */
 export async function initEmbeddingModel(): Promise<boolean> {
-  // Already loaded
-  if (extractor) {
-    return true
-  }
-
-  // Already loading - wait for it
-  if (isLoading) {
-    logger.info('Model already loading, waiting...')
-    while (isLoading) {
-      await new Promise((resolve) => setTimeout(resolve, 100))
-    }
-    return extractor !== null
-  }
-
-  isLoading = true
-  loadError = null
-
-  try {
-    emitProgress('loading', 0, 'Initializing embedding model...')
-
-    // Dynamic import to avoid loading at startup
-    const { pipeline, env } = await import('@huggingface/transformers')
-
-    // Configure cache directory
-    env.cacheDir = getModelCacheDir()
-    logger.debug('Cache directory:', env.cacheDir)
-
-    emitProgress('downloading', 5, 'Loading model (downloading if first time)...')
-
-    // Explicitly set dtype to fp32 for CPU (silences "dtype not specified" warning).
-    // `pipeline('feature-extraction', ...)` returns a union over all task pipelines that TS
-    // reports as "too complex to represent"; route through `unknown` to narrow to the concrete type.
-    const loaded: unknown = await pipeline('feature-extraction', MODEL_NAME, {
-      dtype: 'fp32',
-      progress_callback: (progress: ModelProgress) => {
-        if (progress.status === 'progress' && progress.progress !== undefined) {
-          const pct = Math.round(progress.progress)
-          emitProgress('downloading', pct, `Downloading model: ${pct}%`)
-        } else if (progress.status === 'done') {
-          emitProgress('loading', 95, 'Finalizing model...')
-        }
-      }
-    })
-    extractor = loaded as FeatureExtractionPipeline
-
-    emitProgress('ready', 100, 'Model ready')
-    logger.info('Model loaded successfully')
-    return true
-  } catch (error) {
-    loadError = error instanceof Error ? error.message : String(error)
-    logger.error('Failed to load model:', loadError)
-    emitProgress('error', 0, `Error: ${loadError}`)
-    extractor = null
-    return false
-  } finally {
-    isLoading = false
-  }
+  return bridge.loadModel()
 }
 
 /**
@@ -173,72 +479,38 @@ export async function generateEmbedding(text: string): Promise<Float32Array | nu
     return null
   }
 
-  if (!extractor) {
-    await initEmbeddingModel()
-  }
-
-  const extractorInstance = extractor
-  if (!extractorInstance) {
-    logger.warn('Model not available, skipping embedding')
-    return null
-  }
-
-  try {
-    const truncated = text.substring(0, MAX_CONTENT_LENGTH)
-
-    const output = (await extractorInstance(truncated, {
-      pooling: 'mean',
-      normalize: true
-    })) as { data: ArrayLike<number> }
-
-    // Extract data as Float32Array
-    const embedding = new Float32Array(output.data)
-
-    // Verify dimension
-    if (embedding.length !== EMBEDDING_DIMENSION) {
-      logger.error(`Unexpected dimension: ${embedding.length} (expected ${EMBEDDING_DIMENSION})`)
-      return null
-    }
-
-    return embedding
-  } catch (error) {
-    logger.error('Generation failed:', error)
-    return null
-  }
+  return bridge.embed(text)
 }
 
 /**
  * Check if the embedding model is loaded
  */
 export function isModelLoaded(): boolean {
-  return extractor !== null
+  return bridge.isLoaded
 }
 
 /**
  * Check if the model is currently loading
  */
 export function isModelLoading(): boolean {
-  return isLoading
+  return bridge.isLoading
 }
 
 /**
  * Get model information
  */
 export function getModelInfo(): ModelInfo {
-  return {
-    name: 'all-MiniLM-L6-v2',
-    dimension: EMBEDDING_DIMENSION,
-    loaded: extractor !== null,
-    loading: isLoading,
-    error: loadError
-  }
+  return bridge.info
 }
 
 /**
  * Unload the model to free memory
  */
 export function unloadModel(): void {
-  extractor = null
-  loadError = null
+  bridge.reset()
   logger.info('Model unloaded')
+}
+
+export async function stopEmbeddingModel(): Promise<void> {
+  await bridge.stop()
 }

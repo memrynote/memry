@@ -47,7 +47,6 @@ import { VaultChannels } from '@memry/contracts/ipc-channels'
 import { VaultError, VaultErrorCode } from '../lib/errors'
 import { startWatcher, stopWatcher } from './watcher'
 import { indexVault, rebuildIndex } from './indexer'
-import { initEmbeddingModel, isModelLoaded, isModelLoading } from '../lib/embeddings'
 import { createLogger } from '../lib/logger'
 import { getMainI18n } from '../lib/main-i18n'
 import { startSyncRuntime, stopSyncRuntime } from '../sync/runtime'
@@ -305,14 +304,6 @@ async function openVault(vaultPath: string): Promise<void> {
   await startWatcher(vaultPath)
 
   await startSyncRuntime()
-
-  // Start loading embedding model in background (non-blocking)
-  // This ensures the model is ready when user needs AI suggestions
-  if (!isModelLoaded() && !isModelLoading()) {
-    initEmbeddingModel().catch((err) => {
-      logger.error('Background embedding model load failed:', err)
-    })
-  }
 
   await startVaultAgentServices()
 
