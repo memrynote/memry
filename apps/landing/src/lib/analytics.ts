@@ -26,14 +26,23 @@ export type LandingEventName =
   | 'landing_demo_expand'
   | 'landing_calculator_bundle_select'
 
+export type LandingCampaignKey =
+  | 'utm_source'
+  | 'utm_medium'
+  | 'utm_campaign'
+  | 'utm_content'
+  | 'utm_term'
+
+export type LandingCampaignData = Partial<Record<LandingCampaignKey, string>>
+
 export type LandingEventData = {
   page: string
   target: string
-}
+} & LandingCampaignData
 
 export type LandingPageViewData = {
   page: string
-}
+} & LandingCampaignData
 
 type PostHogClient = typeof import('posthog-js/dist/module.full.no-external').default
 type PostHogConfig = NonNullable<Parameters<PostHogClient['init']>[1]>
@@ -41,6 +50,14 @@ type PostHogConfig = NonNullable<Parameters<PostHogClient['init']>[1]>
 const POSTHOG_KEY = import.meta.env?.VITE_POSTHOG_KEY
 const POSTHOG_HOST = import.meta.env?.VITE_POSTHOG_HOST
 const PRIVATE_REPLAY_SELECTOR = '[data-private], [data-sensitive], [data-ph-no-capture]'
+const CAMPAIGN_PARAM_KEYS: readonly LandingCampaignKey[] = [
+  'utm_source',
+  'utm_medium',
+  'utm_campaign',
+  'utm_content',
+  'utm_term'
+]
+const CAMPAIGN_VALUE_LIMIT = 120
 const URL_PROPERTY_KEYS = [
   '$current_url',
   '$pathname',
@@ -55,16 +72,43 @@ function stripQueryAndHash(value: string): string {
   return value.split(/[?#]/)[0] || 'unknown'
 }
 
-export function createLandingEventData(target: string, pathname: string): LandingEventData {
+function normalizeCampaignValue(value: string): string | undefined {
+  const normalized = value.trim()
+  if (!normalized || /[\r\n]/.test(normalized)) return undefined
+  return normalized.slice(0, CAMPAIGN_VALUE_LIMIT)
+}
+
+export function readLandingCampaignParams(search: string): LandingCampaignData {
+  const campaign: LandingCampaignData = {}
+  const params = new URLSearchParams(search)
+
+  for (const key of CAMPAIGN_PARAM_KEYS) {
+    const value = params.get(key)
+    if (!value) continue
+
+    const normalized = normalizeCampaignValue(value)
+    if (normalized) campaign[key] = normalized
+  }
+
+  return campaign
+}
+
+export function createLandingEventData(
+  target: string,
+  pathname: string,
+  search = ''
+): LandingEventData {
   return {
     page: stripQueryAndHash(pathname),
-    target: stripQueryAndHash(target)
+    target: stripQueryAndHash(target),
+    ...readLandingCampaignParams(search)
   }
 }
 
-export function createLandingPageViewData(pathname: string): LandingPageViewData {
+export function createLandingPageViewData(pathname: string, search = ''): LandingPageViewData {
   return {
-    page: stripQueryAndHash(pathname)
+    page: stripQueryAndHash(pathname),
+    ...readLandingCampaignParams(search)
   }
 }
 
@@ -141,18 +185,35 @@ function getPostHogClient(): Promise<PostHogClient | null> {
   return posthogClient
 }
 
-export function trackLandingPageView(pathname: string): void {
+export function trackLandingPageView(pathname: string, search = ''): void {
   if (typeof window === 'undefined') return
 
   void getPostHogClient().then((posthog) => {
-    posthog?.capture('$pageview', createLandingPageViewData(pathname))
+    posthog?.capture('$pageview', createLandingPageViewData(pathname, search))
   })
+}
+
+export async function getLandingAnalyticsHeaders(): Promise<Record<string, string>> {
+  const posthog = await getPostHogClient()
+  if (!posthog) return {}
+
+  const distinctId = posthog.get_distinct_id()
+  const sessionId = posthog.get_session_id()
+  const headers: Record<string, string> = {}
+
+  if (distinctId) headers['X-POSTHOG-DISTINCT-ID'] = String(distinctId)
+  if (sessionId) headers['X-POSTHOG-SESSION-ID'] = String(sessionId)
+
+  return headers
 }
 
 export function trackLandingEvent(name: LandingEventName, target: string): void {
   if (typeof window === 'undefined') return
 
   void getPostHogClient().then((posthog) => {
-    posthog?.capture(name, createLandingEventData(target, window.location.pathname))
+    posthog?.capture(
+      name,
+      createLandingEventData(target, window.location.pathname, window.location.search)
+    )
   })
 }

@@ -39,6 +39,22 @@ function getPostHogClient(): PostHog | null {
   return new PostHog(key, { host })
 }
 
+async function captureCheckoutInitiated(transactionId: string, plan: string, cadence: string) {
+  const posthog = getPostHogClient()
+  if (!posthog) return
+
+  try {
+    posthog.capture({
+      distinctId: transactionId,
+      event: 'checkout_initiated',
+      properties: { plan, cadence, transactionId }
+    })
+    await posthog.shutdown()
+  } catch {
+    console.error('[paddle-checkout] PostHog capture failed')
+  }
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
@@ -74,15 +90,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       checkout: checkoutUrl ? { url: checkoutUrl } : undefined
     })
 
-    const posthog = getPostHogClient()
-    if (posthog) {
-      posthog.capture({
-        distinctId: transaction.id,
-        event: 'checkout_initiated',
-        properties: { plan: intent.plan, cadence: intent.cadence, transactionId: transaction.id }
-      })
-      await posthog.shutdown()
-    }
+    await captureCheckoutInitiated(transaction.id, intent.plan, intent.cadence)
 
     return res.status(200).json({
       environment: paddleEnvironment,

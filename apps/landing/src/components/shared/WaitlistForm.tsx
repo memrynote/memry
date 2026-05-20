@@ -4,7 +4,11 @@ import { ArrowRight, Check, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { trackLandingEvent } from '@/lib/analytics'
+import {
+  getLandingAnalyticsHeaders,
+  readLandingCampaignParams,
+  trackLandingEvent
+} from '@/lib/analytics'
 
 interface WaitlistFormProps {
   variant?: 'hero' | 'inline' | 'centered'
@@ -25,12 +29,17 @@ export function WaitlistForm({ variant = 'hero', className }: WaitlistFormProps)
     setErrorMessage('')
 
     try {
+      const analyticsHeaders = await getLandingAnalyticsHeaders()
       const response = await fetch('/api/waitlist', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          ...analyticsHeaders
         },
-        body: JSON.stringify({ email })
+        body: JSON.stringify({
+          email,
+          attribution: readLandingCampaignParams(window.location.search)
+        })
       })
 
       const data = await response.json()
