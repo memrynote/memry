@@ -321,13 +321,14 @@ describe('writeTelemetryBatch', () => {
     expect(blobsJoined.includes(HMAC_KEY)).toBe(false)
   })
 
-  it('mirrors accepted telemetry events into PostHog batch without stable client identifiers', async () => {
+  it('mirrors accepted telemetry events into PostHog batch with a hashed install distinct id', async () => {
     // #given a configured PostHog project and a telemetry batch
     const { dataset } = createDataset()
     const fetchMock = vi.fn(async (_input: string | URL, _init?: RequestInit) => {
       return new Response(JSON.stringify({ status: 1 }), { status: 200 })
     })
     vi.stubGlobal('fetch', fetchMock)
+    const installHash = await hashTelemetryId(HMAC_KEY, VALID_INSTALL_ID)
 
     // #when writing
     await writeTelemetryBatch(
@@ -339,7 +340,7 @@ describe('writeTelemetryBatch', () => {
       baseBatch
     )
 
-    // #then the batch is mirrored to PostHog without raw local identifiers
+    // #then the batch is mirrored to PostHog with a stable anonymous install identity
     expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(fetchMock).toHaveBeenCalledWith(
       'https://us.i.posthog.com/batch/',
@@ -361,11 +362,12 @@ describe('writeTelemetryBatch', () => {
     expect(body.api_key).toBe('phc_test_project')
     expect(body.batch).toHaveLength(1)
     expect(body.batch[0].event).toBe('app_started')
-    expect(body.batch[0].distinct_id).toBe('memry_desktop_development')
+    expect(body.batch[0].distinct_id).toBe(`memry_desktop_development_${installHash}`)
     expect(body.batch[0].properties).toMatchObject({
       app_version: '0.1.0',
       build_channel: 'development',
       environment: 'development',
+      distinct_scope: 'install',
       platform: 'darwin',
       surface: 'app',
       action: 'started',
@@ -440,7 +442,8 @@ describe('writeTelemetryBatch', () => {
       '$exception'
     ])
     const exceptionEvent = postHogBatch.batch[2]
-    expect(exceptionEvent.distinct_id).toBe('memry_desktop_development')
+    const installHash = await hashTelemetryId(HMAC_KEY, VALID_INSTALL_ID)
+    expect(exceptionEvent.distinct_id).toBe(`memry_desktop_development_${installHash}`)
     expect(exceptionEvent.properties).toMatchObject({
       service_name: 'memry-desktop',
       environment: 'development',

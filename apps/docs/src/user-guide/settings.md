@@ -79,7 +79,8 @@ Shows the installed version. If a newer version is available, a button lets you 
 
 ### Privacy
 
-**Telemetry** opts in or out of anonymous usage analytics. Off by default. Only enums and surface names are sent — never note content.
+**Telemetry** opts in or out of anonymous usage analytics. Off by default. Only enum-like event
+metadata is sent — never note content, search text, tag names, or file paths.
 
 ---
 

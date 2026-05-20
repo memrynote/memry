@@ -86,9 +86,10 @@ The sync server always writes accepted desktop telemetry batches to Cloudflare A
 When `POSTHOG_API_KEY` and `POSTHOG_HOST` are configured on the sync server, the same
 content-free events are mirrored to PostHog's batch endpoint.
 
-PostHog mirroring does not use install IDs, session IDs, or their hashes as person identifiers.
-Desktop telemetry is grouped under a server-level `memry_desktop_<environment>` distinct ID while
-filterable dimensions stay in event properties.
+PostHog mirroring does not use raw install IDs or session IDs. Desktop telemetry uses a
+server-HMAC install hash as the PostHog distinct ID so active-install, funnel, and retention
+insights work without exposing local identifiers. Session IDs and session hashes stay out of
+PostHog.
 
 Additional PostHog events:
 

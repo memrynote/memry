@@ -174,12 +174,17 @@ const safePostHogLabel = (value: string | undefined, fallback: string): string =
   return value.replace(/[^a-zA-Z0-9_.:-]/g, '_').slice(0, 80) || fallback
 }
 
-const desktopDistinctId = (batch: TelemetryBatch, environment?: string): string =>
-  `memry_desktop_${safePostHogLabel(environment ?? batch.buildChannel, 'unknown')}`
+const desktopDistinctId = (
+  batch: TelemetryBatch,
+  installHash: string,
+  environment?: string
+): string =>
+  `memry_desktop_${safePostHogLabel(environment ?? batch.buildChannel, 'unknown')}_${installHash}`
 
 export const toPostHogEvent = (
   batch: TelemetryBatch,
   event: TelemetryEvent,
+  installHash: string,
   environment?: string
 ): PostHogEventPayload => {
   const dim = firstDimension(event.dimensions)
@@ -193,6 +198,7 @@ export const toPostHogEvent = (
     timezone_bucket: timezoneBucket(batch.timezoneOffsetMinutes),
     auth_state: batch.authState,
     sync_state: batch.syncState,
+    distinct_scope: 'install',
     surface: event.surface,
     action: event.action,
     batch_size: batch.events.length
@@ -217,7 +223,7 @@ export const toPostHogEvent = (
 
   return {
     event: event.name,
-    distinct_id: desktopDistinctId(batch, environment),
+    distinct_id: desktopDistinctId(batch, installHash, environment),
     timestamp: event.occurredAt,
     properties
   }
@@ -226,10 +232,11 @@ export const toPostHogEvent = (
 export const toPostHogBatchPayload = (
   apiKey: string,
   batch: TelemetryBatch,
+  installHash: string,
   environment?: string
 ): PostHogBatchPayload => ({
   api_key: apiKey,
-  batch: batch.events.map((event) => toPostHogEvent(batch, event, environment))
+  batch: batch.events.map((event) => toPostHogEvent(batch, event, installHash, environment))
 })
 
 const shouldMirrorTelemetryBatch = (env: TelemetryEnv): boolean =>
@@ -310,11 +317,17 @@ const toDesktopExceptionEvent = (event: PostHogEventPayload): PostHogEventPayloa
 
 const mirrorTelemetryBatchToPostHog = async (
   env: TelemetryEnv,
-  batch: TelemetryBatch
+  batch: TelemetryBatch,
+  hashes: BatchHashes
 ): Promise<void> => {
   if (!env.POSTHOG_API_KEY || !env.POSTHOG_HOST) return
 
-  const payload = toPostHogBatchPayload(env.POSTHOG_API_KEY, batch, env.ENVIRONMENT)
+  const payload = toPostHogBatchPayload(
+    env.POSTHOG_API_KEY,
+    batch,
+    hashes.installHash,
+    env.ENVIRONMENT
+  )
   const exceptionEvents = payload.batch
     .map(toDesktopExceptionEvent)
     .filter((event): event is PostHogEventPayload => event !== null)
@@ -347,7 +360,7 @@ export const writeTelemetryBatch = async (
   }
 
   if (shouldMirrorTelemetryBatch(env)) {
-    const mirrorPromise = mirrorTelemetryBatchToPostHog(env, batch)
+    const mirrorPromise = mirrorTelemetryBatchToPostHog(env, batch, hashes)
     if (options.waitUntil) {
       options.waitUntil(mirrorPromise)
     } else {
