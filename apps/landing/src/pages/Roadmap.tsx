@@ -46,8 +46,28 @@ const ACTIVE_ITEMS: RoadmapItem[] = [
 
 const PLANNED_ITEMS: RoadmapItem[] = [
   {
-    title: 'Mobile apps — iOS and Android',
-    caption: 'Capture, triage, and read on the go. Targeting late 2026.'
+    title: 'Mobile apps — iPhone, iPad, and Android',
+    caption:
+      'Quick capture on phones plus an iPad-optimized writing and reading surface. Targeting late 2026.'
+  },
+  {
+    title: 'iPad handwriting and PDF annotation',
+    caption:
+      'Apple Pencil writing, searchable handwritten notes, and markup for PDFs inside the vault.'
+  },
+  {
+    title: 'Offline mobile vault with conflict-safe sync',
+    caption:
+      'Keep writing without internet, then merge mobile changes safely when the vault reconnects.'
+  },
+  {
+    title: 'Mobile share sheet, widgets, and quick capture',
+    caption:
+      'Capture links, text, images, and voice from iOS or Android without opening the full app.'
+  },
+  {
+    title: 'Locked spaces for sensitive notes',
+    caption: 'Biometric or passcode-gated areas for private notes inside an encrypted vault.'
   },
   {
     title: 'Public and shared vaults',

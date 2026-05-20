@@ -433,7 +433,11 @@ export const ROADMAP_DATA = {
       title: 'Planned next',
       caption: 'Direction, not a release promise. These unlock more ways to use your vault.',
       items: [
-        'Mobile apps for iOS and Android (targeting late 2026)',
+        'Mobile apps for iPhone, iPad, and Android (targeting late 2026)',
+        'iPad handwriting and PDF annotation',
+        'Offline mobile vault with conflict-safe sync',
+        'Mobile share sheet, widgets, and quick capture',
+        'Locked spaces for sensitive notes',
         'Public and shared vaults',
         'Plugin API for custom tools and views',
         'Templates marketplace',
