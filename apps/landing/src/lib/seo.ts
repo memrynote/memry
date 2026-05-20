@@ -25,7 +25,7 @@ export const PAGE_META: Record<string, PageMeta> = {
   features: {
     title: 'Features — memrynote',
     description:
-      'Inbox, notes, tasks & journal — four pillars of thought in one app. Wiki-links, Kanban, daily journal, AI clustering, all local-first.',
+      'Inbox, notes, tasks & journal — four pillars of thought in one app. Wiki-links, Kanban, daily journal, optional AI clustering, all local-first.',
     path: '/features'
   },
   notes: {
@@ -37,7 +37,7 @@ export const PAGE_META: Record<string, PageMeta> = {
   inbox: {
     title: 'Inbox — memrynote',
     description:
-      'A contemplative space for processing what comes in. Quick capture, voice memos, web clips, PDF extraction, and AI-powered filing — all on your device.',
+      'A contemplative space for processing what comes in. Quick capture, voice memos, web clips, PDF extraction, and optional AI-powered filing — all on your device.',
     path: '/features/inbox'
   },
   journal: {
@@ -61,7 +61,7 @@ export const PAGE_META: Record<string, PageMeta> = {
   aiAgent: {
     title: 'AI Agent — memrynote (Coming soon)',
     description:
-      'Chat with your second brain. Local-first, BYOK, MCP-native. Approval-gated writes, conversation-level provider settings, your vault never leaves your device with local models.',
+      'Optional AI for your second brain. Turn it on or off anytime. Local-first, BYOK, MCP-native, approval-gated writes, and local-model support.',
     path: '/features/ai-agent'
   },
   downloadDesktop: {
@@ -79,7 +79,7 @@ export const PAGE_META: Record<string, PageMeta> = {
   security: {
     title: 'Security & Privacy — memrynote',
     description:
-      'Local-first storage, XChaCha20-Poly1305 encryption, zero-knowledge sync, on-device AI. Your data never leaves your device unencrypted.',
+      'Local-first storage, XChaCha20-Poly1305 encryption, zero-knowledge sync, optional on-device AI. Your data never leaves your device unencrypted.',
     path: '/security'
   },
   pricing: {

@@ -457,8 +457,9 @@ function ClusterPanelMock() {
         12 captures. <span className="italic text-terracotta">3 themes.</span>
       </h3>
       <p className="mt-3 max-w-md text-sm leading-relaxed text-muted">
-        memrynote reads titles and content, then proposes groupings. File the whole cluster at once
-        or break it apart. Local-first by design — see the AI roadmap for the full model story.
+        When AI is on, memrynote reads titles and content, then proposes groupings. File the whole
+        cluster at once or break it apart. Local-first by design — see the AI roadmap for the full
+        model story.
       </p>
 
       <ul className="mt-7 space-y-3">
@@ -959,12 +960,12 @@ const INBOX_FAQ = [
   {
     question: 'How does voice transcription work?',
     answer:
-      'Record a memo and memrynote produces an editable transcript automatically. The audio file is preserved as an attachment so you can re-listen at any time. The full local-model speech pipeline is on the AI roadmap.'
+      'Record a memo and memrynote produces an editable transcript automatically when transcription is enabled. The audio file is preserved as an attachment so you can re-listen at any time. The full local-model speech pipeline is on the AI roadmap.'
   },
   {
     question: 'Is filing private? Does any data leave my machine?',
     answer:
-      'Your captures live in your vault on your device. Sync between your own devices is end-to-end encrypted. memrynote is local-first by design, and the AI Agent roadmap is built around BYOK and local models — see the AI Agent page for the architectural plan.'
+      'Your captures live in your vault on your device. Sync between your own devices is end-to-end encrypted. AI-assisted filing is optional, and the AI Agent roadmap is built around BYOK and local models — see the AI Agent page for the architectural plan.'
   },
   {
     question: 'Can I import existing items into Inbox?',

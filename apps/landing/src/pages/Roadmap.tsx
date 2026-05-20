@@ -38,9 +38,9 @@ const ACTIVE_ITEMS: RoadmapItem[] = [
     caption: 'Bring your knowledge base over from Obsidian, Notion, Roam, or any Markdown folder.'
   },
   {
-    title: 'AI Agent public release polish',
+    title: 'Optional AI Agent public release polish',
     caption:
-      'Stable provider settings, smoother streaming, and approval-gated writes for everyday use.'
+      'Stable on/off controls, provider settings, smoother streaming, and approval-gated writes for everyday use.'
   }
 ]
 
@@ -105,7 +105,7 @@ const LAUNCHED_GROUPS: LaunchedGroup[] = [
     period: 'March 2026',
     items: [
       { title: 'White theme and settings panel polish' },
-      { title: 'Inline AI editing in the editor' },
+      { title: 'Optional inline AI editing in the editor' },
       { title: 'Graph view' },
       { title: 'Global search' },
       { title: 'Journal redesign with day context and templates' },
@@ -132,7 +132,7 @@ const LAUNCHED_GROUPS: LaunchedGroup[] = [
       { title: 'Advanced search with operators and filters' },
       { title: 'Reminders for notes, journals, and highlights' },
       { title: 'Templates with folder defaults and version history' },
-      { title: 'AI filing suggestions with feedback tracking' },
+      { title: 'Optional AI filing suggestions with feedback tracking' },
       { title: 'Local embedding vector search via sqlite-vec' },
       { title: 'Property drag-and-drop, renaming, and unified API' },
       { title: 'Test infrastructure: Vitest and Playwright with seeded fixtures' },
@@ -156,7 +156,7 @@ const LAUNCHED_GROUPS: LaunchedGroup[] = [
       },
       {
         title: 'Journal v1',
-        caption: 'Day cards, calendar heatmap, focus mode, and AI suggestions.'
+        caption: 'Day cards, calendar heatmap, focus mode, and optional AI suggestions.'
       },
       {
         title: 'Inbox capture: text, URLs, images, and voice',

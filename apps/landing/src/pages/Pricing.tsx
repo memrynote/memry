@@ -792,8 +792,8 @@ function LimitMatrix({
             Compare plans
           </h2>
           <p className="mt-5 text-lg leading-relaxed text-muted">
-            Local features stay free. Paid sync, storage, AI access, and supporter extras are split
-            out plainly before checkout.
+            Local features stay free. Paid sync, storage, optional AI access, and supporter extras
+            are split out plainly before checkout.
           </p>
         </motion.div>
 

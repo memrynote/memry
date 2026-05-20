@@ -129,8 +129,9 @@ function AIAgentHero() {
             <span className="italic text-terracotta">On your device.</span>
           </h1>
           <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-muted md:text-lg">
-            An AI agent that lives inside memrynote. Local-first, BYOK, MCP-native. Your vault never
-            leaves your machine with local models, and every write needs your nod.
+            An optional AI agent that lives inside memrynote. Turn it on or off anytime.
+            Local-first, BYOK, MCP-native. Your vault never leaves your machine with local models,
+            and every write needs your nod.
           </p>
 
           <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -194,7 +195,7 @@ const ANCHOR_CARDS: { icon: LucideIcon; title: string; body: string; comingSoon?
   {
     icon: KeyRound,
     title: 'BYOK providers',
-    body: 'Bring your own Claude, Codex, Ollama, or OpenAI-compatible backend. Keys stay in the OS keychain.',
+    body: 'Bring your own Claude, Codex, Ollama, or OpenAI-compatible backend only if you want AI on. Keys stay in the OS keychain.',
     comingSoon: true
   },
   {
@@ -216,8 +217,8 @@ function EverythingInOnePlace() {
             Not for autoplay.
           </h2>
           <p className="mt-5 text-lg leading-relaxed text-muted">
-            We are designing the agent the way we would want one. Open backends, local options,
-            cited answers, and a stop button before any write.
+            We are designing the agent the way we would want one. AI stays optional, open backends
+            and local options are first-class, and there is a stop button before any write.
           </p>
         </motion.div>
 
@@ -669,8 +670,8 @@ function LocalOnlyMode() {
               <span className="italic text-terracotta">Vault never leaves your machine.</span>
             </h2>
             <p className="mt-5 max-w-md text-lg leading-relaxed text-muted">
-              Pair memrynote with Ollama, llama.cpp, MLX, or vLLM. Switch one toggle and the agent
-              stops talking to any network. Inference is yours.
+              Pair memrynote with Ollama, llama.cpp, MLX, or vLLM when you want AI on. Switch one
+              toggle and the agent stops talking to any network. Inference is yours.
             </p>
             <div className="mt-7 flex flex-wrap gap-2">
               {['Ollama', 'llama.cpp', 'MLX', 'vLLM'].map((name) => (
@@ -828,7 +829,7 @@ const INTEGRATIONS: { icon: LucideIcon; title: string; body: string }[] = [
   {
     icon: ShieldCheck,
     title: 'Never leaves your device',
-    body: 'With a local model, your vault and your prompts stay on-machine. No cloud round-trips.'
+    body: 'With AI on and a local model selected, your vault and prompts stay on-machine. No cloud round-trips.'
   }
 ]
 
@@ -1015,6 +1016,11 @@ const AGENT_FAQ = [
     question: 'Do I need an API key?',
     answer:
       'Only if you want to use a hosted provider like Claude or Codex. Bring your own key and memrynote stores it in your OS keychain. Or skip the keys entirely and run a local model with Ollama, llama.cpp, MLX, or vLLM.'
+  },
+  {
+    question: 'Can I turn AI off?',
+    answer:
+      'Yes. AI is optional and can be turned on or off from settings. If you leave it off, your vault still works as a local-first notes, tasks, journal, inbox, and calendar app.'
   },
   {
     question: 'Is my vault sent to the cloud?',

@@ -75,7 +75,7 @@ const PILLARS: PillarSection[] = [
     title: 'Inbox',
     tagline: 'Capture first, organize later.',
     description:
-      'A contemplative space for processing incoming information. Grab anything from anywhere — AI handles the rest.',
+      'A contemplative space for processing incoming information. Grab anything from anywhere — optional AI helps when you want it.',
     features: [
       {
         icon: Zap,
@@ -119,8 +119,8 @@ const PILLARS: PillarSection[] = [
       },
       {
         icon: Brain,
-        title: 'AI Filing',
-        description: 'Smart suggestions learn where you file things over time.'
+        title: 'Optional AI Filing',
+        description: 'Turn on smart suggestions when you want help filing things over time.'
       },
       {
         icon: Clock,
@@ -453,10 +453,11 @@ const SUPPORTING: SupportCategory[] = [
     icon: Sparkles,
     title: 'AI Assistant',
     features: [
+      'On/off from settings',
       'Global AI panel',
       'Chat & compose modes',
       'Attach notes as context',
-      'AI-powered suggestions',
+      'Optional AI-powered suggestions',
       'Smart summarization',
       'Filing recommendations'
     ]
@@ -606,7 +607,7 @@ export function FeaturesPage() {
         <Container>
           <SectionHeading
             title="Supporting features"
-            subtitle="Search, sync, workspace, and AI — the infrastructure that ties everything together."
+            subtitle="Search, sync, workspace, and optional AI — the infrastructure that ties everything together."
           />
           <motion.div
             className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5"

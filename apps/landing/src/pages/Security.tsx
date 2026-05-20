@@ -77,8 +77,9 @@ const SECURITY_SECTIONS: SecuritySection[] = [
     icon: Brain,
     title: 'On-device AI',
     description:
-      'The AI assistant runs a local model on your machine. Your notes are never sent to OpenAI, Google, or anyone else.',
+      'AI is optional and can be turned on or off. With a local model, your notes are never sent to OpenAI, Google, or anyone else.',
     details: [
+      'AI can be disabled fully in settings',
       'Local inference via on-device model',
       'No API calls to external AI providers',
       'Context stays in your process memory',

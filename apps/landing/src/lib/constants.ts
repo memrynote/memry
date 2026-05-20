@@ -100,7 +100,7 @@ export const FEATURE_NAV_ITEMS: readonly LandingDropdownItem[] = [
   },
   {
     label: 'AI Agent',
-    description: 'Chat with your local vault',
+    description: 'Optional. Turn AI on or off anytime.',
     href: '/features/ai-agent',
     icon: AiBrain03Icon,
     iconType: 'hugeicon'
@@ -190,8 +190,8 @@ export const FEATURES = [
     title: 'Inbox',
     tagline: 'Capture first, organize later.',
     description:
-      'A space for processing incoming information. Local AI clustering detects related items and suggests bulk actions — nothing leaves your device.',
-    highlights: ['AI-powered clustering', 'Quick capture', 'Snooze & file', 'Bulk actions'],
+      'A space for processing incoming information. Optional local AI clustering detects related items and suggests bulk actions — nothing leaves your device.',
+    highlights: ['Optional AI clustering', 'Quick capture', 'Snooze & file', 'Bulk actions'],
     screenshot: 'inbox'
   },
   {
@@ -425,7 +425,7 @@ export const ROADMAP_DATA = {
       items: [
         'Web clipper for pages, highlights, and snippets',
         'Importers for Obsidian, Notion, Roam, and Markdown folders',
-        'AI Agent public release polish: provider settings, streaming, approvals'
+        'Optional AI Agent polish: provider settings, streaming, approvals'
       ]
     },
     {
@@ -452,7 +452,7 @@ export const USE_CASES = [
     description:
       'Stop context-switching between Notion, Todoist, and a journal app. memrynote connects your research, tasks, and daily reflections in one local-first workspace — with wiki-links that actually build a knowledge graph.',
     features: [
-      'AI-powered inbox clustering',
+      'Optional AI-powered inbox clustering',
       '[[Wiki links]] & backlinks',
       'Full-text search in ms',
       'Markdown-native'
@@ -510,16 +510,16 @@ export const USE_CASES = [
     title: 'ADHD Brains',
     painQuote: 'Thoughts vanish before I can organize them.',
     description:
-      "Capture first, organize later. The Inbox holds your thoughts so your brain doesn't have to. Zero-friction quick capture means nothing slips through — and AI clustering helps you make sense of the chaos when you're ready.",
+      "Capture first, organize later. The Inbox holds your thoughts so your brain doesn't have to. Zero-friction quick capture means nothing slips through — and optional AI clustering helps you make sense of the chaos when you're ready.",
     features: [
       'Zero-friction Inbox capture',
-      'AI clustering for brain dumps',
+      'Optional AI clustering for brain dumps',
       'Gentle daily Journal ritual',
       'No forced organization'
     ],
     workflow: [
       'Brain-dump into Inbox',
-      'AI groups related thoughts',
+      'Turn on AI to group related thoughts',
       "Process when you're ready",
       'Build structure gradually'
     ]
@@ -782,7 +782,7 @@ export const PLAN_COMPARISON_MATRIX = {
       ]
     },
     {
-      title: 'AI features',
+      title: 'Optional AI features',
       rows: [
         {
           feature: 'AI assistant',
