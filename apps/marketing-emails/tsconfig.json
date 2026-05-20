@@ -1,0 +1,7 @@
+{
+  "extends": "@memry/typescript-config/web.json",
+  "compilerOptions": {
+    "allowImportingTsExtensions": true
+  },
+  "include": ["emails", "src"]
+}

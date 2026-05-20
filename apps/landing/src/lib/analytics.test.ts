@@ -5,6 +5,7 @@ import {
   createLandingEventData,
   createLandingPageViewData,
   createLandingPostHogConfig,
+  readLandingCampaignParams,
   sanitizeCapturedNetworkRequest,
   sanitizePostHogEvent
 } from './analytics.ts'
@@ -21,11 +22,30 @@ describe('landing analytics event data', () => {
     assert.deepEqual(
       createLandingEventData(
         'download:https://github.com/memrynote/memry/releases?token=secret',
-        '/pricing?checkout=success#plans'
+        '/pricing?checkout=success#plans',
+        '?utm_source=waitlist&utm_medium=email&utm_campaign=waitlist_01_launch_plain&utm_content=primary_cta&email=private@example.com'
       ),
       {
         page: '/pricing',
-        target: 'download:https://github.com/memrynote/memry/releases'
+        target: 'download:https://github.com/memrynote/memry/releases',
+        utm_source: 'waitlist',
+        utm_medium: 'email',
+        utm_campaign: 'waitlist_01_launch_plain',
+        utm_content: 'primary_cta'
+      }
+    )
+  })
+
+  it('keeps only safe campaign params for attribution', () => {
+    assert.deepEqual(
+      readLandingCampaignParams(
+        '?utm_source=waitlist&utm_medium=email&utm_campaign=waitlist_01&utm_term=launch&token=secret'
+      ),
+      {
+        utm_source: 'waitlist',
+        utm_medium: 'email',
+        utm_campaign: 'waitlist_01',
+        utm_term: 'launch'
       }
     )
   })

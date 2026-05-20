@@ -1,0 +1,24 @@
+{
+  "name": "@memry/marketing-emails",
+  "version": "0.1.0",
+  "private": true,
+  "license": "GPL-3.0",
+  "type": "module",
+  "scripts": {
+    "dev": "email dev --dir emails --port 3006",
+    "test:copy": "node scripts/check-campaign-copy.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build": "email export --dir emails --outDir out"
+  },
+  "dependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-email": "^6.1.4"
+  },
+  "devDependencies": {
+    "@memry/typescript-config": "workspace:*",
+    "@types/react": "^19.2.5",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "~5.9.3"
+  }
+}

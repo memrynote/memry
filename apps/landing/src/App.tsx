@@ -98,11 +98,11 @@ function ScrollDepthAnalytics() {
 }
 
 function PageViewAnalytics() {
-  const { pathname } = useLocation()
+  const { pathname, search } = useLocation()
 
   useEffect(() => {
-    trackLandingPageView(pathname)
-  }, [pathname])
+    trackLandingPageView(pathname, search)
+  }, [pathname, search])
 
   return null
 }

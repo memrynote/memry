@@ -1,6 +1,18 @@
 import { PostHog } from 'posthog-node'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
+const ATTRIBUTION_KEYS = [
+  'utm_source',
+  'utm_medium',
+  'utm_campaign',
+  'utm_content',
+  'utm_term'
+] as const
+const ATTRIBUTION_VALUE_LIMIT = 120
+
+type WaitlistAttributionKey = (typeof ATTRIBUTION_KEYS)[number]
+type WaitlistAttribution = Partial<Record<WaitlistAttributionKey, string>>
+
 function hasControlWhitespace(value: string): boolean {
   for (const char of value) {
     if (char <= ' ' || char === '\u007f') {
@@ -57,6 +69,73 @@ function getPostHogClient(): PostHog | null {
   return new PostHog(key, { host })
 }
 
+function getHeaderValue(req: VercelRequest, name: string): string | undefined {
+  const value = req.headers[name.toLowerCase()]
+  if (Array.isArray(value)) return value[0]
+  return typeof value === 'string' && value ? value : undefined
+}
+
+function getRequestBody(req: VercelRequest): unknown {
+  if (typeof req.body !== 'string') return req.body
+
+  try {
+    return JSON.parse(req.body)
+  } catch {
+    return null
+  }
+}
+
+function normalizeAttributionValue(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined
+
+  const normalized = value.trim()
+  if (!normalized || /[\r\n]/.test(normalized)) return undefined
+
+  return normalized.slice(0, ATTRIBUTION_VALUE_LIMIT)
+}
+
+export function normalizeWaitlistAttribution(input: unknown): WaitlistAttribution {
+  if (!input || typeof input !== 'object') return {}
+
+  const attribution: WaitlistAttribution = {}
+
+  for (const key of ATTRIBUTION_KEYS) {
+    const value = normalizeAttributionValue((input as Record<string, unknown>)[key])
+    if (value) attribution[key] = value
+  }
+
+  return attribution
+}
+
+async function captureWaitlistSignup(
+  req: VercelRequest,
+  contactId: string,
+  resendSegmentConfigured: boolean,
+  attribution: WaitlistAttribution
+): Promise<void> {
+  const posthog = getPostHogClient()
+  if (!posthog) return
+
+  try {
+    const distinctId = getHeaderValue(req, 'x-posthog-distinct-id') ?? contactId
+    const sessionId = getHeaderValue(req, 'x-posthog-session-id')
+
+    posthog.capture({
+      distinctId,
+      event: 'waitlist_signup_success',
+      properties: {
+        contact_id: contactId,
+        resend_segment_configured: resendSegmentConfigured,
+        ...(sessionId ? { $session_id: sessionId } : {}),
+        ...attribution
+      }
+    })
+    await posthog.shutdown()
+  } catch (error) {
+    console.error('[waitlist] PostHog capture failed:', sanitizeLogValue(error))
+  }
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
@@ -70,7 +149,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: 'Server configuration error' })
   }
 
-  const { email } = req.body
+  const body = getRequestBody(req)
+  const email =
+    body && typeof body === 'object' && 'email' in body ? (body as { email?: unknown }).email : null
 
   if (!email || typeof email !== 'string') {
     return res.status(400).json({ error: 'Email is required' })
@@ -79,6 +160,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!isValidEmail(email)) {
     return res.status(400).json({ error: 'Invalid email format' })
   }
+
+  const attribution = normalizeWaitlistAttribution(
+    body && typeof body === 'object' && 'attribution' in body
+      ? (body as { attribution?: unknown }).attribution
+      : null
+  )
 
   const headers = {
     Authorization: `Bearer ${RESEND_API_KEY}`,
@@ -114,11 +201,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
     }
 
-    const posthog = getPostHogClient()
-    if (posthog && contactId) {
-      posthog.capture({ distinctId: contactId, event: 'waitlist_signup_success' })
-      await posthog.shutdown()
-    }
+    if (contactId)
+      await captureWaitlistSignup(req, contactId, Boolean(RESEND_SEGMENT_ID), attribution)
 
     return res.status(200).json({
       success: true,

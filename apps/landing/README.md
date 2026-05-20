@@ -17,6 +17,7 @@ Built with React 19, TypeScript, Tailwind CSS 4, and Framer Motion. Deployed on 
 | UI        | Radix UI primitives            |
 | API       | Vercel Serverless Functions    |
 | Email     | Resend                         |
+| Analytics | PostHog                        |
 | Fonts     | Satoshi, Inter, JetBrains Mono |
 
 ## Getting Started
@@ -28,15 +29,16 @@ cp apps/landing/.env.example apps/landing/.env.local
 
 Fill in your environment variables:
 
-| Variable            | Required | Description                               |
-| ------------------- | -------- | ----------------------------------------- |
-| `RESEND_API_KEY`    | Yes      | API key from [Resend](https://resend.com) |
-| `RESEND_SEGMENT_ID` | No       | Segment ID to group waitlist contacts     |
+| Variable                | Required | Description                                      |
+| ----------------------- | -------- | ------------------------------------------------ |
+| `RESEND_API_KEY`        | Yes      | API key from [Resend](https://resend.com)        |
+| `RESEND_SEGMENT_ID`     | No       | Segment ID to group waitlist contacts            |
+| `RESEND_WEBHOOK_SECRET` | Yes      | Signing secret for Resend event webhook delivery |
 
 PostHog analytics is optional in local development. Production should set the public project key
-and host so landing pageviews, explicit CTA/demo/waitlist events, and privacy-masked session
-replays are captured. Replay masks all inputs and text, blocks private selectors, and strips network
-bodies/headers before capture.
+and host so landing pageviews, explicit CTA/demo/waitlist events, UTM attribution, Resend webhook
+events, and privacy-masked session replays are captured. Replay masks all inputs and text, blocks
+private selectors, and strips network bodies/headers before capture.
 
 | Variable            | Required | Description                                         |
 | ------------------- | -------- | --------------------------------------------------- |
@@ -88,6 +90,7 @@ functions locally — no separate backend needed.
 ```
 ├── api/
 │   ├── paddle-checkout.ts      # Vercel serverless — Paddle transaction checkout
+│   ├── resend-webhook.ts       # Vercel serverless — Resend event webhook
 │   └── waitlist.ts             # Vercel serverless — Resend waitlist signup
 ├── src/
 │   ├── components/
@@ -113,6 +116,7 @@ set the Vercel project Root Directory to `apps/landing` so Vercel reads this pac
 `package.json`, `vite.config.ts`, `api/`, and `vercel.json`.
 
 - `api/waitlist.ts` runs as a serverless function
+- `api/resend-webhook.ts` receives Resend delivery/open/click/unsubscribe events for PostHog
 - SPA is served as static output from `vite build`
 - Domain redirects configured in `vercel.json` (www + .ai variants → memrynote.com)
 

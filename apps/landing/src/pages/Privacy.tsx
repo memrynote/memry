@@ -125,7 +125,8 @@ export function PrivacyPage() {
         </p>
         <p>
           If you join the waitlist or contact us, we store the email address you submit so we can
-          reply or send the messages you opted into.
+          reply or send the messages you opted into. We may track delivery, opens, clicks, and
+          unsubscribes for those emails so we can understand whether the campaign is working.
         </p>
 
         <h2>6. How we use the data we have</h2>
@@ -174,8 +175,12 @@ export function PrivacyPage() {
             (name, billing address, payment method).
           </li>
           <li>
-            <strong>Postmark or a similar transactional email provider</strong> — delivers sign-up,
-            billing, and security emails.
+            <strong>Resend or a similar transactional email provider</strong> — delivers sign-up,
+            waitlist, billing, and security emails.
+          </li>
+          <li>
+            <strong>PostHog</strong> — collects privacy-masked website analytics, session replay,
+            and campaign events.
           </li>
         </ul>
         <p>
