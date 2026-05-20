@@ -408,7 +408,7 @@ function TierCard({
         isFounding
           ? 'border-dark-border bg-dark text-ink-inverted shadow-[0_24px_60px_-30px_rgba(20,18,16,0.55)]'
           : isRecommended
-            ? 'border-terracotta/35 bg-card shadow-[0_20px_60px_-32px_rgba(255,103,26,0.45)] lg:scale-[1.015]'
+            ? 'z-10 border-terracotta/45 bg-card shadow-[0_30px_80px_-34px_rgba(255,103,26,0.65)] md:scale-[1.03] xl:-translate-y-3 xl:scale-[1.06]'
             : 'border-border/60 bg-card shadow-card'
       )}
     >

@@ -29,7 +29,7 @@ export function FounderStory() {
             </svg>
 
             <div className="flex flex-col md:flex-row items-start gap-8 lg:gap-10">
-              <div className="w-full max-w-xs shrink-0 md:w-52 md:max-w-none lg:w-60">
+              <div className="mx-auto w-44 shrink-0 sm:w-52 md:mx-0 md:w-52 lg:w-60">
                 <div
                   className="overflow-hidden rounded-lg border border-border/70 bg-paper shadow-sm"
                   style={{ transform: 'rotate(1.5deg)' }}
