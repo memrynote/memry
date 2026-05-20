@@ -4,18 +4,13 @@ import { motion } from 'framer-motion'
 import {
   Apple,
   ArrowRight,
-  BookOpen,
   CheckCircle2,
-  CheckSquare,
-  ChevronRight,
   Cpu,
   Download,
   FileText,
   FolderOpen,
   Github,
   HardDrive,
-  Hash,
-  Inbox,
   Lock,
   MonitorSmartphone,
   Package,
@@ -27,6 +22,7 @@ import {
   type LucideIcon
 } from 'lucide-react'
 import { Container } from '@/components/layout/Container'
+import { FeatureHeroScreenshot } from '@/components/shared/FeatureHeroScreenshot'
 import { PageHead } from '@/components/shared/PageHead'
 import { Button } from '@/components/ui/button'
 import {
@@ -177,185 +173,22 @@ function DesktopHero() {
           transition={BLUR_REVEAL_TRANSITION}
           className="mt-14"
         >
-          <DesktopAppMock />
+          <DesktopNoteScreenshot />
         </motion.div>
       </Container>
     </section>
   )
 }
 
-function DesktopAppMock() {
+function DesktopNoteScreenshot() {
   return (
-    <div className="relative mx-auto max-w-4xl">
-      <div className="absolute -inset-x-12 -bottom-10 -top-6 -z-10 rounded-[40px] bg-[radial-gradient(ellipse_at_center,rgba(255,103,26,0.10),transparent_70%)]" />
-      <div className="overflow-hidden rounded-[26px] border border-border/60 bg-card shadow-[0_30px_80px_-30px_rgba(31,41,55,0.3)]">
-        <div className="flex items-center justify-between gap-3 border-b border-border/50 bg-paper-alt px-5 py-3">
-          <div className="flex items-center gap-2">
-            <span className="h-2.5 w-2.5 rounded-full bg-[#FF5F57]" />
-            <span className="h-2.5 w-2.5 rounded-full bg-[#FFBD2E]" />
-            <span className="h-2.5 w-2.5 rounded-full bg-[#28CA41]" />
-          </div>
-          <div className="flex items-center gap-2 font-mono-accent text-[11px] uppercase tracking-[0.16em] text-muted">
-            <FolderOpen className="h-3.5 w-3.5" strokeWidth={1.8} />
-            <span>kaan&apos;s vault</span>
-          </div>
-          <div className="hidden items-center gap-2 sm:flex">
-            <span className="font-mono-accent text-[10px] uppercase tracking-[0.18em] text-muted/70">
-              Local
-            </span>
-            <span className="h-1.5 w-1.5 rounded-full bg-sage" />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-[200px_1fr] md:grid-cols-[220px_1fr_220px]">
-          <aside className="border-e border-border/40 bg-paper-alt/50 px-4 py-5">
-            <p className="font-mono-accent text-[10px] uppercase tracking-[0.22em] text-muted">
-              Workspace
-            </p>
-            <ul className="mt-4 space-y-1 text-[13px]">
-              {[
-                { icon: Inbox, label: 'Inbox', count: 12 },
-                { icon: BookOpen, label: 'Journal', count: null },
-                { icon: FileText, label: 'Notes', count: 248, active: true },
-                { icon: CheckSquare, label: 'Tasks', count: 17 },
-                { icon: Hash, label: 'Tags', count: null }
-              ].map((item) => (
-                <li
-                  key={item.label}
-                  className={cn(
-                    'flex items-center justify-between gap-2 rounded-lg px-2.5 py-1.5',
-                    item.active
-                      ? 'bg-terracotta/12 text-terracotta'
-                      : 'text-ink/85 hover:bg-paper-alt/80'
-                  )}
-                >
-                  <span className="flex items-center gap-2">
-                    <item.icon className="h-4 w-4" strokeWidth={1.8} />
-                    {item.label}
-                  </span>
-                  {item.count != null && (
-                    <span className="font-mono-accent text-[11px] text-muted/80">{item.count}</span>
-                  )}
-                </li>
-              ))}
-            </ul>
-            <div className="mt-6 rounded-xl border border-border/55 bg-card px-3 py-3">
-              <p className="font-mono-accent text-[9px] uppercase tracking-[0.22em] text-muted">
-                Sync
-              </p>
-              <p className="mt-1.5 flex items-center gap-2 text-[12px] text-ink">
-                <span className="h-1.5 w-1.5 rounded-full bg-sage" />
-                Up to date
-              </p>
-              <p className="mt-0.5 text-[11px] text-muted">2 minutes ago</p>
-            </div>
-          </aside>
-
-          <section className="px-6 py-7 md:px-9 md:py-10">
-            <div className="mb-3 flex items-center gap-2 text-[12px] text-muted">
-              <span>Notes</span>
-              <ChevronRight className="h-3 w-3" strokeWidth={2} />
-              <span>research</span>
-              <ChevronRight className="h-3 w-3" strokeWidth={2} />
-              <span className="text-ink">second-brain.md</span>
-            </div>
-            <h2 className="font-serif text-2xl text-ink md:text-3xl">
-              Second brain, first principles
-            </h2>
-            <div className="mt-4 flex flex-wrap items-center gap-2 text-[11px]">
-              <span className="inline-flex items-center gap-1 rounded-full border border-terracotta/30 bg-terracotta/8 px-2 py-0.5 font-mono-accent text-terracotta">
-                #pkm
-              </span>
-              <span className="inline-flex items-center gap-1 rounded-full border border-sage/30 bg-sage/10 px-2 py-0.5 font-mono-accent text-sage">
-                #writing
-              </span>
-              <span className="font-mono-accent uppercase tracking-[0.16em] text-muted">
-                · Updated 14:02
-              </span>
-            </div>
-            <div className="mt-5 space-y-3 text-[14px] leading-relaxed text-ink/85">
-              <p>
-                Notes are plain{' '}
-                <code className="rounded bg-paper-alt px-1.5 py-0.5 font-mono-accent text-[12px] text-terracotta">
-                  .md
-                </code>{' '}
-                files in a folder you own. The app reads, the file system stores. Portable forever.
-              </p>
-              <p>
-                Wiki-links create the graph. Backlinks show the references. Properties give every
-                note its shape.
-              </p>
-              <ul className="ps-2 space-y-1.5">
-                <li className="flex items-start gap-2.5">
-                  <span className="mt-1 inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[5px] border border-terracotta bg-terracotta">
-                    <svg
-                      viewBox="0 0 24 24"
-                      className="h-2.5 w-2.5 text-white"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    >
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  </span>
-                  <span className="text-ink/55 line-through">Open source on GitHub</span>
-                </li>
-                <li className="flex items-start gap-2.5">
-                  <span className="mt-1 inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[5px] border border-ink/25" />
-                  <span>End-to-end encrypted device sync</span>
-                </li>
-                <li className="flex items-start gap-2.5">
-                  <span className="mt-1 inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[5px] border border-ink/25" />
-                  <span>Mobile app — late 2026</span>
-                </li>
-              </ul>
-            </div>
-          </section>
-
-          <aside className="hidden border-s border-border/40 bg-paper-alt/40 px-4 py-5 md:block">
-            <p className="font-mono-accent text-[10px] uppercase tracking-[0.22em] text-muted">
-              Outline
-            </p>
-            <ul className="mt-4 space-y-2 text-[12px] text-muted">
-              <li className="text-ink">Second brain, first principles</li>
-              <li className="ps-3">Why plain markdown</li>
-              <li className="ps-3">Wiki-links and the graph</li>
-              <li className="ps-3">Properties</li>
-            </ul>
-            <p className="mt-6 font-mono-accent text-[10px] uppercase tracking-[0.22em] text-muted">
-              Backlinks · 3
-            </p>
-            <ul className="mt-3 space-y-2 text-[12px] text-muted">
-              <li>
-                <p className="font-medium text-ink">Working with files</p>
-                <p className="mt-0.5">…see [[second-brain]]…</p>
-              </li>
-              <li>
-                <p className="font-medium text-ink">2026 reading list</p>
-                <p className="mt-0.5">Inspired by [[second-brain]]…</p>
-              </li>
-            </ul>
-          </aside>
-        </div>
-
-        <div className="flex items-center justify-between gap-3 border-t border-border/40 bg-paper-alt/60 px-4 py-2 font-mono-accent text-[10px] uppercase tracking-[0.16em] text-muted">
-          <span className="flex items-center gap-3">
-            <span className="flex items-center gap-1.5">
-              <Search className="h-3 w-3" strokeWidth={2} />
-              <span>⌘P</span>
-            </span>
-            <span className="flex items-center gap-1.5">
-              <FileText className="h-3 w-3" strokeWidth={2} />
-              <span>248 notes · 1.2 GB</span>
-            </span>
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-sage" />
-            <span>v0.18 · Stable</span>
-          </span>
-        </div>
-      </div>
-    </div>
+    <FeatureHeroScreenshot
+      screenshot="notes"
+      alt="memrynote notes page in the desktop app"
+      width={1232}
+      height={870}
+      className="max-w-4xl"
+    />
   )
 }
 
