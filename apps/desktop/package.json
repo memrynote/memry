@@ -142,7 +142,7 @@
     "shiki": "^4.0.2",
     "sqlite-vec": "0.1.7-alpha.2",
     "streamdown": "^2.5.0",
-    "ws": "^8.19.0",
+    "ws": "^8.20.1",
     "y-leveldb": "^0.2.0",
     "y-protocols": "^1.0.7",
     "yjs": "^13.6.29",

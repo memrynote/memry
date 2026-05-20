@@ -196,7 +196,7 @@ importers:
         version: 5.1.6
       openai:
         specifier: ^6.15.0
-        version: 6.18.0(ws@8.19.0)(zod@4.3.6)
+        version: 6.18.0(ws@8.20.1)(zod@4.3.6)
       pako:
         specifier: ^2.1.0
         version: 2.1.0
@@ -222,8 +222,8 @@ importers:
         specifier: ^2.5.0
         version: 2.5.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       ws:
-        specifier: ^8.19.0
-        version: 8.19.0
+        specifier: ^8.20.1
+        version: 8.20.1
       y-leveldb:
         specifier: ^0.2.0
         version: 0.2.0(abstract-level@3.1.1)(yjs@13.6.29)
@@ -11070,18 +11070,6 @@ packages:
       utf-8-validate:
         optional: true
 
-  ws@8.19.0:
-    resolution: {integrity: sha512-blAT2mjOEIi0ZzruJfIhb3nps74PRWTCz1IjglWEEpQl5XS/UNama6u2/rjFkDDouqr4L67ry+1aGIALViWjDg==}
-    engines: {node: '>=10.0.0'}
-    peerDependencies:
-      bufferutil: ^4.0.1
-      utf-8-validate: '>=5.0.2'
-    peerDependenciesMeta:
-      bufferutil:
-        optional: true
-      utf-8-validate:
-        optional: true
-
   ws@8.20.1:
     resolution: {integrity: sha512-It4dO0K5v//JtTXuPkfEOaI3uUN87iYPnqo/ZzqCoG3g8uhA66QUMs/SrM0YK7/NAu+r4LMh/9dq2A7k+rHs+w==}
     engines: {node: '>=10.0.0'}
@@ -18013,7 +18001,7 @@ snapshots:
       '@types/ws': 8.18.1
       entities: 7.0.1
       whatwg-mimetype: 3.0.0
-      ws: 8.19.0
+      ws: 8.20.1
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
@@ -18725,7 +18713,7 @@ snapshots:
       whatwg-encoding: 3.1.1
       whatwg-mimetype: 4.0.0
       whatwg-url: 14.2.0
-      ws: 8.19.0
+      ws: 8.20.1
       xml-name-validator: 5.0.0
     transitivePeerDependencies:
       - bufferutil
@@ -18752,7 +18740,7 @@ snapshots:
       webidl-conversions: 8.0.1
       whatwg-mimetype: 4.0.0
       whatwg-url: 15.1.0
-      ws: 8.19.0
+      ws: 8.20.1
       xml-name-validator: 5.0.0
     transitivePeerDependencies:
       - '@noble/hashes'
@@ -20133,9 +20121,9 @@ snapshots:
       powershell-utils: 0.1.0
       wsl-utils: 0.3.1
 
-  openai@6.18.0(ws@8.19.0)(zod@4.3.6):
+  openai@6.18.0(ws@8.20.1)(zod@4.3.6):
     optionalDependencies:
-      ws: 8.19.0
+      ws: 8.20.1
       zod: 4.3.6
 
   optionator@0.9.4:
@@ -22823,8 +22811,6 @@ snapshots:
   wrappy@1.0.2: {}
 
   ws@8.18.0: {}
-
-  ws@8.19.0: {}
 
   ws@8.20.1: {}
 
