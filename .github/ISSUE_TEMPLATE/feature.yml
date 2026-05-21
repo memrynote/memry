@@ -1,0 +1,83 @@
+name: Feature
+description: Propose a new MemryNote capability.
+title: "[Feature]: "
+labels: ["enhancement", "needs-design"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this for new product capabilities, user workflows, or larger feature ideas.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user problem or workflow gap does this solve?
+      placeholder: "I want to..."
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: What should MemryNote do?
+      placeholder: "When I..., Memry should..."
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Notes
+        - Journal
+        - Inbox
+        - Tasks
+        - Calendar
+        - Sync
+        - Agent
+        - Landing
+        - Docs
+        - Project Ops
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - P0 - blocking or data-loss risk
+        - P1 - important user workflow
+        - P2 - useful improvement
+        - P3 - polish or later
+    validations:
+      required: true
+  - type: dropdown
+    id: phase
+    attributes:
+      label: Phase
+      options:
+        - MVP
+        - V2
+        - V3
+        - Later
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: What must be true before this is done?
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Context, screenshots, links
+      description: Add examples, related issues, sketches, docs, or screenshots.
+    validations:
+      required: false

@@ -1,0 +1,67 @@
+name: Improvement
+description: Suggest a smaller polish, workflow, or quality improvement.
+title: "[Improvement]: "
+labels: ["improvement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this for changes that improve an existing behavior without introducing a whole new feature surface.
+  - type: textarea
+    id: friction
+    attributes:
+      label: Current friction
+      description: What is awkward, slow, unclear, noisy, or harder than it should be?
+    validations:
+      required: true
+  - type: textarea
+    id: better
+    attributes:
+      label: Better behavior
+      description: What should be different?
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Notes
+        - Journal
+        - Inbox
+        - Tasks
+        - Calendar
+        - Sync
+        - Agent
+        - Landing
+        - Docs
+        - Project Ops
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: size
+    attributes:
+      label: Expected size
+      options:
+        - S - small polish
+        - M - focused implementation
+        - L - multi-file change
+        - XL - needs design/spec first
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: success
+    attributes:
+      label: Success signal
+      description: How will we know this improvement worked?
+    validations:
+      required: false
+  - type: textarea
+    id: context
+    attributes:
+      label: Context, screenshots, links
+      description: Add examples, related issues, sketches, docs, or screenshots.
+    validations:
+      required: false

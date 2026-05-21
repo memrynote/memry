@@ -1,0 +1,78 @@
+name: Bug
+description: Report something broken in MemryNote.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this when existing behavior is broken, surprising, or risks data correctness.
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened?
+      description: Describe the broken behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+      description: Describe the correct behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction steps
+      placeholder: |
+        1. Open ...
+        2. Click ...
+        3. See ...
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Notes
+        - Journal
+        - Inbox
+        - Tasks
+        - Calendar
+        - Sync
+        - Agent
+        - Landing
+        - Docs
+        - Project Ops
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: data_risk
+    attributes:
+      label: Data risk
+      options:
+        - None known
+        - Possible display-only issue
+        - Possible unsaved changes
+        - Possible data corruption or loss
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: App version, OS, vault/sync state, browser if relevant.
+      placeholder: "macOS ..., Memry ..."
+    validations:
+      required: false
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Logs, screenshots, recordings
+      description: Paste logs or attach screenshots/recordings if available.
+    validations:
+      required: false
