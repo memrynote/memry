@@ -5,9 +5,10 @@ import {
   type Locale,
   FALLBACK_LOCALE,
   I18N_NAMESPACES,
-  DEFAULT_NAMESPACE
+  DEFAULT_NAMESPACE,
+  SUPPORTED_LOCALES
 } from '../shared/config'
-import { RESOURCES } from '../locales'
+import { createLocaleBackend } from '../locales/load'
 
 interface CreateRendererI18nOptions {
   locale: Locale
@@ -16,9 +17,8 @@ interface CreateRendererI18nOptions {
 /**
  * Creates an i18next instance for the renderer process.
  *
- * Resources are bundled eagerly into the renderer JS bundle. For Phase A,
- * the string set is intentionally tiny; this can move to lazy namespace
- * loading when translation volume grows.
+ * Locale JSON is loaded through the i18next backend so startup only pulls
+ * the active locale plus fallback resources.
  */
 export async function createRendererI18n(
   options: CreateRendererI18nOptions
@@ -26,13 +26,14 @@ export async function createRendererI18n(
   const instance = i18next.createInstance()
   await instance
     .use(IcuFormatter)
+    .use(createLocaleBackend())
     .use(initReactI18next)
     .init({
       lng: options.locale,
       fallbackLng: FALLBACK_LOCALE,
+      supportedLngs: [...SUPPORTED_LOCALES],
       ns: I18N_NAMESPACES,
       defaultNS: DEFAULT_NAMESPACE,
-      resources: RESOURCES,
       interpolation: {
         escapeValue: false
       },

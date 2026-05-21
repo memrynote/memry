@@ -8,7 +8,8 @@
     "./main": "./src/main/index.ts",
     "./renderer": "./src/renderer/index.ts",
     "./shared": "./src/shared/index.ts",
-    "./locales": "./src/locales/index.ts"
+    "./locales": "./src/locales/index.ts",
+    "./locales/en-errors": "./src/locales/en-errors.ts"
   },
   "scripts": {
     "test": "vitest run",
