@@ -130,7 +130,7 @@ function GitHubStarWidget({
   return (
     <a
       className={cn(
-        'github-star-widget inline-flex items-center whitespace-nowrap rounded-lg border border-border/70 bg-card/65 font-semibold text-ink shadow-[0_1px_0_rgba(255,255,255,0.7)] transition-colors hover:border-ink/15 hover:bg-card dark:border-white/10 dark:shadow-none',
+        'github-star-widget inline-flex items-center rounded-lg border border-border/70 bg-card/65 font-semibold text-ink shadow-[0_1px_0_rgba(255,255,255,0.7)] transition-colors hover:border-ink/15 hover:bg-card dark:border-white/10 dark:shadow-none',
         iconOnly
           ? 'h-10 w-10 justify-center rounded-full p-0'
           : compact
@@ -145,7 +145,7 @@ function GitHubStarWidget({
         trackLandingEvent('landing_external_click', 'external:github')
         onClick?.()
       }}
-      aria-label={`Support the project on GitHub, ${formattedStars} stars`}
+      aria-label={`${formattedStars} GitHub stars`}
     >
       <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" aria-hidden>
         <path
@@ -157,7 +157,7 @@ function GitHubStarWidget({
       </svg>
       {iconOnly ? null : (
         <>
-          <span>Support the project</span>
+          <span>Star</span>
           <strong className="border-s border-border/80 ps-2 font-mono-accent text-[13px] font-semibold">
             {formattedStars}
           </strong>
