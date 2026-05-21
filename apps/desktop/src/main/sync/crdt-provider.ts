@@ -28,8 +28,30 @@ export const ORIGIN_LOCAL = 'local'
 const SIZE_CHECK_INTERVAL_MS = 60_000
 const ENCODED_SIZE_COMPACTION_THRESHOLD = 1024 * 1024
 const ACCUMULATED_BYTES_RECHECK_THRESHOLD = 512 * 1024
+const DEFAULT_INACTIVE_DOC_LIMIT = 32
 
 export type SnapshotPushFn = (noteId: string, state: Uint8Array) => Promise<void>
+
+export interface CrdtProviderOptions {
+  inactiveDocLimit?: number
+  now?: () => number
+}
+
+export interface CrdtDocSizeMetric {
+  noteId: string
+  encodedSizeBytes: number
+  accumulatedBytes: number
+  pendingSnapshotBytes: number
+  windowCount: number
+  lastTouchedAt: number
+}
+
+export interface CrdtOpenDocMetrics {
+  count: number
+  totalEncodedSizeBytes: number
+  totalAccumulatedBytes: number
+  docs: CrdtDocSizeMetric[]
+}
 
 interface ActiveDoc {
   doc: Y.Doc
@@ -38,6 +60,7 @@ interface ActiveDoc {
   pendingSnapshotBytes: number
   lastEncodedSize: number
   lastSizeCheckAt: number
+  lastTouchedAt: number
   closing?: boolean
 }
 
@@ -55,11 +78,18 @@ export class CrdtProvider {
   private persistence: CrdtPersistence | null = null
   private updateQueue: CrdtUpdateQueue | null = null
   private snapshotPushFn: SnapshotPushFn | null = null
+  private readonly inactiveDocLimit: number
+  private readonly now: () => number
   private compactingDocs = new Set<string>()
   private compactionBuffers = new Map<string, Uint8Array[]>()
   private networkBatcher = new MicrotaskBatchBroadcaster((noteId, merged) => {
     this.broadcastToWindows(noteId, merged, ORIGIN_NETWORK, undefined)
   })
+
+  constructor(options: CrdtProviderOptions = {}) {
+    this.inactiveDocLimit = Math.max(1, options.inactiveDocLimit ?? DEFAULT_INACTIVE_DOC_LIMIT)
+    this.now = options.now ?? Date.now
+  }
 
   async init(queue?: CrdtUpdateQueue, snapshotPush?: SnapshotPushFn): Promise<void> {
     await this.initPersistence()
@@ -87,9 +117,11 @@ export class CrdtProvider {
     const existing = this.docs.get(noteId)
     if (existing && !existing.closing) {
       if (windowId) existing.windowIds.add(windowId)
+      this.touchDoc(existing)
       if (!options?.skipSeed) {
         await this.seedFromMarkdown(noteId, existing.doc)
       }
+      await this.evictInactiveDocsIfNeeded()
       return existing.doc
     }
 
@@ -97,10 +129,14 @@ export class CrdtProvider {
     if (pending) {
       const doc = await pending
       const entry = this.docs.get(noteId)
-      if (entry && windowId) entry.windowIds.add(windowId)
+      if (entry) {
+        if (windowId) entry.windowIds.add(windowId)
+        this.touchDoc(entry)
+      }
       if (!options?.skipSeed) {
         await this.seedFromMarkdown(noteId, doc)
       }
+      await this.evictInactiveDocsIfNeeded()
       return doc
     }
 
@@ -142,13 +178,16 @@ export class CrdtProvider {
       accumulatedBytes: 0,
       pendingSnapshotBytes: 0,
       lastEncodedSize: 0,
-      lastSizeCheckAt: 0
+      lastSizeCheckAt: 0,
+      lastTouchedAt: this.now()
     }
     this.docs.set(noteId, entry)
 
     doc.on('update', (update: Uint8Array, origin: unknown) => {
       this.onDocUpdate(noteId, update, origin)
     })
+
+    await this.evictInactiveDocsIfNeeded()
 
     return doc
   }
@@ -188,6 +227,14 @@ export class CrdtProvider {
     log.debug('Doc closed', { noteId })
   }
 
+  async closeIfInactive(noteId: string): Promise<boolean> {
+    const entry = this.docs.get(noteId)
+    if (!entry || entry.closing || entry.windowIds.size > 0) return false
+
+    await this.close(noteId)
+    return !this.docs.has(noteId)
+  }
+
   async purge(noteId: string): Promise<void> {
     await this.close(noteId)
     await this.persistence?.clearDocument(noteId)
@@ -208,6 +255,8 @@ export class CrdtProvider {
       log.debug('Ignoring remote update for closing doc', { noteId })
       return
     }
+
+    this.touchDoc(entry)
 
     log.debug('applyRemoteUpdate', {
       noteId,
@@ -233,12 +282,14 @@ export class CrdtProvider {
   getStateVector(noteId: string): Uint8Array | null {
     const entry = this.docs.get(noteId)
     if (!entry) return null
+    this.touchDoc(entry)
     return Y.encodeStateVector(entry.doc)
   }
 
   getDiff(noteId: string, remoteStateVector: Uint8Array): Uint8Array | null {
     const entry = this.docs.get(noteId)
     if (!entry) return null
+    this.touchDoc(entry)
     return Y.encodeStateAsUpdate(entry.doc, remoteStateVector)
   }
 
@@ -278,18 +329,20 @@ export class CrdtProvider {
     return Array.from(this.docs.keys())
   }
 
-  getDocSizeMetrics(): Array<{
-    noteId: string
-    encodedSizeBytes: number
-    accumulatedBytes: number
-    windowCount: number
-  }> {
-    return Array.from(this.docs.entries()).map(([noteId, entry]) => ({
-      noteId,
-      encodedSizeBytes: entry.lastEncodedSize,
-      accumulatedBytes: entry.accumulatedBytes,
-      windowCount: entry.windowIds.size
-    }))
+  getDocSizeMetrics(): CrdtDocSizeMetric[] {
+    return Array.from(this.docs.entries()).map(([noteId, entry]) =>
+      this.measureDocSize(noteId, entry)
+    )
+  }
+
+  getOpenDocMetrics(): CrdtOpenDocMetrics {
+    const docs = this.getDocSizeMetrics()
+    return {
+      count: docs.length,
+      totalEncodedSizeBytes: docs.reduce((total, doc) => total + doc.encodedSizeBytes, 0),
+      totalAccumulatedBytes: docs.reduce((total, doc) => total + doc.accumulatedBytes, 0),
+      docs
+    }
   }
 
   async wipeStorage(): Promise<void> {
@@ -426,6 +479,7 @@ export class CrdtProvider {
   updateMeta(noteId: string, meta: { title?: string; date?: string }): void {
     const entry = this.docs.get(noteId)
     if (!entry) return
+    this.touchDoc(entry)
 
     entry.doc.transact(() => {
       const metaMap = entry.doc.getMap('meta')
@@ -479,6 +533,7 @@ export class CrdtProvider {
     const entry = this.docs.get(noteId)
     if (!entry) return
 
+    this.touchDoc(entry)
     entry.accumulatedBytes += update.byteLength
     if (origin !== ORIGIN_NETWORK) {
       entry.pendingSnapshotBytes += update.byteLength
@@ -591,6 +646,37 @@ export class CrdtProvider {
     await this.persistence.flushDocument(noteId)
   }
 
+  private touchDoc(entry: ActiveDoc): void {
+    entry.lastTouchedAt = this.now()
+  }
+
+  private measureDocSize(noteId: string, entry: ActiveDoc): CrdtDocSizeMetric {
+    const encodedSizeBytes = Y.encodeStateAsUpdate(entry.doc).byteLength
+    entry.lastEncodedSize = encodedSizeBytes
+    return {
+      noteId,
+      encodedSizeBytes,
+      accumulatedBytes: entry.accumulatedBytes,
+      pendingSnapshotBytes: entry.pendingSnapshotBytes,
+      windowCount: entry.windowIds.size,
+      lastTouchedAt: entry.lastTouchedAt
+    }
+  }
+
+  private async evictInactiveDocsIfNeeded(): Promise<void> {
+    const inactiveDocs = Array.from(this.docs.entries()).filter(
+      ([, entry]) => entry.windowIds.size === 0 && !entry.closing
+    )
+    const overflow = inactiveDocs.length - this.inactiveDocLimit
+    if (overflow <= 0) return
+
+    inactiveDocs.sort(([, left], [, right]) => left.lastTouchedAt - right.lastTouchedAt)
+
+    for (const [noteId] of inactiveDocs.slice(0, overflow)) {
+      await this.closeIfInactive(noteId)
+    }
+  }
+
   async compactDoc(noteId: string): Promise<void> {
     const entry = this.docs.get(noteId)
     if (!entry) return
@@ -677,6 +763,7 @@ export class CrdtProvider {
   applyIpcUpdate(noteId: string, updateArr: number[], sourceWindowId: number): void {
     const entry = this.docs.get(noteId)
     if (!entry) return
+    this.touchDoc(entry)
 
     const update = new Uint8Array(updateArr)
     const origin: IpcOrigin = { source: 'ipc', windowId: sourceWindowId }
@@ -686,6 +773,7 @@ export class CrdtProvider {
   applyIpcSyncStep2(noteId: string, diffArr: number[]): void {
     const entry = this.docs.get(noteId)
     if (!entry) return
+    this.touchDoc(entry)
     const diff = new Uint8Array(diffArr)
     Y.applyUpdate(entry.doc, diff, { source: 'ipc', windowId: -1 } satisfies IpcOrigin)
   }

@@ -22,6 +22,17 @@ renderer  ──Yjs IPC provider──▶  main (Y.Doc)  ──y-leveldb──�
 - Persistence via y-leveldb is a Node-side concern.
 - Main can broadcast updates to multiple renderer windows (when split view exists).
 
+## Open Doc Lifecycle
+
+Main keeps a Y.Doc open while an editor window is attached to it. Sync pulls may also
+open a Y.Doc without a window so remote updates can be applied, but those sync-only
+docs are closed again after the pull if they are still inactive.
+
+Inactive docs are capped with least-recently-used eviction. The eviction path only
+targets docs with zero attached windows, so active editor docs are never evicted. The
+provider metrics expose the open doc count, encoded size, and per-doc `windowCount`
+so memory growth can be observed without inspecting private provider state.
+
 ## IPC Loop Prevention
 
 Three pieces of metadata prevent feedback loops:
