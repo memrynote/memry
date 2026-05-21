@@ -83,13 +83,15 @@ export class CrdtSyncCoordinator {
     vaultKey: Uint8Array,
     signal?: AbortSignal
   ): Promise<void> {
-    if (!this.ctx.deps.crdtProvider) return
+    const crdtProvider = this.ctx.deps.crdtProvider
+    if (!crdtProvider) return
 
     const effectiveSignal = signal ?? this.ctx.abortController?.signal
     if (!effectiveSignal) return
 
+    const wasOpen = crdtProvider.getDoc(noteId) != null
     try {
-      const doc = await this.ctx.deps.crdtProvider.open(noteId, undefined, { skipSeed: true })
+      const doc = await crdtProvider.open(noteId, undefined, { skipSeed: true })
       if (!doc) return
 
       let since = await this.applySnapshotBaseline(noteId, token, vaultKey, 'single')
@@ -146,16 +148,16 @@ export class CrdtSyncCoordinator {
           }
 
           const decrypted = decryptCrdtUpdate(packed, vaultKey, noteId, signerPubKey)
-          this.ctx.deps.crdtProvider.applyRemoteUpdate(noteId, decrypted)
+          crdtProvider.applyRemoteUpdate(noteId, decrypted)
           since = this.rememberAppliedSequence(noteId, entry.sequenceNum)
         }
 
         hasMore = result.hasMore
       }
 
-      const postVector = this.ctx.deps.crdtProvider.getStateVector(noteId)
+      const postVector = crdtProvider.getStateVector(noteId)
       if (!postVector || postVector.length <= 2) {
-        await this.ctx.deps.crdtProvider.seedFromMarkdownPublic(noteId)
+        await crdtProvider.seedFromMarkdownPublic(noteId)
         log.debug('applyCrdtIncrementals: seeded from markdown as fallback (no server CRDT)', {
           noteId
         })
@@ -169,18 +171,26 @@ export class CrdtSyncCoordinator {
         noteId,
         error: err instanceof Error ? err.message : String(err)
       })
+    } finally {
+      if (!wasOpen) {
+        await crdtProvider.closeIfInactive(noteId)
+      }
     }
   }
 
   async applyCrdtBatch(noteIds: string[], token: string, vaultKey: Uint8Array): Promise<void> {
-    if (!this.ctx.deps.crdtProvider || !this.ctx.abortController) return
+    const crdtProvider = this.ctx.deps.crdtProvider
+    if (!crdtProvider || !this.ctx.abortController) return
 
+    const syncOpenedNoteIds = new Set<string>()
     try {
       const sinceMap = new Map<string, number>()
 
       for (const noteId of noteIds) {
+        const wasOpen = crdtProvider.getDoc(noteId) != null
         try {
-          await this.ctx.deps.crdtProvider.open(noteId, undefined, { skipSeed: true })
+          await crdtProvider.open(noteId, undefined, { skipSeed: true })
+          if (!wasOpen) syncOpenedNoteIds.add(noteId)
         } catch (err) {
           log.warn('Failed to open CRDT doc, skipping note in batch', {
             noteId,
@@ -235,7 +245,7 @@ export class CrdtSyncCoordinator {
               continue
             }
             const decrypted = decryptCrdtUpdate(packed, vaultKey, noteId, pubKey)
-            this.ctx.deps.crdtProvider.applyRemoteUpdate(noteId, decrypted)
+            crdtProvider.applyRemoteUpdate(noteId, decrypted)
             activeSince.set(noteId, this.rememberAppliedSequence(noteId, entry.sequenceNum))
           }
 
@@ -251,9 +261,9 @@ export class CrdtSyncCoordinator {
       }
 
       for (const noteId of noteIds) {
-        const postVector = this.ctx.deps.crdtProvider.getStateVector(noteId)
+        const postVector = crdtProvider.getStateVector(noteId)
         if (!postVector || postVector.length <= 2) {
-          await this.ctx.deps.crdtProvider.seedFromMarkdownPublic(noteId)
+          await crdtProvider.seedFromMarkdownPublic(noteId)
           log.debug('applyCrdtBatch: seeded from markdown as fallback (no server CRDT)', {
             noteId
           })
@@ -267,6 +277,10 @@ export class CrdtSyncCoordinator {
       log.warn('Failed to apply CRDT batch', {
         error: err instanceof Error ? err.message : String(err)
       })
+    } finally {
+      for (const noteId of syncOpenedNoteIds) {
+        await crdtProvider.closeIfInactive(noteId)
+      }
     }
   }
 

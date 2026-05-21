@@ -306,6 +306,34 @@ describe('CrdtProvider', () => {
     )
   })
 
+  it('exposes aggregate open-doc metrics with per-doc size and window counts', async () => {
+    createWindow(1)
+    await provider.open('note-1', 1, { skipSeed: true })
+    await provider.open('sync-only-note', undefined, { skipSeed: true })
+
+    provider.updateMeta('note-1', { title: 'Active editor' })
+    provider.updateMeta('sync-only-note', { title: 'Sync only' })
+
+    const metrics = provider.getOpenDocMetrics()
+
+    expect(metrics.count).toBe(2)
+    expect(metrics.totalEncodedSizeBytes).toBeGreaterThan(0)
+    expect(metrics.docs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          noteId: 'note-1',
+          encodedSizeBytes: expect.any(Number),
+          windowCount: 1
+        }),
+        expect.objectContaining({
+          noteId: 'sync-only-note',
+          encodedSizeBytes: expect.any(Number),
+          windowCount: 0
+        })
+      ])
+    )
+  })
+
   it('keeps shared docs open until the last window closes', async () => {
     createWindow(1)
     createWindow(2)
@@ -320,6 +348,49 @@ describe('CrdtProvider', () => {
     await provider.close('note-1', 2)
     expect(provider.getDoc('note-1')).toBeUndefined()
     expect(mocks.persistenceInstances[0].flushDocument).toHaveBeenCalledWith('note-1')
+  })
+
+  it('closes sync-only docs only while they remain inactive', async () => {
+    await provider.open('sync-only-note', undefined, { skipSeed: true })
+
+    await expect(provider.closeIfInactive('sync-only-note')).resolves.toBe(true)
+    expect(provider.getDoc('sync-only-note')).toBeUndefined()
+    expect(mocks.persistenceInstances[0].flushDocument).toHaveBeenCalledWith('sync-only-note')
+
+    createWindow(8)
+    const activeDoc = await provider.open('active-note', 8, { skipSeed: true })
+
+    await expect(provider.closeIfInactive('active-note')).resolves.toBe(false)
+    expect(provider.getDoc('active-note')).toBe(activeDoc)
+  })
+
+  it('evicts least-recently-used inactive docs without evicting active editor docs', async () => {
+    let now = 1_000
+    const cappedProvider = new CrdtProvider({
+      inactiveDocLimit: 2,
+      now: () => now
+    })
+    await cappedProvider.init(queue as any, pushSnapshot)
+    createWindow(9)
+
+    await cappedProvider.open('active-note', 9, { skipSeed: true })
+    now += 1
+    await cappedProvider.open('inactive-a', undefined, { skipSeed: true })
+    now += 1
+    await cappedProvider.open('inactive-b', undefined, { skipSeed: true })
+    now += 1
+    await cappedProvider.open('inactive-c', undefined, { skipSeed: true })
+
+    expect(cappedProvider.getDoc('active-note')).toBeDefined()
+    expect(cappedProvider.getDoc('inactive-a')).toBeUndefined()
+    expect(cappedProvider.getDoc('inactive-b')).toBeDefined()
+    expect(cappedProvider.getDoc('inactive-c')).toBeDefined()
+
+    const cappedMetrics = cappedProvider.getOpenDocMetrics()
+    expect(cappedMetrics.count).toBe(3)
+    expect(cappedMetrics.docs.filter((doc) => doc.windowCount === 0)).toHaveLength(2)
+
+    await cappedProvider.destroy()
   })
 
   it('pushes only pending snapshots and resets pending byte counters', async () => {

@@ -56,6 +56,8 @@ describe('CrdtSyncCoordinator', () => {
   it('applies single-note incrementals, skips unknown signers, and seeds empty local docs', async () => {
     const applyRemoteUpdate = vi.fn()
     const open = vi.fn().mockResolvedValue({})
+    const closeIfInactive = vi.fn().mockResolvedValue(true)
+    const getDoc = vi.fn().mockReturnValue(undefined)
     const getStateVector = vi.fn().mockReturnValue(new Uint8Array([1, 2]))
     const seedFromMarkdownPublic = vi.fn()
 
@@ -81,7 +83,9 @@ describe('CrdtSyncCoordinator', () => {
     const ctx = {
       deps: {
         crdtProvider: {
+          getDoc,
           open,
+          closeIfInactive,
           applyRemoteUpdate,
           getStateVector,
           seedFromMarkdownPublic
@@ -101,12 +105,48 @@ describe('CrdtSyncCoordinator', () => {
     await coordinator.applyCrdtIncrementals('note-1', 'token-1', new Uint8Array([4, 5, 6]))
 
     expect(open).toHaveBeenCalledWith('note-1', undefined, { skipSeed: true })
+    expect(closeIfInactive).toHaveBeenCalledWith('note-1')
     expect(getFromServerMock).toHaveBeenCalledWith(
       '/sync/crdt/updates?note_id=note-1&since=0&limit=100',
       'token-1'
     )
     expect(applyRemoteUpdate).toHaveBeenCalledWith('note-1', new Uint8Array([7, 7, 7]))
     expect(seedFromMarkdownPublic).toHaveBeenCalledWith('note-1')
+  })
+
+  it('does not close single-note incrementals that were already open', async () => {
+    const openDoc = {}
+    const open = vi.fn().mockResolvedValue(openDoc)
+    const closeIfInactive = vi.fn()
+
+    getFromServerMock.mockResolvedValue({
+      updates: [],
+      hasMore: false
+    })
+
+    const ctx = {
+      deps: {
+        crdtProvider: {
+          getDoc: vi.fn().mockReturnValue(openDoc),
+          open,
+          closeIfInactive,
+          applyRemoteUpdate: vi.fn(),
+          getStateVector: vi.fn().mockReturnValue(new Uint8Array([1, 2, 3])),
+          seedFromMarkdownPublic: vi.fn()
+        }
+      },
+      abortController: new AbortController()
+    } as unknown as SyncContext
+
+    const coordinator = new CrdtSyncCoordinator(
+      ctx,
+      vi.fn().mockResolvedValue(new Uint8Array([1, 2, 3]))
+    )
+
+    await coordinator.applyCrdtIncrementals('note-1', 'token-1', new Uint8Array([4, 5, 6]))
+
+    expect(open).toHaveBeenCalledWith('note-1', undefined, { skipSeed: true })
+    expect(closeIfInactive).not.toHaveBeenCalled()
   })
 
   it('pullCrdtForNote exits without credentials and cleans up the vault key after pulls', async () => {
@@ -148,6 +188,7 @@ describe('CrdtSyncCoordinator', () => {
   it('uses the latest server snapshot as the batch baseline even when the local doc is non-empty', async () => {
     const applyRemoteUpdate = vi.fn()
     const open = vi.fn().mockResolvedValue({})
+    const closeIfInactive = vi.fn().mockResolvedValue(true)
     const getStateVector = vi.fn().mockReturnValue(new Uint8Array([1, 2, 3, 4]))
 
     fetchCrdtSnapshotMock.mockResolvedValue({
@@ -168,7 +209,9 @@ describe('CrdtSyncCoordinator', () => {
     const ctx = {
       deps: {
         crdtProvider: {
+          getDoc: vi.fn().mockReturnValue(undefined),
           open,
+          closeIfInactive,
           applyRemoteUpdate,
           getStateVector,
           seedFromMarkdownPublic: vi.fn()
@@ -193,6 +236,54 @@ describe('CrdtSyncCoordinator', () => {
       },
       'token-1'
     )
+    expect(closeIfInactive).toHaveBeenCalledWith('note-1')
+  })
+
+  it('closes only batch docs opened by sync and leaves already-open docs alone', async () => {
+    const openDoc = {}
+    const getDoc = vi.fn().mockReturnValueOnce(undefined).mockReturnValueOnce(openDoc)
+    const closeIfInactive = vi.fn().mockResolvedValue(true)
+
+    postToServerMock.mockResolvedValue({
+      notes: {
+        'sync-only-note': {
+          updates: [],
+          hasMore: false
+        },
+        'active-note': {
+          updates: [],
+          hasMore: false
+        }
+      }
+    })
+
+    const ctx = {
+      deps: {
+        crdtProvider: {
+          getDoc,
+          open: vi.fn().mockResolvedValue({}),
+          closeIfInactive,
+          applyRemoteUpdate: vi.fn(),
+          getStateVector: vi.fn().mockReturnValue(new Uint8Array([1, 2, 3])),
+          seedFromMarkdownPublic: vi.fn()
+        }
+      },
+      abortController: new AbortController()
+    } as unknown as SyncContext
+
+    const coordinator = new CrdtSyncCoordinator(
+      ctx,
+      vi.fn().mockResolvedValue(new Uint8Array([1, 2, 3]))
+    )
+
+    await coordinator.applyCrdtBatch(
+      ['sync-only-note', 'active-note'],
+      'token-1',
+      new Uint8Array([4, 5, 6])
+    )
+
+    expect(closeIfInactive).toHaveBeenCalledTimes(1)
+    expect(closeIfInactive).toHaveBeenCalledWith('sync-only-note')
   })
 
   it('reuses the highest applied CRDT sequence as the next batch baseline', async () => {
@@ -240,7 +331,9 @@ describe('CrdtSyncCoordinator', () => {
     const ctx = {
       deps: {
         crdtProvider: {
+          getDoc: vi.fn().mockReturnValue(undefined),
           open,
+          closeIfInactive: vi.fn().mockResolvedValue(true),
           applyRemoteUpdate,
           getStateVector,
           seedFromMarkdownPublic: vi.fn()
