@@ -132,6 +132,70 @@ export const useCasesContent = {
   campaign: WAITLIST_CAMPAIGNS.useCases
 } as const satisfies WaitlistProgramEmailContent
 
+export const welcomeContent = {
+  subject: "You're on the MemryNote waitlist",
+  preview: 'Quick note on what to expect before launch.',
+  intro: [
+    'Thanks for joining the MemryNote waitlist. This is the welcome note so you know what to expect.',
+    'MemryNote ships end of June. Local-first notes, tasks, journal, and calendar in one app. Your data stays on your machine.'
+  ],
+  listTitle: "What you'll get from me before launch:",
+  bullets: [
+    'one short email a week, no daily blasts',
+    'product previews with real screenshots',
+    'launch-day link with 25% off your first year on an annual plan',
+    'a way to reply directly to me if you have questions'
+  ],
+  outro: [
+    'If you want to get a head start, hit reply and tell me what you hope MemryNote replaces for you. I read every reply.',
+    'That is it for today.'
+  ],
+  campaign: WAITLIST_CAMPAIGNS.welcome
+} as const satisfies WaitlistProgramEmailContent
+
+export const migrationGuideContent = {
+  subject: 'Bringing your existing notes into MemryNote',
+  preview: 'Notion, Obsidian, Apple Notes — here is the import path.',
+  intro: [
+    'A few people asked how to bring existing notes in. Short answer: do not migrate everything on day one.',
+    'MemryNote is strongest when notes and action keep touching each other. A full import drops a lot of context that you would have rebuilt anyway.'
+  ],
+  listTitle: 'The cleanest path per source app:',
+  bullets: [
+    'Notion: export pages as Markdown + Files, then drop the folder into your vault',
+    'Obsidian: copy your vault folder directly, .md files just work',
+    'Apple Notes: export via Bear or NotePlan as an intermediate step, then copy in',
+    'plain text or Markdown from anywhere: drag the files into the inbox'
+  ],
+  outro: [
+    'Pick one active project you are working on this week and move just that. Everything else can stay where it is for now.',
+    'Reply if your source app is not covered. I will add an import path if enough people ask.'
+  ],
+  campaign: WAITLIST_CAMPAIGNS.migrationGuide
+} as const satisfies WaitlistProgramEmailContent
+
+export const syncConversionContent = {
+  subject: 'Why MemryNote sync is end-to-end encrypted',
+  preview: 'How sync works without the server seeing your notes.',
+  intro: [
+    'You downloaded MemryNote. If you have been thinking about turning sync on but holding off, here is the short version of how it works.',
+    'Notes are encrypted on your device before sync leaves. The server stores opaque encrypted blobs. Only your devices hold the keys.'
+  ],
+  listTitle: 'The shape:',
+  bullets: [
+    'keys derived from your passphrase via Argon2id',
+    'XChaCha20-Poly1305 for note bodies, Ed25519 for signing',
+    'server never sees plaintext, even on a subpoena',
+    'CRDT merge so two devices editing offline do not lose work',
+    '25% off your first year on an annual plan with the waitlist code'
+  ],
+  outro: [
+    'If you would rather wait, that is fine. Local-only is the default and stays useful forever.',
+    'Reply if there is a specific concern that is keeping you on the fence. I will be direct about what we do and do not do.'
+  ],
+  campaign: WAITLIST_CAMPAIGNS.syncConversion
+} as const satisfies WaitlistProgramEmailContent
+
 export const feedbackContent = {
   subject: 'What should I fix next?',
   preview: 'Reply with bugs, sharp edges, or the thing you wanted most.',

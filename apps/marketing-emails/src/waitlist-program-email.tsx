@@ -5,8 +5,11 @@ import {
   gettingStartedContent,
   launchWeekContent,
   localFirstAiContent,
+  migrationGuideContent,
   scatteredWorkflowContent,
+  syncConversionContent,
   useCasesContent,
+  welcomeContent,
   workflowContent
 } from './waitlist-program-content'
 import { trackedMemryUrl } from './tracking-links'
@@ -122,6 +125,9 @@ export const WaitlistLaunchWeekEmail = createWaitlistProgramEmail(launchWeekCont
 export const WaitlistGettingStartedEmail = createWaitlistProgramEmail(gettingStartedContent)
 export const WaitlistUseCasesEmail = createWaitlistProgramEmail(useCasesContent)
 export const WaitlistFeedbackEmail = createWaitlistProgramEmail(feedbackContent)
+export const WaitlistWelcomeEmail = createWaitlistProgramEmail(welcomeContent)
+export const WaitlistMigrationGuideEmail = createWaitlistProgramEmail(migrationGuideContent)
+export const WaitlistSyncConversionEmail = createWaitlistProgramEmail(syncConversionContent)
 
 const styles = {
   body: {

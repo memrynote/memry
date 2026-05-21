@@ -131,6 +131,16 @@ Keep the primary 11 emails as the canonical sequence. Add branches only when the
 | No opens after three emails         | Reduce frequency and skip discount pressure until launch day                    |
 | Replied                             | Answer manually; do not put them into automated nudges until the thread is done |
 
+## Branch Templates
+
+Out-of-sequence templates available for manual sends. Not part of the canonical schedule.
+
+| template file            | trigger                                         | goal                                                      |
+| ------------------------ | ----------------------------------------------- | --------------------------------------------------------- |
+| `branch-welcome`         | Immediately on waitlist signup                  | Confirm signup, set cadence expectations, invite reply    |
+| `branch-migration-guide` | After #8 for downloaders, or to anyone who asks | Reduce import friction from Notion, Obsidian, Apple Notes |
+| `branch-sync-conversion` | Downloaded but did not buy Sync after 7-14 days | Explain end-to-end encryption, lift Sync conversion       |
+
 ## Public Companion Posts
 
 Post after the email, not at the same time. Email gets first touch.
