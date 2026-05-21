@@ -12,7 +12,9 @@ import {
   getRawIndexDatabase,
   closeAllDatabases,
   checkIndexHealth,
-  withTimeout
+  withTimeout,
+  SQLITE_DATA_CACHE_KIB,
+  SQLITE_INDEX_CACHE_KIB
 } from './client'
 
 describe('database client', () => {
@@ -41,6 +43,8 @@ describe('database client', () => {
     expect(client.pragma('foreign_keys', { simple: true })).toBe(1)
     expect(client.pragma('busy_timeout', { simple: true })).toBe(5000)
     expect(client.pragma('synchronous', { simple: true })).toBe(1)
+    expect(client.pragma('cache_size', { simple: true })).toBe(-SQLITE_DATA_CACHE_KIB)
+    expect(client.pragma('temp_store', { simple: true })).toBe(2)
   })
 
   it('initializes the index database with vec table and cache settings', () => {
@@ -54,7 +58,8 @@ describe('database client', () => {
 
     expect(vecTable?.name).toBe('vec_notes')
     expect(String(raw.pragma('journal_mode', { simple: true })).toLowerCase()).toBe('wal')
-    expect(raw.pragma('cache_size', { simple: true })).toBe(-128000)
+    expect(raw.pragma('cache_size', { simple: true })).toBe(-SQLITE_INDEX_CACHE_KIB)
+    expect(raw.pragma('temp_store', { simple: true })).toBe(2)
   })
 
   it('closes databases and resets getters', () => {
