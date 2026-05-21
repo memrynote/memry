@@ -2,7 +2,7 @@
  * M2 promote-external-event flow.
  *
  * Clicking an externally-owned Google event chip in Memry should open a
- * confirmation dialog ("Edit this event in Memry?"). Confirming the dialog
+ * confirmation dialog ("Edit this event in memrynote?"). Confirming the dialog
  * must create a linked calendar_events row, archive the mirror, and open the
  * edit popover so the user can immediately make changes.
  *
@@ -82,7 +82,7 @@ test.describe('Calendar — M2 promote external event', () => {
     // #then: promote confirmation dialog appears with copy from the M2 design
     const dialog = page.getByTestId('promote-external-dialog')
     await expect(dialog).toBeVisible()
-    await expect(dialog.getByText('Edit this event in Memry?')).toBeVisible()
+    await expect(dialog.getByText('Edit this event in memrynote?')).toBeVisible()
     await expect(dialog.getByText(/create a linked copy/i)).toBeVisible()
     await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeVisible()
     await expect(dialog.getByRole('button', { name: /Edit in Memry/i })).toBeVisible()

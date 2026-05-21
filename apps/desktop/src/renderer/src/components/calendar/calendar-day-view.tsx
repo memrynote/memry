@@ -78,7 +78,7 @@ export function CalendarDayView({
           data-testid="day-all-day-strip"
           className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2"
         >
-          <span className="w-[48px] shrink-0 text-xs font-medium text-muted-foreground @xl:w-[72px] pr-3 text-right">
+          <span className="w-[48px] shrink-0 text-xs font-medium text-muted-foreground @xl:w-[72px] pe-3 text-end">
             {t('time.all-day')}
           </span>
           <div className="flex flex-1 flex-wrap gap-1.5">
@@ -105,7 +105,7 @@ export function CalendarDayView({
             {HOURS.map((hour) => (
               <div
                 key={hour}
-                className="flex items-start justify-end pr-3"
+                className="flex items-start justify-end pe-3"
                 style={{ height: HOUR_HEIGHT }}
               >
                 <span className="text-xs font-medium text-muted-foreground -translate-y-1/2">
@@ -151,7 +151,7 @@ export function CalendarDayView({
 
             {today && (
               <div
-                className="absolute left-0 right-0 z-20 flex items-center"
+                className="pointer-events-none absolute start-0 end-0 z-20 flex items-center"
                 style={{ top: currentTimeOffset }}
               >
                 <div className="size-2 rounded-full bg-tint" />

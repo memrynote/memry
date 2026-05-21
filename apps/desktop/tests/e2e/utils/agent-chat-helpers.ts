@@ -23,7 +23,7 @@ export async function openAgentChat(page: Page): Promise<void> {
 
 export function getAgentComposer(page: Page): Locator {
   return page.getByRole('textbox', {
-    name: 'Ask Memry anything. @ to use mention file'
+    name: /Ask (?:Memry|memrynote) anything\. @ to use mention file/i
   })
 }
 

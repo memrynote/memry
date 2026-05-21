@@ -266,7 +266,7 @@ export function CalendarWeekView({
           style={{ height: allDayRowHeight }}
         >
           <div
-            className="flex shrink-0 items-center justify-end border-b border-border pr-1 text-xs font-medium text-muted-foreground"
+            className="flex shrink-0 items-center justify-end border-b border-border pe-1 text-xs font-medium text-muted-foreground"
             style={{ width: GUTTER_WIDTH, height: allDayRowHeight }}
           >
             {t('time.all-day-lower')}
@@ -286,7 +286,7 @@ export function CalendarWeekView({
                     data-day-index={vi.index}
                     data-date={date}
                     className={cn(
-                      'absolute top-0 flex flex-col gap-[2px] border-b border-r border-border bg-background px-0.5 py-1',
+                      'absolute top-0 flex flex-col gap-[2px] border-b border-e border-border bg-background px-0.5 py-1',
                       isWeekend(date) && 'bg-muted/30'
                     )}
                     style={{ left: vi.start, width: vi.size, height: allDayRowHeight }}
@@ -319,7 +319,7 @@ export function CalendarWeekView({
             {HOURS.map((hour) => (
               <div
                 key={hour}
-                className="flex items-start justify-end pr-1"
+                className="flex items-start justify-end pe-1"
                 style={{ height: HOUR_HEIGHT }}
               >
                 <span className="-translate-y-1/2 text-xs font-medium text-muted-foreground">
@@ -351,7 +351,7 @@ export function CalendarWeekView({
                   data-day-index={vi.index}
                   data-date={date}
                   className={cn(
-                    'absolute top-0 border-r border-border bg-background',
+                    'absolute top-0 border-e border-border bg-background',
                     isWeekend(date) && 'bg-muted/30'
                   )}
                   style={{
@@ -393,7 +393,7 @@ export function CalendarWeekView({
 
                   {today && (
                     <div
-                      className="absolute left-0 right-0 z-20 flex items-center"
+                      className="pointer-events-none absolute start-0 end-0 z-20 flex items-center"
                       style={{ top: currentTimeOffset }}
                     >
                       <div className="size-2 rounded-full bg-tint" />

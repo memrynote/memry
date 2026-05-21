@@ -78,7 +78,7 @@ test.describe('Agent chat create-task flow', () => {
     await composer.fill('Create a task from the current note')
     await composer.press('Enter')
 
-    await approveAgentToolCall(page, /vault_create_task.*Awaiting/i)
+    await approveAgentToolCall(page, /Creating task.*Awaiting approval/i)
 
     await expect
       .poll(
@@ -125,7 +125,7 @@ test.describe('Agent chat create-task flow', () => {
     await composer.fill('Create a task from the current note')
     await composer.press('Enter')
 
-    await approveAgentToolCall(page, /vault_create_task.*Awaiting/i)
+    await approveAgentToolCall(page, /Creating task.*Awaiting approval/i)
 
     await expect
       .poll(

@@ -24,9 +24,14 @@ function getLoopbackUrl(value) {
 }
 
 function getMemryAgentToken(headers) {
+  const authorization = headers?.Authorization ?? headers?.authorization
+  if (typeof authorization === 'string' && authorization.startsWith('Bearer ')) {
+    return authorization.slice('Bearer '.length)
+  }
+
   const token = headers?.['x-memry-agent-token']
   if (typeof token !== 'string') {
-    throw new Error('missing x-memry-agent-token')
+    throw new Error('missing Memry MCP bearer token')
   }
 
   return token
@@ -40,7 +45,9 @@ function readMcpConfig() {
   const server = JSON.parse(fs.readFileSync(process.argv[index + 1], 'utf8')).mcpServers.memry
   return {
     url: getLoopbackUrl(server.url),
-    agentHeader: getMemryAgentToken(server.headers)
+    agentAuth: getMemryAgentToken(server.headers),
+    conversationId: server.headers?.['X-Memry-Conversation'],
+    windowId: server.headers?.['X-Memry-Window']
   }
 }
 
@@ -49,7 +56,9 @@ async function callCreateTask() {
   const response = await fetch(server.url, {
     method: 'POST',
     headers: {
-      'x-memry-agent-token': server.agentHeader,
+      Authorization: `Bearer ${server.agentAuth}`,
+      'X-Memry-Conversation': server.conversationId,
+      'X-Memry-Window': server.windowId,
       accept: 'application/json, text/event-stream',
       'content-type': 'application/json'
     },

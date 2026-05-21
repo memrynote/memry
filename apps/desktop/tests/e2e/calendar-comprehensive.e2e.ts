@@ -172,7 +172,7 @@ test.describe('Calendar — comprehensive coverage', () => {
       await expect(cal.eventChip(/Due launch brief/i).first()).toBeVisible()
 
       await cal.openFilters()
-      await page.getByRole('checkbox', { name: 'Memry items' }).uncheck()
+      await page.getByRole('checkbox', { name: 'memrynote items' }).uncheck()
       await page.keyboard.press('Escape')
 
       await expect(cal.eventChip(/Due launch brief/i)).toHaveCount(0)
