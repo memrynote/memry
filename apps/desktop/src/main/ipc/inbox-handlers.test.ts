@@ -69,7 +69,10 @@ vi.mock('../inbox/attachments', () => ({
 
 vi.mock('../inbox/metadata', () => ({
   fetchUrlMetadata: vi.fn(),
-  downloadImage: vi.fn(),
+  downloadImage: vi.fn()
+}))
+
+vi.mock('../inbox/metadata-utils', () => ({
   titleFromUrl: vi.fn((url: string) => url),
   isBotPageTitle: vi.fn(() => false),
   extractDomain: vi.fn((url: string) => {

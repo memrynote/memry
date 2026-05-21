@@ -65,7 +65,7 @@ vi.mock('./jobs', () => ({
   teardownInboxJobScheduler: vi.fn()
 }))
 
-vi.mock('./metadata', () => ({
+vi.mock('./metadata-utils', () => ({
   titleFromUrl: (url: string) => `Title for ${url}`
 }))
 

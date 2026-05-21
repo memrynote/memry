@@ -8,7 +8,7 @@ import {
 } from '@memry/contracts/inbox-api'
 import { InboxChannels } from '@memry/contracts/ipc-channels'
 import { createLogger } from '../lib/logger'
-import { extractDomain, fetchUrlMetadata, isBotPageTitle, titleFromUrl } from '../inbox/metadata'
+import { extractDomain, isBotPageTitle, titleFromUrl } from '../inbox/metadata-utils'
 import {
   createDesktopInboxBatchHandlers,
   createDesktopInboxCrudHandlers,
@@ -168,6 +168,7 @@ export function registerInboxHandlers(): void {
 
   ipcMain.handle(InboxChannels.invoke.PREVIEW_LINK, async (_, url: string) => {
     try {
+      const { fetchUrlMetadata } = await import('../inbox/metadata')
       const metadata = await fetchUrlMetadata(url)
       const domain = extractDomain(url)
       const title =

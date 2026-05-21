@@ -22,7 +22,7 @@ import { eq } from 'drizzle-orm'
 import { InboxChannels, TasksChannels } from '@memry/contracts/ipc-channels'
 import { resolveAttachmentUrl, deleteInboxAttachments } from './attachments'
 import { extractYouTubeVideoId } from '@memry/shared/youtube'
-import { extractDomain } from './metadata'
+import { extractDomain } from './metadata-utils'
 import { publishProjectionEvent } from '../projections'
 import { syncTaskCreate } from '../tasks/runtime-effects'
 
