@@ -1006,7 +1006,8 @@ export const FLOW_STEPS = [
       { name: 'Notion', logo: '/competitors/notion.png' },
       { name: 'Bear', logo: '/competitors/bear.png' },
       { name: 'Roam', logo: '/competitors/roam.png' },
-      { name: 'Evernote', logo: '/competitors/evernote.png' }
+      { name: 'Evernote', logo: '/competitors/evernote.png' },
+      { name: 'Obsidian', logo: '/competitors/obsidian.png' }
     ]
   },
   {
