@@ -15,6 +15,8 @@ export function VideoScene({
   muted,
   onMutedChange,
   onDurationDetected,
+  onPlaybackChange,
+  onProgressChange,
   seekRequest
 }: VideoSceneProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -56,10 +58,29 @@ export function VideoScene({
     onDurationDetected(video.duration * 1000)
   }
 
+  const reportProgress = () => {
+    const video = videoRef.current
+    if (!video || !onProgressChange || !Number.isFinite(video.duration) || video.duration <= 0) {
+      return
+    }
+
+    onProgressChange(Math.min(Math.max(video.currentTime / video.duration, 0), 1))
+  }
+
   const handleCanPlay = () => {
     const video = videoRef.current
     if (!video || !playingRef.current || expanded) return
     video.play().catch(() => {})
+  }
+
+  const handlePlay = () => {
+    onPlaybackChange?.(true)
+    reportProgress()
+  }
+
+  const handlePause = () => {
+    onPlaybackChange?.(false)
+    reportProgress()
   }
 
   const handleModalCanPlay = () => {
@@ -204,12 +225,18 @@ export function VideoScene({
           ref={videoRef}
           src={src}
           muted={muted}
+          controls
           loop
           playsInline
           preload="auto"
-          className="pointer-events-none h-auto w-full scale-x-[1.035]"
+          className="h-auto w-full scale-x-[1.035]"
           onLoadedMetadata={handleLoadedMetadata}
           onCanPlay={handleCanPlay}
+          onTimeUpdate={reportProgress}
+          onSeeked={reportProgress}
+          onPlay={handlePlay}
+          onPause={handlePause}
+          onClick={(event) => event.stopPropagation()}
         />
         <div className="absolute top-3 end-3 z-10 flex gap-2" aria-hidden={expanded}>
           <button

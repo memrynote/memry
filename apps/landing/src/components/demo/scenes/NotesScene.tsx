@@ -7,6 +7,8 @@ export function NotesScene({
   muted,
   onMutedChange,
   onDurationDetected,
+  onPlaybackChange,
+  onProgressChange,
   seekRequest
 }: SceneProps) {
   return (
@@ -17,6 +19,8 @@ export function NotesScene({
       muted={muted}
       onMutedChange={onMutedChange}
       onDurationDetected={onDurationDetected}
+      onPlaybackChange={onPlaybackChange}
+      onProgressChange={onProgressChange}
       seekRequest={seekRequest}
     />
   )

@@ -22,6 +22,8 @@ interface DemoSceneProps {
   onStart?: () => void
   onMutedChange: (muted: boolean) => void
   onDurationDetected: (ms: number) => void
+  onPlaybackChange?: (playing: boolean) => void
+  onProgressChange?: (progress: number) => void
   previewing?: boolean
   seekRequest: SeekRequest | null
 }
@@ -34,6 +36,8 @@ export function DemoScene({
   onStart,
   onMutedChange,
   onDurationDetected,
+  onPlaybackChange,
+  onProgressChange,
   previewing = false,
   seekRequest
 }: DemoSceneProps) {
@@ -73,6 +77,8 @@ export function DemoScene({
               muted={muted}
               onMutedChange={onMutedChange}
               onDurationDetected={isActive ? onDurationDetected : undefined}
+              onPlaybackChange={isActive ? onPlaybackChange : undefined}
+              onProgressChange={isActive ? onProgressChange : undefined}
               seekRequest={isActive ? seekRequest : null}
             />
           </motion.div>

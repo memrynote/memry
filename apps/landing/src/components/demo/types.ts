@@ -12,6 +12,8 @@ export interface SceneProps {
   muted: boolean
   onMutedChange: (muted: boolean) => void
   onDurationDetected?: (ms: number) => void
+  onPlaybackChange?: (playing: boolean) => void
+  onProgressChange?: (progress: number) => void
   seekRequest?: SeekRequest | null
 }
 

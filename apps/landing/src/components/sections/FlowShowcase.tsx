@@ -123,10 +123,40 @@ export function FlowShowcase() {
     setVideoDuration(ms)
   }, [])
 
+  const handleVideoProgressChange = useCallback(
+    (nextProgress: number) => {
+      seekTo(nextProgress)
+    },
+    [seekTo]
+  )
+
+  const handleVideoPlaybackChange = useCallback(
+    (isPlaying: boolean) => {
+      if (isPlaying) {
+        if (!started) {
+          trackLandingEvent('landing_demo_start', demoTarget(CLIPS[activeIndex].id))
+        }
+        setStarted(true)
+        setPaused(false)
+        return
+      }
+
+      setPaused(true)
+    },
+    [activeIndex, started]
+  )
+
   const handleActiveTabSeek = useCallback(
     (nextProgress: number) => {
       if (!started) {
-        handleStart()
+        trackLandingEvent('landing_demo_start', demoTarget(CLIPS[activeIndex].id))
+        setStarted(true)
+        setPaused(false)
+        seekTo(nextProgress)
+        setSeekRequest((current) => ({
+          progress: nextProgress,
+          requestId: (current?.requestId ?? 0) + 1
+        }))
         return
       }
 
@@ -138,7 +168,7 @@ export function FlowShowcase() {
         requestId: (current?.requestId ?? 0) + 1
       }))
     },
-    [activeIndex, handleStart, progress, seekTo, started]
+    [activeIndex, progress, seekTo, started]
   )
 
   return (
@@ -162,13 +192,14 @@ export function FlowShowcase() {
               </div>
               <DemoScene
                 activeIndex={activeIndex}
-                playing={started ? !paused : true}
+                playing={started && !paused}
                 muted={muted}
                 onToggle={handleToggle}
                 onStart={handleStart}
                 onMutedChange={setMuted}
                 onDurationDetected={handleDurationDetected}
-                previewing={!started}
+                onPlaybackChange={handleVideoPlaybackChange}
+                onProgressChange={handleVideoProgressChange}
                 seekRequest={seekRequest}
               />
             </div>
