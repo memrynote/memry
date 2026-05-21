@@ -17,6 +17,9 @@ Switch between Day, Week, Month, and Year from the calendar toolbar.
 
 The current view persists per tab.
 
+Day and week views show a current-time marker on today's grid; event chips remain the
+clickable target for opening or editing events.
+
 ## What Shows Up
 
 | Source                                   | How it appears                            |
