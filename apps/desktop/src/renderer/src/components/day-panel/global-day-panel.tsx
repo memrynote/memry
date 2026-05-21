@@ -1,6 +1,5 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useMemo, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
-import { AgentPane } from '@/agent-chat/agent-pane'
 import { SidebarTabs } from '@/agent-chat/sidebar-tabs'
 import { TabBarAction } from '@/components/tabs/tab-bar-action'
 import { TooltipProvider } from '@/components/ui/tooltip'
@@ -33,6 +32,10 @@ import { useT } from '@memry/i18n/renderer'
 interface GlobalDayPanelProps {
   className?: string
 }
+
+const LazyAgentPane = lazy(async () => ({
+  default: (await import('@/agent-chat/agent-pane')).AgentPane
+}))
 
 function DayPanelResizeRail() {
   const { t: tPhaseF } = useT('common')
@@ -93,9 +96,28 @@ function DayPanelResizeRail() {
 }
 
 export function GlobalDayPanel({ className }: GlobalDayPanelProps) {
+  const { isOpen, width, isResizing } = useDayPanel()
+
+  return (
+    <div
+      data-slot="day-panel-container"
+      style={{ width: isOpen ? `${width}px` : 0 }}
+      className={cn(
+        'fixed top-0 bottom-0 end-0 z-10',
+        !isResizing && 'transition-[width] duration-200 ease-linear',
+        'flex flex-col border-s border-border bg-background',
+        className
+      )}
+    >
+      {isOpen && <GlobalDayPanelContent width={width} />}
+    </div>
+  )
+}
+
+function GlobalDayPanelContent({ width }: { width: number }): React.JSX.Element {
   const { t, i18n } = useT('journal')
   const { t: tCommon } = useT('common')
-  const { isOpen, selectedDate, width, isResizing, setDate, toggle } = useDayPanel()
+  const { selectedDate, setDate, toggle } = useDayPanel()
   const { openTab } = useTabs()
   const activeTab = useActiveTab()
   const { setAnchorDate } = useCalendarView()
@@ -212,68 +234,53 @@ export function GlobalDayPanel({ className }: GlobalDayPanelProps) {
 
   return (
     <div
-      data-slot="day-panel-container"
-      style={{ width: isOpen ? `${width}px` : 0 }}
-      className={cn(
-        'fixed top-0 bottom-0 end-0 z-10',
-        !isResizing && 'transition-[width] duration-200 ease-linear',
-        'flex flex-col border-s border-border bg-background',
-        className
-      )}
+      data-slot="day-panel-inner"
+      style={{ width: `${width}px` }}
+      className={cn('relative flex h-full flex-col', 'transition-opacity duration-200 opacity-100')}
     >
-      <div
-        data-slot="day-panel-inner"
-        style={{ width: `${width}px` }}
-        className={cn(
-          'relative flex h-full flex-col',
-          'transition-opacity duration-200',
-          isOpen ? 'opacity-100' : 'opacity-0'
-        )}
-      >
-        {isOpen && <DayPanelResizeRail />}
+      <DayPanelResizeRail />
 
-        <SidebarTabs
-          dayLabel={dayPanelLabel}
-          endAccessory={
-            isOpen ? (
-              <TooltipProvider delayDuration={300}>
-                <TabBarAction
-                  icon={
-                    <PanelRightIcon className="w-4 h-4 text-tint transition-colors duration-150" />
-                  }
-                  tooltip={tCommon('phaseF.componentsTabsTabBarWithDrag.dayPanel')}
-                  onClick={toggle}
-                  isActive
+      <SidebarTabs
+        dayLabel={dayPanelLabel}
+        endAccessory={
+          <TooltipProvider delayDuration={300}>
+            <TabBarAction
+              icon={<PanelRightIcon className="w-4 h-4 text-tint transition-colors duration-150" />}
+              tooltip={tCommon('phaseF.componentsTabsTabBarWithDrag.dayPanel')}
+              onClick={toggle}
+              isActive
+            />
+          </TooltipProvider>
+        }
+      >
+        {{
+          day: (
+            <div className="h-full overflow-y-auto pt-3">
+              <div className="px-4 pb-3">
+                <DatePickerCalendar
+                  selected={selectedDateObj}
+                  onSelect={handleDateSelect}
+                  activityData={isCalendarTabActive ? undefined : journalActivityData}
+                  dayDots={isCalendarTabActive ? dayDotsData : undefined}
+                  hoveredEventColor={hoveredEventColor}
+                  className="w-full"
+                  showWeekNumbers
+                  onTodayClick={handleTodayClick}
                 />
-              </TooltipProvider>
-            ) : null
-          }
-        >
-          {{
-            day: (
-              <div className="h-full overflow-y-auto pt-3">
-                <div className="px-4 pb-3">
-                  <DatePickerCalendar
-                    selected={selectedDateObj}
-                    onSelect={handleDateSelect}
-                    activityData={isCalendarTabActive ? undefined : journalActivityData}
-                    dayDots={isCalendarTabActive ? dayDotsData : undefined}
-                    hoveredEventColor={hoveredEventColor}
-                    className="w-full"
-                    showWeekNumbers
-                    onTodayClick={handleTodayClick}
-                  />
-                </div>
-                <div className="h-px mx-4 bg-border/30" />
-                <div className="p-4">
-                  <JournalDayPanel date={selectedDate} onHoverColor={handleHoverColor} />
-                </div>
               </div>
-            ),
-            agent: <AgentPane />
-          }}
-        </SidebarTabs>
-      </div>
+              <div className="h-px mx-4 bg-border/30" />
+              <div className="p-4">
+                <JournalDayPanel date={selectedDate} onHoverColor={handleHoverColor} />
+              </div>
+            </div>
+          ),
+          agent: (
+            <Suspense fallback={null}>
+              <LazyAgentPane />
+            </Suspense>
+          )
+        }}
+      </SidebarTabs>
     </div>
   )
 }

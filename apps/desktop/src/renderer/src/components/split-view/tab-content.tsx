@@ -15,18 +15,8 @@ import { useTabActions } from '@/contexts/tabs'
 import { useTasksOptional } from '@/contexts/tasks'
 import { cn } from '@/lib/utils'
 import { InboxPage } from '@/pages/inbox'
-import { CalendarPage } from '@/pages/calendar'
-import { JournalPage } from '@/pages/journal'
-import { TasksPage } from '@/pages/tasks'
-import { NotePage } from '@/pages/note'
-import { FilePage } from '@/pages/file'
-import { FolderViewPage } from '@/pages/folder-view'
-import { TemplateEditorPage } from '@/pages/template-editor'
-import { TemplatesPage } from '@/pages/templates'
-import { GraphPage } from '@/components/graph/graph-page'
 import { useT } from '@memry/i18n/renderer'
 import { stringifyUnknown } from '@/lib/stringify-unknown'
-import { AgentConversationTab } from '@/agent-chat/agent-conversation-tab'
 
 // =============================================================================
 // MEMOIZED PAGE COMPONENTS
@@ -34,16 +24,36 @@ import { AgentConversationTab } from '@/agent-chat/agent-conversation-tab'
 // =============================================================================
 
 const MemoizedInboxPage = React.memo(InboxPage)
-const MemoizedCalendarPage = React.memo(CalendarPage)
-const MemoizedJournalPage = React.memo(JournalPage)
-const MemoizedTasksPage = React.memo(TasksPage)
-const MemoizedNotePage = React.memo(NotePage)
-const MemoizedFilePage = React.memo(FilePage)
-const MemoizedFolderViewPage = React.memo(FolderViewPage)
-const MemoizedTemplateEditorPage = React.memo(TemplateEditorPage)
-const MemoizedTemplatesPage = React.memo(TemplatesPage)
-const MemoizedGraphPage = React.memo(GraphPage)
-const MemoizedAgentConversationTab = React.memo(AgentConversationTab)
+const LazyCalendarPage = React.lazy(async () => ({
+  default: (await import('@/pages/calendar')).CalendarPage
+}))
+const LazyJournalPage = React.lazy(async () => ({
+  default: (await import('@/pages/journal')).JournalPage
+}))
+const LazyTasksPage = React.lazy(async () => ({
+  default: (await import('@/pages/tasks')).TasksPage
+}))
+const LazyNotePage = React.lazy(async () => ({
+  default: (await import('@/pages/note')).NotePage
+}))
+const LazyFilePage = React.lazy(async () => ({
+  default: (await import('@/pages/file')).FilePage
+}))
+const LazyFolderViewPage = React.lazy(async () => ({
+  default: (await import('@/pages/folder-view')).FolderViewPage
+}))
+const LazyTemplateEditorPage = React.lazy(async () => ({
+  default: (await import('@/pages/template-editor')).TemplateEditorPage
+}))
+const LazyTemplatesPage = React.lazy(async () => ({
+  default: (await import('@/pages/templates')).TemplatesPage
+}))
+const LazyGraphPage = React.lazy(async () => ({
+  default: (await import('@/components/graph/graph-page')).GraphPage
+}))
+const LazyAgentConversationTab = React.lazy(async () => ({
+  default: (await import('@/agent-chat/agent-conversation-tab')).AgentConversationTab
+}))
 
 interface TabContentProps {
   /** Tab data */
@@ -99,7 +109,7 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
         return <MemoizedInboxPage />
 
       case 'calendar':
-        return <MemoizedCalendarPage />
+        return <LazyCalendarPage />
 
       case 'tasks':
       case 'all-tasks':
@@ -118,7 +128,7 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
           const selectionType = tab.type === 'project' ? 'project' : 'view'
 
           return (
-            <MemoizedTasksPage
+            <LazyTasksPage
               selectedId={selectionId}
               selectedType={selectionType}
               tasks={tasksContext.tasks}
@@ -142,16 +152,16 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
       }
 
       case 'note':
-        return <MemoizedNotePage noteId={tab.entityId} />
+        return <LazyNotePage noteId={tab.entityId} />
 
       case 'file':
-        return <MemoizedFilePage fileId={tab.entityId} />
+        return <LazyFilePage fileId={tab.entityId} />
 
       case 'folder':
-        return <MemoizedFolderViewPage folderPath={tab.entityId} />
+        return <LazyFolderViewPage folderPath={tab.entityId} />
 
       case 'journal':
-        return <MemoizedJournalPage />
+        return <LazyJournalPage />
 
       case 'search':
         return (
@@ -163,16 +173,16 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
         )
 
       case 'template-editor':
-        return <MemoizedTemplateEditorPage templateId={tab.entityId} />
+        return <LazyTemplateEditorPage templateId={tab.entityId} />
 
       case 'templates':
-        return <MemoizedTemplatesPage />
+        return <LazyTemplatesPage />
 
       case 'graph':
-        return <MemoizedGraphPage />
+        return <LazyGraphPage />
 
       case 'agent-chat':
-        return <MemoizedAgentConversationTab conversationId={tab.entityId} />
+        return <LazyAgentConversationTab conversationId={tab.entityId} />
 
       case 'collection':
         return (
@@ -201,7 +211,7 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
       className={cn('h-full overflow-y-auto overflow-x-hidden', className)}
       data-tab-content={tab.id}
     >
-      {content}
+      <React.Suspense fallback={null}>{content}</React.Suspense>
     </div>
   )
 }
