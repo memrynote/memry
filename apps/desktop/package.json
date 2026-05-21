@@ -63,6 +63,7 @@
     "db:push:index": "drizzle-kit push --config config/drizzle-index.config.ts",
     "db:studio:data": "drizzle-kit studio --config config/drizzle-data.config.ts",
     "db:studio:index": "drizzle-kit studio --config config/drizzle-index.config.ts",
+    "db:benchmark": "node --expose-gc --import tsx scripts/sqlite-memory-benchmark.ts",
     "build:unpack": "pnpm build && node scripts/build-packaged-app.js --dir",
     "build:win": "pnpm build && electron-builder --config config/electron-builder.yml --win",
     "build:mac": "pnpm build && node scripts/build-packaged-app.js --mac",

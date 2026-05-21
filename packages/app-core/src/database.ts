@@ -20,6 +20,10 @@ export interface OpenedDatabases {
   close(): void
 }
 
+const dataCacheKiB = 16000
+const indexCacheKiB = 32000
+const sqliteTempStore = 'MEMORY'
+
 const lockWaitBuffer = new Int32Array(new SharedArrayBuffer(4))
 const initLockTimeoutMs = 30_000
 const staleInitLockMs = 5 * 60_000
@@ -30,7 +34,7 @@ function configure(sqlite: Database.Database, cacheSize: number): void {
   sqlite.pragma('synchronous = NORMAL')
   sqlite.pragma('busy_timeout = 5000')
   sqlite.pragma(`cache_size = ${cacheSize}`)
-  sqlite.pragma('temp_store = MEMORY')
+  sqlite.pragma(`temp_store = ${sqliteTempStore}`)
 }
 
 function sleepSync(ms: number): void {
@@ -158,7 +162,7 @@ export function openDatabases(vaultPath: string): OpenedDatabases {
     )
 
     const seedSqlite = new Database(dataDbPath)
-    configure(seedSqlite, -64000)
+    configure(seedSqlite, -dataCacheKiB)
     try {
       ensureDefaultTaskProject(drizzle(seedSqlite, { schema: dataSchema }))
     } finally {
@@ -168,8 +172,8 @@ export function openDatabases(vaultPath: string): OpenedDatabases {
 
   const dataSqlite = new Database(dataDbPath)
   const indexSqlite = new Database(indexDbPath)
-  configure(dataSqlite, -64000)
-  configure(indexSqlite, -128000)
+  configure(dataSqlite, -dataCacheKiB)
+  configure(indexSqlite, -indexCacheKiB)
 
   const dataDb = drizzle(dataSqlite, { schema: dataSchema })
   const indexDb = drizzle(indexSqlite, { schema: indexSchema })

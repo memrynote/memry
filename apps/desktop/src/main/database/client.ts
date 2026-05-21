@@ -14,6 +14,10 @@ let indexDb: IndexDb | null = null
 let sqliteDataDb: Database.Database | null = null
 let sqliteIndexDb: Database.Database | null = null
 
+export const SQLITE_DATA_CACHE_KIB = 16000
+export const SQLITE_INDEX_CACHE_KIB = 32000
+export const SQLITE_TEMP_STORE = 'MEMORY'
+
 export function initDatabase(dbPath: string): DataDb {
   sqliteDataDb = new Database(dbPath)
 
@@ -29,11 +33,11 @@ export function initDatabase(dbPath: string): DataDb {
   // Wait up to 5 seconds for locks
   sqliteDataDb.pragma('busy_timeout = 5000')
 
-  // Increase cache size for better performance (64MB)
-  sqliteDataDb.pragma('cache_size = -64000')
+  // Keep a bounded page cache; benchmarked as flat for current search/task query latency.
+  sqliteDataDb.pragma(`cache_size = -${SQLITE_DATA_CACHE_KIB}`)
 
   // Store temp tables in memory
-  sqliteDataDb.pragma('temp_store = MEMORY')
+  sqliteDataDb.pragma(`temp_store = ${SQLITE_TEMP_STORE}`)
 
   dataDb = drizzle(sqliteDataDb, { schema: dataSchema })
   return dataDb
@@ -53,11 +57,11 @@ export function initIndexDatabase(dbPath: string): IndexDb {
   // Wait up to 5 seconds for locks
   sqliteIndexDb.pragma('busy_timeout = 5000')
 
-  // Larger cache for search performance (128MB)
-  sqliteIndexDb.pragma('cache_size = -128000')
+  // Keep the rebuildable index cache larger than data.db without reserving old 128MB headroom.
+  sqliteIndexDb.pragma(`cache_size = -${SQLITE_INDEX_CACHE_KIB}`)
 
   // Store temp tables in memory
-  sqliteIndexDb.pragma('temp_store = MEMORY')
+  sqliteIndexDb.pragma(`temp_store = ${SQLITE_TEMP_STORE}`)
 
   // Load sqlite-vec extension for vector search
   sqliteVec.load(sqliteIndexDb)
