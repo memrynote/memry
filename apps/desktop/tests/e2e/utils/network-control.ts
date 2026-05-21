@@ -76,17 +76,26 @@ export async function waitForSyncOffline(page: Page, timeout = 15000): Promise<S
 }
 
 export async function waitForSyncOnline(page: Page, timeout = 15000): Promise<SyncStatusSnapshot> {
-  await playwrightExpect
-    .poll(
-      async () => {
-        const status = await readSyncStatus(page)
-        return (
-          (status.status === 'idle' || status.status === 'syncing') && status.offlineSince == null
-        )
-      },
-      { timeout }
+  let lastStatus: SyncStatusSnapshot | null = null
+  try {
+    await playwrightExpect
+      .poll(
+        async () => {
+          const status = await readSyncStatus(page)
+          lastStatus = status
+          return (
+            (status.status === 'idle' || status.status === 'syncing') && status.offlineSince == null
+          )
+        },
+        { timeout }
+      )
+      .toBe(true)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    throw new Error(
+      `Timed out waiting for sync online. Last sync status: ${JSON.stringify(lastStatus)}\n${message}`
     )
-    .toBe(true)
+  }
 
   return readSyncStatus(page)
 }

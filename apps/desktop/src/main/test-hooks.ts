@@ -27,6 +27,7 @@ import { getOrCreateVaultUuid } from './agent/storage/vault-id'
 export interface SyncTestBootstrapInput {
   email: string
   setupToken: string
+  vaultId: string
   masterKeyBase64: string
   signingSecretKeyBase64: string
   kdfSalt: string
@@ -253,7 +254,16 @@ export function registerTestHooks(): void {
     async bootstrapSyncDevice(input: SyncTestBootstrapInput): Promise<{ deviceId: string }> {
       // E2E fixtures open an empty local vault before sync credentials exist. Clear that
       // test-only local key binding so the shared sync master key can bind this vault.
-      getDatabase().run(sql`DELETE FROM settings WHERE key = ${VAULT_KEY_VERIFIER_SETTING}`)
+      const db = getDatabase()
+      db.run(sql`DELETE FROM settings WHERE key = ${VAULT_KEY_VERIFIER_SETTING}`)
+      const now = Date.now()
+      db.run(
+        sql`INSERT INTO vault_metadata (id, vault_uuid, created_at, updated_at)
+            VALUES ('singleton', ${input.vaultId}, ${now}, ${now})
+            ON CONFLICT(id) DO UPDATE SET
+              vault_uuid = excluded.vault_uuid,
+              updated_at = excluded.updated_at`
+      )
 
       const deviceId = await persistKeysAndRegisterDevice(
         Buffer.from(input.masterKeyBase64, 'base64'),

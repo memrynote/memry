@@ -17,6 +17,7 @@ interface TestSyncServer {
 interface SyncTestDeviceBootstrap {
   email: string
   setupToken: string
+  vaultId: string
   masterKeyBase64: string
   signingSecretKeyBase64: string
   kdfSalt: string
@@ -28,6 +29,7 @@ export interface SharedSyncBootstrap {
   server: TestSyncServer
   serverUrl: string
   email: string
+  vaultId: string
   deviceA: SyncTestDeviceBootstrap
   deviceB: SyncTestDeviceBootstrap
 }
@@ -64,6 +66,24 @@ async function createSharedUser(server: TestSyncServer, email: string): Promise<
     .run()
 
   await db
+    .prepare(
+      `INSERT INTO sync_entitlements (
+         user_id,
+         plan,
+         status,
+         source,
+         storage_limit,
+         max_file_size,
+         max_vaults,
+         version_history_days,
+         updated_at
+       )
+       VALUES (?, 'believer', 'active', 'dev_seed', 53687091200, 209715200, NULL, 365, ?)`
+    )
+    .bind(userId, now)
+    .run()
+
+  await db
     .prepare('INSERT INTO server_cursor_sequence (user_id, current_cursor) VALUES (?, 0)')
     .bind(userId)
     .run()
@@ -82,6 +102,7 @@ export async function startSharedSyncBootstrap(): Promise<SharedSyncBootstrap> {
 
   const serverUrl = (await server.getDirectUrl()).toString().replace(/\/$/, '')
   const email = `e2e-${crypto.randomUUID()}@memry.local`
+  const vaultId = crypto.randomUUID()
   const userId = await createSharedUser(server, email)
   const masterKey = sodium.randombytes_buf(MASTER_KEY_LENGTH)
   const kdfSaltBytes = sodium.randombytes_buf(ARGON2_PARAMS.SALT_LENGTH)
@@ -102,9 +123,11 @@ export async function startSharedSyncBootstrap(): Promise<SharedSyncBootstrap> {
     server,
     serverUrl,
     email,
+    vaultId,
     deviceA: {
       email,
       setupToken: setupTokenA,
+      vaultId,
       masterKeyBase64: toBase64(masterKey),
       signingSecretKeyBase64: toBase64(signingKeyPairA.privateKey),
       kdfSalt,
@@ -114,6 +137,7 @@ export async function startSharedSyncBootstrap(): Promise<SharedSyncBootstrap> {
     deviceB: {
       email,
       setupToken: setupTokenB,
+      vaultId,
       masterKeyBase64: toBase64(masterKey),
       signingSecretKeyBase64: toBase64(signingKeyPairB.privateKey),
       kdfSalt,

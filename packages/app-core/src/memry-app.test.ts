@@ -453,9 +453,10 @@ test('opens a standalone vault and exposes core note, journal, task, inbox, and 
   assert.deepEqual(await app.inbox.tags(), [{ tag: 'cli', count: 1 }])
   assert.equal((await app.inbox.stats()).totalItems, 1)
   assert.ok((await app.inbox.markViewed(inboxItem.id)).viewedAt)
+  const snoozedUntil = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
   assert.equal(
-    (await app.inbox.snooze(inboxItem.id, '2026-05-20T09:00:00.000Z', 'Later')).snoozedUntil,
-    '2026-05-20T09:00:00.000Z'
+    (await app.inbox.snooze(inboxItem.id, snoozedUntil, 'Later')).snoozedUntil,
+    snoozedUntil
   )
   assert.equal((await app.inbox.list()).items.length, 0)
   assert.equal((await app.inbox.list({ includeSnoozed: true })).items.length, 1)

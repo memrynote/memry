@@ -1527,6 +1527,7 @@ test('runs core commands against a vault and prints JSON output', async () => {
   assert.equal(inboxViewedCode, 0)
   assert.ok((JSON.parse(stdout.at(-1) ?? '{}') as { viewedAt?: string | null }).viewedAt)
 
+  const snoozedUntil = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
   const inboxSnoozeCode = await runCli(
     [
       '--vault',
@@ -1536,7 +1537,7 @@ test('runs core commands against a vault and prints JSON output', async () => {
       'snooze',
       inbox.id ?? '',
       '--until',
-      '2026-05-20T09:00:00.000Z',
+      snoozedUntil,
       '--reason',
       'Later'
     ],
@@ -1548,7 +1549,7 @@ test('runs core commands against a vault and prints JSON output', async () => {
   assert.equal(inboxSnoozeCode, 0)
   assert.equal(
     (JSON.parse(stdout.at(-1) ?? '{}') as { snoozedUntil?: string }).snoozedUntil,
-    '2026-05-20T09:00:00.000Z'
+    snoozedUntil
   )
 
   const inboxSnoozedListCode = await runCli(['--vault', vaultPath, '--json', 'inbox', 'snoozed'], {
