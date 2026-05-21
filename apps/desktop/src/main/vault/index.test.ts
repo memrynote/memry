@@ -283,7 +283,7 @@ describe('vault lifecycle', () => {
     expect(mocks.indexVault).toHaveBeenCalledWith('/vault/work')
     expect(mocks.startWatcher).toHaveBeenCalledWith('/vault/work')
     expect(mocks.startSyncRuntime).toHaveBeenCalled()
-    expect(mocks.initEmbeddingModel).toHaveBeenCalled()
+    expect(mocks.initEmbeddingModel).not.toHaveBeenCalled()
     expect(mocks.startAgentMcpLifecycle).toHaveBeenCalled()
     expect(mocks.startAgent).toHaveBeenCalled()
     expect(mocks.currentVaultPath).toBe('/vault/work')

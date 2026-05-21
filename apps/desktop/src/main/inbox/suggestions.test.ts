@@ -296,7 +296,7 @@ describe('inbox suggestions', () => {
     expect(rawDb.prepare).toHaveBeenCalledWith('DELETE FROM vec_notes')
   })
 
-  it('combines similar-note folder and direct-note suggestions', async () => {
+  it('combines similar-note folder and direct-note suggestions when model starts cold', async () => {
     const now = new Date().toISOString()
     const { rawDb, statement } = createRawDbMock()
     statement.all.mockReturnValue([
@@ -304,7 +304,7 @@ describe('inbox suggestions', () => {
       { note_id: 'note-too-far', distance: 1.5 }
     ])
     vi.mocked(getRawIndexDatabase).mockReturnValue(rawDb as never)
-    mockIsModelLoaded.mockReturnValue(true)
+    mockIsModelLoaded.mockReturnValue(false)
     mockGenerateEmbedding.mockResolvedValue(new Float32Array([0.1, 0.2]))
 
     testDb.db
@@ -333,6 +333,9 @@ describe('inbox suggestions', () => {
 
     const suggestions = await getSuggestions('item-similar')
 
+    expect(mockGenerateEmbedding).toHaveBeenCalledWith(
+      'Research memo\n\nlong enough content for matching'
+    )
     expect(suggestions).toEqual(
       expect.arrayContaining([
         expect.objectContaining({

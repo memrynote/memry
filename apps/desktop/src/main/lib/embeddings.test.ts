@@ -1,23 +1,51 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import path from 'path'
-import { SettingsChannels } from '@memry/contracts/ipc-channels'
-import { mockApp, MockBrowserWindow } from '@tests/utils/mock-electron'
+import { EventEmitter } from 'events'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { BrowserWindow } from 'electron'
+import { SettingsChannels } from '@memry/contracts/ipc-channels'
 
-const mockPipeline = vi.fn()
-const mockEnv = { cacheDir: '' }
+const mockApp = vi.hoisted(() => ({
+  getPath: vi.fn((name: string) => `/mock/${name}`)
+}))
+const getAllWindows = vi.hoisted(() => vi.fn())
+const mockFork = vi.hoisted(() => vi.fn())
+
+class MockUtilityProcess extends EventEmitter {
+  postMessage = vi.fn()
+  kill = vi.fn().mockReturnValue(true)
+  stdout = null
+  stderr = null
+  pid = 1234
+
+  simulateMessage(message: unknown): void {
+    this.emit('message', message)
+  }
+}
+
+class MockBrowserWindow {
+  webContents = {
+    send: vi.fn()
+  }
+}
+
+let mockUtilityProcessInstance: MockUtilityProcess
 
 vi.mock('electron', () => ({
   app: mockApp,
   BrowserWindow: {
-    getAllWindows: vi.fn()
+    getAllWindows
+  },
+  utilityProcess: {
+    fork: (...args: unknown[]) => {
+      mockUtilityProcessInstance = new MockUtilityProcess()
+      mockFork(...args)
+      return mockUtilityProcessInstance
+    }
   }
 }))
 
-vi.mock('@huggingface/transformers', () => ({
-  pipeline: mockPipeline,
-  env: mockEnv
-}))
+vi.mock('@huggingface/transformers', () => {
+  throw new Error('@huggingface/transformers should only load inside embedding-worker')
+})
 
 import {
   EMBEDDING_DIMENSION,
@@ -32,8 +60,7 @@ import {
 describe('embeddings', () => {
   beforeEach(() => {
     unloadModel()
-    mockPipeline.mockReset()
-    mockEnv.cacheDir = ''
+    mockFork.mockReset()
     mockApp.getPath.mockImplementation((name: string) =>
       name === 'userData' ? '/mock/user-data' : `/mock/${name}`
     )
@@ -42,71 +69,112 @@ describe('embeddings', () => {
 
   afterEach(() => {
     unloadModel()
+    vi.useRealTimers()
     vi.clearAllMocks()
   })
 
-  it('loads the model, configures cache dir, and emits progress events', async () => {
+  it('loads the model through a utility process and forwards progress events', async () => {
     const window = new MockBrowserWindow()
     vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([window])
 
-    const mockExtractor = vi.fn().mockResolvedValue({
-      data: new Float32Array(EMBEDDING_DIMENSION)
+    const loadPromise = initEmbeddingModel()
+
+    expect(mockFork).toHaveBeenCalledOnce()
+    mockUtilityProcessInstance.simulateMessage({ type: 'ready' })
+    await vi.waitFor(() => {
+      expect(mockUtilityProcessInstance.postMessage).toHaveBeenCalledTimes(1)
     })
 
-    mockPipeline.mockImplementationOnce(async (_task, _model, options) => {
-      options?.progress_callback?.({ status: 'progress', progress: 42 })
-      options?.progress_callback?.({ status: 'done' })
-      return mockExtractor
+    const [, , options] = mockFork.mock.calls[0] ?? []
+    expect(options).toEqual(
+      expect.objectContaining({
+        serviceName: 'Embeddings',
+        env: expect.objectContaining({
+          MEMRY_USER_DATA_PATH: '/mock/user-data'
+        })
+      })
+    )
+
+    const requestMessage = mockUtilityProcessInstance.postMessage.mock.calls[0]?.[0] as {
+      type: string
+      requestId: string
+    }
+    expect(requestMessage.type).toBe('load-model')
+
+    mockUtilityProcessInstance.simulateMessage({
+      type: 'progress',
+      phase: 'downloading',
+      progress: 42,
+      status: 'Downloading model: 42%'
+    })
+    mockUtilityProcessInstance.simulateMessage({
+      type: 'progress',
+      phase: 'ready',
+      progress: 100,
+      status: 'Model ready'
+    })
+    mockUtilityProcessInstance.simulateMessage({
+      type: 'load-model-result',
+      requestId: requestMessage.requestId
     })
 
-    const result = await initEmbeddingModel()
-
-    expect(result).toBe(true)
-    expect(mockEnv.cacheDir).toBe(path.join('/mock/user-data', 'models', 'transformers'))
+    await expect(loadPromise).resolves.toBe(true)
     expect(getModelInfo().loaded).toBe(true)
-
-    const phases = window.webContents.send.mock.calls
-      .filter(([channel]) => channel === SettingsChannels.events.EMBEDDING_PROGRESS)
-      .map(([, payload]) => (payload as { phase: string }).phase)
-
-    expect(phases).toEqual(expect.arrayContaining(['loading', 'downloading', 'ready']))
-  })
-
-  it('returns false and surfaces errors when model load fails', async () => {
-    const window = new MockBrowserWindow()
-    vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([window])
-
-    mockPipeline.mockImplementationOnce(async () => {
-      throw new Error('load failed')
-    })
-
-    const result = await initEmbeddingModel()
-
-    expect(result).toBe(false)
-    expect(getModelInfo().error).toBe('load failed')
 
     expect(window.webContents.send).toHaveBeenCalledWith(
       SettingsChannels.events.EMBEDDING_PROGRESS,
-      expect.objectContaining({ phase: 'error' })
+      expect.objectContaining({
+        phase: 'downloading',
+        progress: 42
+      })
     )
   })
 
+  it('returns false and surfaces errors when model load fails', async () => {
+    const loadPromise = initEmbeddingModel()
+
+    mockUtilityProcessInstance.simulateMessage({ type: 'ready' })
+    await vi.waitFor(() => {
+      expect(mockUtilityProcessInstance.postMessage).toHaveBeenCalledTimes(1)
+    })
+
+    const requestMessage = mockUtilityProcessInstance.postMessage.mock.calls[0]?.[0] as {
+      requestId: string
+    }
+    mockUtilityProcessInstance.simulateMessage({
+      type: 'error',
+      requestId: requestMessage.requestId,
+      error: 'load failed'
+    })
+
+    await expect(loadPromise).resolves.toBe(false)
+    expect(getModelInfo().error).toBe('load failed')
+  })
+
   it('tracks loading state and unloads the model', async () => {
-    const mockExtractor = vi.fn()
-    let resolvePipeline: () => void
-    const pipelineReady = new Promise<void>((resolve) => {
-      resolvePipeline = resolve
-    })
-
-    mockPipeline.mockImplementationOnce(async () => {
-      await pipelineReady
-      return mockExtractor
-    })
-
     const loading = initEmbeddingModel()
     expect(isModelLoading()).toBe(true)
 
-    resolvePipeline!()
+    mockUtilityProcessInstance.simulateMessage({ type: 'ready' })
+    await vi.waitFor(() => {
+      expect(mockUtilityProcessInstance.postMessage).toHaveBeenCalledTimes(1)
+    })
+    expect(isModelLoading()).toBe(true)
+
+    const requestMessage = mockUtilityProcessInstance.postMessage.mock.calls[0]?.[0] as {
+      requestId: string
+    }
+    mockUtilityProcessInstance.simulateMessage({
+      type: 'progress',
+      phase: 'ready',
+      progress: 100,
+      status: 'Model ready'
+    })
+    mockUtilityProcessInstance.simulateMessage({
+      type: 'load-model-result',
+      requestId: requestMessage.requestId
+    })
+
     await loading
 
     expect(isModelLoading()).toBe(false)
@@ -116,39 +184,103 @@ describe('embeddings', () => {
     expect(isModelLoaded()).toBe(false)
   })
 
-  it('returns null for text below the minimum length', async () => {
+  it('returns null for text below the minimum length without starting the worker', async () => {
     const result = await generateEmbedding('short')
+
     expect(result).toBeNull()
+    expect(mockFork).not.toHaveBeenCalled()
   })
 
   it('truncates long text and returns an embedding', async () => {
-    const mockExtractor = vi.fn().mockResolvedValue({
-      data: new Float32Array(EMBEDDING_DIMENSION)
+    const longText = 'a'.repeat(2500)
+    const embeddingPromise = generateEmbedding(longText)
+
+    mockUtilityProcessInstance.simulateMessage({ type: 'ready' })
+    await vi.waitFor(() => {
+      expect(mockUtilityProcessInstance.postMessage).toHaveBeenCalledTimes(1)
     })
 
-    mockPipeline.mockImplementationOnce(async () => mockExtractor)
+    const requestMessage = mockUtilityProcessInstance.postMessage.mock.calls[0]?.[0] as {
+      type: string
+      requestId: string
+      text: string
+    }
+    expect(requestMessage.type).toBe('embed')
+    expect(requestMessage.text.length).toBe(2000)
 
-    const longText = 'a'.repeat(2500)
-    const embedding = await generateEmbedding(longText)
+    mockUtilityProcessInstance.simulateMessage({
+      type: 'embed-result',
+      requestId: requestMessage.requestId,
+      embedding: Array.from(new Float32Array(EMBEDDING_DIMENSION))
+    })
 
+    const embedding = await embeddingPromise
     expect(embedding).toBeInstanceOf(Float32Array)
     expect(embedding?.length).toBe(EMBEDDING_DIMENSION)
-    expect(mockExtractor).toHaveBeenCalled()
-
-    const [inputText] = mockExtractor.mock.calls[0]
-    expect(typeof inputText).toBe('string')
-    expect((inputText as string).length).toBe(2000)
   })
 
   it('returns null when embedding dimension is unexpected', async () => {
-    const mockExtractor = vi.fn().mockResolvedValue({
-      data: new Float32Array(10)
+    const embeddingPromise = generateEmbedding('this is long enough for embeddings')
+
+    mockUtilityProcessInstance.simulateMessage({ type: 'ready' })
+    await vi.waitFor(() => {
+      expect(mockUtilityProcessInstance.postMessage).toHaveBeenCalledTimes(1)
     })
 
-    mockPipeline.mockImplementationOnce(async () => mockExtractor)
+    const requestMessage = mockUtilityProcessInstance.postMessage.mock.calls[0]?.[0] as {
+      requestId: string
+    }
+    mockUtilityProcessInstance.simulateMessage({
+      type: 'embed-result',
+      requestId: requestMessage.requestId,
+      embedding: Array.from(new Float32Array(10))
+    })
 
-    const embedding = await generateEmbedding('this is long enough for embeddings')
+    await expect(embeddingPromise).resolves.toBeNull()
+  })
 
-    expect(embedding).toBeNull()
+  it('reuses the utility process while active and shuts it down after idling', async () => {
+    vi.useFakeTimers()
+    const firstEmbedding = generateEmbedding('first content long enough')
+
+    mockUtilityProcessInstance.simulateMessage({ type: 'ready' })
+    await vi.waitFor(() => {
+      expect(mockUtilityProcessInstance.postMessage).toHaveBeenCalledTimes(1)
+    })
+
+    const firstRequest = mockUtilityProcessInstance.postMessage.mock.calls[0]?.[0] as {
+      requestId: string
+    }
+    mockUtilityProcessInstance.simulateMessage({
+      type: 'embed-result',
+      requestId: firstRequest.requestId,
+      embedding: Array.from(new Float32Array(EMBEDDING_DIMENSION))
+    })
+
+    await expect(firstEmbedding).resolves.toBeInstanceOf(Float32Array)
+    await vi.advanceTimersByTimeAsync(20_000)
+
+    const secondEmbedding = generateEmbedding('second content long enough')
+    await vi.waitFor(() => {
+      expect(mockUtilityProcessInstance.postMessage).toHaveBeenCalledTimes(2)
+    })
+
+    await vi.advanceTimersByTimeAsync(10_000)
+    expect(mockUtilityProcessInstance.postMessage).not.toHaveBeenCalledWith({ type: 'shutdown' })
+
+    const secondRequest = mockUtilityProcessInstance.postMessage.mock.calls[1]?.[0] as {
+      requestId: string
+    }
+    mockUtilityProcessInstance.simulateMessage({
+      type: 'embed-result',
+      requestId: secondRequest.requestId,
+      embedding: Array.from(new Float32Array(EMBEDDING_DIMENSION))
+    })
+
+    await expect(secondEmbedding).resolves.toBeInstanceOf(Float32Array)
+    expect(mockFork).toHaveBeenCalledOnce()
+
+    await vi.advanceTimersByTimeAsync(30_000)
+    expect(mockUtilityProcessInstance.postMessage).toHaveBeenLastCalledWith({ type: 'shutdown' })
   })
 })
