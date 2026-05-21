@@ -34,6 +34,7 @@ import { readPreferences } from './vault/vault-preferences'
 import { getCurrentVaultPath, getStoredLocale } from './store'
 import { startSnoozeScheduler, stopSnoozeScheduler, checkDueItemsOnStartup } from './inbox/snooze'
 import { stopVoiceModel } from './inbox/voice-model'
+import { stopImageProcessing } from './image-processing/bridge'
 import { startReminderScheduler, stopReminderScheduler } from './lib/reminders'
 import { disposeTelemetryRuntime, initializeTelemetryRuntime } from './telemetry/runtime'
 import { getTelemetryAuthState, getTelemetrySyncState } from './telemetry/state'
@@ -1220,6 +1221,10 @@ app.on('before-quit', (event) => {
     .then(() => {
       shutdownLog.info('stopping voice transcription utility...')
       return stopVoiceModel()
+    })
+    .then(() => {
+      shutdownLog.info('stopping image processing utility...')
+      return stopImageProcessing()
     })
     .then(() => {
       shutdownLog.info('flushing telemetry runtime...')

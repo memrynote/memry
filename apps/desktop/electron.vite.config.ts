@@ -77,6 +77,7 @@ export default defineConfig({
           index: resolve(appRoot, 'src/main/index.ts'),
           'embedding-worker': resolve(appRoot, 'src/main/lib/embedding-worker.ts'),
           'sync-worker': resolve(appRoot, 'src/main/sync/worker.ts'),
+          'image-processing-worker': resolve(appRoot, 'src/main/image-processing/worker.ts'),
           'voice-transcription-worker': resolve(
             appRoot,
             'src/main/inbox/voice-transcription-worker.ts'

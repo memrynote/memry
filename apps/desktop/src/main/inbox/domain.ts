@@ -1,6 +1,5 @@
 import { BrowserWindow } from 'electron'
 import { eq } from 'drizzle-orm'
-import sharp from 'sharp'
 import {
   createInboxCommands,
   createInboxQueries,
@@ -22,6 +21,7 @@ import { generateId } from '../lib/id'
 import { createLogger } from '../lib/logger'
 import {
   resolveAttachmentUrl,
+  resolveInboxAttachmentFilePath,
   storeInboxAttachment,
   storeThumbnail,
   ALLOWED_IMAGE_TYPES,
@@ -29,6 +29,7 @@ import {
   ALLOWED_VIDEO_TYPES,
   ALLOWED_DOCUMENT_TYPES
 } from './attachments'
+import { processInboxImageAttachment } from '../image-processing/bridge'
 import { titleFromUrl } from './metadata'
 import { captureVoice } from './capture'
 import { findDuplicateByContent, findDuplicateByUrl } from './duplicates'
@@ -298,31 +299,29 @@ async function captureImageItem(input: CaptureImageInput): Promise<InboxCaptureR
 
     if (isImage) {
       try {
-        const pipeline = sharp(fileBuffer)
-        const metadata = await pipeline.metadata()
-        if (metadata.width && metadata.height) {
+        if (storeResult.path) {
+          const imageResult = await processInboxImageAttachment(
+            resolveInboxAttachmentFilePath(storeResult.path)
+          )
+          const metadata = imageResult?.metadata
+          if (!metadata) {
+            throw new Error('No image metadata returned')
+          }
+
           itemMetadata = {
             originalFilename: input.filename,
-            format: metadata.format || 'unknown',
+            format: metadata.format,
             width: metadata.width,
             height: metadata.height,
             fileSize: fileBuffer.length,
-            hasExif: !!(metadata.exif || metadata.icc)
+            hasExif: metadata.hasExif
           }
 
-          try {
-            const thumbnailBuffer = await pipeline
-              .clone()
-              .resize(400, 400, { fit: 'inside', withoutEnlargement: true })
-              .jpeg({ quality: 80 })
-              .toBuffer()
-
-            const thumbnailResult = await storeThumbnail(id, thumbnailBuffer, 'jpg')
+          if (imageResult.thumbnailData) {
+            const thumbnailResult = await storeThumbnail(id, imageResult.thumbnailData, 'jpg')
             if (thumbnailResult.success && thumbnailResult.thumbnailPath) {
               thumbnailPath = thumbnailResult.thumbnailPath
             }
-          } catch (thumbnailError) {
-            logger.warn('Failed to generate thumbnail', thumbnailError)
           }
         }
       } catch (metadataError) {

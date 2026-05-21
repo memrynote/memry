@@ -53,6 +53,14 @@ pnpm db:studio      # open GUI
 
 better-sqlite3 is synchronous and single-process. The main process is the only writer. The renderer never touches SQLite directly — all reads and writes go through IPC.
 
+## Native Media Processing
+
+Image, PDF, and video thumbnail generation stays local, but the native image stack is not part of
+the always-on main process. The desktop app starts an image-processing utility process only when
+thumbnail or inbox image metadata work is requested. That worker owns the lazy `sharp` / `libvips`
+load, returns the generated metadata or thumbnail bytes over IPC, and shuts down after it has been
+idle.
+
 ## better-sqlite3 ABI Quirk
 
 The native module must match the JS runtime. If you see `ERR_DLOPEN_FAILED`, rebuild for the right target:

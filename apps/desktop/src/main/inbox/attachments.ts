@@ -154,6 +154,10 @@ export function getInboxAttachmentsDir(): string {
   return path.join(vaultPath, 'attachments', 'inbox')
 }
 
+export function resolveInboxAttachmentFilePath(relativePath: string): string {
+  return path.join(requireVaultPath(), relativePath)
+}
+
 /**
  * Get the attachments directory for a specific inbox item
  */

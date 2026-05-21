@@ -17,6 +17,7 @@ const mockQueueTranscriptionJob = vi.fn()
 const mockPublishInboxUpserted = vi.fn()
 const mockSyncInboxCreate = vi.fn()
 const mockExtractSocialPost = vi.fn()
+const mockProcessInboxImageAttachment = vi.hoisted(() => vi.fn())
 
 vi.mock('electron', () => ({
   BrowserWindow: {
@@ -24,23 +25,9 @@ vi.mock('electron', () => ({
   }
 }))
 
-vi.mock('sharp', () => ({
-  default: vi.fn(() => ({
-    metadata: vi.fn().mockResolvedValue({
-      width: 640,
-      height: 480,
-      format: 'jpeg',
-      exif: Buffer.from([1])
-    }),
-    clone: vi.fn(() => ({
-      resize: vi.fn(() => ({
-        jpeg: vi.fn(() => ({
-          toBuffer: vi.fn().mockResolvedValue(Buffer.from('thumb'))
-        }))
-      }))
-    }))
-  }))
-}))
+vi.mock('sharp', () => {
+  throw new Error('inbox domain must not import sharp in the main process')
+})
 
 vi.mock('../database', () => ({
   getDatabase: vi.fn(),
@@ -53,8 +40,13 @@ vi.mock('./attachments', () => ({
   ALLOWED_VIDEO_TYPES: ['video/mp4'],
   ALLOWED_DOCUMENT_TYPES: ['application/pdf'],
   resolveAttachmentUrl: (path: string | null) => (path ? `memry-file://${path}` : null),
+  resolveInboxAttachmentFilePath: (path: string) => `/vault/${path}`,
   storeInboxAttachment: (...args: unknown[]) => mockStoreInboxAttachment(...args),
   storeThumbnail: (...args: unknown[]) => mockStoreThumbnail(...args)
+}))
+
+vi.mock('../image-processing/bridge', () => ({
+  processInboxImageAttachment: (...args: unknown[]) => mockProcessInboxImageAttachment(...args)
 }))
 
 vi.mock('./capture', () => ({
@@ -138,6 +130,15 @@ describe('createDesktopInboxDomain', () => {
     mockStoreThumbnail
       .mockReset()
       .mockResolvedValue({ success: true, thumbnailPath: 'inbox/thumb.jpg' })
+    mockProcessInboxImageAttachment.mockReset().mockResolvedValue({
+      metadata: {
+        format: 'jpeg',
+        width: 640,
+        height: 480,
+        hasExif: true
+      },
+      thumbnailData: Buffer.from('thumb')
+    })
     mockCaptureVoice.mockReset().mockResolvedValue({
       success: true,
       item: {
@@ -245,6 +246,7 @@ describe('createDesktopInboxDomain', () => {
       Buffer.from('thumb'),
       'jpg'
     )
+    expect(mockProcessInboxImageAttachment).toHaveBeenCalledWith('/vault/inbox/file.bin')
 
     const pdfResult = await domain.captureImage({
       data: { type: 'Buffer', data: [5, 6, 7] },
@@ -254,6 +256,7 @@ describe('createDesktopInboxDomain', () => {
 
     expect(pdfResult.success).toBe(true)
     expect(pdfResult.item).toEqual(expect.objectContaining({ type: 'pdf', title: 'brief' }))
+    expect(mockProcessInboxImageAttachment).toHaveBeenCalledTimes(1)
 
     await expect(
       domain.captureImage({

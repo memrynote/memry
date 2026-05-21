@@ -1,23 +1,14 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+const mockGenerateThumbnailInImageProcess = vi.hoisted(() => vi.fn())
 
 vi.mock('sharp', () => {
-  const mockSharp = vi.fn(() => ({
-    resize: vi.fn().mockReturnThis(),
-    webp: vi.fn().mockReturnThis(),
-    toBuffer: vi.fn().mockResolvedValue({
-      data: Buffer.from('fake-webp'),
-      info: { width: 150, height: 100 }
-    })
-  }))
-  return { default: mockSharp }
+  throw new Error('sync thumbnails must not import sharp in the main process')
 })
 
-vi.mock('node:child_process', () => ({
-  execFile: vi.fn()
-}))
-
-vi.mock('node:util', () => ({
-  promisify: (fn: unknown) => fn
+vi.mock('../image-processing/bridge', () => ({
+  generateThumbnailInImageProcess: (...args: unknown[]) =>
+    mockGenerateThumbnailInImageProcess(...args)
 }))
 
 vi.mock('../lib/logger', () => ({
@@ -34,31 +25,12 @@ describe('thumbnails', () => {
 
   beforeEach(async () => {
     vi.resetModules()
-    vi.doMock('sharp', () => {
-      const mockSharp = vi.fn(() => ({
-        resize: vi.fn().mockReturnThis(),
-        webp: vi.fn().mockReturnThis(),
-        toBuffer: vi.fn().mockResolvedValue({
-          data: Buffer.from('fake-webp'),
-          info: { width: 150, height: 100 }
-        })
-      }))
-      return { default: mockSharp }
+    mockGenerateThumbnailInImageProcess.mockReset().mockResolvedValue({
+      data: Buffer.from('fake-webp'),
+      width: 150,
+      height: 100,
+      format: 'webp'
     })
-    vi.doMock('node:child_process', () => ({
-      execFile: vi.fn()
-    }))
-    vi.doMock('node:util', () => ({
-      promisify: (fn: unknown) => fn
-    }))
-    vi.doMock('../lib/logger', () => ({
-      createLogger: () => ({
-        info: vi.fn(),
-        warn: vi.fn(),
-        debug: vi.fn(),
-        error: vi.fn()
-      })
-    }))
 
     const mod = await import('./thumbnails')
     generateThumbnail = mod.generateThumbnail
@@ -71,6 +43,10 @@ describe('thumbnails', () => {
       expect(result!.format).toBe('webp')
       expect(result!.width).toBe(150)
       expect(result!.height).toBe(100)
+      expect(mockGenerateThumbnailInImageProcess).toHaveBeenCalledWith(
+        '/path/to/image.png',
+        'image/png'
+      )
     })
 
     it('handles JPEG', async () => {
@@ -100,68 +76,44 @@ describe('thumbnails', () => {
       const result = await generateThumbnail('/path/to/doc.pdf', 'application/pdf')
       expect(result).not.toBeNull()
       expect(result!.format).toBe('webp')
+      expect(mockGenerateThumbnailInImageProcess).toHaveBeenCalledWith(
+        '/path/to/doc.pdf',
+        'application/pdf'
+      )
     })
   })
 
   describe('video thumbnails', () => {
-    it('returns null when ffmpeg is not available', async () => {
-      const { execFile } = await import('node:child_process')
-      const mockExecFile = execFile as unknown as ReturnType<typeof vi.fn>
-      mockExecFile.mockRejectedValue(new Error('not found'))
-
-      const result = await generateThumbnail('/path/to/video.mp4', 'video/mp4')
-      expect(result).toBeNull()
-    })
-
-    it('generates thumbnail when ffmpeg is available', async () => {
-      const { execFile } = await import('node:child_process')
-      const mockExecFile = execFile as unknown as ReturnType<typeof vi.fn>
-      mockExecFile
-        .mockResolvedValueOnce({ stdout: '/usr/local/bin/ffmpeg\n' })
-        .mockResolvedValueOnce({ stdout: Buffer.from('fake-png-frame') })
-
+    it('generates thumbnails for videos through the image utility process', async () => {
       const result = await generateThumbnail('/path/to/clip.mp4', 'video/mp4')
       expect(result).not.toBeNull()
       expect(result!.format).toBe('webp')
+      expect(mockGenerateThumbnailInImageProcess).toHaveBeenCalledWith(
+        '/path/to/clip.mp4',
+        'video/mp4'
+      )
     })
   })
 
   describe('unsupported types', () => {
-    it('returns null for unsupported mime types', async () => {
+    it('returns null for unsupported mime types without starting image processing', async () => {
       const result = await generateThumbnail('/path/to/file.zip', 'application/zip')
       expect(result).toBeNull()
+      expect(mockGenerateThumbnailInImageProcess).not.toHaveBeenCalled()
     })
 
-    it('returns null for audio files', async () => {
+    it('returns null for audio files without starting image processing', async () => {
       const result = await generateThumbnail('/path/to/song.mp3', 'audio/mpeg')
       expect(result).toBeNull()
+      expect(mockGenerateThumbnailInImageProcess).not.toHaveBeenCalled()
     })
   })
 
   describe('error handling', () => {
-    it('returns null when sharp throws', async () => {
-      vi.doMock('sharp', () => {
-        const mockSharp = vi.fn(() => ({
-          resize: vi.fn().mockReturnThis(),
-          webp: vi.fn().mockReturnThis(),
-          toBuffer: vi.fn().mockRejectedValue(new Error('corrupt image'))
-        }))
-        return { default: mockSharp }
-      })
-      vi.resetModules()
-      vi.doMock('node:child_process', () => ({ execFile: vi.fn() }))
-      vi.doMock('node:util', () => ({ promisify: (fn: unknown) => fn }))
-      vi.doMock('../lib/logger', () => ({
-        createLogger: () => ({
-          info: vi.fn(),
-          warn: vi.fn(),
-          debug: vi.fn(),
-          error: vi.fn()
-        })
-      }))
+    it('returns null when the image utility process throws', async () => {
+      mockGenerateThumbnailInImageProcess.mockRejectedValue(new Error('corrupt image'))
 
-      const mod = await import('./thumbnails')
-      const result = await mod.generateThumbnail('/path/to/bad.png', 'image/png')
+      const result = await generateThumbnail('/path/to/bad.png', 'image/png')
       expect(result).toBeNull()
     })
   })
