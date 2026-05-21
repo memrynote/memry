@@ -4,6 +4,13 @@ import { SectionHeading } from '@/components/shared/SectionHeading'
 import { COMPARISON_DATA } from '@/lib/constants'
 import { cn } from '@/lib/utils'
 
+const comparisonColumns = [
+  { key: 'memry', label: 'memrynote', featured: true },
+  { key: 'notion', label: 'Notion', featured: false },
+  { key: 'obsidian', label: 'Obsidian', featured: false },
+  { key: 'logseq', label: 'Logseq', featured: false }
+] as const
+
 function ComparisonCell({ value }: { value: boolean | 'partial' }) {
   if (value === true) {
     return (
@@ -34,6 +41,33 @@ function ComparisonCell({ value }: { value: boolean | 'partial' }) {
   )
 }
 
+function ComparisonMobileValue({ value }: { value: boolean | 'partial' }) {
+  if (value === true) {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-sage">
+        <Check className="w-3.5 h-3.5" />
+        Yes
+      </span>
+    )
+  }
+
+  if (value === 'partial') {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-terracotta">
+        <Minus className="w-3.5 h-3.5" />
+        Partial
+      </span>
+    )
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted/70">
+      <X className="w-3.5 h-3.5" />
+      No
+    </span>
+  )
+}
+
 export function Comparison() {
   return (
     <section className="py-24 zone-transition">
@@ -43,7 +77,7 @@ export function Comparison() {
           subtitle="We built memrynote to be the PKM we wished existed."
         />
 
-        <div className="overflow-x-auto rounded-xl border border-border/50 bg-card/50 shadow-sm">
+        <div className="hidden overflow-x-auto rounded-xl border border-border/50 bg-card/50 shadow-sm md:block">
           <table className="w-full">
             <thead>
               <tr className="border-b border-border/60">
@@ -94,12 +128,46 @@ export function Comparison() {
           </table>
         </div>
 
+        <div className="space-y-3 md:hidden">
+          {COMPARISON_DATA.rows.map((row) => (
+            <article
+              key={row.feature}
+              className="rounded-lg border border-border/50 bg-card/50 p-4 shadow-sm"
+            >
+              <h3 className="text-sm font-semibold leading-snug text-ink">{row.feature}</h3>
+              <div className="mt-4 grid grid-cols-1 gap-2 min-[380px]:grid-cols-2">
+                {comparisonColumns.map((column) => (
+                  <div
+                    key={column.key}
+                    className={cn(
+                      'flex min-h-11 items-center justify-between gap-3 rounded-md border px-3 py-2',
+                      column.featured
+                        ? 'border-terracotta/30 bg-terracotta/5'
+                        : 'border-border/50 bg-paper/60'
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        'min-w-0 text-xs font-medium',
+                        column.featured ? 'text-terracotta' : 'text-muted'
+                      )}
+                    >
+                      {column.label}
+                    </span>
+                    <ComparisonMobileValue value={row[column.key]} />
+                  </div>
+                ))}
+              </div>
+            </article>
+          ))}
+        </div>
+
         <div className="text-center mt-8 space-y-3">
-          <p className="text-sm text-muted font-mono-accent">
-            <span className="inline-flex items-center gap-2 mr-6">
+          <p className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-muted font-mono-accent">
+            <span className="inline-flex items-center gap-2">
               <Check className="w-3 h-3 text-sage" /> Yes
             </span>
-            <span className="inline-flex items-center gap-2 mr-6">
+            <span className="inline-flex items-center gap-2">
               <Minus className="w-3 h-3 text-terracotta" /> Via plugin or partial
             </span>
             <span className="inline-flex items-center gap-2">
