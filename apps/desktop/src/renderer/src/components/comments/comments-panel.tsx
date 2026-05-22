@@ -92,7 +92,7 @@ export function CommentsPanel({
         {pendingAnchor && (
           <div
             data-testid="comment-composer"
-            className="mb-3 rounded-md border border-amber-300/60 bg-amber-50/80 p-3 dark:border-amber-700/50 dark:bg-amber-950/20"
+            className="mb-3 rounded-md border border-border/70 bg-background p-3"
           >
             <p
               data-testid="comment-composer-quote"
@@ -165,7 +165,7 @@ export function CommentsPanel({
                 className={cn(
                   'rounded-md border p-3 text-start transition-colors',
                   isActive
-                    ? 'border-amber-400 bg-amber-50 dark:border-amber-600 dark:bg-amber-950/30'
+                    ? 'border-border/60 bg-background'
                     : 'border-border/60 bg-background hover:bg-surface-active'
                 )}
               >

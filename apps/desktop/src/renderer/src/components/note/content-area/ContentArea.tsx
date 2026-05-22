@@ -68,6 +68,8 @@ import {
 import { CommentAdd } from '@/lib/icons'
 
 const PRIORITY_REVERSE: Record<string, number> = { none: 0, low: 1, medium: 2, high: 3, urgent: 4 }
+const COMMENT_GUTTER_HOVER_RANGE_PX = 200
+const COMMENT_AFFORDANCE_GAP_PX = 8
 
 interface SelectionCommentAnchor extends CommentAnchorInput {
   x: number
@@ -86,6 +88,26 @@ interface CommentHighlightRect {
 function elementFromNode(node: Node | null): Element | null {
   if (!node) return null
   return node.nodeType === Node.ELEMENT_NODE ? (node as Element) : node.parentElement
+}
+
+function findBlockNearPointer(container: HTMLElement, clientY: number): HTMLElement | null {
+  const blocks = Array.from(container.querySelectorAll<HTMLElement>('[data-id]'))
+  let closestBlock: HTMLElement | null = null
+  let closestDistance = Number.POSITIVE_INFINITY
+
+  for (const block of blocks) {
+    const rect = block.getBoundingClientRect()
+    if (rect.height <= 0) continue
+    if (clientY >= rect.top && clientY <= rect.bottom) return block
+
+    const distance = clientY < rect.top ? rect.top - clientY : clientY - rect.bottom
+    if (distance < closestDistance) {
+      closestBlock = block
+      closestDistance = distance
+    }
+  }
+
+  return closestDistance <= 24 ? closestBlock : null
 }
 
 function findTextRange(root: HTMLElement, quote: string): Range | null {
@@ -548,6 +570,9 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       }
 
       const target = elementFromNode(event.target as Node)
+      if (target?.closest('[data-testid="block-comment-affordance"]')) {
+        return
+      }
       if (!target || target.closest('[data-marquee-ignore]')) {
         clearHoveredBlockCommentAnchor()
         return
@@ -555,8 +580,22 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 
       const root = getEditableRoot()
       const container = editorContainerRef.current
-      const block = target.closest<HTMLElement>('[data-id]')
-      if (!root || !container || !block || !container.contains(block)) {
+      if (!root || !container) {
+        clearHoveredBlockCommentAnchor()
+        return
+      }
+
+      const containerRect = container.getBoundingClientRect()
+      const isRightGutterHover =
+        event.clientX >= containerRect.right - COMMENT_GUTTER_HOVER_RANGE_PX &&
+        event.clientX <= containerRect.right + COMMENT_GUTTER_HOVER_RANGE_PX
+      if (!isRightGutterHover) {
+        clearHoveredBlockCommentAnchor()
+        return
+      }
+
+      const block = findBlockNearPointer(container, event.clientY)
+      if (!block || !container.contains(block)) {
         clearHoveredBlockCommentAnchor()
         return
       }
@@ -568,10 +607,9 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       }
 
       const blockRect = block.getBoundingClientRect()
-      const containerRect = container.getBoundingClientRect()
       setHoveredBlockCommentAnchor(nextAnchor)
       setHoveredBlockButtonPosition({
-        x: blockRect.right - containerRect.left + 6,
+        x: containerRect.width + COMMENT_AFFORDANCE_GAP_PX,
         y: blockRect.top - containerRect.top + 1
       })
     },
@@ -640,7 +678,9 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     () =>
       commentHighlightRects.map((rect) => ({
         id: rect.id,
+        left: rect.left,
         top: rect.top,
+        width: rect.width,
         height: rect.height
       })),
     [commentHighlightRects]
@@ -1242,7 +1282,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           <span
             data-testid="comment-draft-highlight"
             aria-hidden="true"
-            className="pointer-events-none absolute z-20 overflow-hidden rounded-[2px] bg-amber-300/25 text-transparent"
+            className="pointer-events-none absolute z-20 overflow-hidden rounded-[2px] bg-[#352F16] text-transparent underline decoration-[#57470A] decoration-1 underline-offset-2"
             style={{
               left: `${draftCommentRect.left}px`,
               top: `${draftCommentRect.top}px`,
@@ -1267,8 +1307,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
               onCommentHighlightClick?.(rect.id)
             }}
             className={cn(
-              'absolute z-20 overflow-hidden rounded-[2px] bg-amber-300/35 text-transparent transition-colors hover:bg-amber-300/55',
-              activeCommentId === rect.id && 'bg-amber-400/55 ring-1 ring-amber-500/70'
+              'absolute z-20 overflow-hidden rounded-[2px] bg-[#352F16] text-transparent underline decoration-[#57470A] decoration-1 underline-offset-2 transition-opacity hover:opacity-90',
+              activeCommentId === rect.id && 'opacity-90'
             )}
             style={{
               left: `${rect.left}px`,

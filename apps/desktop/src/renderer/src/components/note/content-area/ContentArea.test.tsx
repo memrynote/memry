@@ -190,6 +190,10 @@ vi.mock('@/contexts/tasks', () => ({
   useTasksOptional: vi.fn(() => ({ projects: [] }))
 }))
 
+vi.mock('@/agent-chat/messages/memry-links', () => ({
+  useMemryLinkNavigation: () => vi.fn()
+}))
+
 vi.mock('@/lib/url-metadata', () => ({
   extractDomain: vi.fn((url: string) => new URL(url).hostname),
   fetchLinkPreview: contentAreaMocks.fetchLinkPreview
@@ -616,11 +620,93 @@ describe('ContentArea', () => {
     })
     installRect(block!, { left: 10, top: 44, right: 420, bottom: 70, width: 410, height: 26 })
 
-    fireEvent.mouseMove(block!)
-    fireEvent.click(await screen.findByRole('button', { name: 'Add comment to block' }))
+    fireEvent.mouseMove(block!, { clientX: 60, clientY: 52 })
+    expect(screen.queryByRole('button', { name: 'Add comment to block' })).not.toBeInTheDocument()
+
+    fireEvent.mouseMove(screen.getByRole('application'), { clientX: 399, clientY: 52 })
+    expect(screen.queryByRole('button', { name: 'Add comment to block' })).not.toBeInTheDocument()
+
+    fireEvent.mouseMove(screen.getByRole('application'), { clientX: 400, clientY: 52 })
+    const affordance = await screen.findByRole('button', { name: 'Add comment to block' })
+
+    fireEvent.mouseMove(affordance, { clientX: 608, clientY: 52 })
+    expect(screen.getByRole('button', { name: 'Add comment to block' })).toBeInTheDocument()
+
+    fireEvent.pointerDown(affordance)
 
     expect(await screen.findByTestId('comments-rail')).toBeInTheDocument()
     expect(screen.getByTestId('comment-composer-quote')).toHaveTextContent('checklist target')
+  })
+
+  it('renders saved comment highlights with the comment color and underline only', async () => {
+    const originalRangeRect = Range.prototype.getBoundingClientRect
+    Range.prototype.getBoundingClientRect = vi.fn(() => ({
+      x: 20,
+      y: 30,
+      left: 20,
+      top: 30,
+      right: 140,
+      bottom: 48,
+      width: 120,
+      height: 18,
+      toJSON: () => ({})
+    }))
+
+    try {
+      const { rerender } = render(
+        <ContentArea
+          noteId="note-1"
+          commentTargetType="note"
+          commentTargetId="note-1"
+          onSaveCommentRequest={vi.fn()}
+        />
+      )
+      installRect(screen.getByRole('application'), {
+        left: 0,
+        top: 0,
+        right: 600,
+        bottom: 400,
+        width: 600,
+        height: 400
+      })
+
+      rerender(
+        <ContentArea
+          noteId="note-1"
+          commentTargetType="note"
+          commentTargetId="note-1"
+          onSaveCommentRequest={vi.fn()}
+          comments={[
+            {
+              id: 'comment-1',
+              targetType: 'note',
+              targetId: 'note-1',
+              selectedQuote: 'checklist target',
+              blockId: null,
+              rangeStart: null,
+              rangeEnd: null,
+              prefix: null,
+              suffix: null,
+              body: 'Saved comment',
+              mentionRefs: [],
+              attachmentRefs: [],
+              status: 'open',
+              clock: null,
+              syncedAt: null,
+              createdAt: '2026-05-22T00:00:00.000Z',
+              modifiedAt: '2026-05-22T00:00:00.000Z'
+            }
+          ]}
+        />
+      )
+
+      const highlight = await screen.findByLabelText('Comment: checklist target')
+      expect(highlight.className).toContain('bg-[#352F16]')
+      expect(highlight.className).toContain('decoration-[#57470A]')
+      expect(highlight.className).not.toContain('border')
+    } finally {
+      Range.prototype.getBoundingClientRect = originalRangeRect
+    }
   })
 
   it('turns selected text blocks into the chosen block type from the more menu', async () => {

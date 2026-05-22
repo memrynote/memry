@@ -39,6 +39,7 @@ export interface AgentPromptEditorHandle {
   focus: () => void
   getValue: () => AgentPromptValue
   insertMention: (attachment: MentionAttachment) => void
+  insertMentionTrigger: () => void
 }
 
 interface AgentPromptEditorProps {
@@ -305,6 +306,12 @@ function findMentionQuery(editor: Editor): MentionQuery | null {
   }
 }
 
+function textBeforeSelection(editor: Editor): string {
+  const { selection } = editor.state
+  const { $from } = selection
+  return $from.parent.textBetween(0, $from.parentOffset, '\n', '\ufffc')
+}
+
 export const AgentPromptEditor = forwardRef<AgentPromptEditorHandle, AgentPromptEditorProps>(
   function AgentPromptEditor(
     {
@@ -431,6 +438,19 @@ export const AgentPromptEditor = forwardRef<AgentPromptEditorHandle, AgentPrompt
 
           activeMentionRef.current = null
           onMentionQueryChangeRef.current(null)
+          onValueChangeRef.current(readEditorValue(editor))
+        },
+        insertMentionTrigger: () => {
+          if (!editor) return
+
+          const beforeSelection = textBeforeSelection(editor)
+          const trigger = beforeSelection.length === 0 || /\s$/.test(beforeSelection) ? '@' : ' @'
+
+          editor.chain().focus().insertContent(trigger).run()
+
+          const mentionQuery = findMentionQuery(editor)
+          activeMentionRef.current = mentionQuery
+          onMentionQueryChangeRef.current(mentionQuery?.query ?? null)
           onValueChangeRef.current(readEditorValue(editor))
         }
       }),
