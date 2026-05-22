@@ -68,6 +68,10 @@ Shows the installed version. If a newer version is available, a button lets you 
 - **Language** — UI locale dropdown
 - **Clock Format** — 12-hour or 24-hour
 
+The desktop app loads the active language bundle at startup and fetches another locale when the
+language setting changes. English fallback messages remain available for errors before the selected
+locale has finished loading.
+
 ### Tab Behavior
 
 - **Restore Session** — reopen the previous session's tabs on launch
