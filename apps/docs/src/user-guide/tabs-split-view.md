@@ -39,6 +39,11 @@ Useful for: today's journal, your "now" note, the shared project.
 
 Single-clicking a note, view, search result, or sidebar item opens a permanent tab. If that item is already open, memrynote focuses the existing tab instead of creating another copy.
 
+Inactive workspace surfaces stay unloaded until first use. Inbox remains ready on cold open, while
+heavier surfaces such as Tasks, Calendar, Graph, and the right-side Agent/Day Panel mount when the
+user opens them. This keeps startup memory tied to the visible workspace instead of every possible
+feature surface.
+
 ## Mouse Navigation
 
 Mouse Back and Forward side buttons move through tab focus history across the whole window, including split panes. Back returns to the previously focused tab; Forward replays the next tab after a Back action. Opening or selecting another tab starts a new history path.

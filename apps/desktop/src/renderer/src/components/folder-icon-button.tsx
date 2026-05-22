@@ -1,10 +1,13 @@
-import { useCallback, useState } from 'react'
+import { lazy, Suspense, useCallback, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Folder, FolderOpen, ArrowRight } from '@/lib/icons'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
-import { EmojiPicker } from '@/components/note/note-title/EmojiPicker'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
+
+const LazyEmojiPicker = lazy(async () => ({
+  default: (await import('@/components/note/note-title/EmojiPicker')).EmojiPicker
+}))
 
 interface FolderIconButtonProps {
   icon: string | null
@@ -134,13 +137,15 @@ export function FolderIconButton({
             className="fixed z-[100]"
             style={{ top: portalPosition.top, left: portalPosition.left }}
           >
-            <EmojiPicker
-              isOpen
-              onClose={handleClose}
-              onSelect={handleSelect}
-              onRemove={handleRemove}
-              hasEmoji={!!icon}
-            />
+            <Suspense fallback={null}>
+              <LazyEmojiPicker
+                isOpen
+                onClose={handleClose}
+                onSelect={handleSelect}
+                onRemove={handleRemove}
+                hasEmoji={!!icon}
+              />
+            </Suspense>
           </div>,
           document.body
         )}
