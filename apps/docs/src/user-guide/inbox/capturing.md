@@ -44,6 +44,10 @@ When the browser extension (or quick-share integrations) are available, sharing 
 
 Web clips appear under the **clips** content type filter.
 
+Link metadata scraping runs when a capture or preview needs it. The desktop app keeps the heavier
+metadata scraper out of the cold inbox startup path so opening a vault does not load web-preview
+dependencies before they are used.
+
 ## Social Posts
 
 If you've connected social capture (e.g. saving tweets), those land in inbox under the **social** content type. The original URL is preserved so you can revisit the source.
