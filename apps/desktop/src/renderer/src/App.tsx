@@ -11,7 +11,7 @@ import { DragProvider, type DragState } from '@/contexts/drag-context'
 import { DroppedPriorityProvider } from '@/contexts/dropped-priority-context'
 import { AIInlineProvider } from '@/contexts/ai-inline-context'
 import { AISettingsProvider, useAISettingsContext } from '@/contexts/ai-settings-context'
-import { DayPanelProvider } from '@/contexts/day-panel-context'
+import { DayPanelProvider, useDayPanel } from '@/contexts/day-panel-context'
 import { CalendarViewProvider } from '@/contexts/calendar-view-context'
 import { SidebarDrillDownProvider } from '@/contexts/sidebar-drill-down'
 import { SelectedFolderProvider } from '@/contexts/selected-folder-context'
@@ -69,6 +69,7 @@ import { AgentTabTitleSync } from '@/agent-chat/agent-tab-title-sync'
 
 const log = createLogger('App')
 const startupTheme = getStartupTheme()
+const RIGHT_SIDEBAR_TAB_KEY = ['right', 'sidebar', 'tab'].join('-')
 
 // Base pages (non-task)
 export type BasePage = 'inbox' | 'journal' | 'calendar' | 'graph'
@@ -111,8 +112,30 @@ function TabPersistenceManager({ children }: { children: React.ReactNode }): Rea
 
 function AgentFeatureProvider({ children }: { children: React.ReactNode }): React.JSX.Element {
   const { enabled } = useAISettingsContext()
-  if (!enabled) return <>{children}</>
+  const activeTab = useActiveTab()
+  const { isOpen: isDayPanelOpen } = useDayPanel()
+  const [activated, setActivated] = useState(false)
+
+  useEffect(() => {
+    const activate = () => setActivated(true)
+    window.addEventListener('memry:agent-surface-opened', activate)
+    return () => window.removeEventListener('memry:agent-surface-opened', activate)
+  }, [])
+
+  const isPersistedAgentPanelOpen = isDayPanelOpen && readPersistedRightSidebarTab() === 'agent'
+  const shouldMountAgent =
+    enabled && (activated || activeTab?.type === 'agent-chat' || isPersistedAgentPanelOpen)
+
+  if (!shouldMountAgent) return <>{children}</>
   return <AgentProvider>{children}</AgentProvider>
+}
+
+function readPersistedRightSidebarTab(): string | null {
+  try {
+    return localStorage.getItem(RIGHT_SIDEBAR_TAB_KEY)
+  } catch {
+    return null
+  }
 }
 
 // =============================================================================

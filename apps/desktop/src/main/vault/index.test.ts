@@ -52,6 +52,9 @@ const mocks = vi.hoisted(() => ({
   isModelLoading: vi.fn(),
   startAgentMcpLifecycle: vi.fn(),
   stopAgentMcpLifecycle: vi.fn(),
+  configureLazyAgentServices: vi.fn(),
+  registerLazyAgentHandlers: vi.fn(),
+  unregisterLazyAgentHandlers: vi.fn(),
   startAgent: vi.fn(),
   agentShutdown: vi.fn()
 }))
@@ -196,6 +199,15 @@ vi.mock('../agent/mcp/lifecycle', () => ({
   stopAgentMcpLifecycle: (...args: unknown[]) => mocks.stopAgentMcpLifecycle(...args)
 }))
 
+vi.mock('../agent/lazy-services', () => ({
+  configureLazyAgentServices: (...args: unknown[]) => mocks.configureLazyAgentServices(...args)
+}))
+
+vi.mock('../ipc/agent-lazy-handlers', () => ({
+  registerLazyAgentHandlers: (...args: unknown[]) => mocks.registerLazyAgentHandlers(...args),
+  unregisterLazyAgentHandlers: (...args: unknown[]) => mocks.unregisterLazyAgentHandlers(...args)
+}))
+
 vi.mock('../agent/bootstrap', () => ({
   startAgent: (...args: unknown[]) => mocks.startAgent(...args)
 }))
@@ -251,6 +263,9 @@ describe('vault lifecycle', () => {
     mocks.isModelLoading.mockReturnValue(false)
     mocks.startAgentMcpLifecycle.mockResolvedValue(undefined)
     mocks.stopAgentMcpLifecycle.mockResolvedValue(undefined)
+    mocks.configureLazyAgentServices.mockImplementation(() => undefined)
+    mocks.registerLazyAgentHandlers.mockImplementation(() => undefined)
+    mocks.unregisterLazyAgentHandlers.mockImplementation(() => undefined)
     mocks.agentShutdown.mockResolvedValue(undefined)
     mocks.startAgent.mockResolvedValue({ shutdown: mocks.agentShutdown })
     delete process.env.TEST_VAULT_PATH
@@ -284,11 +299,23 @@ describe('vault lifecycle', () => {
     expect(mocks.startWatcher).toHaveBeenCalledWith('/vault/work')
     expect(mocks.startSyncRuntime).toHaveBeenCalled()
     expect(mocks.initEmbeddingModel).not.toHaveBeenCalled()
-    expect(mocks.startAgentMcpLifecycle).toHaveBeenCalled()
-    expect(mocks.startAgent).toHaveBeenCalled()
+    expect(mocks.configureLazyAgentServices).toHaveBeenCalledWith(expect.any(Function))
+    expect(mocks.registerLazyAgentHandlers).toHaveBeenCalled()
+    expect(mocks.startAgentMcpLifecycle).not.toHaveBeenCalled()
+    expect(mocks.startAgent).not.toHaveBeenCalled()
     expect(mocks.currentVaultPath).toBe('/vault/work')
     expect(getStatus()).toEqual(expect.objectContaining({ isOpen: true, path: '/vault/work' }))
     expect(mocks.sent.some((event) => event.channel === 'vault:status-changed')).toBe(true)
+  })
+
+  it('starts vault-scoped agent services only when lazy startup is requested', async () => {
+    await selectVault({ path: '/vault/work' })
+
+    const starter = mocks.configureLazyAgentServices.mock.calls.at(-1)?.[0] as () => Promise<void>
+    await starter()
+
+    expect(mocks.startAgentMcpLifecycle).toHaveBeenCalledTimes(1)
+    expect(mocks.startAgent).toHaveBeenCalledTimes(1)
   })
 
   it('returns errors for picker cancelation and invalid directories', async () => {
@@ -362,15 +389,17 @@ describe('vault lifecycle', () => {
     })
     expect(mocks.closeAllDatabases).toHaveBeenCalled()
     expect(mocks.destroyPropertyDefinitions).toHaveBeenCalled()
-    expect(mocks.agentShutdown).toHaveBeenCalled()
-    expect(mocks.stopAgentMcpLifecycle).toHaveBeenCalled()
-    expect(mocks.agentShutdown.mock.invocationCallOrder[0]).toBeLessThan(
-      mocks.closeAllDatabases.mock.invocationCallOrder[0]
-    )
+    expect(mocks.unregisterLazyAgentHandlers).toHaveBeenCalled()
+    expect(mocks.agentShutdown).not.toHaveBeenCalled()
+    expect(mocks.stopAgentMcpLifecycle).not.toHaveBeenCalled()
   })
 
   it('restarts vault-scoped agent services when switching vaults', async () => {
     await selectVault({ path: '/vault/one' })
+    const firstStarter = mocks.configureLazyAgentServices.mock.calls.at(
+      -1
+    )?.[0] as () => Promise<void>
+    await firstStarter()
 
     expect(mocks.startAgentMcpLifecycle).toHaveBeenCalledTimes(1)
     expect(mocks.startAgent).toHaveBeenCalledTimes(1)
@@ -386,6 +415,11 @@ describe('vault lifecycle', () => {
     expect(mocks.agentShutdown).toHaveBeenCalledTimes(1)
     expect(mocks.stopAgentMcpLifecycle).toHaveBeenCalledTimes(1)
     expect(mocks.closeAllDatabases).toHaveBeenCalledTimes(1)
+    expect(mocks.configureLazyAgentServices).toHaveBeenCalledWith(expect.any(Function))
+    const secondStarter = mocks.configureLazyAgentServices.mock.calls.at(
+      -1
+    )?.[0] as () => Promise<void>
+    await secondStarter()
     expect(mocks.startAgentMcpLifecycle).toHaveBeenCalledTimes(1)
     expect(mocks.startAgent).toHaveBeenCalledTimes(1)
     expect(mocks.agentShutdown.mock.invocationCallOrder[0]).toBeLessThan(

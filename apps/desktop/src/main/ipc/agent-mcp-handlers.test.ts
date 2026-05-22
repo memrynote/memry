@@ -2,22 +2,26 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { mockElectron } from '@tests/utils/mock-electron'
 
-const lifecycleMock = vi.hoisted(() => ({
-  getPublicStatus: vi.fn(() => ({
+const lazyServicesMock = vi.hoisted(() => ({
+  getLazyAgentMcpStatus: vi.fn(async () => ({
     url: 'http://127.0.0.1:1234',
     ['token']: 'local-token-placeholder',
     toolCount: 20
   })),
-  ['rotateToken']: vi.fn()
+  rotateLazyAgentMcpToken: vi.fn(async () => ({
+    url: 'http://127.0.0.1:1234',
+    ['token']: 'rotated-token-placeholder',
+    toolCount: 20
+  }))
 }))
 
 vi.mock('electron', () => ({
   ipcMain: mockElectron.ipcMain
 }))
 
-vi.mock('../agent/mcp/lifecycle', () => ({
-  getPublicStatus: lifecycleMock.getPublicStatus,
-  ['rotateToken']: lifecycleMock.rotateToken
+vi.mock('../agent/lazy-services', () => ({
+  getLazyAgentMcpStatus: lazyServicesMock.getLazyAgentMcpStatus,
+  rotateLazyAgentMcpToken: lazyServicesMock.rotateLazyAgentMcpToken
 }))
 
 import { AgentMcpChannels } from '@memry/contracts/agent-mcp-channels'
@@ -54,7 +58,7 @@ describe('agent MCP IPC handlers', () => {
   it('returns public status', async () => {
     registerAgentMcpHandlers()
 
-    expect(findHandler(AgentMcpChannels.invoke.GET_STATUS)()).toEqual({
+    await expect(findHandler(AgentMcpChannels.invoke.GET_STATUS)()).resolves.toEqual({
       url: 'http://127.0.0.1:1234',
       ['token']: 'local-token-placeholder',
       toolCount: 20
@@ -64,11 +68,11 @@ describe('agent MCP IPC handlers', () => {
   it('rotates the token and returns refreshed public status', async () => {
     registerAgentMcpHandlers()
 
-    expect(findHandler(AgentMcpChannels.invoke.ROTATE_TOKEN)()).toEqual({
+    await expect(findHandler(AgentMcpChannels.invoke.ROTATE_TOKEN)()).resolves.toEqual({
       url: 'http://127.0.0.1:1234',
-      ['token']: 'local-token-placeholder',
+      ['token']: 'rotated-token-placeholder',
       toolCount: 20
     })
-    expect(lifecycleMock.rotateToken).toHaveBeenCalledTimes(1)
+    expect(lazyServicesMock.rotateLazyAgentMcpToken).toHaveBeenCalledTimes(1)
   })
 })

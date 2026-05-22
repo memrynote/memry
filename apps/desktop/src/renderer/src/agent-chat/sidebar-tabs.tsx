@@ -97,7 +97,10 @@ export function SidebarTabs({
             <SidebarTabButton
               active={resolvedActive === 'agent'}
               label={agentTabLabel}
-              onClick={() => setActive('agent')}
+              onClick={() => {
+                window.dispatchEvent(new Event('memry:agent-surface-opened'))
+                setActive('agent')
+              }}
             >
               <Bot className="size-4" aria-hidden="true" />
               {hasBackgroundActivity && (

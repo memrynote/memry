@@ -214,5 +214,4 @@ export { registerAIInlineHandlers, unregisterAIInlineHandlers } from './ai-inlin
 export { registerUpdaterHandlers, unregisterUpdaterHandlers } from './updater-handlers'
 export { registerTelemetryHandlers, unregisterTelemetryHandlers } from './telemetry-handlers'
 export { registerAgentMcpHandlers, unregisterAgentMcpHandlers } from './agent-mcp-handlers'
-export { registerAgentHandlers, unregisterAgentHandlers } from './agent-handlers'
 export { registerLocaleHandlers, type RebuildMenuFn } from './locale-handler'
