@@ -62,6 +62,31 @@ import { useT } from '@memry/i18n/renderer'
 
 const log = createLogger('Page:Journal')
 
+function isTextInputElement(element: Element | null): boolean {
+  return (
+    element instanceof HTMLInputElement ||
+    element instanceof HTMLTextAreaElement ||
+    element instanceof HTMLSelectElement
+  )
+}
+
+function isContentEditableElement(element: Element | null): element is HTMLElement {
+  if (!(element instanceof HTMLElement)) return false
+  const contentEditableAttr = element.getAttribute('contenteditable')
+  return (
+    element.isContentEditable ||
+    element.contentEditable === 'true' ||
+    element.contentEditable === 'plaintext-only' ||
+    contentEditableAttr === 'true' ||
+    contentEditableAttr === 'plaintext-only'
+  )
+}
+
+function isKeyboardEditingElementFocused(): boolean {
+  const activeElement = document.activeElement
+  return isTextInputElement(activeElement) || isContentEditableElement(activeElement)
+}
+
 // =============================================================================
 // CONSTANTS
 // =============================================================================
@@ -648,12 +673,34 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        const activeElement = document.activeElement
+        if (isContentEditableElement(activeElement)) {
+          e.preventDefault()
+          activeElement.blur()
+          return
+        }
+
         if (currentViewState.type === 'month' || currentViewState.type === 'year') {
           e.preventDefault()
           navigateBack()
           return
         }
       }
+
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        if (currentViewState.type !== 'day') return
+        if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return
+        if (isKeyboardEditingElementFocused()) return
+
+        e.preventDefault()
+        if (e.key === 'ArrowLeft') {
+          handlePreviousDay()
+        } else {
+          handleNextDay()
+        }
+        return
+      }
+
       if ((e.metaKey || e.ctrlKey) && e.key === '\\') {
         e.preventDefault()
         setIsFullWidth((prev) => !prev)
@@ -661,7 +708,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [currentViewState, navigateBack])
+  }, [currentViewState, handleNextDay, handlePreviousDay, navigateBack])
 
   useEffect(() => {
     localStorage.setItem('memry_journal_full_width', isFullWidth.toString())

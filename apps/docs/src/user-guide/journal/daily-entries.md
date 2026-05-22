@@ -40,12 +40,15 @@ Toggle from [Settings → Journal](/user-guide/settings#journal).
 
 ## Navigating Days
 
-| How                                | Action                        |
-| ---------------------------------- | ----------------------------- |
-| Header arrows                      | Previous / next day           |
-| Date breadcrumb                    | Click for the date picker     |
-| [Day Panel](/user-guide/day-panel) | Calendar grid; click any date |
-| Calendar nav                       | Day / month / year views      |
+| How                                | Action                                             |
+| ---------------------------------- | -------------------------------------------------- |
+| Header arrows                      | Previous / next day                                |
+| Left / right arrow keys            | Previous / next day when the editor is not focused |
+| Date breadcrumb                    | Click for the date picker                          |
+| [Day Panel](/user-guide/day-panel) | Calendar grid; click any date                      |
+| Calendar nav                       | Day / month / year views                           |
+
+When the journal editor is focused, arrow keys stay inside the editor. Press <kbd>Esc</kbd> to leave the editor, then use the left / right arrow keys to move between days.
 
 See [Calendar Navigation](/user-guide/journal/calendar-navigation) for the larger views.
 

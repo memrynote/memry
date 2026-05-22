@@ -254,6 +254,14 @@ vi.mock('@/components/note', () => ({
     return (
       <div data-testid="content-area">
         {initialContent}:{placeholder}
+        <div
+          data-testid="blocknote-editor"
+          contentEditable
+          suppressContentEditableWarning
+          tabIndex={0}
+        >
+          BlockNote editor
+        </div>
         <button onClick={() => onMarkdownChange('updated')}>edit markdown</button>
         <button onClick={() => onLinkClick('https://memry.test')}>external link</button>
         <button onClick={() => onInternalLinkClick('Linked Note')}>internal link</button>
@@ -446,6 +454,36 @@ describe('JournalPage', () => {
     expect(localStorage.setItem).toHaveBeenCalledWith('memry_journal_full_width', 'true')
     expect(mocks.toggleBookmark).toHaveBeenCalled()
     expect(mocks.openSettingsModal).toHaveBeenCalledWith('journal')
+  })
+
+  it('navigates day view with arrow keys after BlockNote loses focus', () => {
+    render(<JournalPage />)
+
+    fireEvent.keyDown(document, { key: 'ArrowLeft' })
+    expect(mocks.openTab).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'journal', viewState: { date: '2026-01-14' } })
+    )
+
+    fireEvent.keyDown(document, { key: 'ArrowRight' })
+    expect(mocks.openTab).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'journal', viewState: { date: '2026-01-16' } })
+    )
+
+    mocks.openTab.mockClear()
+    const blocknoteEditor = screen.getByTestId('blocknote-editor')
+    blocknoteEditor.focus()
+    expect(document.activeElement).toBe(blocknoteEditor)
+
+    fireEvent.keyDown(document, { key: 'ArrowLeft' })
+    expect(mocks.openTab).not.toHaveBeenCalled()
+
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(document.activeElement).not.toBe(blocknoteEditor)
+
+    fireEvent.keyDown(document, { key: 'ArrowLeft' })
+    expect(mocks.openTab).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'journal', viewState: { date: '2026-01-14' } })
+    )
   })
 
   it('routes external links and every wiki-link resolution branch', async () => {
