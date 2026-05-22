@@ -27,6 +27,19 @@ export const AppChannels = {
 export type AppEventChannel = (typeof AppChannels.events)[keyof typeof AppChannels.events]
 
 // ============================================================================
+// Debug Channels
+// ============================================================================
+
+export const DebugMemoryChannels = {
+  invoke: {
+    MEMORY_SNAPSHOT: 'debug:memory-snapshot'
+  }
+} as const
+
+export type DebugMemoryInvokeChannel =
+  (typeof DebugMemoryChannels.invoke)[keyof typeof DebugMemoryChannels.invoke]
+
+// ============================================================================
 // Vault Channels
 // ============================================================================
 

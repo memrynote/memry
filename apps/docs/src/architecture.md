@@ -46,6 +46,13 @@ Shared Zod contracts in `packages/contracts`. Validated at typecheck time via `p
 
 → [IPC Boundary](/architecture/ipc)
 
+## Memory Benchmarks
+
+Development-mode memory captures use a loopback-only debug harness and the shared `MemryA` test
+vault.
+
+→ [Memory Benchmarks](/architecture/memory)
+
 ## Observability
 
 Local logging via electron-log; switchable telemetry that ships only enums and surface names.

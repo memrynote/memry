@@ -154,6 +154,7 @@ function unifiedSidebar() {
         { text: 'Monorepo Layout', link: '/architecture/monorepo' },
         { text: 'Local Storage (Dual SQLite)', link: '/architecture/local-storage' },
         { text: 'IPC Boundary', link: '/architecture/ipc' },
+        { text: 'Memory Benchmarks', link: '/architecture/memory' },
         { text: 'CRDT & Notes Sync', link: '/architecture/crdt' },
         { text: 'Sync Protocol', link: '/architecture/sync-protocol' },
         { text: 'Cryptography', link: '/architecture/cryptography' },

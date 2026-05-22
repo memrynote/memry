@@ -76,6 +76,7 @@ import {
   type BillingCadence,
   type BillingPlanId
 } from './billing/paddle-billing'
+import { startMemoryControlServer, stopMemoryControlServer } from './debug/memory-control-server'
 
 if (process.type === 'browser') {
   log.initialize()
@@ -910,6 +911,7 @@ void app.whenReady().then(async () => {
   }
 
   createWindow()
+  startMemoryControlServer()
   initializeUpdater()
 
   // Open the last vault and start schedulers concurrently with renderer load.
@@ -1208,6 +1210,12 @@ app.on('before-quit', (event) => {
   // Flush pending saves from all renderer windows before closing vault
   flushAllWindows()
     .then(() => createCloseSnapshots())
+    .then(() => {
+      shutdownLog.info('stopping memory control server...')
+      void stopMemoryControlServer().catch((error) => {
+        shutdownLog.warn('memory control server failed to stop:', error)
+      })
+    })
     .then(() => {
       shutdownLog.info('stopping snooze scheduler...')
       stopSnoozeScheduler()

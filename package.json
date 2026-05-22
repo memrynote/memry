@@ -22,6 +22,8 @@
     "release:reddit": "node scripts/build-reddit-release-post.mjs",
     "docs:impact": "node scripts/docs-impact.mjs",
     "docs:ai-update": "node scripts/docs-ai-update.mjs",
+    "memory:snapshot": "pnpm --filter @memry/desktop memory:snapshot",
+    "memory:compare": "pnpm --filter @memry/desktop memory:compare",
     "build": "pnpm build:desktop",
     "build:desktop": "pnpm --filter @memry/desktop build",
     "build:landing": "pnpm --filter @memry/landing build",
