@@ -83,6 +83,11 @@
       "disableLocalOnly": "Disable local only",
       "setLocalOnly": "Set local only"
     },
+    "selectionToolbar": {
+      "aria": "Selection formatting",
+      "moreOptions": "More formatting options",
+      "turnInto": "Turn into"
+    },
     "breadcrumb": {
       "locationAria": "Note location",
       "parentFolderAria": "Go to parent folder"

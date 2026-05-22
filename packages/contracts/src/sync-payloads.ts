@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { CommentMentionRefSchema } from './comments-api'
 import { FieldClocksSchema, VectorClockSchema } from './sync-api'
 
 export const TaskSyncPayloadSchema = z.object({
@@ -62,6 +63,7 @@ export const CommentSyncPayloadSchema = z.object({
   prefix: z.string().nullable().optional(),
   suffix: z.string().nullable().optional(),
   body: z.string().optional(),
+  mentionRefs: z.array(CommentMentionRefSchema).optional(),
   attachmentRefs: z.array(z.string()).optional(),
   status: z.enum(['open', 'resolved', 'archived']).optional(),
   clock: VectorClockSchema.optional(),

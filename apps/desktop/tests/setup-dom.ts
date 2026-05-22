@@ -306,6 +306,14 @@ const createMockApi = () => ({
     }
   })(),
 
+  // Comments API
+  comments: {
+    create: vi.fn().mockResolvedValue({ success: true, comment: null }),
+    update: vi.fn().mockResolvedValue({ success: true, comment: null }),
+    delete: vi.fn().mockResolvedValue({ success: true }),
+    list: vi.fn().mockResolvedValue([])
+  },
+
   // Reminders API
   reminders: {
     create: vi.fn().mockResolvedValue({ success: true }),
@@ -491,6 +499,7 @@ const createMockApi = () => ({
   onNoteRenamed: vi.fn().mockReturnValue(() => {}),
   onNoteMoved: vi.fn().mockReturnValue(() => {}),
   onNoteExternalChange: vi.fn().mockReturnValue(() => {}),
+  onCommentsChanged: vi.fn().mockReturnValue(() => {}),
   onTagsChanged: vi.fn().mockReturnValue(() => {}),
   onTaskCreated: vi.fn().mockReturnValue(() => {}),
   onTaskUpdated: vi.fn().mockReturnValue(() => {}),

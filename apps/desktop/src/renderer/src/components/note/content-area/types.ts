@@ -4,7 +4,12 @@
  */
 
 import type { Block } from '@blocknote/core'
-import type { Comment, CommentAnchorInput, CommentTargetType } from '@/services/comments-service'
+import type {
+  Comment,
+  CommentAnchorInput,
+  CommentMentionRef,
+  CommentTargetType
+} from '@/services/comments-service'
 
 // =============================================================================
 // HEADING TYPES
@@ -114,8 +119,13 @@ export interface ContentAreaProps {
   commentTargetId?: string
   /** Active comment ID for highlight styling */
   activeCommentId?: string | null
-  /** Callback when user chooses Add comment for the current selection */
-  onAddCommentRequest?: (anchor: CommentAnchorInput) => void
+  /** Callback when user saves a comment draft for the current selection */
+  onSaveCommentRequest?: (
+    anchor: CommentAnchorInput,
+    body: string,
+    attachmentRefs: string[],
+    mentionRefs: CommentMentionRef[]
+  ) => Promise<void>
   /** Callback when a rendered comment highlight is clicked */
   onCommentHighlightClick?: (commentId: string) => void
   /** Callback with comment IDs whose quote cannot currently be resolved */

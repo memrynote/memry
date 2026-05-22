@@ -11,6 +11,8 @@ import type {
 export type {
   Comment,
   CommentAnchorInput,
+  CommentMentionKind,
+  CommentMentionRef,
   CommentsChangedEvent,
   CommentTargetType,
   CreateCommentInput

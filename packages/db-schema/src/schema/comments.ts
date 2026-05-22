@@ -1,5 +1,6 @@
 import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 import { sql } from 'drizzle-orm'
+import type { CommentMentionRef } from '@memry/contracts/comments-api'
 import type { VectorClock } from '@memry/contracts/sync-api'
 
 export const comments = sqliteTable(
@@ -15,6 +16,10 @@ export const comments = sqliteTable(
     prefix: text('prefix'),
     suffix: text('suffix'),
     body: text('body').notNull().default(''),
+    mentionRefs: text('mention_refs', { mode: 'json' })
+      .$type<CommentMentionRef[]>()
+      .notNull()
+      .default([]),
     attachmentRefs: text('attachment_refs', { mode: 'json' })
       .$type<string[]>()
       .notNull()

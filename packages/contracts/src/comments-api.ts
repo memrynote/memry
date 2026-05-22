@@ -3,6 +3,20 @@ import { VectorClockSchema } from './sync-api'
 
 export const CommentTargetTypeSchema = z.enum(['note', 'journal'])
 export const CommentStatusSchema = z.enum(['open', 'resolved', 'archived'])
+export const CommentMentionKindSchema = z.enum([
+  'note',
+  'journal',
+  'task',
+  'inbox',
+  'calendar_event',
+  'project',
+  'folder'
+])
+export const CommentMentionRefSchema = z.object({
+  kind: CommentMentionKindSchema,
+  refId: z.string().min(1),
+  label: z.string().trim().min(1)
+})
 
 export const CommentAnchorInputSchema = z.object({
   selectedQuote: z.string().trim().min(1),
@@ -24,6 +38,7 @@ export const CommentSchema = z.object({
   prefix: z.string().nullable(),
   suffix: z.string().nullable(),
   body: z.string(),
+  mentionRefs: z.array(CommentMentionRefSchema),
   attachmentRefs: z.array(z.string()),
   status: CommentStatusSchema,
   clock: VectorClockSchema.nullable().optional(),
@@ -42,12 +57,14 @@ export const CreateCommentInputSchema = CommentAnchorInputSchema.extend({
   targetType: CommentTargetTypeSchema,
   targetId: z.string().min(1),
   body: z.string().default(''),
+  mentionRefs: z.array(CommentMentionRefSchema).default([]),
   attachmentRefs: z.array(z.string()).default([])
 })
 
 export const UpdateCommentInputSchema = z.object({
   id: z.string().min(1),
   body: z.string().optional(),
+  mentionRefs: z.array(CommentMentionRefSchema).optional(),
   attachmentRefs: z.array(z.string()).optional()
 })
 
@@ -74,6 +91,8 @@ export const CommentsChangedEventSchema = z.object({
 
 export type CommentTargetType = z.infer<typeof CommentTargetTypeSchema>
 export type CommentStatus = z.infer<typeof CommentStatusSchema>
+export type CommentMentionKind = z.infer<typeof CommentMentionKindSchema>
+export type CommentMentionRef = z.infer<typeof CommentMentionRefSchema>
 export type CommentAnchorInput = z.infer<typeof CommentAnchorInputSchema>
 export type Comment = z.infer<typeof CommentSchema>
 export type ListCommentsInput = z.infer<typeof ListCommentsInputSchema>

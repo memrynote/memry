@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const contentAreaMocks = vi.hoisted(() => ({
@@ -6,6 +6,7 @@ const contentAreaMocks = vi.hoisted(() => ({
   blockNoteOptions: null as any,
   blocks: new Map<string, any>(),
   suggestionControllers: [] as any[],
+  formattingToolbarControllers: [] as any[],
   pasteSelect: null as null | ((option: 'url' | 'mention' | 'embed', url: string) => void),
   handleChange: vi.fn(),
   retryAI: vi.fn(),
@@ -53,7 +54,64 @@ vi.mock('@blocknote/react', () => ({
     contentAreaMocks.blockNoteOptions = options
     return contentAreaMocks.editor
   }),
-  FormattingToolbar: () => <div data-testid="formatting-toolbar" />,
+  useBlockNoteEditor: vi.fn(() => contentAreaMocks.editor),
+  useEditorState: vi.fn(({ selector }) => selector({ editor: contentAreaMocks.editor })),
+  FormattingToolbar: ({ children }: { children?: React.ReactNode }) => (
+    <div data-testid="formatting-toolbar">{children}</div>
+  ),
+  FormattingToolbarController: ({ formattingToolbar: Toolbar }: { formattingToolbar?: any }) => {
+    contentAreaMocks.formattingToolbarControllers.push({ formattingToolbar: Toolbar })
+    return (
+      <div data-testid="selection-formatting-toolbar">
+        {Toolbar ? <Toolbar /> : <div data-testid="default-selection-formatting-toolbar" />}
+      </div>
+    )
+  },
+  BasicTextStyleButton: ({ basicTextStyle }: { basicTextStyle: string }) => (
+    <button type="button" aria-label={basicTextStyle}>
+      {basicTextStyle}
+    </button>
+  ),
+  TextAlignButton: ({ textAlignment }: { textAlignment: string }) => (
+    <button type="button" aria-label={`align ${textAlignment}`}>
+      {textAlignment}
+    </button>
+  ),
+  ColorStyleButton: () => (
+    <button type="button" aria-label="colors">
+      colors
+    </button>
+  ),
+  NestBlockButton: () => (
+    <button type="button" aria-label="nest">
+      nest
+    </button>
+  ),
+  UnnestBlockButton: () => (
+    <button type="button" aria-label="unnest">
+      unnest
+    </button>
+  ),
+  CreateLinkButton: () => (
+    <button type="button" aria-label="create link">
+      link
+    </button>
+  ),
+  blockTypeSelectItems: vi.fn(() => [
+    { name: 'Paragraph', type: 'paragraph', icon: () => <span /> },
+    {
+      name: 'Heading',
+      type: 'heading',
+      props: { level: 1, isToggleable: false },
+      icon: () => <span />
+    },
+    {
+      name: 'Heading 2',
+      type: 'heading',
+      props: { level: 2, isToggleable: false },
+      icon: () => <span />
+    }
+  ]),
   SuggestionMenuController: (props: Record<string, unknown>) => {
     contentAreaMocks.suggestionControllers.push(props)
     return <div data-testid={`suggestion-${props.triggerCharacter}`} />
@@ -295,7 +353,31 @@ function resetEditor(): void {
       if ('props' in update) block.props = { ...block.props, ...(update.props as object) }
     }),
     insertBlocks: vi.fn(),
+    focus: vi.fn(),
+    transact: vi.fn((fn: () => void) => fn()),
+    getSelection: vi.fn(() => ({ blocks: [para] })),
     getTextCursorPosition: vi.fn(() => ({ block: urlBlock })),
+    dictionary: {},
+    schema: {
+      blockSpecs: {
+        paragraph: { config: { propSchema: {} } },
+        heading: {
+          config: {
+            propSchema: {
+              level: { default: 1, type: 'number' },
+              isToggleable: { default: false, type: 'boolean' }
+            }
+          }
+        },
+        callout: {
+          config: {
+            propSchema: {
+              type: { default: 'info', type: 'string' }
+            }
+          }
+        }
+      }
+    },
     prosemirrorView: { focus: vi.fn(), dom: { blur: vi.fn() } },
     _tiptapEditor: { state: { selection: { empty: true, $from: { parentOffset: 0 } } } }
   }
@@ -317,6 +399,7 @@ describe('ContentArea', () => {
     vi.clearAllMocks()
     vi.useRealTimers()
     contentAreaMocks.suggestionControllers = []
+    contentAreaMocks.formattingToolbarControllers = []
     contentAreaMocks.pasteSelect = null
     contentAreaMocks.blockNoteOptions = null
     contentAreaMocks.useSyncState = { status: 'error' }
@@ -417,6 +500,35 @@ describe('ContentArea', () => {
     expect(contentAreaMocks.editor.updateBlock).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'standalone' }),
       expect.objectContaining({ type: 'taskBlock' })
+    )
+  })
+
+  it('uses a compact floating selection toolbar with twelve slots', () => {
+    render(<ContentArea noteId="note-1" />)
+
+    const toolbar = screen.getByLabelText('Selection formatting')
+
+    expect(screen.getByTestId('selection-formatting-toolbar')).toBeInTheDocument()
+    expect(within(toolbar).getAllByRole('button')).toHaveLength(12)
+    expect(within(toolbar).getByRole('button', { name: 'More formatting options' })).toBeVisible()
+  })
+
+  it('turns selected text blocks into the chosen block type from the more menu', async () => {
+    render(<ContentArea noteId="note-1" />)
+
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'More formatting options' }))
+    expect(screen.getByText('Turn into')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('Heading 2'))
+
+    expect(contentAreaMocks.editor.focus).toHaveBeenCalled()
+    expect(contentAreaMocks.editor.transact).toHaveBeenCalled()
+    expect(contentAreaMocks.editor.updateBlock).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'para' }),
+      {
+        type: 'heading',
+        props: { level: 2, isToggleable: false }
+      }
     )
   })
 

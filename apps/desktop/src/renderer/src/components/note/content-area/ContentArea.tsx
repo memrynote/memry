@@ -1,11 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { createPortal } from 'react-dom'
-import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   SuggestionMenuController,
   useCreateBlockNote,
   FormattingToolbar,
+  FormattingToolbarController,
   getDefaultReactSlashMenuItems
 } from '@blocknote/react'
 import { BlockNoteView } from '@blocknote/shadcn'
@@ -20,7 +21,8 @@ import '@blocknote/xl-ai/style.css'
 
 import type * as Y from 'yjs'
 import { cn } from '@/lib/utils'
-import type { CommentAnchorInput } from '@/services/comments-service'
+import type { Comment, CommentAnchorInput, CommentMentionRef } from '@/services/comments-service'
+import { CommentsRail, type CommentRailRect } from '@/components/comments/comments-rail'
 import { notesService } from '@/services/notes-service'
 import { useYjsCollaboration } from '@/sync/use-yjs-collaboration'
 import { useSync } from '@/contexts/sync-context'
@@ -59,6 +61,7 @@ import { extractDomain, fetchLinkPreview } from '@/lib/url-metadata'
 import { createLinkMentionContent } from './link-mention'
 import type { PasteLinkOption } from './hooks/use-paste-link-menu'
 import { useT } from '@memry/i18n/renderer'
+import { CompactSelectionFormattingToolbar } from './selection-formatting-toolbar'
 
 const PRIORITY_REVERSE: Record<string, number> = { none: 0, low: 1, medium: 2, high: 3, urgent: 4 }
 
@@ -120,6 +123,26 @@ function findTextRange(root: HTMLElement, quote: string): Range | null {
   return range
 }
 
+function rangeToHighlightRect(
+  range: Range,
+  container: HTMLElement,
+  id: string,
+  quote: string
+): CommentHighlightRect | null {
+  const rect = range.getBoundingClientRect()
+  if (rect.width === 0 && rect.height === 0) return null
+  const containerRect = container.getBoundingClientRect()
+
+  return {
+    id,
+    quote,
+    left: rect.left - containerRect.left,
+    top: rect.top - containerRect.top,
+    width: rect.width,
+    height: rect.height
+  }
+}
+
 function readSelectionCommentAnchor(
   root: HTMLElement,
   container: HTMLElement
@@ -153,7 +176,7 @@ function readSelectionCommentAnchor(
     suffix:
       rangeEnd !== null ? fullText.slice(rangeEnd, Math.min(fullText.length, rangeEnd + 40)) : null,
     x: rangeRect.left - containerRect.left,
-    y: rangeRect.top - containerRect.top - 34
+    y: rangeRect.top - containerRect.top
   }
 }
 
@@ -205,7 +228,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   commentTargetType,
   commentTargetId,
   activeCommentId,
-  onAddCommentRequest,
+  onSaveCommentRequest,
   onCommentHighlightClick,
   onCommentOrphanIdsChange,
   yjsFragment,
@@ -232,9 +255,9 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   const pendingConvertBlockIdRef = useRef<string | null>(null)
   const editorContainerRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-  const [selectionCommentAnchor, setSelectionCommentAnchor] =
-    useState<SelectionCommentAnchor | null>(null)
+  const [draftCommentAnchor, setDraftCommentAnchor] = useState<SelectionCommentAnchor | null>(null)
   const [commentHighlightRects, setCommentHighlightRects] = useState<CommentHighlightRect[]>([])
+  const [draftCommentRect, setDraftCommentRect] = useState<CommentHighlightRect | null>(null)
   const noteIdRef = useRef<string | undefined>(noteId)
   const wikiLinkHover = useWikiLinkHover(editorContainerRef)
 
@@ -407,40 +430,41 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   }, [])
 
   const updateSelectionCommentAnchor = useCallback(() => {
-    if (!editable || !commentTargetType || !commentTargetId || !onAddCommentRequest) {
-      setSelectionCommentAnchor(null)
+    if (!editable || !commentTargetType || !commentTargetId || !onSaveCommentRequest) {
+      setDraftCommentAnchor(null)
       return
     }
 
     const root = getEditableRoot()
     const container = editorContainerRef.current
     if (!root || !container) {
-      setSelectionCommentAnchor(null)
+      setDraftCommentAnchor(null)
       return
     }
 
-    setSelectionCommentAnchor(readSelectionCommentAnchor(root, container))
-  }, [editable, commentTargetType, commentTargetId, getEditableRoot, onAddCommentRequest])
+    const nextAnchor = readSelectionCommentAnchor(root, container)
+    if (nextAnchor) setDraftCommentAnchor(nextAnchor)
+  }, [editable, commentTargetType, commentTargetId, getEditableRoot, onSaveCommentRequest])
 
   useEffect(() => {
-    if (!commentTargetType || !commentTargetId || !onAddCommentRequest) return
+    if (!commentTargetType || !commentTargetId || !onSaveCommentRequest) return
 
     document.addEventListener('selectionchange', updateSelectionCommentAnchor)
     return () => {
       document.removeEventListener('selectionchange', updateSelectionCommentAnchor)
     }
-  }, [commentTargetType, commentTargetId, onAddCommentRequest, updateSelectionCommentAnchor])
+  }, [commentTargetType, commentTargetId, onSaveCommentRequest, updateSelectionCommentAnchor])
 
   const recomputeCommentHighlights = useCallback(() => {
     const root = getEditableRoot()
     const container = editorContainerRef.current
-    if (!root || !container || comments.length === 0) {
+    if (!root || !container) {
       setCommentHighlightRects([])
+      setDraftCommentRect(null)
       onCommentOrphanIdsChange?.([])
       return
     }
 
-    const containerRect = container.getBoundingClientRect()
     const nextRects: CommentHighlightRect[] = []
     const orphanIds: string[] = []
 
@@ -452,30 +476,81 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         continue
       }
 
-      const rect = range.getBoundingClientRect()
-      if (rect.width === 0 && rect.height === 0) {
+      const rect = rangeToHighlightRect(range, container, comment.id, comment.selectedQuote)
+      if (!rect) {
         orphanIds.push(comment.id)
         continue
       }
 
-      nextRects.push({
-        id: comment.id,
-        quote: comment.selectedQuote,
-        left: rect.left - containerRect.left,
-        top: rect.top - containerRect.top,
-        width: rect.width,
-        height: rect.height
-      })
+      nextRects.push(rect)
+    }
+
+    if (draftCommentAnchor) {
+      const draftRange = findTextRange(root, draftCommentAnchor.selectedQuote)
+      setDraftCommentRect(
+        draftRange
+          ? rangeToHighlightRect(draftRange, container, 'draft', draftCommentAnchor.selectedQuote)
+          : null
+      )
+    } else {
+      setDraftCommentRect(null)
     }
 
     setCommentHighlightRects(nextRects)
     onCommentOrphanIdsChange?.(orphanIds)
-  }, [comments, getEditableRoot, onCommentOrphanIdsChange])
+  }, [comments, draftCommentAnchor, getEditableRoot, onCommentOrphanIdsChange])
 
   useLayoutEffect(() => {
     const frame = requestAnimationFrame(recomputeCommentHighlights)
     return () => cancelAnimationFrame(frame)
   }, [recomputeCommentHighlights, initialContent])
+
+  const commentRailRects = useMemo<CommentRailRect[]>(
+    () =>
+      commentHighlightRects.map((rect) => ({
+        id: rect.id,
+        top: rect.top,
+        height: rect.height
+      })),
+    [commentHighlightRects]
+  )
+
+  const draftCommentAnchorInput = useMemo<CommentAnchorInput | null>(() => {
+    if (!draftCommentAnchor) return null
+    const { x: _x, y: _y, ...anchor } = draftCommentAnchor
+    return anchor
+  }, [draftCommentAnchor])
+
+  const handleSaveCommentDraft = useCallback(
+    async (
+      anchor: CommentAnchorInput,
+      body: string,
+      attachmentRefs: string[],
+      mentionRefs: CommentMentionRef[]
+    ): Promise<void> => {
+      if (!onSaveCommentRequest) return
+      await onSaveCommentRequest(anchor, body, attachmentRefs, mentionRefs)
+      setDraftCommentAnchor(null)
+      setDraftCommentRect(null)
+    },
+    [onSaveCommentRequest]
+  )
+
+  const handleCancelCommentDraft = useCallback(() => {
+    setDraftCommentAnchor(null)
+    setDraftCommentRect(null)
+  }, [])
+
+  const handleRailCommentClick = useCallback(
+    (comment: Comment) => {
+      onCommentHighlightClick?.(comment.id)
+      const highlight = editorContainerRef.current?.querySelector<HTMLElement>(
+        `[data-comment-id="${comment.id}"]`
+      )
+      highlight?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    },
+    [onCommentHighlightClick]
+  )
 
   // Finder-style multi-block marquee selection
   const marquee = useBlockMarqueeSelection({
@@ -883,28 +958,6 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         {!marqueeZoneEl && (
           <BlockMarqueeOverlay rect={marquee.marqueeRect} highlights={marquee.highlightRects} />
         )}
-        {selectionCommentAnchor && (
-          <button
-            type="button"
-            aria-label="Add comment"
-            data-testid="comment-add-selection"
-            className="absolute z-50 rounded-md border border-border bg-background px-2 py-1 text-xs font-medium text-foreground shadow-md hover:bg-surface-active"
-            style={{
-              left: `${Math.max(0, selectionCommentAnchor.x)}px`,
-              top: `${Math.max(0, selectionCommentAnchor.y)}px`
-            }}
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={(event) => {
-              event.preventDefault()
-              event.stopPropagation()
-              const { x: _x, y: _y, ...anchor } = selectionCommentAnchor
-              onAddCommentRequest?.(anchor)
-              setSelectionCommentAnchor(null)
-            }}
-          >
-            Add comment
-          </button>
-        )}
         <BlockNoteView
           editor={editor}
           editable={editable}
@@ -972,9 +1025,12 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             knownTaskBlockIdsRef.current = intents.currentTaskIds
           }}
           theme={editorTheme}
-          formattingToolbar={!stickyToolbar}
+          formattingToolbar={false}
           slashMenu={false}
         >
+          {!stickyToolbar && (
+            <FormattingToolbarController formattingToolbar={CompactSelectionFormattingToolbar} />
+          )}
           {stickyToolbar && <FormattingToolbar />}
           {aiEnabled && aiReady && <AIMenuController aiMenu={CustomAIMenu} />}
           <SuggestionMenuController
@@ -1006,6 +1062,22 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           />
         </BlockNoteView>
 
+        {draftCommentRect && (
+          <span
+            data-testid="comment-draft-highlight"
+            aria-hidden="true"
+            className="pointer-events-none absolute z-20 overflow-hidden rounded-[2px] bg-amber-300/25 text-transparent"
+            style={{
+              left: `${draftCommentRect.left}px`,
+              top: `${draftCommentRect.top}px`,
+              width: `${Math.max(draftCommentRect.width, 8)}px`,
+              height: `${Math.max(draftCommentRect.height, 16)}px`
+            }}
+          >
+            {draftCommentRect.quote}
+          </span>
+        )}
+
         {commentHighlightRects.map((rect) => (
           <button
             key={rect.id}
@@ -1032,6 +1104,20 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             {rect.quote}
           </button>
         ))}
+
+        {commentTargetId && onSaveCommentRequest && (
+          <CommentsRail
+            targetId={commentTargetId}
+            comments={comments.filter((comment) => comment.status !== 'archived')}
+            commentRects={commentRailRects}
+            draftAnchor={draftCommentAnchorInput}
+            draftTop={draftCommentRect?.top ?? draftCommentAnchor?.y ?? null}
+            activeCommentId={activeCommentId ?? null}
+            onSaveDraft={handleSaveCommentDraft}
+            onCancelDraft={handleCancelCommentDraft}
+            onCommentClick={handleRailCommentClick}
+          />
+        )}
 
         {aiEnabled && (
           <TagSuggestionPopover

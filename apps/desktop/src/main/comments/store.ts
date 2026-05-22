@@ -24,6 +24,7 @@ function toComment(row: CommentRow): Comment {
     prefix: row.prefix,
     suffix: row.suffix,
     body: row.body,
+    mentionRefs: row.mentionRefs ?? [],
     attachmentRefs: row.attachmentRefs ?? [],
     status: row.status as CommentStatus,
     clock: (row.clock as VectorClock | null | undefined) ?? null,
@@ -76,6 +77,7 @@ export function createComment(input: CreateCommentInput, db: DataDb = getDatabas
       prefix: input.prefix ?? null,
       suffix: input.suffix ?? null,
       body: input.body ?? '',
+      mentionRefs: input.mentionRefs ?? [],
       attachmentRefs: input.attachmentRefs ?? [],
       status: 'open',
       createdAt: now,
@@ -96,6 +98,7 @@ export function updateComment(input: UpdateCommentInput, db: DataDb = getDatabas
     modifiedAt: new Date().toISOString()
   }
   if (input.body !== undefined) updates.body = input.body
+  if (input.mentionRefs !== undefined) updates.mentionRefs = input.mentionRefs
   if (input.attachmentRefs !== undefined) updates.attachmentRefs = input.attachmentRefs
 
   db.update(comments).set(updates).where(eq(comments.id, input.id)).run()
