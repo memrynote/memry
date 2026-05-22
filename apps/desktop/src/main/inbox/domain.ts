@@ -30,7 +30,7 @@ import {
   ALLOWED_DOCUMENT_TYPES
 } from './attachments'
 import { processInboxImageAttachment } from '../image-processing/bridge'
-import { titleFromUrl } from './metadata'
+import { titleFromUrl } from './metadata-utils'
 import { captureVoice } from './capture'
 import { findDuplicateByContent, findDuplicateByUrl } from './duplicates'
 import { getSuggestions, trackSuggestionFeedback } from './suggestions'

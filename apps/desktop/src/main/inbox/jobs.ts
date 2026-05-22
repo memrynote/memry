@@ -12,7 +12,7 @@ import { requireDatabase, type DataDb } from '../database'
 import { createLogger } from '../lib/logger'
 import { generateId } from '../lib/id'
 import { getItemAttachmentsDir } from './attachments'
-import { downloadImage, fetchUrlMetadata, isBotPageTitle, titleFromUrl } from './metadata'
+import { isBotPageTitle, titleFromUrl } from './metadata-utils'
 import { transcribeAudio } from './transcription'
 import { publishProjectionEvent } from '../projections'
 
@@ -219,6 +219,7 @@ async function processMetadataJob(db: DataDb, job: JobRow): Promise<void> {
   emitUpdated(job.itemId, { processingStatus: 'processing' })
 
   try {
+    const { downloadImage, fetchUrlMetadata } = await import('./metadata')
     const metadata = await fetchUrlMetadata(sourceUrl)
 
     let thumbnailPath: string | null = null

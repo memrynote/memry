@@ -25,7 +25,10 @@ vi.mock('../database', () => ({
 
 vi.mock('./metadata', () => ({
   fetchUrlMetadata: mockFetchUrlMetadata,
-  downloadImage: mockDownloadImage,
+  downloadImage: mockDownloadImage
+}))
+
+vi.mock('./metadata-utils', () => ({
   isBotPageTitle: vi.fn(() => false),
   titleFromUrl: vi.fn((url: string) => url)
 }))
@@ -114,6 +117,7 @@ describe('inbox jobs', () => {
 
     resumeInboxJobs()
     await vi.runAllTimersAsync()
+    await vi.dynamicImportSettled()
 
     const item = testDb.db.select().from(inboxItems).where(eq(inboxItems.id, 'item-1')).get()
     const job = testDb.db.select().from(inboxJobs).where(eq(inboxJobs.id, 'job-1')).get()
@@ -227,6 +231,7 @@ describe('inbox jobs', () => {
     })
 
     await vi.runOnlyPendingTimersAsync()
+    await vi.dynamicImportSettled()
 
     const retryJob = testDb.db.select().from(inboxJobs).where(eq(inboxJobs.id, retryId)).get()
     expect(retryJob).toMatchObject({
@@ -256,6 +261,7 @@ describe('inbox jobs', () => {
     })
 
     await vi.runOnlyPendingTimersAsync()
+    await vi.dynamicImportSettled()
 
     const item = testDb.db.select().from(inboxItems).where(eq(inboxItems.id, 'terminal-item')).get()
     const failedJob = testDb.db.select().from(inboxJobs).where(eq(inboxJobs.id, failedId)).get()
