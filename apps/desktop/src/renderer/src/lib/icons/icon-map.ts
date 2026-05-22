@@ -196,6 +196,7 @@ import {
   Loading03Icon,
   LoaderPinwheelIcon,
   Maximize02Icon,
+  CommentAdd01Icon as HugeCommentAdd01Icon,
   Message01Icon,
   MessageMultiple01Icon,
   MessageSquareCodeIcon,
@@ -347,6 +348,7 @@ export const Flag = createIcon(Flag01Icon)
 export const Star = createIcon(StarIcon)
 export const Heart = createIcon(FavouriteIcon)
 export const StickyNote = createIcon(StickyNote01Icon)
+export const CommentAdd = createIcon(HugeCommentAdd01Icon)
 
 // ── Actions & Tools ─────────────────────────────────
 export const Pencil = createIcon(PencilIcon)

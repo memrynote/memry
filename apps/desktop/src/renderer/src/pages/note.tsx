@@ -907,6 +907,26 @@ export function NotePage({ noteId }: NotePageProps) {
     [noteId, loadComments]
   )
 
+  const handleUpdateComment = useCallback(
+    async (comment: Comment, body: string) => {
+      const updated = await commentsService.update({ id: comment.id, body })
+      setComments((current) => current.map((item) => (item.id === updated.id ? updated : item)))
+      setActiveCommentId(updated.id)
+      await loadComments()
+    },
+    [loadComments]
+  )
+
+  const handleDeleteComment = useCallback(
+    async (comment: Comment) => {
+      await commentsService.delete(comment.id)
+      setComments((current) => current.filter((item) => item.id !== comment.id))
+      setActiveCommentId((current) => (current === comment.id ? null : current))
+      await loadComments()
+    },
+    [loadComments]
+  )
+
   // ============================================================================
   // Render
   // ============================================================================
@@ -1161,6 +1181,8 @@ export function NotePage({ noteId }: NotePageProps) {
               commentTargetId={noteId}
               activeCommentId={activeCommentId}
               onSaveCommentRequest={handleSaveComment}
+              onUpdateCommentRequest={handleUpdateComment}
+              onDeleteCommentRequest={handleDeleteComment}
               onCommentHighlightClick={setActiveCommentId}
               onCommentOrphanIdsChange={setOrphanedCommentIds}
             />

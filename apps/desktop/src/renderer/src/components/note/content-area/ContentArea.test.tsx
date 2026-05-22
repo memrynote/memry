@@ -128,13 +128,15 @@ vi.mock('@blocknote/shadcn', () => ({
       <button type="button" onClick={onChange}>
         change
       </button>
-      <div data-content-type="checkListItem" data-id="standalone">
-        checklist target
-      </div>
-      <div data-id="task-prev">
-        <button type="button" role="button" tabIndex={0}>
-          task title
-        </button>
+      <div data-testid="editor-root" contentEditable suppressContentEditableWarning>
+        <div data-content-type="checkListItem" data-id="standalone">
+          checklist target
+        </div>
+        <div data-id="task-prev">
+          <button type="button" role="button" tabIndex={0}>
+            task title
+          </button>
+        </div>
       </div>
       {children}
     </div>
@@ -394,6 +396,63 @@ function emptyIntents(currentTaskIds = new Set<string>()) {
   }
 }
 
+function findTextNode(root: Node, text: string): Text {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+  while (walker.nextNode()) {
+    const node = walker.currentNode as Text
+    if (node.data.includes(text)) return node
+  }
+  throw new Error(`Could not find text node for ${text}`)
+}
+
+function installRect(element: Element, rect: Partial<DOMRect>): void {
+  Object.defineProperty(element, 'getBoundingClientRect', {
+    configurable: true,
+    value: () => ({
+      x: rect.left ?? 0,
+      y: rect.top ?? 0,
+      left: rect.left ?? 0,
+      top: rect.top ?? 0,
+      right: rect.right ?? 0,
+      bottom: rect.bottom ?? 0,
+      width: rect.width ?? 100,
+      height: rect.height ?? 20,
+      toJSON: () => ({})
+    })
+  })
+}
+
+function selectEditorText(text: string): void {
+  const root = screen.getByTestId('editor-root')
+  const container = screen.getByRole('application')
+  installRect(container, { left: 0, top: 0, right: 600, bottom: 400, width: 600, height: 400 })
+
+  const textNode = findTextNode(root, text)
+  const start = textNode.data.indexOf(text)
+  const range = document.createRange()
+  range.setStart(textNode, start)
+  range.setEnd(textNode, start + text.length)
+  Object.defineProperty(range, 'getBoundingClientRect', {
+    configurable: true,
+    value: () => ({
+      x: 20,
+      y: 30,
+      left: 20,
+      top: 30,
+      right: 140,
+      bottom: 48,
+      width: 120,
+      height: 18,
+      toJSON: () => ({})
+    })
+  })
+
+  const selection = window.getSelection()
+  selection?.removeAllRanges()
+  selection?.addRange(range)
+  fireEvent(document, new Event('selectionchange'))
+}
+
 describe('ContentArea', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -511,6 +570,57 @@ describe('ContentArea', () => {
     expect(screen.getByTestId('selection-formatting-toolbar')).toBeInTheDocument()
     expect(within(toolbar).getAllByRole('button')).toHaveLength(12)
     expect(within(toolbar).getByRole('button', { name: 'More formatting options' })).toBeVisible()
+  })
+
+  it('opens a selected-text comment draft only after the toolbar Comment action', async () => {
+    render(
+      <ContentArea
+        noteId="note-1"
+        commentTargetType="note"
+        commentTargetId="note-1"
+        onSaveCommentRequest={vi.fn()}
+      />
+    )
+
+    selectEditorText('checklist target')
+
+    expect(screen.queryByTestId('comments-rail')).not.toBeInTheDocument()
+
+    const commentButton = await screen.findByRole('button', { name: 'Comment' })
+    await act(async () => {})
+    fireEvent.mouseDown(commentButton)
+
+    expect(await screen.findByTestId('comments-rail')).toBeInTheDocument()
+    expect(screen.getByTestId('comment-composer-quote')).toHaveTextContent('checklist target')
+  })
+
+  it('opens a block comment draft from the hover affordance', async () => {
+    render(
+      <ContentArea
+        noteId="note-1"
+        commentTargetType="note"
+        commentTargetId="note-1"
+        onSaveCommentRequest={vi.fn()}
+      />
+    )
+
+    const block = screen.getByText('checklist target').closest('[data-id]')
+    expect(block).toBeTruthy()
+    installRect(screen.getByRole('application'), {
+      left: 0,
+      top: 0,
+      right: 600,
+      bottom: 400,
+      width: 600,
+      height: 400
+    })
+    installRect(block!, { left: 10, top: 44, right: 420, bottom: 70, width: 410, height: 26 })
+
+    fireEvent.mouseMove(block!)
+    fireEvent.click(await screen.findByRole('button', { name: 'Add comment to block' }))
+
+    expect(await screen.findByTestId('comments-rail')).toBeInTheDocument()
+    expect(screen.getByTestId('comment-composer-quote')).toHaveTextContent('checklist target')
   })
 
   it('turns selected text blocks into the chosen block type from the more menu', async () => {

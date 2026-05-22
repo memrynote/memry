@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import type {
   Comment,
@@ -15,15 +15,14 @@ import {
   type MentionIconSpec
 } from '@/agent-chat/mention-icons'
 import { useMemryLinkNavigation } from '@/agent-chat/messages/memry-links'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog'
-import { ArrowUp, AtSign, FilePdf, FileText, Image, Paperclip, X } from '@/lib/icons'
+import { ArrowUp, AtSign, Check, FileText, Paperclip, PenLine, Trash2, X } from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import {
+  attachmentFileName,
+  AttachmentPreviewButton,
+  CommentAttachmentPreviewDialog
+} from './comment-attachments'
+import { useT } from '@memry/i18n/renderer'
 
 export interface CommentRailRect {
   id: string
@@ -47,6 +46,8 @@ interface CommentsRailProps {
   ) => Promise<void>
   onCancelDraft: () => void
   onCommentClick: (comment: Comment) => void
+  onUpdateComment?: (comment: Comment, body: string) => Promise<void>
+  onDeleteComment?: (comment: Comment) => Promise<void>
 }
 
 interface CommentComposerProps {
@@ -65,6 +66,8 @@ interface CommentCardProps {
   active: boolean
   orphaned: boolean
   onClick: () => void
+  onUpdate?: (comment: Comment, body: string) => Promise<void>
+  onDelete?: (comment: Comment) => Promise<void>
 }
 
 interface RailItem {
@@ -94,8 +97,6 @@ const allowedMentionKinds = new Set<CommentMentionKind>([
   'project',
   'folder'
 ])
-
-const imageExtensions = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'avif', 'svg'])
 
 function findActiveMentionQuery(value: string, caret: number): ActiveMentionQuery | null {
   const beforeCaret = value.slice(0, caret)
@@ -145,33 +146,6 @@ function mentionHref(mention: CommentMentionRef): string {
   const id = encodeURIComponent(mention.refId)
   if (mention.kind === 'calendar_event') return `memry://calendar/event/${id}`
   return `memry://${mention.kind}/${id}`
-}
-
-function attachmentFileName(ref: string): string {
-  const withoutQuery = ref.split('?')[0] ?? ref
-  const last = withoutQuery.split('/').filter(Boolean).at(-1) ?? ref
-  try {
-    return decodeURIComponent(last)
-  } catch {
-    return last
-  }
-}
-
-function attachmentExtension(ref: string): string {
-  const name = attachmentFileName(ref)
-  return name.includes('.') ? (name.split('.').pop() ?? '').toLowerCase() : ''
-}
-
-function isImageAttachment(ref: string): boolean {
-  return imageExtensions.has(attachmentExtension(ref))
-}
-
-function isPdfAttachment(ref: string): boolean {
-  return attachmentExtension(ref) === 'pdf'
-}
-
-function attachmentSrc(ref: string): string {
-  return ref
 }
 
 function estimateCommentHeight(comment: Comment, orphaned: boolean): number {
@@ -230,100 +204,13 @@ function MentionChip({
   return <span className={className}>{chip}</span>
 }
 
-function AttachmentPreviewButton({
-  attachmentRef,
-  onPreview
-}: {
-  attachmentRef: string
-  onPreview: (ref: string) => void
-}): React.JSX.Element {
-  const fileName = attachmentFileName(attachmentRef)
-  const image = isImageAttachment(attachmentRef)
-  const pdf = isPdfAttachment(attachmentRef)
-  const Icon = image ? Image : pdf ? FilePdf : FileText
-
-  if (image) {
-    return (
-      <button
-        type="button"
-        className="group overflow-hidden rounded border border-border/70 bg-muted text-start"
-        onClick={(event) => {
-          event.stopPropagation()
-          onPreview(attachmentRef)
-        }}
-      >
-        <img
-          src={attachmentSrc(attachmentRef)}
-          alt={fileName}
-          className="h-24 w-full object-cover transition-opacity group-hover:opacity-90"
-        />
-      </button>
-    )
-  }
-
-  return (
-    <button
-      type="button"
-      className="flex min-w-0 items-center gap-2 rounded border border-border/70 bg-muted px-2 py-1.5 text-start text-xs text-foreground hover:bg-surface-active"
-      onClick={(event) => {
-        event.stopPropagation()
-        onPreview(attachmentRef)
-      }}
-    >
-      <Icon className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-      <span className="truncate">{fileName}</span>
-    </button>
-  )
-}
-
-export function CommentAttachmentPreviewDialog({
-  attachmentRef,
-  open,
-  onOpenChange
-}: {
-  attachmentRef: string | null
-  open: boolean
-  onOpenChange: (open: boolean) => void
-}): React.JSX.Element {
-  const fileName = attachmentRef ? attachmentFileName(attachmentRef) : 'Attachment'
-  const src = attachmentRef ? attachmentSrc(attachmentRef) : ''
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent data-testid="comment-attachment-preview-dialog" className="max-w-3xl">
-        <DialogHeader>
-          <DialogTitle className="truncate pe-8 text-base">{fileName}</DialogTitle>
-          <DialogDescription className="sr-only">Attachment preview</DialogDescription>
-        </DialogHeader>
-        {attachmentRef && isImageAttachment(attachmentRef) ? (
-          <img
-            src={src}
-            alt={fileName}
-            className="max-h-[70vh] w-full rounded border border-border object-contain"
-          />
-        ) : attachmentRef && isPdfAttachment(attachmentRef) ? (
-          <iframe
-            title={fileName}
-            src={src}
-            className="h-[70vh] w-full rounded border border-border"
-          />
-        ) : (
-          <div className="rounded border border-border bg-muted p-4 text-sm text-muted-foreground">
-            <p className="mb-2 font-medium text-foreground">{fileName}</p>
-            <p className="break-all">{attachmentRef ?? ''}</p>
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
-  )
-}
-
 export function CommentComposer({
   targetId,
   anchor,
   onSave,
   onCancel
 }: CommentComposerProps): React.JSX.Element {
+  const { t } = useT('notes')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [body, setBody] = useState('')
   const [mentionRefs, setMentionRefs] = useState<CommentMentionRef[]>([])
@@ -437,8 +324,8 @@ export function CommentComposer({
         )}
         <textarea
           ref={textareaRef}
-          aria-label="Comment body"
-          placeholder="Add a comment..."
+          aria-label={t('editor.comments.composer.bodyAria')}
+          placeholder={t('editor.comments.composer.placeholder')}
           value={body}
           onChange={(event) => {
             const value = event.currentTarget.value
@@ -467,8 +354,16 @@ export function CommentComposer({
         />
         <div className="absolute end-2 top-2 flex items-center gap-1">
           <label
-            title={isUploading ? 'Attaching...' : 'Attach file'}
-            aria-label={isUploading ? 'Attaching file' : 'Attach file'}
+            title={
+              isUploading
+                ? t('editor.comments.composer.attaching')
+                : t('editor.comments.composer.attachFile')
+            }
+            aria-label={
+              isUploading
+                ? t('editor.comments.composer.attachingFile')
+                : t('editor.comments.composer.attachFile')
+            }
             className="inline-flex size-7 cursor-pointer items-center justify-center rounded-full text-muted-foreground hover:bg-surface-active hover:text-foreground"
           >
             <Paperclip className="size-4" aria-hidden="true" />
@@ -477,13 +372,13 @@ export function CommentComposer({
               multiple
               data-testid="comment-attachment-input"
               className="hidden"
-              onChange={handleAttachmentChange}
+              onChange={(event) => void handleAttachmentChange(event)}
             />
           </label>
           <button
             type="button"
-            aria-label="Mention"
-            title="Mention"
+            aria-label={t('editor.comments.composer.mention')}
+            title={t('editor.comments.composer.mention')}
             className="inline-flex size-7 items-center justify-center rounded-full text-muted-foreground hover:bg-surface-active hover:text-foreground"
             onClick={() => {
               const nextBody = body.endsWith(' ') || body.length === 0 ? `${body}@` : `${body} @`
@@ -501,8 +396,8 @@ export function CommentComposer({
           </button>
           <button
             type="button"
-            aria-label="Save comment"
-            title="Save comment"
+            aria-label={t('editor.comments.composer.save')}
+            title={t('editor.comments.composer.save')}
             disabled={saveDisabled}
             className="inline-flex size-7 items-center justify-center rounded-full bg-foreground text-background transition-opacity disabled:opacity-35"
             onClick={() => void handleSave()}
@@ -556,17 +451,45 @@ export function CommentCard({
   comment,
   active,
   orphaned,
-  onClick
+  onClick,
+  onUpdate,
+  onDelete
 }: CommentCardProps): React.JSX.Element {
+  const { t } = useT('notes')
   const navigate = useMemryLinkNavigation()
   const [previewRef, setPreviewRef] = useState<string | null>(null)
+  const [editing, setEditing] = useState(false)
+  const [draftBody, setDraftBody] = useState(comment.body)
+  const [isSavingEdit, setIsSavingEdit] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  const handleSaveEdit = async (): Promise<void> => {
+    if (!onUpdate || isSavingEdit || draftBody === comment.body) return
+    setIsSavingEdit(true)
+    try {
+      await onUpdate(comment, draftBody)
+      setEditing(false)
+    } finally {
+      setIsSavingEdit(false)
+    }
+  }
+
+  const handleDelete = async (): Promise<void> => {
+    if (!onDelete || isDeleting) return
+    setIsDeleting(true)
+    try {
+      await onDelete(comment)
+    } finally {
+      setIsDeleting(false)
+    }
+  }
 
   return (
     <>
       <div
         role="button"
         tabIndex={0}
-        aria-label="Comment"
+        aria-label={t('editor.comments.card.aria')}
         data-testid="comment-card"
         data-active={active ? 'true' : 'false'}
         data-orphaned={orphaned ? 'true' : 'false'}
@@ -577,8 +500,11 @@ export function CommentCard({
             ? 'border-amber-400 bg-amber-50 dark:border-amber-600 dark:bg-amber-950/30'
             : 'border-border/70 hover:bg-surface-active'
         )}
-        onClick={onClick}
+        onClick={() => {
+          if (!editing) onClick()
+        }}
         onKeyDown={(event) => {
+          if (editing) return
           if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault()
             onClick()
@@ -587,20 +513,99 @@ export function CommentCard({
       >
         <div className="mb-1 flex items-center gap-2">
           <span className="inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-semibold text-muted-foreground">
-            Y
+            {t('editor.comments.card.authorInitial')}
           </span>
-          <span className="text-xs font-medium text-foreground">You</span>
-          <span className="text-[11px] text-muted-foreground">Just now</span>
+          <span className="min-w-0 flex-1 text-xs font-medium text-foreground">
+            {t('editor.comments.card.author')}
+          </span>
+          <span className="text-[11px] text-muted-foreground">
+            {t('editor.comments.card.timestampNow')}
+          </span>
+          {(onUpdate || onDelete) && (
+            <div className="ms-auto flex items-center gap-0.5">
+              {onUpdate && (
+                <button
+                  type="button"
+                  aria-label={t('editor.comments.card.edit')}
+                  title={t('editor.comments.card.edit')}
+                  disabled={isSavingEdit || isDeleting}
+                  className="inline-flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-surface-active hover:text-foreground disabled:opacity-40"
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    setDraftBody(comment.body)
+                    setEditing(true)
+                  }}
+                >
+                  <PenLine className="size-3.5" aria-hidden="true" />
+                </button>
+              )}
+              {onDelete && (
+                <button
+                  type="button"
+                  aria-label={t('editor.comments.card.delete')}
+                  title={t('editor.comments.card.delete')}
+                  disabled={isDeleting}
+                  className="inline-flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-40"
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    void handleDelete()
+                  }}
+                >
+                  <Trash2 className="size-3.5" aria-hidden="true" />
+                </button>
+              )}
+            </div>
+          )}
         </div>
         {orphaned && (
           <div className="mb-1 text-[11px] font-medium text-amber-700 dark:text-amber-400">
-            Anchor not found
+            {t('editor.comments.card.anchorNotFound')}
           </div>
         )}
-        {comment.body && (
-          <p className="whitespace-pre-wrap break-words text-sm leading-5 text-foreground">
-            {comment.body}
-          </p>
+        {editing ? (
+          <div className="space-y-2" onClick={(event) => event.stopPropagation()}>
+            <textarea
+              aria-label={t('editor.comments.card.editBodyAria')}
+              value={draftBody}
+              onChange={(event) => setDraftBody(event.currentTarget.value)}
+              className="min-h-20 w-full resize-none rounded-md border border-border bg-background px-2 py-1.5 text-sm outline-none transition-colors focus:border-primary"
+              autoFocus
+            />
+            <div className="flex justify-end gap-1">
+              <button
+                type="button"
+                aria-label={t('editor.comments.card.cancelEdit')}
+                title={t('editor.comments.card.cancelEdit')}
+                className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-surface-active hover:text-foreground"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  setDraftBody(comment.body)
+                  setEditing(false)
+                }}
+              >
+                <X className="size-4" aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                aria-label={t('editor.comments.card.saveEdit')}
+                title={t('editor.comments.card.saveEdit')}
+                disabled={isSavingEdit || draftBody === comment.body}
+                className="inline-flex size-7 items-center justify-center rounded-md bg-foreground text-background transition-opacity disabled:opacity-35"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  void handleSaveEdit()
+                }}
+              >
+                <Check className="size-4" aria-hidden="true" />
+              </button>
+            </div>
+          </div>
+        ) : (
+          comment.body && (
+            <p className="whitespace-pre-wrap break-words text-sm leading-5 text-foreground">
+              {comment.body}
+            </p>
+          )
         )}
         {comment.mentionRefs.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1">
@@ -642,7 +647,9 @@ export function CommentsRail({
   className,
   onSaveDraft,
   onCancelDraft,
-  onCommentClick
+  onCommentClick,
+  onUpdateComment,
+  onDeleteComment
 }: CommentsRailProps): React.JSX.Element | null {
   const rectById = useMemo(
     () => new Map(commentRects.map((rect) => [rect.id, rect])),
@@ -671,6 +678,8 @@ export function CommentsRail({
             active={comment.id === activeCommentId}
             orphaned
             onClick={() => onCommentClick(comment)}
+            onUpdate={onUpdateComment}
+            onDelete={onDeleteComment}
           />
         </div>
       )
@@ -697,6 +706,8 @@ export function CommentsRail({
               active={comment.id === activeCommentId}
               orphaned={false}
               onClick={() => onCommentClick(comment)}
+              onUpdate={onUpdateComment}
+              onDelete={onDeleteComment}
             />
           </div>
         )
@@ -738,7 +749,9 @@ export function CommentsRail({
     draftTop,
     onCancelDraft,
     onCommentClick,
+    onDeleteComment,
     onSaveDraft,
+    onUpdateComment,
     rectById,
     targetId
   ])
@@ -751,7 +764,9 @@ export function CommentsRail({
       data-marquee-ignore
       className={cn('pointer-events-none absolute inset-0 z-40 overflow-visible', className)}
     >
-      {stackRailItems(items).map((item) => item.render(item.stackedTop))}
+      {stackRailItems(items).map((item) => (
+        <Fragment key={item.key}>{item.render(item.stackedTop)}</Fragment>
+      ))}
     </div>
   )
 }

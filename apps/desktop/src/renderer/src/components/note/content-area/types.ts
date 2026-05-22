@@ -126,6 +126,10 @@ export interface ContentAreaProps {
     attachmentRefs: string[],
     mentionRefs: CommentMentionRef[]
   ) => Promise<void>
+  /** Callback when user edits an existing comment */
+  onUpdateCommentRequest?: (comment: Comment, body: string) => Promise<void>
+  /** Callback when user deletes an existing comment */
+  onDeleteCommentRequest?: (comment: Comment) => Promise<void>
   /** Callback when a rendered comment highlight is clicked */
   onCommentHighlightClick?: (commentId: string) => void
   /** Callback with comment IDs whose quote cannot currently be resolved */

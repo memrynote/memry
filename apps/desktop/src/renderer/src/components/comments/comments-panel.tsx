@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { Comment, CommentAnchorInput, CommentTargetType } from '@/services/comments-service'
 import { notesService } from '@/services/notes-service'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 interface CommentsPanelProps {
   targetType: CommentTargetType
@@ -27,6 +28,7 @@ export function CommentsPanel({
   onCancelPending,
   onCommentClick
 }: CommentsPanelProps): React.JSX.Element | null {
+  const { t } = useT('notes')
   const [body, setBody] = useState('')
   const [attachmentRefs, setAttachmentRefs] = useState<string[]>([])
   const [isSaving, setIsSaving] = useState(false)
@@ -83,7 +85,7 @@ export function CommentsPanel({
       )}
     >
       <div className="border-b border-border/60 px-3 py-2">
-        <h2 className="text-xs font-medium text-foreground">Comments</h2>
+        <h2 className="text-xs font-medium text-foreground">{t('editor.comments.panel.title')}</h2>
       </div>
 
       <div className="flex-1 overflow-y-auto p-3">
@@ -99,7 +101,7 @@ export function CommentsPanel({
               {pendingAnchor.selectedQuote}
             </p>
             <label className="flex flex-col gap-1 text-xs font-medium text-foreground">
-              Comment body
+              {t('editor.comments.composer.bodyAria')}
               <textarea
                 value={body}
                 onChange={(event) => setBody(event.target.value)}
@@ -117,8 +119,15 @@ export function CommentsPanel({
             )}
             <div className="mt-3 flex items-center justify-between gap-2">
               <label className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">
-                {isUploading ? 'Attaching...' : 'Attach file'}
-                <input type="file" multiple className="hidden" onChange={handleAttachmentChange} />
+                {isUploading
+                  ? t('editor.comments.composer.attaching')
+                  : t('editor.comments.composer.attachFile')}
+                <input
+                  type="file"
+                  multiple
+                  className="hidden"
+                  onChange={(event) => void handleAttachmentChange(event)}
+                />
               </label>
               <div className="flex items-center gap-2">
                 <button
@@ -126,7 +135,7 @@ export function CommentsPanel({
                   onClick={onCancelPending}
                   className="rounded-sm px-2 py-1 text-xs text-muted-foreground hover:bg-surface-active"
                 >
-                  Cancel
+                  {t('editor.comments.panel.cancel')}
                 </button>
                 <button
                   type="button"
@@ -134,7 +143,7 @@ export function CommentsPanel({
                   disabled={isSaving}
                   className="rounded-sm bg-foreground px-2.5 py-1 text-xs font-medium text-background disabled:opacity-50"
                 >
-                  Save comment
+                  {t('editor.comments.composer.save')}
                 </button>
               </div>
             </div>
@@ -164,11 +173,11 @@ export function CommentsPanel({
                   {comment.selectedQuote}
                 </span>
                 <span className="block whitespace-pre-wrap break-words text-sm text-foreground">
-                  {comment.body || 'No body'}
+                  {comment.body || t('editor.comments.card.noBody')}
                 </span>
                 {isOrphaned && (
                   <span className="mt-2 block text-[11px] text-amber-700 dark:text-amber-400">
-                    Anchor not found
+                    {t('editor.comments.card.anchorNotFound')}
                   </span>
                 )}
               </button>

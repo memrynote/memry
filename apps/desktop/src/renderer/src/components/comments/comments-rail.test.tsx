@@ -152,4 +152,45 @@ describe('Comment rail composer', () => {
     await userEvent.click(screen.getByRole('button', { name: 'proof.pdf' }))
     expect(screen.getByTestId('comment-attachment-preview-dialog')).toBeInTheDocument()
   })
+
+  it('edits an existing comment from the comment card', async () => {
+    const onUpdate = vi.fn().mockResolvedValue(undefined)
+    render(
+      <CommentCard
+        comment={baseComment}
+        active={false}
+        orphaned={false}
+        onClick={vi.fn()}
+        onUpdate={onUpdate}
+      />
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: 'Edit comment' }))
+    await userEvent.clear(screen.getByRole('textbox', { name: 'Edit comment body' }))
+    await userEvent.type(screen.getByRole('textbox', { name: 'Edit comment body' }), 'Updated')
+    await userEvent.click(screen.getByRole('button', { name: 'Save edit' }))
+
+    await waitFor(() => {
+      expect(onUpdate).toHaveBeenCalledWith(baseComment, 'Updated')
+    })
+  })
+
+  it('deletes an existing comment from the comment card', async () => {
+    const onDelete = vi.fn().mockResolvedValue(undefined)
+    render(
+      <CommentCard
+        comment={baseComment}
+        active={false}
+        orphaned={false}
+        onClick={vi.fn()}
+        onDelete={onDelete}
+      />
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: 'Delete comment' }))
+
+    await waitFor(() => {
+      expect(onDelete).toHaveBeenCalledWith(baseComment)
+    })
+  })
 })

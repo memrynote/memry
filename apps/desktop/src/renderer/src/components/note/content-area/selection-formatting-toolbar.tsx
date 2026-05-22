@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { createContext, useCallback, useContext, useMemo, type ReactNode } from 'react'
 import { editorHasBlockWithType } from '@blocknote/core'
 import { RiQuoteText } from 'react-icons/ri'
 import {
@@ -22,7 +22,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
-import { MoreHorizontal } from '@/lib/icons'
+import { CommentAdd, MoreHorizontal } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
 
@@ -127,8 +127,61 @@ function TurnIntoMenu() {
   )
 }
 
+interface CompactSelectionFormattingToolbarProps {
+  canComment?: boolean
+  onComment?: () => void
+}
+
+const SelectionCommentToolbarContext = createContext<CompactSelectionFormattingToolbarProps>({})
+
+export function SelectionCommentToolbarProvider({
+  canComment = false,
+  onComment,
+  children
+}: CompactSelectionFormattingToolbarProps & { children: ReactNode }) {
+  const value = useMemo(() => ({ canComment, onComment }), [canComment, onComment])
+
+  return (
+    <SelectionCommentToolbarContext.Provider value={value}>
+      {children}
+    </SelectionCommentToolbarContext.Provider>
+  )
+}
+
 export function CompactSelectionFormattingToolbar() {
   const { t } = useT('notes')
+  const { canComment = false, onComment } = useContext(SelectionCommentToolbarContext)
+  const bindCommentButton = useCallback(
+    (button: HTMLButtonElement | null) => {
+      if (!button || !onComment) return
+
+      const openFromEvent = (event: MouseEvent | PointerEvent) => {
+        event.preventDefault()
+        event.stopPropagation()
+        onComment()
+      }
+      let openedFromPointer = false
+
+      const handleKeyboardClick = (event: MouseEvent) => {
+        if (event.detail !== 0) return
+        openFromEvent(event)
+      }
+
+      button.onpointerdown = (event) => {
+        openedFromPointer = true
+        openFromEvent(event)
+      }
+      button.onmousedown = (event) => {
+        if (openedFromPointer) {
+          openedFromPointer = false
+          return
+        }
+        openFromEvent(event)
+      }
+      button.onclick = handleKeyboardClick
+    },
+    [onComment]
+  )
 
   return (
     <FormattingToolbar>
@@ -152,6 +205,23 @@ export function CompactSelectionFormattingToolbar() {
         <UnnestBlockButton />
         <CreateLinkButton />
         <TurnIntoMenu />
+        {canComment && onComment && (
+          <button
+            ref={bindCommentButton}
+            type="button"
+            data-comment-selection-action
+            aria-label={t('editor.selectionToolbar.comment')}
+            title={t('editor.selectionToolbar.comment')}
+            className={cn(
+              'bn-button col-span-4 inline-flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-md px-2',
+              'text-popover-foreground hover:bg-accent hover:text-accent-foreground',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+            )}
+          >
+            <CommentAdd className="size-4" aria-hidden="true" />
+            <span className="text-xs">{t('editor.selectionToolbar.comment')}</span>
+          </button>
+        )}
       </div>
     </FormattingToolbar>
   )

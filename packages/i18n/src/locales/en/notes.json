@@ -86,7 +86,44 @@
     "selectionToolbar": {
       "aria": "Selection formatting",
       "moreOptions": "More formatting options",
-      "turnInto": "Turn into"
+      "turnInto": "Turn into",
+      "comment": "Comment"
+    },
+    "comments": {
+      "composer": {
+        "bodyAria": "Comment body",
+        "placeholder": "Add a comment...",
+        "attaching": "Attaching...",
+        "attachingFile": "Attaching file",
+        "attachFile": "Attach file",
+        "mention": "Mention",
+        "save": "Save comment"
+      },
+      "card": {
+        "aria": "Comment",
+        "authorInitial": "Y",
+        "author": "You",
+        "timestampNow": "Just now",
+        "anchorNotFound": "Anchor not found",
+        "edit": "Edit comment",
+        "delete": "Delete comment",
+        "editBodyAria": "Edit comment body",
+        "cancelEdit": "Cancel edit",
+        "saveEdit": "Save edit",
+        "noBody": "No body"
+      },
+      "attachments": {
+        "fallbackName": "Attachment",
+        "previewDescription": "Attachment preview"
+      },
+      "block": {
+        "addAria": "Add comment to block",
+        "addTitle": "Add comment"
+      },
+      "panel": {
+        "title": "Comments",
+        "cancel": "Cancel"
+      }
     },
     "breadcrumb": {
       "locationAria": "Note location",
