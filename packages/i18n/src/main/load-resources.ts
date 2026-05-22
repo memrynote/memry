@@ -1,11 +1,9 @@
 import type { Locale } from '../shared/config'
-import { RESOURCES } from '../locales'
+import { loadLocaleResources, type LocaleResources } from '../locales/load'
 
 /**
- * Returns the full set of namespaces for a locale, loaded eagerly via the
- * static RESOURCES map. Used by the main-process i18next instance, which
- * must initialize synchronously before the native menu is built.
+ * Returns the full set of namespaces for a locale.
  */
-export function loadResources(locale: Locale): (typeof RESOURCES)[Locale] {
-  return RESOURCES[locale]
+export function loadResources(locale: Locale): Promise<LocaleResources> {
+  return loadLocaleResources(locale)
 }

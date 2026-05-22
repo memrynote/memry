@@ -17,6 +17,11 @@ describe('createMainI18n', () => {
     expect(i18n.t('tasks:page.tabs.today')).toBe('اليوم')
   })
 
+  it('does not load inactive locale resources on startup', async () => {
+    const i18n = await createMainI18n({ locale: 'en' })
+    expect(i18n.hasResourceBundle('tr', 'common')).toBe(false)
+  })
+
   it('returns the key for nonexistent translations', async () => {
     const i18n = await createMainI18n({ locale: 'tr' })
     expect(i18n.t('menu:nonexistent.key')).toBe('menu:nonexistent.key')
@@ -27,5 +32,6 @@ describe('createMainI18n', () => {
     expect(i18n.t('menu:file.label')).toBe('File')
     await i18n.changeLanguage('tr')
     expect(i18n.t('menu:file.label')).toBe('Dosya')
+    expect(i18n.hasResourceBundle('tr', 'menu')).toBe(true)
   })
 })

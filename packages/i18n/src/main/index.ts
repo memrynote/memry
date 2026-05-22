@@ -4,9 +4,10 @@ import {
   type Locale,
   FALLBACK_LOCALE,
   I18N_NAMESPACES,
-  DEFAULT_NAMESPACE
+  DEFAULT_NAMESPACE,
+  SUPPORTED_LOCALES
 } from '../shared/config'
-import { RESOURCES } from '../locales'
+import { createLocaleBackend } from '../locales/load'
 
 interface CreateMainI18nOptions {
   locale: Locale
@@ -15,26 +16,26 @@ interface CreateMainI18nOptions {
 /**
  * Creates an i18next instance for the Electron main process.
  *
- * Synchronous resource loading: all namespaces for all SUPPORTED_LOCALES
- * are bundled into the main-process JS bundle via the static RESOURCES
- * import. No filesystem I/O, no async race with menu construction.
+ * Locale JSON is loaded through the i18next backend before this factory
+ * resolves, so menu construction still sees a fully initialized instance.
  */
-export async function createMainI18n(
-  options: CreateMainI18nOptions
-): Promise<I18nInstance> {
+export async function createMainI18n(options: CreateMainI18nOptions): Promise<I18nInstance> {
   const instance = i18next.createInstance()
-  await instance.use(IcuFormatter).init({
-    lng: options.locale,
-    fallbackLng: FALLBACK_LOCALE,
-    ns: I18N_NAMESPACES,
-    defaultNS: DEFAULT_NAMESPACE,
-    resources: RESOURCES,
-    interpolation: {
-      escapeValue: false // main process renders no HTML
-    },
-    appendNamespaceToMissingKey: true,
-    initImmediate: false // synchronous init
-  })
+  await instance
+    .use(IcuFormatter)
+    .use(createLocaleBackend())
+    .init({
+      lng: options.locale,
+      fallbackLng: FALLBACK_LOCALE,
+      supportedLngs: [...SUPPORTED_LOCALES],
+      ns: I18N_NAMESPACES,
+      defaultNS: DEFAULT_NAMESPACE,
+      interpolation: {
+        escapeValue: false // main process renders no HTML
+      },
+      appendNamespaceToMissingKey: true,
+      initImmediate: false // synchronous init
+    })
   return instance
 }
 

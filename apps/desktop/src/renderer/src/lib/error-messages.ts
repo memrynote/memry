@@ -1,5 +1,5 @@
 import type { SyncErrorCategory } from '@memry/contracts/ipc-sync-ops'
-import { RESOURCES } from '@memry/i18n/locales'
+import { enErrors } from '@memry/i18n/locales/en-errors'
 import { getI18n } from 'react-i18next'
 
 export const ERROR_CODES = {
@@ -100,7 +100,7 @@ const SYNC_ERROR_KEYS: Record<SyncErrorCategory, string> = {
 }
 
 function getEnglishErrorResource(key: string): string | undefined {
-  let current: unknown = RESOURCES.en.errors
+  let current: unknown = enErrors
   for (const segment of key.split('.')) {
     if (!current || typeof current !== 'object' || !(segment in current)) return undefined
     current = (current as Record<string, unknown>)[segment]

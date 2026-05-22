@@ -17,6 +17,11 @@ describe('createRendererI18n', () => {
     expect(i18n.t('tasks:task.add')).toBe('Add Task')
   })
 
+  it('does not load inactive locale resources on startup', async () => {
+    const i18n = await createRendererI18n({ locale: 'en' })
+    expect(i18n.hasResourceBundle('tr', 'common')).toBe(false)
+  })
+
   it('translates Turkish tasks namespace strings', async () => {
     const i18n = await createRendererI18n({ locale: 'tr' })
     expect(i18n.t('tasks:task.add')).toBe('Görev Ekle')
@@ -47,5 +52,6 @@ describe('createRendererI18n', () => {
     const i18n = await createRendererI18n({ locale: 'en' })
     await i18n.changeLanguage('ar')
     expect(i18n.language).toBe('ar')
+    expect(i18n.t('tasks:page.tabs.today')).toBe('اليوم')
   })
 })
