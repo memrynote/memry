@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm'
 import { tasks } from '@memry/db-schema/schema/tasks'
 import { projects } from '@memry/db-schema/schema/projects'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
+import { comments } from '@memry/db-schema/schema/comments'
 import { savedFilters } from '@memry/db-schema/schema/settings'
 import {
   OFFLINE_CLOCK_DEVICE_ID,
@@ -177,5 +178,21 @@ export function incrementFilterClockOffline(db: DataDb, filterId: string): void 
     log.debug('Incremented offline filter clock', { filterId })
   } catch (err) {
     log.warn('Failed to increment offline filter clock', { filterId, error: err })
+  }
+}
+
+export function incrementCommentClockOffline(db: DataDb, commentId: string): void {
+  try {
+    const comment = db.select().from(comments).where(eq(comments.id, commentId)).get()
+    if (!comment) return
+
+    const existingClock = (comment.clock as VectorClock) ?? {}
+    const newClock = increment(existingClock, OFFLINE_DEVICE_KEY)
+
+    db.update(comments).set({ clock: newClock }).where(eq(comments.id, commentId)).run()
+
+    log.debug('Incremented offline comment clock', { commentId })
+  } catch (err) {
+    log.warn('Failed to increment offline comment clock', { commentId, error: err })
   }
 }

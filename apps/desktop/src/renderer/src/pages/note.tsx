@@ -59,6 +59,13 @@ import { graphKeys } from '@/hooks/use-graph-data'
 import { NoteBreadcrumb } from '@/components/note/note-breadcrumb'
 import { FindBar } from '@/components/find-bar/find-bar'
 import { useFindInPage } from '@/hooks/use-find-in-page'
+import { CommentsPanel } from '@/components/comments/comments-panel'
+import {
+  commentsService,
+  onCommentsChanged,
+  type Comment,
+  type CommentAnchorInput
+} from '@/services/comments-service'
 
 import { useT } from '@memry/i18n/renderer'
 
@@ -230,6 +237,10 @@ export function NotePage({ noteId }: NotePageProps) {
   // Find in page (Cmd+F)
   const editorContainerRef = useRef<HTMLDivElement>(null)
   const [marqueeZoneEl, setMarqueeZoneEl] = useState<HTMLDivElement | null>(null)
+  const [comments, setComments] = useState<Comment[]>([])
+  const [pendingCommentAnchor, setPendingCommentAnchor] = useState<CommentAnchorInput | null>(null)
+  const [activeCommentId, setActiveCommentId] = useState<string | null>(null)
+  const [orphanedCommentIds, setOrphanedCommentIds] = useState<string[]>([])
 
   // Click anywhere in the marquee zone (full scroll area, minus title/metadata
   // and editable text) → focus editor at end. Attached imperatively so it
@@ -259,6 +270,32 @@ export function NotePage({ noteId }: NotePageProps) {
     editorContainerRef as RefObject<HTMLElement | null>,
     isActiveNote
   )
+
+  const loadComments = useCallback(async () => {
+    if (!noteId) {
+      setComments([])
+      return
+    }
+    const next = await commentsService.list({
+      targetType: 'note',
+      targetId: noteId,
+      status: ['open', 'resolved']
+    })
+    setComments(next)
+  }, [noteId])
+
+  useEffect(() => {
+    void loadComments()
+  }, [loadComments])
+
+  useEffect(() => {
+    if (!noteId) return
+    return onCommentsChanged((event) => {
+      if (event.targetType === 'note' && event.targetId === noteId) {
+        void loadComments()
+      }
+    })
+  }, [noteId, loadComments])
 
   // Content tracking for change detection
   if (storedNoteIdForContent !== noteId) {
@@ -849,6 +886,31 @@ export function NotePage({ noteId }: NotePageProps) {
     [openTab, linkedTasks]
   )
 
+  const handleSavePendingComment = useCallback(
+    async (body: string, attachmentRefs: string[]) => {
+      if (!noteId || !pendingCommentAnchor) return
+      const created = await commentsService.create({
+        targetType: 'note',
+        targetId: noteId,
+        ...pendingCommentAnchor,
+        body,
+        attachmentRefs
+      })
+      setPendingCommentAnchor(null)
+      setActiveCommentId(created.id)
+      await loadComments()
+    },
+    [noteId, pendingCommentAnchor, loadComments]
+  )
+
+  const handleCommentClick = useCallback((comment: Comment) => {
+    setActiveCommentId(comment.id)
+    const highlight = editorContainerRef.current?.querySelector<HTMLElement>(
+      `[data-comment-id="${comment.id}"]`
+    )
+    highlight?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [])
+
   // ============================================================================
   // Render
   // ============================================================================
@@ -1098,6 +1160,13 @@ export function NotePage({ noteId }: NotePageProps) {
               onInlineTagsChange={(...args) => void handleInlineTagsChange(...args)}
               focusAtEndRef={focusAtEndRef}
               marqueeZoneEl={marqueeZoneEl}
+              comments={comments}
+              commentTargetType="note"
+              commentTargetId={noteId}
+              activeCommentId={activeCommentId}
+              onAddCommentRequest={setPendingCommentAnchor}
+              onCommentHighlightClick={setActiveCommentId}
+              onCommentOrphanIdsChange={setOrphanedCommentIds}
             />
           </EditorErrorBoundary>
         </div>
@@ -1164,6 +1233,17 @@ export function NotePage({ noteId }: NotePageProps) {
           }
           refetchNote()
         }}
+      />
+      <CommentsPanel
+        targetType="note"
+        targetId={noteId}
+        comments={comments}
+        pendingAnchor={pendingCommentAnchor}
+        activeCommentId={activeCommentId}
+        orphanedCommentIds={orphanedCommentIds}
+        onSavePending={handleSavePendingComment}
+        onCancelPending={() => setPendingCommentAnchor(null)}
+        onCommentClick={handleCommentClick}
       />
     </NoteLayout>
   )

@@ -55,7 +55,7 @@ Every domain object syncs as a `sync_item`. The server sees:
   id: string
   user_id: string
   device_id: string         // last writer
-  type: 'note' | 'task' | 'agent_conversation' | 'agent_message' | ...
+  type: 'note' | 'journal' | 'comment' | 'task' | 'agent_conversation' | 'agent_message' | ...
   vector_clock: VectorClock // doc-level
   blob_key: string          // R2 path
   size_bytes: number
@@ -85,6 +85,16 @@ Inside the encrypted blob, tasks, projects, and agent conversations carry per-fi
 See `apps/desktop/src/main/sync/field-merge.ts` for the merge implementation.
 `TASK_SYNCABLE_FIELDS` is 15 fields; `PROJECT_SYNCABLE_FIELDS` is 8; agent conversations merge
 `title`, `backend`, `backendModel`, `trustList`, and `pinned`.
+
+## Comment Items
+
+Comments on notes and journal entries sync as encrypted `comment` records. The payload stores the
+target type/id, selected quote, optional block/range/prefix/suffix anchor context, body, attachment
+refs, status, timestamps, and a doc-level vector clock.
+
+Comment records are separate from note and journal Yjs state. This keeps markdown exports free of
+annotation markers and lets a comment be marked orphaned locally when its quote can no longer be
+matched in the current editor text.
 
 ## Agent Chat Items
 

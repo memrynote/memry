@@ -24,6 +24,7 @@ handler.applyUpsert(decoded, ctx)
 apps/desktop/src/main/sync/item-handlers/
 ├─ note-handler.ts
 ├─ journal-handler.ts
+├─ comment-handler.ts
 ├─ task-handler.ts
 ├─ project-handler.ts
 ├─ inbox-handler.ts
@@ -44,6 +45,10 @@ Every handler uses the shared `resolveClockConflict()` helper for vector-clock c
 For tasks, projects, and agent conversations, handlers additionally invoke `mergeFields()` from
 `field-merge.ts` to merge field-level vector clocks. See
 [Sync Protocol](/architecture/sync-protocol#field-level-merge-tasks-projects).
+
+Comments use doc-level vector clocks and are stored as sidecar records for notes and journal
+entries. They sync independently from the Yjs document body so comment anchors do not add hidden
+markers to markdown.
 
 Agent message sync is append-only. If a message id already exists locally, the handler treats the
 remote item as idempotent instead of overwriting a terminal message.

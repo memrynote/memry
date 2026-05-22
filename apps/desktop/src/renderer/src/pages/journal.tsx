@@ -58,6 +58,13 @@ import { createLogger } from '@/lib/logger'
 import { FindBar } from '@/components/find-bar/find-bar'
 import { useFindInPage } from '@/hooks/use-find-in-page'
 import { useSettingsModal } from '@/contexts/settings-modal-context'
+import { CommentsPanel } from '@/components/comments/comments-panel'
+import {
+  commentsService,
+  onCommentsChanged,
+  type Comment,
+  type CommentAnchorInput
+} from '@/services/comments-service'
 import { useT } from '@memry/i18n/renderer'
 
 const log = createLogger('Page:Journal')
@@ -201,11 +208,43 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
 
   // Find in page (Cmd+F)
   const editorContainerRef = useRef<HTMLDivElement>(null)
+  const [comments, setComments] = useState<Comment[]>([])
+  const [pendingCommentAnchor, setPendingCommentAnchor] = useState<CommentAnchorInput | null>(null)
+  const [activeCommentId, setActiveCommentId] = useState<string | null>(null)
+  const [orphanedCommentIds, setOrphanedCommentIds] = useState<string[]>([])
   const isActiveJournal = activeTab?.type === 'journal'
   const findInPage = useFindInPage(
     editorContainerRef as RefObject<HTMLElement | null>,
     isActiveJournal && currentViewState.type === 'day'
   )
+
+  const commentTargetId = currentViewState.type === 'day' ? (entry?.id ?? null) : null
+
+  const loadComments = useCallback(async () => {
+    if (!commentTargetId) {
+      setComments([])
+      return
+    }
+    const next = await commentsService.list({
+      targetType: 'journal',
+      targetId: commentTargetId,
+      status: ['open', 'resolved']
+    })
+    setComments(next)
+  }, [commentTargetId])
+
+  useEffect(() => {
+    void loadComments()
+  }, [loadComments])
+
+  useEffect(() => {
+    if (!commentTargetId) return
+    return onCommentsChanged((event) => {
+      if (event.targetType === 'journal' && event.targetId === commentTargetId) {
+        void loadComments()
+      }
+    })
+  }, [commentTargetId, loadComments])
 
   // Date parts and heatmap
   const isToday = selectedDate === today
@@ -644,6 +683,31 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     [openTab, backlinks, navigateToDay]
   )
 
+  const handleSavePendingComment = useCallback(
+    async (body: string, attachmentRefs: string[]) => {
+      if (!commentTargetId || !pendingCommentAnchor) return
+      const created = await commentsService.create({
+        targetType: 'journal',
+        targetId: commentTargetId,
+        ...pendingCommentAnchor,
+        body,
+        attachmentRefs
+      })
+      setPendingCommentAnchor(null)
+      setActiveCommentId(created.id)
+      await loadComments()
+    },
+    [commentTargetId, pendingCommentAnchor, loadComments]
+  )
+
+  const handleCommentClick = useCallback((comment: Comment) => {
+    setActiveCommentId(comment.id)
+    const highlight = editorContainerRef.current?.querySelector<HTMLElement>(
+      `[data-comment-id="${comment.id}"]`
+    )
+    highlight?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [])
+
   // Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -811,6 +875,13 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                             onInternalLinkClick={(...args) => void handleInternalLinkClick(...args)}
                             focusAtEndRef={focusAtEndRef}
                             marqueeZoneEl={marqueeZoneEl}
+                            comments={comments}
+                            commentTargetType="journal"
+                            commentTargetId={commentTargetId ?? undefined}
+                            activeCommentId={activeCommentId}
+                            onAddCommentRequest={setPendingCommentAnchor}
+                            onCommentHighlightClick={setActiveCommentId}
+                            onCommentOrphanIdsChange={setOrphanedCommentIds}
                           />
                         )}
                       </div>
@@ -888,6 +959,20 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
             />
           )}
         </main>
+
+        {entry && currentViewState.type === 'day' && (
+          <CommentsPanel
+            targetType="journal"
+            targetId={entry.id}
+            comments={comments}
+            pendingAnchor={pendingCommentAnchor}
+            activeCommentId={activeCommentId}
+            orphanedCommentIds={orphanedCommentIds}
+            onSavePending={handleSavePendingComment}
+            onCancelPending={() => setPendingCommentAnchor(null)}
+            onCommentClick={handleCommentClick}
+          />
+        )}
 
         {/* Dialogs */}
         {entry && (

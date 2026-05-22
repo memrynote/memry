@@ -239,6 +239,30 @@ export type PropertiesInvokeChannel =
   (typeof PropertiesChannels.invoke)[keyof typeof PropertiesChannels.invoke]
 
 // ============================================================================
+// Comments Channels
+// ============================================================================
+
+export const CommentsChannels = {
+  invoke: {
+    LIST: 'comments:list',
+    CREATE: 'comments:create',
+    UPDATE: 'comments:update',
+    RESOLVE: 'comments:resolve',
+    ARCHIVE: 'comments:archive',
+    DELETE: 'comments:delete',
+    LINK_ATTACHMENT: 'comments:link-attachment'
+  },
+  events: {
+    CHANGED: 'comments:changed'
+  }
+} as const
+
+export type CommentsInvokeChannel =
+  (typeof CommentsChannels.invoke)[keyof typeof CommentsChannels.invoke]
+export type CommentsEventChannel =
+  (typeof CommentsChannels.events)[keyof typeof CommentsChannels.events]
+
+// ============================================================================
 // Type Exports
 // ============================================================================
 

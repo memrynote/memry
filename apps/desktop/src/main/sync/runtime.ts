@@ -21,6 +21,7 @@ import { WebSocketManager } from './websocket'
 import { initTaskSyncService, resetTaskSyncService } from './task-sync'
 import { initInboxSyncService, resetInboxSyncService } from './inbox-sync'
 import { initFilterSyncService, resetFilterSyncService } from './filter-sync'
+import { initCommentSyncService, resetCommentSyncService } from './comment-sync'
 import { initProjectSyncService, resetProjectSyncService } from './project-sync'
 import { initSettingsSyncManager, resetSettingsSyncManager } from './settings-sync'
 import { initNoteSyncService, resetNoteSyncService } from './note-sync'
@@ -101,6 +102,7 @@ function resetSyncServiceSingletons(): void {
   resetTaskSyncService()
   resetInboxSyncService()
   resetFilterSyncService()
+  resetCommentSyncService()
   resetProjectSyncService()
   resetSettingsSyncManager()
   resetNoteSyncService()
@@ -215,6 +217,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       const taskSync = initTaskSyncService({ queue, db: runtimeSyncDb, getDeviceId })
       const inboxSync = initInboxSyncService({ queue, db: runtimeSyncDb, getDeviceId })
       const filterSync = initFilterSyncService({ queue, db: runtimeSyncDb, getDeviceId })
+      const commentSync = initCommentSyncService({ queue, db: runtimeSyncDb, getDeviceId })
       const projectSync = initProjectSyncService({ queue, db: runtimeSyncDb, getDeviceId })
       const settingsSync = initSettingsSyncManager({ db: runtimeSyncDb, queue, getDeviceId })
       const noteSync = initNoteSyncService({ queue, getDeviceId })
@@ -258,6 +261,12 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
           kind: 'record',
           local: filterSync,
           remote: getRemoteSyncAdapter('filter')
+        },
+        {
+          type: 'comment',
+          kind: 'record',
+          local: commentSync,
+          remote: getRemoteSyncAdapter('comment')
         },
         {
           type: 'project',

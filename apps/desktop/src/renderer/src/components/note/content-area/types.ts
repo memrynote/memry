@@ -4,6 +4,7 @@
  */
 
 import type { Block } from '@blocknote/core'
+import type { Comment, CommentAnchorInput, CommentTargetType } from '@/services/comments-service'
 
 // =============================================================================
 // HEADING TYPES
@@ -105,6 +106,20 @@ export interface ContentAreaProps {
   onInlineTagsChange?: (tags: string[]) => void
   /** Ref that receives a focusAtEnd function to focus the editor at the end of the document */
   focusAtEndRef?: React.RefObject<(() => void) | null>
+  /** Comments attached to this editor target */
+  comments?: Comment[]
+  /** Entity type comments should attach to */
+  commentTargetType?: CommentTargetType
+  /** Entity ID comments should attach to */
+  commentTargetId?: string
+  /** Active comment ID for highlight styling */
+  activeCommentId?: string | null
+  /** Callback when user chooses Add comment for the current selection */
+  onAddCommentRequest?: (anchor: CommentAnchorInput) => void
+  /** Callback when a rendered comment highlight is clicked */
+  onCommentHighlightClick?: (commentId: string) => void
+  /** Callback with comment IDs whose quote cannot currently be resolved */
+  onCommentOrphanIdsChange?: (commentIds: string[]) => void
   /**
    * The outer wrapper element that owns the marquee selection trigger area
    * (and the overlay's coordinate space). When omitted, falls back to the

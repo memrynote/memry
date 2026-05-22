@@ -14,6 +14,7 @@ import { windowApi, getFileDropPaths, contextMenuApi, quickCaptureApi, flushApi 
 import { vaultApi, vaultEvents } from './api/vault'
 import { propertiesApi, templatesApi, savedFiltersApi, contentEvents } from './api/content'
 import { journalApi, journalEvents } from './api/journal'
+import { commentsApi, commentsEvents } from './api/comments'
 import { bookmarksApi, bookmarkEvents } from './api/bookmarks'
 import { tagsApi, tagEvents } from './api/tags'
 import { remindersApi, reminderEvents } from './api/reminders'
@@ -73,6 +74,7 @@ export const api = {
   templates: templatesApi,
   savedFilters: savedFiltersApi,
   journal: journalApi,
+  comments: commentsApi,
   bookmarks: bookmarksApi,
   graph: graphApi,
   search: searchApi,
@@ -86,6 +88,7 @@ export const api = {
   ...vaultEvents,
   ...contentEvents,
   ...journalEvents,
+  ...commentsEvents,
   ...bookmarkEvents,
   ...searchEvents,
   ...tagEvents,

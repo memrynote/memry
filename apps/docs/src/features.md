@@ -4,14 +4,15 @@ A high-level map of what memrynote does. Each section links to dedicated pages i
 
 ## Notes
 
-Rich-text editing with BlockNote, wiki links, backlinks, properties, attachments, audio blocks,
-reminders, and version history.
+Rich-text editing with BlockNote, selected-text comments, wiki links, backlinks, properties,
+attachments, audio blocks, reminders, and version history.
 
 → [Notes](/user-guide/notes/editing)
 
 ## Journal
 
-A daily writing space with calendar navigation (day / month / year), heatmap, stats, and templates.
+A daily writing space with comments, calendar navigation (day / month / year), heatmap, stats, and
+templates.
 
 → [Journal](/user-guide/journal/daily-entries)
 

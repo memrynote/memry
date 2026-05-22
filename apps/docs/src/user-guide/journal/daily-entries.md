@@ -14,6 +14,9 @@ If today's entry doesn't exist yet, it's created on first focus, seeded by your 
 
 The same BlockNote editor is used for journal entries — slash commands, markdown shortcuts, wiki links, attachments, AI inline. Anything you can do in a note works here too.
 
+Selected-text comments work in journal entries too. Select a passage, choose **Add comment**, and the
+comment is stored beside the entry instead of becoming part of the journal markdown.
+
 Use **Add property** or **Add tag** above the date heading to organize a daily entry before writing.
 
 ## Full-Width Mode

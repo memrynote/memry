@@ -52,6 +52,24 @@ export const FilterSyncPayloadSchema = z.object({
   createdAt: z.string().optional()
 })
 
+export const CommentSyncPayloadSchema = z.object({
+  targetType: z.enum(['note', 'journal']).optional(),
+  targetId: z.string().optional(),
+  selectedQuote: z.string().optional(),
+  blockId: z.string().nullable().optional(),
+  rangeStart: z.number().int().nonnegative().nullable().optional(),
+  rangeEnd: z.number().int().nonnegative().nullable().optional(),
+  prefix: z.string().nullable().optional(),
+  suffix: z.string().nullable().optional(),
+  body: z.string().optional(),
+  attachmentRefs: z.array(z.string()).optional(),
+  status: z.enum(['open', 'resolved', 'archived']).optional(),
+  clock: VectorClockSchema.optional(),
+  syncedAt: z.string().nullable().optional(),
+  createdAt: z.string().optional(),
+  modifiedAt: z.string().optional()
+})
+
 export const StatusSyncSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -336,6 +354,7 @@ export type CalendarExternalEventSyncPayload = z.infer<
 export type TaskSyncPayload = z.infer<typeof TaskSyncPayloadSchema>
 export type InboxSyncPayload = z.infer<typeof InboxSyncPayloadSchema>
 export type FilterSyncPayload = z.infer<typeof FilterSyncPayloadSchema>
+export type CommentSyncPayload = z.infer<typeof CommentSyncPayloadSchema>
 export type ProjectSyncPayload = z.infer<typeof ProjectSyncPayloadSchema>
 export type StatusSync = z.infer<typeof StatusSyncSchema>
 export type NoteSyncPayload = z.infer<typeof NoteSyncPayloadSchema>

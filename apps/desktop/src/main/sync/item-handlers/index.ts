@@ -5,6 +5,7 @@ import type { SyncQueueManager } from '../queue'
 import { taskHandler } from './task-handler'
 import { inboxHandler } from './inbox-handler'
 import { filterHandler } from './filter-handler'
+import { commentHandler } from './comment-handler'
 import { projectHandler } from './project-handler'
 import { settingsHandler } from './settings-handler'
 import { noteHandler } from './note-handler'
@@ -25,6 +26,7 @@ const handlers = new Map<SyncItemType, SyncItemHandler>([
   ['task', taskHandler],
   ['inbox', inboxHandler],
   ['filter', filterHandler],
+  ['comment', commentHandler],
   ['project', projectHandler],
   ['settings', settingsHandler],
   ['note', noteHandler],

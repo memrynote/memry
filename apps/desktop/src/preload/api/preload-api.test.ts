@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   BookmarksChannels,
   AccountChannels,
+  CommentsChannels,
   FolderViewChannels,
   GraphChannels,
   JournalChannels,
@@ -20,6 +21,7 @@ import { propertiesApi, templatesApi, savedFiltersApi, contentEvents } from './c
 import { windowApi, getFileDropPaths, contextMenuApi, quickCaptureApi, flushApi } from './core'
 import { folderViewApi, folderViewEvents } from './folder-view'
 import { journalApi, journalEvents } from './journal'
+import { commentsApi, commentsEvents } from './comments'
 import { remindersApi, reminderEvents } from './reminders'
 import { graphApi, searchApi, searchEvents } from './search'
 import { syncEvents } from './sync-events'
@@ -300,6 +302,44 @@ describe('preload api wrappers', () => {
     )
     await expectInvoke(() => journalApi.getAllTags(), JournalChannels.invoke.GET_ALL_TAGS)
     await expectInvoke(() => journalApi.getStreak(), JournalChannels.invoke.GET_STREAK)
+
+    await expectInvoke(
+      () => commentsApi.list({ targetType: 'note', targetId: 'note-1' }),
+      CommentsChannels.invoke.LIST,
+      { targetType: 'note', targetId: 'note-1' }
+    )
+    await expectInvoke(
+      () =>
+        commentsApi.create({
+          targetType: 'note',
+          targetId: 'note-1',
+          selectedQuote: 'quote',
+          body: 'body'
+        }),
+      CommentsChannels.invoke.CREATE,
+      { targetType: 'note', targetId: 'note-1', selectedQuote: 'quote', body: 'body' }
+    )
+    await expectInvoke(
+      () => commentsApi.update({ id: 'comment-1', body: 'updated' }),
+      CommentsChannels.invoke.UPDATE,
+      { id: 'comment-1', body: 'updated' }
+    )
+    await expectInvoke(
+      () => commentsApi.resolve({ id: 'comment-1', status: 'resolved' }),
+      CommentsChannels.invoke.RESOLVE,
+      { id: 'comment-1', status: 'resolved' }
+    )
+    await expectInvoke(() => commentsApi.archive('comment-1'), CommentsChannels.invoke.ARCHIVE, {
+      id: 'comment-1'
+    })
+    await expectInvoke(() => commentsApi.delete('comment-1'), CommentsChannels.invoke.DELETE, {
+      id: 'comment-1'
+    })
+    await expectInvoke(
+      () => commentsApi.linkAttachment({ id: 'comment-1', attachmentRef: 'attachments/a.png' }),
+      CommentsChannels.invoke.LINK_ATTACHMENT,
+      { id: 'comment-1', attachmentRef: 'attachments/a.png' }
+    )
   })
 
   it('routes organizer APIs and event subscriptions', async () => {
@@ -942,6 +982,10 @@ describe('preload api wrappers', () => {
     expectSubscribe(
       () => journalEvents.onJournalExternalChange(callback),
       JournalChannels.events.EXTERNAL_CHANGE
+    )
+    expectSubscribe(
+      () => commentsEvents.onCommentsChanged(callback),
+      CommentsChannels.events.CHANGED
     )
     expectSubscribe(
       () => reminderEvents.onReminderCreated(callback),

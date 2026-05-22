@@ -11,6 +11,7 @@ import { registerSettingsHandlers, unregisterSettingsHandlers } from './settings
 import { registerBookmarksHandlers, unregisterBookmarksHandlers } from './bookmarks-handlers'
 import { registerTagsHandlers, unregisterTagsHandlers } from './tags-handlers'
 import { registerInboxHandlers, unregisterInboxHandlers } from './inbox-handlers'
+import { registerCommentsHandlers, unregisterCommentsHandlers } from './comments-handlers'
 import { registerReminderHandlers, unregisterReminderHandlers } from './reminder-handlers'
 import { registerCalendarHandlers, unregisterCalendarHandlers } from './calendar-handlers'
 import { registerFolderViewHandlers, unregisterFolderViewHandlers } from './folder-view-handlers'
@@ -98,6 +99,9 @@ export function registerAllHandlers(deps?: IpcDeps): void {
   // Register inbox handlers
   registerInboxHandlers()
 
+  // Register comments handlers
+  registerCommentsHandlers()
+
   // Register reminder handlers
   registerReminderHandlers()
 
@@ -163,6 +167,7 @@ export function unregisterAllHandlers(): void {
   unregisterBookmarksHandlers()
   unregisterTagsHandlers()
   unregisterInboxHandlers()
+  unregisterCommentsHandlers()
   unregisterReminderHandlers()
   unregisterCalendarHandlers()
   unregisterFolderViewHandlers()
@@ -202,6 +207,7 @@ export { registerSettingsHandlers, unregisterSettingsHandlers } from './settings
 export { registerBookmarksHandlers, unregisterBookmarksHandlers } from './bookmarks-handlers'
 export { registerTagsHandlers, unregisterTagsHandlers } from './tags-handlers'
 export { registerInboxHandlers, unregisterInboxHandlers } from './inbox-handlers'
+export { registerCommentsHandlers, unregisterCommentsHandlers } from './comments-handlers'
 export { registerReminderHandlers, unregisterReminderHandlers } from './reminder-handlers'
 export { registerCalendarHandlers, unregisterCalendarHandlers } from './calendar-handlers'
 export { registerFolderViewHandlers, unregisterFolderViewHandlers } from './folder-view-handlers'

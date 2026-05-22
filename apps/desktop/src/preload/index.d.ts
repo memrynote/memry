@@ -4,6 +4,15 @@ import type * as InboxRpc from '@memry/rpc/inbox'
 import type * as NotesRpc from '@memry/rpc/notes'
 import type * as TasksRpc from '@memry/rpc/tasks'
 import type { AppNavigationCommandEvent } from '@memry/contracts/ipc-channels'
+import type {
+  Comment,
+  CommentsChangedEvent,
+  CreateCommentInput,
+  LinkCommentAttachmentInput,
+  ListCommentsInput,
+  SetCommentStatusInput,
+  UpdateCommentInput
+} from '@memry/contracts/comments-api'
 import type { AgentMcpStatus } from '@memry/contracts/agent-mcp-channels'
 import type {
   AgentEvent,
@@ -534,6 +543,16 @@ export interface JournalClientAPI {
 
   // Streak
   getStreak(): Promise<JournalStreak>
+}
+
+export interface CommentsClientAPI {
+  list(input: ListCommentsInput): Promise<Comment[]>
+  create(input: CreateCommentInput): Promise<Comment>
+  update(input: UpdateCommentInput): Promise<Comment>
+  resolve(input: SetCommentStatusInput): Promise<Comment>
+  archive(id: string): Promise<Comment>
+  delete(id: string): Promise<{ success: true }>
+  linkAttachment(input: LinkCommentAttachmentInput): Promise<Comment>
 }
 
 // Bookmark types
@@ -1704,6 +1723,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
   savedFilters: SavedFiltersClientAPI
   templates: TemplatesClientAPI
   journal: JournalClientAPI
+  comments: CommentsClientAPI
   bookmarks: BookmarksClientAPI
   tags: TagsClientAPI
   reminders: RemindersClientAPI
@@ -1767,6 +1787,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
   onJournalEntryUpdated: (callback: (event: JournalEntryUpdatedEvent) => void) => () => void
   onJournalEntryDeleted: (callback: (event: JournalEntryDeletedEvent) => void) => () => void
   onJournalExternalChange: (callback: (event: JournalExternalChangeEvent) => void) => () => void
+  onCommentsChanged: (callback: (event: CommentsChangedEvent) => void) => () => void
   // Bookmarks event subscriptions
   onBookmarkCreated: (callback: (event: BookmarkCreatedEvent) => void) => () => void
   onBookmarkDeleted: (callback: (event: BookmarkDeletedEvent) => void) => () => void

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { createPortal } from 'react-dom'
-import { memo, useCallback, useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import {
   SuggestionMenuController,
   useCreateBlockNote,
@@ -20,6 +20,7 @@ import '@blocknote/xl-ai/style.css'
 
 import type * as Y from 'yjs'
 import { cn } from '@/lib/utils'
+import type { CommentAnchorInput } from '@/services/comments-service'
 import { notesService } from '@/services/notes-service'
 import { useYjsCollaboration } from '@/sync/use-yjs-collaboration'
 import { useSync } from '@/contexts/sync-context'
@@ -60,6 +61,101 @@ import type { PasteLinkOption } from './hooks/use-paste-link-menu'
 import { useT } from '@memry/i18n/renderer'
 
 const PRIORITY_REVERSE: Record<string, number> = { none: 0, low: 1, medium: 2, high: 3, urgent: 4 }
+
+interface SelectionCommentAnchor extends CommentAnchorInput {
+  x: number
+  y: number
+}
+
+interface CommentHighlightRect {
+  id: string
+  quote: string
+  left: number
+  top: number
+  width: number
+  height: number
+}
+
+function elementFromNode(node: Node | null): Element | null {
+  if (!node) return null
+  return node.nodeType === Node.ELEMENT_NODE ? (node as Element) : node.parentElement
+}
+
+function findTextRange(root: HTMLElement, quote: string): Range | null {
+  const fullText = root.textContent ?? ''
+  const start = fullText.indexOf(quote)
+  if (start === -1) return null
+  const end = start + quote.length
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+
+  let offset = 0
+  let startNode: Text | null = null
+  let startOffset = 0
+  let endNode: Text | null = null
+  let endOffset = 0
+
+  while (walker.nextNode()) {
+    const node = walker.currentNode as Text
+    const nextOffset = offset + node.data.length
+
+    if (!startNode && start >= offset && start <= nextOffset) {
+      startNode = node
+      startOffset = start - offset
+    }
+
+    if (startNode && end >= offset && end <= nextOffset) {
+      endNode = node
+      endOffset = end - offset
+      break
+    }
+
+    offset = nextOffset
+  }
+
+  if (!startNode || !endNode) return null
+
+  const range = document.createRange()
+  range.setStart(startNode, startOffset)
+  range.setEnd(endNode, endOffset)
+  return range
+}
+
+function readSelectionCommentAnchor(
+  root: HTMLElement,
+  container: HTMLElement
+): SelectionCommentAnchor | null {
+  const selection = window.getSelection()
+  if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return null
+
+  const range = selection.getRangeAt(0)
+  const selectionElement = elementFromNode(range.commonAncestorContainer)
+  if (!selectionElement || !root.contains(selectionElement)) return null
+
+  const selectedQuote = selection.toString().trim()
+  if (!selectedQuote) return null
+
+  const rangeRect = range.getBoundingClientRect()
+  if (rangeRect.width === 0 && rangeRect.height === 0) return null
+
+  const containerRect = container.getBoundingClientRect()
+  const fullText = root.textContent ?? ''
+  const rangeStart = fullText.indexOf(selectedQuote)
+  const rangeEnd = rangeStart >= 0 ? rangeStart + selectedQuote.length : null
+  const blockId =
+    elementFromNode(range.startContainer)?.closest('[data-id]')?.getAttribute('data-id') ?? null
+
+  return {
+    selectedQuote,
+    blockId,
+    rangeStart: rangeStart >= 0 ? rangeStart : null,
+    rangeEnd,
+    prefix: rangeStart >= 0 ? fullText.slice(Math.max(0, rangeStart - 40), rangeStart) : null,
+    suffix:
+      rangeEnd !== null ? fullText.slice(rangeEnd, Math.min(fullText.length, rangeEnd + 40)) : null,
+    x: rangeRect.left - containerRect.left,
+    y: rangeRect.top - containerRect.top - 34
+  }
+}
 
 function findBlockWithLinkMention(
   blocks: any[],
@@ -105,6 +201,13 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   tagColorMap,
   onInlineTagsChange,
   focusAtEndRef,
+  comments = [],
+  commentTargetType,
+  commentTargetId,
+  activeCommentId,
+  onAddCommentRequest,
+  onCommentHighlightClick,
+  onCommentOrphanIdsChange,
   yjsFragment,
   isRemoteUpdateRef,
   marqueeZoneEl
@@ -129,6 +232,9 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   const pendingConvertBlockIdRef = useRef<string | null>(null)
   const editorContainerRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const [selectionCommentAnchor, setSelectionCommentAnchor] =
+    useState<SelectionCommentAnchor | null>(null)
+  const [commentHighlightRects, setCommentHighlightRects] = useState<CommentHighlightRect[]>([])
   const noteIdRef = useRef<string | undefined>(noteId)
   const wikiLinkHover = useWikiLinkHover(editorContainerRef)
 
@@ -294,6 +400,82 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // State (not just editorContainerRef) so the marquee hook's useEffect
   // re-runs when .bn-container first mounts — refs don't trigger effects.
   const triggerEl = marqueeZoneEl ?? innerContainerEl
+
+  const getEditableRoot = useCallback((): HTMLElement | null => {
+    const container = editorContainerRef.current
+    return container?.querySelector<HTMLElement>('[contenteditable="true"]') ?? container
+  }, [])
+
+  const updateSelectionCommentAnchor = useCallback(() => {
+    if (!editable || !commentTargetType || !commentTargetId || !onAddCommentRequest) {
+      setSelectionCommentAnchor(null)
+      return
+    }
+
+    const root = getEditableRoot()
+    const container = editorContainerRef.current
+    if (!root || !container) {
+      setSelectionCommentAnchor(null)
+      return
+    }
+
+    setSelectionCommentAnchor(readSelectionCommentAnchor(root, container))
+  }, [editable, commentTargetType, commentTargetId, getEditableRoot, onAddCommentRequest])
+
+  useEffect(() => {
+    if (!commentTargetType || !commentTargetId || !onAddCommentRequest) return
+
+    document.addEventListener('selectionchange', updateSelectionCommentAnchor)
+    return () => {
+      document.removeEventListener('selectionchange', updateSelectionCommentAnchor)
+    }
+  }, [commentTargetType, commentTargetId, onAddCommentRequest, updateSelectionCommentAnchor])
+
+  const recomputeCommentHighlights = useCallback(() => {
+    const root = getEditableRoot()
+    const container = editorContainerRef.current
+    if (!root || !container || comments.length === 0) {
+      setCommentHighlightRects([])
+      onCommentOrphanIdsChange?.([])
+      return
+    }
+
+    const containerRect = container.getBoundingClientRect()
+    const nextRects: CommentHighlightRect[] = []
+    const orphanIds: string[] = []
+
+    for (const comment of comments) {
+      if (comment.status === 'archived') continue
+      const range = findTextRange(root, comment.selectedQuote)
+      if (!range) {
+        orphanIds.push(comment.id)
+        continue
+      }
+
+      const rect = range.getBoundingClientRect()
+      if (rect.width === 0 && rect.height === 0) {
+        orphanIds.push(comment.id)
+        continue
+      }
+
+      nextRects.push({
+        id: comment.id,
+        quote: comment.selectedQuote,
+        left: rect.left - containerRect.left,
+        top: rect.top - containerRect.top,
+        width: rect.width,
+        height: rect.height
+      })
+    }
+
+    setCommentHighlightRects(nextRects)
+    onCommentOrphanIdsChange?.(orphanIds)
+  }, [comments, getEditableRoot, onCommentOrphanIdsChange])
+
+  useLayoutEffect(() => {
+    const frame = requestAnimationFrame(recomputeCommentHighlights)
+    return () => cancelAnimationFrame(frame)
+  }, [recomputeCommentHighlights, initialContent])
 
   // Finder-style multi-block marquee selection
   const marquee = useBlockMarqueeSelection({
@@ -701,11 +883,34 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         {!marqueeZoneEl && (
           <BlockMarqueeOverlay rect={marquee.marqueeRect} highlights={marquee.highlightRects} />
         )}
+        {selectionCommentAnchor && (
+          <button
+            type="button"
+            aria-label="Add comment"
+            data-testid="comment-add-selection"
+            className="absolute z-50 rounded-md border border-border bg-background px-2 py-1 text-xs font-medium text-foreground shadow-md hover:bg-surface-active"
+            style={{
+              left: `${Math.max(0, selectionCommentAnchor.x)}px`,
+              top: `${Math.max(0, selectionCommentAnchor.y)}px`
+            }}
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={(event) => {
+              event.preventDefault()
+              event.stopPropagation()
+              const { x: _x, y: _y, ...anchor } = selectionCommentAnchor
+              onAddCommentRequest?.(anchor)
+              setSelectionCommentAnchor(null)
+            }}
+          >
+            Add comment
+          </button>
+        )}
         <BlockNoteView
           editor={editor}
           editable={editable}
           onChange={(): void => {
             void handleChange()
+            requestAnimationFrame(recomputeCommentHighlights)
 
             const intents = analyzeTaskIntents(editor.document as any[], dismissedBlocksRef.current)
 
@@ -800,6 +1005,33 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             onItemClick={(item) => void handleWikiLinkSelect(item)}
           />
         </BlockNoteView>
+
+        {commentHighlightRects.map((rect) => (
+          <button
+            key={rect.id}
+            type="button"
+            data-comment-id={rect.id}
+            data-comment-highlight="true"
+            aria-label={`Comment: ${rect.quote}`}
+            onClick={(event) => {
+              event.preventDefault()
+              event.stopPropagation()
+              onCommentHighlightClick?.(rect.id)
+            }}
+            className={cn(
+              'absolute z-20 overflow-hidden rounded-[2px] bg-amber-300/35 text-transparent transition-colors hover:bg-amber-300/55',
+              activeCommentId === rect.id && 'bg-amber-400/55 ring-1 ring-amber-500/70'
+            )}
+            style={{
+              left: `${rect.left}px`,
+              top: `${rect.top}px`,
+              width: `${Math.max(rect.width, 8)}px`,
+              height: `${Math.max(rect.height, 16)}px`
+            }}
+          >
+            {rect.quote}
+          </button>
+        ))}
 
         {aiEnabled && (
           <TagSuggestionPopover

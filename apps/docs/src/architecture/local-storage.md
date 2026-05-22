@@ -4,7 +4,7 @@ memrynote stores all workspace data locally in two SQLite databases via better-s
 
 ## Why Two Databases
 
-- **Data DB** — primary, durable storage. Notes, journals, tasks, projects, inbox items, templates, settings, and metadata.
+- **Data DB** — primary, durable storage. Notes, journals, comments, tasks, projects, inbox items, templates, settings, and metadata.
 - **Index DB** — derived, rebuildable. Full-text search, link graph, tag indexes, and embedding vectors.
 
 Splitting them buys three properties:
@@ -31,7 +31,7 @@ Inside the vault directory (chosen during [first run](/guide/first-run)):
 
 Drizzle schemas live in `packages/db-schema`. Tables of note:
 
-- `notes`, `journals`, `tasks`, `projects`, `inbox_items`, `templates`
+- `notes`, `journals`, `comments`, `tasks`, `projects`, `inbox_items`, `templates`
 - `vault_metadata` (stable vault UUID singleton)
 - `agent_conversations`, `agent_messages` (encrypted agent chat history)
 - `tags`, `tag_links`, `note_links` (graph)

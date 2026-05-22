@@ -85,6 +85,16 @@ Toggle browser spellcheck in [Settings → Editor](/user-guide/settings#editor).
 
 The formatting toolbar can be sticky at the top or float above selections — choose in [Settings → Editor](/user-guide/settings#editor).
 
+## Comments
+
+Select text in a note and choose **Add comment** from the selection toolbar. memrynote opens the
+comments panel with the selected quote, where you can save a comment without inserting markers into
+the note body.
+
+Comment highlights are rendered as editor overlays. The comment stores the selected quote plus nearby
+anchor context, so markdown export stays clean. If the original text is edited enough that the anchor
+can no longer be found, the comments panel keeps the comment and labels it **Anchor not found**.
+
 ## What Notes Are Made Of
 
 Under the hood, every note is a Yjs CRDT (`Y.Doc`). Markdown is a derived export, not the canonical form — this is what lets edits from two devices merge cleanly. See [CRDT & Notes Sync](/architecture/crdt) for details.

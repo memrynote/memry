@@ -4,11 +4,13 @@ import { getDatabase } from '../database'
 import { createLogger } from '../lib/logger'
 import {
   incrementFilterClockOffline,
+  incrementCommentClockOffline,
   incrementInboxClockOffline,
   incrementProjectClocksOffline,
   incrementTaskClocksOffline
 } from './offline-clock'
 import { getFilterSyncService } from './filter-sync'
+import { getCommentSyncService } from './comment-sync'
 import { getInboxSyncService } from './inbox-sync'
 import { getJournalSyncService } from './journal-sync'
 import { getNoteSyncService } from './note-sync'
@@ -136,6 +138,34 @@ const localSyncRegistry = createSyncAdapterRegistry([
       enqueueDelete(itemId: string, snapshotPayload?: string): void {
         if (!snapshotPayload) return
         getFilterSyncService()?.enqueueDelete(itemId, snapshotPayload)
+      }
+    }
+  },
+  {
+    type: 'comment',
+    kind: 'record',
+    local: {
+      enqueueCreate(itemId: string): void {
+        const service = getCommentSyncService()
+        if (service) {
+          service.enqueueCreate(itemId)
+          return
+        }
+
+        incrementCommentClockOffline(getDatabase(), itemId)
+      },
+      enqueueUpdate(itemId: string): void {
+        const service = getCommentSyncService()
+        if (service) {
+          service.enqueueUpdate(itemId)
+          return
+        }
+
+        incrementCommentClockOffline(getDatabase(), itemId)
+      },
+      enqueueDelete(itemId: string, snapshotPayload?: string): void {
+        if (!snapshotPayload) return
+        getCommentSyncService()?.enqueueDelete(itemId, snapshotPayload)
       }
     }
   },
