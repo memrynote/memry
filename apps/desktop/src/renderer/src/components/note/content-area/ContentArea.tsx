@@ -70,6 +70,8 @@ import { CommentAdd } from '@/lib/icons'
 const PRIORITY_REVERSE: Record<string, number> = { none: 0, low: 1, medium: 2, high: 3, urgent: 4 }
 const COMMENT_GUTTER_HOVER_RANGE_PX = 200
 const COMMENT_AFFORDANCE_GAP_PX = 8
+const COMMENT_AFFORDANCE_VERTICAL_TOLERANCE_PX = 32
+const COMMENT_HOVER_CLEAR_DELAY_MS = 80
 
 interface SelectionCommentAnchor extends CommentAnchorInput {
   x: number
@@ -107,7 +109,7 @@ function findBlockNearPointer(container: HTMLElement, clientY: number): HTMLElem
     }
   }
 
-  return closestDistance <= 24 ? closestBlock : null
+  return closestDistance <= COMMENT_AFFORDANCE_VERTICAL_TOLERANCE_PX ? closestBlock : null
 }
 
 function findTextRange(root: HTMLElement, quote: string): Range | null {
@@ -528,7 +530,6 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 
   const clearHoveredBlockCommentAnchor = useCallback(() => {
     setHoveredBlockCommentAnchor(null)
-    setHoveredBlockButtonPosition(null)
   }, [])
 
   const openSelectionCommentDraft = useCallback(() => {
@@ -558,71 +559,102 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     [clearHoveredBlockCommentAnchor, hoveredBlockCommentAnchor]
   )
 
-  const handleEditorMouseMove = useCallback(
-    (event: React.MouseEvent<HTMLDivElement>) => {
-      if (!editable || !commentTargetType || !commentTargetId || !onSaveCommentRequest) {
-        clearHoveredBlockCommentAnchor()
-        return
+  useEffect(() => {
+    if (typeof document === 'undefined') return undefined
+    if (!editable || !commentTargetType || !commentTargetId || !onSaveCommentRequest) {
+      setHoveredBlockCommentAnchor(null)
+      return undefined
+    }
+
+    let clearTimerId: ReturnType<typeof setTimeout> | null = null
+
+    const cancelClear = (): void => {
+      if (clearTimerId !== null) {
+        clearTimeout(clearTimerId)
+        clearTimerId = null
       }
+    }
+
+    const scheduleClear = (): void => {
+      cancelClear()
+      clearTimerId = setTimeout(() => {
+        setHoveredBlockCommentAnchor(null)
+        clearTimerId = null
+      }, COMMENT_HOVER_CLEAR_DELAY_MS)
+    }
+
+    const handler = (event: MouseEvent): void => {
       if (draftCommentAnchor) {
-        clearHoveredBlockCommentAnchor()
+        cancelClear()
+        setHoveredBlockCommentAnchor(null)
         return
       }
 
       const target = elementFromNode(event.target as Node)
       if (target?.closest('[data-testid="block-comment-affordance"]')) {
-        return
-      }
-      if (!target || target.closest('[data-marquee-ignore]')) {
-        clearHoveredBlockCommentAnchor()
+        cancelClear()
         return
       }
 
       const root = getEditableRoot()
       const container = editorContainerRef.current
       if (!root || !container) {
-        clearHoveredBlockCommentAnchor()
+        scheduleClear()
         return
       }
 
       const containerRect = container.getBoundingClientRect()
+      if (
+        event.clientY < containerRect.top - COMMENT_AFFORDANCE_VERTICAL_TOLERANCE_PX ||
+        event.clientY > containerRect.bottom + COMMENT_AFFORDANCE_VERTICAL_TOLERANCE_PX
+      ) {
+        scheduleClear()
+        return
+      }
+
       const isRightGutterHover =
         event.clientX >= containerRect.right - COMMENT_GUTTER_HOVER_RANGE_PX &&
         event.clientX <= containerRect.right + COMMENT_GUTTER_HOVER_RANGE_PX
       if (!isRightGutterHover) {
-        clearHoveredBlockCommentAnchor()
+        scheduleClear()
         return
       }
 
       const block = findBlockNearPointer(container, event.clientY)
       if (!block || !container.contains(block)) {
-        clearHoveredBlockCommentAnchor()
+        scheduleClear()
         return
       }
 
       const nextAnchor = readBlockCommentAnchor(root, container, block)
       if (!nextAnchor) {
-        clearHoveredBlockCommentAnchor()
+        scheduleClear()
         return
       }
 
+      cancelClear()
       const blockRect = block.getBoundingClientRect()
       setHoveredBlockCommentAnchor(nextAnchor)
       setHoveredBlockButtonPosition({
         x: containerRect.width + COMMENT_AFFORDANCE_GAP_PX,
         y: blockRect.top - containerRect.top + 1
       })
-    },
-    [
-      clearHoveredBlockCommentAnchor,
-      commentTargetId,
-      commentTargetType,
-      draftCommentAnchor,
-      editable,
-      getEditableRoot,
-      onSaveCommentRequest
-    ]
-  )
+    }
+
+    document.addEventListener('mousemove', handler)
+
+    return () => {
+      cancelClear()
+      document.removeEventListener('mousemove', handler)
+    }
+  }, [
+    commentTargetId,
+    commentTargetType,
+    draftCommentAnchor,
+    editable,
+    getEditableRoot,
+    onSaveCommentRequest
+  ])
 
   const recomputeCommentHighlights = useCallback(() => {
     const root = getEditableRoot()
@@ -1131,8 +1163,6 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         role="application"
         aria-label={t('editor.content.richTextAria')}
         onContextMenu={handleEditorContextMenu}
-        onMouseMove={handleEditorMouseMove}
-        onMouseLeave={clearHoveredBlockCommentAnchor}
       >
         {!marqueeZoneEl && (
           <BlockMarqueeOverlay rect={marquee.marqueeRect} highlights={marquee.highlightRects} />
@@ -1246,29 +1276,38 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           />
         </BlockNoteView>
 
-        {hoveredBlockCommentAnchor && hoveredBlockButtonPosition && (
+        {hoveredBlockButtonPosition && (
           <button
             type="button"
             data-marquee-ignore
             data-testid="block-comment-affordance"
             aria-label={t('editor.comments.block.addAria')}
+            aria-hidden={!hoveredBlockCommentAnchor}
+            tabIndex={hoveredBlockCommentAnchor ? 0 : -1}
             title={t('editor.comments.block.addTitle')}
             className={cn(
               'absolute z-30 inline-flex size-7 items-center justify-center rounded-md',
               'border border-border/70 bg-background text-muted-foreground shadow-sm',
               'hover:bg-surface-active hover:text-foreground',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+              'transition-[top,opacity] duration-150 ease-out',
+              "before:absolute before:-inset-2 before:content-['']",
+              hoveredBlockCommentAnchor
+                ? 'pointer-events-auto opacity-100'
+                : 'pointer-events-none opacity-0'
             )}
             style={{
               insetInlineStart: `${hoveredBlockButtonPosition.x}px`,
               top: `${hoveredBlockButtonPosition.y}px`
             }}
             onPointerDown={(event) => {
+              if (!hoveredBlockCommentAnchor) return
               event.preventDefault()
               event.stopPropagation()
               openBlockCommentDraft(hoveredBlockCommentAnchor)
             }}
             onClick={(event) => {
+              if (!hoveredBlockCommentAnchor) return
               event.preventDefault()
               event.stopPropagation()
               openBlockCommentDraft(hoveredBlockCommentAnchor)
@@ -1282,7 +1321,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           <span
             data-testid="comment-draft-highlight"
             aria-hidden="true"
-            className="pointer-events-none absolute z-20 overflow-hidden rounded-[2px] bg-[#352F16] text-transparent underline decoration-[#57470A] decoration-1 underline-offset-2"
+            className="pointer-events-none absolute z-20 overflow-hidden rounded-[2px] bg-[#352F16]/40 text-transparent underline decoration-[#57470A] decoration-1 underline-offset-2"
             style={{
               left: `${draftCommentRect.left}px`,
               top: `${draftCommentRect.top}px`,
@@ -1307,8 +1346,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
               onCommentHighlightClick?.(rect.id)
             }}
             className={cn(
-              'absolute z-20 overflow-hidden rounded-[2px] bg-[#352F16] text-transparent underline decoration-[#57470A] decoration-1 underline-offset-2 transition-opacity hover:opacity-90',
-              activeCommentId === rect.id && 'opacity-90'
+              'absolute z-20 overflow-hidden rounded-[2px] bg-[#352F16]/30 text-transparent underline decoration-[#57470A] decoration-1 underline-offset-2 transition-colors hover:bg-[#352F16]/45',
+              activeCommentId === rect.id && 'bg-[#352F16]/55'
             )}
             style={{
               left: `${rect.left}px`,
@@ -1329,6 +1368,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             draftAnchor={draftCommentAnchorInput}
             draftTop={draftCommentRect?.top ?? draftCommentAnchor?.y ?? null}
             activeCommentId={activeCommentId ?? null}
+            containerRef={editorContainerRef}
             onSaveDraft={handleSaveCommentDraft}
             onCancelDraft={handleCancelCommentDraft}
             onCommentClick={handleRailCommentClick}

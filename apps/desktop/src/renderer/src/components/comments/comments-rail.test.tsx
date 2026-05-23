@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { useLayoutEffect, useRef, type JSX } from 'react'
 
 import type { Comment, CommentAnchorInput } from '@/services/comments-service'
 
@@ -242,37 +243,56 @@ describe('Comment rail composer', () => {
   })
 
   it('uses compact markers on narrow screens and opens the card under the quote', async () => {
-    const originalMatchMedia = window.matchMedia
-    Object.defineProperty(window, 'matchMedia', {
-      configurable: true,
-      value: vi.fn().mockImplementation((query: string) => ({
-        matches: true,
-        media: query,
-        addEventListener: vi.fn(),
-        removeEventListener: vi.fn(),
-        addListener: vi.fn(),
-        removeListener: vi.fn()
-      }))
-    })
+    class ResizeObserverStub {
+      observe = vi.fn()
+      disconnect = vi.fn()
+      unobserve = vi.fn()
+    }
+    vi.stubGlobal('ResizeObserver', ResizeObserverStub)
+    const originalInnerWidth = window.innerWidth
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 700 })
+
+    function CompactHarness(): JSX.Element {
+      const containerRef = useRef<HTMLDivElement>(null)
+      useLayoutEffect(() => {
+        const el = containerRef.current
+        if (!el) return
+        vi.spyOn(el, 'getBoundingClientRect').mockReturnValue({
+          x: 0,
+          y: 0,
+          left: 0,
+          top: 0,
+          right: 600,
+          bottom: 400,
+          width: 600,
+          height: 400,
+          toJSON: () => ({})
+        } as DOMRect)
+      }, [])
+      return (
+        <div ref={containerRef}>
+          <CommentsRail
+            targetId="note-1"
+            comments={[baseComment]}
+            commentRects={[{ id: 'comment-1', left: 12, top: 24, width: 120, height: 18 }]}
+            draftAnchor={null}
+            draftTop={null}
+            activeCommentId={null}
+            containerRef={containerRef}
+            onSaveDraft={vi.fn()}
+            onCancelDraft={vi.fn()}
+            onCommentClick={onCommentClick}
+          />
+        </div>
+      )
+    }
 
     const onCommentClick = vi.fn()
     try {
-      render(
-        <CommentsRail
-          targetId="note-1"
-          comments={[baseComment]}
-          commentRects={[{ id: 'comment-1', left: 12, top: 24, width: 120, height: 18 }]}
-          draftAnchor={null}
-          draftTop={null}
-          activeCommentId={null}
-          onSaveDraft={vi.fn()}
-          onCancelDraft={vi.fn()}
-          onCommentClick={onCommentClick}
-        />
-      )
+      render(<CompactHarness />)
 
       expect(screen.queryByTestId('comment-card')).not.toBeInTheDocument()
-      const marker = screen.getByTestId('compact-comment-marker')
+      const marker = await screen.findByTestId('compact-comment-marker')
       expect(marker.querySelector('span')).toHaveClass("before:content-['+1']")
 
       await userEvent.click(marker)
@@ -280,10 +300,11 @@ describe('Comment rail composer', () => {
       expect(onCommentClick).toHaveBeenCalledWith(baseComment)
       expect(screen.getByTestId('comment-card')).toBeInTheDocument()
     } finally {
-      Object.defineProperty(window, 'matchMedia', {
+      Object.defineProperty(window, 'innerWidth', {
         configurable: true,
-        value: originalMatchMedia
+        value: originalInnerWidth
       })
+      vi.unstubAllGlobals()
     }
   })
 })

@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 
 import {
   AgentPromptEditor,
@@ -29,7 +29,7 @@ import {
 } from './comment-attachments'
 import { dedupeMentionRefs, toMentionRef } from './comment-compose-utils'
 import { renderCommentBodyWithMentions } from './comment-mentions'
-import { useCompactCommentsRail } from './use-compact-comments-rail'
+import { RAIL_OFFSET_PX, RAIL_WIDTH_PX, useCommentsRailMode } from './use-comments-rail-mode'
 import { useT } from '@memry/i18n/renderer'
 
 export interface CommentRailRect {
@@ -48,6 +48,7 @@ interface CommentsRailProps {
   draftTop: number | null
   activeCommentId: string | null
   className?: string
+  containerRef: RefObject<HTMLElement | null>
   onSaveDraft: (
     anchor: CommentAnchorInput,
     body: string,
@@ -87,8 +88,6 @@ interface RailItem {
   render: (top: number) => React.JSX.Element
 }
 
-const RAIL_OFFSET_PX = 56
-const RAIL_WIDTH_PX = 284
 const RAIL_GAP_PX = 10
 const ORPHAN_TOP_PX = 0
 
@@ -581,6 +580,7 @@ export function CommentsRail({
   draftTop,
   activeCommentId,
   className,
+  containerRef,
   onSaveDraft,
   onCancelDraft,
   onCommentClick,
@@ -588,7 +588,7 @@ export function CommentsRail({
   onDeleteComment
 }: CommentsRailProps): React.JSX.Element | null {
   const { t } = useT('notes')
-  const isCompact = useCompactCommentsRail()
+  const railMode = useCommentsRailMode(containerRef)
   const [compactOpenCommentId, setCompactOpenCommentId] = useState<string | null>(null)
   const rectById = useMemo(
     () => new Map(commentRects.map((rect) => [rect.id, rect])),
@@ -696,8 +696,9 @@ export function CommentsRail({
   ])
 
   if (!draftAnchor && comments.length === 0) return null
+  if (railMode === 'hidden') return null
 
-  if (isCompact) {
+  if (railMode === 'compact') {
     const orderedComments = [...comments].sort((a, b) => {
       const aRect = rectById.get(a.id)
       const bRect = rectById.get(b.id)
