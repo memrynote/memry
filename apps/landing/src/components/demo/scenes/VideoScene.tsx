@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, type MouseEvent } from 'react'
+import { useRef, useEffect, useState, type MouseEvent, type PointerEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { Maximize2, Minimize2, Volume2, VolumeX } from 'lucide-react'
 import type { SceneProps } from '../types'
@@ -22,6 +22,8 @@ export function VideoScene({
   const videoRef = useRef<HTMLVideoElement>(null)
   const modalVideoRef = useRef<HTMLVideoElement>(null)
   const playingRef = useRef(playing)
+  const closingExpandedRef = useRef(false)
+  const modalSeekingRef = useRef(false)
   const [expanded, setExpanded] = useState(false)
 
   useEffect(() => {
@@ -58,13 +60,31 @@ export function VideoScene({
     onDurationDetected(video.duration * 1000)
   }
 
-  const reportProgress = () => {
-    const video = videoRef.current
+  const syncInlineTimeFromModal = (modalVideo: HTMLVideoElement) => {
+    const inlineVideo = videoRef.current
+    if (!inlineVideo || !Number.isFinite(modalVideo.currentTime)) return
+
+    inlineVideo.currentTime = modalVideo.currentTime
+  }
+
+  const reportProgressFor = (video: HTMLVideoElement | null) => {
     if (!video || !onProgressChange || !Number.isFinite(video.duration) || video.duration <= 0) {
       return
     }
 
+    if (video === modalVideoRef.current) {
+      syncInlineTimeFromModal(video)
+    }
+
     onProgressChange(Math.min(Math.max(video.currentTime / video.duration, 0), 1))
+  }
+
+  const reportInlineProgress = () => {
+    reportProgressFor(videoRef.current)
+  }
+
+  const reportModalProgress = () => {
+    reportProgressFor(modalVideoRef.current)
   }
 
   const handleCanPlay = () => {
@@ -73,14 +93,29 @@ export function VideoScene({
     video.play().catch(() => {})
   }
 
-  const handlePlay = () => {
+  const handleInlinePlay = () => {
+    if (expanded) return
     onPlaybackChange?.(true)
-    reportProgress()
+    reportInlineProgress()
   }
 
-  const handlePause = () => {
-    onPlaybackChange?.(false)
-    reportProgress()
+  const handleInlinePause = () => {
+    reportInlineProgress()
+    if (!expanded) {
+      onPlaybackChange?.(false)
+    }
+  }
+
+  const handleModalPlay = () => {
+    onPlaybackChange?.(true)
+    reportModalProgress()
+  }
+
+  const handleModalPause = () => {
+    reportModalProgress()
+    if (!closingExpandedRef.current) {
+      onPlaybackChange?.(false)
+    }
   }
 
   const handleModalCanPlay = () => {
@@ -113,13 +148,18 @@ export function VideoScene({
     if (inlineVideo && Number.isFinite(inlineVideo.currentTime)) {
       modalVideo.currentTime = inlineVideo.currentTime
     }
+  }, [expanded, src])
+
+  useEffect(() => {
+    const modalVideo = modalVideoRef.current
+    if (!expanded || !modalVideo) return
 
     if (playing) {
       modalVideo.play().catch(() => {})
     } else {
       modalVideo.pause()
     }
-  }, [expanded, playing, src])
+  }, [expanded, playing])
 
   const handleMuteToggle = (event: MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation()
@@ -146,13 +186,58 @@ export function VideoScene({
     event.stopPropagation()
   }
 
+  const seekModalFromPointer = (event: PointerEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    event.stopPropagation()
+
+    const video = modalVideoRef.current
+    if (!video || !Number.isFinite(video.duration) || video.duration <= 0) return
+
+    const rect = event.currentTarget.getBoundingClientRect()
+    const nextProgress = Math.min(Math.max((event.clientX - rect.left) / rect.width, 0), 1)
+    const nextTime = video.duration * nextProgress
+    video.currentTime = nextTime
+    if (videoRef.current) {
+      videoRef.current.currentTime = nextTime
+    }
+    onProgressChange?.(nextProgress)
+
+    if (playingRef.current) {
+      video.play().catch(() => {})
+    }
+  }
+
+  const handleModalSeekPointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    modalSeekingRef.current = true
+    event.currentTarget.setPointerCapture(event.pointerId)
+    seekModalFromPointer(event)
+  }
+
+  const handleModalSeekPointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    if (!modalSeekingRef.current) return
+    seekModalFromPointer(event)
+  }
+
+  const handleModalSeekPointerEnd = (event: PointerEvent<HTMLDivElement>) => {
+    if (!modalSeekingRef.current) return
+    seekModalFromPointer(event)
+    modalSeekingRef.current = false
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    }
+  }
+
   const closeExpanded = () => {
     const inlineVideo = videoRef.current
     const modalVideo = modalVideoRef.current
+    closingExpandedRef.current = true
     if (inlineVideo && modalVideo && Number.isFinite(modalVideo.currentTime)) {
       inlineVideo.currentTime = modalVideo.currentTime
     }
     setExpanded(false)
+    window.setTimeout(() => {
+      closingExpandedRef.current = false
+    }, 0)
   }
 
   useEffect(() => {
@@ -186,13 +271,27 @@ export function VideoScene({
                 ref={modalVideoRef}
                 src={src}
                 muted={muted}
+                controls
                 loop
                 playsInline
                 preload="auto"
-                className="pointer-events-none h-auto max-h-[82vh] w-full scale-x-[1.035]"
+                className="relative z-0 h-auto max-h-[82vh] w-full scale-x-[1.035]"
                 onCanPlay={handleModalCanPlay}
+                onTimeUpdate={reportModalProgress}
+                onSeeked={reportModalProgress}
+                onPlay={handleModalPlay}
+                onPause={handleModalPause}
               />
-              <div className="absolute top-4 end-4 z-10 flex gap-2">
+              <div
+                aria-hidden="true"
+                onPointerDown={handleModalSeekPointerDown}
+                onPointerMove={handleModalSeekPointerMove}
+                onPointerUp={handleModalSeekPointerEnd}
+                onPointerCancel={handleModalSeekPointerEnd}
+                onClick={(event) => event.stopPropagation()}
+                className="absolute inset-x-6 bottom-14 z-10 h-8 cursor-ew-resize rounded-full bg-transparent"
+              />
+              <div className="absolute top-4 end-4 z-20 flex gap-2">
                 <button
                   type="button"
                   aria-label={muted ? 'Unmute demo video' : 'Mute demo video'}
@@ -232,10 +331,10 @@ export function VideoScene({
           className="h-auto w-full scale-x-[1.035]"
           onLoadedMetadata={handleLoadedMetadata}
           onCanPlay={handleCanPlay}
-          onTimeUpdate={reportProgress}
-          onSeeked={reportProgress}
-          onPlay={handlePlay}
-          onPause={handlePause}
+          onTimeUpdate={reportInlineProgress}
+          onSeeked={reportInlineProgress}
+          onPlay={handleInlinePlay}
+          onPause={handleInlinePause}
           onClick={(event) => event.stopPropagation()}
         />
         <div className="absolute top-3 end-3 z-10 flex gap-2" aria-hidden={expanded}>
