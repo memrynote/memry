@@ -422,10 +422,10 @@ importers:
         version: 1.2.8(@types/react-dom@19.2.3(@types/react@19.2.13))(@types/react@19.2.13)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@react-sigma/core':
         specifier: ^5.0.6
-        version: 5.0.6(graphology@0.26.0(graphology-types@0.24.8))(react@19.2.4)(sigma@3.0.2(graphology-types@0.24.8))
+        version: 5.0.6(graphology@0.26.0(graphology-types@0.24.8))(react@19.2.4)(sigma@3.0.3(graphology-types@0.24.8))
       '@react-sigma/layout-forceatlas2':
         specifier: ^5.0.6
-        version: 5.0.6(graphology-layout-forceatlas2@0.10.1(graphology-types@0.24.8))(graphology@0.26.0(graphology-types@0.24.8))(react@19.2.4)(sigma@3.0.2(graphology-types@0.24.8))
+        version: 5.0.6(graphology-layout-forceatlas2@0.10.1(graphology-types@0.24.8))(graphology@0.26.0(graphology-types@0.24.8))(react@19.2.4)(sigma@3.0.3(graphology-types@0.24.8))
       '@tailwindcss/vite':
         specifier: ^4.1.18
         version: 4.1.18(vite@7.3.2(@types/node@25.2.2)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.21.0)(yaml@2.8.4))
@@ -637,8 +637,8 @@ importers:
         specifier: ^3.6.2
         version: 3.8.4(@types/node@25.2.2)(typescript@5.9.3)
       sigma:
-        specifier: ^3.0.2
-        version: 3.0.2(graphology-types@0.24.8)
+        specifier: ^3.0.3
+        version: 3.0.3(graphology-types@0.24.8)
       sodium-native:
         specifier: ^5.0.10
         version: 5.0.10(bare-url@2.4.2)
@@ -9940,8 +9940,8 @@ packages:
   siginfo@2.0.0:
     resolution: {integrity: sha512-ybx0WO1/8bSBLEWXZvEd7gMW3Sn3JFlW3TvX1nREbDLRNQNaeNN8WK0meBwPdAaOI7TtRRRJn/Es1zhrrCHu7g==}
 
-  sigma@3.0.2:
-    resolution: {integrity: sha512-/BUbeOwPGruiBOm0YQQ6ZMcLIZ6tf/W+Jcm7dxZyAX0tK3WP9/sq7/NAWBxPIxVahdGjCJoGwej0Gdrv0DxlQQ==}
+  sigma@3.0.3:
+    resolution: {integrity: sha512-5H0zFlx6/NTQpqBg4Rm569ZOpnBOXMaS25UQThIWMU3XyzI5AhmorK/gnl87BvJBLhQd0tW4C0LIp3enWzMoNw==}
 
   signal-exit@3.0.7:
     resolution: {integrity: sha512-wnD2ZE+l+SPC/uoS0vXeE9L1+0wuaMqKlfz9AMUo38JsyLSBWSFcHR1Rri62LZc12vLr1gb3jl7iwQhgwpAbGQ==}
@@ -13940,23 +13940,23 @@ snapshots:
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
 
-  '@react-sigma/core@5.0.6(graphology@0.26.0(graphology-types@0.24.8))(react@19.2.4)(sigma@3.0.2(graphology-types@0.24.8))':
+  '@react-sigma/core@5.0.6(graphology@0.26.0(graphology-types@0.24.8))(react@19.2.4)(sigma@3.0.3(graphology-types@0.24.8))':
     dependencies:
       graphology: 0.26.0(graphology-types@0.24.8)
       react: 19.2.4
-      sigma: 3.0.2(graphology-types@0.24.8)
+      sigma: 3.0.3(graphology-types@0.24.8)
 
-  '@react-sigma/layout-core@5.0.6(graphology@0.26.0(graphology-types@0.24.8))(react@19.2.4)(sigma@3.0.2(graphology-types@0.24.8))':
+  '@react-sigma/layout-core@5.0.6(graphology@0.26.0(graphology-types@0.24.8))(react@19.2.4)(sigma@3.0.3(graphology-types@0.24.8))':
     dependencies:
-      '@react-sigma/core': 5.0.6(graphology@0.26.0(graphology-types@0.24.8))(react@19.2.4)(sigma@3.0.2(graphology-types@0.24.8))
+      '@react-sigma/core': 5.0.6(graphology@0.26.0(graphology-types@0.24.8))(react@19.2.4)(sigma@3.0.3(graphology-types@0.24.8))
     transitivePeerDependencies:
       - graphology
       - react
       - sigma
 
-  '@react-sigma/layout-forceatlas2@5.0.6(graphology-layout-forceatlas2@0.10.1(graphology-types@0.24.8))(graphology@0.26.0(graphology-types@0.24.8))(react@19.2.4)(sigma@3.0.2(graphology-types@0.24.8))':
+  '@react-sigma/layout-forceatlas2@5.0.6(graphology-layout-forceatlas2@0.10.1(graphology-types@0.24.8))(graphology@0.26.0(graphology-types@0.24.8))(react@19.2.4)(sigma@3.0.3(graphology-types@0.24.8))':
     dependencies:
-      '@react-sigma/layout-core': 5.0.6(graphology@0.26.0(graphology-types@0.24.8))(react@19.2.4)(sigma@3.0.2(graphology-types@0.24.8))
+      '@react-sigma/layout-core': 5.0.6(graphology@0.26.0(graphology-types@0.24.8))(react@19.2.4)(sigma@3.0.3(graphology-types@0.24.8))
       graphology-layout-forceatlas2: 0.10.1(graphology-types@0.24.8)
     transitivePeerDependencies:
       - graphology
@@ -21533,7 +21533,7 @@ snapshots:
 
   siginfo@2.0.0: {}
 
-  sigma@3.0.2(graphology-types@0.24.8):
+  sigma@3.0.3(graphology-types@0.24.8):
     dependencies:
       events: 3.3.0
       graphology-utils: 2.5.2(graphology-types@0.24.8)
