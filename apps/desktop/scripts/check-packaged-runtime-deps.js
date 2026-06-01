@@ -12,7 +12,6 @@ const {
 } = require('./check-packaged-runtime-deps-utils.cjs')
 
 const appRoot = path.resolve(__dirname, '..')
-const appRequire = createRequire(path.join(appRoot, 'package.json'))
 const productName = 'Memrynote'
 const requiredModules = [
   '@tiptap/core',
@@ -29,42 +28,14 @@ const requiredModules = [
 ]
 const nativeArchCheckedModules = ['better-sqlite3', 'keytar']
 
-function getElectronExecutable() {
-  const electronRoot = path.dirname(appRequire.resolve('electron/package.json'))
-  const electronExecutable = readElectronExecutable(electronRoot)
-  if (electronExecutable) {
-    return electronExecutable
+function getPackagedElectronExecutable(resourcesPath) {
+  const contentsPath = path.dirname(resourcesPath)
+  const executable = path.join(contentsPath, 'MacOS', productName)
+  if (!fs.existsSync(executable)) {
+    throw new Error(`Missing packaged Electron executable: ${executable}`)
   }
 
-  const installResult = spawnSync(process.execPath, [path.join(electronRoot, 'install.js')], {
-    stdio: 'inherit'
-  })
-  if (installResult.status !== 0) {
-    throw new Error('Unable to install Electron executable for the packaged runtime smoke')
-  }
-
-  const installedElectronExecutable = readElectronExecutable(electronRoot)
-  if (!installedElectronExecutable) {
-    throw new Error('Unable to resolve Electron executable from the desktop package')
-  }
-
-  return installedElectronExecutable
-}
-
-function readElectronExecutable(electronRoot) {
-  const pathFile = path.join(electronRoot, 'path.txt')
-  if (!fs.existsSync(pathFile)) {
-    return null
-  }
-
-  const executablePath = fs.readFileSync(pathFile, 'utf8').trim()
-  if (!executablePath) {
-    return null
-  }
-
-  const distPath = process.env.ELECTRON_OVERRIDE_DIST_PATH || path.join(electronRoot, 'dist')
-  const electronExecutable = path.join(distPath, executablePath)
-  return fs.existsSync(electronExecutable) ? electronExecutable : null
+  return executable
 }
 
 function fail(message) {
@@ -141,7 +112,7 @@ function assertPackagedPath(moduleName, resolvedPath, resourcesPath) {
 }
 
 function runElectronNativeSmoke(resourcesPath) {
-  const electronExecutable = getElectronExecutable()
+  const electronExecutable = getPackagedElectronExecutable(resourcesPath)
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-packaged-native-smoke-'))
   const smokeScriptPath = path.join(tempDir, 'smoke.cjs')
   const appMainPath = path.join(resourcesPath, 'app.asar', 'out', 'main', 'index.js')

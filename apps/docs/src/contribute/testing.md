@@ -153,9 +153,9 @@ node apps/desktop/scripts/build-packaged-app.js --dir
 node apps/desktop/scripts/check-packaged-runtime-deps.js
 ```
 
-CI restores the local Electron binary with `apps/desktop/scripts/ensure-native.sh electron` before
-the packaged runtime check. Keep that step with the smoke job; the check runs a small Electron
-native-module probe and needs a valid Electron executable outside the packaged app.
+The packaged runtime check runs its native-module probe through the built
+`Memrynote.app/Contents/MacOS/Memrynote` executable, so it verifies the same Electron runtime that
+will ship instead of depending on the workspace `electron` package binary.
 
 Release builds create one staged dependency tree per macOS architecture. Build x64 on an Intel
 runner and arm64 on an Apple Silicon runner; do not build `--x64 --arm64` from the same staged

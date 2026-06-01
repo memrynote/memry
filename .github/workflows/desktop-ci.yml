@@ -297,8 +297,5 @@ jobs:
           pnpm --filter @memry/desktop exec electron-vite build
           node apps/desktop/scripts/build-packaged-app.js --dir
 
-      - name: Ensure Electron binary for runtime smoke
-        run: bash apps/desktop/scripts/ensure-native.sh electron
-
       - name: Check packaged runtime dependencies
         run: node apps/desktop/scripts/check-packaged-runtime-deps.js
