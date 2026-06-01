@@ -84,6 +84,7 @@ Toggle browser spellcheck in [Settings → Editor](/user-guide/settings#editor).
 ## Toolbar
 
 The formatting toolbar can be sticky at the top or float above selections — choose in [Settings → Editor](/user-guide/settings#editor).
+Floating mode opens a compact selection toolbar with block type, text formatting, color, link, indent, and review actions when those actions are enabled.
 
 ## What Notes Are Made Of
 

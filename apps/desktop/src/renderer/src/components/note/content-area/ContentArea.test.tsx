@@ -235,6 +235,11 @@ vi.mock('./paste-link-menu', () => ({
     isOpen ? <div data-testid="paste-link-menu" /> : null
 }))
 
+vi.mock('./review-formatting-toolbar', () => ({
+  ReviewFormattingToolbar: () => <div data-testid="review-toolbar" />,
+  ReviewFormattingToolbarController: () => <div data-testid="review-toolbar-controller" />
+}))
+
 vi.mock('./ai-menu', () => ({
   CustomAIMenu: () => null
 }))

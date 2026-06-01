@@ -164,6 +164,10 @@
     "showMore": "Show {count} more backlinks",
     "more": "{count} more"
   },
+  "comments": {
+    "toolbarComment": "Comment",
+    "toolbarSuggest": "Suggest edit"
+  },
   "tagsRow": {
     "aria": "Tags",
     "empty": "Add tags",

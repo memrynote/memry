@@ -297,6 +297,90 @@
   height: 28px !important;
 }
 
+.content-area .bn-formatting-toolbar:has(.review-formatting-toolbar-compact) {
+  width: 168px !important;
+  min-width: 168px !important;
+  padding: 6px !important;
+  background: var(--popover) !important;
+  color: var(--popover-foreground) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 16px 40px color-mix(in srgb, black 24%, transparent) !important;
+}
+
+.review-formatting-toolbar-compact {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.review-formatting-toolbar-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 28px);
+  justify-content: center;
+  gap: 4px;
+}
+
+.review-formatting-toolbar-compact .review-block-type-trigger.bn-button {
+  width: 100% !important;
+  min-width: 0 !important;
+  justify-content: flex-start;
+  gap: 8px;
+  padding: 0 8px !important;
+}
+
+.review-block-type-trigger-label {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-align: start;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.review-block-type-trigger-chevron {
+  margin-inline-start: auto;
+  opacity: 0.72;
+}
+
+.review-formatting-toolbar-compact .bn-button {
+  width: 28px !important;
+  min-width: 28px !important;
+  height: 28px !important;
+  justify-content: center;
+  padding: 0 !important;
+  border-radius: 7px !important;
+  color: inherit !important;
+}
+
+.review-formatting-toolbar-compact .bn-button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.review-formatting-toolbar-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 4px;
+  padding-top: 6px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+}
+
+.review-formatting-toolbar-actions .bn-button {
+  width: 100% !important;
+  min-width: 0 !important;
+  gap: 4px;
+  padding: 0 6px !important;
+  font-size: 11px !important;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.review-formatting-toolbar-menu {
+  min-width: 180px !important;
+}
+
 /* ===== COMPACT SLASH MENU (Suggestion Menu) ===== */
 /* BlockNote uses .bn-suggestion-menu class and [role="option"] for items */
 .bn-suggestion-menu {

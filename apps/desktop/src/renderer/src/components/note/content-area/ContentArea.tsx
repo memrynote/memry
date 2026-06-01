@@ -40,6 +40,10 @@ import { formatDateKey } from '@/lib/task-utils'
 import { editorSchema } from './editor-schema'
 import { analyzeTaskIntents } from './scan-task-intents'
 import { useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
+import {
+  ReviewFormattingToolbar,
+  ReviewFormattingToolbarController
+} from './review-formatting-toolbar'
 
 import {
   useBlockNoteSetup,
@@ -107,7 +111,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   focusAtEndRef,
   yjsFragment,
   isRemoteUpdateRef,
-  marqueeZoneEl
+  marqueeZoneEl,
+  review
 }: ContentAreaEditorProps) {
   const { t } = useT('notes')
   const { t: tCommon } = useT('common')
@@ -767,10 +772,25 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             knownTaskBlockIdsRef.current = intents.currentTaskIds
           }}
           theme={editorTheme}
-          formattingToolbar={!stickyToolbar}
+          formattingToolbar={!stickyToolbar && !review}
           slashMenu={false}
         >
-          {stickyToolbar && <FormattingToolbar />}
+          {stickyToolbar &&
+            (review ? (
+              <ReviewFormattingToolbar
+                variant="sticky"
+                onAddComment={review.onAddComment}
+                onStartSuggestionMode={review.onStartSuggestionMode}
+              />
+            ) : (
+              <FormattingToolbar />
+            ))}
+          {!stickyToolbar && review && (
+            <ReviewFormattingToolbarController
+              onAddComment={review.onAddComment}
+              onStartSuggestionMode={review.onStartSuggestionMode}
+            />
+          )}
           {aiEnabled && aiReady && <AIMenuController aiMenu={CustomAIMenu} />}
           <SuggestionMenuController
             triggerCharacter="/"
