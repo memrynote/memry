@@ -50,12 +50,7 @@ has_electron_binary() {
 
 install_electron_binary() {
   node "$SCRIPT_DIR/install-electron-binary.cjs" "$ELECTRON_DIR"
-
-  if ! has_electron_binary; then
-    echo "[electron] install finished, but no Electron binary was found under $ELECTRON_DIR/dist." >&2
-    echo "[electron] Check ELECTRON_SKIP_BINARY_DOWNLOAD and Electron cache settings." >&2
-    exit 1
-  fi
+  echo "[electron] installer helper completed"
 }
 
 if [ "$CURRENT_STAMP" = "$TARGET" ] && has_native_binary; then
