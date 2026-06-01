@@ -159,6 +159,8 @@ will ship instead of depending on the workspace `electron` package binary.
 The desktop unit coverage job sets `ELECTRON_OVERRIDE_DIST_PATH=/usr/bin` before Vitest so
 main-process tests can import `electron` for IPC and `BrowserWindow` mocks even when the workspace
 Electron binary download is unavailable on the runner.
+Main-push E2E jobs still need the workspace `electron` package binary; `ensure-native.sh electron`
+clears fallback install env and verifies `path.txt` before Playwright launches Electron.
 
 Release builds create one staged dependency tree per macOS architecture. Build x64 on an Intel
 runner and arm64 on an Apple Silicon runner; do not build `--x64 --arm64` from the same staged

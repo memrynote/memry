@@ -48,6 +48,16 @@ has_electron_binary() {
   [ -f "$ELECTRON_DIR/dist/$electron_path" ]
 }
 
+install_electron_binary() {
+  ELECTRON_OVERRIDE_DIST_PATH= ELECTRON_SKIP_BINARY_DOWNLOAD= force_no_cache=true node "$ELECTRON_INSTALL_SCRIPT"
+
+  if ! has_electron_binary; then
+    echo "[electron] install finished, but no Electron binary was found under $ELECTRON_DIR/dist." >&2
+    echo "[electron] Check ELECTRON_SKIP_BINARY_DOWNLOAD and Electron cache settings." >&2
+    exit 1
+  fi
+}
+
 if [ "$CURRENT_STAMP" = "$TARGET" ] && has_native_binary; then
   if [ "$TARGET" != "electron" ] || has_electron_binary; then
     echo "[native] already built for $TARGET — skipping"
@@ -73,7 +83,7 @@ if [ "$TARGET" = "electron" ]; then
 
   if ! has_electron_binary; then
     echo "[electron] binary missing — installing..."
-    node "$ELECTRON_INSTALL_SCRIPT"
+    install_electron_binary
   fi
 
   echo "[native] rebuilding $MODULES for Electron..."
