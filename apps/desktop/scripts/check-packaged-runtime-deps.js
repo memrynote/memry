@@ -12,7 +12,6 @@ const {
 } = require('./check-packaged-runtime-deps-utils.cjs')
 
 const appRoot = path.resolve(__dirname, '..')
-const appRequire = createRequire(path.join(appRoot, 'package.json'))
 const productName = 'Memrynote'
 const requiredModules = [
   '@tiptap/core',
@@ -29,13 +28,14 @@ const requiredModules = [
 ]
 const nativeArchCheckedModules = ['better-sqlite3', 'keytar']
 
-function getElectronExecutable() {
-  const electronExecutable = appRequire('electron')
-  if (typeof electronExecutable !== 'string') {
-    throw new Error('Unable to resolve Electron executable from the desktop package')
+function getPackagedElectronExecutable(resourcesPath) {
+  const contentsPath = path.dirname(resourcesPath)
+  const executable = path.join(contentsPath, 'MacOS', productName)
+  if (!fs.existsSync(executable)) {
+    throw new Error(`Missing packaged Electron executable: ${executable}`)
   }
 
-  return electronExecutable
+  return executable
 }
 
 function fail(message) {
@@ -112,7 +112,7 @@ function assertPackagedPath(moduleName, resolvedPath, resourcesPath) {
 }
 
 function runElectronNativeSmoke(resourcesPath) {
-  const electronExecutable = getElectronExecutable()
+  const electronExecutable = getPackagedElectronExecutable(resourcesPath)
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-packaged-native-smoke-'))
   const smokeScriptPath = path.join(tempDir, 'smoke.cjs')
   const appMainPath = path.join(resourcesPath, 'app.asar', 'out', 'main', 'index.js')

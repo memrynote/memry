@@ -23,6 +23,10 @@ vi.mock('@/hooks/use-general-settings', () => ({
   useGeneralSettings: () => ({ settings: { createInSelectedFolder: false } })
 }))
 
+vi.mock('@/pages/calendar', () => ({
+  CalendarPage: () => <div data-testid="calendar-page">Calendar</div>
+}))
+
 vi.mock('@/pages/inbox', () => ({
   InboxPage: () => <div>Inbox</div>
 }))
@@ -213,14 +217,14 @@ describe('Calendar workspace navigation', () => {
     expect(screen.getByTestId('tab-types')).toHaveTextContent('calendar')
   })
 
-  it('routes a calendar tab through TabContent', () => {
+  it('routes a calendar tab through TabContent', async () => {
     renderWithProviders(
       <TabProvider>
         <TabContent tab={CALENDAR_TAB} groupId="calendar-group" />
       </TabProvider>
     )
 
-    expect(screen.getByTestId('calendar-page')).toBeInTheDocument()
+    expect(await screen.findByTestId('calendar-page')).toBeInTheDocument()
     expect(screen.queryByText(/Unknown tab type/i)).not.toBeInTheDocument()
   })
 })

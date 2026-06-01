@@ -521,7 +521,8 @@ test('opens a standalone vault and exposes core note, journal, task, inbox, and 
     errors: []
   })
   assert.equal((await app.inbox.get(batchA.id))?.tags.includes('batch'), true)
-  assert.deepEqual(await app.inbox.bulkSnooze([batchA.id, batchB.id], '2026-05-22T09:00:00.000Z'), {
+  const futureSnoozeDate = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+  assert.deepEqual(await app.inbox.bulkSnooze([batchA.id, batchB.id], futureSnoozeDate), {
     success: true,
     processedCount: 2,
     errors: []

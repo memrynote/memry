@@ -1771,6 +1771,7 @@ test('runs core commands against a vault and prints JSON output', async () => {
   assert.equal(inboxBulkTagCode, 0)
   assert.equal((JSON.parse(stdout.at(-1) ?? '{}') as { processedCount?: number }).processedCount, 2)
 
+  const inboxBulkSnoozeUntil = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
   const inboxBulkSnoozeCode = await runCli(
     [
       '--vault',
@@ -1781,7 +1782,7 @@ test('runs core commands against a vault and prints JSON output', async () => {
       bulkInboxA.id ?? '',
       bulkInboxB.id ?? '',
       '--until',
-      '2026-05-22T09:00:00.000Z'
+      inboxBulkSnoozeUntil
     ],
     {
       stdout: (line) => stdout.push(line),
