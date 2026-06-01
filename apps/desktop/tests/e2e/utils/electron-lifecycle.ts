@@ -48,13 +48,7 @@ function getElectronExecutablePath(): string {
     return installedPath
   }
 
-  installElectronBinary(electronPackageDir)
-  const repairedPath = readElectronExecutablePath(electronPackageDir)
-  if (repairedPath) {
-    return repairedPath
-  }
-
-  throw new Error(`Electron binary was not found after install: ${electronPackageDir}`)
+  return installElectronBinary(electronPackageDir)
 }
 
 function readElectronExecutablePath(electronPackageDir: string): string | null {
@@ -71,7 +65,7 @@ function readElectronExecutablePath(electronPackageDir: string): string | null {
   }
 }
 
-function installElectronBinary(electronPackageDir: string): void {
+function installElectronBinary(electronPackageDir: string): string {
   const result = spawnSync(process.execPath, [ELECTRON_INSTALLER, electronPackageDir], {
     cwd: path.join(__dirname, '../../..'),
     env: process.env,
@@ -84,6 +78,23 @@ function installElectronBinary(electronPackageDir: string): void {
 
   if (result.status !== 0) {
     throw new Error(`Electron binary install failed with exit code ${result.status ?? 'unknown'}`)
+  }
+
+  return path.join(electronPackageDir, 'dist', getElectronPlatformPath())
+}
+
+function getElectronPlatformPath(): string {
+  switch (process.platform) {
+    case 'darwin':
+      return 'Electron.app/Contents/MacOS/Electron'
+    case 'freebsd':
+    case 'openbsd':
+    case 'linux':
+      return 'electron'
+    case 'win32':
+      return 'electron.exe'
+    default:
+      throw new Error(`Electron builds are not available on platform: ${process.platform}`)
   }
 }
 
