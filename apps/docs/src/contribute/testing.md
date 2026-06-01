@@ -156,8 +156,9 @@ node apps/desktop/scripts/check-packaged-runtime-deps.js
 The packaged runtime check runs its native-module probe through the built
 `Memrynote.app/Contents/MacOS/Memrynote` executable, so it verifies the same Electron runtime that
 will ship instead of depending on the workspace `electron` package binary.
-The desktop unit coverage job still installs the workspace Electron binary before Vitest because
-main-process tests import `electron` for IPC and `BrowserWindow` mocks.
+The desktop unit coverage job sets `ELECTRON_OVERRIDE_DIST_PATH=/usr/bin` before Vitest so
+main-process tests can import `electron` for IPC and `BrowserWindow` mocks even when the workspace
+Electron binary download is unavailable on the runner.
 
 Release builds create one staged dependency tree per macOS architecture. Build x64 on an Intel
 runner and arm64 on an Apple Silicon runner; do not build `--x64 --arm64` from the same staged
