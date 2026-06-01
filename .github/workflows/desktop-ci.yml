@@ -182,6 +182,7 @@ jobs:
 
       - name: Run Electron smoke tests
         run: |
+          bash apps/desktop/scripts/ensure-native.sh electron
           dbus-run-session -- bash -c '
             eval "$(printf "\n" | gnome-keyring-daemon --unlock)"
             eval "$(printf "\n" | gnome-keyring-daemon --start --components=secrets)"
@@ -251,6 +252,7 @@ jobs:
           GOOGLE_CALENDAR_E2E_CLIENT_ID: ${{ secrets.GOOGLE_CALENDAR_E2E_CLIENT_ID }}
           GOOGLE_CALENDAR_E2E_CLIENT_SECRET: ${{ secrets.GOOGLE_CALENDAR_E2E_CLIENT_SECRET }}
         run: |
+          bash apps/desktop/scripts/ensure-native.sh electron
           dbus-run-session -- bash -c '
             eval "$(printf "\n" | gnome-keyring-daemon --unlock)"
             eval "$(printf "\n" | gnome-keyring-daemon --start --components=secrets)"
