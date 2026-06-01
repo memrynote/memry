@@ -49,7 +49,13 @@ has_electron_binary() {
 }
 
 install_electron_binary() {
-  ELECTRON_OVERRIDE_DIST_PATH= ELECTRON_SKIP_BINARY_DOWNLOAD= force_no_cache=true node "$ELECTRON_INSTALL_SCRIPT"
+  ELECTRON_OVERRIDE_DIST_PATH= \
+    ELECTRON_SKIP_BINARY_DOWNLOAD= \
+    ELECTRON_MIRROR=https://github.com/electron/electron/releases/download/ \
+    npm_config_electron_mirror=https://github.com/electron/electron/releases/download/ \
+    NPM_CONFIG_ELECTRON_MIRROR=https://github.com/electron/electron/releases/download/ \
+    force_no_cache=true \
+    node "$ELECTRON_INSTALL_SCRIPT"
 
   if ! has_electron_binary; then
     echo "[electron] install finished, but no Electron binary was found under $ELECTRON_DIR/dist." >&2

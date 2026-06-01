@@ -161,6 +161,8 @@ main-process tests can import `electron` for IPC and `BrowserWindow` mocks even 
 Electron binary download is unavailable on the runner.
 Main-push E2E jobs still need the workspace `electron` package binary; `ensure-native.sh electron`
 clears fallback install env and verifies `path.txt` before Playwright launches Electron.
+That install path pins Electron's official mirror so CI is not dependent on the repo-level mirror
+cache.
 
 Release builds create one staged dependency tree per macOS architecture. Build x64 on an Intel
 runner and arm64 on an Apple Silicon runner; do not build `--x64 --arm64` from the same staged
