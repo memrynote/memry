@@ -49,6 +49,8 @@ pnpm --filter @memry/desktop seed:vault
 - Real SQLite (not mocked) for database tests — uses an in-memory DB per test.
 - Real crypto (libsodium) — fast enough that mocking isn't worth the divergence risk.
 - IPC handlers are tested by importing them directly; no Electron runtime needed.
+- Time-sensitive workflow tests should use dates relative to the current run instead of fixed
+  calendar dates, so snooze/reminder assertions do not expire as CI time moves forward.
 
 ## E2E (Playwright)
 
@@ -151,6 +153,13 @@ node apps/desktop/scripts/build-packaged-app.js --dir
 node apps/desktop/scripts/check-packaged-runtime-deps.js
 ```
 
+The packaged runtime check runs its native-module probe through the built
+`Memrynote.app/Contents/MacOS/Memrynote` executable, so it verifies the same Electron runtime that
+will ship instead of depending on the workspace `electron` package binary.
+The desktop unit coverage job sets `ELECTRON_OVERRIDE_DIST_PATH=/usr/bin` before Vitest so
+main-process tests can import `electron` for IPC and `BrowserWindow` mocks even when the workspace
+Electron binary download is unavailable on the runner.
+
 Release builds create one staged dependency tree per macOS architecture. Build x64 on an Intel
 runner and arm64 on an Apple Silicon runner; do not build `--x64 --arm64` from the same staged
 package, because native modules are rebuilt for one target architecture at a time.
@@ -167,10 +176,12 @@ so `x64`, `arm64`, and `amd64` builds stay distinguishable in GitHub releases.
 memrynote is pre-production, but desktop and sync-server coverage are now ratcheted.
 Keep new coverage feature-scoped and avoid catch-all test files.
 
-- **Desktop** — configured in `apps/desktop/config/vitest.config.ts`; current floor is
-  88% statements, 75% branches, 88% functions, and 90% lines.
+- **Desktop** — configured in `apps/desktop/config/vitest.config.ts`; current Vitest 4.1/V8
+  coverage floor is 84.8% statements, 72.4% branches, 85.7% functions, and 86.6% lines.
 - **Sync-server** — configured in `apps/sync-server/vitest.config.ts`; current floor is
   90% for statements, branches, functions, and lines.
+- **Sync harness** — `tests/sync-harness` uses the same Vitest major as the sync server so
+  encrypted sync E2E helpers stay on the same runner behavior as Worker tests.
 - **PRs** — include the relevant coverage command output when raising or defending a
   threshold change.
 

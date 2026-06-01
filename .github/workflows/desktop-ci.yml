@@ -119,10 +119,15 @@ jobs:
       - name: Rebuild native modules for Node
         run: bash apps/desktop/scripts/ensure-native.sh node
 
+      - name: Verify Electron module import fallback
+        run: ELECTRON_OVERRIDE_DIST_PATH=/usr/bin node -e "require('electron')"
+
       - name: Run CLI tests
         run: pnpm test:cli
 
       - name: Run desktop tests with coverage
+        env:
+          ELECTRON_OVERRIDE_DIST_PATH: /usr/bin
         run: pnpm --filter @memry/desktop exec vitest run --coverage --config config/vitest.config.ts
 
       - name: Upload desktop coverage to Codecov

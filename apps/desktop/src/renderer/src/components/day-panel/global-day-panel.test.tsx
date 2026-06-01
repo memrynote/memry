@@ -35,6 +35,10 @@ vi.mock('@/hooks/use-calendar-preferences', () => ({
   resolveDayCellClickBehavior: () => 'journal'
 }))
 
+vi.mock('@/agent-chat/agent-pane', () => ({
+  AgentPane: () => <div>Agent chat</div>
+}))
+
 vi.mock('@/components/journal', async () => {
   const React = await vi.importActual<typeof import('react')>('react')
 
@@ -122,7 +126,7 @@ describe('GlobalDayPanel', () => {
 
     await user.click(screen.getByRole('tab', { name: /Agent/ }))
 
-    expect(screen.getByText('Agent chat')).toBeInTheDocument()
+    expect(await screen.findByText('Agent chat')).toBeInTheDocument()
     expect(screen.queryByTestId('journal-day-panel')).not.toBeInTheDocument()
   })
 
