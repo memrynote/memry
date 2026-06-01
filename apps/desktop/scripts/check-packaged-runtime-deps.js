@@ -30,12 +30,41 @@ const requiredModules = [
 const nativeArchCheckedModules = ['better-sqlite3', 'keytar']
 
 function getElectronExecutable() {
-  const electronExecutable = appRequire('electron')
-  if (typeof electronExecutable !== 'string') {
+  const electronRoot = path.dirname(appRequire.resolve('electron/package.json'))
+  const electronExecutable = readElectronExecutable(electronRoot)
+  if (electronExecutable) {
+    return electronExecutable
+  }
+
+  const installResult = spawnSync(process.execPath, [path.join(electronRoot, 'install.js')], {
+    stdio: 'inherit'
+  })
+  if (installResult.status !== 0) {
+    throw new Error('Unable to install Electron executable for the packaged runtime smoke')
+  }
+
+  const installedElectronExecutable = readElectronExecutable(electronRoot)
+  if (!installedElectronExecutable) {
     throw new Error('Unable to resolve Electron executable from the desktop package')
   }
 
-  return electronExecutable
+  return installedElectronExecutable
+}
+
+function readElectronExecutable(electronRoot) {
+  const pathFile = path.join(electronRoot, 'path.txt')
+  if (!fs.existsSync(pathFile)) {
+    return null
+  }
+
+  const executablePath = fs.readFileSync(pathFile, 'utf8').trim()
+  if (!executablePath) {
+    return null
+  }
+
+  const distPath = process.env.ELECTRON_OVERRIDE_DIST_PATH || path.join(electronRoot, 'dist')
+  const electronExecutable = path.join(distPath, executablePath)
+  return fs.existsSync(electronExecutable) ? electronExecutable : null
 }
 
 function fail(message) {

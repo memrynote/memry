@@ -225,7 +225,10 @@ vi.mock('@/contexts/ai-inline-context', () => ({
 }))
 
 vi.mock('@/contexts/day-panel-context', () => ({
-  DayPanelProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>
+  DayPanelProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  useDayPanel: () => ({
+    isOpen: false
+  })
 }))
 
 vi.mock('@/contexts/calendar-view-context', () => ({
