@@ -180,6 +180,8 @@ Keep new coverage feature-scoped and avoid catch-all test files.
   coverage floor is 84.8% statements, 72.4% branches, 85.7% functions, and 86.6% lines.
 - **Sync-server** — configured in `apps/sync-server/vitest.config.ts`; current floor is
   90% for statements, branches, functions, and lines.
+- **Sync harness** — `tests/sync-harness` uses the same Vitest major as the sync server so
+  encrypted sync E2E helpers stay on the same runner behavior as Worker tests.
 - **PRs** — include the relevant coverage command output when raising or defending a
   threshold change.
 
