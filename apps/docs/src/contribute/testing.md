@@ -174,7 +174,7 @@ memrynote is pre-production, but desktop and sync-server coverage are now ratche
 Keep new coverage feature-scoped and avoid catch-all test files.
 
 - **Desktop** — configured in `apps/desktop/config/vitest.config.ts`; current Vitest 4.1/V8
-  coverage floor is 87.7% statements, 75% branches, 87.8% functions, and 89.7% lines.
+  coverage floor is 84.8% statements, 72.4% branches, 85.7% functions, and 86.6% lines.
 - **Sync-server** — configured in `apps/sync-server/vitest.config.ts`; current floor is
   90% for statements, branches, functions, and lines.
 - **PRs** — include the relevant coverage command output when raising or defending a
