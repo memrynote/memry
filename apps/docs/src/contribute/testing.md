@@ -167,7 +167,9 @@ instead of rerunning the package installer's `path.txt` probe. CI also reruns th
 start of each E2E step, after `electron-vite build`, so Playwright sees a fresh workspace Electron
 binary immediately before launch. The E2E launcher passes that resolved package binary as
 Playwright's explicit `executablePath` so Playwright does not fall back to resolving Electron from
-its own package directory.
+its own package directory. If CI still reaches the launcher with a missing `path.txt` or executable,
+the launcher runs the same installer helper once and reads the package path directly instead of
+importing `electron/index.js`.
 
 Release builds create one staged dependency tree per macOS architecture. Build x64 on an Intel
 runner and arm64 on an Apple Silicon runner; do not build `--x64 --arm64` from the same staged

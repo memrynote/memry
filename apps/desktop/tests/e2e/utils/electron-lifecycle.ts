@@ -12,12 +12,14 @@
  */
 
 import { _electron as electron, ElectronApplication, Page } from '@playwright/test'
+import { spawnSync } from 'child_process'
 import { createRequire } from 'node:module'
 import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
 
 const MAIN_ENTRY = path.join(__dirname, '../../../out/main/index.js')
+const ELECTRON_INSTALLER = path.join(__dirname, '../../../scripts/install-electron-binary.cjs')
 const require = createRequire(__filename)
 const isCI = !!process.env.CI
 
@@ -40,11 +42,49 @@ export interface LaunchedElectron {
 }
 
 function getElectronExecutablePath(): string {
-  const electronPath = require('electron')
-  if (typeof electronPath !== 'string') {
-    throw new Error('Expected the electron package to resolve to an executable path')
+  const electronPackageDir = path.dirname(require.resolve('electron/package.json'))
+  const installedPath = readElectronExecutablePath(electronPackageDir)
+  if (installedPath) {
+    return installedPath
   }
-  return electronPath
+
+  installElectronBinary(electronPackageDir)
+  const repairedPath = readElectronExecutablePath(electronPackageDir)
+  if (repairedPath) {
+    return repairedPath
+  }
+
+  throw new Error(`Electron binary was not found after install: ${electronPackageDir}`)
+}
+
+function readElectronExecutablePath(electronPackageDir: string): string | null {
+  try {
+    const relativePath = fs.readFileSync(path.join(electronPackageDir, 'path.txt'), 'utf8').trim()
+    if (!relativePath) {
+      return null
+    }
+
+    const executablePath = path.join(electronPackageDir, 'dist', relativePath)
+    return fs.existsSync(executablePath) ? executablePath : null
+  } catch {
+    return null
+  }
+}
+
+function installElectronBinary(electronPackageDir: string): void {
+  const result = spawnSync(process.execPath, [ELECTRON_INSTALLER, electronPackageDir], {
+    cwd: path.join(__dirname, '../../..'),
+    env: process.env,
+    stdio: 'inherit'
+  })
+
+  if (result.error) {
+    throw result.error
+  }
+
+  if (result.status !== 0) {
+    throw new Error(`Electron binary install failed with exit code ${result.status ?? 'unknown'}`)
+  }
 }
 
 export async function destroyElectronApp(app: ElectronApplication, dirs: string[]): Promise<void> {
