@@ -119,6 +119,11 @@ jobs:
       - name: Rebuild native modules for Node
         run: bash apps/desktop/scripts/ensure-native.sh node
 
+      - name: Ensure Electron binary for test imports
+        run: |
+          node "$(node -p "require.resolve('electron/install.js')")"
+          node -e "require('electron')"
+
       - name: Run CLI tests
         run: pnpm test:cli
 
