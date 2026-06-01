@@ -71,6 +71,8 @@ async function main() {
   await fs.promises.rm(distDir, { recursive: true, force: true })
   await fs.promises.rm(pathFile, { force: true })
 
+  console.log(`[electron] installing ${version} for ${platform}-${arch} from ${officialMirror}`)
+
   const zipPath = await downloadArtifact({
     version,
     artifactName: 'electron',
