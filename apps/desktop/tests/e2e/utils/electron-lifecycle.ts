@@ -12,11 +12,13 @@
  */
 
 import { _electron as electron, ElectronApplication, Page } from '@playwright/test'
+import { createRequire } from 'node:module'
 import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
 
 const MAIN_ENTRY = path.join(__dirname, '../../../out/main/index.js')
+const require = createRequire(__filename)
 const isCI = !!process.env.CI
 
 const FIRST_WINDOW_MS = 30_000
@@ -35,6 +37,14 @@ export interface LaunchedElectron {
   userDataDir: string
   resolvedUserDataDir: string
   mainLogs: string[]
+}
+
+function getElectronExecutablePath(): string {
+  const electronPath = require('electron')
+  if (typeof electronPath !== 'string') {
+    throw new Error('Expected the electron package to resolve to an executable path')
+  }
+  return electronPath
 }
 
 export async function destroyElectronApp(app: ElectronApplication, dirs: string[]): Promise<void> {
@@ -79,6 +89,7 @@ async function launchOnce(opts: LaunchOptions): Promise<LaunchedElectron> {
   delete env.ELECTRON_RUN_AS_NODE
 
   const app = await electron.launch({
+    executablePath: getElectronExecutablePath(),
     args: [
       ...(isCI ? ['--no-sandbox', '--disable-gpu'] : []),
       `--user-data-dir=${userDataDir}`,
