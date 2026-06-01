@@ -49,6 +49,8 @@ pnpm --filter @memry/desktop seed:vault
 - Real SQLite (not mocked) for database tests — uses an in-memory DB per test.
 - Real crypto (libsodium) — fast enough that mocking isn't worth the divergence risk.
 - IPC handlers are tested by importing them directly; no Electron runtime needed.
+- Time-sensitive workflow tests should use dates relative to the current run instead of fixed
+  calendar dates, so snooze/reminder assertions do not expire as CI time moves forward.
 
 ## E2E (Playwright)
 
@@ -150,6 +152,10 @@ release cannot ship with x64 `better-sqlite3` or `keytar` binaries:
 node apps/desktop/scripts/build-packaged-app.js --dir
 node apps/desktop/scripts/check-packaged-runtime-deps.js
 ```
+
+CI restores the local Electron binary with `apps/desktop/scripts/ensure-native.sh electron` before
+the packaged runtime check. Keep that step with the smoke job; the check runs a small Electron
+native-module probe and needs a valid Electron executable outside the packaged app.
 
 Release builds create one staged dependency tree per macOS architecture. Build x64 on an Intel
 runner and arm64 on an Apple Silicon runner; do not build `--x64 --arm64` from the same staged
