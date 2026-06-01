@@ -274,7 +274,7 @@
     "pdf-parse": "^2.4.5",
     "pdfjs-dist": "5.4.296",
     "postcss": "^8.5.15",
-    "prettier": "^3.7.4",
+    "prettier": "^3.8.3",
     "qrcode.react": "^4.2.0",
     "radix-ui": "^1.4.3",
     "react-complex-tree": "^2.6.1",
