@@ -256,7 +256,7 @@
     "electron-builder": "^26.0.12",
     "electron-store": "^11.0.2",
     "electron-vite": "^5.0.0",
-    "eslint": "^9.39.2",
+    "eslint": "^9.39.4",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.26",
