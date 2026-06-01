@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 
 const childProcess = require('child_process')
+const crypto = require('crypto')
 const fs = require('fs')
+const os = require('os')
 const path = require('path')
 
 const electronDir = process.argv[2]
@@ -12,8 +14,6 @@ if (!electronDir) {
   process.exit(2)
 }
 
-const { downloadArtifact } = require(require.resolve('@electron/get', { paths: [electronDir] }))
-const extract = require(require.resolve('extract-zip', { paths: [electronDir] }))
 const { version } = require(path.join(electronDir, 'package.json'))
 const checksums = require(path.join(electronDir, 'checksums.json'))
 
@@ -61,51 +61,85 @@ function getArch(platform) {
   return arch
 }
 
-async function main() {
+function downloadArtifact(zipUrl, zipPath) {
+  childProcess.execFileSync(
+    'curl',
+    [
+      '--fail',
+      '--location',
+      '--show-error',
+      '--silent',
+      '--retry',
+      '3',
+      '--retry-delay',
+      '2',
+      '--output',
+      zipPath,
+      zipUrl
+    ],
+    { stdio: 'inherit' }
+  )
+}
+
+function extractArtifact(zipPath, distDir) {
+  childProcess.execFileSync('unzip', ['-q', zipPath, '-d', distDir], { stdio: 'inherit' })
+}
+
+function validateChecksum(zipPath, expectedHash) {
+  const actualHash = crypto.createHash('sha256').update(fs.readFileSync(zipPath)).digest('hex')
+  if (actualHash !== expectedHash) {
+    throw new Error(`Electron checksum mismatch: expected ${expectedHash}, got ${actualHash}`)
+  }
+}
+
+function main() {
   const platform = process.env.npm_config_platform || process.platform
   const arch = getArch(platform)
   const platformPath = getPlatformPath(platform)
   const distDir = path.join(electronDir, 'dist')
   const pathFile = path.join(electronDir, 'path.txt')
+  const zipName = `electron-v${version}-${platform}-${arch}.zip`
+  const expectedHash = checksums[zipName]
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-electron-'))
+  const zipPath = path.join(tempDir, zipName)
 
-  await fs.promises.rm(distDir, { recursive: true, force: true })
-  await fs.promises.rm(pathFile, { force: true })
+  if (!expectedHash) {
+    throw new Error(`No Electron checksum found for ${zipName}`)
+  }
+
+  fs.rmSync(distDir, { recursive: true, force: true })
+  fs.rmSync(pathFile, { force: true })
 
   console.log(`[electron] installing ${version} for ${platform}-${arch} from ${officialMirror}`)
 
-  const zipPath = await downloadArtifact({
-    version,
-    artifactName: 'electron',
-    force: true,
-    cacheRoot: process.env.electron_config_cache,
-    checksums,
-    platform,
-    arch,
-    mirrorOptions: {
-      mirror: officialMirror
-    }
-  })
-
-  await extract(zipPath, { dir: distDir })
-
-  const typeDefinitionsPath = path.join(distDir, 'electron.d.ts')
-  if (fs.existsSync(typeDefinitionsPath)) {
-    const targetTypeDefinitionsPath = path.join(electronDir, 'electron.d.ts')
-    await fs.promises.rm(targetTypeDefinitionsPath, { force: true })
-    await fs.promises.rename(typeDefinitionsPath, targetTypeDefinitionsPath)
-  }
-
-  await fs.promises.writeFile(pathFile, platformPath)
-
   const executablePath = path.join(distDir, platformPath)
-  if (!fs.existsSync(executablePath)) {
-    throw new Error(`Electron binary was not found after install: ${executablePath}`)
-  }
+  try {
+    downloadArtifact(`${officialMirror}v${version}/${zipName}`, zipPath)
+    validateChecksum(zipPath, expectedHash)
+    extractArtifact(zipPath, distDir)
 
-  console.log(`[electron] installed ${version} for ${platform}-${arch}`)
+    const typeDefinitionsPath = path.join(distDir, 'electron.d.ts')
+    if (fs.existsSync(typeDefinitionsPath)) {
+      const targetTypeDefinitionsPath = path.join(electronDir, 'electron.d.ts')
+      fs.rmSync(targetTypeDefinitionsPath, { force: true })
+      fs.renameSync(typeDefinitionsPath, targetTypeDefinitionsPath)
+    }
+
+    fs.writeFileSync(pathFile, platformPath)
+
+    if (!fs.existsSync(executablePath)) {
+      throw new Error(`Electron binary was not found after install: ${executablePath}`)
+    }
+
+    console.log(`[electron] installed ${version} for ${platform}-${arch}: ${executablePath}`)
+  } finally {
+    fs.rmSync(tempDir, { recursive: true, force: true })
+  }
 }
 
-main().catch((error) => {
+try {
+  main()
+} catch (error) {
   console.error(error.stack || String(error))
   process.exit(1)
-})
+}
