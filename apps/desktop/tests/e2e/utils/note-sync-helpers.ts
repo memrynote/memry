@@ -18,6 +18,8 @@ export interface NoteHandle {
   emoji?: string | null
 }
 
+const NOTE_OPEN_TIMEOUT_MS = process.env.CI ? 45_000 : 20_000
+
 export async function findNoteHandle(
   page: Page,
   id: string | null,
@@ -96,7 +98,7 @@ async function openNoteInUi(page: Page, note: NoteHandle): Promise<void> {
       },
       {
         intervals: [100, 250, 500, 1_000],
-        timeout: 20_000
+        timeout: NOTE_OPEN_TIMEOUT_MS
       }
     )
     .toBe(note.title)

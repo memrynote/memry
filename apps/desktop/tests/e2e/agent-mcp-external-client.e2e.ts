@@ -13,6 +13,8 @@ type JsonRpcEnvelope = {
   error?: unknown
 }
 
+const AGENT_MCP_STATUS_TIMEOUT_MS = process.env.CI ? 45_000 : 20_000
+
 async function waitForAgentStatus(page: Parameters<typeof waitForAppReady>[0]): Promise<{
   url: string
   bearerValue: string
@@ -24,7 +26,7 @@ async function waitForAgentStatus(page: Parameters<typeof waitForAppReady>[0]): 
         const status = await page.evaluate(() => window.api.agentMcp.getStatus())
         return Boolean(status.url && status.token && status.toolCount > 0)
       },
-      { timeout: 20_000 }
+      { timeout: AGENT_MCP_STATUS_TIMEOUT_MS }
     )
     .toBe(true)
 
