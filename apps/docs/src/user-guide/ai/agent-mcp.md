@@ -7,6 +7,10 @@ Agent runtime idle until Agent Chat or Agent MCP is opened. At that point it sta
 endpoint on `127.0.0.1` with a random port, then gives the selected backend only the vault tools for
 the current conversation.
 
+Opening the Agent MCP settings uses the same lazy start path as opening Agent Chat. If the runtime is
+still starting, memrynote retries the status check until the vault-scoped endpoint, bearer token, and
+tool list are ready to copy.
+
 The Agent runtime and MCP endpoint are scoped to the open vault. Closing or switching vaults stops
 active turns, clears pending tool approvals, and restarts the Agent services for the next vault.
 

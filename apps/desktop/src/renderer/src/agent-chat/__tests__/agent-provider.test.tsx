@@ -139,6 +139,17 @@ describe('AgentProvider', () => {
     expect(unsubscribe).toHaveBeenCalled()
   })
 
+  it('retries backend status bootstrap while lazy agent handlers start', async () => {
+    agentApi.getBackendStatuses.mockRejectedValueOnce(
+      new Error('Agent runtime is starting. Try again.')
+    )
+
+    const { result } = renderHook(() => useAgent(), { wrapper })
+
+    await waitFor(() => expect(result.current.state.backendStatuses).toEqual(backendStatuses))
+    expect(agentApi.getBackendStatuses).toHaveBeenCalledTimes(2)
+  })
+
   it('routes conversation actions through the agent IPC API', async () => {
     const { result } = renderHook(() => useAgent(), { wrapper })
 

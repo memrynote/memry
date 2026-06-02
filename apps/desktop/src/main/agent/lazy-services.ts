@@ -27,7 +27,10 @@ export async function ensureLazyAgentServicesStarted(): Promise<void> {
 }
 
 export async function getLazyAgentMcpStatus(): Promise<AgentMcpStatus> {
-  if (!started) return STOPPED_STATUS
+  if (!started) {
+    if (!starter) return STOPPED_STATUS
+    await ensureLazyAgentServicesStarted()
+  }
 
   const { getPublicStatus } = await import('./mcp/lifecycle')
   return getPublicStatus()
