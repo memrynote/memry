@@ -1,8 +1,8 @@
 import { defineConfig } from '@playwright/test'
 
 const isCi = process.env.CI === 'true'
-const testTimeoutMs = isCi ? 90_000 : 60_000
-const expectTimeoutMs = isCi ? 45_000 : 20_000
+const testTimeoutMs = isCi ? 180_000 : 60_000
+const expectTimeoutMs = isCi ? 60_000 : 20_000
 
 export default defineConfig({
   testDir: '../tests/e2e',
@@ -10,7 +10,7 @@ export default defineConfig({
   timeout: testTimeoutMs,
 
   expect: {
-    // Sync, agent, and CRDT polls can exceed 20s on GitHub's Linux runners
+    // Sync, agent, and CRDT polls can exceed local budgets on GitHub's Linux runners
     // even when the app eventually converges.
     timeout: expectTimeoutMs
   },

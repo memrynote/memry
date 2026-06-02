@@ -21,7 +21,7 @@ import {
   waitForVaultReady
 } from './utils/electron-helpers'
 
-const AGENT_TASK_CREATE_TIMEOUT_MS = process.env.CI ? 45_000 : 20_000
+const AGENT_TASK_CREATE_TIMEOUT_MS = process.env.CI ? 60_000 : 20_000
 
 test.describe('Agent chat Codex create-task flow', () => {
   let launched: LaunchedElectron | null = null

@@ -39,8 +39,9 @@ export async function readNoteOnDevice(
   }
 }
 
-const DEFAULT_WAIT_TIMEOUT_MS = 30_000
+const DEFAULT_WAIT_TIMEOUT_MS = process.env.CI ? 60_000 : 30_000
 const DEFAULT_WAIT_INTERVALS = [250, 500, 1_000, 2_000] as const
+const NOTE_REPLICATION_TIMEOUT_MS = process.env.CI ? 150_000 : 90_000
 
 export async function getVisibleDayStart(page: Page): Promise<number> {
   const value = await page.getByTestId('calendar-view').getAttribute('data-visible-day-start')
@@ -79,7 +80,7 @@ export async function waitForNoteReplicated(
   expectedBody: string,
   opts: { timeout?: number } = {}
 ): Promise<void> {
-  const timeout = opts.timeout ?? 90_000
+  const timeout = opts.timeout ?? NOTE_REPLICATION_TIMEOUT_MS
   const normalizedExpected = normalizeBodyText(expectedBody)
   await expect
     .poll(() => readNoteOnDevice(electronApp, noteId), {

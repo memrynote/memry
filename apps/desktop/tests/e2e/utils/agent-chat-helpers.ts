@@ -1,17 +1,23 @@
 import { expect, type Locator, type Page } from '@playwright/test'
 
+const AGENT_CHAT_OPEN_TIMEOUT_MS = process.env.CI ? 60_000 : 30_000
+
 export async function openAgentChat(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Day Panel' }).click()
-  await page.getByRole('tab', { name: 'Agent', exact: true }).click()
 
+  const agentTab = page.getByRole('tab', { name: 'Agent', exact: true })
   const enableButton = page.getByRole('button', { name: 'Enable Agent chat' })
   const agentChat = page.getByRole('region', { name: 'Agent chat' })
   await expect
     .poll(
-      async () =>
-        (await enableButton.isVisible().catch(() => false)) ||
-        (await agentChat.isVisible().catch(() => false)),
-      { timeout: 30_000 }
+      async () => {
+        await agentTab.click().catch(() => {})
+        return (
+          (await enableButton.isVisible().catch(() => false)) ||
+          (await agentChat.isVisible().catch(() => false))
+        )
+      },
+      { timeout: AGENT_CHAT_OPEN_TIMEOUT_MS }
     )
     .toBe(true)
 

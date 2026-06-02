@@ -71,8 +71,8 @@ pnpm test:e2e -- tests/notes.spec.ts    # one file
 > Skipping the rebuild is the #1 source of "passes locally, fails in CI" surprises.
 
 Main-push Desktop CI runs the full Electron E2E suite across 16 Playwright shards. Local E2E keeps
-the default 60s test timeout and 20s assertion timeout, while CI raises those to 90s and 45s so
-sync, Agent, and CRDT polls can survive slower Linux runners without changing local feedback speed.
+the default 60s test timeout and 20s assertion timeout, while CI raises those to 180s and 60s, with
+helper-specific headroom for sync replication and Agent/MCP startup on slower Linux runners.
 
 ### E2E Test Hooks
 

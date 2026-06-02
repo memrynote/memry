@@ -89,11 +89,11 @@ async function runReceiverOfflineCreatePropagationCase({
 
   await syncBothAndWait(creatorPage, receiverPage)
 
-  await waitForNoteReplicated(offlineApp, created.id, body)
-  expect(await getNoteFileBodyById(receiverPage, created.id)).toBe(body)
-
   await openNoteByHandle(receiverPage, created)
   await expectNoteBody(receiverPage, body)
+
+  await waitForNoteReplicated(offlineApp, created.id, body)
+  expect(await getNoteFileBodyById(receiverPage, created.id)).toBe(body)
 }
 
 test.describe('Body CRDT create propagation', () => {
