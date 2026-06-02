@@ -86,22 +86,22 @@ function bodyToParagraphBlocks(body: string) {
 
 async function openNoteInUi(page: Page, note: NoteHandle): Promise<void> {
   await expect
-    .poll(
-      async () => {
-        await page.evaluate((detail) => {
-          window.dispatchEvent(new CustomEvent('memry:test-open-note', { detail }))
-        }, note)
+    .poll(() => findNoteHandle(page, note.id, note.title), { timeout: NOTE_LIST_POLL_TIMEOUT_MS })
+    .not.toBeNull()
 
-        const titleInput = page.locator(SELECTORS.noteTitle).first()
-        await titleInput.waitFor({ state: 'visible', timeout: 1_000 }).catch(() => {})
-        return titleInput.inputValue().catch(() => null)
-      },
-      {
-        intervals: [100, 250, 500, 1_000],
-        timeout: NOTE_OPEN_TIMEOUT_MS
-      }
-    )
+  await page.evaluate((detail) => {
+    window.dispatchEvent(new CustomEvent('memry:test-open-note', { detail }))
+  }, note)
+
+  const tab = page.locator(SELECTORS.tab).filter({ hasText: note.title }).first()
+  await expect(tab).toBeVisible({ timeout: NOTE_OPEN_TIMEOUT_MS })
+  await tab.click()
+
+  const titleInput = page.locator(SELECTORS.noteTitle).first()
+  await expect
+    .poll(() => titleInput.inputValue().catch(() => null), { timeout: NOTE_OPEN_TIMEOUT_MS })
     .toBe(note.title)
+  await waitForNoteEditor(page)
 }
 
 async function waitForPersistedNoteBody(page: Page, noteId: string, body: string): Promise<void> {

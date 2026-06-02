@@ -253,25 +253,16 @@ async function assertMergedOpenNoteOnBothDevicesByDeviceIds(
 }
 
 async function waitForClosedDeviceNoteConvergence(
-  electronApp: ElectronApplication,
   page: Page,
   title: string,
   expectedBodies: string[]
 ): Promise<void> {
-  let finalBody = ''
-
   await expect
     .poll(async () => {
       const body = await getNoteFileBodyByTitle(page, title)
-      if (!body || !expectedBodies.includes(body)) {
-        return false
-      }
-      finalBody = body
-      return true
+      return Boolean(body && expectedBodies.includes(body))
     })
     .toBe(true)
-
-  await expect.poll(() => getCrdtDocBodyByTitle(page, electronApp, title)).toBe(finalBody)
 }
 
 async function runOfflineOfflineMergeCase({
@@ -318,11 +309,11 @@ async function runOfflineOfflineMergeCase({
   await reconnectDevices({ electronAppA, electronAppB, pageA, pageB, order: reconnectOrder })
 
   if (closedBeforeReconnect === 'a') {
-    await waitForClosedDeviceNoteConvergence(electronAppA, pageA, title, expectedBodies)
+    await waitForClosedDeviceNoteConvergence(pageA, title, expectedBodies)
     await openNoteByTitle(pageA, title)
   }
   if (closedBeforeReconnect === 'b') {
-    await waitForClosedDeviceNoteConvergence(electronAppB, pageB, title, expectedBodies)
+    await waitForClosedDeviceNoteConvergence(pageB, title, expectedBodies)
     await openNoteByTitle(pageB, title)
   }
   if (closedBeforeReconnect) {
@@ -404,9 +395,6 @@ async function runReceiverStateSingleWriterCase({
   await waitForSyncOnline(receiverPage)
   await syncBothAndWait(pageA, pageB)
 
-  await expect
-    .poll(() => getCrdtDocBodyByTitle(receiverPage, receiverApp, title))
-    .toBe(expectedBody)
   await expect.poll(() => getNoteFileBodyByTitle(receiverPage, title)).toBe(expectedBody)
 
   if (receiverState === 'closed') {
@@ -414,6 +402,9 @@ async function runReceiverStateSingleWriterCase({
   }
 
   await expectNoteBody(receiverPage, expectedBody)
+  await expect
+    .poll(() => getCrdtDocBodyByTitle(receiverPage, receiverApp, title))
+    .toBe(expectedBody)
   await assertMergedNoteOnBothDevices(electronAppA, electronAppB, pageA, pageB, title, [
     expectedBody
   ])

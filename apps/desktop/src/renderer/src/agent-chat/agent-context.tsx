@@ -95,7 +95,8 @@ function sleep(ms: number): Promise<void> {
 }
 
 function shouldRetryAgentBootstrap(error: unknown): boolean {
-  return extractErrorMessage(error, '').includes('No handler registered')
+  const message = extractErrorMessage(error, '')
+  return message.includes('No handler registered') || message.includes('Agent runtime is starting')
 }
 
 async function invokeWhenAgentReady<T>(fn: () => Promise<T>): Promise<T> {

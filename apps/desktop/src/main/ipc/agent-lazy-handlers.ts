@@ -43,27 +43,6 @@ const CLI_MODEL_OPTIONS: Record<'claude_cli' | 'codex_cli', AgentBackendModelLis
   }
 }
 
-const IDLE_BACKEND_STATUSES: BackendStatusesResponse = {
-  claude_cli: {
-    backend: 'claude_cli',
-    available: false,
-    reason: 'agent_idle',
-    detail: 'Agent runtime has not started yet.'
-  },
-  codex_cli: {
-    backend: 'codex_cli',
-    available: false,
-    reason: 'agent_idle',
-    detail: 'Agent runtime has not started yet.'
-  },
-  local_openai_compatible: {
-    backend: 'local_openai_compatible',
-    available: false,
-    reason: 'agent_idle',
-    detail: 'Agent runtime has not started yet.'
-  }
-}
-
 export function registerLazyAgentHandlers(): void {
   unregisterLazyAgentHandlers()
 
@@ -126,7 +105,13 @@ export function registerLazyAgentHandlers(): void {
       throw new Error('Agent runtime is starting. Try again.')
     }
   )
-  ipcMain.handle(AgentChannels.invoke.GET_BACKEND_STATUSES, async () => IDLE_BACKEND_STATUSES)
+  ipcMain.handle(
+    AgentChannels.invoke.GET_BACKEND_STATUSES,
+    async (): Promise<BackendStatusesResponse> => {
+      await ensureLazyAgentServicesStarted()
+      throw new Error('Agent runtime is starting. Try again.')
+    }
+  )
   ipcMain.handle(AgentChannels.invoke.LIST_BACKEND_MODELS, async (_event, payload: unknown) => {
     const request = AgentBackendModelListRequestSchema.parse(payload)
     return CLI_MODEL_OPTIONS[request.backend]
