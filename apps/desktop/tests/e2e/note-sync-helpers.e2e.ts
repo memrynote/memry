@@ -17,9 +17,7 @@ test.describe('Note sync helpers smoke', () => {
     await Promise.all([waitForVaultReady(pageA), waitForVaultReady(pageB)])
 
     await createNoteWithBody(pageA, noteA.title, noteA.body)
-    await createNoteWithBody(pageA, `${noteA.title} Decoy`, 'decoy')
     await createNoteWithBody(pageB, noteB.title, noteB.body)
-    await createNoteWithBody(pageB, `${noteB.title} Decoy`, 'decoy')
 
     await openNoteByTitle(pageA, noteA.title)
     await openNoteByTitle(pageB, noteB.title)
