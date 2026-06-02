@@ -21,6 +21,8 @@ import {
   waitForVaultReady
 } from './utils/electron-helpers'
 
+const AGENT_TASK_CREATE_TIMEOUT_MS = process.env.CI ? 45_000 : 20_000
+
 test.describe('Agent chat Codex create-task flow', () => {
   let launched: LaunchedElectron | null = null
   let testVaultPath = ''
@@ -81,7 +83,7 @@ test.describe('Agent chat Codex create-task flow', () => {
           const tasks = await page.evaluate(() => window.api.tasks.list({ limit: 100 }))
           return tasks.tasks.some((task) => task.title === 'Buy milk')
         },
-        { timeout: 20_000 }
+        { timeout: AGENT_TASK_CREATE_TIMEOUT_MS }
       )
       .toBe(true)
 

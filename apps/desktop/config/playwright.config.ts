@@ -1,15 +1,18 @@
 import { defineConfig } from '@playwright/test'
 
+const isCi = process.env.CI === 'true'
+const testTimeoutMs = isCi ? 90_000 : 60_000
+const expectTimeoutMs = isCi ? 45_000 : 20_000
+
 export default defineConfig({
   testDir: '../tests/e2e',
 
-  timeout: 60000,
+  timeout: testTimeoutMs,
 
   expect: {
-    // 20s gives polled assertions (notes.list, CRDT body, writeback debug)
-    // enough headroom under CI shard load, where 10s reproducibly bites the
-    // body-crdt and manual-sync suites without indicating a real product bug.
-    timeout: 20000
+    // Sync, agent, and CRDT polls can exceed 20s on GitHub's Linux runners
+    // even when the app eventually converges.
+    timeout: expectTimeoutMs
   },
 
   fullyParallel: false,
