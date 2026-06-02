@@ -83,11 +83,23 @@ function bodyToParagraphBlocks(body: string) {
 }
 
 async function openNoteInUi(page: Page, note: NoteHandle): Promise<void> {
-  await page.evaluate((detail) => {
-    window.dispatchEvent(new CustomEvent('memry:test-open-note', { detail }))
-  }, note)
+  await expect
+    .poll(
+      async () => {
+        await page.evaluate((detail) => {
+          window.dispatchEvent(new CustomEvent('memry:test-open-note', { detail }))
+        }, note)
 
-  await expect(page.locator(SELECTORS.noteTitle).first()).toHaveValue(note.title)
+        const titleInput = page.locator(SELECTORS.noteTitle).first()
+        await titleInput.waitFor({ state: 'visible', timeout: 1_000 }).catch(() => {})
+        return titleInput.inputValue().catch(() => null)
+      },
+      {
+        intervals: [100, 250, 500, 1_000],
+        timeout: 20_000
+      }
+    )
+    .toBe(note.title)
 }
 
 async function waitForPersistedNoteBody(page: Page, noteId: string, body: string): Promise<void> {
