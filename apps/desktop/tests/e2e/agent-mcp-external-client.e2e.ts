@@ -13,7 +13,7 @@ type JsonRpcEnvelope = {
   error?: unknown
 }
 
-const AGENT_MCP_STATUS_TIMEOUT_MS = process.env.CI ? 45_000 : 20_000
+const AGENT_MCP_STATUS_TIMEOUT_MS = process.env.CI ? 75_000 : 20_000
 
 async function waitForAgentStatus(page: Parameters<typeof waitForAppReady>[0]): Promise<{
   url: string

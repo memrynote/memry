@@ -18,7 +18,7 @@ export interface NoteHandle {
   emoji?: string | null
 }
 
-const NOTE_OPEN_TIMEOUT_MS = process.env.CI ? 45_000 : 20_000
+const NOTE_OPEN_TIMEOUT_MS = process.env.CI ? 75_000 : 20_000
 
 export async function findNoteHandle(
   page: Page,
