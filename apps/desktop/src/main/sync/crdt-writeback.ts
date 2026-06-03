@@ -2,6 +2,7 @@ import * as Y from 'yjs'
 import { createLogger } from '../lib/logger'
 import { getCrdtProvider } from './crdt-provider'
 import { yDocToMarkdown } from './blocknote-converter'
+import { readCriticMarkupMarksFromYDoc, serializeCriticMarkup } from '@memry/shared'
 import { utcNow } from '@memry/shared/utc'
 import {
   atomicWrite,
@@ -141,7 +142,11 @@ export function cancelPendingWritebacks(): void {
 }
 
 async function performWriteback(noteId: string, doc: Y.Doc): Promise<void> {
-  const markdown = await yDocToMarkdown(doc)
+  const plainMarkdown = await yDocToMarkdown(doc)
+  const markdown =
+    plainMarkdown === null
+      ? null
+      : serializeCriticMarkup(plainMarkdown, readCriticMarkupMarksFromYDoc(doc))
   updateDebugState(noteId, {
     pending: false,
     performedCount: (debugState.get(noteId)?.performedCount ?? 0) + 1,

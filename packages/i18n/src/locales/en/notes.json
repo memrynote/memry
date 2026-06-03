@@ -164,6 +164,30 @@
     "showMore": "Show {count} more backlinks",
     "more": "{count} more"
   },
+  "comments": {
+    "railAria": "Comments and suggestions",
+    "toolbarComment": "Comment",
+    "toolbarSuggest": "Suggest",
+    "suggesting": "Suggesting",
+    "exitSuggestionMode": "Exit suggestion mode",
+    "newComment": "New comment",
+    "commentPlaceholder": "Write a comment...",
+    "cancel": "Cancel",
+    "resolve": "Resolve",
+    "delete": "Delete comment",
+    "accept": "Accept",
+    "reject": "Reject",
+    "replyPlaceholder": "Reply...",
+    "attachAria": "Attach file",
+    "mentionAria": "Mention a person, page or date",
+    "sendAria": "Send comment",
+    "kind": {
+      "comment": "Comment",
+      "addition": "Addition",
+      "deletion": "Deletion",
+      "substitution": "Replacement"
+    }
+  },
   "tagsRow": {
     "aria": "Tags",
     "empty": "Add tags",

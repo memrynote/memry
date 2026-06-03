@@ -297,6 +297,230 @@
   height: 28px !important;
 }
 
+.content-area .bn-formatting-toolbar:has(.review-formatting-toolbar-compact) {
+  min-width: 168px !important;
+  width: 168px !important;
+  padding: 6px !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 10px !important;
+  background: var(--popover) !important;
+  color: var(--popover-foreground) !important;
+  box-shadow: 0 16px 40px color-mix(in srgb, black 24%, transparent) !important;
+}
+
+.review-formatting-toolbar-compact {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.review-formatting-toolbar-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 28px);
+  justify-content: center;
+  gap: 4px;
+}
+
+.review-formatting-toolbar-compact .bn-button {
+  width: 28px !important;
+  min-width: 28px !important;
+  height: 28px !important;
+  justify-content: center;
+  padding: 0 !important;
+  border-radius: 7px !important;
+  color: inherit !important;
+}
+
+.review-formatting-toolbar-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 4px;
+  padding-top: 6px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+}
+
+.review-formatting-toolbar-actions .bn-button {
+  width: 100% !important;
+  min-width: 0 !important;
+  gap: 4px;
+  padding: 0 6px !important;
+  font-size: 11px !important;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.critic-mark-inline {
+  border-radius: 3px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  cursor: default;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+}
+
+.critic-mark-inline-comment {
+  background: color-mix(in srgb, var(--accent-orange) 18%, transparent);
+}
+
+.critic-mark-inline-addition {
+  background: color-mix(in srgb, var(--accent-green) 20%, transparent);
+  color: color-mix(in srgb, var(--accent-green) 76%, var(--foreground));
+}
+
+.critic-mark-inline-deletion {
+  background: color-mix(in srgb, var(--destructive) 16%, transparent);
+  color: color-mix(in srgb, var(--destructive) 76%, var(--foreground));
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+.critic-mark-inline-substitution {
+  background: color-mix(in srgb, var(--accent-cyan) 18%, transparent);
+  color: color-mix(in srgb, var(--accent-cyan) 78%, var(--foreground));
+}
+
+.critic-mark-inline:hover,
+.critic-mark-inline.critic-mark-hovered {
+  background: color-mix(in srgb, var(--accent-orange) 30%, transparent);
+}
+
+.suggestion-mode-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 26px;
+  margin-inline-end: 4px;
+  padding-inline-start: 9px;
+  padding-inline-end: 2px;
+  border: 1px solid color-mix(in srgb, var(--accent-cyan) 34%, var(--border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent-cyan) 10%, var(--background));
+  color: color-mix(in srgb, var(--accent-cyan) 82%, var(--foreground));
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.review-rail,
+.review-rail-empty {
+  position: sticky;
+  top: 24px;
+  z-index: 20;
+  width: 340px;
+  min-height: 260px;
+  pointer-events: auto;
+}
+
+.review-rail-inner {
+  position: relative;
+  z-index: 1;
+  min-height: 420px;
+  width: 340px;
+}
+
+.critic-review-card {
+  position: absolute;
+  inset-inline-start: 0;
+  z-index: 1;
+  width: 308px;
+  border: 1px solid color-mix(in srgb, var(--border) 76%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--background) 96%, var(--muted));
+  color: var(--foreground);
+  padding: 10px;
+  box-shadow: 0 10px 28px color-mix(in srgb, black 10%, transparent);
+}
+
+.critic-review-card-draft {
+  position: relative;
+  margin-bottom: 12px;
+}
+
+.critic-review-card[data-hovered='true'],
+.critic-review-card:hover {
+  border-color: color-mix(in srgb, var(--accent-cyan) 40%, var(--border));
+  background: color-mix(in srgb, var(--accent-cyan) 6%, var(--background));
+}
+
+.critic-review-card-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.critic-review-quote {
+  margin-top: 8px;
+  color: var(--foreground);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.critic-review-body {
+  margin-top: 8px;
+  color: var(--foreground);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.critic-review-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.critic-review-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-top: 10px;
+}
+
+.critic-comment-composer {
+  margin-top: 8px;
+  overflow: visible;
+}
+
+.critic-comment-editor .ProseMirror {
+  min-height: 42px !important;
+  max-height: 130px;
+  overflow-y: auto;
+  padding: 8px !important;
+  font-size: 13px !important;
+  line-height: 1.45 !important;
+}
+
+.critic-comment-editor .ProseMirror p {
+  margin: 0;
+}
+
+.critic-review-textarea {
+  margin-top: 8px;
+  min-height: 78px;
+  width: 100%;
+  resize: vertical;
+  border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
+  border-radius: 7px;
+  background: var(--background);
+  padding: 8px;
+  color: var(--foreground);
+  font-size: 13px;
+  line-height: 1.45;
+  outline: none;
+}
+
+.critic-review-textarea:focus {
+  border-color: color-mix(in srgb, var(--accent-cyan) 55%, var(--border));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-cyan) 16%, transparent);
+}
+
 /* ===== COMPACT SLASH MENU (Suggestion Menu) ===== */
 /* BlockNote uses .bn-suggestion-menu class and [role="option"] for items */
 .bn-suggestion-menu {

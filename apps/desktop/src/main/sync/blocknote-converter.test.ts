@@ -108,4 +108,27 @@ describe('blocknote-converter code block language', () => {
     expect(result).toContain('Beta')
     expect(result).toContain('\n\n\n\n')
   })
+
+  it('seeds CriticMarkup as plain Yjs content with review marks metadata', async () => {
+    // #given
+    const markdown = 'Keep {--deleted--} and {++added++}'
+    const doc = new Y.Doc()
+    const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    const { markdownToYFragment } = await import('./blocknote-converter')
+
+    // #when
+    const ok = await markdownToYFragment(markdown, fragment)
+    const result = await yDocToMarkdown(doc)
+    const marks = doc.getArray('criticMarkupMarks').toArray()
+
+    // #then
+    expect(ok).toBe(true)
+    expect(result?.trimEnd()).toBe('Keep deleted and added')
+    expect(result).not.toContain('{--')
+    expect(result).not.toContain('{++')
+    expect(marks).toEqual([
+      expect.objectContaining({ kind: 'deletion', visibleText: 'deleted', start: 5, end: 12 }),
+      expect.objectContaining({ kind: 'addition', visibleText: 'added', start: 17, end: 22 })
+    ])
+  })
 })

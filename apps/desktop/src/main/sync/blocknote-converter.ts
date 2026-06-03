@@ -9,6 +9,7 @@ import {
 import { codeBlockOptions } from '@blocknote/code-block'
 import type * as Y from 'yjs'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
+import { parseCriticMarkup, writeCriticMarkupMarksToYDoc } from '@memry/shared'
 import {
   splitMarkdownPreservingBlanks,
   assembleMarkdownWithBlanks,
@@ -75,9 +76,14 @@ export async function markdownToYFragment(
   markdown: string,
   fragment: Y.XmlFragment
 ): Promise<boolean> {
-  const blocks = await markdownToBlocks(markdown)
+  const parsed = parseCriticMarkup(markdown)
+  const blocks = await markdownToBlocks(parsed.plainText)
   if (!blocks) return false
-  return blocksToYFragment(blocks, fragment)
+  const ok = blocksToYFragment(blocks, fragment)
+  if (ok && fragment.doc) {
+    writeCriticMarkupMarksToYDoc(fragment.doc, parsed.marks)
+  }
+  return ok
 }
 
 export async function yFragmentToBlocks(fragment: Y.XmlFragment): Promise<Block[] | null> {

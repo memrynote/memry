@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import * as Y from 'yjs'
 
 const contentAreaMocks = vi.hoisted(() => ({
   editor: null as any,
@@ -31,6 +32,8 @@ const contentAreaMocks = vi.hoisted(() => ({
   useSyncState: { status: 'error' },
   yjsState: {
     fragment: undefined as unknown,
+    doc: null as unknown,
+    provider: null as unknown,
     isReady: true,
     isRemoteUpdateRef: { current: false }
   },
@@ -54,6 +57,29 @@ vi.mock('@blocknote/react', () => ({
     return contentAreaMocks.editor
   }),
   FormattingToolbar: () => <div data-testid="formatting-toolbar" />,
+  FormattingToolbarController: ({
+    formattingToolbar
+  }: {
+    formattingToolbar: () => React.ReactNode
+  }) => <div data-testid="formatting-toolbar-controller">{formattingToolbar()}</div>,
+  BasicTextStyleButton: () => <button type="button">style</button>,
+  ColorStyleButton: () => <button type="button">color</button>,
+  CreateLinkButton: () => <button type="button">link</button>,
+  NestBlockButton: () => <button type="button">nest</button>,
+  TextAlignButton: () => <button type="button">align</button>,
+  UnnestBlockButton: () => <button type="button">unnest</button>,
+  getFormattingToolbarItems: vi.fn(() => null),
+  useBlockNoteEditor: vi.fn(() => contentAreaMocks.editor),
+  useComponentsContext: vi.fn(() => ({
+    FormattingToolbar: {
+      Button: ({ onClick, label }: { onClick: () => void; label: string }) => (
+        <button type="button" onClick={onClick}>
+          {label}
+        </button>
+      )
+    }
+  })),
+  useEditorState: vi.fn(() => ({ hasSelection: false, isMultiBlock: false })),
   SuggestionMenuController: (props: Record<string, unknown>) => {
     contentAreaMocks.suggestionControllers.push(props)
     return <div data-testid={`suggestion-${props.triggerCharacter}`} />
@@ -322,6 +348,8 @@ describe('ContentArea', () => {
     contentAreaMocks.useSyncState = { status: 'error' }
     contentAreaMocks.yjsState = {
       fragment: undefined,
+      doc: null,
+      provider: null,
       isReady: true,
       isRemoteUpdateRef: { current: false }
     }
@@ -363,6 +391,8 @@ describe('ContentArea', () => {
     contentAreaMocks.useSyncState = { status: 'syncing' }
     contentAreaMocks.yjsState = {
       fragment: undefined,
+      doc: null,
+      provider: null,
       isReady: false,
       isRemoteUpdateRef: { current: false }
     }
@@ -417,6 +447,50 @@ describe('ContentArea', () => {
     expect(contentAreaMocks.editor.updateBlock).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'standalone' }),
       expect.objectContaining({ type: 'taskBlock' })
+    )
+  })
+
+  it('persists review marks into Yjs metadata while collaboration is active', async () => {
+    const doc = new Y.Doc()
+    const fragment = doc.getXmlFragment('blocks')
+    contentAreaMocks.useSyncState = { status: 'idle' }
+    contentAreaMocks.yjsState = {
+      fragment,
+      doc,
+      provider: { doc, isSynced: true },
+      isReady: true,
+      isRemoteUpdateRef: { current: false }
+    }
+
+    render(
+      <ContentArea
+        noteId="note-1"
+        review={{
+          marks: [
+            {
+              id: 'add-1',
+              kind: 'addition',
+              visibleText: 'added',
+              start: 5,
+              end: 10
+            }
+          ],
+          hoveredMarkId: null,
+          isSuggestionModeActive: true
+        }}
+      />
+    )
+
+    await waitFor(() =>
+      expect(doc.getArray('criticMarkupMarks').toArray()).toEqual([
+        expect.objectContaining({
+          id: 'add-1',
+          kind: 'addition',
+          visibleText: 'added',
+          start: 5,
+          end: 10
+        })
+      ])
     )
   })
 

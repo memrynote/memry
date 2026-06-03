@@ -5,7 +5,15 @@
  * Day context (calendar + tasks) available via global Day Panel
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type RefObject
+} from 'react'
 import { cn } from '@/lib/utils'
 import { Loader2 } from '@/lib/icons'
 import {
@@ -58,6 +66,7 @@ import { createLogger } from '@/lib/logger'
 import { FindBar } from '@/components/find-bar/find-bar'
 import { useFindInPage } from '@/hooks/use-find-in-page'
 import { useSettingsModal } from '@/contexts/settings-modal-context'
+import { ReviewRail, SuggestionModePill, useCriticMarkupReview } from '@/components/note/review'
 import { useT } from '@memry/i18n/renderer'
 
 const log = createLogger('Page:Journal')
@@ -519,6 +528,10 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     (markdown: string) => updateContent(markdown),
     [updateContent]
   )
+  const review = useCriticMarkupReview({
+    markdown: editorState.content,
+    onMarkdownChange: handleMarkdownChange
+  })
   const handleContentChange = useCallback((_newBlocks: Block[]) => {}, [])
   const handleLinkClick = useCallback(
     (href: string) => window.open(href, '_blank', 'noopener,noreferrer'),
@@ -757,6 +770,11 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
               isFullWidth={isFullWidth}
               hasEntry={!!entry}
               journalDate={entry?.date ?? null}
+              reviewPill={
+                review.isSuggestionModeActive ? (
+                  <SuggestionModePill onClose={review.stopSuggestionMode} />
+                ) : null
+              }
               onPrevious={handleNavigationPrevious}
               onNext={handleNavigationNext}
               onToggleFullWidth={() => setIsFullWidth(!isFullWidth)}
@@ -776,10 +794,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                 className="mx-auto w-full px-8 lg:px-12 min-h-full flex flex-col pt-6 pb-10 lg:pb-16 transition-[max-width] duration-300 ease-in-out"
                 style={{ maxWidth: isFullWidth ? '100%' : '64rem' }}
               >
-                <div
-                  className="flex flex-col flex-1 mx-auto w-full transition-[max-width] duration-300 ease-in-out"
-                  style={{ maxWidth: journalContentWidth ?? '100%' }}
-                >
+                <div className="flex flex-col flex-1 mx-auto w-full transition-[max-width] duration-300 ease-in-out">
                   {entryError && (
                     <div className="mb-4 px-4 py-3 rounded-md bg-destructive/10 border border-destructive/20 text-destructive text-sm">
                       <span className="font-medium">{t('toast.errorPrefix')}</span> {entryError}
@@ -787,92 +802,131 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                   )}
 
                   {currentViewState.type === 'day' && (
-                    <>
-                      <div className="group/metadata flex flex-col pb-[15px]" data-marquee-ignore>
-                        <GhostAffordanceRow
-                          availableTags={availableTags}
-                          recentTags={recentTags}
-                          currentTagIds={journalTags.map((t) => t.id)}
-                          onAddTag={handleAddTag}
-                          onCreateTag={handleCreateTag}
-                          onAddProperty={handleAddPropertyWithExpand}
-                          className="mb-2"
-                        />
-                        <JournalDateDisplay viewState={currentViewState} dateParts={dateParts} />
-                        <TagsRow
-                          tags={journalTags}
-                          availableTags={availableTags}
-                          recentTags={recentTags}
-                          onAddTag={handleAddTag}
-                          onCreateTag={handleCreateTag}
-                          onRemoveTag={handleRemoveTag}
-                          className="mb-0"
-                          hideWhenEmpty
-                          hideAddButton
-                        />
-                        {properties.length > 0 && (
-                          <InfoSection
-                            properties={properties}
-                            newlyAddedPropertyId={newlyAddedPropertyId}
-                            isExpanded={!propertiesCollapsed}
-                            variant="embedded"
-                            onToggleExpand={togglePropertiesCollapsed}
-                            onPropertyChange={handlePropertyChange}
-                            onPropertyNameChange={handlePropertyNameChange}
-                            onPropertyOrderChange={handlePropertyOrderChange}
+                    <div
+                      className="grid w-full items-start gap-x-12 [grid-template-columns:minmax(0,var(--journal-layout-content-track))_20rem] max-[920px]:grid-cols-1"
+                      style={
+                        {
+                          '--journal-layout-content-track': journalContentWidth ?? '1fr',
+                          maxWidth: isFullWidth
+                            ? '100%'
+                            : `calc(${journalContentWidth ?? '640px'} + 23rem)`
+                        } as CSSProperties
+                      }
+                    >
+                      <div className="min-w-0 flex flex-col">
+                        <div className="group/metadata flex flex-col pb-[15px]" data-marquee-ignore>
+                          <GhostAffordanceRow
+                            availableTags={availableTags}
+                            recentTags={recentTags}
+                            currentTagIds={journalTags.map((t) => t.id)}
+                            onAddTag={handleAddTag}
+                            onCreateTag={handleCreateTag}
                             onAddProperty={handleAddPropertyWithExpand}
-                            onDeleteProperty={handleDeleteProperty}
+                            className="mb-2"
+                          />
+                          <JournalDateDisplay viewState={currentViewState} dateParts={dateParts} />
+                          <TagsRow
+                            tags={journalTags}
+                            availableTags={availableTags}
+                            recentTags={recentTags}
+                            onAddTag={handleAddTag}
+                            onCreateTag={handleCreateTag}
+                            onRemoveTag={handleRemoveTag}
+                            className="mb-0"
+                            hideWhenEmpty
                             hideAddButton
                           />
-                        )}
-                      </div>
-
-                      <div
-                        ref={editorContainerRef}
-                        role="presentation"
-                        className="editor-click-area flex-1 pb-[30vh] relative overflow-visible"
-                        style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
-                      >
-                        {showEditorLoading ? (
-                          <div className="flex items-center justify-center h-[300px]">
-                            <Loader2 className="size-6 animate-spin text-muted-foreground" />
-                          </div>
-                        ) : (
-                          <ContentArea
-                            key={editorState.key}
-                            noteId={entry?.id}
-                            initialContent={editorState.content}
-                            contentType="markdown"
-                            placeholder={
-                              selectedDate > today
-                                ? t('editor.placeholder.future')
-                                : isToday
-                                  ? t('editor.placeholder.today')
-                                  : t('editor.placeholder.past')
-                            }
-                            stickyToolbar={editorSettings.toolbarMode === 'sticky'}
-                            onContentChange={handleContentChange}
-                            onMarkdownChange={handleMarkdownChange}
-                            onHeadingsChange={handleHeadingsChange}
-                            onLinkClick={handleLinkClick}
-                            onInternalLinkClick={(...args) => void handleInternalLinkClick(...args)}
-                            focusAtEndRef={focusAtEndRef}
-                            marqueeZoneEl={marqueeZoneEl}
-                          />
-                        )}
-                      </div>
-
-                      {entry && backlinks.length > 0 && (
-                        <div className="mt-6" data-marquee-ignore>
-                          <BacklinksSection
-                            backlinks={backlinks}
-                            isLoading={backlinksLoading}
-                            initialCount={5}
-                            onBacklinkClick={handleBacklinkClick}
-                          />
+                          {properties.length > 0 && (
+                            <InfoSection
+                              properties={properties}
+                              newlyAddedPropertyId={newlyAddedPropertyId}
+                              isExpanded={!propertiesCollapsed}
+                              variant="embedded"
+                              onToggleExpand={togglePropertiesCollapsed}
+                              onPropertyChange={handlePropertyChange}
+                              onPropertyNameChange={handlePropertyNameChange}
+                              onPropertyOrderChange={handlePropertyOrderChange}
+                              onAddProperty={handleAddPropertyWithExpand}
+                              onDeleteProperty={handleDeleteProperty}
+                              hideAddButton
+                            />
+                          )}
                         </div>
-                      )}
-                    </>
+
+                        <div
+                          ref={editorContainerRef}
+                          role="presentation"
+                          className="editor-click-area flex-1 pb-[30vh] relative overflow-visible"
+                          style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
+                        >
+                          {showEditorLoading ? (
+                            <div className="flex items-center justify-center h-[300px]">
+                              <Loader2 className="size-6 animate-spin text-muted-foreground" />
+                            </div>
+                          ) : (
+                            <ContentArea
+                              key={editorState.key}
+                              noteId={entry?.id}
+                              initialContent={review.editorInitialContent}
+                              contentType="markdown"
+                              placeholder={
+                                selectedDate > today
+                                  ? t('editor.placeholder.future')
+                                  : isToday
+                                    ? t('editor.placeholder.today')
+                                    : t('editor.placeholder.past')
+                              }
+                              stickyToolbar={editorSettings.toolbarMode === 'sticky'}
+                              onContentChange={handleContentChange}
+                              onMarkdownChange={handleMarkdownChange}
+                              onHeadingsChange={handleHeadingsChange}
+                              onLinkClick={handleLinkClick}
+                              onInternalLinkClick={(...args) =>
+                                void handleInternalLinkClick(...args)
+                              }
+                              focusAtEndRef={focusAtEndRef}
+                              marqueeZoneEl={marqueeZoneEl}
+                              review={{
+                                marks: review.marks,
+                                hoveredMarkId: review.hoveredMarkId,
+                                isSuggestionModeActive: review.isSuggestionModeActive,
+                                onEditorReady: review.handleEditorReady,
+                                onAddComment: review.openCommentComposer,
+                                onStartSuggestionMode: review.startSuggestionMode,
+                                onAddSuggestionMark: review.addSuggestionMark,
+                                getMarkdownSourceOffsetForEditorOffset:
+                                  review.getMarkdownSourceOffsetForEditorOffset,
+                                getEditorOffsetForMarkdownSourceOffset:
+                                  review.getEditorOffsetForMarkdownSourceOffset,
+                                onPersistCurrentMarkdown: review.persistCurrentMarkdown,
+                                onPlainMarkdownChange: review.handlePlainMarkdownChange,
+                                onHoveredMarkChange: review.setHoveredMarkId,
+                                onMarkPositionsChange: review.setMarkPositions,
+                                onReplaceMarksFromYjs: review.replaceMarksFromYjs
+                              }}
+                            />
+                          )}
+                        </div>
+
+                        {entry && backlinks.length > 0 && (
+                          <div className="mt-6" data-marquee-ignore>
+                            <BacklinksSection
+                              backlinks={backlinks}
+                              isLoading={backlinksLoading}
+                              initialCount={5}
+                              onBacklinkClick={handleBacklinkClick}
+                            />
+                          </div>
+                        )}
+                      </div>
+                      <div
+                        data-journal-review-rail
+                        data-marquee-ignore
+                        className="max-[920px]:hidden min-w-0 self-start"
+                      >
+                        <ReviewRail review={review} targetId={entry?.id} />
+                      </div>
+                    </div>
                   )}
 
                   {currentViewState.type === 'month' && (

@@ -38,6 +38,7 @@ export interface AgentPromptEditorHandle {
   clear: () => void
   focus: () => void
   getValue: () => AgentPromptValue
+  insertText: (text: string) => void
   insertMention: (attachment: MentionAttachment) => void
 }
 
@@ -417,6 +418,16 @@ export const AgentPromptEditor = forwardRef<AgentPromptEditorHandle, AgentPrompt
           editor?.commands.focus('end')
         },
         getValue: () => readEditorValue(editor),
+        insertText: (text) => {
+          if (!editor || !text) return
+
+          editor.chain().focus().insertContent(text).run()
+
+          const mentionQuery = findMentionQuery(editor)
+          activeMentionRef.current = mentionQuery
+          onMentionQueryChangeRef.current(mentionQuery?.query ?? null)
+          onValueChangeRef.current(readEditorValue(editor))
+        },
         insertMention: (attachment) => {
           if (!editor || !activeMentionRef.current) return
 

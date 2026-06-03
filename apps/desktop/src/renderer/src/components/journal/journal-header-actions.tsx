@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import type { ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   Bookmark,
@@ -28,6 +29,7 @@ interface JournalHeaderActionsProps {
   isFullWidth: boolean
   hasEntry: boolean
   journalDate: string | null
+  reviewPill?: ReactNode
   onPrevious: () => void
   onNext: () => void
   onToggleFullWidth: () => void
@@ -45,6 +47,7 @@ export function JournalHeaderActions({
   isFullWidth,
   hasEntry,
   journalDate,
+  reviewPill,
   onPrevious,
   onNext,
   onToggleFullWidth,
@@ -84,6 +87,8 @@ export function JournalHeaderActions({
 
   return (
     <div className="flex items-center gap-0.5">
+      {reviewPill}
+
       {hasEntry && journalDate && (
         <JournalReminderButton journalDate={journalDate} disabled={false} />
       )}
@@ -116,23 +121,23 @@ export function JournalHeaderActions({
           {hasEntry && (
             <>
               <DropdownMenuItem onClick={onVersionHistory}>
-                <History className="mr-2 size-4" />
+                <History className="me-2 size-4" />
                 {t('action.versionHistory')}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={onExport}>
-                <Download className="mr-2 size-4" />
+                <Download className="me-2 size-4" />
                 {t('action.export')}
               </DropdownMenuItem>
             </>
           )}
           <DropdownMenuItem onClick={onToggleFullWidth}>
-            <Maximize className="mr-2 size-4" />
+            <Maximize className="me-2 size-4" />
             <span className="flex-1">{t('action.fullWidth')}</span>
             <Switch checked={isFullWidth} className="pointer-events-none h-4 w-7" tabIndex={-1} />
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={onOpenSettings}>
-            <Settings className="mr-2 size-4" />
+            <Settings className="me-2 size-4" />
             {t('action.journalSettings')}
           </DropdownMenuItem>
         </DropdownMenuContent>

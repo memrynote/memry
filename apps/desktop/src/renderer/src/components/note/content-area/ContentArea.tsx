@@ -19,6 +19,11 @@ import '@blocknote/shadcn/style.css'
 import '@blocknote/xl-ai/style.css'
 
 import type * as Y from 'yjs'
+import {
+  CRITIC_MARKUP_MARKS_ARRAY,
+  readCriticMarkupMarksFromYDoc,
+  writeCriticMarkupMarksToYDoc
+} from '@memry/shared'
 import { cn } from '@/lib/utils'
 import { notesService } from '@/services/notes-service'
 import { useYjsCollaboration } from '@/sync/use-yjs-collaboration'
@@ -40,6 +45,11 @@ import { formatDateKey } from '@/lib/task-utils'
 import { editorSchema } from './editor-schema'
 import { analyzeTaskIntents } from './scan-task-intents'
 import { useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
+import {
+  ReviewFormattingToolbar,
+  ReviewFormattingToolbarController
+} from './review-formatting-toolbar'
+import { createCriticMarkupDecorationPlugin } from './critic-markup-decorations'
 
 import {
   useBlockNoteSetup,
@@ -51,6 +61,7 @@ import {
   useWikiLinkSuggestions,
   usePasteLinkMenu
 } from './hooks'
+import { useLiveSuggestionTracking } from './hooks/use-live-suggestion-tracking'
 import { BlockMarqueeOverlay } from './block-marquee-overlay'
 import { PasteLinkMenu } from './paste-link-menu'
 import { extractYouTubeVideoId } from '@/lib/youtube-utils'
@@ -83,6 +94,7 @@ function findBlockWithLinkMention(
 
 interface ContentAreaEditorProps extends ContentAreaProps {
   yjsFragment?: Y.XmlFragment
+  yjsDoc?: Y.Doc
   isRemoteUpdateRef?: React.RefObject<boolean>
 }
 
@@ -106,8 +118,10 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   onInlineTagsChange,
   focusAtEndRef,
   yjsFragment,
+  yjsDoc,
   isRemoteUpdateRef,
-  marqueeZoneEl
+  marqueeZoneEl,
+  review
 }: ContentAreaEditorProps) {
   const { t } = useT('notes')
   const { t: tCommon } = useT('common')
@@ -131,6 +145,13 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   const containerRef = useRef<HTMLDivElement>(null)
   const noteIdRef = useRef<string | undefined>(noteId)
   const wikiLinkHover = useWikiLinkHover(editorContainerRef)
+  const reviewMarksRef = useRef(review?.marks ?? [])
+  const reviewMarkdownToEditorOffsetRef = useRef(review?.getEditorOffsetForMarkdownSourceOffset)
+  const skipNextCriticMarkupYjsWriteRef = useRef(false)
+  const isReviewEnabled = Boolean(review)
+  const onReviewEditorReady = review?.onEditorReady
+  const onReviewAddSuggestionMark = review?.onAddSuggestionMark
+  const onReplaceMarksFromYjs = review?.onReplaceMarksFromYjs
 
   // Keep noteIdRef in sync (used by uploadFile closure)
   useEffect(() => {
@@ -192,10 +213,85 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     noteTags,
     tagColorMap,
     onContentChange,
-    onMarkdownChange,
+    onMarkdownChange: onMarkdownChange
+      ? (markdown) => onMarkdownChange(review?.onPlainMarkdownChange?.(markdown) ?? markdown)
+      : undefined,
     onHeadingsChange,
     onInlineTagsChange
   })
+
+  useEffect(() => {
+    onReviewEditorReady?.(editor)
+    return () => onReviewEditorReady?.(null)
+  }, [editor, onReviewEditorReady])
+
+  useEffect(() => {
+    reviewMarksRef.current = review?.marks ?? []
+    reviewMarkdownToEditorOffsetRef.current = review?.getEditorOffsetForMarkdownSourceOffset
+    const tiptap = (editor as any)._tiptapEditor
+    if (!tiptap?.view?.dispatch) return
+    tiptap.view.dispatch(tiptap.state.tr.setMeta('criticMarkupDecorations', true))
+  }, [editor, review?.getEditorOffsetForMarkdownSourceOffset, review?.marks])
+
+  useEffect(() => {
+    if (!isReviewEnabled || !yjsDoc) return
+
+    const array = yjsDoc.getArray(CRITIC_MARKUP_MARKS_ARRAY)
+    const applyYjsMarks = (): void => {
+      const nextMarks = readCriticMarkupMarksFromYDoc(yjsDoc)
+      skipNextCriticMarkupYjsWriteRef.current = true
+      onReplaceMarksFromYjs?.(nextMarks)
+    }
+
+    const currentYjsMarks = readCriticMarkupMarksFromYDoc(yjsDoc)
+    if (currentYjsMarks.length > 0 || reviewMarksRef.current.length === 0) {
+      applyYjsMarks()
+    } else {
+      writeCriticMarkupMarksToYDoc(yjsDoc, reviewMarksRef.current)
+    }
+
+    array.observe(applyYjsMarks)
+    return () => {
+      array.unobserve(applyYjsMarks)
+    }
+  }, [isReviewEnabled, onReplaceMarksFromYjs, yjsDoc])
+
+  useEffect(() => {
+    if (!isReviewEnabled || !yjsDoc) return
+    if (skipNextCriticMarkupYjsWriteRef.current) {
+      skipNextCriticMarkupYjsWriteRef.current = false
+      return
+    }
+    writeCriticMarkupMarksToYDoc(yjsDoc, review?.marks ?? [])
+  }, [isReviewEnabled, review?.marks, yjsDoc])
+
+  useEffect(() => {
+    if (!isReviewEnabled) return
+    const tiptap = (editor as any)._tiptapEditor
+    if (!tiptap?.registerPlugin || !tiptap?.unregisterPlugin) return
+
+    const plugin = createCriticMarkupDecorationPlugin(
+      () => reviewMarksRef.current,
+      (sourceOffset) => reviewMarkdownToEditorOffsetRef.current?.(sourceOffset) ?? null
+    )
+    tiptap.registerPlugin(plugin)
+
+    return () => {
+      tiptap.unregisterPlugin(plugin.spec.key!)
+    }
+  }, [editor, isReviewEnabled])
+
+  const handleReviewAddSuggestionMark = useCallback(
+    (input: {
+      kind: 'addition' | 'deletion' | 'substitution'
+      visibleText: string
+      originalText?: string
+      start?: number
+    }) => {
+      onReviewAddSuggestionMark?.(input)
+    },
+    [onReviewAddSuggestionMark]
+  )
 
   // Hook #3: Wiki link suggestions
   const { getWikiLinkItems, handleWikiLinkSelect } = useWikiLinkSuggestions(editor)
@@ -294,6 +390,80 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // State (not just editorContainerRef) so the marquee hook's useEffect
   // re-runs when .bn-container first mounts — refs don't trigger effects.
   const triggerEl = marqueeZoneEl ?? innerContainerEl
+
+  useLiveSuggestionTracking({
+    editor,
+    containerRef: editorContainerRef,
+    enabled: review?.isSuggestionModeActive ?? false,
+    onAddSuggestion: handleReviewAddSuggestionMark,
+    resolveMarkdownSourceOffset: review?.getMarkdownSourceOffsetForEditorOffset
+  })
+
+  useEffect(() => {
+    if (!review) return
+    const container = editorContainerRef.current
+    if (!container) return
+
+    const handlePointerOver = (event: PointerEvent | FocusEvent): void => {
+      const target = event.target as HTMLElement | null
+      const mark = target?.closest<HTMLElement>('[data-critic-mark-id]')
+      if (!mark) return
+      review.onHoveredMarkChange?.(mark.dataset.criticMarkId ?? null)
+    }
+
+    const handlePointerOut = (event: PointerEvent | FocusEvent): void => {
+      const target = event.target as HTMLElement | null
+      const mark = target?.closest<HTMLElement>('[data-critic-mark-id]')
+      if (!mark) return
+      const relatedTarget = event.relatedTarget as HTMLElement | null
+      const relatedMark = relatedTarget?.closest<HTMLElement>('[data-critic-mark-id]')
+      if (relatedMark?.dataset.criticMarkId === mark.dataset.criticMarkId) return
+      review.onHoveredMarkChange?.(null)
+    }
+
+    container.addEventListener('pointerover', handlePointerOver)
+    container.addEventListener('focusin', handlePointerOver)
+    container.addEventListener('pointerout', handlePointerOut)
+    container.addEventListener('focusout', handlePointerOut)
+    return () => {
+      container.removeEventListener('pointerover', handlePointerOver)
+      container.removeEventListener('focusin', handlePointerOver)
+      container.removeEventListener('pointerout', handlePointerOut)
+      container.removeEventListener('focusout', handlePointerOut)
+    }
+  }, [review])
+
+  useEffect(() => {
+    if (!review) return
+    const container = editorContainerRef.current
+    if (!container) return
+    container
+      .querySelectorAll<HTMLElement>('[data-critic-mark-id]')
+      .forEach((element) =>
+        element.classList.toggle(
+          'critic-mark-hovered',
+          element.dataset.criticMarkId === review.hoveredMarkId
+        )
+      )
+  }, [review, review?.hoveredMarkId, review?.marks])
+
+  useEffect(() => {
+    if (!review?.onMarkPositionsChange) return
+    const container = editorContainerRef.current
+    if (!container) return
+    const frame = window.requestAnimationFrame(() => {
+      const root = container.closest<HTMLElement>('.marquee-zone') ?? container
+      const rootTop = root.getBoundingClientRect().top
+      const positions: Record<string, number> = {}
+      container.querySelectorAll<HTMLElement>('[data-critic-mark-id]').forEach((element) => {
+        const id = element.dataset.criticMarkId
+        if (!id || positions[id] !== undefined) return
+        positions[id] = Math.max(0, element.getBoundingClientRect().top - rootTop)
+      })
+      review.onMarkPositionsChange?.(positions)
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [review, review?.marks])
 
   // Finder-style multi-block marquee selection
   const marquee = useBlockMarqueeSelection({
@@ -767,10 +937,25 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             knownTaskBlockIdsRef.current = intents.currentTaskIds
           }}
           theme={editorTheme}
-          formattingToolbar={!stickyToolbar}
+          formattingToolbar={!stickyToolbar && !review}
           slashMenu={false}
         >
-          {stickyToolbar && <FormattingToolbar />}
+          {stickyToolbar &&
+            (review ? (
+              <ReviewFormattingToolbar
+                variant="sticky"
+                onAddComment={review.onAddComment}
+                onStartSuggestionMode={review.onStartSuggestionMode}
+              />
+            ) : (
+              <FormattingToolbar />
+            ))}
+          {!stickyToolbar && review && (
+            <ReviewFormattingToolbarController
+              onAddComment={review.onAddComment}
+              onStartSuggestionMode={review.onStartSuggestionMode}
+            />
+          )}
           {aiEnabled && aiReady && <AIMenuController aiMenu={CustomAIMenu} />}
           <SuggestionMenuController
             triggerCharacter="/"
@@ -845,7 +1030,7 @@ export const ContentArea = memo(function ContentArea(props: ContentAreaProps) {
   const { state } = useSync()
   const syncActive =
     state.status === 'idle' || state.status === 'syncing' || state.status === 'offline'
-  const { fragment, isReady, isRemoteUpdateRef } = useYjsCollaboration({
+  const { fragment, doc, isReady, isRemoteUpdateRef } = useYjsCollaboration({
     noteId: props.noteId,
     enabled: syncActive
   })
@@ -862,6 +1047,7 @@ export const ContentArea = memo(function ContentArea(props: ContentAreaProps) {
     <ContentAreaEditor
       {...props}
       yjsFragment={isReady && fragment ? fragment : undefined}
+      yjsDoc={isReady && doc ? doc : undefined}
       isRemoteUpdateRef={isRemoteUpdateRef}
     />
   )

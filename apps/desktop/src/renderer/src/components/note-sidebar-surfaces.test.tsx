@@ -310,6 +310,29 @@ describe('note and sidebar cold surfaces', () => {
     expect(marqueeRef).toHaveBeenCalled()
   })
 
+  it('reserves a responsive right rail for note comments', () => {
+    const { container } = render(
+      <NoteLayout
+        headings={[]}
+        breadcrumb={<span>Breadcrumb</span>}
+        sideRail={<aside>Comment rail</aside>}
+        contentWidth="640px"
+      >
+        <article>Note body</article>
+      </NoteLayout>
+    )
+
+    const canvas = container.querySelector('[data-note-layout-canvas]')
+    const main = container.querySelector('[data-note-layout-main]')
+    const rail = container.querySelector('[data-note-layout-rail]')
+
+    expect(canvas).toHaveClass('grid')
+    expect(canvas).toHaveStyle({ maxWidth: 'calc(640px + 23rem)' })
+    expect(main).toContainElement(screen.getByText('Note body'))
+    expect(rail).toContainElement(screen.getByText('Comment rail'))
+    expect(rail).toHaveClass('max-[920px]:hidden')
+  })
+
   it('renders project empty, skeleton, and sortable drop/edit states', async () => {
     const user = userEvent.setup()
     const onCreateProject = vi.fn()
