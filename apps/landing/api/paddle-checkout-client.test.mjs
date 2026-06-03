@@ -42,7 +42,7 @@ describe('paddle checkout response parsing', () => {
     )
 
     const successUrl = buildCheckoutSuccessUrl('https://memrynote.com', 'txn_123')
-    assert.equal(successUrl, 'https://memrynote.com/pricing?checkout=success&transactionId=txn_123')
+    assert.equal(successUrl, 'https://memrynote.com/checkout/success?transactionId=txn_123')
     assert.equal(successUrl.includes('checkout_token'), false)
   })
 })

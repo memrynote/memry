@@ -64,8 +64,8 @@ export function buildMemryBillingCompleteUrl(transactionId: string) {
 }
 
 export function buildCheckoutSuccessUrl(origin: string, transactionId: string) {
-  const params = new URLSearchParams({ checkout: 'success', transactionId })
-  return `${origin}/pricing?${params.toString()}`
+  const params = new URLSearchParams({ transactionId })
+  return `${origin}/checkout/success?${params.toString()}`
 }
 
 async function readJsonBody(response: Response) {

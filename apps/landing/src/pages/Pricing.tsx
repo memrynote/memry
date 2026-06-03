@@ -48,6 +48,39 @@ type CheckoutNotice =
 
 const PURCHASES_ENABLED = false
 
+function getInitialCadence(): Cadence {
+  if (typeof window === 'undefined') return 'annual'
+
+  const intent = parseCheckoutHash(window.location.hash)
+  return intent?.cadence === 'monthly' || intent?.cadence === 'annual' ? intent.cadence : 'annual'
+}
+
+function getInitialCheckoutState(): CheckoutState {
+  if (typeof window === 'undefined') {
+    return { pendingKey: null, error: null, notice: null }
+  }
+
+  const params = new URLSearchParams(window.location.search)
+  if (params.get('checkout') === 'success') {
+    return {
+      pendingKey: null,
+      error: null,
+      notice: { type: 'success', transactionId: params.get('transactionId') }
+    }
+  }
+
+  const intent = parseCheckoutHash(window.location.hash)
+  if (intent) {
+    return {
+      pendingKey: getCheckoutKey(intent.plan, intent.cadence),
+      error: null,
+      notice: null
+    }
+  }
+
+  return { pendingKey: null, error: null, notice: null }
+}
+
 const fadeUp = {
   initial: { opacity: 0, y: 20 },
   whileInView: { opacity: 1, y: 0 },
@@ -56,22 +89,13 @@ const fadeUp = {
 }
 
 export function PricingPage() {
-  const [cadence, setCadence] = useState<Cadence>('annual')
-  const [checkout, setCheckout] = useState<CheckoutState>({
-    pendingKey: null,
-    error: null,
-    notice: null
-  })
+  const [cadence, setCadence] = useState<Cadence>(getInitialCadence)
+  const [checkout, setCheckout] = useState<CheckoutState>(getInitialCheckoutState)
   const consumedCheckoutIntent = useRef(false)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     if (params.get('checkout') === 'success') {
-      setCheckout({
-        pendingKey: null,
-        error: null,
-        notice: { type: 'success', transactionId: params.get('transactionId') }
-      })
       return
     }
 
@@ -81,12 +105,7 @@ export function PricingPage() {
 
     consumedCheckoutIntent.current = true
     window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`)
-    if (intent.cadence === 'monthly' || intent.cadence === 'annual') {
-      setCadence(intent.cadence)
-    }
 
-    const pendingKey = getCheckoutKey(intent.plan, intent.cadence)
-    setCheckout({ pendingKey, error: null, notice: null })
     let checkoutTransactionId: string | null = null
     let checkoutCompleted = false
     void openPaddleCheckout(intent.plan, intent.cadence, intent.checkoutToken, (event) => {
