@@ -305,6 +305,74 @@ describe('serializeBlocksPreservingBlanks', () => {
       expect.objectContaining({ type: 'file' })
     ])
   })
+
+  it('round-trips nested paragraph indentation with hidden markdown markers', async () => {
+    const editor = {
+      tryParseMarkdownToBlocks: vi.fn(async (markdown: string) =>
+        markdown
+          .split(/\n\n+/)
+          .filter((line) => line.trim())
+          .map((line) => ({
+            type: 'paragraph',
+            props: {},
+            content: [{ type: 'text', text: line.trim(), styles: {} }],
+            children: []
+          }))
+      ),
+      blocksToMarkdownLossy: vi.fn(async (blocks: any[]) =>
+        blocks
+          .map((block) =>
+            Array.isArray(block.content)
+              ? block.content.map((content: any) => content.text ?? '').join('')
+              : ''
+          )
+          .filter(Boolean)
+          .join('\n\n')
+      )
+    }
+
+    const markdown = await serializeBlocksPreservingBlanks(editor, [
+      {
+        type: 'paragraph',
+        props: {},
+        content: [{ type: 'text', text: 'Parent', styles: {} }],
+        children: [
+          {
+            type: 'paragraph',
+            props: {},
+            content: [{ type: 'text', text: 'Child', styles: {} }],
+            children: []
+          }
+        ]
+      },
+      {
+        type: 'paragraph',
+        props: {},
+        content: [{ type: 'text', text: 'Sibling', styles: {} }],
+        children: []
+      }
+    ] as any[])
+
+    expect(markdown).toContain('<!-- memry:block-nesting-level=1 -->')
+    expect(markdown).toContain('<!-- memry:block-nesting-level=0 -->')
+
+    const blocks = await parseMarkdownPreservingBlanks(editor, markdown)
+    expect(blocks).toEqual([
+      expect.objectContaining({
+        content: [{ type: 'text', text: 'Parent', styles: {} }],
+        children: [
+          expect.objectContaining({
+            content: [{ type: 'text', text: 'Child', styles: {} }],
+            children: []
+          })
+        ]
+      }),
+      expect.objectContaining({
+        content: [{ type: 'text', text: 'Sibling', styles: {} }],
+        children: []
+      })
+    ])
+  })
 })
 
 describe('isEmptyParagraph', () => {
@@ -312,6 +380,7 @@ describe('isEmptyParagraph', () => {
     expect(isEmptyParagraph({ type: 'heading', content: [] } as any)).toBe(false)
     expect(isEmptyParagraph({ type: 'paragraph', content: undefined } as any)).toBe(true)
     expect(isEmptyParagraph({ type: 'paragraph', content: [] } as any)).toBe(true)
+    expect(isEmptyParagraph({ type: 'paragraph', content: [], children: [{}] } as any)).toBe(false)
     expect(isEmptyParagraph({ type: 'paragraph', content: ['text'] } as any)).toBe(false)
   })
 })
