@@ -14,6 +14,11 @@ import {
   assembleMarkdownWithBlanks,
   type MarkdownSegment
 } from '@memry/shared/empty-lines'
+import {
+  createBlockNestingMarker,
+  restoreBlockNesting,
+  splitMarkdownByBlockNestingMarkers
+} from '@memry/shared/block-nesting'
 import { createLogger } from '../lib/logger'
 
 const log = createLogger('BlockNoteConverter')
@@ -96,6 +101,7 @@ export async function yFragmentToBlocks(fragment: Y.XmlFragment): Promise<Block[
 
 function isEmptyParagraph(block: Block): boolean {
   if (block.type !== 'paragraph') return false
+  if (block.children?.length) return false
   const content = block.content as unknown[]
   return !content || content.length === 0
 }
@@ -110,6 +116,80 @@ function createEmptyParagraph(): Block {
   } as unknown as Block
 }
 
+const MARKDOWN_LIST_BLOCK_TYPES = new Set(['bulletListItem', 'numberedListItem', 'checkListItem'])
+
+function canSerializeChildNatively(parent: Block, child: Block): boolean {
+  return (
+    MARKDOWN_LIST_BLOCK_TYPES.has(parent.type as string) &&
+    MARKDOWN_LIST_BLOCK_TYPES.has(child.type as string)
+  )
+}
+
+function hasMarkerSerializedChildren(block: Block): boolean {
+  const children = (block.children ?? []) as Block[]
+  if (children.length === 0) return false
+
+  return children.some(
+    (child) => !canSerializeChildNatively(block, child) || hasMarkerSerializedChildren(child)
+  )
+}
+
+async function parseMarkdownChunkPreservingNesting(
+  editor: ServerBlockNoteEditor,
+  markdown: string
+): Promise<Block[]> {
+  const chunks = splitMarkdownByBlockNestingMarkers(markdown)
+  if (chunks.length === 0) return []
+
+  if (chunks.length === 1 && chunks[0].level === 0) {
+    return editor.tryParseMarkdownToBlocks(chunks[0].text)
+  }
+
+  const blocks: Block[] = []
+  const levels: number[] = []
+
+  for (const chunk of chunks) {
+    const parsed = await editor.tryParseMarkdownToBlocks(chunk.text)
+    blocks.push(...(parsed as Block[]))
+    levels.push(...parsed.map(() => chunk.level))
+  }
+
+  return restoreBlockNesting(blocks, levels)
+}
+
+async function serializeBlocksWithNestingMarkers(
+  editor: ServerBlockNoteEditor,
+  blocks: Block[]
+): Promise<string> {
+  const parts: string[] = []
+  let currentLevel = 0
+
+  const appendBlock = async (block: Block, level: number): Promise<void> => {
+    if (level !== currentLevel) {
+      parts.push(createBlockNestingMarker(level))
+      currentLevel = level
+    }
+
+    const shallowBlock = { ...block, children: [] } as Block
+    const markdown = (await editor.blocksToMarkdownLossy([shallowBlock] as PartialBlock[])).trim()
+    if (markdown) parts.push(markdown)
+
+    for (const child of (block.children ?? []) as Block[]) {
+      await appendBlock(child, level + 1)
+    }
+  }
+
+  for (const block of blocks) {
+    await appendBlock(block, 0)
+  }
+
+  if (currentLevel !== 0) {
+    parts.push(createBlockNestingMarker(0))
+  }
+
+  return parts.join('\n\n')
+}
+
 async function markdownToBlocksPreserving(
   editor: ServerBlockNoteEditor,
   markdown: string
@@ -119,7 +199,7 @@ async function markdownToBlocksPreserving(
 
   for (const seg of segments) {
     if (seg.type === 'content') {
-      const parsed = await editor.tryParseMarkdownToBlocks(seg.text)
+      const parsed = await parseMarkdownChunkPreservingNesting(editor, seg.text)
       blocks.push(...parsed)
     } else {
       for (let i = 0; i < seg.extraLines; i++) {
@@ -147,6 +227,20 @@ async function blocksToMarkdownPreserving(
         contentGroup = []
       }
       emptyCount++
+    } else if (hasMarkerSerializedChildren(block)) {
+      if (contentGroup.length > 0) {
+        const md = await editor.blocksToMarkdownLossy(contentGroup as PartialBlock[])
+        segments.push({ type: 'content', text: md })
+        contentGroup = []
+      }
+      if (emptyCount > 0) {
+        segments.push({ type: 'gap', extraLines: emptyCount })
+        emptyCount = 0
+      }
+      segments.push({
+        type: 'content',
+        text: await serializeBlocksWithNestingMarkers(editor, [block])
+      })
     } else {
       if (emptyCount > 0) {
         segments.push({ type: 'gap', extraLines: emptyCount })
