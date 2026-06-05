@@ -47,6 +47,8 @@ export interface ReviewSelection {
   text: string
   /** Whether selection is empty/collapsed */
   isEmpty: boolean
+  /** Top position of the selection relative to the shared marquee zone, when available */
+  top?: number
   /** ProseMirror start position for the selected text, when available */
   from?: number
   /** ProseMirror end position for the selected text, when available */

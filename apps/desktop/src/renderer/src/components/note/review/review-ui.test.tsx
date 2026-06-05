@@ -1,4 +1,6 @@
-import { act, fireEvent, render, renderHook, screen } from '@testing-library/react'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { act, fireEvent, render, renderHook, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ReviewRail } from './review-rail'
@@ -29,6 +31,7 @@ vi.mock('@/services/notes-service', () => ({
 
 beforeEach(() => {
   vi.clearAllMocks()
+  document.getElementById('critic-mark-hover-style')?.remove()
 })
 
 function createReview(
@@ -65,7 +68,42 @@ function createReview(
   }
 }
 
+function nextFrame(): Promise<void> {
+  return new Promise((resolve) => requestAnimationFrame(() => resolve()))
+}
+
 describe('review UI', () => {
+  it('moves rail cards left on hover with a theme-owned background token', () => {
+    const css = readFileSync(resolve(process.cwd(), 'src/renderer/src/assets/base.css'), 'utf8')
+    const cardBlock = css.match(/\.critic-review-card\s*\{(?<body>[^}]*)\}/)?.groups?.body
+    const hoverBlock = css.match(
+      /\.critic-review-card\[data-hovered='true'\],\s*\.critic-review-card:hover\s*\{(?<body>[^}]*)\}/
+    )?.groups?.body
+
+    expect(cardBlock).toContain('will-change: transform')
+    expect(cardBlock).toContain('transform 200ms ease')
+    expect(css).toContain('--critic-review-card-hover-background: #252525;')
+    expect(css).toContain('--critic-review-card-hover-background: var(--surface-active);')
+    expect(hoverBlock).toContain('background-color: var(--critic-review-card-hover-background)')
+    expect(hoverBlock).toContain('transform: translateX(-20px)')
+    expect(hoverBlock).not.toContain('border-color')
+    expect(css).toContain('.critic-review-suggestion-label-addition')
+    expect(css).toContain(
+      'color: color-mix(in srgb, var(--accent-cyan) 72%, var(--muted-foreground))'
+    )
+    expect(css).toContain('color: color-mix(in srgb, var(--accent-cyan) 88%, var(--foreground))')
+    expect(css).toContain('color: var(--muted-foreground)')
+    expect(css).toContain('.critic-review-text-collapsible')
+    expect(css).toContain('text-overflow: ellipsis')
+    expect(css).toContain(
+      ".critic-review-card[data-expanded='true'] .critic-review-text-collapsible"
+    )
+    expect(css).toContain('.critic-comment-main-row')
+    expect(css).toContain('display: flex')
+    expect(css).toContain('.critic-comment-editor .ProseMirror')
+    expect(css).toContain('min-height: 22px !important')
+  })
+
   it('renders the suggestion mode pill and exits mode', () => {
     const onClose = vi.fn()
 
@@ -93,37 +131,206 @@ describe('review UI', () => {
           visibleText: 'new text',
           start: 14,
           end: 22
+        },
+        {
+          id: 'delete-1',
+          kind: 'deletion',
+          visibleText: 'old text',
+          originalText: 'old text',
+          start: 23,
+          end: 31
         }
       ],
-      markPositions: { 'comment-1': 24, 'add-1': 160 }
+      markPositions: { 'comment-1': 24, 'add-1': 160, 'delete-1': 296 }
     })
 
     render(<ReviewRail review={review} />)
 
     expect(screen.getByLabelText('comments.railAria')).toBeInTheDocument()
     expect(screen.getByText('Needs a source')).toBeInTheDocument()
-    expect(screen.getByText('new text')).toBeInTheDocument()
+    expect(screen.queryByText('selected text')).not.toBeInTheDocument()
+    expect(screen.queryByText('comments.kind.comment')).not.toBeInTheDocument()
+    expect(screen.queryByText('comments.kind.addition')).not.toBeInTheDocument()
+    expect(screen.queryByText('comments.kind.deletion')).not.toBeInTheDocument()
+
+    const additionCard = document.querySelector('[data-critic-mark-id="add-1"]') as HTMLElement
+    expect(within(additionCard).getByText('Add:')).toHaveClass(
+      'critic-review-suggestion-label-addition'
+    )
+    expect(within(additionCard).getByText('“new text”')).toHaveClass(
+      'critic-review-suggestion-text-addition'
+    )
+
+    const deletionCard = document.querySelector('[data-critic-mark-id="delete-1"]') as HTMLElement
+    expect(within(deletionCard).getByText('Delete:')).toHaveClass(
+      'critic-review-suggestion-label-deletion'
+    )
+    expect(within(deletionCard).getByText('“old text”')).toHaveClass(
+      'critic-review-suggestion-text-deletion'
+    )
+
+    const inlineMark = document.createElement('span')
+    inlineMark.dataset.criticMarkKind = 'comment'
+    inlineMark.dataset.criticMarkId = 'comment-1'
+    document.body.appendChild(inlineMark)
 
     fireEvent.pointerOver(screen.getByText('Needs a source').closest('[data-critic-mark-id]')!)
     expect(review.setHoveredMarkId).toHaveBeenCalledWith('comment-1')
+    expect(inlineMark).toHaveClass('critic-mark-hovered')
 
-    fireEvent.click(screen.getByText('comments.resolve'))
+    fireEvent.pointerOut(screen.getByText('Needs a source').closest('[data-critic-mark-id]')!)
+    expect(inlineMark).not.toHaveClass('critic-mark-hovered')
+    inlineMark.remove()
+
+    expect(screen.queryByText('comments.resolve')).not.toBeInTheDocument()
+    expect(screen.queryByText('comments.accept')).not.toBeInTheDocument()
+    expect(screen.queryByText('comments.reject')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByLabelText('comments.resolve'))
     expect(review.resolveMark).toHaveBeenCalledWith('comment-1')
 
-    fireEvent.click(screen.getByText('comments.accept'))
+    fireEvent.click(within(additionCard).getByLabelText('comments.accept'))
     expect(review.acceptMark).toHaveBeenCalledWith('add-1')
 
-    fireEvent.click(screen.getByText('comments.reject'))
+    fireEvent.click(within(additionCard).getByLabelText('comments.reject'))
     expect(review.rejectMark).toHaveBeenCalledWith('add-1')
   })
 
-  it('submits and cancels an active comment draft', async () => {
+  it('keeps long cards collapsed to one line until the card is clicked', () => {
+    const review = createReview({
+      marks: [
+        {
+          id: 'comment-1',
+          kind: 'comment',
+          visibleText: 'selected text',
+          body: 'This comment is long enough to need the collapsed one-line treatment.',
+          start: 0,
+          end: 13
+        },
+        {
+          id: 'delete-1',
+          kind: 'deletion',
+          visibleText: 'old text that is long enough to overflow the compact rail card',
+          originalText: 'old text that is long enough to overflow the compact rail card',
+          start: 14,
+          end: 77
+        }
+      ],
+      markPositions: { 'comment-1': 24, 'delete-1': 160 }
+    })
+
+    render(<ReviewRail review={review} />)
+
+    const commentCard = document.querySelector('[data-critic-mark-id="comment-1"]') as HTMLElement
+    const deletionCard = document.querySelector('[data-critic-mark-id="delete-1"]') as HTMLElement
+
+    expect(commentCard).toHaveAttribute('aria-expanded', 'false')
+    expect(deletionCard).toHaveAttribute('aria-expanded', 'false')
+    expect(
+      within(commentCard)
+        .getByText(/This comment is long/)
+        .closest('p')
+    ).toHaveClass('critic-review-text-collapsible')
+    expect(
+      within(deletionCard)
+        .getByText(/Delete:/)
+        .closest('p')
+    ).toHaveClass('critic-review-text-collapsible')
+
+    fireEvent.click(within(deletionCard).getByLabelText('Expand review card'))
+    expect(deletionCard).toHaveAttribute('aria-expanded', 'true')
+
+    fireEvent.click(within(deletionCard).getByLabelText('comments.accept'))
+    expect(review.acceptMark).toHaveBeenCalledWith('delete-1')
+    expect(deletionCard).toHaveAttribute('aria-expanded', 'true')
+
+    fireEvent.click(within(deletionCard).getByLabelText('Collapse review card'))
+    expect(deletionCard).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('stacks nearby rail cards with a 10px gap from measured card height', async () => {
+    const offsetHeightDescriptor = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      'offsetHeight'
+    )
+    Object.defineProperty(HTMLElement.prototype, 'offsetHeight', {
+      configurable: true,
+      get() {
+        return this instanceof HTMLElement && this.classList.contains('critic-review-card') ? 30 : 0
+      }
+    })
+
+    try {
+      const review = createReview({
+        marks: [
+          {
+            id: 'comment-1',
+            kind: 'comment',
+            visibleText: 'same line',
+            body: 'First',
+            start: 0,
+            end: 9
+          },
+          {
+            id: 'add-1',
+            kind: 'addition',
+            visibleText: 'same line',
+            start: 0,
+            end: 9
+          },
+          {
+            id: 'delete-1',
+            kind: 'deletion',
+            visibleText: 'same line',
+            originalText: 'same line',
+            start: 0,
+            end: 9
+          }
+        ],
+        markPositions: { 'comment-1': 24, 'add-1': 26, 'delete-1': 28 }
+      })
+
+      render(<ReviewRail review={review} />)
+
+      const commentCard = document.querySelector('[data-critic-mark-id="comment-1"]')
+      const additionCard = document.querySelector('[data-critic-mark-id="add-1"]')
+      const deletionCard = document.querySelector('[data-critic-mark-id="delete-1"]')
+
+      await waitFor(() => {
+        expect(commentCard).toHaveStyle({ top: '24px' })
+        expect(additionCard).toHaveStyle({ top: '64px' })
+        expect(deletionCard).toHaveStyle({ top: '104px' })
+      })
+    } finally {
+      if (offsetHeightDescriptor) {
+        Object.defineProperty(HTMLElement.prototype, 'offsetHeight', offsetHeightDescriptor)
+      } else {
+        delete (HTMLElement.prototype as { offsetHeight?: number }).offsetHeight
+      }
+    }
+  })
+
+  it('renders an inline comment composer row and submits an active draft', async () => {
     const user = userEvent.setup()
     const review = createReview({
       activeDraft: { text: 'draft target' }
     })
 
-    render(<ReviewRail review={review} />)
+    const { container } = render(<ReviewRail review={review} />)
+
+    const composerRow = container.querySelector('.critic-comment-main-row') as HTMLElement
+    expect(composerRow).not.toBeNull()
+    expect(within(composerRow).getByLabelText('comments.commentPlaceholder')).toBeInTheDocument()
+    expect(
+      within(composerRow).getByRole('button', { name: 'comments.attachAria' })
+    ).toBeInTheDocument()
+    expect(
+      within(composerRow).getByRole('button', { name: 'comments.mentionAria' })
+    ).toBeInTheDocument()
+    expect(
+      within(composerRow).getByRole('button', { name: 'comments.sendAria' })
+    ).toBeInTheDocument()
+    expect(screen.queryByText('comments.cancel')).not.toBeInTheDocument()
 
     await user.type(screen.getByLabelText('comments.commentPlaceholder'), 'Draft body')
     await user.click(screen.getByLabelText('comments.sendAria'))
@@ -132,10 +339,68 @@ describe('review UI', () => {
       mentions: [],
       attachments: []
     })
+  })
 
-    await user.type(screen.getByLabelText('comments.commentPlaceholder'), 'Cancel me')
-    await user.click(screen.getByText('comments.cancel'))
+  it('positions the active comment draft from the selected text top', () => {
+    const review = createReview({
+      activeDraft: { text: 'draft target', top: 88 }
+    })
+
+    const { container } = render(<ReviewRail review={review} />)
+
+    expect(container.querySelector('.critic-review-draft')).toHaveStyle({ top: '88px' })
+  })
+
+  it('focuses the active comment draft input when the composer opens', async () => {
+    const review = createReview({
+      activeDraft: { text: 'draft target' }
+    })
+
+    render(<ReviewRail review={review} />)
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('comments.commentPlaceholder')).toHaveFocus()
+    })
+  })
+
+  it('cancels an empty comment draft when focus moves outside', async () => {
+    const user = userEvent.setup()
+    const review = createReview({
+      activeDraft: { text: 'draft target' }
+    })
+
+    render(
+      <>
+        <button type="button">outside target</button>
+        <ReviewRail review={review} />
+      </>
+    )
+
+    await nextFrame()
+    await user.click(screen.getByText('outside target'))
+
     expect(review.cancelCommentDraft).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not auto-cancel a non-empty comment draft', async () => {
+    const user = userEvent.setup()
+    const review = createReview({
+      activeDraft: { text: 'draft target' }
+    })
+
+    render(
+      <>
+        <button type="button">outside target</button>
+        <ReviewRail review={review} />
+      </>
+    )
+
+    const input = screen.getByLabelText('comments.commentPlaceholder')
+    await user.type(input, 'Keep this')
+    await user.keyboard('{Escape}')
+    await user.click(screen.getByText('outside target'))
+
+    expect(review.cancelCommentDraft).not.toHaveBeenCalled()
   })
 
   it('uploads draft attachments through the comment target id', async () => {
@@ -432,8 +697,10 @@ describe('review UI', () => {
     )
 
     act(() => {
-      result.current.openCommentComposer({ text: 'comment target', isEmpty: false })
+      result.current.openCommentComposer({ text: 'comment target', isEmpty: false, top: 72 })
     })
+    expect(result.current.activeDraft).toMatchObject({ text: 'comment target', top: 72 })
+
     act(() => {
       result.current.submitComment({ body: 'Needs work', mentions: [], attachments: [] })
     })

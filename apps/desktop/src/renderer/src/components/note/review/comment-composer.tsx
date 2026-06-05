@@ -1,4 +1,12 @@
-import { useCallback, useMemo, useRef, useState, type ChangeEvent } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent
+} from 'react'
 
 import {
   AgentPromptEditor,
@@ -8,7 +16,7 @@ import {
 import { type MentionAttachment } from '@/agent-chat/mention-icons'
 import { RefPicker } from '@/agent-chat/ref-picker'
 import { Button } from '@/components/ui/button'
-import { AtSign, Loader2, Paperclip, Send, X } from '@/lib/icons'
+import { ArrowUp, AtSign, Loader2, Paperclip, X } from '@/lib/icons'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { cn } from '@/lib/utils'
 import { notesService } from '@/services/notes-service'
@@ -35,6 +43,7 @@ export function CommentComposer({
 }: CommentComposerProps): React.JSX.Element {
   const { t } = useT('notes')
   const { t: tCommon } = useT('common')
+  const composerRef = useRef<HTMLDivElement>(null)
   const editorRef = useRef<AgentPromptEditorHandle>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [editorValue, setEditorValue] = useState<AgentPromptValue>(emptyEditorValue)
@@ -47,6 +56,13 @@ export function CommentComposer({
 
   const mentions = useMemo(() => commentMentionsFromEditorValue(editorValue), [editorValue])
   const canSubmit = editorValue.text.trim().length > 0 && !isUploading
+  const hasDraftContent =
+    editorValue.text.trim().length > 0 || attachments.length > 0 || isUploading
+
+  const cancelIfEmpty = useCallback(() => {
+    if (hasDraftContent) return
+    onCancel()
+  }, [hasDraftContent, onCancel])
 
   const closeMentionPicker = useCallback(() => {
     setMentionQuery(null)
@@ -136,8 +152,37 @@ export function CommentComposer({
     [targetId, tCommon]
   )
 
+  useLayoutEffect(() => {
+    editorRef.current?.focus()
+  }, [])
+
+  useEffect(() => {
+    const composer = composerRef.current
+    if (!composer) return
+
+    const ownerDocument = composer.ownerDocument
+    const ownerWindow = ownerDocument.defaultView ?? window
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null
+      if (!target || composer.contains(target)) return
+      cancelIfEmpty()
+    }
+
+    const frame = ownerWindow.requestAnimationFrame(() => {
+      ownerDocument.addEventListener('pointerdown', handlePointerDown)
+    })
+
+    return () => {
+      ownerWindow.cancelAnimationFrame(frame)
+      ownerDocument.removeEventListener('pointerdown', handlePointerDown)
+    }
+  }, [cancelIfEmpty])
+
   return (
-    <div className="critic-comment-composer relative rounded-md border border-sidebar-border bg-card shadow-sm">
+    <div
+      ref={composerRef}
+      className="critic-comment-composer relative rounded-md border border-sidebar-border bg-background shadow-sm transition-colors hover:bg-[var(--surface-active)]"
+    >
       {mentionQuery !== null && (
         <RefPicker
           query={mentionQuery}
@@ -148,20 +193,79 @@ export function CommentComposer({
           onClose={closeMentionPicker}
         />
       )}
-      <div className="critic-comment-editor min-w-0">
-        <AgentPromptEditor
-          ref={editorRef}
-          disabled={false}
-          placeholder={t('comments.commentPlaceholder')}
-          onEscape={onCancel}
-          onMentionKeyDown={handleMentionKeyDown}
-          onMentionQueryChange={setMentionQuery}
-          onSubmit={handleSubmit}
-          onValueChange={setEditorValue}
-        />
+      <div className="critic-comment-main-row">
+        <div className="critic-comment-editor min-w-0 flex-1">
+          <AgentPromptEditor
+            ref={editorRef}
+            disabled={false}
+            placeholder={t('comments.commentPlaceholder')}
+            onEscape={cancelIfEmpty}
+            onMentionKeyDown={handleMentionKeyDown}
+            onMentionQueryChange={setMentionQuery}
+            onSubmit={handleSubmit}
+            onValueChange={setEditorValue}
+          />
+        </div>
+        <div className="critic-comment-actions">
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            aria-label={t('comments.attachAria')}
+            className="sr-only"
+            tabIndex={-1}
+            onChange={handleFileChange}
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="critic-comment-action-button"
+            aria-label={t('comments.attachAria')}
+            disabled={!targetId || isUploading}
+            onClick={handleAttachClick}
+          >
+            {isUploading ? (
+              <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+            ) : (
+              <Paperclip className="size-3.5" aria-hidden="true" />
+            )}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="critic-comment-action-button"
+            aria-label={t('comments.mentionAria')}
+            onClick={() => {
+              editorRef.current?.focus()
+              editorRef.current?.insertText('@')
+            }}
+          >
+            <AtSign className="size-3.5" aria-hidden="true" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className={cn('critic-comment-send-button', canSubmit && 'critic-comment-send-ready')}
+            aria-label={t('comments.sendAria')}
+            disabled={!canSubmit}
+            onPointerDown={(event) => {
+              if (!canSubmit) return
+              event.preventDefault()
+              handleSubmit()
+            }}
+            onClick={() => {
+              if (canSubmit) handleSubmit()
+            }}
+          >
+            <ArrowUp className="size-4" aria-hidden="true" />
+          </Button>
+        </div>
       </div>
       {attachments.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 border-t border-sidebar-border px-2 pb-2 pt-1">
+        <div className="critic-comment-attachments">
           {attachments.map((attachment) => (
             <span
               key={attachment.id}
@@ -183,71 +287,7 @@ export function CommentComposer({
           ))}
         </div>
       )}
-      {uploadError && (
-        <div className="border-t border-sidebar-border px-2 py-1 text-xs text-destructive">
-          {uploadError}
-        </div>
-      )}
-      <div className="flex items-center justify-between border-t border-sidebar-border px-1.5 py-1">
-        <div className="flex items-center gap-0.5">
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            className="sr-only"
-            onChange={handleFileChange}
-          />
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            aria-label={t('comments.attachAria')}
-            disabled={!targetId || isUploading}
-            onClick={handleAttachClick}
-          >
-            {isUploading ? (
-              <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
-            ) : (
-              <Paperclip className="size-3.5" aria-hidden="true" />
-            )}
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            aria-label={t('comments.mentionAria')}
-            onClick={() => {
-              editorRef.current?.focus()
-              editorRef.current?.insertText('@')
-            }}
-          >
-            <AtSign className="size-3.5" aria-hidden="true" />
-          </Button>
-        </div>
-        <div className="flex items-center gap-0.5">
-          <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
-            {t('comments.cancel')}
-          </Button>
-          <Button
-            type="button"
-            variant="default"
-            size="icon-sm"
-            className={cn('rounded-full', canSubmit && 'bg-primary text-primary-foreground')}
-            aria-label={t('comments.sendAria')}
-            disabled={!canSubmit}
-            onPointerDown={(event) => {
-              if (!canSubmit) return
-              event.preventDefault()
-              handleSubmit()
-            }}
-            onClick={() => {
-              if (canSubmit) handleSubmit()
-            }}
-          >
-            <Send className="size-3.5" aria-hidden="true" />
-          </Button>
-        </div>
-      </div>
+      {uploadError && <div className="critic-comment-error">{uploadError}</div>}
     </div>
   )
 }

@@ -1,7 +1,7 @@
-import { useEffect, useMemo, type MouseEvent } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
 import { MentionIcon, mentionColorForKind, type MentionIconSpec } from '@/agent-chat/mention-icons'
 import { useMemryLinkNavigation } from '@/agent-chat/messages/memry-links'
-import { Check, MessageCircle, Paperclip, PenLine, Trash, X } from '@/lib/icons'
+import { Check, Paperclip, Trash, X } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { CriticMarkupReviewController } from './use-critic-markup-review'
@@ -14,21 +14,89 @@ interface ReviewRailProps {
   targetId?: string
 }
 
+const REVIEW_RAIL_ITEM_GAP = 10
+const REVIEW_RAIL_DRAFT_ID = '__review-draft__'
+
+interface RailItem {
+  id: string
+  desiredTop: number
+  order: number
+}
+
 export function ReviewRail({ review, targetId }: ReviewRailProps) {
   const { t } = useT('notes')
+  const [expandedMarkIds, setExpandedMarkIds] = useState<Set<string>>(() => new Set())
+  const itemRefs = useRef<Record<string, HTMLElement | null>>({})
+  const [itemHeights, setItemHeights] = useState<Record<string, number>>({})
   const setHoveredMark = (id: string | null) => {
     review.setHoveredMarkId(id)
     syncInlineHoverClass(id)
   }
-  const positionedMarks = useMemo(() => {
-    let lastTop = 0
-    return review.marks.map((mark, index) => {
-      const desiredTop = review.markPositions[mark.id] ?? index * 116
-      const top = Math.max(desiredTop, index === 0 ? 0 : lastTop + 12)
-      lastTop = top + 104
-      return { mark, top }
+  const toggleExpandedMark = (id: string) => {
+    setExpandedMarkIds((current) => {
+      const next = new Set(current)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
     })
-  }, [review.markPositions, review.marks])
+  }
+  const railItemPositions = useMemo(() => {
+    const items: RailItem[] = []
+    if (review.activeDraft) {
+      items.push({
+        id: REVIEW_RAIL_DRAFT_ID,
+        desiredTop: review.activeDraft.top ?? 0,
+        order: -1
+      })
+    }
+    review.marks.forEach((mark, index) => {
+      items.push({
+        id: mark.id,
+        desiredTop: review.markPositions[mark.id] ?? index * REVIEW_RAIL_ITEM_GAP,
+        order: index
+      })
+    })
+
+    items.sort((a, b) => a.desiredTop - b.desiredTop || a.order - b.order)
+
+    const positions: Record<string, number> = {}
+    let previousBottom = 0
+    items.forEach((item, index) => {
+      const top = Math.max(item.desiredTop, index === 0 ? 0 : previousBottom + REVIEW_RAIL_ITEM_GAP)
+      positions[item.id] = top
+      previousBottom = top + (itemHeights[item.id] ?? 0)
+    })
+    return positions
+  }, [itemHeights, review.activeDraft, review.markPositions, review.marks])
+  const positionedMarks = useMemo(
+    () =>
+      review.marks.map((mark) => ({
+        mark,
+        top: railItemPositions[mark.id] ?? review.markPositions[mark.id] ?? 0
+      })),
+    [railItemPositions, review.markPositions, review.marks]
+  )
+  const activeDraftTop = railItemPositions[REVIEW_RAIL_DRAFT_ID] ?? review.activeDraft?.top ?? 0
+
+  useLayoutEffect(() => {
+    const nextHeights: Record<string, number> = {}
+    if (review.activeDraft) {
+      const draftElement = itemRefs.current[REVIEW_RAIL_DRAFT_ID]
+      if (draftElement) nextHeights[REVIEW_RAIL_DRAFT_ID] = draftElement.offsetHeight
+    }
+    review.marks.forEach((mark) => {
+      const element = itemRefs.current[mark.id]
+      if (element) nextHeights[mark.id] = element.offsetHeight
+    })
+
+    setItemHeights((previous) => {
+      if (areNumberRecordsEqual(previous, nextHeights)) return previous
+      return nextHeights
+    })
+  }, [expandedMarkIds, review.activeDraft, review.marks])
 
   useEffect(() => {
     syncInlineHoverClass(review.hoveredMarkId)
@@ -49,12 +117,13 @@ export function ReviewRail({ review, targetId }: ReviewRailProps) {
     <aside aria-label={t('comments.railAria')} data-marquee-ignore className="review-rail">
       <div className="review-rail-inner">
         {review.activeDraft && (
-          <div className="critic-review-card critic-review-card-draft">
-            <div className="critic-review-card-header">
-              <MessageCircle className="size-3.5" aria-hidden="true" />
-              <span>{t('comments.newComment')}</span>
-            </div>
-            <p className="critic-review-quote">{review.activeDraft.text}</p>
+          <div
+            ref={(element) => {
+              itemRefs.current[REVIEW_RAIL_DRAFT_ID] = element
+            }}
+            className="critic-review-draft"
+            style={{ top: activeDraftTop }}
+          >
             <CommentComposer
               targetId={targetId}
               onSubmit={review.submitComment}
@@ -65,12 +134,18 @@ export function ReviewRail({ review, targetId }: ReviewRailProps) {
 
         {positionedMarks.map(({ mark, top }) => {
           const isSuggestion = mark.kind !== 'comment'
+          const isExpanded = expandedMarkIds.has(mark.id)
           return (
             <div
+              ref={(element) => {
+                itemRefs.current[mark.id] = element
+              }}
               key={mark.id}
               className={cn('critic-review-card', `critic-review-card-${mark.kind}`)}
               data-critic-mark-id={mark.id}
               data-hovered={review.hoveredMarkId === mark.id ? 'true' : 'false'}
+              data-expanded={isExpanded ? 'true' : 'false'}
+              aria-expanded={isExpanded ? 'true' : 'false'}
               style={{ top }}
               onPointerOver={() => setHoveredMark(mark.id)}
               onPointerOut={(event) => {
@@ -83,50 +158,48 @@ export function ReviewRail({ review, targetId }: ReviewRailProps) {
                 setHoveredMark(null)
               }}
             >
-              <div className="critic-review-card-header">
-                {isSuggestion ? (
-                  <PenLine className="size-3.5" aria-hidden="true" />
-                ) : (
-                  <MessageCircle className="size-3.5" aria-hidden="true" />
-                )}
-                <span>
-                  {isSuggestion ? t(`comments.kind.${mark.kind}`) : t('comments.kind.comment')}
-                </span>
+              <button
+                type="button"
+                className="critic-review-expand-toggle"
+                aria-label={isExpanded ? 'Collapse review card' : 'Expand review card'}
+                aria-expanded={isExpanded ? 'true' : 'false'}
+                onClick={() => toggleExpandedMark(mark.id)}
+              />
+              <div className="critic-review-content">
+                {isSuggestion && <SuggestionPreview mark={mark} />}
+                <CommentBody mark={mark} />
+                <CommentAttachments mark={mark} />
               </div>
-              {mark.kind === 'substitution' && (
-                <p className="critic-review-quote">
-                  {mark.originalText}
-                  {' -> '}
-                  {mark.visibleText}
-                </p>
-              )}
-              {mark.kind !== 'substitution' && (
-                <p className="critic-review-quote">{mark.visibleText}</p>
-              )}
-              <CommentBody mark={mark} />
-              <CommentAttachments mark={mark} />
               <div className="critic-review-actions">
                 {isSuggestion ? (
                   <>
                     <Button
                       type="button"
                       variant="ghost"
-                      size="sm"
-                      onPointerDown={() => review.acceptMark(mark.id)}
+                      size="icon-sm"
+                      className="critic-review-action-button"
+                      aria-label={t('comments.accept')}
+                      onPointerDown={(event) => {
+                        event.preventDefault()
+                        review.acceptMark(mark.id)
+                      }}
                       onClick={() => review.acceptMark(mark.id)}
                     >
-                      <Check className="me-1 size-3.5" aria-hidden="true" />
-                      {t('comments.accept')}
+                      <Check className="size-3.5" aria-hidden="true" />
                     </Button>
                     <Button
                       type="button"
                       variant="ghost"
-                      size="sm"
-                      onPointerDown={() => review.rejectMark(mark.id)}
+                      size="icon-sm"
+                      className="critic-review-action-button"
+                      aria-label={t('comments.reject')}
+                      onPointerDown={(event) => {
+                        event.preventDefault()
+                        review.rejectMark(mark.id)
+                      }}
                       onClick={() => review.rejectMark(mark.id)}
                     >
-                      <X className="me-1 size-3.5" aria-hidden="true" />
-                      {t('comments.reject')}
+                      <X className="size-3.5" aria-hidden="true" />
                     </Button>
                   </>
                 ) : (
@@ -134,19 +207,27 @@ export function ReviewRail({ review, targetId }: ReviewRailProps) {
                     <Button
                       type="button"
                       variant="ghost"
-                      size="sm"
-                      onPointerDown={() => review.resolveMark(mark.id)}
+                      size="icon-sm"
+                      className="critic-review-action-button"
+                      aria-label={t('comments.resolve')}
+                      onPointerDown={(event) => {
+                        event.preventDefault()
+                        review.resolveMark(mark.id)
+                      }}
                       onClick={() => review.resolveMark(mark.id)}
                     >
-                      <Check className="me-1 size-3.5" aria-hidden="true" />
-                      {t('comments.resolve')}
+                      <Check className="size-3.5" aria-hidden="true" />
                     </Button>
                     <Button
                       type="button"
                       variant="ghost"
                       size="icon-sm"
+                      className="critic-review-action-button"
                       aria-label={t('comments.delete')}
-                      onPointerDown={() => review.deleteMark(mark.id)}
+                      onPointerDown={(event) => {
+                        event.preventDefault()
+                        review.deleteMark(mark.id)
+                      }}
                       onClick={() => review.deleteMark(mark.id)}
                     >
                       <Trash className="size-3.5" aria-hidden="true" />
@@ -162,12 +243,62 @@ export function ReviewRail({ review, targetId }: ReviewRailProps) {
   )
 }
 
+function areNumberRecordsEqual(
+  previous: Record<string, number>,
+  next: Record<string, number>
+): boolean {
+  const previousKeys = Object.keys(previous)
+  const nextKeys = Object.keys(next)
+  return (
+    previousKeys.length === nextKeys.length && nextKeys.every((key) => previous[key] === next[key])
+  )
+}
+
+function SuggestionPreview({ mark }: { mark: CriticMarkupMark }): React.JSX.Element | null {
+  if (mark.kind === 'addition') {
+    return (
+      <p className="critic-review-suggestion-preview critic-review-text-collapsible">
+        <span className="critic-review-suggestion-label-addition">Add:</span>{' '}
+        <span className="critic-review-suggestion-text-addition">
+          &ldquo;{mark.visibleText}&rdquo;
+        </span>
+      </p>
+    )
+  }
+
+  if (mark.kind === 'deletion') {
+    return (
+      <p className="critic-review-suggestion-preview critic-review-text-collapsible">
+        <span className="critic-review-suggestion-label-deletion">Delete:</span>{' '}
+        <span className="critic-review-suggestion-text-deletion">
+          &ldquo;{mark.visibleText}&rdquo;
+        </span>
+      </p>
+    )
+  }
+
+  if (mark.kind === 'substitution') {
+    return (
+      <p className="critic-review-suggestion-preview critic-review-text-collapsible">
+        <span className="critic-review-suggestion-label-substitution">Replace:</span>{' '}
+        <span className="critic-review-suggestion-text-substitution">
+          {mark.originalText}
+          {' -> '}
+          {mark.visibleText}
+        </span>
+      </p>
+    )
+  }
+
+  return null
+}
+
 function CommentBody({ mark }: { mark: CriticMarkupMark }): React.JSX.Element | null {
   if (!mark.body) return null
 
   const parts = splitCommentBody(mark.body, mark.mentions ?? [])
   return (
-    <p className="critic-review-body">
+    <p className="critic-review-body critic-review-text-collapsible">
       {parts.map((part, index) =>
         part.kind === 'mention' ? (
           <CommentMentionLink

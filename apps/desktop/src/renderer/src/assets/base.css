@@ -427,38 +427,96 @@
   width: 308px;
   border: 1px solid color-mix(in srgb, var(--border) 76%, transparent);
   border-radius: 8px;
-  background: color-mix(in srgb, var(--background) 96%, var(--muted));
+  background-color: var(--background);
   color: var(--foreground);
   padding: 10px;
   box-shadow: 0 10px 28px color-mix(in srgb, black 10%, transparent);
-}
-
-.critic-review-card-draft {
-  position: relative;
-  margin-bottom: 12px;
+  will-change: transform;
+  transition:
+    background-color 120ms ease,
+    transform 200ms ease;
 }
 
 .critic-review-card[data-hovered='true'],
 .critic-review-card:hover {
-  border-color: color-mix(in srgb, var(--accent-cyan) 40%, var(--border));
-  background: color-mix(in srgb, var(--accent-cyan) 6%, var(--background));
+  background-color: var(--critic-review-card-hover-background);
+  transform: translateX(-20px);
 }
 
-.critic-review-card-header {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--muted-foreground);
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1.2;
+.critic-review-card[data-expanded='true'] {
+  z-index: 3;
 }
 
-.critic-review-quote {
-  margin-top: 8px;
+.critic-review-text-collapsible {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.critic-review-card[data-expanded='true'] .critic-review-text-collapsible {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.critic-review-expand-toggle {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  cursor: pointer;
+}
+
+.critic-review-expand-toggle:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.critic-review-content {
+  position: relative;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.critic-review-content a {
+  pointer-events: auto;
+}
+
+.critic-review-suggestion-preview {
+  margin: 0;
+  padding-inline-end: 66px;
   color: var(--foreground);
-  font-size: 12px;
-  line-height: 1.45;
+  font-size: 14px;
+  line-height: 18px;
+}
+
+.critic-review-suggestion-label-addition,
+.critic-review-suggestion-label-deletion,
+.critic-review-suggestion-label-substitution {
+  font-weight: 500;
+}
+
+.critic-review-suggestion-label-addition {
+  color: color-mix(in srgb, var(--accent-cyan) 72%, var(--muted-foreground));
+}
+
+.critic-review-suggestion-text-addition {
+  color: color-mix(in srgb, var(--accent-cyan) 88%, var(--foreground));
+}
+
+.critic-review-suggestion-label-deletion,
+.critic-review-suggestion-label-substitution {
+  color: var(--muted-foreground);
+}
+
+.critic-review-suggestion-text-deletion,
+.critic-review-suggestion-text-substitution {
+  color: color-mix(in srgb, var(--muted-foreground) 82%, var(--foreground));
 }
 
 .critic-review-body {
@@ -466,6 +524,11 @@
   color: var(--foreground);
   font-size: 13px;
   line-height: 1.45;
+}
+
+.critic-review-card > .critic-review-body:first-child {
+  margin-top: 0;
+  padding-inline-end: 66px;
 }
 
 .critic-review-attachments {
@@ -476,29 +539,121 @@
 }
 
 .critic-review-actions {
+  position: absolute;
+  inset-block-start: -4px;
+  inset-inline-end: 0;
+  z-index: 3;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 4px;
-  margin-top: 10px;
+  gap: 2px;
+  width: fit-content;
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  border-radius: 6px;
+  background-color: var(--background);
+  padding: 2px;
+  box-shadow: 0 8px 20px color-mix(in srgb, black 12%, transparent);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms ease-out;
+}
+
+.critic-review-card:hover .critic-review-actions,
+.critic-review-card:focus-within .critic-review-actions,
+.critic-review-card[data-hovered='true'] .critic-review-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.critic-review-action-button {
+  height: 24px;
+  width: 24px;
+  border-radius: 4px;
+}
+
+.critic-review-draft {
+  position: absolute;
+  inset-inline-start: 0;
+  z-index: 2;
+  width: 308px;
 }
 
 .critic-comment-composer {
-  margin-top: 8px;
+  width: 308px;
   overflow: visible;
 }
 
+.critic-comment-main-row {
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px 6px 10px;
+}
+
 .critic-comment-editor .ProseMirror {
-  min-height: 42px !important;
+  min-height: 22px !important;
   max-height: 130px;
   overflow-y: auto;
-  padding: 8px !important;
+  padding: 2px 0 !important;
   font-size: 13px !important;
-  line-height: 1.45 !important;
+  line-height: 20px !important;
 }
 
 .critic-comment-editor .ProseMirror p {
   margin: 0;
+}
+
+.critic-comment-actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 2px;
+}
+
+.critic-comment-action-button,
+.critic-comment-send-button {
+  height: 24px;
+  width: 24px;
+  border-radius: 999px;
+  color: var(--muted-foreground);
+}
+
+.critic-comment-action-button:hover,
+.critic-comment-send-button:hover {
+  background-color: color-mix(in srgb, var(--muted) 72%, transparent);
+  color: var(--foreground);
+}
+
+.critic-comment-send-button {
+  background-color: color-mix(in srgb, var(--muted-foreground) 24%, transparent);
+  color: var(--background);
+  opacity: 1;
+}
+
+.critic-comment-send-button:disabled {
+  cursor: default;
+  background-color: color-mix(in srgb, var(--muted-foreground) 28%, transparent);
+  color: color-mix(in srgb, var(--foreground) 58%, transparent);
+  opacity: 1;
+}
+
+.critic-comment-send-ready {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.critic-comment-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 8px 8px 10px;
+}
+
+.critic-comment-error {
+  padding: 0 10px 8px;
+  color: var(--destructive);
+  font-size: 12px;
+  line-height: 16px;
 }
 
 .critic-review-textarea {
@@ -652,6 +807,7 @@
     /* Sidebar/Panels - Slightly darker warm grey */
     --surface-active: #e4e4de;
     /* Hover states */
+    --critic-review-card-hover-background: var(--surface-active);
 
     /* ===== SEMANTIC PASTELS (Card Backgrounds) ===== */
     --card-sage: #e6efe6;
@@ -811,6 +967,7 @@
     --foreground: #37352f;
     --surface: #f7f6f3;
     --surface-active: #efedea;
+    --critic-review-card-hover-background: var(--surface-active);
 
     /* ===== SEMANTIC PASTELS - White Mode ===== */
     --card-sage: #dbeddb;
@@ -932,6 +1089,7 @@
     --foreground: #bcbab6;
     --surface: #222222;
     --surface-active: #2a2a2a;
+    --critic-review-card-hover-background: #252525;
 
     /* ===== SEMANTIC PASTELS - Dark Mode (Muted versions) ===== */
     --card-sage: #1e261e;

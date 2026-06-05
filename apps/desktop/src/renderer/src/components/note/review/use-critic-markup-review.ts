@@ -26,6 +26,7 @@ interface UseCriticMarkupReviewParams {
 
 interface CommentDraft {
   text: string
+  top?: number
 }
 
 interface ReviewUndoEntry {
@@ -157,7 +158,10 @@ export function useCriticMarkupReview({
 
   const openCommentComposer = useCallback((selection: ReviewSelection) => {
     if (selection.isEmpty || !selection.text.trim()) return
-    const nextDraft = { text: selection.text.trim() }
+    const nextDraft: CommentDraft = {
+      text: selection.text.trim(),
+      ...(selection.top !== undefined ? { top: selection.top } : {})
+    }
     activeDraftRef.current = nextDraft
     setActiveDraft(nextDraft)
   }, [])

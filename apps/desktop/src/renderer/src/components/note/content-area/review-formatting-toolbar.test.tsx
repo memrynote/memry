@@ -94,15 +94,41 @@ describe('ReviewFormattingToolbar', () => {
   it('captures selected text before clicking Comment collapses selection', () => {
     const onAddComment = vi.fn()
 
-    render(<ReviewFormattingToolbar onAddComment={onAddComment} />)
+    const { rerender } = render(<ReviewFormattingToolbar onAddComment={onAddComment} />)
+
+    toolbarMocks.editor.prosemirrorState.selection.empty = true
+    rerender(<ReviewFormattingToolbar onAddComment={onAddComment} />)
+    expect(screen.getByText('Comment')).toBeEnabled()
 
     fireEvent.click(screen.getByText('Comment'))
-    expect(onAddComment).toHaveBeenCalledWith({
-      text: 'selected text',
-      isEmpty: false,
-      from: 2,
-      to: 15
-    })
+    expect(onAddComment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text: 'selected text',
+        isEmpty: false,
+        from: 2,
+        to: 15
+      })
+    )
+  })
+
+  it('uses cached selected text when click-time selection has no readable text', () => {
+    const onAddComment = vi.fn()
+
+    const { rerender } = render(<ReviewFormattingToolbar onAddComment={onAddComment} />)
+
+    toolbarMocks.editor.prosemirrorState.doc.textBetween.mockReturnValue('')
+    rerender(<ReviewFormattingToolbar onAddComment={onAddComment} />)
+    expect(screen.getByText('Comment')).toBeEnabled()
+
+    fireEvent.click(screen.getByText('Comment'))
+    expect(onAddComment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text: 'selected text',
+        isEmpty: false,
+        from: 2,
+        to: 15
+      })
+    )
   })
 
   it('starts page-level suggestion mode and disables Comment without selection', () => {
