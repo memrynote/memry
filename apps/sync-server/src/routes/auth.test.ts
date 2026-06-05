@@ -126,6 +126,7 @@ import { auth } from './auth'
 import { checkEmailRateLimit, hasPendingOtp } from '../services/otp'
 import { getOrCreateUserByEmail, getUserByEmail, getUserById, updateUser } from '../services/user'
 import { revokeDeviceTokens, rotateRefreshToken } from '../services/auth'
+import { SYNC_PLAN_LIMITS } from '../services/entitlements'
 import { jwtVerify } from 'jose'
 
 // ============================================================================
@@ -154,6 +155,7 @@ const createEnv = (options?: {
   firstRows?: unknown[]
   paddleFetch?: typeof fetch
   paddleApiKey?: string
+  environment?: string
 }) => {
   const firstRows = [...(options?.firstRows ?? [])]
   return {
@@ -167,7 +169,7 @@ const createEnv = (options?: {
     STORAGE: {} as R2Bucket,
     USER_SYNC_STATE: {} as DurableObjectNamespace,
     LINKING_SESSION: {} as DurableObjectNamespace,
-    ENVIRONMENT: 'development',
+    ENVIRONMENT: options?.environment ?? 'development',
     JWT_PUBLIC_KEY: 'mock-public-key',
     JWT_PRIVATE_KEY: 'mock-private-key',
     RESEND_API_KEY: 'mock-resend-key',
@@ -309,6 +311,7 @@ describe('auth routes', () => {
     it('returns free billing status when no paid entitlement exists', async () => {
       env = createEnv({
         firstRows: [
+          { email: 'test@example.com' },
           {
             user_id: 'user-1',
             storage_used: 0,
@@ -339,6 +342,46 @@ describe('auth routes', () => {
       })
     })
 
+    it('returns Kaan as a local dev paid sync account without a checkout', async () => {
+      env = createEnv({
+        firstRows: [
+          { email: 'kaan@memrynote.com' },
+          {
+            user_id: 'user-1',
+            storage_used: 0,
+            plan: 'believer',
+            status: 'active',
+            source: 'dev_seed',
+            storage_limit: SYNC_PLAN_LIMITS.believer.storageLimit,
+            max_file_size: SYNC_PLAN_LIMITS.believer.maxFileSize,
+            max_vaults: SYNC_PLAN_LIMITS.believer.maxVaults,
+            version_history_days: SYNC_PLAN_LIMITS.believer.versionHistoryDays,
+            paddle_customer_id: null,
+            paddle_subscription_id: null,
+            paddle_transaction_id: null,
+            expires_at: null
+          }
+        ]
+      })
+
+      const res = await app.request('/auth/billing', { method: 'GET' }, env)
+
+      expect(res.status).toBe(200)
+      await expect(res.json()).resolves.toMatchObject({
+        plan: 'believer',
+        status: 'active',
+        source: 'dev_seed',
+        limits: { storageLimit: SYNC_PLAN_LIMITS.believer.storageLimit },
+        canManageBilling: false
+      })
+      const prepareMock = env.DB.prepare as unknown as ReturnType<typeof vi.fn>
+      expect(
+        prepareMock.mock.calls.some(([sql]) =>
+          String(sql).includes('INSERT INTO sync_entitlements')
+        )
+      ).toBe(true)
+    })
+
     it('reconciles a completed Paddle transaction for the authenticated user', async () => {
       const paddleFetch = vi.fn().mockResolvedValue(
         new Response(
@@ -363,6 +406,7 @@ describe('auth routes', () => {
       env = createEnv({
         paddleFetch,
         firstRows: [
+          { email: 'test@example.com' },
           {
             user_id: 'user-1',
             storage_used: 128,
@@ -528,6 +572,53 @@ describe('auth routes', () => {
         needsSetup: true,
         setupToken: 'mock-setup-token'
       })
+    })
+
+    it('grants Kaan a local dev paid sync entitlement', async () => {
+      const res = await app.request(
+        '/auth/otp/verify',
+        jsonPost('/auth/otp/verify', { email: 'kaan@memrynote.com', code: '123456' }),
+        env
+      )
+
+      expect(res.status).toBe(200)
+      const prepareMock = env.DB.prepare as unknown as ReturnType<typeof vi.fn>
+      const entitlementCallIndex = prepareMock.mock.calls.findIndex(([sql]) =>
+        String(sql).includes('INSERT INTO sync_entitlements')
+      )
+      expect(entitlementCallIndex).toBeGreaterThanOrEqual(0)
+
+      const entitlementStatement = prepareMock.mock.results[entitlementCallIndex]!
+        .value as ReturnType<typeof createD1Statement>
+      const bindArgs = entitlementStatement.bind.mock.calls[0]
+      expect(bindArgs.slice(0, 8)).toEqual([
+        'user-1',
+        'believer',
+        'active',
+        'dev_seed',
+        SYNC_PLAN_LIMITS.believer.storageLimit,
+        SYNC_PLAN_LIMITS.believer.maxFileSize,
+        SYNC_PLAN_LIMITS.believer.maxVaults,
+        SYNC_PLAN_LIMITS.believer.versionHistoryDays
+      ])
+    })
+
+    it('does not grant local admin sync entitlement outside development', async () => {
+      env = createEnv({ environment: 'production' })
+
+      const res = await app.request(
+        '/auth/otp/verify',
+        jsonPost('/auth/otp/verify', { email: 'kaan@memrynote.com', code: '123456' }),
+        env
+      )
+
+      expect(res.status).toBe(200)
+      const prepareMock = env.DB.prepare as unknown as ReturnType<typeof vi.fn>
+      expect(
+        prepareMock.mock.calls.some(([sql]) =>
+          String(sql).includes('INSERT INTO sync_entitlements')
+        )
+      ).toBe(false)
     })
 
     it('should return 400 for invalid body', async () => {

@@ -68,6 +68,42 @@ export const SYNC_PLAN_LIMITS: Record<SyncPlan, SyncPlanLimits> = {
   }
 }
 
+const LOCAL_ADMIN_SYNC_EMAILS = new Set(['kaan@memrynote.com'])
+
+export async function ensureLocalAdminPaidSyncAccess(
+  db: D1Database,
+  environment: string | undefined,
+  email: string,
+  userId: string
+): Promise<void> {
+  if (environment !== 'development') return
+  if (!LOCAL_ADMIN_SYNC_EMAILS.has(email.trim().toLowerCase())) return
+
+  await upsertSyncEntitlement(db, {
+    userId,
+    plan: 'believer',
+    status: 'active',
+    source: 'dev_seed'
+  })
+}
+
+export async function ensureLocalAdminPaidSyncAccessForUser(
+  db: D1Database,
+  environment: string | undefined,
+  userId: string
+): Promise<void> {
+  if (environment !== 'development') return
+
+  const user = await db
+    .prepare('SELECT email FROM users WHERE id = ?')
+    .bind(userId)
+    .first<{ email: string }>()
+
+  if (typeof user?.email !== 'string') return
+
+  await ensureLocalAdminPaidSyncAccess(db, environment, user.email, userId)
+}
+
 export function isPaidSyncEntitlementActive(
   entitlement: SyncEntitlement,
   nowSeconds = Math.floor(Date.now() / 1000)
