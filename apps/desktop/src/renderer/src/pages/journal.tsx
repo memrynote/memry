@@ -887,6 +887,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                               focusAtEndRef={focusAtEndRef}
                               marqueeZoneEl={marqueeZoneEl}
                               review={{
+                                plainMarkdown: review.plainMarkdown,
                                 marks: review.marks,
                                 hoveredMarkId: review.hoveredMarkId,
                                 isSuggestionModeActive: review.isSuggestionModeActive,

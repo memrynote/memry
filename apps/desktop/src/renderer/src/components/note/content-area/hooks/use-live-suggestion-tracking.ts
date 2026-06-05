@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { TextSelection } from '@tiptap/pm/state'
 import { proseMirrorDocPosToEditorOffset } from '../critic-markup-offset-map'
+import type { CriticMarkupMark } from '@memry/shared'
 
 interface AddSuggestionInput {
   kind: 'addition' | 'deletion' | 'substitution'
@@ -15,6 +16,7 @@ interface UseLiveSuggestionTrackingParams {
   enabled: boolean
   onAddSuggestion: (input: AddSuggestionInput) => void
   resolveMarkdownSourceOffset?: (editorOffset: number) => number | null
+  getReviewMarks?: () => CriticMarkupMark[]
 }
 
 export function useLiveSuggestionTracking({
@@ -22,7 +24,8 @@ export function useLiveSuggestionTracking({
   containerRef,
   enabled,
   onAddSuggestion,
-  resolveMarkdownSourceOffset
+  resolveMarkdownSourceOffset,
+  getReviewMarks
 }: UseLiveSuggestionTrackingParams): void {
   useEffect(() => {
     const container = containerRef.current
@@ -38,6 +41,20 @@ export function useLiveSuggestionTracking({
 
       if (event.inputType === 'insertText' && event.data) {
         const originalText = state.doc.textBetween(selection.from, selection.to, '\n')
+        const replacementRange = markdownSourceRangeForDocRange(
+          state.doc,
+          selection.from,
+          selection.to,
+          resolveMarkdownSourceOffset
+        )
+        if (
+          originalText &&
+          replacementRange &&
+          isRangeInsideAdditionMark(replacementRange.start, replacementRange.end, getReviewMarks)
+        ) {
+          return
+        }
+
         const start = markdownSourceOffsetForDocPos(
           state.doc,
           selection.from,
@@ -56,35 +73,71 @@ export function useLiveSuggestionTracking({
       }
 
       if (event.inputType === 'deleteContentBackward') {
-        if (recordDeletion(tiptap, onAddSuggestion, resolveMarkdownSourceOffset)) {
+        if (recordDeletion(tiptap, onAddSuggestion, resolveMarkdownSourceOffset, getReviewMarks)) {
           event.preventDefault()
         }
       }
     }
 
     const handleKeyDown = (event: KeyboardEvent): void => {
-      if (event.key !== 'Backspace' || event.metaKey || event.ctrlKey || event.altKey) return
+      if (!isBackspaceDeleteEvent(event)) return
       const tiptap = editor._tiptapEditor
       if (!tiptap) return
-      if (!recordDeletion(tiptap, onAddSuggestion, resolveMarkdownSourceOffset)) {
+      if (!recordDeletion(tiptap, onAddSuggestion, resolveMarkdownSourceOffset, getReviewMarks)) {
         return
       }
       event.preventDefault()
     }
 
+    const handleDocumentKeyDown = (event: KeyboardEvent): void => {
+      if (!isBackspaceDeleteEvent(event)) return
+      if (!hasSelectedRangeInsideContainer(container)) return
+      const tiptap = editor._tiptapEditor
+      if (!tiptap) return
+      if (!recordDeletion(tiptap, onAddSuggestion, resolveMarkdownSourceOffset, getReviewMarks)) {
+        return
+      }
+      event.preventDefault()
+      event.stopImmediatePropagation()
+    }
+
+    const ownerDocument = container.ownerDocument
     container.addEventListener('beforeinput', handleBeforeInput, true)
     container.addEventListener('keydown', handleKeyDown, true)
+    ownerDocument.addEventListener('keydown', handleDocumentKeyDown, true)
     return () => {
       container.removeEventListener('beforeinput', handleBeforeInput, true)
       container.removeEventListener('keydown', handleKeyDown, true)
+      ownerDocument.removeEventListener('keydown', handleDocumentKeyDown, true)
     }
-  }, [containerRef, editor, enabled, onAddSuggestion, resolveMarkdownSourceOffset])
+  }, [containerRef, editor, enabled, onAddSuggestion, resolveMarkdownSourceOffset, getReviewMarks])
+}
+
+function isBackspaceDeleteEvent(event: KeyboardEvent): boolean {
+  return event.key === 'Backspace' && !event.metaKey && !event.ctrlKey && !event.altKey
+}
+
+function hasSelectedRangeInsideContainer(container: HTMLElement): boolean {
+  const selection = container.ownerDocument.getSelection()
+  if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return false
+  const { anchorNode, focusNode } = selection
+  return Boolean(
+    anchorNode &&
+    focusNode &&
+    containsSelectionNode(container, anchorNode) &&
+    containsSelectionNode(container, focusNode)
+  )
+}
+
+function containsSelectionNode(container: HTMLElement, node: Node): boolean {
+  return node === container || container.contains(node)
 }
 
 function recordDeletion(
   tiptap: any,
   onAddSuggestion: (input: AddSuggestionInput) => void,
-  resolveMarkdownSourceOffset?: (editorOffset: number) => number | null
+  resolveMarkdownSourceOffset?: (editorOffset: number) => number | null,
+  getReviewMarks?: () => CriticMarkupMark[]
 ): boolean {
   const state = tiptap.state
   const selection = state.selection
@@ -99,6 +152,9 @@ function recordDeletion(
   if (!deletedText) return false
   const start = markdownSourceOffsetForDocPos(state.doc, from, resolveMarkdownSourceOffset)
   if (start === null) return false
+  if (isRangeInsideAdditionMark(start, start + deletedText.length, getReviewMarks)) {
+    return false
+  }
 
   onAddSuggestion({
     kind: 'deletion',
@@ -108,6 +164,30 @@ function recordDeletion(
   })
   moveSelectionTo(tiptap, from)
   return true
+}
+
+function markdownSourceRangeForDocRange(
+  doc: any,
+  from: number,
+  to: number,
+  resolveMarkdownSourceOffset?: (editorOffset: number) => number | null
+): { start: number; end: number } | null {
+  const start = markdownSourceOffsetForDocPos(doc, from, resolveMarkdownSourceOffset)
+  const end = markdownSourceOffsetForDocPos(doc, to, resolveMarkdownSourceOffset)
+  if (start === null || end === null) return null
+  return { start, end }
+}
+
+function isRangeInsideAdditionMark(
+  start: number,
+  end: number,
+  getReviewMarks?: () => CriticMarkupMark[]
+): boolean {
+  return Boolean(
+    getReviewMarks?.().some(
+      (mark) => mark.kind === 'addition' && mark.start <= start && mark.end >= end
+    )
+  )
 }
 
 function moveSelectionTo(tiptap: any, position: number): void {

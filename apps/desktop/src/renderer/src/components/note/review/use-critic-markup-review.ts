@@ -131,11 +131,7 @@ export function useCriticMarkupReview({
 
   const handlePlainMarkdownChange = useCallback((nextPlainMarkdown: string): string => {
     const nextMarks = isSuggestionModeActiveRef.current
-      ? reconcileLiveSuggestionInsertion(
-          plainMarkdownRef.current,
-          nextPlainMarkdown,
-          marksRef.current
-        )
+      ? reconcileLiveSuggestionEdit(plainMarkdownRef.current, nextPlainMarkdown, marksRef.current)
       : marksRef.current
     const serialized = serializeCriticMarkup(nextPlainMarkdown, nextMarks)
     plainMarkdownRef.current = nextPlainMarkdown
@@ -486,44 +482,49 @@ function areCriticMarkupMarksEqual(first: CriticMarkupMark[], second: CriticMark
   return JSON.stringify(first) === JSON.stringify(second)
 }
 
-function reconcileLiveSuggestionInsertion(
+function reconcileLiveSuggestionEdit(
   previousPlainMarkdown: string,
   nextPlainMarkdown: string,
   marks: CriticMarkupMark[]
 ): CriticMarkupMark[] {
   const edit = findSingleTextEdit(previousPlainMarkdown, nextPlainMarkdown)
-  if (!edit || !edit.insertedText || edit.deletedText) return marks
+  if (!edit) return marks
+
   const insertedVisibleText = stripTrailingBlockSeparators(edit.insertedText)
-  const visibleDelta = insertedVisibleText.length
+  const sourceDelta = edit.insertedText.length - edit.deletedText.length
+  const visibleDelta = insertedVisibleText.length - edit.deletedText.length
+  const editEnd = edit.start + edit.deletedText.length
 
   const targetAddition = [...marks]
     .reverse()
-    .find((mark) => mark.kind === 'addition' && mark.start <= edit.start && mark.end >= edit.start)
+    .find(
+      (mark) =>
+        mark.kind === 'addition' &&
+        mark.start <= edit.start &&
+        mark.end >= edit.start &&
+        editEnd <= mark.end
+    )
 
   if (targetAddition) {
-    return marks.map((mark) => {
-      if (mark.id === targetAddition.id) {
-        const end = mark.end + visibleDelta
-        return {
+    return marks.flatMap((mark) => {
+      if (mark.id !== targetAddition.id) {
+        return shiftMarkForPlainTextEdit(mark, edit.start, editEnd, sourceDelta)
+      }
+
+      const end = mark.end + visibleDelta
+      const visibleText = nextPlainMarkdown.slice(mark.start, end)
+      if (!visibleText.trim()) return []
+      return [
+        {
           ...mark,
           end,
-          visibleText: nextPlainMarkdown.slice(mark.start, end)
+          visibleText
         }
-      }
-      if (mark.end <= edit.start) return mark
-      if (mark.start >= edit.start) {
-        return {
-          ...mark,
-          start: mark.start + edit.insertedText.length,
-          end: mark.end + edit.insertedText.length
-        }
-      }
-      return {
-        ...mark,
-        end: mark.end + edit.insertedText.length
-      }
+      ]
     })
   }
+
+  if (!edit.insertedText || edit.deletedText) return marks
 
   const shiftedMarks = shiftMarksForPlainTextEdit(
     marks,
@@ -650,20 +651,28 @@ function shiftMarksForPlainTextEdit(
   delta: number
 ): CriticMarkupMark[] {
   if (delta === 0) return marks
-  return marks.map((mark) => {
-    if (mark.end <= editStart) return mark
-    if (mark.start >= editEnd) {
-      return {
-        ...mark,
-        start: mark.start + delta,
-        end: mark.end + delta
-      }
-    }
+  return marks.map((mark) => shiftMarkForPlainTextEdit(mark, editStart, editEnd, delta))
+}
+
+function shiftMarkForPlainTextEdit(
+  mark: CriticMarkupMark,
+  editStart: number,
+  editEnd: number,
+  delta: number
+): CriticMarkupMark {
+  if (delta === 0) return mark
+  if (mark.end <= editStart) return mark
+  if (mark.start >= editEnd) {
     return {
       ...mark,
+      start: mark.start + delta,
       end: mark.end + delta
     }
-  })
+  }
+  return {
+    ...mark,
+    end: mark.end + delta
+  }
 }
 
 function createCriticMarkId(kind: CriticMarkupKind): string {

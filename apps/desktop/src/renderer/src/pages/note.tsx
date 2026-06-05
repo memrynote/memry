@@ -1109,6 +1109,7 @@ export function NotePage({ noteId }: NotePageProps) {
               focusAtEndRef={focusAtEndRef}
               marqueeZoneEl={marqueeZoneEl}
               review={{
+                plainMarkdown: review.plainMarkdown,
                 marks: review.marks,
                 hoveredMarkId: review.hoveredMarkId,
                 isSuggestionModeActive: review.isSuggestionModeActive,

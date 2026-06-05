@@ -127,6 +127,7 @@ export interface ContentAreaProps {
   marqueeZoneEl?: HTMLDivElement | null
   /** Optional CriticMarkup review behavior for comments and suggestions */
   review?: {
+    plainMarkdown: string
     marks: import('@memry/shared').CriticMarkupMark[]
     hoveredMarkId: string | null
     isSuggestionModeActive: boolean

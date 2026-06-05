@@ -26,9 +26,14 @@ export function createCriticMarkupDecorationPlugin(
             fullText.slice(offset, endOffset) === mark.visibleText
 
           if (!matchesMappedRange) {
-            if (mark.kind !== 'comment') continue
-            offset = fullText.indexOf(mark.visibleText)
-            endOffset = offset + mark.visibleText.length
+            const fallback = nearestVisibleTextEditorRange(
+              fullText,
+              mark.visibleText,
+              offset ?? endOffset ?? 0
+            )
+            if (!fallback) continue
+            offset = fallback.offset
+            endOffset = fallback.endOffset
           }
 
           if (offset === null || endOffset === null || offset < 0) continue
@@ -50,4 +55,25 @@ export function createCriticMarkupDecorationPlugin(
       }
     }
   })
+}
+
+function nearestVisibleTextEditorRange(
+  fullText: string,
+  visibleText: string,
+  targetOffset: number
+): { offset: number; endOffset: number } | null {
+  let best: { offset: number; endOffset: number; distance: number } | null = null
+  let searchFrom = 0
+
+  while (searchFrom <= fullText.length) {
+    const offset = fullText.indexOf(visibleText, searchFrom)
+    if (offset === -1) break
+    searchFrom = offset + Math.max(visibleText.length, 1)
+    const distance = Math.abs(offset - targetOffset)
+    if (!best || distance < best.distance) {
+      best = { offset, endOffset: offset + visibleText.length, distance }
+    }
+  }
+
+  return best ? { offset: best.offset, endOffset: best.endOffset } : null
 }

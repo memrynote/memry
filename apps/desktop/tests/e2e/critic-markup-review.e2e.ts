@@ -16,6 +16,10 @@ import {
 
 const EDITOR_SELECTOR =
   '[aria-label="Rich text editor"] [contenteditable="true"], .bn-editor[contenteditable="true"], .bn-editor'
+const MARQUEE_ZONE_SELECTOR = '.marquee-zone'
+const BLOCK_SELECTOR = '.bn-block[data-id]'
+const MARQUEE_HIGHLIGHT_SELECTOR = '.marquee-block-highlight'
+const MARQUEE_OVERLAY_SELECTOR = '.marquee-overlay'
 
 test.describe('CriticMarkup review flows', () => {
   test.setTimeout(120000)
@@ -32,15 +36,17 @@ test.describe('CriticMarkup review flows', () => {
     await createNote(
       page,
       `Review Comments ${Date.now()}`,
-      'comment target delete target hover target'
+      'review setup line\n\nsecond setup line\n\nthird setup line\n\nfourth setup line\n\ncomment target delete target hover target'
     )
 
     await selectEditorText(page, 'comment target')
     await page.locator(EDITOR_SELECTOR).first().click()
-    await expect(page.locator('.critic-review-card-draft')).toHaveCount(0)
+    await expect(commentComposer(page)).toHaveCount(0)
 
     await selectEditorText(page, 'comment target')
+    const commentTargetTop = await selectedTextTop(page)
     await page.locator('[data-test="review-comment"]').last().click()
+    await expectComposerNearSelectedTop(page, commentTargetTop)
     await submitComment(page, 'Tighten this sentence.')
 
     const rail = reviewRail(page)
@@ -239,6 +245,47 @@ Three reasons, in increasing order of importance:
     await expect.poll(async () => inlineMarkContext(page, 'addition')).not.toContain('Why I keep')
   })
 
+  test('note suggestion mode keeps a corrected typed sentence as one addition', async ({
+    page
+  }) => {
+    const note = await createNoteWithBody(
+      page,
+      `Review Sentence Addition ${Date.now()}`,
+      'sentence addition anchor'
+    )
+
+    await selectEditorText(page, 'sentence addition anchor')
+    await page.locator('[data-test="review-suggest"]').last().click()
+    await expect(page.getByText('Suggesting')).toBeVisible()
+
+    await placeCursorAtEditorEnd(page)
+    await page.keyboard.type('car needs to repait')
+    await selectEditorTextRange(
+      page,
+      'car needs to repait',
+      'car needs to repai'.length,
+      'car needs to repait'.length
+    )
+    await page.keyboard.press('Backspace')
+    await page.keyboard.type('r')
+
+    await expect(page.locator('.critic-review-card-addition')).toHaveCount(1)
+    await expect(expectCard(page, 'addition')).toContainText('car needs to repair')
+    await expect(page.locator('.critic-review-card-deletion')).toHaveCount(0)
+    await expect(page.locator('.critic-review-card-substitution')).toHaveCount(0)
+    await expect(page.locator(EDITOR_SELECTOR).first()).toContainText('car needs to repair')
+
+    await expect
+      .poll(async () => getNoteFileBodyById(page, note.id), { timeout: 5000 })
+      .toContain('{++car needs to repair++}')
+    await expect
+      .poll(async () => getNoteFileBodyById(page, note.id), { timeout: 5000 })
+      .not.toContain('{--t--}')
+    await expect
+      .poll(async () => getNoteFileBodyById(page, note.id), { timeout: 5000 })
+      .not.toContain('{~~')
+  })
+
   test('note suggestion mode merges repeated deletions and persists after reopening', async ({
     page
   }) => {
@@ -279,6 +326,105 @@ Three reasons, in increasing order of importance:
     await expect(inlineMark(page, 'addition')).toBeVisible()
     await expect(page.locator(EDITOR_SELECTOR).first()).not.toContainText('{--')
     await expect(page.locator(EDITOR_SELECTOR).first()).not.toContainText('{++')
+  })
+
+  test('note suggestion mode persists selected-range deletion after reopening', async ({
+    page
+  }) => {
+    const note = await createNoteWithBody(
+      page,
+      `Review Selected Delete ${Date.now()}`,
+      'alpha selected delete omega'
+    )
+
+    await selectEditorText(page, 'selected delete')
+    await page.locator('[data-test="review-suggest"]').last().click()
+    await expect(page.getByText('Suggesting')).toBeVisible()
+
+    await selectEditorText(page, 'selected delete')
+    await page.keyboard.press('Backspace')
+
+    await expect(reviewCardWithText(page, 'deletion', 'selected delete')).toBeVisible()
+    await expect(inlineMark(page, 'deletion')).toBeVisible()
+    await expect(page.locator(EDITOR_SELECTOR).first()).toContainText('selected delete')
+    await expect(page.locator(EDITOR_SELECTOR).first()).not.toContainText('{--')
+    await expect
+      .poll(async () => getNoteFileBodyById(page, note.id), { timeout: 5000 })
+      .toContain('alpha {--selected delete--} omega')
+
+    await navigateTo(page, 'journal')
+    await openNoteByHandle(page, note)
+
+    await expect(reviewCardWithText(page, 'deletion', 'selected delete')).toBeVisible()
+    await expect(inlineMark(page, 'deletion')).toBeVisible()
+    await expect(page.locator(EDITOR_SELECTOR).first()).toContainText('selected delete')
+    await expect(page.locator(EDITOR_SELECTOR).first()).not.toContainText('{--')
+  })
+
+  test('note suggestion mode persists mouse-drag line deletion after reopening', async ({
+    page
+  }) => {
+    const selectedText = 'mouse selected delete line'
+    const note = await createNoteWithBody(
+      page,
+      `Review Mouse Selected Delete ${Date.now()}`,
+      `alpha ${selectedText} omega`
+    )
+
+    await selectEditorText(page, selectedText)
+    await page.locator('[data-test="review-suggest"]').last().click()
+    await expect(page.getByText('Suggesting')).toBeVisible()
+
+    const actualSelectedText = await dragSelectEditorText(page, selectedText)
+    await page.keyboard.press('Backspace')
+
+    await expect(reviewCardWithText(page, 'deletion', actualSelectedText)).toBeVisible()
+    await expect(inlineMark(page, 'deletion')).toBeVisible()
+    await expect(page.locator(EDITOR_SELECTOR).first()).toContainText(actualSelectedText)
+    await expect(page.locator(EDITOR_SELECTOR).first()).not.toContainText('{--')
+    await expect
+      .poll(async () => getNoteFileBodyById(page, note.id), { timeout: 5000 })
+      .toContain(`alpha {--${actualSelectedText}--} omega`)
+
+    await navigateTo(page, 'journal')
+    await openNoteByHandle(page, note)
+
+    await expect(reviewCardWithText(page, 'deletion', actualSelectedText)).toBeVisible()
+    await expect(inlineMark(page, 'deletion')).toBeVisible()
+    await expect(page.locator(EDITOR_SELECTOR).first()).toContainText(actualSelectedText)
+    await expect(page.locator(EDITOR_SELECTOR).first()).not.toContainText('{--')
+  })
+
+  test('note suggestion mode persists marquee line deletion after reopening', async ({ page }) => {
+    const selectedText = 'marquee selected delete line'
+    const note = await createNoteWithBody(
+      page,
+      `Review Marquee Selected Delete ${Date.now()}`,
+      `alpha\n\n${selectedText}\n\nomega`
+    )
+
+    await selectEditorText(page, selectedText)
+    await page.locator('[data-test="review-suggest"]').last().click()
+    await expect(page.getByText('Suggesting')).toBeVisible()
+
+    await marqueeSelectBlockWithText(page, selectedText)
+    await page.keyboard.press('Backspace')
+
+    await expect(reviewCardWithText(page, 'deletion', selectedText)).toBeVisible()
+    await expect(inlineMark(page, 'deletion')).toBeVisible()
+    await expect(page.locator(EDITOR_SELECTOR).first()).toContainText(selectedText)
+    await expect(page.locator(EDITOR_SELECTOR).first()).not.toContainText('{--')
+    await expect
+      .poll(async () => getNoteFileBodyById(page, note.id), { timeout: 5000 })
+      .toContain(`{--${selectedText}--}`)
+
+    await navigateTo(page, 'journal')
+    await openNoteByHandle(page, note)
+
+    await expect(reviewCardWithText(page, 'deletion', selectedText)).toBeVisible()
+    await expect(inlineMark(page, 'deletion')).toBeVisible()
+    await expect(page.locator(EDITOR_SELECTOR).first()).toContainText(selectedText)
+    await expect(page.locator(EDITOR_SELECTOR).first()).not.toContainText('{--')
   })
 
   test('note suggestion mode keeps same-location delete and add marks after autosave', async ({
@@ -329,16 +475,20 @@ Three reasons, in increasing order of importance:
   test('journal comments and deletion suggestions cover accept and reject paths', async ({
     page
   }) => {
+    await writeCurrentJournalEntry(
+      page,
+      'journal setup line\n\nsecond setup line\n\nthird setup line\n\nfourth setup line\n\njournal comment target keep deletion remove deletion'
+    )
     await navigateTo(page, 'journal')
 
     const editor = page.locator(EDITOR_SELECTOR).first()
     await editor.waitFor({ state: 'visible', timeout: 10000 })
-    await editor.click()
-    await page.keyboard.type('journal comment target keep deletion remove deletion')
-    await page.waitForTimeout(300)
+    await expect(editor).toContainText('journal comment target')
 
     await selectEditorText(page, 'journal comment target')
+    const commentTargetTop = await selectedTextTop(page)
     await page.locator('[data-test="review-comment"]').last().click()
+    await expectComposerNearSelectedTop(page, commentTargetTop)
 
     await submitComment(page, 'Journal comment.')
     await expect(reviewRail(page)).toContainText('Journal comment.')
@@ -365,6 +515,69 @@ Three reasons, in increasing order of importance:
     await page.keyboard.press(SHORTCUTS.undo)
     await expect(editor).toContainText('remove deletion')
     await expect(expectCard(page, 'deletion')).toContainText('remove deletion')
+  })
+
+  test('journal suggestion mode keeps a typed sentence as one addition', async ({ page }) => {
+    const journalContent = `journal sentence anchor ${Date.now()}`
+    await writeCurrentJournalEntry(page, journalContent)
+    await navigateTo(page, 'journal')
+
+    const editor = page.locator(EDITOR_SELECTOR).first()
+    await editor.waitFor({ state: 'visible', timeout: 10000 })
+    await expect(editor).toContainText(journalContent)
+
+    await selectEditorText(page, journalContent)
+    await page.locator('[data-test="review-suggest"]').last().click()
+    await expect(page.getByText('Suggesting')).toBeVisible()
+
+    await placeCursorAtEditorEnd(page)
+    await page.keyboard.type('car needs to repair')
+
+    await expect(page.locator('.critic-review-card-addition')).toHaveCount(1)
+    await expect(expectCard(page, 'addition')).toContainText('car needs to repair')
+    await expect(page.locator('.critic-review-card-deletion')).toHaveCount(0)
+    await expect(page.locator('.critic-review-card-substitution')).toHaveCount(0)
+    await expect(editor).toContainText('car needs to repair')
+    await expect(editor).not.toContainText('{++')
+
+    await expect
+      .poll(async () => currentJournalEntryContent(page), { timeout: 5000 })
+      .toContain('{++car needs to repair++}')
+  })
+
+  test('journal suggestion mode persists selected-range deletion after reopening', async ({
+    page
+  }) => {
+    const selectedText = `journal selected delete ${Date.now()}`
+    await writeCurrentJournalEntry(page, `prefix ${selectedText} suffix`)
+    await navigateTo(page, 'journal')
+
+    const editor = page.locator(EDITOR_SELECTOR).first()
+    await editor.waitFor({ state: 'visible', timeout: 10000 })
+    await expect(editor).toContainText(selectedText)
+
+    await selectEditorText(page, selectedText)
+    await page.locator('[data-test="review-suggest"]').last().click()
+    await expect(page.getByText('Suggesting')).toBeVisible()
+
+    await selectEditorText(page, selectedText)
+    await page.keyboard.press('Backspace')
+
+    await expect(reviewCardWithText(page, 'deletion', selectedText)).toBeVisible()
+    await expect(inlineMark(page, 'deletion')).toBeVisible()
+    await expect(editor).toContainText(selectedText)
+    await expect(editor).not.toContainText('{--')
+    await expect
+      .poll(async () => currentJournalEntryContent(page), { timeout: 5000 })
+      .toContain(`prefix {--${selectedText}--} suffix`)
+
+    await navigateTo(page, 'notes')
+    await navigateTo(page, 'journal')
+
+    await expect(editor).toContainText(selectedText)
+    await expect(reviewCardWithText(page, 'deletion', selectedText)).toBeVisible()
+    await expect(inlineMark(page, 'deletion')).toBeVisible()
+    await expect(editor).not.toContainText('{--')
   })
 
   test('journal comments persist mention and attachment metadata', async ({ page }, testInfo) => {
@@ -472,6 +685,154 @@ async function selectEditorText(page: Page, targetText: string): Promise<void> {
   await expect(page.locator('[data-test="review-comment"]').last()).toBeVisible()
 }
 
+async function selectedTextTop(page: Page): Promise<number> {
+  const top = await page.evaluate(() => {
+    const selection = window.getSelection()
+    if (!selection || selection.rangeCount === 0) return null
+
+    const range = selection.getRangeAt(0)
+    const rect =
+      Array.from(range.getClientRects()).find((item) => item.width > 0 && item.height > 0) ??
+      range.getBoundingClientRect()
+    if (rect.width === 0 || rect.height === 0) return null
+    return rect.top
+  })
+
+  expect(top).not.toBeNull()
+  return top!
+}
+
+async function dragSelectEditorText(page: Page, targetText: string): Promise<string> {
+  const editor = page.locator(EDITOR_SELECTOR).first()
+  await editor.waitFor({ state: 'visible', timeout: 10000 })
+
+  const rect = await page.evaluate(
+    ({ editorSelector, text }) => {
+      const root = document.querySelector(editorSelector)
+      if (!root) return null
+
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+      let node: Node | null
+      while ((node = walker.nextNode())) {
+        const value = node.textContent ?? ''
+        const index = value.indexOf(text)
+        if (index === -1) continue
+
+        const range = document.createRange()
+        range.setStart(node, index)
+        range.setEnd(node, index + text.length)
+        const bounds = range.getBoundingClientRect()
+        if (bounds.width === 0 || bounds.height === 0) return null
+        return {
+          left: bounds.left,
+          right: bounds.right,
+          y: bounds.top + bounds.height / 2
+        }
+      }
+      return null
+    },
+    { editorSelector: EDITOR_SELECTOR, text: targetText }
+  )
+
+  expect(rect).not.toBeNull()
+  await page.mouse.move(rect!.left, rect!.y)
+  await page.mouse.down()
+  await page.mouse.move(rect!.right, rect!.y, { steps: 12 })
+  await page.mouse.up()
+
+  const selectedText = await page.evaluate(() => window.getSelection()?.toString() ?? '')
+  expect(selectedText).toContain(targetText)
+  return targetText
+}
+
+async function marqueeSelectBlockWithText(page: Page, targetText: string): Promise<void> {
+  const geometry = await page.evaluate(
+    ({ blockSelector, zoneSelector, text }) => {
+      const zone = document.querySelector(zoneSelector)
+      const block = Array.from(document.querySelectorAll<HTMLElement>(blockSelector)).find((item) =>
+        (item.textContent ?? '').includes(text)
+      )
+      if (!zone || !block) return null
+      const zoneBounds = zone.getBoundingClientRect()
+      const blockBounds = block.getBoundingClientRect()
+      return {
+        startX: zoneBounds.left + 8,
+        startY: blockBounds.top + 2,
+        endX: blockBounds.left + blockBounds.width / 2,
+        endY: blockBounds.bottom - 2
+      }
+    },
+    {
+      blockSelector: BLOCK_SELECTOR,
+      zoneSelector: MARQUEE_ZONE_SELECTOR,
+      text: targetText
+    }
+  )
+
+  expect(geometry).not.toBeNull()
+  await page.mouse.move(geometry!.startX, geometry!.startY)
+  await page.mouse.down()
+  await page.mouse.move(geometry!.endX, geometry!.endY, { steps: 14 })
+  await expect(page.locator(MARQUEE_OVERLAY_SELECTOR)).toBeVisible({ timeout: 2000 })
+  await page.mouse.up()
+  await page.waitForTimeout(150)
+  await expect(page.locator(MARQUEE_OVERLAY_SELECTOR)).toHaveCount(0)
+  expect(await page.locator(MARQUEE_HIGHLIGHT_SELECTOR).count()).toBeGreaterThanOrEqual(1)
+}
+
+async function selectEditorTextRange(
+  page: Page,
+  targetText: string,
+  fromOffset: number,
+  toOffset: number
+): Promise<void> {
+  const didSelect = await page.evaluate(
+    ({ editorSelector, text, from, to }) => {
+      const root = document.querySelector(editorSelector)
+      if (!root) return false
+
+      const chunks: Array<{ node: Node; start: number; end: number }> = []
+      let visibleText = ''
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+      let node: Node | null
+      while ((node = walker.nextNode())) {
+        const value = node.textContent ?? ''
+        chunks.push({ node, start: visibleText.length, end: visibleText.length + value.length })
+        visibleText += value
+      }
+
+      const index = visibleText.indexOf(text)
+      if (index === -1) return false
+
+      const selectionStart = index + from
+      const selectionEnd = index + to
+      const startChunk = chunks.find(
+        (item) => selectionStart >= item.start && selectionStart <= item.end
+      )
+      const endChunk = chunks.find((item) => selectionEnd >= item.start && selectionEnd <= item.end)
+      if (!startChunk || !endChunk) return false
+
+      if (root instanceof HTMLElement) root.focus()
+
+      const range = document.createRange()
+      range.setStart(startChunk.node, selectionStart - startChunk.start)
+      range.setEnd(endChunk.node, selectionEnd - endChunk.start)
+
+      const selection = window.getSelection()
+      selection?.removeAllRanges()
+      selection?.addRange(range)
+
+      root.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }))
+      root.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }))
+      document.dispatchEvent(new Event('selectionchange', { bubbles: true }))
+      return true
+    },
+    { editorSelector: EDITOR_SELECTOR, text: targetText, from: fromOffset, to: toOffset }
+  )
+
+  expect(didSelect).toBe(true)
+}
+
 async function placeCursorAtEditorEnd(page: Page): Promise<void> {
   const didPlaceCursor = await page.evaluate((editorSelector) => {
     const root = document.querySelector(editorSelector)
@@ -550,7 +911,7 @@ async function placeCursorInEditorText(
 }
 
 async function submitComment(page: Page, body: string): Promise<void> {
-  const draft = page.locator('.critic-review-card-draft').first()
+  const draft = commentComposer(page)
   await expect(draft).toBeVisible()
 
   const commentInput = draft.getByLabel('Write a comment...')
@@ -567,7 +928,7 @@ async function submitCommentWithMentionAndAttachment(
   mention: { id: string; title: string },
   attachmentPath: string
 ): Promise<void> {
-  const draft = page.locator('.critic-review-card-draft').first()
+  const draft = commentComposer(page)
   await expect(draft).toBeVisible()
 
   const commentInput = draft.getByLabel('Write a comment...')
@@ -581,7 +942,8 @@ async function submitCommentWithMentionAndAttachment(
   await page.keyboard.press('Enter')
   await expect(option).toBeHidden()
 
-  await expect(draft.getByLabel('Attach file')).toBeEnabled()
+  const attachButton = draft.locator('button[aria-label="Attach file"]')
+  await expect(attachButton).toBeEnabled()
   await draft.locator('input[type="file"]').setInputFiles(attachmentPath)
   const attachmentName = attachmentPath.split('/').pop()!
   await expect(draft).toContainText(attachmentName)
@@ -635,6 +997,23 @@ async function currentLocalDate(page: Page): Promise<string> {
 
 function reviewRail(page: Page) {
   return page.getByRole('complementary', { name: 'Comments and suggestions' })
+}
+
+function commentComposer(page: Page) {
+  return reviewRail(page).locator('.critic-comment-composer').first()
+}
+
+async function expectComposerNearSelectedTop(page: Page, selectedTop: number): Promise<void> {
+  const composer = commentComposer(page)
+  await expect(composer).toBeVisible()
+
+  await expect
+    .poll(async () => {
+      return composer.evaluate((element, expectedTop) => {
+        return Math.abs(element.getBoundingClientRect().top - expectedTop)
+      }, selectedTop)
+    })
+    .toBeLessThan(120)
 }
 
 function inlineMark(page: Page, kind: 'addition' | 'deletion' | 'substitution' | 'comment') {

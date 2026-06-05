@@ -22,6 +22,7 @@ import type * as Y from 'yjs'
 import {
   CRITIC_MARKUP_MARKS_ARRAY,
   readCriticMarkupMarksFromYDoc,
+  type CriticMarkupMark,
   writeCriticMarkupMarksToYDoc
 } from '@memry/shared'
 import { cn } from '@/lib/utils'
@@ -62,6 +63,7 @@ import {
   usePasteLinkMenu
 } from './hooks'
 import { useLiveSuggestionTracking } from './hooks/use-live-suggestion-tracking'
+import { proseMirrorDocPosToEditorOffset } from './critic-markup-offset-map'
 import { BlockMarqueeOverlay } from './block-marquee-overlay'
 import { PasteLinkMenu } from './paste-link-menu'
 import { extractYouTubeVideoId } from '@/lib/youtube-utils'
@@ -86,6 +88,160 @@ function findBlockWithLinkMention(
     }
   }
   return null
+}
+
+function findBlockElementById(container: HTMLElement, blockId: string): HTMLElement | null {
+  return (
+    Array.from(container.querySelectorAll<HTMLElement>('.bn-block[data-id]')).find(
+      (element) => element.dataset.id === blockId
+    ) ?? null
+  )
+}
+
+function blockTextDocRange(
+  tiptap: any,
+  blockElement: HTMLElement
+): { from: number; to: number } | null {
+  const contentElement =
+    blockElement.querySelector<HTMLElement>(':scope > .bn-block-content') ?? blockElement
+  const firstText = firstNonEmptyTextNode(contentElement)
+  const lastText = lastNonEmptyTextNode(contentElement)
+  if (!firstText || !lastText) return null
+
+  const from = tiptap.view.posAtDOM(firstText, 0)
+  const to = tiptap.view.posAtDOM(lastText, (lastText.textContent ?? '').length)
+  if (typeof from !== 'number' || typeof to !== 'number' || from >= to) return null
+  return { from, to }
+}
+
+function firstNonEmptyTextNode(root: Node): Text | null {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+  let node: Node | null
+  while ((node = walker.nextNode())) {
+    if ((node.textContent ?? '').length > 0) return node as Text
+  }
+  return null
+}
+
+function lastNonEmptyTextNode(root: Node): Text | null {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+  let last: Text | null = null
+  let node: Node | null
+  while ((node = walker.nextNode())) {
+    if ((node.textContent ?? '').length > 0) last = node as Text
+  }
+  return last
+}
+
+function sourceOffsetForDocPos(
+  doc: any,
+  targetPos: number,
+  visibleText: string,
+  plainMarkdown: string,
+  marks: ReadonlyArray<CriticMarkupMark>,
+  resolveMarkdownSourceOffset: (editorOffset: number) => number | null,
+  resolveEditorOffset: (sourceOffset: number) => number | null
+): number | null {
+  const editorOffset = proseMirrorDocPosToEditorOffset(doc, targetPos)
+  if (editorOffset === null) return null
+  const directSourceOffset = resolveMarkdownSourceOffset(editorOffset)
+  if (isValidDeletionSourceOffset(plainMarkdown, directSourceOffset, visibleText, marks)) {
+    return directSourceOffset
+  }
+  return nearestVisibleTextSourceOffset(
+    plainMarkdown,
+    visibleText,
+    editorOffset,
+    marks,
+    resolveEditorOffset
+  )
+}
+
+function isRangeInsideAdditionMark(
+  start: number,
+  end: number,
+  marks: ReadonlyArray<CriticMarkupMark>
+): boolean {
+  return marks.some((mark) => mark.kind === 'addition' && mark.start <= start && mark.end >= end)
+}
+
+function isValidDeletionSourceOffset(
+  plainMarkdown: string,
+  start: number | null,
+  visibleText: string,
+  marks: ReadonlyArray<CriticMarkupMark>
+): start is number {
+  if (start === null) return false
+  const end = start + visibleText.length
+  return (
+    plainMarkdown.slice(start, end) === visibleText && !isRangeInsideAdditionMark(start, end, marks)
+  )
+}
+
+function nearestVisibleTextSourceOffset(
+  plainMarkdown: string,
+  visibleText: string,
+  targetEditorOffset: number,
+  marks: ReadonlyArray<CriticMarkupMark>,
+  resolveEditorOffset: (sourceOffset: number) => number | null
+): number | null {
+  let best: { start: number; distance: number } | null = null
+  let searchFrom = 0
+
+  while (searchFrom <= plainMarkdown.length) {
+    const start = plainMarkdown.indexOf(visibleText, searchFrom)
+    if (start === -1) break
+    const end = start + visibleText.length
+    searchFrom = start + Math.max(visibleText.length, 1)
+    if (isRangeInsideAdditionMark(start, end, marks)) continue
+
+    const editorOffset = resolveEditorOffset(start)
+    if (editorOffset === null) continue
+    const distance = Math.abs(editorOffset - targetEditorOffset)
+    if (!best || distance < best.distance) best = { start, distance }
+  }
+
+  return best?.start ?? null
+}
+
+function recordDeletionSuggestionForBlock(
+  tiptap: any,
+  blockElement: HTMLElement,
+  plainMarkdown: string,
+  marks: ReadonlyArray<CriticMarkupMark>,
+  resolveMarkdownSourceOffset: (editorOffset: number) => number | null,
+  resolveEditorOffset: (sourceOffset: number) => number | null,
+  onAddSuggestionMark: (input: {
+    kind: 'addition' | 'deletion' | 'substitution'
+    visibleText: string
+    originalText?: string
+    start?: number
+  }) => void
+): boolean {
+  const range = blockTextDocRange(tiptap, blockElement)
+  if (!range) return false
+
+  const visibleText = tiptap.state.doc.textBetween(range.from, range.to, '\n')
+  if (!visibleText.trim()) return false
+
+  const start = sourceOffsetForDocPos(
+    tiptap.state.doc,
+    range.from,
+    visibleText,
+    plainMarkdown,
+    marks,
+    resolveMarkdownSourceOffset,
+    resolveEditorOffset
+  )
+  if (start === null) return false
+
+  onAddSuggestionMark({
+    kind: 'deletion',
+    visibleText,
+    originalText: visibleText,
+    start
+  })
+  return true
 }
 
 // =============================================================================
@@ -152,6 +308,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   const onReviewEditorReady = review?.onEditorReady
   const onReviewAddSuggestionMark = review?.onAddSuggestionMark
   const onReplaceMarksFromYjs = review?.onReplaceMarksFromYjs
+  const getReviewMarksForLiveSuggestion = useCallback(() => reviewMarksRef.current, [])
 
   // Keep noteIdRef in sync (used by uploadFile closure)
   useEffect(() => {
@@ -391,12 +548,51 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // re-runs when .bn-container first mounts — refs don't trigger effects.
   const triggerEl = marqueeZoneEl ?? innerContainerEl
 
+  const handleReviewMarqueeDelete = useCallback(
+    (blockIds: string[]): boolean => {
+      if (!review?.isSuggestionModeActive || !onReviewAddSuggestionMark) return false
+      const resolveMarkdownSourceOffset = review.getMarkdownSourceOffsetForEditorOffset
+      const resolveEditorOffset = review.getEditorOffsetForMarkdownSourceOffset
+      if (!resolveMarkdownSourceOffset || !resolveEditorOffset) return false
+
+      const container = editorContainerRef.current
+      const tiptap = (editor as any)._tiptapEditor
+      if (!container || !tiptap?.view) return false
+
+      let didRecordDeletion = false
+      for (const blockId of blockIds) {
+        const blockElement = findBlockElementById(container, blockId)
+        if (!blockElement) continue
+        didRecordDeletion =
+          recordDeletionSuggestionForBlock(
+            tiptap,
+            blockElement,
+            review.plainMarkdown,
+            reviewMarksRef.current,
+            resolveMarkdownSourceOffset,
+            resolveEditorOffset,
+            onReviewAddSuggestionMark
+          ) || didRecordDeletion
+      }
+      return didRecordDeletion
+    },
+    [
+      editor,
+      onReviewAddSuggestionMark,
+      review?.getEditorOffsetForMarkdownSourceOffset,
+      review?.getMarkdownSourceOffsetForEditorOffset,
+      review?.isSuggestionModeActive,
+      review?.plainMarkdown
+    ]
+  )
+
   useLiveSuggestionTracking({
     editor,
     containerRef: editorContainerRef,
     enabled: review?.isSuggestionModeActive ?? false,
     onAddSuggestion: handleReviewAddSuggestionMark,
-    resolveMarkdownSourceOffset: review?.getMarkdownSourceOffsetForEditorOffset
+    resolveMarkdownSourceOffset: review?.getMarkdownSourceOffsetForEditorOffset,
+    getReviewMarks: getReviewMarksForLiveSuggestion
   })
 
   useEffect(() => {
@@ -470,7 +666,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     editor,
     blockContainerRef: editorContainerRef,
     triggerContainerEl: triggerEl,
-    enabled: editable
+    enabled: editable,
+    onDeleteSelectedBlocks: handleReviewMarqueeDelete
   })
 
   const convertCheckboxToTask = useCallback(

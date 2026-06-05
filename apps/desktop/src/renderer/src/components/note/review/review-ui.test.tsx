@@ -596,6 +596,51 @@ describe('review UI', () => {
     expect(serialized).toBe('base{++RejectMe++}\n\n\n\n')
   })
 
+  it('keeps edits inside an active addition as one addition suggestion', () => {
+    const { result } = renderHook(() =>
+      useCriticMarkupReview({ markdown: 'base', onMarkdownChange: vi.fn() })
+    )
+
+    act(() => {
+      result.current.startSuggestionMode()
+    })
+    act(() => {
+      result.current.addSuggestionMark({
+        kind: 'addition',
+        visibleText: 'car needs to repait',
+        start: 4
+      })
+    })
+
+    let afterDelete = ''
+    act(() => {
+      afterDelete = result.current.handlePlainMarkdownChange('basecar needs to repai')
+    })
+
+    expect(result.current.marks).toHaveLength(1)
+    expect(result.current.marks[0]).toMatchObject({
+      kind: 'addition',
+      visibleText: 'car needs to repai',
+      start: 4,
+      end: 22
+    })
+    expect(afterDelete).toBe('base{++car needs to repai++}')
+
+    let afterRetype = ''
+    act(() => {
+      afterRetype = result.current.handlePlainMarkdownChange('basecar needs to repair')
+    })
+
+    expect(result.current.marks).toHaveLength(1)
+    expect(result.current.marks[0]).toMatchObject({
+      kind: 'addition',
+      visibleText: 'car needs to repair',
+      start: 4,
+      end: 23
+    })
+    expect(afterRetype).toBe('base{++car needs to repair++}')
+  })
+
   it('does not create empty rail cards for whitespace-only additions', () => {
     const { result } = renderHook(() =>
       useCriticMarkupReview({ markdown: 'base', onMarkdownChange: vi.fn() })
