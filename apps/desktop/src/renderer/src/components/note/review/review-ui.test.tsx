@@ -457,6 +457,60 @@ describe('review UI', () => {
     expect(container.querySelector('.critic-review-draft')).toHaveStyle({ top: '88px' })
   })
 
+  it('subtracts the rail origin offset from marquee-zone-relative mark tops', async () => {
+    // Mark/draft tops are measured from the `.marquee-zone` top, but the rail
+    // renders inside `.review-canvas-rail`, whose origin sits lower (canvas
+    // padding). Cards must subtract that offset to stay flat with the ref line.
+    const rectSpy = vi
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockImplementation(function (this: HTMLElement) {
+        const top = this.classList.contains('review-rail-inner') ? 24 : 0
+        return {
+          top,
+          bottom: top,
+          height: 0,
+          left: 0,
+          right: 0,
+          width: 0,
+          x: 0,
+          y: top,
+          toJSON: () => ({})
+        } as DOMRect
+      })
+    const zone = document.createElement('div')
+    zone.className = 'marquee-zone'
+    document.body.appendChild(zone)
+
+    try {
+      const review = createReview({
+        marks: [
+          {
+            id: 'comment-1',
+            kind: 'comment',
+            visibleText: 'target',
+            body: 'Body',
+            start: 0,
+            end: 6
+          }
+        ],
+        markPositions: { 'comment-1': 124 },
+        activeDraft: { text: 'draft target', top: 88 }
+      })
+
+      const { container } = render(<ReviewRail review={review} />, { container: zone })
+
+      await waitFor(() => {
+        expect(container.querySelector('[data-critic-mark-id="comment-1"]')).toHaveStyle({
+          top: '100px'
+        })
+        expect(container.querySelector('.critic-review-draft')).toHaveStyle({ top: '64px' })
+      })
+    } finally {
+      rectSpy.mockRestore()
+      zone.remove()
+    }
+  })
+
   it('focuses the active comment draft input when the composer opens', async () => {
     const review = createReview({
       activeDraft: { text: 'draft target' }
@@ -966,6 +1020,59 @@ describe('review UI', () => {
     expect(result.current.marks).toEqual([
       expect.objectContaining({ kind: 'comment', body: 'Needs work' })
     ])
+  })
+
+  it('anchors a comment to the selected occurrence, not the first matching text', () => {
+    const { result } = renderHook(() =>
+      useCriticMarkupReview({
+        markdown: 'Mobile first\n\nMobile second',
+        onMarkdownChange: vi.fn()
+      })
+    )
+
+    // Identity doc: ProseMirror positions map 1:1 to visible-text offsets.
+    const visible = 'Mobile first\nMobile second'
+    act(() => {
+      result.current.handleEditorReady({
+        _tiptapEditor: {
+          state: {
+            doc: {
+              content: { size: visible.length },
+              textBetween: (from: number, to: number) => visible.slice(from, to)
+            }
+          }
+        }
+      })
+    })
+
+    // Select the second "Mobile" (visible offsets 13-19)
+    act(() => {
+      result.current.openCommentComposer({ text: 'Mobile', isEmpty: false, from: 13, to: 19 })
+    })
+    act(() => {
+      result.current.submitComment({ body: 'Needs work', mentions: [], attachments: [] })
+    })
+
+    // Source offset 14: the "\n\n" run collapses to one visible "\n"
+    expect(result.current.marks[0]).toMatchObject({ kind: 'comment', start: 14, end: 20 })
+  })
+
+  it('anchors a comment without selection positions to the first matching text', () => {
+    const { result } = renderHook(() =>
+      useCriticMarkupReview({
+        markdown: 'Mobile first\n\nMobile second',
+        onMarkdownChange: vi.fn()
+      })
+    )
+
+    act(() => {
+      result.current.openCommentComposer({ text: 'Mobile', isEmpty: false })
+    })
+    act(() => {
+      result.current.submitComment({ body: 'Needs work', mentions: [], attachments: [] })
+    })
+
+    expect(result.current.marks[0]).toMatchObject({ kind: 'comment', start: 0, end: 6 })
   })
 
   it('submits structured comment refs into the review mark and serialized markdown', () => {

@@ -24,7 +24,12 @@ export function ReviewRail({ review, targetId }: ReviewRailProps) {
   const [expandedMarkIds, setExpandedMarkIds] = useState<Set<string>>(() => new Set())
   const [editingMarkId, setEditingMarkId] = useState<string | null>(null)
   const itemRefs = useRef<Record<string, HTMLElement | null>>({})
+  const innerRef = useRef<HTMLDivElement | null>(null)
   const [itemHeights, setItemHeights] = useState<Record<string, number>>({})
+  // Mark and draft tops are measured relative to the `.marquee-zone` top, but
+  // the rail's positioning context (`.review-rail-inner`) starts lower (canvas
+  // padding, banners). Subtract the delta so cards sit flat with their ref line.
+  const [originOffset, setOriginOffset] = useState(0)
   const toggleExpandedMark = (id: string) => {
     setExpandedMarkIds((current) => {
       const next = new Set(current)
@@ -41,14 +46,17 @@ export function ReviewRail({ review, targetId }: ReviewRailProps) {
     if (review.activeDraft) {
       items.push({
         id: REVIEW_RAIL_DRAFT_ID,
-        desiredTop: review.activeDraft.top ?? 0,
+        desiredTop:
+          review.activeDraft.top !== undefined ? review.activeDraft.top - originOffset : 0,
         order: -1
       })
     }
     review.marks.forEach((mark, index) => {
+      const measuredTop = review.markPositions[mark.id]
       items.push({
         id: mark.id,
-        desiredTop: review.markPositions[mark.id] ?? index * REVIEW_RAIL_ITEM_GAP,
+        desiredTop:
+          measuredTop !== undefined ? measuredTop - originOffset : index * REVIEW_RAIL_ITEM_GAP,
         order: index
       })
     })
@@ -63,7 +71,7 @@ export function ReviewRail({ review, targetId }: ReviewRailProps) {
       previousBottom = top + (itemHeights[item.id] ?? 0)
     })
     return positions
-  }, [itemHeights, review.activeDraft, review.markPositions, review.marks])
+  }, [itemHeights, originOffset, review.activeDraft, review.markPositions, review.marks])
   const positionedMarks = useMemo(
     () =>
       review.marks.map((mark) => ({
@@ -75,6 +83,13 @@ export function ReviewRail({ review, targetId }: ReviewRailProps) {
   const activeDraftTop = railItemPositions[REVIEW_RAIL_DRAFT_ID] ?? review.activeDraft?.top ?? 0
 
   useLayoutEffect(() => {
+    const inner = innerRef.current
+    const marqueeZone = inner?.closest<HTMLElement>('.marquee-zone')
+    if (inner && marqueeZone) {
+      const nextOffset = inner.getBoundingClientRect().top - marqueeZone.getBoundingClientRect().top
+      setOriginOffset((previous) => (previous === nextOffset ? previous : nextOffset))
+    }
+
     const nextHeights: Record<string, number> = {}
     if (review.activeDraft) {
       const draftElement = itemRefs.current[REVIEW_RAIL_DRAFT_ID]
@@ -104,7 +119,7 @@ export function ReviewRail({ review, targetId }: ReviewRailProps) {
 
   return (
     <aside aria-label={t('comments.railAria')} data-marquee-ignore className="review-rail">
-      <div className="review-rail-inner">
+      <div ref={innerRef} className="review-rail-inner">
         {review.activeDraft && (
           <div
             ref={(element) => {
