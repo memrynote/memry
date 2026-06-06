@@ -11,6 +11,13 @@ import type * as Y from 'yjs'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { parseCriticMarkup, writeCriticMarkupMarksToYDoc } from '@memry/shared'
 import {
+  type BlockColors,
+  BLOCK_COLORS_LINE_REGEX,
+  hasNonDefaultColors,
+  parseBlockColorsMarker,
+  serializeBlockColorsMarker
+} from '@memry/shared/block-colors'
+import {
   splitMarkdownPreservingBlanks,
   assembleMarkdownWithBlanks,
   type MarkdownSegment
@@ -125,14 +132,48 @@ async function markdownToBlocksPreserving(
 
   for (const seg of segments) {
     if (seg.type === 'content') {
-      const parsed = await editor.tryParseMarkdownToBlocks(seg.text)
-      blocks.push(...parsed)
+      blocks.push(...(await parseContentWithColorMarkers(editor, seg.text)))
     } else {
       for (let i = 0; i < seg.extraLines; i++) {
         blocks.push(createEmptyParagraph())
       }
     }
   }
+
+  return blocks
+}
+
+async function parseContentWithColorMarkers(
+  editor: ServerBlockNoteEditor,
+  text: string
+): Promise<Block[]> {
+  const blocks: Block[] = []
+  let buffer: string[] = []
+  let pendingColors: BlockColors | null = null
+
+  const flushBuffer = async (): Promise<void> => {
+    if (buffer.length === 0) return
+    const parsed = await editor.tryParseMarkdownToBlocks(buffer.join('\n'))
+    if (pendingColors && parsed[0]) {
+      parsed[0].props = { ...parsed[0].props, ...pendingColors }
+    }
+    pendingColors = null
+    blocks.push(...(parsed as Block[]))
+    buffer = []
+  }
+
+  for (const line of text.split('\n')) {
+    if (BLOCK_COLORS_LINE_REGEX.test(line.trim())) {
+      const colors = parseBlockColorsMarker(line.trim())
+      if (colors) {
+        await flushBuffer()
+        pendingColors = colors
+        continue
+      }
+    }
+    buffer.push(line)
+  }
+  await flushBuffer()
 
   return blocks
 }
@@ -153,6 +194,21 @@ async function blocksToMarkdownPreserving(
         contentGroup = []
       }
       emptyCount++
+    } else if (hasNonDefaultColors(block.props as BlockColors)) {
+      if (contentGroup.length > 0) {
+        const md = await editor.blocksToMarkdownLossy(contentGroup as PartialBlock[])
+        segments.push({ type: 'content', text: md })
+        contentGroup = []
+      }
+      if (emptyCount > 0) {
+        segments.push({ type: 'gap', extraLines: emptyCount })
+        emptyCount = 0
+      }
+      const blockMd = await editor.blocksToMarkdownLossy([block] as PartialBlock[])
+      segments.push({
+        type: 'content',
+        text: `${serializeBlockColorsMarker(block.props as BlockColors)}\n${blockMd.trim()}`
+      })
     } else {
       if (emptyCount > 0) {
         segments.push({ type: 'gap', extraLines: emptyCount })

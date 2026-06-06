@@ -96,6 +96,53 @@ describe('parseMarkdownPreservingBlanks', () => {
     )
   })
 
+  it('applies color markers to the first block of the following chunk', async () => {
+    const editor = {
+      tryParseMarkdownToBlocks: vi.fn(async (markdown: string) =>
+        markdown
+          .split('\n')
+          .filter((line) => line.trim())
+          .map((line) => ({
+            type: 'paragraph',
+            props: {},
+            content: [{ type: 'text', text: line.trim(), styles: {} }],
+            children: []
+          }))
+      )
+    }
+
+    const blocks = await parseMarkdownPreservingBlanks(
+      editor,
+      [
+        'Intro',
+        '<!-- colors:{"textColor":"red"} -->',
+        'Colored line',
+        'Plain line',
+        '<!-- colors:{"textColor":"blue","backgroundColor":"yellow"} -->',
+        'Second colored'
+      ].join('\n')
+    )
+
+    expect(blocks).toEqual([
+      expect.objectContaining({
+        props: {},
+        content: [{ type: 'text', text: 'Intro', styles: {} }]
+      }),
+      expect.objectContaining({
+        props: { textColor: 'red' },
+        content: [{ type: 'text', text: 'Colored line', styles: {} }]
+      }),
+      expect.objectContaining({
+        props: {},
+        content: [{ type: 'text', text: 'Plain line', styles: {} }]
+      }),
+      expect.objectContaining({
+        props: { textColor: 'blue', backgroundColor: 'yellow' },
+        content: [{ type: 'text', text: 'Second colored', styles: {} }]
+      })
+    ])
+  })
+
   it('parses file block markers in place', async () => {
     const editor = {
       tryParseMarkdownToBlocks: vi.fn(async (markdown: string) => [
@@ -254,6 +301,56 @@ describe('serializeBlocksPreservingBlanks', () => {
     expect(markdown).toContain('![embed](https://youtu.be/dQw4w9WgXcQ)')
     expect(markdown).toContain('> [!success]\n> Callout body')
     expect(markdown).toContain('Tail')
+  })
+
+  it('serializes colored blocks alone with a color marker line', async () => {
+    const editor = {
+      blocksToMarkdownLossy: vi.fn(async (blocks: any[]) =>
+        blocks.map((block) => block.content?.[0]?.text ?? '').join('\n')
+      )
+    }
+
+    const markdown = await serializeBlocksPreservingBlanks(editor, [
+      {
+        type: 'paragraph',
+        props: {},
+        content: [{ type: 'text', text: 'Intro', styles: {} }],
+        children: []
+      },
+      {
+        type: 'paragraph',
+        props: { textColor: 'red', backgroundColor: 'default' },
+        content: [{ type: 'text', text: 'Colored line', styles: {} }],
+        children: []
+      },
+      {
+        type: 'paragraph',
+        props: { textColor: 'blue', backgroundColor: 'yellow' },
+        content: [{ type: 'text', text: 'Second colored', styles: {} }],
+        children: []
+      },
+      {
+        type: 'paragraph',
+        props: { textColor: 'default', backgroundColor: 'default' },
+        content: [{ type: 'text', text: 'Tail', styles: {} }],
+        children: []
+      }
+    ] as any[])
+
+    expect(markdown).toContain('<!-- colors:{"textColor":"red"} -->\nColored line')
+    expect(markdown).toContain(
+      '<!-- colors:{"textColor":"blue","backgroundColor":"yellow"} -->\nSecond colored'
+    )
+    // colored blocks are serialized alone, not grouped with neighbors
+    expect(editor.blocksToMarkdownLossy).toHaveBeenCalledWith([
+      expect.objectContaining({ props: { textColor: 'red', backgroundColor: 'default' } })
+    ])
+    // default-colored blocks emit no marker
+    expect(markdown).not.toContain('colors:{}')
+    const tailIndex = markdown.indexOf('Tail')
+    expect(markdown.lastIndexOf('<!-- colors:', tailIndex)).toBeLessThan(
+      markdown.indexOf('Second colored')
+    )
   })
 
   it('serializes file blocks as markers without leaking rendered UI text', async () => {

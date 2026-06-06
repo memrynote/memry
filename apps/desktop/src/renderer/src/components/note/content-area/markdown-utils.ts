@@ -6,6 +6,13 @@ import {
   assembleMarkdownWithBlanks,
   type MarkdownSegment
 } from '@memry/shared/empty-lines'
+import {
+  type BlockColors,
+  BLOCK_COLORS_LINE_REGEX,
+  hasNonDefaultColors,
+  parseBlockColorsMarker,
+  serializeBlockColorsMarker
+} from '@memry/shared/block-colors'
 import { splitMarkdownByCallouts, serializeCalloutBlock } from './callout-block'
 import { extractYouTubeVideoId } from '@/lib/youtube-utils'
 import { serializeYoutubeEmbed } from './youtube-embed-block'
@@ -81,6 +88,9 @@ export async function parseMarkdownPreservingBlanks(
               } as unknown as Block)
             } else {
               const parsed = await editor.tryParseMarkdownToBlocks(part.text)
+              if (part.colors && parsed[0]) {
+                parsed[0].props = { ...parsed[0].props, ...part.colors }
+              }
               blocks.push(...parsed)
             }
           }
@@ -167,6 +177,14 @@ export async function serializeBlocksPreservingBlanks(
     } else if (isEmptyParagraph(block)) {
       await flushContent()
       emptyCount++
+    } else if (hasNonDefaultColors(block.props as BlockColors)) {
+      await flushContent()
+      flushGap()
+      const blockMd = await editor.blocksToMarkdownLossy([block])
+      segments.push({
+        type: 'content',
+        text: `${serializeBlockColorsMarker(block.props as BlockColors)}\n${blockMd.trim()}`
+      })
     } else {
       flushGap()
       contentGroup.push(block)
@@ -185,7 +203,7 @@ export async function serializeBlocksPreservingBlanks(
 }
 
 type EmbedPart =
-  | { kind: 'text'; text: string }
+  | { kind: 'text'; text: string; colors?: BlockColors }
   | { kind: 'embed'; url: string; videoId: string }
   | { kind: 'file'; props: FileBlockProps }
 
@@ -196,20 +214,33 @@ function splitByEmbedMarkers(text: string): EmbedPart[] {
   const lines = text.split('\n')
   const parts: EmbedPart[] = []
   let buffer: string[] = []
+  let pendingColors: BlockColors | null = null
 
   const flushBuffer = (): void => {
     if (buffer.length === 0) return
-    parts.push({ kind: 'text', text: buffer.join('\n') })
+    const part: EmbedPart = { kind: 'text', text: buffer.join('\n') }
+    if (pendingColors) part.colors = pendingColors
+    parts.push(part)
     buffer = []
+    pendingColors = null
   }
 
   for (const line of lines) {
     const trimmedLine = line.trim()
+    if (BLOCK_COLORS_LINE_REGEX.test(trimmedLine)) {
+      const colors = parseBlockColorsMarker(trimmedLine)
+      if (colors) {
+        flushBuffer()
+        pendingColors = colors
+        continue
+      }
+    }
     const fileProps = FILE_BLOCK_LINE_REGEX.test(trimmedLine)
       ? parseFileBlockMarker(trimmedLine)
       : null
     if (fileProps) {
       flushBuffer()
+      pendingColors = null
       parts.push({ kind: 'file', props: fileProps })
       continue
     }

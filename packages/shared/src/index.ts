@@ -1,6 +1,7 @@
 export * from './utc'
 export * from './file-types'
 export * from './empty-lines'
+export * from './block-colors'
 export * from './youtube'
 export * from './critic-markup/parser'
 export * from './critic-markup/transforms'
