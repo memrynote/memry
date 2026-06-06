@@ -3,3 +3,46 @@ packages:
   - packages/*
   - tests/*
   - '!spikes/**'
+
+# Moved from .npmrc (pnpm 11 only reads auth/registry settings from .npmrc)
+shamefullyHoist: true
+
+# Replaces onlyBuiltDependencies (removed in pnpm 11)
+allowBuilds:
+  electron: true
+  esbuild: true
+  better-sqlite3: true
+  sharp: true
+  classic-level: true
+  keytar: true
+  core-js: false
+  electron-winstaller: false
+  msw: false
+  onnxruntime-node: false
+  protobufjs: false
+  re2: false
+  workerd: false
+
+# Moved from package.json "pnpm.overrides" (no longer read by pnpm 11)
+overrides:
+  tar: '>=7.5.15'
+  rollup: '>=4.59.0'
+  hono: '>=4.12.21'
+  '@hono/node-server': '>=1.19.14'
+  esbuild: '>=0.25.0'
+  express-rate-limit: '>=8.2.2'
+  'minimatch@<4': 3.1.5
+  'minimatch@>=5 <6': 5.1.9
+  'minimatch@>=9 <10': 9.0.9
+  'minimatch@>=10': 10.2.5
+  undici: '>=7.24.0'
+  flatted: '>=3.4.2'
+  lodash: '>=4.18.1'
+  path-to-regexp: '>=8.4.2'
+  picomatch: '>=4.0.4'
+  vite: ^7.3.3
+  markdown-it: '>=14.1.1'
+  qs: '>=6.15.2'
+  protobufjs: 7.5.8
+  serialize-javascript: 7.0.5
+  '@xmldom/xmldom': 0.8.13
