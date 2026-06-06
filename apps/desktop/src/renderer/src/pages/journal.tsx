@@ -34,6 +34,7 @@ import { InfoSection, type NewProperty } from '@/components/note/info-section'
 import { GhostAffordanceRow } from '@/components/note/ghost-affordance-row'
 import { OutlineInfoPanel, type HeadingItem } from '@/components/shared'
 import { useActiveHeading } from '@/hooks/use-active-heading'
+import { useReviewRailShift } from '@/hooks/use-review-rail-shift'
 import { useNoteTagsQuery, useNoteLinksQuery } from '@/hooks/use-notes-query'
 import { usePropertiesCollapsed } from '@/hooks/use-properties-collapsed'
 import { usePropertySection } from '@/hooks/use-property-section'
@@ -66,7 +67,12 @@ import { createLogger } from '@/lib/logger'
 import { FindBar } from '@/components/find-bar/find-bar'
 import { useFindInPage } from '@/hooks/use-find-in-page'
 import { useSettingsModal } from '@/contexts/settings-modal-context'
-import { ReviewRail, SuggestionModePill, useCriticMarkupReview } from '@/components/note/review'
+import {
+  ReviewBadgeLayer,
+  ReviewRail,
+  SuggestionModePill,
+  useCriticMarkupReview
+} from '@/components/note/review'
 import { useT } from '@memry/i18n/renderer'
 
 const log = createLogger('Page:Journal')
@@ -322,6 +328,11 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   }, [yearStatsData, currentViewState, dateParts.year, heatmapData, dateLabels])
 
   const journalScrollRef = useRef<HTMLDivElement>(null)
+  const [journalScrollEl, setJournalScrollEl] = useState<HTMLDivElement | null>(null)
+  const setJournalScrollRef = useCallback((el: HTMLDivElement | null) => {
+    journalScrollRef.current = el
+    setJournalScrollEl(el)
+  }, [])
   const [marqueeZoneEl, setMarqueeZoneEl] = useState<HTMLDivElement | null>(null)
 
   // Click anywhere in the marquee zone (full scroll area, minus metadata
@@ -532,6 +543,19 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     markdown: editorState.content,
     onMarkdownChange: handleMarkdownChange
   })
+  const hasReviewContent = review.marks.length > 0 || !!review.activeDraft
+  const {
+    shiftStyle: railShiftStyle,
+    railHidden,
+    setContentEl: setRailContentEl
+  } = useReviewRailShift(journalScrollEl, {
+    railEnabled: hasReviewContent,
+    fullWidth: isFullWidth
+  })
+  // Full width keeps the reserved grid column; otherwise the rail hangs off the
+  // centered content column and the group is shifted Notion-style.
+  const showGridRail = hasReviewContent && isFullWidth
+  const showCanvasRail = hasReviewContent && !isFullWidth && !railHidden
   const handleContentChange = useCallback((_newBlocks: Block[]) => {}, [])
   const handleLinkClick = useCallback(
     (href: string) => window.open(href, '_blank', 'noopener,noreferrer'),
@@ -785,7 +809,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
             />
           </div>
 
-          <div ref={journalScrollRef} className="flex-1 overflow-y-auto overflow-x-visible">
+          <div ref={setJournalScrollRef} className="flex-1 overflow-y-auto overflow-x-visible">
             <div
               ref={setMarqueeZoneEl}
               className="marquee-zone relative min-h-full w-full flex flex-col"
@@ -803,17 +827,22 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
 
                   {currentViewState.type === 'day' && (
                     <div
-                      className="grid w-full items-start gap-x-12 [grid-template-columns:minmax(0,var(--journal-layout-content-track))_20rem] max-[920px]:grid-cols-1"
+                      ref={setRailContentEl}
+                      className={cn(
+                        'w-full',
+                        showGridRail
+                          ? 'grid items-start gap-x-12 [grid-template-columns:minmax(0,1fr)_20rem] max-[920px]:grid-cols-1'
+                          : 'mx-auto flex flex-col flex-1',
+                        showCanvasRail && 'review-canvas'
+                      )}
                       style={
                         {
-                          '--journal-layout-content-track': journalContentWidth ?? '1fr',
-                          maxWidth: isFullWidth
-                            ? '100%'
-                            : `calc(${journalContentWidth ?? '640px'} + 23rem)`
+                          maxWidth: isFullWidth ? '100%' : (journalContentWidth ?? '640px'),
+                          ...railShiftStyle
                         } as CSSProperties
                       }
                     >
-                      <div className="min-w-0 flex flex-col">
+                      <div className="min-w-0 flex flex-col flex-1">
                         <div className="group/metadata flex flex-col pb-[15px]" data-marquee-ignore>
                           <GhostAffordanceRow
                             availableTags={availableTags}
@@ -907,6 +936,12 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                               }}
                             />
                           )}
+                          <ReviewBadgeLayer
+                            review={review}
+                            targetId={entry?.id}
+                            containerRef={editorContainerRef}
+                            active={railHidden}
+                          />
                         </div>
 
                         {entry && backlinks.length > 0 && (
@@ -920,13 +955,19 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                           </div>
                         )}
                       </div>
-                      <div
-                        data-journal-review-rail
-                        data-marquee-ignore
-                        className="max-[920px]:hidden min-w-0 self-start"
-                      >
-                        <ReviewRail review={review} targetId={entry?.id} />
-                      </div>
+                      {(showGridRail || showCanvasRail) && (
+                        <div
+                          data-journal-review-rail
+                          data-marquee-ignore
+                          className={
+                            showGridRail
+                              ? 'max-[920px]:hidden min-w-0 self-start'
+                              : 'review-canvas-rail'
+                          }
+                        >
+                          <ReviewRail review={review} targetId={entry?.id} />
+                        </div>
+                      )}
                     </div>
                   )}
 

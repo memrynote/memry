@@ -11,6 +11,7 @@ import {
 import {
   AgentPromptEditor,
   type AgentPromptEditorHandle,
+  type AgentPromptSeedPart,
   type AgentPromptValue
 } from '@/agent-chat/agent-prompt-editor'
 import { type MentionAttachment } from '@/agent-chat/mention-icons'
@@ -26,10 +27,13 @@ import type {
   CriticMarkupCommentMentionKind,
   CriticMarkupCommentMentionRef
 } from '@memry/shared'
+import { iconForMention, splitCommentBody } from './comment-body'
 import type { SubmitCommentInput } from './use-critic-markup-review'
 
 interface CommentComposerProps {
   targetId?: string
+  /** When set, the composer edits an existing comment seeded with this content. */
+  initialValue?: SubmitCommentInput
   onCancel: () => void
   onSubmit: (input: SubmitCommentInput) => void
 }
@@ -38,6 +42,7 @@ const emptyEditorValue: AgentPromptValue = { text: '', attachments: [] }
 
 export function CommentComposer({
   targetId,
+  initialValue,
   onCancel,
   onSubmit
 }: CommentComposerProps): React.JSX.Element {
@@ -59,10 +64,14 @@ export function CommentComposer({
   const hasDraftContent =
     editorValue.text.trim().length > 0 || attachments.length > 0 || isUploading
 
+  const isEditing = initialValue !== undefined
+
   const cancelIfEmpty = useCallback(() => {
-    if (hasDraftContent) return
+    // Editing an existing comment always cancels back to read mode; a fresh
+    // draft only auto-cancels while it has no content worth keeping.
+    if (!isEditing && hasDraftContent) return
     onCancel()
-  }, [hasDraftContent, onCancel])
+  }, [hasDraftContent, isEditing, onCancel])
 
   const closeMentionPicker = useCallback(() => {
     setMentionQuery(null)
@@ -152,7 +161,14 @@ export function CommentComposer({
     [targetId, tCommon]
   )
 
+  const initialValueRef = useRef(initialValue)
+
   useLayoutEffect(() => {
+    const initial = initialValueRef.current
+    if (initial) {
+      editorRef.current?.seed(seedPartsFromComment(initial))
+      setAttachments(initial.attachments)
+    }
     editorRef.current?.focus()
   }, [])
 
@@ -198,6 +214,7 @@ export function CommentComposer({
           <AgentPromptEditor
             ref={editorRef}
             disabled={false}
+            editorClassName="!min-h-[22px] max-h-[130px] overflow-y-auto !p-0 !py-0.5 !text-[13px] !leading-5"
             placeholder={t('comments.commentPlaceholder')}
             onEscape={cancelIfEmpty}
             onMentionKeyDown={handleMentionKeyDown}
@@ -289,6 +306,22 @@ export function CommentComposer({
       )}
       {uploadError && <div className="critic-comment-error">{uploadError}</div>}
     </div>
+  )
+}
+
+function seedPartsFromComment(initial: SubmitCommentInput): AgentPromptSeedPart[] {
+  return splitCommentBody(initial.body, initial.mentions).map((part) =>
+    part.kind === 'mention'
+      ? {
+          kind: 'mention' as const,
+          attachment: {
+            kind: part.mention.kind,
+            ref_id: part.mention.refId,
+            label: part.mention.label,
+            icon: iconForMention(part.mention)
+          }
+        }
+      : { kind: 'text' as const, text: part.text }
   )
 }
 

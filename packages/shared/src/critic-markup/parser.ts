@@ -31,6 +31,7 @@ export interface CriticMarkupMark {
   originalText?: string
   body?: string
   metadata?: string
+  createdAt?: number
   mentions?: CriticMarkupCommentMentionRef[]
   attachments?: CriticMarkupCommentAttachmentRef[]
 }
@@ -64,6 +65,7 @@ export function parseCriticMarkup(markdown: string): ParsedCriticMarkup {
         visibleText,
         body: payload.body,
         metadata: payload.metadata,
+        createdAt: payload.createdAt ?? createdAtFromCommentMarkId(payload.id),
         mentions: payload.mentions,
         attachments: payload.attachments,
         start,
@@ -110,6 +112,7 @@ export function parseCriticMarkup(markdown: string): ParsedCriticMarkup {
         visibleText: '',
         body: payload.body,
         metadata: payload.metadata,
+        createdAt: payload.createdAt ?? createdAtFromCommentMarkId(payload.id),
         mentions: payload.mentions,
         attachments: payload.attachments,
         start,
@@ -239,6 +242,7 @@ function parseCommentPayload(payload: string): {
   id?: string
   metadata?: string
   body: string
+  createdAt?: number
   mentions?: CriticMarkupCommentMentionRef[]
   attachments?: CriticMarkupCommentAttachmentRef[]
 } {
@@ -251,6 +255,7 @@ function parseCommentPayload(payload: string): {
     id,
     metadata,
     body,
+    createdAt: parseCommentCreatedAt(fields.get('createdAt')),
     mentions: parseStructuredCommentMetadata(
       fields.get('mentions'),
       normalizeCriticMarkupCommentMentions
@@ -285,6 +290,28 @@ function buildCommentMetadata(
   if (mentions) parts.push(`mentions=${encodeURIComponent(JSON.stringify(mentions))}`)
   if (attachments) parts.push(`attachments=${encodeURIComponent(JSON.stringify(attachments))}`)
   return parts.join(';') || `id=${mark.id};type=comment`
+}
+
+function parseCommentCreatedAt(value: string | undefined): number | undefined {
+  if (!value) return undefined
+  const parsed = Number(value)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined
+}
+
+// Comment ids created in the composer embed the creation time as base36
+// (`critic-comment-<Date.now().toString(36)>-<random>`); recover it for
+// comments saved before createdAt landed in metadata.
+const COMMENT_ID_TIMESTAMP_PATTERN = /^critic-comment-([0-9a-z]+)-/
+const COMMENT_ID_TIMESTAMP_MIN = Date.UTC(2020, 0, 1)
+const COMMENT_ID_TIMESTAMP_MAX = Date.UTC(2100, 0, 1)
+
+function createdAtFromCommentMarkId(id: string | undefined): number | undefined {
+  const match = id ? COMMENT_ID_TIMESTAMP_PATTERN.exec(id) : null
+  if (!match) return undefined
+  const parsed = parseInt(match[1], 36)
+  return parsed >= COMMENT_ID_TIMESTAMP_MIN && parsed < COMMENT_ID_TIMESTAMP_MAX
+    ? parsed
+    : undefined
 }
 
 function parseMetadataFields(metadata: string): Map<string, string> {

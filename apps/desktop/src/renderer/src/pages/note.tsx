@@ -59,7 +59,12 @@ import { graphKeys } from '@/hooks/use-graph-data'
 import { NoteBreadcrumb } from '@/components/note/note-breadcrumb'
 import { FindBar } from '@/components/find-bar/find-bar'
 import { useFindInPage } from '@/hooks/use-find-in-page'
-import { ReviewRail, SuggestionModePill, useCriticMarkupReview } from '@/components/note/review'
+import {
+  ReviewBadgeLayer,
+  ReviewRail,
+  SuggestionModePill,
+  useCriticMarkupReview
+} from '@/components/note/review'
 
 import { useT } from '@memry/i18n/renderer'
 
@@ -550,6 +555,8 @@ export function NotePage({ noteId }: NotePageProps) {
     markdown: editorInitialContent,
     onMarkdownChange: handleMarkdownChange
   })
+  const hasReviewContent = review.marks.length > 0 || !!review.activeDraft
+  const [reviewRailHidden, setReviewRailHidden] = useState(false)
 
   const handleTitleChange = useCallback(
     async (newTitle: string) => {
@@ -1003,7 +1010,8 @@ export function NotePage({ noteId }: NotePageProps) {
       actions={actionIcons}
       fullWidth={isFullWidth}
       contentWidth={noteContentWidth ?? undefined}
-      sideRail={<ReviewRail review={review} targetId={noteId} />}
+      sideRail={hasReviewContent ? <ReviewRail review={review} targetId={noteId} /> : undefined}
+      onRailHiddenChange={setReviewRailHidden}
       marqueeZoneRef={setMarqueeZoneEl}
       topBar={
         <FindBar
@@ -1129,6 +1137,12 @@ export function NotePage({ noteId }: NotePageProps) {
               }}
             />
           </EditorErrorBoundary>
+          <ReviewBadgeLayer
+            review={review}
+            targetId={noteId}
+            containerRef={editorContainerRef}
+            active={reviewRailHidden}
+          />
         </div>
 
         {/* Local Graph Panel — excluded from marquee/focus-at-end so graph

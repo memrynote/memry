@@ -11,7 +11,16 @@ import {
 } from './use-critic-markup-review'
 
 vi.mock('@memry/i18n/renderer', () => ({
-  useT: () => ({ t: (key: string) => key })
+  useT: () => ({ t: (key: string) => key, i18n: { language: 'en' } })
+}))
+
+vi.mock('@/hooks/use-general-settings', () => ({
+  useGeneralSettings: () => ({
+    settings: { clockFormat: '24h' },
+    isLoading: false,
+    error: null,
+    updateSettings: vi.fn()
+  })
 }))
 
 vi.mock('@/agent-chat/messages/memry-links', () => ({
@@ -50,7 +59,10 @@ function createReview(
     handleEditorReady: vi.fn(),
     openCommentComposer: vi.fn(),
     cancelCommentDraft: vi.fn(),
+    getActiveDraftSelectionRect: vi.fn(() => null),
+    getActiveDraftDomRange: vi.fn(() => null),
     submitComment: vi.fn(),
+    updateComment: vi.fn(),
     startSuggestionMode: vi.fn(),
     stopSuggestionMode: vi.fn(),
     addSuggestionMark: vi.fn(),
@@ -82,16 +94,16 @@ describe('review UI', () => {
 
     expect(cardBlock).toContain('will-change: transform')
     expect(cardBlock).toContain('transform 200ms ease')
-    expect(css).toContain('--critic-review-card-hover-background: #252525;')
+    expect(css).toContain('--critic-review-card-hover-background: #202020;')
     expect(css).toContain('--critic-review-card-hover-background: var(--surface-active);')
     expect(hoverBlock).toContain('background-color: var(--critic-review-card-hover-background)')
     expect(hoverBlock).toContain('transform: translateX(-20px)')
     expect(hoverBlock).not.toContain('border-color')
     expect(css).toContain('.critic-review-suggestion-label-addition')
     expect(css).toContain(
-      'color: color-mix(in srgb, var(--accent-cyan) 72%, var(--muted-foreground))'
+      'color: color-mix(in srgb, rgb(39, 131, 222) 40%, var(--muted-foreground))'
     )
-    expect(css).toContain('color: color-mix(in srgb, var(--accent-cyan) 88%, var(--foreground))')
+    expect(css).toContain('color: rgb(39, 131, 222)')
     expect(css).toContain('color: var(--muted-foreground)')
     expect(css).toContain('.critic-review-text-collapsible')
     expect(css).toContain('text-overflow: ellipsis')
@@ -101,7 +113,7 @@ describe('review UI', () => {
     expect(css).toContain('.critic-comment-main-row')
     expect(css).toContain('display: flex')
     expect(css).toContain('.critic-comment-editor .ProseMirror')
-    expect(css).toContain('min-height: 22px !important')
+    expect(css).toContain(".critic-review-card[data-editing='true']")
   })
 
   it('renders the suggestion mode pill and exits mode', () => {
@@ -341,6 +353,100 @@ describe('review UI', () => {
     })
   })
 
+  it('edits a comment card inline and saves through updateComment', async () => {
+    const user = userEvent.setup()
+    const review = createReview({
+      marks: [
+        {
+          id: 'comment-1',
+          kind: 'comment',
+          visibleText: 'target',
+          body: 'Original body @Planning note',
+          mentions: [{ kind: 'note', refId: 'note-1', label: 'Planning note' }],
+          attachments: [
+            {
+              id: 'attachments/note-1/spec.pdf',
+              name: 'spec.pdf',
+              path: 'attachments/note-1/spec.pdf',
+              type: 'file'
+            }
+          ],
+          start: 0,
+          end: 6
+        }
+      ]
+    })
+
+    const { container } = render(<ReviewRail review={review} targetId="note-1" />)
+
+    await user.click(screen.getByRole('button', { name: 'comments.edit' }))
+
+    const card = container.querySelector('[data-critic-mark-id="comment-1"]')
+    expect(card).toHaveAttribute('data-editing', 'true')
+    expect(card?.querySelector('.critic-review-content')).not.toBeInTheDocument()
+
+    const editorElement = await screen.findByLabelText('comments.commentPlaceholder')
+    expect(editorElement).toHaveTextContent('Original body')
+    expect(editorElement).toHaveTextContent('@Planning note')
+    expect(screen.getByText('spec.pdf')).toBeInTheDocument()
+    await waitFor(() => expect(editorElement).toHaveFocus())
+
+    await user.keyboard(' more')
+    await user.click(screen.getByLabelText('comments.sendAria'))
+
+    expect(review.updateComment).toHaveBeenCalledWith('comment-1', {
+      body: 'Original body @Planning note more',
+      mentions: [{ kind: 'note', refId: 'note-1', label: 'Planning note' }],
+      attachments: [expect.objectContaining({ path: 'attachments/note-1/spec.pdf' })]
+    })
+    expect(screen.queryByLabelText('comments.commentPlaceholder')).not.toBeInTheDocument()
+  })
+
+  it('cancels comment editing with Escape without saving', async () => {
+    const user = userEvent.setup()
+    const review = createReview({
+      marks: [
+        {
+          id: 'comment-1',
+          kind: 'comment',
+          visibleText: 'target',
+          body: 'Original body',
+          start: 0,
+          end: 6
+        }
+      ]
+    })
+
+    render(<ReviewRail review={review} />)
+
+    await user.click(screen.getByRole('button', { name: 'comments.edit' }))
+    const editorElement = await screen.findByLabelText('comments.commentPlaceholder')
+    await waitFor(() => expect(editorElement).toHaveFocus())
+    await user.keyboard('{Escape}')
+
+    expect(review.updateComment).not.toHaveBeenCalled()
+    expect(screen.queryByLabelText('comments.commentPlaceholder')).not.toBeInTheDocument()
+    expect(screen.getByText('Original body')).toBeInTheDocument()
+  })
+
+  it('does not offer editing on suggestion cards', () => {
+    const review = createReview({
+      marks: [
+        {
+          id: 'addition-1',
+          kind: 'addition',
+          visibleText: 'added text',
+          start: 0,
+          end: 10
+        }
+      ]
+    })
+
+    render(<ReviewRail review={review} />)
+
+    expect(screen.queryByRole('button', { name: 'comments.edit' })).not.toBeInTheDocument()
+  })
+
   it('positions the active comment draft from the selected text top', () => {
     const review = createReview({
       activeDraft: { text: 'draft target', top: 88 }
@@ -474,6 +580,80 @@ describe('review UI', () => {
     expect(mention).toHaveAttribute('href', 'memry://note/note-1')
     expect(mention).toHaveClass('bg-sky-500/10')
     expect(screen.getByText('spec.pdf')).toBeInTheDocument()
+  })
+
+  it('renders creation dates on comment and suggestion cards and omits them when missing', () => {
+    const review = createReview({
+      marks: [
+        {
+          id: 'comment-dated',
+          kind: 'comment',
+          visibleText: 'dated text',
+          body: 'Dated comment',
+          createdAt: new Date(2026, 4, 26, 12, 3, 42).getTime(),
+          start: 0,
+          end: 10
+        },
+        {
+          id: 'comment-undated',
+          kind: 'comment',
+          visibleText: 'undated text',
+          body: 'Undated comment',
+          start: 11,
+          end: 23
+        },
+        {
+          id: 'addition-dated',
+          kind: 'addition',
+          visibleText: 'new text',
+          createdAt: new Date(2026, 5, 2, 9, 30, 0).getTime(),
+          start: 24,
+          end: 32
+        },
+        {
+          id: 'addition-undated',
+          kind: 'addition',
+          visibleText: 'older text',
+          start: 33,
+          end: 43
+        }
+      ]
+    })
+
+    const { container } = render(<ReviewRail review={review} />)
+
+    const dates = container.querySelectorAll('.critic-review-date')
+    expect(dates).toHaveLength(2)
+    expect(dates[0]).toHaveTextContent('26 May')
+    expect(dates[1]).toHaveTextContent('2 Jun')
+  })
+
+  it('keeps suggestion createdAt when its own serialized markdown round-trips', () => {
+    let markdown = 'Hello world'
+    const onMarkdownChange = vi.fn((next: string) => {
+      markdown = next
+    })
+    const { result, rerender } = renderHook(
+      ({ md }) => useCriticMarkupReview({ markdown: md, onMarkdownChange }),
+      { initialProps: { md: markdown } }
+    )
+
+    act(() => {
+      result.current.addSuggestionMark({
+        kind: 'deletion',
+        visibleText: 'world',
+        originalText: 'world',
+        start: 6
+      })
+    })
+
+    const createdAt = result.current.marks[0]?.createdAt
+    expect(createdAt).toEqual(expect.any(Number))
+
+    // Parent echoes the emitted markdown back as the prop (save round-trip).
+    rerender({ md: markdown })
+
+    expect(result.current.marks[0]?.createdAt).toBe(createdAt)
   })
 
   it('merges adjacent typed additions into one suggestion card', () => {
@@ -821,6 +1001,88 @@ describe('review UI', () => {
     })
     expect(onMarkdownChange).toHaveBeenLastCalledWith(expect.stringContaining('mentions='))
     expect(onMarkdownChange).toHaveBeenLastCalledWith(expect.stringContaining('attachments='))
+  })
+
+  it('updates an existing comment and undoes the edit', () => {
+    const onMarkdownChange = vi.fn()
+    const { result } = renderHook(() =>
+      useCriticMarkupReview({ markdown: 'comment target', onMarkdownChange })
+    )
+
+    act(() => {
+      result.current.openCommentComposer({ text: 'comment target', isEmpty: false })
+    })
+    act(() => {
+      result.current.submitComment({
+        body: 'Needs work',
+        mentions: [{ kind: 'note', refId: 'note-1', label: 'Planning note' }],
+        attachments: []
+      })
+    })
+    const commentId = result.current.marks[0].id
+
+    act(() => {
+      result.current.updateComment(commentId, {
+        body: '  Needs more work  ',
+        mentions: [],
+        attachments: [
+          {
+            id: 'attachments/note-1/spec.pdf',
+            name: 'spec.pdf',
+            path: 'attachments/note-1/spec.pdf',
+            type: 'file'
+          }
+        ]
+      })
+    })
+
+    expect(result.current.marks[0]).toMatchObject({
+      id: commentId,
+      kind: 'comment',
+      body: 'Needs more work',
+      attachments: [expect.objectContaining({ path: 'attachments/note-1/spec.pdf' })]
+    })
+    expect(result.current.marks[0].mentions).toBeUndefined()
+    expect(onMarkdownChange).toHaveBeenLastCalledWith(expect.stringContaining('attachments='))
+    expect(onMarkdownChange).toHaveBeenLastCalledWith(expect.not.stringContaining('mentions='))
+
+    act(() => {
+      expect(result.current.undoLastReviewAction()).toBe(true)
+    })
+    expect(result.current.marks[0]).toMatchObject({
+      body: 'Needs work',
+      mentions: [{ kind: 'note', refId: 'note-1', label: 'Planning note' }]
+    })
+    expect(result.current.marks[0].attachments).toBeUndefined()
+  })
+
+  it('ignores comment updates for unknown ids, suggestion marks, or empty bodies', () => {
+    const onMarkdownChange = vi.fn()
+    const { result } = renderHook(() =>
+      useCriticMarkupReview({ markdown: 'comment target', onMarkdownChange })
+    )
+
+    act(() => {
+      result.current.openCommentComposer({ text: 'comment target', isEmpty: false })
+    })
+    act(() => {
+      result.current.submitComment({ body: 'Needs work', mentions: [], attachments: [] })
+    })
+    const commentId = result.current.marks[0].id
+    act(() => {
+      result.current.addSuggestionMark({ kind: 'deletion', visibleText: 'comment', start: 0 })
+    })
+    const suggestionId = result.current.marks[1].id
+    onMarkdownChange.mockClear()
+
+    act(() => {
+      result.current.updateComment('missing-id', { body: 'x', mentions: [], attachments: [] })
+      result.current.updateComment(suggestionId, { body: 'x', mentions: [], attachments: [] })
+      result.current.updateComment(commentId, { body: '   ', mentions: [], attachments: [] })
+    })
+
+    expect(onMarkdownChange).not.toHaveBeenCalled()
+    expect(result.current.marks[0]).toMatchObject({ body: 'Needs work' })
   })
 
   it('handles Mod+Z through the review undo stack before native editor undo', () => {

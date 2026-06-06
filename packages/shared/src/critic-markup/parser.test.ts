@@ -96,6 +96,52 @@ describe('parseCriticMarkup', () => {
     expect(serializeCriticMarkup(parsed.plainText, parsed.marks)).toBe(serialized)
   })
 
+  it('roundtrips comment createdAt through metadata', () => {
+    const source = 'A {==quote==}{>>id=c1;type=comment;createdAt=1748254022000 | body<<}'
+    const parsed = parseCriticMarkup(source)
+
+    expect(parsed.marks[0]).toMatchObject({
+      id: 'c1',
+      kind: 'comment',
+      body: 'body',
+      createdAt: 1748254022000
+    })
+    expect(serializeCriticMarkup(parsed.plainText, parsed.marks)).toBe(source)
+  })
+
+  it('derives createdAt from the comment mark id when metadata has none', () => {
+    const timestamp = Date.UTC(2026, 4, 26, 12, 3, 42)
+    const id = `critic-comment-${timestamp.toString(36)}-abc123`
+    const parsed = parseCriticMarkup(`A {==quote==}{>>id=${id};type=comment | body<<}`)
+
+    expect(parsed.marks[0].createdAt).toBe(timestamp)
+  })
+
+  it('prefers metadata createdAt over the id-derived timestamp', () => {
+    const id = `critic-comment-${Date.UTC(2025, 0, 1).toString(36)}-abc123`
+    const parsed = parseCriticMarkup(
+      `A {==quote==}{>>id=${id};type=comment;createdAt=1748254022000 | body<<}`
+    )
+
+    expect(parsed.marks[0].createdAt).toBe(1748254022000)
+  })
+
+  it('does not derive createdAt from non-timestamp comment ids', () => {
+    const parsed = parseCriticMarkup(
+      'A {==quote==}{>>id=critic-comment-12-abc;type=comment | body<<}'
+    )
+
+    expect(parsed.marks[0].createdAt).toBeUndefined()
+  })
+
+  it('ignores invalid createdAt metadata values', () => {
+    const parsed = parseCriticMarkup(
+      'A {==quote==}{>>id=c1;type=comment;createdAt=not-a-number | body<<}'
+    )
+
+    expect(parsed.marks[0].createdAt).toBeUndefined()
+  })
+
   it('ignores malformed structured comment metadata while preserving legacy comments', () => {
     const parsed = parseCriticMarkup(
       'A {==quote==}{>>id=c1;type=comment;mentions=%7Bbad;attachments=%5B%7B%7D%5D | body<<}'

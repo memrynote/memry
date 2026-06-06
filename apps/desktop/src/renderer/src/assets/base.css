@@ -365,8 +365,8 @@
 }
 
 .critic-mark-inline-addition {
-  background: color-mix(in srgb, var(--accent-green) 20%, transparent);
-  color: color-mix(in srgb, var(--accent-green) 76%, var(--foreground));
+  background: color-mix(in srgb, rgb(39, 131, 222) 20%, transparent);
+  color: color-mix(in srgb, rgb(39, 131, 222) 76%, var(--foreground));
 }
 
 .critic-mark-inline-deletion {
@@ -403,14 +403,30 @@
   line-height: 1;
 }
 
-.review-rail,
-.review-rail-empty {
+.review-rail {
   position: sticky;
   top: 24px;
   z-index: 20;
   width: 340px;
   min-height: 260px;
   pointer-events: auto;
+}
+
+/* Notion-style review canvas: the content column stays centered at its max
+   width; when the rail is visible the whole content + gap + rail group is
+   centered as a unit by shifting the column with an animated transform. */
+.review-canvas {
+  position: relative;
+  transition: transform 200ms ease;
+  transform: translateX(calc(var(--direction, 1) * -1 * var(--review-rail-shift, 0px)));
+}
+
+.review-canvas-rail {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 100%;
+  margin-inline-start: 48px;
+  width: 340px;
 }
 
 .review-rail-inner {
@@ -445,6 +461,19 @@
 
 .critic-review-card[data-expanded='true'] {
   z-index: 3;
+}
+
+.critic-review-card[data-editing='true'] {
+  padding: 0;
+  border-color: transparent;
+  background-color: transparent;
+  box-shadow: none;
+}
+
+.critic-review-card[data-editing='true']:hover,
+.critic-review-card[data-editing='true'][data-hovered='true'] {
+  background-color: transparent;
+  transform: none;
 }
 
 .critic-review-text-collapsible {
@@ -502,11 +531,11 @@
 }
 
 .critic-review-suggestion-label-addition {
-  color: color-mix(in srgb, var(--accent-cyan) 72%, var(--muted-foreground));
+  color: color-mix(in srgb, rgb(39, 131, 222) 40%, var(--muted-foreground));
 }
 
 .critic-review-suggestion-text-addition {
-  color: color-mix(in srgb, var(--accent-cyan) 88%, var(--foreground));
+  color: rgb(39, 131, 222);
 }
 
 .critic-review-suggestion-label-deletion,
@@ -526,9 +555,23 @@
   line-height: 1.45;
 }
 
-.critic-review-card > .critic-review-body:first-child {
+.critic-review-content > .critic-review-body:first-child {
   margin-top: 0;
   padding-inline-end: 66px;
+}
+
+.critic-review-date {
+  display: block;
+  margin: 0 0 4px;
+  width: fit-content;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  line-height: 16px;
+  pointer-events: auto;
+}
+
+.critic-review-date + .critic-review-body {
+  margin-top: 0;
 }
 
 .critic-review-attachments {
@@ -540,8 +583,8 @@
 
 .critic-review-actions {
   position: absolute;
-  inset-block-start: -4px;
-  inset-inline-end: 0;
+  inset-block-start: 5px;
+  inset-inline-end: 6px;
   z-index: 3;
   display: flex;
   align-items: center;
@@ -549,9 +592,8 @@
   width: fit-content;
   border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
   border-radius: 6px;
-  background-color: var(--background);
+  background-color: var(--critic-review-actions-background);
   padding: 2px;
-  box-shadow: 0 8px 20px color-mix(in srgb, black 12%, transparent);
   opacity: 0;
   pointer-events: none;
   transition: opacity 150ms ease-out;
@@ -577,6 +619,88 @@
   width: 308px;
 }
 
+/* Inline badge fallback when the review rail is hidden (narrow windows). */
+.critic-review-badge-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.critic-review-badge {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 24px;
+  padding-inline: 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  pointer-events: auto;
+  white-space: nowrap;
+}
+
+.critic-review-badge:hover,
+.critic-review-badge[data-state='open'] {
+  background-color: var(--critic-review-card-hover-background);
+}
+
+.critic-review-badge:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.critic-review-badge-icon {
+  width: 14px;
+  height: 14px;
+  color: color-mix(in srgb, var(--accent-orange) 85%, var(--foreground));
+}
+
+.critic-review-badge-count {
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+}
+
+/* Invisible positioning wrapper: the cards/composer inside carry their own
+   chrome, so the flyout itself draws no border, background, or shadow. */
+.critic-review-flyout {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 340px;
+  max-height: 420px;
+  overflow-y: auto;
+  pointer-events: auto;
+}
+
+.critic-review-flyout-draft {
+  width: fit-content;
+}
+
+.critic-review-flyout .critic-review-card {
+  position: relative;
+  inset-inline-start: auto;
+  width: 100%;
+}
+
+.critic-review-flyout .critic-review-card:hover,
+.critic-review-flyout .critic-review-card[data-hovered='true'] {
+  transform: none;
+}
+
+/* Drafted-but-unsubmitted comment selection: painted like an existing
+   comment mark while the flyout composer is open. */
+::highlight(critic-comment-draft) {
+  background-color: color-mix(in srgb, var(--accent-orange) 30%, transparent);
+}
+
 .critic-comment-composer {
   width: 308px;
   overflow: visible;
@@ -590,15 +714,7 @@
   padding: 6px 8px 6px 10px;
 }
 
-.critic-comment-editor .ProseMirror {
-  min-height: 22px !important;
-  max-height: 130px;
-  overflow-y: auto;
-  padding: 2px 0 !important;
-  font-size: 13px !important;
-  line-height: 20px !important;
-}
-
+/* Editor sizing lives in the editorClassName passed by CommentComposer. */
 .critic-comment-editor .ProseMirror p {
   margin: 0;
 }
@@ -808,6 +924,7 @@
     --surface-active: #e4e4de;
     /* Hover states */
     --critic-review-card-hover-background: var(--surface-active);
+    --critic-review-actions-background: var(--background);
 
     /* ===== SEMANTIC PASTELS (Card Backgrounds) ===== */
     --card-sage: #e6efe6;
@@ -968,6 +1085,7 @@
     --surface: #f7f6f3;
     --surface-active: #efedea;
     --critic-review-card-hover-background: var(--surface-active);
+    --critic-review-actions-background: var(--background);
 
     /* ===== SEMANTIC PASTELS - White Mode ===== */
     --card-sage: #dbeddb;
@@ -1089,7 +1207,8 @@
     --foreground: #bcbab6;
     --surface: #222222;
     --surface-active: #2a2a2a;
-    --critic-review-card-hover-background: #252525;
+    --critic-review-card-hover-background: #202020;
+    --critic-review-actions-background: #191919;
 
     /* ===== SEMANTIC PASTELS - Dark Mode (Muted versions) ===== */
     --card-sage: #1e261e;

@@ -648,10 +648,10 @@ describe('NotePage', () => {
     )
   })
 
-  it('renders the review rail without replacing note controls', () => {
+  it('omits the review rail when there are no comments, keeping note controls', () => {
     renderWithProviders(<NotePage noteId="note-1" />)
 
-    expect(screen.getByLabelText('comments.railAria')).toBeInTheDocument()
+    expect(screen.queryByLabelText('comments.railAria')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Add tag' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Add property' })).toBeInTheDocument()
     expect(screen.getByTestId('editor-content')).toHaveTextContent('Original body')

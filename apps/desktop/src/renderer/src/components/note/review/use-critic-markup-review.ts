@@ -27,6 +27,15 @@ interface UseCriticMarkupReviewParams {
 interface CommentDraft {
   text: string
   top?: number
+  from?: number
+  to?: number
+}
+
+export interface DraftSelectionRect {
+  top: number
+  bottom: number
+  left: number
+  right: number
 }
 
 interface ReviewUndoEntry {
@@ -65,7 +74,10 @@ export interface CriticMarkupReviewController {
   handleEditorReady: (editor: any | null) => void
   openCommentComposer: (selection: ReviewSelection) => void
   cancelCommentDraft: () => void
+  getActiveDraftSelectionRect: () => DraftSelectionRect | null
+  getActiveDraftDomRange: () => Range | null
   submitComment: (input: SubmitCommentInput) => void
+  updateComment: (id: string, input: SubmitCommentInput) => void
   startSuggestionMode: () => void
   stopSuggestionMode: () => void
   addSuggestionMark: (input: AddSuggestionMarkInput) => void
@@ -103,7 +115,11 @@ export function useCriticMarkupReview({
 
   useEffect(() => {
     const currentSerialized = serializeCriticMarkup(plainMarkdownRef.current, marksRef.current)
-    if (markdown !== currentSerialized && emittedMarkdownsRef.current.includes(markdown)) {
+    // No-op resync: the incoming markdown matches what the current marks
+    // serialize to. Keep the in-memory marks — re-parsing would drop fields the
+    // markup cannot carry (suggestion createdAt, stable suggestion ids).
+    if (markdown === currentSerialized) return
+    if (emittedMarkdownsRef.current.includes(markdown)) {
       return
     }
 
@@ -156,10 +172,46 @@ export function useCriticMarkupReview({
     if (selection.isEmpty || !selection.text.trim()) return
     const nextDraft: CommentDraft = {
       text: selection.text.trim(),
-      ...(selection.top !== undefined ? { top: selection.top } : {})
+      ...(selection.top !== undefined ? { top: selection.top } : {}),
+      ...(selection.from !== undefined ? { from: selection.from } : {}),
+      ...(selection.to !== undefined ? { to: selection.to } : {})
     }
     activeDraftRef.current = nextDraft
     setActiveDraft(nextDraft)
+  }, [])
+
+  const getActiveDraftSelectionRect = useCallback((): DraftSelectionRect | null => {
+    const draft = activeDraftRef.current
+    const tiptap = editorRef.current?._tiptapEditor
+    if (!draft || draft.from === undefined || draft.to === undefined || !tiptap) return null
+    try {
+      const start = tiptap.view.coordsAtPos(draft.from)
+      const end = tiptap.view.coordsAtPos(draft.to, -1)
+      return {
+        top: Math.min(start.top, end.top),
+        bottom: Math.max(start.bottom, end.bottom),
+        left: Math.min(start.left, end.left),
+        right: Math.max(start.right, end.right)
+      }
+    } catch {
+      return null
+    }
+  }, [])
+
+  const getActiveDraftDomRange = useCallback((): Range | null => {
+    const draft = activeDraftRef.current
+    const tiptap = editorRef.current?._tiptapEditor
+    if (!draft || draft.from === undefined || draft.to === undefined || !tiptap) return null
+    try {
+      const start = tiptap.view.domAtPos(draft.from)
+      const end = tiptap.view.domAtPos(draft.to)
+      const range = document.createRange()
+      range.setStart(start.node, start.offset)
+      range.setEnd(end.node, end.offset)
+      return range
+    } catch {
+      return null
+    }
   }, [])
 
   const cancelCommentDraft = useCallback(() => {
@@ -177,6 +229,7 @@ export function useCriticMarkupReview({
       if (start === -1) return
 
       const id = createCriticMarkId('comment')
+      const createdAt = Date.now()
       const nextMarks = [
         ...marksRef.current,
         {
@@ -184,7 +237,8 @@ export function useCriticMarkupReview({
           kind: 'comment' as const,
           visibleText: draft.text,
           body: trimmedBody,
-          metadata: `id=${id};type=comment`,
+          metadata: `id=${id};type=comment;createdAt=${createdAt}`,
+          createdAt,
           ...(input.mentions.length > 0 ? { mentions: input.mentions } : {}),
           ...(input.attachments.length > 0 ? { attachments: input.attachments } : {}),
           start,
@@ -199,6 +253,34 @@ export function useCriticMarkupReview({
       )
       activeDraftRef.current = null
       setActiveDraft(null)
+      persist(plainMarkdownRef.current, nextMarks)
+    },
+    [persist]
+  )
+
+  const updateComment = useCallback(
+    (id: string, input: SubmitCommentInput) => {
+      const trimmedBody = input.body.trim()
+      if (!trimmedBody) return
+      const existing = marksRef.current.find((mark) => mark.id === id && mark.kind === 'comment')
+      if (!existing) return
+
+      const nextMarks = marksRef.current.map((mark) => {
+        if (mark.id !== id) return mark
+        const { mentions: _mentions, attachments: _attachments, ...rest } = mark
+        return {
+          ...rest,
+          body: trimmedBody,
+          ...(input.mentions.length > 0 ? { mentions: input.mentions } : {}),
+          ...(input.attachments.length > 0 ? { attachments: input.attachments } : {})
+        }
+      })
+      pushReviewUndoEntry(
+        undoStackRef.current,
+        snapshotReviewState(plainMarkdownRef.current, marksRef.current),
+        plainMarkdownRef.current,
+        nextMarks
+      )
       persist(plainMarkdownRef.current, nextMarks)
     },
     [persist]
@@ -284,6 +366,7 @@ export function useCriticMarkupReview({
           kind: input.kind,
           visibleText: input.visibleText,
           originalText: input.originalText,
+          createdAt: Date.now(),
           start,
           end
         }
@@ -430,7 +513,10 @@ export function useCriticMarkupReview({
     handleEditorReady,
     openCommentComposer,
     cancelCommentDraft,
+    getActiveDraftSelectionRect,
+    getActiveDraftDomRange,
     submitComment,
+    updateComment,
     startSuggestionMode,
     stopSuggestionMode,
     addSuggestionMark,
@@ -541,6 +627,7 @@ function reconcileLiveSuggestionEdit(
       id,
       kind: 'addition',
       visibleText: insertedVisibleText,
+      createdAt: Date.now(),
       start: edit.start,
       end: edit.start + visibleDelta
     }

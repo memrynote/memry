@@ -81,4 +81,24 @@ describe('critic markup Yjs helpers', () => {
       })
     ])
   })
+
+  it('preserves comment createdAt through write and read', () => {
+    const doc = new FakeYDoc()
+
+    writeCriticMarkupMarksToYDoc(doc, [
+      {
+        id: 'comment-1',
+        kind: 'comment',
+        visibleText: 'target',
+        body: 'A comment',
+        createdAt: 1748254022000,
+        start: 0,
+        end: 6
+      }
+    ])
+
+    expect(readCriticMarkupMarksFromYDoc(doc)).toEqual([
+      expect.objectContaining({ createdAt: 1748254022000 })
+    ])
+  })
 })

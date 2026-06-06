@@ -34,17 +34,24 @@ interface MentionQuery {
   }
 }
 
+export type AgentPromptSeedPart =
+  | { kind: 'text'; text: string }
+  | { kind: 'mention'; attachment: MentionAttachment }
+
 export interface AgentPromptEditorHandle {
   clear: () => void
   focus: () => void
   getValue: () => AgentPromptValue
   insertText: (text: string) => void
   insertMention: (attachment: MentionAttachment) => void
+  seed: (parts: AgentPromptSeedPart[]) => void
 }
 
 interface AgentPromptEditorProps {
   disabled: boolean
   placeholder: string
+  /** Extra classes merged onto the ProseMirror element; wins over the defaults. */
+  editorClassName?: string
   onEscape: () => void
   onMentionKeyDown: (event: KeyboardEvent) => boolean
   onMentionQueryChange: (query: string | null) => void
@@ -311,6 +318,7 @@ export const AgentPromptEditor = forwardRef<AgentPromptEditorHandle, AgentPrompt
     {
       disabled,
       placeholder,
+      editorClassName,
       onEscape,
       onMentionKeyDown,
       onMentionQueryChange,
@@ -367,7 +375,8 @@ export const AgentPromptEditor = forwardRef<AgentPromptEditorHandle, AgentPrompt
           'aria-multiline': 'true',
           class: cn(
             '!min-h-[48.4px] min-h-[48.4px] max-h-[258px] whitespace-pre-wrap break-words border-0 bg-transparent p-3 text-[16px] text-foreground outline-none transition-[padding] duration-200 ease-in-out focus:outline-none',
-            '[&_p]:m-0 [&_.is-editor-empty:first-child::before]:pointer-events-none [&_.is-editor-empty:first-child::before]:float-left [&_.is-editor-empty:first-child::before]:h-0 [&_.is-editor-empty:first-child::before]:text-muted-foreground [&_.is-editor-empty:first-child::before]:content-[attr(data-placeholder)]'
+            '[&_p]:m-0 [&_.is-editor-empty:first-child::before]:pointer-events-none [&_.is-editor-empty:first-child::before]:float-left [&_.is-editor-empty:first-child::before]:h-0 [&_.is-editor-empty:first-child::before]:text-muted-foreground [&_.is-editor-empty:first-child::before]:content-[attr(data-placeholder)]',
+            editorClassName
           )
         },
         handleDOMEvents: {
@@ -426,6 +435,34 @@ export const AgentPromptEditor = forwardRef<AgentPromptEditorHandle, AgentPrompt
           const mentionQuery = findMentionQuery(editor)
           activeMentionRef.current = mentionQuery
           onMentionQueryChangeRef.current(mentionQuery?.query ?? null)
+          onValueChangeRef.current(readEditorValue(editor))
+        },
+        seed: (parts) => {
+          if (!editor) return
+
+          const paragraphs: JSONContent[][] = [[]]
+          for (const part of parts) {
+            if (part.kind === 'mention') {
+              paragraphs[paragraphs.length - 1].push({
+                type: 'agentMention',
+                attrs: mentionAttrs(part.attachment)
+              })
+              continue
+            }
+            part.text.split('\n').forEach((chunk, index) => {
+              if (index > 0) paragraphs.push([])
+              if (chunk) paragraphs[paragraphs.length - 1].push({ type: 'text', text: chunk })
+            })
+          }
+
+          editor.commands.setContent({
+            type: 'doc',
+            content: paragraphs.map((content) =>
+              content.length ? { type: 'paragraph', content } : { type: 'paragraph' }
+            )
+          })
+          activeMentionRef.current = null
+          onMentionQueryChangeRef.current(null)
           onValueChangeRef.current(readEditorValue(editor))
         },
         insertMention: (attachment) => {

@@ -75,6 +75,9 @@ function normalizeCriticMarkupMark(value: unknown): CriticMarkupMark | null {
     ...(typeof mark.originalText === 'string' ? { originalText: mark.originalText } : {}),
     ...(typeof mark.body === 'string' ? { body: mark.body } : {}),
     ...(typeof mark.metadata === 'string' ? { metadata: mark.metadata } : {}),
+    ...(typeof mark.createdAt === 'number' && Number.isFinite(mark.createdAt)
+      ? { createdAt: mark.createdAt }
+      : {}),
     ...(mentions ? { mentions } : {}),
     ...(attachments ? { attachments } : {})
   }
@@ -90,6 +93,7 @@ function toSerializableMark(mark: CriticMarkupMark): Record<string, unknown> {
     ...(mark.originalText !== undefined ? { originalText: mark.originalText } : {}),
     ...(mark.body !== undefined ? { body: mark.body } : {}),
     ...(mark.metadata !== undefined ? { metadata: mark.metadata } : {}),
+    ...(mark.createdAt !== undefined ? { createdAt: mark.createdAt } : {}),
     ...(mark.mentions !== undefined ? { mentions: mark.mentions } : {}),
     ...(mark.attachments !== undefined ? { attachments: mark.attachments } : {})
   }

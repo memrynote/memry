@@ -2,6 +2,11 @@
 
 :root {
   --chrome-width: 180px;
+  --direction: 1;
+}
+
+[dir='rtl'] {
+  --direction: -1;
 }
 
 body {
