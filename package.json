@@ -61,7 +61,8 @@
     "sync:reset": "pnpm sync:clean && pnpm sync:init-db",
     "outdated:check": "pnpm outdated -r --format list | head -100",
     "check:lockfile": "node scripts/check-lockfile.js",
-    "prepare": "husky"
+    "prepare": "husky",
+    "doctor": "npx react-doctor@latest"
   },
   "devDependencies": {
     "husky": "^9.1.7",
