@@ -6,6 +6,7 @@
 - [Contextual resurfacing by relevance](#contextual-resurfacing-by-relevance)
 - [Inbox segmentation and triage](#inbox-segmentation-and-triage)
 - [Structure without folder rigidity](#structure-without-folder-rigidity)
+- [Google Docs for markdown files](#google-docs-for-markdown-files)
 
 ## Reduce filing with AI-assisted capture
 
@@ -198,3 +199,35 @@ Color highlighting and the comments screenshot both landed positively.
 Do not make MemryNote a Notion clone. The goal is flexible organization on top of
 portable local notes: folders for disk structure, links for relationships, tags
 and properties for grouping, and collections for saved perspectives.
+
+## Google Docs for markdown files
+
+Source: Kaan's product note, June 2026.
+
+### User signal
+
+"I need Google Docs but just for markdown files." The collaboration workflow people
+already trust in Google Docs — comments, suggestions, history — but on top of portable
+local Markdown instead of a proprietary document silo.
+
+### Product direction
+
+Bring the Google Docs collaboration loop to Markdown notes:
+
+- Multiplayer comments: comment threads that sync across devices and collaborators,
+  including resolving comments and keeping the resolved state in sync.
+- Suggestion mode: propose edits without changing the underlying text until accepted,
+  building on the existing CriticMarkup review surface.
+- Edit mode: the normal direct-editing default, with a clear switch between editing
+  and suggesting.
+- Edit history: see how a note changed over time and who changed it.
+- Some sense of multi edits: multiple pending edits/suggestions on the same note that
+  can be reviewed and applied individually or together.
+- Easy CLI access: the same notes and collaboration state reachable from the command
+  line, not only the desktop app.
+
+### Important boundary
+
+The files stay plain Markdown on disk. Collaboration metadata (comments, suggestions,
+history) must not break portability — a note opened outside MemryNote should still be
+a readable Markdown file.
