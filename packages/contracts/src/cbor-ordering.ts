@@ -16,6 +16,7 @@ export const CBOR_FIELD_ORDER = {
   SCAN_CONFIRM: ['sessionId', 'initiatorPublicKey', 'devicePublicKey'] as const,
   KEY_CONFIRM: ['sessionId', 'encryptedMasterKey'] as const,
   PROVIDER_AUTH_CONFIRM: ['sessionId', 'encryptedProviderAuth'] as const,
+  VAULT_TRANSFER_CONFIRM: ['sessionId', 'encryptedVaultTransfer'] as const,
   ATTACHMENT_MANIFEST: [
     'encryptedManifest',
     'manifestNonce',
