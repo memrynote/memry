@@ -41,15 +41,113 @@ export interface ParsedCriticMarkup {
   marks: CriticMarkupMark[]
 }
 
-const CRITIC_MARKUP_PATTERN =
-  /\{==([\s\S]*?)==\}\{>>([\s\S]*?)<<\}|\{\+\+([\s\S]*?)\+\+\}|\{--([\s\S]*?)--\}|\{~~([\s\S]*?)~>([\s\S]*?)~~\}|\{>>([\s\S]*?)<<\}/g
+// A regex with lazy `[\s\S]*?` groups under the global flag re-scans to the end
+// of the string at every unclosed `{` opener, giving O(n²) (polynomial ReDoS)
+// parse time on adversarial note content. This hand-rolled single-pass scanner
+// produces identical matches in O(n): each closing delimiter is searched with
+// `indexOf` (forward-only) and, once a delimiter is known to be absent from the
+// rest of the string, it is never searched again.
+interface CriticMatch {
+  index: number
+  0: string
+  [group: number]: string | undefined
+}
+
+const CRITIC_CLOSERS = {
+  highlight: '==}',
+  commentClose: '<<}',
+  addition: '++}',
+  deletion: '--}',
+  substArrow: '~>',
+  substClose: '~~}'
+} as const
+
+function* iterateCriticMarkupMatches(markdown: string): Generator<CriticMatch> {
+  const exhausted = new Set<string>()
+  const findClose = (closer: string, from: number): number => {
+    if (exhausted.has(closer)) return -1
+    const idx = markdown.indexOf(closer, from)
+    if (idx === -1) exhausted.add(closer)
+    return idx
+  }
+  const build = (index: number, full: string, groups: Record<number, string>): CriticMatch => {
+    const match: CriticMatch = { index, 0: full }
+    for (const key of Object.keys(groups)) match[Number(key)] = groups[Number(key)]
+    return match
+  }
+
+  let i = 0
+  const n = markdown.length
+  while (i < n) {
+    if (markdown[i] === '{') {
+      // {==C1==}{>>C2<<}  — highlighted comment
+      if (markdown.startsWith('{==', i)) {
+        const c1 = findClose(CRITIC_CLOSERS.highlight, i + 3)
+        if (c1 !== -1) {
+          const after = c1 + 3
+          if (markdown.startsWith('{>>', after)) {
+            const c2 = findClose(CRITIC_CLOSERS.commentClose, after + 3)
+            if (c2 !== -1) {
+              const end = c2 + 3
+              yield build(i, markdown.slice(i, end), {
+                1: markdown.slice(i + 3, c1),
+                2: markdown.slice(after + 3, c2)
+              })
+              i = end
+              continue
+            }
+          }
+        }
+      } else if (markdown.startsWith('{++', i)) {
+        const c = findClose(CRITIC_CLOSERS.addition, i + 3)
+        if (c !== -1) {
+          const end = c + 3
+          yield build(i, markdown.slice(i, end), { 3: markdown.slice(i + 3, c) })
+          i = end
+          continue
+        }
+      } else if (markdown.startsWith('{--', i)) {
+        const c = findClose(CRITIC_CLOSERS.deletion, i + 3)
+        if (c !== -1) {
+          const end = c + 3
+          yield build(i, markdown.slice(i, end), { 4: markdown.slice(i + 3, c) })
+          i = end
+          continue
+        }
+      } else if (markdown.startsWith('{~~', i)) {
+        const arrow = findClose(CRITIC_CLOSERS.substArrow, i + 3)
+        if (arrow !== -1) {
+          const close = findClose(CRITIC_CLOSERS.substClose, arrow + 2)
+          if (close !== -1) {
+            const end = close + 3
+            yield build(i, markdown.slice(i, end), {
+              5: markdown.slice(i + 3, arrow),
+              6: markdown.slice(arrow + 2, close)
+            })
+            i = end
+            continue
+          }
+        }
+      } else if (markdown.startsWith('{>>', i)) {
+        const c = findClose(CRITIC_CLOSERS.commentClose, i + 3)
+        if (c !== -1) {
+          const end = c + 3
+          yield build(i, markdown.slice(i, end), { 7: markdown.slice(i + 3, c) })
+          i = end
+          continue
+        }
+      }
+    }
+    i++
+  }
+}
 
 export function parseCriticMarkup(markdown: string): ParsedCriticMarkup {
   const marks: CriticMarkupMark[] = []
   let plainText = ''
   let lastIndex = 0
 
-  for (const match of markdown.matchAll(CRITIC_MARKUP_PATTERN)) {
+  for (const match of iterateCriticMarkupMatches(markdown)) {
     const matchText = match[0]
     const index = match.index ?? 0
     plainText += markdown.slice(lastIndex, index)

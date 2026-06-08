@@ -156,6 +156,7 @@ const createEnv = (options?: {
   paddleFetch?: typeof fetch
   paddleApiKey?: string
   environment?: string
+  localAdminSyncEmails?: string
 }) => {
   const firstRows = [...(options?.firstRows ?? [])]
   return {
@@ -170,6 +171,7 @@ const createEnv = (options?: {
     USER_SYNC_STATE: {} as DurableObjectNamespace,
     LINKING_SESSION: {} as DurableObjectNamespace,
     ENVIRONMENT: options?.environment ?? 'development',
+    LOCAL_ADMIN_SYNC_EMAILS: options?.localAdminSyncEmails ?? 'kaan@memrynote.com',
     JWT_PUBLIC_KEY: 'mock-public-key',
     JWT_PRIVATE_KEY: 'mock-private-key',
     RESEND_API_KEY: 'mock-resend-key',

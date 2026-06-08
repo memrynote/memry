@@ -19,7 +19,12 @@ export const paidSyncMiddleware: MiddlewareHandler<AppContext> = async (c, next)
     throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid vault id', 400)
   }
 
-  await ensureLocalAdminPaidSyncAccessForUser(c.env.DB, c.env.ENVIRONMENT, userId)
+  await ensureLocalAdminPaidSyncAccessForUser(
+    c.env.DB,
+    c.env.ENVIRONMENT,
+    userId,
+    c.env.LOCAL_ADMIN_SYNC_EMAILS
+  )
   const entitlement = await assertPaidSyncAccess(c.env.DB, userId)
   await ensureSyncVaultAllowed(c.env.DB, userId, vaultId, entitlement)
   c.set('vaultId', vaultId)

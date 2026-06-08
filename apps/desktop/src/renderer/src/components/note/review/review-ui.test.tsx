@@ -983,7 +983,6 @@ describe('review UI', () => {
     act(() => {
       result.current.submitComment({ body: 'Needs work', mentions: [], attachments: [] })
     })
-    const commentId = result.current.marks[0].id
 
     act(() => {
       expect(result.current.undoLastReviewAction()).toBe(true)

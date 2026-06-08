@@ -192,9 +192,7 @@ function SuggestionPreview({ mark }: { mark: CriticMarkupMark }): React.JSX.Elem
         <span className="critic-review-suggestion-label-addition">
           {t('comments.suggestionAdd')}
         </span>{' '}
-        <span className="critic-review-suggestion-text-addition">
-          {`“${mark.visibleText}”`}
-        </span>
+        <span className="critic-review-suggestion-text-addition">{`“${mark.visibleText}”`}</span>
       </p>
     )
   }
@@ -205,9 +203,7 @@ function SuggestionPreview({ mark }: { mark: CriticMarkupMark }): React.JSX.Elem
         <span className="critic-review-suggestion-label-deletion">
           {t('comments.suggestionDelete')}
         </span>{' '}
-        <span className="critic-review-suggestion-text-deletion">
-          {`“${mark.visibleText}”`}
-        </span>
+        <span className="critic-review-suggestion-text-deletion">{`“${mark.visibleText}”`}</span>
       </p>
     )
   }

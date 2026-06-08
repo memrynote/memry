@@ -16,6 +16,7 @@ import {
   editorOffsetToMarkdownSourceOffset,
   editorOffsetToProseMirrorDocPos,
   markdownSourceOffsetToEditorOffset,
+  proseMirrorDocPosToEditorOffset,
   proseMirrorVisibleText
 } from '../content-area/critic-markup-offset-map'
 
@@ -225,10 +226,19 @@ export function useCriticMarkupReview({
       const trimmedBody = input.body.trim()
       if (!draft || !trimmedBody) return
 
-      const md = plainMarkdownRef.current
-      const fromSrc =
-        draft.from === undefined ? -1 : (editorOffsetToMarkdownSourceOffset(md, draft.from) ?? -1)
-      const start = fromSrc >= 0 ? fromSrc : findTextStart(md, draft.text, marksRef.current)
+      let start: number
+      const doc = editorRef.current?._tiptapEditor?.state?.doc
+      if (draft.from !== undefined && doc) {
+        const editorOffset = proseMirrorDocPosToEditorOffset(doc, draft.from)
+        const sourceOffset =
+          editorOffset !== null
+            ? editorOffsetToMarkdownSourceOffset(plainMarkdownRef.current, editorOffset)
+            : null
+        start =
+          sourceOffset ?? findTextStart(plainMarkdownRef.current, draft.text, marksRef.current)
+      } else {
+        start = findTextStart(plainMarkdownRef.current, draft.text, marksRef.current)
+      }
       if (start === -1) return
 
       const id = createCriticMarkId('comment')

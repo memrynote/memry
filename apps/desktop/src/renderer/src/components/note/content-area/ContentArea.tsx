@@ -635,7 +635,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     enabled: review?.isSuggestionModeActive ?? false,
     onAddSuggestion: handleReviewAddSuggestionMark,
     resolveMarkdownSourceOffset: review?.getMarkdownSourceOffsetForEditorOffset,
-    getReviewMarks: getReviewMarksForLiveSuggestion
+    getReviewMarks: getReviewMarksForLiveSuggestion,
+    getPlainMarkdown: () => review?.plainMarkdown ?? ''
   })
 
   useEffect(() => {

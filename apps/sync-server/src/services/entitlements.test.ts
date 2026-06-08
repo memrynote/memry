@@ -140,7 +140,13 @@ describe('sync plan entitlements', () => {
       prepare: vi.fn(() => statement())
     } as unknown as D1Database
 
-    await ensureLocalAdminPaidSyncAccess(db, 'development', 'KAAN@MEMRYNOTE.COM', 'user-1')
+    await ensureLocalAdminPaidSyncAccess(
+      db,
+      'development',
+      'KAAN@MEMRYNOTE.COM',
+      'user-1',
+      'kaan@memrynote.com'
+    )
 
     const prepareMock = db.prepare as unknown as ReturnType<typeof vi.fn>
     const entitlementStatement = prepareMock.mock.results.find(({ value }) =>
@@ -164,7 +170,13 @@ describe('sync plan entitlements', () => {
       prepare: vi.fn(() => statement())
     } as unknown as D1Database
 
-    await ensureLocalAdminPaidSyncAccess(db, 'production', 'kaan@memrynote.com', 'user-1')
+    await ensureLocalAdminPaidSyncAccess(
+      db,
+      'production',
+      'kaan@memrynote.com',
+      'user-1',
+      'kaan@memrynote.com'
+    )
 
     expect(db.prepare).not.toHaveBeenCalled()
   })
@@ -181,7 +193,7 @@ describe('sync plan entitlements', () => {
       })
     } as unknown as D1Database
 
-    await ensureLocalAdminPaidSyncAccessForUser(db, 'development', 'user-1')
+    await ensureLocalAdminPaidSyncAccessForUser(db, 'development', 'user-1', 'kaan@memrynote.com')
 
     expect(userStatement.bind).toHaveBeenCalledWith('user-1')
     expect(entitlementStatement.bind.mock.calls[0].slice(0, 4)).toEqual([
