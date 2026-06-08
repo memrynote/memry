@@ -33,7 +33,11 @@ export const ApproveLinkingRequestSchema = z.object({
   encryptedProviderAuth: z.string().min(1).optional(),
   encryptedProviderAuthNonce: z.string().min(1).optional(),
   providerAuthConfirm: z.string().min(1).optional(),
-  providerAuthVersion: ProviderAuthVersionSchema.optional()
+  providerAuthVersion: ProviderAuthVersionSchema.optional(),
+  encryptedVaultTransfer: z.string().min(1).optional(),
+  encryptedVaultTransferNonce: z.string().min(1).optional(),
+  vaultTransferConfirm: z.string().min(1).optional(),
+  vaultTransferVersion: ProviderAuthVersionSchema.optional()
 })
 
 export const CompleteLinkingRequestSchema = z.object({
@@ -64,7 +68,11 @@ export const CompleteLinkingResponseSchema = z.object({
   encryptedProviderAuth: z.string().optional(),
   encryptedProviderAuthNonce: z.string().optional(),
   providerAuthConfirm: z.string().optional(),
-  providerAuthVersion: ProviderAuthVersionSchema.optional()
+  providerAuthVersion: ProviderAuthVersionSchema.optional(),
+  encryptedVaultTransfer: z.string().optional(),
+  encryptedVaultTransferNonce: z.string().optional(),
+  vaultTransferConfirm: z.string().optional(),
+  vaultTransferVersion: ProviderAuthVersionSchema.optional()
 })
 
 export type InitiateLinkingRequest = z.infer<typeof InitiateLinkingRequestSchema>
