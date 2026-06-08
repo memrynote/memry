@@ -67,12 +67,7 @@ import { createLogger } from '@/lib/logger'
 import { FindBar } from '@/components/find-bar/find-bar'
 import { useFindInPage } from '@/hooks/use-find-in-page'
 import { useSettingsModal } from '@/contexts/settings-modal-context'
-import {
-  ReviewBadgeLayer,
-  ReviewRail,
-  SuggestionModePill,
-  useCriticMarkupReview
-} from '@/components/note/review'
+import { ReviewBadgeLayer, ReviewRail, useCriticMarkupReview } from '@/components/note/review'
 import { useT } from '@memry/i18n/renderer'
 
 const log = createLogger('Page:Journal')
@@ -794,11 +789,6 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
               isFullWidth={isFullWidth}
               hasEntry={!!entry}
               journalDate={entry?.date ?? null}
-              reviewPill={
-                review.isSuggestionModeActive ? (
-                  <SuggestionModePill onClose={review.stopSuggestionMode} />
-                ) : null
-              }
               onPrevious={handleNavigationPrevious}
               onNext={handleNavigationNext}
               onToggleFullWidth={() => setIsFullWidth(!isFullWidth)}
@@ -919,11 +909,8 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                                 plainMarkdown: review.plainMarkdown,
                                 marks: review.marks,
                                 hoveredMarkId: review.hoveredMarkId,
-                                isSuggestionModeActive: review.isSuggestionModeActive,
                                 onEditorReady: review.handleEditorReady,
                                 onAddComment: review.openCommentComposer,
-                                onStartSuggestionMode: review.startSuggestionMode,
-                                onAddSuggestionMark: review.addSuggestionMark,
                                 getMarkdownSourceOffsetForEditorOffset:
                                   review.getMarkdownSourceOffsetForEditorOffset,
                                 getEditorOffsetForMarkdownSourceOffset:

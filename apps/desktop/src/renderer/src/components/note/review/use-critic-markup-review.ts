@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  acceptCriticMark,
   deleteCriticMark,
   parseCriticMarkup,
-  rejectCriticMark,
   resolveCriticMark,
   serializeCriticMarkup,
   type CriticMarkupCommentAttachmentRef,
@@ -49,13 +47,6 @@ interface ReviewUndoSnapshot {
   marks: CriticMarkupMark[]
 }
 
-export interface AddSuggestionMarkInput {
-  kind: Extract<CriticMarkupKind, 'addition' | 'deletion' | 'substitution'>
-  visibleText: string
-  originalText?: string
-  start?: number
-}
-
 export interface SubmitCommentInput {
   body: string
   mentions: CriticMarkupCommentMentionRef[]
@@ -69,7 +60,6 @@ export interface CriticMarkupReviewController {
   activeDraft: CommentDraft | null
   hoveredMarkId: string | null
   markPositions: Record<string, number>
-  isSuggestionModeActive: boolean
   handlePlainMarkdownChange: (plainMarkdown: string) => string
   persistCurrentMarkdown: () => void
   handleEditorReady: (editor: any | null) => void
@@ -79,13 +69,8 @@ export interface CriticMarkupReviewController {
   getActiveDraftDomRange: () => Range | null
   submitComment: (input: SubmitCommentInput) => void
   updateComment: (id: string, input: SubmitCommentInput) => void
-  startSuggestionMode: () => void
-  stopSuggestionMode: () => void
-  addSuggestionMark: (input: AddSuggestionMarkInput) => void
   getMarkdownSourceOffsetForEditorOffset: (editorOffset: number) => number | null
   getEditorOffsetForMarkdownSourceOffset: (sourceOffset: number) => number | null
-  acceptMark: (id: string) => void
-  rejectMark: (id: string) => void
   resolveMark: (id: string) => void
   deleteMark: (id: string) => void
   undoLastReviewAction: () => boolean
@@ -104,21 +89,19 @@ export function useCriticMarkupReview({
   const [activeDraft, setActiveDraft] = useState<CommentDraft | null>(null)
   const [hoveredMarkId, setHoveredMarkId] = useState<string | null>(null)
   const [markPositions, setMarkPositions] = useState<Record<string, number>>({})
-  const [isSuggestionModeActive, setIsSuggestionModeActive] = useState(false)
 
   const plainMarkdownRef = useRef(parsed.plainText)
   const marksRef = useRef(parsed.marks)
   const activeDraftRef = useRef<CommentDraft | null>(null)
   const editorRef = useRef<any | null>(null)
   const emittedMarkdownsRef = useRef<string[]>([])
-  const isSuggestionModeActiveRef = useRef(false)
   const undoStackRef = useRef<ReviewUndoEntry[]>([])
 
   useEffect(() => {
     const currentSerialized = serializeCriticMarkup(plainMarkdownRef.current, marksRef.current)
     // No-op resync: the incoming markdown matches what the current marks
     // serialize to. Keep the in-memory marks — re-parsing would drop fields the
-    // markup cannot carry (suggestion createdAt, stable suggestion ids).
+    // markup cannot carry (mark createdAt, stable mark ids).
     if (markdown === currentSerialized) return
     if (emittedMarkdownsRef.current.includes(markdown)) {
       return
@@ -147,9 +130,7 @@ export function useCriticMarkupReview({
   )
 
   const handlePlainMarkdownChange = useCallback((nextPlainMarkdown: string): string => {
-    const nextMarks = isSuggestionModeActiveRef.current
-      ? reconcileLiveSuggestionEdit(plainMarkdownRef.current, nextPlainMarkdown, marksRef.current)
-      : marksRef.current
+    const nextMarks = marksRef.current
     const serialized = serializeCriticMarkup(nextPlainMarkdown, nextMarks)
     plainMarkdownRef.current = nextPlainMarkdown
     marksRef.current = nextMarks
@@ -299,113 +280,6 @@ export function useCriticMarkupReview({
     [persist]
   )
 
-  const addSuggestionMark = useCallback(
-    (input: AddSuggestionMarkInput) => {
-      if (!input.visibleText) return
-      if (input.kind === 'addition' && !input.visibleText.trim()) return
-
-      if (input.start === undefined) return
-      const start = input.start
-
-      let nextPlainMarkdown = plainMarkdownRef.current
-      let currentMarks = marksRef.current
-
-      if (
-        input.kind === 'addition' &&
-        nextPlainMarkdown.slice(start, start + input.visibleText.length) !== input.visibleText
-      ) {
-        nextPlainMarkdown = `${nextPlainMarkdown.slice(0, start)}${input.visibleText}${nextPlainMarkdown.slice(start)}`
-        currentMarks = shiftMarksForPlainTextEdit(
-          currentMarks,
-          start,
-          start,
-          input.visibleText.length
-        )
-      }
-
-      if (input.kind === 'substitution' && input.originalText) {
-        const originalEnd = start + input.originalText.length
-        if (nextPlainMarkdown.slice(start, originalEnd) === input.originalText) {
-          nextPlainMarkdown = `${nextPlainMarkdown.slice(0, start)}${input.visibleText}${nextPlainMarkdown.slice(originalEnd)}`
-          currentMarks = shiftMarksForPlainTextEdit(
-            currentMarks,
-            start,
-            originalEnd,
-            input.visibleText.length - input.originalText.length
-          )
-        }
-      }
-
-      const previousMark = currentMarks[currentMarks.length - 1]
-      if (
-        previousMark?.kind === 'addition' &&
-        input.kind === 'addition' &&
-        previousMark.end === start
-      ) {
-        const nextMarks = currentMarks.map((mark) =>
-          mark.id === previousMark.id
-            ? {
-                ...mark,
-                visibleText: `${mark.visibleText}${input.visibleText}`,
-                end: mark.end + input.visibleText.length
-              }
-            : mark
-        )
-        persist(nextPlainMarkdown, nextMarks)
-        return
-      }
-
-      if (input.kind === 'deletion') {
-        const mergedDeletionMarks = mergeAdjacentDeletionMark(currentMarks, input, start)
-        if (mergedDeletionMarks) {
-          persist(nextPlainMarkdown, mergedDeletionMarks)
-          return
-        }
-      }
-
-      const end = start + input.visibleText.length
-      if (
-        input.kind === 'substitution' &&
-        nextPlainMarkdown.slice(start, end) !== input.visibleText
-      ) {
-        return
-      }
-
-      const id = createCriticMarkId(input.kind)
-      const nextMarks = [
-        ...currentMarks,
-        {
-          id,
-          kind: input.kind,
-          visibleText: input.visibleText,
-          originalText: input.originalText,
-          createdAt: Date.now(),
-          start,
-          end
-        }
-      ]
-      persist(nextPlainMarkdown, nextMarks)
-    },
-    [persist]
-  )
-
-  const applyTransform = useCallback(
-    (
-      id: string,
-      transform: typeof acceptCriticMark | typeof rejectCriticMark,
-      mode: 'accept' | 'reject'
-    ) => {
-      const mark = marksRef.current.find((item) => item.id === id)
-      if (!mark) return
-      const before = snapshotReviewState(plainMarkdownRef.current, marksRef.current)
-      const result = transform(plainMarkdownRef.current, marksRef.current, id)
-      replaceEditorVisibleText(editorRef.current, plainMarkdownRef.current, mark, mode)
-      pushReviewUndoEntry(undoStackRef.current, before, result.plainText, result.marks)
-      persist(result.plainText, result.marks)
-    },
-    [persist]
-  )
-
   const getMarkdownSourceOffsetForEditorOffset = useCallback((editorOffset: number) => {
     return editorOffsetToMarkdownSourceOffset(plainMarkdownRef.current, editorOffset)
   }, [])
@@ -413,16 +287,6 @@ export function useCriticMarkupReview({
   const getEditorOffsetForMarkdownSourceOffset = useCallback((sourceOffset: number) => {
     return markdownSourceOffsetToEditorOffset(plainMarkdownRef.current, sourceOffset)
   }, [])
-
-  const acceptMark = useCallback(
-    (id: string) => applyTransform(id, acceptCriticMark, 'accept'),
-    [applyTransform]
-  )
-
-  const rejectMark = useCallback(
-    (id: string) => applyTransform(id, rejectCriticMark, 'reject'),
-    [applyTransform]
-  )
 
   const resolveMark = useCallback(
     (id: string) => {
@@ -495,16 +359,6 @@ export function useCriticMarkupReview({
     })
   }, [])
 
-  const startSuggestionMode = useCallback(() => {
-    isSuggestionModeActiveRef.current = true
-    setIsSuggestionModeActive(true)
-  }, [])
-
-  const stopSuggestionMode = useCallback(() => {
-    isSuggestionModeActiveRef.current = false
-    setIsSuggestionModeActive(false)
-  }, [])
-
   const replaceMarksFromYjs = useCallback((nextMarks: CriticMarkupMark[]) => {
     if (areCriticMarkupMarksEqual(marksRef.current, nextMarks)) return
     marksRef.current = nextMarks
@@ -520,7 +374,6 @@ export function useCriticMarkupReview({
     activeDraft,
     hoveredMarkId,
     markPositions,
-    isSuggestionModeActive,
     handlePlainMarkdownChange,
     persistCurrentMarkdown,
     handleEditorReady,
@@ -530,13 +383,8 @@ export function useCriticMarkupReview({
     getActiveDraftDomRange,
     submitComment,
     updateComment,
-    startSuggestionMode,
-    stopSuggestionMode,
-    addSuggestionMark,
     getMarkdownSourceOffsetForEditorOffset,
     getEditorOffsetForMarkdownSourceOffset,
-    acceptMark,
-    rejectMark,
     resolveMark,
     deleteMark,
     undoLastReviewAction,
@@ -579,76 +427,6 @@ function isNativeTextInput(target: EventTarget | null): boolean {
 
 function areCriticMarkupMarksEqual(first: CriticMarkupMark[], second: CriticMarkupMark[]): boolean {
   return JSON.stringify(first) === JSON.stringify(second)
-}
-
-function reconcileLiveSuggestionEdit(
-  previousPlainMarkdown: string,
-  nextPlainMarkdown: string,
-  marks: CriticMarkupMark[]
-): CriticMarkupMark[] {
-  const edit = findSingleTextEdit(previousPlainMarkdown, nextPlainMarkdown)
-  if (!edit) return marks
-
-  const insertedVisibleText = stripTrailingBlockSeparators(edit.insertedText)
-  const sourceDelta = edit.insertedText.length - edit.deletedText.length
-  const visibleDelta = insertedVisibleText.length - edit.deletedText.length
-  const editEnd = edit.start + edit.deletedText.length
-
-  const targetAddition = [...marks]
-    .reverse()
-    .find(
-      (mark) =>
-        mark.kind === 'addition' &&
-        mark.start <= edit.start &&
-        mark.end >= edit.start &&
-        editEnd <= mark.end
-    )
-
-  if (targetAddition) {
-    return marks.flatMap((mark) => {
-      if (mark.id !== targetAddition.id) {
-        return shiftMarkForPlainTextEdit(mark, edit.start, editEnd, sourceDelta)
-      }
-
-      const end = mark.end + visibleDelta
-      const visibleText = nextPlainMarkdown.slice(mark.start, end)
-      if (!visibleText.trim()) return []
-      return [
-        {
-          ...mark,
-          end,
-          visibleText
-        }
-      ]
-    })
-  }
-
-  if (!edit.insertedText || edit.deletedText) return marks
-
-  const shiftedMarks = shiftMarksForPlainTextEdit(
-    marks,
-    edit.start,
-    edit.start,
-    edit.insertedText.length
-  )
-  if (!insertedVisibleText.trim()) return shiftedMarks
-
-  const id = createCriticMarkId('addition')
-  return [
-    ...shiftedMarks,
-    {
-      id,
-      kind: 'addition',
-      visibleText: insertedVisibleText,
-      createdAt: Date.now(),
-      start: edit.start,
-      end: edit.start + visibleDelta
-    }
-  ]
-}
-
-function stripTrailingBlockSeparators(text: string): string {
-  return text.replace(/\n+$/u, '')
 }
 
 function findSingleTextEdit(
@@ -702,79 +480,6 @@ function findTextStart(
   return -1
 }
 
-function mergeAdjacentDeletionMark(
-  marks: CriticMarkupMark[],
-  input: AddSuggestionMarkInput,
-  start: number
-): CriticMarkupMark[] | null {
-  const previousMark = marks[marks.length - 1]
-  if (previousMark?.kind !== 'deletion') return null
-
-  const visibleText = input.visibleText
-  const originalText = input.originalText ?? input.visibleText
-  const end = start + visibleText.length
-
-  if (end === previousMark.start) {
-    return marks.map((mark) =>
-      mark.id === previousMark.id
-        ? {
-            ...mark,
-            visibleText: `${visibleText}${mark.visibleText}`,
-            originalText: `${originalText}${mark.originalText ?? mark.visibleText}`,
-            start,
-            end: mark.end
-          }
-        : mark
-    )
-  }
-
-  if (start === previousMark.end) {
-    return marks.map((mark) =>
-      mark.id === previousMark.id
-        ? {
-            ...mark,
-            visibleText: `${mark.visibleText}${visibleText}`,
-            originalText: `${mark.originalText ?? mark.visibleText}${originalText}`,
-            end
-          }
-        : mark
-    )
-  }
-
-  return null
-}
-
-function shiftMarksForPlainTextEdit(
-  marks: CriticMarkupMark[],
-  editStart: number,
-  editEnd: number,
-  delta: number
-): CriticMarkupMark[] {
-  if (delta === 0) return marks
-  return marks.map((mark) => shiftMarkForPlainTextEdit(mark, editStart, editEnd, delta))
-}
-
-function shiftMarkForPlainTextEdit(
-  mark: CriticMarkupMark,
-  editStart: number,
-  editEnd: number,
-  delta: number
-): CriticMarkupMark {
-  if (delta === 0) return mark
-  if (mark.end <= editStart) return mark
-  if (mark.start >= editEnd) {
-    return {
-      ...mark,
-      start: mark.start + delta,
-      end: mark.end + delta
-    }
-  }
-  return {
-    ...mark,
-    end: mark.end + delta
-  }
-}
-
 function createCriticMarkId(kind: CriticMarkupKind): string {
   return `critic-${kind}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
 }
@@ -783,32 +488,6 @@ function rememberEmittedMarkdown(emittedMarkdowns: string[], markdown: string): 
   if (emittedMarkdowns.includes(markdown)) return
   emittedMarkdowns.push(markdown)
   if (emittedMarkdowns.length > 12) emittedMarkdowns.splice(0, emittedMarkdowns.length - 12)
-}
-
-function replaceEditorVisibleText(
-  editor: any | null,
-  plainMarkdown: string,
-  mark: CriticMarkupMark,
-  mode: 'accept' | 'reject'
-): void {
-  if (
-    (mode === 'accept' && mark.kind !== 'deletion') ||
-    (mode === 'reject' && mark.kind === 'deletion')
-  ) {
-    return
-  }
-
-  const tiptap = editor?._tiptapEditor
-  if (!tiptap || !mark.visibleText) return
-  const range = findTextRange(tiptap, plainMarkdown, mark)
-  if (!range) return
-
-  let replacement = mark.visibleText
-  if (mark.kind === 'addition') replacement = ''
-  if (mark.kind === 'deletion') replacement = ''
-  if (mark.kind === 'substitution') replacement = mark.originalText ?? ''
-
-  dispatchTextReplacement(tiptap, range, replacement)
 }
 
 function replaceEditorPlainMarkdown(
@@ -851,60 +530,4 @@ function dispatchTextReplacement(
     : tiptap.state.tr.delete(range.from, range.to)
   tr.setMeta('addToHistory', false)
   tiptap.view.dispatch(tr)
-}
-
-function findTextRange(
-  tiptap: any,
-  plainMarkdown: string,
-  mark: CriticMarkupMark
-): { from: number; to: number } | null {
-  const doc = tiptap.state.doc
-  const fromOffset = markdownSourceOffsetToEditorOffset(plainMarkdown, mark.start)
-  const toOffset = markdownSourceOffsetToEditorOffset(plainMarkdown, mark.end)
-  if (fromOffset !== null && toOffset !== null) {
-    if (proseMirrorVisibleText(doc).slice(fromOffset, toOffset) === mark.visibleText) {
-      const from = editorOffsetToProseMirrorDocPos(doc, fromOffset)
-      const to = editorOffsetToProseMirrorDocPos(doc, toOffset)
-      if (from !== null && to !== null) return { from, to }
-    }
-  }
-
-  return findInlineMarkTextRange(tiptap, mark)
-}
-
-function findInlineMarkTextRange(
-  tiptap: any,
-  mark: CriticMarkupMark
-): { from: number; to: number } | null {
-  const root = tiptap.view?.dom as HTMLElement | undefined
-  if (!root) return null
-
-  const element = Array.from(root.querySelectorAll<HTMLElement>('[data-critic-mark-id]')).find(
-    (candidate) => candidate.dataset.criticMarkId === mark.id
-  )
-  if (!element || element.textContent !== mark.visibleText) return null
-
-  const firstText = firstTextNode(element)
-  const lastText = lastTextNode(element)
-  if (!firstText || !lastText) return null
-
-  const from = tiptap.view.posAtDOM(firstText, 0)
-  const to = tiptap.view.posAtDOM(lastText, (lastText.textContent ?? '').length)
-  if (typeof from !== 'number' || typeof to !== 'number' || from > to) return null
-  return { from, to }
-}
-
-function firstTextNode(root: Node): Text | null {
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
-  return walker.nextNode() as Text | null
-}
-
-function lastTextNode(root: Node): Text | null {
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
-  let last: Text | null = null
-  let node: Node | null
-  while ((node = walker.nextNode())) {
-    last = node as Text
-  }
-  return last
 }

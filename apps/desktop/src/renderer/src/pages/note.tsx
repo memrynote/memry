@@ -59,12 +59,7 @@ import { graphKeys } from '@/hooks/use-graph-data'
 import { NoteBreadcrumb } from '@/components/note/note-breadcrumb'
 import { FindBar } from '@/components/find-bar/find-bar'
 import { useFindInPage } from '@/hooks/use-find-in-page'
-import {
-  ReviewBadgeLayer,
-  ReviewRail,
-  SuggestionModePill,
-  useCriticMarkupReview
-} from '@/components/note/review'
+import { ReviewBadgeLayer, ReviewRail, useCriticMarkupReview } from '@/components/note/review'
 
 import { useT } from '@memry/i18n/renderer'
 
@@ -883,8 +878,6 @@ export function NotePage({ noteId }: NotePageProps) {
 
   const actionIcons = (
     <div className="flex items-center gap-0.5">
-      {review.isSuggestionModeActive && <SuggestionModePill onClose={review.stopSuggestionMode} />}
-
       <ReminderPicker
         onSelect={(date, _title, reminderNote) => void handleSetReminder(date, reminderNote)}
         presetType="standard"
@@ -1120,11 +1113,8 @@ export function NotePage({ noteId }: NotePageProps) {
                 plainMarkdown: review.plainMarkdown,
                 marks: review.marks,
                 hoveredMarkId: review.hoveredMarkId,
-                isSuggestionModeActive: review.isSuggestionModeActive,
                 onEditorReady: review.handleEditorReady,
                 onAddComment: review.openCommentComposer,
-                onStartSuggestionMode: review.startSuggestionMode,
-                onAddSuggestionMark: review.addSuggestionMark,
                 getMarkdownSourceOffsetForEditorOffset:
                   review.getMarkdownSourceOffsetForEditorOffset,
                 getEditorOffsetForMarkdownSourceOffset:

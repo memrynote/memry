@@ -1,7 +1,7 @@
 import type { CSSProperties, MouseEvent } from 'react'
 import { MentionIcon, mentionColorForKind } from '@/agent-chat/mention-icons'
 import { useMemryLinkNavigation } from '@/agent-chat/messages/memry-links'
-import { Check, Paperclip, Pencil, Trash, X } from '@/lib/icons'
+import { Check, Paperclip, Pencil, Trash } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
@@ -41,7 +41,6 @@ export function ReviewCard({
 }: ReviewCardProps) {
   const { t } = useT('notes')
   const { settings } = useGeneralSettings()
-  const isSuggestion = mark.kind !== 'comment'
   const setHoveredMark = (id: string | null) => {
     review.setHoveredMarkId(id)
     syncInlineHoverClass(id)
@@ -95,135 +94,57 @@ export function ReviewCard({
             {mark.createdAt !== undefined && (
               <CommentDate createdAt={mark.createdAt} clockFormat={settings.clockFormat} />
             )}
-            {isSuggestion && <SuggestionPreview mark={mark} />}
             <CommentBody mark={mark} />
             <CommentAttachments mark={mark} />
           </div>
           <div className="critic-review-actions">
-            {isSuggestion ? (
-              <>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  className="critic-review-action-button"
-                  aria-label={t('comments.accept')}
-                  onPointerDown={(event) => {
-                    event.preventDefault()
-                    review.acceptMark(mark.id)
-                  }}
-                  onClick={() => review.acceptMark(mark.id)}
-                >
-                  <Check className="size-3.5" aria-hidden="true" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  className="critic-review-action-button"
-                  aria-label={t('comments.reject')}
-                  onPointerDown={(event) => {
-                    event.preventDefault()
-                    review.rejectMark(mark.id)
-                  }}
-                  onClick={() => review.rejectMark(mark.id)}
-                >
-                  <X className="size-3.5" aria-hidden="true" />
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  className="critic-review-action-button"
-                  aria-label={t('comments.edit')}
-                  onPointerDown={(event) => {
-                    event.preventDefault()
-                    onEditingChange(mark.id)
-                  }}
-                  onClick={() => onEditingChange(mark.id)}
-                >
-                  <Pencil className="size-3.5" aria-hidden="true" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  className="critic-review-action-button"
-                  aria-label={t('comments.resolve')}
-                  onPointerDown={(event) => {
-                    event.preventDefault()
-                    review.resolveMark(mark.id)
-                  }}
-                  onClick={() => review.resolveMark(mark.id)}
-                >
-                  <Check className="size-3.5" aria-hidden="true" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  className="critic-review-action-button"
-                  aria-label={t('comments.delete')}
-                  onPointerDown={(event) => {
-                    event.preventDefault()
-                    review.deleteMark(mark.id)
-                  }}
-                  onClick={() => review.deleteMark(mark.id)}
-                >
-                  <Trash className="size-3.5" aria-hidden="true" />
-                </Button>
-              </>
-            )}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className="critic-review-action-button"
+              aria-label={t('comments.edit')}
+              onPointerDown={(event) => {
+                event.preventDefault()
+                onEditingChange(mark.id)
+              }}
+              onClick={() => onEditingChange(mark.id)}
+            >
+              <Pencil className="size-3.5" aria-hidden="true" />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className="critic-review-action-button"
+              aria-label={t('comments.resolve')}
+              onPointerDown={(event) => {
+                event.preventDefault()
+                review.resolveMark(mark.id)
+              }}
+              onClick={() => review.resolveMark(mark.id)}
+            >
+              <Check className="size-3.5" aria-hidden="true" />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className="critic-review-action-button"
+              aria-label={t('comments.delete')}
+              onPointerDown={(event) => {
+                event.preventDefault()
+                review.deleteMark(mark.id)
+              }}
+              onClick={() => review.deleteMark(mark.id)}
+            >
+              <Trash className="size-3.5" aria-hidden="true" />
+            </Button>
           </div>
         </>
       )}
     </div>
   )
-}
-
-function SuggestionPreview({ mark }: { mark: CriticMarkupMark }): React.JSX.Element | null {
-  const { t } = useT('notes')
-  if (mark.kind === 'addition') {
-    return (
-      <p className="critic-review-suggestion-preview critic-review-text-collapsible">
-        <span className="critic-review-suggestion-label-addition">
-          {t('comments.suggestionAdd')}
-        </span>{' '}
-        <span className="critic-review-suggestion-text-addition">{`“${mark.visibleText}”`}</span>
-      </p>
-    )
-  }
-
-  if (mark.kind === 'deletion') {
-    return (
-      <p className="critic-review-suggestion-preview critic-review-text-collapsible">
-        <span className="critic-review-suggestion-label-deletion">
-          {t('comments.suggestionDelete')}
-        </span>{' '}
-        <span className="critic-review-suggestion-text-deletion">{`“${mark.visibleText}”`}</span>
-      </p>
-    )
-  }
-
-  if (mark.kind === 'substitution') {
-    return (
-      <p className="critic-review-suggestion-preview critic-review-text-collapsible">
-        <span className="critic-review-suggestion-label-substitution">
-          {t('comments.suggestionReplace')}
-        </span>{' '}
-        <span className="critic-review-suggestion-text-substitution">
-          {mark.originalText}
-          {' -> '}
-          {mark.visibleText}
-        </span>
-      </p>
-    )
-  }
-
-  return null
 }
 
 function CommentDate({
