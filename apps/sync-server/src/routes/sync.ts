@@ -13,6 +13,7 @@ import {
   getItem,
   getManifest,
   getSyncStatus,
+  listUserVaults,
   processRecordPushBatch,
   pullItems,
   updateDeviceCursor
@@ -39,6 +40,25 @@ import type { AppContext } from '../types'
 export const sync = new Hono<AppContext>()
 
 sync.use('*', authMiddleware)
+
+// Auth-only, NOT single-vault-gated: a joining device must enumerate every vault
+// on the account, so this route is registered before paidSyncMiddleware (which
+// runs ensureSyncVaultAllowed against a single X-Memry-Vault-Id). Hono applies
+// `use('*')` only to routes registered after it.
+const vaultsRateLimit = createRateLimiter({
+  keyPrefix: 'sync_vaults',
+  maxRequests: 60,
+  windowSeconds: 60
+})
+
+const handleListVaults = async (c: Context<AppContext>): Promise<Response> => {
+  const userId = c.get('userId')!
+  const vaults = await listUserVaults(c.env.DB, userId)
+  return c.json({ vaults })
+}
+
+sync.get('/vaults', vaultsRateLimit, handleListVaults)
+
 sync.use('*', paidSyncMiddleware)
 
 const MAX_UPDATE_BYTES = 5 * 1024 * 1024 // 5MB per individual update

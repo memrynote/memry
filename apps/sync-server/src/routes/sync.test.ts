@@ -46,7 +46,11 @@ vi.mock('../services/sync', () => ({
     payload: { encryptedKey: 'ek', keyNonce: 'kn', encryptedData: 'ed', dataNonce: 'dn' },
     serverCursor: 1
   }),
-  updateDeviceCursor: vi.fn().mockResolvedValue(undefined)
+  updateDeviceCursor: vi.fn().mockResolvedValue(undefined),
+  listUserVaults: vi.fn().mockResolvedValue([
+    { vaultUuid: 'v-a', itemCount: 367, createdAt: 1000 },
+    { vaultUuid: 'v-b', itemCount: 4, createdAt: 2000 }
+  ])
 }))
 
 vi.mock('../services/crdt', () => ({
@@ -101,7 +105,8 @@ import {
   processRecordPushBatch,
   pullItems,
   getItem,
-  updateDeviceCursor
+  updateDeviceCursor,
+  listUserVaults
 } from '../services/sync'
 import {
   storeUpdates,
@@ -293,6 +298,24 @@ describe('sync routes', () => {
       expect(res.status).toBe(200)
       expect(await res.json()).toEqual({ usedBytes: 10, quotaBytes: 100, remainingBytes: 90 })
       expect(getStorageBreakdown).toHaveBeenCalledWith(env.DB, 'user-1')
+    })
+  })
+
+  // ==========================================================================
+  // GET /sync/vaults
+  // ==========================================================================
+
+  describe('GET /sync/vaults', () => {
+    it('lists the user vaults with item counts and created dates', async () => {
+      const res = await app.request('/sync/vaults', { method: 'GET' }, env, executionCtx)
+
+      expect(res.status).toBe(200)
+      const body = (await res.json()) as { vaults: unknown }
+      expect(body.vaults).toEqual([
+        { vaultUuid: 'v-a', itemCount: 367, createdAt: 1000 },
+        { vaultUuid: 'v-b', itemCount: 4, createdAt: 2000 }
+      ])
+      expect(listUserVaults).toHaveBeenCalledWith(env.DB, 'user-1')
     })
   })
 

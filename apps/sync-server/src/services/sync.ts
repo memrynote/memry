@@ -609,6 +609,36 @@ export const getChanges = async (
   return { items, deleted, hasMore, nextCursor }
 }
 
+export interface UserVaultSummary {
+  vaultUuid: string
+  itemCount: number
+  createdAt: number | null
+}
+
+export const listUserVaults = async (
+  db: D1Database,
+  userId: string
+): Promise<UserVaultSummary[]> => {
+  const { results } = await db
+    .prepare(
+      `SELECT si.vault_id AS vaultUuid,
+              COUNT(*) AS itemCount,
+              sv.created_at AS createdAt
+       FROM sync_items si
+       LEFT JOIN sync_vaults sv ON sv.user_id = si.user_id AND sv.vault_id = si.vault_id
+       WHERE si.user_id = ? AND si.deleted_at IS NULL
+       GROUP BY si.vault_id
+       ORDER BY itemCount DESC`
+    )
+    .bind(userId)
+    .all<{ vaultUuid: string; itemCount: number; createdAt: number | null }>()
+  return (results ?? []).map((r) => ({
+    vaultUuid: r.vaultUuid,
+    itemCount: Number(r.itemCount),
+    createdAt: r.createdAt ?? null
+  }))
+}
+
 const D1_MAX_BIND_PARAMS = 95
 
 export const pullItems = async (
