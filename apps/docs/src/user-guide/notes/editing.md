@@ -91,6 +91,8 @@ Select text to open the floating toolbar. **Comment** creates an anchored review
 
 While suggestion mode is active, inserts, deletes, and replacements stay visible as review marks instead of raw CriticMarkup. Selected text deleted with Backspace remains visible as a deletion suggestion, including mouse-drag and block-marquee selections, so reopening the note or journal entry restores the deletion card and inline mark. The right rail aligns each card beside the marked text. Comment cards can be resolved or deleted; suggestion cards can be accepted or rejected.
 
+While suggestion mode is active, undo (`Cmd/Ctrl+Z`) is scoped to suggestions: it steps back through your typed suggestions and accept/reject/comment actions — a continuous typing run undoes as one step — and never touches the underlying note body. Once there are no suggestion changes left to undo, the shortcut does nothing. Turn suggestion mode off to undo the note itself again.
+
 ## What Notes Are Made Of
 
 Under the hood, every note is a Yjs CRDT (`Y.Doc`). Markdown is a derived export, not the canonical form — this is what lets edits from two devices merge cleanly. See [CRDT & Notes Sync](/architecture/crdt) for details.
