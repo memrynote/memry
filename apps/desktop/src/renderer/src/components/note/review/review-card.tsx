@@ -185,12 +185,17 @@ export function ReviewCard({
 }
 
 function SuggestionPreview({ mark }: { mark: CriticMarkupMark }): React.JSX.Element | null {
+  const { t } = useT('notes')
   if (mark.kind === 'addition') {
     return (
       <p className="critic-review-suggestion-preview critic-review-text-collapsible">
-        <span className="critic-review-suggestion-label-addition">Add:</span>{' '}
+        <span className="critic-review-suggestion-label-addition">
+          {t('comments.suggestionAdd')}
+        </span>{' '}
         <span className="critic-review-suggestion-text-addition">
-          &ldquo;{mark.visibleText}&rdquo;
+          {'“'}
+          {mark.visibleText}
+          {'”'}
         </span>
       </p>
     )
@@ -199,9 +204,13 @@ function SuggestionPreview({ mark }: { mark: CriticMarkupMark }): React.JSX.Elem
   if (mark.kind === 'deletion') {
     return (
       <p className="critic-review-suggestion-preview critic-review-text-collapsible">
-        <span className="critic-review-suggestion-label-deletion">Delete:</span>{' '}
+        <span className="critic-review-suggestion-label-deletion">
+          {t('comments.suggestionDelete')}
+        </span>{' '}
         <span className="critic-review-suggestion-text-deletion">
-          &ldquo;{mark.visibleText}&rdquo;
+          {'“'}
+          {mark.visibleText}
+          {'”'}
         </span>
       </p>
     )
@@ -210,7 +219,9 @@ function SuggestionPreview({ mark }: { mark: CriticMarkupMark }): React.JSX.Elem
   if (mark.kind === 'substitution') {
     return (
       <p className="critic-review-suggestion-preview critic-review-text-collapsible">
-        <span className="critic-review-suggestion-label-substitution">Replace:</span>{' '}
+        <span className="critic-review-suggestion-label-substitution">
+          {t('comments.suggestionReplace')}
+        </span>{' '}
         <span className="critic-review-suggestion-text-substitution">
           {mark.originalText}
           {' -> '}
