@@ -25,7 +25,7 @@ allowBuilds:
 
 # Moved from package.json "pnpm.overrides" (no longer read by pnpm 11)
 overrides:
-  tar: '>=7.5.15'
+  tar: '>=7.5.16'
   rollup: '>=4.59.0'
   hono: '>=4.12.21'
   '@hono/node-server': '>=1.19.14'
