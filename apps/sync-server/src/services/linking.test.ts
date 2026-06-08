@@ -125,6 +125,10 @@ const makeSession = (overrides: Partial<LinkingSessionRow> = {}): LinkingSession
   encrypted_provider_auth_nonce: null,
   provider_auth_confirm: null,
   provider_auth_version: null,
+  encrypted_vault_transfer: null,
+  encrypted_vault_transfer_nonce: null,
+  vault_transfer_confirm: null,
+  vault_transfer_version: null,
   status: 'pending',
   expires_at: futureExpiry,
   created_at: futureExpiry - 300,
@@ -402,6 +406,10 @@ describe('transitionToApproved', () => {
       'epan',
       'pac',
       1,
+      null,
+      null,
+      null,
+      null,
       'session-1'
     )
   })
@@ -655,6 +663,82 @@ describe('transitionToCompleted', () => {
         statusCode: 404
       })
     )
+  })
+})
+
+// ============================================================================
+// Tests: vault transfer
+// ============================================================================
+
+describe('vault transfer', () => {
+  const VAULT_TRANSFER = {
+    encryptedVaultTransfer: 'ct',
+    encryptedVaultTransferNonce: 'nonce',
+    vaultTransferConfirm: 'confirm',
+    vaultTransferVersion: 1 as const
+  }
+
+  it('binds vault transfer columns on approve', async () => {
+    const session = makeSession({ status: 'scanned' })
+    const selectStmt = createMockStatement()
+    selectStmt.first.mockResolvedValue(session)
+    const updateStmt = createMockStatement()
+    updateStmt.run.mockResolvedValue({ meta: { changes: 1 } })
+
+    const db = createMockDb()
+    db.prepare.mockReturnValueOnce(selectStmt).mockReturnValueOnce(updateStmt)
+
+    await transitionToApproved(
+      db as unknown as D1Database,
+      'session-1',
+      'user-1',
+      'emk',
+      'ekn',
+      'kc',
+      undefined,
+      VAULT_TRANSFER
+    )
+
+    expect(updateStmt.bind).toHaveBeenCalledWith(
+      'emk',
+      'ekn',
+      'kc',
+      null,
+      null,
+      null,
+      null, // provider auth (absent)
+      'ct',
+      'nonce',
+      'confirm',
+      1,
+      'session-1'
+    )
+  })
+
+  it('returns vault transfer on complete', async () => {
+    const session = makeSession({
+      status: 'approved',
+      encrypted_master_key: 'emk',
+      encrypted_key_nonce: 'ekn',
+      key_confirm: 'kc',
+      encrypted_vault_transfer: 'ct',
+      encrypted_vault_transfer_nonce: 'nonce',
+      vault_transfer_confirm: 'confirm',
+      vault_transfer_version: 1
+    })
+    const selectStmt = createMockStatement()
+    selectStmt.first.mockResolvedValue(session)
+    const updateStmt = createMockStatement()
+    updateStmt.run.mockResolvedValue({ meta: { changes: 1 } })
+
+    const db = createMockDb()
+    db.prepare.mockReturnValueOnce(selectStmt).mockReturnValueOnce(updateStmt)
+
+    const result = await transitionToCompleted(db as unknown as D1Database, 'session-1', null)
+    expect(result.encryptedVaultTransfer).toBe('ct')
+    expect(result.encryptedVaultTransferNonce).toBe('nonce')
+    expect(result.vaultTransferConfirm).toBe('confirm')
+    expect(result.vaultTransferVersion).toBe(1)
   })
 })
 

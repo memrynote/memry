@@ -22,6 +22,10 @@ interface LinkingSessionRow {
   encrypted_provider_auth_nonce: string | null
   provider_auth_confirm: string | null
   provider_auth_version: number | null
+  encrypted_vault_transfer: string | null
+  encrypted_vault_transfer_nonce: string | null
+  vault_transfer_confirm: string | null
+  vault_transfer_version: number | null
   status: string
   expires_at: number
   created_at: number
@@ -33,6 +37,13 @@ interface ProviderAuthPayloadRow {
   encryptedProviderAuthNonce: string
   providerAuthConfirm: string
   providerAuthVersion: number
+}
+
+interface VaultTransferPayloadRow {
+  encryptedVaultTransfer: string
+  encryptedVaultTransferNonce: string
+  vaultTransferConfirm: string
+  vaultTransferVersion: number
 }
 
 const hashLinkingSecret = async (secret: string): Promise<string> => {
@@ -234,7 +245,8 @@ const transitionToApproved = async (
   encryptedMasterKey: string,
   encryptedKeyNonce: string,
   keyConfirm: string,
-  providerAuth?: ProviderAuthPayloadRow
+  providerAuth?: ProviderAuthPayloadRow,
+  vaultTransfer?: VaultTransferPayloadRow
 ): Promise<void> => {
   const session = await requireSession(db, sessionId)
   assertNotExpired(session)
@@ -257,7 +269,11 @@ const transitionToApproved = async (
            encrypted_provider_auth = ?,
            encrypted_provider_auth_nonce = ?,
            provider_auth_confirm = ?,
-           provider_auth_version = ?
+           provider_auth_version = ?,
+           encrypted_vault_transfer = ?,
+           encrypted_vault_transfer_nonce = ?,
+           vault_transfer_confirm = ?,
+           vault_transfer_version = ?
        WHERE id = ? AND status = 'scanned'`
     )
     .bind(
@@ -268,6 +284,10 @@ const transitionToApproved = async (
       providerAuth?.encryptedProviderAuthNonce ?? null,
       providerAuth?.providerAuthConfirm ?? null,
       providerAuth?.providerAuthVersion ?? null,
+      vaultTransfer?.encryptedVaultTransfer ?? null,
+      vaultTransfer?.encryptedVaultTransferNonce ?? null,
+      vaultTransfer?.vaultTransferConfirm ?? null,
+      vaultTransfer?.vaultTransferVersion ?? null,
       sessionId
     )
     .run()
@@ -308,6 +328,10 @@ const transitionToCompleted = async (
   encryptedProviderAuthNonce?: string
   providerAuthConfirm?: string
   providerAuthVersion?: number
+  encryptedVaultTransfer?: string
+  encryptedVaultTransferNonce?: string
+  vaultTransferConfirm?: string
+  vaultTransferVersion?: number
 }> => {
   const session = await requireSession(db, sessionId)
   assertNotExpired(session)
@@ -360,7 +384,11 @@ const transitionToCompleted = async (
     encryptedProviderAuth: session.encrypted_provider_auth ?? undefined,
     encryptedProviderAuthNonce: session.encrypted_provider_auth_nonce ?? undefined,
     providerAuthConfirm: session.provider_auth_confirm ?? undefined,
-    providerAuthVersion: session.provider_auth_version ?? undefined
+    providerAuthVersion: session.provider_auth_version ?? undefined,
+    encryptedVaultTransfer: session.encrypted_vault_transfer ?? undefined,
+    encryptedVaultTransferNonce: session.encrypted_vault_transfer_nonce ?? undefined,
+    vaultTransferConfirm: session.vault_transfer_confirm ?? undefined,
+    vaultTransferVersion: session.vault_transfer_version ?? undefined
   }
 }
 
