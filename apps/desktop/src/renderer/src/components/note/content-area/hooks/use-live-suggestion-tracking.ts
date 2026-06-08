@@ -17,6 +17,9 @@ interface UseLiveSuggestionTrackingParams {
   onAddSuggestion: (input: AddSuggestionInput) => void
   resolveMarkdownSourceOffset?: (editorOffset: number) => number | null
   getReviewMarks?: () => CriticMarkupMark[]
+  getPlainMarkdown: () => string
+  onInsertSourceBreak?: (sourceOffset: number, breakStr: string) => void
+  requestMarkdownFlush?: () => void
 }
 
 export function useLiveSuggestionTracking({
@@ -25,7 +28,10 @@ export function useLiveSuggestionTracking({
   enabled,
   onAddSuggestion,
   resolveMarkdownSourceOffset,
-  getReviewMarks
+  getReviewMarks,
+  getPlainMarkdown,
+  onInsertSourceBreak,
+  requestMarkdownFlush
 }: UseLiveSuggestionTrackingParams): void {
   useEffect(() => {
     const container = containerRef.current
@@ -62,7 +68,10 @@ export function useLiveSuggestionTracking({
         )
         if (start === null) return
         event.preventDefault()
-        tiptap.view.dispatch(state.tr.insertText(event.data, selection.from, selection.to))
+        const insertTr = state.tr
+          .insertText(event.data, selection.from, selection.to)
+          .setMeta('addToHistory', false)
+        tiptap.view.dispatch(insertTr)
         onAddSuggestion({
           kind: originalText ? 'substitution' : 'addition',
           visibleText: event.data,
@@ -73,19 +82,56 @@ export function useLiveSuggestionTracking({
       }
 
       if (event.inputType === 'deleteContentBackward') {
-        if (recordDeletion(tiptap, onAddSuggestion, resolveMarkdownSourceOffset, getReviewMarks)) {
+        const result = recordDeletion(
+          tiptap,
+          onAddSuggestion,
+          getPlainMarkdown(),
+          resolveMarkdownSourceOffset,
+          getReviewMarks
+        )
+        if (result !== false) {
           event.preventDefault()
         }
       }
     }
 
+    let rangeHandledByDocument = false
+
     const handleKeyDown = (event: KeyboardEvent): void => {
-      if (!isBackspaceDeleteEvent(event)) return
-      const tiptap = editor._tiptapEditor
-      if (!tiptap) return
-      if (!recordDeletion(tiptap, onAddSuggestion, resolveMarkdownSourceOffset, getReviewMarks)) {
+      if (event.key === 'Enter' && !event.metaKey && !event.ctrlKey) {
+        const tiptap = editor._tiptapEditor
+        if (tiptap && onInsertSourceBreak) {
+          const { from } = tiptap.state.selection
+          const docSize = tiptap.state.doc?.content?.size ?? 0
+          const charAtFrom =
+            from < docSize ? tiptap.state.doc.textBetween(from, from + 1, '\n') : ''
+          const isAtBlockSep = charAtFrom === '\n'
+          const sourceOffset =
+            markdownSourceOffsetForDocPos(tiptap.state.doc, from, resolveMarkdownSourceOffset) ??
+            from
+          onInsertSourceBreak(sourceOffset, isAtBlockSep ? '\n' : '\n\n')
+          if (requestMarkdownFlush) {
+            setTimeout(requestMarkdownFlush, 0)
+          }
+        }
         return
       }
+
+      if (!isBackspaceDeleteEvent(event)) return
+      if (rangeHandledByDocument) {
+        rangeHandledByDocument = false
+        return
+      }
+      const tiptap = editor._tiptapEditor
+      if (!tiptap) return
+      const result = recordDeletion(
+        tiptap,
+        onAddSuggestion,
+        getPlainMarkdown(),
+        resolveMarkdownSourceOffset,
+        getReviewMarks
+      )
+      if (result === false) return
       event.preventDefault()
     }
 
@@ -94,7 +140,16 @@ export function useLiveSuggestionTracking({
       if (!hasSelectedRangeInsideContainer(container)) return
       const tiptap = editor._tiptapEditor
       if (!tiptap) return
-      if (!recordDeletion(tiptap, onAddSuggestion, resolveMarkdownSourceOffset, getReviewMarks)) {
+      rangeHandledByDocument = true
+      const result = recordDeletion(
+        tiptap,
+        onAddSuggestion,
+        getPlainMarkdown(),
+        resolveMarkdownSourceOffset,
+        getReviewMarks
+      )
+      if (result === false) {
+        rangeHandledByDocument = false
         return
       }
       event.preventDefault()
@@ -110,7 +165,17 @@ export function useLiveSuggestionTracking({
       container.removeEventListener('keydown', handleKeyDown, true)
       ownerDocument.removeEventListener('keydown', handleDocumentKeyDown, true)
     }
-  }, [containerRef, editor, enabled, onAddSuggestion, resolveMarkdownSourceOffset, getReviewMarks])
+  }, [
+    containerRef,
+    editor,
+    enabled,
+    onAddSuggestion,
+    resolveMarkdownSourceOffset,
+    getReviewMarks,
+    getPlainMarkdown,
+    onInsertSourceBreak,
+    requestMarkdownFlush
+  ])
 }
 
 function isBackspaceDeleteEvent(event: KeyboardEvent): boolean {
@@ -136,9 +201,10 @@ function containsSelectionNode(container: HTMLElement, node: Node): boolean {
 function recordDeletion(
   tiptap: any,
   onAddSuggestion: (input: AddSuggestionInput) => void,
+  plainMarkdown: string,
   resolveMarkdownSourceOffset?: (editorOffset: number) => number | null,
   getReviewMarks?: () => CriticMarkupMark[]
-): boolean {
+): 'recorded' | 'suppress' | false {
   const state = tiptap.state
   const selection = state.selection
   if (!selection) return false
@@ -148,10 +214,39 @@ function recordDeletion(
   const to = selection.to
   if (from >= to) return false
 
-  const deletedText = state.doc.textBetween(from, to, '\n')
-  if (!deletedText) return false
-  const start = markdownSourceOffsetForDocPos(state.doc, from, resolveMarkdownSourceOffset)
-  if (start === null) return false
+  const visibleDeletedText = state.doc.textBetween(from, to, '\n')
+  if (!visibleDeletedText) return false
+
+  // Try to resolve source range via offset map.
+  // Use (to - 1) + 1 for the end so that trailing hidden markers (e.g. closing
+  // "**") after the last visible char are excluded from the deleted slice.
+  const sourceStart = markdownSourceOffsetForDocPos(state.doc, from, resolveMarkdownSourceOffset)
+  const sourceEndBase =
+    to > 0 ? markdownSourceOffsetForDocPos(state.doc, to - 1, resolveMarkdownSourceOffset) : null
+  const sourceEnd = sourceEndBase !== null ? sourceEndBase + 1 : null
+
+  let deletedText: string
+  let start: number
+
+  if (sourceStart !== null && sourceEnd !== null) {
+    deletedText = plainMarkdown.slice(sourceStart, sourceEnd)
+    start = sourceStart
+  } else {
+    // Fallback: find unambiguous occurrence of visible text in source
+    const idx = findUnambiguousMatch(plainMarkdown, visibleDeletedText)
+    if (idx === -1) {
+      // Can't map — suppress native delete but don't record a suggestion
+      return 'suppress'
+    }
+    deletedText = visibleDeletedText
+    start = idx
+  }
+
+  // Block separators (pure newlines) are not recordable — skip without hard-delete
+  if (/^\n+$/.test(deletedText)) {
+    return 'suppress'
+  }
+
   if (isRangeInsideAdditionMark(start, start + deletedText.length, getReviewMarks)) {
     return false
   }
@@ -163,7 +258,14 @@ function recordDeletion(
     start
   })
   moveSelectionTo(tiptap, from)
-  return true
+  return 'recorded'
+}
+
+function findUnambiguousMatch(source: string, text: string): number {
+  const idx = source.indexOf(text)
+  if (idx === -1) return -1
+  if (source.indexOf(text, idx + 1) !== -1) return -1 // ambiguous
+  return idx
 }
 
 function markdownSourceRangeForDocRange(
