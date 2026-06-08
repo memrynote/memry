@@ -225,7 +225,10 @@ export function useCriticMarkupReview({
       const trimmedBody = input.body.trim()
       if (!draft || !trimmedBody) return
 
-      const start = findTextStart(plainMarkdownRef.current, draft.text, marksRef.current)
+      const md = plainMarkdownRef.current
+      const fromSrc =
+        draft.from === undefined ? -1 : (editorOffsetToMarkdownSourceOffset(md, draft.from) ?? -1)
+      const start = fromSrc >= 0 ? fromSrc : findTextStart(md, draft.text, marksRef.current)
       if (start === -1) return
 
       const id = createCriticMarkId('comment')

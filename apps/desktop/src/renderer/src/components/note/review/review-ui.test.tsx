@@ -166,7 +166,7 @@ describe('review UI', () => {
     expect(screen.queryByText('comments.kind.deletion')).not.toBeInTheDocument()
 
     const additionCard = document.querySelector('[data-critic-mark-id="add-1"]') as HTMLElement
-    expect(within(additionCard).getByText('Add:')).toHaveClass(
+    expect(within(additionCard).getByText('comments.suggestionAdd')).toHaveClass(
       'critic-review-suggestion-label-addition'
     )
     expect(within(additionCard).getByText('“new text”')).toHaveClass(
@@ -174,7 +174,7 @@ describe('review UI', () => {
     )
 
     const deletionCard = document.querySelector('[data-critic-mark-id="delete-1"]') as HTMLElement
-    expect(within(deletionCard).getByText('Delete:')).toHaveClass(
+    expect(within(deletionCard).getByText('comments.suggestionDelete')).toHaveClass(
       'critic-review-suggestion-label-deletion'
     )
     expect(within(deletionCard).getByText('“old text”')).toHaveClass(
@@ -245,7 +245,7 @@ describe('review UI', () => {
     ).toHaveClass('critic-review-text-collapsible')
     expect(
       within(deletionCard)
-        .getByText(/Delete:/)
+        .getByText(/suggestionDelete/)
         .closest('p')
     ).toHaveClass('critic-review-text-collapsible')
 
