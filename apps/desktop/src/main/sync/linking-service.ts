@@ -38,6 +38,7 @@ import { createLogger } from '../lib/logger'
 
 import { getFromServer, postToServer, SyncServerError } from './http-client'
 import { withRetry } from './retry'
+import { collectVaultTransfer, encryptVaultTransfer } from './vault-transfer'
 
 const log = createLogger('DeviceLinking')
 
@@ -510,6 +511,13 @@ export const approveDeviceLinking = async (
         })
       : null
 
+    const vaultTransfer = encryptVaultTransfer({
+      transfer: collectVaultTransfer(getDatabase()),
+      sessionId,
+      encKey,
+      macKey
+    })
+
     await postToServer(
       '/auth/linking/approve',
       {
@@ -517,7 +525,8 @@ export const approveDeviceLinking = async (
         encryptedMasterKey: encryptedMasterKeyB64,
         encryptedKeyNonce: encryptedKeyNonceB64,
         keyConfirm: keyConfirmB64,
-        ...(encryptedProviderAuth ?? {})
+        ...(encryptedProviderAuth ?? {}),
+        ...vaultTransfer
       },
       accessToken
     )
