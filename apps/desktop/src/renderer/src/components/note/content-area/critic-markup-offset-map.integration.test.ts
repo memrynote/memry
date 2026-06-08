@@ -35,18 +35,21 @@ async function realProjection(markdown: string): Promise<string> {
 // Plain-paragraph fixtures: no hidden inline syntax, so every non-newline
 // source char appears verbatim in the projection and the map must agree with
 // the real doc on each one.
-const FIXTURES_PASSING = ['Line1\n\nLine2', 'Line1\n\n\n\n']
-
-// Blocked: multi-blank-line gaps produce N extra editor separator positions
-// (one per empty paragraph) but the offset map collapses them to one.
-// Fix requires calibrating the map from live doc.textBetween.
-const FIXTURES_BROKEN = [
+const FIXTURES_PASSING = [
+  'Line1\n\nLine2',
+  'Line1\n\n\n\n',
+  // Interior multi-blank gaps: the map now emits N-1 separators per N-newline
+  // run, matching one empty paragraph per blank line in the real doc.
   'Line1\n\n\nLine2',
   'Line1\n\n\n\nLine2',
   'Line1\n\n\n\n\nLine2',
-  '\n\n\nLine1',
   'Line4\n\n\n\n\nHey1\n\nHey2\n\nHey3\n\nHey4'
 ]
+
+// Blocked: a LEADING blank run (no content before it) still collapses; the real
+// doc emits one empty paragraph per leading blank line. Out of scope for the
+// interior-gap fix.
+const FIXTURES_BROKEN = ['\n\n\nLine1']
 
 describe('CriticMarkup offset map vs real BlockNote doc projection', () => {
   for (const markdown of FIXTURES_PASSING) {
@@ -90,14 +93,13 @@ const STRUCTURED_FIXTURES = [
   // No wiki-link fixture: the default BlockNote schema used by this harness
   // renders [[Alias]] as literal text (the custom schema's wiki-link inline is
   // what the map models — covered by the offset-map unit tests instead).
-  '⟦* ⟧plain item\n\n⟦* ⟧has ⟦**⟧bold⟦**⟧ word'
-]
-
-// Blocked: double-blank-line gap in this fixture produces N extra editor
-// positions that the offset map doesn't account for.
-const STRUCTURED_FIXTURES_BROKEN = [
+  '⟦* ⟧plain item\n\n⟦* ⟧has ⟦**⟧bold⟦**⟧ word',
+  // Interior multi-blank gap after a loose bullet list — the field repro shape
+  // (Lisbon Notes): a replace/delete landing after the gap used to drift.
   '⟦## ⟧Cues\n\n⟦* ⟧Squat brace feet\n\n⟦* ⟧DL bar over midfoot\n\n⟦* ⟧Bench tucked elbows leg drive\n\n\n\nTrailing paragraph after gap'
 ]
+
+const STRUCTURED_FIXTURES_BROKEN: string[] = []
 
 function parseAnnotatedFixture(annotated: string): { markdown: string; visible: boolean[] } {
   let markdown = ''

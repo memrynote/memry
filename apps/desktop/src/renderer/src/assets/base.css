@@ -362,6 +362,16 @@
 
 .critic-mark-inline-comment {
   background: color-mix(in srgb, var(--accent-orange) 18%, transparent);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--accent-orange) 60%, transparent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+.critic-mark-inline-comment:hover,
+.critic-mark-inline-comment.critic-mark-hovered {
+  background: color-mix(in srgb, var(--accent-orange) 30%, transparent);
+  text-decoration-color: var(--accent-orange);
 }
 
 .critic-mark-inline-addition {
@@ -384,23 +394,6 @@
 .critic-mark-inline:hover,
 .critic-mark-inline.critic-mark-hovered {
   background: color-mix(in srgb, var(--accent-orange) 30%, transparent);
-}
-
-.suggestion-mode-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  height: 26px;
-  margin-inline-end: 4px;
-  padding-inline-start: 9px;
-  padding-inline-end: 2px;
-  border: 1px solid color-mix(in srgb, var(--accent-cyan) 34%, var(--border));
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--accent-cyan) 10%, var(--background));
-  color: color-mix(in srgb, var(--accent-cyan) 82%, var(--foreground));
-  font-size: 11px;
-  font-weight: 500;
-  line-height: 1;
 }
 
 .review-rail {
@@ -514,38 +507,6 @@
 
 .critic-review-content a {
   pointer-events: auto;
-}
-
-.critic-review-suggestion-preview {
-  margin: 0;
-  padding-inline-end: 66px;
-  color: var(--foreground);
-  font-size: 14px;
-  line-height: 18px;
-}
-
-.critic-review-suggestion-label-addition,
-.critic-review-suggestion-label-deletion,
-.critic-review-suggestion-label-substitution {
-  font-weight: 500;
-}
-
-.critic-review-suggestion-label-addition {
-  color: color-mix(in srgb, rgb(39, 131, 222) 40%, var(--muted-foreground));
-}
-
-.critic-review-suggestion-text-addition {
-  color: rgb(39, 131, 222);
-}
-
-.critic-review-suggestion-label-deletion,
-.critic-review-suggestion-label-substitution {
-  color: var(--muted-foreground);
-}
-
-.critic-review-suggestion-text-deletion,
-.critic-review-suggestion-text-substitution {
-  color: color-mix(in srgb, var(--muted-foreground) 82%, var(--foreground));
 }
 
 .critic-review-body {

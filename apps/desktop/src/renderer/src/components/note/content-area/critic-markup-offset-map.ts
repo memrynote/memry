@@ -147,15 +147,24 @@ function buildOffsetMap(markdown: string): OffsetMap {
     if (char === '\n') {
       const runStart = source
       while (source < markdown.length && markdown[source] === '\n') source++
-      const shouldEmit = editor > 0 && source < markdown.length
-      sourceToEditor[runStart] = editor
-      markEditor(editor, runStart)
-      if (shouldEmit) {
-        editor++
+      const runLength = source - runStart
+      // An interior run of N newlines renders as max(1, N-1) editor separators:
+      // the real BlockNote doc keeps one empty paragraph per blank line, each
+      // adding its own '\n' to doc.textBetween. A single '\n' between blocks
+      // (tight list items) still projects to one separator, so the floor is 1.
+      // The old "always one separator" collapse drifted every offset after a
+      // multi-blank gap by N-2, silently mis-anchoring deletions/substitutions.
+      // Leading and trailing runs keep the single-separator collapse handled
+      // elsewhere.
+      const isInterior = editor > 0 && source < markdown.length
+      const separatorCount = isInterior ? Math.max(1, runLength - 1) : 0
+      for (let offset = 0; offset <= runLength; offset++) {
+        sourceToEditor[runStart + offset] = editor + Math.min(offset, separatorCount)
       }
-      for (let index = runStart + 1; index <= source; index++) {
-        sourceToEditor[index] = editor
+      for (let step = 0; step < separatorCount; step++) {
+        markEditor(editor + step, runStart + step)
       }
+      editor += separatorCount
       markEditor(editor, source)
       atLineStart = true
       continue

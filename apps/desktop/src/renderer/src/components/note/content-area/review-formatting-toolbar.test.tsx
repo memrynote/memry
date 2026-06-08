@@ -15,15 +15,13 @@ vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({
     t: (key: string) => {
       if (key === 'comments.toolbarComment') return 'Comment'
-      if (key === 'comments.toolbarSuggest') return 'Suggest'
       return key
     }
   })
 }))
 
 vi.mock('@/lib/icons', () => ({
-  MessageCircle: () => <span data-testid="comment-icon" />,
-  PenLine: () => <span data-testid="suggest-icon" />
+  MessageCircle: () => <span data-testid="comment-icon" />
 }))
 
 vi.mock('@blocknote/react', () => ({
@@ -84,12 +82,11 @@ describe('ReviewFormattingToolbar', () => {
     toolbarMocks.editor.prosemirrorState.doc.textBetween.mockClear()
   })
 
-  it('adds Comment and Suggest to the selected text toolbar', () => {
-    render(<ReviewFormattingToolbar onAddComment={vi.fn()} onStartSuggestionMode={vi.fn()} />)
+  it('adds Comment to the selected text toolbar', () => {
+    render(<ReviewFormattingToolbar onAddComment={vi.fn()} />)
 
     expect(screen.getByText('bold')).toBeInTheDocument()
     expect(screen.getByText('Comment')).toBeInTheDocument()
-    expect(screen.getByText('Suggest')).toBeInTheDocument()
   })
 
   it('captures selected text before clicking Comment collapses selection', () => {
@@ -137,28 +134,17 @@ describe('ReviewFormattingToolbar', () => {
       type: 'bookmark'
     }
 
-    const { container } = render(
-      <ReviewFormattingToolbar onAddComment={vi.fn()} onStartSuggestionMode={vi.fn()} />
-    )
+    const { container } = render(<ReviewFormattingToolbar onAddComment={vi.fn()} />)
 
     expect(screen.queryByText('Comment')).not.toBeInTheDocument()
-    expect(screen.queryByText('Suggest')).not.toBeInTheDocument()
     expect(container).toBeEmptyDOMElement()
   })
 
-  it('starts page-level suggestion mode and disables Comment without selection', () => {
-    const onStartSuggestionMode = vi.fn()
+  it('disables Comment without a selection', () => {
     toolbarMocks.editor.prosemirrorState.selection.empty = true
 
-    render(
-      <ReviewFormattingToolbar
-        onAddComment={vi.fn()}
-        onStartSuggestionMode={onStartSuggestionMode}
-      />
-    )
+    render(<ReviewFormattingToolbar onAddComment={vi.fn()} />)
 
     expect(screen.getByText('Comment')).toBeDisabled()
-    fireEvent.click(screen.getByText('Suggest'))
-    expect(onStartSuggestionMode).toHaveBeenCalledTimes(1)
   })
 })

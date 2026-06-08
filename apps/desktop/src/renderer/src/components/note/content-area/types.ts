@@ -125,21 +125,13 @@ export interface ContentAreaProps {
    * still get the original behavior.
    */
   marqueeZoneEl?: HTMLDivElement | null
-  /** Optional CriticMarkup review behavior for comments and suggestions */
+  /** Optional CriticMarkup review behavior for comments */
   review?: {
     plainMarkdown: string
     marks: import('@memry/shared').CriticMarkupMark[]
     hoveredMarkId: string | null
-    isSuggestionModeActive: boolean
     onEditorReady?: (editor: unknown | null) => void
     onAddComment?: (selection: ReviewSelection) => void
-    onStartSuggestionMode?: () => void
-    onAddSuggestionMark?: (input: {
-      kind: 'addition' | 'deletion' | 'substitution'
-      visibleText: string
-      originalText?: string
-      start?: number
-    }) => void
     getMarkdownSourceOffsetForEditorOffset?: (editorOffset: number) => number | null
     getEditorOffsetForMarkdownSourceOffset?: (sourceOffset: number) => number | null
     onPersistCurrentMarkdown?: () => void

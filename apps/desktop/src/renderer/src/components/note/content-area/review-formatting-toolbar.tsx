@@ -15,14 +15,13 @@ import {
   useEditorState,
   type FormattingToolbarProps
 } from '@blocknote/react'
-import { MessageCircle, PenLine } from '@/lib/icons'
+import { MessageCircle } from '@/lib/icons'
 import type { ReviewSelection } from './types'
 import { useT } from '@memry/i18n/renderer'
 
 interface ReviewFormattingToolbarProps {
   variant?: 'floating' | 'sticky'
   onAddComment?: (selection: ReviewSelection) => void
-  onStartSuggestionMode?: () => void
 }
 
 export function ReviewFormattingToolbarController(props: ReviewFormattingToolbarProps) {
@@ -38,7 +37,6 @@ export function ReviewFormattingToolbarController(props: ReviewFormattingToolbar
 export function ReviewFormattingToolbar({
   variant = 'floating',
   onAddComment,
-  onStartSuggestionMode,
   ...toolbarProps
 }: FormattingToolbarProps & ReviewFormattingToolbarProps) {
   const editor = useBlockNoteEditor()
@@ -59,8 +57,7 @@ export function ReviewFormattingToolbar({
     return (
       <FormattingToolbar {...toolbarProps}>
         {getFormattingToolbarItems(toolbarProps.blockTypeSelectItems)}
-        <ReviewToolbarButton kind="comment" onSelect={onAddComment} />
-        <ReviewToolbarButton kind="suggestion" onStartSuggestionMode={onStartSuggestionMode} />
+        <ReviewToolbarButton onSelect={onAddComment} />
       </FormattingToolbar>
     )
   }
@@ -84,23 +81,14 @@ export function ReviewFormattingToolbar({
           <CreateLinkButton />
         </div>
         <div className="review-formatting-toolbar-actions">
-          <ReviewToolbarButton kind="comment" onSelect={onAddComment} />
-          <ReviewToolbarButton kind="suggestion" onStartSuggestionMode={onStartSuggestionMode} />
+          <ReviewToolbarButton onSelect={onAddComment} />
         </div>
       </div>
     </FormattingToolbar>
   )
 }
 
-function ReviewToolbarButton({
-  kind,
-  onSelect,
-  onStartSuggestionMode
-}: {
-  kind: 'comment' | 'suggestion'
-  onSelect?: (selection: ReviewSelection) => void
-  onStartSuggestionMode?: () => void
-}) {
+function ReviewToolbarButton({ onSelect }: { onSelect?: (selection: ReviewSelection) => void }) {
   const { t } = useT('notes')
   const Components = useComponentsContext()
   const editor = useBlockNoteEditor()
@@ -144,8 +132,6 @@ function ReviewToolbarButton({
   }
 
   useEffect(() => {
-    if (kind !== 'comment') return
-
     const rememberDomSelection = () => {
       window.setTimeout(() => {
         const domSelection = getDomEditorSelection(editor)
@@ -175,18 +161,17 @@ function ReviewToolbarButton({
       window.removeEventListener('mouseup', rememberDomSelection)
       window.removeEventListener('pointerup', rememberDomSelection)
     }
-  }, [editor, kind])
+  }, [editor])
 
   if (!Components) return null
-  if (kind === 'comment' && !onSelect) return null
-  if (kind === 'suggestion' && !onStartSuggestionMode) return null
+  if (!onSelect) return null
 
-  const label = kind === 'comment' ? t('comments.toolbarComment') : t('comments.toolbarSuggest')
-  const Icon = kind === 'comment' ? MessageCircle : PenLine
+  const label = t('comments.toolbarComment')
+  const Icon = MessageCircle
   const renderSelection =
     getSelectableSelection(selectionState.selection) ??
     getSelectableSelection(lastSelectionRef.current)
-  const isDisabled = kind === 'comment' && !renderSelection
+  const isDisabled = !renderSelection
 
   const getActionSelection = (): ReviewSelection | null => {
     const hasMultiBlockSelection = hasMultiBlockDomSelection(editor)
@@ -205,11 +190,6 @@ function ReviewToolbarButton({
   }
 
   const runAction = (): boolean => {
-    if (kind === 'suggestion') {
-      onStartSuggestionMode?.()
-      return true
-    }
-
     const selection = getActionSelection()
     if (!selection) {
       return false
@@ -229,7 +209,6 @@ function ReviewToolbarButton({
   const handlePreClickSelection = (
     event: PointerEvent<HTMLElement> | MouseEvent<HTMLElement>
   ): void => {
-    if (kind !== 'comment') return
     event.preventDefault()
     if (ignoreNextClickRef.current) return
     if (runAction()) {
@@ -246,7 +225,7 @@ function ReviewToolbarButton({
     >
       <Components.FormattingToolbar.Button
         className="bn-button"
-        data-test={kind === 'comment' ? 'review-comment' : 'review-suggest'}
+        data-test="review-comment"
         label={label}
         mainTooltip={label}
         isDisabled={isDisabled}
