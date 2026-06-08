@@ -417,4 +417,19 @@ describe('major renderer gap surfaces', () => {
     )
     expect(screen.getByTestId('blocknote-view')).toHaveAttribute('data-editable', 'false')
   })
+
+  it('restores inbox editor indentation from BlockNote nesting metadata', async () => {
+    const parent = { type: 'paragraph', content: 'Parent', children: [] }
+    const child = { type: 'paragraph', content: 'Child', children: [] }
+    mocks.tryParseHTMLToBlocks.mockReturnValueOnce([parent, child])
+
+    render(<InboxContentEditor initialContent='<p>Parent</p><p data-nesting-level="1">Child</p>' />)
+
+    await waitFor(() =>
+      expect(mocks.replaceBlocks).toHaveBeenCalledWith(
+        [{ type: 'paragraph', content: 'First title' }],
+        [{ ...parent, children: [{ ...child, children: [] }] }]
+      )
+    )
+  })
 })

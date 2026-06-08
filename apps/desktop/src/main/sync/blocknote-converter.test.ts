@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { markdownToBlocks, yDocToMarkdown } from './blocknote-converter'
+import { markdownToBlocks, yDocToMarkdown, blocksToYFragment } from './blocknote-converter'
 import * as Y from 'yjs'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 
@@ -185,6 +185,48 @@ describe('blocknote-converter code block language', () => {
     expect(marks).toEqual([
       expect.objectContaining({ kind: 'deletion', visibleText: 'deleted', start: 5, end: 12 }),
       expect.objectContaining({ kind: 'addition', visibleText: 'added', start: 17, end: 22 })
+    ])
+  })
+
+  it('preserves nested paragraph indentation through markdown writeback', async () => {
+    const doc = new Y.Doc()
+    const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    const ok = blocksToYFragment(
+      [
+        {
+          id: 'parent',
+          type: 'paragraph',
+          props: { backgroundColor: 'default', textColor: 'default', textAlignment: 'left' },
+          content: [{ type: 'text', text: 'Parent', styles: {} }],
+          children: [
+            {
+              id: 'child',
+              type: 'paragraph',
+              props: { backgroundColor: 'default', textColor: 'default', textAlignment: 'left' },
+              content: [{ type: 'text', text: 'Child', styles: {} }],
+              children: []
+            }
+          ]
+        }
+      ] as never,
+      fragment
+    )
+
+    expect(ok).toBe(true)
+    const markdown = await yDocToMarkdown(doc)
+    expect(markdown).toContain('<!-- memry:block-nesting-level=1 -->')
+
+    const blocks = await markdownToBlocks(markdown!)
+    expect(blocks).toEqual([
+      expect.objectContaining({
+        content: [{ type: 'text', text: 'Parent', styles: {} }],
+        children: [
+          expect.objectContaining({
+            content: [{ type: 'text', text: 'Child', styles: {} }],
+            children: []
+          })
+        ]
+      })
     ])
   })
 })
