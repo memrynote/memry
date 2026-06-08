@@ -49,7 +49,11 @@ const ApproveLinkingSchema = z.object({
   encryptedProviderAuth: z.string().min(1).optional(),
   encryptedProviderAuthNonce: z.string().min(1).optional(),
   providerAuthConfirm: z.string().min(1).optional(),
-  providerAuthVersion: z.literal(1).optional()
+  providerAuthVersion: z.literal(1).optional(),
+  encryptedVaultTransfer: z.string().min(1).optional(),
+  encryptedVaultTransferNonce: z.string().min(1).optional(),
+  vaultTransferConfirm: z.string().min(1).optional(),
+  vaultTransferVersion: z.literal(1).optional()
 })
 
 const CompleteLinkingSchema = z.object({
@@ -182,7 +186,11 @@ linking.post('/approve', authMiddleware, linkingRateLimit, async (c) => {
     encryptedProviderAuth,
     encryptedProviderAuthNonce,
     providerAuthConfirm,
-    providerAuthVersion
+    providerAuthVersion,
+    encryptedVaultTransfer,
+    encryptedVaultTransferNonce,
+    vaultTransferConfirm,
+    vaultTransferVersion
   } = parsed.data
 
   await transitionToApproved(
@@ -201,6 +209,17 @@ linking.post('/approve', authMiddleware, linkingRateLimit, async (c) => {
           encryptedProviderAuthNonce,
           providerAuthConfirm,
           providerAuthVersion
+        }
+      : undefined,
+    encryptedVaultTransfer &&
+      encryptedVaultTransferNonce &&
+      vaultTransferConfirm &&
+      vaultTransferVersion
+      ? {
+          encryptedVaultTransfer,
+          encryptedVaultTransferNonce,
+          vaultTransferConfirm,
+          vaultTransferVersion
         }
       : undefined
   )
@@ -265,7 +284,11 @@ linking.post('/complete', linkingCompleteRateLimit, async (c) => {
     encryptedProviderAuth: keyData.encryptedProviderAuth,
     encryptedProviderAuthNonce: keyData.encryptedProviderAuthNonce,
     providerAuthConfirm: keyData.providerAuthConfirm,
-    providerAuthVersion: keyData.providerAuthVersion
+    providerAuthVersion: keyData.providerAuthVersion,
+    encryptedVaultTransfer: keyData.encryptedVaultTransfer,
+    encryptedVaultTransferNonce: keyData.encryptedVaultTransferNonce,
+    vaultTransferConfirm: keyData.vaultTransferConfirm,
+    vaultTransferVersion: keyData.vaultTransferVersion
   })
 })
 

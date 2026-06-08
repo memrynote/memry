@@ -259,7 +259,8 @@ describe('linking routes', () => {
         encryptedProviderAuthNonce: 'epan',
         providerAuthConfirm: 'pac',
         providerAuthVersion: 1
-      }
+      },
+      undefined
     )
     expect(executionCtx.waitUntil).toHaveBeenCalledWith(expect.any(Promise))
   })
@@ -315,5 +316,60 @@ describe('linking routes', () => {
       providerAuthConfirm: 'pac',
       providerAuthVersion: 1
     })
+  })
+
+  it('forwards vault transfer to the service on approve', async () => {
+    const res = await app.request(
+      'http://localhost/linking/approve',
+      jsonPost({
+        sessionId: SESSION_ID,
+        encryptedMasterKey: 'emk',
+        encryptedKeyNonce: 'ekn',
+        keyConfirm: 'kc',
+        encryptedVaultTransfer: 'ct',
+        encryptedVaultTransferNonce: 'nonce',
+        vaultTransferConfirm: 'confirm',
+        vaultTransferVersion: 1
+      }),
+      env,
+      executionCtx
+    )
+    expect(res.status).toBe(200)
+    expect(transitionToApproved).toHaveBeenCalledWith(
+      expect.anything(),
+      SESSION_ID,
+      expect.any(String),
+      'emk',
+      'ekn',
+      'kc',
+      undefined,
+      {
+        encryptedVaultTransfer: 'ct',
+        encryptedVaultTransferNonce: 'nonce',
+        vaultTransferConfirm: 'confirm',
+        vaultTransferVersion: 1
+      }
+    )
+  })
+
+  it('returns vault transfer on complete', async () => {
+    vi.mocked(transitionToCompleted).mockResolvedValueOnce({
+      encryptedMasterKey: 'emk',
+      encryptedKeyNonce: 'ekn',
+      keyConfirm: 'kc',
+      encryptedVaultTransfer: 'ct',
+      encryptedVaultTransferNonce: 'nonce',
+      vaultTransferConfirm: 'confirm',
+      vaultTransferVersion: 1
+    })
+    const res = await app.request(
+      '/linking/complete',
+      jsonPost({ sessionId: SESSION_ID }),
+      env,
+      executionCtx
+    )
+    const body = (await res.json()) as Record<string, unknown>
+    expect(body.encryptedVaultTransfer).toBe('ct')
+    expect(body.vaultTransferVersion).toBe(1)
   })
 })
