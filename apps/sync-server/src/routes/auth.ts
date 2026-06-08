@@ -222,7 +222,13 @@ auth.post('/otp/verify', otpIpRateLimit, async (c) => {
   })
 
   await updateUser(c.env.DB, user.id, { email_verified: 1 })
-  await ensureLocalAdminPaidSyncAccess(c.env.DB, c.env.ENVIRONMENT, email, user.id)
+  await ensureLocalAdminPaidSyncAccess(
+    c.env.DB,
+    c.env.ENVIRONMENT,
+    email,
+    user.id,
+    c.env.LOCAL_ADMIN_SYNC_EMAILS
+  )
 
   const setupToken = await signSetupToken(user.id, c.env.JWT_PRIVATE_KEY, sessionNonce)
 
@@ -313,7 +319,13 @@ auth.post('/oauth/:provider/callback', async (c) => {
     authProviderId: claims.sub
   })
 
-  await ensureLocalAdminPaidSyncAccess(c.env.DB, c.env.ENVIRONMENT, claims.email, user.id)
+  await ensureLocalAdminPaidSyncAccess(
+    c.env.DB,
+    c.env.ENVIRONMENT,
+    claims.email,
+    user.id,
+    c.env.LOCAL_ADMIN_SYNC_EMAILS
+  )
 
   const setupToken = await signSetupToken(user.id, c.env.JWT_PRIVATE_KEY, sessionNonce)
 
@@ -587,7 +599,12 @@ auth.post('/checkout-token', authMiddleware, async (c) => {
 
 auth.get('/billing', authMiddleware, async (c) => {
   const userId = c.get('userId')!
-  await ensureLocalAdminPaidSyncAccessForUser(c.env.DB, c.env.ENVIRONMENT, userId)
+  await ensureLocalAdminPaidSyncAccessForUser(
+    c.env.DB,
+    c.env.ENVIRONMENT,
+    userId,
+    c.env.LOCAL_ADMIN_SYNC_EMAILS
+  )
   return c.json(await getBillingStatus(c.env.DB, userId))
 })
 
@@ -602,7 +619,12 @@ auth.post('/billing/reconcile', authMiddleware, async (c) => {
   if (parsed.data.transactionId) {
     await reconcilePaddleTransaction(c.env, userId, parsed.data.transactionId)
   }
-  await ensureLocalAdminPaidSyncAccessForUser(c.env.DB, c.env.ENVIRONMENT, userId)
+  await ensureLocalAdminPaidSyncAccessForUser(
+    c.env.DB,
+    c.env.ENVIRONMENT,
+    userId,
+    c.env.LOCAL_ADMIN_SYNC_EMAILS
+  )
 
   return c.json(await getBillingStatus(c.env.DB, userId))
 })
