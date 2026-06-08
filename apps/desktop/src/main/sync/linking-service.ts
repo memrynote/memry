@@ -38,7 +38,8 @@ import { createLogger } from '../lib/logger'
 
 import { getFromServer, postToServer, SyncServerError } from './http-client'
 import { withRetry } from './retry'
-import { collectVaultTransfer, encryptVaultTransfer } from './vault-transfer'
+import { collectVaultTransfer, decryptVaultTransfer, encryptVaultTransfer } from './vault-transfer'
+import { adoptVaultLocally } from './vault-adoption'
 
 const log = createLogger('DeviceLinking')
 
@@ -295,6 +296,10 @@ export const completeLinkingQr = async (sessionId: string): Promise<CompleteLink
           encryptedProviderAuthNonce?: string
           providerAuthConfirm?: string
           providerAuthVersion?: number
+          encryptedVaultTransfer?: string
+          encryptedVaultTransferNonce?: string
+          vaultTransferConfirm?: string
+          vaultTransferVersion?: number
         }>('/auth/linking/complete', { sessionId }),
       { maxRetries: 3, baseDelayMs: 2000 }
     )
@@ -360,7 +365,45 @@ export const completeLinkingQr = async (sessionId: string): Promise<CompleteLink
       }
     }
 
-    void finalizeLinking(masterKey, setupToken, importedProviderAuth, importWarning)
+    let adoptedVaultUuid: string | undefined
+    if (
+      completeResponse.encryptedVaultTransfer &&
+      completeResponse.encryptedVaultTransferNonce &&
+      completeResponse.vaultTransferConfirm &&
+      completeResponse.vaultTransferVersion
+    ) {
+      try {
+        const transfer = decryptVaultTransfer({
+          encryptedVaultTransfer: completeResponse.encryptedVaultTransfer,
+          encryptedVaultTransferNonce: completeResponse.encryptedVaultTransferNonce,
+          vaultTransferConfirm: completeResponse.vaultTransferConfirm,
+          vaultTransferVersion: completeResponse.vaultTransferVersion,
+          sessionId,
+          encKey,
+          macKey
+        })
+        // Phase 1: auto-adopt the initiator's single vault. Phase 2 shows a picker when length > 1.
+        adoptedVaultUuid = transfer.vaults[0]?.vaultUuid
+      } catch (error) {
+        log.error('Vault transfer could not be decrypted during linking', {
+          sessionId,
+          error: error instanceof Error ? error.message : 'unknown error'
+        })
+        clearPendingLinkCompletion()
+        return {
+          success: false,
+          error: 'Vault identity could not be verified — linking data may be corrupted'
+        }
+      }
+    }
+
+    void finalizeLinking(
+      masterKey,
+      setupToken,
+      adoptedVaultUuid,
+      importedProviderAuth,
+      importWarning
+    )
 
     log.info('Linking approved — finalizing device registration in background')
     return { success: true }
@@ -377,6 +420,7 @@ export const completeLinkingQr = async (sessionId: string): Promise<CompleteLink
 async function finalizeLinking(
   masterKey: Uint8Array,
   setupToken: string,
+  adoptedVaultUuid?: string,
   importedProviderAuth?: GoogleProviderAuthTransfer,
   initialWarning?: string
 ): Promise<void> {
@@ -388,6 +432,10 @@ async function finalizeLinking(
     )
 
     const signingKeyPair = await getOrCreateSigningKeyPair()
+
+    if (adoptedVaultUuid) {
+      adoptVaultLocally(getDatabase(), adoptedVaultUuid)
+    }
 
     const { persistKeysAndRegisterDevice } = await import('./device-registration')
     const deviceId = await persistKeysAndRegisterDevice(

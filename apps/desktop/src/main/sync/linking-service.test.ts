@@ -12,6 +12,10 @@ const {
   mockDecryptGoogleProviderAuthTransfer,
   mockPersistImportedGoogleProviderAuth,
   mockGetDatabase,
+  mockCollectVaultTransfer,
+  mockEncryptVaultTransfer,
+  mockDecryptVaultTransfer,
+  mockAdoptVaultLocally,
   encKey,
   macKey,
   sharedSecret,
@@ -30,6 +34,10 @@ const {
   mockDecryptGoogleProviderAuthTransfer: vi.fn(),
   mockPersistImportedGoogleProviderAuth: vi.fn(),
   mockGetDatabase: vi.fn(),
+  mockCollectVaultTransfer: vi.fn(),
+  mockEncryptVaultTransfer: vi.fn(),
+  mockDecryptVaultTransfer: vi.fn(),
+  mockAdoptVaultLocally: vi.fn(),
   encKey: new Uint8Array(32).fill(7),
   macKey: new Uint8Array(32).fill(9),
   sharedSecret: new Uint8Array(32).fill(5),
@@ -72,6 +80,16 @@ vi.mock('../calendar/google/provider-auth-transfer', () => ({
   encryptGoogleProviderAuthTransfer: mockEncryptGoogleProviderAuthTransfer,
   decryptGoogleProviderAuthTransfer: mockDecryptGoogleProviderAuthTransfer,
   persistImportedGoogleProviderAuth: mockPersistImportedGoogleProviderAuth
+}))
+
+vi.mock('./vault-transfer', () => ({
+  collectVaultTransfer: mockCollectVaultTransfer,
+  encryptVaultTransfer: mockEncryptVaultTransfer,
+  decryptVaultTransfer: mockDecryptVaultTransfer
+}))
+
+vi.mock('./vault-adoption', () => ({
+  adoptVaultLocally: mockAdoptVaultLocally
 }))
 
 vi.mock('../crypto', () => ({
@@ -214,6 +232,20 @@ describe('linking-service provider auth transfer', () => {
     mockPersistImportedGoogleProviderAuth.mockResolvedValue({
       importedAccountIds: ['account-a'],
       failedImports: []
+    })
+    mockCollectVaultTransfer.mockReturnValue({
+      version: 1,
+      vaults: [{ vaultUuid: 'vault-uuid-a' }]
+    })
+    mockEncryptVaultTransfer.mockReturnValue({
+      encryptedVaultTransfer: 'encrypted-vault-transfer',
+      encryptedVaultTransferNonce: 'vault-transfer-nonce',
+      vaultTransferConfirm: 'vault-transfer-confirm',
+      vaultTransferVersion: 1
+    })
+    mockDecryptVaultTransfer.mockReturnValue({
+      version: 1,
+      vaults: [{ vaultUuid: 'vault-uuid-a' }]
     })
   })
 
