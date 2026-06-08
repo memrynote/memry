@@ -41,6 +41,20 @@ export function ReviewFormattingToolbar({
   onStartSuggestionMode,
   ...toolbarProps
 }: FormattingToolbarProps & ReviewFormattingToolbarProps) {
+  const editor = useBlockNoteEditor()
+  // A NodeSelection (e.g. the URL preview/bookmark atom selected via arrow
+  // keys) is non-empty but holds no inline text. BlockNote opens the floating
+  // toolbar on any non-empty selection, so suppress it here for node
+  // selections — otherwise the comment/suggest tooltip pops over the block.
+  const isNodeSelection = useEditorState({
+    editor,
+    selector: ({ editor }) => {
+      const state = getProseMirrorState(editor as BlockNoteEditor)
+      const selection = state?.selection
+      return Boolean(selection && !selection.empty && selection.node)
+    }
+  })
+
   if (variant === 'sticky') {
     return (
       <FormattingToolbar {...toolbarProps}>
@@ -50,6 +64,8 @@ export function ReviewFormattingToolbar({
       </FormattingToolbar>
     )
   }
+
+  if (isNodeSelection) return null
 
   return (
     <FormattingToolbar {...toolbarProps}>
