@@ -84,7 +84,6 @@ function createReview(
     activeDraft: null,
     hoveredMarkId: null,
     markPositions: {},
-    isSuggestionModeActive: false,
     handlePlainMarkdownChange: vi.fn((markdown: string) => markdown),
     persistCurrentMarkdown: vi.fn(),
     handleEditorReady: vi.fn(),
@@ -94,13 +93,8 @@ function createReview(
     getActiveDraftDomRange: vi.fn(() => null),
     submitComment: vi.fn(),
     updateComment: vi.fn(),
-    startSuggestionMode: vi.fn(),
-    stopSuggestionMode: vi.fn(),
-    addSuggestionMark: vi.fn(),
     getMarkdownSourceOffsetForEditorOffset: vi.fn(() => null),
     getEditorOffsetForMarkdownSourceOffset: vi.fn(() => null),
-    acceptMark: vi.fn(),
-    rejectMark: vi.fn(),
     resolveMark: vi.fn(),
     deleteMark: vi.fn(),
     undoLastReviewAction: vi.fn(() => false),
@@ -187,12 +181,6 @@ describe('ReviewBadgeLayer', () => {
 
     fireEvent.click(within(commentCard).getByLabelText('comments.resolve'))
     expect(review.resolveMark).toHaveBeenCalledWith('comment-1')
-
-    fireEvent.click(within(additionCard).getByLabelText('comments.accept'))
-    expect(review.acceptMark).toHaveBeenCalledWith('add-1')
-
-    fireEvent.click(within(additionCard).getByLabelText('comments.reject'))
-    expect(review.rejectMark).toHaveBeenCalledWith('add-1')
   })
 
   it('toggles the flyout closed when the open badge is clicked again', async () => {

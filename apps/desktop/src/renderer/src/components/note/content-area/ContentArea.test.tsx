@@ -476,8 +476,7 @@ describe('ContentArea', () => {
               end: 10
             }
           ],
-          hoveredMarkId: null,
-          isSuggestionModeActive: true
+          hoveredMarkId: null
         }}
       />
     )

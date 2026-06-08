@@ -4,7 +4,6 @@ import { act, fireEvent, render, renderHook, screen, waitFor, within } from '@te
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ReviewRail } from './review-rail'
-import { SuggestionModePill } from './suggestion-mode-pill'
 import {
   useCriticMarkupReview,
   type CriticMarkupReviewController
@@ -53,7 +52,6 @@ function createReview(
     activeDraft: null,
     hoveredMarkId: null,
     markPositions: {},
-    isSuggestionModeActive: false,
     handlePlainMarkdownChange: vi.fn((markdown: string) => markdown),
     persistCurrentMarkdown: vi.fn(),
     handleEditorReady: vi.fn(),
@@ -63,13 +61,8 @@ function createReview(
     getActiveDraftDomRange: vi.fn(() => null),
     submitComment: vi.fn(),
     updateComment: vi.fn(),
-    startSuggestionMode: vi.fn(),
-    stopSuggestionMode: vi.fn(),
-    addSuggestionMark: vi.fn(),
     getMarkdownSourceOffsetForEditorOffset: vi.fn(() => null),
     getEditorOffsetForMarkdownSourceOffset: vi.fn(() => null),
-    acceptMark: vi.fn(),
-    rejectMark: vi.fn(),
     resolveMark: vi.fn(),
     deleteMark: vi.fn(),
     undoLastReviewAction: vi.fn(() => false),
@@ -99,12 +92,6 @@ describe('review UI', () => {
     expect(hoverBlock).toContain('background-color: var(--critic-review-card-hover-background)')
     expect(hoverBlock).toContain('transform: translateX(-20px)')
     expect(hoverBlock).not.toContain('border-color')
-    expect(css).toContain('.critic-review-suggestion-label-addition')
-    expect(css).toContain(
-      'color: color-mix(in srgb, rgb(39, 131, 222) 40%, var(--muted-foreground))'
-    )
-    expect(css).toContain('color: rgb(39, 131, 222)')
-    expect(css).toContain('color: var(--muted-foreground)')
     expect(css).toContain('.critic-review-text-collapsible')
     expect(css).toContain('text-overflow: ellipsis')
     expect(css).toContain(
@@ -114,16 +101,6 @@ describe('review UI', () => {
     expect(css).toContain('display: flex')
     expect(css).toContain('.critic-comment-editor .ProseMirror')
     expect(css).toContain(".critic-review-card[data-editing='true']")
-  })
-
-  it('renders the suggestion mode pill and exits mode', () => {
-    const onClose = vi.fn()
-
-    render(<SuggestionModePill onClose={onClose} />)
-
-    expect(screen.getByText('comments.suggesting')).toBeInTheDocument()
-    fireEvent.click(screen.getByLabelText('comments.exitSuggestionMode'))
-    expect(onClose).toHaveBeenCalledTimes(1)
   })
 
   it('renders rail cards, drives actions, and emits hover linkage', () => {
@@ -136,24 +113,9 @@ describe('review UI', () => {
           body: 'Needs a source',
           start: 0,
           end: 13
-        },
-        {
-          id: 'add-1',
-          kind: 'addition',
-          visibleText: 'new text',
-          start: 14,
-          end: 22
-        },
-        {
-          id: 'delete-1',
-          kind: 'deletion',
-          visibleText: 'old text',
-          originalText: 'old text',
-          start: 23,
-          end: 31
         }
       ],
-      markPositions: { 'comment-1': 24, 'add-1': 160, 'delete-1': 296 }
+      markPositions: { 'comment-1': 24 }
     })
 
     render(<ReviewRail review={review} />)
@@ -161,25 +123,6 @@ describe('review UI', () => {
     expect(screen.getByLabelText('comments.railAria')).toBeInTheDocument()
     expect(screen.getByText('Needs a source')).toBeInTheDocument()
     expect(screen.queryByText('selected text')).not.toBeInTheDocument()
-    expect(screen.queryByText('comments.kind.comment')).not.toBeInTheDocument()
-    expect(screen.queryByText('comments.kind.addition')).not.toBeInTheDocument()
-    expect(screen.queryByText('comments.kind.deletion')).not.toBeInTheDocument()
-
-    const additionCard = document.querySelector('[data-critic-mark-id="add-1"]') as HTMLElement
-    expect(within(additionCard).getByText('comments.suggestionAdd')).toHaveClass(
-      'critic-review-suggestion-label-addition'
-    )
-    expect(within(additionCard).getByText('“new text”')).toHaveClass(
-      'critic-review-suggestion-text-addition'
-    )
-
-    const deletionCard = document.querySelector('[data-critic-mark-id="delete-1"]') as HTMLElement
-    expect(within(deletionCard).getByText('comments.suggestionDelete')).toHaveClass(
-      'critic-review-suggestion-label-deletion'
-    )
-    expect(within(deletionCard).getByText('“old text”')).toHaveClass(
-      'critic-review-suggestion-text-deletion'
-    )
 
     const inlineMark = document.createElement('span')
     inlineMark.dataset.criticMarkKind = 'comment'
@@ -194,18 +137,8 @@ describe('review UI', () => {
     expect(inlineMark).not.toHaveClass('critic-mark-hovered')
     inlineMark.remove()
 
-    expect(screen.queryByText('comments.resolve')).not.toBeInTheDocument()
-    expect(screen.queryByText('comments.accept')).not.toBeInTheDocument()
-    expect(screen.queryByText('comments.reject')).not.toBeInTheDocument()
-
     fireEvent.click(screen.getByLabelText('comments.resolve'))
     expect(review.resolveMark).toHaveBeenCalledWith('comment-1')
-
-    fireEvent.click(within(additionCard).getByLabelText('comments.accept'))
-    expect(review.acceptMark).toHaveBeenCalledWith('add-1')
-
-    fireEvent.click(within(additionCard).getByLabelText('comments.reject'))
-    expect(review.rejectMark).toHaveBeenCalledWith('add-1')
   })
 
   it('keeps long cards collapsed to one line until the card is clicked', () => {
@@ -218,46 +151,27 @@ describe('review UI', () => {
           body: 'This comment is long enough to need the collapsed one-line treatment.',
           start: 0,
           end: 13
-        },
-        {
-          id: 'delete-1',
-          kind: 'deletion',
-          visibleText: 'old text that is long enough to overflow the compact rail card',
-          originalText: 'old text that is long enough to overflow the compact rail card',
-          start: 14,
-          end: 77
         }
       ],
-      markPositions: { 'comment-1': 24, 'delete-1': 160 }
+      markPositions: { 'comment-1': 24 }
     })
 
     render(<ReviewRail review={review} />)
 
     const commentCard = document.querySelector('[data-critic-mark-id="comment-1"]') as HTMLElement
-    const deletionCard = document.querySelector('[data-critic-mark-id="delete-1"]') as HTMLElement
 
     expect(commentCard).toHaveAttribute('aria-expanded', 'false')
-    expect(deletionCard).toHaveAttribute('aria-expanded', 'false')
     expect(
       within(commentCard)
         .getByText(/This comment is long/)
         .closest('p')
     ).toHaveClass('critic-review-text-collapsible')
-    expect(
-      within(deletionCard)
-        .getByText(/suggestionDelete/)
-        .closest('p')
-    ).toHaveClass('critic-review-text-collapsible')
 
-    fireEvent.click(within(deletionCard).getByLabelText('Expand review card'))
-    expect(deletionCard).toHaveAttribute('aria-expanded', 'true')
+    fireEvent.click(within(commentCard).getByLabelText('Expand review card'))
+    expect(commentCard).toHaveAttribute('aria-expanded', 'true')
 
-    fireEvent.click(within(deletionCard).getByLabelText('comments.accept'))
-    expect(review.acceptMark).toHaveBeenCalledWith('delete-1')
-    expect(deletionCard).toHaveAttribute('aria-expanded', 'true')
-
-    fireEvent.click(within(deletionCard).getByLabelText('Collapse review card'))
-    expect(deletionCard).toHaveAttribute('aria-expanded', 'false')
+    fireEvent.click(within(commentCard).getByLabelText('Collapse review card'))
+    expect(commentCard).toHaveAttribute('aria-expanded', 'false')
   })
 
   it('stacks nearby rail cards with a 10px gap from measured card height', async () => {
@@ -427,24 +341,6 @@ describe('review UI', () => {
     expect(review.updateComment).not.toHaveBeenCalled()
     expect(screen.queryByLabelText('comments.commentPlaceholder')).not.toBeInTheDocument()
     expect(screen.getByText('Original body')).toBeInTheDocument()
-  })
-
-  it('does not offer editing on suggestion cards', () => {
-    const review = createReview({
-      marks: [
-        {
-          id: 'addition-1',
-          kind: 'addition',
-          visibleText: 'added text',
-          start: 0,
-          end: 10
-        }
-      ]
-    })
-
-    render(<ReviewRail review={review} />)
-
-    expect(screen.queryByRole('button', { name: 'comments.edit' })).not.toBeInTheDocument()
   })
 
   it('positions the active comment draft from the selected text top', () => {
@@ -636,7 +532,7 @@ describe('review UI', () => {
     expect(screen.getByText('spec.pdf')).toBeInTheDocument()
   })
 
-  it('renders creation dates on comment and suggestion cards and omits them when missing', () => {
+  it('renders creation dates on comment cards and omits them when missing', () => {
     const review = createReview({
       marks: [
         {
@@ -655,21 +551,6 @@ describe('review UI', () => {
           body: 'Undated comment',
           start: 11,
           end: 23
-        },
-        {
-          id: 'addition-dated',
-          kind: 'addition',
-          visibleText: 'new text',
-          createdAt: new Date(2026, 5, 2, 9, 30, 0).getTime(),
-          start: 24,
-          end: 32
-        },
-        {
-          id: 'addition-undated',
-          kind: 'addition',
-          visibleText: 'older text',
-          start: 33,
-          end: 43
         }
       ]
     })
@@ -677,297 +558,8 @@ describe('review UI', () => {
     const { container } = render(<ReviewRail review={review} />)
 
     const dates = container.querySelectorAll('.critic-review-date')
-    expect(dates).toHaveLength(2)
+    expect(dates).toHaveLength(1)
     expect(dates[0]).toHaveTextContent('26 May')
-    expect(dates[1]).toHaveTextContent('2 Jun')
-  })
-
-  it('keeps suggestion createdAt when its own serialized markdown round-trips', () => {
-    let markdown = 'Hello world'
-    const onMarkdownChange = vi.fn((next: string) => {
-      markdown = next
-    })
-    const { result, rerender } = renderHook(
-      ({ md }) => useCriticMarkupReview({ markdown: md, onMarkdownChange }),
-      { initialProps: { md: markdown } }
-    )
-
-    act(() => {
-      result.current.addSuggestionMark({
-        kind: 'deletion',
-        visibleText: 'world',
-        originalText: 'world',
-        start: 6
-      })
-    })
-
-    const createdAt = result.current.marks[0]?.createdAt
-    expect(createdAt).toEqual(expect.any(Number))
-
-    // Parent echoes the emitted markdown back as the prop (save round-trip).
-    rerender({ md: markdown })
-
-    expect(result.current.marks[0]?.createdAt).toBe(createdAt)
-  })
-
-  it('merges adjacent typed additions into one suggestion card', () => {
-    const { result } = renderHook(() =>
-      useCriticMarkupReview({ markdown: 'base', onMarkdownChange: vi.fn() })
-    )
-
-    act(() => {
-      result.current.addSuggestionMark({ kind: 'addition', visibleText: 'a', start: 4 })
-    })
-    act(() => {
-      result.current.addSuggestionMark({ kind: 'addition', visibleText: 'b', start: 5 })
-    })
-
-    expect(result.current.marks).toHaveLength(1)
-    expect(result.current.marks[0]).toMatchObject({
-      kind: 'addition',
-      visibleText: 'ab',
-      start: 4,
-      end: 6
-    })
-  })
-
-  it('persists typed additions as CriticMarkup immediately', () => {
-    const onMarkdownChange = vi.fn()
-    const { result } = renderHook(() =>
-      useCriticMarkupReview({ markdown: 'base', onMarkdownChange })
-    )
-
-    act(() => {
-      result.current.addSuggestionMark({ kind: 'addition', visibleText: 'a', start: 4 })
-    })
-
-    expect(onMarkdownChange).toHaveBeenLastCalledWith('base{++a++}')
-  })
-
-  it('feeds BlockNote plain markdown while keeping suggestion marks', () => {
-    const { result } = renderHook(() =>
-      useCriticMarkupReview({
-        markdown: 'Keep {--deleted--} and {++added++}',
-        onMarkdownChange: vi.fn()
-      })
-    )
-
-    expect(result.current.editorInitialContent).toBe('Keep deleted and added')
-    expect(result.current.editorInitialContent).not.toContain('{--')
-    expect(result.current.editorInitialContent).not.toContain('{++')
-    expect(result.current.marks).toEqual([
-      expect.objectContaining({ kind: 'deletion', visibleText: 'deleted' }),
-      expect.objectContaining({ kind: 'addition', visibleText: 'added' })
-    ])
-  })
-
-  it('merges repeated backward deletions into one suggestion card', () => {
-    const onMarkdownChange = vi.fn()
-    const { result } = renderHook(() =>
-      useCriticMarkupReview({ markdown: 'book', onMarkdownChange })
-    )
-
-    act(() => {
-      result.current.addSuggestionMark({
-        kind: 'deletion',
-        visibleText: 'k',
-        originalText: 'k',
-        start: 3
-      })
-    })
-    act(() => {
-      result.current.addSuggestionMark({
-        kind: 'deletion',
-        visibleText: 'o',
-        originalText: 'o',
-        start: 2
-      })
-    })
-    act(() => {
-      result.current.addSuggestionMark({
-        kind: 'deletion',
-        visibleText: 'o',
-        originalText: 'o',
-        start: 1
-      })
-    })
-
-    expect(result.current.marks).toHaveLength(1)
-    expect(result.current.marks[0]).toMatchObject({
-      kind: 'deletion',
-      visibleText: 'ook',
-      originalText: 'ook',
-      start: 1,
-      end: 4
-    })
-    expect(onMarkdownChange).toHaveBeenLastCalledWith('b{--ook--}')
-  })
-
-  it('reconciles missed trailing typed text into the active addition mark', () => {
-    const { result } = renderHook(() =>
-      useCriticMarkupReview({ markdown: 'base', onMarkdownChange: vi.fn() })
-    )
-
-    act(() => {
-      result.current.startSuggestionMode()
-    })
-    act(() => {
-      result.current.addSuggestionMark({ kind: 'addition', visibleText: 'R', start: 4 })
-    })
-
-    let serialized = ''
-    act(() => {
-      serialized = result.current.handlePlainMarkdownChange('baseRejectMe\n\n\n\n')
-    })
-
-    expect(result.current.marks).toHaveLength(1)
-    expect(result.current.marks[0]).toMatchObject({
-      kind: 'addition',
-      visibleText: 'RejectMe',
-      start: 4,
-      end: 12
-    })
-    expect(serialized).toBe('base{++RejectMe++}\n\n\n\n')
-  })
-
-  it('keeps edits inside an active addition as one addition suggestion', () => {
-    const { result } = renderHook(() =>
-      useCriticMarkupReview({ markdown: 'base', onMarkdownChange: vi.fn() })
-    )
-
-    act(() => {
-      result.current.startSuggestionMode()
-    })
-    act(() => {
-      result.current.addSuggestionMark({
-        kind: 'addition',
-        visibleText: 'car needs to repait',
-        start: 4
-      })
-    })
-
-    let afterDelete = ''
-    act(() => {
-      afterDelete = result.current.handlePlainMarkdownChange('basecar needs to repai')
-    })
-
-    expect(result.current.marks).toHaveLength(1)
-    expect(result.current.marks[0]).toMatchObject({
-      kind: 'addition',
-      visibleText: 'car needs to repai',
-      start: 4,
-      end: 22
-    })
-    expect(afterDelete).toBe('base{++car needs to repai++}')
-
-    let afterRetype = ''
-    act(() => {
-      afterRetype = result.current.handlePlainMarkdownChange('basecar needs to repair')
-    })
-
-    expect(result.current.marks).toHaveLength(1)
-    expect(result.current.marks[0]).toMatchObject({
-      kind: 'addition',
-      visibleText: 'car needs to repair',
-      start: 4,
-      end: 23
-    })
-    expect(afterRetype).toBe('base{++car needs to repair++}')
-  })
-
-  it('does not create empty rail cards for whitespace-only additions', () => {
-    const { result } = renderHook(() =>
-      useCriticMarkupReview({ markdown: 'base', onMarkdownChange: vi.fn() })
-    )
-
-    act(() => {
-      result.current.addSuggestionMark({ kind: 'addition', visibleText: ' ', start: 4 })
-    })
-
-    expect(result.current.marks).toHaveLength(0)
-  })
-
-  it('ignores stale self-originated markdown after accepting a suggestion', () => {
-    const onMarkdownChange = vi.fn()
-    const { result, rerender } = renderHook(
-      ({ markdown }) => useCriticMarkupReview({ markdown, onMarkdownChange }),
-      { initialProps: { markdown: 'base' } }
-    )
-
-    act(() => {
-      result.current.addSuggestionMark({ kind: 'addition', visibleText: 'a', start: 4 })
-    })
-
-    let staleMarkdown = ''
-    act(() => {
-      staleMarkdown = result.current.handlePlainMarkdownChange('basea')
-    })
-
-    expect(staleMarkdown).toContain('{++a++}')
-
-    const markId = result.current.marks[0].id
-    act(() => {
-      result.current.acceptMark(markId)
-    })
-
-    expect(result.current.marks).toHaveLength(0)
-
-    rerender({ markdown: staleMarkdown })
-
-    expect(result.current.marks).toHaveLength(0)
-  })
-
-  it('undoes accepted and rejected suggestion actions', () => {
-    const onMarkdownChange = vi.fn()
-    const { result } = renderHook(() =>
-      useCriticMarkupReview({ markdown: 'base wrong', onMarkdownChange })
-    )
-
-    act(() => {
-      result.current.addSuggestionMark({ kind: 'addition', visibleText: ' added', start: 4 })
-    })
-    const additionId = result.current.marks[0].id
-    act(() => {
-      result.current.rejectMark(additionId)
-    })
-
-    expect(result.current.plainMarkdown).toBe('base wrong')
-    expect(result.current.marks).toHaveLength(0)
-
-    act(() => {
-      expect(result.current.undoLastReviewAction()).toBe(true)
-    })
-
-    expect(result.current.plainMarkdown).toBe('base added wrong')
-    expect(result.current.marks).toHaveLength(1)
-    expect(result.current.marks[0]).toMatchObject({ id: additionId, kind: 'addition' })
-
-    act(() => {
-      result.current.addSuggestionMark({
-        kind: 'substitution',
-        visibleText: 'right',
-        originalText: 'wrong',
-        start: 'base added '.length
-      })
-    })
-    const substitutionId = result.current.marks.find((mark) => mark.kind === 'substitution')?.id
-    expect(substitutionId).toBeTruthy()
-
-    act(() => {
-      result.current.acceptMark(substitutionId!)
-    })
-    expect(result.current.marks.some((mark) => mark.id === substitutionId)).toBe(false)
-
-    act(() => {
-      expect(result.current.undoLastReviewAction()).toBe(true)
-    })
-
-    expect(result.current.plainMarkdown).toBe('base added right')
-    expect(result.current.marks).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ id: substitutionId, kind: 'substitution' })
-      ])
-    )
   })
 
   it('undoes submitted, resolved, and deleted comments', () => {
@@ -1162,7 +754,7 @@ describe('review UI', () => {
     expect(result.current.marks[0].attachments).toBeUndefined()
   })
 
-  it('ignores comment updates for unknown ids, suggestion marks, or empty bodies', () => {
+  it('ignores comment updates for unknown ids or empty bodies', () => {
     const onMarkdownChange = vi.fn()
     const { result } = renderHook(() =>
       useCriticMarkupReview({ markdown: 'comment target', onMarkdownChange })
@@ -1175,15 +767,10 @@ describe('review UI', () => {
       result.current.submitComment({ body: 'Needs work', mentions: [], attachments: [] })
     })
     const commentId = result.current.marks[0].id
-    act(() => {
-      result.current.addSuggestionMark({ kind: 'deletion', visibleText: 'comment', start: 0 })
-    })
-    const suggestionId = result.current.marks[1].id
     onMarkdownChange.mockClear()
 
     act(() => {
       result.current.updateComment('missing-id', { body: 'x', mentions: [], attachments: [] })
-      result.current.updateComment(suggestionId, { body: 'x', mentions: [], attachments: [] })
       result.current.updateComment(commentId, { body: '   ', mentions: [], attachments: [] })
     })
 
@@ -1197,11 +784,12 @@ describe('review UI', () => {
     )
 
     act(() => {
-      result.current.addSuggestionMark({ kind: 'addition', visibleText: ' added', start: 4 })
+      result.current.openCommentComposer({ text: 'base', isEmpty: false })
     })
     act(() => {
-      result.current.rejectMark(result.current.marks[0].id)
+      result.current.submitComment({ body: 'note', mentions: [], attachments: [] })
     })
+    expect(result.current.marks).toHaveLength(1)
 
     const undoEvent = new KeyboardEvent('keydown', {
       key: 'z',
@@ -1214,66 +802,6 @@ describe('review UI', () => {
     })
 
     expect(undoEvent.defaultPrevented).toBe(true)
-    expect(result.current.plainMarkdown).toBe('base added')
-    expect(result.current.marks).toHaveLength(1)
-  })
-
-  it('serializes a repeated-letter deletion at the provided source offset', () => {
-    const markdown = `## Why I keep at it
-
-Three reasons, in increasing order of importance:
-
-1. **Information** — useful, but Wikipedia handles this
-
-2. **Empathy** — fiction is a flight simulator for other lives`
-    const onMarkdownChange = vi.fn()
-    const { result } = renderHook(() => useCriticMarkupReview({ markdown, onMarkdownChange }))
-    const flightI = markdown.indexOf('flight') + 2
-
-    act(() => {
-      result.current.addSuggestionMark({
-        kind: 'deletion',
-        visibleText: 'i',
-        originalText: 'i',
-        start: flightI
-      })
-    })
-    act(() => {
-      result.current.persistCurrentMarkdown()
-    })
-
-    const serialized = onMarkdownChange.mock.calls.at(-1)?.[0] as string
-    expect(serialized).toContain('fl{--i--}ght')
-    expect(serialized).toContain('## Why I keep at it')
-    expect(serialized).not.toContain('Why I keep at {--i--}t')
-  })
-
-  it('serializes a repeated-letter addition at the provided source offset', () => {
-    const markdown = `## Why I keep at it
-
-Three reasons, in increasing order of importance:
-
-1. **Information** — useful, but Wikipedia handles this
-
-2. **Empathy** — fiction is a flight simulator for other lives`
-    const onMarkdownChange = vi.fn()
-    const { result } = renderHook(() => useCriticMarkupReview({ markdown, onMarkdownChange }))
-    const wikipediaExtraP = markdown.indexOf('Wikipedia') + 'Wikip'.length
-
-    act(() => {
-      result.current.addSuggestionMark({
-        kind: 'addition',
-        visibleText: 'p',
-        start: wikipediaExtraP
-      })
-    })
-    act(() => {
-      result.current.persistCurrentMarkdown()
-    })
-
-    const serialized = onMarkdownChange.mock.calls.at(-1)?.[0] as string
-    expect(serialized).toContain('Wikip{++p++}edia')
-    expect(serialized).toContain('## Why I keep at it')
-    expect(serialized).not.toContain('Why I kee{++p++} at it')
+    expect(result.current.marks).toHaveLength(0)
   })
 })
