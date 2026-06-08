@@ -96,6 +96,33 @@ describe('parseMarkdownPreservingBlanks', () => {
     )
   })
 
+  it('parses bookmark markers into bookmark blocks with derived domain', async () => {
+    const editor = {
+      tryParseMarkdownToBlocks: vi.fn(async (markdown: string) => [
+        {
+          type: 'paragraph',
+          props: {},
+          content: [{ type: 'text', text: markdown, styles: {} }],
+          children: []
+        }
+      ])
+    }
+
+    const blocks = await parseMarkdownPreservingBlanks(
+      editor,
+      ['Intro', '![bookmark](https://www.example.com/article)', 'Outro'].join('\n')
+    )
+
+    expect(blocks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'bookmark',
+          props: { url: 'https://www.example.com/article', domain: 'example.com' }
+        })
+      ])
+    )
+  })
+
   it('applies color markers to the first block of the following chunk', async () => {
     const editor = {
       tryParseMarkdownToBlocks: vi.fn(async (markdown: string) =>
@@ -283,6 +310,11 @@ describe('serializeBlocksPreservingBlanks', () => {
         children: []
       },
       {
+        type: 'bookmark',
+        props: { url: 'https://example.com/article', domain: 'example.com' },
+        children: []
+      },
+      {
         type: 'callout',
         props: { type: 'success' },
         children: []
@@ -299,6 +331,7 @@ describe('serializeBlocksPreservingBlanks', () => {
     expect(markdown).toContain('- [ ] Parent task {task:parent-1}')
     expect(markdown).toContain('  - [x] Child task {task:child-1}')
     expect(markdown).toContain('![embed](https://youtu.be/dQw4w9WgXcQ)')
+    expect(markdown).toContain('![bookmark](https://example.com/article)')
     expect(markdown).toContain('> [!success]\n> Callout body')
     expect(markdown).toContain('Tail')
   })

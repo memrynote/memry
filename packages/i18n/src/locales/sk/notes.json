@@ -123,7 +123,8 @@
       "title": "Vložiť ako",
       "url": "URL",
       "mention": "Odkaz",
-      "embedVideo": "Vložiť video"
+      "embedVideo": "Vložiť video",
+      "bookmark": "Záložka"
     },
     "emoji": {
       "aria": "Výber emoji a ikon",

@@ -8,6 +8,7 @@ import { codeBlockOptions } from '@blocknote/code-block'
 import { createFileBlock } from './file-block'
 import { createCalloutBlock } from './callout-block'
 import { createYoutubeEmbedBlock } from './youtube-embed-block'
+import { createBookmarkBlock } from './bookmark-block'
 import { createTaskBlock } from './task-block'
 import { WikiLink } from './wiki-link'
 import { HashTag } from './hash-tag'
@@ -20,6 +21,7 @@ export const editorSchema = BlockNoteSchema.create({
     file: createFileBlock(),
     callout: createCalloutBlock(),
     youtubeEmbed: createYoutubeEmbedBlock(),
+    bookmark: createBookmarkBlock(),
     taskBlock: createTaskBlock()
   },
   inlineContentSpecs: {

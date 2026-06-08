@@ -123,7 +123,8 @@
       "title": "다음으로 붙여넣기",
       "url": "URL",
       "mention": "언급",
-      "embedVideo": "비디오 삽입"
+      "embedVideo": "비디오 삽입",
+      "bookmark": "북마크"
     },
     "emoji": {
       "aria": "이모티콘 및 아이콘 선택기",

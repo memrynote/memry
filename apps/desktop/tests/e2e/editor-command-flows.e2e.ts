@@ -154,7 +154,7 @@ test.describe('Editor command flows E2E', () => {
     await focusEditor(page)
     await pastePlainText(page, 'https://www.youtube.com/watch?v=dQw4w9WgXcQ')
     await expect(page.locator('[data-paste-link-menu]')).toBeVisible()
-    await page.keyboard.press('ArrowDown')
+    // Menu order: Mention, Embed, Bookmark, URL — one ArrowDown reaches Embed
     await page.keyboard.press('ArrowDown')
     await page.keyboard.press('Enter')
 

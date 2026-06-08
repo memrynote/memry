@@ -80,6 +80,7 @@ vi.mock('@blocknote/react', () => ({
 describe('ReviewFormattingToolbar', () => {
   beforeEach(() => {
     toolbarMocks.editor.prosemirrorState.selection.empty = false
+    ;(toolbarMocks.editor.prosemirrorState.selection as { node?: unknown }).node = undefined
     toolbarMocks.editor.prosemirrorState.doc.textBetween.mockClear()
   })
 
@@ -129,6 +130,20 @@ describe('ReviewFormattingToolbar', () => {
         to: 15
       })
     )
+  })
+
+  it('suppresses the floating toolbar for a block (node) selection', () => {
+    ;(toolbarMocks.editor.prosemirrorState.selection as { node?: unknown }).node = {
+      type: 'bookmark'
+    }
+
+    const { container } = render(
+      <ReviewFormattingToolbar onAddComment={vi.fn()} onStartSuggestionMode={vi.fn()} />
+    )
+
+    expect(screen.queryByText('Comment')).not.toBeInTheDocument()
+    expect(screen.queryByText('Suggest')).not.toBeInTheDocument()
+    expect(container).toBeEmptyDOMElement()
   })
 
   it('starts page-level suggestion mode and disables Comment without selection', () => {

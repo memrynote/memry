@@ -127,7 +127,8 @@
       "title": "Paste as",
       "url": "URL",
       "mention": "Mention",
-      "embedVideo": "Embed video"
+      "embedVideo": "Embed video",
+      "bookmark": "Bookmark"
     },
     "emoji": {
       "aria": "Emoji and icon picker",
@@ -179,6 +180,9 @@
     "delete": "Delete comment",
     "accept": "Accept",
     "reject": "Reject",
+    "suggestionAdd": "Add:",
+    "suggestionDelete": "Delete:",
+    "suggestionReplace": "Replace:",
     "replyPlaceholder": "Reply...",
     "attachAria": "Attach file",
     "mentionAria": "Mention a person, page or date",

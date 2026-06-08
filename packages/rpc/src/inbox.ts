@@ -226,6 +226,7 @@ export interface LinkPreviewData {
   favicon?: string
   image?: string
   description?: string
+  siteName?: string
 }
 
 export interface CaptureTextInput {
@@ -486,9 +487,7 @@ export const inboxRpc = defineDomain({
       channel: InboxChannels.invoke.CONVERT_TO_TASK,
       params: ['itemId']
     }),
-    linkToNote: defineMethod<
-      (itemId: string, noteId: string, tags?: string[]) => SuccessResponse
-    >({
+    linkToNote: defineMethod<(itemId: string, noteId: string, tags?: string[]) => SuccessResponse>({
       channel: InboxChannels.invoke.LINK_TO_NOTE,
       params: ['itemId', 'noteId', 'tags'],
       invokeArgs: ['itemId', 'noteId', 'tags ?? []']

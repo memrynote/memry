@@ -30,12 +30,14 @@ import { notesService } from '@/services/notes-service'
 import { useYjsCollaboration } from '@/sync/use-yjs-collaboration'
 import { useSync } from '@/contexts/sync-context'
 import { useWikiLinkHover } from '@/hooks/use-wiki-link-hover'
+import { useLinkMentionHover } from '@/hooks/use-link-mention-hover'
 import { useAIInlineContext } from '@/contexts/ai-inline-context'
 import { useAISettingsContext } from '@/contexts/ai-settings-context'
 import type { ContentAreaProps } from './types'
 import { WikiLinkMenu } from './wiki-link-menu'
 import { TagSuggestionPopover } from './tag-suggestion-popover'
 import { WikiLinkPreviewCard } from './wiki-link-preview-card'
+import { LinkMentionPreviewCard } from './link-mention-preview-card'
 import { BlockDropIndicator, EmptyDocumentDropIndicator } from './block-drop-indicator'
 import { getCalloutSlashMenuItem } from './callout-block'
 import { getTaskSlashMenuItem } from './task-block'
@@ -84,6 +86,17 @@ function findBlockWithLinkMention(
     if (idx !== -1) return { block, index: idx }
     if (block.children?.length) {
       const found = findBlockWithLinkMention(block.children, url)
+      if (found) return found
+    }
+  }
+  return null
+}
+
+function findBookmarkBlock(blocks: any[], url: string): any | null {
+  for (const block of blocks) {
+    if (block.type === 'bookmark' && block.props?.url === url) return block
+    if (block.children?.length) {
+      const found = findBookmarkBlock(block.children, url)
       if (found) return found
     }
   }
@@ -301,6 +314,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   const containerRef = useRef<HTMLDivElement>(null)
   const noteIdRef = useRef<string | undefined>(noteId)
   const wikiLinkHover = useWikiLinkHover(editorContainerRef)
+  const linkMentionHover = useLinkMentionHover(editorContainerRef)
   const reviewMarksRef = useRef(review?.marks ?? [])
   const reviewMarkdownToEditorOffsetRef = useRef(review?.getEditorOffsetForMarkdownSourceOffset)
   const skipNextCriticMarkupYjsWriteRef = useRef(false)
@@ -507,7 +521,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
               url,
               metadata.domain || domain,
               metadata.title,
-              metadata.favicon
+              metadata.favicon,
+              metadata.siteName
             )
             editor.updateBlock(found.block, { content: updatedContent })
           })
@@ -528,6 +543,34 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           block,
           'after'
         )
+        return
+      }
+
+      if (option === 'bookmark') {
+        const domain = extractDomain(url)
+        if (urlNodeIndex !== -1) {
+          const newContent = inlineContent.filter((_: any, i: number) => i !== urlNodeIndex)
+          editor.updateBlock(block, { content: newContent.length > 0 ? newContent : [] })
+        }
+        editor.insertBlocks([{ type: 'bookmark' as any, props: { url, domain } }], block, 'after')
+
+        fetchLinkPreview(url)
+          .then((metadata) => {
+            const target = findBookmarkBlock(editor.document, url)
+            if (!target) return
+            editor.updateBlock(target, {
+              props: {
+                url,
+                domain: metadata.domain || domain,
+                title: metadata.title ?? '',
+                description: metadata.description ?? '',
+                image: metadata.image ?? '',
+                favicon: metadata.favicon ?? '',
+                siteName: metadata.siteName ?? ''
+              }
+            })
+          })
+          .catch(() => {})
       }
     },
     [editor]
@@ -1202,6 +1245,19 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             onNoteClick={onInternalLinkClick}
           />
         )}
+
+        {linkMentionHover.isVisible &&
+          linkMentionHover.url &&
+          linkMentionHover.preview &&
+          linkMentionHover.position && (
+            <LinkMentionPreviewCard
+              url={linkMentionHover.url}
+              preview={linkMentionHover.preview}
+              position={linkMentionHover.position}
+              onMouseEnter={linkMentionHover.handleCardMouseEnter}
+              onMouseLeave={linkMentionHover.handleCardMouseLeave}
+            />
+          )}
 
         <PasteLinkMenu
           isOpen={pasteLinkState.isOpen}

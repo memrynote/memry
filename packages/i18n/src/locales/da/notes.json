@@ -123,7 +123,8 @@
       "title": "Indsæt som",
       "url": "URL",
       "mention": "Omtale",
-      "embedVideo": "Integrer video"
+      "embedVideo": "Integrer video",
+      "bookmark": "Bogmærke"
     },
     "emoji": {
       "aria": "Emoji og ikonvælger",
