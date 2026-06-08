@@ -215,3 +215,15 @@ export const computeProviderAuthConfirm = (
   )
   return sodium.crypto_auth(payload, macKey)
 }
+
+export const computeVaultTransferConfirm = (
+  macKey: Uint8Array,
+  sessionId: string,
+  encryptedVaultTransfer: string
+): Uint8Array => {
+  const payload = encodeCbor(
+    { sessionId, encryptedVaultTransfer },
+    CBOR_FIELD_ORDER.VAULT_TRANSFER_CONFIRM
+  )
+  return sodium.crypto_auth(payload, macKey)
+}
