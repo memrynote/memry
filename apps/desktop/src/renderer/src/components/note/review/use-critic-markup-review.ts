@@ -19,6 +19,14 @@ import {
   proseMirrorDocPosToEditorOffset,
   proseMirrorVisibleText
 } from '../content-area/critic-markup-offset-map'
+import {
+  isNativeTextInput,
+  isUndoKeyboardShortcut,
+  pushReviewUndoEntry,
+  snapshotReviewState,
+  type ReviewUndoEntry,
+  type ReviewUndoSnapshot
+} from './review-undo'
 
 interface UseCriticMarkupReviewParams {
   markdown: string
@@ -37,16 +45,6 @@ export interface DraftSelectionRect {
   bottom: number
   left: number
   right: number
-}
-
-interface ReviewUndoEntry {
-  before: ReviewUndoSnapshot
-  afterSerialized: string
-}
-
-interface ReviewUndoSnapshot {
-  plainMarkdown: string
-  marks: CriticMarkupMark[]
 }
 
 export interface AddSuggestionMarkInput {
@@ -307,6 +305,24 @@ export function useCriticMarkupReview({
       if (input.start === undefined) return
       const start = input.start
 
+      // Snapshot before any mutation. handlePlainMarkdownChange is debounced
+      // while this runs synchronously in beforeinput, so the refs still hold the
+      // pre-keystroke state here — the correct `before` for the undo entry.
+      // Snapshot before any mutation. handlePlainMarkdownChange is debounced
+      // while this runs synchronously in beforeinput, so the refs still hold the
+      // pre-keystroke state here — the correct `before` for the undo entry.
+      // coalesceKey is the edited mark id: consecutive keystrokes on the same
+      // suggestion collapse into one undo step.
+      const before = snapshotReviewState(plainMarkdownRef.current, marksRef.current)
+      const commit = (
+        nextPlainMarkdown: string,
+        nextMarks: CriticMarkupMark[],
+        coalesceKey: string
+      ): void => {
+        pushReviewUndoEntry(undoStackRef.current, before, nextPlainMarkdown, nextMarks, coalesceKey)
+        persist(nextPlainMarkdown, nextMarks)
+      }
+
       let nextPlainMarkdown = plainMarkdownRef.current
       let currentMarks = marksRef.current
 
@@ -351,14 +367,15 @@ export function useCriticMarkupReview({
               }
             : mark
         )
-        persist(nextPlainMarkdown, nextMarks)
+        commit(nextPlainMarkdown, nextMarks, previousMark.id)
         return
       }
 
       if (input.kind === 'deletion') {
+        const deletionRunKey = previousMark?.kind === 'deletion' ? previousMark.id : undefined
         const mergedDeletionMarks = mergeAdjacentDeletionMark(currentMarks, input, start)
-        if (mergedDeletionMarks) {
-          persist(nextPlainMarkdown, mergedDeletionMarks)
+        if (mergedDeletionMarks && deletionRunKey) {
+          commit(nextPlainMarkdown, mergedDeletionMarks, deletionRunKey)
           return
         }
       }
@@ -384,7 +401,7 @@ export function useCriticMarkupReview({
           end
         }
       ]
-      persist(nextPlainMarkdown, nextMarks)
+      commit(nextPlainMarkdown, nextMarks, id)
     },
     [persist]
   )
@@ -471,10 +488,20 @@ export function useCriticMarkupReview({
     const handleKeyDown = (event: KeyboardEvent): void => {
       if (!isUndoKeyboardShortcut(event)) return
       if (isNativeTextInput(event.target)) return
-      if (!undoLastReviewAction()) return
 
-      event.preventDefault()
-      event.stopPropagation()
+      if (undoLastReviewAction()) {
+        event.preventDefault()
+        event.stopPropagation()
+        return
+      }
+
+      // Nothing left in the suggestion undo stack. While suggestion mode is
+      // active, keep undo scoped to suggestions — never let it reach the note
+      // body.
+      if (isSuggestionModeActiveRef.current) {
+        event.preventDefault()
+        event.stopPropagation()
+      }
     }
 
     document.addEventListener('keydown', handleKeyDown, true)
@@ -544,37 +571,6 @@ export function useCriticMarkupReview({
     setMarkPositions: updateMarkPositions,
     replaceMarksFromYjs
   }
-}
-
-function snapshotReviewState(plainMarkdown: string, marks: CriticMarkupMark[]): ReviewUndoSnapshot {
-  return {
-    plainMarkdown,
-    marks: marks.map((mark) => ({ ...mark }))
-  }
-}
-
-function pushReviewUndoEntry(
-  stack: ReviewUndoEntry[],
-  before: ReviewUndoSnapshot,
-  afterPlainMarkdown: string,
-  afterMarks: CriticMarkupMark[]
-): void {
-  stack.push({
-    before,
-    afterSerialized: serializeCriticMarkup(afterPlainMarkdown, afterMarks)
-  })
-  if (stack.length > 50) stack.splice(0, stack.length - 50)
-}
-
-function isUndoKeyboardShortcut(event: KeyboardEvent): boolean {
-  if (event.key.toLowerCase() !== 'z') return false
-  if (event.altKey || event.shiftKey) return false
-  return event.metaKey || event.ctrlKey
-}
-
-function isNativeTextInput(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false
-  return Boolean(target.closest('input, textarea, select'))
 }
 
 function areCriticMarkupMarksEqual(first: CriticMarkupMark[], second: CriticMarkupMark[]): boolean {

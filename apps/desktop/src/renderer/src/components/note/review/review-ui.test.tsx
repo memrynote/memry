@@ -1218,6 +1218,96 @@ describe('review UI', () => {
     expect(result.current.marks).toHaveLength(1)
   })
 
+  it('undoes a typed suggestion via Mod+Z', () => {
+    const { result } = renderHook(() =>
+      useCriticMarkupReview({ markdown: 'base', onMarkdownChange: vi.fn() })
+    )
+
+    act(() => {
+      result.current.startSuggestionMode()
+      result.current.addSuggestionMark({ kind: 'addition', visibleText: ' added', start: 4 })
+    })
+    expect(result.current.marks).toHaveLength(1)
+
+    const undoEvent = new KeyboardEvent('keydown', {
+      key: 'z',
+      metaKey: true,
+      bubbles: true,
+      cancelable: true
+    })
+    act(() => {
+      document.dispatchEvent(undoEvent)
+    })
+
+    expect(undoEvent.defaultPrevented).toBe(true)
+    expect(result.current.plainMarkdown).toBe('base')
+    expect(result.current.marks).toHaveLength(0)
+  })
+
+  it('coalesces a contiguous typing run into a single undo step', () => {
+    const { result } = renderHook(() =>
+      useCriticMarkupReview({ markdown: 'base', onMarkdownChange: vi.fn() })
+    )
+
+    act(() => {
+      result.current.startSuggestionMode()
+      result.current.addSuggestionMark({ kind: 'addition', visibleText: 'a', start: 4 })
+      result.current.addSuggestionMark({ kind: 'addition', visibleText: 'b', start: 5 })
+    })
+    expect(result.current.marks).toHaveLength(1)
+    expect(result.current.marks[0]).toMatchObject({ kind: 'addition', visibleText: 'ab' })
+
+    act(() => {
+      expect(result.current.undoLastReviewAction()).toBe(true)
+    })
+
+    expect(result.current.plainMarkdown).toBe('base')
+    expect(result.current.marks).toHaveLength(0)
+  })
+
+  it('blocks Mod+Z from the note body while suggestion mode is active', () => {
+    const { result } = renderHook(() =>
+      useCriticMarkupReview({ markdown: 'base', onMarkdownChange: vi.fn() })
+    )
+
+    act(() => {
+      result.current.startSuggestionMode()
+    })
+
+    const undoEvent = new KeyboardEvent('keydown', {
+      key: 'z',
+      metaKey: true,
+      bubbles: true,
+      cancelable: true
+    })
+    act(() => {
+      document.dispatchEvent(undoEvent)
+    })
+
+    expect(undoEvent.defaultPrevented).toBe(true)
+    expect(result.current.plainMarkdown).toBe('base')
+  })
+
+  it('lets Mod+Z reach the note body when suggestion mode is inactive', () => {
+    const { result } = renderHook(() =>
+      useCriticMarkupReview({ markdown: 'base', onMarkdownChange: vi.fn() })
+    )
+
+    expect(result.current.isSuggestionModeActive).toBe(false)
+
+    const undoEvent = new KeyboardEvent('keydown', {
+      key: 'z',
+      metaKey: true,
+      bubbles: true,
+      cancelable: true
+    })
+    act(() => {
+      document.dispatchEvent(undoEvent)
+    })
+
+    expect(undoEvent.defaultPrevented).toBe(false)
+  })
+
   it('serializes a repeated-letter deletion at the provided source offset', () => {
     const markdown = `## Why I keep at it
 
