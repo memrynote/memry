@@ -59,6 +59,27 @@ const USER_AGENT =
 /** Maximum image size to download (5MB) */
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024
 
+/**
+ * Fetch through Electron's Chromium network stack when available.
+ *
+ * Node's fetch (undici) has a TLS fingerprint that Cloudflare and similar
+ * bot walls reject with a 403 challenge page (e.g. eksisozluk.com), which
+ * loses all metadata. Electron's net.fetch uses Chrome's TLS fingerprint
+ * and passes those passive checks. Falls back to global fetch outside
+ * Electron (node-side tests).
+ */
+async function chromiumFetch(url: string, init: RequestInit): Promise<Response> {
+  try {
+    const { net } = await import('electron')
+    if (typeof net?.fetch === 'function') {
+      return net.fetch(url, init)
+    }
+  } catch {
+    // not running inside Electron
+  }
+  return fetch(url, init)
+}
+
 // ============================================================================
 // Metascraper Instance
 // ============================================================================
@@ -106,7 +127,7 @@ async function fetchRedditMetadata(url: string): Promise<UrlMetadata | null> {
 
   try {
     const jsonUrl = url.replace(/\/?(\?.*)?$/, '.json$1')
-    const response = await fetch(jsonUrl, {
+    const response = await chromiumFetch(jsonUrl, {
       signal: controller.signal,
       headers: { 'User-Agent': USER_AGENT }
     })
@@ -156,7 +177,7 @@ export async function fetchUrlMetadata(url: string): Promise<UrlMetadata> {
   const timeoutId = setTimeout(() => controller.abort(), URL_FETCH_TIMEOUT)
 
   try {
-    const response = await fetch(fetchUrl, {
+    const response = await chromiumFetch(fetchUrl, {
       signal: controller.signal,
       headers: {
         'User-Agent': USER_AGENT,
@@ -240,7 +261,7 @@ export async function downloadImage(imageUrl: string, destDir: string): Promise<
   const timeoutId = setTimeout(() => controller.abort(), IMAGE_DOWNLOAD_TIMEOUT)
 
   try {
-    const response = await fetch(imageUrl, {
+    const response = await chromiumFetch(imageUrl, {
       signal: controller.signal,
       headers: {
         'User-Agent': USER_AGENT,

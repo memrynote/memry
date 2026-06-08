@@ -179,7 +179,8 @@ export function registerInboxHandlers(): void {
         domain,
         favicon: metadata.logo,
         image: metadata.image,
-        description: metadata.description
+        description: metadata.description,
+        siteName: metadata.publisher
       }
     } catch {
       const domain = extractDomain(url)
