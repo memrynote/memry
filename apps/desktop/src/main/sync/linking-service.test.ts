@@ -284,6 +284,16 @@ describe('linking-service provider auth transfer', () => {
       }),
       'access-token'
     )
+
+    const approveCall = mockPostToServer.mock.calls.find(
+      ([path]) => path === '/auth/linking/approve'
+    )
+    expect(approveCall).toBeDefined()
+    const approveBody = approveCall?.[1] as Record<string, unknown>
+    expect(approveBody.encryptedVaultTransfer).toBe('encrypted-vault-transfer')
+    expect(approveBody.encryptedVaultTransferNonce).toBe('vault-transfer-nonce')
+    expect(approveBody.vaultTransferConfirm).toBe('vault-transfer-confirm')
+    expect(approveBody.vaultTransferVersion).toBe(1)
   })
 
   it('imports transferred provider auth only after device registration succeeds', async () => {
@@ -310,7 +320,11 @@ describe('linking-service provider auth transfer', () => {
           encryptedProviderAuth: 'encrypted-provider-auth',
           encryptedProviderAuthNonce: 'provider-auth-nonce',
           providerAuthConfirm: 'provider-auth-confirm',
-          providerAuthVersion: 1
+          providerAuthVersion: 1,
+          encryptedVaultTransfer: 'encrypted-vault-transfer',
+          encryptedVaultTransferNonce: 'vault-transfer-nonce',
+          vaultTransferConfirm: 'vault-transfer-confirm',
+          vaultTransferVersion: 1
         }
       }
 
@@ -345,6 +359,11 @@ describe('linking-service provider auth transfer', () => {
     })
     expect(mockPersistKeysAndRegisterDevice.mock.invocationCallOrder[0]).toBeLessThan(
       mockPersistImportedGoogleProviderAuth.mock.invocationCallOrder[0]
+    )
+
+    expect(mockAdoptVaultLocally).toHaveBeenCalledWith({ tag: 'db' }, 'vault-uuid-a')
+    expect(mockAdoptVaultLocally.mock.invocationCallOrder[0]).toBeLessThan(
+      mockPersistKeysAndRegisterDevice.mock.invocationCallOrder[0]
     )
   })
 
