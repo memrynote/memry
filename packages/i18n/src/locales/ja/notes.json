@@ -123,7 +123,8 @@
       "title": "として貼り付け",
       "url": "URL",
       "mention": "言及",
-      "embedVideo": "ビデオを埋め込む"
+      "embedVideo": "ビデオを埋め込む",
+      "bookmark": "ブックマーク"
     },
     "emoji": {
       "aria": "絵文字とアイコンのピッカー",

@@ -123,7 +123,8 @@
       "title": "貼上為",
       "url": "網址",
       "mention": "提及",
-      "embedVideo": "嵌入影片"
+      "embedVideo": "嵌入影片",
+      "bookmark": "書籤"
     },
     "emoji": {
       "aria": "表情符號與圖示選擇器",

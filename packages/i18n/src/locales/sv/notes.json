@@ -123,7 +123,8 @@
       "title": "Klistra in som",
       "url": "URL",
       "mention": "Nämn",
-      "embedVideo": "Bädda in video"
+      "embedVideo": "Bädda in video",
+      "bookmark": "Bokmärke"
     },
     "emoji": {
       "aria": "Emoji- och ikonväljare",

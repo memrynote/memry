@@ -123,7 +123,8 @@
       "title": "Liitä muodossa",
       "url": "URL-osoite",
       "mention": "Mainitse",
-      "embedVideo": "Upota video"
+      "embedVideo": "Upota video",
+      "bookmark": "Kirjanmerkki"
     },
     "emoji": {
       "aria": "Emoji ja kuvakevalitsin",

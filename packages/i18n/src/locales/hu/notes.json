@@ -123,7 +123,8 @@
       "title": "Beillesztés másként",
       "url": "URL",
       "mention": "Említés",
-      "embedVideo": "Videó beágyazása"
+      "embedVideo": "Videó beágyazása",
+      "bookmark": "Könyvjelző"
     },
     "emoji": {
       "aria": "Emoji és ikonválasztó",

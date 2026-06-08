@@ -123,7 +123,8 @@
       "title": "Einfügen als",
       "url": "URL",
       "mention": "Erwähnung",
-      "embedVideo": "Video einbetten"
+      "embedVideo": "Video einbetten",
+      "bookmark": "Lesezeichen"
     },
     "emoji": {
       "aria": "Emoji- und Symbolauswahl",

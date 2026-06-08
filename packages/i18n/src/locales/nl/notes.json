@@ -123,7 +123,8 @@
       "title": "Plakken als",
       "url": "URL",
       "mention": "Vermeld",
-      "embedVideo": "Video insluiten"
+      "embedVideo": "Video insluiten",
+      "bookmark": "Bladwijzer"
     },
     "emoji": {
       "aria": "Emoji en pictogramkiezer",
