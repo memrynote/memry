@@ -1,6 +1,8 @@
-{
-  "ignore": {
-    "files": [
+import type { ReactDoctorConfig } from "react-doctor/api";
+
+export default {
+  ignore: {
+    files: [
       "**/tests/**",
       "**/*.test.ts",
       "**/*.test.tsx",
@@ -12,7 +14,7 @@
       "**/dist/**",
       "**/.wrangler/**"
     ],
-    "rules": [
+    rules: [
       "knip/duplicates",
       "knip/exports",
       "knip/files",
@@ -82,7 +84,7 @@
       "jsx-a11y/no-static-element-interactions"
     ]
   },
-  "lint": true,
-  "deadCode": true,
-  "failOn": "error"
-}
+  lint: true,
+  deadCode: true,
+  failOn: "error"
+} satisfies ReactDoctorConfig;

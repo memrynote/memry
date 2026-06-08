@@ -17,8 +17,19 @@ import { cn } from '@/lib/utils'
 import { createLogger } from '@/lib/logger'
 import { extractTitleFromBlocks } from '@/lib/blocknote-title'
 import { useT } from '@memry/i18n/renderer'
+import { restoreBlockNesting } from '@memry/shared/block-nesting'
 
 const log = createLogger('Component:InboxContentEditor')
+
+function extractTopLevelNestingLevels(html: string): number[] {
+  const template = document.createElement('template')
+  template.innerHTML = html
+
+  return Array.from(template.content.children).map((element) => {
+    const value = Number(element.getAttribute('data-nesting-level') ?? 0)
+    return Number.isInteger(value) && value > 0 ? value : 0
+  })
+}
 
 interface InboxContentEditorProps {
   /** Initial content (plain text or HTML) */
@@ -87,8 +98,13 @@ export const InboxContentEditor = memo(function InboxContentEditor({
           // Try to parse as HTML first, fallback to plain text
           try {
             const blocks = editor.tryParseHTMLToBlocks(initialContent)
-            if (blocks.length > 0) {
-              editor.replaceBlocks(editor.document, blocks)
+            const nestingLevels = extractTopLevelNestingLevels(initialContent)
+            const nextBlocks =
+              nestingLevels.some((level) => level > 0) && nestingLevels.length === blocks.length
+                ? restoreBlockNesting(blocks, nestingLevels)
+                : blocks
+            if (nextBlocks.length > 0) {
+              editor.replaceBlocks(editor.document, nextBlocks)
             } else {
               // If HTML parsing gives empty result, try as plain text
               const plainTextBlock = {
