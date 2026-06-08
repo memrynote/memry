@@ -16,6 +16,8 @@ import {
 import { splitMarkdownByCallouts, serializeCalloutBlock } from './callout-block'
 import { extractYouTubeVideoId } from '@/lib/youtube-utils'
 import { serializeYoutubeEmbed } from './youtube-embed-block'
+import { serializeBookmark } from './bookmark-block'
+import { extractDomain } from '@/lib/url-metadata'
 import { serializeTaskBlock } from './task-block/task-block-utils'
 import { parseFileBlockMarker, serializeFileBlock, type FileBlockProps } from './file-block-markers'
 
@@ -80,6 +82,11 @@ export async function parseMarkdownPreservingBlanks(
               blocks.push({
                 type: 'youtubeEmbed' as const,
                 props: { videoId: part.videoId, videoUrl: part.url }
+              } as unknown as Block)
+            } else if (part.kind === 'bookmark') {
+              blocks.push({
+                type: 'bookmark' as const,
+                props: { url: part.url, domain: extractDomain(part.url) }
               } as unknown as Block)
             } else if (part.kind === 'file') {
               blocks.push({
@@ -161,6 +168,10 @@ export async function serializeBlocksPreservingBlanks(
       flushGap()
       const videoUrl = (block.props as any).videoUrl as string
       segments.push({ type: 'content', text: serializeYoutubeEmbed(videoUrl) })
+    } else if ((block.type as string) === 'bookmark') {
+      await flushContent()
+      flushGap()
+      segments.push({ type: 'content', text: serializeBookmark((block.props as any).url) })
     } else if ((block.type as string) === 'file') {
       await flushContent()
       flushGap()
@@ -205,9 +216,11 @@ export async function serializeBlocksPreservingBlanks(
 type EmbedPart =
   | { kind: 'text'; text: string; colors?: BlockColors }
   | { kind: 'embed'; url: string; videoId: string }
+  | { kind: 'bookmark'; url: string }
   | { kind: 'file'; props: FileBlockProps }
 
 const EMBED_LINE_REGEX = /^!\[embed\]\(([^)]+)\)$/
+const BOOKMARK_LINE_REGEX = /^!\[bookmark\]\(([^)]+)\)$/
 const FILE_BLOCK_LINE_REGEX = /^<!-- file:\{[^}]+\} -->$/
 
 function splitByEmbedMarkers(text: string): EmbedPart[] {
@@ -254,6 +267,13 @@ function splitByEmbedMarkers(text: string): EmbedPart[] {
         parts.push({ kind: 'embed', url, videoId })
         continue
       }
+    }
+
+    const bookmarkMatch = line.match(BOOKMARK_LINE_REGEX)
+    if (bookmarkMatch) {
+      flushBuffer()
+      parts.push({ kind: 'bookmark', url: bookmarkMatch[1] })
+      continue
     }
     buffer.push(line)
   }

@@ -10,6 +10,7 @@ import {
   normalizeMarkdownHardBreaks
 } from '../wiki-link-utils'
 import { normalizeHashTags, extractInlineTags } from '../hash-tag'
+import { normalizeLinkMentions } from '../link-mention-utils'
 import { normalizeTaskBlocks } from '../task-block/task-block-utils'
 import {
   parseMarkdownPreservingBlanks,
@@ -66,7 +67,11 @@ function hydrateLinkMentionFavicons(editor: any): void {
       const content = block.content
       if (Array.isArray(content)) {
         content.forEach((c: any, i: number) => {
-          if (c.type === 'linkMention' && c.props?.url && !c.props.favicon) {
+          if (
+            c.type === 'linkMention' &&
+            c.props?.url &&
+            (!c.props.favicon || !c.props.siteName || !c.props.title)
+          ) {
             mentions.push({ block, index: i, url: c.props.url })
           }
         })
@@ -88,7 +93,8 @@ function hydrateLinkMentionFavicons(editor: any): void {
           url,
           metadata.domain || current[index].props.domain,
           metadata.title || current[index].props.title,
-          metadata.favicon
+          metadata.favicon,
+          metadata.siteName || current[index].props.siteName
         )
         editor.updateBlock(block, { content: updated })
       })
@@ -201,6 +207,7 @@ export function useEditorSync({
             }
 
             let normalizedBlocks = normalizeWikiLinks(blocks).blocks
+            normalizedBlocks = normalizeLinkMentions(normalizedBlocks).blocks
             const taskNormalized = normalizeTaskBlocks(normalizedBlocks)
             normalizedBlocks = taskNormalized.blocks
 
@@ -220,6 +227,7 @@ export function useEditorSync({
           }
         } else if (Array.isArray(initialContent) && initialContent.length > 0) {
           let normalizedBlocks = normalizeWikiLinks(initialContent).blocks
+          normalizedBlocks = normalizeLinkMentions(normalizedBlocks).blocks
           const taskNormalized = normalizeTaskBlocks(normalizedBlocks)
           normalizedBlocks = taskNormalized.blocks
 
@@ -232,6 +240,7 @@ export function useEditorSync({
 
           normalizedBlocks = sanitizeBlockIds(normalizedBlocks)
           replaceInitialBlocksWithoutHistory(editor, normalizedBlocks)
+          hydrateLinkMentionFavicons(editor)
           loadedSuccessfully = true
         } else {
           loadedSuccessfully = true

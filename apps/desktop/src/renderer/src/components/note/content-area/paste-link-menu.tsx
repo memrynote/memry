@@ -1,13 +1,14 @@
 import { memo } from 'react'
-import { Link, Play, Globe } from '@/lib/icons'
+import { Link, Play, Globe, Bookmark } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import type { PasteLinkOption } from './hooks/use-paste-link-menu'
 import { useT } from '@memry/i18n/renderer'
 
-const OPTION_CONFIG: Record<PasteLinkOption, { icon: typeof Link }> = {
-  url: { icon: Globe },
-  mention: { icon: Link },
-  embed: { icon: Play }
+const OPTION_CONFIG: Record<PasteLinkOption, { icon: typeof Link; labelKey: string }> = {
+  mention: { icon: Link, labelKey: 'menus.pasteLink.mention' },
+  embed: { icon: Play, labelKey: 'menus.pasteLink.embedVideo' },
+  bookmark: { icon: Bookmark, labelKey: 'menus.pasteLink.bookmark' },
+  url: { icon: Globe, labelKey: 'menus.pasteLink.url' }
 }
 
 interface PasteLinkMenuProps {
@@ -34,13 +35,8 @@ export const PasteLinkMenu = memo(
           {t('menus.pasteLink.title')}
         </p>
         {options.map((option, index) => {
-          const { icon: Icon } = OPTION_CONFIG[option]
-          const label =
-            option === 'url'
-              ? t('menus.pasteLink.url')
-              : option === 'mention'
-                ? t('menus.pasteLink.mention')
-                : t('menus.pasteLink.embedVideo')
+          const { icon: Icon, labelKey } = OPTION_CONFIG[option]
+          const label = t(labelKey)
           return (
             <button
               key={option}

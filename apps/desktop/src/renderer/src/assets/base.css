@@ -2310,44 +2310,62 @@ del.bn-inline-content {
   opacity: 0.8;
 }
 
-/* Link mention — inline rich link with favicon + domain + title */
+/* Link mention — Notion-style inline token: favicon + site name + title.
+   The `.bn-shadcn .bn-editor a` prefix is required to beat BlockNote's
+   `.bn-shadcn .bn-editor a { color: revert; text-decoration: revert }`,
+   which otherwise paints the whole token browser-default blue/underlined. */
+.bn-shadcn .bn-editor a.link-mention,
 .link-mention {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 1px 6px;
+  display: inline;
+  padding: 1px 4px;
   border-radius: 4px;
-  background: hsl(var(--muted) / 0.5);
-  font-size: 0.9em;
-  font-weight: 500;
-  color: hsl(var(--foreground));
+  color: var(--bn-colors-editor-text, var(--foreground));
   cursor: pointer;
-  white-space: nowrap;
   text-decoration: none;
   user-select: none;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
   transition: background 0.15s ease;
 }
 
+/* Whole-token highlight on hover so it reads as one unit. --accent is the
+   theme-aware hover-surface token (light + dark). Tokens here are hex, so
+   reference them directly — hsl(var(--token)) would be invalid and dropped. */
+.bn-shadcn .bn-editor a.link-mention:hover,
 .link-mention:hover {
-  background: hsl(var(--muted));
+  background: var(--accent);
   text-decoration: none;
 }
 
 .link-mention-favicon {
-  width: 14px;
-  height: 14px;
-  border-radius: 2px;
-  flex-shrink: 0;
+  display: inline-block;
+  width: 1.2em;
+  height: 1.2em;
+  border-radius: 3px;
+  vertical-align: -0.22em;
+  margin-inline-end: 0.3em;
   object-fit: contain;
 }
 
-.link-mention-sep {
-  color: hsl(var(--muted-foreground) / 0.4);
+.link-mention-site {
+  color: var(--muted-foreground);
+  margin-inline-end: 0.3em;
 }
 
 .link-mention-title {
-  color: hsl(var(--muted-foreground));
-  font-weight: 400;
+  color: inherit;
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-thickness: 0.05em;
+  text-underline-offset: 10%;
+  text-decoration-color: color-mix(in srgb, var(--muted-foreground) 50%, transparent);
+}
+
+/* Bookmark card link — beat BlockNote's `.bn-shadcn .bn-editor a` revert
+   that would otherwise underline the whole preview card. */
+.bn-shadcn .bn-editor a.bookmark-link,
+.bookmark-block a.bookmark-link {
+  text-decoration: none;
 }
 
 /* Backlink mention highlight - warm amber for wiki-style links */

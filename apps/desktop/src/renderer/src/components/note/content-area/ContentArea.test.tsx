@@ -365,7 +365,8 @@ describe('ContentArea', () => {
     contentAreaMocks.fetchLinkPreview.mockResolvedValue({
       domain: 'youtu.be',
       title: 'Video',
-      favicon: 'icon.png'
+      favicon: 'icon.png',
+      siteName: 'YouTube'
     })
     contentAreaMocks.tasksService.listProjects.mockResolvedValue({
       projects: [{ id: 'project-1', name: 'Inbox', isDefault: true }]
@@ -545,7 +546,8 @@ describe('ContentArea', () => {
         'https://youtu.be/video-1',
         'youtu.be',
         'Video',
-        'icon.png'
+        'icon.png',
+        'YouTube'
       )
     )
 

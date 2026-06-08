@@ -1,16 +1,22 @@
 import { describe, expect, it } from 'vitest'
 
-import { createLinkMentionContent, LinkMention } from './link-mention'
+import {
+  createLinkMentionContent,
+  LinkMention,
+  serializeLinkMentionToken,
+  parseLinkMentionToken
+} from './link-mention'
 
 describe('LinkMention inline content', () => {
-  it('creates link mention payloads with optional title and favicon defaults', () => {
+  it('creates link mention payloads with optional title, favicon, and site name defaults', () => {
     expect(createLinkMentionContent('https://memry.test/page', 'memry.test')).toEqual({
       type: 'linkMention',
       props: {
         url: 'https://memry.test/page',
         domain: 'memry.test',
         title: '',
-        favicon: ''
+        favicon: '',
+        siteName: ''
       }
     })
 
@@ -19,7 +25,8 @@ describe('LinkMention inline content', () => {
         'https://memry.test/page',
         'memry.test',
         'memrynote',
-        'https://memry.test/favicon.ico'
+        'https://memry.test/favicon.ico',
+        'Memry Notes'
       )
     ).toEqual({
       type: 'linkMention',
@@ -27,18 +34,20 @@ describe('LinkMention inline content', () => {
         url: 'https://memry.test/page',
         domain: 'memry.test',
         title: 'memrynote',
-        favicon: 'https://memry.test/favicon.ico'
+        favicon: 'https://memry.test/favicon.ico',
+        siteName: 'Memry Notes'
       }
     })
   })
 
-  it('renders favicon, title, data attributes, fallback text, and image error hiding', () => {
+  it('renders favicon, site name, title, data attributes, fallback text, and image error hiding', () => {
     const render = (LinkMention as any).implementation.render({
       props: {
         url: 'https://memry.test/page',
         domain: 'memry.test',
         title: 'memrynote Page',
-        favicon: 'https://memry.test/favicon.ico'
+        favicon: 'https://memry.test/favicon.ico',
+        siteName: 'Memry Notes'
       }
     })
 
@@ -47,26 +56,40 @@ describe('LinkMention inline content', () => {
     expect(render.dom).toHaveAttribute('rel', 'noopener noreferrer')
     expect(render.dom).toHaveAttribute('data-link-mention', '')
     expect(render.dom).toHaveAttribute('data-title', 'memrynote Page')
-    expect(render.dom.textContent).toBe('memry.test · memrynote Page')
+    expect(render.dom).toHaveAttribute('data-site-name', 'Memry Notes')
+    expect(render.dom.querySelector('.link-mention-site')?.textContent).toBe('Memry Notes')
+    expect(render.dom.querySelector('.link-mention-title')?.textContent).toBe('memrynote Page')
 
     const image = render.dom.querySelector('img') as HTMLImageElement
     expect(image).toHaveAttribute('src', 'https://memry.test/favicon.ico')
     image.onerror?.(new Event('error'))
     expect(image).toHaveStyle({ display: 'none' })
 
+    const domainFallback = (LinkMention as any).implementation.render({
+      props: {
+        url: 'https://memry.test/page',
+        domain: 'memry.test',
+        title: '',
+        favicon: '',
+        siteName: ''
+      }
+    })
+    expect(domainFallback.dom.querySelector('.link-mention-site')?.textContent).toBe('memry.test')
+
     const fallback = (LinkMention as any).implementation.render({
       props: {
         url: 'https://fallback.test/page',
         domain: '',
         title: '',
-        favicon: ''
+        favicon: '',
+        siteName: ''
       }
     })
     expect(fallback.dom.textContent).toBe('https://fallback.test/page')
     expect(fallback.dom.querySelector('img')).toBeNull()
   })
 
-  it('parses data-link mentions, legacy anchors, and rejects unknown or empty links', () => {
+  it('parses data-link mentions and rejects unknown or empty links', () => {
     const dataElement = document.createElement('a')
     dataElement.setAttribute('data-link-mention', '')
     dataElement.setAttribute('data-url', 'https://memry.test/page')
@@ -77,50 +100,46 @@ describe('LinkMention inline content', () => {
       url: 'https://memry.test/page',
       domain: 'memry.test',
       title: 'memrynote Page',
-      favicon: 'https://memry.test/favicon.ico'
+      favicon: 'https://memry.test/favicon.ico',
+      siteName: ''
     })
+
+    dataElement.setAttribute('data-site-name', 'Memry Notes')
+    expect((LinkMention as any).implementation.parse(dataElement)).toEqual(
+      expect.objectContaining({ siteName: 'Memry Notes' })
+    )
+    dataElement.removeAttribute('data-site-name')
 
     dataElement.setAttribute('data-url', '')
     expect((LinkMention as any).implementation.parse(dataElement)).toBeUndefined()
-
-    const legacy = document.createElement('a')
-    legacy.href = 'https://legacy.test/post'
-    legacy.title = 'mention'
-    legacy.textContent = 'legacy.test · Legacy Post'
-    expect((LinkMention as any).implementation.parse(legacy)).toEqual({
-      url: 'https://legacy.test/post',
-      domain: 'legacy.test',
-      title: 'Legacy Post',
-      favicon: ''
-    })
-
-    const noTitle = document.createElement('a')
-    noTitle.href = 'https://legacy.test/post'
-    noTitle.title = 'mention'
-    noTitle.textContent = 'legacy.test'
-    expect((LinkMention as any).implementation.parse(noTitle)).toEqual({
-      url: 'https://legacy.test/post',
-      domain: 'legacy.test',
-      title: '',
-      favicon: ''
-    })
 
     expect(
       (LinkMention as any).implementation.parse(document.createElement('span'))
     ).toBeUndefined()
   })
 
-  it('serializes to external HTML with title and url fallback text', () => {
-    const withTitle = (LinkMention as any).implementation.toExternalHTML({
-      props: { url: 'https://memry.test/page', domain: 'memry.test', title: 'memrynote Page' }
+  it('serializes to external HTML as a persistence token that round-trips', () => {
+    const url = 'https://eksisozluk.com/entry/184233570?debe=true'
+    const result = (LinkMention as any).implementation.toExternalHTML({
+      props: { url, domain: 'eksisozluk.com', title: 'duolingo', siteName: 'ekşi sözlük' }
     })
-    expect(withTitle.dom).toHaveAttribute('href', 'https://memry.test/page')
-    expect(withTitle.dom).toHaveAttribute('title', 'mention')
-    expect(withTitle.dom.textContent).toBe('memry.test · memrynote Page')
+    expect(result.dom.tagName).toBe('SPAN')
+    expect(result.dom.textContent).toBe(serializeLinkMentionToken(url))
+    // No bare URL/anchor that GFM would auto-link or BlockNote would reclaim.
+    expect(result.dom.querySelector('a')).toBeNull()
+    expect(result.dom.textContent).not.toContain(url)
+  })
 
-    const withoutTitle = (LinkMention as any).implementation.toExternalHTML({
-      props: { url: 'https://memry.test/page', domain: '', title: '' }
-    })
-    expect(withoutTitle.dom.textContent).toBe('https://memry.test/page')
+  it('round-trips the mention token including reserved URL characters', () => {
+    const url = 'https://x.test/a)b?c=d&e=f'
+    const token = serializeLinkMentionToken(url)
+    // The literal ')' in the URL must be escaped so the closing '))' delimiter
+    // stays unambiguous.
+    expect(token).not.toContain(')b')
+    expect(token.endsWith('))')).toBe(true)
+    const match = new RegExp(/\(\(mention:([^)\s]+)\)\)/).exec(token)
+    expect(match).not.toBeNull()
+    expect(parseLinkMentionToken(match![1])).toBe(url)
+    expect(parseLinkMentionToken('%E0%A4%A')).toBeNull()
   })
 })

@@ -101,7 +101,7 @@ describe('coverage hooks around note editing', () => {
       isOpen: true,
       url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
       position: { x: 30, y: 54 },
-      options: ['url', 'mention', 'embed'],
+      options: ['mention', 'embed', 'bookmark', 'url'],
       selectedIndex: 0
     })
 
@@ -113,11 +113,11 @@ describe('coverage hooks around note editing', () => {
     act(() => {
       container.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
     })
-    expect(onSelect).toHaveBeenCalledWith('mention', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ')
+    expect(onSelect).toHaveBeenCalledWith('embed', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ')
     expect(result.current.state.isOpen).toBe(false)
 
     act(() => paste(container, 'https://memry.test/page'))
-    expect(result.current.state.options).toEqual(['url', 'mention'])
+    expect(result.current.state.options).toEqual(['mention', 'bookmark', 'url'])
 
     act(() => result.current.handleSelect('url'))
     expect(onSelect).toHaveBeenLastCalledWith('url', 'https://memry.test/page')
