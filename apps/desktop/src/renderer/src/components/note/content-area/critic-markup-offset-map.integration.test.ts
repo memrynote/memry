@@ -1,14 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { BlockNoteEditor, BlockNoteSchema, defaultInlineContentSpecs } from '@blocknote/core'
+import { BlockNoteEditor } from '@blocknote/core'
 import { splitMarkdownPreservingBlanks } from '@memry/shared/empty-lines'
 import {
   editorOffsetToMarkdownSourceOffset,
-  markdownSourceOffsetToEditorOffset,
-  proseMirrorVisibleText
+  markdownSourceOffsetToEditorOffset
 } from './critic-markup-offset-map'
 import { parseMarkdownPreservingBlanks, serializeBlocksPreservingBlanks } from './markdown-utils'
-import { WikiLink, createWikiLinkInlineContent } from './wiki-link'
-import { HashTag, createHashTagInlineContent } from './hash-tag'
+import { createWikiLinkInlineContent } from './wiki-link'
+import { createHashTagInlineContent } from './hash-tag'
 
 // Builds a REAL ProseMirror doc the same way parseMarkdownPreservingBlanks
 // does (gap segments become empty paragraph blocks) and returns the editor
@@ -123,9 +122,7 @@ describe('CriticMarkup offset map vs real doc projection for structured markdown
   for (const annotated of STRUCTURED_FIXTURES) {
     const { markdown, visible } = parseAnnotatedFixture(annotated)
 
-    // The production resolvers always pass the live projection — this is the
-    // path suggestion-mode deletions actually use.
-    it(`agrees with the projection-fed map for ${JSON.stringify(markdown)}`, async () => {
+    it(`agrees with the map for ${JSON.stringify(markdown)}`, async () => {
       const projection = await realProjection(markdown)
 
       let editorIndex = 0
@@ -136,29 +133,6 @@ describe('CriticMarkup offset map vs real doc projection for structured markdown
         expect(editorIndex, `projection missing ${JSON.stringify(char)} @${sourceIndex}`).not.toBe(
           -1
         )
-        expect(
-          markdownSourceOffsetToEditorOffset(markdown, sourceIndex, projection),
-          `source→editor @${sourceIndex} ${JSON.stringify(char)}`
-        ).toBe(editorIndex)
-        expect(
-          editorOffsetToMarkdownSourceOffset(markdown, editorIndex, projection),
-          `editor→source @${editorIndex} ${JSON.stringify(char)}`
-        ).toBe(sourceIndex)
-        editorIndex++
-      }
-    })
-
-    // Projection-less fallback: used by serializer-side mapping (accept/reject
-    // replacement, undo). Must agree for the same docs.
-    it(`agrees with the formula-fallback map for ${JSON.stringify(markdown)}`, async () => {
-      const projection = await realProjection(markdown)
-
-      let editorIndex = 0
-      for (let sourceIndex = 0; sourceIndex < markdown.length; sourceIndex++) {
-        if (!visible[sourceIndex]) continue
-        const char = markdown[sourceIndex]
-        editorIndex = projection.indexOf(char, editorIndex)
-        expect(editorIndex).not.toBe(-1)
         expect(
           markdownSourceOffsetToEditorOffset(markdown, sourceIndex),
           `source→editor @${sourceIndex} ${JSON.stringify(char)}`
@@ -174,11 +148,8 @@ describe('CriticMarkup offset map vs real doc projection for structured markdown
 
   for (const annotated of STRUCTURED_FIXTURES_BROKEN) {
     const { markdown } = parseAnnotatedFixture(annotated)
-    it.skip(`agrees with the projection-fed map for ${JSON.stringify(markdown)}`, async () => {
+    it.skip(`agrees with the map for ${JSON.stringify(markdown)}`, async () => {
       // Blocked: double-blank-line gap shifts all following editor offsets.
-    })
-    it.skip(`agrees with the formula-fallback map for ${JSON.stringify(markdown)}`, async () => {
-      // Blocked: same as above.
     })
   }
 })
