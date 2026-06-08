@@ -123,7 +123,8 @@
       "title": "Coller comme",
       "url": "URL",
       "mention": "Mentionner",
-      "embedVideo": "Intégrer la vidéo"
+      "embedVideo": "Intégrer la vidéo",
+      "bookmark": "Signet"
     },
     "emoji": {
       "aria": "Sélecteur d'émoticônes et d'icônes",

@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useCallback, useEffect, useRef } from 'react'
-import { type Block } from '@blocknote/core'
+import { removeAndInsertBlocks, type Block } from '@blocknote/core'
+import { yUndoPluginKey } from 'y-prosemirror'
 import type * as Y from 'yjs'
 import {
   extractHeadings,
@@ -9,6 +10,7 @@ import {
   normalizeMarkdownHardBreaks
 } from '../wiki-link-utils'
 import { normalizeHashTags, extractInlineTags } from '../hash-tag'
+import { normalizeLinkMentions } from '../link-mention-utils'
 import { normalizeTaskBlocks } from '../task-block/task-block-utils'
 import {
   parseMarkdownPreservingBlanks,
@@ -22,6 +24,31 @@ import { createLogger } from '@/lib/logger'
 
 const log = createLogger('Hook:EditorSync')
 const activeNoteEditors = new Map<string, any>()
+
+function replaceInitialBlocksWithoutHistory(editor: any, blocks: Block[]): void {
+  if (typeof editor.transact !== 'function') {
+    editor.replaceBlocks(editor.document, blocks)
+    return
+  }
+
+  editor.transact((tr: any) => {
+    tr.setMeta?.('addToHistory', false)
+    return removeAndInsertBlocks(
+      tr,
+      editor.document,
+      blocks as Parameters<typeof removeAndInsertBlocks>[2]
+    )
+  })
+}
+
+function clearYjsUndoHistory(editor: any): void {
+  const state = editor?._tiptapEditor?.state
+  if (!state) return
+
+  const undoManager = yUndoPluginKey.getState(state)?.undoManager
+  undoManager?.clear?.(true, true)
+  undoManager?.stopCapturing?.()
+}
 
 export async function extractMarkdownFromActiveEditor(noteId?: string): Promise<string | null> {
   if (!noteId) return null
@@ -40,7 +67,11 @@ function hydrateLinkMentionFavicons(editor: any): void {
       const content = block.content
       if (Array.isArray(content)) {
         content.forEach((c: any, i: number) => {
-          if (c.type === 'linkMention' && c.props?.url && !c.props.favicon) {
+          if (
+            c.type === 'linkMention' &&
+            c.props?.url &&
+            (!c.props.favicon || !c.props.siteName || !c.props.title)
+          ) {
             mentions.push({ block, index: i, url: c.props.url })
           }
         })
@@ -62,7 +93,8 @@ function hydrateLinkMentionFavicons(editor: any): void {
           url,
           metadata.domain || current[index].props.domain,
           metadata.title || current[index].props.title,
-          metadata.favicon
+          metadata.favicon,
+          metadata.siteName || current[index].props.siteName
         )
         editor.updateBlock(block, { content: updated })
       })
@@ -145,6 +177,7 @@ export function useEditorSync({
     let cancelled = false
 
     if (yjsFragment) {
+      clearYjsUndoHistory(editor)
       isContentReadyRef.current = true
       if (onHeadingsChange) {
         const headings = extractHeadings(editor.document as Block[])
@@ -174,6 +207,7 @@ export function useEditorSync({
             }
 
             let normalizedBlocks = normalizeWikiLinks(blocks).blocks
+            normalizedBlocks = normalizeLinkMentions(normalizedBlocks).blocks
             const taskNormalized = normalizeTaskBlocks(normalizedBlocks)
             normalizedBlocks = taskNormalized.blocks
 
@@ -185,7 +219,7 @@ export function useEditorSync({
             }
 
             normalizedBlocks = sanitizeBlockIds(normalizedBlocks)
-            editor.replaceBlocks(editor.document, normalizedBlocks)
+            replaceInitialBlocksWithoutHistory(editor, normalizedBlocks)
             hydrateLinkMentionFavicons(editor)
             loadedSuccessfully = true
           } catch (error) {
@@ -193,6 +227,7 @@ export function useEditorSync({
           }
         } else if (Array.isArray(initialContent) && initialContent.length > 0) {
           let normalizedBlocks = normalizeWikiLinks(initialContent).blocks
+          normalizedBlocks = normalizeLinkMentions(normalizedBlocks).blocks
           const taskNormalized = normalizeTaskBlocks(normalizedBlocks)
           normalizedBlocks = taskNormalized.blocks
 
@@ -204,7 +239,8 @@ export function useEditorSync({
           }
 
           normalizedBlocks = sanitizeBlockIds(normalizedBlocks)
-          editor.replaceBlocks(editor.document, normalizedBlocks)
+          replaceInitialBlocksWithoutHistory(editor, normalizedBlocks)
+          hydrateLinkMentionFavicons(editor)
           loadedSuccessfully = true
         } else {
           loadedSuccessfully = true

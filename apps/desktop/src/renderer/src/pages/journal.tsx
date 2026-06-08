@@ -5,7 +5,15 @@
  * Day context (calendar + tasks) available via global Day Panel
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type RefObject
+} from 'react'
 import { cn } from '@/lib/utils'
 import { Loader2 } from '@/lib/icons'
 import {
@@ -26,6 +34,7 @@ import { InfoSection, type NewProperty } from '@/components/note/info-section'
 import { GhostAffordanceRow } from '@/components/note/ghost-affordance-row'
 import { OutlineInfoPanel, type HeadingItem } from '@/components/shared'
 import { useActiveHeading } from '@/hooks/use-active-heading'
+import { useReviewRailShift } from '@/hooks/use-review-rail-shift'
 import { useNoteTagsQuery, useNoteLinksQuery } from '@/hooks/use-notes-query'
 import { usePropertiesCollapsed } from '@/hooks/use-properties-collapsed'
 import { usePropertySection } from '@/hooks/use-property-section'
@@ -58,6 +67,12 @@ import { createLogger } from '@/lib/logger'
 import { FindBar } from '@/components/find-bar/find-bar'
 import { useFindInPage } from '@/hooks/use-find-in-page'
 import { useSettingsModal } from '@/contexts/settings-modal-context'
+import {
+  ReviewBadgeLayer,
+  ReviewRail,
+  SuggestionModePill,
+  useCriticMarkupReview
+} from '@/components/note/review'
 import { useT } from '@memry/i18n/renderer'
 
 const log = createLogger('Page:Journal')
@@ -313,6 +328,11 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   }, [yearStatsData, currentViewState, dateParts.year, heatmapData, dateLabels])
 
   const journalScrollRef = useRef<HTMLDivElement>(null)
+  const [journalScrollEl, setJournalScrollEl] = useState<HTMLDivElement | null>(null)
+  const setJournalScrollRef = useCallback((el: HTMLDivElement | null) => {
+    journalScrollRef.current = el
+    setJournalScrollEl(el)
+  }, [])
   const [marqueeZoneEl, setMarqueeZoneEl] = useState<HTMLDivElement | null>(null)
 
   // Click anywhere in the marquee zone (full scroll area, minus metadata
@@ -519,6 +539,23 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     (markdown: string) => updateContent(markdown),
     [updateContent]
   )
+  const review = useCriticMarkupReview({
+    markdown: editorState.content,
+    onMarkdownChange: handleMarkdownChange
+  })
+  const hasReviewContent = review.marks.length > 0 || !!review.activeDraft
+  const {
+    shiftStyle: railShiftStyle,
+    railHidden,
+    setContentEl: setRailContentEl
+  } = useReviewRailShift(journalScrollEl, {
+    railEnabled: hasReviewContent,
+    fullWidth: isFullWidth
+  })
+  // Full width keeps the reserved grid column; otherwise the rail hangs off the
+  // centered content column and the group is shifted Notion-style.
+  const showGridRail = hasReviewContent && isFullWidth
+  const showCanvasRail = hasReviewContent && !isFullWidth && !railHidden
   const handleContentChange = useCallback((_newBlocks: Block[]) => {}, [])
   const handleLinkClick = useCallback(
     (href: string) => window.open(href, '_blank', 'noopener,noreferrer'),
@@ -757,6 +794,11 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
               isFullWidth={isFullWidth}
               hasEntry={!!entry}
               journalDate={entry?.date ?? null}
+              reviewPill={
+                review.isSuggestionModeActive ? (
+                  <SuggestionModePill onClose={review.stopSuggestionMode} />
+                ) : null
+              }
               onPrevious={handleNavigationPrevious}
               onNext={handleNavigationNext}
               onToggleFullWidth={() => setIsFullWidth(!isFullWidth)}
@@ -767,7 +809,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
             />
           </div>
 
-          <div ref={journalScrollRef} className="flex-1 overflow-y-auto overflow-x-visible">
+          <div ref={setJournalScrollRef} className="flex-1 overflow-y-auto overflow-x-visible">
             <div
               ref={setMarqueeZoneEl}
               className="marquee-zone relative min-h-full w-full flex flex-col"
@@ -776,10 +818,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                 className="mx-auto w-full px-8 lg:px-12 min-h-full flex flex-col pt-6 pb-10 lg:pb-16 transition-[max-width] duration-300 ease-in-out"
                 style={{ maxWidth: isFullWidth ? '100%' : '64rem' }}
               >
-                <div
-                  className="flex flex-col flex-1 mx-auto w-full transition-[max-width] duration-300 ease-in-out"
-                  style={{ maxWidth: journalContentWidth ?? '100%' }}
-                >
+                <div className="flex flex-col flex-1 mx-auto w-full transition-[max-width] duration-300 ease-in-out">
                   {entryError && (
                     <div className="mb-4 px-4 py-3 rounded-md bg-destructive/10 border border-destructive/20 text-destructive text-sm">
                       <span className="font-medium">{t('toast.errorPrefix')}</span> {entryError}
@@ -787,92 +826,149 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                   )}
 
                   {currentViewState.type === 'day' && (
-                    <>
-                      <div className="group/metadata flex flex-col pb-[15px]" data-marquee-ignore>
-                        <GhostAffordanceRow
-                          availableTags={availableTags}
-                          recentTags={recentTags}
-                          currentTagIds={journalTags.map((t) => t.id)}
-                          onAddTag={handleAddTag}
-                          onCreateTag={handleCreateTag}
-                          onAddProperty={handleAddPropertyWithExpand}
-                          className="mb-2"
-                        />
-                        <JournalDateDisplay viewState={currentViewState} dateParts={dateParts} />
-                        <TagsRow
-                          tags={journalTags}
-                          availableTags={availableTags}
-                          recentTags={recentTags}
-                          onAddTag={handleAddTag}
-                          onCreateTag={handleCreateTag}
-                          onRemoveTag={handleRemoveTag}
-                          className="mb-0"
-                          hideWhenEmpty
-                          hideAddButton
-                        />
-                        {properties.length > 0 && (
-                          <InfoSection
-                            properties={properties}
-                            newlyAddedPropertyId={newlyAddedPropertyId}
-                            isExpanded={!propertiesCollapsed}
-                            variant="embedded"
-                            onToggleExpand={togglePropertiesCollapsed}
-                            onPropertyChange={handlePropertyChange}
-                            onPropertyNameChange={handlePropertyNameChange}
-                            onPropertyOrderChange={handlePropertyOrderChange}
+                    <div
+                      ref={setRailContentEl}
+                      className={cn(
+                        'w-full',
+                        showGridRail
+                          ? 'grid items-start gap-x-12 [grid-template-columns:minmax(0,1fr)_20rem] max-[920px]:grid-cols-1'
+                          : 'mx-auto flex flex-col flex-1',
+                        showCanvasRail && 'review-canvas'
+                      )}
+                      style={
+                        {
+                          maxWidth: isFullWidth ? '100%' : (journalContentWidth ?? '640px'),
+                          ...railShiftStyle
+                        } as CSSProperties
+                      }
+                    >
+                      <div className="min-w-0 flex flex-col flex-1">
+                        <div className="group/metadata flex flex-col pb-[15px]" data-marquee-ignore>
+                          <GhostAffordanceRow
+                            availableTags={availableTags}
+                            recentTags={recentTags}
+                            currentTagIds={journalTags.map((t) => t.id)}
+                            onAddTag={handleAddTag}
+                            onCreateTag={handleCreateTag}
                             onAddProperty={handleAddPropertyWithExpand}
-                            onDeleteProperty={handleDeleteProperty}
+                            className="mb-2"
+                          />
+                          <JournalDateDisplay viewState={currentViewState} dateParts={dateParts} />
+                          <TagsRow
+                            tags={journalTags}
+                            availableTags={availableTags}
+                            recentTags={recentTags}
+                            onAddTag={handleAddTag}
+                            onCreateTag={handleCreateTag}
+                            onRemoveTag={handleRemoveTag}
+                            className="mb-0"
+                            hideWhenEmpty
                             hideAddButton
                           />
-                        )}
-                      </div>
+                          {properties.length > 0 && (
+                            <InfoSection
+                              properties={properties}
+                              newlyAddedPropertyId={newlyAddedPropertyId}
+                              isExpanded={!propertiesCollapsed}
+                              variant="embedded"
+                              onToggleExpand={togglePropertiesCollapsed}
+                              onPropertyChange={handlePropertyChange}
+                              onPropertyNameChange={handlePropertyNameChange}
+                              onPropertyOrderChange={handlePropertyOrderChange}
+                              onAddProperty={handleAddPropertyWithExpand}
+                              onDeleteProperty={handleDeleteProperty}
+                              hideAddButton
+                            />
+                          )}
+                        </div>
 
-                      <div
-                        ref={editorContainerRef}
-                        role="presentation"
-                        className="editor-click-area flex-1 pb-[30vh] relative overflow-visible"
-                        style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
-                      >
-                        {showEditorLoading ? (
-                          <div className="flex items-center justify-center h-[300px]">
-                            <Loader2 className="size-6 animate-spin text-muted-foreground" />
-                          </div>
-                        ) : (
-                          <ContentArea
-                            key={editorState.key}
-                            noteId={entry?.id}
-                            initialContent={editorState.content}
-                            contentType="markdown"
-                            placeholder={
-                              selectedDate > today
-                                ? t('editor.placeholder.future')
-                                : isToday
-                                  ? t('editor.placeholder.today')
-                                  : t('editor.placeholder.past')
-                            }
-                            stickyToolbar={editorSettings.toolbarMode === 'sticky'}
-                            onContentChange={handleContentChange}
-                            onMarkdownChange={handleMarkdownChange}
-                            onHeadingsChange={handleHeadingsChange}
-                            onLinkClick={handleLinkClick}
-                            onInternalLinkClick={(...args) => void handleInternalLinkClick(...args)}
-                            focusAtEndRef={focusAtEndRef}
-                            marqueeZoneEl={marqueeZoneEl}
-                          />
-                        )}
-                      </div>
-
-                      {entry && backlinks.length > 0 && (
-                        <div className="mt-6" data-marquee-ignore>
-                          <BacklinksSection
-                            backlinks={backlinks}
-                            isLoading={backlinksLoading}
-                            initialCount={5}
-                            onBacklinkClick={handleBacklinkClick}
+                        <div
+                          ref={editorContainerRef}
+                          role="presentation"
+                          className="editor-click-area flex-1 pb-[30vh] relative overflow-visible"
+                          style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
+                        >
+                          {showEditorLoading ? (
+                            <div className="flex items-center justify-center h-[300px]">
+                              <Loader2 className="size-6 animate-spin text-muted-foreground" />
+                            </div>
+                          ) : (
+                            <ContentArea
+                              key={editorState.key}
+                              noteId={entry?.id}
+                              initialContent={review.editorInitialContent}
+                              contentType="markdown"
+                              placeholder={
+                                selectedDate > today
+                                  ? t('editor.placeholder.future')
+                                  : isToday
+                                    ? t('editor.placeholder.today')
+                                    : t('editor.placeholder.past')
+                              }
+                              stickyToolbar={editorSettings.toolbarMode === 'sticky'}
+                              onContentChange={handleContentChange}
+                              onMarkdownChange={handleMarkdownChange}
+                              onHeadingsChange={handleHeadingsChange}
+                              onLinkClick={handleLinkClick}
+                              onInternalLinkClick={(...args) =>
+                                void handleInternalLinkClick(...args)
+                              }
+                              focusAtEndRef={focusAtEndRef}
+                              marqueeZoneEl={marqueeZoneEl}
+                              review={{
+                                plainMarkdown: review.plainMarkdown,
+                                marks: review.marks,
+                                hoveredMarkId: review.hoveredMarkId,
+                                isSuggestionModeActive: review.isSuggestionModeActive,
+                                onEditorReady: review.handleEditorReady,
+                                onAddComment: review.openCommentComposer,
+                                onStartSuggestionMode: review.startSuggestionMode,
+                                onAddSuggestionMark: review.addSuggestionMark,
+                                getMarkdownSourceOffsetForEditorOffset:
+                                  review.getMarkdownSourceOffsetForEditorOffset,
+                                getEditorOffsetForMarkdownSourceOffset:
+                                  review.getEditorOffsetForMarkdownSourceOffset,
+                                onPersistCurrentMarkdown: review.persistCurrentMarkdown,
+                                onPlainMarkdownChange: review.handlePlainMarkdownChange,
+                                onHoveredMarkChange: review.setHoveredMarkId,
+                                onMarkPositionsChange: review.setMarkPositions,
+                                onReplaceMarksFromYjs: review.replaceMarksFromYjs
+                              }}
+                            />
+                          )}
+                          <ReviewBadgeLayer
+                            review={review}
+                            targetId={entry?.id}
+                            containerRef={editorContainerRef}
+                            active={railHidden}
                           />
                         </div>
+
+                        {entry && backlinks.length > 0 && (
+                          <div className="mt-6" data-marquee-ignore>
+                            <BacklinksSection
+                              backlinks={backlinks}
+                              isLoading={backlinksLoading}
+                              initialCount={5}
+                              onBacklinkClick={handleBacklinkClick}
+                            />
+                          </div>
+                        )}
+                      </div>
+                      {(showGridRail || showCanvasRail) && (
+                        <div
+                          data-journal-review-rail
+                          data-marquee-ignore
+                          className={
+                            showGridRail
+                              ? 'max-[920px]:hidden min-w-0 self-start'
+                              : 'review-canvas-rail'
+                          }
+                        >
+                          <ReviewRail review={review} targetId={entry?.id} />
+                        </div>
                       )}
-                    </>
+                    </div>
                   )}
 
                   {currentViewState.type === 'month' && (

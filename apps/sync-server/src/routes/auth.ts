@@ -41,6 +41,10 @@ import {
   getBillingStatus,
   reconcilePaddleTransaction
 } from '../services/paddle-billing'
+import {
+  ensureLocalAdminPaidSyncAccess,
+  ensureLocalAdminPaidSyncAccessForUser
+} from '../services/entitlements'
 import type { AppContext } from '../types'
 
 const logger = createLogger('Auth')
@@ -218,6 +222,7 @@ auth.post('/otp/verify', otpIpRateLimit, async (c) => {
   })
 
   await updateUser(c.env.DB, user.id, { email_verified: 1 })
+  await ensureLocalAdminPaidSyncAccess(c.env.DB, c.env.ENVIRONMENT, email, user.id)
 
   const setupToken = await signSetupToken(user.id, c.env.JWT_PRIVATE_KEY, sessionNonce)
 
@@ -307,6 +312,8 @@ auth.post('/oauth/:provider/callback', async (c) => {
     authProvider: 'google',
     authProviderId: claims.sub
   })
+
+  await ensureLocalAdminPaidSyncAccess(c.env.DB, c.env.ENVIRONMENT, claims.email, user.id)
 
   const setupToken = await signSetupToken(user.id, c.env.JWT_PRIVATE_KEY, sessionNonce)
 
@@ -580,6 +587,7 @@ auth.post('/checkout-token', authMiddleware, async (c) => {
 
 auth.get('/billing', authMiddleware, async (c) => {
   const userId = c.get('userId')!
+  await ensureLocalAdminPaidSyncAccessForUser(c.env.DB, c.env.ENVIRONMENT, userId)
   return c.json(await getBillingStatus(c.env.DB, userId))
 })
 
@@ -594,6 +602,7 @@ auth.post('/billing/reconcile', authMiddleware, async (c) => {
   if (parsed.data.transactionId) {
     await reconcilePaddleTransaction(c.env, userId, parsed.data.transactionId)
   }
+  await ensureLocalAdminPaidSyncAccessForUser(c.env.DB, c.env.ENVIRONMENT, userId)
 
   return c.json(await getBillingStatus(c.env.DB, userId))
 })

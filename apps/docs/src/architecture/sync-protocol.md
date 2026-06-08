@@ -27,6 +27,11 @@ Inactive, past-due, paused, canceled, or expired entitlements return `SYNC_PAYME
 sync data is read or written. Vault and file-size limits return `SYNC_VAULT_LIMIT_EXCEEDED` and
 `STORAGE_FILE_TOO_LARGE`.
 
+Development sync servers can seed a `dev_seed` Believer entitlement for configured local admin
+accounts during sign-in, billing checks, reconcile, and paid-sync middleware access. This path is
+guarded by `ENVIRONMENT=development`; production and staging rely on Paddle webhooks, explicit
+admin overrides, or billing reconcile only.
+
 Desktop checkout is account-owned. The app requests `/auth/checkout-token`, opens
 `memrynote.com/pricing` with the token in the URL fragment, and the landing page passes that token
 to the Paddle checkout transaction API. After payment, Paddle webhooks are the primary entitlement

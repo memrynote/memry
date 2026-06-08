@@ -1,6 +1,7 @@
-import { ReactNode, useCallback, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 import { useActiveHeading } from '@/hooks/use-active-heading'
+import { useReviewRailShift } from '@/hooks/use-review-rail-shift'
 import { OutlineInfoPanel, type OutlineInfoPanelProps } from '../shared/outline-info-panel'
 
 interface HeadingItem {
@@ -20,7 +21,10 @@ interface NoteLayoutProps {
   topBar?: ReactNode
   stats?: OutlineInfoPanelProps['stats']
   fullWidth?: boolean
+  sideRail?: ReactNode
+  contentWidth?: string
   marqueeZoneRef?: (el: HTMLDivElement | null) => void
+  onRailHiddenChange?: (hidden: boolean) => void
 }
 
 const EMPTY_HEADINGS: HeadingItem[] = []
@@ -35,9 +39,17 @@ export function NoteLayout({
   topBar,
   stats,
   fullWidth = false,
-  marqueeZoneRef
+  sideRail,
+  contentWidth,
+  marqueeZoneRef,
+  onRailHiddenChange
 }: NoteLayoutProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
+  const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null)
+  const setScrollRef = useCallback((el: HTMLDivElement | null) => {
+    scrollRef.current = el
+    setScrollEl(el)
+  }, [])
   const { activeHeadingId, setActiveHeading } = useActiveHeading({
     headings,
     offset: 120,
@@ -52,6 +64,32 @@ export function NoteLayout({
     [onHeadingClick, setActiveHeading]
   )
 
+  const hasSideRail = sideRail !== undefined && sideRail !== null
+  const resolvedContentWidth = contentWidth ?? '64rem'
+  const { shiftStyle, railHidden, setContentEl } = useReviewRailShift(scrollEl, {
+    railEnabled: hasSideRail,
+    fullWidth
+  })
+  useEffect(() => {
+    onRailHiddenChange?.(railHidden)
+  }, [onRailHiddenChange, railHidden])
+
+  // Full width keeps the reserved grid column; otherwise the rail hangs off the
+  // centered content column and the group is shifted Notion-style.
+  const showGridRail = hasSideRail && fullWidth
+  const showCanvasRail = hasSideRail && !fullWidth && !railHidden
+  const canvasStyle = showGridRail
+    ? ({
+        maxWidth: '100%',
+        '--note-layout-content-track': '1fr',
+        '--note-layout-content-max': resolvedContentWidth
+      } as CSSProperties)
+    : {
+        // 12rem compensates px-24 so the inner content width stays exactly
+        // resolvedContentWidth with or without the rail.
+        maxWidth: fullWidth ? '100%' : contentWidth ? `calc(${contentWidth} + 12rem)` : '64rem'
+      }
+
   return (
     <div className={cn('h-full w-full overflow-hidden flex flex-col relative', className)}>
       {(breadcrumb || actions) && (
@@ -60,13 +98,46 @@ export function NoteLayout({
           <div className="flex items-center">{actions}</div>
         </div>
       )}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-visible">
+      <div ref={setScrollRef} className="flex-1 overflow-y-auto overflow-x-visible">
         <div ref={marqueeZoneRef} className="marquee-zone relative min-h-full w-full flex flex-col">
           <div
-            className="mx-auto w-full px-24 pt-6 pb-10 min-h-full flex flex-col transition-[max-width] duration-300 ease-in-out"
-            style={{ maxWidth: fullWidth ? '100%' : '64rem' }}
+            data-note-layout-canvas
+            className={cn(
+              'mx-auto w-full pt-6 pb-10 min-h-full transition-[max-width] duration-300 ease-in-out',
+              showGridRail
+                ? 'grid items-start gap-x-12 px-0 [grid-template-columns:minmax(0,var(--note-layout-content-track))_20rem] max-[920px]:max-w-[var(--note-layout-content-max)] max-[920px]:grid-cols-1 max-[920px]:px-8'
+                : 'px-24 flex flex-col'
+            )}
+            style={canvasStyle}
           >
-            {children}
+            {showGridRail ? (
+              <>
+                <div data-note-layout-main className="min-w-0 flex flex-col">
+                  {children}
+                </div>
+                <div
+                  data-note-layout-rail
+                  data-marquee-ignore
+                  className="max-[920px]:hidden min-w-0 self-start"
+                >
+                  {sideRail}
+                </div>
+              </>
+            ) : (
+              <div
+                ref={setContentEl}
+                data-note-layout-main
+                className={cn('min-w-0 flex flex-col flex-1', showCanvasRail && 'review-canvas')}
+                style={showCanvasRail ? shiftStyle : undefined}
+              >
+                {children}
+                {showCanvasRail && (
+                  <div data-note-layout-rail data-marquee-ignore className="review-canvas-rail">
+                    {sideRail}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>

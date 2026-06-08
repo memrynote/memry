@@ -8,6 +8,7 @@ const log = createLogger('useYjsCollaboration')
 
 export interface YjsCollaborationState {
   fragment: Y.XmlFragment | null
+  doc: Y.Doc | null
   provider: YjsIpcProvider | null
   isReady: boolean
 }
@@ -21,7 +22,12 @@ export interface UseYjsCollaborationReturn extends YjsCollaborationState {
   isRemoteUpdateRef: RefObject<boolean>
 }
 
-const DISABLED_STATE: YjsCollaborationState = { fragment: null, provider: null, isReady: false }
+const DISABLED_STATE: YjsCollaborationState = {
+  fragment: null,
+  doc: null,
+  provider: null,
+  isReady: false
+}
 type ActiveYjsCollaborationState = YjsCollaborationState & {
   noteId: string | null
   fallback: boolean
@@ -64,7 +70,7 @@ export function useYjsCollaboration(
       .then(() => {
         if (cancelled) return
         const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
-        setActiveState({ noteId, fragment, provider, isReady: true, fallback: false })
+        setActiveState({ noteId, fragment, doc, provider, isReady: true, fallback: false })
         log.debug('Collaboration ready', { noteId })
       })
       .catch((err) => {
@@ -73,7 +79,14 @@ export function useYjsCollaboration(
         provider.destroy()
         doc.destroy()
         isRemoteUpdateRef.current = false
-        setActiveState({ noteId, fragment: null, provider: null, isReady: true, fallback: true })
+        setActiveState({
+          noteId,
+          fragment: null,
+          doc: null,
+          provider: null,
+          isReady: true,
+          fallback: true
+        })
       })
 
     return () => {
@@ -92,6 +105,7 @@ export function useYjsCollaboration(
       ? DISABLED_STATE
       : {
           fragment: activeState.fragment,
+          doc: activeState.doc,
           provider: activeState.provider,
           isReady: activeState.isReady
         }

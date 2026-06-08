@@ -14,6 +14,8 @@ If today's entry doesn't exist yet, it's created on first focus, seeded by your 
 
 The same BlockNote editor is used for journal entries — slash commands, markdown shortcuts, wiki links, attachments, AI inline. Anything you can do in a note works here too.
 
+Journal entries also share note review tools: selection comments, page-level suggestion mode, and the aligned right review rail. See [Comments & Suggestion Mode](/user-guide/notes/editing#comments--suggestion-mode).
+
 Use **Add property** or **Add tag** above the date heading to organize a daily entry before writing.
 
 ## Full-Width Mode

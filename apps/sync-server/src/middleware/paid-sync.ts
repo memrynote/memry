@@ -3,6 +3,7 @@ import type { MiddlewareHandler } from 'hono'
 import { AppError, ErrorCodes } from '../lib/errors'
 import {
   assertPaidSyncAccess,
+  ensureLocalAdminPaidSyncAccessForUser,
   ensureSyncVaultAllowed,
   type SyncEntitlement
 } from '../services/entitlements'
@@ -18,6 +19,7 @@ export const paidSyncMiddleware: MiddlewareHandler<AppContext> = async (c, next)
     throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid vault id', 400)
   }
 
+  await ensureLocalAdminPaidSyncAccessForUser(c.env.DB, c.env.ENVIRONMENT, userId)
   const entitlement = await assertPaidSyncAccess(c.env.DB, userId)
   await ensureSyncVaultAllowed(c.env.DB, userId, vaultId, entitlement)
   c.set('vaultId', vaultId)

@@ -42,6 +42,19 @@ export interface SelectionInfo {
   isEmpty: boolean
 }
 
+export interface ReviewSelection {
+  /** Selected text visible in the editor */
+  text: string
+  /** Whether selection is empty/collapsed */
+  isEmpty: boolean
+  /** Top position of the selection relative to the shared marquee zone, when available */
+  top?: number
+  /** ProseMirror start position for the selected text, when available */
+  from?: number
+  /** ProseMirror end position for the selected text, when available */
+  to?: number
+}
+
 // =============================================================================
 // CONTENT AREA PROPS
 // =============================================================================
@@ -112,6 +125,29 @@ export interface ContentAreaProps {
    * still get the original behavior.
    */
   marqueeZoneEl?: HTMLDivElement | null
+  /** Optional CriticMarkup review behavior for comments and suggestions */
+  review?: {
+    plainMarkdown: string
+    marks: import('@memry/shared').CriticMarkupMark[]
+    hoveredMarkId: string | null
+    isSuggestionModeActive: boolean
+    onEditorReady?: (editor: unknown | null) => void
+    onAddComment?: (selection: ReviewSelection) => void
+    onStartSuggestionMode?: () => void
+    onAddSuggestionMark?: (input: {
+      kind: 'addition' | 'deletion' | 'substitution'
+      visibleText: string
+      originalText?: string
+      start?: number
+    }) => void
+    getMarkdownSourceOffsetForEditorOffset?: (editorOffset: number) => number | null
+    getEditorOffsetForMarkdownSourceOffset?: (sourceOffset: number) => number | null
+    onPersistCurrentMarkdown?: () => void
+    onPlainMarkdownChange?: (markdown: string) => string
+    onHoveredMarkChange?: (id: string | null) => void
+    onMarkPositionsChange?: (positions: Record<string, number>) => void
+    onReplaceMarksFromYjs?: (marks: import('@memry/shared').CriticMarkupMark[]) => void
+  }
 }
 
 // =============================================================================

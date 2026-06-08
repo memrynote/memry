@@ -236,6 +236,7 @@ vi.mock('@/components/note', () => ({
     topBar,
     breadcrumb,
     stats,
+    sideRail,
     marqueeZoneRef,
     onHeadingClick
   }: {
@@ -245,6 +246,7 @@ vi.mock('@/components/note', () => ({
     topBar: React.ReactNode
     breadcrumb: React.ReactNode
     stats?: { wordCount?: number }
+    sideRail?: React.ReactNode
     marqueeZoneRef: (element: HTMLDivElement | null) => void
     onHeadingClick: (id: string) => void
   }) => (
@@ -259,6 +261,7 @@ vi.mock('@/components/note', () => ({
       {breadcrumb}
       {actions}
       {children}
+      {sideRail}
     </div>
   ),
   ContentArea: ({
@@ -643,6 +646,15 @@ describe('NotePage', () => {
         viewState: expect.objectContaining({ openTaskId: 'task-1', selectedProjectId: 'project-1' })
       })
     )
+  })
+
+  it('omits the review rail when there are no comments, keeping note controls', () => {
+    renderWithProviders(<NotePage noteId="note-1" />)
+
+    expect(screen.queryByLabelText('comments.railAria')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Add tag' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Add property' })).toBeInTheDocument()
+    expect(screen.getByTestId('editor-content')).toHaveTextContent('Original body')
   })
 
   it('debounces markdown saves and syncs inline tags', async () => {

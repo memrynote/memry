@@ -297,6 +297,501 @@
   height: 28px !important;
 }
 
+.content-area .bn-formatting-toolbar:has(.review-formatting-toolbar-compact) {
+  min-width: 168px !important;
+  width: 168px !important;
+  padding: 6px !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 10px !important;
+  background: var(--popover) !important;
+  color: var(--popover-foreground) !important;
+  box-shadow: 0 16px 40px color-mix(in srgb, black 24%, transparent) !important;
+}
+
+.review-formatting-toolbar-compact {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.review-formatting-toolbar-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 28px);
+  justify-content: center;
+  gap: 4px;
+}
+
+.review-formatting-toolbar-compact .bn-button {
+  width: 28px !important;
+  min-width: 28px !important;
+  height: 28px !important;
+  justify-content: center;
+  padding: 0 !important;
+  border-radius: 7px !important;
+  color: inherit !important;
+}
+
+.review-formatting-toolbar-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 4px;
+  padding-top: 6px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+}
+
+.review-formatting-toolbar-actions .bn-button {
+  width: 100% !important;
+  min-width: 0 !important;
+  gap: 4px;
+  padding: 0 6px !important;
+  font-size: 11px !important;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.critic-mark-inline {
+  border-radius: 3px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  cursor: default;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+}
+
+.critic-mark-inline-comment {
+  background: color-mix(in srgb, var(--accent-orange) 18%, transparent);
+}
+
+.critic-mark-inline-addition {
+  background: color-mix(in srgb, rgb(39, 131, 222) 20%, transparent);
+  color: color-mix(in srgb, rgb(39, 131, 222) 76%, var(--foreground));
+}
+
+.critic-mark-inline-deletion {
+  background: color-mix(in srgb, var(--destructive) 16%, transparent);
+  color: color-mix(in srgb, var(--destructive) 76%, var(--foreground));
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+.critic-mark-inline-substitution {
+  background: color-mix(in srgb, var(--accent-cyan) 18%, transparent);
+  color: color-mix(in srgb, var(--accent-cyan) 78%, var(--foreground));
+}
+
+.critic-mark-inline:hover,
+.critic-mark-inline.critic-mark-hovered {
+  background: color-mix(in srgb, var(--accent-orange) 30%, transparent);
+}
+
+.suggestion-mode-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 26px;
+  margin-inline-end: 4px;
+  padding-inline-start: 9px;
+  padding-inline-end: 2px;
+  border: 1px solid color-mix(in srgb, var(--accent-cyan) 34%, var(--border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent-cyan) 10%, var(--background));
+  color: color-mix(in srgb, var(--accent-cyan) 82%, var(--foreground));
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.review-rail {
+  position: sticky;
+  top: 24px;
+  z-index: 20;
+  width: 340px;
+  min-height: 260px;
+  pointer-events: auto;
+}
+
+/* Notion-style review canvas: the content column stays centered at its max
+   width; when the rail is visible the whole content + gap + rail group is
+   centered as a unit by shifting the column with an animated transform. */
+.review-canvas {
+  position: relative;
+  transition: transform 200ms ease;
+  transform: translateX(calc(var(--direction, 1) * -1 * var(--review-rail-shift, 0px)));
+}
+
+.review-canvas-rail {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 100%;
+  margin-inline-start: 48px;
+  width: 340px;
+}
+
+.review-rail-inner {
+  position: relative;
+  z-index: 1;
+  min-height: 420px;
+  width: 340px;
+}
+
+.critic-review-card {
+  position: absolute;
+  inset-inline-start: 0;
+  z-index: 1;
+  width: 308px;
+  border: 1px solid color-mix(in srgb, var(--border) 76%, transparent);
+  border-radius: 8px;
+  background-color: var(--background);
+  color: var(--foreground);
+  padding: 10px;
+  box-shadow: 0 10px 28px color-mix(in srgb, black 10%, transparent);
+  will-change: transform;
+  transition:
+    background-color 120ms ease,
+    transform 200ms ease;
+}
+
+.critic-review-card[data-hovered='true'],
+.critic-review-card:hover {
+  background-color: var(--critic-review-card-hover-background);
+  transform: translateX(-20px);
+}
+
+.critic-review-card[data-expanded='true'] {
+  z-index: 3;
+}
+
+.critic-review-card[data-editing='true'] {
+  padding: 0;
+  border-color: transparent;
+  background-color: transparent;
+  box-shadow: none;
+}
+
+.critic-review-card[data-editing='true']:hover,
+.critic-review-card[data-editing='true'][data-hovered='true'] {
+  background-color: transparent;
+  transform: none;
+}
+
+.critic-review-text-collapsible {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.critic-review-card[data-expanded='true'] .critic-review-text-collapsible {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.critic-review-expand-toggle {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  cursor: pointer;
+}
+
+.critic-review-expand-toggle:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.critic-review-content {
+  position: relative;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.critic-review-content a {
+  pointer-events: auto;
+}
+
+.critic-review-suggestion-preview {
+  margin: 0;
+  padding-inline-end: 66px;
+  color: var(--foreground);
+  font-size: 14px;
+  line-height: 18px;
+}
+
+.critic-review-suggestion-label-addition,
+.critic-review-suggestion-label-deletion,
+.critic-review-suggestion-label-substitution {
+  font-weight: 500;
+}
+
+.critic-review-suggestion-label-addition {
+  color: color-mix(in srgb, rgb(39, 131, 222) 40%, var(--muted-foreground));
+}
+
+.critic-review-suggestion-text-addition {
+  color: rgb(39, 131, 222);
+}
+
+.critic-review-suggestion-label-deletion,
+.critic-review-suggestion-label-substitution {
+  color: var(--muted-foreground);
+}
+
+.critic-review-suggestion-text-deletion,
+.critic-review-suggestion-text-substitution {
+  color: color-mix(in srgb, var(--muted-foreground) 82%, var(--foreground));
+}
+
+.critic-review-body {
+  margin-top: 8px;
+  color: var(--foreground);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.critic-review-content > .critic-review-body:first-child {
+  margin-top: 0;
+  padding-inline-end: 66px;
+}
+
+.critic-review-date {
+  display: block;
+  margin: 0 0 4px;
+  width: fit-content;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  line-height: 16px;
+  pointer-events: auto;
+}
+
+.critic-review-date + .critic-review-body {
+  margin-top: 0;
+}
+
+.critic-review-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.critic-review-actions {
+  position: absolute;
+  inset-block-start: 5px;
+  inset-inline-end: 6px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  width: fit-content;
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  border-radius: 6px;
+  background-color: var(--critic-review-actions-background);
+  padding: 2px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms ease-out;
+}
+
+.critic-review-card:hover .critic-review-actions,
+.critic-review-card:focus-within .critic-review-actions,
+.critic-review-card[data-hovered='true'] .critic-review-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.critic-review-action-button {
+  height: 24px;
+  width: 24px;
+  border-radius: 4px;
+}
+
+.critic-review-draft {
+  position: absolute;
+  inset-inline-start: 0;
+  z-index: 2;
+  width: 308px;
+}
+
+/* Inline badge fallback when the review rail is hidden (narrow windows). */
+.critic-review-badge-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.critic-review-badge {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 24px;
+  padding-inline: 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  pointer-events: auto;
+  white-space: nowrap;
+}
+
+.critic-review-badge:hover,
+.critic-review-badge[data-state='open'] {
+  background-color: var(--critic-review-card-hover-background);
+}
+
+.critic-review-badge:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.critic-review-badge-icon {
+  width: 14px;
+  height: 14px;
+  color: color-mix(in srgb, var(--accent-orange) 85%, var(--foreground));
+}
+
+.critic-review-badge-count {
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+}
+
+/* Invisible positioning wrapper: the cards/composer inside carry their own
+   chrome, so the flyout itself draws no border, background, or shadow. */
+.critic-review-flyout {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 340px;
+  max-height: 420px;
+  overflow-y: auto;
+  pointer-events: auto;
+}
+
+.critic-review-flyout-draft {
+  width: fit-content;
+}
+
+.critic-review-flyout .critic-review-card {
+  position: relative;
+  inset-inline-start: auto;
+  width: 100%;
+}
+
+.critic-review-flyout .critic-review-card:hover,
+.critic-review-flyout .critic-review-card[data-hovered='true'] {
+  transform: none;
+}
+
+/* Drafted-but-unsubmitted comment selection: painted like an existing
+   comment mark while the flyout composer is open. */
+::highlight(critic-comment-draft) {
+  background-color: color-mix(in srgb, var(--accent-orange) 30%, transparent);
+}
+
+.critic-comment-composer {
+  width: 308px;
+  overflow: visible;
+}
+
+.critic-comment-main-row {
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px 6px 10px;
+}
+
+/* Editor sizing lives in the editorClassName passed by CommentComposer. */
+.critic-comment-editor .ProseMirror p {
+  margin: 0;
+}
+
+.critic-comment-actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 2px;
+}
+
+.critic-comment-action-button,
+.critic-comment-send-button {
+  height: 24px;
+  width: 24px;
+  border-radius: 999px;
+  color: var(--muted-foreground);
+}
+
+.critic-comment-action-button:hover,
+.critic-comment-send-button:hover {
+  background-color: color-mix(in srgb, var(--muted) 72%, transparent);
+  color: var(--foreground);
+}
+
+.critic-comment-send-button {
+  background-color: color-mix(in srgb, var(--muted-foreground) 24%, transparent);
+  color: var(--background);
+  opacity: 1;
+}
+
+.critic-comment-send-button:disabled {
+  cursor: default;
+  background-color: color-mix(in srgb, var(--muted-foreground) 28%, transparent);
+  color: color-mix(in srgb, var(--foreground) 58%, transparent);
+  opacity: 1;
+}
+
+.critic-comment-send-ready {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.critic-comment-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 8px 8px 10px;
+}
+
+.critic-comment-error {
+  padding: 0 10px 8px;
+  color: var(--destructive);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.critic-review-textarea {
+  margin-top: 8px;
+  min-height: 78px;
+  width: 100%;
+  resize: vertical;
+  border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
+  border-radius: 7px;
+  background: var(--background);
+  padding: 8px;
+  color: var(--foreground);
+  font-size: 13px;
+  line-height: 1.45;
+  outline: none;
+}
+
+.critic-review-textarea:focus {
+  border-color: color-mix(in srgb, var(--accent-cyan) 55%, var(--border));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-cyan) 16%, transparent);
+}
+
 /* ===== COMPACT SLASH MENU (Suggestion Menu) ===== */
 /* BlockNote uses .bn-suggestion-menu class and [role="option"] for items */
 .bn-suggestion-menu {
@@ -428,6 +923,8 @@
     /* Sidebar/Panels - Slightly darker warm grey */
     --surface-active: #e4e4de;
     /* Hover states */
+    --critic-review-card-hover-background: var(--surface-active);
+    --critic-review-actions-background: var(--background);
 
     /* ===== SEMANTIC PASTELS (Card Backgrounds) ===== */
     --card-sage: #e6efe6;
@@ -587,6 +1084,8 @@
     --foreground: #37352f;
     --surface: #f7f6f3;
     --surface-active: #efedea;
+    --critic-review-card-hover-background: var(--surface-active);
+    --critic-review-actions-background: var(--background);
 
     /* ===== SEMANTIC PASTELS - White Mode ===== */
     --card-sage: #dbeddb;
@@ -708,6 +1207,8 @@
     --foreground: #bcbab6;
     --surface: #222222;
     --surface-active: #2a2a2a;
+    --critic-review-card-hover-background: #202020;
+    --critic-review-actions-background: #191919;
 
     /* ===== SEMANTIC PASTELS - Dark Mode (Muted versions) ===== */
     --card-sage: #1e261e;
@@ -1809,44 +2310,62 @@ del.bn-inline-content {
   opacity: 0.8;
 }
 
-/* Link mention — inline rich link with favicon + domain + title */
+/* Link mention — Notion-style inline token: favicon + site name + title.
+   The `.bn-shadcn .bn-editor a` prefix is required to beat BlockNote's
+   `.bn-shadcn .bn-editor a { color: revert; text-decoration: revert }`,
+   which otherwise paints the whole token browser-default blue/underlined. */
+.bn-shadcn .bn-editor a.link-mention,
 .link-mention {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 1px 6px;
+  display: inline;
+  padding: 1px 4px;
   border-radius: 4px;
-  background: hsl(var(--muted) / 0.5);
-  font-size: 0.9em;
-  font-weight: 500;
-  color: hsl(var(--foreground));
+  color: var(--bn-colors-editor-text, var(--foreground));
   cursor: pointer;
-  white-space: nowrap;
   text-decoration: none;
   user-select: none;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
   transition: background 0.15s ease;
 }
 
+/* Whole-token highlight on hover so it reads as one unit. --accent is the
+   theme-aware hover-surface token (light + dark). Tokens here are hex, so
+   reference them directly — hsl(var(--token)) would be invalid and dropped. */
+.bn-shadcn .bn-editor a.link-mention:hover,
 .link-mention:hover {
-  background: hsl(var(--muted));
+  background: var(--accent);
   text-decoration: none;
 }
 
 .link-mention-favicon {
-  width: 14px;
-  height: 14px;
-  border-radius: 2px;
-  flex-shrink: 0;
+  display: inline-block;
+  width: 1.2em;
+  height: 1.2em;
+  border-radius: 3px;
+  vertical-align: -0.22em;
+  margin-inline-end: 0.3em;
   object-fit: contain;
 }
 
-.link-mention-sep {
-  color: hsl(var(--muted-foreground) / 0.4);
+.link-mention-site {
+  color: var(--muted-foreground);
+  margin-inline-end: 0.3em;
 }
 
 .link-mention-title {
-  color: hsl(var(--muted-foreground));
-  font-weight: 400;
+  color: inherit;
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-thickness: 0.05em;
+  text-underline-offset: 10%;
+  text-decoration-color: color-mix(in srgb, var(--muted-foreground) 50%, transparent);
+}
+
+/* Bookmark card link — beat BlockNote's `.bn-shadcn .bn-editor a` revert
+   that would otherwise underline the whole preview card. */
+.bn-shadcn .bn-editor a.bookmark-link,
+.bookmark-block a.bookmark-link {
+  text-decoration: none;
 }
 
 /* Backlink mention highlight - warm amber for wiki-style links */

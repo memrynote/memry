@@ -8,7 +8,7 @@ function detectEmbedProvider(url: string): string | null {
   return null
 }
 
-export type PasteLinkOption = 'url' | 'mention' | 'embed'
+export type PasteLinkOption = 'mention' | 'embed' | 'bookmark' | 'url'
 
 interface PasteLinkMenuState {
   isOpen: boolean
@@ -54,10 +54,11 @@ export function usePasteLinkMenu({ editorContainerRef, onSelect }: UsePasteLinkM
       const text = e.clipboardData?.getData('text/plain')?.trim()
       if (!text || !URL_REGEX.test(text)) return
 
-      const options: PasteLinkOption[] = ['url', 'mention']
+      const options: PasteLinkOption[] = ['mention']
       if (detectEmbedProvider(text)) {
         options.push('embed')
       }
+      options.push('bookmark', 'url')
 
       requestAnimationFrame(() => {
         const selection = window.getSelection()

@@ -7,6 +7,13 @@ import {
   type MarkdownSegment
 } from '@memry/shared/empty-lines'
 import {
+  type BlockColors,
+  BLOCK_COLORS_LINE_REGEX,
+  hasNonDefaultColors,
+  parseBlockColorsMarker,
+  serializeBlockColorsMarker
+} from '@memry/shared/block-colors'
+import {
   createBlockNestingMarker,
   restoreBlockNesting,
   splitMarkdownByBlockNestingMarkers
@@ -14,6 +21,8 @@ import {
 import { splitMarkdownByCallouts, serializeCalloutBlock } from './callout-block'
 import { extractYouTubeVideoId } from '@/lib/youtube-utils'
 import { serializeYoutubeEmbed } from './youtube-embed-block'
+import { serializeBookmark } from './bookmark-block'
+import { extractDomain } from '@/lib/url-metadata'
 import { serializeTaskBlock } from './task-block/task-block-utils'
 import { parseFileBlockMarker, serializeFileBlock, type FileBlockProps } from './file-block-markers'
 
@@ -151,6 +160,11 @@ export async function parseMarkdownPreservingBlanks(
                 type: 'youtubeEmbed' as const,
                 props: { videoId: part.videoId, videoUrl: part.url }
               } as unknown as Block)
+            } else if (part.kind === 'bookmark') {
+              blocks.push({
+                type: 'bookmark' as const,
+                props: { url: part.url, domain: extractDomain(part.url) }
+              } as unknown as Block)
             } else if (part.kind === 'file') {
               blocks.push({
                 type: 'file' as const,
@@ -158,6 +172,9 @@ export async function parseMarkdownPreservingBlanks(
               } as unknown as Block)
             } else {
               const parsed = await parseMarkdownChunkPreservingNesting(editor, part.text)
+              if (part.colors && parsed[0]) {
+                parsed[0].props = { ...parsed[0].props, ...part.colors }
+              }
               blocks.push(...parsed)
             }
           }
@@ -228,6 +245,10 @@ export async function serializeBlocksPreservingBlanks(
       flushGap()
       const videoUrl = (block.props as any).videoUrl as string
       segments.push({ type: 'content', text: serializeYoutubeEmbed(videoUrl) })
+    } else if ((block.type as string) === 'bookmark') {
+      await flushContent()
+      flushGap()
+      segments.push({ type: 'content', text: serializeBookmark((block.props as any).url) })
     } else if ((block.type as string) === 'file') {
       await flushContent()
       flushGap()
@@ -244,6 +265,14 @@ export async function serializeBlocksPreservingBlanks(
     } else if (isEmptyParagraph(block)) {
       await flushContent()
       emptyCount++
+    } else if (hasNonDefaultColors(block.props as BlockColors)) {
+      await flushContent()
+      flushGap()
+      const blockMd = await editor.blocksToMarkdownLossy([block])
+      segments.push({
+        type: 'content',
+        text: `${serializeBlockColorsMarker(block.props as BlockColors)}\n${blockMd.trim()}`
+      })
     } else if (hasMarkerSerializedChildren(block)) {
       await flushContent()
       flushGap()
@@ -269,31 +298,46 @@ export async function serializeBlocksPreservingBlanks(
 }
 
 type EmbedPart =
-  | { kind: 'text'; text: string }
+  | { kind: 'text'; text: string; colors?: BlockColors }
   | { kind: 'embed'; url: string; videoId: string }
+  | { kind: 'bookmark'; url: string }
   | { kind: 'file'; props: FileBlockProps }
 
 const EMBED_LINE_REGEX = /^!\[embed\]\(([^)]+)\)$/
+const BOOKMARK_LINE_REGEX = /^!\[bookmark\]\(([^)]+)\)$/
 const FILE_BLOCK_LINE_REGEX = /^<!-- file:\{[^}]+\} -->$/
 
 function splitByEmbedMarkers(text: string): EmbedPart[] {
   const lines = text.split('\n')
   const parts: EmbedPart[] = []
   let buffer: string[] = []
+  let pendingColors: BlockColors | null = null
 
   const flushBuffer = (): void => {
     if (buffer.length === 0) return
-    parts.push({ kind: 'text', text: buffer.join('\n') })
+    const part: EmbedPart = { kind: 'text', text: buffer.join('\n') }
+    if (pendingColors) part.colors = pendingColors
+    parts.push(part)
     buffer = []
+    pendingColors = null
   }
 
   for (const line of lines) {
     const trimmedLine = line.trim()
+    if (BLOCK_COLORS_LINE_REGEX.test(trimmedLine)) {
+      const colors = parseBlockColorsMarker(trimmedLine)
+      if (colors) {
+        flushBuffer()
+        pendingColors = colors
+        continue
+      }
+    }
     const fileProps = FILE_BLOCK_LINE_REGEX.test(trimmedLine)
       ? parseFileBlockMarker(trimmedLine)
       : null
     if (fileProps) {
       flushBuffer()
+      pendingColors = null
       parts.push({ kind: 'file', props: fileProps })
       continue
     }
@@ -307,6 +351,13 @@ function splitByEmbedMarkers(text: string): EmbedPart[] {
         parts.push({ kind: 'embed', url, videoId })
         continue
       }
+    }
+
+    const bookmarkMatch = line.match(BOOKMARK_LINE_REGEX)
+    if (bookmarkMatch) {
+      flushBuffer()
+      parts.push({ kind: 'bookmark', url: bookmarkMatch[1] })
+      continue
     }
     buffer.push(line)
   }

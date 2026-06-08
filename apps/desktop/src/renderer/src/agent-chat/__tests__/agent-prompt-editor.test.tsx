@@ -70,6 +70,17 @@ describe('AgentPromptEditor', () => {
     expect(onValueChange).toHaveBeenLastCalledWith({ text: '', attachments: [] })
   })
 
+  it('inserts plain text through the imperative handle', async () => {
+    const { ref, onMentionQueryChange } = renderPromptEditor()
+
+    act(() => {
+      ref.current?.insertText('@')
+    })
+
+    expect(ref.current?.getValue()).toEqual({ text: '@', attachments: [] })
+    expect(onMentionQueryChange).toHaveBeenLastCalledWith('')
+  })
+
   it('serializes non-standard mention kinds and dedupes repeated attachments', async () => {
     const { ref, onMentionQueryChange } = renderPromptEditor()
 

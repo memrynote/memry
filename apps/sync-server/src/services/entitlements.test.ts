@@ -5,6 +5,8 @@ import {
   SYNC_PLAN_LIMITS,
   assertFileSizeAllowed,
   assertPaidSyncAccess,
+  ensureLocalAdminPaidSyncAccess,
+  ensureLocalAdminPaidSyncAccessForUser,
   ensureSyncVaultAllowed,
   isPaidSyncEntitlementActive,
   type SyncEntitlement
@@ -131,6 +133,63 @@ describe('sync plan entitlements', () => {
 
     expect(entitlement.plan).toBe('pro')
     expect(entitlement.storage_limit).toBe(10 * GIB)
+  })
+
+  it('grants the local admin email a development Believer entitlement', async () => {
+    const db = {
+      prepare: vi.fn(() => statement())
+    } as unknown as D1Database
+
+    await ensureLocalAdminPaidSyncAccess(db, 'development', 'KAAN@MEMRYNOTE.COM', 'user-1')
+
+    const prepareMock = db.prepare as unknown as ReturnType<typeof vi.fn>
+    const entitlementStatement = prepareMock.mock.results.find(({ value }) =>
+      (value as MockStatement).bind.mock.calls.some((args) => args[1] === 'believer')
+    )!.value as MockStatement
+
+    expect(entitlementStatement.bind.mock.calls[0].slice(0, 8)).toEqual([
+      'user-1',
+      'believer',
+      'active',
+      'dev_seed',
+      SYNC_PLAN_LIMITS.believer.storageLimit,
+      SYNC_PLAN_LIMITS.believer.maxFileSize,
+      SYNC_PLAN_LIMITS.believer.maxVaults,
+      SYNC_PLAN_LIMITS.believer.versionHistoryDays
+    ])
+  })
+
+  it('does not grant the local admin entitlement outside development', async () => {
+    const db = {
+      prepare: vi.fn(() => statement())
+    } as unknown as D1Database
+
+    await ensureLocalAdminPaidSyncAccess(db, 'production', 'kaan@memrynote.com', 'user-1')
+
+    expect(db.prepare).not.toHaveBeenCalled()
+  })
+
+  it('can grant the local admin entitlement from an existing user id', async () => {
+    const userStatement = statement({ email: 'kaan@memrynote.com' })
+    const entitlementStatement = statement()
+    const updateUserStatement = statement()
+    const db = {
+      prepare: vi.fn((sql: string) => {
+        if (sql.includes('SELECT email FROM users')) return userStatement
+        if (sql.includes('INSERT INTO sync_entitlements')) return entitlementStatement
+        return updateUserStatement
+      })
+    } as unknown as D1Database
+
+    await ensureLocalAdminPaidSyncAccessForUser(db, 'development', 'user-1')
+
+    expect(userStatement.bind).toHaveBeenCalledWith('user-1')
+    expect(entitlementStatement.bind.mock.calls[0].slice(0, 4)).toEqual([
+      'user-1',
+      'believer',
+      'active',
+      'dev_seed'
+    ])
   })
 
   it('enforces per-file limits from the active paid plan', async () => {

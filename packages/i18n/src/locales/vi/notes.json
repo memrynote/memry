@@ -123,7 +123,8 @@
       "title": "Dán dưới dạng",
       "url": "URL",
       "mention": "Nhắc đến",
-      "embedVideo": "Nhúng video"
+      "embedVideo": "Nhúng video",
+      "bookmark": "Dấu trang"
     },
     "emoji": {
       "aria": "Trình chọn emoji và biểu tượng",

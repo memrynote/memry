@@ -1,14 +1,40 @@
 import { createInlineContentSpec } from '@blocknote/core'
 
+/**
+ * Markdown persistence token for link mentions. A mention is serialized to
+ * literal text `((mention:<encodeURIComponent(url)>))` so it survives the
+ * markdown round-trip as a single text node (a raw URL would be GFM
+ * auto-linkified and fragmented; an <a> would be claimed by BlockNote's
+ * built-in link mark). Reconstructed on load by normalizeLinkMentions.
+ */
+export const MENTION_TOKEN_REGEX = /\(\(mention:([^)\s]+)\)\)/g
+
+export function serializeLinkMentionToken(url: string): string {
+  // encodeURIComponent leaves `(` and `)` raw, which would break the `))`
+  // delimiter for URLs containing parens — escape them explicitly.
+  const encoded = encodeURIComponent(url).replace(/\(/g, '%28').replace(/\)/g, '%29')
+  return `((mention:${encoded}))`
+}
+
+export function parseLinkMentionToken(encoded: string): string | null {
+  try {
+    const url = decodeURIComponent(encoded)
+    return url || null
+  } catch {
+    return null
+  }
+}
+
 export function createLinkMentionContent(
   url: string,
   domain: string,
   title?: string,
-  favicon?: string
+  favicon?: string,
+  siteName?: string
 ) {
   return {
     type: 'linkMention' as const,
-    props: { url, domain, title: title ?? '', favicon: favicon ?? '' }
+    props: { url, domain, title: title ?? '', favicon: favicon ?? '', siteName: siteName ?? '' }
   }
 }
 
@@ -19,13 +45,15 @@ export const LinkMention = createInlineContentSpec(
       url: { default: '' },
       domain: { default: '' },
       title: { default: '' },
-      favicon: { default: '' }
+      favicon: { default: '' },
+      siteName: { default: '' }
     },
     content: 'none'
   },
   {
     render: (inlineContent) => {
-      const { url, domain, title, favicon } = inlineContent.props
+      const { url, domain, title, favicon, siteName } = inlineContent.props
+      const siteLabel = siteName || domain || url
 
       const dom = document.createElement('a')
       dom.className = 'link-mention'
@@ -37,14 +65,13 @@ export const LinkMention = createInlineContentSpec(
       dom.setAttribute('data-domain', domain)
       dom.setAttribute('data-title', title)
       dom.setAttribute('data-favicon', favicon)
+      dom.setAttribute('data-site-name', siteName)
       dom.setAttribute('contenteditable', 'false')
 
       if (favicon) {
         const img = document.createElement('img')
         img.className = 'link-mention-favicon'
         img.src = favicon
-        img.width = 14
-        img.height = 14
         img.alt = ''
         img.onerror = () => {
           img.style.display = 'none'
@@ -52,16 +79,12 @@ export const LinkMention = createInlineContentSpec(
         dom.appendChild(img)
       }
 
-      const domainSpan = document.createElement('span')
-      domainSpan.textContent = domain || url
-      dom.appendChild(domainSpan)
+      const siteSpan = document.createElement('span')
+      siteSpan.className = 'link-mention-site'
+      siteSpan.textContent = siteLabel
+      dom.appendChild(siteSpan)
 
       if (title) {
-        const sep = document.createElement('span')
-        sep.className = 'link-mention-sep'
-        sep.textContent = ' \u00B7 '
-        dom.appendChild(sep)
-
         const titleSpan = document.createElement('span')
         titleSpan.className = 'link-mention-title'
         titleSpan.textContent = title
@@ -77,28 +100,20 @@ export const LinkMention = createInlineContentSpec(
         const domain = element.getAttribute('data-domain') || ''
         const title = element.getAttribute('data-title') || ''
         const favicon = element.getAttribute('data-favicon') || ''
+        const siteName = element.getAttribute('data-site-name') || ''
         if (!url) return undefined
-        return { url, domain, title, favicon }
-      }
-
-      if (element.tagName === 'A' && element.getAttribute('title') === 'mention') {
-        const url = (element as HTMLAnchorElement).href || ''
-        const text = element.textContent || ''
-        const parts = text.split(' \u00B7 ')
-        return { url, domain: parts[0] || '', title: parts[1] || '', favicon: '' }
+        return { url, domain, title, favicon, siteName }
       }
 
       return undefined
     },
 
     toExternalHTML: (inlineContent) => {
-      const { url, domain, title } = inlineContent.props
-      const text = title ? `${domain} \u00B7 ${title}` : domain || url
-
-      const dom = document.createElement('a')
-      dom.href = url
-      dom.title = 'mention'
-      dom.textContent = text
+      // Emit the markdown persistence token as plain text (not an <a>, which
+      // BlockNote's link mark would reclaim on reload). normalizeLinkMentions
+      // rebuilds the rich inline content from this token on load.
+      const dom = document.createElement('span')
+      dom.textContent = serializeLinkMentionToken(inlineContent.props.url)
       return { dom }
     }
   }

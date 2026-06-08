@@ -4,6 +4,7 @@ export interface UrlPreviewData {
   favicon?: string
   image?: string
   description?: string
+  siteName?: string
 }
 
 export function extractDomain(url: string): string {

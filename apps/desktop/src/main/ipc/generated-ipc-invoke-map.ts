@@ -120,7 +120,7 @@ export interface MainIpcInvokeHandlers {
   "inbox:list": (...args: [any]) => Awaited<Promise<import("../../../../../packages/contracts/src/inbox-api").InboxListResponse>>
   "inbox:list-archived": (...args: [any]) => Awaited<Promise<import("../../../../../packages/contracts/src/inbox-api").ArchivedListResponse>>
   "inbox:mark-viewed": (...args: [any]) => Awaited<Promise<{ success: boolean; error?: string | undefined; }>>
-  "inbox:preview-link": (...args: [string]) => Awaited<Promise<{ title: string; domain: string; favicon: string | undefined; image: string | undefined; description: string | undefined; } | { title: string; domain: string; favicon?: undefined; image?: undefined; description?: undefined; }>>
+  "inbox:preview-link": (...args: [string]) => Awaited<Promise<{ title: string; domain: string; favicon: string | undefined; image: string | undefined; description: string | undefined; siteName: string | undefined; } | { title: string; domain: string; favicon?: undefined; image?: undefined; description?: undefined; siteName?: undefined; }>>
   "inbox:remove-tag": (...args: [any, any]) => Awaited<Promise<{ success: boolean; error?: string | undefined; }>>
   "inbox:retry-metadata": (...args: [any]) => Awaited<Promise<{ success: boolean; error?: string | undefined; }>>
   "inbox:retry-transcription": (...args: [any]) => Awaited<Promise<{ success: boolean; error?: string | undefined; }>>

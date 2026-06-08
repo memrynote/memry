@@ -213,6 +213,42 @@ describe('crdt writeback', () => {
     })
   })
 
+  it('serializes CriticMarkup marks from the Y.Doc during existing note writeback', async () => {
+    const markdown = 'updated markdown added deleted'
+    const doc = makeDoc('Yjs title')
+    doc.getArray('criticMarkupMarks').push([
+      {
+        id: 'add-1',
+        kind: 'addition',
+        visibleText: 'added',
+        start: markdown.indexOf('added'),
+        end: markdown.indexOf('added') + 'added'.length
+      },
+      {
+        id: 'del-1',
+        kind: 'deletion',
+        visibleText: 'deleted',
+        originalText: 'deleted',
+        start: markdown.indexOf('deleted'),
+        end: markdown.indexOf('deleted') + 'deleted'.length
+      }
+    ])
+    mocks.yDocToMarkdown.mockResolvedValueOnce(markdown)
+
+    scheduleWriteback('note-1', doc)
+    await vi.advanceTimersByTimeAsync(500)
+
+    expect(mocks.atomicWrite).toHaveBeenCalledWith(
+      '/vault/notes/Existing.md',
+      expect.stringContaining('updated markdown {++added++} {--deleted--}')
+    )
+    expect(mocks.syncNoteToCache).toHaveBeenCalledWith(
+      { kind: 'index-db' },
+      expect.objectContaining({ parsedContent: 'updated markdown {++added++} {--deleted--}' }),
+      { isNew: false }
+    )
+  })
+
   it('creates a new markdown note when cache has no path for the synced id', async () => {
     mocks.getNoteCacheById.mockReturnValue(undefined)
 

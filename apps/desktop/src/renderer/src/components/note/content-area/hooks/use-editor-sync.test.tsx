@@ -3,6 +3,31 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useEditorSync } from './use-editor-sync'
 import { fetchLinkPreview } from '@/lib/url-metadata'
 
+const blockNoteMocks = vi.hoisted(() => ({
+  removeAndInsertBlocks: vi.fn((tr: any, blocksToRemove: any[], blocksToInsert: any[]) => {
+    tr.__nextBlocks = blocksToInsert
+    return { insertedBlocks: blocksToInsert, removedBlocks: blocksToRemove }
+  })
+}))
+
+const yUndoMocks = vi.hoisted(() => ({
+  getState: vi.fn()
+}))
+
+vi.mock('@blocknote/core', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@blocknote/core')>()
+  return {
+    ...actual,
+    removeAndInsertBlocks: blockNoteMocks.removeAndInsertBlocks
+  }
+})
+
+vi.mock('y-prosemirror', () => ({
+  yUndoPluginKey: {
+    getState: yUndoMocks.getState
+  }
+}))
+
 vi.mock('@/lib/url-metadata', () => ({
   fetchLinkPreview: vi.fn().mockResolvedValue({
     domain: 'example.com',
@@ -13,11 +38,22 @@ vi.mock('@/lib/url-metadata', () => ({
 
 function createEditor(parsedBlocks: any[] = []) {
   let document = [{ id: 'initial', type: 'paragraph', props: {}, content: [], children: [] }]
+  const transact = vi.fn((callback: (tr: any) => unknown) => {
+    const tr = {
+      setMeta: vi.fn().mockReturnThis()
+    }
+    const result = callback(tr)
+    if (Array.isArray(tr.__nextBlocks)) {
+      document = tr.__nextBlocks
+    }
+    return result
+  })
 
   return {
     get document() {
       return document
     },
+    transact,
     replaceBlocks: vi.fn((_current: any[], next: any[]) => {
       document = next
     }),
@@ -27,7 +63,10 @@ function createEditor(parsedBlocks: any[] = []) {
     updateBlock: vi.fn((block: any, update: any) => {
       if ('content' in update) block.content = update.content
       if ('props' in update) block.props = { ...block.props, ...update.props }
-    })
+    }),
+    _tiptapEditor: {
+      state: {}
+    }
   }
 }
 
@@ -44,9 +83,67 @@ function collectIds(blocks: any[]): string[] {
 
 afterEach(() => {
   vi.useRealTimers()
+  blockNoteMocks.removeAndInsertBlocks.mockClear()
+  yUndoMocks.getState.mockReset()
 })
 
 describe('useEditorSync', () => {
+  it('loads initial markdown content without adding an editor undo history entry', async () => {
+    const editor = createEditor([
+      {
+        id: 'paragraph-1',
+        type: 'paragraph',
+        props: {},
+        content: ['Body'],
+        children: []
+      }
+    ])
+
+    renderHook(() =>
+      useEditorSync({
+        editor,
+        initialContent: 'Body',
+        contentType: 'markdown'
+      })
+    )
+
+    await waitFor(() => expect(blockNoteMocks.removeAndInsertBlocks).toHaveBeenCalled())
+
+    const tr = blockNoteMocks.removeAndInsertBlocks.mock.calls[0][0]
+    expect(editor.transact).toHaveBeenCalled()
+    expect(tr.setMeta).toHaveBeenCalledWith('addToHistory', false)
+    expect(editor.replaceBlocks).not.toHaveBeenCalled()
+    expect(editor.document).toEqual([
+      {
+        id: 'paragraph-1',
+        type: 'paragraph',
+        props: {},
+        content: ['Body'],
+        children: []
+      }
+    ])
+  })
+
+  it('clears Yjs undo history when collaboration content becomes ready', async () => {
+    const undoManager = {
+      clear: vi.fn(),
+      stopCapturing: vi.fn()
+    }
+    yUndoMocks.getState.mockReturnValue({ undoManager })
+
+    const editor = createEditor()
+
+    renderHook(() =>
+      useEditorSync({
+        editor,
+        yjsFragment: {} as never
+      })
+    )
+
+    await waitFor(() => expect(undoManager.clear).toHaveBeenCalledWith(true, true))
+    expect(undoManager.stopCapturing).toHaveBeenCalled()
+  })
+
   it('hydrates link mentions without crashing on non-array block content', async () => {
     const nestedMention = {
       id: 'nested-mention',
@@ -150,9 +247,9 @@ describe('useEditorSync', () => {
       })
     )
 
-    await waitFor(() => expect(editor.replaceBlocks).toHaveBeenCalled())
+    await waitFor(() => expect(blockNoteMocks.removeAndInsertBlocks).toHaveBeenCalled())
 
-    const [, nextBlocks] = editor.replaceBlocks.mock.calls[0]
+    const [, , nextBlocks] = blockNoteMocks.removeAndInsertBlocks.mock.calls[0]
     expect(collectIds(nextBlocks)).not.toContain('')
   })
 

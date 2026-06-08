@@ -310,6 +310,51 @@ describe('note and sidebar cold surfaces', () => {
     expect(marqueeRef).toHaveBeenCalled()
   })
 
+  it('hangs the comment rail off the centered content column', () => {
+    const { container } = render(
+      <NoteLayout
+        headings={[]}
+        breadcrumb={<span>Breadcrumb</span>}
+        sideRail={<aside>Comment rail</aside>}
+        contentWidth="640px"
+      >
+        <article>Note body</article>
+      </NoteLayout>
+    )
+
+    const canvas = container.querySelector('[data-note-layout-canvas]')
+    const main = container.querySelector('[data-note-layout-main]')
+    const rail = container.querySelector('[data-note-layout-rail]')
+
+    expect(canvas).toHaveClass('px-24')
+    expect(canvas).toHaveStyle({ maxWidth: 'calc(640px + 12rem)' })
+    expect(main).toHaveClass('review-canvas')
+    expect(main).toContainElement(screen.getByText('Note body'))
+    expect(rail).toContainElement(screen.getByText('Comment rail'))
+    expect(rail).toHaveClass('review-canvas-rail')
+  })
+
+  it('reserves a grid rail column in full width mode', () => {
+    const { container } = render(
+      <NoteLayout
+        headings={[]}
+        breadcrumb={<span>Breadcrumb</span>}
+        sideRail={<aside>Comment rail</aside>}
+        fullWidth
+      >
+        <article>Note body</article>
+      </NoteLayout>
+    )
+
+    const canvas = container.querySelector('[data-note-layout-canvas]')
+    const rail = container.querySelector('[data-note-layout-rail]')
+
+    expect(canvas).toHaveClass('grid')
+    expect(canvas).toHaveStyle({ maxWidth: '100%' })
+    expect(rail).toContainElement(screen.getByText('Comment rail'))
+    expect(rail).toHaveClass('max-[920px]:hidden')
+  })
+
   it('renders project empty, skeleton, and sortable drop/edit states', async () => {
     const user = userEvent.setup()
     const onCreateProject = vi.fn()

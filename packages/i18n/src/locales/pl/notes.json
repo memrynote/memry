@@ -123,7 +123,8 @@
       "title": "Wklej jako",
       "url": "Adres URL",
       "mention": "Wspomnij",
-      "embedVideo": "Osadź wideo"
+      "embedVideo": "Osadź wideo",
+      "bookmark": "Zakładka"
     },
     "emoji": {
       "aria": "Wybór emoji i ikon",

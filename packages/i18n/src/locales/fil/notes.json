@@ -123,7 +123,8 @@
       "title": "Idikit bilang",
       "url": "URL",
       "mention": "Banggitin",
-      "embedVideo": "I-embed ang video"
+      "embedVideo": "I-embed ang video",
+      "bookmark": "Bookmark"
     },
     "emoji": {
       "aria": "Emoji at tagapili ng icon",

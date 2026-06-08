@@ -123,7 +123,8 @@
       "title": "Zalijepi kao",
       "url": "URL",
       "mention": "Spomenuti",
-      "embedVideo": "Ugradi video"
+      "embedVideo": "Ugradi video",
+      "bookmark": "Oznaka"
     },
     "emoji": {
       "aria": "Emojiji i birač ikona",

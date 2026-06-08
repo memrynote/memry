@@ -123,7 +123,8 @@
       "title": "Pegar como",
       "url": "URL",
       "mention": "Mención",
-      "embedVideo": "Insertar vídeo"
+      "embedVideo": "Insertar vídeo",
+      "bookmark": "Marcador"
     },
     "emoji": {
       "aria": "Selector de iconos y emojis",

@@ -109,6 +109,85 @@ describe('blocknote-converter code block language', () => {
     expect(result).toContain('\n\n\n\n')
   })
 
+  it('applies block color markers when parsing markdown to blocks', async () => {
+    // #given
+    const markdown = 'Plain intro\n<!-- colors:{"textColor":"red"} -->\nColored line'
+
+    // #when
+    const blocks = await markdownToBlocks(markdown)
+
+    // #then
+    expect(blocks).not.toBeNull()
+    const texts = blocks!.map((b) =>
+      ((b.content as Array<{ text?: string }>) ?? []).map((c) => c.text).join('')
+    )
+    expect(texts).toEqual(['Plain intro', 'Colored line'])
+    expect((blocks![0].props as { textColor: string }).textColor).toBe('default')
+    expect((blocks![1].props as { textColor: string }).textColor).toBe('red')
+  })
+
+  it('round-trips block colors through markdown → Yjs → markdown', async () => {
+    // #given
+    const markdown =
+      'Plain intro\n<!-- colors:{"textColor":"red","backgroundColor":"yellow"} -->\nColored line'
+    const doc = new Y.Doc()
+    const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    const { markdownToYFragment } = await import('./blocknote-converter')
+
+    // #when
+    const ok = await markdownToYFragment(markdown, fragment)
+    const result = await yDocToMarkdown(doc)
+
+    // #then
+    expect(ok).toBe(true)
+    expect(result).toContain('Plain intro')
+    expect(result).toContain(
+      '<!-- colors:{"textColor":"red","backgroundColor":"yellow"} -->\nColored line'
+    )
+  })
+
+  it('keeps list item content when a middle item is colored', async () => {
+    // #given
+    const markdown = '- one\n<!-- colors:{"backgroundColor":"blue"} -->\n- two\n- three'
+    const doc = new Y.Doc()
+    const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    const { markdownToYFragment } = await import('./blocknote-converter')
+
+    // #when
+    const ok = await markdownToYFragment(markdown, fragment)
+    const result = await yDocToMarkdown(doc)
+
+    // #then
+    expect(ok).toBe(true)
+    expect(result).toContain('one')
+    expect(result).toContain('two')
+    expect(result).toContain('three')
+    expect(result).toContain('<!-- colors:{"backgroundColor":"blue"} -->')
+  })
+
+  it('seeds CriticMarkup as plain Yjs content with review marks metadata', async () => {
+    // #given
+    const markdown = 'Keep {--deleted--} and {++added++}'
+    const doc = new Y.Doc()
+    const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    const { markdownToYFragment } = await import('./blocknote-converter')
+
+    // #when
+    const ok = await markdownToYFragment(markdown, fragment)
+    const result = await yDocToMarkdown(doc)
+    const marks = doc.getArray('criticMarkupMarks').toArray()
+
+    // #then
+    expect(ok).toBe(true)
+    expect(result?.trimEnd()).toBe('Keep deleted and added')
+    expect(result).not.toContain('{--')
+    expect(result).not.toContain('{++')
+    expect(marks).toEqual([
+      expect.objectContaining({ kind: 'deletion', visibleText: 'deleted', start: 5, end: 12 }),
+      expect.objectContaining({ kind: 'addition', visibleText: 'added', start: 17, end: 22 })
+    ])
+  })
+
   it('preserves nested paragraph indentation through markdown writeback', async () => {
     const doc = new Y.Doc()
     const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)

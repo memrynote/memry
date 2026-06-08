@@ -32,6 +32,7 @@ interface UseBlockMarqueeSelectionOptions {
   /** The outer wrapper element that owns the listener and the overlay coordinate space. */
   triggerContainerEl: HTMLDivElement | null
   enabled?: boolean
+  onDeleteSelectedBlocks?: (ids: string[]) => boolean
 }
 
 interface UseBlockMarqueeSelectionReturn {
@@ -85,7 +86,8 @@ export function useBlockMarqueeSelection({
   editor,
   blockContainerRef,
   triggerContainerEl,
-  enabled = true
+  enabled = true,
+  onDeleteSelectedBlocks
 }: UseBlockMarqueeSelectionOptions): UseBlockMarqueeSelectionReturn {
   const [marqueeRect, setMarqueeRect] = useState<MarqueeRect | null>(null)
   const [highlightRects, setHighlightRects] = useState<ReadonlyArray<BlockHighlightRect>>([])
@@ -457,6 +459,10 @@ export function useBlockMarqueeSelection({
         if (ids.length === 0) return
         event.preventDefault()
         event.stopPropagation()
+        if (onDeleteSelectedBlocks?.(ids)) {
+          clearSelection()
+          return
+        }
         try {
           editor.removeBlocks(ids)
         } catch (err) {
@@ -467,7 +473,7 @@ export function useBlockMarqueeSelection({
     }
     document.addEventListener('keydown', onKeyDown, true)
     return () => document.removeEventListener('keydown', onKeyDown, true)
-  }, [clearSelection, editor, indentSelectedBlocks, outdentSelectedBlocks])
+  }, [clearSelection, editor, indentSelectedBlocks, onDeleteSelectedBlocks, outdentSelectedBlocks])
 
   useEffect(() => {
     const onMouseDown = (event: globalThis.MouseEvent): void => {

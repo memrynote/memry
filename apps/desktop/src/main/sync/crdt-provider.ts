@@ -15,6 +15,7 @@ import { parseNote } from '../vault/frontmatter'
 import { markdownToYFragment } from './blocknote-converter'
 import { compactYDoc } from './crdt-compact-utils'
 import { isBinaryFileType } from '@memry/shared/file-types'
+import { CRITIC_MARKUP_MARKS_ARRAY } from '@memry/shared'
 
 const log = createLogger('CrdtProvider')
 
@@ -424,6 +425,7 @@ export class CrdtProvider {
     doc.getXmlFragment(CRDT_FRAGMENT_NAME)
     doc.getMap('meta')
     doc.getArray('tags')
+    doc.getArray(CRITIC_MARKUP_MARKS_ARRAY)
   }
 
   private async seedFromMarkdown(noteId: string, doc: Y.Doc): Promise<void> {
