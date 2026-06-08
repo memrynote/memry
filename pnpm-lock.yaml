@@ -978,7 +978,7 @@ importers:
         specifier: workspace:*
         version: link:../contracts
       i18next:
-        specifier: ^23.16.0
+        specifier: ^23.16.8
         version: 23.16.8
       i18next-icu:
         specifier: ^2.3.0

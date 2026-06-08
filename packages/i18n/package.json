@@ -20,7 +20,7 @@
   },
   "dependencies": {
     "@memry/contracts": "workspace:*",
-    "i18next": "^23.16.0",
+    "i18next": "^23.16.8",
     "react-i18next": "^15.4.0",
     "i18next-icu": "^2.3.0",
     "i18next-resources-to-backend": "^1.2.1",
