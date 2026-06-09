@@ -38,7 +38,13 @@ import { createLogger } from '../lib/logger'
 
 import { getFromServer, postToServer, SyncServerError } from './http-client'
 import { withRetry } from './retry'
-import { collectVaultTransfer, decryptVaultTransfer, encryptVaultTransfer } from './vault-transfer'
+import {
+  buildVaultTransfer,
+  collectVaultTransfer,
+  decryptVaultTransfer,
+  encryptVaultTransfer,
+  type ServerVaultSummary
+} from './vault-transfer'
 import { adoptVaultLocally } from './vault-adoption'
 
 const log = createLogger('DeviceLinking')
@@ -559,8 +565,22 @@ export const approveDeviceLinking = async (
         })
       : null
 
+    let transfer
+    try {
+      const { vaults } = await getFromServer<{ vaults: ServerVaultSummary[] }>(
+        '/sync/vaults',
+        accessToken
+      )
+      transfer =
+        vaults.length > 0 ? buildVaultTransfer(vaults) : collectVaultTransfer(getDatabase())
+    } catch (err) {
+      log.warn('Could not enumerate account vaults; falling back to current vault', {
+        error: err instanceof Error ? err.message : 'unknown'
+      })
+      transfer = collectVaultTransfer(getDatabase())
+    }
     const vaultTransfer = encryptVaultTransfer({
-      transfer: collectVaultTransfer(getDatabase()),
+      transfer,
       sessionId,
       encKey,
       macKey

@@ -45,6 +45,24 @@ export function collectVaultTransfer(db: DataDb): VaultTransfer {
   }
 }
 
+export interface ServerVaultSummary {
+  vaultUuid: string
+  itemCount?: number
+  createdAt?: number | null
+}
+
+/** Phase 2: build a transfer from the account's full server vault list. */
+export function buildVaultTransfer(vaults: ServerVaultSummary[]): VaultTransfer {
+  return {
+    version: VAULT_TRANSFER_VERSION,
+    vaults: vaults.map((v) => ({
+      vaultUuid: v.vaultUuid,
+      ...(v.itemCount !== undefined && { itemCount: v.itemCount }),
+      ...(v.createdAt != null && { createdAt: v.createdAt })
+    }))
+  }
+}
+
 export function encryptVaultTransfer(input: {
   transfer: VaultTransfer
   sessionId: string

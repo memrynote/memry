@@ -1,7 +1,12 @@
 import { describe, it, expect, beforeAll } from 'vitest'
 import sodium from 'libsodium-wrappers-sumo'
 
-import { encryptVaultTransfer, decryptVaultTransfer, type VaultTransfer } from './vault-transfer'
+import {
+  buildVaultTransfer,
+  encryptVaultTransfer,
+  decryptVaultTransfer,
+  type VaultTransfer
+} from './vault-transfer'
 
 const SESSION = '11111111-1111-1111-1111-111111111111'
 const transfer: VaultTransfer = {
@@ -24,6 +29,20 @@ describe('vault-transfer', () => {
     const enc = encryptVaultTransfer({ transfer, sessionId: SESSION, encKey, macKey })
     const out = decryptVaultTransfer({ ...enc, sessionId: SESSION, encKey, macKey })
     expect(out).toEqual(transfer)
+  })
+
+  it('builds a transfer from a server vault list', () => {
+    const t = buildVaultTransfer([
+      { vaultUuid: 'v-a', itemCount: 367, createdAt: 1000 },
+      { vaultUuid: 'v-b', itemCount: 4, createdAt: 2000 }
+    ])
+    expect(t).toEqual({
+      version: 1,
+      vaults: [
+        { vaultUuid: 'v-a', itemCount: 367, createdAt: 1000 },
+        { vaultUuid: 'v-b', itemCount: 4, createdAt: 2000 }
+      ]
+    })
   })
 
   it('rejects a tampered confirm', () => {
