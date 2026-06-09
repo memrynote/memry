@@ -325,7 +325,15 @@
       "rdquoFromList": "rdquo; aus der Liste?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Dieser Tresor wird aus der App entfernt, Ihre Dateien bleiben jedoch auf der Festplatte. Sie können es später jederzeit erneut hinzufügen.",
       "cancel": "Abbrechen",
-      "remove2": "Entfernen"
+      "remove2": "Entfernen",
+      "inYourAccount": "In deinem Konto",
+      "itemsCount": "{{count}} Elemente",
+      "untitledVault": "Tresor",
+      "downloadVaultTitle": "„{{name}}“ herunterladen",
+      "downloadLocation": "Speicherort",
+      "changeLocation": "Ändern…",
+      "download": "Herunterladen",
+      "downloadFailed": "Der Tresor konnte nicht heruntergeladen werden"
     },
     "componentsWindowControls": {
       "searchK": "Suche (⌘K)",

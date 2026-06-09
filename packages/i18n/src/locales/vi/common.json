@@ -325,7 +325,15 @@
       "rdquoFromList": "rdquo; từ danh sách?  ",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "  \nKho lưu trữ này sẽ bị xóa khỏi ứng dụng, nhưng các tệp của bạn sẽ vẫn còn trên ổ đĩa. Bạn luôn có thể thêm lại sau.  ",
       "cancel": "Hủy",
-      "remove2": "Gỡ bỏ"
+      "remove2": "Gỡ bỏ",
+      "inYourAccount": "Trong tài khoản của bạn",
+      "itemsCount": "{{count}} mục",
+      "untitledVault": "Két",
+      "downloadVaultTitle": "Tải xuống “{{name}}”",
+      "downloadLocation": "Vị trí",
+      "changeLocation": "Thay đổi…",
+      "download": "Tải xuống",
+      "downloadFailed": "Không thể tải xuống két"
     },
     "componentsWindowControls": {
       "searchK": "  \nTìm kiếm (⌘K)  ",

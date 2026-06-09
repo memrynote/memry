@@ -325,7 +325,15 @@
       "rdquoFromList": "rdquo ; de la liste ?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Ce coffre-fort sera supprimé de l'application, mais vos fichiers resteront sur le disque. Vous pourrez toujours le rajouter plus tard.",
       "cancel": "Annuler",
-      "remove2": "Supprimer"
+      "remove2": "Supprimer",
+      "inYourAccount": "Dans votre compte",
+      "itemsCount": "{{count}} éléments",
+      "untitledVault": "Coffre",
+      "downloadVaultTitle": "Télécharger « {{name}} »",
+      "downloadLocation": "Emplacement",
+      "changeLocation": "Modifier…",
+      "download": "Télécharger",
+      "downloadFailed": "Impossible de télécharger le coffre"
     },
     "componentsWindowControls": {
       "searchK": "Rechercher (⌘K)",

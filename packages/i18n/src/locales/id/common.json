@@ -325,7 +325,15 @@
       "rdquoFromList": "benar; dari daftar?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Vault ini akan dihapus dari aplikasi, namun file Anda akan tetap ada di disk. Anda selalu dapat menambahkannya kembali nanti.",
       "cancel": "Batalkan",
-      "remove2": "Hapus"
+      "remove2": "Hapus",
+      "inYourAccount": "Di akun Anda",
+      "itemsCount": "{{count}} item",
+      "untitledVault": "Brankas",
+      "downloadVaultTitle": "Unduh “{{name}}”",
+      "downloadLocation": "Lokasi",
+      "changeLocation": "Ubah…",
+      "download": "Unduh",
+      "downloadFailed": "Brankas tidak dapat diunduh"
     },
     "componentsWindowControls": {
       "searchK": "Pencarian (⌘K)",

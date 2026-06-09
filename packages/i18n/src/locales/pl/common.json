@@ -325,7 +325,15 @@
       "rdquoFromList": "nieważne; z listy?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Ten skarbiec zostanie usunięty z aplikacji, ale Twoje pliki pozostaną na dysku. Zawsze możesz dodać go ponownie później.",
       "cancel": "Anuluj",
-      "remove2": "Usuń"
+      "remove2": "Usuń",
+      "inYourAccount": "Na Twoim koncie",
+      "itemsCount": "{{count}} elementy",
+      "untitledVault": "Sejf",
+      "downloadVaultTitle": "Pobierz „{{name}}”",
+      "downloadLocation": "Lokalizacja",
+      "changeLocation": "Zmień…",
+      "download": "Pobierz",
+      "downloadFailed": "Nie udało się pobrać sejfu"
     },
     "componentsWindowControls": {
       "searchK": "Szukaj (⌘K)",

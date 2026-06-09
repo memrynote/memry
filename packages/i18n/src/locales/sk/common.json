@@ -325,7 +325,15 @@
       "rdquoFromList": "rdquo; zo zoznamu?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Tento trezor bude odstránený z aplikácie, ale vaše súbory zostanú na disku. Vždy ho môžete neskôr znova pridať.",
       "cancel": "Zrušiť",
-      "remove2": "Odstrániť"
+      "remove2": "Odstrániť",
+      "inYourAccount": "Vo vašom účte",
+      "itemsCount": "{{count}} položiek",
+      "untitledVault": "Trezor",
+      "downloadVaultTitle": "Stiahnuť „{{name}}“",
+      "downloadLocation": "Umiestnenie",
+      "changeLocation": "Zmeniť…",
+      "download": "Stiahnuť",
+      "downloadFailed": "Trezor sa nepodarilo stiahnuť"
     },
     "componentsWindowControls": {
       "searchK": "Vyhľadávanie (⌘K)",

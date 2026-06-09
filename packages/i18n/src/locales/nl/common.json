@@ -325,7 +325,15 @@
       "rdquoFromList": "rdquo; uit de lijst?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Deze kluis wordt uit de app verwijderd, maar uw bestanden blijven op schijf staan. Je kunt het later altijd opnieuw toevoegen.",
       "cancel": "Annuleer",
-      "remove2": "Verwijderen"
+      "remove2": "Verwijderen",
+      "inYourAccount": "In je account",
+      "itemsCount": "{{count}} items",
+      "untitledVault": "Kluis",
+      "downloadVaultTitle": "“{{name}}” downloaden",
+      "downloadLocation": "Locatie",
+      "changeLocation": "Wijzigen…",
+      "download": "Downloaden",
+      "downloadFailed": "De kluis kon niet worden gedownload"
     },
     "componentsWindowControls": {
       "searchK": "Zoeken (⌘K)",

@@ -325,7 +325,15 @@
       "rdquoFromList": "ردقوو]؛ من القائمة؟",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "ستتم إزالة هذا المخزن من التطبيق، لكن ملفاتك ستبقى على القرص. ويمكنك دائمًا إعادة إضافته لاحقًا.",
       "cancel": "إلغاء",
-      "remove2": "إزالة"
+      "remove2": "إزالة",
+      "inYourAccount": "في حسابك",
+      "itemsCount": "{{count}} عنصر",
+      "untitledVault": "خزنة",
+      "downloadVaultTitle": "تنزيل “{{name}}”",
+      "downloadLocation": "الموقع",
+      "changeLocation": "تغيير…",
+      "download": "تنزيل",
+      "downloadFailed": "تعذر تنزيل الخزنة"
     },
     "componentsWindowControls": {
       "searchK": "بحث (⌘K)",

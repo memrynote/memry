@@ -325,7 +325,15 @@
       "rdquoFromList": "rdquo; de la lista?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Esta bóveda se eliminará de la aplicación, pero sus archivos permanecerán en el disco. Siempre puedes volver a agregarlo más tarde.",
       "cancel": "Cancelar",
-      "remove2": "Quitar"
+      "remove2": "Quitar",
+      "inYourAccount": "En tu cuenta",
+      "itemsCount": "{{count}} elementos",
+      "untitledVault": "Bóveda",
+      "downloadVaultTitle": "Descargar “{{name}}”",
+      "downloadLocation": "Ubicación",
+      "changeLocation": "Cambiar…",
+      "download": "Descargar",
+      "downloadFailed": "No se pudo descargar la bóveda"
     },
     "componentsWindowControls": {
       "searchK": "Buscar (⌘K)",

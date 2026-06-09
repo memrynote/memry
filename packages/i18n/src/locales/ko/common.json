@@ -325,7 +325,15 @@
       "rdquoFromList": "rdquo; 목록에서?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "이 저장소는 앱에서 제거되지만 파일은 디스크에 남아 있습니다. 나중에 언제든지 다시 추가할 수 있습니다.",
       "cancel": "취소",
-      "remove2": "제거"
+      "remove2": "제거",
+      "inYourAccount": "내 계정의 보관함",
+      "itemsCount": "{{count}}개 항목",
+      "untitledVault": "보관함",
+      "downloadVaultTitle": "“{{name}}” 다운로드",
+      "downloadLocation": "위치",
+      "changeLocation": "변경…",
+      "download": "다운로드",
+      "downloadFailed": "보관함을 다운로드하지 못했습니다"
     },
     "componentsWindowControls": {
       "searchK": "검색(⌘K)",

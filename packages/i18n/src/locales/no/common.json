@@ -325,7 +325,15 @@
       "rdquoFromList": "rdquo; fra listen?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Dette hvelvet vil bli fjernet fra appen, men filene dine forblir på disken. Du kan alltid legge den til på nytt senere.",
       "cancel": "Avbryt",
-      "remove2": "Fjern"
+      "remove2": "Fjern",
+      "inYourAccount": "På kontoen din",
+      "itemsCount": "{{count}} elementer",
+      "untitledVault": "Hvelv",
+      "downloadVaultTitle": "Last ned “{{name}}”",
+      "downloadLocation": "Plassering",
+      "changeLocation": "Endre…",
+      "download": "Last ned",
+      "downloadFailed": "Hvelvet kunne ikke lastes ned"
     },
     "componentsWindowControls": {
       "searchK": "Søk (⌘K)",

@@ -325,7 +325,15 @@
       "rdquoFromList": "rdquo; från listan?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Detta valv kommer att tas bort från appen, men dina filer kommer att finnas kvar på disken. Du kan alltid lägga till det igen senare.",
       "cancel": "Avbryt",
-      "remove2": "Ta bort"
+      "remove2": "Ta bort",
+      "inYourAccount": "På ditt konto",
+      "itemsCount": "{{count}} objekt",
+      "untitledVault": "Valv",
+      "downloadVaultTitle": "Ladda ner ”{{name}}”",
+      "downloadLocation": "Plats",
+      "changeLocation": "Ändra…",
+      "download": "Ladda ner",
+      "downloadFailed": "Valvet kunde inte laddas ner"
     },
     "componentsWindowControls": {
       "searchK": "Sök (⌘K)",

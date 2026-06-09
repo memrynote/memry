@@ -325,7 +325,15 @@
       "rdquoFromList": "rdquo; listából?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Ezt a tárolót eltávolítjuk az alkalmazásból, de a fájlok a lemezen maradnak. Később bármikor újra hozzáadhatja.",
       "cancel": "Mégsem",
-      "remove2": "Távolítsa el"
+      "remove2": "Távolítsa el",
+      "inYourAccount": "A fiókodban",
+      "itemsCount": "{{count}} elem",
+      "untitledVault": "Széf",
+      "downloadVaultTitle": "„{{name}}” letöltése",
+      "downloadLocation": "Hely",
+      "changeLocation": "Módosítás…",
+      "download": "Letöltés",
+      "downloadFailed": "A széfet nem sikerült letölteni"
     },
     "componentsWindowControls": {
       "searchK": "Keresés (⌘K)",

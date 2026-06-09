@@ -1,4 +1,5 @@
 import type {
+  AccountVaultInfo,
   VaultClientAPI,
   VaultStatus,
   VaultConfig,
@@ -85,6 +86,20 @@ export const vaultService: VaultClientAPI = {
 
   reveal: (): Promise<void> => {
     return window.api.vault.reveal()
+  },
+
+  /**
+   * List all vaults in the signed-in account (local + cloud-only).
+   */
+  listAccount: (): Promise<AccountVaultInfo[]> => {
+    return window.api.vault.listAccount()
+  },
+
+  /**
+   * Provision + open a cloud-only vault locally.
+   */
+  downloadRemote: (vaultUuid: string, parentPath?: string): Promise<SelectVaultResponse> => {
+    return window.api.vault.downloadRemote(vaultUuid, parentPath)
   }
 }
 

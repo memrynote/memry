@@ -325,7 +325,15 @@
       "rdquoFromList": "rdquo; s popisa?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Ovaj će trezor biti uklonjen iz aplikacije, ali će vaše datoteke ostati na disku. Uvijek ga možete ponovno dodati kasnije.",
       "cancel": "Odustani",
-      "remove2": "Ukloniti"
+      "remove2": "Ukloniti",
+      "inYourAccount": "Na vašem računu",
+      "itemsCount": "{{count}} stavki",
+      "untitledVault": "Trezor",
+      "downloadVaultTitle": "Preuzmi „{{name}}“",
+      "downloadLocation": "Lokacija",
+      "changeLocation": "Promijeni…",
+      "download": "Preuzmi",
+      "downloadFailed": "Trezor nije bilo moguće preuzeti"
     },
     "componentsWindowControls": {
       "searchK": "Pretraživanje (⌘K)",

@@ -325,7 +325,15 @@
       "rdquoFromList": "rdquo; da lista?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Este cofre será removido do aplicativo, mas seus arquivos permanecerão no disco. Você sempre pode adicioná-lo novamente mais tarde.",
       "cancel": "Cancelar",
-      "remove2": "Remover"
+      "remove2": "Remover",
+      "inYourAccount": "Na sua conta",
+      "itemsCount": "{{count}} itens",
+      "untitledVault": "Cofre",
+      "downloadVaultTitle": "Transferir “{{name}}”",
+      "downloadLocation": "Localização",
+      "changeLocation": "Alterar…",
+      "download": "Transferir",
+      "downloadFailed": "Não foi possível transferir o cofre"
     },
     "componentsWindowControls": {
       "searchK": "Pesquisar (⌘K)",
