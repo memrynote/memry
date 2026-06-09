@@ -43,7 +43,8 @@ import {
   collectVaultTransfer,
   decryptVaultTransfer,
   encryptVaultTransfer,
-  type ServerVaultSummary
+  type ServerVaultSummary,
+  type VaultTransfer
 } from './vault-transfer'
 import { adoptVaultLocally } from './vault-adoption'
 
@@ -73,8 +74,19 @@ interface PendingLinkCompletion {
   expiresAt: number
 }
 
+interface PendingVaultChoice {
+  sessionId: string
+  masterKey: Uint8Array
+  setupToken: string
+  importedProviderAuth?: GoogleProviderAuthTransfer
+  initialWarning?: string
+  vaults: VaultTransfer['vaults']
+  expiresAt: number
+}
+
 let pendingSession: PendingSession | null = null
 let pendingLinkCompletion: PendingLinkCompletion | null = null
+let pendingVaultChoice: PendingVaultChoice | null = null
 
 export const clearPendingSession = (): void => {
   if (pendingSession) {
@@ -87,6 +99,13 @@ export const clearPendingLinkCompletion = (): void => {
   if (pendingLinkCompletion) {
     secureCleanup(pendingLinkCompletion.encKey, pendingLinkCompletion.macKey)
     pendingLinkCompletion = null
+  }
+}
+
+export const clearPendingVaultChoice = (): void => {
+  if (pendingVaultChoice) {
+    secureCleanup(pendingVaultChoice.masterKey)
+    pendingVaultChoice = null
   }
 }
 
@@ -371,7 +390,7 @@ export const completeLinkingQr = async (sessionId: string): Promise<CompleteLink
       }
     }
 
-    let adoptedVaultUuid: string | undefined
+    let adoptedTransfer: VaultTransfer | undefined
     if (
       completeResponse.encryptedVaultTransfer &&
       completeResponse.encryptedVaultTransferNonce &&
@@ -379,7 +398,7 @@ export const completeLinkingQr = async (sessionId: string): Promise<CompleteLink
       completeResponse.vaultTransferVersion
     ) {
       try {
-        const transfer = decryptVaultTransfer({
+        adoptedTransfer = decryptVaultTransfer({
           encryptedVaultTransfer: completeResponse.encryptedVaultTransfer,
           encryptedVaultTransferNonce: completeResponse.encryptedVaultTransferNonce,
           vaultTransferConfirm: completeResponse.vaultTransferConfirm,
@@ -388,8 +407,6 @@ export const completeLinkingQr = async (sessionId: string): Promise<CompleteLink
           encKey,
           macKey
         })
-        // Phase 1: auto-adopt the initiator's single vault. Phase 2 shows a picker when length > 1.
-        adoptedVaultUuid = transfer.vaults[0]?.vaultUuid
       } catch (error) {
         log.error('Vault transfer could not be decrypted during linking', {
           sessionId,
@@ -403,6 +420,37 @@ export const completeLinkingQr = async (sessionId: string): Promise<CompleteLink
       }
     }
 
+    const vaults = adoptedTransfer?.vaults ?? []
+    if (vaults.length >= 2) {
+      // Defer finalize: the user picks which vault(s) to pull. Ownership of the
+      // decrypted master key moves to pendingVaultChoice (cleaned on finalize,
+      // cancel, expiry, or error — never logged, never sent to the renderer).
+      pendingVaultChoice = {
+        sessionId,
+        masterKey,
+        setupToken,
+        importedProviderAuth,
+        initialWarning: importWarning,
+        vaults,
+        expiresAt: pendingLinkCompletion.expiresAt
+      }
+      clearPendingLinkCompletion()
+      log.info('Multiple vaults available — deferring finalize for user choice', {
+        sessionId,
+        count: vaults.length
+      })
+      return {
+        success: true,
+        vaults: vaults.map((v) => ({
+          vaultUuid: v.vaultUuid,
+          itemCount: v.itemCount,
+          createdAt: v.createdAt
+        }))
+      }
+    }
+
+    // Phase 1: auto-adopt the initiator's single vault.
+    const adoptedVaultUuid = vaults[0]?.vaultUuid
     void finalizeLinking(
       masterKey,
       setupToken,
@@ -486,6 +534,71 @@ function emitLinkingFinalized(payload: {
 }): void {
   for (const win of BrowserWindow.getAllWindows()) {
     win.webContents.send('sync:linking-finalized', payload)
+  }
+}
+
+// ============================================================================
+// Flow 3b: New device finalizes after the user picks which vault(s) to pull
+// ============================================================================
+
+export async function finalizeVaultChoice(input: {
+  sessionId: string
+  parentFolderPath: string
+  selectedVaultUuids: string[]
+  primaryVaultUuid: string
+}): Promise<{ success: boolean; error?: string }> {
+  if (!pendingVaultChoice || pendingVaultChoice.sessionId !== input.sessionId) {
+    return { success: false, error: 'No pending vault choice for this session' }
+  }
+  if (isExpired(pendingVaultChoice.expiresAt)) {
+    clearPendingVaultChoice()
+    return { success: false, error: 'Linking session has expired' }
+  }
+  if (!input.selectedVaultUuids.includes(input.primaryVaultUuid)) {
+    return { success: false, error: 'Primary vault must be among the selected vaults' }
+  }
+
+  const { masterKey, setupToken, importedProviderAuth, initialWarning } = pendingVaultChoice
+  // Ownership of masterKey moves to finalizeLinking on the happy path; only the
+  // pre-finalizeLinking catch below cleans it up.
+  pendingVaultChoice = null
+
+  try {
+    const { createDormantVault, dormantVaultFolderName } = await import('./vault-provisioning')
+    const path = await import('path')
+    const { selectVault } = await import('../vault')
+
+    const primaryFolder = path.join(
+      input.parentFolderPath,
+      dormantVaultFolderName(input.primaryVaultUuid)
+    )
+
+    // Create the dormant vaults first; each transiently repoints the data.db
+    // singleton, so the primary must be opened LAST.
+    for (const uuid of input.selectedVaultUuids) {
+      if (uuid === input.primaryVaultUuid) continue
+      createDormantVault(path.join(input.parentFolderPath, dormantVaultFolderName(uuid)), uuid)
+    }
+
+    const selected = await selectVault({ path: primaryFolder })
+    if (!selected.success) {
+      throw new Error(selected.error ?? 'Failed to open the primary vault')
+    }
+
+    await finalizeLinking(
+      masterKey,
+      setupToken,
+      input.primaryVaultUuid,
+      importedProviderAuth,
+      initialWarning
+    )
+    return { success: true }
+  } catch (err) {
+    log.error('finalizeVaultChoice failed', err)
+    secureCleanup(masterKey)
+    const message = err instanceof Error ? err.message : 'Vault selection failed'
+    emitLinkingFinalized({ error: message })
+    return { success: false, error: message }
   }
 }
 

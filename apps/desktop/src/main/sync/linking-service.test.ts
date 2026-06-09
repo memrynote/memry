@@ -16,6 +16,8 @@ const {
   mockEncryptVaultTransfer,
   mockDecryptVaultTransfer,
   mockAdoptVaultLocally,
+  mockCreateDormantVault,
+  mockSelectVault,
   encKey,
   macKey,
   sharedSecret,
@@ -38,6 +40,8 @@ const {
   mockEncryptVaultTransfer: vi.fn(),
   mockDecryptVaultTransfer: vi.fn(),
   mockAdoptVaultLocally: vi.fn(),
+  mockCreateDormantVault: vi.fn(),
+  mockSelectVault: vi.fn(),
   encKey: new Uint8Array(32).fill(7),
   macKey: new Uint8Array(32).fill(9),
   sharedSecret: new Uint8Array(32).fill(5),
@@ -92,6 +96,15 @@ vi.mock('./vault-adoption', () => ({
   adoptVaultLocally: mockAdoptVaultLocally
 }))
 
+vi.mock('./vault-provisioning', () => ({
+  createDormantVault: mockCreateDormantVault,
+  dormantVaultFolderName: (uuid: string) => `memry-vault-${uuid.slice(0, 8)}`
+}))
+
+vi.mock('../vault', () => ({
+  selectVault: mockSelectVault
+}))
+
 vi.mock('../crypto', () => ({
   CBOR_FIELD_ORDER: {},
   computeKeyConfirm: vi.fn(() => new Uint8Array(32).fill(11)),
@@ -124,7 +137,9 @@ import {
   approveDeviceLinking,
   clearPendingLinkCompletion,
   clearPendingSession,
+  clearPendingVaultChoice,
   completeLinkingQr,
+  finalizeVaultChoice,
   getLinkingVerificationCode,
   initiateDeviceLinking,
   linkViaQr
@@ -247,11 +262,13 @@ describe('linking-service provider auth transfer', () => {
       version: 1,
       vaults: [{ vaultUuid: 'vault-uuid-a' }]
     })
+    mockSelectVault.mockResolvedValue({ success: true })
   })
 
   afterEach(() => {
     clearPendingSession()
     clearPendingLinkCompletion()
+    clearPendingVaultChoice()
   })
 
   it('posts encrypted provider auth alongside the master key when approving a link', async () => {
@@ -630,5 +647,127 @@ describe('linking-service provider auth transfer', () => {
           'Google Calendar auth could not be restored on this device. Reconnect Google if needed.'
       })
     })
+  })
+})
+
+describe('linking-service multi-vault choice', () => {
+  const qrData = JSON.stringify({
+    sessionId: 'session-1',
+    ephemeralPublicKey: sodium.to_base64(
+      new Uint8Array(32).fill(71),
+      sodium.base64_variants.ORIGINAL
+    ),
+    linkingSecret: sodium.to_base64(new Uint8Array(32).fill(4), sodium.base64_variants.ORIGINAL),
+    expiresAt: Math.floor(Date.now() / 1000) + 300
+  })
+
+  beforeAll(async () => {
+    await sodium.ready
+  })
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockGetDatabase.mockReturnValue({ tag: 'db' })
+    mockPersistKeysAndRegisterDevice.mockResolvedValue('device-1')
+    mockSelectVault.mockResolvedValue({ success: true })
+    mockPostToServer.mockImplementation(async (path: string) => {
+      if (path === '/auth/linking/scan') return { success: true }
+      if (path === '/auth/linking/complete') {
+        return {
+          success: true,
+          encryptedMasterKey: sodium.to_base64(
+            new Uint8Array([41, 42, 43]),
+            sodium.base64_variants.ORIGINAL
+          ),
+          encryptedKeyNonce: sodium.to_base64(
+            new Uint8Array(24).fill(8),
+            sodium.base64_variants.ORIGINAL
+          ),
+          keyConfirm: sodium.to_base64(
+            new Uint8Array(32).fill(11),
+            sodium.base64_variants.ORIGINAL
+          ),
+          encryptedVaultTransfer: 'encrypted-vault-transfer',
+          encryptedVaultTransferNonce: 'vault-transfer-nonce',
+          vaultTransferConfirm: 'vault-transfer-confirm',
+          vaultTransferVersion: 1
+        }
+      }
+      return { success: true }
+    })
+    mockGetFromServer.mockImplementation(async (path: string) => {
+      if (path === '/auth/recovery-info') return { kdfSalt: 'salt', keyVerifier: 'verifier' }
+      throw new Error(`Unexpected GET path: ${path}`)
+    })
+    mockDecryptVaultTransfer.mockReturnValue({
+      version: 1,
+      vaults: [
+        { vaultUuid: 'v-a', itemCount: 367 },
+        { vaultUuid: 'v-b', itemCount: 4 }
+      ]
+    })
+  })
+
+  afterEach(() => {
+    clearPendingSession()
+    clearPendingLinkCompletion()
+    clearPendingVaultChoice()
+  })
+
+  it('returns the vault list and defers finalize when 2+ vaults', async () => {
+    await linkViaQr(qrData, 'setup-token')
+    const res = await completeLinkingQr('session-1')
+
+    expect(res.success).toBe(true)
+    expect(res.vaults).toEqual([
+      { vaultUuid: 'v-a', itemCount: 367, createdAt: undefined },
+      { vaultUuid: 'v-b', itemCount: 4, createdAt: undefined }
+    ])
+    expect(mockPersistKeysAndRegisterDevice).not.toHaveBeenCalled()
+  })
+
+  it('finalizeVaultChoice provisions dormant vaults, opens the primary, then registers', async () => {
+    await linkViaQr(qrData, 'setup-token')
+    await completeLinkingQr('session-1')
+
+    const result = await finalizeVaultChoice({
+      sessionId: 'session-1',
+      parentFolderPath: '/tmp/parent',
+      selectedVaultUuids: ['v-a', 'v-b'],
+      primaryVaultUuid: 'v-a'
+    })
+
+    expect(result).toEqual({ success: true })
+    expect(mockCreateDormantVault).toHaveBeenCalledTimes(1)
+    expect(mockCreateDormantVault).toHaveBeenCalledWith(expect.stringContaining('v-b'), 'v-b')
+    expect(mockSelectVault).toHaveBeenCalledWith({ path: expect.stringContaining('v-a') })
+    expect(mockSelectVault.mock.invocationCallOrder[0]).toBeLessThan(
+      mockPersistKeysAndRegisterDevice.mock.invocationCallOrder[0]
+    )
+  })
+
+  it('rejects a finalize for a session without a pending vault choice', async () => {
+    expect(
+      await finalizeVaultChoice({
+        sessionId: 'missing',
+        parentFolderPath: '/tmp/parent',
+        selectedVaultUuids: ['v-a'],
+        primaryVaultUuid: 'v-a'
+      })
+    ).toEqual({ success: false, error: 'No pending vault choice for this session' })
+  })
+
+  it('rejects when the primary is not among the selected vaults', async () => {
+    await linkViaQr(qrData, 'setup-token')
+    await completeLinkingQr('session-1')
+
+    expect(
+      await finalizeVaultChoice({
+        sessionId: 'session-1',
+        parentFolderPath: '/tmp/parent',
+        selectedVaultUuids: ['v-b'],
+        primaryVaultUuid: 'v-a'
+      })
+    ).toEqual({ success: false, error: 'Primary vault must be among the selected vaults' })
   })
 })

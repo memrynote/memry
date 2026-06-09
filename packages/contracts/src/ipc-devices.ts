@@ -53,10 +53,17 @@ export interface CompleteLinkingQrInput {
   sessionId: string
 }
 
+export interface LinkingVaultSummary {
+  vaultUuid: string
+  itemCount?: number
+  createdAt?: number | null
+}
+
 export interface CompleteLinkingQrResult {
   success: boolean
   deviceId?: string
   error?: string
+  vaults?: LinkingVaultSummary[]
 }
 
 export interface GetLinkingSasInput {
