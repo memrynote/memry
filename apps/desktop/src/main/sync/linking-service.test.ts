@@ -764,7 +764,7 @@ describe('linking-service multi-vault choice', () => {
     expect(mockPersistKeysAndRegisterDevice).not.toHaveBeenCalled()
   })
 
-  it('finalizeVaultChoice provisions dormant vaults, opens the primary, then registers', async () => {
+  it('finalizeVaultChoice opens only the primary, then registers (non-primaries stay cloud-only)', async () => {
     await linkViaQr(qrData, 'setup-token')
     await completeLinkingQr('session-1')
 
@@ -776,8 +776,9 @@ describe('linking-service multi-vault choice', () => {
     })
 
     expect(result).toEqual({ success: true })
-    expect(mockCreateDormantVault).toHaveBeenCalledTimes(1)
-    expect(mockCreateDormantVault).toHaveBeenCalledWith(expect.stringContaining('v-b'), 'v-b')
+    // Non-primary vaults are no longer provisioned eagerly — they appear in the
+    // switcher's "In your account" section via the vault directory instead.
+    expect(mockCreateDormantVault).not.toHaveBeenCalled()
     expect(mockSelectVault).toHaveBeenCalledWith({ path: expect.stringContaining('v-a') })
     expect(mockSelectVault.mock.invocationCallOrder[0]).toBeLessThan(
       mockPersistKeysAndRegisterDevice.mock.invocationCallOrder[0]
