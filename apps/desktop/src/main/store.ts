@@ -26,6 +26,8 @@ export interface StoredVaultInfo {
 export interface SyncStoreData {
   recoveryPhraseConfirmed?: boolean
   email?: string
+  /** Server device id for this install; seeds device rows in newly provisioned vault DBs */
+  deviceId?: string
   /** Last known account vault list (decrypted names) for offline switcher display */
   accountVaultsCache?: AccountVaultsCache
 }
@@ -208,6 +210,20 @@ export function removeVault(vaultPath: string): void {
  */
 export function findVault(vaultPath: string): StoredVaultInfo | undefined {
   return store.get('vaults').find((v) => v.path === vaultPath)
+}
+
+/**
+ * Get the install-wide server device id
+ */
+export function getStoredDeviceId(): string | undefined {
+  return store.get('sync').deviceId
+}
+
+/**
+ * Persist the install-wide server device id
+ */
+export function setStoredDeviceId(deviceId: string): void {
+  store.set('sync', { ...store.get('sync'), deviceId })
 }
 
 /**

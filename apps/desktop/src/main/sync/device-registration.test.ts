@@ -29,6 +29,10 @@ const mocks = vi.hoisted(() => ({
   toBase64: vi.fn(),
   sign: vi.fn(),
   bindLocalVaultToMasterKey: vi.fn(),
+  retrieveKey: vi.fn(),
+  secureCleanup: vi.fn(),
+  getStoredDeviceId: vi.fn(),
+  setStoredDeviceId: vi.fn(),
   dbDelete: vi.fn(),
   dbWhere: vi.fn(),
   dbRun: vi.fn(),
@@ -70,7 +74,17 @@ vi.mock('../crypto', () => ({
   storeKey: (...args: unknown[]) => mocks.storeKey(...args),
   deleteKey: (...args: unknown[]) => mocks.deleteKey(...args),
   getDevicePublicKey: (...args: unknown[]) => mocks.getDevicePublicKey(...args),
-  bindLocalVaultToMasterKey: (...args: unknown[]) => mocks.bindLocalVaultToMasterKey(...args)
+  bindLocalVaultToMasterKey: (...args: unknown[]) => mocks.bindLocalVaultToMasterKey(...args),
+  retrieveKey: (...args: unknown[]) => mocks.retrieveKey(...args),
+  secureCleanup: (...args: unknown[]) => mocks.secureCleanup(...args)
+}))
+
+vi.mock('../store', () => ({
+  getStoredDeviceId: (...args: unknown[]) => mocks.getStoredDeviceId(...args),
+  setStoredDeviceId: (...args: unknown[]) => mocks.setStoredDeviceId(...args),
+  getCurrentVaultPath: vi.fn(() => null),
+  findVault: vi.fn(() => undefined),
+  upsertVault: vi.fn()
 }))
 
 vi.mock('../database/client', () => ({
@@ -105,7 +119,11 @@ vi.mock('./token-manager', () => ({
 }))
 
 vi.mock('../lib/logger', () => ({
-  createLogger: () => ({ error: (...args: unknown[]) => mocks.logError(...args) })
+  createLogger: () => ({
+    error: (...args: unknown[]) => mocks.logError(...args),
+    warn: vi.fn(),
+    info: vi.fn()
+  })
 }))
 
 function setupDb() {
@@ -266,5 +284,76 @@ describe('device registration', () => {
     expect(mocks.deleteKey).toHaveBeenCalledWith(keychainEntries.DEVICE_SIGNING_KEY)
     expect(mocks.activate).not.toHaveBeenCalled()
     expect(mocks.startSyncRuntime).not.toHaveBeenCalled()
+  })
+})
+
+describe('ensureDeviceRowForVault', () => {
+  function fakeVaultDb(existingRow: { id: string } | null) {
+    const run = vi.fn()
+    const values = vi.fn(() => ({ run }))
+    const insert = vi.fn(() => ({ values }))
+    const get = vi.fn(() => existingRow ?? undefined)
+    const where = vi.fn(() => ({ get }))
+    const from = vi.fn(() => ({ where }))
+    const select = vi.fn(() => ({ from }))
+    return { db: { select, insert } as never, insert, values, run }
+  }
+
+  beforeEach(() => {
+    vi.resetModules()
+    vi.clearAllMocks()
+    mocks.getDevicePublicKey.mockReturnValue(new Uint8Array([1, 2, 3]))
+    mocks.toBase64.mockImplementation((bytes: Uint8Array) => `b64-${Array.from(bytes).join('-')}`)
+  })
+
+  it('backfills the stored device id when the vault already has a device row', async () => {
+    const { ensureDeviceRowForVault } = await importModule()
+    const { db, insert } = fakeVaultDb({ id: 'device-9' })
+    mocks.getStoredDeviceId.mockReturnValue(undefined)
+
+    await ensureDeviceRowForVault(db)
+
+    expect(mocks.setStoredDeviceId).toHaveBeenCalledWith('device-9')
+    expect(insert).not.toHaveBeenCalled()
+  })
+
+  it('seeds the device row from the stored id and keychain signing key', async () => {
+    const { ensureDeviceRowForVault } = await importModule()
+    const { db, values } = fakeVaultDb(null)
+    mocks.getStoredDeviceId.mockReturnValue('device-9')
+    mocks.retrieveKey.mockResolvedValue(new Uint8Array([7]))
+
+    await ensureDeviceRowForVault(db)
+
+    expect(values).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'device-9',
+        isCurrentDevice: true,
+        signingPublicKey: 'b64-1-2-3'
+      })
+    )
+    expect(mocks.secureCleanup).toHaveBeenCalled()
+  })
+
+  it('does nothing without a stored device id', async () => {
+    const { ensureDeviceRowForVault } = await importModule()
+    const { db, insert } = fakeVaultDb(null)
+    mocks.getStoredDeviceId.mockReturnValue(undefined)
+
+    await ensureDeviceRowForVault(db)
+
+    expect(mocks.retrieveKey).not.toHaveBeenCalled()
+    expect(insert).not.toHaveBeenCalled()
+  })
+
+  it('does nothing when the keychain has no signing key', async () => {
+    const { ensureDeviceRowForVault } = await importModule()
+    const { db, insert } = fakeVaultDb(null)
+    mocks.getStoredDeviceId.mockReturnValue('device-9')
+    mocks.retrieveKey.mockResolvedValue(null)
+
+    await ensureDeviceRowForVault(db)
+
+    expect(insert).not.toHaveBeenCalled()
   })
 })

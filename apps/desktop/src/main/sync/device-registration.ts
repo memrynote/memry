@@ -11,7 +11,15 @@ import {
   type DeviceRegisterResponse
 } from '@memry/contracts/auth-api'
 
-import { bindLocalVaultToMasterKey, deleteKey, getDevicePublicKey, storeKey } from '../crypto'
+import {
+  bindLocalVaultToMasterKey,
+  deleteKey,
+  getDevicePublicKey,
+  retrieveKey,
+  secureCleanup,
+  storeKey
+} from '../crypto'
+import { getStoredDeviceId, setStoredDeviceId } from '../store'
 import { getDatabase } from '../database/client'
 import { createLogger } from '../lib/logger'
 import { deleteFromServer, postToServer } from './http-client'
@@ -174,6 +182,8 @@ export const persistKeysAndRegisterDevice = async (
       .run()
   })
 
+  setStoredDeviceId(deviceResponse.deviceId)
+
   // Stamp the registered uuid onto the current vault's store entry so the
   // account vault directory can self-register it (with its name) right away.
   try {
@@ -201,4 +211,53 @@ export const persistKeysAndRegisterDevice = async (
   }
 
   return deviceResponse.deviceId
+}
+
+/**
+ * Seed the per-vault current-device row from the install-wide identity
+ * (store deviceId + keychain signing key). Vault DBs created by dormant
+ * provisioning (downloaded or linked vaults) start without a device row,
+ * which makes getSigningKeys() return null and leaves the sync engine idle —
+ * the vault would never pull. When a row already exists, backfill the store
+ * deviceId instead so older installs become seed-capable.
+ */
+export const ensureDeviceRowForVault = async (
+  db: ReturnType<typeof getDatabase>
+): Promise<void> => {
+  const existing = db
+    .select({ id: syncDevices.id })
+    .from(syncDevices)
+    .where(eq(syncDevices.isCurrentDevice, true))
+    .get()
+
+  if (existing) {
+    if (getStoredDeviceId() !== existing.id) setStoredDeviceId(existing.id)
+    return
+  }
+
+  const deviceId = getStoredDeviceId()
+  if (!deviceId) return
+
+  const signingSecretKey = await retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY)
+  if (!signingSecretKey) return
+
+  try {
+    const pubKey = getDevicePublicKey(signingSecretKey)
+    const pubKeyBase64 = sodium.to_base64(pubKey, sodium.base64_variants.ORIGINAL)
+    db.insert(syncDevices)
+      .values({
+        id: deviceId,
+        name: os.hostname(),
+        platform: PLATFORM_MAP[process.platform] || 'linux',
+        osVersion: os.release(),
+        appVersion: app.getVersion(),
+        linkedAt: new Date(),
+        isCurrentDevice: true,
+        signingPublicKey: pubKeyBase64
+      })
+      .run()
+    logger.info('Seeded current device row from install identity', { deviceId })
+  } finally {
+    secureCleanup(signingSecretKey)
+  }
 }
