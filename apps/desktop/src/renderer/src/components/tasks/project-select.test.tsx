@@ -92,6 +92,7 @@ describe('ProjectSelect create-project footer', () => {
     await user.click(screen.getByRole('button', { name: 'Create project' }))
 
     expect(screen.getByRole('heading', { name: 'Create Project' })).toBeInTheDocument()
+    expect(screen.queryAllByRole('option')).toHaveLength(0)
   })
 
   it('creates the project and auto-selects it', async () => {
@@ -101,7 +102,7 @@ describe('ProjectSelect create-project footer', () => {
     await user.click(screen.getByRole('combobox'))
     await user.click(screen.getByRole('button', { name: 'Create project' }))
 
-    await user.type(screen.getAllByRole('textbox')[0], 'Roadmap')
+    await user.type(screen.getByPlaceholderText('Project name'), 'Roadmap')
     await user.click(screen.getByRole('button', { name: 'Create' }))
 
     await waitFor(() => expect(addProject).toHaveBeenCalledTimes(1))

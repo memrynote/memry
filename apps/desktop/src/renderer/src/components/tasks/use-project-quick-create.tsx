@@ -28,6 +28,7 @@ export function useProjectQuickCreate(onCreated: (projectId: string) => void): P
   )
 
   const dialog = tasks ? (
+    // Modal closes immediately after onSave; addProject is optimistic and handles its own errors
     <ProjectModal
       isOpen={isOpen}
       onClose={() => setIsOpen(false)}

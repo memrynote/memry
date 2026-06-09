@@ -263,7 +263,7 @@ describe('InteractiveProjectBadge create-project footer', () => {
 
     await user.click(screen.getByRole('button', { name: /project:.*click to change/i }))
     await user.click(screen.getByRole('button', { name: 'Create project' }))
-    await user.type(screen.getAllByRole('textbox')[0], 'Roadmap')
+    await user.type(screen.getByPlaceholderText('Project name'), 'Roadmap')
     await user.click(screen.getByRole('button', { name: 'Create' }))
 
     await waitFor(() => expect(addProject).toHaveBeenCalledTimes(1))
