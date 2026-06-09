@@ -135,7 +135,7 @@ function toVaultInfo(stored: StoredVaultInfo): VaultInfo {
 /**
  * Create VaultInfo for a vault path
  */
-function createVaultInfo(vaultPath: string): VaultInfo {
+export function createVaultInfo(vaultPath: string): VaultInfo {
   const config = readVaultConfig(vaultPath)
   const noteCount = countMarkdownFiles(vaultPath, config.excludePatterns)
   const existingVault = findVault(vaultPath)
