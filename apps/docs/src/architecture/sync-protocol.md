@@ -118,6 +118,34 @@ freshly pushed note is not treated as server-only while indexing catches up.
 
 Deletions include `deleted_at` inside the **Ed25519-signed** payload — preventing a hostile server from forging deletions.
 
+## Account Vault Directory
+
+An account can hold several vaults (subject to the plan's vault limit). The directory lets any
+signed-in device see every vault on the account and pull one it does not have locally yet.
+
+Each vault registers itself in the `sync_vaults` table, keyed `UNIQUE (user_id, vault_id)`. The
+server stores only the ciphertext of the vault's display name:
+
+| Column                         | Holds                                                     |
+| ------------------------------ | --------------------------------------------------------- |
+| `vault_id`                     | The vault UUID that scopes all sync data for the vault    |
+| `encrypted_name`, `name_nonce` | XChaCha20-Poly1305 ciphertext of the display name + nonce |
+
+Names are encrypted client-side by `encryptVaultName` (AAD bound to the vault UUID) and decrypted
+locally; the server never sees a plaintext vault name. Registration is authenticated but does not
+require the vault to have synced any items, so a freshly created vault still appears in the directory.
+
+Desktop reads the directory over IPC:
+
+| IPC method                                     | Purpose                                                                                              |
+| ---------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `vault.listAccount()`                          | Returns `AccountVaultInfo[]` (uuid, decrypted name, item count, local path, suggested download path) |
+| `vault.downloadRemote(vaultUuid, parentPath?)` | Clone a cloud-only vault into a local folder and open it                                             |
+
+The renderer surfaces this as an in-account switcher section plus a download dialog where the user
+picks the destination folder. A name that fails to decrypt is shown as `null` rather than blocking the
+list.
+
 ## Endpoints
 
 | Path                      | Direction | Purpose                                      |
@@ -125,6 +153,8 @@ Deletions include `deleted_at` inside the **Ed25519-signed** payload — prevent
 | `POST /sync/push`         | up        | Upload new sync items (metadata + blob refs) |
 | `POST /sync/pull`         | down      | Fetch updates since cursor                   |
 | `POST /sync/crdt/updates` | both      | Incremental Yjs binary updates               |
+| `GET /sync/vaults`        | down      | List the account's registered vaults         |
+| `POST /sync/vaults`       | up        | Register or update a vault's encrypted name  |
 | `POST /auth/*`            | mixed     | OTP, sign-in, refresh, sign-out              |
 | `POST /devices/*`         | mixed     | Linking, listing, revoking                   |
 | `POST /keys/*`            | mixed     | Key sealing during link, rotation            |
