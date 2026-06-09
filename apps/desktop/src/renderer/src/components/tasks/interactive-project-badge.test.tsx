@@ -1,8 +1,33 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { I18nextProvider } from 'react-i18next'
+import type { ReactElement } from 'react'
+import type { i18n as I18nInstance } from 'i18next'
+import { createRendererI18n } from '@memry/i18n/renderer'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import { InteractiveProjectBadge } from './interactive-project-badge'
 import type { Project } from '@/data/tasks-data'
+import { useTasksOptional } from '@/contexts/tasks'
+
+vi.mock('@/contexts/tasks', () => ({
+  useTasksOptional: vi.fn(),
+  useTasksContext: vi.fn()
+}))
+
+let i18nEn: I18nInstance
+
+beforeAll(async () => {
+  i18nEn = await createRendererI18n({ locale: 'en' })
+})
+
+function renderWithI18n(ui: ReactElement) {
+  return render(
+    <TooltipProvider>
+      <I18nextProvider i18n={i18nEn}>{ui}</I18nextProvider>
+    </TooltipProvider>
+  )
+}
 
 const projects: Project[] = [
   {
@@ -181,5 +206,68 @@ describe('InteractiveProjectBadge', () => {
     await user.click(screen.getByRole('button', { name: /project:.*click to change/i }))
 
     expect(parentClick).not.toHaveBeenCalled()
+  })
+})
+
+describe('InteractiveProjectBadge create-project footer', () => {
+  const onProjectChange = vi.fn()
+  const addProject = vi.fn()
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(useTasksOptional).mockReturnValue({ addProject } as never)
+  })
+
+  it('does not show the footer without allowCreate', async () => {
+    const user = userEvent.setup()
+    renderWithI18n(
+      <InteractiveProjectBadge
+        projectId="proj-1"
+        projects={projects}
+        onProjectChange={onProjectChange}
+      />
+    )
+
+    await user.click(screen.getByRole('button', { name: /project:.*click to change/i }))
+
+    expect(screen.queryByRole('button', { name: 'Create project' })).not.toBeInTheDocument()
+  })
+
+  it('shows the footer and opens the dialog when allowCreate is set', async () => {
+    const user = userEvent.setup()
+    renderWithI18n(
+      <InteractiveProjectBadge
+        projectId="proj-1"
+        projects={projects}
+        onProjectChange={onProjectChange}
+        allowCreate
+      />
+    )
+
+    await user.click(screen.getByRole('button', { name: /project:.*click to change/i }))
+    await user.click(screen.getByRole('button', { name: 'Create project' }))
+
+    expect(screen.getByRole('heading', { name: 'Create Project' })).toBeInTheDocument()
+  })
+
+  it('creates the project and selects it when allowCreate is set', async () => {
+    const user = userEvent.setup()
+    renderWithI18n(
+      <InteractiveProjectBadge
+        projectId="proj-1"
+        projects={projects}
+        onProjectChange={onProjectChange}
+        allowCreate
+      />
+    )
+
+    await user.click(screen.getByRole('button', { name: /project:.*click to change/i }))
+    await user.click(screen.getByRole('button', { name: 'Create project' }))
+    await user.type(screen.getAllByRole('textbox')[0], 'Roadmap')
+    await user.click(screen.getByRole('button', { name: 'Create' }))
+
+    await waitFor(() => expect(addProject).toHaveBeenCalledTimes(1))
+    const created = addProject.mock.calls[0][0] as Project
+    await waitFor(() => expect(onProjectChange).toHaveBeenCalledWith(created.id))
   })
 })
