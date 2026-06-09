@@ -28,7 +28,11 @@ export function useProjectQuickCreate(onCreated: (projectId: string) => void): P
   )
 
   const dialog = tasks ? (
-    <ProjectModal isOpen={isOpen} onClose={() => setIsOpen(false)} onSave={handleSave} />
+    <ProjectModal
+      isOpen={isOpen}
+      onClose={() => setIsOpen(false)}
+      onSave={(p) => void handleSave(p)}
+    />
   ) : null
 
   return { canCreate: !!tasks, openCreate, dialog }
