@@ -312,16 +312,20 @@ async function openVault(vaultPath: string): Promise<void> {
   // Start file watcher for external changes
   await startWatcher(vaultPath)
 
-  await startSyncRuntime()
-
-  configureLazyAgentServices(startVaultAgentServices)
-  registerLazyAgentHandlers()
-
+  // Mark the vault open BEFORE the sync runtime starts: startSyncRuntime awaits
+  // the engine's first fullSync, and on a freshly provisioned (downloaded or
+  // linked) vault that pull writes notes/journals to disk via the current vault
+  // path — which throws "No vault is currently open" if the status isn't set yet.
   updateStatus({
     isOpen: true,
     path: vaultPath,
     error: null
   })
+
+  await startSyncRuntime()
+
+  configureLazyAgentServices(startVaultAgentServices)
+  registerLazyAgentHandlers()
 }
 
 /**
