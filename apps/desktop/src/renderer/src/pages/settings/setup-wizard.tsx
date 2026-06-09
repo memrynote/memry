@@ -12,6 +12,7 @@ import { RecoveryPhraseConfirm } from '@/components/sync/recovery-phrase-confirm
 import { RecoveryPhraseInput } from '@/components/sync/recovery-phrase-input'
 import { LinkingCodeEntry } from '@/components/sync/linking-code-entry'
 import { LinkingPending } from '@/components/sync/linking-pending'
+import { VaultPickerStep } from '@/components/sync/vault-picker-step'
 
 const STEP_KEYS = ['setup.steps.signIn', 'setup.steps.verify', 'setup.steps.link'] as const
 const STEP_MAP: Record<WizardStep, number> = {
@@ -23,7 +24,8 @@ const STEP_MAP: Record<WizardStep, number> = {
   'recovery-input': 1,
   'linking-choice': 2,
   'linking-scan': 1,
-  'linking-pending': 2
+  'linking-pending': 2,
+  'linking-vault-picker': 2
 }
 
 export function SetupWizard(): React.JSX.Element {
@@ -33,6 +35,7 @@ export function SetupWizard(): React.JSX.Element {
       wizardStep,
       wizardLinkingSessionId,
       wizardVerificationCode,
+      wizardVaults,
       wizardExpiresAt,
       wizardError,
       email
@@ -295,8 +298,17 @@ export function SetupWizard(): React.JSX.Element {
           onComplete={() => {
             linkingCompleted()
           }}
+          onPickVaults={(vaults) => setWizardStep('linking-vault-picker', { vaults })}
           onError={(error) => setWizardError(error)}
           onCancel={() => setWizardStep('linking-choice')}
+        />
+      )}
+
+      {wizardStep === 'linking-vault-picker' && wizardLinkingSessionId && (
+        <VaultPickerStep
+          sessionId={wizardLinkingSessionId}
+          vaults={wizardVaults ?? []}
+          onError={(error) => setWizardError(error)}
         />
       )}
 

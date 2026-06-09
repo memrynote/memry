@@ -591,7 +591,15 @@
       "waitingTitle": "Waiting for approval",
       "waitingDescription": "Open memrynote on your other device and approve the linking request.",
       "verificationCode": "Verification code",
-      "confirmCode": "Confirm this matches the code on your other device"
+      "confirmCode": "Confirm this matches the code on your other device",
+      "vaultPickerTitle": "Choose what to pull",
+      "vaultPickerDescription": "This account has multiple vaults. Pick a folder and the vault(s) to add to this device.",
+      "vaultPickerFolderLabel": "Store vaults in folder",
+      "vaultPickerChooseFolder": "Choose folder",
+      "vaultRow": "Vault — {{count}} items · {{date}}",
+      "vaultPickerPrimaryHint": "Opens now",
+      "vaultPickerDormantHint": "Added, opens when you switch to it",
+      "vaultPickerConfirm": "Pull selected"
     }
   },
   "devices": {

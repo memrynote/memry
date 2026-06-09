@@ -21,6 +21,12 @@ type AuthStatus =
   | 'authenticated'
   | 'error'
 
+export interface WizardVaultSummary {
+  vaultUuid: string
+  itemCount?: number
+  createdAt?: number | null
+}
+
 export type WizardStep =
   | 'idle'
   | 'sign-in'
@@ -31,6 +37,7 @@ export type WizardStep =
   | 'linking-choice'
   | 'linking-scan'
   | 'linking-pending'
+  | 'linking-vault-picker'
 
 export interface WizardData {
   linkingSessionId?: string | null
@@ -38,6 +45,7 @@ export interface WizardData {
   expiresAt?: number | null
   oauthState?: string | null
   error?: string | null
+  vaults?: WizardVaultSummary[] | null
 }
 
 interface AuthState {
@@ -49,6 +57,7 @@ interface AuthState {
   wizardStep: WizardStep
   wizardLinkingSessionId: string | null
   wizardVerificationCode: string | null
+  wizardVaults: WizardVaultSummary[] | null
   wizardExpiresAt: number | null
   wizardOAuthState: string | null
   wizardError: string | null
@@ -87,6 +96,7 @@ const WIZARD_IDLE_FIELDS = {
   wizardStep: 'idle' as const,
   wizardLinkingSessionId: null,
   wizardVerificationCode: null,
+  wizardVaults: null,
   wizardExpiresAt: null,
   wizardOAuthState: null,
   wizardError: null
@@ -184,6 +194,9 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         }),
         ...(action.data?.verificationCode !== undefined && {
           wizardVerificationCode: action.data.verificationCode
+        }),
+        ...(action.data?.vaults !== undefined && {
+          wizardVaults: action.data.vaults
         }),
         ...(action.data?.expiresAt !== undefined && {
           wizardExpiresAt: action.data.expiresAt

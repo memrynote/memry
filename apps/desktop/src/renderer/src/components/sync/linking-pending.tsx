@@ -10,10 +10,17 @@ function formatSasCode(code: string): string {
   return `${code.slice(0, 3)} ${code.slice(3)}`
 }
 
+interface LinkingVaultSummary {
+  vaultUuid: string
+  itemCount?: number
+  createdAt?: number | null
+}
+
 interface LinkingPendingProps {
   sessionId: string
   verificationCode?: string
   onComplete: () => void
+  onPickVaults: (vaults: LinkingVaultSummary[]) => void
   onError: (error: string) => void
   onCancel: () => void
 }
@@ -22,6 +29,7 @@ export function LinkingPending({
   sessionId,
   verificationCode,
   onComplete,
+  onPickVaults,
   onError,
   onCancel
 }: LinkingPendingProps): React.JSX.Element {
@@ -41,8 +49,12 @@ export function LinkingPending({
       if (cancelledRef.current) return
 
       if (result.success) {
-        setStatus('completing')
         if (intervalRef.current) clearInterval(intervalRef.current)
+        if (result.vaults && result.vaults.length >= 2) {
+          onPickVaults(result.vaults)
+          return
+        }
+        setStatus('completing')
         onComplete()
         return
       }
@@ -63,7 +75,7 @@ export function LinkingPending({
       if (intervalRef.current) clearInterval(intervalRef.current)
       onError(msg)
     }
-  }, [sessionId, onComplete, onError, t])
+  }, [sessionId, onComplete, onPickVaults, onError, t])
 
   useEffect(() => {
     cancelledRef.current = false
