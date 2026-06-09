@@ -23,6 +23,7 @@ describe('CBOR_FIELD_ORDER', () => {
         'SCAN_CONFIRM',
         'KEY_CONFIRM',
         'PROVIDER_AUTH_CONFIRM',
+        'VAULT_TRANSFER_CONFIRM',
         'ATTACHMENT_MANIFEST'
       ].sort()
     )
