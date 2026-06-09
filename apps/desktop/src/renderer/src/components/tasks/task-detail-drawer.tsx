@@ -347,6 +347,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                   projectId={task.projectId}
                   projects={projects}
                   onProjectChange={handleProjectChange}
+                  allowCreate
                 />
               </div>
             </div>
