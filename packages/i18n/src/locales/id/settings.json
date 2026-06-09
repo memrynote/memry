@@ -389,12 +389,10 @@
       "identity": "Identitas",
       "sync": "Sinkronisasi",
       "storage": "Penyimpanan",
-      "devices": "Perangkat",
-      "security": "Keamanan"
+      "devices": "Perangkat"
     },
     "identity": {
-      "unknown": "Tidak diketahui",
-      "plan": "Rencana profesional"
+      "unknown": "Tidak diketahui"
     },
     "sync": {
       "lastSynced": "{time} yang terakhir disinkronkan",
@@ -424,16 +422,6 @@
       }
     },
     "security": {
-      "recoveryKey": {
-        "label": "Kunci Pemulihan",
-        "description": "Lihat kunci pemulihan Anda untuk akses data",
-        "action": "Lihat Kunci"
-      },
-      "rotateKeys": {
-        "label": "Putar Kunci Enkripsi",
-        "description": "Hasilkan kunci baru dan enkripsi ulang semua data",
-        "action": "Putar"
-      },
       "signOut": {
         "label": "Keluar",
         "description": "Putuskan sambungan perangkat ini dari sinkronisasi",
@@ -610,56 +598,6 @@
     "approving": "Menyetujui...",
     "approvalFailed": "Persetujuan gagal",
     "failedToApprove": "Gagal menyetujui perangkat"
-  },
-  "recoveryKey": {
-    "title": "Kunci Pemulihan",
-    "description": "Simpan kunci ini dengan aman. Itu dapat memulihkan brankas Anda jika Anda kehilangan akses ke semua perangkat.",
-    "retrieveFailed": "Gagal mengambil kunci pemulihan",
-    "copied": "Kunci pemulihan disalin ke papan klip",
-    "copyFailed": "Gagal menyalin ke papan klip",
-    "clickToReveal": "Klik untuk mengungkapkan",
-    "hide": "Sembunyikan",
-    "reveal": "Mengungkapkan",
-    "sessionHint": "Kunci ini ditampilkan sekali per sesi. Tutup dialog ini untuk menghapusnya dari memori."
-  },
-  "keyRotation": {
-    "title": "Putar Kunci Enkripsi",
-    "descriptions": {
-      "confirm": "Hasilkan kunci enkripsi baru untuk brankas Anda.",
-      "rotating": "Mengenkripsi ulang data Anda dengan kunci baru...",
-      "phrase": "Simpan frase pemulihan baru Anda.",
-      "complete": "Rotasi kunci selesai.",
-      "error": "Rotasi kunci mengalami kesalahan."
-    },
-    "warningTitle": "Tindakan ini akan:",
-    "warningItems": {
-      "keyPair": "Hasilkan pasangan kunci enkripsi baru",
-      "rewrap": "Bungkus ulang semua item yang disinkronkan dengan kunci baru",
-      "phrase": "Menghasilkan frase pemulihan baru (yang lama menjadi tidak valid)",
-      "pause": "Jeda sementara sinkronisasi selama proses berlangsung"
-    },
-    "explanation": "Konten data Anda tidak pernah dienkripsi ulang - hanya sampul kunci yang berubah. Ini adalah operasi yang cepat dan aman.",
-    "start": "Mulai Rotasi Kunci",
-    "starting": "Mulai...",
-    "phases": {
-      "preparing": "Mempersiapkan...",
-      "reencrypting": "Membungkus ulang kunci ({processed}/{total})",
-      "finalizing": "Menyelesaikan...",
-      "working": "Bekerja..."
-    },
-    "progressAria": "Rotasi kunci: {phaseLabel} {pct}%",
-    "progressLabel": "Kemajuan rotasi kunci",
-    "doNotClose": "Jangan tutup aplikasi selama proses ini.",
-    "complete": "Semua kunci enkripsi telah diputar. Frase pemulihan baru Anda telah disimpan. Sinkronisasi akan dilanjutkan secara otomatis.",
-    "unknownError": "Terjadi kesalahan yang tidak diketahui selama rotasi kunci.",
-    "errorHint": "Kunci Anda yang ada tetap valid. Sinkronisasi telah dilanjutkan. Anda dapat mencoba lagi kapan saja.",
-    "closeConfirm": {
-      "title": "Rotasi sedang berlangsung",
-      "description": "Rotasi kunci masih berjalan. Menutup dialog ini tidak akan menghentikan proses, namun Anda tidak akan melihat frasa pemulihan baru hingga proses selesai.",
-      "stay": "Tinggal",
-      "closeAnyway": "Tutup saja"
-    },
-    "failed": "Rotasi kunci gagal"
   },
   "ai": {
     "header": {

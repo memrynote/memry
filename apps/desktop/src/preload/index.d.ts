@@ -40,7 +40,6 @@ import type {
   QueueClearedEvent,
   SyncPausedEvent,
   SyncResumedEvent,
-  KeyRotationProgressEvent,
   SessionExpiredEvent,
   OtpDetectedEvent,
   OAuthCallbackEvent,
@@ -1462,6 +1461,7 @@ interface BillingStatus {
   plan: BillingPlan
   status: BillingStatusValue
   source: string
+  email: string | null
   limits: {
     storageLimit: number
     maxFileSize: number
@@ -1483,7 +1483,6 @@ interface BillingActionResult {
 interface AccountClientAPI {
   getInfo: () => Promise<{ email: string | null; joinedAt: number | null }>
   signOut: () => Promise<{ success: boolean; keychainWarning?: string }>
-  getRecoveryKey: () => Promise<{ success: boolean; key?: string; error?: string }>
   startCheckout: (input: {
     plan: BillingPlanId
     cadence: Exclude<BillingCadence, 'lifetime'>
@@ -1620,17 +1619,6 @@ interface CryptoClientAPI {
     metadata?: Record<string, unknown>
   }) => Promise<{
     valid: boolean
-  }>
-  rotateKeys: (input: { confirm: boolean }) => Promise<{
-    success: boolean
-    newRecoveryPhrase?: string
-    error?: string
-  }>
-  getRotationProgress: () => Promise<{
-    inProgress: boolean
-    phase?: string
-    processedItems?: number
-    totalItems?: number
   }>
 }
 
@@ -1826,7 +1814,6 @@ interface API extends WindowAPI, GeneratedRpcApi {
   onQueueCleared: (callback: (event: QueueClearedEvent) => void) => () => void
   onSyncPaused: (callback: (event: SyncPausedEvent) => void) => () => void
   onSyncResumed: (callback: (event: SyncResumedEvent) => void) => () => void
-  onKeyRotationProgress: (callback: (event: KeyRotationProgressEvent) => void) => () => void
   onSessionExpired: (callback: (event: SessionExpiredEvent) => void) => () => void
   onDeviceRevoked: (callback: (event: DeviceRevokedEvent) => void) => () => void
   onOtpDetected: (callback: (event: OtpDetectedEvent) => void) => () => void

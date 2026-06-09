@@ -389,12 +389,10 @@
       "identity": "아이덴티티",
       "sync": "동기화",
       "storage": "저장",
-      "devices": "장치",
-      "security": "보안"
+      "devices": "장치"
     },
     "identity": {
-      "unknown": "알 수 없음",
-      "plan": "프로 플랜"
+      "unknown": "알 수 없음"
     },
     "sync": {
       "lastSynced": "마지막으로 동기화된 {time}",
@@ -424,16 +422,6 @@
       }
     },
     "security": {
-      "recoveryKey": {
-        "label": "복구 키",
-        "description": "데이터 액세스를 위한 복구 키 보기",
-        "action": "키 보기"
-      },
-      "rotateKeys": {
-        "label": "암호화 키 순환",
-        "description": "새 키를 생성하고 모든 데이터를 다시 암호화합니다.",
-        "action": "회전"
-      },
       "signOut": {
         "label": "로그아웃",
         "description": "이 장치를 동기화에서 연결 해제",
@@ -610,56 +598,6 @@
     "approving": "승인 중...",
     "approvalFailed": "승인 실패",
     "failedToApprove": "기기 승인 실패"
-  },
-  "recoveryKey": {
-    "title": "복구 키",
-    "description": "이 키를 안전하게 보관하세요. 모든 장치에 액세스할 수 없는 경우 볼트를 복원할 수 있습니다.",
-    "retrieveFailed": "복구 키를 검색하지 못했습니다.",
-    "copied": "복구 키가 클립보드에 복사되었습니다.",
-    "copyFailed": "클립보드에 복사하지 못했습니다.",
-    "clickToReveal": "공개하려면 클릭하세요.",
-    "hide": "숨기기",
-    "reveal": "공개",
-    "sessionHint": "이 키는 세션당 한 번 표시됩니다. 메모리에서 삭제하려면 이 대화 상자를 닫으세요."
-  },
-  "keyRotation": {
-    "title": "암호화 키 순환",
-    "descriptions": {
-      "confirm": "저장소에 대한 새 암호화 키를 생성합니다.",
-      "rotating": "새 키로 데이터를 다시 암호화하는 중...",
-      "phrase": "새 복구 문구를 저장하세요.",
-      "complete": "키 순환이 완료되었습니다.",
-      "error": "키 순환 중에 오류가 발생했습니다."
-    },
-    "warningTitle": "이 작업은 다음을 수행합니다.",
-    "warningItems": {
-      "keyPair": "새 암호화 키 쌍 생성",
-      "rewrap": "모든 동기화된 항목을 새 키로 다시 래핑",
-      "phrase": "새로운 복구 문구 생성(이전 문구는 유효하지 않음)",
-      "pause": "프로세스 중에 일시적으로 동기화를 일시중지합니다."
-    },
-    "explanation": "데이터 콘텐츠는 다시 암호화되지 않으며 키 봉투만 변경됩니다. 이것은 빠르고 안전한 작업입니다.",
-    "start": "키 순환 시작",
-    "starting": "시작 중...",
-    "phases": {
-      "preparing": "준비 중...",
-      "reencrypting": "키 재래핑({processed}/{total})",
-      "finalizing": "마무리 중...",
-      "working": "일하는 중..."
-    },
-    "progressAria": "키 회전: {phaseLabel} {pct}%",
-    "progressLabel": "키 순환 진행",
-    "doNotClose": "이 과정에서 응용 프로그램을 닫지 마십시오.",
-    "complete": "모든 암호화 키가 순환되었습니다. 새로운 복구 문구가 저장되었습니다. 동기화가 자동으로 재개됩니다.",
-    "unknownError": "키 순환 중에 알 수 없는 오류가 발생했습니다.",
-    "errorHint": "기존 키는 계속 유효합니다. 동기화가 재개되었습니다. 언제든지 다시 시도할 수 있습니다.",
-    "closeConfirm": {
-      "title": "순환 진행 중",
-      "description": "키 순환이 아직 실행 중입니다. 이 대화 상자를 닫아도 프로세스가 중지되지는 않지만 완료될 때까지 새 복구 문구가 표시되지 않습니다.",
-      "stay": "숙박",
-      "closeAnyway": "무시하고 닫음"
-    },
-    "failed": "키 순환 실패"
   },
   "ai": {
     "header": {

@@ -265,14 +265,6 @@ vi.mock('@/components/sync/device-list', () => ({
   )
 }))
 
-vi.mock('@/components/sync/key-rotation-wizard', () => ({
-  KeyRotationWizard: ({ open }: { open: boolean }) => (open ? <div>rotation wizard</div> : null)
-}))
-
-vi.mock('@/components/settings/recovery-key-dialog', () => ({
-  RecoveryKeyDialog: ({ open }: { open: boolean }) => (open ? <div>recovery key</div> : null)
-}))
-
 function installWindowApi() {
   const agentPreferences = {
     accessMode: 'vault_only',
@@ -479,7 +471,7 @@ describe('settings section coverage', () => {
     mocks.journalSettings.setDefaultTemplate.mockResolvedValue(true)
   })
 
-  it('renders account loading, setup, authenticated, storage, device, security, and linking states', async () => {
+  it('renders account loading, setup, authenticated, storage, device, and linking states', async () => {
     mocks.authState = { status: 'checking' }
     const { rerender } = render(<AccountSettings />)
     expect(screen.getByText('account.header.loading')).toBeInTheDocument()
@@ -494,7 +486,7 @@ describe('settings section coverage', () => {
     mocks.syncContext.linkingRequest = { code: '123456' }
     rerender(<AccountSettings />)
     expect(await screen.findByText('kaan@example.com')).toBeInTheDocument()
-    expect(await screen.findByText('account.billing.plans.free')).toBeInTheDocument()
+    expect((await screen.findAllByText('account.billing.plans.free')).length).toBeGreaterThan(0)
     expect(screen.getByText(/account.storage.used/)).toBeInTheDocument()
     expect(screen.getByText('account.community.prompt')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'account.community.star' })).toHaveAttribute(
@@ -512,12 +504,6 @@ describe('settings section coverage', () => {
     fireEvent.click(screen.getByText('link device'))
     expect(screen.getByText('qr linking')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('account.security.recoveryKey.action'))
-    expect(screen.getByText('recovery key')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByText('account.security.rotateKeys.action'))
-    expect(screen.getByText('rotation wizard')).toBeInTheDocument()
-
     fireEvent.click(screen.getByText('approve link'))
     expect(mocks.syncContext.clearLinkingRequest).toHaveBeenCalled()
     expect(toast.success).toHaveBeenCalledWith('account.toasts.deviceLinked')
@@ -525,7 +511,7 @@ describe('settings section coverage', () => {
 
   it('starts checkout, refreshes billing, and opens Paddle portal from account settings', async () => {
     render(<AccountSettings />)
-    expect(await screen.findByText('account.billing.plans.free')).toBeInTheDocument()
+    expect((await screen.findAllByText('account.billing.plans.free')).length).toBeGreaterThan(0)
 
     fireEvent.click(screen.getByText('account.billing.actions.upgrade'))
     await waitFor(() =>
@@ -536,7 +522,9 @@ describe('settings section coverage', () => {
     )
 
     fireEvent.click(screen.getByText('account.billing.actions.refresh'))
-    await waitFor(() => expect(screen.getByText('account.billing.plans.pro')).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getAllByText('account.billing.plans.pro').length).toBeGreaterThan(0)
+    )
     expect(mocks.syncContext.triggerSync).toHaveBeenCalled()
 
     fireEvent.click(screen.getByText('account.billing.actions.manage'))

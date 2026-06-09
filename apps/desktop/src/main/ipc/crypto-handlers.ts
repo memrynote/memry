@@ -1,4 +1,4 @@
-import { BrowserWindow, ipcMain } from 'electron'
+import { ipcMain } from 'electron'
 import sodium from 'libsodium-wrappers-sumo'
 
 import { createLogger } from '../lib/logger'
@@ -7,10 +7,8 @@ import {
   SYNC_CHANNELS,
   EncryptItemSchema,
   DecryptItemSchema,
-  VerifySignatureSchema,
-  RotateKeysSchema
+  VerifySignatureSchema
 } from '@memry/contracts/ipc-sync'
-import { SYNC_EVENTS } from '@memry/contracts/ipc-sync'
 import { CBOR_FIELD_ORDER } from '@memry/contracts/cbor-ordering'
 import {
   CRYPTO_VERSION,
@@ -24,43 +22,21 @@ import type {
   DecryptItemInput,
   DecryptItemResult,
   VerifySignatureInput,
-  VerifySignatureResult,
-  RotateKeysInput,
-  RotateKeysResult,
-  GetRotationProgressResult
+  VerifySignatureResult
 } from '@memry/contracts/ipc-sync'
-import type {
-  RecordPullItemResponse,
-  RecordSyncManifest,
-  PushResponse
-} from '@memry/contracts/sync-api'
-import { RecordPullResponseSchema } from '@memry/contracts/sync-api'
 import {
   encrypt,
   decrypt,
   generateFileKey,
   getOrInitializeLocalVaultKey,
-  deriveKey,
-  generateSalt,
-  generateRecoveryPhrase,
-  deriveMasterKey,
   wrapFileKey,
   unwrapFileKey,
   signPayload,
   verifySignature,
   retrieveKey,
-  storeKey,
-  secureCleanup,
-  storeVaultKeyVerifier
+  secureCleanup
 } from '../crypto'
-import { KEY_DERIVATION_CONTEXTS } from '@memry/contracts/crypto'
-import { eq } from 'drizzle-orm'
-import { syncDevices } from '@memry/db-schema/schema/sync-devices'
 import { getDatabase } from '../database'
-import { getSyncEngine } from '../sync/runtime'
-import { getFromServer, postToServer } from '../sync/http-client'
-import { getValidAccessToken } from '../sync/token-manager'
-import { performKeyRotation, type RotationState } from '../crypto/rotation'
 import { getOrCreateVaultUuid } from '../agent/storage/vault-id'
 
 const logger = createLogger('IPC:Crypto')
@@ -286,164 +262,6 @@ async function handleVerifySignature(input: VerifySignatureInput): Promise<Verif
   return { valid }
 }
 
-let currentRotationState: RotationState | null = null
-let rotationLock = false
-
-function emitToAllWindows(channel: string, data: unknown): void {
-  for (const win of BrowserWindow.getAllWindows()) {
-    win.webContents.send(channel, data)
-  }
-}
-
-async function handleRotateKeys(input: RotateKeysInput): Promise<RotateKeysResult> {
-  if (!input.confirm) {
-    return { success: false, error: 'Key rotation not confirmed' }
-  }
-
-  if (rotationLock) {
-    return { success: false, error: 'Key rotation already in progress' }
-  }
-  rotationLock = true
-
-  let seed: Uint8Array | undefined
-  let newMasterKey: Uint8Array | undefined
-  let newVaultKey: Uint8Array | undefined
-  let salt: Uint8Array | undefined
-
-  try {
-    await ensureSodiumReady()
-
-    const generated = await generateRecoveryPhrase()
-    seed = generated.seed
-    const phrase = generated.phrase
-    salt = generateSalt()
-
-    const material = await deriveMasterKey(seed, salt)
-    newMasterKey = material.masterKey
-    newVaultKey = await deriveKey(newMasterKey, KEY_DERIVATION_CONTEXTS.VAULT_KEY, 32)
-
-    const result = await performKeyRotation(
-      {
-        getAccessToken() {
-          return getValidAccessToken()
-        },
-        getVaultKey: getVerifiedVaultKey,
-        getSigningKeys: async () => {
-          const sk = await retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY)
-          if (!sk) return null
-          const db = getDatabase()
-          const device = db
-            .select({ id: syncDevices.id })
-            .from(syncDevices)
-            .where(eq(syncDevices.isCurrentDevice, true))
-            .get()
-          if (!device) {
-            secureCleanup(sk)
-            return null
-          }
-          const pk = sodium.crypto_sign_ed25519_sk_to_pk(sk)
-          return { secretKey: sk, publicKey: pk, deviceId: device.id }
-        },
-        fetchManifest: (token) => getFromServer<RecordSyncManifest>('/sync/manifest', token),
-        pullItems: async (token, itemIds) => {
-          const raw = await postToServer<{ items: RecordPullItemResponse[] }>(
-            '/sync/pull',
-            { itemIds },
-            token
-          )
-          const parsed = RecordPullResponseSchema.safeParse(raw)
-          if (!parsed.success) {
-            throw new Error(`Invalid pull response: ${parsed.error.message}`)
-          }
-          return parsed.data.items
-        },
-        pushItems: async (token, items) => {
-          return postToServer<PushResponse>('/sync/push', { items }, token)
-        },
-        fetchCrdtSnapshots: async (token, noteIds) => {
-          const results: Array<{ noteId: string; snapshot: Uint8Array; sequenceNum: number }> = []
-          for (const noteId of noteIds) {
-            const resp = await getFromServer<{
-              snapshot: string | null
-              sequenceNum: number
-            }>(`/sync/crdt/snapshot/${encodeURIComponent(noteId)}`, token)
-            if (resp.snapshot) {
-              results.push({
-                noteId,
-                snapshot: Buffer.from(resp.snapshot, 'base64'),
-                sequenceNum: resp.sequenceNum
-              })
-            }
-          }
-          return results
-        },
-        pushCrdtSnapshot: async (token, noteId, snapshot) => {
-          const b64 = Buffer.from(snapshot).toString('base64')
-          await postToServer('/sync/crdt/snapshot', { noteId, snapshot: b64 }, token)
-        },
-        updateServerKeys: async (token, kdfSalt, keyVerifier) => {
-          await postToServer('/auth/setup', { kdfSalt, keyVerifier }, token)
-        },
-        pauseSync: () => {
-          const engine = getSyncEngine()
-          engine?.pause()
-        },
-        resumeSync: () => {
-          const engine = getSyncEngine()
-          engine?.resume()
-        },
-        storeNewMasterKey: async (mk) => {
-          await storeKey(KEYCHAIN_ENTRIES.MASTER_KEY, mk)
-          if (newVaultKey) {
-            const db = getDatabase()
-            storeVaultKeyVerifier(db, getOrCreateVaultUuid(db), newVaultKey)
-          }
-        },
-        onProgress: (rotationState) => {
-          currentRotationState = rotationState
-          emitToAllWindows(SYNC_EVENTS.KEY_ROTATION_PROGRESS, {
-            phase: rotationState.phase,
-            totalItems: rotationState.totalItems,
-            processedItems: rotationState.processedItems,
-            error: rotationState.error
-          })
-        }
-      },
-      newVaultKey,
-      material.kdfSalt,
-      material.keyVerifier,
-      newMasterKey
-    )
-
-    if (result.success) {
-      return { success: true, newRecoveryPhrase: phrase }
-    }
-    return { success: false, error: result.error }
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Key rotation failed'
-    logger.error('handleRotateKeys failed', err)
-    return { success: false, error: message }
-  } finally {
-    rotationLock = false
-    if (seed) secureCleanup(seed)
-    if (salt) secureCleanup(salt)
-    if (newVaultKey) secureCleanup(newVaultKey)
-    if (newMasterKey) secureCleanup(newMasterKey)
-  }
-}
-
-function handleGetRotationProgress(): GetRotationProgressResult {
-  if (!currentRotationState) {
-    return { inProgress: false }
-  }
-  return {
-    inProgress: currentRotationState.inProgress,
-    phase: currentRotationState.phase,
-    totalItems: currentRotationState.totalItems,
-    processedItems: currentRotationState.processedItems
-  }
-}
-
 export function registerCryptoHandlers(): void {
   ipcMain.handle(
     SYNC_CHANNELS.ENCRYPT_ITEM,
@@ -459,21 +277,12 @@ export function registerCryptoHandlers(): void {
     SYNC_CHANNELS.VERIFY_SIGNATURE,
     createValidatedHandler(VerifySignatureSchema, handleVerifySignature)
   )
-
-  ipcMain.handle(
-    SYNC_CHANNELS.ROTATE_KEYS,
-    createValidatedHandler(RotateKeysSchema, handleRotateKeys)
-  )
-
-  ipcMain.handle(SYNC_CHANNELS.GET_ROTATION_PROGRESS, handleGetRotationProgress)
 }
 
 export function unregisterCryptoHandlers(): void {
   ipcMain.removeHandler(SYNC_CHANNELS.ENCRYPT_ITEM)
   ipcMain.removeHandler(SYNC_CHANNELS.DECRYPT_ITEM)
   ipcMain.removeHandler(SYNC_CHANNELS.VERIFY_SIGNATURE)
-  ipcMain.removeHandler(SYNC_CHANNELS.ROTATE_KEYS)
-  ipcMain.removeHandler(SYNC_CHANNELS.GET_ROTATION_PROGRESS)
 
   logger.info('Crypto handlers unregistered')
 }

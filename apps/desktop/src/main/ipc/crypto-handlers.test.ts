@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 
 import { mockIpcMain, resetIpcMocks, invokeHandler } from '@tests/utils/mock-ipc'
-import { SYNC_CHANNELS, SYNC_EVENTS } from '@memry/contracts/ipc-sync'
+import { SYNC_CHANNELS } from '@memry/contracts/ipc-sync'
 import type { DecryptItemInput, VerifySignatureInput } from '@memry/contracts/ipc-sync'
 
 const VALID_PUBLIC_KEY = 'valid-public-key'
@@ -63,27 +63,8 @@ const hoisted = vi.hoisted(() => {
     decryptMock: vi.fn(() => new TextEncoder().encode(JSON.stringify({ title: 'Decrypted' }))),
     getVerifiedVaultKeyMock: vi.fn(async () => new Uint8Array(32)),
     retrieveKeyMock: vi.fn(async () => new Uint8Array(64)),
-    generateRecoveryPhraseMock: vi.fn(async () => ({
-      phrase: 'new recovery phrase',
-      seed: new Uint8Array(64)
-    })),
-    generateSaltMock: vi.fn(() => new Uint8Array(16)),
-    deriveMasterKeyMock: vi.fn(async () => ({
-      masterKey: new Uint8Array(32),
-      kdfSalt: 'new-salt',
-      keyVerifier: 'new-verifier'
-    })),
-    deriveKeyMock: vi.fn(async () => new Uint8Array(32)),
-    storeKeyMock: vi.fn(async () => undefined),
-    storeVaultKeyVerifierMock: vi.fn(),
-    performKeyRotationMock: vi.fn(async () => ({ success: true })),
     getDatabaseMock: vi.fn(),
-    getOrCreateVaultUuidMock: vi.fn(() => 'vault-1'),
-    getSyncEngineMock: vi.fn(() => null),
-    getFromServerMock: vi.fn(),
-    postToServerMock: vi.fn(),
-    getValidAccessTokenMock: vi.fn(async () => 'access-token'),
-    getAllWindowsMock: vi.fn(() => [])
+    getOrCreateVaultUuidMock: vi.fn(() => 'vault-1')
   }
 })
 
@@ -95,9 +76,6 @@ vi.mock('electron', () => ({
     removeHandler: vi.fn((channel: string) => {
       mockIpcMain.removeHandler(channel)
     })
-  },
-  BrowserWindow: {
-    getAllWindows: () => hoisted.getAllWindowsMock()
   }
 }))
 
@@ -130,12 +108,6 @@ vi.mock('../crypto', () => ({
   signPayload: vi.fn(() => new Uint8Array(64)),
   verifySignature: hoisted.verifySignatureMock,
   retrieveKey: hoisted.retrieveKeyMock,
-  generateRecoveryPhrase: hoisted.generateRecoveryPhraseMock,
-  generateSalt: hoisted.generateSaltMock,
-  deriveMasterKey: hoisted.deriveMasterKeyMock,
-  deriveKey: hoisted.deriveKeyMock,
-  storeKey: hoisted.storeKeyMock,
-  storeVaultKeyVerifier: hoisted.storeVaultKeyVerifierMock,
   secureCleanup: vi.fn()
 }))
 
@@ -143,25 +115,8 @@ vi.mock('../agent/storage/vault-id', () => ({
   getOrCreateVaultUuid: hoisted.getOrCreateVaultUuidMock
 }))
 
-vi.mock('../crypto/rotation', () => ({
-  performKeyRotation: (...args: unknown[]) => hoisted.performKeyRotationMock(...args)
-}))
-
 vi.mock('../database', () => ({
   getDatabase: () => hoisted.getDatabaseMock()
-}))
-
-vi.mock('../sync/runtime', () => ({
-  getSyncEngine: () => hoisted.getSyncEngineMock()
-}))
-
-vi.mock('../sync/http-client', () => ({
-  getFromServer: (...args: unknown[]) => hoisted.getFromServerMock(...args),
-  postToServer: (...args: unknown[]) => hoisted.postToServerMock(...args)
-}))
-
-vi.mock('../sync/token-manager', () => ({
-  getValidAccessToken: (...args: unknown[]) => hoisted.getValidAccessTokenMock(...args)
 }))
 
 import { registerCryptoHandlers, unregisterCryptoHandlers } from './crypto-handlers'
@@ -197,31 +152,7 @@ describe('crypto-handlers', () => {
     )
     hoisted.getVerifiedVaultKeyMock.mockResolvedValue(new Uint8Array(32))
     hoisted.retrieveKeyMock.mockResolvedValue(new Uint8Array(64))
-    hoisted.generateRecoveryPhraseMock.mockResolvedValue({
-      phrase: 'new recovery phrase',
-      seed: new Uint8Array(64)
-    })
-    hoisted.generateSaltMock.mockReturnValue(new Uint8Array(16))
-    hoisted.deriveMasterKeyMock.mockResolvedValue({
-      masterKey: new Uint8Array(32),
-      kdfSalt: 'new-salt',
-      keyVerifier: 'new-verifier'
-    })
-    hoisted.deriveKeyMock.mockResolvedValue(new Uint8Array(32))
-    hoisted.storeKeyMock.mockResolvedValue(undefined)
-    hoisted.performKeyRotationMock.mockResolvedValue({ success: true })
-    hoisted.getSyncEngineMock.mockReturnValue(null)
-    hoisted.getAllWindowsMock.mockReturnValue([])
-    hoisted.getValidAccessTokenMock.mockResolvedValue('access-token')
-    hoisted.getDatabaseMock.mockReturnValue({
-      select: () => ({
-        from: () => ({
-          where: () => ({
-            get: () => ({ id: 'device-1' })
-          })
-        })
-      })
-    })
+    hoisted.getDatabaseMock.mockReturnValue({})
   })
 
   afterEach(() => {
@@ -364,18 +295,6 @@ describe('crypto-handlers', () => {
     ).rejects.toThrow('Device signing key not found in keychain')
   })
 
-  it('returns key rotation guard responses and empty progress before rotation starts', async () => {
-    registerCryptoHandlers()
-
-    await expect(invokeHandler(SYNC_CHANNELS.ROTATE_KEYS, { confirm: false })).resolves.toEqual({
-      success: false,
-      error: 'Key rotation not confirmed'
-    })
-    await expect(invokeHandler(SYNC_CHANNELS.GET_ROTATION_PROGRESS)).resolves.toEqual({
-      inProgress: false
-    })
-  })
-
   it('waits for sodium.ready before signature verification', async () => {
     registerCryptoHandlers()
 
@@ -406,99 +325,5 @@ describe('crypto-handlers', () => {
     const result = await pending
 
     expect(result).toEqual({ valid: true })
-  })
-
-  it('rotates keys, emits progress, pauses sync, and exposes current rotation progress', async () => {
-    const send = vi.fn()
-    const pause = vi.fn()
-    const resume = vi.fn()
-    hoisted.getAllWindowsMock.mockReturnValue([{ webContents: { send } }])
-    hoisted.getSyncEngineMock.mockReturnValue({ pause, resume })
-    hoisted.performKeyRotationMock.mockImplementationOnce(async (ops: any) => {
-      ops.pauseSync()
-      const signingKeys = await ops.getSigningKeys()
-      ops.onProgress({
-        inProgress: true,
-        phase: 'reencrypt',
-        totalItems: 3,
-        processedItems: 2
-      })
-      ops.resumeSync()
-      expect(signingKeys).toEqual({
-        secretKey: expect.any(Uint8Array),
-        publicKey: expect.any(Uint8Array),
-        deviceId: 'device-1'
-      })
-      return { success: true }
-    })
-    registerCryptoHandlers()
-
-    await expect(invokeHandler(SYNC_CHANNELS.ROTATE_KEYS, { confirm: true })).resolves.toEqual({
-      success: true,
-      newRecoveryPhrase: 'new recovery phrase'
-    })
-    expect(pause).toHaveBeenCalledOnce()
-    expect(resume).toHaveBeenCalledOnce()
-    expect(send).toHaveBeenCalledWith(SYNC_EVENTS.KEY_ROTATION_PROGRESS, {
-      phase: 'reencrypt',
-      totalItems: 3,
-      processedItems: 2,
-      error: undefined
-    })
-    await expect(invokeHandler(SYNC_CHANNELS.GET_ROTATION_PROGRESS)).resolves.toEqual({
-      inProgress: true,
-      phase: 'reencrypt',
-      totalItems: 3,
-      processedItems: 2
-    })
-  })
-
-  it('guards concurrent rotation and returns rotation failures', async () => {
-    registerCryptoHandlers()
-
-    let finishRotation!: (value: { success: false; error: string }) => void
-    hoisted.performKeyRotationMock.mockReturnValueOnce(
-      new Promise((resolve) => {
-        finishRotation = resolve
-      })
-    )
-
-    const first = invokeHandler(SYNC_CHANNELS.ROTATE_KEYS, { confirm: true })
-    await Promise.resolve()
-
-    await expect(invokeHandler(SYNC_CHANNELS.ROTATE_KEYS, { confirm: true })).resolves.toEqual({
-      success: false,
-      error: 'Key rotation already in progress'
-    })
-
-    finishRotation({ success: false, error: 'server refused keys' })
-    await expect(first).resolves.toEqual({ success: false, error: 'server refused keys' })
-  })
-
-  it('returns null signing keys when keychain or database state is missing during rotation', async () => {
-    registerCryptoHandlers()
-
-    hoisted.retrieveKeyMock.mockResolvedValueOnce(null)
-    hoisted.performKeyRotationMock.mockImplementationOnce(async (ops: any) => {
-      expect(await ops.getSigningKeys()).toBeNull()
-      return { success: true }
-    })
-    await invokeHandler(SYNC_CHANNELS.ROTATE_KEYS, { confirm: true })
-
-    hoisted.retrieveKeyMock.mockResolvedValueOnce(new Uint8Array(64))
-    hoisted.getDatabaseMock.mockReturnValueOnce({
-      select: () => ({
-        from: () => ({
-          where: () => ({
-            get: () => null
-          })
-        })
-      })
-    })
-    hoisted.performKeyRotationMock.mockImplementationOnce(async (ops: any) => {
-      expect(await ops.getSigningKeys()).toBeNull()
-      return { success: true }
-    })
-    await invokeHandler(SYNC_CHANNELS.ROTATE_KEYS, { confirm: true })
   })
 })

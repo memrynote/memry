@@ -389,12 +389,10 @@
       "identity": "Identitatea",
       "sync": "Sincronizare",
       "storage": "Depozitare",
-      "devices": "Dispozitive",
-      "security": "Securitate"
+      "devices": "Dispozitive"
     },
     "identity": {
-      "unknown": "Necunoscut",
-      "plan": "Plan pro"
+      "unknown": "Necunoscut"
     },
     "sync": {
       "lastSynced": "Ultima sincronizare {time}",
@@ -424,16 +422,6 @@
       }
     },
     "security": {
-      "recoveryKey": {
-        "label": "Cheie de recuperare",
-        "description": "Vizualizați cheia de recuperare pentru acces la date",
-        "action": "Vedere cheie"
-      },
-      "rotateKeys": {
-        "label": "Rotiți cheile de criptare",
-        "description": "Generați chei noi și recriptați toate datele",
-        "action": "Rotiți"
-      },
       "signOut": {
         "label": "Deconectați-vă",
         "description": "Deconectați acest dispozitiv de la sincronizare",
@@ -610,56 +598,6 @@
     "approving": "Se aprobă...",
     "approvalFailed": "Aprobarea nu a reușit",
     "failedToApprove": "Dispozitivul nu a fost aprobat"
-  },
-  "recoveryKey": {
-    "title": "Cheie de recuperare",
-    "description": "Păstrați această cheie în siguranță. Îți poate restabili seiful dacă pierzi accesul la toate dispozitivele.",
-    "retrieveFailed": "Nu s-a putut prelua cheia de recuperare",
-    "copied": "Cheia de recuperare a fost copiată în clipboard",
-    "copyFailed": "Copierea eșuată în clipboard",
-    "clickToReveal": "Faceți clic pentru a dezvălui",
-    "hide": "Ascunde",
-    "reveal": "Dezvăluie",
-    "sessionHint": "Această cheie este afișată o dată pe sesiune. Închideți acest dialog pentru a-l șterge din memorie."
-  },
-  "keyRotation": {
-    "title": "Rotiți cheile de criptare",
-    "descriptions": {
-      "confirm": "Generați noi chei de criptare pentru seif.",
-      "rotating": "Re-criptarea datelor dvs. cu chei noi...",
-      "phrase": "Salvați noua frază de recuperare.",
-      "complete": "Rotirea cheii s-a încheiat.",
-      "error": "Rotirea tastelor a întâmpinat o eroare."
-    },
-    "warningTitle": "Această acțiune va:",
-    "warningItems": {
-      "keyPair": "Generați o nouă pereche de chei de criptare",
-      "rewrap": "Reînfășurați toate elementele sincronizate cu noua cheie",
-      "phrase": "Produceți o nouă expresie de recuperare (cea veche devine invalidă)",
-      "pause": "Întrerupeți temporar sincronizarea în timpul procesului"
-    },
-    "explanation": "Conținutul dvs. de date nu este niciodată re-criptat - doar plicurile cheii se schimbă. Aceasta este o operațiune rapidă și sigură.",
-    "start": "Începeți rotirea tastelor",
-    "starting": "Incepand...",
-    "phases": {
-      "preparing": "Se pregatesc...",
-      "reencrypting": "Reambalarea cheilor ({processed}/{total})",
-      "finalizing": "Finalizarea...",
-      "working": "Se lucreaza..."
-    },
-    "progressAria": "Rotatie cheie: {phaseLabel} {pct}%",
-    "progressLabel": "Progresul rotației cheilor",
-    "doNotClose": "Nu închideți aplicația în timpul acestui proces.",
-    "complete": "Toate cheile de criptare au fost rotite. Noua ta expresie de recuperare a fost salvată. Sincronizarea se va relua automat.",
-    "unknownError": "A apărut o eroare necunoscută în timpul rotației cheii.",
-    "errorHint": "Cheile dvs. existente rămân valabile. Sincronizarea a fost reluată. Puteți reîncerca oricând.",
-    "closeConfirm": {
-      "title": "Rotație în curs",
-      "description": "Rotirea tastelor este încă în curs. Închiderea acestei casete de dialog nu va opri procesul, dar nu veți vedea noua frază de recuperare până când nu se va finaliza.",
-      "stay": "Stai",
-      "closeAnyway": "Închide oricum"
-    },
-    "failed": "Rotirea cheii a eșuat"
   },
   "ai": {
     "header": {

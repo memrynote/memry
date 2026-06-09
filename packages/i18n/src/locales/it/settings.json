@@ -389,12 +389,10 @@
       "identity": "Identità",
       "sync": "Sincronizzazione",
       "storage": "Stoccaggio",
-      "devices": "Dispositivi",
-      "security": "Sicurezza"
+      "devices": "Dispositivi"
     },
     "identity": {
-      "unknown": "Sconosciuto",
-      "plan": "Piano professionale"
+      "unknown": "Sconosciuto"
     },
     "sync": {
       "lastSynced": "Ultimo {time} sincronizzato",
@@ -424,16 +422,6 @@
       }
     },
     "security": {
-      "recoveryKey": {
-        "label": "Chiave di ripristino",
-        "description": "Visualizza la chiave di ripristino per l'accesso ai dati",
-        "action": "Visualizza chiave"
-      },
-      "rotateKeys": {
-        "label": "Ruota le chiavi di crittografia",
-        "description": "Genera nuove chiavi e crittografa nuovamente tutti i dati",
-        "action": "Ruota"
-      },
       "signOut": {
         "label": "Esci",
         "description": "Scollega questo dispositivo dalla sincronizzazione",
@@ -610,56 +598,6 @@
     "approving": "Approvazione...",
     "approvalFailed": "Approvazione non riuscita",
     "failedToApprove": "Impossibile approvare il dispositivo"
-  },
-  "recoveryKey": {
-    "title": "Chiave di ripristino",
-    "description": "Conserva questa chiave in modo sicuro. Può ripristinare il tuo caveau se perdi l'accesso a tutti i dispositivi.",
-    "retrieveFailed": "Impossibile recuperare la chiave di ripristino",
-    "copied": "Chiave di ripristino copiata negli appunti",
-    "copyFailed": "Impossibile copiare negli appunti",
-    "clickToReveal": "Fare clic per rivelare",
-    "hide": "Nasconditi",
-    "reveal": "Rivela",
-    "sessionHint": "Questa chiave viene visualizzata una volta per sessione. Chiudere questa finestra di dialogo per cancellarla dalla memoria."
-  },
-  "keyRotation": {
-    "title": "Ruota le chiavi di crittografia",
-    "descriptions": {
-      "confirm": "Genera nuove chiavi di crittografia per il tuo vault.",
-      "rotating": "Nuova crittografia dei dati con nuove chiavi...",
-      "phrase": "Salva la tua nuova frase di recupero.",
-      "complete": "Rotazione chiave completata.",
-      "error": "Si è verificato un errore nella rotazione della chiave."
-    },
-    "warningTitle": "Questa azione:",
-    "warningItems": {
-      "keyPair": "Genera una nuova coppia di chiavi di crittografia",
-      "rewrap": "Ricopri tutti gli elementi sincronizzati con la nuova chiave",
-      "phrase": "Produrre una nuova frase di recupero (quella vecchia diventa non valida)",
-      "pause": "Sospendere temporaneamente la sincronizzazione durante il processo"
-    },
-    "explanation": "Il contenuto dei tuoi dati non viene mai crittografato nuovamente: cambiano solo le buste della chiave. Si tratta di un'operazione rapida e sicura.",
-    "start": "Avvia la rotazione dei tasti",
-    "starting": "A partire...",
-    "phases": {
-      "preparing": "Preparazione...",
-      "reencrypting": "Chiavi di riavvolgimento ({processed}/{total})",
-      "finalizing": "Finalizzazione...",
-      "working": "Lavorando..."
-    },
-    "progressAria": "Rotazione chiave: {phaseLabel} {pct}%",
-    "progressLabel": "Avanzamento della rotazione delle chiavi",
-    "doNotClose": "Non chiudere l'applicazione durante questo processo.",
-    "complete": "Tutte le chiavi di crittografia sono state ruotate. La tua nuova frase di recupero è stata salvata. La sincronizzazione riprenderà automaticamente.",
-    "unknownError": "Si è verificato un errore sconosciuto durante la rotazione della chiave.",
-    "errorHint": "Le chiavi esistenti rimangono valide. La sincronizzazione è stata ripresa. Puoi riprovare in qualsiasi momento.",
-    "closeConfirm": {
-      "title": "Rotazione in corso",
-      "description": "La rotazione della chiave è ancora in esecuzione. La chiusura di questa finestra di dialogo non interromperà il processo, ma non vedrai la nuova frase di recupero finché non sarà completata.",
-      "stay": "Rimani",
-      "closeAnyway": "Chiudi comunque"
-    },
-    "failed": "Rotazione della chiave non riuscita"
   },
   "ai": {
     "header": {

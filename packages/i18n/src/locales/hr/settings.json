@@ -389,12 +389,10 @@
       "identity": "Identitet",
       "sync": "Sinkronizacija",
       "storage": "Skladištenje",
-      "devices": "Uređaji",
-      "security": "Sigurnost"
+      "devices": "Uređaji"
     },
     "identity": {
-      "unknown": "Nepoznato",
-      "plan": "Pro plan"
+      "unknown": "Nepoznato"
     },
     "sync": {
       "lastSynced": "Zadnja sinkronizacija {time}",
@@ -424,16 +422,6 @@
       }
     },
     "security": {
-      "recoveryKey": {
-        "label": "Ključ za oporavak",
-        "description": "Pogledajte svoj ključ za oporavak za pristup podacima",
-        "action": "Prikaz ključa"
-      },
-      "rotateKeys": {
-        "label": "Rotirajte ključeve šifriranja",
-        "description": "Generirajte nove ključeve i ponovno šifrirajte sve podatke",
-        "action": "Rotirajte"
-      },
       "signOut": {
         "label": "Odjavi se",
         "description": "Isključite ovaj uređaj iz sinkronizacije",
@@ -610,56 +598,6 @@
     "approving": "Odobravanje...",
     "approvalFailed": "Odobrenje nije uspjelo",
     "failedToApprove": "Odobravanje uređaja nije uspjelo"
-  },
-  "recoveryKey": {
-    "title": "Ključ za oporavak",
-    "description": "Čuvajte ovaj ključ na sigurnom mjestu. Može vratiti vaš trezor ako izgubite pristup svim uređajima.",
-    "retrieveFailed": "Dohvaćanje ključa za oporavak nije uspjelo",
-    "copied": "Ključ za oporavak kopiran je u međuspremnik",
-    "copyFailed": "Kopiranje u međuspremnik nije uspjelo",
-    "clickToReveal": "Kliknite za otkrivanje",
-    "hide": "Sakrij se",
-    "reveal": "otkriti",
-    "sessionHint": "Ovaj ključ se prikazuje jednom po sesiji. Zatvorite ovaj dijaloški okvir da biste ga izbrisali iz memorije."
-  },
-  "keyRotation": {
-    "title": "Rotirajte ključeve šifriranja",
-    "descriptions": {
-      "confirm": "Generirajte nove ključeve šifriranja za svoj trezor.",
-      "rotating": "Ponovno šifriranje vaših podataka novim ključevima...",
-      "phrase": "Spremite svoju novu frazu za oporavak.",
-      "complete": "Rotacija ključa dovršena.",
-      "error": "Rotacija ključa naišla je na pogrešku."
-    },
-    "warningTitle": "Ova radnja će:",
-    "warningItems": {
-      "keyPair": "Generirajte novi par ključeva za šifriranje",
-      "rewrap": "Ponovno omotajte sve sinkronizirane stavke s novim ključem",
-      "phrase": "Izradi novu frazu za oporavak (stara postaje nevažeća)",
-      "pause": "Privremeno pauzirajte sinkronizaciju tijekom procesa"
-    },
-    "explanation": "Sadržaj vaših podataka nikad se ponovno ne šifrira - mijenjaju se samo omotnice ključeva. Ovo je brza, sigurna operacija.",
-    "start": "Pokrenite rotaciju ključa",
-    "starting": "Počinje...",
-    "phases": {
-      "preparing": "Priprema...",
-      "reencrypting": "Ponovno omotavanje ključeva ({processed}/{total})",
-      "finalizing": "Završavanje...",
-      "working": "radi..."
-    },
-    "progressAria": "Rotacija ključa: {phaseLabel} {pct}%",
-    "progressLabel": "Napredak rotacije ključeva",
-    "doNotClose": "Ne zatvarajte aplikaciju tijekom ovog procesa.",
-    "complete": "Svi ključevi za šifriranje su rotirani. Vaša nova fraza za oporavak je spremljena. Sinkronizacija će se automatski nastaviti.",
-    "unknownError": "Došlo je do nepoznate pogreške tijekom rotacije ključa.",
-    "errorHint": "Vaši postojeći ključevi ostaju važeći. Sinkronizacija je nastavljena. Možete ponovno pokušati bilo kada.",
-    "closeConfirm": {
-      "title": "Rotacija u tijeku",
-      "description": "Rotacija ključeva još traje. Zatvaranje ovog dijaloškog okvira neće zaustaviti proces, ali nećete vidjeti svoju novu frazu za oporavak dok ne završi.",
-      "stay": "Ostani",
-      "closeAnyway": "Svejedno zatvori"
-    },
-    "failed": "Rotacija ključa nije uspjela"
   },
   "ai": {
     "header": {

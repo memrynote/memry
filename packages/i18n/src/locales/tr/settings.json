@@ -389,12 +389,10 @@
       "identity": "Kimlik",
       "sync": "Senkronizasyon",
       "storage": "Depolama",
-      "devices": "Cihazlar",
-      "security": "Güvenlik"
+      "devices": "Cihazlar"
     },
     "identity": {
-      "unknown": "Bilinmiyor",
-      "plan": "Profesyonel plan"
+      "unknown": "Bilinmiyor"
     },
     "sync": {
       "lastSynced": "Son senkronize edildi {time}",
@@ -424,16 +422,6 @@
       }
     },
     "security": {
-      "recoveryKey": {
-        "label": "Kurtarma Anahtarı",
-        "description": "Veri erişimi için kurtarma anahtarınızı görüntüleyin",
-        "action": "Anahtarı Görüntüle"
-      },
-      "rotateKeys": {
-        "label": "Şifreleme Anahtarlarını Döndür",
-        "description": "Yeni anahtarlar oluşturun ve tüm verileri yeniden şifreleyin",
-        "action": "Döndür"
-      },
       "signOut": {
         "label": "Oturumu Kapat",
         "description": "Bu cihazın senkronizasyon bağlantısını kesin",
@@ -610,56 +598,6 @@
     "approving": "Onaylanıyor...",
     "approvalFailed": "Onay başarısız oldu",
     "failedToApprove": "Cihaz onaylanamadı"
-  },
-  "recoveryKey": {
-    "title": "Kurtarma Anahtarı",
-    "description": "Bu anahtarı güvenli bir şekilde saklayın. Tüm cihazlara erişiminizi kaybederseniz kasanızı geri yükleyebilir.",
-    "retrieveFailed": "Kurtarma anahtarı alınamadı",
-    "copied": "Kurtarma anahtarı panoya kopyalandı",
-    "copyFailed": "Panoya kopyalanamadı",
-    "clickToReveal": "Ortaya çıkarmak için tıklayın",
-    "hide": "Gizle",
-    "reveal": "Açıkla",
-    "sessionHint": "Bu anahtar oturum başına bir kez gösterilir. Bellekten temizlemek için bu iletişim kutusunu kapatın."
-  },
-  "keyRotation": {
-    "title": "Şifreleme Anahtarlarını Döndür",
-    "descriptions": {
-      "confirm": "Kasanız için yeni şifreleme anahtarları oluşturun.",
-      "rotating": "Verileriniz yeni anahtarlarla yeniden şifreleniyor...",
-      "phrase": "Yeni kurtarma ifadenizi kaydedin.",
-      "complete": "Anahtar döndürme tamamlandı.",
-      "error": "Anahtar yönlendirme bir hatayla karşılaştı."
-    },
-    "warningTitle": "Bu eylem:",
-    "warningItems": {
-      "keyPair": "Yeni bir şifreleme anahtarı çifti oluşturun",
-      "rewrap": "Senkronize edilen tüm öğeleri yeni anahtarla yeniden sarın",
-      "phrase": "Yeni bir kurtarma ifadesi oluşturun (eskisi geçersiz olur)",
-      "pause": "İşlem sırasında senkronizasyonu geçici olarak duraklatın"
-    },
-    "explanation": "Veri içeriğiniz hiçbir zaman yeniden şifrelenmez; yalnızca anahtar zarfları değişir. Bu hızlı ve güvenli bir işlemdir.",
-    "start": "Anahtar Döndürmeyi Başlat",
-    "starting": "Başlıyor...",
-    "phases": {
-      "preparing": "Hazırlanıyor...",
-      "reencrypting": "Anahtarları yeniden sarma ({processed}/{total})",
-      "finalizing": "Sonlandırılıyor...",
-      "working": "Çalışıyorum..."
-    },
-    "progressAria": "Anahtar rotasyonu: {phaseLabel} {pct}%",
-    "progressLabel": "Anahtar döndürme ilerlemesi",
-    "doNotClose": "Bu işlem sırasında uygulamayı kapatmayın.",
-    "complete": "Tüm şifreleme anahtarları döndürüldü. Yeni kurtarma ifadeniz kaydedildi. Senkronizasyon otomatik olarak devam edecektir.",
-    "unknownError": "Anahtar döndürme sırasında bilinmeyen bir hata oluştu.",
-    "errorHint": "Mevcut anahtarlarınız geçerliliğini korur. Senkronizasyon yeniden başlatıldı. İstediğiniz zaman yeniden deneyebilirsiniz.",
-    "closeConfirm": {
-      "title": "Döndürme devam ediyor",
-      "description": "Anahtar rotasyonu hala çalışıyor. Bu iletişim kutusunun kapatılması işlemi durdurmaz ancak işlem tamamlanana kadar yeni kurtarma ifadenizi göremezsiniz.",
-      "stay": "Kal",
-      "closeAnyway": "Yine de kapat"
-    },
-    "failed": "Anahtar döndürme başarısız oldu"
   },
   "ai": {
     "header": {

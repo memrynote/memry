@@ -389,12 +389,10 @@
       "identity": "Identität",
       "sync": "Synchronisieren",
       "storage": "Lagerung",
-      "devices": "Geräte",
-      "security": "Sicherheit"
+      "devices": "Geräte"
     },
     "identity": {
-      "unknown": "Unbekannt",
-      "plan": "Pro-Plan"
+      "unknown": "Unbekannt"
     },
     "sync": {
       "lastSynced": "Zuletzt synchronisiert {time}",
@@ -424,16 +422,6 @@
       }
     },
     "security": {
-      "recoveryKey": {
-        "label": "Wiederherstellungsschlüssel",
-        "description": "Sehen Sie sich Ihren Wiederherstellungsschlüssel für den Datenzugriff an",
-        "action": "Schlüssel anzeigen"
-      },
-      "rotateKeys": {
-        "label": "Verschlüsselungsschlüssel rotieren",
-        "description": "Generieren Sie neue Schlüssel und verschlüsseln Sie alle Daten neu",
-        "action": "Drehen"
-      },
       "signOut": {
         "label": "Abmelden",
         "description": "Trennen Sie die Synchronisierung dieses Geräts",
@@ -610,56 +598,6 @@
     "approving": "Genehmigen...",
     "approvalFailed": "Die Genehmigung ist fehlgeschlagen",
     "failedToApprove": "Gerät konnte nicht genehmigt werden"
-  },
-  "recoveryKey": {
-    "title": "Wiederherstellungsschlüssel",
-    "description": "Bewahren Sie diesen Schlüssel sicher auf. Es kann Ihren Tresor wiederherstellen, wenn Sie den Zugriff auf alle Geräte verlieren.",
-    "retrieveFailed": "Wiederherstellungsschlüssel konnte nicht abgerufen werden",
-    "copied": "Wiederherstellungsschlüssel in die Zwischenablage kopiert",
-    "copyFailed": "Kopieren in die Zwischenablage fehlgeschlagen",
-    "clickToReveal": "Klicken Sie hier, um es anzuzeigen",
-    "hide": "Verstecken",
-    "reveal": "Enthüllen",
-    "sessionHint": "Dieser Schlüssel wird einmal pro Sitzung angezeigt. Schließen Sie dieses Dialogfeld, um es aus dem Speicher zu löschen."
-  },
-  "keyRotation": {
-    "title": "Verschlüsselungsschlüssel rotieren",
-    "descriptions": {
-      "confirm": "Generieren Sie neue Verschlüsselungsschlüssel für Ihren Tresor.",
-      "rotating": "Neuverschlüsselung Ihrer Daten mit neuen Schlüsseln...",
-      "phrase": "Speichern Sie Ihre neue Wiederherstellungsphrase.",
-      "complete": "Schlüsseldrehung abgeschlossen.",
-      "error": "Bei der Schlüsselrotation ist ein Fehler aufgetreten."
-    },
-    "warningTitle": "Diese Aktion wird:",
-    "warningItems": {
-      "keyPair": "Erzeugen Sie ein neues Verschlüsselungsschlüsselpaar",
-      "rewrap": "Verpacken Sie alle synchronisierten Elemente erneut mit dem neuen Schlüssel",
-      "phrase": "Erstellen Sie eine neue Wiederherstellungsphrase (die alte wird ungültig)",
-      "pause": "Unterbrechen Sie die Synchronisierung während des Vorgangs vorübergehend"
-    },
-    "explanation": "Ihr Dateninhalt wird niemals erneut verschlüsselt – nur die Schlüsselumschläge ändern sich. Dies ist ein schneller und sicherer Vorgang.",
-    "start": "Starten Sie die Schlüsselrotation",
-    "starting": "Beginnt...",
-    "phases": {
-      "preparing": "Vorbereiten...",
-      "reencrypting": "Schlüssel neu verpacken ({processed}/{total})",
-      "finalizing": "Finalisierung...",
-      "working": "Arbeiten..."
-    },
-    "progressAria": "Schlüsselrotation: {phaseLabel} {pct}%",
-    "progressLabel": "Fortschritt der Schlüsselrotation",
-    "doNotClose": "Schließen Sie die Anwendung während dieses Vorgangs nicht.",
-    "complete": "Alle Verschlüsselungsschlüssel wurden rotiert. Ihre neue Wiederherstellungsphrase wurde gespeichert. Die Synchronisierung wird automatisch fortgesetzt.",
-    "unknownError": "Bei der Schlüsselrotation ist ein unbekannter Fehler aufgetreten.",
-    "errorHint": "Ihre bisherigen Schlüssel behalten ihre Gültigkeit. Die Synchronisierung wurde wieder aufgenommen. Sie können es jederzeit erneut versuchen.",
-    "closeConfirm": {
-      "title": "Rotation läuft",
-      "description": "Die Schlüsselrotation läuft noch. Durch das Schließen dieses Dialogfelds wird der Vorgang nicht gestoppt, Sie sehen Ihre neue Wiederherstellungsphrase jedoch erst, wenn er abgeschlossen ist.",
-      "stay": "Bleib",
-      "closeAnyway": "Trotzdem schließen"
-    },
-    "failed": "Die Schlüsselrotation ist fehlgeschlagen"
   },
   "ai": {
     "header": {

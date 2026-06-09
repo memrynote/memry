@@ -389,12 +389,10 @@
       "identity": "身份",
       "sync": "同步",
       "storage": "存储",
-      "devices": "设备",
-      "security": "安全"
+      "devices": "设备"
     },
     "identity": {
-      "unknown": "未知",
-      "plan": "专业计划"
+      "unknown": "未知"
     },
     "sync": {
       "lastSynced": "最后同步 {time}",
@@ -424,16 +422,6 @@
       }
     },
     "security": {
-      "recoveryKey": {
-        "label": "恢复密钥",
-        "description": "查看数据访问的恢复密钥",
-        "action": "查看密钥"
-      },
-      "rotateKeys": {
-        "label": "轮换加密密钥",
-        "description": "生成新密钥并重新加密所有数据",
-        "action": "旋转"
-      },
       "signOut": {
         "label": "登出",
         "description": "将此设备从同步中断开",
@@ -610,56 +598,6 @@
     "approving": "正在批准...",
     "approvalFailed": "批准失败",
     "failedToApprove": "设备批准失败"
-  },
-  "recoveryKey": {
-    "title": "恢复密钥",
-    "description": "请安全存储此密钥。如果您失去对所有设备的访问，它可以恢复您的保险库。",
-    "retrieveFailed": "无法检索恢复密钥",
-    "copied": "恢复密钥已复制到剪贴板",
-    "copyFailed": "复制到剪贴板失败",
-    "clickToReveal": "点击以显示",
-    "hide": "隐藏",
-    "reveal": "显示",
-    "sessionHint": "该密钥每次会话仅显示一次。关闭此对话框可将其从内存中清除。"
-  },
-  "keyRotation": {
-    "title": "轮换加密密钥",
-    "descriptions": {
-      "confirm": "为您的保险库生成新的加密密钥。",
-      "rotating": "正在使用新密钥重新加密您的数据...",
-      "phrase": "保存您的新恢复短语。",
-      "complete": "密钥轮换完成。",
-      "error": "密钥轮换时发生错误。"
-    },
-    "warningTitle": "此操作将：",
-    "warningItems": {
-      "keyPair": "生成新的加密密钥对",
-      "rewrap": "使用新密钥重新封装所有同步项",
-      "phrase": "生成新的恢复短语（旧的将失效）",
-      "pause": "在此过程中暂时暂停同步"
-    },
-    "explanation": "您的数据内容从未重新加密 - 仅密钥封套会改变。这是一个快速、安全的操作。",
-    "start": "开始密钥轮换",
-    "starting": "正在启动...",
-    "phases": {
-      "preparing": "准备中...",
-      "reencrypting": "重新封装密钥（{processed}/{total}）",
-      "finalizing": "正在完成...",
-      "working": "工作中..."
-    },
-    "progressAria": "密钥轮换：{phaseLabel} {pct}%",
-    "progressLabel": "密钥轮换进度",
-    "doNotClose": "在此过程中请勿关闭应用程序。",
-    "complete": "所有加密密钥已完成轮换。您的新恢复短语已保存。同步将自动恢复。",
-    "unknownError": "密钥轮换过程中发生未知错误。",
-    "errorHint": "您现有的密钥仍然有效。同步已恢复。您可以随时重试。",
-    "closeConfirm": {
-      "title": "旋转进行中",
-      "description": "密钥旋转仍在运行。关闭此对话框不会停止该过程，但在完成之前你将看不到新的恢复短语。",
-      "stay": "保留",
-      "closeAnyway": "仍然关闭"
-    },
-    "failed": "密钥旋转失败"
   },
   "ai": {
     "header": {

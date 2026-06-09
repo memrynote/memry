@@ -389,12 +389,10 @@
       "identity": "Identitet",
       "sync": "Synkronisera",
       "storage": "Lagring",
-      "devices": "Enheter",
-      "security": "Säkerhet"
+      "devices": "Enheter"
     },
     "identity": {
-      "unknown": "Okänt",
-      "plan": "Pro plan"
+      "unknown": "Okänt"
     },
     "sync": {
       "lastSynced": "Senast synkroniserad {time}",
@@ -424,16 +422,6 @@
       }
     },
     "security": {
-      "recoveryKey": {
-        "label": "Återställningsnyckel",
-        "description": "Visa din återställningsnyckel för åtkomst till data",
-        "action": "Visa nyckel"
-      },
-      "rotateKeys": {
-        "label": "Rotera krypteringsnycklar",
-        "description": "Generera nya nycklar och kryptera om all data",
-        "action": "Rotera"
-      },
       "signOut": {
         "label": "Logga ut",
         "description": "Koppla bort denna enhet från synkronisering",
@@ -610,56 +598,6 @@
     "approving": "Godkänner...",
     "approvalFailed": "Godkännande misslyckades",
     "failedToApprove": "Misslyckades med att godkänna enhet"
-  },
-  "recoveryKey": {
-    "title": "Återställningsnyckel",
-    "description": "Lagra denna nyckel säkert. Den kan återställa ditt valv om du förlorar tillgången till alla enheter.",
-    "retrieveFailed": "Misslyckades med att hämta återställningsnyckel",
-    "copied": "Återställningsnyckel kopierad till urklipp",
-    "copyFailed": "Misslyckades med att kopiera till urklipp",
-    "clickToReveal": "Klicka för att visa",
-    "hide": "Dölj",
-    "reveal": "Visa",
-    "sessionHint": "Denna nyckel visas en gång per session. Stäng denna dialog för att rensa den från minnet."
-  },
-  "keyRotation": {
-    "title": "Rotera krypteringsnycklar",
-    "descriptions": {
-      "confirm": "Generera nya krypteringsnycklar för ditt valv.",
-      "rotating": "Omkrypterar dina data med nya nycklar...",
-      "phrase": "Spara din nya återställningsfras.",
-      "complete": "Nyckelrotation klar.",
-      "error": "Nyckelrotation stötte på ett fel."
-    },
-    "warningTitle": "Denna åtgärd kommer att:",
-    "warningItems": {
-      "keyPair": "Generera ett nytt krypteringsnyckelpar",
-      "rewrap": "Omkapsla alla synkroniserade objekt med den nya nyckeln",
-      "phrase": "Skapa en ny återställningsfras (den gamla blir ogiltig)",
-      "pause": "Pausa synkronisering tillfälligt under processen"
-    },
-    "explanation": "Ditt datainnehåll krypteras aldrig om - endast nyckelkuverten ändras. Detta är en snabb och säker operation.",
-    "start": "Starta nyckelrotation",
-    "starting": "Startar...",
-    "phases": {
-      "preparing": "Förbereder...",
-      "reencrypting": "Omkapslar nycklar ({processed}/{total})",
-      "finalizing": "Slutför...",
-      "working": "Arbetar..."
-    },
-    "progressAria": "Nyckelrotation: {phaseLabel} {pct}%",
-    "progressLabel": "Framsteg i nyckelrotation",
-    "doNotClose": "Stäng inte applikationen under denna process.",
-    "complete": "Alla krypteringsnycklar har roterats. Din nya återställningsfras har sparats. Synkronisering kommer att återupptas automatiskt.",
-    "unknownError": "Ett okänt fel inträffade under nyckelrotationen.",
-    "errorHint": "Dina befintliga nycklar är fortfarande giltiga. Synkronisering har återupptagits. Du kan försöka igen när som helst.",
-    "closeConfirm": {
-      "title": "Rotation pågår",
-      "description": "Nyckelrotationen pågår fortfarande. Att stänga denna dialog kommer inte att stoppa processen, men du kommer inte att se din nya återställningsfras förrän den är klar.",
-      "stay": "Stanna",
-      "closeAnyway": "Stäng ändå"
-    },
-    "failed": "Nyckelrotation misslyckades"
   },
   "ai": {
     "header": {

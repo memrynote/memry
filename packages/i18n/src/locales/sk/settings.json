@@ -389,12 +389,10 @@
       "identity": "Identita",
       "sync": "Synchronizácia",
       "storage": "Úložisko",
-      "devices": "Zariadenia",
-      "security": "Bezpečnosť"
+      "devices": "Zariadenia"
     },
     "identity": {
-      "unknown": "Neznáme",
-      "plan": "Pro plán"
+      "unknown": "Neznáme"
     },
     "sync": {
       "lastSynced": "Naposledy synchronizované {time}",
@@ -424,16 +422,6 @@
       }
     },
     "security": {
-      "recoveryKey": {
-        "label": "Obnovovací kľúč",
-        "description": "Zobraziť svoj obnovovací kľúč pre prístup k údajom",
-        "action": "Zobraziť kľúč"
-      },
-      "rotateKeys": {
-        "label": "Pretočiť šifrovacie kľúče",
-        "description": "Generovať nové kľúče a znovu zašifrovať všetky údaje",
-        "action": "Otočiť"
-      },
       "signOut": {
         "label": "Odhlásiť sa",
         "description": "Odpojiť toto zariadenie zo synchronizácie",
@@ -610,56 +598,6 @@
     "approving": "Schvaľovanie...",
     "approvalFailed": "Schválenie zlyhalo",
     "failedToApprove": "Nepodarilo sa schváliť zariadenie"
-  },
-  "recoveryKey": {
-    "title": "Obnovovací kľúč",
-    "description": "Uchovajte tento kľúč bezpečne. Môže obnoviť váš trezor, ak stratíte prístup ku všetkým zariadeniam.",
-    "retrieveFailed": "Nepodarilo sa načítať kľúč na obnovu",
-    "copied": "Kľúč na obnovu skopírovaný do schránky",
-    "copyFailed": "Nepodarilo sa skopírovať do schránky",
-    "clickToReveal": "Kliknite pre zobrazenie",
-    "hide": "Skryť",
-    "reveal": "Zobraziť",
-    "sessionHint": "Tento kľúč sa zobrazí raz za reláciu. Zatvorte tento dialóg na jeho vymazanie z pamäte."
-  },
-  "keyRotation": {
-    "title": "Pretočiť šifrovacie kľúče",
-    "descriptions": {
-      "confirm": "Generovať nové šifrovacie kľúče pre váš trezor.",
-      "rotating": "Prešifrovanie vašich dát s novými kľúčmi...",
-      "phrase": "Uložte si svoju novú zotavovaciu frázu.",
-      "complete": "Rotácia kľúčov dokončená.",
-      "error": "Pri rotácii kľúčov došlo k chybe."
-    },
-    "warningTitle": "Táto akcia bude:",
-    "warningItems": {
-      "keyPair": "Generovať nový pár šifrovacích kľúčov",
-      "rewrap": "Znovu obaliť všetky synchronizované položky novým kľúčom",
-      "phrase": "Vytvorte novú obnovovaciu frázu (stará sa stane neplatnou)",
-      "pause": "Dočasne pozastavte synchronizáciu počas procesu"
-    },
-    "explanation": "Obsah vašich dát nikdy nie je znovu šifrovaný - menia sa iba obálky kľúčov. Je to rýchla a bezpečná operácia.",
-    "start": "Spustiť rotáciu kľúčov",
-    "starting": "Spúšťanie...",
-    "phases": {
-      "preparing": "Príprava...",
-      "reencrypting": "Znova zabalenie kľúčov ({processed}/{total})",
-      "finalizing": "Finalizácia...",
-      "working": "Pracuje sa..."
-    },
-    "progressAria": "Rotácia kľúčov: {phaseLabel} {pct}%",
-    "progressLabel": "Pokrok rotácie kľúčov",
-    "doNotClose": "Nezatvárajte aplikáciu počas tohto procesu.",
-    "complete": "Všetky šifrovacie kľúče boli rotované. Vaša nová obnovovacia fráza bola uložená. Synchronizácia sa automaticky obnoví.",
-    "unknownError": "Počas rotácie kľúčov došlo k neznámej chybe.",
-    "errorHint": "Vaše existujúce kľúče zostávajú platné. Synchronizácia bola obnovená. Môžete to skúsiť znova kedykoľvek.",
-    "closeConfirm": {
-      "title": "Rotácia prebieha",
-      "description": "Rotácia kľúčov stále beží. Zatvorenie tohto dialógu nezastaví proces, ale svoju novú obnovovaciu frázu neuvidíte, kým sa nedokončí.",
-      "stay": "Zostať",
-      "closeAnyway": "Zatvoriť napriek tomu"
-    },
-    "failed": "Rotácia kľúča zlyhala"
   },
   "ai": {
     "header": {

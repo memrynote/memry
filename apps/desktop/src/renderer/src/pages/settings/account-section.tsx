@@ -23,8 +23,6 @@ import { SetupWizard } from './setup-wizard'
 import { QrLinking } from '@/components/sync/qr-linking'
 import { LinkingApprovalDialog } from '@/components/sync/linking-approval-dialog'
 import { DeviceList } from '@/components/sync/device-list'
-import { KeyRotationWizard } from '@/components/sync/key-rotation-wizard'
-import { RecoveryKeyDialog } from '@/components/settings/recovery-key-dialog'
 import type { StorageBreakdownResult } from '@memry/contracts/ipc-sync-ops'
 import {
   SettingsHeader,
@@ -45,6 +43,7 @@ type BillingStatusValue = 'inactive' | 'active' | 'past_due' | 'paused' | 'cance
 interface BillingStatus {
   plan: BillingPlan
   status: BillingStatusValue
+  email: string | null
   limits: {
     storageLimit: number
     maxFileSize: number
@@ -132,8 +131,6 @@ export function AccountSettings() {
   const [showSignOutDialog, setShowSignOutDialog] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
   const [showLinkingQr, setShowLinkingQr] = useState(false)
-  const [showRotationWizard, setShowRotationWizard] = useState(false)
-  const [showRecoveryKey, setShowRecoveryKey] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isBillingRefreshing, setIsBillingRefreshing] = useState(false)
   const [isCheckoutStarting, setIsCheckoutStarting] = useState(false)
@@ -269,7 +266,7 @@ export function AccountSettings() {
     )
   }
 
-  const email = state.email
+  const email = billing?.email ?? state.email
   const initial = (email ?? 'U').charAt(0).toUpperCase()
   const isSyncActive = syncStatus.status !== 'paused'
   const isToggleDisabled = syncStatus.status === 'syncing' || syncStatus.status === 'offline'
@@ -296,7 +293,9 @@ export function AccountSettings() {
             <span className="font-medium text-[13px]/4 text-foreground truncate">
               {email ?? t('account.identity.unknown')}
             </span>
-            <span className="text-xs/4 text-muted-foreground">{t('account.identity.plan')}</span>
+            <span className="text-xs/4 text-muted-foreground">
+              {billing ? t(`account.billing.plans.${billing.plan}`) : t('account.billing.checking')}
+            </span>
           </div>
         </div>
       </SettingsGroup>
@@ -499,36 +498,6 @@ export function AccountSettings() {
         <DeviceList onLinkDevice={() => setShowLinkingQr(true)} />
       </SettingsGroup>
 
-      <SettingsGroup label={t('account.groups.security')}>
-        <SettingRow
-          label={t('account.security.recoveryKey.label')}
-          description={t('account.security.recoveryKey.description')}
-        >
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowRecoveryKey(true)}
-            className="h-7 px-3 text-xs/4"
-          >
-            {t('account.security.recoveryKey.action')}
-          </Button>
-        </SettingRow>
-
-        <SettingRow
-          label={t('account.security.rotateKeys.label')}
-          description={t('account.security.rotateKeys.description')}
-        >
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowRotationWizard(true)}
-            className="h-7 px-3 text-xs/4"
-          >
-            {t('account.security.rotateKeys.action')}
-          </Button>
-        </SettingRow>
-      </SettingsGroup>
-
       <SettingsGroup>
         <SettingRow
           label={t('account.security.signOut.label')}
@@ -569,9 +538,6 @@ export function AccountSettings() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <KeyRotationWizard open={showRotationWizard} onOpenChange={setShowRotationWizard} />
-      <RecoveryKeyDialog open={showRecoveryKey} onOpenChange={setShowRecoveryKey} />
 
       <Dialog open={showLinkingQr} onOpenChange={setShowLinkingQr}>
         <DialogContent className="sm:max-w-[400px] rounded-xl">

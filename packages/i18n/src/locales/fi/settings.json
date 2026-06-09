@@ -389,12 +389,10 @@
       "identity": "Identiteetti",
       "sync": "Synkronoi",
       "storage": "Varastointi",
-      "devices": "Laitteet",
-      "security": "Turvallisuus"
+      "devices": "Laitteet"
     },
     "identity": {
-      "unknown": "Tuntematon",
-      "plan": "Pro suunnitelma"
+      "unknown": "Tuntematon"
     },
     "sync": {
       "lastSynced": "Viimeksi synkronoitu {time}",
@@ -424,16 +422,6 @@
       }
     },
     "security": {
-      "recoveryKey": {
-        "label": "Palautusavain",
-        "description": "Tarkastele palautusavaimesi tietojen käyttöä varten",
-        "action": "Näytä avain"
-      },
-      "rotateKeys": {
-        "label": "Kierrä salausavaimia",
-        "description": "Luo uudet avaimet ja salaa kaikki tiedot uudelleen",
-        "action": "Kierrä"
-      },
       "signOut": {
         "label": "Kirjaudu ulos",
         "description": "Irrota tämän laitteen synkronointi",
@@ -610,56 +598,6 @@
     "approving": "Hyväksytään...",
     "approvalFailed": "Hyväksyminen epäonnistui",
     "failedToApprove": "Laitteen hyväksyminen epäonnistui"
-  },
-  "recoveryKey": {
-    "title": "Palautusavain",
-    "description": "Säilytä tämä avain turvallisesti. Se voi palauttaa holvisi, jos menetät pääsyn kaikkiin laitteisiin.",
-    "retrieveFailed": "Palautusavaimen nouto epäonnistui",
-    "copied": "Palautusavain kopioitiin leikepöydälle",
-    "copyFailed": "Kopioiminen leikepöydälle epäonnistui",
-    "clickToReveal": "Napsauta paljastaaksesi",
-    "hide": "Piilota",
-    "reveal": "Paljasta",
-    "sessionHint": "Tämä avain näytetään kerran istunnon aikana. Sulje tämä valintaikkuna tyhjentääksesi sen muistista."
-  },
-  "keyRotation": {
-    "title": "Kierrä salausavaimia",
-    "descriptions": {
-      "confirm": "Luo uusia salausavaimia holvillesi.",
-      "rotating": "Salataan tietojasi uudelleen uusilla avaimilla...",
-      "phrase": "Tallenna uusi palautuslauseesi.",
-      "complete": "Avaimen kierto valmis.",
-      "error": "Avaimen kierto havaitsi virheen."
-    },
-    "warningTitle": "Tämä toiminto:",
-    "warningItems": {
-      "keyPair": "Luo uusi salausavainpari",
-      "rewrap": "Kääri kaikki synkronoidut kohteet uudelleen uudella avaimella",
-      "phrase": "Luo uusi palautuslauseke (vanha ei kelpaa)",
-      "pause": "Keskeytä synkronointi väliaikaisesti prosessin ajaksi"
-    },
-    "explanation": "Tietosisältöäsi ei koskaan salata uudelleen - vain avainkuoret muuttuvat. Tämä on nopea ja turvallinen toiminta.",
-    "start": "Käynnistä avainten kierto",
-    "starting": "Aloitetaan...",
-    "phases": {
-      "preparing": "Valmistellaan...",
-      "reencrypting": "Avainten uudelleen kääriminen ({processed}/{total})",
-      "finalizing": "Viimeistellään...",
-      "working": "Työskentelee..."
-    },
-    "progressAria": "Avaimen kierto: {phaseLabel} {pct}%",
-    "progressLabel": "Avainten kierto edistyy",
-    "doNotClose": "Älä sulje sovellusta tämän prosessin aikana.",
-    "complete": "Kaikki salausavaimet on käännetty. Uusi palautuslauseesi on tallennettu. Synkronointi jatkuu automaattisesti.",
-    "unknownError": "Tuntematon virhe tapahtui avaimen kiertämisen aikana.",
-    "errorHint": "Nykyiset avaimesi pysyvät voimassa. Synkronointia on jatkettu. Voit yrittää uudelleen milloin tahansa.",
-    "closeConfirm": {
-      "title": "Kierto käynnissä",
-      "description": "Avainten kierto on edelleen käynnissä. Tämän valintaikkunan sulkeminen ei pysäytä prosessia, mutta et näe uutta palautuslausettasi, ennen kuin se on valmis.",
-      "stay": "Pysy",
-      "closeAnyway": "Sulje joka tapauksessa"
-    },
-    "failed": "Avaimen kierto epäonnistui"
   },
   "ai": {
     "header": {

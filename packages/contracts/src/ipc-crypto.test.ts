@@ -2,7 +2,7 @@
  * IPC Crypto Contract Tests
  *
  * Zod schema validation tests for the crypto IPC boundary:
- * encrypt/decrypt requests, signature verification, and key rotation.
+ * encrypt/decrypt requests and signature verification.
  */
 
 import { describe, expect, it } from 'vitest'
@@ -10,7 +10,6 @@ import {
   CRYPTO_CHANNELS,
   DecryptItemSchema,
   EncryptItemSchema,
-  RotateKeysSchema,
   VerifySignatureSchema
 } from './ipc-crypto'
 
@@ -19,8 +18,6 @@ describe('CRYPTO_CHANNELS', () => {
     expect(CRYPTO_CHANNELS.ENCRYPT_ITEM).toBe('crypto:encrypt-item')
     expect(CRYPTO_CHANNELS.DECRYPT_ITEM).toBe('crypto:decrypt-item')
     expect(CRYPTO_CHANNELS.VERIFY_SIGNATURE).toBe('crypto:verify-signature')
-    expect(CRYPTO_CHANNELS.ROTATE_KEYS).toBe('crypto:rotate-keys')
-    expect(CRYPTO_CHANNELS.GET_ROTATION_PROGRESS).toBe('crypto:get-rotation-progress')
   })
 })
 
@@ -160,31 +157,6 @@ describe('VerifySignatureSchema', () => {
     const invalid: Record<string, unknown> = { ...base }
     delete invalid.encryptedData
     const result = VerifySignatureSchema.safeParse(invalid)
-    expect(result.success).toBe(false)
-  })
-})
-
-describe('RotateKeysSchema', () => {
-  it('accepts confirm: true', () => {
-    const result = RotateKeysSchema.safeParse({ confirm: true })
-    expect(result.success).toBe(true)
-  })
-
-  it('accepts confirm: false', () => {
-    const result = RotateKeysSchema.safeParse({ confirm: false })
-    expect(result.success).toBe(true)
-  })
-
-  it('rejects a non-boolean confirm', () => {
-    const result = RotateKeysSchema.safeParse({ confirm: 'yes' })
-    expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('confirm')
-    }
-  })
-
-  it('rejects missing confirm flag — rotation must be explicit', () => {
-    const result = RotateKeysSchema.safeParse({})
     expect(result.success).toBe(false)
   })
 })

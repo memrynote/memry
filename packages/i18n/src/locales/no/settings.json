@@ -389,12 +389,10 @@
       "identity": "Identitet",
       "sync": "Synkroniser",
       "storage": "Oppbevaring",
-      "devices": "Enheter",
-      "security": "Sikkerhet"
+      "devices": "Enheter"
     },
     "identity": {
-      "unknown": "Ukjent",
-      "plan": "Pro plan"
+      "unknown": "Ukjent"
     },
     "sync": {
       "lastSynced": "Sist synkroniserte {time}",
@@ -424,16 +422,6 @@
       }
     },
     "security": {
-      "recoveryKey": {
-        "label": "Gjenopprettingsnøkkel",
-        "description": "Se gjenopprettingsnøkkelen for datatilgang",
-        "action": "Vis nøkkel"
-      },
-      "rotateKeys": {
-        "label": "Roter krypteringsnøkler",
-        "description": "Generer nye nøkler og krypter alle data på nytt",
-        "action": "Roter"
-      },
       "signOut": {
         "label": "Logg ut",
         "description": "Koble denne enheten fra synkronisering",
@@ -610,56 +598,6 @@
     "approving": "Godkjenner...",
     "approvalFailed": "Godkjenning mislyktes",
     "failedToApprove": "Kunne ikke godkjenne enheten"
-  },
-  "recoveryKey": {
-    "title": "Gjenopprettingsnøkkel",
-    "description": "Oppbevar denne nøkkelen trygt. Den kan gjenopprette hvelvet ditt hvis du mister tilgang til alle enheter.",
-    "retrieveFailed": "Kunne ikke hente gjenopprettingsnøkkelen",
-    "copied": "Gjenopprettingsnøkkel kopiert til utklippstavlen",
-    "copyFailed": "Kunne ikke kopiere til utklippstavlen",
-    "clickToReveal": "Klikk for å avsløre",
-    "hide": "Skjul",
-    "reveal": "Avsløre",
-    "sessionHint": "Denne nøkkelen vises én gang per økt. Lukk denne dialogboksen for å fjerne den fra minnet."
-  },
-  "keyRotation": {
-    "title": "Roter krypteringsnøkler",
-    "descriptions": {
-      "confirm": "Generer nye krypteringsnøkler for hvelvet ditt.",
-      "rotating": "Krypterer dataene dine på nytt med nye nøkler...",
-      "phrase": "Lagre den nye gjenopprettingsfrasen din.",
-      "complete": "Nøkkelrotasjon fullført.",
-      "error": "Nøkkelrotasjon oppdaget en feil."
-    },
-    "warningTitle": "Denne handlingen vil:",
-    "warningItems": {
-      "keyPair": "Generer et nytt krypteringsnøkkelpar",
-      "rewrap": "Pakk alle synkroniserte elementer på nytt med den nye nøkkelen",
-      "phrase": "Lag en ny gjenopprettingsfrase (den gamle blir ugyldig)",
-      "pause": "Sett synkronisering midlertidig på pause under prosessen"
-    },
-    "explanation": "Datainnholdet ditt blir aldri kryptert på nytt - bare nøkkelkonvoluttene endres. Dette er en rask og sikker operasjon.",
-    "start": "Start nøkkelrotering",
-    "starting": "Starter...",
-    "phases": {
-      "preparing": "Forbereder...",
-      "reencrypting": "Pakke inn nøkler ({processed}/{total})",
-      "finalizing": "Fullfører...",
-      "working": "Jobber..."
-    },
-    "progressAria": "Nøkkelrotasjon: {phaseLabel} {pct}%",
-    "progressLabel": "Fremgang ved nøkkelrotasjon",
-    "doNotClose": "Ikke lukk programmet under denne prosessen.",
-    "complete": "Alle krypteringsnøkler har blitt rotert. Den nye gjenopprettingsfrasen din er lagret. Synkroniseringen gjenopptas automatisk.",
-    "unknownError": "Det oppstod en ukjent feil under nøkkelrotasjon.",
-    "errorHint": "Dine eksisterende nøkler forblir gyldige. Synkronisering er gjenopptatt. Du kan prøve på nytt når som helst.",
-    "closeConfirm": {
-      "title": "Rotasjon pågår",
-      "description": "Nøkkelrotasjon pågår fortsatt. Å lukke denne dialogboksen vil ikke stoppe prosessen, men du vil ikke se den nye gjenopprettingsfrasen før den er fullført.",
-      "stay": "Bli",
-      "closeAnyway": "Lukk uansett"
-    },
-    "failed": "Nøkkelrotasjon mislyktes"
   },
   "ai": {
     "header": {

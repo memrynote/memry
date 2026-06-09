@@ -389,12 +389,10 @@
       "identity": "Identitet",
       "sync": "Synkroniser",
       "storage": "Opbevaring",
-      "devices": "Enheder",
-      "security": "Sikkerhed"
+      "devices": "Enheder"
     },
     "identity": {
-      "unknown": "Ukendt",
-      "plan": "Pro plan"
+      "unknown": "Ukendt"
     },
     "sync": {
       "lastSynced": "Sidst synkroniseret {time}",
@@ -424,16 +422,6 @@
       }
     },
     "security": {
-      "recoveryKey": {
-        "label": "Gendannelsesnøgle",
-        "description": "Se din gendannelsesnøgle for dataadgang",
-        "action": "Vis nøgle"
-      },
-      "rotateKeys": {
-        "label": "Roter krypteringsnøgler",
-        "description": "Generer nye nøgler og genkrypter alle data",
-        "action": "Roter"
-      },
       "signOut": {
         "label": "Log ud",
         "description": "Frakobl denne enhed fra synkronisering",
@@ -610,56 +598,6 @@
     "approving": "Godkender...",
     "approvalFailed": "Godkendelse mislykkedes",
     "failedToApprove": "Enheden kunne ikke godkendes"
-  },
-  "recoveryKey": {
-    "title": "Gendannelsesnøgle",
-    "description": "Opbevar denne nøgle sikkert. Det kan gendanne din boks, hvis du mister adgang til alle enheder.",
-    "retrieveFailed": "Kunne ikke hente gendannelsesnøgle",
-    "copied": "Gendannelsesnøgle kopieret til udklipsholder",
-    "copyFailed": "Kunne ikke kopiere til udklipsholder",
-    "clickToReveal": "Klik for at afsløre",
-    "hide": "Skjul",
-    "reveal": "Afsløre",
-    "sessionHint": "Denne nøgle vises én gang pr. session. Luk denne dialogboks for at rydde den fra hukommelsen."
-  },
-  "keyRotation": {
-    "title": "Roter krypteringsnøgler",
-    "descriptions": {
-      "confirm": "Generer nye krypteringsnøgler til din boks.",
-      "rotating": "Genkrypterer dine data med nye nøgler...",
-      "phrase": "Gem din nye gendannelsessætning.",
-      "complete": "Nøgledrejning fuldført.",
-      "error": "Nøglerotation stødte på en fejl."
-    },
-    "warningTitle": "Denne handling vil:",
-    "warningItems": {
-      "keyPair": "Generer et nyt krypteringsnøglepar",
-      "rewrap": "Indpak alle synkroniserede elementer igen med den nye nøgle",
-      "phrase": "Lav en ny gendannelsessætning (den gamle bliver ugyldig)",
-      "pause": "Sæt synkronisering midlertidigt på pause under processen"
-    },
-    "explanation": "Dit dataindhold bliver aldrig genkrypteret - kun nøglekonvolutterne ændres. Dette er en hurtig og sikker operation.",
-    "start": "Start nøglerotation",
-    "starting": "Starter...",
-    "phases": {
-      "preparing": "Forbereder...",
-      "reencrypting": "Genindpakning af nøgler ({processed}/{total})",
-      "finalizing": "Færdiggør...",
-      "working": "Arbejder..."
-    },
-    "progressAria": "Nøglerotation: {phaseLabel} {pct}%",
-    "progressLabel": "Fremskridt med nøglerotation",
-    "doNotClose": "Luk ikke applikationen under denne proces.",
-    "complete": "Alle krypteringsnøgler er blevet roteret. Din nye gendannelsessætning er blevet gemt. Synkronisering genoptages automatisk.",
-    "unknownError": "Der opstod en ukendt fejl under nøglerotation.",
-    "errorHint": "Dine eksisterende nøgler forbliver gyldige. Synkronisering er blevet genoptaget. Du kan til enhver tid prøve igen.",
-    "closeConfirm": {
-      "title": "Rotation i gang",
-      "description": "Nøglerotation kører stadig. At lukke denne dialog vil ikke stoppe processen, men du vil ikke se din nye gendannelsessætning, før den er fuldført.",
-      "stay": "Bliv",
-      "closeAnyway": "Luk alligevel"
-    },
-    "failed": "Nøglerotation mislykkedes"
   },
   "ai": {
     "header": {

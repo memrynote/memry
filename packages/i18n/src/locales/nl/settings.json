@@ -389,12 +389,10 @@
       "identity": "Identiteit",
       "sync": "Synchroniseren",
       "storage": "Opslag",
-      "devices": "Apparaten",
-      "security": "Beveiliging"
+      "devices": "Apparaten"
     },
     "identity": {
-      "unknown": "Onbekend",
-      "plan": "Pro-abonnement"
+      "unknown": "Onbekend"
     },
     "sync": {
       "lastSynced": "Laatst gesynchroniseerde {time}",
@@ -424,16 +422,6 @@
       }
     },
     "security": {
-      "recoveryKey": {
-        "label": "Herstelsleutel",
-        "description": "Bekijk uw herstelsleutel voor gegevenstoegang",
-        "action": "Sleutel bekijken"
-      },
-      "rotateKeys": {
-        "label": "Versleutelingssleutels roteren",
-        "description": "Genereer nieuwe sleutels en versleutel alle gegevens opnieuw",
-        "action": "Draaien"
-      },
       "signOut": {
         "label": "Uitloggen",
         "description": "Ontkoppel dit apparaat van synchronisatie",
@@ -610,56 +598,6 @@
     "approving": "Goedkeuren...",
     "approvalFailed": "Goedkeuring mislukt",
     "failedToApprove": "Kan het apparaat niet goedkeuren"
-  },
-  "recoveryKey": {
-    "title": "Herstelsleutel",
-    "description": "Bewaar deze sleutel veilig. Het kan uw kluis herstellen als u de toegang tot alle apparaten verliest.",
-    "retrieveFailed": "Kan de herstelsleutel niet ophalen",
-    "copied": "Herstelsleutel gekopieerd naar klembord",
-    "copyFailed": "Kopiëren naar klembord is mislukt",
-    "clickToReveal": "Klik om te onthullen",
-    "hide": "Verbergen",
-    "reveal": "Onthullen",
-    "sessionHint": "Deze sleutel wordt één keer per sessie getoond. Sluit dit dialoogvenster om het uit het geheugen te wissen."
-  },
-  "keyRotation": {
-    "title": "Versleutelingssleutels roteren",
-    "descriptions": {
-      "confirm": "Genereer nieuwe coderingssleutels voor uw kluis.",
-      "rotating": "Uw gegevens opnieuw coderen met nieuwe sleutels...",
-      "phrase": "Sla uw nieuwe herstelzin op.",
-      "complete": "Sleutelrotatie voltooid.",
-      "error": "Bij sleutelrotatie is een fout opgetreden."
-    },
-    "warningTitle": "Deze actie zal:",
-    "warningItems": {
-      "keyPair": "Genereer een nieuw coderingssleutelpaar",
-      "rewrap": "Verpak alle gesynchroniseerde items opnieuw met de nieuwe sleutel",
-      "phrase": "Maak een nieuwe herstelzin (de oude wordt ongeldig)",
-      "pause": "Onderbreek de synchronisatie tijdelijk tijdens het proces"
-    },
-    "explanation": "Uw gegevensinhoud wordt nooit opnieuw gecodeerd; alleen de sleutelenveloppen veranderen. Dit is een snelle, veilige operatie.",
-    "start": "Sleutelrotatie starten",
-    "starting": "Beginnen...",
-    "phases": {
-      "preparing": "Voorbereiden...",
-      "reencrypting": "Sleutels opnieuw inpakken ({processed}/{total})",
-      "finalizing": "Bezig met afronden...",
-      "working": "Werken..."
-    },
-    "progressAria": "Sleutelrotatie: {phaseLabel} {pct}%",
-    "progressLabel": "Voortgang van de sleutelrotatie",
-    "doNotClose": "Sluit de applicatie niet tijdens dit proces.",
-    "complete": "Alle encryptiesleutels zijn gerouleerd. Uw nieuwe herstelzin is opgeslagen. De synchronisatie wordt automatisch hervat.",
-    "unknownError": "Er is een onbekende fout opgetreden tijdens het wisselen van de sleutel.",
-    "errorHint": "Uw bestaande sleutels blijven geldig. De synchronisatie is hervat. U kunt het op elk gewenst moment opnieuw proberen.",
-    "closeConfirm": {
-      "title": "Rotatie bezig",
-      "description": "Sleutelrotatie is nog steeds actief. Als u dit dialoogvenster sluit, wordt het proces niet gestopt, maar u zult uw nieuwe herstelzin pas zien als deze is voltooid.",
-      "stay": "Blijf",
-      "closeAnyway": "Toch dicht"
-    },
-    "failed": "Sleutelrotatie is mislukt"
   },
   "ai": {
     "header": {

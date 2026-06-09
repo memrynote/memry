@@ -391,12 +391,10 @@
       "sync": "Sync",
       "billing": "Billing",
       "storage": "Storage",
-      "devices": "Devices",
-      "security": "Security"
+      "devices": "Devices"
     },
     "identity": {
-      "unknown": "Unknown",
-      "plan": "Pro plan"
+      "unknown": "Unknown"
     },
     "sync": {
       "lastSynced": "Last synced {time}",
@@ -467,16 +465,6 @@
       }
     },
     "security": {
-      "recoveryKey": {
-        "label": "Recovery Key",
-        "description": "View your recovery key for data access",
-        "action": "View Key"
-      },
-      "rotateKeys": {
-        "label": "Rotate Encryption Keys",
-        "description": "Generate new keys and re-encrypt all data",
-        "action": "Rotate"
-      },
       "signOut": {
         "label": "Sign Out",
         "description": "Disconnect this device from sync",
@@ -673,56 +661,6 @@
     "approving": "Approving...",
     "approvalFailed": "Approval failed",
     "failedToApprove": "Failed to approve device"
-  },
-  "recoveryKey": {
-    "title": "Recovery Key",
-    "description": "Store this key securely. It can restore your vault if you lose access to all devices.",
-    "retrieveFailed": "Failed to retrieve recovery key",
-    "copied": "Recovery key copied to clipboard",
-    "copyFailed": "Failed to copy to clipboard",
-    "clickToReveal": "Click to reveal",
-    "hide": "Hide",
-    "reveal": "Reveal",
-    "sessionHint": "This key is shown once per session. Close this dialog to clear it from memory."
-  },
-  "keyRotation": {
-    "title": "Rotate Encryption Keys",
-    "descriptions": {
-      "confirm": "Generate new encryption keys for your vault.",
-      "rotating": "Re-encrypting your data with new keys...",
-      "phrase": "Save your new recovery phrase.",
-      "complete": "Key rotation complete.",
-      "error": "Key rotation encountered an error."
-    },
-    "warningTitle": "This action will:",
-    "warningItems": {
-      "keyPair": "Generate a new encryption key pair",
-      "rewrap": "Re-wrap all synced items with the new key",
-      "phrase": "Produce a new recovery phrase (old one becomes invalid)",
-      "pause": "Temporarily pause sync during the process"
-    },
-    "explanation": "Your data content is never re-encrypted - only the key envelopes change. This is a fast, safe operation.",
-    "start": "Start Key Rotation",
-    "starting": "Starting...",
-    "phases": {
-      "preparing": "Preparing...",
-      "reencrypting": "Re-wrapping keys ({processed}/{total})",
-      "finalizing": "Finalizing...",
-      "working": "Working..."
-    },
-    "progressAria": "Key rotation: {phaseLabel} {pct}%",
-    "progressLabel": "Key rotation progress",
-    "doNotClose": "Do not close the application during this process.",
-    "complete": "All encryption keys have been rotated. Your new recovery phrase has been saved. Sync will resume automatically.",
-    "unknownError": "An unknown error occurred during key rotation.",
-    "errorHint": "Your existing keys remain valid. Sync has been resumed. You can retry at any time.",
-    "closeConfirm": {
-      "title": "Rotation in progress",
-      "description": "Key rotation is still running. Closing this dialog will not stop the process, but you won't see your new recovery phrase until it completes.",
-      "stay": "Stay",
-      "closeAnyway": "Close anyway"
-    },
-    "failed": "Key rotation failed"
   },
   "ai": {
     "header": {

@@ -13,9 +13,7 @@ import {
 export const CRYPTO_CHANNELS = {
   ENCRYPT_ITEM: 'crypto:encrypt-item',
   DECRYPT_ITEM: 'crypto:decrypt-item',
-  VERIFY_SIGNATURE: 'crypto:verify-signature',
-  ROTATE_KEYS: 'crypto:rotate-keys',
-  GET_ROTATION_PROGRESS: 'crypto:get-rotation-progress'
+  VERIFY_SIGNATURE: 'crypto:verify-signature'
 } as const
 
 // ============================================================================
@@ -75,25 +73,6 @@ export interface VerifySignatureResult {
   valid: boolean
 }
 
-export interface RotateKeysInput {
-  confirm: boolean
-}
-
-export interface RotateKeysResult {
-  success: boolean
-  newRecoveryPhrase?: string
-  error?: string
-}
-
-export type RotationPhase = 'preparing' | 're-encrypting' | 'finalizing' | 'complete'
-
-export interface GetRotationProgressResult {
-  inProgress: boolean
-  totalItems?: number
-  processedItems?: number
-  phase?: RotationPhase
-}
-
 // ============================================================================
 // Zod Schemas
 // ============================================================================
@@ -136,10 +115,6 @@ export const VerifySignatureSchema = z.object({
   metadata: z.record(z.string(), z.unknown()).optional()
 })
 
-export const RotateKeysSchema = z.object({
-  confirm: z.boolean()
-})
-
 // ============================================================================
 // Type Inference
 // ============================================================================
@@ -147,4 +122,3 @@ export const RotateKeysSchema = z.object({
 export type EncryptItemSchemaInput = z.infer<typeof EncryptItemSchema>
 export type DecryptItemSchemaInput = z.infer<typeof DecryptItemSchema>
 export type VerifySignatureSchemaInput = z.infer<typeof VerifySignatureSchema>
-export type RotateKeysSchemaInput = z.infer<typeof RotateKeysSchema>
