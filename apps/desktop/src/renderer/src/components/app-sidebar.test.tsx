@@ -277,10 +277,7 @@ describe('AppSidebar', () => {
     expect(mocks.notesTreeCreateFolder).toHaveBeenCalled()
   })
 
-  it('opens tags, bookmarks, shortcuts, and account settings', () => {
-    const shortcutListener = vi.fn()
-    window.addEventListener('memry:open-shortcuts', shortcutListener)
-
+  it('opens tags, bookmarks, account settings, and the settings panel via the gear', () => {
     render(<AppSidebar currentPage="inbox" viewCounts={{}} />)
 
     fireEvent.click(screen.getByRole('button', { name: 'Tag work' }))
@@ -294,13 +291,11 @@ describe('AppSidebar', () => {
       entityId: 'note-1'
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Open keyboard shortcuts' }))
-    expect(shortcutListener).toHaveBeenCalled()
-
     fireEvent.click(screen.getByRole('button', { name: 'syncDisabled' }))
     expect(mocks.openSettings).toHaveBeenCalledWith('account')
 
-    window.removeEventListener('memry:open-shortcuts', shortcutListener)
+    fireEvent.click(screen.getByRole('button', { name: 'settings' }))
+    expect(mocks.openSettings).toHaveBeenCalledWith()
   })
 
   it('uses SyncStatus for authenticated accounts and hides sync action while checking', () => {

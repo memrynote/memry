@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { Plus, Check, Loader2, Settings, X, LogOut, Cloud } from '@/lib/icons'
+import { Plus, Check, Loader2, X, Cloud } from '@/lib/icons'
 
 import { Picker } from '@/components/ui/picker'
 import {
@@ -32,7 +32,7 @@ export function VaultSwitcher() {
   const { status, isLoading, selectVault, switchVault } = useVault()
   const { vaults, removeVault } = useVaultList()
   const { open: openSettings } = useSettingsModal()
-  const { state: authState, logout } = useAuth()
+  const { state: authState } = useAuth()
   const [vaultToRemove, setVaultToRemove] = useState<VaultInfo | null>(null)
   const [open, setOpen] = useState(false)
 
@@ -54,18 +54,10 @@ export function VaultSwitcher() {
     [switchVault]
   )
 
-  const handleOpenSettings = useCallback(() => {
-    openSettings()
-  }, [openSettings])
-
   const handleSignIn = useCallback(() => {
     setOpen(false)
     openSettings('account')
   }, [openSettings])
-
-  const handleLogout = useCallback(async () => {
-    await logout()
-  }, [logout])
 
   const handleRemoveClick = (e: React.MouseEvent, vault: VaultInfo): void => {
     e.stopPropagation()
@@ -87,8 +79,6 @@ export function VaultSwitcher() {
           value={null}
           onValueChange={(action) => {
             if (action === 'open-vault') void handleSelectNewVault()
-            if (action === 'settings') handleOpenSettings()
-            if (action === 'logout') void handleLogout()
           }}
           open={open}
           onOpenChange={setOpen}
@@ -121,15 +111,6 @@ export function VaultSwitcher() {
             sideOffset={8}
           >
             <Picker.List>
-              {isAuthenticated && authState.email && (
-                <>
-                  <div className="px-3 py-2 text-[11px] text-muted-foreground/60">
-                    {authState.email}
-                  </div>
-                  <Picker.Separator />
-                </>
-              )}
-
               {vaults.length > 0 ? (
                 vaults.map((vault) => {
                   const isActive = status?.path === vault.path
@@ -151,7 +132,7 @@ export function VaultSwitcher() {
                       />
                       <span
                         className={cn(
-                          'flex-1 truncate text-left',
+                          'flex-1 truncate text-start',
                           isActive ? 'font-medium' : 'text-muted-foreground'
                         )}
                       >
@@ -186,31 +167,21 @@ export function VaultSwitcher() {
                 label={tPhaseF('phaseF.componentsVaultSwitcher.openVault')}
                 icon={<Plus className="size-3.5" />}
               />
-              <Picker.Item
-                value="settings"
-                label={tPhaseF('phaseF.componentsVaultSwitcher.settings')}
-                icon={<Settings className="size-3.5" />}
-              />
 
-              <Picker.Separator />
-
-              {isAuthenticated ? (
-                <Picker.Item
-                  value="logout"
-                  label={tPhaseF('phaseF.componentsVaultSwitcher.logOut')}
-                  icon={<LogOut className="size-3.5" />}
-                />
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleSignIn}
-                  className="flex w-full items-center gap-2.5 rounded-[5px] px-2 py-1.5 hover:bg-accent transition-colors cursor-pointer"
-                >
-                  <Cloud className="size-3.5 text-sidebar-terracotta" />
-                  <span className="text-sidebar-terracotta font-medium">
-                    {tPhaseF('phaseF.componentsVaultSwitcher.signInToSync')}
-                  </span>
-                </button>
+              {!isAuthenticated && (
+                <>
+                  <Picker.Separator />
+                  <button
+                    type="button"
+                    onClick={handleSignIn}
+                    className="flex w-full items-center gap-2.5 rounded-[5px] px-2 py-1.5 hover:bg-accent transition-colors cursor-pointer"
+                  >
+                    <Cloud className="size-3.5 text-sidebar-terracotta" />
+                    <span className="text-sidebar-terracotta font-medium">
+                      {tPhaseF('phaseF.componentsVaultSwitcher.signInToSync')}
+                    </span>
+                  </button>
+                </>
               )}
             </Picker.List>
           </Picker.Content>

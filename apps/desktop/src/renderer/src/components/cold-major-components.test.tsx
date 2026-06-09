@@ -758,7 +758,7 @@ describe('cold major renderer components', () => {
     expect(onClose).toHaveBeenCalled()
   })
 
-  it('switches vaults, opens settings, logs out, signs in, and removes vault list entries', async () => {
+  it('switches vaults, opens a new vault, signs in, and removes vault list entries', async () => {
     const { rerender } = render(<VaultSwitcher />)
 
     fireEvent.click(screen.getByText('Side'))
@@ -766,12 +766,6 @@ describe('cold major renderer components', () => {
 
     fireEvent.click(screen.getByText('phaseF.componentsVaultSwitcher.openVault'))
     expect(mocks.selectVault).toHaveBeenCalled()
-
-    fireEvent.click(screen.getByText('phaseF.componentsVaultSwitcher.settings'))
-    expect(mocks.openSettings).toHaveBeenCalledWith()
-
-    fireEvent.click(screen.getByText('phaseF.componentsVaultSwitcher.logOut'))
-    expect(mocks.logout).toHaveBeenCalled()
 
     fireEvent.click(screen.getByLabelText('Remove Side from list'))
     fireEvent.click(screen.getByText('phaseF.componentsVaultSwitcher.remove2'))

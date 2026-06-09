@@ -18,6 +18,12 @@ The left sidebar is your primary navigation. Sections from top to bottom:
 
 Drag any section item to reorder, or right-click for a context menu.
 
+At the bottom of the sidebar, a footer row holds three controls, left to right:
+
+- **Sync status** — shows whether sync is connected; click it to open account settings (or to sign in when you're signed out).
+- **Vault name** — click to open the vault menu: switch between vaults, **Open vault** to add another, or **Sign in to sync**.
+- **Settings** (gear) — opens the settings modal, the same as <kbd>⌘</kbd>+<kbd>,</kbd>.
+
 ## Tabs
 
 Across the top of the workspace. Every note, search, project view, journal entry, or settings panel opens in a tab.
