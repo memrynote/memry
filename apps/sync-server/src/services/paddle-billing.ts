@@ -5,12 +5,14 @@ import {
   type SyncEntitlement,
   type SyncPlan
 } from './entitlements'
+import { getUserById } from './user'
 import type { Bindings } from '../types'
 
 export interface BillingStatusResponse {
   plan: SyncEntitlement['plan']
   status: SyncEntitlement['status']
   source: SyncEntitlement['source']
+  email: string | null
   limits: {
     storageLimit: number
     maxFileSize: number
@@ -41,11 +43,15 @@ interface PaddleResponse<T> {
   data?: T
 }
 
-export function formatBillingStatus(entitlement: SyncEntitlement): BillingStatusResponse {
+export function formatBillingStatus(
+  entitlement: SyncEntitlement,
+  email: string | null = null
+): BillingStatusResponse {
   return {
     plan: entitlement.plan,
     status: entitlement.status,
     source: entitlement.source,
+    email,
     limits: {
       storageLimit: entitlement.storage_limit,
       maxFileSize: entitlement.max_file_size,
@@ -64,7 +70,11 @@ export async function getBillingStatus(
   db: D1Database,
   userId: string
 ): Promise<BillingStatusResponse> {
-  return formatBillingStatus(await getSyncEntitlement(db, userId))
+  const [entitlement, user] = await Promise.all([
+    getSyncEntitlement(db, userId),
+    getUserById(db, userId)
+  ])
+  return formatBillingStatus(entitlement, user?.email ?? null)
 }
 
 export async function reconcilePaddleTransaction(

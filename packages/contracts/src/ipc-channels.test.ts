@@ -201,7 +201,6 @@ describe('AccountChannels', () => {
   it('exposes auth-related channels', () => {
     expect(AccountChannels.invoke.GET_INFO).toBe('account:getInfo')
     expect(AccountChannels.invoke.SIGN_OUT).toBe('account:signOut')
-    expect(AccountChannels.invoke.GET_RECOVERY_KEY).toBe('account:getRecoveryKey')
   })
 })
 

@@ -389,12 +389,10 @@
       "identity": "Tożsamość",
       "sync": "Synchronizuj",
       "storage": "Przechowywanie",
-      "devices": "Urządzenia",
-      "security": "Bezpieczeństwo"
+      "devices": "Urządzenia"
     },
     "identity": {
-      "unknown": "Nieznany",
-      "plan": "Plan profesjonalny"
+      "unknown": "Nieznany"
     },
     "sync": {
       "lastSynced": "Ostatnia synchronizacja {time}",
@@ -424,16 +422,6 @@
       }
     },
     "security": {
-      "recoveryKey": {
-        "label": "Klucz odzyskiwania",
-        "description": "Wyświetl klucz odzyskiwania, aby uzyskać dostęp do danych",
-        "action": "Zobacz klucz"
-      },
-      "rotateKeys": {
-        "label": "Obróć klucze szyfrujące",
-        "description": "Wygeneruj nowe klucze i ponownie zaszyfruj wszystkie dane",
-        "action": "Obróć"
-      },
       "signOut": {
         "label": "Wyloguj się",
         "description": "Odłącz to urządzenie od synchronizacji",
@@ -610,56 +598,6 @@
     "approving": "Zatwierdzanie...",
     "approvalFailed": "Zatwierdzenie nie powiodło się",
     "failedToApprove": "Nie udało się zatwierdzić urządzenia"
-  },
-  "recoveryKey": {
-    "title": "Klucz odzyskiwania",
-    "description": "Przechowuj ten klucz w bezpiecznym miejscu. Może przywrócić skarbiec, jeśli utracisz dostęp do wszystkich urządzeń.",
-    "retrieveFailed": "Nie udało się pobrać klucza odzyskiwania",
-    "copied": "Klucz odzyskiwania skopiowany do schowka",
-    "copyFailed": "Nie udało się skopiować do schowka",
-    "clickToReveal": "Kliknij, aby odsłonić",
-    "hide": "Ukryj",
-    "reveal": "Ujawnij",
-    "sessionHint": "Ten klucz jest wyświetlany raz na sesję. Zamknij to okno dialogowe, aby usunąć je z pamięci."
-  },
-  "keyRotation": {
-    "title": "Obróć klucze szyfrujące",
-    "descriptions": {
-      "confirm": "Wygeneruj nowe klucze szyfrujące dla swojego skarbca.",
-      "rotating": "Ponowne szyfrowanie danych za pomocą nowych kluczy...",
-      "phrase": "Zapisz nową frazę odzyskiwania.",
-      "complete": "Zakończono rotację klucza.",
-      "error": "Rotacja klucza napotkała błąd."
-    },
-    "warningTitle": "To działanie:",
-    "warningItems": {
-      "keyPair": "Wygeneruj nową parę kluczy szyfrujących",
-      "rewrap": "Ponownie zawiń wszystkie zsynchronizowane elementy nowym kluczem",
-      "phrase": "Utwórz nową frazę odzyskiwania (stara stanie się nieważna)",
-      "pause": "Tymczasowo wstrzymaj synchronizację w trakcie procesu"
-    },
-    "explanation": "Treść Twoich danych nigdy nie jest ponownie szyfrowana – zmieniają się jedynie koperty kluczy. Jest to szybka i bezpieczna operacja.",
-    "start": "Rozpocznij rotację klucza",
-    "starting": "Zaczynam...",
-    "phases": {
-      "preparing": "Przygotowanie...",
-      "reencrypting": "Ponowne pakowanie kluczy ({processed}/{total})",
-      "finalizing": "Finalizowanie...",
-      "working": "Pracuję..."
-    },
-    "progressAria": "Rotacja klawiszy: {phaseLabel} {pct}%",
-    "progressLabel": "Postęp rotacji klucza",
-    "doNotClose": "Nie zamykaj aplikacji w trakcie tego procesu.",
-    "complete": "Wszystkie klucze szyfrujące zostały obrócone. Twoja nowa fraza odzyskiwania została zapisana. Synchronizacja zostanie wznowiona automatycznie.",
-    "unknownError": "Wystąpił nieznany błąd podczas obracania klucza.",
-    "errorHint": "Twoje istniejące klucze pozostają ważne. Synchronizacja została wznowiona. Możesz spróbować ponownie w dowolnym momencie.",
-    "closeConfirm": {
-      "title": "Trwa rotacja",
-      "description": "Rotacja kluczy nadal trwa. Zamknięcie tego okna dialogowego nie zatrzyma procesu, ale nowa fraza odzyskiwania nie będzie widoczna, dopóki się nie zakończy.",
-      "stay": "Zostań",
-      "closeAnyway": "Zamknij mimo wszystko"
-    },
-    "failed": "Rotacja klucza nie powiodła się"
   },
   "ai": {
     "header": {

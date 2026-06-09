@@ -40,9 +40,7 @@ export const cryptoApi = {
     metadata?: Record<string, unknown>
   }) => invoke(SYNC_CHANNELS.ENCRYPT_ITEM, input),
   decryptItem: (input: DecryptInput) => invoke(SYNC_CHANNELS.DECRYPT_ITEM, input),
-  verifySignature: (input: DecryptInput) => invoke(SYNC_CHANNELS.VERIFY_SIGNATURE, input),
-  rotateKeys: (input: { confirm: boolean }) => invoke(SYNC_CHANNELS.ROTATE_KEYS, input),
-  getRotationProgress: () => invoke(SYNC_CHANNELS.GET_ROTATION_PROGRESS)
+  verifySignature: (input: DecryptInput) => invoke(SYNC_CHANNELS.VERIFY_SIGNATURE, input)
 }
 
 export const syncAttachments = {

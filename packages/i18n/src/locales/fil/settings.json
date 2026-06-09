@@ -389,12 +389,10 @@
       "identity": "Pagkakakilanlan",
       "sync": "I-sync",
       "storage": "Imbakan",
-      "devices": "Mga device",
-      "security": "Seguridad"
+      "devices": "Mga device"
     },
     "identity": {
-      "unknown": "Hindi alam",
-      "plan": "Pro plan"
+      "unknown": "Hindi alam"
     },
     "sync": {
       "lastSynced": "Huling na-sync ang {time}",
@@ -424,16 +422,6 @@
       }
     },
     "security": {
-      "recoveryKey": {
-        "label": "Susi sa Pagbawi",
-        "description": "Tingnan ang iyong recovery key para sa pag-access ng data",
-        "action": "Tingnan ang Key"
-      },
-      "rotateKeys": {
-        "label": "I-rotate ang Encryption Keys",
-        "description": "Bumuo ng mga bagong key at muling i-encrypt ang lahat ng data",
-        "action": "Iikot"
-      },
       "signOut": {
         "label": "Mag-sign Out",
         "description": "Idiskonekta ang device na ito sa pag-sync",
@@ -610,56 +598,6 @@
     "approving": "Inaprubahan...",
     "approvalFailed": "Nabigo ang pag-apruba",
     "failedToApprove": "Nabigong aprubahan ang device"
-  },
-  "recoveryKey": {
-    "title": "Susi sa Pagbawi",
-    "description": "Itago ang susi na ito nang ligtas. Maaari nitong i-restore ang iyong vault kung mawawalan ka ng access sa lahat ng device.",
-    "retrieveFailed": "Nabigong makuha ang recovery key",
-    "copied": "Nakopya ang recovery key sa clipboard",
-    "copyFailed": "Nabigong kopyahin sa clipboard",
-    "clickToReveal": "I-click para ibunyag",
-    "hide": "Magtago",
-    "reveal": "Ibunyag",
-    "sessionHint": "Ang key na ito ay ipinapakita nang isang beses bawat session. Isara ang dialog na ito upang i-clear ito sa memorya."
-  },
-  "keyRotation": {
-    "title": "I-rotate ang Encryption Keys",
-    "descriptions": {
-      "confirm": "Bumuo ng mga bagong encryption key para sa iyong vault.",
-      "rotating": "Muling ine-encrypt ang iyong data gamit ang mga bagong key...",
-      "phrase": "I-save ang iyong bagong parirala sa pagbawi.",
-      "complete": "Kumpleto na ang pag-ikot ng key.",
-      "error": "Nagkaroon ng error ang pag-ikot ng key."
-    },
-    "warningTitle": "Ang pagkilos na ito ay:",
-    "warningItems": {
-      "keyPair": "Bumuo ng bagong pares ng encryption key",
-      "rewrap": "I-wrap muli ang lahat ng naka-sync na item gamit ang bagong key",
-      "phrase": "Gumawa ng bagong parirala sa pagbawi (magiging di-wasto ang luma)",
-      "pause": "Pansamantalang i-pause ang pag-sync sa panahon ng proseso"
-    },
-    "explanation": "Ang nilalaman ng iyong data ay hindi kailanman muling na-encrypt - tanging ang mga pangunahing sobre ang nagbabago. Ito ay isang mabilis, ligtas na operasyon.",
-    "start": "Simulan ang Pag-ikot ng Key",
-    "starting": "Nagsisimula...",
-    "phases": {
-      "preparing": "Inihahanda...",
-      "reencrypting": "Muling pag-wrap ng mga key ({processed}/{total})",
-      "finalizing": "Tinatapos...",
-      "working": "Nagtatrabaho..."
-    },
-    "progressAria": "Pag-ikot ng key: {phaseLabel} {pct}%",
-    "progressLabel": "Pag-unlad ng key rotation",
-    "doNotClose": "Huwag isara ang aplikasyon sa panahon ng prosesong ito.",
-    "complete": "Naiikot na ang lahat ng encryption key. Na-save na ang iyong bagong parirala sa pagbawi. Awtomatikong magpapatuloy ang pag-sync.",
-    "unknownError": "Isang hindi kilalang error ang naganap sa panahon ng pag-ikot ng key.",
-    "errorHint": "Nananatiling wasto ang iyong mga kasalukuyang key. Ipinagpatuloy ang pag-sync. Maaari mong subukang muli anumang oras.",
-    "closeConfirm": {
-      "title": "Kasalukuyang umiikot",
-      "description": "Gumagana pa rin ang pag-ikot ng key. Ang pagsasara sa dialog na ito ay hindi hihinto sa proseso, ngunit hindi mo makikita ang iyong bagong parirala sa pagbawi hanggang sa makumpleto ito.",
-      "stay": "Manatili",
-      "closeAnyway": "Isara pa rin"
-    },
-    "failed": "Nabigo ang pag-ikot ng key"
   },
   "ai": {
     "header": {

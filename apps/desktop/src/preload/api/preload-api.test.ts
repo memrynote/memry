@@ -663,7 +663,6 @@ describe('preload api wrappers', () => {
 
     await expectInvoke(() => accountApi.getInfo(), AccountChannels.invoke.GET_INFO)
     await expectInvoke(() => accountApi.signOut(), AccountChannels.invoke.SIGN_OUT)
-    await expectInvoke(() => accountApi.getRecoveryKey(), AccountChannels.invoke.GET_RECOVERY_KEY)
     await expectInvoke(
       () => accountApi.startCheckout({ plan: 'pro', cadence: 'annual' }),
       AccountChannels.invoke.START_CHECKOUT,
@@ -736,10 +735,6 @@ describe('preload api wrappers', () => {
       SYNC_CHANNELS.VERIFY_SIGNATURE,
       decryptInput
     )
-    await expectInvoke(() => cryptoApi.rotateKeys({ confirm: true }), SYNC_CHANNELS.ROTATE_KEYS, {
-      confirm: true
-    })
-    await expectInvoke(() => cryptoApi.getRotationProgress(), SYNC_CHANNELS.GET_ROTATION_PROGRESS)
 
     await expectInvoke(
       () => syncAttachments.upload({ noteId: 'note-1', filePath: '/tmp/file.pdf' }),
@@ -1005,10 +1000,6 @@ describe('preload api wrappers', () => {
     expectSubscribe(() => syncEvents.onQueueCleared(callback), SYNC_EVENTS.QUEUE_CLEARED)
     expectSubscribe(() => syncEvents.onSyncPaused(callback), SYNC_EVENTS.PAUSED)
     expectSubscribe(() => syncEvents.onSyncResumed(callback), SYNC_EVENTS.RESUMED)
-    expectSubscribe(
-      () => syncEvents.onKeyRotationProgress(callback),
-      SYNC_EVENTS.KEY_ROTATION_PROGRESS
-    )
     expectSubscribe(() => syncEvents.onSessionExpired(callback), SYNC_EVENTS.SESSION_EXPIRED)
     expectSubscribe(() => syncEvents.onDeviceRevoked(callback), SYNC_EVENTS.DEVICE_REMOVED)
     expectSubscribe(() => syncEvents.onOtpDetected(callback), SYNC_EVENTS.OTP_DETECTED)

@@ -451,8 +451,6 @@ export const AccountChannels = {
     GET_INFO: 'account:getInfo',
     /** Sign out and clear local synced data */
     SIGN_OUT: 'account:signOut',
-    /** Get recovery key (requires re-auth token) */
-    GET_RECOVERY_KEY: 'account:getRecoveryKey',
     /** Start a signed Paddle checkout from the desktop app */
     START_CHECKOUT: 'account:startCheckout',
     /** Get current billing status */

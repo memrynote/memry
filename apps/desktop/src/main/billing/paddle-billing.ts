@@ -16,6 +16,7 @@ export interface BillingStatus {
   plan: BillingPlan
   status: BillingStatusValue
   source: string
+  email: string | null
   limits: {
     storageLimit: number
     maxFileSize: number

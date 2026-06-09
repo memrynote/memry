@@ -389,12 +389,10 @@
       "identity": "Identitás",
       "sync": "Szinkronizálás",
       "storage": "Tárolás",
-      "devices": "Eszközök",
-      "security": "Biztonság"
+      "devices": "Eszközök"
     },
     "identity": {
-      "unknown": "Ismeretlen",
-      "plan": "Pro terv"
+      "unknown": "Ismeretlen"
     },
     "sync": {
       "lastSynced": "Utoljára szinkronizált {time}",
@@ -424,16 +422,6 @@
       }
     },
     "security": {
-      "recoveryKey": {
-        "label": "Helyreállítási kulcs",
-        "description": "Tekintse meg helyreállítási kulcsát az adatokhoz való hozzáféréshez",
-        "action": "View Key"
-      },
-      "rotateKeys": {
-        "label": "Forgassa el a titkosítási kulcsokat",
-        "description": "Hozzon létre új kulcsokat, és titkosítsa újra az összes adatot",
-        "action": "Forgatás"
-      },
       "signOut": {
         "label": "Jelentkezzen ki",
         "description": "Válassza le az eszközt a szinkronizálásról",
@@ -610,56 +598,6 @@
     "approving": "Jóváhagyás...",
     "approvalFailed": "A jóváhagyás sikertelen",
     "failedToApprove": "Nem sikerült jóváhagyni az eszközt"
-  },
-  "recoveryKey": {
-    "title": "Helyreállítási kulcs",
-    "description": "Tárolja biztonságosan ezt a kulcsot. Visszaállíthatja a trezort, ha elveszíti hozzáférését az összes eszközhöz.",
-    "retrieveFailed": "Nem sikerült lekérni a helyreállítási kulcsot",
-    "copied": "A helyreállítási kulcs a vágólapra másolva",
-    "copyFailed": "Nem sikerült a vágólapra másolni",
-    "clickToReveal": "Kattintson a felfedéshez",
-    "hide": "Elrejtés",
-    "reveal": "Felfedni",
-    "sessionHint": "Ez a kulcs munkamenetenként egyszer jelenik meg. A memória törléséhez zárja be ezt a párbeszédpanelt."
-  },
-  "keyRotation": {
-    "title": "Forgassa el a titkosítási kulcsokat",
-    "descriptions": {
-      "confirm": "Hozzon létre új titkosítási kulcsokat a trezorhoz.",
-      "rotating": "Adatainak újratitkosítása új kulcsokkal...",
-      "phrase": "Mentse el az új helyreállítási kifejezést.",
-      "complete": "A kulcsforgatás befejeződött.",
-      "error": "A kulcs elforgatásakor hiba történt."
-    },
-    "warningTitle": "Ez a művelet:",
-    "warningItems": {
-      "keyPair": "Hozzon létre egy új titkosítási kulcspárt",
-      "rewrap": "Csomagolja be újra az összes szinkronizált elemet az új kulccsal",
-      "phrase": "Hozzon létre egy új helyreállítási kifejezést (a régi érvénytelen lesz)",
-      "pause": "Átmenetileg szüneteltesse a szinkronizálást a folyamat során"
-    },
-    "explanation": "Az adattartalmat soha nem titkosítják újra – csak a kulcsborítékok változnak. Ez egy gyors, biztonságos művelet.",
-    "start": "Indítsa el a billentyűforgatást",
-    "starting": "Indítás...",
-    "phases": {
-      "preparing": "Felkészülés...",
-      "reencrypting": "Kulcsok újracsomagolása ({processed}/{total})",
-      "finalizing": "Véglegesítés...",
-      "working": "Dolgozik..."
-    },
-    "progressAria": "Kulcsforgatás: {phaseLabel} {pct}%",
-    "progressLabel": "Kulcsforgatás folyamata",
-    "doNotClose": "A folyamat során ne zárja be az alkalmazást.",
-    "complete": "Az összes titkosítási kulcs el lett forgatva. Az új helyreállítási kifejezést elmentettük. A szinkronizálás automatikusan folytatódik.",
-    "unknownError": "Ismeretlen hiba történt a kulcs elforgatása közben.",
-    "errorHint": "Meglévő kulcsai érvényesek maradnak. A szinkronizálás újraindult. Bármikor újrapróbálhatja.",
-    "closeConfirm": {
-      "title": "Forgatás folyamatban",
-      "description": "A kulcsforgatás továbbra is működik. A párbeszédpanel bezárása nem állítja le a folyamatot, de nem fogja látni az új helyreállítási kifejezést, amíg be nem fejeződik.",
-      "stay": "Maradj",
-      "closeAnyway": "Mindenképpen zárd be"
-    },
-    "failed": "A kulcs elforgatása nem sikerült"
   },
   "ai": {
     "header": {

@@ -12,7 +12,6 @@ import type {
   QueueClearedEvent,
   SyncPausedEvent,
   SyncResumedEvent,
-  KeyRotationProgressEvent,
   SessionExpiredEvent,
   OtpDetectedEvent,
   OAuthCallbackEvent,
@@ -60,9 +59,6 @@ export const syncEvents = {
 
   onSyncResumed: (callback: (event: SyncResumedEvent) => void): (() => void) =>
     subscribe<SyncResumedEvent>(SYNC_EVENTS.RESUMED, callback),
-
-  onKeyRotationProgress: (callback: (event: KeyRotationProgressEvent) => void): (() => void) =>
-    subscribe<KeyRotationProgressEvent>(SYNC_EVENTS.KEY_ROTATION_PROGRESS, callback),
 
   onSessionExpired: (callback: (event: SessionExpiredEvent) => void): (() => void) =>
     subscribe<SessionExpiredEvent>(SYNC_EVENTS.SESSION_EXPIRED, callback),

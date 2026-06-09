@@ -389,12 +389,10 @@
       "identity": "身份認證",
       "sync": "同步",
       "storage": "儲存",
-      "devices": "裝置",
-      "security": "安全"
+      "devices": "裝置"
     },
     "identity": {
-      "unknown": "未知",
-      "plan": "專業方案"
+      "unknown": "未知"
     },
     "sync": {
       "lastSynced": "最後同步 {time}",
@@ -424,16 +422,6 @@
       }
     },
     "security": {
-      "recoveryKey": {
-        "label": "恢復金鑰",
-        "description": "查看您的恢復金鑰以存取資料",
-        "action": "查看金鑰"
-      },
-      "rotateKeys": {
-        "label": "輪換加密金鑰",
-        "description": "生成新金鑰並重新加密所有資料",
-        "action": "旋轉"
-      },
       "signOut": {
         "label": "登出",
         "description": "將此裝置與同步斷開",
@@ -610,56 +598,6 @@
     "approving": "批准中...",
     "approvalFailed": "批准失敗",
     "failedToApprove": "無法批准設備"
-  },
-  "recoveryKey": {
-    "title": "恢復金鑰",
-    "description": "請妥善保存此金鑰。如果您失去對所有設備的存取，可以用它來恢復保險庫。",
-    "retrieveFailed": "無法檢索恢復金鑰",
-    "copied": "恢復金鑰已複製到剪貼簿",
-    "copyFailed": "無法複製到剪貼簿",
-    "clickToReveal": "點擊以顯示",
-    "hide": "隱藏",
-    "reveal": "顯示",
-    "sessionHint": "此金鑰每次會話僅顯示一次。關閉此對話框可從記憶中清除它。"
-  },
-  "keyRotation": {
-    "title": "輪換加密金鑰",
-    "descriptions": {
-      "confirm": "為您的保險庫生成新的加密金鑰。",
-      "rotating": "正在使用新金鑰重新加密您的數據...",
-      "phrase": "保存您的新恢復短語。",
-      "complete": "金鑰輪換完成。",
-      "error": "金鑰輪換發生錯誤。"
-    },
-    "warningTitle": "此操作將：",
-    "warningItems": {
-      "keyPair": "生成新的加密金鑰對",
-      "rewrap": "使用新金鑰重新包裝所有同步項目",
-      "phrase": "產生新的恢復短語（舊的將失效）",
-      "pause": "在此過程中暫時暫停同步"
-    },
-    "explanation": "您的數據內容從未重新加密——只有金鑰封套會改變。這是一個快速且安全的操作。",
-    "start": "開始金鑰輪換",
-    "starting": "開始中...",
-    "phases": {
-      "preparing": "準備中...",
-      "reencrypting": "重新包裝金鑰（{processed}/{total}）",
-      "finalizing": "最終處理中...",
-      "working": "進行中..."
-    },
-    "progressAria": "金鑰輪換：{phaseLabel} {pct}%",
-    "progressLabel": "金鑰輪換進度",
-    "doNotClose": "在此過程中請勿關閉應用程式。",
-    "complete": "所有加密金鑰已經輪換完成。您的新恢復短語已保存。同步將自動恢復。",
-    "unknownError": "金鑰輪換過程中發生未知錯誤。",
-    "errorHint": "您現有的金鑰仍然有效。同步已恢復。您可以隨時重試。",
-    "closeConfirm": {
-      "title": "正在旋轉中",
-      "description": "密鑰旋轉仍在進行中。關閉此對話框不會停止此過程，但在完成之前，您將無法看到新的恢復短語。",
-      "stay": "留下",
-      "closeAnyway": "仍要關閉"
-    },
-    "failed": "密鑰旋轉失敗"
   },
   "ai": {
     "header": {

@@ -1,11 +1,9 @@
 import { act, render, renderHook, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useState } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { LinkingPending } from '@/components/sync/linking-pending'
 import { NaturalDateInput, type NaturalDateInputRef } from '@/components/tasks/natural-date-input'
-import { RecoveryKeyDialog } from '@/components/settings/recovery-key-dialog'
 import { ProjectSelector } from '@/components/tasks/projects/project-selector'
 import { EmojiPicker } from '@/components/note/note-title/EmojiPicker'
 import { useReminderNotifications } from '@/hooks/use-reminder-notifications'
@@ -173,27 +171,10 @@ function installWindowApi(overrides: Partial<typeof window.api> = {}) {
     syncLinking: {
       completeLinkingQr: vi.fn()
     },
-    account: {
-      getRecoveryKey: vi.fn()
-    },
     onReminderDue: vi.fn(),
     onReminderClicked: vi.fn(),
     ...overrides
   }
-}
-
-function RecoveryHarness({ onOpenChange }: { onOpenChange: (open: boolean) => void }) {
-  const [open, setOpen] = useState(false)
-
-  return (
-    <RecoveryKeyDialog
-      open={open}
-      onOpenChange={(nextOpen) => {
-        onOpenChange(nextOpen)
-        setOpen(nextOpen)
-      }}
-    />
-  )
 }
 
 describe('medium cold renderer surfaces', () => {
@@ -313,47 +294,6 @@ describe('medium cold renderer surfaces', () => {
     expect(await screen.findByText('No date found')).toBeInTheDocument()
     expect(inputRef.current?.getValue()).toBe('nonsense')
     expect(onInputChange).toHaveBeenCalledWith(expect.stringContaining('next friday'))
-  })
-
-  it('loads, reveals, copies, hides, closes, and reports recovery key failures', async () => {
-    const user = userEvent.setup()
-    Object.defineProperty(navigator, 'clipboard', {
-      configurable: true,
-      value: {
-        writeText: clipboardWrite
-      }
-    })
-    const onOpenChange = vi.fn()
-    window.api.account.getRecoveryKey = vi.fn().mockResolvedValue({
-      success: true,
-      key: 'recovery-key-123'
-    })
-
-    render(<RecoveryHarness onOpenChange={onOpenChange} />)
-
-    await user.click(screen.getByRole('button', { name: 'open recovery dialog' }))
-    await waitFor(() => expect(window.api.account.getRecoveryKey).toHaveBeenCalled())
-    expect(onOpenChange).toHaveBeenCalledWith(true)
-
-    expect(await screen.findByText('recovery-key-123')).toBeInTheDocument()
-    await user.click(screen.getByText('recovery-key-123'))
-    await user.click(screen.getByRole('button', { name: /button.copy/ }))
-    expect(clipboardWrite).toHaveBeenCalledWith('recovery-key-123')
-    expect(toastMock.success).toHaveBeenCalledWith('recoveryKey.copied')
-    await user.click(screen.getByRole('button', { name: /recoveryKey.hide/ }))
-    await user.click(screen.getByRole('button', { name: 'close recovery dialog' }))
-    expect(onOpenChange).toHaveBeenCalledWith(false)
-
-    window.api.account.getRecoveryKey = vi.fn().mockResolvedValue({
-      success: false,
-      error: 'missing key'
-    })
-    await user.click(screen.getByRole('button', { name: 'open recovery dialog' }))
-    await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith('missing key'))
-
-    window.api.account.getRecoveryKey = vi.fn().mockRejectedValue(new Error('offline'))
-    await user.click(screen.getByRole('button', { name: 'open recovery dialog' }))
-    await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith('offline'))
   })
 
   it('renders project selection, counts incomplete top-level tasks, and runs project actions', async () => {

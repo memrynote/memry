@@ -1,4 +1,3 @@
-import type { RotationPhase } from './ipc-crypto'
 import type { SyncErrorCategory, SyncStatusValue } from './ipc-sync-ops'
 import type { VectorClock } from './sync-api'
 
@@ -18,7 +17,6 @@ export const EVENT_CHANNELS = {
   QUEUE_CLEARED: 'sync:queue-cleared',
   PAUSED: 'sync:paused',
   RESUMED: 'sync:resumed',
-  KEY_ROTATION_PROGRESS: 'crypto:key-rotation-progress',
   SESSION_EXPIRED: 'auth:session-expired',
   OTP_DETECTED: 'auth:otp-detected',
   CLOCK_SKEW_WARNING: 'sync:clock-skew-warning',
@@ -106,13 +104,6 @@ export interface SyncPausedEvent {
 
 export interface SyncResumedEvent {
   pendingCount: number
-}
-
-export interface KeyRotationProgressEvent {
-  phase: RotationPhase
-  totalItems: number
-  processedItems: number
-  error?: string
 }
 
 export type SessionExpiredReason = 'token_expired' | 'device_revoked' | 'server_error'

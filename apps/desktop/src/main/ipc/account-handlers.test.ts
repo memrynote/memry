@@ -14,12 +14,10 @@ const mocks = vi.hoisted(() => ({
   },
   storeGet: vi.fn(),
   teardownSession: vi.fn(),
-  retrieveKey: vi.fn(),
   getValidAccessToken: vi.fn(),
   getFromServer: vi.fn(),
   postToServer: vi.fn(),
   shellOpenExternal: vi.fn(),
-  toBase64: vi.fn(),
   logger: {
     info: vi.fn(),
     error: vi.fn(),
@@ -57,10 +55,6 @@ vi.mock('../sync/session-teardown', () => ({
   teardownSession: (...args: unknown[]) => mocks.teardownSession(...args)
 }))
 
-vi.mock('../crypto', () => ({
-  retrieveKey: (...args: unknown[]) => mocks.retrieveKey(...args)
-}))
-
 vi.mock('../sync/token-manager', () => ({
   getValidAccessToken: (...args: unknown[]) => mocks.getValidAccessToken(...args)
 }))
@@ -76,13 +70,6 @@ vi.mock('../sync/runtime', () => ({
 
 vi.mock('../lib/logger', () => ({
   createLogger: () => mocks.logger
-}))
-
-vi.mock('libsodium-wrappers-sumo', () => ({
-  default: {
-    to_base64: (...args: unknown[]) => mocks.toBase64(...args),
-    base64_variants: { URLSAFE_NO_PADDING: 7 }
-  }
 }))
 
 import { isDatabaseInitialized } from '../database/client'
@@ -110,8 +97,6 @@ describe('account-handlers', () => {
       canManageBilling: false
     })
     mocks.shellOpenExternal.mockResolvedValue('')
-    mocks.retrieveKey.mockResolvedValue(new Uint8Array([1, 2, 3]))
-    mocks.toBase64.mockReturnValue('recovery-key')
     vi.mocked(isDatabaseInitialized).mockReturnValue(false)
   })
 
@@ -153,38 +138,6 @@ describe('account-handlers', () => {
       keychainWarning: 'Failed to remove: masterKey, deviceKey'
     })
     expect(mocks.teardownSession).toHaveBeenCalledWith('logout')
-  })
-
-  it('returns recovery key authentication, missing-key, success, and failure states', async () => {
-    registerAccountHandlers()
-
-    mocks.getValidAccessToken.mockResolvedValueOnce(null)
-    await expect(invokeHandler(AccountChannels.invoke.GET_RECOVERY_KEY)).resolves.toEqual({
-      success: false,
-      error: 'Not authenticated'
-    })
-
-    mocks.retrieveKey.mockResolvedValueOnce(null)
-    await expect(invokeHandler(AccountChannels.invoke.GET_RECOVERY_KEY)).resolves.toEqual({
-      success: false,
-      error: 'Recovery key not available on this device'
-    })
-
-    await expect(invokeHandler(AccountChannels.invoke.GET_RECOVERY_KEY)).resolves.toEqual({
-      success: true,
-      key: 'recovery-key'
-    })
-    expect(mocks.toBase64).toHaveBeenCalledWith(new Uint8Array([1, 2, 3]), 7)
-
-    mocks.retrieveKey.mockRejectedValueOnce(new Error('keychain failed'))
-    await expect(invokeHandler(AccountChannels.invoke.GET_RECOVERY_KEY)).resolves.toEqual({
-      success: false,
-      error: 'Failed to retrieve recovery key'
-    })
-    expect(mocks.logger.error).toHaveBeenCalledWith(
-      'Failed to retrieve recovery key',
-      expect.any(Error)
-    )
   })
 
   it('starts checkout by minting a token and opening landing with a fragment', async () => {

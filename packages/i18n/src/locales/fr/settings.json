@@ -389,12 +389,10 @@
       "identity": "Identité",
       "sync": "Synchroniser",
       "storage": "Stockage",
-      "devices": "Appareils",
-      "security": "Sécurité"
+      "devices": "Appareils"
     },
     "identity": {
-      "unknown": "Inconnu",
-      "plan": "Forfait Pro"
+      "unknown": "Inconnu"
     },
     "sync": {
       "lastSynced": "Dernière synchronisation {time}",
@@ -424,16 +422,6 @@
       }
     },
     "security": {
-      "recoveryKey": {
-        "label": "Clé de récupération",
-        "description": "Afficher votre clé de récupération pour l'accès aux données",
-        "action": "Afficher la clé"
-      },
-      "rotateKeys": {
-        "label": "Rotation des clés de chiffrement",
-        "description": "Générez de nouvelles clés et chiffrez à nouveau toutes les données",
-        "action": "Rotation"
-      },
       "signOut": {
         "label": "Se déconnecter",
         "description": "Déconnecter cet appareil de la synchronisation",
@@ -610,56 +598,6 @@
     "approving": "Approuver...",
     "approvalFailed": "Échec de l'approbation",
     "failedToApprove": "Échec de l'approbation de l'appareil"
-  },
-  "recoveryKey": {
-    "title": "Clé de récupération",
-    "description": "Conservez cette clé en toute sécurité. Il peut restaurer votre coffre-fort si vous perdez l'accès à tous les appareils.",
-    "retrieveFailed": "Échec de la récupération de la clé de récupération",
-    "copied": "Clé de récupération copiée dans le presse-papiers",
-    "copyFailed": "Échec de la copie dans le presse-papiers",
-    "clickToReveal": "Cliquez pour révéler",
-    "hide": "Masquer",
-    "reveal": "Révéler",
-    "sessionHint": "Cette clé est affichée une fois par session. Fermez cette boîte de dialogue pour l'effacer de la mémoire."
-  },
-  "keyRotation": {
-    "title": "Rotation des clés de chiffrement",
-    "descriptions": {
-      "confirm": "Générez de nouvelles clés de chiffrement pour votre coffre-fort.",
-      "rotating": "Rechiffrer vos données avec de nouvelles clés...",
-      "phrase": "Enregistrez votre nouvelle phrase de récupération.",
-      "complete": "Rotation des clés terminée.",
-      "error": "La rotation des clés a rencontré une erreur."
-    },
-    "warningTitle": "Cette action va :",
-    "warningItems": {
-      "keyPair": "Générer une nouvelle paire de clés de chiffrement",
-      "rewrap": "Réemballez tous les éléments synchronisés avec la nouvelle clé",
-      "phrase": "Produire une nouvelle phrase de récupération (l'ancienne devient invalide)",
-      "pause": "Suspendre temporairement la synchronisation pendant le processus"
-    },
-    "explanation": "Le contenu de vos données n'est jamais rechiffré - seules les enveloppes de clé changent. Il s'agit d'une opération rapide et sûre.",
-    "start": "Démarrer la rotation des clés",
-    "starting": "Commencer...",
-    "phases": {
-      "preparing": "Préparation...",
-      "reencrypting": "Réemballage des clés ({processed}/{total})",
-      "finalizing": "Finalisation...",
-      "working": "Travailler..."
-    },
-    "progressAria": "Rotation des clés : {phaseLabel} {pct}%",
-    "progressLabel": "Progression de la rotation des clés",
-    "doNotClose": "Ne fermez pas l'application pendant ce processus.",
-    "complete": "Toutes les clés de cryptage ont été alternées. Votre nouvelle phrase de récupération a été enregistrée. La synchronisation reprendra automatiquement.",
-    "unknownError": "Une erreur inconnue s'est produite lors de la rotation des clés.",
-    "errorHint": "Vos clés existantes restent valables. La synchronisation a repris. Vous pouvez réessayer à tout moment.",
-    "closeConfirm": {
-      "title": "Rotation en cours",
-      "description": "La rotation des clés est toujours en cours. La fermeture de cette boîte de dialogue n'arrêtera pas le processus, mais vous ne verrez pas votre nouvelle phrase de récupération tant qu'elle ne sera pas terminée.",
-      "stay": "Rester",
-      "closeAnyway": "Fermer quand même"
-    },
-    "failed": "Échec de la rotation des clés"
   },
   "ai": {
     "header": {

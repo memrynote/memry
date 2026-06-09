@@ -378,17 +378,6 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
     )
 
     cleanups.push(
-      window.api.onKeyRotationProgress((event) => {
-        if (cancelled) return
-        if (event.phase === 'complete') {
-          dispatch({ type: 'CLEAR_ERROR' })
-        } else if (event.error) {
-          dispatch({ type: 'SET_ERROR', error: extractErrorMessage(event.error, '') })
-        }
-      })
-    )
-
-    cleanups.push(
       window.api.onSecurityWarning((event) => {
         if (cancelled) return
         const message = event.permanent

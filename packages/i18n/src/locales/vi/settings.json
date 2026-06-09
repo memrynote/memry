@@ -389,12 +389,10 @@
       "identity": "Danh tính",
       "sync": "Đồng bộ",
       "storage": "Lưu trữ",
-      "devices": "Thiết bị",
-      "security": "Bảo mật"
+      "devices": "Thiết bị"
     },
     "identity": {
-      "unknown": "Không xác định",
-      "plan": "Gói Pro"
+      "unknown": "Không xác định"
     },
     "sync": {
       "lastSynced": "Đồng bộ lần cuối {time}",
@@ -424,16 +422,6 @@
       }
     },
     "security": {
-      "recoveryKey": {
-        "label": "Khóa khôi phục",
-        "description": "Xem khóa khôi phục của bạn để truy cập dữ liệu",
-        "action": "Xem khóa"
-      },
-      "rotateKeys": {
-        "label": "Xoay khóa mã hóa",
-        "description": "Tạo khóa mới và mã hóa lại tất cả dữ liệu",
-        "action": "Xoay"
-      },
       "signOut": {
         "label": "Đăng xuất",
         "description": "Ngắt kết nối thiết bị này khỏi đồng bộ",
@@ -610,56 +598,6 @@
     "approving": "Đang phê duyệt...",
     "approvalFailed": "Phê duyệt thất bại",
     "failedToApprove": "Không thể phê duyệt thiết bị"
-  },
-  "recoveryKey": {
-    "title": "Khóa khôi phục",
-    "description": "Lưu khóa này một cách an toàn. Nó có thể khôi phục kho dữ liệu của bạn nếu bạn mất quyền truy cập tất cả thiết bị.",
-    "retrieveFailed": "Không thể lấy khóa khôi phục",
-    "copied": "Đã sao chép khóa khôi phục vào clipboard",
-    "copyFailed": "Không thể sao chép vào clipboard",
-    "clickToReveal": "Nhấp để hiển thị",
-    "hide": "Ẩn",
-    "reveal": "Hiện ra",
-    "sessionHint": "Khóa này được hiển thị một lần mỗi phiên. Đóng hộp thoại này để xóa nó khỏi bộ nhớ."
-  },
-  "keyRotation": {
-    "title": "Xoay khóa mã hóa",
-    "descriptions": {
-      "confirm": "Tạo khóa mã hóa mới cho kho dữ liệu của bạn.",
-      "rotating": "Đang mã hóa lại dữ liệu của bạn với các khóa mới...",
-      "phrase": "Lưu cụm từ khôi phục mới của bạn.",
-      "complete": "Hoàn tất xoay khóa.",
-      "error": "Xoay khóa gặp lỗi."
-    },
-    "warningTitle": "Hành động này sẽ:",
-    "warningItems": {
-      "keyPair": "Tạo một cặp khóa mã hóa mới",
-      "rewrap": "Mã hóa lại tất cả các mục đã đồng bộ với khóa mới",
-      "phrase": "Tạo một cụm từ khôi phục mới (cụm từ cũ sẽ không còn hiệu lực)",
-      "pause": "Tạm thời tạm dừng đồng bộ trong quá trình này"
-    },
-    "explanation": "Nội dung dữ liệu của bạn không bao giờ bị mã hóa lại - chỉ có các phong bì khóa thay đổi. Đây là một thao tác nhanh và an toàn.",
-    "start": "Bắt đầu Quay vòng Khóa",
-    "starting": "Bắt đầu...",
-    "phases": {
-      "preparing": "Đang chuẩn bị...",
-      "reencrypting": "Đang bọc lại các khóa ({processed}/{total})",
-      "finalizing": "Đang hoàn tất...",
-      "working": "Đang thực hiện..."
-    },
-    "progressAria": "Quay vòng khóa: {phaseLabel} {pct}%",
-    "progressLabel": "Tiến trình quay vòng khóa",
-    "doNotClose": "Không đóng ứng dụng trong quá trình này.",
-    "complete": "Tất cả các khóa mã hóa đã được quay vòng. Cụm từ khôi phục mới của bạn đã được lưu. Đồng bộ sẽ tự động tiếp tục.",
-    "unknownError": "Đã xảy ra lỗi không xác định trong quá trình quay vòng khóa.",
-    "errorHint": "Các khóa hiện có của bạn vẫn còn hiệu lực. Đồng bộ đã được tiếp tục. Bạn có thể thử lại bất cứ lúc nào.",
-    "closeConfirm": {
-      "title": "Đang quay vòng  ",
-      "description": "  \nViệc quay vòng khóa vẫn đang diễn ra. Đóng hộp thoại này sẽ không dừng quá trình, nhưng bạn sẽ không thấy cụm từ khôi phục mới cho đến khi quá trình hoàn tất.  ",
-      "stay": "  \nỞ lại  ",
-      "closeAnyway": "  \nĐóng dù sao  "
-    },
-    "failed": "  \nQuay vòng khóa thất bại  "
   },
   "ai": {
     "header": {

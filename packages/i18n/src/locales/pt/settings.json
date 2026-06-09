@@ -389,12 +389,10 @@
       "identity": "Identidade",
       "sync": "Sincronizar",
       "storage": "Armazenamento",
-      "devices": "Dispositivos",
-      "security": "Segurança"
+      "devices": "Dispositivos"
     },
     "identity": {
-      "unknown": "Desconhecido",
-      "plan": "Plano profissional"
+      "unknown": "Desconhecido"
     },
     "sync": {
       "lastSynced": "Última sincronização {time}",
@@ -424,16 +422,6 @@
       }
     },
     "security": {
-      "recoveryKey": {
-        "label": "Chave de recuperação",
-        "description": "Veja sua chave de recuperação para acesso a dados",
-        "action": "Ver chave"
-      },
-      "rotateKeys": {
-        "label": "Girar chaves de criptografia",
-        "description": "Gere novas chaves e criptografe novamente todos os dados",
-        "action": "Girar"
-      },
       "signOut": {
         "label": "Sair",
         "description": "Desconectar este dispositivo da sincronização",
@@ -610,56 +598,6 @@
     "approving": "Aprovando...",
     "approvalFailed": "Falha na aprovação",
     "failedToApprove": "Falha ao aprovar o dispositivo"
-  },
-  "recoveryKey": {
-    "title": "Chave de recuperação",
-    "description": "Armazene esta chave com segurança. Ele pode restaurar seu cofre se você perder o acesso a todos os dispositivos.",
-    "retrieveFailed": "Falha ao recuperar a chave de recuperação",
-    "copied": "Chave de recuperação copiada para a área de transferência",
-    "copyFailed": "Falha ao copiar para a área de transferência",
-    "clickToReveal": "Clique para revelar",
-    "hide": "Esconder",
-    "reveal": "Revelar",
-    "sessionHint": "Esta chave é mostrada uma vez por sessão. Feche esta caixa de diálogo para limpá-la da memória."
-  },
-  "keyRotation": {
-    "title": "Girar chaves de criptografia",
-    "descriptions": {
-      "confirm": "Gere novas chaves de criptografia para seu cofre.",
-      "rotating": "Criptografando novamente seus dados com novas chaves...",
-      "phrase": "Salve sua nova frase de recuperação.",
-      "complete": "Rotação da chave concluída.",
-      "error": "A rotação de chave encontrou um erro."
-    },
-    "warningTitle": "Esta ação irá:",
-    "warningItems": {
-      "keyPair": "Gere um novo par de chaves de criptografia",
-      "rewrap": "Reembrulhe todos os itens sincronizados com a nova chave",
-      "phrase": "Produza uma nova frase de recuperação (a antiga torna-se inválida)",
-      "pause": "Pausar temporariamente a sincronização durante o processo"
-    },
-    "explanation": "O conteúdo dos seus dados nunca é criptografado novamente - apenas os envelopes das chaves mudam. Esta é uma operação rápida e segura.",
-    "start": "Iniciar rotação de chave",
-    "starting": "Começando...",
-    "phases": {
-      "preparing": "Preparando...",
-      "reencrypting": "Reempacotamento de chaves ({processed}/{total})",
-      "finalizing": "Finalizando...",
-      "working": "Trabalhando..."
-    },
-    "progressAria": "Rotação de chave: {phaseLabel} {pct}%",
-    "progressLabel": "Progresso da rotação de chaves",
-    "doNotClose": "Não feche o aplicativo durante este processo.",
-    "complete": "Todas as chaves de criptografia foram rotacionadas. Sua nova frase de recuperação foi salva. A sincronização será retomada automaticamente.",
-    "unknownError": "Ocorreu um erro desconhecido durante a rotação da chave.",
-    "errorHint": "Suas chaves existentes permanecem válidas. A sincronização foi retomada. Você pode tentar novamente a qualquer momento.",
-    "closeConfirm": {
-      "title": "Rotação em andamento",
-      "description": "A rotação de chaves ainda está em execução. Fechar esta caixa de diálogo não interromperá o processo, mas você não verá sua nova frase de recuperação até que ela seja concluída.",
-      "stay": "Fique",
-      "closeAnyway": "Fechar mesmo assim"
-    },
-    "failed": "Falha na rotação da chave"
   },
   "ai": {
     "header": {

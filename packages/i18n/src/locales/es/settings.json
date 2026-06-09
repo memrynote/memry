@@ -389,12 +389,10 @@
       "identity": "Identidad",
       "sync": "Sincronizar",
       "storage": "Almacenamiento",
-      "devices": "Dispositivos",
-      "security": "Seguridad"
+      "devices": "Dispositivos"
     },
     "identity": {
-      "unknown": "Desconocido",
-      "plan": "plan profesional"
+      "unknown": "Desconocido"
     },
     "sync": {
       "lastSynced": "Última sincronización {time}",
@@ -424,16 +422,6 @@
       }
     },
     "security": {
-      "recoveryKey": {
-        "label": "Clave de recuperación",
-        "description": "Ver su clave de recuperación para acceder a los datos",
-        "action": "Ver clave"
-      },
-      "rotateKeys": {
-        "label": "Rotar claves de cifrado",
-        "description": "Genere nuevas claves y vuelva a cifrar todos los datos",
-        "action": "rotar"
-      },
       "signOut": {
         "label": "Cerrar sesión",
         "description": "Desconecta este dispositivo de la sincronización",
@@ -610,56 +598,6 @@
     "approving": "Aprobando...",
     "approvalFailed": "La aprobación falló",
     "failedToApprove": "No se pudo aprobar el dispositivo"
-  },
-  "recoveryKey": {
-    "title": "Clave de recuperación",
-    "description": "Guarde esta clave de forma segura. Puede restaurar su bóveda si pierde el acceso a todos los dispositivos.",
-    "retrieveFailed": "No se pudo recuperar la clave de recuperación",
-    "copied": "Clave de recuperación copiada al portapapeles",
-    "copyFailed": "No se pudo copiar al portapapeles",
-    "clickToReveal": "Haga clic para revelar",
-    "hide": "Ocultar",
-    "reveal": "revelar",
-    "sessionHint": "Esta clave se muestra una vez por sesión. Cierre este cuadro de diálogo para borrarlo de la memoria."
-  },
-  "keyRotation": {
-    "title": "Rotar claves de cifrado",
-    "descriptions": {
-      "confirm": "Genere nuevas claves de cifrado para su bóveda.",
-      "rotating": "Volviendo a cifrar sus datos con nuevas claves...",
-      "phrase": "Guarda tu nueva frase de recuperación.",
-      "complete": "Rotación de clave completa.",
-      "error": "La rotación de claves encontró un error."
-    },
-    "warningTitle": "Esta acción:",
-    "warningItems": {
-      "keyPair": "Generar un nuevo par de claves de cifrado",
-      "rewrap": "Vuelva a empaquetar todos los elementos sincronizados con la nueva clave",
-      "phrase": "Producir una nueva frase de recuperación (la anterior deja de ser válida)",
-      "pause": "Pausar temporalmente la sincronización durante el proceso"
-    },
-    "explanation": "El contenido de sus datos nunca se vuelve a cifrar: solo cambian los sobres de las claves. Esta es una operación rápida y segura.",
-    "start": "Iniciar rotación de clave",
-    "starting": "Empezando...",
-    "phases": {
-      "preparing": "Preparando...",
-      "reencrypting": "Reajustar claves ({processed}/{total})",
-      "finalizing": "Finalizando...",
-      "working": "Trabajando..."
-    },
-    "progressAria": "Rotación de claves: {phaseLabel} {pct}%",
-    "progressLabel": "Progreso de la rotación de claves",
-    "doNotClose": "No cierre la aplicación durante este proceso.",
-    "complete": "Se han rotado todas las claves de cifrado. Tu nueva frase de recuperación ha sido guardada. La sincronización se reanudará automáticamente.",
-    "unknownError": "Se produjo un error desconocido durante la rotación de claves.",
-    "errorHint": "Sus claves existentes siguen siendo válidas. La sincronización se ha reanudado. Puedes volver a intentarlo en cualquier momento.",
-    "closeConfirm": {
-      "title": "Rotación en curso",
-      "description": "La rotación de claves todavía está en marcha. Cerrar este cuadro de diálogo no detendrá el proceso, pero no verá su nueva frase de recuperación hasta que se complete.",
-      "stay": "quedarse",
-      "closeAnyway": "Cerrar de todos modos"
-    },
-    "failed": "Falló la rotación de claves"
   },
   "ai": {
     "header": {

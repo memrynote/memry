@@ -18,7 +18,6 @@ let linkingApprovedListeners: EventCallback[] = []
 let conflictDetectedListeners: EventCallback[] = []
 let itemSyncedListeners: EventCallback[] = []
 let initialSyncProgressListeners: EventCallback[] = []
-let keyRotationProgressListeners: EventCallback[] = []
 let queueClearedListeners: VoidCallback[] = []
 let clockSkewWarningListeners: VoidCallback[] = []
 let sessionExpiredListeners: VoidCallback[] = []
@@ -106,7 +105,6 @@ beforeEach(async () => {
   conflictDetectedListeners = []
   itemSyncedListeners = []
   initialSyncProgressListeners = []
-  keyRotationProgressListeners = []
   queueClearedListeners = []
   clockSkewWarningListeners = []
   sessionExpiredListeners = []
@@ -203,12 +201,6 @@ beforeEach(async () => {
     initialSyncProgressListeners.push(cb)
     return () => {
       initialSyncProgressListeners = initialSyncProgressListeners.filter((l) => l !== cb)
-    }
-  })
-  api.onKeyRotationProgress = vi.fn((cb: EventCallback) => {
-    keyRotationProgressListeners.push(cb)
-    return () => {
-      keyRotationProgressListeners = keyRotationProgressListeners.filter((l) => l !== cb)
     }
   })
   api.onSecurityWarning = vi.fn((cb: EventCallback) => {
@@ -442,18 +434,6 @@ describe('SyncProvider', () => {
         for (const cb of linkingApprovedListeners) cb({})
       })
       expect(result.current.linkingRequest).toBeNull()
-
-      act(() => {
-        for (const cb of keyRotationProgressListeners) cb({ error: 'rotation failed' })
-      })
-      expect(result.current.state.status).toBe('error')
-      expect(result.current.state.error).toBe('rotation failed')
-
-      act(() => {
-        for (const cb of keyRotationProgressListeners) cb({ phase: 'complete' })
-      })
-      expect(result.current.state.status).toBe('idle')
-      expect(result.current.state.error).toBeNull()
 
       act(() => {
         for (const cb of deviceRevokedListeners) cb({ unsyncedCount: 7 })

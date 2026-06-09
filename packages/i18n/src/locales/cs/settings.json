@@ -389,12 +389,10 @@
       "identity": "Identita",
       "sync": "Synchronizovat",
       "storage": "Skladování",
-      "devices": "Zařízení",
-      "security": "Bezpečnost"
+      "devices": "Zařízení"
     },
     "identity": {
-      "unknown": "Neznámý",
-      "plan": "Pro plán"
+      "unknown": "Neznámý"
     },
     "sync": {
       "lastSynced": "Poslední synchronizace {time}",
@@ -424,16 +422,6 @@
       }
     },
     "security": {
-      "recoveryKey": {
-        "label": "Obnovovací klíč",
-        "description": "Zobrazte svůj obnovovací klíč pro přístup k datům",
-        "action": "Zobrazit klíč"
-      },
-      "rotateKeys": {
-        "label": "Otočte šifrovací klíče",
-        "description": "Vygenerujte nové klíče a znovu zašifrujte všechna data",
-        "action": "Otočit"
-      },
       "signOut": {
         "label": "Odhlásit se",
         "description": "Odpojte toto zařízení od synchronizace",
@@ -610,56 +598,6 @@
     "approving": "Schvalování...",
     "approvalFailed": "Schválení se nezdařilo",
     "failedToApprove": "Zařízení se nepodařilo schválit"
-  },
-  "recoveryKey": {
-    "title": "Obnovovací klíč",
-    "description": "Tento klíč bezpečně uschovejte. Může obnovit váš trezor, pokud ztratíte přístup ke všem zařízením.",
-    "retrieveFailed": "Nepodařilo se načíst obnovovací klíč",
-    "copied": "Obnovovací klíč byl zkopírován do schránky",
-    "copyFailed": "Kopírování do schránky se nezdařilo",
-    "clickToReveal": "Kliknutím zobrazíte",
-    "hide": "Skrýt",
-    "reveal": "Odhalit",
-    "sessionHint": "Tento klíč se zobrazuje jednou za relaci. Zavřete toto dialogové okno, chcete-li jej vymazat z paměti."
-  },
-  "keyRotation": {
-    "title": "Otočte šifrovací klíče",
-    "descriptions": {
-      "confirm": "Vygenerujte nové šifrovací klíče pro svůj trezor.",
-      "rotating": "Opětovné šifrování dat pomocí nových klíčů...",
-      "phrase": "Uložte si novou frázi pro obnovení.",
-      "complete": "Otočení klíče dokončeno.",
-      "error": "Při rotaci klíče došlo k chybě."
-    },
-    "warningTitle": "Tato akce:",
-    "warningItems": {
-      "keyPair": "Vygenerujte nový pár šifrovacích klíčů",
-      "rewrap": "Znovu zabalte všechny synchronizované položky novým klíčem",
-      "phrase": "Vytvořte novou frázi pro obnovení (stará se stane neplatnou)",
-      "pause": "Během procesu dočasně pozastavte synchronizaci"
-    },
-    "explanation": "Váš datový obsah není nikdy znovu zašifrován – mění se pouze obálky klíčů. Jedná se o rychlou a bezpečnou operaci.",
-    "start": "Start Key Rotation",
-    "starting": "Spouštění...",
-    "phases": {
-      "preparing": "Příprava...",
-      "reencrypting": "Přebalení klíčů ({processed}/{total})",
-      "finalizing": "Dokončování...",
-      "working": "Práce..."
-    },
-    "progressAria": "Otočení klíče: {phaseLabel} {pct}%",
-    "progressLabel": "Průběh střídání klíčů",
-    "doNotClose": "Během tohoto procesu nezavírejte aplikaci.",
-    "complete": "Všechny šifrovací klíče byly otočeny. Vaše nová fráze pro obnovení byla uložena. Synchronizace se automaticky obnoví.",
-    "unknownError": "Při otáčení klíče došlo k neznámé chybě.",
-    "errorHint": "Vaše stávající klíče zůstávají v platnosti. Synchronizace byla obnovena. Kdykoli to můžete zkusit znovu.",
-    "closeConfirm": {
-      "title": "Probíhá rotace",
-      "description": "Střídání klíčů stále běží. Zavřením tohoto dialogového okna se proces nezastaví, ale dokud nebude dokončena, nová fráze pro obnovení se nezobrazí.",
-      "stay": "Zůstaň",
-      "closeAnyway": "Každopádně zavřít"
-    },
-    "failed": "Otočení klíče se nezdařilo"
   },
   "ai": {
     "header": {

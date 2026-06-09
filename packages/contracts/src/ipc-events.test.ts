@@ -22,7 +22,6 @@ import type {
   ItemCorruptEvent,
   ItemRecoveredEvent,
   ItemSyncedEvent,
-  KeyRotationProgressEvent,
   LinkingApprovedEvent,
   LinkingFinalizedEvent,
   LinkingRequestEvent,
@@ -58,7 +57,6 @@ describe('EVENT_CHANNELS', () => {
     expect(EVENT_CHANNELS.STATUS_CHANGED).toBe('sync:status-changed')
     expect(EVENT_CHANNELS.ITEM_SYNCED).toBe('sync:item-synced')
     expect(EVENT_CHANNELS.CONFLICT_DETECTED).toBe('sync:conflict-detected')
-    expect(EVENT_CHANNELS.KEY_ROTATION_PROGRESS).toBe('crypto:key-rotation-progress')
     expect(EVENT_CHANNELS.SESSION_EXPIRED).toBe('auth:session-expired')
     expect(EVENT_CHANNELS.OTP_DETECTED).toBe('auth:otp-detected')
     expect(EVENT_CHANNELS.OAUTH_CALLBACK).toBe('auth:oauth-callback')
@@ -129,13 +127,7 @@ describe('event payload types (compile-time shape locks)', () => {
   })
 
   it('InitialSyncProgressEvent locks phase union', () => {
-    const phases: InitialSyncPhase[] = [
-      'manifest',
-      'notes',
-      'tasks',
-      'attachments',
-      'complete'
-    ]
+    const phases: InitialSyncPhase[] = ['manifest', 'notes', 'tasks', 'attachments', 'complete']
     for (const phase of phases) {
       const event: InitialSyncProgressEvent = {
         phase,
@@ -153,22 +145,8 @@ describe('event payload types (compile-time shape locks)', () => {
     expect(cleared.itemCount + paused.pendingCount + resumed.pendingCount).toBe(5)
   })
 
-  it('KeyRotationProgressEvent accepts optional error', () => {
-    const event: KeyRotationProgressEvent = {
-      phase: 're-encrypting',
-      totalItems: 10,
-      processedItems: 5,
-      error: undefined
-    }
-    expect(event.phase).toBe('re-encrypting')
-  })
-
   it('SessionExpiredEvent reason union', () => {
-    const reasons: SessionExpiredReason[] = [
-      'token_expired',
-      'device_revoked',
-      'server_error'
-    ]
+    const reasons: SessionExpiredReason[] = ['token_expired', 'device_revoked', 'server_error']
     for (const reason of reasons) {
       const event: SessionExpiredEvent = { reason }
       expect(event.reason).toBe(reason)

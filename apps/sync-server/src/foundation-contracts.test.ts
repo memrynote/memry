@@ -18,7 +18,6 @@ import {
   CRYPTO_CHANNELS,
   DecryptItemSchema,
   EncryptItemSchema,
-  RotateKeysSchema,
   VerifySignatureSchema
 } from '@memry/contracts/ipc-crypto'
 import {
@@ -292,7 +291,6 @@ describe('sync-server contracts', () => {
         signature: 'sig'
       }).success
     ).toBe(true)
-    expect(RotateKeysSchema.safeParse({ confirm: true }).success).toBe(true)
 
     expect(
       LinkViaQrSchema.safeParse({ qrData: 'qr', oauthToken: 'oauth', provider: 'google' }).success

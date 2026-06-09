@@ -389,12 +389,10 @@
       "identity": "identiti",
       "sync": "Segerakkan",
       "storage": "Penyimpanan",
-      "devices": "Peranti",
-      "security": "Keselamatan"
+      "devices": "Peranti"
     },
     "identity": {
-      "unknown": "Tidak diketahui",
-      "plan": "Pelan pro"
+      "unknown": "Tidak diketahui"
     },
     "sync": {
       "lastSynced": "Terakhir disegerakkan {time}",
@@ -424,16 +422,6 @@
       }
     },
     "security": {
-      "recoveryKey": {
-        "label": "Kunci Pemulihan",
-        "description": "Lihat kunci pemulihan anda untuk akses data",
-        "action": "Lihat Kunci"
-      },
-      "rotateKeys": {
-        "label": "Putar Kekunci Penyulitan",
-        "description": "Hasilkan kunci baharu dan sulitkan semula semua data",
-        "action": "Putar"
-      },
       "signOut": {
         "label": "Log Keluar",
         "description": "Putuskan sambungan peranti ini daripada penyegerakan",
@@ -610,56 +598,6 @@
     "approving": "Meluluskan...",
     "approvalFailed": "Kelulusan gagal",
     "failedToApprove": "Gagal meluluskan peranti"
-  },
-  "recoveryKey": {
-    "title": "Kunci Pemulihan",
-    "description": "Simpan kunci ini dengan selamat. Ia boleh memulihkan peti besi anda jika anda kehilangan akses kepada semua peranti.",
-    "retrieveFailed": "Gagal mendapatkan kunci pemulihan",
-    "copied": "Kunci pemulihan disalin ke papan keratan",
-    "copyFailed": "Gagal menyalin ke papan keratan",
-    "clickToReveal": "Klik untuk mendedahkan",
-    "hide": "Sembunyi",
-    "reveal": "Dedahkan",
-    "sessionHint": "Kunci ini ditunjukkan sekali setiap sesi. Tutup dialog ini untuk mengosongkannya daripada ingatan."
-  },
-  "keyRotation": {
-    "title": "Putar Kekunci Penyulitan",
-    "descriptions": {
-      "confirm": "Hasilkan kunci penyulitan baharu untuk peti besi anda.",
-      "rotating": "Menyulitkan semula data anda dengan kunci baharu...",
-      "phrase": "Simpan frasa pemulihan baharu anda.",
-      "complete": "Putaran kunci selesai.",
-      "error": "Putaran kunci mengalami ralat."
-    },
-    "warningTitle": "Tindakan ini akan:",
-    "warningItems": {
-      "keyPair": "Hasilkan pasangan kunci penyulitan baharu",
-      "rewrap": "Balut semula semua item yang disegerakkan dengan kunci baharu",
-      "phrase": "Hasilkan frasa pemulihan baharu (yang lama menjadi tidak sah)",
-      "pause": "Jeda penyegerakan buat sementara waktu semasa proses"
-    },
-    "explanation": "Kandungan data anda tidak sekali-kali disulitkan semula - hanya sampul surat kunci sahaja yang berubah. Ini adalah operasi yang cepat dan selamat.",
-    "start": "Mulakan Putaran Kekunci",
-    "starting": "Bermula...",
-    "phases": {
-      "preparing": "Menyediakan...",
-      "reencrypting": "Kekunci pembalut semula ({processed}/{total})",
-      "finalizing": "Memuktamadkan...",
-      "working": "sedang bekerja..."
-    },
-    "progressAria": "Putaran kekunci: {phaseLabel} {pct}%",
-    "progressLabel": "Kemajuan putaran kunci",
-    "doNotClose": "Jangan tutup permohonan semasa proses ini.",
-    "complete": "Semua kunci penyulitan telah diputar. Frasa pemulihan baharu anda telah disimpan. Penyegerakan akan disambung semula secara automatik.",
-    "unknownError": "Ralat yang tidak diketahui berlaku semasa putaran kekunci.",
-    "errorHint": "Kunci sedia ada anda kekal sah. Penyegerakan telah disambung semula. Anda boleh mencuba semula pada bila-bila masa.",
-    "closeConfirm": {
-      "title": "Putaran sedang berjalan",
-      "description": "Putaran kunci masih berjalan. Menutup dialog ini tidak akan menghentikan proses, tetapi anda tidak akan melihat frasa pemulihan baharu anda sehingga ia selesai.",
-      "stay": "Kekal",
-      "closeAnyway": "Tutup pula"
-    },
-    "failed": "Putaran kunci gagal"
   },
   "ai": {
     "header": {
