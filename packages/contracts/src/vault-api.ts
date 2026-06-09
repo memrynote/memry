@@ -22,6 +22,20 @@ export interface VaultInfo {
   taskCount: number
   lastOpened: string
   isDefault: boolean
+  /** Server vault uuid; stamped when the vault is opened while sync is set up */
+  vaultUuid?: string
+}
+
+export interface AccountVaultInfo {
+  vaultUuid: string
+  /** Decrypted display name; null when absent or undecryptable */
+  name: string | null
+  itemCount: number
+  createdAt: number | null
+  /** Path of the local copy, null when the vault is cloud-only */
+  localPath: string | null
+  /** Default destination folder for download */
+  suggestedPath: string
 }
 
 export interface VaultStatus {
@@ -50,6 +64,11 @@ export const SelectVaultSchema = z.object({
 export const CreateVaultSchema = z.object({
   path: z.string(),
   name: z.string().min(1).max(100)
+})
+
+export const DownloadRemoteVaultSchema = z.object({
+  vaultUuid: z.string().min(1),
+  parentPath: z.string().optional()
 })
 
 export const UpdateVaultConfigSchema = z.object({
@@ -106,6 +125,12 @@ export interface VaultHandlers {
   [VaultChannels.invoke.REINDEX]: () => Promise<void>
 
   [VaultChannels.invoke.REVEAL]: () => Promise<void>
+
+  [VaultChannels.invoke.LIST_ACCOUNT]: () => Promise<AccountVaultInfo[]>
+
+  [VaultChannels.invoke.DOWNLOAD_REMOTE]: (
+    input: z.infer<typeof DownloadRemoteVaultSchema>
+  ) => Promise<SelectVaultResponse>
 }
 
 // ============================================================================
@@ -143,4 +168,6 @@ export interface VaultClientAPI {
   remove(vaultPath: string): Promise<void>
   reindex(): Promise<void>
   reveal(): Promise<void>
+  listAccount(): Promise<AccountVaultInfo[]>
+  downloadRemote(vaultUuid: string, parentPath?: string): Promise<SelectVaultResponse>
 }

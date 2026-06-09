@@ -16,6 +16,8 @@ export interface StoredVaultInfo {
   taskCount: number
   lastOpened: string
   isDefault: boolean
+  /** Server vault uuid; stamped when the vault is opened while sync is set up */
+  vaultUuid?: string
 }
 
 /**
@@ -24,6 +26,18 @@ export interface StoredVaultInfo {
 export interface SyncStoreData {
   recoveryPhraseConfirmed?: boolean
   email?: string
+  /** Last known account vault list (decrypted names) for offline switcher display */
+  accountVaultsCache?: AccountVaultsCache
+}
+
+export interface AccountVaultsCache {
+  fetchedAt: number
+  vaults: Array<{
+    vaultUuid: string
+    name: string | null
+    itemCount: number
+    createdAt: number | null
+  }>
 }
 
 export interface AgentStoreData {
@@ -194,6 +208,20 @@ export function removeVault(vaultPath: string): void {
  */
 export function findVault(vaultPath: string): StoredVaultInfo | undefined {
   return store.get('vaults').find((v) => v.path === vaultPath)
+}
+
+/**
+ * Get the cached account vault list
+ */
+export function getAccountVaultsCache(): AccountVaultsCache | undefined {
+  return store.get('sync').accountVaultsCache
+}
+
+/**
+ * Replace the cached account vault list
+ */
+export function setAccountVaultsCache(accountVaultsCache: AccountVaultsCache): void {
+  store.set('sync', { ...store.get('sync'), accountVaultsCache })
 }
 
 /**

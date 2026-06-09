@@ -43,7 +43,11 @@ export const VaultChannels = {
     REMOVE: 'vault:remove',
     REINDEX: 'vault:reindex',
     /** Reveal vault folder in OS file manager */
-    REVEAL: 'vault:reveal'
+    REVEAL: 'vault:reveal',
+    /** List all vaults in the signed-in account (local + cloud-only) */
+    LIST_ACCOUNT: 'vault:list-account',
+    /** Provision + open a cloud-only vault locally */
+    DOWNLOAD_REMOTE: 'vault:download-remote'
   },
   events: {
     STATUS_CHANGED: 'vault:status-changed',

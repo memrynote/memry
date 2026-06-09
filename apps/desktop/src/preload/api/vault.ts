@@ -13,7 +13,10 @@ export const vaultApi = {
   switch: (vaultPath: string) => invoke(VaultChannels.invoke.SWITCH, vaultPath),
   remove: (vaultPath: string) => invoke(VaultChannels.invoke.REMOVE, vaultPath),
   reindex: () => invoke(VaultChannels.invoke.REINDEX),
-  reveal: () => invoke(VaultChannels.invoke.REVEAL)
+  reveal: () => invoke(VaultChannels.invoke.REVEAL),
+  listAccount: () => invoke(VaultChannels.invoke.LIST_ACCOUNT),
+  downloadRemote: (vaultUuid: string, parentPath?: string) =>
+    invoke(VaultChannels.invoke.DOWNLOAD_REMOTE, { vaultUuid, parentPath })
 }
 
 export const vaultEvents = {

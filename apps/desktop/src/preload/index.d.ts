@@ -60,6 +60,7 @@ export interface VaultInfo {
   taskCount: number
   lastOpened: string
   isDefault: boolean
+  vaultUuid?: string
 }
 
 export type NoteFrontmatter = NotesRpc.Note['frontmatter']
@@ -442,6 +443,15 @@ export interface GetVaultsResponse {
   currentVault: string | null
 }
 
+export interface AccountVaultInfo {
+  vaultUuid: string
+  name: string | null
+  itemCount: number
+  createdAt: number | null
+  localPath: string | null
+  suggestedPath: string
+}
+
 // Vault client API interface
 export interface VaultClientAPI {
   select(path?: string): Promise<SelectVaultResponse>
@@ -455,6 +465,8 @@ export interface VaultClientAPI {
   remove(vaultPath: string): Promise<void>
   reindex(): Promise<void>
   reveal(): Promise<void>
+  listAccount(): Promise<AccountVaultInfo[]>
+  downloadRemote(vaultUuid: string, parentPath?: string): Promise<SelectVaultResponse>
 }
 
 // Notes client API interface
