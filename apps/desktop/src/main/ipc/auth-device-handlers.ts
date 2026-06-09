@@ -7,9 +7,11 @@ import { VerifyOtpResponseSchema, RecoveryDataResponseSchema } from '@memry/cont
 import {
   ApproveLinkingSchema,
   CompleteLinkingQrSchema,
+  FinalizeVaultChoiceSchema,
   GetLinkingSasSchema,
   LinkViaQrSchema,
   LinkViaRecoverySchema,
+  PickVaultFolderSchema,
   RemoveDeviceSchema,
   RenameDeviceSchema
 } from '@memry/contracts/ipc-devices'
@@ -34,6 +36,7 @@ import { persistKeysAndRegisterDevice } from '../sync/device-registration'
 import {
   approveDeviceLinking,
   completeLinkingQr,
+  finalizeVaultChoice,
   getLinkingVerificationCode,
   initiateDeviceLinking,
   linkViaQr
@@ -313,6 +316,23 @@ export function registerAuthDeviceHandlers(): void {
       return completeLinkingQr(input.sessionId)
     },
     'Failed to complete linking'
+  )
+
+  registerCommand(
+    SYNC_CHANNELS.FINALIZE_VAULT_CHOICE,
+    FinalizeVaultChoiceSchema,
+    async (input) => finalizeVaultChoice(input),
+    'Failed to finalize vault choice'
+  )
+
+  registerCommand(
+    SYNC_CHANNELS.PICK_VAULT_FOLDER,
+    PickVaultFolderSchema,
+    async () => {
+      const { pickVaultFolder } = await import('../vault')
+      return { path: await pickVaultFolder() }
+    },
+    'Failed to pick folder'
   )
 
   registerCommand(

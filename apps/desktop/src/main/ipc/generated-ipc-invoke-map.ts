@@ -273,6 +273,7 @@ export interface MainIpcInvokeHandlers {
   "sync:confirm-recovery-phrase": (...args: [{ confirmed: boolean; }]) => Awaited<Promise<{ success: boolean; }> | { success: false; error: string }>
   "sync:download-attachment": (...args: [{ attachmentId: string; targetPath?: string | undefined; }]) => Awaited<Promise<{ success: boolean; error: string; filePath?: undefined; } | { success: boolean; filePath: string; error?: undefined; }> | { success: false; error: string }>
   "sync:emergency-wipe": (...args: []) => Awaited<Promise<{ success: boolean; }>>
+  "sync:finalize-vault-choice": (...args: [{ sessionId: string; parentFolderPath: string; selectedVaultUuids: string[]; primaryVaultUuid: string; }]) => Awaited<Promise<{ success: boolean; error?: string | undefined; }> | { success: false; error: string }>
   "sync:generate-linking-qr": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/ipc-devices").GenerateLinkingQrResult>>
   "sync:get-devices": (...args: []) => Awaited<Promise<{ devices: { id: string; name: string; platform: "macos" | "windows" | "linux" | "ios" | "android"; linkedAt: number; lastSyncAt: number | undefined; isCurrentDevice: boolean; }[]; email: string | undefined; needsRecoveryConfirmation: boolean; }>>
   "sync:get-download-progress": (...args: [{ attachmentId: string; }]) => Awaited<{ progress: number; downloadedChunks: number; totalChunks: number; status: "downloading"; } | null | { success: false; error: string }>
@@ -289,6 +290,7 @@ export interface MainIpcInvokeHandlers {
   "sync:link-via-recovery": (...args: [{ recoveryPhrase: string; }]) => Awaited<Promise<{ success: boolean; error: string; deviceId?: undefined; } | { success: boolean; deviceId: string; error?: undefined; }> | { success: false; error: string }>
   "sync:logout": (...args: []) => Awaited<Promise<{ keychainWarning?: string | undefined; success: boolean; }>>
   "sync:pause": (...args: []) => Awaited<{ success: boolean; wasPaused: boolean; }>
+  "sync:pick-vault-folder": (...args: [Record<string, never>]) => Awaited<Promise<{ path: string | null; }> | { success: false; error: string }>
   "sync:remove-device": (...args: [{ deviceId: string; }]) => Awaited<Promise<{ success: boolean; error: string; } | { success: boolean; error?: undefined; }> | { success: false; error: string }>
   "sync:rename-device": (...args: [{ deviceId: string; newName: string; }]) => Awaited<Promise<{ success: boolean; error: string; } | { success: boolean; error?: undefined; }> | { success: false; error: string }>
   "sync:resume": (...args: []) => Awaited<{ success: boolean; pendingCount: number; }>

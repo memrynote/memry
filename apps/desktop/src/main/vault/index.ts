@@ -103,6 +103,12 @@ async function showFolderPicker(): Promise<string | null> {
 }
 
 /**
+ * Show the native folder picker to the renderer (used by the multi-vault
+ * linking picker to choose where adopted vaults are stored on disk).
+ */
+export const pickVaultFolder = (): Promise<string | null> => showFolderPicker()
+
+/**
  * Validate a vault path
  */
 function validateVaultPath(vaultPath: string): void {

@@ -31,7 +31,14 @@ export const syncLinking = {
   approveLinking: (input: { sessionId: string }) => invoke(SYNC_CHANNELS.APPROVE_LINKING, input),
   getLinkingSas: (input: { sessionId: string }) => invoke(SYNC_CHANNELS.GET_LINKING_SAS, input),
   completeLinkingQr: (input: { sessionId: string }) =>
-    invoke(SYNC_CHANNELS.COMPLETE_LINKING_QR, input)
+    invoke(SYNC_CHANNELS.COMPLETE_LINKING_QR, input),
+  finalizeVaultChoice: (input: {
+    sessionId: string
+    parentFolderPath: string
+    selectedVaultUuids: string[]
+    primaryVaultUuid: string
+  }) => invoke(SYNC_CHANNELS.FINALIZE_VAULT_CHOICE, input),
+  pickVaultFolder: () => invoke(SYNC_CHANNELS.PICK_VAULT_FOLDER, {})
 }
 
 export const accountApi = {

@@ -13,7 +13,9 @@ export const DEVICE_CHANNELS = {
   GET_LINKING_SAS: 'sync:get-linking-sas',
   GET_DEVICES: 'sync:get-devices',
   REMOVE_DEVICE: 'sync:remove-device',
-  RENAME_DEVICE: 'sync:rename-device'
+  RENAME_DEVICE: 'sync:rename-device',
+  FINALIZE_VAULT_CHOICE: 'sync:finalize-vault-choice',
+  PICK_VAULT_FOLDER: 'sync:pick-vault-folder'
 } as const
 
 // ============================================================================
@@ -64,6 +66,22 @@ export interface CompleteLinkingQrResult {
   deviceId?: string
   error?: string
   vaults?: LinkingVaultSummary[]
+}
+
+export interface FinalizeVaultChoiceInput {
+  sessionId: string
+  parentFolderPath: string
+  selectedVaultUuids: string[]
+  primaryVaultUuid: string
+}
+
+export interface FinalizeVaultChoiceResult {
+  success: boolean
+  error?: string
+}
+
+export interface PickVaultFolderResult {
+  path: string | null
 }
 
 export interface GetLinkingSasInput {
@@ -135,6 +153,15 @@ export const LinkViaRecoverySchema = z.object({
 export const CompleteLinkingQrSchema = z.object({
   sessionId: z.string().min(1)
 })
+
+export const FinalizeVaultChoiceSchema = z.object({
+  sessionId: z.string().min(1),
+  parentFolderPath: z.string().min(1),
+  selectedVaultUuids: z.array(z.string().min(1)).min(1),
+  primaryVaultUuid: z.string().min(1)
+})
+
+export const PickVaultFolderSchema = z.object({})
 
 export const GetLinkingSasSchema = z.object({
   sessionId: z.string().min(1)

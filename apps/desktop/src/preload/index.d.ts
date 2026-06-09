@@ -1429,7 +1429,15 @@ interface SyncLinkingClientAPI {
     success: boolean
     deviceId?: string
     error?: string
+    vaults?: Array<{ vaultUuid: string; itemCount?: number; createdAt?: number | null }>
   }>
+  finalizeVaultChoice: (input: {
+    sessionId: string
+    parentFolderPath: string
+    selectedVaultUuids: string[]
+    primaryVaultUuid: string
+  }) => Promise<{ success: boolean; error?: string }>
+  pickVaultFolder: () => Promise<{ path: string | null }>
 }
 
 // Account API
