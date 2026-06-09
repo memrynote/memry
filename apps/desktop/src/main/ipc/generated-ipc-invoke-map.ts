@@ -360,9 +360,11 @@ export interface MainIpcInvokeHandlers {
   "updater:get-state": (...args: []) => Awaited<import("../../../../../packages/contracts/src/ipc-updater").AppUpdateState>
   "updater:quit-and-install": (...args: []) => Awaited<void>
   "vault:close": (...args: []) => Awaited<Promise<void>>
+  "vault:download-remote": (...args: [{ vaultUuid: string; parentPath?: string | undefined; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/vault-api").SelectVaultResponse>>
   "vault:get-all": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/vault-api").GetVaultsResponse>>
   "vault:get-config": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/vault-api").VaultConfig>>
   "vault:get-status": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/vault-api").VaultStatus>>
+  "vault:list-account": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/vault-api").AccountVaultInfo[]>>
   "vault:reindex": (...args: []) => Awaited<Promise<void>>
   "vault:remove": (...args: [string]) => Awaited<Promise<void>>
   "vault:reveal": (...args: []) => Awaited<Promise<void>>

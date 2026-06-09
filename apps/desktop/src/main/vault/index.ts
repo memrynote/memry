@@ -312,16 +312,20 @@ async function openVault(vaultPath: string): Promise<void> {
   // Start file watcher for external changes
   await startWatcher(vaultPath)
 
-  await startSyncRuntime()
-
-  configureLazyAgentServices(startVaultAgentServices)
-  registerLazyAgentHandlers()
-
+  // Mark the vault open BEFORE the sync runtime starts: startSyncRuntime awaits
+  // the engine's first fullSync, and on a freshly provisioned (downloaded or
+  // linked) vault that pull writes notes/journals to disk via the current vault
+  // path — which throws "No vault is currently open" if the status isn't set yet.
   updateStatus({
     isOpen: true,
     path: vaultPath,
     error: null
   })
+
+  await startSyncRuntime()
+
+  configureLazyAgentServices(startVaultAgentServices)
+  registerLazyAgentHandlers()
 }
 
 /**
@@ -348,6 +352,16 @@ export async function selectVault(input: { path?: string }): Promise<SelectVault
 
     // Create vault info
     const vaultInfo = createVaultInfo(vaultPath)
+
+    // Stamp the server vault uuid so the account vault directory can match
+    // this vault without opening its data.db (best-effort: re-stamps next open)
+    try {
+      const { getOrCreateVaultUuid } = await import('../agent/storage/vault-id')
+      const { getDatabase } = await import('../database/client')
+      vaultInfo.vaultUuid = getOrCreateVaultUuid(getDatabase())
+    } catch {
+      // vault opened without a data db (or uuid minting failed) — skip
+    }
 
     // Store in electron-store
     setCurrentVaultPath(vaultPath)
@@ -558,6 +572,12 @@ export async function autoOpenLastVault(): Promise<void> {
     } catch (error) {
       logger.error('Failed to open test vault:', error)
     }
+  }
+
+  // Dev ergonomics: land on the vault picker instead of restoring the last
+  // vault. Opt-in via MEMRY_FORCE_VAULT_PICKER=1 (wired into the dev scripts).
+  if (process.env.MEMRY_FORCE_VAULT_PICKER === '1') {
+    return
   }
 
   const lastVault = getCurrentVaultPath()

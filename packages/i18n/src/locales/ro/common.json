@@ -325,7 +325,15 @@
       "rdquoFromList": "rdquo; din lista?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Acest seif va fi eliminat din aplicație, dar fișierele dvs. vor rămâne pe disc. Îl poți adăuga oricând din nou mai târziu.",
       "cancel": "Anulează",
-      "remove2": "Eliminați"
+      "remove2": "Eliminați",
+      "inYourAccount": "În contul tău",
+      "itemsCount": "{count} elemente",
+      "untitledVault": "Seif",
+      "downloadVaultTitle": "Descarcă „{name}”",
+      "downloadLocation": "Locație",
+      "changeLocation": "Schimbă…",
+      "download": "Descarcă",
+      "downloadFailed": "Seiful nu a putut fi descărcat"
     },
     "componentsWindowControls": {
       "searchK": "Căutați (⌘K)",

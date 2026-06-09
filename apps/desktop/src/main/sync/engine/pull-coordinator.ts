@@ -30,6 +30,33 @@ import { SYNC_STATE_KEYS, YIELD_EVERY_N_ITEMS, yieldToEventLoop } from './sync-c
 
 const log = createLogger('PullCoordinator')
 
+type DecryptedPullItem = Awaited<ReturnType<typeof decryptPullBatch>>['decrypted'][number]
+
+/**
+ * FK parents must apply before their children (e.g. a task references its
+ * project), but server cursor order is last-update order, not dependency
+ * order. Lower rank applies first; unlisted types use the default middle rank.
+ */
+const PULL_APPLY_ORDER: Record<string, number> = {
+  project: 0,
+  folder_config: 0,
+  tag_definition: 0,
+  filter: 0,
+  settings: 0,
+  calendar_source: 0,
+  agent_conversation: 0,
+  task: 2,
+  agent_message: 2,
+  calendar_event: 2,
+  calendar_external_event: 2,
+  calendar_binding: 3
+}
+
+const applyRank = (type: string): number => PULL_APPLY_ORDER[type] ?? 1
+
+export const sortByApplyOrder = <T extends { type: string }>(items: T[]): T[] =>
+  [...items].sort((a, b) => applyRank(a.type) - applyRank(b.type))
+
 interface PullRunState {
   timer: SyncTimer
   startTime: number
@@ -49,6 +76,8 @@ export class PullCoordinator {
   private pushCoordinator: PushCoordinator
   private corruptTracker: CorruptItemTracker
   private deviceKeyCache = new Map<string, Uint8Array | null>()
+  /** Items whose apply threw (e.g. FK parent not pulled yet) — retried once after all pages land */
+  private pendingApplyRetries: DecryptedPullItem[] = []
 
   constructor(
     ctx: SyncContext,
@@ -87,8 +116,10 @@ export class PullCoordinator {
         credentials.vaultKey,
         pullStartedAt
       )
+      this.pendingApplyRetries = []
       try {
         await this.pullChanges(runState)
+        await this.applyDeferredRetries(runState)
         this.finalizePullSuccess(runState)
       } catch (error) {
         this.handlePullError(error, runState.startTime)
@@ -325,6 +356,78 @@ export class PullCoordinator {
     }
   }
 
+  /**
+   * Re-apply items whose first apply threw. By the time every page has landed,
+   * FK parents (projects, conversations, sources) exist locally, so ordering
+   * failures from cursor-ordered pages resolve here. Items that fail again are
+   * dropped until their next server-side update.
+   */
+  private async applyDeferredRetries(runState: PullRunState): Promise<void> {
+    if (this.pendingApplyRetries.length === 0) return
+
+    const retries = sortByApplyOrder(this.pendingApplyRetries)
+    this.pendingApplyRetries = []
+    let applied = 0
+    let failed = 0
+
+    for (let i = 0; i < retries.length; i++) {
+      if (this.ctx.abortController?.signal.aborted) break
+      if (i > 0 && i % YIELD_EVERY_N_ITEMS === 0) await yieldToEventLoop()
+      const dec = retries[i]
+      try {
+        const contentBytes = new TextEncoder().encode(dec.content)
+        const itemOp = dec.deletedAt ? 'delete' : (dec.operation as 'create' | 'update')
+        const result = this.ctx.applier.apply({
+          itemId: dec.id,
+          type: dec.type as Parameters<typeof this.ctx.applier.apply>[0]['type'],
+          operation: itemOp,
+          content: contentBytes,
+          clock: dec.clock,
+          deletedAt: dec.deletedAt,
+          vaultKey: runState.vaultKey
+        })
+
+        if (result === 'parse_error') {
+          failed++
+          continue
+        }
+        if (result === 'conflict') {
+          this.handleConflict(dec)
+          runState.totalConflictsResolved++
+        }
+
+        if (
+          (dec.type === 'note' || dec.type === 'journal') &&
+          this.ctx.deps.crdtProvider &&
+          itemOp !== 'delete'
+        ) {
+          let isBinary = false
+          try {
+            const p = JSON.parse(dec.content) as { fileType?: string }
+            if (p.fileType && isBinaryFileType(p.fileType)) isBinary = true
+          } catch {
+            /* safe to skip CRDT on parse failure */
+          }
+          if (!isBinary) runState.crdtNoteIds.push(dec.id)
+        }
+
+        runState.processedIds.add(dec.id)
+        runState.pulledCount++
+        applied++
+        this.stateManager.emitItemSynced(dec.id, dec.type, 'pull', itemOp)
+      } catch (retryError) {
+        failed++
+        log.error('Pull: deferred retry failed — item skipped until next remote update', {
+          itemId: dec.id,
+          type: dec.type,
+          error: retryError instanceof Error ? retryError.message : String(retryError)
+        })
+      }
+    }
+
+    log.info('Pull: deferred apply retries processed', { retried: retries.length, applied, failed })
+  }
+
   private async processPage(
     itemIds: string[],
     accessJwt: string,
@@ -404,11 +507,12 @@ export class PullCoordinator {
 
     timer.startPhase('apply')
     this.pushCoordinator.suppressPushDuringPull = true
+    const orderedDecrypted = sortByApplyOrder(decrypted)
     try {
-      for (let i = 0; i < decrypted.length; i++) {
+      for (let i = 0; i < orderedDecrypted.length; i++) {
         if (this.ctx.abortController?.signal.aborted) break
         if (i > 0 && i % YIELD_EVERY_N_ITEMS === 0) await yieldToEventLoop()
-        const dec = decrypted[i]
+        const dec = orderedDecrypted[i]
         try {
           const contentBytes = new TextEncoder().encode(dec.content)
           const itemOp = dec.deletedAt ? 'delete' : (dec.operation as 'create' | 'update')
@@ -452,11 +556,12 @@ export class PullCoordinator {
           pageApplied++
           this.stateManager.emitItemSynced(dec.id, dec.type, 'pull', itemOp)
         } catch (applyError) {
-          log.error('Pull: failed to apply decrypted item', {
+          log.error('Pull: failed to apply decrypted item — deferring for retry', {
             itemId: dec.id,
             type: dec.type,
             error: applyError instanceof Error ? applyError.message : String(applyError)
           })
+          this.pendingApplyRetries.push(dec)
           pageFailed++
         }
       }

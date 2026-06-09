@@ -16,8 +16,14 @@ import {
   listUserVaults,
   processRecordPushBatch,
   pullItems,
+  setVaultName,
   updateDeviceCursor
 } from '../services/sync'
+import {
+  ensureSyncVaultAllowed,
+  getSyncEntitlement,
+  isPaidSyncEntitlementActive
+} from '../services/entitlements'
 import {
   logCrdtTraffic,
   logRecordPushBatch,
@@ -58,6 +64,40 @@ const handleListVaults = async (c: Context<AppContext>): Promise<Response> => {
 }
 
 sync.get('/vaults', vaultsRateLimit, handleListVaults)
+
+const RegisterVaultSchema = z.object({
+  vaultUuid: z.string().min(1).max(128),
+  encryptedName: z.string().min(1).max(2048),
+  nameNonce: z.string().min(1).max(128)
+})
+
+// Auth-only like GET /vaults: registration must work for a vault that has never
+// pushed (paidSyncMiddleware gates on the X-Memry-Vault-Id header, which a brand
+// new vault cannot satisfy yet). Paid access is enforced inline instead.
+const handleRegisterVault = async (c: Context<AppContext>): Promise<Response> => {
+  const userId = c.get('userId')!
+  const parsed = RegisterVaultSchema.safeParse(await c.req.json().catch(() => null))
+  if (!parsed.success) {
+    return c.json({ error: 'Invalid vault registration payload' }, 400)
+  }
+
+  const entitlement = await getSyncEntitlement(c.env.DB, userId)
+  if (!isPaidSyncEntitlementActive(entitlement)) {
+    return c.json({ error: 'Active sync subscription required' }, 402)
+  }
+
+  await ensureSyncVaultAllowed(c.env.DB, userId, parsed.data.vaultUuid, entitlement)
+  await setVaultName(
+    c.env.DB,
+    userId,
+    parsed.data.vaultUuid,
+    parsed.data.encryptedName,
+    parsed.data.nameNonce
+  )
+  return c.json({ success: true })
+}
+
+sync.post('/vaults', vaultsRateLimit, handleRegisterVault)
 
 sync.use('*', paidSyncMiddleware)
 

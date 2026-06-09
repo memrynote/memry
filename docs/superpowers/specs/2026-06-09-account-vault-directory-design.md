@@ -18,7 +18,7 @@ QR linking partially solves this (vault transfer + dormant provisioning), but ea
 - **Sync scope:** auto-sync all vaults for a signed-in paid user. No per-vault opt-in/opt-out.
 - **Key delivery:** sign-in (email + password) derives the account master key (Argon2id), so any signed-in device can decrypt any vault. QR linking is a convenience path, not a key requirement. All three cases are discovery/UX/provisioning problems, not crypto problems.
 - **Discovery:** poll + on-demand. Refetch `GET /sync/vaults` during fullSync (startup/reconnect) and when the vault switcher opens. No WebSocket event (can be added later as a fast path).
-- **Download UX:** cloud-only vaults appear in the vault switcher under an "In your account" section; clicking one provisions, switches, and pulls. No silent auto-download of folders.
+- **Download UX:** cloud-only vaults appear in the vault switcher under an "In your account" section. Clicking one opens a confirm dialog showing the destination path (default vaults dir + slugified name, changeable via folder picker); confirming provisions, switches, and pulls. No silent auto-download of folders.
 - **Vault names:** server stores an `encrypted_name` blob per vault (encrypted client-side with the account master key). Server stays E2E-blind; devices decrypt for display.
 
 ## Architecture
@@ -80,7 +80,7 @@ App-global cache (in-memory + store, with `fetchedAt`).
 "In your account" section below local vaults, rendered only when authenticated and at least one remote-only vault exists:
 
 - Cloud icon + decrypted name, fallback label `Vault · N items`.
-- Click → `downloadRemote` with a per-row spinner → app switches to the new vault.
+- Click → download confirm dialog: vault name, item count, destination path prefilled (default vaults dir + slugified name) with a "Change…" button reusing the linking `pickVaultFolder` IPC. Confirm → `downloadRemote` with in-dialog progress → app switches to the new vault. Cancel → nothing created.
 - i18n keys for all strings; Tailwind logical properties (`ms-*`/`me-*` etc.); errors via `extractErrorMessage` toast.
 
 ### 5. Error handling

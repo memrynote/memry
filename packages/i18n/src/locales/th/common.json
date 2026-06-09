@@ -325,7 +325,15 @@
       "rdquoFromList": "rdquo; จากรายการ?  ",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "  \nคลังเก็บนี้จะถูกลบออกจากแอป แต่ไฟล์ของคุณจะยังคงอยู่บนดิสก์ คุณสามารถเพิ่มกลับได้ตลอดเวลาในภายหลัง  ",
       "cancel": "ยกเลิก",
-      "remove2": "ลบออก"
+      "remove2": "ลบออก",
+      "inYourAccount": "ในบัญชีของคุณ",
+      "itemsCount": "{count} รายการ",
+      "untitledVault": "ห้องนิรภัย",
+      "downloadVaultTitle": "ดาวน์โหลด “{name}”",
+      "downloadLocation": "ตำแหน่ง",
+      "changeLocation": "เปลี่ยน…",
+      "download": "ดาวน์โหลด",
+      "downloadFailed": "ไม่สามารถดาวน์โหลดห้องนิรภัยได้"
     },
     "componentsWindowControls": {
       "searchK": "  \nค้นหา (⌘K)  ",

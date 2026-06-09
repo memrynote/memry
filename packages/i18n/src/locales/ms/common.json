@@ -325,7 +325,15 @@
       "rdquoFromList": "rdquo; dari senarai?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Bilik kebal ini akan dialih keluar daripada apl, tetapi fail anda akan kekal pada cakera. Anda sentiasa boleh menambahkannya semula kemudian.",
       "cancel": "Batal",
-      "remove2": "Alih keluar"
+      "remove2": "Alih keluar",
+      "inYourAccount": "Dalam akaun anda",
+      "itemsCount": "{count} item",
+      "untitledVault": "Peti besi",
+      "downloadVaultTitle": "Muat turun “{name}”",
+      "downloadLocation": "Lokasi",
+      "changeLocation": "Tukar…",
+      "download": "Muat turun",
+      "downloadFailed": "Peti besi tidak dapat dimuat turun"
     },
     "componentsWindowControls": {
       "searchK": "Cari (⌘K)",

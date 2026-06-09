@@ -574,7 +574,7 @@ export async function finalizeVaultChoice(input: {
   pendingVaultChoice = null
 
   try {
-    const { createDormantVault, dormantVaultFolderName } = await import('./vault-provisioning')
+    const { dormantVaultFolderName } = await import('./vault-provisioning')
     const path = await import('path')
     const { selectVault } = await import('../vault')
 
@@ -583,12 +583,9 @@ export async function finalizeVaultChoice(input: {
       dormantVaultFolderName(input.primaryVaultUuid)
     )
 
-    // Create the dormant vaults first; each transiently repoints the data.db
-    // singleton, so the primary must be opened LAST.
-    for (const uuid of input.selectedVaultUuids) {
-      if (uuid === input.primaryVaultUuid) continue
-      createDormantVault(path.join(input.parentFolderPath, dormantVaultFolderName(uuid)), uuid)
-    }
+    // Only the primary vault is provisioned here. The remaining account vaults
+    // surface in the switcher's "In your account" section (vault directory)
+    // and download on demand.
 
     const selected = await selectVault({ path: primaryFolder })
     if (!selected.success) {

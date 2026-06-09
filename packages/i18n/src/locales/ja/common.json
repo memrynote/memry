@@ -325,7 +325,15 @@
       "rdquoFromList": "rdquo;リストから?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "このボールトはアプリから削除されますが、ファイルはディスク上に残ります。後でいつでも再追加できます。",
       "cancel": "キャンセル",
-      "remove2": "削除"
+      "remove2": "削除",
+      "inYourAccount": "アカウント内",
+      "itemsCount": "{count} 件",
+      "untitledVault": "保管庫",
+      "downloadVaultTitle": "「{name}」をダウンロード",
+      "downloadLocation": "保存先",
+      "changeLocation": "変更…",
+      "download": "ダウンロード",
+      "downloadFailed": "保管庫をダウンロードできませんでした"
     },
     "componentsWindowControls": {
       "searchK": "検索(⌘K)",

@@ -325,7 +325,15 @@
       "rdquoFromList": "从列表中删除？",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "此保险库将从应用中移除，但您的文件仍会保存在磁盘上。您以后可以随时重新添加。",
       "cancel": "取消",
-      "remove2": "移除"
+      "remove2": "移除",
+      "inYourAccount": "在您的账户中",
+      "itemsCount": "{count} 个项目",
+      "untitledVault": "保险库",
+      "downloadVaultTitle": "下载“{name}”",
+      "downloadLocation": "位置",
+      "changeLocation": "更改…",
+      "download": "下载",
+      "downloadFailed": "无法下载保险库"
     },
     "componentsWindowControls": {
       "searchK": "搜索 (⌘K)",

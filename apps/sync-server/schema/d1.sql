@@ -118,6 +118,8 @@ CREATE TABLE sync_vaults (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   vault_id TEXT NOT NULL,
+  encrypted_name TEXT,
+  name_nonce TEXT,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
   UNIQUE (user_id, vault_id)

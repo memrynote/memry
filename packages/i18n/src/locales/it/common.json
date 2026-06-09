@@ -325,7 +325,15 @@
       "rdquoFromList": "rdquo; dalla lista?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Questo deposito verrà rimosso dall'app, ma i tuoi file rimarranno sul disco. Puoi sempre aggiungerlo nuovamente in seguito.",
       "cancel": "Annulla",
-      "remove2": "Rimuovi"
+      "remove2": "Rimuovi",
+      "inYourAccount": "Nel tuo account",
+      "itemsCount": "{count} elementi",
+      "untitledVault": "Cassaforte",
+      "downloadVaultTitle": "Scarica “{name}”",
+      "downloadLocation": "Posizione",
+      "changeLocation": "Cambia…",
+      "download": "Scarica",
+      "downloadFailed": "Impossibile scaricare la cassaforte"
     },
     "componentsWindowControls": {
       "searchK": "Cerca (⌘K)",

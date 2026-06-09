@@ -325,7 +325,15 @@
       "rdquoFromList": "rdquo; зі списку?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Цей сховище буде видалено з додатку, але ваші файли залишаться на диску. Ви завжди можете додати його пізніше.",
       "cancel": "Скасувати",
-      "remove2": "Видалити"
+      "remove2": "Видалити",
+      "inYourAccount": "У вашому обліковому записі",
+      "itemsCount": "{count} елементів",
+      "untitledVault": "Сховище",
+      "downloadVaultTitle": "Завантажити «{name}»",
+      "downloadLocation": "Розташування",
+      "changeLocation": "Змінити…",
+      "download": "Завантажити",
+      "downloadFailed": "Не вдалося завантажити сховище"
     },
     "componentsWindowControls": {
       "searchK": "Пошук (⌘K)",

@@ -325,7 +325,15 @@
       "rdquoFromList": "rdquo; fra listen?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Denne boks vil blive fjernet fra appen, men dine filer forbliver på disken. Du kan altid tilføje det igen senere.",
       "cancel": "Annuller",
-      "remove2": "Fjern"
+      "remove2": "Fjern",
+      "inYourAccount": "På din konto",
+      "itemsCount": "{count} elementer",
+      "untitledVault": "Boks",
+      "downloadVaultTitle": "Download “{name}”",
+      "downloadLocation": "Placering",
+      "changeLocation": "Skift…",
+      "download": "Download",
+      "downloadFailed": "Boksen kunne ikke downloades"
     },
     "componentsWindowControls": {
       "searchK": "Søg (⌘K)",

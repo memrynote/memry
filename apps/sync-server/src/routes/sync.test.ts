@@ -48,9 +48,16 @@ vi.mock('../services/sync', () => ({
   }),
   updateDeviceCursor: vi.fn().mockResolvedValue(undefined),
   listUserVaults: vi.fn().mockResolvedValue([
-    { vaultUuid: 'v-a', itemCount: 367, createdAt: 1000 },
-    { vaultUuid: 'v-b', itemCount: 4, createdAt: 2000 }
-  ])
+    { vaultUuid: 'v-a', itemCount: 367, createdAt: 1000, encryptedName: 'enc-a', nameNonce: 'n-a' },
+    { vaultUuid: 'v-b', itemCount: 4, createdAt: 2000, encryptedName: null, nameNonce: null }
+  ]),
+  setVaultName: vi.fn().mockResolvedValue(undefined)
+}))
+
+vi.mock('../services/entitlements', () => ({
+  getSyncEntitlement: vi.fn().mockResolvedValue({ plan: 'pro', status: 'active', expires_at: null }),
+  isPaidSyncEntitlementActive: vi.fn().mockReturnValue(true),
+  ensureSyncVaultAllowed: vi.fn().mockResolvedValue(undefined)
 }))
 
 vi.mock('../services/crdt', () => ({
@@ -106,8 +113,10 @@ import {
   pullItems,
   getItem,
   updateDeviceCursor,
-  listUserVaults
+  listUserVaults,
+  setVaultName
 } from '../services/sync'
+import { ensureSyncVaultAllowed, isPaidSyncEntitlementActive } from '../services/entitlements'
 import {
   storeUpdates,
   getUpdates,
@@ -312,10 +321,73 @@ describe('sync routes', () => {
       expect(res.status).toBe(200)
       const body = (await res.json()) as { vaults: unknown }
       expect(body.vaults).toEqual([
-        { vaultUuid: 'v-a', itemCount: 367, createdAt: 1000 },
-        { vaultUuid: 'v-b', itemCount: 4, createdAt: 2000 }
+        {
+          vaultUuid: 'v-a',
+          itemCount: 367,
+          createdAt: 1000,
+          encryptedName: 'enc-a',
+          nameNonce: 'n-a'
+        },
+        { vaultUuid: 'v-b', itemCount: 4, createdAt: 2000, encryptedName: null, nameNonce: null }
       ])
       expect(listUserVaults).toHaveBeenCalledWith(env.DB, 'user-1')
+    })
+  })
+
+  // ==========================================================================
+  // POST /sync/vaults
+  // ==========================================================================
+
+  describe('POST /sync/vaults', () => {
+    const postVault = (body: unknown) =>
+      app.request(
+        '/sync/vaults',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        },
+        env,
+        executionCtx
+      )
+
+    it('registers a vault and stores its encrypted name', async () => {
+      const res = await postVault({
+        vaultUuid: 'vault-new',
+        encryptedName: 'enc-name',
+        nameNonce: 'nonce'
+      })
+
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual({ success: true })
+      expect(ensureSyncVaultAllowed).toHaveBeenCalledWith(
+        env.DB,
+        'user-1',
+        'vault-new',
+        expect.objectContaining({ plan: 'pro' })
+      )
+      expect(setVaultName).toHaveBeenCalledWith(env.DB, 'user-1', 'vault-new', 'enc-name', 'nonce')
+    })
+
+    it('rejects invalid payloads with 400', async () => {
+      const res = await postVault({})
+
+      expect(res.status).toBe(400)
+      expect(setVaultName).not.toHaveBeenCalled()
+    })
+
+    it('returns 402 when the user has no active paid sync entitlement', async () => {
+      vi.mocked(isPaidSyncEntitlementActive).mockReturnValueOnce(false)
+
+      const res = await postVault({
+        vaultUuid: 'vault-new',
+        encryptedName: 'enc-name',
+        nameNonce: 'nonce'
+      })
+
+      expect(res.status).toBe(402)
+      expect(ensureSyncVaultAllowed).not.toHaveBeenCalled()
+      expect(setVaultName).not.toHaveBeenCalled()
     })
   })
 

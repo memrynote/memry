@@ -206,6 +206,16 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         if (startupVaultKey) secureCleanup(startupVaultKey)
       }
 
+      // Dormant-provisioned vaults (downloaded or linked) start without a
+      // current-device row; without it getSigningKeys() is null and the engine
+      // never pulls. Seed it from the install-wide identity before starting.
+      try {
+        const { ensureDeviceRowForVault } = await import('./device-registration')
+        await ensureDeviceRowForVault(db)
+      } catch (error) {
+        log.warn('Device row self-heal failed — sync may stay idle for this vault', error)
+      }
+
       const queue = new SyncQueueManager(db)
       type RuntimeSyncDb = SyncEngineDeps['db'] & Parameters<typeof initTaskSyncService>[0]['db']
       const runtimeSyncDb = db as unknown as RuntimeSyncDb
@@ -523,6 +533,10 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
 
       await engine.start()
       log.info('Sync runtime started')
+
+      void import('./vault-directory')
+        .then(({ refreshVaultDirectory }) => refreshVaultDirectory({ force: true }))
+        .catch(() => {})
 
       trackMainEvent('sync_enabled', {
         surface: 'sync',

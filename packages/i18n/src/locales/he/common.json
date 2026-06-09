@@ -325,7 +325,15 @@
       "rdquoFromList": "rdquo; מהרשימה?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "כספת זו תוסר מהאפליקציה, אך הקבצים שלך יישארו בדיסק. תמיד תוכל להוסיף אותו מחדש מאוחר יותר.",
       "cancel": "בטל",
-      "remove2": "הסר"
+      "remove2": "הסר",
+      "inYourAccount": "בחשבון שלך",
+      "itemsCount": "{count} פריטים",
+      "untitledVault": "כספת",
+      "downloadVaultTitle": "הורדת “{name}”",
+      "downloadLocation": "מיקום",
+      "changeLocation": "שינוי…",
+      "download": "הורדה",
+      "downloadFailed": "לא ניתן היה להוריד את הכספת"
     },
     "componentsWindowControls": {
       "searchK": "חפש (⌘K)",

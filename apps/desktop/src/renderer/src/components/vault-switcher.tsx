@@ -21,9 +21,11 @@ import {
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useVault, useVaultList } from '@/hooks/use-vault'
+import { useAccountVaults } from '@/hooks/use-account-vaults'
 import { useSettingsModal } from '@/contexts/settings-modal-context'
 import { useAuth } from '@/contexts/auth-context'
-import type { VaultInfo } from '../../../preload/index.d'
+import { DownloadVaultDialog } from '@/components/download-vault-dialog'
+import type { AccountVaultInfo, VaultInfo } from '../../../preload/index.d'
 import { useT } from '@memry/i18n/renderer'
 
 export function VaultSwitcher() {
@@ -33,10 +35,13 @@ export function VaultSwitcher() {
   const { vaults, removeVault } = useVaultList()
   const { open: openSettings } = useSettingsModal()
   const { state: authState } = useAuth()
+  const { accountVaults, refresh: refreshAccountVaults } = useAccountVaults()
   const [vaultToRemove, setVaultToRemove] = useState<VaultInfo | null>(null)
+  const [vaultToDownload, setVaultToDownload] = useState<AccountVaultInfo | null>(null)
   const [open, setOpen] = useState(false)
 
   const isAuthenticated = authState.status === 'authenticated'
+  const remoteOnlyVaults = accountVaults.filter((vault) => !vault.localPath)
 
   const currentVaultName = status?.path
     ? status.path.split('/').pop() || 'Vault'
@@ -81,7 +86,10 @@ export function VaultSwitcher() {
             if (action === 'open-vault') void handleSelectNewVault()
           }}
           open={open}
-          onOpenChange={setOpen}
+          onOpenChange={(nextOpen) => {
+            setOpen(nextOpen)
+            if (nextOpen && isAuthenticated) void refreshAccountVaults()
+          }}
         >
           <Picker.Trigger asChild>
             <SidebarMenuButton
@@ -160,6 +168,36 @@ export function VaultSwitcher() {
                 <Picker.Empty message={tPhaseF('phaseF.componentsVaultSwitcher.noVaultsYet')} />
               )}
 
+              {isAuthenticated && remoteOnlyVaults.length > 0 && (
+                <>
+                  <Picker.Separator />
+                  <div className="px-2 py-1 text-[10px] uppercase tracking-wide text-muted-foreground/60">
+                    {tPhaseF('phaseF.componentsVaultSwitcher.inYourAccount')}
+                  </div>
+                  {remoteOnlyVaults.map((vault) => (
+                    <button
+                      key={vault.vaultUuid}
+                      type="button"
+                      onClick={() => {
+                        setOpen(false)
+                        setVaultToDownload(vault)
+                      }}
+                      className="flex w-full items-center gap-2.5 rounded-[5px] px-2 py-1.5 hover:bg-accent transition-colors cursor-pointer"
+                    >
+                      <Cloud className="size-3.5 shrink-0 text-muted-foreground" />
+                      <span className="flex-1 truncate text-start text-muted-foreground">
+                        {vault.name ?? tPhaseF('phaseF.componentsVaultSwitcher.untitledVault')}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground/60">
+                        {tPhaseF('phaseF.componentsVaultSwitcher.itemsCount', {
+                          count: vault.itemCount
+                        })}
+                      </span>
+                    </button>
+                  ))}
+                </>
+              )}
+
               <Picker.Separator />
 
               <Picker.Item
@@ -187,6 +225,8 @@ export function VaultSwitcher() {
           </Picker.Content>
         </Picker>
       </SidebarMenuItem>
+
+      <DownloadVaultDialog vault={vaultToDownload} onClose={() => setVaultToDownload(null)} />
 
       <AlertDialog open={!!vaultToRemove} onOpenChange={(o) => !o && setVaultToRemove(null)}>
         <AlertDialogContent>

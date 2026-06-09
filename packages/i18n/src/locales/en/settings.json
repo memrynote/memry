@@ -566,7 +566,13 @@
         "registering": "Registering device..."
       },
       "failed": "Recovery failed",
-      "confirmationFailed": "Confirmation failed"
+      "confirmationFailed": "Confirmation failed",
+      "unavailable": {
+        "loading": "Loading your recovery phrase…",
+        "title": "Couldn't load your recovery phrase",
+        "description": "Your recovery phrase is shown only once during setup and can't be retrieved later. Start over to generate a new one.",
+        "startOver": "Start over"
+      }
     },
     "linking": {
       "choiceTitle": "Link this device",

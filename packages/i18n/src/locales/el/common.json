@@ -325,7 +325,15 @@
       "rdquoFromList": "rdquo; από τη λίστα;",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Αυτό το θησαυροφυλάκιο θα αφαιρεθεί από την εφαρμογή, αλλά τα αρχεία σας θα παραμείνουν στο δίσκο. Μπορείτε πάντα να το προσθέσετε ξανά αργότερα.",
       "cancel": "Ακύρωση",
-      "remove2": "Αφαίρεση"
+      "remove2": "Αφαίρεση",
+      "inYourAccount": "Στον λογαριασμό σας",
+      "itemsCount": "{count} στοιχεία",
+      "untitledVault": "Θησαυροφυλάκιο",
+      "downloadVaultTitle": "Λήψη “{name}”",
+      "downloadLocation": "Τοποθεσία",
+      "changeLocation": "Αλλαγή…",
+      "download": "Λήψη",
+      "downloadFailed": "Δεν ήταν δυνατή η λήψη του θησαυροφυλακίου"
     },
     "componentsWindowControls": {
       "searchK": "Αναζήτηση (⌘K)",
