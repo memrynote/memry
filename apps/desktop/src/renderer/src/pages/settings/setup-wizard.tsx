@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { QrCode, KeyRound } from '@/lib/icons'
+import { QrCode, KeyRound, AlertTriangle } from '@/lib/icons'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useT } from '@memry/i18n/renderer'
@@ -47,6 +48,7 @@ export function SetupWizard(): React.JSX.Element {
     confirmRecoveryPhrase,
     linkViaRecovery,
     linkingCompleted,
+    logout,
     setWizardStep,
     setWizardError,
     clearWizardError
@@ -55,6 +57,7 @@ export function SetupWizard(): React.JSX.Element {
   const [isLoading, setIsLoading] = useState(false)
   const [isResending, setIsResending] = useState(false)
   const [recoveryPhrase, setRecoveryPhrase] = useState<string | null>(null)
+  const [recoveryPhraseError, setRecoveryPhraseError] = useState(false)
   const [now, setNow] = useState(() => Date.now())
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -83,10 +86,14 @@ export function SetupWizard(): React.JSX.Element {
       .getRecoveryPhrase()
       .then((phrase) => {
         if (cancelled) return
-        setRecoveryPhrase(phrase)
+        if (phrase) setRecoveryPhrase(phrase)
+        else setRecoveryPhraseError(true)
       })
       .catch(() => {
-        /* recovery phrase fetch failed — user can retry via back navigation */
+        // Phrase lives only in main-process memory; it is gone after a restart
+        // before confirmation. Surface a recoverable error instead of a blank step.
+        if (cancelled) return
+        setRecoveryPhraseError(true)
       })
     return () => {
       cancelled = true
@@ -203,6 +210,10 @@ export function SetupWizard(): React.JSX.Element {
       })
   }, [confirmRecoveryPhrase, setWizardError, clearWizardError, t])
 
+  const handleRecoveryStartOver = useCallback(() => {
+    void logout()
+  }, [logout])
+
   const currentStepIndex = STEP_MAP[wizardStep]
 
   return (
@@ -269,6 +280,31 @@ export function SetupWizard(): React.JSX.Element {
           onConfirmed={handleConfirmRecovery}
           onBack={() => setWizardStep('recovery-display')}
         />
+      )}
+
+      {isRecoveryStep && !activePhrase && (
+        <div className="wizard-step-enter">
+          {recoveryPhraseError ? (
+            <div className="flex flex-col items-center gap-4 py-6 text-center">
+              <AlertTriangle className="size-8 text-amber-500" />
+              <div className="space-y-1.5">
+                <h3 className="font-semibold text-base/5 tracking-[-0.01em] text-foreground">
+                  {t('setup.recovery.unavailable.title')}
+                </h3>
+                <p className="text-xs/4 text-muted-foreground">
+                  {t('setup.recovery.unavailable.description')}
+                </p>
+              </div>
+              <Button onClick={handleRecoveryStartOver} className="w-full">
+                {t('setup.recovery.unavailable.startOver')}
+              </Button>
+            </div>
+          ) : (
+            <p className="py-6 text-center text-xs/4 text-muted-foreground">
+              {t('setup.recovery.unavailable.loading')}
+            </p>
+          )}
+        </div>
       )}
 
       {wizardStep === 'linking-choice' && (

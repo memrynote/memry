@@ -314,6 +314,34 @@ describe('SetupWizard', () => {
     expect(getRecoveryPhrase).toHaveBeenCalledTimes(2)
   })
 
+  it('shows a recoverable error when the pending recovery phrase is gone', async () => {
+    const user = userEvent.setup()
+    const auth = mockAuth({ wizardStep: 'recovery-display' })
+    ;(window as Window & { api: unknown }).api = {
+      syncSetup: { getRecoveryPhrase: vi.fn().mockResolvedValue(null) }
+    }
+
+    render(<SetupWizard />)
+
+    expect(await screen.findByText('setup.recovery.unavailable.title')).toBeInTheDocument()
+    expect(screen.queryByText(/^display:/)).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'setup.recovery.unavailable.startOver' }))
+    expect(auth.logout).toHaveBeenCalled()
+  })
+
+  it('shows a recoverable error when fetching the recovery phrase fails', async () => {
+    mockAuth({ wizardStep: 'recovery-confirm' })
+    ;(window as Window & { api: unknown }).api = {
+      syncSetup: { getRecoveryPhrase: vi.fn().mockRejectedValue(new Error('ipc down')) }
+    }
+
+    render(<SetupWizard />)
+
+    expect(await screen.findByText('setup.recovery.unavailable.title')).toBeInTheDocument()
+    expect(screen.queryByText(/^confirm:/)).not.toBeInTheDocument()
+  })
+
   it('routes linking choice, scan, pending, and recovery input callbacks', async () => {
     const user = userEvent.setup()
     const auth = mockAuth({ wizardStep: 'linking-choice' })
