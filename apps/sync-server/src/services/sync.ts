@@ -613,6 +613,8 @@ export interface UserVaultSummary {
   vaultUuid: string
   itemCount: number
   createdAt: number | null
+  encryptedName: string | null
+  nameNonce: string | null
 }
 
 export const listUserVaults = async (
@@ -621,22 +623,46 @@ export const listUserVaults = async (
 ): Promise<UserVaultSummary[]> => {
   const { results } = await db
     .prepare(
-      `SELECT si.vault_id AS vaultUuid,
-              COUNT(*) AS itemCount,
-              sv.created_at AS createdAt
-       FROM sync_items si
-       LEFT JOIN sync_vaults sv ON sv.user_id = si.user_id AND sv.vault_id = si.vault_id
-       WHERE si.user_id = ? AND si.deleted_at IS NULL
-       GROUP BY si.vault_id
+      `SELECT sv.vault_id AS vaultUuid,
+              COALESCE(cnt.itemCount, 0) AS itemCount,
+              sv.created_at AS createdAt,
+              sv.encrypted_name AS encryptedName,
+              sv.name_nonce AS nameNonce
+       FROM sync_vaults sv
+       LEFT JOIN (
+         SELECT user_id, vault_id, COUNT(*) AS itemCount
+         FROM sync_items
+         WHERE deleted_at IS NULL
+         GROUP BY user_id, vault_id
+       ) cnt ON cnt.user_id = sv.user_id AND cnt.vault_id = sv.vault_id
+       WHERE sv.user_id = ?
        ORDER BY itemCount DESC`
     )
     .bind(userId)
-    .all<{ vaultUuid: string; itemCount: number; createdAt: number | null }>()
+    .all<UserVaultSummary>()
   return (results ?? []).map((r) => ({
     vaultUuid: r.vaultUuid,
     itemCount: Number(r.itemCount),
-    createdAt: r.createdAt ?? null
+    createdAt: r.createdAt ?? null,
+    encryptedName: r.encryptedName ?? null,
+    nameNonce: r.nameNonce ?? null
   }))
+}
+
+export const setVaultName = async (
+  db: D1Database,
+  userId: string,
+  vaultId: string,
+  encryptedName: string,
+  nameNonce: string
+): Promise<void> => {
+  await db
+    .prepare(
+      `UPDATE sync_vaults SET encrypted_name = ?, name_nonce = ?, updated_at = ?
+       WHERE user_id = ? AND vault_id = ?`
+    )
+    .bind(encryptedName, nameNonce, Math.floor(Date.now() / 1000), userId, vaultId)
+    .run()
 }
 
 const D1_MAX_BIND_PARAMS = 95
