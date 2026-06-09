@@ -174,10 +174,24 @@ export const persistKeysAndRegisterDevice = async (
       .run()
   })
 
+  // Stamp the registered uuid onto the current vault's store entry so the
+  // account vault directory can self-register it (with its name) right away.
+  try {
+    const { getCurrentVaultPath, findVault, upsertVault } = await import('../store')
+    const currentPath = getCurrentVaultPath()
+    const storedVault = currentPath ? findVault(currentPath) : undefined
+    if (storedVault) upsertVault({ ...storedVault, vaultUuid: vaultId })
+  } catch (err) {
+    logger.warn('Failed to stamp vault uuid after device registration', err)
+  }
+
   if (!skipActivation) {
     const engine = getSyncEngine()
     if (engine) {
       void engine.activate()
+      void import('./vault-directory')
+        .then(({ refreshVaultDirectory }) => refreshVaultDirectory({ force: true }))
+        .catch(() => {})
     } else {
       void startSyncRuntime()
     }

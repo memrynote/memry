@@ -524,6 +524,10 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       await engine.start()
       log.info('Sync runtime started')
 
+      void import('./vault-directory')
+        .then(({ refreshVaultDirectory }) => refreshVaultDirectory({ force: true }))
+        .catch(() => {})
+
       trackMainEvent('sync_enabled', {
         surface: 'sync',
         action: 'enabled',

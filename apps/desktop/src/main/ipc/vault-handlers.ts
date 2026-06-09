@@ -1,6 +1,7 @@
 import { ipcMain, shell } from 'electron'
 import {
   VaultChannels,
+  DownloadRemoteVaultSchema,
   SelectVaultSchema,
   UpdateVaultConfigSchema
 } from '@memry/contracts/vault-api'
@@ -114,6 +115,29 @@ export function registerVaultHandlers(): void {
     createHandler(async () => {
       const status = getStatus()
       if (status.path) shell.showItemInFolder(status.path)
+    })
+  )
+
+  // vault:list-account - List all vaults in the signed-in account
+  ipcMain.handle(
+    VaultChannels.invoke.LIST_ACCOUNT,
+    createHandler(async () => {
+      const { refreshVaultDirectory, listAccountVaults } = await import('../sync/vault-directory')
+      await refreshVaultDirectory()
+      return listAccountVaults()
+    })
+  )
+
+  // vault:download-remote - Provision + open a cloud-only vault locally
+  ipcMain.handle(
+    VaultChannels.invoke.DOWNLOAD_REMOTE,
+    createValidatedHandler(DownloadRemoteVaultSchema, async (input) => {
+      const { downloadRemoteVault } = await import('../sync/vault-directory')
+      const result = await downloadRemoteVault(input)
+      if (result.success && result.vault) {
+        trackVaultEvent('vault_opened', 'download-remote')
+      }
+      return result
     })
   )
 }
