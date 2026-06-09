@@ -1,4 +1,4 @@
-import type { MiddlewareHandler } from 'hono'
+import type { Context, MiddlewareHandler } from 'hono'
 
 import { AppError, ErrorCodes } from '../lib/errors'
 import type { AppContext } from '../types'
@@ -7,6 +7,12 @@ export interface RateLimitOptions {
   maxRequests: number
   windowSeconds: number
   keyPrefix: string
+  // Optional per-request identity. Lets a route key its bucket by something
+  // other than userId/IP (e.g. a request's sessionId). Falls back to the
+  // userId/IP chain when it returns null/undefined. Used by the linking routes,
+  // which are unauthenticated — keying by IP collapses every local device
+  // profile (and devices behind one NAT) into a single shared bucket.
+  identifier?: (c: Context<AppContext>) => Promise<string | null> | string | null
 }
 
 export const createRateLimiter = (options: RateLimitOptions): MiddlewareHandler<AppContext> => {
@@ -15,6 +21,7 @@ export const createRateLimiter = (options: RateLimitOptions): MiddlewareHandler<
   return async (c, next) => {
     const db = c.env.DB
     const identifier =
+      (await options.identifier?.(c)) ??
       c.get('userId') ??
       c.req.header('CF-Connecting-IP') ??
       c.req.header('x-forwarded-for')?.split(',')[0]?.trim() ??

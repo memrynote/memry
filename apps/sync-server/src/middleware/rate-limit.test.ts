@@ -171,4 +171,42 @@ describe('createRateLimiter', () => {
       expect.any(Number)
     )
   })
+
+  it('should key by the custom identifier when provided', async () => {
+    // #given — e.g. linking routes keying by sessionId instead of shared IP
+    const { c, next, db } = createMockContext({ userId: 'user-1', ip: '10.0.0.1', count: 1 })
+    const middleware = createRateLimiter({ ...options, identifier: () => 'session:abc' })
+
+    // #when
+    await middleware(c as never, next)
+
+    // #then — sessionId wins over userId/IP, so devices don't share a bucket
+    const insertStmt = db.batch.mock.calls[0][0][0]
+    expect(insertStmt.bind).toHaveBeenCalledWith(
+      'test:session:abc',
+      expect.any(Number),
+      expect.any(Number),
+      expect.any(Number),
+      expect.any(Number)
+    )
+  })
+
+  it('should fall back to userId/IP when the custom identifier returns null', async () => {
+    // #given
+    const { c, next, db } = createMockContext({ userId: 'user-1', count: 1 })
+    const middleware = createRateLimiter({ ...options, identifier: () => null })
+
+    // #when
+    await middleware(c as never, next)
+
+    // #then
+    const insertStmt = db.batch.mock.calls[0][0][0]
+    expect(insertStmt.bind).toHaveBeenCalledWith(
+      'test:user-1',
+      expect.any(Number),
+      expect.any(Number),
+      expect.any(Number),
+      expect.any(Number)
+    )
+  })
 })

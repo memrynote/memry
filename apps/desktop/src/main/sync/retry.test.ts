@@ -67,6 +67,18 @@ describe('withRetry', () => {
     })
   })
 
+  describe('#given RateLimitError #when retryOn429 is false', () => {
+    it('#then throws immediately without retrying (no backoff storm)', async () => {
+      const fn = vi.fn().mockRejectedValue(new RateLimitError(60))
+      const onRetry = vi.fn()
+
+      await expect(withRetry(fn, { retryOn429: false, onRetry })).rejects.toThrow(RateLimitError)
+
+      expect(fn).toHaveBeenCalledTimes(1)
+      expect(onRetry).not.toHaveBeenCalled()
+    })
+  })
+
   describe('#given NetworkError #when offline', () => {
     it('#then polls isOnline until true', async () => {
       let online = false

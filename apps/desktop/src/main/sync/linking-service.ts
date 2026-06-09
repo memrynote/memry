@@ -36,7 +36,7 @@ import {
 } from '../calendar/google/provider-auth-transfer'
 import { createLogger } from '../lib/logger'
 
-import { getFromServer, postToServer, SyncServerError } from './http-client'
+import { getFromServer, postToServer, RateLimitError, SyncServerError } from './http-client'
 import { withRetry } from './retry'
 import {
   buildVaultTransfer,
@@ -326,7 +326,11 @@ export const completeLinkingQr = async (sessionId: string): Promise<CompleteLink
           vaultTransferConfirm?: string
           vaultTransferVersion?: number
         }>('/auth/linking/complete', { sessionId }),
-      { maxRetries: 3, baseDelayMs: 2000 }
+      // This call is polled every few seconds by LinkingPending. The poll
+      // cadence IS the retry, so do NOT internally retry 429 — otherwise each
+      // tick spawns its own multi-attempt backoff and they pile into a storm
+      // that keeps the server's rate-limit bucket saturated.
+      { maxRetries: 3, baseDelayMs: 2000, retryOn429: false }
     )
 
     if (
@@ -464,6 +468,12 @@ export const completeLinkingQr = async (sessionId: string): Promise<CompleteLink
   } catch (err) {
     if (err instanceof SyncServerError && err.statusCode === 409) {
       return { success: false, error: 'Session not yet approved' }
+    }
+    // 429 is transient — the next poll tick retries. Keep the pending session
+    // alive (do NOT clear) so linking can still complete once the window frees.
+    // The message contains "Too many requests", which LinkingPending skips on.
+    if (err instanceof RateLimitError) {
+      return { success: false, error: err.message }
     }
     log.error('Failed to complete device linking', err)
     clearPendingLinkCompletion()

@@ -54,10 +54,8 @@ vi.mock('electron', () => ({
   }
 }))
 
-vi.mock('./http-client', () => ({
-  postToServer: mockPostToServer,
-  getFromServer: mockGetFromServer,
-  SyncServerError: class SyncServerError extends Error {
+vi.mock('./http-client', () => {
+  class SyncServerError extends Error {
     constructor(
       message: string,
       public readonly statusCode: number
@@ -65,7 +63,18 @@ vi.mock('./http-client', () => ({
       super(message)
     }
   }
-}))
+  class RateLimitError extends SyncServerError {
+    constructor(public readonly retryAfter?: number) {
+      super('Too many requests. Please try again later.', 429)
+    }
+  }
+  return {
+    postToServer: mockPostToServer,
+    getFromServer: mockGetFromServer,
+    SyncServerError,
+    RateLimitError
+  }
+})
 
 vi.mock('./retry', () => ({
   withRetry: mockWithRetry
@@ -545,6 +554,35 @@ describe('linking-service provider auth transfer', () => {
 
     await linkViaQr(qrData, 'setup-token')
     mockPostToServer.mockRejectedValueOnce(new SyncServerError('wait', 409))
+    expect(await completeLinkingQr('session-1')).toEqual({
+      success: false,
+      error: 'Session not yet approved'
+    })
+  })
+
+  it('treats rate-limit (429) as transient — soft error, pending session survives', async () => {
+    const { RateLimitError } = await import('./http-client')
+    const qrData = JSON.stringify({
+      sessionId: 'session-1',
+      ephemeralPublicKey: sodium.to_base64(
+        new Uint8Array(32).fill(71),
+        sodium.base64_variants.ORIGINAL
+      ),
+      linkingSecret: sodium.to_base64(new Uint8Array(32).fill(4), sodium.base64_variants.ORIGINAL),
+      expiresAt: Math.floor(Date.now() / 1000) + 300
+    })
+
+    await linkViaQr(qrData, 'setup-token')
+
+    // A 429 must NOT throw or clear the session — it returns a soft error whose
+    // message LinkingPending skips on, so the next poll tick simply retries.
+    mockPostToServer.mockRejectedValueOnce(new RateLimitError(60))
+    const rateLimited = await completeLinkingQr('session-1')
+    expect(rateLimited.success).toBe(false)
+    expect(rateLimited.error).toContain('Too many requests')
+
+    // Session still pending (not wiped) → the next poll resolves normally.
+    mockPostToServer.mockResolvedValueOnce({ success: true })
     expect(await completeLinkingQr('session-1')).toEqual({
       success: false,
       error: 'Session not yet approved'

@@ -8,6 +8,11 @@ export interface RetryOptions {
   onRetry?: (attempt: number, error: Error, delayMs: number) => void
   signal?: AbortSignal
   isOnline?: () => boolean
+  // When false, a 429 is treated like any other 4xx and thrown immediately
+  // instead of being retried with backoff. Use for polling callers where the
+  // poll cadence itself is the retry (otherwise each tick spawns its own
+  // multi-attempt backoff storm). Defaults to retrying 429.
+  retryOn429?: boolean
 }
 
 export interface RetryResult<T> {
@@ -85,7 +90,7 @@ export async function withRetry<T>(
         error instanceof SyncServerError &&
         error.statusCode >= 400 &&
         error.statusCode < 500 &&
-        error.statusCode !== 429
+        (error.statusCode !== 429 || opts.retryOn429 === false)
       ) {
         throw error
       }

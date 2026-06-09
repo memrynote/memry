@@ -1,4 +1,4 @@
-import { Hono } from 'hono'
+import { Hono, type Context } from 'hono'
 import { z } from 'zod'
 
 import { AppError, ErrorCodes } from '../lib/errors'
@@ -14,16 +14,33 @@ import {
 import { waitUntilWithPostHog } from '../services/posthog'
 import type { AppContext } from '../types'
 
+// Key linking buckets by the request's sessionId so concurrent devices and
+// repeated attempts get independent budgets. These routes are unauthenticated;
+// keying by IP would collapse every local profile (and devices behind one NAT)
+// into one shared bucket. Falls back to userId/IP when the body has no sessionId.
+const sessionIdentifier = async (c: Context<AppContext>): Promise<string | null> => {
+  try {
+    const body = (await c.req.json()) as { sessionId?: unknown }
+    return typeof body?.sessionId === 'string' ? `session:${body.sessionId}` : null
+  } catch {
+    return null
+  }
+}
+
 const linkingRateLimit = createRateLimiter({
   maxRequests: 5,
   windowSeconds: 300,
-  keyPrefix: 'linking'
+  keyPrefix: 'linking',
+  identifier: sessionIdentifier
 })
 
+// Polled by the new device every few seconds while it waits for approval, so
+// the budget must comfortably exceed that cadence for a single session.
 const linkingCompleteRateLimit = createRateLimiter({
-  maxRequests: 5,
+  maxRequests: 30,
   windowSeconds: 60,
-  keyPrefix: 'linking_complete'
+  keyPrefix: 'linking_complete',
+  identifier: sessionIdentifier
 })
 
 const InitiateLinkingSchema = z.object({
