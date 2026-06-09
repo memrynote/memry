@@ -574,6 +574,12 @@ export async function autoOpenLastVault(): Promise<void> {
     }
   }
 
+  // Dev ergonomics: land on the vault picker instead of restoring the last
+  // vault. Opt-in via MEMRY_FORCE_VAULT_PICKER=1 (wired into the dev scripts).
+  if (process.env.MEMRY_FORCE_VAULT_PICKER === '1') {
+    return
+  }
+
   const lastVault = getCurrentVaultPath()
 
   if (lastVault && isVaultInitialized(lastVault)) {

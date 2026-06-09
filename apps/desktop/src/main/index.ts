@@ -376,6 +376,7 @@ const VAULT_PICKER_WINDOW_SIZE = { width: 760, height: 560 } as const
 function getInitialMainWindowSize():
   | typeof DEFAULT_MAIN_WINDOW_SIZE
   | typeof VAULT_PICKER_WINDOW_SIZE {
+  if (process.env.MEMRY_FORCE_VAULT_PICKER === '1') return VAULT_PICKER_WINDOW_SIZE
   return getCurrentVaultPath() ? DEFAULT_MAIN_WINDOW_SIZE : VAULT_PICKER_WINDOW_SIZE
 }
 
