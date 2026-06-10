@@ -46,6 +46,7 @@ main trackMainEvent() ────────────▶        │
   - Valid token → PostHog `distinct_id = user.id` — the same key `captureBusinessEvent` uses for `user_signed_up` / `subscription_activated` / `device_registered` / `vault_registered`, so cross-surface funnels join. The mirror also emits a `$identify` event with `$anon_distinct_id = memry_desktop_<env>_<installHash>` so PostHog merges the pre-signin person into the account person.
   - Missing or invalid token → fall back to install-hash distinct_id. The batch is **never rejected** for auth reasons.
 - Identity is server-verified; the payload cannot assert an account. Event properties are unchanged. The Analytics Engine write path is untouched.
+- **Known deviation from `authMiddleware`:** telemetry identity is verified-but-not-revocation-checked — the JWT signature/claims are verified, but there is no devices-table lookup. A revoked device's unexpired token (≤15 min TTL) can still attribute telemetry to the account. Accepted for write-only telemetry; do not assume parity with the real auth path.
 
 ## Coverage baseline (verified 2026-06-10) and remaining work
 
