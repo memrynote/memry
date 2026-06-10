@@ -151,6 +151,22 @@ export const initializeTelemetryRuntime = (deps?: TelemetryRuntimeDeps): Telemet
     })
   }
 
+  const currentVersion = context.appVersion
+  if (initialEnabled && stored.lastRunVersion && stored.lastRunVersion !== currentVersion) {
+    client.track({
+      id: randomUUID(),
+      name: 'app_update_installed',
+      occurredAt: new Date().toISOString(),
+      surface: 'updater',
+      action: 'installed',
+      result: 'success',
+      dimensions: { from_version: stored.lastRunVersion }
+    })
+  }
+  if (stored.lastRunVersion !== currentVersion) {
+    mergeTelemetryConfig({ lastRunVersion: currentVersion })
+  }
+
   let flushTimer: ReturnType<typeof setInterval> | null = null
   const intervalMs = deps?.flushIntervalMs ?? FLUSH_INTERVAL_MS
   if (intervalMs && Number.isFinite(intervalMs) && intervalMs > 0) {

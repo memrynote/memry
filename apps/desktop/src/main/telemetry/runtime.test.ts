@@ -221,4 +221,130 @@ describe('initializeTelemetryRuntime', () => {
 
     expect(runtime.client.getQueueDepth()).toBeGreaterThan(1)
   })
+
+  describe('app_update_installed', () => {
+    it('emits app_update_installed when stored lastRunVersion differs from current appVersion', async () => {
+      fs.writeFileSync(
+        path.join(tempDir, TELEMETRY_CONFIG_FILENAME),
+        JSON.stringify({ enabled: true, lastRunVersion: '1.0.0' })
+      )
+
+      const { calls, fetchMock } = createFetch()
+      const runtime = initializeTelemetryRuntime({
+        fetch: fetchMock,
+        buildChannel: 'production',
+        endpoint: 'https://example.test/telemetry/batch',
+        initialEnabled: true,
+        appVersion: '1.1.0',
+        flushIntervalMs: null
+      })
+
+      await runtime.flush('manual')
+
+      expect(calls).toHaveLength(1)
+      const body = JSON.parse(calls[0].init?.body as string) as {
+        events: Array<{ name: string; dimensions?: Record<string, string> }>
+      }
+      const updateEvent = body.events.find((e) => e.name === 'app_update_installed')
+      expect(updateEvent).toBeDefined()
+      expect(updateEvent?.dimensions?.from_version).toBe('1.0.0')
+    })
+
+    it('does NOT emit app_update_installed when no lastRunVersion is stored', async () => {
+      fs.writeFileSync(
+        path.join(tempDir, TELEMETRY_CONFIG_FILENAME),
+        JSON.stringify({ enabled: true })
+      )
+
+      const { calls, fetchMock } = createFetch()
+      const runtime = initializeTelemetryRuntime({
+        fetch: fetchMock,
+        buildChannel: 'production',
+        endpoint: 'https://example.test/telemetry/batch',
+        initialEnabled: true,
+        appVersion: '1.1.0',
+        flushIntervalMs: null
+      })
+
+      await runtime.flush('manual')
+
+      expect(calls).toHaveLength(1)
+      const body = JSON.parse(calls[0].init?.body as string) as { events: Array<{ name: string }> }
+      expect(body.events.find((e) => e.name === 'app_update_installed')).toBeUndefined()
+    })
+
+    it('does NOT emit app_update_installed when stored version matches current', async () => {
+      fs.writeFileSync(
+        path.join(tempDir, TELEMETRY_CONFIG_FILENAME),
+        JSON.stringify({ enabled: true, lastRunVersion: '1.1.0' })
+      )
+
+      const { calls, fetchMock } = createFetch()
+      const runtime = initializeTelemetryRuntime({
+        fetch: fetchMock,
+        buildChannel: 'production',
+        endpoint: 'https://example.test/telemetry/batch',
+        initialEnabled: true,
+        appVersion: '1.1.0',
+        flushIntervalMs: null
+      })
+
+      await runtime.flush('manual')
+
+      expect(calls).toHaveLength(1)
+      const body = JSON.parse(calls[0].init?.body as string) as { events: Array<{ name: string }> }
+      expect(body.events.find((e) => e.name === 'app_update_installed')).toBeUndefined()
+    })
+
+    it('persists current appVersion as lastRunVersion when version changes', () => {
+      fs.writeFileSync(
+        path.join(tempDir, TELEMETRY_CONFIG_FILENAME),
+        JSON.stringify({ enabled: true, lastRunVersion: '1.0.0' })
+      )
+
+      const { fetchMock } = createFetch()
+      initializeTelemetryRuntime({
+        fetch: fetchMock,
+        buildChannel: 'production',
+        endpoint: 'https://example.test/telemetry/batch',
+        initialEnabled: true,
+        appVersion: '1.1.0',
+        flushIntervalMs: null
+      })
+
+      const stored = JSON.parse(
+        fs.readFileSync(path.join(tempDir, TELEMETRY_CONFIG_FILENAME), 'utf-8')
+      ) as { lastRunVersion?: string }
+      expect(stored.lastRunVersion).toBe('1.1.0')
+    })
+
+    it('does NOT call mergeTelemetryConfig with lastRunVersion when stored version already matches', async () => {
+      fs.writeFileSync(
+        path.join(tempDir, TELEMETRY_CONFIG_FILENAME),
+        JSON.stringify({ enabled: true, lastRunVersion: '1.1.0' })
+      )
+
+      const { fetchMock } = createFetch()
+      const { mergeTelemetryConfig: mergeSpy } = await import('./config')
+      const spy = vi.spyOn({ mergeTelemetryConfig: mergeSpy }, 'mergeTelemetryConfig')
+
+      // Re-import config module and spy on the real export
+      const configModule = await import('./config')
+      const mergeSpy2 = vi.spyOn(configModule, 'mergeTelemetryConfig')
+
+      initializeTelemetryRuntime({
+        fetch: fetchMock,
+        buildChannel: 'production',
+        endpoint: 'https://example.test/telemetry/batch',
+        initialEnabled: true,
+        appVersion: '1.1.0',
+        flushIntervalMs: null
+      })
+
+      const versionWrites = mergeSpy2.mock.calls.filter((c) => c[0] && 'lastRunVersion' in c[0])
+      expect(versionWrites).toHaveLength(0)
+      spy.mockRestore()
+      mergeSpy2.mockRestore()
+    })
+  })
 })

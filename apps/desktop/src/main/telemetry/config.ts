@@ -12,10 +12,10 @@ export const TELEMETRY_CONFIG_FILENAME = 'telemetry.json'
 export interface TelemetryConfigOnDisk {
   installId?: string
   enabled?: boolean
+  lastRunVersion?: string
 }
 
-const getConfigPath = (): string =>
-  path.join(app.getPath('userData'), TELEMETRY_CONFIG_FILENAME)
+const getConfigPath = (): string => path.join(app.getPath('userData'), TELEMETRY_CONFIG_FILENAME)
 
 export const readTelemetryConfig = (): TelemetryConfigOnDisk => {
   try {
