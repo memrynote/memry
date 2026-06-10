@@ -37,6 +37,7 @@ export interface TelemetryClientDeps {
   initialEnabled: boolean
   getAuthState: () => TelemetryAuthState
   getSyncState: () => TelemetrySyncState
+  /** Resolves the signed-in account's access token for identity attribution; null/throw → anonymous batch. */
   getAccessToken?: () => Promise<string | null>
 }
 
@@ -102,7 +103,10 @@ export const createTelemetryClient = (deps: TelemetryClientDeps): TelemetryClien
     if (deps.getAccessToken) {
       try {
         bearerValue = await deps.getAccessToken()
-      } catch {
+      } catch (error) {
+        logger.debug('getAccessToken failed, sending anonymous telemetry', {
+          error: error instanceof Error ? error.message : String(error)
+        })
         bearerValue = null
       }
     }
