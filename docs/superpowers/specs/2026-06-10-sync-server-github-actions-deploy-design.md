@@ -84,12 +84,23 @@ pnpm --filter @memry/sync-server exec wrangler deploy --env <staging|production>
    (`e654584e-41c8-4716-a0f5-612940543514`) so staging deploys only from GitHub
    Actions.
 
+## Native module ABI
+
+`schema/d1.test.ts` loads `better-sqlite3`, a native module. The first GitHub
+Actions run failed with the same `NODE_MODULE_VERSION 140 vs 137` mismatch that
+broke the Cloudflare build: `cache: pnpm` restores a pnpm store populated by another
+workflow on a newer Node, so `--frozen-lockfile` reuses a binary built for the wrong
+ABI and skips the install script. Both workflows therefore run a
+`pnpm --filter @memry/sync-server rebuild better-sqlite3` step after install — it
+re-runs `prebuild-install || node-gyp rebuild` against the runner's Node (24 / ABI
+137), producing a matching binary regardless of what the cache held.
+
 ## Risks
 
-- **Test-gate flake.** `schema/d1.test.ts` has a recorded flake: 4 cases fail under
-  parallel vitest workers but pass solo. As a deploy gate this can block a deploy
-  and require a rerun. The gate stays as plain `pnpm test:sync-server` for now; if
-  it flakes in practice, the fallback is pinning that run to
+- **Test-gate flake.** `schema/d1.test.ts` also has a recorded flake: 4 cases fail
+  under parallel vitest workers but pass solo. As a deploy gate this can block a
+  deploy and require a rerun. The gate stays as plain `pnpm test:sync-server` for
+  now; if it flakes in practice, the fallback is pinning that run to
   `--no-file-parallelism`.
 - **Plan requirement.** Required-reviewer environments need GitHub Pro/Team/
   Enterprise for private repos. Confirmed available (reviewer rule added).

@@ -45,6 +45,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Rebuild better-sqlite3 for the runner's Node ABI
+        run: pnpm --filter @memry/sync-server rebuild better-sqlite3
+
       - name: Typecheck sync-server
         run: pnpm typecheck:sync-server
 
