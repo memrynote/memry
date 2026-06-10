@@ -23,7 +23,8 @@ import { getFromServer } from '../sync/http-client'
 import { createLogger } from '../lib/logger'
 import { withErrorHandler } from './validate'
 import { registerCommand } from './lib/register-command'
-import { getSyncEngine } from '../sync/runtime'
+import { getSyncEngine, startSyncRuntime } from '../sync/runtime'
+import { getCachedEntitlement } from '../billing/entitlement-cache'
 import { teardownSession } from '../sync/session-teardown'
 import { getValidAccessToken, cancelTokenRefresh } from '../sync/token-manager'
 import {
@@ -143,12 +144,21 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
 
   ipcMain.handle(SYNC_CHANNELS.GET_STATUS, () => {
     const engine = resolveSyncEngine()
-    if (!engine) return { status: 'idle', pendingCount: 0 }
+    if (!engine) {
+      const cached = getCachedEntitlement()
+      if (cached && !cached.isPaid) {
+        return { status: 'local_only', pendingCount: 0 }
+      }
+      return { status: 'idle', pendingCount: 0 }
+    }
     return engine.getStatus()
   })
 
   ipcMain.handle(SYNC_CHANNELS.TRIGGER_SYNC, async () => {
-    const engine = resolveSyncEngine()
+    let engine: SyncEngine | null = resolveSyncEngine()
+    if (!engine) {
+      engine = await startSyncRuntime()
+    }
     if (!engine) {
       return { success: false, error: 'errors:sync.engineNotInitialized' }
     }
