@@ -68,6 +68,23 @@ Fix: fire submit from `onPointerDown`. Keep `onClick` as a keyboard-activation f
 
 See `calendar-quick-create-dialog.tsx` for the canonical version.
 
+## Editor-Zone Mousedown Handlers Steal Focus from BlockNote Menus
+
+BlockNote's shadcn menus (drag-handle menu, side menu, toolbars and their nested dropdowns) render **inline inside `.bn-container`, not portaled**. Any editor-zone mousedown handler — such as the "click the marquee zone to focus the editor at end" handler in `note.tsx` / `journal.tsx`, or the marquee selection hook — therefore also sees clicks on menu items. If such a handler focuses the editor on mousedown, the menu unmounts between `pointerdown` and `pointerup`, so the item's click never lands and the action silently does nothing (for example, drag-handle Colors/Delete appear to do nothing).
+
+Fix: bail before touching focus when the target is inside menu UI:
+
+```ts
+if (
+  target.closest(
+    '.bn-side-menu, .bn-formatting-toolbar, .bn-suggestion-menu, .bn-link-toolbar, .bn-drag-handle-menu, .bn-menu-dropdown, [role="menu"]'
+  )
+)
+  return
+```
+
+This mirrors `shouldStartMarquee` in `use-block-marquee-selection.ts`. Regression coverage: `tests/e2e/editor-drag-handle-menu.e2e.ts`.
+
 ## Lazy URL Resolution in http-client
 
 The HTTP client resolves URLs **per-call**, not at module-import time. This avoids tests crashing on import when env vars are absent. If you add a new client, follow the same pattern: read env inside the function, not in module scope.
