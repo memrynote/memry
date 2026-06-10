@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto'
 import type { AgentBackendOptions, AgentTurnPermissions } from '@memry/contracts/ipc-agent'
 
 import { createLogger } from '../../lib/logger'
+import { trackMainEvent } from '../../telemetry/track'
 import type { BackendEvent } from '../cli/types'
 import type { ConversationStore } from '../storage/conversation-store'
 import type { MessageStore } from '../storage/message-store'
@@ -61,6 +62,12 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
     kind: 'message_upserted',
     message: user
   })
+
+  const backendLabel = input.backendOptions.backend
+  if (shouldGenerateTitle) {
+    trackMainEvent('agent_chat_started', { surface: 'ai', action: 'started', source: backendLabel })
+  }
+  trackMainEvent('agent_chat_message_sent', { surface: 'ai', action: 'sent', source: backendLabel })
 
   const titlePromise = shouldGenerateTitle
     ? maybeGenerateConversationTitle(deps, {

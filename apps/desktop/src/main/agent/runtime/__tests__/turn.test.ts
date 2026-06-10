@@ -4,6 +4,10 @@ vi.mock('../event-bus', () => ({
   broadcastAgentEvent: vi.fn()
 }))
 
+vi.mock('../../../telemetry/track', () => ({
+  trackMainEvent: vi.fn()
+}))
+
 import type { ConversationStore } from '../../storage/conversation-store'
 import type { AgentBackendRegistry } from '../../backends/registry'
 import type { AgentBackend, BackendRunHandle } from '../../backends/types'
@@ -16,6 +20,7 @@ import type {
   MessageStatus
 } from '../../storage/types'
 import { broadcastAgentEvent } from '../event-bus'
+import { trackMainEvent } from '../../../telemetry/track'
 import { runTurn } from '../turn'
 
 describe('runTurn against a stub backend', () => {
@@ -616,6 +621,97 @@ describe('runTurn against a stub backend', () => {
       error: { code: 'INTERNAL', message: 'unknown' }
     })
     expect(messages.listByConversation('conversation-1')[1].status).toBe('completed')
+  })
+
+  describe('telemetry', () => {
+    it('tracks agent_chat_started when a turn starts a new (default-titled) conversation', async () => {
+      const messages = createFakeMessageStore()
+      const conversations = createFakeConversationStore() // default title = 'New conversation'
+      const backend = createFakeBackend({ turn: [{ kind: 'message_stop' }] })
+
+      await runTurn(
+        { conversations, messages, backends: createFakeRegistry(backend) },
+        {
+          conversationId: 'conversation-1',
+          sourceWindowId: 'window-1',
+          text: 'hello',
+          attachments: [],
+          backendOptions: { backend: 'claude_cli', claudeEffort: 'low' }
+        }
+      )
+
+      expect(trackMainEvent).toHaveBeenCalledWith(
+        'agent_chat_started',
+        expect.objectContaining({ surface: 'ai', action: 'started' })
+      )
+    })
+
+    it('does not track agent_chat_started for an existing conversation', async () => {
+      const messages = createFakeMessageStore()
+      const conversations = createFakeConversationStore({ title: 'Existing conversation' })
+      const backend = createFakeBackend({ turn: [{ kind: 'message_stop' }] })
+      vi.mocked(trackMainEvent).mockClear()
+
+      await runTurn(
+        { conversations, messages, backends: createFakeRegistry(backend) },
+        {
+          conversationId: 'conversation-1',
+          sourceWindowId: 'window-1',
+          text: 'hello',
+          attachments: [],
+          backendOptions: { backend: 'claude_cli', claudeEffort: 'low' }
+        }
+      )
+
+      const startedCalls = vi
+        .mocked(trackMainEvent)
+        .mock.calls.filter(([name]) => name === 'agent_chat_started')
+      expect(startedCalls).toHaveLength(0)
+    })
+
+    it('tracks agent_chat_message_sent on every turn with the backend discriminant', async () => {
+      const messages = createFakeMessageStore()
+      const conversations = createFakeConversationStore({ title: 'Existing conversation' })
+      const backend = createFakeBackend({ turn: [{ kind: 'message_stop' }] })
+
+      await runTurn(
+        { conversations, messages, backends: createFakeRegistry(backend) },
+        {
+          conversationId: 'conversation-1',
+          sourceWindowId: 'window-1',
+          text: 'hello',
+          attachments: [],
+          backendOptions: { backend: 'codex_cli', reasoningEffort: 'medium' }
+        }
+      )
+
+      expect(trackMainEvent).toHaveBeenCalledWith(
+        'agent_chat_message_sent',
+        expect.objectContaining({ surface: 'ai', action: 'sent', source: expect.any(String) })
+      )
+    })
+
+    it('does not include input text in tracked telemetry payloads', async () => {
+      const messages = createFakeMessageStore()
+      const conversations = createFakeConversationStore({ title: 'Existing conversation' })
+      const backend = createFakeBackend({ turn: [{ kind: 'message_stop' }] })
+      vi.mocked(trackMainEvent).mockClear()
+
+      const sensitiveText = 'my-secret-message-xyz'
+      await runTurn(
+        { conversations, messages, backends: createFakeRegistry(backend) },
+        {
+          conversationId: 'conversation-1',
+          sourceWindowId: 'window-1',
+          text: sensitiveText,
+          attachments: [],
+          backendOptions: { backend: 'claude_cli', claudeEffort: 'low' }
+        }
+      )
+
+      const allArgs = JSON.stringify(vi.mocked(trackMainEvent).mock.calls)
+      expect(allArgs).not.toContain(sensitiveText)
+    })
   })
 })
 
