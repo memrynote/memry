@@ -274,7 +274,10 @@ jobs:
   build-windows:
     name: Build Windows x64
     needs: setup-release
-    runs-on: windows-latest
+    # Pinned: windows-latest now ships VS 2026, which node-gyp 11.5.0 cannot
+    # detect ("Could not find any Visual Studio installation"), so the native
+    # electron-rebuild fails. windows-2022 ships VS 2022, which node-gyp finds.
+    runs-on: windows-2022
     timeout-minutes: 90
 
     steps:
