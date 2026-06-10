@@ -49,6 +49,7 @@ import {
 } from '../inbox/voice-transcription-keychain'
 import { syncSettingsUpdates } from '../settings/runtime-effects'
 import { trackMainEvent } from '../telemetry/track'
+import { SafeDimensionValueSchema } from '@memry/contracts/telemetry-api'
 import {
   getTerminalCommandStatus,
   installTerminalCommand,
@@ -314,11 +315,13 @@ export function registerSettingsHandlers(): void {
         win.webContents.send(SettingsChannels.events.CHANGED, { key, value })
       })
 
-      trackMainEvent('setting_changed', {
-        surface: 'settings',
-        action: 'changed',
-        dimensions: { setting: key }
-      })
+      if (SafeDimensionValueSchema.safeParse(key).success) {
+        trackMainEvent('setting_changed', {
+          surface: 'settings',
+          action: 'changed',
+          dimensions: { setting: key }
+        })
+      }
 
       return { success: true }
     }

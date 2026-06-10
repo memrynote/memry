@@ -266,6 +266,33 @@ describe('settings-handlers', () => {
     expect(payload).not.toHaveProperty('value')
   })
 
+  it('does not track setting_changed when key fails SafeDimensionValueSchema', async () => {
+    registerSettingsHandlers()
+
+    const unsafeKeys = ['x@evil', 'a/b', 'https://evil.com', 'a'.repeat(65)]
+
+    for (const key of unsafeKeys) {
+      mockTrackMainEvent.mockClear()
+      const result = await invokeHandler(SettingsChannels.invoke.SET, { key, value: 'v' })
+      expect(result).toEqual({ success: true })
+      expect(mockTrackMainEvent).not.toHaveBeenCalled()
+    }
+  })
+
+  it('does not track setting_changed when no vault is open', async () => {
+    registerSettingsHandlers()
+    ;(getDatabase as Mock).mockImplementation(() => {
+      throw new Error('no db')
+    })
+
+    const result = await invokeHandler(SettingsChannels.invoke.SET, {
+      key: 'appearance.theme',
+      value: 'dark'
+    })
+    expect(result).toEqual({ success: false, error: 'No vault open' })
+    expect(mockTrackMainEvent).not.toHaveBeenCalled()
+  })
+
   it('returns the startup theme and accent color synchronously', () => {
     registerSettingsHandlers()
     ;(settingsQueries.getSetting as Mock).mockReturnValue(
