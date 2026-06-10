@@ -17,7 +17,7 @@ The **+** affordance in the sidebar Projects section opens a creation dialog:
 - **Icon** — emoji or icon set choice
 - **Initial statuses** — memrynote pre-fills `Todo / In Progress / Done`; you can edit before creating
 
-You can also create a project without leaving the task you're working on. The project dropdown in the **Add Task** dialog and the **task detail** drawer ends with a **Create project** entry; choosing it opens the same creation dialog, and the new project is selected for that task once you save.
+You can also create a project without leaving the task you're working on. Every project dropdown — the **Add Task** dialog, the **task detail** drawer, the project picker in the **Projects** tab, and the project-scope dropdown above the task list — ends with a **Create project** entry. Choosing it opens the same creation dialog, and the new project is selected once you save.
 
 ## Statuses
 

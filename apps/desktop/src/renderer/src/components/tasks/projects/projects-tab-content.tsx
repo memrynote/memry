@@ -131,7 +131,6 @@ export const ProjectsTabContent = ({
           onProjectEdit={onProjectEdit}
           onProjectArchive={onProjectArchive}
           onProjectDelete={onProjectDelete}
-          onCreateProject={onCreateProject}
         />
       </div>
 
@@ -169,7 +168,7 @@ export const ProjectsTabContent = ({
             </p>
             {activeProjects.length === 0 && (
               <Button onClick={onCreateProject}>
-                <Plus className="size-4 mr-2" />
+                <Plus className="size-4 me-2" />
 
                 {tPhaseF('phaseF.componentsTasksProjectsProjectsTabContent.createYourFirstProject')}
               </Button>

@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Plus, Pencil, Archive, Trash2, MoreHorizontal, FolderKanban } from '@/lib/icons'
+import { Pencil, Archive, Trash2, MoreHorizontal } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -8,7 +8,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
-import { Picker, usePickerContext } from '@/components/ui/picker'
+import { usePickerContext } from '@/components/ui/picker'
+import { ProjectPicker } from '@/components/tasks/project-picker'
 import { cn } from '@/lib/utils'
 import type { Project } from '@/data/tasks-data'
 import type { Task } from '@/data/task-model'
@@ -22,7 +23,6 @@ interface ProjectSelectorProps {
   onProjectEdit?: (project: Project) => void
   onProjectArchive?: (project: Project) => void
   onProjectDelete?: (projectId: string) => void
-  onCreateProject?: () => void
   className?: string
 }
 
@@ -59,7 +59,7 @@ function ProjectActions({
             onOpenChange(false)
           }}
         >
-          <Pencil className="mr-2 size-4" />
+          <Pencil className="me-2 size-4" />
 
           {tPhaseF('phaseF.componentsTasksProjectsProjectSelector.editProject')}
         </DropdownMenuItem>
@@ -70,7 +70,7 @@ function ProjectActions({
             onOpenChange(false)
           }}
         >
-          <Archive className="mr-2 size-4" />
+          <Archive className="me-2 size-4" />
 
           {tPhaseF('phaseF.componentsTasksProjectsProjectSelector.archiveProject')}
         </DropdownMenuItem>
@@ -81,7 +81,7 @@ function ProjectActions({
           }}
           className="text-destructive focus:text-destructive"
         >
-          <Trash2 className="mr-2 size-4" />
+          <Trash2 className="me-2 size-4" />
 
           {tPhaseF('phaseF.componentsTasksProjectsProjectSelector.deleteProject')}
         </DropdownMenuItem>
@@ -98,10 +98,8 @@ export const ProjectSelector = ({
   onProjectEdit,
   onProjectArchive,
   onProjectDelete,
-  onCreateProject,
   className
 }: ProjectSelectorProps): React.JSX.Element => {
-  const { t: tPhaseF } = useT('tasks')
   const activeProjects = useMemo(() => projects.filter((p) => !p.isArchived), [projects])
 
   const selectedProject = useMemo(
@@ -126,70 +124,25 @@ export const ProjectSelector = ({
 
   return (
     <div className={cn('flex items-center gap-1.5', className)}>
-      <Picker value={selectedProjectId} onValueChange={onProjectSelect}>
-        <Picker.Trigger variant="button" chevron className="min-w-[180px] max-w-[280px]">
-          {selectedProject ? (
-            <span className="flex items-center gap-2 min-w-0">
-              <span
-                className="size-2.5 rounded-full shrink-0"
-                style={{ backgroundColor: selectedProject.color }}
-              />
-              <span className="truncate text-sm font-medium">{selectedProject.name}</span>
-            </span>
-          ) : (
-            <span className="text-sm text-muted-foreground">
-              {tPhaseF('phaseF.componentsTasksProjectsProjectSelector.selectProject')}
-            </span>
-          )}
-        </Picker.Trigger>
-        <Picker.Content width={280} align="start">
-          {activeProjects.length === 0 ? (
-            <Picker.Empty
-              icon={<FolderKanban className="size-8" />}
-              message={tPhaseF('phaseF.componentsTasksProjectsProjectSelector.noProjectsYet')}
-              action={
-                <Button variant="outline" size="sm" onClick={onCreateProject}>
-                  <Plus className="size-4 mr-1" />
-
-                  {tPhaseF('phaseF.componentsTasksProjectsProjectSelector.createProject')}
-                </Button>
-              }
-            />
-          ) : (
-            <Picker.List>
-              {activeProjects.map((project) => (
-                <Picker.Item
-                  key={project.id}
-                  value={project.id}
-                  label={project.name}
-                  icon={
-                    <span
-                      className="size-2.5 rounded-full shrink-0"
-                      style={{ backgroundColor: project.color }}
-                    />
-                  }
-                  trailing={
-                    <div className="flex items-center gap-1">
-                      {projectTaskCounts[project.id] > 0 && (
-                        <span className="text-xs text-muted-foreground tabular-nums">
-                          {projectTaskCounts[project.id]}
-                        </span>
-                      )}
-                      <ProjectActions
-                        project={project}
-                        onEdit={onProjectEdit}
-                        onArchive={onProjectArchive}
-                        onDelete={onProjectDelete}
-                      />
-                    </div>
-                  }
-                  className="group"
-                />
-              ))}
-            </Picker.List>
-          )}
-        </Picker.Content>
-      </Picker>
+      <ProjectPicker
+        value={selectedProjectId}
+        onChange={(id) => {
+          if (id) onProjectSelect(id)
+        }}
+        projects={projects}
+        showCounts
+        taskCountByProject={projectTaskCounts}
+        renderItemActions={(project) => (
+          <ProjectActions
+            project={project}
+            onEdit={onProjectEdit}
+            onArchive={onProjectArchive}
+            onDelete={onProjectDelete}
+          />
+        )}
+        contentWidth={280}
+        className="min-w-[180px] max-w-[280px]"
+      />
 
       {selectedProject && (
         <Button
@@ -201,10 +154,6 @@ export const ProjectSelector = ({
           <Pencil className="size-3.5" />
         </Button>
       )}
-
-      <Button variant="ghost" size="icon" className="size-8" onClick={onCreateProject}>
-        <Plus className="size-4" />
-      </Button>
     </div>
   )
 }

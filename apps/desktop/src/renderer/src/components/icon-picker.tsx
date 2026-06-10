@@ -514,12 +514,19 @@ export const IconPicker = ({
     <div
       ref={popoverRef}
       className={cn(
-        'fixed z-[100] w-80 rounded-md border bg-popover text-popover-foreground shadow-xl',
+        // pointer-events-auto: a modal Radix Dialog sets body { pointer-events: none };
+        // this floating picker renders outside the dialog's content layer, so it must
+        // opt back in or its controls are dead and every click reads as "outside".
+        'pointer-events-auto fixed z-[100] w-80 rounded-md border bg-popover text-popover-foreground shadow-xl',
         'animate-in fade-in-0 zoom-in-95 duration-200'
       )}
       style={positionStyle}
       role="dialog"
       aria-label={tPhaseF('phaseF.componentsIconPicker.iconPicker')}
+      // Keep interactions from reaching a host modal's dismiss + focus-trap layers,
+      // which would otherwise close the dialog or steal focus from the search box.
+      onPointerDown={(e) => e.stopPropagation()}
+      onFocus={(e) => e.stopPropagation()}
     >
       {/* Header */}
       <div className="border-b p-3">

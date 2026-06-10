@@ -8,6 +8,12 @@ import { createRendererI18n } from '@memry/i18n/renderer'
 import { TasksTabBar, type TasksInternalTab } from './tasks-tab-bar'
 import type { Project, SavedFilter } from '@/data/tasks-data'
 
+// ProjectPicker's create footer is gated on a tasks context being present.
+vi.mock('@/contexts/tasks', () => ({
+  useTasksOptional: vi.fn(() => ({ addProject: vi.fn() })),
+  useTasksContext: vi.fn()
+}))
+
 let i18nEn: I18nInstance
 
 beforeAll(async () => {
@@ -108,7 +114,7 @@ describe('TasksTabBar', () => {
     expect(onTabChange).toHaveBeenCalledWith('today')
   })
 
-  it('renders the project dropdown, filters archived projects, searches, selects, and edits', () => {
+  it('renders the project scope picker: filters archived, searches, selects, edits, and offers create', () => {
     const onProjectChange = vi.fn()
     const onProjectEdit = vi.fn()
     const writing = makeProject()
@@ -122,42 +128,40 @@ describe('TasksTabBar', () => {
       onProjectEdit
     })
 
-    fireEvent.click(screen.getByRole('button', { name: /writing/i }))
+    fireEvent.click(screen.getByRole('combobox'))
 
-    expect(document.body.querySelector('[data-state="open"][data-side]')).toHaveClass(
-      'floating-content-motion'
-    )
-    expect(screen.getAllByText('All projects').length).toBeGreaterThan(0)
-    expect(screen.getByText('Work')).toBeInTheDocument()
-    expect(screen.queryByText('Archive')).not.toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /all projects/i })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /work/i })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: /archive/i })).not.toBeInTheDocument()
+
+    // Create-project footer is now available on this dropdown (was missing before).
+    expect(screen.getByRole('button', { name: 'Create project' })).toBeInTheDocument()
 
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'wo' } })
-    expect(screen.getAllByText('Writing')).toHaveLength(1)
-    expect(screen.getByText('Work')).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /work/i })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: /writing/i })).not.toBeInTheDocument()
 
-    const workRow = screen.getByText('Work').closest('[role="button"]')!
-    fireEvent.keyDown(workRow, { key: 'Enter' })
+    fireEvent.click(screen.getByRole('option', { name: /work/i }))
     expect(onProjectChange).toHaveBeenCalledWith('project-2')
 
-    fireEvent.click(screen.getByRole('button', { name: /writing/i }))
+    fireEvent.click(screen.getByRole('combobox'))
     fireEvent.click(screen.getByLabelText('Edit Work'))
     expect(onProjectEdit).toHaveBeenCalledWith(work)
   })
 
-  it('clears project scope and renders the empty project trigger state', () => {
+  it('selects "All projects" to clear the project scope', () => {
     const onProjectChange = vi.fn()
     renderTabBar({
       counts: { today: 0, all: 0 },
       projects: [makeProject()],
-      selectedProjectId: null,
+      selectedProjectId: 'project-1',
       onProjectChange
     })
 
-    fireEvent.click(screen.getByRole('button', { name: /all projects/i }))
-    fireEvent.click(screen.getAllByRole('button', { name: /all projects/i }).at(-1)!)
+    fireEvent.click(screen.getByRole('combobox'))
+    fireEvent.click(screen.getByRole('option', { name: /all projects/i }))
 
     expect(onProjectChange).toHaveBeenCalledWith(null)
-    expect(screen.getByRole('tab', { name: /^today/i })).toHaveAttribute('aria-selected', 'false')
   })
 
   describe('saved filter pills', () => {
