@@ -4,7 +4,13 @@ vi.mock('../middleware/rate-limit', () => ({
   createRateLimiter: vi.fn(() => async (_c: unknown, next: () => Promise<void>) => next())
 }))
 
+vi.mock('../lib/jwt-verify', () => ({
+  verifyAccessToken: vi.fn(),
+  JwtKeyError: class JwtKeyError extends Error {}
+}))
+
 import { app } from '../index'
+import { verifyAccessToken } from '../lib/jwt-verify'
 
 const VALID_INSTALL_ID = '550e8400-e29b-41d4-a716-446655440000'
 const VALID_SESSION_ID = '550e8400-e29b-41d4-a716-446655440001'
@@ -207,5 +213,126 @@ describe('telemetry route + rate limiter', () => {
     expect(createRateLimiter).toHaveBeenCalledWith(
       expect.objectContaining({ keyPrefix: 'telemetry' })
     )
+  })
+})
+
+const readFetchJson = <T>(fetchMock: ReturnType<typeof vi.fn>, path: string): T => {
+  const call = fetchMock.mock.calls.find((args: unknown[]) => String(args[0]).includes(path))
+  expect(call).toBeDefined()
+  const init = call?.[1] as RequestInit | undefined
+  expect(init?.body).toBeDefined()
+  return JSON.parse(init?.body as string) as T
+}
+
+describe('POST /telemetry/batch — optional bearer verification', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.mocked(verifyAccessToken).mockReset()
+  })
+
+  it('uses verified userId as PostHog distinct_id when bearer token is valid', async () => {
+    // #given a valid token that resolves to user_123
+    vi.mocked(verifyAccessToken).mockResolvedValue({
+      userId: 'user_123',
+      deviceId: 'dev_1',
+      exp: 9999999999
+    })
+    const fetchMock = vi.fn(
+      async () => new Response(JSON.stringify({ status: 1 }), { status: 200 })
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    const { env } = createEnv({
+      POSTHOG_API_KEY: 'phc_test',
+      POSTHOG_HOST: 'https://us.i.posthog.com',
+      JWT_PUBLIC_KEY: 'pk'
+    })
+    const waitUntilPromises: Promise<unknown>[] = []
+    const executionCtx = {
+      waitUntil: vi.fn((p: Promise<unknown>) => {
+        waitUntilPromises.push(p)
+      })
+    } as unknown as ExecutionContext
+    const request = new Request('http://localhost/telemetry/batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer good-token' },
+      body: JSON.stringify(sampleBatch)
+    })
+
+    // #when posting
+    const response = await app.request(request, {}, env, executionCtx)
+
+    // #then 202 and PostHog payload uses user_123 as distinct_id
+    expect(response.status).toBe(202)
+    await Promise.all(waitUntilPromises)
+    expect(fetchMock).toHaveBeenCalled()
+    const body = readFetchJson<{ batch: Array<{ event: string; distinct_id: string }> }>(
+      fetchMock,
+      '/batch/'
+    )
+    const nonIdentify = body.batch.filter((e) => e.event !== '$identify')
+    for (const event of nonIdentify) {
+      expect(event.distinct_id).toBe('user_123')
+    }
+    const identify = body.batch.find((e) => e.event === '$identify')
+    expect(identify).toBeDefined()
+  })
+
+  it('falls back to anonymous path when bearer token is invalid', async () => {
+    // #given a token that fails verification
+    vi.mocked(verifyAccessToken).mockRejectedValue(new Error('Token has expired'))
+    const fetchMock = vi.fn(
+      async () => new Response(JSON.stringify({ status: 1 }), { status: 200 })
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    const { env } = createEnv({
+      POSTHOG_API_KEY: 'phc_test',
+      POSTHOG_HOST: 'https://us.i.posthog.com',
+      JWT_PUBLIC_KEY: 'pk'
+    })
+    const waitUntilPromises: Promise<unknown>[] = []
+    const executionCtx = {
+      waitUntil: vi.fn((p: Promise<unknown>) => {
+        waitUntilPromises.push(p)
+      })
+    } as unknown as ExecutionContext
+    const request = new Request('http://localhost/telemetry/batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer bad-token' },
+      body: JSON.stringify(sampleBatch)
+    })
+
+    // #when posting
+    const response = await app.request(request, {}, env, executionCtx)
+
+    // #then still 202, no $identify, install-hash distinct_id
+    expect(response.status).toBe(202)
+    await Promise.all(waitUntilPromises)
+    expect(fetchMock).toHaveBeenCalled()
+    const body = readFetchJson<{ batch: Array<{ event: string; distinct_id: string }> }>(
+      fetchMock,
+      '/batch/'
+    )
+    const identify = body.batch.find((e) => e.event === '$identify')
+    expect(identify).toBeUndefined()
+    for (const event of body.batch) {
+      expect(event.distinct_id).not.toBe('user_123')
+    }
+  })
+
+  it('accepts batch without Authorization header — anonymous path unchanged', async () => {
+    // #given no Authorization header
+    const { env } = createEnv()
+    const request = new Request('http://localhost/telemetry/batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(sampleBatch)
+    })
+
+    // #when posting
+    const response = await app.request(request, {}, env)
+
+    // #then 202, verifyAccessToken never called
+    expect(response.status).toBe(202)
+    expect(vi.mocked(verifyAccessToken)).not.toHaveBeenCalled()
   })
 })

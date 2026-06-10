@@ -3,6 +3,7 @@ import { Hono } from 'hono'
 import { TelemetryBatchSchema } from '@memry/contracts/telemetry-api'
 
 import { AppError, ErrorCodes } from '../lib/errors'
+import { verifyAccessToken } from '../lib/jwt-verify'
 import { createRateLimiter } from '../middleware/rate-limit'
 import { writeTelemetryBatch } from '../services/telemetry'
 import type { AppContext } from '../types'
@@ -14,6 +15,19 @@ telemetry.use(
   createRateLimiter({ maxRequests: 60, windowSeconds: 60, keyPrefix: 'telemetry' })
 )
 
+const resolveOptionalUserId = async (
+  authHeader: string | undefined,
+  jwtPublicKey: string
+): Promise<string | undefined> => {
+  if (!authHeader?.startsWith('Bearer ')) return undefined
+  try {
+    const claims = await verifyAccessToken(authHeader.slice(7), jwtPublicKey)
+    return claims.userId
+  } catch {
+    return undefined
+  }
+}
+
 telemetry.post('/batch', async (c) => {
   const body = await c.req.json().catch(() => null)
   const parsed = TelemetryBatchSchema.safeParse(body)
@@ -21,8 +35,10 @@ telemetry.post('/batch', async (c) => {
     throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid telemetry payload', 400)
   }
 
+  const userId = await resolveOptionalUserId(c.req.header('Authorization'), c.env.JWT_PUBLIC_KEY)
   const result = await writeTelemetryBatch(c.env, parsed.data, {
-    waitUntil: (promise) => c.executionCtx.waitUntil(promise)
+    waitUntil: (promise) => c.executionCtx.waitUntil(promise),
+    userId
   })
   return c.json(result, 202)
 })
