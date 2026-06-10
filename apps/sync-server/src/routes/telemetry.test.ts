@@ -335,4 +335,57 @@ describe('POST /telemetry/batch — optional bearer verification', () => {
     expect(response.status).toBe(202)
     expect(vi.mocked(verifyAccessToken)).not.toHaveBeenCalled()
   })
+
+  it('empty token after "Bearer " — Headers trims trailing space, treated as no token, 202 anonymous', async () => {
+    // #given Authorization: 'Bearer ' — the Headers API trims trailing whitespace, storing 'Bearer'
+    // which does not match the 'Bearer ' prefix check, so we fall through to the anonymous path
+    const { env } = createEnv({ JWT_PUBLIC_KEY: 'pk' })
+    const request = new Request('http://localhost/telemetry/batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' },
+      body: JSON.stringify(sampleBatch)
+    })
+
+    // #when posting
+    const response = await app.request(request, {}, env)
+
+    // #then 'Bearer' (trimmed) fails startsWith('Bearer '), verifyAccessToken never called, still 202
+    expect(response.status).toBe(202)
+    expect(vi.mocked(verifyAccessToken)).not.toHaveBeenCalled()
+  })
+
+  it('lowercase "bearer" scheme — treated as no token, verifyAccessToken never called, 202', async () => {
+    // #given Authorization: 'bearer good-token' (wrong casing)
+    const { env } = createEnv({ JWT_PUBLIC_KEY: 'pk' })
+    const request = new Request('http://localhost/telemetry/batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'bearer good-token' },
+      body: JSON.stringify(sampleBatch)
+    })
+
+    // #when posting
+    const response = await app.request(request, {}, env)
+
+    // #then the header is ignored entirely — anonymous path, no JWT call
+    expect(response.status).toBe(202)
+    expect(vi.mocked(verifyAccessToken)).not.toHaveBeenCalled()
+  })
+
+  it('double space after "Bearer" — verifyAccessToken called with leading-space token, 202 anonymous', async () => {
+    // #given Authorization: 'Bearer  good-token' (two spaces after Bearer)
+    vi.mocked(verifyAccessToken).mockRejectedValue(new Error('invalid token'))
+    const { env } = createEnv({ JWT_PUBLIC_KEY: 'pk' })
+    const request = new Request('http://localhost/telemetry/batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer  good-token' },
+      body: JSON.stringify(sampleBatch)
+    })
+
+    // #when posting
+    const response = await app.request(request, {}, env)
+
+    // #then verifyAccessToken receives the token with its leading space and we still get 202
+    expect(response.status).toBe(202)
+    expect(vi.mocked(verifyAccessToken)).toHaveBeenCalledWith(' good-token', 'pk')
+  })
 })
