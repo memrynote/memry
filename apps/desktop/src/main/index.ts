@@ -38,7 +38,14 @@ import { stopImageProcessing } from './image-processing/bridge'
 import { startReminderScheduler, stopReminderScheduler } from './lib/reminders'
 import { disposeTelemetryRuntime, initializeTelemetryRuntime } from './telemetry/runtime'
 import { getTelemetryAuthState, getTelemetrySyncState } from './telemetry/state'
-import { trackLaunchPhase, trackMainError, trackMainLog } from './telemetry/diagnostics'
+import {
+  trackLaunchPhase,
+  trackMainError,
+  trackMainLog,
+  startActiveHeartbeat,
+  stopActiveHeartbeat
+} from './telemetry/diagnostics'
+import { trackMainEvent } from './telemetry/track'
 import {
   startGoogleCalendarSyncRunner,
   stopGoogleCalendarSyncRunner,
@@ -737,6 +744,16 @@ void app.whenReady().then(async () => {
     accessTokenProvider: () => getValidAccessToken()
   })
   registerMainDiagnostics()
+  startActiveHeartbeat(() => BrowserWindow.getFocusedWindow() !== null)
+
+  app.on('browser-window-blur', () => {
+    setImmediate(() => {
+      if (BrowserWindow.getFocusedWindow() === null) {
+        trackMainEvent('app_backgrounded', { surface: 'app', action: 'backgrounded' })
+      }
+    })
+  })
+
   trackLaunchPhase('app_ready', Date.now() - launchStartedAt)
 
   registerAllHandlers({ i18n: mainI18n, rebuildMenu })
@@ -1230,6 +1247,8 @@ app.on('before-quit', (event) => {
       return stopImageProcessing()
     })
     .then(() => {
+      shutdownLog.info('stopping active heartbeat...')
+      stopActiveHeartbeat()
       shutdownLog.info('flushing telemetry runtime...')
       return disposeTelemetryRuntime()
     })
