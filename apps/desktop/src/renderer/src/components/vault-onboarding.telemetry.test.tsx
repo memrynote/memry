@@ -113,4 +113,18 @@ describe('VaultOnboarding telemetry', () => {
     )
     expect(completedCalls).toHaveLength(0)
   })
+
+  it('does not track onboarding_completed when switchVault fails', async () => {
+    mockVaults = [{ path: '/vaults/Old', name: 'Old Vault' }]
+    mockSwitchVault.mockResolvedValue({ success: false, vault: null, error: 'cancelled' })
+    render(<VaultOnboarding />)
+    const vaultBtn = screen.getByText('Old Vault').closest('button')!
+    await act(async () => {
+      fireEvent.click(vaultBtn)
+    })
+    const completedCalls = (trackTelemetry as ReturnType<typeof vi.fn>).mock.calls.filter(
+      ([name]) => name === 'onboarding_completed'
+    )
+    expect(completedCalls).toHaveLength(0)
+  })
 })
