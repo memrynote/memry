@@ -47,6 +47,7 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
   const existingConversation = deps.conversations.getById(input.conversationId)
   const backend = deps.backends.get(input.backendOptions.backend)
   const permissions = input.permissions ?? DEFAULT_TURN_PERMISSIONS
+  // agent_chat_started keys on this heuristic; revisit if a user-facing rename path is added
   const shouldGenerateTitle =
     existingConversation?.title.trim() === DEFAULT_CONVERSATION_TITLE &&
     !existingMessages.some((message) => message.role === 'user')

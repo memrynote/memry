@@ -642,7 +642,7 @@ describe('runTurn against a stub backend', () => {
 
       expect(trackMainEvent).toHaveBeenCalledWith(
         'agent_chat_started',
-        expect.objectContaining({ surface: 'ai', action: 'started' })
+        expect.objectContaining({ surface: 'ai', action: 'started', source: 'claude_cli' })
       )
     })
 
@@ -687,7 +687,7 @@ describe('runTurn against a stub backend', () => {
 
       expect(trackMainEvent).toHaveBeenCalledWith(
         'agent_chat_message_sent',
-        expect.objectContaining({ surface: 'ai', action: 'sent', source: expect.any(String) })
+        expect.objectContaining({ surface: 'ai', action: 'sent', source: 'codex_cli' })
       )
     })
 
