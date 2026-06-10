@@ -1,0 +1,58 @@
+name: Deploy sync-server (staging)
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'apps/sync-server/**'
+      - 'packages/contracts/**'
+      - 'packages/shared/**'
+      - 'packages/rpc/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'turbo.json'
+      - '.github/workflows/sync-server-deploy-staging.yml'
+
+concurrency:
+  group: sync-server-deploy-staging-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Typecheck, test, and deploy to staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck sync-server
+        run: pnpm typecheck:sync-server
+
+      - name: Test sync-server
+        run: pnpm test:sync-server
+
+      - name: Deploy to staging
+        run: pnpm --filter @memry/sync-server exec wrangler deploy --env staging
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
