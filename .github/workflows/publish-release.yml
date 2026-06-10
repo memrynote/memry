@@ -337,6 +337,20 @@ jobs:
             printf 'GOOGLE_CALENDAR_CLIENT_ID=%s\n' "$GOOGLE_CALENDAR_CLIENT_ID"
           } > apps/desktop/.env.production
 
+      # Windows Defender aggressively scans .env-named files (the build copies
+      # .env.production -> resources/.env), holding a lock that makes
+      # electron-builder's copyfile fail with EBUSY. Exclude the workspace from
+      # real-time scanning. Non-fatal if the runner disallows it.
+      - name: Exclude workspace from Windows Defender (avoid EBUSY file locks)
+        shell: pwsh
+        run: |
+          try {
+            Add-MpPreference -ExclusionPath "${{ github.workspace }}" -ErrorAction Stop
+            Write-Host "Defender exclusion added for ${{ github.workspace }}"
+          } catch {
+            Write-Host "Could not add Defender exclusion (continuing): $_"
+          }
+
       - name: Build Windows artifacts
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
