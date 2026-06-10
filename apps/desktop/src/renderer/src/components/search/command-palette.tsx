@@ -10,6 +10,7 @@ import type {
 import { useTabs } from '@/contexts/tabs'
 import { useSearch } from '@/hooks/use-search'
 import { searchService } from '@/services/search-service'
+import { trackTelemetry } from '@/lib/telemetry'
 import { SearchResultGroup } from './search-result-group'
 import { SearchFilters } from './search-filters'
 import { RecentReasons } from './recent-reasons'
@@ -48,6 +49,12 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
   useEffect(() => {
     if (open) loadReasons()
   }, [open, loadReasons])
+
+  useEffect(() => {
+    if (open) {
+      void trackTelemetry('command_palette_opened', { surface: 'search', action: 'opened' })
+    }
+  }, [open])
 
   const handleClose = useCallback(() => {
     onOpenChange(false)
@@ -134,6 +141,11 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
       type: ContentType
       metadata?: SearchResultItemType['metadata']
     }) => {
+      void trackTelemetry('search_result_opened', {
+        surface: 'search',
+        action: 'opened',
+        objectType: item.type
+      })
       switch (item.type) {
         case 'note':
           openTab({
