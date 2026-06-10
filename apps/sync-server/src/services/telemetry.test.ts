@@ -399,15 +399,14 @@ describe('writeTelemetryBatch', () => {
       await writeTelemetryBatch(env, baseBatch, { userId: 'user_123' })
 
       // #then the batch call contains an $identify event first and all events use userId as distinct_id
-      const batchCall = fetchMock.mock.calls.find(([url]) => String(url).includes('/batch/'))
-      expect(batchCall).toBeDefined()
-      const payload = JSON.parse(batchCall![1].body as string) as {
+      const payload = readFetchJson<{
         batch: Array<{ event: string; distinct_id: string; properties: Record<string, unknown> }>
-      }
+      }>(fetchMock, '/batch/')
       const identify = payload.batch.find((e) => e.event === '$identify')
       expect(identify).toBeDefined()
       expect(identify!.distinct_id).toBe('user_123')
       expect(identify!.properties.$anon_distinct_id).toBe(`memry_desktop_test_${installHash}`)
+      expect(identify!.properties.service_name).toBe('memry-desktop')
       // $identify must be first
       expect(payload.batch[0].event).toBe('$identify')
       const events = payload.batch.filter((e) => e.event !== '$identify')
@@ -434,11 +433,9 @@ describe('writeTelemetryBatch', () => {
       await writeTelemetryBatch(env, baseBatch, {})
 
       // #then no $identify and all events use install-hash distinct_id
-      const batchCall = fetchMock.mock.calls.find(([url]) => String(url).includes('/batch/'))
-      expect(batchCall).toBeDefined()
-      const payload = JSON.parse(batchCall![1].body as string) as {
+      const payload = readFetchJson<{
         batch: Array<{ event: string; distinct_id: string }>
-      }
+      }>(fetchMock, '/batch/')
       const identify = payload.batch.find((e) => e.event === '$identify')
       expect(identify).toBeUndefined()
       for (const event of payload.batch) {
