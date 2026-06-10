@@ -54,6 +54,7 @@ import {
 } from './sync/certificate-pinning'
 import { getCrdtProvider } from './sync/crdt-provider'
 import { stopSyncRuntime } from './sync/runtime'
+import { getValidAccessToken } from './sync/token-manager'
 import { getNoteCacheById } from '@main/database/queries/notes'
 import { getIndexDatabase } from './database/client'
 import { toAbsolutePath, createSnapshot } from './vault/notes'
@@ -732,7 +733,8 @@ void app.whenReady().then(async () => {
     appVersion: app.getVersion(),
     locale: app.getLocale(),
     authStateProvider: getTelemetryAuthState,
-    syncStateProvider: getTelemetrySyncState
+    syncStateProvider: getTelemetrySyncState,
+    accessTokenProvider: () => getValidAccessToken()
   })
   registerMainDiagnostics()
   trackLaunchPhase('app_ready', Date.now() - launchStartedAt)
