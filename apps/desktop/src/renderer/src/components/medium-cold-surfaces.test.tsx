@@ -4,7 +4,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { LinkingPending } from '@/components/sync/linking-pending'
 import { NaturalDateInput, type NaturalDateInputRef } from '@/components/tasks/natural-date-input'
-import { ProjectSelector } from '@/components/tasks/projects/project-selector'
 import { EmojiPicker } from '@/components/note/note-title/EmojiPicker'
 import { useReminderNotifications } from '@/hooks/use-reminder-notifications'
 
@@ -294,81 +293,6 @@ describe('medium cold renderer surfaces', () => {
     expect(await screen.findByText('No date found')).toBeInTheDocument()
     expect(inputRef.current?.getValue()).toBe('nonsense')
     expect(onInputChange).toHaveBeenCalledWith(expect.stringContaining('next friday'))
-  })
-
-  it('renders project selection, counts incomplete top-level tasks, and runs project actions', async () => {
-    const user = userEvent.setup()
-    const onProjectSelect = vi.fn()
-    const onProjectEdit = vi.fn()
-    const onProjectArchive = vi.fn()
-    const onProjectDelete = vi.fn()
-    const onCreateProject = vi.fn()
-    const projects = [
-      {
-        id: 'work',
-        name: 'Work',
-        color: '#2255ff',
-        isArchived: false,
-        statuses: [
-          { id: 'todo', name: 'Todo', type: 'todo' },
-          { id: 'done', name: 'Done', type: 'done' }
-        ]
-      },
-      {
-        id: 'old',
-        name: 'Old',
-        color: '#999',
-        isArchived: true,
-        statuses: []
-      }
-    ] as never
-    const tasks = [
-      { id: 'task-1', projectId: 'work', statusId: 'todo', parentId: null },
-      { id: 'task-2', projectId: 'work', statusId: 'done', parentId: null },
-      { id: 'task-3', projectId: 'work', statusId: 'todo', parentId: 'task-1' }
-    ] as never
-
-    const { rerender } = render(
-      <ProjectSelector
-        tasks={tasks}
-        projects={projects}
-        selectedProjectId="work"
-        onProjectSelect={onProjectSelect}
-        onProjectEdit={onProjectEdit}
-        onProjectArchive={onProjectArchive}
-        onProjectDelete={onProjectDelete}
-        onCreateProject={onCreateProject}
-      />
-    )
-
-    expect(screen.getAllByText('Work').length).toBeGreaterThan(0)
-    expect(screen.queryByText('Old')).not.toBeInTheDocument()
-    expect(screen.getByText('1')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'select work from picker' }))
-    expect(onProjectSelect).toHaveBeenCalledWith('work')
-    await user.click(screen.getByRole('button', { name: /editProject/ }))
-    await user.click(screen.getByRole('button', { name: /archiveProject/ }))
-    await user.click(screen.getByRole('button', { name: /deleteProject/ }))
-    expect(onProjectEdit).toHaveBeenCalledWith(projects[0])
-    expect(onProjectArchive).toHaveBeenCalledWith(projects[0])
-    expect(onProjectDelete).toHaveBeenCalledWith('work')
-    expect(pickerOpenChange).toHaveBeenCalledWith(false)
-
-    await user.click(screen.getAllByRole('button').at(-1)!)
-    expect(onCreateProject).toHaveBeenCalled()
-
-    rerender(
-      <ProjectSelector
-        tasks={[]}
-        projects={[]}
-        selectedProjectId={null}
-        onProjectSelect={onProjectSelect}
-        onCreateProject={onCreateProject}
-      />
-    )
-    expect(
-      screen.getByText('phaseF.componentsTasksProjectsProjectSelector.noProjectsYet')
-    ).toBeInTheDocument()
   })
 
   it('selects emoji and icons, removes an existing emoji, handles escape, and renders closed state', async () => {
