@@ -1,8 +1,14 @@
 import { shell } from 'electron'
 import { getFromServer, postToServer } from '../sync/http-client'
 import { getValidAccessToken } from '../sync/token-manager'
-import { getSyncEngine } from '../sync/runtime'
+import { getSyncEngine, startSyncRuntime } from '../sync/runtime'
 import { createLogger } from '../lib/logger'
+import {
+  getCachedEntitlement,
+  isPaidBillingStatus,
+  setCachedEntitlementFromStatus,
+  type CachedEntitlement
+} from './entitlement-cache'
 
 const log = createLogger('Billing')
 const LANDING_CHECKOUT_URL = 'https://memrynote.com/pricing'
@@ -59,7 +65,9 @@ export async function getBillingStatus(): Promise<
 > {
   const token = await getValidAccessToken()
   if (!token) return { success: false, error: 'Sign in to view billing' }
-  return getFromServer<BillingStatus>('/auth/billing', token)
+  const result = await getFromServer<BillingStatus>('/auth/billing', token)
+  setCachedEntitlementFromStatus(result)
+  return result
 }
 
 export async function refreshBillingStatus(input?: {
@@ -67,11 +75,13 @@ export async function refreshBillingStatus(input?: {
 }): Promise<BillingStatus | (BillingActionResult & { status?: never })> {
   const token = await getValidAccessToken()
   if (!token) return { success: false, error: 'Sign in to refresh billing' }
-  return postToServer<BillingStatus>(
+  const result = await postToServer<BillingStatus>(
     '/auth/billing/reconcile',
     input?.transactionId ? { transactionId: input.transactionId } : {},
     token
   )
+  setCachedEntitlementFromStatus(result)
+  return result
 }
 
 export async function openBillingPortal(): Promise<BillingActionResult & { portalUrl?: string }> {
@@ -91,7 +101,9 @@ export async function reconcileBillingAndSync(input?: { transactionId?: string }
   try {
     for (let attempt = 0; attempt < 5; attempt += 1) {
       const status = await refreshBillingStatus(input)
-      if ('status' in status && status.status === 'active') {
+      if ('plan' in status && isPaidBillingStatus(status)) {
+        setCachedEntitlementFromStatus(status)
+        await startSyncRuntime()
         await getSyncEngine()?.fullSync()
         return
       }
@@ -102,6 +114,28 @@ export async function reconcileBillingAndSync(input?: { transactionId?: string }
       error: error instanceof Error ? error.message : String(error)
     })
   }
+}
+
+export async function resolveEntitlementForSyncStart(): Promise<CachedEntitlement> {
+  const cached = getCachedEntitlement()
+  if (cached && !cached.isPaid) return cached // known-unpaid: no server call
+
+  try {
+    const result = await getBillingStatus()
+    if ('plan' in result) {
+      return {
+        isPaid: isPaidBillingStatus(result),
+        plan: result.plan,
+        status: result.status
+      }
+    }
+    log.warn('Billing status unavailable; treating as unpaid for this launch')
+  } catch (error) {
+    log.warn('Billing status fetch failed; treating as unpaid for this launch', {
+      error: error instanceof Error ? error.message : String(error)
+    })
+  }
+  return cached ?? { isPaid: false, plan: 'free', status: 'inactive' }
 }
 
 function buildLandingCheckoutUrl(
