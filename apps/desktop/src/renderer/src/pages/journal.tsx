@@ -341,6 +341,17 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
       if (!target) return
       if (target.closest('[data-marquee-ignore]')) return
       if (target.closest('button, a, input, textarea, select, [role="button"]')) return
+      // BlockNote's side menu, drag-handle menu, toolbars and their nested
+      // dropdowns render inside the marquee zone (not portaled). A mousedown on
+      // one must NOT focus the editor: stealing focus unmounts the menu between
+      // mousedown and mouseup, so the item's click never fires. Mirror the
+      // marquee hook's exclusion list, plus menu roles for nested submenus.
+      if (
+        target.closest(
+          '.bn-side-menu, .bn-formatting-toolbar, .bn-suggestion-menu, .bn-link-toolbar, .bn-drag-handle-menu, .bn-menu-dropdown, [role="menu"]'
+        )
+      )
+        return
       if (
         target.closest('[contenteditable="true"]')?.contains(target) &&
         target.closest('.bn-block-content')
