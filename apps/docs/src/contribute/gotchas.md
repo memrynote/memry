@@ -85,6 +85,16 @@ if (
 
 This mirrors `shouldStartMarquee` in `use-block-marquee-selection.ts`. Regression coverage: `tests/e2e/editor-drag-handle-menu.e2e.ts`.
 
+## Cross-Platform Env Vars in package Scripts
+
+`VAR=value cmd` is POSIX-only. pnpm runs package scripts through cmd on Windows, where `MEMRY_ENV=production pnpm ...` fails with `'MEMRY_ENV' is not recognized`. This broke the Windows release build (`apps/desktop` `build` script). Use `cross-env` for any inline env var that must work on Windows too:
+
+```jsonc
+"build": "cross-env MEMRY_ENV=production pnpm typecheck && cross-env MEMRY_ENV=production electron-vite build"
+```
+
+The macOS and Linux release builds run scripts via `sh`, so the bug only surfaces in the Windows release job.
+
 ## Lazy URL Resolution in http-client
 
 The HTTP client resolves URLs **per-call**, not at module-import time. This avoids tests crashing on import when env vars are absent. If you add a new client, follow the same pattern: read env inside the function, not in module scope.
