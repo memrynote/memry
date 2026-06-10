@@ -234,8 +234,11 @@ jobs:
             \( -name '*.dmg' -o -name '*.zip' -o -name '*.blockmap' -o -name 'latest-mac.yml' \) \
             -exec cp {} "$asset_dir" \;
 
-          if [ "${{ matrix.arch }}" != "arm64" ]; then
-            rm -f "$asset_dir/latest-mac.yml"
+          # Each arch build emits its own latest-mac.yml. Rename per-arch so both
+          # survive the merge-multiple artifact download; they are merged into a
+          # single latest-mac.yml at publish time so x64 and arm64 both auto-update.
+          if [ -f "$asset_dir/latest-mac.yml" ]; then
+            mv "$asset_dir/latest-mac.yml" "$asset_dir/latest-mac-${{ matrix.arch }}.yml"
           fi
 
           ls -la "$asset_dir"
@@ -257,8 +260,8 @@ jobs:
             exit 1
           fi
 
-          if [ "${{ matrix.arch }}" = "arm64" ] && [ ! -f "$asset_dir/latest-mac.yml" ]; then
-            echo "::error::latest-mac.yml was not produced."
+          if [ ! -f "$asset_dir/latest-mac-${{ matrix.arch }}.yml" ]; then
+            echo "::error::latest-mac-${{ matrix.arch }}.yml was not produced."
             exit 1
           fi
 
@@ -518,6 +521,67 @@ jobs:
           pattern: memry-release-*-${{ needs.setup-release.outputs.app_version }}
           path: ${{ runner.temp }}/release-assets
           merge-multiple: true
+
+      - name: Merge macOS update manifests
+        env:
+          ASSET_DIR: ${{ runner.temp }}/release-assets
+        run: |
+          set -euo pipefail
+          work="$RUNNER_TEMP/yml-merge"
+          rm -rf "$work"
+          mkdir -p "$work"
+          cd "$work"
+          npm init -y >/dev/null 2>&1
+          npm install js-yaml@4 >/dev/null 2>&1
+          node <<'NODE'
+          const fs = require('node:fs')
+          const path = require('node:path')
+          const yaml = require('js-yaml')
+
+          const dir = process.env.ASSET_DIR
+          const armPath = path.join(dir, 'latest-mac-arm64.yml')
+          const x64Path = path.join(dir, 'latest-mac-x64.yml')
+
+          for (const file of [armPath, x64Path]) {
+            if (!fs.existsSync(file)) {
+              throw new Error(`Missing per-arch manifest: ${path.basename(file)}`)
+            }
+          }
+
+          const arm = yaml.load(fs.readFileSync(armPath, 'utf8'))
+          const x64 = yaml.load(fs.readFileSync(x64Path, 'utf8'))
+
+          if (arm.version !== x64.version) {
+            throw new Error(`Manifest version mismatch: arm64=${arm.version} x64=${x64.version}`)
+          }
+
+          // electron-updater's MacUpdater picks the .zip whose url's includes('arm64')
+          // matches the host arch, so both arch entries must be present in files[].
+          const filesByUrl = new Map()
+          for (const entry of [...(arm.files || []), ...(x64.files || [])]) {
+            filesByUrl.set(entry.url, entry)
+          }
+
+          const merged = {
+            version: arm.version,
+            files: [...filesByUrl.values()],
+            path: arm.path,
+            sha512: arm.sha512,
+            releaseDate: arm.releaseDate || x64.releaseDate
+          }
+
+          fs.writeFileSync(
+            path.join(dir, 'latest-mac.yml'),
+            yaml.dump(merged, { lineWidth: -1, noRefs: true })
+          )
+          fs.rmSync(armPath)
+          fs.rmSync(x64Path)
+
+          console.log('Merged latest-mac.yml entries:')
+          for (const entry of merged.files) {
+            console.log(`  - ${entry.url}`)
+          }
+          NODE
 
       - name: Verify release asset set
         id: assets
