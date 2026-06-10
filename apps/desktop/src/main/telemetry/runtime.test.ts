@@ -318,20 +318,18 @@ describe('initializeTelemetryRuntime', () => {
       expect(stored.lastRunVersion).toBe('1.1.0')
     })
 
-    it('does NOT call mergeTelemetryConfig with lastRunVersion when stored version already matches', async () => {
-      fs.writeFileSync(
-        path.join(tempDir, TELEMETRY_CONFIG_FILENAME),
-        JSON.stringify({ enabled: true, lastRunVersion: '1.1.0' })
-      )
+    it('does NOT write lastRunVersion when stored version already matches', () => {
+      const configPath = path.join(tempDir, TELEMETRY_CONFIG_FILENAME)
+      // Include a valid installId so getOrCreateInstallId skips its own write;
+      // without it, the install-id merge would reformat the file independently.
+      const initial = JSON.stringify({
+        installId: '00000000-0000-0000-0000-000000000001',
+        enabled: true,
+        lastRunVersion: '1.1.0'
+      })
+      fs.writeFileSync(configPath, initial)
 
       const { fetchMock } = createFetch()
-      const { mergeTelemetryConfig: mergeSpy } = await import('./config')
-      const spy = vi.spyOn({ mergeTelemetryConfig: mergeSpy }, 'mergeTelemetryConfig')
-
-      // Re-import config module and spy on the real export
-      const configModule = await import('./config')
-      const mergeSpy2 = vi.spyOn(configModule, 'mergeTelemetryConfig')
-
       initializeTelemetryRuntime({
         fetch: fetchMock,
         buildChannel: 'production',
@@ -341,10 +339,31 @@ describe('initializeTelemetryRuntime', () => {
         flushIntervalMs: null
       })
 
-      const versionWrites = mergeSpy2.mock.calls.filter((c) => c[0] && 'lastRunVersion' in c[0])
-      expect(versionWrites).toHaveLength(0)
-      spy.mockRestore()
-      mergeSpy2.mockRestore()
+      // File content must be byte-for-byte identical — no rewrite occurred
+      expect(fs.readFileSync(configPath, 'utf-8')).toBe(initial)
+    })
+
+    it('persists lastRunVersion on first run (no stored lastRunVersion)', () => {
+      // Pre-write a config with no lastRunVersion at all
+      fs.writeFileSync(
+        path.join(tempDir, TELEMETRY_CONFIG_FILENAME),
+        JSON.stringify({ enabled: true })
+      )
+
+      const { fetchMock } = createFetch()
+      initializeTelemetryRuntime({
+        fetch: fetchMock,
+        buildChannel: 'production',
+        endpoint: 'https://example.test/telemetry/batch',
+        initialEnabled: true,
+        appVersion: '1.2.0',
+        flushIntervalMs: null
+      })
+
+      const stored = JSON.parse(
+        fs.readFileSync(path.join(tempDir, TELEMETRY_CONFIG_FILENAME), 'utf-8')
+      ) as { lastRunVersion?: string }
+      expect(stored.lastRunVersion).toBe('1.2.0')
     })
   })
 })
