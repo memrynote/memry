@@ -46,44 +46,36 @@ main trackMainEvent() ────────────▶        │
   - Valid token → PostHog `distinct_id = user.id` — the same key `captureBusinessEvent` uses for `user_signed_up` / `subscription_activated` / `device_registered` / `vault_registered`, so cross-surface funnels join. The mirror also emits a `$identify` event with `$anon_distinct_id = memry_desktop_<env>_<installHash>` so PostHog merges the pre-signin person into the account person.
   - Missing or invalid token → fall back to install-hash distinct_id. The batch is **never rejected** for auth reasons.
 - Identity is server-verified; the payload cannot assert an account. Event properties are unchanged. The Analytics Engine write path is untouched.
-- **Known deviation from `authMiddleware`:** telemetry identity is verified-but-not-revocation-checked — the JWT signature/claims are verified, but there is no devices-table lookup. A revoked device's unexpired token (≤15 min TTL) can still attribute telemetry to the account. Accepted for write-only telemetry; do not assume parity with the real auth path.
 
-## Coverage baseline (verified 2026-06-10) and remaining work
+## Event coverage — four phases, each an independently shippable PR
 
-**Correction:** 29 of 40 contract events already fire — core loop (notes, journal, tasks, project, `search_performed`), inbox, calendar, sync, vault, app lifecycle diagnostics, and `page_viewed` are instrumented in main IPC handlers and `telemetry/diagnostics.ts`. The earlier "only ~3 fire" estimate came from grepping the wrong symbol name and was wrong.
+Instrumentation sits in **main-process IPC handlers** wherever possible: all renderer-initiated CRUD flows through them (single choke point), and sync-applied remote changes do not, so remote writes never pollute usage counts. Renderer call sites are used only for UI-only events (page views, onboarding, command palette).
 
-Instrumentation continues to sit in **main-process IPC handlers** wherever possible: renderer-initiated CRUD flows through them (single choke point) and sync-applied remote changes do not, so remote writes never pollute usage counts. Renderer call sites are used only for UI-only events.
+### Phase 1 — Core loop
 
-Remaining work:
+`note_created`, `note_opened`, `note_updated`, `note_deleted`, `journal_opened`, `journal_updated`, `task_created`, `task_completed`, `task_reopened`, `project_created`, `search_opened`, `search_performed`, `search_result_opened`
 
-### A. Identity merge
+Call sites: `notes-handlers.ts`, `journal-handlers.ts`, `tasks-handlers.ts`, `search-handlers.ts` (main). `search_opened` in renderer.
 
-As designed above: sync-server optional auth + `$identify`, desktop bearer header.
+### Phase 2 — Lifecycle + funnel
 
-### B. Noise control
+`app_started`, `app_backgrounded`, `app_active_heartbeat`, `app_launch_phase_completed`, `onboarding_started`, `onboarding_completed`, `sync_enabled`, `sync_run_completed`, `sync_error`, `setting_changed`
 
-`note_updated` (notes-handlers.ts) and `journal_updated` (journal-handlers.ts) currently fire **unthrottled on every autosave**. Add the 5-minute per-document throttle.
+Call sites: main lifecycle (`main/index.ts`), sync engine, renderer onboarding and settings pages.
 
-### C. Missing contract events
+### Phase 3 — Feature breadth
 
-- `app_backgrounded`, `app_active_heartbeat` — main lifecycle (`main/index.ts`, `telemetry/diagnostics.ts`)
-- `onboarding_started`, `onboarding_completed` — `vault-onboarding.tsx`
-- `setting_changed` — `settings-handlers.ts` SET handler; setting key as the single dimension
-- `search_result_opened` — command palette result opens (`command-palette.tsx`), objectType note/task/journal
+`inbox_captured`, `inbox_filed`, `inbox_archived`, `inbox_snoozed`, `calendar_event_created`, `calendar_event_updated`, `calendar_google_connected`, `calendar_google_sync_completed`, `graph_opened`, `voice_recording_completed`, `transcription_completed`, `ai_action_completed`
 
-Deliberately not instrumented:
+Call sites: `inbox-handlers.ts` / `inbox-crud-handlers.ts`, `calendar-handlers.ts` (follow existing `calendar-telemetry.ts` pattern), voice/AI handlers; `graph_opened` in renderer.
 
-- `graph_opened` — redundant; `page_viewed` already fires with surface `graph`
-- `search_opened` — the command palette is the search surface; `command_palette_opened` (below) covers it
-- `voice_recording_completed`, `transcription_completed`, `ai_action_completed` — deferred to a follow-up plan; the inbox voice flow needs its own exploration
-
-### D. New events (contract extension)
+### Phase 4 — New events (contract extension)
 
 Add to `TelemetryEventNameSchema`:
 
-- `agent_chat_started`, `agent_chat_message_sent` — `agent/runtime/turn.ts`; properties carry the backend/provider label only, never prompt or message content. Reuse the existing `ai` surface.
-- `command_palette_opened` — `command-palette.tsx` open transition; palette result opens fire the existing `search_result_opened`.
-- `app_update_installed` — fires on first launch after a version change, compared against `lastRunVersion` persisted in `telemetry.json`; surface `updater`.
+- `agent_chat_started`, `agent_chat_message_sent` — properties carry provider/model label only, never prompt or message content. Reuse the existing `ai` surface; the event names already distinguish Agent Chat from other AI actions, so no new surface value is needed.
+- `command_palette_opened`, `command_palette_action_executed` — feature-discovery signal; action id as the single dimension.
+- `app_update_installed` — fires on first launch after an update (compare persisted last-run version); surface `updater`.
 
 Contract edits require `pnpm ipc:generate` then `pnpm ipc:check`.
 
