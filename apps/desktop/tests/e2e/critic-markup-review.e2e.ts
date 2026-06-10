@@ -262,7 +262,7 @@ async function submitComment(page: Page, body: string): Promise<void> {
   const draft = commentComposer(page)
   await expect(draft).toBeVisible()
 
-  const commentInput = draft.getByLabel('Write a comment...')
+  const commentInput = draft.getByLabel('Add a comment...')
   await expect(commentInput).toBeVisible()
   await commentInput.fill(body)
 
@@ -279,7 +279,7 @@ async function submitCommentWithMentionAndAttachment(
   const draft = commentComposer(page)
   await expect(draft).toBeVisible()
 
-  const commentInput = draft.getByLabel('Write a comment...')
+  const commentInput = draft.getByLabel('Add a comment...')
   await expect(commentInput).toBeVisible()
   await commentInput.click()
   await page.keyboard.type(`See @${mention.title}`)
@@ -344,7 +344,10 @@ async function currentLocalDate(page: Page): Promise<string> {
 }
 
 function reviewRail(page: Page) {
-  return page.getByRole('complementary', { name: 'Comments and suggestions' })
+  // The rail's aria-label is `comments.railAria` ("Comments"). It used to read
+  // "Comments and suggestions"; #507 removed the suggestion feature and renamed
+  // it, but this helper wasn't updated, so every rail lookup silently missed.
+  return page.getByRole('complementary', { name: 'Comments', exact: true })
 }
 
 function commentComposer(page: Page) {
