@@ -20,6 +20,12 @@ export interface StoredVaultInfo {
   vaultUuid?: string
 }
 
+export interface CachedEntitlement {
+  isPaid: boolean
+  plan: string
+  status: string
+}
+
 /**
  * Sync-related persistent state
  */
@@ -30,6 +36,8 @@ export interface SyncStoreData {
   deviceId?: string
   /** Last known account vault list (decrypted names) for offline switcher display */
   accountVaultsCache?: AccountVaultsCache
+  /** Cache-first entitlement snapshot; gates whether sync runs without a server call */
+  entitlement?: CachedEntitlement
 }
 
 export interface AccountVaultsCache {
