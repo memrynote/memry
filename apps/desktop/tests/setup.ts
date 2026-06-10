@@ -15,6 +15,26 @@ if (!globalWithJest.jest) {
   globalWithJest.jest = vi
 }
 
+// Block real OS keychain access from tests. Unmocked transitive imports of keytar
+// (e.g. local-sync-effects → isMemryUserSignedIn → retrieveKey) otherwise read the
+// real 'com.memry.sync' items, triggering macOS "node wants to use your confidential
+// information" prompts on every suite run. Per-file vi.mock('keytar', ...) factories
+// still take precedence. The env check must live inside the factory: vi.mock calls
+// are hoisted, so an `if` around the call is bypassed. KEYCHAIN_E2E=1 opts back into
+// the real keychain for keychain.e2e.test.ts, which roundtrips 'com.memry.sync.test'.
+vi.mock('keytar', async (importOriginal) => {
+  if (process.env.KEYCHAIN_E2E === '1') return importOriginal()
+  return {
+    default: {
+      getPassword: vi.fn(async () => null),
+      setPassword: vi.fn(async () => undefined),
+      deletePassword: vi.fn(async () => false),
+      findPassword: vi.fn(async () => null),
+      findCredentials: vi.fn(async () => [])
+    }
+  }
+})
+
 // Mock crypto.randomUUID for consistent IDs in tests
 if (typeof globalThis.crypto === 'undefined') {
   Object.defineProperty(globalThis, 'crypto', {
