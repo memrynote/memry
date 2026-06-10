@@ -85,6 +85,7 @@ import {
   updatePropertyDefinitionRecord
 } from '../vault/property-definition-store'
 import { trackMainEvent } from '../telemetry/track'
+import { shouldEmitThrottled } from '../telemetry/throttle'
 
 // ============================================================================
 // Zod Schemas for Property Definitions (T017-T018)
@@ -271,12 +272,14 @@ export function registerNotesHandlers(): void {
     NoteUpdateSchema,
     async (input) => {
       const note = await updateNoteCommand(input)
-      trackMainEvent('note_updated', {
-        surface: 'notes',
-        action: 'updated',
-        objectType: 'note',
-        result: 'success'
-      })
+      if (shouldEmitThrottled(`note_updated:${note.id}`)) {
+        trackMainEvent('note_updated', {
+          surface: 'notes',
+          action: 'updated',
+          objectType: 'note',
+          result: 'success'
+        })
+      }
       return { success: true as const, note }
     },
     'Failed to update note'
