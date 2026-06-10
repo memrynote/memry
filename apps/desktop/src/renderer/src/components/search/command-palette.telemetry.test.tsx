@@ -1,12 +1,8 @@
-import { act, render } from '@testing-library/react'
+import { act, fireEvent, render } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent } from '@testing-library/react'
 
 // Hoist mutable references so factory functions close over the same instances.
 const mockOpenTab = vi.fn()
-const mockLoadReasons = vi.fn()
-const mockClearReasons = vi.fn()
-const mockReset = vi.fn()
 const mockAddReason = vi.fn()
 let mockReasons: unknown[] = []
 
@@ -86,9 +82,6 @@ describe('CommandPalette telemetry', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockReasons = []
-    mockLoadReasons.mockReset()
-    mockClearReasons.mockReset()
-    mockReset.mockReset()
     mockAddReason.mockResolvedValue(undefined)
   })
 
@@ -123,48 +116,56 @@ describe('CommandPalette telemetry', () => {
     expect(openedCalls).toHaveLength(1)
   })
 
-  it('tracks search_result_opened with objectType=note when a note result is opened', async () => {
+  // Helper: render palette, mock a single result group, type a query, click the result button.
+  async function openResultAndClick(
+    group: {
+      type: string
+      items: { id: string; title: string; metadata: Record<string, unknown> }[]
+    },
+    query: string,
+    buttonLabel: string
+  ) {
     const { getByText } = render(<CommandPalette open={true} onOpenChange={vi.fn()} />)
 
     const { searchService } = await import('@/services/search-service')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(searchService.query).mockResolvedValue({
-      groups: [
-        {
-          type: 'note' as const,
-          items: [
-            {
-              id: 'note-1',
-              title: 'My Note',
-              score: 1,
-              highlights: [],
-              metadata: { type: 'note' as const, emoji: null, path: '/notes/my-note' }
-            }
-          ]
-        }
-      ],
+      groups: [group] as any,
       totalCount: 1,
       queryTimeMs: 5
     })
 
-    // Manually trigger handleSelect via the mocked SearchResultGroup's button
-    // We need to render with a query so results show — but since query is internal state,
-    // we drive it via the Command.Input directly via fireEvent.change
     const input = document.querySelector('[cmdk-input]') as HTMLInputElement
     if (input) {
       await act(async () => {
-        fireEvent.change(input, { target: { value: 'my note' } })
+        fireEvent.change(input, { target: { value: query } })
       })
     }
 
-    // Wait for debounce (150ms) + async state
     await act(async () => {
       await new Promise((r) => setTimeout(r, 200))
     })
 
-    const noteBtn = getByText('My Note')
     await act(async () => {
-      fireEvent.click(noteBtn)
+      fireEvent.click(getByText(buttonLabel))
     })
+  }
+
+  it('tracks search_result_opened with objectType=note when a note result is opened', async () => {
+    await openResultAndClick(
+      {
+        type: 'note',
+        items: [
+          {
+            id: 'note-1',
+            title: 'My Note',
+            metadata: { type: 'note', emoji: null, path: '/notes/my-note' }
+          }
+        ]
+      },
+      'my note',
+      'My Note'
+    )
 
     expect(trackMock).toHaveBeenCalledWith('search_result_opened', {
       surface: 'search',
@@ -174,43 +175,20 @@ describe('CommandPalette telemetry', () => {
   })
 
   it('tracks search_result_opened with objectType=journal when a journal result is opened', async () => {
-    const { getByText } = render(<CommandPalette open={true} onOpenChange={vi.fn()} />)
-
-    const { searchService } = await import('@/services/search-service')
-    vi.mocked(searchService.query).mockResolvedValue({
-      groups: [
-        {
-          type: 'journal' as const,
-          items: [
-            {
-              id: 'journal-1',
-              title: 'Journal Entry',
-              score: 1,
-              highlights: [],
-              metadata: { type: 'journal' as const, date: '2026-06-10' }
-            }
-          ]
-        }
-      ],
-      totalCount: 1,
-      queryTimeMs: 5
-    })
-
-    const input = document.querySelector('[cmdk-input]') as HTMLInputElement
-    if (input) {
-      await act(async () => {
-        fireEvent.change(input, { target: { value: 'journal' } })
-      })
-    }
-
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 200))
-    })
-
-    const btn = getByText('Journal Entry')
-    await act(async () => {
-      fireEvent.click(btn)
-    })
+    await openResultAndClick(
+      {
+        type: 'journal',
+        items: [
+          {
+            id: 'journal-1',
+            title: 'Journal Entry',
+            metadata: { type: 'journal', date: '2026-06-10' }
+          }
+        ]
+      },
+      'journal',
+      'Journal Entry'
+    )
 
     expect(trackMock).toHaveBeenCalledWith('search_result_opened', {
       surface: 'search',
@@ -220,48 +198,54 @@ describe('CommandPalette telemetry', () => {
   })
 
   it('tracks search_result_opened with objectType=task when a task result is opened', async () => {
-    const { getByText } = render(<CommandPalette open={true} onOpenChange={vi.fn()} />)
-
-    const { searchService } = await import('@/services/search-service')
-    vi.mocked(searchService.query).mockResolvedValue({
-      groups: [
-        {
-          type: 'task' as const,
-          items: [
-            {
-              id: 'task-1',
-              title: 'Fix the bug',
-              score: 1,
-              highlights: [],
-              metadata: { type: 'task' as const, projectId: 'proj-1', status: 'todo' as const }
-            }
-          ]
-        }
-      ],
-      totalCount: 1,
-      queryTimeMs: 5
-    })
-
-    const input = document.querySelector('[cmdk-input]') as HTMLInputElement
-    if (input) {
-      await act(async () => {
-        fireEvent.change(input, { target: { value: 'fix' } })
-      })
-    }
-
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 200))
-    })
-
-    const btn = getByText('Fix the bug')
-    await act(async () => {
-      fireEvent.click(btn)
-    })
+    await openResultAndClick(
+      {
+        type: 'task',
+        items: [
+          {
+            id: 'task-1',
+            title: 'Fix the bug',
+            metadata: { type: 'task', projectId: 'proj-1', status: 'todo' }
+          }
+        ]
+      },
+      'fix',
+      'Fix the bug'
+    )
 
     expect(trackMock).toHaveBeenCalledWith('search_result_opened', {
       surface: 'search',
       action: 'opened',
       objectType: 'task'
+    })
+  })
+
+  it('tracks search_result_opened with objectType=inbox when an inbox result is opened', async () => {
+    await openResultAndClick(
+      {
+        type: 'inbox',
+        items: [
+          {
+            id: 'inbox-1',
+            title: 'Saved Link',
+            metadata: {
+              type: 'inbox',
+              itemType: 'link',
+              sourceUrl: 'https://example.com',
+              sourceTitle: null,
+              filedAt: null
+            }
+          }
+        ]
+      },
+      'saved',
+      'Saved Link'
+    )
+
+    expect(trackMock).toHaveBeenCalledWith('search_result_opened', {
+      surface: 'search',
+      action: 'opened',
+      objectType: 'inbox'
     })
   })
 })
