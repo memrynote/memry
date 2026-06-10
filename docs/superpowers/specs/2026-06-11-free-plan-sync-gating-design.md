@@ -1,332 +1,149 @@
-# Free-Plan Sync Gating + Upgrade Return — Design Spec
+# Free-Plan Sync Gating — Design Spec
 
 **Date:** 2026-06-11
-**Status:** Approved (brainstorming complete; awaiting implementation plan)
+**Status:** Approved (scope corrected after code audit; awaiting implementation)
 **Owner:** Kaan Karaca
 **Parent spec:** [`2026-05-09-paid-sync-design.md`](./2026-05-09-paid-sync-design.md)
 
+> **Revision note:** An earlier draft of this spec assumed the desktop billing
+> layer did not exist and proposed new loopback servers + `upgrade-session` /
+> `hosted-checkout` endpoints + a dedicated web page. A code audit proved that
+> wrong: the desktop billing IPC, checkout flow, `memry://` deep-link return, and
+> reconcile loop **already exist**. This revision narrows the spec to the **only
+> real gap: the sync entitlement gate** (the crash). The plan-selection page is a
+> separate, deferred follow-up.
+
 ## Summary
 
-Sign-in/sign-up currently throws an error for any new (free) user because the
-desktop client starts the sync runtime with **no plan awareness** — it slams a
-paid-only sync route and surfaces the server's `402 SYNC_PAYMENT_REQUIRED` as a
-sync failure. This spec adds the **desktop client half** of paid sync: detect
-the plan, gate sync on it (free → no sync, no error, fully-local app unchanged),
-and provide an upgrade path that returns the app to a synced state after the
-user picks a plan and pays on the web.
+A free user who signs in hits a sync error because the desktop **never checks
+entitlement before starting sync**: `startSyncRuntime()` only guards on
+refresh-token + recovery-phrase, then `SyncEngine` calls a paid-only route and the
+server's `402 SYNC_PAYMENT_REQUIRED` surfaces as a sync failure. The fix is a
+**cache-first entitlement gate** so an unpaid account (free or lapsed) does **no
+sync-server interaction at all** — it behaves exactly like a signed-out local user.
 
-This is the MVP slice of the parent paid-sync design. The parent's **server half
-is already built** (`/auth/billing`, `/auth/billing/reconcile`, `paddle-billing.ts`,
-`entitlements.ts`, `paidSyncMiddleware`); its **desktop half was never
-implemented**. This spec fills that gap with the smallest behavior that ships a
-correct free→paid experience.
+## What already exists (verified in code — do NOT rebuild)
 
-## Problem (the exact bug)
+| Capability                                                                          | Location                                                                                                           |
+| ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Billing status fetch (`/auth/billing`)                                              | `apps/desktop/src/main/billing/paddle-billing.ts` `getBillingStatus()`                                             |
+| Reconcile w/ retry → sync (`/auth/billing/reconcile`)                               | same file, `reconcileBillingAndSync()` (5×/2s; on `active` → `getSyncEngine()?.fullSync()`)                        |
+| Checkout (`/auth/checkout-token` → web `pricing#checkout_token`)                    | same file, `startBillingCheckout()`                                                                                |
+| Billing portal                                                                      | same file, `openBillingPortal()`                                                                                   |
+| `memry://billing/complete?transactionId=…` deep link → reconcile                    | `apps/desktop/src/main/index.ts:514` `handleDeepLink()`                                                            |
+| `memry://billing/start?plan=&cadence=` deep link → checkout                         | same handler                                                                                                       |
+| Account IPC (get/refresh/checkout/portal)                                           | `apps/desktop/src/main/ipc/account-handlers.ts`, `AccountChannels` in `packages/contracts/src/ipc-channels.ts:452` |
+| Preload `accountApi`                                                                | `apps/desktop/src/preload/api/sync-identity.ts`                                                                    |
+| Renderer billing UI (plan/status, Upgrade, Refresh)                                 | `apps/desktop/src/renderer/src/pages/settings/account-section.tsx`                                                 |
+| Server routes (`/auth/billing`, `/reconcile`, `/checkout-token`, `/portal-session`) | `apps/sync-server/src/routes/auth.ts`                                                                              |
 
-`startSyncRuntime()` (`apps/desktop/src/main/sync/runtime.ts:178`) short-circuits
-on a missing refresh token and an unconfirmed recovery phrase, but **never checks
-entitlement**. All three sync-start call sites funnel through it:
+## The gap (this spec)
 
-- `apps/desktop/src/main/ipc/auth-oauth-handlers.ts:277` (after OAuth success)
-- `apps/desktop/src/main/sync/device-registration.ts:206` (after device registration)
-- `apps/desktop/src/main/vault/index.ts:325` (on vault open)
+1. **No entitlement gate.** `startSyncRuntime()`
+   (`apps/desktop/src/main/sync/runtime.ts:178`) has no plan check → free sync
+   starts → `402` → `sync_error`. **This is the crash.**
+2. **Reconcile can't restart a stopped engine.** `reconcileBillingAndSync()` (and
+   the manual-refresh path via `SYNC_CHANNELS.TRIGGER_SYNC` →
+   `sync-core-handlers.ts:150`) only `fullSync()` an **already-running** engine.
+   Once the gate stops a free engine, a free→paid activation must **start** the
+   runtime, not just full-sync it.
+3. **No `local_only` status.** The sync pill should read "Local only" for unpaid,
+   instead of `idle`.
 
-So a free user who signs in → `startSyncRuntime()` → `SyncEngine.start()` →
-first sync request hits `paidSyncMiddleware` → `assertPaidSyncAccess` throws
-`402` → renderer shows it as `sync_error`. There is **zero** billing/entitlement
-code on the client today (no contracts, no IPC, no UI).
+## Decisions (carried from brainstorming, corrected to reality)
 
-## Goals
+| #   | Decision                                                                                                                                |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Gate at one chokepoint: `startSyncRuntime()`. All 3 start sites funnel through it.                                                      |
+| 2   | Unpaid (free **or** lapsed) = identical to free: no pull, no push, **no sync-server calls**.                                            |
+| 3   | **Cache-first:** a known-unpaid account makes zero `/auth/billing` calls on launch; only known-paid (or unknown/first-run) re-verifies. |
+| 4   | Reuse the existing `memry://` + checkout + reconcile flow. No new endpoints, no loopback.                                               |
+| 5   | Sign-in stays optional; onboarding unchanged (vault-based).                                                                             |
+| 6   | Dedicated plan-selection page (replacing the hardcoded `plan:'pro'` in `handleStartCheckout`) is a **separate, deferred** spec.         |
 
-- A free user can sign in (or stay signed out) and use the **fully-local app
-  with no error** and no behavior change.
-- Sync never starts unless the account is paid (`active` or `grace`). An unpaid
-  account (free **or** lapsed) makes **no sync-server interaction at all** —
-  treated exactly like a signed-out local user.
-- An in-app upgrade path: open a **dedicated web plan-selection page** → pick
-  plan + cadence → pay on Paddle's hosted checkout → app returns to a synced
-  state automatically, with a manual fallback.
-- Reuse existing infra: the OAuth loopback pattern, `/auth/billing*` routes,
-  `paddle-checkout-config.ts`, the approved pricing matrix.
+## Design
 
-## Non-Goals
+### 1. Entitlement cache (new module)
 
-- Re-specifying the server (webhooks, lapse cron, vault/storage/file limits,
-  state machine) — all covered by the parent spec.
-- Lapse-state UI nuance (separate `grace` vs `read_only` vs `purged` banners).
-  This MVP treats entitlement as **binary**: paid (`active`/`grace`) → sync on;
-  everything else → free behavior. Richer banners are a follow-up.
-- Independent storage selection / new storage Paddle prices — storage stays
-  **coupled to plan** per the approved matrix (Decision #9). The plan page shows
-  storage as a read-only detail.
-- In-app (Electron-embedded) plan selection or Paddle.js overlay — plan is
-  picked on the web page; payment runs on Paddle's **hosted** checkout.
-- Onboarding changes — first launch is already vault-based, not auth-gated
-  (`App.tsx` → `!isVaultOpen` → `VaultOnboarding`); sign-in is already optional.
+`apps/desktop/src/main/billing/entitlement-cache.ts`
 
-## Decisions Log (from brainstorming, 2026-06-11)
+- Persist last-known `{ isPaid, plan, status }` in the `store` `sync` slice
+  (new `entitlement` field on `SyncStoreData`).
+- `isPaidBillingStatus(s)` = `s.plan !== 'free' && s.status === 'active'`
+  (mirrors server `isPaidSyncEntitlementActive`; lapsed statuses are not `active`).
+- `getCachedEntitlement()` → cached object or `null`.
+- `setCachedEntitlementFromStatus(BillingStatus)` → writes cache.
+- `resolveEntitlementForSyncStart()`:
+  - cache `null` (unknown / first run) → `getBillingStatus()`, cache, return.
+  - cache `isPaid === true` → re-verify via `getBillingStatus()`, cache, return.
+  - cache `isPaid === false` → **return cache, no server call.**
 
-| #   | Decision                                                              | Rationale                                                                                                                                                                                 |
-| --- | --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Gate sync at **one chokepoint** in `startSyncRuntime()`               | All 3 start sites funnel through it; one `isPaid` precheck covers them. No doomed network round-trip, no 402 toast.                                                                       |
-| 2   | Sign-in stays **optional**; free = full local app                     | Already the status quo (vault-based onboarding). No nags, no blocking screens.                                                                                                            |
-| 3   | Unpaid = identical to free (incl. churn/expiry)                       | Any non-paid entitlement (`canceled`/`purged`/`read_only`/none) → treated exactly as free: **no pull, no push, no sync-server calls**. Pill shows "Renew". No special-casing in this MVP. |
-| 4   | Upgrade entry point lives **only** in Settings › Sync (+ return path) | No banner elsewhere.                                                                                                                                                                      |
-| 5   | Plan is picked on a **dedicated web page**, not in-app                | Desktop carries identity to the web page; page hosts plan/cadence selection + order summary.                                                                                              |
-| 6   | Return-to-app via **loopback redirect**, reusing the OAuth pattern    | OAuth already uses a loopback HTTP server (`http://127.0.0.1:<port>`), not `memry://`. Zero new OS infra. `memry://` is a future upgrade.                                                 |
-| 7   | Absorb webhook lag with **reconcile + retry** on return               | `POST /auth/billing/reconcile` (accepts `transactionId`) forces Paddle→D1 sync; return doesn't depend on the webhook landing first.                                                       |
-| 8   | Payment via **Paddle Hosted Checkout** (full redirect)                | `Proceed to payment` redirects to Paddle's hosted page; its success URL bounces to the loopback. No Paddle.js embedding.                                                                  |
-| 9   | Storage stays **coupled to plan** (read-only on the page)             | Matches the approved matrix + live `SYNC_PLAN_LIMITS`; no new Paddle prices, no server entitlement changes.                                                                               |
+### 2. The gate (`startSyncRuntime`)
 
-## Architecture
+After the existing refresh-token + recovery-phrase guards:
 
-```
-┌──────────────────────────────┐         ┌────────────────────────────────┐
-│ Desktop (Electron)           │         │ Web (landing)                  │
-│  main:                       │         │  /upgrade plan-selection page  │
-│   - entitlement cache        │         │   - verify upgradeToken        │
-│   - startSyncRuntime() gate  │         │   - pick plan + cadence        │
-│   - upgrade loopback server  │         │   - live order summary         │
-│   (reuses OAuth loopback)    │         │   - Proceed → hosted checkout  │
-│  renderer:                   │         └───────────────┬────────────────┘
-│   - Settings › Sync (free)   │                         │ redirect
-│   - [Upgrade] / [Refresh]    │                         ▼
-│   - "Local only" status pill │         ┌────────────────────────────────┐
-└──────────────┬───────────────┘         │ Paddle Billing (hosted checkout)│
-               │ token-auth              │  pay → success_url = loopback   │
-               ▼                         │  webhook → D1 entitlement        │
-┌──────────────────────────────────────┐└───────────────┬────────────────┘
-│ Sync Server (existing + 2 new)       │                 │ success redirect
-│  GET  /auth/billing  (status)        │◀────────────────┘  to 127.0.0.1:PORT
-│  POST /auth/billing/reconcile        │   webhook (existing pipeline)
-│  POST /auth/billing/upgrade-session  │   NEW: mint upgradeToken
-│  POST /auth/billing/hosted-checkout  │   NEW: create Paddle txn, return URL
-│  POST /paddle/webhook (existing)     │
-└──────────────────────────────────────┘
-```
-
-## Component Design
-
-### A. Server (mostly reuse; two new endpoints)
-
-**Reused as-is:**
-
-- `GET /auth/billing` → `getBillingStatus(db, userId)` → entitlement status.
-- `POST /auth/billing/reconcile { transactionId? }` → forces Paddle→D1 sync,
-  returns fresh status. The post-payment failsafe.
-- Paddle webhook pipeline; `paddle-checkout-config.ts` (`priceId` + `customData`
-  resolution from the approved matrix).
-
-**New 1 — `POST /auth/billing/upgrade-session` (authed):** returns a short-lived
-signed **`upgradeToken`** carrying `{ userId, exp }` (HMAC via the existing
-`PADDLE_CHECKOUT_TOKEN_SECRET` family). Lets the desktop hand identity to the web
-`/upgrade` page **without** putting the raw access token in a browser URL and
-**without** pre-committing a plan (plan is picked on the page).
-
-**New 2 — `POST /auth/billing/hosted-checkout` (token-verified):**
-input `{ upgradeToken, plan, cadence, returnUrl }`. Verifies `upgradeToken` →
-`userId`; resolves `priceId` via `getPaddleCheckoutConfig({ plan, cadence })`;
-creates a Paddle transaction with `customData = { userId, plan, cadence }` and
-checkout `success_url = returnUrl` (the desktop loopback); returns
-`{ checkoutUrl }`. Believer forces `cadence = 'lifetime'` (one-time SKU), matching
-`parsePaddleCheckoutIntent`.
-
-> Why a dedicated mint + create split: the existing checkout-token mint expects
-> `plan`+`cadence` up front (Paddle.js flow); the page doesn't know them until the
-> user picks. `upgradeToken` is identity-only; `hosted-checkout` commits the plan.
-
-### B. Web — `/upgrade` plan-selection page (landing)
-
-A dedicated page modeled on the reference screenshot (two columns: selectors
-left, live order summary right).
-
-- **Entry:** `memrynote.com/upgrade?session=<upgradeToken>&redirect=<loopback>`.
-  Verify `upgradeToken` server-side on load (reject expired/tampered → "open this
-  from the Memry app" message).
-- **Plan** (radio): **Plus**, **Pro**, **Believer**. Each row shows its bundled,
-  **read-only** details from the matrix — vault count · version history · storage
-  (Plus 1 GiB / Pro 10 GiB / Believer 50 GiB). No storage selector (Decision #9).
-- **Renewal frequency** (radio): **Yearly** (SAVE 20%) / **Monthly**.
-  **Disabled when Believer** is selected (lifetime → one-time price).
-- **Order summary** (right): live line item + total, recomputed on each change.
-- **Proceed to payment:** `POST /auth/billing/hosted-checkout` with the chosen
-  `{ plan, cadence }`, the carried `upgradeToken`, and `returnUrl = redirect`
-  → receive `checkoutUrl` → `window.location = checkoutUrl` (Paddle hosted).
-- **After payment:** Paddle redirects the browser to `returnUrl`
-  (`http://127.0.0.1:PORT/upgraded?…`); Paddle appends its transaction id.
-
-> Loopback-as-success-URL fallback: if Paddle rejects a raw `127.0.0.1` success
-> URL, set `success_url` to a thin landing `/upgrade/success` page that
-> JS-redirects to the loopback (carrying the transaction id). Verify at impl time.
-
-### C. Desktop — main process
-
-**Entitlement cache + gate (the bug fix).** A small main-process module owns the
-last-known entitlement (`{ isPaid, plan, status }`), **persisted locally**.
-`isPaid` is derived from `status ∈ { active, grace }` (server's existing helper).
-
-**Cache-first — unpaid makes zero sync-server calls.** The cache is refreshed by
-calling `GET /auth/billing` **only** on: sign-in, an upgrade return, and a manual
-`[Refresh plan]`. On app **start**:
-
-- cached `isPaid = false` (or no cache, signed out) → **no server call**; sync
-  stays off. This is what guarantees "no server interaction" for free/lapsed users.
-- cached `isPaid = true` → re-verify via `GET /auth/billing` (a paying user
-  already talks to the server); if still paid, start sync; if it now reports
-  unpaid, drop to `local_only`.
-
-`startSyncRuntime()` gains an `isPaid` precheck **after** the existing
-refresh-token and recovery-phrase guards:
-
-```
-if (!hasRefreshToken) return null                   // existing
-if (recoveryPhraseConfirmed === false) return null  // existing
-if (!entitlement.isPaid) {                           // NEW
-  log.info('Sync runtime skipped: free plan')
-  emitToRenderer(sync status = 'local_only')
+```ts
+const entitlement = await resolveEntitlementForSyncStart()
+if (!entitlement.isPaid) {
+  log.info('Sync runtime skipped: not on a paid plan')
+  emitSyncStatus('local_only')
   return null
 }
 ```
 
-Free → runtime never starts → **no 402, no error**. One chokepoint covers OAuth
-success, device registration, and vault open.
+Free → engine never starts → **no 402, no error**.
 
-**Upgrade loopback handler.** Reuse the OAuth loopback module
-(`auth-oauth-handlers.ts` already runs `http.createServer` with a state-keyed
-session map + timeout). Add an upgrade variant:
+### 3. Activation starts the runtime (not just fullSync)
 
-1. Desktop mints `upgradeToken` (`POST /auth/billing/upgrade-session`).
-2. Arm a loopback server; `redirect = http://127.0.0.1:<port>/upgraded`.
-3. `shell.openExternal('https://memrynote.com/upgrade?session=<token>&redirect=<redirect>')`.
-4. On payment, the browser hits `…/upgraded?transactionId=<id>` (via Paddle's
-   success URL).
-5. Loopback catches it → `POST /auth/billing/reconcile { transactionId }` →
-   refresh entitlement cache → if now paid, `startSyncRuntime()` → success HTML.
-6. Webhook-lag guard: `reconcile` does the Paddle fetch directly; if still not
-   paid (rare), bounded retry, then fall back to the manual refresh affordance.
+- `reconcileBillingAndSync()`: on `status === 'active'`, call
+  `setCachedEntitlementFromStatus(status)` then `startSyncRuntime()` (idempotent —
+  returns the running engine if present, starts it if not), then `fullSync()`.
+- `getBillingStatus()` / `refreshBillingStatus()`: whenever they return a
+  `BillingStatus`, update the cache (so the renderer manual-refresh path leaves a
+  paid cache behind before triggering sync).
+- `SYNC_CHANNELS.TRIGGER_SYNC` handler (`sync-core-handlers.ts:150`): if no engine,
+  `await startSyncRuntime()` before `fullSync()`, so the manual `[Refresh]` →
+  active path starts a stopped engine.
 
-**Lifetime/teardown.** Loopback session reuses the OAuth timeout window
-(~10 min). If the app is closed mid-checkout, the return 404s and the user uses
-**Settings › Sync → [Refresh plan]** (manual reconcile).
+### 4. `local_only` status
 
-### D. Desktop — renderer
-
-- **Settings › Sync, signed-in + free:** `Signed in as <email> · Free plan`,
-  primary `[Upgrade to sync]` (opens the loopback upgrade flow), secondary
-  `[Refresh plan]` (manual reconcile).
-- **Settings › Sync, signed-out:** existing `[Sign in to enable sync]`.
-- **Sync status pill:** new `local_only` value → "Local only" (free) /
-  "Sync paused · Renew" (churned). No nags elsewhere.
-- No paywall modal, no blocking screen.
-
-### E. Contracts / IPC
-
-New `packages/contracts/src/ipc-billing.ts` (run `pnpm ipc:generate` +
-`pnpm ipc:check` after):
-
-```ts
-export interface BillingApi {
-  'billing:getStatus': () => Promise<{
-    isPaid: boolean
-    plan: string | null
-    status: string | null
-  }>
-  'billing:openUpgrade': () => Promise<void> // mint token, open web page, arm loopback
-  'billing:refresh': () => Promise<{ isPaid: boolean }> // manual reconcile fallback
-}
-```
-
-## End-to-End Flow
-
-```
-Free user signs in
-  → token stored, GET /auth/billing → isPaid=false
-  → startSyncRuntime() returns null (gate)   ✓ no error, app fully local
-  → Settings › Sync shows Free + [Upgrade to sync]
-
-Clicks [Upgrade]
-  → main: POST /auth/billing/upgrade-session → upgradeToken
-  → main: arm loopback :PORT, openExternal(memrynote.com/upgrade?session=…&redirect=127.0.0.1:PORT/upgraded)
-  → web: verify token → pick plan (Plus/Pro/Believer) + cadence → live summary
-  → web: Proceed → POST /auth/billing/hosted-checkout {upgradeToken, plan, cadence, returnUrl}
-         → { checkoutUrl } → redirect to Paddle hosted checkout
-  → user pays → Paddle webhook → D1 entitlement = active (async)
-  → Paddle success_url → browser → 127.0.0.1:PORT/upgraded?transactionId=…
-  → main loopback: POST /auth/billing/reconcile { transactionId } → isPaid=true
-  → main: refresh cache → startSyncRuntime() → sync starts (as today)
-  → renderer: pill flips off "Local only"; toast "Sync enabled"
-
-App closed mid-checkout (loopback gone)
-  → user reopens → Settings › Sync → [Refresh plan] → reconcile → isPaid=true → sync starts
-```
+- Add `'local_only'` to `SyncStatusValue` in
+  `packages/contracts/src/ipc-sync-ops.ts`.
+- Gate emits a `STATUS_CHANGED` event with `status: 'local_only'` (mirror the
+  existing `emitQuotaExceeded()` pattern in `runtime.ts:82`).
+- `SYNC_CHANNELS.GET_STATUS` (`sync-core-handlers.ts:144`): when no engine **and**
+  cached entitlement is unpaid, return `{ status: 'local_only', pendingCount: 0 }`
+  (so a fresh launch shows it).
 
 ## Edge Cases
 
-| Case                                 | Handling                                                                                                                    |
-| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
-| Webhook lags the loopback return     | `reconcile` fetches Paddle state directly; bounded retry; then manual fallback.                                             |
-| App closed before return             | Loopback 404; `[Refresh plan]` in Settings reconciles on next launch.                                                       |
-| User abandons Paddle hosted checkout | No success redirect; nothing changes; still free.                                                                           |
-| Believer selected                    | Frequency toggle disabled; `cadence='lifetime'`, one-time SKU; reconcile same path.                                         |
-| Paid user's plan lapses (churn)      | Next `getStatus`/start sees non-paid → sync stops, pill "Sync paused · Renew".                                              |
-| Multiple devices, one upgrades       | Cache-first: a free device won't poll on launch. It sees paid on next sign-in or manual `[Refresh plan]`, then starts sync. |
-| `upgradeToken` expired/tampered      | `/upgrade` page rejects on load; user retries from Settings.                                                                |
-| Paddle rejects loopback success URL  | `success_url` → thin `/upgrade/success` page that JS-redirects to loopback.                                                 |
-| Signed-out free user                 | App fully local; no entitlement fetch; `[Sign in to enable sync]`.                                                          |
-| Local-admin dev override             | `ensureLocalAdminPaidSyncAccessForUser` grants paid in `development`; gate honors it.                                       |
+| Case                                                         | Handling                                                                                                                      |
+| ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| First sign-in (no cache yet)                                 | `resolveEntitlementForSyncStart()` fetches once (sign-in is itself a server interaction), caches; thereafter free = no calls. |
+| Lapsed paid user                                             | `status` no longer `active` → `isPaid=false` → gate stops sync, pill "Local only / Renew".                                    |
+| Paid on another device                                       | Cache-first: free device sees it on next sign-in or manual `[Refresh]` (then starts sync).                                    |
+| Upgrade via `memry://billing/complete`                       | reconcile updates cache + `startSyncRuntime()` → sync starts.                                                                 |
+| Dev local-admin override                                     | `getBillingStatus()` reflects the dev override (`ensureLocalAdminPaidSyncAccessForUser`); gate honors it.                     |
+| `getBillingStatus()` returns an error (offline at first run) | Treat as unpaid for this launch (no sync); retried on next trigger/sign-in.                                                   |
 
-## Telemetry
+## Testing
 
-Reuse the existing PostHog taxonomy (account-linked identity, env property).
-New funnel events:
+- **`runtime.test.ts`** (mirror existing mocks): gate returns `null` + does not
+  call `getDatabase()` when cached entitlement is unpaid and makes **no**
+  `getBillingStatus` call; starts (calls `getDatabase`) when cached paid (after
+  re-verify); first-run (no cache) fetches once.
+- **`entitlement-cache.test.ts`**: `isPaidBillingStatus` truth table (free/active,
+  plus/active, plus/canceled, plus/active+expired-status); cache read/write.
+- **`paddle-billing` test**: `reconcileBillingAndSync` on `active` updates cache +
+  calls `startSyncRuntime`.
+- **`sync-core-handlers` test**: `TRIGGER_SYNC` with no engine calls
+  `startSyncRuntime`; `GET_STATUS` returns `local_only` when no engine + cached free.
+- **Manual QA**: free sign-in → no error, app fully local, pill "Local only";
+  upgrade (existing flow) → return → sync starts; paid relaunch → re-verify → sync.
 
-- `sync_gated_free` (sync skipped because free)
-- `upgrade_clicked`
-- `upgrade_page_opened`
-- `upgrade_checkout_started` (hosted-checkout redirect)
-- `entitlement_activated` (reconcile flips to paid)
-- `upgrade_return_fallback_used` (manual refresh path)
+## Deferred (separate spec)
 
-## Testing Strategy
-
-- **Unit (main):** `startSyncRuntime()` gate — paid starts, free/churned skips
-  (TDD: write the skip test first, watch it fail against current code).
-- **Unit (main):** upgrade loopback — URL built with `session`+`redirect`;
-  `/upgraded` → reconcile called with `transactionId`; paid → `startSyncRuntime`.
-- **Unit (server):** `upgrade-session` mints a verifiable, expiring token;
-  `hosted-checkout` verifies token, resolves priceId, sets success_url, returns URL;
-  Believer → lifetime.
-- **Renderer:** Settings › Sync free vs paid vs churned; pill `local_only`.
-- **Web:** `/upgrade` page — token gate, plan/cadence selection, live summary,
-  Believer disables frequency, Proceed posts correct payload.
-- **Integration (server):** reconcile flips D1 entitlement from a sandbox txn.
-- **E2E (Playwright):** sign in as free → no error, app usable, Settings shows
-  Upgrade; mocked reconcile flips to paid → sync starts.
-- **Manual QA:** full Paddle sandbox: free sign-in → upgrade page → hosted
-  checkout → loopback return → sync on; app-closed → manual refresh; Believer
-  lifetime; two-device activation.
-
-## Phased Implementation
-
-| Phase                  | Scope                                                                                                                                                   |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1. Gate (ship the fix) | Entitlement cache + `getStatus` IPC; `startSyncRuntime()` precheck; `local_only` sync status. **Free sign-in stops erroring.** Independently shippable. |
-| 2. Settings UI         | Settings › Sync free/paid/churned states; `[Upgrade]` + `[Refresh plan]`.                                                                               |
-| 3. Upgrade round-trip  | `upgrade-session` + `hosted-checkout` endpoints; web `/upgrade` plan-selection page; main loopback upgrade handler; reconcile + restart.                |
-| 4. Polish              | Telemetry funnel; toasts; bounded retry + fallback copy; docs (`apps/docs`).                                                                            |
-
-## Open Items (resolve at implementation time)
-
-- Confirm `getBillingStatus` response shape → map to `{ isPaid, plan, status }`
-  (derive `isPaid` from `status ∈ {active, grace}`).
-- Verify whether landing already has a `/upgrade` or `/pricing` page to extend vs
-  build new (`paddle-checkout-config.ts` exists; page status TBD).
-- Confirm Paddle Hosted Checkout accepts a `127.0.0.1` `success_url` and appends a
-  transaction id; if not, use the `/upgrade/success` bounce-page fallback.
-- Decide `upgradeToken` TTL (propose 10 min, matching the OAuth session window).
-- Believer one-time SKU wiring in `hosted-checkout` (lifetime cadence).
-- Telemetry event names vs. existing taxonomy (reuse, don't fork).
-
-```
-
-```
+- **Dedicated plan-selection page.** Today `handleStartCheckout`
+  (`account-section.tsx:190`) hardcodes `plan:'pro', cadence:'annual'`. A real
+  Plus/Pro/Believer + cadence selector (in-app dialog or a web page reachable from
+  the existing checkout flow) is its own design + plan. Out of scope here.
