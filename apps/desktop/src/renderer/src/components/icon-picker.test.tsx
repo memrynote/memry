@@ -84,3 +84,32 @@ describe('IconPicker', () => {
     expect(onClose).toHaveBeenCalledOnce()
   })
 })
+
+describe('IconPicker inside a modal layer', () => {
+  it('re-enables pointer events on its overlay root', () => {
+    render(<IconPicker isOpen onClose={vi.fn()} onSelect={vi.fn()} position={{ x: 10, y: 10 }} />)
+
+    // A modal Radix Dialog sets body { pointer-events: none }; the picker must opt
+    // back in or its controls are dead and every click reads as "outside".
+    expect(screen.getByRole('dialog').className).toContain('pointer-events-auto')
+  })
+
+  it('stops pointer-down and focus from reaching the host (keeps the parent dialog open)', () => {
+    const hostPointerDown = vi.fn()
+    const hostFocus = vi.fn()
+
+    render(
+      // eslint-disable-next-line jsx-a11y/no-static-element-interactions
+      <div onPointerDown={hostPointerDown} onFocus={hostFocus}>
+        <IconPicker isOpen onClose={vi.fn()} onSelect={vi.fn()} position={{ x: 10, y: 10 }} />
+      </div>
+    )
+
+    const search = screen.getByPlaceholderText('phaseF.componentsIconPicker.searchIcons')
+    fireEvent.pointerDown(search)
+    fireEvent.focus(search)
+
+    expect(hostPointerDown).not.toHaveBeenCalled()
+    expect(hostFocus).not.toHaveBeenCalled()
+  })
+})

@@ -249,7 +249,15 @@ const ProjectModalDialog = ({
 
   return (
     <>
-      <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
+      {/* Drop modal behavior only while the icon picker is open. The picker is a
+          floating layer rendered outside DialogContent; a modal dialog's focus trap
+          would yank focus back from its search box and its pointer-events lock would
+          disable it. Staying modal otherwise keeps the normal open/dismiss flow intact. */}
+      <Dialog
+        modal={!isIconPickerOpen}
+        open={isOpen}
+        onOpenChange={(open) => !open && handleClose()}
+      >
         <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{isEditMode ? 'Edit Project' : 'Create Project'}</DialogTitle>
