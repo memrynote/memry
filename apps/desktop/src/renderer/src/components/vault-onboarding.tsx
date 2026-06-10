@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { HelpCircle, Loader2, MoreHorizontal, Plus } from '@/lib/icons'
 import { useVault, useVaultList } from '@/hooks/use-vault'
 import { useT } from '@memry/i18n/renderer'
@@ -15,6 +15,7 @@ import {
   SelectValue
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
+import { trackTelemetry } from '@/lib/telemetry'
 
 type Translate = (key: string) => string
 
@@ -43,12 +44,30 @@ export function VaultOnboarding(): React.JSX.Element {
   const showSidebar = recentVaults.length > 0
   const activeLocale = getSupportedLocale(i18n.resolvedLanguage ?? i18n.language)
 
+  useEffect(() => {
+    void trackTelemetry('onboarding_started', { surface: 'onboarding', action: 'started' })
+  }, [])
+
   const handlePick = async (): Promise<void> => {
-    await selectVault()
+    const result = await selectVault()
+    if (result.success) {
+      void trackTelemetry('onboarding_completed', {
+        surface: 'onboarding',
+        action: 'completed',
+        result: 'success'
+      })
+    }
   }
 
   const handleOpenRecent = async (path: string): Promise<void> => {
-    await switchVault(path)
+    const result = await switchVault(path)
+    if (result.success) {
+      void trackTelemetry('onboarding_completed', {
+        surface: 'onboarding',
+        action: 'completed',
+        result: 'success'
+      })
+    }
   }
 
   const handleHelp = (): void => {
