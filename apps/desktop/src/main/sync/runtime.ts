@@ -91,6 +91,16 @@ function emitQuotaExceeded(): void {
   }
 }
 
+function emitLocalOnly(): void {
+  const event: SyncStatusChangedEvent = {
+    status: 'local_only',
+    pendingCount: 0
+  }
+  for (const win of BrowserWindow.getAllWindows()) {
+    win.webContents.send(EVENT_CHANNELS.STATUS_CHANGED, event)
+  }
+}
+
 let runtime: SyncRuntimeState | null = null
 let startPromise: Promise<SyncEngine | null> | null = null
 let seedAbortController: AbortController | null = null
@@ -187,6 +197,14 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
 
   if (store.get('sync').recoveryPhraseConfirmed === false) {
     log.debug('Sync runtime skipped: recovery phrase confirmation pending')
+    return null
+  }
+
+  const { resolveEntitlementForSyncStart } = await import('../billing/paddle-billing')
+  const entitlement = await resolveEntitlementForSyncStart()
+  if (!entitlement.isPaid) {
+    log.info('Sync runtime skipped: not on a paid plan')
+    emitLocalOnly()
     return null
   }
 

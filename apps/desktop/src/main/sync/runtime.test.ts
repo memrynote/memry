@@ -146,7 +146,8 @@ const runtimeMocks = vi.hoisted(() => {
       destroy: vi.fn()
     },
     browserSend: vi.fn(),
-    sodiumToBase64: vi.fn(() => 'derived-public-key')
+    sodiumToBase64: vi.fn(() => 'derived-public-key'),
+    resolveEntitlementForSyncStart: vi.fn()
   }
 })
 
@@ -288,6 +289,11 @@ vi.mock('./dirty-recovery', () => ({
   recoverDirtyItems: runtimeMocks.recoverDirtyItems
 }))
 
+vi.mock('../billing/paddle-billing', () => ({
+  resolveEntitlementForSyncStart: (...args: unknown[]) =>
+    runtimeMocks.resolveEntitlementForSyncStart(...args)
+}))
+
 vi.mock('./crdt-encrypt', () => ({
   encryptCrdtUpdate: runtimeMocks.encryptCrdtUpdate
 }))
@@ -381,6 +387,11 @@ describe('sync runtime', () => {
     runtimeMocks.crdtProvider.pushAllSnapshots.mockResolvedValue(2)
     runtimeMocks.crdtProvider.destroy.mockResolvedValue(undefined)
     runtimeMocks.syncGoogleCalendarSource.mockResolvedValue(undefined)
+    runtimeMocks.resolveEntitlementForSyncStart.mockResolvedValue({
+      isPaid: true,
+      plan: 'plus',
+      status: 'active'
+    })
   })
 
   it('skips startup when no refresh token exists', async () => {
@@ -420,6 +431,20 @@ describe('sync runtime', () => {
 
   it('skips startup when recovery phrase confirmation is still pending', async () => {
     runtimeMocks.storeGet.mockReturnValue({ recoveryPhraseConfirmed: false })
+    const runtime = await loadRuntime()
+
+    await expect(runtime.startSyncRuntime()).resolves.toBeNull()
+
+    expect(runtimeMocks.getDatabase).not.toHaveBeenCalled()
+    expect(runtime.getSyncEngine()).toBeNull()
+  })
+
+  it('skips startup when the account is not on a paid plan', async () => {
+    runtimeMocks.resolveEntitlementForSyncStart.mockResolvedValue({
+      isPaid: false,
+      plan: 'free',
+      status: 'inactive'
+    })
     const runtime = await loadRuntime()
 
     await expect(runtime.startSyncRuntime()).resolves.toBeNull()
