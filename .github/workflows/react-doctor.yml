@@ -44,10 +44,16 @@ jobs:
       - uses: actions/checkout@v5
 
       - uses: millionco/react-doctor@v1
-        # Common configuration knobs — uncomment any to override the default.
+        with:
+          # On push to `main` React Doctor scans the whole repo as an advisory
+          # health-score trend, so it must not fail the run (several findings,
+          # e.g. dependency supply-chain scores, are not code-fixable and it
+          # does not gate releases). On pull_request it stays blocking, scoped
+          # to the diff, so new code is still held to the bar.
+          non-blocking: ${{ github.event_name == 'push' }}
+        # Other configuration knobs — uncomment any to override the default.
         # Full reference: https://www.react.doctor/ci
         # with:
-        #   non-blocking: true       # Report findings but always exit 0 (won't fail the PR check)
         #   fail-on: warning         # Gate level: "error" (default) | "warning" | "none"
         #   comment: false           # Disable the sticky PR summary comment
         #   annotations: false       # Disable inline GitHub Actions annotations on changed files
