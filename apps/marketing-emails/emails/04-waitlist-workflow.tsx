@@ -1,1 +1,1 @@
-export { WaitlistWorkflowEmail as default } from '../src/waitlist-program-email'
+export { WaitlistWorkflowVisualEmail as default } from '../src/waitlist-workflow-visual-email'

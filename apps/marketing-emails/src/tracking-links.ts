@@ -12,7 +12,8 @@ export const WAITLIST_CAMPAIGNS = {
   lastCall: 'waitlist_11',
   welcome: 'waitlist_welcome',
   migrationGuide: 'waitlist_migration',
-  syncConversion: 'waitlist_sync_conversion'
+  syncConversion: 'waitlist_sync_conversion',
+  tasksDeepDive: 'waitlist_tasks_deep_dive'
 } as const
 
 export type WaitlistCampaignId = (typeof WAITLIST_CAMPAIGNS)[keyof typeof WAITLIST_CAMPAIGNS]

@@ -36,7 +36,7 @@ then schedule the broadcast.
 | 1   | `01-waitlist-launch-plain`       | Wed May 20 | 11:00am / 6:00pm | Plain founder note                |
 | 2   | `02-waitlist-scattered-workflow` | Wed May 27 | 11:00am / 6:00pm | Problem framing                   |
 | 3   | `03-waitlist-product-preview`    | Wed Jun 3  | 11:00am / 6:00pm | Editor and product preview        |
-| 4   | `04-waitlist-workflow`           | Wed Jun 10 | 11:00am / 6:00pm | Tasks, journal, calendar workflow |
+| 4   | `04-waitlist-workflow`           | Wed Jun 10 | 11:00am / 6:00pm | Notes, tasks, calendar workflow   |
 | 5   | `05-waitlist-local-first-ai`     | Wed Jun 17 | 11:00am / 6:00pm | Privacy, offline, AI agent trust  |
 | 6   | `06-waitlist-launch-week`        | Wed Jun 24 | 11:00am / 6:00pm | Waitlist perk and launch-day plan |
 | 7   | `07-waitlist-launch-day`         | Tue Jun 30 | 10:30am / 5:30pm | Download link and waitlist code   |
@@ -69,9 +69,9 @@ Istanbul is UTC+3. US Eastern is EDT during this window, so Istanbul = ET + 7h.
 
 ### #4 Workflow
 
-- Subject: `How tasks, journal, and calendar connect in MemryNote`
-- Asset: none.
-- Goal: explain the daily operating loop in the same plain-text tone as #1.
+- Subject: `the daily loop, in pictures`
+- Asset: three real app screenshots (note with tasks, task page, calendar), each 1280x824 hosted PNG or JPG under 300KB. Captured at 2x, shown at 640px, each image links to its own full-res file.
+- Goal: show the daily operating loop as captioned screenshots instead of full text.
 
 ### #5 Local-first + AI
 
@@ -135,11 +135,12 @@ Keep the primary 11 emails as the canonical sequence. Add branches only when the
 
 Out-of-sequence templates available for manual sends. Not part of the canonical schedule.
 
-| template file            | trigger                                         | goal                                                      |
-| ------------------------ | ----------------------------------------------- | --------------------------------------------------------- |
-| `branch-welcome`         | Immediately on waitlist signup                  | Confirm signup, set cadence expectations, invite reply    |
-| `branch-migration-guide` | After #8 for downloaders, or to anyone who asks | Reduce import friction from Notion, Obsidian, Apple Notes |
-| `branch-sync-conversion` | Downloaded but did not buy Sync after 7-14 days | Explain end-to-end encryption, lift Sync conversion       |
+| template file            | trigger                                                            | goal                                                                                                                                                                                             |
+| ------------------------ | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `branch-welcome`         | Immediately on waitlist signup                                     | Confirm signup, set cadence expectations, invite reply                                                                                                                                           |
+| `branch-migration-guide` | After #8 for downloaders, or to anyone who asks                    | Reduce import friction from Notion, Obsidian, Apple Notes                                                                                                                                        |
+| `branch-sync-conversion` | Downloaded but did not buy Sync after 7-14 days                    | Explain end-to-end encryption, lift Sync conversion                                                                                                                                              |
+| `branch-tasks-deep-dive` | After #4 for engaged readers, or to anyone who asks how tasks work | Show the task system end to end: quick-add, note/journal checklists, inbox capture conversion, calendar due dates. Asset: four real app screenshots, 1280x824 hosted PNG or JPG under 300KB each |
 
 ## Public Companion Posts
 
