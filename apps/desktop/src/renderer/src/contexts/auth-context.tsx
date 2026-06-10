@@ -483,18 +483,28 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
 
   const initOAuth = useCallback(async (): Promise<{ state: string } | null> => {
     dispatch({ type: 'SET_AUTHENTICATING' })
-    try {
-      const result = await authService.initOAuth({ provider: 'google' })
-      return result
-    } catch (err) {
+    const failGoogleStart = (cause: unknown): null => {
       dispatch({
         type: 'SET_ERROR',
         error: extractErrorMessage(
-          err,
+          cause,
           getI18n().getFixedT(null, 'settings')('setup.signIn.errors.googleStart')
         )
       })
       return null
+    }
+    try {
+      const result = await authService.initOAuth({ provider: 'google' })
+      // The main handler resolves (not rejects) with a { success: false, error }
+      // envelope when OAuth init fails (withErrorHandler). Without this guard the
+      // wizard advances with an undefined state and the button spins forever.
+      const envelope = result as { state?: string; error?: unknown }
+      if (typeof envelope.state !== 'string' || envelope.state.length === 0) {
+        return failGoogleStart(envelope.error)
+      }
+      return result
+    } catch (err) {
+      return failGoogleStart(err)
     }
   }, [])
 

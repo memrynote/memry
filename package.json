@@ -59,6 +59,7 @@
     "sync:clean": "rm -rf apps/sync-server/.wrangler",
     "sync:init-db": "pnpm --filter @memry/sync-server exec wrangler d1 execute memry-sync --local --file=schema/d1.sql",
     "sync:reset": "pnpm sync:clean && pnpm sync:init-db",
+    "sync:reset:staging": "pnpm --filter @memry/sync-server reset:staging",
     "outdated:check": "pnpm outdated -r --format list | head -100",
     "check:lockfile": "node scripts/check-lockfile.js",
     "prepare": "husky || true",

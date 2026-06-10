@@ -178,14 +178,14 @@ describe('auth-oauth handlers', () => {
         headers: { location: 'https://accounts.google.com/o/oauth2/v2/auth?state=oauth-state' },
         resume: vi.fn()
       })
-      return { on: vi.fn() }
+      return { on: vi.fn(), setTimeout: vi.fn(), destroy: vi.fn() }
     })
     loopback.httpsGet.mockImplementation((_url: string, callback: (res: any) => void) => {
       callback({
         headers: { location: 'https://accounts.google.com/o/oauth2/v2/auth?state=oauth-state' },
         resume: vi.fn()
       })
-      return { on: vi.fn() }
+      return { on: vi.fn(), setTimeout: vi.fn(), destroy: vi.fn() }
     })
     loopback.shellOpenExternal.mockResolvedValue(undefined)
   })
@@ -240,7 +240,7 @@ describe('auth-oauth handlers', () => {
       registerAuthOAuthHandlers()
       loopback.httpGet.mockImplementationOnce((_url: string, callback: (res: any) => void) => {
         callback({ headers: {}, resume: vi.fn() })
-        return { on: vi.fn() }
+        return { on: vi.fn(), setTimeout: vi.fn(), destroy: vi.fn() }
       })
 
       const failure = await invokeHandler<{ success: false; error: string }>(
@@ -248,6 +248,42 @@ describe('auth-oauth handlers', () => {
         { provider: 'google' }
       )
       expect(failure).toEqual({ success: false, error: 'Failed to get OAuth URL from server' })
+    })
+
+    it('rejects instead of hanging when the sync server never responds', async () => {
+      // Regression: a server that accepts the socket but never sends headers
+      // must not leave the IPC call unsettled (the "spins forever" bug). The
+      // request timeout destroys the socket and surfaces an error envelope.
+      registerAuthOAuthHandlers()
+
+      loopback.httpGet.mockImplementationOnce((_url: string, _callback: (res: any) => void) => {
+        let errHandler: ((err: Error) => void) | undefined
+        const req: any = {
+          on: vi.fn((event: string, handler: (err: Error) => void) => {
+            if (event === 'error') errHandler = handler
+            return req
+          }),
+          setTimeout: vi.fn((_ms: number, cb: () => void) => {
+            cb()
+            return req
+          }),
+          destroy: vi.fn((err?: Error) => {
+            if (err) errHandler?.(err)
+            return req
+          })
+        }
+        return req
+      })
+
+      const failure = await invokeHandler<{ success: false; error: string }>(
+        SYNC_CHANNELS.AUTH_INIT_OAUTH,
+        { provider: 'google' }
+      )
+      expect(failure).toEqual({
+        success: false,
+        error: 'Timed out contacting sync server for OAuth URL'
+      })
+      expect(loopback.close).toHaveBeenCalled()
     })
 
     it('returns 404 for non-callback loopback requests', async () => {

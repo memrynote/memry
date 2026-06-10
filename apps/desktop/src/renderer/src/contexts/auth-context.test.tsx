@@ -241,6 +241,26 @@ describe('AuthProvider', () => {
     expect(result.current.state.status).toBe('unauthenticated')
   })
 
+  it('surfaces a failed OAuth init instead of spinning forever', async () => {
+    // Regression: the main handler resolves with a { success: false, error }
+    // envelope (withErrorHandler) when OAuth init fails. initOAuth must treat
+    // that as an error and return null so the wizard stops the spinner and
+    // shows the message, rather than advancing with an undefined state.
+    serviceMocks.authService.initOAuth.mockResolvedValueOnce({
+      success: false,
+      error: 'Failed to get OAuth URL from server'
+    })
+
+    const { result } = renderHook(() => useAuth(), { wrapper })
+    await waitFor(() => expect(result.current.state.status).toBe('unauthenticated'))
+
+    await act(async () => {
+      expect(await result.current.initOAuth()).toBeNull()
+    })
+    expect(result.current.state.status).toBe('error')
+    expect(result.current.state.error).toBe('Failed to get OAuth URL from server')
+  })
+
   it('surfaces service errors through state and thrown messages', async () => {
     serviceMocks.authService.requestOtp.mockResolvedValueOnce({
       success: false,

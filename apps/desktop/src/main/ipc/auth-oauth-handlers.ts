@@ -39,6 +39,10 @@ interface OAuthSession {
 
 const oauthSessions = new Map<string, OAuthSession>()
 const OAUTH_SESSION_TIMEOUT_MS = 10 * 60 * 1000
+// Cap how long we wait for the sync server to hand back the Google OAuth URL.
+// Without it, a server that accepts the socket but never responds leaves the
+// IPC call unsettled, so the "Continue with Google" button spins forever.
+const OAUTH_INIT_REQUEST_TIMEOUT_MS = 15 * 1000
 let activeLoopbackServer: http.Server | null = null
 
 const SYNC_SERVER_URL = process.env.SYNC_SERVER_URL || 'http://localhost:8787'
@@ -138,20 +142,23 @@ export function registerAuthOAuthHandlers(): void {
       const oauthUrl = `${SYNC_SERVER_URL}/auth/oauth/google?redirect_uri=${encodeURIComponent(redirectUri)}`
       const googleUrl = await new Promise<string>((resolve, reject) => {
         const mod = oauthUrl.startsWith('https') ? https : http
-        mod
-          .get(oauthUrl, (res) => {
-            res.resume()
-            const location = res.headers.location
-            if (!location) {
-              shutdownLoopbackServer()
-              return reject(new Error('Failed to get OAuth URL from server'))
-            }
-            resolve(location)
-          })
-          .on('error', (err) => {
+        const req = mod.get(oauthUrl, (res) => {
+          res.resume()
+          const location = res.headers.location
+          if (!location) {
             shutdownLoopbackServer()
-            reject(err)
-          })
+            return reject(new Error('Failed to get OAuth URL from server'))
+          }
+          resolve(location)
+        })
+        req.on('error', (err) => {
+          shutdownLoopbackServer()
+          reject(err)
+        })
+        req.setTimeout(OAUTH_INIT_REQUEST_TIMEOUT_MS, () => {
+          shutdownLoopbackServer()
+          req.destroy(new Error('Timed out contacting sync server for OAuth URL'))
+        })
       })
 
       const parsedUrl = new URL(googleUrl)
