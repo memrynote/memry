@@ -11,6 +11,7 @@ const repoRoot = path.resolve(appRoot, '..', '..')
 const appRequire = createRequire(path.join(appRoot, 'package.json'))
 const electronBuilderCli = appRequire.resolve('electron-builder/cli.js')
 const electronVersion = appRequire('electron/package.json').version
+const electronRebuildCli = resolveElectronRebuildCli()
 const { parse } = require('dotenv')
 const {
   assertProductionSyncServerUrl,
@@ -50,6 +51,26 @@ function resolveBundledPnpmCli() {
   }
 
   throw new Error('Unable to resolve the Corepack pnpm CLI next to the active Node runtime')
+}
+
+function resolveElectronRebuildCli() {
+  // Resolve @electron/rebuild's CLI from its exported main entry, then run it
+  // directly with Node (see runElectronRebuild). We deliberately avoid
+  // `pnpm --dir apps/desktop exec electron-rebuild`: pnpm runs a deps-status
+  // check before exec that, under CI, reinstalls the workspace in production
+  // mode and prunes devDependencies — including @electron/rebuild itself — so
+  // the exec then fails with "Command electron-rebuild not found". The package
+  // blocks deep-subpath resolution via `exports`, so derive the package root
+  // from the resolved main module path.
+  const marker = path.join('@electron', 'rebuild')
+  const mainModule = appRequire.resolve('@electron/rebuild')
+  const markerIndex = mainModule.lastIndexOf(marker)
+
+  if (markerIndex === -1) {
+    throw new Error(`Unable to locate the @electron/rebuild package root from ${mainModule}`)
+  }
+
+  return path.join(mainModule.slice(0, markerIndex + marker.length), 'lib', 'cli.js')
 }
 
 function removePath(targetPath) {
@@ -229,12 +250,10 @@ function main() {
   syncIntoStage(runtimeEnvFile)
   removePath(path.join(stageDir, 'node_modules', '@memry', 'desktop'))
   removePath(path.join(stageDir, 'electron-builder.env'))
-  runPnpm(
+  execFileSync(
+    process.execPath,
     [
-      '--dir',
-      appRoot,
-      'exec',
-      'electron-rebuild',
+      electronRebuildCli,
       '--force',
       '--only',
       nativeModules.join(','),
@@ -247,6 +266,8 @@ function main() {
     ],
     {
       cwd: repoRoot,
+      stdio: 'inherit',
+      shell: false,
       env: {
         ...process.env,
         SKIP_ELECTRON_REBUILD: '1'
