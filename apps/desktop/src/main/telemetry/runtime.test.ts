@@ -182,7 +182,8 @@ describe('initializeTelemetryRuntime', () => {
   })
 
   it('passes accessTokenProvider through to the client flush', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 202 })
+    const { calls, fetchMock } = createFetch()
+
     const runtime = initializeTelemetryRuntime({
       fetch: fetchMock,
       buildChannel: 'production',
@@ -191,10 +192,13 @@ describe('initializeTelemetryRuntime', () => {
       flushIntervalMs: null,
       accessTokenProvider: async () => 'jwt-token'
     })
+
     await runtime.flush('manual')
-    const [, init] = fetchMock.mock.calls[0]
-    expect((init.headers as Record<string, string>).Authorization).toBe('Bearer jwt-token')
-    await runtime.dispose()
+
+    expect(calls).toHaveLength(1)
+    expect((calls[0].init?.headers as Record<string, string>).Authorization).toBe(
+      'Bearer jwt-token'
+    )
   })
 
   it('trackTelemetry adds events through the runtime API', () => {
