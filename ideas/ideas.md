@@ -7,6 +7,7 @@
 - [Inbox segmentation and triage](#inbox-segmentation-and-triage)
 - [Structure without folder rigidity](#structure-without-folder-rigidity)
 - [Google Docs for markdown files](#google-docs-for-markdown-files)
+- [One-way Google Calendar sync](#one-way-google-calendar-sync)
 
 ## Reduce filing with AI-assisted capture
 
@@ -231,3 +232,47 @@ Bring the Google Docs collaboration loop to Markdown notes:
 The files stay plain Markdown on disk. Collaboration metadata (comments, suggestions,
 history) must not break portability — a note opened outside MemryNote should still be
 a readable Markdown file.
+
+## One-way Google Calendar sync
+
+Source: app feedback from Aurelie Kabore asking for a one-way Google Calendar sync
+option.
+
+### User signal
+
+She wants tasks and appointments to live in MemryNote, but only appointments to push
+out to Google Calendar. Today the sync is two-way, so anything with a date — both
+appointments and tasks that have a due date — flows to Google and stays in step in both
+directions. She wants tasks to stay private to MemryNote while still surfacing
+appointments in Google.
+
+### Current behavior
+
+- Sync is two-way: appointments and dated tasks both flow to Google Calendar and stay
+  in step in both directions.
+- A task only syncs to Google if it has a due date. Tasks without a due date never
+  leave MemryNote.
+- Workaround available today: keep due dates off tasks to get the appointments-only
+  split, but that gives up due dates as a feature.
+
+### Product direction
+
+Add an explicit sync-direction and scope control instead of relying on the
+no-due-date workaround:
+
+- One-way (push only): MemryNote → Google Calendar, no inbound changes.
+- Item-type scope: choose what pushes out — appointments only, tasks only, or both.
+- Per-calendar mapping so appointments and tasks can route to different Google
+  calendars or stay local.
+- Keep two-way as the default; make direction and scope a clear, visible setting.
+
+### Follow-up validation
+
+Told Aurelie a proper appointments-only / one-way switch is on the list and asked how
+she works day-to-day to shape the right version. Watch for the reply to refine scope.
+
+### Important boundary
+
+Do not silently change what syncs. Direction and item-type scope must be explicit and
+visible, so users always know what leaves MemryNote and what stays local. Tasks should
+never appear in Google Calendar unless the user opts in.

@@ -28,6 +28,7 @@ const mockSetLoginItemSettings = electronMocks.setLoginItemSettings
 const mockGlobalShortcutUnregisterAll = electronMocks.globalShortcutUnregisterAll
 const mockGlobalShortcutRegister = electronMocks.globalShortcutRegister
 const mockIsTrustedAccessibilityClient = electronMocks.isTrustedAccessibilityClient
+const mockTrackMainEvent = vi.hoisted(() => vi.fn())
 const mockGetVoiceModelStatus = vi.hoisted(() => vi.fn())
 const mockDownloadVoiceModel = vi.hoisted(() => vi.fn())
 const mockGetVoiceRecordingReadiness = vi.hoisted(() => vi.fn())
@@ -88,6 +89,10 @@ vi.mock('../lib/embeddings', () => ({
   getModelInfo: vi.fn(),
   isModelLoaded: vi.fn(),
   isModelLoading: vi.fn()
+}))
+
+vi.mock('../telemetry/track', () => ({
+  trackMainEvent: mockTrackMainEvent
 }))
 
 vi.mock('../inbox/voice-model', () => ({
@@ -229,6 +234,63 @@ describe('settings-handlers', () => {
       key: 'settings.key',
       value: 'value-2'
     })
+  })
+
+  it('tracks setting_changed with the setting key as dimension', async () => {
+    registerSettingsHandlers()
+
+    await invokeHandler(SettingsChannels.invoke.SET, {
+      key: 'appearance.theme',
+      value: 'dark'
+    })
+
+    expect(mockTrackMainEvent).toHaveBeenCalledWith('setting_changed', {
+      surface: 'settings',
+      action: 'changed',
+      dimensions: { setting: 'appearance.theme' }
+    })
+  })
+
+  it('never includes the setting value in the tracked payload', async () => {
+    registerSettingsHandlers()
+    const secretValue = 'super-secret-value-xyz'
+
+    await invokeHandler(SettingsChannels.invoke.SET, {
+      key: 'some.key',
+      value: secretValue
+    })
+
+    expect(mockTrackMainEvent).toHaveBeenCalledOnce()
+    const [, payload] = mockTrackMainEvent.mock.calls[0]
+    expect(JSON.stringify(payload)).not.toContain(secretValue)
+    expect(payload).not.toHaveProperty('value')
+  })
+
+  it('does not track setting_changed when key fails SafeDimensionValueSchema', async () => {
+    registerSettingsHandlers()
+
+    const unsafeKeys = ['x@evil', 'a/b', 'https://evil.com', 'a'.repeat(65)]
+
+    for (const key of unsafeKeys) {
+      mockTrackMainEvent.mockClear()
+      const result = await invokeHandler(SettingsChannels.invoke.SET, { key, value: 'v' })
+      expect(result).toEqual({ success: true })
+      expect(mockTrackMainEvent).not.toHaveBeenCalled()
+    }
+  })
+
+  it('does not track setting_changed when no vault is open', async () => {
+    registerSettingsHandlers()
+    ;(getDatabase as Mock).mockImplementation(() => {
+      throw new Error('no db')
+    })
+
+    const result = await invokeHandler(SettingsChannels.invoke.SET, {
+      key: 'appearance.theme',
+      value: 'dark'
+    })
+    expect(result).toEqual({ success: false, error: 'No vault open' })
+    expect(mockTrackMainEvent).not.toHaveBeenCalled()
   })
 
   it('returns the startup theme and accent color synchronously', () => {

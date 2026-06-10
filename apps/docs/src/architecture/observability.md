@@ -73,12 +73,20 @@ The `void` makes the call non-blocking and unfailable from the UI's point of vie
 
 ## Event Categories
 
-| Category      | Examples                                                |
-| ------------- | ------------------------------------------------------- |
-| Surface views | `page_viewed` per tab type                              |
-| Lifecycle     | `onboarding_started`, `onboarding_completed`            |
-| Sync health   | `sync_push_succeeded`, `sync_pull_failed` (counts only) |
-| Auth          | `signin_started`, `signin_succeeded`                    |
+| Category        | Events                                                                                |
+| --------------- | ------------------------------------------------------------------------------------- |
+| Surface views   | `page_viewed` — one per tab open                                                      |
+| App lifecycle   | `app_started`, `app_backgrounded`, `app_active_heartbeat`, `app_update_installed`     |
+| Onboarding      | `onboarding_started`, `onboarding_completed`                                          |
+| Notes           | `note_created`, `note_opened`, `note_updated` (throttled 1/doc/5 min), `note_deleted` |
+| Journal         | `journal_opened`, `journal_updated` (throttled 1/doc/5 min)                           |
+| Search          | `search_opened`, `search_performed`, `search_result_opened`                           |
+| Command palette | `command_palette_opened`, `search_result_opened` (palette context)                    |
+| Settings        | `setting_changed` — surface only, never the value                                     |
+| Agent chat      | `agent_chat_started`, `agent_chat_message_sent`                                       |
+| Sync health     | `sync_enabled`, `sync_run_completed`, `sync_error` (counts/status only)               |
+| Auth            | `signin_started`, `signin_succeeded`                                                  |
+| Diagnostics     | `app_log_recorded`, `app_error_seen`, `app_launch_phase_completed`                    |
 
 ## PostHog Export
 
@@ -100,6 +108,26 @@ Additional PostHog events:
 | `app_error_seen`             | Renderer, React boundary, and main errors |
 | `server_error_seen`          | Sync-server request/background failures   |
 | `server_log_recorded`        | Structured sync-server diagnostic logs    |
+
+### Account-Linked Identity
+
+When a user is signed in, the desktop telemetry flush includes a verified bearer token. The
+sync server verifies the token's signature, extracts the account ID, and passes it to PostHog
+as the `distinct_id` for the batch. An `$identify` merge event is also sent to link the
+anonymous install-hash identity to the account ID so funnels and retention insights stay
+coherent across sign-in.
+
+- **Signed-out / anonymous**: uses the server-HMAC install hash as before.
+- **Signed-in**: uses the verified account ID. Token signatures are checked but revocation is
+  not (the token is accepted as long as the signature is valid and it is not expired).
+- **Auth never blocks telemetry**: a missing or invalid bearer falls back to anonymous. Batches
+  are never rejected for auth reasons.
+
+### Autosave Event Throttling
+
+`note_updated` and `journal_updated` events fired by the autosave path are throttled to at most
+one emission per document per 5-minute window (in-memory, resets on restart). This prevents
+high-frequency editor flushes from inflating event counts.
 
 ## Error Reporting
 

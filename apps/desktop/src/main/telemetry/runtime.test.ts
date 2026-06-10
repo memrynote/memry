@@ -181,6 +181,26 @@ describe('initializeTelemetryRuntime', () => {
     expect(runtime.client.getQueueDepth()).toBe(0)
   })
 
+  it('passes accessTokenProvider through to the client flush', async () => {
+    const { calls, fetchMock } = createFetch()
+
+    const runtime = initializeTelemetryRuntime({
+      fetch: fetchMock,
+      buildChannel: 'production',
+      endpoint: 'https://example.test/telemetry/batch',
+      initialEnabled: true,
+      flushIntervalMs: null,
+      accessTokenProvider: async () => 'jwt-token'
+    })
+
+    await runtime.flush('manual')
+
+    expect(calls).toHaveLength(1)
+    expect((calls[0].init?.headers as Record<string, string>).Authorization).toBe(
+      'Bearer jwt-token'
+    )
+  })
+
   it('trackTelemetry adds events through the runtime API', () => {
     const { fetchMock } = createFetch()
     const runtime = initializeTelemetryRuntime({
@@ -200,5 +220,150 @@ describe('initializeTelemetryRuntime', () => {
     })
 
     expect(runtime.client.getQueueDepth()).toBeGreaterThan(1)
+  })
+
+  describe('app_update_installed', () => {
+    it('emits app_update_installed when stored lastRunVersion differs from current appVersion', async () => {
+      fs.writeFileSync(
+        path.join(tempDir, TELEMETRY_CONFIG_FILENAME),
+        JSON.stringify({ enabled: true, lastRunVersion: '1.0.0' })
+      )
+
+      const { calls, fetchMock } = createFetch()
+      const runtime = initializeTelemetryRuntime({
+        fetch: fetchMock,
+        buildChannel: 'production',
+        endpoint: 'https://example.test/telemetry/batch',
+        initialEnabled: true,
+        appVersion: '1.1.0',
+        flushIntervalMs: null
+      })
+
+      await runtime.flush('manual')
+
+      expect(calls).toHaveLength(1)
+      const body = JSON.parse(calls[0].init?.body as string) as {
+        events: Array<{ name: string; dimensions?: Record<string, string> }>
+      }
+      const updateEvent = body.events.find((e) => e.name === 'app_update_installed')
+      expect(updateEvent).toBeDefined()
+      expect(updateEvent?.dimensions?.from_version).toBe('1.0.0')
+    })
+
+    it('does NOT emit app_update_installed when no lastRunVersion is stored', async () => {
+      fs.writeFileSync(
+        path.join(tempDir, TELEMETRY_CONFIG_FILENAME),
+        JSON.stringify({ enabled: true })
+      )
+
+      const { calls, fetchMock } = createFetch()
+      const runtime = initializeTelemetryRuntime({
+        fetch: fetchMock,
+        buildChannel: 'production',
+        endpoint: 'https://example.test/telemetry/batch',
+        initialEnabled: true,
+        appVersion: '1.1.0',
+        flushIntervalMs: null
+      })
+
+      await runtime.flush('manual')
+
+      expect(calls).toHaveLength(1)
+      const body = JSON.parse(calls[0].init?.body as string) as { events: Array<{ name: string }> }
+      expect(body.events.find((e) => e.name === 'app_update_installed')).toBeUndefined()
+    })
+
+    it('does NOT emit app_update_installed when stored version matches current', async () => {
+      fs.writeFileSync(
+        path.join(tempDir, TELEMETRY_CONFIG_FILENAME),
+        JSON.stringify({ enabled: true, lastRunVersion: '1.1.0' })
+      )
+
+      const { calls, fetchMock } = createFetch()
+      const runtime = initializeTelemetryRuntime({
+        fetch: fetchMock,
+        buildChannel: 'production',
+        endpoint: 'https://example.test/telemetry/batch',
+        initialEnabled: true,
+        appVersion: '1.1.0',
+        flushIntervalMs: null
+      })
+
+      await runtime.flush('manual')
+
+      expect(calls).toHaveLength(1)
+      const body = JSON.parse(calls[0].init?.body as string) as { events: Array<{ name: string }> }
+      expect(body.events.find((e) => e.name === 'app_update_installed')).toBeUndefined()
+    })
+
+    it('persists current appVersion as lastRunVersion when version changes', () => {
+      fs.writeFileSync(
+        path.join(tempDir, TELEMETRY_CONFIG_FILENAME),
+        JSON.stringify({ enabled: true, lastRunVersion: '1.0.0' })
+      )
+
+      const { fetchMock } = createFetch()
+      initializeTelemetryRuntime({
+        fetch: fetchMock,
+        buildChannel: 'production',
+        endpoint: 'https://example.test/telemetry/batch',
+        initialEnabled: true,
+        appVersion: '1.1.0',
+        flushIntervalMs: null
+      })
+
+      const stored = JSON.parse(
+        fs.readFileSync(path.join(tempDir, TELEMETRY_CONFIG_FILENAME), 'utf-8')
+      ) as { lastRunVersion?: string }
+      expect(stored.lastRunVersion).toBe('1.1.0')
+    })
+
+    it('does NOT write lastRunVersion when stored version already matches', () => {
+      const configPath = path.join(tempDir, TELEMETRY_CONFIG_FILENAME)
+      // Include a valid installId so getOrCreateInstallId skips its own write;
+      // without it, the install-id merge would reformat the file independently.
+      const initial = JSON.stringify({
+        installId: '00000000-0000-0000-0000-000000000001',
+        enabled: true,
+        lastRunVersion: '1.1.0'
+      })
+      fs.writeFileSync(configPath, initial)
+
+      const { fetchMock } = createFetch()
+      initializeTelemetryRuntime({
+        fetch: fetchMock,
+        buildChannel: 'production',
+        endpoint: 'https://example.test/telemetry/batch',
+        initialEnabled: true,
+        appVersion: '1.1.0',
+        flushIntervalMs: null
+      })
+
+      // File content must be byte-for-byte identical — no rewrite occurred
+      expect(fs.readFileSync(configPath, 'utf-8')).toBe(initial)
+    })
+
+    it('persists lastRunVersion on first run (no stored lastRunVersion)', () => {
+      // Pre-write a config with no lastRunVersion at all
+      fs.writeFileSync(
+        path.join(tempDir, TELEMETRY_CONFIG_FILENAME),
+        JSON.stringify({ enabled: true })
+      )
+
+      const { fetchMock } = createFetch()
+      initializeTelemetryRuntime({
+        fetch: fetchMock,
+        buildChannel: 'production',
+        endpoint: 'https://example.test/telemetry/batch',
+        initialEnabled: true,
+        appVersion: '1.2.0',
+        flushIntervalMs: null
+      })
+
+      const stored = JSON.parse(
+        fs.readFileSync(path.join(tempDir, TELEMETRY_CONFIG_FILENAME), 'utf-8')
+      ) as { lastRunVersion?: string }
+      expect(stored.lastRunVersion).toBe('1.2.0')
+    })
   })
 })

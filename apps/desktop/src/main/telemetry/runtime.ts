@@ -42,6 +42,7 @@ export interface TelemetryRuntimeDeps {
   timezoneOffsetMinutes?: number
   authStateProvider?: () => TelemetryAuthState
   syncStateProvider?: () => TelemetrySyncState
+  accessTokenProvider?: () => Promise<string | null>
   /** Disable internal flush interval (used in tests) */
   flushIntervalMs?: number | null
 }
@@ -135,7 +136,8 @@ export const initializeTelemetryRuntime = (deps?: TelemetryRuntimeDeps): Telemet
     context,
     initialEnabled,
     getAuthState: deps?.authStateProvider ?? (() => 'anonymous'),
-    getSyncState: deps?.syncStateProvider ?? (() => 'unknown')
+    getSyncState: deps?.syncStateProvider ?? (() => 'unknown'),
+    getAccessToken: deps?.accessTokenProvider
   })
 
   if (initialEnabled) {
@@ -147,6 +149,22 @@ export const initializeTelemetryRuntime = (deps?: TelemetryRuntimeDeps): Telemet
       action: 'started',
       result: 'success'
     })
+  }
+
+  const currentVersion = context.appVersion
+  if (initialEnabled && stored.lastRunVersion && stored.lastRunVersion !== currentVersion) {
+    client.track({
+      id: randomUUID(),
+      name: 'app_update_installed',
+      occurredAt: new Date().toISOString(),
+      surface: 'updater',
+      action: 'installed',
+      result: 'success',
+      dimensions: { from_version: stored.lastRunVersion }
+    })
+  }
+  if (stored.lastRunVersion !== currentVersion) {
+    mergeTelemetryConfig({ lastRunVersion: currentVersion })
   }
 
   let flushTimer: ReturnType<typeof setInterval> | null = null

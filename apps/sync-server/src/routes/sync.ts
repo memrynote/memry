@@ -30,7 +30,7 @@ import {
   logRecordQueryBatch,
   logSyncValidationFailure
 } from '../services/sync-telemetry'
-import { waitUntilWithPostHog } from '../services/posthog'
+import { captureBusinessEvent, safeWaitUntil, waitUntilWithPostHog } from '../services/posthog'
 import { updateDevice } from '../services/device'
 import { getStorageBreakdown } from '../services/storage'
 import {
@@ -94,6 +94,9 @@ const handleRegisterVault = async (c: Context<AppContext>): Promise<Response> =>
     parsed.data.encryptedName,
     parsed.data.nameNonce
   )
+
+  safeWaitUntil(c, captureBusinessEvent(c.env, 'vault_registered', userId, {}))
+
   return c.json({ success: true })
 }
 

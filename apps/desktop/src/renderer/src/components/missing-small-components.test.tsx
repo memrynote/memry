@@ -186,8 +186,8 @@ describe('missing small component surfaces', () => {
       mocks.i18n.language = locale
     })
     mocks.localeSet.mockResolvedValue(undefined)
-    mocks.selectVault.mockResolvedValue(undefined)
-    mocks.switchVault.mockResolvedValue(undefined)
+    mocks.selectVault.mockResolvedValue({ success: false, vault: null, error: 'cancelled' })
+    mocks.switchVault.mockResolvedValue({ success: false, vault: null, error: 'cancelled' })
     if (!HTMLElement.prototype.hasPointerCapture) {
       HTMLElement.prototype.hasPointerCapture = vi.fn(() => false)
     }

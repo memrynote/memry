@@ -45,6 +45,7 @@ import {
   ensureLocalAdminPaidSyncAccess,
   ensureLocalAdminPaidSyncAccessForUser
 } from '../services/entitlements'
+import { captureBusinessEvent, safeWaitUntil } from '../services/posthog'
 import type { AppContext } from '../types'
 
 const logger = createLogger('Auth')
@@ -232,6 +233,13 @@ auth.post('/otp/verify', otpIpRateLimit, async (c) => {
 
   const setupToken = await signSetupToken(user.id, c.env.JWT_PRIVATE_KEY, sessionNonce)
 
+  safeWaitUntil(
+    c,
+    captureBusinessEvent(c.env, isNewUser ? 'user_signed_up' : 'user_logged_in', user.id, {
+      auth_method: 'otp'
+    })
+  )
+
   return c.json({
     success: true,
     isNewUser,
@@ -328,6 +336,14 @@ auth.post('/oauth/:provider/callback', async (c) => {
   )
 
   const setupToken = await signSetupToken(user.id, c.env.JWT_PRIVATE_KEY, sessionNonce)
+
+  safeWaitUntil(
+    c,
+    captureBusinessEvent(c.env, isNewUser ? 'user_signed_up' : 'user_logged_in', user.id, {
+      auth_method: 'oauth',
+      auth_provider: 'google'
+    })
+  )
 
   return c.json({
     success: true,
@@ -440,6 +456,14 @@ auth.post('/devices', setupAuthMiddleware, async (c) => {
     userId,
     deviceId,
     c.env.JWT_PRIVATE_KEY
+  )
+
+  safeWaitUntil(
+    c,
+    captureBusinessEvent(c.env, 'device_registered', userId, {
+      platform: sanitizedPlatform,
+      app_version: appVersion
+    })
   )
 
   return c.json({

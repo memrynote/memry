@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import {
   createTestDataDb,
   seedInboxItems,
@@ -34,36 +34,44 @@ describe('inbox-query-handlers › handleGetPatterns', () => {
   })
 
   it('returns 24x7 heatmap grid with correct counts for captured items', async () => {
-    // #given — 3 items captured on a Wednesday at 14:xx (hour 14, dow 3 in SQLite = Wednesday)
-    const wed14 = '2026-03-18T14:30:00.000Z' // Wednesday March 18 2026 at 14:30 UTC
-    seedInboxItems(testDb.db, [
-      { id: 'item-1', type: 'note', title: 'Note 1', createdAt: wed14 },
-      {
-        id: 'item-2',
-        type: 'link',
-        title: 'Link 1',
-        createdAt: wed14,
-        sourceUrl: 'https://example.com/page'
-      },
-      { id: 'item-3', type: 'note', title: 'Note 2', createdAt: '2026-03-18T10:00:00.000Z' }
-    ])
+    // Freeze "now" so the handler's rolling 84-day window always contains the fixed
+    // seed date; otherwise this test becomes a time-bomb once the cutoff passes 2026-03-18.
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-03-25T00:00:00.000Z'))
+    try {
+      // #given — 3 items captured on a Wednesday at 14:xx (hour 14, dow 3 in SQLite = Wednesday)
+      const wed14 = '2026-03-18T14:30:00.000Z' // Wednesday March 18 2026 at 14:30 UTC
+      seedInboxItems(testDb.db, [
+        { id: 'item-1', type: 'note', title: 'Note 1', createdAt: wed14 },
+        {
+          id: 'item-2',
+          type: 'link',
+          title: 'Link 1',
+          createdAt: wed14,
+          sourceUrl: 'https://example.com/page'
+        },
+        { id: 'item-3', type: 'note', title: 'Note 2', createdAt: '2026-03-18T10:00:00.000Z' }
+      ])
 
-    // #when
-    const handlers = createInboxQueryHandlers(deps)
-    const result = await handlers.handleGetPatterns()
+      // #when
+      const handlers = createInboxQueryHandlers(deps)
+      const result = await handlers.handleGetPatterns()
 
-    // #then — timeHeatmap should be 24 rows × 7 cols
-    expect(result.timeHeatmap).toHaveLength(24)
-    expect(result.timeHeatmap[0]).toHaveLength(7)
+      // #then — timeHeatmap should be 24 rows × 7 cols
+      expect(result.timeHeatmap).toHaveLength(24)
+      expect(result.timeHeatmap[0]).toHaveLength(7)
 
-    // Wednesday = SQLite %w 3 → index (3+6)%7 = 2
-    const wedIdx = 2
-    expect(result.timeHeatmap[14][wedIdx]).toBe(2) // 2 items at hour 14
-    expect(result.timeHeatmap[10][wedIdx]).toBe(1) // 1 item at hour 10
+      // Wednesday = SQLite %w 3 → index (3+6)%7 = 2
+      const wedIdx = 2
+      expect(result.timeHeatmap[14][wedIdx]).toBe(2) // 2 items at hour 14
+      expect(result.timeHeatmap[10][wedIdx]).toBe(1) // 1 item at hour 10
 
-    // All other slots should be 0
-    expect(result.timeHeatmap[0][0]).toBe(0)
-    expect(result.timeHeatmap[23][6]).toBe(0)
+      // All other slots should be 0
+      expect(result.timeHeatmap[0][0]).toBe(0)
+      expect(result.timeHeatmap[23][6]).toBe(0)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('returns empty 24x7 grid when no items exist', async () => {

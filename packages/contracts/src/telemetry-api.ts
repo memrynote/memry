@@ -40,6 +40,10 @@ export const TelemetryEventNameSchema = z.enum([
   'voice_recording_completed',
   'transcription_completed',
   'ai_action_completed',
+  'agent_chat_started',
+  'agent_chat_message_sent',
+  'command_palette_opened',
+  'app_update_installed',
   'app_error_seen'
 ])
 

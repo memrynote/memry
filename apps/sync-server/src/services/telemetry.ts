@@ -147,6 +147,7 @@ export interface TelemetryEnv {
 
 export interface TelemetryWriteOptions {
   waitUntil?: (promise: Promise<unknown>) => void
+  userId?: string
 }
 
 const addStringProperty = (
@@ -185,7 +186,8 @@ export const toPostHogEvent = (
   batch: TelemetryBatch,
   event: TelemetryEvent,
   installHash: string,
-  environment?: string
+  environment?: string,
+  overrideDistinctId?: string
 ): PostHogEventPayload => {
   const dim = firstDimension(event.dimensions)
   const metrics = event.metrics ?? {}
@@ -223,7 +225,7 @@ export const toPostHogEvent = (
 
   return {
     event: event.name,
-    distinct_id: desktopDistinctId(batch, installHash, environment),
+    distinct_id: overrideDistinctId ?? desktopDistinctId(batch, installHash, environment),
     timestamp: event.occurredAt,
     properties
   }
@@ -233,10 +235,13 @@ export const toPostHogBatchPayload = (
   apiKey: string,
   batch: TelemetryBatch,
   installHash: string,
-  environment?: string
+  environment?: string,
+  overrideDistinctId?: string
 ): PostHogBatchPayload => ({
   api_key: apiKey,
-  batch: batch.events.map((event) => toPostHogEvent(batch, event, installHash, environment))
+  batch: batch.events.map((event) =>
+    toPostHogEvent(batch, event, installHash, environment, overrideDistinctId)
+  )
 })
 
 const shouldMirrorTelemetryBatch = (env: TelemetryEnv): boolean =>
@@ -318,16 +323,32 @@ const toDesktopExceptionEvent = (event: PostHogEventPayload): PostHogEventPayloa
 const mirrorTelemetryBatchToPostHog = async (
   env: TelemetryEnv,
   batch: TelemetryBatch,
-  hashes: BatchHashes
+  hashes: BatchHashes,
+  userId?: string
 ): Promise<void> => {
   if (!env.POSTHOG_API_KEY || !env.POSTHOG_HOST) return
 
+  const distinctOverride = userId || undefined
   const payload = toPostHogBatchPayload(
     env.POSTHOG_API_KEY,
     batch,
     hashes.installHash,
-    env.ENVIRONMENT
+    env.ENVIRONMENT,
+    distinctOverride
   )
+  const identifyEvents: PostHogEventPayload[] = distinctOverride
+    ? [
+        {
+          event: '$identify',
+          distinct_id: distinctOverride,
+          timestamp: new Date().toISOString(),
+          properties: {
+            $anon_distinct_id: desktopDistinctId(batch, hashes.installHash, env.ENVIRONMENT),
+            service_name: DESKTOP_SERVICE_NAME
+          }
+        }
+      ]
+    : []
   const exceptionEvents = payload.batch
     .map(toDesktopExceptionEvent)
     .filter((event): event is PostHogEventPayload => event !== null)
@@ -336,7 +357,7 @@ const mirrorTelemetryBatchToPostHog = async (
     .filter((record): record is PostHogLogRecordInput => record !== null)
 
   await Promise.all([
-    sendPostHogBatch(env, [...payload.batch, ...exceptionEvents]),
+    sendPostHogBatch(env, [...identifyEvents, ...payload.batch, ...exceptionEvents]),
     sendPostHogLogs(env, logRecords)
   ])
 }
@@ -360,7 +381,7 @@ export const writeTelemetryBatch = async (
   }
 
   if (shouldMirrorTelemetryBatch(env)) {
-    const mirrorPromise = mirrorTelemetryBatchToPostHog(env, batch, hashes)
+    const mirrorPromise = mirrorTelemetryBatchToPostHog(env, batch, hashes, options.userId)
     if (options.waitUntil) {
       options.waitUntil(mirrorPromise)
     } else {

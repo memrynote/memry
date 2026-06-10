@@ -8,7 +8,13 @@ vi.mock('./track', () => ({
   trackMainEvent: trackMainEventMock
 }))
 
-import { trackLaunchPhase, trackMainError, trackMainLog } from './diagnostics'
+import {
+  trackLaunchPhase,
+  trackMainError,
+  trackMainLog,
+  startActiveHeartbeat,
+  stopActiveHeartbeat
+} from './diagnostics'
 
 describe('telemetry diagnostics', () => {
   beforeEach(() => {
@@ -54,6 +60,39 @@ describe('telemetry diagnostics', () => {
       result: 'failed',
       errorCode: 'NetworkError',
       dimensions: { log_action: 'flush_failed' }
+    })
+  })
+
+  describe('active heartbeat', () => {
+    it('emits app_active_heartbeat every 5 minutes while focused', () => {
+      vi.useFakeTimers()
+      startActiveHeartbeat(() => true)
+      vi.advanceTimersByTime(5 * 60 * 1000)
+      expect(trackMainEventMock).toHaveBeenCalledWith(
+        'app_active_heartbeat',
+        expect.objectContaining({ surface: 'app', action: 'heartbeat' })
+      )
+      stopActiveHeartbeat()
+      vi.useRealTimers()
+    })
+
+    it('skips heartbeat when no window focused', () => {
+      vi.useFakeTimers()
+      startActiveHeartbeat(() => false)
+      vi.advanceTimersByTime(5 * 60 * 1000)
+      expect(trackMainEventMock).not.toHaveBeenCalled()
+      stopActiveHeartbeat()
+      vi.useRealTimers()
+    })
+
+    it('second startActiveHeartbeat call is a no-op (single timer)', () => {
+      vi.useFakeTimers()
+      startActiveHeartbeat(() => true)
+      startActiveHeartbeat(() => true)
+      vi.advanceTimersByTime(5 * 60 * 1000)
+      expect(trackMainEventMock).toHaveBeenCalledTimes(1)
+      stopActiveHeartbeat()
+      vi.useRealTimers()
     })
   })
 

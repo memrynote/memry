@@ -65,6 +65,32 @@ export const trackMainLog = (
   trackMainEvent('app_log_recorded', eventOptions)
 }
 
+const HEARTBEAT_INTERVAL_MS = 5 * 60 * 1000
+
+let heartbeatTimer: ReturnType<typeof setInterval> | null = null
+
+export const startActiveHeartbeat = (isFocused: () => boolean): void => {
+  if (heartbeatTimer) return
+  heartbeatTimer = setInterval(() => {
+    if (!isFocused()) return
+    trackMainEvent('app_active_heartbeat', {
+      surface: 'app',
+      action: 'heartbeat',
+      metrics: { activeSeconds: HEARTBEAT_INTERVAL_MS / 1000 }
+    })
+  }, HEARTBEAT_INTERVAL_MS)
+  if (typeof (heartbeatTimer as NodeJS.Timeout).unref === 'function') {
+    ;(heartbeatTimer as NodeJS.Timeout).unref()
+  }
+}
+
+export const stopActiveHeartbeat = (): void => {
+  if (heartbeatTimer) {
+    clearInterval(heartbeatTimer)
+    heartbeatTimer = null
+  }
+}
+
 export const trackLaunchPhase = (phase: string, durationMs: number): void => {
   trackMainEvent('app_launch_phase_completed', {
     surface: 'app',

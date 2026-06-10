@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import { TelemetryBatchSchema, TelemetryEventSchema } from './telemetry-api'
+import {
+  TelemetryBatchSchema,
+  TelemetryEventNameSchema,
+  TelemetryEventSchema
+} from './telemetry-api'
 
 const VALID_INSTALL_ID = '550e8400-e29b-41d4-a716-446655440000'
 const VALID_SESSION_ID = '550e8400-e29b-41d4-a716-446655440001'
@@ -457,5 +461,16 @@ describe('TelemetryEventSchema', () => {
 
     // #then validation fails
     expect(result.success).toBe(false)
+  })
+
+  it('accepts the agent chat, command palette, and updater event names', () => {
+    for (const name of [
+      'agent_chat_started',
+      'agent_chat_message_sent',
+      'command_palette_opened',
+      'app_update_installed'
+    ]) {
+      expect(TelemetryEventNameSchema.safeParse(name).success).toBe(true)
+    }
   })
 })

@@ -4,7 +4,12 @@ import type { Context } from 'hono'
 import { createLogger } from '../lib/logger'
 import { applyPaddleWebhook, verifyPaddleWebhookSignature } from '../services/paddle-webhooks'
 import { lookupChannel, verifyChannelToken } from '../services/google-webhooks'
-import { captureServerLog, waitUntilWithPostHog } from '../services/posthog'
+import {
+  captureBusinessEvent,
+  captureServerLog,
+  safeWaitUntil,
+  waitUntilWithPostHog
+} from '../services/posthog'
 import type { AppContext } from '../types'
 
 const log = createLogger('Webhooks')
@@ -69,6 +74,36 @@ webhooks.post('/paddle', async (c) => {
   }
 
   const result = await applyPaddleWebhook(c.env.DB, payload as never)
+
+  if (result.processed && result.userId && c.env.POSTHOG_API_KEY && c.env.POSTHOG_HOST) {
+    const paddlePayload = payload as {
+      event_type?: string
+      eventType?: string
+      data?: { customer_id?: string; customerId?: string }
+    }
+    const eventType = paddlePayload.event_type ?? paddlePayload.eventType ?? ''
+    const customerId = paddlePayload.data?.customer_id ?? paddlePayload.data?.customerId ?? ''
+    const subscriptionEvent =
+      eventType === 'subscription.canceled'
+        ? 'subscription_canceled'
+        : eventType === 'subscription.paused'
+          ? 'subscription_paused'
+          : eventType === 'subscription.past_due'
+            ? null
+            : eventType.startsWith('subscription.') || eventType === 'transaction.completed'
+              ? 'subscription_activated'
+              : null
+    if (subscriptionEvent) {
+      safeWaitUntil(
+        c,
+        captureBusinessEvent(c.env, subscriptionEvent, result.userId, {
+          paddle_event_type: eventType,
+          paddle_customer_id: customerId || null
+        })
+      )
+    }
+  }
+
   return c.json({ success: true, ...result })
 })
 

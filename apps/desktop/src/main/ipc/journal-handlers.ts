@@ -56,6 +56,7 @@ import {
 } from '../journal/runtime-effects'
 import { deleteJournalCache, syncJournalCache } from '../vault/journal-cache-sync'
 import { trackMainEvent } from '../telemetry/track'
+import { shouldEmitThrottled } from '../telemetry/throttle'
 import { flushProjectionEvents } from '../projections'
 
 const logger = createLogger('IPC:Journal')
@@ -266,12 +267,14 @@ export function registerJournalHandlers(): void {
         entry
       })
 
-      trackMainEvent('journal_updated', {
-        surface: 'journal',
-        action: 'updated',
-        objectType: 'journal',
-        result: 'success'
-      })
+      if (shouldEmitThrottled(`journal_updated:${entry.date}`)) {
+        trackMainEvent('journal_updated', {
+          surface: 'journal',
+          action: 'updated',
+          objectType: 'journal',
+          result: 'success'
+        })
+      }
 
       return entry
     })

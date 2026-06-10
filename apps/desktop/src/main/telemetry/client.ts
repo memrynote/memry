@@ -37,6 +37,8 @@ export interface TelemetryClientDeps {
   initialEnabled: boolean
   getAuthState: () => TelemetryAuthState
   getSyncState: () => TelemetrySyncState
+  /** Resolves the signed-in account's access token for identity attribution; null/throw → anonymous batch. */
+  getAccessToken?: () => Promise<string | null>
 }
 
 export type TelemetryFlushReason = 'manual' | 'interval' | 'shutdown' | 'background'
@@ -97,10 +99,25 @@ export const createTelemetryClient = (deps: TelemetryClientDeps): TelemetryClien
     const events = queue.slice(0, batchSize)
     const batch = buildBatch(events)
 
+    let bearerValue: string | null = null
+    if (deps.getAccessToken) {
+      try {
+        bearerValue = await deps.getAccessToken()
+      } catch (error) {
+        logger.debug('getAccessToken failed, sending anonymous telemetry', {
+          error: error instanceof Error ? error.message : String(error)
+        })
+        bearerValue = null
+      }
+    }
+
     try {
       const response = await deps.fetch(deps.endpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(bearerValue ? { Authorization: `Bearer ${bearerValue}` } : {})
+        },
         body: JSON.stringify(batch)
       })
 

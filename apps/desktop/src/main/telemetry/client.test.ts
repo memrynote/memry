@@ -142,7 +142,7 @@ describe('createTelemetryClient', () => {
     expect(body.authState).toBe('anonymous')
     expect(body.syncState).toBe('disabled')
     expect(Array.isArray(body.events)).toBe(true)
-    expect((body.events as unknown[])).toHaveLength(1)
+    expect(body.events as unknown[]).toHaveLength(1)
   })
 
   it('flush is a no-op when the queue is empty', async () => {
@@ -223,5 +223,77 @@ describe('createTelemetryClient', () => {
     const body = JSON.parse(calls[0].init?.body as string) as { events: unknown[] }
     expect(body.events).toHaveLength(50)
     expect(client.getQueueDepth()).toBe(20)
+  })
+
+  describe('getAccessToken', () => {
+    it('sends Authorization header when getAccessToken resolves a token', async () => {
+      // #given a client with getAccessToken that resolves a JWT
+      const { deps, calls } = createDeps({
+        getAccessToken: async () => 'jwt-token'
+      })
+      const client = createTelemetryClient(deps)
+      client.track(buildEvent('11111111-1111-1111-1111-111111111111'))
+
+      // #when flushing
+      const result = await client.flush('manual')
+
+      // #then fetch is called with correct Authorization header and Content-Type preserved
+      expect(result.success).toBe(true)
+      const headers = calls[0].init?.headers as Record<string, string>
+      expect(headers['Authorization']).toBe('Bearer jwt-token')
+      expect(headers['Content-Type']).toBe('application/json')
+    })
+
+    it('sends no Authorization header when getAccessToken resolves null', async () => {
+      // #given a client with getAccessToken that resolves null
+      const { deps, calls } = createDeps({
+        getAccessToken: async () => null
+      })
+      const client = createTelemetryClient(deps)
+      client.track(buildEvent('11111111-1111-1111-1111-111111111111'))
+
+      // #when flushing
+      await client.flush('manual')
+
+      // #then no Authorization key is present in headers
+      const headers = calls[0].init?.headers as Record<string, string>
+      expect('Authorization' in headers).toBe(false)
+    })
+
+    it('flush still succeeds when getAccessToken throws', async () => {
+      // #given a client with getAccessToken that throws
+      const { deps, calls } = createDeps({
+        getAccessToken: async () => {
+          throw new Error('token fetch failed')
+        }
+      })
+      const client = createTelemetryClient(deps)
+      client.track(buildEvent('11111111-1111-1111-1111-111111111111'))
+
+      // #when flushing
+      const result = await client.flush('manual')
+
+      // #then flush still succeeds and no Authorization header is sent
+      expect(result.success).toBe(true)
+      const headers = calls[0].init?.headers as Record<string, string>
+      expect('Authorization' in headers).toBe(false)
+    })
+
+    it('Authorization header is exactly Bearer <token> with one space', async () => {
+      // #given a client with a known token
+      const { deps, calls } = createDeps({
+        getAccessToken: async () => 'my-access-token'
+      })
+      const client = createTelemetryClient(deps)
+      client.track(buildEvent('11111111-1111-1111-1111-111111111111'))
+
+      // #when flushing
+      await client.flush('manual')
+
+      // #then the header value matches exactly — one space, no extra whitespace
+      const headers = calls[0].init?.headers as Record<string, string>
+      expect(headers['Authorization']).toBe('Bearer my-access-token')
+      expect(headers['Authorization']).toMatch(/^Bearer [^ ]+$/)
+    })
   })
 })
