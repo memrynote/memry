@@ -45,21 +45,10 @@ import {
   ensureLocalAdminPaidSyncAccess,
   ensureLocalAdminPaidSyncAccessForUser
 } from '../services/entitlements'
-import { captureBusinessEvent } from '../services/posthog'
+import { captureBusinessEvent, safeWaitUntil } from '../services/posthog'
 import type { AppContext } from '../types'
 
 const logger = createLogger('Auth')
-
-const safeWaitUntil = (
-  c: { executionCtx?: { waitUntil?: (promise: Promise<unknown>) => void } },
-  promise: Promise<unknown>
-): void => {
-  try {
-    c.executionCtx?.waitUntil?.(promise)
-  } catch {
-    // ExecutionContext not available in tests
-  }
-}
 
 const OTP_EXPIRY_MINUTES = 10
 const DEVICE_TEXT_UNSAFE_CHARS = /[\u0000-\u001F\u007F<>"'`&]/g
@@ -473,7 +462,6 @@ auth.post('/devices', setupAuthMiddleware, async (c) => {
     c,
     captureBusinessEvent(c.env, 'device_registered', userId, {
       platform: sanitizedPlatform,
-      vault_id: sanitizedVaultId,
       app_version: appVersion
     })
   )

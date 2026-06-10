@@ -210,7 +210,7 @@ describe('Paddle webhook support', () => {
           }
         }
       })
-    ).resolves.toEqual({ processed: false })
+    ).resolves.toEqual({ processed: false, userId: null })
 
     expect(statements.some((entry) => entry.sql.includes('INSERT INTO sync_entitlements'))).toBe(
       false
@@ -237,10 +237,33 @@ describe('Paddle webhook support', () => {
           }
         }
       })
-    ).resolves.toEqual({ processed: false })
+    ).resolves.toEqual({ processed: false, userId: null })
 
     expect(statements.some((entry) => entry.sql.includes('INSERT INTO sync_entitlements'))).toBe(
       false
     )
+  })
+
+  it('returns the resolved userId on successful processing', async () => {
+    const { db } = createDb()
+
+    const result = await applyPaddleWebhook(db, {
+      event_id: 'evt_uid',
+      event_type: 'transaction.completed',
+      data: {
+        id: 'txn_uid',
+        customer_id: 'ctm_1',
+        subscription_id: 'sub_uid',
+        status: 'completed',
+        custom_data: {
+          app: 'memry',
+          entitlement: 'sync',
+          plan: 'plus',
+          userId: 'user-1'
+        }
+      }
+    })
+
+    expect(result).toEqual({ processed: true, userId: 'user-1' })
   })
 })

@@ -30,7 +30,7 @@ import {
   logRecordQueryBatch,
   logSyncValidationFailure
 } from '../services/sync-telemetry'
-import { captureBusinessEvent, waitUntilWithPostHog } from '../services/posthog'
+import { captureBusinessEvent, safeWaitUntil, waitUntilWithPostHog } from '../services/posthog'
 import { updateDevice } from '../services/device'
 import { getStorageBreakdown } from '../services/storage'
 import {
@@ -42,17 +42,6 @@ import {
   pruneUpdatesBeforeSnapshot
 } from '../services/crdt'
 import type { AppContext } from '../types'
-
-const safeWaitUntil = (
-  c: { executionCtx?: { waitUntil?: (promise: Promise<unknown>) => void } },
-  promise: Promise<unknown>
-): void => {
-  try {
-    c.executionCtx?.waitUntil?.(promise)
-  } catch {
-    // ExecutionContext not available in tests
-  }
-}
 
 export const sync = new Hono<AppContext>()
 

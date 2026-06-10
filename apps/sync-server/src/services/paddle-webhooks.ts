@@ -75,10 +75,10 @@ export async function verifyPaddleWebhookSignature({
 export async function applyPaddleWebhook(
   db: D1Database,
   event: PaddleEvent
-): Promise<{ processed: boolean }> {
+): Promise<{ processed: boolean; userId: string | null }> {
   const eventType = event.event_type ?? event.eventType
   if (!eventType || !SUPPORTED_EVENTS.has(eventType)) {
-    return { processed: false }
+    return { processed: false, userId: null }
   }
 
   const eventId = event.event_id ?? event.eventId ?? asString(event.data?.id)
@@ -89,14 +89,14 @@ export async function applyPaddleWebhook(
       .first<{ id: string }>()
 
     if (existing) {
-      return { processed: false }
+      return { processed: false, userId: null }
     }
   }
 
   const data = event.data ?? {}
   const target = await resolveEntitlementTarget(db, data)
   if (!target) {
-    return { processed: false }
+    return { processed: false, userId: null }
   }
 
   await upsertSyncEntitlement(db, {
@@ -117,7 +117,7 @@ export async function applyPaddleWebhook(
       .run()
   }
 
-  return { processed: true }
+  return { processed: true, userId: target.userId }
 }
 
 async function resolveEntitlementTarget(

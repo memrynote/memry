@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { captureServerError, captureServerLog, waitUntilWithPostHog } from './posthog'
+import {
+  captureBusinessEvent,
+  captureServerError,
+  captureServerLog,
+  waitUntilWithPostHog
+} from './posthog'
 
 const env = {
   POSTHOG_API_KEY: 'phc_test_project',
@@ -228,6 +233,32 @@ describe('sync-server PostHog capture', () => {
     expect(logsBody.resourceLogs[0].scopeLogs[0].logRecords[0]).toMatchObject({
       severityText: 'WARN',
       body: { stringValue: 'memry-sync-server:GoogleWebhook:channel_token_mismatch' }
+    })
+  })
+
+  it('captureBusinessEvent posts a batch with the correct shape', async () => {
+    // #given a configured PostHog project
+    const fetchMock = vi.fn(
+      async () => new Response(JSON.stringify({ status: 1 }), { status: 200 })
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    // #when capturing a business event
+    await captureBusinessEvent(env, 'user_signed_up', 'user_1', { auth_method: 'otp' })
+
+    // #then a single batch request is sent with the expected shape
+    expect(fetchMock).toHaveBeenCalledOnce()
+    const body = readPostHogBody()
+    expect(body.api_key).toBe('phc_test_project')
+    expect(body.batch).toHaveLength(1)
+    expect(body.batch[0]).toMatchObject({
+      event: 'user_signed_up',
+      distinct_id: 'user_1'
+    })
+    expect(body.batch[0].properties).toMatchObject({
+      auth_method: 'otp',
+      service_name: 'memry-sync-server',
+      environment: 'development'
     })
   })
 

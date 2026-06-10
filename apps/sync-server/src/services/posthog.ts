@@ -530,6 +530,17 @@ export const captureServerLog = async (
   await Promise.all([sendPostHogBatch(env, [event]), sendPostHogLogs(env, [logRecord])])
 }
 
+export const safeWaitUntil = (
+  c: { executionCtx?: { waitUntil?: (promise: Promise<unknown>) => void } },
+  promise: Promise<unknown>
+): void => {
+  try {
+    c.executionCtx?.waitUntil?.(promise)
+  } catch (error) {
+    logger.warn('Business event capture failed', { error })
+  }
+}
+
 export const captureBusinessEvent = async (
   env: PostHogEnv,
   event: string,
