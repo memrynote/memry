@@ -442,6 +442,47 @@ describe('writeTelemetryBatch', () => {
         expect(event.distinct_id).toBe(`memry_desktop_test_${installHash}`)
       }
     })
+
+    it('mirrored $exception event uses userId as distinct_id when batch contains app_error_seen', async () => {
+      // #given a batch with an app_error_seen event and a userId
+      const { dataset } = createDataset()
+      const fetchMock = vi.fn(async (_input: string | URL, _init?: RequestInit) => {
+        return new Response(JSON.stringify({ status: 1 }), { status: 200 })
+      })
+      vi.stubGlobal('fetch', fetchMock)
+      const env = createEnv(dataset, HMAC_KEY, {
+        POSTHOG_API_KEY: 'phk',
+        POSTHOG_HOST: 'https://ph.example.com',
+        ENVIRONMENT: 'test'
+      })
+      const batch: TelemetryBatch = {
+        ...baseBatch,
+        events: [
+          {
+            id: '550e8400-e29b-41d4-a716-446655440003',
+            name: 'app_error_seen',
+            occurredAt: VALID_TIMESTAMP,
+            surface: 'app',
+            action: 'manual_dev_error',
+            objectType: 'exception',
+            source: 'renderer',
+            result: 'failed',
+            errorCode: 'ManualDevError'
+          }
+        ]
+      }
+
+      // #when writing with userId
+      await writeTelemetryBatch(env, batch, { userId: 'user_123' })
+
+      // #then the mirrored $exception event carries userId as distinct_id
+      const payload = readFetchJson<{
+        batch: Array<{ event: string; distinct_id: string }>
+      }>(fetchMock, '/batch/')
+      const exceptionEvent = payload.batch.find((e) => e.event === '$exception')
+      expect(exceptionEvent).toBeDefined()
+      expect(exceptionEvent!.distinct_id).toBe('user_123')
+    })
   })
 
   it('mirrors desktop diagnostic events into PostHog logs and error tracking', async () => {

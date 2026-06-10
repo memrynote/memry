@@ -328,18 +328,19 @@ const mirrorTelemetryBatchToPostHog = async (
 ): Promise<void> => {
   if (!env.POSTHOG_API_KEY || !env.POSTHOG_HOST) return
 
+  const distinctOverride = userId || undefined
   const payload = toPostHogBatchPayload(
     env.POSTHOG_API_KEY,
     batch,
     hashes.installHash,
     env.ENVIRONMENT,
-    userId
+    distinctOverride
   )
-  const identifyEvents: PostHogEventPayload[] = userId
+  const identifyEvents: PostHogEventPayload[] = distinctOverride
     ? [
         {
           event: '$identify',
-          distinct_id: userId,
+          distinct_id: distinctOverride,
           timestamp: new Date().toISOString(),
           properties: {
             $anon_distinct_id: desktopDistinctId(batch, hashes.installHash, env.ENVIRONMENT),
