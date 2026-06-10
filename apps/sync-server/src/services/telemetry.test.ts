@@ -380,6 +380,73 @@ describe('writeTelemetryBatch', () => {
     expect(payloadText.includes(HMAC_KEY)).toBe(false)
   })
 
+  describe('writeTelemetryBatch with userId', () => {
+    it('uses userId as distinct_id and prepends $identify with $anon_distinct_id', async () => {
+      // #given a batch and a userId
+      const { dataset } = createDataset()
+      const fetchMock = vi.fn(async (_input: string | URL, _init?: RequestInit) => {
+        return new Response(JSON.stringify({ status: 1 }), { status: 200 })
+      })
+      vi.stubGlobal('fetch', fetchMock)
+      const installHash = await hashTelemetryId(HMAC_KEY, VALID_INSTALL_ID)
+      const env = createEnv(dataset, HMAC_KEY, {
+        POSTHOG_API_KEY: 'phk',
+        POSTHOG_HOST: 'https://ph.example.com',
+        ENVIRONMENT: 'test'
+      })
+
+      // #when writing with userId
+      await writeTelemetryBatch(env, baseBatch, { userId: 'user_123' })
+
+      // #then the batch call contains an $identify event first and all events use userId as distinct_id
+      const batchCall = fetchMock.mock.calls.find(([url]) => String(url).includes('/batch/'))
+      expect(batchCall).toBeDefined()
+      const payload = JSON.parse(batchCall![1].body as string) as {
+        batch: Array<{ event: string; distinct_id: string; properties: Record<string, unknown> }>
+      }
+      const identify = payload.batch.find((e) => e.event === '$identify')
+      expect(identify).toBeDefined()
+      expect(identify!.distinct_id).toBe('user_123')
+      expect(identify!.properties.$anon_distinct_id).toBe(`memry_desktop_test_${installHash}`)
+      // $identify must be first
+      expect(payload.batch[0].event).toBe('$identify')
+      const events = payload.batch.filter((e) => e.event !== '$identify')
+      for (const event of events) {
+        expect(event.distinct_id).toBe('user_123')
+      }
+    })
+
+    it('keeps install-hash distinct_id and sends no $identify without userId', async () => {
+      // #given a batch without userId
+      const { dataset } = createDataset()
+      const fetchMock = vi.fn(async (_input: string | URL, _init?: RequestInit) => {
+        return new Response(JSON.stringify({ status: 1 }), { status: 200 })
+      })
+      vi.stubGlobal('fetch', fetchMock)
+      const installHash = await hashTelemetryId(HMAC_KEY, VALID_INSTALL_ID)
+      const env = createEnv(dataset, HMAC_KEY, {
+        POSTHOG_API_KEY: 'phk',
+        POSTHOG_HOST: 'https://ph.example.com',
+        ENVIRONMENT: 'test'
+      })
+
+      // #when writing without userId
+      await writeTelemetryBatch(env, baseBatch, {})
+
+      // #then no $identify and all events use install-hash distinct_id
+      const batchCall = fetchMock.mock.calls.find(([url]) => String(url).includes('/batch/'))
+      expect(batchCall).toBeDefined()
+      const payload = JSON.parse(batchCall![1].body as string) as {
+        batch: Array<{ event: string; distinct_id: string }>
+      }
+      const identify = payload.batch.find((e) => e.event === '$identify')
+      expect(identify).toBeUndefined()
+      for (const event of payload.batch) {
+        expect(event.distinct_id).toBe(`memry_desktop_test_${installHash}`)
+      }
+    })
+  })
+
   it('mirrors desktop diagnostic events into PostHog logs and error tracking', async () => {
     // #given a configured PostHog project and desktop diagnostic telemetry
     const { dataset } = createDataset()
