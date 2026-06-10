@@ -246,7 +246,11 @@ function main() {
       electronVersion
     ],
     {
-      cwd: repoRoot
+      cwd: repoRoot,
+      env: {
+        ...process.env,
+        SKIP_ELECTRON_REBUILD: '1'
+      }
     }
   )
   relativizeInternalSymlinks(path.join(stageDir, 'node_modules'))
