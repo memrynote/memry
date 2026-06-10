@@ -86,6 +86,9 @@ Optional, end-to-end encrypted, running on Cloudflare Workers + R2. Multi-device
 
 ## Screenshots
 
+<details>
+<summary>View screenshots</summary>
+
 > _Screenshot: Notes view with backlinks panel._
 >
 > ![Memry notes view in dark mode](apps/landing/public/screenshots/note_black.png)
@@ -105,6 +108,8 @@ Optional, end-to-end encrypted, running on Cloudflare Workers + R2. Multi-device
 > _Screenshot: Calendar view with task time-blocking._
 >
 > ![Memry calendar view in dark mode](apps/landing/public/screenshots/calendar_black.png)
+
+</details>
 
 ## Install
 

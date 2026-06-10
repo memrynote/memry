@@ -30,7 +30,7 @@ import {
   logRecordQueryBatch,
   logSyncValidationFailure
 } from '../services/sync-telemetry'
-import { waitUntilWithPostHog } from '../services/posthog'
+import { captureBusinessEvent, waitUntilWithPostHog } from '../services/posthog'
 import { updateDevice } from '../services/device'
 import { getStorageBreakdown } from '../services/storage'
 import {
@@ -42,6 +42,17 @@ import {
   pruneUpdatesBeforeSnapshot
 } from '../services/crdt'
 import type { AppContext } from '../types'
+
+const safeWaitUntil = (
+  c: { executionCtx?: { waitUntil?: (promise: Promise<unknown>) => void } },
+  promise: Promise<unknown>
+): void => {
+  try {
+    c.executionCtx?.waitUntil?.(promise)
+  } catch {
+    // ExecutionContext not available in tests
+  }
+}
 
 export const sync = new Hono<AppContext>()
 
@@ -94,6 +105,9 @@ const handleRegisterVault = async (c: Context<AppContext>): Promise<Response> =>
     parsed.data.encryptedName,
     parsed.data.nameNonce
   )
+
+  safeWaitUntil(c, captureBusinessEvent(c.env, 'vault_registered', userId, {}))
+
   return c.json({ success: true })
 }
 
