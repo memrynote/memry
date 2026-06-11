@@ -4,12 +4,18 @@ import {
   type PartialBlock,
   BlockNoteSchema,
   defaultBlockSpecs,
+  createBlockSpec,
   createCodeBlockSpec
 } from '@blocknote/core'
 import { codeBlockOptions } from '@blocknote/code-block'
 import type * as Y from 'yjs'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { parseCriticMarkup, writeCriticMarkupMarksToYDoc } from '@memry/shared'
+import {
+  normalizeTaskBlocks,
+  serializeTaskBlock,
+  type TaskBlockProps
+} from '@memry/shared/task-block'
 import {
   type BlockColors,
   BLOCK_COLORS_LINE_REGEX,
@@ -31,10 +37,36 @@ import { createLogger } from '../lib/logger'
 
 const log = createLogger('BlockNoteConverter')
 
+// Headless `taskBlock` node so the CRDT fragment stores the SAME custom block
+// the renderer paints. Seeding a raw `checkListItem` would flash a plain
+// checkbox on open and — via the renderer's checkbox→task converter — mint a
+// duplicate task. Only the node schema (type + props + content) is used for
+// (de)serialization here; the server never renders, so `render` throws if it is
+// ever reached. propSchema must stay identical to the renderer's taskBlock
+// (task-block/index.tsx) or yXmlFragmentToBlocks would mis-parse the props.
+const createServerTaskBlock = createBlockSpec(
+  {
+    type: 'taskBlock' as const,
+    propSchema: {
+      taskId: { default: '' },
+      title: { default: '' },
+      checked: { default: false },
+      parentTaskId: { default: '' }
+    },
+    content: 'none'
+  },
+  {
+    render: () => {
+      throw new Error('taskBlock server spec is serialization-only and must not be rendered')
+    }
+  }
+)
+
 const serverSchema = BlockNoteSchema.create({
   blockSpecs: {
     ...defaultBlockSpecs,
-    codeBlock: createCodeBlockSpec(codeBlockOptions)
+    codeBlock: createCodeBlockSpec(codeBlockOptions),
+    taskBlock: createServerTaskBlock()
   }
 })
 
@@ -42,7 +74,12 @@ let serverEditor: ServerBlockNoteEditor | null = null
 
 function getEditor(): ServerBlockNoteEditor {
   if (!serverEditor) {
-    serverEditor = ServerBlockNoteEditor.create({ schema: serverSchema })
+    // The custom taskBlock adds a key absent from the default block schema, so
+    // the create() return type no longer matches the default-parameterised
+    // `ServerBlockNoteEditor`. The extra block only matters at runtime (for
+    // (de)serialization); erase it from the type so the existing default-typed
+    // helpers keep working.
+    serverEditor = ServerBlockNoteEditor.create({ schema: serverSchema }) as ServerBlockNoteEditor
   }
   return serverEditor
 }
@@ -91,7 +128,10 @@ export async function markdownToYFragment(
   const parsed = parseCriticMarkup(markdown)
   const blocks = await markdownToBlocks(parsed.plainText)
   if (!blocks) return false
-  const ok = blocksToYFragment(blocks, fragment)
+  // Upgrade `- [ ] … {task:id}` checkboxes into taskBlock nodes so the renderer
+  // binds the custom block on first paint instead of a raw checkbox.
+  const normalized = normalizeTaskBlocks(blocks).blocks
+  const ok = blocksToYFragment(normalized, fragment)
   if (ok && fragment.doc) {
     writeCriticMarkupMarksToYDoc(fragment.doc, parsed.marks)
   }
@@ -266,8 +306,34 @@ async function blocksToMarkdownPreserving(
   let contentGroup: Block[] = []
   let emptyCount = 0
 
+  const flushContentGroup = async (): Promise<void> => {
+    if (contentGroup.length === 0) return
+    const md = await editor.blocksToMarkdownLossy(contentGroup as PartialBlock[])
+    segments.push({ type: 'content', text: md })
+    contentGroup = []
+  }
+
+  const flushGap = (): void => {
+    if (emptyCount === 0) return
+    segments.push({ type: 'gap', extraLines: emptyCount })
+    emptyCount = 0
+  }
+
   for (const block of blocks) {
-    if (isEmptyParagraph(block)) {
+    if ((block.type as string) === 'taskBlock') {
+      // BlockNote can't serialize a taskBlock (it's content:'none'), so emit the
+      // `- [ ] … {task:id}` line ourselves. Subtasks are kept on the immediately
+      // following line (tight list) so a re-parse re-nests them under the parent.
+      await flushContentGroup()
+      flushGap()
+      const lines = [serializeTaskBlock(block.props as unknown as TaskBlockProps)]
+      for (const child of (block.children ?? []) as Block[]) {
+        if ((child.type as string) === 'taskBlock') {
+          lines.push(serializeTaskBlock(child.props as unknown as TaskBlockProps))
+        }
+      }
+      segments.push({ type: 'content', text: lines.join('\n') })
+    } else if (isEmptyParagraph(block)) {
       if (contentGroup.length > 0) {
         const md = await editor.blocksToMarkdownLossy(contentGroup as PartialBlock[])
         segments.push({ type: 'content', text: md })

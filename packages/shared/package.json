@@ -11,7 +11,8 @@
     "./empty-lines": "./src/empty-lines.ts",
     "./block-colors": "./src/block-colors.ts",
     "./block-nesting": "./src/block-nesting.ts",
-    "./youtube": "./src/youtube.ts"
+    "./youtube": "./src/youtube.ts",
+    "./task-block": "./src/task-block.ts"
   },
   "types": "./src/index.ts",
   "scripts": {

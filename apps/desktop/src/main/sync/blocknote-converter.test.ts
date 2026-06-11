@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { markdownToBlocks, yDocToMarkdown, blocksToYFragment } from './blocknote-converter'
+import {
+  markdownToBlocks,
+  yDocToMarkdown,
+  blocksToYFragment,
+  markdownToYFragment,
+  yFragmentToBlocks
+} from './blocknote-converter'
 import * as Y from 'yjs'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 
@@ -186,6 +192,54 @@ describe('blocknote-converter code block language', () => {
       expect.objectContaining({ kind: 'deletion', visibleText: 'deleted', start: 5, end: 12 }),
       expect.objectContaining({ kind: 'addition', visibleText: 'added', start: 17, end: 22 })
     ])
+  })
+
+  it('seeds a {task:} checkbox into the Yjs doc as a taskBlock node (no raw checkbox)', async () => {
+    // #given
+    const doc = new Y.Doc()
+    const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+
+    // #when
+    const ok = await markdownToYFragment('- [ ] Buy milk {task:abc-123}', fragment)
+    const blocks = await yFragmentToBlocks(fragment)
+
+    // #then
+    expect(ok).toBe(true)
+    expect(blocks).not.toBeNull()
+    const task = blocks!.find((b) => b.type === 'taskBlock')
+    expect(task).toBeTruthy()
+    expect(task!.props).toMatchObject({ taskId: 'abc-123', title: 'Buy milk', checked: false })
+    expect(blocks!.some((b) => b.type === 'checkListItem')).toBe(false)
+  })
+
+  it('round-trips a checked taskBlock back to its {task:} markdown line', async () => {
+    // #given
+    const doc = new Y.Doc()
+    const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+
+    // #when
+    await markdownToYFragment('- [x] Ship it {task:t-9}', fragment)
+    const result = await yDocToMarkdown(doc)
+
+    // #then
+    expect(result).not.toBeNull()
+    expect(result!.trim()).toBe('- [x] Ship it {task:t-9}')
+  })
+
+  it('preserves a task with an indented subtask through the full round-trip', async () => {
+    // #given
+    const md = '- [ ] Parent {task:p1}\n  - [x] Child {task:c1}'
+    const doc = new Y.Doc()
+    const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+
+    // #when
+    await markdownToYFragment(md, fragment)
+    const result = await yDocToMarkdown(doc)
+
+    // #then
+    expect(result).not.toBeNull()
+    expect(result).toContain('- [ ] Parent {task:p1}')
+    expect(result).toContain('  - [x] Child {task:c1}')
   })
 
   it('preserves nested paragraph indentation through markdown writeback', async () => {
