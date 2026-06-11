@@ -1,11 +1,5 @@
-import type { SyncPlan } from './entitlements'
-
-export type CheckoutCadence = 'monthly' | 'annual' | 'lifetime'
-
 interface CheckoutTokenPayload {
   userId: string
-  plan: Exclude<SyncPlan, 'free'>
-  cadence: CheckoutCadence
   exp: number
 }
 
