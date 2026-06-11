@@ -191,7 +191,7 @@ export function AccountSettings() {
     setIsCheckoutStarting(true)
     setActivationPending(true)
     try {
-      const result = await window.api.account.startCheckout({ plan: 'pro', cadence: 'annual' })
+      const result = await window.api.account.startCheckout()
       if (!result.success) {
         setActivationPending(false)
         toast.error(result.error ?? t('account.billing.toasts.checkoutFailed'))

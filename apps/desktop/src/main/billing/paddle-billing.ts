@@ -11,7 +11,7 @@ import {
 } from './entitlement-cache'
 
 const log = createLogger('Billing')
-const LANDING_CHECKOUT_URL = 'https://memrynote.com/pricing'
+const CHECKOUT_PAGE_URL = 'https://memrynote.com/checkout'
 
 export type BillingPlanId = 'plus' | 'pro' | 'believer'
 export type BillingCadence = 'monthly' | 'annual' | 'lifetime'
@@ -41,20 +41,14 @@ export interface BillingActionResult {
   error?: string
 }
 
-export async function startBillingCheckout(input: {
-  plan: BillingPlanId
-  cadence: BillingCadence
-}): Promise<BillingActionResult & { checkoutUrl?: string }> {
+export async function startBillingCheckout(): Promise<
+  BillingActionResult & { checkoutUrl?: string }
+> {
   const token = await getValidAccessToken()
   if (!token) return { success: false, error: 'Sign in to start checkout' }
 
-  const cadence = input.plan === 'believer' ? 'lifetime' : input.cadence
-  const response = await postToServer<{ checkoutToken: string }>(
-    '/auth/checkout-token',
-    { plan: input.plan, cadence },
-    token
-  )
-  const checkoutUrl = buildLandingCheckoutUrl(input.plan, cadence, response.checkoutToken)
+  const response = await postToServer<{ checkoutToken: string }>('/auth/checkout-token', {}, token)
+  const checkoutUrl = buildCheckoutPageUrl(response.checkoutToken)
   await shell.openExternal(checkoutUrl)
 
   return { success: true, checkoutUrl }
@@ -138,15 +132,7 @@ export async function resolveEntitlementForSyncStart(): Promise<CachedEntitlemen
   return cached ?? { isPaid: false, plan: 'free', status: 'inactive' }
 }
 
-function buildLandingCheckoutUrl(
-  plan: BillingPlanId,
-  cadence: BillingCadence,
-  checkoutToken: string
-): string {
-  const params = new URLSearchParams({
-    checkout_plan: plan,
-    checkout_cadence: cadence,
-    checkout_token: checkoutToken
-  })
-  return `${LANDING_CHECKOUT_URL}#${params.toString()}`
+function buildCheckoutPageUrl(checkoutToken: string): string {
+  const params = new URLSearchParams({ token: checkoutToken })
+  return `${CHECKOUT_PAGE_URL}#${params.toString()}`
 }

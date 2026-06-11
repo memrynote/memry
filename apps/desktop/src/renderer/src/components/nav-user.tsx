@@ -40,7 +40,7 @@ export function NavUser({
   const handleUpgrade = async (): Promise<void> => {
     setIsStartingCheckout(true)
     try {
-      const result = await window.api.account.startCheckout({ plan: 'pro', cadence: 'annual' })
+      const result = await window.api.account.startCheckout()
       if (!result.success) {
         toast.error(result.error ?? tSettings('account.billing.toasts.checkoutFailed'))
         return

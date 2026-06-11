@@ -663,11 +663,7 @@ describe('preload api wrappers', () => {
 
     await expectInvoke(() => accountApi.getInfo(), AccountChannels.invoke.GET_INFO)
     await expectInvoke(() => accountApi.signOut(), AccountChannels.invoke.SIGN_OUT)
-    await expectInvoke(
-      () => accountApi.startCheckout({ plan: 'pro', cadence: 'annual' }),
-      AccountChannels.invoke.START_CHECKOUT,
-      { plan: 'pro', cadence: 'annual' }
-    )
+    await expectInvoke(() => accountApi.startCheckout(), AccountChannels.invoke.START_CHECKOUT)
     await expectInvoke(
       () => accountApi.getBillingStatus(),
       AccountChannels.invoke.GET_BILLING_STATUS
