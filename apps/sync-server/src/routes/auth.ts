@@ -11,7 +11,8 @@ import {
   RefreshTokenRequestSchema,
   OAuthCallbackSchema,
   EmailChangeRequestSchema,
-  EmailChangeVerifySchema
+  EmailChangeVerifySchema,
+  DeleteAccountRequestSchema
 } from '@memry/contracts/auth-api'
 import { buildOtpEmailHtml } from '../emails/otp-template'
 import { safeBase64Decode } from '../lib/encoding'
@@ -54,6 +55,7 @@ import {
   ensureLocalAdminPaidSyncAccessForUser
 } from '../services/entitlements'
 import { captureBusinessEvent, safeWaitUntil } from '../services/posthog'
+import { deleteUserData } from '../services/account-deletion'
 import type { AppContext } from '../types'
 
 const logger = createLogger('Auth')
@@ -758,5 +760,22 @@ auth.post('/logout-all', authMiddleware, async (c) => {
       'UPDATE refresh_tokens SET revoked = 1 WHERE user_id = ? AND revoked = 0'
     ).bind(userId)
   ])
+  return c.json({ success: true })
+})
+
+// DELETE /account — irreversibly delete the authenticated user's account after OTP verification
+auth.delete('/account', authMiddleware, async (c) => {
+  const body = await c.req.json()
+  const parsed = DeleteAccountRequestSchema.safeParse(body)
+  if (!parsed.success) {
+    throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid request body', 400)
+  }
+  const userId = c.get('userId')!
+  const user = await getUserById(c.env.DB, userId)
+  if (!user) {
+    throw new AppError(ErrorCodes.NOT_FOUND, 'User not found', 404)
+  }
+  await verifyOtp(c.env.DB, user.email, parsed.data.code, c.env.OTP_HMAC_KEY)
+  await deleteUserData(c.env.DB, c.env.STORAGE, userId, user.email)
   return c.json({ success: true })
 })

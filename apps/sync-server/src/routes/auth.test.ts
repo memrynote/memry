@@ -74,6 +74,10 @@ vi.mock('../middleware/auth', () => ({
   }
 }))
 
+vi.mock('../services/account-deletion', () => ({
+  deleteUserData: vi.fn().mockResolvedValue(undefined)
+}))
+
 vi.mock('../middleware/setup-auth', () => ({
   setupAuthMiddleware: async (
     c: { set: (k: string, v: string) => void },
@@ -134,6 +138,7 @@ import {
 } from '../services/user'
 import { revokeDeviceTokens, rotateRefreshToken } from '../services/auth'
 import { SYNC_PLAN_LIMITS } from '../services/entitlements'
+import { deleteUserData } from '../services/account-deletion'
 import { jwtVerify } from 'jose'
 
 // ============================================================================
@@ -1424,6 +1429,90 @@ describe('auth routes', () => {
 
       expect(res.status).toBe(200)
       expect(await res.json()).toEqual({ success: true })
+    })
+  })
+
+  // ==========================================================================
+  // DELETE /auth/account
+  // ==========================================================================
+
+  describe('DELETE /auth/account', () => {
+    const makeDeleteAuthed = (body: Record<string, unknown>) =>
+      new Request('http://localhost/auth/account', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer mock-access-token'
+        },
+        body: JSON.stringify(body)
+      })
+
+    const makeEnvWithStorage = () => {
+      const storage: Pick<R2Bucket, 'list' | 'delete'> = {
+        list: vi.fn().mockResolvedValue({ objects: [], truncated: false }),
+        delete: vi.fn().mockResolvedValue(undefined)
+      }
+      return {
+        ...env,
+        STORAGE: storage as unknown as R2Bucket
+      }
+    }
+
+    it('returns 200 and wipes user data when OTP is valid', async () => {
+      vi.mocked(getUserById).mockResolvedValueOnce({
+        id: 'user-1',
+        email: 'test@example.com'
+      } as never)
+
+      const envWithStorage = makeEnvWithStorage()
+      const res = await app.request(makeDeleteAuthed({ code: '123456' }), undefined, envWithStorage)
+
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual({ success: true })
+      expect(deleteUserData).toHaveBeenCalledWith(
+        envWithStorage.DB,
+        envWithStorage.STORAGE,
+        'user-1',
+        'test@example.com'
+      )
+    })
+
+    it('returns 400 when code is missing or invalid format', async () => {
+      const envWithStorage = makeEnvWithStorage()
+      const res = await app.request(makeDeleteAuthed({ code: 'bad' }), undefined, envWithStorage)
+
+      expect(res.status).toBe(400)
+      const json = (await res.json()) as { error: { code: string } }
+      expect(json.error.code).toBe(ErrorCodes.VALIDATION_ERROR)
+    })
+
+    it('returns 404 when user is not found', async () => {
+      vi.mocked(getUserById).mockResolvedValueOnce(null as never)
+
+      const envWithStorage = makeEnvWithStorage()
+      const res = await app.request(makeDeleteAuthed({ code: '123456' }), undefined, envWithStorage)
+
+      expect(res.status).toBe(404)
+      const json = (await res.json()) as { error: { code: string } }
+      expect(json.error.code).toBe(ErrorCodes.NOT_FOUND)
+    })
+
+    it('returns 401 when OTP verification fails', async () => {
+      vi.mocked(getUserById).mockResolvedValueOnce({
+        id: 'user-1',
+        email: 'test@example.com'
+      } as never)
+      const { verifyOtp } = await import('../services/otp')
+      vi.mocked(verifyOtp).mockRejectedValueOnce(
+        new AppError(ErrorCodes.AUTH_INVALID_OTP, 'Invalid OTP', 401)
+      )
+
+      const envWithStorage = makeEnvWithStorage()
+      const res = await app.request(makeDeleteAuthed({ code: '000000' }), undefined, envWithStorage)
+
+      expect(res.status).toBe(401)
+      const json = (await res.json()) as { error: { code: string } }
+      expect(json.error.code).toBe(ErrorCodes.AUTH_INVALID_OTP)
     })
   })
 })
