@@ -382,6 +382,40 @@ rot while the user grinds an endless queue of short-term tasks.
 - Protect the long-term bucket from neglect: keep long-term items in view, resurface
   them, and nudge dated ones so they do not get buried under short-term churn.
 - Make turning a note into a reminder a one-step action.
+- Add a focus mode for the short-term list: the user hand-ranks tasks by dragging them
+  up or down, then hits "Go" to enter a one-task-at-a-time feed that brings the top
+  task to the fore with its subtasks inline and says, in effect, "this is what to do
+  right now."
+- Show a small "Next task" peek in a corner of focus mode — just the next task's name —
+  as a gentle prod not to over-spend on the current one.
+- The focus feed must follow the user's manual rank order, never auto-sort by date or
+  priority. A "do now" task added today must not automatically outrank a "do now" task
+  carried over from yesterday; relative urgency is the user's call, set by dragging.
+
+### Follow-up: what already exists
+
+Source: Reddit follow-up refining the do-now / do-soon model into a hand-ranked focus
+feed with a next-task nudge.
+
+Most of this substrate already exists in the task system, so the new work is a thin
+view, not a data-model change:
+
+- Manual ranking is already supported — tasks have a `position` field with a
+  `reorderTasks` command and drag-and-drop reordering UI.
+- Subtasks are already modeled (parent / child) and rendered.
+- A Today view plus overdue / upcoming queries already exist.
+
+The genuinely missing pieces:
+
+- A focus mode / single-task "do this now" feed — today there is only a task detail
+  drawer, no focus view.
+- A persistent "Next task" peek.
+- Task-level reminders — reminders currently target notes, journals, and highlights,
+  not tasks, so "turn this into a reminder" does not yet cover tasks.
+
+Open design decision: whether do now / do soon / long term map onto the existing
+numeric priority field, the per-project status columns, or a new dedicated axis. The
+hand-ranked short-term list is orthogonal to whichever bucketing is chosen.
 
 ### Important boundary
 
