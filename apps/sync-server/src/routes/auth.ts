@@ -745,3 +745,18 @@ auth.post('/email/change/verify', authMiddleware, async (c) => {
   await updateUserEmail(c.env.DB, userId, newEmail)
   return c.json({ success: true })
 })
+
+// POST /logout-all — revoke all devices and refresh tokens for the authenticated user
+auth.post('/logout-all', authMiddleware, async (c) => {
+  const userId = c.get('userId')!
+  const now = Math.floor(Date.now() / 1000)
+  await c.env.DB.batch([
+    c.env.DB.prepare(
+      'UPDATE devices SET revoked_at = ?, updated_at = ? WHERE user_id = ? AND revoked_at IS NULL'
+    ).bind(now, now, userId),
+    c.env.DB.prepare(
+      'UPDATE refresh_tokens SET revoked = 1 WHERE user_id = ? AND revoked = 0'
+    ).bind(userId)
+  ])
+  return c.json({ success: true })
+})

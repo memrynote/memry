@@ -1413,4 +1413,17 @@ describe('auth routes', () => {
       expect(updateUserEmail).toHaveBeenCalledWith(env.DB, 'user-1', 'new@example.com')
     })
   })
+
+  // ==========================================================================
+  // POST /auth/logout-all
+  // ==========================================================================
+
+  describe('POST /auth/logout-all', () => {
+    it('revokes all devices and tokens and returns success', async () => {
+      const res = await app.request('/auth/logout-all', { method: 'POST' }, env)
+
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual({ success: true })
+    })
+  })
 })
