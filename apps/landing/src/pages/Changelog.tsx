@@ -158,7 +158,7 @@ export function ChangelogPage() {
             initial={BLUR_REVEAL_INITIAL}
             animate={BLUR_REVEAL_ANIMATE}
             transition={BLUR_REVEAL_TRANSITION}
-            className="border-b border-border pb-12"
+            className="border-b border-border pb-12 text-center"
           >
             <p className="font-mono-accent text-xs uppercase tracking-[0.18em] text-terracotta">
               Release notes
@@ -166,12 +166,12 @@ export function ChangelogPage() {
             <h1 className="mt-4 font-serif text-5xl leading-[1.05] text-ink md:text-6xl">
               Changelog
             </h1>
-            <p className="mt-5 max-w-2xl text-lg leading-relaxed text-muted">
+            <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-muted">
               Major memrynote milestones from the first desktop scaffold on December 1, 2025 to the
               current launch push. Small fixes, copy changes, and operational release notes stay in
               GitHub.
             </p>
-            <div className="mt-8 flex flex-wrap gap-3 text-sm">
+            <div className="mt-8 flex flex-wrap justify-center gap-3 text-sm">
               <a
                 href={`${GITHUB_URL}/releases`}
                 className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 font-medium text-ink transition-colors hover:border-terracotta/30 hover:text-terracotta"

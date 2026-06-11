@@ -4,6 +4,7 @@ import { HelmetProvider } from 'react-helmet-async'
 import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
 import { SmoothScroll } from '@/components/layout/SmoothScroll'
+import { PageGlow } from '@/components/shared/PageGlow'
 import { Home } from '@/pages/Home'
 import { FeaturesPage } from '@/pages/Features'
 import { NotesFeaturePage } from '@/pages/Notes'
@@ -116,7 +117,8 @@ function AppContent() {
       <PageViewAnalytics />
       <ScrollDepthAnalytics />
       <Header />
-      <main className="flex-1">
+      <main className="relative isolate flex-1">
+        <PageGlow />
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/features" element={<FeaturesPage />} />

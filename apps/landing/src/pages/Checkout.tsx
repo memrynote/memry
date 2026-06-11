@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Check, Lock } from 'lucide-react'
 import { Container } from '@/components/layout/Container'
 import { PageHead } from '@/components/shared/PageHead'
 import { Button } from '@/components/ui/button'
@@ -16,6 +17,14 @@ import { cn } from '@/lib/utils'
 const PURCHASABLE_TIERS = SYNC_PLAN_TIERS.filter((tier) => tier.checkoutPlanId)
 
 type CheckoutStatus = 'idle' | 'starting' | 'pending' | 'success' | 'failed' | 'canceled'
+
+function formatPrice(amount: number) {
+  return Number.isInteger(amount) ? `$${amount}` : `$${amount.toFixed(2)}`
+}
+
+function cadenceSuffix(label: 'Monthly' | 'Yearly' | 'One-time') {
+  return label === 'Monthly' ? '/mo' : label === 'Yearly' ? '/yr' : 'once'
+}
 
 export function CheckoutPage() {
   const [token, setToken] = useState<string | null>(null)
@@ -67,66 +76,136 @@ export function CheckoutPage() {
   return (
     <>
       <PageHead page="pricing" />
-      <main className="py-16">
-        <Container>
+      <main className="overflow-hidden py-16 md:py-24">
+        <Container size="sm">
           {!token ? (
             <NoTokenNotice />
           ) : (
-            <div className="grid gap-10 md:grid-cols-2">
-              <section>
-                <p className="text-sm text-muted">Account · Sync · Checkout</p>
-                <h1 className="mt-2 text-2xl font-semibold">Choose a sync plan</h1>
+            <div className="animate-fade-up mx-auto max-w-md">
+              <p className="font-mono-accent text-[11px] uppercase tracking-[0.22em] text-muted">
+                memrynote · sync
+              </p>
+              <h1 className="font-editorial mt-2 text-[28px] leading-none tracking-[-0.02em]">
+                Choose your plan
+              </h1>
+              <p className="mt-2 text-sm text-muted">
+                End-to-end encrypted. Cancel anytime, refund within 7 days.
+              </p>
 
-                <h2 className="mt-8 text-sm font-medium uppercase tracking-wide">Plan</h2>
-                <div className="mt-3 space-y-2">
-                  {PURCHASABLE_TIERS.map((tier) => (
-                    <button
-                      key={tier.id}
-                      type="button"
-                      onClick={() => selectPlan(tier.checkoutPlanId!)}
-                      className={cn(
-                        'flex w-full flex-col rounded-lg border p-4 text-start transition',
-                        plan === tier.checkoutPlanId
-                          ? 'border-primary ring-1 ring-primary'
-                          : 'border-border hover:border-foreground/30'
-                      )}
-                    >
-                      <span className="font-medium">{tier.name}</span>
-                      <span className="text-sm text-muted">{tier.tagline}</span>
-                    </button>
-                  ))}
+              <div className="mt-7 overflow-hidden rounded-2xl border border-border bg-card shadow-card">
+                <div role="radiogroup" aria-label="Plan" className="space-y-1 p-2">
+                  {PURCHASABLE_TIERS.map((tier) => {
+                    const id = tier.checkoutPlanId!
+                    const selected = plan === id
+                    const rowSummary = getCheckoutSummary(id, normalizeCadenceForPlan(id, cadence))
+                    return (
+                      <button
+                        key={tier.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={selected}
+                        onClick={() => selectPlan(id)}
+                        className={cn(
+                          'flex w-full items-center gap-3 rounded-xl px-3 py-3 text-start transition-colors duration-200',
+                          selected
+                            ? 'bg-[var(--color-paper-alt)]'
+                            : 'hover:bg-[var(--color-paper-alt)]/60'
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            'flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border transition-colors',
+                            selected
+                              ? 'border-terracotta bg-terracotta text-white'
+                              : 'border-border text-transparent'
+                          )}
+                        >
+                          <Check className="h-2.5 w-2.5" strokeWidth={3.5} />
+                        </span>
+
+                        <span className="min-w-0 flex-1">
+                          <span className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-ink">{tier.name}</span>
+                            {tier.ribbon && (
+                              <span className="rounded-full bg-terracotta/10 px-1.5 py-0.5 text-[10px] font-medium text-terracotta">
+                                {tier.ribbon}
+                              </span>
+                            )}
+                          </span>
+                          <span className="mt-0.5 block truncate text-xs text-muted">
+                            {tier.tagline}
+                          </span>
+                        </span>
+
+                        {rowSummary && (
+                          <span className="text-end leading-tight">
+                            <span className="font-mono-accent text-sm font-medium tabular-nums text-ink">
+                              {formatPrice(rowSummary.amount)}
+                            </span>
+                            <span className="ms-0.5 text-[11px] text-muted">
+                              {cadenceSuffix(rowSummary.billingFrequencyLabel)}
+                            </span>
+                          </span>
+                        )}
+                      </button>
+                    )
+                  })}
                 </div>
 
                 {cadenceOptions.length > 1 && (
-                  <>
-                    <h2 className="mt-8 text-sm font-medium uppercase tracking-wide">
-                      Renewal frequency
-                    </h2>
-                    <div className="mt-3 space-y-2">
-                      {cadenceOptions.map((option) => (
-                        <button
-                          key={option}
-                          type="button"
-                          onClick={() => setCadence(option)}
-                          className={cn(
-                            'flex w-full items-center justify-between rounded-lg border p-4 text-start transition',
-                            effectiveCadence === option
-                              ? 'border-primary ring-1 ring-primary'
-                              : 'border-border hover:border-foreground/30'
-                          )}
-                        >
-                          <span>{option === 'annual' ? 'Yearly' : 'Monthly'}</span>
-                          {option === 'annual' && (
-                            <span className="text-xs font-medium text-emerald-600">SAVE 20%</span>
-                          )}
-                        </button>
-                      ))}
+                  <div className="px-3 pb-3">
+                    <div
+                      role="radiogroup"
+                      aria-label="Renewal frequency"
+                      className="flex rounded-full border border-border bg-[var(--color-paper-alt)] p-1"
+                    >
+                      {cadenceOptions.map((option) => {
+                        const active = effectiveCadence === option
+                        return (
+                          <button
+                            key={option}
+                            type="button"
+                            role="radio"
+                            aria-checked={active}
+                            onClick={() => setCadence(option)}
+                            className={cn(
+                              'flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all duration-200',
+                              active ? 'bg-card text-ink shadow-sm' : 'text-muted hover:text-ink'
+                            )}
+                          >
+                            {option === 'annual' ? 'Yearly' : 'Monthly'}
+                            {option === 'annual' && (
+                              <span className="font-semibold text-sage">−20%</span>
+                            )}
+                          </button>
+                        )
+                      })}
                     </div>
-                  </>
+                  </div>
                 )}
-              </section>
 
-              <OrderSummary summary={summary} status={status} error={error} onProceed={proceed} />
+                <OrderSummary summary={summary} status={status} error={error} onProceed={proceed} />
+              </div>
+
+              <p className="mt-4 flex items-center justify-center gap-1.5 text-xs text-muted">
+                <Lock className="h-3 w-3" strokeWidth={2} />
+                Secured by Paddle · VAT included · 7-day refund
+              </p>
+
+              <p className="mt-2 text-center text-xs text-muted">
+                Need help?{' '}
+                <a
+                  href="mailto:billing@memrynote.com"
+                  className="text-terracotta underline-offset-2 hover:underline"
+                >
+                  Contact us
+                </a>
+                .{' '}
+                <Link to="/refund" className="text-terracotta underline-offset-2 hover:underline">
+                  Refund policy
+                </Link>
+                .
+              </p>
             </div>
           )}
         </Container>
@@ -148,34 +227,37 @@ function OrderSummary({
 }) {
   if (!summary) {
     return (
-      <aside className="rounded-lg border border-border p-6">
+      <div className="border-t border-border px-5 py-5">
         <p className="text-sm text-muted">This plan is not available for purchase.</p>
-      </aside>
+      </div>
     )
   }
 
   const isBusy = status === 'starting' || status === 'pending'
+  const recurring = summary.billingFrequencyLabel !== 'One-time'
 
   return (
-    <aside className="rounded-lg border border-border bg-card p-6">
-      <div className="flex items-center justify-between text-sm">
-        <span className="text-muted">Billing frequency</span>
-        <span className="font-medium">{summary.billingFrequencyLabel}</span>
-      </div>
-      <div className="mt-4 flex items-center justify-between text-sm">
-        <span>{summary.lineItemLabel}</span>
-        <span>${summary.amount.toFixed(2)}</span>
-      </div>
-      <hr className="my-6 border-border" />
-      <div className="flex items-center justify-between">
-        <span className="text-lg font-semibold">Total</span>
-        <span className="text-lg font-semibold">
-          {summary.currency} ${summary.amount.toFixed(2)}
-        </span>
+    <div className="border-t border-border px-5 py-5">
+      <div className="flex items-end justify-between">
+        <div>
+          <p className="font-mono-accent text-[11px] uppercase tracking-[0.18em] text-muted">
+            Total due today
+          </p>
+          <p className="mt-1 text-xs text-muted">
+            {summary.lineItemLabel}
+            {recurring && ` · renews ${summary.billingFrequencyLabel.toLowerCase()}`}
+          </p>
+        </div>
+        <p className="shrink-0 text-end">
+          <span className="font-mono-accent text-[28px] font-medium leading-none tabular-nums text-ink">
+            {formatPrice(summary.amount)}
+          </span>
+          <span className="ms-1 align-top text-xs text-muted">{summary.currency}</span>
+        </p>
       </div>
 
       {status === 'success' && (
-        <p role="status" className="mt-4 text-sm text-emerald-600">
+        <p role="status" className="mt-4 text-sm text-sage">
           Payment complete. Return to Memry to finish activation.
         </p>
       )}
@@ -195,22 +277,32 @@ function OrderSummary({
         </p>
       )}
 
-      <Button type="button" className="mt-6 w-full" disabled={isBusy} onClick={onProceed}>
-        {isBusy ? 'Opening…' : 'Proceed to payment'}
+      <Button type="button" className="mt-5 w-full" disabled={isBusy} onClick={onProceed}>
+        {isBusy ? (
+          'Opening…'
+        ) : (
+          <>
+            <Lock className="h-3.5 w-3.5" strokeWidth={2.25} />
+            Proceed to payment
+          </>
+        )}
       </Button>
-    </aside>
+    </div>
   )
 }
 
 function NoTokenNotice() {
   return (
-    <div className="mx-auto max-w-md rounded-lg border border-border p-8 text-center">
-      <h1 className="text-xl font-semibold">Open Memry to upgrade</h1>
+    <div className="animate-fade-up mx-auto max-w-sm rounded-2xl border border-border bg-card p-8 text-center shadow-card">
+      <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-terracotta/10 text-terracotta">
+        <Lock className="h-5 w-5" strokeWidth={2} />
+      </span>
+      <h1 className="font-editorial mt-5 text-xl tracking-[-0.01em]">Open Memry to upgrade</h1>
       <p className="mt-3 text-sm text-muted">
-        Start checkout from <strong>Settings → Account</strong> in the Memry desktop app so we can
-        link the purchase to your account.
+        Start checkout from <strong className="font-medium text-ink">Settings → Account</strong> in
+        the Memry desktop app so we can link the purchase to your account.
       </p>
-      <Button asChild className="mt-6">
+      <Button asChild className="mt-6 w-full">
         <Link to="/download/desktop">Download Memry</Link>
       </Button>
     </div>
