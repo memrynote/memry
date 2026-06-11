@@ -225,8 +225,27 @@ export async function listPaddleInvoices(env: Bindings, userId: string): Promise
 
 export async function getPaddleInvoicePdfUrl(
   env: Bindings,
+  userId: string,
   transactionId: string
 ): Promise<string> {
+  // Verify the transaction belongs to this user's Paddle customer before
+  // handing back a signed PDF URL — otherwise any authenticated user could
+  // read another customer's invoice (name, address, amount) by guessing its
+  // transaction id.
+  const entitlement = await env.DB.prepare(
+    'SELECT paddle_customer_id FROM sync_entitlements WHERE user_id = ?'
+  )
+    .bind(userId)
+    .first<{ paddle_customer_id: string | null }>()
+  if (!entitlement?.paddle_customer_id) {
+    throw new AppError(ErrorCodes.NOT_FOUND, 'Invoice not found', 404)
+  }
+  const transaction = await fetchPaddleTransaction(env, transactionId)
+  const transactionCustomerId = transaction.customer_id ?? transaction.customerId ?? null
+  if (transactionCustomerId !== entitlement.paddle_customer_id) {
+    throw new AppError(ErrorCodes.STORAGE_UNAUTHORIZED, 'Invoice belongs to another account', 403)
+  }
+
   const apiKey = normalizePaddleApiKey(env.PADDLE_API_KEY)
   if (!apiKey) {
     throw new AppError(ErrorCodes.INTERNAL_ERROR, 'Paddle API key is not configured', 503)

@@ -22,6 +22,7 @@ export function BillingSection() {
   const [invoices, setInvoices] = useState<InvoiceRow[]>([])
   const [billingError, setBillingError] = useState<string | null>(null)
   const [portalError, setPortalError] = useState<string | null>(null)
+  const [invoicesError, setInvoicesError] = useState<string | null>(null)
 
   useEffect(() => {
     api
@@ -31,7 +32,7 @@ export function BillingSection() {
     api
       .authedJson<{ invoices: InvoiceRow[] }>('/auth/billing/invoices')
       .then((r) => setInvoices(r.invoices))
-      .catch(() => {})
+      .catch(() => setInvoicesError('Could not load invoices. Try again later.'))
   }, [api])
 
   async function openPortal() {
@@ -48,11 +49,12 @@ export function BillingSection() {
   }
 
   async function openInvoice(id: string) {
+    setInvoicesError(null)
     try {
       const { url } = await api.authedJson<{ url: string }>(`/auth/billing/invoices/${id}/pdf`)
       window.open(url, '_blank', 'noopener')
     } catch {
-      // silently ignore — user can retry
+      setInvoicesError('Could not open invoice PDF. Try again.')
     }
   }
 
@@ -79,7 +81,9 @@ export function BillingSection() {
 
       <section className="rounded-2xl border border-border bg-card p-6">
         <h2 className="text-sm font-semibold">Invoices</h2>
-        {invoices.length === 0 ? (
+        {invoicesError ? (
+          <p className="mt-2 text-sm text-red-500">{invoicesError}</p>
+        ) : invoices.length === 0 ? (
           <p className="mt-2 text-sm text-muted">No invoices yet.</p>
         ) : (
           <ul className="mt-4 divide-y divide-border">

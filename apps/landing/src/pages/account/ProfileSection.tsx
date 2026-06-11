@@ -31,6 +31,7 @@ export function ProfileSection() {
   }, [api])
 
   async function requestEmailChange() {
+    setMsg(null)
     try {
       await api.authedJson('/auth/email/change', {
         method: 'POST',
@@ -44,6 +45,7 @@ export function ProfileSection() {
   }
 
   async function verifyEmailChange() {
+    setMsg(null)
     try {
       await api.authedJson('/auth/email/change/verify', {
         method: 'POST',
@@ -70,6 +72,13 @@ export function ProfileSection() {
   }
 
   async function requestDeleteCode() {
+    setMsg(null)
+    if (!email) {
+      // email only populates once /auth/billing loads; without it the OTP would
+      // be requested for an empty address and never arrive.
+      setMsg('Could not load your account email yet. Reload and try again.')
+      return
+    }
     try {
       await api.authedJson('/auth/otp/request', {
         method: 'POST',
@@ -82,6 +91,7 @@ export function ProfileSection() {
   }
 
   async function deleteAccount() {
+    setMsg(null)
     try {
       await api.authedJson('/auth/account', {
         method: 'DELETE',
@@ -147,7 +157,7 @@ export function ProfileSection() {
           This permanently erases your account and synced data. It cannot be undone.
         </p>
         <div className="mt-4 space-y-2">
-          <Button variant="outline" onClick={requestDeleteCode}>
+          <Button variant="outline" disabled={!email} onClick={requestDeleteCode}>
             Email me a confirmation code
           </Button>
           <Input

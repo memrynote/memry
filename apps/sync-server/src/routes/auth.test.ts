@@ -200,7 +200,7 @@ const jsonPost = (path: string, body: Record<string, unknown>) => ({
   headers: { 'Content-Type': 'application/json' }
 })
 
-const getAuthed = (path: string) => ({ method: 'GET' as const })
+const getAuthed = () => ({ method: 'GET' as const })
 
 function readCheckoutTokenPayload(token: string): Record<string, unknown> {
   const [encodedPayload] = token.split('.')
@@ -568,11 +568,7 @@ describe('auth routes', () => {
         firstRows: [{ paddle_customer_id: 'ctm_1' }]
       })
 
-      const res = await app.request(
-        '/auth/billing/invoices',
-        getAuthed('/auth/billing/invoices'),
-        env
-      )
+      const res = await app.request('/auth/billing/invoices', getAuthed(), env)
 
       expect(res.status).toBe(200)
       await expect(res.json()).resolves.toEqual({ invoices: [] })
@@ -581,30 +577,39 @@ describe('auth routes', () => {
     it('GET /billing/invoices returns [] without calling Paddle when no customer id', async () => {
       env = createEnv({ firstRows: [null] })
 
-      const res = await app.request(
-        '/auth/billing/invoices',
-        getAuthed('/auth/billing/invoices'),
-        env
-      )
+      const res = await app.request('/auth/billing/invoices', getAuthed(), env)
 
       expect(res.status).toBe(200)
       await expect(res.json()).resolves.toEqual({ invoices: [] })
     })
 
-    it('GET /billing/invoices/:id/pdf returns the PDF url', async () => {
+    it('GET /billing/invoices/:id/pdf returns the PDF url for an owned transaction', async () => {
       const paddleFetch = vi
         .fn()
-        .mockResolvedValue(Response.json({ data: { url: 'https://paddle.com/invoice/txn_1.pdf' } }))
-      env = createEnv({ paddleFetch, firstRows: [] })
+        .mockImplementation((url: string) =>
+          Promise.resolve(
+            url.endsWith('/invoice')
+              ? Response.json({ data: { url: 'https://paddle.com/invoice/txn_1.pdf' } })
+              : Response.json({ data: { id: 'txn_1', customer_id: 'ctm_1' } })
+          )
+        )
+      env = createEnv({ paddleFetch, firstRows: [{ paddle_customer_id: 'ctm_1' }] })
 
-      const res = await app.request(
-        '/auth/billing/invoices/txn_1/pdf',
-        getAuthed('/auth/billing/invoices/txn_1/pdf'),
-        env
-      )
+      const res = await app.request('/auth/billing/invoices/txn_1/pdf', getAuthed(), env)
 
       expect(res.status).toBe(200)
       await expect(res.json()).resolves.toEqual({ url: 'https://paddle.com/invoice/txn_1.pdf' })
+    })
+
+    it('GET /billing/invoices/:id/pdf rejects a transaction owned by another customer', async () => {
+      const paddleFetch = vi
+        .fn()
+        .mockResolvedValue(Response.json({ data: { id: 'txn_1', customer_id: 'ctm_other' } }))
+      env = createEnv({ paddleFetch, firstRows: [{ paddle_customer_id: 'ctm_1' }] })
+
+      const res = await app.request('/auth/billing/invoices/txn_1/pdf', getAuthed(), env)
+
+      expect(res.status).toBe(403)
     })
   })
 

@@ -120,13 +120,26 @@ describe('listPaddleInvoices', () => {
 // ---------------------------------------------------------------------------
 
 describe('getPaddleInvoicePdfUrl', () => {
-  it('returns the PDF url from Paddle', async () => {
-    const paddleFetch = vi
+  // The transaction lookup (ownership check) and the invoice lookup hit
+  // different Paddle URLs, so the mock branches on the path.
+  const ownedTransactionFetch = (invoiceResponse: () => Response) =>
+    vi
       .fn()
-      .mockResolvedValue(Response.json({ data: { url: 'https://paddle.com/invoice/txn_1.pdf' } }))
-    const env = createEnv({ firstRow: null, paddleFetch })
+      .mockImplementation((url: string) =>
+        Promise.resolve(
+          url.endsWith('/invoice')
+            ? invoiceResponse()
+            : Response.json({ data: { id: 'txn_1', customer_id: 'ctm_1' } })
+        )
+      )
 
-    const url = await getPaddleInvoicePdfUrl(env, 'txn_1')
+  it('returns the PDF url from Paddle when the transaction belongs to the user', async () => {
+    const paddleFetch = ownedTransactionFetch(() =>
+      Response.json({ data: { url: 'https://paddle.com/invoice/txn_1.pdf' } })
+    )
+    const env = createEnv({ firstRow: { paddle_customer_id: 'ctm_1' }, paddleFetch })
+
+    const url = await getPaddleInvoicePdfUrl(env, 'user-1', 'txn_1')
 
     expect(url).toBe('https://paddle.com/invoice/txn_1.pdf')
     expect(paddleFetch).toHaveBeenCalledWith(
@@ -137,17 +150,40 @@ describe('getPaddleInvoicePdfUrl', () => {
     )
   })
 
-  it('throws when url is missing in Paddle response', async () => {
-    const paddleFetch = vi.fn().mockResolvedValue(Response.json({ data: {} }))
-    const env = createEnv({ firstRow: null, paddleFetch })
+  it('rejects with 403 when the transaction belongs to another customer', async () => {
+    const paddleFetch = vi
+      .fn()
+      .mockResolvedValue(Response.json({ data: { id: 'txn_1', customer_id: 'ctm_other' } }))
+    const env = createEnv({ firstRow: { paddle_customer_id: 'ctm_1' }, paddleFetch })
 
-    await expect(getPaddleInvoicePdfUrl(env, 'txn_1')).rejects.toMatchObject({ statusCode: 502 })
+    await expect(getPaddleInvoicePdfUrl(env, 'user-1', 'txn_1')).rejects.toMatchObject({
+      statusCode: 403
+    })
   })
 
-  it('throws when Paddle returns non-ok', async () => {
-    const paddleFetch = vi.fn().mockResolvedValue(new Response('err', { status: 404 }))
-    const env = createEnv({ firstRow: null, paddleFetch })
+  it('rejects with 404 when the user has no Paddle customer', async () => {
+    const env = createEnv({ firstRow: null })
 
-    await expect(getPaddleInvoicePdfUrl(env, 'txn_1')).rejects.toMatchObject({ statusCode: 502 })
+    await expect(getPaddleInvoicePdfUrl(env, 'user-1', 'txn_1')).rejects.toMatchObject({
+      statusCode: 404
+    })
+  })
+
+  it('throws when url is missing in Paddle response', async () => {
+    const paddleFetch = ownedTransactionFetch(() => Response.json({ data: {} }))
+    const env = createEnv({ firstRow: { paddle_customer_id: 'ctm_1' }, paddleFetch })
+
+    await expect(getPaddleInvoicePdfUrl(env, 'user-1', 'txn_1')).rejects.toMatchObject({
+      statusCode: 502
+    })
+  })
+
+  it('throws when Paddle returns non-ok for the invoice', async () => {
+    const paddleFetch = ownedTransactionFetch(() => new Response('err', { status: 404 }))
+    const env = createEnv({ firstRow: { paddle_customer_id: 'ctm_1' }, paddleFetch })
+
+    await expect(getPaddleInvoicePdfUrl(env, 'user-1', 'txn_1')).rejects.toMatchObject({
+      statusCode: 502
+    })
   })
 })

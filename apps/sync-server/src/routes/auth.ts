@@ -664,7 +664,8 @@ auth.get('/billing/invoices', authMiddleware, async (c) => {
 })
 
 auth.get('/billing/invoices/:id/pdf', authMiddleware, async (c) => {
-  const url = await getPaddleInvoicePdfUrl(c.env, c.req.param('id'))
+  const userId = c.get('userId')!
+  const url = await getPaddleInvoicePdfUrl(c.env, userId, c.req.param('id'))
   return c.json({ url })
 })
 
@@ -741,6 +742,10 @@ auth.post('/email/change', authMiddleware, async (c) => {
   if (existing) {
     throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Email already in use', 409)
   }
+  // Rate-limit per target address so this endpoint can't be used to bomb an
+  // arbitrary inbox with "Confirm your new Memry email" messages (mirrors
+  // /otp/request).
+  await checkEmailRateLimit(c.env.DB, newEmail)
   const code = generateOtp()
   await storeOtp(c.env.DB, newEmail, code, c.env.OTP_HMAC_KEY)
   const html = buildOtpEmailHtml(code, OTP_EXPIRY_MINUTES)

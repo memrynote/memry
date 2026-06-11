@@ -7,18 +7,31 @@ interface SyncApiOptions {
 }
 
 export function createSyncApi({ baseUrl, storage, fetchImpl = fetch }: SyncApiOptions) {
-  async function refresh(): Promise<boolean> {
-    const session = storage.getSession()
-    if (!session) return false
-    const res = await fetchImpl(`${baseUrl}/auth/refresh`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken: session.refreshToken })
+  // The refresh token is single-use. If several authed calls 401 at once they
+  // must share one in-flight /auth/refresh instead of each spending the same
+  // token and clobbering the rotated session (which would force a spurious
+  // sign-out).
+  let inFlightRefresh: Promise<boolean> | null = null
+
+  function refresh(): Promise<boolean> {
+    if (inFlightRefresh) return inFlightRefresh
+    const run = async (): Promise<boolean> => {
+      const session = storage.getSession()
+      if (!session) return false
+      const res = await fetchImpl(`${baseUrl}/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken: session.refreshToken })
+      })
+      if (!res.ok) return false
+      const data = (await res.json()) as { accessToken: string; refreshToken: string }
+      storage.setSession({ ...session, ...data })
+      return true
+    }
+    inFlightRefresh = run().finally(() => {
+      inFlightRefresh = null
     })
-    if (!res.ok) return false
-    const data = (await res.json()) as { accessToken: string; refreshToken: string }
-    storage.setSession({ ...session, ...data })
-    return true
+    return inFlightRefresh
   }
 
   async function authedFetch(path: string, init: RequestInit = {}): Promise<Response> {

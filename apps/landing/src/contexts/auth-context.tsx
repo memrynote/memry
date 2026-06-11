@@ -31,17 +31,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
   }, [storage])
 
-  const value: AuthState = {
-    ready,
-    isSignedIn,
-    storage,
-    api,
-    refreshSignedIn: () => setIsSignedIn(Boolean(storage.getSession())),
-    signOutLocal: () => {
-      storage.clearSession()
-      setIsSignedIn(false)
-    }
-  }
+  const value = useMemo<AuthState>(
+    () => ({
+      ready,
+      isSignedIn,
+      storage,
+      api,
+      refreshSignedIn: () => setIsSignedIn(Boolean(storage.getSession())),
+      signOutLocal: () => {
+        storage.clearSession()
+        setIsSignedIn(false)
+      }
+    }),
+    [ready, isSignedIn, storage, api]
+  )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
