@@ -1,8 +1,7 @@
 function base64UrlDecode(input: string): string {
   const pad = input.length % 4 === 0 ? '' : '='.repeat(4 - (input.length % 4))
   const base64 = input.replace(/-/g, '+').replace(/_/g, '/') + pad
-  if (typeof atob === 'function') return atob(base64)
-  return Buffer.from(base64, 'base64').toString('binary')
+  return atob(base64)
 }
 
 export function extractJti(jwt: string): string {
