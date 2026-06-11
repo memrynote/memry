@@ -105,7 +105,7 @@ export function NoteLayout({
             className={cn(
               'mx-auto w-full pt-6 pb-10 min-h-full transition-[max-width] duration-300 ease-in-out',
               showGridRail
-                ? 'grid items-start gap-x-12 px-0 [grid-template-columns:minmax(0,var(--note-layout-content-track))_20rem] max-[920px]:max-w-[var(--note-layout-content-max)] max-[920px]:grid-cols-1 max-[920px]:px-8'
+                ? 'grid items-start gap-x-12 px-24 [grid-template-columns:minmax(0,var(--note-layout-content-track))_20rem] max-[920px]:max-w-[var(--note-layout-content-max)] max-[920px]:grid-cols-1 max-[920px]:px-8'
                 : 'px-24 flex flex-col'
             )}
             style={canvasStyle}
