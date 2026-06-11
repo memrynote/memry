@@ -3,6 +3,7 @@ import { ArrowRight } from 'lucide-react'
 import { Container } from '@/components/layout/Container'
 import { PageHead } from '@/components/shared/PageHead'
 import { GITHUB_URL } from '@/lib/constants'
+import { BLUR_REVEAL_ANIMATE, BLUR_REVEAL_INITIAL, BLUR_REVEAL_TRANSITION } from '@/lib/motion'
 
 const EASE_OUT_EXPO = [0.16, 1, 0.3, 1] as const
 
@@ -240,16 +241,21 @@ export function RoadmapPage() {
     <main className="pt-32 pb-24 md:pt-40">
       <PageHead page="roadmap" />
       <Container size="md">
-        <section className="border-b border-border pb-12">
+        <motion.section
+          initial={BLUR_REVEAL_INITIAL}
+          animate={BLUR_REVEAL_ANIMATE}
+          transition={BLUR_REVEAL_TRANSITION}
+          className="border-b border-border pb-12 text-center"
+        >
           <p className="font-mono-accent text-xs uppercase tracking-[0.18em] text-terracotta">
             Building in public
           </p>
           <h1 className="mt-4 font-serif text-5xl leading-[1.05] text-ink md:text-6xl">Roadmap</h1>
-          <p className="mt-5 max-w-2xl text-lg leading-relaxed text-muted">
+          <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-muted">
             What is available, what is active, and what is planned next. This is direction, not a
             release promise.
           </p>
-          <div className="mt-8 flex flex-wrap gap-3 text-sm">
+          <div className="mt-8 flex flex-wrap justify-center gap-3 text-sm">
             <a
               href={`${GITHUB_URL}/releases`}
               className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 font-medium text-ink transition-colors hover:border-terracotta/30 hover:text-terracotta"
@@ -265,7 +271,7 @@ export function RoadmapPage() {
               <ArrowRight className="h-4 w-4" aria-hidden />
             </a>
           </div>
-        </section>
+        </motion.section>
 
         <section className="border-b border-border py-12">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-[140px_1fr] md:gap-10">
