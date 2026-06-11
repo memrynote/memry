@@ -79,26 +79,23 @@ function getVerifiedVaultKey(db: DataDb): Promise<Uint8Array> {
   return getOrInitializeLocalVaultKey(db, getOrCreateVaultUuid(db))
 }
 
-function emitQuotaExceeded(): void {
-  const event: SyncStatusChangedEvent = {
-    status: 'error',
-    pendingCount: 0,
-    error: 'Storage quota exceeded',
-    errorCategory: 'storage_quota_exceeded'
-  }
+function emitSyncStatus(event: SyncStatusChangedEvent): void {
   for (const win of BrowserWindow.getAllWindows()) {
     win.webContents.send(EVENT_CHANNELS.STATUS_CHANGED, event)
   }
 }
 
+function emitQuotaExceeded(): void {
+  emitSyncStatus({
+    status: 'error',
+    pendingCount: 0,
+    error: 'Storage quota exceeded',
+    errorCategory: 'storage_quota_exceeded'
+  })
+}
+
 function emitLocalOnly(): void {
-  const event: SyncStatusChangedEvent = {
-    status: 'local_only',
-    pendingCount: 0
-  }
-  for (const win of BrowserWindow.getAllWindows()) {
-    win.webContents.send(EVENT_CHANNELS.STATUS_CHANGED, event)
-  }
+  emitSyncStatus({ status: 'local_only', pendingCount: 0 })
 }
 
 let runtime: SyncRuntimeState | null = null
@@ -189,29 +186,29 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
   if (runtime) return runtime.engine
   if (startPromise) return startPromise
 
-  const hasRefreshToken = await retrieveToken(KEYCHAIN_ENTRIES.REFRESH_TOKEN)
-  if (!hasRefreshToken) {
-    log.debug('Sync runtime skipped: no user session')
-    return null
-  }
-
-  if (store.get('sync').recoveryPhraseConfirmed === false) {
-    log.debug('Sync runtime skipped: recovery phrase confirmation pending')
-    return null
-  }
-
-  const { resolveEntitlementForSyncStart } = await import('../billing/paddle-billing')
-  const entitlement = await resolveEntitlementForSyncStart()
-  if (!entitlement.isPaid) {
-    log.info('Sync runtime skipped: not on a paid plan')
-    emitLocalOnly()
-    return null
-  }
-
   startPromise = (async () => {
     let pendingRuntime: SyncRuntimeState | null = null
 
     try {
+      const hasRefreshToken = await retrieveToken(KEYCHAIN_ENTRIES.REFRESH_TOKEN)
+      if (!hasRefreshToken) {
+        log.debug('Sync runtime skipped: no user session')
+        return null
+      }
+
+      if (store.get('sync').recoveryPhraseConfirmed === false) {
+        log.debug('Sync runtime skipped: recovery phrase confirmation pending')
+        return null
+      }
+
+      const { resolveEntitlementForSyncStart } = await import('../billing/paddle-billing')
+      const entitlement = await resolveEntitlementForSyncStart()
+      if (!entitlement.isPaid) {
+        log.info('Sync runtime skipped: not on a paid plan')
+        emitLocalOnly()
+        return null
+      }
+
       const db = getDatabase()
       let startupVaultKey: Uint8Array | null = null
       try {

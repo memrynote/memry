@@ -1,7 +1,7 @@
 import { shell } from 'electron'
 import { getFromServer, postToServer } from '../sync/http-client'
 import { getValidAccessToken } from '../sync/token-manager'
-import { getSyncEngine, startSyncRuntime } from '../sync/runtime'
+import { startSyncRuntime } from '../sync/runtime'
 import { createLogger } from '../lib/logger'
 import {
   getCachedEntitlement,
@@ -96,9 +96,11 @@ export async function reconcileBillingAndSync(input?: { transactionId?: string }
     for (let attempt = 0; attempt < 5; attempt += 1) {
       const status = await refreshBillingStatus(input)
       if ('plan' in status && isPaidBillingStatus(status)) {
-        setCachedEntitlementFromStatus(status)
-        await startSyncRuntime()
-        await getSyncEngine()?.fullSync()
+        // refreshBillingStatus already cached this status; start the runtime and
+        // use the engine it returns rather than re-reading getSyncEngine() (which
+        // can be null if a concurrent start is still in flight).
+        const engine = await startSyncRuntime()
+        await engine?.fullSync()
         return
       }
       await new Promise((resolve) => setTimeout(resolve, 2000))

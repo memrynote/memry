@@ -4,7 +4,11 @@ import type { BillingStatus } from './paddle-billing'
 export type { CachedEntitlement }
 
 export function isPaidBillingStatus(s: BillingStatus): boolean {
-  return s.plan !== 'free' && s.status === 'active'
+  if (s.plan === 'free' || s.status !== 'active') return false
+  // Mirror the server gate (isPaidSyncEntitlementActive): an expired-but-still-active
+  // entitlement is not paid, otherwise the runtime starts and every request 402s.
+  if (s.expiresAt !== null && s.expiresAt <= Math.floor(Date.now() / 1000)) return false
+  return true
 }
 
 export function getCachedEntitlement(): CachedEntitlement | null {
