@@ -129,13 +129,7 @@ vi.mock('jose', () => ({
 
 import { auth } from './auth'
 import { checkEmailRateLimit, hasPendingOtp } from '../services/otp'
-import {
-  getOrCreateUserByEmail,
-  getUserByEmail,
-  getUserById,
-  updateUser,
-  updateUserEmail
-} from '../services/user'
+import { getUserByEmail, getUserById, updateUserEmail } from '../services/user'
 import { revokeDeviceTokens, rotateRefreshToken } from '../services/auth'
 import { SYNC_PLAN_LIMITS } from '../services/entitlements'
 import { deleteUserData } from '../services/account-deletion'
