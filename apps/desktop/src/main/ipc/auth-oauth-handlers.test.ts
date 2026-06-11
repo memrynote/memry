@@ -224,6 +224,27 @@ describe('auth-oauth handlers', () => {
       expect(loopback.close).toHaveBeenCalled()
     })
 
+    it('resolves the sync server URL at call time, not module import (staging regression)', async () => {
+      // Regression: SYNC_SERVER_URL was captured in a module-level const that
+      // evaluated before dotenv loaded .env.staging in index.ts, so dev:staging
+      // silently hit http://localhost:8787 and OAuth init failed with
+      // "Failed to start Google sign-in". The URL must be read per call.
+      const original = process.env.SYNC_SERVER_URL
+      process.env.SYNC_SERVER_URL = 'http://sync-staging.test'
+      try {
+        registerAuthOAuthHandlers()
+        await invokeHandler(SYNC_CHANNELS.AUTH_INIT_OAUTH, { provider: 'google' })
+
+        expect(loopback.httpGet).toHaveBeenCalledWith(
+          expect.stringContaining('http://sync-staging.test/auth/oauth/google'),
+          expect.any(Function)
+        )
+      } finally {
+        if (original === undefined) delete process.env.SYNC_SERVER_URL
+        else process.env.SYNC_SERVER_URL = original
+      }
+    })
+
     it('relays OAuth errors and rejects malformed provider responses', async () => {
       const send = vi.fn()
       mockGetAllWindows.mockReturnValue([{ webContents: { send } }])

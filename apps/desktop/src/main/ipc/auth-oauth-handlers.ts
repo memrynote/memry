@@ -13,6 +13,7 @@ import { SYNC_CHANNELS, SYNC_EVENTS } from '@memry/contracts/ipc-sync'
 
 import { store } from '../store'
 import { postToServer } from '../sync/http-client'
+import { resolveSyncServerUrl } from '../sync/sync-server-url'
 import { getSyncEngine, startSyncRuntime } from '../sync/runtime'
 import { startGoogleCalendarSyncRunner } from '../calendar/google/sync-service'
 import { teardownSession } from '../sync/session-teardown'
@@ -44,8 +45,6 @@ const OAUTH_SESSION_TIMEOUT_MS = 10 * 60 * 1000
 // IPC call unsettled, so the "Continue with Google" button spins forever.
 const OAUTH_INIT_REQUEST_TIMEOUT_MS = 15 * 1000
 let activeLoopbackServer: http.Server | null = null
-
-const SYNC_SERVER_URL = process.env.SYNC_SERVER_URL || 'http://localhost:8787'
 
 const cleanExpiredOAuthSessions = (): void => {
   const now = Date.now()
@@ -139,7 +138,7 @@ export function registerAuthOAuthHandlers(): void {
 
       const redirectUri = `http://127.0.0.1:${port}/callback`
 
-      const oauthUrl = `${SYNC_SERVER_URL}/auth/oauth/google?redirect_uri=${encodeURIComponent(redirectUri)}`
+      const oauthUrl = `${resolveSyncServerUrl()}/auth/oauth/google?redirect_uri=${encodeURIComponent(redirectUri)}`
       const googleUrl = await new Promise<string>((resolve, reject) => {
         const mod = oauthUrl.startsWith('https') ? https : http
         const req = mod.get(oauthUrl, (res) => {

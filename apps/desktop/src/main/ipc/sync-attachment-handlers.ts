@@ -34,12 +34,11 @@ import {
 } from '../sync/note-attachment-metadata'
 import { registerCommand } from './lib/register-command'
 import { getNetworkMonitor } from '../sync/runtime'
+import { resolveSyncServerUrl } from '../sync/sync-server-url'
 import { getValidAccessToken } from '../sync/token-manager'
 import { getOrCreateVaultUuid } from '../agent/storage/vault-id'
 
 const logger = createLogger('IPC:Sync:Attachments')
-
-const SYNC_SERVER_URL = process.env.SYNC_SERVER_URL || 'http://localhost:8787'
 
 // ============================================================================
 // Attachment Service (lazy singleton)
@@ -115,7 +114,7 @@ const getOrCreateAttachmentService = (): AttachmentSyncService | null => {
       if (!device?.signingPublicKey) return null
       return sodium.from_base64(device.signingPublicKey, sodium.base64_variants.ORIGINAL)
     },
-    getSyncServerUrl: () => SYNC_SERVER_URL
+    getSyncServerUrl: () => resolveSyncServerUrl()
   })
 
   return attachmentService
