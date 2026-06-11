@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Check, ArrowRight, Sparkles, ShieldCheck, Heart, ExternalLink } from 'lucide-react'
@@ -25,8 +25,6 @@ import {
 import {
   buildMemryBillingCompleteUrl,
   buildMemryBillingStartUrl,
-  openPaddleCheckout,
-  parseCheckoutHash,
   type PaddleCheckoutCadence
 } from '@/lib/paddle-checkout'
 import { cn } from '@/lib/utils'
@@ -62,8 +60,6 @@ export function PricingPage() {
     error: null,
     notice: null
   })
-  const consumedCheckoutIntent = useRef(false)
-
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     if (params.get('checkout') === 'success') {
@@ -72,47 +68,7 @@ export function PricingPage() {
         error: null,
         notice: { type: 'success', transactionId: params.get('transactionId') }
       })
-      return
     }
-
-    if (consumedCheckoutIntent.current) return
-    const intent = parseCheckoutHash(window.location.hash)
-    if (!intent) return
-
-    consumedCheckoutIntent.current = true
-    window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`)
-    if (intent.cadence === 'monthly' || intent.cadence === 'annual') {
-      setCadence(intent.cadence)
-    }
-
-    const pendingKey = getCheckoutKey(intent.plan, intent.cadence)
-    setCheckout({ pendingKey, error: null, notice: null })
-    let checkoutTransactionId: string | null = null
-    let checkoutCompleted = false
-    void openPaddleCheckout(intent.plan, intent.cadence, intent.checkoutToken, (event) => {
-      if (event.name === 'checkout.completed') {
-        checkoutCompleted = true
-        setCheckout({
-          pendingKey: null,
-          error: null,
-          notice: { type: 'success', transactionId: checkoutTransactionId }
-        })
-      } else if (event.name === 'checkout.closed' && !checkoutCompleted) {
-        setCheckout({ pendingKey: null, error: null, notice: { type: 'canceled' } })
-      } else if (event.name === 'checkout.payment.failed') {
-        setCheckout({ pendingKey: null, error: null, notice: { type: 'failed' } })
-      }
-    })
-      .then((result) => {
-        checkoutTransactionId = result.transactionId
-      })
-      .catch((error) => {
-        setCheckout({
-          pendingKey: null,
-          error: error instanceof Error ? error.message : 'Could not start checkout',
-          notice: null
-        })
-      })
   }, [])
 
   const handleCheckout = async (tier: SyncPlanTier) => {

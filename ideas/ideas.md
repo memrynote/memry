@@ -8,6 +8,9 @@
 - [Structure without folder rigidity](#structure-without-folder-rigidity)
 - [Google Docs for markdown files](#google-docs-for-markdown-files)
 - [One-way Google Calendar sync](#one-way-google-calendar-sync)
+- [Streamlined onboarding without AI noise](#streamlined-onboarding-without-ai-noise)
+- [Import from other note apps (Google Keep first)](#import-from-other-note-apps-google-keep-first)
+- [Scheduled review and priority buckets](#scheduled-review-and-priority-buckets)
 
 ## Reduce filing with AI-assisted capture
 
@@ -246,6 +249,19 @@ appointments and tasks that have a due date — flows to Google and stays in ste
 directions. She wants tasks to stay private to MemryNote while still surfacing
 appointments in Google.
 
+Her follow-up spelled out the workflow behind this. The task manager is the daily
+driver: she looks at it to know what she is doing today. The calendar is for
+availability only — when she is free for meetings — and never for tasks. She runs a
+one-way feed from Google Calendar into her task manager so appointments show up
+alongside tasks in one place. MemryNote's two-way push is the inverse direction of how
+she works.
+
+The deeper reason two-way is a problem: her dated tasks are flexible, not commitments.
+She may schedule a task for a given day at the start of the week, but that is a "would
+like to" not a "have to" — subject to change. Pushing those tentative, movable tasks
+into the calendar makes it messy and misrepresents her real availability. Due dates
+stay valuable in the task manager; they should just never leave it.
+
 ### Current behavior
 
 - Sync is two-way: appointments and dated tasks both flow to Google Calendar and stay
@@ -268,11 +284,108 @@ no-due-date workaround:
 
 ### Follow-up validation
 
-Told Aurelie a proper appointments-only / one-way switch is on the list and asked how
-she works day-to-day to shape the right version. Watch for the reply to refine scope.
+Aurelie replied with the full workflow above (task manager as daily driver, calendar
+for availability only, flexible due dates that should not clog the calendar). Confirmed
+her workflow is valid and not an edge case, and committed to ship one-way /
+appointments-only sync before launch — direction is a real, supported control, not just
+the no-due-date workaround. Scope is now well understood; this moves from "on the list"
+to a launch-blocking commitment.
 
 ### Important boundary
 
 Do not silently change what syncs. Direction and item-type scope must be explicit and
 visible, so users always know what leaves MemryNote and what stays local. Tasks should
 never appear in Google Calendar unless the user opts in.
+
+## Streamlined onboarding without AI noise
+
+Source: Reddit feedback comparing MemryNote favorably to Saner AI, but put off by
+Saner's onboarding and how verbose its AI is.
+
+### User signal
+
+The user found MemryNote close to exactly what they need, but bounced off Saner AI's
+onboarding. Saner generated prompts like "Pull 3 concrete measurable goals for
+cross-team collaboration you can use in the next sync" before the user had entered
+anything. That generic, corporate AI verbiage felt repulsive and pushed them away. They
+asked directly whether MemryNote has thought about a streamlined onboarding.
+
+### Product direction
+
+- Keep onboarding short and concrete. Get the user to their own notes and tasks fast,
+  not through AI-generated busywork or fake example goals.
+- Do not generate unprompted AI suggestions before the user has put anything in. AI
+  should respond to real user content, never invent filler to perform intelligence at
+  an empty app.
+- Keep the AI footprint deliberately small for now. Add AI one piece at a time, driven
+  by real feedback, instead of bolting it onto every surface because it is the current
+  hype.
+
+### Important boundary
+
+AI must stay quiet and useful, not chatty and needy. The edge here is restraint: an
+empty app should feel calm. This positioning is a feature, not a gap.
+
+## Import from other note apps (Google Keep first)
+
+Source: Reddit feedback from a user who dumps random notes into Google Keep and wants
+to bring them into MemryNote.
+
+### User signal
+
+The user has a tendency to dump random notes into Google Keep — sometimes continuous
+prose, sometimes a to-do list — and wants to import and sort those into MemryNote.
+
+### Product direction
+
+- Build import for several note apps, with Google Keep as one of the first supported
+  sources.
+- Handle both shapes Keep produces: continuous free-text notes and checklist / to-do
+  notes.
+- Imported items should land in the inbox for triage rather than auto-filing, so the
+  user decides what becomes a note, task, or reference. This reuses the inbox
+  segmentation and triage model.
+
+### Important boundary
+
+Import should not silently scatter content across the app. Bring it in as reviewable
+material the user can sort, consistent with the capture-then-triage model.
+
+## Scheduled review and priority buckets
+
+Source: Reddit feedback describing a capture-fast, organize-later workflow with
+do-now / do-soon / long-term priorities.
+
+### User signal
+
+The user wants to jot things down quickly and get back to work, then continue and
+organize the thought later. Concretely: dump items through the day without deciding
+what they are, then at a set time each day (for example 6pm) get a reminder to sit down
+and process that pile — turning items into tasks sorted into priority buckets.
+
+Their own framing: "I need to-dos bucketed into 'do now', 'do soon', and 'long term',
+but so that I don't fail to do the long-term stuff by constantly doing one short-term
+task after another. Easily turning notes into reminders would be good."
+
+The core pain is not routing — it is prioritization over time. Long-term items quietly
+rot while the user grinds an endless queue of short-term tasks.
+
+### Product direction
+
+- Separate capture from classification in time. Capture stays instant and
+  type-agnostic — no bucket, no date, no decision at jot time. Items land in the inbox.
+  This builds directly on inbox segmentation and triage.
+- Add a scheduled review: an optional daily reminder at a user-set time (for example
+  6pm) that nudges the user to process the day's captures in one calm pass.
+- During review, let items be sorted into priority buckets — do now / do soon / long
+  term — as a priority axis distinct from the task / note / event destination type.
+- Protect the long-term bucket from neglect: keep long-term items in view, resurface
+  them, and nudge dated ones so they do not get buried under short-term churn.
+- Make turning a note into a reminder a one-step action.
+
+### Important boundary
+
+Do not force the user to prioritize at capture time — that reintroduces the friction
+the workflow is meant to remove. The scheduled review is a prompt to process, not an
+automated sorter; the user stays in control of what goes where. The reminder should be
+a gentle nudge, not nagging.

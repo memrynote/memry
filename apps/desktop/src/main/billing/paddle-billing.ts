@@ -1,11 +1,17 @@
 import { shell } from 'electron'
 import { getFromServer, postToServer } from '../sync/http-client'
 import { getValidAccessToken } from '../sync/token-manager'
-import { getSyncEngine } from '../sync/runtime'
+import { startSyncRuntime } from '../sync/runtime'
 import { createLogger } from '../lib/logger'
+import {
+  getCachedEntitlement,
+  isPaidBillingStatus,
+  setCachedEntitlementFromStatus,
+  type CachedEntitlement
+} from './entitlement-cache'
 
 const log = createLogger('Billing')
-const LANDING_CHECKOUT_URL = 'https://memrynote.com/pricing'
+const DEFAULT_CHECKOUT_PAGE_URL = 'https://memrynote.com/checkout'
 
 export type BillingPlanId = 'plus' | 'pro' | 'believer'
 export type BillingCadence = 'monthly' | 'annual' | 'lifetime'
@@ -35,20 +41,14 @@ export interface BillingActionResult {
   error?: string
 }
 
-export async function startBillingCheckout(input: {
-  plan: BillingPlanId
-  cadence: BillingCadence
-}): Promise<BillingActionResult & { checkoutUrl?: string }> {
+export async function startBillingCheckout(): Promise<
+  BillingActionResult & { checkoutUrl?: string }
+> {
   const token = await getValidAccessToken()
   if (!token) return { success: false, error: 'Sign in to start checkout' }
 
-  const cadence = input.plan === 'believer' ? 'lifetime' : input.cadence
-  const response = await postToServer<{ checkoutToken: string }>(
-    '/auth/checkout-token',
-    { plan: input.plan, cadence },
-    token
-  )
-  const checkoutUrl = buildLandingCheckoutUrl(input.plan, cadence, response.checkoutToken)
+  const response = await postToServer<{ checkoutToken: string }>('/auth/checkout-token', {}, token)
+  const checkoutUrl = buildCheckoutPageUrl(response.checkoutToken)
   await shell.openExternal(checkoutUrl)
 
   return { success: true, checkoutUrl }
@@ -59,7 +59,9 @@ export async function getBillingStatus(): Promise<
 > {
   const token = await getValidAccessToken()
   if (!token) return { success: false, error: 'Sign in to view billing' }
-  return getFromServer<BillingStatus>('/auth/billing', token)
+  const result = await getFromServer<BillingStatus>('/auth/billing', token)
+  setCachedEntitlementFromStatus(result)
+  return result
 }
 
 export async function refreshBillingStatus(input?: {
@@ -67,11 +69,13 @@ export async function refreshBillingStatus(input?: {
 }): Promise<BillingStatus | (BillingActionResult & { status?: never })> {
   const token = await getValidAccessToken()
   if (!token) return { success: false, error: 'Sign in to refresh billing' }
-  return postToServer<BillingStatus>(
+  const result = await postToServer<BillingStatus>(
     '/auth/billing/reconcile',
     input?.transactionId ? { transactionId: input.transactionId } : {},
     token
   )
+  setCachedEntitlementFromStatus(result)
+  return result
 }
 
 export async function openBillingPortal(): Promise<BillingActionResult & { portalUrl?: string }> {
@@ -91,8 +95,12 @@ export async function reconcileBillingAndSync(input?: { transactionId?: string }
   try {
     for (let attempt = 0; attempt < 5; attempt += 1) {
       const status = await refreshBillingStatus(input)
-      if ('status' in status && status.status === 'active') {
-        await getSyncEngine()?.fullSync()
+      if ('plan' in status && isPaidBillingStatus(status)) {
+        // refreshBillingStatus already cached this status; start the runtime and
+        // use the engine it returns rather than re-reading getSyncEngine() (which
+        // can be null if a concurrent start is still in flight).
+        const engine = await startSyncRuntime()
+        await engine?.fullSync()
         return
       }
       await new Promise((resolve) => setTimeout(resolve, 2000))
@@ -104,15 +112,33 @@ export async function reconcileBillingAndSync(input?: { transactionId?: string }
   }
 }
 
-function buildLandingCheckoutUrl(
-  plan: BillingPlanId,
-  cadence: BillingCadence,
-  checkoutToken: string
-): string {
-  const params = new URLSearchParams({
-    checkout_plan: plan,
-    checkout_cadence: cadence,
-    checkout_token: checkoutToken
-  })
-  return `${LANDING_CHECKOUT_URL}#${params.toString()}`
+export async function resolveEntitlementForSyncStart(): Promise<CachedEntitlement> {
+  const cached = getCachedEntitlement()
+  if (cached && !cached.isPaid) return cached // known-unpaid: no server call
+
+  try {
+    const result = await getBillingStatus()
+    if ('plan' in result) {
+      return {
+        isPaid: isPaidBillingStatus(result),
+        plan: result.plan,
+        status: result.status
+      }
+    }
+    log.warn('Billing status unavailable; treating as unpaid for this launch')
+  } catch (error) {
+    log.warn('Billing status fetch failed; treating as unpaid for this launch', {
+      error: error instanceof Error ? error.message : String(error)
+    })
+  }
+  return cached ?? { isPaid: false, plan: 'free', status: 'inactive' }
+}
+
+function getCheckoutPageUrl(): string {
+  return process.env.CHECKOUT_PAGE_URL?.trim() || DEFAULT_CHECKOUT_PAGE_URL
+}
+
+function buildCheckoutPageUrl(checkoutToken: string): string {
+  const params = new URLSearchParams({ token: checkoutToken })
+  return `${getCheckoutPageUrl()}#${params.toString()}`
 }

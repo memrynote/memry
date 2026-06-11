@@ -11,8 +11,11 @@ memrynote sync is **end-to-end encrypted**. The server stores ciphertext and nev
 - Persist a backup off-device that you control via passphrase
 
 Sync is **opt-in** and requires a paid sync plan. If you never sign in, nothing leaves your
-device. If you sign in without an active paid plan, the app stays local-only until the plan is
-active.
+device. If you sign in without an active paid plan, the app stays fully local — signing in on a
+free or lapsed plan never triggers a sync error. memrynote checks your plan once at sign-in, then
+will not contact the sync server again to start sync while you stay unpaid, so a signed-in unpaid
+account behaves exactly like a signed-out one. Activating a plan starts sync immediately, with no
+restart.
 
 ## Paid Sync Plans
 

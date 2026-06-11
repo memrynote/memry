@@ -23,7 +23,7 @@ export const SYNC_OP_CHANNELS = {
 // Types
 // ============================================================================
 
-export type SyncStatusValue = 'idle' | 'syncing' | 'offline' | 'error'
+export type SyncStatusValue = 'idle' | 'syncing' | 'offline' | 'error' | 'local_only'
 
 export type SyncErrorCategory =
   | 'network_offline'

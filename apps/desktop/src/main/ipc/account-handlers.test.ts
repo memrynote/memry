@@ -140,24 +140,17 @@ describe('account-handlers', () => {
     expect(mocks.teardownSession).toHaveBeenCalledWith('logout')
   })
 
-  it('starts checkout by minting a token and opening landing with a fragment', async () => {
+  it('starts checkout by minting a token and opening checkout with a fragment', async () => {
     registerAccountHandlers()
 
-    await expect(
-      invokeHandler(AccountChannels.invoke.START_CHECKOUT, { plan: 'pro', cadence: 'annual' })
-    ).resolves.toEqual({
+    await expect(invokeHandler(AccountChannels.invoke.START_CHECKOUT)).resolves.toEqual({
       success: true,
-      checkoutUrl:
-        'https://memrynote.com/pricing#checkout_plan=pro&checkout_cadence=annual&checkout_token=checkout-token-1'
+      checkoutUrl: 'https://memrynote.com/checkout#token=checkout-token-1'
     })
 
-    expect(mocks.postToServer).toHaveBeenCalledWith(
-      '/auth/checkout-token',
-      { plan: 'pro', cadence: 'annual' },
-      'token-1'
-    )
+    expect(mocks.postToServer).toHaveBeenCalledWith('/auth/checkout-token', {}, 'token-1')
     expect(mocks.shellOpenExternal).toHaveBeenCalledWith(
-      'https://memrynote.com/pricing#checkout_plan=pro&checkout_cadence=annual&checkout_token=checkout-token-1'
+      'https://memrynote.com/checkout#token=checkout-token-1'
     )
   })
 
@@ -165,9 +158,10 @@ describe('account-handlers', () => {
     mocks.getValidAccessToken.mockResolvedValueOnce(null)
     registerAccountHandlers()
 
-    await expect(
-      invokeHandler(AccountChannels.invoke.START_CHECKOUT, { plan: 'pro', cadence: 'annual' })
-    ).resolves.toEqual({ success: false, error: 'Sign in to start checkout' })
+    await expect(invokeHandler(AccountChannels.invoke.START_CHECKOUT)).resolves.toEqual({
+      success: false,
+      error: 'Sign in to start checkout'
+    })
 
     expect(mocks.shellOpenExternal).not.toHaveBeenCalled()
   })

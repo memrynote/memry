@@ -926,7 +926,7 @@ describe('main index phase2 exports', () => {
       SettingsChannels.events.OPEN_SECTION,
       'account'
     )
-    expect(startBillingCheckoutMock).toHaveBeenCalledWith({ plan: 'plus', cadence: 'monthly' })
+    expect(startBillingCheckoutMock).toHaveBeenCalledWith()
 
     openUrlHandler({ preventDefault }, 'memry://billing/complete?transactionId=txn_123')
     expect(reconcileBillingAndSyncMock).toHaveBeenCalledWith({ transactionId: 'txn_123' })

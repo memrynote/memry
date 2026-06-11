@@ -5,12 +5,6 @@ import type { CheckoutPlanId, SyncPlanId } from './constants'
 export type PaddleCheckoutCadence = 'monthly' | 'annual' | 'lifetime'
 export type PaddleCheckoutEventHandler = (event: PaddleEventData) => void
 
-export interface CheckoutHashIntent {
-  plan: CheckoutPlanId
-  cadence: PaddleCheckoutCadence
-  checkoutToken: string
-}
-
 type CheckoutResponse = {
   transactionId: string
   checkoutUrl: string | null
@@ -41,16 +35,6 @@ function getPaddleClient() {
   })
 
   return paddlePromise
-}
-
-export function parseCheckoutHash(hash: string): CheckoutHashIntent | null {
-  const params = new URLSearchParams(hash.replace(/^#/, ''))
-  const plan = params.get('checkout_plan')
-  const cadence = params.get('checkout_cadence')
-  const checkoutToken = params.get('checkout_token')?.trim()
-
-  if (!isCheckoutPlan(plan) || !isCheckoutCadence(cadence) || !checkoutToken) return null
-  return { plan, cadence, checkoutToken }
 }
 
 export function buildMemryBillingStartUrl(plan: CheckoutPlanId, cadence: PaddleCheckoutCadence) {
@@ -132,12 +116,4 @@ export async function openPaddleCheckout(
   }
 
   throw new Error('Paddle client token is missing')
-}
-
-function isCheckoutPlan(value: string | null): value is CheckoutPlanId {
-  return value === 'plus' || value === 'pro' || value === 'believer'
-}
-
-function isCheckoutCadence(value: string | null): value is PaddleCheckoutCadence {
-  return value === 'monthly' || value === 'annual' || value === 'lifetime'
 }

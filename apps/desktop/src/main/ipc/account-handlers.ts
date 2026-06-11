@@ -66,9 +66,9 @@ export function registerAccountHandlers(): void {
     }
   })
 
-  ipcMain.handle(AccountChannels.invoke.START_CHECKOUT, async (_event, input) => {
+  ipcMain.handle(AccountChannels.invoke.START_CHECKOUT, async () => {
     log.info('account:startCheckout requested')
-    return startBillingCheckout(input)
+    return startBillingCheckout()
   })
 
   ipcMain.handle(AccountChannels.invoke.GET_BILLING_STATUS, async () => {

@@ -26,9 +26,10 @@ A toggle to enable or pause cloud sync, plus a status indicator and the time of 
 ### Billing
 
 Shows the current sync plan, activation state, storage limit, max file size, synced vault limit, and
-version-history window. **Upgrade** starts Paddle checkout in the browser, **Refresh status** asks
-the sync server to reconcile the latest Paddle transaction, and **Manage billing** opens Paddle's
-hosted customer portal when the account has a Paddle customer id.
+version-history window. **Upgrade** opens the plan page in your browser, where you choose a plan
+(Plus, Pro, or Believer) and billing frequency (monthly or yearly) before continuing to Paddle
+checkout. **Refresh status** asks the sync server to reconcile the latest Paddle transaction, and
+**Manage billing** opens Paddle's hosted customer portal when the account has a Paddle customer id.
 
 If checkout succeeds before the webhook finishes, Billing shows **Activation pending**. Use
 **Refresh status** after a moment, or contact the billing support email shown in the panel for

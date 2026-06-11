@@ -132,8 +132,13 @@ vi.mock('../sync/settings-sync', () => ({
 
 vi.mock('../sync/runtime', () => ({
   getSyncEngine: vi.fn().mockReturnValue(null),
-  startSyncRuntime: vi.fn(),
+  startSyncRuntime: vi.fn().mockResolvedValue(null),
   getNetworkMonitor: vi.fn().mockReturnValue(null)
+}))
+
+const mockGetCachedEntitlement = vi.fn().mockReturnValue(null)
+vi.mock('../billing/entitlement-cache', () => ({
+  getCachedEntitlement: () => mockGetCachedEntitlement()
 }))
 
 const mockTeardownSession = vi.fn().mockResolvedValue({ success: true, keychainFailures: [] })
@@ -166,6 +171,7 @@ vi.mock('../sync/token-manager', () => ({
   refreshAccessToken: (...args: unknown[]) => mockRefreshAccessToken(...args)
 }))
 
+import * as syncRuntime from '../sync/runtime'
 import {
   registerSyncHandlers,
   unregisterSyncHandlers,
@@ -270,6 +276,33 @@ describe('sync IPC handlers', () => {
       success: false,
       error: 'errors:sync.engineNotInitialized'
     })
+  })
+
+  it('TRIGGER_SYNC starts the runtime when no engine is running', async () => {
+    const startedEngine = { fullSync: vi.fn().mockResolvedValue(undefined) }
+    vi.mocked(syncRuntime.startSyncRuntime).mockResolvedValueOnce(startedEngine as never)
+
+    registerSyncHandlers()
+
+    const result = await invokeHandler(SYNC_CHANNELS.TRIGGER_SYNC)
+
+    expect(syncRuntime.startSyncRuntime).toHaveBeenCalledTimes(1)
+    expect(startedEngine.fullSync).toHaveBeenCalledTimes(1)
+    expect(result).toEqual({ success: true })
+  })
+
+  it('GET_STATUS returns local_only when no engine and cached entitlement is unpaid', async () => {
+    mockGetCachedEntitlement.mockReturnValueOnce({
+      isPaid: false,
+      plan: 'free',
+      status: 'inactive'
+    })
+
+    registerSyncHandlers()
+
+    const result = await invokeHandler(SYNC_CHANNELS.GET_STATUS)
+
+    expect(result).toEqual({ status: 'local_only', pendingCount: 0 })
   })
 
   it('delegates core status, sync, queue, pause, resume, quarantine, device, and wipe handlers', async () => {

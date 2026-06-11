@@ -514,12 +514,7 @@ describe('settings section coverage', () => {
     expect((await screen.findAllByText('account.billing.plans.free')).length).toBeGreaterThan(0)
 
     fireEvent.click(screen.getByText('account.billing.actions.upgrade'))
-    await waitFor(() =>
-      expect(window.api.account.startCheckout).toHaveBeenCalledWith({
-        plan: 'pro',
-        cadence: 'annual'
-      })
-    )
+    await waitFor(() => expect(window.api.account.startCheckout).toHaveBeenCalledWith())
 
     fireEvent.click(screen.getByText('account.billing.actions.refresh'))
     await waitFor(() =>

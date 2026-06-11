@@ -78,12 +78,7 @@ import {
   type AppNavigationSwipeDirection
 } from './app-navigation-command'
 import { getHeadlessCliArgs, runHeadlessCli } from './cli/headless'
-import {
-  reconcileBillingAndSync,
-  startBillingCheckout,
-  type BillingCadence,
-  type BillingPlanId
-} from './billing/paddle-billing'
+import { reconcileBillingAndSync, startBillingCheckout } from './billing/paddle-billing'
 
 if (process.type === 'browser') {
   log.initialize()
@@ -497,16 +492,6 @@ export const registerOAuthState = (state: string): void => {
   setTimeout(() => pendingOAuthStates.delete(state), 10 * 60 * 1000)
 }
 
-function parseBillingPlan(value: string | null): BillingPlanId {
-  if (value === 'plus' || value === 'pro' || value === 'believer') return value
-  return 'pro'
-}
-
-function parseBillingCadence(value: string | null, plan: BillingPlanId): BillingCadence {
-  if (value === 'monthly' || value === 'annual' || value === 'lifetime') return value
-  return plan === 'believer' ? 'lifetime' : 'annual'
-}
-
 function openAccountSettings(mainWindow: BrowserWindow): void {
   mainWindow.webContents.send(SettingsChannels.events.OPEN_SECTION, 'account')
 }
@@ -521,10 +506,8 @@ function handleDeepLink(url: string): void {
 
     if (parsed.hostname === 'billing') {
       if (parsed.pathname === '/start') {
-        const plan = parseBillingPlan(parsed.searchParams.get('plan'))
-        const cadence = parseBillingCadence(parsed.searchParams.get('cadence'), plan)
         openAccountSettings(mainWindow)
-        void startBillingCheckout({ plan, cadence })
+        void startBillingCheckout()
       } else if (parsed.pathname === '/complete') {
         const transactionId = parsed.searchParams.get('transactionId') ?? undefined
         openAccountSettings(mainWindow)

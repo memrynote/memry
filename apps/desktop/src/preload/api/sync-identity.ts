@@ -44,8 +44,7 @@ export const syncLinking = {
 export const accountApi = {
   getInfo: () => invoke(AccountChannels.invoke.GET_INFO),
   signOut: () => invoke(AccountChannels.invoke.SIGN_OUT),
-  startCheckout: (input: { plan: 'plus' | 'pro' | 'believer'; cadence: 'monthly' | 'annual' }) =>
-    invoke(AccountChannels.invoke.START_CHECKOUT, input),
+  startCheckout: () => invoke(AccountChannels.invoke.START_CHECKOUT),
   getBillingStatus: () => invoke(AccountChannels.invoke.GET_BILLING_STATUS),
   refreshBillingStatus: (input?: { transactionId?: string }) =>
     invoke(AccountChannels.invoke.REFRESH_BILLING_STATUS, input),

@@ -155,10 +155,16 @@ async function main() {
   // 3. Drop every table, then re-apply the schema (same database_id).
   //    No PRAGMA: a leading `PRAGMA foreign_keys=OFF` / `defer_foreign_keys=true` in the same
   //    --command batch makes D1 fail the DROPs with a bogus "no such table" (SQLITE_ERROR 7500).
-  //    A plain multi-DROP batch drops parents + children + ON DELETE CASCADE rows just fine.
+  //    Drop children before parents: D1 enforces foreign keys, so dropping a still-referenced
+  //    parent (e.g. `users`, referenced by every other table) also 7500s as "no such table".
+  //    sqlite_master returns tables in creation order and the schema is dependency-ordered
+  //    (referenced tables first), so reversing drops each table only once nothing references it.
   if (tables.length) {
     console.log(`D1: dropping ${tables.length} table(s)...`)
-    const dropSql = tables.map((t) => `DROP TABLE IF EXISTS "${t}";`).join('\n')
+    const dropSql = [...tables]
+      .reverse()
+      .map((t) => `DROP TABLE IF EXISTS "${t}";`)
+      .join('\n')
     wrangler(['d1', 'execute', DB_NAME, '--env', ENV, '--remote', '--yes', '--command', dropSql])
   }
   console.log('D1: applying schema/d1.sql...')

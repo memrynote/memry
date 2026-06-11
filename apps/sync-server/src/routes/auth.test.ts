@@ -1315,10 +1315,10 @@ describe('auth routes', () => {
   })
 
   describe('POST /auth/checkout-token', () => {
-    it('mints an account-bound checkout token for the authenticated sync account', async () => {
+    it('mints an account-bound identity token for the authenticated sync account', async () => {
       const res = await app.request(
         '/auth/checkout-token',
-        jsonPost('/auth/checkout-token', { plan: 'pro', cadence: 'annual' }),
+        jsonPost('/auth/checkout-token', {}),
         env
       )
 
@@ -1328,21 +1328,9 @@ describe('auth routes', () => {
 
       expect(payload).toEqual({
         userId: 'user-1',
-        plan: 'pro',
-        cadence: 'annual',
         exp: json.expiresAt
       })
       expect(json.checkoutToken.split('.')).toHaveLength(2)
-    })
-
-    it('rejects lifetime checkout cadence for recurring plans', async () => {
-      const res = await app.request(
-        '/auth/checkout-token',
-        jsonPost('/auth/checkout-token', { plan: 'plus', cadence: 'lifetime' }),
-        env
-      )
-
-      expect(res.status).toBe(400)
     })
   })
 

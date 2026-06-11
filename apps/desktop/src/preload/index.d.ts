@@ -1453,7 +1453,6 @@ interface SyncLinkingClientAPI {
 
 // Account API
 type BillingPlanId = 'plus' | 'pro' | 'believer'
-type BillingCadence = 'monthly' | 'annual' | 'lifetime'
 type BillingPlan = 'free' | BillingPlanId
 type BillingStatusValue = 'inactive' | 'active' | 'past_due' | 'paused' | 'canceled'
 
@@ -1483,10 +1482,7 @@ interface BillingActionResult {
 interface AccountClientAPI {
   getInfo: () => Promise<{ email: string | null; joinedAt: number | null }>
   signOut: () => Promise<{ success: boolean; keychainWarning?: string }>
-  startCheckout: (input: {
-    plan: BillingPlanId
-    cadence: Exclude<BillingCadence, 'lifetime'>
-  }) => Promise<BillingActionResult & { checkoutUrl?: string }>
+  startCheckout: () => Promise<BillingActionResult & { checkoutUrl?: string }>
   getBillingStatus: () => Promise<BillingStatus | (BillingActionResult & { status?: never })>
   refreshBillingStatus: (input?: {
     transactionId?: string
