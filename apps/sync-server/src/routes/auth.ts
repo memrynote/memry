@@ -270,10 +270,15 @@ auth.get('/oauth/:provider', async (c) => {
   const clientRedirectUri = c.req.query('redirect_uri')
   const redirectUri = clientRedirectUri ?? c.env.GOOGLE_REDIRECT_URI
 
-  if (clientRedirectUri && !/^http:\/\/127\.0\.0\.1(:\d+)?(\/.*)?$/.test(clientRedirectUri)) {
+  const isLoopback =
+    clientRedirectUri != null && /^http:\/\/127\.0\.0\.1(:\d+)?(\/.*)?$/.test(clientRedirectUri)
+  const isConfiguredWeb =
+    clientRedirectUri != null && clientRedirectUri === c.env.WEB_OAUTH_REDIRECT_URI
+
+  if (clientRedirectUri && !isLoopback && !isConfiguredWeb) {
     throw new AppError(
       ErrorCodes.VALIDATION_ERROR,
-      'redirect_uri must be a 127.0.0.1 loopback address',
+      'redirect_uri must be a 127.0.0.1 loopback address or the configured web origin',
       400
     )
   }

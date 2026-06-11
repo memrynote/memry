@@ -756,6 +756,36 @@ describe('auth routes', () => {
       const json = (await res.json()) as { error: { code: string } }
       expect(json.error.code).toBe(ErrorCodes.VALIDATION_ERROR)
     })
+
+    it('should accept configured web redirect URI', async () => {
+      const webRedirectUri = 'https://memrynote.com/auth/oauth/callback'
+      const envWithWeb = { ...env, WEB_OAUTH_REDIRECT_URI: webRedirectUri }
+      const res = await app.request(
+        `/auth/oauth/google?redirect_uri=${encodeURIComponent(webRedirectUri)}`,
+        { method: 'GET' },
+        envWithWeb
+      )
+
+      expect(res.status).toBe(302)
+      const location = res.headers.get('Location')
+      expect(location).toContain('https://accounts.google.com/o/oauth2/v2/auth')
+    })
+
+    it('should reject non-loopback, non-configured redirect URIs even when WEB_OAUTH_REDIRECT_URI is set', async () => {
+      const envWithWeb = {
+        ...env,
+        WEB_OAUTH_REDIRECT_URI: 'https://memrynote.com/auth/oauth/callback'
+      }
+      const res = await app.request(
+        '/auth/oauth/google?redirect_uri=https://evil.example/callback',
+        { method: 'GET' },
+        envWithWeb
+      )
+
+      expect(res.status).toBe(400)
+      const json = (await res.json()) as { error: { code: string } }
+      expect(json.error.code).toBe(ErrorCodes.VALIDATION_ERROR)
+    })
   })
 
   // ==========================================================================

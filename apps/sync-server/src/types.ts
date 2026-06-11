@@ -14,6 +14,7 @@ export type Bindings = {
   GOOGLE_CLIENT_ID: string
   GOOGLE_CLIENT_SECRET: string
   GOOGLE_REDIRECT_URI: string
+  WEB_OAUTH_REDIRECT_URI?: string
   MIN_APP_VERSION: string
   RECOVERY_DUMMY_SECRET: string
   WEBHOOK_HMAC_KEY: string
