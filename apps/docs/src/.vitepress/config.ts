@@ -131,6 +131,7 @@ function unifiedSidebar() {
           items: [
             { text: 'How Sync Works', link: '/user-guide/sync/how-sync-works' },
             { text: 'Linking Another Device', link: '/user-guide/sync/linking-devices' },
+            { text: 'Account on the Web', link: '/user-guide/sync/web-account' },
             { text: 'Recovery Key & Rotation', link: '/user-guide/sync/recovery-rotation' },
             { text: 'Conflict & Health', link: '/user-guide/sync/conflict-health' }
           ]
