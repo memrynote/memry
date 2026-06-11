@@ -21,6 +21,8 @@ the note or file viewer. When a task has multiple related items, the indicator o
 
 Click the row body to open the task detail drawer. Inline status and priority controls open their own pickers without opening the drawer.
 
+Drag the drawer's left edge to resize it; double-click the edge to reset to the default width. The width is remembered across restarts.
+
 Rows can be drag-reordered. Multi-select with shift-click for bulk actions.
 
 When grouping is on, group headers show counts and roll up subtask progress.
