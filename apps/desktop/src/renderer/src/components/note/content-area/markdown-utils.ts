@@ -206,7 +206,10 @@ export async function serializeBlocksPreservingBlanks(
   const flushContent = async (): Promise<void> => {
     if (contentGroup.length === 0) return
     const md = await editor.blocksToMarkdownLossy(contentGroup)
-    segments.push({ type: 'content', text: md })
+    // Trim the trailing newline BlockNote appends to list/heading groups; left
+    // untrimmed it merges with the segment join into a 3+ newline run that
+    // re-parses as a growing blank-line gap on every save (see round-trip tests).
+    segments.push({ type: 'content', text: md.trim() })
     contentGroup = []
   }
 
@@ -288,7 +291,7 @@ export async function serializeBlocksPreservingBlanks(
 
   if (contentGroup.length > 0) {
     const md = await editor.blocksToMarkdownLossy(contentGroup)
-    segments.push({ type: 'content', text: md })
+    segments.push({ type: 'content', text: md.trim() })
   }
   if (emptyCount > 0) {
     segments.push({ type: 'gap', extraLines: emptyCount })

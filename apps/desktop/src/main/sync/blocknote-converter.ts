@@ -270,14 +270,14 @@ async function blocksToMarkdownPreserving(
     if (isEmptyParagraph(block)) {
       if (contentGroup.length > 0) {
         const md = await editor.blocksToMarkdownLossy(contentGroup as PartialBlock[])
-        segments.push({ type: 'content', text: md })
+        segments.push({ type: 'content', text: md.trim() })
         contentGroup = []
       }
       emptyCount++
     } else if (hasNonDefaultColors(block.props as BlockColors)) {
       if (contentGroup.length > 0) {
         const md = await editor.blocksToMarkdownLossy(contentGroup as PartialBlock[])
-        segments.push({ type: 'content', text: md })
+        segments.push({ type: 'content', text: md.trim() })
         contentGroup = []
       }
       if (emptyCount > 0) {
@@ -292,7 +292,7 @@ async function blocksToMarkdownPreserving(
     } else if (hasMarkerSerializedChildren(block)) {
       if (contentGroup.length > 0) {
         const md = await editor.blocksToMarkdownLossy(contentGroup as PartialBlock[])
-        segments.push({ type: 'content', text: md })
+        segments.push({ type: 'content', text: md.trim() })
         contentGroup = []
       }
       if (emptyCount > 0) {
@@ -314,7 +314,9 @@ async function blocksToMarkdownPreserving(
 
   if (contentGroup.length > 0) {
     const md = await editor.blocksToMarkdownLossy(contentGroup as PartialBlock[])
-    segments.push({ type: 'content', text: md })
+    // Trim the trailing newline BlockNote appends to list/heading groups; left
+    // untrimmed it re-parses as a growing blank-line gap on every writeback.
+    segments.push({ type: 'content', text: md.trim() })
   }
   if (emptyCount > 0) {
     segments.push({ type: 'gap', extraLines: emptyCount })
