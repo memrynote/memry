@@ -75,19 +75,6 @@ vi.mock('@/components/ui/tooltip', () => ({
   TooltipTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>
 }))
 
-vi.mock('@/components/ui/dropdown-menu', () => ({
-  DropdownMenu: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DropdownMenuContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DropdownMenuItem: ({
-    children,
-    onClick
-  }: {
-    children: React.ReactNode
-    onClick?: () => void
-  }) => <button onClick={onClick}>{children}</button>,
-  DropdownMenuTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>
-}))
-
 vi.mock('@/lib/render-note-icon', () => ({
   NoteIconDisplay: ({ value }: { value: string }) => <span>{value}</span>
 }))
