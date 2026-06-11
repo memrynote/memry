@@ -816,7 +816,10 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
               className="marquee-zone relative min-h-full w-full flex flex-col"
             >
               <div
-                className="mx-auto w-full px-8 lg:px-12 min-h-full flex flex-col pt-6 pb-10 lg:pb-16 transition-[max-width] duration-300 ease-in-out"
+                className={cn(
+                  'mx-auto w-full min-h-full flex flex-col pt-6 pb-10 lg:pb-16 transition-[max-width] duration-300 ease-in-out',
+                  isFullWidth ? 'px-24 max-[920px]:px-8' : 'px-8 lg:px-12'
+                )}
                 style={{ maxWidth: isFullWidth ? '100%' : '64rem' }}
               >
                 <div className="flex flex-col flex-1 mx-auto w-full transition-[max-width] duration-300 ease-in-out">
