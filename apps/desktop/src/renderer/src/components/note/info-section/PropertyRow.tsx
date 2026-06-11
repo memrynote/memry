@@ -4,7 +4,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { GripVertical, Trash2 } from '@/lib/icons'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
-import { Property, PROPERTY_TYPE_CONFIG } from './types'
+import { Property } from './types'
 import {
   TextEditor,
   NumberEditor,
@@ -288,8 +288,6 @@ export function PropertyRow({
   const [isNameHovered, setIsNameHovered] = useState(false)
   const nameInputRef = useRef<HTMLInputElement>(null)
 
-  const config = PROPERTY_TYPE_CONFIG[property.type]
-  const IconComponent = config.icon
   const isDragEnabled = isSortable && !disabled
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -365,7 +363,7 @@ export function PropertyRow({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       className={cn(
-        'flex items-center py-[0px]',
+        'flex items-center py-1.5',
         'transition-colors duration-150',
         isDragging && 'opacity-60 bg-muted/20 rounded'
       )}
@@ -375,9 +373,9 @@ export function PropertyRow({
         onMouseEnter={() => setIsNameHovered(true)}
         onMouseLeave={() => setIsNameHovered(false)}
       >
-        {/* Icon / Drag Handle — fixed w-5 slot */}
+        {/* Drag Handle — fixed w-5 slot, empty at rest for a clean editorial look */}
         <div className="flex items-center w-5 shrink-0">
-          {showDragHandle ? (
+          {showDragHandle && (
             <button
               type="button"
               {...attributes}
@@ -394,8 +392,6 @@ export function PropertyRow({
             >
               <GripVertical className="h-3.5 w-3.5" />
             </button>
-          ) : (
-            <IconComponent className="h-3.5 w-3.5 text-text-tertiary" aria-hidden="true" />
           )}
         </div>
 
@@ -409,7 +405,7 @@ export function PropertyRow({
             onBlur={handleEndNameEdit}
             onKeyDown={handleNameKeyDown}
             className={cn(
-              'w-24 shrink-0',
+              'w-28 shrink-0',
               'text-[13px] text-muted-foreground font-sans',
               'bg-transparent border-b border-border',
               'focus:outline-none focus:border-muted-foreground',
@@ -421,8 +417,8 @@ export function PropertyRow({
           <span
             onClick={onNameChange ? handleStartNameEdit : undefined}
             className={cn(
-              'w-24 shrink-0',
-              'text-[13px] text-muted-foreground font-sans leading-4',
+              'w-28 shrink-0',
+              'text-[13px] text-text-tertiary font-sans leading-4',
               'truncate',
               onNameChange && !disabled && 'cursor-pointer hover:text-text-secondary'
             )}
@@ -477,7 +473,7 @@ export function PropertyRow({
           onClick={onDelete}
           aria-label={`${t('properties.delete')}: ${property.name}`}
           className={cn(
-            'ml-2 flex h-6 w-6 items-center justify-center',
+            'ms-2 flex h-6 w-6 items-center justify-center',
             'rounded text-text-tertiary',
             'transition-all duration-150',
             'hover:bg-destructive/10 hover:text-destructive',

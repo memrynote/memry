@@ -1040,19 +1040,7 @@ export function NotePage({ noteId }: NotePageProps) {
         style={{ maxWidth: noteContentWidth ?? '100%' }}
       >
         {/* Title + Metadata zone — ghost affordance appears on hover */}
-        <div className="group/metadata flex flex-col pb-[15px]" data-marquee-ignore>
-          {/* Ghost affordance: fades in on hover/focus */}
-          <GhostAffordanceRow
-            availableTags={availableTags}
-            recentTags={recentTags}
-            currentTagIds={noteTags.map((t) => t.id)}
-            onAddTag={(...args) => void handleAddTag(...args)}
-            onCreateTag={(...args) => void handleCreateTag(...args)}
-            onAddProperty={handleAddPropertyWithExpand}
-            disabled={isDeleted}
-            className="mb-2"
-          />
-
+        <div className="group/metadata flex flex-col gap-2.5 pb-[15px]" data-marquee-ignore>
           <NoteTitle
             emoji={null}
             title={note.title}
@@ -1089,6 +1077,18 @@ export function NotePage({ noteId }: NotePageProps) {
               hideAddButton
             />
           )}
+
+          {/* Ghost affordance: add tag/property — fades in on hover/focus, placed
+              below the metadata so it never sits above the title */}
+          <GhostAffordanceRow
+            availableTags={availableTags}
+            recentTags={recentTags}
+            currentTagIds={noteTags.map((t) => t.id)}
+            onAddTag={(...args) => void handleAddTag(...args)}
+            onCreateTag={(...args) => void handleCreateTag(...args)}
+            onAddProperty={handleAddPropertyWithExpand}
+            disabled={isDeleted}
+          />
         </div>
 
         {/* Main content - BlockNote Editor */}
