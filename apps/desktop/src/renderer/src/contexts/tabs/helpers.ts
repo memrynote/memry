@@ -289,6 +289,7 @@ export const createInitialState = (): TabSystemState => {
       tabGroupId: initialGroup.id
     },
     activeGroupId: initialGroup.id,
-    settings: { ...DEFAULT_TAB_SETTINGS }
+    settings: { ...DEFAULT_TAB_SETTINGS },
+    recentlyClosed: []
   }
 }

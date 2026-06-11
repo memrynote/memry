@@ -16,6 +16,7 @@ export function tabReducer(state: TabSystemState, action: TabAction): TabSystemS
     case 'CLOSE_TABS_TO_RIGHT':
     case 'CLOSE_ALL_TABS':
     case 'CLOSE_GROUP':
+    case 'REOPEN_CLOSED_TAB':
       return tabCrudReducer(state, action)
 
     case 'SET_ACTIVE_TAB':
