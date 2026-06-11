@@ -9,7 +9,7 @@
  * renders a `taskBlock` back to that markdown line.
  */
 
-const TASK_BLOCK_SUFFIX_REGEX = /\{task:([^}]+)\}\s*$/
+const TASK_BLOCK_SUFFIX_OPEN = '{task:'
 
 export interface TaskBlockProps {
   taskId: string
@@ -37,13 +37,19 @@ export function serializeTaskBlock(props: TaskBlockProps): string {
   return `${indent}- [${check}] ${props.title} {task:${props.taskId}}`
 }
 
+// Parsed by hand rather than with a regex: the suffix is always the trailing
+// `{task:<id>}`, and a greedy-class-plus-end-anchor regex (`\{task:([^}]+)\}$`)
+// backtracks quadratically on adversarial note content with many `{task:`
+// starts — flagged as polynomial ReDoS on uncontrolled input. String ops keep
+// it linear.
 export function parseTaskBlockSuffix(text: string): { taskId: string; title: string } | null {
-  const match = text.match(TASK_BLOCK_SUFFIX_REGEX)
-  if (!match) return null
-  return {
-    taskId: match[1],
-    title: text.replace(TASK_BLOCK_SUFFIX_REGEX, '').trim()
-  }
+  const trimmed = text.trimEnd()
+  if (!trimmed.endsWith('}')) return null
+  const open = trimmed.lastIndexOf(TASK_BLOCK_SUFFIX_OPEN)
+  if (open === -1) return null
+  const taskId = trimmed.slice(open + TASK_BLOCK_SUFFIX_OPEN.length, -1)
+  if (taskId.length === 0 || taskId.includes('}')) return null
+  return { taskId, title: trimmed.slice(0, open).trim() }
 }
 
 export function extractInlineText(content: unknown): string {
