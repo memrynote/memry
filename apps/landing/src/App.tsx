@@ -26,6 +26,7 @@ import { RefundPage } from '@/pages/Refund'
 import { NotFound } from '@/pages/NotFound'
 import { scrollToLandingTarget } from '@/lib/smooth-scroll'
 import { trackLandingEvent, trackLandingPageView, type LandingEventName } from '@/lib/analytics'
+import { AuthProvider } from '@/contexts/auth-context'
 
 const SCROLL_DEPTH_EVENTS: readonly { depth: number; event: LandingEventName }[] = [
   { depth: 25, event: 'landing_scroll_25' },
@@ -150,7 +151,9 @@ export default function App() {
   return (
     <HelmetProvider>
       <BrowserRouter>
-        <AppContent />
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
       </BrowserRouter>
     </HelmetProvider>
   )

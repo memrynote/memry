@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { renderToString } from 'react-dom/server'
 import { StaticRouter } from 'react-router'
 import { HelmetProvider, HelmetData, type HelmetServerState } from 'react-helmet-async'
+import { AuthProvider } from '@/contexts/auth-context'
 import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
 import { Home } from '@/pages/Home'
@@ -49,11 +50,13 @@ export function render(url: string): { html: string; helmet: HelmetServerState |
   const html = renderToString(
     <HelmetProvider context={helmetData.context}>
       <StaticRouter location={url}>
-        <div className="min-h-screen flex flex-col">
-          <Header />
-          <main className="flex-1">{Page ? <Page /> : null}</main>
-          <Footer />
-        </div>
+        <AuthProvider>
+          <div className="min-h-screen flex flex-col">
+            <Header />
+            <main className="flex-1">{Page ? <Page /> : null}</main>
+            <Footer />
+          </div>
+        </AuthProvider>
       </StaticRouter>
     </HelmetProvider>
   )
