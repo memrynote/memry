@@ -99,8 +99,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       plan: intent.plan,
       cadence: intent.cadence
     })
-  } catch {
-    console.error('[paddle-checkout] transaction creation failed')
-    return res.status(502).json({ error: 'Could not start checkout' })
+  } catch (error) {
+    console.error('[paddle-checkout] transaction creation failed', error)
+    const detail =
+      error instanceof Error
+        ? error.message
+        : typeof error === 'string'
+          ? error
+          : JSON.stringify(error)
+    return res.status(502).json({ error: `Could not start checkout: ${detail}` })
   }
 }
