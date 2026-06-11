@@ -24,6 +24,13 @@ import { TermsPage } from '@/pages/Terms'
 import { PrivacyPage } from '@/pages/Privacy'
 import { RefundPage } from '@/pages/Refund'
 import { NotFound } from '@/pages/NotFound'
+import { AuthPage } from '@/pages/Auth'
+import { AuthCallbackPage } from '@/pages/AuthCallback'
+import { RequireAuth } from '@/components/account/RequireAuth'
+import { AccountLayout } from '@/components/account/AccountLayout'
+import { ProfileSection } from '@/pages/account/ProfileSection'
+import { BillingSection } from '@/pages/account/BillingSection'
+import { SyncSection } from '@/pages/account/SyncSection'
 import { scrollToLandingTarget } from '@/lib/smooth-scroll'
 import { trackLandingEvent, trackLandingPageView, type LandingEventName } from '@/lib/analytics'
 import { AuthProvider } from '@/contexts/auth-context'
@@ -139,6 +146,21 @@ function AppContent() {
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/refund" element={<RefundPage />} />
+          <Route path="/auth" element={<AuthPage />} />
+          <Route path="/auth/oauth/callback" element={<AuthCallbackPage />} />
+          <Route
+            path="/account"
+            element={
+              <RequireAuth>
+                <AccountLayout />
+              </RequireAuth>
+            }
+          >
+            <Route index element={<ProfileSection />} />
+            <Route path="profile" element={<ProfileSection />} />
+            <Route path="billing" element={<BillingSection />} />
+            <Route path="sync" element={<SyncSection />} />
+          </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
