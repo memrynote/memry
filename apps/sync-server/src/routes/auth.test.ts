@@ -206,6 +206,8 @@ const jsonPost = (path: string, body: Record<string, unknown>) => ({
   headers: { 'Content-Type': 'application/json' }
 })
 
+const getAuthed = (path: string) => ({ method: 'GET' as const })
+
 function readCheckoutTokenPayload(token: string): Record<string, unknown> {
   const [encodedPayload] = token.split('.')
   const base64 = encodedPayload.replace(/-/g, '+').replace(/_/g, '/')
@@ -563,6 +565,52 @@ describe('auth routes', () => {
       )
 
       expect(res.status).toBe(409)
+    })
+
+    it('GET /billing/invoices returns 200 with empty invoices array', async () => {
+      const paddleFetch = vi.fn().mockResolvedValue(Response.json({ data: [] }))
+      env = createEnv({
+        paddleFetch,
+        firstRows: [{ paddle_customer_id: 'ctm_1' }]
+      })
+
+      const res = await app.request(
+        '/auth/billing/invoices',
+        getAuthed('/auth/billing/invoices'),
+        env
+      )
+
+      expect(res.status).toBe(200)
+      await expect(res.json()).resolves.toEqual({ invoices: [] })
+    })
+
+    it('GET /billing/invoices returns [] without calling Paddle when no customer id', async () => {
+      env = createEnv({ firstRows: [null] })
+
+      const res = await app.request(
+        '/auth/billing/invoices',
+        getAuthed('/auth/billing/invoices'),
+        env
+      )
+
+      expect(res.status).toBe(200)
+      await expect(res.json()).resolves.toEqual({ invoices: [] })
+    })
+
+    it('GET /billing/invoices/:id/pdf returns the PDF url', async () => {
+      const paddleFetch = vi
+        .fn()
+        .mockResolvedValue(Response.json({ data: { url: 'https://paddle.com/invoice/txn_1.pdf' } }))
+      env = createEnv({ paddleFetch, firstRows: [] })
+
+      const res = await app.request(
+        '/auth/billing/invoices/txn_1/pdf',
+        getAuthed('/auth/billing/invoices/txn_1/pdf'),
+        env
+      )
+
+      expect(res.status).toBe(200)
+      await expect(res.json()).resolves.toEqual({ url: 'https://paddle.com/invoice/txn_1.pdf' })
     })
   })
 

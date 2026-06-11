@@ -48,6 +48,8 @@ import { signCheckoutToken } from '../services/checkout-token'
 import {
   createPaddlePortalSession,
   getBillingStatus,
+  getPaddleInvoicePdfUrl,
+  listPaddleInvoices,
   reconcilePaddleTransaction
 } from '../services/paddle-billing'
 import {
@@ -648,6 +650,17 @@ auth.post('/billing/reconcile', authMiddleware, async (c) => {
 auth.post('/billing/portal-session', authMiddleware, async (c) => {
   const userId = c.get('userId')!
   return c.json(await createPaddlePortalSession(c.env, userId))
+})
+
+auth.get('/billing/invoices', authMiddleware, async (c) => {
+  const userId = c.get('userId')!
+  const invoices = await listPaddleInvoices(c.env, userId)
+  return c.json({ invoices })
+})
+
+auth.get('/billing/invoices/:id/pdf', authMiddleware, async (c) => {
+  const url = await getPaddleInvoicePdfUrl(c.env, c.req.param('id'))
+  return c.json({ url })
 })
 
 // POST /refresh
