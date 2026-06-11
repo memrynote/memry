@@ -135,8 +135,10 @@ export async function parsePaddleCheckoutIntent(
 ): Promise<PaddleCheckoutIntent | null> {
   if (!input || typeof input !== 'object') return null
 
-  const { checkoutToken } = input as {
+  const { checkoutToken, plan, cadence } = input as {
     checkoutToken?: unknown
+    plan?: unknown
+    cadence?: unknown
   }
   if (typeof checkoutToken !== 'string' || checkoutToken.trim().length === 0) return null
 
@@ -146,10 +148,11 @@ export async function parsePaddleCheckoutIntent(
   )
   if (!tokenPayload) return null
 
-  const { plan, cadence, userId, exp } = tokenPayload
-  if (!isPlan(plan) || !isCadence(cadence)) return null
+  const { userId, exp } = tokenPayload
   if (typeof userId !== 'string' || userId.trim().length === 0) return null
   if (typeof exp !== 'number' || !Number.isFinite(exp) || exp <= nowSeconds) return null
+
+  if (!isPlan(plan) || !isCadence(cadence)) return null
 
   if (plan === 'believer') {
     return { plan, cadence: 'lifetime', userId: userId.trim() }
@@ -161,7 +164,7 @@ export async function parsePaddleCheckoutIntent(
 }
 
 export async function signPaddleCheckoutToken(
-  payload: PaddleCheckoutIntent & { exp: number },
+  payload: { userId: string; exp: number },
   secret: string
 ): Promise<string> {
   const encodedPayload = base64UrlEncode(encoder.encode(JSON.stringify(payload)))
