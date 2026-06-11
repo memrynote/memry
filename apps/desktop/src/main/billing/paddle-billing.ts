@@ -11,7 +11,7 @@ import {
 } from './entitlement-cache'
 
 const log = createLogger('Billing')
-const CHECKOUT_PAGE_URL = 'https://memrynote.com/checkout'
+const DEFAULT_CHECKOUT_PAGE_URL = 'https://memrynote.com/checkout'
 
 export type BillingPlanId = 'plus' | 'pro' | 'believer'
 export type BillingCadence = 'monthly' | 'annual' | 'lifetime'
@@ -132,7 +132,11 @@ export async function resolveEntitlementForSyncStart(): Promise<CachedEntitlemen
   return cached ?? { isPaid: false, plan: 'free', status: 'inactive' }
 }
 
+function getCheckoutPageUrl(): string {
+  return process.env.CHECKOUT_PAGE_URL?.trim() || DEFAULT_CHECKOUT_PAGE_URL
+}
+
 function buildCheckoutPageUrl(checkoutToken: string): string {
   const params = new URLSearchParams({ token: checkoutToken })
-  return `${CHECKOUT_PAGE_URL}#${params.toString()}`
+  return `${getCheckoutPageUrl()}#${params.toString()}`
 }
