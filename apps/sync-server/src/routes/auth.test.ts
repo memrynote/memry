@@ -25,7 +25,8 @@ vi.mock('../services/user', () => ({
   }),
   getUserByEmail: vi.fn().mockResolvedValue(null),
   getUserById: vi.fn().mockResolvedValue({ id: 'user-1', kdf_salt: null }),
-  updateUser: vi.fn().mockResolvedValue(undefined)
+  updateUser: vi.fn().mockResolvedValue(undefined),
+  updateUserEmail: vi.fn().mockResolvedValue(undefined)
 }))
 
 vi.mock('../services/auth', () => ({
@@ -124,7 +125,13 @@ vi.mock('jose', () => ({
 
 import { auth } from './auth'
 import { checkEmailRateLimit, hasPendingOtp } from '../services/otp'
-import { getOrCreateUserByEmail, getUserByEmail, getUserById, updateUser } from '../services/user'
+import {
+  getOrCreateUserByEmail,
+  getUserByEmail,
+  getUserById,
+  updateUser,
+  updateUserEmail
+} from '../services/user'
 import { revokeDeviceTokens, rotateRefreshToken } from '../services/auth'
 import { SYNC_PLAN_LIMITS } from '../services/entitlements'
 import { jwtVerify } from 'jose'
@@ -165,7 +172,8 @@ const createEnv = (options?: {
         const statement = createD1Statement()
         statement.first.mockImplementation(() => Promise.resolve(firstRows.shift() ?? null))
         return statement
-      })
+      }),
+      batch: vi.fn().mockResolvedValue([])
     } as unknown as D1Database,
     STORAGE: {} as R2Bucket,
     USER_SYNC_STATE: {} as DurableObjectNamespace,
@@ -1350,6 +1358,39 @@ describe('auth routes', () => {
 
       expect(res.status).toBe(200)
       expect(await res.json()).toEqual({ success: true })
+    })
+  })
+
+  // ==========================================================================
+  // POST /auth/email/change
+  // ==========================================================================
+
+  describe('POST /auth/email/change', () => {
+    it('sends OTP when new email is free', async () => {
+      vi.mocked(getUserByEmail).mockResolvedValueOnce(null)
+
+      const res = await app.request(
+        '/auth/email/change',
+        jsonPost('/auth/email/change', { newEmail: 'new@example.com' }),
+        env
+      )
+
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual({ success: true, expiresIn: 600 })
+    })
+
+    it('returns 409 when new email is already in use', async () => {
+      vi.mocked(getUserByEmail).mockResolvedValueOnce({ id: 'user-2' } as never)
+
+      const res = await app.request(
+        '/auth/email/change',
+        jsonPost('/auth/email/change', { newEmail: 'taken@example.com' }),
+        env
+      )
+
+      expect(res.status).toBe(409)
+      const json = (await res.json()) as { error: { code: string } }
+      expect(json.error.code).toBe(ErrorCodes.VALIDATION_ERROR)
     })
   })
 })

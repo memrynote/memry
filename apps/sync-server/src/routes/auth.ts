@@ -9,7 +9,9 @@ import {
   DeviceRegisterRequestSchema,
   FirstDeviceSetupRequestSchema,
   RefreshTokenRequestSchema,
-  OAuthCallbackSchema
+  OAuthCallbackSchema,
+  EmailChangeRequestSchema,
+  EmailChangeVerifySchema
 } from '@memry/contracts/auth-api'
 import { buildOtpEmailHtml } from '../emails/otp-template'
 import { safeBase64Decode } from '../lib/encoding'
@@ -34,7 +36,13 @@ import {
   checkEmailRateLimit,
   hasPendingOtp
 } from '../services/otp'
-import { getOrCreateUserByEmail, getUserByEmail, getUserById, updateUser } from '../services/user'
+import {
+  getOrCreateUserByEmail,
+  getUserByEmail,
+  getUserById,
+  updateUser,
+  updateUserEmail
+} from '../services/user'
 import { signCheckoutToken } from '../services/checkout-token'
 import {
   createPaddlePortalSession,
@@ -699,4 +707,23 @@ auth.post('/logout', authMiddleware, async (c) => {
   }
 
   return c.json({ success: true })
+})
+
+// POST /email/change — request OTP to new email address
+auth.post('/email/change', authMiddleware, async (c) => {
+  const body = await c.req.json()
+  const parsed = EmailChangeRequestSchema.safeParse(body)
+  if (!parsed.success) {
+    throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid request body', 400)
+  }
+  const { newEmail } = parsed.data
+  const existing = await getUserByEmail(c.env.DB, newEmail)
+  if (existing) {
+    throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Email already in use', 409)
+  }
+  const code = generateOtp()
+  await storeOtp(c.env.DB, newEmail, code, c.env.OTP_HMAC_KEY)
+  const html = buildOtpEmailHtml(code, OTP_EXPIRY_MINUTES)
+  await sendEmail(newEmail, 'Confirm your new Memry email', html, c.env.RESEND_API_KEY)
+  return c.json({ success: true, expiresIn: OTP_EXPIRY_MINUTES * 60 })
 })
