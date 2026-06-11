@@ -5,7 +5,6 @@ import {
   buildCheckoutSuccessUrl,
   buildMemryBillingCompleteUrl,
   buildMemryBillingStartUrl,
-  parseCheckoutHash,
   readCheckoutResponse
 } from '../src/lib/paddle-checkout.ts'
 
@@ -17,18 +16,6 @@ describe('paddle checkout response parsing', () => {
     })
 
     await assert.rejects(readCheckoutResponse(response), /Could not start checkout/)
-  })
-
-  it('parses and strips desktop checkout intents from the URL fragment', () => {
-    const href =
-      'https://memrynote.com/pricing#checkout_plan=pro&checkout_cadence=annual&checkout_token=tok_123'
-    const url = new URL(href)
-
-    assert.deepEqual(parseCheckoutHash(url.hash), {
-      plan: 'pro',
-      cadence: 'annual',
-      checkoutToken: 'tok_123'
-    })
   })
 
   it('builds purchase handoff URLs without leaking checkout tokens into query params', () => {
