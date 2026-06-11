@@ -138,4 +138,32 @@ describe('SidebarTagList', () => {
     fireEvent.keyDown(input, { key: 'Escape' })
     expect(screen.queryByPlaceholderText('filterTags')).not.toBeInTheDocument()
   })
+
+  it('fades the tag label only when its text overflows the available width', () => {
+    mocks.query.tags = [{ tag: 'travel', count: 42, color: 'red' }]
+
+    // jsdom default: scrollWidth === clientWidth === 0 → text fits → no fade mask
+    const fits = render(<SidebarTagList />)
+    expect(screen.getByText('travel').className).not.toContain('sidebar-label-fade-mask')
+    fits.unmount()
+
+    // scrollWidth > clientWidth → text overflows → fade mask applied
+    const scroll = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollWidth')
+    const client = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'clientWidth')
+    Object.defineProperty(HTMLElement.prototype, 'scrollWidth', {
+      configurable: true,
+      get: () => 100
+    })
+    Object.defineProperty(HTMLElement.prototype, 'clientWidth', {
+      configurable: true,
+      get: () => 40
+    })
+    try {
+      render(<SidebarTagList />)
+      expect(screen.getByText('travel').className).toContain('sidebar-label-fade-mask')
+    } finally {
+      if (scroll) Object.defineProperty(HTMLElement.prototype, 'scrollWidth', scroll)
+      if (client) Object.defineProperty(HTMLElement.prototype, 'clientWidth', client)
+    }
+  })
 })
