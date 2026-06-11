@@ -1393,4 +1393,24 @@ describe('auth routes', () => {
       expect(json.error.code).toBe(ErrorCodes.VALIDATION_ERROR)
     })
   })
+
+  // ==========================================================================
+  // POST /auth/email/change/verify
+  // ==========================================================================
+
+  describe('POST /auth/email/change/verify', () => {
+    it('verifies OTP and updates email', async () => {
+      vi.mocked(getUserByEmail).mockResolvedValueOnce(null)
+
+      const res = await app.request(
+        '/auth/email/change/verify',
+        jsonPost('/auth/email/change/verify', { newEmail: 'new@example.com', code: '123456' }),
+        env
+      )
+
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual({ success: true })
+      expect(updateUserEmail).toHaveBeenCalledWith(env.DB, 'user-1', 'new@example.com')
+    })
+  })
 })

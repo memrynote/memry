@@ -727,3 +727,21 @@ auth.post('/email/change', authMiddleware, async (c) => {
   await sendEmail(newEmail, 'Confirm your new Memry email', html, c.env.RESEND_API_KEY)
   return c.json({ success: true, expiresIn: OTP_EXPIRY_MINUTES * 60 })
 })
+
+// POST /email/change/verify — verify OTP and update email
+auth.post('/email/change/verify', authMiddleware, async (c) => {
+  const body = await c.req.json()
+  const parsed = EmailChangeVerifySchema.safeParse(body)
+  if (!parsed.success) {
+    throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid request body', 400)
+  }
+  const { newEmail, code } = parsed.data
+  const existing = await getUserByEmail(c.env.DB, newEmail)
+  if (existing) {
+    throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Email already in use', 409)
+  }
+  await verifyOtp(c.env.DB, newEmail, code, c.env.OTP_HMAC_KEY)
+  const userId = c.get('userId')!
+  await updateUserEmail(c.env.DB, userId, newEmail)
+  return c.json({ success: true })
+})
