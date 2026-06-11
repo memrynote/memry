@@ -71,6 +71,28 @@ describe('parseTaskBlockSuffix', () => {
       title: 'Send email'
     })
   })
+
+  it('ignores trailing whitespace after the suffix', () => {
+    expect(parseTaskBlockSuffix('Buy groceries {task:abc-123}   ')).toEqual({
+      taskId: 'abc-123',
+      title: 'Buy groceries'
+    })
+  })
+
+  it('returns null when the suffix is not at the end', () => {
+    expect(parseTaskBlockSuffix('foo {task:x} bar')).toBeNull()
+  })
+
+  it('returns null for a malformed id containing a closing brace', () => {
+    expect(parseTaskBlockSuffix('foo {task:a} bar}')).toBeNull()
+  })
+
+  it('stays linear on adversarial input (no catastrophic backtracking)', () => {
+    const hostile = `${'{task:'.repeat(100000)}x`
+    const start = Date.now()
+    expect(parseTaskBlockSuffix(hostile)).toBeNull()
+    expect(Date.now() - start).toBeLessThan(1000)
+  })
 })
 
 describe('normalizeTaskBlocks', () => {

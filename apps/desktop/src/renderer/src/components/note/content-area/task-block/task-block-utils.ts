@@ -1,10 +1,20 @@
-import type { Block } from '@blocknote/core'
 import type {
   Task as DisplayTask,
   Priority,
   RepeatConfig as DisplayRepeatConfig
 } from '@/data/task-model'
 import type { Task as ServiceTask } from '@/services/tasks-service'
+
+// Pure task-block markdown helpers live in @memry/shared so the main-process
+// CRDT seed/writeback can reuse the exact same logic. Re-exported here so the
+// renderer's existing import sites stay unchanged.
+export {
+  serializeTaskBlock,
+  parseTaskBlockSuffix,
+  extractInlineText,
+  normalizeTaskBlocks
+} from '@memry/shared/task-block'
+export type { TaskBlockProps } from '@memry/shared/task-block'
 
 const DB_PRIORITY_MAP: Record<number, Priority> = {
   0: 'none',
@@ -167,98 +177,4 @@ export function isLikelyTask(text: string): boolean {
   if (trimmed.length < 3 || trimmed.length > 200) return false
   const firstWord = trimmed.split(/\s+/)[0].toLowerCase()
   return ACTION_VERBS.has(firstWord)
-}
-
-const TASK_BLOCK_SUFFIX_REGEX = /\{task:([^}]+)\}\s*$/
-
-export interface TaskBlockProps {
-  taskId: string
-  title: string
-  checked: boolean
-  parentTaskId?: string
-}
-
-export function serializeTaskBlock(props: TaskBlockProps): string {
-  const check = props.checked ? 'x' : ' '
-  const indent = props.parentTaskId ? '  ' : ''
-  return `${indent}- [${check}] ${props.title} {task:${props.taskId}}`
-}
-
-export function parseTaskBlockSuffix(text: string): { taskId: string; title: string } | null {
-  const match = text.match(TASK_BLOCK_SUFFIX_REGEX)
-  if (!match) return null
-  return {
-    taskId: match[1],
-    title: text.replace(TASK_BLOCK_SUFFIX_REGEX, '').trim()
-  }
-}
-
-function extractInlineText(content: unknown): string {
-  if (typeof content === 'string') return content
-  if (!Array.isArray(content)) return ''
-  return content
-    .map((item: unknown) => {
-      if (typeof item === 'string') return item
-      if (
-        item &&
-        typeof item === 'object' &&
-        'type' in item &&
-        (item as Record<string, unknown>).type === 'text'
-      ) {
-        return ((item as Record<string, unknown>).text as string) || ''
-      }
-      return ''
-    })
-    .join('')
-}
-
-export function normalizeTaskBlocks(blocks: Block[]): { blocks: Block[]; didChange: boolean } {
-  const blockStr = JSON.stringify(blocks)
-  if (!blockStr.includes('{task:')) {
-    return { blocks, didChange: false }
-  }
-
-  let didChange = false
-
-  function processBlocks(blockList: Block[], parentTaskId: string): Block[] {
-    return blockList.map((block) => {
-      if ((block.type as string) === 'taskBlock' && block.children?.length) {
-        const taskId = (block.props as Record<string, unknown>).taskId as string
-        const processedChildren = processBlocks(block.children as Block[], taskId)
-        if (processedChildren !== block.children) {
-          didChange = true
-          return { ...block, children: processedChildren } as Block
-        }
-        return block
-      }
-
-      if (block.type !== 'checkListItem') return block
-
-      const text = extractInlineText(block.content)
-      const parsed = parseTaskBlockSuffix(text)
-      if (!parsed) return block
-
-      didChange = true
-
-      const processedChildren = block.children?.length
-        ? processBlocks(block.children as Block[], parsed.taskId)
-        : []
-
-      return {
-        type: 'taskBlock',
-        props: {
-          taskId: parsed.taskId,
-          title: parsed.title,
-          checked: (block.props as Record<string, unknown>).isChecked ?? false,
-          parentTaskId
-        },
-        content: undefined,
-        children: processedChildren,
-        id: block.id
-      } as unknown as Block
-    })
-  }
-
-  const nextBlocks = processBlocks(blocks, '')
-  return { blocks: didChange ? nextBlocks : blocks, didChange }
 }

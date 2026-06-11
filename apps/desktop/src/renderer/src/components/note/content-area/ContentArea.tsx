@@ -40,6 +40,7 @@ import { LinkMentionPreviewCard } from './link-mention-preview-card'
 import { BlockDropIndicator, EmptyDocumentDropIndicator } from './block-drop-indicator'
 import { getCalloutSlashMenuItem } from './callout-block'
 import { getTaskSlashMenuItem } from './task-block'
+import { TaskPrefetchProvider } from './task-block/task-prefetch-context'
 import { tasksService } from '@/services/tasks-service'
 import { useTasksOptional } from '@/contexts/tasks'
 import { parseQuickAdd } from '@/lib/quick-add-parser'
@@ -1071,12 +1072,14 @@ export const ContentArea = memo(function ContentArea(props: ContentAreaProps) {
   }
 
   return (
-    <ContentAreaEditor
-      {...props}
-      yjsFragment={isReady && fragment ? fragment : undefined}
-      yjsDoc={isReady && doc ? doc : undefined}
-      isRemoteUpdateRef={isRemoteUpdateRef}
-    />
+    <TaskPrefetchProvider noteId={props.noteId}>
+      <ContentAreaEditor
+        {...props}
+        yjsFragment={isReady && fragment ? fragment : undefined}
+        yjsDoc={isReady && doc ? doc : undefined}
+        isRemoteUpdateRef={isRemoteUpdateRef}
+      />
+    </TaskPrefetchProvider>
   )
 })
 

@@ -59,6 +59,43 @@ describe('analyzeTaskIntents', () => {
     })
   })
 
+  describe('existing {task:} checkboxes (already-persisted tasks)', () => {
+    it('should NOT mark a top-level checkbox carrying a {task:} suffix as a standalone candidate', () => {
+      // #given - a persisted task that seeded into the doc as a raw checkbox
+      const blocks = [cl('cl1', 'Buy milk {task:abc-123}')]
+
+      // #when
+      const result = analyzeTaskIntents(blocks, new Set())
+
+      // #then - converting it would create a duplicate task, so skip it
+      expect(result.standaloneCandidate).toBeNull()
+      expect(result.subtaskCandidate).toBeNull()
+    })
+
+    it('should NOT mark a nested {task:} checkbox under a taskBlock as a subtask candidate', () => {
+      // #given
+      const blocks = [tb('tb1', 'task-1', 'Plan trip', '', [cl('cl1', 'Book flight {task:sub-9}')])]
+
+      // #when
+      const result = analyzeTaskIntents(blocks, new Set())
+
+      // #then
+      expect(result.subtaskCandidate).toBeNull()
+      expect(result.standaloneCandidate).toBeNull()
+    })
+
+    it('should still mark a plain checkbox (no suffix) as a candidate', () => {
+      // #given
+      const blocks = [cl('cl1', 'Buy milk')]
+
+      // #when
+      const result = analyzeTaskIntents(blocks, new Set())
+
+      // #then
+      expect(result.standaloneCandidate).toEqual({ blockId: 'cl1' })
+    })
+  })
+
   describe('checkListItem nested under taskBlock', () => {
     it('should mark a nested checkbox under a top-level taskBlock as subtask candidate', () => {
       // #given

@@ -12,6 +12,8 @@
  *     ancestor in the document), not the value of the parentTaskId prop.
  */
 
+import { extractInlineText, parseTaskBlockSuffix } from '@memry/shared/task-block'
+
 export interface SubtaskCandidate {
   blockId: string
   parentTaskId: string
@@ -54,6 +56,7 @@ interface TaskIntentBlock {
     parentTaskId?: string
     title?: unknown
   }
+  content?: unknown
   children?: TaskIntentBlock[]
 }
 
@@ -63,6 +66,14 @@ function isTaskBlock(block: TaskIntentBlock): boolean {
 
 function isCheckListItem(block: TaskIntentBlock): boolean {
   return block?.type === 'checkListItem'
+}
+
+// A checkbox that already carries a `{task:<id>}` suffix is a persisted task
+// (seeded from markdown / synced from the CRDT), NOT a fresh user checkbox.
+// Converting it would mint a duplicate DB task and drop the original id, so it
+// must never be treated as a conversion candidate.
+function hasTaskSuffix(block: TaskIntentBlock): boolean {
+  return parseTaskBlockSuffix(extractInlineText(block.content)) !== null
 }
 
 export function analyzeTaskIntents(
@@ -129,7 +140,7 @@ export function analyzeTaskIntents(
         }
       }
 
-      if (isCheckListItem(b) && !dismissedBlockIds.has(b.id)) {
+      if (isCheckListItem(b) && !dismissedBlockIds.has(b.id) && !hasTaskSuffix(b)) {
         if (parentTaskBlock && parentTaskBlock.props?.taskId) {
           if (!intents.subtaskCandidate) {
             intents.subtaskCandidate = {
