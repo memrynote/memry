@@ -17,6 +17,7 @@ import {
 import { cn } from '@/lib/utils'
 import { scrollToLandingTarget } from '@/lib/smooth-scroll'
 import { trackLandingEvent, type LandingEventName } from '@/lib/analytics'
+import { useAuth } from '@/contexts/auth-context'
 
 function useScrollToSection() {
   const navigate = useNavigate()
@@ -419,6 +420,7 @@ export function Header() {
   const navigate = useNavigate()
   const scrollToSection = useScrollToSection()
   const showHeaderSurface = headerScrolled || mobileMenuOpen
+  const { isSignedIn } = useAuth()
 
   const closeMobileMenu = () => {
     setMobileMenuOpen(false)
@@ -495,6 +497,14 @@ export function Header() {
           <div className="hidden md:flex items-center gap-3">
             <ThemeToggle />
             <GitHubStarWidget />
+            <Button variant="ghost" size="sm" className="rounded-full px-4" asChild>
+              <Link
+                to={isSignedIn ? '/account' : '/auth'}
+                onClick={() => trackLandingEvent('landing_account_open', 'nav:account')}
+              >
+                Account
+              </Link>
+            </Button>
             <Button variant="default" size="sm" className="rounded-full px-6" asChild>
               <a
                 href="#waitlist"
@@ -561,6 +571,11 @@ export function Header() {
                     onNavigate={closeMobileMenu}
                   />
                 ))}
+                <MobileNavLink
+                  href={isSignedIn ? '/account' : '/auth'}
+                  label="Account"
+                  onNavigate={closeMobileMenu}
+                />
                 <Button variant="default" className="mt-1 h-10 w-full rounded-full" asChild>
                   <a
                     href="#waitlist"
