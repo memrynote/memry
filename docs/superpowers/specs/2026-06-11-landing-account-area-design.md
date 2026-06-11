@@ -22,7 +22,7 @@ porting the desktop's heavy ("23-phase") vault setup to the web:
 
 1. **No account password exists.** Sign-in is email OTP + Google OAuth. There is
    no server-side password and no `password` column. The only password-like
-   secret is the *vault passphrase* (client-side Argon2id, desktop-only, never
+   secret is the _vault passphrase_ (client-side Argon2id, desktop-only, never
    sent to the server).
 2. **Account/billing endpoints do not require vault keys.** `POST /auth/devices`
    needs only a per-device Ed25519 keypair + a signed challenge (not the vault
@@ -97,7 +97,7 @@ Sign-in flow:
 2. Generate a device Ed25519 keypair (libsodium). Persist keypair + `deviceId`
    in `localStorage` so repeat sign-ins reuse one device.
 3. `POST /auth/devices` with the signed challenge → `{ deviceId, accessToken,
-   refreshToken }`.
+refreshToken }`.
 4. Store tokens in `localStorage`.
 
 Runtime:

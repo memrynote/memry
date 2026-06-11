@@ -13,6 +13,7 @@ import {
   secureCleanup
 } from '../crypto'
 import { SyncEngine, type SyncEngineDeps } from './engine'
+import { resolveSyncServerUrl } from './sync-server-url'
 import { syncGoogleCalendarSource } from '../calendar/google/sync-service'
 import { trackMainEvent } from '../telemetry/track'
 import { SyncQueueManager } from './queue'
@@ -72,8 +73,6 @@ interface SyncRuntimeState {
   crdtQueue: CrdtUpdateQueue
   workerBridge: SyncWorkerBridge
 }
-
-const SYNC_SERVER_URL = process.env.SYNC_SERVER_URL || 'http://localhost:8787'
 
 function getVerifiedVaultKey(db: DataDb): Promise<Uint8Array> {
   return getOrInitializeLocalVaultKey(db, getOrCreateVaultUuid(db))
@@ -477,7 +476,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         getAccessToken: () => getValidAccessToken(),
         getAppVersion: () => app.getVersion(),
         isOnline: () => network.online,
-        serverUrl: SYNC_SERVER_URL
+        serverUrl: resolveSyncServerUrl()
       })
 
       const engine = new SyncEngine({

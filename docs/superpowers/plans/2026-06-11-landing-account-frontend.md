@@ -47,6 +47,7 @@ Build/verify: `pnpm --filter @memry/landing typecheck && pnpm lint && pnpm --fil
 ## Task 1: Add libsodium dep + env config
 
 **Files:**
+
 - Modify: `apps/landing/package.json`
 - Create: `apps/landing/src/lib/account/config.ts`
 - Modify: `apps/landing/.env.example`
@@ -94,6 +95,7 @@ git commit -m "chore(landing): add libsodium + sync-server URL config for accoun
 ## Task 2: `extract-jti` (pure)
 
 **Files:**
+
 - Create: `apps/landing/src/lib/account/extract-jti.ts`
 - Test: `apps/landing/src/lib/account/extract-jti.test.ts`
 
@@ -160,6 +162,7 @@ git commit -m "feat(landing): extractJti helper for device registration"
 ## Task 3: sodium init + device identity (challenge signing)
 
 **Files:**
+
 - Create: `apps/landing/src/lib/account/sodium.ts`
 - Create: `apps/landing/src/lib/account/device-identity.ts`
 - Test: `apps/landing/src/lib/account/device-identity.test.ts`
@@ -270,6 +273,7 @@ git commit -m "feat(landing): device keypair + challenge signing"
 ## Task 4: auth storage (injectable)
 
 **Files:**
+
 - Create: `apps/landing/src/lib/account/auth-storage.ts`
 - Test: `apps/landing/src/lib/account/auth-storage.test.ts`
 
@@ -385,6 +389,7 @@ git commit -m "feat(landing): injectable auth storage (session + device keypair)
 ## Task 5: sync-api client (injectable fetch + refresh-on-401)
 
 **Files:**
+
 - Create: `apps/landing/src/lib/account/sync-api.ts`
 - Test: `apps/landing/src/lib/account/sync-api.test.ts`
 
@@ -400,7 +405,11 @@ import { createAuthStorage } from './auth-storage'
 
 function memoryStorage() {
   const m = new Map<string, string>()
-  return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => void m.set(k, v), removeItem: (k) => void m.delete(k) }
+  return {
+    getItem: (k) => m.get(k) ?? null,
+    setItem: (k, v) => void m.set(k, v),
+    removeItem: (k) => void m.delete(k)
+  }
 }
 
 describe('sync api', () => {
@@ -414,11 +423,17 @@ describe('sync api', () => {
         return new Response('{}', { status: 401 })
       }
       if (url.endsWith('/auth/refresh')) {
-        return new Response(JSON.stringify({ accessToken: 'new', refreshToken: 'r2' }), { status: 200 })
+        return new Response(JSON.stringify({ accessToken: 'new', refreshToken: 'r2' }), {
+          status: 200
+        })
       }
       return new Response(JSON.stringify({ plan: 'pro' }), { status: 200 })
     }
-    const api = createSyncApi({ baseUrl: 'https://s', storage, fetchImpl: fakeFetch as typeof fetch })
+    const api = createSyncApi({
+      baseUrl: 'https://s',
+      storage,
+      fetchImpl: fakeFetch as typeof fetch
+    })
     const res = await api.authedJson('/auth/billing')
     assert.deepEqual(res, { plan: 'pro' })
     assert.equal(storage.getSession()?.accessToken, 'new')
@@ -523,6 +538,7 @@ git commit -m "feat(landing): sync-server api client with refresh-on-401"
 ## Task 6: auth-client (sign-in orchestration)
 
 **Files:**
+
 - Create: `apps/landing/src/lib/account/auth-client.ts`
 - Test: `apps/landing/src/lib/account/auth-client.test.ts`
 
@@ -537,7 +553,11 @@ import { createAuthStorage } from './auth-storage'
 
 function memoryStorage() {
   const m = new Map<string, string>()
-  return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => void m.set(k, v), removeItem: (k) => void m.delete(k) }
+  return {
+    getItem: (k) => m.get(k) ?? null,
+    setItem: (k, v) => void m.set(k, v),
+    removeItem: (k) => void m.delete(k)
+  }
 }
 
 describe('registerWebDevice', () => {
@@ -561,7 +581,11 @@ describe('registerWebDevice', () => {
     })
     assert.equal(body.platform, 'web')
     assert.equal(typeof body.authPublicKey, 'string')
-    assert.deepEqual(storage.getSession(), { accessToken: 'a', refreshToken: 'r', deviceId: 'dev-1' })
+    assert.deepEqual(storage.getSession(), {
+      accessToken: 'a',
+      refreshToken: 'r',
+      deviceId: 'dev-1'
+    })
   })
 })
 ```
@@ -654,6 +678,7 @@ git commit -m "feat(landing): registerWebDevice exchanges setup token for sessio
 ## Task 7: AuthProvider + useAuth (SSR-safe)
 
 **Files:**
+
 - Create: `apps/landing/src/contexts/auth-context.tsx`
 
 Component task — verified by typecheck/lint/build + manual QA (no jsdom).
@@ -680,10 +705,7 @@ const AuthContext = createContext<AuthState | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const storage = useMemo(() => browserAuthStorage(), [])
-  const api = useMemo(
-    () => createSyncApi({ baseUrl: SYNC_SERVER_URL, storage }),
-    [storage]
-  )
+  const api = useMemo(() => createSyncApi({ baseUrl: SYNC_SERVER_URL, storage }), [storage])
   const [ready, setReady] = useState(false)
   const [isSignedIn, setIsSignedIn] = useState(false)
 
@@ -732,6 +754,7 @@ git commit -m "feat(landing): AuthProvider + useAuth (SSR-safe)"
 ## Task 8: Analytics events + Account nav item
 
 **Files:**
+
 - Modify: `apps/landing/src/lib/analytics.ts`
 - Modify: `apps/landing/src/components/layout/Header.tsx`
 
@@ -780,6 +803,7 @@ git commit -m "feat(landing): Account nav item + account analytics events"
 ## Task 9: Sign-in page `/auth` (OTP + Google)
 
 **Files:**
+
 - Create: `apps/landing/src/pages/Auth.tsx`
 
 Component task — verify by typecheck/lint/build + manual QA.
@@ -847,8 +871,7 @@ export function AuthPage() {
 
   function continueWithGoogle() {
     const redirectUri = `${window.location.origin}${WEB_OAUTH_REDIRECT_PATH}`
-    window.location.href =
-      `${SYNC_SERVER_URL}/auth/oauth/google?redirect_uri=${encodeURIComponent(redirectUri)}`
+    window.location.href = `${SYNC_SERVER_URL}/auth/oauth/google?redirect_uri=${encodeURIComponent(redirectUri)}`
   }
 
   return (
@@ -879,7 +902,11 @@ export function AuthPage() {
                   value={code}
                   onChange={(e) => setCode(e.target.value)}
                 />
-                <Button className="w-full" disabled={busy || code.length !== 6} onClick={verifyCode}>
+                <Button
+                  className="w-full"
+                  disabled={busy || code.length !== 6}
+                  onClick={verifyCode}
+                >
                   {busy ? 'Verifying…' : 'Verify & sign in'}
                 </Button>
               </div>
@@ -915,6 +942,7 @@ git commit -m "feat(landing): /auth sign-in page (OTP + Google)"
 ## Task 10: OAuth callback page `/auth/oauth/callback`
 
 **Files:**
+
 - Create: `apps/landing/src/pages/AuthCallback.tsx`
 
 - [ ] **Step 1: Implement**
@@ -966,9 +994,7 @@ export function AuthCallbackPage() {
   return (
     <main className="py-24">
       <Container size="sm">
-        <p className="text-center text-sm text-muted">
-          {error ? error : 'Finishing sign-in…'}
-        </p>
+        <p className="text-center text-sm text-muted">{error ? error : 'Finishing sign-in…'}</p>
       </Container>
     </main>
   )
@@ -992,6 +1018,7 @@ git commit -m "feat(landing): Google OAuth callback page"
 ## Task 11: RequireAuth guard + AccountLayout (sidebar)
 
 **Files:**
+
 - Create: `apps/landing/src/components/account/RequireAuth.tsx`
 - Create: `apps/landing/src/components/account/AccountLayout.tsx`
 
@@ -1069,7 +1096,10 @@ export function AccountLayout() {
               >
                 Log out
               </button>
-              <NavLink to="/" className="block rounded-lg px-3 py-2 text-sm font-medium text-muted hover:text-ink">
+              <NavLink
+                to="/"
+                className="block rounded-lg px-3 py-2 text-sm font-medium text-muted hover:text-ink"
+              >
                 Back to homepage
               </NavLink>
             </div>
@@ -1101,6 +1131,7 @@ git commit -m "feat(landing): account layout shell + route guard"
 ## Task 12: Profile section
 
 **Files:**
+
 - Create: `apps/landing/src/pages/account/ProfileSection.tsx`
 
 Implements: current email + change-email (OTP), contact support (mailto), log out everywhere, delete account (typed confirm + OTP).
@@ -1136,7 +1167,10 @@ export function ProfileSection() {
   }, [api])
 
   async function requestEmailChange() {
-    await api.authedJson('/auth/email/change', { method: 'POST', body: JSON.stringify({ newEmail }) })
+    await api.authedJson('/auth/email/change', {
+      method: 'POST',
+      body: JSON.stringify({ newEmail })
+    })
     setEmailStep('code')
     setMsg('Code sent to ' + newEmail)
   }
@@ -1159,7 +1193,10 @@ export function ProfileSection() {
     setMsg('Confirmation code sent to ' + email)
   }
   async function deleteAccount() {
-    await api.authedFetch('/auth/account', { method: 'DELETE', body: JSON.stringify({ code: deleteCode }) })
+    await api.authedFetch('/auth/account', {
+      method: 'DELETE',
+      body: JSON.stringify({ code: deleteCode })
+    })
     signOutLocal()
     navigate('/')
   }
@@ -1174,13 +1211,27 @@ export function ProfileSection() {
         <p className="mt-1 text-sm text-muted">{email || '—'}</p>
         {emailStep === 'idle' ? (
           <div className="mt-4 flex gap-2">
-            <Input type="email" placeholder="new@example.com" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} />
-            <Button variant="outline" disabled={!newEmail} onClick={requestEmailChange}>Change</Button>
+            <Input
+              type="email"
+              placeholder="new@example.com"
+              value={newEmail}
+              onChange={(e) => setNewEmail(e.target.value)}
+            />
+            <Button variant="outline" disabled={!newEmail} onClick={requestEmailChange}>
+              Change
+            </Button>
           </div>
         ) : (
           <div className="mt-4 flex gap-2">
-            <Input inputMode="numeric" placeholder="123456" value={emailCode} onChange={(e) => setEmailCode(e.target.value)} />
-            <Button disabled={emailCode.length !== 6} onClick={verifyEmailChange}>Confirm</Button>
+            <Input
+              inputMode="numeric"
+              placeholder="123456"
+              value={emailCode}
+              onChange={(e) => setEmailCode(e.target.value)}
+            />
+            <Button disabled={emailCode.length !== 6} onClick={verifyEmailChange}>
+              Confirm
+            </Button>
           </div>
         )}
       </section>
@@ -1191,17 +1242,32 @@ export function ProfileSection() {
           <Button variant="outline" asChild>
             <a href={`mailto:${SUPPORT_EMAIL}`}>Contact support</a>
           </Button>
-          <Button variant="outline" onClick={logoutEverywhere}>Log out everywhere</Button>
+          <Button variant="outline" onClick={logoutEverywhere}>
+            Log out everywhere
+          </Button>
         </div>
       </section>
 
       <section className="rounded-2xl border border-red-500/30 bg-card p-6">
         <h2 className="text-sm font-semibold text-red-500">Delete account</h2>
-        <p className="mt-1 text-sm text-muted">This permanently erases your account and synced data. It cannot be undone.</p>
+        <p className="mt-1 text-sm text-muted">
+          This permanently erases your account and synced data. It cannot be undone.
+        </p>
         <div className="mt-4 space-y-2">
-          <Button variant="outline" onClick={requestDeleteCode}>Email me a confirmation code</Button>
-          <Input inputMode="numeric" placeholder="Confirmation code" value={deleteCode} onChange={(e) => setDeleteCode(e.target.value)} />
-          <Input placeholder='Type "DELETE" to confirm' value={confirmText} onChange={(e) => setConfirmText(e.target.value)} />
+          <Button variant="outline" onClick={requestDeleteCode}>
+            Email me a confirmation code
+          </Button>
+          <Input
+            inputMode="numeric"
+            placeholder="Confirmation code"
+            value={deleteCode}
+            onChange={(e) => setDeleteCode(e.target.value)}
+          />
+          <Input
+            placeholder='Type "DELETE" to confirm'
+            value={confirmText}
+            onChange={(e) => setConfirmText(e.target.value)}
+          />
           <Button
             className="bg-red-500 text-white hover:bg-red-600"
             disabled={confirmText !== 'DELETE' || deleteCode.length !== 6}
@@ -1235,6 +1301,7 @@ git commit -m "feat(landing): account Profile section (email, support, logout-al
 ## Task 13: Billing section (invoices + portal)
 
 **Files:**
+
 - Create: `apps/landing/src/pages/account/BillingSection.tsx`
 
 - [ ] **Step 1: Implement**
@@ -1259,16 +1326,23 @@ export function BillingSection() {
   const [invoices, setInvoices] = useState<InvoiceRow[]>([])
 
   useEffect(() => {
-    api.authedJson<Record<string, unknown>>('/auth/billing').then(setBilling).catch(() => {})
-    api.authedJson<{ invoices: InvoiceRow[] }>('/auth/billing/invoices')
+    api
+      .authedJson<Record<string, unknown>>('/auth/billing')
+      .then(setBilling)
+      .catch(() => {})
+    api
+      .authedJson<{ invoices: InvoiceRow[] }>('/auth/billing/invoices')
       .then((r) => setInvoices(r.invoices))
       .catch(() => {})
   }, [api])
 
   async function openPortal() {
-    const { portalUrl } = await api.authedJson<{ portalUrl: string }>('/auth/billing/portal-session', {
-      method: 'POST'
-    })
+    const { portalUrl } = await api.authedJson<{ portalUrl: string }>(
+      '/auth/billing/portal-session',
+      {
+        method: 'POST'
+      }
+    )
     window.open(portalUrl, '_blank', 'noopener')
   }
 
@@ -1304,7 +1378,10 @@ export function BillingSection() {
                   {(Number(inv.amount) / 100).toFixed(2)} {inv.currency}
                 </span>
                 <span className="text-muted">{inv.status}</span>
-                <button className="text-terracotta hover:underline" onClick={() => openInvoice(inv.id)}>
+                <button
+                  className="text-terracotta hover:underline"
+                  onClick={() => openInvoice(inv.id)}
+                >
                   PDF
                 </button>
               </li>
@@ -1336,6 +1413,7 @@ git commit -m "feat(landing): account Billing section (invoices + portal)"
 ## Task 14: Extract CheckoutPanel + Sync section
 
 **Files:**
+
 - Create: `apps/landing/src/components/account/CheckoutPanel.tsx`
 - Modify: `apps/landing/src/pages/Checkout.tsx`
 - Create: `apps/landing/src/pages/account/SyncSection.tsx`
@@ -1351,7 +1429,7 @@ Move the plan-selector + cadence + order-summary JSX out of `Checkout.tsx` into 
 // currently inside Checkout.tsx (lines ~31-219), with `token` taken from props.
 ```
 
-Keep the existing `openPaddleCheckout`, `getCheckoutSummary`, plan/cadence state, and status handling verbatim — only the token *source* changes from `parseCheckoutToken(window.location.hash)` to the `token` prop.
+Keep the existing `openPaddleCheckout`, `getCheckoutSummary`, plan/cadence state, and status handling verbatim — only the token _source_ changes from `parseCheckoutToken(window.location.hash)` to the `token` prop.
 
 - [ ] **Step 2: Point Checkout.tsx at the panel**
 
@@ -1402,6 +1480,7 @@ git commit -m "feat(landing): extract CheckoutPanel + account Sync section"
 ## Task 15: Wire routes + AuthProvider (keep account out of SSR prerender)
 
 **Files:**
+
 - Modify: `apps/landing/src/App.tsx`
 - Modify: `apps/landing/src/entry-server.tsx` (do NOT add `/auth` or `/account/*` to `ROUTE_MAP`)
 

@@ -28,6 +28,7 @@ Run all sync-server tests with: `pnpm test:sync-server`
 ## Task 1: Extend contracts (device platform + new schemas)
 
 **Files:**
+
 - Modify: `packages/contracts/src/auth-api.ts`
 
 - [ ] **Step 1: Add `'web'` to the device platform enum**
@@ -78,6 +79,7 @@ git commit -m "feat(contracts): add web device platform + account schemas"
 ## Task 2: `updateUserEmail` service
 
 **Files:**
+
 - Modify: `apps/sync-server/src/services/user.ts`
 - Test: `apps/sync-server/src/services/user.test.ts` (create if absent; otherwise add to existing)
 
@@ -115,6 +117,7 @@ git commit -m "feat(sync-server): add updateUserEmail service"
 ## Task 3: `POST /auth/email/change` (request OTP to new address)
 
 **Files:**
+
 - Modify: `apps/sync-server/src/routes/auth.ts`
 - Test: `apps/sync-server/src/routes/auth.test.ts`
 
@@ -215,6 +218,7 @@ git commit -m "feat(sync-server): POST /auth/email/change requests OTP to new em
 ## Task 4: `POST /auth/email/change/verify`
 
 **Files:**
+
 - Modify: `apps/sync-server/src/routes/auth.ts`
 - Test: `apps/sync-server/src/routes/auth.test.ts`
 
@@ -225,7 +229,11 @@ describe('POST /auth/email/change/verify', () => {
   it('updates the email after a valid OTP', async () => {
     // verifyOtp reads the otp row; mock it to resolve. The D1 run() default
     // returns changes:1 so updateUserEmail succeeds.
-    const env = createEnv({ firstRows: [/* otp row for verifyOtp */] })
+    const env = createEnv({
+      firstRows: [
+        /* otp row for verifyOtp */
+      ]
+    })
     const res = await app.request(
       '/auth/email/change/verify',
       jsonPostAuthed('/auth/email/change/verify', {
@@ -291,6 +299,7 @@ git commit -m "feat(sync-server): POST /auth/email/change/verify updates email"
 ## Task 5: `POST /auth/logout-all` (revoke all devices + tokens)
 
 **Files:**
+
 - Modify: `apps/sync-server/src/routes/auth.ts`
 - Test: `apps/sync-server/src/routes/auth.test.ts`
 
@@ -300,11 +309,7 @@ git commit -m "feat(sync-server): POST /auth/email/change/verify updates email"
 describe('POST /auth/logout-all', () => {
   it('revokes every device and refresh token for the user', async () => {
     const env = createEnv()
-    const res = await app.request(
-      '/auth/logout-all',
-      jsonPostAuthed('/auth/logout-all', {}),
-      env
-    )
+    const res = await app.request('/auth/logout-all', jsonPostAuthed('/auth/logout-all', {}), env)
     expect(res.status).toBe(200)
     expect(await res.json()).toEqual({ success: true })
   })
@@ -355,6 +360,7 @@ git commit -m "feat(sync-server): POST /auth/logout-all revokes all devices + to
 ## Task 6: `deleteUserData` service (D1 + R2 wipe)
 
 **Files:**
+
 - Create: `apps/sync-server/src/services/account-deletion.ts`
 - Test: `apps/sync-server/src/services/account-deletion.test.ts`
 
@@ -467,6 +473,7 @@ git commit -m "feat(sync-server): add deleteUserData (R2 + D1 wipe)"
 ## Task 7: `DELETE /auth/account` (OTP-gated)
 
 **Files:**
+
 - Modify: `apps/sync-server/src/routes/auth.ts`
 - Test: `apps/sync-server/src/routes/auth.test.ts`
 
@@ -544,6 +551,7 @@ git commit -m "feat(sync-server): DELETE /auth/account wipes user data after OTP
 ## Task 8: Paddle invoices service
 
 **Files:**
+
 - Modify: `apps/sync-server/src/services/paddle-billing.ts`
 - Test: `apps/sync-server/src/services/paddle-billing.test.ts` (add cases)
 
@@ -654,7 +662,10 @@ export async function listPaddleInvoices(env: Bindings, userId: string): Promise
   }))
 }
 
-export async function getPaddleInvoicePdfUrl(env: Bindings, transactionId: string): Promise<string> {
+export async function getPaddleInvoicePdfUrl(
+  env: Bindings,
+  transactionId: string
+): Promise<string> {
   const apiKey = normalizePaddleApiKey(env.PADDLE_API_KEY)
   if (!apiKey) {
     throw new AppError(ErrorCodes.INTERNAL_ERROR, 'Paddle API key is not configured', 503)
@@ -692,6 +703,7 @@ git commit -m "feat(sync-server): list Paddle invoices + invoice PDF URL"
 ## Task 9: Billing invoice endpoints
 
 **Files:**
+
 - Modify: `apps/sync-server/src/routes/auth.ts`
 - Test: `apps/sync-server/src/routes/auth.test.ts`
 
@@ -702,11 +714,15 @@ describe('GET /auth/billing/invoices', () => {
   it('returns invoice rows for the user', async () => {
     const env = createEnv({
       firstRows: [{ paddle_customer_id: 'ctm_1' }],
-      paddleFetch: vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ data: [] }), { status: 200 })
-      )
+      paddleFetch: vi
+        .fn()
+        .mockResolvedValue(new Response(JSON.stringify({ data: [] }), { status: 200 }))
     })
-    const res = await app.request('/auth/billing/invoices', getAuthed('/auth/billing/invoices'), env)
+    const res = await app.request(
+      '/auth/billing/invoices',
+      getAuthed('/auth/billing/invoices'),
+      env
+    )
     expect(res.status).toBe(200)
     expect(await res.json()).toEqual({ invoices: [] })
   })
@@ -754,6 +770,7 @@ git commit -m "feat(sync-server): GET /auth/billing/invoices + invoice PDF"
 ## Task 10: Allow the landing origin as an OAuth redirect URI
 
 **Files:**
+
 - Modify: `apps/sync-server/src/routes/auth.ts:258-267`
 - Test: `apps/sync-server/src/routes/auth.test.ts`
 
@@ -787,22 +804,21 @@ Expected: FAIL (400 — redirect_uri rejected)
 Replace the loopback-only validation with a check that also allows an explicit, configured web redirect URI. Change the block at `auth.ts:261`:
 
 ```typescript
-  const clientRedirectUri = c.req.query('redirect_uri')
-  const redirectUri = clientRedirectUri ?? c.env.GOOGLE_REDIRECT_URI
+const clientRedirectUri = c.req.query('redirect_uri')
+const redirectUri = clientRedirectUri ?? c.env.GOOGLE_REDIRECT_URI
 
-  const isLoopback =
-    clientRedirectUri != null &&
-    /^http:\/\/127\.0\.0\.1(:\d+)?(\/.*)?$/.test(clientRedirectUri)
-  const isConfiguredWeb =
-    clientRedirectUri != null && clientRedirectUri === c.env.WEB_OAUTH_REDIRECT_URI
+const isLoopback =
+  clientRedirectUri != null && /^http:\/\/127\.0\.0\.1(:\d+)?(\/.*)?$/.test(clientRedirectUri)
+const isConfiguredWeb =
+  clientRedirectUri != null && clientRedirectUri === c.env.WEB_OAUTH_REDIRECT_URI
 
-  if (clientRedirectUri && !isLoopback && !isConfiguredWeb) {
-    throw new AppError(
-      ErrorCodes.VALIDATION_ERROR,
-      'redirect_uri must be a 127.0.0.1 loopback address or the configured web origin',
-      400
-    )
-  }
+if (clientRedirectUri && !isLoopback && !isConfiguredWeb) {
+  throw new AppError(
+    ErrorCodes.VALIDATION_ERROR,
+    'redirect_uri must be a 127.0.0.1 loopback address or the configured web origin',
+    400
+  )
+}
 ```
 
 Add `WEB_OAUTH_REDIRECT_URI?: string` to the `Bindings` type (`apps/sync-server/src/types.ts`) and to `apps/sync-server/wrangler.toml` `[vars]` for staging/production (value = landing origin + `/auth/oauth/callback`). The same `WEB_OAUTH_REDIRECT_URI` must also be registered in the Google Cloud OAuth client's Authorized redirect URIs.
@@ -824,6 +840,7 @@ git commit -m "feat(sync-server): allow configured web origin as OAuth redirect_
 ## Task 11: CORS for the landing origin + full suite
 
 **Files:**
+
 - Modify: `apps/sync-server/wrangler.toml` (set `ALLOWED_ORIGIN` for staging + production to the landing origin)
 
 - [ ] **Step 1: Set `ALLOWED_ORIGIN`**
