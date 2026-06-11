@@ -16,7 +16,7 @@ export const ResendOtpRequestSchema = z.object({
 
 export const DeviceRegisterRequestSchema = z.object({
   name: z.string().min(1).max(255),
-  platform: z.enum(['macos', 'windows', 'linux', 'ios', 'android']),
+  platform: z.enum(['macos', 'windows', 'linux', 'ios', 'android', 'web']),
   osVersion: z.string().optional(),
   appVersion: z.string().min(1),
   authPublicKey: z.string().min(1),
@@ -82,6 +82,23 @@ export const RefreshTokenResponseSchema = z.object({
   refreshToken: z.string(),
   expiresIn: z.number()
 })
+
+export const EmailChangeRequestSchema = z.object({
+  newEmail: z.string().email()
+})
+
+export const EmailChangeVerifySchema = z.object({
+  newEmail: z.string().email(),
+  code: z.string().regex(/^\d{6}$/)
+})
+
+export const DeleteAccountRequestSchema = z.object({
+  code: z.string().regex(/^\d{6}$/)
+})
+
+export type EmailChangeRequest = z.infer<typeof EmailChangeRequestSchema>
+export type EmailChangeVerify = z.infer<typeof EmailChangeVerifySchema>
+export type DeleteAccountRequest = z.infer<typeof DeleteAccountRequestSchema>
 
 export type RequestOtpRequest = z.infer<typeof RequestOtpRequestSchema>
 export type VerifyOtpRequest = z.infer<typeof VerifyOtpRequestSchema>
