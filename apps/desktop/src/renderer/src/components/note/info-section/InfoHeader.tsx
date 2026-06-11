@@ -9,60 +9,8 @@ interface InfoHeaderProps {
   propertyCount?: number
 }
 
-export function InfoHeader({
-  isExpanded,
-  onToggle,
-  variant = 'default',
-  propertyCount = 0
-}: InfoHeaderProps) {
+export function InfoHeader({ isExpanded, onToggle, propertyCount = 0 }: InfoHeaderProps) {
   const { t } = useT('notes')
-
-  if (variant === 'embedded') {
-    return (
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={isExpanded}
-        className={cn(
-          'w-full flex items-center rounded-md py-1.5 px-2 gap-2',
-          'cursor-pointer select-none',
-          'transition-colors duration-150',
-          'hover:bg-[var(--surface-active)]/50'
-        )}
-      >
-        <div
-          className={cn(
-            'w-[3px] h-3.5 shrink-0 rounded-xs transition-colors duration-150',
-            isExpanded ? 'bg-sidebar-terracotta' : 'bg-transparent'
-          )}
-        />
-        <ChevronRight
-          className={cn(
-            'h-3 w-3 shrink-0 transition-transform duration-150',
-            isExpanded ? 'text-sidebar-terracotta rotate-90' : 'text-text-tertiary'
-          )}
-        />
-        <span
-          className={cn(
-            'text-[12px] font-sans leading-4 transition-colors duration-150',
-            isExpanded ? 'text-sidebar-terracotta font-medium' : 'text-text-secondary'
-          )}
-        >
-          {t('properties.title')}
-        </span>
-        {propertyCount > 0 && (
-          <span
-            className={cn(
-              'text-[11px] font-sans leading-3.5 transition-colors duration-150',
-              isExpanded ? 'text-sidebar-terracotta/60' : 'text-text-tertiary'
-            )}
-          >
-            {propertyCount}
-          </span>
-        )}
-      </button>
-    )
-  }
 
   return (
     <button
@@ -70,40 +18,30 @@ export function InfoHeader({
       onClick={onToggle}
       aria-expanded={isExpanded}
       className={cn(
-        'w-full flex items-center rounded-md py-1.5 px-2 gap-2',
+        'group/info-header flex w-fit items-center gap-1.5 rounded-md py-1 pe-2',
         'cursor-pointer select-none',
-        'transition-colors duration-150',
-        'hover:bg-[var(--surface-active)]/50'
+        'transition-opacity duration-150'
       )}
     >
-      <div
-        className={cn(
-          'w-[3px] h-3.5 shrink-0 rounded-xs transition-colors duration-150',
-          isExpanded ? 'bg-sidebar-terracotta' : 'bg-transparent'
-        )}
-      />
       <ChevronRight
         className={cn(
           'h-3 w-3 shrink-0 transition-transform duration-150',
-          isExpanded ? 'text-sidebar-terracotta rotate-90' : 'text-text-tertiary'
+          isExpanded ? 'rotate-90 text-sidebar-terracotta' : 'text-text-tertiary',
+          'group-hover/info-header:text-sidebar-terracotta'
         )}
       />
       <span
         className={cn(
-          'text-[12px] font-sans leading-4 transition-colors duration-150',
-          isExpanded ? 'text-sidebar-terracotta font-medium' : 'text-text-secondary'
+          'text-[11px] font-semibold uppercase tracking-[0.09em] leading-4 transition-colors duration-150',
+          isExpanded ? 'text-text-secondary' : 'text-text-tertiary',
+          'group-hover/info-header:text-text-secondary'
         )}
       >
         {t('properties.title')}
       </span>
       {propertyCount > 0 && (
-        <span
-          className={cn(
-            'text-[11px] font-sans leading-3.5 transition-colors duration-150',
-            isExpanded ? 'text-sidebar-terracotta/60' : 'text-text-tertiary'
-          )}
-        >
-          {propertyCount}
+        <span className="text-[11px] font-medium leading-4 text-text-tertiary tabular-nums">
+          · {propertyCount}
         </span>
       )}
     </button>

@@ -133,7 +133,8 @@ export const deserializeTabState = (persisted: PersistedTabState): Partial<TabSy
     tabGroups,
     layout: validLayout,
     activeGroupId: validActiveGroupId,
-    settings: migrated.settings
+    settings: migrated.settings,
+    recentlyClosed: []
   }
 }
 

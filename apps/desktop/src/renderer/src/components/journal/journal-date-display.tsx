@@ -1,5 +1,4 @@
-import { useMemo } from 'react'
-import { Sun, Sunset, Moon } from '@/lib/icons'
+import { useMemo, type CSSProperties } from 'react'
 import { cn } from '@/lib/utils'
 import { createJournalDateLabels, getMonthName } from '@/lib/journal-utils'
 import type { JournalViewState } from './date-breadcrumb'
@@ -21,11 +20,13 @@ export interface JournalDateDisplayProps {
   className?: string
 }
 
-const TIME_CONFIG = {
-  morning: { icon: Sun, labelKey: 'date.greeting.morning', iconColor: 'text-amber-500' },
-  afternoon: { icon: Sunset, labelKey: 'date.greeting.afternoon', iconColor: 'text-orange-500' },
-  evening: { icon: Moon, labelKey: 'date.greeting.evening', iconColor: 'text-indigo-400' },
-  night: { icon: Moon, labelKey: 'date.greeting.night', iconColor: 'text-indigo-400' }
+// Time-of-day tinted fog drifting behind the date. Two radial blobs (::before /
+// ::after) read these custom properties; see `.journal-date-fog` in base.css.
+const FOG_CONFIG: Record<TimeOfDay, { tint: string; tint2: string }> = {
+  morning: { tint: 'rgba(217, 119, 6, 0.72)', tint2: 'rgba(245, 158, 11, 0.55)' },
+  afternoon: { tint: 'rgba(234, 88, 12, 0.72)', tint2: 'rgba(249, 115, 22, 0.52)' },
+  evening: { tint: 'rgba(99, 102, 241, 0.75)', tint2: 'rgba(79, 70, 229, 0.55)' },
+  night: { tint: 'rgba(79, 70, 229, 0.82)', tint2: 'rgba(67, 56, 202, 0.62)' }
 }
 
 function getTimeOfDay(): TimeOfDay {
@@ -40,24 +41,22 @@ export function JournalDateDisplay({ viewState, dateParts, className }: JournalD
   const { t, i18n: _i18n } = useT('journal')
   const dateLabels = useMemo(() => createJournalDateLabels(t), [t])
   const timeOfDay = useMemo(() => getTimeOfDay(), [])
-  const config = TIME_CONFIG[timeOfDay]
-  const Icon = config.icon
 
   if (viewState.type === 'day' && dateParts) {
+    const fog = FOG_CONFIG[timeOfDay]
     return (
-      <div className={cn('flex flex-col', className)}>
+      <div className={cn('relative flex flex-col', className)}>
+        <div
+          className="journal-date-fog"
+          style={{ '--fog-tint': fog.tint, '--fog-tint-2': fog.tint2 } as CSSProperties}
+          aria-hidden="true"
+        />
         <h1
-          className="text-[42px] tracking-[-0.02em] leading-12 font-normal text-text-bright"
+          className="relative z-[1] text-[42px] tracking-[-0.02em] leading-12 font-normal text-text-bright"
           style={{ fontFamily: 'var(--font-heading)' }}
         >
           {dateParts.dayName}, {dateParts.month} {dateParts.day}
         </h1>
-        <div className="flex items-center gap-2 mt-1.5">
-          <Icon className={cn('size-4', config.iconColor)} />
-          <span className="font-serif text-sm italic text-muted-foreground">
-            {t(config.labelKey)}
-          </span>
-        </div>
       </div>
     )
   }
