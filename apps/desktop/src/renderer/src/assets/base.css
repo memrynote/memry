@@ -2618,6 +2618,38 @@ del.bn-inline-content {
   );
 }
 
+/* Fade mask only — pair with `truncate`/`min-w-0` and apply conditionally so the
+   fade appears solely when the label actually overflows (e.g. sidebar tag pills
+   that shrink-wrap their text). */
+.sidebar-label-fade-mask {
+  --sidebar-label-fade-width: 1.75rem;
+  -webkit-mask-image: linear-gradient(
+    to right,
+    #000 calc(100% - var(--sidebar-label-fade-width)),
+    rgba(0, 0, 0, 0.2) 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    #000 calc(100% - var(--sidebar-label-fade-width)),
+    rgba(0, 0, 0, 0.2) 100%
+  );
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+
+[dir='rtl'] .sidebar-label-fade-mask {
+  -webkit-mask-image: linear-gradient(
+    to left,
+    #000 calc(100% - var(--sidebar-label-fade-width)),
+    rgba(0, 0, 0, 0.2) 100%
+  );
+  mask-image: linear-gradient(
+    to left,
+    #000 calc(100% - var(--sidebar-label-fade-width)),
+    rgba(0, 0, 0, 0.2) 100%
+  );
+}
+
 /* ============================================
    Outline Indicator (T078)
    Heading outline navigation component
