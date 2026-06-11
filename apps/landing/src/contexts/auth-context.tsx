@@ -22,9 +22,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isSignedIn, setIsSignedIn] = useState(false)
 
   useEffect(() => {
-    // Client-only: localStorage is unavailable during SSR.
-    setIsSignedIn(Boolean(storage.getSession()))
-    setReady(true)
+    // Client-only: localStorage is unavailable during SSR. Defer the read to a
+    // microtask so the signed-in state lands after hydration (server renders
+    // signed-out) without a synchronous setState cascade in the effect body.
+    queueMicrotask(() => {
+      setIsSignedIn(Boolean(storage.getSession()))
+      setReady(true)
+    })
   }, [storage])
 
   const value: AuthState = {
