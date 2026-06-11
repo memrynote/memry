@@ -847,16 +847,10 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                       }
                     >
                       <div className="min-w-0 flex flex-col flex-1">
-                        <div className="group/metadata flex flex-col pb-[15px]" data-marquee-ignore>
-                          <GhostAffordanceRow
-                            availableTags={availableTags}
-                            recentTags={recentTags}
-                            currentTagIds={journalTags.map((t) => t.id)}
-                            onAddTag={handleAddTag}
-                            onCreateTag={handleCreateTag}
-                            onAddProperty={handleAddPropertyWithExpand}
-                            className="mb-2"
-                          />
+                        <div
+                          className="group/metadata flex flex-col gap-2.5 pb-[15px]"
+                          data-marquee-ignore
+                        >
                           <JournalDateDisplay viewState={currentViewState} dateParts={dateParts} />
                           <TagsRow
                             tags={journalTags}
@@ -884,6 +878,17 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                               hideAddButton
                             />
                           )}
+
+                          {/* Ghost affordance: add tag/property — fades in on hover/focus,
+                              placed below the metadata so it never sits above the date */}
+                          <GhostAffordanceRow
+                            availableTags={availableTags}
+                            recentTags={recentTags}
+                            currentTagIds={journalTags.map((t) => t.id)}
+                            onAddTag={handleAddTag}
+                            onCreateTag={handleCreateTag}
+                            onAddProperty={handleAddPropertyWithExpand}
+                          />
                         </div>
 
                         <div

@@ -27,8 +27,8 @@ export function TagChip({ tag, onRemove, onClick, isSelected, isFocused, disable
 
   const pillClasses = cn(
     '[font-synthesis:none] relative inline-flex items-center gap-1',
-    'rounded-[10px] px-2 py-0.5',
-    'text-[11px]/3.5 font-medium',
+    'rounded-full px-2.5 py-1',
+    'text-[12px]/4 font-medium',
     'shrink-0 select-none',
     'transition-colors transition-opacity duration-150',
     isClickable ? 'cursor-pointer hover:opacity-80' : 'cursor-default',
@@ -64,7 +64,7 @@ export function TagChip({ tag, onRemove, onClick, isSelected, isFocused, disable
           }}
           aria-label={t('tagsRow.removeAria', { tag: tag.name })}
           className={cn(
-            'absolute -right-1 -top-1',
+            'absolute -end-1 -top-1',
             'flex h-3.5 w-3.5 items-center justify-center',
             'rounded-full bg-stone-500 text-white',
             'shadow-sm',
