@@ -243,13 +243,12 @@ describe('CriticMarkup offset map vs real doc projection for atom inline nodes',
 // that, serialization must be a fixed point for everything.
 const ROUND_TRIP_FIXTURES_PASSING: Array<{ markdown: string }> = [
   { markdown: '* alpha\n* bravo\n* charlie' },
-  { markdown: '1. first launch\n2. second channel\n3. third post' }
-]
-
-// Blocked: serializer adds trailing '\n' to loose lists and heading blocks,
-// so canonical=true fixtures don't round-trip identically. Fix: strip the
-// trailing newline in serializeBlocksPreservingBlanks.
-const ROUND_TRIP_FIXTURES_BROKEN: Array<{ markdown: string }> = [
+  { markdown: '1. first launch\n2. second channel\n3. third post' },
+  // Loose lists and heading+list shapes. The serializer must strip the trailing
+  // '\n' that blocksToMarkdownLossy appends to list/heading blocks; otherwise the
+  // trailing newline merges with the segment join into a 3+ newline run that
+  // re-parses as a growing blank-line gap — the doc gains one blank line per list
+  // group per save (the inline-task "new line above the task on reopen" bug).
   { markdown: '* alpha\n\n* bravo\n\n* charlie' },
   { markdown: '1. first launch\n\n2. second channel\n\n3. third post' },
   {
@@ -276,12 +275,6 @@ describe('parse→serialize round-trip stability for structured markdown', () =>
         await parseMarkdownPreservingBlanks(editor, once)
       )
       expect(twice).toBe(once)
-    })
-  }
-
-  for (const { markdown } of ROUND_TRIP_FIXTURES_BROKEN) {
-    it.skip(`round-trips ${JSON.stringify(markdown.slice(0, 40))}…`, async () => {
-      // Blocked: serializer adds trailing newline making canonical round-trip fail.
     })
   }
 })

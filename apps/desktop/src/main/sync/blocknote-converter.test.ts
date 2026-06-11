@@ -106,7 +106,11 @@ describe('blocknote-converter code block language', () => {
     ).toBe(true)
     expect(result).toContain('Alpha')
     expect(result).toContain('Beta')
-    expect(result).toContain('\n\n\n\n')
+    // The single extra blank line is preserved exactly, not grown. Before the
+    // serializer trimmed the trailing newline blocksToMarkdownLossy appends, this
+    // round-trip emitted 'Alpha\n\n\n\nBeta' — one extra blank line per save (the
+    // inline-task "new line above the task on reopen" bug).
+    expect(result).toBe('Alpha\n\n\nBeta')
   })
 
   it('applies block color markers when parsing markdown to blocks', async () => {
@@ -186,6 +190,28 @@ describe('blocknote-converter code block language', () => {
       expect.objectContaining({ kind: 'deletion', visibleText: 'deleted', start: 5, end: 12 }),
       expect.objectContaining({ kind: 'addition', visibleText: 'added', start: 17, end: 22 })
     ])
+  })
+
+  it('does not accumulate blank lines around inline task list items on reopen', async () => {
+    // Reproduces the inline-task bug: a task checklist followed by a gap and more
+    // content. Each markdown → Yjs → markdown round-trip models one note reopen;
+    // it must be a fixed point, otherwise a blank line grows above the tasks every
+    // time the note is opened.
+    const roundTrip = async (md: string): Promise<string> => {
+      const doc = new Y.Doc()
+      const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+      const { markdownToYFragment } = await import('./blocknote-converter')
+      await markdownToYFragment(md, fragment)
+      return (await yDocToMarkdown(doc)) ?? ''
+    }
+
+    const original =
+      '- [ ] Buy milk {task:t1}\n- [ ] Call mom {task:t2}\n- [ ] Ship the PR {task:t3}\n\n\n\nWrap-up notes'
+
+    const once = await roundTrip(original)
+    const twice = await roundTrip(once)
+
+    expect(twice).toBe(once)
   })
 
   it('preserves nested paragraph indentation through markdown writeback', async () => {
