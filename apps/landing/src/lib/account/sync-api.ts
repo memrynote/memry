@@ -34,8 +34,14 @@ export function createSyncApi({ baseUrl, storage, fetchImpl = fetch }: SyncApiOp
       })
     }
     let res = await send()
-    if (res.status === 401 && (await refresh())) {
-      res = await send()
+    if (res.status === 401) {
+      if (await refresh()) {
+        res = await send()
+      } else {
+        // Refresh token is gone/expired — drop the local session so the route
+        // guard sends the user back to /auth instead of looping on failed calls.
+        storage.clearSession()
+      }
     }
     return res
   }

@@ -42,4 +42,21 @@ describe('sync api', () => {
     assert.equal(storage.getSession()?.accessToken, 'new')
     assert.ok(calls.includes('https://s/auth/refresh'))
   })
+
+  it('clears the session when refresh fails on a 401', async () => {
+    const storage = createAuthStorage(memoryStorage())
+    storage.setSession({ accessToken: 'old', refreshToken: 'r', deviceId: 'd' })
+    const fakeFetch = async (url: string) => {
+      if (url.endsWith('/auth/refresh')) return new Response('{}', { status: 401 })
+      return new Response('{}', { status: 401 })
+    }
+    const api = createSyncApi({
+      baseUrl: 'https://s',
+      storage,
+      fetchImpl: fakeFetch as typeof fetch
+    })
+    const res = await api.authedFetch('/auth/billing')
+    assert.equal(res.status, 401)
+    assert.equal(storage.getSession(), null)
+  })
 })
