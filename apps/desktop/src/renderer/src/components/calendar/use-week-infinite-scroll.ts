@@ -91,14 +91,27 @@ export function useWeekInfiniteScroll({
     return () => {}
   }, [columnWidth, virtualizer])
 
-  const didInitialScrollRef = useRef(false)
+  const lastLayoutColumnWidthRef = useRef(0)
   useLayoutEffect(() => {
-    if (didInitialScrollRef.current) return
-    if (columnWidth <= MIN_COLUMN_WIDTH) return
     const el = scrollContainerRef.current
     if (!el) return
-    el.scrollLeft = initialIndex * columnWidth
-    didInitialScrollRef.current = true
+    if (columnWidth <= MIN_COLUMN_WIDTH) return
+    const prev = lastLayoutColumnWidthRef.current
+    if (prev <= MIN_COLUMN_WIDTH) {
+      // First usable layout: position on the initial date.
+      lastLayoutColumnWidthRef.current = columnWidth
+      el.scrollLeft = initialIndex * columnWidth
+      return
+    }
+    if (prev === columnWidth) return
+    // Container resized: column width changed. scrollLeft is an absolute pixel
+    // offset (= dayIndex * columnWidth) and today's index is ~2300+, so leaving
+    // it stale would re-interpret the same pixels as a day hundreds of days off
+    // and jump the view. Re-derive scrollLeft from the current day position so
+    // the same day stays pinned.
+    const dayPosition = el.scrollLeft / prev
+    lastLayoutColumnWidthRef.current = columnWidth
+    el.scrollLeft = dayPosition * columnWidth
   }, [columnWidth, initialIndex])
 
   useEffect(() => {
