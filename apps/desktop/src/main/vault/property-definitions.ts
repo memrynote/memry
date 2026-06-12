@@ -98,6 +98,28 @@ export class PropertyDefinitionsService {
     })
   }
 
+  async setShowOnCalendar(name: string, show: boolean): Promise<void> {
+    await this.enqueueWrite(async () => {
+      const existing = this.cache.get(name)
+      if (show) {
+        this.cache.set(name, { name, type: 'date', showOnCalendar: true })
+      } else if (existing?.type === 'date') {
+        // date entries only carry the calendar flag → drop the entry when off
+        this.cache.delete(name)
+      } else if (existing) {
+        this.cache.set(name, { ...existing, showOnCalendar: false })
+      }
+      await this.persistToFile()
+      this.rebuildDbCache()
+    })
+  }
+
+  listCalendarEnabledNames(): string[] {
+    return Array.from(this.cache.values())
+      .filter((def) => def.showOnCalendar === true)
+      .map((def) => def.name)
+  }
+
   async renameOption(propertyName: string, oldValue: string, newValue: string): Promise<void> {
     const def = this.cache.get(propertyName)
     if (!def) return
@@ -192,6 +214,8 @@ export class PropertyDefinitionsService {
     for (const [name, def] of Object.entries(data.properties)) {
       if (def.type === 'status') {
         this.cache.set(name, { name, type: 'status', categories: def.categories })
+      } else if (def.type === 'date') {
+        this.cache.set(name, { name, type: 'date', showOnCalendar: def.showOnCalendar })
       } else {
         this.cache.set(name, { name, type: def.type, options: def.options })
       }
@@ -204,6 +228,8 @@ export class PropertyDefinitionsService {
     for (const [name, def] of this.cache) {
       if (def.type === 'status') {
         properties[name] = { type: 'status', categories: def.categories }
+      } else if (def.type === 'date') {
+        properties[name] = { type: 'date', showOnCalendar: def.showOnCalendar }
       } else {
         properties[name] = { type: def.type, options: def.options }
       }

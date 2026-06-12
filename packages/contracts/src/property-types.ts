@@ -35,6 +35,7 @@ export interface PropertyDefinition {
   options?: SelectOption[]
   categories?: StatusCategories
   defaultValue?: string
+  showOnCalendar?: boolean
 }
 
 export const DEFAULT_STATUS_DEFINITION: PropertyDefinition = {
@@ -89,10 +90,16 @@ const MultiselectPropertySchema = z.object({
   options: z.array(SelectOptionSchema)
 })
 
+const DatePropertySchema = z.object({
+  type: z.literal('date'),
+  showOnCalendar: z.boolean().optional()
+})
+
 export const PropertyDefinitionSchema = z.discriminatedUnion('type', [
   StatusPropertySchema,
   SelectPropertySchema,
-  MultiselectPropertySchema
+  MultiselectPropertySchema,
+  DatePropertySchema
 ])
 
 export const PropertyDefinitionsFileSchema = z.object({
