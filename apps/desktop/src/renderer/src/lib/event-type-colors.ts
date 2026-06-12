@@ -10,7 +10,8 @@ export const EVENT_TYPE_COLORS: Record<VisualType, string> = {
   task: '#1EB06D',
   reminder: '#1BADF8',
   snooze: '#7BD148',
-  external_event: '#9A9CFF'
+  external_event: '#9A9CFF',
+  note: '#E0A458'
 }
 
 export function getEventBaseColor(type: VisualType): string {
