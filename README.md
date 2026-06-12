@@ -121,7 +121,7 @@ Current GitHub releases are unstable preview builds. Join the [waitlist](https:/
 
 ### Build from Source
 
-Requires Node 20+ and pnpm 9+.
+Requires Node 24 (see `.nvmrc`) and pnpm 11 (the repo pins `pnpm@11.5.2` via corepack).
 
 ```bash
 git clone https://github.com/memrynote/memry.git
