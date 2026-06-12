@@ -11,7 +11,7 @@ Be respectful and constructive. We're building something together.
 ### Prerequisites
 
 - [Node.js](https://nodejs.org/) (v24.x; use `.nvmrc`)
-- [pnpm](https://pnpm.io/) (v10.30+)
+- [pnpm](https://pnpm.io/) (v11.5.2 — the repo pins it via `packageManager`; corepack will use the right version automatically)
 - Git
 
 ### Setup
