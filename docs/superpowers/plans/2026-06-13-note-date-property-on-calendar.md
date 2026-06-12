@@ -17,10 +17,12 @@
 ## File Structure
 
 **New files:**
+
 - `apps/desktop/src/renderer/src/hooks/use-calendar-properties.ts` — renderer state for the toggle (fetch-once cache + optimistic setter).
 - `apps/desktop/src/renderer/src/components/calendar/calendar-note-popover.tsx` — chip-click popover for notes.
 
 **Modified files:**
+
 - `packages/contracts/src/property-types.ts` — add `showOnCalendar` to `PropertyDefinition` + a `date` variant to the file schema.
 - `apps/desktop/src/main/vault/property-definitions.ts` — persist/parse date entries; `setShowOnCalendar` + `listCalendarEnabledNames`.
 - `packages/contracts/src/calendar-api.ts` — add `'note'` to source/visual enums.
@@ -40,6 +42,7 @@
 ## Task 1: Persist the flag in properties.md (contract + service)
 
 **Files:**
+
 - Modify: `packages/contracts/src/property-types.ts`
 - Modify: `apps/desktop/src/main/vault/property-definitions.ts`
 - Test: `apps/desktop/src/main/vault/property-definitions.test.ts` (create or extend)
@@ -49,6 +52,7 @@
 In `property-types.ts`:
 
 Add `showOnCalendar` to the `PropertyDefinition` interface (after `defaultValue`, line 37):
+
 ```ts
 export interface PropertyDefinition {
   name: string
@@ -61,6 +65,7 @@ export interface PropertyDefinition {
 ```
 
 Add a date variant and include it in the discriminated union (after `MultiselectPropertySchema`, line 90):
+
 ```ts
 const DatePropertySchema = z.object({
   type: z.literal('date'),
@@ -122,6 +127,7 @@ Expected: FAIL — `setShowOnCalendar` / `listCalendarEnabledNames` don't exist.
 In `property-definitions.ts`:
 
 `applyParsedData` (line 190) — add a `date` branch:
+
 ```ts
 private applyParsedData(data: PropertyDefinitionsFileData): void {
   this.cache.clear()
@@ -138,6 +144,7 @@ private applyParsedData(data: PropertyDefinitionsFileData): void {
 ```
 
 `persistToFile` (line 201) — add a `date` branch:
+
 ```ts
 for (const [name, def] of this.cache) {
   if (def.type === 'status') {
@@ -151,6 +158,7 @@ for (const [name, def] of this.cache) {
 ```
 
 Add two public methods (next to `upsert`/`remove`):
+
 ```ts
 async setShowOnCalendar(name: string, show: boolean): Promise<void> {
   await this.enqueueWrite(async () => {
@@ -199,6 +207,7 @@ git commit -m "feat(notes): persist showOnCalendar date-property flag in propert
 ## Task 2: Projection — derive note items from enabled date properties
 
 **Files:**
+
 - Modify: `apps/desktop/src/main/calendar/projection.ts`
 - Test: `apps/desktop/src/main/calendar/projection.test.ts` (add cases; if absent, create following the existing main-test harness)
 
@@ -259,12 +268,14 @@ Expected: FAIL — `getCalendarRangeProjection` takes 3 args / no `note` items.
 In `projection.ts`:
 
 Imports (extend the existing `'../database'` type import to add `IndexDb`):
+
 ```ts
 import { noteCache, noteProperties } from '@memry/db-schema/schema/notes-cache'
 import type { DataDb, IndexDb } from '../database'
 ```
 
 Add the loader (after `loadExternalEvents`):
+
 ```ts
 function loadNoteDatePropertyItems(
   indexDb: IndexDb,
@@ -327,6 +338,7 @@ function loadNoteDatePropertyItems(
 ```
 
 Change the exported function signature + aggregation:
+
 ```ts
 export function getCalendarRangeProjection(
   db: DataDb,
@@ -365,6 +377,7 @@ git commit -m "feat(calendar): project notes with enabled date properties"
 ## Task 3: Contracts enum + chip visuals + handler wiring
 
 **Files:**
+
 - Modify: `packages/contracts/src/calendar-api.ts`
 - Modify: `apps/desktop/src/renderer/src/lib/event-type-colors.ts`
 - Modify: `apps/desktop/src/renderer/src/components/calendar/calendar-item-chip.tsx`
@@ -373,6 +386,7 @@ git commit -m "feat(calendar): project notes with enabled date properties"
 - [ ] **Step 1: Add `'note'` to both enums**
 
 In `calendar-api.ts`, add `'note'` to `CalendarProjectionSourceTypeSchema` (line 10) and `CalendarProjectionVisualTypeSchema` (line 17):
+
 ```ts
 // source type enum → append:  'note'
 // visual type enum → append:  'note'
@@ -381,28 +395,34 @@ In `calendar-api.ts`, add `'note'` to `CalendarProjectionSourceTypeSchema` (line
 - [ ] **Step 2: Add the note color**
 
 In `event-type-colors.ts` `EVENT_TYPE_COLORS`:
+
 ```ts
   external_event: '#9A9CFF',
   note: '#E0A458'
 ```
+
 (Amber/clay — distinct from green task / teal event / blue reminder / periwinkle external. Kaan may tweak the hex.)
 
 - [ ] **Step 3: Add the note icon**
 
 In `calendar-item-chip.tsx`, import a document icon and add to `VISUAL_TYPE_ICONS`:
+
 ```ts
 import { AlarmClock, Calendar2, CheckSquare3, FileText, NotificationSnooze } from '@/lib/icons'
 // ...
   external_event: Calendar2,
   note: FileText
 ```
+
 > Verify `FileText` is exported from `@/lib/icons`; if not, pick the nearest document glyph. `grep -n "FileText\|Document\|FileText3" apps/desktop/src/renderer/src/lib/icons.ts`.
 
 - [ ] **Step 4: Pass index DB + enabled names into the projection**
 
 In `calendar-handlers.ts`:
+
 - Import `getIndexDatabase` (add to the existing `'../database'` import alongside `requireDatabase`).
 - Add a safe getter for enabled names near the top of the file:
+
 ```ts
 function getCalendarEnabledPropertyNames(): string[] {
   try {
@@ -412,8 +432,11 @@ function getCalendarEnabledPropertyNames(): string[] {
   }
 }
 ```
+
 (Import the service: `import { PropertyDefinitionsService } from '../vault/property-definitions'` — confirm path; the file may prefer a dynamic import, but a static import is fine here since the service is initialized at vault load.)
+
 - Update the GET_RANGE handler (line 509):
+
 ```ts
 return getCalendarRangeProjection(
   requireDatabase(),
@@ -440,6 +463,7 @@ git commit -m "feat(calendar): add 'note' source/visual type + chip visuals + pr
 ## Task 4: IPC plumbing — toggle write + read (service-backed)
 
 **Files:**
+
 - Modify: `packages/contracts/src/ipc-channels.ts`
 - Modify: `packages/rpc/src/notes.ts`
 - Modify: `apps/desktop/src/main/ipc/notes-handlers.ts`
@@ -448,15 +472,18 @@ git commit -m "feat(calendar): add 'note' source/visual type + chip visuals + pr
 - [ ] **Step 1: Add channels**
 
 In `ipc-channels.ts`, in the Notes `invoke` map (near the `*_PROPERTY_DEFINITION` channels):
+
 ```ts
     SET_CALENDAR_PROPERTY_VISIBILITY: 'notes:set-calendar-property-visibility',
     GET_CALENDAR_PROPERTY_NAMES: 'notes:get-calendar-property-names',
 ```
+
 > Match the exact surrounding key/value style.
 
 - [ ] **Step 2: Add RPC methods**
 
 In `packages/rpc/src/notes.ts`, in `notesRpc.methods` (after `deletePropertyDefinition`, ~line 481):
+
 ```ts
     setCalendarPropertyVisibility: defineMethod<
       (name: string, showOnCalendar: boolean) => Promise<{ success: boolean }>
@@ -473,26 +500,28 @@ In `packages/rpc/src/notes.ts`, in `notesRpc.methods` (after `deletePropertyDefi
 - [ ] **Step 3: Add main handlers (service-backed)**
 
 In `notes-handlers.ts`, register near the other property-definition handlers (~line 507). The select-type handlers already `await import('../vault/property-definitions')` — mirror that:
-```ts
-  registerCommand(
-    NotesChannels.invoke.SET_CALENDAR_PROPERTY_VISIBILITY,
-    z.object({ name: z.string().min(1), showOnCalendar: z.boolean() }),
-    async (input) => {
-      const { PropertyDefinitionsService } = await import('../vault/property-definitions')
-      await PropertyDefinitionsService.get().setShowOnCalendar(input.name, input.showOnCalendar)
-      return { success: true as const }
-    },
-    'Failed to set calendar property visibility'
-  )
 
-  ipcMain.handle(
-    NotesChannels.invoke.GET_CALENDAR_PROPERTY_NAMES,
-    createHandler(async () => {
-      const { PropertyDefinitionsService } = await import('../vault/property-definitions')
-      return PropertyDefinitionsService.get().listCalendarEnabledNames()
-    })
-  )
+```ts
+registerCommand(
+  NotesChannels.invoke.SET_CALENDAR_PROPERTY_VISIBILITY,
+  z.object({ name: z.string().min(1), showOnCalendar: z.boolean() }),
+  async (input) => {
+    const { PropertyDefinitionsService } = await import('../vault/property-definitions')
+    await PropertyDefinitionsService.get().setShowOnCalendar(input.name, input.showOnCalendar)
+    return { success: true as const }
+  },
+  'Failed to set calendar property visibility'
+)
+
+ipcMain.handle(
+  NotesChannels.invoke.GET_CALENDAR_PROPERTY_NAMES,
+  createHandler(async () => {
+    const { PropertyDefinitionsService } = await import('../vault/property-definitions')
+    return PropertyDefinitionsService.get().listCalendarEnabledNames()
+  })
+)
 ```
+
 > Confirm `registerCommand` arity and `createHandler` against the existing `CREATE_PROPERTY_DEFINITION` / `GET_PROPERTY_DEFINITIONS` registrations.
 
 - [ ] **Step 4: Regenerate the invoke map + verify**
@@ -517,6 +546,7 @@ git commit -m "feat(notes): IPC to toggle + read calendar-enabled date propertie
 ## Task 5: Inline "Show on calendar" toggle on date-property rows
 
 **Files:**
+
 - Create: `apps/desktop/src/renderer/src/hooks/use-calendar-properties.ts`
 - Modify: `apps/desktop/src/renderer/src/components/note/info-section/PropertyRow.tsx`
 - Modify: `packages/i18n/src/locales/en/notes.json`
@@ -578,10 +608,12 @@ export function useCalendarProperties() {
 - [ ] **Step 2: Add i18n strings**
 
 In `packages/i18n/src/locales/en/notes.json`, under `properties`:
+
 ```json
 "showOnCalendar": "Show on calendar",
 "showOnCalendarHint": "Adds an all-day chip on its date"
 ```
+
 > Only `en` is required to pass `i18n:check`.
 
 - [ ] **Step 3: Write the failing PropertyRow test**
@@ -602,37 +634,41 @@ Expected: FAIL.
 - [ ] **Step 4: Add the inline menu to PropertyRow**
 
 In `PropertyRow.tsx`:
+
 - Import `DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem` from `@/components/ui/dropdown-menu`, `Calendar` from `@/lib/icons`, and `useCalendarProperties`.
 - `const { isEnabled, setEnabled } = useCalendarProperties()`.
 - Render only for `property.type === 'date'`, in the trailing controls area (alongside the delete button, gated like it):
 
 ```tsx
-{property.type === 'date' && (
-  <DropdownMenu>
-    <DropdownMenuTrigger asChild>
-      <button
-        type="button"
-        aria-label={t('properties.showOnCalendar')}
-        className={cn(
-          'ms-1 flex h-6 w-6 items-center justify-center rounded',
-          'text-text-tertiary transition-all duration-150 hover:bg-surface hover:text-muted-foreground',
-          isHovered || isEnabled(property.name) ? 'opacity-100' : 'opacity-0 pointer-events-none'
-        )}
-      >
-        <Calendar className="h-3.5 w-3.5" />
-      </button>
-    </DropdownMenuTrigger>
-    <DropdownMenuContent align="end">
-      <DropdownMenuCheckboxItem
-        checked={isEnabled(property.name)}
-        onCheckedChange={(checked) => void setEnabled(property.name, checked === true)}
-      >
-        {t('properties.showOnCalendar')}
-      </DropdownMenuCheckboxItem>
-    </DropdownMenuContent>
-  </DropdownMenu>
-)}
+{
+  property.type === 'date' && (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          aria-label={t('properties.showOnCalendar')}
+          className={cn(
+            'ms-1 flex h-6 w-6 items-center justify-center rounded',
+            'text-text-tertiary transition-all duration-150 hover:bg-surface hover:text-muted-foreground',
+            isHovered || isEnabled(property.name) ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          )}
+        >
+          <Calendar className="h-3.5 w-3.5" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuCheckboxItem
+          checked={isEnabled(property.name)}
+          onCheckedChange={(checked) => void setEnabled(property.name, checked === true)}
+        >
+          {t('properties.showOnCalendar')}
+        </DropdownMenuCheckboxItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
 ```
+
 > Confirm `DropdownMenuCheckboxItem` is exported by `@/components/ui/dropdown-menu`; if not, use a `DropdownMenuItem` that toggles and renders a check icon. Keep the trigger visible (opacity-100) when enabled so it's discoverable to turn off.
 
 - [ ] **Step 5: Run the test, verify it passes**
@@ -652,6 +688,7 @@ git commit -m "feat(notes): inline 'Show on calendar' toggle on date-property ro
 ## Task 6: Note popover on chip click
 
 **Files:**
+
 - Create: `apps/desktop/src/renderer/src/components/calendar/calendar-note-popover.tsx`
 - Modify: `apps/desktop/src/renderer/src/components/calendar/calendar-page.tsx`
 - Modify: `packages/i18n/src/locales/en/calendar.json`
@@ -671,6 +708,7 @@ In `calendar-page.tsx`, add a branch: when `selectedItem.sourceType === 'note'`,
 - [ ] **Step 4: Add i18n strings**
 
 In `calendar.json`:
+
 ```json
 "notePopover": { "kind": "Note", "open": "Open note" }
 ```
@@ -693,6 +731,7 @@ git commit -m "feat(calendar): note chip popover with open-note action"
 - [ ] **Step 1: Lint + typecheck + tests + i18n + ipc**
 
 Run, expect all green:
+
 ```bash
 pnpm lint
 pnpm typecheck
