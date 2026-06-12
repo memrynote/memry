@@ -23,7 +23,7 @@ below — run `pnpm audit --prod` separately if you want that).
 | 002  | Flush pending CRDT write-backs on shutdown (not drop)              | P1       | S      | LOW  | [#543](https://github.com/memrynote/memry/issues/543) | TODO   |
 | 003  | Fix README license contradiction → GPL-3.0                         | P1       | S      | LOW  | [#544](https://github.com/memrynote/memry/issues/544) | TODO   |
 | 004  | Align documented Node/pnpm versions with the pinned toolchain      | P2       | S      | LOW  | [#545](https://github.com/memrynote/memry/issues/545) | TODO   |
-| 005  | Consolidate `ReminderTargetType` (fix `'task'` drift)              | P2       | S      | MED  | [#546](https://github.com/memrynote/memry/issues/546) | TODO   |
+| 005  | Consolidate `ReminderTargetType` (fix `'task'` drift)              | P2       | S      | MED  | [#546](https://github.com/memrynote/memry/issues/546) | DONE   |
 | 006  | Remove duplicate/broken `onSearchIndex*` preload declarations      | P2       | S      | LOW  | [#547](https://github.com/memrynote/memry/issues/547) | TODO   |
 | 007  | Concurrent (bounded) R2 reads in `pullItems`                       | P2       | M      | LOW  | [#548](https://github.com/memrynote/memry/issues/548) | TODO   |
 | 008  | Allowlist `openExternal` schemes + explicit window hardening       | P2       | M      | MED  | [#549](https://github.com/memrynote/memry/issues/549) | TODO   |

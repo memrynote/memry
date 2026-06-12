@@ -2,9 +2,9 @@ import { asc, eq } from 'drizzle-orm'
 import { reminders } from '@memry/db-schema/data-schema'
 import type { DataDb } from './database.ts'
 import { createId } from './ids.ts'
+import type { ReminderTargetType, ReminderStatus } from '@memry/contracts/reminder-types'
 
-export type ReminderTargetType = 'note' | 'journal' | 'highlight'
-export type ReminderStatus = 'pending' | 'triggered' | 'dismissed' | 'snoozed'
+export type { ReminderTargetType, ReminderStatus }
 
 export interface ReminderRecord {
   id: string
