@@ -761,7 +761,8 @@ import type {
   SearchResponse,
   QuickSearchResponse,
   SearchStats,
-  SearchReason
+  SearchReason,
+  IndexRebuildProgress
 } from '@memry/contracts/search-api'
 
 export interface SearchClientAPI {
@@ -1750,15 +1751,6 @@ interface API extends WindowAPI, GeneratedRpcApi {
   onVaultIndexProgress: (callback: (progress: number) => void) => () => void
   onVaultError: (callback: (error: string) => void) => () => void
   onVaultIndexRecovered: (callback: (event: IndexRecoveredEvent) => void) => () => void
-  // Search event subscriptions
-  onSearchIndexRebuildStarted: (callback: () => void) => () => void
-  onSearchIndexRebuildProgress: (
-    callback: (progress: IndexRebuildProgressEvent) => void
-  ) => () => void
-  onSearchIndexRebuildCompleted: (
-    callback: (result: IndexRebuildCompletedEvent) => void
-  ) => () => void
-  onSearchIndexCorrupt: (callback: () => void) => () => void
   // Saved Filters event subscriptions
   onSavedFilterCreated: (callback: (event: SavedFilterCreatedEvent) => void) => () => void
   onSavedFilterUpdated: (callback: (event: SavedFilterUpdatedEvent) => void) => () => void
@@ -1793,9 +1785,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
   onFolderViewConfigUpdated: (callback: (event: FolderViewConfigUpdatedEvent) => void) => () => void
   // Search event subscriptions
   onSearchIndexRebuildStarted: (callback: () => void) => () => void
-  onSearchIndexRebuildProgress: (
-    callback: (progress: { phase: string; current: number; total: number; percent: number }) => void
-  ) => () => void
+  onSearchIndexRebuildProgress: (callback: (progress: IndexRebuildProgress) => void) => () => void
   onSearchIndexRebuildCompleted: (callback: () => void) => () => void
   onSearchIndexCorrupt: (callback: () => void) => () => void
   // Sync event subscriptions
