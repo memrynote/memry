@@ -137,4 +137,40 @@ describe('useWeekInfiniteScroll', () => {
     )
     expect(current?.dateForDayIndex(0)).toMatch(/^\d{4}-\d{2}-\d{2}$/)
   })
+
+  it('keeps the same day pinned when the container is resized', () => {
+    let current: UseWeekInfiniteScrollResult | null = null
+
+    function Harness(): React.JSX.Element {
+      current = useWeekInfiniteScroll({
+        initialDate: '2026-05-14',
+        gutterWidth: 48,
+        totalDays: 36_525
+      })
+      return <div data-testid="week-scroller" ref={current.scrollContainerRef} />
+    }
+
+    const { getByTestId } = render(<Harness />)
+    const scroller = getByTestId('week-scroller') as HTMLDivElement
+
+    // First real layout: (748 - 48 gutter) / 7 = 100px columns.
+    defineReadonlyNumber(scroller, 'clientWidth', 748)
+    act(() => {
+      ResizeObserverMock.instances[0].trigger()
+    })
+    expect(current?.columnWidth).toBe(100)
+    const pinnedScrollLeft = scroller.scrollLeft
+    expect(pinnedScrollLeft).toBeGreaterThan(0)
+    const pinnedDay = pinnedScrollLeft / 100
+
+    // Window widened: (1098 - 48) / 7 = 150px columns. The same day must stay
+    // pinned — scrollLeft is re-derived from the day position, not left at the
+    // stale pixel offset (which would jump hundreds of days into the past/future).
+    defineReadonlyNumber(scroller, 'clientWidth', 1098)
+    act(() => {
+      ResizeObserverMock.instances[0].trigger()
+    })
+    expect(current?.columnWidth).toBe(150)
+    expect(scroller.scrollLeft).toBe(pinnedDay * 150)
+  })
 })

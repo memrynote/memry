@@ -120,6 +120,16 @@ interface TabContextType {
   canNavForward: boolean
 
   /**
+   * Reopen the most recently closed tab (browser-style Cmd+Shift+T).
+   */
+  reopenClosedTab: () => void
+
+  /**
+   * True when there is a closed tab available to reopen.
+   */
+  canReopenClosedTab: boolean
+
+  /**
    * Pin a tab
    */
   pinTab: (tabId: string, groupId?: string) => void
@@ -433,6 +443,15 @@ export const TabProvider = ({
     [state.tabGroups, state.activeGroupId]
   )
 
+  const reopenClosedTab = useCallback(() => {
+    dispatch({ type: 'REOPEN_CLOSED_TAB' })
+  }, [])
+
+  const canReopenClosedTab = useMemo(
+    () => (state.recentlyClosed?.length ?? 0) > 0,
+    [state.recentlyClosed]
+  )
+
   const pinTab = useCallback((tabId: string, groupId?: string) => {
     const actualGroupId = groupId ?? activeGroupIdRef.current
     dispatch({
@@ -644,6 +663,8 @@ export const TabProvider = ({
       navForward,
       canNavBack,
       canNavForward,
+      reopenClosedTab,
+      canReopenClosedTab,
       pinTab,
       unpinTab,
       togglePinTab,
@@ -684,6 +705,8 @@ export const TabProvider = ({
       navForward,
       canNavBack,
       canNavForward,
+      reopenClosedTab,
+      canReopenClosedTab,
       pinTab,
       unpinTab,
       togglePinTab,
