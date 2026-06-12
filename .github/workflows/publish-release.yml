@@ -145,9 +145,28 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
+        shell: bash
         env:
           SKIP_ELECTRON_REBUILD: 1
-        run: pnpm install --frozen-lockfile
+        # Retry to survive transient registry/CDN network flakes during a cold
+        # pnpm store download (e.g. ETIMEDOUT on npmjs, ENOTFOUND github.com in
+        # electron postinstall) that would otherwise kill the whole release.
+        run: |
+          attempts=3
+          for attempt in $(seq 1 "$attempts"); do
+            echo "::group::pnpm install (attempt $attempt/$attempts)"
+            if pnpm install --frozen-lockfile; then
+              echo "::endgroup::"
+              exit 0
+            fi
+            echo "::endgroup::"
+            if [ "$attempt" -lt "$attempts" ]; then
+              echo "::warning::pnpm install failed (attempt $attempt/$attempts); retrying in 20s"
+              sleep 20
+            fi
+          done
+          echo "::error::pnpm install failed after $attempts attempts"
+          exit 1
 
       - name: Apply release app version
         env:
@@ -301,9 +320,28 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
+        shell: bash
         env:
           SKIP_ELECTRON_REBUILD: 1
-        run: pnpm install --frozen-lockfile
+        # Retry to survive transient registry/CDN network flakes during a cold
+        # pnpm store download (e.g. ETIMEDOUT on npmjs, ENOTFOUND github.com in
+        # electron postinstall) that would otherwise kill the whole release.
+        run: |
+          attempts=3
+          for attempt in $(seq 1 "$attempts"); do
+            echo "::group::pnpm install (attempt $attempt/$attempts)"
+            if pnpm install --frozen-lockfile; then
+              echo "::endgroup::"
+              exit 0
+            fi
+            echo "::endgroup::"
+            if [ "$attempt" -lt "$attempts" ]; then
+              echo "::warning::pnpm install failed (attempt $attempt/$attempts); retrying in 20s"
+              sleep 20
+            fi
+          done
+          echo "::error::pnpm install failed after $attempts attempts"
+          exit 1
 
       - name: Apply release app version
         env:
@@ -425,9 +463,28 @@ jobs:
           sudo apt-get install -y libsecret-1-dev
 
       - name: Install dependencies
+        shell: bash
         env:
           SKIP_ELECTRON_REBUILD: 1
-        run: pnpm install --frozen-lockfile
+        # Retry to survive transient registry/CDN network flakes during a cold
+        # pnpm store download (e.g. ETIMEDOUT on npmjs, ENOTFOUND github.com in
+        # electron postinstall) that would otherwise kill the whole release.
+        run: |
+          attempts=3
+          for attempt in $(seq 1 "$attempts"); do
+            echo "::group::pnpm install (attempt $attempt/$attempts)"
+            if pnpm install --frozen-lockfile; then
+              echo "::endgroup::"
+              exit 0
+            fi
+            echo "::endgroup::"
+            if [ "$attempt" -lt "$attempts" ]; then
+              echo "::warning::pnpm install failed (attempt $attempt/$attempts); retrying in 20s"
+              sleep 20
+            fi
+          done
+          echo "::error::pnpm install failed after $attempts attempts"
+          exit 1
 
       - name: Apply release app version
         env:
