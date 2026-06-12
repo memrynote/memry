@@ -173,6 +173,98 @@ export async function createPaddlePortalSession(
   return { portalUrl }
 }
 
+export interface InvoiceRow {
+  id: string
+  status: string
+  billedAt: string | null
+  amount: string
+  currency: string
+}
+
+interface PaddleTransactionListItem {
+  id: string
+  status: string
+  billed_at: string | null
+  currency_code: string
+  details?: { totals?: { grand_total?: string } }
+}
+
+export async function listPaddleInvoices(env: Bindings, userId: string): Promise<InvoiceRow[]> {
+  const entitlement = await env.DB.prepare(
+    'SELECT paddle_customer_id FROM sync_entitlements WHERE user_id = ?'
+  )
+    .bind(userId)
+    .first<{ paddle_customer_id: string | null }>()
+  if (!entitlement?.paddle_customer_id) {
+    return []
+  }
+  const apiKey = normalizePaddleApiKey(env.PADDLE_API_KEY)
+  if (!apiKey) {
+    throw new AppError(ErrorCodes.INTERNAL_ERROR, 'Paddle API key is not configured', 503)
+  }
+  const url =
+    `${getPaddleBaseUrl(env)}/transactions` +
+    `?customer_id=${encodeURIComponent(entitlement.paddle_customer_id)}` +
+    `&per_page=30&order_by=billed_at[DESC]`
+  const response = await (env.fetch ?? fetch)(url, {
+    headers: { Authorization: `Bearer ${apiKey}`, Accept: 'application/json' }
+  })
+  if (!response.ok) {
+    throw new AppError(ErrorCodes.INTERNAL_ERROR, 'Could not list Paddle invoices', 502)
+  }
+  const payload = (await response.json()) as PaddleResponse<PaddleTransactionListItem[]>
+  const items = payload.data ?? []
+  return items.map((t) => ({
+    id: t.id,
+    status: t.status,
+    billedAt: t.billed_at,
+    amount: t.details?.totals?.grand_total ?? '0',
+    currency: t.currency_code
+  }))
+}
+
+export async function getPaddleInvoicePdfUrl(
+  env: Bindings,
+  userId: string,
+  transactionId: string
+): Promise<string> {
+  // Verify the transaction belongs to this user's Paddle customer before
+  // handing back a signed PDF URL — otherwise any authenticated user could
+  // read another customer's invoice (name, address, amount) by guessing its
+  // transaction id.
+  const entitlement = await env.DB.prepare(
+    'SELECT paddle_customer_id FROM sync_entitlements WHERE user_id = ?'
+  )
+    .bind(userId)
+    .first<{ paddle_customer_id: string | null }>()
+  if (!entitlement?.paddle_customer_id) {
+    throw new AppError(ErrorCodes.NOT_FOUND, 'Invoice not found', 404)
+  }
+  const transaction = await fetchPaddleTransaction(env, transactionId)
+  const transactionCustomerId = transaction.customer_id ?? transaction.customerId ?? null
+  if (transactionCustomerId !== entitlement.paddle_customer_id) {
+    throw new AppError(ErrorCodes.STORAGE_UNAUTHORIZED, 'Invoice belongs to another account', 403)
+  }
+
+  const apiKey = normalizePaddleApiKey(env.PADDLE_API_KEY)
+  if (!apiKey) {
+    throw new AppError(ErrorCodes.INTERNAL_ERROR, 'Paddle API key is not configured', 503)
+  }
+  const response = await (env.fetch ?? fetch)(
+    `${getPaddleBaseUrl(env)}/transactions/${encodeURIComponent(transactionId)}/invoice`,
+    { headers: { Authorization: `Bearer ${apiKey}`, Accept: 'application/json' } }
+  )
+  if (!response.ok) {
+    throw new AppError(ErrorCodes.INTERNAL_ERROR, 'Could not fetch invoice PDF', 502)
+  }
+  const payload = (await response.json()) as PaddleResponse<{ url?: string }>
+  const url = payload.data?.url
+  if (!url) {
+    throw new AppError(ErrorCodes.INTERNAL_ERROR, 'Invoice PDF URL missing', 502)
+  }
+  return url
+}
+
 async function fetchPaddleTransaction(
   env: Bindings,
   transactionId: string
