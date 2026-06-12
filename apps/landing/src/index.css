@@ -5,7 +5,7 @@
 @theme {
   --font-sans: 'Satoshi', system-ui, sans-serif;
   --font-geist: 'Geist', system-ui, sans-serif;
-  --font-serif: 'Fraunces', 'Iowan Old Style', Georgia, serif;
+  --font-serif: 'Inter', 'Inter Placeholder', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 
   --color-primary: #ff671a;
@@ -191,15 +191,6 @@ h6 {
 }
 
 /* ——— The Private Press: editorial display & print furniture ——— */
-
-.display-hero {
-  font-family: var(--font-serif);
-  font-optical-sizing: auto;
-  font-weight: 380;
-  font-size: clamp(2.75rem, 8vw, 6.25rem);
-  line-height: 1.02;
-  letter-spacing: -0.035em;
-}
 
 .display-section {
   font-family: var(--font-serif);
