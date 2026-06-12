@@ -24,17 +24,11 @@ export async function createTestDevice(
   const vaultKey = opts.vaultKey ?? generateVaultKey()
   const { publicKey, secretKey } = generateSigningKeypair()
 
-  const authPublicKeyBase64 = sodium.to_base64(
-    publicKey,
-    sodium.base64_variants.ORIGINAL
-  )
+  const authPublicKeyBase64 = sodium.to_base64(publicKey, sodium.base64_variants.ORIGINAL)
 
   const now = Math.floor(Date.now() / 1000)
 
-  const existingUser = await db
-    .prepare('SELECT id FROM users WHERE id = ?')
-    .bind(userId)
-    .first()
+  const existingUser = await db.prepare('SELECT id FROM users WHERE id = ?').bind(userId).first()
 
   if (!existingUser) {
     await db
@@ -46,10 +40,18 @@ export async function createTestDevice(
       .run()
 
     await db
-      .prepare(
-        `INSERT INTO server_cursor_sequence (user_id, current_cursor) VALUES (?, 0)`
-      )
+      .prepare(`INSERT INTO server_cursor_sequence (user_id, current_cursor) VALUES (?, 0)`)
       .bind(userId)
+      .run()
+
+    // Sync routes are gated behind an active paid entitlement (paidSyncMiddleware →
+    // assertPaidSyncAccess). Seed a 'pro' entitlement so the harness can push/pull.
+    await db
+      .prepare(
+        `INSERT INTO sync_entitlements (user_id, plan, status, source, storage_limit, max_file_size, max_vaults, version_history_days, expires_at, updated_at)
+         VALUES (?, 'pro', 'active', 'dev_seed', ?, ?, ?, ?, NULL, ?)`
+      )
+      .bind(userId, 10 * 1024 * 1024 * 1024, 200 * 1024 * 1024, 10, 365, now)
       .run()
   }
 
