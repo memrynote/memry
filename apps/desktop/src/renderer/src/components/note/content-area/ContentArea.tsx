@@ -983,7 +983,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                 group: t('editor.callout.group'),
                 subtext: t('editor.callout.subtext')
               })
-              const taskItem = getTaskSlashMenuItem(editor)
+              const taskItem = getTaskSlashMenuItem(editor, noteId)
               const all = orderSlashMenuItemsByGroup([
                 ...defaults,
                 calloutItem,
