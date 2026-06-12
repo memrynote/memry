@@ -236,7 +236,11 @@ export const snoozePresets: ReminderPreset[] = [
 /**
  * Format a date for display in reminder UI
  */
-export function formatReminderDate(date: Date, clockFormat: ClockFormat = '12h'): string {
+export function formatReminderDate(
+  date: Date,
+  clockFormat: ClockFormat = '12h',
+  compact = false
+): string {
   const now = new Date()
   const tomorrow = new Date(now)
   tomorrow.setDate(tomorrow.getDate() + 1)
@@ -245,20 +249,23 @@ export function formatReminderDate(date: Date, clockFormat: ClockFormat = '12h')
   const isTomorrow = date.toDateString() === tomorrow.toDateString()
 
   const timeStr = formatTimeOfDay(date, clockFormat)
+  // Compact form drops the "at" separator and shortens the weekday, for tight
+  // surfaces like the task drawer badge where the verbose form wraps to two lines.
+  const sep = compact ? ', ' : ' at '
 
   if (isToday) {
-    return `Today at ${timeStr}`
+    return `Today${sep}${timeStr}`
   }
 
   if (isTomorrow) {
-    return `Tomorrow at ${timeStr}`
+    return `Tomorrow${sep}${timeStr}`
   }
 
   // Check if within this week
   const daysUntil = Math.ceil((date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
   if (daysUntil < 7) {
-    const dayName = date.toLocaleDateString('en-US', { weekday: 'long' })
-    return `${dayName} at ${timeStr}`
+    const dayName = date.toLocaleDateString('en-US', { weekday: compact ? 'short' : 'long' })
+    return `${dayName}${sep}${timeStr}`
   }
 
   // Otherwise, use full date
@@ -268,7 +275,7 @@ export function formatReminderDate(date: Date, clockFormat: ClockFormat = '12h')
     year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
   })
 
-  return `${dateStr} at ${timeStr}`
+  return `${dateStr}${sep}${timeStr}`
 }
 
 /**

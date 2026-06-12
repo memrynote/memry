@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { useState } from 'react'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
-import { Bell, Calendar, Clock, ChevronRight } from '@/lib/icons'
+import { Bell, Calendar, Clock, ChevronRight, Pencil, Trash2 } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { Picker } from '@/components/ui/picker'
 import { DatePickerCalendar } from '@/components/tasks/date-picker-calendar'
@@ -17,6 +17,14 @@ import {
   formatReminderDate
 } from './reminder-presets'
 
+/** Minimal shape of an existing reminder rendered in the management list. */
+export interface ManagedReminder {
+  id: string
+  remindAt: string
+  note?: string | null
+  status?: string
+}
+
 export interface ReminderPickerProps {
   onSelect: (date: Date, title?: string, note?: string) => void
   presetType?: 'standard' | 'journal'
@@ -27,9 +35,15 @@ export interface ReminderPickerProps {
   disabled?: boolean
   isLoading?: boolean
   className?: string
+  /** Existing reminders to manage (opt-in). When provided, a list renders below the presets. */
+  reminders?: ManagedReminder[]
+  /** Edit an existing reminder's time/note. Required for the edit affordance. */
+  onEdit?: (id: string, date: Date, note?: string) => void
+  /** Delete an existing reminder by id. Required for the delete affordance. */
+  onDelete?: (id: string) => void
 }
 
-type PickerMode = 'presets' | 'custom'
+type PickerMode = 'presets' | 'custom' | 'edit'
 
 export function ReminderPicker({
   onSelect,
@@ -40,7 +54,10 @@ export function ReminderPicker({
   showNoteField = false,
   disabled = false,
   isLoading = false,
-  className
+  className,
+  reminders,
+  onEdit,
+  onDelete
 }: ReminderPickerProps): React.ReactElement {
   const { t: tPhaseF } = useT('inbox')
   const {
@@ -51,9 +68,18 @@ export function ReminderPicker({
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
   const [selectedTime, setSelectedTime] = useState('09:00')
   const [note, setNote] = useState('')
+  const [editingId, setEditingId] = useState<string | null>(null)
 
   const presets = presetType === 'journal' ? journalPresets : standardPresets
   const shouldShowNote = showNote || showNoteField
+
+  const buildSelectedDate = (): Date | null => {
+    if (!selectedDate) return null
+    const [hours, minutes] = selectedTime.split(':').map(Number)
+    const date = new Date(selectedDate)
+    date.setHours(hours, minutes, 0, 0)
+    return date
+  }
 
   const handlePresetSelect = (preset: ReminderPreset): void => {
     const date = preset.getDate()
@@ -63,13 +89,30 @@ export function ReminderPicker({
   }
 
   const handleCustomSubmit = (): void => {
-    if (!selectedDate) return
-
-    const [hours, minutes] = selectedTime.split(':').map(Number)
-    const date = new Date(selectedDate)
-    date.setHours(hours, minutes, 0, 0)
+    const date = buildSelectedDate()
+    if (!date) return
 
     onSelect(date, undefined, note || undefined)
+    setOpen(false)
+    resetState()
+  }
+
+  const startEdit = (reminder: ManagedReminder): void => {
+    const date = new Date(reminder.remindAt)
+    const hours = String(date.getHours()).padStart(2, '0')
+    const minutes = String(date.getMinutes()).padStart(2, '0')
+    setEditingId(reminder.id)
+    setSelectedDate(date)
+    setSelectedTime(`${hours}:${minutes}`)
+    setNote(reminder.note ?? '')
+    setMode('edit')
+  }
+
+  const handleEditSubmit = (): void => {
+    const date = buildSelectedDate()
+    if (!date || !editingId) return
+
+    onEdit?.(editingId, date, note || undefined)
     setOpen(false)
     resetState()
   }
@@ -79,6 +122,7 @@ export function ReminderPicker({
     setSelectedDate(undefined)
     setSelectedTime('09:00')
     setNote('')
+    setEditingId(null)
   }
 
   const handleOpenChange = (isOpen: boolean): void => {
@@ -167,16 +211,69 @@ export function ReminderPicker({
                 </div>
               </>
             )}
+
+            {reminders && reminders.length > 0 && onEdit && onDelete && (
+              <>
+                <Picker.Separator />
+                <div className="px-1.5 py-1.5">
+                  <div className="px-1.5 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground/70">
+                    {tPhaseF('phaseF.componentsReminderReminderPicker.set')} ({reminders.length})
+                  </div>
+                  <div className="flex flex-col gap-0.5">
+                    {reminders.map((reminder) => (
+                      <div
+                        key={reminder.id}
+                        className="group flex items-center gap-2 rounded-md px-1.5 py-1 hover:bg-muted/50"
+                      >
+                        <Bell className="size-3.5 shrink-0 text-amber-500" />
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm">
+                            {formatReminderDate(new Date(reminder.remindAt), clockFormat)}
+                          </div>
+                          {reminder.note && (
+                            <div className="truncate text-[11px] text-muted-foreground">
+                              {reminder.note}
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          aria-label={tPhaseF(
+                            'phaseF.componentsReminderReminderPicker.editReminder'
+                          )}
+                          onClick={() => startEdit(reminder)}
+                          className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                        >
+                          <Pencil className="size-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={tPhaseF(
+                            'phaseF.componentsReminderReminderPicker.deleteReminder'
+                          )}
+                          onClick={() => onDelete(reminder.id)}
+                          className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-destructive"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
           </>
         ) : (
           <div className="p-2">
             <button
-              onClick={() => setMode('presets')}
+              onClick={() => (mode === 'edit' ? resetState() : setMode('presets'))}
               className="mb-2 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
             >
               <ChevronRight className="h-3 w-3 rotate-180" />
 
-              {tPhaseF('phaseF.componentsReminderReminderPicker.backToPresets')}
+              {mode === 'edit'
+                ? tPhaseF('phaseF.componentsReminderReminderPicker.editReminder')
+                : tPhaseF('phaseF.componentsReminderReminderPicker.backToPresets')}
             </button>
 
             <DatePickerCalendar
@@ -234,12 +331,16 @@ export function ReminderPicker({
               )}
 
               <Button
-                onClick={handleCustomSubmit}
+                onClick={mode === 'edit' ? handleEditSubmit : handleCustomSubmit}
                 disabled={!selectedDate || isLoading}
                 className="w-full"
                 size="sm"
               >
-                {isLoading ? 'Setting...' : 'Set Reminder'}
+                {mode === 'edit'
+                  ? tPhaseF('phaseF.componentsReminderReminderPicker.save')
+                  : isLoading
+                    ? 'Setting...'
+                    : 'Set Reminder'}
               </Button>
             </div>
           </div>

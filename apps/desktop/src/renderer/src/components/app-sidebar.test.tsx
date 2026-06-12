@@ -227,6 +227,41 @@ vi.mock('@/hooks/use-file-drop', () => ({
   useFileDrop: () => ({ isDraggingFiles: false, dropHandlers: {} })
 }))
 
+// Minimal stateful Picker mock: the real Radix Popover does not open on click in
+// jsdom. Content is gated on a trigger click so the create-menu items only exist
+// after the chevron is clicked (avoids colliding with other tests that query
+// buttons like "newNote").
+vi.mock('@/components/ui/picker', async () => {
+  const React = await import('react')
+  const PickerCtx = React.createContext<{ open: boolean; toggle: () => void }>({
+    open: false,
+    toggle: () => {}
+  })
+  const Picker = ({ children }: { children: ReactNode }) => {
+    const [open, setOpen] = React.useState(false)
+    return (
+      <PickerCtx.Provider value={{ open, toggle: () => setOpen((value) => !value) }}>
+        {children}
+      </PickerCtx.Provider>
+    )
+  }
+  Picker.Trigger = ({ children }: { children: ReactNode }) => {
+    const { toggle } = React.useContext(PickerCtx)
+    return <span onClick={toggle}>{children}</span>
+  }
+  Picker.Content = ({ children }: { children: ReactNode }) => {
+    const { open } = React.useContext(PickerCtx)
+    return open ? <div>{children}</div> : null
+  }
+  Picker.List = ({ children }: { children: ReactNode }) => <div>{children}</div>
+  Picker.Item = ({ label, onClick }: { label: string; onClick?: () => void }) => (
+    <button type="button" onClick={onClick}>
+      {label}
+    </button>
+  )
+  return { Picker }
+})
+
 describe('AppSidebar', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -275,6 +310,19 @@ describe('AppSidebar', () => {
     expect(mocks.notesTreeCreateNote).toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: 'newFolder' }))
     expect(mocks.notesTreeCreateFolder).toHaveBeenCalled()
+  })
+
+  it('opens the new-item menu from the chevron and routes to journal', async () => {
+    render(<AppSidebar currentPage="inbox" viewCounts={{}} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'newItemMenu' }))
+    fireEvent.click(await screen.findByText('journal'))
+
+    expect(mocks.openSidebarItem).toHaveBeenCalledWith({
+      type: 'journal',
+      title: 'Journal',
+      path: '/journal'
+    })
   })
 
   it('opens tags, bookmarks, account settings, and the settings panel via the gear', () => {

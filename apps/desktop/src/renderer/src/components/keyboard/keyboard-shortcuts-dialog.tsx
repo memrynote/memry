@@ -70,6 +70,7 @@ export const getShortcutGroups = (): ShortcutGroup[] => {
         { combos: [[mod, 'T']], description: 'Open the new tab menu' },
         { combos: [[mod, 'W']], description: 'Close tab' },
         { combos: [[mod, shift, 'W']], description: 'Close all tabs in pane' },
+        { combos: [[mod, shift, 'T']], description: 'Reopen closed tab' },
         { combos: [['Ctrl', 'Tab']], description: 'Next tab' },
         { combos: [['Ctrl', shift, 'Tab']], description: 'Previous tab' },
         {

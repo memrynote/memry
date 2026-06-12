@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
     { id: 'item-2', type: 'note' }
   ],
   snoozedItems: [{ id: 'snoozed-1' }],
+  upcomingCount: 1,
   activeJobCount: 1,
   failedJobCount: 1,
   activeTab: null as null | { viewState?: Record<string, unknown> }
@@ -41,6 +42,15 @@ vi.mock('@/hooks/use-inbox', () => ({
   useInboxJobs: () => ({
     activeCount: mocks.activeJobCount,
     failedCount: mocks.failedJobCount
+  })
+}))
+
+vi.mock('@/hooks/use-inbox-reminders-panel', () => ({
+  useInboxRemindersPanel: () => ({
+    upcoming: [],
+    past: [],
+    upcomingCount: mocks.upcomingCount,
+    isLoading: false
   })
 }))
 
@@ -192,6 +202,7 @@ describe('InboxPage', () => {
       { id: 'item-2', type: 'note' }
     ]
     mocks.snoozedItems = [{ id: 'snoozed-1' }]
+    mocks.upcomingCount = 1
     mocks.activeJobCount = 1
     mocks.failedJobCount = 1
     mocks.activeTab = null
@@ -221,13 +232,12 @@ describe('InboxPage', () => {
     expect(screen.getByTestId('inbox-list')).toHaveAttribute('data-types', '')
   })
 
-  it('counts reminder inbox items in the snoozed view button', () => {
-    mocks.items = [{ id: 'reminder-1', type: 'reminder' }]
-    mocks.snoozedItems = []
+  it('shows the upcoming reminder count on the snoozed view button', () => {
+    mocks.upcomingCount = 3
 
     render(<InboxPage />)
 
-    expect(screen.getByTitle('view.snoozed.showWithCount:1')).toBeInTheDocument()
+    expect(screen.getByTitle('view.snoozed.showWithCount:3')).toBeInTheDocument()
   })
 
   it('switches views, searches archived items, and closes search when leaving archive', () => {

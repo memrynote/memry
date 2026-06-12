@@ -23,6 +23,10 @@ vi.mock('@/contexts/day-panel-context', () => ({
   useDayPanel: () => ({ isOpen: false, width: 320 })
 }))
 
+vi.mock('@/components/tasks/task-reminder-button', () => ({
+  TaskReminderButton: () => null
+}))
+
 let i18nEn: I18nInstance
 
 function renderWithI18n(ui: ReactElement) {
@@ -98,12 +102,12 @@ describe('TaskDetailDrawer — editable properties', () => {
     vi.clearAllMocks()
   })
 
-  it('renders the task drawer 30 percent narrower than the previous 380px width', () => {
+  it('renders the task drawer at the default 266px width', () => {
     renderWithI18n(<TaskDetailDrawer {...defaultProps} />)
 
     const drawer = screen.getByRole('complementary')
-    expect(drawer).toHaveClass('w-[266px]')
-    expect(drawer.firstElementChild).toHaveClass('w-[266px]')
+    expect(drawer).toHaveStyle({ width: '266px' })
+    expect(drawer.firstElementChild).toHaveStyle({ width: '266px' })
   })
 
   describe('status editing', () => {

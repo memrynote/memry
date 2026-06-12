@@ -6,6 +6,7 @@ import { getI18n } from 'react-i18next'
 import {
   Calendar2,
   CloudOff,
+  ChevronDown,
   ChevronsDown,
   ChevronsUp,
   FilePlus,
@@ -33,6 +34,8 @@ import { SidebarTagList } from '@/components/sidebar/sidebar-tag-list'
 import { SidebarBookmarkList } from '@/components/sidebar/sidebar-bookmark-list'
 import { SidebarDrillDownContainer } from '@/components/sidebar/sidebar-drill-down-container'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { Picker } from '@/components/ui/picker'
+import { NewItemMenuItems } from '@/components/tabs/new-item-menu-items'
 import { useSelectedFolder } from '@/contexts/selected-folder-context'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
@@ -390,17 +393,45 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
       <SidebarContent className="flex flex-col overflow-hidden gap-0">
         {/* Quick Action: New — persistent, stays visible during drill-down */}
         <div className="shrink-0 flex items-center px-3 pt-2 pb-0 group-data-[collapsible=icon]:hidden">
-          <button
-            type="button"
-            onClick={() => void handleNewNote()}
-            className="flex flex-1 items-center justify-center gap-2 h-[30px] rounded-[5px] bg-sidebar-surface hover:bg-black/[0.06] dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
-            title={tPhaseF('phaseF.componentsAppSidebar.newNoteN')}
-          >
-            <Plus className="size-[15px] text-muted-foreground/70" />
-            <span className="text-[13px] text-muted-foreground/70 font-normal">
-              {tPhaseF('phaseF.componentsAppSidebar.new')}
-            </span>
-          </button>
+          <div className="flex flex-1 items-center h-[30px] rounded-[5px] bg-sidebar-surface overflow-hidden">
+            <button
+              type="button"
+              onClick={() => void handleNewNote()}
+              className="flex flex-1 items-center justify-center gap-2 h-full hover:bg-black/[0.06] dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
+              title={tPhaseF('phaseF.componentsAppSidebar.newNoteN')}
+            >
+              <Plus className="size-[15px] text-muted-foreground/70" />
+              <span className="text-[13px] text-muted-foreground/70 font-normal">
+                {tPhaseF('phaseF.componentsAppSidebar.new')}
+              </span>
+            </button>
+            <Picker>
+              <Picker.Trigger asChild>
+                <button
+                  type="button"
+                  aria-label={tPhaseF('phaseF.componentsAppSidebar.newItemMenu')}
+                  className="flex h-full w-7 shrink-0 items-center justify-center border-s border-black/[0.06] dark:border-white/[0.08] hover:bg-black/[0.06] dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
+                >
+                  <ChevronDown className="size-3.5 text-muted-foreground/70" />
+                </button>
+              </Picker.Trigger>
+              <Picker.Content width={200} align="end" side="bottom">
+                <NewItemMenuItems
+                  actions={{
+                    onNewNote: () => void handleNewNote(),
+                    onJournal: () =>
+                      openSidebarItem({ type: 'journal', title: 'Journal', path: '/journal' }),
+                    onCalendar: () =>
+                      openSidebarItem({ type: 'calendar', title: 'Calendar', path: '/calendar' }),
+                    onInbox: () =>
+                      openSidebarItem({ type: 'inbox', title: 'Inbox', path: '/inbox' }),
+                    onTasks: () =>
+                      openSidebarItem({ type: 'tasks', title: 'Tasks', path: '/tasks' })
+                  }}
+                />
+              </Picker.Content>
+            </Picker>
+          </div>
         </div>
         <SidebarNav
           items={mainNav}

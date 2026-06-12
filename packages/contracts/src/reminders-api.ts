@@ -26,7 +26,7 @@ export { reminderTargetType, reminderStatus, type ReminderTargetType, type Remin
 // Zod Schemas
 // ============================================================================
 
-const ReminderTargetTypeSchema = z.enum(['note', 'journal', 'highlight'])
+const ReminderTargetTypeSchema = z.enum(['note', 'journal', 'highlight', 'task'])
 const ReminderStatusSchema = z.enum(['pending', 'triggered', 'dismissed', 'snoozed'])
 
 /**
@@ -53,6 +53,13 @@ export const CreateReminderSchema = z.discriminatedUnion('targetType', [
     highlightText: z.string().min(1).max(5000),
     highlightStart: z.number().int().min(0),
     highlightEnd: z.number().int().min(0),
+    remindAt: z.string().datetime(),
+    title: z.string().max(200).optional(),
+    note: z.string().max(1000).optional()
+  }),
+  z.object({
+    targetType: z.literal('task'),
+    targetId: z.string().min(1),
     remindAt: z.string().datetime(),
     title: z.string().max(200).optional(),
     note: z.string().max(1000).optional()
@@ -151,6 +158,8 @@ export interface ReminderWithTarget extends Reminder {
   targetExists: boolean
   /** For highlights: whether the text still exists in the note */
   highlightExists?: boolean
+  /** For tasks: the project the task belongs to (used to open the Tasks page) */
+  projectId?: string | null
 }
 
 export interface ReminderCreateResponse {

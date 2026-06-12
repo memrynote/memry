@@ -17,6 +17,8 @@ import { useT } from '@memry/i18n/renderer'
 
 import { cn } from '@/lib/utils'
 import { useDayPanel } from '@/contexts/day-panel-context'
+import { useResizablePanel } from '@/hooks/use-resizable-panel'
+import { PanelResizeRail } from '@/components/ui/panel-resize-rail'
 
 import { Button } from '@/components/ui/button'
 
@@ -34,6 +36,11 @@ const log = createLogger('Component:InboxDetailPanel')
 
 // Panel can work with either full or list item types
 type DetailItem = InboxItem | InboxItemListItem
+
+const INBOX_DETAIL_WIDTH_KEY = 'inbox-detail-width'
+const INBOX_DETAIL_WIDTH_DEFAULT_PX = 380
+const INBOX_DETAIL_WIDTH_MIN_PX = 300
+const INBOX_DETAIL_WIDTH_MAX_PX = 560
 
 // =============================================================================
 // Types
@@ -69,6 +76,17 @@ export const InboxDetailPanel = ({
   const { t } = useT('inbox')
   const { enabled: aiEnabled } = useAISettingsContext()
   const { isOpen: isDayPanelOpen, width: dayPanelWidth } = useDayPanel()
+  const {
+    width,
+    setWidth,
+    isResizing: isPanelResizing,
+    setIsResizing: setIsPanelResizing
+  } = useResizablePanel({
+    storageKey: INBOX_DETAIL_WIDTH_KEY,
+    defaultPx: INBOX_DETAIL_WIDTH_DEFAULT_PX,
+    minPx: INBOX_DETAIL_WIDTH_MIN_PX,
+    maxPx: INBOX_DETAIL_WIDTH_MAX_PX
+  })
   const queryClient = useQueryClient()
 
   // Retry transcription mutation
@@ -345,12 +363,19 @@ export const InboxDetailPanel = ({
       data-state={isOpen ? 'open' : 'closed'}
       className={cn(
         'fixed top-[37px] bottom-0 z-10 border-s bg-surface overflow-hidden',
-        'transition-[width,opacity,right] duration-200 ease-out',
-        isOpen ? 'w-[380px] opacity-100 border-border' : 'w-0 opacity-0 border-transparent'
+        'transition-[opacity,right] duration-200 ease-out',
+        !isPanelResizing && 'transition-[width,opacity,right] duration-200 ease-out',
+        isOpen ? 'opacity-100 border-border' : 'opacity-0 border-transparent'
       )}
-      style={{ right: isDayPanelOpen ? `${dayPanelWidth}px` : 0 }}
+      style={{
+        width: isOpen ? `${width}px` : 0,
+        right: isDayPanelOpen ? `${dayPanelWidth}px` : 0
+      }}
     >
-      <div className="w-[380px] h-full flex flex-col overflow-hidden [font-synthesis:none] text-[12px] leading-4">
+      <div
+        style={{ width: `${width}px` }}
+        className="h-full flex flex-col overflow-hidden [font-synthesis:none] text-[12px] leading-4"
+      >
         {isLoading ? (
           <ContentSkeleton />
         ) : item ? (
@@ -527,6 +552,17 @@ export const InboxDetailPanel = ({
           </>
         ) : null}
       </div>
+      {isOpen && (
+        <PanelResizeRail
+          width={width}
+          setWidth={setWidth}
+          setIsResizing={setIsPanelResizing}
+          minPx={INBOX_DETAIL_WIDTH_MIN_PX}
+          maxPx={INBOX_DETAIL_WIDTH_MAX_PX}
+          defaultPx={INBOX_DETAIL_WIDTH_DEFAULT_PX}
+          ariaLabel={t('detail.resize')}
+        />
+      )}
     </div>
   )
 }

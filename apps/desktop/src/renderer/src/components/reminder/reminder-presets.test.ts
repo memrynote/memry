@@ -83,4 +83,12 @@ describe('reminder-presets', () => {
     expect(getReminderTimeLabel(new Date(2026, 4, 6, 10, 29))).toBe('Overdue')
     expect(getReminderTimeLabel(new Date(2026, 4, 6, 10, 31))).toBe('in 1 minute')
   })
+
+  it('formats compact reminder labels for tight surfaces', () => {
+    expect(formatReminderDate(new Date(2026, 4, 6, 14, 0), '12h', true)).toBe('Today, 2:00 PM')
+    expect(formatReminderDate(new Date(2026, 4, 7, 9, 30), '24h', true)).toBe('Tomorrow, 09:30')
+    expect(formatReminderDate(new Date(2026, 4, 9, 8, 0), '12h', true)).toBe('Sat, 8:00 AM')
+    expect(formatReminderDate(new Date(2026, 5, 20, 8, 0), '12h', true)).toBe('Jun 20, 8:00 AM')
+    expect(formatReminderDate(new Date(2027, 0, 2, 8, 0), '12h', true)).toBe('Jan 2, 2027, 8:00 AM')
+  })
 })

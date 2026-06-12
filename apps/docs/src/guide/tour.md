@@ -6,7 +6,11 @@ A 60-second lap through the parts of the app you'll use most.
 
 ## The Sidebar
 
-The left sidebar is your primary navigation. Sections from top to bottom:
+The left sidebar is your primary navigation.
+
+At the very top, the **New** button creates a note in one click. Click the chevron on its right to open the create menu — New Note, Journal, Calendar, Inbox, or Tasks — the same menu as the **+** on the tab bar.
+
+Sections from top to bottom:
 
 - **Notes** — recent and pinned notes
 - **Projects** — task projects with their incomplete-task counts

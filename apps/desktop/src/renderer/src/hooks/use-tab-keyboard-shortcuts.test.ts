@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   dispatch: vi.fn(),
   openTab: vi.fn(),
   closeTab: vi.fn(),
+  reopenClosedTab: vi.fn(),
   pinTab: vi.fn(),
   unpinTab: vi.fn(),
   splitView: vi.fn(),
@@ -23,6 +24,7 @@ vi.mock('@/contexts/tabs', () => ({
     dispatch: mocks.dispatch,
     openTab: mocks.openTab,
     closeTab: mocks.closeTab,
+    reopenClosedTab: mocks.reopenClosedTab,
     pinTab: mocks.pinTab,
     unpinTab: mocks.unpinTab,
     splitView: mocks.splitView,
@@ -73,10 +75,13 @@ describe('useTabKeyboardShortcuts', () => {
     window.addEventListener('memry:new-tab-menu', newTabMenu)
 
     renderHook(() => useTabKeyboardShortcuts())
-    expect(mocks.shortcuts).toHaveLength(21)
+    expect(mocks.shortcuts).toHaveLength(22)
 
     shortcut('New tab').action()
     expect(newTabMenu).toHaveBeenCalled()
+
+    shortcut('Reopen closed tab').action()
+    expect(mocks.reopenClosedTab).toHaveBeenCalled()
 
     shortcut('Close tab').action()
     expect(mocks.windowClose).toHaveBeenCalled()

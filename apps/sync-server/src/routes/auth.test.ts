@@ -25,7 +25,8 @@ vi.mock('../services/user', () => ({
   }),
   getUserByEmail: vi.fn().mockResolvedValue(null),
   getUserById: vi.fn().mockResolvedValue({ id: 'user-1', kdf_salt: null }),
-  updateUser: vi.fn().mockResolvedValue(undefined)
+  updateUser: vi.fn().mockResolvedValue(undefined),
+  updateUserEmail: vi.fn().mockResolvedValue(undefined)
 }))
 
 vi.mock('../services/auth', () => ({
@@ -71,6 +72,10 @@ vi.mock('../middleware/auth', () => ({
     c.set('deviceId', 'device-1')
     await next()
   }
+}))
+
+vi.mock('../services/account-deletion', () => ({
+  deleteUserData: vi.fn().mockResolvedValue(undefined)
 }))
 
 vi.mock('../middleware/setup-auth', () => ({
@@ -124,9 +129,10 @@ vi.mock('jose', () => ({
 
 import { auth } from './auth'
 import { checkEmailRateLimit, hasPendingOtp } from '../services/otp'
-import { getOrCreateUserByEmail, getUserByEmail, getUserById, updateUser } from '../services/user'
+import { getUserByEmail, getUserById, updateUserEmail } from '../services/user'
 import { revokeDeviceTokens, rotateRefreshToken } from '../services/auth'
 import { SYNC_PLAN_LIMITS } from '../services/entitlements'
+import { deleteUserData } from '../services/account-deletion'
 import { jwtVerify } from 'jose'
 
 // ============================================================================
@@ -165,7 +171,8 @@ const createEnv = (options?: {
         const statement = createD1Statement()
         statement.first.mockImplementation(() => Promise.resolve(firstRows.shift() ?? null))
         return statement
-      })
+      }),
+      batch: vi.fn().mockResolvedValue([])
     } as unknown as D1Database,
     STORAGE: {} as R2Bucket,
     USER_SYNC_STATE: {} as DurableObjectNamespace,
@@ -192,6 +199,8 @@ const jsonPost = (path: string, body: Record<string, unknown>) => ({
   body: JSON.stringify(body),
   headers: { 'Content-Type': 'application/json' }
 })
+
+const getAuthed = () => ({ method: 'GET' as const })
 
 function readCheckoutTokenPayload(token: string): Record<string, unknown> {
   const [encodedPayload] = token.split('.')
@@ -551,6 +560,57 @@ describe('auth routes', () => {
 
       expect(res.status).toBe(409)
     })
+
+    it('GET /billing/invoices returns 200 with empty invoices array', async () => {
+      const paddleFetch = vi.fn().mockResolvedValue(Response.json({ data: [] }))
+      env = createEnv({
+        paddleFetch,
+        firstRows: [{ paddle_customer_id: 'ctm_1' }]
+      })
+
+      const res = await app.request('/auth/billing/invoices', getAuthed(), env)
+
+      expect(res.status).toBe(200)
+      await expect(res.json()).resolves.toEqual({ invoices: [] })
+    })
+
+    it('GET /billing/invoices returns [] without calling Paddle when no customer id', async () => {
+      env = createEnv({ firstRows: [null] })
+
+      const res = await app.request('/auth/billing/invoices', getAuthed(), env)
+
+      expect(res.status).toBe(200)
+      await expect(res.json()).resolves.toEqual({ invoices: [] })
+    })
+
+    it('GET /billing/invoices/:id/pdf returns the PDF url for an owned transaction', async () => {
+      const paddleFetch = vi
+        .fn()
+        .mockImplementation((url: string) =>
+          Promise.resolve(
+            url.endsWith('/invoice')
+              ? Response.json({ data: { url: 'https://paddle.com/invoice/txn_1.pdf' } })
+              : Response.json({ data: { id: 'txn_1', customer_id: 'ctm_1' } })
+          )
+        )
+      env = createEnv({ paddleFetch, firstRows: [{ paddle_customer_id: 'ctm_1' }] })
+
+      const res = await app.request('/auth/billing/invoices/txn_1/pdf', getAuthed(), env)
+
+      expect(res.status).toBe(200)
+      await expect(res.json()).resolves.toEqual({ url: 'https://paddle.com/invoice/txn_1.pdf' })
+    })
+
+    it('GET /billing/invoices/:id/pdf rejects a transaction owned by another customer', async () => {
+      const paddleFetch = vi
+        .fn()
+        .mockResolvedValue(Response.json({ data: { id: 'txn_1', customer_id: 'ctm_other' } }))
+      env = createEnv({ paddleFetch, firstRows: [{ paddle_customer_id: 'ctm_1' }] })
+
+      const res = await app.request('/auth/billing/invoices/txn_1/pdf', getAuthed(), env)
+
+      expect(res.status).toBe(403)
+    })
   })
 
   // ==========================================================================
@@ -689,6 +749,36 @@ describe('auth routes', () => {
         '/auth/oauth/google?redirect_uri=https://evil.example/callback',
         { method: 'GET' },
         env
+      )
+
+      expect(res.status).toBe(400)
+      const json = (await res.json()) as { error: { code: string } }
+      expect(json.error.code).toBe(ErrorCodes.VALIDATION_ERROR)
+    })
+
+    it('should accept configured web redirect URI', async () => {
+      const webRedirectUri = 'https://memrynote.com/auth/oauth/callback'
+      const envWithWeb = { ...env, WEB_OAUTH_REDIRECT_URI: webRedirectUri }
+      const res = await app.request(
+        `/auth/oauth/google?redirect_uri=${encodeURIComponent(webRedirectUri)}`,
+        { method: 'GET' },
+        envWithWeb
+      )
+
+      expect(res.status).toBe(302)
+      const location = res.headers.get('Location')
+      expect(location).toContain('https://accounts.google.com/o/oauth2/v2/auth')
+    })
+
+    it('should reject non-loopback, non-configured redirect URIs even when WEB_OAUTH_REDIRECT_URI is set', async () => {
+      const envWithWeb = {
+        ...env,
+        WEB_OAUTH_REDIRECT_URI: 'https://memrynote.com/auth/oauth/callback'
+      }
+      const res = await app.request(
+        '/auth/oauth/google?redirect_uri=https://evil.example/callback',
+        { method: 'GET' },
+        envWithWeb
       )
 
       expect(res.status).toBe(400)
@@ -1350,6 +1440,156 @@ describe('auth routes', () => {
 
       expect(res.status).toBe(200)
       expect(await res.json()).toEqual({ success: true })
+    })
+  })
+
+  // ==========================================================================
+  // POST /auth/email/change
+  // ==========================================================================
+
+  describe('POST /auth/email/change', () => {
+    it('sends OTP when new email is free', async () => {
+      vi.mocked(getUserByEmail).mockResolvedValueOnce(null)
+
+      const res = await app.request(
+        '/auth/email/change',
+        jsonPost('/auth/email/change', { newEmail: 'new@example.com' }),
+        env
+      )
+
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual({ success: true, expiresIn: 600 })
+    })
+
+    it('returns 409 when new email is already in use', async () => {
+      vi.mocked(getUserByEmail).mockResolvedValueOnce({ id: 'user-2' } as never)
+
+      const res = await app.request(
+        '/auth/email/change',
+        jsonPost('/auth/email/change', { newEmail: 'taken@example.com' }),
+        env
+      )
+
+      expect(res.status).toBe(409)
+      const json = (await res.json()) as { error: { code: string } }
+      expect(json.error.code).toBe(ErrorCodes.VALIDATION_ERROR)
+    })
+  })
+
+  // ==========================================================================
+  // POST /auth/email/change/verify
+  // ==========================================================================
+
+  describe('POST /auth/email/change/verify', () => {
+    it('verifies OTP and updates email', async () => {
+      vi.mocked(getUserByEmail).mockResolvedValueOnce(null)
+
+      const res = await app.request(
+        '/auth/email/change/verify',
+        jsonPost('/auth/email/change/verify', { newEmail: 'new@example.com', code: '123456' }),
+        env
+      )
+
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual({ success: true })
+      expect(updateUserEmail).toHaveBeenCalledWith(env.DB, 'user-1', 'new@example.com')
+    })
+  })
+
+  // ==========================================================================
+  // POST /auth/logout-all
+  // ==========================================================================
+
+  describe('POST /auth/logout-all', () => {
+    it('revokes all devices and tokens and returns success', async () => {
+      const res = await app.request('/auth/logout-all', { method: 'POST' }, env)
+
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual({ success: true })
+    })
+  })
+
+  // ==========================================================================
+  // DELETE /auth/account
+  // ==========================================================================
+
+  describe('DELETE /auth/account', () => {
+    const makeDeleteAuthed = (body: Record<string, unknown>) =>
+      new Request('http://localhost/auth/account', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer mock-access-token'
+        },
+        body: JSON.stringify(body)
+      })
+
+    const makeEnvWithStorage = () => {
+      const storage: Pick<R2Bucket, 'list' | 'delete'> = {
+        list: vi.fn().mockResolvedValue({ objects: [], truncated: false }),
+        delete: vi.fn().mockResolvedValue(undefined)
+      }
+      return {
+        ...env,
+        STORAGE: storage as unknown as R2Bucket
+      }
+    }
+
+    it('returns 200 and wipes user data when OTP is valid', async () => {
+      vi.mocked(getUserById).mockResolvedValueOnce({
+        id: 'user-1',
+        email: 'test@example.com'
+      } as never)
+
+      const envWithStorage = makeEnvWithStorage()
+      const res = await app.request(makeDeleteAuthed({ code: '123456' }), undefined, envWithStorage)
+
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual({ success: true })
+      expect(deleteUserData).toHaveBeenCalledWith(
+        envWithStorage.DB,
+        envWithStorage.STORAGE,
+        'user-1',
+        'test@example.com'
+      )
+    })
+
+    it('returns 400 when code is missing or invalid format', async () => {
+      const envWithStorage = makeEnvWithStorage()
+      const res = await app.request(makeDeleteAuthed({ code: 'bad' }), undefined, envWithStorage)
+
+      expect(res.status).toBe(400)
+      const json = (await res.json()) as { error: { code: string } }
+      expect(json.error.code).toBe(ErrorCodes.VALIDATION_ERROR)
+    })
+
+    it('returns 404 when user is not found', async () => {
+      vi.mocked(getUserById).mockResolvedValueOnce(null as never)
+
+      const envWithStorage = makeEnvWithStorage()
+      const res = await app.request(makeDeleteAuthed({ code: '123456' }), undefined, envWithStorage)
+
+      expect(res.status).toBe(404)
+      const json = (await res.json()) as { error: { code: string } }
+      expect(json.error.code).toBe(ErrorCodes.NOT_FOUND)
+    })
+
+    it('returns 401 when OTP verification fails', async () => {
+      vi.mocked(getUserById).mockResolvedValueOnce({
+        id: 'user-1',
+        email: 'test@example.com'
+      } as never)
+      const { verifyOtp } = await import('../services/otp')
+      vi.mocked(verifyOtp).mockRejectedValueOnce(
+        new AppError(ErrorCodes.AUTH_INVALID_OTP, 'Invalid OTP', 401)
+      )
+
+      const envWithStorage = makeEnvWithStorage()
+      const res = await app.request(makeDeleteAuthed({ code: '000000' }), undefined, envWithStorage)
+
+      expect(res.status).toBe(401)
+      const json = (await res.json()) as { error: { code: string } }
+      expect(json.error.code).toBe(ErrorCodes.AUTH_INVALID_OTP)
     })
   })
 })

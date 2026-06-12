@@ -170,7 +170,10 @@ export const InfoSection = memo(function InfoSection({
 
       {/* Collapsible Content */}
       {effectiveExpanded && (
-        <div id="properties-content">
+        <div
+          id="properties-content"
+          className={cn(variant === 'embedded' && 'mt-1.5 border-t border-border/60 pt-2.5')}
+        >
           {/* Section Header */}
           {folderProperties && folderProperties.length > 0 && (
             <div className="mb-3 flex items-center gap-1">

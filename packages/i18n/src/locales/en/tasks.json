@@ -29,11 +29,26 @@
     "status": "Status",
     "priority": "Priority",
     "dueDate": "Due Date",
+    "reminder": "Reminder",
     "project": "Project",
     "repeat": "Repeat",
     "createAnother": "Create another",
     "delete": "Delete task",
     "created": "Created {date}"
+  },
+  "reminders": {
+    "summary": "Reminder: {date}",
+    "summaryWithMore": "Reminder: {date} (+{count} more)",
+    "hasReminders": "Has reminders",
+    "setReminder": "Set reminder",
+    "toast": {
+      "set": "Reminder set",
+      "setFailed": "Failed to set reminder",
+      "updated": "Reminder updated",
+      "updateFailed": "Failed to update reminder",
+      "deleted": "Reminder deleted",
+      "deleteFailed": "Failed to delete reminder"
+    }
   },
   "filters": {
     "filter": "Filter",
@@ -50,6 +65,7 @@
   },
   "drawer": {
     "close": "Close task details",
+    "resize": "Resize panel",
     "subIssues": "Sub-issues",
     "addSubIssue": "Add sub-issue",
     "subIssuePlaceholder": "Add sub-issue…",

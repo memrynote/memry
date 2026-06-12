@@ -11,8 +11,18 @@ import { useKeyboardShortcuts, type KeyboardShortcut } from './use-keyboard-shor
  * Hook providing all tab-related keyboard shortcuts
  */
 export const useTabKeyboardShortcuts = (): void => {
-  const { state, dispatch, openTab, closeTab, pinTab, unpinTab, splitView, navBack, navForward } =
-    useTabs()
+  const {
+    state,
+    dispatch,
+    openTab,
+    closeTab,
+    reopenClosedTab,
+    pinTab,
+    unpinTab,
+    splitView,
+    navBack,
+    navForward
+  } = useTabs()
 
   const shortcuts = useMemo<KeyboardShortcut[]>(() => {
     const activeGroup = state.tabGroups[state.activeGroupId]
@@ -64,6 +74,16 @@ export const useTabKeyboardShortcuts = (): void => {
           })
         },
         description: 'Close all tabs'
+      },
+
+      // Reopen closed tab (⌘⇧T) — like Chrome
+      {
+        key: 't',
+        modifiers: { meta: true, shift: true },
+        action: () => {
+          reopenClosedTab()
+        },
+        description: 'Reopen closed tab'
       },
 
       // =====================================================================
@@ -230,6 +250,7 @@ export const useTabKeyboardShortcuts = (): void => {
     dispatch,
     openTab,
     closeTab,
+    reopenClosedTab,
     pinTab,
     unpinTab,
     splitView,

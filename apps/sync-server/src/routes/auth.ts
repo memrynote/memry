@@ -9,7 +9,10 @@ import {
   DeviceRegisterRequestSchema,
   FirstDeviceSetupRequestSchema,
   RefreshTokenRequestSchema,
-  OAuthCallbackSchema
+  OAuthCallbackSchema,
+  EmailChangeRequestSchema,
+  EmailChangeVerifySchema,
+  DeleteAccountRequestSchema
 } from '@memry/contracts/auth-api'
 import { buildOtpEmailHtml } from '../emails/otp-template'
 import { safeBase64Decode } from '../lib/encoding'
@@ -34,11 +37,19 @@ import {
   checkEmailRateLimit,
   hasPendingOtp
 } from '../services/otp'
-import { getOrCreateUserByEmail, getUserByEmail, getUserById, updateUser } from '../services/user'
+import {
+  getOrCreateUserByEmail,
+  getUserByEmail,
+  getUserById,
+  updateUser,
+  updateUserEmail
+} from '../services/user'
 import { signCheckoutToken } from '../services/checkout-token'
 import {
   createPaddlePortalSession,
   getBillingStatus,
+  getPaddleInvoicePdfUrl,
+  listPaddleInvoices,
   reconcilePaddleTransaction
 } from '../services/paddle-billing'
 import {
@@ -46,6 +57,7 @@ import {
   ensureLocalAdminPaidSyncAccessForUser
 } from '../services/entitlements'
 import { captureBusinessEvent, safeWaitUntil } from '../services/posthog'
+import { deleteUserData } from '../services/account-deletion'
 import type { AppContext } from '../types'
 
 const logger = createLogger('Auth')
@@ -258,10 +270,15 @@ auth.get('/oauth/:provider', async (c) => {
   const clientRedirectUri = c.req.query('redirect_uri')
   const redirectUri = clientRedirectUri ?? c.env.GOOGLE_REDIRECT_URI
 
-  if (clientRedirectUri && !/^http:\/\/127\.0\.0\.1(:\d+)?(\/.*)?$/.test(clientRedirectUri)) {
+  const isLoopback =
+    clientRedirectUri != null && /^http:\/\/127\.0\.0\.1(:\d+)?(\/.*)?$/.test(clientRedirectUri)
+  const isConfiguredWeb =
+    clientRedirectUri != null && clientRedirectUri === c.env.WEB_OAUTH_REDIRECT_URI
+
+  if (clientRedirectUri && !isLoopback && !isConfiguredWeb) {
     throw new AppError(
       ErrorCodes.VALIDATION_ERROR,
-      'redirect_uri must be a 127.0.0.1 loopback address',
+      'redirect_uri must be a 127.0.0.1 loopback address or the configured web origin',
       400
     )
   }
@@ -640,6 +657,18 @@ auth.post('/billing/portal-session', authMiddleware, async (c) => {
   return c.json(await createPaddlePortalSession(c.env, userId))
 })
 
+auth.get('/billing/invoices', authMiddleware, async (c) => {
+  const userId = c.get('userId')!
+  const invoices = await listPaddleInvoices(c.env, userId)
+  return c.json({ invoices })
+})
+
+auth.get('/billing/invoices/:id/pdf', authMiddleware, async (c) => {
+  const userId = c.get('userId')!
+  const url = await getPaddleInvoicePdfUrl(c.env, userId, c.req.param('id'))
+  return c.json({ url })
+})
+
 // POST /refresh
 auth.post('/refresh', refreshRateLimit, async (c) => {
   const body = await c.req.json()
@@ -698,5 +727,78 @@ auth.post('/logout', authMiddleware, async (c) => {
     })
   }
 
+  return c.json({ success: true })
+})
+
+// POST /email/change — request OTP to new email address
+auth.post('/email/change', authMiddleware, async (c) => {
+  const body = await c.req.json()
+  const parsed = EmailChangeRequestSchema.safeParse(body)
+  if (!parsed.success) {
+    throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid request body', 400)
+  }
+  const { newEmail } = parsed.data
+  const existing = await getUserByEmail(c.env.DB, newEmail)
+  if (existing) {
+    throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Email already in use', 409)
+  }
+  // Rate-limit per target address so this endpoint can't be used to bomb an
+  // arbitrary inbox with "Confirm your new Memry email" messages (mirrors
+  // /otp/request).
+  await checkEmailRateLimit(c.env.DB, newEmail)
+  const code = generateOtp()
+  await storeOtp(c.env.DB, newEmail, code, c.env.OTP_HMAC_KEY)
+  const html = buildOtpEmailHtml(code, OTP_EXPIRY_MINUTES)
+  await sendEmail(newEmail, 'Confirm your new Memry email', html, c.env.RESEND_API_KEY)
+  return c.json({ success: true, expiresIn: OTP_EXPIRY_MINUTES * 60 })
+})
+
+// POST /email/change/verify — verify OTP and update email
+auth.post('/email/change/verify', authMiddleware, async (c) => {
+  const body = await c.req.json()
+  const parsed = EmailChangeVerifySchema.safeParse(body)
+  if (!parsed.success) {
+    throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid request body', 400)
+  }
+  const { newEmail, code } = parsed.data
+  const existing = await getUserByEmail(c.env.DB, newEmail)
+  if (existing) {
+    throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Email already in use', 409)
+  }
+  await verifyOtp(c.env.DB, newEmail, code, c.env.OTP_HMAC_KEY)
+  const userId = c.get('userId')!
+  await updateUserEmail(c.env.DB, userId, newEmail)
+  return c.json({ success: true })
+})
+
+// POST /logout-all — revoke all devices and refresh tokens for the authenticated user
+auth.post('/logout-all', authMiddleware, async (c) => {
+  const userId = c.get('userId')!
+  const now = Math.floor(Date.now() / 1000)
+  await c.env.DB.batch([
+    c.env.DB.prepare(
+      'UPDATE devices SET revoked_at = ?, updated_at = ? WHERE user_id = ? AND revoked_at IS NULL'
+    ).bind(now, now, userId),
+    c.env.DB.prepare(
+      'UPDATE refresh_tokens SET revoked = 1 WHERE user_id = ? AND revoked = 0'
+    ).bind(userId)
+  ])
+  return c.json({ success: true })
+})
+
+// DELETE /account — irreversibly delete the authenticated user's account after OTP verification
+auth.delete('/account', authMiddleware, async (c) => {
+  const body = await c.req.json()
+  const parsed = DeleteAccountRequestSchema.safeParse(body)
+  if (!parsed.success) {
+    throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid request body', 400)
+  }
+  const userId = c.get('userId')!
+  const user = await getUserById(c.env.DB, userId)
+  if (!user) {
+    throw new AppError(ErrorCodes.NOT_FOUND, 'User not found', 404)
+  }
+  await verifyOtp(c.env.DB, user.email, parsed.data.code, c.env.OTP_HMAC_KEY)
+  await deleteUserData(c.env.DB, c.env.STORAGE, userId, user.email)
   return c.json({ success: true })
 })

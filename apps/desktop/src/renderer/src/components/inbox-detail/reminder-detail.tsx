@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useT } from '@memry/i18n/renderer'
 
 import { cn } from '@/lib/utils'
-import { BellRing, FileText, Calendar, Clock, ChevronRight } from '@/lib/icons'
+import { BellRing, FileText, Calendar, Clock, ChevronRight, CheckSquare } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { SnoozePicker } from '@/components/snooze/snooze-picker'
 import { inOneHour, tomorrow, nextWeek } from '@/components/snooze/snooze-presets'
@@ -11,6 +11,7 @@ import { inboxService } from '@/services/inbox-service'
 import { inboxKeys } from '@/hooks/use-inbox'
 import { useTabs } from '@/contexts/tabs'
 import { createLogger } from '@/lib/logger'
+import { buildReminderTargetTab } from '@/lib/open-reminder-target'
 import type { InboxItem, InboxItemListItem } from '@/types'
 import type { ReminderMetadata } from '@memry/contracts/inbox-api'
 
@@ -43,6 +44,8 @@ function getTargetIcon(targetType: string) {
   switch (targetType) {
     case 'journal':
       return Calendar
+    case 'task':
+      return CheckSquare
     default:
       return FileText
   }
@@ -103,43 +106,22 @@ export function ReminderDetail({ item }: ReminderDetailProps): React.JSX.Element
 
     inboxService.markViewed(item.id).catch(() => {})
 
-    switch (metadata.targetType) {
-      case 'note':
-      case 'highlight':
-        openTab({
-          type: 'note',
-          title: metadata.targetTitle || t('reminder.noteFallback'),
-          icon: 'file-text',
-          path: `/notes/${metadata.targetId}`,
-          entityId: metadata.targetId,
-          isPinned: false,
-          isModified: false,
-          isPreview: false,
-          isDeleted: false,
-          viewState:
-            metadata.targetType === 'highlight'
-              ? {
-                  highlightStart: metadata.highlightStart,
-                  highlightEnd: metadata.highlightEnd,
-                  highlightText: metadata.highlightText
-                }
-              : undefined
-        })
-        break
-      case 'journal':
-        openTab({
-          type: 'journal',
-          title: t('reminder.journalFallback'),
-          icon: 'book-open',
-          path: '/journal',
-          isPinned: false,
-          isModified: false,
-          isPreview: false,
-          isDeleted: false,
-          viewState: { date: metadata.targetId }
-        })
-        break
-    }
+    openTab(
+      buildReminderTargetTab({
+        targetType: metadata.targetType,
+        targetId: metadata.targetId,
+        targetTitle: metadata.targetTitle,
+        projectId: metadata.projectId,
+        highlightStart: metadata.highlightStart,
+        highlightEnd: metadata.highlightEnd,
+        highlightText: metadata.highlightText,
+        fallbacks: {
+          note: t('reminder.noteFallback'),
+          journal: t('reminder.journalFallback'),
+          task: t('reminder.taskFallback')
+        }
+      })
+    )
   }, [metadata, item.id, openTab, t])
 
   if (!metadata) {

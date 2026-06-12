@@ -25,6 +25,9 @@ export type LandingEventName =
   | 'landing_demo_unmute'
   | 'landing_demo_expand'
   | 'landing_calculator_bundle_select'
+  | 'landing_account_open'
+  | 'landing_account_signin'
+  | 'landing_account_signout'
 
 export type LandingCampaignKey =
   | 'utm_source'

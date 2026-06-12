@@ -1,5 +1,5 @@
 import { useCallback, useState, useEffect } from 'react'
-import { Plus, FileText, BookOpen, Calendar, Inbox, ListTodo } from '@/lib/icons'
+import { Plus } from '@/lib/icons'
 import { useTabs } from '@/contexts/tabs'
 import { notesService } from '@/services/notes-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
@@ -10,12 +10,8 @@ import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useT } from '@memry/i18n/renderer'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger
-} from '@/components/ui/dropdown-menu'
+import { Picker } from '@/components/ui/picker'
+import { NewItemMenuItems } from './new-item-menu-items'
 import { getI18n } from 'react-i18next'
 
 const log = createLogger('NewTabMenu')
@@ -145,10 +141,10 @@ export function NewTabMenu({ groupId }: NewTabMenuProps): React.JSX.Element {
   }, [openTab, groupId])
 
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
+    <Picker open={open} onOpenChange={setOpen}>
       <Tooltip>
         <TooltipTrigger asChild>
-          <DropdownMenuTrigger asChild>
+          <Picker.Trigger asChild>
             <button
               type="button"
               className={cn(
@@ -162,7 +158,7 @@ export function NewTabMenu({ groupId }: NewTabMenuProps): React.JSX.Element {
             >
               <Plus className="w-4 h-4" />
             </button>
-          </DropdownMenuTrigger>
+          </Picker.Trigger>
         </TooltipTrigger>
         <TooltipContent
           side="bottom"
@@ -171,28 +167,17 @@ export function NewTabMenu({ groupId }: NewTabMenuProps): React.JSX.Element {
           {tPhaseF('phaseF.componentsTabsNewTabMenu.newTab2')}
         </TooltipContent>
       </Tooltip>
-      <DropdownMenuContent side="bottom" align="start" className="min-w-[180px]">
-        <DropdownMenuItem onClick={() => void handleNewNote()}>
-          <FileText className="size-4" />
-          <span>{tPhaseF('phaseF.componentsTabsNewTabMenu.newNote')}</span>
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={handleNewJournal}>
-          <BookOpen className="size-4" />
-          <span>{tPhaseF('phaseF.componentsTabsNewTabMenu.journal')}</span>
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={handleOpenCalendar}>
-          <Calendar className="size-4" />
-          <span>{tPhaseF('phaseF.componentsTabsNewTabMenu.calendar')}</span>
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={handleOpenInbox}>
-          <Inbox className="size-4" />
-          <span>{tPhaseF('phaseF.componentsTabsNewTabMenu.inboxCapture')}</span>
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={handleNewTask}>
-          <ListTodo className="size-4" />
-          <span>{tPhaseF('phaseF.componentsTabsNewTabMenu.tasks')}</span>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+      <Picker.Content width={200} align="start" side="bottom">
+        <NewItemMenuItems
+          actions={{
+            onNewNote: () => void handleNewNote(),
+            onJournal: handleNewJournal,
+            onCalendar: handleOpenCalendar,
+            onInbox: handleOpenInbox,
+            onTasks: handleNewTask
+          }}
+        />
+      </Picker.Content>
+    </Picker>
   )
 }

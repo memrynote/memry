@@ -15,7 +15,11 @@ import { BulkTagPopover } from '@/components/bulk/bulk-tag-popover'
 import { ArchiveConfirmationDialog } from '@/components/bulk/archive-confirmation-dialog'
 import { EmptyState } from '@/components/empty-state/empty-state'
 import { inboxService } from '@/services/inbox-service'
-import type { ReminderMetadata, InboxItemType } from '@memry/contracts/inbox-api'
+import { buildReminderTargetTab } from '@/lib/open-reminder-target'
+import { useInboxRemindersPanel } from '@/hooks/use-inbox-reminders-panel'
+import { InboxRemindersList } from '@/components/inbox/inbox-reminders-list'
+import type { ReminderPanelEntry } from '@/lib/reminder-panel'
+import type { InboxItemType } from '@memry/contracts/inbox-api'
 import { detectClusters, getClusterKey } from '@/lib/ai-clustering'
 import { cn } from '@/lib/utils'
 import { isInputFocused } from '@/hooks/use-keyboard-shortcuts'
@@ -66,6 +70,7 @@ export function InboxListView({
     error,
     refetch
   } = useInboxList({ includeSnoozed: showSnoozedItems })
+  const remindersPanel = useInboxRemindersPanel()
   const fileItemMutation = useFileInboxItem()
   const _archiveItemMutation = useArchiveInboxItem()
   const bulkArchiveMutation = useBulkArchiveInboxItems()
@@ -358,52 +363,38 @@ export function InboxListView({
     [items, fileItemMutation, queryClient, scheduleEmptyStateReveal, clearEmptyStateDelay, t]
   )
 
-  const _openReminderTarget = useCallback(
-    async (item: (typeof items)[0]): Promise<void> => {
-      const metadata = item.metadata as ReminderMetadata | undefined
-      if (!metadata) return
-
-      await inboxService.markViewed(item.id)
-
-      switch (metadata.targetType) {
-        case 'note':
-        case 'highlight':
-          openTab({
-            type: 'note',
-            title: metadata.targetTitle || 'Note',
-            icon: 'file-text',
-            path: `/notes/${metadata.targetId}`,
-            entityId: metadata.targetId,
-            isPinned: false,
-            isModified: false,
-            isPreview: false,
-            isDeleted: false,
-            viewState:
-              metadata.targetType === 'highlight'
-                ? {
-                    highlightStart: metadata.highlightStart,
-                    highlightEnd: metadata.highlightEnd,
-                    highlightText: metadata.highlightText
-                  }
-                : undefined
-          })
-          break
-        case 'journal':
-          openTab({
-            type: 'journal',
-            title: 'Journal',
-            icon: 'book-open',
-            path: '/journal',
-            isPinned: false,
-            isModified: false,
-            isPreview: false,
-            isDeleted: false,
-            viewState: { date: metadata.targetId }
-          })
-          break
+  const handleOpenReminderEntry = useCallback(
+    (entry: ReminderPanelEntry): void => {
+      // Snoozed capture rows open in the inbox detail panel, like a normal click.
+      if (entry.kind === 'inbox-item') {
+        setActiveDetailItemId(entry.item.id)
+        setFocusedItemIdState(entry.item.id)
+        return
       }
+
+      // A fired reminder row carries the inbox item id — mark it viewed on open.
+      if (entry.inboxItemId) {
+        void inboxService.markViewed(entry.inboxItemId)
+      }
+
+      openTab(
+        buildReminderTargetTab({
+          targetType: entry.nav.targetType,
+          targetId: entry.nav.targetId,
+          targetTitle: entry.nav.targetTitle,
+          projectId: entry.nav.projectId,
+          highlightStart: entry.nav.highlightStart,
+          highlightEnd: entry.nav.highlightEnd,
+          highlightText: entry.nav.highlightText,
+          fallbacks: {
+            note: t('reminder.noteFallback'),
+            journal: t('reminder.journalFallback'),
+            task: t('reminder.taskFallback')
+          }
+        })
+      )
     },
-    [openTab]
+    [openTab, t]
   )
 
   const handlePreview = useCallback(
@@ -871,6 +862,8 @@ export function InboxListView({
                 {t('loading.tryAgain')}
               </Button>
             </div>
+          ) : showSnoozedItems ? (
+            <InboxRemindersList panel={remindersPanel} onOpen={handleOpenReminderEntry} />
           ) : showEmptyState ? (
             <EmptyState
               itemsProcessedToday={itemsProcessedToday}

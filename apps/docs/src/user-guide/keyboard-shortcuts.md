@@ -31,6 +31,8 @@ Default shortcuts. Every entry in the Navigation, Tabs, Editor, and View categor
 | Pin / unpin tab   | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>P</kbd>                |
 | Duplicate tab     | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>D</kbd>                |
 
+> **Reopen closed tab** brings back the most recently closed tab at its original position and focus. Press it repeatedly to walk back through closed tabs, most recent first — it also recovers tabs closed in bulk by **Close all tabs**. The history is kept for the current session only.
+
 ## Split View
 
 Some commands use a chord — press <kbd>⌘</kbd>+<kbd>K</kbd>, release, then press the next key.
