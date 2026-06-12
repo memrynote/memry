@@ -25,6 +25,7 @@
   "visual-type": {
     "event": "Event",
     "imported-event": "Imported event",
+    "note": "Note",
     "task": "Task",
     "reminder": "Reminder",
     "snooze": "Snooze"

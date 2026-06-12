@@ -14,7 +14,8 @@ import { calendarSources } from '@memry/db-schema/schema/calendar-sources'
 import { reminders } from '@memry/db-schema/schema/reminders'
 import { tasks } from '@memry/db-schema/schema/tasks'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
-import type { DataDb } from '../database'
+import { noteCache, noteProperties } from '@memry/db-schema/schema/notes-cache'
+import type { DataDb, IndexDb } from '../database'
 
 const LOCAL_TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
 
@@ -381,16 +382,92 @@ function loadExternalEvents(db: DataDb, input: GetCalendarRangeInput): CalendarP
   }))
 }
 
+// Date-property values are usually full ISO instants (the date editor stores
+// localMidnight.toISOString()), but may also be bare YYYY-MM-DD (hand-written /
+// imported frontmatter). For a bare date, use it directly as the calendar day —
+// parsing it via `new Date()` would treat it as UTC midnight and shift the day
+// for users west of UTC. For a full instant, position by its local day.
+// Known caveat: a date set as an instant on a device in one timezone can render
+// a day off when viewed in a very different timezone. The proper fix is storing
+// date-only values (write-side follow-up), tracked separately.
+function localDayOfDateValue(value: string): string | null {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) return null
+  return toLocalDateString(parsed)
+}
+
+function loadNoteDatePropertyItems(
+  indexDb: IndexDb,
+  enabledNames: string[],
+  input: GetCalendarRangeInput
+): CalendarProjectionItem[] {
+  if (enabledNames.length === 0) return []
+
+  const rows = indexDb
+    .select({
+      noteId: noteProperties.noteId,
+      name: noteProperties.name,
+      value: noteProperties.value,
+      title: noteCache.title
+    })
+    .from(noteProperties)
+    .innerJoin(noteCache, eq(noteProperties.noteId, noteCache.id))
+    .where(
+      and(
+        inArray(noteProperties.name, enabledNames),
+        eq(noteProperties.type, 'date'),
+        isNotNull(noteProperties.value),
+        gte(noteProperties.value, input.startAt),
+        lt(noteProperties.value, input.endAt)
+      )
+    )
+    .all()
+
+  const editability: CalendarProjectionEditability = {
+    canMove: false,
+    canResize: false,
+    canEditText: false,
+    canDelete: false
+  }
+
+  return rows.flatMap((row) => {
+    const dateStr = localDayOfDateValue(row.value!)
+    if (dateStr === null) return []
+    return [
+      {
+        projectionId: `note:${row.noteId}:${row.name}`,
+        sourceType: 'note' as const,
+        sourceId: row.noteId,
+        title: row.title,
+        descriptionPreview: row.name,
+        startAt: toLocalInstant(dateStr, null),
+        endAt: toLocalAllDayEnd(dateStr),
+        isAllDay: true,
+        timezone: LOCAL_TIMEZONE,
+        visualType: 'note' as const,
+        editability,
+        source: nativeSource('memrynote Notes'),
+        binding: null,
+        snoozeOffsetMinutes: null
+      }
+    ]
+  })
+}
+
 export function getCalendarRangeProjection(
   db: DataDb,
-  input: GetCalendarRangeInput
+  indexDb: IndexDb,
+  input: GetCalendarRangeInput,
+  enabledNames: string[]
 ): CalendarRangeResponse {
   const items = sortProjectionItems([
     ...loadMemryEvents(db, input),
     ...loadTaskItems(db, input),
     ...loadReminderItems(db, input),
     ...loadInboxSnoozeItems(db, input),
-    ...loadExternalEvents(db, input)
+    ...loadExternalEvents(db, input),
+    ...loadNoteDatePropertyItems(indexDb, enabledNames, input)
   ])
 
   return { items }
