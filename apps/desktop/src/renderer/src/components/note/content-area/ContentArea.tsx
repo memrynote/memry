@@ -39,6 +39,7 @@ import { WikiLinkPreviewCard } from './wiki-link-preview-card'
 import { LinkMentionPreviewCard } from './link-mention-preview-card'
 import { BlockDropIndicator, EmptyDocumentDropIndicator } from './block-drop-indicator'
 import { getCalloutSlashMenuItem } from './callout-block'
+import { orderSlashMenuItemsByGroup } from './slash-menu-utils'
 import { getTaskSlashMenuItem } from './task-block'
 import { TaskPrefetchProvider } from './task-block/task-prefetch-context'
 import { tasksService } from '@/services/tasks-service'
@@ -983,7 +984,12 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                 subtext: t('editor.callout.subtext')
               })
               const taskItem = getTaskSlashMenuItem(editor, noteId)
-              const all = [...defaults, calloutItem, taskItem, ...aiItems]
+              const all = orderSlashMenuItemsByGroup([
+                ...defaults,
+                calloutItem,
+                taskItem,
+                ...aiItems
+              ])
               if (!query) return all
               const lower = query.toLowerCase()
               return all.filter(

@@ -37,6 +37,7 @@
     "test:release": "node --test scripts/release-utils.test.mjs scripts/release-notes-utils.test.mjs scripts/reddit-release-utils.test.mjs scripts/pre-push-policy.test.mjs scripts/package-scripts.test.mjs apps/desktop/scripts/build-packaged-app-utils.test.cjs apps/desktop/scripts/check-packaged-runtime-deps-utils.test.cjs",
     "test:desktop": "pnpm --filter @memry/desktop test",
     "test:sync-server": "pnpm --filter @memry/sync-server test",
+    "test:sync-harness": "pnpm --filter @memry/sync-harness build:worker && pnpm --filter @memry/sync-harness test",
     "test:coverage": "pnpm --filter @memry/desktop test:coverage",
     "test:e2e": "pnpm --filter @memry/desktop test:e2e",
     "lint": "pnpm lint:desktop",

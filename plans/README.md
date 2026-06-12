@@ -33,7 +33,7 @@ below — run `pnpm audit --prod` separately if you want that).
 | 008  | Allowlist `openExternal` schemes + explicit window hardening       | P2       | M      | MED  | [#549](https://github.com/memrynote/memry/issues/549) | DONE   |
 | 007  | Concurrent (bounded) R2 reads in `pullItems`                       | P2       | M      | LOW  | [#548](https://github.com/memrynote/memry/issues/548) | DONE   |
 | 008  | Allowlist `openExternal` schemes + explicit window hardening       | P2       | M      | MED  | [#549](https://github.com/memrynote/memry/issues/549) | TODO   |
-| 009  | Run the cross-boundary sync protocol harness in CI                 | P3       | M      | MED  | [#550](https://github.com/memrynote/memry/issues/550) | TODO   |
+| 009  | Run the cross-boundary sync protocol harness in CI                 | P3       | M      | MED  | [#550](https://github.com/memrynote/memry/issues/550) | DONE   |
 | 010  | Web clipper design spec (transport, clip contract, store timeline) | P1       | M      | LOW  | —                                                     | TODO   |
 | 011  | Importers design spec (Obsidian + Markdown folder v1)              | P1       | M      | LOW  | —                                                     | TODO   |
 | 012  | Task focus mode design spec (bucket axis, focus feed, daily nudge) | P2       | M      | LOW  | —                                                     | TODO   |
