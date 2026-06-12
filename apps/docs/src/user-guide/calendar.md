@@ -58,6 +58,14 @@ If a Google Calendar account is linked in [Settings → Integrations](/user-guid
 
 External events are **read-mostly**: titles and times sync in. Inline edits propagate back if the integration supports it.
 
+### Sync Direction
+
+By default Google Calendar sync is **two-way**: events, tasks, reminders, and snoozes you create in memrynote are pushed up to Google, and changes made in Google flow back into memrynote.
+
+To switch to **one-way (inbound only)**, open [Settings → Integrations](/user-guide/settings#integrations) and turn off **Show memrynote events in Google Calendar**. You'll still see your Google events inside memrynote, but memrynote events will no longer appear in Google.
+
+Switching to one-way is non-destructive — anything already synced to Google before the change stays there; only new pushes, updates, and deletes are stopped.
+
 ### Promote External Events
 
 Right-click an external event → **Promote to vault** to copy it into your encrypted vault. Useful when you want to attach notes, tags, or reminders that wouldn't survive on the source calendar.
