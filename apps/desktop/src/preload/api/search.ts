@@ -1,4 +1,5 @@
 import { SearchChannels, GraphChannels } from '@memry/contracts/ipc-channels'
+import type { IndexRebuildProgress } from '@memry/contracts/search-api'
 import { invoke, subscribe } from '../lib/ipc'
 
 export const graphApi = {
@@ -39,12 +40,9 @@ export const searchEvents = {
     subscribe<void>(SearchChannels.events.INDEX_REBUILD_STARTED, () => callback()),
 
   onSearchIndexRebuildProgress: (
-    callback: (progress: { phase: string; current: number; total: number; percent: number }) => void
+    callback: (progress: IndexRebuildProgress) => void
   ): (() => void) =>
-    subscribe<{ phase: string; current: number; total: number; percent: number }>(
-      SearchChannels.events.INDEX_REBUILD_PROGRESS,
-      callback
-    ),
+    subscribe<IndexRebuildProgress>(SearchChannels.events.INDEX_REBUILD_PROGRESS, callback),
 
   onSearchIndexRebuildCompleted: (callback: () => void): (() => void) =>
     subscribe<void>(SearchChannels.events.INDEX_REBUILD_COMPLETED, () => callback()),
