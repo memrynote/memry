@@ -122,8 +122,13 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
   })
 
   const pushSettingMutation = useMutation({
-    mutationFn: (pushEventsToGoogle: boolean) =>
-      window.api.settings.setCalendarGoogleSettings({ pushEventsToGoogle }),
+    mutationFn: async (pushEventsToGoogle: boolean) => {
+      const result = await window.api.settings.setCalendarGoogleSettings({ pushEventsToGoogle })
+      if (!result.success) {
+        throw new Error(result.error ?? t('integrations.googleCalendar.pushToGoogle.error'))
+      }
+      return result
+    },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: GOOGLE_SETTINGS_QUERY_KEY })
     }
@@ -165,7 +170,11 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
     sourceMutation.isPending
 
   const mutationError =
-    connectMutation.error ?? refreshMutation.error ?? disconnectMutation.error ?? null
+    connectMutation.error ??
+    refreshMutation.error ??
+    disconnectMutation.error ??
+    pushSettingMutation.error ??
+    null
 
   return (
     <div className="px-4 py-3">
