@@ -65,6 +65,7 @@
   },
   "drawer": {
     "close": "Close task details",
+    "resize": "Resize panel",
     "subIssues": "Sub-issues",
     "addSubIssue": "Add sub-issue",
     "subIssuePlaceholder": "Add sub-issue…",

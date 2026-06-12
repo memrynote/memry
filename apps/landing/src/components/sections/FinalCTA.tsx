@@ -23,8 +23,11 @@ export function FinalCTA() {
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
           className="text-center"
         >
+          <p aria-hidden className="mb-8 font-serif text-2xl tracking-[0.5em] text-terracotta">
+            ⁂
+          </p>
           <h2 className="font-serif text-6xl md:text-7xl font-normal text-ink-inverted mb-6">
-            Join the waitlist
+            Join the <span className="italic text-terracotta">waitlist.</span>
           </h2>
           <p className="text-xl text-dark-muted font-sans mb-12 max-w-lg mx-auto leading-relaxed">
             Desktop app {DESKTOP_RELEASE_TIMING.toLowerCase()}.
@@ -38,6 +41,10 @@ export function FinalCTA() {
 
           <p className="text-sm text-dark-muted/60 mt-6 font-mono-accent">
             We'll never spam. Unsubscribe anytime.
+          </p>
+
+          <p className="mt-16 font-mono-accent text-[10px] uppercase tracking-[0.3em] text-dark-muted/50">
+            memrynote · local-first · open source · <span className="italic normal-case">fin.</span>
           </p>
         </motion.div>
       </Container>

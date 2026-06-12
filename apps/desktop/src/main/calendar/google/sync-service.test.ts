@@ -771,6 +771,52 @@ describe('google calendar sync service', () => {
     expect(client.deleteEvent).not.toHaveBeenCalled()
   })
 
+  it('skips outbound push/delete when pushEventsToGoogle is disabled (one-way sync)', async () => {
+    seedGoogleCalendarSource()
+    db.insert(settings)
+      .values({
+        key: 'calendar.google',
+        value: JSON.stringify({ pushEventsToGoogle: false }),
+        modifiedAt: '2026-04-12T09:00:00.000Z'
+      })
+      .run()
+
+    db.insert(tasks)
+      .values({
+        id: 'task-oneway-1',
+        projectId,
+        statusId: todoStatusId,
+        title: 'One-way task',
+        position: 1,
+        dueDate: '2026-04-14',
+        dueTime: null,
+        clock: { 'device-a': 1 },
+        fieldClocks: {},
+        createdAt: '2026-04-12T09:00:00.000Z',
+        modifiedAt: '2026-04-12T09:00:00.000Z'
+      })
+      .run()
+
+    const client = {
+      upsertEvent: vi.fn(),
+      deleteEvent: vi.fn(),
+      listCalendars: vi.fn(),
+      createCalendar: vi.fn()
+    }
+
+    await expect(
+      syncLocalSourceToGoogleCalendar(
+        db,
+        { sourceType: 'task', sourceId: 'task-oneway-1' },
+        { client }
+      )
+    ).resolves.toBeNull()
+
+    expect(client.upsertEvent).not.toHaveBeenCalled()
+    expect(client.deleteEvent).not.toHaveBeenCalled()
+    expect(db.select().from(calendarBindings).all()).toHaveLength(0)
+  })
+
   it('routes Google updates for bound events through applyGoogleCalendarWriteback instead of the mirror', async () => {
     // #given a selected non-managed source with an active binding for one remote event
     const now = '2026-04-18T09:00:00.000Z'

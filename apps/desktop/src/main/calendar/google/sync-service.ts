@@ -468,6 +468,9 @@ export async function syncLocalSourceToGoogleCalendar(
 ): Promise<typeof calendarBindings.$inferSelect | null> {
   if (!(await isMemryUserSignedIn())) return null
   if (!(await hasGoogleCalendarConnection(db))) return null
+  // One-way (inbound-only) mode: pull Google → memrynote stays on, but never
+  // push/update/delete memrynote items out to Google.
+  if (!readCalendarGoogleSettings(db).pushEventsToGoogle) return null
 
   if (shouldSourceSyncToGoogleCalendar(db, target)) {
     return await pushSourceToGoogleCalendar(db, target, deps)

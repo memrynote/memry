@@ -172,7 +172,7 @@ export function FlowShowcase() {
   )
 
   return (
-    <section>
+    <section className="pt-8 pb-4 md:pt-12">
       <Container>
         <motion.div
           className="max-w-4xl mx-auto"
@@ -180,6 +180,13 @@ export function FlowShowcase() {
           animate={BLUR_REVEAL_ANIMATE}
           transition={BLUR_REVEAL_TRANSITION}
         >
+          <div className="mb-6 flex items-baseline justify-between gap-4">
+            <p className="font-mono-accent text-xs uppercase tracking-[0.22em] text-terracotta">
+              § 01 — Exhibit A
+            </p>
+            <p className="font-serif text-lg italic text-muted">The app, unedited.</p>
+          </div>
+
           <MockupFrame caption="Full app walkthrough — click the bar to jump">
             <div className="flex flex-col">
               <div className="px-3 py-2 border-b border-border/30">

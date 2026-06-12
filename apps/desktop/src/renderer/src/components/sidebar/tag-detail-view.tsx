@@ -159,48 +159,47 @@ export function TagDetailView({ tag, color, className }: TagDetailViewProps): Re
 
   return (
     <div className={cn('flex flex-col h-full', className)}>
-      {/* Header */}
-      <div className="flex items-center gap-2 px-3 py-3 border-b">
+      {/* Header — single compact row */}
+      <div className="flex items-center gap-1.5 px-2.5 py-2 border-b border-border/60">
         <Button
           variant="ghost"
           size="icon"
-          className="h-7 w-7 shrink-0"
+          className="h-6 w-6 shrink-0"
           onClick={goBack}
           aria-label={tPhaseF('phaseF.componentsSidebarTagDetailView.goBack')}
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-3.5 w-3.5" />
         </Button>
 
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span
-              className="w-2.5 h-2.5 rounded-full shrink-0"
-              style={{
-                backgroundColor: tagColors.background,
-                border: `1.5px solid ${tagColors.text}`
-              }}
-            />
-            <span className="font-medium truncate">
-              {tag.includes('/') ? (
-                <span className="flex items-center gap-0.5">
-                  {tag.split('/').map((segment, i, arr) => (
-                    <span key={i} className="flex items-center gap-0.5">
-                      {i > 0 && <span className="text-muted-foreground/40 text-xs">/</span>}
-                      <span className={i < arr.length - 1 ? 'text-muted-foreground' : ''}>
-                        {segment}
-                      </span>
-                    </span>
-                  ))}
+        <span
+          className="w-2.5 h-2.5 rounded-full shrink-0"
+          style={{
+            backgroundColor: tagColors.background,
+            border: `1.5px solid ${tagColors.text}`
+          }}
+        />
+
+        <div
+          className="flex-1 min-w-0 truncate text-[13px] font-medium leading-5"
+          title={`${tag} · ${count} ${tPhaseF('phaseF.componentsSidebarTagDetailView.notes')}`}
+        >
+          {tag.includes('/') ? (
+            <span className="inline-flex items-center gap-0.5 align-middle">
+              {tag.split('/').map((segment, i, arr) => (
+                <span key={i} className="inline-flex items-center gap-0.5">
+                  {i > 0 && <span className="text-muted-foreground/40 text-xs">/</span>}
+                  <span className={i < arr.length - 1 ? 'text-muted-foreground' : ''}>
+                    {segment}
+                  </span>
                 </span>
-              ) : (
-                tag
-              )}
+              ))}
             </span>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {count} {tPhaseF('phaseF.componentsSidebarTagDetailView.notes')}
-          </p>
+          ) : (
+            tag
+          )}
         </div>
+
+        <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground/60">{count}</span>
 
         {/* Overflow menu */}
         <TagOverflowMenu
@@ -227,8 +226,14 @@ export function TagDetailView({ tag, color, className }: TagDetailViewProps): Re
       {/* Content */}
       <ScrollArea className="flex-1">
         {isLoading ? (
-          <div className="px-3 py-8 text-center text-sm text-muted-foreground">
-            {tPhaseF('phaseF.componentsSidebarTagDetailView.loadingNotes')}
+          <div
+            className="py-1.5"
+            aria-busy="true"
+            aria-label={tPhaseF('phaseF.componentsSidebarTagDetailView.loadingNotes')}
+          >
+            <NoteRowSkeleton />
+            <NoteRowSkeleton />
+            <NoteRowSkeleton />
           </div>
         ) : error ? (
           <div className="px-3 py-8 text-center text-sm text-destructive">{error}</div>
@@ -240,13 +245,12 @@ export function TagDetailView({ tag, color, className }: TagDetailViewProps): Re
             </p>
           </div>
         ) : (
-          <div className="py-2">
+          <div className="py-1.5">
             {/* Pinned section */}
             {pinnedNotes.length > 0 && (
               <>
-                <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-                  <Pin className="h-3 w-3" />
-
+                <div className="px-3 pt-1.5 pb-1 flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">
+                  <Pin className="h-2.5 w-2.5" />
                   {tPhaseF('phaseF.componentsSidebarTagDetailView.pinned')}
                 </div>
                 {pinnedNotes.map((note) => (
@@ -259,12 +263,12 @@ export function TagDetailView({ tag, color, className }: TagDetailViewProps): Re
                     onUnpin={() => void unpinNote(note.id)}
                   />
                 ))}
-                <Separator className="my-2" />
+                <Separator className="my-1.5" />
               </>
             )}
 
             {/* All notes section */}
-            <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground flex items-center justify-between">
+            <div className="px-3 pt-1.5 pb-1 flex items-center justify-between text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">
               <span>{tPhaseF('phaseF.componentsSidebarTagDetailView.allNotes')}</span>
               <SortDropdown sortBy={sortBy} onSortChange={setSortBy} />
             </div>
@@ -329,7 +333,7 @@ function NoteItem({ note, isPinned, onClick, onPin, onUnpin }: NoteItemProps): R
 
   return (
     <div
-      className="group/noteitem px-3 py-2 hover:bg-accent/50 cursor-pointer relative"
+      className="group/noteitem flex items-center gap-2 mx-1.5 px-1.5 py-1 rounded-md hover:bg-accent/50 cursor-pointer"
       role="button"
       tabIndex={0}
       onClick={onClick}
@@ -340,59 +344,63 @@ function NoteItem({ note, isPinned, onClick, onPin, onUnpin }: NoteItemProps): R
         }
       }}
     >
-      <div className="flex items-start gap-2">
-        {/* Icon */}
-        <div className="mt-0.5 shrink-0">
-          {note.emoji ? (
-            <NoteIconDisplay value={note.emoji} className="text-sm" />
-          ) : (
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          )}
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium truncate">{note.title}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">{formatDate(note.modified)}</p>
-        </div>
-
-        {/* Pin button - always visible when pinned, only on hover when unpinned */}
-        {isPinned ? (
-          <TooltipProvider delayDuration={300}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={handlePinClick}
-                  className="shrink-0 mt-0.5 p-1 rounded-sm transition-colors hover:bg-accent text-primary"
-                  aria-label={tPhaseF('phaseF.componentsSidebarTagDetailView.unpinFromTag')}
-                >
-                  <Pin className="h-3.5 w-3.5 fill-current" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="left" className="text-xs">
-                {tPhaseF('phaseF.componentsSidebarTagDetailView.unpin')}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+      {/* Icon */}
+      <span className="shrink-0 flex w-4 items-center justify-center">
+        {note.emoji ? (
+          <NoteIconDisplay value={note.emoji} className="text-[13px]" />
         ) : (
-          <TooltipProvider delayDuration={300}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={handlePinClick}
-                  className="shrink-0 mt-0.5 p-1 rounded-sm transition-all hover:bg-accent text-muted-foreground hover:text-foreground opacity-0 group-hover/noteitem:opacity-100"
-                  aria-label={tPhaseF('phaseF.componentsSidebarTagDetailView.pinToTag')}
-                >
-                  <Pin className="h-3.5 w-3.5" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="left" className="text-xs">
-                {tPhaseF('phaseF.componentsSidebarTagDetailView.pin')}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <FileText className="h-3.5 w-3.5 text-muted-foreground/70" />
         )}
-      </div>
+      </span>
+
+      {/* Title */}
+      <span className="flex-1 min-w-0 truncate text-[13px] leading-5">{note.title}</span>
+
+      {/* Date + pin — pin slot reserved so hover never shifts the row */}
+      <span className="ms-auto shrink-0 flex items-center gap-1">
+        <span className="text-[10px] tabular-nums text-muted-foreground/60">
+          {formatDate(note.modified)}
+        </span>
+        <TooltipProvider delayDuration={300}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={handlePinClick}
+                className={cn(
+                  'flex size-5 items-center justify-center rounded-sm transition-all hover:bg-accent',
+                  isPinned
+                    ? 'text-primary'
+                    : 'text-muted-foreground/70 opacity-0 hover:text-foreground group-hover/noteitem:opacity-100'
+                )}
+                aria-label={tPhaseF(
+                  isPinned
+                    ? 'phaseF.componentsSidebarTagDetailView.unpinFromTag'
+                    : 'phaseF.componentsSidebarTagDetailView.pinToTag'
+                )}
+              >
+                <Pin className={cn('h-3 w-3', isPinned && 'fill-current')} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="left" className="text-xs">
+              {tPhaseF(
+                isPinned
+                  ? 'phaseF.componentsSidebarTagDetailView.unpin'
+                  : 'phaseF.componentsSidebarTagDetailView.pin'
+              )}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </span>
+    </div>
+  )
+}
+
+// Loading placeholder row matching the single-line note layout.
+function NoteRowSkeleton(): React.JSX.Element {
+  return (
+    <div className="flex items-center gap-2 mx-1.5 px-1.5 py-1">
+      <span className="shrink-0 size-3.5 rounded bg-muted animate-pulse" />
+      <span className="h-3 w-3/5 rounded bg-muted animate-pulse" />
     </div>
   )
 }
@@ -445,21 +453,21 @@ function TagOverflowMenu({
         <Button
           variant="ghost"
           size="icon"
-          className="h-7 w-7 shrink-0"
+          className="h-6 w-6 shrink-0"
           aria-label={tPhaseF('phaseF.componentsSidebarTagDetailView.tagActions')}
         >
-          <MoreHorizontal className="h-4 w-4" />
+          <MoreHorizontal className="h-3.5 w-3.5" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">
         <DropdownMenuItem onClick={onRequestRename}>
-          <Pencil className="h-4 w-4 mr-2" />
+          <Pencil className="h-4 w-4 me-2" />
 
           {tPhaseF('phaseF.componentsSidebarTagDetailView.editTagName')}
         </DropdownMenuItem>
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
-            <Palette className="h-4 w-4 mr-2" />
+            <Palette className="h-4 w-4 me-2" />
 
             {tPhaseF('phaseF.componentsSidebarTagDetailView.changeColor')}
           </DropdownMenuSubTrigger>
@@ -489,7 +497,7 @@ function TagOverflowMenu({
           onClick={onRequestDelete}
           className="text-destructive focus:text-destructive"
         >
-          <Trash2 className="h-4 w-4 mr-2" />
+          <Trash2 className="h-4 w-4 me-2" />
 
           {tPhaseF('phaseF.componentsSidebarTagDetailView.deleteTag')}
         </DropdownMenuItem>
@@ -515,17 +523,17 @@ function SortDropdown({ sortBy, onSortChange }: SortDropdownProps): React.JSX.El
       <DropdownMenuContent align="end" className="w-40">
         <DropdownMenuRadioGroup value={sortBy} onValueChange={(v) => onSortChange(v as TagSortBy)}>
           <DropdownMenuRadioItem value="modified">
-            <Clock className="h-4 w-4 mr-2" />
+            <Clock className="h-4 w-4 me-2" />
 
             {tPhaseF('phaseF.componentsSidebarTagDetailView.recent')}
           </DropdownMenuRadioItem>
           <DropdownMenuRadioItem value="created">
-            <Calendar className="h-4 w-4 mr-2" />
+            <Calendar className="h-4 w-4 me-2" />
 
             {tPhaseF('phaseF.componentsSidebarTagDetailView.created')}
           </DropdownMenuRadioItem>
           <DropdownMenuRadioItem value="title">
-            <SortAsc className="h-4 w-4 mr-2" />
+            <SortAsc className="h-4 w-4 me-2" />
 
             {tPhaseF('phaseF.componentsSidebarTagDetailView.alphabetical')}
           </DropdownMenuRadioItem>

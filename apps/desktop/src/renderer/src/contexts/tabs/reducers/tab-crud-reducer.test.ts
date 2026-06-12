@@ -47,6 +47,7 @@ const baseState = (overrides: Partial<TabSystemState> = {}): TabSystemState => (
     restoreSessionOnStart: true,
     tabCloseButton: 'hover'
   },
+  recentlyClosed: [],
   ...overrides
 })
 
@@ -356,5 +357,110 @@ describe('tabCrudReducer', () => {
     )
     expect(Object.values(noLayout.tabGroups)[0].tabs[0].type).toBe('inbox')
     expect(noLayout.settings).toEqual(state.settings)
+  })
+
+  it('captures a closed tab onto the recentlyClosed stack with its origin and position', () => {
+    const state = baseState()
+
+    const closed = tabCrudReducer(state, {
+      type: 'CLOSE_TAB',
+      payload: { tabId: 'tasks', groupId: 'g1' }
+    })
+
+    expect(closed.recentlyClosed).toHaveLength(1)
+    expect(closed.recentlyClosed[0]).toMatchObject({
+      groupId: 'g1',
+      index: 2,
+      tab: { type: 'tasks', path: '/tasks' }
+    })
+  })
+
+  it('reopens the most recently closed tab at its original position and focuses it', () => {
+    const state = baseState()
+
+    const closed = tabCrudReducer(state, {
+      type: 'CLOSE_TAB',
+      payload: { tabId: 'note-a', groupId: 'g1' }
+    })
+    expect(closed.tabGroups.g1.tabs.map((t) => t.id)).toEqual(['pin', 'tasks'])
+
+    const reopened = tabCrudReducer(closed, { type: 'REOPEN_CLOSED_TAB' })
+
+    expect(reopened.tabGroups.g1.tabs.map((t) => t.id)).toEqual(['pin', 'generated-1', 'tasks'])
+    expect(reopened.tabGroups.g1.tabs[1]).toMatchObject({
+      type: 'note',
+      entityId: 'note-a',
+      path: '/note/note-a'
+    })
+    expect(reopened.tabGroups.g1.activeTabId).toBe('generated-1')
+    expect(reopened.recentlyClosed).toHaveLength(0)
+  })
+
+  it('reopens closed tabs in last-in-first-out order', () => {
+    const state = baseState()
+
+    const c1 = tabCrudReducer(state, {
+      type: 'CLOSE_TAB',
+      payload: { tabId: 'note-a', groupId: 'g1' }
+    })
+    const c2 = tabCrudReducer(c1, {
+      type: 'CLOSE_TAB',
+      payload: { tabId: 'tasks', groupId: 'g1' }
+    })
+    expect(c2.recentlyClosed.map((e) => e.tab.type)).toEqual(['note', 'tasks'])
+
+    const r1 = tabCrudReducer(c2, { type: 'REOPEN_CLOSED_TAB' })
+    expect(r1.tabGroups.g1.tabs.some((t) => t.type === 'tasks')).toBe(true)
+    expect(r1.recentlyClosed.map((e) => e.tab.type)).toEqual(['note'])
+
+    const r2 = tabCrudReducer(r1, { type: 'REOPEN_CLOSED_TAB' })
+    expect(r2.tabGroups.g1.tabs.some((t) => t.type === 'note')).toBe(true)
+    expect(r2.recentlyClosed).toHaveLength(0)
+  })
+
+  it('captures every tab removed by close-all', () => {
+    const state = baseState()
+
+    const closedAll = tabCrudReducer(state, {
+      type: 'CLOSE_ALL_TABS',
+      payload: { groupId: 'g1' }
+    })
+
+    expect(closedAll.tabGroups.g1.tabs.map((t) => t.id)).toEqual(['pin'])
+    expect(closedAll.recentlyClosed.map((e) => e.tab.type)).toEqual(['note', 'tasks'])
+  })
+
+  it('returns state unchanged when reopening with an empty stack', () => {
+    const state = baseState()
+    expect(tabCrudReducer(state, { type: 'REOPEN_CLOSED_TAB' })).toBe(state)
+  })
+
+  it('focuses an already-open entity tab instead of duplicating on reopen', () => {
+    const state = baseState({
+      recentlyClosed: [
+        {
+          tab: {
+            type: 'note',
+            title: 'Note A',
+            icon: 'file',
+            path: '/note/note-a',
+            entityId: 'note-a',
+            isPinned: false,
+            isModified: false,
+            isPreview: false,
+            isDeleted: false
+          },
+          groupId: 'g1',
+          index: 1,
+          closedAt: 1
+        }
+      ]
+    })
+
+    const reopened = tabCrudReducer(state, { type: 'REOPEN_CLOSED_TAB' })
+
+    expect(reopened.tabGroups.g1.tabs.map((t) => t.id)).toEqual(['pin', 'note-a', 'tasks'])
+    expect(reopened.tabGroups.g1.activeTabId).toBe('note-a')
+    expect(reopened.recentlyClosed).toHaveLength(0)
   })
 })

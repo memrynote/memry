@@ -164,3 +164,14 @@ export const getOrCreateUserByEmail = async (
 
   return { user, isNewUser: true }
 }
+
+export async function updateUserEmail(
+  db: D1Database,
+  userId: string,
+  newEmail: string
+): Promise<void> {
+  await db
+    .prepare('UPDATE users SET email = ?, email_verified = 1, updated_at = ? WHERE id = ?')
+    .bind(newEmail, Math.floor(Date.now() / 1000), userId)
+    .run()
+}

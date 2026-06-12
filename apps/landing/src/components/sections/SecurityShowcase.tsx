@@ -77,7 +77,10 @@ export function SecurityShowcase() {
           animate={isInView ? { opacity: 1, y: 0 } : undefined}
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
         >
-          <h2 className="font-serif text-4xl md:text-5xl font-normal text-ink-inverted mb-4">
+          <p className="mb-4 font-mono-accent text-xs uppercase tracking-[0.22em] text-terracotta">
+            § 04 — Sealed
+          </p>
+          <h2 className="display-section text-ink-inverted mb-4">
             We can't read your notes. <span className="text-terracotta italic">By design.</span>
           </h2>
           <p className="text-lg text-dark-muted font-sans max-w-xl mx-auto">
@@ -92,9 +95,9 @@ export function SecurityShowcase() {
           animate={isInView ? { opacity: 1, y: 0 } : undefined}
           transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
         >
-          <div className="rounded-xl border border-dark-border bg-dark-surface p-6">
+          <div className="rounded-lg border border-dark-border bg-dark-surface p-6">
             <span className="inline-block text-xs font-mono-accent uppercase tracking-widest text-sage mb-4">
-              What you see
+              Plate I — What you see
             </span>
             <div className="font-serif text-lg text-ink-inverted leading-relaxed space-y-1">
               {CLEAR_TEXT_LINES.map((line, i) => (
@@ -111,12 +114,12 @@ export function SecurityShowcase() {
           </div>
 
           <div
-            className="rounded-xl border border-dark-border bg-dark-surface p-6 overflow-hidden cursor-crosshair transition-border-color duration-300 hover:border-terracotta/40"
+            className="rounded-lg border border-dark-border bg-dark-surface p-6 overflow-hidden cursor-crosshair transition-border-color duration-300 hover:border-terracotta/40"
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
           >
             <span className="inline-block text-xs font-mono-accent uppercase tracking-widest text-terracotta mb-4">
-              What we see
+              Plate II — What we see
             </span>
             <div className="font-mono text-lg text-terracotta/60 leading-relaxed space-y-1 select-none">
               {scrambled.map((line, i) => (

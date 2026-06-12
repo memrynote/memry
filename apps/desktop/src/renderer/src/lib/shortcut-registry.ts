@@ -122,7 +122,7 @@ export const SHORTCUT_REGISTRY: ShortcutEntry[] = [
     label: 'Reopen Last Tab',
     description: 'Reopen the most recently closed tab',
     category: 'Tabs',
-    defaultBinding: { key: 't', modifiers: { meta: true } }
+    defaultBinding: { key: 't', modifiers: { meta: true, shift: true } }
   },
   {
     id: 'tabs.navBack',

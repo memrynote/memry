@@ -91,6 +91,21 @@ function TagTreeItem({
   const colors = node.color ? getTagColors(node.color) : null
   const isSelected = selectedTag === node.fullPath
 
+  // The tag pill shrink-wraps its label, so the fade mask must only apply when
+  // the name is actually clipped — otherwise short names fade with room to spare.
+  const labelRef = React.useRef<HTMLSpanElement>(null)
+  const [isLabelTruncated, setIsLabelTruncated] = React.useState(false)
+
+  React.useLayoutEffect(() => {
+    const el = labelRef.current
+    if (!el) return
+    const measure = (): void => setIsLabelTruncated(el.scrollWidth > el.clientWidth)
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [node.name])
+
   const handleChevronClick = (e: React.MouseEvent) => {
     e.stopPropagation()
     onToggle(node.fullPath)
@@ -145,10 +160,15 @@ function TagTreeItem({
                 : { backgroundColor: 'var(--muted-foreground)' }
             }
           />
-          <span className="sidebar-label-fade">{node.name}</span>
+          <span
+            ref={labelRef}
+            className={cn('min-w-0 truncate', isLabelTruncated && 'sidebar-label-fade-mask')}
+          >
+            {node.name}
+          </span>
         </button>
 
-        <span className="ml-auto pr-2.5 text-[10px] text-muted-foreground/40 tabular-nums opacity-0 group-hover:opacity-100 transition-opacity">
+        <span className="ms-auto pe-2.5 text-[10px] text-muted-foreground/40 tabular-nums opacity-0 group-hover:opacity-100 transition-opacity">
           {node.totalCount}
         </span>
       </div>
@@ -411,7 +431,7 @@ export function SidebarTagList({
           <button
             type="button"
             onClick={() => setShowAll(!showAll)}
-            className="rounded-sm py-0.5 px-2 ml-6 text-[11px] font-medium leading-3.5 text-sidebar-muted hover:text-sidebar-foreground transition-colors text-left"
+            className="rounded-sm py-0.5 px-2 ms-6 text-[11px] font-medium leading-3.5 text-sidebar-muted hover:text-sidebar-foreground transition-colors text-start"
           >
             {showAll
               ? t('action.showLess')

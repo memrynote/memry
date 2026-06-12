@@ -46,7 +46,10 @@ export function FounderStory() {
                 </p>
               </div>
 
-              <div className="space-y-4 md:pr-6 lg:pr-12">
+              <div className="space-y-4 md:pe-6 lg:pe-12">
+                <p className="font-mono-accent text-xs uppercase tracking-[0.22em] text-terracotta">
+                  § 05 — A letter from the maker
+                </p>
                 <div className="flex flex-wrap items-center gap-3">
                   <h3 className="font-serif text-2xl text-ink">Why I'm building memrynote</h3>
                   <span className="text-xs font-mono-accent uppercase tracking-wider text-terracotta bg-terracotta/10 px-2 py-0.5 rounded">
@@ -58,7 +61,7 @@ export function FounderStory() {
                   className="space-y-3 text-muted"
                   style={{ fontSize: '17px', lineHeight: '1.8' }}
                 >
-                  <p>
+                  <p className="drop-cap">
                     Hi, I'm Kaan, the developer behind memrynote. I started building this because I
                     wanted a workspace that feels less like managing software and more like
                     continuing a thought.
@@ -71,6 +74,7 @@ export function FounderStory() {
                     memrynote is an indie project built with care, not a VC-funded race to monetize
                     your data.
                   </p>
+                  <p className="font-serif text-2xl italic text-ink">— Kaan</p>
                 </div>
 
                 <div className="flex items-center gap-4 pt-2">

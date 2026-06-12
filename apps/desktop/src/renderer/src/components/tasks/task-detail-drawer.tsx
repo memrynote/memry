@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, useMemo, memo, useCallback } from 'react'
 import { useT } from '@memry/i18n/renderer'
 import { cn } from '@/lib/utils'
 import { useDayPanel } from '@/contexts/day-panel-context'
+import { useResizablePanel } from '@/hooks/use-resizable-panel'
+import { PanelResizeRail } from '@/components/ui/panel-resize-rail'
 import { type Task, type Priority, type RepeatConfig } from '@/data/task-model'
 import type { Project } from '@/data/tasks-data'
 import { getSubtasks } from '@/lib/subtask-utils'
@@ -16,6 +18,11 @@ import { StatusIcon } from '@/components/tasks/status-icon'
 import { FileAudio, FileImage, FilePdf, FileVideo, X, Plus, Trash } from '@/lib/icons'
 import { DeleteTaskDialog } from '@/components/tasks/delete-task-dialog'
 import type { FileType } from '@memry/shared/file-types'
+
+const TASK_DETAIL_WIDTH_KEY = 'task-detail-width'
+const TASK_DETAIL_WIDTH_DEFAULT_PX = 266
+const TASK_DETAIL_WIDTH_MIN_PX = 240
+const TASK_DETAIL_WIDTH_MAX_PX = 480
 
 // ============================================================================
 // TYPES
@@ -114,6 +121,12 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
 }: TaskDetailDrawerProps): React.JSX.Element {
   const { t, i18n } = useT('tasks')
   const { isOpen: isDayPanelOpen, width: dayPanelWidth } = useDayPanel()
+  const { width, setWidth, isResizing, setIsResizing } = useResizablePanel({
+    storageKey: TASK_DETAIL_WIDTH_KEY,
+    defaultPx: TASK_DETAIL_WIDTH_DEFAULT_PX,
+    minPx: TASK_DETAIL_WIDTH_MIN_PX,
+    maxPx: TASK_DETAIL_WIDTH_MAX_PX
+  })
   const [noteNames, setNoteNames] = useState<RelatedItemInfoById>({})
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isAddingSubtask, setIsAddingSubtask] = useState(false)
@@ -276,12 +289,19 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
       aria-hidden={!isOpen}
       className={cn(
         'fixed top-[37px] bottom-0 z-10 border-s bg-surface overflow-hidden',
-        'transition-[width,opacity,right] duration-200 ease-out',
-        isOpen ? 'w-[266px] opacity-100 border-border' : 'w-0 opacity-0 border-transparent'
+        'transition-[opacity,right] duration-200 ease-out',
+        !isResizing && 'transition-[width,opacity,right] duration-200 ease-out',
+        isOpen ? 'opacity-100 border-border' : 'opacity-0 border-transparent'
       )}
-      style={{ right: isDayPanelOpen ? `${dayPanelWidth}px` : 0 }}
+      style={{
+        width: isOpen ? `${width}px` : 0,
+        right: isDayPanelOpen ? `${dayPanelWidth}px` : 0
+      }}
     >
-      <div className="w-[266px] h-full flex flex-col overflow-y-auto scrollbar-thin [font-synthesis:none] text-[12px] leading-4">
+      <div
+        style={{ width: `${width}px` }}
+        className="h-full flex flex-col overflow-y-auto scrollbar-thin [font-synthesis:none] text-[12px] leading-4"
+      >
         {task && project && (
           <>
             {/* ── Header: editable title + close ── */}
@@ -633,6 +653,17 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
           </>
         )}
       </div>
+      {isOpen && (
+        <PanelResizeRail
+          width={width}
+          setWidth={setWidth}
+          setIsResizing={setIsResizing}
+          minPx={TASK_DETAIL_WIDTH_MIN_PX}
+          maxPx={TASK_DETAIL_WIDTH_MAX_PX}
+          defaultPx={TASK_DETAIL_WIDTH_DEFAULT_PX}
+          ariaLabel={t('drawer.resize')}
+        />
+      )}
     </div>
   )
 })

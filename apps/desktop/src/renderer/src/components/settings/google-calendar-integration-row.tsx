@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
 import { Calendar } from '@/lib/icons'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import {
@@ -20,6 +21,7 @@ import { useT } from '@memry/i18n/renderer'
 
 const GOOGLE_STATUS_QUERY_KEY = ['calendar', 'google', 'status'] as const
 const GOOGLE_SOURCES_QUERY_KEY = ['calendar', 'google', 'sources'] as const
+const GOOGLE_SETTINGS_QUERY_KEY = ['calendar', 'google', 'settings'] as const
 
 async function invalidateGoogleCalendarQueries(queryClient: ReturnType<typeof useQueryClient>) {
   await Promise.all([
@@ -46,6 +48,11 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
   const sourcesQuery = useQuery({
     queryKey: GOOGLE_SOURCES_QUERY_KEY,
     queryFn: () => calendarService.listSources({ provider: 'google', kind: 'calendar' })
+  })
+
+  const googleSettingsQuery = useQuery({
+    queryKey: GOOGLE_SETTINGS_QUERY_KEY,
+    queryFn: () => window.api.settings.getCalendarGoogleSettings()
   })
 
   const connectMutation = useMutation({
@@ -114,6 +121,14 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
     }
   })
 
+  const pushSettingMutation = useMutation({
+    mutationFn: (pushEventsToGoogle: boolean) =>
+      window.api.settings.setCalendarGoogleSettings({ pushEventsToGoogle }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: GOOGLE_SETTINGS_QUERY_KEY })
+    }
+  })
+
   // Re-open onboarding for users who connected before M2 shipped OR who
   // closed the dialog last time without picking a default. Single auto-open
   // per mount via the ref above; settings.onboardingCompleted flips to true
@@ -139,6 +154,7 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
     [sourcesQuery.data?.sources]
   )
   const status = statusQuery.data
+  const pushEventsToGoogle = googleSettingsQuery.data?.pushEventsToGoogle ?? true
   const reconnectRequired = Boolean(
     status?.accounts?.some((account) => account.status === 'reconnect_required')
   )
@@ -296,6 +312,23 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
             onRetrySource={(sourceId) => retryMutation.mutate(sourceId)}
             retryingSourceId={retryMutation.isPending ? (retryMutation.variables ?? null) : null}
           />
+
+          <div className="mt-1 flex items-start justify-between gap-3 border-t border-border/60 pt-3">
+            <div className="flex min-w-0 flex-col gap-0.5">
+              <span className="text-[13px]/4 font-medium text-foreground">
+                {t('integrations.googleCalendar.pushToGoogle.label')}
+              </span>
+              <p className="text-xs/4 text-muted-foreground">
+                {t('integrations.googleCalendar.pushToGoogle.description')}
+              </p>
+            </div>
+            <Switch
+              checked={pushEventsToGoogle}
+              disabled={pushSettingMutation.isPending || googleSettingsQuery.isLoading}
+              onCheckedChange={(checked) => pushSettingMutation.mutate(checked)}
+              aria-label={t('integrations.googleCalendar.pushToGoogle.label')}
+            />
+          </div>
         </div>
       )}
 

@@ -154,6 +154,25 @@ export interface TabSettings {
 }
 
 // =============================================================================
+// RECENTLY CLOSED TABS
+// =============================================================================
+
+/**
+ * Snapshot of a closed tab, used to reopen it (Cmd+Shift+T).
+ * In-memory only — not persisted across restarts.
+ */
+export interface ClosedTabEntry {
+  /** Serializable snapshot of the closed tab */
+  tab: Omit<Tab, 'id' | 'openedAt' | 'lastAccessedAt'>
+  /** Group the tab was closed from */
+  groupId: string
+  /** Original position within that group's tabs */
+  index: number
+  /** Timestamp when closed */
+  closedAt: number
+}
+
+// =============================================================================
 // TAB SYSTEM STATE
 // =============================================================================
 
@@ -173,6 +192,8 @@ export interface TabSystemState {
   isMaximized?: boolean
   /** Snapshot of layout before maximize, used to restore on toggle-off */
   preMaximizeLayout?: SplitLayout
+  /** LIFO stack of recently closed tabs (in-memory, for reopen). */
+  recentlyClosed: ClosedTabEntry[]
 }
 
 // =============================================================================
@@ -216,6 +237,7 @@ export type TabAction =
   | { type: 'CLOSE_TABS_TO_RIGHT'; payload: { tabId: string; groupId: string } }
   | { type: 'CLOSE_ALL_TABS'; payload: { groupId: string } }
   | { type: 'CLOSE_GROUP'; payload: { groupId: string } }
+  | { type: 'REOPEN_CLOSED_TAB' }
 
   // Tab navigation
   | { type: 'SET_ACTIVE_TAB'; payload: { tabId: string; groupId: string } }

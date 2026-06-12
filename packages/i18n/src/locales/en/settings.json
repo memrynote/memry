@@ -803,7 +803,12 @@
       "connectFailed": "Failed to connect Google Calendar",
       "refreshFailed": "Failed to refresh Google Calendar",
       "disconnectFailed": "Failed to disconnect Google Calendar",
-      "retryFailed": "Failed to retry calendar sync"
+      "retryFailed": "Failed to retry calendar sync",
+      "pushToGoogle": {
+        "label": "Show memrynote events in Google Calendar",
+        "description": "Turn off for one-way sync — you'll still see your Google events in memrynote, but memrynote events won't appear in Google.",
+        "error": "Failed to update sync direction"
+      }
     },
     "sourcePicker": {
       "empty": "No imported Google calendars are available on this device yet.",
