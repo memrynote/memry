@@ -11,7 +11,7 @@ Notes, tasks, projects, journal, calendar, and an AI agent that actually has con
 [![Release](https://img.shields.io/github/v/release/memrynote/memry?include_prereleases&sort=semver)](https://github.com/memrynote/memry/releases)
 [![CI](https://github.com/memrynote/memry/actions/workflows/ci.yml/badge.svg)](https://github.com/memrynote/memry/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/memrynote/memry/branch/main/graph/badge.svg)](https://codecov.io/gh/memrynote/memry)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
 [![Standard Readme](https://img.shields.io/badge/readme%20style-standard-brightgreen.svg)](https://github.com/RichardLitt/standard-readme)
 [![Electron](https://img.shields.io/badge/built%20with-Electron-47848F.svg)](https://www.electronjs.org/)
 [![React 19](https://img.shields.io/badge/React-19-61DAFB.svg)](https://react.dev/)
@@ -163,6 +163,6 @@ If you ship a workflow you love, tell us. If something is broken, tell us louder
 
 ## License
 
-MIT © Memry contributors
+GPL-3.0 © Memry contributors
 
 See [LICENSE](LICENSE) for the legal text.
