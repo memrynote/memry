@@ -25,6 +25,10 @@ env:
   NODE_OPTIONS: --max-old-space-size=4096
   RELEASE_TIME_ZONE: Europe/Istanbul
   TURBO_TELEMETRY_DISABLED: 1
+  # Native modules are rebuilt once in the staged copy by build-packaged-app.js.
+  # Skip the throwaway rebuild that pnpm's deps-status preflight triggers via the
+  # desktop `postinstall` before each build step.
+  SKIP_ELECTRON_REBUILD: 1
 
 jobs:
   setup-release:
@@ -231,7 +235,7 @@ jobs:
             fi
           done
 
-          pnpm --filter @memry/desktop build
+          pnpm --filter @memry/desktop build:release
           node apps/desktop/scripts/build-packaged-app.js \
             --config config/electron-builder.staged-local-mac.yml \
             --mac \
@@ -408,7 +412,7 @@ jobs:
           SYNC_SERVER_URL: ${{ secrets.SYNC_SERVER_URL }}
         shell: pwsh
         run: |
-          pnpm --filter @memry/desktop build
+          pnpm --filter @memry/desktop build:release
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           # electron-builder intermittently fails with "EBUSY: resource busy or
           # locked" copying .env.production -> resources/.env when Windows
@@ -553,7 +557,7 @@ jobs:
           SYNC_SERVER_URL: ${{ secrets.SYNC_SERVER_URL }}
         run: |
           set -euo pipefail
-          pnpm --filter @memry/desktop build
+          pnpm --filter @memry/desktop build:release
           node apps/desktop/scripts/build-packaged-app.js --linux --x64 --publish never
 
       - name: Stage Linux assets
