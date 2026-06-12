@@ -62,6 +62,15 @@ memrynote shows a toast with:
 
 Items with upcoming reminders show a small bell badge in the sidebar / tab bar / inbox row. Hover for the time.
 
+### Upcoming & Past in the Inbox
+
+When a reminder fires it also lands in the inbox, so you never miss one even if you dismissed the toast. The inbox toolbar's alarm-clock button toggles a dedicated reminders view with two sections:
+
+- **Upcoming** — reminders you have scheduled but that haven't fired yet (on notes, tasks, journals, or highlights) plus any snoozed inbox items, earliest first. This is how you see a reminder _before_ its time arrives.
+- **Past** — reminders that have already fired, most recent first.
+
+Each row shows the source type icon and title; clicking it opens the source — the note, the task (with its project), or the journal day. The count on the alarm button reflects how many **upcoming** reminders you have.
+
 ### App Closed When Reminder Fires?
 
 The toast appears when memrynote next opens. Reminders aren't OS-level notifications (yet — see [Roadmap](/roadmap)).

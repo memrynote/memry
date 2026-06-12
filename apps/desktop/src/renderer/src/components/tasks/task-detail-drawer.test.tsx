@@ -23,6 +23,10 @@ vi.mock('@/contexts/day-panel-context', () => ({
   useDayPanel: () => ({ isOpen: false, width: 320 })
 }))
 
+vi.mock('@/components/tasks/task-reminder-button', () => ({
+  TaskReminderButton: () => null
+}))
+
 let i18nEn: I18nInstance
 
 function renderWithI18n(ui: ReactElement) {

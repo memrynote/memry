@@ -163,6 +163,89 @@ describe('ReminderPicker', () => {
     )
   })
 
+  const MANAGED = [
+    { id: 'r1', remindAt: '2026-05-12T09:00:00.000Z', status: 'pending', note: 'orig note' },
+    { id: 'r2', remindAt: '2026-05-20T08:00:00.000Z', status: 'pending', note: undefined }
+  ]
+
+  it('lists existing reminders with edit and delete actions', () => {
+    renderWithProviders(
+      <ReminderPicker onSelect={vi.fn()} reminders={MANAGED} onEdit={vi.fn()} onDelete={vi.fn()} />
+    )
+
+    expect(screen.getByText(/\(2\)/)).toBeInTheDocument()
+    expect(screen.getByText('orig note')).toBeInTheDocument()
+    expect(
+      screen.getAllByRole('button', {
+        name: /phaseF.componentsReminderReminderPicker.deleteReminder/
+      })
+    ).toHaveLength(2)
+    expect(
+      screen.getAllByRole('button', {
+        name: /phaseF.componentsReminderReminderPicker.editReminder/
+      })
+    ).toHaveLength(2)
+  })
+
+  it('omits the management list when no reminders are passed', () => {
+    renderWithProviders(<ReminderPicker onSelect={vi.fn()} />)
+
+    expect(
+      screen.queryByRole('button', {
+        name: /phaseF.componentsReminderReminderPicker.deleteReminder/
+      })
+    ).not.toBeInTheDocument()
+  })
+
+  it('deletes a reminder by id', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const onDelete = vi.fn()
+
+    renderWithProviders(
+      <ReminderPicker onSelect={vi.fn()} reminders={MANAGED} onEdit={vi.fn()} onDelete={onDelete} />
+    )
+
+    await user.click(
+      screen.getAllByRole('button', {
+        name: /phaseF.componentsReminderReminderPicker.deleteReminder/
+      })[0]
+    )
+
+    expect(onDelete).toHaveBeenCalledWith('r1')
+  })
+
+  it('edits a reminder through a prefilled date, time, and note', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const onEdit = vi.fn()
+
+    renderWithProviders(
+      <ReminderPicker
+        onSelect={vi.fn()}
+        showNote
+        reminders={MANAGED}
+        onEdit={onEdit}
+        onDelete={vi.fn()}
+      />
+    )
+
+    await user.click(
+      screen.getAllByRole('button', {
+        name: /phaseF.componentsReminderReminderPicker.editReminder/
+      })[0]
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Select May 12' }))
+    fireEvent.change(screen.getByLabelText(/phaseF.componentsReminderReminderPicker.time/), {
+      target: { value: '10:15' }
+    })
+
+    await user.click(
+      screen.getByRole('button', { name: /phaseF.componentsReminderReminderPicker.save/ })
+    )
+
+    expect(onEdit).toHaveBeenCalledWith('r1', new Date(2026, 4, 12, 10, 15, 0, 0), 'orig note')
+  })
+
   it('resets custom state when returning to presets and shows loading state', async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
 

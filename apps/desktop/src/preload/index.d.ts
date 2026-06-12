@@ -928,7 +928,7 @@ export interface VoiceModelProgressEvent {
 }
 
 // Reminder types
-export type ReminderTargetType = 'note' | 'journal' | 'highlight'
+export type ReminderTargetType = 'note' | 'journal' | 'highlight' | 'task'
 export type ReminderStatus = 'pending' | 'triggered' | 'dismissed' | 'snoozed'
 
 export interface Reminder {
@@ -953,6 +953,7 @@ export interface ReminderWithTarget extends Reminder {
   targetTitle: string | null
   targetExists: boolean
   highlightExists?: boolean
+  projectId?: string | null
 }
 
 export interface CreateReminderInput {

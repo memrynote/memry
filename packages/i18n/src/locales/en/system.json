@@ -35,6 +35,7 @@
       "note": "Note reminder",
       "journal": "Journal reminder",
       "highlight": "Highlight reminder",
+      "task": "Task reminder",
       "fallback": "Reminder due",
       "default": "Reminder"
     }

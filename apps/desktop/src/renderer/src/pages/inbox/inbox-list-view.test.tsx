@@ -12,6 +12,12 @@ const mocks = vi.hoisted(() => ({
     error: null as Error | null,
     detailItem: null as Record<string, unknown> | null
   },
+  remindersPanel: {
+    upcoming: [] as Array<Record<string, unknown>>,
+    past: [] as Array<Record<string, unknown>>,
+    upcomingCount: 0,
+    isLoading: false
+  },
   refetch: vi.fn(),
   fileItem: vi.fn(),
   bulkArchive: vi.fn(),
@@ -106,6 +112,20 @@ vi.mock('@/services/inbox-service', () => ({
     snooze: mocks.snooze,
     captureImage: mocks.captureImage
   }
+}))
+
+vi.mock('@/hooks/use-inbox-reminders-panel', () => ({
+  useInboxRemindersPanel: () => mocks.remindersPanel
+}))
+
+vi.mock('@/components/inbox/inbox-reminders-list', () => ({
+  InboxRemindersList: ({ panel }: { panel: { upcoming: unknown[]; past: unknown[] } }) => (
+    <div
+      data-testid="reminders-panel"
+      data-upcoming={panel.upcoming.length}
+      data-past={panel.past.length}
+    />
+  )
 }))
 
 vi.mock('@/lib/ai-clustering', () => ({
@@ -366,6 +386,7 @@ describe('InboxListView', () => {
     mocks.inboxState.isLoading = false
     mocks.inboxState.error = null
     mocks.inboxState.detailItem = item
+    mocks.remindersPanel = { upcoming: [], past: [], upcomingCount: 0, isLoading: false }
     mocks.fileItem.mockResolvedValue({ success: true })
     mocks.bulkArchive.mockResolvedValue({ success: true })
     mocks.archiveWithUndo.mockResolvedValue(undefined)
@@ -400,28 +421,21 @@ describe('InboxListView', () => {
     expect(screen.getByText('Empty 2/7/3')).toBeInTheDocument()
   })
 
-  it('shows snoozed inbox rows and reminder rows in the snoozed view', () => {
-    mocks.inboxState.items = [
-      item,
-      {
-        ...item,
-        id: 'snoozed-1',
-        title: 'Snoozed Link',
-        snoozedUntil: new Date('2026-05-12T09:00:00.000Z')
-      },
-      {
-        ...item,
-        id: 'reminder-1',
-        type: 'reminder',
-        title: 'Reminder Note'
-      }
-    ]
+  it('renders the reminders panel instead of the list in the snoozed view', () => {
+    mocks.remindersPanel = {
+      upcoming: [{ key: 'u1' }, { key: 'u2' }],
+      past: [{ key: 'p1' }],
+      upcomingCount: 2,
+      isLoading: false
+    }
 
     renderWithProviders(<InboxListView selectedTypes={new Set()} showSnoozedItems />)
 
+    const panel = screen.getByTestId('reminders-panel')
+    expect(panel).toHaveAttribute('data-upcoming', '2')
+    expect(panel).toHaveAttribute('data-past', '1')
+    // The normal inbox list rows are not shown in the reminders view.
     expect(screen.queryByText('Saved Link')).not.toBeInTheDocument()
-    expect(screen.getByText('Snoozed Link')).toBeInTheDocument()
-    expect(screen.getByText('Reminder Note')).toBeInTheDocument()
   })
 
   it('previews, files, archives, and snoozes individual items', async () => {

@@ -15,7 +15,8 @@ describe('reminderTargetType', () => {
     expect(reminderTargetType).toEqual({
       NOTE: 'note',
       JOURNAL: 'journal',
-      HIGHLIGHT: 'highlight'
+      HIGHLIGHT: 'highlight',
+      TASK: 'task'
     })
   })
 
@@ -23,9 +24,10 @@ describe('reminderTargetType', () => {
     const values: ReminderTargetType[] = [
       reminderTargetType.NOTE,
       reminderTargetType.JOURNAL,
-      reminderTargetType.HIGHLIGHT
+      reminderTargetType.HIGHLIGHT,
+      reminderTargetType.TASK
     ]
-    expect(values).toHaveLength(3)
+    expect(values).toHaveLength(4)
   })
 })
 

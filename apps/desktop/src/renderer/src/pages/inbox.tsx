@@ -23,7 +23,8 @@ import { InboxSegmentControl, type InboxView } from '@/components/inbox/inbox-se
 import { CaptureInput } from '@/components/capture-input'
 import { Picker } from '@/components/ui/picker'
 import { useInboxNotifications } from '@/hooks/use-inbox-notifications'
-import { useInboxJobs, useInboxList, useInboxSnoozed } from '@/hooks/use-inbox'
+import { useInboxJobs, useInboxList } from '@/hooks/use-inbox'
+import { useInboxRemindersPanel } from '@/hooks/use-inbox-reminders-panel'
 import { useActiveTab } from '@/contexts/tabs'
 import type { InboxItemType } from '@memry/contracts/inbox-api'
 import { InboxListView } from './inbox/inbox-list-view'
@@ -71,15 +72,10 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   const archivedSearchRef = useRef<HTMLInputElement>(null)
   useInboxNotifications()
   const { items } = useInboxList()
-  const { data: snoozedItems = [] } = useInboxSnoozed()
+  const { upcomingCount } = useInboxRemindersPanel()
   const { activeCount: activeJobCount, failedCount: failedJobCount } = useInboxJobs(
     items.map((item) => item.id)
   )
-  const reminderCount = useMemo(
-    () => items.filter((item) => item.type === 'reminder').length,
-    [items]
-  )
-  const snoozedViewCount = snoozedItems.length + reminderCount
 
   const activeTab = useActiveTab()
   const focusInboxItemId =
@@ -290,8 +286,8 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                   title={
                     showSnoozedItems
                       ? t('view.snoozed.hide')
-                      : snoozedViewCount > 0
-                        ? t('view.snoozed.showWithCount', { count: snoozedViewCount })
+                      : upcomingCount > 0
+                        ? t('view.snoozed.showWithCount', { count: upcomingCount })
                         : t('view.snoozed.show')
                   }
                   className={cn(
@@ -302,7 +298,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                   )}
                 >
                   <AlarmClock className="size-3" />
-                  {snoozedViewCount > 0 && (
+                  {upcomingCount > 0 && (
                     <span
                       className={cn(
                         'flex items-center justify-center size-[14px] rounded-full text-[9px] font-bold',
@@ -311,7 +307,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                           : 'bg-foreground/15 text-text-secondary'
                       )}
                     >
-                      {snoozedViewCount}
+                      {upcomingCount}
                     </span>
                   )}
                 </button>

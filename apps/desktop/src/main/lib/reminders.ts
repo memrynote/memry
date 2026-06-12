@@ -13,6 +13,7 @@ import type { IndexDb } from '../database/types'
 import { getNoteCacheById } from '../database/queries/notes'
 import { getStatus } from '../vault'
 import { reminders } from '@memry/db-schema/schema/reminders'
+import { tasks } from '@memry/db-schema/schema/tasks'
 import { inboxItems, inboxItemType } from '@memry/db-schema/schema/inbox'
 import { eq, and, lte, sql, or, gte, asc } from 'drizzle-orm'
 import { generateId } from './id'
@@ -88,7 +89,7 @@ function toReminder(row: ReminderRow): Reminder {
 function resolveReminderTarget(
   reminder: Reminder,
   indexDb: IndexDb
-): Pick<ReminderWithTarget, 'targetTitle' | 'targetExists' | 'highlightExists'> {
+): Pick<ReminderWithTarget, 'targetTitle' | 'targetExists' | 'highlightExists' | 'projectId'> {
   switch (reminder.targetType) {
     case 'journal':
       return { targetTitle: reminder.targetId, targetExists: true, highlightExists: undefined }
@@ -101,6 +102,20 @@ function resolveReminderTarget(
         targetTitle: note?.title ?? null,
         targetExists,
         highlightExists: reminder.targetType === 'highlight' ? targetExists : undefined
+      }
+    }
+
+    case 'task': {
+      const task = getDatabase()
+        .select({ title: tasks.title, projectId: tasks.projectId })
+        .from(tasks)
+        .where(eq(tasks.id, reminder.targetId))
+        .get()
+      return {
+        targetTitle: task?.title ?? null,
+        targetExists: !!task,
+        highlightExists: undefined,
+        projectId: task?.projectId
       }
     }
   }
@@ -167,7 +182,8 @@ function createReminderInboxItem(reminder: ReminderWithTarget): void {
       highlightText: reminder.highlightText || undefined,
       highlightStart: reminder.highlightStart || undefined,
       highlightEnd: reminder.highlightEnd || undefined,
-      reminderNote: reminder.note || undefined
+      reminderNote: reminder.note || undefined,
+      projectId: reminder.projectId || undefined
     }
 
     // Insert inbox item
@@ -236,7 +252,8 @@ function showDesktopNotification(reminder: ReminderWithTarget): void {
     const typeLabels: Record<string, string> = {
       note: t('notification.reminder.note'),
       journal: t('notification.reminder.journal'),
-      highlight: t('notification.reminder.highlight')
+      highlight: t('notification.reminder.highlight'),
+      task: t('notification.reminder.task')
     }
     body = typeLabels[reminder.targetType] || t('notification.reminder.fallback')
   }

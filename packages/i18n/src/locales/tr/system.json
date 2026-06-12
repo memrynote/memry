@@ -35,6 +35,7 @@
       "note": "Not hatırlatıcısı",
       "journal": "Günlük hatırlatıcısı",
       "highlight": "Hatırlatıcıyı vurgula",
+      "task": "Görev hatırlatıcısı",
       "fallback": "Hatırlatma zamanı",
       "default": "Hatırlatma"
     }
