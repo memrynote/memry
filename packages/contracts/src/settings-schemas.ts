@@ -185,7 +185,10 @@ export const CALENDAR_SETTINGS_DEFAULTS: CalendarSettings = {
 export const CalendarGoogleSettingsSchema = z.object({
   defaultTargetCalendarId: z.string().nullable(),
   onboardingCompleted: z.boolean(),
-  promoteConfirmDismissed: z.boolean()
+  promoteConfirmDismissed: z.boolean(),
+  // false = one-way (inbound-only): pull Google events into memrynote but never
+  // push memrynote events out to Google.
+  pushEventsToGoogle: z.boolean()
 })
 
 export type CalendarGoogleSettings = z.infer<typeof CalendarGoogleSettingsSchema>
@@ -193,7 +196,8 @@ export type CalendarGoogleSettings = z.infer<typeof CalendarGoogleSettingsSchema
 export const CALENDAR_GOOGLE_SETTINGS_DEFAULTS: CalendarGoogleSettings = {
   defaultTargetCalendarId: null,
   onboardingCompleted: false,
-  promoteConfirmDismissed: false
+  promoteConfirmDismissed: false,
+  pushEventsToGoogle: true
 }
 
 // ============================================================================
