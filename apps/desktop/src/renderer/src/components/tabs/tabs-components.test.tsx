@@ -75,19 +75,6 @@ vi.mock('@/components/ui/tooltip', () => ({
   TooltipTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>
 }))
 
-vi.mock('@/components/ui/dropdown-menu', () => ({
-  DropdownMenu: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DropdownMenuContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DropdownMenuItem: ({
-    children,
-    onClick
-  }: {
-    children: React.ReactNode
-    onClick?: () => void
-  }) => <button onClick={onClick}>{children}</button>,
-  DropdownMenuTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>
-}))
-
 vi.mock('@/lib/render-note-icon', () => ({
   NoteIconDisplay: ({ value }: { value: string }) => <span>{value}</span>
 }))
@@ -206,7 +193,7 @@ describe('tabs components coverage', () => {
     act(() => {
       window.dispatchEvent(new Event('memry:new-tab-menu'))
     })
-    fireEvent.click(screen.getByRole('button', { name: /newNote/ }))
+    fireEvent.click(screen.getByRole('option', { name: /newNote/ }))
     await waitFor(() => expect(notesService.create).toHaveBeenCalled())
     expect(dispatchSpy).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'memry:expand-folder' })
@@ -216,10 +203,22 @@ describe('tabs components coverage', () => {
       { groupId: 'group-1' }
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /journal/ }))
-    fireEvent.click(screen.getByRole('button', { name: /calendar/ }))
-    fireEvent.click(screen.getByRole('button', { name: /inboxCapture/ }))
-    fireEvent.click(screen.getByRole('button', { name: /tasks/ }))
+    act(() => {
+      window.dispatchEvent(new Event('memry:new-tab-menu'))
+    })
+    fireEvent.click(screen.getByRole('option', { name: /journal/ }))
+    act(() => {
+      window.dispatchEvent(new Event('memry:new-tab-menu'))
+    })
+    fireEvent.click(screen.getByRole('option', { name: /calendar/ }))
+    act(() => {
+      window.dispatchEvent(new Event('memry:new-tab-menu'))
+    })
+    fireEvent.click(screen.getByRole('option', { name: /inboxCapture/ }))
+    act(() => {
+      window.dispatchEvent(new Event('memry:new-tab-menu'))
+    })
+    fireEvent.click(screen.getByRole('option', { name: /tasks/ }))
     expect(tabsApi.openTab).toHaveBeenCalledWith(expect.objectContaining({ type: 'journal' }), {
       groupId: 'group-1'
     })
