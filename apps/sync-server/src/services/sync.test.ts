@@ -1265,6 +1265,174 @@ describe('pullItems', () => {
     // #then
     expect(result).toEqual([])
   })
+
+  it('should preserve server_cursor order across concurrency windows', async () => {
+    // #given — more rows than the concurrency window so reads span >1 window
+    const ROW_COUNT = 30
+    const stmt = createMockStatement()
+    stmt.all.mockResolvedValue({
+      results: Array.from({ length: ROW_COUNT }, (_, index) => ({
+        item_id: `item-${index}`,
+        item_type: 'note',
+        blob_key: `blob-${index}`,
+        crypto_version: 1,
+        operation: 'update',
+        signer_device_id: 'device-1',
+        signature: `sig-${index}`,
+        state_vector: null,
+        clock: null,
+        deleted_at: null,
+        server_cursor: index
+      }))
+    })
+    db.prepare.mockReturnValue(stmt)
+    // Resolve earlier blob keys later so completion order is roughly the reverse
+    // of input order; windowed Promise.all must still return server_cursor order.
+    vi.mocked(getBlob).mockImplementation(async (_storage, blobKey) => {
+      const index = Number(blobKey.split('-')[1])
+      await new Promise((resolve) => setTimeout(resolve, (ROW_COUNT - index) % 5))
+      return {
+        body: JSON.stringify({
+          encryptedKey: 'ek',
+          keyNonce: 'kn',
+          encryptedData: 'ed',
+          dataNonce: 'dn'
+        })
+      } as unknown as R2ObjectBody
+    })
+
+    // #when
+    const result = await pullItems(
+      db as unknown as D1Database,
+      {} as R2Bucket,
+      'user-1',
+      Array.from({ length: ROW_COUNT }, (_, index) => `item-${index}`)
+    )
+
+    // #then
+    expect(result.map((item) => item.id)).toEqual(
+      Array.from({ length: ROW_COUNT }, (_, index) => `item-${index}`)
+    )
+  })
+
+  it('should filter out unsupported item types while preserving order of the rest', async () => {
+    // #given — a middle row whose type is not a supported record type
+    const stmt = createMockStatement()
+    stmt.all.mockResolvedValue({
+      results: [
+        {
+          item_id: 'item-a',
+          item_type: 'note',
+          blob_key: 'blob-a',
+          crypto_version: 1,
+          operation: 'update',
+          signer_device_id: 'device-1',
+          signature: 'sig-a',
+          state_vector: null,
+          clock: null,
+          deleted_at: null,
+          server_cursor: 1
+        },
+        {
+          item_id: 'item-skip',
+          item_type: 'legacy_unsupported',
+          blob_key: 'blob-skip',
+          crypto_version: 1,
+          operation: 'update',
+          signer_device_id: 'device-1',
+          signature: 'sig-skip',
+          state_vector: null,
+          clock: null,
+          deleted_at: null,
+          server_cursor: 2
+        },
+        {
+          item_id: 'item-b',
+          item_type: 'task',
+          blob_key: 'blob-b',
+          crypto_version: 1,
+          operation: 'update',
+          signer_device_id: 'device-1',
+          signature: 'sig-b',
+          state_vector: null,
+          clock: null,
+          deleted_at: null,
+          server_cursor: 3
+        }
+      ]
+    })
+    db.prepare.mockReturnValue(stmt)
+    vi.mocked(getBlob).mockResolvedValue({
+      body: JSON.stringify({
+        encryptedKey: 'ek',
+        keyNonce: 'kn',
+        encryptedData: 'ed',
+        dataNonce: 'dn'
+      })
+    } as unknown as R2ObjectBody)
+
+    // #when
+    const result = await pullItems(db as unknown as D1Database, {} as R2Bucket, 'user-1', [
+      'item-a',
+      'item-skip',
+      'item-b'
+    ])
+
+    // #then — the unsupported row is dropped, surviving rows keep their order
+    expect(result.map((item) => item.id)).toEqual(['item-a', 'item-b'])
+  })
+
+  it('should bound concurrent R2 reads to the window size', async () => {
+    // #given — mirrors R2_CONCURRENCY in sync.ts; rows span more than one window
+    const R2_CONCURRENCY = 25
+    const ROW_COUNT = R2_CONCURRENCY + 10
+    const stmt = createMockStatement()
+    stmt.all.mockResolvedValue({
+      results: Array.from({ length: ROW_COUNT }, (_, index) => ({
+        item_id: `item-${index}`,
+        item_type: 'note',
+        blob_key: `blob-${index}`,
+        crypto_version: 1,
+        operation: 'update',
+        signer_device_id: 'device-1',
+        signature: `sig-${index}`,
+        state_vector: null,
+        clock: null,
+        deleted_at: null,
+        server_cursor: index
+      }))
+    })
+    db.prepare.mockReturnValue(stmt)
+    let inFlight = 0
+    let peak = 0
+    vi.mocked(getBlob).mockImplementation(async () => {
+      inFlight += 1
+      peak = Math.max(peak, inFlight)
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      inFlight -= 1
+      return {
+        body: JSON.stringify({
+          encryptedKey: 'ek',
+          keyNonce: 'kn',
+          encryptedData: 'ed',
+          dataNonce: 'dn'
+        })
+      } as unknown as R2ObjectBody
+    })
+
+    // #when
+    const result = await pullItems(
+      db as unknown as D1Database,
+      {} as R2Bucket,
+      'user-1',
+      Array.from({ length: ROW_COUNT }, (_, index) => `item-${index}`)
+    )
+
+    // #then — reads overlapped (not serial) but never exceeded the bound
+    expect(result).toHaveLength(ROW_COUNT)
+    expect(peak).toBeGreaterThan(1)
+    expect(peak).toBeLessThanOrEqual(R2_CONCURRENCY)
+  })
 })
 
 describe('getItem', () => {
