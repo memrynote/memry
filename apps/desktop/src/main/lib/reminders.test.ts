@@ -9,6 +9,8 @@ import { eq } from 'drizzle-orm'
 import { reminders } from '@memry/db-schema/schema/reminders'
 import { reminderStatus } from '@memry/contracts/reminders-api'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
+import { tasks } from '@memry/db-schema/schema/tasks'
+import { projects } from '@memry/db-schema/schema/projects'
 import { noteCache } from '@memry/db-schema/schema/notes-cache'
 import { InboxChannels, ReminderChannels } from '@memry/contracts/ipc-channels'
 import {
@@ -102,6 +104,16 @@ describe('reminders service', () => {
     return reminder.id
   }
 
+  const seedTask = (id: string, title: string, projectId: string): void => {
+    const now = '2025-01-01T00:00:00.000Z'
+    dataDb.db
+      .insert(projects)
+      .values({ id: projectId, name: projectId, createdAt: now, modifiedAt: now })
+      .onConflictDoNothing()
+      .run()
+    dataDb.db.insert(tasks).values({ id, projectId, title, createdAt: now, modifiedAt: now }).run()
+  }
+
   const seedNoteCache = (id: string, title: string): void => {
     const now = '2025-01-01T00:00:00.000Z'
     indexDb.db
@@ -154,6 +166,7 @@ describe('reminders service', () => {
         'notification.reminder.note': 'Note reminder',
         'notification.reminder.journal': 'Journal reminder',
         'notification.reminder.highlight': 'Highlight reminder',
+        'notification.reminder.task': 'Task reminder',
         'notification.reminder.fallback': 'Reminder due',
         'notification.reminder.default': 'Reminder',
         'error.reminderTimeMustBeFuture': 'Reminder time must be in the future'
@@ -426,6 +439,41 @@ describe('reminders service', () => {
     })
   })
 
+  it('lands a task reminder in the inbox with task title, projectId, and notification', () => {
+    seedTask('task-due', 'Ship release', 'proj-9')
+    seedReminder({
+      id: 'rem-task-due',
+      targetType: 'task',
+      targetId: 'task-due',
+      remindAt: '2000-01-01T00:00:00.000Z',
+      status: reminderStatus.PENDING
+    })
+
+    remindersService.startReminderScheduler()
+    remindersService.stopReminderScheduler()
+
+    expect(notificationInstances).toHaveLength(1)
+    expect(notificationInstances[0]?.options.title).toContain('Ship release')
+    expect(notificationInstances[0]?.options.body).toBe('Task reminder')
+
+    const inboxRow = dataDb.db
+      .select()
+      .from(inboxItems)
+      .all()
+      .find((item) => item.type === 'reminder')
+
+    expect(inboxRow?.title).toBe('Ship release')
+    expect(inboxRow?.metadata).toEqual(
+      expect.objectContaining({
+        reminderId: 'rem-task-due',
+        targetType: 'task',
+        targetId: 'task-due',
+        targetTitle: 'Ship release',
+        projectId: 'proj-9'
+      })
+    )
+  })
+
   it('bulk dismisses reminders and notifies calendar projection state for each changed row', () => {
     seedReminder({
       id: 'rem-b1',
@@ -659,6 +707,33 @@ describe('reminders service', () => {
       expect(reminder?.targetTitle).toBe('Annotated Essay')
       expect(reminder?.targetExists).toBe(true)
       expect(reminder?.highlightExists).toBe(true)
+    })
+
+    it('resolves task title and projectId for task reminders', () => {
+      // #given
+      seedTask('task-7', 'Ship release', 'proj-1')
+      const id = seedReminder({ targetType: 'task', targetId: 'task-7' })
+
+      // #when
+      const reminder = remindersService.getReminder(id)
+
+      // #then
+      expect(reminder?.targetTitle).toBe('Ship release')
+      expect(reminder?.targetExists).toBe(true)
+      expect(reminder?.projectId).toBe('proj-1')
+      expect(reminder?.highlightExists).toBeUndefined()
+    })
+
+    it('marks task reminders missing from the data db as non-existent', () => {
+      // #given — no seedTask for this id
+      const id = seedReminder({ targetType: 'task', targetId: 'task-gone' })
+
+      // #when
+      const reminder = remindersService.getReminder(id)
+
+      // #then
+      expect(reminder?.targetTitle).toBeNull()
+      expect(reminder?.targetExists).toBe(false)
     })
 
     it('clears highlightExists when the underlying note is missing', () => {

@@ -245,6 +245,7 @@
     "journalTitle": "Journal — {date}",
     "noteFallback": "Note",
     "journalFallback": "Journal",
+    "taskFallback": "Task",
     "highlighted": "Highlighted: \"{text}\"",
     "viewed": "Viewed",
     "markViewed": "Mark as viewed",
@@ -253,7 +254,10 @@
     "presetInOneHour": "1 hour",
     "presetTomorrow": "Tomorrow",
     "presetNextWeek": "Next week",
-    "custom": "Custom..."
+    "custom": "Custom...",
+    "panelUpcoming": "Upcoming",
+    "panelPast": "Past",
+    "panelEmpty": "No upcoming reminders."
   },
   "insights": {
     "captureActivity": "Capture Activity",
@@ -416,7 +420,11 @@
       "backToPresets": "Back to presets",
       "time": "Time",
       "noteOptional": "Note (optional)",
-      "whyAreYouSettingThisReminder": "Why are you setting this reminder?"
+      "whyAreYouSettingThisReminder": "Why are you setting this reminder?",
+      "set": "Set",
+      "editReminder": "Edit reminder",
+      "deleteReminder": "Delete reminder",
+      "save": "Save"
     },
     "componentsSnoozeSnoozePicker": {
       "snooze": "Snooze",

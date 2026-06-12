@@ -43,6 +43,15 @@ describe('CreateReminderSchema', () => {
     expect(result.success).toBe(true)
   })
 
+  it('should validate task type reminder', () => {
+    const result = CreateReminderSchema.safeParse({
+      targetType: 'task',
+      targetId: 'task-abc123',
+      remindAt: '2025-01-15T09:00:00.000Z'
+    })
+    expect(result.success).toBe(true)
+  })
+
   it('should reject highlight type without highlightText', () => {
     const result = CreateReminderSchema.safeParse({
       targetType: 'highlight',
@@ -65,8 +74,8 @@ describe('CreateReminderSchema', () => {
 
   it('should reject invalid targetType', () => {
     const result = CreateReminderSchema.safeParse({
-      targetType: 'task',
-      targetId: 'task-123',
+      targetType: 'bogus',
+      targetId: 'x-123',
       remindAt: '2025-01-15T09:00:00.000Z'
     })
     expect(result.success).toBe(false)
@@ -235,9 +244,16 @@ describe('ListRemindersSchema', () => {
     expect(result.success).toBe(false)
   })
 
-  it('should reject invalid targetType', () => {
+  it('should validate with task targetType', () => {
     const result = ListRemindersSchema.safeParse({
       targetType: 'task'
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('should reject invalid targetType', () => {
+    const result = ListRemindersSchema.safeParse({
+      targetType: 'bogus'
     })
     expect(result.success).toBe(false)
   })

@@ -127,9 +127,9 @@ export interface SocialMetadata {
 export interface ReminderMetadata {
   /** The reminder ID from the reminders table */
   reminderId: string
-  /** The type of target: note, journal, or highlight */
+  /** The type of target: note, journal, highlight, or task */
   targetType: ReminderTargetType
-  /** The target ID (noteId or journal date YYYY-MM-DD) */
+  /** The target ID (noteId, journal date YYYY-MM-DD, or taskId) */
   targetId: string
   /** The resolved title of the target */
   targetTitle: string | null
@@ -143,6 +143,8 @@ export interface ReminderMetadata {
   highlightEnd?: number
   /** User's note/description for the reminder */
   reminderNote?: string
+  /** Project the task belongs to (for task reminders — opens the Tasks page filtered to it) */
+  projectId?: string
 }
 
 export type InboxMetadata =

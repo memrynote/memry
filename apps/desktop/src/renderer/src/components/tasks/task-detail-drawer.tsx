@@ -11,6 +11,7 @@ import { InteractiveStatusBadge } from '@/components/tasks/interactive-status-ba
 import { InteractivePriorityBadge } from '@/components/tasks/interactive-priority-badge'
 import { InteractiveDueDateBadge } from '@/components/tasks/interactive-due-date-badge'
 import { InteractiveProjectBadge } from '@/components/tasks/interactive-project-badge'
+import { TaskReminderButton } from '@/components/tasks/task-reminder-button'
 import { StatusIcon } from '@/components/tasks/status-icon'
 import { FileAudio, FileImage, FilePdf, FileVideo, X, Plus, Trash } from '@/lib/icons'
 import { DeleteTaskDialog } from '@/components/tasks/delete-task-dialog'
@@ -337,6 +338,13 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                   onTimeChange={handleDueTimeChange}
                   isRepeating={task.isRepeating}
                 />
+              </div>
+
+              <div className="flex items-center py-1.5">
+                <span className="text-[12px] w-[90px] shrink-0 text-text-tertiary leading-4">
+                  {t('task.reminder')}
+                </span>
+                <TaskReminderButton taskId={task.id} />
               </div>
 
               <div className="flex items-center py-1.5">
