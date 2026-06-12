@@ -22,6 +22,7 @@ import { RoadmapPage } from '@/pages/Roadmap'
 import { TermsPage } from '@/pages/Terms'
 import { PrivacyPage } from '@/pages/Privacy'
 import { RefundPage } from '@/pages/Refund'
+import { NotFound } from '@/pages/NotFound'
 
 const ROUTE_MAP: Record<string, () => ReactNode> = {
   '/': () => <Home />,
@@ -40,7 +41,9 @@ const ROUTE_MAP: Record<string, () => ReactNode> = {
   '/roadmap': () => <RoadmapPage />,
   '/terms': () => <TermsPage />,
   '/privacy': () => <PrivacyPage />,
-  '/refund': () => <RefundPage />
+  '/refund': () => <RefundPage />,
+  // Prerendered to dist/404.html; Vercel serves it as the not-found fallback (HTTP 404).
+  '/404': () => <NotFound />
 }
 
 export function render(url: string): { html: string; helmet: HelmetServerState | null } {
