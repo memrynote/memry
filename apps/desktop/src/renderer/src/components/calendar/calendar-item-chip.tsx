@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from 'react'
 import { useT } from '@memry/i18n/renderer'
-import { AlarmClock, Calendar2, CheckSquare3, NotificationSnooze } from '@/lib/icons'
+import { AlarmClock, Calendar2, CheckSquare3, NotificationSnooze, StickyNote } from '@/lib/icons'
 import { getEventBaseColor, getEventBgColor, getEventTextColor } from '@/lib/event-type-colors'
 import { formatTimeOfDay } from '@/lib/time-format'
 import type { ClockFormat } from '@/lib/time-format'
@@ -16,7 +16,8 @@ const VISUAL_TYPE_ICONS: Record<
   task: CheckSquare3,
   reminder: AlarmClock,
   snooze: NotificationSnooze,
-  external_event: Calendar2
+  external_event: Calendar2,
+  note: StickyNote
 }
 
 interface CalendarItemChipProps {
@@ -46,7 +47,7 @@ export function CalendarItemChip({
   const VisualIcon = VISUAL_TYPE_ICONS[item.visualType]
   const deletable = Boolean(onDeleteItem) && canDeleteEvent(item)
   const cls = cn(
-    'flex h-full w-full items-start justify-between gap-0.5 rounded-[6px] px-1 py-0.5 text-left transition-[filter] @xl:px-2 @xl:py-1',
+    'flex h-full w-full items-start justify-between gap-0.5 rounded-[6px] px-1 py-0.5 text-start transition-[filter] @xl:px-2 @xl:py-1',
     (onClick || deletable) && 'cursor-pointer hover:brightness-100'
   )
   const chipStyle = useMemo<React.CSSProperties>(

@@ -37,7 +37,7 @@ import { calendarSources } from '@memry/db-schema/schema/calendar-sources'
 import { calendarBindings } from '@memry/db-schema/schema/calendar-bindings'
 import { createLogger } from '../lib/logger'
 import { trackCalendar } from './calendar-telemetry'
-import { requireDatabase, type DataDb } from '../database'
+import { requireDatabase, getIndexDatabase, type DataDb } from '../database'
 import { generateId } from '../lib/id'
 import { createStringHandler, createValidatedHandler, withDb } from './validate'
 import {
@@ -54,6 +54,7 @@ import {
   resolveDefaultGoogleAccountId
 } from '../calendar/google/oauth'
 import { getCalendarRangeProjection } from '../calendar/projection'
+import { PropertyDefinitionsService } from '../vault/property-definitions'
 import {
   startGoogleCalendarSyncRunner,
   stopGoogleCalendarSyncRunner,
@@ -81,6 +82,14 @@ import {
 } from '../calendar/runtime-effects'
 
 const log = createLogger('IPC:Calendar')
+
+function getCalendarEnabledPropertyNames(): string[] {
+  try {
+    return PropertyDefinitionsService.get().listCalendarEnabledNames()
+  } catch {
+    return []
+  }
+}
 
 function emitCalendarChanged(event: CalendarChangedEvent): void {
   for (const win of BrowserWindow.getAllWindows()) {
@@ -506,7 +515,12 @@ export function registerCalendarHandlers(): void {
   ipcMain.handle(
     CalendarChannels.invoke.GET_RANGE,
     createValidatedHandler(GetCalendarRangeSchema, (input): CalendarRangeResponse => {
-      return getCalendarRangeProjection(requireDatabase(), input)
+      return getCalendarRangeProjection(
+        requireDatabase(),
+        getIndexDatabase(),
+        input,
+        getCalendarEnabledPropertyNames()
+      )
     })
   )
 
