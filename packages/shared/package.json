@@ -10,6 +10,7 @@
     "./file-types": "./src/file-types.ts",
     "./empty-lines": "./src/empty-lines.ts",
     "./block-colors": "./src/block-colors.ts",
+    "./date-mention": "./src/date-mention.ts",
     "./block-nesting": "./src/block-nesting.ts",
     "./youtube": "./src/youtube.ts",
     "./task-block": "./src/task-block.ts"
