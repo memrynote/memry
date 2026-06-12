@@ -378,18 +378,28 @@ jobs:
             printf 'GOOGLE_CALENDAR_CLIENT_ID=%s\n' "$GOOGLE_CALENDAR_CLIENT_ID"
           } > apps/desktop/.env.production
 
-      # Windows Defender aggressively scans .env-named files (the build copies
-      # .env.production -> resources/.env), holding a lock that makes
-      # electron-builder's copyfile fail with EBUSY. Exclude the workspace from
-      # real-time scanning. Non-fatal if the runner disallows it.
-      - name: Exclude workspace from Windows Defender (avoid EBUSY file locks)
+      # electron-builder copies .env.production -> resources/.env during
+      # packaging. Windows Defender real-time scanning grabs a handle on the
+      # freshly written .env file, so electron-builder's copyfile fails with
+      # "EBUSY: resource busy or locked". A workspace path exclusion alone is not
+      # honored reliably on hosted runners (the lock recurs across retries within
+      # the same job), so disable real-time monitoring outright. Best-effort:
+      # the path/extension exclusions remain as a fallback if Tamper Protection
+      # refuses the disable.
+      - name: Relax Windows Defender for packaging (avoid EBUSY .env file lock)
         shell: pwsh
         run: |
           try {
-            Add-MpPreference -ExclusionPath "${{ github.workspace }}" -ErrorAction Stop
-            Write-Host "Defender exclusion added for ${{ github.workspace }}"
+            Add-MpPreference -ExclusionPath "${{ github.workspace }}" -ErrorAction SilentlyContinue
+            Add-MpPreference -ExclusionExtension "env", "production" -ErrorAction SilentlyContinue
           } catch {
-            Write-Host "Could not add Defender exclusion (continuing): $_"
+            Write-Host "Could not add Defender exclusions (continuing): $_"
+          }
+          try {
+            Set-MpPreference -DisableRealtimeMonitoring $true -ErrorAction Stop
+            Write-Host "Disabled Defender real-time monitoring for packaging"
+          } catch {
+            Write-Host "Could not disable Defender real-time monitoring (continuing): $_"
           }
 
       - name: Build Windows artifacts
