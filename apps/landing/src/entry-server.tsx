@@ -22,7 +22,22 @@ import { RoadmapPage } from '@/pages/Roadmap'
 import { TermsPage } from '@/pages/Terms'
 import { PrivacyPage } from '@/pages/Privacy'
 import { RefundPage } from '@/pages/Refund'
+import { CheckoutPage } from '@/pages/Checkout'
+import { AuthPage } from '@/pages/Auth'
+import { AuthCallbackPage } from '@/pages/AuthCallback'
+import { RequireAuth } from '@/components/account/RequireAuth'
+import { AccountLayout } from '@/components/account/AccountLayout'
 import { NotFound } from '@/pages/NotFound'
+
+// Account routes are gated by RequireAuth, which renders null until the client is
+// ready, so prerendering emits an empty shell (no session/localStorage access during
+// SSR). main.tsx re-renders via createRoot (not hydrate), so this shell is replaced
+// on mount; it exists only so direct loads/refreshes get a file instead of a 404.
+const accountShell = () => (
+  <RequireAuth>
+    <AccountLayout />
+  </RequireAuth>
+)
 
 const ROUTE_MAP: Record<string, () => ReactNode> = {
   '/': () => <Home />,
@@ -42,6 +57,16 @@ const ROUTE_MAP: Record<string, () => ReactNode> = {
   '/terms': () => <TermsPage />,
   '/privacy': () => <PrivacyPage />,
   '/refund': () => <RefundPage />,
+  // Client-only app routes: no SEO value, but they must be prerendered as static
+  // shells so direct loads (e.g. the desktop "Upgrade" deep link to /checkout#token,
+  // the Google OAuth redirect to /auth/oauth/callback) resolve instead of 404ing.
+  '/checkout': () => <CheckoutPage />,
+  '/auth': () => <AuthPage />,
+  '/auth/oauth/callback': () => <AuthCallbackPage />,
+  '/account': accountShell,
+  '/account/profile': accountShell,
+  '/account/billing': accountShell,
+  '/account/sync': accountShell,
   // Prerendered to dist/404.html; Vercel serves it as the not-found fallback (HTTP 404).
   '/404': () => <NotFound />
 }
