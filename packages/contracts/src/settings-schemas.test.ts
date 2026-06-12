@@ -694,7 +694,8 @@ describe('CalendarGoogleSettingsSchema (M2)', () => {
     const result = CalendarGoogleSettingsSchema.safeParse({
       defaultTargetCalendarId: 'primary@group.calendar.google.com',
       onboardingCompleted: true,
-      promoteConfirmDismissed: false
+      promoteConfirmDismissed: false,
+      pushEventsToGoogle: true
     })
     expect(result.success).toBe(true)
   })
@@ -703,7 +704,8 @@ describe('CalendarGoogleSettingsSchema (M2)', () => {
     const result = CalendarGoogleSettingsSchema.safeParse({
       defaultTargetCalendarId: null,
       onboardingCompleted: true,
-      promoteConfirmDismissed: false
+      promoteConfirmDismissed: false,
+      pushEventsToGoogle: true
     })
     expect(result.success).toBe(true)
   })

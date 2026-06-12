@@ -127,7 +127,8 @@ describe('setDefaultGoogleCalendar (M2)', () => {
     expect(JSON.parse(row!.value)).toEqual({
       defaultTargetCalendarId: 'primary@group.calendar.google.com',
       onboardingCompleted: true,
-      promoteConfirmDismissed: false
+      promoteConfirmDismissed: false,
+      pushEventsToGoogle: true
     })
   })
 

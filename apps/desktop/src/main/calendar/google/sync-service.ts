@@ -787,12 +787,18 @@ export async function syncGoogleCalendarNow(
     const accountIds = listGoogleAccountIds(db)
     const defaultAccountId = resolveDefaultGoogleAccountId(db)
 
-    for (const accountId of accountIds) {
-      const client =
-        deps.client && accountId === defaultAccountId
-          ? deps.client
-          : createGoogleCalendarClient({ accountId })
-      await ensureMemryCalendarSource(db, client, accountId)
+    // One-way (inbound-only) mode: skip provisioning the managed "memrynote"
+    // calendar — ensureMemryCalendarSource may call createCalendar, an outbound
+    // write that the sync-direction setting is meant to suppress. The managed
+    // source is only a push target, never pulled inbound, so skipping it is safe.
+    if (readCalendarGoogleSettings(db).pushEventsToGoogle) {
+      for (const accountId of accountIds) {
+        const client =
+          deps.client && accountId === defaultAccountId
+            ? deps.client
+            : createGoogleCalendarClient({ accountId })
+        await ensureMemryCalendarSource(db, client, accountId)
+      }
     }
 
     const sources = listCalendarSources(db, {
