@@ -479,6 +479,16 @@ export const notesRpc = defineDomain({
       params: ['name'],
       invokeArgs: ['{ name }']
     }),
+    setCalendarPropertyVisibility: defineMethod<
+      (name: string, showOnCalendar: boolean) => Promise<{ success: boolean }>
+    >({
+      channel: NotesChannels.invoke.SET_CALENDAR_PROPERTY_VISIBILITY,
+      params: ['name', 'showOnCalendar'],
+      invokeArgs: ['{ name, showOnCalendar }']
+    }),
+    getCalendarPropertyNames: defineMethod<() => Promise<string[]>>({
+      channel: NotesChannels.invoke.GET_CALENDAR_PROPERTY_NAMES
+    }),
     uploadAttachment: defineMethod<
       (noteId: string, file: AttachmentUploadFile) => Promise<AttachmentResult>
     >({
