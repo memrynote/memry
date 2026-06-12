@@ -667,6 +667,10 @@ export const setVaultName = async (
 
 const D1_MAX_BIND_PARAMS = 95
 
+// Upper bound on simultaneous R2 reads from pullItems. Conservative for a
+// Worker (avoids firing hundreds of subrequests at once); tune here if needed.
+const R2_CONCURRENCY = 25
+
 export const pullItems = async (
   db: D1Database,
   storage: R2Bucket,
@@ -701,16 +705,19 @@ export const pullItems = async (
 
   allDbRows.sort((a, b) => a.server_cursor - b.server_cursor)
 
-  const results: RecordPullItemResponse[] = []
+  // Fetch encrypted payloads from R2 with bounded concurrency. Map over the
+  // already server_cursor-sorted allDbRows in fixed-size windows and concatenate
+  // window results in order, so output ordering is preserved while at most
+  // R2_CONCURRENCY reads are in flight at once.
+  const settled: Array<RecordPullItemResponse | null> = []
 
-  for (const row of allDbRows) {
-    const item = await toPullItemResponse(storage, userId, row)
-    if (item) {
-      results.push(item)
-    }
+  for (let i = 0; i < allDbRows.length; i += R2_CONCURRENCY) {
+    const window = allDbRows.slice(i, i + R2_CONCURRENCY)
+    const part = await Promise.all(window.map((row) => toPullItemResponse(storage, userId, row)))
+    settled.push(...part)
   }
 
-  return results
+  return settled.filter((item): item is RecordPullItemResponse => item !== null)
 }
 
 export const getItem = async (
