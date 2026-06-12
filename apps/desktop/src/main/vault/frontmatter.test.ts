@@ -326,4 +326,12 @@ More text here to ensure the snippet is long enough.
   it('createSnippet returns full cleaned content when shorter than max', () => {
     expect(createSnippet('Simple note text.', 200)).toBe('Simple note text.')
   })
+
+  it('createSnippet strips memry HTML comment markers', () => {
+    const content =
+      'first <!-- memry:block-nesting-level=1 --> second <!-- colors:{"textColor":"red"} --> third'
+    const snippet = createSnippet(content, 200)
+    expect(snippet).toBe('first second third')
+    expect(snippet).not.toContain('<!--')
+  })
 })
