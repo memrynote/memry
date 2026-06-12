@@ -19,7 +19,7 @@ below — run `pnpm audit --prod` separately if you want that).
 
 | Plan | Title                                                              | Priority | Effort | Risk | Issue                                                 | Status |
 | ---- | ------------------------------------------------------------------ | -------- | ------ | ---- | ----------------------------------------------------- | ------ |
-| 001  | Placeholder + rotate real secrets in committed `.env.example`      | P1       | S      | MED  | [#542](https://github.com/memrynote/memry/issues/542) | TODO   |
+| 001  | Placeholder + rotate real secrets in committed `.env.example`      | P1       | S      | MED  | [#542](https://github.com/memrynote/memry/issues/542) | REJECTED — false positive: `.env.example` only ever held placeholders (no real secret in any commit); nothing to rotate |
 | 002  | Flush pending CRDT write-backs on shutdown (not drop)              | P1       | S      | LOW  | [#543](https://github.com/memrynote/memry/issues/543) | TODO   |
 | 003  | Fix README license contradiction → GPL-3.0                         | P1       | S      | LOW  | [#544](https://github.com/memrynote/memry/issues/544) | TODO   |
 | 004  | Align documented Node/pnpm versions with the pinned toolchain      | P2       | S      | LOW  | [#545](https://github.com/memrynote/memry/issues/545) | TODO   |
