@@ -8,6 +8,8 @@ interface SplitLayoutRendererProps {
   path: number[]
   showSidebarToggle?: boolean
   reserveDayPanelSpace?: boolean
+  /** Whether this branch contains the single top-right pane (only it shows the day-panel toggle) */
+  showDayPanelToggle?: boolean
 }
 
 /**
@@ -25,7 +27,8 @@ export const SplitLayoutRenderer = ({
   layout,
   path,
   showSidebarToggle = true,
-  reserveDayPanelSpace = true
+  reserveDayPanelSpace = true,
+  showDayPanelToggle = true
 }: SplitLayoutRendererProps): React.JSX.Element | null => {
   const { state, dispatch } = useTabs()
 
@@ -39,6 +42,7 @@ export const SplitLayoutRenderer = ({
         isActive={state.activeGroupId === layout.tabGroupId}
         showSidebarToggle={showSidebarToggle}
         reserveDayPanelSpace={reserveDayPanelSpace}
+        showDayPanelToggle={showDayPanelToggle}
       />
     )
   }
@@ -61,12 +65,14 @@ export const SplitLayoutRenderer = ({
         path={[...path, 0]}
         showSidebarToggle={showSidebarToggle}
         reserveDayPanelSpace={direction === 'horizontal' ? false : reserveDayPanelSpace}
+        showDayPanelToggle={direction === 'vertical' ? showDayPanelToggle : false}
       />
       <SplitLayoutRenderer
         layout={layout.second}
         path={[...path, 1]}
         showSidebarToggle={false}
         reserveDayPanelSpace={reserveDayPanelSpace}
+        showDayPanelToggle={direction === 'horizontal' ? showDayPanelToggle : false}
       />
     </SplitPane>
   )

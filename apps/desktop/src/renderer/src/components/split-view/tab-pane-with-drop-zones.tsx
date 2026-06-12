@@ -24,6 +24,8 @@ interface TabPaneWithDropZonesProps {
   showSidebarToggle?: boolean
   /** Whether this pane should reserve space for the fixed day panel */
   reserveDayPanelSpace?: boolean
+  /** Whether this pane is the top-right one that shows the day-panel toggle */
+  showDayPanelToggle?: boolean
   /** Additional CSS classes */
   className?: string
 }
@@ -36,6 +38,7 @@ export const TabPaneWithDropZones = ({
   isActive,
   showSidebarToggle = true,
   reserveDayPanelSpace = true,
+  showDayPanelToggle = true,
   className
 }: TabPaneWithDropZonesProps): React.JSX.Element | null => {
   const { dispatch } = useTabs()
@@ -165,6 +168,7 @@ export const TabPaneWithDropZones = ({
         groupId={groupId}
         showSidebarToggle={showSidebarToggle}
         reserveDayPanelSpace={reserveDayPanelSpace}
+        showDayPanelToggle={showDayPanelToggle}
       />
 
       {/* Content area */}
