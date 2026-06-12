@@ -64,6 +64,7 @@ export function buildReminderTargetTab(input: ReminderTargetInput): ReminderTarg
 
     case 'note':
     case 'highlight':
+    case 'note_date':
       return {
         type: 'note',
         title: targetTitle || fallbacks.note,
