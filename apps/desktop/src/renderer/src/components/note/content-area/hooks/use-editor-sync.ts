@@ -11,6 +11,7 @@ import {
 } from '../wiki-link-utils'
 import { normalizeHashTags, extractInlineTags } from '../hash-tag'
 import { normalizeLinkMentions } from '../link-mention-utils'
+import { normalizeDateMentions } from '../date-mention-utils'
 import { normalizeTaskBlocks } from '../task-block/task-block-utils'
 import {
   parseMarkdownPreservingBlanks,
@@ -208,6 +209,7 @@ export function useEditorSync({
 
             let normalizedBlocks = normalizeWikiLinks(blocks).blocks
             normalizedBlocks = normalizeLinkMentions(normalizedBlocks).blocks
+            normalizedBlocks = normalizeDateMentions(normalizedBlocks).blocks
             const taskNormalized = normalizeTaskBlocks(normalizedBlocks)
             normalizedBlocks = taskNormalized.blocks
 
@@ -228,6 +230,7 @@ export function useEditorSync({
         } else if (Array.isArray(initialContent) && initialContent.length > 0) {
           let normalizedBlocks = normalizeWikiLinks(initialContent).blocks
           normalizedBlocks = normalizeLinkMentions(normalizedBlocks).blocks
+          normalizedBlocks = normalizeDateMentions(normalizedBlocks).blocks
           const taskNormalized = normalizeTaskBlocks(normalizedBlocks)
           normalizedBlocks = taskNormalized.blocks
 
