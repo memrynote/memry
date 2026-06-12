@@ -1,4 +1,4 @@
-import type { Tab, TabAction, TabGroup, TabSystemState } from '../types'
+import type { ClosedTabEntry, Tab, TabAction, TabGroup, TabSystemState } from '../types'
 import { SINGLETON_TAB_TYPES } from '../types'
 import {
   generateId,
@@ -21,8 +21,53 @@ type CrudAction = Extract<
       | 'CLOSE_TABS_TO_RIGHT'
       | 'CLOSE_ALL_TABS'
       | 'CLOSE_GROUP'
+      | 'REOPEN_CLOSED_TAB'
   }
 >
+
+/** Max number of closed-tab snapshots retained for reopen (Cmd+Shift+T). */
+const MAX_RECENTLY_CLOSED = 25
+
+/** Snapshot a tab being closed so it can be reopened later. */
+const snapshotClosedTab = (tab: Tab, groupId: string, index: number): ClosedTabEntry => ({
+  tab: {
+    type: tab.type,
+    title: tab.title,
+    icon: tab.icon,
+    emoji: tab.emoji,
+    path: tab.path,
+    entityId: tab.entityId,
+    isPinned: tab.isPinned,
+    isModified: false,
+    isPreview: false,
+    isDeleted: false,
+    scrollPosition: tab.scrollPosition,
+    viewState: tab.viewState
+  },
+  groupId,
+  index,
+  closedAt: Date.now()
+})
+
+/** Append closed-tab snapshots, trimming the stack to MAX_RECENTLY_CLOSED. */
+const pushClosed = (
+  stack: ClosedTabEntry[] | undefined,
+  entries: ClosedTabEntry[]
+): ClosedTabEntry[] => {
+  const next = [...(stack ?? []), ...entries]
+  return next.length > MAX_RECENTLY_CLOSED ? next.slice(next.length - MAX_RECENTLY_CLOSED) : next
+}
+
+/** Snapshot the tabs removed by a bulk close, in original (left→right) order. */
+const snapshotRemoved = (
+  group: TabGroup,
+  groupId: string,
+  isRemoved: (tab: Tab, index: number) => boolean
+): ClosedTabEntry[] =>
+  group.tabs
+    .map((tab, index) => ({ tab, index }))
+    .filter(({ tab, index }) => isRemoved(tab, index))
+    .map(({ tab, index }) => snapshotClosedTab(tab, groupId, index))
 
 const closeGroup = (state: TabSystemState, groupId: string): TabSystemState => {
   const { [groupId]: _removedGroup, ...remainingGroups } = state.tabGroups
@@ -254,12 +299,16 @@ export function tabCrudReducer(state: TabSystemState, action: CrudAction): TabSy
       if (tabIndex === -1) return state
 
       const newTabs = group.tabs.filter((t) => t.id !== tabId)
+      const recentlyClosed = pushClosed(state.recentlyClosed, [
+        snapshotClosedTab(group.tabs[tabIndex], groupId, tabIndex)
+      ])
 
       if (newTabs.length === 0) {
         if (Object.keys(state.tabGroups).length === 1) {
           const defaultTab = createDefaultTab()
           return {
             ...state,
+            recentlyClosed,
             tabGroups: {
               [groupId]: {
                 ...group,
@@ -271,7 +320,7 @@ export function tabCrudReducer(state: TabSystemState, action: CrudAction): TabSy
             }
           }
         }
-        return closeGroup(state, groupId)
+        return closeGroup({ ...state, recentlyClosed }, groupId)
       }
 
       let newActiveTabId = group.activeTabId
@@ -283,6 +332,7 @@ export function tabCrudReducer(state: TabSystemState, action: CrudAction): TabSy
       const pruned = pruneHistory(group, new Set([tabId]))
       return {
         ...state,
+        recentlyClosed,
         tabGroups: {
           ...state.tabGroups,
           [groupId]: { ...pruned, tabs: newTabs, activeTabId: newActiveTabId }
@@ -300,9 +350,14 @@ export function tabCrudReducer(state: TabSystemState, action: CrudAction): TabSy
       const tabsToKeep = group.tabs.filter((t) => t.id === tabId || t.isPinned)
       const removedIds = new Set(group.tabs.filter((t) => !tabsToKeep.includes(t)).map((t) => t.id))
       const pruned = pruneHistory(group, removedIds)
+      const recentlyClosed = pushClosed(
+        state.recentlyClosed,
+        snapshotRemoved(group, groupId, (t) => removedIds.has(t.id))
+      )
 
       return {
         ...state,
+        recentlyClosed,
         tabGroups: {
           ...state.tabGroups,
           [groupId]: { ...pruned, tabs: tabsToKeep, activeTabId: tabId }
@@ -322,9 +377,14 @@ export function tabCrudReducer(state: TabSystemState, action: CrudAction): TabSy
       const tabsToKeep = group.tabs.filter((t, i) => i <= tabIndex || t.isPinned)
       const removedIds = new Set(group.tabs.filter((t) => !tabsToKeep.includes(t)).map((t) => t.id))
       const pruned = pruneHistory(group, removedIds)
+      const recentlyClosed = pushClosed(
+        state.recentlyClosed,
+        snapshotRemoved(group, groupId, (t) => removedIds.has(t.id))
+      )
 
       return {
         ...state,
+        recentlyClosed,
         tabGroups: {
           ...state.tabGroups,
           [groupId]: { ...pruned, tabs: tabsToKeep }
@@ -339,12 +399,17 @@ export function tabCrudReducer(state: TabSystemState, action: CrudAction): TabSy
       if (!group) return state
 
       const pinnedTabs = group.tabs.filter((t) => t.isPinned)
+      const recentlyClosed = pushClosed(
+        state.recentlyClosed,
+        snapshotRemoved(group, groupId, (t) => !t.isPinned)
+      )
 
       if (pinnedTabs.length === 0) {
         if (Object.keys(state.tabGroups).length === 1) {
           const defaultTab = createDefaultTab()
           return {
             ...state,
+            recentlyClosed,
             tabGroups: {
               [groupId]: {
                 ...group,
@@ -356,7 +421,7 @@ export function tabCrudReducer(state: TabSystemState, action: CrudAction): TabSy
             }
           }
         }
-        return closeGroup(state, groupId)
+        return closeGroup({ ...state, recentlyClosed }, groupId)
       }
 
       const removedIds = new Set(group.tabs.filter((t) => !t.isPinned).map((t) => t.id))
@@ -364,6 +429,7 @@ export function tabCrudReducer(state: TabSystemState, action: CrudAction): TabSy
 
       return {
         ...state,
+        recentlyClosed,
         tabGroups: {
           ...state.tabGroups,
           [groupId]: { ...pruned, tabs: pinnedTabs, activeTabId: pinnedTabs[0]?.id || null }
@@ -379,6 +445,70 @@ export function tabCrudReducer(state: TabSystemState, action: CrudAction): TabSy
       if (!state.tabGroups[groupId]) return state
 
       return closeGroup(state, groupId)
+    }
+
+    case 'REOPEN_CLOSED_TAB': {
+      const stack = state.recentlyClosed ?? []
+      if (stack.length === 0) return state
+
+      const entry = stack[stack.length - 1]
+      const recentlyClosed = stack.slice(0, -1)
+
+      // Reopen into the original group if it still exists, else the active group.
+      const targetGroupId = state.tabGroups[entry.groupId] ? entry.groupId : state.activeGroupId
+      const group = state.tabGroups[targetGroupId]
+      if (!group) return { ...state, recentlyClosed }
+
+      const snap = entry.tab
+
+      // If the entity/singleton is already open in the target group, focus it
+      // instead of creating a duplicate (mirrors OPEN_TAB dedup).
+      const existing = snap.entityId
+        ? findTabByEntityIdInGroup(group, snap.entityId)
+        : group.tabs.find(
+            (t) => t.entityId === undefined && t.type === snap.type && t.path === snap.path
+          )
+      if (existing) {
+        return {
+          ...state,
+          recentlyClosed,
+          activeGroupId: targetGroupId,
+          tabGroups: {
+            ...state.tabGroups,
+            [targetGroupId]: recordActivation(group, existing.id)
+          }
+        }
+      }
+
+      const newTab: Tab = {
+        ...snap,
+        isPreview: false,
+        id: generateId(),
+        openedAt: Date.now(),
+        lastAccessedAt: Date.now()
+      }
+
+      let insertIndex = Math.min(entry.index, group.tabs.length)
+      if (!snap.isPinned) {
+        insertIndex = Math.max(insertIndex, getInsertIndexAfterPinned(group.tabs))
+      }
+      insertIndex = Math.min(insertIndex, group.tabs.length)
+
+      const newTabs = [
+        ...group.tabs.slice(0, insertIndex),
+        newTab,
+        ...group.tabs.slice(insertIndex)
+      ]
+
+      return {
+        ...state,
+        recentlyClosed,
+        activeGroupId: targetGroupId,
+        tabGroups: {
+          ...state.tabGroups,
+          [targetGroupId]: { ...recordActivation(group, newTab.id), tabs: newTabs }
+        }
+      }
     }
 
     default:

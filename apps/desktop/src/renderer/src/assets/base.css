@@ -2125,6 +2125,80 @@ del.bn-inline-content {
   }
 }
 
+/* Journal date fog — soft, time-of-day tinted atmosphere drifting behind the
+   date heading. Tints are provided inline via --fog-tint / --fog-tint-2 (see
+   JournalDateDisplay) so the mood follows getTimeOfDay(). */
+@keyframes journal-fog-drift-a {
+  0%,
+  100% {
+    transform: translate3d(-3%, 0, 0) scale(1);
+    opacity: 0.85;
+  }
+  50% {
+    transform: translate3d(5%, -10%, 0) scale(1.15);
+    opacity: 1;
+  }
+}
+
+@keyframes journal-fog-drift-b {
+  0%,
+  100% {
+    transform: translate3d(4%, 4%, 0) scale(1.08);
+    opacity: 0.65;
+  }
+  50% {
+    transform: translate3d(-6%, -4%, 0) scale(1.22);
+    opacity: 0.9;
+  }
+}
+
+.journal-date-fog {
+  position: absolute;
+  inset: -15% -10% -35% -10%;
+  z-index: 0;
+  pointer-events: none;
+  /* Fade the fog's own alpha to zero before it reaches the scroll/overflow
+     boundaries on every side, so the clip lands in a transparent region
+     instead of leaving a hard edge. Two linear masks (horizontal + vertical)
+     are intersected to feather all four edges symmetrically. */
+  -webkit-mask:
+    linear-gradient(to right, transparent, #000 16%, #000 84%, transparent),
+    linear-gradient(to bottom, transparent, #000 26%, #000 74%, transparent);
+  -webkit-mask-composite: source-in;
+  mask:
+    linear-gradient(to right, transparent, #000 16%, #000 84%, transparent),
+    linear-gradient(to bottom, transparent, #000 26%, #000 74%, transparent);
+  mask-composite: intersect;
+}
+
+.journal-date-fog::before,
+.journal-date-fog::after {
+  content: '';
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(36px);
+  will-change: transform, opacity;
+}
+
+.journal-date-fog::before {
+  inset: 8% 40% 24% 0;
+  background: radial-gradient(closest-side, var(--fog-tint), transparent 82%);
+  animation: journal-fog-drift-a 15s ease-in-out infinite;
+}
+
+.journal-date-fog::after {
+  inset: 18% 0 0 34%;
+  background: radial-gradient(closest-side, var(--fog-tint-2, var(--fog-tint)), transparent 80%);
+  animation: journal-fog-drift-b 19s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .journal-date-fog::before,
+  .journal-date-fog::after {
+    animation: none;
+  }
+}
+
 /* Journal animation utilities */
 .journal-animate-in {
   animation: journal-fade-in 0.6s var(--ease-out) forwards;
@@ -2532,6 +2606,38 @@ del.bn-inline-content {
 }
 
 [dir='rtl'] .sidebar-label-fade {
+  -webkit-mask-image: linear-gradient(
+    to left,
+    #000 calc(100% - var(--sidebar-label-fade-width)),
+    rgba(0, 0, 0, 0.2) 100%
+  );
+  mask-image: linear-gradient(
+    to left,
+    #000 calc(100% - var(--sidebar-label-fade-width)),
+    rgba(0, 0, 0, 0.2) 100%
+  );
+}
+
+/* Fade mask only — pair with `truncate`/`min-w-0` and apply conditionally so the
+   fade appears solely when the label actually overflows (e.g. sidebar tag pills
+   that shrink-wrap their text). */
+.sidebar-label-fade-mask {
+  --sidebar-label-fade-width: 1.75rem;
+  -webkit-mask-image: linear-gradient(
+    to right,
+    #000 calc(100% - var(--sidebar-label-fade-width)),
+    rgba(0, 0, 0, 0.2) 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    #000 calc(100% - var(--sidebar-label-fade-width)),
+    rgba(0, 0, 0, 0.2) 100%
+  );
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+
+[dir='rtl'] .sidebar-label-fade-mask {
   -webkit-mask-image: linear-gradient(
     to left,
     #000 calc(100% - var(--sidebar-label-fade-width)),

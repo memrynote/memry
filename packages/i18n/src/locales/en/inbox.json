@@ -183,6 +183,7 @@
   },
   "detail": {
     "ariaLabel": "Item details",
+    "resize": "Resize panel",
     "closePanel": "Close panel",
     "resizeFiling": "Resize filing section",
     "restore": "Restore",

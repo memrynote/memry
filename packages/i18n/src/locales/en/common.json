@@ -211,6 +211,7 @@
       "dropFilesToImport": "Drop files to import",
       "newNoteN": "New note (⌘N)",
       "new": "New",
+      "newItemMenu": "Create new…",
       "syncDisabled": "Sync disabled",
       "syncDisabled2": "Sync disabled"
     },

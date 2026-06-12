@@ -816,7 +816,10 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
               className="marquee-zone relative min-h-full w-full flex flex-col"
             >
               <div
-                className="mx-auto w-full px-8 lg:px-12 min-h-full flex flex-col pt-6 pb-10 lg:pb-16 transition-[max-width] duration-300 ease-in-out"
+                className={cn(
+                  'mx-auto w-full min-h-full flex flex-col pt-6 pb-10 lg:pb-16 transition-[max-width] duration-300 ease-in-out',
+                  isFullWidth ? 'px-24 max-[920px]:px-8' : 'px-8 lg:px-12'
+                )}
                 style={{ maxWidth: isFullWidth ? '100%' : '64rem' }}
               >
                 <div className="flex flex-col flex-1 mx-auto w-full transition-[max-width] duration-300 ease-in-out">
@@ -844,16 +847,10 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                       }
                     >
                       <div className="min-w-0 flex flex-col flex-1">
-                        <div className="group/metadata flex flex-col pb-[15px]" data-marquee-ignore>
-                          <GhostAffordanceRow
-                            availableTags={availableTags}
-                            recentTags={recentTags}
-                            currentTagIds={journalTags.map((t) => t.id)}
-                            onAddTag={handleAddTag}
-                            onCreateTag={handleCreateTag}
-                            onAddProperty={handleAddPropertyWithExpand}
-                            className="mb-2"
-                          />
+                        <div
+                          className="group/metadata flex flex-col gap-2.5 pb-[15px]"
+                          data-marquee-ignore
+                        >
                           <JournalDateDisplay viewState={currentViewState} dateParts={dateParts} />
                           <TagsRow
                             tags={journalTags}
@@ -881,6 +878,17 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                               hideAddButton
                             />
                           )}
+
+                          {/* Ghost affordance: add tag/property — fades in on hover/focus,
+                              placed below the metadata so it never sits above the date */}
+                          <GhostAffordanceRow
+                            availableTags={availableTags}
+                            recentTags={recentTags}
+                            currentTagIds={journalTags.map((t) => t.id)}
+                            onAddTag={handleAddTag}
+                            onCreateTag={handleCreateTag}
+                            onAddProperty={handleAddPropertyWithExpand}
+                          />
                         </div>
 
                         <div
