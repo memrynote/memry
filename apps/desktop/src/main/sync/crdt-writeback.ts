@@ -33,7 +33,12 @@ const log = createLogger('CrdtWriteback')
 const WRITEBACK_DEBOUNCE_MS = 500
 const IGNORED_WRITE_TTL_MS = 5000
 
-const pendingTimers = new Map<string, ReturnType<typeof setTimeout>>()
+interface PendingWriteback {
+  timer: ReturnType<typeof setTimeout>
+  doc: Y.Doc
+}
+
+const pendingTimers = new Map<string, PendingWriteback>()
 const ignoredWrites = new Map<string, number>()
 const lastNetworkUpdateMs = new Map<string, number>()
 
@@ -112,7 +117,7 @@ function emitToRenderer(channel: string, data: unknown): void {
 
 export function scheduleWriteback(noteId: string, doc: Y.Doc): void {
   const existing = pendingTimers.get(noteId)
-  if (existing) clearTimeout(existing)
+  if (existing) clearTimeout(existing.timer)
   updateDebugState(noteId, {
     pending: true,
     scheduledCount: (debugState.get(noteId)?.scheduledCount ?? 0) + 1,
@@ -131,14 +136,27 @@ export function scheduleWriteback(noteId: string, doc: Y.Doc): void {
     })
   }, WRITEBACK_DEBOUNCE_MS)
 
-  pendingTimers.set(noteId, timer)
+  pendingTimers.set(noteId, { timer, doc })
 }
 
 export function cancelPendingWritebacks(): void {
-  for (const timer of pendingTimers.values()) {
+  for (const { timer } of pendingTimers.values()) {
     clearTimeout(timer)
   }
   pendingTimers.clear()
+}
+
+export async function flushPendingWritebacks(): Promise<void> {
+  const pending = Array.from(pendingTimers.entries())
+  pendingTimers.clear()
+  for (const [, { timer }] of pending) clearTimeout(timer)
+  await Promise.all(
+    pending.map(([noteId, { doc }]) =>
+      performWriteback(noteId, doc).catch((err) => {
+        log.error('Write-back failed during shutdown flush', { noteId, error: err })
+      })
+    )
+  )
 }
 
 async function performWriteback(noteId: string, doc: Y.Doc): Promise<void> {

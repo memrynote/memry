@@ -8,7 +8,7 @@ import { getIndexDatabase } from '../database/client'
 import { getNoteCacheById } from '@main/database/queries/notes'
 import type { CrdtUpdateQueue } from './crdt-queue'
 import { MicrotaskBatchBroadcaster } from './microtask-batch-broadcaster'
-import { scheduleWriteback, cancelPendingWritebacks, recordNetworkUpdate } from './crdt-writeback'
+import { scheduleWriteback, flushPendingWritebacks, recordNetworkUpdate } from './crdt-writeback'
 import { toAbsolutePath } from '../vault/notes'
 import { safeRead } from '../vault/file-ops'
 import { parseNote } from '../vault/frontmatter'
@@ -295,7 +295,7 @@ export class CrdtProvider {
   }
 
   async destroy(): Promise<void> {
-    cancelPendingWritebacks()
+    await flushPendingWritebacks()
     this.networkBatcher.flushAll()
 
     for (const [noteId] of this.docs) {
