@@ -306,3 +306,68 @@ describe('PropertyDefinitionsService', () => {
     expect(DEFAULT_STATUS_DEFINITION.type).toBe('status')
   })
 })
+
+describe('PropertyDefinitionsService — showOnCalendar', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    PropertyDefinitionsService.destroy()
+    getMemryDirMock.mockReturnValue('/vault/.memry')
+    getDatabaseMock.mockReturnValue(
+      (() => {
+        const db = {
+          delete: vi.fn(() => ({ run: vi.fn() })),
+          insert: vi.fn(() => ({ values: vi.fn(() => ({ run: vi.fn() })) }))
+        }
+        return db
+      })()
+    )
+    getIndexDatabaseMock.mockReturnValue(
+      (() => {
+        const db = {
+          delete: vi.fn(() => ({ run: vi.fn() })),
+          insert: vi.fn(() => ({ values: vi.fn(() => ({ run: vi.fn() })) }))
+        }
+        return db
+      })()
+    )
+    safeReadMock.mockResolvedValue(null)
+    atomicWriteMock.mockResolvedValue(undefined)
+  })
+
+  it('enables, persists, reloads, and disables a date property flag', async () => {
+    const svc = PropertyDefinitionsService.init('/vault')
+    expect(svc.listCalendarEnabledNames()).toEqual([])
+
+    await svc.setShowOnCalendar('Deadline', true)
+    expect(svc.listCalendarEnabledNames()).toEqual(['Deadline'])
+
+    // Simulate reload from persisted file: atomicWrite captured the yaml, feed it back via safeRead
+    const writtenContent = atomicWriteMock.mock.calls[0][1] as string
+    safeReadMock.mockResolvedValueOnce(writtenContent)
+    await svc.reload()
+    expect(svc.listCalendarEnabledNames()).toEqual(['Deadline'])
+
+    await svc.setShowOnCalendar('Deadline', false)
+    expect(svc.listCalendarEnabledNames()).toEqual([])
+
+    const writtenContent2 = atomicWriteMock.mock.calls.at(-1)![1] as string
+    safeReadMock.mockResolvedValueOnce(writtenContent2)
+    await svc.reload()
+    expect(svc.listCalendarEnabledNames()).toEqual([])
+  })
+
+  it('keeps other enabled properties when one is toggled off', async () => {
+    const svc = PropertyDefinitionsService.init('/vault')
+    await svc.setShowOnCalendar('Deadline', true)
+    await svc.setShowOnCalendar('Published', true)
+    expect(svc.listCalendarEnabledNames().sort()).toEqual(['Deadline', 'Published'])
+
+    await svc.setShowOnCalendar('Deadline', false)
+    expect(svc.listCalendarEnabledNames()).toEqual(['Published'])
+
+    const writtenContent = atomicWriteMock.mock.calls.at(-1)![1] as string
+    safeReadMock.mockResolvedValueOnce(writtenContent)
+    await svc.reload()
+    expect(svc.listCalendarEnabledNames()).toEqual(['Published'])
+  })
+})

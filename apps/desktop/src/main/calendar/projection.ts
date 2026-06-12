@@ -14,7 +14,8 @@ import { calendarSources } from '@memry/db-schema/schema/calendar-sources'
 import { reminders } from '@memry/db-schema/schema/reminders'
 import { tasks } from '@memry/db-schema/schema/tasks'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
-import type { DataDb } from '../database'
+import { noteCache, noteProperties } from '@memry/db-schema/schema/notes-cache'
+import type { DataDb, IndexDb } from '../database'
 
 const LOCAL_TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
 
@@ -381,16 +382,78 @@ function loadExternalEvents(db: DataDb, input: GetCalendarRangeInput): CalendarP
   }))
 }
 
+function loadNoteDatePropertyItems(
+  indexDb: IndexDb,
+  enabledNames: string[],
+  input: GetCalendarRangeInput
+): CalendarProjectionItem[] {
+  if (enabledNames.length === 0) return []
+
+  const rows = indexDb
+    .select({
+      noteId: noteProperties.noteId,
+      name: noteProperties.name,
+      value: noteProperties.value,
+      title: noteCache.title
+    })
+    .from(noteProperties)
+    .innerJoin(noteCache, eq(noteProperties.noteId, noteCache.id))
+    .where(
+      and(
+        inArray(noteProperties.name, enabledNames),
+        eq(noteProperties.type, 'date'),
+        isNotNull(noteProperties.value),
+        gte(noteProperties.value, input.startAt),
+        lt(noteProperties.value, input.endAt)
+      )
+    )
+    .all()
+
+  const editability: CalendarProjectionEditability = {
+    canMove: false,
+    canResize: false,
+    canEditText: false,
+    canDelete: false
+  }
+
+  return rows.flatMap((row) => {
+    const parsed = new Date(row.value!)
+    if (Number.isNaN(parsed.getTime())) return []
+    const dateStr = toLocalDateString(parsed)
+    return [
+      {
+        projectionId: `note:${row.noteId}:${row.name}`,
+        sourceType: 'note' as const,
+        sourceId: row.noteId,
+        title: row.title,
+        descriptionPreview: row.name,
+        startAt: toLocalInstant(dateStr, null),
+        endAt: toLocalAllDayEnd(dateStr),
+        isAllDay: true,
+        timezone: LOCAL_TIMEZONE,
+        visualType: 'note' as const,
+        editability,
+        source: nativeSource('memrynote Notes'),
+        binding: null,
+        snoozeOffsetMinutes: null
+      }
+    ]
+  })
+}
+
 export function getCalendarRangeProjection(
   db: DataDb,
-  input: GetCalendarRangeInput
+  indexDb: IndexDb,
+  input: GetCalendarRangeInput,
+  enabledNames: string[]
 ): CalendarRangeResponse {
   const items = sortProjectionItems([
     ...loadMemryEvents(db, input),
     ...loadTaskItems(db, input),
     ...loadReminderItems(db, input),
     ...loadInboxSnoozeItems(db, input),
-    ...loadExternalEvents(db, input)
+    ...loadExternalEvents(db, input),
+    ...loadNoteDatePropertyItems(indexDb, enabledNames, input)
   ])
 
   return { items }

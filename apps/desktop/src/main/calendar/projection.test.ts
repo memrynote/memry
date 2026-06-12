@@ -2,22 +2,29 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { sql } from 'drizzle-orm'
 import {
   createTestDataDb,
+  createTestIndexDb,
   seedInboxItem,
   seedTestData,
   type TestDatabaseResult,
   type TestDb
 } from '@tests/utils/test-db'
+import type { DataDb, IndexDb } from '../../main/database'
 import { getCalendarRangeProjection } from './projection'
 
 describe('getCalendarRangeProjection', () => {
   let dbResult: TestDatabaseResult
+  let indexDbResult: TestDatabaseResult
   let db: TestDb
+  let indexDb: IndexDb
   let projectId: string
   let todoStatusId: string
 
   beforeEach(() => {
     dbResult = createTestDataDb()
     db = dbResult.db
+
+    indexDbResult = createTestIndexDb()
+    indexDb = indexDbResult.db as unknown as IndexDb
 
     const seeded = seedTestData(db)
     projectId = seeded.projectId
@@ -26,6 +33,7 @@ describe('getCalendarRangeProjection', () => {
 
   afterEach(() => {
     dbResult.close()
+    indexDbResult.close()
   })
 
   function getLocalDayRange(date: { year: number; monthIndex: number; day: number }): {
@@ -334,11 +342,16 @@ describe('getCalendarRangeProjection', () => {
       )
     `)
 
-    const result = getCalendarRangeProjection(db, {
-      startAt: range.startAt,
-      endAt: range.endAt,
-      includeUnselectedSources: false
-    })
+    const result = getCalendarRangeProjection(
+      db as unknown as DataDb,
+      indexDb,
+      {
+        startAt: range.startAt,
+        endAt: range.endAt,
+        includeUnselectedSources: false
+      },
+      []
+    )
 
     expect(result.items).toHaveLength(6)
     expect(result.items).toEqual(
@@ -477,11 +490,16 @@ describe('getCalendarRangeProjection', () => {
       )
     `)
 
-    const result = getCalendarRangeProjection(db, {
-      startAt: range.startAt,
-      endAt: range.endAt,
-      includeUnselectedSources: true
-    })
+    const result = getCalendarRangeProjection(
+      db as unknown as DataDb,
+      indexDb,
+      {
+        startAt: range.startAt,
+        endAt: range.endAt,
+        includeUnselectedSources: true
+      },
+      []
+    )
 
     expect(result.items).toEqual([
       expect.objectContaining({
@@ -491,5 +509,65 @@ describe('getCalendarRangeProjection', () => {
         title: 'Hidden imported event'
       })
     ])
+  })
+
+  it('projects notes with an enabled date property', () => {
+    indexDbResult.db.run(sql`
+      INSERT INTO note_cache (id, path, title, file_type, created_at, modified_at)
+      VALUES (${'n1'}, ${'notes/q3-launch.md'}, ${'Q3 Launch'}, ${'markdown'}, ${'2026-06-01T00:00:00.000Z'}, ${'2026-06-01T00:00:00.000Z'})
+    `)
+    indexDbResult.db.run(sql`
+      INSERT INTO note_properties (note_id, name, type, value)
+      VALUES (${'n1'}, ${'Deadline'}, ${'date'}, ${'2026-06-20T00:00:00.000Z'})
+    `)
+
+    const { items } = getCalendarRangeProjection(
+      db as unknown as DataDb,
+      indexDb,
+      {
+        startAt: '2026-06-01T00:00:00.000Z',
+        endAt: '2026-07-01T00:00:00.000Z',
+        includeUnselectedSources: false
+      },
+      ['Deadline']
+    )
+
+    const note = items.find((i) => i.sourceType === 'note')
+    expect(note).toBeDefined()
+    expect(note!.title).toBe('Q3 Launch')
+    expect(note!.visualType).toBe('note')
+    expect(note!.isAllDay).toBe(true)
+    expect(note!.projectionId).toBe('note:n1:Deadline')
+    expect(note!.descriptionPreview).toBe('Deadline')
+    expect(note!.editability).toEqual({
+      canMove: false,
+      canResize: false,
+      canEditText: false,
+      canDelete: false
+    })
+  })
+
+  it('omits the note when its property is not in enabledNames', () => {
+    indexDbResult.db.run(sql`
+      INSERT INTO note_cache (id, path, title, file_type, created_at, modified_at)
+      VALUES (${'n1'}, ${'notes/q3-launch.md'}, ${'Q3 Launch'}, ${'markdown'}, ${'2026-06-01T00:00:00.000Z'}, ${'2026-06-01T00:00:00.000Z'})
+    `)
+    indexDbResult.db.run(sql`
+      INSERT INTO note_properties (note_id, name, type, value)
+      VALUES (${'n1'}, ${'Deadline'}, ${'date'}, ${'2026-06-20T00:00:00.000Z'})
+    `)
+
+    const { items } = getCalendarRangeProjection(
+      db as unknown as DataDb,
+      indexDb,
+      {
+        startAt: '2026-06-01T00:00:00.000Z',
+        endAt: '2026-07-01T00:00:00.000Z',
+        includeUnselectedSources: false
+      },
+      []
+    )
+
+    expect(items.some((i) => i.sourceType === 'note')).toBe(false)
   })
 })
