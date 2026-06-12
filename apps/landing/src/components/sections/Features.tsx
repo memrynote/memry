@@ -1,7 +1,6 @@
 import { useRef, useLayoutEffect, useState } from 'react'
 import { motion, useScroll, useTransform } from 'framer-motion'
 import { Container } from '@/components/layout/Container'
-import { SectionHeading } from '@/components/shared/SectionHeading'
 import { FEATURES } from '@/lib/constants'
 import { getFeatureScreenshotSrc } from '@/lib/feature-screenshots'
 import { useTheme } from '@/lib/use-theme'
@@ -10,14 +9,6 @@ import { cn } from '@/lib/utils'
 const STACKED_FEATURES = FEATURES.slice(0, 5)
 
 const STICKY_OFFSET_PX = 112
-
-const FEATURE_ACCENTS = [
-  'border-terracotta/35 bg-terracotta/10 text-terracotta',
-  'border-sage/35 bg-sage/10 text-sage',
-  'border-ink/15 bg-ink/10 text-ink dark:border-white/15 dark:bg-white/10 dark:text-ink',
-  'border-brand-400/35 bg-brand-400/10 text-brand-600 dark:text-brand-300',
-  'border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-300'
-] as const
 
 type Feature = (typeof FEATURES)[number]
 
@@ -30,8 +21,6 @@ function FeatureStackCard({
   index: number
   total: number
 }) {
-  const Icon = feature.icon
-  const accent = FEATURE_ACCENTS[index % FEATURE_ACCENTS.length]
   const isLast = index === total - 1
   const imageFirstOnDesktop = index % 2 === 1
   const articleRef = useRef<HTMLElement>(null)
@@ -84,7 +73,7 @@ function FeatureStackCard({
       className="relative md:sticky md:top-28"
       style={{ zIndex: index + 1, scale, filter }}
     >
-      <div className="group relative overflow-hidden rounded-2xl border border-border/70 bg-card shadow-elevated">
+      <div className="group relative overflow-hidden rounded-lg border border-ink/15 bg-card shadow-elevated">
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-terracotta/50 to-transparent" />
 
         <div
@@ -100,22 +89,12 @@ function FeatureStackCard({
             )}
           >
             <div>
-              <div className="mb-8 flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <span
-                    className={cn(
-                      'flex h-10 w-10 items-center justify-center rounded-full border',
-                      accent
-                    )}
-                  >
-                    <Icon className="h-5 w-5" aria-hidden="true" />
-                  </span>
-                  <span className="font-mono-accent text-xs uppercase tracking-[0.18em] text-muted/60">
-                    {String(index + 1).padStart(2, '0')} / {String(total).padStart(2, '0')}
-                  </span>
-                </div>
-                <span className="hidden rounded-full border border-border/70 px-3 py-1 text-xs font-medium text-muted md:inline-flex">
-                  {index === 0 ? 'Start here' : 'Then'}
+              <div className="mb-8 flex items-start justify-between gap-4">
+                <span className="chapter-num" aria-hidden>
+                  {String(index + 1).padStart(2, '0')}
+                </span>
+                <span className="pt-2 font-mono-accent text-[10px] uppercase tracking-[0.22em] text-muted/60">
+                  Ch. {index + 1} / {total}
                 </span>
               </div>
 
@@ -123,22 +102,19 @@ function FeatureStackCard({
                 {feature.title}
               </h3>
 
-              <p className="mt-5 max-w-sm font-serif text-2xl italic leading-tight text-terracotta">
+              <p className="mt-4 max-w-sm font-serif text-2xl italic leading-tight text-terracotta">
                 {feature.tagline}
               </p>
 
-              <p className="mt-6 max-w-md text-base leading-7 text-muted sm:text-lg">
-                {feature.description}
-              </p>
+              <p className="mt-6 max-w-md text-base leading-7 text-muted">{feature.description}</p>
             </div>
 
-            <ul className="grid gap-3 sm:grid-cols-2">
+            <ul className="grid gap-x-8 gap-y-2.5 sm:grid-cols-2">
               {feature.highlights.map((highlight) => (
-                <li
-                  key={highlight}
-                  className="flex items-start gap-3 text-sm font-medium text-ink/80"
-                >
-                  <span className="mt-2 h-1.5 w-1.5 flex-none rounded-full bg-terracotta" />
+                <li key={highlight} className="flex items-baseline gap-2.5 text-sm text-ink/80">
+                  <span aria-hidden className="font-serif text-terracotta">
+                    ✳
+                  </span>
                   {highlight}
                 </li>
               ))}
@@ -163,6 +139,9 @@ function FeatureStackCard({
                 imageFirstOnDesktop ? 'end-0 bg-gradient-to-l' : 'start-0 bg-gradient-to-r'
               )}
             />
+            <span className="pointer-events-none absolute bottom-3 end-4 font-mono-accent text-[10px] uppercase tracking-[0.2em] text-white/80 drop-shadow-sm">
+              Fig. {index + 1} — {feature.title}, unedited
+            </span>
           </div>
         </div>
       </div>
@@ -172,13 +151,27 @@ function FeatureStackCard({
 
 export function Features() {
   return (
-    <section id="features" className="py-24">
+    <section id="features" className="py-24 md:py-32">
       <Container>
-        <SectionHeading
-          title="What's inside"
-          subtitle="Everything you need to capture, organize, and act on your ideas. Nothing you don't."
-          titleClassName="section-heading-medium"
-        />
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-80px' }}
+          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          className="grid gap-6 md:grid-cols-[minmax(200px,1fr)_2fr]"
+        >
+          <p className="font-mono-accent text-xs uppercase tracking-[0.22em] text-terracotta">
+            § 02 — Contents
+          </p>
+          <div>
+            <h2 className="display-section text-ink">
+              What's inside, <span className="italic text-terracotta">chapter by chapter.</span>
+            </h2>
+            <p className="mt-4 max-w-xl text-lg leading-relaxed text-muted">
+              Everything you need to capture, organize, and act on your ideas. Nothing you don't.
+            </p>
+          </div>
+        </motion.div>
 
         <div className="relative mt-16 space-y-6 md:space-y-8">
           {STACKED_FEATURES.map((feature, index) => (
