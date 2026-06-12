@@ -6,7 +6,8 @@ export const reminderTargetType = {
   NOTE: 'note',
   JOURNAL: 'journal',
   HIGHLIGHT: 'highlight',
-  TASK: 'task'
+  TASK: 'task',
+  NOTE_DATE: 'note_date'
 } as const
 
 export type ReminderTargetType = (typeof reminderTargetType)[keyof typeof reminderTargetType]

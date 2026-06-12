@@ -4,7 +4,7 @@ import type { MainIpcInvokeArgs } from '../../main/ipc/generated-ipc-invoke-map'
 
 export const remindersApi = {
   create: (input: {
-    targetType: 'note' | 'journal' | 'highlight'
+    targetType: 'note' | 'journal' | 'highlight' | 'task' | 'note_date'
     targetId: string
     remindAt: string
     title?: string
@@ -26,7 +26,7 @@ export const remindersApi = {
   get: (id: string) => invoke(ReminderChannels.invoke.GET, id),
 
   list: (options?: {
-    targetType?: 'note' | 'journal' | 'highlight'
+    targetType?: 'note' | 'journal' | 'highlight' | 'task' | 'note_date'
     targetId?: string
     status?: string | string[]
     fromDate?: string
@@ -43,8 +43,10 @@ export const remindersApi = {
 
   getDue: () => invoke(ReminderChannels.invoke.GET_DUE),
 
-  getForTarget: (input: { targetType: 'note' | 'journal' | 'highlight'; targetId: string }) =>
-    invoke(ReminderChannels.invoke.GET_FOR_TARGET, input),
+  getForTarget: (input: {
+    targetType: 'note' | 'journal' | 'highlight' | 'task' | 'note_date'
+    targetId: string
+  }) => invoke(ReminderChannels.invoke.GET_FOR_TARGET, input),
 
   countPending: () => invoke(ReminderChannels.invoke.COUNT_PENDING),
 

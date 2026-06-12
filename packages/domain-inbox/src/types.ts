@@ -95,7 +95,7 @@ export interface SocialMetadata {
 
 export interface ReminderMetadata {
   reminderId: string
-  targetType: 'note' | 'journal' | 'highlight' | 'task'
+  targetType: 'note' | 'journal' | 'highlight' | 'task' | 'note_date'
   targetId: string
   targetTitle: string | null
   remindAt: string

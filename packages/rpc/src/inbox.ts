@@ -31,7 +31,7 @@ export type InboxJobStatus = 'pending' | 'running' | 'failed' | 'complete'
 
 interface ReminderMetadata {
   reminderId: string
-  targetType: 'note' | 'journal' | 'highlight'
+  targetType: 'note' | 'journal' | 'highlight' | 'task' | 'note_date'
   targetId: string
   targetTitle: string | null
   remindAt: string

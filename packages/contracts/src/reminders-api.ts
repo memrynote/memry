@@ -26,7 +26,7 @@ export { reminderTargetType, reminderStatus, type ReminderTargetType, type Remin
 // Zod Schemas
 // ============================================================================
 
-const ReminderTargetTypeSchema = z.enum(['note', 'journal', 'highlight', 'task'])
+const ReminderTargetTypeSchema = z.enum(['note', 'journal', 'highlight', 'task', 'note_date'])
 const ReminderStatusSchema = z.enum(['pending', 'triggered', 'dismissed', 'snoozed'])
 
 /**
@@ -60,6 +60,14 @@ export const CreateReminderSchema = z.discriminatedUnion('targetType', [
   z.object({
     targetType: z.literal('task'),
     targetId: z.string().min(1),
+    remindAt: z.string().datetime(),
+    title: z.string().max(200).optional(),
+    note: z.string().max(1000).optional()
+  }),
+  z.object({
+    targetType: z.literal('note_date'),
+    targetId: z.string().min(1),
+    anchorId: z.string().min(1),
     remindAt: z.string().datetime(),
     title: z.string().max(200).optional(),
     note: z.string().max(1000).optional()

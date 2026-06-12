@@ -202,10 +202,10 @@ function parseReminderStatus(value: string | undefined) {
 }
 
 function parseReminderTargetType(value: string | undefined) {
-  if (!value || !['note', 'journal', 'highlight'].includes(value)) {
-    throw new Error('Reminder target type must be note, journal, or highlight')
+  if (!value || !['note', 'journal', 'highlight', 'task', 'note_date'].includes(value)) {
+    throw new Error('Reminder target type must be note, journal, highlight, task, or note_date')
   }
-  return value as 'note' | 'journal' | 'highlight'
+  return value as 'note' | 'journal' | 'highlight' | 'task' | 'note_date'
 }
 
 function parseSearchItemType(value: string | undefined) {

@@ -141,6 +141,8 @@ export interface ReminderMetadata {
   highlightStart?: number
   /** Character end position (for highlights) */
   highlightEnd?: number
+  /** For 'note_date' reminders: the inline date pill's anchor id (scroll target) */
+  anchorId?: string
   /** User's note/description for the reminder */
   reminderNote?: string
   /** Project the task belongs to (for task reminders — opens the Tasks page filtered to it) */

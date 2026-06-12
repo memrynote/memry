@@ -95,6 +95,7 @@ function resolveReminderTarget(
       return { targetTitle: reminder.targetId, targetExists: true, highlightExists: undefined }
 
     case 'note':
+    case 'note_date':
     case 'highlight': {
       const note = getNoteCacheById(indexDb, reminder.targetId)
       const targetExists = !!note
