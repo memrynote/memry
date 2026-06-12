@@ -396,9 +396,6 @@ function TierCard({
       {isRecommended && (
         <div className="absolute inset-x-0 top-0 h-[3px] bg-terracotta" aria-hidden />
       )}
-      {isRecommended && (
-        <span className="ink-stamp absolute end-5 top-5 -rotate-3 text-[10px]">Recommended</span>
-      )}
       {isFounding && tier.ribbon && (
         <span className="ink-stamp absolute end-5 top-5 -rotate-3 text-[10px]">{tier.ribbon}</span>
       )}
@@ -774,11 +771,6 @@ function LimitMatrix({
                             >
                               {tier.name}
                             </span>
-                            {isRecommended && (
-                              <span className="mt-2 block font-mono-accent text-[10px] uppercase tracking-[0.18em] text-terracotta">
-                                ✳ Recommended
-                              </span>
-                            )}
                           </div>
                           {!tier.checkoutPlanId ? (
                             <Button
