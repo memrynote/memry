@@ -13,6 +13,7 @@ import { createTaskBlock } from './task-block'
 import { WikiLink } from './wiki-link'
 import { HashTag } from './hash-tag'
 import { LinkMention } from './link-mention'
+import { DateMention } from './date-mention'
 
 export const editorSchema = BlockNoteSchema.create({
   blockSpecs: {
@@ -28,7 +29,8 @@ export const editorSchema = BlockNoteSchema.create({
     ...defaultInlineContentSpecs,
     wikiLink: WikiLink,
     hashTag: HashTag,
-    linkMention: LinkMention
+    linkMention: LinkMention,
+    dateMention: DateMention
   }
 })
 
