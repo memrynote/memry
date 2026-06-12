@@ -5,7 +5,7 @@
 @theme {
   --font-sans: 'Satoshi', system-ui, sans-serif;
   --font-geist: 'Geist', system-ui, sans-serif;
-  --font-serif: 'Inter', 'Inter Placeholder', sans-serif;
+  --font-serif: 'Fraunces', 'Iowan Old Style', Georgia, serif;
   --font-mono: 'JetBrains Mono', monospace;
 
   --color-primary: #ff671a;
@@ -102,9 +102,11 @@ h4,
 h5,
 h6 {
   font-family: var(--font-serif);
+  font-optical-sizing: auto;
   font-weight: 400;
   font-style: normal;
-  line-height: 1.3;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
 }
 
 .section-heading-medium {
@@ -188,43 +190,74 @@ h6 {
   font-family: var(--font-serif);
 }
 
-.hero-fora-title {
-  max-width: 500px;
+/* ——— The Private Press: editorial display & print furniture ——— */
+
+.display-hero {
   font-family: var(--font-serif);
-  font-size: 36px;
-  font-style: normal;
-  font-weight: 400;
-  line-height: 46.8px;
-  letter-spacing: -1.44px;
-  text-align: center;
+  font-optical-sizing: auto;
+  font-weight: 380;
+  font-size: clamp(2.75rem, 8vw, 6.25rem);
+  line-height: 1.02;
+  letter-spacing: -0.035em;
 }
 
-.hero-fora-copy {
-  max-width: 420px;
+.display-section {
   font-family: var(--font-serif);
-  font-size: 14px;
-  font-style: normal;
+  font-optical-sizing: auto;
   font-weight: 400;
-  line-height: 21px;
-  letter-spacing: -0.28px;
-  text-align: center;
+  font-size: clamp(2.25rem, 4.5vw, 3.5rem);
+  line-height: 1.08;
+  letter-spacing: -0.025em;
 }
 
-@media (min-width: 1024px) {
-  .hero-fora-title {
-    max-width: 620px;
-    font-size: 40px;
-    line-height: 52px;
-    letter-spacing: -1.6px;
-  }
+/* Double hairline rule, like a newspaper masthead. Color via currentColor. */
+.rule-double {
+  height: 5px;
+  border-top: 1px solid currentColor;
+  border-bottom: 1px solid currentColor;
 }
 
-@media (min-width: 1400px) {
-  .hero-fora-title {
-    font-size: 56px;
-    line-height: 72.8px;
-    letter-spacing: -2.24px;
-  }
+/* Oversized outlined numeral for feature chapters */
+.chapter-num {
+  font-family: var(--font-serif);
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-size: clamp(4.5rem, 9vw, 7.5rem);
+  line-height: 0.78;
+  letter-spacing: -0.02em;
+  color: transparent;
+  -webkit-text-stroke: 1px color-mix(in srgb, var(--color-ink) 38%, transparent);
+}
+
+/* Letterpress drop cap for the founder letter */
+.drop-cap::first-letter {
+  float: inline-start;
+  font-family: var(--font-serif);
+  font-weight: 500;
+  font-size: 3.2em;
+  line-height: 0.82;
+  padding-inline-end: 0.12em;
+  padding-block-start: 0.06em;
+  color: var(--color-terracotta);
+}
+
+/* Rubber-stamp label, red ink */
+.ink-stamp {
+  display: inline-block;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--color-terracotta);
+  border: 1.5px solid color-mix(in srgb, var(--color-terracotta) 70%, transparent);
+  border-radius: 5px;
+  padding: 0.4rem 0.7rem;
+  box-shadow: inset 0 0 14px rgb(255 103 26 / 0.07);
+}
+
+/* Vertical marginalia, spine text */
+.marginalia-vertical {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
 }
 
 .font-mono-accent {

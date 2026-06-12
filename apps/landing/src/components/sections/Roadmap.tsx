@@ -42,10 +42,12 @@ export function Roadmap() {
         >
           <div className="grid gap-8 lg:grid-cols-[1fr_minmax(280px,360px)] lg:items-end">
             <div>
-              <p className="font-mono-accent text-xs uppercase tracking-[0.18em] text-terracotta">
-                Roadmap snapshot
+              <p className="font-mono-accent text-xs uppercase tracking-[0.22em] text-terracotta">
+                § 06 — The road ahead
               </p>
-              <h2 className="mt-3 font-serif text-4xl text-ink md:text-5xl">Building in public</h2>
+              <h2 className="display-section mt-4 text-ink">
+                Building <span className="italic text-terracotta">in public.</span>
+              </h2>
               <p className="mt-3 max-w-2xl text-lg leading-relaxed text-muted">
                 {ROADMAP_DATA.earlyAccess}. Here is what already works, what is active now, and what
                 is planned next.
