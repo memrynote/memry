@@ -221,6 +221,7 @@
     "newOption": "New option",
     "ratingAria": "Rating",
     "openUrlAria": "Open URL",
+    "showOnCalendar": "Show on calendar",
     "types": {
       "text": "Text",
       "number": "Number",

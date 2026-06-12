@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useMemo } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical, Trash2 } from '@/lib/icons'
+import { GripVertical, Trash2, Calendar } from '@/lib/icons'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { Property } from './types'
@@ -24,6 +24,13 @@ import {
   type StatusCategoryKey
 } from '@memry/contracts/property-types'
 import { useT } from '@memry/i18n/renderer'
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuCheckboxItem
+} from '@/components/ui/dropdown-menu'
+import { useCalendarProperties } from '@/hooks/use-calendar-properties'
 
 interface PropertyValueRendererProps {
   property: Property
@@ -279,6 +286,7 @@ export function PropertyRow({
   isSortable = false
 }: PropertyRowProps) {
   const { t } = useT('notes')
+  const { isEnabled, setEnabled } = useCalendarProperties()
   const [isEditing, setIsEditing] = useState(
     autoFocus && property.type !== 'checkbox' && !SELECT_TYPES.has(property.type)
   )
@@ -465,6 +473,33 @@ export function PropertyRow({
           onEndEdit={handleEndEdit}
         />
       </div>
+
+      {/* Calendar toggle — date properties only */}
+      {property.type === 'date' && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              aria-label={t('properties.showOnCalendar')}
+              className={cn(
+                'ms-1 flex h-6 w-6 items-center justify-center rounded',
+                'text-text-tertiary transition-all duration-150 hover:bg-surface hover:text-muted-foreground',
+                isHovered || isEnabled(property.name) ? 'opacity-100' : 'opacity-0 pointer-events-none'
+              )}
+            >
+              <Calendar className="h-3.5 w-3.5" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuCheckboxItem
+              checked={isEnabled(property.name)}
+              onCheckedChange={(checked) => void setEnabled(property.name, checked === true)}
+            >
+              {t('properties.showOnCalendar')}
+            </DropdownMenuCheckboxItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
 
       {/* Delete button */}
       {property.isCustom && onDelete && (
