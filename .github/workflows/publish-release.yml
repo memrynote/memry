@@ -400,7 +400,25 @@ jobs:
         run: |
           pnpm --filter @memry/desktop build
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          node apps/desktop/scripts/build-packaged-app.js --win --x64 --publish never
+          # electron-builder intermittently fails with "EBUSY: resource busy or
+          # locked" copying .env.production -> resources/.env when Windows
+          # Defender holds a transient scan handle. The Defender exclusion above
+          # reduces but does not eliminate the race, so retry packaging. The temp
+          # stage dir is freshly mkdtemp'd and cleaned per run, so retries are safe.
+          $attempts = 3
+          for ($attempt = 1; $attempt -le $attempts; $attempt++) {
+            Write-Host "::group::electron-builder package (attempt $attempt/$attempts)"
+            node apps/desktop/scripts/build-packaged-app.js --win --x64 --publish never
+            $code = $LASTEXITCODE
+            Write-Host "::endgroup::"
+            if ($code -eq 0) { exit 0 }
+            if ($attempt -lt $attempts) {
+              Write-Host "::warning::Windows packaging failed (attempt $attempt/$attempts, exit $code); retrying in 20s"
+              Start-Sleep -Seconds 20
+            }
+          }
+          Write-Host "::error::Windows packaging failed after $attempts attempts"
+          exit 1
 
       - name: Stage Windows assets
         id: assets
