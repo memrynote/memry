@@ -52,6 +52,7 @@ import {
   triggerGoogleCalendarSyncNow
 } from './calendar/google/sync-service'
 import { log, createLogger, disableConsoleTransport } from './lib/logger'
+import { isAllowedExternalUrl } from './lib/external-url'
 import { registerTestHooks } from './test-hooks'
 import {
   computeSpkiHashFromPem,
@@ -417,7 +418,10 @@ function createWindow(): void {
       : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      sandbox: false
+      sandbox: false,
+      contextIsolation: true,
+      nodeIntegration: false,
+      webSecurity: true
     }
   })
   trackLaunchPhase('window_created', Date.now() - launchStartedAt)
@@ -446,7 +450,11 @@ function createWindow(): void {
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
-    void shell.openExternal(details.url)
+    if (isAllowedExternalUrl(details.url)) {
+      void shell.openExternal(details.url)
+    } else {
+      log.warn('Blocked external open for disallowed URL scheme', { url: details.url })
+    }
     return { action: 'deny' }
   })
 
@@ -1015,7 +1023,10 @@ function showQuickCaptureWindow(): void {
     vibrancy: process.platform === 'darwin' ? 'popover' : undefined,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      sandbox: false
+      sandbox: false,
+      contextIsolation: true,
+      nodeIntegration: false,
+      webSecurity: true
     }
   })
 

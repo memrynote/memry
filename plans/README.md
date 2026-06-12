@@ -26,7 +26,7 @@ below — run `pnpm audit --prod` separately if you want that).
 | 005  | Consolidate `ReminderTargetType` (fix `'task'` drift)              | P2       | S      | MED  | [#546](https://github.com/memrynote/memry/issues/546) | TODO   |
 | 006  | Remove duplicate/broken `onSearchIndex*` preload declarations      | P2       | S      | LOW  | [#547](https://github.com/memrynote/memry/issues/547) | TODO   |
 | 007  | Concurrent (bounded) R2 reads in `pullItems`                       | P2       | M      | LOW  | [#548](https://github.com/memrynote/memry/issues/548) | TODO   |
-| 008  | Allowlist `openExternal` schemes + explicit window hardening       | P2       | M      | MED  | [#549](https://github.com/memrynote/memry/issues/549) | TODO   |
+| 008  | Allowlist `openExternal` schemes + explicit window hardening       | P2       | M      | MED  | [#549](https://github.com/memrynote/memry/issues/549) | DONE   |
 | 009  | Run the cross-boundary sync protocol harness in CI                 | P3       | M      | MED  | [#550](https://github.com/memrynote/memry/issues/550) | TODO   |
 | 010  | Web clipper design spec (transport, clip contract, store timeline) | P1       | M      | LOW  | —                                                     | TODO   |
 | 011  | Importers design spec (Obsidian + Markdown folder v1)              | P1       | M      | LOW  | —                                                     | TODO   |
