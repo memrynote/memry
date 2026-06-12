@@ -35,6 +35,7 @@ vi.mock('./crdt-compact-utils', () => ({ compactYDoc: vi.fn() }))
 vi.mock('./crdt-writeback', () => ({
   scheduleWriteback: vi.fn(),
   cancelPendingWritebacks: vi.fn(),
+  flushPendingWritebacks: vi.fn(),
   recordNetworkUpdate: vi.fn()
 }))
 vi.mock('./microtask-batch-broadcaster', () => ({

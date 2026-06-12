@@ -104,6 +104,7 @@ vi.mock('@main/database/queries/notes', () => ({
 
 import {
   cancelPendingWritebacks,
+  flushPendingWritebacks,
   getWritebackDebugState,
   handleSyncDeletion,
   isWritebackIgnored,
@@ -352,5 +353,43 @@ describe('crdt writeback', () => {
         source: 'sync'
       }
     })
+  })
+
+  it('flushPendingWritebacks runs a scheduled write-back without advancing the debounce timer', async () => {
+    scheduleWriteback('note-1', makeDoc('Pending title', ['flush-tag']))
+    expect(mocks.atomicWrite).not.toHaveBeenCalled()
+
+    await flushPendingWritebacks()
+
+    expect(mocks.atomicWrite).toHaveBeenCalledWith(
+      '/vault/notes/Existing.md',
+      expect.stringContaining('updated markdown')
+    )
+  })
+
+  it('flushPendingWritebacks clears pending timers so they do not fire a second time', async () => {
+    scheduleWriteback('note-1', makeDoc('Pending title'))
+
+    await flushPendingWritebacks()
+    expect(mocks.atomicWrite).toHaveBeenCalledTimes(1)
+
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(mocks.atomicWrite).toHaveBeenCalledTimes(1)
+  })
+
+  it('flushPendingWritebacks with nothing pending is a no-op', async () => {
+    await flushPendingWritebacks()
+    expect(mocks.atomicWrite).not.toHaveBeenCalled()
+  })
+
+  it('flushPendingWritebacks swallows a failing write-back and logs instead of rejecting', async () => {
+    mocks.yDocToMarkdown.mockRejectedValueOnce(new Error('conversion boom'))
+    scheduleWriteback('note-1', makeDoc('Pending title'))
+
+    await expect(flushPendingWritebacks()).resolves.toBeUndefined()
+    expect(mocks.logger.error).toHaveBeenCalledWith(
+      'Write-back failed during shutdown flush',
+      expect.objectContaining({ noteId: 'note-1' })
+    )
   })
 })

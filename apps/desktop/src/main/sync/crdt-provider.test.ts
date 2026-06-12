@@ -13,7 +13,7 @@ const mocks = vi.hoisted(() => ({
   markdownToYFragment: vi.fn(),
   compactYDoc: vi.fn(),
   scheduleWriteback: vi.fn(),
-  cancelPendingWritebacks: vi.fn(),
+  flushPendingWritebacks: vi.fn(),
   recordNetworkUpdate: vi.fn(),
   persistenceInstances: [] as Array<{
     getYDoc: ReturnType<typeof vi.fn>
@@ -85,7 +85,7 @@ vi.mock('./crdt-compact-utils', () => ({
 
 vi.mock('./crdt-writeback', () => ({
   scheduleWriteback: (...args: unknown[]) => mocks.scheduleWriteback(...args),
-  cancelPendingWritebacks: (...args: unknown[]) => mocks.cancelPendingWritebacks(...args),
+  flushPendingWritebacks: (...args: unknown[]) => mocks.flushPendingWritebacks(...args),
   recordNetworkUpdate: (...args: unknown[]) => mocks.recordNetworkUpdate(...args)
 }))
 
@@ -286,7 +286,7 @@ describe('CrdtProvider', () => {
     expect(mocks.persistenceInstances[0].clearDocument).toHaveBeenCalledWith('seed-a')
 
     await provider.destroy()
-    expect(mocks.cancelPendingWritebacks).toHaveBeenCalled()
+    expect(mocks.flushPendingWritebacks).toHaveBeenCalled()
     expect(mocks.persistenceInstances[0].destroy).toHaveBeenCalled()
   })
 
