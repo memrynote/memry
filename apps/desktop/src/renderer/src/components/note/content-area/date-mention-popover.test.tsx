@@ -1,11 +1,24 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { DateMentionPopover, type DateMentionValue } from './date-mention-popover'
+import { DateMentionPopover, remindOptions, type DateMentionValue } from './date-mention-popover'
 
-// Radix Popover renders into a Portal and gates content behind floating-ui
-// measurements that don't resolve in jsdom. Mock it to render content inline
-// whenever `open` is true (the established convention for Radix popovers under
-// jsdom). PopoverAnchor renders nothing; PopoverContent shows its children.
+vi.mock('@memry/i18n/renderer', () => ({
+  useT: () => ({
+    t: (key: string) => {
+      const messages: Record<string, string> = {
+        'dateMention.dateInput': 'Date',
+        'dateMention.time': 'Time',
+        'dateMention.includeTime': 'Include time',
+        'dateMention.timeFormat': 'Time format',
+        'dateMention.dateFormat': 'Date format',
+        'dateMention.remind': 'Remind',
+        'dateMention.clear': 'Clear'
+      }
+      return messages[key] ?? key
+    }
+  })
+}))
+
 vi.mock('@/components/ui/popover', () => ({
   Popover: ({ open, children }: { open: boolean; children: React.ReactNode }) =>
     open ? <div data-testid="popover">{children}</div> : null,
@@ -13,113 +26,155 @@ vi.mock('@/components/ui/popover', () => ({
   PopoverContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>
 }))
 
-// DatePickerCalendar pulls i18n + icon deps and isn't under test here. Expose
-// onSelect via a button so date-selection logic (time-of-day preservation) can
-// be exercised without rendering the real calendar.
 vi.mock('@/components/tasks/date-picker-calendar', () => ({
   DatePickerCalendar: ({ onSelect }: { onSelect: (date: Date) => void }) => (
     <button
       type="button"
       data-testid="calendar"
-      onClick={() => onSelect(new Date('2026-07-15T00:00:00.000Z'))}
+      onClick={() => onSelect(new Date(2026, 6, 15, 0, 0, 0))}
     >
       calendar
     </button>
   )
 }))
 
+// Local-time event so wall-clock assertions are timezone-independent.
 const BASE_VALUE: DateMentionValue = {
-  dateISO: '2026-06-20T09:00:00.000Z',
+  dateISO: new Date(2026, 5, 20, 9, 0, 0).toISOString(),
   hasTime: true,
-  remind: false,
-  lead: 'at'
+  dateFormat: 'relative',
+  remind: 'none',
+  timeFormat: 'system'
 }
 
+function renderPopover(
+  overrides: Partial<DateMentionValue> = {},
+  props: Record<string, unknown> = {}
+) {
+  const onChange = vi.fn()
+  const onClear = vi.fn()
+  render(
+    <DateMentionPopover
+      open
+      anchorId="dm_test"
+      value={{ ...BASE_VALUE, ...overrides }}
+      onChange={onChange}
+      onClear={onClear}
+      onClose={vi.fn()}
+      {...props}
+    />
+  )
+  return { onChange, onClear }
+}
+
+describe('remindOptions', () => {
+  it('shows day-level offsets when there is no time', () => {
+    const labels = remindOptions(false).map((o) => o.label)
+    expect(labels).toContain('On day of event (09:00)')
+    expect(labels).not.toContain('5 minutes before')
+  })
+
+  it('shows sub-day offsets when there is a time', () => {
+    const labels = remindOptions(true).map((o) => o.label)
+    expect(labels).toContain('At time of event')
+    expect(labels).toContain('5 minutes before')
+    expect(labels).toContain('1 week before (09:00)')
+  })
+})
+
 describe('DateMentionPopover', () => {
-  it('renders reminder controls and toggling the switch emits remind=true', () => {
-    const onChange = vi.fn()
-    render(
-      <DateMentionPopover
-        open
-        anchorId="dm_test"
-        value={BASE_VALUE}
-        onChange={onChange}
-        onClose={vi.fn()}
-      />
-    )
-
-    // The "Remind me" label is present.
-    expect(screen.getByText('Remind me')).toBeInTheDocument()
-
-    // The lead Select trigger is disabled while remind is off.
-    expect(screen.getByLabelText('Reminder lead time')).toBeDisabled()
-
-    // Toggling the Switch emits the value with remind flipped on.
-    fireEvent.click(screen.getByRole('switch'))
-    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ remind: true }))
+  it('opens the Remind list and selecting an option emits the offset', () => {
+    const { onChange } = renderPopover()
+    fireEvent.click(screen.getByLabelText('Remind'))
+    expect(screen.getByText('At time of event')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('1 day before (09:00)'))
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ remind: '1d' }))
   })
 
-  it('enables the lead Select once remind is on', () => {
-    render(
+  it('shows the day-level Remind list when time is off', () => {
+    renderPopover({ hasTime: false })
+    fireEvent.click(screen.getByLabelText('Remind'))
+    expect(screen.getByText('On day of event (09:00)')).toBeInTheDocument()
+    expect(screen.queryByText('5 minutes before')).toBeNull()
+  })
+
+  it('selecting a Date format emits dateFormat', () => {
+    const { onChange } = renderPopover()
+    fireEvent.click(screen.getByLabelText('Date format'))
+    fireEvent.click(screen.getByText('Full date'))
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ dateFormat: 'full' }))
+  })
+
+  it('toggling time off coerces a sub-day remind to "at"', () => {
+    const { onChange } = renderPopover({ hasTime: true, remind: '5m' })
+    fireEvent.click(screen.getByRole('switch', { name: 'Include time' }))
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ hasTime: false, remind: 'at' }))
+  })
+
+  it('shows the Time format caption only when time is on', () => {
+    const { rerender } = (() =>
+      render(
+        <DateMentionPopover
+          open
+          anchorId="dm_test"
+          value={{ ...BASE_VALUE, hasTime: false }}
+          onChange={vi.fn()}
+          onClear={vi.fn()}
+          onClose={vi.fn()}
+        />
+      ))()
+    expect(screen.queryByText('Time format')).toBeNull()
+    rerender(
       <DateMentionPopover
         open
         anchorId="dm_test"
-        value={{ ...BASE_VALUE, remind: true }}
+        value={{ ...BASE_VALUE, hasTime: true }}
         onChange={vi.fn()}
+        onClear={vi.fn()}
         onClose={vi.fn()}
       />
     )
-
-    expect(screen.getByLabelText('Reminder lead time')).not.toBeDisabled()
+    expect(screen.getByText('Time format')).toBeInTheDocument()
   })
 
-  it('changing the time emits hasTime=true with the new time reflected in dateISO', () => {
-    const onChange = vi.fn()
-    render(
-      <DateMentionPopover
-        open
-        anchorId="dm_test"
-        value={BASE_VALUE}
-        onChange={onChange}
-        onClose={vi.fn()}
-      />
-    )
+  it('shows the inherited clock format on the Default time-format option', () => {
+    renderPopover({ hasTime: true, timeFormat: 'system' }, { clockFormat: '24h' })
+    expect(screen.getByText('Default (24 hour)')).toBeInTheDocument()
+  })
 
+  it('selecting a per-block time format emits timeFormat', () => {
+    const { onChange } = renderPopover({ hasTime: true }, { clockFormat: '12h' })
+    fireEvent.click(screen.getByLabelText('Time format'))
+    fireEvent.click(screen.getByText('24 hour'))
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ timeFormat: '24h' }))
+  })
+
+  it('changing the time emits hasTime=true with the new local time in dateISO', () => {
+    const { onChange } = renderPopover()
     fireEvent.change(screen.getByLabelText('Time'), { target: { value: '14:30' } })
 
     expect(onChange).toHaveBeenCalledTimes(1)
     const emitted = onChange.mock.calls[0][0]
     expect(emitted.hasTime).toBe(true)
-    // The local time-of-day round-trips through the emitted ISO (TZ-agnostic).
-    const emittedDate = new Date(emitted.dateISO)
-    expect(emittedDate.getHours()).toBe(14)
-    expect(emittedDate.getMinutes()).toBe(30)
-    // The calendar day is preserved (only the time changed).
-    const baseDate = new Date(BASE_VALUE.dateISO)
-    expect(emittedDate.getFullYear()).toBe(baseDate.getFullYear())
-    expect(emittedDate.getMonth()).toBe(baseDate.getMonth())
-    expect(emittedDate.getDate()).toBe(baseDate.getDate())
+    const d = new Date(emitted.dateISO)
+    expect(d.getHours()).toBe(14)
+    expect(d.getMinutes()).toBe(30)
   })
 
   it('selecting a calendar date preserves the existing time-of-day', () => {
-    const onChange = vi.fn()
-    render(
-      <DateMentionPopover
-        open
-        anchorId="dm_test"
-        value={BASE_VALUE}
-        onChange={onChange}
-        onClose={vi.fn()}
-      />
-    )
-
-    // BASE_VALUE's local time-of-day must survive a date change.
-    const baseDate = new Date(BASE_VALUE.dateISO)
+    const { onChange } = renderPopover()
     fireEvent.click(screen.getByTestId('calendar'))
 
     expect(onChange).toHaveBeenCalledTimes(1)
+    const base = new Date(BASE_VALUE.dateISO)
     const emitted = new Date(onChange.mock.calls[0][0].dateISO)
-    expect(emitted.getHours()).toBe(baseDate.getHours())
-    expect(emitted.getMinutes()).toBe(baseDate.getMinutes())
+    expect(emitted.getHours()).toBe(base.getHours())
+    expect(emitted.getMinutes()).toBe(base.getMinutes())
+  })
+
+  it('Clear calls onClear', () => {
+    const { onClear } = renderPopover()
+    fireEvent.click(screen.getByText('Clear'))
+    expect(onClear).toHaveBeenCalled()
   })
 })
