@@ -22,12 +22,13 @@ clickable target for opening or editing events.
 
 ## What Shows Up
 
-| Source                                   | How it appears                            |
-| ---------------------------------------- | ----------------------------------------- |
-| Calendar events created in memrynote     | Inline events on the day grid             |
-| Tasks with due dates                     | Task chips on the day they're due         |
-| External calendar events (if integrated) | Translucent events with a source badge    |
-| Journal entries                          | A small badge / dot on dates with entries |
+| Source                                      | How it appears                            |
+| ------------------------------------------- | ----------------------------------------- |
+| Calendar events created in memrynote        | Inline events on the day grid             |
+| Tasks with due dates                        | Task chips on the day they're due         |
+| External calendar events (if integrated)    | Translucent events with a source badge    |
+| Journal entries                             | A small badge / dot on dates with entries |
+| Notes with a calendar-enabled date property | All-day note chips on the property's date |
 
 ## Quick Create
 
@@ -42,6 +43,12 @@ Click an empty time slot (day / week views) or a date cell (month) to create an 
 ## Event Detail Popover
 
 Click an event to open the popover. Edit title, time, and description in place. The popover has a "Open in tab" action for full editing.
+
+## Notes with Dates
+
+A note that has a `date`-typed [property](/user-guide/notes/properties-tags) can appear on the calendar. Turn on **Show on calendar** from that property's row in the note, and the note shows up as an all-day chip on the property's date. Clicking the chip opens a small read-only popover showing the property and date, with an **Open note** action.
+
+The toggle is vault-wide per property name — enabling it for "Deadline" once surfaces every note's "Deadline" — and it syncs across your devices. A note with several calendar-enabled date properties shows one chip per date.
 
 ## Drag to Reschedule
 

@@ -46,6 +46,10 @@ A property definition is reused across every note that adopts it — adding a `T
 
 In the property panel, click **Add property** and pick from the list. Set the value inline.
 
+### Showing Dates on the Calendar
+
+A `Date` property can surface its value on the [calendar](/user-guide/calendar). On a date property's row, open its calendar toggle and turn on **Show on calendar** — the note then appears as an all-day chip on that date, and clicking the chip opens the note. The setting is vault-wide per property name and syncs across your devices.
+
 ## Tags vs Properties — When to Use Which
 
 | Need                                        | Use                   |
