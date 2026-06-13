@@ -5,6 +5,7 @@ import { UpdaterChannels } from '@memry/contracts/ipc-updater'
 import { createLogger } from './lib/logger'
 import { getMainI18n } from './lib/main-i18n'
 import { formatAppVersionForDisplay } from './lib/app-version-display'
+import { htmlToPlainText } from './lib/html-to-plain-text'
 
 const logger = createLogger('Updater')
 
@@ -279,13 +280,13 @@ function normalizeReleaseNotes(info: UpdateInfo): string | null {
   }
 
   if (typeof releaseNotes === 'string') {
-    return releaseNotes.trim() || null
+    return htmlToPlainText(releaseNotes) || null
   }
 
   const combined = releaseNotes
     .map((entry) => {
       const heading = entry.version ? `${formatAppVersionForDisplay(entry.version)}\n` : ''
-      return `${heading}${entry.note}`.trim()
+      return `${heading}${htmlToPlainText(entry.note ?? '')}`.trim()
     })
     .filter(Boolean)
     .join('\n\n')

@@ -187,6 +187,23 @@ describe('updater', () => {
     })
   })
 
+  it('strips HTML from release notes before showing them in the dialog', async () => {
+    const updater = await loadUpdater()
+
+    updater.initializeUpdater()
+    mocks.autoUpdater.emit('update-available', {
+      version: '1.2.6',
+      releaseNotes: '<h2>Fixes</h2><ul><li>Sync fix</li><li>Calendar fix</li></ul>'
+    })
+    await flushAsyncWork()
+
+    const { detail } = mocks.dialog.showMessageBox.mock.calls[0][0]
+    expect(detail).toContain('Sync fix')
+    expect(detail).toContain('• Calendar fix')
+    expect(detail).not.toMatch(/<[^>]+>/)
+    expect(updater.getUpdateState().releaseNotes).toBe('Fixes\n• Sync fix\n• Calendar fix')
+  })
+
   it('coalesces manual checks and downloads, then installs downloaded updates', async () => {
     const updater = await loadUpdater()
     updater.initializeUpdater()

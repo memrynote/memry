@@ -23,5 +23,21 @@ export function wordCount(content: string): number {
 }
 
 export function snippet(content: string): string {
-  return content.replace(/\s+/g, ' ').trim().slice(0, 180)
+  return stripMarkup(content).replace(/\s+/g, ' ').trim().slice(0, 180)
+}
+
+function stripMarkup(markdown: string): string {
+  return markdown
+    .replace(/<!--[\s\S]*?-->/g, '') // memry block/colors/file markers + any HTML comment
+    .replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, '$2') // wiki link w/ alias → alias
+    .replace(/\[\[([^\]]+)\]\]/g, '$1') // wiki link → target
+    .replace(/```[\s\S]*?```/g, (block) => block.replace(/```/g, '')) // fenced code → inner text
+    .replace(/`([^`]+)`/g, '$1') // inline code
+    .replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1') // image → alt
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // link → text
+    .replace(/^#{1,6}\s+/gm, '') // headings
+    .replace(/^>\s?/gm, '') // blockquotes
+    .replace(/^\s*[-*+]\s+/gm, '') // bullet markers
+    .replace(/^\s*\d+\.\s+/gm, '') // ordered markers
+    .replace(/[*_~]{1,3}/g, '') // emphasis/strike
 }

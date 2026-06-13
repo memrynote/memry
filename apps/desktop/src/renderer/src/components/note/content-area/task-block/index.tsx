@@ -34,18 +34,29 @@ export const createTaskBlock = createReactBlockSpec(
   }
 )
 
-export function getTaskSlashMenuItem(editor: unknown) {
+export function getTaskSlashMenuItem(editor: unknown, noteId?: string) {
   return {
     title: 'Task',
     onItemClick: async () => {
-      const taskEditor = editor as TaskBlockEditor
+      const taskEditor = editor as TaskBlockEditor & {
+        getBlock: (id: string) => TaskBlock | undefined
+      }
       const currentBlock = taskEditor.getTextCursorPosition().block
+      const blockId = currentBlock.id
       const content = currentBlock.content ?? []
       const text =
         content
           .map((c: TaskBlockInlineContent) => (typeof c === 'string' ? c : (c.text ?? '')))
           .join('')
           .trim() || ''
+
+      // Convert the block to a taskBlock immediately — same as the
+      // checklist→task conversion — so the user always sees a task even if the
+      // backing task creation below is slow, fails, or has no project yet.
+      taskEditor.updateBlock(currentBlock, {
+        type: 'taskBlock',
+        props: { taskId: '', title: text, checked: false }
+      })
 
       const res = await tasksService.listProjects()
       const projects = res.projects ?? []
@@ -64,13 +75,21 @@ export function getTaskSlashMenuItem(editor: unknown) {
         projectId: parsed.projectId ?? defaultProject.id,
         title: parsed.title,
         priority: PRIORITY_REVERSE[parsed.priority] ?? 0,
-        dueDate: parsed.dueDate ? formatDateKey(parsed.dueDate) : null
+        dueDate: parsed.dueDate ? formatDateKey(parsed.dueDate) : null,
+        linkedNoteIds: noteId ? [noteId] : []
       })
       if (result.success && result.task) {
-        taskEditor.updateBlock(currentBlock, {
+        // Re-fetch fresh: the block reference captured before the awaits above
+        // may be stale by now.
+        const freshBlock = taskEditor.getBlock(blockId) ?? currentBlock
+        const currentTitle = (freshBlock.props?.title as string) || parsed.title || text
+        taskEditor.updateBlock(freshBlock, {
           type: 'taskBlock',
-          props: { taskId: result.task.id, title: parsed.title, checked: false }
+          props: { taskId: result.task.id, title: currentTitle, checked: false }
         })
+        if (currentTitle && currentTitle !== result.task.title) {
+          void tasksService.update({ id: result.task.id, title: currentTitle })
+        }
       }
     },
     aliases: ['task', 'todo', 'action'],

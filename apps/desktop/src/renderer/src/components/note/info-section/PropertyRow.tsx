@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useMemo } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical, Trash2 } from '@/lib/icons'
+import { GripVertical, Trash2, Calendar } from '@/lib/icons'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { Property } from './types'
@@ -24,6 +24,9 @@ import {
   type StatusCategoryKey
 } from '@memry/contracts/property-types'
 import { useT } from '@memry/i18n/renderer'
+import { useCalendarProperties } from '@/hooks/use-calendar-properties'
+import { getEventBaseColor } from '@/lib/event-type-colors'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface PropertyValueRendererProps {
   property: Property
@@ -279,6 +282,7 @@ export function PropertyRow({
   isSortable = false
 }: PropertyRowProps) {
   const { t } = useT('notes')
+  const { isEnabled, setEnabled } = useCalendarProperties()
   const [isEditing, setIsEditing] = useState(
     autoFocus && property.type !== 'checkbox' && !SELECT_TYPES.has(property.type)
   )
@@ -465,6 +469,40 @@ export function PropertyRow({
           onEndEdit={handleEndEdit}
         />
       </div>
+
+      {/* Calendar toggle — date properties only. One click toggles; the icon
+          stays visible and tinted (chip color) while enabled so the state is
+          readable without opening anything. The tooltip names the action. */}
+      {property.type === 'date' && (
+        <TooltipProvider delayDuration={250}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                aria-label={t('properties.showOnCalendar')}
+                aria-pressed={isEnabled(property.name)}
+                onClick={() => void setEnabled(property.name, !isEnabled(property.name))}
+                style={isEnabled(property.name) ? { color: getEventBaseColor('note') } : undefined}
+                className={cn(
+                  'ms-1 flex h-6 w-6 items-center justify-center rounded transition-all duration-150 hover:bg-surface',
+                  isEnabled(property.name)
+                    ? 'opacity-100'
+                    : isHovered
+                      ? 'opacity-100 text-text-tertiary hover:text-muted-foreground'
+                      : 'opacity-0 pointer-events-none'
+                )}
+              >
+                <Calendar className="h-3.5 w-3.5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              {isEnabled(property.name)
+                ? t('properties.showingOnCalendar')
+                : t('properties.showOnCalendar')}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
 
       {/* Delete button */}
       {property.isCustom && onDelete && (
