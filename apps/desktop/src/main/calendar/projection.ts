@@ -297,6 +297,80 @@ function loadReminderItems(db: DataDb, input: GetCalendarRangeInput): CalendarPr
   })
 }
 
+function loadNoteDateReminderItems(
+  db: DataDb,
+  indexDb: IndexDb,
+  input: GetCalendarRangeInput
+): CalendarProjectionItem[] {
+  const rows = db
+    .select()
+    .from(reminders)
+    .where(
+      and(
+        eq(reminders.targetType, 'note_date'),
+        or(
+          and(
+            eq(reminders.status, 'pending'),
+            gte(reminders.remindAt, input.startAt),
+            lt(reminders.remindAt, input.endAt)
+          ),
+          and(
+            eq(reminders.status, 'snoozed'),
+            isNotNull(reminders.snoozedUntil),
+            gte(reminders.snoozedUntil, input.startAt),
+            lt(reminders.snoozedUntil, input.endAt)
+          )
+        )
+      )
+    )
+    .orderBy(asc(reminders.remindAt))
+    .all()
+
+  if (rows.length === 0) return []
+
+  const noteIds = [...new Set(rows.map((row) => row.targetId))]
+  const titleRows = indexDb
+    .select({ id: noteCache.id, title: noteCache.title })
+    .from(noteCache)
+    .where(inArray(noteCache.id, noteIds))
+    .all()
+  const titleById = new Map(titleRows.map((row) => [row.id, row.title]))
+
+  const editability: CalendarProjectionEditability = {
+    canMove: false,
+    canResize: false,
+    canEditText: false,
+    canDelete: false
+  }
+
+  return rows.map((row) => {
+    const isSnoozed = row.status === 'snoozed' && !!row.snoozedUntil
+    const effectiveStartAt = isSnoozed ? row.snoozedUntil! : row.remindAt
+    const snoozeOffsetMinutes = isSnoozed
+      ? Math.round(
+          (new Date(row.snoozedUntil!).getTime() - new Date(row.remindAt).getTime()) / 60000
+        )
+      : null
+
+    return {
+      projectionId: `note_date:${row.id}`,
+      sourceType: 'note_date' as const,
+      sourceId: row.id,
+      title: titleById.get(row.targetId)?.trim() || 'Untitled',
+      descriptionPreview: getDescriptionPreview(row.note),
+      startAt: effectiveStartAt,
+      endAt: null,
+      isAllDay: false,
+      timezone: LOCAL_TIMEZONE,
+      visualType: 'note_date' as const,
+      editability,
+      source: nativeSource('memrynote Notes'),
+      binding: null,
+      snoozeOffsetMinutes
+    }
+  })
+}
+
 function loadInboxSnoozeItems(db: DataDb, input: GetCalendarRangeInput): CalendarProjectionItem[] {
   const rows = db
     .select()
@@ -472,6 +546,7 @@ export function getCalendarRangeProjection(
     ...loadMemryEvents(db, input),
     ...loadTaskItems(db, input),
     ...loadReminderItems(db, input),
+    ...loadNoteDateReminderItems(db, indexDb, input),
     ...loadInboxSnoozeItems(db, input),
     ...loadExternalEvents(db, input),
     ...loadNoteDatePropertyItems(indexDb, enabledNames, input)
