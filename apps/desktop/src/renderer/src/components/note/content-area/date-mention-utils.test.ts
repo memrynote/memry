@@ -7,8 +7,9 @@ const token = serializeDateMentionToken({
   anchorId: 'dm_1',
   dateISO: '2026-06-20T09:00:00.000Z',
   hasTime: true,
-  remind: true,
-  lead: '1h'
+  dateFormat: 'relative',
+  remind: '1h',
+  timeFormat: 'system'
 })
 
 function paragraph(text: string): Block {
