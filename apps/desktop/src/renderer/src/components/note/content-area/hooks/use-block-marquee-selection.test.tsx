@@ -10,7 +10,7 @@ const marqueeIndentMocks = vi.hoisted(() => ({
 
 vi.mock('./task-block-marquee-indent', () => marqueeIndentMocks)
 
-import { useBlockMarqueeSelection } from './use-block-marquee-selection'
+import { topLevelSelectedBlockIds, useBlockMarqueeSelection } from './use-block-marquee-selection'
 
 function setRect(el: Element, rect: Partial<DOMRect>): void {
   const value = {
@@ -144,6 +144,47 @@ describe('useBlockMarqueeSelection', () => {
     trigger.remove()
   })
 
+  it('deletes only top-level ancestors when a nested child is also selected', () => {
+    // Regression: a marquee box selects both a parent block and its nested
+    // child (e.g. a list item whose sub-item holds a date/reminder pill).
+    // Passing both ids to editor.removeBlocks throws "could not be found"
+    // (the ancestor removal already deleted the child), rolling back the whole
+    // transaction so NOTHING — including the date pill — gets removed.
+    const { trigger, blockContainerRef } = setupDom()
+    const editor = {
+      prosemirrorView: { dom: { blur: vi.fn() } },
+      // 'b' is nested under 'a'; the marquee selects both 'a' and 'b'.
+      document: [{ id: 'a', children: [{ id: 'b' }] }, { id: 'c' }],
+      removeBlocks: vi.fn()
+    }
+
+    const { result, unmount } = renderHook(() =>
+      useBlockMarqueeSelection({
+        editor,
+        blockContainerRef,
+        triggerContainerEl: trigger
+      })
+    )
+
+    act(() => {
+      trigger.dispatchEvent(mouse('mousedown', { clientX: 0, clientY: 0 }))
+      document.dispatchEvent(mouse('mousemove', { clientX: 150, clientY: 70 }))
+      document.dispatchEvent(mouse('mouseup', { clientX: 150, clientY: 70 }))
+    })
+    expect([...result.current.selectedBlockIds]).toEqual(['a', 'b'])
+
+    act(() => {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete', bubbles: true }))
+    })
+
+    // Only the ancestor — 'b' is removed implicitly with it.
+    expect(editor.removeBlocks).toHaveBeenCalledWith(['a'])
+    expect(result.current.selectedBlockIds.size).toBe(0)
+
+    unmount()
+    trigger.remove()
+  })
+
   it('ignores disabled, interactive, and mostly-horizontal editable drags', () => {
     const { trigger, blockContainerRef } = setupDom()
     const button = document.createElement('button')
@@ -189,5 +230,27 @@ describe('useBlockMarqueeSelection', () => {
 
     unmount()
     trigger.remove()
+  })
+})
+
+describe('topLevelSelectedBlockIds', () => {
+  it('keeps flat selections unchanged in document order', () => {
+    const doc = [{ id: 'a' }, { id: 'b' }, { id: 'c' }]
+    expect(topLevelSelectedBlockIds(doc, new Set(['a', 'c']))).toEqual(['a', 'c'])
+  })
+
+  it('drops a selected descendant when its ancestor is also selected', () => {
+    const doc = [{ id: 'a', children: [{ id: 'b', children: [{ id: 'd' }] }] }, { id: 'c' }]
+    expect(topLevelSelectedBlockIds(doc, new Set(['a', 'b', 'd']))).toEqual(['a'])
+  })
+
+  it('keeps a nested block when its ancestor is not selected', () => {
+    const doc = [{ id: 'a', children: [{ id: 'b' }] }, { id: 'c' }]
+    expect(topLevelSelectedBlockIds(doc, new Set(['b', 'c']))).toEqual(['b', 'c'])
+  })
+
+  it('drops stale ids that are absent from the document', () => {
+    const doc = [{ id: 'a' }]
+    expect(topLevelSelectedBlockIds(doc, new Set(['a', 'ghost']))).toEqual(['a'])
   })
 })
