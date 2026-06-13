@@ -317,7 +317,14 @@ function getDomEditorSelection(editor: BlockNoteEditor): ReviewSelection | null 
 }
 
 function getProseMirrorView(editor: BlockNoteEditor) {
-  return (editor as any)._tiptapEditor?.view ?? (editor as any).prosemirrorView
+  const tiptap = (editor as any)._tiptapEditor
+  // TipTap 3.x `editor.view` returns a Proxy that THROWS on any property access
+  // (e.g. `.dom`) until the ProseMirror view is mounted, so `view?.dom` can't
+  // short-circuit — the Proxy is non-null. `editorView` is the real view and is
+  // only set once mounted; guard on it so reads during the pre-mount render
+  // window get `undefined` instead of crashing the editor (issue #541).
+  if (tiptap && !tiptap.editorView) return undefined
+  return tiptap?.view ?? (editor as any).prosemirrorView
 }
 
 function getProseMirrorViewDom(editor: BlockNoteEditor): HTMLElement | undefined {
