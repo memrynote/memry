@@ -17,7 +17,8 @@ const VISUAL_TYPE_ICONS: Record<
   reminder: AlarmClock,
   snooze: NotificationSnooze,
   external_event: Calendar2,
-  note: StickyNote
+  note: StickyNote,
+  note_date: StickyNote
 }
 
 interface CalendarItemChipProps {

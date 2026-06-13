@@ -13,7 +13,8 @@ export const CalendarProjectionSourceTypeSchema = z.enum([
   'reminder',
   'inbox_snooze',
   'external_event',
-  'note'
+  'note',
+  'note_date'
 ])
 export const CalendarProjectionVisualTypeSchema = z.enum([
   'event',
@@ -21,7 +22,8 @@ export const CalendarProjectionVisualTypeSchema = z.enum([
   'reminder',
   'snooze',
   'external_event',
-  'note'
+  'note',
+  'note_date'
 ])
 export const CalendarChangeEntityTypeSchema = z.enum([
   'calendar_event',

@@ -26,6 +26,7 @@
     "event": "Event",
     "imported-event": "Imported event",
     "note": "Note",
+    "note-date": "Date reminder",
     "task": "Task",
     "reminder": "Reminder",
     "snooze": "Snooze"

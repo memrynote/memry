@@ -11,7 +11,8 @@ export const EVENT_TYPE_COLORS: Record<VisualType, string> = {
   reminder: '#1BADF8',
   snooze: '#7BD148',
   external_event: '#9A9CFF',
-  note: '#E0A458'
+  note: '#E0A458',
+  note_date: '#B57BD6'
 }
 
 export function getEventBaseColor(type: VisualType): string {
