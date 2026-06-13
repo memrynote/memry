@@ -157,6 +157,7 @@
   },
   "notePopover": {
     "kind": "Note",
-    "open": "Open note"
+    "open": "Open note",
+    "couldNotOpen": "Could not open note"
   }
 }

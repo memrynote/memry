@@ -54,7 +54,7 @@ import {
   resolveDefaultGoogleAccountId
 } from '../calendar/google/oauth'
 import { getCalendarRangeProjection } from '../calendar/projection'
-import { PropertyDefinitionsService } from '../vault/property-definitions'
+import { getCalendarEnabledPropertyNames } from '../calendar/calendar-property-visibility'
 import {
   startGoogleCalendarSyncRunner,
   stopGoogleCalendarSyncRunner,
@@ -82,14 +82,6 @@ import {
 } from '../calendar/runtime-effects'
 
 const log = createLogger('IPC:Calendar')
-
-function getCalendarEnabledPropertyNames(): string[] {
-  try {
-    return PropertyDefinitionsService.get().listCalendarEnabledNames()
-  } catch {
-    return []
-  }
-}
 
 function emitCalendarChanged(event: CalendarChangedEvent): void {
   for (const win of BrowserWindow.getAllWindows()) {

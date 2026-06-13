@@ -484,7 +484,9 @@ export function PropertyRow({
               className={cn(
                 'ms-1 flex h-6 w-6 items-center justify-center rounded',
                 'text-text-tertiary transition-all duration-150 hover:bg-surface hover:text-muted-foreground',
-                isHovered || isEnabled(property.name) ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                isHovered || isEnabled(property.name)
+                  ? 'opacity-100'
+                  : 'opacity-0 pointer-events-none'
               )}
             >
               <Calendar className="h-3.5 w-3.5" />

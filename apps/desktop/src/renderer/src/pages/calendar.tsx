@@ -493,6 +493,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
   }
 
   const handleNoteOpen = (noteId: string) => {
+    const tCalendar = getI18n().getFixedT(null, 'calendar')
     setNotePopoverState(null)
     void window.api.notes
       .get(noteId)
@@ -513,7 +514,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
       .catch((err: unknown) => {
         log.error('Failed to open note from calendar', {
           noteId,
-          error: extractErrorMessage(err, 'Could not open note')
+          error: extractErrorMessage(err, tCalendar('notePopover.couldNotOpen'))
         })
       })
   }
