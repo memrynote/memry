@@ -1,12 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { createPortal } from 'react-dom'
-import { memo, useCallback, useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   SuggestionMenuController,
   useCreateBlockNote,
   FormattingToolbar,
-  getDefaultReactSlashMenuItems
+  getDefaultReactSlashMenuItems,
+  type SuggestionMenuProps
 } from '@blocknote/react'
 import { BlockNoteView } from '@blocknote/shadcn'
 import { useTheme } from 'next-themes'
@@ -71,8 +72,12 @@ import { extractYouTubeVideoId } from '@/lib/youtube-utils'
 import { extractDomain, fetchLinkPreview } from '@/lib/url-metadata'
 import { createLinkMentionContent } from './link-mention'
 import { createDateMentionContent } from './date-mention'
+import { buildDateSuggestions } from './date-suggestions'
+import { createDateMentionGhostPlugin } from './date-mention-ghost-plugin'
 import { useDateMentionPrefs } from '@/hooks/use-date-mention-prefs'
 import { DateMentionPopover, type DateMentionValue } from './date-mention-popover'
+import { MentionMenu, type MentionSuggestionItem } from './mention-menu'
+import { useMentionSuggestions } from './hooks/use-mention-suggestions'
 import type { PasteLinkOption } from './hooks/use-paste-link-menu'
 import { useT } from '@memry/i18n/renderer'
 
@@ -143,7 +148,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 }: ContentAreaEditorProps) {
   const { t } = useT('notes')
   const { t: tCommon } = useT('common')
-  useDateMentionPrefs()
+  const { clockFormat: dateMentionClockFormat } = useDateMentionPrefs()
   const { resolvedTheme } = useTheme()
   const editorTheme = resolvedTheme === 'dark' ? 'dark' : 'light'
   const { openTag } = useSidebarDrillDown()
@@ -428,7 +433,13 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   }>({
     open: false,
     anchorId: null,
-    value: { dateISO: '', hasTime: false, remind: false, lead: 'at' }
+    value: {
+      dateISO: '',
+      hasTime: false,
+      dateFormat: 'relative',
+      remind: 'none',
+      timeFormat: 'system'
+    }
   })
   // Mirror the live anchorId so handleDateMentionChange can mutate the editor
   // outside the state updater (updaters must be pure; StrictMode double-invokes
@@ -456,8 +467,9 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                 anchorId,
                 dateISO: next.dateISO,
                 hasTime: next.hasTime,
+                dateFormat: next.dateFormat,
                 remind: next.remind,
-                lead: next.lead
+                timeFormat: next.timeFormat
               })
               editor.updateBlock(block, { content: updated })
               return true
@@ -468,6 +480,32 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         return false
       }
       updateInBlocks(editor.document)
+    },
+    [editor]
+  )
+
+  // Clear: splice the matching dateMention inline content out of its block.
+  const removeDateMention = useCallback(
+    (anchorId: string) => {
+      const removeInBlocks = (blocks: any[]): boolean => {
+        for (const block of blocks) {
+          const content = (block.content ?? []) as any[]
+          if (Array.isArray(content)) {
+            const index = content.findIndex(
+              (c: any) => c?.type === 'dateMention' && c.props?.anchorId === anchorId
+            )
+            if (index !== -1) {
+              const updated = [...content]
+              updated.splice(index, 1)
+              editor.updateBlock(block, { content: updated })
+              return true
+            }
+          }
+          if (block.children?.length && removeInBlocks(block.children)) return true
+        }
+        return false
+      }
+      removeInBlocks(editor.document)
     },
     [editor]
   )
@@ -489,6 +527,12 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     setDateMentionState((prev) => ({ ...prev, open: false, anchorId: null }))
   }, [])
 
+  const handleDateMentionClear = useCallback(() => {
+    const anchorId = dateMentionAnchorIdRef.current
+    if (anchorId) removeDateMention(anchorId)
+    setDateMentionState((prev) => ({ ...prev, open: false, anchorId: null }))
+  }, [removeDateMention])
+
   // Click-to-edit: open the popover seeded from a clicked pill's data-* props.
   useEffect(() => {
     const container = editorContainerRef.current
@@ -507,8 +551,11 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         value: {
           dateISO,
           hasTime: pill.getAttribute('data-has-time') === 'true',
-          remind: pill.getAttribute('data-remind') === 'true',
-          lead: (pill.getAttribute('data-lead') || 'at') as DateMentionValue['lead']
+          dateFormat: (pill.getAttribute('data-date-format') ||
+            'relative') as DateMentionValue['dateFormat'],
+          remind: (pill.getAttribute('data-remind') || 'none') as DateMentionValue['remind'],
+          timeFormat: (pill.getAttribute('data-time-format') ||
+            'system') as DateMentionValue['timeFormat']
         }
       })
     }
@@ -516,34 +563,57 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     return () => container.removeEventListener('click', handleClick)
   }, [])
 
-  // Slash item: insert a fresh dateMention pill (today at 09:00), then open the
-  // popover anchored to it so the user immediately sets the date.
-  const handleDateSlashSelect = useCallback(() => {
-    const anchorId = `dm_${crypto.randomUUID()}`
-    const today = new Date()
-    today.setHours(9, 0, 0, 0)
-    const dateISO = today.toISOString()
-    editor.insertInlineContent(
-      [
-        createDateMentionContent({
-          anchorId,
-          dateISO,
-          hasTime: false,
-          remind: false,
-          lead: 'at'
-        }),
-        ' '
-      ],
-      { updateSelection: true }
-    )
-    // The popover resolves its anchor by querying the live pill via anchorId,
-    // so it positions correctly once ProseMirror has rendered the span.
-    setDateMentionState({
-      open: true,
-      anchorId,
-      value: { dateISO, hasTime: false, remind: false, lead: 'at' }
-    })
-  }, [editor])
+  // Insert a configurable dateMention pill from a committed value (slash items
+  // and the `@` Date group both use this). No auto-open: the picker opens when
+  // the user clicks the pill (click-to-edit above).
+  const insertDatePill = useCallback(
+    (value: DateMentionValue) => {
+      const anchorId = `dm_${crypto.randomUUID()}`
+      editor.insertInlineContent([createDateMentionContent({ anchorId, ...value }), ' '], {
+        updateSelection: true
+      })
+    },
+    [editor]
+  )
+
+  // Tab-accept from the inline ghost plugin: drop the typed `@query` range, then
+  // reuse the standard pill insert at the resulting caret.
+  const insertDatePillAtRange = useCallback(
+    (from: number, to: number, value: DateMentionValue) => {
+      const tiptap = (editor as any)._tiptapEditor
+      if (!tiptap?.view) return
+      tiptap.view.dispatch(tiptap.view.state.tr.delete(from, to))
+      insertDatePill(value)
+    },
+    [editor, insertDatePill]
+  )
+
+  // Inline `@`-date ghost text + Tab completion. Prepend the plugin so its Tab
+  // handler wins over block-indent keymaps while a date mention is active.
+  useEffect(() => {
+    const tiptap = (editor as any)._tiptapEditor
+    if (!tiptap?.registerPlugin || !tiptap?.unregisterPlugin) return
+    const plugin = createDateMentionGhostPlugin({ onAcceptPill: insertDatePillAtRange })
+    tiptap.registerPlugin(plugin, (p: any, plugins: any[]) => [p, ...plugins])
+    return () => {
+      tiptap.unregisterPlugin(plugin.spec.key!)
+    }
+  }, [editor, insertDatePillAtRange])
+
+  // `@` quick-insert menu: a Date group (date + remind) when the query parses
+  // as a date, plus recent notes (insert as wiki links). The bound menu is
+  // memoized so it doesn't remount per render.
+  const { getMentionItems, handleMentionSelect, mentionHasMore, showMore } = useMentionSuggestions(
+    editor,
+    { onInsertDate: insertDatePill }
+  )
+  const MentionSuggestionMenu = useMemo(
+    () =>
+      function BoundMentionMenu(props: SuggestionMenuProps<MentionSuggestionItem>) {
+        return <MentionMenu {...props} hasMore={mentionHasMore} onShowMore={showMore} />
+      },
+    [mentionHasMore, showMore]
+  )
 
   const [innerContainerEl, setInnerContainerEl] = useState<HTMLDivElement | null>(null)
   const setEditorContainerRef = useCallback((el: HTMLDivElement | null) => {
@@ -1117,18 +1187,34 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                 subtext: t('editor.callout.subtext')
               })
               const taskItem = getTaskSlashMenuItem(editor, noteId)
-              const dateItem = {
-                title: 'Date',
-                onItemClick: handleDateSlashSelect,
-                aliases: ['date', 'remind', 'reminder', 'when'],
-                group: 'Basic blocks',
-                subtext: 'Insert a date with an optional reminder'
-              }
+              // `/date` and `/remind` both surface the same two-row Date group:
+              // a plain date and a "Remind me — <subtitle>" (aliases overlap so
+              // either trigger shows both). Selecting inserts a configurable pill.
+              const suggestion = buildDateSuggestions('')
+              const dateAliases = ['date', 'remind', 'reminder', 'when']
+              const dateItems = suggestion
+                ? [
+                    {
+                      title: suggestion.dateLabel,
+                      onItemClick: () => insertDatePill(suggestion.dateValue),
+                      aliases: dateAliases,
+                      group: 'Basic blocks',
+                      subtext: 'Insert a date'
+                    },
+                    {
+                      title: 'Remind me',
+                      onItemClick: () => insertDatePill(suggestion.remindValue),
+                      aliases: dateAliases,
+                      group: 'Basic blocks',
+                      subtext: suggestion.remindSubtitle
+                    }
+                  ]
+                : []
               const all = orderSlashMenuItemsByGroup([
                 ...defaults,
                 calloutItem,
                 taskItem,
-                dateItem,
+                ...dateItems,
                 ...aiItems
               ])
               if (!query) return all
@@ -1145,6 +1231,12 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             getItems={getWikiLinkItems}
             suggestionMenuComponent={WikiLinkMenu}
             onItemClick={(item) => void handleWikiLinkSelect(item)}
+          />
+          <SuggestionMenuController
+            triggerCharacter="@"
+            getItems={getMentionItems}
+            suggestionMenuComponent={MentionSuggestionMenu}
+            onItemClick={(item) => handleMentionSelect(item)}
           />
         </BlockNoteView>
 
@@ -1192,7 +1284,9 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           open={dateMentionState.open}
           anchorId={dateMentionState.anchorId}
           value={dateMentionState.value}
+          clockFormat={dateMentionClockFormat}
           onChange={handleDateMentionChange}
+          onClear={handleDateMentionClear}
           onClose={handleDateMentionClose}
         />
       </div>
