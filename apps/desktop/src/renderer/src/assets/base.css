@@ -2397,17 +2397,18 @@ del.bn-inline-content {
 }
 
 /* Date mention — Notion-style inline date/reminder token: dimmed `@` +
-   relative label (Today/Tomorrow/…) + calendar icon, or alarm clock when a
-   reminder is set. Blue reads as a time/date affordance (matches
+   relative label (Today/Tomorrow/…). A date-only pill (data-remind="none") is
+   muted and label-only. When a reminder is set the pill turns blue and gains an
+   alarm icon — blue + the alarm read as the reminder affordance (matches
    --task-due-tomorrow). The whole token highlights on hover as one unit. */
 .bn-shadcn .bn-editor .date-mention,
 .date-mention {
-  --date-mention-color: #2563eb;
+  --date-mention-color: var(--muted-foreground);
   display: inline;
   padding: 1px 4px;
   border-radius: 5px;
   color: var(--date-mention-color);
-  font-weight: 500;
+  font-weight: 400;
   cursor: pointer;
   white-space: nowrap;
   user-select: none;
@@ -2416,8 +2417,14 @@ del.bn-inline-content {
   transition: background 0.15s ease;
 }
 
-.dark .bn-editor .date-mention,
-.dark .date-mention {
+/* A reminder is set → blue affordance. */
+.bn-shadcn .bn-editor .date-mention:not([data-remind='none']),
+.date-mention:not([data-remind='none']) {
+  --date-mention-color: #2563eb;
+}
+
+.dark .bn-editor .date-mention:not([data-remind='none']),
+.dark .date-mention:not([data-remind='none']) {
   --date-mention-color: #60a5fa;
 }
 
@@ -2444,6 +2451,37 @@ del.bn-inline-content {
   display: block;
   width: 100%;
   height: 100%;
+}
+
+/* Inline `@`-date ghost autocomplete (date-mention-ghost-plugin.ts).
+   Two intentional, distinct states: a neutral grey background signals a
+   date/reminder is "activating" as you type (and firms into the blue pill on
+   accept), while the ghost previews that same blue — faded — so it reads as a
+   suggestion, never as typed text. */
+.date-mention-typing {
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--foreground) 9%, transparent);
+  /* Outset shadow fakes ~2px padding with zero layout shift while typing. */
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--foreground) 9%, transparent);
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.date-mention-ghost {
+  --date-mention-ghost-color: #2563eb;
+  color: color-mix(in srgb, var(--date-mention-ghost-color) 50%, transparent);
+  white-space: pre; /* preserve a leading space, e.g. "next" → " Wednesday" */
+  pointer-events: none;
+  user-select: none;
+}
+
+.dark .date-mention-typing {
+  background: color-mix(in srgb, var(--foreground) 14%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--foreground) 14%, transparent);
+}
+
+.dark .date-mention-ghost {
+  --date-mention-ghost-color: #60a5fa;
 }
 
 /* Bookmark card link — beat BlockNote's `.bn-shadcn .bn-editor a` revert
