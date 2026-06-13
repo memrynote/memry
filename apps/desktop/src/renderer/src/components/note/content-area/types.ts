@@ -110,6 +110,8 @@ export interface ContentAreaProps {
   className?: string
   /** Initial highlight info to scroll to and highlight (from reminder navigation) */
   initialHighlight?: HighlightInfo
+  /** Inline date pill anchor id to scroll to (from note_date reminder navigation) */
+  initialAnchorId?: string
   /** Note tags for hash tag normalization on markdown load */
   noteTags?: string[]
   /** Map of tag name to color name for hash tag styling */

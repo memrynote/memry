@@ -112,6 +112,7 @@ export function ReminderDetail({ item }: ReminderDetailProps): React.JSX.Element
         targetId: metadata.targetId,
         targetTitle: metadata.targetTitle,
         projectId: metadata.projectId,
+        anchorId: metadata.anchorId,
         highlightStart: metadata.highlightStart,
         highlightEnd: metadata.highlightEnd,
         highlightText: metadata.highlightText,

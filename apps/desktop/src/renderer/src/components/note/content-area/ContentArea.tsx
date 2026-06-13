@@ -128,6 +128,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   onInternalLinkClick,
   className,
   initialHighlight,
+  initialAnchorId,
   noteTags,
   tagColorMap,
   onInlineTagsChange,
@@ -214,7 +215,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     editorContainerRef,
     onLinkClick,
     onInternalLinkClick,
-    initialHighlight
+    initialHighlight,
+    initialAnchorId
   })
 
   // Hook #2: Content sync (initial load + debounced change handler)

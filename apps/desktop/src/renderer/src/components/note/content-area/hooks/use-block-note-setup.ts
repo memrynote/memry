@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { AIExtension } from '@blocknote/xl-ai'
 import { DefaultChatTransport } from 'ai'
 import type { HighlightInfo } from '../types'
+import { scrollToAnchor } from '../scroll-to-anchor'
 import { createLogger } from '@/lib/logger'
 
 const _log = createLogger('Hook:BlockNoteSetup')
@@ -17,6 +18,8 @@ interface BlockNoteSetupParams {
   onLinkClick?: (href: string) => void
   onInternalLinkClick?: (noteIdOrTitle: string) => void
   initialHighlight?: HighlightInfo
+  /** For 'note_date' reminders: scroll to the inline date pill with this anchor id. */
+  initialAnchorId?: string
 }
 
 interface BlockNoteSetupResult {
@@ -31,7 +34,8 @@ export function useBlockNoteSetup({
   editorContainerRef,
   onLinkClick,
   onInternalLinkClick,
-  initialHighlight
+  initialHighlight,
+  initialAnchorId
 }: BlockNoteSetupParams): BlockNoteSetupResult {
   const [aiReady, setAiReady] = useState(false)
 
@@ -183,6 +187,19 @@ export function useBlockNoteSetup({
     const timeoutId = setTimeout(scrollToHighlight, 500)
     return () => clearTimeout(timeoutId)
   }, [initialHighlight, editorContainerRef])
+
+  // Scroll to inline date pill on mount (from note_date reminder navigation)
+  useEffect(() => {
+    if (!initialAnchorId || !editorContainerRef.current) return
+
+    const scroll = (): void => {
+      const container = editorContainerRef.current
+      if (container) scrollToAnchor(container, initialAnchorId)
+    }
+
+    const timeoutId = setTimeout(scroll, 500)
+    return () => clearTimeout(timeoutId)
+  }, [initialAnchorId, editorContainerRef])
 
   // Derive aiReady so we don't reset state in an effect on prop change.
   return { aiReady: aiPort ? aiReady : false }

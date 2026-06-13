@@ -25,6 +25,8 @@ export interface ReminderEntryNav {
   targetId: string
   targetTitle: string | null
   projectId?: string
+  /** For 'note_date' reminders: the inline date pill's stable anchor id. */
+  anchorId?: string
   highlightStart?: number
   highlightEnd?: number
   highlightText?: string
@@ -74,6 +76,7 @@ function reminderToNav(r: ReminderWithTarget): ReminderEntryNav {
     targetId: r.targetId,
     targetTitle: r.targetTitle,
     projectId: r.projectId ?? undefined,
+    anchorId: r.anchorId ?? undefined,
     highlightStart: r.highlightStart ?? undefined,
     highlightEnd: r.highlightEnd ?? undefined,
     highlightText: r.highlightText ?? undefined
@@ -86,6 +89,7 @@ function metadataToNav(m: ReminderMetadata): ReminderEntryNav {
     targetId: m.targetId,
     targetTitle: m.targetTitle,
     projectId: m.projectId,
+    anchorId: m.anchorId,
     highlightStart: m.highlightStart,
     highlightEnd: m.highlightEnd,
     highlightText: m.highlightText

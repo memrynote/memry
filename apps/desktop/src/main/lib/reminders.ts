@@ -181,6 +181,7 @@ function createReminderInboxItem(reminder: ReminderWithTarget): void {
       targetId: reminder.targetId,
       targetTitle: reminder.targetTitle,
       remindAt: reminder.remindAt,
+      anchorId: reminder.anchorId ?? undefined,
       highlightText: reminder.highlightText || undefined,
       highlightStart: reminder.highlightStart || undefined,
       highlightEnd: reminder.highlightEnd || undefined,
