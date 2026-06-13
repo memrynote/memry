@@ -937,6 +937,7 @@ export interface Reminder {
   targetType: ReminderTargetType
   targetId: string
   remindAt: string
+  anchorId: string | null
   highlightText: string | null
   highlightStart: number | null
   highlightEnd: number | null

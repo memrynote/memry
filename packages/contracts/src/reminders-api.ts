@@ -143,6 +143,8 @@ export interface Reminder {
   targetType: ReminderTargetType
   targetId: string
   remindAt: string
+  /** For 'note_date' reminders: the inline date pill's stable anchor id */
+  anchorId: string | null
   highlightText: string | null
   highlightStart: number | null
   highlightEnd: number | null

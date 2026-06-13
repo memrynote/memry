@@ -50,6 +50,8 @@ import { getStatus } from './index'
 import { emitNoteEvent, getNotesDir, toAbsolutePath, toRelativePath } from './notes-io'
 import { maybeCreateSignificantSnapshot } from './notes-versions'
 import { noteToListItem } from './notes-queries'
+import { createRemindersService } from '@memry/app-core/reminders'
+import { syncNoteDateReminders, clearNoteDateReminders } from '../notes/note-date-reminders'
 
 const logger = createLogger('VaultNotesCrud')
 
@@ -264,6 +266,12 @@ export async function createNote(input: NoteCreateInput): Promise<Note> {
     note: noteToListItem(note),
     source: 'internal'
   })
+
+  try {
+    await syncNoteDateReminders(note.id, content, createRemindersService(dataDb))
+  } catch (err) {
+    logger.warn('Failed to sync note_date reminders on create', { noteId: note.id, err })
+  }
 
   if (mergedTags.length > 0) {
     emitNoteEvent('notes:tags-changed', undefined)
@@ -568,6 +576,12 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
     source: 'internal'
   })
 
+  try {
+    await syncNoteDateReminders(input.id, newContent, createRemindersService(dataDb))
+  } catch (err) {
+    logger.warn('Failed to sync note_date reminders on update', { noteId: input.id, err })
+  }
+
   if (tagsChanged) {
     emitNoteEvent('notes:tags-changed', undefined)
   }
@@ -597,6 +611,12 @@ export async function deleteNote(id: string): Promise<void> {
     path: cached.path,
     source: 'internal'
   })
+
+  try {
+    await clearNoteDateReminders(id, createRemindersService(getDatabase()))
+  } catch (err) {
+    logger.warn('Failed to clear note_date reminders on delete', { noteId: id, err })
+  }
 }
 
 // ============================================================================

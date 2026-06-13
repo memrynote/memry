@@ -11,6 +11,7 @@ export interface ReminderRecord {
   targetType: ReminderTargetType
   targetId: string
   remindAt: string
+  anchorId: string | null
   highlightText: string | null
   highlightStart: number | null
   highlightEnd: number | null
@@ -28,6 +29,7 @@ export interface CreateReminderInput {
   targetType: ReminderTargetType
   targetId: string
   remindAt: string
+  anchorId?: string | null
   title?: string | null
   note?: string | null
   highlightText?: string | null
@@ -83,6 +85,7 @@ function toReminder(row: typeof reminders.$inferSelect): ReminderRecord {
     targetType: row.targetType as ReminderTargetType,
     targetId: row.targetId,
     remindAt: row.remindAt,
+    anchorId: row.anchorId,
     highlightText: row.highlightText,
     highlightStart: row.highlightStart,
     highlightEnd: row.highlightEnd,
@@ -122,6 +125,7 @@ export function createRemindersService(dataDb: DataDb): RemindersService {
           targetType: input.targetType,
           targetId: input.targetId,
           remindAt: input.remindAt,
+          anchorId: input.anchorId ?? null,
           highlightText: input.highlightText ?? null,
           highlightStart: input.highlightStart ?? null,
           highlightEnd: input.highlightEnd ?? null,

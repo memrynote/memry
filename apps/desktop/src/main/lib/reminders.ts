@@ -63,6 +63,7 @@ function toReminder(row: ReminderRow): Reminder {
     targetType: row.targetType as Reminder['targetType'],
     targetId: row.targetId,
     remindAt: row.remindAt,
+    anchorId: row.anchorId,
     highlightText: row.highlightText,
     highlightStart: row.highlightStart,
     highlightEnd: row.highlightEnd,
