@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   SuggestionMenuController,
+  GridSuggestionMenuController,
   useCreateBlockNote,
   FormattingToolbar,
   getDefaultReactSlashMenuItems,
@@ -73,7 +74,8 @@ import { extractDomain, fetchLinkPreview } from '@/lib/url-metadata'
 import { createLinkMentionContent } from './link-mention'
 import { createDateMentionContent } from './date-mention'
 import { buildDateSuggestions } from './date-suggestions'
-import { createDateMentionGhostPlugin } from './date-mention-ghost-plugin'
+import { createDateMentionGhostPlugin, isDateMentionActive } from './date-mention-ghost-plugin'
+import { useFiredDatePillAnchors, useTriggeredDatePills } from './use-triggered-date-pills'
 import { useDateMentionPrefs } from '@/hooks/use-date-mention-prefs'
 import { DateMentionPopover, type DateMentionValue } from './date-mention-popover'
 import { MentionMenu, type MentionSuggestionItem } from './mention-menu'
@@ -170,6 +172,9 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   const noteIdRef = useRef<string | undefined>(noteId)
   const wikiLinkHover = useWikiLinkHover(editorContainerRef)
   const linkMentionHover = useLinkMentionHover(editorContainerRef)
+  // Recolor inline date pills whose reminder has fired (red, per-device overlay).
+  const firedDatePillAnchors = useFiredDatePillAnchors(noteId)
+  useTriggeredDatePills(editorContainerRef, firedDatePillAnchors)
   const reviewMarksRef = useRef(review?.marks ?? [])
   const reviewMarkdownToEditorOffsetRef = useRef(review?.getEditorOffsetForMarkdownSourceOffset)
   const skipNextCriticMarkupYjsWriteRef = useRef(false)
@@ -449,12 +454,13 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     dateMentionAnchorIdRef.current = dateMentionState.anchorId
   }, [dateMentionState.anchorId])
 
-  const updateDateMention = useCallback(
-    (anchorId: string, next: DateMentionValue) => {
-      // editor.document is a nested tree (a pill can live inside a list item's
-      // children[]), so recurse like findBlockWithLinkMention does. Returns
-      // true once the matching pill is found and updated.
-      const updateInBlocks = (blocks: any[]): boolean => {
+  // Walk the (nested) block tree — a pill can live inside a list item's
+  // children[], so recurse like findBlockWithLinkMention does — find the
+  // dateMention with `anchorId`, and write back the content `mutate` returns.
+  // Stops at the first match.
+  const mutateDateMention = useCallback(
+    (anchorId: string, mutate: (content: any[], index: number) => any[]) => {
+      const walk = (blocks: any[]): boolean => {
         for (const block of blocks) {
           const content = (block.content ?? []) as any[]
           if (Array.isArray(content)) {
@@ -462,52 +468,40 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
               (c: any) => c?.type === 'dateMention' && c.props?.anchorId === anchorId
             )
             if (index !== -1) {
-              const updated = [...content]
-              updated[index] = createDateMentionContent({
-                anchorId,
-                dateISO: next.dateISO,
-                hasTime: next.hasTime,
-                dateFormat: next.dateFormat,
-                remind: next.remind,
-                timeFormat: next.timeFormat
-              })
-              editor.updateBlock(block, { content: updated })
+              editor.updateBlock(block, { content: mutate(content, index) })
               return true
             }
           }
-          if (block.children?.length && updateInBlocks(block.children)) return true
+          if (block.children?.length && walk(block.children)) return true
         }
         return false
       }
-      updateInBlocks(editor.document)
+      walk(editor.document)
     },
     [editor]
+  )
+
+  const updateDateMention = useCallback(
+    (anchorId: string, next: DateMentionValue) => {
+      mutateDateMention(anchorId, (content, index) => {
+        const updated = [...content]
+        updated[index] = createDateMentionContent({ anchorId, ...next })
+        return updated
+      })
+    },
+    [mutateDateMention]
   )
 
   // Clear: splice the matching dateMention inline content out of its block.
   const removeDateMention = useCallback(
     (anchorId: string) => {
-      const removeInBlocks = (blocks: any[]): boolean => {
-        for (const block of blocks) {
-          const content = (block.content ?? []) as any[]
-          if (Array.isArray(content)) {
-            const index = content.findIndex(
-              (c: any) => c?.type === 'dateMention' && c.props?.anchorId === anchorId
-            )
-            if (index !== -1) {
-              const updated = [...content]
-              updated.splice(index, 1)
-              editor.updateBlock(block, { content: updated })
-              return true
-            }
-          }
-          if (block.children?.length && removeInBlocks(block.children)) return true
-        }
-        return false
-      }
-      removeInBlocks(editor.document)
+      mutateDateMention(anchorId, (content, index) => {
+        const updated = [...content]
+        updated.splice(index, 1)
+        return updated
+      })
     },
-    [editor]
+    [mutateDateMention]
   )
 
   const handleDateMentionChange = useCallback(
@@ -1165,6 +1159,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           theme={editorTheme}
           formattingToolbar={!stickyToolbar && !review}
           slashMenu={false}
+          emojiPicker={false}
         >
           {stickyToolbar &&
             (review ? (
@@ -1237,6 +1232,16 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             getItems={getMentionItems}
             suggestionMenuComponent={MentionSuggestionMenu}
             onItemClick={(item) => handleMentionSelect(item)}
+          />
+          {/* Re-add BlockNote's default `:` emoji picker (disabled above via
+              emojiPicker={false}), but gated so it never opens while the caret
+              is inside an inline date/reminder — the `:` in `@today 23:20` must
+              type a time, not pop clock emojis. */}
+          <GridSuggestionMenuController
+            triggerCharacter=":"
+            columns={10}
+            minQueryLength={2}
+            shouldOpen={(tr) => !isDateMentionActive(tr)}
           />
         </BlockNoteView>
 

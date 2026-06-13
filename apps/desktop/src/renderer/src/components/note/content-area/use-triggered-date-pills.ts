@@ -68,9 +68,9 @@ export function useTriggeredDatePills(
   firedAnchorIds: Set<string>
 ): void {
   const firedRef = useRef(firedAnchorIds)
-  firedRef.current = firedAnchorIds
 
   useEffect(() => {
+    firedRef.current = firedAnchorIds
     const container = containerRef.current
     if (container) applyFiredState(container, firedAnchorIds)
   }, [containerRef, firedAnchorIds])
@@ -92,7 +92,9 @@ export function useFiredDatePillAnchors(noteId: string | undefined): Set<string>
   const { reminders, refetch } = useRemindersForTarget('note_date', noteId ?? '')
 
   const refetchRef = useRef(refetch)
-  refetchRef.current = refetch
+  useEffect(() => {
+    refetchRef.current = refetch
+  })
 
   useEffect(() => {
     if (!noteId) return
