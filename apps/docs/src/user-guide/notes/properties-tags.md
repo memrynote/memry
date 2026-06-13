@@ -48,7 +48,7 @@ In the property panel, click **Add property** and pick from the list. Set the va
 
 ### Showing Dates on the Calendar
 
-A `Date` property can surface its value on the [calendar](/user-guide/calendar). On a date property's row, open its calendar toggle and turn on **Show on calendar** — the note then appears as an all-day chip on that date, and clicking the chip opens the note. The setting is vault-wide per property name and syncs across your devices.
+A `Date` property can surface its value on the [calendar](/user-guide/calendar). On a date property's row, click the calendar icon to turn on **Show on calendar** — the icon stays tinted while it's on, so you can see the state at a glance. The note then appears as an all-day chip on that date, and clicking the chip opens the note. The setting is vault-wide per property name and syncs across your devices.
 
 ## Tags vs Properties — When to Use Which
 

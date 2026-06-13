@@ -24,13 +24,8 @@ import {
   type StatusCategoryKey
 } from '@memry/contracts/property-types'
 import { useT } from '@memry/i18n/renderer'
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuCheckboxItem
-} from '@/components/ui/dropdown-menu'
 import { useCalendarProperties } from '@/hooks/use-calendar-properties'
+import { getEventBaseColor } from '@/lib/event-type-colors'
 
 interface PropertyValueRendererProps {
   property: Property
@@ -474,33 +469,32 @@ export function PropertyRow({
         />
       </div>
 
-      {/* Calendar toggle — date properties only */}
+      {/* Calendar toggle — date properties only. One click toggles; the icon
+          stays visible and tinted (chip color) while enabled so the state is
+          readable without opening anything. */}
       {property.type === 'date' && (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              aria-label={t('properties.showOnCalendar')}
-              className={cn(
-                'ms-1 flex h-6 w-6 items-center justify-center rounded',
-                'text-text-tertiary transition-all duration-150 hover:bg-surface hover:text-muted-foreground',
-                isHovered || isEnabled(property.name)
-                  ? 'opacity-100'
-                  : 'opacity-0 pointer-events-none'
-              )}
-            >
-              <Calendar className="h-3.5 w-3.5" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuCheckboxItem
-              checked={isEnabled(property.name)}
-              onCheckedChange={(checked) => void setEnabled(property.name, checked === true)}
-            >
-              {t('properties.showOnCalendar')}
-            </DropdownMenuCheckboxItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <button
+          type="button"
+          aria-label={t('properties.showOnCalendar')}
+          aria-pressed={isEnabled(property.name)}
+          title={
+            isEnabled(property.name)
+              ? t('properties.showingOnCalendar')
+              : t('properties.showOnCalendar')
+          }
+          onClick={() => void setEnabled(property.name, !isEnabled(property.name))}
+          style={isEnabled(property.name) ? { color: getEventBaseColor('note') } : undefined}
+          className={cn(
+            'ms-1 flex h-6 w-6 items-center justify-center rounded transition-all duration-150 hover:bg-surface',
+            isEnabled(property.name)
+              ? 'opacity-100'
+              : isHovered
+                ? 'opacity-100 text-text-tertiary hover:text-muted-foreground'
+                : 'opacity-0 pointer-events-none'
+          )}
+        >
+          <Calendar className="h-3.5 w-3.5" />
+        </button>
       )}
 
       {/* Delete button */}

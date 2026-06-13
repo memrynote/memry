@@ -361,9 +361,7 @@ describe('PropertyRow', () => {
         onValueChange={onValueChange}
       />
     )
-    expect(
-      screen.getByRole('button', { name: 'properties.showOnCalendar' })
-    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'properties.showOnCalendar' })).toBeInTheDocument()
 
     rerender(
       <PropertyRow
@@ -374,5 +372,36 @@ describe('PropertyRow', () => {
     expect(
       screen.queryByRole('button', { name: 'properties.showOnCalendar' })
     ).not.toBeInTheDocument()
+  })
+
+  it('toggles calendar visibility in one click and reflects state', () => {
+    const onValueChange = vi.fn()
+
+    // OFF by default (mock isEnabled => false): aria-pressed false, click turns on
+    const { rerender } = render(
+      <PropertyRow
+        property={property({ name: 'Deadline', type: 'date', value: '2026-01-01T00:00:00Z' })}
+        onValueChange={onValueChange}
+      />
+    )
+    const offBtn = screen.getByRole('button', { name: 'properties.showOnCalendar' })
+    expect(offBtn).toHaveAttribute('aria-pressed', 'false')
+    expect(offBtn).toHaveAttribute('title', 'properties.showOnCalendar')
+    fireEvent.click(offBtn)
+    expect(mocks.setEnabled).toHaveBeenCalledWith('Deadline', true)
+
+    // ON: aria-pressed true, tooltip reflects state, click turns off
+    mocks.isEnabled.mockReturnValue(true)
+    rerender(
+      <PropertyRow
+        property={property({ name: 'Deadline', type: 'date', value: '2026-01-01T00:00:00Z' })}
+        onValueChange={onValueChange}
+      />
+    )
+    const onBtn = screen.getByRole('button', { name: 'properties.showOnCalendar' })
+    expect(onBtn).toHaveAttribute('aria-pressed', 'true')
+    expect(onBtn).toHaveAttribute('title', 'properties.showingOnCalendar')
+    fireEvent.click(onBtn)
+    expect(mocks.setEnabled).toHaveBeenCalledWith('Deadline', false)
   })
 })
