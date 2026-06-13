@@ -9,6 +9,7 @@ import { SnoozePicker } from '@/components/snooze/snooze-picker'
 import { inOneHour, tomorrow, nextWeek } from '@/components/snooze/snooze-presets'
 import { inboxService } from '@/services/inbox-service'
 import { inboxKeys } from '@/hooks/use-inbox'
+import { useUndoableAction } from '@/hooks/use-undoable-action'
 import { useTabs } from '@/contexts/tabs'
 import { createLogger } from '@/lib/logger'
 import { buildReminderTargetTab } from '@/lib/open-reminder-target'
@@ -52,14 +53,13 @@ function getTargetIcon(targetType: string) {
 }
 
 export function ReminderDetail({ item }: ReminderDetailProps): React.JSX.Element {
-  const { t: tPhaseF } = useT('inbox')
   const { t } = useT('inbox')
   const metadata = item.metadata as ReminderMetadata | undefined
   const queryClient = useQueryClient()
   const { openTab } = useTabs()
+  const { archiveWithUndo } = useUndoableAction()
   const [isSnoozing, setIsSnoozing] = useState(false)
-  const [isMarkingViewed, setIsMarkingViewed] = useState(false)
-  const [localViewedAt, setLocalViewedAt] = useState<Date | null>(item.viewedAt ?? null)
+  const [isArchiving, setIsArchiving] = useState(false)
 
   const invalidateInbox = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
@@ -88,18 +88,16 @@ export function ReminderDetail({ item }: ReminderDetailProps): React.JSX.Element
     [handleSnooze]
   )
 
-  const handleMarkViewed = useCallback(async () => {
-    setIsMarkingViewed(true)
+  const handleArchive = useCallback(async () => {
+    setIsArchiving(true)
     try {
-      await inboxService.markViewed(item.id)
-      setLocalViewedAt(new Date())
-      invalidateInbox()
+      await archiveWithUndo(item.id, item.title)
     } catch (err) {
-      log.error('Failed to mark reminder as viewed', err)
+      log.error('Failed to archive reminder', err)
     } finally {
-      setIsMarkingViewed(false)
+      setIsArchiving(false)
     }
-  }, [item.id, invalidateInbox])
+  }, [item.id, item.title, archiveWithUndo])
 
   const handleNavigateToSource = useCallback(() => {
     if (!metadata) return
@@ -130,7 +128,7 @@ export function ReminderDetail({ item }: ReminderDetailProps): React.JSX.Element
   }
 
   const TargetIcon = getTargetIcon(metadata.targetType)
-  const isViewed = localViewedAt !== null
+  const isViewed = item.viewedAt != null
   const presetLabels = {
     'in-1-hour': t('reminder.presetInOneHour'),
     tomorrow: t('reminder.presetTomorrow'),
@@ -210,17 +208,16 @@ export function ReminderDetail({ item }: ReminderDetailProps): React.JSX.Element
           <Button
             variant="outline"
             size="sm"
-            onClick={() => void handleMarkViewed()}
-            disabled={isMarkingViewed}
+            onClick={() => void handleArchive()}
+            disabled={isArchiving}
             className="h-auto py-0.5 px-2 text-[11px] text-muted-foreground border-border"
           >
-            {t('reminder.markViewed')}
+            {t('reminder.archive')}
           </Button>
         )}
         {!isViewed && (
           <span className="text-text-tertiary text-[11px]">
-            &{tPhaseF('phaseF.componentsInboxDetailReminderDetail.middot')}
-            {t('reminder.notYetViewed')}
+            {`· ${t('reminder.notYetViewed')}`}
           </span>
         )}
       </div>

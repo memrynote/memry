@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   openTab: vi.fn(),
   snooze: vi.fn(),
   markViewed: vi.fn(),
+  archive: vi.fn(),
   logError: vi.fn(),
   exportPdf: vi.fn(),
   exportHtml: vi.fn(),
@@ -51,7 +52,9 @@ vi.mock('@/contexts/tabs', () => ({
 vi.mock('@/services/inbox-service', () => ({
   inboxService: {
     snooze: mocks.snooze,
-    markViewed: mocks.markViewed
+    markViewed: mocks.markViewed,
+    archive: mocks.archive,
+    undoArchive: vi.fn(() => Promise.resolve({ success: true }))
   }
 }))
 
@@ -155,6 +158,7 @@ describe('major renderer gap surfaces', () => {
     vi.clearAllMocks()
     mocks.snooze.mockResolvedValue(undefined)
     mocks.markViewed.mockResolvedValue(undefined)
+    mocks.archive.mockResolvedValue({ success: true })
     mocks.exportPdf.mockResolvedValue({ success: true, path: '/tmp/note.pdf' })
     mocks.exportHtml.mockResolvedValue({ success: true, path: '/tmp/note.html' })
     mocks.tryParseHTMLToBlocks.mockReturnValue([{ type: 'paragraph', content: 'Parsed' }])
@@ -166,7 +170,7 @@ describe('major renderer gap surfaces', () => {
     vi.useRealTimers()
   })
 
-  it('renders reminder metadata, navigates to sources, marks viewed, and snoozes reminders', async () => {
+  it('renders reminder metadata, navigates to sources, archives, and snoozes reminders', async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     const item = {
       id: 'reminder-1',
@@ -203,9 +207,12 @@ describe('major renderer gap surfaces', () => {
       })
     )
 
-    await user.click(screen.getByRole('button', { name: 'markViewed' }))
-    await waitFor(() => expect(mocks.markViewed).toHaveBeenCalledWith('reminder-1'))
-    expect(await screen.findByText('viewed')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'archive' }))
+    await waitFor(() => expect(mocks.archive).toHaveBeenCalledWith('reminder-1'))
+    expect(mocks.toastSuccess).toHaveBeenCalledWith(
+      expect.stringContaining('Archived'),
+      expect.objectContaining({ action: expect.objectContaining({ label: 'Undo' }) })
+    )
 
     await user.click(screen.getByRole('button', { name: 'presetTomorrow' }))
     await waitFor(() =>
