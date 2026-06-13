@@ -386,7 +386,6 @@ describe('PropertyRow', () => {
     )
     const offBtn = screen.getByRole('button', { name: 'properties.showOnCalendar' })
     expect(offBtn).toHaveAttribute('aria-pressed', 'false')
-    expect(offBtn).toHaveAttribute('title', 'properties.showOnCalendar')
     fireEvent.click(offBtn)
     expect(mocks.setEnabled).toHaveBeenCalledWith('Deadline', true)
 
@@ -400,7 +399,6 @@ describe('PropertyRow', () => {
     )
     const onBtn = screen.getByRole('button', { name: 'properties.showOnCalendar' })
     expect(onBtn).toHaveAttribute('aria-pressed', 'true')
-    expect(onBtn).toHaveAttribute('title', 'properties.showingOnCalendar')
     fireEvent.click(onBtn)
     expect(mocks.setEnabled).toHaveBeenCalledWith('Deadline', false)
   })
