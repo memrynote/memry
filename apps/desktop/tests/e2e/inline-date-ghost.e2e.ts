@@ -20,6 +20,9 @@ const MOD = process.platform === 'darwin' ? 'Meta' : 'Control'
 const TYPING = '.date-mention-typing'
 const GHOST = '.date-mention-ghost'
 const PILL = '.date-mention[data-date-mention]'
+// BlockNote's `:` emoji picker (GridSuggestionMenuController) — gated off while a
+// date mention is active so a typed time (`23:20`) never pops clock emojis.
+const EMOJI_MENU = '.bn-grid-suggestion-menu'
 
 // English long weekday of "today" — matches predictDateCompletion's hardcoded
 // weekday table (WEEKDAYS[now.getDay()]).
@@ -142,6 +145,112 @@ test.describe('Inline @-date ghost autocomplete', () => {
 
     await page.keyboard.type('@today 12')
     await expect(page.locator(GHOST)).toHaveText(':00')
+  })
+
+  test('keeps the activated highlight while the "at" connector is typed', async ({ page }) => {
+    await createNote(page, uniqueLabel('At connector'))
+    await focusEditor(page)
+
+    // "today at" has no confident completion yet, but the mention must stay
+    // activated (highlight on, not dropped to plain text) so the user can finish
+    // typing the time, e.g. "@today at 23:00".
+    await page.keyboard.type('@today at')
+    await expect(page.locator(TYPING).first()).toBeVisible()
+    await expect(page.locator(GHOST)).toHaveCount(0)
+    expect(await editorText(page)).toBe('@today at')
+  })
+
+  test('keeps padding the minutes after the colon is typed', async ({ page }) => {
+    await createNote(page, uniqueLabel('Colon time'))
+    await focusEditor(page)
+
+    await page.keyboard.type('@today 23')
+    await expect(page.locator(GHOST)).toHaveText(':00')
+
+    // Typing the colon must not drop the mention to plain text — the ghost just
+    // shifts to padding the minutes ("00").
+    await page.keyboard.type(':')
+    await expect(page.locator(GHOST)).toHaveText('00')
+    await expect(page.locator(TYPING).first()).toBeVisible()
+    expect(await editorText(page)).toBe('@today 23:')
+  })
+
+  test('typing a time in a date mention never opens the emoji picker', async ({ page }) => {
+    await createNote(page, uniqueLabel('No emoji on time'))
+    await focusEditor(page)
+
+    // `:` is BlockNote's emoji-picker trigger (`23:20` → query "20" → clock
+    // emojis). Inside an active date mention the picker must stay suppressed so
+    // the time types cleanly.
+    await page.keyboard.type('@today 23:20')
+    await expect(page.locator(EMOJI_MENU)).toHaveCount(0)
+    await expect(page.locator(TYPING).first()).toBeVisible()
+    expect(await editorText(page)).toBe('@today 23:20')
+  })
+
+  test('the emoji picker still opens for a colon in plain text', async ({ page }) => {
+    await createNote(page, uniqueLabel('Emoji in prose'))
+    await focusEditor(page)
+
+    // Outside a date mention, suppression must not apply — the `:` emoji picker
+    // still works (we only gated it, did not remove it).
+    await page.keyboard.type('standup :smile')
+    await expect(page.locator(EMOJI_MENU)).toBeVisible()
+  })
+
+  test('a single Tab commits a timed pill for "<date> at <time>"', async ({ page }) => {
+    await createNote(page, uniqueLabel('At time pill'))
+    await focusEditor(page)
+
+    // The complete phrase parses, so one Tab commits the pill (no fill step).
+    await page.keyboard.type('@today at 23:00')
+    await page.keyboard.press('Tab')
+
+    const pill = page.locator(PILL).first()
+    await expect(pill).toBeVisible()
+    await expect(pill).toHaveAttribute('data-has-time', 'true')
+    await expect(page.locator(TYPING)).toHaveCount(0)
+  })
+
+  test('a fired (triggered) date pill renders in the triggered color', async ({ page }) => {
+    await createNote(page, uniqueLabel('Fired pill color'))
+    await focusEditor(page)
+
+    // Commit a timed pill (one Tab — the complete phrase parses).
+    await page.keyboard.type('@today at 23:00')
+    await page.keyboard.press('Tab')
+
+    const pill = page.locator(PILL).first()
+    await expect(pill).toBeVisible()
+
+    // Simulate the overlay marking this pill fired, then assert the CSS contract:
+    // --date-mention-color resolves to #e56458 = rgb(229, 100, 88).
+    await pill.evaluate((el) => el.setAttribute('data-fired', 'true'))
+    const color = await pill.evaluate((el) => getComputedStyle(el).color)
+    expect(color).toBe('rgb(229, 100, 88)')
+  })
+
+  test('keeps the highlight while a meridiem is typed after the hour', async ({ page }) => {
+    await createNote(page, uniqueLabel('Meridiem typing'))
+    await focusEditor(page)
+
+    // Mid-typing "pm" must not drop the mention to plain text.
+    await page.keyboard.type('@today at 14p')
+    await expect(page.locator(TYPING).first()).toBeVisible()
+    expect(await editorText(page)).toBe('@today at 14p')
+  })
+
+  test('commits a timed pill for a 24-hour hour written with a meridiem', async ({ page }) => {
+    await createNote(page, uniqueLabel('14pm pill'))
+    await focusEditor(page)
+
+    // "14pm" is unambiguous 24-hour (14:00) — one Tab commits a timed pill.
+    await page.keyboard.type('@next monday at 14pm')
+    await page.keyboard.press('Tab')
+
+    const pill = page.locator(PILL).first()
+    await expect(pill).toBeVisible()
+    await expect(pill).toHaveAttribute('data-has-time', 'true')
   })
 
   test('Tab fills the ghost, then a second Tab inserts the date pill', async ({ page }) => {
