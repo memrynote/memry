@@ -2428,6 +2428,15 @@ del.bn-inline-content {
   --date-mention-color: #60a5fa;
 }
 
+/* Fired (triggered) reminder pill → red until the pill is edited. Set by
+   useTriggeredDatePills via data-fired; overrides the blue affordance above
+   (same specificity, later in source). One color for both themes. */
+.bn-shadcn .bn-editor .date-mention[data-fired='true'],
+.dark .bn-editor .date-mention[data-fired='true'],
+.date-mention[data-fired='true'] {
+  --date-mention-color: #e56458;
+}
+
 .bn-shadcn .bn-editor .date-mention:hover,
 .date-mention:hover {
   background: color-mix(in srgb, var(--date-mention-color) 12%, transparent);
