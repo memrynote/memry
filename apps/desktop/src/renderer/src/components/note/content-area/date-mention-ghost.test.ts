@@ -74,6 +74,72 @@ describe('findActiveDateQuery', () => {
     expect(r?.query).toBe('today 12:00')
     expect(r?.prediction).toBeNull()
   })
+
+  it('stays active (no ghost) while the "at" connector is being typed', () => {
+    const r = findActiveDateQuery('@today at', now)
+    expect(r).not.toBeNull()
+    expect(r?.query).toBe('today at')
+    expect(r?.prediction).toBeNull()
+  })
+
+  it('ghosts the time typed after the "at" connector', () => {
+    const r = findActiveDateQuery('@today at 23', now)
+    expect(r?.query).toBe('today at 23')
+    expect(r?.prediction).toBe('today at 23:00')
+  })
+
+  it('keeps padding the minutes alive once the colon is typed', () => {
+    const r = findActiveDateQuery('@today 23:', now)
+    expect(r?.query).toBe('today 23:')
+    expect(r?.prediction).toBe('today 23:00')
+  })
+
+  it('stays active (no ghost) while a single minute digit is being typed', () => {
+    const r = findActiveDateQuery('@today at 23:3', now)
+    expect(r).not.toBeNull()
+    expect(r?.query).toBe('today at 23:3')
+    expect(r?.prediction).toBeNull()
+  })
+
+  it('stays active for a complete "<date> at <time>" phrase', () => {
+    const r = findActiveDateQuery('@today at 23:00', now)
+    expect(r).not.toBeNull()
+    expect(r?.query).toBe('today at 23:00')
+    expect(r?.prediction).toBeNull()
+  })
+
+  it('stays active (no ghost) while a meridiem is typed after the hour', () => {
+    const r = findActiveDateQuery('@today at 14p', now)
+    expect(r).not.toBeNull()
+    expect(r?.query).toBe('today at 14p')
+    expect(r?.prediction).toBeNull()
+  })
+
+  it('stays active for a 24-hour hour written with a redundant meridiem', () => {
+    const r = findActiveDateQuery('@next monday at 14pm', now)
+    expect(r).not.toBeNull()
+    expect(r?.query).toBe('next monday at 14pm')
+  })
+
+  // The emoji-picker-suppression contract: the `:` emoji menu opens at
+  // minQueryLength 2 (after the 2nd minute digit), so the mention MUST read as
+  // active at exactly these states for `shouldOpen` to keep clock emojis away.
+  it('stays active for a fully-typed "<date> HH:MM" time (emoji-trigger state)', () => {
+    const r = findActiveDateQuery('@today 23:20', now)
+    expect(r).not.toBeNull()
+    expect(r?.query).toBe('today 23:20')
+  })
+
+  // Boundary: a bare `@HH:MM` with no day cannot resolve to a date pill, so it is
+  // NOT an active date mention — emoji suppression covers only real reminders
+  // like `@today 23:20`. (Out of scope; documented so the boundary is explicit.)
+  it('does not treat a bare "@HH:MM" with no day as a date mention', () => {
+    expect(findActiveDateQuery('@23:20', now)).toBeNull()
+  })
+
+  it('leaves a bare prose time (no @) untouched — emoji stays available there', () => {
+    expect(findActiveDateQuery('meeting at 3:20 today', now)).toBeNull()
+  })
 })
 
 describe('resolveTabAction', () => {
@@ -112,5 +178,30 @@ describe('resolveTabAction', () => {
   it('returns null when a bare time cannot resolve to a date pill', () => {
     // "12:00" fills, then a 2nd Tab has nothing to anchor the time to.
     expect(resolveTabAction('12:00', now)).toBeNull()
+  })
+
+  it('fills the time typed after the "at" connector', () => {
+    expect(resolveTabAction('today at 23', now)).toEqual({
+      kind: 'fill',
+      text: 'today at 23:00'
+    })
+  })
+
+  it('inserts a timed pill for a complete "<date> at <time>" phrase', () => {
+    const action = resolveTabAction('today at 23:00', now)
+    expect(action?.kind).toBe('pill')
+    if (action?.kind === 'pill') {
+      expect(action.value.hasTime).toBe(true)
+      expect(new Date(action.value.dateISO).getHours()).toBe(23)
+    }
+  })
+
+  it('inserts a timed pill for a 24-hour hour written with a meridiem', () => {
+    const action = resolveTabAction('next monday at 14pm', now)
+    expect(action?.kind).toBe('pill')
+    if (action?.kind === 'pill') {
+      expect(action.value.hasTime).toBe(true)
+      expect(new Date(action.value.dateISO).getHours()).toBe(14)
+    }
   })
 })

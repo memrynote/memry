@@ -2,7 +2,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import {
   buildDateSuggestions,
   buildDateMentionEntry,
-  predictDateCompletion
+  predictDateCompletion,
+  isTimeInProgress
 } from './date-suggestions'
 
 // parseNaturalDate reads the real clock internally, so drive everything from a
@@ -144,8 +145,20 @@ describe('predictDateCompletion', () => {
     expect(predictDateCompletion('today 12')).toBe('today 12:00')
   })
 
+  it('completes a time typed after the "at" connector', () => {
+    expect(predictDateCompletion('today at 23')).toBe('today at 23:00')
+    expect(predictDateCompletion('today at 2')).toBe('today at 2:00')
+  })
+
+  it('pads the minutes once the colon is typed (with or without "at")', () => {
+    expect(predictDateCompletion('today 23:')).toBe('today 23:00')
+    expect(predictDateCompletion('today at 23:')).toBe('today at 23:00')
+    expect(predictDateCompletion('23:')).toBe('23:00')
+  })
+
   it('does not time-complete a number after a non-date word', () => {
     expect(predictDateCompletion('meeting 12')).toBeNull()
+    expect(predictDateCompletion('meeting at 12')).toBeNull()
   })
 
   it('returns null for a non-date query', () => {
@@ -157,5 +170,36 @@ describe('predictDateCompletion', () => {
     const p = predictDateCompletion('ne')
     expect(p).not.toBeNull()
     expect(p!.toLowerCase().startsWith('ne')).toBe(true)
+  })
+})
+
+// isTimeInProgress keeps the inline mention alive through the time-entry phase
+// even when there is nothing confident to ghost: a freshly typed "at" connector
+// or a single, still-ambiguous minute digit.
+describe('isTimeInProgress', () => {
+  it('is true while the "at" connector is typed after a date', () => {
+    expect(isTimeInProgress('today at')).toBe(true)
+    expect(isTimeInProgress('today at ')).toBe(true)
+    expect(isTimeInProgress('next monday at')).toBe(true)
+  })
+
+  it('is true while a single minute digit is being typed', () => {
+    expect(isTimeInProgress('today 23:3')).toBe(true)
+    expect(isTimeInProgress('today at 9:0')).toBe(true)
+    expect(isTimeInProgress('23:3')).toBe(true)
+  })
+
+  it('is true while a meridiem is being typed after a dated hour', () => {
+    expect(isTimeInProgress('today at 14p')).toBe(true)
+    expect(isTimeInProgress('today 2p')).toBe(true)
+    expect(isTimeInProgress('next monday at 14pm')).toBe(true)
+    expect(isTimeInProgress('today 2:30p')).toBe(true)
+  })
+
+  it('is false for a non-date connector or plain prose', () => {
+    expect(isTimeInProgress('meeting at')).toBe(false)
+    expect(isTimeInProgress('meeting at 5p')).toBe(false)
+    expect(isTimeInProgress('next monday foo')).toBe(false)
+    expect(isTimeInProgress('today')).toBe(false)
   })
 })

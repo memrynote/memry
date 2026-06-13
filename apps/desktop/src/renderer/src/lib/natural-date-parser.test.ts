@@ -30,6 +30,10 @@ const isSuccess = (result: NaturalDateParseResult): result is ParseResult => res
 // Helper to check if result is an error
 const isError = (result: NaturalDateParseResult): result is ParseError => !result.success
 
+// Helper to read the parsed time ("HH:MM") or null on parse failure.
+const timeOf = (result: NaturalDateParseResult): string | null =>
+  result.success ? result.result.time : null
+
 // Helper to get date string for comparison (YYYY-MM-DD)
 const toDateString = (date: Date): string => {
   const year = date.getFullYear()
@@ -1099,13 +1103,13 @@ describe('Natural Date Parser', () => {
       }
     })
 
-    it('should handle invalid 12-hour time gracefully', () => {
-      // "13pm" is not valid 12-hour time
-      const result = parseNaturalDate('tomorrow 13pm')
-      expect(isSuccess(result)).toBe(true)
-      if (isSuccess(result)) {
-        expect(result.result.time).toBeNull()
-      }
+    it('treats a 24-hour hour with a redundant meridiem as 24-hour', () => {
+      // "13pm".."23pm" are unambiguous as 24-hour — honor the hour, ignore the
+      // redundant meridiem rather than dropping the time.
+      expect(timeOf(parseNaturalDate('tomorrow 13pm'))).toBe('13:00')
+      expect(timeOf(parseNaturalDate('tomorrow 14pm'))).toBe('14:00')
+      expect(timeOf(parseNaturalDate('tomorrow 14:30pm'))).toBe('14:30')
+      expect(timeOf(parseNaturalDate('next monday at 14pm'))).toBe('14:00')
     })
   })
 

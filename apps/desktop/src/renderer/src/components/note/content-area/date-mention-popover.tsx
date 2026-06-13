@@ -93,7 +93,19 @@ function pad(n: number): string {
 
 function tryParseDateInput(raw: string): { y: number; mo: number; d: number } | null {
   const dmy = raw.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
-  if (dmy) return { d: Number(dmy[1]), mo: Number(dmy[2]), y: Number(dmy[3]) }
+  if (dmy) {
+    const d = Number(dmy[1])
+    const mo = Number(dmy[2])
+    const y = Number(dmy[3])
+    // Reject impossible day/month so emitYMDHM's `new Date(y, mo-1, d)` doesn't
+    // silently roll over to another date (e.g. 31/02/2026 → 3 Mar 2026). The
+    // probe must round-trip exactly.
+    const probe = new Date(y, mo - 1, d)
+    if (probe.getFullYear() === y && probe.getMonth() === mo - 1 && probe.getDate() === d) {
+      return { d, mo, y }
+    }
+    return null
+  }
   const nat = parseNaturalDate(raw)
   if (nat.success) {
     const dt = nat.result.date

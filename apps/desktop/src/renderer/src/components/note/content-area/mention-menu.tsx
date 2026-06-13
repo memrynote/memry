@@ -8,7 +8,7 @@
  * item — because selecting any item closes the menu and clears the query.
  */
 
-import { Fragment } from 'react'
+import { Fragment, useEffect } from 'react'
 import type { SuggestionMenuProps } from '@blocknote/react'
 import { AlarmClock, Clock, FileText } from '@/lib/icons'
 import { cn } from '@/lib/utils'
@@ -35,6 +35,26 @@ export function MentionMenu({
   onShowMore
 }: MentionMenuProps) {
   const { t } = useT('notes')
+
+  // Tab confirms the highlighted row (mirrors Enter). BlockNote's suggestion
+  // handler ignores Tab, and the inline date ghost plugin otherwise swallows it
+  // to commit a plain date — so we intercept Tab in document capture phase, ahead
+  // of the ghost plugin's ProseMirror (bubble) handler, and select the highlighted
+  // item via onItemClick. The non-selectable date-hint row is left to the ghost so
+  // its two-stage fill (e.g. "@nex" → "next Monday") still works.
+  useEffect(() => {
+    const handler = (event: KeyboardEvent): void => {
+      if (event.key !== 'Tab') return
+      if (event.shiftKey || event.metaKey || event.ctrlKey || event.altKey) return
+      const item = items[selectedIndex ?? 0]
+      if (!item || item.kind === 'date-hint') return
+      event.preventDefault()
+      event.stopPropagation()
+      onItemClick?.(item)
+    }
+    document.addEventListener('keydown', handler, true)
+    return () => document.removeEventListener('keydown', handler, true)
+  }, [items, selectedIndex, onItemClick])
 
   if (items.length === 0 && loadingState !== 'loaded') {
     return (

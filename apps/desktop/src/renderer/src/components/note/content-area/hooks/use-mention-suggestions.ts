@@ -25,6 +25,9 @@ interface UseMentionSuggestionsOptions {
 
 export function useMentionSuggestions(editor: any, { onInsertDate }: UseMentionSuggestionsOptions) {
   const notesCacheRef = useRef<{ notes: NoteSuggestion[]; fetchedAt: number } | null>(null)
+  // Live `@` query, so a date-hint selection can restore the text BlockNote
+  // strips on item select (see handleMentionSelect).
+  const lastQueryRef = useRef('')
   const [expanded, setExpanded] = useState(false)
   const [mentionHasMore, setMentionHasMore] = useState(false)
 
@@ -34,6 +37,7 @@ export function useMentionSuggestions(editor: any, { onInsertDate }: UseMentionS
   // loop forever against the setMentionHasMore call below.
   const getMentionItems = useCallback(
     async (query: string): Promise<MentionSuggestionItem[]> => {
+      lastQueryRef.current = query
       const now = Date.now()
       const cache = notesCacheRef.current
       const shouldRefresh = !cache || now - cache.fetchedAt > 5000
@@ -90,7 +94,15 @@ export function useMentionSuggestions(editor: any, { onInsertDate }: UseMentionS
 
   const handleMentionSelect = useCallback(
     (item: MentionSuggestionItem): void => {
-      if (item.kind === 'date-hint') return // placeholder; keep typing
+      if (item.kind === 'date-hint') {
+        // BlockNote strips the typed `@query` whenever any item is selected,
+        // including this non-actionable hint. Re-insert it so pressing Enter
+        // while a date phrase is still mid-type doesn't silently delete the
+        // user's text. (Empty query, e.g. a direct unit call → nothing to do.)
+        const query = lastQueryRef.current
+        if (query) editor.insertInlineContent('@' + query)
+        return
+      }
       if (item.kind === 'note') {
         editor.insertInlineContent([createWikiLinkInlineContent(item.title, ''), ' '], {
           updateSelection: true

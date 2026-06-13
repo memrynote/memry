@@ -133,3 +133,45 @@ describe('MentionMenu', () => {
     expect(onItemClick).toHaveBeenCalledWith(remindItem)
   })
 })
+
+describe('MentionMenu Tab selection', () => {
+  it('Tab selects the highlighted Remind row', () => {
+    const { onItemClick } = renderMenu({ selectedIndex: 1 })
+    fireEvent.keyDown(document, { key: 'Tab' })
+    expect(onItemClick).toHaveBeenCalledWith(remindItem)
+  })
+
+  it('Tab selects the highlighted Date row', () => {
+    const { onItemClick } = renderMenu({ selectedIndex: 0 })
+    fireEvent.keyDown(document, { key: 'Tab' })
+    expect(onItemClick).toHaveBeenCalledWith(dateItem)
+  })
+
+  it('Tab selects a highlighted note row', () => {
+    const { onItemClick } = renderMenu({ selectedIndex: 2 })
+    fireEvent.keyDown(document, { key: 'Tab' })
+    expect(onItemClick).toHaveBeenCalledWith(noteA)
+  })
+
+  it('Tab on the non-selectable hint defers to the ghost (no select)', () => {
+    const onItemClick = vi.fn()
+    render(
+      <MentionMenu
+        items={[{ kind: 'date-hint' }]}
+        loadingState="loaded"
+        selectedIndex={0}
+        onItemClick={onItemClick}
+        hasMore={false}
+        onShowMore={vi.fn()}
+      />
+    )
+    fireEvent.keyDown(document, { key: 'Tab' })
+    expect(onItemClick).not.toHaveBeenCalled()
+  })
+
+  it('Shift+Tab does not select', () => {
+    const { onItemClick } = renderMenu({ selectedIndex: 1 })
+    fireEvent.keyDown(document, { key: 'Tab', shiftKey: true })
+    expect(onItemClick).not.toHaveBeenCalled()
+  })
+})

@@ -164,7 +164,18 @@ const parseTimeString = (timeStr: string): string | null => {
     const minutes = match12Hour[2] ? parseInt(match12Hour[2], 10) : 0
     const period = match12Hour[3]
 
-    if (hours < 1 || hours > 12 || minutes < 0 || minutes > 59) {
+    if (minutes < 0 || minutes > 59) {
+      return null
+    }
+
+    // A 24-hour hour with a redundant meridiem ("14pm", "14:30pm") is
+    // unambiguous — honor the hour and ignore the meridiem rather than dropping
+    // the time.
+    if (hours >= 13 && hours <= 23) {
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+    }
+
+    if (hours < 1 || hours > 12) {
       return null
     }
 

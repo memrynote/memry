@@ -4,7 +4,7 @@
  * `date-mention-ghost-plugin.ts` wires these into editor decorations + keymap.
  */
 
-import { predictDateCompletion, buildDateSuggestions } from './date-suggestions'
+import { predictDateCompletion, buildDateSuggestions, isTimeInProgress } from './date-suggestions'
 import type { DateMentionValue } from './date-mention-popover'
 
 // BlockNote serializes inline atoms (existing pills) to the object-replacement
@@ -43,9 +43,15 @@ export function findActiveDateQuery(
     const query = textBeforeCursor.slice(i + 1)
     if (query.includes(ATOM) || query.includes('\n')) return null
     const prediction = predictDateCompletion(query, now)
-    // Active when there is a completion to preview, or the query already parses
-    // as a date (a complete "today 12:00" keeps the highlight, sans ghost).
-    if (prediction === null && buildDateSuggestions(query, now) === null) return null
+    // Active when there is a completion to preview, the query already parses as a
+    // date (a complete "today 12:00" keeps the highlight, sans ghost), or a time
+    // is mid-entry ("today at", "today 23:3") with nothing confident to ghost.
+    if (
+      prediction === null &&
+      buildDateSuggestions(query, now) === null &&
+      !isTimeInProgress(query)
+    )
+      return null
     return { atIndex: i, query, prediction }
   }
   return null

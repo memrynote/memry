@@ -15,7 +15,7 @@
  */
 
 import { Plugin, PluginKey } from '@tiptap/pm/state'
-import type { EditorState } from '@tiptap/pm/state'
+import type { Selection } from '@tiptap/pm/state'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import type { EditorView } from '@tiptap/pm/view'
 import { findActiveDateQuery, resolveTabAction } from './date-mention-ghost'
@@ -32,7 +32,10 @@ interface ActiveMention {
 
 // The date `@` mention being typed at a collapsed caret, resolved to absolute
 // document positions, or null when the caret is not inside a date-ish `@query`.
-function getActiveDateMention(state: EditorState): ActiveMention | null {
+// Typed structurally on `{ selection }` (the only field read) so both an
+// `EditorState` and a `Transaction` can be passed — the latter lets `shouldOpen`
+// gates reuse this without an `EditorState`.
+function getActiveDateMention(state: { selection: Selection }): ActiveMention | null {
   const { selection } = state
   if (!selection.empty) return null
 
@@ -50,6 +53,15 @@ function getActiveDateMention(state: EditorState): ActiveMention | null {
     query: active.query,
     prediction: active.prediction
   }
+}
+
+/**
+ * True when the caret sits inside an active date-ish `@` mention — the same
+ * predicate that drives the ghost highlight. Used to gate BlockNote's `:` emoji
+ * picker (via `shouldOpen`) so typing a time like `@today 23:20` never opens it.
+ */
+export function isDateMentionActive(state: { selection: Selection }): boolean {
+  return getActiveDateMention(state) !== null
 }
 
 function ghostWidget(text: string): HTMLElement {

@@ -1,4 +1,4 @@
-import { and, asc, eq, gte, inArray, isNotNull, isNull, lte, lt, or, sql } from 'drizzle-orm'
+import { and, asc, eq, gte, inArray, isNotNull, isNull, lte, lt, ne, or, sql } from 'drizzle-orm'
 import type {
   CalendarProjectionBinding,
   CalendarProjectionEditability,
@@ -232,17 +232,24 @@ function loadReminderItems(db: DataDb, input: GetCalendarRangeInput): CalendarPr
     .select()
     .from(reminders)
     .where(
-      or(
-        and(
-          eq(reminders.status, 'pending'),
-          gte(reminders.remindAt, input.startAt),
-          lt(reminders.remindAt, input.endAt)
-        ),
-        and(
-          eq(reminders.status, 'snoozed'),
-          isNotNull(reminders.snoozedUntil),
-          gte(reminders.snoozedUntil, input.startAt),
-          lt(reminders.snoozedUntil, input.endAt)
+      and(
+        // `note_date` reminders are derived from inline date pills; surfacing
+        // them on the calendar is Phase 2 (read-only, own source type). Until
+        // then they only fire into the inbox — exclude them here so they don't
+        // leak in as editable generic 'Reminder' chips.
+        ne(reminders.targetType, 'note_date'),
+        or(
+          and(
+            eq(reminders.status, 'pending'),
+            gte(reminders.remindAt, input.startAt),
+            lt(reminders.remindAt, input.endAt)
+          ),
+          and(
+            eq(reminders.status, 'snoozed'),
+            isNotNull(reminders.snoozedUntil),
+            gte(reminders.snoozedUntil, input.startAt),
+            lt(reminders.snoozedUntil, input.endAt)
+          )
         )
       )
     )

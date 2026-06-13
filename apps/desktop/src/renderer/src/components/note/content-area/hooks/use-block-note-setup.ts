@@ -188,16 +188,23 @@ export function useBlockNoteSetup({
     return () => clearTimeout(timeoutId)
   }, [initialHighlight, editorContainerRef])
 
-  // Scroll to inline date pill on mount (from note_date reminder navigation)
+  // Scroll to inline date pill on mount (from note_date reminder navigation).
+  // The pill DOM only exists once the CRDT doc has loaded and rendered, which
+  // can take longer than a single fixed delay on large/slow notes — so retry
+  // until the anchor is found (or give up after ~2s) instead of a lone 500ms
+  // shot that silently misses.
   useEffect(() => {
     if (!initialAnchorId || !editorContainerRef.current) return
 
-    const scroll = (): void => {
+    let attempts = 0
+    let timeoutId: ReturnType<typeof setTimeout>
+    const tryScroll = (): void => {
       const container = editorContainerRef.current
-      if (container) scrollToAnchor(container, initialAnchorId)
+      if (container && scrollToAnchor(container, initialAnchorId)) return
+      if (++attempts >= 20) return
+      timeoutId = setTimeout(tryScroll, 100)
     }
-
-    const timeoutId = setTimeout(scroll, 500)
+    timeoutId = setTimeout(tryScroll, 100)
     return () => clearTimeout(timeoutId)
   }, [initialAnchorId, editorContainerRef])
 
