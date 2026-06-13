@@ -234,6 +234,63 @@ describe('Natural Date Parser', () => {
       })
     })
 
+    describe('"last" prefix', () => {
+      // Reference: Wednesday, January 14, 2026 (currentDay = 3)
+      it('should return this Monday (Jan 12) for "last monday"', () => {
+        const result = parseNaturalDate('last monday')
+        expect(isSuccess(result)).toBe(true)
+        if (isSuccess(result)) {
+          expect(toDateString(result.result.date)).toBe('2026-01-12')
+        }
+      })
+
+      it('should return previous Wednesday (Jan 7) for "last wednesday"', () => {
+        const result = parseNaturalDate('last wednesday')
+        expect(isSuccess(result)).toBe(true)
+        if (isSuccess(result)) {
+          expect(toDateString(result.result.date)).toBe('2026-01-07')
+        }
+      })
+
+      it('should return last Friday (Jan 9) for "last friday"', () => {
+        const result = parseNaturalDate('last friday')
+        expect(isSuccess(result)).toBe(true)
+        if (isSuccess(result)) {
+          expect(toDateString(result.result.date)).toBe('2026-01-09')
+        }
+      })
+
+      it('should return last Sunday (Jan 11) for "last sunday"', () => {
+        const result = parseNaturalDate('last sunday')
+        expect(isSuccess(result)).toBe(true)
+        if (isSuccess(result)) {
+          expect(toDateString(result.result.date)).toBe('2026-01-11')
+        }
+      })
+
+      it('should parse a trailing time with "last monday 3pm"', () => {
+        const result = parseNaturalDate('last monday 3pm')
+        expect(isSuccess(result)).toBe(true)
+        if (isSuccess(result)) {
+          expect(toDateString(result.result.date)).toBe('2026-01-12')
+          expect(result.result.time).toBe('15:00')
+        }
+      })
+
+      it('should return last week\'s Monday (Jan 5) for "last week"', () => {
+        const result = parseNaturalDate('last week')
+        expect(isSuccess(result)).toBe(true)
+        if (isSuccess(result)) {
+          expect(toDateString(result.result.date)).toBe('2026-01-05')
+        }
+      })
+
+      it('should return an error for bare "last"', () => {
+        const result = parseNaturalDate('last')
+        expect(isError(result)).toBe(true)
+      })
+    })
+
     describe('"this" prefix', () => {
       it('should return this week\'s Friday for "this friday"', () => {
         const result = parseNaturalDate('this friday')

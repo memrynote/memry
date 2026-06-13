@@ -70,6 +70,33 @@ const getNextDayOfWeek = (dayIndex: number, startFrom: Date = new Date()): Date 
 }
 
 /**
+ * Get the most recent past occurrence of a specific day of the week
+ */
+const getPreviousDayOfWeek = (dayIndex: number, startFrom: Date = new Date()): Date => {
+  const today = startOfDay(startFrom)
+  const currentDay = today.getDay()
+  let daysSince = currentDay - dayIndex
+
+  // If target day is today or is later this week, go back to last week's occurrence
+  if (daysSince <= 0) {
+    daysSince += 7
+  }
+
+  return addDays(today, -daysSince)
+}
+
+/**
+ * Get last week's Monday (for "last week")
+ */
+export const lastMonday = (from: Date = new Date()): Date => {
+  const today = startOfDay(from)
+  const currentDay = today.getDay()
+  const sinceMonday = currentDay === 0 ? 6 : currentDay - 1
+  const thisMonday = addDays(today, -sinceMonday)
+  return addDays(thisMonday, -7)
+}
+
+/**
  * Get the next Saturday (for "this weekend")
  */
 export const nextSaturday = (from: Date = new Date()): Date => {
@@ -242,6 +269,8 @@ export const parseNaturalDate = (input: string): NaturalDateParseResult => {
     date = addDays(today, -1)
   } else if (normalizedInput === 'next week') {
     date = nextMonday(today)
+  } else if (normalizedInput === 'last week') {
+    date = lastMonday(today)
   } else if (normalizedInput === 'this weekend' || normalizedInput === 'weekend') {
     date = nextSaturday(today)
   }
@@ -290,6 +319,22 @@ export const parseNaturalDate = (input: string): NaturalDateParseResult => {
             date = addDays(date, 7)
           }
         }
+      }
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // "LAST <weekday>": most recent past occurrence ("last monday", "last friday")
+  // -------------------------------------------------------------------------
+
+  if (!date) {
+    const lastDayMatch = normalizedInput.match(
+      /^last\s+(sunday|monday|tuesday|wednesday|thursday|friday|saturday)$/
+    )
+    if (lastDayMatch) {
+      const dayIndex = DAY_NAMES.indexOf(lastDayMatch[1])
+      if (dayIndex !== -1) {
+        date = getPreviousDayOfWeek(dayIndex, today)
       }
     }
   }
