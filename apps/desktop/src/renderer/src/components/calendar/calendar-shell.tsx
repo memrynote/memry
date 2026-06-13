@@ -6,6 +6,7 @@ import { RefreshCw, SlidersHorizontal } from '@/lib/icons'
 import { CalendarDayView } from './calendar-day-view'
 import { CalendarEventPopover, type CalendarEventReadOnlyMetadata } from './calendar-event-popover'
 import { CalendarInboxSnoozePopover } from './calendar-inbox-snooze-popover'
+import { CalendarNotePopover } from './calendar-note-popover'
 import { CalendarMonthView } from './calendar-month-view'
 import { CalendarToolbar, type CalendarWorkspaceView } from './calendar-toolbar'
 import { CalendarWeekView } from './calendar-week-view'
@@ -48,6 +49,12 @@ interface CalendarShellProps {
   onInboxSnoozeUnsnooze: (itemId: string) => void | Promise<void>
   onInboxSnoozeReschedule: (itemId: string, snoozeUntil: string) => void | Promise<void>
   onInboxSnoozePopoverDismiss: () => void
+  notePopoverState: {
+    item: CalendarProjectionItem
+    anchorRect: AnchorRect
+  } | null
+  onNoteOpen: (noteId: string) => void
+  onNotePopoverDismiss: () => void
   isSaving: boolean
   onViewChange: (view: CalendarWorkspaceView) => void
   onPrevious: () => void
@@ -92,6 +99,9 @@ export function CalendarShell({
   onInboxSnoozeUnsnooze,
   onInboxSnoozeReschedule,
   onInboxSnoozePopoverDismiss,
+  notePopoverState,
+  onNoteOpen,
+  onNotePopoverDismiss,
   isSaving,
   onViewChange,
   onPrevious,
@@ -321,6 +331,15 @@ export function CalendarShell({
           onUnsnooze={onInboxSnoozeUnsnooze}
           onReschedule={onInboxSnoozeReschedule}
           onDismiss={onInboxSnoozePopoverDismiss}
+        />
+      )}
+
+      {notePopoverState && (
+        <CalendarNotePopover
+          item={notePopoverState.item}
+          anchorRect={notePopoverState.anchorRect}
+          onOpenNote={onNoteOpen}
+          onDismiss={onNotePopoverDismiss}
         />
       )}
     </div>

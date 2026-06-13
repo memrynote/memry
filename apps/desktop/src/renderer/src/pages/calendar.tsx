@@ -202,6 +202,10 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     item: CalendarProjectionItem
     anchorRect: AnchorRect
   } | null>(null)
+  const [notePopoverState, setNotePopoverState] = useState<{
+    item: CalendarProjectionItem
+    anchorRect: AnchorRect
+  } | null>(null)
   const { openTab } = useTabActions()
   const activeTab = useActiveTab()
   const calendarFocusEventId =
@@ -433,6 +437,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     if (item.sourceType === 'task') {
       setPopoverState(null)
       setInboxSnoozePopoverState(null)
+      setNotePopoverState(null)
       setTaskPopoverState({ item, anchorRect: rect })
       return
     }
@@ -440,6 +445,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     if (item.sourceType === 'event') {
       setTaskPopoverState(null)
       setInboxSnoozePopoverState(null)
+      setNotePopoverState(null)
       const record = await calendarService.getEvent(item.sourceId).catch(() => null)
       setPopoverState({
         mode: 'edit',
@@ -461,12 +467,22 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     if (item.sourceType === 'inbox_snooze') {
       setPopoverState(null)
       setTaskPopoverState(null)
+      setNotePopoverState(null)
       setInboxSnoozePopoverState({ item, anchorRect: rect })
+      return
+    }
+
+    if (item.sourceType === 'note') {
+      setPopoverState(null)
+      setTaskPopoverState(null)
+      setInboxSnoozePopoverState(null)
+      setNotePopoverState({ item, anchorRect: rect })
       return
     }
 
     if (item.sourceType !== 'external_event') return
 
+    setNotePopoverState(null)
     const settings = await window.api.settings.getCalendarGoogleSettings()
     if (settings.promoteConfirmDismissed) {
       await runPromote(item, rect, { dontAskAgain: false })
@@ -474,6 +490,32 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     }
 
     setPendingPromote({ item, anchorRect: rect })
+  }
+
+  const handleNoteOpen = (noteId: string) => {
+    setNotePopoverState(null)
+    void window.api.notes
+      .get(noteId)
+      .then((note) => {
+        if (!note) return
+        openTab({
+          type: 'note',
+          title: note.title ?? note.path,
+          icon: 'FileText',
+          path: note.path,
+          entityId: note.id,
+          isPinned: false,
+          isModified: false,
+          isPreview: false,
+          isDeleted: false
+        })
+      })
+      .catch((err: unknown) => {
+        log.error('Failed to open note from calendar', {
+          noteId,
+          error: extractErrorMessage(err, 'Could not open note')
+        })
+      })
   }
 
   const handleInboxSnoozeOpenInInbox = (itemId: string) => {
@@ -692,6 +734,9 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
         onInboxSnoozeUnsnooze={handleInboxSnoozeUnsnooze}
         onInboxSnoozeReschedule={handleInboxSnoozeReschedule}
         onInboxSnoozePopoverDismiss={() => setInboxSnoozePopoverState(null)}
+        notePopoverState={notePopoverState}
+        onNoteOpen={handleNoteOpen}
+        onNotePopoverDismiss={() => setNotePopoverState(null)}
         onPopoverDismiss={() => setPopoverState(null)}
         onPopoverDraftChange={(draft) =>
           setPopoverState((current) => (current ? { ...current, draft } : current))

@@ -154,5 +154,9 @@
       "could-not-remove-due-date": "Could not remove due date",
       "could-not-open-note": "Could not open note"
     }
+  },
+  "notePopover": {
+    "kind": "Note",
+    "open": "Open note"
   }
 }
