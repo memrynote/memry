@@ -29,8 +29,9 @@ const remindingToken = serializeDateMentionToken({
   anchorId: 'dm_1',
   dateISO: '2026-06-20T09:00:00.000Z',
   hasTime: true,
-  remind: true,
-  lead: '1h'
+  dateFormat: 'relative',
+  remind: '1h',
+  timeFormat: 'system'
 })
 
 describe('syncNoteDateReminders', () => {
@@ -46,17 +47,35 @@ describe('syncNoteDateReminders', () => {
     })
   })
 
-  it('does NOT create a row for a bare (remind:false) date', async () => {
+  it('does NOT create a row for a bare (remind:none) date', async () => {
     const bare = serializeDateMentionToken({
       anchorId: 'dm_2',
       dateISO: '2026-06-20T09:00:00.000Z',
       hasTime: false,
-      remind: false,
-      lead: 'at'
+      dateFormat: 'relative',
+      remind: 'none',
+      timeFormat: 'system'
     })
     const svc = fakeService()
     await syncNoteDateReminders('note_1', bare, svc as any)
     expect(svc.create).not.toHaveBeenCalled()
+  })
+
+  it('fires a day-level offset at 09:00 local, N days before', async () => {
+    // Local date so the assertion is timezone-independent.
+    const dayLevel = serializeDateMentionToken({
+      anchorId: 'dm_3',
+      dateISO: new Date(2026, 5, 20, 0, 0, 0).toISOString(),
+      hasTime: false,
+      dateFormat: 'relative',
+      remind: '1d',
+      timeFormat: 'system'
+    })
+    const svc = fakeService()
+    await syncNoteDateReminders('note_1', dayLevel, svc as any)
+    const r = new Date(svc.rows[0].remindAt)
+    expect(r.getHours()).toBe(9)
+    expect(r.getDate()).toBe(19)
   })
 
   it('deletes the row when the pill is removed from the note', async () => {

@@ -10,8 +10,8 @@ const log = createLogger('NoteDateReminders')
 
 /**
  * Reconcile note_date reminder rows for a note against the date pills in its
- * markdown. Only pills with remind:true produce rows. Idempotent: safe to run
- * on every note write.
+ * markdown. Only pills whose remind offset is not 'none' produce rows.
+ * Idempotent: safe to run on every note write.
  */
 export async function syncNoteDateReminders(
   noteId: string,
@@ -21,8 +21,10 @@ export async function syncNoteDateReminders(
   const desired = new Map<string, { remindAt: string }>()
   for (const m of markdown.matchAll(DATE_MENTION_TOKEN_REGEX)) {
     const data = parseDateMentionToken(m[1])
-    if (!data || !data.remind) continue
-    desired.set(data.anchorId, { remindAt: computeRemindAt(data.dateISO, data.lead) })
+    if (!data || data.remind === 'none') continue
+    const remindAt = computeRemindAt(data)
+    if (remindAt === null) continue
+    desired.set(data.anchorId, { remindAt })
   }
 
   const existingList = await service.list({
