@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { createDateMentionContent, formatDateMentionLabel } from './date-mention'
+import {
+  createDateMentionContent,
+  createDateMentionPillDom,
+  formatDateMentionLabel
+} from './date-mention'
 
 // Wednesday. Local-time ISO (no trailing Z) keeps the calendar-day math
 // stable regardless of the machine's timezone.
@@ -11,12 +15,14 @@ describe('date-mention content', () => {
       anchorId: 'dm_1',
       dateISO: '2026-06-20T09:00:00.000Z',
       hasTime: true,
-      remind: true,
-      lead: '1h'
+      dateFormat: 'relative',
+      remind: '1h',
+      timeFormat: '24h'
     })
     expect(c.type).toBe('dateMention')
     expect(c.props.anchorId).toBe('dm_1')
-    expect(c.props.remind).toBe(true)
+    expect(c.props.remind).toBe('1h')
+    expect(c.props.timeFormat).toBe('24h')
   })
 })
 
@@ -93,9 +99,72 @@ describe('formatDateMentionLabel', () => {
     ).toBe('24 Jun, 2026 12:00 PM')
   })
 
+  it('lets a per-block timeFormat override the system clock format', () => {
+    const far = new Date('2026-01-01T12:00:00')
+    // System is 12h, but the block overrides to 24h.
+    expect(
+      formatDateMentionLabel('2026-06-24T13:30:00', true, {
+        now: far,
+        clockFormat: '12h',
+        timeFormat: '24h'
+      })
+    ).toBe('24 Jun, 2026 13:30')
+    // System is 24h, but the block overrides to 12h.
+    expect(
+      formatDateMentionLabel('2026-06-24T13:30:00', true, {
+        now: far,
+        clockFormat: '24h',
+        timeFormat: '12h'
+      })
+    ).toBe('24 Jun, 2026 1:30 PM')
+  })
+
+  it('inherits the system clock format when timeFormat is "system"', () => {
+    const far = new Date('2026-01-01T12:00:00')
+    expect(
+      formatDateMentionLabel('2026-06-24T13:30:00', true, {
+        now: far,
+        clockFormat: '24h',
+        timeFormat: 'system'
+      })
+    ).toBe('24 Jun, 2026 13:30')
+  })
+
   it('falls back to OS-locale time when no clock format is given', () => {
     const label = formatDateMentionLabel('2026-06-18T09:30:00', true, { now })
     expect(label).toMatch(/^Tomorrow /)
     expect(label).toMatch(/:/)
+  })
+
+  it('renders an absolute date when dateFormat is "full"', () => {
+    // 2026-06-18 is "Tomorrow" relatively, but "full" forces the absolute date
+    expect(formatDateMentionLabel('2026-06-18T15:00:00', false, { now, dateFormat: 'full' })).toBe(
+      '18 Jun, 2026'
+    )
+  })
+})
+
+describe('createDateMentionPillDom', () => {
+  const base = {
+    anchorId: 'dm_1',
+    dateISO: '2026-06-20T09:00:00.000Z',
+    hasTime: true,
+    dateFormat: 'relative' as const,
+    timeFormat: 'system' as const
+  }
+
+  it('renders no icon for a date-only mention (remind "none")', () => {
+    const dom = createDateMentionPillDom({ ...base, remind: 'none' })
+    expect(dom.getAttribute('data-remind')).toBe('none')
+    expect(dom.querySelector('.date-mention-icon')).toBeNull()
+  })
+
+  it('renders the alarm icon when a reminder is set', () => {
+    const dom = createDateMentionPillDom({ ...base, remind: '1h' })
+    const icon = dom.querySelector('.date-mention-icon')
+    expect(icon).not.toBeNull()
+    // Alarm clock SVG has a <circle>; the dropped calendar had a <rect>.
+    expect(icon?.querySelector('circle')).not.toBeNull()
+    expect(icon?.querySelector('rect')).toBeNull()
   })
 })

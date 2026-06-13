@@ -3,14 +3,15 @@ import { isSameWeek, addWeeks, subWeeks } from 'date-fns'
 import {
   serializeDateMentionToken,
   type DateMentionData,
-  type DateMentionLead
+  type DateMentionDateFormat,
+  type DateMentionTimeFormat,
+  type RemindOffset
 } from '@memry/shared/date-mention'
 import { formatTimeOfDay, type ClockFormat } from '@/lib/time-format'
 
-// Notion-style inline icons (raw DOM render, so SVG markup rather than the
-// React icon components). Stroke uses currentColor → inherits the pill's blue.
-const CALENDAR_SVG =
-  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>'
+// Notion-style inline alarm icon (raw DOM render, so SVG markup rather than the
+// React icon component). Only reminder pills show it; a date-only pill renders
+// label-only. Stroke uses currentColor → inherits the pill's blue.
 const ALARM_SVG =
   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/><path d="M5 3 2 6"/><path d="m22 6-3-3"/><path d="M6.38 18.7 4 21"/><path d="M17.64 18.67 20 21"/></svg>'
 
@@ -57,6 +58,14 @@ export interface DateMentionLabelOptions {
   now?: Date
   weekStartsOn?: 0 | 1
   clockFormat?: ClockFormat
+  dateFormat?: DateMentionDateFormat
+  timeFormat?: DateMentionTimeFormat
+}
+
+function formatTime(d: Date, clockFormat: ClockFormat | undefined): string {
+  return clockFormat
+    ? formatTimeOfDay(d, clockFormat)
+    : d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
 }
 
 export function formatDateMentionLabel(
@@ -66,14 +75,65 @@ export function formatDateMentionLabel(
 ): string {
   const now = opts.now ?? new Date()
   const weekStartsOn = opts.weekStartsOn ?? prefWeekStartsOn
-  const clockFormat = opts.clockFormat ?? prefClockFormat
+  const systemClock = opts.clockFormat ?? prefClockFormat
+  // A per-block 12h/24h override wins; 'system' (and unset) inherit the setting.
+  const clockFormat: ClockFormat | undefined =
+    opts.timeFormat === '12h' || opts.timeFormat === '24h' ? opts.timeFormat : systemClock
+  const dateFormat = opts.dateFormat ?? 'relative'
   const d = new Date(dateISO)
-  const day = formatRelativeDay(d, now, weekStartsOn)
+  const day = dateFormat === 'full' ? absoluteDate(d) : formatRelativeDay(d, now, weekStartsOn)
   if (!hasTime) return day
-  const time = clockFormat
-    ? formatTimeOfDay(d, clockFormat)
-    : d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
-  return `${day} ${time}`
+  return `${day} ${formatTime(d, clockFormat)}`
+}
+
+// Builds the raw pill DOM. Extracted from the inline-content `render` so the
+// icon/label behavior is unit-testable (BlockNote wraps the spec's render in a
+// ProseMirror node-view signature). A reminder (`remind !== 'none'`) shows the
+// alarm icon and reads as blue (see base.css); a date-only pill is label-only
+// and muted.
+export function createDateMentionPillDom(props: {
+  anchorId: string
+  dateISO: string
+  hasTime: boolean
+  dateFormat: DateMentionDateFormat
+  remind: RemindOffset
+  timeFormat: DateMentionTimeFormat
+}): HTMLSpanElement {
+  const { anchorId, dateISO, hasTime, dateFormat, remind, timeFormat } = props
+
+  const dom = document.createElement('span')
+  dom.className = 'date-mention'
+  dom.setAttribute('data-date-mention', '')
+  dom.setAttribute('data-anchor-id', anchorId)
+  dom.setAttribute('data-date-iso', dateISO)
+  dom.setAttribute('data-has-time', String(hasTime))
+  dom.setAttribute('data-date-format', String(dateFormat))
+  dom.setAttribute('data-remind', String(remind))
+  dom.setAttribute('data-time-format', String(timeFormat))
+  dom.setAttribute('contenteditable', 'false')
+  dom.setAttribute('role', 'button')
+  dom.setAttribute('tabindex', '0')
+
+  const at = document.createElement('span')
+  at.className = 'date-mention-at'
+  at.textContent = '@'
+  at.setAttribute('aria-hidden', 'true')
+  dom.appendChild(at)
+
+  const label = document.createElement('span')
+  label.className = 'date-mention-label'
+  label.textContent = formatDateMentionLabel(dateISO, hasTime, { dateFormat, timeFormat })
+  dom.appendChild(label)
+
+  if (remind !== 'none') {
+    const icon = document.createElement('span')
+    icon.className = 'date-mention-icon'
+    icon.setAttribute('aria-hidden', 'true')
+    icon.innerHTML = ALARM_SVG
+    dom.appendChild(icon)
+  }
+
+  return dom
 }
 
 export function createDateMentionContent(data: DateMentionData) {
@@ -83,8 +143,9 @@ export function createDateMentionContent(data: DateMentionData) {
       anchorId: data.anchorId,
       dateISO: data.dateISO,
       hasTime: data.hasTime,
+      dateFormat: data.dateFormat,
       remind: data.remind,
-      lead: data.lead
+      timeFormat: data.timeFormat
     }
   }
 }
@@ -96,44 +157,23 @@ export const DateMention = createInlineContentSpec(
       anchorId: { default: '' },
       dateISO: { default: '' },
       hasTime: { default: false },
-      remind: { default: false },
-      lead: { default: 'at' }
+      dateFormat: { default: 'relative' },
+      remind: { default: 'none' },
+      timeFormat: { default: 'system' }
     },
     content: 'none'
   },
   {
     render: (inlineContent) => {
-      const { anchorId, dateISO, hasTime, remind, lead } = inlineContent.props
-
-      const dom = document.createElement('span')
-      dom.className = 'date-mention'
-      dom.setAttribute('data-date-mention', '')
-      dom.setAttribute('data-anchor-id', anchorId)
-      dom.setAttribute('data-date-iso', dateISO)
-      dom.setAttribute('data-has-time', String(hasTime))
-      dom.setAttribute('data-remind', String(remind))
-      dom.setAttribute('data-lead', String(lead))
-      dom.setAttribute('contenteditable', 'false')
-      dom.setAttribute('role', 'button')
-      dom.setAttribute('tabindex', '0')
-
-      const at = document.createElement('span')
-      at.className = 'date-mention-at'
-      at.textContent = '@'
-      at.setAttribute('aria-hidden', 'true')
-      dom.appendChild(at)
-
-      const label = document.createElement('span')
-      label.className = 'date-mention-label'
-      label.textContent = formatDateMentionLabel(dateISO, hasTime)
-      dom.appendChild(label)
-
-      const icon = document.createElement('span')
-      icon.className = 'date-mention-icon'
-      icon.setAttribute('aria-hidden', 'true')
-      icon.innerHTML = remind ? ALARM_SVG : CALENDAR_SVG
-      dom.appendChild(icon)
-
+      const { anchorId, dateISO, hasTime, dateFormat, remind, timeFormat } = inlineContent.props
+      const dom = createDateMentionPillDom({
+        anchorId,
+        dateISO,
+        hasTime,
+        dateFormat: dateFormat as DateMentionDateFormat,
+        remind: remind as RemindOffset,
+        timeFormat: timeFormat as DateMentionTimeFormat
+      })
       return { dom }
     },
 
@@ -146,16 +186,24 @@ export const DateMention = createInlineContentSpec(
         anchorId,
         dateISO,
         hasTime: element.getAttribute('data-has-time') === 'true',
-        remind: element.getAttribute('data-remind') === 'true',
-        lead: (element.getAttribute('data-lead') || 'at') as DateMentionLead
+        dateFormat: (element.getAttribute('data-date-format') ||
+          'relative') as DateMentionDateFormat,
+        remind: (element.getAttribute('data-remind') || 'none') as RemindOffset,
+        timeFormat: (element.getAttribute('data-time-format') || 'system') as DateMentionTimeFormat
       }
     },
 
     toExternalHTML: (inlineContent) => {
-      const { anchorId, dateISO, hasTime, remind } = inlineContent.props
-      const lead = inlineContent.props.lead as DateMentionLead
+      const { anchorId, dateISO, hasTime, dateFormat, remind, timeFormat } = inlineContent.props
       const dom = document.createElement('span')
-      dom.textContent = serializeDateMentionToken({ anchorId, dateISO, hasTime, remind, lead })
+      dom.textContent = serializeDateMentionToken({
+        anchorId,
+        dateISO,
+        hasTime,
+        dateFormat: dateFormat as DateMentionDateFormat,
+        remind: remind as RemindOffset,
+        timeFormat: timeFormat as DateMentionTimeFormat
+      })
       return { dom }
     }
   }
