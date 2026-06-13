@@ -26,6 +26,8 @@ interface TabBarWithDragProps {
   showSidebarToggle?: boolean
   /** Whether this tab bar should reserve space for the fixed day panel */
   reserveDayPanelSpace?: boolean
+  /** Whether this tab bar is the top-right one that shows the day-panel toggle */
+  showDayPanelToggle?: boolean
   /** Additional CSS classes */
   className?: string
 }
@@ -38,6 +40,7 @@ export const TabBarWithDrag = ({
   groupId,
   showSidebarToggle = true,
   reserveDayPanelSpace = true,
+  showDayPanelToggle = true,
   className
 }: TabBarWithDragProps): React.JSX.Element | null => {
   const { t: tPhaseF } = useT('common')
@@ -51,6 +54,8 @@ export const TabBarWithDrag = ({
   const { state: sidebarState } = useSidebar()
   const needsChromeSpacer = sidebarState === 'collapsed' && showSidebarToggle
   const shouldReserveDayPanelSpace = reserveDayPanelSpace && isDayPanelOpen
+  // Only the top-right tab bar shows the day-panel toggle (and reserves room for it)
+  const showDayPanelToggleButton = !isDayPanelOpen && showDayPanelToggle
 
   // Scroll state
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -201,7 +206,9 @@ export const TabBarWithDrag = ({
               'bg-gradient-to-l from-muted/95 via-muted/70 to-transparent',
               'hover:from-surface-active/95',
               'transition-all duration-150 ease-out z-20',
-              isDayPanelOpen ? 'absolute end-0 bottom-px' : 'absolute end-[48px] bottom-px'
+              showDayPanelToggleButton
+                ? 'absolute end-[48px] bottom-px'
+                : 'absolute end-0 bottom-px'
             )}
             aria-label={tPhaseF('phaseF.componentsTabsTabBarWithDrag.scrollTabsRight')}
           >
@@ -210,7 +217,7 @@ export const TabBarWithDrag = ({
         )}
 
         {/* Tab actions */}
-        {!isDayPanelOpen && (
+        {showDayPanelToggleButton && (
           <div className="no-drag ms-auto flex items-center gap-1 self-center pe-[13px] ps-2">
             <TabBarAction
               icon={<LayoutAlignRightIcon className="w-4 h-4 transition-colors duration-150" />}
