@@ -69,6 +69,8 @@ import { PasteLinkMenu } from './paste-link-menu'
 import { extractYouTubeVideoId } from '@/lib/youtube-utils'
 import { extractDomain, fetchLinkPreview } from '@/lib/url-metadata'
 import { createLinkMentionContent } from './link-mention'
+import { createDateMentionContent } from './date-mention'
+import { DateMentionPopover, type DateMentionValue } from './date-mention-popover'
 import type { PasteLinkOption } from './hooks/use-paste-link-menu'
 import { useT } from '@memry/i18n/renderer'
 
@@ -410,6 +412,133 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     editorContainerRef,
     onSelect: handlePasteLinkSelect
   })
+
+  // Date mention editing: a single popover shared by the /date slash item and
+  // click-to-edit. anchorId identifies which dateMention inline content to
+  // update; anchorEl positions the popover next to the rendered pill.
+  const [dateMentionState, setDateMentionState] = useState<{
+    open: boolean
+    anchorId: string | null
+    value: DateMentionValue
+  }>({
+    open: false,
+    anchorId: null,
+    value: { dateISO: '', hasTime: false, remind: false, lead: 'at' }
+  })
+  // Mirror the live anchorId so handleDateMentionChange can mutate the editor
+  // outside the state updater (updaters must be pure; StrictMode double-invokes
+  // them in dev and would otherwise fire editor.updateBlock twice).
+  const dateMentionAnchorIdRef = useRef<string | null>(null)
+  useEffect(() => {
+    dateMentionAnchorIdRef.current = dateMentionState.anchorId
+  }, [dateMentionState.anchorId])
+
+  const updateDateMention = useCallback(
+    (anchorId: string, next: DateMentionValue) => {
+      // editor.document is a nested tree (a pill can live inside a list item's
+      // children[]), so recurse like findBlockWithLinkMention does. Returns
+      // true once the matching pill is found and updated.
+      const updateInBlocks = (blocks: any[]): boolean => {
+        for (const block of blocks) {
+          const content = (block.content ?? []) as any[]
+          if (Array.isArray(content)) {
+            const index = content.findIndex(
+              (c: any) => c?.type === 'dateMention' && c.props?.anchorId === anchorId
+            )
+            if (index !== -1) {
+              const updated = [...content]
+              updated[index] = createDateMentionContent({
+                anchorId,
+                dateISO: next.dateISO,
+                hasTime: next.hasTime,
+                remind: next.remind,
+                lead: next.lead
+              })
+              editor.updateBlock(block, { content: updated })
+              return true
+            }
+          }
+          if (block.children?.length && updateInBlocks(block.children)) return true
+        }
+        return false
+      }
+      updateInBlocks(editor.document)
+    },
+    [editor]
+  )
+
+  const handleDateMentionChange = useCallback(
+    (next: DateMentionValue) => {
+      const anchorId = dateMentionAnchorIdRef.current
+      // Mutate the editor OUTSIDE the state updater so it runs exactly once
+      // (updaters are double-invoked under StrictMode). ProseMirror applies
+      // updateBlock synchronously, so the recreated pill is queryable right
+      // after; the popover re-queries it by anchorId on its next measure.
+      if (anchorId) updateDateMention(anchorId, next)
+      setDateMentionState((prev) => ({ ...prev, value: next }))
+    },
+    [updateDateMention]
+  )
+
+  const handleDateMentionClose = useCallback(() => {
+    setDateMentionState((prev) => ({ ...prev, open: false, anchorId: null }))
+  }, [])
+
+  // Click-to-edit: open the popover seeded from a clicked pill's data-* props.
+  useEffect(() => {
+    const container = editorContainerRef.current
+    if (!container) return
+    const handleClick = (event: MouseEvent): void => {
+      const target = event.target as HTMLElement | null
+      const pill = target?.closest<HTMLElement>('[data-date-mention]')
+      if (!pill) return
+      const anchorId = pill.getAttribute('data-anchor-id')
+      const dateISO = pill.getAttribute('data-date-iso')
+      if (!anchorId || !dateISO || Number.isNaN(new Date(dateISO).getTime())) return
+      event.preventDefault()
+      setDateMentionState({
+        open: true,
+        anchorId,
+        value: {
+          dateISO,
+          hasTime: pill.getAttribute('data-has-time') === 'true',
+          remind: pill.getAttribute('data-remind') === 'true',
+          lead: (pill.getAttribute('data-lead') || 'at') as DateMentionValue['lead']
+        }
+      })
+    }
+    container.addEventListener('click', handleClick)
+    return () => container.removeEventListener('click', handleClick)
+  }, [])
+
+  // Slash item: insert a fresh dateMention pill (today at 09:00), then open the
+  // popover anchored to it so the user immediately sets the date.
+  const handleDateSlashSelect = useCallback(() => {
+    const anchorId = `dm_${crypto.randomUUID()}`
+    const today = new Date()
+    today.setHours(9, 0, 0, 0)
+    const dateISO = today.toISOString()
+    editor.insertInlineContent(
+      [
+        createDateMentionContent({
+          anchorId,
+          dateISO,
+          hasTime: false,
+          remind: false,
+          lead: 'at'
+        }),
+        ' '
+      ],
+      { updateSelection: true }
+    )
+    // The popover resolves its anchor by querying the live pill via anchorId,
+    // so it positions correctly once ProseMirror has rendered the span.
+    setDateMentionState({
+      open: true,
+      anchorId,
+      value: { dateISO, hasTime: false, remind: false, lead: 'at' }
+    })
+  }, [editor])
 
   const [innerContainerEl, setInnerContainerEl] = useState<HTMLDivElement | null>(null)
   const setEditorContainerRef = useCallback((el: HTMLDivElement | null) => {
@@ -983,7 +1112,14 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                 subtext: t('editor.callout.subtext')
               })
               const taskItem = getTaskSlashMenuItem(editor)
-              const all = [...defaults, calloutItem, taskItem, ...aiItems]
+              const dateItem = {
+                title: 'Date',
+                onItemClick: handleDateSlashSelect,
+                aliases: ['date', 'remind', 'reminder', 'when'],
+                group: 'Basic blocks',
+                subtext: 'Insert a date with an optional reminder'
+              }
+              const all = [...defaults, calloutItem, taskItem, dateItem, ...aiItems]
               if (!query) return all
               const lower = query.toLowerCase()
               return all.filter(
@@ -1039,6 +1175,14 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           options={pasteLinkState.options}
           selectedIndex={pasteLinkState.selectedIndex}
           onSelect={handlePasteLinkOptionSelect}
+        />
+
+        <DateMentionPopover
+          open={dateMentionState.open}
+          anchorId={dateMentionState.anchorId}
+          value={dateMentionState.value}
+          onChange={handleDateMentionChange}
+          onClose={handleDateMentionClose}
         />
       </div>
       {marqueeZoneEl &&
