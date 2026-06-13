@@ -21,8 +21,10 @@ import {
 import { getJournalPath } from '../vault/journal'
 import { syncNoteToCache, deleteNoteFromCache } from '../vault/note-sync'
 import { flushProjectionEvents } from '../projections'
-import { getIndexDatabase } from '../database/client'
+import { getIndexDatabase, getDatabase } from '../database/client'
 import { getNoteCacheById } from '@main/database/queries/notes'
+import { createRemindersService } from '@memry/app-core/reminders'
+import { syncNoteDateReminders, clearNoteDateReminders } from '../notes/note-date-reminders'
 import { deleteFile } from '../vault/file-ops'
 import { NotesChannels, JournalChannels } from '@memry/contracts/ipc-channels'
 import { BrowserWindow } from 'electron'
@@ -181,10 +183,17 @@ async function performWriteback(noteId: string, doc: Y.Doc): Promise<void> {
 
   if (isJournalId(noteId)) {
     await writebackJournal(noteId, doc, markdown, cached, indexDb)
-  } else if (cached) {
-    await writebackExisting(noteId, cached.path, doc, markdown, indexDb)
   } else {
-    await writebackNewNote(noteId, doc, markdown, indexDb)
+    if (cached) {
+      await writebackExisting(noteId, cached.path, doc, markdown, indexDb)
+    } else {
+      await writebackNewNote(noteId, doc, markdown, indexDb)
+    }
+    try {
+      await syncNoteDateReminders(noteId, markdown, createRemindersService(getDatabase()))
+    } catch (err) {
+      log.warn('Failed to sync note_date reminders on write-back', { noteId, err })
+    }
   }
 }
 
@@ -424,6 +433,14 @@ export async function handleSyncDeletion(noteId: string): Promise<void> {
   })
 
   await getCrdtProvider().close(noteId)
+
+  if (!isJournalId(noteId)) {
+    try {
+      await clearNoteDateReminders(noteId, createRemindersService(getDatabase()))
+    } catch (err) {
+      log.warn('Failed to clear note_date reminders on sync deletion', { noteId, err })
+    }
+  }
 
   const channel = isJournalId(noteId)
     ? JournalChannels.events.ENTRY_DELETED

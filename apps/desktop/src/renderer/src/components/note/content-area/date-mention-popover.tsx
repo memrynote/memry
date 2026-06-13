@@ -66,7 +66,9 @@ export function DateMentionPopover({
     getBoundingClientRect: () => {
       const id = anchorIdRef.current
       if (!id) return new DOMRect()
-      const el = document.querySelector<HTMLElement>(`[data-date-mention][data-anchor-id="${id}"]`)
+      const el = document.querySelector<HTMLElement>(
+        `[data-date-mention][data-anchor-id="${CSS.escape(id)}"]`
+      )
       return el?.getBoundingClientRect() ?? new DOMRect()
     }
   })
