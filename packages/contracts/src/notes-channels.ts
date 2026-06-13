@@ -67,6 +67,10 @@ export const NotesChannels = {
     UPDATE_OPTION_COLOR: 'notes:update-option-color',
     /** Delete an entire property definition */
     DELETE_PROPERTY_DEFINITION: 'notes:delete-property-definition',
+    /** Toggle whether a date property's value shows on the calendar (vault-wide) */
+    SET_CALENDAR_PROPERTY_VISIBILITY: 'notes:set-calendar-property-visibility',
+    /** List property names currently enabled to show on the calendar */
+    GET_CALENDAR_PROPERTY_NAMES: 'notes:get-calendar-property-names',
     /** Upload an attachment to a note (T070) */
     UPLOAD_ATTACHMENT: 'notes:upload-attachment',
     /** List attachments for a note */

@@ -84,6 +84,8 @@ export function createGeneratedRpcApi({
       "renamePropertyOption": ((propertyName, oldValue, newValue) => invoke("notes:rename-property-option", { propertyName, oldValue, newValue })) as GeneratedRpcApi["notes"]["renamePropertyOption"],
       "updateOptionColor": ((propertyName, optionValue, newColor) => invoke("notes:update-option-color", { propertyName, optionValue, newColor })) as GeneratedRpcApi["notes"]["updateOptionColor"],
       "deletePropertyDefinition": ((name) => invoke("notes:delete-property-definition", { name })) as GeneratedRpcApi["notes"]["deletePropertyDefinition"],
+      "setCalendarPropertyVisibility": ((name, showOnCalendar) => invoke("notes:set-calendar-property-visibility", { name, showOnCalendar })) as GeneratedRpcApi["notes"]["setCalendarPropertyVisibility"],
+      "getCalendarPropertyNames": (() => invoke("notes:get-calendar-property-names")) as GeneratedRpcApi["notes"]["getCalendarPropertyNames"],
       "uploadAttachment": (async (noteId, file) =>
         invoke("notes:upload-attachment", {
           noteId,

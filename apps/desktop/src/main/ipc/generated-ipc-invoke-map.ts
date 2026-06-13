@@ -159,6 +159,7 @@ export interface MainIpcInvokeHandlers {
   "notes:get": (...args: [string]) => Awaited<Promise<import("../vault/notes-crud").Note | null>>
   "notes:get-all-positions": (...args: []) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; positions: Record<string, number>; }>>
   "notes:get-by-path": (...args: [string]) => Awaited<Promise<import("../vault/notes-crud").Note | null>>
+  "notes:get-calendar-property-names": (...args: []) => Awaited<Promise<string[]>>
   "notes:get-file": (...args: [string]) => Awaited<Promise<import("../vault/notes-crud").FileMetadata | null>>
   "notes:get-folder-config": (...args: [string]) => Awaited<Promise<import("../../../../../packages/contracts/src/templates-api").FolderConfig | null>>
   "notes:get-folder-template": (...args: [string]) => Awaited<Promise<string | null>>
@@ -184,6 +185,7 @@ export interface MainIpcInvokeHandlers {
   "notes:resolve-by-title": (...args: [string]) => Awaited<Promise<{ id: string; path: string; title: string; fileType: import("../../../../../packages/shared/src/file-types").FileType; } | null>>
   "notes:restore-version": (...args: [string]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; note: import("../vault/notes-crud").Note; }>>
   "notes:reveal-in-finder": (...args: [string]) => Awaited<Promise<void>>
+  "notes:set-calendar-property-visibility": (...args: [{ name: string; showOnCalendar: boolean; }]) => Awaited<Promise<{ success: true; }> | { success: false; error: string }>
   "notes:set-folder-config": (...args: [{ folderPath: string; config: { icon?: string | null | undefined; template?: string | undefined; inherit?: boolean | undefined; }; }]) => Awaited<Promise<{ success: true; }> | { success: false; error: string }>
   "notes:set-local-only": (...args: [{ id: string; localOnly: boolean; }]) => Awaited<Promise<{ success: true; note: import("../vault/notes-crud").Note; }> | { success: false; error: string }>
   "notes:show-import-dialog": (...args: []) => Awaited<Promise<{ canceled: boolean; filePaths: string[]; }>>

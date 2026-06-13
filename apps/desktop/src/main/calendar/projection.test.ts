@@ -570,4 +570,91 @@ describe('getCalendarRangeProjection', () => {
 
     expect(items.some((i) => i.sourceType === 'note')).toBe(false)
   })
+
+  it('excludes a note date property that falls outside the query window', () => {
+    indexDbResult.db.run(sql`
+      INSERT INTO note_cache (id, path, title, file_type, created_at, modified_at)
+      VALUES (${'n-out'}, ${'notes/old.md'}, ${'Old Note'}, ${'markdown'}, ${'2026-05-01T00:00:00.000Z'}, ${'2026-05-01T00:00:00.000Z'})
+    `)
+    indexDbResult.db.run(sql`
+      INSERT INTO note_properties (note_id, name, type, value)
+      VALUES (${'n-out'}, ${'Deadline'}, ${'date'}, ${'2026-05-10T00:00:00.000Z'})
+    `)
+
+    const { items } = getCalendarRangeProjection(
+      db as unknown as DataDb,
+      indexDb,
+      {
+        startAt: '2026-06-01T00:00:00.000Z',
+        endAt: '2026-07-01T00:00:00.000Z',
+        includeUnselectedSources: false
+      },
+      ['Deadline']
+    )
+
+    expect(items.some((i) => i.sourceType === 'note')).toBe(false)
+  })
+
+  it('projects two enabled date properties on one note as two chips', () => {
+    indexDbResult.db.run(sql`
+      INSERT INTO note_cache (id, path, title, file_type, created_at, modified_at)
+      VALUES (${'n2'}, ${'notes/article.md'}, ${'Article'}, ${'markdown'}, ${'2026-06-01T00:00:00.000Z'}, ${'2026-06-01T00:00:00.000Z'})
+    `)
+    indexDbResult.db.run(sql`
+      INSERT INTO note_properties (note_id, name, type, value)
+      VALUES (${'n2'}, ${'Deadline'}, ${'date'}, ${'2026-06-10T00:00:00.000Z'})
+    `)
+    indexDbResult.db.run(sql`
+      INSERT INTO note_properties (note_id, name, type, value)
+      VALUES (${'n2'}, ${'Published'}, ${'date'}, ${'2026-06-20T00:00:00.000Z'})
+    `)
+
+    const { items } = getCalendarRangeProjection(
+      db as unknown as DataDb,
+      indexDb,
+      {
+        startAt: '2026-06-01T00:00:00.000Z',
+        endAt: '2026-07-01T00:00:00.000Z',
+        includeUnselectedSources: false
+      },
+      ['Deadline', 'Published']
+    )
+
+    const noteItems = items.filter((i) => i.sourceType === 'note')
+    expect(noteItems).toHaveLength(2)
+    const ids = noteItems.map((i) => i.projectionId).sort()
+    expect(ids).toEqual(['note:n2:Deadline', 'note:n2:Published'])
+  })
+
+  it('places a bare YYYY-MM-DD property on the correct calendar day without timezone shift', () => {
+    indexDbResult.db.run(sql`
+      INSERT INTO note_cache (id, path, title, file_type, created_at, modified_at)
+      VALUES (${'n3'}, ${'notes/bare-date.md'}, ${'Bare Date Note'}, ${'markdown'}, ${'2026-06-01T00:00:00.000Z'}, ${'2026-06-01T00:00:00.000Z'})
+    `)
+    // Bare YYYY-MM-DD — no time component
+    indexDbResult.db.run(sql`
+      INSERT INTO note_properties (note_id, name, type, value)
+      VALUES (${'n3'}, ${'Deadline'}, ${'date'}, ${'2026-06-15'})
+    `)
+
+    const { items } = getCalendarRangeProjection(
+      db as unknown as DataDb,
+      indexDb,
+      {
+        startAt: '2026-06-01T00:00:00.000Z',
+        endAt: '2026-07-01T00:00:00.000Z',
+        includeUnselectedSources: false
+      },
+      ['Deadline']
+    )
+
+    const note = items.find((i) => i.sourceType === 'note')
+    expect(note).toBeDefined()
+    expect(note!.projectionId).toBe('note:n3:Deadline')
+
+    // Verify the projected startAt lands on June 15 in local time (not shifted by UTC parse)
+    const d = new Date(note!.startAt)
+    const localDay = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    expect(localDay).toBe('2026-06-15')
+  })
 })

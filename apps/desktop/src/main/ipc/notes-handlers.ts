@@ -506,6 +506,27 @@ export function registerNotesHandlers(): void {
     'Failed to update property definition'
   )
 
+  // notes:set-calendar-property-visibility - Toggle a date property's calendar visibility
+  registerCommand(
+    NotesChannels.invoke.SET_CALENDAR_PROPERTY_VISIBILITY,
+    z.object({ name: z.string().min(1), showOnCalendar: z.boolean() }),
+    async (input) => {
+      const { PropertyDefinitionsService } = await import('../vault/property-definitions')
+      await PropertyDefinitionsService.get().setShowOnCalendar(input.name, input.showOnCalendar)
+      return { success: true as const }
+    },
+    'Failed to set calendar property visibility'
+  )
+
+  // notes:get-calendar-property-names - List property names enabled to show on the calendar
+  ipcMain.handle(
+    NotesChannels.invoke.GET_CALENDAR_PROPERTY_NAMES,
+    createHandler(async () => {
+      const { PropertyDefinitionsService } = await import('../vault/property-definitions')
+      return PropertyDefinitionsService.get().listCalendarEnabledNames()
+    })
+  )
+
   // =========================================================================
   // Property Option Mutations (select/multiselect/status)
   // =========================================================================

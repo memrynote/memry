@@ -25,6 +25,7 @@
   "visual-type": {
     "event": "Event",
     "imported-event": "Imported event",
+    "note": "Note",
     "task": "Task",
     "reminder": "Reminder",
     "snooze": "Snooze"
@@ -153,5 +154,10 @@
       "could-not-remove-due-date": "Could not remove due date",
       "could-not-open-note": "Could not open note"
     }
+  },
+  "notePopover": {
+    "kind": "Note",
+    "open": "Open note",
+    "couldNotOpen": "Could not open note"
   }
 }
