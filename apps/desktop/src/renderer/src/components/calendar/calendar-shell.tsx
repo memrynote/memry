@@ -53,7 +53,7 @@ interface CalendarShellProps {
     item: CalendarProjectionItem
     anchorRect: AnchorRect
   } | null
-  onNoteOpen: (noteId: string) => void
+  onNoteOpen: (noteId: string, anchorId?: string | null) => void
   onNotePopoverDismiss: () => void
   isSaving: boolean
   onViewChange: (view: CalendarWorkspaceView) => void

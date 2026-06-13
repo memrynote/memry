@@ -688,6 +688,8 @@ describe('getCalendarRangeProjection', () => {
     expect(item!.startAt).toBe('2026-04-14T11:00:00.000Z')
     expect(item!.isAllDay).toBe(false)
     expect(item!.projectionId).toBe('note_date:rem-nd-1')
+    expect(item!.noteId).toBe('note-7')
+    expect(item!.anchorId).toBe('anchor-1')
     expect(item!.editability).toEqual({
       canMove: false,
       canResize: false,

@@ -472,7 +472,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
       return
     }
 
-    if (item.sourceType === 'note') {
+    if (item.sourceType === 'note' || item.sourceType === 'note_date') {
       setPopoverState(null)
       setTaskPopoverState(null)
       setInboxSnoozePopoverState(null)
@@ -492,7 +492,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     setPendingPromote({ item, anchorRect: rect })
   }
 
-  const handleNoteOpen = (noteId: string) => {
+  const handleNoteOpen = (noteId: string, anchorId?: string | null) => {
     const tCalendar = getI18n().getFixedT(null, 'calendar')
     setNotePopoverState(null)
     void window.api.notes
@@ -508,7 +508,8 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
           isPinned: false,
           isModified: false,
           isPreview: false,
-          isDeleted: false
+          isDeleted: false,
+          ...(anchorId ? { viewState: { anchorId } } : {})
         })
       })
       .catch((err: unknown) => {

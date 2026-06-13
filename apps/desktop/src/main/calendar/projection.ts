@@ -366,7 +366,9 @@ function loadNoteDateReminderItems(
       editability,
       source: nativeSource('memrynote Notes'),
       binding: null,
-      snoozeOffsetMinutes
+      snoozeOffsetMinutes,
+      noteId: row.targetId,
+      anchorId: row.anchorId
     }
   })
 }

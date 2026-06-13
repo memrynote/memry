@@ -253,6 +253,13 @@ export interface CalendarProjectionItem {
    * Null for non-reminders or reminders with no active snooze.
    */
   snoozeOffsetMinutes: number | null
+  /**
+   * For `note_date` items: the source note id and the inline date pill's stable
+   * anchor id, so a click can open the note scrolled to that exact pill.
+   * Undefined for item types that don't navigate to a note anchor.
+   */
+  noteId?: string | null
+  anchorId?: string | null
 }
 
 export type CalendarProviderAccountConnectionStatus =
