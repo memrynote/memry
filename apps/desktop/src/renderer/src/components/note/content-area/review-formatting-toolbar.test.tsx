@@ -80,6 +80,7 @@ describe('ReviewFormattingToolbar', () => {
     toolbarMocks.editor.prosemirrorState.selection.empty = false
     ;(toolbarMocks.editor.prosemirrorState.selection as { node?: unknown }).node = undefined
     toolbarMocks.editor.prosemirrorState.doc.textBetween.mockClear()
+    ;(toolbarMocks.editor as { _tiptapEditor?: unknown })._tiptapEditor = undefined
   })
 
   it('adds Comment to the selected text toolbar', () => {
@@ -146,5 +147,41 @@ describe('ReviewFormattingToolbar', () => {
     render(<ReviewFormattingToolbar onAddComment={vi.fn()} />)
 
     expect(screen.getByText('Comment')).toBeDisabled()
+  })
+
+  // Regression for #541: TipTap 3.x `editor.view` returns a Proxy that throws
+  // on any property access (e.g. `.dom`) until the ProseMirror view is mounted.
+  // The toolbar reads `view.dom` while reading the selection; before the guard,
+  // that threw "[tiptap error]: ... Cannot access view['dom']" and crashed the
+  // editor into its error boundary ("Editor Error") on note open.
+  it('does not crash when the ProseMirror view is not mounted yet', () => {
+    const unmountedView = new Proxy(
+      {},
+      {
+        get(_target, key) {
+          throw new Error(
+            `[tiptap error]: The editor view is not available. Cannot access view['${String(key)}']. The editor may not be mounted yet.`
+          )
+        }
+      }
+    )
+    ;(toolbarMocks.editor as { _tiptapEditor?: unknown })._tiptapEditor = {
+      state: { selection: { empty: true } },
+      view: unmountedView,
+      // editorView is the real mounted view — absent until the PM view mounts.
+      editorView: undefined
+    }
+
+    vi.useFakeTimers()
+    try {
+      expect(() => {
+        render(<ReviewFormattingToolbar onAddComment={vi.fn()} />)
+        // Flush the deferred selection read in ReviewToolbarButton's effect,
+        // which also routes through `view.dom`.
+        vi.runOnlyPendingTimers()
+      }).not.toThrow()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
