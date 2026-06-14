@@ -260,6 +260,12 @@ export interface CalendarProjectionItem {
    */
   noteId?: string | null
   anchorId?: string | null
+  /**
+   * For `note_date` items: true once the reminder has fired (status `triggered`
+   * or `dismissed`). The chip is kept on the calendar but rendered faded so the
+   * date isn't lost. Undefined/false for upcoming or non-`note_date` items.
+   */
+  isTriggered?: boolean
 }
 
 export type CalendarProviderAccountConnectionStatus =

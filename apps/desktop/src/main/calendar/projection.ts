@@ -308,9 +308,13 @@ function loadNoteDateReminderItems(
     .where(
       and(
         eq(reminders.targetType, 'note_date'),
+        // note_date chips persist after firing (the date lives in the note), so
+        // we include every status — upcoming (`pending`), snoozed, and already
+        // fired (`triggered`/`dismissed`, rendered faded). Snoozed positions by
+        // `snoozedUntil`; all other statuses by `remindAt`.
         or(
           and(
-            eq(reminders.status, 'pending'),
+            ne(reminders.status, 'snoozed'),
             gte(reminders.remindAt, input.startAt),
             lt(reminders.remindAt, input.endAt)
           ),
@@ -368,7 +372,8 @@ function loadNoteDateReminderItems(
       binding: null,
       snoozeOffsetMinutes,
       noteId: row.targetId,
-      anchorId: row.anchorId
+      anchorId: row.anchorId,
+      isTriggered: row.status === 'triggered' || row.status === 'dismissed'
     }
   })
 }

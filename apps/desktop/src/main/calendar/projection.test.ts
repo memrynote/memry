@@ -690,6 +690,7 @@ describe('getCalendarRangeProjection', () => {
     expect(item!.projectionId).toBe('note_date:rem-nd-1')
     expect(item!.noteId).toBe('note-7')
     expect(item!.anchorId).toBe('anchor-1')
+    expect(item!.isTriggered).toBe(false)
     expect(item!.editability).toEqual({
       canMove: false,
       canResize: false,
@@ -733,5 +734,35 @@ describe('getCalendarRangeProjection', () => {
           60000
       )
     )
+  })
+
+  it('keeps a triggered note_date reminder on the calendar, flagged as fired', () => {
+    const range = getLocalDayRange({ year: 2026, monthIndex: 3, day: 14 })
+
+    indexDbResult.db.run(sql`
+      INSERT INTO note_cache (id, path, title, file_type, created_at, modified_at)
+      VALUES (${'note-9'}, ${'notes/standup.md'}, ${'Standup'}, ${'markdown'}, ${'2026-04-12T08:00:00.000Z'}, ${'2026-04-12T08:00:00.000Z'})
+    `)
+    db.run(sql`
+      INSERT INTO reminders (
+        id, target_type, target_id, remind_at, anchor_id, status, triggered_at, created_at, modified_at
+      )
+      VALUES (
+        ${'rem-nd-3'}, ${'note_date'}, ${'note-9'}, ${'2026-04-14T11:00:00.000Z'}, ${'anchor-3'}, ${'triggered'}, ${'2026-04-14T11:00:01.000Z'}, ${'2026-04-12T08:20:00.000Z'}, ${'2026-04-12T08:20:00.000Z'}
+      )
+    `)
+
+    const { items } = getCalendarRangeProjection(
+      db as unknown as DataDb,
+      indexDb,
+      { ...range, includeUnselectedSources: false },
+      []
+    )
+
+    const item = items.find((i) => i.sourceType === 'note_date')
+    expect(item).toBeDefined()
+    expect(item!.title).toBe('Standup')
+    expect(item!.startAt).toBe('2026-04-14T11:00:00.000Z')
+    expect(item!.isTriggered).toBe(true)
   })
 })
