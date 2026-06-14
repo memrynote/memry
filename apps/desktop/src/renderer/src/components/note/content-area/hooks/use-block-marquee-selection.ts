@@ -82,6 +82,38 @@ function getOrderedBlockIds(container: HTMLElement, ids: ReadonlySet<string>): s
   return ordered
 }
 
+interface BlockNode {
+  id: string
+  children?: ReadonlyArray<BlockNode>
+}
+
+// Reduce a marquee selection to its outermost blocks. `editor.removeBlocks`
+// throws "Blocks with the following IDs could not be found" if asked to remove
+// both a block and one of its descendants: removing the ancestor already
+// deletes the descendant, so the descendant id no longer resolves and the
+// WHOLE transaction rolls back (nothing gets deleted). The rect hit-test
+// naturally selects nested children alongside their parents, so prune any id
+// whose ancestor is also selected before deleting. Stale ids (not present in
+// the document) drop out too, which also avoids the same throw.
+export function topLevelSelectedBlockIds(
+  document: ReadonlyArray<BlockNode>,
+  selected: ReadonlySet<string>
+): string[] {
+  const out: string[] = []
+  const walk = (blocks: ReadonlyArray<BlockNode>): void => {
+    for (const block of blocks) {
+      if (selected.has(block.id)) {
+        out.push(block.id)
+        // Descendants are removed implicitly with this ancestor — don't recurse.
+        continue
+      }
+      if (block.children?.length) walk(block.children)
+    }
+  }
+  walk(document)
+  return out
+}
+
 export function useBlockMarqueeSelection({
   editor,
   blockContainerRef,
@@ -455,10 +487,19 @@ export function useBlockMarqueeSelection({
       // native cross-block deletion so textblocks and custom blocks
       // (taskBlock, file, youtubeEmbed) share the same block-only path.
       if (event.key === 'Backspace' || event.key === 'Delete') {
-        const ids = Array.from(selectedRef.current)
-        if (ids.length === 0) return
+        if (selectedRef.current.size === 0) return
         event.preventDefault()
         event.stopPropagation()
+        // Prune nested descendants: removeBlocks throws (and rolls back the
+        // entire deletion) when given both a block and a descendant of it.
+        const doc = Array.isArray(editor?.document) ? (editor.document as BlockNode[]) : null
+        const ids = doc
+          ? topLevelSelectedBlockIds(doc, selectedRef.current)
+          : Array.from(selectedRef.current)
+        if (ids.length === 0) {
+          clearSelection()
+          return
+        }
         if (onDeleteSelectedBlocks?.(ids)) {
           clearSelection()
           return

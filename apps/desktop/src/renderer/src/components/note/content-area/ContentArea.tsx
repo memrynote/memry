@@ -1,12 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { createPortal } from 'react-dom'
-import { memo, useCallback, useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   SuggestionMenuController,
+  GridSuggestionMenuController,
   useCreateBlockNote,
   FormattingToolbar,
-  getDefaultReactSlashMenuItems
+  getDefaultReactSlashMenuItems,
+  type SuggestionMenuProps
 } from '@blocknote/react'
 import { BlockNoteView } from '@blocknote/shadcn'
 import { useTheme } from 'next-themes'
@@ -70,6 +72,14 @@ import { PasteLinkMenu } from './paste-link-menu'
 import { extractYouTubeVideoId } from '@/lib/youtube-utils'
 import { extractDomain, fetchLinkPreview } from '@/lib/url-metadata'
 import { createLinkMentionContent } from './link-mention'
+import { createDateMentionContent } from './date-mention'
+import { buildDateSuggestions } from './date-suggestions'
+import { createDateMentionGhostPlugin, isDateMentionActive } from './date-mention-ghost-plugin'
+import { useFiredDatePillAnchors, useTriggeredDatePills } from './use-triggered-date-pills'
+import { useDateMentionPrefs } from '@/hooks/use-date-mention-prefs'
+import { DateMentionPopover, type DateMentionValue } from './date-mention-popover'
+import { MentionMenu, type MentionSuggestionItem } from './mention-menu'
+import { useMentionSuggestions } from './hooks/use-mention-suggestions'
 import type { PasteLinkOption } from './hooks/use-paste-link-menu'
 import { useT } from '@memry/i18n/renderer'
 
@@ -127,6 +137,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   onInternalLinkClick,
   className,
   initialHighlight,
+  initialAnchorId,
   noteTags,
   tagColorMap,
   onInlineTagsChange,
@@ -139,6 +150,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 }: ContentAreaEditorProps) {
   const { t } = useT('notes')
   const { t: tCommon } = useT('common')
+  const { clockFormat: dateMentionClockFormat } = useDateMentionPrefs()
   const { resolvedTheme } = useTheme()
   const editorTheme = resolvedTheme === 'dark' ? 'dark' : 'light'
   const { openTag } = useSidebarDrillDown()
@@ -160,6 +172,9 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   const noteIdRef = useRef<string | undefined>(noteId)
   const wikiLinkHover = useWikiLinkHover(editorContainerRef)
   const linkMentionHover = useLinkMentionHover(editorContainerRef)
+  // Recolor inline date pills whose reminder has fired (red, per-device overlay).
+  const firedDatePillAnchors = useFiredDatePillAnchors(noteId)
+  useTriggeredDatePills(editorContainerRef, firedDatePillAnchors)
   const reviewMarksRef = useRef(review?.marks ?? [])
   const reviewMarkdownToEditorOffsetRef = useRef(review?.getEditorOffsetForMarkdownSourceOffset)
   const skipNextCriticMarkupYjsWriteRef = useRef(false)
@@ -213,7 +228,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     editorContainerRef,
     onLinkClick,
     onInternalLinkClick,
-    initialHighlight
+    initialHighlight,
+    initialAnchorId
   })
 
   // Hook #2: Content sync (initial load + debounced change handler)
@@ -411,6 +427,187 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     editorContainerRef,
     onSelect: handlePasteLinkSelect
   })
+
+  // Date mention editing: a single popover shared by the /date slash item and
+  // click-to-edit. anchorId identifies which dateMention inline content to
+  // update; anchorEl positions the popover next to the rendered pill.
+  const [dateMentionState, setDateMentionState] = useState<{
+    open: boolean
+    anchorId: string | null
+    value: DateMentionValue
+  }>({
+    open: false,
+    anchorId: null,
+    value: {
+      dateISO: '',
+      hasTime: false,
+      dateFormat: 'relative',
+      remind: 'none',
+      timeFormat: 'system'
+    }
+  })
+  // Mirror the live anchorId so handleDateMentionChange can mutate the editor
+  // outside the state updater (updaters must be pure; StrictMode double-invokes
+  // them in dev and would otherwise fire editor.updateBlock twice).
+  const dateMentionAnchorIdRef = useRef<string | null>(null)
+  useEffect(() => {
+    dateMentionAnchorIdRef.current = dateMentionState.anchorId
+  }, [dateMentionState.anchorId])
+
+  // Walk the (nested) block tree — a pill can live inside a list item's
+  // children[], so recurse like findBlockWithLinkMention does — find the
+  // dateMention with `anchorId`, and write back the content `mutate` returns.
+  // Stops at the first match.
+  const mutateDateMention = useCallback(
+    (anchorId: string, mutate: (content: any[], index: number) => any[]) => {
+      const walk = (blocks: any[]): boolean => {
+        for (const block of blocks) {
+          const content = (block.content ?? []) as any[]
+          if (Array.isArray(content)) {
+            const index = content.findIndex(
+              (c: any) => c?.type === 'dateMention' && c.props?.anchorId === anchorId
+            )
+            if (index !== -1) {
+              editor.updateBlock(block, { content: mutate(content, index) })
+              return true
+            }
+          }
+          if (block.children?.length && walk(block.children)) return true
+        }
+        return false
+      }
+      walk(editor.document)
+    },
+    [editor]
+  )
+
+  const updateDateMention = useCallback(
+    (anchorId: string, next: DateMentionValue) => {
+      mutateDateMention(anchorId, (content, index) => {
+        const updated = [...content]
+        updated[index] = createDateMentionContent({ anchorId, ...next })
+        return updated
+      })
+    },
+    [mutateDateMention]
+  )
+
+  // Clear: splice the matching dateMention inline content out of its block.
+  const removeDateMention = useCallback(
+    (anchorId: string) => {
+      mutateDateMention(anchorId, (content, index) => {
+        const updated = [...content]
+        updated.splice(index, 1)
+        return updated
+      })
+    },
+    [mutateDateMention]
+  )
+
+  const handleDateMentionChange = useCallback(
+    (next: DateMentionValue) => {
+      const anchorId = dateMentionAnchorIdRef.current
+      // Mutate the editor OUTSIDE the state updater so it runs exactly once
+      // (updaters are double-invoked under StrictMode). ProseMirror applies
+      // updateBlock synchronously, so the recreated pill is queryable right
+      // after; the popover re-queries it by anchorId on its next measure.
+      if (anchorId) updateDateMention(anchorId, next)
+      setDateMentionState((prev) => ({ ...prev, value: next }))
+    },
+    [updateDateMention]
+  )
+
+  const handleDateMentionClose = useCallback(() => {
+    setDateMentionState((prev) => ({ ...prev, open: false, anchorId: null }))
+  }, [])
+
+  const handleDateMentionClear = useCallback(() => {
+    const anchorId = dateMentionAnchorIdRef.current
+    if (anchorId) removeDateMention(anchorId)
+    setDateMentionState((prev) => ({ ...prev, open: false, anchorId: null }))
+  }, [removeDateMention])
+
+  // Click-to-edit: open the popover seeded from a clicked pill's data-* props.
+  useEffect(() => {
+    const container = editorContainerRef.current
+    if (!container) return
+    const handleClick = (event: MouseEvent): void => {
+      const target = event.target as HTMLElement | null
+      const pill = target?.closest<HTMLElement>('[data-date-mention]')
+      if (!pill) return
+      const anchorId = pill.getAttribute('data-anchor-id')
+      const dateISO = pill.getAttribute('data-date-iso')
+      if (!anchorId || !dateISO || Number.isNaN(new Date(dateISO).getTime())) return
+      event.preventDefault()
+      setDateMentionState({
+        open: true,
+        anchorId,
+        value: {
+          dateISO,
+          hasTime: pill.getAttribute('data-has-time') === 'true',
+          dateFormat: (pill.getAttribute('data-date-format') ||
+            'relative') as DateMentionValue['dateFormat'],
+          remind: (pill.getAttribute('data-remind') || 'none') as DateMentionValue['remind'],
+          timeFormat: (pill.getAttribute('data-time-format') ||
+            'system') as DateMentionValue['timeFormat']
+        }
+      })
+    }
+    container.addEventListener('click', handleClick)
+    return () => container.removeEventListener('click', handleClick)
+  }, [])
+
+  // Insert a configurable dateMention pill from a committed value (slash items
+  // and the `@` Date group both use this). No auto-open: the picker opens when
+  // the user clicks the pill (click-to-edit above).
+  const insertDatePill = useCallback(
+    (value: DateMentionValue) => {
+      const anchorId = `dm_${crypto.randomUUID()}`
+      editor.insertInlineContent([createDateMentionContent({ anchorId, ...value }), ' '], {
+        updateSelection: true
+      })
+    },
+    [editor]
+  )
+
+  // Tab-accept from the inline ghost plugin: drop the typed `@query` range, then
+  // reuse the standard pill insert at the resulting caret.
+  const insertDatePillAtRange = useCallback(
+    (from: number, to: number, value: DateMentionValue) => {
+      const tiptap = (editor as any)._tiptapEditor
+      if (!tiptap?.view) return
+      tiptap.view.dispatch(tiptap.view.state.tr.delete(from, to))
+      insertDatePill(value)
+    },
+    [editor, insertDatePill]
+  )
+
+  // Inline `@`-date ghost text + Tab completion. Prepend the plugin so its Tab
+  // handler wins over block-indent keymaps while a date mention is active.
+  useEffect(() => {
+    const tiptap = (editor as any)._tiptapEditor
+    if (!tiptap?.registerPlugin || !tiptap?.unregisterPlugin) return
+    const plugin = createDateMentionGhostPlugin({ onAcceptPill: insertDatePillAtRange })
+    tiptap.registerPlugin(plugin, (p: any, plugins: any[]) => [p, ...plugins])
+    return () => {
+      tiptap.unregisterPlugin(plugin.spec.key!)
+    }
+  }, [editor, insertDatePillAtRange])
+
+  // `@` quick-insert menu: a Date group (date + remind) when the query parses
+  // as a date, plus recent notes (insert as wiki links). The bound menu is
+  // memoized so it doesn't remount per render.
+  const { getMentionItems, handleMentionSelect, mentionHasMore, showMore } = useMentionSuggestions(
+    editor,
+    { onInsertDate: insertDatePill }
+  )
+  const MentionSuggestionMenu = useMemo(
+    () =>
+      function BoundMentionMenu(props: SuggestionMenuProps<MentionSuggestionItem>) {
+        return <MentionMenu {...props} hasMore={mentionHasMore} onShowMore={showMore} />
+      },
+    [mentionHasMore, showMore]
+  )
 
   const [innerContainerEl, setInnerContainerEl] = useState<HTMLDivElement | null>(null)
   const setEditorContainerRef = useCallback((el: HTMLDivElement | null) => {
@@ -962,6 +1159,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           theme={editorTheme}
           formattingToolbar={!stickyToolbar && !review}
           slashMenu={false}
+          emojiPicker={false}
         >
           {stickyToolbar &&
             (review ? (
@@ -984,10 +1182,34 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                 subtext: t('editor.callout.subtext')
               })
               const taskItem = getTaskSlashMenuItem(editor, noteId)
+              // `/date` and `/remind` both surface the same two-row Date group:
+              // a plain date and a "Remind me — <subtitle>" (aliases overlap so
+              // either trigger shows both). Selecting inserts a configurable pill.
+              const suggestion = buildDateSuggestions('')
+              const dateAliases = ['date', 'remind', 'reminder', 'when']
+              const dateItems = suggestion
+                ? [
+                    {
+                      title: suggestion.dateLabel,
+                      onItemClick: () => insertDatePill(suggestion.dateValue),
+                      aliases: dateAliases,
+                      group: 'Basic blocks',
+                      subtext: 'Insert a date'
+                    },
+                    {
+                      title: 'Remind me',
+                      onItemClick: () => insertDatePill(suggestion.remindValue),
+                      aliases: dateAliases,
+                      group: 'Basic blocks',
+                      subtext: suggestion.remindSubtitle
+                    }
+                  ]
+                : []
               const all = orderSlashMenuItemsByGroup([
                 ...defaults,
                 calloutItem,
                 taskItem,
+                ...dateItems,
                 ...aiItems
               ])
               if (!query) return all
@@ -1004,6 +1226,22 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             getItems={getWikiLinkItems}
             suggestionMenuComponent={WikiLinkMenu}
             onItemClick={(item) => void handleWikiLinkSelect(item)}
+          />
+          <SuggestionMenuController
+            triggerCharacter="@"
+            getItems={getMentionItems}
+            suggestionMenuComponent={MentionSuggestionMenu}
+            onItemClick={(item) => handleMentionSelect(item)}
+          />
+          {/* Re-add BlockNote's default `:` emoji picker (disabled above via
+              emojiPicker={false}), but gated so it never opens while the caret
+              is inside an inline date/reminder — the `:` in `@today 23:20` must
+              type a time, not pop clock emojis. */}
+          <GridSuggestionMenuController
+            triggerCharacter=":"
+            columns={10}
+            minQueryLength={2}
+            shouldOpen={(tr) => !isDateMentionActive(tr)}
           />
         </BlockNoteView>
 
@@ -1045,6 +1283,16 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           options={pasteLinkState.options}
           selectedIndex={pasteLinkState.selectedIndex}
           onSelect={handlePasteLinkOptionSelect}
+        />
+
+        <DateMentionPopover
+          open={dateMentionState.open}
+          anchorId={dateMentionState.anchorId}
+          value={dateMentionState.value}
+          clockFormat={dateMentionClockFormat}
+          onChange={handleDateMentionChange}
+          onClear={handleDateMentionClear}
+          onClose={handleDateMentionClose}
         />
       </div>
       {marqueeZoneEl &&

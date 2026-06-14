@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ReminderDetail } from './reminder-detail'
@@ -6,6 +6,8 @@ import { ReminderDetail } from './reminder-detail'
 const mocks = vi.hoisted(() => ({
   openTab: vi.fn(),
   markViewed: vi.fn(() => Promise.resolve()),
+  archive: vi.fn(() => Promise.resolve({ success: true })),
+  toastSuccess: vi.fn(),
   invalidateQueries: vi.fn()
 }))
 
@@ -13,12 +15,21 @@ vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({ t: (key: string) => key })
 }))
 
+vi.mock('sonner', () => ({
+  toast: { success: mocks.toastSuccess, info: vi.fn() }
+}))
+
 vi.mock('@/contexts/tabs', () => ({
   useTabs: () => ({ openTab: mocks.openTab })
 }))
 
 vi.mock('@/services/inbox-service', () => ({
-  inboxService: { markViewed: mocks.markViewed, snooze: vi.fn(() => Promise.resolve()) }
+  inboxService: {
+    markViewed: mocks.markViewed,
+    snooze: vi.fn(() => Promise.resolve()),
+    archive: mocks.archive,
+    undoArchive: vi.fn(() => Promise.resolve({ success: true }))
+  }
 }))
 
 vi.mock('@tanstack/react-query', () => ({
@@ -79,6 +90,26 @@ describe('ReminderDetail task navigation', () => {
           selectedProjectId: 'proj-2'
         })
       })
+    )
+  })
+
+  it('renders a real middot separator, not a literal "&middot;" entity', () => {
+    const { container } = render(<ReminderDetail item={taskItem as never} />)
+
+    expect(container.textContent).toContain('·')
+    expect(container.textContent).not.toContain('middot')
+  })
+
+  it('archives the reminder and toasts "Archived" when the Archive button is clicked', async () => {
+    render(<ReminderDetail item={taskItem as never} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'reminder.archive' }))
+
+    await waitFor(() => expect(mocks.archive).toHaveBeenCalledWith('inbox_rem_1'))
+    expect(mocks.markViewed).not.toHaveBeenCalled()
+    expect(mocks.toastSuccess).toHaveBeenCalledWith(
+      expect.stringContaining('Archived'),
+      expect.objectContaining({ action: expect.objectContaining({ label: 'Undo' }) })
     )
   })
 })

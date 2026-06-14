@@ -75,6 +75,23 @@ export function useReminderNotifications(): void {
             isDeleted: false
           })
           break
+
+        case 'note_date':
+          // Inline date pill reminder: open the note and scroll to the pill via
+          // its stable anchor id (note.tsx reads viewState.anchorId).
+          openTab({
+            type: 'note',
+            title: reminder.targetTitle || 'Note',
+            icon: 'file-text',
+            path: `/notes/${reminder.targetId}`,
+            entityId: reminder.targetId,
+            isPinned: false,
+            isModified: false,
+            isPreview: false,
+            isDeleted: false,
+            viewState: { anchorId: reminder.anchorId ?? undefined }
+          })
+          break
       }
     },
     [openTab]
@@ -95,7 +112,8 @@ export function useReminderNotifications(): void {
         const typeLabels: Record<string, string> = {
           note: 'Note reminder',
           journal: 'Journal reminder',
-          highlight: 'Highlight reminder'
+          highlight: 'Highlight reminder',
+          note_date: 'Note reminder'
         }
         description = typeLabels[reminder.targetType] || 'Reminder due'
       }

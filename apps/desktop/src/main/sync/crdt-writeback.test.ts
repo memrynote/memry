@@ -22,6 +22,9 @@ const mocks = vi.hoisted(() => ({
   deleteNoteFromCache: vi.fn(),
   flushProjectionEvents: vi.fn(),
   closeDoc: vi.fn(),
+  syncNoteDateReminders: vi.fn(),
+  clearNoteDateReminders: vi.fn(),
+  createRemindersService: vi.fn(),
   sent: [] as Array<{ channel: string; payload: unknown }>,
   logger: {
     debug: vi.fn(),
@@ -95,11 +98,21 @@ vi.mock('../projections', () => ({
 }))
 
 vi.mock('../database/client', () => ({
-  getIndexDatabase: () => ({ kind: 'index-db' })
+  getIndexDatabase: () => ({ kind: 'index-db' }),
+  getDatabase: () => ({ kind: 'data-db' })
 }))
 
 vi.mock('@main/database/queries/notes', () => ({
   getNoteCacheById: (...args: unknown[]) => mocks.getNoteCacheById(...args)
+}))
+
+vi.mock('@memry/app-core/reminders', () => ({
+  createRemindersService: (...args: unknown[]) => mocks.createRemindersService(...args)
+}))
+
+vi.mock('../notes/note-date-reminders', () => ({
+  syncNoteDateReminders: (...args: unknown[]) => mocks.syncNoteDateReminders(...args),
+  clearNoteDateReminders: (...args: unknown[]) => mocks.clearNoteDateReminders(...args)
 }))
 
 import {

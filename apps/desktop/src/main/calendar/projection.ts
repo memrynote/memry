@@ -1,4 +1,4 @@
-import { and, asc, eq, gte, inArray, isNotNull, isNull, lte, lt, or, sql } from 'drizzle-orm'
+import { and, asc, eq, gte, inArray, isNotNull, isNull, lte, lt, ne, or, sql } from 'drizzle-orm'
 import type {
   CalendarProjectionBinding,
   CalendarProjectionEditability,
@@ -232,17 +232,24 @@ function loadReminderItems(db: DataDb, input: GetCalendarRangeInput): CalendarPr
     .select()
     .from(reminders)
     .where(
-      or(
-        and(
-          eq(reminders.status, 'pending'),
-          gte(reminders.remindAt, input.startAt),
-          lt(reminders.remindAt, input.endAt)
-        ),
-        and(
-          eq(reminders.status, 'snoozed'),
-          isNotNull(reminders.snoozedUntil),
-          gte(reminders.snoozedUntil, input.startAt),
-          lt(reminders.snoozedUntil, input.endAt)
+      and(
+        // `note_date` reminders are derived from inline date pills; surfacing
+        // them on the calendar is Phase 2 (read-only, own source type). Until
+        // then they only fire into the inbox — exclude them here so they don't
+        // leak in as editable generic 'Reminder' chips.
+        ne(reminders.targetType, 'note_date'),
+        or(
+          and(
+            eq(reminders.status, 'pending'),
+            gte(reminders.remindAt, input.startAt),
+            lt(reminders.remindAt, input.endAt)
+          ),
+          and(
+            eq(reminders.status, 'snoozed'),
+            isNotNull(reminders.snoozedUntil),
+            gte(reminders.snoozedUntil, input.startAt),
+            lt(reminders.snoozedUntil, input.endAt)
+          )
         )
       )
     )
@@ -286,6 +293,87 @@ function loadReminderItems(db: DataDb, input: GetCalendarRangeInput): CalendarPr
       source: nativeSource('memrynote Reminders'),
       binding: bindings.get(row.id) ?? null,
       snoozeOffsetMinutes
+    }
+  })
+}
+
+function loadNoteDateReminderItems(
+  db: DataDb,
+  indexDb: IndexDb,
+  input: GetCalendarRangeInput
+): CalendarProjectionItem[] {
+  const rows = db
+    .select()
+    .from(reminders)
+    .where(
+      and(
+        eq(reminders.targetType, 'note_date'),
+        // note_date chips persist after firing (the date lives in the note), so
+        // we include every status — upcoming (`pending`), snoozed, and already
+        // fired (`triggered`/`dismissed`, rendered faded). Snoozed positions by
+        // `snoozedUntil`; all other statuses by `remindAt`.
+        or(
+          and(
+            ne(reminders.status, 'snoozed'),
+            gte(reminders.remindAt, input.startAt),
+            lt(reminders.remindAt, input.endAt)
+          ),
+          and(
+            eq(reminders.status, 'snoozed'),
+            isNotNull(reminders.snoozedUntil),
+            gte(reminders.snoozedUntil, input.startAt),
+            lt(reminders.snoozedUntil, input.endAt)
+          )
+        )
+      )
+    )
+    .orderBy(asc(reminders.remindAt))
+    .all()
+
+  if (rows.length === 0) return []
+
+  const noteIds = [...new Set(rows.map((row) => row.targetId))]
+  const titleRows = indexDb
+    .select({ id: noteCache.id, title: noteCache.title })
+    .from(noteCache)
+    .where(inArray(noteCache.id, noteIds))
+    .all()
+  const titleById = new Map(titleRows.map((row) => [row.id, row.title]))
+
+  const editability: CalendarProjectionEditability = {
+    canMove: false,
+    canResize: false,
+    canEditText: false,
+    canDelete: false
+  }
+
+  return rows.map((row) => {
+    const isSnoozed = row.status === 'snoozed' && !!row.snoozedUntil
+    const effectiveStartAt = isSnoozed ? row.snoozedUntil! : row.remindAt
+    const snoozeOffsetMinutes = isSnoozed
+      ? Math.round(
+          (new Date(row.snoozedUntil!).getTime() - new Date(row.remindAt).getTime()) / 60000
+        )
+      : null
+
+    return {
+      projectionId: `note_date:${row.id}`,
+      sourceType: 'note_date' as const,
+      sourceId: row.id,
+      title: titleById.get(row.targetId)?.trim() || 'Untitled',
+      descriptionPreview: getDescriptionPreview(row.note),
+      startAt: effectiveStartAt,
+      endAt: null,
+      isAllDay: false,
+      timezone: LOCAL_TIMEZONE,
+      visualType: 'note_date' as const,
+      editability,
+      source: nativeSource('memrynote Notes'),
+      binding: null,
+      snoozeOffsetMinutes,
+      noteId: row.targetId,
+      anchorId: row.anchorId,
+      isTriggered: row.status === 'triggered' || row.status === 'dismissed'
     }
   })
 }
@@ -465,6 +553,7 @@ export function getCalendarRangeProjection(
     ...loadMemryEvents(db, input),
     ...loadTaskItems(db, input),
     ...loadReminderItems(db, input),
+    ...loadNoteDateReminderItems(db, indexDb, input),
     ...loadInboxSnoozeItems(db, input),
     ...loadExternalEvents(db, input),
     ...loadNoteDatePropertyItems(indexDb, enabledNames, input)

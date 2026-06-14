@@ -30,6 +30,10 @@ const isSuccess = (result: NaturalDateParseResult): result is ParseResult => res
 // Helper to check if result is an error
 const isError = (result: NaturalDateParseResult): result is ParseError => !result.success
 
+// Helper to read the parsed time ("HH:MM") or null on parse failure.
+const timeOf = (result: NaturalDateParseResult): string | null =>
+  result.success ? result.result.time : null
+
 // Helper to get date string for comparison (YYYY-MM-DD)
 const toDateString = (date: Date): string => {
   const year = date.getFullYear()
@@ -231,6 +235,63 @@ describe('Natural Date Parser', () => {
         if (isSuccess(result)) {
           expect(toDateString(result.result.date)).toBe('2026-01-28')
         }
+      })
+    })
+
+    describe('"last" prefix', () => {
+      // Reference: Wednesday, January 14, 2026 (currentDay = 3)
+      it('should return this Monday (Jan 12) for "last monday"', () => {
+        const result = parseNaturalDate('last monday')
+        expect(isSuccess(result)).toBe(true)
+        if (isSuccess(result)) {
+          expect(toDateString(result.result.date)).toBe('2026-01-12')
+        }
+      })
+
+      it('should return previous Wednesday (Jan 7) for "last wednesday"', () => {
+        const result = parseNaturalDate('last wednesday')
+        expect(isSuccess(result)).toBe(true)
+        if (isSuccess(result)) {
+          expect(toDateString(result.result.date)).toBe('2026-01-07')
+        }
+      })
+
+      it('should return last Friday (Jan 9) for "last friday"', () => {
+        const result = parseNaturalDate('last friday')
+        expect(isSuccess(result)).toBe(true)
+        if (isSuccess(result)) {
+          expect(toDateString(result.result.date)).toBe('2026-01-09')
+        }
+      })
+
+      it('should return last Sunday (Jan 11) for "last sunday"', () => {
+        const result = parseNaturalDate('last sunday')
+        expect(isSuccess(result)).toBe(true)
+        if (isSuccess(result)) {
+          expect(toDateString(result.result.date)).toBe('2026-01-11')
+        }
+      })
+
+      it('should parse a trailing time with "last monday 3pm"', () => {
+        const result = parseNaturalDate('last monday 3pm')
+        expect(isSuccess(result)).toBe(true)
+        if (isSuccess(result)) {
+          expect(toDateString(result.result.date)).toBe('2026-01-12')
+          expect(result.result.time).toBe('15:00')
+        }
+      })
+
+      it('should return last week\'s Monday (Jan 5) for "last week"', () => {
+        const result = parseNaturalDate('last week')
+        expect(isSuccess(result)).toBe(true)
+        if (isSuccess(result)) {
+          expect(toDateString(result.result.date)).toBe('2026-01-05')
+        }
+      })
+
+      it('should return an error for bare "last"', () => {
+        const result = parseNaturalDate('last')
+        expect(isError(result)).toBe(true)
       })
     })
 
@@ -1042,13 +1103,13 @@ describe('Natural Date Parser', () => {
       }
     })
 
-    it('should handle invalid 12-hour time gracefully', () => {
-      // "13pm" is not valid 12-hour time
-      const result = parseNaturalDate('tomorrow 13pm')
-      expect(isSuccess(result)).toBe(true)
-      if (isSuccess(result)) {
-        expect(result.result.time).toBeNull()
-      }
+    it('treats a 24-hour hour with a redundant meridiem as 24-hour', () => {
+      // "13pm".."23pm" are unambiguous as 24-hour — honor the hour, ignore the
+      // redundant meridiem rather than dropping the time.
+      expect(timeOf(parseNaturalDate('tomorrow 13pm'))).toBe('13:00')
+      expect(timeOf(parseNaturalDate('tomorrow 14pm'))).toBe('14:00')
+      expect(timeOf(parseNaturalDate('tomorrow 14:30pm'))).toBe('14:30')
+      expect(timeOf(parseNaturalDate('next monday at 14pm'))).toBe('14:00')
     })
   })
 

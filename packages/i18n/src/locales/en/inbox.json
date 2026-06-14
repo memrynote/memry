@@ -249,7 +249,7 @@
     "taskFallback": "Task",
     "highlighted": "Highlighted: \"{text}\"",
     "viewed": "Viewed",
-    "markViewed": "Mark as viewed",
+    "archive": "Archive",
     "notYetViewed": "Not yet viewed",
     "snooze": "Snooze",
     "presetInOneHour": "1 hour",
@@ -365,9 +365,6 @@
     },
     "componentsInboxDetailInboxContentEditor": {
       "contentEditor": "Content editor"
-    },
-    "componentsInboxDetailReminderDetail": {
-      "middot": "middot; "
     },
     "componentsInboxDetailTweetCard": {
       "tweetUnavailable": "Tweet unavailable",

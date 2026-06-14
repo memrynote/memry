@@ -383,6 +383,7 @@ export function InboxListView({
           targetId: entry.nav.targetId,
           targetTitle: entry.nav.targetTitle,
           projectId: entry.nav.projectId,
+          anchorId: entry.nav.anchorId,
           highlightStart: entry.nav.highlightStart,
           highlightEnd: entry.nav.highlightEnd,
           highlightText: entry.nav.highlightText,

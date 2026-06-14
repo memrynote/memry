@@ -9,6 +9,7 @@ interface VisualTypeMeta {
     | 'visual-type.reminder'
     | 'visual-type.snooze'
     | 'visual-type.note'
+    | 'visual-type.note-date'
   swatchColor: string
   dotColor: string
 }
@@ -43,6 +44,11 @@ export const VISUAL_TYPE_META: Record<CalendarProjectionVisualType, VisualTypeMe
     labelKey: 'visual-type.note',
     swatchColor: EVENT_TYPE_COLORS.note,
     dotColor: EVENT_TYPE_COLORS.note
+  },
+  note_date: {
+    labelKey: 'visual-type.note-date',
+    swatchColor: EVENT_TYPE_COLORS.note_date,
+    dotColor: EVENT_TYPE_COLORS.note_date
   }
 }
 
@@ -52,5 +58,6 @@ export const VISUAL_TYPE_ORDER: CalendarProjectionVisualType[] = [
   'task',
   'reminder',
   'snooze',
-  'note'
+  'note',
+  'note_date'
 ]

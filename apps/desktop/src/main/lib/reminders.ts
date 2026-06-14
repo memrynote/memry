@@ -63,6 +63,7 @@ function toReminder(row: ReminderRow): Reminder {
     targetType: row.targetType as Reminder['targetType'],
     targetId: row.targetId,
     remindAt: row.remindAt,
+    anchorId: row.anchorId,
     highlightText: row.highlightText,
     highlightStart: row.highlightStart,
     highlightEnd: row.highlightEnd,
@@ -95,6 +96,7 @@ function resolveReminderTarget(
       return { targetTitle: reminder.targetId, targetExists: true, highlightExists: undefined }
 
     case 'note':
+    case 'note_date':
     case 'highlight': {
       const note = getNoteCacheById(indexDb, reminder.targetId)
       const targetExists = !!note
@@ -179,6 +181,7 @@ function createReminderInboxItem(reminder: ReminderWithTarget): void {
       targetId: reminder.targetId,
       targetTitle: reminder.targetTitle,
       remindAt: reminder.remindAt,
+      anchorId: reminder.anchorId ?? undefined,
       highlightText: reminder.highlightText || undefined,
       highlightStart: reminder.highlightStart || undefined,
       highlightEnd: reminder.highlightEnd || undefined,

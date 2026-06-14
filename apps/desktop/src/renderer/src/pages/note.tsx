@@ -150,6 +150,12 @@ export function NotePage({ noteId }: NotePageProps) {
     return undefined
   }, [activeTab?.viewState])
 
+  // Extract inline date pill anchor from tab viewState (from note_date reminder navigation)
+  const initialAnchorId = useMemo(() => {
+    const viewState = activeTab?.viewState as { anchorId?: string } | undefined
+    return viewState?.anchorId
+  }, [activeTab?.viewState])
+
   // Convert query error to string
   const error = noteError?.message ?? null
 
@@ -1116,6 +1122,7 @@ export function NotePage({ noteId }: NotePageProps) {
               onLinkClick={handleLinkClick}
               onInternalLinkClick={(...args) => void handleInternalLinkClick(...args)}
               initialHighlight={initialHighlight}
+              initialAnchorId={initialAnchorId}
               noteTags={note.tags}
               tagColorMap={tagColorMap}
               onInlineTagsChange={(...args) => void handleInlineTagsChange(...args)}

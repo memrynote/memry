@@ -13,7 +13,8 @@ export const CalendarProjectionSourceTypeSchema = z.enum([
   'reminder',
   'inbox_snooze',
   'external_event',
-  'note'
+  'note',
+  'note_date'
 ])
 export const CalendarProjectionVisualTypeSchema = z.enum([
   'event',
@@ -21,7 +22,8 @@ export const CalendarProjectionVisualTypeSchema = z.enum([
   'reminder',
   'snooze',
   'external_event',
-  'note'
+  'note',
+  'note_date'
 ])
 export const CalendarChangeEntityTypeSchema = z.enum([
   'calendar_event',
@@ -251,6 +253,19 @@ export interface CalendarProjectionItem {
    * Null for non-reminders or reminders with no active snooze.
    */
   snoozeOffsetMinutes: number | null
+  /**
+   * For `note_date` items: the source note id and the inline date pill's stable
+   * anchor id, so a click can open the note scrolled to that exact pill.
+   * Undefined for item types that don't navigate to a note anchor.
+   */
+  noteId?: string | null
+  anchorId?: string | null
+  /**
+   * For `note_date` items: true once the reminder has fired (status `triggered`
+   * or `dismissed`). The chip is kept on the calendar but rendered faded so the
+   * date isn't lost. Undefined/false for upcoming or non-`note_date` items.
+   */
+  isTriggered?: boolean
 }
 
 export type CalendarProviderAccountConnectionStatus =

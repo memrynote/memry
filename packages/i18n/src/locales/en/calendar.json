@@ -26,6 +26,7 @@
     "event": "Event",
     "imported-event": "Imported event",
     "note": "Note",
+    "note-date": "Date reminder",
     "task": "Task",
     "reminder": "Reminder",
     "snooze": "Snooze"
@@ -157,6 +158,7 @@
   },
   "notePopover": {
     "kind": "Note",
+    "kindDateReminder": "Date reminder",
     "open": "Open note",
     "couldNotOpen": "Could not open note"
   }

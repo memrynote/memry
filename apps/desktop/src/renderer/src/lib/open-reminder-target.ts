@@ -13,6 +13,8 @@ export interface ReminderTargetInput {
   targetTitle: string | null
   /** Project the task belongs to — opens the Tasks page filtered to it. */
   projectId?: string
+  /** For 'note_date' targets: the inline date pill's stable anchor id. */
+  anchorId?: string
   highlightStart?: number
   highlightEnd?: number
   highlightText?: string
@@ -64,6 +66,7 @@ export function buildReminderTargetTab(input: ReminderTargetInput): ReminderTarg
 
     case 'note':
     case 'highlight':
+    case 'note_date':
       return {
         type: 'note',
         title: targetTitle || fallbacks.note,
@@ -78,7 +81,9 @@ export function buildReminderTargetTab(input: ReminderTargetInput): ReminderTarg
                 highlightEnd: input.highlightEnd,
                 highlightText: input.highlightText
               }
-            : undefined
+            : targetType === 'note_date'
+              ? { anchorId: input.anchorId }
+              : undefined
       }
   }
 }

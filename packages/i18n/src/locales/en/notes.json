@@ -106,6 +106,15 @@
       "success": "Success"
     }
   },
+  "dateMention": {
+    "dateInput": "Date",
+    "time": "Time",
+    "includeTime": "Include time",
+    "timeFormat": "Time format",
+    "dateFormat": "Date format",
+    "remind": "Remind",
+    "clear": "Clear"
+  },
   "menus": {
     "wiki": {
       "aria": "Note suggestions",
@@ -116,6 +125,15 @@
       "wikiLink": "Wiki link",
       "embedAria": "Embed {title}",
       "wikiLinkAria": "Wiki link {title}"
+    },
+    "mention": {
+      "aria": "Date and note suggestions",
+      "loading": "Loading notes...",
+      "empty": "No notes found",
+      "date": "Date",
+      "remindMe": "Remind me",
+      "dateHint": "Keep typing a date…",
+      "showMore": "Show more"
     },
     "tags": {
       "aria": "Tag suggestions",

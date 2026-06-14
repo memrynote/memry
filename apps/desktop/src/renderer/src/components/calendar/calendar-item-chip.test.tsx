@@ -47,4 +47,16 @@ describe('CalendarItemChip', () => {
     expect(screen.getByText('Planning')).toBeInTheDocument()
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
+
+  it('fades a fired (triggered) note_date chip but keeps it visible', () => {
+    render(
+      <CalendarItemChip
+        item={eventItem({ sourceType: 'note_date', visualType: 'note_date', isTriggered: true })}
+      />
+    )
+
+    const chip = screen.getByText('Planning').closest('[data-visual-type]')
+    expect(chip).toHaveAttribute('data-triggered', 'true')
+    expect(chip).toHaveClass('opacity-60')
+  })
 })

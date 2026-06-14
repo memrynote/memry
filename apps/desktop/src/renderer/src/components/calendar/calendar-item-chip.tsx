@@ -17,7 +17,8 @@ const VISUAL_TYPE_ICONS: Record<
   reminder: AlarmClock,
   snooze: NotificationSnooze,
   external_event: Calendar2,
-  note: StickyNote
+  note: StickyNote,
+  note_date: StickyNote
 }
 
 interface CalendarItemChipProps {
@@ -48,7 +49,9 @@ export function CalendarItemChip({
   const deletable = Boolean(onDeleteItem) && canDeleteEvent(item)
   const cls = cn(
     'flex h-full w-full items-start justify-between gap-0.5 rounded-[6px] px-1 py-0.5 text-start transition-[filter] @xl:px-2 @xl:py-1',
-    (onClick || deletable) && 'cursor-pointer hover:brightness-100'
+    (onClick || deletable) && 'cursor-pointer hover:brightness-100',
+    // Fired note_date chips are kept but faded so the date isn't lost.
+    item.isTriggered && 'opacity-60'
   )
   const chipStyle = useMemo<React.CSSProperties>(
     () =>
@@ -107,6 +110,7 @@ export function CalendarItemChip({
         }}
         onContextMenu={deletable ? handleContextMenu : undefined}
         data-visual-type={item.visualType}
+        data-triggered={item.isTriggered ? 'true' : undefined}
       >
         {content}
       </button>
@@ -114,7 +118,12 @@ export function CalendarItemChip({
   }
 
   return (
-    <div className={cls} style={chipStyle} data-visual-type={item.visualType}>
+    <div
+      className={cls}
+      style={chipStyle}
+      data-visual-type={item.visualType}
+      data-triggered={item.isTriggered ? 'true' : undefined}
+    >
       {content}
     </div>
   )

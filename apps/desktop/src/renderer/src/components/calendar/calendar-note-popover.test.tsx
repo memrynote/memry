@@ -42,7 +42,7 @@ describe('CalendarNotePopover', () => {
     expect(screen.getByText(/Deadline ·/)).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'notePopover.open' }))
-    expect(onOpenNote).toHaveBeenCalledWith('n1')
+    expect(onOpenNote).toHaveBeenCalledWith('n1', null)
 
     // clicks inside the popover never dismiss
     fireEvent.pointerDown(screen.getByTestId('calendar-note-popover'))
@@ -52,5 +52,40 @@ describe('CalendarNotePopover', () => {
     fireEvent.pointerDown(document.body)
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(onDismiss).toHaveBeenCalledTimes(2)
+  })
+
+  it('shows a note_date reminder with its own kind label and opens at the pill anchor', async () => {
+    const user = userEvent.setup()
+    const onOpenNote = vi.fn()
+    const onDismiss = vi.fn()
+
+    render(
+      <CalendarNotePopover
+        item={
+          {
+            sourceType: 'note_date',
+            visualType: 'note_date',
+            sourceId: 'rem-nd-1',
+            noteId: 'note-7',
+            anchorId: 'anchor-1',
+            title: 'Launch Plan',
+            descriptionPreview: null,
+            isAllDay: false,
+            startAt: '2026-04-14T11:00:00.000Z'
+          } as never
+        }
+        anchorRect={{ x: 20, y: 30, width: 40, height: 50 }}
+        onOpenNote={onOpenNote}
+        onDismiss={onDismiss}
+      />
+    )
+
+    expect(screen.getByText('Launch Plan')).toBeInTheDocument()
+    // distinct kind label for the inline-pill reminder
+    expect(screen.getByText('notePopover.kindDateReminder')).toBeInTheDocument()
+
+    // opens the note scrolled to the exact pill (noteId + anchorId)
+    await user.click(screen.getByRole('button', { name: 'notePopover.open' }))
+    expect(onOpenNote).toHaveBeenCalledWith('note-7', 'anchor-1')
   })
 })

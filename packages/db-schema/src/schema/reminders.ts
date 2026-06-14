@@ -61,6 +61,9 @@ export const reminders = sqliteTable(
     /** Character offset where highlight ends */
     highlightEnd: integer('highlight_end'),
 
+    /** For 'note_date' reminders: the inline date pill's stable anchor id */
+    anchorId: text('anchor_id'),
+
     // ========================================================================
     // Reminder Metadata
     // ========================================================================

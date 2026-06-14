@@ -70,6 +70,33 @@ const getNextDayOfWeek = (dayIndex: number, startFrom: Date = new Date()): Date 
 }
 
 /**
+ * Get the most recent past occurrence of a specific day of the week
+ */
+const getPreviousDayOfWeek = (dayIndex: number, startFrom: Date = new Date()): Date => {
+  const today = startOfDay(startFrom)
+  const currentDay = today.getDay()
+  let daysSince = currentDay - dayIndex
+
+  // If target day is today or is later this week, go back to last week's occurrence
+  if (daysSince <= 0) {
+    daysSince += 7
+  }
+
+  return addDays(today, -daysSince)
+}
+
+/**
+ * Get last week's Monday (for "last week")
+ */
+export const lastMonday = (from: Date = new Date()): Date => {
+  const today = startOfDay(from)
+  const currentDay = today.getDay()
+  const sinceMonday = currentDay === 0 ? 6 : currentDay - 1
+  const thisMonday = addDays(today, -sinceMonday)
+  return addDays(thisMonday, -7)
+}
+
+/**
  * Get the next Saturday (for "this weekend")
  */
 export const nextSaturday = (from: Date = new Date()): Date => {
@@ -137,7 +164,18 @@ const parseTimeString = (timeStr: string): string | null => {
     const minutes = match12Hour[2] ? parseInt(match12Hour[2], 10) : 0
     const period = match12Hour[3]
 
-    if (hours < 1 || hours > 12 || minutes < 0 || minutes > 59) {
+    if (minutes < 0 || minutes > 59) {
+      return null
+    }
+
+    // A 24-hour hour with a redundant meridiem ("14pm", "14:30pm") is
+    // unambiguous — honor the hour and ignore the meridiem rather than dropping
+    // the time.
+    if (hours >= 13 && hours <= 23) {
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+    }
+
+    if (hours < 1 || hours > 12) {
       return null
     }
 
@@ -242,6 +280,8 @@ export const parseNaturalDate = (input: string): NaturalDateParseResult => {
     date = addDays(today, -1)
   } else if (normalizedInput === 'next week') {
     date = nextMonday(today)
+  } else if (normalizedInput === 'last week') {
+    date = lastMonday(today)
   } else if (normalizedInput === 'this weekend' || normalizedInput === 'weekend') {
     date = nextSaturday(today)
   }
@@ -290,6 +330,22 @@ export const parseNaturalDate = (input: string): NaturalDateParseResult => {
             date = addDays(date, 7)
           }
         }
+      }
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // "LAST <weekday>": most recent past occurrence ("last monday", "last friday")
+  // -------------------------------------------------------------------------
+
+  if (!date) {
+    const lastDayMatch = normalizedInput.match(
+      /^last\s+(sunday|monday|tuesday|wednesday|thursday|friday|saturday)$/
+    )
+    if (lastDayMatch) {
+      const dayIndex = DAY_NAMES.indexOf(lastDayMatch[1])
+      if (dayIndex !== -1) {
+        date = getPreviousDayOfWeek(dayIndex, today)
       }
     }
   }

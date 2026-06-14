@@ -5,7 +5,8 @@
   "license": "GPL-3.0",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./reminders": "./src/reminders.ts"
   },
   "types": "./src/index.ts",
   "scripts": {
