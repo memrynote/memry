@@ -14,6 +14,7 @@ let activeCheck: Promise<AppUpdateState> | null = null
 let activeDownload: Promise<AppUpdateState> | null = null
 let downloadPromptVisible = false
 let restartPromptVisible = false
+let quitAndInstallRequested = false
 
 let state: AppUpdateState = {
   currentVersion: getCurrentDisplayVersion(),
@@ -171,7 +172,22 @@ export function quitAndInstall(): void {
   }
 
   logger.info('quitting to install update', { version: state.availableVersion })
-  setImmediate(() => autoUpdater.quitAndInstall())
+  quitAndInstallRequested = true
+  // Trigger the app's graceful shutdown first. Calling autoUpdater.quitAndInstall()
+  // directly here is cancelled by the before-quit handler (event.preventDefault +
+  // app.exit), so the update never installs and the app re-prompts on every launch.
+  // The shutdown handler calls performQuitAndInstall() once cleanup completes.
+  app.quit()
+}
+
+export function isQuitAndInstallRequested(): boolean {
+  return quitAndInstallRequested
+}
+
+// Performs the real Squirrel/NSIS install + relaunch. Must run only after the
+// app's graceful shutdown (vault close, write-back flush) has completed.
+export function performQuitAndInstall(): void {
+  autoUpdater.quitAndInstall()
 }
 
 function setState(patch: Partial<AppUpdateState>): void {
