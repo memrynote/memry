@@ -27,11 +27,10 @@ function stripHtmlComments(text) {
 export function extractPullRequestNumbers(body = '') {
   const seen = new Set()
   const numbers = []
-  const pattern = /\(#(\d+)\)|^#(\d+)\b/gm
 
-  for (const match of body.matchAll(pattern)) {
-    const number = Number(match[1] ?? match[2])
-    if (!Number.isInteger(number) || seen.has(number)) {
+  for (const line of body.split('\n')) {
+    const number = extractPullRequestNumberFromLine(line)
+    if (number === null || seen.has(number)) {
       continue
     }
 
@@ -40,6 +39,26 @@ export function extractPullRequestNumbers(body = '') {
   }
 
   return numbers
+}
+
+function extractPullRequestNumberFromLine(line) {
+  const trimmed = line.trim()
+
+  // Deterministic changelog format: "#569 title @author".
+  const leading = /^#(\d+)\b/.exec(trimmed)
+  if (leading) {
+    return Number(leading[1])
+  }
+
+  // release-drafter format: "- title (#issue) @author (#PR)". release-drafter
+  // appends the PR number last, so the trailing "(#NNN)" is the PR; earlier
+  // "(#NNN)" matches are issue references baked into the title.
+  let pullRequestNumber = null
+  for (const match of trimmed.matchAll(/\(#(\d+)\)/g)) {
+    pullRequestNumber = Number(match[1])
+  }
+
+  return pullRequestNumber
 }
 
 export function extractReleaseNote(body = '') {
@@ -201,27 +220,23 @@ export function buildReleaseNotesPrompt({ finalTag, pullRequests }) {
     '- Leave a section empty if no provided PR belongs there.',
     '- Do not include a Changelog section.',
     '- Return Markdown only. Do not wrap the answer in a code fence.',
+    '- Begin the response with the "## New Features" heading. Add no greeting, preamble, or closing remarks.',
     '',
     'Input JSON:',
     JSON.stringify(input, null, 2)
   ].join('\n')
 }
 
-export function buildCodexExecArgs({ model, outputFile }) {
-  const args = [
-    'exec',
-    '--ephemeral',
-    '--sandbox',
-    'read-only',
-    '--output-last-message',
-    outputFile
-  ]
+export function buildClaudeExecArgs({ model } = {}) {
+  // Headless run with no setting sources so the local user/project CLAUDE.md,
+  // skills, and hooks never load — conversational instructions (e.g. a greeting)
+  // would otherwise contaminate the structured release-notes output.
+  const args = ['-p', '--output-format', 'text', '--setting-sources', '']
 
   if (model) {
     args.push('--model', model)
   }
 
-  args.push('-')
   return args
 }
 

@@ -6,7 +6,7 @@ import {
   buildHumanizedReleaseBody,
   buildHumanizedReleaseMarker,
   buildReleaseNotesPrompt,
-  buildCodexExecArgs,
+  buildClaudeExecArgs,
   assertHumanizedReleaseNotesForPublish,
   extractPreviousTagFromReleaseBody,
   extractPullRequestNumbers,
@@ -19,7 +19,7 @@ import {
 describe('release notes helpers', () => {
   it('extracts unique PR numbers from release-drafter markdown in order', () => {
     const body = [
-      '## What\'s Changed',
+      "## What's Changed",
       '- feat: add outline shortcut @kaan (#124)',
       '- fix: resolve media paths @kaan (#125)',
       '- docs: update setup guide @kaan (#124)'
@@ -29,11 +29,24 @@ describe('release notes helpers', () => {
   })
 
   it('extracts PR numbers from an existing deterministic changelog', () => {
-    const body = ['## Changelog', '#124 feat: add outline shortcut @kaan', '#125 fix media @kaan'].join(
-      '\n'
-    )
+    const body = [
+      '## Changelog',
+      '#124 feat: add outline shortcut @kaan',
+      '#125 fix media @kaan'
+    ].join('\n')
 
     assert.deepEqual(extractPullRequestNumbers(body), [124, 125])
+  })
+
+  it('uses the trailing PR number and ignores issue references in the title', () => {
+    const body = [
+      '## 🐛 Bug Fixes',
+      '- fix(editor): guard ProseMirror view access before mount (#541) @h4yfans (#569)',
+      '- fix(updater): strip HTML from release notes in update dialog (#514) @h4yfans (#566)',
+      '- build(deps-dev): bump esbuild from 0.28.0 to 0.28.1 @[dependabot[bot]](https://github.com/apps/dependabot) (#560)'
+    ].join('\n')
+
+    assert.deepEqual(extractPullRequestNumbers(body), [569, 566, 560])
   })
 
   it('extracts a human release note from the PR body', () => {
@@ -115,20 +128,28 @@ describe('release notes helpers', () => {
     ].join('\n')
 
     assert.equal(validateHumanizedReleaseMarkdown(markdown), markdown)
-    assert.throws(() => validateHumanizedReleaseMarkdown('## New Features\n- Missing sections'), /Bug Fixes/)
-    assert.throws(() => validateHumanizedReleaseMarkdown(`${markdown}\n\n## Changelog`), /Changelog/)
+    assert.throws(
+      () => validateHumanizedReleaseMarkdown('## New Features\n- Missing sections'),
+      /Bug Fixes/
+    )
+    assert.throws(
+      () => validateHumanizedReleaseMarkdown(`${markdown}\n\n## Changelog`),
+      /Changelog/
+    )
     assert.throws(
       () =>
-        validateHumanizedReleaseMarkdown([
-          '## New Features',
-          '📑 Table of Contents Shortcut — Open note outlines faster. (#124)',
-          '',
-          '## Bug Fixes',
-          '',
-          '## Documentation',
-          '',
-          '## Chores'
-        ].join('\n')),
+        validateHumanizedReleaseMarkdown(
+          [
+            '## New Features',
+            '📑 Table of Contents Shortcut — Open note outlines faster. (#124)',
+            '',
+            '## Bug Fixes',
+            '',
+            '## Documentation',
+            '',
+            '## Chores'
+          ].join('\n')
+        ),
       /must be Markdown bullets/
     )
   })
@@ -182,7 +203,7 @@ describe('release notes helpers', () => {
     assert.match(body, /#124 feat: add table of contents shortcut @kaan/)
   })
 
-  it('builds a prompt that asks Codex to rewrite facts, not invent them', () => {
+  it('builds a prompt that asks the model to rewrite facts, not invent them', () => {
     const prompt = buildReleaseNotesPrompt({
       finalTag: 'v2026-05-08',
       pullRequests: [
@@ -202,27 +223,23 @@ describe('release notes helpers', () => {
     assert.match(prompt, /Open a note outline/)
   })
 
-  it('builds codex exec args supported by current CLI', () => {
-    assert.deepEqual(buildCodexExecArgs({ outputFile: '/tmp/humanized.md' }), [
-      'exec',
-      '--ephemeral',
-      '--sandbox',
-      'read-only',
-      '--output-last-message',
-      '/tmp/humanized.md',
-      '-'
+  it('builds claude exec args supported by current CLI', () => {
+    assert.deepEqual(buildClaudeExecArgs(), [
+      '-p',
+      '--output-format',
+      'text',
+      '--setting-sources',
+      ''
     ])
 
-    assert.deepEqual(buildCodexExecArgs({ model: 'gpt-5.4', outputFile: '/tmp/humanized.md' }), [
-      'exec',
-      '--ephemeral',
-      '--sandbox',
-      'read-only',
-      '--output-last-message',
-      '/tmp/humanized.md',
+    assert.deepEqual(buildClaudeExecArgs({ model: 'claude-sonnet-4-6' }), [
+      '-p',
+      '--output-format',
+      'text',
+      '--setting-sources',
+      '',
       '--model',
-      'gpt-5.4',
-      '-'
+      'claude-sonnet-4-6'
     ])
   })
 

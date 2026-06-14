@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { execFileSync, spawnSync } from 'node:child_process'
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { stdin as input, stdout as output } from 'node:process'
@@ -14,7 +14,7 @@ import {
 } from './release-utils.mjs'
 import {
   buildCompareUrl,
-  buildCodexExecArgs,
+  buildClaudeExecArgs,
   buildHumanizedReleaseBody,
   buildReleaseNotesPrompt,
   extractCompareBaseFromReleaseBody,
@@ -66,13 +66,7 @@ async function runCli() {
 
   const pullRequests = pullRequestNumbers.map((number) =>
     normalizePullRequest(
-      readGhJson([
-        'pr',
-        'view',
-        String(number),
-        '--json',
-        'number,title,author,labels,body,url'
-      ])
+      readGhJson(['pr', 'view', String(number), '--json', 'number,title,author,labels,body,url'])
     )
   )
   const previousTag = selectPreviousTag({
@@ -100,7 +94,7 @@ async function runCli() {
     finalTag: preview.tag,
     pullRequests
   })
-  const humanizedMarkdown = runCodex(prompt, options)
+  const humanizedMarkdown = runClaude(prompt, options)
   const finalBody = buildHumanizedReleaseBody({
     compareUrl,
     finalTag: preview.tag,
@@ -125,7 +119,9 @@ async function runCli() {
 
   const notesFile = writeTempNotes(finalBody)
   try {
-    runGh(['release', 'edit', draftDetails.tagName, '--notes-file', notesFile], { stdio: 'inherit' })
+    runGh(['release', 'edit', draftDetails.tagName, '--notes-file', notesFile], {
+      stdio: 'inherit'
+    })
   } finally {
     rmSync(path.dirname(notesFile), { force: true, recursive: true })
   }
@@ -145,39 +141,32 @@ function printPlan({ compareUrl, draft, dryRun, preview, pullRequests }) {
   console.log('')
 }
 
-function runCodex(prompt, options) {
-  const tempDir = mkdtempSync(path.join(os.tmpdir(), 'memry-release-notes-'))
-  const outputFile = path.join(tempDir, 'humanized.md')
-  const args = buildCodexExecArgs({ model: options.model, outputFile })
+function runClaude(prompt, options) {
+  const args = buildClaudeExecArgs({ model: options.model })
 
-  const result = spawnSync('codex', args, {
+  const result = spawnSync('claude', args, {
     encoding: 'utf8',
     input: prompt
   })
 
   if (result.error) {
-    rmSync(tempDir, { force: true, recursive: true })
     throw result.error
   }
 
   if (result.status !== 0) {
-    rmSync(tempDir, { force: true, recursive: true })
     throw new Error(
-      [
-        `codex ${args.join(' ')} failed`,
-        result.stdout?.trim(),
-        result.stderr?.trim()
-      ]
+      [`claude ${args.join(' ')} failed`, result.stdout?.trim(), result.stderr?.trim()]
         .filter(Boolean)
         .join('\n')
     )
   }
 
-  try {
-    return readFileSync(outputFile, 'utf8').trim()
-  } finally {
-    rmSync(tempDir, { force: true, recursive: true })
+  const output = result.stdout?.trim()
+  if (!output) {
+    throw new Error('claude returned no release notes output')
   }
+
+  return output
 }
 
 function selectPreviousTag({ draftBody, draftTag, releases }) {
@@ -253,7 +242,7 @@ function printHelp() {
 Options:
   --tag <tag>    Draft release tag to humanize. Defaults to the newest draft.
   --dry-run      Generate notes and print them without editing GitHub.
-  --model <id>   Codex model override.
+  --model <id>   Claude model override.
   --yes, -y      Skip the interactive confirmation prompt.
   --help, -h     Show this help.
 `)
