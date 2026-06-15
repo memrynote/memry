@@ -29,6 +29,10 @@ import { registerCrdtIpcHandlers } from './crdt-handlers'
 import { registerTelemetryHandlers, unregisterTelemetryHandlers } from './telemetry-handlers'
 import { registerUpdaterHandlers, unregisterUpdaterHandlers } from './updater-handlers'
 import { registerAgentMcpHandlers, unregisterAgentMcpHandlers } from './agent-mcp-handlers'
+import {
+  registerTickTickImportHandlers,
+  unregisterTickTickImportHandlers
+} from './ticktick-import-handlers'
 import { registerLocaleHandlers, type RebuildMenuFn } from './locale-handler'
 import type { I18nInstance } from '@memry/i18n/main'
 import { createLogger } from '../lib/logger'
@@ -141,6 +145,9 @@ export function registerAllHandlers(deps?: IpcDeps): void {
   // Register Agent MCP settings/status handlers
   registerAgentMcpHandlers()
 
+  // Register TickTick import handler
+  registerTickTickImportHandlers()
+
   handlersRegistered = true
 }
 
@@ -176,6 +183,7 @@ export function unregisterAllHandlers(): void {
   unregisterUpdaterHandlers()
   unregisterTelemetryHandlers()
   unregisterAgentMcpHandlers()
+  unregisterTickTickImportHandlers()
 
   handlersRegistered = false
   ipcLog.info('all handlers unregistered')
