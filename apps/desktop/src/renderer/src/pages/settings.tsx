@@ -14,7 +14,8 @@ import {
   Key,
   User,
   CalendarDays,
-  Terminal
+  Terminal,
+  Download
 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { GeneralSettings } from './settings/general-section'
@@ -32,6 +33,7 @@ import { CalendarSettingsSection } from './settings/calendar-section'
 import { ShortcutsSettings } from './settings/shortcuts-section'
 import { AccountSettings } from './settings/account-section'
 import { CommandLineSettings } from './settings/command-line-section'
+import { ImportSettings } from './settings/import-section'
 import { useSettingsModal } from '@/contexts/settings-modal-context'
 import { useT } from '@memry/i18n/renderer'
 
@@ -146,6 +148,12 @@ export function SettingsPage() {
             isActive={activeSection === 'properties'}
             onClick={() => setActiveSection('properties')}
           />
+          <SettingsNavItem
+            icon={<Download className="w-3.5 h-3.5" />}
+            label={t('page.nav.items.import')}
+            isActive={activeSection === 'import'}
+            onClick={() => setActiveSection('import')}
+          />
         </SettingsNavGroup>
       </div>
 
@@ -170,6 +178,7 @@ export function SettingsPage() {
             {activeSection === 'integrations' && <IntegrationsSettings />}
             {activeSection === 'tags' && <TagsSettings />}
             {activeSection === 'properties' && <PropertiesSettings />}
+            {activeSection === 'import' && <ImportSettings />}
             {activeSection === 'shortcuts' && <ShortcutsSettings />}
             {activeSection === 'command-line' && <CommandLineSettings />}
             {activeSection === 'account' && <AccountSettings />}

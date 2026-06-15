@@ -26,6 +26,7 @@ import type {
   Message
 } from '@memry/contracts/ipc-agent'
 import type { AppUpdateState } from '@memry/contracts/ipc-updater'
+import type { TickTickImportSummary } from '@memry/contracts/ticktick-import-api'
 import type { Locale, LocaleApi } from '@memry/contracts/locale-api'
 import type {
   SyncStatusChangedEvent,
@@ -1715,6 +1716,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
   bookmarks: BookmarksClientAPI
   tags: TagsClientAPI
   reminders: RemindersClientAPI
+  tickTickImport: { run: () => Promise<TickTickImportSummary> }
   search: SearchClientAPI
   graph: GraphClientAPI
   quickCapture: QuickCaptureClientAPI
