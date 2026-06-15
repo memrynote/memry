@@ -26,7 +26,8 @@
         "integrations": "Integrations",
         "vault": "Vault",
         "tags": "Tags",
-        "properties": "Properties"
+        "properties": "Properties",
+        "import": "Import"
       }
     }
   },
@@ -791,6 +792,38 @@
       "connectFailed": "Failed to connect",
       "testFailed": "Connection test failed",
       "updateFailed": "Failed to update setting"
+    }
+  },
+  "import": {
+    "header": {
+      "title": "Import",
+      "subtitle": "Bring your notes in from other apps"
+    },
+    "intro": "One-time imports create new notes in your vault. Your original export files are left untouched.",
+    "sources": {
+      "notion": "Import an HTML export (.zip)"
+    },
+    "action": "Import",
+    "dialog": {
+      "title": "Import from {{name}}",
+      "choose": "Choose file…",
+      "chooseHint": "Select your {{label}}",
+      "selected": "{{count}} file selected",
+      "selected_other": "{{count}} files selected",
+      "start": "Start import",
+      "cancel": "Cancel",
+      "close": "Close",
+      "done": "Done",
+      "running": "Importing…",
+      "progress": "{{completed}} of {{total}}",
+      "summary": {
+        "title": "Import complete",
+        "imported": "{{count}} notes imported",
+        "attachments": "{{count}} attachments copied",
+        "skipped": "{{count}} skipped",
+        "failed": "{{count}} failed"
+      },
+      "error": "Import failed"
     }
   },
   "integrations": {
