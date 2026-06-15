@@ -807,7 +807,8 @@
       "html": "Import .html files with linked images and cross-page links",
       "google-keep": "Import a Google Takeout Keep export (.json or .zip)",
       "bear": "Import a Bear .bear2bk archive (notes, tags, attachments)",
-      "evernote": "Import one or more Evernote .enex export files"
+      "evernote": "Import one or more Evernote .enex export files",
+      "roam": "Import a Roam Research graph (.json) with nested outlines"
     },
     "action": "Import",
     "stats": {

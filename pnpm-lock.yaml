@@ -354,6 +354,9 @@ importers:
       '@memry/markdown-import':
         specifier: workspace:*
         version: link:../../packages/markdown-import
+      '@memry/roam-import':
+        specifier: workspace:*
+        version: link:../../packages/roam-import
       '@memry/rpc':
         specifier: workspace:*
         version: link:../../packages/rpc

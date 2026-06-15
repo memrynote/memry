@@ -190,6 +190,7 @@
     "@memry/google-keep-import": "workspace:*",
     "@memry/bear-import": "workspace:*",
     "@memry/evernote-import": "workspace:*",
+    "@memry/roam-import": "workspace:*",
     "@memry/rpc": "workspace:*",
     "@memry/shared": "workspace:*",
     "@memry/storage-data": "workspace:*",
