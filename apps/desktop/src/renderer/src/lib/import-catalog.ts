@@ -1,26 +1,11 @@
 import { Import } from '@/lib/icons'
 import type { AppIcon } from '@/lib/icons/types'
 
-export interface ImportCatalogItem {
-  id: string
-  name: string
-  /** i18n key (within the `settings` namespace) for the short description. */
-  descriptionKey: string
-  icon: AppIcon
-  /** Native picker filter label + extensions. */
-  fileLabel: string
-  extensions: string[]
-  allowMultiple: boolean
-}
+/**
+ * Per-importer icon override, keyed by importer id. Importer metadata (name,
+ * description, file spec, preview capability) comes from the registry over IPC;
+ * only the icon is renderer-side. Missing ids fall back to DEFAULT_IMPORT_ICON.
+ */
+export const IMPORT_ICONS: Record<string, AppIcon> = {}
 
-export const IMPORT_CATALOG: ImportCatalogItem[] = [
-  {
-    id: 'notion',
-    name: 'Notion',
-    descriptionKey: 'import.sources.notion',
-    icon: Import,
-    fileLabel: 'Notion HTML export',
-    extensions: ['zip'],
-    allowMultiple: true
-  }
-]
+export const DEFAULT_IMPORT_ICON: AppIcon = Import

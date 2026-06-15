@@ -17,7 +17,11 @@ export const ImportChannels = {
     /** Start an import run (resolves with the final summary). */
     START: 'import:start',
     /** Cancel an in-flight import run by id. */
-    CANCEL: 'import:cancel'
+    CANCEL: 'import:cancel',
+    /** Run an importer's optional preview (no writes). */
+    PREVIEW: 'import:preview',
+    /** List registered importers' metadata for the Settings catalog. */
+    LIST: 'import:list'
   },
   events: {
     /** Streaming progress for a run, keyed by importId. */
@@ -83,3 +87,50 @@ export interface ImportProgressEvent {
   done: boolean
   summary?: ImportSummaryResult
 }
+
+// ============================================================================
+// Importer metadata (registry-derived Settings catalog)
+// ============================================================================
+
+export interface ImporterMeta {
+  id: string
+  name: string
+  descriptionKey: string
+  fileSpec: { label: string; extensions: string[]; allowMultiple: boolean }
+  supportsPreview: boolean
+}
+
+// ============================================================================
+// Optional preview (no writes) — importers that support it report what would
+// be imported before the user commits.
+// ============================================================================
+
+export interface ImportPreviewGroup {
+  /** File name / project name the group represents. */
+  label: string
+  /** Labeled counts; the renderer resolves each labelKey via i18n. */
+  counts: { labelKey: string; value: number }[]
+  sampleTitles?: string[]
+  warnings?: string[]
+  /** Set when this group could not be parsed; other groups still preview. */
+  error?: string
+}
+
+export interface ImportPreview {
+  groups: ImportPreviewGroup[]
+}
+
+export const ImportPreviewSchema = z.object({
+  importId: z.string().min(1),
+  importerId: z.string().min(1),
+  sourcePaths: z.array(z.string().min(1)),
+  options: z.record(z.string(), z.unknown()).optional()
+})
+export type ImportPreviewInput = z.infer<typeof ImportPreviewSchema>
+
+export interface ImportPreviewSuccess {
+  success: true
+  preview: ImportPreview
+}
+
+export type ImportPreviewResponse = ImportPreviewSuccess | ImportErrorResult

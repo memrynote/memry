@@ -13,8 +13,8 @@ describe('import context', () => {
 
   it('tallies notes/attachments/skipped/failed into summary', () => {
     const ctx = createImportContext('id1', new AbortController().signal)
-    ctx.reportNote()
-    ctx.reportNote()
+    ctx.reportImported()
+    ctx.reportImported()
     ctx.reportAttachment()
     ctx.reportSkipped('a.html', 'empty')
     ctx.reportFailed('b.html', new Error('boom'))

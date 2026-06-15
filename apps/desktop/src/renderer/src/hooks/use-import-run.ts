@@ -1,12 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { ImportProgressEvent, ImportSummaryResult } from '@memry/contracts/import-channels'
+import type {
+  ImportPreview,
+  ImportProgressEvent,
+  ImportSummaryResult
+} from '@memry/contracts/import-channels'
 
 export interface UseImportRun {
   importId: string | null
   progress: ImportProgressEvent | null
   summary: ImportSummaryResult | null
+  preview: ImportPreview | null
+  isPreviewing: boolean
   isRunning: boolean
   error: string | null
+  runPreview: (importerId: string, sourcePaths: string[]) => Promise<void>
   start: (importerId: string, sourcePaths: string[]) => Promise<void>
   cancel: () => void
   reset: () => void
@@ -21,6 +28,8 @@ export function useImportRun(): UseImportRun {
   const [importId, setImportId] = useState<string | null>(null)
   const [progress, setProgress] = useState<ImportProgressEvent | null>(null)
   const [summary, setSummary] = useState<ImportSummaryResult | null>(null)
+  const [preview, setPreview] = useState<ImportPreview | null>(null)
+  const [isPreviewing, setIsPreviewing] = useState(false)
   const [isRunning, setIsRunning] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -36,10 +45,33 @@ export function useImportRun(): UseImportRun {
   const reset = useCallback(() => {
     setProgress(null)
     setSummary(null)
+    setPreview(null)
     setError(null)
     setImportId(null)
     activeIdRef.current = null
   }, [])
+
+  const runPreview = useCallback(
+    async (importerId: string, sourcePaths: string[]): Promise<void> => {
+      const id = crypto.randomUUID()
+      activeIdRef.current = id
+      setImportId(id)
+      setPreview(null)
+      setSummary(null)
+      setError(null)
+      setIsPreviewing(true)
+      try {
+        const res = await window.api.import.preview({ importId: id, importerId, sourcePaths })
+        if (res.success) setPreview(res.preview)
+        else setError(res.error ?? 'Preview failed')
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Preview failed')
+      } finally {
+        setIsPreviewing(false)
+      }
+    },
+    []
+  )
 
   const start = useCallback(async (importerId: string, sourcePaths: string[]): Promise<void> => {
     const id = crypto.randomUUID()
@@ -77,5 +109,17 @@ export function useImportRun(): UseImportRun {
     void window.api.import.cancel({ importId: id })
   }, [])
 
-  return { importId, progress, summary, isRunning, error, start, cancel, reset }
+  return {
+    importId,
+    progress,
+    summary,
+    preview,
+    isPreviewing,
+    isRunning,
+    error,
+    runPreview,
+    start,
+    cancel,
+    reset
+  }
 }

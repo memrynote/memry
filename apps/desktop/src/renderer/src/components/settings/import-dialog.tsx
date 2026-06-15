@@ -11,10 +11,10 @@ import {
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { useImportRun } from '@/hooks/use-import-run'
-import type { ImportCatalogItem } from '@/lib/import-catalog'
+import type { ImporterItem } from '@/hooks/use-importers'
 
 interface ImportDialogProps {
-  item: ImportCatalogItem | null
+  item: ImporterItem | null
   open: boolean
   onOpenChange: (open: boolean) => void
 }
@@ -38,11 +38,13 @@ export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
   const choose = async () => {
     if (!item) return
     const result = await window.api.import.pickFiles({
-      label: item.fileLabel,
-      extensions: item.extensions,
-      allowMultiple: item.allowMultiple
+      label: item.fileSpec.label,
+      extensions: item.fileSpec.extensions,
+      allowMultiple: item.fileSpec.allowMultiple
     })
-    if (!result.canceled && result.filePaths.length > 0) setPaths(result.filePaths)
+    if (result.canceled || result.filePaths.length === 0) return
+    setPaths(result.filePaths)
+    if (item.supportsPreview) void run.runPreview(item.id, result.filePaths)
   }
 
   const startImport = () => {
@@ -52,6 +54,7 @@ export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
 
   const summary = run.summary
   const showProgress = (run.isRunning || Boolean(run.progress)) && !run.error
+  const needsPreview = Boolean(item?.supportsPreview)
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -67,7 +70,7 @@ export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
               variant="outline"
               size="sm"
               onClick={() => void choose()}
-              disabled={run.isRunning}
+              disabled={run.isRunning || run.isPreviewing}
             >
               {t('import.dialog.choose')}
             </Button>
@@ -75,6 +78,49 @@ export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
               <p className="text-xs/4 text-muted-foreground truncate">
                 {t('import.dialog.selected', { count: paths.length })}
               </p>
+            )}
+
+            {run.isPreviewing && (
+              <div className="flex items-center gap-2 text-[13px]/4 text-foreground">
+                <Spinner />
+                <span>{t('import.dialog.running')}</span>
+              </div>
+            )}
+
+            {run.preview && (
+              <div className="flex flex-col gap-3">
+                {run.preview.groups.map((g, gi) => (
+                  <div key={gi} className="rounded-md border border-border p-3 text-xs/4">
+                    <div className="font-medium text-[13px]/4 text-foreground">{g.label}</div>
+                    {g.error ? (
+                      <div className="mt-1 text-destructive">{g.error}</div>
+                    ) : (
+                      <>
+                        <div className="mt-1 text-muted-foreground">
+                          {g.counts.map((c) => t(c.labelKey, { count: c.value })).join(' · ')}
+                        </div>
+                        {g.sampleTitles && g.sampleTitles.length > 0 && (
+                          <div className="mt-1 truncate text-muted-foreground">
+                            {g.sampleTitles.join(' · ')}
+                          </div>
+                        )}
+                        {g.warnings && g.warnings.length > 0 && (
+                          <details className="mt-1">
+                            <summary className="cursor-pointer">
+                              {t('import.preview.warnings')} ({g.warnings.length})
+                            </summary>
+                            <ul className="mt-1 ps-4 list-disc">
+                              {g.warnings.map((w, i) => (
+                                <li key={i}>{w}</li>
+                              ))}
+                            </ul>
+                          </details>
+                        )}
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
             )}
 
             {showProgress && (
@@ -116,9 +162,11 @@ export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
             <p className="text-xs/4 text-muted-foreground">
               {t('import.dialog.summary.imported', { count: summary.imported })}
             </p>
-            <p className="text-xs/4 text-muted-foreground">
-              {t('import.dialog.summary.attachments', { count: summary.attachments })}
-            </p>
+            {summary.attachments > 0 && (
+              <p className="text-xs/4 text-muted-foreground">
+                {t('import.dialog.summary.attachments', { count: summary.attachments })}
+              </p>
+            )}
             {summary.skipped > 0 && (
               <p className="text-xs/4 text-muted-foreground">
                 {t('import.dialog.summary.skipped', { count: summary.skipped })}
@@ -144,11 +192,11 @@ export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
           ) : (
             <Button
               size="sm"
-              disabled={paths.length === 0}
+              disabled={paths.length === 0 || run.isPreviewing || (needsPreview && !run.preview)}
               onPointerDown={startImport}
               onClick={startImport}
             >
-              {t('import.dialog.start')}
+              {needsPreview ? t('import.preview.confirm') : t('import.dialog.start')}
             </Button>
           )}
         </DialogFooter>

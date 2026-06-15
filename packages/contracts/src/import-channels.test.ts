@@ -3,7 +3,8 @@ import {
   ImportChannels,
   ImportStartSchema,
   ImportCancelSchema,
-  ImportPickFilesSchema
+  ImportPickFilesSchema,
+  ImportPreviewSchema
 } from './import-channels'
 
 describe('ImportChannels', () => {
@@ -11,6 +12,8 @@ describe('ImportChannels', () => {
     expect(ImportChannels.invoke.PICK_FILES).toBe('import:pick-files')
     expect(ImportChannels.invoke.START).toBe('import:start')
     expect(ImportChannels.invoke.CANCEL).toBe('import:cancel')
+    expect(ImportChannels.invoke.PREVIEW).toBe('import:preview')
+    expect(ImportChannels.invoke.LIST).toBe('import:list')
     expect(ImportChannels.events.PROGRESS).toBe('import:progress')
   })
 
@@ -41,5 +44,22 @@ describe('ImportChannels', () => {
 
   it('rejects an empty cancel payload', () => {
     expect(ImportCancelSchema.safeParse({}).success).toBe(false)
+  })
+
+  it('validates a preview payload', () => {
+    expect(
+      ImportPreviewSchema.safeParse({
+        importId: 'i1',
+        importerId: 'todoist',
+        sourcePaths: ['/a.csv']
+      }).success
+    ).toBe(true)
+  })
+
+  it('rejects a preview payload with an empty importerId', () => {
+    expect(
+      ImportPreviewSchema.safeParse({ importId: 'i1', importerId: '', sourcePaths: ['/a.csv'] })
+        .success
+    ).toBe(false)
   })
 })

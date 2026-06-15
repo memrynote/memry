@@ -1,5 +1,6 @@
 import { registerImporter } from './registry'
 import { notionImporter } from './notion/notion-importer'
+import { todoistImporter } from './todoist/todoist-importer'
 
 let registered = false
 
@@ -8,4 +9,5 @@ export function registerBuiltinImporters(): void {
   if (registered) return
   registered = true
   registerImporter(notionImporter)
+  registerImporter(todoistImporter)
 }
