@@ -28,7 +28,8 @@ const mocks = vi.hoisted(() => {
   return {
     app: {
       isPackaged: true,
-      getVersion: vi.fn(() => '1.2.3')
+      getVersion: vi.fn(() => '1.2.3'),
+      quit: vi.fn()
     },
     windows: [
       {
@@ -107,6 +108,7 @@ describe('updater', () => {
     mocks.dialog.showMessageBox.mockResolvedValue({ response: 1 })
     mocks.app.isPackaged = true
     mocks.app.getVersion.mockReturnValue('1.2.3')
+    mocks.app.quit.mockClear()
     mocks.windows[0].webContents.send.mockClear()
   })
 
@@ -234,6 +236,34 @@ describe('updater', () => {
       releaseNotes: 'Ready to install',
       downloadProgressPercent: 100
     })
+    // quitAndInstall triggers a graceful app quit (so before-quit cleanup runs)
+    // instead of installing immediately; the install runs after cleanup.
+    expect(mocks.app.quit).toHaveBeenCalledTimes(1)
+    expect(updater.isQuitAndInstallRequested()).toBe(true)
+    expect(mocks.autoUpdater.quitAndInstall).not.toHaveBeenCalled()
+  })
+
+  it('installs the downloaded update only after graceful shutdown completes', async () => {
+    const updater = await loadUpdater()
+    updater.initializeUpdater()
+
+    mocks.autoUpdater.emit('update-downloaded', {
+      version: '1.2.7',
+      releaseNotes: 'Ready'
+    })
+    await flushAsyncWork()
+
+    expect(updater.isQuitAndInstallRequested()).toBe(false)
+
+    // User clicks "Restart now": request a graceful quit, do not install yet.
+    updater.quitAndInstall()
+    expect(mocks.app.quit).toHaveBeenCalledTimes(1)
+    expect(updater.isQuitAndInstallRequested()).toBe(true)
+    expect(mocks.autoUpdater.quitAndInstall).not.toHaveBeenCalled()
+
+    // The shutdown handler calls performQuitAndInstall() after cleanup; only
+    // then does Squirrel install + relaunch.
+    updater.performQuitAndInstall()
     expect(mocks.autoUpdater.quitAndInstall).toHaveBeenCalledTimes(1)
   })
 })

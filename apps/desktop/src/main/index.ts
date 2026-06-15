@@ -69,7 +69,7 @@ import { toAbsolutePath, createSnapshot } from './vault/notes'
 import { safeRead } from './vault/file-ops'
 import { SnapshotReasons } from '@memry/db-schema/schema/notes-cache'
 import { SettingsChannels } from '@memry/contracts/ipc-channels'
-import { initializeUpdater } from './updater'
+import { initializeUpdater, isQuitAndInstallRequested, performQuitAndInstall } from './updater'
 import { buildAppMenu, buildEditableTextContextMenu } from './menu'
 import { setMainI18n } from './lib/main-i18n'
 import {
@@ -1257,7 +1257,15 @@ app.on('before-quit', (event) => {
     .then(() => {
       shutdownLog.info('cleanup complete')
       clearTimeout(shutdownTimeout)
-      app.exit(0)
+      if (isQuitAndInstallRequested()) {
+        // Cleanup is done; hand off to Squirrel/NSIS to install + relaunch.
+        // The re-entrant before-quit returns early (isShuttingDown), so the
+        // install-driven quit is no longer cancelled by preventDefault.
+        shutdownLog.info('installing downloaded update and relaunching')
+        performQuitAndInstall()
+      } else {
+        app.exit(0)
+      }
     })
     .catch((error) => {
       shutdownLog.error('error during cleanup:', error)
