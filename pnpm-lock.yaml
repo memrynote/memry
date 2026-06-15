@@ -321,6 +321,9 @@ importers:
       '@memry/app-core':
         specifier: workspace:*
         version: link:../../packages/app-core
+      '@memry/apple-journal-import':
+        specifier: workspace:*
+        version: link:../../packages/apple-journal-import
       '@memry/bear-import':
         specifier: workspace:*
         version: link:../../packages/bear-import

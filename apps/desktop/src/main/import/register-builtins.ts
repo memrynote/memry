@@ -7,6 +7,7 @@ import { googleKeepImporter } from './google-keep/google-keep-importer'
 import { bearImporter } from './bear/bear-importer'
 import { evernoteImporter } from './evernote/evernote-importer'
 import { roamImporter } from './roam/roam-importer'
+import { appleJournalImporter } from './apple-journal/apple-journal-importer'
 
 let registered = false
 
@@ -22,4 +23,5 @@ export function registerBuiltinImporters(): void {
   registerImporter(bearImporter)
   registerImporter(evernoteImporter)
   registerImporter(roamImporter)
+  registerImporter(appleJournalImporter)
 }

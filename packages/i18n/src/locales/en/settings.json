@@ -808,7 +808,8 @@
       "google-keep": "Import a Google Takeout Keep export (.json or .zip)",
       "bear": "Import a Bear .bear2bk archive (notes, tags, attachments)",
       "evernote": "Import one or more Evernote .enex export files",
-      "roam": "Import a Roam Research graph (.json) with nested outlines"
+      "roam": "Import a Roam Research graph (.json) with nested outlines",
+      "apple-journal": "Import an Apple Journal HTML export as dated notes"
     },
     "action": "Import",
     "stats": {
