@@ -13,6 +13,7 @@ export type SettingsSection =
   | 'agent-providers'
   | 'agent-mcp'
   | 'integrations'
+  | 'import'
   | 'tags'
   | 'properties'
   | 'shortcuts'

@@ -26,7 +26,8 @@
         "integrations": "Integrations",
         "vault": "Vault",
         "tags": "Tags",
-        "properties": "Properties"
+        "properties": "Properties",
+        "import": "Import"
       }
     }
   },
@@ -791,6 +792,23 @@
       "connectFailed": "Failed to connect",
       "testFailed": "Connection test failed",
       "updateFailed": "Failed to update setting"
+    }
+  },
+  "import": {
+    "header": {
+      "title": "Import",
+      "subtitle": "Bring tasks in from other apps"
+    },
+    "todoist": {
+      "title": "Import from Todoist",
+      "description": "Choose a Todoist project CSV export. Each file becomes a new project.",
+      "choose": "Choose CSV file(s)…",
+      "import": "Import",
+      "cancel": "Cancel",
+      "counts": "{{tasks}} tasks · {{subtasks}} sub-tasks · {{withDueDate}} dated · {{comments}} comments · {{skipped}} skipped",
+      "warnings": "Warnings",
+      "success": "Imported {{projects}} project(s), {{tasks}} task(s)",
+      "error": "Todoist import failed"
     }
   },
   "integrations": {
