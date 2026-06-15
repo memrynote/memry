@@ -383,8 +383,9 @@ describe('vault lifecycle', () => {
     expect(getAllVaults().vaults).toEqual([])
     expect(getConfig()).toEqual({
       excludePatterns: [],
-      defaultNoteFolder: 'notes',
+      defaultNoteFolder: '',
       journalFolder: 'journal',
+      journalDateFormat: 'YYYY-MM-DD',
       attachmentsFolder: 'attachments'
     })
     expect(mocks.closeAllDatabases).toHaveBeenCalled()

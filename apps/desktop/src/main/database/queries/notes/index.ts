@@ -83,8 +83,6 @@ export {
 } from './snapshot-queries'
 
 export {
-  JOURNAL_PATH_PREFIX,
-  JOURNAL_DATE_PATTERN,
   isJournalEntry,
   extractDateFromPath,
   generateJournalPath,

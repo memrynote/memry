@@ -6,13 +6,15 @@ export interface VaultConfig {
   excludePatterns: string[]
   defaultNoteFolder: string
   journalFolder: string
+  journalDateFormat: string
   attachmentsFolder: string
 }
 
 export const defaultVaultConfig: VaultConfig = {
-  excludePatterns: ['.git', 'node_modules', '.trash'],
-  defaultNoteFolder: 'notes',
+  excludePatterns: ['.git', 'node_modules', '.trash', '.obsidian', '.memry'],
+  defaultNoteFolder: '',
   journalFolder: 'journal',
+  journalDateFormat: 'YYYY-MM-DD',
   attachmentsFolder: 'attachments'
 }
 

@@ -109,10 +109,7 @@ export function useNoteTreeData(): NoteTreeData {
       if (note) {
         const parts = note.path.split('/')
         parts.pop()
-        if (parts.length > 1 && parts[0] === 'notes') {
-          return parts.slice(1).join('/')
-        }
-        return ''
+        return parts.join('/')
       }
 
       return ''

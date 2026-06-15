@@ -9,6 +9,7 @@ import {
   getNoteMetadataByPath,
   listNoteMetadata
 } from '@memry/storage-data'
+import { formatJournalFilename } from '@memry/storage-vault'
 import type { DataDb } from './database.ts'
 import { createId } from './ids.ts'
 import { parseMarkdownNote, snippet, wordCount, writeMarkdownNote } from './markdown.ts'
@@ -126,8 +127,21 @@ function notePath(config: VaultConfig, title: string, folder?: string): string {
   return normalizePath(`${config.defaultNoteFolder}/${folderPart}${safeFilename(title)}.md`)
 }
 
+// Folder of a note relative to defaultNoteFolder ('' = vault root). Tolerant of
+// both the flat model (no prefix) and a legacy notes/ prefix; preserves nested
+// folders (a plain string replace would mangle multi-level paths).
+function noteFolderFromPath(notePathValue: string, defaultNoteFolder: string): string {
+  const dir = path.dirname(notePathValue)
+  const base = dir === '.' ? '' : dir
+  if (!defaultNoteFolder) return base
+  if (base === defaultNoteFolder) return ''
+  return base.startsWith(`${defaultNoteFolder}/`) ? base.slice(defaultNoteFolder.length + 1) : base
+}
+
 function journalPath(config: VaultConfig, date: string): string {
-  return normalizePath(`${config.journalFolder}/${date}.md`)
+  return normalizePath(
+    `${config.journalFolder}/${formatJournalFilename(date, config.journalDateFormat)}.md`
+  )
 }
 
 async function ensureUniquePath(vaultPath: string, relativePath: string): Promise<string> {
@@ -316,7 +330,7 @@ export function createNotesService({
       let nextPath = row.path
 
       if (input.title && input.title !== row.title && !row.journalDate) {
-        const folder = path.dirname(row.path).replace(`${config.defaultNoteFolder}/`, '')
+        const folder = noteFolderFromPath(row.path, config.defaultNoteFolder)
         nextPath = await ensureUniquePath(vaultPath, notePath(config, input.title, folder))
         await fs.mkdir(path.dirname(path.join(vaultPath, nextPath)), { recursive: true })
         await fs.rename(path.join(vaultPath, row.path), path.join(vaultPath, nextPath))

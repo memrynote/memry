@@ -97,7 +97,7 @@ test('opens a standalone vault and exposes core note, journal, task, inbox, and 
     properties: { status: 'draft' }
   })
   assert.equal(note.title, 'CLI Note')
-  assert.equal(note.path, 'notes/Projects/CLI Note.md')
+  assert.equal(note.path, 'Projects/CLI Note.md')
   assert.deepEqual(note.properties, { status: 'draft' })
 
   const fetchedNote = await app.notes.get(note.id)
@@ -163,10 +163,7 @@ test('opens a standalone vault and exposes core note, journal, task, inbox, and 
     targetFolder: 'Projects'
   })
   assert.equal(importResult.imported, 1)
-  assert.equal(
-    importResult.importedFiles[0]?.destPath,
-    path.join(vaultPath, 'notes/Projects/import.md')
-  )
+  assert.equal(importResult.importedFiles[0]?.destPath, path.join(vaultPath, 'Projects/import.md'))
 
   const htmlExportPath = path.join(vaultPath, 'cli-note.html')
   const markdownExportPath = path.join(vaultPath, 'cli-note.md')

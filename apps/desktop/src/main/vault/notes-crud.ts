@@ -46,7 +46,7 @@ import type { FolderInfo } from '@memry/contracts/templates-api'
 import { readFolderConfig } from './folders'
 import { createLogger } from '../lib/logger'
 import { getFileType, getExtension } from '@memry/shared/file-types'
-import { getStatus } from './index'
+import { getStatus, getConfig } from './index'
 import { emitNoteEvent, getNotesDir, toAbsolutePath, toRelativePath } from './notes-io'
 import { maybeCreateSignificantSnapshot } from './notes-versions'
 import { noteToListItem } from './notes-queries'
@@ -625,7 +625,17 @@ export async function deleteNote(id: string): Promise<void> {
 
 export async function getFolders(): Promise<FolderInfo[]> {
   const notesDir = getNotesDir()
-  const paths = await listDirectories(notesDir, notesDir)
+  const config = getConfig()
+  // Hide structural/excluded top-level folders (journal, attachments, node_modules,
+  // etc.) from the collection tree; journals live in the Journal view.
+  const hiddenRoots = new Set(
+    [config.journalFolder, config.attachmentsFolder, ...config.excludePatterns]
+      .filter(Boolean)
+      .map((p) => p.replace(/\/+$/, '').split('/')[0])
+  )
+  const paths = (await listDirectories(notesDir, notesDir)).filter(
+    (folderPath) => !hiddenRoots.has(folderPath.split('/')[0])
+  )
   const db = getDatabase()
 
   return Promise.all(

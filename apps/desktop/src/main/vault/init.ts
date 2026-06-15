@@ -4,7 +4,7 @@ import path from 'path'
 /**
  * Default vault folder structure
  */
-const VAULT_FOLDERS = ['notes', 'journal', 'attachments', 'attachments/images', 'attachments/files']
+const VAULT_FOLDERS = ['journal', 'attachments', 'attachments/images', 'attachments/files']
 
 /**
  * Hidden Memry folder name
@@ -15,9 +15,10 @@ const MEMRY_DIR = '.memry'
  * Default vault configuration
  */
 const DEFAULT_CONFIG = {
-  excludePatterns: ['.git', 'node_modules', '.trash'],
-  defaultNoteFolder: 'notes',
+  excludePatterns: ['.git', 'node_modules', '.trash', '.obsidian', '.memry'],
+  defaultNoteFolder: '',
   journalFolder: 'journal',
+  journalDateFormat: 'YYYY-MM-DD',
   attachmentsFolder: 'attachments'
 }
 

@@ -146,11 +146,11 @@ const createNote = (
 })
 
 const mockNotes: NoteListItem[] = [
-  createNote('note-1', 'notes/Meeting Notes.md'),
-  createNote('note-2', 'notes/Projects/Project Alpha.md'),
-  createNote('note-3', 'notes/Projects/Project Beta.md'),
-  createNote('note-4', 'notes/Archive/Old Note.md'),
-  createNote('note-5', 'notes/Daily Journal.md', { emoji: '📝' })
+  createNote('note-1', 'Meeting Notes.md'),
+  createNote('note-2', 'Projects/Project Alpha.md'),
+  createNote('note-3', 'Projects/Project Beta.md'),
+  createNote('note-4', 'Archive/Old Note.md'),
+  createNote('note-5', 'Daily Journal.md', { emoji: '📝' })
 ]
 
 const mockFolders: FolderInfo[] = [
@@ -186,7 +186,7 @@ const setupMocks = (
     createNote: {
       mutateAsync: vi
         .fn()
-        .mockResolvedValue({ success: true, note: { id: 'new-note', path: 'notes/Untitled.md' } })
+        .mockResolvedValue({ success: true, note: { id: 'new-note', path: 'Untitled.md' } })
     },
     deleteNote: {
       mutateAsync: vi.fn().mockResolvedValue({ success: true })
@@ -610,7 +610,7 @@ describe('T523: NotesTree - context-aware note/folder creation', () => {
 
     createNoteMock = vi.fn().mockResolvedValue({
       success: true,
-      note: { id: 'new-note', path: 'notes/Untitled.md' }
+      note: { id: 'new-note', path: 'Untitled.md' }
     })
     createFolderMock = vi.fn().mockResolvedValue(true)
     ;(useNotesList as ReturnType<typeof vi.fn>).mockReturnValue({

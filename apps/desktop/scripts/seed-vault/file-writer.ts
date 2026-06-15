@@ -3,7 +3,7 @@ import { dirname, resolve } from 'path'
 import matter from 'gray-matter'
 
 export interface NoteFile {
-  /** Relative path inside the vault (e.g. "notes/movies/Dune.md") */
+  /** Relative path inside the vault (e.g. "movies/Dune.md") */
   relativePath: string
   /** Frontmatter object — id/title/created/modified must be set by the caller. */
   frontmatter: Record<string, unknown>

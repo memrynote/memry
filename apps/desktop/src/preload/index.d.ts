@@ -428,6 +428,7 @@ export interface VaultConfig {
   excludePatterns: string[]
   defaultNoteFolder: string
   journalFolder: string
+  journalDateFormat: string
   attachmentsFolder: string
 }
 

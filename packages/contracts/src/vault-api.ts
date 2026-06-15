@@ -48,8 +48,11 @@ export interface VaultStatus {
 
 export interface VaultConfig {
   excludePatterns: string[]
+  /** Default folder for newly created notes; '' = vault root */
   defaultNoteFolder: string
   journalFolder: string
+  /** Obsidian-style date format for journal filenames (e.g. 'YYYY-MM-DD') */
+  journalDateFormat: string
   attachmentsFolder: string
 }
 
@@ -75,6 +78,7 @@ export const UpdateVaultConfigSchema = z.object({
   excludePatterns: z.array(z.string()).optional(),
   defaultNoteFolder: z.string().optional(),
   journalFolder: z.string().optional(),
+  journalDateFormat: z.string().optional(),
   attachmentsFolder: z.string().optional()
 })
 

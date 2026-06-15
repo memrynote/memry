@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { AppUpdateState } from '@memry/contracts/ipc-updater'
 import { type Locale } from '@memry/contracts/locale-api'
 import { useT } from '@memry/i18n/renderer'
@@ -12,10 +12,12 @@ import {
   SelectValue
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
+import { Input } from '@/components/ui/input'
 import { useTabPreferences } from '@/hooks/use-tab-preferences'
 import { useAppUpdater } from '@/hooks/use-app-updater'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { useTelemetrySettings } from '@/hooks/use-telemetry-settings'
+import { useVault } from '@/hooks/use-vault'
 import { useTabs } from '@/contexts/tabs'
 import { toast } from 'sonner'
 import {
@@ -56,6 +58,13 @@ export function GeneralSettings() {
     quitAndInstall
   } = useAppUpdater()
   const { updateSettings: updateContextSettings } = useTabs()
+  const { config, updateConfig } = useVault()
+
+  const [defaultNoteFolder, setDefaultNoteFolder] = useState('')
+
+  useEffect(() => {
+    if (config) setDefaultNoteFolder(config.defaultNoteFolder)
+  }, [config])
 
   const isLoading = tabLoading || generalLoading || telemetryLoading
 
@@ -86,6 +95,12 @@ export function GeneralSettings() {
     },
     [t, updateGeneralSettings]
   )
+
+  const handleDefaultNoteFolderBlur = useCallback(() => {
+    if (config && defaultNoteFolder !== config.defaultNoteFolder) {
+      void updateConfig({ defaultNoteFolder })
+    }
+  }, [config, defaultNoteFolder, updateConfig])
 
   const handleTelemetryChange = useCallback(
     async (enabled: boolean) => {
@@ -313,6 +328,19 @@ export function GeneralSettings() {
             checked={generalSettings.createInSelectedFolder}
             onCheckedChange={(...args) => void handleCreateInSelectedFolderChange(...args)}
             className={ACCENT_SWITCH}
+          />
+        </SettingRow>
+
+        <SettingRow
+          label={t('general.fileCreation.defaultNoteFolder.label')}
+          description={t('general.fileCreation.defaultNoteFolder.description')}
+        >
+          <Input
+            value={defaultNoteFolder}
+            onChange={(e) => setDefaultNoteFolder(e.target.value)}
+            onBlur={handleDefaultNoteFolderBlur}
+            placeholder={t('general.fileCreation.defaultNoteFolder.placeholder')}
+            className="h-7 w-40 text-xs/4"
           />
         </SettingRow>
       </SettingsGroup>

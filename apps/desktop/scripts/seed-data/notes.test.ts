@@ -7,7 +7,7 @@ describe('notes seed data', () => {
     const istanbul = NOTES.find((note) => note.frontmatter.title === 'Istanbul')
 
     expect(istanbul).toBeDefined()
-    expect(istanbul?.relativePath).toBe('notes/travel/Istanbul.md')
+    expect(istanbul?.relativePath).toBe('travel/Istanbul.md')
     expect(istanbul?.frontmatter.tags).toEqual(['travel', 'istanbul', 'planning'])
     expect(istanbul?.frontmatter.location).toBe('Istanbul, Turkey')
     expect(istanbul?.frontmatter.status).toBe('planning')
