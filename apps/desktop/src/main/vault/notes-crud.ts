@@ -112,6 +112,9 @@ export interface NoteCreateInput {
   tags?: string[]
   template?: string
   properties?: Record<string, unknown>
+  /** ISO timestamps to preserve on import; default to now when omitted. */
+  created?: string
+  modified?: string
 }
 
 export interface NoteUpdateInput {
@@ -218,7 +221,10 @@ export async function createNote(input: NoteCreateInput): Promise<Note> {
 
   const mergedTags = [...new Set([...templateTags, ...(input.tags ?? [])])]
 
-  const frontmatter = createFrontmatter(input.title, mergedTags)
+  const frontmatter = createFrontmatter(input.title, mergedTags, {
+    created: input.created,
+    modified: input.modified
+  })
 
   const properties = { ...templateProperties, ...(input.properties ?? {}) }
   if (Object.keys(properties).length > 0) {
