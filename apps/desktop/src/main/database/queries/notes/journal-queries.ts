@@ -1,6 +1,6 @@
 import { eq, desc, and, like, sql, count } from 'drizzle-orm'
 import { noteCache, type NoteCache } from '@memry/db-schema/schema/notes-cache'
-import { buildJournalRegex, parseJournalDate, formatJournalFilename } from '@memry/storage-vault'
+import { parseJournalDate, formatJournalFilename } from '@memry/storage-vault'
 import type { IndexDb } from '../../types'
 import { type ActivityLevel, ACTIVITY_THRESHOLDS, calculateActivityLevel } from './query-helpers'
 import { getJournalConfig } from '@main/vault/journal-config'
@@ -29,9 +29,9 @@ function journalStem(path: string): string | null {
 }
 
 export function isJournalEntry(path: string): boolean {
-  const stem = journalStem(path)
-  if (stem === null) return false
-  return buildJournalRegex(getJournalConfig().journalDateFormat).test(stem)
+  // Range-validate via parseJournalDate so detection and date extraction agree
+  // (a regex-only match like journal/2026-13-01.md is NOT a journal entry).
+  return extractDateFromPath(path) !== null
 }
 
 export function extractDateFromPath(path: string): string | null {

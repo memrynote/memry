@@ -51,4 +51,11 @@ describe('journal detection (config-aware)', () => {
     expect(extractDateFromPath('journal/2026-06-15.md')).toBe('2026-06-15')
     expect(generateJournalPath('2026-06-15')).toBe('journal/2026-06-15.md')
   })
+
+  it('treats a regex-matching but out-of-range date as a regular note', () => {
+    // Detection range-validates, so isJournalEntry agrees with extractDateFromPath
+    // and never yields a journal with an empty date.
+    expect(isJournalEntry('journal/2026-13-01.md')).toBe(false)
+    expect(extractDateFromPath('journal/2026-13-01.md')).toBeNull()
+  })
 })

@@ -13,15 +13,24 @@ export interface FoldersService {
   delete(folderPath: string): Promise<boolean>
 }
 
-async function walkFolders(root: string, current = ''): Promise<FolderRecord[]> {
+async function walkFolders(
+  root: string,
+  hiddenTopLevel: Set<string>,
+  current = ''
+): Promise<FolderRecord[]> {
   const absolute = path.join(root, current)
   const entries = await fs.readdir(absolute, { withFileTypes: true })
   const folders: FolderRecord[] = []
   for (const entry of entries) {
     if (!entry.isDirectory()) continue
+    // Skip hidden dirs (.memry, .obsidian, .git) and structural/excluded folders
+    // (journal, attachments, excludePatterns) — relevant once the notes root is
+    // the vault root (defaultNoteFolder = '').
+    if (entry.name.startsWith('.')) continue
+    if (current === '' && hiddenTopLevel.has(entry.name)) continue
     const relative = normalizePath(path.join(current, entry.name))
     folders.push({ path: relative })
-    folders.push(...(await walkFolders(root, relative)))
+    folders.push(...(await walkFolders(root, hiddenTopLevel, relative)))
   }
   return folders
 }
@@ -34,10 +43,15 @@ export function createFoldersService({
   config: VaultConfig
 }): FoldersService {
   const root = path.join(vaultPath, config.defaultNoteFolder)
+  const hiddenTopLevel = new Set(
+    [config.journalFolder, config.attachmentsFolder, ...config.excludePatterns]
+      .filter(Boolean)
+      .map((p) => normalizePath(p).split('/')[0])
+  )
 
   return {
     async list() {
-      return walkFolders(root)
+      return walkFolders(root, hiddenTopLevel)
     },
     async create(folderPath) {
       const normalized = normalizePath(folderPath)

@@ -261,7 +261,10 @@ async function openVault(vaultPath: string): Promise<void> {
     createInboxStatsProjector()
   ])
 
-  updateStatus({ isIndexing: true, indexProgress: 0 })
+  // Set the vault path before indexing so getConfig() (and the journal-config
+  // holder) resolve the real config.json instead of the closed-vault fallback —
+  // otherwise the initial index uses default journal config + empty excludes.
+  updateStatus({ isIndexing: true, indexProgress: 0, path: vaultPath })
 
   try {
     if (indexHealth !== 'healthy') {
@@ -451,7 +454,14 @@ export async function updateConfig(updates: Partial<VaultConfig>): Promise<Vault
 
   if (structuralChanged) {
     logger.info('Structural vault config changed, rebuilding index...')
-    await reindex()
+    updateStatus({ isIndexing: true, indexProgress: 0 })
+    try {
+      // Full rebuild, not incremental reindex: indexFile skips paths already in
+      // cache, so re-classifying existing notes/journals needs a clean rebuild.
+      await rebuildIndex(currentStatus.path)
+    } finally {
+      updateStatus({ isIndexing: false, indexProgress: 100 })
+    }
   }
 
   return newConfig
