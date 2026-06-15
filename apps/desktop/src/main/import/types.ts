@@ -1,3 +1,5 @@
+import type { ImportPreview } from '@memry/contracts/import-channels'
+
 export interface ImportFileSpec {
   label: string
   extensions: string[]
@@ -29,7 +31,7 @@ export interface ImportContext {
   status(message: string): void
   setPhase(phase: ImportProgress['phase']): void
   reportProgress(completed: number, total: number): void
-  reportNote(): void
+  reportImported(): void
   reportAttachment(): void
   reportSkipped(item: string, reason?: string): void
   reportFailed(item: string, error?: unknown): void
@@ -46,6 +48,10 @@ export interface ImportInput {
 export interface Importer {
   id: string
   name: string
+  descriptionKey: string
   fileSpec: ImportFileSpec
+  preview?(input: ImportInput, signal: AbortSignal): Promise<ImportPreview>
   run(input: ImportInput, ctx: ImportContext): Promise<ImportSummary>
 }
+
+export type { ImportPreview, ImportPreviewGroup } from '@memry/contracts/import-channels'

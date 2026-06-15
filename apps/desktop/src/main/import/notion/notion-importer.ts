@@ -29,6 +29,7 @@ function decodeName(name: string): string {
 export const notionImporter: Importer = {
   id: 'notion',
   name: 'Notion',
+  descriptionKey: 'import.sources.notion',
   fileSpec: { label: 'Notion HTML export', extensions: ['zip'], allowMultiple: true },
 
   async run(input: ImportInput, ctx: ImportContext): Promise<ImportSummary> {
@@ -100,7 +101,7 @@ export const notionImporter: Importer = {
           created: fileInfo.ctime?.toISOString(),
           modified: fileInfo.mtime?.toISOString()
         })
-        ctx.reportNote()
+        ctx.reportImported()
 
         // Copy this page's attachments into the note and rewrite the refs.
         let rewritten = body

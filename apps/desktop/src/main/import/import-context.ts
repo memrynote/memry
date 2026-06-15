@@ -57,7 +57,7 @@ export function createImportContext(importId: string, signal: AbortSignal): Impo
       total = t
       emit()
     },
-    reportNote: () => {
+    reportImported: () => {
       imported++
       emit()
     },
