@@ -197,7 +197,7 @@ export const INBOX_ITEMS: SeedInboxItem[] = [
     sourceUrl: 'https://example.com/recipes/lemon-ricotta-pancakes',
     captureSource: 'browser-extension',
     filedAt: offsetISO(-3, 16),
-    filedTo: 'notes/food/Lemon Ricotta Pancakes.md',
+    filedTo: 'food/Lemon Ricotta Pancakes.md',
     filedAction: 'note',
     metadata: { publisher: 'Kitchen Journal', readingTime: 6 },
     createdAt: offsetISO(-4, 11),
@@ -277,7 +277,7 @@ export const FILING_HISTORY_ROWS: SeedFilingHistory[] = [
     id: generateId(),
     itemType: 'link',
     itemContent: 'Recipe: lemon ricotta pancakes — weekend breakfast idea',
-    filedTo: 'notes/food/Lemon Ricotta Pancakes.md',
+    filedTo: 'food/Lemon Ricotta Pancakes.md',
     filedAction: 'note',
     tags: ['projects/personal', 'food'],
     filedAt: offsetISO(-3, 16)
@@ -286,7 +286,7 @@ export const FILING_HISTORY_ROWS: SeedFilingHistory[] = [
     id: generateId(),
     itemType: 'link',
     itemContent: 'Weekend hike in Marin — trail map and picnic stop',
-    filedTo: 'notes/travel/Marin Weekend.md',
+    filedTo: 'travel/Marin Weekend.md',
     filedAction: 'note',
     tags: ['projects/personal', 'fitness'],
     filedAt: offsetISO(-9, 14)
@@ -295,7 +295,7 @@ export const FILING_HISTORY_ROWS: SeedFilingHistory[] = [
     id: generateId(),
     itemType: 'note',
     itemContent: 'Birthday dinner ideas for Dad',
-    filedTo: 'notes/life/Birthday Plans.md',
+    filedTo: 'life/Birthday Plans.md',
     filedAction: 'note',
     tags: ['projects/personal', 'family'],
     filedAt: offsetISO(-15, 11)

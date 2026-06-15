@@ -90,13 +90,13 @@ export const NOTE_IDS = {
 } as const
 
 export const FOLDER_CONFIGS: Array<{ path: string; icon: string }> = [
-  { path: 'notes/books', icon: '📚' },
-  { path: 'notes/movies', icon: '🎬' },
-  { path: 'notes/weight', icon: '💪' },
-  { path: 'notes/life', icon: '🌳' },
-  { path: 'notes/projects', icon: '📦' },
-  { path: 'notes/tech', icon: '💻' },
-  { path: 'notes/travel', icon: '✈️' }
+  { path: 'books', icon: '📚' },
+  { path: 'movies', icon: '🎬' },
+  { path: 'weight', icon: '💪' },
+  { path: 'life', icon: '🌳' },
+  { path: 'projects', icon: '📦' },
+  { path: 'tech', icon: '💻' },
+  { path: 'travel', icon: '✈️' }
 ]
 
 interface NoteSpec {
@@ -118,7 +118,7 @@ const SPECS: NoteSpec[] = [
   // ============================================================================
   {
     id: NOTE_IDS.bookDune,
-    relativePath: 'notes/books/Dune.md',
+    relativePath: 'books/Dune.md',
     title: 'Dune',
     emoji: '🪐',
     tags: ['fiction', 'sci-fi', 'classic', 'reread'],
@@ -148,7 +148,7 @@ Sixty years on, *Dune* still sets the bar for political-sci-fi worldbuilding. Re
   },
   {
     id: NOTE_IDS.bookProjectHailMary,
-    relativePath: 'notes/books/Project Hail Mary.md',
+    relativePath: 'books/Project Hail Mary.md',
     title: 'Project Hail Mary',
     emoji: '🚀',
     tags: ['fiction', 'sci-fi', 'andy-weir'],
@@ -176,7 +176,7 @@ See also: [[The Martian]] — same flavor, drier.
   },
   {
     id: NOTE_IDS.bookAtomicHabits,
-    relativePath: 'notes/books/Atomic Habits.md',
+    relativePath: 'books/Atomic Habits.md',
     title: 'Atomic Habits',
     emoji: '⚛️',
     tags: ['nonfiction', 'productivity', 'habits'],
@@ -209,7 +209,7 @@ See also: [[The Martian]] — same flavor, drier.
   },
   {
     id: NOTE_IDS.bookDeepWork,
-    relativePath: 'notes/books/Deep Work.md',
+    relativePath: 'books/Deep Work.md',
     title: 'Deep Work',
     emoji: '🧠',
     tags: ['nonfiction', 'productivity', 'focus'],
@@ -243,7 +243,7 @@ Cognitive demand is the new luxury good. Defend three to four hours a day or sur
   },
   {
     id: NOTE_IDS.bookTheMartian,
-    relativePath: 'notes/books/The Martian.md',
+    relativePath: 'books/The Martian.md',
     title: 'The Martian',
     emoji: '🥔',
     tags: ['fiction', 'sci-fi', 'andy-weir'],
@@ -275,7 +275,7 @@ When motivation is thin. Watney's *I-am-not-going-to-die-today* energy is contag
   },
   {
     id: NOTE_IDS.bookSapiens,
-    relativePath: 'notes/books/Sapiens.md',
+    relativePath: 'books/Sapiens.md',
     title: 'Sapiens',
     emoji: '🌍',
     tags: ['nonfiction', 'history', 'big-ideas'],
@@ -307,7 +307,7 @@ Chapter 9. Cognitive revolution → agricultural revolution → unification of h
   },
   {
     id: NOTE_IDS.bookMisteryHotel,
-    relativePath: 'notes/books/The Mystery Guest.md',
+    relativePath: 'books/The Mystery Guest.md',
     title: 'The Mystery Guest',
     emoji: '🔍',
     tags: ['fiction', 'mystery', 'cozy'],
@@ -329,7 +329,7 @@ Half through. The narrator's voice is the appeal more than the puzzle.
   },
   {
     id: NOTE_IDS.bookOnWriting,
-    relativePath: 'notes/books/On Writing.md',
+    relativePath: 'books/On Writing.md',
     title: 'On Writing',
     emoji: '✍️',
     tags: ['nonfiction', 'craft', 'writing'],
@@ -358,7 +358,7 @@ Pair with [[Deep Work]] for the *defend the time* angle.
   },
   {
     id: NOTE_IDS.bookKitchenConfidential,
-    relativePath: 'notes/books/Kitchen Confidential.md',
+    relativePath: 'books/Kitchen Confidential.md',
     title: 'Kitchen Confidential',
     emoji: '🔪',
     tags: ['nonfiction', 'memoir', 'food'],
@@ -384,7 +384,7 @@ Also see [[Tokyo Cafes]] — different cuisine, same reverence.
   },
   {
     id: NOTE_IDS.bookAlmanackOfNaval,
-    relativePath: 'notes/books/The Almanack of Naval Ravikant.md',
+    relativePath: 'books/The Almanack of Naval Ravikant.md',
     title: 'The Almanack of Naval Ravikant',
     emoji: '🧭',
     tags: ['nonfiction', 'philosophy', 'wealth'],
@@ -408,7 +408,7 @@ Pairs with [[On Reading]] and [[My Why]].
   },
   {
     id: NOTE_IDS.bookFourThousandWeeks,
-    relativePath: 'notes/books/Four Thousand Weeks.md',
+    relativePath: 'books/Four Thousand Weeks.md',
     title: 'Four Thousand Weeks',
     emoji: '⏳',
     tags: ['nonfiction', 'productivity', 'mortality'],
@@ -432,7 +432,7 @@ Hard counterweight to [[Atomic Habits]] and [[Deep Work]] — those say *get mor
   },
   {
     id: NOTE_IDS.bookManSearchMeaning,
-    relativePath: "notes/books/Man's Search for Meaning.md",
+    relativePath: "books/Man's Search for Meaning.md",
     title: "Man's Search for Meaning",
     emoji: '🕯️',
     tags: ['nonfiction', 'philosophy', 'memoir'],
@@ -460,7 +460,7 @@ Frankl's central claim: *meaning* — not pleasure, not even purpose — is what
   // ============================================================================
   {
     id: NOTE_IDS.movieDune2021,
-    relativePath: 'notes/movies/Dune (2021).md',
+    relativePath: 'movies/Dune (2021).md',
     title: 'Dune (2021)',
     emoji: '🪐',
     tags: ['movies/sci-fi', 'denis-villeneuve', 'rewatch'],
@@ -495,7 +495,7 @@ The Salusa Secundus scene needs ten more seconds. Hardly a crime.
   },
   {
     id: NOTE_IDS.movieInterstellar,
-    relativePath: 'notes/movies/Interstellar.md',
+    relativePath: 'movies/Interstellar.md',
     title: 'Interstellar',
     emoji: '🌌',
     tags: ['movies/sci-fi', 'christopher-nolan', 'rewatch'],
@@ -523,7 +523,7 @@ Plot-mechanically nonsense. Emotionally undefeated. I will fight on this.
   },
   {
     id: NOTE_IDS.movieTheMatrix,
-    relativePath: 'notes/movies/The Matrix.md',
+    relativePath: 'movies/The Matrix.md',
     title: 'The Matrix',
     emoji: '💊',
     tags: ['movies/sci-fi', 'wachowski', 'classic'],
@@ -545,7 +545,7 @@ Plot-mechanically nonsense. Emotionally undefeated. I will fight on this.
   },
   {
     id: NOTE_IDS.movieEverythingEverywhere,
-    relativePath: 'notes/movies/Everything Everywhere All at Once.md',
+    relativePath: 'movies/Everything Everywhere All at Once.md',
     title: 'Everything Everywhere All at Once',
     emoji: '🥯',
     tags: ['movies/scifi', 'a24', 'absurd'],
@@ -567,7 +567,7 @@ Multiverse-as-feeling instead of multiverse-as-plot. Michelle Yeoh as the laundr
   },
   {
     id: NOTE_IDS.movieAnewHope,
-    relativePath: 'notes/movies/Star Wars Episode IV.md',
+    relativePath: 'movies/Star Wars Episode IV.md',
     title: 'Star Wars Episode IV',
     emoji: '⚔️',
     tags: ['movies/sci-fi', 'star-wars', 'classic'],
@@ -588,7 +588,7 @@ Multiverse-as-feeling instead of multiverse-as-plot. Michelle Yeoh as the laundr
   },
   {
     id: NOTE_IDS.movieAriival,
-    relativePath: 'notes/movies/Arrival.md',
+    relativePath: 'movies/Arrival.md',
     title: 'Arrival',
     emoji: '🛸',
     tags: ['movies/sci-fi', 'denis-villeneuve', 'thoughtful'],
@@ -608,7 +608,7 @@ Multiverse-as-feeling instead of multiverse-as-plot. Michelle Yeoh as the laundr
   },
   {
     id: NOTE_IDS.movieTheMartianFilm,
-    relativePath: 'notes/movies/The Martian (Film).md',
+    relativePath: 'movies/The Martian (Film).md',
     title: 'The Martian (Film)',
     emoji: '🥔',
     tags: ['movies/sci-fi', 'ridley-scott'],
@@ -628,7 +628,7 @@ Multiverse-as-feeling instead of multiverse-as-plot. Michelle Yeoh as the laundr
   },
   {
     id: NOTE_IDS.movieParasite,
-    relativePath: 'notes/movies/Parasite.md',
+    relativePath: 'movies/Parasite.md',
     title: 'Parasite',
     emoji: '🪳',
     tags: ['movies/drama', 'bong-joon-ho', 'foreign'],
@@ -648,7 +648,7 @@ Multiverse-as-feeling instead of multiverse-as-plot. Michelle Yeoh as the laundr
   },
   {
     id: NOTE_IDS.movieSpiritedAway,
-    relativePath: 'notes/movies/Spirited Away.md',
+    relativePath: 'movies/Spirited Away.md',
     title: 'Spirited Away',
     emoji: '🐉',
     tags: ['movies/animation', 'studio-ghibli'],
@@ -668,7 +668,7 @@ Multiverse-as-feeling instead of multiverse-as-plot. Michelle Yeoh as the laundr
   },
   {
     id: NOTE_IDS.movieWatchlist2026,
-    relativePath: 'notes/movies/Watchlist 2026.md',
+    relativePath: 'movies/Watchlist 2026.md',
     title: 'Watchlist 2026',
     emoji: '🎞️',
     tags: ['movies', 'watchlist'],
@@ -699,7 +699,7 @@ Multiverse-as-feeling instead of multiverse-as-plot. Michelle Yeoh as the laundr
   },
   {
     id: NOTE_IDS.movieBladerunner,
-    relativePath: 'notes/movies/Blade Runner 2049.md',
+    relativePath: 'movies/Blade Runner 2049.md',
     title: 'Blade Runner 2049',
     emoji: '🌆',
     tags: ['movies/sci-fi', 'denis-villeneuve'],
@@ -719,7 +719,7 @@ Multiverse-as-feeling instead of multiverse-as-plot. Michelle Yeoh as the laundr
   },
   {
     id: NOTE_IDS.movieGoodfellas,
-    relativePath: 'notes/movies/Goodfellas.md',
+    relativePath: 'movies/Goodfellas.md',
     title: 'Goodfellas',
     emoji: '🍝',
     tags: ['movies/crime', 'scorsese'],
@@ -745,7 +745,7 @@ Multiverse-as-feeling instead of multiverse-as-plot. Michelle Yeoh as the laundr
   // ============================================================================
   {
     id: NOTE_IDS.weightCut2026,
-    relativePath: 'notes/weight/2026 Cut.md',
+    relativePath: 'weight/2026 Cut.md',
     title: '2026 Cut',
     emoji: '💪',
     tags: ['fitness', 'cut'],
@@ -784,7 +784,7 @@ See running table in [[Cutting Log]]. Wikilinked journal entries: [[2026-04-22]]
   },
   {
     id: NOTE_IDS.weightCuttingLog,
-    relativePath: 'notes/weight/Cutting Log.md',
+    relativePath: 'weight/Cutting Log.md',
     title: 'Cutting Log',
     emoji: '📊',
     tags: ['fitness', 'log'],
@@ -813,7 +813,7 @@ See running table in [[Cutting Log]]. Wikilinked journal entries: [[2026-04-22]]
   },
   {
     id: NOTE_IDS.weightProteinTargets,
-    relativePath: 'notes/weight/Protein Targets.md',
+    relativePath: 'weight/Protein Targets.md',
     title: 'Protein Targets',
     emoji: '🍳',
     tags: ['fitness', 'nutrition'],
@@ -838,7 +838,7 @@ Real food first. Powder fills gaps after lifting.
   },
   {
     id: NOTE_IDS.weightTrainingSplit,
-    relativePath: 'notes/weight/Training Split.md',
+    relativePath: 'weight/Training Split.md',
     title: 'Training Split',
     emoji: '🏋️',
     tags: ['fitness', 'strength'],
@@ -865,7 +865,7 @@ Wed and Sat are [[Cardio Plan]]. Sun rest.
   },
   {
     id: NOTE_IDS.weightSundayWeighIn,
-    relativePath: 'notes/weight/Sunday Weigh-in.md',
+    relativePath: 'weight/Sunday Weigh-in.md',
     title: 'Sunday Weigh-in',
     emoji: '⚖️',
     tags: ['fitness', 'tracking'],
@@ -883,7 +883,7 @@ Goes into [[Cutting Log]].
   },
   {
     id: NOTE_IDS.weightCardioPlan,
-    relativePath: 'notes/weight/Cardio Plan.md',
+    relativePath: 'weight/Cardio Plan.md',
     title: 'Cardio Plan',
     emoji: '🏃',
     tags: ['fitness', 'cardio'],
@@ -902,7 +902,7 @@ Heart rate monitor on, not optional.
   },
   {
     id: NOTE_IDS.weightFoodDiary,
-    relativePath: 'notes/weight/Food Diary.md',
+    relativePath: 'weight/Food Diary.md',
     title: 'Food Diary',
     emoji: '🥗',
     tags: ['fitness', 'food'],
@@ -920,7 +920,7 @@ Heart rate monitor on, not optional.
   },
   {
     id: NOTE_IDS.weightProgressPhotos,
-    relativePath: 'notes/weight/Progress Photos.md',
+    relativePath: 'weight/Progress Photos.md',
     title: 'Progress Photos',
     emoji: '📸',
     tags: ['fitness', 'tracking'],
@@ -942,7 +942,7 @@ Compares to [[2026 Cut]] start.
   // ============================================================================
   {
     id: NOTE_IDS.lifeMyWhy,
-    relativePath: 'notes/life/My Why.md',
+    relativePath: 'life/My Why.md',
     title: 'My Why',
     emoji: '🌳',
     tags: ['life', 'reflection', 'mission'],
@@ -964,7 +964,7 @@ Local first. End-to-end encrypted. Open file format. Sync optional.
   },
   {
     id: NOTE_IDS.lifeOnReading,
-    relativePath: 'notes/life/On Reading.md',
+    relativePath: 'life/On Reading.md',
     title: 'On Reading',
     emoji: '📖',
     tags: ['life', 'reading', 'reflection'],
@@ -995,7 +995,7 @@ I'd rather read [[Atomic Habits]] (one good idea, executed well) than another *7
   },
   {
     id: NOTE_IDS.lifeYearReview2025,
-    relativePath: 'notes/life/Year in Review 2025.md',
+    relativePath: 'life/Year in Review 2025.md',
     title: 'Year in Review 2025',
     emoji: '📅',
     tags: ['life', 'annual', 'reflection'],
@@ -1030,7 +1030,7 @@ I'd rather read [[Atomic Habits]] (one good idea, executed well) than another *7
   },
   {
     id: NOTE_IDS.lifeMorningRoutine,
-    relativePath: 'notes/life/Morning Routine.md',
+    relativePath: 'life/Morning Routine.md',
     title: 'Morning Routine',
     emoji: '☀️',
     tags: ['life', 'habits'],
@@ -1058,7 +1058,7 @@ Inspired by [[Deep Work]]. Codified after [[Atomic Habits]].
   },
   {
     id: NOTE_IDS.lifeFinances,
-    relativePath: 'notes/life/Finances.md',
+    relativePath: 'life/Finances.md',
     title: 'Finances',
     emoji: '💸',
     tags: ['life', 'money'],
@@ -1086,7 +1086,7 @@ Inspired by [[Deep Work]]. Codified after [[Atomic Habits]].
   },
   {
     id: NOTE_IDS.lifeOnFear,
-    relativePath: 'notes/life/On Fear.md',
+    relativePath: 'life/On Fear.md',
     title: 'On Fear',
     emoji: '🌑',
     tags: ['life', 'reflection'],
@@ -1110,7 +1110,7 @@ Read [[Man's Search for Meaning]] when it's bad. Talk to my partner. Run hard. S
   },
   {
     id: NOTE_IDS.lifeRelationships,
-    relativePath: 'notes/life/Relationships.md',
+    relativePath: 'life/Relationships.md',
     title: 'Relationships',
     emoji: '🫶',
     tags: ['life', 'people'],
@@ -1138,7 +1138,7 @@ If a relationship is important, it should show up *in the calendar*, not just in
   },
   {
     id: NOTE_IDS.lifeWhatBringsJoy,
-    relativePath: 'notes/life/What Brings Me Joy.md',
+    relativePath: 'life/What Brings Me Joy.md',
     title: 'What Brings Me Joy',
     emoji: '😄',
     tags: ['life', 'gratitude', 'joy'],
@@ -1163,7 +1163,7 @@ If a relationship is important, it should show up *in the calendar*, not just in
   // ============================================================================
   {
     id: NOTE_IDS.projMemryLaunch,
-    relativePath: 'notes/projects/memrynote Launch.md',
+    relativePath: 'projects/memrynote Launch.md',
     title: 'memrynote Launch',
     emoji: '🚀',
     tags: ['projects/memry', 'projects/active'],
@@ -1209,7 +1209,7 @@ Tasks tagged \`#projects/memry\` show up under "memrynote Launch" project — th
   },
   {
     id: NOTE_IDS.projMemryArchitecture,
-    relativePath: 'notes/projects/memrynote Architecture.md',
+    relativePath: 'projects/memrynote Architecture.md',
     title: 'memrynote Architecture',
     emoji: '🏛️',
     tags: ['projects/memry', 'architecture'],
@@ -1239,7 +1239,7 @@ Local-first means *all* data is on disk. Browser sandbox is a non-starter.
   },
   {
     id: NOTE_IDS.projMemryRoadmap,
-    relativePath: 'notes/projects/memrynote Roadmap.md',
+    relativePath: 'projects/memrynote Roadmap.md',
     title: 'memrynote Roadmap',
     emoji: '🗺️',
     tags: ['projects/memry', 'planning'],
@@ -1273,7 +1273,7 @@ Local-first means *all* data is on disk. Browser sandbox is a non-starter.
   },
   {
     id: NOTE_IDS.projMemryGTM,
-    relativePath: 'notes/projects/memrynote GTM.md',
+    relativePath: 'projects/memrynote GTM.md',
     title: 'memrynote GTM',
     emoji: '📣',
     tags: ['projects/memry', 'gtm'],
@@ -1305,7 +1305,7 @@ People who already journal but resent their tool. Bonus: programmers, researcher
   },
   {
     id: NOTE_IDS.projGardenSchedule,
-    relativePath: 'notes/projects/Garden Schedule.md',
+    relativePath: 'projects/Garden Schedule.md',
     title: 'Garden Schedule',
     emoji: '🌱',
     tags: ['projects/home', 'garden'],
@@ -1333,7 +1333,7 @@ Focus on what survives a heat dome: peppers, eggplant, zucchini.
   },
   {
     id: NOTE_IDS.projHomeRenovation,
-    relativePath: 'notes/projects/Home Renovation.md',
+    relativePath: 'projects/Home Renovation.md',
     title: 'Home Renovation',
     emoji: '🔨',
     tags: ['projects/home', 'renovation'],
@@ -1367,7 +1367,7 @@ Focus on what survives a heat dome: peppers, eggplant, zucchini.
   },
   {
     id: NOTE_IDS.projBlogRedesign,
-    relativePath: 'notes/projects/Blog Redesign.md',
+    relativePath: 'projects/Blog Redesign.md',
     title: 'Blog Redesign',
     emoji: '✏️',
     tags: ['projects/personal', 'web'],
@@ -1388,7 +1388,7 @@ Tracking related work: [[TypeScript Patterns]], [[Vim Motions]].
   },
   {
     id: NOTE_IDS.projOpenSourceFork,
-    relativePath: 'notes/projects/Open Source Fork.md',
+    relativePath: 'projects/Open Source Fork.md',
     title: 'Open Source Fork',
     emoji: '🌿',
     tags: ['projects/personal', 'oss'],
@@ -1408,7 +1408,7 @@ Move only if a real maintainer disappears for ~6 months.
   },
   {
     id: NOTE_IDS.projSideProjectIdeas,
-    relativePath: 'notes/projects/Side Project Ideas.md',
+    relativePath: 'projects/Side Project Ideas.md',
     title: 'Side Project Ideas',
     emoji: '💡',
     tags: ['projects/personal', 'ideas'],
@@ -1434,7 +1434,7 @@ Linked: [[Year in Review 2025]] (the *abandoned-at-60%* problem).
   },
   {
     id: NOTE_IDS.projConferenceTalk,
-    relativePath: 'notes/projects/Conference Talk.md',
+    relativePath: 'projects/Conference Talk.md',
     title: 'Conference Talk',
     emoji: '🎤',
     tags: ['projects/personal', 'speaking'],
@@ -1472,7 +1472,7 @@ Linked: [[Year in Review 2025]] (the *abandoned-at-60%* problem).
   // ============================================================================
   {
     id: NOTE_IDS.techTypescriptPatterns,
-    relativePath: 'notes/tech/TypeScript Patterns.md',
+    relativePath: 'tech/TypeScript Patterns.md',
     title: 'TypeScript Patterns',
     emoji: '🟦',
     tags: ['tech/typescript', 'reference'],
@@ -1513,7 +1513,7 @@ Linked: [[Drizzle ORM]] for type inference details, [[memrynote Architecture]] f
   },
   {
     id: NOTE_IDS.techDrizzleORM,
-    relativePath: 'notes/tech/Drizzle ORM.md',
+    relativePath: 'tech/Drizzle ORM.md',
     title: 'Drizzle ORM',
     emoji: '🦉',
     tags: ['tech/sql', 'tech/typescript', 'reference'],
@@ -1553,7 +1553,7 @@ pnpm db:studio      # browse
   },
   {
     id: NOTE_IDS.techCRDTArchitecture,
-    relativePath: 'notes/tech/CRDT Architecture.md',
+    relativePath: 'tech/CRDT Architecture.md',
     title: 'CRDT Architecture',
     emoji: '🧩',
     tags: ['tech/sync', 'tech/architecture'],
@@ -1593,7 +1593,7 @@ Yes, "CRDT" is overloaded[^1]. Yjs implements a state-based CRDT (specifically a
   },
   {
     id: NOTE_IDS.techPostgresIndexing,
-    relativePath: 'notes/tech/Postgres Indexing.md',
+    relativePath: 'tech/Postgres Indexing.md',
     title: 'Postgres Indexing',
     emoji: '🐘',
     tags: ['tech/sql', 'tech/postgres'],
@@ -1630,7 +1630,7 @@ Always. Otherwise you're index-cargo-culting.
   },
   {
     id: NOTE_IDS.techCMUDatabaseCourse,
-    relativePath: 'notes/tech/CMU Database Course.md',
+    relativePath: 'tech/CMU Database Course.md',
     title: 'CMU Database Course',
     emoji: '🎓',
     tags: ['tech/sql', 'learning'],
@@ -1648,7 +1648,7 @@ Pair with [[Postgres Indexing]] for practice.
   },
   {
     id: NOTE_IDS.techKipThorneBlackHoles,
-    relativePath: 'notes/tech/Kip Thorne — Black Holes.md',
+    relativePath: 'tech/Kip Thorne — Black Holes.md',
     title: 'Kip Thorne — Black Holes',
     emoji: '⚫',
     tags: ['tech/physics', 'reference'],
@@ -1674,7 +1674,7 @@ Watched [[Interstellar]] for the fourth time. Wanted to understand Gargantua, no
   },
   {
     id: NOTE_IDS.techElectronGotchas,
-    relativePath: 'notes/tech/Electron Gotchas.md',
+    relativePath: 'tech/Electron Gotchas.md',
     title: 'Electron Gotchas',
     emoji: '⚡',
     tags: ['tech/electron', 'reference'],
@@ -1705,7 +1705,7 @@ Run \`pnpm ipc:check\` after editing any contract type. Renderer will lie about 
   },
   {
     id: NOTE_IDS.techSqliteVec,
-    relativePath: 'notes/tech/sqlite-vec.md',
+    relativePath: 'tech/sqlite-vec.md',
     title: 'sqlite-vec',
     emoji: '🧮',
     tags: ['tech/sql', 'tech/embeddings'],
@@ -1741,7 +1741,7 @@ ORDER BY distance;
   },
   {
     id: NOTE_IDS.techVimMotions,
-    relativePath: 'notes/tech/Vim Motions.md',
+    relativePath: 'tech/Vim Motions.md',
     title: 'Vim Motions',
     emoji: '⌨️',
     tags: ['tech/editor', 'reference'],
@@ -1767,7 +1767,7 @@ ORDER BY distance;
   },
   {
     id: NOTE_IDS.techGitWorkflow,
-    relativePath: 'notes/tech/Git Workflow.md',
+    relativePath: 'tech/Git Workflow.md',
     title: 'Git Workflow',
     emoji: '🌿',
     tags: ['tech/git', 'reference'],
@@ -1794,7 +1794,7 @@ Until the branch lands. After that, it's history.
   },
   {
     id: NOTE_IDS.techRustNotes,
-    relativePath: 'notes/tech/Rust Notes.md',
+    relativePath: 'tech/Rust Notes.md',
     title: 'Rust Notes',
     emoji: '🦀',
     tags: ['tech/rust', 'learning'],
@@ -1818,7 +1818,7 @@ Borrow checker is exactly as advertised. The first week is rough; the second wee
   },
   {
     id: NOTE_IDS.techDockerCheatsheet,
-    relativePath: 'notes/tech/Docker Cheatsheet.md',
+    relativePath: 'tech/Docker Cheatsheet.md',
     title: 'Docker Cheatsheet',
     emoji: '🐳',
     tags: ['tech/docker', 'reference'],
@@ -1843,7 +1843,7 @@ docker system prune -af --volumes
   // ============================================================================
   {
     id: NOTE_IDS.travelIstanbul,
-    relativePath: 'notes/travel/Istanbul.md',
+    relativePath: 'travel/Istanbul.md',
     title: 'Istanbul',
     emoji: '🌉',
     tags: ['travel', 'istanbul', 'planning'],
@@ -1894,7 +1894,7 @@ docker system prune -af --volumes
   },
   {
     id: NOTE_IDS.travelTokyoTrip,
-    relativePath: 'notes/travel/Tokyo Trip.md',
+    relativePath: 'travel/Tokyo Trip.md',
     title: 'Tokyo Trip',
     emoji: '🗼',
     tags: ['travel/asia', 'travel/japan', 'memoir'],
@@ -1939,7 +1939,7 @@ Linked journal entries: [[2026-04-15]], [[2026-04-17]].
   },
   {
     id: NOTE_IDS.travelKyotoDayTrip,
-    relativePath: 'notes/travel/Kyoto Day Trip.md',
+    relativePath: 'travel/Kyoto Day Trip.md',
     title: 'Kyoto Day Trip',
     emoji: '⛩️',
     tags: ['travel/asia', 'travel/japan'],
@@ -1970,7 +1970,7 @@ Linked: [[Tokyo Trip]] (the parent), journal [[2026-04-15]].
   },
   {
     id: NOTE_IDS.travelLisbonNotes,
-    relativePath: 'notes/travel/Lisbon Notes.md',
+    relativePath: 'travel/Lisbon Notes.md',
     title: 'Lisbon Notes',
     emoji: '🐠',
     tags: ['travel/europe', 'travel/portugal'],
@@ -1997,7 +1997,7 @@ Linked: [[Tokyo Trip]] (the parent), journal [[2026-04-15]].
   },
   {
     id: NOTE_IDS.travelIcelandRingRoad,
-    relativePath: 'notes/travel/Iceland Ring Road.md',
+    relativePath: 'travel/Iceland Ring Road.md',
     title: 'Iceland Ring Road',
     emoji: '🌋',
     tags: ['travel/europe', 'travel/iceland', 'planning'],
@@ -2032,7 +2032,7 @@ Linked: [[Tokyo Trip]] (the parent), journal [[2026-04-15]].
   },
   {
     id: NOTE_IDS.travelPackingList,
-    relativePath: 'notes/travel/Packing List.md',
+    relativePath: 'travel/Packing List.md',
     title: 'Packing List',
     emoji: '🎒',
     tags: ['travel', 'reference'],
@@ -2058,7 +2058,7 @@ Linked: [[Tokyo Trip]] (the parent), journal [[2026-04-15]].
   },
   {
     id: NOTE_IDS.travelSeoulFood,
-    relativePath: 'notes/travel/Seoul Food.md',
+    relativePath: 'travel/Seoul Food.md',
     title: 'Seoul Food',
     emoji: '🌶️',
     tags: ['travel/asia', 'travel/korea', 'food'],
@@ -2081,7 +2081,7 @@ Linked: [[Tokyo Trip]] (the parent), journal [[2026-04-15]].
   },
   {
     id: NOTE_IDS.travelMexicoCityArt,
-    relativePath: 'notes/travel/Mexico City Art.md',
+    relativePath: 'travel/Mexico City Art.md',
     title: 'Mexico City Art',
     emoji: '🎨',
     tags: ['travel/americas', 'travel/mexico', 'art'],
@@ -2100,7 +2100,7 @@ Linked: [[Tokyo Trip]] (the parent), journal [[2026-04-15]].
   },
   {
     id: NOTE_IDS.travelOsakaRamen,
-    relativePath: 'notes/travel/Osaka Ramen.md',
+    relativePath: 'travel/Osaka Ramen.md',
     title: 'Osaka Ramen',
     emoji: '🍜',
     tags: ['travel/asia', 'travel/japan', 'food'],
@@ -2121,7 +2121,7 @@ Linked: [[Tokyo Trip]] (the parent), journal [[2026-04-15]].
   },
   {
     id: NOTE_IDS.travelTokyoCafes,
-    relativePath: 'notes/travel/Tokyo Cafes.md',
+    relativePath: 'travel/Tokyo Cafes.md',
     title: 'Tokyo Cafes',
     emoji: '☕',
     tags: ['travel/asia', 'travel/japan', 'coffee'],
@@ -2148,7 +2148,7 @@ Pair with [[Kitchen Confidential]] for the *travel-as-eating* mindset.
   },
   {
     id: NOTE_IDS.travelAirportLounges,
-    relativePath: 'notes/travel/Airport Lounges.md',
+    relativePath: 'travel/Airport Lounges.md',
     title: 'Airport Lounges',
     emoji: '🛫',
     tags: ['travel', 'logistics'],
