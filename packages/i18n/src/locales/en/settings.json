@@ -803,7 +803,8 @@
     "sources": {
       "notion": "Import an HTML export (.zip)",
       "todoist": "Import a project CSV export (.csv)",
-      "markdown": "Import .md files or a folder (frontmatter, tags, attachments)"
+      "markdown": "Import .md files or a folder (frontmatter, tags, attachments)",
+      "html": "Import .html files with linked images and cross-page links"
     },
     "action": "Import",
     "stats": {

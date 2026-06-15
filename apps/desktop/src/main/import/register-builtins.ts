@@ -2,6 +2,7 @@ import { registerImporter } from './registry'
 import { notionImporter } from './notion/notion-importer'
 import { todoistImporter } from './todoist/todoist-importer'
 import { markdownImporter } from './markdown/markdown-importer'
+import { htmlImporter } from './html/html-importer'
 
 let registered = false
 
@@ -12,4 +13,5 @@ export function registerBuiltinImporters(): void {
   registerImporter(notionImporter)
   registerImporter(todoistImporter)
   registerImporter(markdownImporter)
+  registerImporter(htmlImporter)
 }

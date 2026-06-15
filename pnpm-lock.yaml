@@ -339,6 +339,9 @@ importers:
       '@memry/domain-tasks':
         specifier: workspace:*
         version: link:../../packages/domain-tasks
+      '@memry/html-import':
+        specifier: workspace:*
+        version: link:../../packages/html-import
       '@memry/markdown-import':
         specifier: workspace:*
         version: link:../../packages/markdown-import
@@ -933,6 +936,12 @@ importers:
         specifier: ^25.0.3
         version: 25.2.2
 
+  packages/bear-import:
+    devDependencies:
+      '@memry/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+
   packages/contracts:
     dependencies:
       '@memry/domain-tasks':
@@ -988,6 +997,18 @@ importers:
         version: link:../typescript-config
 
   packages/domain-tasks:
+    devDependencies:
+      '@memry/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+
+  packages/google-keep-import:
+    devDependencies:
+      '@memry/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+
+  packages/html-import:
     devDependencies:
       '@memry/typescript-config':
         specifier: workspace:*
