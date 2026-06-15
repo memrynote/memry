@@ -90,9 +90,9 @@ packages/ticktick-import/                ← PURE transform (no fs, no electron,
 
 apps/desktop/src/main/import/ticktick/   ← I/O + DB orchestration (Node/electron)
   ticktick-import-service.ts
-                      read file → parseTickTickCsv → mapRows → applyPlan within a
-                      single better-sqlite3 transaction via the tasks domain layer
-                      (createTaskDomain) + reminders service; returns ImportSummary
+                      read file → parseTickTickCsv → mapRows → applyPlan
+                      (sequential, via the async tasks domain layer
+                      createDesktopTasksDomain + reminders lib); returns ImportSummary
   ticktick-import-service.test.ts   in-memory DataDb integration test
 
 packages/contracts/src/ticktick-import-api.ts        ← IPC contract (channel + zod)
@@ -262,17 +262,26 @@ Given a `.csv` absolute path:
 
 1. Read the file (UTF-8). `parseTickTickCsv` → rows. `mapRows(rows, { now })` →
    `ImportPlan`.
-2. Open a single better-sqlite3 transaction.
+2. Writes go through the **async** tasks domain layer
+   (`createDesktopTasksDomain`), so they are **sequential, not wrapped in a
+   single better-sqlite3 transaction** (better-sqlite3 transactions are
+   synchronous-only and cannot await the domain's publisher). Each create is
+   awaited in turn.
 3. For each `ProjectPlan`: bind to `getInboxProject()` when `useExistingInbox`,
-   else `createProject`. Create statuses (`createCustomStatuses` for kanban,
-   `createDefaultStatuses` otherwise). Build `tempId → real id` maps for
-   projects + statuses.
+   else `createProject({ name, statuses })` (the domain seeds custom statuses
+   when ≥2 are supplied, default `To Do/In Progress/Done` otherwise). Build
+   `tempId → real id` maps for projects + statuses (read back via
+   `listStatuses`).
 4. For each `TaskPlan` (parents before children so `parentId` resolves):
    `createTask` with mapped `projectId`/`statusId`/`parentId` + dates/priority/
-   completion/repeat; `setTaskTags`; create each reminder via the reminders
-   service with `targetType:'task'`, the new `taskId`, and `remindAt`.
-5. Commit. Return `ImportSummary { stats, warnings }`.
-6. On any hard failure the transaction rolls back — no partial import.
+   repeat + `tags` (the domain `createTask` sets tags internally);
+   then `completeTask`/`archiveTask` for completed/won't-do; then create each
+   reminder via the main reminders lib (`createReminder`) with
+   `targetType:'task'`, the new `taskId`, and `remindAt`.
+5. Return `ImportSummary { canceled, stats, warnings }`.
+6. A per-row failure is caught → warning → continue (no rollback). A hard
+   failure surfaces a partial summary plus the error. Re-import is "create
+   fresh", so a partial import is recoverable by deleting and retrying.
 
 Logging via `createLogger('TickTickImport')`; user-facing errors via
 `extractErrorMessage`. Tag definitions: optionally insert a `tag_definitions`
@@ -304,7 +313,8 @@ exists.
 - Unparseable reminder/RRULE/date → skip just that facet (task still imports) +
   warning.
 - Missing parent reference → task imported top-level + warning.
-- Whole apply is transactional: a hard DB error rolls back everything.
+- Import is sequential, not transactional (async domain layer): a per-row DB
+  error is caught + warned + skipped; a hard failure returns a partial summary.
 
 ## 10. Testing (TDD)
 
