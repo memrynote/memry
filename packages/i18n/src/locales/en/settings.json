@@ -805,23 +805,22 @@
     },
     "action": "Import",
     "dialog": {
-      "title": "Import from {{name}}",
+      "title": "Import from {name}",
       "choose": "Choose file…",
-      "chooseHint": "Select your {{label}}",
-      "selected": "{{count}} file selected",
-      "selected_other": "{{count}} files selected",
+      "chooseHint": "Select your {label}",
+      "selected": "{count, plural, one {# file selected} other {# files selected}}",
       "start": "Start import",
       "cancel": "Cancel",
       "close": "Close",
       "done": "Done",
       "running": "Importing…",
-      "progress": "{{completed}} of {{total}}",
+      "progress": "{completed} of {total}",
       "summary": {
         "title": "Import complete",
-        "imported": "{{count}} notes imported",
-        "attachments": "{{count}} attachments copied",
-        "skipped": "{{count}} skipped",
-        "failed": "{{count}} failed"
+        "imported": "{count, plural, one {# note imported} other {# notes imported}}",
+        "attachments": "{count, plural, one {# attachment copied} other {# attachments copied}}",
+        "skipped": "{count} skipped",
+        "failed": "{count} failed"
       },
       "error": "Import failed"
     },
@@ -831,9 +830,9 @@
       "choose": "Choose CSV file(s)…",
       "import": "Import",
       "cancel": "Cancel",
-      "counts": "{{tasks}} tasks · {{subtasks}} sub-tasks · {{withDueDate}} dated · {{comments}} comments · {{skipped}} skipped",
+      "counts": "{tasks} tasks · {subtasks} sub-tasks · {withDueDate} dated · {comments} comments · {skipped} skipped",
       "warnings": "Warnings",
-      "success": "Imported {{projects}} project(s), {{tasks}} task(s)",
+      "success": "Imported {projects} project(s), {tasks} task(s)",
       "error": "Todoist import failed"
     }
   },
