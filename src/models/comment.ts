@@ -1,0 +1,1 @@
+interface Comment { id: string; text: string; unresolved: boolean; type: 'question' | 'objection' | 'follow-up'; noteId: string; }

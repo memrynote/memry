@@ -1,0 +1,1 @@
+import { Comment } from '../models/comment'; class CommentService { async summarizeUnresolvedComments(noteId: string): Promise<Comment[]> { // implement summarization algorithm } async convertCommentToTask(commentId: string): Promise<Task> { // implement comment-to-task conversion } }
