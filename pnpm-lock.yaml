@@ -321,6 +321,9 @@ importers:
       '@memry/app-core':
         specifier: workspace:*
         version: link:../../packages/app-core
+      '@memry/bear-import':
+        specifier: workspace:*
+        version: link:../../packages/bear-import
       '@memry/cli':
         specifier: workspace:*
         version: link:../cli

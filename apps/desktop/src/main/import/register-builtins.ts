@@ -4,6 +4,7 @@ import { todoistImporter } from './todoist/todoist-importer'
 import { markdownImporter } from './markdown/markdown-importer'
 import { htmlImporter } from './html/html-importer'
 import { googleKeepImporter } from './google-keep/google-keep-importer'
+import { bearImporter } from './bear/bear-importer'
 
 let registered = false
 
@@ -16,4 +17,5 @@ export function registerBuiltinImporters(): void {
   registerImporter(markdownImporter)
   registerImporter(htmlImporter)
   registerImporter(googleKeepImporter)
+  registerImporter(bearImporter)
 }
