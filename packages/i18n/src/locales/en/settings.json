@@ -794,6 +794,33 @@
       "updateFailed": "Failed to update setting"
     }
   },
+  "import": {
+    "header": {
+      "title": "Import",
+      "subtitle": "Bring tasks in from other apps"
+    },
+    "todoist": {
+      "title": "Import from Todoist",
+      "description": "Choose a Todoist project CSV export. Each file becomes a new project.",
+      "choose": "Choose CSV file(s)…",
+      "import": "Import",
+      "cancel": "Cancel",
+      "counts": "{{tasks}} tasks · {{subtasks}} sub-tasks · {{withDueDate}} dated · {{comments}} comments · {{skipped}} skipped",
+      "warnings": "Warnings",
+      "success": "Imported {{projects}} project(s), {{tasks}} task(s)",
+      "error": "Todoist import failed"
+    },
+    "ticktick": {
+      "title": "Import from TickTick",
+      "description": "Import a TickTick CSV backup as projects, tasks, tags, reminders and repeats.",
+      "button": "Import from TickTick (CSV)",
+      "importing": "Importing…",
+      "success": "Imported {count, plural, one {# task} other {# tasks}}",
+      "failed": "TickTick import failed",
+      "result": "Imported {projects} projects, {tasks} tasks ({subtasks} subtasks), {reminders} reminders.",
+      "warnings": "{count, plural, one {# warning} other {# warnings}}"
+    }
+  },
   "integrations": {
     "header": {
       "title": "Integrations",
@@ -929,18 +956,6 @@
       "merged": "Merged \"{source}\" into \"{target}\" ({count, plural, one {# item} other {# items}})",
       "colorUpdated": "Updated color for \"{name}\"",
       "colorFailed": "Failed to update color"
-    }
-  },
-  "import": {
-    "ticktick": {
-      "title": "Import from TickTick",
-      "description": "Import a TickTick CSV backup as projects, tasks, tags, reminders and repeats.",
-      "button": "Import from TickTick (CSV)",
-      "importing": "Importing…",
-      "success": "Imported {count, plural, one {# task} other {# tasks}}",
-      "failed": "TickTick import failed",
-      "result": "Imported {projects} projects, {tasks} tasks ({subtasks} subtasks), {reminders} reminders.",
-      "warnings": "{count, plural, one {# warning} other {# warnings}}"
     }
   },
   "properties": {
