@@ -41,7 +41,7 @@ async function defaultDomain(): Promise<ImportTasksDomain> {
 }
 
 const errorMessage = (err: unknown, fallback: string) =>
-  err instanceof Error ? err.message : err ? String(err) : fallback
+  err instanceof Error ? err.message : typeof err === 'string' ? err : fallback
 
 function projectNameFromPath(p: string): string {
   return (
