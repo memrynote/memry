@@ -1069,6 +1069,12 @@ importers:
         specifier: workspace:*
         version: link:../typescript-config
 
+  packages/todoist-import:
+    devDependencies:
+      '@memry/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+
   packages/typescript-config: {}
 
   tests/sync-harness:
