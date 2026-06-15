@@ -18,7 +18,7 @@ export function ImportSettings() {
           <Button
             size="sm"
             variant="outline"
-            onClick={chooseFiles}
+            onClick={() => void chooseFiles()}
             disabled={isPreviewing || isImporting}
           >
             <Download className="w-3.5 h-3.5 me-1.5" />
@@ -66,7 +66,7 @@ export function ImportSettings() {
               </div>
             ))}
             <div className="flex gap-2">
-              <Button size="sm" onClick={confirmImport} disabled={isImporting}>
+              <Button size="sm" onClick={() => void confirmImport()} disabled={isImporting}>
                 {t('import.todoist.import')}
               </Button>
               <Button size="sm" variant="ghost" onClick={cancel} disabled={isImporting}>
