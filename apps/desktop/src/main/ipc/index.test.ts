@@ -48,7 +48,9 @@ const hoisted = vi.hoisted(() => ({
   registerTelemetryHandlers: vi.fn(),
   unregisterTelemetryHandlers: vi.fn(),
   registerAgentMcpHandlers: vi.fn(),
-  unregisterAgentMcpHandlers: vi.fn()
+  unregisterAgentMcpHandlers: vi.fn(),
+  registerTickTickImportHandlers: vi.fn(),
+  unregisterTickTickImportHandlers: vi.fn()
 }))
 
 vi.mock('./vault-handlers', () => ({
@@ -146,6 +148,10 @@ vi.mock('./telemetry-handlers', () => ({
 vi.mock('./agent-mcp-handlers', () => ({
   registerAgentMcpHandlers: hoisted.registerAgentMcpHandlers,
   unregisterAgentMcpHandlers: hoisted.unregisterAgentMcpHandlers
+}))
+vi.mock('./ticktick-import-handlers', () => ({
+  registerTickTickImportHandlers: hoisted.registerTickTickImportHandlers,
+  unregisterTickTickImportHandlers: hoisted.unregisterTickTickImportHandlers
 }))
 
 import { areHandlersRegistered, registerAllHandlers, unregisterAllHandlers } from './index'
