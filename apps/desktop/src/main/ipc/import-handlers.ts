@@ -1,8 +1,9 @@
-import { ipcMain } from 'electron'
+import { ipcMain, dialog } from 'electron'
 import {
   ImportChannels,
   ImportStartSchema,
-  ImportCancelSchema
+  ImportCancelSchema,
+  ImportPickFilesSchema
 } from '@memry/contracts/import-channels'
 import { registerCommand } from './lib/register-command'
 import { registerBuiltinImporters } from '../import/register-builtins'
@@ -15,6 +16,22 @@ import { runImport, cancelImport } from '../import/runner'
  */
 export function registerImportHandlers(): void {
   registerBuiltinImporters()
+
+  registerCommand(
+    ImportChannels.invoke.PICK_FILES,
+    ImportPickFilesSchema,
+    async (input) => {
+      const result = await dialog.showOpenDialog({
+        properties: input.allowMultiple ? ['openFile', 'multiSelections'] : ['openFile'],
+        filters: [{ name: input.label, extensions: input.extensions }]
+      })
+      if (result.canceled || result.filePaths.length === 0) {
+        return { canceled: true as const, filePaths: [] }
+      }
+      return { canceled: false as const, filePaths: result.filePaths }
+    },
+    'File selection failed'
+  )
 
   registerCommand(
     ImportChannels.invoke.START,
@@ -38,6 +55,7 @@ export function registerImportHandlers(): void {
 }
 
 export function unregisterImportHandlers(): void {
+  ipcMain.removeHandler(ImportChannels.invoke.PICK_FILES)
   ipcMain.removeHandler(ImportChannels.invoke.START)
   ipcMain.removeHandler(ImportChannels.invoke.CANCEL)
 }

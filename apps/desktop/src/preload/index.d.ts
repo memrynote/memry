@@ -26,6 +26,14 @@ import type {
   Message
 } from '@memry/contracts/ipc-agent'
 import type { AppUpdateState } from '@memry/contracts/ipc-updater'
+import type {
+  ImportStartInput,
+  ImportStartResult,
+  ImportCancelInput,
+  ImportPickFilesInput,
+  ImportPickFilesResult,
+  ImportProgressEvent
+} from '@memry/contracts/import-channels'
 import type { Locale, LocaleApi } from '@memry/contracts/locale-api'
 import type {
   SyncStatusChangedEvent,
@@ -1730,6 +1738,11 @@ interface API extends WindowAPI, GeneratedRpcApi {
   syncAttachments: SyncAttachmentsClientAPI
   agentMcp: AgentMcpClientAPI
   agent: AgentClientAPI
+  import: {
+    pickFiles: (input: ImportPickFilesInput) => Promise<ImportPickFilesResult>
+    start: (input: ImportStartInput) => Promise<ImportStartResult>
+    cancel: (input: ImportCancelInput) => Promise<{ success: true }>
+  }
   updater: {
     getState: () => Promise<AppUpdateState>
     checkForUpdates: () => Promise<AppUpdateState>
@@ -1812,6 +1825,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
   onSecurityWarning: (callback: (event: SecurityWarningEvent) => void) => () => void
   onCertificatePinFailed: (callback: (event: CertificatePinFailedEvent) => void) => () => void
   onUpdaterStateChanged: (callback: (state: AppUpdateState) => void) => () => void
+  onImportProgress: (callback: (event: ImportProgressEvent) => void) => () => void
   onAppNavigationCommand: (callback: (command: AppNavigationCommandEvent) => void) => () => void
   onLocaleChanged: (callback: (locale: Locale) => void) => () => void
   onMainInvoke: (callback: (payload: MainInvokePayload) => void | Promise<void>) => () => void

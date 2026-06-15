@@ -12,6 +12,8 @@ import { z } from 'zod'
 
 export const ImportChannels = {
   invoke: {
+    /** Open a native file picker filtered to an importer's extensions. */
+    PICK_FILES: 'import:pick-files',
     /** Start an import run (resolves with the final summary). */
     START: 'import:start',
     /** Cancel an in-flight import run by id. */
@@ -22,6 +24,18 @@ export const ImportChannels = {
     PROGRESS: 'import:progress'
   }
 } as const
+
+export const ImportPickFilesSchema = z.object({
+  label: z.string().min(1),
+  extensions: z.array(z.string().min(1)),
+  allowMultiple: z.boolean().optional()
+})
+export type ImportPickFilesInput = z.infer<typeof ImportPickFilesSchema>
+
+export interface ImportPickFilesResult {
+  canceled: boolean
+  filePaths: string[]
+}
 
 export const ImportStartSchema = z.object({
   importId: z.string().min(1),
