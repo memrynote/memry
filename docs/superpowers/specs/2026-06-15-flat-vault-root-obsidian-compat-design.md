@@ -50,6 +50,26 @@ note; the journal folder + date format are user-configurable.
 - Indexing arbitrary non-`.md` files at the root as standalone collection items is
   out of scope; only `.md` files are notes.
 
+## Revision (post-research, 2026-06-15)
+
+Research changed two decisions for lower risk / smaller blast radius:
+
+- **`defaultNoteFolder` is repurposed, not removed.** It has a 34-file blast
+  radius (app-core path construction, sync prefix matching in
+  `sync/note-sync.ts`, inbox filing). All sites either use
+  `path.join(vaultPath, defaultNoteFolder)` (handles `''` → vault root) or build
+  template strings passed through `normalizePath` (strips leading slash). So the
+  field stays; its **default becomes `''`** (vault root) and it doubles as the
+  configurable "default new-note folder". This is also B7's mechanism.
+- **The `newNoteLocation` / `newNoteFolder` enum is dropped (YAGNI).** A single
+  `defaultNoteFolder` string (`''` = root, else a folder) covers root + specified.
+  "Same folder as active note" is deferred to a follow-up.
+- Journal filename formatting must also be applied in `@memry/storage-vault`
+  `note-content-store.ts` (`getJournalRelativePath`), the desktop journal path
+  generator. The format util lives in a shared location both packages import.
+
+The B1/B7 sections below are read through this revision.
+
 ## Architecture
 
 ### B1. Config schema
