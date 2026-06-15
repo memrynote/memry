@@ -328,10 +328,7 @@ describe('vault watcher', () => {
     trigger('ready')
     await startPromise
 
-    expect(mockWatch).toHaveBeenCalledWith(
-      [path.join(vault.path, 'notes'), path.join(vault.path, 'journal')],
-      expect.any(Object)
-    )
+    expect(mockWatch).toHaveBeenCalledWith([vault.path], expect.any(Object))
 
     expect(getWatcher().isWatching()).toBe(true)
 

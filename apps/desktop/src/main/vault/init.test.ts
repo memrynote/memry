@@ -189,8 +189,9 @@ describe('initVault', () => {
     // Check config.json
     expect(fs.existsSync(path.join(tempDir.path, '.memry', 'config.json'))).toBe(true)
 
-    // Check default folders
-    expect(fs.existsSync(path.join(tempDir.path, 'notes'))).toBe(true)
+    // Check default folders — notes/ is deprecated in the flat model (new notes
+    // live at the vault root)
+    expect(fs.existsSync(path.join(tempDir.path, 'notes'))).toBe(false)
     expect(fs.existsSync(path.join(tempDir.path, 'journal'))).toBe(true)
     expect(fs.existsSync(path.join(tempDir.path, 'attachments'))).toBe(true)
     expect(fs.existsSync(path.join(tempDir.path, 'attachments', 'images'))).toBe(true)
@@ -205,8 +206,9 @@ describe('initVault', () => {
 
     expect(config.excludePatterns).toContain('.git')
     expect(config.excludePatterns).toContain('node_modules')
-    expect(config.defaultNoteFolder).toBe('notes')
+    expect(config.defaultNoteFolder).toBe('')
     expect(config.journalFolder).toBe('journal')
+    expect(config.journalDateFormat).toBe('YYYY-MM-DD')
     expect(config.attachmentsFolder).toBe('attachments')
   })
 
@@ -247,7 +249,7 @@ describe('readVaultConfig', () => {
     const config = readVaultConfig(tempDir.path)
 
     expect(config.excludePatterns).toContain('.git')
-    expect(config.defaultNoteFolder).toBe('notes')
+    expect(config.defaultNoteFolder).toBe('')
     expect(config.journalFolder).toBe('journal')
     expect(config.attachmentsFolder).toBe('attachments')
   })
@@ -277,7 +279,7 @@ describe('readVaultConfig', () => {
     const config = readVaultConfig(tempDir.path)
 
     // Should return defaults
-    expect(config.defaultNoteFolder).toBe('notes')
+    expect(config.defaultNoteFolder).toBe('')
   })
 })
 
@@ -322,7 +324,7 @@ describe('writeVaultConfig', () => {
     const result = writeVaultConfig(tempDir.path, { attachmentsFolder: 'files' })
 
     expect(result.attachmentsFolder).toBe('files')
-    expect(result.defaultNoteFolder).toBe('notes') // Default preserved
+    expect(result.defaultNoteFolder).toBe('') // Default preserved
   })
 })
 
