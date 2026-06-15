@@ -63,7 +63,12 @@ export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
 
         {!summary && (
           <div className="flex flex-col gap-3 py-2">
-            <Button variant="outline" size="sm" onClick={choose} disabled={run.isRunning}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void choose()}
+              disabled={run.isRunning}
+            >
               {t('import.dialog.choose')}
             </Button>
             {paths.length > 0 && (
