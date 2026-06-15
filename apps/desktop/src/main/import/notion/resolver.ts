@@ -24,9 +24,9 @@ const TRAILING_DOT_SPACE = /[. ]+$/
  * Holds the page tree discovered while scanning a Notion export and resolves
  * each page/attachment to a folder under the import root.
  *
- * Ported from obsidian-importer's `NotionResolverInfo`, adapted to be FS-free:
- * Memry's `createNote`/`saveAttachment` already generate unique paths, so the
- * de-duplication here only needs to settle in-export title collisions.
+ * Kept FS-free: Memry's `createNote`/`saveAttachment` already generate unique
+ * paths, so the de-duplication here only needs to settle in-export title
+ * collisions.
  */
 export class NotionResolverInfo {
   idsToFileInfo: Record<string, NotionFileInfo> = {}

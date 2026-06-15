@@ -11,8 +11,7 @@ export interface ParsedPageInfo {
 /**
  * Pure (FS-free) parse of a Notion HTML page: its id (from the first body child
  * carrying a Notion id), full title (from `<title>`), and created/last-edited
- * timestamps (from the property table). Ported from obsidian-importer's
- * `parseFileInfo`, using a `Document` (jsdom) instead of obsidian's parseHTML.
+ * timestamps (from the property table). Parses via `jsdom`.
  */
 export function parsePageInfo(doc: Document, filepath: string): ParsedPageInfo {
   const children = doc.body?.children

@@ -20,8 +20,8 @@ export function parseParentIds(filepath: string): string[] {
 
 /**
  * Remove the trailing 32-hex id from a folder/file name, keeping any extension.
- * Unlike the upstream helper this does not strip internal dashes, so hyphenated
- * titles survive. Notion export filenames use the undashed id form.
+ * Internal dashes are preserved so hyphenated titles survive; Notion export
+ * filenames use the undashed id form.
  */
 export function stripNotionId(name: string): string {
   return name.replace(/ ?[0-9a-f]{32}(\.[^.]*)?$/i, '$1')
