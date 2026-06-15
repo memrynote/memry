@@ -354,6 +354,9 @@ importers:
       '@memry/sync-core':
         specifier: workspace:*
         version: link:../../packages/sync-core
+      '@memry/todoist-import':
+        specifier: workspace:*
+        version: link:../../packages/todoist-import
       '@playwright/test':
         specifier: ^1.57.0
         version: 1.58.2
@@ -1070,6 +1073,12 @@ importers:
       zod:
         specifier: ^4.3.4
         version: 4.3.6
+    devDependencies:
+      '@memry/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+
+  packages/todoist-import:
     devDependencies:
       '@memry/typescript-config':
         specifier: workspace:*

@@ -6,6 +6,11 @@ import type * as TasksRpc from '@memry/rpc/tasks'
 import type { AppNavigationCommandEvent } from '@memry/contracts/ipc-channels'
 import type { AgentMcpStatus } from '@memry/contracts/agent-mcp-channels'
 import type {
+  TodoistImportRunInput,
+  TodoistImportSummary,
+  TodoistPreviewResponse
+} from '@memry/contracts/todoist-import-api'
+import type {
   AgentEvent,
   AgentBackendId,
   AgentBackendModelList,
@@ -1742,6 +1747,10 @@ interface API extends WindowAPI, GeneratedRpcApi {
     pickFiles: (input: ImportPickFilesInput) => Promise<ImportPickFilesResult>
     start: (input: ImportStartInput) => Promise<ImportStartResult>
     cancel: (input: ImportCancelInput) => Promise<{ success: true }>
+  }
+  todoistImport: {
+    preview: () => Promise<TodoistPreviewResponse>
+    run: (input: TodoistImportRunInput) => Promise<TodoistImportSummary>
   }
   updater: {
     getState: () => Promise<AppUpdateState>

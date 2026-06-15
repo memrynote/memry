@@ -357,6 +357,8 @@ export interface MainIpcInvokeHandlers {
   "templates:get": (...args: [string]) => Awaited<Promise<import("../../../../../packages/contracts/src/templates-api").Template | null>>
   "templates:list": (...args: []) => Awaited<Promise<{ templates: import("../../../../../packages/contracts/src/templates-api").TemplateListItem[]; }>>
   "templates:update": (...args: [{ id: string; name?: string | undefined; description?: string | undefined; icon?: string | null | undefined; tags?: string[] | undefined; properties?: { name: string; type: "number" | "date" | "url" | "text" | "select" | "checkbox" | "multiselect" | "rating"; value: unknown; options?: string[] | undefined; }[] | undefined; content?: string | undefined; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; template: import("../../../../../packages/contracts/src/templates-api").Template; }>>
+  "todoist-import:preview": (...args: []) => Awaited<Promise<{ canceled: true; filePaths?: undefined; files?: undefined; } | { canceled: false; filePaths: string[]; files: import("../import/todoist/todoist-import-service").PreviewFile[]; }>>
+  "todoist-import:run": (...args: [{ filePaths: string[]; }]) => Awaited<Promise<import("../import/todoist/todoist-import-service").ImportSummary>>
   "updater:check-for-updates": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/ipc-updater").AppUpdateState>>
   "updater:download-update": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/ipc-updater").AppUpdateState>>
   "updater:get-state": (...args: []) => Awaited<import("../../../../../packages/contracts/src/ipc-updater").AppUpdateState>

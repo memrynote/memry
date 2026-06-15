@@ -190,6 +190,7 @@
     "@memry/storage-data": "workspace:*",
     "@memry/storage-vault": "workspace:*",
     "@memry/sync-core": "workspace:*",
+    "@memry/todoist-import": "workspace:*",
     "@playwright/test": "^1.57.0",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-alert-dialog": "^1.1.15",

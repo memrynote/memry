@@ -797,7 +797,7 @@
   "import": {
     "header": {
       "title": "Import",
-      "subtitle": "Bring your notes in from other apps"
+      "subtitle": "Bring your notes and tasks in from other apps"
     },
     "intro": "One-time imports create new notes in your vault. Your original export files are left untouched.",
     "sources": {
@@ -824,6 +824,17 @@
         "failed": "{{count}} failed"
       },
       "error": "Import failed"
+    },
+    "todoist": {
+      "title": "Import from Todoist",
+      "description": "Choose a Todoist project CSV export. Each file becomes a new project.",
+      "choose": "Choose CSV file(s)…",
+      "import": "Import",
+      "cancel": "Cancel",
+      "counts": "{{tasks}} tasks · {{subtasks}} sub-tasks · {{withDueDate}} dated · {{comments}} comments · {{skipped}} skipped",
+      "warnings": "Warnings",
+      "success": "Imported {{projects}} project(s), {{tasks}} task(s)",
+      "error": "Todoist import failed"
     }
   },
   "integrations": {
