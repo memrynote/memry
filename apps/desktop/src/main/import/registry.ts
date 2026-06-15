@@ -1,3 +1,4 @@
+import type { ImporterMeta } from '@memry/contracts/import-channels'
 import type { Importer } from './types'
 
 const importers = new Map<string, Importer>()
@@ -15,6 +16,17 @@ export function getImporter(id: string): Importer | undefined {
 
 export function listImporters(): Importer[] {
   return [...importers.values()]
+}
+
+/** Serializable importer metadata for the renderer's Settings catalog. */
+export function listImporterMeta(): ImporterMeta[] {
+  return listImporters().map((i) => ({
+    id: i.id,
+    name: i.name,
+    descriptionKey: i.descriptionKey,
+    fileSpec: i.fileSpec,
+    supportsPreview: typeof i.preview === 'function'
+  }))
 }
 
 /** Test-only: clear the registry between cases. */
