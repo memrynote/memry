@@ -50,7 +50,9 @@ const hoisted = vi.hoisted(() => ({
   registerTelemetryHandlers: vi.fn(),
   unregisterTelemetryHandlers: vi.fn(),
   registerAgentMcpHandlers: vi.fn(),
-  unregisterAgentMcpHandlers: vi.fn()
+  unregisterAgentMcpHandlers: vi.fn(),
+  registerImportHandlers: vi.fn(),
+  unregisterImportHandlers: vi.fn()
 }))
 
 vi.mock('./vault-handlers', () => ({
@@ -153,6 +155,10 @@ vi.mock('./agent-mcp-handlers', () => ({
   registerAgentMcpHandlers: hoisted.registerAgentMcpHandlers,
   unregisterAgentMcpHandlers: hoisted.unregisterAgentMcpHandlers
 }))
+vi.mock('./import-handlers', () => ({
+  registerImportHandlers: hoisted.registerImportHandlers,
+  unregisterImportHandlers: hoisted.unregisterImportHandlers
+}))
 
 import { areHandlersRegistered, registerAllHandlers, unregisterAllHandlers } from './index'
 
@@ -174,6 +180,7 @@ describe('ipc index registration lifecycle', () => {
     expect(hoisted.registerCrdtIpcHandlers).toHaveBeenCalledTimes(1)
     expect(hoisted.registerTelemetryHandlers).toHaveBeenCalledTimes(1)
     expect(hoisted.registerAgentMcpHandlers).toHaveBeenCalledTimes(1)
+    expect(hoisted.registerImportHandlers).toHaveBeenCalledTimes(1)
   })
 
   it('prevents duplicate registration', () => {
@@ -198,6 +205,7 @@ describe('ipc index registration lifecycle', () => {
     expect(hoisted.unregisterCryptoHandlers).toHaveBeenCalledTimes(1)
     expect(hoisted.unregisterUpdaterHandlers).toHaveBeenCalledTimes(1)
     expect(hoisted.unregisterAgentMcpHandlers).toHaveBeenCalledTimes(1)
+    expect(hoisted.unregisterImportHandlers).toHaveBeenCalledTimes(1)
   })
 
   it('is a no-op to unregister when handlers are not registered', () => {

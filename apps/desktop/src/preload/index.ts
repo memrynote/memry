@@ -25,6 +25,7 @@ import { syncEvents } from './api/sync-events'
 import { updaterApi, updaterEvents } from './api/updater'
 import { agentMcpApi } from './api/agent-mcp'
 import { agentApi } from './api/agent'
+import { importApi, importEvents } from './api/import'
 import { todoistImportApi } from './api/todoist-import'
 
 const logger = createLogger('Preload')
@@ -105,11 +106,13 @@ export const api = {
   updater: updaterApi,
   agentMcp: agentMcpApi,
   agent: agentApi,
+  import: importApi,
   todoistImport: todoistImportApi,
 
   onCrdtStateChanged,
   ...syncEvents,
   ...updaterEvents,
+  ...importEvents,
   ...flushApi,
 
   onAppNavigationCommand: (callback: (command: AppNavigationCommandEvent) => void) =>

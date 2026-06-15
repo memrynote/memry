@@ -158,14 +158,18 @@ export function serializeNote(frontmatter: NoteFrontmatter, content: string): st
  * @param tags - Optional tags
  * @returns Fresh frontmatter object
  */
-export function createFrontmatter(title: string, tags?: string[]): NoteFrontmatter {
+export function createFrontmatter(
+  title: string,
+  tags?: string[],
+  options?: { created?: string; modified?: string }
+): NoteFrontmatter {
   const now = new Date().toISOString()
 
   return {
     id: generateNoteId(),
     title,
-    created: now,
-    modified: now,
+    created: options?.created ?? now,
+    modified: options?.modified ?? now,
     tags: tags ?? []
   }
 }
