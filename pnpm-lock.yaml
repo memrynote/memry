@@ -324,6 +324,9 @@ importers:
       '@memry/apple-journal-import':
         specifier: workspace:*
         version: link:../../packages/apple-journal-import
+      '@memry/apple-notes-import':
+        specifier: workspace:*
+        version: link:../../packages/apple-notes-import
       '@memry/bear-import':
         specifier: workspace:*
         version: link:../../packages/bear-import
@@ -360,6 +363,9 @@ importers:
       '@memry/markdown-import':
         specifier: workspace:*
         version: link:../../packages/markdown-import
+      '@memry/onenote-import':
+        specifier: workspace:*
+        version: link:../../packages/onenote-import
       '@memry/roam-import':
         specifier: workspace:*
         version: link:../../packages/roam-import
@@ -960,6 +966,16 @@ importers:
         specifier: workspace:*
         version: link:../typescript-config
 
+  packages/apple-notes-import:
+    dependencies:
+      protobufjs:
+        specifier: 7.5.8
+        version: 7.5.8
+    devDependencies:
+      '@memry/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+
   packages/bear-import:
     devDependencies:
       '@memry/typescript-config':
@@ -1093,6 +1109,12 @@ importers:
       gray-matter:
         specifier: ^4.0.3
         version: 4.0.3
+    devDependencies:
+      '@memry/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+
+  packages/onenote-import:
     devDependencies:
       '@memry/typescript-config':
         specifier: workspace:*

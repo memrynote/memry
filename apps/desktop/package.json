@@ -193,6 +193,8 @@
     "@memry/roam-import": "workspace:*",
     "@memry/apple-journal-import": "workspace:*",
     "@memry/csv-import": "workspace:*",
+    "@memry/apple-notes-import": "workspace:*",
+    "@memry/onenote-import": "workspace:*",
     "@memry/rpc": "workspace:*",
     "@memry/shared": "workspace:*",
     "@memry/storage-data": "workspace:*",

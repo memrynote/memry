@@ -810,7 +810,9 @@
       "evernote": "Import one or more Evernote .enex export files",
       "roam": "Import a Roam Research graph (.json) with nested outlines",
       "apple-journal": "Import an Apple Journal HTML export as dated notes",
-      "csv": "Import a .csv file — one note per row, columns become properties"
+      "csv": "Import a .csv file — one note per row, columns become properties",
+      "apple-notes": "Import from the Apple Notes database (NoteStore.sqlite, macOS)",
+      "onenote": "Import OneNote notebooks (requires a Microsoft account)"
     },
     "action": "Import",
     "stats": {
