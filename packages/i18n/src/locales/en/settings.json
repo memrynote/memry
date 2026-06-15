@@ -804,7 +804,8 @@
       "notion": "Import an HTML export (.zip)",
       "todoist": "Import a project CSV export (.csv)",
       "markdown": "Import .md files or a folder (frontmatter, tags, attachments)",
-      "html": "Import .html files with linked images and cross-page links"
+      "html": "Import .html files with linked images and cross-page links",
+      "google-keep": "Import a Google Takeout Keep export (.json or .zip)"
     },
     "action": "Import",
     "stats": {

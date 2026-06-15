@@ -339,6 +339,9 @@ importers:
       '@memry/domain-tasks':
         specifier: workspace:*
         version: link:../../packages/domain-tasks
+      '@memry/google-keep-import':
+        specifier: workspace:*
+        version: link:../../packages/google-keep-import
       '@memry/html-import':
         specifier: workspace:*
         version: link:../../packages/html-import
