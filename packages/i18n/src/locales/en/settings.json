@@ -801,9 +801,21 @@
     },
     "intro": "One-time imports create new notes in your vault. Your original export files are left untouched.",
     "sources": {
-      "notion": "Import an HTML export (.zip)"
+      "notion": "Import an HTML export (.zip)",
+      "todoist": "Import a project CSV export (.csv)"
     },
     "action": "Import",
+    "stats": {
+      "tasks": "{count, plural, one {# task} other {# tasks}}",
+      "subtasks": "{count, plural, one {# sub-task} other {# sub-tasks}}",
+      "withDueDate": "{count} dated",
+      "comments": "{count, plural, one {# comment} other {# comments}}",
+      "skipped": "{count} skipped"
+    },
+    "preview": {
+      "warnings": "Warnings",
+      "confirm": "Import"
+    },
     "dialog": {
       "title": "Import from {name}",
       "choose": "Choose file…",
@@ -817,23 +829,12 @@
       "progress": "{completed} of {total}",
       "summary": {
         "title": "Import complete",
-        "imported": "{count, plural, one {# note imported} other {# notes imported}}",
+        "imported": "{count, plural, one {# item imported} other {# items imported}}",
         "attachments": "{count, plural, one {# attachment copied} other {# attachments copied}}",
         "skipped": "{count} skipped",
         "failed": "{count} failed"
       },
       "error": "Import failed"
-    },
-    "todoist": {
-      "title": "Import from Todoist",
-      "description": "Choose a Todoist project CSV export. Each file becomes a new project.",
-      "choose": "Choose CSV file(s)…",
-      "import": "Import",
-      "cancel": "Cancel",
-      "counts": "{tasks} tasks · {subtasks} sub-tasks · {withDueDate} dated · {comments} comments · {skipped} skipped",
-      "warnings": "Warnings",
-      "success": "Imported {projects} project(s), {tasks} task(s)",
-      "error": "Todoist import failed"
     }
   },
   "integrations": {
