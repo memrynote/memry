@@ -333,6 +333,9 @@ importers:
       '@memry/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@memry/csv-import':
+        specifier: workspace:*
+        version: link:../../packages/csv-import
       '@memry/db-schema':
         specifier: workspace:*
         version: link:../../packages/db-schema
@@ -971,6 +974,12 @@ importers:
       zod:
         specifier: ^4.3.4
         version: 4.3.6
+    devDependencies:
+      '@memry/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+
+  packages/csv-import:
     devDependencies:
       '@memry/typescript-config':
         specifier: workspace:*

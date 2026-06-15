@@ -8,6 +8,7 @@ import { bearImporter } from './bear/bear-importer'
 import { evernoteImporter } from './evernote/evernote-importer'
 import { roamImporter } from './roam/roam-importer'
 import { appleJournalImporter } from './apple-journal/apple-journal-importer'
+import { csvImporter } from './csv/csv-importer'
 
 let registered = false
 
@@ -24,4 +25,5 @@ export function registerBuiltinImporters(): void {
   registerImporter(evernoteImporter)
   registerImporter(roamImporter)
   registerImporter(appleJournalImporter)
+  registerImporter(csvImporter)
 }

@@ -809,10 +809,12 @@
       "bear": "Import a Bear .bear2bk archive (notes, tags, attachments)",
       "evernote": "Import one or more Evernote .enex export files",
       "roam": "Import a Roam Research graph (.json) with nested outlines",
-      "apple-journal": "Import an Apple Journal HTML export as dated notes"
+      "apple-journal": "Import an Apple Journal HTML export as dated notes",
+      "csv": "Import a .csv file — one note per row, columns become properties"
     },
     "action": "Import",
     "stats": {
+      "notes": "{count, plural, one {# note} other {# notes}}",
       "tasks": "{count, plural, one {# task} other {# tasks}}",
       "subtasks": "{count, plural, one {# sub-task} other {# sub-tasks}}",
       "withDueDate": "{count} dated",
