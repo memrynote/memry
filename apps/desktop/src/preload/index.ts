@@ -25,6 +25,7 @@ import { syncEvents } from './api/sync-events'
 import { updaterApi, updaterEvents } from './api/updater'
 import { agentMcpApi } from './api/agent-mcp'
 import { agentApi } from './api/agent'
+import { todoistImportApi } from './api/todoist-import'
 
 const logger = createLogger('Preload')
 const MAIN_INVOKE_CHANNEL = 'main:invoke'
@@ -104,6 +105,7 @@ export const api = {
   updater: updaterApi,
   agentMcp: agentMcpApi,
   agent: agentApi,
+  todoistImport: todoistImportApi,
 
   onCrdtStateChanged,
   ...syncEvents,
