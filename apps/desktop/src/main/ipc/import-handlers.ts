@@ -1,13 +1,16 @@
 import { ipcMain, dialog } from 'electron'
+import { z } from 'zod'
 import {
   ImportChannels,
   ImportStartSchema,
   ImportCancelSchema,
-  ImportPickFilesSchema
+  ImportPickFilesSchema,
+  ImportPreviewSchema
 } from '@memry/contracts/import-channels'
 import { registerCommand } from './lib/register-command'
 import { registerBuiltinImporters } from '../import/register-builtins'
-import { runImport, cancelImport } from '../import/runner'
+import { listImporterMeta } from '../import/registry'
+import { runImport, previewImport, cancelImport } from '../import/runner'
 
 /**
  * Generic import IPC: start a run (resolves with the final summary) and cancel
@@ -52,10 +55,29 @@ export function registerImportHandlers(): void {
     },
     'Cancel failed'
   )
+
+  registerCommand(
+    ImportChannels.invoke.PREVIEW,
+    ImportPreviewSchema,
+    async (input) => {
+      const preview = await previewImport(input)
+      return { success: true as const, preview }
+    },
+    'Preview failed'
+  )
+
+  registerCommand(
+    ImportChannels.invoke.LIST,
+    z.unknown(),
+    () => listImporterMeta(),
+    'Failed to list importers'
+  )
 }
 
 export function unregisterImportHandlers(): void {
   ipcMain.removeHandler(ImportChannels.invoke.PICK_FILES)
   ipcMain.removeHandler(ImportChannels.invoke.START)
   ipcMain.removeHandler(ImportChannels.invoke.CANCEL)
+  ipcMain.removeHandler(ImportChannels.invoke.PREVIEW)
+  ipcMain.removeHandler(ImportChannels.invoke.LIST)
 }

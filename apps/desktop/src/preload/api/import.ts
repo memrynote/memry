@@ -5,7 +5,10 @@ import {
   type ImportCancelInput,
   type ImportPickFilesInput,
   type ImportPickFilesResult,
-  type ImportProgressEvent
+  type ImportProgressEvent,
+  type ImportPreviewInput,
+  type ImportPreviewResponse,
+  type ImporterMeta
 } from '@memry/contracts/import-channels'
 import { invoke, subscribe } from '../lib/ipc'
 
@@ -15,7 +18,10 @@ export const importApi = {
   start: (input: ImportStartInput): Promise<ImportStartResponse> =>
     invoke<ImportStartResponse>(ImportChannels.invoke.START, input),
   cancel: (input: ImportCancelInput): Promise<{ success: true }> =>
-    invoke<{ success: true }>(ImportChannels.invoke.CANCEL, input)
+    invoke<{ success: true }>(ImportChannels.invoke.CANCEL, input),
+  preview: (input: ImportPreviewInput): Promise<ImportPreviewResponse> =>
+    invoke<ImportPreviewResponse>(ImportChannels.invoke.PREVIEW, input),
+  list: (): Promise<ImporterMeta[]> => invoke<ImporterMeta[]>(ImportChannels.invoke.LIST)
 }
 
 export const importEvents = {

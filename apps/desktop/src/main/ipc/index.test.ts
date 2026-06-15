@@ -7,8 +7,6 @@ const hoisted = vi.hoisted(() => ({
   unregisterNotesHandlers: vi.fn(),
   registerTasksHandlers: vi.fn(),
   unregisterTasksHandlers: vi.fn(),
-  registerTodoistImportHandlers: vi.fn(),
-  unregisterTodoistImportHandlers: vi.fn(),
   registerSavedFiltersHandlers: vi.fn(),
   unregisterSavedFiltersHandlers: vi.fn(),
   registerTemplatesHandlers: vi.fn(),
@@ -66,10 +64,6 @@ vi.mock('./notes-handlers', () => ({
 vi.mock('./tasks-handlers', () => ({
   registerTasksHandlers: hoisted.registerTasksHandlers,
   unregisterTasksHandlers: hoisted.unregisterTasksHandlers
-}))
-vi.mock('./todoist-import-handlers', () => ({
-  registerTodoistImportHandlers: hoisted.registerTodoistImportHandlers,
-  unregisterTodoistImportHandlers: hoisted.unregisterTodoistImportHandlers
 }))
 vi.mock('./saved-filters-handlers', () => ({
   registerSavedFiltersHandlers: hoisted.registerSavedFiltersHandlers,

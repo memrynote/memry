@@ -2,10 +2,6 @@ import { registerVaultHandlers, unregisterVaultHandlers } from './vault-handlers
 import { registerNotesHandlers, unregisterNotesHandlers } from './notes-handlers'
 import { registerTasksHandlers, unregisterTasksHandlers } from './tasks-handlers'
 import {
-  registerTodoistImportHandlers,
-  unregisterTodoistImportHandlers
-} from './todoist-import-handlers'
-import {
   registerSavedFiltersHandlers,
   unregisterSavedFiltersHandlers
 } from './saved-filters-handlers'
@@ -76,9 +72,6 @@ export function registerAllHandlers(deps?: IpcDeps): void {
 
   // Register tasks handlers
   registerTasksHandlers()
-
-  // Register Todoist import handlers
-  registerTodoistImportHandlers()
 
   // Register saved filters handlers
   registerSavedFiltersHandlers()
@@ -167,7 +160,6 @@ export function unregisterAllHandlers(): void {
   unregisterVaultHandlers()
   unregisterNotesHandlers()
   unregisterTasksHandlers()
-  unregisterTodoistImportHandlers()
   unregisterSavedFiltersHandlers()
   unregisterTemplatesHandlers()
   unregisterJournalHandlers()
@@ -205,10 +197,6 @@ export function areHandlersRegistered(): boolean {
 export { registerVaultHandlers, unregisterVaultHandlers } from './vault-handlers'
 export { registerNotesHandlers, unregisterNotesHandlers } from './notes-handlers'
 export { registerTasksHandlers, unregisterTasksHandlers } from './tasks-handlers'
-export {
-  registerTodoistImportHandlers,
-  unregisterTodoistImportHandlers
-} from './todoist-import-handlers'
 export {
   registerSavedFiltersHandlers,
   unregisterSavedFiltersHandlers
