@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import path from 'node:path'
-import { forEachZipEntry, assertSafeEntryPath } from './notion-zip'
+import { forEachZipEntry, assertSafeEntryPath } from './zip'
 
-const FIXTURE = path.join(__dirname, '__fixtures__', 'notion-export.zip')
+const FIXTURE = path.join(__dirname, '..', 'notion', '__fixtures__', 'notion-export.zip')
 
-describe('notion-zip', () => {
+describe('shared zip iteration', () => {
   it('recurses into the nested Part-1.zip and yields html entries', async () => {
     const names: string[] = []
     await forEachZipEntry([FIXTURE], new AbortController().signal, async (entry) => {
