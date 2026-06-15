@@ -1,8 +1,13 @@
 # Importing Notes
 
-Bring content in from other apps as a one-time import. Imports create new notes in your vault; your original export files are never modified.
+Bring content in from other apps as a one-time import. Imports create new notes (or tasks) in your vault; your original export files are never modified.
 
-Open **Settings → Import** to see the available sources.
+Open **Settings → Import** to see the available sources. Every source shares the same flow: click **Import** next to a source, choose your export file(s), and watch the live progress. Some sources (such as Todoist) first show a **preview** — counts, sample titles, and any warnings — so you can review what will be imported before committing.
+
+| Source  | Export format      | Creates | Details                                              |
+| ------- | ------------------ | ------- | ---------------------------------------------------- |
+| Notion  | HTML export `.zip` | Notes   | See below                                            |
+| Todoist | Project CSV `.csv` | Tasks   | See [Import from Todoist](./tasks/import-todoist.md) |
 
 ## Importing from Notion
 
