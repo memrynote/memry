@@ -97,8 +97,8 @@ packages/todoist-import/                  ← PURE transform (no fs, electron, d
 
 apps/desktop/src/main/import/todoist/      ← I/O + DB orchestration (Node/electron)
   todoist-import-service.ts
-                    read file(s) → parseTodoistCsv → mapRows → applyPlan within a
-                    single better-sqlite3 transaction via the tasks domain layer
+                    read file(s) → parseTodoistCsv → mapRows → applyPlan
+                    sequentially via the tasks domain layer
                     (createProject + createTask); returns ImportSummary
   todoist-import-service.test.ts   in-memory DataDb integration test
 
@@ -225,15 +225,18 @@ Given one or more `.csv` absolute paths:
    `mapRows(rows, projectName, { now })` → `ImportPlan`.
 2. **Preview** (`previewTodoistImport`): return per-file
    `{ fileName, projectName, stats, sampleTitles, warnings }` — **no writes**.
-3. **Run** (`runTodoistImport`): open a single better-sqlite3 transaction over
-   the data db. For each plan:
-   a. `createProject({ name })` (default statuses created automatically).
+3. **Run** (`runTodoistImport`): the desktop tasks-domain methods are **async**
+   (they publish + queue sync), so we create **sequentially** through the domain
+   rather than inside a synchronous better-sqlite3 transaction. For each plan:
+   a. `createProject({ name })` → `{ project }` (default statuses auto-created).
    b. For each `TaskPlan` (parents precede children, so `parentId` resolves):
    `createTask({ projectId, parentId, title, description, priority, dueDate,
-   dueTime, position })`; record `tempId → real id`.
-   Commit. Return `ImportSummary { files: [{ projectName, projectId, stats,
-warnings }] }`.
-4. On any hard failure the transaction rolls back — no partial import.
+dueTime, position })` → `{ task }`; record `tempId → real id` (`task.id`).
+   Return `ImportSummary { files: [{ projectName, projectId, stats, warnings,
+error? }] }`.
+4. **Best-effort, per-file isolation:** a hard error on one file aborts only that
+   file (captured as `error` in its summary entry); other files still import.
+   Re-running creates fresh rows; a partially-created project can be deleted.
 
 Logging via `createLogger('TodoistImport')`; user-facing errors via
 `extractErrorMessage`.
@@ -277,7 +280,9 @@ files: PreviewFile[] }`.
 - Unparseable / non-en / recurring date → task imports with no due date +
   warning.
 - Missing parent reference → task imported top-level + warning.
-- Whole `run` apply is transactional: a hard DB error rolls back everything.
+- `run` is best-effort per file (domain methods are async → no single SQL
+  transaction): a hard error aborts only that file and is reported in its summary
+  entry; other files still import. A partially-created project can be deleted.
 
 ## 10. Testing (TDD)
 
