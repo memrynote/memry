@@ -185,6 +185,7 @@
     "@memry/domain-inbox": "workspace:*",
     "@memry/domain-notes": "workspace:*",
     "@memry/domain-tasks": "workspace:*",
+    "@memry/markdown-import": "workspace:*",
     "@memry/rpc": "workspace:*",
     "@memry/shared": "workspace:*",
     "@memry/storage-data": "workspace:*",

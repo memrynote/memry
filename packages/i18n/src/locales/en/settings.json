@@ -802,7 +802,8 @@
     "intro": "One-time imports create new notes in your vault. Your original export files are left untouched.",
     "sources": {
       "notion": "Import an HTML export (.zip)",
-      "todoist": "Import a project CSV export (.csv)"
+      "todoist": "Import a project CSV export (.csv)",
+      "markdown": "Import .md files or a folder (frontmatter, tags, attachments)"
     },
     "action": "Import",
     "stats": {

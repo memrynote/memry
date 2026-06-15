@@ -339,6 +339,9 @@ importers:
       '@memry/domain-tasks':
         specifier: workspace:*
         version: link:../../packages/domain-tasks
+      '@memry/markdown-import':
+        specifier: workspace:*
+        version: link:../../packages/markdown-import
       '@memry/rpc':
         specifier: workspace:*
         version: link:../../packages/rpc
@@ -1019,6 +1022,16 @@ importers:
       zod:
         specifier: ^4.3.4
         version: 4.3.6
+    devDependencies:
+      '@memry/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+
+  packages/markdown-import:
+    dependencies:
+      gray-matter:
+        specifier: ^4.0.3
+        version: 4.0.3
     devDependencies:
       '@memry/typescript-config':
         specifier: workspace:*
