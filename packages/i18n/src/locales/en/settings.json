@@ -110,6 +110,11 @@
       "createInSelectedFolder": {
         "label": "Create in Selected Folder",
         "description": "New notes and folders are created inside the currently selected folder. When off, items are always created at root."
+      },
+      "defaultNoteFolder": {
+        "label": "Default Location for New Notes",
+        "description": "Empty = vault root",
+        "placeholder": "notes"
       }
     },
     "privacy": {
@@ -278,6 +283,7 @@
     },
     "groups": {
       "defaultTemplate": "Default Template",
+      "location": "Location & Format",
       "sidebarVisibility": "Sidebar Visibility",
       "footer": "Footer"
     },
@@ -307,6 +313,20 @@
     "showStatsFooter": {
       "label": "Show Stats Footer",
       "description": "Word count, reading time, timestamps"
+    },
+    "folder": {
+      "label": "Journal Folder",
+      "description": "Folder where daily notes are stored",
+      "placeholder": "journal"
+    },
+    "dateFormat": {
+      "label": "Date Format",
+      "description": "Filename format for daily notes (e.g. YYYY-MM-DD)",
+      "placeholder": "YYYY-MM-DD"
+    },
+    "preview": {
+      "label": "Preview",
+      "description": "Today's journal file path"
     },
     "updateError": "Failed to update setting"
   },

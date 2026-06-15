@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   Select,
   SelectContent,
@@ -7,9 +7,12 @@ import {
   SelectValue
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
+import { Input } from '@/components/ui/input'
 import { Lock } from '@/lib/icons'
 import { useTemplates } from '@/hooks/use-templates'
 import { useJournalSettings } from '@/hooks/use-journal-settings'
+import { useVault } from '@/hooks/use-vault'
+import { formatJournalFilename } from '@memry/storage-vault/journal-format'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
 import {
@@ -30,6 +33,34 @@ export function JournalSettings() {
     setDefaultTemplate,
     isLoading: isLoadingSettings
   } = useJournalSettings()
+  const { config, updateConfig } = useVault()
+
+  const [journalFolder, setJournalFolder] = useState('')
+  const [journalDateFormat, setJournalDateFormat] = useState('')
+
+  // Sync editable copies whenever the persisted vault config loads or changes.
+  useEffect(() => {
+    if (!config) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setJournalFolder(config.journalFolder)
+    setJournalDateFormat(config.journalDateFormat)
+  }, [config])
+
+  const handleJournalFolderBlur = useCallback(() => {
+    if (config && journalFolder !== config.journalFolder) {
+      void updateConfig({ journalFolder })
+    }
+  }, [config, journalFolder, updateConfig])
+
+  const handleJournalDateFormatBlur = useCallback(() => {
+    if (config && journalDateFormat !== config.journalDateFormat) {
+      void updateConfig({ journalDateFormat })
+    }
+  }, [config, journalDateFormat, updateConfig])
+
+  const todayIso = new Date().toISOString().slice(0, 10)
+  const previewFilename = `${formatJournalFilename(todayIso, journalDateFormat)}.md`
+  const previewPath = journalFolder ? `${journalFolder}/${previewFilename}` : previewFilename
 
   const handleTemplateChange = useCallback(
     async (value: string) => {
@@ -124,6 +155,38 @@ export function JournalSettings() {
               ))}
             </SelectContent>
           </Select>
+        </SettingRow>
+      </SettingsGroup>
+
+      <SettingsGroup label={t('journal.groups.location')}>
+        <SettingRow label={t('journal.folder.label')} description={t('journal.folder.description')}>
+          <Input
+            value={journalFolder}
+            onChange={(e) => setJournalFolder(e.target.value)}
+            onBlur={handleJournalFolderBlur}
+            placeholder={t('journal.folder.placeholder')}
+            className="h-7 w-40 text-xs/4"
+          />
+        </SettingRow>
+
+        <SettingRow
+          label={t('journal.dateFormat.label')}
+          description={t('journal.dateFormat.description')}
+        >
+          <Input
+            value={journalDateFormat}
+            onChange={(e) => setJournalDateFormat(e.target.value)}
+            onBlur={handleJournalDateFormatBlur}
+            placeholder={t('journal.dateFormat.placeholder')}
+            className="h-7 w-40 text-xs/4"
+          />
+        </SettingRow>
+
+        <SettingRow
+          label={t('journal.preview.label')}
+          description={t('journal.preview.description')}
+        >
+          <span className="font-mono text-xs/4 text-muted-foreground">{previewPath}</span>
         </SettingRow>
       </SettingsGroup>
 

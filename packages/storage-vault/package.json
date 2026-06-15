@@ -6,7 +6,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./note-content-store": "./src/note-content-store.ts"
+    "./note-content-store": "./src/note-content-store.ts",
+    "./journal-format": "./src/journal-format.ts"
   },
   "types": "./src/index.ts",
   "scripts": {
