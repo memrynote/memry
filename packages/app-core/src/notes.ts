@@ -9,6 +9,7 @@ import {
   getNoteMetadataByPath,
   listNoteMetadata
 } from '@memry/storage-data'
+import { formatJournalFilename } from '@memry/storage-vault'
 import type { DataDb } from './database.ts'
 import { createId } from './ids.ts'
 import { parseMarkdownNote, snippet, wordCount, writeMarkdownNote } from './markdown.ts'
@@ -127,7 +128,9 @@ function notePath(config: VaultConfig, title: string, folder?: string): string {
 }
 
 function journalPath(config: VaultConfig, date: string): string {
-  return normalizePath(`${config.journalFolder}/${date}.md`)
+  return normalizePath(
+    `${config.journalFolder}/${formatJournalFilename(date, config.journalDateFormat)}.md`
+  )
 }
 
 async function ensureUniquePath(vaultPath: string, relativePath: string): Promise<string> {

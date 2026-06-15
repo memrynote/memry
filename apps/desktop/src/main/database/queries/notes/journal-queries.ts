@@ -1,26 +1,50 @@
 import { eq, desc, and, like, sql, count } from 'drizzle-orm'
 import { noteCache, type NoteCache } from '@memry/db-schema/schema/notes-cache'
+import { buildJournalRegex, parseJournalDate, formatJournalFilename } from '@memry/storage-vault'
 import type { IndexDb } from '../../types'
 import { type ActivityLevel, ACTIVITY_THRESHOLDS, calculateActivityLevel } from './query-helpers'
+import { getJournalConfig } from '@main/vault/journal-config'
 
 // ============================================================================
 // Journal Entry Utilities
+//
+// A journal entry is a direct child of the configured journal folder whose
+// filename matches the configured Obsidian-style date format. Config comes from
+// the journal-config holder, kept in sync by the vault's getConfig().
 // ============================================================================
 
-export const JOURNAL_PATH_PREFIX = 'journal/'
-export const JOURNAL_DATE_PATTERN = /^journal\/(\d{4}-\d{2}-\d{2})\.md$/
+function normalizeFolder(folder: string): string {
+  return folder.endsWith('/') ? folder.slice(0, -1) : folder
+}
+
+/** Filename stem (no extension) when `path` is a direct child of the journal folder. */
+function journalStem(path: string): string | null {
+  const folder = normalizeFolder(getJournalConfig().journalFolder)
+  if (!folder) return null
+  const prefix = `${folder}/`
+  if (!path.startsWith(prefix)) return null
+  const rest = path.slice(prefix.length)
+  if (rest.includes('/') || !rest.endsWith('.md')) return null
+  return rest.slice(0, -3)
+}
 
 export function isJournalEntry(path: string): boolean {
-  return JOURNAL_DATE_PATTERN.test(path)
+  const stem = journalStem(path)
+  if (stem === null) return false
+  return buildJournalRegex(getJournalConfig().journalDateFormat).test(stem)
 }
 
 export function extractDateFromPath(path: string): string | null {
-  const match = path.match(JOURNAL_DATE_PATTERN)
-  return match ? match[1] : null
+  const stem = journalStem(path)
+  if (stem === null) return null
+  return parseJournalDate(stem, getJournalConfig().journalDateFormat)
 }
 
 export function generateJournalPath(date: string): string {
-  return `journal/${date}.md`
+  const { journalFolder, journalDateFormat } = getJournalConfig()
+  const folder = normalizeFolder(journalFolder)
+  const filename = formatJournalFilename(date, journalDateFormat)
+  return folder ? `${folder}/${filename}.md` : `${filename}.md`
 }
 
 export function generateJournalId(date: string): string {

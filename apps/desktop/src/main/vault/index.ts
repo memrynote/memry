@@ -28,6 +28,7 @@ import {
   getDataDbPath,
   getIndexDbPath
 } from './init'
+import { setJournalConfig } from './journal-config'
 import {
   initDatabase,
   initIndexDatabase,
@@ -388,21 +389,33 @@ export function getStatus(): VaultStatus {
  */
 export function getConfig(): VaultConfig {
   if (!currentStatus.path) {
-    return {
+    const fallback: VaultConfig = {
       excludePatterns: [],
-      defaultNoteFolder: 'notes',
+      defaultNoteFolder: '',
       journalFolder: 'journal',
+      journalDateFormat: 'YYYY-MM-DD',
       attachmentsFolder: 'attachments'
     }
+    setJournalConfig({
+      journalFolder: fallback.journalFolder,
+      journalDateFormat: fallback.journalDateFormat
+    })
+    return fallback
   }
 
   const config = readVaultConfig(currentStatus.path)
-  return {
+  const resolved: VaultConfig = {
     excludePatterns: config.excludePatterns,
     defaultNoteFolder: config.defaultNoteFolder,
     journalFolder: config.journalFolder,
+    journalDateFormat: config.journalDateFormat,
     attachmentsFolder: config.attachmentsFolder
   }
+  setJournalConfig({
+    journalFolder: resolved.journalFolder,
+    journalDateFormat: resolved.journalDateFormat
+  })
+  return resolved
 }
 
 /**
@@ -426,6 +439,19 @@ export async function updateConfig(updates: Partial<VaultConfig>): Promise<Vault
     logger.info('Exclude patterns changed, restarting watcher...')
     await stopWatcher()
     await startWatcher(currentStatus.path, newConfig.excludePatterns)
+  }
+
+  // Re-index when config that affects note/journal classification changes, so the
+  // collection/journal split and folder tree update live.
+  const structuralChanged =
+    oldConfig.journalFolder !== newConfig.journalFolder ||
+    oldConfig.journalDateFormat !== newConfig.journalDateFormat ||
+    oldConfig.defaultNoteFolder !== newConfig.defaultNoteFolder ||
+    JSON.stringify(oldConfig.excludePatterns) !== JSON.stringify(newConfig.excludePatterns)
+
+  if (structuralChanged) {
+    logger.info('Structural vault config changed, rebuilding index...')
+    await reindex()
   }
 
   return newConfig

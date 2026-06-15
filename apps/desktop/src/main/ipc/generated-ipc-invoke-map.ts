@@ -369,7 +369,7 @@ export interface MainIpcInvokeHandlers {
   "vault:reveal": (...args: []) => Awaited<Promise<void>>
   "vault:select": (...args: [{ path?: string | undefined; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/vault-api").SelectVaultResponse>>
   "vault:switch": (...args: [string]) => Awaited<Promise<import("../../../../../packages/contracts/src/vault-api").SelectVaultResponse>>
-  "vault:update-config": (...args: [{ excludePatterns?: string[] | undefined; defaultNoteFolder?: string | undefined; journalFolder?: string | undefined; attachmentsFolder?: string | undefined; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/vault-api").VaultConfig>>
+  "vault:update-config": (...args: [{ excludePatterns?: string[] | undefined; defaultNoteFolder?: string | undefined; journalFolder?: string | undefined; journalDateFormat?: string | undefined; attachmentsFolder?: string | undefined; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/vault-api").VaultConfig>>
 }
 
 export type MainIpcInvokeChannel = keyof MainIpcInvokeHandlers

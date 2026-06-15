@@ -20,7 +20,9 @@ import { syncNoteToCache, syncFileToCache, deleteNoteFromCache } from './note-sy
 import {
   getNoteCacheByPath,
   getNoteCacheById,
-  ensureTagDefinitions
+  ensureTagDefinitions,
+  isJournalEntry,
+  extractDateFromPath
 } from '@main/database/queries/notes'
 import { getDatabase, getIndexDatabase } from '../database'
 import { NotesChannels, JournalChannels } from '@memry/contracts/ipc-channels'
@@ -116,30 +118,18 @@ function emitEvent(channel: string, payload: unknown): void {
 }
 
 /**
- * Check if a path is a journal entry (in the journal folder with YYYY-MM-DD.md pattern).
+ * Check if a path is a journal entry, per the active vault's journal folder +
+ * date format (delegates to the shared config-aware detector).
  */
-function isJournalPath(relativePath: string, journalFolder: string): boolean {
-  // Get the directory part of the path
-  const lastSlash = relativePath.lastIndexOf('/')
-  const dir = lastSlash >= 0 ? relativePath.substring(0, lastSlash) : ''
-  const filename = lastSlash >= 0 ? relativePath.substring(lastSlash + 1) : relativePath
-
-  // Check if file is directly in the journal folder
-  if (dir !== journalFolder) {
-    return false
-  }
-
-  // Check for YYYY-MM-DD.md pattern
-  const datePattern = /^\d{4}-\d{2}-\d{2}\.md$/
-  return datePattern.test(filename)
+function isJournalPath(relativePath: string): boolean {
+  return isJournalEntry(relativePath)
 }
 
 /**
- * Extract date from journal path (YYYY-MM-DD).
+ * Extract the canonical ISO date (YYYY-MM-DD) from a journal path.
  */
 function extractJournalDate(relativePath: string): string {
-  const filename = relativePath.substring(relativePath.lastIndexOf('/') + 1)
-  return filename.replace('.md', '')
+  return extractDateFromPath(relativePath) ?? ''
 }
 
 // Full fragment replace on external edits: lossy but acceptable since
@@ -192,18 +182,17 @@ export class VaultWatcher {
     this.onError = onError
     this.isReady = false
 
-    // Get vault config for folder names
+    // Watch the entire vault root. The `ignored` filter below drops dotfolders
+    // (.memry, .obsidian, .git) and excluded dirs; the attachments folder is added
+    // to the exclude set so binaries are not watched/indexed as notes.
     const config = getConfig()
-    const watchPaths = [
-      path.join(vaultPath, config.defaultNoteFolder),
-      path.join(vaultPath, config.journalFolder)
-    ]
+    const watchPaths = [vaultPath]
 
     // Create debounced handlers
     this.debouncedChange = createPathDebouncer((filePath) => this.handleFileChange(filePath), 100)
 
     // Capture exclude patterns for use in ignored function
-    const userExcludePatterns = this.excludePatterns
+    const userExcludePatterns = [...this.excludePatterns, config.attachmentsFolder].filter(Boolean)
 
     // Create watcher with chokidar
     this.watcher = chokidar.watch(watchPaths, {
@@ -426,8 +415,7 @@ export class VaultWatcher {
     }
 
     // Enqueue sync push so other devices learn about the new file
-    const config = getConfig()
-    if (isJournalPath(relativePath, config.journalFolder)) {
+    if (isJournalPath(relativePath)) {
       const journalDate = extractJournalDate(relativePath)
       enqueueJournalCreate(parsed.frontmatter.id, journalDate)
       initializeJournalCrdt(parsed.frontmatter.id, journalDate, tags)
@@ -447,7 +435,7 @@ export class VaultWatcher {
     })
 
     // Also emit journal event if this is a journal entry
-    if (isJournalPath(relativePath, config.journalFolder)) {
+    if (isJournalPath(relativePath)) {
       const journalDate = extractJournalDate(relativePath)
       emitEvent(JournalChannels.events.ENTRY_CREATED, {
         date: journalDate,
@@ -648,8 +636,7 @@ export class VaultWatcher {
       logger.warn('Failed to feed external edit to CRDT', { noteId: cached.id, error: err })
     })
 
-    const config = getConfig()
-    if (isJournalPath(relativePath, config.journalFolder)) {
+    if (isJournalPath(relativePath)) {
       const journalDate = extractJournalDate(relativePath)
       emitEvent(JournalChannels.events.ENTRY_UPDATED, {
         date: journalDate,
@@ -729,9 +716,7 @@ export class VaultWatcher {
         return
       }
 
-      // Capture config for use in callback
-      const config = getConfig()
-      const isJournal = isJournalPath(relativePath, config.journalFolder)
+      const isJournal = isJournalPath(relativePath)
       const journalDate = isJournal ? extractJournalDate(relativePath) : null
 
       // Track as pending delete - wait for potential rename (matching 'add' event)

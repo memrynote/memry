@@ -86,7 +86,8 @@ function getContentStore() {
   return createNoteContentStore({
     rootPath: vaultPath,
     notesFolder: config.defaultNoteFolder,
-    journalFolder: config.journalFolder
+    journalFolder: config.journalFolder,
+    journalDateFormat: config.journalDateFormat
   })
 }
 

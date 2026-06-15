@@ -1,11 +1,14 @@
 import fs from 'fs/promises'
 import path from 'path'
 import { randomBytes } from 'node:crypto'
+import { formatJournalFilename } from './journal-format.ts'
 
 export interface VaultStoreLayout {
   rootPath: string
   notesFolder: string
   journalFolder: string
+  /** Obsidian-style date format for journal filenames; defaults to YYYY-MM-DD */
+  journalDateFormat?: string
 }
 
 export interface NoteContentStore {
@@ -73,7 +76,8 @@ export function createNoteContentStore(layout: VaultStoreLayout): NoteContentSto
       }
     },
     getJournalRelativePath(date) {
-      return normalizeRelativePath(path.join(layout.journalFolder, `${date}.md`))
+      const filename = formatJournalFilename(date, layout.journalDateFormat ?? '')
+      return normalizeRelativePath(path.join(layout.journalFolder, `${filename}.md`))
     }
   }
 }

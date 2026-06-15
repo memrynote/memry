@@ -307,11 +307,11 @@ export async function indexVault(vaultPath: string): Promise<IndexResult> {
     errors: 0
   }
 
-  // Get folders to scan
-  const foldersToScan = [
-    path.join(vaultPath, config.defaultNoteFolder),
-    path.join(vaultPath, config.journalFolder)
-  ]
+  // Scan the entire vault root. findVaultFiles skips dotfolders (.memry,
+  // .obsidian, .git) and excludePatterns; also exclude the attachments folder so
+  // binaries are not indexed as notes.
+  const scanExcludes = [...excludePatterns, config.attachmentsFolder].filter(Boolean)
+  const foldersToScan = [vaultPath]
 
   // Find all supported files (respecting exclude patterns)
   const allFiles: string[] = []
@@ -319,7 +319,7 @@ export async function indexVault(vaultPath: string): Promise<IndexResult> {
     try {
       const folderStat = await stat(folder)
       if (folderStat.isDirectory()) {
-        const files = await findVaultFiles(folder, vaultPath, excludePatterns)
+        const files = await findVaultFiles(folder, vaultPath, scanExcludes)
         allFiles.push(...files)
       }
     } catch {
