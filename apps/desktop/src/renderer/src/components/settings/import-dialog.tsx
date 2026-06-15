@@ -51,7 +51,7 @@ export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
   }
 
   const summary = run.summary
-  const showProgress = run.isRunning || Boolean(run.progress)
+  const showProgress = (run.isRunning || Boolean(run.progress)) && !run.error
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>

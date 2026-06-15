@@ -60,6 +60,14 @@ export interface ImportStartResult {
   summary: ImportSummaryResult
 }
 
+/** The IPC layer resolves a thrown importer as this envelope (it does not reject). */
+export interface ImportErrorResult {
+  success: false
+  error: string
+}
+
+export type ImportStartResponse = ImportStartResult | ImportErrorResult
+
 export type ImportPhase = 'scanning' | 'importing' | 'done'
 
 export interface ImportProgressEvent {

@@ -58,6 +58,51 @@ describe('useImportRun', () => {
     expect(result.current.isRunning).toBe(false)
   })
 
+  it('surfaces an error envelope and does not show a summary', async () => {
+    // Reproduces a rejected import (e.g. a Markdown export): the runner still
+    // emits a done progress event with an empty summary, then start() resolves
+    // with { success: false, error }. The hook must show the error, not a
+    // misleading "Import complete".
+    let progressCb: (e: ImportProgressEvent) => void = () => {}
+    ;(window as unknown as { api: unknown }).api = {
+      onImportProgress: (fn: (e: ImportProgressEvent) => void) => {
+        progressCb = fn
+        return () => {}
+      },
+      import: {
+        pickFiles: vi.fn(),
+        cancel: vi.fn(),
+        start: vi.fn(async (input: { importId: string }) => {
+          progressCb({
+            importId: input.importId,
+            phase: 'done',
+            status: '',
+            imported: 0,
+            attachments: 0,
+            skipped: 0,
+            failed: 0,
+            completed: 0,
+            total: 0,
+            done: true,
+            summary: { imported: 0, attachments: 0, skipped: 0, failed: [] }
+          })
+          return {
+            success: false,
+            error: 'This looks like a Notion Markdown export. Please re-export as HTML.'
+          }
+        })
+      }
+    }
+
+    const { result } = renderHook(() => useImportRun())
+    await act(async () => {
+      await result.current.start('notion', ['markdown.zip'])
+    })
+
+    expect(result.current.error).toMatch(/Markdown export/)
+    expect(result.current.summary).toBeNull()
+  })
+
   it('cancels the active run by id', async () => {
     const api = installApi()
     const { result } = renderHook(() => useImportRun())

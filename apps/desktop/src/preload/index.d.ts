@@ -33,7 +33,7 @@ import type {
 import type { AppUpdateState } from '@memry/contracts/ipc-updater'
 import type {
   ImportStartInput,
-  ImportStartResult,
+  ImportStartResponse,
   ImportCancelInput,
   ImportPickFilesInput,
   ImportPickFilesResult,
@@ -1745,7 +1745,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
   agent: AgentClientAPI
   import: {
     pickFiles: (input: ImportPickFilesInput) => Promise<ImportPickFilesResult>
-    start: (input: ImportStartInput) => Promise<ImportStartResult>
+    start: (input: ImportStartInput) => Promise<ImportStartResponse>
     cancel: (input: ImportCancelInput) => Promise<{ success: true }>
   }
   todoistImport: {

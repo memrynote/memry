@@ -54,12 +54,14 @@ export function useImportRun(): UseImportRun {
     unsubscribeRef.current = window.api.onImportProgress((event) => {
       if (event.importId !== activeIdRef.current) return
       setProgress(event)
-      if (event.done && event.summary) setSummary(event.summary)
     })
 
     try {
+      // The IPC layer resolves errors as a { success: false, error } envelope
+      // (it does not reject), so a thrown importer surfaces here, not in catch.
       const result = await window.api.import.start({ importId: id, importerId, sourcePaths })
       if (result.success) setSummary(result.summary)
+      else setError(result.error ?? 'Import failed')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Import failed')
     } finally {
