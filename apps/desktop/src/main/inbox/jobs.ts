@@ -19,6 +19,7 @@ import { publishProjectionEvent } from '../projections'
 const log = createLogger('Inbox:Jobs')
 
 const METADATA_RETRY_DELAY_MS = 5000
+const ARTICLE_RETRY_DELAY_MS = 5_000
 
 const scheduledJobTimers = new Map<string, ReturnType<typeof setTimeout>>()
 const activeJobs = new Set<string>()
@@ -307,6 +308,59 @@ async function processMetadataJob(db: DataDb, job: JobRow): Promise<void> {
   }
 }
 
+async function processArticleExtractJob(db: DataDb, job: JobRow): Promise<void> {
+  const item = db.select().from(inboxItems).where(eq(inboxItems.id, job.itemId)).get()
+  const sourceUrl = item?.sourceUrl || (job.payload?.url as string | undefined)
+
+  if (!item || !sourceUrl) {
+    failJob(db, job.id, 'Link item not found or missing source URL.')
+    return
+  }
+
+  try {
+    const { fetchUrlHtml } = await import('./metadata')
+    const { extractFromHtml } = await import('@memry/article-extract/node')
+    const html = await fetchUrlHtml(sourceUrl)
+    const capture = await extractFromHtml(html, sourceUrl)
+
+    if (capture.extractionStatus === 'failed') {
+      completeJob(db, job.id, { extractionStatus: 'failed' })
+      return
+    }
+
+    const now = new Date().toISOString()
+    const existingMetadata =
+      item.metadata && typeof item.metadata === 'object'
+        ? (item.metadata as Record<string, unknown>)
+        : {}
+
+    db.update(inboxItems)
+      .set({
+        content: capture.contentMarkdown,
+        modifiedAt: now,
+        metadata: {
+          ...existingMetadata,
+          url: sourceUrl,
+          excerpt: capture.excerpt,
+          extractionStatus: capture.extractionStatus,
+          properties: capture.properties
+        }
+      })
+      .where(eq(inboxItems.id, job.itemId))
+      .run()
+
+    emitUpdated(job.itemId, { content: capture.contentMarkdown })
+    completeJob(db, job.id, { extractionStatus: capture.extractionStatus })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown extraction error'
+    if (job.attempts < job.maxAttempts) {
+      rescheduleJob(db, job, message, ARTICLE_RETRY_DELAY_MS)
+      return
+    }
+    failJob(db, job.id, message)
+  }
+}
+
 async function processTranscriptionJob(db: DataDb, job: JobRow): Promise<void> {
   const item = db.select().from(inboxItems).where(eq(inboxItems.id, job.itemId)).get()
   const attachmentPath = item?.attachmentPath || (job.payload?.attachmentPath as string | undefined)
@@ -366,6 +420,9 @@ async function processInboxJob(jobId: string): Promise<void> {
       case 'transcription':
         await processTranscriptionJob(db, runningJob)
         break
+      case 'article-extract':
+        await processArticleExtractJob(db, runningJob)
+        break
       default:
         failJob(db, runningJob.id, `No processor registered for job type "${runningJob.type}".`)
         break
@@ -387,6 +444,31 @@ export function queueInboxMetadataJob(
   const jobId = upsertJob(db, {
     itemId,
     type: 'metadata-scrape',
+    status: 'pending',
+    payload: { url },
+    attempts: 0,
+    maxAttempts: options.maxAttempts ?? 2,
+    runAt,
+    lastError: null,
+    startedAt: null,
+    completedAt: null,
+    result: null
+  })
+
+  scheduleJob(jobId, runAt)
+  return jobId
+}
+
+export function queueInboxArticleExtractJob(
+  itemId: string,
+  url: string,
+  options: { maxAttempts?: number; runAt?: string } = {}
+): string {
+  const db = requireDatabase()
+  const runAt = options.runAt ?? new Date().toISOString()
+  const jobId = upsertJob(db, {
+    itemId,
+    type: 'article-extract',
     status: 'pending',
     payload: { url },
     attempts: 0,
