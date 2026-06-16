@@ -1,0 +1,55 @@
+/**
+ * Shared helpers for embedding a saved vault attachment into note markdown.
+ *
+ * Importers save bytes via `saveAttachment` (which returns a `memry-file://`
+ * URL) and must splice a reference into the markdown body. Two rules every
+ * importer needs to get right:
+ *
+ *  1. The URL is percent-encoded so a filename with spaces/parens does not break
+ *     markdown link parsing (`![](a b.png)` truncates at the space). The
+ *     `memry-file` protocol handler decodes it again via `decodeURIComponent`.
+ *  2. Images embed inline (`![](url)`); every other file renders as a clickable
+ *     file block via the renderer's `<!-- file:{...} -->` marker so it can be
+ *     opened inside Memry instead of showing a broken image.
+ */
+
+import type { AttachmentResult } from '../../vault/attachments'
+
+/**
+ * Percent-encode the markdown-breaking characters in an attachment URL without
+ * touching the scheme/path separators. Spaces and parentheses are the ones that
+ * break `![](...)` / `[...](...)`; the protocol handler decodes them back.
+ */
+export function encodeAttachmentUrl(url: string): string {
+  return url.replace(/ /g, '%20').replace(/\(/g, '%28').replace(/\)/g, '%29')
+}
+
+/**
+ * Renderer file-block marker (kept in sync with renderer
+ * `content-area/file-block-markers.ts`). Must sit alone on its own line and
+ * contain no literal `}` for the renderer's line regex to match.
+ */
+export function serializeFileBlockMarker(result: AttachmentResult): string {
+  const props = {
+    url: result.path ?? '',
+    name: result.name ?? '',
+    size: result.size ?? 0,
+    mimeType: result.mimeType ?? 'application/octet-stream'
+  }
+  return `<!-- file:${JSON.stringify(props)} -->`
+}
+
+/**
+ * Markdown for a saved attachment: an inline image embed for images, otherwise a
+ * clickable file block. Returns null if the save did not produce a usable path.
+ */
+export function attachmentMarkdown(result: AttachmentResult): string | null {
+  if (!result.success || !result.path) return null
+  if (result.type === 'image') {
+    // Use the original filename as alt text (mirrors manual image embeds); strip
+    // brackets so the name can't break the `![alt](url)` syntax.
+    const alt = (result.name ?? '').replace(/[[\]]/g, '')
+    return `![${alt}](${encodeAttachmentUrl(result.path)})`
+  }
+  return serializeFileBlockMarker(result)
+}

@@ -1,7 +1,9 @@
 import * as fs from 'fs/promises'
 import * as path from 'path'
-import { createNote, updateNote } from '../../vault/notes-crud'
+import { createNote } from '../../vault/notes-crud'
 import { saveAttachment } from '../../vault/attachments'
+import { attachmentMarkdown } from '../_shared/attachment-markdown'
+import { generateNoteId } from '../../lib/id'
 import { createLogger } from '../../lib/logger'
 import type { Importer, ImportContext, ImportInput, ImportSummary } from '../types'
 import { parseFrontmatter, extractAssetRefs, mapFiles } from '@memry/markdown-import'
@@ -11,6 +13,23 @@ import { percentDecodeRef } from '../_shared/html-to-markdown'
 const logger = createLogger('MarkdownImport')
 
 const MD_EXTENSIONS = new Set(['.md', '.markdown'])
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+/**
+ * Replace every markdown image/link token pointing at `ref` (`![alt](ref)` or
+ * `[text](ref)`) with the already-built attachment markdown, dropping whatever
+ * alt/link text the source authored. Mirrors `extractAssetRefs`' token shape so
+ * images and non-image file blocks both swap cleanly regardless of label.
+ */
+function replaceAssetToken(body: string, ref: string, replacement: string): string {
+  const tokenRe = new RegExp(`!?\\[[^\\][]*\\]\\(${escapeRegExp(ref)}\\)`, 'g')
+  // Function replacer so `$` in the attachment markdown (e.g. a filename) is not
+  // treated as a `String.replace` substitution pattern.
+  return body.replace(tokenRe, () => replacement)
+}
 
 /** Collect all .md/.markdown files under a directory recursively. */
 async function collectMarkdownFiles(
@@ -88,16 +107,11 @@ export const markdownImporter: Importer = {
 
         const noteTitle = title || notePlan.title
 
-        const note = await createNote({
-          title: noteTitle,
-          content: body,
-          folder: notePlan.vaultFolder,
-          tags,
-          properties,
-          created: fileStat.birthtime.toISOString(),
-          modified: fileStat.mtime.toISOString()
-        })
-        ctx.reportImported()
+        // Pre-generate the note id so attachments can be saved under it before
+        // the note exists. The note is then created once with the fully resolved
+        // body — no create-then-update round trip (whose getNoteById can miss the
+        // just-written cache mid-import, throw, and drop every rewrite).
+        const noteId = generateNoteId()
 
         // ---- Attachments: save co-located assets referenced in the body ----
         const refs = extractAssetRefs(body)
@@ -127,18 +141,30 @@ export const markdownImporter: Importer = {
             continue
           }
 
-          const result = await saveAttachment(note.id, bytes, path.basename(decodedRef))
-          if (result.success && result.path) {
-            rewritten = rewritten.split(`](${ref})`).join(`](${result.path})`)
+          const result = await saveAttachment(noteId, bytes, path.basename(decodedRef))
+          // Images embed inline (url-encoded so spaces don't break `![](...)`);
+          // other files become a clickable file block. Replaces the whole
+          // `![alt](ref)` / `[text](ref)` token, not just the `](ref)` tail.
+          const md = attachmentMarkdown(result)
+          if (md) {
+            rewritten = replaceAssetToken(rewritten, ref, md)
             ctx.reportAttachment()
           } else {
-            ctx.reportSkipped(ref, result.error)
+            ctx.reportSkipped(path.basename(decodedRef), result.error)
           }
         }
 
-        if (rewritten !== body) {
-          await updateNote({ id: note.id, content: rewritten })
-        }
+        await createNote({
+          id: noteId,
+          title: noteTitle,
+          content: rewritten,
+          folder: notePlan.vaultFolder,
+          tags,
+          properties,
+          created: fileStat.birthtime.toISOString(),
+          modified: fileStat.mtime.toISOString()
+        })
+        ctx.reportImported()
 
         done++
         ctx.reportProgress(done, total)

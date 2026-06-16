@@ -135,6 +135,23 @@ describe('decodeNote + docToMarkdown round-trip', () => {
     expect(markdown).toContain(`![](${ATTACHMENT_TOKEN_PREFIX}ATT-123)`)
   })
 
+  it('emits an attachment on its own line without inheriting a heading/title prefix', () => {
+    // Apple Notes can style an attachment-only paragraph as Title; the embedded
+    // image must not become `# ![](...)` (which breaks the renderer file/image block).
+    const text = '￼\n'
+    const bytes = encodeDocument(text, [
+      {
+        length: 1,
+        paragraphStyle: { styleType: ANStyleType.Title },
+        attachmentInfo: { attachmentIdentifier: 'ATT-T', typeUti: 'public.png' }
+      },
+      { length: '\n'.length, paragraphStyle: { styleType: ANStyleType.Title } }
+    ])
+    const { markdown } = docToMarkdown(decodeNote(bytes))
+    expect(markdown).toContain(`![](${ATTACHMENT_TOKEN_PREFIX}ATT-T)`)
+    expect(markdown).not.toContain('#')
+  })
+
   it('marks deferred attachment types (tables) without throwing', () => {
     const text = '￼\n'
     const bytes = encodeDocument(text, [

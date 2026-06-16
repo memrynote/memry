@@ -1,5 +1,6 @@
 import { getImporter } from './registry'
 import { createImportContext } from './import-context'
+import { flushProjectionEvents } from '../projections'
 import type { ImportPreview, ImportSummary } from './types'
 
 const controllers = new Map<string, AbortController>()
@@ -22,6 +23,11 @@ export async function runImport(input: RunImportInput): Promise<ImportSummary> {
     return await importer.run({ sourcePaths: input.sourcePaths, options: input.options }, ctx)
   } finally {
     controllers.delete(input.importId)
+    // Importers write notes through the async projection pipeline; their
+    // note_cache rows (which the sidebar's notes list reads) are only persisted
+    // when the projection bus drains. Flush here so a post-import refetch sees
+    // every imported note instead of empty folders until the next reload.
+    await flushProjectionEvents()
     ctx.setPhase('done')
   }
 }

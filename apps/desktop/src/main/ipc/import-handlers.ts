@@ -24,9 +24,21 @@ export function registerImportHandlers(): void {
     ImportChannels.invoke.PICK_FILES,
     ImportPickFilesSchema,
     async (input) => {
+      // A directory pick grants recursive read of the chosen folder (macOS
+      // user-consent), letting us read the protected Apple Notes container —
+      // database + attachments — without Full Disk Access.
+      const properties: Array<'openFile' | 'openDirectory' | 'multiSelections'> = input.directory
+        ? ['openDirectory']
+        : input.allowMultiple
+          ? ['openFile', 'multiSelections']
+          : ['openFile']
       const result = await dialog.showOpenDialog({
-        properties: input.allowMultiple ? ['openFile', 'multiSelections'] : ['openFile'],
-        filters: [{ name: input.label, extensions: input.extensions }]
+        properties,
+        defaultPath: input.defaultPath,
+        message: input.message,
+        ...(input.directory
+          ? {}
+          : { filters: [{ name: input.label, extensions: input.extensions }] })
       })
       if (result.canceled || result.filePaths.length === 0) {
         return { canceled: true as const, filePaths: [] }

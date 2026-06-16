@@ -129,8 +129,14 @@ export function docToMarkdown(doc: { text: string; runs: AttributeRun[] }): Conv
   let monospace = false
   const listCounter = { n: 0 }
 
+  // An attachment placeholder must stand alone as its own block — never carry a
+  // heading/list/quote prefix, or the renderer can't parse it as an image/file
+  // block (e.g. `# ![](...)` from an attachment in a Title-styled paragraph).
+  const isAttachmentOnlyLine = (line: string): boolean =>
+    new RegExp(`^!\\[\\]\\(${ATTACHMENT_TOKEN_PREFIX}[^)]+\\)$`).test(line)
+
   const flushLine = (attr: AttributeRun | null) => {
-    if (attr && !monospace) {
+    if (attr && !monospace && !isAttachmentOnlyLine(current)) {
       const prefix = lineMarkdownPrefix(attr, listCounter)
       lines.push(prefix + current)
     } else {

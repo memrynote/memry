@@ -4,6 +4,7 @@ import { type Block } from '@blocknote/core'
 import {
   splitMarkdownPreservingBlanks,
   assembleMarkdownWithBlanks,
+  separateBlockImages,
   type MarkdownSegment
 } from '@memry/shared/empty-lines'
 import {
@@ -150,7 +151,7 @@ export async function parseMarkdownPreservingBlanks(
         content: inlineContent
       } as unknown as Block)
     } else {
-      const blankSegments = splitMarkdownPreservingBlanks(cseg.text)
+      const blankSegments = splitMarkdownPreservingBlanks(separateBlockImages(cseg.text))
       for (const seg of blankSegments) {
         if (seg.type === 'content') {
           const embedParts = splitByEmbedMarkers(seg.text)

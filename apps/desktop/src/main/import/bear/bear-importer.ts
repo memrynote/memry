@@ -1,5 +1,7 @@
-import { createNote, updateNote } from '../../vault/notes-crud'
+import { createNote } from '../../vault/notes-crud'
 import { saveAttachment } from '../../vault/attachments'
+import { attachmentMarkdown, encodeAttachmentUrl } from '../_shared/attachment-markdown'
+import { generateNoteId } from '../../lib/id'
 import { createLogger } from '../../lib/logger'
 import type { Importer, ImportContext, ImportInput, ImportSummary } from '../types'
 import { forEachZipEntry } from '../_shared/zip'
@@ -7,6 +9,11 @@ import { parseInfo, mapNote, rewriteBearLinks } from '@memry/bear-import'
 import type { ZipEntry } from '../_shared/zip'
 
 const logger = createLogger('BearImport')
+
+/** Escape regex metacharacters so a filename can be matched literally. */
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
 
 interface NoteStash {
   folderName: string
@@ -158,17 +165,13 @@ export const bearImporter: Importer = {
 
         const body = rewriteBearLinks(mapped.body, uidToTitle)
 
-        const note = await createNote({
-          title: mapped.title,
-          content: body,
-          folder: mapped.folder,
-          tags: mapped.tags,
-          created: mapped.created?.toISOString(),
-          modified: mapped.modified?.toISOString()
-        })
-        ctx.reportImported()
+        // Pre-generate the note id so attachments can be saved under it before
+        // the note exists. The note is then created once with the fully resolved
+        // body — no create-then-update round trip (whose getNoteById can miss the
+        // just-written cache mid-import, throw, and drop every rewrite).
+        const noteId = generateNoteId()
 
-        // Save assets and rewrite refs
+        // Save assets and rewrite refs into the body
         let rewritten = body
         const seenAssets = new Set<string>()
 
@@ -183,18 +186,40 @@ export const bearImporter: Importer = {
           if (!assetEntry) continue
 
           const bytes = await assetEntry.read()
-          const result = await saveAttachment(note.id, bytes, decodedName)
-          if (result.success && result.path) {
-            rewritten = rewritten.split(`](assets/${assetFilename})`).join(`](${result.path})`)
+          const result = await saveAttachment(noteId, bytes, decodedName)
+          const markdown = attachmentMarkdown(result)
+          if (markdown) {
+            if (result.type === 'image') {
+              // Keep the original alt text; just encode the saved path so spaces
+              // and parens don't break the markdown image link.
+              rewritten = rewritten
+                .split(`](assets/${assetFilename})`)
+                .join(`](${encodeAttachmentUrl(result.path!)})`)
+            } else {
+              // Non-image: replace the whole `![alt](assets/<file>)` token with a
+              // clickable file block. Use a function replacer so `$` inside the
+              // file-block JSON isn't treated as a replacement pattern.
+              rewritten = rewritten.replace(
+                new RegExp('!\\[[^\\]]*\\]\\(assets/' + escapeRegExp(assetFilename) + '\\)', 'g'),
+                () => markdown
+              )
+            }
             ctx.reportAttachment()
           } else {
             ctx.reportSkipped(decodedName, result.error)
           }
         }
 
-        if (rewritten !== body) {
-          await updateNote({ id: note.id, content: rewritten })
-        }
+        await createNote({
+          id: noteId,
+          title: mapped.title,
+          content: rewritten,
+          folder: mapped.folder,
+          tags: mapped.tags,
+          created: mapped.created?.toISOString(),
+          modified: mapped.modified?.toISOString()
+        })
+        ctx.reportImported()
       } catch (error) {
         logger.warn('bear note import failed', { folder: stash.folderName, error })
         ctx.reportFailed(stash.folderName, error)

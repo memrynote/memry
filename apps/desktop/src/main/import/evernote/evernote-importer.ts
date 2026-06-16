@@ -13,9 +13,12 @@
  *   2. Replace every `<en-media hash="H" type="image/…"/>` with
  *      `<img src="memry-enex:H">` and non-image resources with a plain anchor.
  *   3. The image hook in htmlToMarkdown intercepts `memry-enex:H` src values,
- *      collects the hash token, and emits a placeholder `![](memry-enex:H)`.
- *   4. After createNote we save each resource via saveAttachment and do a
- *      string-replace on the collected refs in the body.
+ *      collects the hash token, and emits a placeholder `![](memry-enex:H)`
+ *      (images) or `[text](memry-enex:H)` (non-image anchors).
+ *   4. We pre-generate the note id, save each resource via saveAttachment under
+ *      it, and replace the placeholder token with `attachmentMarkdown` (inline
+ *      image embed or clickable file block), then create the note once with the
+ *      fully resolved body.
  */
 
 import * as fs from 'fs'
@@ -23,8 +26,10 @@ import * as path from 'path'
 import * as crypto from 'crypto'
 import { JSDOM } from 'jsdom'
 import { parseEnex, prepareEnml, resourceByHash } from '@memry/evernote-import'
-import { createNote, updateNote } from '../../vault/notes-crud'
+import { createNote } from '../../vault/notes-crud'
 import { saveAttachment } from '../../vault/attachments'
+import { attachmentMarkdown } from '../_shared/attachment-markdown'
+import { generateNoteId } from '../../lib/id'
 import { createLogger } from '../../lib/logger'
 import { sanitizeFilename } from '../../lib/export-utils'
 import { htmlToMarkdown } from '../_shared/html-to-markdown'
@@ -34,6 +39,11 @@ const ROOT = 'Evernote'
 const logger = createLogger('EvernoteImport')
 
 const ENEX_SCHEME = 'memry-enex:'
+
+/** Escape a string for safe use inside a RegExp. */
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
 
 /** Compute an MD5 hex digest from a base64-encoded string (no whitespace). */
 function md5Hex(base64: string): string {
@@ -151,15 +161,11 @@ export const evernoteImporter: Importer = {
             }
           })
 
-          const note = await createNote({
-            title: enexNote.title,
-            content: markdown,
-            folder,
-            tags: enexNote.tags.length > 0 ? enexNote.tags : undefined,
-            created: enexNote.created,
-            modified: enexNote.updated
-          })
-          ctx.reportImported()
+          // Pre-generate the note id so attachments can be saved under it before
+          // the note exists. The note is then created once with the fully resolved
+          // body — no create-then-update round trip (whose getNoteById can miss the
+          // just-written cache mid-import, throw, and drop every rewrite).
+          const noteId = generateNoteId()
 
           // Save attachments and rewrite refs in the body
           let rewritten = markdown
@@ -169,12 +175,20 @@ export const evernoteImporter: Importer = {
 
             const bytes = Buffer.from(resource.base64, 'base64')
             const filename = resource.fileName ?? resourceFilename(resource.mime, hash)
-            const result = await saveAttachment(note.id, bytes, filename)
+            const result = await saveAttachment(noteId, bytes, filename)
 
-            if (result.success && result.path) {
-              // Replace both image and anchor placeholders
+            const md = attachmentMarkdown(result)
+            if (md) {
+              // Replace the whole placeholder token — image (`![](memry-enex:H)`)
+              // or non-image anchor (`[text](memry-enex:H)`) — with the shared
+              // helper output: images embed inline (url-encoded), other files
+              // become a clickable file block. A function replacer keeps `$` in
+              // the file-block JSON from being treated as a replacement pattern.
               const placeholder = `${ENEX_SCHEME}${hash}`
-              rewritten = rewritten.split(`](${placeholder})`).join(`](${result.path})`)
+              rewritten = rewritten.replace(
+                new RegExp('!?\\[[^\\]]*\\]\\(' + escapeRegExp(placeholder) + '\\)', 'g'),
+                () => md
+              )
               ctx.reportAttachment()
             } else {
               ctx.reportSkipped(filename, result.error)
@@ -185,9 +199,16 @@ export const evernoteImporter: Importer = {
           // or a failed save) so the internal `memry-enex:` scheme never leaks.
           rewritten = rewritten.replace(/!?\[[^\]]*\]\(memry-enex:[^)]*\)/g, '')
 
-          if (rewritten !== markdown) {
-            await updateNote({ id: note.id, content: rewritten })
-          }
+          await createNote({
+            id: noteId,
+            title: enexNote.title,
+            content: rewritten,
+            folder,
+            tags: enexNote.tags.length > 0 ? enexNote.tags : undefined,
+            created: enexNote.created,
+            modified: enexNote.updated
+          })
+          ctx.reportImported()
 
           done++
           ctx.reportProgress(done, total)

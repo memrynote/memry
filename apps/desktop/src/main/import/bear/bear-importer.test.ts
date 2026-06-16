@@ -186,6 +186,14 @@ describe('bearImporter (integration)', () => {
     expect(noteAContent).toContain('[[Note B]]')
     // attachment link rewritten to memry-file://
     expect(noteAContent).toContain('memry-file://')
+    // image embed keeps its alt text and the saved filename has no spaces, so the
+    // markdown image link URL can't be truncated by a space
+    const imageMatch = noteAContent.match(/!\[shared image\]\((memry-file:\/\/[^)]+)\)/)
+    expect(imageMatch).not.toBeNull()
+    expect(imageMatch![1]).not.toContain(' ')
+    expect(imageMatch![1]).toContain('shared-image.png')
+    // no leftover unresolved asset ref
+    expect(noteAContent).not.toContain('assets/shared%20image.png')
 
     // Note B is archived → Bear/Archived/
     const archivedDir = path.join(tempVault.notesDir, 'Bear', 'Archived')

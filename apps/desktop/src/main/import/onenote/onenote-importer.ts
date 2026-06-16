@@ -27,8 +27,10 @@ import {
   type OneNoteSection,
   type PagePlan
 } from '@memry/onenote-import'
-import { createNote, updateNote } from '../../vault/notes-crud'
+import { createNote } from '../../vault/notes-crud'
 import { saveAttachment } from '../../vault/attachments'
+import { attachmentMarkdown, encodeAttachmentUrl } from '../_shared/attachment-markdown'
+import { generateNoteId } from '../../lib/id'
 import { createLogger } from '../../lib/logger'
 import { htmlToMarkdown } from '../_shared/html-to-markdown'
 import { refreshAccessToken } from './onenote-auth'
@@ -40,6 +42,11 @@ const logger = createLogger('OneNoteImport')
 
 // TODO(Azure app registration): set client id + redirect URI.
 const ONENOTE_CLIENT_ID = ''
+
+/** Escape a string for safe use inside a `new RegExp(...)` pattern. */
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
 
 /**
  * Internal seam so tests can drive the importer without live auth or a real
@@ -133,30 +140,46 @@ async function runImport(
       const html = await graph.getPageHtml(plan.pageId)
       const { markdown, images } = convertPage(html)
 
-      const note = await createNote({
-        title: plan.title,
-        content: markdown,
-        folder: plan.folder.startsWith(`${ROOT}/`) ? plan.folder : `${ROOT}/${plan.folder}`,
-        created: plan.created
-      })
-      ctx.reportImported()
+      // Pre-generate the note id so attachments can be saved under it before the
+      // note exists. The note is then created once with the fully resolved body —
+      // no create-then-update round trip (whose getNoteById can miss the
+      // just-written cache mid-import, throw, and drop every rewrite).
+      const noteId = generateNoteId()
 
       // Persist lifted base64 images and rewrite their placeholder refs.
       let rewritten = markdown
       for (const image of images) {
         const bytes = Buffer.from(image.base64, 'base64')
         const filename = `${image.placeholder}.${extensionForMime(image.mime)}`
-        const result = await saveAttachment(note.id, bytes, filename)
-        if (result.success && result.path) {
-          rewritten = rewritten.split(`](${image.placeholder})`).join(`](${result.path})`)
+        const result = await saveAttachment(noteId, bytes, filename)
+        const md = attachmentMarkdown(result)
+        if (md) {
+          // Images embed inline (url-encoded so spaced/paren filenames survive
+          // markdown link parsing); other files become a clickable file block.
+          if (result.type === 'image') {
+            rewritten = rewritten
+              .split(`](${image.placeholder})`)
+              .join(`](${encodeAttachmentUrl(result.path!)})`)
+          } else {
+            rewritten = rewritten.replace(
+              new RegExp('!\\[[^\\]]*\\]\\(' + escapeRegExp(image.placeholder) + '\\)', 'g'),
+              () => md
+            )
+          }
           ctx.reportAttachment()
         } else {
           ctx.reportSkipped(filename, result.error)
         }
       }
-      if (rewritten !== markdown) {
-        await updateNote({ id: note.id, content: rewritten })
-      }
+
+      await createNote({
+        id: noteId,
+        title: plan.title,
+        content: rewritten,
+        folder: plan.folder.startsWith(`${ROOT}/`) ? plan.folder : `${ROOT}/${plan.folder}`,
+        created: plan.created
+      })
+      ctx.reportImported()
 
       done++
       ctx.reportProgress(done, total)

@@ -1,8 +1,10 @@
 import path from 'node:path'
 import { readFile } from 'node:fs/promises'
 import { parseKeepNote, mapKeepNote } from '@memry/google-keep-import'
-import { createNote, updateNote } from '../../vault/notes-crud'
+import { createNote } from '../../vault/notes-crud'
 import { saveAttachment } from '../../vault/attachments'
+import { attachmentMarkdown } from '../_shared/attachment-markdown'
+import { generateNoteId } from '../../lib/id'
 import { createLogger } from '../../lib/logger'
 import type { Importer, ImportContext, ImportInput, ImportSummary } from '../types'
 import { forEachZipEntry } from '../_shared/zip'
@@ -35,39 +37,45 @@ async function processNote(
   try {
     const mapped = mapKeepNote(keepNote)
     ctx.status(`Importing ${mapped.title}`)
-    const note = await createNote({
+
+    // Pre-generate the note id so attachments can be saved under it before the
+    // note exists. The note is then created once with the fully resolved body —
+    // no create-then-update round trip (whose getNoteById can miss the
+    // just-written cache mid-import, throw, and drop every rewrite).
+    const noteId = generateNoteId()
+
+    // Save attachments and rewrite refs into the note body.
+    let rewritten = mapped.body
+    for (const attachPath of mapped.attachmentPaths) {
+      if (ctx.isCancelled()) return
+      const name = basename(attachPath)
+      const bytes = assetMap.get(name)
+      if (!bytes) {
+        ctx.reportSkipped(name, 'Attachment file not found')
+        continue
+      }
+      const result = await saveAttachment(noteId, bytes, name)
+      // Images embed inline (url-encoded); other files become a clickable file
+      // block. Appended after the body so the reference survives.
+      const md = attachmentMarkdown(result)
+      if (md) {
+        rewritten = `${rewritten}\n\n${md}`
+        ctx.reportAttachment()
+      } else {
+        ctx.reportSkipped(name, result.error)
+      }
+    }
+
+    await createNote({
+      id: noteId,
       title: mapped.title,
-      content: mapped.body,
+      content: rewritten,
       folder: ROOT,
       tags: mapped.tags,
       created: mapped.created,
       modified: mapped.modified
     })
     ctx.reportImported()
-
-    // Save attachments and rewrite refs into the note body.
-    if (mapped.attachmentPaths.length > 0) {
-      let rewritten = mapped.body
-      for (const attachPath of mapped.attachmentPaths) {
-        if (ctx.isCancelled()) return
-        const name = basename(attachPath)
-        const bytes = assetMap.get(name)
-        if (!bytes) {
-          ctx.reportSkipped(name, 'Attachment file not found')
-          continue
-        }
-        const result = await saveAttachment(note.id, bytes, name)
-        if (result.success && result.path) {
-          rewritten = `${rewritten}\n\n![](${result.path})`
-          ctx.reportAttachment()
-        } else {
-          ctx.reportSkipped(name, result.error)
-        }
-      }
-      if (rewritten !== mapped.body) {
-        await updateNote({ id: note.id, content: rewritten })
-      }
-    }
   } catch (error) {
     logger.warn('note import failed', { source: sourceLabel })
     ctx.reportFailed(sourceLabel, error)

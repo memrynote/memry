@@ -219,7 +219,15 @@ export function generateUniqueFilename(originalFilename: string): string {
   const prefix = generatePrefix()
   const ext = path.extname(originalFilename)
   const baseName = path.basename(originalFilename, ext)
-  const sanitizedName = sanitizeFilename(baseName)
+  // Spaces and parens survive sanitizeFilename but break markdown image links
+  // (`![](a b.png)` / `![](a(1).png)` stop parsing at the space/paren and render
+  // as raw text). Percent-encoding the URL is not enough — the editor decodes it
+  // back on save — so keep them out of the filename itself.
+  const sanitizedName =
+    sanitizeFilename(baseName)
+      .replace(/[\s()]+/g, '-')
+      .replace(/-{2,}/g, '-')
+      .replace(/^-|-$/g, '') || 'file'
   return `${prefix}-${sanitizedName}${ext}`
 }
 

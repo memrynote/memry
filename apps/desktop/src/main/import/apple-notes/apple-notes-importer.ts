@@ -17,8 +17,10 @@ import path from 'path'
 import fs from 'fs/promises'
 import zlib from 'zlib'
 import Database from 'better-sqlite3'
-import { createNote, updateNote } from '../../vault/notes-crud'
+import { createNote } from '../../vault/notes-crud'
 import { saveAttachment } from '../../vault/attachments'
+import { attachmentMarkdown } from '../_shared/attachment-markdown'
+import { generateNoteId } from '../../lib/id'
 import { createLogger } from '../../lib/logger'
 import type { Importer, ImportContext, ImportInput, ImportSummary } from '../types'
 import {
@@ -30,7 +32,8 @@ import {
 } from '@memry/apple-notes-import'
 
 const ROOT = 'Apple Notes'
-const NOTE_DB_REL = 'Library/Group Containers/group.com.apple.notes/NoteStore.sqlite'
+const NOTE_CONTAINER_REL = 'Library/Group Containers/group.com.apple.notes'
+const NOTE_DB = 'NoteStore.sqlite'
 const logger = createLogger('AppleNotesImport')
 
 function errorMessage(error: unknown): string {
@@ -38,6 +41,22 @@ function errorMessage(error: unknown): string {
   if (typeof error === 'string') return error
   return 'Import error'
 }
+
+function errorCode(error: unknown): string | undefined {
+  return (error as { code?: string } | null | undefined)?.code
+}
+
+/** macOS TCC / filesystem permission denial reading the protected Notes data. */
+function isAccessDenied(error: unknown): boolean {
+  const code = errorCode(error)
+  return code === 'EPERM' || code === 'EACCES' || code === 'SQLITE_CANTOPEN'
+}
+
+const ACCESS_DENIED_HINT =
+  'Memry could not read the Apple Notes data. Click “Select Apple Notes folder” and ' +
+  'choose the “group.com.apple.notes” folder when the picker opens — that grants access ' +
+  'without Full Disk Access. If it still fails, grant Full Disk Access to Memry (or ' +
+  '“Electron” in development) in System Settings → Privacy & Security, then reopen the app.'
 
 /** Folder type discriminator from ICFolder.ZFOLDERTYPE. */
 const FOLDER_TYPE_TRASH = 1
@@ -79,11 +98,24 @@ interface MediaRow {
   identifier: string | null
   generation: string | null
   filename: string | null
-  note: number | null
 }
 
-function defaultDbPath(): string {
-  return path.join(os.homedir(), NOTE_DB_REL)
+/**
+ * A note's inline attachment resolved by its ICAttachment identifier. URL cards
+ * carry `typeUti`/`title`/`url` and no file; file/image attachments carry the
+ * `media*` fields from the joined ICMedia row (where the real filename lives).
+ */
+interface AttachmentRow {
+  typeUti: string | null
+  title: string | null
+  url: string | null
+  mediaId: string | null
+  generation: string | null
+  filename: string | null
+}
+
+function defaultContainerDir(): string {
+  return path.join(os.homedir(), NOTE_CONTAINER_REL)
 }
 
 /**
@@ -105,11 +137,15 @@ async function copyToTemp(sourcePath: string): Promise<string> {
 }
 
 function loadPrimaryKeys(db: Database.Database): PrimaryKeys {
-  const rows = db.prepare('SELECT z_ent, z_name FROM z_primarykey').all() as {
-    z_ent: number
-    z_name: string
+  // better-sqlite3 keys rows by the schema's real column case — the Apple Notes
+  // DB declares Z_ENT/Z_NAME uppercase, so an unaliased `z_name` read returns
+  // undefined and every entity id falls back to -1 (→ zero rows). Alias to a
+  // stable lowercase key. (Every other query already aliases its columns.)
+  const rows = db.prepare('SELECT z_ent AS ent, z_name AS name FROM z_primarykey').all() as {
+    ent: number
+    name: string
   }[]
-  const byName = new Map(rows.map((r) => [r.z_name, r.z_ent]))
+  const byName = new Map(rows.map((r) => [r.name, r.ent]))
   return {
     ICAccount: byName.get('ICAccount') ?? -1,
     ICFolder: byName.get('ICFolder') ?? -1,
@@ -122,10 +158,17 @@ export const appleNotesImporter: Importer = {
   id: 'apple-notes',
   name: 'Apple Notes',
   descriptionKey: 'import.sources.apple-notes',
+  // Pick the protected Notes container folder; selecting it grants recursive
+  // read access (database + attachments) without Full Disk Access.
   fileSpec: {
-    label: 'Apple Notes database (NoteStore.sqlite)',
+    label: 'Apple Notes data folder',
     extensions: ['sqlite'],
-    allowMultiple: false
+    allowMultiple: false,
+    directory: true,
+    defaultPath: defaultContainerDir(),
+    message:
+      'Select the “group.com.apple.notes” folder to let Memry read your Apple Notes — ' +
+      'notes and attachments. No Full Disk Access needed.'
   },
 
   async run(input: ImportInput, ctx: ImportContext): Promise<ImportSummary> {
@@ -134,16 +177,33 @@ export const appleNotesImporter: Importer = {
       return ctx.toSummary()
     }
 
-    const sourcePath = input.sourcePaths[0] || defaultDbPath()
+    // The user selects the container folder (preferred — its grant also covers
+    // attachments) or a NoteStore.sqlite file directly. Resolve both the DB path
+    // and the media base from whatever was chosen.
+    const selected = input.sourcePaths[0] || defaultContainerDir()
+    const isDbFile = selected.toLowerCase().endsWith('.sqlite')
+    const dbPath = isDbFile ? selected : path.join(selected, NOTE_DB)
+    const mediaBase = isDbFile ? path.dirname(selected) : selected
+
     let tempPath: string | null = null
     let db: Database.Database | null = null
 
     try {
       ctx.setPhase('scanning')
       ctx.status('Copying Apple Notes database…')
-      tempPath = await copyToTemp(sourcePath)
-
-      db = new Database(tempPath, { readonly: true, fileMustExist: true })
+      try {
+        tempPath = await copyToTemp(dbPath)
+        db = new Database(tempPath, { readonly: true, fileMustExist: true })
+      } catch (error) {
+        if (isAccessDenied(error)) throw new Error(ACCESS_DENIED_HINT)
+        if (errorCode(error) === 'ENOENT') {
+          throw new Error(
+            `Apple Notes database not found at ${dbPath}. Open the Notes app once to ` +
+              'create it, or select the “group.com.apple.notes” folder.'
+          )
+        }
+        throw error
+      }
       const keys = loadPrimaryKeys(db)
 
       // ---- Accounts ----
@@ -181,11 +241,14 @@ export const appleNotesImporter: Importer = {
         )
         .all(keys.ICNote) as NoteDataRow[]
 
-      const mediaStmt = db.prepare(
-        'SELECT a.zidentifier AS identifier, a.zgeneration1 AS generation, ' +
-          'a.zfilename AS filename, b.znote AS note ' +
+      // The note body references the ICAttachment identifier. URL cards hold
+      // their link on the attachment row itself; file/image attachments point
+      // (ZMEDIA) at an ICMedia row that carries the real filename + generation.
+      const attachmentStmt = db.prepare(
+        'SELECT a.ztypeuti AS typeUti, a.ztitle AS title, a.zurlstring AS url, ' +
+          'm.zidentifier AS mediaId, m.zgeneration1 AS generation, m.zfilename AS filename ' +
           'FROM ziccloudsyncingobject AS a ' +
-          'JOIN ziccloudsyncingobject AS b ON b.zmedia = a.z_pk ' +
+          'LEFT JOIN ziccloudsyncingobject AS m ON m.z_pk = a.zmedia ' +
           'WHERE a.zidentifier = ?'
       )
 
@@ -234,46 +297,71 @@ export const appleNotesImporter: Importer = {
             attachmentIds = converted.attachmentIds
           }
 
-          const note = await createNote({
-            title: mapped.title,
-            content: body,
-            folder: mapped.folder,
-            created: mapped.created,
-            modified: mapped.modified
-          })
-          ctx.reportImported()
+          // Pre-generate the note id so attachments can be saved under it before
+          // the note exists. The note is then created once with the fully resolved
+          // body — no create-then-update round trip (whose getNoteById can miss the
+          // just-written cache mid-import, throw, and drop every rewrite).
+          const noteId = generateNoteId()
 
-          // Resolve inline image attachments, save them, rewrite the tokens.
+          // Resolve inline attachments into the body: URL cards → markdown links,
+          // images → embedded `![](path)`, other files → a clickable file block.
           let rewritten = body
           for (const attachmentId of new Set(attachmentIds)) {
             const token = `${ATTACHMENT_TOKEN_PREFIX}${attachmentId}`
             try {
-              const media = mediaStmt.get(attachmentId) as MediaRow | undefined
-              if (!media || !media.filename || media.note == null) {
-                ctx.reportSkipped(attachmentId, 'attachment file not found')
+              const att = attachmentStmt.get(attachmentId) as AttachmentRow | undefined
+              if (!att) {
+                ctx.reportSkipped(attachmentId, 'attachment not found')
                 continue
               }
+
+              // URL link card — no file on disk; emit a markdown link, dropping
+              // the image (`!`) prefix the converter wrote for the placeholder.
+              if (att.typeUti === 'public.url' && att.url) {
+                const label = att.title?.trim() || att.url
+                rewritten = rewritten.split(`![](${token})`).join(`[${label}](${att.url})`)
+                continue
+              }
+
+              if (!att.filename || !att.mediaId) {
+                ctx.reportSkipped(att.title || attachmentId, 'attachment file not found')
+                continue
+              }
+
               const account = accountById.get(folder?.owner ?? -1)
-              const bytes = await readMediaBytes(account?.identifier, media)
+              const bytes = await readMediaBytes(mediaBase, account?.identifier, {
+                identifier: att.mediaId,
+                generation: att.generation,
+                filename: att.filename
+              })
               if (!bytes) {
-                ctx.reportSkipped(media.filename, 'attachment bytes unreadable')
+                ctx.reportSkipped(att.filename, 'attachment bytes unreadable')
                 continue
               }
-              const result = await saveAttachment(note.id, bytes, media.filename)
-              if (result.success && result.path) {
-                rewritten = rewritten.split(`](${token})`).join(`](${result.path})`)
+              const result = await saveAttachment(noteId, bytes, att.filename)
+              const md = attachmentMarkdown(result)
+              if (md) {
+                // Images embed inline (url-encoded); other files become a
+                // clickable file block. Replaces the whole `![](token)` placeholder.
+                rewritten = rewritten.split(`![](${token})`).join(md)
                 ctx.reportAttachment()
               } else {
-                ctx.reportSkipped(media.filename, result.error)
+                ctx.reportSkipped(att.filename, result.error)
               }
             } catch (error) {
               ctx.reportSkipped(attachmentId, errorMessage(error))
             }
           }
 
-          if (rewritten !== body) {
-            await updateNote({ id: note.id, content: rewritten })
-          }
+          await createNote({
+            id: noteId,
+            title: mapped.title,
+            content: rewritten,
+            folder: mapped.folder,
+            created: mapped.created,
+            modified: mapped.modified
+          })
+          ctx.reportImported()
         } catch (error) {
           logger.warn('apple note import failed', { title })
           ctx.reportFailed(title, error)
@@ -307,14 +395,15 @@ function folderDisplayName(folder: FolderRow | undefined): string | null {
 }
 
 /**
- * Read an attachment's bytes from the Apple Notes Media directory on disk.
- * Falls back to the flat Media path when the per-account path is unavailable.
+ * Read an attachment's bytes from the Apple Notes Media directory on disk,
+ * relative to the selected container folder (`base`). Falls back to the flat
+ * Media path when the per-account path is unavailable.
  */
 async function readMediaBytes(
+  base: string,
   accountIdentifier: string | undefined,
   media: MediaRow
 ): Promise<Buffer | null> {
-  const base = path.join(os.homedir(), 'Library/Group Containers/group.com.apple.notes')
   const candidates: string[] = []
   if (accountIdentifier && media.identifier && media.filename) {
     candidates.push(
@@ -334,12 +423,15 @@ async function readMediaBytes(
       path.join(base, 'Media', media.identifier, media.generation ?? '', media.filename)
     )
   }
+  let accessDenied = false
   for (const candidate of candidates) {
     try {
       return await fs.readFile(candidate)
-    } catch {
-      // try next candidate
+    } catch (error) {
+      // ENOENT → try the next candidate; permission denial → surface FDA hint.
+      if (isAccessDenied(error)) accessDenied = true
     }
   }
+  if (accessDenied) throw new Error(ACCESS_DENIED_HINT)
   return null
 }

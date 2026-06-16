@@ -830,7 +830,9 @@
     "dialog": {
       "title": "Import from {name}",
       "choose": "Choose file…",
+      "chooseFolder": "Select Apple Notes folder…",
       "chooseHint": "Select your {label}",
+      "folderHint": "Click below and select the “group.com.apple.notes” folder when the picker opens (it starts there). This lets Memry read your notes and attachments — no Full Disk Access needed.",
       "selected": "{count, plural, one {# file selected} other {# files selected}}",
       "start": "Start import",
       "cancel": "Cancel",

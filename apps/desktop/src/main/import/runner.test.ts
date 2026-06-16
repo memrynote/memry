@@ -4,12 +4,20 @@ vi.mock('electron', () => ({
   BrowserWindow: { getAllWindows: () => [] }
 }))
 
+vi.mock('../projections', () => ({
+  flushProjectionEvents: vi.fn().mockResolvedValue(undefined)
+}))
+
 import { runImport, previewImport, cancelImport } from './runner'
 import { registerImporter, __resetRegistry } from './registry'
+import { flushProjectionEvents } from '../projections'
 import type { Importer } from './types'
 
 describe('runner', () => {
-  beforeEach(() => __resetRegistry())
+  beforeEach(() => {
+    __resetRegistry()
+    vi.mocked(flushProjectionEvents).mockClear().mockResolvedValue(undefined)
+  })
 
   it('runs the named importer and returns its summary', async () => {
     const imp: Importer = {
@@ -22,6 +30,48 @@ describe('runner', () => {
     registerImporter(imp)
     const s = await runImport({ importId: 'r1', importerId: 'x', sourcePaths: ['a.zip'] })
     expect(s.imported).toBe(5)
+  })
+
+  it('flushes projection events after the importer finishes', async () => {
+    // Importers create notes through the async projection pipeline; their
+    // note_cache rows are only written when the projection bus drains. The run
+    // must flush after the importer so a post-import notes-list refetch sees
+    // every imported note instead of empty folders until the next reload.
+    const order: string[] = []
+    vi.mocked(flushProjectionEvents).mockImplementation(async () => {
+      order.push('flush')
+    })
+    const imp: Importer = {
+      id: 'f',
+      name: 'F',
+      descriptionKey: 'k.f',
+      fileSpec: { label: 'F', extensions: ['md'], allowMultiple: true },
+      run: async () => {
+        order.push('run')
+        return { imported: 3, attachments: 0, skipped: 0, failed: [] }
+      }
+    }
+    registerImporter(imp)
+    await runImport({ importId: 'rf', importerId: 'f', sourcePaths: ['a.md'] })
+    expect(flushProjectionEvents).toHaveBeenCalledTimes(1)
+    expect(order).toEqual(['run', 'flush'])
+  })
+
+  it('flushes projection events even when the importer throws', async () => {
+    const imp: Importer = {
+      id: 'fe',
+      name: 'FE',
+      descriptionKey: 'k.fe',
+      fileSpec: { label: 'FE', extensions: ['md'], allowMultiple: true },
+      run: async () => {
+        throw new Error('boom')
+      }
+    }
+    registerImporter(imp)
+    await expect(runImport({ importId: 'rfe', importerId: 'fe', sourcePaths: [] })).rejects.toThrow(
+      'boom'
+    )
+    expect(flushProjectionEvents).toHaveBeenCalledTimes(1)
   })
 
   it('throws for unknown importer id', async () => {

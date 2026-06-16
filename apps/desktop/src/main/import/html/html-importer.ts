@@ -1,8 +1,10 @@
 import { JSDOM } from 'jsdom'
 import * as fs from 'fs/promises'
 import * as path from 'path'
-import { createNote, updateNote } from '../../vault/notes-crud'
+import { createNote } from '../../vault/notes-crud'
 import { saveAttachment } from '../../vault/attachments'
+import { attachmentMarkdown, encodeAttachmentUrl } from '../_shared/attachment-markdown'
+import { generateNoteId } from '../../lib/id'
 import { createLogger } from '../../lib/logger'
 import type { Importer, ImportContext, ImportInput, ImportSummary } from '../types'
 import { htmlToMarkdown, percentDecodeRef } from '../_shared/html-to-markdown'
@@ -110,12 +112,11 @@ export const htmlImporter: Importer = {
           }
         })
 
-        const note = await createNote({
-          title: notePlan.title,
-          content: markdown,
-          folder: notePlan.vaultFolder
-        })
-        ctx.reportImported()
+        // Pre-generate the note id so attachments can be saved under it before
+        // the note exists. The note is then created once with the fully resolved
+        // body — no create-then-update round trip (whose getNoteById can miss the
+        // just-written cache mid-import, throw, and drop every rewrite).
+        const noteId = generateNoteId()
 
         // ---- Post-process: download / read each collected asset ref ----
         let rewritten = markdown
@@ -186,18 +187,35 @@ export const htmlImporter: Importer = {
           }
 
           const filename = path.basename(ref.split('?')[0])
-          const result = await saveAttachment(note.id, bytes, filename)
-          if (result.success && result.path) {
-            rewritten = rewritten.split(`](${ref})`).join(`](${result.path})`)
-            ctx.reportAttachment()
-          } else {
+          const result = await saveAttachment(noteId, bytes, filename)
+          if (!result.success || !result.path) {
             ctx.reportSkipped(ref, result.error)
+            continue
           }
+          if (result.type === 'image') {
+            // Image embed: keep the converter's `![alt](ref)` token and only swap
+            // the path inside the parens (url-encoded so spaces/parens don't break
+            // markdown), preserving any alt text from the source <img>.
+            rewritten = rewritten.split(`](${ref})`).join(`](${encodeAttachmentUrl(result.path)})`)
+          } else {
+            // Non-image file: replace the whole `![alt](ref)` image token with a
+            // clickable file block (alt is unknown here, so match it with a regex).
+            const md = attachmentMarkdown(result)
+            if (md) {
+              const escaped = ref.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+              rewritten = rewritten.replace(new RegExp(`!\\[[^\\]]*\\]\\(${escaped}\\)`, 'g'), md)
+            }
+          }
+          ctx.reportAttachment()
         }
 
-        if (rewritten !== markdown) {
-          await updateNote({ id: note.id, content: rewritten })
-        }
+        await createNote({
+          id: noteId,
+          title: notePlan.title,
+          content: rewritten,
+          folder: notePlan.vaultFolder
+        })
+        ctx.reportImported()
 
         done++
         ctx.reportProgress(done, total)
