@@ -39,6 +39,7 @@ import { detectSocialPlatform, extractSocialPost, isSocialPost } from './social'
 import { isStale as checkIsStale } from './stats'
 import { getSnoozedItems, snoozeItem, unsnoozeItem } from './snooze'
 import {
+  queueInboxArticleExtractJob,
   queueInboxMetadataJob,
   queueInboxTranscriptionJob,
   resumeInboxJobs,
@@ -481,6 +482,7 @@ export function createDesktopInboxDomain() {
       storeSocialMetadata,
       queueMetadataJob: (itemId, url) => {
         queueInboxMetadataJob(itemId, url)
+        queueInboxArticleExtractJob(itemId, url)
       },
       getSuggestions,
       trackSuggestionFeedback: (input) => {
