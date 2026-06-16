@@ -21,16 +21,20 @@ export function parseInfo(raw: unknown): BearInfo {
     return { archived: false, trashed: false }
   }
 
-  const obj = raw as Record<string, unknown>
+  // Real Bear exports nest note metadata under the `net.shinyfrog.bear` key.
+  const outer = raw as Record<string, unknown>
+  const inner = outer['net.shinyfrog.bear']
+  const obj =
+    inner !== null && typeof inner === 'object' && !Array.isArray(inner)
+      ? (inner as Record<string, unknown>)
+      : outer
 
   return {
     uniqueIdentifier:
-      typeof obj['net.shinyfrog.bear.uniqueIdentifier'] === 'string'
-        ? obj['net.shinyfrog.bear.uniqueIdentifier']
-        : undefined,
-    created: toDate(obj['net.shinyfrog.bear.note-creation-date']),
-    modified: toDate(obj['net.shinyfrog.bear.note-modification-date']),
-    archived: toBool(obj['net.shinyfrog.bear.note-archived']),
-    trashed: toBool(obj['net.shinyfrog.bear.note-trashed'])
+      typeof obj['uniqueIdentifier'] === 'string' ? obj['uniqueIdentifier'] : undefined,
+    created: toDate(obj['creationDate']),
+    modified: toDate(obj['modificationDate']),
+    archived: toBool(obj['archived']),
+    trashed: toBool(obj['trashed'])
   }
 }

@@ -15,8 +15,27 @@ interface NoteStash {
   assetEntries: Map<string, ZipEntry>
 }
 
-function firstPathComponent(filepath: string): string {
-  return filepath.split('/')[0]
+/**
+ * Path prefix up to and including the `.textbundle` segment, or null if none.
+ * Real Bear exports wrap every note in `<backup>.bear2bk/<Title>.textbundle/…`,
+ * so the bundle is not necessarily the first path component.
+ */
+function textbundleFolder(filepath: string): string | null {
+  const parts = filepath.split('/')
+  const idx = parts.findIndex((p) => p.endsWith('.textbundle'))
+  return idx === -1 ? null : parts.slice(0, idx + 1).join('/')
+}
+
+function bundleName(folder: string): string {
+  return (folder.split('/').pop() ?? folder).replace(/\.textbundle$/, '')
+}
+
+function safeDecode(value: string): string {
+  try {
+    return decodeURI(value)
+  } catch {
+    return value
+  }
 }
 
 export const bearImporter: Importer = {
@@ -36,10 +55,10 @@ export const bearImporter: Importer = {
     await forEachZipEntry(input.sourcePaths, ctx.signal, async (entry) => {
       if (ctx.isCancelled()) return
 
-      const folder = firstPathComponent(entry.filepath)
-      if (!folder.endsWith('.textbundle')) return
+      const folder = textbundleFolder(entry.filepath)
+      if (!folder) return
 
-      const folderName = folder.replace(/\.textbundle$/, '')
+      const folderName = bundleName(folder)
 
       if (entry.name === 'text.md') {
         if (!noteMap.has(folder)) {
@@ -157,16 +176,19 @@ export const bearImporter: Importer = {
           if (seenAssets.has(assetFilename)) continue
           seenAssets.add(assetFilename)
 
-          const assetEntry = stash.assetEntries.get(assetFilename)
+          // Markdown asset refs are URL-encoded (e.g. `assets/My%20File.png`),
+          // but zip entries use the decoded filename.
+          const decodedName = safeDecode(assetFilename)
+          const assetEntry = stash.assetEntries.get(decodedName)
           if (!assetEntry) continue
 
           const bytes = await assetEntry.read()
-          const result = await saveAttachment(note.id, bytes, assetFilename)
+          const result = await saveAttachment(note.id, bytes, decodedName)
           if (result.success && result.path) {
             rewritten = rewritten.split(`](assets/${assetFilename})`).join(`](${result.path})`)
             ctx.reportAttachment()
           } else {
-            ctx.reportSkipped(assetFilename, result.error)
+            ctx.reportSkipped(decodedName, result.error)
           }
         }
 

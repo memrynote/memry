@@ -37,14 +37,18 @@ beforeAll(() => {
   tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bear-fixture-'))
   const fixturePath = path.join(tmpDir, 'test.bear2bk')
 
-  const noteADir = path.join(tmpDir, 'NoteA.textbundle')
+  // Real Bear exports wrap every textbundle inside a single backup folder.
+  const rootName = 'Bear Notes Backup'
+  const rootDir = path.join(tmpDir, rootName)
+  const noteADir = path.join(rootDir, 'NoteA.textbundle')
   const noteAAssetsDir = path.join(noteADir, 'assets')
-  const noteBDir = path.join(tmpDir, 'NoteB-archived.textbundle')
+  const noteBDir = path.join(rootDir, 'NoteB-archived.textbundle')
 
   fs.mkdirSync(noteAAssetsDir, { recursive: true })
   fs.mkdirSync(noteBDir, { recursive: true })
 
-  // Note A: references Note B via bear link, has enclosed tag, references an asset
+  // Note A: references Note B via bear link, has enclosed tag, references an
+  // asset whose markdown ref is URL-encoded (spaces → %20) like real Bear.
   fs.writeFileSync(
     path.join(noteADir, 'text.md'),
     [
@@ -54,7 +58,7 @@ beforeAll(() => {
       '',
       `See also [Note B](bear://x-callback-url/open-note?id=${NOTE_B_UID})`,
       '',
-      '![shared image](assets/shared.png)'
+      '![shared image](assets/shared%20image.png)'
     ].join('\n'),
     'utf8'
   )
@@ -62,17 +66,23 @@ beforeAll(() => {
   fs.writeFileSync(
     path.join(noteADir, 'info.json'),
     JSON.stringify({
-      'net.shinyfrog.bear.uniqueIdentifier': NOTE_A_UID,
-      'net.shinyfrog.bear.note-creation-date': '2024-01-01T10:00:00.000Z',
-      'net.shinyfrog.bear.note-modification-date': '2024-06-01T12:00:00.000Z',
-      'net.shinyfrog.bear.note-archived': false,
-      'net.shinyfrog.bear.note-trashed': false
+      creatorIdentifier: 'net.shinyfrog.bear',
+      'net.shinyfrog.bear': {
+        uniqueIdentifier: NOTE_A_UID,
+        creationDate: '2024-01-01T10:00:00.000Z',
+        modificationDate: '2024-06-01T12:00:00.000Z',
+        archived: 0,
+        trashed: 0
+      }
     }),
     'utf8'
   )
 
-  // Asset file
-  fs.writeFileSync(path.join(noteAAssetsDir, 'shared.png'), Buffer.from([0x89, 0x50, 0x4e, 0x47]))
+  // Asset file (real decoded filename has spaces)
+  fs.writeFileSync(
+    path.join(noteAAssetsDir, 'shared image.png'),
+    Buffer.from([0x89, 0x50, 0x4e, 0x47])
+  )
 
   // Note B: archived
   fs.writeFileSync(
@@ -84,15 +94,18 @@ beforeAll(() => {
   fs.writeFileSync(
     path.join(noteBDir, 'info.json'),
     JSON.stringify({
-      'net.shinyfrog.bear.uniqueIdentifier': NOTE_B_UID,
-      'net.shinyfrog.bear.note-archived': true,
-      'net.shinyfrog.bear.note-trashed': false
+      creatorIdentifier: 'net.shinyfrog.bear',
+      'net.shinyfrog.bear': {
+        uniqueIdentifier: NOTE_B_UID,
+        archived: 1,
+        trashed: 0
+      }
     }),
     'utf8'
   )
 
-  // Zip everything into fixture
-  execSync(`cd "${tmpDir}" && zip -r "${fixturePath}" NoteA.textbundle NoteB-archived.textbundle`)
+  // Zip the wrapping backup folder into the fixture
+  execSync(`cd "${tmpDir}" && zip -r "${fixturePath}" "${rootName}"`)
   FIXTURE = fixturePath
 })
 

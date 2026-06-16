@@ -4,11 +4,14 @@ import { parseInfo } from './parse-info.ts'
 describe('parseInfo', () => {
   it('parses a full bear info object', () => {
     const raw = {
-      'net.shinyfrog.bear.uniqueIdentifier': 'ABC-123',
-      'net.shinyfrog.bear.note-creation-date': '2024-01-15T10:00:00.000Z',
-      'net.shinyfrog.bear.note-modification-date': '2024-03-05T12:00:00.000Z',
-      'net.shinyfrog.bear.note-archived': false,
-      'net.shinyfrog.bear.note-trashed': false
+      creatorIdentifier: 'net.shinyfrog.bear',
+      'net.shinyfrog.bear': {
+        uniqueIdentifier: 'ABC-123',
+        creationDate: '2024-01-15T10:00:00.000Z',
+        modificationDate: '2024-03-05T12:00:00.000Z',
+        archived: 0,
+        trashed: 0
+      }
     }
     const result = parseInfo(raw)
     expect(result.uniqueIdentifier).toBe('ABC-123')
@@ -18,10 +21,12 @@ describe('parseInfo', () => {
     expect(result.modified).toBeInstanceOf(Date)
   })
 
-  it('handles archived flag as boolean true', () => {
+  it('handles archived flag as numeric 1', () => {
     const raw = {
-      'net.shinyfrog.bear.note-archived': true,
-      'net.shinyfrog.bear.note-trashed': false
+      'net.shinyfrog.bear': {
+        archived: 1,
+        trashed: 0
+      }
     }
     const result = parseInfo(raw)
     expect(result.archived).toBe(true)
@@ -30,8 +35,10 @@ describe('parseInfo', () => {
 
   it('handles archived/trashed as numeric 1/0', () => {
     const raw = {
-      'net.shinyfrog.bear.note-archived': 0,
-      'net.shinyfrog.bear.note-trashed': 1
+      'net.shinyfrog.bear': {
+        archived: 0,
+        trashed: 1
+      }
     }
     const result = parseInfo(raw)
     expect(result.archived).toBe(false)
