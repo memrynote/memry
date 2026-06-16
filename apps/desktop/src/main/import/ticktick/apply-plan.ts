@@ -8,8 +8,21 @@
  * @module main/import/ticktick/apply-plan
  */
 
-import type { ImportPlan, ImportWarning, RepeatConfig, StatusType } from '@memry/ticktick-import'
-import type { TickTickImportSummary } from '@memry/contracts/ticktick-import-api'
+import type {
+  ImportPlan,
+  ImportStats,
+  ImportWarning,
+  RepeatConfig,
+  StatusType
+} from '@memry/ticktick-import'
+import type { ImportContext } from '../types'
+
+/** Result of applying a plan. Streaming progress (when wanted) goes through `ctx`. */
+export interface ApplyResult {
+  canceled: boolean
+  stats: ImportStats
+  warnings: ImportWarning[]
+}
 
 interface CreateProjectArgs {
   name: string
@@ -51,8 +64,16 @@ export interface ApplyDeps {
   createReminder(a: { targetType: 'task'; targetId: string; remindAt: string }): void
 }
 
-/** Apply a parsed plan via injected deps. Sequential; per-row failures warn + continue. */
-export async function applyPlan(plan: ImportPlan, deps: ApplyDeps): Promise<TickTickImportSummary> {
+/**
+ * Apply a parsed plan via injected deps. Sequential; per-row failures warn +
+ * continue. When `ctx` is supplied (framework run), streams imported/skipped/
+ * failed counts and honors cancellation.
+ */
+export async function applyPlan(
+  plan: ImportPlan,
+  deps: ApplyDeps,
+  ctx?: ImportContext
+): Promise<ApplyResult> {
   const warnings: ImportWarning[] = [...plan.warnings]
   const projectIdByTemp = new Map<string, string>()
   const statusIdByTemp = new Map<string, string>()
@@ -103,11 +124,17 @@ export async function applyPlan(plan: ImportPlan, deps: ApplyDeps): Promise<Tick
     (a, b) => (a.parentTempId ? 1 : 0) - (b.parentTempId ? 1 : 0)
   )
   const nowMs = Date.now()
+  let canceled = false
 
   for (const t of ordered) {
+    if (ctx?.isCancelled()) {
+      canceled = true
+      break
+    }
     const projectId = projectIdByTemp.get(t.projectTempId)
     if (!projectId) {
       warnings.push({ message: `Task "${t.title}" skipped (no project)` })
+      ctx?.reportSkipped(t.title, 'no project')
       continue
     }
     try {
@@ -128,10 +155,12 @@ export async function applyPlan(plan: ImportPlan, deps: ApplyDeps): Promise<Tick
       })
       if (!created.success || !created.task) {
         warnings.push({ message: `Task "${t.title}" failed to import` })
+        ctx?.reportFailed(t.title, 'failed to import')
         continue
       }
       const realId = created.task.id
       tempIdToRealId.set(t.tempId, realId)
+      ctx?.reportImported()
 
       if (t.completedAt) await deps.completeTask({ id: realId, completedAt: t.completedAt })
       if (t.archivedAt) await deps.archiveTask(realId)
@@ -140,6 +169,7 @@ export async function applyPlan(plan: ImportPlan, deps: ApplyDeps): Promise<Tick
         // createReminder rejects past times (backups are usually old) — skip + warn.
         if (new Date(reminder.remindAt).getTime() <= nowMs) {
           warnings.push({ message: `Reminder for "${t.title}" is in the past; skipped` })
+          ctx?.reportSkipped(t.title, 'reminder in the past')
           continue
         }
         try {
@@ -150,8 +180,9 @@ export async function applyPlan(plan: ImportPlan, deps: ApplyDeps): Promise<Tick
       }
     } catch (err) {
       warnings.push({ message: `Task "${t.title}" failed: ${(err as Error).message}` })
+      ctx?.reportFailed(t.title, err)
     }
   }
 
-  return { canceled: false, stats: plan.stats, warnings }
+  return { canceled, stats: plan.stats, warnings }
 }

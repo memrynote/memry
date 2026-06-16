@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseIsoDurationMs } from '../src/duration'
+import { parseIsoDurationMs } from './duration'
 
 describe('parseIsoDurationMs', () => {
   it('parses zero, minutes, hours, days, and negatives', () => {

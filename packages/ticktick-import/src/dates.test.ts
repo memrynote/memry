@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { splitDateTime } from '../src/dates'
+import { splitDateTime } from './dates'
 
 describe('splitDateTime', () => {
   it('returns local date + time in the given timezone', () => {

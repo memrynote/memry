@@ -1,6 +1,7 @@
 import { registerImporter } from './registry'
 import { notionImporter } from './notion/notion-importer'
 import { todoistImporter } from './todoist/todoist-importer'
+import { ticktickImporter } from './ticktick/ticktick-importer'
 import { markdownImporter } from './markdown/markdown-importer'
 import { htmlImporter } from './html/html-importer'
 import { googleKeepImporter } from './google-keep/google-keep-importer'
@@ -19,6 +20,7 @@ export function registerBuiltinImporters(): void {
   registered = true
   registerImporter(notionImporter)
   registerImporter(todoistImporter)
+  registerImporter(ticktickImporter)
   registerImporter(markdownImporter)
   registerImporter(htmlImporter)
   registerImporter(googleKeepImporter)

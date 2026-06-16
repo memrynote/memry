@@ -764,17 +764,3 @@ export const TelemetryChannels = {
 
 export type TelemetryInvokeChannel =
   (typeof TelemetryChannels.invoke)[keyof typeof TelemetryChannels.invoke]
-
-// ============================================================================
-// TickTick Import Channels
-// ============================================================================
-
-export const TickTickImportChannels = {
-  invoke: {
-    /** Open a file picker and import a TickTick CSV backup */
-    RUN: 'ticktick-import:run'
-  }
-} as const
-
-export type TickTickImportInvokeChannel =
-  (typeof TickTickImportChannels.invoke)[keyof typeof TickTickImportChannels.invoke]

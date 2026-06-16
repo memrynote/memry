@@ -6,20 +6,21 @@ Open **Settings → Import** to see the available sources. Every source shares t
 
 Each importer writes into its own top-level folder (`Notion/`, `Bear/`, `Evernote/`, …) so sources never collide, and imports are **additive** — running an import again creates new notes rather than updating existing ones.
 
-| Source        | Export format                   | Creates | Details                                              |
-| ------------- | ------------------------------- | ------- | ---------------------------------------------------- |
-| Notion        | HTML export `.zip`              | Notes   | [Notion](#importing-from-notion)                     |
-| Markdown      | `.md` files / folder            | Notes   | [Markdown](#importing-from-markdown)                 |
-| HTML          | `.html` / `.htm` files          | Notes   | [HTML](#importing-from-html)                         |
-| Evernote      | `.enex` export                  | Notes   | [Evernote](#importing-from-evernote)                 |
-| Bear          | `.bear2bk` archive              | Notes   | [Bear](#importing-from-bear)                         |
-| Apple Notes   | `NoteStore.sqlite` (macOS)      | Notes   | [Apple Notes](#importing-from-apple-notes)           |
-| Google Keep   | Google Takeout `.json` / `.zip` | Notes   | [Google Keep](#importing-from-google-keep)           |
-| Roam Research | Graph `.json` export            | Notes   | [Roam](#importing-from-roam-research)                |
-| Apple Journal | HTML export                     | Notes   | [Apple Journal](#importing-from-apple-journal)       |
-| CSV           | `.csv` file                     | Notes   | [CSV](#importing-from-csv)                           |
-| OneNote       | Microsoft Graph (account)       | Notes   | [OneNote](#importing-from-onenote)                   |
-| Todoist       | Project CSV `.csv`              | Tasks   | See [Import from Todoist](./tasks/import-todoist.md) |
+| Source        | Export format                   | Creates | Details                                                |
+| ------------- | ------------------------------- | ------- | ------------------------------------------------------ |
+| Notion        | HTML export `.zip`              | Notes   | [Notion](#importing-from-notion)                       |
+| Markdown      | `.md` files / folder            | Notes   | [Markdown](#importing-from-markdown)                   |
+| HTML          | `.html` / `.htm` files          | Notes   | [HTML](#importing-from-html)                           |
+| Evernote      | `.enex` export                  | Notes   | [Evernote](#importing-from-evernote)                   |
+| Bear          | `.bear2bk` archive              | Notes   | [Bear](#importing-from-bear)                           |
+| Apple Notes   | `NoteStore.sqlite` (macOS)      | Notes   | [Apple Notes](#importing-from-apple-notes)             |
+| Google Keep   | Google Takeout `.json` / `.zip` | Notes   | [Google Keep](#importing-from-google-keep)             |
+| Roam Research | Graph `.json` export            | Notes   | [Roam](#importing-from-roam-research)                  |
+| Apple Journal | HTML export                     | Notes   | [Apple Journal](#importing-from-apple-journal)         |
+| CSV           | `.csv` file                     | Notes   | [CSV](#importing-from-csv)                             |
+| OneNote       | Microsoft Graph (account)       | Notes   | [OneNote](#importing-from-onenote)                     |
+| Todoist       | Project CSV `.csv`              | Tasks   | See [Import from Todoist](./tasks/import-todoist.md)   |
+| TickTick      | Backup CSV `.csv`               | Tasks   | See [Import from TickTick](./tasks/import-ticktick.md) |
 
 ## Importing from Notion
 

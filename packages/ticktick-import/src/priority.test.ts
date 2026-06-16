@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { mapPriority } from '../src/priority'
+import { mapPriority } from './priority'
 
 describe('mapPriority', () => {
   it('maps TickTick 0/1/3/5 to Memry 0/1/2/3', () => {

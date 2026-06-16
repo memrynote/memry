@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { mapRows } from '../src/map-rows'
-import type { TickTickRow } from '../src/types'
+import { mapRows } from './map-rows'
+import type { TickTickRow } from './types'
 
 const NOW = '2026-06-15T00:00:00.000Z'
 

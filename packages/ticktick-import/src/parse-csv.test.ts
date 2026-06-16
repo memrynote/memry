@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { tokenizeCsv, parseTickTickCsv } from '../src/parse-csv'
+import { tokenizeCsv, parseTickTickCsv } from './parse-csv'
 
 const PREAMBLE =
   '﻿"Date: 2026-06-15+0000"\n"Version: 7.2"\n"Status: \n0 Normal\n1 Completed\n2 Archived"\n'

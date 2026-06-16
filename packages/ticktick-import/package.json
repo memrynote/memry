@@ -9,11 +9,9 @@
   },
   "types": "./src/index.ts",
   "scripts": {
-    "test": "vitest run --passWithNoTests",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "devDependencies": {
-    "@memry/typescript-config": "workspace:*",
-    "vitest": "4"
+    "@memry/typescript-config": "workspace:*"
   }
 }

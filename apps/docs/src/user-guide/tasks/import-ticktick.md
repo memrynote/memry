@@ -7,14 +7,13 @@ Bring your existing TickTick tasks into Memry from a TickTick CSV backup.
 In TickTick, open **Settings → Backup** and download the backup. You get a
 `.csv` file (for example `TickTick-backup-2026-06-15.csv`).
 
-## Run the import
+## Import into Memry
 
-1. Open Memry **Settings → Import**.
-2. Click **Import from TickTick (CSV)**.
-3. Choose your exported `.csv` file.
-
-Memry parses the file and creates everything in one pass, then shows a summary
-of what was imported and any items it skipped.
+1. Open **Settings → Import**.
+2. Click **Import** next to **TickTick**.
+3. **Choose file** and select one or more exported `.csv` backups.
+4. Review the preview for each file — counts (projects, tasks, sub-tasks, reminders), a few sample task titles, and any warnings.
+5. Click **Import**. Items are created with live progress you can **Cancel** at any time, and a summary lists anything skipped.
 
 ## What gets imported
 
