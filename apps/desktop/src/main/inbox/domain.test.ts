@@ -14,6 +14,7 @@ const mockStoreThumbnail = vi.fn()
 const mockCaptureVoice = vi.fn()
 const mockQueueMetadataJob = vi.fn()
 const mockQueueTranscriptionJob = vi.fn()
+const mockQueueArticleExtractJob = vi.fn()
 const mockPublishInboxUpserted = vi.fn()
 const mockSyncInboxCreate = vi.fn()
 const mockExtractSocialPost = vi.fn()
@@ -61,6 +62,7 @@ vi.mock('./duplicates', () => ({
 vi.mock('./jobs', () => ({
   queueInboxMetadataJob: (...args: unknown[]) => mockQueueMetadataJob(...args),
   queueInboxTranscriptionJob: (...args: unknown[]) => mockQueueTranscriptionJob(...args),
+  queueInboxArticleExtractJob: (...args: unknown[]) => mockQueueArticleExtractJob(...args),
   resumeInboxJobs: vi.fn(),
   teardownInboxJobScheduler: vi.fn()
 }))
@@ -149,6 +151,7 @@ describe('createDesktopInboxDomain', () => {
     })
     mockQueueMetadataJob.mockReset()
     mockQueueTranscriptionJob.mockReset()
+    mockQueueArticleExtractJob.mockReset()
     mockPublishInboxUpserted.mockReset()
     mockSyncInboxCreate.mockReset()
     mockExtractSocialPost.mockReset().mockReturnValue({
@@ -203,6 +206,10 @@ describe('createDesktopInboxDomain', () => {
       })
     )
     expect(mockQueueMetadataJob).toHaveBeenCalledWith(
+      linkResult.item?.id,
+      'https://example.com/read'
+    )
+    expect(mockQueueArticleExtractJob).toHaveBeenCalledWith(
       linkResult.item?.id,
       'https://example.com/read'
     )
