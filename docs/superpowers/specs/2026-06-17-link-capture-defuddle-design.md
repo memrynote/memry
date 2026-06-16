@@ -55,8 +55,9 @@ vs. the extension's live page DOM).
   author/date). No article body. — `apps/desktop/src/main/inbox/{jobs,metadata}.ts`
 - `CaptureClipInput { html, text, sourceUrl, sourceTitle, tags, source }` and item
   type `'clip'` are already typed in contracts (handler wiring to be verified).
-- `LinkMetadata.extractionStatus: 'pending' | 'full' | 'partial' | 'failed'`
-  already exists — to be populated.
+- `LinkMetadata` (`packages/domain-inbox/src/types.ts`) has `fetchStatus`; an
+  `extractionStatus` field exists on `SocialMetadata` only — to be **added** to
+  `LinkMetadata` for the article path.
 - `CaptureSource` already includes `'browser-extension'` and `'api'`.
 - `startLoopbackServer` pattern exists in main (Google Calendar + auth OAuth) —
   reused as the basis for a persistent capture endpoint.
@@ -243,7 +244,7 @@ popup can show connected/disconnected accurately.
   (`packages/contracts`, `packages/rpc`, `packages/db-schema`,
   `packages/domain-inbox`) and must be kept in sync (same pattern as
   `CaptureSource`).
-- `LinkMetadata.extractionStatus` already exists — populate it.
+- Add `extractionStatus?: 'full' | 'partial' | 'failed'` to `LinkMetadata`.
 - `metadata.properties: Record<string, unknown>` carried on the inbox item.
 - Capture inputs gain `properties` (+ `mode`, `selectionMarkdown`, screenshot
   attachment).
