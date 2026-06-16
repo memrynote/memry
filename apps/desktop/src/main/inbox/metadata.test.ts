@@ -13,6 +13,7 @@ import * as path from 'path'
 import * as os from 'os'
 import {
   fetchUrlMetadata,
+  fetchUrlHtml,
   downloadImage,
   isValidUrl,
   extractDomain,
@@ -622,5 +623,25 @@ describe('URL Metadata Extraction', () => {
         })
       )
     })
+  })
+})
+
+// ==========================================================================
+// fetchUrlHtml
+// ==========================================================================
+describe('fetchUrlHtml', () => {
+  beforeEach(() => {
+    mockFetch.mockReset()
+  })
+
+  it('returns the response body text', async () => {
+    mockFetch.mockResolvedValue(new Response('<html><body>hi</body></html>', { status: 200 }))
+    const html = await fetchUrlHtml('https://example.com/article')
+    expect(html).toContain('<body>hi</body>')
+  })
+
+  it('throws on non-ok status', async () => {
+    mockFetch.mockResolvedValue(new Response('nope', { status: 404 }))
+    await expect(fetchUrlHtml('https://example.com/missing')).rejects.toThrow()
   })
 })

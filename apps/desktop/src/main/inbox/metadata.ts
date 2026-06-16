@@ -213,6 +213,29 @@ export async function fetchUrlMetadata(url: string): Promise<UrlMetadata> {
   }
 }
 
+export async function fetchUrlHtml(url: string): Promise<string> {
+  const fetchUrl = rewriteUrlForFetch(url)
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), URL_FETCH_TIMEOUT)
+
+  try {
+    const response = await chromiumFetch(fetchUrl, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': USER_AGENT,
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5'
+      }
+    })
+    if (!response.ok) {
+      throw new Error(`Failed to fetch ${url}: ${response.status}`)
+    }
+    return await response.text()
+  } finally {
+    clearTimeout(timeoutId)
+  }
+}
+
 // ============================================================================
 // Image Downloading
 // ============================================================================
