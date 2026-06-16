@@ -13,6 +13,12 @@ describe('htmlToMarkdown', () => {
     expect(markdown).toBe('# Title\n\nBody text\n\n---\n\n### Sub')
   })
 
+  it('renders bare text and loose inline content directly inside a div', () => {
+    expect(convert('<div>plain text</div>').markdown).toBe('plain text')
+    expect(convert('<div>some <b>bold</b> text</div>').markdown).toBe('some **bold** text')
+    expect(convert('<div>intro<p>para</p></div>').markdown).toBe('intro\n\npara')
+  })
+
   it('renders inline emphasis, code and line breaks', () => {
     const { markdown } = convert(
       '<p><strong>b</strong> <em>i</em> <del>d</del> <mark>m</mark> <code>c</code><br>next</p>'

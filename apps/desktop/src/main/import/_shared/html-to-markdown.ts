@@ -70,12 +70,70 @@ export function decodeRef(ref: string): string {
 // Block level
 // ============================================================================
 
+/**
+ * Inline-level tags that, alongside bare text nodes, should be grouped into an
+ * implicit paragraph when they appear directly inside a block container rather
+ * than being treated as their own block. Anything not listed here is rendered
+ * via {@link renderBlock} (headings, lists, tables, nested divs, `<img>`, …).
+ */
+const INLINE_TAGS = new Set([
+  'br',
+  'strong',
+  'b',
+  'em',
+  'i',
+  'del',
+  's',
+  'strike',
+  'mark',
+  'code',
+  'a',
+  'time',
+  'span',
+  'sub',
+  'sup',
+  'u',
+  'small',
+  'font',
+  'big',
+  'abbr',
+  'q',
+  'cite',
+  'label',
+  'input'
+])
+
+function isInlineNode(node: ChildNode): boolean {
+  if (node.nodeType === TEXT_NODE) return true
+  if (node.nodeType !== ELEMENT_NODE) return false
+  return INLINE_TAGS.has((node as Element).tagName.toLowerCase())
+}
+
+/**
+ * Render a container's children. Block-level element children are rendered as
+ * blocks; runs of bare text and inline elements (which Evernote/HTML exports
+ * place directly inside a `<div>` with no wrapping `<p>`) are grouped into an
+ * implicit paragraph so their text is not dropped.
+ */
 function renderBlocks(ctx: Ctx, parent: Element): string {
   const parts: string[] = []
-  for (const child of Array.from(parent.children)) {
-    const md = renderBlock(ctx, child)
+  let inline = ''
+  const flushInline = (): void => {
+    const trimmed = inline.trim()
+    if (trimmed) parts.push(trimmed)
+    inline = ''
+  }
+  for (const node of Array.from(parent.childNodes)) {
+    if (isInlineNode(node)) {
+      inline += renderInlineNode(ctx, node)
+      continue
+    }
+    if (node.nodeType !== ELEMENT_NODE) continue
+    flushInline()
+    const md = renderBlock(ctx, node as Element)
     if (md && md.trim()) parts.push(md.trim())
   }
+  flushInline()
   return parts.join('\n\n')
 }
 
