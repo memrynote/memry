@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE en-export SYSTEM "http://xml.evernote.com/pub/evernote-export4.dtd">
+<en-export export-date="20231015T143022Z" application="Evernote" version="10.0">
+  <note>
+    <title>Sample Evernote Note</title>
+    <content><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE en-note SYSTEM "http://xml.evernote.com/pub/enml2.dtd">
+<en-note>
+  <p>Hello from Evernote!</p>
+  <en-todo checked="true"/>Finished task
+  <en-todo checked="false"/>Pending task
+  <en-media hash="f829b914fc47cfc9c0747c119c27cf1b" type="image/png"/>
+</en-note>
+]]></content>
+    <created>20231015T143022Z</created>
+    <updated>20231016T090000Z</updated>
+    <tag>evernote-tag</tag>
+    <resource>
+      <data encoding="base64">iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==</data>
+      <mime>image/png</mime>
+      <resource-attributes>
+        <file-name>pixel.png</file-name>
+      </resource-attributes>
+    </resource>
+  </note>
+</en-export>

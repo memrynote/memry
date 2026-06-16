@@ -1,0 +1,48 @@
+[
+  {
+    "title": "Project Plan",
+    "uid": "page-project",
+    "create-time": 1709596800000,
+    "edit-time": 1709683200000,
+    "children": [
+      {
+        "uid": "blk-overview",
+        "string": "Overview",
+        "heading": 1,
+        "children": [
+          {
+            "uid": "blk-goals",
+            "string": "Goals are __important__ and ^^urgent^^",
+            "children": [
+              { "uid": "blk-ship", "string": "{{[[TODO]]}} Ship the importer" },
+              { "uid": "blk-done", "string": "{{[[DONE]]}} Write the parser" }
+            ]
+          }
+        ]
+      },
+      {
+        "uid": "blk-noise",
+        "string": "Distraction {{[[POMO]]}} and a {{word-count}} widget"
+      }
+    ]
+  },
+  {
+    "title": "Meeting Notes",
+    "uid": "page-meeting",
+    "create-time": 1709600000000,
+    "edit-time": 1709700000000,
+    "children": [
+      {
+        "uid": "blk-ref",
+        "string": "Discussed: ((blk-goals))"
+      }
+    ]
+  },
+  {
+    "title": "January 1st, 2024",
+    "uid": "01-01-2024",
+    "create-time": 1704067200000,
+    "edit-time": 1704067200000,
+    "children": [{ "uid": "blk-journal", "string": "First entry of the year" }]
+  }
+]

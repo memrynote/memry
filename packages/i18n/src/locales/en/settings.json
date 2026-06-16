@@ -802,10 +802,21 @@
     "intro": "One-time imports create new notes in your vault. Your original export files are left untouched.",
     "sources": {
       "notion": "Import an HTML export (.zip)",
-      "todoist": "Import a project CSV export (.csv)"
+      "todoist": "Import a project CSV export (.csv)",
+      "markdown": "Import .md files or a folder (frontmatter, tags, attachments)",
+      "html": "Import .html files with linked images and cross-page links",
+      "google-keep": "Import a Google Takeout Keep export (.json or .zip)",
+      "bear": "Import a Bear .bear2bk archive (notes, tags, attachments)",
+      "evernote": "Import one or more Evernote .enex export files",
+      "roam": "Import a Roam Research graph (.json) with nested outlines",
+      "apple-journal": "Import an Apple Journal HTML export as dated notes",
+      "csv": "Import a .csv file — one note per row, columns become properties",
+      "apple-notes": "Import from the Apple Notes database (NoteStore.sqlite, macOS)",
+      "onenote": "Import OneNote notebooks (requires a Microsoft account)"
     },
     "action": "Import",
     "stats": {
+      "notes": "{count, plural, one {# note} other {# notes}}",
       "tasks": "{count, plural, one {# task} other {# tasks}}",
       "subtasks": "{count, plural, one {# sub-task} other {# sub-tasks}}",
       "withDueDate": "{count} dated",
