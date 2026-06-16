@@ -46,3 +46,6 @@ overrides:
   protobufjs: 7.5.8
   serialize-javascript: 7.0.5
   '@xmldom/xmldom': 0.8.13
+
+minimumReleaseAgeExclude:
+  - defuddle@0.19.0
