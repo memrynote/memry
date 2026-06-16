@@ -52,7 +52,8 @@ export const inboxJobType = {
   METADATA_SCRAPE: 'metadata-scrape',
   DUPLICATE_DETECTION: 'duplicate-detection',
   SUGGESTION_GENERATION: 'suggestion-generation',
-  THUMBNAIL_GENERATION: 'thumbnail-generation'
+  THUMBNAIL_GENERATION: 'thumbnail-generation',
+  ARTICLE_EXTRACT: 'article-extract'
 } as const
 
 export type InboxJobType = (typeof inboxJobType)[keyof typeof inboxJobType]
