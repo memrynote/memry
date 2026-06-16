@@ -26,8 +26,10 @@
 
 import type { PreparedPageHtml } from './types.ts'
 
-/** `<object .../>` / `<iframe .../>` → paired open/close so children stay flat. */
-const SELF_CLOSING_REGEX = /<(object|iframe)([^>]*?)\/>/gi
+/** `<object .../>` / `<iframe .../>` → paired open/close so children stay flat.
+ * Attr run also excludes `<` so it cannot overrun across repeated tag-open
+ * anchors (ReDoS); a self-closing tag's attributes never contain `<`/`>`. */
+const SELF_CLOSING_REGEX = /<(object|iframe)([^><]*)\/>/gi
 
 /** Collapse empty-paragraph runs and the `\n  \n` filler OneNote inserts. */
 const EMPTY_PARAGRAPH_REGEX = /<p[^>]*>(\s|&nbsp;|<br\s*\/?>)*<\/p>/gi

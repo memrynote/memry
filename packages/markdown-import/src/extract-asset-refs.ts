@@ -9,8 +9,10 @@
  * Returns deduplicated list of relative path strings.
  */
 
-// Matches markdown image/link syntax: ![...](ref) or [...](ref)
-const MD_LINK_RE = /!?\[[^\]]*\]\(([^)]+)\)/g
+// Matches markdown image/link syntax: ![...](ref) or [...](ref). Both inner
+// classes also exclude `[` so a run cannot overrun across repeated `[…](`
+// anchors (ReDoS hardening); valid link text / targets never contain `[`.
+const MD_LINK_RE = /!?\[[^\][]*\]\(([^)[]+)\)/g
 
 const URL_RE = /^[a-zA-Z][a-zA-Z\d+\-.]*:/
 const WIKILINK_RE = /^\[\[/

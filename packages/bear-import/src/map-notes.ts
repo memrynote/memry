@@ -1,8 +1,9 @@
 import type { BearInfo, MappedNote } from './types.ts'
 import { parseTags } from './parse-tags.ts'
 
-// Matches ](assets/filename) to extract asset refs
-const ASSET_REF_RE = /\]\(assets\/([^)]+)\)/g
+// Matches ](assets/filename) to extract asset refs. Inner class also excludes
+// `]` so a run cannot overrun across repeated `](assets/` anchors (ReDoS).
+const ASSET_REF_RE = /\]\(assets\/([^)\]]+)\)/g
 
 function extractTitle(md: string, folderName: string): string {
   for (const line of md.split('\n')) {

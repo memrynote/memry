@@ -19,8 +19,10 @@ import { scrubMarkup } from './convert-blocks.ts'
 import type { BlockIndex, BlockRefMode } from './types.ts'
 
 // One alternation matching an embed OR a bare block ref. The embed form is
-// listed first so it wins at a position where both could start.
-const REF_RE = /\{\{embed:\(\(([^)]+)\)\)\}\}|\(\(([^)]+)\)\)/g
+// listed first so it wins at a position where both could start. Inner classes
+// also exclude `(` so a uid run cannot overrun across repeated `((` / `{{embed:((`
+// anchors (ReDoS); a Roam uid never contains a paren.
+const REF_RE = /\{\{embed:\(\(([^)(]+)\)\)\}\}|\(\(([^)(]+)\)\)/g
 
 function quote(text: string): string {
   // Scrub markup in the referenced text and collapse to a single line.

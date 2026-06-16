@@ -13,8 +13,10 @@ const MONTH_NAMES: Record<string, number> = {
   december: 12
 }
 
-// Matches optional "Weekday, " prefix then "D Month YYYY"
-const DATE_RE = /(?:\w+,\s+)?(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/
+// Matches optional "Weekday, " prefix then "D Month YYYY".
+// Weekday is length-bounded so the optional prefix cannot backtrack
+// quadratically over long digit runs (ReDoS hardening).
+const DATE_RE = /(?:\w{1,20},\s+)?(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/
 
 /**
  * Parse an Apple Journal date header like "Sunday, 3 November 2024" into an ISO date.

@@ -1,5 +1,6 @@
-// Matches Bear's enclosed tag syntax: #[tag name]#
-const ENCLOSED_TAG_RE = /#\[([^\]]+)\]#/g
+// Matches Bear's enclosed tag syntax: #[tag name]#. Inner class also excludes
+// `[` so a run cannot overrun across repeated `#[` anchors (ReDoS).
+const ENCLOSED_TAG_RE = /#\[([^\][]+)\]#/g
 
 export function parseTags(body: string): string[] {
   const seen = new Set<string>()
