@@ -49,4 +49,10 @@ describe('parseTags', () => {
     expect(tags).toContain('tag_one')
     expect(tags).toContain('tag_two')
   })
+
+  it('extracts tags at the very start of a line (Bear notes often end in a tag line)', () => {
+    const tags = parseTags('My note body.\n#work #urgent')
+    expect(tags).toContain('work')
+    expect(tags).toContain('urgent')
+  })
 })

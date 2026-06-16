@@ -17,11 +17,10 @@ export function parseTags(body: string): string[] {
     // Skip lines that are headings (start with # optionally preceded by whitespace)
     if (/^#{1,6}\s/.test(trimmed)) continue
 
-    // Find all #tag patterns not at the very start of line
+    // Find all #tag patterns on the line (Markdown headings are already skipped
+    // above; a leading `#tag` with no following space is a real Bear tag).
     const lineRe = /(?<!\S)#([\p{L}\p{N}/\-_]+)/gu
     for (const match of line.matchAll(lineRe)) {
-      // Make sure it's not at position 0 of the line (which would be a heading)
-      if (match.index === 0) continue
       const tag = match[1]
       if (tag) seen.add(tag)
     }

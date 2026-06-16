@@ -32,9 +32,8 @@ async function processNote(
     return
   }
 
-  const mapped = mapKeepNote(keepNote)
-
   try {
+    const mapped = mapKeepNote(keepNote)
     ctx.status(`Importing ${mapped.title}`)
     const note = await createNote({
       title: mapped.title,
@@ -117,7 +116,12 @@ export const googleKeepImporter: Importer = {
             pendingNotes.push({ raw, label: entry.filepath })
           } else {
             // Treat as an asset — key by basename so note attachmentPaths can resolve it.
-            assetMap.set(entry.name, await entry.read())
+            // Isolate a corrupt member so it can't abort the whole scan.
+            try {
+              assetMap.set(entry.name, await entry.read())
+            } catch (err) {
+              ctx.reportSkipped(entry.filepath, errorMessage(err))
+            }
           }
         })
       } else if (ext === 'json') {

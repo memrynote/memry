@@ -46,6 +46,9 @@ function tokenize(text: string): string[][] {
       continue
     }
     if (ch === '\r') {
+      pushRow()
+      // Consume a following \n so CRLF counts as a single row terminator.
+      if (text[i + 1] === '\n') i++
       i++
       continue
     }

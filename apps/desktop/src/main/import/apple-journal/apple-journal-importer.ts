@@ -75,11 +75,12 @@ export const appleJournalImporter: Importer = {
 
         // Build body markdown from paragraphs only (reflection added by mapEntry)
         const bodyContainer = doc.createElement('div')
-        for (const sel of ['.p2', '.p3']) {
-          doc.querySelectorAll(sel).forEach((el) => {
-            bodyContainer.appendChild(el.cloneNode(true))
-          })
-        }
+        // Collect body paragraphs in a single pass so document order is preserved
+        // (Apple assigns .p2/.p3 by paragraph style, not sequence — a two-pass
+        // ['.p2','.p3'] collection would reorder the entry text).
+        doc.querySelectorAll('.p2, .p3').forEach((el) => {
+          bodyContainer.appendChild(el.cloneNode(true))
+        })
         const { markdown: bodyMarkdown } = htmlToMarkdown(bodyContainer)
 
         // Collect metadata tokens from asset grid (ignoring media)

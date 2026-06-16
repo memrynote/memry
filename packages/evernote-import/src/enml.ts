@@ -42,10 +42,11 @@ function stripEnNoteWrapper(enml: string): string {
  * dependency-free (no jsdom here — that lives in the desktop importer).
  */
 function convertTodos(html: string): string {
-  // Match <en-todo checked="true"/> or <en-todo checked="false"/> optionally
-  // followed by text content before the next tag.
+  // Match <en-todo .../> and its label — everything up to the next <en-todo> or
+  // the end of the containing block. Capturing inline markup (e.g. <b>…</b>)
+  // keeps bold/italic/links inside the checkbox item instead of orphaning them.
   return html.replace(
-    /<en-todo\s+checked="(true|false)"\s*\/>([^<]*)/gi,
+    /<en-todo\s+checked="(true|false)"\s*\/>((?:(?!<en-todo|<\/div>|<\/p>|<br\s*\/?>)[\s\S])*)/gi,
     (_match, checked, text) => {
       const checkedAttr = checked === 'true' ? ' checked' : ''
       const label = text.trim()

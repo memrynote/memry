@@ -181,6 +181,10 @@ export const evernoteImporter: Importer = {
             }
           }
 
+          // Strip any en-media placeholders that never resolved (missing resource
+          // or a failed save) so the internal `memry-enex:` scheme never leaks.
+          rewritten = rewritten.replace(/!?\[[^\]]*\]\(memry-enex:[^)]*\)/g, '')
+
           if (rewritten !== markdown) {
             await updateNote({ id: note.id, content: rewritten })
           }

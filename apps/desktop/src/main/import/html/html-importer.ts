@@ -5,7 +5,7 @@ import { createNote, updateNote } from '../../vault/notes-crud'
 import { saveAttachment } from '../../vault/attachments'
 import { createLogger } from '../../lib/logger'
 import type { Importer, ImportContext, ImportInput, ImportSummary } from '../types'
-import { htmlToMarkdown, decodeRef } from '../_shared/html-to-markdown'
+import { htmlToMarkdown, percentDecodeRef } from '../_shared/html-to-markdown'
 import { classifyRef, exceedsMaxSize, interFileWikilink, mapFiles } from '@memry/html-import'
 import type { HtmlFileDescriptor } from '@memry/html-import'
 
@@ -101,8 +101,10 @@ export const htmlImporter: Importer = {
               // Keep data URIs inline — never download
               return `![${alt}](${src})`
             }
-            // For http/file/local: collect the decoded ref for post-processing
-            const decoded = kind === 'http' ? src : decodeRef(src)
+            // For http/file/local: collect the decoded ref for post-processing.
+            // Percent-decode but PRESERVE `../` so parent-relative paths resolve
+            // correctly and the traversal guard below can reject true escapes.
+            const decoded = kind === 'http' ? src : percentDecodeRef(src)
             collect(decoded)
             return `![${alt}](${decoded})`
           }

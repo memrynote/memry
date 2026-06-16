@@ -18,8 +18,9 @@
 import { scrubMarkup } from './convert-blocks.ts'
 import type { BlockIndex, BlockRefMode } from './types.ts'
 
-const EMBED_RE = /\{\{embed:\(\(([^)]+)\)\)\}\}/g
-const REF_RE = /\(\(([^)]+)\)\)/g
+// One alternation matching an embed OR a bare block ref. The embed form is
+// listed first so it wins at a position where both could start.
+const REF_RE = /\{\{embed:\(\(([^)]+)\)\)\}\}|\(\(([^)]+)\)\)/g
 
 function quote(text: string): string {
   // Scrub markup in the referenced text and collapse to a single line.
@@ -48,7 +49,9 @@ export function resolveRefs(
   index: BlockIndex,
   _mode: BlockRefMode = 'fallback'
 ): string {
-  let out = markdown.replace(EMBED_RE, (_m, uid: string) => renderRef(uid, index))
-  out = out.replace(REF_RE, (_m, uid: string) => renderRef(uid, index))
-  return out
+  // Single pass: a referenced block's injected text is never re-scanned, so a
+  // nested ((uid)) inside that text is left intact rather than double-resolved.
+  return markdown.replace(REF_RE, (_m, embedUid?: string, refUid?: string) =>
+    renderRef(embedUid ?? refUid ?? '', index)
+  )
 }

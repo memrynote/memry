@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { JSDOM } from 'jsdom'
-import { htmlToMarkdown, decodeRef } from './html-to-markdown'
+import { htmlToMarkdown, decodeRef, percentDecodeRef } from './html-to-markdown'
 
 function convert(html: string, hooks?: Parameters<typeof htmlToMarkdown>[1]) {
   const doc = new JSDOM(`<body>${html}</body>`).window.document
@@ -86,5 +86,14 @@ describe('decodeRef', () => {
   })
   it('returns the raw ref when decoding fails', () => {
     expect(decodeRef('bad%ref')).toBe('bad%ref')
+  })
+})
+
+describe('percentDecodeRef', () => {
+  it('percent-decodes but preserves ../ segments (unlike decodeRef)', () => {
+    expect(percentDecodeRef('../images/My%20File.png')).toBe('../images/My File.png')
+  })
+  it('returns the raw ref when decoding fails', () => {
+    expect(percentDecodeRef('bad%ref')).toBe('bad%ref')
   })
 })

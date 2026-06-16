@@ -6,7 +6,8 @@ function makeIndex(): BlockIndex {
   return new Map([
     ['abc', { pageTitle: 'Target Page', text: 'the referenced text' }],
     ['empty', { pageTitle: 'Empty Block Page', text: '' }],
-    ['markup', { pageTitle: 'Markup Page', text: '{{[[TODO]]}} __scrub__ me' }]
+    ['markup', { pageTitle: 'Markup Page', text: '{{[[TODO]]}} __scrub__ me' }],
+    ['nested', { pageTitle: 'Nested Page', text: 'see ((abc)) inside' }]
   ])
 }
 
@@ -37,5 +38,13 @@ describe('resolveRefs (fallback mode)', () => {
 
   it('emits no ^uid anchors', () => {
     expect(resolveRefs('((abc))', makeIndex())).not.toContain('^')
+  })
+
+  it('does not double-resolve a ((uid)) contained in a referenced block', () => {
+    // The injected quote keeps the literal ((abc)) — a single pass must not
+    // re-scan and resolve it.
+    expect(resolveRefs('{{embed:((nested))}}', makeIndex())).toBe(
+      '[[Nested Page]]: "see ((abc)) inside"'
+    )
   })
 })

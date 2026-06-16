@@ -6,6 +6,7 @@ import { createLogger } from '../../lib/logger'
 import type { Importer, ImportContext, ImportInput, ImportSummary } from '../types'
 import { parseFrontmatter, extractAssetRefs, mapFiles } from '@memry/markdown-import'
 import type { FileDescriptor } from '@memry/markdown-import'
+import { percentDecodeRef } from '../_shared/html-to-markdown'
 
 const logger = createLogger('MarkdownImport')
 
@@ -106,8 +107,12 @@ export const markdownImporter: Importer = {
         for (const ref of refs) {
           if (ctx.isCancelled()) break
 
+          // Refs in markdown are commonly URL-encoded (e.g. `My%20File.png`);
+          // decode for disk resolution while keeping the original `ref` to rewrite
+          // the body link. `../` is preserved so the traversal guard stays meaningful.
+          const decodedRef = percentDecodeRef(ref)
           // Guard against path traversal — must stay within the same source directory tree
-          const absRef = path.resolve(sourceDir, ref)
+          const absRef = path.resolve(sourceDir, decodedRef)
           const refRelToSource = path.relative(sourceDir, absRef)
           if (refRelToSource.startsWith('..')) {
             ctx.reportSkipped(ref, 'Path traversal outside source directory')
@@ -122,7 +127,7 @@ export const markdownImporter: Importer = {
             continue
           }
 
-          const result = await saveAttachment(note.id, bytes, path.basename(ref))
+          const result = await saveAttachment(note.id, bytes, path.basename(decodedRef))
           if (result.success && result.path) {
             rewritten = rewritten.split(`](${ref})`).join(`](${result.path})`)
             ctx.reportAttachment()

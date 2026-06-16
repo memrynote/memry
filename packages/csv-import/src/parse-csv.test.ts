@@ -57,4 +57,13 @@ describe('parseCsv', () => {
     const result = parseCsv('Title,Tags\nHello')
     expect(result.rows[0]).toEqual({ Title: 'Hello', Tags: '' })
   })
+
+  it('handles bare CR line endings (classic-Mac CSVs)', () => {
+    const result = parseCsv('Title,Tags\rHello,work\rWorld,home')
+    expect(result.headers).toEqual(['Title', 'Tags'])
+    expect(result.rows).toEqual([
+      { Title: 'Hello', Tags: 'work' },
+      { Title: 'World', Tags: 'home' }
+    ])
+  })
 })

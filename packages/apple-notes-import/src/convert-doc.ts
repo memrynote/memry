@@ -143,10 +143,18 @@ export function docToMarkdown(doc: { text: string; runs: AttributeRun[] }): Conv
   const setMonospace = (next: boolean) => {
     if (next === monospace) return
     if (next) {
-      if (current || lines.length) lines.push('')
+      // Flush any pending inline text as a normal line first so it is not
+      // swallowed into the opening code fence.
+      if (current) flushLine(lineAttr)
+      if (lines.length) lines.push('')
       lines.push('```')
     } else {
-      if (current) flushLine(lineAttr)
+      // Drop the code paragraph's trailing newline so there is no blank line
+      // before the closing fence.
+      if (current) {
+        current = current.replace(/\n$/, '')
+        flushLine(lineAttr)
+      }
       lines.push('```')
     }
     monospace = next

@@ -94,6 +94,13 @@ export async function clearOneNoteTokens(accountId: string = DEFAULT_ACCOUNT_ID)
  * Build the Microsoft authorize URL for the loopback auth-code flow. The
  * redirect URI must be one registered on the Azure app (typically a loopback
  * `http://127.0.0.1:<port>` address, matching Memry's existing Google flow).
+ *
+ * TODO(onenote, before enabling — see PR "Blockers"): this scaffold still needs
+ * (1) PKCE (`code_challenge`/`code_verifier`, S256) on the authorize + token
+ * exchange, matching Memry's Google flow — required for a public desktop client;
+ * (2) access-token caching keyed on `expires_in` so `getAccessToken()` does not
+ * POST the token endpoint on every Graph request. Both require a live Azure app
+ * registration to verify, so they are deferred to that manual-QA pass.
  */
 export function buildAuthorizeUrl(input: {
   clientId: string

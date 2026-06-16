@@ -52,14 +52,18 @@ export function htmlToMarkdown(
   return { markdown, assets }
 }
 
-/** Strip leading `../` segments and percent-decode a local ref. */
-export function decodeRef(ref: string): string {
-  const withoutParents = ref.replace(/^(\.\.\/)+/, '')
+/** Percent-decode a ref, preserving `../` segments (tolerant of malformed `%`). */
+export function percentDecodeRef(ref: string): string {
   try {
-    return decodeURIComponent(withoutParents)
+    return decodeURIComponent(ref)
   } catch {
-    return withoutParents
+    return ref
   }
+}
+
+/** Strip leading `../` segments and percent-decode a local ref (Notion layout). */
+export function decodeRef(ref: string): string {
+  return percentDecodeRef(ref.replace(/^(\.\.\/)+/, ''))
 }
 
 // ============================================================================

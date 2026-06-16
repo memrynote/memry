@@ -57,6 +57,7 @@ export function createOneNoteGraphClient(deps: GraphClientDeps) {
 
   async function request(url: string): Promise<Response> {
     let attempt = 0
+    let authRetried = false
     // Loop only for 401 refresh + 429 backoff; other errors throw immediately.
     for (;;) {
       if (deps.isCancelled()) throw new Error('cancelled')
@@ -74,10 +75,17 @@ export function createOneNoteGraphClient(deps: GraphClientDeps) {
         const slices = Math.ceil(waitMs / 1000)
         for (let i = 0; i < slices; i++) {
           if (deps.isCancelled()) throw new Error('cancelled')
-          await sleep(Math.min(1000, waitMs))
+          await sleep(Math.min(1000, waitMs - i * 1000))
         }
         attempt++
         if (attempt > 10) throw new Error('OneNote kept rate-limiting; giving up')
+        continue
+      }
+
+      // A 401 usually means the access token expired mid-import; refresh + retry
+      // once (getAccessToken re-mints the token on the next iteration).
+      if (response.status === 401 && !authRetried) {
+        authRetried = true
         continue
       }
 
