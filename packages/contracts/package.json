@@ -20,6 +20,7 @@
     "./ipc-auth": "./src/ipc-auth.ts",
     "./ipc-agent": "./src/ipc-agent.ts",
     "./ipc-channels": "./src/ipc-channels.ts",
+    "./import-channels": "./src/import-channels.ts",
     "./ipc-crdt": "./src/ipc-crdt.ts",
     "./ipc-crypto": "./src/ipc-crypto.ts",
     "./ipc-devices": "./src/ipc-devices.ts",

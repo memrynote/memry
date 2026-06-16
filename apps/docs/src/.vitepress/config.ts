@@ -113,7 +113,8 @@ function unifiedSidebar() {
             { text: 'Tabs & Split View', link: '/user-guide/tabs-split-view' },
             { text: 'Folder View', link: '/user-guide/folder-view' },
             { text: 'Day Panel', link: '/user-guide/day-panel' },
-            { text: 'Snooze & Reminders', link: '/user-guide/snooze-reminders' }
+            { text: 'Snooze & Reminders', link: '/user-guide/snooze-reminders' },
+            { text: 'Importing Notes', link: '/user-guide/import' }
           ]
         },
         {

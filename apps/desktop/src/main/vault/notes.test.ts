@@ -188,6 +188,18 @@ describe('notes operations', () => {
       })
     })
 
+    it('preserves explicit created/modified timestamps', async () => {
+      const note = await notes.createNote({
+        title: 'Imported',
+        content: 'x',
+        created: '2020-01-01T00:00:00.000Z',
+        modified: '2020-02-02T00:00:00.000Z'
+      })
+
+      expect(note.created.toISOString()).toBe('2020-01-01T00:00:00.000Z')
+      expect(note.modified.toISOString()).toBe('2020-02-02T00:00:00.000Z')
+    })
+
     it('T361: creates note in subfolder', async () => {
       const result = await notes.createNote({
         title: 'Nested Note',

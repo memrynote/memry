@@ -119,6 +119,26 @@ describe('blocknote-converter code block language', () => {
     expect(result).toBe('Alpha\n\n\nBeta')
   })
 
+  it('keeps an image glued to the previous line as an image block', async () => {
+    // #given — imported notes (Apple Notes/Bear/…) emit an image on the line
+    // directly after text with no blank line between. Without separation that
+    // image folds into the paragraph as an inline image and BlockNote drops it.
+    const url = 'memry-file://local/v/attachments/n/abc-Screen-Shot.png'
+    const markdown = `Cluster Proxy. \n![Screen Shot.png](${url})\n\nafter`
+    const doc = new Y.Doc()
+    const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+
+    // #when
+    const ok = await markdownToYFragment(markdown, fragment)
+    const blocks = await yFragmentToBlocks(fragment)
+
+    // #then — the image survives as a real image block with the right url
+    expect(ok).toBe(true)
+    const image = blocks!.find((b) => b.type === 'image')
+    expect(image).toBeDefined()
+    expect((image!.props as { url: string }).url).toBe(url)
+  })
+
   it('applies block color markers when parsing markdown to blocks', async () => {
     // #given
     const markdown = 'Plain intro\n<!-- colors:{"textColor":"red"} -->\nColored line'

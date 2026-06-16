@@ -106,12 +106,18 @@ export interface FileMetadata {
 }
 
 export interface NoteCreateInput {
+  /** Preset note id (importers that save attachments under the id before the
+   *  note exists, to avoid a create-then-update round trip). Defaults to a new id. */
+  id?: string
   title: string
   content?: string
   folder?: string
   tags?: string[]
   template?: string
   properties?: Record<string, unknown>
+  /** ISO timestamps to preserve on import; default to now when omitted. */
+  created?: string
+  modified?: string
 }
 
 export interface NoteUpdateInput {
@@ -218,7 +224,11 @@ export async function createNote(input: NoteCreateInput): Promise<Note> {
 
   const mergedTags = [...new Set([...templateTags, ...(input.tags ?? [])])]
 
-  const frontmatter = createFrontmatter(input.title, mergedTags)
+  const frontmatter = createFrontmatter(input.title, mergedTags, {
+    created: input.created,
+    modified: input.modified
+  })
+  if (input.id) frontmatter.id = input.id
 
   const properties = { ...templateProperties, ...(input.properties ?? {}) }
   if (Object.keys(properties).length > 0) {

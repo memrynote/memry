@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   splitMarkdownPreservingBlanks,
   assembleMarkdownWithBlanks,
+  separateBlockImages,
   type MarkdownSegment
 } from './empty-lines'
 
@@ -323,5 +324,44 @@ describe('assembleMarkdownWithBlanks', () => {
 
     // #then
     expect(result).toBe(original)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// separateBlockImages
+// ---------------------------------------------------------------------------
+
+describe('separateBlockImages', () => {
+  const url = 'memry-file://local/v/attachments/n/abc-image.png'
+
+  it('inserts a blank line before an image glued to the previous line', () => {
+    // #given — imported note shape: text then image on the next line, no blank
+    const md = `Some text.\n![image.png](${url})\n\nafter`
+
+    // #when
+    const result = separateBlockImages(md)
+
+    // #then — image becomes its own block (blank line before and after)
+    expect(result).toBe(`Some text.\n\n![image.png](${url})\n\nafter`)
+  })
+
+  it('inserts blank lines on both sides when image is sandwiched by text', () => {
+    const md = `before\n![image.png](${url})\nafter`
+    expect(separateBlockImages(md)).toBe(`before\n\n![image.png](${url})\n\nafter`)
+  })
+
+  it('leaves an already block-separated image untouched', () => {
+    const md = `before\n\n![image.png](${url})\n\nafter`
+    expect(separateBlockImages(md)).toBe(md)
+  })
+
+  it('does not touch image-like syntax inside a code fence', () => {
+    const md = '```\nbefore\n![x](y)\nafter\n```'
+    expect(separateBlockImages(md)).toBe(md)
+  })
+
+  it('is a no-op when there are no images', () => {
+    const md = 'just\ntext\nlines'
+    expect(separateBlockImages(md)).toBe(md)
   })
 })

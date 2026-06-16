@@ -2,10 +2,6 @@ import { registerVaultHandlers, unregisterVaultHandlers } from './vault-handlers
 import { registerNotesHandlers, unregisterNotesHandlers } from './notes-handlers'
 import { registerTasksHandlers, unregisterTasksHandlers } from './tasks-handlers'
 import {
-  registerTodoistImportHandlers,
-  unregisterTodoistImportHandlers
-} from './todoist-import-handlers'
-import {
   registerSavedFiltersHandlers,
   unregisterSavedFiltersHandlers
 } from './saved-filters-handlers'
@@ -33,10 +29,7 @@ import { registerCrdtIpcHandlers } from './crdt-handlers'
 import { registerTelemetryHandlers, unregisterTelemetryHandlers } from './telemetry-handlers'
 import { registerUpdaterHandlers, unregisterUpdaterHandlers } from './updater-handlers'
 import { registerAgentMcpHandlers, unregisterAgentMcpHandlers } from './agent-mcp-handlers'
-import {
-  registerTickTickImportHandlers,
-  unregisterTickTickImportHandlers
-} from './ticktick-import-handlers'
+import { registerImportHandlers, unregisterImportHandlers } from './import-handlers'
 import { registerLocaleHandlers, type RebuildMenuFn } from './locale-handler'
 import type { I18nInstance } from '@memry/i18n/main'
 import { createLogger } from '../lib/logger'
@@ -79,9 +72,6 @@ export function registerAllHandlers(deps?: IpcDeps): void {
 
   // Register tasks handlers
   registerTasksHandlers()
-
-  // Register Todoist import handlers
-  registerTodoistImportHandlers()
 
   // Register saved filters handlers
   registerSavedFiltersHandlers()
@@ -152,8 +142,8 @@ export function registerAllHandlers(deps?: IpcDeps): void {
   // Register Agent MCP settings/status handlers
   registerAgentMcpHandlers()
 
-  // Register TickTick import handler
-  registerTickTickImportHandlers()
+  // Register generic import handlers (Notion + future importers)
+  registerImportHandlers()
 
   handlersRegistered = true
 }
@@ -170,7 +160,6 @@ export function unregisterAllHandlers(): void {
   unregisterVaultHandlers()
   unregisterNotesHandlers()
   unregisterTasksHandlers()
-  unregisterTodoistImportHandlers()
   unregisterSavedFiltersHandlers()
   unregisterTemplatesHandlers()
   unregisterJournalHandlers()
@@ -191,7 +180,7 @@ export function unregisterAllHandlers(): void {
   unregisterUpdaterHandlers()
   unregisterTelemetryHandlers()
   unregisterAgentMcpHandlers()
-  unregisterTickTickImportHandlers()
+  unregisterImportHandlers()
 
   handlersRegistered = false
   ipcLog.info('all handlers unregistered')
@@ -208,10 +197,6 @@ export function areHandlersRegistered(): boolean {
 export { registerVaultHandlers, unregisterVaultHandlers } from './vault-handlers'
 export { registerNotesHandlers, unregisterNotesHandlers } from './notes-handlers'
 export { registerTasksHandlers, unregisterTasksHandlers } from './tasks-handlers'
-export {
-  registerTodoistImportHandlers,
-  unregisterTodoistImportHandlers
-} from './todoist-import-handlers'
 export {
   registerSavedFiltersHandlers,
   unregisterSavedFiltersHandlers
@@ -234,4 +219,5 @@ export { registerAIInlineHandlers, unregisterAIInlineHandlers } from './ai-inlin
 export { registerUpdaterHandlers, unregisterUpdaterHandlers } from './updater-handlers'
 export { registerTelemetryHandlers, unregisterTelemetryHandlers } from './telemetry-handlers'
 export { registerAgentMcpHandlers, unregisterAgentMcpHandlers } from './agent-mcp-handlers'
+export { registerImportHandlers, unregisterImportHandlers } from './import-handlers'
 export { registerLocaleHandlers, type RebuildMenuFn } from './locale-handler'

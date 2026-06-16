@@ -7,8 +7,6 @@ const hoisted = vi.hoisted(() => ({
   unregisterNotesHandlers: vi.fn(),
   registerTasksHandlers: vi.fn(),
   unregisterTasksHandlers: vi.fn(),
-  registerTodoistImportHandlers: vi.fn(),
-  unregisterTodoistImportHandlers: vi.fn(),
   registerSavedFiltersHandlers: vi.fn(),
   unregisterSavedFiltersHandlers: vi.fn(),
   registerTemplatesHandlers: vi.fn(),
@@ -51,8 +49,8 @@ const hoisted = vi.hoisted(() => ({
   unregisterTelemetryHandlers: vi.fn(),
   registerAgentMcpHandlers: vi.fn(),
   unregisterAgentMcpHandlers: vi.fn(),
-  registerTickTickImportHandlers: vi.fn(),
-  unregisterTickTickImportHandlers: vi.fn()
+  registerImportHandlers: vi.fn(),
+  unregisterImportHandlers: vi.fn()
 }))
 
 vi.mock('./vault-handlers', () => ({
@@ -66,10 +64,6 @@ vi.mock('./notes-handlers', () => ({
 vi.mock('./tasks-handlers', () => ({
   registerTasksHandlers: hoisted.registerTasksHandlers,
   unregisterTasksHandlers: hoisted.unregisterTasksHandlers
-}))
-vi.mock('./todoist-import-handlers', () => ({
-  registerTodoistImportHandlers: hoisted.registerTodoistImportHandlers,
-  unregisterTodoistImportHandlers: hoisted.unregisterTodoistImportHandlers
 }))
 vi.mock('./saved-filters-handlers', () => ({
   registerSavedFiltersHandlers: hoisted.registerSavedFiltersHandlers,
@@ -155,9 +149,9 @@ vi.mock('./agent-mcp-handlers', () => ({
   registerAgentMcpHandlers: hoisted.registerAgentMcpHandlers,
   unregisterAgentMcpHandlers: hoisted.unregisterAgentMcpHandlers
 }))
-vi.mock('./ticktick-import-handlers', () => ({
-  registerTickTickImportHandlers: hoisted.registerTickTickImportHandlers,
-  unregisterTickTickImportHandlers: hoisted.unregisterTickTickImportHandlers
+vi.mock('./import-handlers', () => ({
+  registerImportHandlers: hoisted.registerImportHandlers,
+  unregisterImportHandlers: hoisted.unregisterImportHandlers
 }))
 
 import { areHandlersRegistered, registerAllHandlers, unregisterAllHandlers } from './index'
@@ -180,6 +174,7 @@ describe('ipc index registration lifecycle', () => {
     expect(hoisted.registerCrdtIpcHandlers).toHaveBeenCalledTimes(1)
     expect(hoisted.registerTelemetryHandlers).toHaveBeenCalledTimes(1)
     expect(hoisted.registerAgentMcpHandlers).toHaveBeenCalledTimes(1)
+    expect(hoisted.registerImportHandlers).toHaveBeenCalledTimes(1)
   })
 
   it('prevents duplicate registration', () => {
@@ -204,6 +199,7 @@ describe('ipc index registration lifecycle', () => {
     expect(hoisted.unregisterCryptoHandlers).toHaveBeenCalledTimes(1)
     expect(hoisted.unregisterUpdaterHandlers).toHaveBeenCalledTimes(1)
     expect(hoisted.unregisterAgentMcpHandlers).toHaveBeenCalledTimes(1)
+    expect(hoisted.unregisterImportHandlers).toHaveBeenCalledTimes(1)
   })
 
   it('is a no-op to unregister when handlers are not registered', () => {

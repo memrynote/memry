@@ -6,11 +6,6 @@ import type * as TasksRpc from '@memry/rpc/tasks'
 import type { AppNavigationCommandEvent } from '@memry/contracts/ipc-channels'
 import type { AgentMcpStatus } from '@memry/contracts/agent-mcp-channels'
 import type {
-  TodoistImportRunInput,
-  TodoistImportSummary,
-  TodoistPreviewResponse
-} from '@memry/contracts/todoist-import-api'
-import type {
   AgentEvent,
   AgentBackendId,
   AgentBackendModelList,
@@ -31,7 +26,17 @@ import type {
   Message
 } from '@memry/contracts/ipc-agent'
 import type { AppUpdateState } from '@memry/contracts/ipc-updater'
-import type { TickTickImportSummary } from '@memry/contracts/ticktick-import-api'
+import type {
+  ImportStartInput,
+  ImportStartResponse,
+  ImportCancelInput,
+  ImportPickFilesInput,
+  ImportPickFilesResult,
+  ImportProgressEvent,
+  ImportPreviewInput,
+  ImportPreviewResponse,
+  ImporterMeta
+} from '@memry/contracts/import-channels'
 import type { Locale, LocaleApi } from '@memry/contracts/locale-api'
 import type {
   SyncStatusChangedEvent,
@@ -1721,7 +1726,6 @@ interface API extends WindowAPI, GeneratedRpcApi {
   bookmarks: BookmarksClientAPI
   tags: TagsClientAPI
   reminders: RemindersClientAPI
-  tickTickImport: { run: () => Promise<TickTickImportSummary> }
   search: SearchClientAPI
   graph: GraphClientAPI
   quickCapture: QuickCaptureClientAPI
@@ -1737,9 +1741,12 @@ interface API extends WindowAPI, GeneratedRpcApi {
   syncAttachments: SyncAttachmentsClientAPI
   agentMcp: AgentMcpClientAPI
   agent: AgentClientAPI
-  todoistImport: {
-    preview: () => Promise<TodoistPreviewResponse>
-    run: (input: TodoistImportRunInput) => Promise<TodoistImportSummary>
+  import: {
+    pickFiles: (input: ImportPickFilesInput) => Promise<ImportPickFilesResult>
+    start: (input: ImportStartInput) => Promise<ImportStartResponse>
+    cancel: (input: ImportCancelInput) => Promise<{ success: true }>
+    preview: (input: ImportPreviewInput) => Promise<ImportPreviewResponse>
+    list: () => Promise<ImporterMeta[]>
   }
   updater: {
     getState: () => Promise<AppUpdateState>
@@ -1823,6 +1830,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
   onSecurityWarning: (callback: (event: SecurityWarningEvent) => void) => () => void
   onCertificatePinFailed: (callback: (event: CertificatePinFailedEvent) => void) => () => void
   onUpdaterStateChanged: (callback: (state: AppUpdateState) => void) => () => void
+  onImportProgress: (callback: (event: ImportProgressEvent) => void) => () => void
   onAppNavigationCommand: (callback: (command: AppNavigationCommandEvent) => void) => () => void
   onLocaleChanged: (callback: (locale: Locale) => void) => () => void
   onMainInvoke: (callback: (payload: MainInvokePayload) => void | Promise<void>) => () => void

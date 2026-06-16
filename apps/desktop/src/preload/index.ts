@@ -25,8 +25,7 @@ import { syncEvents } from './api/sync-events'
 import { updaterApi, updaterEvents } from './api/updater'
 import { agentMcpApi } from './api/agent-mcp'
 import { agentApi } from './api/agent'
-import { tickTickImportApi } from './api/ticktick-import'
-import { todoistImportApi } from './api/todoist-import'
+import { importApi, importEvents } from './api/import'
 
 const logger = createLogger('Preload')
 const MAIN_INVOKE_CHANNEL = 'main:invoke'
@@ -106,12 +105,12 @@ export const api = {
   updater: updaterApi,
   agentMcp: agentMcpApi,
   agent: agentApi,
-  tickTickImport: tickTickImportApi,
-  todoistImport: todoistImportApi,
+  import: importApi,
 
   onCrdtStateChanged,
   ...syncEvents,
   ...updaterEvents,
+  ...importEvents,
   ...flushApi,
 
   onAppNavigationCommand: (callback: (command: AppNavigationCommandEvent) => void) =>

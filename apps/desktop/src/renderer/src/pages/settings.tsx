@@ -15,7 +15,7 @@ import {
   User,
   CalendarDays,
   Terminal,
-  Download
+  Import
 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { GeneralSettings } from './settings/general-section'
@@ -149,7 +149,7 @@ export function SettingsPage() {
             onClick={() => setActiveSection('properties')}
           />
           <SettingsNavItem
-            icon={<Download className="w-3.5 h-3.5" />}
+            icon={<Import className="w-3.5 h-3.5" />}
             label={t('page.nav.items.import')}
             isActive={activeSection === 'import'}
             onClick={() => setActiveSection('import')}

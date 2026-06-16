@@ -26,6 +26,7 @@ import {
 import {
   splitMarkdownPreservingBlanks,
   assembleMarkdownWithBlanks,
+  separateBlockImages,
   type MarkdownSegment
 } from '@memry/shared/empty-lines'
 import {
@@ -247,7 +248,7 @@ async function markdownToBlocksPreserving(
   editor: ServerBlockNoteEditor,
   markdown: string
 ): Promise<Block[]> {
-  const segments = splitMarkdownPreservingBlanks(markdown)
+  const segments = splitMarkdownPreservingBlanks(separateBlockImages(markdown))
   const blocks: Block[] = []
 
   for (const seg of segments) {

@@ -11,9 +11,10 @@ In Todoist, open a project → **⋯** menu → **Export as a template** → **E
 ## Import into Memry
 
 1. Open **Settings → Import**.
-2. Under **Import from Todoist**, click **Choose CSV file(s)…** and select one or more exported `.csv` files.
-3. Review the preview for each file — project name, counts (tasks, sub-tasks, dated, comments, skipped), a few sample task titles, and any warnings.
-4. Click **Import**. A new project is created per file and opens in your task list.
+2. Click **Import** next to **Todoist**.
+3. **Choose file** and select one or more exported `.csv` files.
+4. Review the preview for each file — project name, counts (tasks, sub-tasks, dated, comments, skipped), a few sample task titles, and any warnings.
+5. Click **Import**. A new project is created per file, with live progress you can **Cancel** at any time.
 
 ## What gets imported
 

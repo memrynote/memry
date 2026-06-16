@@ -27,17 +27,6 @@ export const AppChannels = {
 export type AppEventChannel = (typeof AppChannels.events)[keyof typeof AppChannels.events]
 
 // ============================================================================
-// Todoist Import Channels
-// ============================================================================
-
-export const TodoistImportChannels = {
-  invoke: {
-    PREVIEW: 'todoist-import:preview',
-    RUN: 'todoist-import:run'
-  }
-} as const
-
-// ============================================================================
 // Vault Channels
 // ============================================================================
 

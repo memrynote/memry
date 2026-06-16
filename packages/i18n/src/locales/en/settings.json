@@ -797,28 +797,57 @@
   "import": {
     "header": {
       "title": "Import",
-      "subtitle": "Bring tasks in from other apps"
+      "subtitle": "Bring your notes and tasks in from other apps"
     },
-    "todoist": {
-      "title": "Import from Todoist",
-      "description": "Choose a Todoist project CSV export. Each file becomes a new project.",
-      "choose": "Choose CSV file(s)…",
-      "import": "Import",
-      "cancel": "Cancel",
-      "counts": "{{tasks}} tasks · {{subtasks}} sub-tasks · {{withDueDate}} dated · {{comments}} comments · {{skipped}} skipped",
+    "intro": "One-time imports create new notes in your vault. Your original export files are left untouched.",
+    "sources": {
+      "notion": "Import an HTML export (.zip)",
+      "todoist": "Import a project CSV export (.csv)",
+      "markdown": "Import .md files or a folder (frontmatter, tags, attachments)",
+      "html": "Import .html files with linked images and cross-page links",
+      "google-keep": "Import a Google Takeout Keep export (.json or .zip)",
+      "bear": "Import a Bear .bear2bk archive (notes, tags, attachments)",
+      "evernote": "Import one or more Evernote .enex export files",
+      "roam": "Import a Roam Research graph (.json) with nested outlines",
+      "apple-journal": "Import an Apple Journal HTML export as dated notes",
+      "csv": "Import a .csv file — one note per row, columns become properties",
+      "apple-notes": "Import from the Apple Notes database (NoteStore.sqlite, macOS)",
+      "onenote": "Import OneNote notebooks (requires a Microsoft account)"
+    },
+    "action": "Import",
+    "stats": {
+      "notes": "{count, plural, one {# note} other {# notes}}",
+      "tasks": "{count, plural, one {# task} other {# tasks}}",
+      "subtasks": "{count, plural, one {# sub-task} other {# sub-tasks}}",
+      "withDueDate": "{count} dated",
+      "comments": "{count, plural, one {# comment} other {# comments}}",
+      "skipped": "{count} skipped"
+    },
+    "preview": {
       "warnings": "Warnings",
-      "success": "Imported {{projects}} project(s), {{tasks}} task(s)",
-      "error": "Todoist import failed"
+      "confirm": "Import"
     },
-    "ticktick": {
-      "title": "Import from TickTick",
-      "description": "Import a TickTick CSV backup as projects, tasks, tags, reminders and repeats.",
-      "button": "Import from TickTick (CSV)",
-      "importing": "Importing…",
-      "success": "Imported {count, plural, one {# task} other {# tasks}}",
-      "failed": "TickTick import failed",
-      "result": "Imported {projects} projects, {tasks} tasks ({subtasks} subtasks), {reminders} reminders.",
-      "warnings": "{count, plural, one {# warning} other {# warnings}}"
+    "dialog": {
+      "title": "Import from {name}",
+      "choose": "Choose file…",
+      "chooseFolder": "Select Apple Notes folder…",
+      "chooseHint": "Select your {label}",
+      "folderHint": "Click below and select the “group.com.apple.notes” folder when the picker opens (it starts there). This lets Memry read your notes and attachments — no Full Disk Access needed.",
+      "selected": "{count, plural, one {# file selected} other {# files selected}}",
+      "start": "Start import",
+      "cancel": "Cancel",
+      "close": "Close",
+      "done": "Done",
+      "running": "Importing…",
+      "progress": "{completed} of {total}",
+      "summary": {
+        "title": "Import complete",
+        "imported": "{count, plural, one {# item imported} other {# items imported}}",
+        "attachments": "{count, plural, one {# attachment copied} other {# attachments copied}}",
+        "skipped": "{count} skipped",
+        "failed": "{count} failed"
+      },
+      "error": "Import failed"
     }
   },
   "integrations": {

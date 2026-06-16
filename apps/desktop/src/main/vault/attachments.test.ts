@@ -215,6 +215,18 @@ describe('generateUniqueFilename', () => {
     expect(result).not.toContain('>')
   })
 
+  it('replaces spaces and parens so the attachment URL stays markdown-safe', () => {
+    // `![](a b.png)` / `![](a(1).png)` are invalid markdown image links — a space
+    // or paren in the URL makes the editor render the raw text instead of the
+    // image. Keep the on-disk filename (and thus the URL) free of both.
+    const result = generateUniqueFilename('Pasted Graphic (1).png')
+
+    expect(result).toMatch(/^[a-z0-9]{6}-[^\s()]+\.png$/)
+    expect(result).not.toContain(' ')
+    expect(result).not.toContain('(')
+    expect(result).not.toContain(')')
+  })
+
   it('T392: generates different prefixes each time', () => {
     const result1 = generateUniqueFilename('file.png')
     const result2 = generateUniqueFilename('file.png')
