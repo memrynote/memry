@@ -1180,6 +1180,12 @@ importers:
         specifier: workspace:*
         version: link:../typescript-config
 
+  packages/ticktick-import:
+    devDependencies:
+      '@memry/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+
   packages/todoist-import:
     devDependencies:
       '@memry/typescript-config':

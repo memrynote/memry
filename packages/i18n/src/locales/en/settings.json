@@ -803,6 +803,7 @@
     "sources": {
       "notion": "Import an HTML export (.zip)",
       "todoist": "Import a project CSV export (.csv)",
+      "ticktick": "Import a TickTick backup (.csv) as projects, tasks and reminders",
       "markdown": "Import .md files or a folder (frontmatter, tags, attachments)",
       "html": "Import .html files with linked images and cross-page links",
       "google-keep": "Import a Google Takeout Keep export (.json or .zip)",
@@ -817,8 +818,10 @@
     "action": "Import",
     "stats": {
       "notes": "{count, plural, one {# note} other {# notes}}",
+      "projects": "{count, plural, one {# project} other {# projects}}",
       "tasks": "{count, plural, one {# task} other {# tasks}}",
       "subtasks": "{count, plural, one {# sub-task} other {# sub-tasks}}",
+      "reminders": "{count, plural, one {# reminder} other {# reminders}}",
       "withDueDate": "{count} dated",
       "comments": "{count, plural, one {# comment} other {# comments}}",
       "skipped": "{count} skipped"

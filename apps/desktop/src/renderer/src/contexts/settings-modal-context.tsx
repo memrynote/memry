@@ -16,6 +16,7 @@ export type SettingsSection =
   | 'import'
   | 'tags'
   | 'properties'
+  | 'import'
   | 'shortcuts'
   | 'command-line'
   | 'account'
