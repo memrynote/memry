@@ -222,8 +222,9 @@ local processes. All of the following are required:
 
 - **Bind `127.0.0.1` only** (never `0.0.0.0`).
 - **Pairing token**: the app generates a secret; the user pairs the extension once
-  (popup "Pair" → app shows a code, or deep-link `memry://pair?token=…`). The
-  extension sends `Authorization: Bearer <token>`; requests without it are
+  via `memry://pair?token=…` deep-link (popup "Pair" opens the app, which confirms
+  and hands the token + live port back to the extension). The extension sends
+  `Authorization: Bearer <token>` on every capture; requests without it are
   rejected (blocks drive-by web pages). Token is rotatable from app settings;
   unpair revokes.
 - **Origin allowlist**: accept only `Origin: chrome-extension://<known-id>`;
@@ -287,11 +288,11 @@ editing contracts/preload/handlers.
 5. Polish: queue/retry/badge, keyboard command, settings (token/port/rotate),
    "Add and open note".
 
-## Open questions
+## Resolved
 
-- Extension build tool: WXT vs `@crxjs/vite-plugin` (lean WXT — first-class MV3 +
-  cross-browser later).
-- Whether `apps/extension` ships in this monorepo (turbo pipeline + lint/types) or
-  a sibling repo. Default: in-monorepo `apps/extension`, excluded from the desktop
-  build.
-- Pairing UX: app-shows-code vs `memry://pair` deep-link (lean deep-link).
+- **Extension build tool: WXT** — first-class MV3, cross-browser (Firefox) drop-in
+  later, Vite under the hood.
+- **In-monorepo `apps/extension`** — own turbo pipeline + lint/types, excluded from
+  the desktop build/package.
+- **Pairing UX: `memry://pair?token=…` deep-link** — one click from the extension
+  to authorize against the running app (single-click pair; no manual code entry).
