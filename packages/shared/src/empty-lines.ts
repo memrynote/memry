@@ -81,6 +81,47 @@ export function assembleMarkdownWithBlanks(segments: MarkdownSegment[]): string 
   return result
 }
 
+/**
+ * A standalone image line (`![alt](url)` alone on its line) must be a block-level
+ * element for BlockNote to create an image block. When it sits directly under a
+ * text line with no blank line between, CommonMark folds it into the preceding
+ * paragraph as an *inline* image — and BlockNote has no inline-image node, so the
+ * image is silently dropped on parse. Imported notes (Apple Notes, Bear, …) emit
+ * images glued to the previous line this way. Insert a blank line before/after
+ * each such line so it parses as its own image block. Code fences are left as-is.
+ */
+const STANDALONE_IMAGE_LINE = /^\s*!\[[^\]]*\]\([^)]+\)\s*$/
+
+export function separateBlockImages(markdown: string): string {
+  if (!markdown.includes('![')) return markdown
+
+  const regions = splitByCodeFences(markdown)
+  let out = ''
+
+  for (const region of regions) {
+    if (region.isCode) {
+      out += region.text
+      continue
+    }
+
+    const lines = region.text.split('\n')
+    const result: string[] = []
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]
+      if (STANDALONE_IMAGE_LINE.test(line)) {
+        if (result.length > 0 && result[result.length - 1].trim() !== '') result.push('')
+        result.push(line)
+        if (i + 1 < lines.length && lines[i + 1].trim() !== '') result.push('')
+        continue
+      }
+      result.push(line)
+    }
+    out += result.join('\n')
+  }
+
+  return out
+}
+
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------

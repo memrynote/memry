@@ -1,9 +1,11 @@
 import { JSDOM } from 'jsdom'
-import { createNote, updateNote } from '../../vault/notes-crud'
+import { createNote } from '../../vault/notes-crud'
 import { saveAttachment } from '../../vault/attachments'
+import { attachmentMarkdown, encodeAttachmentUrl } from '../_shared/attachment-markdown'
+import { generateNoteId } from '../../lib/id'
 import { createLogger } from '../../lib/logger'
 import type { Importer, ImportContext, ImportInput, ImportSummary } from '../types'
-import { forEachZipEntry } from './notion-zip'
+import { forEachZipEntry } from '../_shared/zip'
 import { parsePageInfo } from './parse-info'
 import { NotionResolverInfo } from './resolver'
 import { convertHtmlToMarkdown } from './convert-to-md'
@@ -24,6 +26,10 @@ function decodeName(name: string): string {
   } catch {
     return name
   }
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
 export const notionImporter: Importer = {
@@ -92,16 +98,11 @@ export const notionImporter: Importer = {
         const { body, properties, tags, assets } = convertHtmlToMarkdown(info, doc, entry.filepath)
         const folder = `${ROOT}/${info.getPathForFile(fileInfo)}`.replace(/\/+$/, '')
 
-        const note = await createNote({
-          title: fileInfo.title,
-          content: body,
-          folder,
-          tags,
-          properties,
-          created: fileInfo.ctime?.toISOString(),
-          modified: fileInfo.mtime?.toISOString()
-        })
-        ctx.reportImported()
+        // Pre-generate the note id so attachments can be saved under it before
+        // the note exists. The note is then created once with the fully resolved
+        // body — no create-then-update round trip (whose getNoteById can miss the
+        // just-written cache mid-import, throw, and drop every rewrite).
+        const noteId = generateNoteId()
 
         // Copy this page's attachments into the note and rewrite the refs.
         let rewritten = body
@@ -109,17 +110,39 @@ export const notionImporter: Importer = {
           const bytes = attachmentBytes.get(ref)
           const attachmentInfo = info.pathsToAttachmentInfo[ref]
           if (!bytes || !attachmentInfo) continue
-          const result = await saveAttachment(note.id, bytes, attachmentInfo.nameWithExtension)
-          if (result.success && result.path) {
-            rewritten = rewritten.split(`](${ref})`).join(`](${result.path})`)
+          const result = await saveAttachment(noteId, bytes, attachmentInfo.nameWithExtension)
+          const md = attachmentMarkdown(result)
+          if (md) {
+            if (result.type === 'image') {
+              // Images embed inline; url-encode so spaced/paren filenames don't
+              // truncate the `![](...)` link.
+              const encoded = encodeAttachmentUrl(result.path!)
+              rewritten = rewritten.split(`](${ref})`).join(`](${encoded})`)
+            } else {
+              // Other files become a clickable file block, replacing the whole
+              // `![alt](ref)` / `[text](ref)` token the converter emitted.
+              rewritten = rewritten.replace(
+                new RegExp('!?\\[[^\\]]*\\]\\(' + escapeRegExp(ref) + '\\)', 'g'),
+                () => md
+              )
+            }
             ctx.reportAttachment()
           } else {
-            ctx.reportSkipped(ref, result.error)
+            ctx.reportSkipped(attachmentInfo.nameWithExtension, result.error)
           }
         }
-        if (rewritten !== body) {
-          await updateNote({ id: note.id, content: rewritten })
-        }
+
+        await createNote({
+          id: noteId,
+          title: fileInfo.title,
+          content: rewritten,
+          folder,
+          tags,
+          properties,
+          created: fileInfo.ctime?.toISOString(),
+          modified: fileInfo.mtime?.toISOString()
+        })
+        ctx.reportImported()
 
         done++
         ctx.reportProgress(done, total)

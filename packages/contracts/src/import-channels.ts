@@ -32,7 +32,13 @@ export const ImportChannels = {
 export const ImportPickFilesSchema = z.object({
   label: z.string().min(1),
   extensions: z.array(z.string().min(1)),
-  allowMultiple: z.boolean().optional()
+  allowMultiple: z.boolean().optional(),
+  /** Pick a directory instead of file(s) — grants recursive read of its contents. */
+  directory: z.boolean().optional(),
+  /** Pre-navigate the native picker to this absolute path. */
+  defaultPath: z.string().optional(),
+  /** Guidance shown in the native picker (macOS). */
+  message: z.string().optional()
 })
 export type ImportPickFilesInput = z.infer<typeof ImportPickFilesSchema>
 
@@ -96,7 +102,22 @@ export interface ImporterMeta {
   id: string
   name: string
   descriptionKey: string
-  fileSpec: { label: string; extensions: string[]; allowMultiple: boolean }
+  fileSpec: {
+    label: string
+    extensions: string[]
+    allowMultiple: boolean
+    /**
+     * Pick a directory instead of file(s). Selecting a folder in the native
+     * panel grants the app recursive read access to it (macOS user-consent
+     * exception), so protected locations like the Apple Notes container —
+     * including attachments — become readable without Full Disk Access.
+     */
+    directory?: boolean
+    /** Pre-navigate the picker to this absolute path. */
+    defaultPath?: string
+    /** Guidance shown inside the native picker. */
+    message?: string
+  }
   supportsPreview: boolean
 }
 

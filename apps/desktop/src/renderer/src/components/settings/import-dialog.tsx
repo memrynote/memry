@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useT } from '@memry/i18n/renderer'
 import {
   Dialog,
@@ -11,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { useImportRun } from '@/hooks/use-import-run'
+import { notesKeys } from '@/hooks/use-notes-query'
 import type { ImporterItem } from '@/hooks/use-importers'
 
 interface ImportDialogProps {
@@ -22,7 +24,18 @@ interface ImportDialogProps {
 export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
   const { t } = useT('settings')
   const run = useImportRun()
+  const queryClient = useQueryClient()
   const [paths, setPaths] = useState<string[]>([])
+
+  // The import runner drains its projection pipeline before resolving, so once a
+  // summary arrives the note_cache is complete. Refetch the sidebar tree (notes +
+  // folders + tags) so imported notes appear without a manual reload.
+  useEffect(() => {
+    if (!run.summary) return
+    void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
+    void queryClient.invalidateQueries({ queryKey: notesKeys.folders() })
+    void queryClient.invalidateQueries({ queryKey: notesKeys.tags() })
+  }, [run.summary, queryClient])
 
   const reset = () => {
     setPaths([])
@@ -40,12 +53,17 @@ export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
     const result = await window.api.import.pickFiles({
       label: item.fileSpec.label,
       extensions: item.fileSpec.extensions,
-      allowMultiple: item.fileSpec.allowMultiple
+      allowMultiple: item.fileSpec.allowMultiple,
+      directory: item.fileSpec.directory,
+      defaultPath: item.fileSpec.defaultPath,
+      message: item.fileSpec.message
     })
     if (result.canceled || result.filePaths.length === 0) return
     setPaths(result.filePaths)
     if (item.supportsPreview) void run.runPreview(item.id, result.filePaths)
   }
+
+  const isDirectoryPick = Boolean(item?.fileSpec.directory)
 
   const startImport = () => {
     if (!item || paths.length === 0 || run.isRunning) return
@@ -66,13 +84,16 @@ export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
 
         {!summary && (
           <div className="flex flex-col gap-3 py-2">
+            {isDirectoryPick && (
+              <p className="text-xs/4 text-muted-foreground">{t('import.dialog.folderHint')}</p>
+            )}
             <Button
               variant="outline"
               size="sm"
               onClick={() => void choose()}
               disabled={run.isRunning || run.isPreviewing}
             >
-              {t('import.dialog.choose')}
+              {isDirectoryPick ? t('import.dialog.chooseFolder') : t('import.dialog.choose')}
             </Button>
             {paths.length > 0 && (
               <p className="text-xs/4 text-muted-foreground truncate">

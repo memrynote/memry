@@ -4,6 +4,12 @@ export interface ImportFileSpec {
   label: string
   extensions: string[]
   allowMultiple: boolean
+  /** Pick a directory; selecting it grants recursive read of its contents. */
+  directory?: boolean
+  /** Pre-navigate the native picker to this absolute path. */
+  defaultPath?: string
+  /** Guidance shown inside the native picker. */
+  message?: string
 }
 
 export interface ImportProgress {
