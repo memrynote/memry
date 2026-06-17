@@ -9,10 +9,32 @@ The inbox is a capture surface for things you want to process later: links, file
 A capture input at the top of the inbox view accepts:
 
 - Free-text notes
-- Pasted URLs (memrynote fetches the title and a snippet)
+- Pasted URLs (memrynote fetches the title, a snippet, and the full readable article)
 - Pasted file paths
 
 Press <kbd>Enter</kbd> to add. The new item lands at the top of the list as **pending**.
+
+## Readable Article Capture
+
+When you paste a link, the card appears immediately with its title and snippet. A moment later
+memrynote fetches the page and extracts the **full readable article** — the main content, stripped of
+navigation, ads, and boilerplate — into the item body as Markdown.
+
+Alongside the article it captures a property set:
+
+- `title` — the article headline
+- `source` — the original URL
+- `author`, `published`, `description` — when the page provides them
+- `created` — when you captured it
+- `tags` — defaults to `clippings`
+
+When you [file the item to a note](/user-guide/inbox/triage), the readable article becomes the note
+body and these properties become the note's frontmatter, so a clipped article opens as a clean,
+attributed note.
+
+Extraction runs in the background after metadata, so the body fills in within a few seconds. If a
+page can't be read cleanly (e.g. a login wall), the card keeps its title and snippet and the article
+body is skipped.
 
 ## Drag and Drop
 

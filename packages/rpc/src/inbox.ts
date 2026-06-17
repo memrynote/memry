@@ -27,6 +27,7 @@ export type InboxJobType =
   | 'duplicate-detection'
   | 'suggestion-generation'
   | 'thumbnail-generation'
+  | 'article-extract'
 export type InboxJobStatus = 'pending' | 'running' | 'failed' | 'complete'
 
 interface ReminderMetadata {

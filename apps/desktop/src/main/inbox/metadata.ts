@@ -59,6 +59,9 @@ const USER_AGENT =
 /** Maximum image size to download (5MB) */
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024
 
+/** Maximum HTML body size to read (10MB) */
+const MAX_HTML_SIZE = 10 * 1024 * 1024
+
 /**
  * Fetch through Electron's Chromium network stack when available.
  *
@@ -208,6 +211,33 @@ export async function fetchUrlMetadata(url: string): Promise<UrlMetadata> {
       logo: metadata.logo || undefined,
       url: metadata.url || url
     }
+  } finally {
+    clearTimeout(timeoutId)
+  }
+}
+
+export async function fetchUrlHtml(url: string): Promise<string> {
+  const fetchUrl = rewriteUrlForFetch(url)
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), URL_FETCH_TIMEOUT)
+
+  try {
+    const response = await chromiumFetch(fetchUrl, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': USER_AGENT,
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5'
+      }
+    })
+    if (!response.ok) {
+      throw new Error(`Failed to fetch ${url}: ${response.status}`)
+    }
+    const contentLength = response.headers.get('content-length')
+    if (contentLength && parseInt(contentLength, 10) > MAX_HTML_SIZE) {
+      throw new Error(`Response too large: ${contentLength} bytes`)
+    }
+    return await response.text()
   } finally {
     clearTimeout(timeoutId)
   }

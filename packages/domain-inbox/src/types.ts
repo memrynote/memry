@@ -18,6 +18,7 @@ export type InboxJobType =
   | 'duplicate-detection'
   | 'suggestion-generation'
   | 'thumbnail-generation'
+  | 'article-extract'
 export type InboxJobStatus = 'pending' | 'running' | 'failed' | 'complete'
 export type TriageAction = 'discard' | 'convert-to-task' | 'expand-to-note' | 'file' | 'defer'
 
@@ -32,6 +33,7 @@ export interface LinkMetadata {
   publishedDate?: string
   fetchedAt?: string
   fetchStatus: 'pending' | 'success' | 'partial' | 'failed'
+  extractionStatus?: 'full' | 'partial' | 'failed'
 }
 
 export interface ImageMetadata {

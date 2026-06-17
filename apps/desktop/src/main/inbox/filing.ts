@@ -29,6 +29,17 @@ import { syncTaskCreate } from '../tasks/runtime-effects'
 const log = createLogger('Inbox:Filing')
 
 // ============================================================================
+// Helpers
+// ============================================================================
+
+export function extractItemProperties(metadata: unknown): Record<string, unknown> | undefined {
+  if (!metadata || typeof metadata !== 'object') return undefined
+  const properties = (metadata as { properties?: unknown }).properties
+  if (!properties || typeof properties !== 'object') return undefined
+  return properties as Record<string, unknown>
+}
+
+// ============================================================================
 // Types
 // ============================================================================
 
@@ -232,7 +243,7 @@ function getFiledBinaryFilename(item: InboxItemRow): string {
 /**
  * Generate note content based on inbox item type
  */
-function generateNoteContent(item: InboxItemRow): string {
+export function generateNoteContent(item: InboxItemRow): string {
   const now = new Date()
   const filedDate = formatDateDisplay(now)
 
@@ -244,6 +255,8 @@ function generateNoteContent(item: InboxItemRow): string {
       const title = item.title || ''
       const domain = url ? extractDomain(url) : ''
       const isYouTube = !!extractYouTubeVideoId(url)
+      const extractionStatus = metadata?.extractionStatus
+      const hasArticle = extractionStatus === 'full' || extractionStatus === 'partial'
 
       let content = ''
 
@@ -254,23 +267,30 @@ function generateNoteContent(item: InboxItemRow): string {
         content += `[${mentionText}](${url} "mention")\n\n`
       }
 
-      if (description) {
-        content += `> ${description}\n\n`
-      }
+      if (hasArticle && description) {
+        // Extracted article: use the full readable markdown as the note body.
+        // Its author/site/published live in the note frontmatter, so skip the
+        // inline meta lines here.
+        content += `${description}\n\n`
+      } else {
+        if (description) {
+          content += `> ${description}\n\n`
+        }
 
-      if (metadata) {
-        const metaLines: string[] = []
-        if (metadata.author && typeof metadata.author === 'string') {
-          metaLines.push(`**Author:** ${metadata.author}`)
-        }
-        if (metadata.siteName && typeof metadata.siteName === 'string') {
-          metaLines.push(`**Site:** ${metadata.siteName}`)
-        }
-        if (metadata.publishedDate && typeof metadata.publishedDate === 'string') {
-          metaLines.push(`**Published:** ${metadata.publishedDate}`)
-        }
-        if (metaLines.length > 0) {
-          content += metaLines.join('  \n') + '\n'
+        if (metadata) {
+          const metaLines: string[] = []
+          if (metadata.author && typeof metadata.author === 'string') {
+            metaLines.push(`**Author:** ${metadata.author}`)
+          }
+          if (metadata.siteName && typeof metadata.siteName === 'string') {
+            metaLines.push(`**Site:** ${metadata.siteName}`)
+          }
+          if (metadata.publishedDate && typeof metadata.publishedDate === 'string') {
+            metaLines.push(`**Published:** ${metadata.publishedDate}`)
+          }
+          if (metaLines.length > 0) {
+            content += metaLines.join('  \n') + '\n'
+          }
         }
       }
 
@@ -560,7 +580,8 @@ export async function fileToFolder(
       title,
       content,
       folder: folderPath || undefined,
-      tags: mergedTags
+      tags: mergedTags,
+      properties: extractItemProperties(item.metadata)
     })
 
     // Mark inbox item as filed
@@ -616,7 +637,8 @@ export async function convertToNote(itemId: string): Promise<FileResponse> {
     const note = await createNote({
       title,
       content,
-      tags: mergedTags
+      tags: mergedTags,
+      properties: extractItemProperties(item.metadata)
     })
 
     log.info(`Converted to note: ${note.id}`)
@@ -933,7 +955,8 @@ export async function linkToNotes(
       title: inboxNoteTitle,
       content: inboxNoteContent,
       folder: folderPath || undefined,
-      tags: mergedTags
+      tags: mergedTags,
+      properties: extractItemProperties(item.metadata)
     })
 
     // Generate the wikilink entry
