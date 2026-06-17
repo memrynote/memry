@@ -48,7 +48,10 @@ export default function App() {
   const setDraft = (draft: ArticleCapture) => dispatch({ type: 'EDIT', draft })
 
   const onSelectMode = async (mode: CaptureMode) => {
-    if (mode === state.mode) return
+    // Re-clicking article is a pure no-op (it would clobber edits with the cached draft),
+    // but re-clicking selection/screenshot re-runs the grab — that's the documented retry
+    // path ("Select text on the page, then pick Selection again").
+    if (mode === state.mode && mode === 'article') return
     dispatch({ type: 'SET_MODE', mode })
     if (mode === 'article') {
       dispatch({ type: 'DRAFT_READY', draft: articleDraftRef.current })

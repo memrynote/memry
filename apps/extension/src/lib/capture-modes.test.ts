@@ -100,6 +100,19 @@ describe('planStitch', () => {
     expect(p.height).toBe(1600)
     expect(p.slices[p.slices.length - 1].scrollY).toBe(800)
   })
+
+  it('returns a single slice without looping when innerHeight is 0', () => {
+    const p = planStitch({
+      scrollHeight: 2000,
+      innerHeight: 0,
+      innerWidth: 1000,
+      dpr: 1,
+      maxHeight: 15000
+    })
+    expect(p.slices).toEqual([{ scrollY: 0, drawY: 0 }])
+    expect(p.height).toBe(2000)
+    expect(p.width).toBe(1000)
+  })
 })
 
 describe('bytesToDataUrl', () => {

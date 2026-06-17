@@ -61,6 +61,11 @@ export function planStitch(opts: {
 }): StitchPlan {
   const { scrollHeight, innerHeight, innerWidth, dpr, maxHeight } = opts
   const total = Math.min(scrollHeight, maxHeight)
+  const width = Math.round(innerWidth * dpr)
+  const height = Math.round(total * dpr)
+  // ponytail: guard a non-advancing loop — a hidden/zero-height viewport (innerHeight 0)
+  // would spin `y += innerHeight` forever. One slice, no scroll.
+  if (innerHeight <= 0) return { width, height, slices: [{ scrollY: 0, drawY: 0 }] }
   const tops: number[] = []
   for (let y = 0; y < total; y += innerHeight) tops.push(y)
   if (tops.length === 0) tops.push(0)
@@ -69,8 +74,8 @@ export function planStitch(opts: {
   else tops[tops.length - 1] = lastTop
   const unique = tops.filter((y, i) => i === 0 || y !== tops[i - 1])
   return {
-    width: Math.round(innerWidth * dpr),
-    height: Math.round(total * dpr),
+    width,
+    height,
     slices: unique.map((scrollY) => ({ scrollY, drawY: Math.round(scrollY * dpr) }))
   }
 }
