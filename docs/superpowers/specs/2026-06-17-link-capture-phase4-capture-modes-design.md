@@ -69,8 +69,10 @@ the desktop path needs zero changes (it already accepts `mode:'selection'`).
 - **Dedup**: `force: true` — each selection is a distinct inbox item (a page can be clipped twice).
 - **Popup**: enable the Selection segment. Selecting it sends `GRAB_SELECTION` to the active tab's
   content script and renders the result as a **read-only body preview** via `renderMarkdown`. No
-  selection → empty-state hint ("Select text on the page, then reopen the popup"); "Add to Memry"
-  disabled. The title/properties rows stay editable, consistent with article mode.
+  selection → empty-state hint ("Select text on the page, then pick Selection again"); "Add to
+  Memry" disabled. Re-clicking the Selection segment re-runs the grab (the documented retry path —
+  select text, then pick Selection again), unlike Article which is a pure no-op on re-click. The
+  title/properties rows stay editable, consistent with article mode.
 
 ### 2. Screenshot mode — full-page scroll + stitch
 
