@@ -33,4 +33,10 @@ describe('validateCaptureRequest', () => {
       false
     )
   })
+  it('rejects a same-length but different token', () => {
+    expect(
+      validateCaptureRequest({ ...good, authorization: `Bearer ${'b'.repeat(64)}` }, TOKEN, allow)
+        .ok
+    ).toBe(false)
+  })
 })

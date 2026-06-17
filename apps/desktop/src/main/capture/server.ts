@@ -86,7 +86,13 @@ async function handle(req: http.IncomingMessage, res: http.ServerResponse): Prom
       json(res, 413, { error: 'payload-too-large' })
       return
     }
-    const parsed = ArticleCaptureSchema.safeParse(JSON.parse(body))
+    let parsed: ReturnType<typeof ArticleCaptureSchema.safeParse>
+    try {
+      parsed = ArticleCaptureSchema.safeParse(JSON.parse(body))
+    } catch {
+      json(res, 422, { error: 'invalid-capture' })
+      return
+    }
     if (!parsed.success) {
       json(res, 422, { error: 'invalid-capture' })
       return
