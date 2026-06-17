@@ -6,7 +6,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./node": "./src/node.ts"
+    "./node": "./src/node.ts",
+    "./browser": "./src/browser.ts"
   },
   "types": "./src/index.ts",
   "scripts": {
