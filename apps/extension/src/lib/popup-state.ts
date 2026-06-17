@@ -1,8 +1,9 @@
 import type { ArticleCapture } from '@memry/article-extract'
-import type { ConnectionState } from './messages'
+import type { CaptureMode, ConnectionState } from './messages'
 
 export type Phase =
   | 'extracting'
+  | 'capturing'
   | 'app-closed'
   | 'launching'
   | 'ready'
@@ -14,6 +15,8 @@ export type Phase =
 export interface PopupState {
   draft: ArticleCapture | null
   draftReady: boolean
+  mode: CaptureMode
+  capturing: boolean
   connection: 'unknown' | ConnectionState
   port: number | null
   action: 'idle' | 'launching' | 'approving' | 'saving' | 'saved' | 'error'
@@ -32,10 +35,13 @@ export type PopupAction =
   | { type: 'LAUNCH_START' }
   | { type: 'LAUNCH_DONE'; ok: boolean }
   | { type: 'RETRY' }
+  | { type: 'SET_MODE'; mode: CaptureMode }
 
 export const initialState: PopupState = {
   draft: null,
   draftReady: false,
+  mode: 'article',
+  capturing: false,
   connection: 'unknown',
   port: null,
   action: 'idle',
@@ -62,7 +68,15 @@ export function mapError(code: string): string {
 export function reducer(state: PopupState, action: PopupAction): PopupState {
   switch (action.type) {
     case 'DRAFT_READY':
-      return { ...state, draft: action.draft, draftReady: true }
+      return { ...state, draft: action.draft, draftReady: true, capturing: false }
+    case 'SET_MODE':
+      return {
+        ...state,
+        mode: action.mode,
+        capturing: action.mode !== 'article',
+        draftReady: false,
+        errorMessage: null
+      }
     case 'STATUS':
       return { ...state, connection: action.connection, port: action.port }
     case 'EDIT':
@@ -102,6 +116,7 @@ export function selectPhase(state: PopupState): Phase {
   if (state.action === 'saving') return 'saving'
   if (state.action === 'approving') return 'approving'
   if (state.action === 'launching') return 'launching'
+  if (state.capturing) return 'capturing'
   if (state.connection === 'unknown' || !state.draftReady) return 'extracting'
   if (state.connection === 'app-closed') return 'app-closed'
   return 'ready' // 'ready' and 'needs-pairing' both render the editable miniature
