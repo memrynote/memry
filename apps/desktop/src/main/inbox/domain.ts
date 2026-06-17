@@ -158,7 +158,7 @@ function getInboxTypeFromMime(mimeType: string): 'image' | 'voice' | 'video' | '
   return 'image'
 }
 
-function insertItemWithTags(
+export function insertItemWithTags(
   db: ReturnType<typeof requireDatabase>,
   values: typeof inboxItems.$inferInsert,
   tags: string[] | undefined
@@ -189,7 +189,7 @@ function insertItemWithTags(
   })
 }
 
-function emitCapturedAndSync(
+export function emitCapturedAndSync(
   row: typeof inboxItems.$inferSelect,
   tags: string[]
 ): ContractInboxItem {

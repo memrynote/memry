@@ -122,6 +122,9 @@ importers:
       chokidar:
         specifier: ^5.0.0
         version: 5.0.0
+      defuddle:
+        specifier: ^0.19.0
+        version: 0.19.0
       dotenv:
         specifier: ^17.2.3
         version: 17.2.4
@@ -155,6 +158,9 @@ importers:
       libsodium-wrappers-sumo:
         specifier: ^0.8.2
         version: 0.8.2
+      linkedom:
+        specifier: ^0.18.12
+        version: 0.18.12
       lucide-react:
         specifier: ^0.562.0
         version: 0.562.0(react@19.2.4)
@@ -327,6 +333,9 @@ importers:
       '@memry/apple-notes-import':
         specifier: workspace:*
         version: link:../../packages/apple-notes-import
+      '@memry/article-extract':
+        specifier: workspace:*
+        version: link:../../packages/article-extract
       '@memry/bear-import':
         specifier: workspace:*
         version: link:../../packages/bear-import

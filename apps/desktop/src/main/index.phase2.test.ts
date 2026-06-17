@@ -252,6 +252,15 @@ vi.mock('./billing/paddle-billing', () => ({
   reconcileBillingAndSync: reconcileBillingAndSyncMock
 }))
 
+vi.mock('./capture/pairing', () => ({
+  openPairingWindow: vi.fn()
+}))
+
+vi.mock('./capture/server', () => ({
+  startCaptureServer: vi.fn(async () => 7849),
+  stopCaptureServer: vi.fn(async () => undefined)
+}))
+
 vi.mock('./lib/logger', () => {
   const scopedLogger = {
     debug: vi.fn(),
@@ -1163,7 +1172,7 @@ describe('main index phase2 exports', () => {
       ([event]) => event === 'app:flush-done'
     )?.[1] as () => void
     flushHandler()
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < 25; i++) {
       await Promise.resolve()
     }
 

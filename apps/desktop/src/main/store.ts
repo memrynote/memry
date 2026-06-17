@@ -76,6 +76,8 @@ interface StoreSchema {
   sync: SyncStoreData
   /** Local agent-chat preferences */
   agent: AgentStoreData
+  /** Localhost capture: origins that have completed the pairing handshake */
+  captureAllowedOrigins: string[]
 }
 
 const CONFIG_FILE = 'memry-config.json'
@@ -85,7 +87,8 @@ const defaultData: StoreSchema = {
   currentVault: null,
   vaults: [],
   sync: {},
-  agent: {}
+  agent: {},
+  captureAllowedOrigins: []
 }
 
 /** In-memory cache — populated on first read, updated on every write. */
