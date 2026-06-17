@@ -64,6 +64,7 @@ opencode.jsonc
 .gstack/
 .playwright-mcp
 .agents/
+.impeccable/
 
 
 agents/
