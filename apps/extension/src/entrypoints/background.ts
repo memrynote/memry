@@ -9,7 +9,15 @@ import type {
   StatusResponse
 } from '@/lib/messages'
 import type { ArticleCapture } from '@memry/article-extract'
-import { claimToken, pollUntil, postCapture, probeServer, requestPair } from '@/lib/capture-client'
+import {
+  claimToken,
+  pollUntil,
+  postCapture,
+  postRevoke,
+  PROBE_PORTS,
+  probeServer,
+  requestPair
+} from '@/lib/capture-client'
 import { bytesToDataUrl, planStitch } from '@/lib/capture-modes'
 import {
   badgeText,
@@ -31,8 +39,30 @@ async function setToken(token: string): Promise<void> {
   await browser.storage.local.set({ [TOKEN_KEY]: token })
 }
 
+const PORT_KEY = 'memry:capture-port'
+
+async function getOverridePort(): Promise<number | null> {
+  const r = await browser.storage.local.get(PORT_KEY)
+  const v = r[PORT_KEY]
+  return typeof v === 'number' && Number.isInteger(v) ? v : null
+}
+
+// Probe the override port first (if set), then the default range.
+async function probe(): Promise<Awaited<ReturnType<typeof probeServer>>> {
+  const override = await getOverridePort()
+  return override ? probeServer(fetch, [override, ...PROBE_PORTS]) : probeServer()
+}
+
+async function revoke(): Promise<{ ok: boolean }> {
+  const found = await probe()
+  const token = await getToken()
+  if (found && token) await postRevoke(found.port, token)
+  await browser.storage.local.remove(TOKEN_KEY)
+  return { ok: true }
+}
+
 async function getStatus(): Promise<StatusResponse> {
-  const found = await probeServer()
+  const found = await probe()
   if (!found) return { connection: 'app-closed', port: null }
   const token = await getToken()
   if (found.ping.paired && token) return { connection: 'ready', port: found.port }
@@ -40,7 +70,7 @@ async function getStatus(): Promise<StatusResponse> {
 }
 
 async function pair(): Promise<PairResponse> {
-  const found = await probeServer()
+  const found = await probe()
   if (!found) return { ok: false }
   const status = await requestPair(found.port)
   if (status === 'error') return { ok: false }
@@ -59,7 +89,7 @@ async function waitForServer(): Promise<{ ok: boolean }> {
 }
 
 async function capture(body: ArticleCapture): Promise<CaptureResponse> {
-  const found = await probeServer()
+  const found = await probe()
   if (!found) return { ok: false, error: 'app-closed' }
   const token = await getToken()
   if (!token) return { ok: false, error: 'bad-token' }
@@ -152,7 +182,7 @@ async function flushQueue(): Promise<FlushResponse> {
     await stopFlushAlarm()
     return { flushed: 0, remaining: 0 }
   }
-  const found = await probeServer()
+  const found = await probe()
   const token = await getToken()
   if (!found || !token) return { flushed: 0, remaining: queue.length }
   let flushed = 0
@@ -214,6 +244,8 @@ export default defineBackground(() => {
         return grabScreenshot()
       case 'FLUSH_QUEUE':
         return flushQueue()
+      case 'REVOKE':
+        return revoke()
       default:
         return undefined
     }
