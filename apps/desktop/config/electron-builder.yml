@@ -1,5 +1,9 @@
 appId: com.memrynote.memry
 productName: Memrynote
+protocols:
+  - name: Memry
+    schemes:
+      - memry
 directories:
   buildResources: build
 files:

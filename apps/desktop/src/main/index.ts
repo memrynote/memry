@@ -532,6 +532,11 @@ function handleDeepLink(url: string): void {
     const mainWindow = BrowserWindow.getAllWindows()[0]
     if (!mainWindow) return
 
+    if (parsed.hostname === 'open') {
+      // launch/focus only — no dialog. Restore+focus happens below for any memry:// url.
+      deepLinkLog.info('launch requested via memry://open')
+    }
+
     if (parsed.hostname === 'billing') {
       if (parsed.pathname === '/start') {
         openAccountSettings(mainWindow)
@@ -643,7 +648,9 @@ void app.whenReady().then(async () => {
   electronApp.setAppUserModelId('com.electron')
 
   // Register memry:// deep link protocol for OAuth callbacks (T041e)
-  if (!app.isDefaultProtocolClient('memry')) {
+  if (process.defaultApp && process.argv.length >= 2) {
+    app.setAsDefaultProtocolClient('memry', process.execPath, [resolve(process.argv[1])])
+  } else if (!app.isDefaultProtocolClient('memry')) {
     app.setAsDefaultProtocolClient('memry')
   }
 
