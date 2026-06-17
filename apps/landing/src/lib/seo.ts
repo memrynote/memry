@@ -1,7 +1,10 @@
+import { FAQ_ITEMS, FEATURES, GITHUB_URL, REDDIT_URL, TWITTER_DEV_URL } from './constants'
+
 export const BASE_URL = 'https://memrynote.com'
 export const SITE_NAME = 'memrynote'
 export const ALTERNATE_SITE_NAMES = ['Memry Note', 'memrynote.com'] as const
-export const TWITTER_HANDLE = '@h4yfans'
+// Brand handle (matches index.html). The founder's personal handle is TWITTER_DEV_URL in constants.
+export const TWITTER_HANDLE = '@memrynote'
 export const SOCIAL_IMAGE_PATH = '/og-image.png'
 export const SOCIAL_IMAGE_URL = `${BASE_URL}${SOCIAL_IMAGE_PATH}`
 export const SOCIAL_IMAGE_WIDTH = '1200'
@@ -65,9 +68,9 @@ export const PAGE_META: Record<string, PageMeta> = {
     path: '/features/ai-agent'
   },
   downloadDesktop: {
-    title: 'memrynote for Desktop — Coming at the end of June',
+    title: 'memrynote for Desktop — macOS, Windows & Linux',
     description:
-      'memrynote desktop installers for macOS, Windows, and Linux are coming at the end of June. Plain Markdown vault, end-to-end encrypted sync, open source.',
+      'memrynote desktop for macOS, Windows, and Linux. Plain Markdown vault, end-to-end encrypted sync, open source.',
     path: '/download/desktop'
   },
   useCases: {
@@ -117,6 +120,24 @@ export const PAGE_META: Record<string, PageMeta> = {
     description:
       'Seven-day money-back guarantee on every paid Sync plan, including Believer. Requests processed through Paddle, refunded to your original payment method.',
     path: '/refund'
+  },
+  obsidianAlternative: {
+    title: 'Obsidian alternative — memrynote',
+    description:
+      'Looking for an Obsidian alternative with built-in tasks, a calendar, and end-to-end encrypted sync? memrynote keeps your notes as local Markdown files — no plugin tax.',
+    path: '/obsidian-alternative'
+  },
+  notionAlternative: {
+    title: 'Private Notion alternative — memrynote',
+    description:
+      'A private, end-to-end encrypted Notion alternative. memrynote stores notes as local Markdown files on your device — offline-first, open source, no vendor access to your data.',
+    path: '/notion-alternative'
+  },
+  noteplanAlternative: {
+    title: 'NotePlan alternative — memrynote',
+    description:
+      'A cross-platform NotePlan alternative for Windows, macOS, and Linux. Notes, tasks, calendar, and a daily journal in one local-first app with end-to-end encrypted sync.',
+    path: '/noteplan-alternative'
   }
 }
 
@@ -133,53 +154,121 @@ export function getCanonicalUrl(path: string): string {
   return `${BASE_URL}${path}`
 }
 
+const ORGANIZATION_ID = `${BASE_URL}/#organization`
+
 function getWebsiteJsonLdObject() {
   return {
+    '@id': `${BASE_URL}/#website`,
     name: 'memrynote',
     alternateName: ALTERNATE_SITE_NAMES,
     url: `${BASE_URL}/`
   }
 }
 
+function getOrganizationJsonLdObject() {
+  return {
+    '@type': 'Organization',
+    '@id': ORGANIZATION_ID,
+    name: 'memrynote',
+    alternateName: ALTERNATE_SITE_NAMES,
+    url: `${BASE_URL}/`,
+    logo: {
+      '@type': 'ImageObject',
+      url: `${BASE_URL}/favicon.svg`
+    },
+    sameAs: [GITHUB_URL, TWITTER_DEV_URL, REDDIT_URL],
+    founder: {
+      '@type': 'Person',
+      name: 'Kaan Karaca',
+      sameAs: ['https://x.com/h4yfans', 'https://github.com/h4yfans']
+    }
+  }
+}
+
+const SCREENSHOT_CAPTIONS: ReadonlyArray<readonly [string, string]> = [
+  ['inbox', 'memrynote inbox'],
+  ['journal', 'memrynote daily journal'],
+  ['note', 'memrynote notes editor'],
+  ['task', 'memrynote task management'],
+  ['calendar', 'memrynote calendar view']
+]
+
 function getSoftwareApplicationJsonLdObject() {
   return {
     '@type': 'SoftwareApplication',
+    '@id': `${BASE_URL}/#app`,
     name: 'memrynote',
     applicationCategory: 'ProductivityApplication',
+    applicationSubCategory: 'Personal Knowledge Management',
     operatingSystem: 'macOS, Windows, Linux',
     description: PAGE_META.home.description,
-    url: BASE_URL,
+    url: `${BASE_URL}/`,
+    downloadUrl: `${BASE_URL}/download/desktop`,
+    screenshot: SCREENSHOT_CAPTIONS.map(([id, caption]) => ({
+      '@type': 'ImageObject',
+      url: `${BASE_URL}/screenshots/${id}_white.png`,
+      caption
+    })),
+    featureList: [
+      ...FEATURES.map((feature) => `${feature.title} — ${feature.tagline}`),
+      'End-to-end encrypted sync',
+      'Open source'
+    ],
+    creator: { '@id': ORGANIZATION_ID },
+    publisher: { '@id': ORGANIZATION_ID },
+    // aggregateRating and softwareVersion are intentionally omitted until a real rating
+    // source and release tag exist — fabricating either violates Google's policies.
     offers: [
       {
         '@type': 'Offer',
+        name: 'Free',
         price: '0',
         priceCurrency: 'USD',
+        availability: 'https://schema.org/InStock',
         description: 'Free tier — notes, tasks, journal, inbox, and local vault'
       },
       {
         '@type': 'Offer',
+        name: 'Plus',
         price: '5',
         priceCurrency: 'USD',
+        availability: 'https://schema.org/InStock',
         description: 'Plus — 1 GB encrypted sync and 1 vault'
       },
       {
         '@type': 'Offer',
+        name: 'Pro',
         price: '10',
         priceCurrency: 'USD',
+        availability: 'https://schema.org/InStock',
         description: 'Pro — 10 GB encrypted sync and 10 vaults'
       },
       {
         '@type': 'Offer',
+        name: 'Believer',
         price: '500',
         priceCurrency: 'USD',
+        availability: 'https://schema.org/InStock',
         description: 'Believer — supporter package with 50 GB and unlimited vaults'
       }
-    ],
-    author: {
-      '@type': 'Organization',
-      name: 'memrynote',
-      url: BASE_URL
-    }
+    ]
+  }
+}
+
+function getFaqPageJsonLdObject() {
+  return {
+    '@type': 'FAQPage',
+    '@id': `${BASE_URL}/#faq`,
+    // Google retired FAQ rich results (May 2026); this stays for AI-search citation
+    // (Perplexity / ChatGPT / AI Overviews), since on-page answers live in a JS accordion.
+    mainEntity: FAQ_ITEMS.map((item) => ({
+      '@type': 'Question',
+      name: item.question,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: item.answer
+      }
+    }))
   }
 }
 
@@ -197,9 +286,59 @@ export function getJsonLd(): string {
     '@graph': [
       {
         ...getWebsiteJsonLdObject(),
-        '@type': 'WebSite'
+        '@type': 'WebSite',
+        publisher: { '@id': ORGANIZATION_ID }
       },
-      getSoftwareApplicationJsonLdObject()
+      getOrganizationJsonLdObject(),
+      getSoftwareApplicationJsonLdObject(),
+      getFaqPageJsonLdObject()
     ]
+  })
+}
+
+function breadcrumbLabel(title: string): string {
+  return title.split(' — ')[0]
+}
+
+// BreadcrumbList for inner pages. Intermediate segments without their own PAGE_META
+// entry (e.g. /download) are skipped so no crumb links to a non-existent page.
+export function getBreadcrumbJsonLd(page: keyof typeof PAGE_META): string | null {
+  const meta = PAGE_META[page]
+  if (!meta || meta.path === '/') return null
+
+  const items: Array<{ '@type': 'ListItem'; position: number; name: string; item: string }> = [
+    { '@type': 'ListItem', position: 1, name: 'Home', item: `${BASE_URL}/` }
+  ]
+
+  const segments = meta.path.split('/').filter(Boolean)
+  let position = 2
+  let acc = ''
+  for (let i = 0; i < segments.length; i++) {
+    acc += `/${segments[i]}`
+    const isLeaf = i === segments.length - 1
+    if (isLeaf) {
+      items.push({
+        '@type': 'ListItem',
+        position: position++,
+        name: breadcrumbLabel(meta.title),
+        item: `${BASE_URL}${meta.path}`
+      })
+      continue
+    }
+    const parent = Object.values(PAGE_META).find((m) => m.path === acc)
+    if (parent) {
+      items.push({
+        '@type': 'ListItem',
+        position: position++,
+        name: breadcrumbLabel(parent.title),
+        item: `${BASE_URL}${acc}`
+      })
+    }
+  }
+
+  return JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: items
   })
 }

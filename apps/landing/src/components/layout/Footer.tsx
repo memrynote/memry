@@ -50,7 +50,7 @@ export function Footer() {
   return (
     <footer className="border-t border-border bg-paper py-20">
       <Container>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-10 mb-16">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-10 mb-16">
           <div className="col-span-2 md:col-span-2 pe-8">
             <Link
               to="/"
@@ -70,6 +70,23 @@ export function Footer() {
             <h4 className="font-serif text-lg text-ink mb-6">Product</h4>
             <ul className="space-y-4">
               {FOOTER_LINKS.product.map((link) => (
+                <li key={link.label}>
+                  <Link
+                    to={footerHref(link.href, pathname)}
+                    className="text-sm text-muted hover:text-terracotta transition-colors font-medium"
+                    onClick={() => trackLandingEvent('landing_nav_click', footerTarget(link.label))}
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="font-serif text-lg text-ink mb-6">Compare</h4>
+            <ul className="space-y-4">
+              {FOOTER_LINKS.compare.map((link) => (
                 <li key={link.label}>
                   <Link
                     to={footerHref(link.href, pathname)}

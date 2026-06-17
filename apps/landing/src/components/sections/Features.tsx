@@ -130,6 +130,8 @@ function FeatureStackCard({
             <img
               src={screenshotSrc}
               alt={`${feature.title} feature screenshot`}
+              loading="lazy"
+              decoding="async"
               className="h-full w-full object-cover object-left-top transition-transform duration-700 ease-out group-hover:scale-[1.025]"
             />
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-ink/20 via-transparent to-white/10" />

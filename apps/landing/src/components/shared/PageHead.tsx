@@ -1,5 +1,6 @@
 import { Helmet } from 'react-helmet-async'
 import {
+  getBreadcrumbJsonLd,
   getCanonicalUrl,
   getJsonLd,
   PAGE_META,
@@ -19,6 +20,7 @@ interface PageHeadProps {
 export function PageHead({ page, jsonLd }: PageHeadProps) {
   const meta = PAGE_META[page]
   const canonical = getCanonicalUrl(meta.path)
+  const breadcrumb = getBreadcrumbJsonLd(page)
 
   return (
     <Helmet>
@@ -45,6 +47,7 @@ export function PageHead({ page, jsonLd }: PageHeadProps) {
       <meta name="twitter:image:alt" content={SOCIAL_IMAGE_ALT} />
 
       {jsonLd && <script type="application/ld+json">{getJsonLd()}</script>}
+      {breadcrumb && <script type="application/ld+json">{breadcrumb}</script>}
     </Helmet>
   )
 }

@@ -43,6 +43,7 @@ export function Hero() {
             <RevealLine inView={isInView} delay={0.05}>
               Your thoughts,
             </RevealLine>
+            {/* Whitespace text node so the two block lines extract as "thoughts, beautifully" */}{' '}
             <RevealLine inView={isInView} delay={0.18}>
               <span className="relative inline-block italic text-terracotta">
                 beautifully organized.

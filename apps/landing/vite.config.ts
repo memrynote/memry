@@ -77,6 +77,26 @@ export default defineConfig(({ mode }) => {
       alias: {
         '@': path.resolve(__dirname, './src')
       }
+    },
+    build: {
+      rollupOptions: {
+        output: {
+          // Split heavy vendors into separately-cacheable chunks. Static imports keep
+          // them in the initial graph, but immutable per-lib caching (see vercel.json)
+          // means a deploy that only touches app code reuses these from cache.
+          // ponytail: chunk grouping only; deferring these off first paint needs
+          // dynamic import() + a hydrateRoot() migration (createRoot replaces the
+          // prerendered DOM, so React.lazy would flash a fallback on direct loads).
+          manualChunks: {
+            'react-vendor': ['react', 'react-dom', 'react-router', 'react-router-dom'],
+            motion: ['framer-motion', 'lenis'],
+            paddle: ['@paddle/paddle-js'],
+            crypto: ['libsodium-wrappers-sumo'],
+            analytics: ['posthog-js'],
+            icons: ['lucide-react', '@hugeicons/react', '@hugeicons/core-free-icons']
+          }
+        }
+      }
     }
   }
 })

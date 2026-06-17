@@ -41,6 +41,10 @@ function CompetitorBar({ activeIndex }: { activeIndex: number }) {
                 src={c.logo}
                 alt={c.name}
                 title={c.name}
+                width={18}
+                height={18}
+                loading="lazy"
+                decoding="async"
                 className="w-[18px] h-[18px] rounded-sm opacity-60 hover:opacity-100 transition-opacity"
               />
             ))}
