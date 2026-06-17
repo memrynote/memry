@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createServer } from 'vite'
-import { buildRobotsTxt, buildSitemapXml } from '../src/lib/crawl-files.ts'
+import { buildLlmsTxt, buildRobotsTxt, buildSitemapXml } from '../src/lib/crawl-files.ts'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.resolve(__dirname, '..')
@@ -91,8 +91,10 @@ async function prerender() {
 
     fs.writeFileSync(path.resolve(DIST, 'sitemap.xml'), buildSitemapXml())
     fs.writeFileSync(path.resolve(DIST, 'robots.txt'), buildRobotsTxt())
+    fs.writeFileSync(path.resolve(DIST, 'llms.txt'), buildLlmsTxt())
     console.log('  wrote: dist/sitemap.xml')
     console.log('  wrote: dist/robots.txt')
+    console.log('  wrote: dist/llms.txt')
 
     console.log(`\n  ${ROUTES.length} routes prerendered.`)
   } finally {

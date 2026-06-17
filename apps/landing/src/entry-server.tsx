@@ -27,6 +27,11 @@ import { AuthPage } from '@/pages/Auth'
 import { AuthCallbackPage } from '@/pages/AuthCallback'
 import { RequireAuth } from '@/components/account/RequireAuth'
 import { AccountLayout } from '@/components/account/AccountLayout'
+import {
+  ObsidianAlternativePage,
+  NotionAlternativePage,
+  NotePlanAlternativePage
+} from '@/pages/AlternativePage'
 import { NotFound } from '@/pages/NotFound'
 
 // Account routes are gated by RequireAuth, which renders null until the client is
@@ -51,6 +56,9 @@ const ROUTE_MAP: Record<string, () => ReactNode> = {
   '/download/desktop': () => <DownloadDesktopPage />,
   '/use-cases': () => <UseCasesPage />,
   '/security': () => <SecurityPage />,
+  '/obsidian-alternative': () => <ObsidianAlternativePage />,
+  '/notion-alternative': () => <NotionAlternativePage />,
+  '/noteplan-alternative': () => <NotePlanAlternativePage />,
   '/pricing': () => <PricingPage />,
   '/changelog': () => <ChangelogPage />,
   '/roadmap': () => <RoadmapPage />,
