@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 const updateRun = vi.fn()
 const selectGet = vi.fn()
 const insertSpy = vi.fn()
+let setArg: Record<string, unknown> = {}
 
 vi.mock('electron', () => ({
   BrowserWindow: { getAllWindows: vi.fn(() => []) }
@@ -24,7 +25,12 @@ vi.mock('./metadata', () => ({ downloadImage: vi.fn(async () => 'hero.webp') }))
 vi.mock('../database', () => ({
   requireDatabase: () => ({
     select: () => ({ from: () => ({ where: () => ({ get: selectGet }) }) }),
-    update: () => ({ set: () => ({ where: () => ({ run: updateRun }) }) })
+    update: () => ({
+      set: (payload: Record<string, unknown>) => {
+        setArg = payload
+        return { where: () => ({ run: updateRun }) }
+      }
+    })
   })
 }))
 
@@ -33,6 +39,7 @@ describe('ingestArticleCapture', () => {
     updateRun.mockReset()
     insertSpy.mockReset()
     selectGet.mockReset()
+    setArg = {}
   })
 
   it('creates a new clip item with properties + extraction status when no itemId', async () => {
@@ -64,7 +71,11 @@ describe('ingestArticleCapture', () => {
   })
 
   it('enriches the existing item in place when itemId is given', async () => {
-    selectGet.mockReturnValue({ id: 'item-1', sourceUrl: 'https://example.com/post', metadata: {} })
+    selectGet.mockReturnValue({
+      id: 'item-1',
+      sourceUrl: 'https://example.com/post',
+      metadata: { siteName: 'Example', fetchStatus: 'complete' }
+    })
     const { ingestArticleCapture } = await import('./ingest')
     const res = await ingestArticleCapture(
       {
@@ -86,5 +97,13 @@ describe('ingestArticleCapture', () => {
     expect(res.itemId).toBe('item-1')
     expect(insertSpy).not.toHaveBeenCalled()
     expect(updateRun).toHaveBeenCalled()
+    // pre-existing metadata must be preserved
+    expect((setArg.metadata as Record<string, unknown>).siteName).toBe('Example')
+    // new fields written by enrich path
+    expect((setArg.metadata as Record<string, unknown>).extractionStatus).toBe('partial')
+    expect(
+      ((setArg.metadata as Record<string, unknown>).properties as Record<string, unknown>).title
+    ).toBe('Hello')
+    expect(setArg.content).toBe('# Hello')
   })
 })
