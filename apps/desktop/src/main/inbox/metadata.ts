@@ -59,6 +59,9 @@ const USER_AGENT =
 /** Maximum image size to download (5MB) */
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024
 
+/** Maximum HTML body size to read (10MB) */
+const MAX_HTML_SIZE = 10 * 1024 * 1024
+
 /**
  * Fetch through Electron's Chromium network stack when available.
  *
@@ -229,6 +232,10 @@ export async function fetchUrlHtml(url: string): Promise<string> {
     })
     if (!response.ok) {
       throw new Error(`Failed to fetch ${url}: ${response.status}`)
+    }
+    const contentLength = response.headers.get('content-length')
+    if (contentLength && parseInt(contentLength, 10) > MAX_HTML_SIZE) {
+      throw new Error(`Response too large: ${contentLength} bytes`)
     }
     return await response.text()
   } finally {
