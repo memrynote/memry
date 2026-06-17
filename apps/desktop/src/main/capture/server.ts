@@ -13,6 +13,7 @@ const PROBE_RANGE = 8 // try 7849..7856
 
 let server: http.Server | null = null
 let currentPort: number | null = null
+let startInFlight: Promise<number> | null = null
 
 export function getCaptureServerPort(): number | null {
   return server?.listening ? currentPort : null
@@ -118,6 +119,9 @@ function listen(port: number): Promise<number> {
       server = next
       currentPort = port
       next.removeListener('error', reject)
+      // Keep a lifetime error handler: without one, any later server 'error'
+      // event is unhandled and crashes the process.
+      next.on('error', (err) => log.error('capture server error', err))
       log.info(`capture server on 127.0.0.1:${port}`)
       resolve(port)
     })
@@ -126,15 +130,25 @@ function listen(port: number): Promise<number> {
 
 export async function startCaptureServer(): Promise<number> {
   if (server?.listening && currentPort !== null) return currentPort
-  for (let i = 0; i < PROBE_RANGE; i++) {
-    try {
-      return await listen(DEFAULT_PORT + i)
-    } catch (err) {
-      const code = (err as NodeJS.ErrnoException).code
-      if (code !== 'EADDRINUSE') throw err
+  // Collapse concurrent starts: without this, two callers both pass the
+  // listening check and bind two servers, orphaning the first.
+  if (startInFlight) return startInFlight
+  startInFlight = (async () => {
+    for (let i = 0; i < PROBE_RANGE; i++) {
+      try {
+        return await listen(DEFAULT_PORT + i)
+      } catch (err) {
+        const code = (err as NodeJS.ErrnoException).code
+        if (code !== 'EADDRINUSE') throw err
+      }
     }
+    throw new Error('no free capture port in probe range')
+  })()
+  try {
+    return await startInFlight
+  } finally {
+    startInFlight = null
   }
-  throw new Error('no free capture port in probe range')
 }
 
 export async function stopCaptureServer(): Promise<void> {
