@@ -1,6 +1,12 @@
 import { useEffect, useReducer } from 'react'
 import type { ArticleCapture } from '@memry/article-extract'
-import type { CaptureResponse, ExtractResponse, PairResponse, StatusResponse } from '@/lib/messages'
+import type {
+  CaptureResponse,
+  ConnectionState,
+  ExtractResponse,
+  PairResponse,
+  StatusResponse
+} from '@/lib/messages'
 import { initialState, reducer, selectPhase } from '@/lib/popup-state'
 import { StatusStrip } from '@/components/StatusStrip'
 import { EditableTitle } from '@/components/EditableTitle'
@@ -35,10 +41,11 @@ export default function App() {
 
   const setDraft = (draft: ArticleCapture) => dispatch({ type: 'EDIT', draft })
 
-  const onAdd = async () => {
+  const onAdd = async (connectionOverride?: ConnectionState) => {
     if (!state.draft) return
+    const connection = connectionOverride ?? state.connection
     // Pair inline if this connection isn't ready yet.
-    if (state.connection === 'needs-pairing') {
+    if (connection === 'needs-pairing') {
       dispatch({ type: 'APPROVE_START' })
       const pair: PairResponse = await browser.runtime
         .sendMessage({ type: 'PAIR' })
@@ -62,7 +69,7 @@ export default function App() {
     dispatch({ type: 'LAUNCH_DONE', ok: up.ok })
     if (!up.ok) return
     dispatch({ type: 'STATUS', connection: 'needs-pairing', port: null })
-    await onAdd()
+    await onAdd('needs-pairing')
   }
 
   const draft = state.draft
@@ -134,7 +141,7 @@ export default function App() {
         )}
 
         {phase === 'ready' && (
-          <PrimaryButton label="Add to Memry" onClick={onAdd} disabled={!draft} />
+          <PrimaryButton label="Add to Memry" onClick={() => onAdd()} disabled={!draft} />
         )}
         {phase === 'approving' && <PrimaryButton label="Approve in Memry…" disabled />}
         {phase === 'saving' && <PrimaryButton label="Adding…" disabled />}

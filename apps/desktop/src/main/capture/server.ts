@@ -164,6 +164,7 @@ export async function startCaptureServer(
   deps: { requestPairConsent?: (origin: string) => Promise<boolean> } = {}
 ): Promise<number> {
   requestPairConsent = deps.requestPairConsent ?? null
+  pendingConsent.clear() // reset stale per-origin consent guards across restarts
   if (server?.listening && currentPort !== null) return currentPort
   // Collapse concurrent starts: without this, two callers both pass the
   // listening check and bind two servers, orphaning the first.

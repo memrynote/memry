@@ -97,10 +97,11 @@ describe('launch lifecycle', () => {
   })
 
   test('LAUNCH_DONE ok:true leaves launching', () => {
-    let s = reducer(initialState, { type: 'STATUS', connection: 'app-closed', port: null })
+    let s = reducer(initialState, { type: 'DRAFT_READY', draft: null })
+    s = reducer(s, { type: 'STATUS', connection: 'app-closed', port: null })
     s = reducer(s, { type: 'LAUNCH_START' })
     s = reducer(s, { type: 'LAUNCH_DONE', ok: true })
-    expect(selectPhase(s)).not.toBe('launching')
+    expect(selectPhase(s)).toBe('app-closed')
   })
 
   test('LAUNCH_DONE ok:false surfaces error with message', () => {
