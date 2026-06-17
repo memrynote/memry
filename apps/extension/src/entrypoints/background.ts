@@ -145,6 +145,8 @@ async function grabScreenshot(): Promise<ScreenshotResponse> {
 const QUEUE_KEY = 'memry:capture-queue'
 const FLUSH_ALARM = 'memry-flush'
 
+let flushing: Promise<FlushResponse> | null = null
+
 async function readQueue(): Promise<QueuedCapture[]> {
   const r = await browser.storage.local.get(QUEUE_KEY)
   const v = r[QUEUE_KEY]
@@ -176,32 +178,40 @@ async function stopFlushAlarm(): Promise<void> {
 // Try the live server once and drain queued items oldest-first. Drop on success
 // or permanent failure; stop the pass (keep the rest) the moment the server is
 // unreachable again.
-async function flushQueue(): Promise<FlushResponse> {
-  let queue = await readQueue()
-  if (queue.length === 0) {
-    await stopFlushAlarm()
-    return { flushed: 0, remaining: 0 }
-  }
-  const found = await probe()
-  const token = await getToken()
-  if (!found || !token) return { flushed: 0, remaining: queue.length }
-  let flushed = 0
-  for (const item of [...queue]) {
-    const res = await postCapture(found.port, token, item.capture)
-    if (res.ok) {
-      queue = dequeueById(queue, item.id)
-      flushed++
-    } else if (isRetryable(res.error)) {
-      break
-    } else {
-      console.warn('[memry] dropping unsendable queued capture', item.id, res.error)
-      queue = dequeueById(queue, item.id)
+// Re-entrancy guard: concurrent callers share ONE in-flight flush pass so the
+// same queued item is never POSTed twice.
+function flushQueue(): Promise<FlushResponse> {
+  if (flushing) return flushing
+  flushing = (async (): Promise<FlushResponse> => {
+    let queue = await readQueue()
+    if (queue.length === 0) {
+      await stopFlushAlarm()
+      return { flushed: 0, remaining: 0 }
     }
-  }
-  await writeQueue(queue)
-  await setBadge(queue.length)
-  if (queue.length === 0) await stopFlushAlarm()
-  return { flushed, remaining: queue.length }
+    const found = await probe()
+    const token = await getToken()
+    if (!found || !token) return { flushed: 0, remaining: queue.length }
+    let flushed = 0
+    for (const item of [...queue]) {
+      const res = await postCapture(found.port, token, item.capture)
+      if (res.ok) {
+        queue = dequeueById(queue, item.id)
+        flushed++
+      } else if (isRetryable(res.error)) {
+        break
+      } else {
+        console.warn('[memry] dropping unsendable queued capture', item.id, res.error)
+        queue = dequeueById(queue, item.id)
+      }
+    }
+    await writeQueue(queue)
+    await setBadge(queue.length)
+    if (queue.length === 0) await stopFlushAlarm()
+    return { flushed, remaining: queue.length }
+  })().finally(() => {
+    flushing = null
+  })
+  return flushing
 }
 
 // Capture, or queue it for retry when the server is unreachable. Permanent
