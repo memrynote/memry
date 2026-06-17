@@ -89,7 +89,7 @@ export async function ingestArticleCapture(
     db,
     {
       id,
-      type: input.itemType ?? 'clip',
+      type: input.itemType ?? 'link',
       title: input.properties.title,
       content: input.contentMarkdown,
       sourceUrl: input.url,
