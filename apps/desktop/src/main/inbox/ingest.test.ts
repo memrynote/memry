@@ -42,7 +42,7 @@ describe('ingestArticleCapture', () => {
     setArg = {}
   })
 
-  it('creates a new clip item with properties + extraction status when no itemId', async () => {
+  it('creates a new link item with properties + extraction status when no itemId', async () => {
     selectGet.mockReturnValue(undefined) // no dedup hit
     const { ingestArticleCapture } = await import('./ingest')
     const res = await ingestArticleCapture(
@@ -64,7 +64,7 @@ describe('ingestArticleCapture', () => {
     expect(res.itemId).toBeTruthy()
     expect(insertSpy).toHaveBeenCalledOnce()
     const [row] = insertSpy.mock.calls[0]
-    expect(row.type).toBe('clip')
+    expect(row.type).toBe('link')
     expect(row.captureSource).toBe('browser-extension')
     expect(row.metadata.extractionStatus).toBe('full')
     expect(row.metadata.properties.title).toBe('Hello')
