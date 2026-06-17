@@ -355,9 +355,11 @@ export async function processArticleExtractJob(db: DataDb, job: JobRow): Promise
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown extraction error'
     if (job.attempts < job.maxAttempts) {
+      log.error('article-extract failed, will retry', { itemId: job.itemId, url: sourceUrl, error })
       rescheduleJob(db, job, message, ARTICLE_RETRY_DELAY_MS)
       return
     }
+    log.error('article-extract failed', { itemId: job.itemId, url: sourceUrl, error })
     failJob(db, job.id, message)
   }
 }

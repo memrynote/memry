@@ -237,7 +237,14 @@ export async function fetchUrlHtml(url: string): Promise<string> {
     if (contentLength && parseInt(contentLength, 10) > MAX_HTML_SIZE) {
       throw new Error(`Response too large: ${contentLength} bytes`)
     }
-    return await response.text()
+    const html = await response.text()
+    // content-length is often absent (chunked responses), so enforce the cap on
+    // the decoded body too — otherwise an oversized page bypasses the limit and
+    // reaches the HTML parser.
+    if (html.length > MAX_HTML_SIZE) {
+      throw new Error(`Response too large: ${html.length} bytes`)
+    }
+    return html
   } finally {
     clearTimeout(timeoutId)
   }

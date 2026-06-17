@@ -25,7 +25,12 @@ vi.mock('../database', () => ({
 
 vi.mock('./metadata', () => ({
   fetchUrlMetadata: mockFetchUrlMetadata,
-  downloadImage: mockDownloadImage
+  downloadImage: mockDownloadImage,
+  fetchUrlHtml: vi.fn(async () => '')
+}))
+
+vi.mock('@memry/article-extract/node', () => ({
+  extractFromHtml: vi.fn(async () => ({ extractionStatus: 'failed' }))
 }))
 
 vi.mock('./metadata-utils', () => ({
