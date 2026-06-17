@@ -93,7 +93,7 @@
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.81",
-    "@ai-sdk/openai": "^3.0.41",
+    "@ai-sdk/openai": "^3.0.68",
     "@blocknote/code-block": "^0.47.1",
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
