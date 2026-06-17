@@ -142,7 +142,9 @@ export const InboxChannels = {
     /** Metadata fetch completed */
     METADATA_COMPLETE: 'inbox:metadata-complete',
     /** Processing error occurred */
-    PROCESSING_ERROR: 'inbox:processing-error'
+    PROCESSING_ERROR: 'inbox:processing-error',
+    /** Open and focus a specific inbox item */
+    OPEN_ITEM: 'inbox:open-item'
   }
 } as const
 
