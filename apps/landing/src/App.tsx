@@ -26,6 +26,11 @@ import { RefundPage } from '@/pages/Refund'
 import { NotFound } from '@/pages/NotFound'
 import { AuthPage } from '@/pages/Auth'
 import { AuthCallbackPage } from '@/pages/AuthCallback'
+import {
+  ObsidianAlternativePage,
+  NotionAlternativePage,
+  NotePlanAlternativePage
+} from '@/pages/AlternativePage'
 import { RequireAuth } from '@/components/account/RequireAuth'
 import { AccountLayout } from '@/components/account/AccountLayout'
 import { ProfileSection } from '@/pages/account/ProfileSection'
@@ -139,6 +144,9 @@ function AppContent() {
           <Route path="/download/desktop" element={<DownloadDesktopPage />} />
           <Route path="/use-cases" element={<UseCasesPage />} />
           <Route path="/security" element={<SecurityPage />} />
+          <Route path="/obsidian-alternative" element={<ObsidianAlternativePage />} />
+          <Route path="/notion-alternative" element={<NotionAlternativePage />} />
+          <Route path="/noteplan-alternative" element={<NotePlanAlternativePage />} />
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/changelog" element={<ChangelogPage />} />

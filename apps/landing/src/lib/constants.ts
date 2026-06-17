@@ -151,6 +151,11 @@ export const FOOTER_LINKS = {
     { label: 'Changelog', href: '/changelog' },
     { label: 'Security', href: '/security' }
   ],
+  compare: [
+    { label: 'Obsidian alternative', href: '/obsidian-alternative' },
+    { label: 'Notion alternative', href: '/notion-alternative' },
+    { label: 'NotePlan alternative', href: '/noteplan-alternative' }
+  ],
   resources: [
     { label: 'Docs', href: DOCS_URL },
     { label: 'Terms of Service', href: '/terms' },

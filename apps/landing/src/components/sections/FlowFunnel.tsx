@@ -45,6 +45,10 @@ function CompetitorLogos({
             src={c.logo}
             alt={c.name}
             title={c.name}
+            width={20}
+            height={20}
+            loading="lazy"
+            decoding="async"
             className="w-5 h-5 rounded-sm opacity-50 grayscale hover:opacity-100 hover:grayscale-0 transition-all duration-200"
           />
         ))}
