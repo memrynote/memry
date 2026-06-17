@@ -39,8 +39,16 @@ export default function App() {
   }
 
   const onRotate = async () => {
-    await onUnpair()
-    await onPair()
+    setBusy(true)
+    try {
+      await browser.runtime.sendMessage({ type: 'REVOKE' }).catch(() => {})
+      const r: PairResponse = await browser.runtime
+        .sendMessage({ type: 'PAIR' })
+        .catch(() => ({ ok: false }))
+      if (r.ok) void refresh()
+    } finally {
+      setBusy(false)
+    }
   }
 
   const onSavePort = async () => {
