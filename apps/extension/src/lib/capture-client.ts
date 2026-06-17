@@ -12,6 +12,9 @@ export function pingUrl(port: number): string {
 export function claimUrl(port: number): string {
   return `http://127.0.0.1:${port}/pair/claim`
 }
+export function pairRequestUrl(port: number): string {
+  return `http://127.0.0.1:${port}/pair/request`
+}
 export function captureUrl(port: number): string {
   return `http://127.0.0.1:${port}/capture`
 }
@@ -62,6 +65,26 @@ export async function claimToken(
     return typeof data.token === 'string' ? data.token : null
   } catch {
     return null
+  }
+}
+
+// Ask the desktop app to pair this extension. 200 = origin already allowlisted (a
+// pairing window was opened so we can re-claim the token); 202 = the desktop is
+// showing an Allow/Deny dialog; error = unreachable/declined-shaped response.
+export async function requestPair(
+  port: number,
+  fetchFn: typeof fetch = fetch
+): Promise<'already-paired' | 'pending' | 'error'> {
+  try {
+    const res = await fetchFn(pairRequestUrl(port), {
+      method: 'POST',
+      headers: { [CAPTURE_HEADER]: '1' }
+    })
+    if (res.status === 200) return 'already-paired'
+    if (res.status === 202) return 'pending'
+    return 'error'
+  } catch {
+    return 'error'
   }
 }
 

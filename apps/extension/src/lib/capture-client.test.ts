@@ -4,11 +4,13 @@ import {
   PROBE_PORTS,
   captureHeaders,
   claimToken,
+  pairRequestUrl,
   parsePing,
   pingUrl,
   pollUntil,
   postCapture,
-  probeServer
+  probeServer,
+  requestPair
 } from './capture-client'
 
 const draft: ArticleCapture = {
@@ -96,6 +98,39 @@ describe('postCapture', () => {
       ok: false,
       error: 'invalid-capture'
     })
+  })
+})
+
+describe('requestPair', () => {
+  test('maps 200 to already-paired, 202 to pending, else error', async () => {
+    const paired = vi.fn(
+      async () => new Response(JSON.stringify({ status: 'already-paired' }), { status: 200 })
+    )
+    expect(await requestPair(7849, paired as unknown as typeof fetch)).toBe('already-paired')
+    const pending = vi.fn(
+      async () => new Response(JSON.stringify({ status: 'pending' }), { status: 202 })
+    )
+    expect(await requestPair(7849, pending as unknown as typeof fetch)).toBe('pending')
+    const denied = vi.fn(async () => new Response('{}', { status: 403 }))
+    expect(await requestPair(7849, denied as unknown as typeof fetch)).toBe('error')
+  })
+  test('sends the X-Memry-Capture header', async () => {
+    const fetchFn = vi.fn(
+      async () => new Response(JSON.stringify({ status: 'pending' }), { status: 202 })
+    )
+    await requestPair(7849, fetchFn as unknown as typeof fetch)
+    expect(fetchFn).toHaveBeenCalledWith(
+      pairRequestUrl(7849),
+      expect.objectContaining({ method: 'POST' })
+    )
+    const opts = (fetchFn.mock.calls[0] as unknown[])[1] as RequestInit
+    expect((opts.headers as Record<string, string>)['X-Memry-Capture']).toBe('1')
+  })
+  test('returns error on network failure', async () => {
+    const fetchFn = vi.fn(async () => {
+      throw new Error('refused')
+    })
+    expect(await requestPair(7849, fetchFn as unknown as typeof fetch)).toBe('error')
   })
 })
 
