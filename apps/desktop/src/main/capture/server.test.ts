@@ -9,6 +9,7 @@ const TOKEN = 'b'.repeat(64)
 let windowOpen = true
 const origins = new Set<string>()
 const openPairingWindowMock = vi.fn()
+const mockUnpair = vi.fn()
 vi.mock('./pairing', () => ({
   getCaptureToken: async () => TOKEN,
   isOriginAllowed: (o: string) => origins.has(o),
@@ -18,7 +19,8 @@ vi.mock('./pairing', () => ({
     if (!windowOpen) return null
     origins.add(o)
     return { token: TOKEN }
-  }
+  },
+  unpairCapture: mockUnpair
 }))
 
 async function req(port: number, path: string, init: RequestInit) {
@@ -32,6 +34,7 @@ describe('capture server', () => {
     origins.clear()
     ingestSpy.mockClear()
     openPairingWindowMock.mockClear()
+    mockUnpair.mockClear()
     const { startCaptureServer } = await import('./server')
     port = await startCaptureServer()
   })
@@ -81,6 +84,43 @@ describe('capture server', () => {
     expect((await cap.json()).itemId).toBe('item-9')
     expect(ingestSpy).toHaveBeenCalledWith(
       expect.objectContaining({ mode: 'article' }),
+      'browser-extension'
+    )
+  })
+
+  it('passes a screenshot capture through to ingest', async () => {
+    origins.add('chrome-extension://abc')
+    const cap = await req(port, '/capture', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${TOKEN}`,
+        Origin: 'chrome-extension://abc',
+        'X-Memry-Capture': '1',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        url: 'https://example.com/p',
+        mode: 'screenshot',
+        contentMarkdown: '',
+        excerpt: '',
+        extractionStatus: 'full',
+        properties: {
+          title: 'x',
+          source: 'https://example.com/p',
+          created: '2026-06-17T00:00:00.000Z',
+          tags: ['clippings']
+        },
+        screenshotDataUrl: 'data:image/png;base64,aGk=',
+        force: true
+      })
+    })
+    expect(cap.status).toBe(200)
+    expect(ingestSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mode: 'screenshot',
+        screenshotDataUrl: 'data:image/png;base64,aGk=',
+        force: true
+      }),
       'browser-extension'
     )
   })
@@ -195,6 +235,34 @@ describe('capture server', () => {
 
     await stop()
     port = await (await import('./server')).startCaptureServer()
+  })
+
+  it('revokes pairing for an authorized origin', async () => {
+    origins.add('chrome-extension://abc')
+    const res = await req(port, '/pair/revoke', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${TOKEN}`,
+        Origin: 'chrome-extension://abc',
+        'X-Memry-Capture': '1'
+      }
+    })
+    expect(res.status).toBe(200)
+    expect(mockUnpair).toHaveBeenCalledTimes(1)
+  })
+
+  it('rejects revoke with a bad token', async () => {
+    origins.add('chrome-extension://abc')
+    const res = await req(port, '/pair/revoke', {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer wrong',
+        Origin: 'chrome-extension://abc',
+        'X-Memry-Capture': '1'
+      }
+    })
+    expect(res.status).toBe(401)
+    expect(mockUnpair).not.toHaveBeenCalled()
   })
 
   it('single-pending guard: two concurrent /pair/request calls invoke consent only once', async () => {

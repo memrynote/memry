@@ -2,7 +2,13 @@ import http from 'node:http'
 import { app } from 'electron'
 import { ArticleCaptureSchema } from '@memry/contracts/capture-api'
 import { ingestArticleCapture } from '../inbox/ingest'
-import { getCaptureToken, isOriginAllowed, claimPairing, openPairingWindow } from './pairing'
+import {
+  getCaptureToken,
+  isOriginAllowed,
+  claimPairing,
+  openPairingWindow,
+  unpairCapture
+} from './pairing'
 import { validateCaptureRequest } from './auth'
 import { createLogger } from '../lib/logger'
 
@@ -132,6 +138,26 @@ async function handle(req: http.IncomingMessage, res: http.ServerResponse): Prom
     }
     const result = await ingestArticleCapture(parsed.data, 'browser-extension')
     json(res, 200, { itemId: result.itemId })
+    return
+  }
+
+  if (req.method === 'POST' && req.url === '/pair/revoke') {
+    const token = await getCaptureToken()
+    const auth = validateCaptureRequest(
+      {
+        authorization: req.headers.authorization,
+        origin,
+        'x-memry-capture': req.headers['x-memry-capture'] as string | undefined
+      },
+      token,
+      isOriginAllowed
+    )
+    if (!auth.ok) {
+      json(res, 401, { error: auth.reason })
+      return
+    }
+    await unpairCapture()
+    json(res, 200, { ok: true })
     return
   }
 

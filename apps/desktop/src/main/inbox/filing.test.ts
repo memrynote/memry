@@ -98,8 +98,38 @@ import {
   convertToTask,
   linkToNote,
   linkToNotes,
-  bulkFileToFolder
+  bulkFileToFolder,
+  generateNoteContent
 } from './filing'
+
+describe('generateNoteContent', () => {
+  it('resolves a vault-relative screenshot embed in a link body to a memry-file URL', () => {
+    const item = {
+      type: 'link',
+      sourceUrl: 'https://example.com/p',
+      title: 'Example',
+      content: '![screenshot](attachments/inbox/cap-1/screenshot.png)',
+      metadata: { extractionStatus: 'full' }
+    } as unknown as Parameters<typeof generateNoteContent>[0]
+
+    const content = generateNoteContent(item)
+
+    expect(content).toContain('![screenshot](memry-file://attachments/inbox/cap-1/screenshot.png)')
+    expect(content).not.toContain('![screenshot](attachments/inbox/cap-1/screenshot.png)')
+  })
+
+  it('leaves http(s) article images untouched', () => {
+    const item = {
+      type: 'link',
+      sourceUrl: 'https://example.com/p',
+      title: 'Example',
+      content: 'Intro\n\n![hero](https://cdn.example.com/a.png)',
+      metadata: { extractionStatus: 'full' }
+    } as unknown as Parameters<typeof generateNoteContent>[0]
+
+    expect(generateNoteContent(item)).toContain('![hero](https://cdn.example.com/a.png)')
+  })
+})
 
 describe('Inbox Filing Operations', () => {
   let testDb: TestDatabaseResult

@@ -57,14 +57,52 @@ If voice transcription setup is incomplete, memrynote takes you to AI settings b
 
 ## Web Clips and Browser Extension
 
-When the browser extension (or quick-share integrations) are available, sharing a page from your browser creates an inbox item with:
+The memrynote browser extension captures the page you're reading straight into your inbox. Web clips
+appear under the **clips** content type filter.
 
-- The page title
-- The source URL
-- A snippet or selected text
-- Sometimes a screenshot
+### Pairing
 
-Web clips appear under the **clips** content type filter.
+The extension talks to the desktop app over a local loopback connection — nothing leaves your
+machine. The first capture prompts memrynote to show an **Allow / Deny** pairing dialog; approving it
+issues the extension a token. Until paired, the popup shows a needs-pairing state.
+
+### Capture modes
+
+The popup offers three ways to grab a page:
+
+- **Article** — the readable main content, stripped of navigation and ads (the default).
+- **Selection** — only the text you've highlighted on the page.
+- **Screenshot** — a stitched full-page image, captured by scrolling the page.
+
+Article and Selection land as text; Screenshot lands as an image attachment.
+
+### Keyboard shortcut
+
+Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> (<kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> on
+macOS) to capture the current page in Article mode without opening the popup. A brief ✓ badge
+confirms the save. Rebind it at `chrome://extensions/shortcuts` if it collides with another
+extension. (The shortcut is Article-only — Selection and Screenshot need the popup.)
+
+### Offline queue
+
+If memrynote is closed when you capture, the clip is saved to a local queue instead of being lost.
+The toolbar badge shows the pending count. The extension retries about once a minute and, the moment
+memrynote is open again, the queued clips sync into your inbox and the badge clears. The popup shows
+"Saved offline" so you know it's queued, not dropped.
+
+### Add & open
+
+The popup's **Add & open in Memry** button captures the page and then jumps straight to the new item
+in memrynote's inbox. (When memrynote is closed the capture queues instead, and the open is skipped —
+there's nothing to open yet.)
+
+### Settings
+
+Open the extension's options page (right-click the toolbar icon → **Options**) to:
+
+- **Re-pair** or **Unpair** the extension (unpair clears the local token even if memrynote is closed).
+- **Rotate token** — revoke and immediately re-pair to mint a fresh token.
+- **Port override** — leave blank to auto-detect (ports 7849–7856), or pin a specific port.
 
 Link metadata scraping runs when a capture or preview needs it. The desktop app keeps the heavier
 metadata scraper out of the cold inbox startup path so opening a vault does not load web-preview

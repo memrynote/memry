@@ -30,6 +30,7 @@ const eventChannels = {
   "onInboxTranscriptionComplete": "inbox:transcription-complete",
   "onInboxMetadataComplete": "inbox:metadata-complete",
   "onInboxProcessingError": "inbox:processing-error",
+  "onInboxOpenItem": "inbox:open-item",
   "onSettingsChanged": "settings:changed",
   "onEmbeddingProgress": "settings:embeddingProgress",
   "onVoiceModelProgress": "settings:voiceModelProgress",

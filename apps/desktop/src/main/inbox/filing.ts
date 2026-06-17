@@ -240,6 +240,17 @@ function getFiledBinaryFilename(item: InboxItemRow): string {
   return `${sanitizeFiledVoiceFilenameBase(generateNoteTitle(item))}${extension}`
 }
 
+// Inbox screenshot/clip bodies embed images by their vault-relative attachment
+// path (e.g. attachments/inbox/<id>/screenshot.png). The note editor only renders
+// the memry-file:// protocol, so resolve those paths the same way thumbnails are
+// resolved below. http(s) article images are left untouched.
+function resolveInlineAttachmentPaths(markdown: string): string {
+  return markdown.replace(/!\[([^\]]*)\]\((attachments\/[^)\s]+)\)/g, (match, alt, relPath) => {
+    const url = resolveAttachmentUrl(relPath)
+    return url ? `![${alt}](${url})` : match
+  })
+}
+
 /**
  * Generate note content based on inbox item type
  */
@@ -250,7 +261,7 @@ export function generateNoteContent(item: InboxItemRow): string {
   switch (item.type) {
     case 'link': {
       const url = item.sourceUrl || ''
-      const description = item.content || ''
+      const description = resolveInlineAttachmentPaths(item.content || '')
       const metadata = item.metadata as Record<string, unknown> | null
       const title = item.title || ''
       const domain = url ? extractDomain(url) : ''

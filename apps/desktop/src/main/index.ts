@@ -69,7 +69,8 @@ import { getIndexDatabase } from './database/client'
 import { toAbsolutePath, createSnapshot } from './vault/notes'
 import { safeRead } from './vault/file-ops'
 import { SnapshotReasons } from '@memry/db-schema/schema/notes-cache'
-import { SettingsChannels } from '@memry/contracts/ipc-channels'
+import { SettingsChannels, InboxChannels } from '@memry/contracts/ipc-channels'
+import { parseInboxOpenItemId } from './deeplink-utils'
 import { initializeUpdater, isQuitAndInstallRequested, performQuitAndInstall } from './updater'
 import { buildAppMenu, buildEditableTextContextMenu } from './menu'
 import { setMainI18n } from './lib/main-i18n'
@@ -535,6 +536,8 @@ function handleDeepLink(url: string): void {
     if (parsed.hostname === 'open') {
       // launch/focus only — no dialog. Restore+focus happens below for any memry:// url.
       deepLinkLog.info('launch requested via memry://open')
+      const itemId = parseInboxOpenItemId(url)
+      if (itemId) mainWindow.webContents.send(InboxChannels.events.OPEN_ITEM, itemId)
     }
 
     if (parsed.hostname === 'billing') {

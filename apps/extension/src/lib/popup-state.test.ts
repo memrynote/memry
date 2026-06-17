@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest'
+import { describe, expect, it, test } from 'vitest'
 import type { ArticleCapture } from '@memry/article-extract'
 import { initialState, mapError, reducer, selectPhase } from './popup-state'
 
@@ -118,5 +118,53 @@ describe('mapError', () => {
     expect(mapError('bad-token')).toContain('pair')
     expect(mapError('payload-too-large')).toContain('too large')
     expect(mapError('whatever')).toContain('reach Memry')
+  })
+})
+
+describe('offline queue state', () => {
+  it('SAVE_DONE with a queued result is a terminal queued state, not an error', () => {
+    const mid = reducer(initialState, { type: 'SAVE_START' })
+    const s = reducer(mid, { type: 'SAVE_DONE', result: { ok: false, error: 'queued' } })
+    expect(s.action).toBe('queued')
+    expect(s.errorMessage).toBeNull()
+    expect(selectPhase(s)).toBe('queued')
+  })
+
+  it('SAVE_DONE with a real error still maps to error', () => {
+    const s = reducer(initialState, {
+      type: 'SAVE_DONE',
+      result: { ok: false, error: 'bad-token' }
+    })
+    expect(s.action).toBe('error')
+    expect(selectPhase(s)).toBe('error')
+  })
+})
+
+describe('mode switching', () => {
+  it('SET_MODE to selection starts capturing and resets draftReady', () => {
+    const s = reducer(
+      { ...initialState, draftReady: true },
+      { type: 'SET_MODE', mode: 'selection' }
+    )
+    expect(s.mode).toBe('selection')
+    expect(s.capturing).toBe(true)
+    expect(s.draftReady).toBe(false)
+  })
+
+  it('SET_MODE to article does not enter capturing', () => {
+    const s = reducer(initialState, { type: 'SET_MODE', mode: 'article' })
+    expect(s.mode).toBe('article')
+    expect(s.capturing).toBe(false)
+  })
+
+  it('DRAFT_READY clears capturing', () => {
+    const mid = reducer(initialState, { type: 'SET_MODE', mode: 'screenshot' })
+    const done = reducer(mid, { type: 'DRAFT_READY', draft: null })
+    expect(done.capturing).toBe(false)
+    expect(done.draftReady).toBe(true)
+  })
+
+  it('selectPhase returns capturing while a grab is in flight', () => {
+    expect(selectPhase({ ...initialState, capturing: true })).toBe('capturing')
   })
 })

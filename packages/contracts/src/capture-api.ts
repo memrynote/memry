@@ -18,6 +18,7 @@ export const ArticleCaptureSchema = z.object({
   extractionStatus: z.enum(['full', 'partial', 'failed']),
   properties: ArticlePropertiesSchema,
   heroImage: z.string().optional(),
+  screenshotDataUrl: z.string().optional(),
   tags: z.array(z.string()).optional(),
   force: z.boolean().optional()
 })

@@ -13,12 +13,36 @@ export interface PairResponse {
 
 export type CaptureResponse = { ok: true; itemId: string } | { ok: false; error: string }
 
+export type CaptureMode = 'article' | 'selection' | 'screenshot'
+
 export type PopupMessage =
   | { type: 'GET_STATUS' }
   | { type: 'PAIR' }
   | { type: 'CAPTURE'; capture: ArticleCapture }
   | { type: 'WAIT_FOR_SERVER' }
+  | { type: 'GRAB_SCREENSHOT' }
+  | { type: 'FLUSH_QUEUE' }
+  | { type: 'REVOKE' }
 
-export type ContentMessage = { type: 'EXTRACT' }
+export type ContentMessage =
+  | { type: 'EXTRACT' }
+  | { type: 'GRAB_SELECTION' }
+  | { type: 'GET_PAGE_METRICS' }
+  | { type: 'SCROLL_TO'; y: number }
 
 export type ExtractResponse = { ok: true; capture: ArticleCapture } | { ok: false; error: string }
+
+export interface PageMetrics {
+  scrollHeight: number
+  innerHeight: number
+  innerWidth: number
+  dpr: number
+  scrollY: number
+}
+
+export type ScreenshotResponse = { ok: true; dataUrl: string } | { ok: false; error: string }
+
+export interface FlushResponse {
+  flushed: number
+  remaining: number
+}

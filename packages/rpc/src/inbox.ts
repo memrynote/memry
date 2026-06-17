@@ -608,7 +608,8 @@ export const inboxRpc = defineDomain({
     ),
     onInboxProcessingError: defineEvent<InboxProcessingErrorEvent>(
       InboxChannels.events.PROCESSING_ERROR
-    )
+    ),
+    onInboxOpenItem: defineEvent<string>(InboxChannels.events.OPEN_ITEM)
   }
 })
 

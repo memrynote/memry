@@ -302,6 +302,22 @@ const AppContent = (): React.JSX.Element => {
     })
   }, [openSettings])
 
+  useEffect(() => {
+    return window.api.onInboxOpenItem((itemId) => {
+      openTab({
+        type: 'inbox',
+        title: 'Inbox',
+        icon: 'inbox',
+        path: '/inbox',
+        isPinned: false,
+        isModified: false,
+        isPreview: false,
+        isDeleted: false,
+        viewState: { focusInboxItemId: itemId, focusedAt: Date.now() }
+      })
+    })
+  }, [openTab])
+
   return (
     <TabDragProvider>
       <AgentTabTitleSync />

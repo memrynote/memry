@@ -10,7 +10,8 @@ import { createLogger } from '../lib/logger'
 import { publishProjectionEvent } from '../projections'
 import { insertItemWithTags, emitCapturedAndSync } from './domain'
 import { downloadImage } from './metadata'
-import { getItemAttachmentsDir } from './attachments'
+import { getItemAttachmentsDir, storeInboxAttachment } from './attachments'
+import { parseDataUrl } from './parse-data-url'
 
 const log = createLogger('Inbox:Ingest')
 
@@ -84,14 +85,32 @@ export async function ingestArticleCapture(
   const id = generateId()
   const now = new Date().toISOString()
   const tags = input.tags ?? input.properties.tags ?? []
-  const thumbnailPath = await downloadHero(id, input.heroImage)
+
+  // Screenshot mode: decode the data URL into an inbox attachment and make the
+  // image the note body. The extension sends contentMarkdown:'' for screenshots.
+  let content = input.contentMarkdown
+  let screenshotPath: string | null = null
+  if (input.screenshotDataUrl) {
+    const parsed = parseDataUrl(input.screenshotDataUrl)
+    if (parsed) {
+      const stored = await storeInboxAttachment(id, parsed.buffer, 'screenshot', parsed.mime)
+      if (stored.success && stored.path) {
+        screenshotPath = stored.path
+        content = `![screenshot](${stored.path})`
+      } else {
+        log.warn('screenshot attachment failed', { itemId: id, error: stored.error })
+      }
+    }
+  }
+
+  const thumbnailPath = screenshotPath ?? (await downloadHero(id, input.heroImage))
   const { row, tags: appliedTags } = insertItemWithTags(
     db,
     {
       id,
       type: input.itemType ?? 'link',
       title: input.properties.title,
-      content: input.contentMarkdown,
+      content,
       sourceUrl: input.url,
       thumbnailPath,
       createdAt: now,
