@@ -76,7 +76,9 @@ export default function App() {
     }
   }
 
-  const onAdd = async (connectionOverride?: ConnectionState) => {
+  const onAdd = async (
+    connectionOverride?: ConnectionState
+  ): Promise<CaptureResponse | undefined> => {
     if (!state.draft) return
     const connection = connectionOverride ?? state.connection
     // Pair inline if this connection isn't ready yet.
@@ -93,6 +95,16 @@ export default function App() {
       .sendMessage({ type: 'CAPTURE', capture: state.draft })
       .catch(() => ({ ok: false, error: 'network' }))
     dispatch({ type: 'SAVE_DONE', result })
+    return result
+  }
+
+  const onAddAndOpen = async () => {
+    const result = await onAdd()
+    if (result?.ok) {
+      browser.tabs
+        .create({ url: `memry://open?item=${encodeURIComponent(result.itemId)}` })
+        .catch(() => {})
+    }
   }
 
   const onLaunchAndAdd = async () => {
@@ -204,7 +216,17 @@ export default function App() {
         )}
 
         {phase === 'ready' && (
-          <PrimaryButton label="Add to Memry" onClick={() => onAdd()} disabled={!draft} />
+          <div className="flex flex-col gap-2">
+            <PrimaryButton label="Add to Memry" onClick={() => onAdd()} disabled={!draft} />
+            <button
+              type="button"
+              disabled={!draft}
+              onClick={onAddAndOpen}
+              className="rounded-md border border-border px-3 py-2 text-[13px] font-medium text-text-secondary disabled:opacity-50"
+            >
+              Add &amp; open in Memry
+            </button>
+          </div>
         )}
         {phase === 'approving' && <PrimaryButton label="Approve in Memry…" disabled />}
         {phase === 'saving' && <PrimaryButton label="Adding…" disabled />}
