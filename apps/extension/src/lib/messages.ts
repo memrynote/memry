@@ -15,7 +15,7 @@ export type CaptureResponse = { ok: true; itemId: string } | { ok: false; error:
 
 export type PopupMessage =
   | { type: 'GET_STATUS' }
-  | { type: 'START_PAIR' }
+  | { type: 'PAIR' }
   | { type: 'CAPTURE'; capture: ArticleCapture }
 
 export type ContentMessage = { type: 'EXTRACT' }

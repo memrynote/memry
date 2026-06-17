@@ -4,9 +4,8 @@ import type { ConnectionState } from './messages'
 export type Phase =
   | 'extracting'
   | 'app-closed'
-  | 'needs-pairing'
-  | 'pairing'
   | 'ready'
+  | 'approving'
   | 'saving'
   | 'saved'
   | 'error'
@@ -16,7 +15,7 @@ export interface PopupState {
   draftReady: boolean
   connection: 'unknown' | ConnectionState
   port: number | null
-  action: 'idle' | 'pairing' | 'saving' | 'saved' | 'error'
+  action: 'idle' | 'approving' | 'saving' | 'saved' | 'error'
   itemId: string | null
   errorMessage: string | null
 }
@@ -25,8 +24,8 @@ export type PopupAction =
   | { type: 'DRAFT_READY'; draft: ArticleCapture | null }
   | { type: 'STATUS'; connection: ConnectionState; port: number | null }
   | { type: 'EDIT'; draft: ArticleCapture }
-  | { type: 'PAIR_START' }
-  | { type: 'PAIR_DONE'; ok: boolean }
+  | { type: 'APPROVE_START' }
+  | { type: 'APPROVE_DONE'; ok: boolean }
   | { type: 'SAVE_START' }
   | { type: 'SAVE_DONE'; result: { ok: true; itemId: string } | { ok: false; error: string } }
   | { type: 'RETRY' }
@@ -65,12 +64,16 @@ export function reducer(state: PopupState, action: PopupAction): PopupState {
       return { ...state, connection: action.connection, port: action.port }
     case 'EDIT':
       return { ...state, draft: action.draft }
-    case 'PAIR_START':
-      return { ...state, action: 'pairing', errorMessage: null }
-    case 'PAIR_DONE':
+    case 'APPROVE_START':
+      return { ...state, action: 'approving', errorMessage: null }
+    case 'APPROVE_DONE':
       return action.ok
-        ? { ...state, action: 'idle', connection: 'ready' }
-        : { ...state, action: 'error', errorMessage: mapError('pair-timeout') }
+        ? { ...state, action: 'idle' }
+        : {
+            ...state,
+            action: 'error',
+            errorMessage: 'Approve the Memry extension, then try again.'
+          }
     case 'SAVE_START':
       return { ...state, action: 'saving', errorMessage: null }
     case 'SAVE_DONE':
@@ -88,9 +91,8 @@ export function selectPhase(state: PopupState): Phase {
   if (state.action === 'saved') return 'saved'
   if (state.action === 'error') return 'error'
   if (state.action === 'saving') return 'saving'
-  if (state.action === 'pairing') return 'pairing'
+  if (state.action === 'approving') return 'approving'
   if (state.connection === 'unknown' || !state.draftReady) return 'extracting'
   if (state.connection === 'app-closed') return 'app-closed'
-  if (state.connection === 'needs-pairing') return 'needs-pairing'
-  return 'ready'
+  return 'ready' // 'ready' and 'needs-pairing' both render the editable miniature
 }

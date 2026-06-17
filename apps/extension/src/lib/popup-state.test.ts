@@ -26,22 +26,37 @@ test('app-closed renders even without a draft', () => {
   expect(selectPhase(s)).toBe('app-closed')
 })
 
-test('needs-pairing then pairing then ready', () => {
+test('ready connection shows ready', () => {
   let s = reducer(initialState, { type: 'DRAFT_READY', draft })
-  s = reducer(s, { type: 'STATUS', connection: 'needs-pairing', port: 7849 })
-  expect(selectPhase(s)).toBe('needs-pairing')
-  s = reducer(s, { type: 'PAIR_START' })
-  expect(selectPhase(s)).toBe('pairing')
-  s = reducer(s, { type: 'PAIR_DONE', ok: true })
+  s = reducer(s, { type: 'STATUS', connection: 'ready', port: 7849 })
   expect(selectPhase(s)).toBe('ready')
 })
 
-test('failed pairing surfaces an error', () => {
+test('unpaired connection still shows ready (pairing happens inline on save)', () => {
   let s = reducer(initialState, { type: 'DRAFT_READY', draft })
   s = reducer(s, { type: 'STATUS', connection: 'needs-pairing', port: 7849 })
-  s = reducer(s, { type: 'PAIR_START' })
-  s = reducer(s, { type: 'PAIR_DONE', ok: false })
+  expect(selectPhase(s)).toBe('ready')
+})
+
+test('approve then save lifecycle', () => {
+  let s = reducer(initialState, { type: 'DRAFT_READY', draft })
+  s = reducer(s, { type: 'STATUS', connection: 'needs-pairing', port: 7849 })
+  s = reducer(s, { type: 'APPROVE_START' })
+  expect(selectPhase(s)).toBe('approving')
+  s = reducer(s, { type: 'APPROVE_DONE', ok: true })
+  s = reducer(s, { type: 'SAVE_START' })
+  expect(selectPhase(s)).toBe('saving')
+  s = reducer(s, { type: 'SAVE_DONE', result: { ok: true, itemId: 'i1' } })
+  expect(selectPhase(s)).toBe('saved')
+})
+
+test('declined approval surfaces an error', () => {
+  let s = reducer(initialState, { type: 'DRAFT_READY', draft })
+  s = reducer(s, { type: 'STATUS', connection: 'needs-pairing', port: 7849 })
+  s = reducer(s, { type: 'APPROVE_START' })
+  s = reducer(s, { type: 'APPROVE_DONE', ok: false })
   expect(selectPhase(s)).toBe('error')
+  expect(s.errorMessage).toContain('Memry')
 })
 
 test('save lifecycle: saving -> saved', () => {
