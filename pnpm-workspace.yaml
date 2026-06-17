@@ -22,6 +22,7 @@ allowBuilds:
   protobufjs: false
   re2: false
   workerd: false
+  spawn-sync: false
 
 # Moved from package.json "pnpm.overrides" (no longer read by pnpm 11)
 overrides:

@@ -1,0 +1,54 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-background: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-active: var(--surface-active);
+  --color-foreground: var(--fg);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent-green: var(--accent-green);
+  --font-serif: 'Crimson Pro', Georgia, 'Times New Roman', serif;
+  --font-sans: ui-sans-serif, -apple-system, system-ui, 'Segoe UI', Helvetica, Arial, sans-serif;
+}
+
+/* Memry token subset, copied from apps/desktop/src/renderer/src/assets/base.css */
+:root {
+  --bg: #f6f5f0;
+  --surface: #efefe9;
+  --surface-active: #e4e4de;
+  --fg: #1a1a1a;
+  --text-secondary: #4a4a4a;
+  --text-tertiary: #8c8c8c;
+  --border: #e4e4de;
+  --primary: #1a1a1a;
+  --primary-foreground: #f6f5f0;
+  --accent-green: #22c55e;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #181919;
+    --surface: #222222;
+    --surface-active: #2a2a2a;
+    --fg: #bcbab6;
+    --text-secondary: #bcbab6;
+    --text-tertiary: #ada9a3;
+    --border: #2a2a2a;
+    --primary: #e8e6e1;
+    --primary-foreground: #191919;
+    --accent-green: #4ade80;
+  }
+}
+
+html,
+body {
+  margin: 0;
+}
+
+#root {
+  width: 400px;
+}
