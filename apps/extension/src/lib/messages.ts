@@ -17,6 +17,7 @@ export type PopupMessage =
   | { type: 'GET_STATUS' }
   | { type: 'PAIR' }
   | { type: 'CAPTURE'; capture: ArticleCapture }
+  | { type: 'WAIT_FOR_SERVER' }
 
 export type ContentMessage = { type: 'EXTRACT' }
 

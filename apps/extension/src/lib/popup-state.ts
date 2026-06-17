@@ -4,6 +4,7 @@ import type { ConnectionState } from './messages'
 export type Phase =
   | 'extracting'
   | 'app-closed'
+  | 'launching'
   | 'ready'
   | 'approving'
   | 'saving'
@@ -15,7 +16,7 @@ export interface PopupState {
   draftReady: boolean
   connection: 'unknown' | ConnectionState
   port: number | null
-  action: 'idle' | 'approving' | 'saving' | 'saved' | 'error'
+  action: 'idle' | 'launching' | 'approving' | 'saving' | 'saved' | 'error'
   itemId: string | null
   errorMessage: string | null
 }
@@ -28,6 +29,8 @@ export type PopupAction =
   | { type: 'APPROVE_DONE'; ok: boolean }
   | { type: 'SAVE_START' }
   | { type: 'SAVE_DONE'; result: { ok: true; itemId: string } | { ok: false; error: string } }
+  | { type: 'LAUNCH_START' }
+  | { type: 'LAUNCH_DONE'; ok: boolean }
   | { type: 'RETRY' }
 
 export const initialState: PopupState = {
@@ -80,6 +83,12 @@ export function reducer(state: PopupState, action: PopupAction): PopupState {
       return action.result.ok
         ? { ...state, action: 'saved', itemId: action.result.itemId }
         : { ...state, action: 'error', errorMessage: mapError(action.result.error) }
+    case 'LAUNCH_START':
+      return { ...state, action: 'launching', errorMessage: null }
+    case 'LAUNCH_DONE':
+      return action.ok
+        ? { ...state, action: 'idle' }
+        : { ...state, action: 'error', errorMessage: 'Open Memry, then try again.' }
     case 'RETRY':
       return { ...state, action: 'idle', errorMessage: null }
     default:
@@ -92,6 +101,7 @@ export function selectPhase(state: PopupState): Phase {
   if (state.action === 'error') return 'error'
   if (state.action === 'saving') return 'saving'
   if (state.action === 'approving') return 'approving'
+  if (state.action === 'launching') return 'launching'
   if (state.connection === 'unknown' || !state.draftReady) return 'extracting'
   if (state.connection === 'app-closed') return 'app-closed'
   return 'ready' // 'ready' and 'needs-pairing' both render the editable miniature

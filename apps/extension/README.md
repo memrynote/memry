@@ -37,7 +37,15 @@ Run the desktop app first: `pnpm dev`.
    link item appears in the desktop inbox with the article body + properties.
 4. **Failed extraction:** open the popup on a non-article page (e.g. a web app)
    → "Couldn't read this page — saving the link and title." Saving still works.
-5. **Origin header check (the known risk):** if `/capture` returns 401
+5. **Launch when closed:** quit Memry, open the popup on any page, click
+   **Open Memry & save** → Chrome prompts to open Memry → the app starts,
+   click Allow (first time), and the capture lands in the inbox. Button shows
+   "Opening Memry…" while polling; times out after 20 s with an error if the
+   app never came up.
+   **macOS `pnpm dev`:** run `pnpm --filter @memry/desktop dev:protocol` once
+   so the dev Electron registers `memry://`, or test this path against a
+   packaged build.
+6. **Origin header check (the known risk):** if `/capture` returns 401
    `origin-not-allowed`/`bad-token` despite a successful pair, Chrome is not
    attaching `Origin: chrome-extension://<id>` on the background fetch — verify
    in DevTools → background service worker → Network.

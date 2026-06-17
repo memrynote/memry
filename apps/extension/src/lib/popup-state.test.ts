@@ -88,6 +88,30 @@ test('EDIT replaces the draft', () => {
   expect(s.draft?.properties.title).toBe('New')
 })
 
+describe('launch lifecycle', () => {
+  test('LAUNCH_START transitions to launching phase', () => {
+    let s = reducer(initialState, { type: 'DRAFT_READY', draft: null })
+    s = reducer(s, { type: 'STATUS', connection: 'app-closed', port: null })
+    s = reducer(s, { type: 'LAUNCH_START' })
+    expect(selectPhase(s)).toBe('launching')
+  })
+
+  test('LAUNCH_DONE ok:true leaves launching', () => {
+    let s = reducer(initialState, { type: 'STATUS', connection: 'app-closed', port: null })
+    s = reducer(s, { type: 'LAUNCH_START' })
+    s = reducer(s, { type: 'LAUNCH_DONE', ok: true })
+    expect(selectPhase(s)).not.toBe('launching')
+  })
+
+  test('LAUNCH_DONE ok:false surfaces error with message', () => {
+    let s = reducer(initialState, { type: 'STATUS', connection: 'app-closed', port: null })
+    s = reducer(s, { type: 'LAUNCH_START' })
+    s = reducer(s, { type: 'LAUNCH_DONE', ok: false })
+    expect(selectPhase(s)).toBe('error')
+    expect(s.errorMessage).toBe('Open Memry, then try again.')
+  })
+})
+
 describe('mapError', () => {
   test('maps known server codes to human copy', () => {
     expect(mapError('bad-token')).toContain('pair')

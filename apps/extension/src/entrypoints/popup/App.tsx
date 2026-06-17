@@ -53,6 +53,18 @@ export default function App() {
     dispatch({ type: 'SAVE_DONE', result })
   }
 
+  const onLaunchAndAdd = async () => {
+    dispatch({ type: 'LAUNCH_START' })
+    browser.tabs.create({ url: 'memry://open' }).catch(() => {})
+    const up: { ok: boolean } = await browser.runtime
+      .sendMessage({ type: 'WAIT_FOR_SERVER' })
+      .catch(() => ({ ok: false }))
+    dispatch({ type: 'LAUNCH_DONE', ok: up.ok })
+    if (!up.ok) return
+    dispatch({ type: 'STATUS', connection: 'needs-pairing', port: null })
+    await onAdd()
+  }
+
   const draft = state.draft
   const editable = phase === 'ready' || phase === 'error'
 
@@ -111,7 +123,9 @@ export default function App() {
           <p className="text-[12px] text-text-secondary">{state.errorMessage}</p>
         )}
         {phase === 'app-closed' && (
-          <p className="text-[12px] text-text-secondary">Open Memry to save this page.</p>
+          <p className="text-[12px] text-text-secondary">
+            Memry isn't running — click below to launch it.
+          </p>
         )}
         {phase === 'saved' && (
           <p className="py-2 text-center text-[14px] font-medium text-foreground">
@@ -124,7 +138,10 @@ export default function App() {
         )}
         {phase === 'approving' && <PrimaryButton label="Approve in Memry…" disabled />}
         {phase === 'saving' && <PrimaryButton label="Adding…" disabled />}
-        {phase === 'app-closed' && <PrimaryButton label="Add to Memry" disabled />}
+        {phase === 'app-closed' && (
+          <PrimaryButton label="Open Memry & save" onClick={onLaunchAndAdd} />
+        )}
+        {phase === 'launching' && <PrimaryButton label="Opening Memry…" disabled />}
         {phase === 'error' && (
           <PrimaryButton label="Try again" onClick={() => dispatch({ type: 'RETRY' })} />
         )}

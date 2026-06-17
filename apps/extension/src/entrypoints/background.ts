@@ -36,6 +36,11 @@ async function pair(): Promise<PairResponse> {
   return { ok: true }
 }
 
+async function waitForServer(): Promise<{ ok: boolean }> {
+  const found = await pollUntil(() => probeServer(), { intervalMs: 800, timeoutMs: 20_000 })
+  return { ok: found !== null }
+}
+
 async function capture(body: ArticleCapture): Promise<CaptureResponse> {
   const found = await probeServer()
   if (!found) return { ok: false, error: 'app-closed' }
@@ -54,6 +59,8 @@ export default defineBackground(() => {
         return pair()
       case 'CAPTURE':
         return capture(message.capture)
+      case 'WAIT_FOR_SERVER':
+        return waitForServer()
       default:
         return undefined
     }
