@@ -85,6 +85,43 @@ describe('capture server', () => {
     )
   })
 
+  it('passes a screenshot capture through to ingest', async () => {
+    origins.add('chrome-extension://abc')
+    const cap = await req(port, '/capture', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${TOKEN}`,
+        Origin: 'chrome-extension://abc',
+        'X-Memry-Capture': '1',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        url: 'https://example.com/p',
+        mode: 'screenshot',
+        contentMarkdown: '',
+        excerpt: '',
+        extractionStatus: 'full',
+        properties: {
+          title: 'x',
+          source: 'https://example.com/p',
+          created: '2026-06-17T00:00:00.000Z',
+          tags: ['clippings']
+        },
+        screenshotDataUrl: 'data:image/png;base64,aGk=',
+        force: true
+      })
+    })
+    expect(cap.status).toBe(200)
+    expect(ingestSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mode: 'screenshot',
+        screenshotDataUrl: 'data:image/png;base64,aGk=',
+        force: true
+      }),
+      'browser-extension'
+    )
+  })
+
   it('rejects /capture without the custom header', async () => {
     origins.add('chrome-extension://abc')
     const r = await req(port, '/capture', {
