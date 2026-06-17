@@ -2,7 +2,7 @@ import http from 'node:http'
 import { app } from 'electron'
 import { ArticleCaptureSchema } from '@memry/contracts/capture-api'
 import { ingestArticleCapture } from '../inbox/ingest'
-import { getCaptureToken, isOriginAllowed, claimPairing } from './pairing'
+import { getCaptureToken, isOriginAllowed, claimPairing, openPairingWindow } from './pairing'
 import { validateCaptureRequest } from './auth'
 import { createLogger } from '../lib/logger'
 
@@ -14,6 +14,8 @@ const PROBE_RANGE = 8 // try 7849..7856
 let server: http.Server | null = null
 let currentPort: number | null = null
 let startInFlight: Promise<number> | null = null
+let requestPairConsent: ((origin: string) => Promise<boolean>) | null = null
+const pendingConsent = new Set<string>()
 
 export function getCaptureServerPort(): number | null {
   return server?.listening ? currentPort : null
@@ -61,6 +63,36 @@ async function handle(req: http.IncomingMessage, res: http.ServerResponse): Prom
       return
     }
     json(res, 200, { token: claim.token, port: currentPort })
+    return
+  }
+
+  if (req.method === 'POST' && req.url === '/pair/request') {
+    if (!origin) {
+      json(res, 400, { error: 'missing-origin' })
+      return
+    }
+    if (!origin.startsWith('chrome-extension://')) {
+      json(res, 403, { error: 'origin-not-allowed' })
+      return
+    }
+    if (req.headers['x-memry-capture'] !== '1') {
+      json(res, 401, { error: 'missing-capture-header' })
+      return
+    }
+    if (isOriginAllowed(origin)) {
+      openPairingWindow()
+      json(res, 200, { status: 'already-paired' })
+      return
+    }
+    if (requestPairConsent && !pendingConsent.has(origin)) {
+      pendingConsent.add(origin)
+      void requestPairConsent(origin)
+        .then((allowed) => {
+          if (allowed) openPairingWindow()
+        })
+        .finally(() => pendingConsent.delete(origin))
+    }
+    json(res, 202, { status: 'pending' })
     return
   }
 
@@ -128,7 +160,10 @@ function listen(port: number): Promise<number> {
   })
 }
 
-export async function startCaptureServer(): Promise<number> {
+export async function startCaptureServer(
+  deps: { requestPairConsent?: (origin: string) => Promise<boolean> } = {}
+): Promise<number> {
+  requestPairConsent = deps.requestPairConsent ?? null
   if (server?.listening && currentPort !== null) return currentPort
   // Collapse concurrent starts: without this, two callers both pass the
   // listening check and bind two servers, orphaning the first.

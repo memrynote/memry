@@ -507,6 +507,23 @@ function openAccountSettings(mainWindow: BrowserWindow): void {
   mainWindow.webContents.send(SettingsChannels.events.OPEN_SECTION, 'account')
 }
 
+async function showPairConsentDialog(origin: string): Promise<boolean> {
+  const mainWindow = BrowserWindow.getAllWindows()[0]
+  if (!mainWindow) return false
+  if (mainWindow.isMinimized()) mainWindow.restore()
+  mainWindow.focus()
+  const { response } = await dialog.showMessageBox(mainWindow, {
+    type: 'question',
+    buttons: ['Allow', 'Deny'],
+    defaultId: 0,
+    cancelId: 1,
+    title: 'Pair browser extension',
+    message: 'Allow the Memry browser extension to save captures to this app?',
+    detail: origin
+  })
+  return response === 0
+}
+
 function handleDeepLink(url: string): void {
   try {
     const parsed = new URL(url)
@@ -974,7 +991,9 @@ void app.whenReady().then(async () => {
           errorCode: error instanceof Error ? error.name : 'UnknownError'
         })
       })
-      void startCaptureServer().catch((err) => mainLog.error('capture server failed to start', err))
+      void startCaptureServer({ requestPairConsent: showPairConsentDialog }).catch((err) =>
+        mainLog.error('capture server failed to start', err)
+      )
     })
     .catch((err) => {
       mainLog.error('autoOpenLastVault failed:', err)

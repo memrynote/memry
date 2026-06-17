@@ -8,10 +8,12 @@ vi.mock('../inbox/ingest', () => ({ ingestArticleCapture: ingestSpy }))
 const TOKEN = 'b'.repeat(64)
 let windowOpen = true
 const origins = new Set<string>()
+const openPairingWindowMock = vi.fn()
 vi.mock('./pairing', () => ({
   getCaptureToken: async () => TOKEN,
   isOriginAllowed: (o: string) => origins.has(o),
   isPairingWindowOpen: () => windowOpen,
+  openPairingWindow: openPairingWindowMock,
   claimPairing: async (o: string) => {
     if (!windowOpen) return null
     origins.add(o)
@@ -29,6 +31,7 @@ describe('capture server', () => {
     windowOpen = true
     origins.clear()
     ingestSpy.mockClear()
+    openPairingWindowMock.mockClear()
     const { startCaptureServer } = await import('./server')
     port = await startCaptureServer()
   })
@@ -104,5 +107,120 @@ describe('capture server', () => {
       headers: { Origin: 'chrome-extension://abc', 'X-Memry-Capture': '1' }
     })
     expect(r.status).toBe(403)
+  })
+
+  // /pair/request tests
+  it('/pair/request with no Origin header → 400 missing-origin', async () => {
+    const r = await req(port, '/pair/request', {
+      method: 'POST',
+      headers: { 'X-Memry-Capture': '1' }
+    })
+    expect(r.status).toBe(400)
+    expect((await r.json()).error).toBe('missing-origin')
+  })
+
+  it('/pair/request with non-chrome-extension origin → 403 origin-not-allowed', async () => {
+    const r = await req(port, '/pair/request', {
+      method: 'POST',
+      headers: { Origin: 'https://example.com', 'X-Memry-Capture': '1' }
+    })
+    expect(r.status).toBe(403)
+    expect((await r.json()).error).toBe('origin-not-allowed')
+  })
+
+  it('/pair/request missing X-Memry-Capture header → 401 missing-capture-header', async () => {
+    const r = await req(port, '/pair/request', {
+      method: 'POST',
+      headers: { Origin: 'chrome-extension://ext1' }
+    })
+    expect(r.status).toBe(401)
+    expect((await r.json()).error).toBe('missing-capture-header')
+  })
+
+  it('/pair/request for already-allowlisted origin → 200 already-paired + openPairingWindow', async () => {
+    origins.add('chrome-extension://ext-allowlisted')
+    const r = await req(port, '/pair/request', {
+      method: 'POST',
+      headers: { Origin: 'chrome-extension://ext-allowlisted', 'X-Memry-Capture': '1' }
+    })
+    expect(r.status).toBe(200)
+    expect((await r.json()).status).toBe('already-paired')
+    expect(openPairingWindowMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('/pair/request with consent=true → 202 pending, fires consent once, openPairingWindow called', async () => {
+    let resolveFn!: (v: boolean) => void
+    const consentPromise = new Promise<boolean>((resolve) => {
+      resolveFn = resolve
+    })
+    const requestPairConsent = vi.fn(() => consentPromise)
+
+    const { stopCaptureServer: stop, startCaptureServer: start } = await import('./server')
+    await stop()
+    const newPort = await start({ requestPairConsent })
+
+    const r = await req(newPort, '/pair/request', {
+      method: 'POST',
+      headers: { Origin: 'chrome-extension://ext-consent-true', 'X-Memry-Capture': '1' }
+    })
+    expect(r.status).toBe(202)
+    expect((await r.json()).status).toBe('pending')
+    expect(requestPairConsent).toHaveBeenCalledTimes(1)
+    expect(openPairingWindowMock).not.toHaveBeenCalled()
+
+    resolveFn(true)
+    // let the .then() run
+    await new Promise((r) => setTimeout(r, 0))
+    expect(openPairingWindowMock).toHaveBeenCalledTimes(1)
+
+    await stop()
+    // restore the server for afterEach
+    port = await (await import('./server')).startCaptureServer()
+  })
+
+  it('/pair/request with consent=false → 202 pending, openPairingWindow NOT called', async () => {
+    const requestPairConsent = vi.fn(async () => false)
+
+    const { stopCaptureServer: stop, startCaptureServer: start } = await import('./server')
+    await stop()
+    const newPort = await start({ requestPairConsent })
+
+    const r = await req(newPort, '/pair/request', {
+      method: 'POST',
+      headers: { Origin: 'chrome-extension://ext-consent-false', 'X-Memry-Capture': '1' }
+    })
+    expect(r.status).toBe(202)
+    await new Promise((r) => setTimeout(r, 0))
+    expect(openPairingWindowMock).not.toHaveBeenCalled()
+
+    await stop()
+    port = await (await import('./server')).startCaptureServer()
+  })
+
+  it('single-pending guard: two concurrent /pair/request calls invoke consent only once', async () => {
+    let resolveFn!: (v: boolean) => void
+    const consentPromise = new Promise<boolean>((resolve) => {
+      resolveFn = resolve
+    })
+    const requestPairConsent = vi.fn(() => consentPromise)
+
+    const { stopCaptureServer: stop, startCaptureServer: start } = await import('./server')
+    await stop()
+    const newPort = await start({ requestPairConsent })
+
+    const headers = { Origin: 'chrome-extension://ext-dedup', 'X-Memry-Capture': '1' }
+    const [r1, r2] = await Promise.all([
+      req(newPort, '/pair/request', { method: 'POST', headers }),
+      req(newPort, '/pair/request', { method: 'POST', headers })
+    ])
+    expect(r1.status).toBe(202)
+    expect(r2.status).toBe(202)
+    expect(requestPairConsent).toHaveBeenCalledTimes(1)
+
+    resolveFn(true)
+    await new Promise((r) => setTimeout(r, 0))
+
+    await stop()
+    port = await (await import('./server')).startCaptureServer()
   })
 })
