@@ -9,6 +9,7 @@ const TOKEN = 'b'.repeat(64)
 let windowOpen = true
 const origins = new Set<string>()
 const openPairingWindowMock = vi.fn()
+const mockUnpair = vi.fn()
 vi.mock('./pairing', () => ({
   getCaptureToken: async () => TOKEN,
   isOriginAllowed: (o: string) => origins.has(o),
@@ -18,7 +19,8 @@ vi.mock('./pairing', () => ({
     if (!windowOpen) return null
     origins.add(o)
     return { token: TOKEN }
-  }
+  },
+  unpairCapture: mockUnpair
 }))
 
 async function req(port: number, path: string, init: RequestInit) {
@@ -32,6 +34,7 @@ describe('capture server', () => {
     origins.clear()
     ingestSpy.mockClear()
     openPairingWindowMock.mockClear()
+    mockUnpair.mockClear()
     const { startCaptureServer } = await import('./server')
     port = await startCaptureServer()
   })
@@ -232,6 +235,34 @@ describe('capture server', () => {
 
     await stop()
     port = await (await import('./server')).startCaptureServer()
+  })
+
+  it('revokes pairing for an authorized origin', async () => {
+    origins.add('chrome-extension://abc')
+    const res = await req(port, '/pair/revoke', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${TOKEN}`,
+        Origin: 'chrome-extension://abc',
+        'X-Memry-Capture': '1'
+      }
+    })
+    expect(res.status).toBe(200)
+    expect(mockUnpair).toHaveBeenCalledTimes(1)
+  })
+
+  it('rejects revoke with a bad token', async () => {
+    origins.add('chrome-extension://abc')
+    const res = await req(port, '/pair/revoke', {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer wrong',
+        Origin: 'chrome-extension://abc',
+        'X-Memry-Capture': '1'
+      }
+    })
+    expect(res.status).toBe(401)
+    expect(mockUnpair).not.toHaveBeenCalled()
   })
 
   it('single-pending guard: two concurrent /pair/request calls invoke consent only once', async () => {
