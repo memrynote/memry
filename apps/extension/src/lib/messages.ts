@@ -21,6 +21,8 @@ export type PopupMessage =
   | { type: 'CAPTURE'; capture: ArticleCapture }
   | { type: 'WAIT_FOR_SERVER' }
   | { type: 'GRAB_SCREENSHOT' }
+  | { type: 'FLUSH_QUEUE' }
+  | { type: 'REVOKE' }
 
 export type ContentMessage =
   | { type: 'EXTRACT' }
@@ -39,3 +41,8 @@ export interface PageMetrics {
 }
 
 export type ScreenshotResponse = { ok: true; dataUrl: string } | { ok: false; error: string }
+
+export interface FlushResponse {
+  flushed: number
+  remaining: number
+}

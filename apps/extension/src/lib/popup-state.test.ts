@@ -121,6 +121,25 @@ describe('mapError', () => {
   })
 })
 
+describe('offline queue state', () => {
+  it('SAVE_DONE with a queued result is a terminal queued state, not an error', () => {
+    const mid = reducer(initialState, { type: 'SAVE_START' })
+    const s = reducer(mid, { type: 'SAVE_DONE', result: { ok: false, error: 'queued' } })
+    expect(s.action).toBe('queued')
+    expect(s.errorMessage).toBeNull()
+    expect(selectPhase(s)).toBe('queued')
+  })
+
+  it('SAVE_DONE with a real error still maps to error', () => {
+    const s = reducer(initialState, {
+      type: 'SAVE_DONE',
+      result: { ok: false, error: 'bad-token' }
+    })
+    expect(s.action).toBe('error')
+    expect(selectPhase(s)).toBe('error')
+  })
+})
+
 describe('mode switching', () => {
   it('SET_MODE to selection starts capturing and resets draftReady', () => {
     const s = reducer(

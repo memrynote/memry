@@ -10,6 +10,7 @@ export type Phase =
   | 'approving'
   | 'saving'
   | 'saved'
+  | 'queued'
   | 'error'
 
 export interface PopupState {
@@ -19,7 +20,7 @@ export interface PopupState {
   capturing: boolean
   connection: 'unknown' | ConnectionState
   port: number | null
-  action: 'idle' | 'launching' | 'approving' | 'saving' | 'saved' | 'error'
+  action: 'idle' | 'launching' | 'approving' | 'saving' | 'saved' | 'queued' | 'error'
   itemId: string | null
   errorMessage: string | null
 }
@@ -94,9 +95,13 @@ export function reducer(state: PopupState, action: PopupAction): PopupState {
     case 'SAVE_START':
       return { ...state, action: 'saving', errorMessage: null }
     case 'SAVE_DONE':
-      return action.result.ok
-        ? { ...state, action: 'saved', itemId: action.result.itemId }
-        : { ...state, action: 'error', errorMessage: mapError(action.result.error) }
+      if (action.result.ok) {
+        return { ...state, action: 'saved', itemId: action.result.itemId }
+      }
+      if (action.result.error === 'queued') {
+        return { ...state, action: 'queued', errorMessage: null }
+      }
+      return { ...state, action: 'error', errorMessage: mapError(action.result.error) }
     case 'LAUNCH_START':
       return { ...state, action: 'launching', errorMessage: null }
     case 'LAUNCH_DONE':
@@ -112,6 +117,7 @@ export function reducer(state: PopupState, action: PopupAction): PopupState {
 
 export function selectPhase(state: PopupState): Phase {
   if (state.action === 'saved') return 'saved'
+  if (state.action === 'queued') return 'queued'
   if (state.action === 'error') return 'error'
   if (state.action === 'saving') return 'saving'
   if (state.action === 'approving') return 'approving'
