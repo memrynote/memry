@@ -1,0 +1,158 @@
+import { useEffect, useReducer } from 'react'
+import type { ArticleCapture } from '@memry/article-extract'
+import type {
+  CaptureResponse,
+  ConnectionState,
+  ExtractResponse,
+  PairResponse,
+  StatusResponse
+} from '@/lib/messages'
+import { initialState, reducer, selectPhase } from '@/lib/popup-state'
+import { StatusStrip } from '@/components/StatusStrip'
+import { EditableTitle } from '@/components/EditableTitle'
+import { PropertyRows } from '@/components/PropertyRows'
+import { TagEditor } from '@/components/TagEditor'
+import { BodyPreview } from '@/components/BodyPreview'
+import { ModeSegmented } from '@/components/ModeSegmented'
+import { PrimaryButton } from '@/components/PrimaryButton'
+
+export default function App() {
+  const [state, dispatch] = useReducer(reducer, initialState)
+  const phase = selectPhase(state)
+
+  useEffect(() => {
+    browser.runtime
+      .sendMessage({ type: 'GET_STATUS' })
+      .then((r: StatusResponse) =>
+        dispatch({ type: 'STATUS', connection: r.connection, port: r.port })
+      )
+      .catch(() => dispatch({ type: 'STATUS', connection: 'app-closed', port: null }))
+
+    browser.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
+      if (!tab?.id) return dispatch({ type: 'DRAFT_READY', draft: null })
+      browser.tabs
+        .sendMessage(tab.id, { type: 'EXTRACT' })
+        .then((r: ExtractResponse) =>
+          dispatch({ type: 'DRAFT_READY', draft: r.ok ? r.capture : null })
+        )
+        .catch(() => dispatch({ type: 'DRAFT_READY', draft: null }))
+    })
+  }, [])
+
+  const setDraft = (draft: ArticleCapture) => dispatch({ type: 'EDIT', draft })
+
+  const onAdd = async (connectionOverride?: ConnectionState) => {
+    if (!state.draft) return
+    const connection = connectionOverride ?? state.connection
+    // Pair inline if this connection isn't ready yet.
+    if (connection === 'needs-pairing') {
+      dispatch({ type: 'APPROVE_START' })
+      const pair: PairResponse = await browser.runtime
+        .sendMessage({ type: 'PAIR' })
+        .catch(() => ({ ok: false }))
+      dispatch({ type: 'APPROVE_DONE', ok: pair.ok })
+      if (!pair.ok) return
+    }
+    dispatch({ type: 'SAVE_START' })
+    const result: CaptureResponse = await browser.runtime
+      .sendMessage({ type: 'CAPTURE', capture: state.draft })
+      .catch(() => ({ ok: false, error: 'network' }))
+    dispatch({ type: 'SAVE_DONE', result })
+  }
+
+  const onLaunchAndAdd = async () => {
+    dispatch({ type: 'LAUNCH_START' })
+    browser.tabs.create({ url: 'memry://open' }).catch(() => {})
+    const up: { ok: boolean } = await browser.runtime
+      .sendMessage({ type: 'WAIT_FOR_SERVER' })
+      .catch(() => ({ ok: false }))
+    dispatch({ type: 'LAUNCH_DONE', ok: up.ok })
+    if (!up.ok) return
+    dispatch({ type: 'STATUS', connection: 'needs-pairing', port: null })
+    await onAdd('needs-pairing')
+  }
+
+  const draft = state.draft
+  const editable = phase === 'ready' || phase === 'error'
+
+  return (
+    <div className="flex flex-col bg-background font-sans text-foreground">
+      <StatusStrip phase={phase} />
+
+      {phase === 'extracting' && (
+        <div className="px-4 py-8 text-center text-[13px] text-text-tertiary">
+          Reading this page…
+        </div>
+      )}
+
+      {phase !== 'extracting' && phase !== 'saved' && (
+        <div
+          className={
+            'flex flex-col gap-2 px-4 py-3 ' +
+            (phase === 'ready' || phase === 'error' ? '' : 'opacity-60')
+          }
+        >
+          {draft && (
+            <>
+              <EditableTitle
+                value={draft.properties.title}
+                disabled={!editable}
+                onChange={(title) =>
+                  setDraft({ ...draft, properties: { ...draft.properties, title } })
+                }
+              />
+              {draft.extractionStatus === 'failed' && (
+                <p className="text-[12px] text-text-tertiary">
+                  Couldn't read this page — saving the link and title.
+                </p>
+              )}
+              <PropertyRows
+                properties={draft.properties}
+                disabled={!editable}
+                onChange={(properties) => setDraft({ ...draft, properties })}
+              />
+              <TagEditor
+                tags={draft.properties.tags}
+                disabled={!editable}
+                onChange={(tags) =>
+                  setDraft({ ...draft, properties: { ...draft.properties, tags } })
+                }
+              />
+              <ModeSegmented />
+              <BodyPreview markdown={draft.contentMarkdown} />
+            </>
+          )}
+        </div>
+      )}
+
+      <div className="flex flex-col gap-2 border-t border-border px-4 py-3">
+        {phase === 'error' && state.errorMessage && (
+          <p className="text-[12px] text-text-secondary">{state.errorMessage}</p>
+        )}
+        {phase === 'app-closed' && (
+          <p className="text-[12px] text-text-secondary">
+            Memry isn't running — click below to launch it.
+          </p>
+        )}
+        {phase === 'saved' && (
+          <p className="py-2 text-center text-[14px] font-medium text-foreground">
+            Added to inbox ✓
+          </p>
+        )}
+
+        {phase === 'ready' && (
+          <PrimaryButton label="Add to Memry" onClick={() => onAdd()} disabled={!draft} />
+        )}
+        {phase === 'approving' && <PrimaryButton label="Approve in Memry…" disabled />}
+        {phase === 'saving' && <PrimaryButton label="Adding…" disabled />}
+        {phase === 'app-closed' && (
+          <PrimaryButton label="Open Memry & save" onClick={onLaunchAndAdd} />
+        )}
+        {phase === 'launching' && <PrimaryButton label="Opening Memry…" disabled />}
+        {phase === 'error' && (
+          <PrimaryButton label="Try again" onClick={() => dispatch({ type: 'RETRY' })} />
+        )}
+      </div>
+    </div>
+  )
+}

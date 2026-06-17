@@ -31,6 +31,7 @@
     "start": "electron-vite preview",
     "dev": "MEMRY_ENV=development MEMRY_DEVICE=dev MEMRY_FORCE_VAULT_PICKER=1 electron-vite dev --mode=dev",
     "dev:staging": "MEMRY_ENV=staging MEMRY_DEVICE=dev electron-vite dev --mode=staging",
+    "dev:protocol": "node scripts/patch-dev-protocol.mjs",
     "dev:a": "bash scripts/ensure-native.sh electron && MEMRY_ENV=development MEMRY_DEVICE=A MEMRY_FORCE_VAULT_PICKER=1 electron-vite dev --mode=dev",
     "dev:b": "bash scripts/ensure-native.sh electron && MEMRY_ENV=development MEMRY_DEVICE=B MEMRY_FORCE_VAULT_PICKER=1 electron-vite dev --mode=dev",
     "dev:c": "bash scripts/ensure-native.sh electron && MEMRY_ENV=development MEMRY_DEVICE=C MEMRY_FORCE_VAULT_PICKER=1 electron-vite dev --mode=dev",

@@ -4,7 +4,8 @@ import { inboxJobs, inboxItems } from '@memry/db-schema/schema/inbox'
 import type {
   InboxJob as InboxJobContract,
   InboxJobStatus,
-  InboxJobType
+  InboxJobType,
+  CaptureSource
 } from '@memry/contracts/inbox-api'
 import { InboxChannels } from '@memry/contracts/ipc-channels'
 
@@ -321,6 +322,7 @@ export async function processArticleExtractJob(db: DataDb, job: JobRow): Promise
   try {
     const { fetchUrlHtml } = await import('./metadata')
     const { extractFromHtml } = await import('@memry/article-extract/node')
+    const { ingestArticleCapture } = await import('./ingest')
     const html = await fetchUrlHtml(sourceUrl)
     const capture = await extractFromHtml(html, sourceUrl)
 
@@ -329,28 +331,10 @@ export async function processArticleExtractJob(db: DataDb, job: JobRow): Promise
       return
     }
 
-    const now = new Date().toISOString()
-    const existingMetadata =
-      item.metadata && typeof item.metadata === 'object'
-        ? (item.metadata as Record<string, unknown>)
-        : {}
-
-    db.update(inboxItems)
-      .set({
-        content: capture.contentMarkdown,
-        modifiedAt: now,
-        metadata: {
-          ...existingMetadata,
-          url: sourceUrl,
-          excerpt: capture.excerpt,
-          extractionStatus: capture.extractionStatus,
-          properties: capture.properties
-        }
-      })
-      .where(eq(inboxItems.id, job.itemId))
-      .run()
-
-    emitUpdated(job.itemId, { content: capture.contentMarkdown })
+    await ingestArticleCapture(
+      { ...capture, itemId: job.itemId },
+      (item.captureSource as CaptureSource) ?? 'api'
+    )
     completeJob(db, job.id, { extractionStatus: capture.extractionStatus })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown extraction error'

@@ -11,7 +11,8 @@ import {
   session,
   nativeImage,
   Menu,
-  MenuItem
+  MenuItem,
+  dialog
 } from 'electron'
 import { createHash } from 'node:crypto'
 import { join, resolve, normalize } from 'path'
@@ -80,6 +81,8 @@ import {
 } from './app-navigation-command'
 import { getHeadlessCliArgs, runHeadlessCli } from './cli/headless'
 import { reconcileBillingAndSync, startBillingCheckout } from './billing/paddle-billing'
+import { openPairingWindow } from './capture/pairing'
+import { startCaptureServer, stopCaptureServer } from './capture/server'
 
 if (process.type === 'browser') {
   log.initialize()
@@ -504,6 +507,23 @@ function openAccountSettings(mainWindow: BrowserWindow): void {
   mainWindow.webContents.send(SettingsChannels.events.OPEN_SECTION, 'account')
 }
 
+async function showPairConsentDialog(origin: string): Promise<boolean> {
+  const mainWindow = BrowserWindow.getAllWindows()[0]
+  if (!mainWindow) return false
+  if (mainWindow.isMinimized()) mainWindow.restore()
+  mainWindow.focus()
+  const { response } = await dialog.showMessageBox(mainWindow, {
+    type: 'question',
+    buttons: ['Allow', 'Deny'],
+    defaultId: 0,
+    cancelId: 1,
+    title: 'Pair browser extension',
+    message: 'Allow the Memry browser extension to save captures to this app?',
+    detail: origin
+  })
+  return response === 0
+}
+
 function handleDeepLink(url: string): void {
   try {
     const parsed = new URL(url)
@@ -511,6 +531,11 @@ function handleDeepLink(url: string): void {
 
     const mainWindow = BrowserWindow.getAllWindows()[0]
     if (!mainWindow) return
+
+    if (parsed.hostname === 'open') {
+      // launch/focus only — no dialog. Restore+focus happens below for any memry:// url.
+      deepLinkLog.info('launch requested via memry://open')
+    }
 
     if (parsed.hostname === 'billing') {
       if (parsed.pathname === '/start') {
@@ -530,6 +555,21 @@ function handleDeepLink(url: string): void {
         pendingOAuthStates.delete(state)
         mainWindow.webContents.send('auth:oauth-callback', { code, state })
       }
+    }
+
+    if (parsed.hostname === 'pair') {
+      void dialog
+        .showMessageBox(mainWindow, {
+          type: 'question',
+          buttons: ['Pair', 'Cancel'],
+          defaultId: 0,
+          cancelId: 1,
+          title: 'Pair browser extension',
+          message: 'Allow the Memry browser extension to send captures to this app?'
+        })
+        .then(({ response }) => {
+          if (response === 0) openPairingWindow()
+        })
     }
 
     if (mainWindow.isMinimized()) mainWindow.restore()
@@ -608,7 +648,9 @@ void app.whenReady().then(async () => {
   electronApp.setAppUserModelId('com.electron')
 
   // Register memry:// deep link protocol for OAuth callbacks (T041e)
-  if (!app.isDefaultProtocolClient('memry')) {
+  if (process.defaultApp && process.argv.length >= 2) {
+    app.setAsDefaultProtocolClient('memry', process.execPath, [resolve(process.argv[1])])
+  } else if (!app.isDefaultProtocolClient('memry')) {
     app.setAsDefaultProtocolClient('memry')
   }
 
@@ -956,6 +998,9 @@ void app.whenReady().then(async () => {
           errorCode: error instanceof Error ? error.name : 'UnknownError'
         })
       })
+      void startCaptureServer({ requestPairConsent: showPairConsentDialog }).catch((err) =>
+        mainLog.error('capture server failed to start', err)
+      )
     })
     .catch((err) => {
       mainLog.error('autoOpenLastVault failed:', err)
@@ -1231,6 +1276,10 @@ app.on('before-quit', (event) => {
 
       shutdownLog.info('stopping Google Calendar sync runner...')
       stopGoogleCalendarSyncRunner()
+    })
+    .then(() => {
+      shutdownLog.info('stopping capture server...')
+      return stopCaptureServer()
     })
     .then(() => {
       shutdownLog.info('stopping voice transcription utility...')
