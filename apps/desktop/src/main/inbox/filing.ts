@@ -580,7 +580,8 @@ export async function fileToFolder(
       title,
       content,
       folder: folderPath || undefined,
-      tags: mergedTags
+      tags: mergedTags,
+      properties: extractItemProperties(item.metadata)
     })
 
     // Mark inbox item as filed
@@ -954,7 +955,8 @@ export async function linkToNotes(
       title: inboxNoteTitle,
       content: inboxNoteContent,
       folder: folderPath || undefined,
-      tags: mergedTags
+      tags: mergedTags,
+      properties: extractItemProperties(item.metadata)
     })
 
     // Generate the wikilink entry
