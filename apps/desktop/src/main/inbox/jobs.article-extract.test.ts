@@ -10,6 +10,9 @@ import {
 
 const mockFetchUrlHtml = vi.hoisted(() => vi.fn())
 const mockExtractFromHtml = vi.hoisted(() => vi.fn())
+const ingestSpy = vi.hoisted(() => vi.fn(async () => ({ itemId: 'item-1' })))
+
+vi.mock('./ingest', () => ({ ingestArticleCapture: ingestSpy }))
 
 vi.mock('electron', () => ({
   BrowserWindow: {
@@ -81,6 +84,7 @@ describe('processArticleExtractJob', () => {
     cleanupTestDatabase(testDb)
     vi.useRealTimers()
     vi.clearAllMocks()
+    ingestSpy.mockReset().mockResolvedValue({ itemId: 'item-1' })
   })
 
   function seedLinkItem(id: string, extraMetadata: Record<string, unknown> = {}) {
@@ -129,7 +133,7 @@ describe('processArticleExtractJob', () => {
     return testDb.db.select().from(inboxItems).where(eq(inboxItems.id, id)).get()
   }
 
-  it('happy path: sets content, merges existing metadata fields, marks job complete', async () => {
+  it('happy path: delegates to ingestArticleCapture and marks job complete', async () => {
     seedLinkItem('item-ae', { siteName: 'Example', fetchStatus: 'complete' })
     seedJob('job-ae', 'item-ae')
 
@@ -138,19 +142,12 @@ describe('processArticleExtractJob', () => {
 
     await processArticleExtractJob(db as never, job as never)
 
-    const item = getItem('item-ae')
-    const metadata = item?.metadata as Record<string, unknown>
-
-    // content set from extracted markdown
-    expect(item?.content).toBe('# Article\n\nArticle body text.')
-
-    // prior metadata-scrape fields preserved
-    expect(metadata?.siteName).toBe('Example')
-    expect(metadata?.fetchStatus).toBe('complete')
-
-    // new extraction fields written
-    expect(metadata?.extractionStatus).toBe('full')
-    expect(metadata?.properties).toEqual({ author: 'Jane Doe', publishedDate: '2026-05-01' })
+    // delegates enrichment to ingestArticleCapture
+    expect(ingestSpy).toHaveBeenCalledOnce()
+    expect(ingestSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ itemId: 'item-ae', contentMarkdown: expect.any(String) }),
+      expect.any(String)
+    )
 
     // job marked complete
     expect(getJob('job-ae')?.status).toBe('complete')
