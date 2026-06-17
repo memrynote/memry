@@ -82,6 +82,7 @@ import {
 import { getHeadlessCliArgs, runHeadlessCli } from './cli/headless'
 import { reconcileBillingAndSync, startBillingCheckout } from './billing/paddle-billing'
 import { openPairingWindow } from './capture/pairing'
+import { startCaptureServer, stopCaptureServer } from './capture/server'
 
 if (process.type === 'browser') {
   log.initialize()
@@ -973,6 +974,7 @@ void app.whenReady().then(async () => {
           errorCode: error instanceof Error ? error.name : 'UnknownError'
         })
       })
+      void startCaptureServer().catch((err) => mainLog.error('capture server failed to start', err))
     })
     .catch((err) => {
       mainLog.error('autoOpenLastVault failed:', err)
@@ -1248,6 +1250,10 @@ app.on('before-quit', (event) => {
 
       shutdownLog.info('stopping Google Calendar sync runner...')
       stopGoogleCalendarSyncRunner()
+    })
+    .then(() => {
+      shutdownLog.info('stopping capture server...')
+      return stopCaptureServer()
     })
     .then(() => {
       shutdownLog.info('stopping voice transcription utility...')
