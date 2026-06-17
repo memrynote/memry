@@ -92,7 +92,7 @@
     "seed:vault": "bash scripts/ensure-native.sh node && npx tsx scripts/seed-vault.ts"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^3.0.58",
+    "@ai-sdk/anthropic": "^3.0.81",
     "@ai-sdk/openai": "^3.0.41",
     "@blocknote/code-block": "^0.47.1",
     "@electron-toolkit/preload": "^3.0.2",
