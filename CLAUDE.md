@@ -192,3 +192,13 @@ npx ctx7@latest docs /org/project "<user's question>"
 ```
 
 Call `library` first unless the user gives a `/org/project` ID. Do not use ctx7 for refactoring, writing scripts from scratch, debugging business logic, code review, or general programming concepts. Max 3 ctx7 commands per question. If quota fails, tell the user to run `npx ctx7@latest login` or set `CONTEXT7_API_KEY`.
+
+## Design Context
+
+Strategic design brief lives in `PRODUCT.md` (root). Read it before UI work.
+
+- **Register:** `product` (desktop app) by default; `apps/landing` is a co-equal `brand` surface.
+- **Personality:** calm, private, crafted. Not cold-corporate, not gamified, not cluttered.
+- **Principles:** privacy is the product · one calm place · graceful by toggle · crafted not corporate · earn trust through restraint.
+- **A11y:** WCAG AA + reduced-motion + RTL (logical Tailwind props).
+- **Visual system:** `docs/DESIGN_TOKENS.md`, `apps/landing/src/index.css` (terracotta `#ff671a` / paper / ink). Run
