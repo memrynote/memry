@@ -19,7 +19,7 @@ import { publishProjectionEvent } from '../projections'
 const log = createLogger('Inbox:Jobs')
 
 const METADATA_RETRY_DELAY_MS = 5000
-const ARTICLE_RETRY_DELAY_MS = 5_000
+const ARTICLE_RETRY_DELAY_MS = 5000
 
 const scheduledJobTimers = new Map<string, ReturnType<typeof setTimeout>>()
 const activeJobs = new Set<string>()
@@ -273,6 +273,7 @@ async function processMetadataJob(db: DataDb, job: JobRow): Promise<void> {
       title: metadata.title || titleFromUrl(sourceUrl),
       hasThumbnail: Boolean(thumbnailPath)
     })
+    queueInboxArticleExtractJob(job.itemId, sourceUrl)
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown metadata error'
 
