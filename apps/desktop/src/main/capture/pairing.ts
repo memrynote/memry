@@ -7,29 +7,48 @@ const ACCOUNT = 'pairing-token'
 const ALLOWLIST_KEY = 'captureAllowedOrigins'
 
 let claimWindowUntil = 0
+let cachedToken: string | null = null
+let inFlightRead: Promise<string> | null = null
 
 function generateToken(): string {
   return randomBytes(32).toString('hex')
 }
 
+// Resolve once, then serve from memory: the token never changes except via
+// rotate/unpair, and /capture reads it on every request — a keychain round-trip
+// per request is both slow and racy (two first-run callers could mint different
+// tokens). The in-flight guard collapses concurrent first reads into one.
 export async function getCaptureToken(): Promise<string> {
-  const existing = await keytar.getPassword(SERVICE, ACCOUNT)
-  if (existing) return existing
-  const token = generateToken()
-  await keytar.setPassword(SERVICE, ACCOUNT, token)
-  return token
+  if (cachedToken) return cachedToken
+  if (inFlightRead) return inFlightRead
+  inFlightRead = (async () => {
+    const existing = await keytar.getPassword(SERVICE, ACCOUNT)
+    const token = existing ?? generateToken()
+    if (!existing) await keytar.setPassword(SERVICE, ACCOUNT, token)
+    cachedToken = token
+    return token
+  })()
+  try {
+    return await inFlightRead
+  } finally {
+    inFlightRead = null
+  }
 }
 
 export async function rotateCaptureToken(): Promise<string> {
   const token = generateToken()
   await keytar.setPassword(SERVICE, ACCOUNT, token)
+  cachedToken = token
   store.set(ALLOWLIST_KEY, [])
+  claimWindowUntil = 0
   return token
 }
 
 export async function unpairCapture(): Promise<void> {
   await keytar.deletePassword(SERVICE, ACCOUNT)
+  cachedToken = null
   store.set(ALLOWLIST_KEY, [])
+  claimWindowUntil = 0
 }
 
 function allowlist(): string[] {

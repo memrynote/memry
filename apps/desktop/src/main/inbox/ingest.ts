@@ -43,7 +43,6 @@ export async function ingestArticleCapture(
   source: CaptureSource
 ): Promise<{ itemId: string }> {
   const db = requireDatabase()
-  const tags = input.tags ?? input.properties.tags ?? []
 
   // Enrich existing item (paste path).
   if (input.itemId) {
@@ -84,6 +83,7 @@ export async function ingestArticleCapture(
   // Create a new item (extension path).
   const id = generateId()
   const now = new Date().toISOString()
+  const tags = input.tags ?? input.properties.tags ?? []
   const thumbnailPath = await downloadHero(id, input.heroImage)
   const { row, tags: appliedTags } = insertItemWithTags(
     db,
