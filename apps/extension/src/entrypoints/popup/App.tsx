@@ -2,28 +2,38 @@ import { useEffect, useReducer, useRef } from 'react'
 import type { ArticleCapture } from '@memry/article-extract'
 import type {
   CaptureResponse,
-  CaptureMode,
   ConnectionState,
   ExtractResponse,
   PairResponse,
-  ScreenshotResponse,
   StatusResponse
 } from '@/lib/messages'
 import { initialState, reducer, selectPhase } from '@/lib/popup-state'
-import { buildScreenshotDraft } from '@/lib/capture-modes'
-import { StatusStrip } from '@/components/StatusStrip'
 import { EditableTitle } from '@/components/EditableTitle'
 import { PropertyRows } from '@/components/PropertyRows'
 import { TagEditor } from '@/components/TagEditor'
-import { BodyPreview } from '@/components/BodyPreview'
-import { ModeSegmented } from '@/components/ModeSegmented'
-import { ScreenshotPreview } from '@/components/ScreenshotPreview'
+import { Excerpt } from '@/components/Excerpt'
 import { PrimaryButton } from '@/components/PrimaryButton'
+
+const isMac = navigator.platform.toLowerCase().includes('mac')
+const SUBMIT_HINT = isMac ? '⌘ ↵' : 'Ctrl ↵'
+
+function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '')
+  } catch {
+    return url
+  }
+}
+
+const STATUS: Record<ConnectionState, { tone: string; label: string }> = {
+  ready: { tone: 'bg-ready', label: 'Connected to Memry' },
+  'needs-pairing': { tone: 'bg-ready', label: 'Ready — first save pairs with Memry' },
+  'app-closed': { tone: 'bg-text-tertiary', label: 'Memry is closed — saving opens it' }
+}
 
 export default function App() {
   const [state, dispatch] = useReducer(reducer, initialState)
   const phase = selectPhase(state)
-  const articleDraftRef = useRef<ArticleCapture | null>(null)
 
   useEffect(() => {
     browser.runtime
@@ -37,44 +47,14 @@ export default function App() {
       if (!tab?.id) return dispatch({ type: 'DRAFT_READY', draft: null })
       browser.tabs
         .sendMessage(tab.id, { type: 'EXTRACT' })
-        .then((r: ExtractResponse) => {
-          articleDraftRef.current = r.ok ? r.capture : null
+        .then((r: ExtractResponse) =>
           dispatch({ type: 'DRAFT_READY', draft: r.ok ? r.capture : null })
-        })
+        )
         .catch(() => dispatch({ type: 'DRAFT_READY', draft: null }))
     })
   }, [])
 
   const setDraft = (draft: ArticleCapture) => dispatch({ type: 'EDIT', draft })
-
-  const onSelectMode = async (mode: CaptureMode) => {
-    // Re-clicking article is a pure no-op (it would clobber edits with the cached draft),
-    // but re-clicking selection/screenshot re-runs the grab — that's the documented retry
-    // path ("Select text on the page, then pick Selection again").
-    if (mode === state.mode && mode === 'article') return
-    dispatch({ type: 'SET_MODE', mode })
-    if (mode === 'article') {
-      dispatch({ type: 'DRAFT_READY', draft: articleDraftRef.current })
-      return
-    }
-    const [tab] = await browser.tabs.query({ active: true, currentWindow: true })
-    if (!tab?.id) return dispatch({ type: 'DRAFT_READY', draft: null })
-    if (mode === 'selection') {
-      const r: ExtractResponse = await browser.tabs
-        .sendMessage(tab.id, { type: 'GRAB_SELECTION' })
-        .catch(() => ({ ok: false, error: 'network' }))
-      dispatch({ type: 'DRAFT_READY', draft: r.ok ? r.capture : null })
-    } else {
-      const base = articleDraftRef.current
-      const r: ScreenshotResponse = await browser.runtime
-        .sendMessage({ type: 'GRAB_SCREENSHOT' })
-        .catch(() => ({ ok: false, error: 'network' }))
-      dispatch({
-        type: 'DRAFT_READY',
-        draft: r.ok && base ? buildScreenshotDraft(base, r.dataUrl) : null
-      })
-    }
-  }
 
   const onAdd = async (
     connectionOverride?: ConnectionState
@@ -98,15 +78,6 @@ export default function App() {
     return result
   }
 
-  const onAddAndOpen = async () => {
-    const result = await onAdd()
-    if (result?.ok) {
-      browser.tabs
-        .create({ url: `memry://open?item=${encodeURIComponent(result.itemId)}` })
-        .catch(() => {})
-    }
-  }
-
   const onLaunchAndAdd = async () => {
     dispatch({ type: 'LAUNCH_START' })
     browser.tabs.create({ url: 'memry://open' }).catch(() => {})
@@ -119,48 +90,150 @@ export default function App() {
     await onAdd('needs-pairing')
   }
 
+  // One button: launch MemryNote first if it's closed, otherwise just send.
+  const onSend = () => (state.connection === 'app-closed' ? onLaunchAndAdd() : onAdd())
+
+  const openInMemry = () => {
+    if (state.itemId)
+      browser.tabs.create({ url: `memry://open?item=${state.itemId}` }).catch(() => {})
+  }
+
+  // ⌘↵ / Ctrl↵ saves when the card is ready. Ref keeps the handler fresh
+  // without re-subscribing the listener on every render.
+  const sendRef = useRef(onSend)
+  sendRef.current = onSend
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (
+        (e.metaKey || e.ctrlKey) &&
+        e.key === 'Enter' &&
+        (phase === 'ready' || phase === 'app-closed')
+      ) {
+        e.preventDefault()
+        sendRef.current()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [phase])
+
   const draft = state.draft
   const editable = phase === 'ready' || phase === 'error'
+  const isCard = phase !== 'extracting' && phase !== 'saved' && phase !== 'queued'
+  const status =
+    state.connection === 'unknown' ? STATUS.ready : STATUS[state.connection as ConnectionState]
+  const dest = state.connection === 'app-closed' ? 'Offline' : 'Inbox'
 
   return (
-    <div className="flex flex-col bg-background font-sans text-foreground">
-      <StatusStrip phase={phase} />
-
-      {phase === 'extracting' && (
-        <div className="px-4 py-8 text-center text-[13px] text-text-tertiary">
-          Reading this page…
+    <div className="flex max-h-[600px] flex-col bg-background font-sans text-foreground">
+      <header className="flex shrink-0 items-center justify-between border-b border-border bg-surface-strong px-4 py-2.5">
+        <div className="flex items-center gap-2">
+          <span
+            className="grid size-5 place-items-center rounded-[6px] bg-brand text-[11px] font-bold leading-none text-white"
+            aria-hidden
+          >
+            M
+          </span>
+          <span className="text-[13px] font-semibold tracking-tight text-foreground">Memry</span>
         </div>
-      )}
-
-      {phase === 'capturing' && (
-        <div className="px-4 py-8 text-center text-[13px] text-text-tertiary">
-          {state.mode === 'screenshot' ? 'Capturing full page…' : 'Reading selection…'}
+        <div className="flex items-center gap-1.5" title={status.label}>
+          <span className={`size-1.5 rounded-full ${status.tone}`} aria-hidden />
+          <span className="text-[11px] font-medium text-text-tertiary">{dest}</span>
+          <span className="sr-only">{status.label}</span>
         </div>
-      )}
+      </header>
 
-      {phase !== 'extracting' &&
-        phase !== 'capturing' &&
-        phase !== 'saved' &&
-        phase !== 'queued' && (
+      <main className="flex-1 overflow-y-auto">
+        {phase === 'extracting' && (
+          <div className="flex flex-col gap-3 px-4 py-4" aria-live="polite" aria-busy>
+            <div className="h-3 w-20 rounded bg-surface-active" />
+            <div className="h-5 w-3/4 rounded bg-surface-active" />
+            <div className="flex flex-col gap-1.5">
+              <div className="h-3 w-full rounded bg-surface-active" />
+              <div className="h-3 w-11/12 rounded bg-surface-active" />
+              <div className="h-3 w-2/3 rounded bg-surface-active" />
+            </div>
+            <span className="sr-only">Reading this page…</span>
+          </div>
+        )}
+
+        {phase === 'saved' && (
+          <div className="rise-in flex flex-col items-center gap-2.5 px-4 py-10 text-center">
+            <span className="pop-in grid size-11 place-items-center rounded-full bg-brand/10 text-brand">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                className="size-5"
+              >
+                <path d="m5 13 4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </span>
+            <p className="text-[14px] font-medium text-foreground">Saved to Inbox</p>
+            {state.itemId && (
+              <button
+                type="button"
+                onClick={openInMemry}
+                className="text-[12px] text-text-tertiary underline-offset-2 transition-colors hover:text-foreground hover:underline focus-visible:outline-none focus-visible:text-foreground focus-visible:underline"
+              >
+                Open in Memry
+              </button>
+            )}
+          </div>
+        )}
+
+        {phase === 'queued' && (
+          <div className="rise-in flex flex-col items-center gap-2.5 px-4 py-10 text-center">
+            <span className="pop-in grid size-11 place-items-center rounded-full bg-surface-active text-text-secondary">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                className="size-5"
+              >
+                <path
+                  d="M7 18a4 4 0 0 1 0-8 5 5 0 0 1 9.6-1.5A3.5 3.5 0 0 1 17 18H7Z"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </span>
+            <p className="text-[14px] font-medium text-foreground">Saved offline</p>
+            <p className="text-[12px] text-text-tertiary">Syncs the next time Memry opens.</p>
+          </div>
+        )}
+
+        {isCard && (
           <div
             className={
-              'flex flex-col gap-2 px-4 py-3 ' +
-              (phase === 'ready' || phase === 'error' ? '' : 'opacity-60')
+              'rise-in flex flex-col gap-3 px-4 py-3.5 ' +
+              (editable ? '' : 'pointer-events-none opacity-60')
             }
           >
-            <ModeSegmented mode={state.mode} disabled={!editable} onSelect={onSelectMode} />
-            {!draft && state.mode === 'selection' && (
-              <p className="py-6 text-center text-[12px] text-text-tertiary">
-                Select text on the page, then pick Selection again.
-              </p>
+            {!draft && (
+              <div className="flex flex-col items-center gap-1 py-8 text-center">
+                <p className="text-[13px] font-medium text-foreground">Couldn't read this page</p>
+                <p className="text-[12px] text-text-tertiary">
+                  Open a regular web page, then try again.
+                </p>
+              </div>
             )}
-            {!draft && state.mode === 'screenshot' && (
-              <p className="py-6 text-center text-[12px] text-text-tertiary">
-                Couldn't capture this page.
-              </p>
-            )}
+
             {draft && (
               <>
+                <div className="flex items-center gap-2">
+                  <span
+                    className="grid size-4 shrink-0 place-items-center rounded bg-surface-active text-[9px] font-bold uppercase leading-none text-text-secondary"
+                    aria-hidden
+                  >
+                    {hostOf(draft.properties.source).charAt(0)}
+                  </span>
+                  <span className="truncate text-[12px] text-text-tertiary">
+                    {hostOf(draft.properties.source)}
+                  </span>
+                </div>
+
                 <EditableTitle
                   value={draft.properties.title}
                   disabled={!editable}
@@ -168,16 +241,15 @@ export default function App() {
                     setDraft({ ...draft, properties: { ...draft.properties, title } })
                   }
                 />
+
                 {draft.extractionStatus === 'failed' && (
                   <p className="text-[12px] text-text-tertiary">
-                    Couldn't read this page — saving the link and title.
+                    Couldn't read the article — saving the link and title.
                   </p>
                 )}
-                <PropertyRows
-                  properties={draft.properties}
-                  disabled={!editable}
-                  onChange={(properties) => setDraft({ ...draft, properties })}
-                />
+
+                <Excerpt text={draft.excerpt} />
+
                 <TagEditor
                   tags={draft.properties.tags}
                   disabled={!editable}
@@ -185,59 +257,57 @@ export default function App() {
                     setDraft({ ...draft, properties: { ...draft.properties, tags } })
                   }
                 />
-                {state.mode === 'screenshot' && draft.screenshotDataUrl ? (
-                  <ScreenshotPreview dataUrl={draft.screenshotDataUrl} />
-                ) : (
-                  <BodyPreview markdown={draft.contentMarkdown} />
-                )}
+
+                <details className="group border-t border-border pt-2.5">
+                  <summary className="flex cursor-pointer select-none list-none items-center gap-1 text-[12px] font-medium text-text-secondary [&::-webkit-details-marker]:hidden">
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      className="size-3 transition-transform duration-[130ms] ease-[var(--ease-out)] group-open:rotate-90"
+                      aria-hidden
+                    >
+                      <path d="m9 6 6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    Details
+                  </summary>
+                  <div className="pt-1.5">
+                    <PropertyRows
+                      properties={draft.properties}
+                      disabled={!editable}
+                      onChange={(properties) => setDraft({ ...draft, properties })}
+                    />
+                  </div>
+                </details>
               </>
             )}
           </div>
         )}
+      </main>
 
-      <div className="flex flex-col gap-2 border-t border-border px-4 py-3">
-        {phase === 'error' && state.errorMessage && (
-          <p className="text-[12px] text-text-secondary">{state.errorMessage}</p>
-        )}
-        {phase === 'app-closed' && (
-          <p className="text-[12px] text-text-secondary">
-            Memry isn't running — click below to launch it.
-          </p>
-        )}
-        {phase === 'saved' && (
-          <p className="py-2 text-center text-[14px] font-medium text-foreground">
-            Added to inbox ✓
-          </p>
-        )}
-        {phase === 'queued' && (
-          <p className="py-2 text-center text-[14px] font-medium text-foreground">
-            Saved offline — syncs when Memry opens ✓
-          </p>
-        )}
+      {isCard && (
+        <footer className="flex shrink-0 flex-col gap-2 border-t border-border px-4 py-3">
+          {phase === 'error' && state.errorMessage && (
+            <p className="text-[12px] text-text-secondary">{state.errorMessage}</p>
+          )}
 
-        {phase === 'ready' && (
-          <div className="flex flex-col gap-2">
-            <PrimaryButton label="Add to Memry" onClick={() => onAdd()} disabled={!draft} />
-            <button
-              type="button"
+          {(phase === 'ready' || phase === 'app-closed') && (
+            <PrimaryButton
+              label={state.connection === 'app-closed' ? 'Open Memry & save' : 'Save to Inbox'}
+              hint={draft ? SUBMIT_HINT : undefined}
+              onClick={onSend}
               disabled={!draft}
-              onClick={onAddAndOpen}
-              className="rounded-md border border-border px-3 py-2 text-[13px] font-medium text-text-secondary disabled:opacity-50"
-            >
-              Add &amp; open in Memry
-            </button>
-          </div>
-        )}
-        {phase === 'approving' && <PrimaryButton label="Approve in Memry…" disabled />}
-        {phase === 'saving' && <PrimaryButton label="Adding…" disabled />}
-        {phase === 'app-closed' && (
-          <PrimaryButton label="Open Memry & save" onClick={onLaunchAndAdd} />
-        )}
-        {phase === 'launching' && <PrimaryButton label="Opening Memry…" disabled />}
-        {phase === 'error' && (
-          <PrimaryButton label="Try again" onClick={() => dispatch({ type: 'RETRY' })} />
-        )}
-      </div>
+            />
+          )}
+          {phase === 'approving' && <PrimaryButton label="Approve in Memry…" disabled />}
+          {phase === 'saving' && <PrimaryButton label="Saving…" disabled />}
+          {phase === 'launching' && <PrimaryButton label="Opening Memry…" disabled />}
+          {phase === 'error' && (
+            <PrimaryButton label="Try again" onClick={() => dispatch({ type: 'RETRY' })} />
+          )}
+        </footer>
+      )}
     </div>
   )
 }

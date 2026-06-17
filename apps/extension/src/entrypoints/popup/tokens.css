@@ -3,52 +3,115 @@
 @theme {
   --color-background: var(--bg);
   --color-surface: var(--surface);
+  --color-surface-strong: var(--surface-strong);
   --color-surface-active: var(--surface-active);
   --color-foreground: var(--fg);
   --color-text-secondary: var(--text-secondary);
   --color-text-tertiary: var(--text-tertiary);
   --color-border: var(--border);
   --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
   --color-primary-foreground: var(--primary-foreground);
-  --color-accent-green: var(--accent-green);
+  --color-brand: var(--brand);
+  --color-ready: var(--ready);
   --font-serif: 'Crimson Pro', Georgia, 'Times New Roman', serif;
   --font-sans: ui-sans-serif, -apple-system, system-ui, 'Segoe UI', Helvetica, Arial, sans-serif;
 }
 
-/* Memry token subset, copied from apps/desktop/src/renderer/src/assets/base.css */
+/* Memry token subset, tuned for the clipper. Light = warm paper; dark = charcoal.
+   Tertiary text is darkened from the desktop #8c8c8c to clear AA (4.5:1) on paper. */
 :root {
   --bg: #f6f5f0;
   --surface: #efefe9;
+  --surface-strong: #f1f0ea;
   --surface-active: #e4e4de;
   --fg: #1a1a1a;
   --text-secondary: #4a4a4a;
-  --text-tertiary: #8c8c8c;
-  --border: #e4e4de;
+  --text-tertiary: #6e6e6e;
+  --border: #e4e2db;
   --primary: #1a1a1a;
+  --primary-hover: #000000;
   --primary-foreground: #f6f5f0;
-  --accent-green: #22c55e;
+  --brand: #ff671a;
+  --ready: #5b7f6a;
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-fast: 130ms;
+  --dur-base: 200ms;
+  color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #181919;
-    --surface: #222222;
+    --surface: #202020;
+    --surface-strong: #1d1e1e;
     --surface-active: #2a2a2a;
-    --fg: #bcbab6;
+    --fg: #e9e7e2;
     --text-secondary: #bcbab6;
-    --text-tertiary: #ada9a3;
-    --border: #2a2a2a;
-    --primary: #e8e6e1;
+    --text-tertiary: #989590;
+    --border: #2c2c2c;
+    --primary: #e9e7e2;
+    --primary-hover: #ffffff;
     --primary-foreground: #191919;
-    --accent-green: #4ade80;
+    --brand: #ff7a36;
+    --ready: #7b9e87;
+    color-scheme: dark;
   }
 }
 
 html,
 body {
   margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 #root {
   width: 400px;
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.rise-in {
+  animation: rise-in var(--dur-base) var(--ease-out) both;
+}
+
+.pop-in {
+  animation: pop-in var(--dur-base) var(--ease-out) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise-in,
+  .pop-in {
+    animation: none;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+  }
 }

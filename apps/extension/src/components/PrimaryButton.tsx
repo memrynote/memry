@@ -1,9 +1,11 @@
 export function PrimaryButton({
   label,
+  hint,
   onClick,
   disabled
 }: {
   label: string
+  hint?: string
   onClick?: () => void
   disabled?: boolean
 }) {
@@ -12,9 +14,14 @@ export function PrimaryButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="w-full rounded-md bg-primary px-4 py-2.5 text-[14px] font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+      className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-[13.5px] font-medium text-primary-foreground shadow-sm transition-[transform,background-color,opacity] duration-[130ms] ease-[var(--ease-out)] hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/25 active:scale-[0.985] disabled:opacity-50 disabled:active:scale-100"
     >
-      {label}
+      <span>{label}</span>
+      {hint && (
+        <kbd className="rounded bg-primary-foreground/15 px-1.5 py-0.5 font-sans text-[10px] font-medium text-primary-foreground/80">
+          {hint}
+        </kbd>
+      )}
     </button>
   )
 }
