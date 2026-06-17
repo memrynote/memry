@@ -126,59 +126,62 @@ export default function App() {
         </div>
       )}
 
-      {phase !== 'extracting' && phase !== 'capturing' && phase !== 'saved' && (
-        <div
-          className={
-            'flex flex-col gap-2 px-4 py-3 ' +
-            (phase === 'ready' || phase === 'error' ? '' : 'opacity-60')
-          }
-        >
-          <ModeSegmented mode={state.mode} disabled={!editable} onSelect={onSelectMode} />
-          {!draft && state.mode === 'selection' && (
-            <p className="py-6 text-center text-[12px] text-text-tertiary">
-              Select text on the page, then pick Selection again.
-            </p>
-          )}
-          {!draft && state.mode === 'screenshot' && (
-            <p className="py-6 text-center text-[12px] text-text-tertiary">
-              Couldn't capture this page.
-            </p>
-          )}
-          {draft && (
-            <>
-              <EditableTitle
-                value={draft.properties.title}
-                disabled={!editable}
-                onChange={(title) =>
-                  setDraft({ ...draft, properties: { ...draft.properties, title } })
-                }
-              />
-              {draft.extractionStatus === 'failed' && (
-                <p className="text-[12px] text-text-tertiary">
-                  Couldn't read this page — saving the link and title.
-                </p>
-              )}
-              <PropertyRows
-                properties={draft.properties}
-                disabled={!editable}
-                onChange={(properties) => setDraft({ ...draft, properties })}
-              />
-              <TagEditor
-                tags={draft.properties.tags}
-                disabled={!editable}
-                onChange={(tags) =>
-                  setDraft({ ...draft, properties: { ...draft.properties, tags } })
-                }
-              />
-              {state.mode === 'screenshot' && draft.screenshotDataUrl ? (
-                <ScreenshotPreview dataUrl={draft.screenshotDataUrl} />
-              ) : (
-                <BodyPreview markdown={draft.contentMarkdown} />
-              )}
-            </>
-          )}
-        </div>
-      )}
+      {phase !== 'extracting' &&
+        phase !== 'capturing' &&
+        phase !== 'saved' &&
+        phase !== 'queued' && (
+          <div
+            className={
+              'flex flex-col gap-2 px-4 py-3 ' +
+              (phase === 'ready' || phase === 'error' ? '' : 'opacity-60')
+            }
+          >
+            <ModeSegmented mode={state.mode} disabled={!editable} onSelect={onSelectMode} />
+            {!draft && state.mode === 'selection' && (
+              <p className="py-6 text-center text-[12px] text-text-tertiary">
+                Select text on the page, then pick Selection again.
+              </p>
+            )}
+            {!draft && state.mode === 'screenshot' && (
+              <p className="py-6 text-center text-[12px] text-text-tertiary">
+                Couldn't capture this page.
+              </p>
+            )}
+            {draft && (
+              <>
+                <EditableTitle
+                  value={draft.properties.title}
+                  disabled={!editable}
+                  onChange={(title) =>
+                    setDraft({ ...draft, properties: { ...draft.properties, title } })
+                  }
+                />
+                {draft.extractionStatus === 'failed' && (
+                  <p className="text-[12px] text-text-tertiary">
+                    Couldn't read this page — saving the link and title.
+                  </p>
+                )}
+                <PropertyRows
+                  properties={draft.properties}
+                  disabled={!editable}
+                  onChange={(properties) => setDraft({ ...draft, properties })}
+                />
+                <TagEditor
+                  tags={draft.properties.tags}
+                  disabled={!editable}
+                  onChange={(tags) =>
+                    setDraft({ ...draft, properties: { ...draft.properties, tags } })
+                  }
+                />
+                {state.mode === 'screenshot' && draft.screenshotDataUrl ? (
+                  <ScreenshotPreview dataUrl={draft.screenshotDataUrl} />
+                ) : (
+                  <BodyPreview markdown={draft.contentMarkdown} />
+                )}
+              </>
+            )}
+          </div>
+        )}
 
       <div className="flex flex-col gap-2 border-t border-border px-4 py-3">
         {phase === 'error' && state.errorMessage && (
@@ -192,6 +195,11 @@ export default function App() {
         {phase === 'saved' && (
           <p className="py-2 text-center text-[14px] font-medium text-foreground">
             Added to inbox ✓
+          </p>
+        )}
+        {phase === 'queued' && (
+          <p className="py-2 text-center text-[14px] font-medium text-foreground">
+            Saved offline — syncs when Memry opens ✓
           </p>
         )}
 

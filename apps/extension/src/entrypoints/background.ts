@@ -1,5 +1,6 @@
 import type {
   CaptureResponse,
+  FlushResponse,
   PageMetrics,
   PairResponse,
   PopupMessage,
@@ -9,6 +10,13 @@ import type {
 import type { ArticleCapture } from '@memry/article-extract'
 import { claimToken, pollUntil, postCapture, probeServer, requestPair } from '@/lib/capture-client'
 import { bytesToDataUrl, planStitch } from '@/lib/capture-modes'
+import {
+  badgeText,
+  dequeueById,
+  enqueue,
+  isRetryable,
+  type QueuedCapture
+} from '@/lib/capture-queue'
 
 const TOKEN_KEY = 'memry:capture-token'
 
@@ -103,22 +111,117 @@ async function grabScreenshot(): Promise<ScreenshotResponse> {
   }
 }
 
+const QUEUE_KEY = 'memry:capture-queue'
+const FLUSH_ALARM = 'memry-flush'
+
+async function readQueue(): Promise<QueuedCapture[]> {
+  const r = await browser.storage.local.get(QUEUE_KEY)
+  const v = r[QUEUE_KEY]
+  return Array.isArray(v) ? (v as QueuedCapture[]) : []
+}
+
+async function writeQueue(queue: QueuedCapture[]): Promise<void> {
+  await browser.storage.local.set({ [QUEUE_KEY]: queue })
+}
+
+async function setBadge(count: number): Promise<void> {
+  await browser.action.setBadgeText({ text: badgeText(count) })
+  if (count > 0) await browser.action.setBadgeBackgroundColor({ color: '#E56458' })
+}
+
+async function ensureFlushAlarm(): Promise<void> {
+  const existing = await browser.alarms.get(FLUSH_ALARM)
+  if (!existing) await browser.alarms.create(FLUSH_ALARM, { periodInMinutes: 1 })
+}
+
+async function stopFlushAlarm(): Promise<void> {
+  await browser.alarms.clear(FLUSH_ALARM)
+}
+
+// Try the live server once and drain queued items oldest-first. Drop on success
+// or permanent failure; stop the pass (keep the rest) the moment the server is
+// unreachable again.
+async function flushQueue(): Promise<FlushResponse> {
+  let queue = await readQueue()
+  if (queue.length === 0) {
+    await stopFlushAlarm()
+    return { flushed: 0, remaining: 0 }
+  }
+  const found = await probeServer()
+  const token = await getToken()
+  if (!found || !token) return { flushed: 0, remaining: queue.length }
+  let flushed = 0
+  for (const item of [...queue]) {
+    const res = await postCapture(found.port, token, item.capture)
+    if (res.ok) {
+      queue = dequeueById(queue, item.id)
+      flushed++
+    } else if (isRetryable(res.error)) {
+      break
+    } else {
+      console.warn('[memry] dropping unsendable queued capture', item.id, res.error)
+      queue = dequeueById(queue, item.id)
+    }
+  }
+  await writeQueue(queue)
+  await setBadge(queue.length)
+  if (queue.length === 0) await stopFlushAlarm()
+  return { flushed, remaining: queue.length }
+}
+
+// Capture, or queue it for retry when the server is unreachable. Permanent
+// errors (bad token, invalid payload) pass straight through to the popup.
+async function captureOrQueue(body: ArticleCapture): Promise<CaptureResponse> {
+  const res = await capture(body)
+  if (res.ok) {
+    void flushQueue()
+    return res
+  }
+  if (isRetryable(res.error)) {
+    const queue = enqueue(await readQueue(), {
+      id: crypto.randomUUID(),
+      capture: body,
+      queuedAt: Date.now()
+    })
+    await writeQueue(queue)
+    await setBadge(queue.length)
+    await ensureFlushAlarm()
+    return { ok: false, error: 'queued' }
+  }
+  return res
+}
+
 export default defineBackground(() => {
   browser.runtime.onMessage.addListener((message: PopupMessage) => {
-    // Returning a Promise responds asynchronously (webextension-polyfill).
     switch (message.type) {
       case 'GET_STATUS':
-        return getStatus()
+        return getStatus().then((status) => {
+          if (status.connection === 'ready') void flushQueue()
+          return status
+        })
       case 'PAIR':
         return pair()
       case 'CAPTURE':
-        return capture(message.capture)
+        return captureOrQueue(message.capture)
       case 'WAIT_FOR_SERVER':
         return waitForServer()
       case 'GRAB_SCREENSHOT':
         return grabScreenshot()
+      case 'FLUSH_QUEUE':
+        return flushQueue()
       default:
         return undefined
     }
   })
+
+  browser.alarms.onAlarm.addListener((alarm) => {
+    if (alarm.name === FLUSH_ALARM) void flushQueue()
+  })
+
+  // Restore the badge + retry alarm whenever the service worker (re)starts.
+  void (async () => {
+    const queue = await readQueue()
+    await setBadge(queue.length)
+    if (queue.length > 0) await ensureFlushAlarm()
+  })()
 })
