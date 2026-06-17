@@ -133,7 +133,7 @@ export default function App() {
           <ModeSegmented mode={state.mode} disabled={!editable} onSelect={onSelectMode} />
           {!draft && state.mode === 'selection' && (
             <p className="py-6 text-center text-[12px] text-text-tertiary">
-              Select text on the page, then reopen the popup.
+              Select text on the page, then pick Selection again.
             </p>
           )}
           {!draft && state.mode === 'screenshot' && (

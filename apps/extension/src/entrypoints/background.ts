@@ -57,7 +57,9 @@ async function capture(body: ArticleCapture): Promise<CaptureResponse> {
   return postCapture(found.port, token, body)
 }
 
-const MAX_SHOT_HEIGHT = 15000 // ponytail: cap full-page height so the PNG stays under /capture's 25MB cap
+// ponytail: best-effort cap on full-page height; very tall photo-heavy pages may still exceed
+// /capture's 25MB body cap (base64 inflates the bytes) and 413. Upgrade path: downscale or JPEG-encode.
+const MAX_SHOT_HEIGHT = 15000
 const SETTLE_MS = 400 // wait between scroll and capture; also honors captureVisibleTab's ~2/sec limit
 
 function sleep(ms: number): Promise<void> {
@@ -72,7 +74,8 @@ async function grabScreenshot(): Promise<ScreenshotResponse> {
   try {
     const metrics = (await browser.tabs.sendMessage(tabId, {
       type: 'GET_PAGE_METRICS'
-    })) as PageMetrics
+    })) as PageMetrics | undefined
+    if (!metrics) return { ok: false, error: 'no-metrics' }
     const plan = planStitch({ ...metrics, maxHeight: MAX_SHOT_HEIGHT })
     const canvas = new OffscreenCanvas(plan.width, plan.height)
     const ctx = canvas.getContext('2d')
