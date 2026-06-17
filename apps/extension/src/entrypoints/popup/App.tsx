@@ -1,24 +1,29 @@
-import { useEffect, useReducer } from 'react'
+import { useEffect, useReducer, useRef } from 'react'
 import type { ArticleCapture } from '@memry/article-extract'
 import type {
   CaptureResponse,
+  CaptureMode,
   ConnectionState,
   ExtractResponse,
   PairResponse,
+  ScreenshotResponse,
   StatusResponse
 } from '@/lib/messages'
 import { initialState, reducer, selectPhase } from '@/lib/popup-state'
+import { buildScreenshotDraft } from '@/lib/capture-modes'
 import { StatusStrip } from '@/components/StatusStrip'
 import { EditableTitle } from '@/components/EditableTitle'
 import { PropertyRows } from '@/components/PropertyRows'
 import { TagEditor } from '@/components/TagEditor'
 import { BodyPreview } from '@/components/BodyPreview'
 import { ModeSegmented } from '@/components/ModeSegmented'
+import { ScreenshotPreview } from '@/components/ScreenshotPreview'
 import { PrimaryButton } from '@/components/PrimaryButton'
 
 export default function App() {
   const [state, dispatch] = useReducer(reducer, initialState)
   const phase = selectPhase(state)
+  const articleDraftRef = useRef<ArticleCapture | null>(null)
 
   useEffect(() => {
     browser.runtime
@@ -32,14 +37,41 @@ export default function App() {
       if (!tab?.id) return dispatch({ type: 'DRAFT_READY', draft: null })
       browser.tabs
         .sendMessage(tab.id, { type: 'EXTRACT' })
-        .then((r: ExtractResponse) =>
+        .then((r: ExtractResponse) => {
+          articleDraftRef.current = r.ok ? r.capture : null
           dispatch({ type: 'DRAFT_READY', draft: r.ok ? r.capture : null })
-        )
+        })
         .catch(() => dispatch({ type: 'DRAFT_READY', draft: null }))
     })
   }, [])
 
   const setDraft = (draft: ArticleCapture) => dispatch({ type: 'EDIT', draft })
+
+  const onSelectMode = async (mode: CaptureMode) => {
+    if (mode === state.mode) return
+    dispatch({ type: 'SET_MODE', mode })
+    if (mode === 'article') {
+      dispatch({ type: 'DRAFT_READY', draft: articleDraftRef.current })
+      return
+    }
+    const [tab] = await browser.tabs.query({ active: true, currentWindow: true })
+    if (!tab?.id) return dispatch({ type: 'DRAFT_READY', draft: null })
+    if (mode === 'selection') {
+      const r: ExtractResponse = await browser.tabs
+        .sendMessage(tab.id, { type: 'GRAB_SELECTION' })
+        .catch(() => ({ ok: false, error: 'network' }))
+      dispatch({ type: 'DRAFT_READY', draft: r.ok ? r.capture : null })
+    } else {
+      const base = articleDraftRef.current
+      const r: ScreenshotResponse = await browser.runtime
+        .sendMessage({ type: 'GRAB_SCREENSHOT' })
+        .catch(() => ({ ok: false, error: 'network' }))
+      dispatch({
+        type: 'DRAFT_READY',
+        draft: r.ok && base ? buildScreenshotDraft(base, r.dataUrl) : null
+      })
+    }
+  }
 
   const onAdd = async (connectionOverride?: ConnectionState) => {
     if (!state.draft) return
@@ -85,13 +117,30 @@ export default function App() {
         </div>
       )}
 
-      {phase !== 'extracting' && phase !== 'saved' && (
+      {phase === 'capturing' && (
+        <div className="px-4 py-8 text-center text-[13px] text-text-tertiary">
+          {state.mode === 'screenshot' ? 'Capturing full page…' : 'Reading selection…'}
+        </div>
+      )}
+
+      {phase !== 'extracting' && phase !== 'capturing' && phase !== 'saved' && (
         <div
           className={
             'flex flex-col gap-2 px-4 py-3 ' +
             (phase === 'ready' || phase === 'error' ? '' : 'opacity-60')
           }
         >
+          <ModeSegmented mode={state.mode} disabled={!editable} onSelect={onSelectMode} />
+          {!draft && state.mode === 'selection' && (
+            <p className="py-6 text-center text-[12px] text-text-tertiary">
+              Select text on the page, then reopen the popup.
+            </p>
+          )}
+          {!draft && state.mode === 'screenshot' && (
+            <p className="py-6 text-center text-[12px] text-text-tertiary">
+              Couldn't capture this page.
+            </p>
+          )}
           {draft && (
             <>
               <EditableTitle
@@ -118,8 +167,11 @@ export default function App() {
                   setDraft({ ...draft, properties: { ...draft.properties, tags } })
                 }
               />
-              <ModeSegmented />
-              <BodyPreview markdown={draft.contentMarkdown} />
+              {state.mode === 'screenshot' && draft.screenshotDataUrl ? (
+                <ScreenshotPreview dataUrl={draft.screenshotDataUrl} />
+              ) : (
+                <BodyPreview markdown={draft.contentMarkdown} />
+              )}
             </>
           )}
         </div>
