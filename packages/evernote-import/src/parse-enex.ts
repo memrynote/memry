@@ -36,10 +36,7 @@ const parser = new XMLParser({
   ignoreAttributes: false,
   attributeNamePrefix: '@_',
   // Allow multiple <note> and <tag> and <resource> siblings
-  isArray: (_name, jpath) => {
-    const leaf = jpath.split('.').pop() ?? ''
-    return leaf === 'note' || leaf === 'tag' || leaf === 'resource'
-  }
+  isArray: (name) => name === 'note' || name === 'tag' || name === 'resource'
 })
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
