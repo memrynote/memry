@@ -30,4 +30,24 @@ describe('ArticleCaptureSchema', () => {
     })
     expect(r.success).toBe(false)
   })
+
+  it('accepts a screenshot payload with screenshotDataUrl + force', () => {
+    const r = ArticleCaptureSchema.safeParse({
+      url: 'https://example.com/p',
+      mode: 'screenshot',
+      contentMarkdown: '',
+      excerpt: '',
+      extractionStatus: 'full',
+      properties: {
+        title: 't',
+        source: 'https://example.com/p',
+        created: '2026-06-17T00:00:00.000Z',
+        tags: []
+      },
+      screenshotDataUrl: 'data:image/png;base64,AAAA',
+      force: true
+    })
+    expect(r.success).toBe(true)
+    if (r.success) expect(r.data.screenshotDataUrl).toBe('data:image/png;base64,AAAA')
+  })
 })

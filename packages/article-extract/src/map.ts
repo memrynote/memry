@@ -16,6 +16,10 @@ export interface ArticleCapture {
   extractionStatus: 'full' | 'partial' | 'failed'
   properties: ArticleProperties
   heroImage?: string
+  // Capture directives (set by the extension for selection/screenshot; the
+  // extraction mapping never sets them).
+  force?: boolean
+  screenshotDataUrl?: string
 }
 
 export interface DefuddleLikeResult {
