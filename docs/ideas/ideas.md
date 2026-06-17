@@ -11,6 +11,7 @@
 - [Streamlined onboarding without AI noise](#streamlined-onboarding-without-ai-noise)
 - [Import from other note apps (Google Keep first)](#import-from-other-note-apps-google-keep-first)
 - [Scheduled review and priority buckets](#scheduled-review-and-priority-buckets)
+- [Bulk URL import via CSV](#bulk-url-import-via-csv)
 
 ## Reduce filing with AI-assisted capture
 
@@ -423,3 +424,32 @@ Do not force the user to prioritize at capture time — that reintroduces the fr
 the workflow is meant to remove. The scheduled review is a prompt to process, not an
 automated sorter; the user stays in control of what goes where. The reminder should be
 a gentle nudge, not nagging.
+
+## Bulk URL import via CSV
+
+Source: feature request asking for a CSV import button on the inbox page to bulk-add
+URLs (for example YouTube links).
+
+### User signal
+
+The user already captures single links into the inbox. They want to bring in many links
+at once — paste or upload a CSV of URLs (YouTube videos and similar) and have each row
+land in the inbox, instead of adding links one at a time.
+
+### Product direction
+
+- Add a CSV / bulk-paste import on the inbox: one URL per row, each becomes an inbox
+  item.
+- Reuse the existing single-item link capture and parsing pipeline per row rather than
+  building a separate path — same article/metadata extraction, just looped.
+- Run extraction in the background and queue rows; the existing offline capture queue
+  already handles retry and batching, so bulk import can ride on it.
+- Surface per-row progress and failures (bad URL, fetch failed) without blocking the
+  rest of the batch.
+- Imported links land in the inbox for triage, consistent with the capture-then-triage
+  model — no auto-filing.
+
+### Important boundary
+
+Bulk import must not hammer the network or duplicate items. Dedupe against existing
+inbox items, throttle extraction, and keep the user able to cancel a large run.
