@@ -26,9 +26,12 @@ Run the desktop app first: `pnpm dev`.
 
 1. **App-closed:** quit the desktop app, open the popup on any article → status
    "Memry isn't running", "Add to Memry" disabled.
-2. **Pairing:** start the desktop app. Open the popup → "Not paired" + "Pair with
-   Memry". Click it → desktop shows the `memry://pair` confirm dialog → click
-   Pair. Popup flips to "Connected" within a couple of seconds.
+2. **Pairing (in-app):** with Memry running (`pnpm dev`), open the popup on an
+   article and click **Add to Memry**. The first time, Memry pops an
+   **"Allow the Memry browser extension to save captures?"** dialog → click
+   **Allow**. The capture then lands in the inbox. Subsequent captures are
+   silent. No `memry://` needed for pairing.
+   If Allow does nothing, check the desktop logs for `/pair/request`.
 3. **Capture:** open the popup on a real article → properties + body fill in.
    Edit the title/tags → "Add to Memry" → "Added to inbox ✓". Confirm a new
    link item appears in the desktop inbox with the article body + properties.

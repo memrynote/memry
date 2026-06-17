@@ -27,7 +27,8 @@ async function pair(): Promise<PairResponse> {
   if (!found) return { ok: false }
   const status = await requestPair(found.port)
   if (status === 'error') return { ok: false }
-  // 'already-paired' opened a window immediately; 'pending' opens it after the user Allows.
+  // 'already-paired': token is available immediately — short 5s poll.
+  // 'pending': desktop approval window opened; the user has 120s to Allow.
   const timeoutMs = status === 'already-paired' ? 5000 : 120_000
   const token = await pollUntil(() => claimToken(found.port), { intervalMs: 1500, timeoutMs })
   if (!token) return { ok: false }

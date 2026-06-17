@@ -35,22 +35,22 @@ export default function App() {
 
   const setDraft = (draft: ArticleCapture) => dispatch({ type: 'EDIT', draft })
 
-  const onPair = () => {
-    dispatch({ type: 'PAIR_START' })
-    window.open('memry://pair') // desktop shows confirm + opens the 120s claim window
-    browser.runtime
-      .sendMessage({ type: 'START_PAIR' })
-      .then((r: PairResponse) => dispatch({ type: 'PAIR_DONE', ok: r.ok }))
-      .catch(() => dispatch({ type: 'PAIR_DONE', ok: false }))
-  }
-
-  const onSave = () => {
+  const onAdd = async () => {
     if (!state.draft) return
+    // Pair inline if this connection isn't ready yet.
+    if (state.connection === 'needs-pairing') {
+      dispatch({ type: 'APPROVE_START' })
+      const pair: PairResponse = await browser.runtime
+        .sendMessage({ type: 'PAIR' })
+        .catch(() => ({ ok: false }))
+      dispatch({ type: 'APPROVE_DONE', ok: pair.ok })
+      if (!pair.ok) return
+    }
     dispatch({ type: 'SAVE_START' })
-    browser.runtime
+    const result: CaptureResponse = await browser.runtime
       .sendMessage({ type: 'CAPTURE', capture: state.draft })
-      .then((r: CaptureResponse) => dispatch({ type: 'SAVE_DONE', result: r }))
-      .catch(() => dispatch({ type: 'SAVE_DONE', result: { ok: false, error: 'network' } }))
+      .catch(() => ({ ok: false, error: 'network' }))
+    dispatch({ type: 'SAVE_DONE', result })
   }
 
   const draft = state.draft
@@ -111,7 +111,7 @@ export default function App() {
           <p className="text-[12px] text-text-secondary">{state.errorMessage}</p>
         )}
         {phase === 'app-closed' && (
-          <p className="text-[12px] text-text-secondary">Open Memry to capture this page.</p>
+          <p className="text-[12px] text-text-secondary">Open Memry to save this page.</p>
         )}
         {phase === 'saved' && (
           <p className="py-2 text-center text-[14px] font-medium text-foreground">
@@ -119,11 +119,10 @@ export default function App() {
           </p>
         )}
 
-        {phase === 'needs-pairing' && <PrimaryButton label="Pair with Memry" onClick={onPair} />}
-        {phase === 'pairing' && <PrimaryButton label="Confirm pairing in Memry…" disabled />}
         {phase === 'ready' && (
-          <PrimaryButton label="Add to Memry" onClick={onSave} disabled={!draft} />
+          <PrimaryButton label="Add to Memry" onClick={onAdd} disabled={!draft} />
         )}
+        {phase === 'approving' && <PrimaryButton label="Approve in Memry…" disabled />}
         {phase === 'saving' && <PrimaryButton label="Adding…" disabled />}
         {phase === 'app-closed' && <PrimaryButton label="Add to Memry" disabled />}
         {phase === 'error' && (

@@ -2,15 +2,15 @@ import type { Phase } from '@/lib/popup-state'
 
 const LABEL: Partial<Record<Phase, string>> = {
   'app-closed': "Memry isn't running",
-  'needs-pairing': 'Not paired',
   ready: 'Connected',
-  pairing: 'Pairing…',
+  approving: 'Approve in Memry…',
   saving: 'Saving…',
   saved: 'Saved'
 }
 
 export function StatusStrip({ phase }: { phase: Phase }) {
-  const connected = phase === 'ready' || phase === 'saving' || phase === 'saved'
+  const connected =
+    phase === 'ready' || phase === 'approving' || phase === 'saving' || phase === 'saved'
   return (
     <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
       <span className="text-[13px] font-semibold text-foreground">Memry</span>
