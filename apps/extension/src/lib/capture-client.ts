@@ -18,6 +18,9 @@ export function pairRequestUrl(port: number): string {
 export function captureUrl(port: number): string {
   return `http://127.0.0.1:${port}/capture`
 }
+export function revokeUrl(port: number): string {
+  return `http://127.0.0.1:${port}/pair/revoke`
+}
 
 export interface PingResponse {
   app: 'memry'
@@ -34,9 +37,10 @@ export function parsePing(data: unknown): PingResponse | null {
 
 // Probe the loopback range. Returns the first live memry server, or null.
 export async function probeServer(
-  fetchFn: typeof fetch = fetch
+  fetchFn: typeof fetch = fetch,
+  ports: number[] = PROBE_PORTS
 ): Promise<{ port: number; ping: PingResponse } | null> {
-  for (const port of PROBE_PORTS) {
+  for (const port of ports) {
     try {
       const res = await fetchFn(pingUrl(port), { method: 'GET' })
       if (!res.ok) continue
@@ -93,6 +97,19 @@ export function captureHeaders(token: string): Record<string, string> {
     'Content-Type': 'application/json',
     Authorization: `Bearer ${token}`,
     [CAPTURE_HEADER]: '1'
+  }
+}
+
+export async function postRevoke(
+  port: number,
+  token: string,
+  fetchFn: typeof fetch = fetch
+): Promise<boolean> {
+  try {
+    const res = await fetchFn(revokeUrl(port), { method: 'POST', headers: captureHeaders(token) })
+    return res.ok
+  } catch {
+    return false
   }
 }
 

@@ -9,8 +9,10 @@ import {
   pingUrl,
   pollUntil,
   postCapture,
+  postRevoke,
   probeServer,
-  requestPair
+  requestPair,
+  revokeUrl
 } from './capture-client'
 
 const draft: ArticleCapture = {
@@ -153,5 +155,35 @@ describe('pollUntil', () => {
       now: () => (t += 20)
     })
     expect(r).toBeNull()
+  })
+})
+
+const notOk = () => new Response('{}', { status: 500 })
+
+describe('probeServer with an explicit port list', () => {
+  test('returns the first live server in the supplied list', async () => {
+    const fetchFn = vi.fn(async (url: string) =>
+      url.includes(':9001') ? ok({ app: 'memry', paired: true, version: '1' }) : notOk()
+    ) as unknown as typeof fetch
+    const found = await probeServer(fetchFn, [9000, 9001])
+    expect(found?.port).toBe(9001)
+  })
+})
+
+describe('postRevoke', () => {
+  test('returns true on a 2xx', async () => {
+    const fetchFn = vi.fn(async () => ok({ ok: true })) as unknown as typeof fetch
+    expect(await postRevoke(7849, 'tok', fetchFn)).toBe(true)
+    expect((fetchFn as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0]).toBe(revokeUrl(7849))
+  })
+  test('returns false on a non-2xx', async () => {
+    const fetchFn = vi.fn(async () => notOk()) as unknown as typeof fetch
+    expect(await postRevoke(7849, 'tok', fetchFn)).toBe(false)
+  })
+  test('returns false when fetch throws', async () => {
+    const fetchFn = vi.fn(async () => {
+      throw new Error('down')
+    }) as unknown as typeof fetch
+    expect(await postRevoke(7849, 'tok', fetchFn)).toBe(false)
   })
 })
