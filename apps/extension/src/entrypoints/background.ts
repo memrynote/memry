@@ -1,6 +1,14 @@
-import type { CaptureResponse, PairResponse, PopupMessage, StatusResponse } from '@/lib/messages'
+import type {
+  CaptureResponse,
+  PageMetrics,
+  PairResponse,
+  PopupMessage,
+  ScreenshotResponse,
+  StatusResponse
+} from '@/lib/messages'
 import type { ArticleCapture } from '@memry/article-extract'
 import { claimToken, pollUntil, postCapture, probeServer, requestPair } from '@/lib/capture-client'
+import { bytesToDataUrl, planStitch } from '@/lib/capture-modes'
 
 const TOKEN_KEY = 'memry:capture-token'
 
@@ -49,6 +57,49 @@ async function capture(body: ArticleCapture): Promise<CaptureResponse> {
   return postCapture(found.port, token, body)
 }
 
+const MAX_SHOT_HEIGHT = 15000 // ponytail: cap full-page height so the PNG stays under /capture's 25MB cap
+const SETTLE_MS = 400 // wait between scroll and capture; also honors captureVisibleTab's ~2/sec limit
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms))
+}
+
+async function grabScreenshot(): Promise<ScreenshotResponse> {
+  const [tab] = await browser.tabs.query({ active: true, currentWindow: true })
+  if (!tab?.id || tab.windowId == null) return { ok: false, error: 'no-tab' }
+  const tabId = tab.id
+  const windowId = tab.windowId
+  try {
+    const metrics = (await browser.tabs.sendMessage(tabId, {
+      type: 'GET_PAGE_METRICS'
+    })) as PageMetrics
+    const plan = planStitch({ ...metrics, maxHeight: MAX_SHOT_HEIGHT })
+    const canvas = new OffscreenCanvas(plan.width, plan.height)
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return { ok: false, error: 'no-canvas' }
+    try {
+      for (const slice of plan.slices) {
+        await browser.tabs.sendMessage(tabId, { type: 'SCROLL_TO', y: slice.scrollY })
+        await sleep(SETTLE_MS)
+        const shot = await browser.tabs.captureVisibleTab(windowId, { format: 'png' })
+        const bmp = await createImageBitmap(await (await fetch(shot)).blob())
+        ctx.drawImage(bmp, 0, slice.drawY)
+        bmp.close()
+      }
+    } finally {
+      // Always restore the user's scroll position, even if a capture threw.
+      await browser.tabs
+        .sendMessage(tabId, { type: 'SCROLL_TO', y: metrics.scrollY })
+        .catch(() => {})
+    }
+    const blob = await canvas.convertToBlob({ type: 'image/png' })
+    const bytes = new Uint8Array(await blob.arrayBuffer())
+    return { ok: true, dataUrl: bytesToDataUrl(bytes, 'image/png') }
+  } catch (err) {
+    return { ok: false, error: String(err) }
+  }
+}
+
 export default defineBackground(() => {
   browser.runtime.onMessage.addListener((message: PopupMessage) => {
     // Returning a Promise responds asynchronously (webextension-polyfill).
@@ -61,6 +112,8 @@ export default defineBackground(() => {
         return capture(message.capture)
       case 'WAIT_FOR_SERVER':
         return waitForServer()
+      case 'GRAB_SCREENSHOT':
+        return grabScreenshot()
       default:
         return undefined
     }
