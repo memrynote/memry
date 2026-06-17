@@ -309,7 +309,7 @@ async function processMetadataJob(db: DataDb, job: JobRow): Promise<void> {
   }
 }
 
-async function processArticleExtractJob(db: DataDb, job: JobRow): Promise<void> {
+export async function processArticleExtractJob(db: DataDb, job: JobRow): Promise<void> {
   const item = db.select().from(inboxItems).where(eq(inboxItems.id, job.itemId)).get()
   const sourceUrl = item?.sourceUrl || (job.payload?.url as string | undefined)
 
