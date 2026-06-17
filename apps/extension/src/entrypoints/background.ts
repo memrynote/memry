@@ -1,5 +1,6 @@
 import type {
   CaptureResponse,
+  ExtractResponse,
   FlushResponse,
   PageMetrics,
   PairResponse,
@@ -129,6 +130,10 @@ async function setBadge(count: number): Promise<void> {
   if (count > 0) await browser.action.setBadgeBackgroundColor({ color: '#E56458' })
 }
 
+async function restoreQueueBadge(): Promise<void> {
+  await setBadge((await readQueue()).length)
+}
+
 async function ensureFlushAlarm(): Promise<void> {
   const existing = await browser.alarms.get(FLUSH_ALARM)
   if (!existing) await browser.alarms.create(FLUSH_ALARM, { periodInMinutes: 1 })
@@ -216,6 +221,31 @@ export default defineBackground(() => {
 
   browser.alarms.onAlarm.addListener((alarm) => {
     if (alarm.name === FLUSH_ALARM) void flushQueue()
+  })
+
+  browser.commands.onCommand.addListener(async (command) => {
+    if (command !== 'capture-page') return
+    const [tab] = await browser.tabs.query({ active: true, currentWindow: true })
+    if (!tab?.id) return
+    // The content script is declared on *://*/* and auto-injected, so messaging
+    // it needs no activeTab grant. It is absent on chrome://, the Web Store, and
+    // PDFs — sendMessage rejects there, which we surface as a brief error badge.
+    const extracted: ExtractResponse = await browser.tabs
+      .sendMessage(tab.id, { type: 'EXTRACT' })
+      .catch(() => ({ ok: false, error: 'no-content-script' }))
+    if (!extracted.ok) {
+      await browser.action.setBadgeText({ text: '!' })
+      await browser.action.setBadgeBackgroundColor({ color: '#E56458' })
+      setTimeout(() => void restoreQueueBadge(), 2000)
+      return
+    }
+    const res = await captureOrQueue(extracted.capture)
+    if (res.ok) {
+      await browser.action.setBadgeText({ text: '✓' })
+      await browser.action.setBadgeBackgroundColor({ color: '#3B873E' })
+      setTimeout(() => void restoreQueueBadge(), 2000)
+    }
+    // A queued save already set the count badge inside captureOrQueue.
   })
 
   // Restore the badge + retry alarm whenever the service worker (re)starts.
