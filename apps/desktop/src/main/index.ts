@@ -11,7 +11,8 @@ import {
   session,
   nativeImage,
   Menu,
-  MenuItem
+  MenuItem,
+  dialog
 } from 'electron'
 import { createHash } from 'node:crypto'
 import { join, resolve, normalize } from 'path'
@@ -80,6 +81,7 @@ import {
 } from './app-navigation-command'
 import { getHeadlessCliArgs, runHeadlessCli } from './cli/headless'
 import { reconcileBillingAndSync, startBillingCheckout } from './billing/paddle-billing'
+import { openPairingWindow } from './capture/pairing'
 
 if (process.type === 'browser') {
   log.initialize()
@@ -530,6 +532,21 @@ function handleDeepLink(url: string): void {
         pendingOAuthStates.delete(state)
         mainWindow.webContents.send('auth:oauth-callback', { code, state })
       }
+    }
+
+    if (parsed.hostname === 'pair') {
+      void dialog
+        .showMessageBox(mainWindow, {
+          type: 'question',
+          buttons: ['Pair', 'Cancel'],
+          defaultId: 0,
+          cancelId: 1,
+          title: 'Pair browser extension',
+          message: 'Allow the Memry browser extension to send captures to this app?'
+        })
+        .then(({ response }) => {
+          if (response === 0) openPairingWindow()
+        })
     }
 
     if (mainWindow.isMinimized()) mainWindow.restore()
