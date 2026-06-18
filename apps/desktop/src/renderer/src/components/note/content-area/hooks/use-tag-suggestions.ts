@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import { createHashTagInlinePlugin } from '../hash-tag-inline-plugin'
+import { defaultTagColorName } from '@/components/note/tags-row/tag-colors'
 import { useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
 
 interface TagSuggestionsParams {
@@ -29,7 +30,9 @@ export function useTagSuggestions({
   }, [tagColorMap])
 
   const getTagColor = useCallback((tag: string): string => {
-    return tagColorMapRef.current?.get(tag) || 'stone'
+    // Fall back to a deterministic palette color derived from the tag name
+    // (instead of a flat grey) when the tag has no explicit color yet.
+    return tagColorMapRef.current?.get(tag) || defaultTagColorName(tag)
   }, [])
 
   // Register hashTag inline plugin on editor's tiptap instance
@@ -60,7 +63,8 @@ export function useTagSuggestions({
 
     state.doc.descendants((node: any, pos: number) => {
       if (node.type.name === 'hashTag') {
-        const correctColor = tagColorMap.get(node.attrs.tag as string) || 'stone'
+        const correctColor =
+          tagColorMap.get(node.attrs.tag as string) || defaultTagColorName(node.attrs.tag as string)
         if (node.attrs.color !== correctColor) {
           tr = tr.setNodeMarkup(pos, undefined, { ...node.attrs, color: correctColor })
           changed = true
@@ -83,7 +87,7 @@ export function useTagSuggestions({
       if (!pill) return
 
       const tag = pill.dataset.hashTag
-      const color = pill.dataset.hashTagColor || 'stone'
+      const color = pill.dataset.hashTagColor || ''
       if (tag) openTag(tag, color)
     }
 

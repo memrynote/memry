@@ -50,7 +50,7 @@ export function HashTagMenu({
     >
       {items.map((item, index) => {
         const isSelected = selectedIndex === index
-        const colors = getTagColors(item.color)
+        const colors = getTagColors(item.color, item.name)
 
         return (
           <button

@@ -91,6 +91,19 @@ export function registerAIInlineHandlers(): void {
     await stopChatServer()
     return { success: true }
   })
+
+  ipcMain.handle(
+    AIInlineChannels.invoke.LIST_OLLAMA_MODELS,
+    withErrorHandler(async () => {
+      const { baseUrl } = readSettings()
+      const url = `${(baseUrl || 'http://localhost:11434/v1').replace(/\/$/, '')}/models`
+      const res = await fetch(url)
+      if (!res.ok) throw new Error(`Ollama responded ${res.status}`)
+      const json = (await res.json()) as { data?: Array<{ id?: string }> }
+      const models = (json.data ?? []).map((m) => m.id).filter((id): id is string => Boolean(id))
+      return { success: true, models }
+    }, 'Failed to list Ollama models')
+  )
 }
 
 export function unregisterAIInlineHandlers(): void {
@@ -99,5 +112,6 @@ export function unregisterAIInlineHandlers(): void {
   ipcMain.removeHandler(AIInlineChannels.invoke.GET_SERVER_PORT)
   ipcMain.removeHandler(AIInlineChannels.invoke.START_SERVER)
   ipcMain.removeHandler(AIInlineChannels.invoke.STOP_SERVER)
+  ipcMain.removeHandler(AIInlineChannels.invoke.LIST_OLLAMA_MODELS)
   logger.info('Unregistered')
 }

@@ -11,9 +11,10 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { Bot, CalendarDays, Expand, PlusSignIcon } from '@/lib/icons'
+import { Bot, CalendarDays, Expand, PlusSignIcon, X } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { useAgentOptional } from './agent-context'
+import { preferredConversationDefaults } from './agent-model-preference'
 import { ConversationList } from './conversation-list'
 
 export type RightSidebarTab = 'day' | 'agent'
@@ -126,7 +127,27 @@ export function SidebarTabs({
                 {activeLabel}
               </span>
             ) : (
-              <AgentConversationActions />
+              <>
+                <AgentConversationActions />
+                <TooltipProvider delayDuration={300}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label={t('agentChat.sidebar.close')}
+                        title={t('agentChat.sidebar.close')}
+                        onClick={() => setActive('day')}
+                        className="inline-flex size-6 shrink-0 items-center justify-center rounded-[5px] text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      >
+                        <X className="size-3.5" aria-hidden="true" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="text-xs">
+                      {t('agentChat.sidebar.close')}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </>
             )}
           </div>
           {endAccessory && (
@@ -185,7 +206,7 @@ function AgentConversationActions(): React.JSX.Element | null {
               type="button"
               aria-label={newConversationLabel}
               title={newConversationLabel}
-              onClick={() => void currentAgent.createConversation()}
+              onClick={() => void currentAgent.createConversation(preferredConversationDefaults())}
               className="inline-flex size-6 shrink-0 items-center justify-center rounded-[5px] text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               <PlusSignIcon className="size-3.5" aria-hidden="true" />

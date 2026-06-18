@@ -296,7 +296,7 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
   // Handle clicking a tag
   const handleTagClick = useCallback(
     (tag: string): void => {
-      const color = tagColorMap.get(tag.toLowerCase()) ?? 'stone'
+      const color = tagColorMap.get(tag.toLowerCase()) ?? ''
       openTag(tag, color)
     },
     [openTag, tagColorMap]

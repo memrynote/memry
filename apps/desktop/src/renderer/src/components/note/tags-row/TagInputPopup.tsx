@@ -3,7 +3,7 @@ import { FilterSearchHeader } from '@/components/ui/filter-search-header'
 import { Picker } from '@/components/ui/picker'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { TagChip, Tag } from './TagChip'
-import { getRandomColor } from './tag-colors'
+import { defaultTagColorName } from './tag-colors'
 import { useT } from '@memry/i18n/renderer'
 
 interface TagInputPopupProps {
@@ -31,7 +31,6 @@ export function TagInputPopup({
 }: TagInputPopupProps) {
   const { t } = useT('notes')
   const [searchQuery, setSearchQuery] = useState('')
-  const [newTagColor, setNewTagColor] = useState(getRandomColor())
   const [focusedIndex, setFocusedIndex] = useState(-1)
   const [internalOpen, setInternalOpen] = useState(false)
   const open = controlledOpen ?? internalOpen
@@ -42,7 +41,6 @@ export function TagInputPopup({
       controlledOnOpenChange?.(next)
       if (!next) {
         setSearchQuery('')
-        setNewTagColor(getRandomColor())
         setFocusedIndex(-1)
       }
     },
@@ -93,7 +91,7 @@ export function TagInputPopup({
         const trimmed = searchQuery.trim()
         if (trimmed) {
           if (!exactMatchExists) {
-            onCreateTag(trimmed, newTagColor)
+            onCreateTag(trimmed, defaultTagColorName(trimmed))
             handleOpenChange(false)
           } else if (filteredTags.length > 0) {
             onAddTag(filteredTags[0].id)
@@ -105,7 +103,6 @@ export function TagInputPopup({
     [
       searchQuery,
       exactMatchExists,
-      newTagColor,
       onCreateTag,
       filteredTags,
       onAddTag,

@@ -52,7 +52,7 @@ export function CalendarTaskPopover({
   const tagColorMap = useMemo(() => {
     const map = new Map<string, string>()
     for (const tag of allTags) {
-      map.set(normalizeTagName(tag.tag), tag.color || 'stone')
+      map.set(normalizeTagName(tag.tag), tag.color || '')
     }
     return map
   }, [allTags])
@@ -64,7 +64,7 @@ export function CalendarTaskPopover({
         return {
           id: tagName,
           name,
-          color: tagColorMap.get(normalizedName) ?? 'stone'
+          color: tagColorMap.get(normalizedName) ?? ''
         }
       }),
     [task?.tags, tagColorMap]

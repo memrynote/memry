@@ -157,4 +157,25 @@ describe('AI inline IPC handlers', () => {
     expect(mocks.ipcMain.removeHandler).toHaveBeenCalledWith(AIInlineChannels.invoke.STOP_SERVER)
     expect(mocks.info).toHaveBeenCalledWith('Unregistered')
   })
+
+  it('lists installed Ollama models from the OpenAI-compatible endpoint', async () => {
+    registerAIInlineHandlers()
+    const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: [{ id: 'gemma3:latest' }, { id: 'llama3.2' }, {}] })
+    } as Response)
+
+    await expect(invoke(AIInlineChannels.invoke.LIST_OLLAMA_MODELS)).resolves.toEqual({
+      success: true,
+      models: ['gemma3:latest', 'llama3.2']
+    })
+    expect(fetchSpy).toHaveBeenCalledWith('http://localhost:11434/v1/models')
+
+    fetchSpy.mockResolvedValue({ ok: false, status: 500 } as Response)
+    await expect(invoke(AIInlineChannels.invoke.LIST_OLLAMA_MODELS)).resolves.toEqual({
+      success: false,
+      error: 'Ollama responded 500'
+    })
+    fetchSpy.mockRestore()
+  })
 })

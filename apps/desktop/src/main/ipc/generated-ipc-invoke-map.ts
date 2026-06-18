@@ -32,6 +32,7 @@ export interface MainIpcInvokeHandlers {
   "agent:testLocalProvider": (...args: []) => Awaited<Promise<{ connected: boolean; modelAvailable: boolean; streamingSupported: boolean; toolCallingSupported: boolean; toolContinuationSupported: boolean; toolsEnabled: boolean; detail: string | null; }>>
   "ai-inline:get-server-port": (...args: []) => Awaited<number | null>
   "ai-inline:get-settings": (...args: []) => Awaited<import("../../../../../packages/contracts/src/ai-inline-channels").AIInlineSettings>
+  "ai-inline:list-ollama-models": (...args: []) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; models: string[]; }>>
   "ai-inline:set-settings": (...args: [Partial<import("../../../../../packages/contracts/src/ai-inline-channels").AIInlineSettings>]) => Awaited<{ success: boolean; error: string; } | { success: boolean; error?: undefined; }>
   "ai-inline:start-server": (...args: []) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; error: string; port?: undefined; } | { success: boolean; port: number; error?: undefined; }>>
   "ai-inline:stop-server": (...args: []) => Awaited<Promise<{ success: boolean; }>>

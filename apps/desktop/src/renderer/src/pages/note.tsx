@@ -443,7 +443,7 @@ export function NotePage({ noteId }: NotePageProps) {
     return (note?.tags || []).map((tagName) => ({
       id: tagName,
       name: tagName,
-      color: tagColorMap.get(tagName) ?? pendingTagColorsRef.current.get(tagName) ?? 'stone'
+      color: tagColorMap.get(tagName) ?? pendingTagColorsRef.current.get(tagName) ?? ''
     }))
   }, [note?.tags, tagColorMap])
 

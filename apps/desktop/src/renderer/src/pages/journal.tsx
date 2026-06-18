@@ -395,7 +395,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     return (entry?.tags || []).map((tagName) => ({
       id: tagName,
       name: tagName,
-      color: tagColorMap.get(tagName) ?? pendingTagColors.get(tagName.toLowerCase()) ?? 'stone'
+      color: tagColorMap.get(tagName) ?? pendingTagColors.get(tagName.toLowerCase()) ?? ''
     }))
   }, [entry?.tags, tagColorMap, pendingTagColors])
 

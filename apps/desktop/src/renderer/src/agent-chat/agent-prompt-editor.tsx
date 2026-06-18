@@ -375,7 +375,7 @@ export const AgentPromptEditor = forwardRef<AgentPromptEditorHandle, AgentPrompt
           'aria-multiline': 'true',
           class: cn(
             '!min-h-[48.4px] min-h-[48.4px] max-h-[258px] whitespace-pre-wrap break-words border-0 bg-transparent p-3 text-[16px] text-foreground outline-none transition-[padding] duration-200 ease-in-out focus:outline-none',
-            '[&_p]:m-0 [&_.is-editor-empty:first-child::before]:pointer-events-none [&_.is-editor-empty:first-child::before]:float-left [&_.is-editor-empty:first-child::before]:h-0 [&_.is-editor-empty:first-child::before]:text-muted-foreground [&_.is-editor-empty:first-child::before]:content-[attr(data-placeholder)]',
+            '[&_p]:m-0 [&_.is-editor-empty:first-child::before]:pointer-events-none [&_.is-editor-empty:first-child::before]:float-left [&_.is-editor-empty:first-child::before]:h-0 [&_.is-editor-empty:first-child::before]:text-sm [&_.is-editor-empty:first-child::before]:text-muted-foreground [&_.is-editor-empty:first-child::before]:content-[attr(data-placeholder)]',
             editorClassName
           )
         },

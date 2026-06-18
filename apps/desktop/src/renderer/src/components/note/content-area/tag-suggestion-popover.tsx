@@ -185,7 +185,7 @@ export function TagSuggestionPopover({
     >
       {suggestions.map((item, index) => {
         const isSelected = selectedIndex === index
-        const colors = getTagColors(item.color)
+        const colors = getTagColors(item.color, item.tag)
 
         return (
           <button
