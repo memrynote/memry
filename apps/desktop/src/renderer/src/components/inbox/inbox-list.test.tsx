@@ -8,7 +8,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
-import { InboxListSection, InboxListItem, TypeIcon } from './inbox-list'
+import { InboxListSection, InboxListItem, TypeIcon, getInboxItemPreview } from './inbox-list'
 import type { InboxItemListItem, InboxItemType } from '@/types'
 
 vi.mock('@/components/ui/tooltip', () => ({
@@ -517,5 +517,29 @@ describe('InboxList - accessibility', () => {
 
     const listItem = screen.getByRole('listitem')
     expect(listItem).toHaveAttribute('tabindex', '0')
+  })
+})
+
+describe('getInboxItemPreview', () => {
+  it('returns markup-stripped content for a note', () => {
+    const item = createInboxItem('note', {
+      content: '# Title\n\nBody **bold** text <!-- memry:block-nesting-level=1 -->'
+    })
+    expect(getInboxItemPreview(item)).toBe('Title Body bold text')
+  })
+
+  it('prefers the excerpt for links', () => {
+    const item = createInboxItem('link', { excerpt: 'Link excerpt', content: 'fallback content' })
+    expect(getInboxItemPreview(item)).toBe('Link excerpt')
+  })
+
+  it('uses the transcription for voice items', () => {
+    const item = createInboxItem('voice', { transcription: 'Spoken words', content: null })
+    expect(getInboxItemPreview(item)).toBe('Spoken words')
+  })
+
+  it('returns null when there is no preview text', () => {
+    const item = createInboxItem('note', { content: null, excerpt: undefined })
+    expect(getInboxItemPreview(item)).toBeNull()
   })
 })

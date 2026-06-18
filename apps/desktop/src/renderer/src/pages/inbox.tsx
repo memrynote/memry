@@ -7,7 +7,9 @@ import {
   FilePdf,
   Image,
   Link2,
+  List,
   Mic,
+  Rows2,
   Scissors,
   Search,
   Share2,
@@ -24,6 +26,7 @@ import { CaptureInput } from '@/components/capture-input'
 import { Picker } from '@/components/ui/picker'
 import { useInboxNotifications } from '@/hooks/use-inbox-notifications'
 import { useInboxJobs, useInboxList } from '@/hooks/use-inbox'
+import { useDisplayDensity } from '@/hooks/use-display-density'
 import { useInboxRemindersPanel } from '@/hooks/use-inbox-reminders-panel'
 import { useActiveTab } from '@/contexts/tabs'
 import type { InboxItemType } from '@memry/contracts/inbox-api'
@@ -72,6 +75,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   const archivedSearchRef = useRef<HTMLInputElement>(null)
   useInboxNotifications()
   const { items } = useInboxList()
+  const { density, toggleDensity, isComfortable } = useDisplayDensity()
   const { upcomingCount } = useInboxRemindersPanel()
   const { activeCount: activeJobCount, failedCount: failedJobCount } = useInboxJobs(
     items.map((item) => item.id)
@@ -386,6 +390,23 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                     )}
                   </Picker.Content>
                 </Picker>
+
+                <button
+                  type="button"
+                  onClick={toggleDensity}
+                  title={
+                    isComfortable ? t('view.density.toCompact') : t('view.density.toComfortable')
+                  }
+                  aria-label={
+                    isComfortable ? t('view.density.toCompact') : t('view.density.toComfortable')
+                  }
+                  className={cn(
+                    'flex items-center justify-center shrink-0 rounded-[5px] py-1 px-2 border transition-colors',
+                    'border-border text-muted-foreground hover:bg-surface-active/50'
+                  )}
+                >
+                  {isComfortable ? <Rows2 className="size-3" /> : <List className="size-3" />}
+                </button>
               </>
             )}
           </PageToolbar>
@@ -413,6 +434,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                 className={className}
                 selectedTypes={selectedTypes}
                 showSnoozedItems={showSnoozedItems}
+                density={density}
                 focusItemId={focusInboxItemId}
                 {...{ focusToken }}
               />

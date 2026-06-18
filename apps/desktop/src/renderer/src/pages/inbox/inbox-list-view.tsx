@@ -23,7 +23,7 @@ import type { InboxItemType } from '@memry/contracts/inbox-api'
 import { detectClusters, getClusterKey } from '@/lib/ai-clustering'
 import { cn } from '@/lib/utils'
 import { isInputFocused } from '@/hooks/use-keyboard-shortcuts'
-import { DENSITY_CONFIG } from '@/hooks/use-display-density'
+import { DENSITY_CONFIG, type DisplayDensity } from '@/hooks/use-display-density'
 import {
   useInboxList,
   useInboxItem,
@@ -44,6 +44,7 @@ export interface InboxListViewProps {
   className?: string
   selectedTypes: Set<InboxItemType>
   showSnoozedItems: boolean
+  density?: DisplayDensity
   focusItemId?: string | null
   focusToken?: number | null
 }
@@ -52,6 +53,7 @@ export function InboxListView({
   className,
   selectedTypes,
   showSnoozedItems,
+  density = 'comfortable',
   focusItemId = null,
   focusToken
 }: InboxListViewProps): React.JSX.Element {
@@ -60,8 +62,7 @@ export function InboxListView({
   const { openTab } = useTabs()
   const { enabled: aiEnabled } = useAISettingsContext()
 
-  const density = 'compact'
-  const densityConfig = DENSITY_CONFIG.compact
+  const densityConfig = DENSITY_CONFIG[density]
 
   // Data hooks
   const {

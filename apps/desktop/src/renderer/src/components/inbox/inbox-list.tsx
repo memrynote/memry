@@ -50,10 +50,35 @@ type InboxItem = InboxItemListItem
 // Context for selection and focus state
 // ============================================================================
 
+/** Strip light markdown/markup and collapse whitespace for a one-glance preview. */
+function normalizePreview(raw: string | null | undefined): string | null {
+  if (!raw) return null
+  const text = raw
+    .replace(/<!--[\s\S]*?-->/g, ' ') // html comments (e.g. memry block markers)
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ') // images
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1') // links -> label
+    .replace(/[#>*_`~]+/g, ' ') // md heading/quote/emphasis markers
+    .replace(/\s+/g, ' ')
+    .trim()
+  return text.length > 0 ? text : null
+}
+
+/**
+ * Preview text for the comfortable (two-line) row: transcription for voice,
+ * excerpt for link/clip, else the captured content. Null when there's nothing
+ * worth showing — the row stays single-line in that case.
+ */
+export function getInboxItemPreview(item: InboxItem): string | null {
+  const raw =
+    item.type === 'voice' ? (item.transcription ?? item.content) : (item.excerpt ?? item.content)
+  return normalizePreview(raw)
+}
+
 interface InboxListContextValue {
   selectedIds: Set<string>
   focusedId: string | null
   isInBulkMode: boolean
+  density: DisplayDensity
   densityConfig: DensityConfig
   onSelect: (id: string, shiftKey: boolean) => void
   onFocus: (id: string) => void
@@ -198,7 +223,7 @@ const TranscriptionStatus = ({
               onRetry(item.id)
             }}
           >
-            <RotateCcw className="w-3 h-3 mr-1" />
+            <RotateCcw className="w-3 h-3 me-1" />
             {t('list.retryTranscription')}
           </Button>
         )}
@@ -292,7 +317,7 @@ export function InboxListSection({
 
   return (
     <InboxListContext.Provider
-      value={{ selectedIds, focusedId, isInBulkMode, densityConfig, onSelect, onFocus }}
+      value={{ selectedIds, focusedId, isInBulkMode, density, densityConfig, onSelect, onFocus }}
     >
       <section
         className={className}
@@ -302,7 +327,7 @@ export function InboxListSection({
           type="button"
           onClick={() => collapsible && setIsCollapsed(!isCollapsed)}
           className={cn(
-            'flex items-center gap-1.5 w-full text-left py-2 px-2',
+            'flex items-center gap-1.5 w-full text-start py-2 px-2',
             collapsible && 'cursor-pointer group'
           )}
           disabled={!collapsible}
@@ -393,7 +418,8 @@ export function InboxListItem({
   className
 }: InboxListItemProps) {
   const { t } = useT('inbox')
-  const { selectedIds, focusedId, isInBulkMode, densityConfig, onSelect, onFocus } = useInboxList()
+  const { selectedIds, focusedId, isInBulkMode, density, densityConfig, onSelect, onFocus } =
+    useInboxList()
   const isSelected = selectedIds.has(item.id)
   const isFocused = focusedId === item.id
 
@@ -419,6 +445,10 @@ export function InboxListItem({
     social: t('type.social'),
     reminder: t('type.reminder')
   }
+
+  // Comfortable density shows a second muted line of preview text (when present).
+  const previewText = getInboxItemPreview(item)
+  const showPreview = density === 'comfortable' && previewText !== null
 
   const handleClick = (): void => {
     onFocus(item.id)
@@ -517,95 +547,105 @@ export function InboxListItem({
           />
         </>
       ) : (
-        <>
-          {/* Title — single line, truncated */}
-          <span
-            className={cn(
-              'grow shrink min-w-0 truncate font-medium',
-              densityConfig.titleSize,
-              isReminderViewed
-                ? 'text-muted-foreground/60'
-                : item.snoozedUntil
-                  ? 'text-muted-foreground'
-                  : 'text-foreground/90'
-            )}
-          >
-            {displayTitle}
-          </span>
-
-          {/* Voice duration pill — hidden on hover when actions show */}
-          {item.type === 'voice' && item.duration != null && (
-            <div className={cn('shrink-0', !isInBulkMode && 'group-hover:opacity-0')}>
-              <Pill variant="bordered" color="amber">
-                {formatDuration(item.duration)}
-              </Pill>
-            </div>
-          )}
-
-          {/* PDF page count pill */}
-          {item.type === 'pdf' && item.pageCount != null && (
-            <Pill variant="bordered" color="red">
-              {t('list.pageCount', { count: item.pageCount })}
-            </Pill>
-          )}
-
-          {/* Snooze pill */}
-          {item.snoozedUntil && (
-            <Pill variant="filled" color="gray">
-              {t('list.snoozedUntilShort', {
-                date: new Date(item.snoozedUntil).toLocaleDateString('en-US', {
-                  month: 'short',
-                  day: 'numeric'
-                })
-              })}
-            </Pill>
-          )}
-
-          {/* Right slot: metadata swaps to actions on hover */}
-          <div className="relative shrink-0 flex items-center">
-            {/* Metadata — visible by default, hidden on hover */}
-            <div
-              className={cn('flex items-center gap-2', !isInBulkMode && 'group-hover:opacity-0')}
+        <div className="flex flex-col grow min-w-0 gap-0.5">
+          {/* Row 1: title, pills, and the metadata/actions slot */}
+          <div className="flex items-center gap-2 min-w-0">
+            {/* Title — single line, truncated */}
+            <span
+              className={cn(
+                'grow shrink min-w-0 truncate font-medium',
+                densityConfig.titleSize,
+                isReminderViewed
+                  ? 'text-muted-foreground/60'
+                  : item.snoozedUntil
+                    ? 'text-muted-foreground'
+                    : 'text-foreground/90'
+              )}
             >
-              {item.sourceUrl &&
-                (item.type === 'link' || item.type === 'social' || item.type === 'clip') && (
-                  <span
-                    className={cn('shrink-0', densityConfig.metaSize, 'text-muted-foreground/60')}
-                  >
-                    {extractDomain(item.sourceUrl)}
-                  </span>
-                )}
-              <span
-                className={cn(
-                  'shrink-0 w-9 text-right tabular-nums',
-                  densityConfig.metaSize,
-                  item.isStale ? 'text-amber-600 dark:text-amber-500' : 'text-muted-foreground/60'
-                )}
-              >
-                {formatCompactRelativeTime(
-                  item.createdAt instanceof Date ? item.createdAt : new Date(item.createdAt)
-                )}
-              </span>
-            </div>
+              {displayTitle}
+            </span>
 
-            {/* Actions — overlaid, visible on hover */}
-            {!isInBulkMode && (
-              <div
-                className={cn(
-                  'absolute inset-0 flex items-center justify-end',
-                  'opacity-0 group-hover:opacity-100'
-                )}
-              >
-                <QuickActions
-                  itemId={item.id}
-                  onArchive={onArchive}
-                  onSnooze={onSnooze}
-                  variant="row"
-                />
+            {/* Voice duration pill — hidden on hover when actions show */}
+            {item.type === 'voice' && item.duration != null && (
+              <div className={cn('shrink-0', !isInBulkMode && 'group-hover:opacity-0')}>
+                <Pill variant="bordered" color="amber">
+                  {formatDuration(item.duration)}
+                </Pill>
               </div>
             )}
+
+            {/* PDF page count pill */}
+            {item.type === 'pdf' && item.pageCount != null && (
+              <Pill variant="bordered" color="red">
+                {t('list.pageCount', { count: item.pageCount })}
+              </Pill>
+            )}
+
+            {/* Snooze pill */}
+            {item.snoozedUntil && (
+              <Pill variant="filled" color="gray">
+                {t('list.snoozedUntilShort', {
+                  date: new Date(item.snoozedUntil).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric'
+                  })
+                })}
+              </Pill>
+            )}
+
+            {/* Right slot: metadata swaps to actions on hover */}
+            <div className="relative shrink-0 flex items-center">
+              {/* Metadata — visible by default, hidden on hover */}
+              <div
+                className={cn('flex items-center gap-2', !isInBulkMode && 'group-hover:opacity-0')}
+              >
+                {item.sourceUrl &&
+                  (item.type === 'link' || item.type === 'social' || item.type === 'clip') && (
+                    <span
+                      className={cn('shrink-0', densityConfig.metaSize, 'text-muted-foreground/60')}
+                    >
+                      {extractDomain(item.sourceUrl)}
+                    </span>
+                  )}
+                <span
+                  className={cn(
+                    'shrink-0 w-9 text-end tabular-nums',
+                    densityConfig.metaSize,
+                    item.isStale ? 'text-amber-600 dark:text-amber-500' : 'text-muted-foreground/60'
+                  )}
+                >
+                  {formatCompactRelativeTime(
+                    item.createdAt instanceof Date ? item.createdAt : new Date(item.createdAt)
+                  )}
+                </span>
+              </div>
+
+              {/* Actions — overlaid, visible on hover */}
+              {!isInBulkMode && (
+                <div
+                  className={cn(
+                    'absolute inset-0 flex items-center justify-end',
+                    'opacity-0 group-hover:opacity-100'
+                  )}
+                >
+                  <QuickActions
+                    itemId={item.id}
+                    onArchive={onArchive}
+                    onSnooze={onSnooze}
+                    variant="row"
+                  />
+                </div>
+              )}
+            </div>
           </div>
-        </>
+
+          {/* Row 2: comfortable-only preview line */}
+          {showPreview && (
+            <span className="line-clamp-2 pe-1 text-[13px] leading-snug text-muted-foreground">
+              {previewText}
+            </span>
+          )}
+        </div>
       )}
     </div>
   )
