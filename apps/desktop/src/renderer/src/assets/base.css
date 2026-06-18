@@ -1312,6 +1312,12 @@ div.react-sigma {
 
   html {
     font-family: var(--font-sans);
+    /* Make native scrollbars/form controls follow the app theme, not the OS. */
+    color-scheme: light;
+  }
+
+  html.dark {
+    color-scheme: dark;
   }
 
   body {
@@ -2498,6 +2504,19 @@ del.bn-inline-content {
 .bn-shadcn .bn-editor a.bookmark-link,
 .bookmark-block a.bookmark-link {
   text-decoration: none;
+}
+
+/* Plain inline links — paint with the user accent (--tint, from the Settings
+   accent color) instead of BlockNote's browser-default blue. The custom link
+   tokens (.link-mention, .bookmark-link) keep their own higher-specificity
+   colors, so they're excluded. The `.bn-shadcn .bn-editor a` prefix is needed
+   to beat BlockNote's `color: revert` rule. */
+.bn-shadcn .bn-editor a:not(.link-mention):not(.bookmark-link):not(.backlink-mention) {
+  color: var(--tint);
+}
+
+.bn-shadcn .bn-editor a:not(.link-mention):not(.bookmark-link):not(.backlink-mention):hover {
+  color: var(--tint-hover);
 }
 
 /* Backlink mention highlight - warm amber for wiki-style links */
