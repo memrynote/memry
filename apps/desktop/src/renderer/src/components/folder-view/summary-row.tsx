@@ -116,9 +116,9 @@ export function SummaryRow({
                 // Density-aware padding
                 density === 'compact' ? 'px-2 py-1' : 'px-3 py-2',
                 // Column borders (not on last column)
-                showColumnBorders && !isLast && 'border-r border-border/30',
+                showColumnBorders && !isLast && 'border-e border-border/30',
                 // Text styling
-                'text-sm font-medium text-muted-foreground',
+                'text-[11px] font-medium text-muted-foreground',
                 // Truncate overflow
                 'overflow-hidden'
               )}
@@ -164,18 +164,28 @@ function SummaryCell({ value, type, label }: SummaryCellProps): React.JSX.Elemen
   // For countBy, the value is already formatted with labels
   if (type === 'countBy') {
     return (
-      <div className="flex items-center gap-1.5 truncate" title={value}>
-        <span className="text-xs opacity-60">{symbol}</span>
-        <span className="truncate text-xs">{value}</span>
+      <div className="flex items-center gap-1.5 truncate text-[11px]" title={value}>
+        <span className="font-semibold text-muted-foreground/60">{symbol}</span>
+        <span className="truncate text-muted-foreground">{value}</span>
       </div>
     )
   }
 
   return (
-    <div className="flex items-center gap-1.5 truncate" title={`${label ?? type}: ${value}`}>
-      <span className="text-xs opacity-60">{symbol}</span>
-      {label && <span className="text-xs opacity-70">{label}:</span>}
-      <span className="truncate">{value}</span>
+    <div
+      className="flex items-center gap-1.5 truncate text-[11px]"
+      title={`${label ?? type}: ${value}`}
+    >
+      <span
+        className={cn(
+          'font-semibold',
+          type === 'sum' ? 'text-[var(--tint)]' : 'text-muted-foreground/60'
+        )}
+      >
+        {symbol}
+      </span>
+      {label && <span className="text-muted-foreground/70">{label}:</span>}
+      <span className="truncate font-semibold tabular-nums text-foreground">{value}</span>
     </div>
   )
 }

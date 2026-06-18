@@ -1152,13 +1152,13 @@ export function GroupedTable({
                       paddingLeft: isInGroup ? '24px' : undefined
                     }}
                     className={cn(
-                      'border-b border-border/50',
+                      'border-b border-border/40',
                       'transition-colors',
                       'items-center',
                       'cursor-pointer',
                       !isSelected && 'hover:bg-muted/50',
-                      isSelected && 'border-l-2 border-amber-400 dark:border-amber-600',
-                      isFocused && 'ring-2 ring-amber-400/50 ring-inset dark:ring-amber-600/50',
+                      isSelected && 'bg-[var(--tint)]/[0.06] border-s-2 border-s-[var(--tint)]',
+                      isFocused && 'ring-2 ring-[var(--tint)]/40 ring-inset',
                       // T121: Exit animation - simple opacity fade
                       isExiting && 'opacity-0 transition-opacity duration-200'
                     )}
@@ -1175,7 +1175,7 @@ export function GroupedTable({
                           className={cn(
                             'flex-shrink-0 overflow-hidden',
                             density === 'compact' ? 'px-2 py-1' : 'px-3 py-2',
-                            showColumnBorders && !isLastCell && 'border-r border-border/30'
+                            showColumnBorders && !isLastCell && 'border-e border-border/30'
                           )}
                           style={
                             isLastCell
@@ -1318,7 +1318,7 @@ const GroupHeaderRow = memo(function GroupHeaderRow({
         </button>
 
         {/* Group property name and value */}
-        <span className="text-xs text-muted-foreground font-medium">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-muted-foreground">
           {capitalizeFirst(groupByProperty)}:
         </span>
         <span className="font-medium">{getGroupDisplayValue(groupValue)}</span>
@@ -1330,7 +1330,7 @@ const GroupHeaderRow = memo(function GroupHeaderRow({
 
         {/* Group summaries (if enabled) */}
         {groupSummaries && (
-          <div className="flex items-center gap-3 ml-4 text-xs text-muted-foreground">
+          <div className="flex items-center gap-3 ms-4 text-xs text-muted-foreground">
             {Object.entries(groupSummaries)
               .slice(0, 3)
               .map(([columnId, value]) => {
