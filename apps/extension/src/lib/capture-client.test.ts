@@ -21,7 +21,8 @@ const draft: ArticleCapture = {
   contentMarkdown: '# Hi',
   excerpt: 'Hi',
   extractionStatus: 'full',
-  properties: { title: 'Hi', source: 'https://example.com/p', created: 'now', tags: ['clippings'] }
+  properties: { title: 'Hi', source: 'https://example.com/p', created: 'now' },
+  tags: ['clippings']
 }
 
 const ok = (body: unknown) =>

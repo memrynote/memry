@@ -8,7 +8,8 @@ const draft: ArticleCapture = {
   contentMarkdown: '# Hi',
   excerpt: 'Hi',
   extractionStatus: 'full',
-  properties: { title: 'Hi', source: 'https://x.com/p', created: 'now', tags: ['clippings'] }
+  properties: { title: 'Hi', source: 'https://x.com/p', created: 'now' },
+  tags: ['clippings']
 }
 
 test('starts in extracting until both draft and status resolve', () => {

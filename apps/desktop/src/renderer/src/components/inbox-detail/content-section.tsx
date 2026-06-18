@@ -31,6 +31,7 @@ import {
 
 import { Skeleton } from '@/components/ui/skeleton'
 import { extractDomain } from '@/lib/inbox-utils'
+import { extractYouTubeVideoId } from '@/lib/youtube-utils'
 import { InboxContentEditor } from './inbox-content-editor'
 import { LinkPreview } from './link-preview'
 import { ReminderDetail } from './reminder-detail'
@@ -502,7 +503,7 @@ const VoicePreview = ({
             {isPlaying ? (
               <Pause className="size-3.5 text-background" />
             ) : (
-              <Play className="size-3.5 text-background ml-0.5" />
+              <Play className="size-3.5 text-background ms-0.5" />
             )}
           </button>
 
@@ -579,7 +580,7 @@ const VoicePreview = ({
           {transcription && (
             <button
               onClick={() => void handleCopyTranscription()}
-              className="ml-auto text-muted-foreground hover:text-foreground transition-colors"
+              className="ms-auto text-muted-foreground hover:text-foreground transition-colors"
               aria-label={t('content.copyTranscription')}
             >
               {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
@@ -734,6 +735,32 @@ const SimpleContent = ({ item, onContentChange }: SimpleContentProps): React.JSX
 }
 
 // =============================================================================
+// Link Article Content (clickable source + editable extracted article)
+// =============================================================================
+
+interface LinkArticleProps {
+  item: ContentItem
+  onContentChange?: (content: string) => void
+}
+
+const LinkArticle = ({ item, onContentChange }: LinkArticleProps): React.JSX.Element => (
+  <div className="flex flex-col gap-2.5">
+    {item.sourceUrl && (
+      <a
+        href={item.sourceUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-2 text-sm text-[var(--primary)] hover:underline"
+      >
+        <Globe className="size-4 shrink-0 text-[var(--muted-foreground)]" aria-hidden="true" />
+        <span className="truncate">{extractDomain(item.sourceUrl)}</span>
+      </a>
+    )}
+    <SimpleContent item={item} onContentChange={onContentChange} />
+  </div>
+)
+
+// =============================================================================
 // Main Content Section Component
 // =============================================================================
 
@@ -752,8 +779,15 @@ export const ContentSection = ({
   onContentChange
 }: ContentSectionProps): React.JSX.Element => {
   switch (item.type) {
-    case 'link':
-      return <LinkPreview item={item} />
+    case 'link': {
+      // YouTube keeps its inline player; screenshot captures stay an image preview.
+      // Everything else is an extracted article → full, editable body.
+      // ponytail: screenshot detected by the exact marker ingest writes (`![screenshot](…)`).
+      const isScreenshot = (item.content ?? '').trim().startsWith('![screenshot]')
+      const isYouTube = item.sourceUrl ? extractYouTubeVideoId(item.sourceUrl) !== null : false
+      if (isYouTube || isScreenshot) return <LinkPreview item={item} />
+      return <LinkArticle item={item} onContentChange={onContentChange} />
+    }
     case 'image':
       return <ImagePreview item={item} />
     case 'voice':

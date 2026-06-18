@@ -1,11 +1,10 @@
 export interface ArticleProperties {
   title: string
   source: string
-  author?: string[]
+  author?: string
   published?: string
   created: string
   description?: string
-  tags: string[]
 }
 
 export interface ArticleCapture {
@@ -15,6 +14,9 @@ export interface ArticleCapture {
   excerpt: string
   extractionStatus: 'full' | 'partial' | 'failed'
   properties: ArticleProperties
+  // Inbox tags for the clip (e.g. ['clippings']). Kept out of `properties` so it
+  // surfaces as real tags, not a redundant note frontmatter property.
+  tags?: string[]
   heroImage?: string
   // Capture directives (set by the extension for selection/screenshot; the
   // extraction mapping never sets them).
@@ -56,10 +58,9 @@ export function mapToArticleCapture(
   const properties: ArticleProperties = {
     title,
     source: url,
-    created: now,
-    tags: ['clippings']
+    created: now
   }
-  if (result.author?.trim()) properties.author = [result.author.trim()]
+  if (result.author?.trim()) properties.author = result.author.trim()
   if (result.published?.trim()) properties.published = result.published.trim()
   if (result.description?.trim()) properties.description = result.description.trim()
 
@@ -70,6 +71,7 @@ export function mapToArticleCapture(
     excerpt: result.description?.trim() || contentMarkdown.slice(0, 200),
     extractionStatus: extractionStatusFor(contentMarkdown, wordCount),
     properties,
+    tags: ['clippings'],
     heroImage: result.image?.trim() || undefined
   }
 }

@@ -12,9 +12,9 @@ describe('ArticleCaptureSchema', () => {
       properties: {
         title: 'x',
         source: 'https://example.com/p',
-        created: '2026-06-17T00:00:00.000Z',
-        tags: ['clippings']
-      }
+        created: '2026-06-17T00:00:00.000Z'
+      },
+      tags: ['clippings']
     })
     expect(r.success).toBe(true)
   })
@@ -26,7 +26,7 @@ describe('ArticleCaptureSchema', () => {
       contentMarkdown: '',
       excerpt: '',
       extractionStatus: 'full',
-      properties: { title: 'x', source: 'https://example.com/p', created: 'x', tags: [] }
+      properties: { title: 'x', source: 'https://example.com/p', created: 'x' }
     })
     expect(r.success).toBe(false)
   })
@@ -41,8 +41,7 @@ describe('ArticleCaptureSchema', () => {
       properties: {
         title: 't',
         source: 'https://example.com/p',
-        created: '2026-06-17T00:00:00.000Z',
-        tags: []
+        created: '2026-06-17T00:00:00.000Z'
       },
       screenshotDataUrl: 'data:image/png;base64,AAAA',
       force: true

@@ -26,12 +26,12 @@ describe('mapToArticleCapture', () => {
     expect(capture.properties).toEqual({
       title: 'Running local models is good now',
       source: 'https://example.com/article',
-      author: ['Vicki Boykis'],
+      author: 'Vicki Boykis',
       published: '2026-06-15',
       created: NOW,
-      description: 'Local agentic coding has gotten good.',
-      tags: ['clippings']
+      description: 'Local agentic coding has gotten good.'
     })
+    expect(capture.tags).toEqual(['clippings'])
   })
 
   it('flags thin content as partial and empty content as failed', () => {

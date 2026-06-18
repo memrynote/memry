@@ -3,11 +3,10 @@ import { z } from 'zod'
 export const ArticlePropertiesSchema = z.object({
   title: z.string(),
   source: z.string(),
-  author: z.array(z.string()).optional(),
+  author: z.string().optional(),
   published: z.string().optional(),
   created: z.string(),
-  description: z.string().optional(),
-  tags: z.array(z.string())
+  description: z.string().optional()
 })
 
 export const ArticleCaptureSchema = z.object({

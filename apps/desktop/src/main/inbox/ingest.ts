@@ -9,6 +9,7 @@ import { generateId } from '../lib/id'
 import { createLogger } from '../lib/logger'
 import { publishProjectionEvent } from '../projections'
 import { insertItemWithTags, emitCapturedAndSync } from './domain'
+import { findDuplicateByUrl } from './duplicates'
 import { downloadImage } from './metadata'
 import { getItemAttachmentsDir, storeInboxAttachment } from './attachments'
 import { parseDataUrl } from './parse-data-url'
@@ -73,9 +74,10 @@ export async function ingestArticleCapture(
     return { itemId: input.itemId }
   }
 
-  // Dedup on URL unless force.
+  // Dedup on URL unless force. Only matches active (unfiled, unarchived) items, so
+  // re-capturing a URL you already filed into a folder creates a fresh inbox item.
   if (!input.force) {
-    const existing = db.select().from(inboxItems).where(eq(inboxItems.sourceUrl, input.url)).get()
+    const existing = findDuplicateByUrl(input.url)
     if (existing) {
       return ingestArticleCapture({ ...input, itemId: existing.id }, source)
     }
@@ -84,7 +86,7 @@ export async function ingestArticleCapture(
   // Create a new item (extension path).
   const id = generateId()
   const now = new Date().toISOString()
-  const tags = input.tags ?? input.properties.tags ?? []
+  const tags = input.tags ?? ['clippings']
 
   // Screenshot mode: decode the data URL into an inbox attachment and make the
   // image the note body. The extension sends contentMarkdown:'' for screenshots.

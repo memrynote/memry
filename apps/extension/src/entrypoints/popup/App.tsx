@@ -25,6 +25,12 @@ function hostOf(url: string): string {
   }
 }
 
+// Render captured page HTML as plain text — never inject untrusted page markup
+// into the extension popup's DOM (XSS).
+function stripHtml(html: string): string {
+  return new DOMParser().parseFromString(html, 'text/html').body.textContent?.trim() ?? ''
+}
+
 const STATUS: Record<ConnectionState, { tone: string; label: string }> = {
   ready: { tone: 'bg-ready', label: 'Connected to Memry' },
   'needs-pairing': { tone: 'bg-ready', label: 'Ready — first save pairs with Memry' },
@@ -75,6 +81,8 @@ export default function App() {
       .sendMessage({ type: 'CAPTURE', capture: state.draft })
       .catch(() => ({ ok: false, error: 'network' }))
     dispatch({ type: 'SAVE_DONE', result })
+    // Flash a "Sent" confirmation, then close. Offline-queued / error stay open.
+    if (result.ok) setTimeout(() => window.close(), 600)
     return result
   }
 
@@ -92,11 +100,6 @@ export default function App() {
 
   // One button: launch MemryNote first if it's closed, otherwise just send.
   const onSend = () => (state.connection === 'app-closed' ? onLaunchAndAdd() : onAdd())
-
-  const openInMemry = () => {
-    if (state.itemId)
-      browser.tabs.create({ url: `memry://open?item=${state.itemId}` }).catch(() => {})
-  }
 
   // ⌘↵ / Ctrl↵ saves when the card is ready. Ref keeps the handler fresh
   // without re-subscribing the listener on every render.
@@ -118,29 +121,27 @@ export default function App() {
   }, [phase])
 
   const draft = state.draft
-  const editable = phase === 'ready' || phase === 'error'
-  const isCard = phase !== 'extracting' && phase !== 'saved' && phase !== 'queued'
+  const editable = phase === 'ready' || phase === 'error' || phase === 'app-closed'
+  const isCard = phase !== 'extracting' && phase !== 'queued'
   const status =
     state.connection === 'unknown' ? STATUS.ready : STATUS[state.connection as ConnectionState]
-  const dest = state.connection === 'app-closed' ? 'Offline' : 'Inbox'
 
   return (
     <div className="flex max-h-[600px] flex-col bg-background font-sans text-foreground">
       <header className="flex shrink-0 items-center justify-between border-b border-border bg-surface-strong px-4 py-2.5">
         <div className="flex items-center gap-2">
-          <span
-            className="grid size-5 place-items-center rounded-[6px] bg-brand text-[11px] font-bold leading-none text-white"
-            aria-hidden
-          >
-            M
+          <img src="/icon/32.png" alt="" className="size-5 rounded-[6px]" aria-hidden />
+          <span className="text-[13px] font-semibold tracking-tight text-foreground">
+            memrynote
           </span>
-          <span className="text-[13px] font-semibold tracking-tight text-foreground">Memry</span>
         </div>
-        <div className="flex items-center gap-1.5" title={status.label}>
-          <span className={`size-1.5 rounded-full ${status.tone}`} aria-hidden />
-          <span className="text-[11px] font-medium text-text-tertiary">{dest}</span>
-          <span className="sr-only">{status.label}</span>
-        </div>
+        {state.connection !== 'app-closed' && (
+          <div className="flex items-center gap-1.5" title={status.label}>
+            <span className={`size-1.5 rounded-full ${status.tone}`} aria-hidden />
+            <span className="text-[11px] font-medium text-text-tertiary">Inbox</span>
+            <span className="sr-only">{status.label}</span>
+          </div>
+        )}
       </header>
 
       <main className="flex-1 overflow-y-auto">
@@ -154,32 +155,6 @@ export default function App() {
               <div className="h-3 w-2/3 rounded bg-surface-active" />
             </div>
             <span className="sr-only">Reading this page…</span>
-          </div>
-        )}
-
-        {phase === 'saved' && (
-          <div className="rise-in flex flex-col items-center gap-2.5 px-4 py-10 text-center">
-            <span className="pop-in grid size-11 place-items-center rounded-full bg-brand/10 text-brand">
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.4"
-                className="size-5"
-              >
-                <path d="m5 13 4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </span>
-            <p className="text-[14px] font-medium text-foreground">Saved to Inbox</p>
-            {state.itemId && (
-              <button
-                type="button"
-                onClick={openInMemry}
-                className="text-[12px] text-text-tertiary underline-offset-2 transition-colors hover:text-foreground hover:underline focus-visible:outline-none focus-visible:text-foreground focus-visible:underline"
-              >
-                Open in Memry
-              </button>
-            )}
           </div>
         )}
 
@@ -251,12 +226,37 @@ export default function App() {
                 <Excerpt text={draft.excerpt} />
 
                 <TagEditor
-                  tags={draft.properties.tags}
+                  tags={draft.tags ?? []}
                   disabled={!editable}
-                  onChange={(tags) =>
-                    setDraft({ ...draft, properties: { ...draft.properties, tags } })
-                  }
+                  onChange={(tags) => setDraft({ ...draft, tags })}
                 />
+
+                {draft.contentMarkdown.trim() && (
+                  <details className="group border-t border-border pt-2.5">
+                    <summary className="flex cursor-pointer select-none list-none items-center gap-1 text-[12px] font-medium text-text-secondary [&::-webkit-details-marker]:hidden">
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        className="size-3 transition-transform duration-[130ms] ease-[var(--ease-out)] group-open:rotate-90"
+                        aria-hidden
+                      >
+                        <path d="m9 6 6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                      Content
+                    </summary>
+                    {/* Uncontrolled: untouched keeps the original rich HTML on save; editing
+                        replaces it with the user's plain text. Edit-to-save lives in the app. */}
+                    <textarea
+                      key={draft.properties.source}
+                      defaultValue={stripHtml(draft.contentMarkdown)}
+                      disabled={!editable}
+                      onChange={(e) => setDraft({ ...draft, contentMarkdown: e.target.value })}
+                      className="mt-1.5 max-h-64 min-h-24 w-full resize-y overflow-y-auto rounded-md border border-border bg-transparent p-2 font-sans text-[13px] leading-relaxed text-text-secondary outline-none focus:border-text-tertiary"
+                    />
+                  </details>
+                )}
 
                 <details className="group border-t border-border pt-2.5">
                   <summary className="flex cursor-pointer select-none list-none items-center gap-1 text-[12px] font-medium text-text-secondary [&::-webkit-details-marker]:hidden">
@@ -294,7 +294,7 @@ export default function App() {
 
           {(phase === 'ready' || phase === 'app-closed') && (
             <PrimaryButton
-              label={state.connection === 'app-closed' ? 'Open Memry & save' : 'Save to Inbox'}
+              label="Send to memrynote"
               hint={draft ? SUBMIT_HINT : undefined}
               onClick={onSend}
               disabled={!draft}
@@ -302,6 +302,7 @@ export default function App() {
           )}
           {phase === 'approving' && <PrimaryButton label="Approve in Memry…" disabled />}
           {phase === 'saving' && <PrimaryButton label="Saving…" disabled />}
+          {phase === 'saved' && <PrimaryButton label="Sent ✓" disabled />}
           {phase === 'launching' && <PrimaryButton label="Opening Memry…" disabled />}
           {phase === 'error' && (
             <PrimaryButton label="Try again" onClick={() => dispatch({ type: 'RETRY' })} />

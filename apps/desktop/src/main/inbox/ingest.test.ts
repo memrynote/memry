@@ -3,11 +3,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 const updateRun = vi.fn()
 const selectGet = vi.fn()
 const insertSpy = vi.fn()
+const findDuplicateByUrl = vi.fn()
 let setArg: Record<string, unknown> = {}
 
 vi.mock('electron', () => ({
   BrowserWindow: { getAllWindows: vi.fn(() => []) }
 }))
+vi.mock('./duplicates', () => ({ findDuplicateByUrl }))
 vi.mock('../projections', () => ({
   publishProjectionEvent: vi.fn()
 }))
@@ -39,11 +41,12 @@ describe('ingestArticleCapture', () => {
     updateRun.mockReset()
     insertSpy.mockReset()
     selectGet.mockReset()
+    findDuplicateByUrl.mockReset()
+    findDuplicateByUrl.mockReturnValue(null) // no active duplicate by default
     setArg = {}
   })
 
   it('creates a new link item with properties + extraction status when no itemId', async () => {
-    selectGet.mockReturnValue(undefined) // no dedup hit
     const { ingestArticleCapture } = await import('./ingest')
     const res = await ingestArticleCapture(
       {
@@ -55,8 +58,7 @@ describe('ingestArticleCapture', () => {
         properties: {
           title: 'Hello',
           source: 'https://example.com/post',
-          created: '2026-06-17T00:00:00.000Z',
-          tags: ['clippings']
+          created: '2026-06-17T00:00:00.000Z'
         }
       },
       'browser-extension'
@@ -88,8 +90,7 @@ describe('ingestArticleCapture', () => {
         properties: {
           title: 'Hello',
           source: 'https://example.com/post',
-          created: '2026-06-17T00:00:00.000Z',
-          tags: ['clippings']
+          created: '2026-06-17T00:00:00.000Z'
         }
       },
       'api'
@@ -105,5 +106,58 @@ describe('ingestArticleCapture', () => {
       ((setArg.metadata as Record<string, unknown>).properties as Record<string, unknown>).title
     ).toBe('Hello')
     expect(setArg.content).toBe('# Hello')
+  })
+
+  it('creates a new item when the URL was already filed (no active duplicate)', async () => {
+    findDuplicateByUrl.mockReturnValue(null) // filed/archived rows are excluded by the active filter
+    // A bare sourceUrl query (the old dedup) WOULD find the filed row — guards against regressing to it.
+    selectGet.mockReturnValue({ id: 'filed-1', metadata: {} })
+    const { ingestArticleCapture } = await import('./ingest')
+    const res = await ingestArticleCapture(
+      {
+        url: 'https://example.com/post',
+        mode: 'article',
+        contentMarkdown: '# Hello',
+        excerpt: 'body',
+        extractionStatus: 'full',
+        properties: {
+          title: 'Hello',
+          source: 'https://example.com/post',
+          created: '2026-06-17T00:00:00.000Z'
+        }
+      },
+      'browser-extension'
+    )
+    expect(res.itemId).toBeTruthy()
+    expect(insertSpy).toHaveBeenCalledOnce()
+    expect(updateRun).not.toHaveBeenCalled()
+  })
+
+  it('enriches in place when an active duplicate URL exists', async () => {
+    findDuplicateByUrl.mockReturnValue({
+      id: 'active-1',
+      title: 'Hello',
+      createdAt: '2026-06-17T00:00:00.000Z'
+    })
+    selectGet.mockReturnValue({ id: 'active-1', metadata: { fetchStatus: 'complete' } })
+    const { ingestArticleCapture } = await import('./ingest')
+    const res = await ingestArticleCapture(
+      {
+        url: 'https://example.com/post',
+        mode: 'article',
+        contentMarkdown: '# Hello again',
+        excerpt: 'body',
+        extractionStatus: 'full',
+        properties: {
+          title: 'Hello',
+          source: 'https://example.com/post',
+          created: '2026-06-17T00:00:00.000Z'
+        }
+      },
+      'browser-extension'
+    )
+    expect(res.itemId).toBe('active-1')
+    expect(insertSpy).not.toHaveBeenCalled()
+    expect(updateRun).toHaveBeenCalled()
   })
 })

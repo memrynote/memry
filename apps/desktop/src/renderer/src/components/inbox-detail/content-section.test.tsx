@@ -114,8 +114,17 @@ describe('ContentSection', () => {
   })
 
   it('routes content types to their detail previews', () => {
-    const { rerender } = render(<ContentSection item={baseItem('link', { title: 'Article' })} />)
-    expect(screen.getByText('link preview Article')).toBeInTheDocument()
+    const { rerender } = render(
+      <ContentSection
+        item={baseItem('link', {
+          title: 'Article',
+          sourceUrl: 'https://example.com/story',
+          content: '<p>Body</p>'
+        })}
+      />
+    )
+    expect(screen.getByLabelText('inbox content editor')).toHaveValue('<p>Body</p>')
+    expect(screen.getByRole('link', { name: 'example.com' })).toBeInTheDocument()
 
     rerender(
       <ContentSection
@@ -168,6 +177,47 @@ describe('ContentSection', () => {
 
     rerender(<ContentSection item={baseItem('reminder', { title: 'Follow up' })} />)
     expect(screen.getByText('reminder Follow up')).toBeInTheDocument()
+  })
+
+  it('keeps youtube and screenshot links as previews but makes plain articles editable', async () => {
+    const user = userEvent.setup()
+    const onContentChange = vi.fn()
+
+    const { rerender } = render(
+      <ContentSection
+        item={baseItem('link', {
+          title: 'Video',
+          sourceUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
+        })}
+      />
+    )
+    expect(screen.getByText('link preview Video')).toBeInTheDocument()
+
+    rerender(
+      <ContentSection
+        item={baseItem('link', {
+          title: 'Shot',
+          content: '![screenshot](attachments/inbox/x/screenshot.png)'
+        })}
+      />
+    )
+    expect(screen.getByText('link preview Shot')).toBeInTheDocument()
+
+    rerender(
+      <ContentSection
+        item={baseItem('link', {
+          title: 'Doc',
+          sourceUrl: 'https://example.com/a',
+          content: '<p>Hello</p>'
+        })}
+        onContentChange={onContentChange}
+      />
+    )
+    const editor = screen.getByLabelText('inbox content editor')
+    expect(editor).toHaveValue('<p>Hello</p>')
+    await user.clear(editor)
+    await user.type(editor, 'Edited')
+    expect(onContentChange).toHaveBeenLastCalledWith('Edited')
   })
 
   it('renders fallback image and video previews without attachments', () => {
