@@ -2,11 +2,14 @@ import type { Message, MessageAttachment } from '@memry/contracts/ipc-agent'
 import type { MouseEvent } from 'react'
 
 import { Message as AIMessage, MessageContent } from '@/components/ai-elements/message'
+import { cn } from '@/lib/utils'
 
+import { mentionColorForKind } from '../mention-icons'
 import { MemryLinkIcon, useMemryLinkNavigation } from './memry-links'
 
-const userMentionTagClassName =
-  'mx-0.5 inline-flex max-w-full items-center gap-1 rounded-full bg-primary-foreground/15 px-1.5 py-0.5 align-baseline text-xs font-medium text-primary-foreground ring-1 ring-primary-foreground/20 transition-colors hover:bg-primary-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-foreground/50'
+// Match the composer mention chip: per-kind color so it stays readable on the primary bubble.
+const userMentionTagBaseClassName =
+  'mx-0.5 inline-flex max-w-full items-center gap-1 rounded-full px-1.5 py-0.5 align-baseline text-xs font-medium ring-1 transition-colors focus-visible:outline-none focus-visible:ring-2'
 const memryHrefKinds: Partial<Record<MessageAttachment['kind'], string>> = {
   note: 'note',
   task: 'task',
@@ -122,9 +125,10 @@ function UserAttachmentTag({
   navigateMemryLink: (href: string, title?: string) => boolean
 }): React.JSX.Element {
   const href = hrefForAttachment(attachment)
+  const tagClassName = cn(userMentionTagBaseClassName, mentionColorForKind(attachment.kind))
 
   if (!href) {
-    return <span className={userMentionTagClassName}>{label}</span>
+    return <span className={tagClassName}>{label}</span>
   }
   const targetHref = href
 
@@ -134,8 +138,8 @@ function UserAttachmentTag({
   }
 
   return (
-    <a href={targetHref} className={userMentionTagClassName} onClick={handleClick}>
-      <MemryLinkIcon href={targetHref} className="text-primary-foreground/90" />
+    <a href={targetHref} className={tagClassName} onClick={handleClick}>
+      <MemryLinkIcon href={targetHref} className="text-current" />
       <span className="min-w-0">{label}</span>
     </a>
   )

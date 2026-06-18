@@ -179,7 +179,8 @@
       "day": "Day",
       "agent": "Agent",
       "pendingApproval": "{count, plural, one {# pending approval} other {# pending approvals}}",
-      "inProgress": "Agent turn in progress"
+      "inProgress": "Agent turn in progress",
+      "close": "Close agent"
     },
     "errors": {
       "loadConversations": "Could not load agent conversations",
