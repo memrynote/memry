@@ -64,7 +64,7 @@ export const WikiLinkPreviewCard = memo(function WikiLinkPreviewCard({
         {preview.tags.length > 0 && (
           <div className="flex items-center gap-2 flex-wrap">
             {preview.tags.map((tag) => {
-              const colors = getTagColors(tag.color)
+              const colors = getTagColors(tag.color, tag.name)
               return (
                 <button
                   key={tag.name}

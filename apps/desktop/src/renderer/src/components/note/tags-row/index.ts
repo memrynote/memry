@@ -10,7 +10,7 @@ export {
   COLOR_NAMES,
   COLOR_ROWS,
   getTagColors,
-  getRandomColor,
+  defaultTagColorName,
   withAlpha
 } from './tag-colors'
 export type { TagColorConfig } from './tag-colors'

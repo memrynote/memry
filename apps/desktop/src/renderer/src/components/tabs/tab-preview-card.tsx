@@ -66,7 +66,7 @@ export const TabPreviewCard = memo(function TabPreviewCard({
       {preview.tags.length > 0 && (
         <div data-testid="tab-preview-tags" className="flex items-center gap-1.5 flex-wrap">
           {visibleTags.map((tag) => {
-            const colors = getTagColors(tag.color)
+            const colors = getTagColors(tag.color, tag.name)
             return (
               <span
                 key={tag.name}

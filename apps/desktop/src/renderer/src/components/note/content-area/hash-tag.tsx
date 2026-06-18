@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { createInlineContentSpec, type Block } from '@blocknote/core'
-import { TAG_COLORS, withAlpha } from '@/components/note/tags-row/tag-colors'
+import { getTagColors, withAlpha } from '@/components/note/tags-row/tag-colors'
 
-export function createHashTagInlineContent(tag: string, color: string = 'stone') {
+export function createHashTagInlineContent(tag: string, color: string = '') {
   return {
     type: 'hashTag' as const,
     props: { tag, color }
@@ -15,15 +15,15 @@ export const HashTag = createInlineContentSpec(
     type: 'hashTag' as const,
     propSchema: {
       tag: { default: '' },
-      color: { default: 'stone' }
+      color: { default: '' }
     },
     content: 'none'
   },
   {
     render: (inlineContent) => {
       const tag = inlineContent.props.tag || ''
-      const colorName = inlineContent.props.color || 'stone'
-      const colors = TAG_COLORS[colorName] || TAG_COLORS.stone
+      const colorName = inlineContent.props.color || ''
+      const colors = getTagColors(colorName, tag)
 
       const dom = document.createElement('span')
       dom.className = 'inline-hash-tag'
@@ -51,7 +51,7 @@ export const HashTag = createInlineContentSpec(
       if (element.hasAttribute('data-hash-tag')) {
         const tag = element.getAttribute('data-hash-tag')?.trim() || ''
         if (tag) {
-          const color = element.getAttribute('data-hash-tag-color')?.trim() || 'stone'
+          const color = element.getAttribute('data-hash-tag-color')?.trim() || ''
           return { tag, color }
         }
       }
@@ -104,7 +104,7 @@ function splitTextWithHashTags(
       segments.push(styles ? createStyledText(before, styles) : before)
     }
 
-    const color = tagColorMap.get(normalizedTag) || 'stone'
+    const color = tagColorMap.get(normalizedTag) || ''
     segments.push(createHashTagInlineContent(normalizedTag, color))
 
     didChange = true

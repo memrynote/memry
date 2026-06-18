@@ -86,7 +86,7 @@ export function TagDetailView({ tag, color, className }: TagDetailViewProps): Re
   const [renameOpen, setRenameOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
 
-  const tagColors = getTagColors(resolvedColor)
+  const tagColors = getTagColors(resolvedColor, tag)
 
   // Handle note click - open in main area
   const handleNoteClick = useCallback(

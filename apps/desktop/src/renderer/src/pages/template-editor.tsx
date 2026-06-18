@@ -211,7 +211,7 @@ function TemplateEditorForm({
     return tags.map((tagName) => ({
       id: tagName,
       name: tagName,
-      color: tagColorMap.get(tagName) ?? pendingTagColorsRef.current.get(tagName) ?? 'stone'
+      color: tagColorMap.get(tagName) ?? pendingTagColorsRef.current.get(tagName) ?? ''
     }))
   }, [tags, tagColorMap])
 

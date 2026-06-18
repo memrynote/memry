@@ -39,13 +39,23 @@ export const COLOR_ROWS = [
   ['plum', 'magenta', 'slate', 'sand', 'stone', 'mauve']
 ]
 
-export function getTagColors(colorName: string): TagColorConfig {
-  return TAG_COLORS[colorName] || TAG_COLORS.stone
+// Deterministic palette color from a tag name: same tag → same color,
+// everywhere, with no stored color needed. Used as the default when a tag has
+// no explicit user-picked color (the alternative was a flat grey).
+export function defaultTagColorName(tagName: string): string {
+  let hash = 0
+  for (let i = 0; i < tagName.length; i++) {
+    hash = (hash * 31 + tagName.charCodeAt(i)) | 0
+  }
+  return COLOR_NAMES[Math.abs(hash) % COLOR_NAMES.length]
+}
+
+// Resolve to a palette config. An explicit palette name wins; otherwise (empty,
+// or a legacy hex from seed/backend) we derive a stable color from the tag name.
+export function getTagColors(colorName: string, tagName?: string): TagColorConfig {
+  if (colorName && TAG_COLORS[colorName]) return TAG_COLORS[colorName]
+  if (tagName) return TAG_COLORS[defaultTagColorName(tagName)]
+  return TAG_COLORS.stone
 }
 
 export { withAlpha } from '@/lib/color'
-
-export function getRandomColor(): string {
-  const index = Math.floor(Math.random() * COLOR_NAMES.length)
-  return COLOR_NAMES[index]
-}

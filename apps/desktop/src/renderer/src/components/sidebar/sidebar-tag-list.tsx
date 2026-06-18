@@ -88,7 +88,7 @@ function TagTreeItem({
   const { t } = useT('common')
   const hasChildren = node.children.length > 0
   const isExpanded = expanded.has(node.fullPath)
-  const colors = node.color ? getTagColors(node.color) : null
+  const colors = getTagColors(node.color ?? '', node.fullPath)
   const isSelected = selectedTag === node.fullPath
 
   // The tag pill shrink-wraps its label, so the fade mask must only apply when
@@ -113,7 +113,7 @@ function TagTreeItem({
 
   const handleTagClick = (e: React.MouseEvent) => {
     e.preventDefault()
-    onTagClick(node.fullPath, node.color ?? 'stone')
+    onTagClick(node.fullPath, node.color ?? '')
   }
 
   return (

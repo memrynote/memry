@@ -174,7 +174,7 @@ export function TagManager() {
           </p>
         )}
         {filteredTags.map((tag, i) => {
-          const colors = tag.color ? getTagColors(tag.color) : null
+          const colors = getTagColors(tag.color ?? '', tag.name)
 
           return (
             <div key={tag.name}>

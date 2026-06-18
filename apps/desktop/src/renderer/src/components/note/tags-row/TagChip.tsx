@@ -22,7 +22,7 @@ interface TagChipProps {
 export function TagChip({ tag, onRemove, onClick, isSelected, isFocused, disabled }: TagChipProps) {
   const { t } = useT('notes')
   const [isHovered, setIsHovered] = useState(false)
-  const colors = getTagColors(tag.color)
+  const colors = getTagColors(tag.color, tag.name)
   const isClickable = !!onClick && !isSelected
 
   const pillClasses = cn(
