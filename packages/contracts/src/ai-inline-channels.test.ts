@@ -18,7 +18,8 @@ describe('AIInlineChannels.invoke', () => {
       SET_SETTINGS: 'ai-inline:set-settings',
       GET_SERVER_PORT: 'ai-inline:get-server-port',
       START_SERVER: 'ai-inline:start-server',
-      STOP_SERVER: 'ai-inline:stop-server'
+      STOP_SERVER: 'ai-inline:stop-server',
+      LIST_OLLAMA_MODELS: 'ai-inline:list-ollama-models'
     })
   })
 
