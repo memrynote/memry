@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { I18nextProvider } from 'react-i18next'
 import type { i18n as I18nInstance } from 'i18next'
 import { createRendererI18n } from '@memry/i18n/renderer'
@@ -38,9 +39,11 @@ describe('ImportDialog i18n', () => {
 
   it('interpolates the ICU title and description (no literal braces)', () => {
     render(
-      <I18nextProvider i18n={i18n}>
-        <ImportDialog item={notionItem} open onOpenChange={() => {}} />
-      </I18nextProvider>
+      <QueryClientProvider client={new QueryClient()}>
+        <I18nextProvider i18n={i18n}>
+          <ImportDialog item={notionItem} open onOpenChange={() => {}} />
+        </I18nextProvider>
+      </QueryClientProvider>
     )
 
     expect(screen.getByText('Import from Notion')).toBeInTheDocument()

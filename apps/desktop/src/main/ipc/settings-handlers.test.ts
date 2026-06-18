@@ -986,7 +986,8 @@ describe('settings-handlers', () => {
       expect(result).toEqual({
         defaultTargetCalendarId: null,
         onboardingCompleted: false,
-        promoteConfirmDismissed: false
+        promoteConfirmDismissed: false,
+        pushEventsToGoogle: true
       })
     })
 
@@ -1009,7 +1010,8 @@ describe('settings-handlers', () => {
       expect(result).toEqual({
         defaultTargetCalendarId: 'primary@group.calendar.google.com',
         onboardingCompleted: true,
-        promoteConfirmDismissed: false
+        promoteConfirmDismissed: false,
+        pushEventsToGoogle: true
       })
     })
 
@@ -1029,7 +1031,8 @@ describe('settings-handlers', () => {
         JSON.stringify({
           defaultTargetCalendarId: 'work@group.calendar.google.com',
           onboardingCompleted: true,
-          promoteConfirmDismissed: false
+          promoteConfirmDismissed: false,
+          pushEventsToGoogle: true
         })
       )
     })

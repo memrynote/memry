@@ -17,9 +17,9 @@ const mocks = vi.hoisted(() => ({
   exportHtml: vi.fn(),
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
-  tryParseHTMLToBlocks: vi.fn(),
+  tryParseMarkdownToBlocks: vi.fn(),
   replaceBlocks: vi.fn(),
-  blocksToHTMLLossy: vi.fn(),
+  blocksToMarkdownLossy: vi.fn(),
   editorFocus: vi.fn(),
   extractTitleFromBlocks: vi.fn()
 }))
@@ -113,9 +113,9 @@ vi.mock('next-themes', () => ({
 vi.mock('@blocknote/react', () => ({
   useCreateBlockNote: () => ({
     document: [{ type: 'paragraph', content: 'First title' }],
-    tryParseHTMLToBlocks: mocks.tryParseHTMLToBlocks,
+    tryParseMarkdownToBlocks: mocks.tryParseMarkdownToBlocks,
     replaceBlocks: mocks.replaceBlocks,
-    blocksToHTMLLossy: mocks.blocksToHTMLLossy
+    blocksToMarkdownLossy: mocks.blocksToMarkdownLossy
   })
 }))
 
@@ -161,8 +161,8 @@ describe('major renderer gap surfaces', () => {
     mocks.archive.mockResolvedValue({ success: true })
     mocks.exportPdf.mockResolvedValue({ success: true, path: '/tmp/note.pdf' })
     mocks.exportHtml.mockResolvedValue({ success: true, path: '/tmp/note.html' })
-    mocks.tryParseHTMLToBlocks.mockReturnValue([{ type: 'paragraph', content: 'Parsed' }])
-    mocks.blocksToHTMLLossy.mockReturnValue('<p>Saved</p>')
+    mocks.tryParseMarkdownToBlocks.mockResolvedValue([{ type: 'paragraph', content: 'Parsed' }])
+    mocks.blocksToMarkdownLossy.mockResolvedValue('Saved markdown')
     mocks.extractTitleFromBlocks.mockReturnValue('First title')
   })
 
@@ -382,12 +382,12 @@ describe('major renderer gap surfaces', () => {
     expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 
-  it('loads inbox editor content, reports changes, handles parse fallback, and focuses the editor', async () => {
+  it('parses inbox editor markdown, reports markdown changes, and focuses the editor', async () => {
     const onContentChange = vi.fn()
     const onTitleChange = vi.fn()
-    const editorRender = render(
+    render(
       <InboxContentEditor
-        initialContent="<p>Hello</p>"
+        initialContent="**Hello**"
         onContentChange={onContentChange}
         onTitleChange={onTitleChange}
         placeholder="Write"
@@ -401,42 +401,25 @@ describe('major renderer gap surfaces', () => {
         [{ type: 'paragraph', content: 'Parsed' }]
       )
     )
+    expect(mocks.tryParseMarkdownToBlocks).toHaveBeenCalledWith('**Hello**')
     expect(screen.getByTestId('blocknote-view')).toHaveAttribute('data-theme', 'dark')
 
     fireEvent.click(screen.getByRole('button', { name: 'Change content' }))
     expect(onTitleChange).toHaveBeenCalledWith('First title')
-    expect(onContentChange).toHaveBeenCalledWith('<p>Saved</p>')
+    await waitFor(() => expect(onContentChange).toHaveBeenCalledWith('Saved markdown'))
 
     fireEvent.mouseDown(screen.getByRole('region', { name: 'contentEditor' }))
     expect(mocks.editorFocus).toHaveBeenCalled()
-
-    mocks.tryParseHTMLToBlocks.mockImplementationOnce(() => {
-      throw new Error('not html')
-    })
-    editorRender.unmount()
-    mocks.replaceBlocks.mockClear()
-    render(<InboxContentEditor initialContent="Plain text" editable={false} />)
-    await waitFor(() =>
-      expect(mocks.replaceBlocks).toHaveBeenCalledWith(
-        [{ type: 'paragraph', content: 'First title' }],
-        [{ type: 'paragraph', content: 'Plain text' }]
-      )
-    )
-    expect(screen.getByTestId('blocknote-view')).toHaveAttribute('data-editable', 'false')
   })
 
-  it('restores inbox editor indentation from BlockNote nesting metadata', async () => {
-    const parent = { type: 'paragraph', content: 'Parent', children: [] }
-    const child = { type: 'paragraph', content: 'Child', children: [] }
-    mocks.tryParseHTMLToBlocks.mockReturnValueOnce([parent, child])
+  it('leaves the inbox editor untouched when markdown parsing fails', async () => {
+    mocks.tryParseMarkdownToBlocks.mockRejectedValueOnce(new Error('bad markdown'))
 
-    render(<InboxContentEditor initialContent='<p>Parent</p><p data-nesting-level="1">Child</p>' />)
+    render(<InboxContentEditor initialContent="Plain text" editable={false} />)
 
     await waitFor(() =>
-      expect(mocks.replaceBlocks).toHaveBeenCalledWith(
-        [{ type: 'paragraph', content: 'First title' }],
-        [{ ...parent, children: [{ ...child, children: [] }] }]
-      )
+      expect(screen.getByTestId('blocknote-view')).toHaveAttribute('data-editable', 'false')
     )
+    expect(mocks.replaceBlocks).not.toHaveBeenCalled()
   })
 })

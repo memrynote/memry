@@ -47,13 +47,21 @@ describe('CalendarSourceSyncStatusSchema', () => {
 
 describe('CalendarProjectionSourceTypeSchema', () => {
   it('accepts valid source types', () => {
-    for (const v of ['event', 'task', 'reminder', 'inbox_snooze', 'external_event']) {
+    for (const v of [
+      'event',
+      'task',
+      'reminder',
+      'inbox_snooze',
+      'external_event',
+      'note',
+      'note_date'
+    ]) {
       expect(CalendarProjectionSourceTypeSchema.safeParse(v).success).toBe(true)
     }
   })
 
   it('rejects invalid source type', () => {
-    expect(CalendarProjectionSourceTypeSchema.safeParse('note').success).toBe(false)
+    expect(CalendarProjectionSourceTypeSchema.safeParse('bogus').success).toBe(false)
   })
 })
 

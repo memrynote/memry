@@ -111,6 +111,7 @@ const createMockApi = () => ({
     openExternal: vi.fn().mockResolvedValue({ success: true }),
     revealInFinder: vi.fn().mockResolvedValue({ success: true }),
     getPropertyDefinitions: vi.fn().mockResolvedValue([]),
+    getCalendarPropertyNames: vi.fn().mockResolvedValue([]),
     createPropertyDefinition: vi.fn().mockResolvedValue({ success: true }),
     updatePropertyDefinition: vi.fn().mockResolvedValue({ success: true }),
     uploadAttachment: vi.fn().mockResolvedValue({ success: true }),
@@ -501,7 +502,14 @@ const createMockApi = () => ({
   onProjectUpdated: vi.fn().mockReturnValue(() => {}),
   onProjectDeleted: vi.fn().mockReturnValue(() => {}),
   onSettingsChanged: vi.fn().mockReturnValue(() => {}),
-  onReminderDue: vi.fn().mockReturnValue(() => {})
+  onReminderDue: vi.fn().mockReturnValue(() => {}),
+  onReminderCreated: vi.fn().mockReturnValue(() => {}),
+  onReminderUpdated: vi.fn().mockReturnValue(() => {}),
+  onReminderDeleted: vi.fn().mockReturnValue(() => {}),
+  onReminderDismissed: vi.fn().mockReturnValue(() => {}),
+  onReminderSnoozed: vi.fn().mockReturnValue(() => {}),
+  onReminderClicked: vi.fn().mockReturnValue(() => {}),
+  onInboxOpenItem: vi.fn().mockReturnValue(() => {})
 })
 
 if (typeof window === 'undefined') {
