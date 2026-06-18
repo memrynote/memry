@@ -17,6 +17,10 @@
       "showWithCount": "Show snoozed items ({count})",
       "hide": "Hide snoozed items"
     },
+    "density": {
+      "toComfortable": "Comfortable view",
+      "toCompact": "Compact view"
+    },
     "filter": {
       "button": "Filter",
       "byType": "Filter by type",
