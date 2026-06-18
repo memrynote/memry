@@ -83,7 +83,7 @@ export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
         </DialogHeader>
 
         {!summary && (
-          <div className="flex flex-col gap-3 py-2">
+          <div className="flex min-w-0 flex-col gap-3 py-2">
             {isDirectoryPick && (
               <p className="text-xs/4 text-muted-foreground">{t('import.dialog.folderHint')}</p>
             )}
