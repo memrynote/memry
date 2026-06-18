@@ -16,7 +16,8 @@ describe('reminderTargetType', () => {
       NOTE: 'note',
       JOURNAL: 'journal',
       HIGHLIGHT: 'highlight',
-      TASK: 'task'
+      TASK: 'task',
+      NOTE_DATE: 'note_date'
     })
   })
 
@@ -25,9 +26,10 @@ describe('reminderTargetType', () => {
       reminderTargetType.NOTE,
       reminderTargetType.JOURNAL,
       reminderTargetType.HIGHLIGHT,
-      reminderTargetType.TASK
+      reminderTargetType.TASK,
+      reminderTargetType.NOTE_DATE
     ]
-    expect(values).toHaveLength(4)
+    expect(values).toHaveLength(5)
   })
 })
 

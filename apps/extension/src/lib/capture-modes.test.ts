@@ -16,9 +16,9 @@ const base: ArticleCapture = {
   properties: {
     title: 'Page',
     source: 'https://example.com/p',
-    created: 'now',
-    tags: ['clippings']
-  }
+    created: 'now'
+  },
+  tags: ['clippings']
 }
 
 describe('toSelectionCapture', () => {

@@ -294,8 +294,13 @@ export function createNotesService({
     },
 
     async list(options = {}) {
+      // listNoteMetadata filters on the full vault-relative path, so prepend the
+      // configured note root (e.g. 'notes'); for a flat vault root it stays as-is.
+      const folder = options.folder
+        ? [config.defaultNoteFolder, options.folder].filter(Boolean).join('/')
+        : undefined
       const rows = listNoteMetadata(dataDb, {
-        folder: options.folder,
+        folder,
         journalOnly: options.journalOnly ?? false,
         limit: options.limit ?? 100
       })

@@ -1,7 +1,10 @@
 #!/bin/bash
-# Rebuilds better-sqlite3 for the target runtime (node or electron) only when needed.
+# Rebuilds the native modules for the target runtime (node or electron) only when needed.
 # Uses a stamp file to track which runtime the binary was last compiled for,
 # avoiding the 5-10s rebuild penalty on every pnpm dev / pnpm test.
+# classic-level ships per-platform prebuilds; without a from-source rebuild the Linux CI
+# runner can load the bundled darwin prebuild (invalid ELF header → ERR_DLOPEN), so it
+# must be rebuilt for the runner like better-sqlite3.
 
 set -euo pipefail
 
@@ -9,7 +12,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 REPO_ROOT="$(cd "$APP_ROOT/../.." && pwd)"
 TARGET="${1:-node}"
-MODULES="better-sqlite3,keytar"
+MODULES="better-sqlite3,keytar,classic-level"
 STAMP_FILE="$APP_ROOT/node_modules/.native-build-target"
 MODULE_DIR="$(node -e "const path = require('path'); process.stdout.write(path.dirname(require.resolve('better-sqlite3/package.json')))")"
 ELECTRON_INSTALL_SCRIPT="$(node -e "process.stdout.write(require.resolve('electron/install.js'))")"
@@ -86,7 +89,23 @@ if [ "$TARGET" = "electron" ]; then
 else
   echo "[native] rebuilding $MODULES for Node $(node -v)..."
   for mod in ${MODULES//,/ }; do
-    pnpm rebuild "$mod" 2>/dev/null || npm rebuild "$mod"
+    if [ "$mod" = "classic-level" ]; then
+      # classic-level resolves a bundled prebuild via node-gyp-build, which can pick the
+      # wrong platform binary on CI (darwin prebuild on Linux → invalid ELF header →
+      # ERR_DLOPEN). `pnpm rebuild` keeps using that prebuild, so force a from-source
+      # compile; node-gyp-build then loads the local build/Release binary instead.
+      # Multiple versions coexist (direct 3.x + y-leveldb's transitive 1.4.x), so build
+      # every instance in the store, not just the one resolved from this workspace.
+      classic_built=0
+      for classic_dir in "$REPO_ROOT"/node_modules/.pnpm/classic-level@*/node_modules/classic-level; do
+        [ -d "$classic_dir" ] || continue
+        echo "[native] force-building ${classic_dir#"$REPO_ROOT/"}"
+        ( cd "$classic_dir" && pnpm exec node-gyp rebuild ) && classic_built=1
+      done
+      [ "$classic_built" = 1 ] || pnpm rebuild "$mod" || npm rebuild "$mod"
+    else
+      pnpm rebuild "$mod" 2>/dev/null || npm rebuild "$mod"
+    fi
   done
 fi
 

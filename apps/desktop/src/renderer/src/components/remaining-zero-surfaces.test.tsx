@@ -70,7 +70,8 @@ vi.mock('./note/content-area/task-block/task-block-renderer', () => ({
 vi.mock('@/services/tasks-service', () => ({
   tasksService: {
     listProjects: (...args: unknown[]) => mocks.listProjects(...args),
-    create: (...args: unknown[]) => mocks.createTask(...args)
+    create: (...args: unknown[]) => mocks.createTask(...args),
+    update: vi.fn().mockResolvedValue({ success: true })
   }
 }))
 
@@ -265,18 +266,19 @@ describe('remaining zero renderer surfaces', () => {
 
     expect((createTaskBlock as any).schema.type).toBe('taskBlock')
     const updateBlock = vi.fn()
+    const block = { id: 'b1', content: [{ text: 'Plan launch' }] }
     const item = getTaskSlashMenuItem({
-      getTextCursorPosition: () => ({
-        block: { content: [{ text: 'Plan launch' }] }
-      }),
-      updateBlock
+      getTextCursorPosition: () => ({ block }),
+      updateBlock,
+      getBlock: () => block
     })
     await item.onItemClick()
     expect(mocks.createTask).toHaveBeenCalledWith({
       projectId: 'project-2',
       title: 'Plan launch',
       priority: 3,
-      dueDate: '2026-05-10'
+      dueDate: '2026-05-10',
+      linkedNoteIds: []
     })
     expect(updateBlock).toHaveBeenCalledWith(
       expect.anything(),

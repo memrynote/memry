@@ -3,6 +3,7 @@ import { sql } from 'drizzle-orm'
 import { mockIpcMain, resetIpcMocks, invokeHandler } from '@tests/utils/mock-ipc'
 import {
   createTestDataDb,
+  createTestIndexDb,
   type TestDatabaseResult,
   type TestDb,
   asClientDb
@@ -20,6 +21,7 @@ const mockListGoogleAccountIds = vi.fn(() => [] as string[])
 const mockResolveDefaultGoogleAccountId = vi.fn(() => null as string | null)
 const mockSyncGoogleCalendarNow = vi.fn()
 const mockSyncGoogleCalendarSource = vi.fn()
+const mockSyncLocalSourceToGoogleCalendar = vi.fn(async () => null)
 const mockStartGoogleCalendarSyncRunner = vi.fn(async () => {})
 const mockStopGoogleCalendarSyncRunner = vi.fn()
 const mockIsMemryUserSignedIn = vi.fn(async () => true)
@@ -57,7 +59,8 @@ vi.mock('electron', () => ({
 
 vi.mock('../database', () => ({
   getDatabase: vi.fn(),
-  requireDatabase: vi.fn()
+  requireDatabase: vi.fn(),
+  getIndexDatabase: vi.fn()
 }))
 
 vi.mock('../lib/id', () => ({
@@ -82,6 +85,8 @@ vi.mock('../calendar/google/oauth', () => ({
 vi.mock('../calendar/google/sync-service', () => ({
   syncGoogleCalendarNow: (...args: unknown[]) => mockSyncGoogleCalendarNow(...args),
   syncGoogleCalendarSource: (...args: unknown[]) => mockSyncGoogleCalendarSource(...args),
+  syncLocalSourceToGoogleCalendar: (...args: unknown[]) =>
+    mockSyncLocalSourceToGoogleCalendar(...args),
   startGoogleCalendarSyncRunner: (...args: unknown[]) => mockStartGoogleCalendarSyncRunner(...args),
   stopGoogleCalendarSyncRunner: (...args: unknown[]) => mockStopGoogleCalendarSyncRunner(...args)
 }))
@@ -111,7 +116,7 @@ vi.mock('../auth-state', () => ({
   isMemryUserSignedIn: (...args: unknown[]) => mockIsMemryUserSignedIn(...args)
 }))
 
-import { getDatabase, requireDatabase } from '../database'
+import { getDatabase, getIndexDatabase, requireDatabase } from '../database'
 import {
   enqueueLocalSyncCreate,
   enqueueLocalSyncDelete,
@@ -122,6 +127,7 @@ import { registerCalendarHandlers, unregisterCalendarHandlers } from './calendar
 describe('calendar-handlers', () => {
   let dbResult: TestDatabaseResult
   let db: TestDb
+  let indexDbResult: TestDatabaseResult
 
   beforeEach(() => {
     resetIpcMocks()
@@ -130,8 +136,10 @@ describe('calendar-handlers', () => {
     removeHandlerCalls.length = 0
     dbResult = createTestDataDb()
     db = dbResult.db
+    indexDbResult = createTestIndexDb()
     ;(getDatabase as Mock).mockReturnValue(asClientDb(db))
     ;(requireDatabase as Mock).mockReturnValue(asClientDb(db))
+    ;(getIndexDatabase as Mock).mockReturnValue(asClientDb(indexDbResult.db))
     mockHasGoogleCalendarLocalAuth.mockResolvedValue(false)
     mockHasAnyGoogleCalendarLocalAuth.mockResolvedValue(false)
     mockListGoogleAccountIds.mockReturnValue([])
@@ -158,6 +166,7 @@ describe('calendar-handlers', () => {
   afterEach(() => {
     unregisterCalendarHandlers()
     dbResult.close()
+    indexDbResult.close()
   })
 
   it('registers all calendar handlers', () => {

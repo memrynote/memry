@@ -1,4 +1,5 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { renderWithProviders as render } from '@tests/utils/render'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import * as Y from 'yjs'
 
@@ -83,6 +84,10 @@ vi.mock('@blocknote/react', () => ({
   SuggestionMenuController: (props: Record<string, unknown>) => {
     contentAreaMocks.suggestionControllers.push(props)
     return <div data-testid={`suggestion-${props.triggerCharacter}`} />
+  },
+  GridSuggestionMenuController: (props: Record<string, unknown>) => {
+    contentAreaMocks.suggestionControllers.push(props)
+    return <div data-testid={`grid-suggestion-${props.triggerCharacter}`} />
   },
   getDefaultReactSlashMenuItems: vi.fn(() => [
     { title: 'Paragraph', aliases: ['text'] },

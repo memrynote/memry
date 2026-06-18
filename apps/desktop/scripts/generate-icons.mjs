@@ -14,6 +14,9 @@ const PROFILE_RECTANGLE_PATH = join(BRAND_DIR, 'social', 'profile-rectangle.png'
 const PROFILE_IMAGE_DARK_PATH = join(BRAND_DIR, 'social', 'profile-image-dark.png')
 const PROFILE_SQUARE_DARK_PATH = join(BRAND_DIR, 'social', 'profile-square-dark.png')
 const PROFILE_RECTANGLE_DARK_PATH = join(BRAND_DIR, 'social', 'profile-rectangle-dark.png')
+const EXTENSION_ICON_DIR = join(__dirname, '..', '..', 'extension', 'public', 'icon')
+const EXTENSION_ICON_SIZES = [16, 32, 48, 96, 128]
+const EXTENSION_LOGO_FILL = 0.96 // mark width as fraction of frame; wide mark on transparent bg
 const CANVAS_SIZE = 1024
 const PROFILE_RECTANGLE_WIDTH = 1500
 const PROFILE_RECTANGLE_HEIGHT = 500
@@ -330,6 +333,31 @@ async function generateProfileRectangle() {
   console.log('  assets/brand/memry/social/profile-rectangle-dark.png')
 }
 
+async function generateExtensionIcons() {
+  // Trim the baked transparent top/bottom padding off the source mark, then center it
+  // edge-to-edge by width on a transparent square — fills the toolbar frame like other
+  // extension icons instead of floating small in the middle.
+  const trimmed = await sharp(SOURCE_ICON_PATH).trim({ threshold: 1 }).toBuffer()
+  await Promise.all(
+    EXTENSION_ICON_SIZES.map(async (size) => {
+      const inner = Math.max(1, Math.round(size * EXTENSION_LOGO_FILL))
+      const mark = await sharp(trimmed).resize({ width: inner, fit: 'inside' }).png().toBuffer()
+      await sharp({
+        create: {
+          width: size,
+          height: size,
+          channels: 4,
+          background: { r: 0, g: 0, b: 0, alpha: 0 }
+        }
+      })
+        .composite([{ input: mark, gravity: 'center' }])
+        .png()
+        .toFile(join(EXTENSION_ICON_DIR, `${size}.png`))
+    })
+  )
+  console.log('  apps/extension/public/icon/{16,32,48,96,128}.png')
+}
+
 async function main() {
   mkdirSync(BUILD_DIR, { recursive: true })
   const iconTheme = ICON_THEMES[ICON_THEME_NAME]
@@ -339,7 +367,8 @@ async function main() {
     generateIco(iconTheme),
     generatePng(iconTheme),
     generateProfileImage(),
-    generateProfileRectangle()
+    generateProfileRectangle(),
+    generateExtensionIcons()
   ])
   console.log('Done.')
 }

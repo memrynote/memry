@@ -17,22 +17,11 @@ import { cn } from '@/lib/utils'
 import { createLogger } from '@/lib/logger'
 import { extractTitleFromBlocks } from '@/lib/blocknote-title'
 import { useT } from '@memry/i18n/renderer'
-import { restoreBlockNesting } from '@memry/shared/block-nesting'
 
 const log = createLogger('Component:InboxContentEditor')
 
-function extractTopLevelNestingLevels(html: string): number[] {
-  const template = document.createElement('template')
-  template.innerHTML = html
-
-  return Array.from(template.content.children).map((element) => {
-    const value = Number(element.getAttribute('data-nesting-level') ?? 0)
-    return Number.isInteger(value) && value > 0 ? value : 0
-  })
-}
-
 interface InboxContentEditorProps {
-  /** Initial content (plain text or HTML) */
+  /** Initial content (markdown) */
   initialContent: string | null
   /** Called when content changes */
   onContentChange?: (content: string) => void
@@ -93,35 +82,19 @@ export const InboxContentEditor = memo(function InboxContentEditor({
     initialContentLoadedRef.current = true
 
     async function loadContent() {
+      if (typeof initialContent !== 'string' || !initialContent.trim()) {
+        isContentReadyRef.current = true
+        return
+      }
       try {
-        if (typeof initialContent === 'string' && initialContent.trim()) {
-          // Try to parse as HTML first, fallback to plain text
-          try {
-            const blocks = editor.tryParseHTMLToBlocks(initialContent)
-            const nestingLevels = extractTopLevelNestingLevels(initialContent)
-            const nextBlocks =
-              nestingLevels.some((level) => level > 0) && nestingLevels.length === blocks.length
-                ? restoreBlockNesting(blocks, nestingLevels)
-                : blocks
-            if (nextBlocks.length > 0) {
-              editor.replaceBlocks(editor.document, nextBlocks)
-            } else {
-              // If HTML parsing gives empty result, try as plain text
-              const plainTextBlock = {
-                type: 'paragraph' as const,
-                content: initialContent
-              }
-              editor.replaceBlocks(editor.document, [plainTextBlock])
-            }
-          } catch {
-            // Fallback: treat as plain text
-            const plainTextBlock = {
-              type: 'paragraph' as const,
-              content: initialContent
-            }
-            editor.replaceBlocks(editor.document, [plainTextBlock])
-          }
+        // Inbox content is markdown (article extraction, captured text, screenshots).
+        // Parse it like the note page so bold/headings/links render instead of raw `**…**`.
+        const blocks = await editor.tryParseMarkdownToBlocks(initialContent)
+        if (blocks.length > 0) {
+          editor.replaceBlocks(editor.document, blocks)
         }
+      } catch (error) {
+        log.error('Failed to parse markdown content', error)
       } finally {
         isContentReadyRef.current = true
       }
@@ -137,8 +110,8 @@ export const InboxContentEditor = memo(function InboxContentEditor({
       onTitleChange?.(extractTitleFromBlocks(editor.document))
 
       if (onContentChange) {
-        const html = editor.blocksToHTMLLossy(editor.document)
-        onContentChange(html)
+        const markdown = await editor.blocksToMarkdownLossy(editor.document)
+        onContentChange(markdown)
       }
     } catch (error) {
       log.error('Failed to convert content', error)

@@ -49,16 +49,9 @@ export function PropertyRows({
       />
       <Row
         label="author"
-        value={(properties.author ?? []).join(', ')}
+        value={properties.author ?? ''}
         disabled={disabled}
-        onChange={(v) =>
-          set({
-            author: v
-              .split(',')
-              .map((s) => s.trim())
-              .filter(Boolean)
-          })
-        }
+        onChange={(v) => set({ author: v })}
       />
       <Row
         label="published"

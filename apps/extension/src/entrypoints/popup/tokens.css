@@ -14,7 +14,6 @@
   --color-primary-foreground: var(--primary-foreground);
   --color-brand: var(--brand);
   --color-ready: var(--ready);
-  --font-serif: 'Crimson Pro', Georgia, 'Times New Roman', serif;
   --font-sans: ui-sans-serif, -apple-system, system-ui, 'Segoe UI', Helvetica, Arial, sans-serif;
 }
 

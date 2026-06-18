@@ -61,7 +61,8 @@ vi.mock('@/contexts/sidebar-drill-down', () => ({
   useSidebarDrillDown: () => ({ openTag: mocks.openTag })
 }))
 
-vi.mock('@/hooks/use-display-density', () => ({
+vi.mock('@/hooks/use-display-density', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/hooks/use-display-density')>()),
   useDisplayDensity: () => ({ density: 'comfortable', setDensity: mocks.setDensity })
 }))
 
