@@ -36,6 +36,10 @@ Extraction runs in the background after metadata, so the body fills in within a 
 page can't be read cleanly (e.g. a login wall), the card keeps its title and snippet and the article
 body is skipped.
 
+In the inbox detail view the captured article renders as formatted rich text — headings, bold, links,
+and lists — exactly as it appears in the note editor, rather than as raw Markdown. You can edit it
+inline before filing.
+
 ## Drag and Drop
 
 Drop files from your OS file manager onto the inbox window. memrynote:

@@ -869,7 +869,7 @@ test('opens a standalone vault and exposes core note, journal, task, inbox, and 
     'Renamed File Note'
   )
   const movedFileNote = await app.notes.move(fileNote.id, 'Moved')
-  assert.match(movedFileNote.path, /^notes\/Moved\//)
+  assert.match(movedFileNote.path, /^Moved\//)
   assert.equal((await app.notes.setLocalOnly(movedFileNote.id, true)).localOnly, true)
   assert.equal((await app.notes.localOnlyCount()).count, 1)
 

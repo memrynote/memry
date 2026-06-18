@@ -213,9 +213,9 @@ describe('note-metadata-repository', () => {
       expect(rows.map((r) => r.id)).toEqual(['j-1'])
     })
 
-    it('filters by folder prefix', () => {
-      // #when
-      const rows = listNoteMetadata(db, { folder: 'sub' })
+    it('filters by full folder-path prefix', () => {
+      // #when — folder is a full vault-relative prefix (caller prepends the note root)
+      const rows = listNoteMetadata(db, { folder: 'notes/sub' })
 
       // #then
       expect(rows.map((r) => r.id)).toEqual(['n-b'])

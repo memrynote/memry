@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, like, type SQL } from 'drizzle-orm'
+import { and, asc, count, desc, eq, like, notLike, type SQL } from 'drizzle-orm'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import {
   noteMetadata,
@@ -116,13 +116,18 @@ export function listNoteMetadata(
   if (journalOnly) {
     conditions.push(like(noteMetadata.path, 'journal/%'))
   } else {
-    conditions.push(like(noteMetadata.path, 'notes/%'))
+    // Flat vault root (#571): regular notes live anywhere except journal/, not just
+    // under notes/. Match "not a journal note" so root- and custom-folder notes list.
+    conditions.push(notLike(noteMetadata.path, 'journal/%'))
   }
 
   if (folder) {
+    // `folder` is a full vault-relative folder prefix (callers prepend the configured
+    // note root, e.g. 'notes/sub' or — for a flat vault root — 'Projects'). Don't assume
+    // a 'notes/' prefix here, or flat-vault notes never match.
     const normalized = trimPathSlashes(folder)
     if (normalized.length > 0) {
-      conditions.push(like(noteMetadata.path, `notes/${normalized}/%`))
+      conditions.push(like(noteMetadata.path, `${normalized}/%`))
     }
   }
 

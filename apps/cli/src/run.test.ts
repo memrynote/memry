@@ -572,7 +572,7 @@ test('runs core commands against a vault and prints JSON output', async () => {
   )
   assert.equal(noteMoveCode, 0)
   const movedFileNote = JSON.parse(stdout.at(-1) ?? '{}') as { id?: string; path?: string }
-  assert.match(movedFileNote.path ?? '', /^notes\/Moved\//)
+  assert.match(movedFileNote.path ?? '', /^Moved\//)
 
   const localOnlyCode = await runCli(
     ['--vault', vaultPath, '--json', 'notes', 'set-local-only', movedFileNote.id ?? '', 'true'],

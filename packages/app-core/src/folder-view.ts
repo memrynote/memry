@@ -185,14 +185,23 @@ function noteFolder(note: NoteRecord, config: VaultConfig): string {
   return folder === '.' ? '' : normalizePath(folder)
 }
 
-async function walkFolderPaths(root: string, current = ''): Promise<string[]> {
+async function walkFolderPaths(
+  root: string,
+  hiddenTopLevel: Set<string>,
+  current = ''
+): Promise<string[]> {
   const entries = await fs.readdir(path.join(root, current), { withFileTypes: true })
   const folders: string[] = []
   for (const entry of entries) {
     if (!entry.isDirectory()) continue
+    // Skip hidden dirs (.memry, .obsidian, .git) and structural/excluded folders
+    // (journal, attachments, excludePatterns) — relevant once the notes root is the
+    // vault root (defaultNoteFolder = ''). Mirrors folders.ts walkFolders.
+    if (entry.name.startsWith('.')) continue
+    if (current === '' && hiddenTopLevel.has(entry.name)) continue
     const relative = normalizePath(path.join(current, entry.name))
     folders.push(relative)
-    folders.push(...(await walkFolderPaths(root, relative)))
+    folders.push(...(await walkFolderPaths(root, hiddenTopLevel, relative)))
   }
   return folders
 }
@@ -316,7 +325,14 @@ export function createFolderViewService({
 
       const currentFolder = noteFolder(note, config)
       const root = notesDir(vaultPath, config)
-      const folders = (await walkFolderPaths(root)).filter((folder) => folder !== currentFolder)
+      const hiddenTopLevel = new Set(
+        [config.journalFolder, config.attachmentsFolder, ...config.excludePatterns]
+          .filter(Boolean)
+          .map((p) => normalizePath(p).split('/')[0])
+      )
+      const folders = (await walkFolderPaths(root, hiddenTopLevel)).filter(
+        (folder) => folder !== currentFolder
+      )
 
       const suggestions = await Promise.all(
         folders.map(async (folder) => {
