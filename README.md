@@ -26,9 +26,9 @@ Notes, tasks, projects, journal, calendar, and an AI agent that actually has con
 
 Hi — I'm **[Kaan](https://x.com/h4yfans)**, the developer behind Memry. For years I bounced between four apps just to get through the day — inbox in one, calendar in another, notes somewhere else, tasks in a fourth — and with ADHD that constant jumping around drained me before I'd even started working. I wanted one calm place that held all of it: inbox, notes, daily journal, tasks, projects, calendar, and an AI agent that actually knows what I'm working on. And because not everyone needs every piece, every feature is a toggle — don't use a calendar? Turn it off. Not into AI? Turn that off too. Memry is the app I wish I'd had years ago, so I shipped it myself.
 
-> _Screenshot: Memry's main workspace — notes, sidebar, agent chat side-by-side._
->
-> ![Memry main workspace in dark mode](apps/landing/public/screenshots/note_black.png)
+> memrynote: with note, inbox, task, and the calendar in one split pane
+> <img width="2684" height="1374" alt="home2-4split" src="https://github.com/user-attachments/assets/c4cf9a40-97df-45cd-907e-1b3b54280001" />
+
 
 ## Table of Contents
 
