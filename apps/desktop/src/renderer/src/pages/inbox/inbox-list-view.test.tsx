@@ -60,12 +60,11 @@ vi.mock('@/contexts/tabs', () => ({
   useTabs: () => ({ openTab: mocks.openTab })
 }))
 
-vi.mock('@/hooks/use-display-density', () => ({
-  DENSITY_CONFIG: {
-    compact: {
-      headerMargin: 'mb-1'
-    }
-  }
+// Spread the real (dependency-free) module so DENSITY_CONFIG is always complete; a
+// minimal partial mock could surface as `DENSITY_CONFIG.compact` undefined when test
+// files share module state in the full coverage run.
+vi.mock('@/hooks/use-display-density', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/hooks/use-display-density')>())
 }))
 
 vi.mock('@/hooks/use-keyboard-shortcuts', () => ({
