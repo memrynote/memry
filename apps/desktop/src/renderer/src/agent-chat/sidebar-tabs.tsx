@@ -14,6 +14,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Bot, CalendarDays, Expand, PlusSignIcon } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { useAgentOptional } from './agent-context'
+import { preferredConversationDefaults } from './agent-model-preference'
 import { ConversationList } from './conversation-list'
 
 export type RightSidebarTab = 'day' | 'agent'
@@ -185,7 +186,7 @@ function AgentConversationActions(): React.JSX.Element | null {
               type="button"
               aria-label={newConversationLabel}
               title={newConversationLabel}
-              onClick={() => void currentAgent.createConversation()}
+              onClick={() => void currentAgent.createConversation(preferredConversationDefaults())}
               className="inline-flex size-6 shrink-0 items-center justify-center rounded-[5px] text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               <PlusSignIcon className="size-3.5" aria-hidden="true" />

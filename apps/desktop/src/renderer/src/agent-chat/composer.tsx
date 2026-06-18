@@ -43,13 +43,16 @@ import {
 import { useAgentOptional } from './agent-context'
 import type { MentionAttachment } from './mention-icons'
 import { RefPicker } from './ref-picker'
+import {
+  type AgentProvider,
+  persistAgentModelPreference,
+  readAgentModelPreference
+} from './agent-model-preference'
 
 interface ComposerProps {
   conversationId: string | null
   sourceWindowId: string | null
 }
-
-type AgentProvider = 'claude_cli' | 'codex_cli' | 'local_openai_compatible'
 
 const DEFAULT_CLAUDE_MODEL = 'opus'
 const DEFAULT_CODEX_REASONING: CodexReasoningEffort = 'medium'
@@ -205,12 +208,17 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
   const [pickerItems, setPickerItems] = useState<MentionAttachment[]>([])
   const [selectedPickerIndex, setSelectedPickerIndex] = useState(-1)
   const [submitting, setSubmitting] = useState(false)
-  const [selectedProvider, setSelectedProvider] = useState<AgentProvider>('claude_cli')
+  const [storedPreference] = useState(readAgentModelPreference)
+  const [selectedProvider, setSelectedProvider] = useState<AgentProvider>(
+    storedPreference?.provider ?? 'claude_cli'
+  )
   const [accessMode, setAccessMode] = useState<AgentAccessMode>(DEFAULT_ACCESS_MODE)
   const [webSearchEnabled, setWebSearchEnabled] = useState(false)
   const [modelMenuOpen, setModelMenuOpen] = useState(false)
-  const [selectedModels, setSelectedModels] =
-    useState<Record<AgentCliBackendId, string | null>>(DEFAULT_SELECTED_MODELS)
+  const [selectedModels, setSelectedModels] = useState<Record<AgentCliBackendId, string | null>>({
+    ...DEFAULT_SELECTED_MODELS,
+    ...storedPreference?.models
+  })
   const [modelOptions, setModelOptions] =
     useState<Record<AgentCliBackendId, AgentBackendModelList | null>>(EMPTY_MODEL_OPTIONS)
   const [claudeReasoning, setClaudeReasoning] = useState<ClaudeEffort>(DEFAULT_CLAUDE_EFFORT)
@@ -360,7 +368,9 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
       : undefined
   const selectModel = (model: string | null): void => {
     if (!isCliProvider(selectedProvider)) return
-    setSelectedModels((current) => ({ ...current, [selectedProvider]: model }))
+    const nextModels = { ...selectedModels, [selectedProvider]: model }
+    setSelectedModels(nextModels)
+    persistAgentModelPreference({ provider: selectedProvider, models: nextModels })
   }
   const selectReasoning = (value: ClaudeEffort | CodexReasoningEffort): void => {
     if (selectedProvider === 'codex_cli') {
@@ -393,6 +403,7 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
   }
   const selectProvider = (provider: AgentProvider): void => {
     setSelectedProvider(provider)
+    persistAgentModelPreference({ provider, models: selectedModels })
     if (isCliProvider(provider)) {
       void loadModelOptions(provider)
     }
