@@ -221,9 +221,9 @@ export function SortableColumnHeader({
     const arrow = sortDirection === 'asc' ? '▲' : '▼'
     const showIndex = totalSortedColumns > 1 && sortIndex !== undefined
     return (
-      <span className="ml-1 text-muted-foreground/70 whitespace-nowrap">
+      <span className="ms-1 text-muted-foreground/70 whitespace-nowrap">
         {arrow}
-        {showIndex && <sup className="text-[10px] ml-0.5">{sortIndex}</sup>}
+        {showIndex && <sup className="text-[10px] ms-0.5">{sortIndex}</sup>}
       </span>
     )
   }
@@ -235,17 +235,17 @@ export function SortableColumnHeader({
       className={cn(
         // T099: Density-aware padding
         density === 'compact' ? 'px-2 py-1' : 'px-3 py-2',
-        'text-left font-medium text-muted-foreground',
+        'text-start text-[11px] font-semibold uppercase tracking-[0.04em] text-muted-foreground/80',
         'select-none relative group',
         canSort && !isEditing && 'cursor-pointer hover:bg-muted/50',
         header.column.getIsResizing() && 'bg-muted/30',
         isHighlighted && 'bg-primary/10 text-primary',
         isDragging && 'opacity-50 z-50',
         // T099: Column borders (not on last column)
-        showColumnBorders && !isLastColumn && 'border-r border-border/30',
-        // Drop indicator - blue line on left side
+        showColumnBorders && !isLastColumn && 'border-e border-border/30',
+        // Drop indicator - accent line on the leading edge
         isOver &&
-          'before:absolute before:left-0 before:top-1 before:bottom-1 before:w-0.5 before:bg-primary before:rounded-full before:z-20'
+          'before:absolute before:start-0 before:top-1 before:bottom-1 before:w-0.5 before:bg-primary before:rounded-full before:z-20'
       )}
       onClick={handleSortClick}
     >
@@ -264,7 +264,7 @@ export function SortableColumnHeader({
             'flex-shrink-0 cursor-grab active:cursor-grabbing',
             'opacity-0 group-hover:opacity-100 transition-opacity',
             'text-muted-foreground/50 hover:text-muted-foreground',
-            '-ml-1 mr-0.5'
+            '-ms-1 me-0.5'
           )}
           aria-label={`Drag to reorder column: ${columnConfig.displayName ?? columnConfig.id}`}
           title={tPhaseF('phaseF.componentsFolderViewSortableColumnHeader.dragToReorderColumn')}
@@ -325,7 +325,7 @@ export function SortableColumnHeader({
         }}
         aria-label={tPhaseF('phaseF.componentsFolderViewSortableColumnHeader.resizeColumn')}
         className={cn(
-          'absolute right-0 top-0 h-full w-1 cursor-col-resize select-none touch-none',
+          'absolute end-0 top-0 h-full w-1 cursor-col-resize select-none touch-none',
           'opacity-0 group-hover:opacity-100 hover:bg-primary/50',
           header.column.getIsResizing() && 'opacity-100 bg-primary'
         )}

@@ -1042,7 +1042,7 @@ export function FolderTableView({
               top: 0,
               zIndex: 10
             }}
-            className="bg-background border-b"
+            className="bg-muted border-b border-border/60"
           >
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id} style={{ display: 'flex', width: '100%' }}>
@@ -1115,14 +1115,14 @@ export function FolderTableView({
                       transform: `translateY(${virtualRow.start}px)`
                     }}
                     className={cn(
-                      'border-b border-border/50',
+                      'border-b border-border/40',
                       'transition-colors',
                       'items-center',
                       'cursor-pointer',
                       // Hover styling (only when not selected)
                       !isSelected && 'hover:bg-muted/50',
-                      // Selected row styling - thin warm border
-                      isSelected && 'border-l-2',
+                      // Selected row styling - terracotta accent (tint)
+                      isSelected && 'bg-[var(--tint)]/[0.06] border-s-2 border-s-[var(--tint)]',
                       // Focused row styling (keyboard navigation cursor)
                       isFocused && 'ring-2x ring-inset',
                       // T121: Exit animation - simple opacity fade
@@ -1141,7 +1141,7 @@ export function FolderTableView({
                             // T099: Density-aware padding
                             density === 'compact' ? 'px-2 py-1' : 'px-3 py-2',
                             // T099: Column borders (not on last column)
-                            showColumnBorders && !isLastCell && 'border-r border-border/30'
+                            showColumnBorders && !isLastCell && 'border-e border-border/30'
                           )}
                           style={
                             isLastCell

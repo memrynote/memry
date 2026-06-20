@@ -6,7 +6,7 @@
  */
 
 import { useMemo, useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react'
-import { ArrowLeft, Folder, LayoutGrid, List, Plus, Settings2 } from '@/lib/icons'
+import { ArrowLeft, Columns3, Folder, LayoutGrid, List, Plus, Rows2, Settings2 } from '@/lib/icons'
 
 // ============================================================================
 // Debounce Hook
@@ -58,7 +58,11 @@ import { useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
 import { FolderTableView } from '@/components/folder-view/folder-table-view'
 import { GroupedTable } from '@/components/folder-view/grouped-table'
 import { FolderViewToolbar } from '@/components/folder-view/folder-view-toolbar'
+import { FolderListView } from '@/components/folder-view/folder-list-view'
+import { FolderBoardView } from '@/components/folder-view/folder-board-view'
+import { FolderGalleryView } from '@/components/folder-view/folder-gallery-view'
 import { ViewSwitcher } from '@/components/folder-view/view-switcher'
+import { cn } from '@/lib/utils'
 import { MoveToFolderDialog } from '@/components/folder-view/move-to-folder-dialog'
 import { useFolderView } from '@/hooks/use-folder-view'
 import { useNoteMutations, useNoteTagsQuery } from '@/hooks/use-notes-query'
@@ -132,6 +136,15 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
 
   // Get first note for formula preview in editor
   const sampleNote = notes.length > 0 ? notes[0] : null
+
+  // Active view render mode (table / list / kanban / grid) — persisted via the view config.
+  const viewType = activeView?.type ?? 'table'
+  const handleViewTypeChange = useCallback(
+    (type: 'table' | 'list' | 'kanban' | 'grid') => {
+      void updateView({ type })
+    },
+    [updateView]
+  )
 
   // Delete confirmation dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -534,15 +547,15 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
         </span>
 
         {/* T098: New Note button */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
+        <button
+          type="button"
           onClick={() => void handleCreateNote()}
           title={tPhaseF('phaseF.pagesFolderView.createNewNote')}
+          className="flex h-8 items-center gap-1.5 rounded-md bg-[var(--tint)] px-3 text-[12.5px] font-semibold text-[var(--tint-foreground)] transition-colors hover:bg-[var(--tint-hover)]"
         >
-          <Plus className="h-4 w-4" />
-        </Button>
+          <Plus className="size-3.5" />
+          {tPhaseF('phaseF.pagesFolderView.createNewNote')}
+        </button>
 
         {/* Spacer */}
         <div className="flex-1" />
@@ -559,14 +572,36 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
           onDeleteView={deleteView}
         />
 
-        {/* View type toggle (future: table/grid/list) */}
-        <div className="flex items-center gap-1 border rounded-md p-0.5">
-          <Button variant="ghost" size="icon" className="h-7 w-7 bg-muted">
-            <List className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7" disabled>
-            <LayoutGrid className="h-4 w-4" />
-          </Button>
+        {/* View type switcher: Table / List / Board / Gallery */}
+        <div className="flex items-center gap-0.5 rounded-md border p-0.5">
+          {(
+            [
+              { type: 'table', Icon: Rows2, label: 'Table' },
+              { type: 'list', Icon: List, label: 'List' },
+              { type: 'kanban', Icon: Columns3, label: 'Board' },
+              { type: 'grid', Icon: LayoutGrid, label: 'Gallery' }
+            ] as const
+          ).map(({ type, Icon, label }) => {
+            const active = viewType === type
+            return (
+              <button
+                key={type}
+                type="button"
+                title={label}
+                aria-pressed={active}
+                onClick={() => handleViewTypeChange(type)}
+                className={cn(
+                  'flex h-7 items-center gap-1.5 rounded-[5px] px-2 text-xs font-medium transition-colors',
+                  active
+                    ? 'bg-muted text-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <Icon className="size-3.5" />
+                {active && <span>{label}</span>}
+              </button>
+            )
+          })}
         </div>
 
         {/* T099: View Settings dropdown */}
@@ -656,6 +691,41 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
             />
           ) : isLoading ? (
             <FolderViewSkeleton columns={activeView?.columns ?? DEFAULT_COLUMNS} />
+          ) : viewType === 'list' ? (
+            <FolderListView
+              notes={notes}
+              searchQuery={debouncedSearchQuery}
+              density={density}
+              tagColorMap={tagColorMap}
+              onNoteOpen={handleNoteOpen}
+              onTagClick={handleTagClick}
+              onCreateNote={() => void handleCreateNote()}
+              onClearAll={handleClearAll}
+              className="h-full"
+            />
+          ) : viewType === 'kanban' ? (
+            <FolderBoardView
+              notes={notes}
+              searchQuery={debouncedSearchQuery}
+              tagColorMap={tagColorMap}
+              availableProperties={availableProperties}
+              onNoteOpen={handleNoteOpen}
+              onTagClick={handleTagClick}
+              onCreateNote={() => void handleCreateNote()}
+              onClearAll={handleClearAll}
+              className="h-full"
+            />
+          ) : viewType === 'grid' ? (
+            <FolderGalleryView
+              notes={notes}
+              searchQuery={debouncedSearchQuery}
+              tagColorMap={tagColorMap}
+              onNoteOpen={handleNoteOpen}
+              onTagClick={handleTagClick}
+              onCreateNote={() => void handleCreateNote()}
+              onClearAll={handleClearAll}
+              className="h-full"
+            />
           ) : activeView?.groupBy ? (
             // Grouped table view when groupBy is set (Phase 24)
             <GroupedTable
