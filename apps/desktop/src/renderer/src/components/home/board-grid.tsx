@@ -23,6 +23,7 @@ export function BoardGrid({ board, onChange, editing }: BoardGridProps): React.J
     <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <SortableContext items={board.widgets.map((w) => w.id)} strategy={rectSortingStrategy}>
         <div
+          data-testid="board-grid"
           className="grid auto-rows-[7rem] gap-3"
           style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gridAutoFlow: 'dense' }}
         >

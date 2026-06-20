@@ -9,9 +9,16 @@ interface WidgetGalleryProps {
 export function WidgetGallery({ onAdd }: WidgetGalleryProps): React.JSX.Element {
   const { t } = useT('common')
   return (
-    <div className="flex flex-col gap-1">
+    <div data-testid="widget-gallery" className="flex flex-col gap-1">
       {Object.values(WIDGET_REGISTRY).map((def) => (
-        <button key={def.type} type="button" onClick={() => onAdd(def.type)} className="text-start">
+        <button
+          key={def.type}
+          type="button"
+          data-testid="widget-gallery-item"
+          data-widget-type={def.type}
+          onClick={() => onAdd(def.type)}
+          className="text-start"
+        >
           {t(def.titleKey)}
         </button>
       ))}

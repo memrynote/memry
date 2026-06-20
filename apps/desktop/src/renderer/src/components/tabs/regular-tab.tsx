@@ -93,6 +93,7 @@ const RegularTabComponent = ({
       role="tab"
       aria-selected={isActive}
       tabIndex={isActive ? 0 : -1}
+      data-testid={tab.type === 'home' ? 'nav-home' : undefined}
       data-tab-id={tab.id}
       data-group-id={groupId}
     >

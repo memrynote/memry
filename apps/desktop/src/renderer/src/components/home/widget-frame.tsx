@@ -33,6 +33,10 @@ export function WidgetFrame({
   return (
     <div
       ref={setNodeRef}
+      data-testid="widget"
+      data-widget-type={widget.type}
+      data-widget-size={widget.size}
+      data-widget-id={widget.id}
       style={{
         transform: CSS.Transform.toString(transform),
         transition,
@@ -49,6 +53,8 @@ export function WidgetFrame({
               <button
                 key={s}
                 type="button"
+                data-testid={`widget-size-${s}`}
+                aria-label={`Resize to ${s}`}
                 onClick={() => onResize(s)}
                 className={widget.size === s ? 'font-semibold text-foreground' : ''}
               >

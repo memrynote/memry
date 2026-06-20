@@ -22,6 +22,9 @@ export function BookmarksWidget({ config, size }: WidgetComponentProps): React.J
         <li key={b.id}>
           <button
             type="button"
+            data-testid="bookmark-item"
+            data-item-id={b.itemId}
+            data-item-type={b.itemType}
             className="w-full truncate text-start text-sm hover:underline"
             onClick={() =>
               openTab(

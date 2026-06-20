@@ -21,6 +21,8 @@ export function RecentlyEditedWidget({ size }: WidgetComponentProps): React.JSX.
         <li key={n.id}>
           <button
             type="button"
+            data-testid="recent-note"
+            data-note-id={n.id}
             className="w-full truncate text-start text-sm hover:underline"
             onClick={() =>
               openTab({

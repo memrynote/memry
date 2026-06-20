@@ -56,7 +56,7 @@ export default function HomePage(): React.JSX.Element {
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <div data-testid="home-page" className="flex h-full flex-col">
       <BoardSwitcher
         boards={localBoards}
         activeBoardId={activeBoardId}
