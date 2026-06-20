@@ -4,6 +4,7 @@ import { WidgetFrame } from './widget-frame'
 import { WIDGET_REGISTRY } from '@/lib/home/widget-registry'
 import { moveWidget, removeWidget, resizeWidget } from '@/lib/home/layout-reducer'
 import type { HomePage, WidgetSize } from '@/lib/home/types'
+import { useT } from '@memry/i18n/renderer'
 
 interface BoardGridProps {
   board: HomePage
@@ -12,6 +13,7 @@ interface BoardGridProps {
 }
 
 export function BoardGrid({ board, onChange, editing }: BoardGridProps): React.JSX.Element {
+  const { t } = useT('common')
   const handleDragEnd = (e: DragEndEvent) => {
     if (e.over && e.active.id !== e.over.id) {
       onChange(moveWidget(board, String(e.active.id), String(e.over.id)))
@@ -32,7 +34,7 @@ export function BoardGrid({ board, onChange, editing }: BoardGridProps): React.J
               <WidgetFrame
                 key={w.id}
                 widget={w}
-                title={def.titleKey}
+                title={t(def.titleKey)}
                 sizes={def.sizes}
                 editing={editing}
                 onResize={(s: WidgetSize) => onChange(resizeWidget(board, w.id, s))}

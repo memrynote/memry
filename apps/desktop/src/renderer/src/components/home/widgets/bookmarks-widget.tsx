@@ -28,7 +28,7 @@ export function BookmarksWidget({ config, size }: WidgetComponentProps): React.J
                 b.itemType === 'task'
                   ? {
                       type: 'tasks',
-                      title: b.itemTitle ?? 'Untitled',
+                      title: b.itemTitle ?? t('home.widget.untitled'),
                       icon: 'check-square',
                       path: '/tasks',
                       entityId: b.itemId,
@@ -39,7 +39,7 @@ export function BookmarksWidget({ config, size }: WidgetComponentProps): React.J
                     }
                   : {
                       type: 'note',
-                      title: b.itemTitle ?? 'Untitled',
+                      title: b.itemTitle ?? t('home.widget.untitled'),
                       icon: 'file-text',
                       path: `/notes/${b.itemId}`,
                       entityId: b.itemId,
@@ -51,7 +51,7 @@ export function BookmarksWidget({ config, size }: WidgetComponentProps): React.J
               )
             }
           >
-            {b.itemTitle ?? 'Untitled'}
+            {b.itemTitle ?? t('home.widget.untitled')}
           </button>
         </li>
       ))}

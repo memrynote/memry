@@ -4,7 +4,7 @@ import { BookmarksWidget } from './bookmarks-widget'
 
 registerWidget({
   type: 'recently-edited',
-  titleKey: 'Recently edited',
+  titleKey: 'home.widget.recentlyEdited',
   icon: 'clock',
   sizes: ['S', 'M'],
   defaultSize: 'M',
@@ -14,7 +14,7 @@ registerWidget({
 
 registerWidget({
   type: 'bookmarks',
-  titleKey: 'Bookmarks',
+  titleKey: 'home.widget.bookmarks',
   icon: 'bookmark',
   sizes: ['S', 'M'],
   defaultSize: 'M',

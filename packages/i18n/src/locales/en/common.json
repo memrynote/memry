@@ -487,7 +487,10 @@
   "home": {
     "widget": {
       "removeAria": "Remove widget",
-      "dragAria": "Drag widget"
+      "dragAria": "Drag widget",
+      "recentlyEdited": "Recently edited",
+      "bookmarks": "Bookmarks",
+      "untitled": "Untitled"
     },
     "board": {
       "newAria": "New board"

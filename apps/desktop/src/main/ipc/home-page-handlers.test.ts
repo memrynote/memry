@@ -1,7 +1,36 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { createTestDataDb } from '@tests/utils/test-db'
 import type { TestDatabaseResult } from '@tests/utils/test-db'
-import { makeHomePageHandlers } from './home-page-handlers'
+import { makeHomePageHandlers, registerHomePageHandlers } from './home-page-handlers'
+
+// Mock electron ipcMain so registerHomePageHandlers can run in tests
+vi.mock('electron', () => ({
+  ipcMain: {
+    handle: vi.fn(),
+    removeHandler: vi.fn()
+  }
+}))
+
+// Mock requireDatabase to throw (simulates no vault open at registration time)
+vi.mock('../database', () => ({
+  requireDatabase: vi.fn(() => {
+    throw new Error('No vault is open')
+  })
+}))
+
+describe('registerHomePageHandlers — lazy DB resolution', () => {
+  it('does not throw at registration and registers all 6 channels without touching the DB', async () => {
+    const { ipcMain } = await import('electron')
+    const handleMock = vi.mocked(ipcMain.handle)
+    handleMock.mockClear()
+
+    // If the fix regresses, requireDatabase() is called eagerly here → throws
+    expect(() => registerHomePageHandlers()).not.toThrow()
+
+    // All 6 channels must be registered
+    expect(handleMock.mock.calls.length).toBe(6)
+  })
+})
 
 describe('home-page handlers', () => {
   let dbResult: TestDatabaseResult

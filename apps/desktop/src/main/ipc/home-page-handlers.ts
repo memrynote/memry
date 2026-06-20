@@ -71,14 +71,22 @@ export function makeHomePageHandlers(db: DataDb) {
 }
 
 export function registerHomePageHandlers(): void {
-  const db = requireDatabase()
-  const h = makeHomePageHandlers(db)
-  ipcMain.handle(HomePagesChannels.LIST, () => h.list())
-  ipcMain.handle(HomePagesChannels.GET, (_e, id: string) => h.get(id))
-  ipcMain.handle(HomePagesChannels.CREATE, (_e, input) => h.create(input))
-  ipcMain.handle(HomePagesChannels.UPDATE, (_e, input) => h.update(input))
-  ipcMain.handle(HomePagesChannels.DELETE, (_e, id: string) => h.delete(id))
-  ipcMain.handle(HomePagesChannels.REORDER, (_e, input) => h.reorder(input))
+  ipcMain.handle(HomePagesChannels.LIST, () => makeHomePageHandlers(requireDatabase()).list())
+  ipcMain.handle(HomePagesChannels.GET, (_e, id: string) =>
+    makeHomePageHandlers(requireDatabase()).get(id)
+  )
+  ipcMain.handle(HomePagesChannels.CREATE, (_e, input) =>
+    makeHomePageHandlers(requireDatabase()).create(input)
+  )
+  ipcMain.handle(HomePagesChannels.UPDATE, (_e, input) =>
+    makeHomePageHandlers(requireDatabase()).update(input)
+  )
+  ipcMain.handle(HomePagesChannels.DELETE, (_e, id: string) =>
+    makeHomePageHandlers(requireDatabase()).delete(id)
+  )
+  ipcMain.handle(HomePagesChannels.REORDER, (_e, input) =>
+    makeHomePageHandlers(requireDatabase()).reorder(input)
+  )
 }
 
 export function unregisterHomePageHandlers(): void {
