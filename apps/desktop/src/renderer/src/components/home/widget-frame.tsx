@@ -3,6 +3,7 @@ import { CSS } from '@dnd-kit/utilities'
 import type { ReactNode } from 'react'
 import { SIZE_SPANS } from '@/lib/home/widget-sizes'
 import type { WidgetInstance, WidgetSize } from '@/lib/home/types'
+import { useT } from '@memry/i18n/renderer'
 
 interface WidgetFrameProps {
   widget: WidgetInstance
@@ -23,6 +24,7 @@ export function WidgetFrame({
   onRemove,
   children
 }: WidgetFrameProps): React.JSX.Element {
+  const { t } = useT('common')
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
     id: widget.id,
     disabled: !editing
@@ -53,10 +55,15 @@ export function WidgetFrame({
                 {s}
               </button>
             ))}
-            <button type="button" aria-label="Remove widget" onClick={onRemove}>
+            <button type="button" aria-label={t('home.widget.removeAria')} onClick={onRemove}>
               ×
             </button>
-            <span {...attributes} {...listeners} aria-label="Drag widget" className="cursor-grab">
+            <span
+              {...attributes}
+              {...listeners}
+              aria-label={t('home.widget.dragAria')}
+              className="cursor-grab"
+            >
               ⠿
             </span>
           </span>

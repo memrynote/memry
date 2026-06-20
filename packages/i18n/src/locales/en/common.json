@@ -483,5 +483,16 @@
     "toasts": {
       "undone": "Undone"
     }
+  },
+  "home": {
+    "widget": {
+      "removeAria": "Remove widget",
+      "dragAria": "Drag widget"
+    },
+    "board": {
+      "newAria": "New board"
+    },
+    "noBookmarksYet": "No bookmarks yet.",
+    "noNotesYet": "No notes yet."
   }
 }
