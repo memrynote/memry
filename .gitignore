@@ -69,3 +69,4 @@ opencode.jsonc
 
 agents/
 .env*.local
+.superpowers/
