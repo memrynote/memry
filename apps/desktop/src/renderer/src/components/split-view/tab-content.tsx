@@ -54,6 +54,7 @@ const LazyGraphPage = React.lazy(async () => ({
 const LazyAgentConversationTab = React.lazy(async () => ({
   default: (await import('@/agent-chat/agent-conversation-tab')).AgentConversationTab
 }))
+const LazyHomePage = React.lazy(() => import('@/pages/home'))
 
 interface TabContentProps {
   /** Tab data */
@@ -105,6 +106,9 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
   // only unrelated state changes (like other tabs being modified)
   const content = useMemo((): React.ReactNode => {
     switch (tab.type) {
+      case 'home':
+        return <LazyHomePage />
+
       case 'inbox':
         return <MemoizedInboxPage />
 

@@ -225,7 +225,7 @@ describe('TabProvider context', () => {
     })
 
     expect(rendered.ctx.state.tabGroups.main.tabs).toHaveLength(1)
-    expect(rendered.ctx.state.tabGroups.main.tabs[0].type).toBe('inbox')
+    expect(rendered.ctx.state.tabGroups.main.tabs[0].type).toBe('home')
   })
 
   it('opens sidebar tabs, splits panes, moves tabs, restores sessions, and resets', async () => {
@@ -274,7 +274,7 @@ describe('TabProvider context', () => {
     act(() => {
       rendered.ctx.resetToDefault()
     })
-    expect(rendered.ctx.getActiveTab()?.type).toBe('inbox')
+    expect(rendered.ctx.getActiveTab()?.type).toBe('home')
   })
 })
 

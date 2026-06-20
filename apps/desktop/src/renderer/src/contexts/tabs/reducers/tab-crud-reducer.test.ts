@@ -290,7 +290,7 @@ describe('tabCrudReducer', () => {
       payload: { tabId: 'only', groupId: 'g1' }
     })
     expect(reset.tabGroups.g1.tabs).toHaveLength(1)
-    expect(reset.tabGroups.g1.tabs[0].type).toBe('inbox')
+    expect(reset.tabGroups.g1.tabs[0].type).toBe('home')
 
     const closeOthers = tabCrudReducer(state, {
       type: 'CLOSE_OTHER_TABS',
@@ -355,7 +355,7 @@ describe('tabCrudReducer', () => {
       },
       'g1'
     )
-    expect(Object.values(noLayout.tabGroups)[0].tabs[0].type).toBe('inbox')
+    expect(Object.values(noLayout.tabGroups)[0].tabs[0].type).toBe('home')
     expect(noLayout.settings).toEqual(state.settings)
   })
 
