@@ -26,6 +26,17 @@ export function resizeWidget(page: HomePage, id: string, size: WidgetSize): Home
   }
 }
 
+export function updateWidgetConfig(
+  page: HomePage,
+  widgetId: string,
+  config: Record<string, unknown>
+): HomePage {
+  return {
+    ...page,
+    widgets: page.widgets.map((w) => (w.id === widgetId ? { ...w, config } : w))
+  }
+}
+
 export function configureWidget(
   page: HomePage,
   id: string,

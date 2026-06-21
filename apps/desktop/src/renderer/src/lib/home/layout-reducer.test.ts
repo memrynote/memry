@@ -4,7 +4,8 @@ import {
   removeWidget,
   moveWidget,
   resizeWidget,
-  configureWidget
+  configureWidget,
+  updateWidgetConfig
 } from './layout-reducer'
 import type { HomePage, WidgetInstance } from './types'
 
@@ -38,6 +39,11 @@ describe('layout-reducer', () => {
   it('configureWidget shallow-merges config', () => {
     const out = configureWidget(page({ ...w('a'), config: { x: 1 } }), 'a', { y: 2 })
     expect(out.widgets[0].config).toEqual({ x: 1, y: 2 })
+  })
+  it('updateWidgetConfig replaces only the target config', () => {
+    const out = updateWidgetConfig(page({ ...w('a'), config: { x: 1 } }, w('b')), 'a', { y: 2 })
+    expect(out.widgets.find((x) => x.id === 'a')?.config).toEqual({ y: 2 })
+    expect(out.widgets.find((x) => x.id === 'b')?.config).toEqual({})
   })
   it('reducers do not mutate the input', () => {
     const p = page(w('a'))

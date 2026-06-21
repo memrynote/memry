@@ -2,7 +2,12 @@ import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, rectSortingStrategy } from '@dnd-kit/sortable'
 import { WidgetFrame } from './widget-frame'
 import { WIDGET_REGISTRY } from '@/lib/home/widget-registry'
-import { moveWidget, removeWidget, resizeWidget } from '@/lib/home/layout-reducer'
+import {
+  moveWidget,
+  removeWidget,
+  resizeWidget,
+  updateWidgetConfig
+} from '@/lib/home/layout-reducer'
 import type { HomePage, WidgetSize } from '@/lib/home/types'
 import { useT } from '@memry/i18n/renderer'
 
@@ -40,6 +45,8 @@ export function BoardGrid({ board, onChange, editing }: BoardGridProps): React.J
                 editing={editing}
                 onResize={(s: WidgetSize) => onChange(resizeWidget(board, w.id, s))}
                 onRemove={() => onChange(removeWidget(board, w.id))}
+                ConfigEditor={def.ConfigEditor}
+                onConfigChange={(cfg) => onChange(updateWidgetConfig(board, w.id, cfg))}
               >
                 <Component config={w.config} size={w.size} />
               </WidgetFrame>

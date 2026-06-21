@@ -1,7 +1,8 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import type { ReactNode } from 'react'
+import { useState, type FC, type ReactNode } from 'react'
 import { SIZE_SPANS } from '@/lib/home/widget-sizes'
+import type { WidgetConfigEditorProps } from '@/lib/home/widget-registry'
 import type { WidgetInstance, WidgetSize } from '@/lib/home/types'
 import { useT } from '@memry/i18n/renderer'
 
@@ -12,6 +13,8 @@ interface WidgetFrameProps {
   editing: boolean
   onResize: (size: WidgetSize) => void
   onRemove: () => void
+  ConfigEditor?: FC<WidgetConfigEditorProps>
+  onConfigChange?: (config: Record<string, unknown>) => void
   children: ReactNode
 }
 
@@ -22,9 +25,12 @@ export function WidgetFrame({
   editing,
   onResize,
   onRemove,
+  ConfigEditor,
+  onConfigChange,
   children
 }: WidgetFrameProps): React.JSX.Element {
   const { t } = useT('common')
+  const [configOpen, setConfigOpen] = useState(false)
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
     id: widget.id,
     disabled: !editing
@@ -61,6 +67,16 @@ export function WidgetFrame({
                 {s}
               </button>
             ))}
+            {ConfigEditor && (
+              <button
+                type="button"
+                data-testid="widget-config-toggle"
+                aria-label={t('home.widget.configAria')}
+                onClick={() => setConfigOpen((open) => !open)}
+              >
+                ⚙
+              </button>
+            )}
             <button type="button" aria-label={t('home.widget.removeAria')} onClick={onRemove}>
               ×
             </button>
@@ -75,6 +91,11 @@ export function WidgetFrame({
           </span>
         )}
       </div>
+      {editing && ConfigEditor && configOpen && (
+        <div data-testid="widget-config-panel" className="border-b px-3 py-2">
+          <ConfigEditor config={widget.config} onChange={(c) => onConfigChange?.(c)} />
+        </div>
+      )}
       <div className="min-h-0 flex-1 overflow-auto p-3">{children}</div>
     </div>
   )

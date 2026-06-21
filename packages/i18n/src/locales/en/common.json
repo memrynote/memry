@@ -488,8 +488,12 @@
     "widget": {
       "removeAria": "Remove widget",
       "dragAria": "Drag widget",
+      "configAria": "Configure widget",
       "recentlyEdited": "Recently edited",
       "bookmarks": "Bookmarks",
+      "tasks": "Tasks",
+      "inbox": "Inbox",
+      "folder": "Folder",
       "untitled": "Untitled"
     },
     "board": {

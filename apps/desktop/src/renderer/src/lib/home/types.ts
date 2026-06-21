@@ -1,5 +1,5 @@
 export type WidgetSize = 'S' | 'M' | 'L'
-export type WidgetType = 'recently-edited' | 'bookmarks'
+export type WidgetType = 'recently-edited' | 'bookmarks' | 'tasks' | 'inbox' | 'folder'
 
 export interface WidgetInstance {
   id: string
