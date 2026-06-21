@@ -17,7 +17,7 @@ export function WidgetGallery({ onAdd }: WidgetGalleryProps): React.JSX.Element 
           data-testid="widget-gallery-item"
           data-widget-type={def.type}
           onClick={() => onAdd(def.type)}
-          className="text-start"
+          className="rounded-md px-2 py-1 text-start text-sm hover:bg-muted/60"
         >
           {t(def.titleKey)}
         </button>

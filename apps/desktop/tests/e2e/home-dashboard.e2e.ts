@@ -40,6 +40,9 @@ const SEL = {
   grid: '[data-testid="board-grid"]',
   gallery: '[data-testid="widget-gallery"]',
   galleryItem: '[data-testid="widget-gallery-item"]',
+  // Edit-mode controls (gated behind board-edit-toggle since the Shape phase).
+  editToggle: '[data-testid="board-edit-toggle"]',
+  addWidgetTrigger: '[data-testid="add-widget-trigger"]',
   widget: '[data-testid="widget"]',
   // Home tab in the main tab strip (regular-tab.tsx sets nav-home on the home tab)
   homeTab: '[data-testid="nav-home"]'
@@ -65,6 +68,34 @@ async function waitForSeed(page) {
   await expect(page.locator(SEL.grid)).toBeVisible({ timeout: 20000 })
   // Default board renders its two default widgets.
   await expect(page.locator(`${SEL.grid} ${SEL.widget}`)).toHaveCount(2, { timeout: 20000 })
+}
+
+/**
+ * Enter board edit mode. Since the Shape phase, `editing` defaults to false and
+ * frame controls (resize / remove / drag) plus the add-widget affordance only
+ * render while editing. Idempotent: skips the toggle if already pressed.
+ */
+async function enterEditMode(page) {
+  const toggle = page.locator(SEL.editToggle)
+  await expect(toggle).toBeVisible({ timeout: 20000 })
+  if ((await toggle.getAttribute('aria-pressed')) !== 'true') {
+    await toggle.click()
+    await expect(toggle).toHaveAttribute('aria-pressed', 'true', { timeout: 20000 })
+  }
+}
+
+/**
+ * Open the add-widget Popover so its gallery is reachable. Requires edit mode
+ * (the trigger only renders while editing). Idempotent: opens only if closed.
+ */
+async function openWidgetGallery(page) {
+  await enterEditMode(page)
+  const trigger = page.locator(SEL.addWidgetTrigger)
+  await expect(trigger).toBeVisible({ timeout: 20000 })
+  if (!(await page.locator(SEL.gallery).isVisible())) {
+    await trigger.click()
+    await expect(page.locator(SEL.gallery)).toBeVisible({ timeout: 20000 })
+  }
 }
 
 function widgetsByType(page, type) {
@@ -296,6 +327,7 @@ test.describe('Home Dashboard — C: add widget', () => {
   test('C1: gallery lists one item per registered widget type', async ({ page }) => {
     await ready(page)
     await waitForSeed(page)
+    await openWidgetGallery(page)
 
     await expect(page.locator(SEL.gallery)).toBeVisible()
     await expect(
@@ -307,6 +339,7 @@ test.describe('Home Dashboard — C: add widget', () => {
   test('C2: clicking a gallery item adds a widget of that type', async ({ page }) => {
     await ready(page)
     await waitForSeed(page)
+    await openWidgetGallery(page)
 
     await page.locator(`${SEL.galleryItem}[data-widget-type="bookmarks"]`).click()
     // Seed already had one bookmarks widget → now two.
@@ -316,6 +349,7 @@ test.describe('Home Dashboard — C: add widget', () => {
   test('C3: adding the same type twice yields two cards (instances allowed)', async ({ page }) => {
     await ready(page)
     await waitForSeed(page)
+    await openWidgetGallery(page)
 
     const item = page.locator(`${SEL.galleryItem}[data-widget-type="recently-edited"]`)
     await item.click()
@@ -327,6 +361,7 @@ test.describe('Home Dashboard — C: add widget', () => {
   test('C4: an added widget persists across reload', async ({ page }) => {
     await ready(page)
     await waitForSeed(page)
+    await openWidgetGallery(page)
 
     await page.locator(`${SEL.galleryItem}[data-widget-type="bookmarks"]`).click()
     await expect(widgetsByType(page, 'bookmarks')).toHaveCount(2, { timeout: 20000 })
@@ -346,6 +381,7 @@ test.describe('Home Dashboard — D: widget frame controls', () => {
   test('D1: remove deletes the card and persists across reload', async ({ page }) => {
     await ready(page)
     await waitForSeed(page)
+    await enterEditMode(page)
 
     const bookmarks = widgetsByType(page, 'bookmarks')
     await expect(bookmarks).toHaveCount(1)
@@ -365,6 +401,7 @@ test.describe('Home Dashboard — D: widget frame controls', () => {
   test('D2: resize updates data-widget-size and persists across reload', async ({ page }) => {
     await ready(page)
     await waitForSeed(page)
+    await enterEditMode(page)
 
     const recent = widgetsByType(page, 'recently-edited').first()
     const widgetId = await recent.getAttribute('data-widget-id')
@@ -386,6 +423,7 @@ test.describe('Home Dashboard — D: widget frame controls', () => {
   test('D3: recently-edited/bookmarks expose only S and M (no L)', async ({ page }) => {
     await ready(page)
     await waitForSeed(page)
+    await enterEditMode(page)
 
     for (const type of ['recently-edited', 'bookmarks']) {
       const card = widgetsByType(page, type).first()
@@ -398,6 +436,7 @@ test.describe('Home Dashboard — D: widget frame controls', () => {
   test('D4: reorder via drag handle changes order and persists across reload', async ({ page }) => {
     await ready(page)
     await waitForSeed(page)
+    await enterEditMode(page)
 
     const cards = page.locator(`${SEL.grid} ${SEL.widget}`)
     await expect(cards).toHaveCount(2)
@@ -432,6 +471,7 @@ test.describe('Home Dashboard — E: layout persistence', () => {
   }) => {
     await ready(page)
     await waitForSeed(page)
+    await openWidgetGallery(page)
 
     // Add a 2nd recently-edited.
     await page.locator(`${SEL.galleryItem}[data-widget-type="recently-edited"]`).click()
@@ -477,6 +517,7 @@ test.describe('Home Dashboard — E: layout persistence', () => {
     test.setTimeout(120_000)
     await ready(page)
     await waitForSeed(page)
+    await openWidgetGallery(page)
 
     // Compose: add a 2nd recently-edited, resize bookmarks to S.
     await page.locator(`${SEL.galleryItem}[data-widget-type="recently-edited"]`).click()
@@ -536,6 +577,7 @@ test.describe('Home Dashboard — E: layout persistence', () => {
     await newChip.click()
     await expect(newChip).toHaveAttribute('data-active', 'true')
     await expect(page.locator(`${SEL.grid} ${SEL.widget}`)).toHaveCount(0, { timeout: 20000 })
+    await openWidgetGallery(page)
     await page.locator(`${SEL.galleryItem}[data-widget-type="bookmarks"]`).click()
     await expect(page.locator(`${SEL.grid} ${SEL.widget}`)).toHaveCount(1, { timeout: 20000 })
     await expect(widgetsByType(page, 'bookmarks')).toHaveCount(1)
@@ -608,6 +650,7 @@ test.describe('Home Dashboard — H: edge cases', () => {
     // per Playwright's visibility heuristic — assert presence, not paint.
     await expect(page.locator(SEL.grid)).toBeAttached()
     await expect(page.locator(`${SEL.grid} ${SEL.widget}`)).toHaveCount(0, { timeout: 20000 })
+    await openWidgetGallery(page)
     await expect(page.locator(SEL.gallery)).toBeVisible()
     await page.locator(`${SEL.galleryItem}[data-widget-type="bookmarks"]`).click()
     await expect(page.locator(`${SEL.grid} ${SEL.widget}`)).toHaveCount(1, { timeout: 20000 })

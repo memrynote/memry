@@ -1,17 +1,23 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { BoardGrid } from './board-grid'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import { registerWidget } from '@/lib/home/widget-registry'
 import type { HomePage } from '@/lib/home/types'
 
 vi.mock('@dnd-kit/core', () => ({
   DndContext: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  closestCenter: vi.fn()
+  closestCenter: vi.fn(),
+  KeyboardSensor: vi.fn(),
+  PointerSensor: vi.fn(),
+  useSensor: vi.fn(),
+  useSensors: vi.fn(() => [])
 }))
 
 vi.mock('@dnd-kit/sortable', () => ({
   SortableContext: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   rectSortingStrategy: vi.fn(),
+  sortableKeyboardCoordinates: vi.fn(),
   useSortable: () => ({
     attributes: {},
     listeners: {},
@@ -41,7 +47,11 @@ const board: HomePage = {
 describe('BoardGrid', () => {
   it('renders a widget and removes it', () => {
     const onChange = vi.fn()
-    render(<BoardGrid board={board} onChange={onChange} editing />)
+    render(
+      <TooltipProvider>
+        <BoardGrid board={board} onChange={onChange} editing />
+      </TooltipProvider>
+    )
     expect(screen.getByText('BM')).toBeInTheDocument()
     fireEvent.click(screen.getByLabelText('Remove widget'))
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ widgets: [] }))

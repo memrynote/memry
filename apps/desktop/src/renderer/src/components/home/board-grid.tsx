@@ -1,5 +1,17 @@
-import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core'
-import { SortableContext, rectSortingStrategy } from '@dnd-kit/sortable'
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  rectSortingStrategy,
+  sortableKeyboardCoordinates
+} from '@dnd-kit/sortable'
 import { WidgetFrame } from './widget-frame'
 import { WIDGET_REGISTRY } from '@/lib/home/widget-registry'
 import {
@@ -19,13 +31,17 @@ interface BoardGridProps {
 
 export function BoardGrid({ board, onChange, editing }: BoardGridProps): React.JSX.Element {
   const { t } = useT('common')
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
   const handleDragEnd = (e: DragEndEvent) => {
     if (e.over && e.active.id !== e.over.id) {
       onChange(moveWidget(board, String(e.active.id), String(e.over.id)))
     }
   }
   return (
-    <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <SortableContext items={board.widgets.map((w) => w.id)} strategy={rectSortingStrategy}>
         <div
           data-testid="board-grid"
@@ -34,7 +50,23 @@ export function BoardGrid({ board, onChange, editing }: BoardGridProps): React.J
         >
           {board.widgets.map((w) => {
             const def = WIDGET_REGISTRY[w.type]
-            if (!def) return null
+            if (!def) {
+              return (
+                <WidgetFrame
+                  key={w.id}
+                  widget={w}
+                  title={t('home.widget.unknown')}
+                  sizes={[]}
+                  editing={editing}
+                  onResize={(s: WidgetSize) => onChange(resizeWidget(board, w.id, s))}
+                  onRemove={() => onChange(removeWidget(board, w.id))}
+                >
+                  <p data-testid="widget-unknown" className="text-sm text-muted-foreground">
+                    {t('home.widget.unknown')}
+                  </p>
+                </WidgetFrame>
+              )
+            }
             const { Component } = def
             return (
               <WidgetFrame

@@ -7,6 +7,8 @@ import { useTabActions } from '@/contexts/tabs/context'
 import { FolderListView } from '@/components/folder-view/folder-list-view'
 import { FolderBoardView } from '@/components/folder-view/folder-board-view'
 import { FolderGalleryView } from '@/components/folder-view/folder-gallery-view'
+import { Skeleton } from '@/components/ui/skeleton'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import type { WidgetComponentProps } from '@/lib/home/widget-registry'
 import { useT } from '@memry/i18n/renderer'
 
@@ -18,7 +20,7 @@ export function FolderWidget({ config, size }: WidgetComponentProps): React.JSX.
   const viewType = (config.viewType as FolderViewType) ?? 'list'
   const limit = size === 'L' ? 24 : 12
 
-  const { notes, isLoading } = useFolderNotes({ folderPath, limit })
+  const { notes, isLoading, error } = useFolderNotes({ folderPath, limit })
   const { tags: allTags } = useNoteTagsQuery()
   const { density } = useDisplayDensity()
   const { openTab } = useTabActions()
@@ -51,7 +53,25 @@ export function FolderWidget({ config, size }: WidgetComponentProps): React.JSX.
   if (!folderPath)
     return <div className="text-xs text-muted-foreground">{t('home.widget.folderPickPrompt')}</div>
 
-  if (isLoading) return <div className="text-xs text-muted-foreground">{t('state.loading')}</div>
+  if (isLoading)
+    return (
+      <div className="flex flex-col gap-1" aria-busy="true">
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-full" />
+      </div>
+    )
+
+  if (error)
+    return (
+      <div
+        role="alert"
+        className="text-xs text-muted-foreground"
+        title={extractErrorMessage(error, t('home.widget.loadError'))}
+      >
+        {t('home.widget.loadError')}
+      </div>
+    )
 
   return (
     <div data-widget-folder-view={viewType} className="h-full">

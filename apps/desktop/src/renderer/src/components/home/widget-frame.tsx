@@ -5,6 +5,10 @@ import { SIZE_SPANS } from '@/lib/home/widget-sizes'
 import type { WidgetConfigEditorProps } from '@/lib/home/widget-registry'
 import type { WidgetInstance, WidgetSize } from '@/lib/home/types'
 import { useT } from '@memry/i18n/renderer'
+import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { GripVertical, Settings, X } from '@/lib/icons/icon-map'
+import { cn } from '@/lib/utils'
 
 interface WidgetFrameProps {
   widget: WidgetInstance
@@ -51,52 +55,93 @@ export function WidgetFrame({
       }}
       className="flex flex-col overflow-hidden rounded-xl border bg-card"
     >
-      <div className="flex items-center justify-between gap-2 border-b px-3 py-2 text-xs font-medium text-muted-foreground">
-        <span className="truncate">{title}</span>
+      <div className="flex items-center justify-between gap-2 border-b px-3.5 py-2.5 text-xs font-medium text-muted-foreground">
+        <span className="truncate text-sm font-medium text-foreground">{title}</span>
         {editing && (
           <span className="flex items-center gap-1">
-            {sizes.map((s) => (
-              <button
-                key={s}
-                type="button"
-                data-testid={`widget-size-${s}`}
-                aria-label={`Resize to ${s}`}
-                onClick={() => onResize(s)}
-                className={widget.size === s ? 'font-semibold text-foreground' : ''}
-              >
-                {s}
-              </button>
-            ))}
+            {sizes.map((s) => {
+              const active = widget.size === s
+              const resizeLabel = t('home.widget.resizeAria', { size: s })
+              return (
+                <Tooltip key={s}>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      data-testid={`widget-size-${s}`}
+                      aria-label={resizeLabel}
+                      aria-pressed={active}
+                      onClick={() => onResize(s)}
+                      className={cn(
+                        'h-7 min-w-7 rounded px-1.5 text-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--tint-ring)]',
+                        active
+                          ? 'bg-[var(--tint-light)] font-semibold text-[var(--tint)]'
+                          : 'hover:bg-muted/60'
+                      )}
+                    >
+                      {s}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>{resizeLabel}</TooltipContent>
+                </Tooltip>
+              )
+            })}
             {ConfigEditor && (
-              <button
-                type="button"
-                data-testid="widget-config-toggle"
-                aria-label={t('home.widget.configAria')}
-                onClick={() => setConfigOpen((open) => !open)}
-              >
-                ⚙
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    data-testid="widget-config-toggle"
+                    aria-label={t('home.widget.configAria')}
+                    aria-pressed={configOpen}
+                    onClick={() => setConfigOpen((open) => !open)}
+                    className="text-muted-foreground focus-visible:ring-[var(--tint-ring)]"
+                  >
+                    <Settings className="size-4" aria-hidden="true" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{t('home.widget.configAria')}</TooltipContent>
+              </Tooltip>
             )}
-            <button type="button" aria-label={t('home.widget.removeAria')} onClick={onRemove}>
-              ×
-            </button>
-            <span
-              {...attributes}
-              {...listeners}
-              aria-label={t('home.widget.dragAria')}
-              className="cursor-grab"
-            >
-              ⠿
-            </span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={t('home.widget.removeAria')}
+                  onClick={onRemove}
+                  className="text-muted-foreground focus-visible:ring-[var(--tint-ring)]"
+                >
+                  <X className="size-4" aria-hidden="true" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{t('home.widget.removeAria')}</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  {...attributes}
+                  {...listeners}
+                  aria-label={t('home.widget.dragAria')}
+                  className="inline-flex h-8 w-8 cursor-grab items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--tint-ring)] active:cursor-grabbing"
+                >
+                  <GripVertical className="size-4" aria-hidden="true" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{t('home.widget.dragAria')}</TooltipContent>
+            </Tooltip>
           </span>
         )}
       </div>
       {editing && ConfigEditor && configOpen && (
-        <div data-testid="widget-config-panel" className="border-b px-3 py-2">
+        <div data-testid="widget-config-panel" className="border-b px-3.5 py-2.5">
           <ConfigEditor config={widget.config} onChange={(c) => onConfigChange?.(c)} />
         </div>
       )}
-      <div className="min-h-0 flex-1 overflow-auto p-3">{children}</div>
+      <div className="min-h-0 flex-1 overflow-auto px-3.5 py-3">{children}</div>
     </div>
   )
 }
