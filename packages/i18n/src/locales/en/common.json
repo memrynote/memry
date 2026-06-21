@@ -494,12 +494,18 @@
       "tasks": "Tasks",
       "inbox": "Inbox",
       "folder": "Folder",
-      "untitled": "Untitled"
+      "untitled": "Untitled",
+      "folderPickPrompt": "Pick a folder",
+      "folderViewLabel": "View",
+      "folderView_list": "List",
+      "folderView_board": "Board",
+      "folderView_gallery": "Gallery"
     },
     "board": {
       "newAria": "New board"
     },
     "noBookmarksYet": "No bookmarks yet.",
-    "noNotesYet": "No notes yet."
+    "noNotesYet": "No notes yet.",
+    "noTasksYet": "No tasks yet."
   }
 }
