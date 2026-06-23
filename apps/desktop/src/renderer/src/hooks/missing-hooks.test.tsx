@@ -12,7 +12,6 @@ import { useEditorSettings } from './use-editor-settings'
 import { useExpandedTasks } from './use-expanded-tasks'
 import { useFlushOnQuit } from './use-flush-on-quit'
 import { useFocusTrap } from './use-focus-trap'
-import { useFocusManagement } from './use-focus-management'
 import { useFolderViewEvents } from './use-folder-view-events'
 import { useGraphData, useGraphReactivity, useLocalGraphData } from './use-graph-data'
 import { useGraphFilters } from './use-graph-filters'
@@ -23,7 +22,6 @@ import { useKeyboardSettings } from './use-keyboard-settings'
 import { useSearchShortcut } from './use-search-shortcut'
 import { useSettingsShortcut } from './use-settings-shortcut'
 import { useStorageUsage } from './use-storage-usage'
-import { useThrottledTabSwitch } from './use-throttled-tab-switch'
 import { useTriageQueue } from './use-triage-queue'
 import { useUndoableAction } from './use-undoable-action'
 import { AISettingsProvider } from '@/contexts/ai-settings-context'
@@ -457,18 +455,6 @@ describe('navigation and keyboard hooks', () => {
     expect(result.current.activeHeadingId).toBe('h1')
   })
 
-  it('throttles tab switches', () => {
-    vi.spyOn(Date, 'now').mockReturnValueOnce(100).mockReturnValueOnce(120).mockReturnValueOnce(200)
-    const { result } = renderHook(() => useThrottledTabSwitch({ delayMs: 50 }))
-
-    act(() => result.current('tab-1', 'group-1'))
-    act(() => result.current('tab-2', 'group-1'))
-    act(() => result.current('tab-3', 'group-1'))
-
-    expect(mocks.setActiveTab).toHaveBeenCalledTimes(2)
-    expect(mocks.setActiveTab).toHaveBeenLastCalledWith('tab-3', 'group-1')
-  })
-
   it('handles inbox keyboard refresh, archive, bulk archive, and source opening', () => {
     const callbacks = {
       onRefresh: vi.fn(),
@@ -511,7 +497,7 @@ describe('navigation and keyboard hooks', () => {
     expect(callbacks.onOpenBulkArchiveDialog).toHaveBeenCalled()
   })
 
-  it('handles search, settings, focus, countdown, and flush lifecycle hooks', async () => {
+  it('handles search, settings, countdown, and flush lifecycle hooks', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-05-10T12:00:00.000Z'))
     const isMacPlatform = navigator.platform.toUpperCase().includes('MAC')
@@ -537,20 +523,6 @@ describe('navigation and keyboard hooks', () => {
     act(() => vi.advanceTimersByTime(65_000))
     expect(countdown.result.current.isExpired).toBe(true)
     countdown.unmount()
-
-    const focus = renderHook(() => useFocusManagement())
-    const pane = document.createElement('section')
-    pane.dataset.paneId = 'pane-b'
-    const button = document.createElement('button')
-    pane.append(button)
-    document.body.append(pane)
-    fireEvent.focusIn(button)
-    expect(mocks.tabsDispatch).toHaveBeenCalledWith({
-      type: 'SET_ACTIVE_GROUP',
-      payload: { groupId: 'pane-b' }
-    })
-    focus.unmount()
-    pane.remove()
 
     const flush = renderHook(() => useFlushOnQuit())
     await act(async () => {

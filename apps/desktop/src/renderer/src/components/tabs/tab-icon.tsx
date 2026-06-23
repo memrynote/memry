@@ -74,6 +74,7 @@ const ICON_COMPONENTS: Record<string, React.ComponentType<{ className?: string }
  * Default icon mapping for tab types
  */
 const TYPE_TO_ICON: Record<TabType, string> = {
+  home: 'home',
   inbox: 'inbox',
   calendar: 'calendar',
   tasks: 'list-checks', // New unified tasks tab

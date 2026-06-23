@@ -99,28 +99,3 @@ export function parseSearchQuery(input: string): string {
 
   return tokens.join(' ')
 }
-
-export function extractSnippet(content: string, query: string, contextChars = 50): string {
-  if (!content || !query.trim()) return content.slice(0, contextChars * 2)
-
-  const terms = query.split(/\s+/).filter(Boolean)
-  const lowerContent = content.toLowerCase()
-
-  let bestPos = -1
-  for (const term of terms) {
-    const idx = lowerContent.indexOf(term.toLowerCase())
-    if (idx !== -1) {
-      bestPos = idx
-      break
-    }
-  }
-
-  if (bestPos === -1) return content.slice(0, contextChars * 2)
-
-  const start = Math.max(0, bestPos - contextChars)
-  const end = Math.min(content.length, bestPos + contextChars)
-  const prefix = start > 0 ? '...' : ''
-  const suffix = end < content.length ? '...' : ''
-
-  return `${prefix}${content.slice(start, end)}${suffix}`
-}

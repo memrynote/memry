@@ -30,6 +30,7 @@ import { registerTelemetryHandlers, unregisterTelemetryHandlers } from './teleme
 import { registerUpdaterHandlers, unregisterUpdaterHandlers } from './updater-handlers'
 import { registerAgentMcpHandlers, unregisterAgentMcpHandlers } from './agent-mcp-handlers'
 import { registerImportHandlers, unregisterImportHandlers } from './import-handlers'
+import { registerHomePageHandlers, unregisterHomePageHandlers } from './home-page-handlers'
 import { registerLocaleHandlers, type RebuildMenuFn } from './locale-handler'
 import type { I18nInstance } from '@memry/i18n/main'
 import { createLogger } from '../lib/logger'
@@ -145,6 +146,9 @@ export function registerAllHandlers(deps?: IpcDeps): void {
   // Register generic import handlers (Notion + future importers)
   registerImportHandlers()
 
+  // Register home page handlers
+  registerHomePageHandlers()
+
   handlersRegistered = true
 }
 
@@ -181,6 +185,7 @@ export function unregisterAllHandlers(): void {
   unregisterTelemetryHandlers()
   unregisterAgentMcpHandlers()
   unregisterImportHandlers()
+  unregisterHomePageHandlers()
 
   handlersRegistered = false
   ipcLog.info('all handlers unregistered')
@@ -220,4 +225,5 @@ export { registerUpdaterHandlers, unregisterUpdaterHandlers } from './updater-ha
 export { registerTelemetryHandlers, unregisterTelemetryHandlers } from './telemetry-handlers'
 export { registerAgentMcpHandlers, unregisterAgentMcpHandlers } from './agent-mcp-handlers'
 export { registerImportHandlers, unregisterImportHandlers } from './import-handlers'
+export { registerHomePageHandlers, unregisterHomePageHandlers } from './home-page-handlers'
 export { registerLocaleHandlers, type RebuildMenuFn } from './locale-handler'

@@ -13,23 +13,7 @@ import { cn } from '@/lib/utils'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
 import type { LinkedNote } from '@/types'
 
-// =============================================================================
-// Debounce Hook
-// =============================================================================
-
-function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState<T>(value)
-
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value)
-    }, delay)
-
-    return () => clearTimeout(handler)
-  }, [value, delay])
-
-  return debouncedValue
-}
+import { useDebouncedValue } from '@/hooks/use-task-filters'
 
 // =============================================================================
 // LinkedNoteCard Component
@@ -150,7 +134,7 @@ export const LinkInput = ({
   const containerRef = useRef<HTMLDivElement>(null)
 
   // Debounced search query
-  const debouncedQuery = useDebounce(searchQuery, 200)
+  const debouncedQuery = useDebouncedValue(searchQuery, 200)
 
   // Fetch notes for search (by title only)
   const { data: searchResults = [], isLoading: isSearching } = useQuery({

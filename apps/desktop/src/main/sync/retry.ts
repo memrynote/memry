@@ -41,7 +41,7 @@ const DEFAULTS: RetryOptions = {
 const ONLINE_POLL_MS = 2000
 const MAX_OFFLINE_WAIT_MS = 5 * 60 * 1000
 
-function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+export function sleep(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     if (signal?.aborted) {
       reject(new DOMException('The operation was aborted.', 'AbortError'))
