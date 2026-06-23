@@ -14,7 +14,7 @@ import type {
   ImportWarning,
   RepeatConfig,
   StatusType
-} from '@memry/ticktick-import'
+} from '@memry/importers/ticktick'
 import type { ImportContext } from '../types'
 
 /** Result of applying a plan. Streaming progress (when wanted) goes through `ctx`. */

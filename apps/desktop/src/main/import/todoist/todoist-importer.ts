@@ -1,7 +1,7 @@
 /**
  * Todoist CSV importer (framework-native).
  *
- * Reuses the pure `@memry/todoist-import` package, applies plans through the
+ * Reuses the pure `@memry/importers/todoist` package, applies plans through the
  * tasks domain, and plugs into the generic import framework (registry + preview
  * + streaming progress).
  *
@@ -10,7 +10,7 @@
 
 import { readFile } from 'fs/promises'
 import { basename } from 'path'
-import { parseTodoistCsv, mapRows, type ImportPlan } from '@memry/todoist-import'
+import { parseTodoistCsv, mapRows, type ImportPlan } from '@memry/importers/todoist'
 import { createLogger } from '../../lib/logger'
 import type { Importer, ImportContext, ImportPreview } from '../types'
 
