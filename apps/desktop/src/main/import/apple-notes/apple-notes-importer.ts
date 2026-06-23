@@ -2,7 +2,7 @@
  * Apple Notes importer (macOS only).
  *
  * Reads a copy of the Apple Notes NoteStore.sqlite database, decodes each
- * note's gzipped protobuf body via the pure @memry/apple-notes-import package,
+ * note's gzipped protobuf body via the pure @memry/importers/apple-notes package,
  * converts it to markdown, resolves inline image attachments, and creates a
  * note under `Apple Notes/<account>/<folder>`.
  *
@@ -29,7 +29,7 @@ import {
   mapNote,
   ATTACHMENT_TOKEN_PREFIX,
   type AppleNoteRow
-} from '@memry/apple-notes-import'
+} from '@memry/importers/apple-notes'
 
 const ROOT = 'Apple Notes'
 const NOTE_CONTAINER_REL = 'Library/Group Containers/group.com.apple.notes'

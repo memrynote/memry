@@ -324,24 +324,12 @@ importers:
       '@memry/app-core':
         specifier: workspace:*
         version: link:../../packages/app-core
-      '@memry/apple-journal-import':
-        specifier: workspace:*
-        version: link:../../packages/apple-journal-import
-      '@memry/apple-notes-import':
-        specifier: workspace:*
-        version: link:../../packages/apple-notes-import
-      '@memry/bear-import':
-        specifier: workspace:*
-        version: link:../../packages/bear-import
       '@memry/cli':
         specifier: workspace:*
         version: link:../cli
       '@memry/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
-      '@memry/csv-import':
-        specifier: workspace:*
-        version: link:../../packages/csv-import
       '@memry/db-schema':
         specifier: workspace:*
         version: link:../../packages/db-schema
@@ -354,24 +342,12 @@ importers:
       '@memry/domain-tasks':
         specifier: workspace:*
         version: link:../../packages/domain-tasks
-      '@memry/evernote-import':
+      '@memry/importers':
         specifier: workspace:*
-        version: link:../../packages/evernote-import
-      '@memry/google-keep-import':
-        specifier: workspace:*
-        version: link:../../packages/google-keep-import
-      '@memry/html-import':
-        specifier: workspace:*
-        version: link:../../packages/html-import
-      '@memry/markdown-import':
-        specifier: workspace:*
-        version: link:../../packages/markdown-import
+        version: link:../../packages/importers
       '@memry/onenote-import':
         specifier: workspace:*
         version: link:../../packages/onenote-import
-      '@memry/roam-import':
-        specifier: workspace:*
-        version: link:../../packages/roam-import
       '@memry/rpc':
         specifier: workspace:*
         version: link:../../packages/rpc
@@ -387,9 +363,6 @@ importers:
       '@memry/sync-core':
         specifier: workspace:*
         version: link:../../packages/sync-core
-      '@memry/todoist-import':
-        specifier: workspace:*
-        version: link:../../packages/todoist-import
       '@playwright/test':
         specifier: ^1.57.0
         version: 1.58.2
@@ -1018,22 +991,6 @@ importers:
         specifier: ^25.0.3
         version: 25.2.2
 
-  packages/apple-journal-import:
-    devDependencies:
-      '@memry/typescript-config':
-        specifier: workspace:*
-        version: link:../typescript-config
-
-  packages/apple-notes-import:
-    dependencies:
-      protobufjs:
-        specifier: 7.5.8
-        version: 7.5.8
-    devDependencies:
-      '@memry/typescript-config':
-        specifier: workspace:*
-        version: link:../typescript-config
-
   packages/article-extract:
     dependencies:
       defuddle:
@@ -1047,12 +1004,6 @@ importers:
         specifier: workspace:*
         version: link:../typescript-config
 
-  packages/bear-import:
-    devDependencies:
-      '@memry/typescript-config':
-        specifier: workspace:*
-        version: link:../typescript-config
-
   packages/contracts:
     dependencies:
       '@memry/domain-tasks':
@@ -1061,12 +1012,6 @@ importers:
       zod:
         specifier: ^4.3.4
         version: 4.3.6
-    devDependencies:
-      '@memry/typescript-config':
-        specifier: workspace:*
-        version: link:../typescript-config
-
-  packages/csv-import:
     devDependencies:
       '@memry/typescript-config':
         specifier: workspace:*
@@ -1119,28 +1064,6 @@ importers:
         specifier: workspace:*
         version: link:../typescript-config
 
-  packages/evernote-import:
-    dependencies:
-      fast-xml-parser:
-        specifier: ^5.9.0
-        version: 5.9.0
-    devDependencies:
-      '@memry/typescript-config':
-        specifier: workspace:*
-        version: link:../typescript-config
-
-  packages/google-keep-import:
-    devDependencies:
-      '@memry/typescript-config':
-        specifier: workspace:*
-        version: link:../typescript-config
-
-  packages/html-import:
-    devDependencies:
-      '@memry/typescript-config':
-        specifier: workspace:*
-        version: link:../typescript-config
-
   packages/i18n:
     dependencies:
       '@memry/contracts':
@@ -1175,23 +1098,23 @@ importers:
         specifier: workspace:*
         version: link:../typescript-config
 
-  packages/markdown-import:
+  packages/importers:
     dependencies:
+      fast-xml-parser:
+        specifier: ^5.9.0
+        version: 5.9.0
       gray-matter:
         specifier: ^4.0.3
         version: 4.0.3
+      protobufjs:
+        specifier: 7.5.8
+        version: 7.5.8
     devDependencies:
       '@memry/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
 
   packages/onenote-import:
-    devDependencies:
-      '@memry/typescript-config':
-        specifier: workspace:*
-        version: link:../typescript-config
-
-  packages/roam-import:
     devDependencies:
       '@memry/typescript-config':
         specifier: workspace:*
@@ -1246,18 +1169,6 @@ importers:
       zod:
         specifier: ^4.3.4
         version: 4.3.6
-    devDependencies:
-      '@memry/typescript-config':
-        specifier: workspace:*
-        version: link:../typescript-config
-
-  packages/ticktick-import:
-    devDependencies:
-      '@memry/typescript-config':
-        specifier: workspace:*
-        version: link:../typescript-config
-
-  packages/todoist-import:
     devDependencies:
       '@memry/typescript-config':
         specifier: workspace:*
