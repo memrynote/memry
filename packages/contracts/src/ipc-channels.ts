@@ -506,6 +506,21 @@ export type DataInvokeChannel = (typeof DataChannels.invoke)[keyof typeof DataCh
 export type DataEventChannel = (typeof DataChannels.events)[keyof typeof DataChannels.events]
 
 // ============================================================================
+// Home Pages Channels
+// ============================================================================
+
+export const HomePagesChannels = {
+  LIST: 'home-pages:list',
+  GET: 'home-pages:get',
+  CREATE: 'home-pages:create',
+  UPDATE: 'home-pages:update',
+  DELETE: 'home-pages:delete',
+  REORDER: 'home-pages:reorder'
+} as const
+
+export type HomePagesInvokeChannel = (typeof HomePagesChannels)[keyof typeof HomePagesChannels]
+
+// ============================================================================
 // Bookmarks Channels
 // ============================================================================
 

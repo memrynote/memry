@@ -154,12 +154,13 @@ export async function waitForVaultReady(page: Page, timeout = 15000): Promise<vo
  */
 export async function navigateTo(
   page: Page,
-  view: 'notes' | 'tasks' | 'inbox' | 'journal' | 'settings'
+  view: 'home' | 'notes' | 'tasks' | 'inbox' | 'journal' | 'settings'
 ): Promise<void> {
   await dismissFirstRunOnboarding(page)
 
   // Map view names to display text (capitalize first letter)
   const viewNames: Record<string, string> = {
+    home: 'Home',
     notes: 'Notes',
     tasks: 'Tasks',
     inbox: 'Inbox',
