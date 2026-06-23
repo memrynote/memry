@@ -23,10 +23,6 @@ export * from './use-chord-shortcuts'
 export * from './use-mouse-nav-buttons'
 export * from './use-pane-navigation'
 
-// Accessibility & polish
-export * from './use-focus-management'
-export * from './use-throttled-tab-switch'
-
 // Journal
 export * from './use-journal-scroll'
 
