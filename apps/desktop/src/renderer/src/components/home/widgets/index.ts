@@ -5,6 +5,7 @@ import { TasksWidget } from './tasks-widget'
 import { InboxWidget } from './inbox-widget'
 import { FolderWidget } from './folder-widget'
 import { FolderWidgetConfigEditor } from './folder-widget-config-editor'
+import { TasksWidgetConfigEditor } from './tasks-widget-config-editor'
 
 registerWidget({
   type: 'recently-edited',
@@ -33,7 +34,8 @@ registerWidget({
   sizes: ['S', 'M', 'L'],
   defaultSize: 'M',
   defaultConfig: { dateRange: 'today' },
-  Component: TasksWidget
+  Component: TasksWidget,
+  ConfigEditor: TasksWidgetConfigEditor
 })
 
 registerWidget({

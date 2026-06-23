@@ -502,7 +502,10 @@
       "folderView_board": "Board",
       "folderView_gallery": "Gallery",
       "loadError": "Couldn't load",
-      "unknown": "Unknown widget"
+      "unknown": "Unknown widget",
+      "savedFilterLabel": "Saved filter",
+      "savedFilterDefault": "Today",
+      "savedFilterHint": "Star filters on the Tasks page to use them here"
     },
     "board": {
       "newAria": "New board",
