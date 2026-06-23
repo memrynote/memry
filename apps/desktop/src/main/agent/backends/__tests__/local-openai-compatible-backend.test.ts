@@ -4,12 +4,17 @@ const mocks = vi.hoisted(() => ({
   createOpenAI: vi.fn(() => ({
     chat: vi.fn((model: string) => ({ provider: 'openai-compatible', model }))
   })),
+  createOllama: vi.fn(() => vi.fn((model: string) => ({ provider: 'ollama', model }))),
   streamText: vi.fn(),
   stepCountIs: vi.fn((count: number) => ({ type: 'step-count', count }))
 }))
 
 vi.mock('@ai-sdk/openai', () => ({
   createOpenAI: mocks.createOpenAI
+}))
+
+vi.mock('ollama-ai-provider-v2', () => ({
+  createOllama: mocks.createOllama
 }))
 
 vi.mock('ai', () => ({
@@ -85,10 +90,9 @@ describe('LocalOpenAICompatibleBackend', () => {
     const events = []
     for await (const event of run.events) events.push(event)
 
-    expect(mocks.createOpenAI).toHaveBeenCalledWith({
-      baseURL: 'http://localhost:11434/v1',
-      apiKey: 'local'
-    })
+    expect(mocks.createOllama).toHaveBeenCalledWith(
+      expect.objectContaining({ baseURL: 'http://localhost:11434/api' })
+    )
     expect(mocks.stepCountIs).toHaveBeenCalledWith(8)
     expect(mocks.streamText).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -392,6 +396,73 @@ describe('LocalOpenAICompatibleBackend', () => {
         tools: expect.anything()
       })
     )
+  })
+
+  it('ollama preset uses the native /api endpoint with num_ctx 8192', async () => {
+    mocks.streamText.mockReturnValueOnce({
+      fullStream: (async function* () {
+        yield { type: 'text-delta', text: 'ok' }
+      })()
+    })
+
+    const backend = new LocalOpenAICompatibleBackend({
+      getSettings: async () => ({
+        preset: 'ollama',
+        baseUrl: 'http://localhost:11434/v1',
+        model: 'gemma4',
+        apiKeyConfigured: false,
+        allowNonLoopback: false
+      }),
+      getApiKey: async () => null,
+      toolBridge: { execute: vi.fn() } as never,
+      fetch: createProbeFetch()
+    })
+
+    await backend.runTurn({
+      prompt: 'hi',
+      conversationId: 'c1',
+      windowId: 'window-1',
+      options: { backend: 'local_openai_compatible' }
+    })
+
+    expect(mocks.createOllama).toHaveBeenCalledWith(
+      expect.objectContaining({ baseURL: 'http://localhost:11434/api' })
+    )
+    expect(mocks.createOpenAI).not.toHaveBeenCalled()
+    const streamArgs = mocks.streamText.mock.calls[0][0]
+    expect(streamArgs.providerOptions).toEqual({ ollama: { options: { num_ctx: 8192 } } })
+  })
+
+  it('non-ollama preset stays on the /v1 openai-compat path without num_ctx', async () => {
+    mocks.streamText.mockReturnValueOnce({
+      fullStream: (async function* () {
+        yield { type: 'text-delta', text: 'ok' }
+      })()
+    })
+
+    const backend = new LocalOpenAICompatibleBackend({
+      getSettings: async () => ({
+        preset: 'lm_studio',
+        baseUrl: 'http://localhost:1234/v1',
+        model: 'qwen2.5',
+        apiKeyConfigured: false,
+        allowNonLoopback: false
+      }),
+      getApiKey: async () => null,
+      toolBridge: { execute: vi.fn() } as never,
+      fetch: createProbeFetch()
+    })
+
+    await backend.runTurn({
+      prompt: 'hi',
+      conversationId: 'c1',
+      windowId: 'window-1',
+      options: { backend: 'local_openai_compatible' }
+    })
+
+    expect(mocks.createOpenAI).toHaveBeenCalled()
+    expect(mocks.createOllama).not.toHaveBeenCalled()
+    expect(mocks.streamText.mock.calls[0][0].providerOptions).toBeUndefined()
   })
 })
 
