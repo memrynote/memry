@@ -5,12 +5,14 @@ export type { Tag } from './TagChip'
 export { AddTagButton } from './AddTagButton'
 export { TagInputPopup } from './TagInputPopup'
 export { ColorPicker } from './ColorPicker'
+export { CustomColorSwatch } from './CustomColorSwatch'
 export {
   TAG_COLORS,
   COLOR_NAMES,
   COLOR_ROWS,
   getTagColors,
   defaultTagColorName,
+  isHexColor,
   withAlpha
 } from './tag-colors'
 export type { TagColorConfig } from './tag-colors'

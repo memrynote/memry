@@ -47,6 +47,7 @@ import { useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
 import { useTagDetail, type TagSortBy } from '@/hooks/use-tag-detail'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { COLOR_NAMES, getTagColors } from '@/components/note/tags-row/tag-colors'
+import { CustomColorSwatch } from '@/components/note/tags-row/CustomColorSwatch'
 import { tagsService, onTagRenamed, onTagDeleted, type TagNoteItem } from '@/services/tags-service'
 import type { SidebarItem } from '@/contexts/tabs/types'
 import { createLogger } from '@/lib/logger'
@@ -489,6 +490,11 @@ function TagOverflowMenu({
                   />
                 )
               })}
+              <CustomColorSwatch
+                size="sm"
+                value={color}
+                onChange={(hex) => void handleColorChange(hex)}
+              />
             </div>
           </DropdownMenuSubContent>
         </DropdownMenuSub>

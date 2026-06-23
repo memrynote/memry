@@ -38,6 +38,7 @@ import { toast } from 'sonner'
 import { useTags } from '@/hooks/use-tags'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { getTagColors, COLOR_ROWS, TAG_COLORS } from '@/components/note/tags-row/tag-colors'
+import { CustomColorSwatch } from '@/components/note/tags-row/CustomColorSwatch'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
 
@@ -344,6 +345,12 @@ export function TagManager() {
                     />
                   )
                 })}
+                {rowIndex === COLOR_ROWS.length - 1 && (
+                  <CustomColorSwatch
+                    value={tags.find((t) => t.name === colorTarget)?.color ?? ''}
+                    onChange={(hex) => void handleColorChange(hex)}
+                  />
+                )}
               </div>
             ))}
           </div>
