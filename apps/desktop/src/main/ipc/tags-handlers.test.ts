@@ -62,6 +62,7 @@ vi.mock('@main/database/queries/notes', () => ({
   removeTagFromNote: vi.fn(),
   getOrCreateTag: vi.fn(),
   updateTagColor: vi.fn(),
+  updateTagIcon: vi.fn(),
   getNoteTags: vi.fn(),
   getNoteCacheById: vi.fn()
 }))
@@ -234,6 +235,28 @@ describe('tags-handlers', () => {
       expect.objectContaining({ tag: 'new', affectedNotes: 5 })
     )
     expect(mockSend).toHaveBeenCalledWith('notes:tags-changed', {})
+  })
+
+  it('sets and clears a tag icon, emitting a change event for refetch', async () => {
+    registerTagsHandlers()
+
+    const setResult = await invokeHandler(TagsChannels.invoke.UPDATE_TAG_ICON, {
+      tag: 'focus',
+      icon: '📚'
+    })
+    expect(setResult).toEqual({ success: true })
+    expect(notesQueries.getOrCreateTag).toHaveBeenCalledWith(expect.any(Object), 'focus')
+    expect(notesQueries.updateTagIcon).toHaveBeenCalledWith(expect.any(Object), 'focus', '📚')
+    expect(fileMocks.syncTagDefinitionUpdate).toHaveBeenCalledWith('focus')
+    // use-tags refetches on this event; without it the new icon never shows.
+    expect(mockSend).toHaveBeenCalledWith('notes:tags-changed', {})
+
+    const clearResult = await invokeHandler(TagsChannels.invoke.UPDATE_TAG_ICON, {
+      tag: 'focus',
+      icon: null
+    })
+    expect(clearResult).toEqual({ success: true })
+    expect(notesQueries.updateTagIcon).toHaveBeenCalledWith(expect.any(Object), 'focus', null)
   })
 
   it('removes a tag from a note and emits change events', async () => {
