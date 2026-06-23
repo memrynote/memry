@@ -194,6 +194,9 @@ importers:
       nanoid:
         specifier: ^5.1.6
         version: 5.1.6
+      ollama-ai-provider-v2:
+        specifier: ^3.6.0
+        version: 3.6.0(ai@6.0.206(zod@4.3.6))(zod@4.3.6)
       openai:
         specifier: ^6.15.0
         version: 6.18.0(ws@8.20.1)(zod@4.3.6)
@@ -9863,6 +9866,13 @@ packages:
 
   ohash@2.0.11:
     resolution: {integrity: sha512-RdR9FQrFwNBNXAr4GixM8YaRZRJ5PUWbKYbE5eOsrwAjJW0q2REGcf79oYPsLyskQCZG1PLN+S/K1V00joZAoQ==}
+
+  ollama-ai-provider-v2@3.6.0:
+    resolution: {integrity: sha512-1Om3FVJYhBwkAr5kQ+BX1s/tdVdtVdoFQWrX4PBQHDHPISyGt24CjhtggEjUYpy5ait0YeVfZwEpIYjgD8Ih7Q==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      ai: ^5.0.0 || ^6.0.0
+      zod: ^4.0.16
 
   on-exit-leak-free@2.1.2:
     resolution: {integrity: sha512-0eJJY6hXLGf1udHwfNftBqH+g73EU4B504nZeKpz1sYRKafAghwxEJunB2O7rDZkL4PGfsMVnTXZ2EjibbqcsA==}
@@ -22258,6 +22268,13 @@ snapshots:
       ufo: 1.6.4
 
   ohash@2.0.11: {}
+
+  ollama-ai-provider-v2@3.6.0(ai@6.0.206(zod@4.3.6))(zod@4.3.6):
+    dependencies:
+      '@ai-sdk/provider': 3.0.10
+      '@ai-sdk/provider-utils': 4.0.29(zod@4.3.6)
+      ai: 6.0.206(zod@4.3.6)
+      zod: 4.3.6
 
   on-exit-leak-free@2.1.2: {}
 

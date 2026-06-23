@@ -137,6 +137,7 @@
     "metascraper-url": "^5.49.15",
     "mime-types": "^3.0.2",
     "nanoid": "^5.1.6",
+    "ollama-ai-provider-v2": "^3.6.0",
     "openai": "^6.15.0",
     "pako": "^2.1.0",
     "react": "^19.2.3",
