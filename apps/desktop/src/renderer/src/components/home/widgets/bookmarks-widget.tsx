@@ -3,7 +3,14 @@ import { useBookmarks } from '@/hooks/use-bookmarks'
 import { useTabActions } from '@/contexts/tabs/context'
 import type { WidgetComponentProps } from '@/lib/home/widget-registry'
 import { Skeleton } from '@/components/ui/skeleton'
+import { CheckSquare, FileText, BookOpen } from '@/lib/icons/icon-map'
 import { useT } from '@memry/i18n/renderer'
+
+const ICON_BY_TYPE: Record<string, typeof FileText> = {
+  task: CheckSquare,
+  note: FileText,
+  journal: BookOpen
+}
 
 export function BookmarksWidget({ config, size }: WidgetComponentProps): React.JSX.Element {
   const { t } = useT('common')
@@ -29,46 +36,52 @@ export function BookmarksWidget({ config, size }: WidgetComponentProps): React.J
 
   return (
     <ul className="flex flex-col gap-1">
-      {bookmarks.slice(0, limit).map((b) => (
-        <li key={b.id}>
-          <button
-            type="button"
-            data-testid="bookmark-item"
-            data-item-id={b.itemId}
-            data-item-type={b.itemType}
-            className="w-full truncate rounded-md px-2 py-1 text-start text-sm hover:bg-muted/60"
-            onClick={() =>
-              openTab(
-                b.itemType === 'task'
-                  ? {
-                      type: 'tasks',
-                      title: b.itemTitle ?? t('home.widget.untitled'),
-                      icon: 'check-square',
-                      path: '/tasks',
-                      entityId: b.itemId,
-                      isPinned: false,
-                      isModified: false,
-                      isDeleted: false,
-                      isPreview: true
-                    }
-                  : {
-                      type: 'note',
-                      title: b.itemTitle ?? t('home.widget.untitled'),
-                      icon: 'file-text',
-                      path: `/notes/${b.itemId}`,
-                      entityId: b.itemId,
-                      isPinned: false,
-                      isModified: false,
-                      isDeleted: false,
-                      isPreview: true
-                    }
-              )
-            }
-          >
-            {b.itemTitle ?? t('home.widget.untitled')}
-          </button>
-        </li>
-      ))}
+      {bookmarks.slice(0, limit).map((b) => {
+        const Icon = ICON_BY_TYPE[b.itemType] ?? FileText
+        const typeLabel = b.itemType.charAt(0).toUpperCase() + b.itemType.slice(1)
+        return (
+          <li key={b.id}>
+            <button
+              type="button"
+              data-testid="bookmark-item"
+              data-item-id={b.itemId}
+              data-item-type={b.itemType}
+              className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-start text-sm hover:bg-muted/60"
+              onClick={() =>
+                openTab(
+                  b.itemType === 'task'
+                    ? {
+                        type: 'tasks',
+                        title: b.itemTitle ?? t('home.widget.untitled'),
+                        icon: 'check-square',
+                        path: '/tasks',
+                        entityId: b.itemId,
+                        isPinned: false,
+                        isModified: false,
+                        isDeleted: false,
+                        isPreview: true
+                      }
+                    : {
+                        type: 'note',
+                        title: b.itemTitle ?? t('home.widget.untitled'),
+                        icon: 'file-text',
+                        path: `/notes/${b.itemId}`,
+                        entityId: b.itemId,
+                        isPinned: false,
+                        isModified: false,
+                        isDeleted: false,
+                        isPreview: true
+                      }
+                )
+              }
+            >
+              <Icon className="size-3.5 shrink-0 text-muted-foreground/70" aria-hidden="true" />
+              <span className="sr-only">{typeLabel}</span>
+              <span className="truncate">{b.itemTitle ?? t('home.widget.untitled')}</span>
+            </button>
+          </li>
+        )
+      })}
     </ul>
   )
 }

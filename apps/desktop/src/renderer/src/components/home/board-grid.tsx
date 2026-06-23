@@ -26,10 +26,9 @@ import { useT } from '@memry/i18n/renderer'
 interface BoardGridProps {
   board: HomePage
   onChange: (next: HomePage) => void
-  editing: boolean
 }
 
-export function BoardGrid({ board, onChange, editing }: BoardGridProps): React.JSX.Element {
+export function BoardGrid({ board, onChange }: BoardGridProps): React.JSX.Element {
   const { t } = useT('common')
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -57,7 +56,6 @@ export function BoardGrid({ board, onChange, editing }: BoardGridProps): React.J
                   widget={w}
                   title={t('home.widget.unknown')}
                   sizes={[]}
-                  editing={editing}
                   onResize={(s: WidgetSize) => onChange(resizeWidget(board, w.id, s))}
                   onRemove={() => onChange(removeWidget(board, w.id))}
                 >
@@ -74,7 +72,6 @@ export function BoardGrid({ board, onChange, editing }: BoardGridProps): React.J
                 widget={w}
                 title={t(def.titleKey)}
                 sizes={def.sizes}
-                editing={editing}
                 onResize={(s: WidgetSize) => onChange(resizeWidget(board, w.id, s))}
                 onRemove={() => onChange(removeWidget(board, w.id))}
                 ConfigEditor={def.ConfigEditor}

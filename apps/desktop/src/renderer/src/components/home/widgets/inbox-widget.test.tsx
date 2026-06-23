@@ -4,7 +4,13 @@ import { InboxWidget } from './inbox-widget'
 
 const archiveMutate = vi.fn()
 
-let mockItems: Array<{ id: string; type: string; title: string }> = []
+let mockItems: Array<{
+  id: string
+  type: string
+  title: string
+  createdAt: Date
+  thumbnailUrl: string | null
+}> = []
 
 vi.mock('@/hooks/use-inbox-queries', () => ({
   useInboxList: () => ({ items: mockItems, isLoading: false })
@@ -22,10 +28,10 @@ describe('InboxWidget', () => {
   beforeEach(() => {
     archiveMutate.mockClear()
     mockItems = [
-      { id: 'i1', type: 'link', title: 'Alpha' },
-      { id: 'i2', type: 'note', title: 'Beta' },
-      { id: 'i3', type: 'image', title: 'Gamma' },
-      { id: 'i4', type: 'voice', title: 'Delta' }
+      { id: 'i1', type: 'link', title: 'Alpha', createdAt: new Date(), thumbnailUrl: null },
+      { id: 'i2', type: 'note', title: 'Beta', createdAt: new Date(), thumbnailUrl: null },
+      { id: 'i3', type: 'image', title: 'Gamma', createdAt: new Date(), thumbnailUrl: null },
+      { id: 'i4', type: 'voice', title: 'Delta', createdAt: new Date(), thumbnailUrl: null }
     ]
   })
 

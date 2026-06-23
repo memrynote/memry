@@ -4,6 +4,8 @@ import { useTabActions } from '@/contexts/tabs/context'
 import type { WidgetComponentProps } from '@/lib/home/widget-registry'
 import { Skeleton } from '@/components/ui/skeleton'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { FileImage, FileText } from '@/lib/icons'
+import { formatRelative } from '@/components/folder-view/note-card-pieces'
 import { useT } from '@memry/i18n/renderer'
 
 export function RecentlyEditedWidget({ size }: WidgetComponentProps): React.JSX.Element {
@@ -39,7 +41,7 @@ export function RecentlyEditedWidget({ size }: WidgetComponentProps): React.JSX.
             type="button"
             data-testid="recent-note"
             data-note-id={n.id}
-            className="w-full truncate rounded-md px-2 py-1 text-start text-sm hover:bg-muted/60"
+            className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-start hover:bg-muted/60"
             onClick={() =>
               openTab({
                 type: 'note',
@@ -54,7 +56,18 @@ export function RecentlyEditedWidget({ size }: WidgetComponentProps): React.JSX.
               })
             }
           >
-            {n.title}
+            {n.emoji ? (
+              <span className="shrink-0 text-sm leading-none">{n.emoji}</span>
+            ) : n.fileType === 'image' ? (
+              <FileImage className="size-[15px] shrink-0 text-muted-foreground/70" />
+            ) : (
+              <FileText className="size-[15px] shrink-0 text-muted-foreground/70" />
+            )}
+            <span className="truncate text-[13px] font-medium text-foreground/90">{n.title}</span>
+            <span className="flex-1" />
+            <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground/60">
+              {n.modified ? formatRelative(n.modified.toISOString()) : ''}
+            </span>
           </button>
         </li>
       ))}

@@ -49,7 +49,7 @@ describe('BoardGrid', () => {
     const onChange = vi.fn()
     render(
       <TooltipProvider>
-        <BoardGrid board={board} onChange={onChange} editing />
+        <BoardGrid board={board} onChange={onChange} />
       </TooltipProvider>
     )
     expect(screen.getByText('BM')).toBeInTheDocument()

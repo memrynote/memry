@@ -40,8 +40,9 @@ const SEL = {
   grid: '[data-testid="board-grid"]',
   gallery: '[data-testid="widget-gallery"]',
   galleryItem: '[data-testid="widget-gallery-item"]',
-  // Edit-mode controls (gated behind board-edit-toggle since the Shape phase).
-  editToggle: '[data-testid="board-edit-toggle"]',
+  // Frame controls (resize/remove/drag) live on each widget header, hover-revealed
+  // (opacity-0 until header hover/focus). Playwright treats opacity-0 as visible,
+  // so clicks resolve without an explicit hover. No global edit mode any more.
   addWidgetTrigger: '[data-testid="add-widget-trigger"]',
   widget: '[data-testid="widget"]',
   // Home tab in the main tab strip (regular-tab.tsx sets nav-home on the home tab)
@@ -71,25 +72,10 @@ async function waitForSeed(page) {
 }
 
 /**
- * Enter board edit mode. Since the Shape phase, `editing` defaults to false and
- * frame controls (resize / remove / drag) plus the add-widget affordance only
- * render while editing. Idempotent: skips the toggle if already pressed.
- */
-async function enterEditMode(page) {
-  const toggle = page.locator(SEL.editToggle)
-  await expect(toggle).toBeVisible({ timeout: 20000 })
-  if ((await toggle.getAttribute('aria-pressed')) !== 'true') {
-    await toggle.click()
-    await expect(toggle).toHaveAttribute('aria-pressed', 'true', { timeout: 20000 })
-  }
-}
-
-/**
- * Open the add-widget Popover so its gallery is reachable. Requires edit mode
- * (the trigger only renders while editing). Idempotent: opens only if closed.
+ * Open the add-widget Popover so its gallery is reachable. The trigger now
+ * renders unconditionally (no edit mode). Idempotent: opens only if closed.
  */
 async function openWidgetGallery(page) {
-  await enterEditMode(page)
   const trigger = page.locator(SEL.addWidgetTrigger)
   await expect(trigger).toBeVisible({ timeout: 20000 })
   if (!(await page.locator(SEL.gallery).isVisible())) {
@@ -381,7 +367,6 @@ test.describe('Home Dashboard — D: widget frame controls', () => {
   test('D1: remove deletes the card and persists across reload', async ({ page }) => {
     await ready(page)
     await waitForSeed(page)
-    await enterEditMode(page)
 
     const bookmarks = widgetsByType(page, 'bookmarks')
     await expect(bookmarks).toHaveCount(1)
@@ -401,7 +386,6 @@ test.describe('Home Dashboard — D: widget frame controls', () => {
   test('D2: resize updates data-widget-size and persists across reload', async ({ page }) => {
     await ready(page)
     await waitForSeed(page)
-    await enterEditMode(page)
 
     const recent = widgetsByType(page, 'recently-edited').first()
     const widgetId = await recent.getAttribute('data-widget-id')
@@ -423,7 +407,6 @@ test.describe('Home Dashboard — D: widget frame controls', () => {
   test('D3: recently-edited/bookmarks expose only S and M (no L)', async ({ page }) => {
     await ready(page)
     await waitForSeed(page)
-    await enterEditMode(page)
 
     for (const type of ['recently-edited', 'bookmarks']) {
       const card = widgetsByType(page, type).first()
@@ -436,7 +419,6 @@ test.describe('Home Dashboard — D: widget frame controls', () => {
   test('D4: reorder via drag handle changes order and persists across reload', async ({ page }) => {
     await ready(page)
     await waitForSeed(page)
-    await enterEditMode(page)
 
     const cards = page.locator(`${SEL.grid} ${SEL.widget}`)
     await expect(cards).toHaveCount(2)

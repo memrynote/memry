@@ -2,7 +2,7 @@ import type { HomePage } from '@/lib/home/types'
 import { useT } from '@memry/i18n/renderer'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { Check, Pencil, Plus } from '@/lib/icons/icon-map'
+import { Plus } from '@/lib/icons/icon-map'
 import { cn } from '@/lib/utils'
 
 interface BoardSwitcherProps {
@@ -10,20 +10,15 @@ interface BoardSwitcherProps {
   activeBoardId: string | null
   onSelect: (id: string) => void
   onCreate: () => void
-  editing: boolean
-  onToggleEditing: () => void
 }
 
 export function BoardSwitcher({
   boards,
   activeBoardId,
   onSelect,
-  onCreate,
-  editing,
-  onToggleEditing
+  onCreate
 }: BoardSwitcherProps): React.JSX.Element {
   const { t } = useT('common')
-  const toggleLabel = editing ? t('home.done') : t('home.edit')
   return (
     <div data-testid="board-switcher" className="flex items-center gap-2 border-b px-6 py-2.5">
       <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto">
@@ -61,28 +56,6 @@ export function BoardSwitcher({
           </Button>
         </TooltipTrigger>
         <TooltipContent>{t('home.board.newAria')}</TooltipContent>
-      </Tooltip>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            data-testid="board-edit-toggle"
-            aria-label={toggleLabel}
-            aria-pressed={editing}
-            onClick={onToggleEditing}
-            className="shrink-0"
-          >
-            {editing ? (
-              <Check className="size-4" aria-hidden="true" />
-            ) : (
-              <Pencil className="size-4" aria-hidden="true" />
-            )}
-            {toggleLabel}
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>{toggleLabel}</TooltipContent>
       </Tooltip>
     </div>
   )

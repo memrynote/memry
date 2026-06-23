@@ -35,6 +35,7 @@ import { createLogger } from '../lib/logger'
 import { getNoteFolderSuggestions } from '../inbox/suggestions'
 import { createValidatedHandler, withErrorHandler } from './validate'
 import { readFolderConfig, writeFolderConfig, folderExists } from '../vault/folders'
+import { getConfig } from '../vault'
 import { getIndexDatabase as getDataDb } from '../database'
 import { noteCache, noteTags, noteProperties } from '@memry/db-schema/schema/notes-cache'
 
@@ -45,14 +46,28 @@ const logger = createLogger('IPC:FolderView')
 // ============================================================================
 
 /**
+ * Notes path prefix derived from defaultNoteFolder. Empty for a flat vault
+ * root (the default); "notes/" for a vault that nests notes under a folder.
+ */
+function getNotesPrefix(): string {
+  const folder = getConfig().defaultNoteFolder.replace(/\/+$/, '')
+  return folder ? `${folder}/` : ''
+}
+
+/**
  * Compute relative folder path from the viewed folder.
- * E.g., if viewing "projects" and note is at "notes/projects/2024/note.md"
+ * E.g., if viewing "projects" and note is at "projects/2024/note.md"
  * returns "/2024"
  */
-function computeRelativeFolder(notePath: string, viewedFolder: string): string {
-  // notePath is like "notes/projects/2024/note.md"
+function computeRelativeFolder(
+  notePath: string,
+  viewedFolder: string,
+  notesPrefix: string
+): string {
+  // notePath is like "projects/2024/note.md" (prefix stripped if present)
   // viewedFolder is like "projects"
-  const withoutNotes = notePath.startsWith('notes/') ? notePath.slice(6) : notePath
+  const withoutNotes =
+    notesPrefix && notePath.startsWith(notesPrefix) ? notePath.slice(notesPrefix.length) : notePath
   const noteDir = withoutNotes.split('/').slice(0, -1).join('/')
 
   if (!viewedFolder || viewedFolder === '') {
@@ -204,9 +219,11 @@ export function registerFolderViewHandlers(): void {
           return { notes: [], total: 0, hasMore: false }
         }
 
-        // Build path pattern for LIKE query
-        // folderPath is like "projects" -> match "notes/projects/%"
-        const pathPattern = input.folderPath ? `notes/${input.folderPath}/%` : 'notes/%'
+        // Build path pattern for LIKE query.
+        // Prefix matches the vault layout: "" (flat root) or "notes/".
+        // folderPath "projects" -> match "<prefix>projects/%"
+        const prefix = getNotesPrefix()
+        const pathPattern = input.folderPath ? `${prefix}${input.folderPath}/%` : `${prefix}%`
 
         // Query notes in folder (exclude journal entries where date IS NOT NULL)
         const notesResult = await db
@@ -279,7 +296,7 @@ export function registerFolderViewHandlers(): void {
           path: note.path,
           title: note.title,
           emoji: note.emoji,
-          folder: computeRelativeFolder(note.path, input.folderPath),
+          folder: computeRelativeFolder(note.path, input.folderPath, prefix),
           tags: tagsByNote.get(note.id) || [],
           created: note.created,
           modified: note.modified,
@@ -329,7 +346,8 @@ export function registerFolderViewHandlers(): void {
           : []
 
         // Query distinct property names used in this folder
-        const pathPattern = input.folderPath ? `notes/${input.folderPath}/%` : 'notes/%'
+        const prefix = getNotesPrefix()
+        const pathPattern = input.folderPath ? `${prefix}${input.folderPath}/%` : `${prefix}%`
 
         // Get notes in folder first
         const folderNotes = await db

@@ -5,8 +5,11 @@ import { useArchiveInboxItem } from '@/hooks/use-inbox-mutations'
 import { useTabActions } from '@/contexts/tabs/context'
 import { Archive } from '@/lib/icons/icon-map'
 import { Skeleton } from '@/components/ui/skeleton'
+import { InboxTypeIcon } from '@/components/inbox/inbox-type-icon'
+import { formatTimeAgo } from '@/services/inbox-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import type { WidgetComponentProps } from '@/lib/home/widget-registry'
+import type { InboxItemType } from '@/types'
 import { useT } from '@memry/i18n/renderer'
 
 // Triage decision: Archive only. useFileInboxItem requires a destination
@@ -22,6 +25,18 @@ export function InboxWidget({ config, size }: WidgetComponentProps): React.JSX.E
   const { items, isLoading, error } = useInboxList(type ? { type } : {})
   const { openTab } = useTabActions()
   const archive = useArchiveInboxItem()
+
+  const typeLabels: Record<InboxItemType, string> = {
+    link: tInbox('type.link'),
+    note: tInbox('type.note'),
+    image: tInbox('type.image'),
+    voice: tInbox('type.voice'),
+    video: tInbox('type.video'),
+    clip: tInbox('type.clip'),
+    pdf: tInbox('type.pdf'),
+    social: tInbox('type.social'),
+    reminder: tInbox('type.reminder')
+  }
 
   if (isLoading)
     return (
@@ -53,7 +68,7 @@ export function InboxWidget({ config, size }: WidgetComponentProps): React.JSX.E
             data-testid="inbox-item"
             data-inbox-id={item.id}
             data-inbox-type={item.type}
-            className="min-w-0 flex-1 truncate rounded-md px-2 py-1 text-start text-sm hover:bg-muted/60"
+            className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1 text-start hover:bg-muted/60"
             onClick={() =>
               openTab({
                 type: 'inbox',
@@ -69,7 +84,22 @@ export function InboxWidget({ config, size }: WidgetComponentProps): React.JSX.E
               })
             }
           >
-            {item.title || t('home.widget.untitled')}
+            <span className="sr-only">{typeLabels[item.type]}</span>
+            <InboxTypeIcon type={item.type} className="shrink-0" />
+            {item.thumbnailUrl && (
+              <img
+                src={item.thumbnailUrl}
+                alt=""
+                loading="lazy"
+                className="size-7 shrink-0 rounded-md object-cover ring-1 ring-border/50"
+              />
+            )}
+            <span className="min-w-0 flex-1 truncate text-sm">
+              {item.title || t('home.widget.untitled')}
+            </span>
+            <span className="shrink-0 text-xs text-muted-foreground/60 tabular-nums">
+              {formatTimeAgo(item.createdAt)}
+            </span>
           </button>
           <button
             type="button"

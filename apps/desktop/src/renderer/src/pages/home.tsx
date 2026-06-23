@@ -30,7 +30,6 @@ function asLocalPage(page: {
 
 export default function HomePage(): React.JSX.Element {
   const { t, i18n } = useT('common')
-  const [editing, setEditing] = useState(false)
   const [galleryOpen, setGalleryOpen] = useState(false)
   const {
     boards,
@@ -64,9 +63,8 @@ export default function HomePage(): React.JSX.Element {
     void updateWidgets(next.id, next.widgets)
   }
 
-  // Empty-state CTA: enter edit mode and open the Add-widget popover.
+  // Empty-state CTA: open the Add-widget popover.
   const handleAddFirstWidget = () => {
-    setEditing(true)
     setGalleryOpen(true)
   }
 
@@ -91,8 +89,6 @@ export default function HomePage(): React.JSX.Element {
         activeBoardId={activeBoardId}
         onSelect={setActiveBoardId}
         onCreate={() => void createBoard(t('home.board.newName'))}
-        editing={editing}
-        onToggleEditing={() => setEditing((v) => !v)}
       />
       {isLoading && (
         <div
@@ -115,32 +111,25 @@ export default function HomePage(): React.JSX.Element {
       )}
       {!isLoading && localActive && (
         <div className="min-h-0 flex-1 overflow-auto px-6 py-6">
-          {editing && (
-            <div className="mb-5">
-              <Popover open={galleryOpen} onOpenChange={setGalleryOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    data-testid="add-widget-trigger"
-                  >
-                    <Plus className="size-4" aria-hidden="true" />
-                    {t('home.addWidget')}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent align="start" className="w-56 p-2">
-                  <WidgetGallery
-                    onAdd={(type) => {
-                      handleChange(addWidget(localActive, makeWidget(type)))
-                      setGalleryOpen(false)
-                    }}
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-          )}
-          <BoardGrid board={localActive} onChange={handleChange} editing={editing} />
+          <div className="mb-5">
+            <Popover open={galleryOpen} onOpenChange={setGalleryOpen}>
+              <PopoverTrigger asChild>
+                <Button type="button" variant="outline" size="sm" data-testid="add-widget-trigger">
+                  <Plus className="size-4" aria-hidden="true" />
+                  {t('home.addWidget')}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-56 p-2">
+                <WidgetGallery
+                  onAdd={(type) => {
+                    handleChange(addWidget(localActive, makeWidget(type)))
+                    setGalleryOpen(false)
+                  }}
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+          <BoardGrid board={localActive} onChange={handleChange} />
           {localActive.widgets.length === 0 && (
             <BoardEmptyState onAddFirstWidget={handleAddFirstWidget} />
           )}
