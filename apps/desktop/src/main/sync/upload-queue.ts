@@ -1,5 +1,6 @@
 import { createLogger } from '../lib/logger'
 import { NetworkError, RateLimitError } from './http-client'
+import { sleep } from './retry'
 import type { NetworkMonitor } from './network'
 import type { ProgressCallback, UploadResult } from './attachments'
 
@@ -87,7 +88,7 @@ export class UploadQueue {
         if (this.backoffUntil > now) {
           const waitMs = this.backoffUntil - now
           log.info('global backoff active', { waitMs })
-          await delay(waitMs)
+          await sleep(waitMs)
           continue
         }
 
@@ -128,8 +129,4 @@ export class UploadQueue {
       item.reject(err instanceof Error ? err : new Error(String(err)))
     }
   }
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
 }

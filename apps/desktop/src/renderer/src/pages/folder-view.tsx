@@ -5,32 +5,10 @@
  * Supports multiple views, filtering, and sorting.
  */
 
-import { useMemo, useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react'
+import { useMemo, useState, useLayoutEffect, useCallback, useRef } from 'react'
 import { ArrowLeft, Columns3, Folder, LayoutGrid, List, Plus, Rows2, Settings2 } from '@/lib/icons'
 
-// ============================================================================
-// Debounce Hook
-// ============================================================================
-
-/**
- * Hook to debounce a value by a specified delay.
- * Used for search input to avoid excessive filtering while typing.
- */
-function useDebouncedValue<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState<T>(value)
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedValue(value)
-    }, delay)
-
-    return () => {
-      clearTimeout(timer)
-    }
-  }, [value, delay])
-
-  return debouncedValue
-}
+import { useDebouncedValue } from '@/hooks/use-task-filters'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { FolderViewEmptyState } from '@/components/folder-view/folder-view-empty-state'

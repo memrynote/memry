@@ -20,18 +20,10 @@ const appRoots = [
 ]
 
 async function walk(dir) {
-  const entries = await fs.readdir(dir, { withFileTypes: true })
-  const files = await Promise.all(
-    entries.map(async (entry) => {
-      const entryPath = path.join(dir, entry.name)
-      if (entry.isDirectory()) {
-        return walk(entryPath)
-      }
-      return [entryPath]
-    })
-  )
-
-  return files.flat()
+  const entries = await fs.readdir(dir, { recursive: true, withFileTypes: true })
+  return entries
+    .filter((entry) => !entry.isDirectory())
+    .map((entry) => path.join(entry.parentPath, entry.name))
 }
 
 function isSourceFile(filePath) {
