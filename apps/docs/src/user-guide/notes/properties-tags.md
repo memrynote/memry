@@ -20,6 +20,10 @@ Tags appear in the sidebar **Tags** section. Click any tag to drill into a list 
 
 Manage tags globally from [Settings → Tags](/user-guide/settings#tags). Renames apply across every note instantly.
 
+### Tag Icons
+
+Give any tag a custom icon to tell it apart at a glance. In [Settings → Tags](/user-guide/settings#tags), click the icon next to a tag name and pick an emoji or icon (or clear it to fall back to the default). The icon is stored on the tag and syncs across your devices.
+
 ## Properties Panel
 
 A collapsible section under the title for **structured** metadata. Properties are typed and reusable.
