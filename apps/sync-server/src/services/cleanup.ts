@@ -117,6 +117,33 @@ export const cleanupStaleRateLimits = async (db: D1Database): Promise<number> =>
 
 const CLEANUP_BATCH_SIZE = 1000
 
+// Best-effort delete each row's R2 blob, then batch-delete the D1 rows by id.
+// ponytail: table is a hardcoded caller literal, not user input — safe to interpolate.
+const deleteRowsAndBlobs = async <T extends { id: string }>(
+  db: D1Database,
+  storage: R2Bucket,
+  table: string,
+  rows: T[],
+  blobKeyOf: (row: T) => string
+): Promise<number> => {
+  for (const row of rows) {
+    try {
+      await storage.delete(blobKeyOf(row))
+    } catch {
+      // R2 delete may fail if blob already removed; proceed with D1 cleanup
+    }
+  }
+
+  const ids = rows.map((r) => r.id)
+  const placeholders = ids.map(() => '?').join(',')
+  const result = await db
+    .prepare(`DELETE FROM ${table} WHERE id IN (${placeholders})`)
+    .bind(...ids)
+    .run()
+
+  return result.meta.changes ?? 0
+}
+
 export const cleanupExpiredTombstones = async (
   db: D1Database,
   storage: R2Bucket
@@ -138,22 +165,7 @@ export const cleanupExpiredTombstones = async (
   const rows = expired.results ?? []
   if (rows.length === 0) return 0
 
-  for (const row of rows) {
-    try {
-      await storage.delete(row.blob_key)
-    } catch {
-      // R2 delete may fail if blob already removed; proceed with D1 cleanup
-    }
-  }
-
-  const ids = rows.map((r) => r.id)
-  const placeholders = ids.map(() => '?').join(',')
-  const result = await db
-    .prepare(`DELETE FROM sync_items WHERE id IN (${placeholders})`)
-    .bind(...ids)
-    .run()
-
-  const changes = result.meta.changes ?? 0
+  const changes = await deleteRowsAndBlobs(db, storage, 'sync_items', rows, (r) => r.blob_key)
   if (changes > 0) {
     const bytesByUser = new Map<string, number>()
     for (const row of rows) {
@@ -187,22 +199,7 @@ export const cleanupOrphanedBlobChunks = async (
   const rows = orphaned.results ?? []
   if (rows.length === 0) return 0
 
-  for (const row of rows) {
-    try {
-      await storage.delete(row.r2_key)
-    } catch {
-      // R2 delete may fail if blob already removed; proceed with D1 cleanup
-    }
-  }
-
-  const ids = rows.map((r) => r.id)
-  const placeholders = ids.map(() => '?').join(',')
-  const result = await db
-    .prepare(`DELETE FROM blob_chunks WHERE id IN (${placeholders})`)
-    .bind(...ids)
-    .run()
-
-  return result.meta.changes ?? 0
+  return deleteRowsAndBlobs(db, storage, 'blob_chunks', rows, (r) => r.r2_key)
 }
 
 const parseUploadedChunkHashes = (value: string): Set<string> => {
