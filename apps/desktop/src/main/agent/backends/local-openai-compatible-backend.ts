@@ -1,4 +1,5 @@
 import { createOpenAI } from '@ai-sdk/openai'
+import { createOllama } from 'ollama-ai-provider-v2'
 import {
   type AgentBackendStatus,
   type AgentLocalProviderProbeResult,
@@ -11,6 +12,18 @@ import { AgentToolBridge, createAiSdkToolSet } from './tool-bridge'
 import type { AgentBackend, AgentBackendRunInput, BackendRunHandle } from './types'
 
 let nextLocalRunPid = -1
+
+// ponytail: fixed 8192-token window fixes #591. Ollama's default context is 4096
+// and OLLAMA_NUM_PARALLEL divides it across slots, so Memry's system prompt + tool
+// schemas overflow and the reply is cut to one token. Promote to a user setting only
+// if someone needs to tune it.
+const OLLAMA_NUM_CTX = 8192
+
+// Ollama's native API (the only endpoint that accepts num_ctx) lives at /api, while
+// the stored ollama preset baseUrl points at the /v1 OpenAI-compat path.
+function toOllamaApiBaseUrl(baseUrl: string): string {
+  return baseUrl.replace(/\/v1\/?$/, '') + '/api'
+}
 
 export class LocalOpenAICompatibleBackend implements AgentBackend {
   readonly id = 'local_openai_compatible' as const
@@ -63,10 +76,16 @@ export class LocalOpenAICompatibleBackend implements AgentBackend {
     const apiKey = await this.deps.getApiKey()
     const options = input.options.backend === this.id ? input.options : null
     const modelName = options?.model || settings.model
-    const model = createOpenAI({
-      baseURL: settings.baseUrl,
-      apiKey: apiKey || 'local'
-    }).chat(modelName)
+    const isOllama = settings.preset === 'ollama'
+    const model = isOllama
+      ? createOllama({
+          baseURL: toOllamaApiBaseUrl(settings.baseUrl),
+          ...(apiKey ? { headers: { Authorization: `Bearer ${apiKey}` } } : {})
+        })(modelName)
+      : createOpenAI({
+          baseURL: settings.baseUrl,
+          apiKey: apiKey || 'local'
+        }).chat(modelName)
     const controller = new AbortController()
     const toolsEnabled =
       allowTools &&
@@ -77,6 +96,9 @@ export class LocalOpenAICompatibleBackend implements AgentBackend {
       prompt: input.prompt,
       abortSignal: controller.signal,
       stopWhen: stepCountIs(8),
+      ...(isOllama
+        ? { providerOptions: { ollama: { options: { num_ctx: OLLAMA_NUM_CTX } } } }
+        : {}),
       ...(toolsEnabled
         ? {
             tools: createAiSdkToolSet(this.deps.toolBridge, {

@@ -29,7 +29,7 @@ Best when you want privacy, no metering, and don't mind running an extra backgro
 
 ### Notes
 
-- Ollama exposes an OpenAI-compatible API at `/v1`, which memrynote uses.
+- memrynote talks to Ollama's native `/api/chat` endpoint and automatically sets `num_ctx: 8192` per request. You do not need to set `OLLAMA_CONTEXT_LENGTH` or `OLLAMA_NUM_PARALLEL` — the context window is managed for you.
 - No API key required for default local Ollama.
 - Token costs: zero, but RAM usage scales with model size.
 
