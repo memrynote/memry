@@ -43,6 +43,7 @@ class TagDefinitionHandler extends BaseItemHandler<TagDefinitionSyncPayload> {
         tx.update(tagDefinitions)
           .set({
             color: data.color ?? existing.color,
+            icon: data.icon !== undefined ? data.icon : existing.icon,
             clock: resolution.mergedClock
           })
           .where(eq(tagDefinitions.name, itemId))
@@ -57,6 +58,7 @@ class TagDefinitionHandler extends BaseItemHandler<TagDefinitionSyncPayload> {
         .values({
           name: itemId,
           color: data.color ?? '#808080',
+          icon: data.icon ?? null,
           clock: remoteClock,
           createdAt: data.createdAt ?? now
         })
@@ -107,6 +109,7 @@ class TagDefinitionHandler extends BaseItemHandler<TagDefinitionSyncPayload> {
     const payload: TagDefinitionSyncPayload = {
       name: tag.name,
       color: tag.color,
+      icon: tag.icon ?? null,
       clock: (tag.clock as VectorClock) ?? undefined,
       createdAt: tag.createdAt
     }

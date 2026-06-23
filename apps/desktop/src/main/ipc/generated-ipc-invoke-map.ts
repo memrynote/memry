@@ -313,6 +313,7 @@ export interface MainIpcInvokeHandlers {
   "tags:rename": (...args: [{ oldName: string; newName: string; }]) => Awaited<Promise<{ success: false; error: string; } | import("../../../../../packages/contracts/src/tags-api").RenameTagResponse>>
   "tags:unpin-note-from-tag": (...args: [{ noteId: string; tag: string; }]) => Awaited<Promise<{ success: false; error: string; } | import("../../../../../packages/contracts/src/tags-api").TagOperationResponse>>
   "tags:update-color": (...args: [{ tag: string; color: string; }]) => Awaited<Promise<{ success: false; error: string; } | import("../../../../../packages/contracts/src/tags-api").TagOperationResponse>>
+  "tags:update-icon": (...args: [{ tag: string; icon: string | null; }]) => Awaited<Promise<{ success: false; error: string; } | import("../../../../../packages/contracts/src/tags-api").TagOperationResponse>>
   "tasks:archive": (...args: [string]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; error: string; } | { success: boolean; error?: undefined; }>>
   "tasks:bulk-archive": (...args: [{ ids: string[]; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; count: number; }>>
   "tasks:bulk-complete": (...args: [{ ids: string[]; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; count: number; }>>

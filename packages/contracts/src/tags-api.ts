@@ -70,6 +70,12 @@ export const UpdateTagColorSchema = z.object({
   color: z.string().min(1)
 })
 
+export const UpdateTagIconSchema = z.object({
+  tag: z.string().min(1),
+  // Raw emoji "📚" or "icon:Name"; null clears the icon back to the default.
+  icon: z.string().min(1).nullable()
+})
+
 export const RemoveTagFromNoteSchema = z.object({
   noteId: z.string().min(1),
   tag: z.string().min(1)
@@ -113,6 +119,7 @@ export interface TagWithCount {
   name: string
   count: number
   color?: string
+  icon?: string | null
 }
 
 export interface GetAllWithCountsResponse {
@@ -142,6 +149,10 @@ export interface TagsHandlers {
 
   [TagsChannels.invoke.UPDATE_TAG_COLOR]: (
     input: z.infer<typeof UpdateTagColorSchema>
+  ) => Promise<TagOperationResponse>
+
+  [TagsChannels.invoke.UPDATE_TAG_ICON]: (
+    input: z.infer<typeof UpdateTagIconSchema>
   ) => Promise<TagOperationResponse>
 
   [TagsChannels.invoke.DELETE_TAG]: (tag: string) => Promise<DeleteTagResponse>
@@ -215,6 +226,7 @@ export interface TagsClientAPI {
   unpinNoteFromTag(input: z.infer<typeof UnpinNoteFromTagSchema>): Promise<TagOperationResponse>
   renameTag(input: z.infer<typeof RenameTagSchema>): Promise<RenameTagResponse>
   updateTagColor(input: z.infer<typeof UpdateTagColorSchema>): Promise<TagOperationResponse>
+  updateTagIcon(input: z.infer<typeof UpdateTagIconSchema>): Promise<TagOperationResponse>
   deleteTag(tag: string): Promise<DeleteTagResponse>
   removeTagFromNote(input: z.infer<typeof RemoveTagFromNoteSchema>): Promise<TagOperationResponse>
   getAllWithCounts(): Promise<GetAllWithCountsResponse>

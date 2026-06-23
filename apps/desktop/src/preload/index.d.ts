@@ -688,6 +688,7 @@ export interface TagWithCount {
   name: string
   count: number
   color?: string
+  icon?: string | null
 }
 
 export interface GetAllWithCountsResponse {
@@ -728,6 +729,7 @@ export interface TagsClientAPI {
   unpinNoteFromTag(input: { noteId: string; tag: string }): Promise<TagOperationResponse>
   renameTag(input: { oldName: string; newName: string }): Promise<RenameTagResponse>
   updateTagColor(input: { tag: string; color: string }): Promise<TagOperationResponse>
+  updateTagIcon(input: { tag: string; icon: string | null }): Promise<TagOperationResponse>
   deleteTag(tag: string): Promise<DeleteTagResponse>
   removeTagFromNote(input: { noteId: string; tag: string }): Promise<TagOperationResponse>
   getAllWithCounts(): Promise<GetAllWithCountsResponse>
