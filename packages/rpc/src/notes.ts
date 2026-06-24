@@ -171,6 +171,9 @@ export interface ExportNoteInput {
   noteId: string
   includeMetadata?: boolean
   pageSize?: 'A4' | 'Letter' | 'Legal'
+  // When set, write directly to this path and skip the native save dialog
+  // (enables headless export, e.g. from the Agent MCP server).
+  outputPath?: string
 }
 
 export interface ExportNoteResponse {

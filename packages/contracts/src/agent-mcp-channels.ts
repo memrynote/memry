@@ -29,6 +29,7 @@ export const AgentMcpDesktopReadOperations = [
   'notes.getPositions',
   'notes.getAllPositions',
   'notes.getLocalOnlyCount',
+  'notes.getCalendarPropertyNames',
   'tasks.get',
   'tasks.list',
   'tasks.getSubtasks',
@@ -114,7 +115,13 @@ export const AgentMcpDesktopReadOperations = [
   'search.getReasons',
   'search.getAllTags',
   'graph.getData',
-  'graph.getLocal'
+  'graph.getLocal',
+  'homePages.list',
+  'homePages.get',
+  'vault.getAll',
+  'vault.getStatus',
+  'vault.getConfig',
+  'vault.listAccount'
 ] as const
 
 export const AgentMcpDesktopWriteOperations = [
@@ -143,6 +150,9 @@ export const AgentMcpDesktopWriteOperations = [
   'notes.reorder',
   'notes.importFiles',
   'notes.setLocalOnly',
+  'notes.setCalendarPropertyVisibility',
+  'notes.exportPdf',
+  'notes.exportHtml',
   'tasks.create',
   'tasks.update',
   'tasks.delete',
@@ -224,6 +234,7 @@ export const AgentMcpDesktopWriteOperations = [
   'tags.deleteTag',
   'tags.removeTagFromNote',
   'tags.mergeTag',
+  'tags.updateTagIcon',
   'folderView.setConfig',
   'folderView.setView',
   'folderView.deleteView',
@@ -257,7 +268,15 @@ export const AgentMcpDesktopWriteOperations = [
   'settings.setCalendarSettings',
   'search.rebuildIndex',
   'search.addReason',
-  'search.clearReasons'
+  'search.clearReasons',
+  'homePages.create',
+  'homePages.update',
+  'homePages.delete',
+  'homePages.reorder',
+  'vault.switch',
+  'vault.reindex',
+  'vault.updateConfig',
+  'vault.downloadRemote'
 ] as const
 
 export const AgentMcpDesktopOperations = [
