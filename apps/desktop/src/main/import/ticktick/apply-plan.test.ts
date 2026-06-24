@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { mapRows, type TickTickRow } from '@memry/ticktick-import'
+import { mapRows, type TickTickRow } from '@memry/importers/ticktick'
 import { applyPlan, type ApplyDeps } from './apply-plan'
 
 const NOW = '2026-06-15T00:00:00.000Z'

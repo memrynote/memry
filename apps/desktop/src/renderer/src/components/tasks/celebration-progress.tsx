@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence } from 'motion/react'
 
 import { Check } from '@/lib/icons'
 import { SubtaskProgressBar } from './subtask-progress-bar'

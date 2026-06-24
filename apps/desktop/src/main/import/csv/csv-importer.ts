@@ -10,7 +10,7 @@
 
 import { readFile } from 'fs/promises'
 import { basename } from 'path'
-import { parseCsv, mapRows } from '@memry/csv-import'
+import { parseCsv, mapRows } from '@memry/importers/csv'
 import { createNote } from '../../vault/notes-crud'
 import { createLogger } from '../../lib/logger'
 import type { Importer, ImportContext, ImportInput, ImportPreview, ImportSummary } from '../types'

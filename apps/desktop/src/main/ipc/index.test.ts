@@ -50,7 +50,9 @@ const hoisted = vi.hoisted(() => ({
   registerAgentMcpHandlers: vi.fn(),
   unregisterAgentMcpHandlers: vi.fn(),
   registerImportHandlers: vi.fn(),
-  unregisterImportHandlers: vi.fn()
+  unregisterImportHandlers: vi.fn(),
+  registerHomePageHandlers: vi.fn(),
+  unregisterHomePageHandlers: vi.fn()
 }))
 
 vi.mock('./vault-handlers', () => ({
@@ -152,6 +154,10 @@ vi.mock('./agent-mcp-handlers', () => ({
 vi.mock('./import-handlers', () => ({
   registerImportHandlers: hoisted.registerImportHandlers,
   unregisterImportHandlers: hoisted.unregisterImportHandlers
+}))
+vi.mock('./home-page-handlers', () => ({
+  registerHomePageHandlers: hoisted.registerHomePageHandlers,
+  unregisterHomePageHandlers: hoisted.unregisterHomePageHandlers
 }))
 
 import { areHandlersRegistered, registerAllHandlers, unregisterAllHandlers } from './index'

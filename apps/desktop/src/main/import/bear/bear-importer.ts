@@ -5,7 +5,7 @@ import { generateNoteId } from '../../lib/id'
 import { createLogger } from '../../lib/logger'
 import type { Importer, ImportContext, ImportInput, ImportSummary } from '../types'
 import { forEachZipEntry } from '../_shared/zip'
-import { parseInfo, mapNote, rewriteBearLinks } from '@memry/bear-import'
+import { parseInfo, mapNote, rewriteBearLinks } from '@memry/importers/bear'
 import type { ZipEntry } from '../_shared/zip'
 
 const logger = createLogger('BearImport')

@@ -483,5 +483,45 @@
     "toasts": {
       "undone": "Undone"
     }
+  },
+  "home": {
+    "widget": {
+      "removeAria": "Remove widget",
+      "dragAria": "Drag widget",
+      "configAria": "Configure widget",
+      "resizeAria": "Resize to {{size}}",
+      "recentlyEdited": "Recently edited",
+      "bookmarks": "Bookmarks",
+      "tasks": "Tasks",
+      "inbox": "Inbox",
+      "folder": "Folder",
+      "untitled": "Untitled",
+      "folderPickPrompt": "Pick a folder",
+      "folderViewLabel": "View",
+      "folderView_list": "List",
+      "folderView_board": "Board",
+      "folderView_gallery": "Gallery",
+      "loadError": "Couldn't load",
+      "unknown": "Unknown widget",
+      "savedFilterLabel": "Saved filter",
+      "savedFilterDefault": "Today",
+      "savedFilterHint": "Star filters on the Tasks page to use them here"
+    },
+    "board": {
+      "newAria": "New board",
+      "newName": "New board",
+      "defaultName": "Home"
+    },
+    "edit": "Edit",
+    "done": "Done",
+    "addWidget": "Add widget",
+    "empty": {
+      "title": "Your board is empty",
+      "body": "Widgets bring your notes, tasks, and bookmarks together in one calm place.",
+      "cta": "Add your first widget"
+    },
+    "noBookmarksYet": "No bookmarks yet.",
+    "noNotesYet": "No notes yet.",
+    "noTasksYet": "No tasks yet."
   }
 }

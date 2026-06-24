@@ -6,8 +6,8 @@ import { attachmentMarkdown } from '../_shared/attachment-markdown'
 import { generateNoteId } from '../../lib/id'
 import { createLogger } from '../../lib/logger'
 import type { Importer, ImportContext, ImportInput, ImportSummary } from '../types'
-import { parseFrontmatter, extractAssetRefs, mapFiles } from '@memry/markdown-import'
-import type { FileDescriptor } from '@memry/markdown-import'
+import { parseFrontmatter, extractAssetRefs, mapFiles } from '@memry/importers/markdown'
+import type { FileDescriptor } from '@memry/importers/markdown'
 import { percentDecodeRef } from '../_shared/html-to-markdown'
 
 const logger = createLogger('MarkdownImport')

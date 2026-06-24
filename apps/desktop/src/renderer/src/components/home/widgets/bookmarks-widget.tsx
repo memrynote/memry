@@ -1,0 +1,87 @@
+import type React from 'react'
+import { useBookmarks } from '@/hooks/use-bookmarks'
+import { useTabActions } from '@/contexts/tabs/context'
+import type { WidgetComponentProps } from '@/lib/home/widget-registry'
+import { Skeleton } from '@/components/ui/skeleton'
+import { CheckSquare, FileText, BookOpen } from '@/lib/icons/icon-map'
+import { useT } from '@memry/i18n/renderer'
+
+const ICON_BY_TYPE: Record<string, typeof FileText> = {
+  task: CheckSquare,
+  note: FileText,
+  journal: BookOpen
+}
+
+export function BookmarksWidget({ config, size }: WidgetComponentProps): React.JSX.Element {
+  const { t } = useT('common')
+  const itemType = typeof config.itemType === 'string' ? config.itemType : undefined
+  const limit = size === 'L' ? 12 : size === 'M' ? 6 : 3
+  const { bookmarks, isLoading, error } = useBookmarks({ itemType })
+  const { openTab } = useTabActions()
+
+  if (isLoading)
+    return (
+      <div className="flex flex-col gap-1">
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-full" />
+      </div>
+    )
+
+  if (error)
+    return <div className="text-xs text-muted-foreground">{t('home.widget.loadError')}</div>
+
+  if (bookmarks.length === 0)
+    return <div className="text-xs text-muted-foreground">{t('home.noBookmarksYet')}</div>
+
+  return (
+    <ul className="flex flex-col gap-1">
+      {bookmarks.slice(0, limit).map((b) => {
+        const Icon = ICON_BY_TYPE[b.itemType] ?? FileText
+        const typeLabel = b.itemType.charAt(0).toUpperCase() + b.itemType.slice(1)
+        return (
+          <li key={b.id}>
+            <button
+              type="button"
+              data-testid="bookmark-item"
+              data-item-id={b.itemId}
+              data-item-type={b.itemType}
+              className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-start text-sm hover:bg-muted/60"
+              onClick={() =>
+                openTab(
+                  b.itemType === 'task'
+                    ? {
+                        type: 'tasks',
+                        title: b.itemTitle ?? t('home.widget.untitled'),
+                        icon: 'check-square',
+                        path: '/tasks',
+                        entityId: b.itemId,
+                        isPinned: false,
+                        isModified: false,
+                        isDeleted: false,
+                        isPreview: true
+                      }
+                    : {
+                        type: 'note',
+                        title: b.itemTitle ?? t('home.widget.untitled'),
+                        icon: 'file-text',
+                        path: `/notes/${b.itemId}`,
+                        entityId: b.itemId,
+                        isPinned: false,
+                        isModified: false,
+                        isDeleted: false,
+                        isPreview: true
+                      }
+                )
+              }
+            >
+              <Icon className="size-3.5 shrink-0 text-muted-foreground/70" aria-hidden="true" />
+              <span className="sr-only">{typeLabel}</span>
+              <span className="truncate">{b.itemTitle ?? t('home.widget.untitled')}</span>
+            </button>
+          </li>
+        )
+      })}
+    </ul>
+  )
+}

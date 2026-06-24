@@ -4,8 +4,7 @@ import {
   buildPrefixQuery,
   normalizeScores,
   truncateQuery,
-  parseSearchQuery,
-  extractSnippet
+  parseSearchQuery
 } from './search-utils'
 import type { SearchResultItem } from '@memry/contracts/search-api'
 
@@ -171,44 +170,5 @@ describe('parseSearchQuery', () => {
     expect(result).toContain('"exact phrase"')
     expect(result).toContain('AND')
     expect(result).toContain('"other"*')
-  })
-})
-
-describe('extractSnippet', () => {
-  it('returns content around matched term', () => {
-    // #given
-    const content =
-      'This is a long piece of text where the keyword appears somewhere in the middle of the content for testing.'
-    const query = 'keyword'
-
-    // #when
-    const result = extractSnippet(content, query, 20)
-
-    // #then
-    expect(result).toContain('keyword')
-    expect(result.length).toBeLessThan(content.length)
-  })
-
-  it('adds ellipsis prefix when match is not at start', () => {
-    const content = 'Some prefix text before the searchterm is located here.'
-    const result = extractSnippet(content, 'searchterm', 10)
-    expect(result.startsWith('...')).toBe(true)
-  })
-
-  it('returns start of content when no match found', () => {
-    const content = 'Hello world this is content'
-    const result = extractSnippet(content, 'xyz', 10)
-    expect(result).toBe(content.slice(0, 20))
-  })
-
-  it('handles empty query', () => {
-    const content = 'Hello world'
-    const result = extractSnippet(content, '', 10)
-    expect(result).toBe(content.slice(0, 20))
-  })
-
-  it('handles empty content', () => {
-    const result = extractSnippet('', 'test', 10)
-    expect(result).toBe('')
   })
 })

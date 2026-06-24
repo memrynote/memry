@@ -1,0 +1,31 @@
+{
+  "name": "@memry/importers",
+  "version": "0.1.0",
+  "private": true,
+  "license": "GPL-3.0",
+  "type": "module",
+  "exports": {
+    "./apple-journal": "./src/apple-journal/index.ts",
+    "./apple-notes": "./src/apple-notes/index.ts",
+    "./bear": "./src/bear/index.ts",
+    "./csv": "./src/csv/index.ts",
+    "./evernote": "./src/evernote/index.ts",
+    "./google-keep": "./src/google-keep/index.ts",
+    "./html": "./src/html/index.ts",
+    "./markdown": "./src/markdown/index.ts",
+    "./roam": "./src/roam/index.ts",
+    "./ticktick": "./src/ticktick/index.ts",
+    "./todoist": "./src/todoist/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "fast-xml-parser": "^5.9.0",
+    "gray-matter": "^4.0.3",
+    "protobufjs": "7.6.3"
+  },
+  "devDependencies": {
+    "@memry/typescript-config": "workspace:*"
+  }
+}

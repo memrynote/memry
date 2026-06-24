@@ -26,6 +26,7 @@ import { updaterApi, updaterEvents } from './api/updater'
 import { agentMcpApi } from './api/agent-mcp'
 import { agentApi } from './api/agent'
 import { importApi, importEvents } from './api/import'
+import { homePagesApi } from './api/home-pages'
 
 const logger = createLogger('Preload')
 const MAIN_INVOKE_CHANNEL = 'main:invoke'
@@ -106,6 +107,7 @@ export const api = {
   agentMcp: agentMcpApi,
   agent: agentApi,
   import: importApi,
+  homePages: homePagesApi,
 
   onCrdtStateChanged,
   ...syncEvents,

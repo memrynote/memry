@@ -77,6 +77,7 @@ export const findTabById = (state: TabSystemState, tabId: string): FoundTab | nu
  * Icon mapping for tab types
  */
 const TAB_ICONS: Record<TabType, string> = {
+  home: 'home',
   inbox: 'inbox',
   calendar: 'calendar',
   tasks: 'list-checks',
@@ -111,6 +112,7 @@ export const getTabIcon = (type: TabType): string => {
  * Path mapping for singleton tab types
  */
 const TAB_PATHS: Partial<Record<TabType, string>> = {
+  home: '/home',
   inbox: '/inbox',
   calendar: '/calendar',
   'all-tasks': '/tasks/all',
@@ -150,14 +152,14 @@ export const getDefaultPath = (type: TabType, entityId?: string): string => {
 // =============================================================================
 
 /**
- * Create a default Inbox tab
+ * Create a default Home tab
  */
 export const createDefaultTab = (): Tab => ({
   id: generateId(),
-  type: 'inbox',
-  title: 'Inbox',
-  icon: 'inbox',
-  path: '/inbox',
+  type: 'home',
+  title: 'Home',
+  icon: 'home',
+  path: '/home',
   isPinned: false,
   isModified: false,
   isPreview: false,

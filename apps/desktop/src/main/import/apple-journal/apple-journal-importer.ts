@@ -4,7 +4,7 @@ import { JSDOM } from 'jsdom'
 import { createNote } from '../../vault/notes-crud'
 import { createLogger } from '../../lib/logger'
 import { htmlToMarkdown } from '../_shared/html-to-markdown'
-import { parseJournalDate, mapEntry } from '@memry/apple-journal-import'
+import { parseJournalDate, mapEntry } from '@memry/importers/apple-journal'
 import type { Importer, ImportContext, ImportInput, ImportSummary } from '../types'
 
 const logger = createLogger('AppleJournalImport')

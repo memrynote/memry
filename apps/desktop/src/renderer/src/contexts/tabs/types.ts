@@ -11,6 +11,7 @@
  * Content types that can be opened in tabs
  */
 export type TabType =
+  | 'home'
   | 'inbox'
   | 'calendar'
   | 'tasks' // New unified tasks tab
@@ -34,6 +35,7 @@ export type TabType =
  * If user tries to open an existing singleton, focus existing tab
  */
 export const SINGLETON_TAB_TYPES: TabType[] = [
+  'home',
   'inbox',
   'calendar',
   'journal',
