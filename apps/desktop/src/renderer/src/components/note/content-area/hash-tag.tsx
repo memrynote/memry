@@ -2,11 +2,61 @@
 
 import { createInlineContentSpec, type Block } from '@blocknote/core'
 import { getTagColors, withAlpha } from '@/components/note/tags-row/tag-colors'
+import { isIconValue, parseIconName } from '@/components/note/note-title/emoji-icon-utils'
+import { loadAllIcons } from '@/lib/hugeicon-renderer'
 
-export function createHashTagInlineContent(tag: string, color: string = '') {
+export function createHashTagInlineContent(tag: string, color: string = '', icon: string = '') {
   return {
     type: 'hashTag' as const,
-    props: { tag, color }
+    props: { tag, color, icon }
+  }
+}
+
+const SVG_NS = 'http://www.w3.org/2000/svg'
+
+/** Build a HugeIcon SVG (vanilla DOM — the inline content render isn't React). */
+function buildHugeIconSvg(
+  data: Array<[string, Record<string, string>]>,
+  colorHex: string
+): SVGSVGElement {
+  const svg = document.createElementNS(SVG_NS, 'svg')
+  svg.setAttribute('viewBox', '0 0 24 24')
+  svg.setAttribute('width', '1em')
+  svg.setAttribute('height', '1em')
+  svg.setAttribute('fill', 'none')
+  svg.style.color = colorHex
+  svg.style.flexShrink = '0'
+  for (const [tagName, attrs] of data) {
+    const el = document.createElementNS(SVG_NS, tagName)
+    for (const [key, value] of Object.entries(attrs)) el.setAttribute(key, value)
+    svg.appendChild(el)
+  }
+  return svg
+}
+
+/** Prepend a tag's emoji/icon to its inline #tag chip. */
+function prependTagIcon(dom: HTMLElement, iconValue: string, colorHex: string): void {
+  if (isIconValue(iconValue)) {
+    const holder = document.createElement('span')
+    holder.style.display = 'inline-flex'
+    holder.style.alignItems = 'center'
+    // An inline-flex box baselines at its bottom edge, so the icon rides high
+    // above the text — center it on the line instead.
+    holder.style.verticalAlign = 'middle'
+    holder.style.marginInlineEnd = '3px'
+    holder.setAttribute('aria-hidden', 'true')
+    dom.insertBefore(holder, dom.firstChild)
+    const name = parseIconName(iconValue)
+    void loadAllIcons().then((mod) => {
+      const data = mod[name] as Array<[string, Record<string, string>]> | undefined
+      if (data) holder.appendChild(buildHugeIconSvg(data, colorHex))
+    })
+  } else {
+    const span = document.createElement('span')
+    span.textContent = iconValue
+    span.style.marginInlineEnd = '3px'
+    span.setAttribute('aria-hidden', 'true')
+    dom.insertBefore(span, dom.firstChild)
   }
 }
 
@@ -15,7 +65,8 @@ export const HashTag = createInlineContentSpec(
     type: 'hashTag' as const,
     propSchema: {
       tag: { default: '' },
-      color: { default: '' }
+      color: { default: '' },
+      icon: { default: '' }
     },
     content: 'none'
   },
@@ -23,14 +74,17 @@ export const HashTag = createInlineContentSpec(
     render: (inlineContent) => {
       const tag = inlineContent.props.tag || ''
       const colorName = inlineContent.props.color || ''
+      const icon = inlineContent.props.icon || ''
       const colors = getTagColors(colorName, tag)
 
       const dom = document.createElement('span')
       dom.className = 'inline-hash-tag'
       dom.setAttribute('data-hash-tag', tag)
       dom.setAttribute('data-hash-tag-color', colorName)
+      if (icon) dom.setAttribute('data-hash-tag-icon', icon)
       dom.setAttribute('contenteditable', 'false')
       dom.textContent = `#${tag}`
+      if (icon) prependTagIcon(dom, icon, colors.text)
 
       dom.style.backgroundColor = withAlpha(colors.text, 0.12)
       dom.style.setProperty('--hash-tag-color', colors.text)
@@ -52,7 +106,8 @@ export const HashTag = createInlineContentSpec(
         const tag = element.getAttribute('data-hash-tag')?.trim() || ''
         if (tag) {
           const color = element.getAttribute('data-hash-tag-color')?.trim() || ''
-          return { tag, color }
+          const icon = element.getAttribute('data-hash-tag-icon')?.trim() || ''
+          return { tag, color, icon }
         }
       }
       return undefined
@@ -82,6 +137,7 @@ function splitTextWithHashTags(
   text: string,
   noteTags: Set<string>,
   tagColorMap: Map<string, string>,
+  tagIconMap?: Map<string, string>,
   styles?: Record<string, boolean | string>
 ): { segments: Array<string | Record<string, unknown>>; didChange: boolean } {
   const segments: Array<string | Record<string, unknown>> = []
@@ -105,7 +161,8 @@ function splitTextWithHashTags(
     }
 
     const color = tagColorMap.get(normalizedTag) || ''
-    segments.push(createHashTagInlineContent(normalizedTag, color))
+    const icon = tagIconMap?.get(normalizedTag) || ''
+    segments.push(createHashTagInlineContent(normalizedTag, color, icon))
 
     didChange = true
     lastIndex = match.index + full.length
@@ -126,10 +183,16 @@ function splitTextWithHashTags(
 function normalizeInlineContentHashTags(
   content: string | Array<any>,
   noteTags: Set<string>,
-  tagColorMap: Map<string, string>
+  tagColorMap: Map<string, string>,
+  tagIconMap?: Map<string, string>
 ): { content: string | Array<any>; didChange: boolean } {
   if (typeof content === 'string') {
-    const { segments, didChange } = splitTextWithHashTags(content, noteTags, tagColorMap)
+    const { segments, didChange } = splitTextWithHashTags(
+      content,
+      noteTags,
+      tagColorMap,
+      tagIconMap
+    )
     if (!didChange) return { content, didChange: false }
     return { content: segments, didChange: true }
   }
@@ -144,7 +207,8 @@ function normalizeInlineContentHashTags(
       const { segments, didChange: itemChanged } = splitTextWithHashTags(
         item,
         noteTags,
-        tagColorMap
+        tagColorMap,
+        tagIconMap
       )
       if (itemChanged) {
         didChange = true
@@ -161,6 +225,7 @@ function normalizeInlineContentHashTags(
         item.text ?? '',
         noteTags,
         tagColorMap,
+        tagIconMap,
         itemStyles
       )
       if (itemChanged) {
@@ -186,7 +251,8 @@ function normalizeInlineContentHashTags(
 export function normalizeHashTags(
   blocks: Block[],
   noteTags: Set<string>,
-  tagColorMap: Map<string, string>
+  tagColorMap: Map<string, string>,
+  tagIconMap?: Map<string, string>
 ): { blocks: Block[]; didChange: boolean } {
   if (noteTags.size === 0) return { blocks, didChange: false }
 
@@ -202,7 +268,12 @@ export function normalizeHashTags(
     let nextBlock: Block = block
 
     if (block.content && (typeof block.content === 'string' || Array.isArray(block.content))) {
-      const normalized = normalizeInlineContentHashTags(block.content as any, noteTags, tagColorMap)
+      const normalized = normalizeInlineContentHashTags(
+        block.content as any,
+        noteTags,
+        tagColorMap,
+        tagIconMap
+      )
       if (normalized.didChange) {
         blockChanged = true
         nextBlock = { ...nextBlock, content: normalized.content as any }
@@ -210,7 +281,12 @@ export function normalizeHashTags(
     }
 
     if (block.children?.length) {
-      const normalizedChildren = normalizeHashTags(block.children as Block[], noteTags, tagColorMap)
+      const normalizedChildren = normalizeHashTags(
+        block.children as Block[],
+        noteTags,
+        tagColorMap,
+        tagIconMap
+      )
       if (normalizedChildren.didChange) {
         blockChanged = true
         nextBlock = { ...nextBlock, children: normalizedChildren.blocks }

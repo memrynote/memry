@@ -1,7 +1,7 @@
 import { lazy, Suspense, useCallback, useState } from 'react'
-import { createPortal } from 'react-dom'
 import { Tag } from '@/lib/icons'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { useT } from '@memry/i18n/renderer'
 
 const LazyEmojiPicker = lazy(async () => ({
@@ -20,18 +20,14 @@ interface TagIconChipProps {
 /**
  * Tag Config row chip showing a tag's custom icon (or a color-tinted tag glyph).
  * Clicking opens the shared emoji/icon picker to set, change, or remove it.
+ *
+ * Hosted in a Radix Popover (modal) so the picker is clickable even when the
+ * chip lives inside the settings modal Dialog — a plain `document.body` portal
+ * inherits the Dialog's `pointer-events: none` and would be visible but inert.
  */
 export function TagIconChip({ icon, color, onIconChange }: TagIconChipProps): React.JSX.Element {
   const { t } = useT('settings')
   const [open, setOpen] = useState(false)
-  const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
-
-  const handleClick = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation()
-    const rect = e.currentTarget.getBoundingClientRect()
-    setPos({ top: rect.bottom + 6, left: rect.left })
-    setOpen((v) => !v)
-  }, [])
 
   const handleSelect = useCallback(
     (value: string) => {
@@ -47,36 +43,38 @@ export function TagIconChip({ icon, color, onIconChange }: TagIconChipProps): Re
   }, [onIconChange])
 
   return (
-    <>
-      <button
-        type="button"
-        onClick={handleClick}
-        aria-label={t('tags.actions.changeIcon')}
-        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-accent"
+    <Popover open={open} onOpenChange={setOpen} modal>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          onClick={(e) => e.stopPropagation()}
+          aria-label={t('tags.actions.changeIcon')}
+          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-accent"
+        >
+          {icon ? (
+            <NoteIconDisplay value={icon} className="size-[15px] text-[15px] leading-none" />
+          ) : (
+            <Tag className="h-3.5 w-3.5" style={{ color: color ?? undefined }} />
+          )}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        sideOffset={6}
+        className="w-auto border-0 bg-transparent p-0 shadow-none"
+        onClick={(e) => e.stopPropagation()}
       >
-        {icon ? (
-          <NoteIconDisplay value={icon} className="text-[15px] leading-none" />
-        ) : (
-          <Tag className="h-3.5 w-3.5" style={{ color: color ?? undefined }} />
-        )}
-      </button>
-
-      {open &&
-        pos &&
-        createPortal(
-          <div className="fixed z-[100]" style={{ top: pos.top, left: pos.left }}>
-            <Suspense fallback={null}>
-              <LazyEmojiPicker
-                isOpen
-                onClose={() => setOpen(false)}
-                onSelect={handleSelect}
-                onRemove={handleRemove}
-                hasEmoji={!!icon}
-              />
-            </Suspense>
-          </div>,
-          document.body
-        )}
-    </>
+        <Suspense fallback={null}>
+          <LazyEmojiPicker
+            isOpen
+            embedded
+            onClose={() => setOpen(false)}
+            onSelect={handleSelect}
+            onRemove={handleRemove}
+            hasEmoji={!!icon}
+          />
+        </Suspense>
+      </PopoverContent>
+    </Popover>
   )
 }

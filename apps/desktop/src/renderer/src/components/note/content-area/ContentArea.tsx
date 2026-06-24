@@ -140,6 +140,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   initialAnchorId,
   noteTags,
   tagColorMap,
+  tagIconMap,
   onInlineTagsChange,
   focusAtEndRef,
   yjsFragment,
@@ -242,6 +243,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     isRemoteUpdateRef,
     noteTags,
     tagColorMap,
+    tagIconMap,
     onContentChange,
     onMarkdownChange: onMarkdownChange
       ? (markdown) => onMarkdownChange(review?.onPlainMarkdownChange?.(markdown) ?? markdown)
@@ -318,7 +320,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   const { handleTagSuggestionSelect } = useTagSuggestions({
     editor,
     editorContainerRef,
-    tagColorMap
+    tagColorMap,
+    tagIconMap
   })
 
   // Hook #5: Drag and drop state

@@ -24,6 +24,8 @@ Manage tags globally from [Settings → Tags](/user-guide/settings#tags). Rename
 
 Give any tag a custom icon to tell it apart at a glance. In [Settings → Tags](/user-guide/settings#tags), click the icon next to a tag name and pick an emoji or icon (or clear it to fall back to the default). The icon is stored on the tag and syncs across your devices.
 
+You can also set a tag's icon straight from the sidebar: drill into a tag and click the chip in its detail header. Once set, the icon shows everywhere the tag appears — the sidebar tag list, the tag chips on a note or journal entry, and inline `#tags` in the editor.
+
 ## Properties Panel
 
 A collapsible section under the title for **structured** metadata. Properties are typed and reusable.
