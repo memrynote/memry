@@ -17,6 +17,13 @@ interface EmojiPickerProps {
   onSelect: (emoji: string) => void
   onRemove: () => void
   hasEmoji: boolean
+  /**
+   * When hosted inside a layer that already provides anchoring + dismissal
+   * (e.g. a Radix Popover in the tag icon chip), render as a static panel
+   * instead of an absolutely-positioned floating one, and let the host own
+   * outside-click. Needed so the picker is clickable inside a modal Dialog.
+   */
+  embedded?: boolean
 }
 
 interface EmojiData {
@@ -28,7 +35,14 @@ interface EmojiData {
   shortcodes: string
 }
 
-export function EmojiPicker({ isOpen, onClose, onSelect, onRemove, hasEmoji }: EmojiPickerProps) {
+export function EmojiPicker({
+  isOpen,
+  onClose,
+  onSelect,
+  onRemove,
+  hasEmoji,
+  embedded = false
+}: EmojiPickerProps) {
   const { t } = useT('notes')
   const { t: tCommon } = useT('common')
   const pickerRef = useRef<HTMLDivElement>(null)
@@ -53,7 +67,8 @@ export function EmojiPicker({ isOpen, onClose, onSelect, onRemove, hasEmoji }: E
     return () => observer.disconnect()
   }, [isOpen, activeTab])
 
-  useClickOutside(pickerRef, onClose, isOpen)
+  // When embedded, the host (Popover) owns dismissal — avoid a double handler.
+  useClickOutside(pickerRef, onClose, isOpen && !embedded)
 
   const handleEmojiSelect = useCallback(
     (emoji: EmojiData) => {
@@ -96,7 +111,7 @@ export function EmojiPicker({ isOpen, onClose, onSelect, onRemove, hasEmoji }: E
       aria-label={t('menus.emoji.aria')}
       onKeyDown={handleKeyDown}
       className={cn(
-        'absolute left-0 top-full z-50 mt-2',
+        embedded ? 'relative' : 'absolute start-0 top-full z-50 mt-2',
         'rounded-xl border border-border bg-popover shadow-lg',
         'animate-in fade-in-0 zoom-in-95 duration-150'
       )}

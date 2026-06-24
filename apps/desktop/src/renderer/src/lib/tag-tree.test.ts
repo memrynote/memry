@@ -102,6 +102,23 @@ describe('tag-tree', () => {
       expect(result[0].children[0].children[0].depth).toBe(2)
     })
 
+    it('should carry a leaf tag icon onto its node', () => {
+      const result = buildTagTree([{ tag: 'books', count: 3, color: 'blue', icon: '📚' }])
+      expect(result[0].icon).toBe('📚')
+    })
+
+    it('should default icon to null when none is provided', () => {
+      const result = buildTagTree([{ tag: 'books', count: 3 }])
+      expect(result[0].icon).toBeNull()
+    })
+
+    it('should leave virtual parent nodes without an icon', () => {
+      const result = buildTagTree([{ tag: 'movies/oscar', count: 5, icon: '🎬' }])
+      expect(result[0].isVirtual).toBe(true)
+      expect(result[0].icon).toBeNull()
+      expect(result[0].children[0].icon).toBe('🎬')
+    })
+
     it('should preserve color on explicit parent when children exist', () => {
       const result = buildTagTree([
         { tag: 'movies/oscar', count: 3, color: 'blue' },

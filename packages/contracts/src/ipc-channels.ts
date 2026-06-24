@@ -81,6 +81,8 @@ export const TagsChannels = {
     RENAME_TAG: 'tags:rename',
     /** Update tag color */
     UPDATE_TAG_COLOR: 'tags:update-color',
+    /** Update tag icon (raw emoji or "icon:Name", null to clear) */
+    UPDATE_TAG_ICON: 'tags:update-icon',
     /** Delete a tag from all notes */
     DELETE_TAG: 'tags:delete',
     /** Remove tag from a specific note */

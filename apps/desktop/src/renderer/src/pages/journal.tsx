@@ -391,13 +391,22 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     return map
   }, [allAvailableTags])
 
+  const tagIconMap = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const t of allAvailableTags) {
+      if (t.icon) map.set(t.tag, t.icon)
+    }
+    return map
+  }, [allAvailableTags])
+
   const journalTags: Tag[] = useMemo(() => {
     return (entry?.tags || []).map((tagName) => ({
       id: tagName,
       name: tagName,
-      color: tagColorMap.get(tagName) ?? pendingTagColors.get(tagName.toLowerCase()) ?? ''
+      color: tagColorMap.get(tagName) ?? pendingTagColors.get(tagName.toLowerCase()) ?? '',
+      icon: tagIconMap.get(tagName) ?? null
     }))
-  }, [entry?.tags, tagColorMap, pendingTagColors])
+  }, [entry?.tags, tagColorMap, tagIconMap, pendingTagColors])
 
   const availableTags: Tag[] = useMemo(() => {
     return allAvailableTags.map((t) => ({

@@ -117,7 +117,10 @@ export function CommandLineSettings(): React.JSX.Element {
         >
           <Select
             value={defaultVaultPath}
-            disabled={isLoading || isChanging || vaults.length === 0}
+            // Don't disable on isChanging: flipping disabled mid-select releases the
+            // trigger's pointer capture, so the pointerup leaks to the settings Dialog
+            // overlay and dismisses it. (Same class as the self-disabling-button gotcha.)
+            disabled={isLoading || vaults.length === 0}
             onValueChange={(value) => void handleDefaultVaultChange(value)}
           >
             <SelectTrigger className={COMPACT_SELECT}>

@@ -112,6 +112,7 @@ interface EditorSyncParams {
   isRemoteUpdateRef?: React.RefObject<boolean>
   noteTags?: string[]
   tagColorMap?: Map<string, string>
+  tagIconMap?: Map<string, string>
   onContentChange?: (blocks: Block[]) => void
   onMarkdownChange?: (markdown: string) => void
   onHeadingsChange?: (headings: HeadingInfo[]) => void
@@ -134,6 +135,7 @@ export function useEditorSync({
   isRemoteUpdateRef,
   noteTags,
   tagColorMap,
+  tagIconMap,
   onContentChange,
   onMarkdownChange,
   onHeadingsChange,
@@ -215,7 +217,12 @@ export function useEditorSync({
 
             if (noteTags?.length && tagColorMap) {
               const tagSet = new Set(noteTags.map((t) => t.toLowerCase()))
-              const hashNormalized = normalizeHashTags(normalizedBlocks, tagSet, tagColorMap)
+              const hashNormalized = normalizeHashTags(
+                normalizedBlocks,
+                tagSet,
+                tagColorMap,
+                tagIconMap
+              )
               normalizedBlocks = hashNormalized.blocks
               lastNormalizedTagsRef.current = noteTags.slice().sort().join(',')
             }
@@ -236,7 +243,12 @@ export function useEditorSync({
 
           if (noteTags?.length && tagColorMap) {
             const tagSet = new Set(noteTags.map((t) => t.toLowerCase()))
-            const hashNormalized = normalizeHashTags(normalizedBlocks, tagSet, tagColorMap)
+            const hashNormalized = normalizeHashTags(
+              normalizedBlocks,
+              tagSet,
+              tagColorMap,
+              tagIconMap
+            )
             normalizedBlocks = hashNormalized.blocks
             lastNormalizedTagsRef.current = noteTags.slice().sort().join(',')
           }

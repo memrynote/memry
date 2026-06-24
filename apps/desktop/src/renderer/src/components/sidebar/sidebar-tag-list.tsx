@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils'
 import { useNoteTagsQuery } from '@/hooks/use-notes-query'
 import { getTagColors } from '@/components/note/tags-row/tag-colors'
 import { buildTagTree, type TagTreeNode } from '@/lib/tag-tree'
+import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { Button } from '@/components/ui/button'
 import { Picker } from '@/components/ui/picker'
 import { useT } from '@memry/i18n/renderer'
@@ -152,14 +153,21 @@ function TagTreeItem({
               : { backgroundColor: 'var(--muted)', color: 'var(--muted-foreground)' }
           }
         >
-          <span
-            className="size-1.5 rounded-full shrink-0"
-            style={
-              colors
-                ? { backgroundColor: colors.text }
-                : { backgroundColor: 'var(--muted-foreground)' }
-            }
-          />
+          {node.icon ? (
+            <NoteIconDisplay
+              value={node.icon}
+              className="size-3 shrink-0 text-[11px] leading-none"
+            />
+          ) : (
+            <span
+              className="size-1.5 rounded-full shrink-0"
+              style={
+                colors
+                  ? { backgroundColor: colors.text }
+                  : { backgroundColor: 'var(--muted-foreground)' }
+              }
+            />
+          )}
           <span
             ref={labelRef}
             className={cn('min-w-0 truncate', isLabelTruncated && 'sidebar-label-fade-mask')}
@@ -325,7 +333,7 @@ export function SidebarTagList({
       })
 
     const built = buildTagTree(
-      filtered.map((t) => ({ tag: t.tag, count: t.count, color: t.color }))
+      filtered.map((t) => ({ tag: t.tag, count: t.count, color: t.color, icon: t.icon }))
     )
 
     const sortNodes = (nodes: TagTreeNode[]): TagTreeNode[] => {

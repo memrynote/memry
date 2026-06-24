@@ -967,6 +967,7 @@
     "actions": {
       "rename": "Rename",
       "changeColor": "Change color",
+      "changeIcon": "Change icon",
       "mergeInto": "Merge into...",
       "merge": "Merge",
       "delete": "Delete"
@@ -987,7 +988,8 @@
       "mergeFailed": "Failed to merge tags",
       "merged": "Merged \"{source}\" into \"{target}\" ({count, plural, one {# item} other {# items}})",
       "colorUpdated": "Updated color for \"{name}\"",
-      "colorFailed": "Failed to update color"
+      "colorFailed": "Failed to update color",
+      "iconFailed": "Failed to update icon"
     }
   },
   "properties": {

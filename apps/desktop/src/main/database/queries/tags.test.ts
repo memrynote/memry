@@ -166,6 +166,35 @@ describe('getAllTagsWithCounts', () => {
     expect(work?.color).toBe('#ff0000')
   })
 
+  it('attaches icons from tag definitions', () => {
+    // #given: a tag definition with a custom icon
+    insertNote(indexDb, 'n1')
+    insertNoteTag(indexDb, 'n1', 'work')
+    insertTagDefinition(dataDb, 'work', '#ff0000')
+    dataDb.run(sql`UPDATE tag_definitions SET icon = ${'icon:StarIcon'} WHERE name = 'work'`)
+
+    // #when
+    const result = getAllTagsWithCounts(indexDb, dataDb)
+
+    // #then
+    const work = result.find((t) => t.name === 'work')
+    expect(work?.icon).toBe('icon:StarIcon')
+  })
+
+  it('leaves icon null when a tag definition has none', () => {
+    // #given
+    insertNote(indexDb, 'n1')
+    insertNoteTag(indexDb, 'n1', 'work')
+    insertTagDefinition(dataDb, 'work', '#ff0000')
+
+    // #when
+    const result = getAllTagsWithCounts(indexDb, dataDb)
+
+    // #then
+    const work = result.find((t) => t.name === 'work')
+    expect(work?.icon ?? null).toBeNull()
+  })
+
   it('auto-creates a color for orphaned tags without definitions', () => {
     // #given: tag exists in notes but has no tag definition
     insertNote(indexDb, 'n1')

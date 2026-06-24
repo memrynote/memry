@@ -4,6 +4,7 @@ import { sql } from 'drizzle-orm'
 export const tagDefinitions = sqliteTable('tag_definitions', {
   name: text('name').primaryKey(),
   color: text('color').notNull(),
+  icon: text('icon'),
   clock: text('clock', { mode: 'json' }),
   createdAt: text('created_at')
     .notNull()
