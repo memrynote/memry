@@ -164,7 +164,9 @@ const UpdatePropertyDefinitionSchema = z.object({
 const ExportNoteSchema = z.object({
   noteId: z.string().min(1),
   includeMetadata: z.boolean().default(true),
-  pageSize: z.enum(['A4', 'Letter', 'Legal']).default('A4')
+  pageSize: z.enum(['A4', 'Letter', 'Legal']).default('A4'),
+  // Headless export target — when provided, skip the save dialog (Agent MCP).
+  outputPath: z.string().min(1).optional()
 })
 
 /**
@@ -757,15 +759,19 @@ export function registerNotesHandlers(): void {
         return { success: false as const, error: t('error.noteNotFound') }
       }
 
-      const defaultFilename = `${sanitizeFilename(note.title)}.pdf`
-      const result = await dialog.showSaveDialog({
-        title: t('dialog.exportPdf.title'),
-        defaultPath: defaultFilename,
-        filters: [{ name: t('dialog.exportPdf.filterName'), extensions: ['pdf'] }]
-      })
+      let targetPath = input.outputPath
+      if (!targetPath) {
+        const defaultFilename = `${sanitizeFilename(note.title)}.pdf`
+        const result = await dialog.showSaveDialog({
+          title: t('dialog.exportPdf.title'),
+          defaultPath: defaultFilename,
+          filters: [{ name: t('dialog.exportPdf.filterName'), extensions: ['pdf'] }]
+        })
 
-      if (result.canceled || !result.filePath) {
-        return { success: false as const, error: t('dialog.exportCancelled') }
+        if (result.canceled || !result.filePath) {
+          return { success: false as const, error: t('dialog.exportCancelled') }
+        }
+        targetPath = result.filePath
       }
 
       const html = renderNoteAsHtml(
@@ -811,9 +817,9 @@ export function registerNotesHandlers(): void {
       })
 
       win.destroy()
-      await fs.writeFile(result.filePath, pdfData)
+      await fs.writeFile(targetPath, pdfData)
 
-      return { success: true as const, path: result.filePath }
+      return { success: true as const, path: targetPath }
     },
     'Failed to export PDF'
   )
@@ -832,15 +838,19 @@ export function registerNotesHandlers(): void {
         return { success: false as const, error: t('error.noteNotFound') }
       }
 
-      const defaultFilename = `${sanitizeFilename(note.title)}.html`
-      const result = await dialog.showSaveDialog({
-        title: t('dialog.exportHtml.title'),
-        defaultPath: defaultFilename,
-        filters: [{ name: t('dialog.exportHtml.filterName'), extensions: ['html', 'htm'] }]
-      })
+      let targetPath = input.outputPath
+      if (!targetPath) {
+        const defaultFilename = `${sanitizeFilename(note.title)}.html`
+        const result = await dialog.showSaveDialog({
+          title: t('dialog.exportHtml.title'),
+          defaultPath: defaultFilename,
+          filters: [{ name: t('dialog.exportHtml.filterName'), extensions: ['html', 'htm'] }]
+        })
 
-      if (result.canceled || !result.filePath) {
-        return { success: false as const, error: t('dialog.exportCancelled') }
+        if (result.canceled || !result.filePath) {
+          return { success: false as const, error: t('dialog.exportCancelled') }
+        }
+        targetPath = result.filePath
       }
 
       const html = renderNoteAsHtml(
@@ -856,9 +866,9 @@ export function registerNotesHandlers(): void {
         { includeMetadata: input.includeMetadata }
       )
 
-      await fs.writeFile(result.filePath, html, 'utf-8')
+      await fs.writeFile(targetPath, html, 'utf-8')
 
-      return { success: true as const, path: result.filePath }
+      return { success: true as const, path: targetPath }
     },
     'Failed to export HTML'
   )

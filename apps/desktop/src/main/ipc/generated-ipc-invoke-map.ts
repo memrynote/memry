@@ -166,8 +166,8 @@ export interface MainIpcInvokeHandlers {
   "notes:delete-version": (...args: [string]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; }>>
   "notes:ensure-property-definition": (...args: [{ name: string; type: "status" | "select" | "multiselect"; }]) => Awaited<Promise<{ success: boolean; }>>
   "notes:exists": (...args: [string]) => Awaited<Promise<boolean>>
-  "notes:export-html": (...args: [{ noteId: string; includeMetadata?: boolean | undefined; pageSize?: "A4" | "Letter" | "Legal" | undefined; }]) => Awaited<Promise<{ success: false; error: string; path?: undefined; } | { success: true; path: string; error?: undefined; }> | { success: false; error: string }>
-  "notes:export-pdf": (...args: [{ noteId: string; includeMetadata?: boolean | undefined; pageSize?: "A4" | "Letter" | "Legal" | undefined; }]) => Awaited<Promise<{ success: false; error: string; path?: undefined; } | { success: true; path: string; error?: undefined; }> | { success: false; error: string }>
+  "notes:export-html": (...args: [{ noteId: string; includeMetadata?: boolean | undefined; pageSize?: "A4" | "Letter" | "Legal" | undefined; outputPath?: string | undefined; }]) => Awaited<Promise<{ success: false; error: string; path?: undefined; } | { success: true; path: string; error?: undefined; }> | { success: false; error: string }>
+  "notes:export-pdf": (...args: [{ noteId: string; includeMetadata?: boolean | undefined; pageSize?: "A4" | "Letter" | "Legal" | undefined; outputPath?: string | undefined; }]) => Awaited<Promise<{ success: false; error: string; path?: undefined; } | { success: true; path: string; error?: undefined; }> | { success: false; error: string }>
   "notes:get": (...args: [string]) => Awaited<Promise<import("../vault/notes-crud").Note | null>>
   "notes:get-all-positions": (...args: []) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; positions: Record<string, number>; }>>
   "notes:get-by-path": (...args: [string]) => Awaited<Promise<import("../vault/notes-crud").Note | null>>
