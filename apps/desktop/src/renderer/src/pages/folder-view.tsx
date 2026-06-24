@@ -6,7 +6,7 @@
  */
 
 import { useMemo, useState, useLayoutEffect, useCallback, useRef } from 'react'
-import { ArrowLeft, Columns3, Folder, LayoutGrid, List, Plus, Rows2, Settings2 } from '@/lib/icons'
+import { ArrowLeft, Folder, LayoutGrid, List, Plus, Rows2, Settings2 } from '@/lib/icons'
 
 import { useDebouncedValue } from '@/hooks/use-task-filters'
 import { Button } from '@/components/ui/button'
@@ -37,7 +37,6 @@ import { FolderTableView } from '@/components/folder-view/folder-table-view'
 import { GroupedTable } from '@/components/folder-view/grouped-table'
 import { FolderViewToolbar } from '@/components/folder-view/folder-view-toolbar'
 import { FolderListView } from '@/components/folder-view/folder-list-view'
-import { FolderBoardView } from '@/components/folder-view/folder-board-view'
 import { FolderGalleryView } from '@/components/folder-view/folder-gallery-view'
 import { ViewSwitcher } from '@/components/folder-view/view-switcher'
 import { cn } from '@/lib/utils'
@@ -115,10 +114,10 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
   // Get first note for formula preview in editor
   const sampleNote = notes.length > 0 ? notes[0] : null
 
-  // Active view render mode (table / list / kanban / grid) — persisted via the view config.
+  // Active view render mode (table / list / grid) — persisted via the view config.
   const viewType = activeView?.type ?? 'table'
   const handleViewTypeChange = useCallback(
-    (type: 'table' | 'list' | 'kanban' | 'grid') => {
+    (type: 'table' | 'list' | 'grid') => {
       void updateView({ type })
     },
     [updateView]
@@ -556,7 +555,6 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
             [
               { type: 'table', Icon: Rows2, label: 'Table' },
               { type: 'list', Icon: List, label: 'List' },
-              { type: 'kanban', Icon: Columns3, label: 'Board' },
               { type: 'grid', Icon: LayoutGrid, label: 'Gallery' }
             ] as const
           ).map(({ type, Icon, label }) => {
@@ -675,18 +673,6 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
               searchQuery={debouncedSearchQuery}
               density={density}
               tagColorMap={tagColorMap}
-              onNoteOpen={handleNoteOpen}
-              onTagClick={handleTagClick}
-              onCreateNote={() => void handleCreateNote()}
-              onClearAll={handleClearAll}
-              className="h-full"
-            />
-          ) : viewType === 'kanban' ? (
-            <FolderBoardView
-              notes={notes}
-              searchQuery={debouncedSearchQuery}
-              tagColorMap={tagColorMap}
-              availableProperties={availableProperties}
               onNoteOpen={handleNoteOpen}
               onTagClick={handleTagClick}
               onCreateNote={() => void handleCreateNote()}

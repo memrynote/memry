@@ -1,6 +1,6 @@
 /**
- * Shared presentational pieces for the non-table folder views (list / board / gallery).
- * Kept tiny and dependency-free so the three views render notes consistently.
+ * Shared presentational pieces for the non-table folder views (list / gallery).
+ * Kept tiny and dependency-free so the views render notes consistently.
  */
 
 import { cn } from '@/lib/utils'
@@ -57,14 +57,6 @@ export function pastelFor(seed: string): string {
   let h = 0
   for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0
   return PASTELS[h % PASTELS.length]
-}
-
-// Status-dot palette for board columns (terracotta accent shared with --tint).
-const DOTS = ['#9b9a97', '#2563eb', '#f97316', '#16a34a', '#7c3aed', '#0891b2'] as const
-
-/** Pick a board-column dot color by column index. */
-export function dotFor(index: number): string {
-  return DOTS[index % DOTS.length]
 }
 
 /** Compact relative timestamp ("2h ago" / "Jun 16") for card + row metadata. */

@@ -99,7 +99,7 @@ describe('folder-view-handlers', () => {
 
     const result = await invokeHandler(FolderViewChannels.invoke.SET_VIEW, {
       folderPath: 'projects',
-      view: { name: 'Kanban', type: 'kanban', default: true }
+      view: { name: 'Gallery', type: 'grid', default: true }
     })
 
     expect(result).toEqual({ success: true })
@@ -108,7 +108,7 @@ describe('folder-view-handlers', () => {
       expect.objectContaining({
         views: [
           expect.objectContaining({ name: 'Default', default: false }),
-          expect.objectContaining({ name: 'Kanban', default: true })
+          expect.objectContaining({ name: 'Gallery', default: true })
         ]
       })
     )

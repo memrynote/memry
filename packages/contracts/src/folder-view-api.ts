@@ -208,7 +208,7 @@ export const OrderConfigSchema = z.object({
 // ============================================================================
 
 /**
- * Grouping configuration for table/kanban views.
+ * Grouping configuration for table views.
  * Stored in .folder.md view.groupBy
  */
 export interface GroupByConfig {
@@ -303,7 +303,7 @@ export interface ViewConfig {
   name: string
 
   /** View type */
-  type: 'table' | 'grid' | 'list' | 'kanban'
+  type: 'table' | 'grid' | 'list'
 
   /** Is this the default view? */
   default?: boolean
@@ -329,7 +329,7 @@ export interface ViewConfig {
 
 export const ViewConfigSchema = z.object({
   name: z.string().min(1),
-  type: z.enum(['table', 'grid', 'list', 'kanban']).default('table'),
+  type: z.enum(['table', 'grid', 'list']).default('table'),
   default: z.boolean().optional(),
   columns: z.array(ColumnConfigSchema).optional(),
   filters: FilterExpressionSchema.optional(),
