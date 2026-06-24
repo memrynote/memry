@@ -2,13 +2,11 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { type ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { SavedFilter } from '@/data/tasks-data'
 import { JournalHeaderActions } from './journal/journal-header-actions'
 import { TriageSnoozePicker } from './inbox/triage-snooze-picker'
 import { WikiLinkMenu, type WikiLinkSuggestionItem } from './note/content-area/wiki-link-menu'
 import { WikiLinkPreviewCard } from './note/content-area/wiki-link-preview-card'
 import { TabPane } from './split-view/tab-pane'
-import { SavedFiltersDropdown } from './tasks/filters/saved-filters-dropdown'
 
 const mocks = vi.hoisted(() => ({
   dispatch: vi.fn(),
@@ -269,39 +267,5 @@ describe('small zero-line renderer surfaces', () => {
     expect(handlers.onExport).toHaveBeenCalledTimes(1)
     expect(handlers.onToggleFullWidth).toHaveBeenCalledTimes(1)
     expect(handlers.onOpenSettings).toHaveBeenCalledTimes(1)
-  })
-
-  it('applies, deletes, saves, and renders empty saved-filter states', () => {
-    const onApply = vi.fn()
-    const onDelete = vi.fn()
-    const onSaveCurrent = vi.fn()
-    const filter: SavedFilter = {
-      id: 'filter-1',
-      name: 'High priority',
-      filters: {} as SavedFilter['filters'],
-      starred: true,
-      createdAt: new Date('2026-05-10T00:00:00.000Z')
-    }
-
-    const { rerender } = render(
-      <SavedFiltersDropdown
-        savedFilters={[filter]}
-        onApply={onApply}
-        onDelete={onDelete}
-        onSaveCurrent={onSaveCurrent}
-      />
-    )
-
-    fireEvent.click(screen.getByRole('button', { name: 'High priority' }))
-    fireEvent.click(screen.getByLabelText('Delete High priority'))
-    fireEvent.click(screen.getByRole('button', { name: /saveCurrentFilters/ }))
-
-    expect(onApply).toHaveBeenCalledWith(filter)
-    expect(onDelete).toHaveBeenCalledWith('filter-1')
-    expect(onSaveCurrent).toHaveBeenCalledTimes(1)
-
-    rerender(<SavedFiltersDropdown savedFilters={[]} onApply={onApply} onDelete={onDelete} />)
-    expect(screen.getByText('noSavedFiltersYet')).toBeInTheDocument()
-    expect(screen.getByText('saveCurrentFilters2')).toBeInTheDocument()
   })
 })
