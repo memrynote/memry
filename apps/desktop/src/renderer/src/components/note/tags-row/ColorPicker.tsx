@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils'
 import { TAG_COLORS, COLOR_ROWS, getTagColors, withAlpha } from './tag-colors'
+import { CustomColorSwatch } from './CustomColorSwatch'
 import { Check } from '@/lib/icons'
 import { useT } from '@memry/i18n/renderer'
 
@@ -65,6 +66,9 @@ export function ColorPicker({
                 </button>
               )
             })}
+            {rowIndex === COLOR_ROWS.length - 1 && (
+              <CustomColorSwatch size="sm" value={selectedColor} onChange={onSelectColor} />
+            )}
           </div>
         ))}
       </div>

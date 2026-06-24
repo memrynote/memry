@@ -217,7 +217,8 @@
     "createTag": "Create tag: \"{tag}\"",
     "chooseColor": "Choose color:",
     "preview": "Preview:",
-    "colorAria": "Select {color} color"
+    "colorAria": "Select {color} color",
+    "customColor": "Custom color"
   },
   "properties": {
     "title": "Properties",

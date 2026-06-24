@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { TAG_COLORS, COLOR_NAMES, defaultTagColorName, getTagColors } from './tag-colors'
+import {
+  TAG_COLORS,
+  COLOR_NAMES,
+  defaultTagColorName,
+  getTagColors,
+  isHexColor
+} from './tag-colors'
 
 describe('defaultTagColorName', () => {
   it('is deterministic for the same tag name', () => {
@@ -31,13 +37,32 @@ describe('getTagColors', () => {
     expect(getTagColors('', 'research')).toBe(TAG_COLORS[defaultTagColorName('research')])
   })
 
-  it('derives from the tag name when color is a legacy hex (seed/backend)', () => {
-    const colors = getTagColors('#6b7280', 'research')
-    expect(colors).toBe(TAG_COLORS[defaultTagColorName('research')])
-    expect(colors).not.toBe(TAG_COLORS.stone)
+  it('uses a custom hex verbatim for text and background', () => {
+    expect(getTagColors('#6b7280', 'research')).toEqual({
+      background: '#6b7280',
+      text: '#6b7280'
+    })
+  })
+
+  it('prefers a known palette name over the hex branch', () => {
+    expect(getTagColors('rose', 'research')).toBe(TAG_COLORS.rose)
   })
 
   it('falls back to stone only when no tag name is available', () => {
     expect(getTagColors('')).toBe(TAG_COLORS.stone)
+  })
+})
+
+describe('isHexColor', () => {
+  it('accepts 6-digit hex', () => {
+    expect(isHexColor('#ff6600')).toBe(true)
+    expect(isHexColor('#FFFFFF')).toBe(true)
+  })
+
+  it('rejects names, partial hex, and empty', () => {
+    expect(isHexColor('rose')).toBe(false)
+    expect(isHexColor('#fff')).toBe(false)
+    expect(isHexColor('ff6600')).toBe(false)
+    expect(isHexColor('')).toBe(false)
   })
 })

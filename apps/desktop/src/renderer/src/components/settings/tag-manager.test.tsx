@@ -48,6 +48,7 @@ vi.mock('./tag-icon-chip', () => ({
 
 vi.mock('@/components/note/tags-row/tag-colors', () => ({
   getTagColors: (color: string) => ({ background: `${color}-bg`, text: `${color}-text` }),
+  isHexColor: (v: string) => /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v),
   TAG_COLORS: {
     red: { background: '#f00' },
     blue: { background: '#00f' }

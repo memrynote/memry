@@ -40,9 +40,7 @@ describe('FolderWidget', () => {
   })
 
   it('renders the list view body with notes when viewType is list', () => {
-    render(
-      <FolderWidget config={{ folderPath: 'projects', viewType: 'list' }} size="M" />
-    )
+    render(<FolderWidget config={{ folderPath: 'projects', viewType: 'list' }} size="M" />)
     const wrapper = screen.getByText('Alpha').closest('[data-widget-folder-view]')
     expect(wrapper).toHaveAttribute('data-widget-folder-view', 'list')
     expect(screen.getByText('Alpha')).toBeInTheDocument()
@@ -52,13 +50,15 @@ describe('FolderWidget', () => {
     const { rerender } = render(
       <FolderWidget config={{ folderPath: 'projects', viewType: 'list' }} size="M" />
     )
-    expect(
-      screen.getByText('Alpha').closest('[data-widget-folder-view]')
-    ).toHaveAttribute('data-widget-folder-view', 'list')
+    expect(screen.getByText('Alpha').closest('[data-widget-folder-view]')).toHaveAttribute(
+      'data-widget-folder-view',
+      'list'
+    )
 
     rerender(<FolderWidget config={{ folderPath: 'projects', viewType: 'gallery' }} size="M" />)
-    expect(
-      screen.getByText('Alpha').closest('[data-widget-folder-view]')
-    ).toHaveAttribute('data-widget-folder-view', 'gallery')
+    expect(screen.getByText('Alpha').closest('[data-widget-folder-view]')).toHaveAttribute(
+      'data-widget-folder-view',
+      'gallery'
+    )
   })
 })

@@ -50,10 +50,20 @@ export function defaultTagColorName(tagName: string): string {
   return COLOR_NAMES[Math.abs(hash) % COLOR_NAMES.length]
 }
 
-// Resolve to a palette config. An explicit palette name wins; otherwise (empty,
-// or a legacy hex from seed/backend) we derive a stable color from the tag name.
+// A user-picked custom color, stored verbatim as the tag's color value.
+// Native <input type="color"> always emits 6-digit #rrggbb.
+const HEX_COLOR = /^#[0-9a-fA-F]{6}$/
+
+export function isHexColor(value: string): boolean {
+  return HEX_COLOR.test(value)
+}
+
+// Resolve to a palette config. An explicit palette name wins; a custom hex is
+// used as-is; otherwise (empty, or a legacy hex) we derive a stable color from
+// the tag name.
 export function getTagColors(colorName: string, tagName?: string): TagColorConfig {
   if (colorName && TAG_COLORS[colorName]) return TAG_COLORS[colorName]
+  if (isHexColor(colorName)) return { background: colorName, text: colorName }
   if (tagName) return TAG_COLORS[defaultTagColorName(tagName)]
   return TAG_COLORS.stone
 }

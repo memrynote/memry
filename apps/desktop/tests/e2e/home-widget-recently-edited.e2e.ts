@@ -21,7 +21,11 @@
  */
 
 import { test, expect } from './fixtures'
-import { waitForAppReady, waitForVaultReady, dismissFirstRunOnboarding } from './utils/electron-helpers'
+import {
+  waitForAppReady,
+  waitForVaultReady,
+  dismissFirstRunOnboarding
+} from './utils/electron-helpers'
 import * as path from 'path'
 import * as fs from 'fs'
 import matter from 'gray-matter'
@@ -209,7 +213,9 @@ test.describe('Group F — Recently edited widget', () => {
 
     const target = newestFirst[0]
     // The data-testid sits on the button itself, so match by attribute directly.
-    const targetRow = recentRows(page).and(page.locator(`[data-note-id="${target.id}"]`)).first()
+    const targetRow = recentRows(page)
+      .and(page.locator(`[data-note-id="${target.id}"]`))
+      .first()
     await expect(targetRow).toBeVisible()
     await targetRow.click()
 
