@@ -118,7 +118,7 @@ const NOTE_GC_TIME = 5 * 60 * 1000
 
 /** Stable empty arrays/objects to avoid recreating on every render */
 const EMPTY_FOLDERS: FolderInfo[] = []
-const EMPTY_TAGS: Array<{ tag: string; color: string; count: number }> = []
+const EMPTY_TAGS: Array<{ tag: string; color: string; count: number; icon: string | null }> = []
 const EMPTY_NOTES_LIST: NoteListResponse = { notes: [], total: 0, hasMore: false }
 const EMPTY_LINKS: NoteLinksResponse = { outgoing: [], incoming: [] }
 
@@ -271,7 +271,12 @@ export function useNoteTagsQuery(options: { enabled?: boolean } = {}) {
     queryKey: notesKeys.tags(),
     queryFn: async () => {
       const { tags } = await tagsService.getAllWithCounts()
-      return tags.map((t) => ({ tag: t.name, color: t.color ?? '', count: t.count }))
+      return tags.map((t) => ({
+        tag: t.name,
+        color: t.color ?? '',
+        count: t.count,
+        icon: t.icon ?? null
+      }))
     },
     enabled,
     staleTime: METADATA_STALE_TIME,

@@ -9,6 +9,7 @@ interface TagSuggestionsParams {
   editor: any
   editorContainerRef: React.RefObject<HTMLDivElement | null>
   tagColorMap?: Map<string, string>
+  tagIconMap?: Map<string, string>
 }
 
 interface TagSuggestionsResult {
@@ -19,15 +20,18 @@ interface TagSuggestionsResult {
 export function useTagSuggestions({
   editor,
   editorContainerRef,
-  tagColorMap
+  tagColorMap,
+  tagIconMap
 }: TagSuggestionsParams): TagSuggestionsResult {
   const { openTag } = useSidebarDrillDown()
   const tagColorMapRef = useRef(tagColorMap)
+  const tagIconMapRef = useRef(tagIconMap)
 
-  // Keep ref in sync
+  // Keep refs in sync
   useEffect(() => {
     tagColorMapRef.current = tagColorMap
-  }, [tagColorMap])
+    tagIconMapRef.current = tagIconMap
+  }, [tagColorMap, tagIconMap])
 
   const getTagColor = useCallback((tag: string): string => {
     // Fall back to a deterministic palette color derived from the tag name
@@ -48,9 +52,10 @@ export function useTagSuggestions({
     }
   }, [editor, getTagColor])
 
-  // Re-color existing hashTag nodes when tagColorMap changes. Pure DOM/editor
-  // mutation — useLayoutEffect runs after layout but before paint, which is
-  // appropriate here and avoids the no-pass-data-to-parent false positive.
+  // Re-color + re-icon existing hashTag nodes when the tag color/icon maps
+  // change. Pure DOM/editor mutation — useLayoutEffect runs after layout but
+  // before paint, which is appropriate here and avoids the
+  // no-pass-data-to-parent false positive.
   useLayoutEffect(() => {
     if (!tagColorMap || tagColorMap.size === 0) return
 
@@ -65,8 +70,13 @@ export function useTagSuggestions({
       if (node.type.name === 'hashTag') {
         const correctColor =
           tagColorMap.get(node.attrs.tag as string) || defaultTagColorName(node.attrs.tag as string)
-        if (node.attrs.color !== correctColor) {
-          tr = tr.setNodeMarkup(pos, undefined, { ...node.attrs, color: correctColor })
+        const correctIcon = tagIconMap?.get(node.attrs.tag as string) ?? ''
+        if (node.attrs.color !== correctColor || (node.attrs.icon ?? '') !== correctIcon) {
+          tr = tr.setNodeMarkup(pos, undefined, {
+            ...node.attrs,
+            color: correctColor,
+            icon: correctIcon
+          })
           changed = true
         }
       }
@@ -75,7 +85,7 @@ export function useTagSuggestions({
     if (changed) {
       tiptap.view.dispatch(tr)
     }
-  }, [editor, tagColorMap])
+  }, [editor, tagColorMap, tagIconMap])
 
   // Tag pill click handler — navigates to tag drill-down
   useEffect(() => {
@@ -106,7 +116,8 @@ export function useTagSuggestions({
       const oldNode = tiptap.state.doc.nodeAt(nodePos)
       if (!oldNode || oldNode.type.name !== 'hashTag') return
 
-      const newNode = hashTagNodeType.create({ tag, color })
+      const icon = tagIconMapRef.current?.get(tag) ?? ''
+      const newNode = hashTagNodeType.create({ tag, color, icon })
       const tr = tiptap.state.tr.replaceWith(nodePos, nodePos + oldNode.nodeSize, newNode)
       tiptap.view.dispatch(tr)
     },

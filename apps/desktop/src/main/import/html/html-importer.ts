@@ -8,8 +8,8 @@ import { generateNoteId } from '../../lib/id'
 import { createLogger } from '../../lib/logger'
 import type { Importer, ImportContext, ImportInput, ImportSummary } from '../types'
 import { htmlToMarkdown, percentDecodeRef } from '../_shared/html-to-markdown'
-import { classifyRef, exceedsMaxSize, interFileWikilink, mapFiles } from '@memry/html-import'
-import type { HtmlFileDescriptor } from '@memry/html-import'
+import { classifyRef, exceedsMaxSize, interFileWikilink, mapFiles } from '@memry/importers/html'
+import type { HtmlFileDescriptor } from '@memry/importers/html'
 
 const logger = createLogger('HtmlImport')
 

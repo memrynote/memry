@@ -33,8 +33,4 @@ export function registerBuiltinImporters(): void {
   if (process.platform === 'darwin') {
     registerImporter(appleNotesImporter)
   }
-  // OneNote requires an Azure app registration (ONENOTE_CLIENT_ID). It is built
-  // and tested but registered DISABLED until that external blocker is resolved.
-  // See the PR "Blockers" section. Uncomment once the client id is configured:
-  // registerImporter(onenoteImporter)
 }

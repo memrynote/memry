@@ -150,7 +150,7 @@ describe('tabReducer', () => {
       const newGroupId = Object.keys(result.tabGroups).find((id) => id !== group.id)!
       const newGroup = result.tabGroups[newGroupId]
       expect(newGroup.tabs).toHaveLength(1)
-      expect(newGroup.tabs[0].type).toBe('inbox')
+      expect(newGroup.tabs[0].type).toBe('home')
     })
   })
 

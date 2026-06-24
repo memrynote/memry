@@ -439,13 +439,22 @@ export function NotePage({ noteId }: NotePageProps) {
     return map
   }, [allAvailableTags])
 
+  const tagIconMap = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const t of allAvailableTags) {
+      if (t.icon) map.set(t.tag, t.icon)
+    }
+    return map
+  }, [allAvailableTags])
+
   const noteTags: Tag[] = useMemo(() => {
     return (note?.tags || []).map((tagName) => ({
       id: tagName,
       name: tagName,
-      color: tagColorMap.get(tagName) ?? pendingTagColorsRef.current.get(tagName) ?? ''
+      color: tagColorMap.get(tagName) ?? pendingTagColorsRef.current.get(tagName) ?? '',
+      icon: tagIconMap.get(tagName) ?? null
     }))
-  }, [note?.tags, tagColorMap])
+  }, [note?.tags, tagColorMap, tagIconMap])
 
   const availableTags: Tag[] = useMemo(() => {
     return allAvailableTags.map((t) => ({
@@ -1125,6 +1134,7 @@ export function NotePage({ noteId }: NotePageProps) {
               initialAnchorId={initialAnchorId}
               noteTags={note.tags}
               tagColorMap={tagColorMap}
+              tagIconMap={tagIconMap}
               onInlineTagsChange={(...args) => void handleInlineTagsChange(...args)}
               focusAtEndRef={focusAtEndRef}
               marqueeZoneEl={marqueeZoneEl}

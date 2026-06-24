@@ -39,6 +39,7 @@ import { useTags } from '@/hooks/use-tags'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { getTagColors, COLOR_ROWS, TAG_COLORS } from '@/components/note/tags-row/tag-colors'
 import { CustomColorSwatch } from '@/components/note/tags-row/CustomColorSwatch'
+import { TagIconChip } from './tag-icon-chip'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
 
@@ -144,6 +145,17 @@ export function TagManager() {
     [colorTarget, t]
   )
 
+  const handleIconChange = useCallback(
+    async (tagName: string, icon: string | null) => {
+      try {
+        await window.api.tags.updateTagIcon({ tag: tagName, icon })
+      } catch (err) {
+        toast.error(extractErrorMessage(err, t('tags.toasts.iconFailed')))
+      }
+    },
+    [t]
+  )
+
   if (isLoading) {
     return <p className="text-xs/4 text-muted-foreground">{t('tags.loading')}</p>
   }
@@ -182,11 +194,10 @@ export function TagManager() {
               {i > 0 && <div className="h-px bg-border" />}
               <div className="flex items-center justify-between h-11 py-3 px-4 shrink-0 group">
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <div
-                    className="w-2.5 h-2.5 rounded-full shrink-0"
-                    style={{
-                      backgroundColor: colors?.background ?? '#6366f1'
-                    }}
+                  <TagIconChip
+                    icon={tag.icon ?? null}
+                    color={colors?.background ?? '#6366f1'}
+                    onIconChange={(icon) => void handleIconChange(tag.name, icon)}
                   />
                   {editingTag === tag.name ? (
                     <Input

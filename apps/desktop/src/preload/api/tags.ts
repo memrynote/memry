@@ -16,6 +16,8 @@ export const tagsApi = {
     invoke(TagsChannels.invoke.RENAME_TAG, input),
   updateTagColor: (input: { tag: string; color: string }) =>
     invoke(TagsChannels.invoke.UPDATE_TAG_COLOR, input),
+  updateTagIcon: (input: { tag: string; icon: string | null }) =>
+    invoke(TagsChannels.invoke.UPDATE_TAG_ICON, input),
   deleteTag: (tag: string) => invoke(TagsChannels.invoke.DELETE_TAG, tag),
   removeTagFromNote: (input: { noteId: string; tag: string }) =>
     invoke(TagsChannels.invoke.REMOVE_TAG_FROM_NOTE, input),

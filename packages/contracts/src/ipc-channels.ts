@@ -81,6 +81,8 @@ export const TagsChannels = {
     RENAME_TAG: 'tags:rename',
     /** Update tag color */
     UPDATE_TAG_COLOR: 'tags:update-color',
+    /** Update tag icon (raw emoji or "icon:Name", null to clear) */
+    UPDATE_TAG_ICON: 'tags:update-icon',
     /** Delete a tag from all notes */
     DELETE_TAG: 'tags:delete',
     /** Remove tag from a specific note */
@@ -504,6 +506,21 @@ export const DataChannels = {
 
 export type DataInvokeChannel = (typeof DataChannels.invoke)[keyof typeof DataChannels.invoke]
 export type DataEventChannel = (typeof DataChannels.events)[keyof typeof DataChannels.events]
+
+// ============================================================================
+// Home Pages Channels
+// ============================================================================
+
+export const HomePagesChannels = {
+  LIST: 'home-pages:list',
+  GET: 'home-pages:get',
+  CREATE: 'home-pages:create',
+  UPDATE: 'home-pages:update',
+  DELETE: 'home-pages:delete',
+  REORDER: 'home-pages:reorder'
+} as const
+
+export type HomePagesInvokeChannel = (typeof HomePagesChannels)[keyof typeof HomePagesChannels]
 
 // ============================================================================
 // Bookmarks Channels

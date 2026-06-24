@@ -2,7 +2,7 @@
  * Roam Research importer (orchestrator).
  *
  * Input is one or more Roam graph exports in `.json` form (each file is a
- * `RoamPage[]`). The pure `@memry/roam-import` package does all transforms:
+ * `RoamPage[]`). The pure `@memry/importers/roam` package does all transforms:
  *   1. index every block uid → its page (for `((uid))` resolution),
  *   2. convert each page's outline into a nested markdown bullet list + scrub
  *      Roam markup,
@@ -20,8 +20,8 @@ import fs from 'fs/promises'
 import { createNote } from '../../vault/notes-crud'
 import { createLogger } from '../../lib/logger'
 import type { Importer, ImportContext, ImportInput, ImportSummary } from '../types'
-import { indexBlocks, mapPages } from '@memry/roam-import'
-import type { BlockIndex, NotePlan, RoamPage } from '@memry/roam-import'
+import { indexBlocks, mapPages } from '@memry/importers/roam'
+import type { BlockIndex, NotePlan, RoamPage } from '@memry/importers/roam'
 
 const logger = createLogger('RoamImport')
 

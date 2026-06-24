@@ -58,6 +58,13 @@ export const tagsService: TagsClientAPI = {
   },
 
   /**
+   * Update tag icon (raw emoji or "icon:Name", null clears).
+   */
+  updateTagIcon: (input: { tag: string; icon: string | null }): Promise<TagOperationResponse> => {
+    return window.api.tags.updateTagIcon(input)
+  },
+
+  /**
    * Delete a tag from all notes.
    */
   deleteTag: (tag: string): Promise<DeleteTagResponse> => {

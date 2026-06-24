@@ -116,6 +116,8 @@ export interface ContentAreaProps {
   noteTags?: string[]
   /** Map of tag name to color name for hash tag styling */
   tagColorMap?: Map<string, string>
+  /** Map of tag name to icon (raw emoji or "icon:Name") for inline hash tag display */
+  tagIconMap?: Map<string, string>
   /** Callback when inline #tags change in editor content */
   onInlineTagsChange?: (tags: string[]) => void
   /** Ref that receives a focusAtEnd function to focus the editor at the end of the document */

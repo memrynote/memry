@@ -29,7 +29,10 @@ const TAG_COLOR_PALETTE = [
   'coral'
 ]
 
-export function getOrCreateTag(db: DataDb, name: string): { name: string; color: string } {
+export function getOrCreateTag(
+  db: DataDb,
+  name: string
+): { name: string; color: string; icon: string | null } {
   const normalizedName = name.toLowerCase().trim()
 
   const existing = db
@@ -39,7 +42,7 @@ export function getOrCreateTag(db: DataDb, name: string): { name: string; color:
     .get()
 
   if (existing) {
-    return { name: existing.name, color: existing.color }
+    return { name: existing.name, color: existing.color, icon: existing.icon }
   }
 
   const tagCount = db.select({ count: count() }).from(tagDefinitions).get()?.count ?? 0
@@ -47,14 +50,17 @@ export function getOrCreateTag(db: DataDb, name: string): { name: string; color:
 
   db.insert(tagDefinitions).values({ name: normalizedName, color }).run()
 
-  return { name: normalizedName, color }
+  return { name: normalizedName, color, icon: null }
 }
 
-export function getAllTagDefinitions(db: DataDb): { name: string; color: string }[] {
+export function getAllTagDefinitions(
+  db: DataDb
+): { name: string; color: string; icon: string | null }[] {
   return db
     .select({
       name: tagDefinitions.name,
-      color: tagDefinitions.color
+      color: tagDefinitions.color,
+      icon: tagDefinitions.icon
     })
     .from(tagDefinitions)
     .all()
@@ -63,6 +69,11 @@ export function getAllTagDefinitions(db: DataDb): { name: string; color: string 
 export function updateTagColor(db: DataDb, name: string, color: string): void {
   const normalizedName = name.toLowerCase().trim()
   db.update(tagDefinitions).set({ color }).where(eq(tagDefinitions.name, normalizedName)).run()
+}
+
+export function updateTagIcon(db: DataDb, name: string, icon: string | null): void {
+  const normalizedName = name.toLowerCase().trim()
+  db.update(tagDefinitions).set({ icon }).where(eq(tagDefinitions.name, normalizedName)).run()
 }
 
 export function renameTagDefinition(db: DataDb, oldName: string, newName: string): void {

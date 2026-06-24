@@ -559,6 +559,42 @@ export interface JournalClientAPI {
   getStreak(): Promise<JournalStreak>
 }
 
+// Home Page types
+export interface WidgetInstance {
+  id: string
+  type: string
+  size: 'S' | 'M' | 'L'
+  config: Record<string, unknown>
+}
+
+export interface HomePage {
+  id: string
+  name: string
+  icon?: string
+  position: number
+  widgets: WidgetInstance[]
+}
+
+export interface HomePagesClientAPI {
+  list(): Promise<HomePage[]>
+  get(id: string): Promise<HomePage | null>
+  create(input: {
+    name: string
+    icon?: string
+    position?: number
+    widgets?: WidgetInstance[]
+  }): Promise<HomePage>
+  update(input: {
+    id: string
+    name?: string
+    icon?: string
+    position?: number
+    widgets?: WidgetInstance[]
+  }): Promise<HomePage>
+  delete(id: string): Promise<{ success: boolean }>
+  reorder(ids: string[]): Promise<{ success: boolean }>
+}
+
 // Bookmark types
 export interface Bookmark {
   id: string
@@ -688,6 +724,7 @@ export interface TagWithCount {
   name: string
   count: number
   color?: string
+  icon?: string | null
 }
 
 export interface GetAllWithCountsResponse {
@@ -728,6 +765,7 @@ export interface TagsClientAPI {
   unpinNoteFromTag(input: { noteId: string; tag: string }): Promise<TagOperationResponse>
   renameTag(input: { oldName: string; newName: string }): Promise<RenameTagResponse>
   updateTagColor(input: { tag: string; color: string }): Promise<TagOperationResponse>
+  updateTagIcon(input: { tag: string; icon: string | null }): Promise<TagOperationResponse>
   deleteTag(tag: string): Promise<DeleteTagResponse>
   removeTagFromNote(input: { noteId: string; tag: string }): Promise<TagOperationResponse>
   getAllWithCounts(): Promise<GetAllWithCountsResponse>
@@ -1739,6 +1777,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
   syncOps: SyncOpsClientAPI
   crypto: CryptoClientAPI
   syncAttachments: SyncAttachmentsClientAPI
+  homePages: HomePagesClientAPI
   agentMcp: AgentMcpClientAPI
   agent: AgentClientAPI
   import: {

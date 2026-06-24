@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { X, Check } from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { getTagColors, withAlpha } from './tag-colors'
 import { useT } from '@memry/i18n/renderer'
 
@@ -8,6 +9,8 @@ export interface Tag {
   id: string
   name: string
   color: string
+  /** Optional per-tag icon (raw emoji "📚" or "icon:Name") from its definition. */
+  icon?: string | null
 }
 
 interface TagChipProps {
@@ -49,6 +52,9 @@ export function TagChip({ tag, onRemove, onClick, isSelected, isFocused, disable
 
   const content = (
     <>
+      {tag.icon && (
+        <NoteIconDisplay value={tag.icon} className="size-3.5 shrink-0 text-[14px] leading-none" />
+      )}
       <span>{tag.name}</span>
       {isSelected && <Check className="h-3 w-3" />}
       {onRemove && !disabled && isHovered && (

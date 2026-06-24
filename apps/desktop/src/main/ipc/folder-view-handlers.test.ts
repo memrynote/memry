@@ -155,7 +155,7 @@ describe('folder-view-handlers', () => {
       .insert(noteCache)
       .values({
         id: 'note-1',
-        path: 'notes/projects/2024/note.md',
+        path: 'projects/2024/note.md',
         title: 'Note',
         contentHash: 'hash',
         wordCount: 5,
@@ -205,7 +205,7 @@ describe('folder-view-handlers', () => {
       .insert(noteCache)
       .values({
         id: 'note-2',
-        path: 'notes/projects/note.md',
+        path: 'projects/note.md',
         title: 'Note',
         contentHash: 'hash',
         wordCount: 2,

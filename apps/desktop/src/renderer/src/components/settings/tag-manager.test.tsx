@@ -6,7 +6,7 @@ import { TagManager } from './tag-manager'
 
 const mocks = vi.hoisted(() => ({
   tagsState: {
-    tags: [] as Array<{ name: string; count: number; color?: string | null }>,
+    tags: [] as Array<{ name: string; count: number; color?: string | null; icon?: string | null }>,
     isLoading: false,
     error: null as string | null
   },
@@ -42,8 +42,13 @@ vi.mock('@/hooks/use-tags', () => ({
   })
 }))
 
+vi.mock('./tag-icon-chip', () => ({
+  TagIconChip: () => <button type="button">tag-icon</button>
+}))
+
 vi.mock('@/components/note/tags-row/tag-colors', () => ({
   getTagColors: (color: string) => ({ background: `${color}-bg`, text: `${color}-text` }),
+  isHexColor: (v: string) => /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v),
   TAG_COLORS: {
     red: { background: '#f00' },
     blue: { background: '#00f' }
@@ -142,6 +147,9 @@ describe('TagManager', () => {
     mocks.mergeTag.mockResolvedValue({ success: true, affectedItems: 2 })
     mocks.deleteTag.mockResolvedValue({ success: true, affectedNotes: 3 })
     ;(window as Window & { api: any }).api.tags.updateTagColor = vi
+      .fn()
+      .mockResolvedValue({ success: true })
+    ;(window as Window & { api: any }).api.tags.updateTagIcon = vi
       .fn()
       .mockResolvedValue({ success: true })
   })

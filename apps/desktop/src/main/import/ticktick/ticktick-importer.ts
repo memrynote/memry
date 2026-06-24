@@ -1,7 +1,7 @@
 /**
  * TickTick CSV importer (framework-native).
  *
- * Reuses the pure `@memry/ticktick-import` package to parse a TickTick backup
+ * Reuses the pure `@memry/importers/ticktick` package to parse a TickTick backup
  * CSV into an ImportPlan, then applies it through the tasks domain + reminders
  * lib (see `apply-plan.ts`). Plugs into the generic import framework (registry +
  * preview + streaming progress).
@@ -11,7 +11,7 @@
 
 import { readFile } from 'fs/promises'
 import { basename } from 'path'
-import { parseTickTickCsv, mapRows, type ImportPlan } from '@memry/ticktick-import'
+import { parseTickTickCsv, mapRows, type ImportPlan } from '@memry/importers/ticktick'
 import { createLogger } from '../../lib/logger'
 import type { Importer, ImportContext, ImportPreview } from '../types'
 import { applyPlan, type ApplyDeps } from './apply-plan'

@@ -9,6 +9,7 @@ export {
   deleteTagDefinition,
   renameTagDefinition,
   updateTagColor,
+  updateTagIcon,
   getNoteTags,
   getNoteCacheById
 } from '@main/database/queries/notes'

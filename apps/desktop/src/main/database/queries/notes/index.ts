@@ -37,6 +37,7 @@ export {
   getOrCreateTag,
   getAllTagDefinitions,
   updateTagColor,
+  updateTagIcon,
   renameTagDefinition,
   deleteTagDefinition,
   ensureTagDefinitions

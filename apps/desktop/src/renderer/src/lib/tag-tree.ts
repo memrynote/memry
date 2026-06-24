@@ -2,6 +2,7 @@ export interface TagTreeNode {
   name: string
   fullPath: string
   color: string | null
+  icon: string | null
   ownCount: number
   totalCount: number
   children: TagTreeNode[]
@@ -13,12 +14,14 @@ interface FlatTag {
   tag: string
   count: number
   color?: string | null
+  icon?: string | null
 }
 
 interface BuildNode {
   name: string
   fullPath: string
   color: string | null
+  icon: string | null
   ownCount: number
   childrenMap: Map<string, BuildNode>
   isVirtual: boolean
@@ -27,7 +30,7 @@ interface BuildNode {
 export function buildTagTree(flatTags: FlatTag[]): TagTreeNode[] {
   const rootChildren = new Map<string, BuildNode>()
 
-  for (const { tag, count, color } of flatTags) {
+  for (const { tag, count, color, icon } of flatTags) {
     const segments = tag.split('/')
     let currentMap = rootChildren
 
@@ -42,6 +45,7 @@ export function buildTagTree(flatTags: FlatTag[]): TagTreeNode[] {
           name: segment,
           fullPath,
           color: isLeaf ? (color ?? null) : null,
+          icon: isLeaf ? (icon ?? null) : null,
           ownCount: isLeaf ? count : 0,
           childrenMap: new Map(),
           isVirtual: !isLeaf
@@ -50,6 +54,7 @@ export function buildTagTree(flatTags: FlatTag[]): TagTreeNode[] {
       } else if (isLeaf) {
         node.ownCount = count
         node.color = color ?? node.color
+        node.icon = icon ?? node.icon
         node.isVirtual = false
       }
 
@@ -71,6 +76,7 @@ function buildTreeFromMap(map: Map<string, BuildNode>, depth: number): TagTreeNo
       name: buildNode.name,
       fullPath: buildNode.fullPath,
       color: buildNode.color,
+      icon: buildNode.icon,
       ownCount: buildNode.ownCount,
       totalCount: buildNode.ownCount + childTotal,
       children,

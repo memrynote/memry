@@ -15,6 +15,7 @@ import {
   UnpinNoteFromTagSchema,
   RenameTagSchema,
   UpdateTagColorSchema,
+  UpdateTagIconSchema,
   RemoveTagFromNoteSchema,
   MergeTagSchema,
   type TagNoteItem,
@@ -45,6 +46,7 @@ import {
   deleteTagDefinition,
   renameTagDefinition,
   updateTagColor,
+  updateTagIcon,
   getNoteTags,
   getNoteCacheById
 } from '../tags/store'
@@ -308,6 +310,24 @@ export function registerTagsHandlers(): void {
     )
   )
 
+  // tags:update-icon - Update tag icon (raw emoji or "icon:Name", null clears)
+  ipcMain.handle(
+    TagsChannels.invoke.UPDATE_TAG_ICON,
+    createValidatedHandler(
+      UpdateTagIconSchema,
+      withErrorHandler((input) => {
+        const dataDb = requireDatabase()
+        getOrCreateTag(dataDb, input.tag)
+        updateTagIcon(dataDb, input.tag, input.icon)
+        syncTagDefinitionUpdate(input.tag)
+
+        emitTagEvent('notes:tags-changed', {})
+
+        return { success: true } as TagOperationResponse
+      }, 'Failed to update tag icon')
+    )
+  )
+
   // tags:delete - Delete a tag from all notes
   ipcMain.handle(
     TagsChannels.invoke.DELETE_TAG,
@@ -451,6 +471,7 @@ export function unregisterTagsHandlers(): void {
   ipcMain.removeHandler(TagsChannels.invoke.UNPIN_NOTE_FROM_TAG)
   ipcMain.removeHandler(TagsChannels.invoke.RENAME_TAG)
   ipcMain.removeHandler(TagsChannels.invoke.UPDATE_TAG_COLOR)
+  ipcMain.removeHandler(TagsChannels.invoke.UPDATE_TAG_ICON)
   ipcMain.removeHandler(TagsChannels.invoke.DELETE_TAG)
   ipcMain.removeHandler(TagsChannels.invoke.REMOVE_TAG_FROM_NOTE)
   ipcMain.removeHandler(TagsChannels.invoke.GET_ALL_WITH_COUNTS)

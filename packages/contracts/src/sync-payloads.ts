@@ -107,6 +107,7 @@ export const JournalSyncPayloadSchema = z.object({
 export const TagDefinitionSyncPayloadSchema = z.object({
   name: z.string(),
   color: z.string(),
+  icon: z.string().nullable().optional(),
   clock: VectorClockSchema.optional(),
   createdAt: z.string().optional()
 })

@@ -10,6 +10,7 @@ export interface Tag {
   name: string
   count: number
   color?: string
+  icon?: string | null
 }
 
 export function useTags() {

@@ -14,11 +14,12 @@ export function getAllTagsWithCounts(indexDb: IndexDb, dataDb: DataDb): TagWithC
   const definitions = getAllTagDefinitions(dataDb)
 
   const colorMap = new Map(definitions.map((d) => [d.name, d.color]))
+  const iconMap = new Map(definitions.map((d) => [d.name, d.icon]))
   const merged = new Map<string, TagWithCount>()
 
   for (const { tag, count } of noteCounts) {
     const name = tag.toLowerCase().trim()
-    merged.set(name, { name, count, color: colorMap.get(name) })
+    merged.set(name, { name, count, color: colorMap.get(name), icon: iconMap.get(name) })
   }
 
   for (const { tag, count } of taskCounts) {
@@ -27,7 +28,7 @@ export function getAllTagsWithCounts(indexDb: IndexDb, dataDb: DataDb): TagWithC
     if (existing) {
       existing.count += count
     } else {
-      merged.set(name, { name, count, color: colorMap.get(name) })
+      merged.set(name, { name, count, color: colorMap.get(name), icon: iconMap.get(name) })
     }
   }
 

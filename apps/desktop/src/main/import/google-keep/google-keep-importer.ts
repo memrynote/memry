@@ -1,6 +1,6 @@
 import path from 'node:path'
 import { readFile } from 'node:fs/promises'
-import { parseKeepNote, mapKeepNote } from '@memry/google-keep-import'
+import { parseKeepNote, mapKeepNote } from '@memry/importers/google-keep'
 import { createNote } from '../../vault/notes-crud'
 import { saveAttachment } from '../../vault/attachments'
 import { attachmentMarkdown } from '../_shared/attachment-markdown'

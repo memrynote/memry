@@ -54,6 +54,8 @@ import { createLogger } from '@/lib/logger'
 import { toast } from 'sonner'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
+import { TagIconChip } from '@/components/settings/tag-icon-chip'
+import { useNoteTagsQuery } from '@/hooks/use-notes-query'
 import { TagRenameDialog } from './tag-rename-dialog'
 import { TagDeleteDialog } from './tag-delete-dialog'
 import { useT } from '@memry/i18n/renderer'
@@ -87,7 +89,26 @@ export function TagDetailView({ tag, color, className }: TagDetailViewProps): Re
   const [renameOpen, setRenameOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
 
+  const { tags } = useNoteTagsQuery()
+  const tagIcon = tags.find((t) => t.tag === tag)?.icon ?? null
+
   const tagColors = getTagColors(resolvedColor, tag)
+
+  const handleIconChange = useCallback(
+    async (icon: string | null) => {
+      const tSettings = getI18n().getFixedT(null, 'settings')
+      try {
+        const result = await tagsService.updateTagIcon({ tag, icon })
+        if (!result.success) {
+          throw new Error(result.error ?? tSettings('tags.toasts.iconFailed'))
+        }
+      } catch (err) {
+        log.error('Failed to update tag icon', err)
+        toast.error(extractErrorMessage(err, tSettings('tags.toasts.iconFailed')))
+      }
+    },
+    [tag]
+  )
 
   // Handle note click - open in main area
   const handleNoteClick = useCallback(
@@ -172,12 +193,10 @@ export function TagDetailView({ tag, color, className }: TagDetailViewProps): Re
           <ArrowLeft className="h-3.5 w-3.5" />
         </Button>
 
-        <span
-          className="w-2.5 h-2.5 rounded-full shrink-0"
-          style={{
-            backgroundColor: tagColors.background,
-            border: `1.5px solid ${tagColors.text}`
-          }}
+        <TagIconChip
+          icon={tagIcon}
+          color={tagColors.text}
+          onIconChange={(icon) => void handleIconChange(icon)}
         />
 
         <div
