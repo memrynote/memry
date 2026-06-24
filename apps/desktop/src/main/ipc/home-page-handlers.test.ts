@@ -56,7 +56,7 @@ describe('home-page handlers', () => {
     const board = await h.create({ name: 'Work', position: 0, widgets: [] })
     await h.update({
       id: board.id,
-      widgets: [{ id: 'w1', type: 'bookmarks', size: 'M', config: {} }]
+      widgets: [{ id: 'w1', type: 'bookmarks', x: 0, y: 0, w: 4, h: 4, config: {} }]
     })
     const boards = await h.list()
     expect(boards[0].widgets[0].type).toBe('bookmarks')

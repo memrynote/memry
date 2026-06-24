@@ -1,88 +1,133 @@
+import { useMemo } from 'react'
 import {
-  DndContext,
-  KeyboardSensor,
-  PointerSensor,
-  closestCenter,
-  useSensor,
-  useSensors,
-  type DragEndEvent
-} from '@dnd-kit/core'
-import {
-  SortableContext,
-  rectSortingStrategy,
-  sortableKeyboardCoordinates
-} from '@dnd-kit/sortable'
+  Responsive,
+  WidthProvider,
+  type Layout,
+  type ResponsiveLayouts
+} from 'react-grid-layout/legacy'
+import 'react-grid-layout/css/styles.css'
+import './home-grid.css'
 import { WidgetFrame } from './widget-frame'
 import { WIDGET_REGISTRY } from '@/lib/home/widget-registry'
 import {
-  moveWidget,
+  applyLayout,
   removeWidget,
-  resizeWidget,
-  updateWidgetConfig
+  updateWidgetConfig,
+  type GridLayoutItem
 } from '@/lib/home/layout-reducer'
-import type { HomePage, WidgetSize } from '@/lib/home/types'
+import {
+  GRID_BREAKPOINTS,
+  GRID_COLS,
+  GRID_ROW_HEIGHT,
+  GRID_MARGIN,
+  MIN_W,
+  MIN_H,
+  sizeTier
+} from '@/lib/home/widget-sizes'
+import type { HomePage } from '@/lib/home/types'
 import { useT } from '@memry/i18n/renderer'
+
+const ResponsiveGrid = WidthProvider(Responsive)
 
 interface BoardGridProps {
   board: HomePage
   onChange: (next: HomePage) => void
 }
 
+// react-grid-layout calls onLayoutChange on mount (and after vertical compaction), not only on real
+// edits. Skip persisting when nothing actually moved/resized, so we don't loop refetch → re-render.
+function unchanged(board: HomePage, next: Layout): boolean {
+  if (board.widgets.length !== next.length) return false
+  const byId = new Map(next.map((l) => [l.i, l]))
+  return board.widgets.every((w) => {
+    const l = byId.get(w.id)
+    return !!l && l.x === w.x && l.y === w.y && l.w === w.w && l.h === w.h
+  })
+}
+
 export function BoardGrid({ board, onChange }: BoardGridProps): React.JSX.Element {
   const { t } = useT('common')
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+
+  const layout: Layout = useMemo(
+    () =>
+      board.widgets.map((w) => {
+        const min = WIDGET_REGISTRY[w.type]?.minLayout
+        return {
+          i: w.id,
+          x: w.x,
+          y: w.y,
+          w: w.w,
+          h: w.h,
+          minW: min?.w ?? MIN_W,
+          minH: min?.h ?? MIN_H
+        }
+      }),
+    [board.widgets]
   )
-  const handleDragEnd = (e: DragEndEvent) => {
-    if (e.over && e.active.id !== e.over.id) {
-      onChange(moveWidget(board, String(e.active.id), String(e.over.id)))
-    }
+
+  // Responsive RGL switches to a fewer-column breakpoint below `lg` width and reports the COLLAPSED
+  // layout as the first arg. Persisting that would overwrite the stored desktop arrangement and it
+  // never returns on resize-up. The model's x/y/w/h are authored against `lg`, so persist only the
+  // `lg` entry from allLayouts — it stays intact across breakpoint collapses, the first arg doesn't.
+  const handleLayoutChange = (_current: Layout, allLayouts: ResponsiveLayouts): void => {
+    const lg = allLayouts.lg
+    if (!lg || unchanged(board, lg)) return
+    onChange(applyLayout(board, lg as GridLayoutItem[]))
   }
+
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-      <SortableContext items={board.widgets.map((w) => w.id)} strategy={rectSortingStrategy}>
-        <div
-          data-testid="board-grid"
-          className="grid auto-rows-[7rem] gap-3"
-          style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gridAutoFlow: 'dense' }}
-        >
-          {board.widgets.map((w) => {
-            const def = WIDGET_REGISTRY[w.type]
-            if (!def) {
-              return (
-                <WidgetFrame
-                  key={w.id}
-                  widget={w}
-                  title={t('home.widget.unknown')}
-                  sizes={[]}
-                  onResize={(s: WidgetSize) => onChange(resizeWidget(board, w.id, s))}
-                  onRemove={() => onChange(removeWidget(board, w.id))}
-                >
+    <ResponsiveGrid
+      className="home-grid"
+      layouts={{ lg: layout }}
+      breakpoints={GRID_BREAKPOINTS}
+      cols={GRID_COLS}
+      rowHeight={GRID_ROW_HEIGHT}
+      margin={GRID_MARGIN}
+      compactType="vertical"
+      draggableHandle=".widget-drag-handle"
+      draggableCancel=".widget-no-drag"
+      resizeHandles={['se']}
+      isBounded
+      onLayoutChange={handleLayoutChange}
+    >
+      {board.widgets.map((w) => {
+        const def = WIDGET_REGISTRY[w.type]
+        const size = sizeTier(w.w, w.h)
+        // react-grid-layout clones this plain wrapper div (injecting position styles, drag handlers,
+        // and appending the resize handle). Keeping it a vanilla element — rather than letting RGL
+        // clone WidgetFrame directly — is what makes drag/resize wiring reliable.
+        return (
+          <div key={w.id} className="overflow-visible">
+            {def ? (
+              <WidgetFrame
+                widget={w}
+                size={size}
+                title={t(def.titleKey)}
+                icon={def.icon}
+                onRemove={() => onChange(removeWidget(board, w.id))}
+                ConfigEditor={def.ConfigEditor}
+                HeaderFilter={def.HeaderFilter}
+                HeaderCount={def.HeaderCount}
+                Footer={def.Footer}
+                onConfigChange={(cfg) => onChange(updateWidgetConfig(board, w.id, cfg))}
+                content={<def.Component config={w.config} size={size} />}
+              />
+            ) : (
+              <WidgetFrame
+                widget={w}
+                size={size}
+                title={t('home.widget.unknown')}
+                onRemove={() => onChange(removeWidget(board, w.id))}
+                content={
                   <p data-testid="widget-unknown" className="text-sm text-muted-foreground">
                     {t('home.widget.unknown')}
                   </p>
-                </WidgetFrame>
-              )
-            }
-            const { Component } = def
-            return (
-              <WidgetFrame
-                key={w.id}
-                widget={w}
-                title={t(def.titleKey)}
-                sizes={def.sizes}
-                onResize={(s: WidgetSize) => onChange(resizeWidget(board, w.id, s))}
-                onRemove={() => onChange(removeWidget(board, w.id))}
-                ConfigEditor={def.ConfigEditor}
-                onConfigChange={(cfg) => onChange(updateWidgetConfig(board, w.id, cfg))}
-              >
-                <Component config={w.config} size={w.size} />
-              </WidgetFrame>
-            )
-          })}
-        </div>
-      </SortableContext>
-    </DndContext>
+                }
+              />
+            )}
+          </div>
+        )
+      })}
+    </ResponsiveGrid>
   )
 }

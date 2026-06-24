@@ -3,12 +3,14 @@ import { z } from 'zod'
 import { HomePagesChannels } from './ipc-channels'
 export { HomePagesChannels }
 
-export const WidgetSizeSchema = z.enum(['S', 'M', 'L'])
-
 export const WidgetInstanceSchema = z.object({
   id: z.string().min(1),
   type: z.string().min(1),
-  size: WidgetSizeSchema,
+  // Free-form grid placement (react-grid-layout units). x/y = top-left cell, w/h = span.
+  x: z.number().int().min(0),
+  y: z.number().int().min(0),
+  w: z.number().int().min(1),
+  h: z.number().int().min(1),
   config: z.record(z.string(), z.unknown()).default({})
 })
 export type WidgetInstance = z.infer<typeof WidgetInstanceSchema>

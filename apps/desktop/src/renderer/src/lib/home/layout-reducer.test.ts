@@ -2,14 +2,21 @@ import { describe, it, expect } from 'vitest'
 import {
   addWidget,
   removeWidget,
-  moveWidget,
-  resizeWidget,
+  applyLayout,
   configureWidget,
   updateWidgetConfig
 } from './layout-reducer'
 import type { HomePage, WidgetInstance } from './types'
 
-const w = (id: string): WidgetInstance => ({ id, type: 'bookmarks', size: 'M', config: {} })
+const w = (id: string): WidgetInstance => ({
+  id,
+  type: 'bookmarks',
+  x: 0,
+  y: 0,
+  w: 4,
+  h: 4,
+  config: {}
+})
 const page = (...widgets: WidgetInstance[]): HomePage => ({
   id: 'b1',
   name: 'B',
@@ -24,17 +31,10 @@ describe('layout-reducer', () => {
   it('removeWidget drops by id', () => {
     expect(removeWidget(page(w('a'), w('b')), 'a').widgets.map((x) => x.id)).toEqual(['b'])
   })
-  it('moveWidget reorders active before/after over', () => {
-    expect(moveWidget(page(w('a'), w('b'), w('c')), 'c', 'a').widgets.map((x) => x.id)).toEqual([
-      'c',
-      'a',
-      'b'
-    ])
-  })
-  it('resizeWidget changes only the target size', () => {
-    const out = resizeWidget(page(w('a'), w('b')), 'a', 'L')
-    expect(out.widgets.find((x) => x.id === 'a')?.size).toBe('L')
-    expect(out.widgets.find((x) => x.id === 'b')?.size).toBe('M')
+  it('applyLayout writes x/y/w/h back by id, leaving others untouched', () => {
+    const out = applyLayout(page(w('a'), w('b')), [{ i: 'a', x: 2, y: 1, w: 6, h: 5 }])
+    expect(out.widgets.find((x) => x.id === 'a')).toMatchObject({ x: 2, y: 1, w: 6, h: 5 })
+    expect(out.widgets.find((x) => x.id === 'b')).toMatchObject({ x: 0, y: 0, w: 4, h: 4 })
   })
   it('configureWidget shallow-merges config', () => {
     const out = configureWidget(page({ ...w('a'), config: { x: 1 } }), 'a', { y: 2 })

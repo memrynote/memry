@@ -1,6 +1,7 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { FolderWidget } from './folder-widget'
+import type { ViewConfig } from '@/hooks/use-folder-view'
 
 const note = {
   id: 'n1',
@@ -15,10 +16,18 @@ const note = {
   properties: {}
 }
 
-const folderNotesMock = vi.fn(() => ({ notes: [note], isLoading: false, error: null }))
+const tableView: ViewConfig = {
+  name: 'Default',
+  type: 'table',
+  default: true,
+  columns: [{ id: 'title' }, { id: 'status' }, { id: 'modified' }]
+}
+const galleryView: ViewConfig = { name: 'Cards', type: 'grid' }
 
-vi.mock('@/hooks/use-folder-notes', () => ({
-  useFolderNotes: (opts: { folderPath: string }) => folderNotesMock(opts)
+const folderViewMock = vi.fn()
+
+vi.mock('@/hooks/use-folder-view', () => ({
+  useFolderView: () => folderViewMock()
 }))
 
 vi.mock('@/hooks/use-notes-query', () => ({
@@ -33,32 +42,67 @@ vi.mock('@/contexts/tabs/context', () => ({
   useTabActions: () => ({ openTab: vi.fn() })
 }))
 
+// Stub the heavy view bodies so the test exercises the widget's view-type branching, not the
+// internals of TanStack Table / gallery / list (those have their own suites).
+vi.mock('@/components/folder-view/folder-table-view', () => ({
+  FolderTableView: (p: { notes: unknown[]; columns: unknown[] }) => (
+    <div data-testid="table-body">{`${p.notes.length} rows / ${p.columns.length} cols`}</div>
+  )
+}))
+vi.mock('@/components/folder-view/folder-gallery-view', () => ({
+  FolderGalleryView: (p: { notes: { title: string }[] }) => (
+    <div data-testid="gallery-body">{p.notes.map((n) => n.title).join(',')}</div>
+  )
+}))
+vi.mock('@/components/folder-view/folder-list-view', () => ({
+  FolderListView: (p: { notes: { title: string }[] }) => (
+    <div data-testid="list-body">{p.notes.map((n) => n.title).join(',')}</div>
+  )
+}))
+
+function mockFolderView(overrides: Record<string, unknown> = {}): void {
+  folderViewMock.mockReturnValue({
+    views: [tableView, galleryView],
+    activeView: tableView,
+    activeViewIndex: 0,
+    setActiveViewIndex: vi.fn(),
+    notes: [note],
+    availableProperties: [{ name: 'status', type: 'select', usageCount: 1 }],
+    formulasMap: {},
+    updateNoteProperty: vi.fn(),
+    updateSorting: vi.fn(),
+    updateColumns: vi.fn(),
+    updateDisplayName: vi.fn(),
+    isLoading: false,
+    error: null,
+    ...overrides
+  })
+}
+
 describe('FolderWidget', () => {
+  beforeEach(() => {
+    folderViewMock.mockReset()
+    mockFolderView()
+  })
+
   it('renders empty state when no folder is configured', () => {
-    render(<FolderWidget config={{ folderPath: '', viewType: 'list' }} size="M" />)
-    expect(screen.getByText('Pick a folder')).toBeInTheDocument()
+    render(<FolderWidget config={{ folderPath: '' }} size="M" />)
+    expect(screen.getByText('No folder selected')).toBeInTheDocument()
   })
 
-  it('renders the list view body with notes when viewType is list', () => {
-    render(<FolderWidget config={{ folderPath: 'projects', viewType: 'list' }} size="M" />)
-    const wrapper = screen.getByText('Alpha').closest('[data-widget-folder-view]')
-    expect(wrapper).toHaveAttribute('data-widget-folder-view', 'list')
+  it('renders the table body with property columns when the active view is a table', () => {
+    render(<FolderWidget config={{ folderPath: 'projects' }} size="M" />)
+    const wrapper = screen.getByTestId('table-body').closest('[data-widget-folder-view]')
+    expect(wrapper).toHaveAttribute('data-widget-folder-view', 'table')
+    // 3 columns from the saved view => property columns are passed through.
+    expect(screen.getByTestId('table-body')).toHaveTextContent('1 rows / 3 cols')
+  })
+
+  it('renders the gallery body when the active view is a grid type', () => {
+    mockFolderView({ activeView: galleryView, activeViewIndex: 1 })
+    render(<FolderWidget config={{ folderPath: 'projects', viewName: 'Cards' }} size="M" />)
+    const wrapper = screen.getByTestId('gallery-body').closest('[data-widget-folder-view]')
+    expect(wrapper).toHaveAttribute('data-widget-folder-view', 'grid')
     expect(screen.getByText('Alpha')).toBeInTheDocument()
-  })
-
-  it('switches the rendered body when viewType changes', () => {
-    const { rerender } = render(
-      <FolderWidget config={{ folderPath: 'projects', viewType: 'list' }} size="M" />
-    )
-    expect(screen.getByText('Alpha').closest('[data-widget-folder-view]')).toHaveAttribute(
-      'data-widget-folder-view',
-      'list'
-    )
-
-    rerender(<FolderWidget config={{ folderPath: 'projects', viewType: 'gallery' }} size="M" />)
-    expect(screen.getByText('Alpha').closest('[data-widget-folder-view]')).toHaveAttribute(
-      'data-widget-folder-view',
-      'gallery'
-    )
   })
 })

@@ -1,12 +1,11 @@
 import type React from 'react'
 import { useMemo } from 'react'
 import { useTaskWorkspaceData, useTaskWorkspaceMutations } from '@/features/tasks/use-task-queries'
-import { getFilteredTasks } from '@/lib/task-utils/task-view-helpers'
-import { applyFiltersAndSort } from '@/lib/task-utils/task-filters'
+import { selectTasksForWidget } from '@/lib/home/tasks-widget-filter'
 import { useSavedFilters } from '@/hooks/use-task-filters'
 import { useTabActions } from '@/contexts/tabs/context'
 import { TaskRow } from '@/components/tasks/task-row'
-import { defaultSort, type Project } from '@/data/tasks-data'
+import { type Project } from '@/data/tasks-data'
 import type { WidgetComponentProps } from '@/lib/home/widget-registry'
 import { Skeleton } from '@/components/ui/skeleton'
 import { extractErrorMessage } from '@/lib/ipc-error'
@@ -20,25 +19,10 @@ export function TasksWidget({ config, size }: WidgetComponentProps): React.JSX.E
   const { openTab } = useTabActions()
   const { savedFilters } = useSavedFilters()
 
-  const dateRange = typeof config.dateRange === 'string' ? config.dateRange : 'today'
-  const projectId = typeof config.projectId === 'string' ? config.projectId : null
-  const selectedId = projectId ?? dateRange
-  const selectedType = projectId ? 'project' : 'view'
-
-  const savedFilterId = typeof config.savedFilterId === 'string' ? config.savedFilterId : null
-  const savedFilter = savedFilterId ? savedFilters.find((f) => f.id === savedFilterId) : null
-
-  const filtered = useMemo(() => {
-    if (savedFilter) {
-      return applyFiltersAndSort(
-        tasks,
-        savedFilter.filters,
-        savedFilter.sort ?? defaultSort,
-        projects
-      ).slice(0, limit)
-    }
-    return getFilteredTasks(tasks, selectedId, selectedType, projects).slice(0, limit)
-  }, [savedFilter, tasks, projects, selectedId, selectedType, limit])
+  const filtered = useMemo(
+    () => selectTasksForWidget(tasks, projects, savedFilters ?? [], config).slice(0, limit),
+    [tasks, projects, savedFilters, config, limit]
+  )
 
   if (isLoading)
     return (

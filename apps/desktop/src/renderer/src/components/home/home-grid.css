@@ -1,0 +1,36 @@
+/* Overrides for react-grid-layout on the Home board. Loaded after the library's base styles. */
+
+/* Drag/resize placeholder under the moving widget. */
+.home-grid .react-grid-placeholder {
+  background: var(--tint);
+  opacity: 0.12;
+  border-radius: 0.75rem;
+}
+
+/* Resize grip: replace RGL's default corner arrow with a subtle always-on grip. */
+.home-grid .react-resizable-handle-se {
+  background-image: none;
+  inset-inline-end: 3px;
+  inset-block-end: 3px;
+  width: 14px;
+  height: 14px;
+}
+.home-grid .react-resizable-handle-se::after {
+  content: '';
+  position: absolute;
+  inset-inline-end: 0;
+  inset-block-end: 0;
+  width: 10px;
+  height: 10px;
+  border-inline-end: 2px solid var(--tint);
+  border-block-end: 2px solid var(--tint);
+  border-end-end-radius: 3px;
+}
+
+/* Respect reduced-motion: drop RGL's slide animation. */
+@media (prefers-reduced-motion: reduce) {
+  .home-grid .react-grid-item.cssTransforms,
+  .home-grid .react-grid-item {
+    transition: none !important;
+  }
+}
