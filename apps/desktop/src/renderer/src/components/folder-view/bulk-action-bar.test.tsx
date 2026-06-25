@@ -157,7 +157,7 @@ describe('BulkActionBar', () => {
     fireEvent.click(tagBtn)
 
     const input = screen.getByPlaceholderText(/tag name/i) as HTMLInputElement
-    fireEvent.change(input, { target: { value: 'test' } })
+    fireEvent.change(input, { target: { value: 'imp' } })
 
     const importantTag = screen.getByText('important')
     fireEvent.click(importantTag)

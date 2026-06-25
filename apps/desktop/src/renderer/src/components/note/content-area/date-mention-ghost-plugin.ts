@@ -64,6 +64,18 @@ export function isDateMentionActive(state: { selection: Selection }): boolean {
   return getActiveDateMention(state) !== null
 }
 
+/**
+ * True when the caret sits inside a date `@` mention that still has ghost text to
+ * fill (e.g. a time being typed: `@today 12` → ghost `:00`). The `@` quick-insert
+ * menu gates its `shouldOpen` off this so Tab is owned by the inline ghost (which
+ * fills the time) instead of the menu committing a no-time date pill.
+ */
+export function dateMentionHasGhostFill(state: { selection: Selection }): boolean {
+  const active = getActiveDateMention(state)
+  if (!active) return false
+  return resolveTabAction(active.query)?.kind === 'fill'
+}
+
 function ghostWidget(text: string): HTMLElement {
   const span = document.createElement('span')
   span.className = 'date-mention-ghost'

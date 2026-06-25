@@ -653,6 +653,15 @@
       "startYourCollection": "Start Your Collection",
       "templatesHelpYouCreateNotesWithConsistentStructure": "Templates help you create notes with consistent structure.",
       "createTemplate": "Create Template"
+    },
+    "componentsFolderViewSortSelector": {
+      "clearSort": "Clear sort",
+      "sort": "Sort",
+      "searchProperties": "Search properties...",
+      "builtIn": "Built-in",
+      "properties": "Properties",
+      "noSortablePropertiesFound": "No sortable properties found",
+      "sortDirection": "Sort direction"
     }
   },
   "phaseI": {
@@ -700,5 +709,16 @@
       "cannotRemoveTagThisNoteWasDeleted": "Cannot remove tag - this note was deleted",
       "cannotChangeLocalOnlyThisNoteWasDeleted": "Cannot change local-only — this note was deleted"
     }
+  },
+  "bulkActions": {
+    "toolbarAria": "Bulk actions",
+    "selected": "selected",
+    "move": "Move",
+    "copyLinks": "Copy links",
+    "addTag": "Add tag",
+    "tagNamePlaceholder": "Tag name",
+    "export": "Export",
+    "delete": "Delete",
+    "clearAria": "Clear selection"
   }
 }

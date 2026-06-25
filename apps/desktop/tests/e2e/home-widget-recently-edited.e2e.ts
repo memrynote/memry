@@ -134,11 +134,29 @@ async function bootstrap(page): Promise<void> {
   await dismissFirstRunOnboarding(page)
 }
 
-/** Set the widget instance to a given size by clicking its resize control. */
+// Grid height that maps to each content-density tier (sizeTier: h<=2 → S,
+// h<=4 → M). The board engine derives the tier from the widget's row span, so
+// there is no resize button to click — height IS the size.
+const HEIGHT_BY_SIZE: Record<'S' | 'M', number> = { S: 2, M: 4 }
+
+/**
+ * Set the recently-edited widget to a given content-density tier by writing its
+ * grid height through the homePages API, then reload so the board re-renders from
+ * the stored layout.
+ */
 async function resizeWidgetTo(page, size: 'S' | 'M'): Promise<void> {
-  const widget = page.locator(RECENT_WIDGET).first()
-  await widget.locator(`[data-testid="widget-size-${size}"]`).click()
-  await expect(widget).toHaveAttribute('data-widget-size', size)
+  await page.evaluate(
+    async ({ h }) => {
+      const boards = await window.api.homePages.list()
+      const board = boards.find((b) => b.widgets.some((w) => w.type === 'recently-edited'))
+      if (!board) throw new Error('no board with a recently-edited widget')
+      const widgets = board.widgets.map((w) => (w.type === 'recently-edited' ? { ...w, h } : w))
+      await window.api.homePages.update({ id: board.id, widgets })
+    },
+    { h: HEIGHT_BY_SIZE[size] }
+  )
+  await reload(page)
+  await expect(page.locator(RECENT_WIDGET).first()).toHaveAttribute('data-widget-size', size)
 }
 
 // ============================================================================
@@ -174,9 +192,10 @@ test.describe('Group F — Recently edited widget', () => {
     // Default widget size is M → up to 6 rows.
     await expect(rows.first()).toBeVisible()
 
-    // Top row must be the most recently modified note.
+    // Top row must be the most recently modified note. The row also renders an
+    // "edited <time>" meta line beneath the title, so assert containment.
     await expect(rows.first()).toHaveAttribute('data-note-id', newestFirst[0].id)
-    await expect(rows.first()).toHaveText(newestFirst[0].title)
+    await expect(rows.first()).toContainText(newestFirst[0].title)
   })
 
   test('F3: size→limit — S shows ≤3 rows, M shows ≤6 rows', async ({ page, testVaultPath }) => {

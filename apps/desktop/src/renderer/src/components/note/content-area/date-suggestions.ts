@@ -213,7 +213,7 @@ function matchWeekday(prefix: string): string | null {
 // Stays date-anchored: a number after a non-date word ("meeting 12") is left
 // alone. A single, still-ambiguous minute digit ("12:3") is not ghosted — that
 // state is held open by {@link isTimeInProgress} instead.
-function predictTime(query: string): string | null {
+export function predictTime(query: string): string | null {
   const q = query.trimEnd()
 
   // Bare time at the caret: "12" or "12:".

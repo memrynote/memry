@@ -63,7 +63,7 @@ describe('SortSelector', () => {
       />
     )
 
-    const trigger = screen.getByRole('button')
+    const trigger = screen.getAllByRole('button')[0]
     fireEvent.click(trigger)
 
     const titleBtn = screen.getByText('Title')
@@ -89,8 +89,8 @@ describe('SortSelector', () => {
     const searchInput = screen.getByPlaceholderText(/search/i)
     fireEvent.change(searchInput, { target: { value: 'status' } })
 
-    expect(screen.getByText('status')).toBeDefined()
-    expect(screen.queryByText('priority')).toBeFalsy()
+    expect(screen.getByText('Status')).toBeDefined()
+    expect(screen.queryByText('Priority')).toBeFalsy()
   })
 
   it('clears sort when clicking clear button', () => {
@@ -106,7 +106,7 @@ describe('SortSelector', () => {
       />
     )
 
-    const trigger = screen.getByRole('button')
+    const trigger = screen.getAllByRole('button')[0]
     fireEvent.click(trigger)
 
     const clearBtn = screen.getByLabelText(/clear/i)
@@ -128,7 +128,7 @@ describe('SortSelector', () => {
       />
     )
 
-    const trigger = screen.getByRole('button')
+    const trigger = screen.getAllByRole('button')[0]
     fireEvent.click(trigger)
 
     const directionBtn = screen.getByText(/A → Z/i)

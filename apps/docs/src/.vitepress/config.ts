@@ -105,6 +105,7 @@ function unifiedSidebar() {
           text: 'Workspace',
           collapsed: true,
           items: [
+            { text: 'Home Dashboard', link: '/user-guide/home-dashboard' },
             { text: 'Projects', link: '/user-guide/projects' },
             { text: 'Calendar', link: '/user-guide/calendar' },
             { text: 'Search & Command Palette', link: '/user-guide/search' },

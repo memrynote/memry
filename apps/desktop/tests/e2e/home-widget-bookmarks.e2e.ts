@@ -152,6 +152,30 @@ async function bookmark(
   })
 }
 
+/**
+ * Set the content-density tier of the first widget of `type` by writing its grid
+ * height through the homePages API. The board engine derives the tier from the
+ * widget's row span (sizeTier: h<=2 → S, h<=4 → M, else L), so there is no longer
+ * a resize button to click — height IS the size. Returns after persisting; the
+ * caller reloads to re-render from the stored board.
+ */
+async function setWidgetHeight(
+  page: import('@playwright/test').Page,
+  type: string,
+  h: number
+): Promise<void> {
+  await page.evaluate(
+    async ({ type, h }) => {
+      const boards = await window.api.homePages.list()
+      const board = boards.find((b) => b.widgets.some((w) => w.type === type))
+      if (!board) throw new Error(`no board with a ${type} widget`)
+      const widgets = board.widgets.map((w) => (w.type === type ? { ...w, h } : w))
+      await window.api.homePages.update({ id: board.id, widgets })
+    },
+    { type, h }
+  )
+}
+
 // ============================================================================
 // Tests
 // ============================================================================
@@ -183,7 +207,9 @@ test.describe('Group G — Bookmarks widget', () => {
       `[data-testid="bookmark-item"][data-item-type="note"][data-item-id="${id}"]`
     )
     await expect(row).toBeVisible()
-    await expect(row).toHaveText(title)
+    // The row prefixes a screen-reader-only type label ("Note") before the title
+    // span, so assert containment rather than exact text.
+    await expect(row).toContainText(title)
   })
 
   // G3: itemType variants — note + journal (+ task if creatable).
@@ -318,20 +344,21 @@ test.describe('Group G — Bookmarks widget', () => {
 
     await reloadHome(page)
 
-    const widget = bookmarksWidget(page)
-
-    // Default size is M → at most 6 rows (real limits: S=3, M=6 — matches the prompt).
-    await expect(widget).toHaveAttribute('data-widget-size', 'M')
+    // Default span is h=4 → M tier (limit 6) → at most 6 rows.
+    await expect(bookmarksWidget(page)).toHaveAttribute('data-widget-size', 'M')
     await expect(bookmarkRows(page)).toHaveCount(6)
 
-    // Resize to S → at most 3 rows.
-    await widget.locator('[data-testid="widget-size-S"]').click()
-    await expect(widget).toHaveAttribute('data-widget-size', 'S')
+    // Shrink to h=2 → S tier (limit 3) → at most 3 rows. Size is derived from the
+    // grid span now, so set the height through the board API and reload.
+    await setWidgetHeight(page, 'bookmarks', 2)
+    await reloadHome(page)
+    await expect(bookmarksWidget(page)).toHaveAttribute('data-widget-size', 'S')
     await expect(bookmarkRows(page)).toHaveCount(3)
 
-    // Resize back to M → 6 rows again.
-    await widget.locator('[data-testid="widget-size-M"]').click()
-    await expect(widget).toHaveAttribute('data-widget-size', 'M')
+    // Grow back to h=4 → M tier → 6 rows again.
+    await setWidgetHeight(page, 'bookmarks', 4)
+    await reloadHome(page)
+    await expect(bookmarksWidget(page)).toHaveAttribute('data-widget-size', 'M')
     await expect(bookmarkRows(page)).toHaveCount(6)
   })
 
@@ -351,7 +378,9 @@ test.describe('Group G — Bookmarks widget', () => {
       `[data-testid="bookmark-item"][data-item-type="note"][data-item-id="${ghostId}"]`
     )
     await expect(row).toBeVisible()
-    await expect(row).toHaveText('Untitled')
+    // The row prefixes a screen-reader-only type label ("Note") before the
+    // Untitled fallback span, so assert containment rather than exact text.
+    await expect(row).toContainText('Untitled')
   })
 
   // G7: Un-bookmark (toggle again) → row disappears after refresh.

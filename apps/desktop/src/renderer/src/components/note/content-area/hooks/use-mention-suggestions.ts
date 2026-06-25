@@ -4,7 +4,7 @@ import { useCallback, useRef, useState } from 'react'
 import { fuzzySearch } from '@/lib/fuzzy-search'
 import { notesService } from '@/services/notes-service'
 import { createWikiLinkInlineContent } from '../wiki-link'
-import { buildDateMentionEntry } from '../date-suggestions'
+import { buildDateMentionEntry, predictTime } from '../date-suggestions'
 import type { DateMentionValue } from '../date-mention-popover'
 import type { MentionSuggestionItem } from '../mention-menu'
 import { createLogger } from '@/lib/logger'
@@ -76,6 +76,13 @@ export function useMentionSuggestions(editor: any, { onInsertDate }: UseMentionS
       // open while a date-ish phrase is still being typed (e.g. "next monday").
       // A non-date query (e.g. "@meeting note") yields note results only.
       const { suggestion, hint } = buildDateMentionEntry(trimmed)
+      // While a time is being typed (bare "12" → ghost ":00", or after a date:
+      // "today 12" → ":00"), yield no items so the `@` menu closes and Tab is owned
+      // by the inline ghost (which fills the time) instead of committing a no-time
+      // date pill via this menu. Narrow to time-in-progress only: empty queries,
+      // partial dates ("next"), and note searches still get their normal items.
+      if (predictTime(trimmed) !== null) return []
+
       const dateItems: MentionSuggestionItem[] = suggestion
         ? [
             { kind: 'date', label: suggestion.dateLabel, value: suggestion.dateValue },

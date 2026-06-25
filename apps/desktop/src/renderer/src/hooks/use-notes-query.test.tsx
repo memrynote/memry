@@ -198,7 +198,8 @@ describe('use-notes-query', () => {
       expect(tagsHook.result.current.tags[0]).toEqual({
         tag: 'work',
         color: '#ff0000',
-        count: 2
+        count: 2,
+        icon: null
       })
     )
 

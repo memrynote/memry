@@ -15,7 +15,7 @@ import {
   updateHomePage,
   deleteHomePage,
   reorderHomePages
-} from '../database/queries/home-pages'
+} from '../home/store'
 import type { DataDb } from '../database/types'
 import type { HomePageRow } from '@memry/db-schema/schema/home-pages'
 import { requireDatabase } from '../database'

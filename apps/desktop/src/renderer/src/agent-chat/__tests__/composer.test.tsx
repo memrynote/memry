@@ -45,6 +45,7 @@ async function submitPrompt(): Promise<void> {
 
 describe('Composer', () => {
   beforeEach(() => {
+    localStorage.clear()
     mockSendTurn.mockReset()
     mockCancelTurn.mockReset()
     mockCreateConversation.mockReset()

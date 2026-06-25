@@ -23,14 +23,14 @@ describe('FolderEmojiChip', () => {
     expect(btn).toBeDefined()
   })
 
-  it('opens emoji picker when button clicked', () => {
+  it('opens emoji picker when button clicked', async () => {
     const onIconChange = vi.fn()
     render(<FolderEmojiChip icon={null} onIconChange={onIconChange} />)
 
     const btn = screen.getByRole('button')
     fireEvent.click(btn)
 
-    expect(screen.getByTestId('emoji-picker')).toBeDefined()
+    expect(await screen.findByTestId('emoji-picker')).toBeDefined()
   })
 
   it('calls onIconChange when emoji selected', () => {

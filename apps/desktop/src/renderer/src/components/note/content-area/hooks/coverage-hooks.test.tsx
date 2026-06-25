@@ -178,7 +178,11 @@ describe('coverage hooks around note editing', () => {
     )
     expect(result.current.getTagColor('work')).toBe('blue')
     expect(tiptap.view.dispatch).toHaveBeenCalledWith(tr)
-    expect(tr.setNodeMarkup).toHaveBeenCalledWith(4, undefined, { tag: 'work', color: 'blue' })
+    expect(tr.setNodeMarkup).toHaveBeenCalledWith(4, undefined, {
+      tag: 'work',
+      color: 'blue',
+      icon: ''
+    })
 
     rerender({ tagColorMap: new Map([['work', 'green']]) })
     expect(result.current.getTagColor('work')).toBe('green')
@@ -192,10 +196,14 @@ describe('coverage hooks around note editing', () => {
     expect(mocks.openTag).toHaveBeenCalledWith('work', 'green')
 
     act(() => result.current.handleTagSuggestionSelect('workflow', 'purple', 12))
-    expect(hashTagNodeType.create).toHaveBeenCalledWith({ tag: 'workflow', color: 'purple' })
+    expect(hashTagNodeType.create).toHaveBeenCalledWith({
+      tag: 'workflow',
+      color: 'purple',
+      icon: ''
+    })
     expect(tr.replaceWith).toHaveBeenCalledWith(12, 16, {
       type: { name: 'hashTag' },
-      attrs: { tag: 'workflow', color: 'purple' }
+      attrs: { tag: 'workflow', color: 'purple', icon: '' }
     })
     expect(tiptap.view.dispatch).toHaveBeenLastCalledWith(tr)
 

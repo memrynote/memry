@@ -74,7 +74,11 @@ import { extractDomain, fetchLinkPreview } from '@/lib/url-metadata'
 import { createLinkMentionContent } from './link-mention'
 import { createDateMentionContent } from './date-mention'
 import { buildDateSuggestions } from './date-suggestions'
-import { createDateMentionGhostPlugin, isDateMentionActive } from './date-mention-ghost-plugin'
+import {
+  createDateMentionGhostPlugin,
+  isDateMentionActive,
+  dateMentionHasGhostFill
+} from './date-mention-ghost-plugin'
 import { useFiredDatePillAnchors, useTriggeredDatePills } from './use-triggered-date-pills'
 import { useDateMentionPrefs } from '@/hooks/use-date-mention-prefs'
 import { DateMentionPopover, type DateMentionValue } from './date-mention-popover'
@@ -1235,6 +1239,11 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             getItems={getMentionItems}
             suggestionMenuComponent={MentionSuggestionMenu}
             onItemClick={(item) => handleMentionSelect(item)}
+            // While the inline date ghost still has text to fill (e.g. a time
+            // being typed: `@today 12` → ghost `:00`), keep this menu closed so
+            // Tab is owned by the ghost (which fills the time) instead of the menu
+            // committing a no-time date pill.
+            shouldOpen={(tr) => !dateMentionHasGhostFill(tr)}
           />
           {/* Re-add BlockNote's default `:` emoji picker (disabled above via
               emojiPicker={false}), but gated so it never opens while the caret

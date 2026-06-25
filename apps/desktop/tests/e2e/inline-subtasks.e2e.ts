@@ -43,28 +43,38 @@ async function findTasksByTitles(page: Page, titles: string[]): Promise<TaskRow[
   return all.filter((t) => titles.includes(t.title))
 }
 
+// New notes land at the vault ROOT (defaultNoteFolder is '' under the flat-vault
+// layout), while pre-seeded fixtures still write into notes/. Walk the whole
+// vault (skipping internal/system dirs) so both locations are covered.
 function readNoteFiles(vaultPath: string): { name: string; content: string; mtime: number }[] {
-  const notesDir = path.join(vaultPath, 'notes')
-  let entries: string[]
-  try {
-    entries = fs.readdirSync(notesDir)
-  } catch {
-    return []
+  const out: { name: string; content: string; mtime: number }[] = []
+
+  const walk = (dir: string): void => {
+    let entries: fs.Dirent[]
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true })
+    } catch {
+      return
+    }
+    for (const entry of entries) {
+      const full = path.join(dir, entry.name)
+      if (entry.isDirectory()) {
+        if (entry.name === '.memry' || entry.name === '.git') continue
+        walk(full)
+      } else if (entry.name.endsWith('.md')) {
+        const fd = fs.openSync(full, 'r')
+        try {
+          const stat = fs.fstatSync(fd)
+          out.push({ name: entry.name, content: fs.readFileSync(fd, 'utf8'), mtime: stat.mtimeMs })
+        } finally {
+          fs.closeSync(fd)
+        }
+      }
+    }
   }
 
-  return entries
-    .filter((f) => f.endsWith('.md'))
-    .map((name) => {
-      const full = path.join(notesDir, name)
-      const fd = fs.openSync(full, 'r')
-      try {
-        const stat = fs.fstatSync(fd)
-        return { name, content: fs.readFileSync(fd, 'utf8'), mtime: stat.mtimeMs }
-      } finally {
-        fs.closeSync(fd)
-      }
-    })
-    .sort((a, b) => b.mtime - a.mtime)
+  walk(vaultPath)
+  return out.sort((a, b) => b.mtime - a.mtime)
 }
 
 async function focusEditor(page) {

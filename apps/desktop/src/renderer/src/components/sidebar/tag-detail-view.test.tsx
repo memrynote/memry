@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach, type Mock } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 import { TagDetailView } from './tag-detail-view'
 
@@ -105,6 +106,7 @@ describe('TagDetailView rename + delete actions', () => {
     mockPinNoteToTag.mockResolvedValue(success)
     mockUnpinNoteFromTag.mockResolvedValue(success)
     mockRemoveTagFromNote.mockResolvedValue(success)
+    mockGetAllWithCounts.mockResolvedValue({ tags: [] })
     ;(mockOnTagRenamed as Mock).mockReturnValue(() => {})
     ;(mockOnTagDeleted as Mock).mockReturnValue(() => {})
     ;(mockOnTagNotesChanged as Mock).mockReturnValue(() => {})
@@ -112,7 +114,14 @@ describe('TagDetailView rename + delete actions', () => {
   })
 
   const renderView = async () => {
-    const view = render(<TagDetailView tag="react" color="blue" />)
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: 0 } }
+    })
+    const view = render(
+      <QueryClientProvider client={queryClient}>
+        <TagDetailView tag="react" color="blue" />
+      </QueryClientProvider>
+    )
     // Wait for the initial load to finish
     await waitFor(() => expect(mockGetNotesByTag).toHaveBeenCalled())
     return view
