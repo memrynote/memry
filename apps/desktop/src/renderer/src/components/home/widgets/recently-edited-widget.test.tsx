@@ -22,6 +22,15 @@ vi.mock('@/hooks/use-notes-query', () => ({
         modified: new Date(),
         tags: [],
         wordCount: 0
+      },
+      {
+        id: 'n3',
+        path: 'notes/Work/gamma.md',
+        title: 'Gamma',
+        created: new Date(),
+        modified: new Date(),
+        tags: [],
+        wordCount: 0
       }
     ],
     isLoading: false
@@ -37,5 +46,11 @@ describe('RecentlyEditedWidget', () => {
     render(<RecentlyEditedWidget config={{}} size="M" />)
     expect(screen.getByText('Alpha')).toBeInTheDocument()
     expect(screen.getByText('Beta')).toBeInTheDocument()
+    expect(screen.getByText('Gamma')).toBeInTheDocument()
+  })
+
+  it('shows the folder in the row subtitle', () => {
+    render(<RecentlyEditedWidget config={{}} size="M" />)
+    expect(screen.getByText(/Work · edited/)).toBeInTheDocument()
   })
 })

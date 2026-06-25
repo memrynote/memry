@@ -4,15 +4,21 @@ import { BookmarksWidget } from './bookmarks-widget'
 import { TasksWidget } from './tasks-widget'
 import { InboxWidget } from './inbox-widget'
 import { FolderWidget } from './folder-widget'
-import { FolderWidgetConfigEditor } from './folder-widget-config-editor'
+import { FolderHeaderControls } from './folder-header-controls'
 import { TasksWidgetConfigEditor } from './tasks-widget-config-editor'
+import { TasksHeaderFilter, TasksHeaderCount } from './tasks-header'
+import { InboxHeaderFilter, InboxHeaderCount } from './inbox-header'
+import { InboxWidgetFooter } from './inbox-footer'
+import { CalendarWidget } from './calendar-widget'
+import { CalendarHeaderLabel, CalendarHeaderCount, CalendarFooter } from './calendar-header'
+import { JournalWidget } from './journal-widget'
+import { JournalHeaderStreak } from './journal-header'
 
 registerWidget({
   type: 'recently-edited',
   titleKey: 'home.widget.recentlyEdited',
-  icon: 'clock',
-  sizes: ['S', 'M'],
-  defaultSize: 'M',
+  icon: 'trending-up',
+  defaultLayout: { w: 4, h: 4 },
   defaultConfig: {},
   Component: RecentlyEditedWidget
 })
@@ -21,8 +27,7 @@ registerWidget({
   type: 'bookmarks',
   titleKey: 'home.widget.bookmarks',
   icon: 'bookmark',
-  sizes: ['S', 'M'],
-  defaultSize: 'M',
+  defaultLayout: { w: 4, h: 4 },
   defaultConfig: {},
   Component: BookmarksWidget
 })
@@ -31,30 +36,54 @@ registerWidget({
   type: 'tasks',
   titleKey: 'home.widget.tasks',
   icon: 'check-square',
-  sizes: ['S', 'M', 'L'],
-  defaultSize: 'M',
+  defaultLayout: { w: 4, h: 4 },
   defaultConfig: { dateRange: 'today' },
   Component: TasksWidget,
-  ConfigEditor: TasksWidgetConfigEditor
+  ConfigEditor: TasksWidgetConfigEditor,
+  HeaderFilter: TasksHeaderFilter,
+  HeaderCount: TasksHeaderCount
 })
 
 registerWidget({
   type: 'inbox',
   titleKey: 'home.widget.inbox',
   icon: 'inbox',
-  sizes: ['S', 'M', 'L'],
-  defaultSize: 'M',
+  defaultLayout: { w: 4, h: 4 },
   defaultConfig: {},
-  Component: InboxWidget
+  Component: InboxWidget,
+  HeaderFilter: InboxHeaderFilter,
+  HeaderCount: InboxHeaderCount,
+  Footer: InboxWidgetFooter
 })
 
 registerWidget({
   type: 'folder',
   titleKey: 'home.widget.folder',
   icon: 'folder',
-  sizes: ['M', 'L'],
-  defaultSize: 'M',
-  defaultConfig: { folderPath: '', viewType: 'list' },
+  defaultLayout: { w: 4, h: 4 },
+  defaultConfig: { folderPath: '' },
   Component: FolderWidget,
-  ConfigEditor: FolderWidgetConfigEditor
+  HeaderFilter: FolderHeaderControls
+})
+
+registerWidget({
+  type: 'calendar',
+  titleKey: 'home.widget.calendar',
+  icon: 'calendar',
+  defaultLayout: { w: 4, h: 4 },
+  defaultConfig: {},
+  Component: CalendarWidget,
+  HeaderFilter: CalendarHeaderLabel,
+  HeaderCount: CalendarHeaderCount,
+  Footer: CalendarFooter
+})
+
+registerWidget({
+  type: 'journal',
+  titleKey: 'home.widget.journal',
+  icon: 'book-open',
+  defaultLayout: { w: 4, h: 4 },
+  defaultConfig: {},
+  Component: JournalWidget,
+  HeaderFilter: JournalHeaderStreak
 })

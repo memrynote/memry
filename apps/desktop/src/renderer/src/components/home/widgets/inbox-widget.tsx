@@ -9,6 +9,7 @@ import { InboxTypeIcon } from '@/components/inbox/inbox-type-icon'
 import { formatTimeAgo } from '@/services/inbox-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import type { WidgetComponentProps } from '@/lib/home/widget-registry'
+import { inboxWidgetLimit } from '@/lib/home/inbox-widget-filter'
 import type { InboxItemType } from '@/types'
 import { useT } from '@memry/i18n/renderer'
 
@@ -20,7 +21,7 @@ import { useT } from '@memry/i18n/renderer'
 export function InboxWidget({ config, size }: WidgetComponentProps): React.JSX.Element {
   const { t } = useT('common')
   const { t: tInbox } = useT('inbox')
-  const limit = size === 'L' ? 12 : size === 'M' ? 6 : 3
+  const limit = inboxWidgetLimit(size)
   const type = typeof config.type === 'string' ? (config.type as InboxListInput['type']) : undefined
   const { items, isLoading, error } = useInboxList(type ? { type } : {})
   const { openTab } = useTabActions()
@@ -60,7 +61,7 @@ export function InboxWidget({ config, size }: WidgetComponentProps): React.JSX.E
     return <div className="text-xs text-muted-foreground">{tInbox('empty.noItemsYet')}</div>
 
   return (
-    <ul className="flex flex-col gap-1">
+    <ul className="flex flex-col gap-0.5">
       {items.slice(0, limit).map((item) => (
         <li key={item.id} className="flex items-center gap-1">
           <button
@@ -94,10 +95,10 @@ export function InboxWidget({ config, size }: WidgetComponentProps): React.JSX.E
                 className="size-7 shrink-0 rounded-md object-cover ring-1 ring-border/50"
               />
             )}
-            <span className="min-w-0 flex-1 truncate text-sm">
+            <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground/90">
               {item.title || t('home.widget.untitled')}
             </span>
-            <span className="shrink-0 text-xs text-muted-foreground/60 tabular-nums">
+            <span className="shrink-0 text-[11px] text-text-tertiary tabular-nums">
               {formatTimeAgo(item.createdAt)}
             </span>
           </button>

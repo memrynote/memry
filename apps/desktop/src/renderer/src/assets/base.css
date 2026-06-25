@@ -1471,6 +1471,52 @@ div.react-sigma {
 /* ===== CUSTOM SCROLLBAR UTILITIES ===== */
 /* These need to be outside @layer to ensure higher specificity */
 
+/* Global default: every scrollbar follows the app theme, not the OS.
+   ponytail: themed default for all elements; .scrollbar-thin/.scrollbar-none
+   still win on class specificity. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.25) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.25);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+  min-height: 40px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.4);
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.dark *,
+.dark {
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+}
+
+.dark *::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.25);
+}
+
+.dark *::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.4);
+}
+
 /* Thin scrollbar for sidebars and panels */
 .scrollbar-thin {
   scrollbar-width: thin;

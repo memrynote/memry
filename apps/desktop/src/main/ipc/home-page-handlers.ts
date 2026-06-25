@@ -20,13 +20,46 @@ import type { DataDb } from '../database/types'
 import type { HomePageRow } from '@memry/db-schema/schema/home-pages'
 import { requireDatabase } from '../database'
 
+// Legacy span (S/M/L) → grid coords, for boards saved before the resizable-grid migration.
+const LEGACY_SPAN: Record<string, { w: number; h: number }> = {
+  S: { w: 2, h: 2 },
+  M: { w: 4, h: 4 },
+  L: { w: 8, h: 4 }
+}
+
 function rowToHomePage(row: HomePageRow): HomePage {
+  const raw = JSON.parse(row.widgets) as Array<Record<string, unknown>>
+  let y = 0
+  const widgets = raw.map((w): WidgetInstance => {
+    if (
+      typeof w.x === 'number' &&
+      typeof w.y === 'number' &&
+      typeof w.w === 'number' &&
+      typeof w.h === 'number'
+    ) {
+      return w as unknown as WidgetInstance
+    }
+    // ponytail: migrate old {size} widgets on read; the next drag/resize persists real coords and
+    // react-grid-layout compacts any overlap. Remove once no legacy boards remain (pre-production).
+    const span = LEGACY_SPAN[w.size as string] ?? LEGACY_SPAN.M
+    const migrated: WidgetInstance = {
+      id: String(w.id),
+      type: String(w.type),
+      x: 0,
+      y,
+      w: span.w,
+      h: span.h,
+      config: (w.config as Record<string, unknown>) ?? {}
+    }
+    y += span.h
+    return migrated
+  })
   return {
     id: row.id,
     name: row.name,
     icon: row.icon ?? undefined,
     position: row.position,
-    widgets: JSON.parse(row.widgets) as WidgetInstance[]
+    widgets
   }
 }
 

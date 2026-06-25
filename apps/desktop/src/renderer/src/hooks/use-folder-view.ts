@@ -42,7 +42,7 @@ export interface ColumnConfig {
 
 export interface ViewConfig {
   name: string
-  type: 'table' | 'grid' | 'list' | 'kanban'
+  type: 'table' | 'grid' | 'list'
   default?: boolean
   columns?: ColumnConfig[]
   filters?: unknown // Allow unknown for API compatibility

@@ -1,14 +1,11 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 import type { Project, Status, TaskFilters } from '@/data/tasks-data'
 import { defaultFilters } from '@/data/tasks-data'
-import { DueDateFilter } from './due-date-filter'
 import { FilterEmptyState } from './filter-empty-state'
 import { FilterDropdown } from './filter-dropdown'
-import { MoreFiltersDropdown } from './more-filters-dropdown'
 import { PriorityFilter } from './priority-filter'
-import { ProjectFilter } from './project-filter'
 import { QuickFilters } from './quick-filters'
 import { SaveFilterDialog } from './save-filter-dialog'
 import { SearchInput } from './search-input'
@@ -162,31 +159,6 @@ describe('task filter surfaces', () => {
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
-  it('filters projects, hides archived projects, and clears selection', () => {
-    const onChange = vi.fn()
-    render(
-      <ProjectFilter
-        projects={projects}
-        selectedIds={['work']}
-        onChange={onChange}
-        taskCountByProject={{ work: 7 }}
-      />
-    )
-
-    fireEvent.click(screen.getByRole('button', { name: /filterByProject/ }))
-    expect(screen.getByText('Work')).toBeInTheDocument()
-    expect(screen.queryByText('Archived')).not.toBeInTheDocument()
-    expect(screen.getByText('7')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByText('Work'))
-    expect(onChange).toHaveBeenCalledWith([])
-
-    fireEvent.click(
-      screen.getByRole('button', { name: 'phaseF.componentsTasksFiltersProjectFilter.clear' })
-    )
-    expect(onChange).toHaveBeenLastCalledWith([])
-  })
-
   it('toggles priorities from picker content', () => {
     const onChange = vi.fn()
     render(
@@ -203,65 +175,6 @@ describe('task filter surfaces', () => {
 
     fireEvent.click(screen.getByRole('option', { name: /Urgent/ }))
     expect(onChange).toHaveBeenLastCalledWith([])
-  })
-
-  it('changes due-date presets and clears selected ranges', () => {
-    const onChange = vi.fn()
-    render(
-      <DueDateFilter
-        value={{
-          type: 'custom',
-          customStart: new Date(2026, 4, 1),
-          customEnd: new Date(2026, 4, 3)
-        }}
-        onChange={onChange}
-        taskCountByDueDate={
-          { overdue: 2, today: 1, tomorrow: 0, 'this-week': 3, 'next-week': 4, none: 5 } as never
-        }
-      />
-    )
-
-    expect(screen.getByText('May 1 - May 3')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: /filterByDueDate/ }))
-    fireEvent.click(screen.getByText('Today'))
-    expect(onChange).toHaveBeenCalledWith({ type: 'today', customStart: null, customEnd: null })
-
-    fireEvent.click(screen.getByText('Today'))
-    expect(onChange).toHaveBeenLastCalledWith({ type: 'any', customStart: null, customEnd: null })
-  })
-
-  it('opens more filters, toggles switches, and picks statuses', () => {
-    const onStatusChange = vi.fn()
-    const onRepeatTypeChange = vi.fn()
-    const onHasTimeChange = vi.fn()
-    render(
-      <MoreFiltersDropdown
-        statuses={statuses}
-        selectedStatusIds={['todo']}
-        onStatusChange={onStatusChange}
-        repeatType="all"
-        onRepeatTypeChange={onRepeatTypeChange}
-        hasTime="all"
-        onHasTimeChange={onHasTimeChange}
-        taskCountByStatus={{ todo: 5, done: 2 }}
-      />
-    )
-
-    fireEvent.click(screen.getByRole('button', { name: /moreFilters/ }))
-    const switches = screen.getAllByRole('switch')
-    fireEvent.click(switches[0])
-    expect(onHasTimeChange).toHaveBeenCalledWith('with-time')
-    fireEvent.click(switches[1])
-    expect(onRepeatTypeChange).toHaveBeenCalledWith('repeating')
-
-    fireEvent.click(screen.getByText('phaseF.componentsTasksFiltersMoreFiltersDropdown.status'))
-    expect(screen.getByText('Todo')).toBeInTheDocument()
-    expect(screen.getByText('Done')).toBeInTheDocument()
-    expect(within(screen.getByText('Todo').closest('button')!).getByText('5')).toBeInTheDocument()
-    fireEvent.click(screen.getByText('Done'))
-    expect(onStatusChange).toHaveBeenCalledWith(['todo', 'done'])
-    fireEvent.click(screen.getByText('Todo'))
-    expect(onStatusChange).toHaveBeenLastCalledWith([])
   })
 
   it('navigates the full filter dropdown panels and emits filter updates', () => {

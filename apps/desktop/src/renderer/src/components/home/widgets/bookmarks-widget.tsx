@@ -21,7 +21,7 @@ export function BookmarksWidget({ config, size }: WidgetComponentProps): React.J
 
   if (isLoading)
     return (
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-1" aria-busy="true" aria-label={t('state.loading')}>
         <Skeleton className="h-4 w-full" />
         <Skeleton className="h-4 w-full" />
         <Skeleton className="h-4 w-full" />
@@ -29,13 +29,17 @@ export function BookmarksWidget({ config, size }: WidgetComponentProps): React.J
     )
 
   if (error)
-    return <div className="text-xs text-muted-foreground">{t('home.widget.loadError')}</div>
+    return (
+      <div className="text-xs text-destructive" role="alert">
+        {t('home.widget.loadError')}
+      </div>
+    )
 
   if (bookmarks.length === 0)
     return <div className="text-xs text-muted-foreground">{t('home.noBookmarksYet')}</div>
 
   return (
-    <ul className="flex flex-col gap-1">
+    <ul className="flex flex-col gap-0.5">
       {bookmarks.slice(0, limit).map((b) => {
         const Icon = ICON_BY_TYPE[b.itemType] ?? FileText
         const typeLabel = b.itemType.charAt(0).toUpperCase() + b.itemType.slice(1)
@@ -46,7 +50,7 @@ export function BookmarksWidget({ config, size }: WidgetComponentProps): React.J
               data-testid="bookmark-item"
               data-item-id={b.itemId}
               data-item-type={b.itemType}
-              className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-start text-sm hover:bg-muted/60"
+              className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-start text-[13px] hover:bg-muted/60"
               onClick={() =>
                 openTab(
                   b.itemType === 'task'
@@ -75,9 +79,11 @@ export function BookmarksWidget({ config, size }: WidgetComponentProps): React.J
                 )
               }
             >
-              <Icon className="size-3.5 shrink-0 text-muted-foreground/70" aria-hidden="true" />
+              <Icon className="size-4 shrink-0 text-muted-foreground/70" aria-hidden="true" />
               <span className="sr-only">{typeLabel}</span>
-              <span className="truncate">{b.itemTitle ?? t('home.widget.untitled')}</span>
+              <span className="truncate font-medium text-foreground/90">
+                {b.itemTitle ?? t('home.widget.untitled')}
+              </span>
             </button>
           </li>
         )

@@ -202,7 +202,7 @@ describe('ViewConfigSchema', () => {
   it('should validate full view config', () => {
     const result = ViewConfigSchema.safeParse({
       name: 'Active Tasks',
-      type: 'kanban',
+      type: 'list',
       default: true,
       columns: [{ id: 'title', width: 250 }],
       filters: { and: ['status != "done"'] },
@@ -215,7 +215,7 @@ describe('ViewConfigSchema', () => {
   })
 
   it('should validate all view types', () => {
-    const types = ['table', 'grid', 'list', 'kanban']
+    const types = ['table', 'grid', 'list']
     types.forEach((type) => {
       expect(ViewConfigSchema.safeParse({ name: 'View', type }).success).toBe(true)
     })

@@ -4,6 +4,7 @@ import {
   startOfDay,
   addDays,
   endOfDay,
+  endOfWeek,
   isSameDay,
   isBefore,
   isAfter,
@@ -71,6 +72,25 @@ export const getFilteredTasks = (
           if (!task.dueDate) return false
           const taskDate = startOfDay(task.dueDate)
           return isAfter(taskDate, today) && !isAfter(taskDate, weekFromNow)
+        })
+        return includeSubtasksForMatchingParents(matchingTopLevel, nonArchivedTasks)
+      }
+
+      case 'tomorrow': {
+        const tomorrow = addDays(today, 1)
+        const matchingTopLevel = incompleteTopLevel.filter((task) => {
+          if (!task.dueDate) return false
+          return isSameDay(startOfDay(task.dueDate), tomorrow)
+        })
+        return includeSubtasksForMatchingParents(matchingTopLevel, nonArchivedTasks)
+      }
+
+      case 'week': {
+        const weekEnd = endOfWeek(today)
+        const matchingTopLevel = incompleteTopLevel.filter((task) => {
+          if (!task.dueDate) return false
+          const taskDate = startOfDay(task.dueDate)
+          return !isBefore(taskDate, today) && !isAfter(taskDate, weekEnd)
         })
         return includeSubtasksForMatchingParents(matchingTopLevel, nonArchivedTasks)
       }

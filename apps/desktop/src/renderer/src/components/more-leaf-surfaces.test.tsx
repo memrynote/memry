@@ -122,6 +122,18 @@ vi.mock('@/components/ui/popover', () => ({
   PopoverTrigger: ({ children }: { children: ReactNode }) => <>{children}</>
 }))
 
+vi.mock('@/components/ui/dropdown-menu', () => ({
+  DropdownMenu: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  DropdownMenuTrigger: ({ children }: { children: ReactNode }) => <>{children}</>,
+  DropdownMenuContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  DropdownMenuItem: ({ children, onSelect }: any) => (
+    <button type="button" onClick={() => onSelect?.({ preventDefault: () => {} })}>
+      {children}
+    </button>
+  ),
+  DropdownMenuSeparator: () => <hr />
+}))
+
 vi.mock('@/components/ui/separator', () => ({
   Separator: () => <hr />
 }))

@@ -563,7 +563,10 @@ export interface JournalClientAPI {
 export interface WidgetInstance {
   id: string
   type: string
-  size: 'S' | 'M' | 'L'
+  x: number
+  y: number
+  w: number
+  h: number
   config: Record<string, unknown>
 }
 
@@ -1157,7 +1160,7 @@ export interface FolderViewGroupBy {
 
 export interface FolderViewView {
   name: string
-  type: 'table' | 'grid' | 'list' | 'kanban'
+  type: 'table' | 'grid' | 'list'
   default?: boolean
   columns?: FolderViewColumn[]
   filters?: unknown

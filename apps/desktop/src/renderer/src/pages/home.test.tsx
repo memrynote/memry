@@ -5,9 +5,9 @@ import HomePage from './home'
 // Stub the widgets barrel (Task 9 fills this)
 vi.mock('@/components/home/widgets', () => ({}))
 
-// Stub child components to avoid dnd-kit / WIDGET_REGISTRY deps
-vi.mock('@/components/home/board-switcher', () => ({
-  BoardSwitcher: () => null
+// Stub child components to avoid dnd-kit / WIDGET_REGISTRY / react-query deps
+vi.mock('@/components/home/home-header', () => ({
+  HomeHeader: () => null
 }))
 vi.mock('@/components/home/board-grid', () => ({
   BoardGrid: () => null

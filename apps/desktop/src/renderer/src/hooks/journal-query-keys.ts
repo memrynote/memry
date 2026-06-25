@@ -15,5 +15,6 @@ export const journalKeys = {
   yearStats: () => [...journalKeys.all, 'yearStats'] as const,
   yearStatsForYear: (year: number) => [...journalKeys.yearStats(), year] as const,
   dayContext: () => [...journalKeys.all, 'dayContext'] as const,
-  dayContextForDate: (date: string) => [...journalKeys.dayContext(), date] as const
+  dayContextForDate: (date: string) => [...journalKeys.dayContext(), date] as const,
+  streak: () => [...journalKeys.all, 'streak'] as const
 }

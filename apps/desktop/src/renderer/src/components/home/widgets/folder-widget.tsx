@@ -1,29 +1,58 @@
 import type React from 'react'
-import { useMemo } from 'react'
-import { useFolderNotes } from '@/hooks/use-folder-notes'
+import { useEffect, useMemo } from 'react'
+import { useFolderView } from '@/hooks/use-folder-view'
 import { useNoteTagsQuery } from '@/hooks/use-notes-query'
 import { useDisplayDensity } from '@/hooks/use-display-density'
 import { useTabActions } from '@/contexts/tabs/context'
 import { FolderListView } from '@/components/folder-view/folder-list-view'
-import { FolderBoardView } from '@/components/folder-view/folder-board-view'
 import { FolderGalleryView } from '@/components/folder-view/folder-gallery-view'
+import { FolderTableView } from '@/components/folder-view/folder-table-view'
 import { Skeleton } from '@/components/ui/skeleton'
-import { extractErrorMessage } from '@/lib/ipc-error'
+import { Folder as FolderIcon } from '@/lib/icons/icon-map'
+import { DEFAULT_COLUMNS } from '@memry/contracts/folder-view-api'
 import type { WidgetComponentProps } from '@/lib/home/widget-registry'
 import { useT } from '@memry/i18n/renderer'
 
-type FolderViewType = 'list' | 'board' | 'gallery'
+type PropertyType =
+  | 'text'
+  | 'number'
+  | 'checkbox'
+  | 'date'
+  | 'select'
+  | 'multiselect'
+  | 'url'
+  | 'rating'
 
-export function FolderWidget({ config, size }: WidgetComponentProps): React.JSX.Element {
+export function FolderWidget({ config }: WidgetComponentProps): React.JSX.Element {
   const { t } = useT('common')
   const folderPath = typeof config.folderPath === 'string' ? config.folderPath : ''
-  const viewType = (config.viewType as FolderViewType) ?? 'list'
-  const limit = size === 'L' ? 24 : 12
+  const viewName = typeof config.viewName === 'string' ? config.viewName : undefined
 
-  const { notes, isLoading, error } = useFolderNotes({ folderPath, limit })
+  const {
+    views,
+    activeView,
+    activeViewIndex,
+    setActiveViewIndex,
+    notes,
+    availableProperties,
+    formulasMap,
+    updateNoteProperty,
+    updateSorting,
+    updateColumns,
+    updateDisplayName,
+    isLoading,
+    error
+  } = useFolderView({ folderPath })
   const { tags: allTags } = useNoteTagsQuery()
   const { density } = useDisplayDensity()
   const { openTab } = useTabActions()
+
+  // Honor the widget's saved-view selection (config.viewName) over the folder's default.
+  useEffect(() => {
+    if (!viewName) return
+    const idx = views.findIndex((v) => v.name === viewName)
+    if (idx >= 0 && idx !== activeViewIndex) setActiveViewIndex(idx)
+  }, [viewName, views, activeViewIndex, setActiveViewIndex])
 
   const tagColorMap = useMemo(() => {
     const map = new Map<string, string>()
@@ -32,6 +61,14 @@ export function FolderWidget({ config, size }: WidgetComponentProps): React.JSX.
     }
     return map
   }, [allTags])
+
+  const propertyTypes = useMemo(() => {
+    const map: Record<string, PropertyType> = {}
+    for (const prop of availableProperties) {
+      map[prop.name] = prop.type as PropertyType
+    }
+    return map
+  }, [availableProperties])
 
   const handleNoteOpen = (noteId: string): void => {
     const note = notes.find((n) => n.id === noteId)
@@ -51,11 +88,16 @@ export function FolderWidget({ config, size }: WidgetComponentProps): React.JSX.
   }
 
   if (!folderPath)
-    return <div className="text-xs text-muted-foreground">{t('home.widget.folderPickPrompt')}</div>
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-1.5 text-center text-[var(--text-tertiary)]">
+        <FolderIcon className="size-6 opacity-50" aria-hidden="true" />
+        <span className="text-xs">{t('home.widget.folderNoSelection')}</span>
+      </div>
+    )
 
   if (isLoading)
     return (
-      <div className="flex flex-col gap-1" aria-busy="true">
+      <div className="flex flex-col gap-1" aria-busy="true" aria-label={t('state.loading')}>
         <Skeleton className="h-4 w-full" />
         <Skeleton className="h-4 w-full" />
         <Skeleton className="h-4 w-full" />
@@ -64,26 +106,33 @@ export function FolderWidget({ config, size }: WidgetComponentProps): React.JSX.
 
   if (error)
     return (
-      <div
-        role="alert"
-        className="text-xs text-muted-foreground"
-        title={extractErrorMessage(error, t('home.widget.loadError'))}
-      >
+      <div role="alert" className="text-xs text-destructive" title={error}>
         {t('home.widget.loadError')}
       </div>
     )
 
+  const viewType = activeView?.type ?? 'table'
+  const columns = activeView?.columns ?? DEFAULT_COLUMNS
+
   return (
     <div data-widget-folder-view={viewType} className="h-full">
-      {viewType === 'board' ? (
-        <FolderBoardView
+      {viewType === 'table' ? (
+        <FolderTableView
           notes={notes}
-          tagColorMap={tagColorMap}
-          availableProperties={[]}
+          columns={columns}
+          formulas={formulasMap}
+          propertyTypes={propertyTypes}
+          initialSorting={activeView?.order}
           onNoteOpen={handleNoteOpen}
+          onOpenInNewTab={handleNoteOpen}
+          onPropertyUpdate={(...args) => void updateNoteProperty(...args)}
+          onSortingChange={(...args) => void updateSorting(...args)}
+          onColumnsChange={(...args) => void updateColumns(...args)}
+          onDisplayNameChange={(...args) => void updateDisplayName(...args)}
+          density={density}
           className="h-full"
         />
-      ) : viewType === 'gallery' ? (
+      ) : viewType === 'grid' ? (
         <FolderGalleryView
           notes={notes}
           tagColorMap={tagColorMap}

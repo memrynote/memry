@@ -113,6 +113,14 @@ export default defineConfig({
     }
   },
   renderer: {
+    define: {
+      // react-grid-layout reads a bare `process.env` at runtime. The contextIsolated renderer has
+      // no Node `process`, so without this it throws "process is not defined" inside RGL's drag/
+      // resize handlers — interaction silently does nothing while widgets still render. No renderer
+      // source reads process.env, so replacing it with {} is safe.
+      'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'production'),
+      'process.env': '{}'
+    },
     resolve: {
       alias: {
         ...workspaceAliases,

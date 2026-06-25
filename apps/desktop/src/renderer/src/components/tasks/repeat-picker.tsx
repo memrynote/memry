@@ -1,9 +1,14 @@
-import { useState, useMemo, useCallback, useId } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { RefreshCw, ChevronDown, Check } from '@/lib/icons'
 
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator
+} from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
 import { getRepeatPresets, getRepeatDisplayText, type RepeatPreset } from '@/lib/repeat-utils'
 import type { RepeatConfig } from '@/data/task-model'
@@ -37,7 +42,6 @@ export const RepeatPicker = ({
   const { t: tPhaseF } = useT('tasks')
   const { t } = useT('common')
   const [isOpen, setIsOpen] = useState(false)
-  const optionsId = useId()
 
   // Generate presets based on due date
   const presets = useMemo(() => getRepeatPresets(dueDate), [dueDate])
@@ -76,13 +80,10 @@ export const RepeatPicker = ({
   }, [onOpenCustomDialog])
 
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <PopoverTrigger asChild>
+    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+      <DropdownMenuTrigger asChild>
         <Button
           variant="outline"
-          role="combobox"
-          aria-controls={optionsId}
-          aria-expanded={isOpen}
           aria-label={tPhaseF('phaseF.componentsTasksRepeatPicker.selectRepeatFrequency')}
           disabled={disabled}
           className={cn(
@@ -103,67 +104,48 @@ export const RepeatPicker = ({
           </div>
           <ChevronDown className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
         </Button>
-      </PopoverTrigger>
+      </DropdownMenuTrigger>
 
-      <PopoverContent id={optionsId} className="w-[280px] p-1" align="start">
+      <DropdownMenuContent className="w-[280px]" align="start">
         {/* Does not repeat option */}
-        <button
-          type="button"
-          onClick={() => handleSelectPreset(null)}
-          className={cn(
-            'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors',
-            'hover:bg-accent focus:bg-accent focus:outline-none',
-            !value && 'bg-accent/50'
-          )}
+        <DropdownMenuItem
+          onSelect={() => handleSelectPreset(null)}
+          className={cn(!value && 'bg-accent/50')}
         >
-          <span className="size-4 flex items-center justify-center">
+          <span className="flex size-4 items-center justify-center">
             {!value && <Check className="size-4" aria-hidden="true" />}
           </span>
           <span>{tPhaseF('phaseF.componentsTasksRepeatPicker.doesNotRepeat')}</span>
-        </button>
+        </DropdownMenuItem>
 
-        <Separator className="my-1" />
+        <DropdownMenuSeparator />
 
         {/* Preset options */}
-        <div className="flex flex-col">
-          {presets.map((preset) => (
-            <button
-              key={preset.id}
-              type="button"
-              onClick={() => handleSelectPreset(preset)}
-              className={cn(
-                'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors',
-                'hover:bg-accent focus:bg-accent focus:outline-none',
-                matchingPresetId === preset.id && 'bg-accent/50'
-              )}
-            >
-              <span className="size-4 flex items-center justify-center">
-                {matchingPresetId === preset.id && <Check className="size-4" aria-hidden="true" />}
-              </span>
-              <span>{preset.label}</span>
-            </button>
-          ))}
-        </div>
+        {presets.map((preset) => (
+          <DropdownMenuItem
+            key={preset.id}
+            onSelect={() => handleSelectPreset(preset)}
+            className={cn(matchingPresetId === preset.id && 'bg-accent/50')}
+          >
+            <span className="flex size-4 items-center justify-center">
+              {matchingPresetId === preset.id && <Check className="size-4" aria-hidden="true" />}
+            </span>
+            <span>{preset.label}</span>
+          </DropdownMenuItem>
+        ))}
 
         {/* Custom option */}
         {onOpenCustomDialog && (
           <>
-            <Separator className="my-1" />
-            <button
-              type="button"
-              onClick={handleOpenCustom}
-              className={cn(
-                'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors',
-                'hover:bg-accent focus:bg-accent focus:outline-none text-muted-foreground'
-              )}
-            >
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={handleOpenCustom}>
               <span className="size-4" />
               <span>{tPhaseF('phaseF.componentsTasksRepeatPicker.custom')}</span>
-            </button>
+            </DropdownMenuItem>
           </>
         )}
-      </PopoverContent>
-    </Popover>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 
