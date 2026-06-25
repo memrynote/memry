@@ -491,6 +491,9 @@ jobs:
 
       - name: Install system dependencies
         run: |
+          # GitHub runners ship Microsoft/Azure apt repos that intermittently 403
+          # ("no longer signed") and break apt-get update. We don't need them.
+          sudo rm -f /etc/apt/sources.list.d/microsoft*.list /etc/apt/sources.list.d/azure-cli* 2>/dev/null || true
           sudo apt-get update
           sudo apt-get install -y libsecret-1-dev
 
