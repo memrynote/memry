@@ -238,6 +238,7 @@
     "allDay": "All day",
     "location": "Location",
     "remindAt": "Remind me at",
+    "time": "Time",
     "success": "Converted to {target}",
     "failed": "Couldn't convert: {error}"
   },

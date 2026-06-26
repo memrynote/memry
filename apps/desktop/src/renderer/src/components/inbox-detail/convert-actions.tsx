@@ -16,6 +16,7 @@ import { useT } from '@memry/i18n/renderer'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
+import { DatePickerCalendar } from '@/components/tasks/date-picker-calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import {
@@ -87,7 +88,8 @@ export const ConvertActions = ({ item, onConverted }: ConvertActionsProps): Reac
   const [location, setLocation] = useState('')
 
   // Reminder form state
-  const [remindAt, setRemindAt] = useState('')
+  const [remindDate, setRemindDate] = useState<Date | undefined>(undefined)
+  const [remindTime, setRemindTime] = useState('09:00')
 
   const { data: projects = [] } = useQuery({
     queryKey: ['tasks', 'projects'],
@@ -143,11 +145,16 @@ export const ConvertActions = ({ item, onConverted }: ConvertActionsProps): Reac
       t('convert.event')
     )
 
-  const handleReminder = (): Promise<void> =>
-    run(
-      convertReminder.mutateAsync({ itemId: item.id, input: { remindAt: toIso(remindAt) } }),
+  const handleReminder = (): Promise<void> => {
+    if (!remindDate) return Promise.resolve()
+    const [hours, minutes] = remindTime.split(':').map(Number)
+    const at = new Date(remindDate)
+    at.setHours(hours, minutes, 0, 0)
+    return run(
+      convertReminder.mutateAsync({ itemId: item.id, input: { remindAt: at.toISOString() } }),
       t('convert.reminder')
     )
+  }
 
   return (
     <TooltipProvider>
@@ -275,18 +282,27 @@ export const ConvertActions = ({ item, onConverted }: ConvertActionsProps): Reac
             disabledHint={t('convert.binaryOnlyNote')}
             open={openForm === 'reminder'}
             onOpenChange={(open) => setOpenForm(open ? 'reminder' : null)}
+            contentClassName="w-72 p-3"
           >
             <div className="flex flex-col gap-2.5">
               <Field label={t('convert.remindAt')}>
+                <DatePickerCalendar
+                  selected={remindDate}
+                  onSelect={setRemindDate}
+                  disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                  className="rounded-md border p-2"
+                />
+              </Field>
+              <Field label={t('convert.time')}>
                 <Input
-                  type="datetime-local"
-                  value={remindAt}
-                  onChange={(e) => setRemindAt(e.target.value)}
+                  type="time"
+                  value={remindTime}
+                  onChange={(e) => setRemindTime(e.target.value)}
                 />
               </Field>
               <Button
                 size="sm"
-                disabled={!remindAt || isPending}
+                disabled={!remindDate || isPending}
                 onClick={() => void handleReminder()}
                 className="bg-tint hover:bg-tint-hover text-tint-foreground border-0"
               >
@@ -308,6 +324,7 @@ interface ConvertButtonProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   children: React.ReactNode
+  contentClassName?: string
 }
 
 function ConvertButton({
@@ -317,7 +334,8 @@ function ConvertButton({
   disabledHint,
   open,
   onOpenChange,
-  children
+  children,
+  contentClassName = 'w-64 p-3'
 }: ConvertButtonProps): React.JSX.Element {
   const trigger = (
     <Button
@@ -345,7 +363,7 @@ function ConvertButton({
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-      <PopoverContent align="start" className="w-64 p-3">
+      <PopoverContent align="start" className={contentClassName}>
         {children}
       </PopoverContent>
     </Popover>
