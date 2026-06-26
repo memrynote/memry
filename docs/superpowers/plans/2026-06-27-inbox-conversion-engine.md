@@ -35,7 +35,7 @@
 
 - Produces: `FilingAction = 'folder' | 'note' | 'linked' | 'task' | 'event' | 'reminder'`; `markItemAsFiled(itemId: string, filedTo: string, filedAction: FilingAction): void`; `convertToTask` files as `'task'` with bare `taskId`.
 
-- [ ] **Step 1: Write the failing test** — add to the existing `describe('convertToTask', ...)` block in `filing.test.ts`, mirroring that block's existing setup/mocks:
+- [x] **Step 1: Write the failing test** — add to the existing `describe('convertToTask', ...)` block in `filing.test.ts`, mirroring that block's existing setup/mocks:
 
 ```ts
 it('files as task with the bare task id as filedTo', async () => {
@@ -49,12 +49,12 @@ it('files as task with the bare task id as filedTo', async () => {
 })
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter @memry/desktop test:main -- filing.test.ts -t "bare task id"`
 Expected: FAIL — `filedAction` is `'note'` and `filedTo` is `task:<id>`.
 
-- [ ] **Step 3: Widen the three type definitions**
+- [x] **Step 3: Widen the three type definitions**
 
 In each of the three files replace the union with:
 
@@ -64,7 +64,7 @@ export type FilingAction = 'folder' | 'note' | 'linked' | 'task' | 'event' | 're
 
 (`InboxFilingAction` in `packages/rpc/src/inbox.ts` and `packages/domain-inbox/src/types.ts`; `FilingAction` in `packages/contracts/src/inbox-api.ts`.)
 
-- [ ] **Step 4: Widen the main signatures + fix provenance** in `filing.ts`
+- [x] **Step 4: Widen the main signatures + fix provenance** in `filing.ts`
 
 Change the `filedAction` param type on `markItemAsFiled` and `recordFilingHistory` from `'folder' | 'note' | 'linked'` to the full union (import `FilingAction` from `@memry/contracts/inbox-api`). In `convertToTask`, replace:
 
@@ -80,17 +80,17 @@ markItemAsFiled(itemId, taskId, 'task')
 recordFilingHistory(item.type, item.content, taskId, 'task', mergedTags)
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `pnpm --filter @memry/desktop test:main -- filing.test.ts -t "bare task id"`
 Expected: PASS. Then run the whole file: `pnpm --filter @memry/desktop test:main -- filing.test.ts` — existing convertToTask assertions that asserted the `task:` prefix must be updated to the bare id in the same commit.
 
-- [ ] **Step 6: Typecheck the packages**
+- [x] **Step 6: Typecheck the packages**
 
 Run: `pnpm typecheck`
 Expected: PASS (the widened union is a superset; no exhaustiveness breaks expected — fix any that surface).
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add packages/contracts/src/inbox-api.ts packages/rpc/src/inbox.ts packages/domain-inbox/src/types.ts apps/desktop/src/main/inbox/filing.ts apps/desktop/src/main/inbox/filing.test.ts

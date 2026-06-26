@@ -19,7 +19,7 @@ export type InboxItemType =
   | 'reminder'
 
 export type InboxProcessingStatus = 'pending' | 'processing' | 'complete' | 'failed'
-export type InboxFilingAction = 'folder' | 'note' | 'linked'
+export type InboxFilingAction = 'folder' | 'note' | 'linked' | 'task' | 'event' | 'reminder'
 export type CaptureSource = 'quick-capture' | 'inline' | 'browser-extension' | 'api' | 'reminder'
 export type InboxJobType =
   | 'transcription'

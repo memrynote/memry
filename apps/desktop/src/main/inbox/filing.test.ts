@@ -946,6 +946,22 @@ describe('Inbox Filing Operations', () => {
         expect.objectContaining({ success: false, error: 'insert failed' })
       )
     })
+
+    it('files as task with the bare task id as filedTo', async () => {
+      const itemId = seedInboxItem(testDb.db, {
+        id: 'task-provenance',
+        type: 'note',
+        title: 'Ship the report'
+      })
+
+      const res = await convertToTask(itemId)
+
+      expect(res.success).toBe(true)
+      const row = testDb.db.select().from(inboxItems).where(eq(inboxItems.id, itemId)).get()
+      expect(row?.filedAction).toBe('task')
+      expect(row?.filedTo).toBe(res.taskId)
+      expect(row?.filedTo?.startsWith('task:')).toBe(false)
+    })
   })
 
   // ==========================================================================

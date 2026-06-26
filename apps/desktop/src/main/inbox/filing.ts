@@ -20,6 +20,7 @@ import { generateId } from '../lib/id'
 import { normalizeRelativePath } from '../lib/paths'
 import { eq } from 'drizzle-orm'
 import { InboxChannels, TasksChannels } from '@memry/contracts/ipc-channels'
+import type { FilingAction } from '@memry/contracts/inbox-api'
 import { resolveAttachmentUrl, deleteInboxAttachments } from './attachments'
 import { extractYouTubeVideoId } from '@memry/shared/youtube'
 import { extractDomain } from './metadata-utils'
@@ -394,11 +395,7 @@ function generateInboxCaptureEntry(item: InboxItemRow, noteTitle: string): strin
  * Mark inbox item as filed (update DB, don't delete)
  * Also clears any snooze status since the item is now filed
  */
-function markItemAsFiled(
-  itemId: string,
-  filedTo: string,
-  filedAction: 'folder' | 'note' | 'linked'
-): void {
+function markItemAsFiled(itemId: string, filedTo: string, filedAction: FilingAction): void {
   const db = requireDatabase()
   const now = new Date().toISOString()
 
@@ -435,7 +432,7 @@ function recordFilingHistory(
   itemType: string,
   itemContent: string | null,
   filedTo: string,
-  filedAction: 'folder' | 'note' | 'linked',
+  filedAction: FilingAction,
   tags: string[]
 ): void {
   const db = requireDatabase()
@@ -734,8 +731,8 @@ export async function convertToTask(
 
     log.info(`Converted to task: ${taskId}`)
 
-    markItemAsFiled(itemId, `task:${taskId}`, 'note')
-    recordFilingHistory(item.type, item.content, `task:${taskId}`, 'note', mergedTags)
+    markItemAsFiled(itemId, taskId, 'task')
+    recordFilingHistory(item.type, item.content, taskId, 'task', mergedTags)
 
     const enrichedTask = { ...task, linkedNoteIds: [] as string[] }
     BrowserWindow.getAllWindows().forEach((win) => {
