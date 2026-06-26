@@ -89,7 +89,7 @@ export function useTriageQueue(): UseTriageQueueResult {
 
   const convertToTask = useCallback(async () => {
     if (!currentItem) return
-    const result = await convertToTaskMutation.mutateAsync(currentItem.id)
+    const result = await convertToTaskMutation.mutateAsync({ itemId: currentItem.id })
     if (!result.success) {
       throw new Error(result.error || 'Failed to convert to task')
     }

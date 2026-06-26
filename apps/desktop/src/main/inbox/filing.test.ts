@@ -8,6 +8,7 @@ import {
   type TestDatabaseResult
 } from '../../../tests/utils/test-db'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
+import { calendarEvents } from '@memry/db-schema/schema/calendar-events'
 import { eq } from 'drizzle-orm'
 
 // Mock the database module
@@ -26,6 +27,7 @@ const mockInsertTask = vi.fn()
 const mockGetNextTaskPosition = vi.fn()
 const mockSetTaskTags = vi.fn()
 const mockGetInboxProject = vi.fn()
+const mockCreateReminder = vi.fn()
 
 vi.mock('electron', () => ({
   BrowserWindow: {
@@ -90,12 +92,18 @@ vi.mock('../database/queries/projects', () => ({
   getInboxProject: (...args: unknown[]) => mockGetInboxProject(...args)
 }))
 
+vi.mock('../lib/reminders', () => ({
+  createReminder: (...args: unknown[]) => mockCreateReminder(...args)
+}))
+
 import { getDatabase, requireDatabase } from '../database'
 import { getStatus } from '../vault/index'
 import {
   fileToFolder,
   convertToNote,
   convertToTask,
+  convertToEvent,
+  convertToReminder,
   linkToNote,
   linkToNotes,
   bulkFileToFolder,
@@ -158,6 +166,7 @@ describe('Inbox Filing Operations', () => {
     mockGetNextTaskPosition.mockReset().mockReturnValue(42)
     mockSetTaskTags.mockReset()
     mockGetInboxProject.mockReset().mockReturnValue({ id: 'project-inbox' })
+    mockCreateReminder.mockReset().mockReturnValue({ id: 'rem_1' })
     vi.mocked(getStatus).mockReturnValue({ isOpen: true, path: '/mock-vault' } as never)
 
     mockCreateNote.mockResolvedValue({
@@ -945,6 +954,131 @@ describe('Inbox Filing Operations', () => {
       await expect(convertToTask(failingItemId)).resolves.toEqual(
         expect.objectContaining({ success: false, error: 'insert failed' })
       )
+    })
+
+    it('files as task with the bare task id as filedTo', async () => {
+      const itemId = seedInboxItem(testDb.db, {
+        id: 'task-provenance',
+        type: 'note',
+        title: 'Ship the report'
+      })
+
+      const res = await convertToTask(itemId)
+
+      expect(res.success).toBe(true)
+      const row = testDb.db.select().from(inboxItems).where(eq(inboxItems.id, itemId)).get()
+      expect(row?.filedAction).toBe('task')
+      expect(row?.filedTo).toBe(res.taskId)
+      expect(row?.filedTo?.startsWith('task:')).toBe(false)
+    })
+
+    it('honours projectId, dueDate, dueTime and priority', async () => {
+      const itemId = seedInboxItem(testDb.db, {
+        id: 'task-options',
+        type: 'note',
+        title: 'Send invoice'
+      })
+
+      const res = await convertToTask(itemId, {
+        projectId: 'project-work',
+        dueDate: '2099-03-01',
+        dueTime: '14:00',
+        priority: 2
+      })
+
+      expect(res.success).toBe(true)
+      expect(mockInsertTask).toHaveBeenCalledWith(
+        testDb.db,
+        expect.objectContaining({
+          projectId: 'project-work',
+          dueDate: '2099-03-01',
+          dueTime: '14:00',
+          priority: 2
+        })
+      )
+    })
+  })
+
+  describe('convertToEvent', () => {
+    it('creates a calendar event and files the item as event', async () => {
+      const itemId = seedInboxItem(testDb.db, {
+        id: 'event-source',
+        type: 'note',
+        title: 'Budget meeting'
+      })
+
+      const res = await convertToEvent(itemId, { startAt: '2099-01-02T15:00:00.000Z' })
+
+      expect(res.success).toBe(true)
+      const event = testDb.db
+        .select()
+        .from(calendarEvents)
+        .where(eq(calendarEvents.id, res.eventId!))
+        .get()
+      expect(event?.title).toBe('Budget meeting')
+      expect(event?.startAt).toBe('2099-01-02T15:00:00.000Z')
+      const row = testDb.db.select().from(inboxItems).where(eq(inboxItems.id, itemId)).get()
+      expect(row?.filedAction).toBe('event')
+      expect(row?.filedTo).toBe(res.eventId)
+    })
+
+    it('rejects binary items', async () => {
+      const itemId = seedInboxItem(testDb.db, { id: 'event-pdf', type: 'pdf', title: 'doc.pdf' })
+      const res = await convertToEvent(itemId, { startAt: '2099-01-02T15:00:00.000Z' })
+      expect(res.success).toBe(false)
+      expect(res.error).toMatch(/binary|file|text/i)
+    })
+
+    it('rejects already-filed items', async () => {
+      const itemId = seedInboxItem(testDb.db, {
+        id: 'event-filed',
+        type: 'note',
+        title: 'x',
+        filedAt: new Date().toISOString()
+      })
+      const res = await convertToEvent(itemId, { startAt: '2099-01-02T15:00:00.000Z' })
+      expect(res.success).toBe(false)
+    })
+  })
+
+  describe('convertToReminder', () => {
+    it('creates a note and a note-target reminder, files as reminder', async () => {
+      const itemId = seedInboxItem(testDb.db, {
+        id: 'reminder-source',
+        type: 'note',
+        title: 'Follow up with Sam'
+      })
+
+      const res = await convertToReminder(itemId, { remindAt: '2099-01-02T09:00:00.000Z' })
+
+      expect(res.success).toBe(true)
+      expect(res.noteId).toBeTruthy()
+      expect(mockCreateReminder).toHaveBeenCalledWith(
+        expect.objectContaining({
+          targetType: 'note',
+          targetId: 'note-123',
+          remindAt: '2099-01-02T09:00:00.000Z'
+        })
+      )
+      const row = testDb.db.select().from(inboxItems).where(eq(inboxItems.id, itemId)).get()
+      expect(row?.filedAction).toBe('reminder')
+    })
+
+    it('rejects a past remindAt', async () => {
+      const itemId = seedInboxItem(testDb.db, { id: 'reminder-past', type: 'note', title: 'x' })
+      const res = await convertToReminder(itemId, { remindAt: '2000-01-01T00:00:00.000Z' })
+      expect(res.success).toBe(false)
+      expect(mockCreateReminder).not.toHaveBeenCalled()
+    })
+
+    it('rejects binary items', async () => {
+      const itemId = seedInboxItem(testDb.db, {
+        id: 'reminder-image',
+        type: 'image',
+        title: 'pic.png'
+      })
+      const res = await convertToReminder(itemId, { remindAt: '2099-01-02T09:00:00.000Z' })
+      expect(res.success).toBe(false)
     })
   })
 

@@ -19,7 +19,11 @@ import { inboxItems, inboxItemTags, filingHistory } from '@memry/db-schema/schem
 import { generateId } from '../lib/id'
 import { normalizeRelativePath } from '../lib/paths'
 import { eq } from 'drizzle-orm'
-import { InboxChannels, TasksChannels } from '@memry/contracts/ipc-channels'
+import { InboxChannels, TasksChannels, CalendarChannels } from '@memry/contracts/ipc-channels'
+import type { FilingAction } from '@memry/contracts/inbox-api'
+import { upsertCalendarEvent } from '../calendar/repositories/calendar-events-repository'
+import { syncCalendarEventCreate } from '../calendar/runtime-effects'
+import { createReminder } from '../lib/reminders'
 import { resolveAttachmentUrl, deleteInboxAttachments } from './attachments'
 import { extractYouTubeVideoId } from '@memry/shared/youtube'
 import { extractDomain } from './metadata-utils'
@@ -74,6 +78,16 @@ function getVaultPath(): string {
  */
 function isBinaryType(type: string): boolean {
   return ['image', 'voice', 'pdf', 'video'].includes(type)
+}
+
+/**
+ * Items with no usable text body — they can only become a plain Note, not a
+ * task/event/reminder. Distinct from isBinaryType: voice is excluded here
+ * because its transcription is the text, while clip (a text type for filing)
+ * is included because it has no standalone body worth scheduling.
+ */
+function isNoteOnlyType(type: string): boolean {
+  return ['image', 'pdf', 'video', 'clip'].includes(type)
 }
 
 /**
@@ -394,11 +408,7 @@ function generateInboxCaptureEntry(item: InboxItemRow, noteTitle: string): strin
  * Mark inbox item as filed (update DB, don't delete)
  * Also clears any snooze status since the item is now filed
  */
-function markItemAsFiled(
-  itemId: string,
-  filedTo: string,
-  filedAction: 'folder' | 'note' | 'linked'
-): void {
+function markItemAsFiled(itemId: string, filedTo: string, filedAction: FilingAction): void {
   const db = requireDatabase()
   const now = new Date().toISOString()
 
@@ -435,7 +445,7 @@ function recordFilingHistory(
   itemType: string,
   itemContent: string | null,
   filedTo: string,
-  filedAction: 'folder' | 'note' | 'linked',
+  filedAction: FilingAction,
   tags: string[]
 ): void {
   const db = requireDatabase()
@@ -680,7 +690,13 @@ export async function convertToNote(itemId: string): Promise<FileResponse> {
  * @param itemId - Inbox item ID
  */
 export async function convertToTask(
-  itemId: string
+  itemId: string,
+  input?: {
+    projectId?: string
+    dueDate?: string | null
+    dueTime?: string | null
+    priority?: number
+  }
 ): Promise<{ success: boolean; taskId: string | null; error?: string }> {
   try {
     const db = requireDatabase()
@@ -706,22 +722,23 @@ export async function convertToTask(
     const { getInboxProject } = await import('../database/queries/projects')
 
     const inboxProject = getInboxProject(db)
-    if (!inboxProject) {
+    const projectId = input?.projectId ?? inboxProject?.id
+    if (!projectId) {
       return { success: false, taskId: null, error: 'No inbox project found' }
     }
 
-    const position = getNextTaskPosition(db, inboxProject.id, null)
+    const position = getNextTaskPosition(db, projectId, null)
     const task = insertTask(db, {
       id: taskId,
-      projectId: inboxProject.id,
+      projectId,
       statusId: null,
       parentId: null,
       title,
       description,
-      priority: 0,
+      priority: input?.priority ?? 0,
       position,
-      dueDate: null,
-      dueTime: null,
+      dueDate: input?.dueDate ?? null,
+      dueTime: input?.dueTime ?? null,
       startDate: null,
       repeatConfig: null,
       repeatFrom: null,
@@ -734,8 +751,8 @@ export async function convertToTask(
 
     log.info(`Converted to task: ${taskId}`)
 
-    markItemAsFiled(itemId, `task:${taskId}`, 'note')
-    recordFilingHistory(item.type, item.content, `task:${taskId}`, 'note', mergedTags)
+    markItemAsFiled(itemId, taskId, 'task')
+    recordFilingHistory(item.type, item.content, taskId, 'task', mergedTags)
 
     const enrichedTask = { ...task, linkedNoteIds: [] as string[] }
     BrowserWindow.getAllWindows().forEach((win) => {
@@ -749,6 +766,125 @@ export async function convertToTask(
     const message = error instanceof Error ? error.message : 'Unknown error'
     log.error('Error converting to task:', message)
     return { success: false, taskId: null, error: message }
+  }
+}
+
+/**
+ * Convert an inbox item to a calendar event.
+ * Reuses the existing calendar_events create path (upsert + sync + emit),
+ * carries the item title/body, and marks the inbox item as filed.
+ *
+ * @param itemId - Inbox item ID
+ * @param input - Event timing/location
+ */
+export async function convertToEvent(
+  itemId: string,
+  input: { startAt: string; endAt?: string | null; isAllDay?: boolean; location?: string | null }
+): Promise<{ success: boolean; eventId: string | null; error?: string }> {
+  try {
+    const db = requireDatabase()
+    const item = getInboxItem(db, itemId)
+    if (!item) return { success: false, eventId: null, error: 'Inbox item not found' }
+    if (item.filedAt) {
+      return { success: false, eventId: null, error: 'Item has already been filed' }
+    }
+    if (isNoteOnlyType(item.type)) {
+      return {
+        success: false,
+        eventId: null,
+        error: 'Only text and voice items can become an event'
+      }
+    }
+
+    const content = item.type === 'voice' ? item.transcription : item.content
+    const existingTags = getItemTags(db, itemId)
+    const mergedTags = [...new Set([...existingTags, 'inbox'])]
+
+    const id = generateId()
+    const now = new Date().toISOString()
+    upsertCalendarEvent(db, {
+      id,
+      title: generateNoteTitle(item),
+      description: content ?? null,
+      location: input.location ?? null,
+      startAt: input.startAt,
+      endAt: input.endAt ?? null,
+      timezone: 'UTC',
+      isAllDay: input.isAllDay ?? false,
+      createdAt: now,
+      modifiedAt: now
+    })
+
+    try {
+      syncCalendarEventCreate(id)
+    } catch (error) {
+      log.warn('syncCalendarEventCreate failed; event persisted locally', error)
+    }
+    BrowserWindow.getAllWindows().forEach((win) => {
+      win.webContents.send(CalendarChannels.events.CHANGED, { entityType: 'calendar_event', id })
+    })
+
+    markItemAsFiled(itemId, id, 'event')
+    recordFilingHistory(item.type, item.content, id, 'event', mergedTags)
+    log.info(`Converted to event: ${id}`)
+    return { success: true, eventId: id }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    log.error('Error converting to event:', message)
+    return { success: false, eventId: null, error: message }
+  }
+}
+
+/**
+ * Convert an inbox item to a reminder.
+ * Creates a standalone note (reminders need a target) and schedules a
+ * note-target reminder via the existing reminders service.
+ *
+ * @param itemId - Inbox item ID
+ * @param input - Reminder timing (must be in the future)
+ */
+export async function convertToReminder(
+  itemId: string,
+  input: { remindAt: string }
+): Promise<{ success: boolean; noteId: string | null; error?: string }> {
+  try {
+    const db = requireDatabase()
+    const item = getInboxItem(db, itemId)
+    if (!item) return { success: false, noteId: null, error: 'Inbox item not found' }
+    if (item.filedAt) {
+      return { success: false, noteId: null, error: 'Item has already been filed' }
+    }
+    if (isNoteOnlyType(item.type)) {
+      return {
+        success: false,
+        noteId: null,
+        error: 'Only text and voice items can become a reminder'
+      }
+    }
+    if (new Date(input.remindAt).getTime() <= Date.now()) {
+      return { success: false, noteId: null, error: 'Reminder time must be in the future' }
+    }
+
+    const existingTags = getItemTags(db, itemId)
+    const mergedTags = [...new Set([...existingTags, 'inbox'])]
+    const title = generateNoteTitle(item)
+    const note = await createNote({
+      title,
+      content: generateNoteContent(item),
+      tags: mergedTags,
+      properties: extractItemProperties(item.metadata)
+    })
+
+    createReminder({ targetType: 'note', targetId: note.id, remindAt: input.remindAt, title })
+
+    markItemAsFiled(itemId, note.path, 'reminder')
+    recordFilingHistory(item.type, item.content, note.path, 'reminder', mergedTags)
+    log.info(`Converted to reminder: note ${note.id}`)
+    return { success: true, noteId: note.id }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    log.error('Error converting to reminder:', message)
+    return { success: false, noteId: null, error: message }
   }
 }
 

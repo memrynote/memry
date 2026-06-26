@@ -159,12 +159,57 @@ export function useConvertToNote(): UseMutationResult<InboxFileResponse, Error, 
   })
 }
 
+export type ConvertTaskOptions = {
+  projectId?: string
+  dueDate?: string | null
+  dueTime?: string | null
+  priority?: number
+}
+
+export type ConvertEventOptions = {
+  startAt: string
+  endAt?: string | null
+  isAllDay?: boolean
+  location?: string | null
+}
+
+export type ConvertReminderOptions = { remindAt: string }
+
 export function useConvertToTask() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (itemId: string) => inboxService.convertToTask(itemId),
-    onSuccess: (_, itemId) => {
+    mutationFn: ({ itemId, input }: { itemId: string; input?: ConvertTaskOptions }) =>
+      inboxService.convertToTask(itemId, input),
+    onSuccess: (_, { itemId }) => {
+      queryClient.removeQueries({ queryKey: inboxKeys.item(itemId) })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
+    }
+  })
+}
+
+export function useConvertToEvent() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ itemId, input }: { itemId: string; input: ConvertEventOptions }) =>
+      inboxService.convertToEvent(itemId, input),
+    onSuccess: (_, { itemId }) => {
+      queryClient.removeQueries({ queryKey: inboxKeys.item(itemId) })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
+    }
+  })
+}
+
+export function useConvertToReminder() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ itemId, input }: { itemId: string; input: ConvertReminderOptions }) =>
+      inboxService.convertToReminder(itemId, input),
+    onSuccess: (_, { itemId }) => {
       queryClient.removeQueries({ queryKey: inboxKeys.item(itemId) })
       void queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
       void queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
