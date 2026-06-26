@@ -63,39 +63,28 @@ function getRepoRoot() {
   return result.stdout.trim()
 }
 
-function buildCodexArgs(repoRoot) {
-  const args = [
-    'exec',
-    '--cd',
-    repoRoot,
-    '--sandbox',
-    'workspace-write',
-    '--ask-for-approval',
-    'never'
-  ]
+function buildClaudeArgs(prompt) {
+  const args = ['-p']
   const model = process.env.DOCS_AI_MODEL?.trim()
 
   if (model) {
     args.push('--model', model)
   }
 
-  args.push('-')
+  args.push(prompt)
   return args
 }
 
-function runCodex(prompt) {
-  const command = process.env.DOCS_AI_CLI?.trim() || 'codex'
-  const repoRoot = getRepoRoot()
-  const result = spawnSync(command, buildCodexArgs(repoRoot), {
+function runClaude(prompt) {
+  const args = buildClaudeArgs(prompt)
+  const result = spawnSync('claude', args, {
     encoding: 'utf8',
-    input: prompt,
-    stdio: ['pipe', 'inherit', 'inherit']
+    stdio: ['inherit', 'inherit', 'inherit'],
+    cwd: getRepoRoot()
   })
 
   if (result.error?.code === 'ENOENT') {
-    throw new Error(
-      `Docs AI updater could not find \`${command}\`. Install Codex CLI or set DOCS_AI_CLI.`
-    )
+    throw new Error('Docs AI updater could not find `claude` CLI. Install Claude Code CLI.')
   }
 
   if (result.error) {
@@ -123,7 +112,7 @@ function runCli() {
     return
   }
 
-  process.exit(runCodex(prompt))
+  process.exit(runClaude(prompt))
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
