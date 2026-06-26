@@ -25,15 +25,17 @@ Each card shows:
 
 ## Actions
 
-| Action              | Result                                                                                                                   |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| **Archive**         | Done; file the item and move on. The item is searchable but out of the active inbox.                                     |
-| **Snooze**          | Defer until later. Item disappears from inbox until wake time. See [Snooze & Archive](/user-guide/inbox/snooze-archive). |
-| **Quick file**      | Move into a folder, project, or tag without converting.                                                                  |
-| **Convert to Note** | Create a note seeded with the item's content. The original is archived with a back-reference.                            |
-| **Convert to Task** | Create a task in the current default project.                                                                            |
-| **Open**            | Open the source URL in your browser.                                                                                     |
-| **Delete**          | Discard. (Confirms first.)                                                                                               |
+| Action                  | Result                                                                                                                                                |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Archive**             | Done; file the item and move on. The item is searchable but out of the active inbox.                                                                  |
+| **Snooze**              | Defer until later. Item disappears from inbox until wake time. See [Snooze & Archive](/user-guide/inbox/snooze-archive).                              |
+| **Quick file**          | Move into a folder, project, or tag without converting.                                                                                               |
+| **Convert to Note**     | Create a note seeded with the item's content. The original is archived with a back-reference.                                                         |
+| **Convert to Task**     | Create a task in the current default project, or pick a project, due date, due time, and priority.                                                    |
+| **Convert to Event**    | Create a calendar event from the item: start (and optional end) time, an all-day toggle, and a location. The item body becomes the event description. |
+| **Convert to Reminder** | Create a note from the item and schedule a reminder for it at a chosen time. The time must be in the future.                                          |
+| **Open**                | Open the source URL in your browser.                                                                                                                  |
+| **Delete**              | Discard. (Confirms first.)                                                                                                                            |
 
 ## Keyboard Shortcuts
 
@@ -55,6 +57,16 @@ Many items map to a sequence:
 - **Task hidden in a link** → Convert to Task, the source is preserved as a reference
 - **Reference material** → Convert to Note with a tag, then Archive
 - **Already obsolete** → Delete
+
+## Converting from the Detail Panel
+
+Opening an item shows a **Convert** row beneath the filing section with four targets: **Note**, **Task**, **Event**, and **Reminder**. Task, Event, and Reminder open a small form so you can set details before converting:
+
+- **Task** — project, due date, due time, and priority.
+- **Event** — start time (required), end time, all-day, and location.
+- **Reminder** — the time to be reminded (must be in the future).
+
+File-based items (images, PDFs, videos, and clips) can only become a **Note**, so the other three are disabled for them. Voice memos convert using their transcription, so they keep the full set of options.
 
 ## Speed-Run Mode
 
