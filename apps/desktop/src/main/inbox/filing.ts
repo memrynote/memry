@@ -23,6 +23,7 @@ import { InboxChannels, TasksChannels, CalendarChannels } from '@memry/contracts
 import type { FilingAction } from '@memry/contracts/inbox-api'
 import { upsertCalendarEvent } from '../calendar/repositories/calendar-events-repository'
 import { syncCalendarEventCreate } from '../calendar/runtime-effects'
+import { createReminder } from '../lib/reminders'
 import { resolveAttachmentUrl, deleteInboxAttachments } from './attachments'
 import { extractYouTubeVideoId } from '@memry/shared/youtube'
 import { extractDomain } from './metadata-utils'
@@ -824,6 +825,59 @@ export async function convertToEvent(
     const message = error instanceof Error ? error.message : 'Unknown error'
     log.error('Error converting to event:', message)
     return { success: false, eventId: null, error: message }
+  }
+}
+
+/**
+ * Convert an inbox item to a reminder.
+ * Creates a standalone note (reminders need a target) and schedules a
+ * note-target reminder via the existing reminders service.
+ *
+ * @param itemId - Inbox item ID
+ * @param input - Reminder timing (must be in the future)
+ */
+export async function convertToReminder(
+  itemId: string,
+  input: { remindAt: string }
+): Promise<{ success: boolean; noteId: string | null; error?: string }> {
+  try {
+    const db = requireDatabase()
+    const item = getInboxItem(db, itemId)
+    if (!item) return { success: false, noteId: null, error: 'Inbox item not found' }
+    if (item.filedAt) {
+      return { success: false, noteId: null, error: 'Item has already been filed' }
+    }
+    if (isNoteOnlyType(item.type)) {
+      return {
+        success: false,
+        noteId: null,
+        error: 'Only text and voice items can become a reminder'
+      }
+    }
+    if (new Date(input.remindAt).getTime() <= Date.now()) {
+      return { success: false, noteId: null, error: 'Reminder time must be in the future' }
+    }
+
+    const existingTags = getItemTags(db, itemId)
+    const mergedTags = [...new Set([...existingTags, 'inbox'])]
+    const title = generateNoteTitle(item)
+    const note = await createNote({
+      title,
+      content: generateNoteContent(item),
+      tags: mergedTags,
+      properties: extractItemProperties(item.metadata)
+    })
+
+    createReminder({ targetType: 'note', targetId: note.id, remindAt: input.remindAt, title })
+
+    markItemAsFiled(itemId, note.path, 'reminder')
+    recordFilingHistory(item.type, item.content, note.path, 'reminder', mergedTags)
+    log.info(`Converted to reminder: note ${note.id}`)
+    return { success: true, noteId: note.id }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    log.error('Error converting to reminder:', message)
+    return { success: false, noteId: null, error: message }
   }
 }
 

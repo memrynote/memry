@@ -245,11 +245,11 @@ git commit -m "feat(inbox): convertToEvent reuses calendar_events create"
 - Consumes: `createNote(...)` (already imported in filing.ts); the main reminders create used in `reminder-handlers.ts` — confirm the exact import there (`remindersService.n({ targetType, targetId, remindAt, title? })` from `@memry/app-core/reminders` via its `nsService(db)` factory). Reuse `generateNoteTitle`, `generateNoteContent`, `extractItemProperties`, `getItemTags`.
 - Produces: `convertToReminder(itemId: string, input: { remindAt: string }): Promise<{ success: boolean; noteId: string | null; error?: string }>`
 
-- [ ] **Step 1: Confirm the reminder create import**
+- [x] **Step 1: Confirm the reminder create import**
 
 Open `apps/desktop/src/main/ipc/reminder-handlers.ts`, find the create call (`remindersService.n(input)`) and its import. Use the SAME factory/import in filing.ts. Do not invent a new helper.
 
-- [ ] **Step 2: Write the failing test** (new `describe('convertToReminder', ...)`):
+- [x] **Step 2: Write the failing test** (new `describe('convertToReminder', ...)`):
 
 ```ts
 describe('convertToReminder', () => {
@@ -276,12 +276,12 @@ describe('convertToReminder', () => {
 })
 ```
 
-- [ ] **Step 3: Run test to verify it fails**
+- [x] **Step 3: Run test to verify it fails**
 
 Run: `pnpm --filter @memry/desktop test:main -- filing.test.ts -t convertToReminder`
 Expected: FAIL — `convertToReminder is not a function`.
 
-- [ ] **Step 4: Implement `convertToReminder`** in `filing.ts` (using the import confirmed in Step 1; example assumes `nsService`):
+- [x] **Step 4: Implement `convertToReminder`** in `filing.ts` (using the import confirmed in Step 1; example assumes `nsService`):
 
 ```ts
 export async function convertToReminder(
@@ -328,12 +328,12 @@ export async function convertToReminder(
 }
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `pnpm --filter @memry/desktop test:main -- filing.test.ts -t convertToReminder`
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add apps/desktop/src/main/inbox/filing.ts apps/desktop/src/main/inbox/filing.test.ts
