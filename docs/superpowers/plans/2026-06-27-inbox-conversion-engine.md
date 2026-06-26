@@ -502,7 +502,7 @@ git commit -m "feat(inbox): wire convert-to-event/reminder IPC + preload"
 
 - Consumes: `window.api.inbox.convertToEvent/Reminder/Task` from Task 5.
 
-- [ ] **Step 1: Write the failing renderer test** — binary gating:
+- [x] **Step 1: Write the failing renderer test** — binary gating:
 
 ```tsx
 it('disables Task/Event/Reminder for binary items, Note stays enabled', () => {
@@ -513,14 +513,14 @@ it('disables Task/Event/Reminder for binary items, Note stays enabled', () => {
 })
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `vitest run --config config/vitest.config.ts --project renderer apps/desktop/src/renderer/src/components/inbox-detail/filing-section.test.tsx`
 Expected: FAIL — no Event/Reminder buttons yet.
 
-- [ ] **Step 3: Add mutations** in `use-inbox-mutations.ts` mirroring the existing `convertToTask` mutation: `convertToEvent(itemId, input)`, `convertToReminder(itemId, input)`, and extend `convertToTask` to pass `input`. On success invalidate `inboxKeys.lists()` + `inboxKeys.item(id)` and show a success toast with an Open action.
+- [x] **Step 3: Add mutations** in `use-inbox-mutations.ts` mirroring the existing `convertToTask` mutation: `convertToEvent(itemId, input)`, `convertToReminder(itemId, input)`, and extend `convertToTask` to pass `input`. On success invalidate `inboxKeys.lists()` + `inboxKeys.item(id)` and show a success toast with an Open action.
 
-- [ ] **Step 4: Add the UI** in the convert surface:
+- [x] **Step 4: Add the UI** in the convert surface:
   - Buttons: Note · Task · Event · Reminder. Compute `const isBinary = ['image','pdf','video','clip'].includes(item.type)`; disable Task/Event/Reminder when `isBinary`, with a tooltip using the i18n key `inbox.convert.binaryOnlyNote`.
   - Each non-note button opens a compact popover form (use existing popover + Input/date primitives):
     - Task: project select (existing `useProjects`) · due date · due time · priority. All optional → calls `convertToTask(item.id, {...})`.
@@ -530,13 +530,13 @@ Expected: FAIL — no Event/Reminder buttons yet.
 
 - [ ] **Step 5: Add the filed badge** — in the filed/done list item, map `filedAction` → label/icon: `task → Task`, `event → Event`, `reminder → Reminder`, `note|linked → Note`, `folder → Folder`. Click routes to the target (task workspace / calendar / note).
 
-- [ ] **Step 6: Run the renderer test + i18n**
+- [x] **Step 6: Run the renderer test + i18n**
 
 Run: `vitest run --config config/vitest.config.ts --project renderer apps/desktop/src/renderer/src/components/inbox-detail/filing-section.test.tsx`
 Then: `pnpm --filter @memry/desktop i18n:check`
 Expected: PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add apps/desktop/src/renderer packages/i18n

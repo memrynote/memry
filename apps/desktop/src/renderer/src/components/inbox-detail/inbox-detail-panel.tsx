@@ -25,6 +25,7 @@ import { ContentSection, ContentSkeleton } from './content-section'
 import { DetailHeader } from './detail-header'
 import { NoteDetail } from './note-detail'
 import { FilingSection, useFilingState } from './filing-section'
+import { ConvertActions } from './convert-actions'
 import { useAISettingsContext } from '@/contexts/ai-settings-context'
 import { useRetryTranscription, useUpdateInboxItem } from '@/hooks/use-inbox'
 import { isMac, isInputFocused } from '@/hooks/use-keyboard-shortcuts'
@@ -485,6 +486,11 @@ export const InboxDetailPanel = ({
                 </>
               )}
             </div>
+
+            {/* Convert actions */}
+            {!readOnly && item.type !== 'reminder' && (
+              <ConvertActions item={item} onConverted={onClose} />
+            )}
 
             {/* Footer */}
             <div className="shrink-0 px-5 py-3 border-t border-border flex flex-col gap-1.5">

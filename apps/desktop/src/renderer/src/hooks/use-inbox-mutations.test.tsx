@@ -159,9 +159,9 @@ describe('use-inbox-mutations', () => {
     expect(inboxService.convertToNote).toHaveBeenCalledWith('note-item')
 
     renderHook(() => useConvertToTask())
-    latestMutation().mutationFn('task-item' as never)
-    latestMutation().onSuccess?.({}, 'task-item' as never)
-    expect(inboxService.convertToTask).toHaveBeenCalledWith('task-item')
+    latestMutation().mutationFn({ itemId: 'task-item' } as never)
+    latestMutation().onSuccess?.({}, { itemId: 'task-item' } as never)
+    expect(inboxService.convertToTask).toHaveBeenCalledWith('task-item', undefined)
   })
 
   it('handles tag, snooze, bulk, and retry invalidations', () => {
