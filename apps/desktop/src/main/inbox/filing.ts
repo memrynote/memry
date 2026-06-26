@@ -19,8 +19,10 @@ import { inboxItems, inboxItemTags, filingHistory } from '@memry/db-schema/schem
 import { generateId } from '../lib/id'
 import { normalizeRelativePath } from '../lib/paths'
 import { eq } from 'drizzle-orm'
-import { InboxChannels, TasksChannels } from '@memry/contracts/ipc-channels'
+import { InboxChannels, TasksChannels, CalendarChannels } from '@memry/contracts/ipc-channels'
 import type { FilingAction } from '@memry/contracts/inbox-api'
+import { upsertCalendarEvent } from '../calendar/repositories/calendar-events-repository'
+import { syncCalendarEventCreate } from '../calendar/runtime-effects'
 import { resolveAttachmentUrl, deleteInboxAttachments } from './attachments'
 import { extractYouTubeVideoId } from '@memry/shared/youtube'
 import { extractDomain } from './metadata-utils'
@@ -75,6 +77,16 @@ function getVaultPath(): string {
  */
 function isBinaryType(type: string): boolean {
   return ['image', 'voice', 'pdf', 'video'].includes(type)
+}
+
+/**
+ * Items with no usable text body — they can only become a plain Note, not a
+ * task/event/reminder. Distinct from isBinaryType: voice is excluded here
+ * because its transcription is the text, while clip (a text type for filing)
+ * is included because it has no standalone body worth scheduling.
+ */
+function isNoteOnlyType(type: string): boolean {
+  return ['image', 'pdf', 'video', 'clip'].includes(type)
 }
 
 /**
@@ -746,6 +758,72 @@ export async function convertToTask(
     const message = error instanceof Error ? error.message : 'Unknown error'
     log.error('Error converting to task:', message)
     return { success: false, taskId: null, error: message }
+  }
+}
+
+/**
+ * Convert an inbox item to a calendar event.
+ * Reuses the existing calendar_events create path (upsert + sync + emit),
+ * carries the item title/body, and marks the inbox item as filed.
+ *
+ * @param itemId - Inbox item ID
+ * @param input - Event timing/location
+ */
+export async function convertToEvent(
+  itemId: string,
+  input: { startAt: string; endAt?: string | null; isAllDay?: boolean; location?: string | null }
+): Promise<{ success: boolean; eventId: string | null; error?: string }> {
+  try {
+    const db = requireDatabase()
+    const item = getInboxItem(db, itemId)
+    if (!item) return { success: false, eventId: null, error: 'Inbox item not found' }
+    if (item.filedAt) {
+      return { success: false, eventId: null, error: 'Item has already been filed' }
+    }
+    if (isNoteOnlyType(item.type)) {
+      return {
+        success: false,
+        eventId: null,
+        error: 'Only text and voice items can become an event'
+      }
+    }
+
+    const content = item.type === 'voice' ? item.transcription : item.content
+    const existingTags = getItemTags(db, itemId)
+    const mergedTags = [...new Set([...existingTags, 'inbox'])]
+
+    const id = generateId()
+    const now = new Date().toISOString()
+    upsertCalendarEvent(db, {
+      id,
+      title: generateNoteTitle(item),
+      description: content ?? null,
+      location: input.location ?? null,
+      startAt: input.startAt,
+      endAt: input.endAt ?? null,
+      timezone: 'UTC',
+      isAllDay: input.isAllDay ?? false,
+      createdAt: now,
+      modifiedAt: now
+    })
+
+    try {
+      syncCalendarEventCreate(id)
+    } catch (error) {
+      log.warn('syncCalendarEventCreate failed; event persisted locally', error)
+    }
+    BrowserWindow.getAllWindows().forEach((win) => {
+      win.webContents.send(CalendarChannels.events.CHANGED, { entityType: 'calendar_event', id })
+    })
+
+    markItemAsFiled(itemId, id, 'event')
+    recordFilingHistory(item.type, item.content, id, 'event', mergedTags)
+    log.info(`Converted to event: ${id}`)
+    return { success: true, eventId: id }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    log.error('Error converting to event:', message)
+    return { success: false, eventId: null, error: message }
   }
 }
 

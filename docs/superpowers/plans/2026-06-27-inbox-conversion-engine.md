@@ -111,7 +111,7 @@ git commit -m "feat(inbox): add task/event/reminder FilingAction + fix convertTo
 - Consumes: `upsertCalendarEvent(db, NewCalendarEvent)` from `../calendar/repositories/calendar-events-repository`; `syncCalendarEventCreate(id)` from `../calendar/runtime-effects`; `CalendarChannels` from `@memry/contracts/ipc-channels`; existing `getInboxItem`, `getItemTags`, `generateNoteTitle`, `isBinaryType`, `markItemAsFiled`, `recordFilingHistory`, `generateId`.
 - Produces: `convertToEvent(itemId: string, input: { startAt: string; endAt?: string | null; isAllDay?: boolean; location?: string | null }): Promise<{ success: boolean; eventId: string | null; error?: string }>`
 
-- [ ] **Step 1: Write the failing test** (new `describe('convertToEvent', ...)`, mirror convertToTask setup):
+- [x] **Step 1: Write the failing test** (new `describe('convertToEvent', ...)`, mirror convertToTask setup):
 
 ```ts
 describe('convertToEvent', () => {
@@ -148,12 +148,12 @@ describe('convertToEvent', () => {
 
 Add `import { calendarEvents } from '@memry/db-schema/schema/calendar-events'` to the test if not present.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter @memry/desktop test:main -- filing.test.ts -t convertToEvent`
 Expected: FAIL — `convertToEvent is not a function`.
 
-- [ ] **Step 3: Implement `convertToEvent`** in `filing.ts` (add imports at top of file):
+- [x] **Step 3: Implement `convertToEvent`** in `filing.ts` (add imports at top of file):
 
 ```ts
 import { upsertCalendarEvent } from '../calendar/repositories/calendar-events-repository'
@@ -219,12 +219,12 @@ export async function convertToEvent(
 
 Verify the `CalendarChannels.events.CHANGED` payload shape against the IPC handler in `apps/desktop/src/main/ipc/calendar-handlers.ts` (line ~88 `emitCalendarChanged`); match its exact shape rather than guessing if it differs.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `pnpm --filter @memry/desktop test:main -- filing.test.ts -t convertToEvent`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add apps/desktop/src/main/inbox/filing.ts apps/desktop/src/main/inbox/filing.test.ts

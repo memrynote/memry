@@ -8,6 +8,7 @@ import {
   type TestDatabaseResult
 } from '../../../tests/utils/test-db'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
+import { calendarEvents } from '@memry/db-schema/schema/calendar-events'
 import { eq } from 'drizzle-orm'
 
 // Mock the database module
@@ -96,6 +97,8 @@ import {
   fileToFolder,
   convertToNote,
   convertToTask,
+  convertToEvent,
+  convertToReminder,
   linkToNote,
   linkToNotes,
   bulkFileToFolder,
@@ -961,6 +964,48 @@ describe('Inbox Filing Operations', () => {
       expect(row?.filedAction).toBe('task')
       expect(row?.filedTo).toBe(res.taskId)
       expect(row?.filedTo?.startsWith('task:')).toBe(false)
+    })
+  })
+
+  describe('convertToEvent', () => {
+    it('creates a calendar event and files the item as event', async () => {
+      const itemId = seedInboxItem(testDb.db, {
+        id: 'event-source',
+        type: 'note',
+        title: 'Budget meeting'
+      })
+
+      const res = await convertToEvent(itemId, { startAt: '2099-01-02T15:00:00.000Z' })
+
+      expect(res.success).toBe(true)
+      const event = testDb.db
+        .select()
+        .from(calendarEvents)
+        .where(eq(calendarEvents.id, res.eventId!))
+        .get()
+      expect(event?.title).toBe('Budget meeting')
+      expect(event?.startAt).toBe('2099-01-02T15:00:00.000Z')
+      const row = testDb.db.select().from(inboxItems).where(eq(inboxItems.id, itemId)).get()
+      expect(row?.filedAction).toBe('event')
+      expect(row?.filedTo).toBe(res.eventId)
+    })
+
+    it('rejects binary items', async () => {
+      const itemId = seedInboxItem(testDb.db, { id: 'event-pdf', type: 'pdf', title: 'doc.pdf' })
+      const res = await convertToEvent(itemId, { startAt: '2099-01-02T15:00:00.000Z' })
+      expect(res.success).toBe(false)
+      expect(res.error).toMatch(/binary|file|text/i)
+    })
+
+    it('rejects already-filed items', async () => {
+      const itemId = seedInboxItem(testDb.db, {
+        id: 'event-filed',
+        type: 'note',
+        title: 'x',
+        filedAt: new Date().toISOString()
+      })
+      const res = await convertToEvent(itemId, { startAt: '2099-01-02T15:00:00.000Z' })
+      expect(res.success).toBe(false)
     })
   })
 
