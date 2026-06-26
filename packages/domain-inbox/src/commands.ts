@@ -39,8 +39,22 @@ export interface InboxCommandServices {
   fileToFolder(itemId: string, folderPath: string, tags?: string[]): Promise<InboxFileResponse>
   convertToNote(itemId: string): Promise<InboxFileResponse>
   convertToTask(
-    itemId: string
+    itemId: string,
+    input?: {
+      projectId?: string
+      dueDate?: string | null
+      dueTime?: string | null
+      priority?: number
+    }
   ): Promise<{ success: boolean; taskId: string | null; error?: string }>
+  convertToEvent(
+    itemId: string,
+    input: { startAt: string; endAt?: string | null; isAllDay?: boolean; location?: string | null }
+  ): Promise<{ success: boolean; eventId: string | null; error?: string }>
+  convertToReminder(
+    itemId: string,
+    input: { remindAt: string }
+  ): Promise<{ success: boolean; noteId: string | null; error?: string }>
   linkToNote(
     itemId: string,
     noteId: string,
@@ -69,11 +83,27 @@ export interface InboxCommands {
   captureVoice(input: CaptureVoiceInput): Promise<InboxCaptureResponse>
   fileItem(input: FileItemInput): Promise<InboxFileResponse>
   getSuggestions(itemId: string): Promise<{ suggestions: InboxFilingSuggestion[] }>
-  trackSuggestion(input: TrackSuggestionFeedbackInput): Promise<{ success: boolean; error?: string }>
+  trackSuggestion(
+    input: TrackSuggestionFeedbackInput
+  ): Promise<{ success: boolean; error?: string }>
   convertToNote(itemId: string): Promise<InboxFileResponse>
   convertToTask(
-    itemId: string
+    itemId: string,
+    input?: {
+      projectId?: string
+      dueDate?: string | null
+      dueTime?: string | null
+      priority?: number
+    }
   ): Promise<{ success: boolean; taskId: string | null; error?: string }>
+  convertToEvent(
+    itemId: string,
+    input: { startAt: string; endAt?: string | null; isAllDay?: boolean; location?: string | null }
+  ): Promise<{ success: boolean; eventId: string | null; error?: string }>
+  convertToReminder(
+    itemId: string,
+    input: { remindAt: string }
+  ): Promise<{ success: boolean; noteId: string | null; error?: string }>
   linkToNote(
     itemId: string,
     noteId: string,
@@ -154,7 +184,9 @@ export function createInboxCommands(services: InboxCommandServices): InboxComman
         tags: input.tags,
         source: input.source,
         itemType: isSocial ? 'social' : 'link',
-        metadata: isSocial ? createSocialMetadata(input.url, platform) : createLinkMetadata(input.url)
+        metadata: isSocial
+          ? createSocialMetadata(input.url, platform)
+          : createLinkMetadata(input.url)
       })
 
       if (!result.success || !result.item) {
@@ -241,7 +273,9 @@ export function createInboxCommands(services: InboxCommandServices): InboxComman
     },
 
     convertToNote: (itemId) => services.convertToNote(itemId),
-    convertToTask: (itemId) => services.convertToTask(itemId),
+    convertToTask: (itemId, input) => services.convertToTask(itemId, input),
+    convertToEvent: (itemId, input) => services.convertToEvent(itemId, input),
+    convertToReminder: (itemId, input) => services.convertToReminder(itemId, input),
     linkToNote: (itemId, noteId, tags) => services.linkToNote(itemId, noteId, tags),
 
     async snooze(input) {

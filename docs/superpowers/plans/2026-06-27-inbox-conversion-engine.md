@@ -444,16 +444,16 @@ git commit -m "feat(inbox): convertToTask accepts project/due/priority options"
 
 - Produces: `window.api.inbox.convertToEvent(itemId, input)`, `window.api.inbox.convertToReminder(itemId, input)`, `window.api.inbox.convertToTask(itemId, input?)`.
 
-- [ ] **Step 1: Add channel ids** in `ipc-channels.ts` under `InboxChannels.invoke`:
+- [x] **Step 1: Add channel ids** in `ipc-channels.ts` under `InboxChannels.invoke`:
 
 ```ts
 CONVERT_TO_EVENT: 'inbox:convert-to-event',
 CONVERT_TO_REMINDER: 'inbox:convert-to-reminder',
 ```
 
-- [ ] **Step 2: Export from the domain** — in `domain.ts` add `convertToEvent`, `convertToReminder` to the inbox domain object (next to `convertToNote`, `convertToTask`), and re-export from `index.ts`.
+- [x] **Step 2: Export from the domain** — in `domain.ts` add `convertToEvent`, `convertToReminder` to the inbox domain object (next to `convertToNote`, `convertToTask`), and re-export from `index.ts`.
 
-- [ ] **Step 3: Register handlers** in `inbox-handlers.ts` (beside the existing CONVERT_TO_NOTE/TASK at line ~142), and add `ipcMain.removeHandler(...)` for both in the teardown block (line ~209):
+- [x] **Step 3: Register handlers** in `inbox-handlers.ts` (beside the existing CONVERT_TO_NOTE/TASK at line ~142), and add `ipcMain.removeHandler(...)` for both in the teardown block (line ~209):
 
 ```ts
 ipcMain.handle(InboxChannels.invoke.CONVERT_TO_TASK, (_, itemId, input) =>
@@ -467,19 +467,19 @@ ipcMain.handle(InboxChannels.invoke.CONVERT_TO_REMINDER, (_, itemId, input) =>
 )
 ```
 
-- [ ] **Step 4: Add preload methods** mirroring the existing `convertToTask` forwarder in the inbox preload api, and add the typed signatures in `preload/index.d.ts` (the hand-maintained inbox `WindowAPI` block — match the surrounding style).
+- [x] **Step 4: Add preload methods** mirroring the existing `convertToTask` forwarder in the inbox preload api, and add the typed signatures in `preload/index.d.ts` (the hand-maintained inbox `WindowAPI` block — match the surrounding style).
 
-- [ ] **Step 5: Regenerate + check the IPC map**
+- [x] **Step 5: Regenerate + check the IPC map**
 
 Run: `pnpm ipc:generate && pnpm ipc:check`
 Expected: PASS ("invoke map up to date").
 
-- [ ] **Step 6: Typecheck + main tests**
+- [x] **Step 6: Typecheck + main tests**
 
 Run: `pnpm typecheck && pnpm --filter @memry/desktop test:main -- inbox`
 Expected: PASS (update `ipc/index.test.ts` mock if it enumerates handlers).
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add packages/contracts/src/ipc-channels.ts apps/desktop/src/main/inbox apps/desktop/src/preload apps/desktop/src/main/ipc

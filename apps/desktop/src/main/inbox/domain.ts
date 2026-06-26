@@ -34,7 +34,15 @@ import { titleFromUrl } from './metadata-utils'
 import { captureVoice } from './capture'
 import { findDuplicateByContent, findDuplicateByUrl } from './duplicates'
 import { getSuggestions, trackSuggestionFeedback } from './suggestions'
-import { fileToFolder, convertToNote, convertToTask, linkToNote, linkToNotes } from './filing'
+import {
+  fileToFolder,
+  convertToNote,
+  convertToTask,
+  convertToEvent,
+  convertToReminder,
+  linkToNote,
+  linkToNotes
+} from './filing'
 import { detectSocialPlatform, extractSocialPost, isSocialPost } from './social'
 import { isStale as checkIsStale } from './stats'
 import { getSnoozedItems, snoozeItem, unsnoozeItem } from './snooze'
@@ -497,6 +505,8 @@ export function createDesktopInboxDomain() {
       fileToFolder,
       convertToNote,
       convertToTask,
+      convertToEvent,
+      convertToReminder,
       linkToNote,
       linkToNotes,
       snoozeItem,

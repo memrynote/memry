@@ -142,8 +142,14 @@ export function registerInboxHandlers(): void {
   ipcMain.handle(InboxChannels.invoke.CONVERT_TO_NOTE, (_, itemId) =>
     inboxDomain.convertToNote(itemId)
   )
-  ipcMain.handle(InboxChannels.invoke.CONVERT_TO_TASK, (_, itemId) =>
-    inboxDomain.convertToTask(itemId)
+  ipcMain.handle(InboxChannels.invoke.CONVERT_TO_TASK, (_, itemId, input) =>
+    inboxDomain.convertToTask(itemId, input)
+  )
+  ipcMain.handle(InboxChannels.invoke.CONVERT_TO_EVENT, (_, itemId, input) =>
+    inboxDomain.convertToEvent(itemId, input)
+  )
+  ipcMain.handle(InboxChannels.invoke.CONVERT_TO_REMINDER, (_, itemId, input) =>
+    inboxDomain.convertToReminder(itemId, input)
   )
   ipcMain.handle(InboxChannels.invoke.LINK_TO_NOTE, (_, itemId, noteId, tags) =>
     inboxDomain.linkToNote(itemId, noteId, tags || [])
@@ -208,6 +214,8 @@ export function unregisterInboxHandlers(): void {
   ipcMain.removeHandler(InboxChannels.invoke.TRACK_SUGGESTION)
   ipcMain.removeHandler(InboxChannels.invoke.CONVERT_TO_NOTE)
   ipcMain.removeHandler(InboxChannels.invoke.CONVERT_TO_TASK)
+  ipcMain.removeHandler(InboxChannels.invoke.CONVERT_TO_EVENT)
+  ipcMain.removeHandler(InboxChannels.invoke.CONVERT_TO_REMINDER)
   ipcMain.removeHandler(InboxChannels.invoke.LINK_TO_NOTE)
   ipcMain.removeHandler(InboxChannels.invoke.SNOOZE)
   ipcMain.removeHandler(InboxChannels.invoke.UNSNOOZE)

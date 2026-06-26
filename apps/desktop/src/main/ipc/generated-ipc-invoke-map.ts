@@ -111,8 +111,10 @@ export interface MainIpcInvokeHandlers {
   "inbox:capture-pdf": (...args: [unknown]) => Awaited<Promise<{ success: boolean; item: null; error: string; }>>
   "inbox:capture-text": (...args: [any]) => Awaited<Promise<import("../../../../../packages/domain-inbox/src/types").InboxCaptureResponse>>
   "inbox:capture-voice": (...args: [any]) => Awaited<Promise<import("../../../../../packages/domain-inbox/src/types").InboxCaptureResponse>>
+  "inbox:convert-to-event": (...args: [any, any]) => Awaited<Promise<{ success: boolean; eventId: string | null; error?: string | undefined; }>>
   "inbox:convert-to-note": (...args: [any]) => Awaited<Promise<import("../../../../../packages/domain-inbox/src/types").InboxFileResponse>>
-  "inbox:convert-to-task": (...args: [any]) => Awaited<Promise<{ success: boolean; taskId: string | null; error?: string | undefined; }>>
+  "inbox:convert-to-reminder": (...args: [any, any]) => Awaited<Promise<{ success: boolean; noteId: string | null; error?: string | undefined; }>>
+  "inbox:convert-to-task": (...args: [any, any]) => Awaited<Promise<{ success: boolean; taskId: string | null; error?: string | undefined; }>>
   "inbox:delete-permanent": (...args: [any]) => Awaited<Promise<{ success: boolean; error?: string | undefined; }>>
   "inbox:file": (...args: [any]) => Awaited<Promise<import("../../../../../packages/domain-inbox/src/types").InboxFileResponse>>
   "inbox:file-all-stale": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/inbox-api").BulkResponse>>

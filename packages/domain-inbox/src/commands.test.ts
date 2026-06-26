@@ -1,9 +1,5 @@
 import { describe, expect, test, vi } from 'vitest'
-import {
-  createInboxCommands,
-  type InboxCommandServices,
-  type InboxItem
-} from './index.ts'
+import { createInboxCommands, type InboxCommandServices, type InboxItem } from './index.ts'
 
 function createItem(overrides: Partial<InboxItem> = {}): InboxItem {
   return {
@@ -53,8 +49,14 @@ function createServices(overrides: Partial<InboxCommandServices> = {}): InboxCom
     getSuggestions: vi.fn(async () => []),
     trackSuggestionFeedback: vi.fn(),
     fileToFolder: vi.fn(async () => ({ success: true, filedTo: 'Folder/Note.md' })),
-    convertToNote: vi.fn(async () => ({ success: true, filedTo: 'Inbox Note.md', noteId: 'note-1' })),
+    convertToNote: vi.fn(async () => ({
+      success: true,
+      filedTo: 'Inbox Note.md',
+      noteId: 'note-1'
+    })),
     convertToTask: vi.fn(async () => ({ success: true, taskId: 'task-1' })),
+    convertToEvent: vi.fn(async () => ({ success: true, eventId: 'event-1' })),
+    convertToReminder: vi.fn(async () => ({ success: true, noteId: 'note-1' })),
     linkToNote: vi.fn(async () => ({ success: true })),
     linkToNotes: vi.fn(async () => ({ success: true })),
     snoozeItem: vi.fn(() => ({ success: true })),

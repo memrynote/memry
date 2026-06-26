@@ -88,6 +88,8 @@ vi.mock('../inbox/filing', () => ({
   fileToFolder: vi.fn(),
   convertToNote: vi.fn(),
   convertToTask: vi.fn(),
+  convertToEvent: vi.fn(),
+  convertToReminder: vi.fn(),
   linkToNote: vi.fn(),
   linkToNotes: vi.fn(),
   bulkFileToFolder: vi.fn()

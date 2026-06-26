@@ -50,6 +50,10 @@ export const InboxChannels = {
     CONVERT_TO_NOTE: 'inbox:convert-to-note',
     /** Convert an inbox item to a task */
     CONVERT_TO_TASK: 'inbox:convert-to-task',
+    /** Convert an inbox item to a calendar event */
+    CONVERT_TO_EVENT: 'inbox:convert-to-event',
+    /** Convert an inbox item to a reminder (note + reminder) */
+    CONVERT_TO_REMINDER: 'inbox:convert-to-reminder',
     /** Link an item to an existing note */
     LINK_TO_NOTE: 'inbox:link-to-note',
 

@@ -483,10 +483,41 @@ export const inboxRpc = defineDomain({
       params: ['itemId']
     }),
     convertToTask: defineMethod<
-      (itemId: string) => Promise<{ success: boolean; taskId: string | null; error?: string }>
+      (
+        itemId: string,
+        input?: {
+          projectId?: string
+          dueDate?: string | null
+          dueTime?: string | null
+          priority?: number
+        }
+      ) => Promise<{ success: boolean; taskId: string | null; error?: string }>
     >({
       channel: InboxChannels.invoke.CONVERT_TO_TASK,
-      params: ['itemId']
+      params: ['itemId', 'input']
+    }),
+    convertToEvent: defineMethod<
+      (
+        itemId: string,
+        input: {
+          startAt: string
+          endAt?: string | null
+          isAllDay?: boolean
+          location?: string | null
+        }
+      ) => Promise<{ success: boolean; eventId: string | null; error?: string }>
+    >({
+      channel: InboxChannels.invoke.CONVERT_TO_EVENT,
+      params: ['itemId', 'input']
+    }),
+    convertToReminder: defineMethod<
+      (
+        itemId: string,
+        input: { remindAt: string }
+      ) => Promise<{ success: boolean; noteId: string | null; error?: string }>
+    >({
+      channel: InboxChannels.invoke.CONVERT_TO_REMINDER,
+      params: ['itemId', 'input']
     }),
     linkToNote: defineMethod<(itemId: string, noteId: string, tags?: string[]) => SuccessResponse>({
       channel: InboxChannels.invoke.LINK_TO_NOTE,
