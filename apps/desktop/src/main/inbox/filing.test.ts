@@ -971,6 +971,32 @@ describe('Inbox Filing Operations', () => {
       expect(row?.filedTo).toBe(res.taskId)
       expect(row?.filedTo?.startsWith('task:')).toBe(false)
     })
+
+    it('honours projectId, dueDate, dueTime and priority', async () => {
+      const itemId = seedInboxItem(testDb.db, {
+        id: 'task-options',
+        type: 'note',
+        title: 'Send invoice'
+      })
+
+      const res = await convertToTask(itemId, {
+        projectId: 'project-work',
+        dueDate: '2099-03-01',
+        dueTime: '14:00',
+        priority: 2
+      })
+
+      expect(res.success).toBe(true)
+      expect(mockInsertTask).toHaveBeenCalledWith(
+        testDb.db,
+        expect.objectContaining({
+          projectId: 'project-work',
+          dueDate: '2099-03-01',
+          dueTime: '14:00',
+          priority: 2
+        })
+      )
+    })
   })
 
   describe('convertToEvent', () => {

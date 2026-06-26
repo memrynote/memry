@@ -690,7 +690,13 @@ export async function convertToNote(itemId: string): Promise<FileResponse> {
  * @param itemId - Inbox item ID
  */
 export async function convertToTask(
-  itemId: string
+  itemId: string,
+  input?: {
+    projectId?: string
+    dueDate?: string | null
+    dueTime?: string | null
+    priority?: number
+  }
 ): Promise<{ success: boolean; taskId: string | null; error?: string }> {
   try {
     const db = requireDatabase()
@@ -716,22 +722,23 @@ export async function convertToTask(
     const { getInboxProject } = await import('../database/queries/projects')
 
     const inboxProject = getInboxProject(db)
-    if (!inboxProject) {
+    const projectId = input?.projectId ?? inboxProject?.id
+    if (!projectId) {
       return { success: false, taskId: null, error: 'No inbox project found' }
     }
 
-    const position = getNextTaskPosition(db, inboxProject.id, null)
+    const position = getNextTaskPosition(db, projectId, null)
     const task = insertTask(db, {
       id: taskId,
-      projectId: inboxProject.id,
+      projectId,
       statusId: null,
       parentId: null,
       title,
       description,
-      priority: 0,
+      priority: input?.priority ?? 0,
       position,
-      dueDate: null,
-      dueTime: null,
+      dueDate: input?.dueDate ?? null,
+      dueTime: input?.dueTime ?? null,
       startDate: null,
       repeatConfig: null,
       repeatFrom: null,

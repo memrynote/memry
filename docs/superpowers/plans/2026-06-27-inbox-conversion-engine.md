@@ -353,7 +353,7 @@ git commit -m "feat(inbox): convertToReminder creates note + note-target reminde
 
 - Produces: `convertToTask(itemId: string, input?: { projectId?: string; dueDate?: string | null; dueTime?: string | null; priority?: number }): Promise<{ success: boolean; taskId: string | null; error?: string }>`
 
-- [ ] **Step 1: Write the failing test**:
+- [x] **Step 1: Write the failing test**:
 
 ```ts
 it('honours projectId, dueDate, dueTime and priority', async () => {
@@ -374,12 +374,12 @@ it('honours projectId, dueDate, dueTime and priority', async () => {
 })
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter @memry/desktop test:main -- filing.test.ts -t "honours projectId"`
 Expected: FAIL — current `convertToTask` ignores options.
 
-- [ ] **Step 3: Implement** — add the optional `input` param and thread defaults into `insertTask`:
+- [x] **Step 3: Implement** — add the optional `input` param and thread defaults into `insertTask`:
 
 ```ts
 export async function convertToTask(
@@ -416,12 +416,12 @@ export async function convertToTask(
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `pnpm --filter @memry/desktop test:main -- filing.test.ts -t convertToTask`
 Expected: PASS (all convertToTask tests, including Task 1's provenance test).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add apps/desktop/src/main/inbox/filing.ts apps/desktop/src/main/inbox/filing.test.ts
