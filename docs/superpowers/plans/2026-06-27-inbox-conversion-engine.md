@@ -547,7 +547,7 @@ git commit -m "feat(inbox): convert-to-event/reminder UI + task options + filed 
 
 ### Task 7: Full verification + docs gate
 
-- [ ] **Step 1: Run the full gate set**
+- [x] **Step 1: Run the full gate set**
 
 ```bash
 pnpm typecheck
@@ -561,7 +561,7 @@ git diff --check
 
 Expected: all PASS. Fix any failure in the task that introduced it.
 
-- [ ] **Step 2: Docs gate** (desktop change → docs routing)
+- [x] **Step 2: Docs gate** (desktop change → docs routing)
 
 ```bash
 pnpm docs:impact --base origin/main --strict
@@ -573,7 +573,7 @@ If `missing-docs`, run `pnpm docs:ai-update --base origin/main` or update `apps/
 
 `pnpm --filter @memry/desktop dev:a` — capture a text item, Convert → Event (future time): event appears on the calendar; the item leaves the active inbox with a "→ Event" badge. Repeat for Reminder (note created + reminder scheduled) and Task (with a due date → also shows on the calendar as a task chip). Confirm binary (PDF) shows only Note enabled.
 
-- [ ] **Step 4: Commit any doc updates**
+- [x] **Step 4: Commit any doc updates**
 
 ```bash
 git add apps/docs
