@@ -1,13 +1,8 @@
-import { lazy, Suspense, useCallback, useState } from 'react'
-import { createPortal } from 'react-dom'
 import { Folder, FolderOpen, ArrowRight } from '@/lib/icons'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
+import { IconPickerButton } from '@/components/icon-picker-button'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
-
-const LazyEmojiPicker = lazy(async () => ({
-  default: (await import('@/components/note/note-title/EmojiPicker')).EmojiPicker
-}))
 
 interface FolderIconButtonProps {
   icon: string | null
@@ -28,69 +23,6 @@ export function FolderIconButton({
   onPickerOpenChange
 }: FolderIconButtonProps) {
   const { t: tPhaseF } = useT('common')
-  const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
-  const [portalPosition, setPortalPosition] = useState<{ top: number; left: number } | null>(null)
-
-  const isControlled = pickerOpen !== undefined
-  const isPickerOpen = isControlled ? pickerOpen : uncontrolledOpen
-
-  const setPickerOpen = useCallback(
-    (open: boolean) => {
-      if (isControlled) {
-        onPickerOpenChange?.(open)
-      } else {
-        setUncontrolledOpen(open)
-      }
-    },
-    [isControlled, onPickerOpenChange]
-  )
-
-  const updatePortalPosition = useCallback((button: HTMLButtonElement) => {
-    const rect = button.getBoundingClientRect()
-    setPortalPosition({ top: rect.bottom + 4, left: rect.left })
-  }, [])
-
-  const handleButtonRef = useCallback(
-    (button: HTMLButtonElement | null) => {
-      if (button) {
-        updatePortalPosition(button)
-      } else {
-        setPortalPosition(null)
-      }
-    },
-    [updatePortalPosition]
-  )
-
-  const handleIconClick = useCallback(
-    (e: React.MouseEvent<HTMLButtonElement>) => {
-      e.stopPropagation()
-      e.preventDefault()
-      updatePortalPosition(e.currentTarget)
-      setPickerOpen(!isPickerOpen)
-    },
-    [updatePortalPosition, setPickerOpen, isPickerOpen]
-  )
-
-  const handleExpandClick = useCallback((_e: React.MouseEvent) => {
-    // Let the click bubble to TreeNodeTrigger which handles expand/collapse
-  }, [])
-
-  const handleSelect = useCallback(
-    (value: string) => {
-      onIconChange(value)
-      setPickerOpen(false)
-    },
-    [onIconChange, setPickerOpen]
-  )
-
-  const handleRemove = useCallback(() => {
-    onIconChange(null)
-    setPickerOpen(false)
-  }, [onIconChange, setPickerOpen])
-
-  const handleClose = useCallback(() => {
-    setPickerOpen(false)
-  }, [setPickerOpen])
 
   const folderIcon = icon ? (
     <NoteIconDisplay value={icon} className="text-sm leading-none" />
@@ -100,55 +32,34 @@ export function FolderIconButton({
     <Folder className="h-4 w-4 text-muted-foreground" />
   )
 
-  return (
-    <div className="shrink-0 flex items-center gap-0.5">
-      {hasChildren ? (
-        <button
-          type="button"
-          onClick={handleExpandClick}
-          className="flex h-4 w-4 items-center justify-center cursor-pointer rounded"
-          aria-label={isExpanded ? 'Collapse folder' : 'Expand folder'}
-        >
-          <ArrowRight
-            className={cn(
-              'h-3 w-3 text-muted-foreground/60 transition-transform ',
-              isExpanded && 'rotate-90'
-            )}
-          />
-        </button>
-      ) : (
-        <div className="h-4 w-4" />
-      )}
-
-      <button
-        ref={handleButtonRef}
-        type="button"
-        onClick={handleIconClick}
-        className="flex h-5 w-5 items-center justify-center rounded"
-        aria-label={tPhaseF('phaseF.componentsFolderIconButton.setFolderIcon')}
-      >
-        {folderIcon}
-      </button>
-
-      {isPickerOpen &&
-        portalPosition &&
-        createPortal(
-          <div
-            className="fixed z-[100]"
-            style={{ top: portalPosition.top, left: portalPosition.left }}
-          >
-            <Suspense fallback={null}>
-              <LazyEmojiPicker
-                isOpen
-                onClose={handleClose}
-                onSelect={handleSelect}
-                onRemove={handleRemove}
-                hasEmoji={!!icon}
-              />
-            </Suspense>
-          </div>,
-          document.body
+  // Chevron lets the click bubble to the row, which handles expand/collapse.
+  const chevron = hasChildren ? (
+    <button
+      type="button"
+      className="flex h-4 w-4 items-center justify-center cursor-pointer rounded"
+      aria-label={isExpanded ? 'Collapse folder' : 'Expand folder'}
+    >
+      <ArrowRight
+        className={cn(
+          'h-3 w-3 text-muted-foreground/60 transition-transform ',
+          isExpanded && 'rotate-90'
         )}
-    </div>
+      />
+    </button>
+  ) : (
+    <div className="h-4 w-4" />
+  )
+
+  return (
+    <IconPickerButton
+      leading={chevron}
+      hasIcon={!!icon}
+      onIconChange={onIconChange}
+      ariaLabel={tPhaseF('phaseF.componentsFolderIconButton.setFolderIcon')}
+      pickerOpen={pickerOpen}
+      onPickerOpenChange={onPickerOpenChange}
+    >
+      {folderIcon}
+    </IconPickerButton>
   )
 }

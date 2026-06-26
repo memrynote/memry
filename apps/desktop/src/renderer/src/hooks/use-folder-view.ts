@@ -50,6 +50,7 @@ export interface ViewConfig {
   groupBy?: unknown // Allow unknown for API compatibility
   limit?: number
   showSummaries?: boolean
+  columnBorders?: boolean
 }
 
 export interface NoteWithProperties {
@@ -176,6 +177,8 @@ interface UseFolderViewResult {
   addView: (view: ViewConfig) => Promise<void>
   /** Delete a view by name */
   deleteView: (viewName: string) => Promise<void>
+  /** Rename a view in place by index */
+  renameView: (index: number, newName: string) => Promise<void>
   /** Update column configuration for current view */
   updateColumns: (columns: ColumnConfig[]) => Promise<void>
   /** Update sort order for current view */
@@ -229,6 +232,8 @@ export function useFolderView({
 
   // Debounce timer for column updates
   const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  // Debounce timer for in-place renames (live, per-keystroke)
+  const renameTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // ============================================================================
   // Queries
@@ -500,6 +505,57 @@ export function useFolderView({
       }
     },
     [folderPath, queryClient, activeViewIndex]
+  )
+
+  /**
+   * Rename a view in place by index. Safe to call on every keystroke: the cache
+   * updates optimistically right away and the disk write is debounced.
+   *
+   * `setView` keys by name and would push a duplicate on a name change, so a
+   * rename rewrites the whole views array via `setConfig` to preserve order.
+   * Empty names and names that collide with another view are skipped.
+   */
+  const renameView = useCallback(
+    async (index: number, newName: string) => {
+      const target = views[index]
+      if (!target) return
+      const name = newName.trim()
+      if (!name || name === target.name) return
+      const collides = views.some(
+        (v, i) => i !== index && v.name.toLowerCase() === name.toLowerCase()
+      )
+      if (collides) return
+
+      const newViews = views.map((v, i) => (i === index ? { ...v, name } : v))
+
+      // Optimistic update to cache
+      queryClient.setQueryData<ViewsQueryData>(folderViewKeys.views(folderPath), (old) =>
+        old ? { ...old, views: newViews } : old
+      )
+
+      // Debounce the disk write to avoid thrashing on every keystroke
+      if (renameTimeoutRef.current) {
+        clearTimeout(renameTimeoutRef.current)
+      }
+      renameTimeoutRef.current = setTimeout(() => {
+        void (async () => {
+          try {
+            const result = await window.api.folderView.setConfig(folderPath, {
+              views: newViews
+            } as unknown as Record<string, unknown>)
+
+            if (!result.success) {
+              throw new Error(result.error || 'Failed to rename view')
+            }
+          } catch (err) {
+            log.error('renameView failed:', err)
+            // Revert on error
+            void queryClient.invalidateQueries({ queryKey: folderViewKeys.views(folderPath) })
+          }
+        })()
+      }, 300)
+    },
+    [views, folderPath, queryClient]
   )
 
   /**
@@ -971,6 +1027,7 @@ export function useFolderView({
     setViewAsDefault,
     addView,
     deleteView,
+    renameView,
     updateColumns,
     updateSorting,
     updateFilters,

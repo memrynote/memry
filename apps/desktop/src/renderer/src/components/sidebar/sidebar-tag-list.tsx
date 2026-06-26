@@ -16,6 +16,8 @@ import { buildTagTree, type TagTreeNode } from '@/lib/tag-tree'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { Button } from '@/components/ui/button'
 import { Picker } from '@/components/ui/picker'
+import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from '@/components/ui/context-menu'
+import { BookmarkMenuItem } from '@/components/sidebar/bookmark-menu-item'
 import { useT } from '@memry/i18n/renderer'
 
 type TagSortOption = 'count-desc' | 'count-asc' | 'alpha-asc' | 'alpha-desc'
@@ -137,44 +139,51 @@ function TagTreeItem({
           <span className="shrink-0 size-4" />
         )}
 
-        <button
-          type="button"
-          onClick={handleTagClick}
-          title={`${node.fullPath} (${node.totalCount})`}
-          className={cn(
-            'flex items-center gap-1.5 rounded-sm py-0.5 px-1.5 text-[11px] font-medium leading-3.5 min-w-0',
-            'transition-opacity hover:opacity-80',
-            isSelected && 'ring-1 ring-current',
-            node.isVirtual && 'opacity-60'
-          )}
-          style={
-            colors
-              ? { backgroundColor: `${colors.text}1A`, color: colors.text }
-              : { backgroundColor: 'var(--muted)', color: 'var(--muted-foreground)' }
-          }
-        >
-          {node.icon ? (
-            <NoteIconDisplay
-              value={node.icon}
-              className="size-3 shrink-0 text-[11px] leading-none"
-            />
-          ) : (
-            <span
-              className="size-1.5 rounded-full shrink-0"
+        <ContextMenu>
+          <ContextMenuTrigger asChild>
+            <button
+              type="button"
+              onClick={handleTagClick}
+              title={`${node.fullPath} (${node.totalCount})`}
+              className={cn(
+                'flex items-center gap-1.5 rounded-sm py-0.5 px-1.5 text-[11px] font-medium leading-3.5 min-w-0',
+                'transition-opacity hover:opacity-80',
+                isSelected && 'ring-1 ring-current',
+                node.isVirtual && 'opacity-60'
+              )}
               style={
                 colors
-                  ? { backgroundColor: colors.text }
-                  : { backgroundColor: 'var(--muted-foreground)' }
+                  ? { backgroundColor: `${colors.text}1A`, color: colors.text }
+                  : { backgroundColor: 'var(--muted)', color: 'var(--muted-foreground)' }
               }
-            />
-          )}
-          <span
-            ref={labelRef}
-            className={cn('min-w-0 truncate', isLabelTruncated && 'sidebar-label-fade-mask')}
-          >
-            {node.name}
-          </span>
-        </button>
+            >
+              {node.icon ? (
+                <NoteIconDisplay
+                  value={node.icon}
+                  className="size-3 shrink-0 text-[11px] leading-none"
+                />
+              ) : (
+                <span
+                  className="size-1.5 rounded-full shrink-0"
+                  style={
+                    colors
+                      ? { backgroundColor: colors.text }
+                      : { backgroundColor: 'var(--muted-foreground)' }
+                  }
+                />
+              )}
+              <span
+                ref={labelRef}
+                className={cn('min-w-0 truncate', isLabelTruncated && 'sidebar-label-fade-mask')}
+              >
+                {node.name}
+              </span>
+            </button>
+          </ContextMenuTrigger>
+          <ContextMenuContent className="w-48">
+            <BookmarkMenuItem itemType="tag" itemId={node.fullPath} />
+          </ContextMenuContent>
+        </ContextMenu>
 
         <span className="ms-auto pe-2.5 text-[10px] text-muted-foreground/40 tabular-nums opacity-0 group-hover:opacity-100 transition-opacity">
           {node.totalCount}

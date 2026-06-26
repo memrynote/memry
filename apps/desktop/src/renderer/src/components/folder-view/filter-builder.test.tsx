@@ -120,7 +120,7 @@ describe('FilterBuilder', () => {
       />
     )
 
-    expect(screen.getByText('noFiltersApplied')).toBeInTheDocument()
+    expect(screen.queryByText(/^row /)).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: /addFilter/ }))
     flushDebounce()
@@ -143,7 +143,12 @@ describe('FilterBuilder', () => {
       or: ['status == "done"', 'title == ""']
     })
 
-    fireEvent.click(screen.getByRole('button', { name: /clearAll/ }))
+    // No clear-all button anymore — clear by removing the condition then the group.
+    fireEvent.click(screen.getAllByRole('button', { name: /remove cond_/ })[0])
+    flushDebounce()
+    expect(onFiltersChange).toHaveBeenLastCalledWith('title == ""')
+
+    fireEvent.click(screen.getByRole('button', { name: /removeGroup/ }))
     flushDebounce()
     expect(onFiltersChange).toHaveBeenLastCalledWith(undefined)
   })
@@ -161,8 +166,8 @@ describe('FilterBuilder', () => {
 
     expect(screen.getByText('3')).toBeInTheDocument()
     expect(screen.getByText(/row 0 status == todo/)).toBeInTheDocument()
-    expect(screen.getByText(/row 1 priority > 2/)).toBeInTheDocument()
-    expect(screen.getByText(/row 1 title contains plan/)).toBeInTheDocument()
+    expect(screen.getByText(/row 0 priority > 2/)).toBeInTheDocument()
+    expect(screen.getByText(/row 0 title contains plan/)).toBeInTheDocument()
 
     fireEvent.click(screen.getAllByRole('button', { name: /remove cond_/ })[1])
     flushDebounce()

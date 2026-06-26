@@ -16,7 +16,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useT } from '@memry/i18n/renderer'
 
 import { cn } from '@/lib/utils'
-import { useDayPanel } from '@/contexts/day-panel-context'
 import { useResizablePanel } from '@/hooks/use-resizable-panel'
 import { PanelResizeRail } from '@/components/ui/panel-resize-rail'
 
@@ -75,7 +74,6 @@ export const InboxDetailPanel = ({
 }: InboxDetailPanelProps): React.JSX.Element => {
   const { t } = useT('inbox')
   const { enabled: aiEnabled } = useAISettingsContext()
-  const { isOpen: isDayPanelOpen, width: dayPanelWidth } = useDayPanel()
   const {
     width,
     setWidth,
@@ -362,14 +360,14 @@ export const InboxDetailPanel = ({
       data-testid="inbox-detail-panel"
       data-state={isOpen ? 'open' : 'closed'}
       className={cn(
-        'fixed top-[37px] bottom-0 z-10 border-s bg-surface overflow-hidden',
-        'transition-[opacity,right] duration-200 ease-out',
-        !isPanelResizing && 'transition-[width,opacity,right] duration-200 ease-out',
+        // ponytail: absolute (not fixed) so the drawer stays inside its own pane in split view
+        'absolute inset-y-0 end-0 z-10 border-s bg-surface overflow-hidden',
+        'transition-[opacity] duration-200 ease-out',
+        !isPanelResizing && 'transition-[width,opacity] duration-200 ease-out',
         isOpen ? 'opacity-100 border-border' : 'opacity-0 border-transparent'
       )}
       style={{
-        width: isOpen ? `${width}px` : 0,
-        right: isDayPanelOpen ? `${dayPanelWidth}px` : 0
+        width: isOpen ? `${width}px` : 0
       }}
     >
       <div

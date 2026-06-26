@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { createDefaultTab } from './helpers'
+import { buildHistoryEntries, createDefaultTab, DEFAULT_TAB_SETTINGS } from './helpers'
 import { SINGLETON_TAB_TYPES } from './types'
+import type { Tab, TabSystemState } from './types'
 
 describe('home tab', () => {
   it('home is a singleton tab type', () => {
@@ -8,5 +9,78 @@ describe('home tab', () => {
   })
   it('default tab is home', () => {
     expect(createDefaultTab().type).toBe('home')
+  })
+})
+
+// -- buildHistoryEntries ------------------------------------------------------
+
+const mkTab = (id: string): Tab => ({
+  id,
+  type: 'note',
+  title: `Note ${id}`,
+  icon: 'file-text',
+  path: `/note/${id}`,
+  isPinned: false,
+  isModified: false,
+  isPreview: false,
+  isDeleted: false,
+  openedAt: 0,
+  lastAccessedAt: 0
+})
+
+const mkState = (tabIds: string[], back: string[], forward: string[]): TabSystemState => ({
+  tabGroups: {
+    g1: {
+      id: 'g1',
+      tabs: tabIds.map(mkTab),
+      activeTabId: tabIds[tabIds.length - 1] ?? null,
+      isActive: true,
+      back,
+      forward
+    }
+  },
+  layout: { type: 'leaf', tabGroupId: 'g1' },
+  activeGroupId: 'g1',
+  settings: { ...DEFAULT_TAB_SETTINGS },
+  recentlyClosed: []
+})
+
+describe('buildHistoryEntries', () => {
+  it('returns valid back entries nearest-first with steps 1..N', () => {
+    // back is oldest→newest; nearest (newest) is the end.
+    const state = mkState(['a', 'b', 'c', 'd'], ['a', 'b', 'c'], [])
+    const entries = buildHistoryEntries(state, 'g1', 'back')
+    expect(entries.map((e) => e.tab.id)).toEqual(['c', 'b', 'a'])
+    expect(entries.map((e) => e.steps)).toEqual([1, 2, 3])
+  })
+
+  it('skips closed (stale) ids without consuming a step', () => {
+    // 'x' and 'z' are no longer open tabs → dropped, steps stay contiguous.
+    const state = mkState(['a', 'b', 'd'], ['a', 'x', 'b', 'z'], [])
+    const entries = buildHistoryEntries(state, 'g1', 'back')
+    expect(entries.map((e) => e.tab.id)).toEqual(['b', 'a'])
+    expect(entries.map((e) => e.steps)).toEqual([1, 2])
+  })
+
+  it('caps the list at the limit', () => {
+    const ids = Array.from({ length: 15 }, (_, i) => `t${i}`)
+    const state = mkState(ids, ids.slice(0, 14), [])
+    const entries = buildHistoryEntries(state, 'g1', 'back')
+    expect(entries).toHaveLength(10)
+    expect(entries[0].steps).toBe(1)
+    expect(entries[9].steps).toBe(10)
+  })
+
+  it('reads the forward stack nearest-first', () => {
+    const state = mkState(['a', 'b', 'c'], [], ['a', 'b'])
+    const entries = buildHistoryEntries(state, 'g1', 'forward')
+    expect(entries.map((e) => e.tab.id)).toEqual(['b', 'a'])
+    expect(entries.map((e) => e.steps)).toEqual([1, 2])
+  })
+
+  it('returns [] for an unknown group or empty stack', () => {
+    const state = mkState(['a'], [], [])
+    expect(buildHistoryEntries(state, 'nope', 'back')).toEqual([])
+    expect(buildHistoryEntries(state, 'g1', 'back')).toEqual([])
   })
 })

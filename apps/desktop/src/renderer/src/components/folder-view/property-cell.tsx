@@ -11,7 +11,7 @@
  * T117: Added TruncatedTooltip component for shadcn tooltip on truncated content.
  */
 
-import { memo, useState, useRef, useEffect, useCallback } from 'react'
+import { memo, useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react'
 import { format } from 'date-fns'
 import { Check, X, ExternalLink, Folder, FileText } from '@/lib/icons'
 import { cn } from '@/lib/utils'
@@ -23,8 +23,11 @@ import {
   UrlEditor
 } from '@/components/note/info-section/editors'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { stringifyUnknown } from '@/lib/stringify-unknown'
+import { TagChip } from '@/components/note/tags-row/TagChip'
+import { toTagChip, type TagMeta, type TagMetaMap } from './note-card-pieces'
 
 // ============================================================================
 // Types
@@ -85,8 +88,8 @@ interface TagsCellProps {
   onTagClick?: (tag: string) => void
   /** Remove handler for individual tag */
   onTagRemove?: (tag: string) => void
-  /** Query to highlight in tags */
-  highlightQuery?: string
+  /** Tag color + icon, keyed by lowercased tag name */
+  tagMetaMap?: TagMetaMap
   /** Additional CSS classes */
   className?: string
 }
@@ -185,28 +188,6 @@ function highlightText(text: string, query: string): React.ReactNode {
       {highlightText(after, query)}
     </>
   )
-}
-
-/**
- * Get a color class for a tag based on its name (deterministic).
- */
-function getTagColor(tag: string): string {
-  const colors = [
-    'bg-blue-500/15 text-blue-700 dark:text-blue-400',
-    'bg-green-500/15 text-green-700 dark:text-green-400',
-    'bg-purple-500/15 text-purple-700 dark:text-purple-400',
-    'bg-orange-500/15 text-orange-700 dark:text-orange-400',
-    'bg-pink-500/15 text-pink-700 dark:text-pink-400',
-    'bg-cyan-500/15 text-cyan-700 dark:text-cyan-400',
-    'bg-yellow-500/15 text-yellow-700 dark:text-yellow-400',
-    'bg-red-500/15 text-red-700 dark:text-red-400'
-  ]
-  // Simple hash based on tag name
-  let hash = 0
-  for (let i = 0; i < tag.length; i++) {
-    hash = tag.charCodeAt(i) + ((hash << 5) - hash)
-  }
-  return colors[Math.abs(hash) % colors.length]
 }
 
 /**
@@ -683,17 +664,19 @@ export const TitleCell = memo(function TitleCell({
         onClick?.()
       }}
       className={cn(
-        'group flex items-center gap-2 text-left hover:text-primary transition-colors truncate w-full',
+        'group flex items-center gap-2 text-left text-[13px] text-foreground/90 hover:text-primary transition-colors truncate w-full',
         'focus:outline-none focus:text-primary cursor-pointer',
         className
       )}
       title={title}
     >
-      {emoji ? (
-        <NoteIconDisplay value={emoji} className="flex-shrink-0 text-base" />
-      ) : (
-        <FileText className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-      )}
+      <span className="flex size-5 flex-shrink-0 items-center justify-center leading-none">
+        {emoji ? (
+          <NoteIconDisplay value={emoji} className="size-5 text-sm" />
+        ) : (
+          <FileText className="size-5 text-muted-foreground" />
+        )}
+      </span>
       <span className="truncate font-medium group-hover:underline">
         {highlightQuery ? highlightText(title, highlightQuery) : title}
       </span>
@@ -735,64 +718,156 @@ export const FolderCell = memo(function FolderCell({
 })
 
 /**
- * T051: Tags cell - multiple colored tag badges
+ * Wraps the shared {@link TagChip} pill so the tags cell can measure its width
+ * for the "+N" overflow collapse. Overflow chips stay rendered but offscreen.
+ * Uses the same pill as the sidebar / note tags, so colors + icons match.
+ */
+function MeasuredTagPill({
+  tag,
+  meta,
+  onTagClick,
+  onTagRemove,
+  offscreen
+}: {
+  tag: string
+  meta?: TagMeta
+  onTagClick?: (tag: string) => void
+  onTagRemove?: (tag: string) => void
+  /** Kept in the DOM for width measurement but pulled out of flow + hidden. */
+  offscreen?: boolean
+}): React.JSX.Element {
+  return (
+    <span
+      data-tag-chip
+      className={cn('inline-flex shrink-0', offscreen && 'pointer-events-none invisible absolute')}
+    >
+      <TagChip
+        tag={toTagChip(tag, meta)}
+        onClick={onTagClick ? () => onTagClick(tag) : undefined}
+        onRemove={onTagRemove}
+      />
+    </span>
+  )
+}
+
+/**
+ * Measure how many tag chips fit on one line, reserving room for the "+N" chip.
+ * All chips stay rendered (overflow ones go offscreen) so widths are always
+ * measurable. Falls back to showing every tag when there is no layout (e.g. jsdom).
+ */
+function useTagOverflow(
+  tagKey: string,
+  count: number
+): {
+  containerRef: React.RefObject<HTMLDivElement | null>
+  visible: number
+} {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [visible, setVisible] = useState(count)
+
+  useLayoutEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+
+    const GAP = 4 // matches gap-1
+    const RESERVE = 44 // room for the "+N" chip
+
+    const recompute = (): void => {
+      const avail = el.clientWidth
+      const chips = el.querySelectorAll<HTMLElement>('[data-tag-chip]')
+      if (!avail || chips.length === 0) {
+        setVisible(count)
+        return
+      }
+      let used = 0
+      let fit = 0
+      for (const chip of chips) {
+        const next = used + (fit > 0 ? GAP : 0) + chip.offsetWidth
+        if (next > avail) break
+        used = next
+        fit++
+      }
+      // Make room for the "+N" chip when something overflows.
+      while (fit > 0 && fit < chips.length && used + GAP + RESERVE > avail) {
+        used -= GAP + chips[fit - 1].offsetWidth
+        fit--
+      }
+      setVisible(Math.max(1, fit))
+    }
+
+    recompute()
+    const ro = new ResizeObserver(recompute)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [tagKey, count])
+
+  return { containerRef, visible }
+}
+
+/**
+ * T051: Tags cell - multiple colored tag badges on a single line. Tags that
+ * don't fit collapse into a "+N" chip; hovering it reveals the rest.
  */
 export const TagsCell = memo(function TagsCell({
   tags,
   onTagClick,
   onTagRemove,
-  highlightQuery,
+  tagMetaMap,
   className
 }: TagsCellProps): React.JSX.Element {
+  const { containerRef, visible } = useTagOverflow((tags ?? []).join(''), tags?.length ?? 0)
+
   if (!tags || tags.length === 0) {
     return <span className="text-muted-foreground/50">—</span>
   }
 
+  const hiddenCount = tags.length - visible
+
   return (
-    <div className={cn('flex flex-wrap gap-1', className)}>
-      {tags.map((tag) => {
-        const shouldHighlight =
-          highlightQuery && tag.toLowerCase().includes(highlightQuery.toLowerCase())
-        return (
-          <span
-            key={tag}
-            className={cn(
-              'inline-flex items-center rounded text-xs font-medium',
-              'transition-opacity hover:opacity-80',
-              getTagColor(tag)
-            )}
-            title={tag}
-          >
+    <div
+      ref={containerRef}
+      className={cn('relative flex flex-nowrap items-center gap-1 overflow-hidden', className)}
+    >
+      {tags.map((tag, i) => (
+        <MeasuredTagPill
+          key={tag}
+          tag={tag}
+          meta={tagMetaMap?.get(tag.toLowerCase())}
+          onTagClick={onTagClick}
+          onTagRemove={onTagRemove}
+          offscreen={i >= visible}
+        />
+      ))}
+      {hiddenCount > 0 && (
+        <HoverCard openDelay={100} closeDelay={100}>
+          <HoverCardTrigger asChild>
             <button
               type="button"
-              onClick={(e) => {
-                e.stopPropagation()
-                onTagClick?.(tag)
-              }}
-              className={cn('px-1.5 py-0.5', 'focus:outline-none rounded')}
+              onClick={(e) => e.stopPropagation()}
+              className={cn(
+                'inline-flex shrink-0 items-center rounded px-1.5 py-0.5 text-xs font-medium',
+                'bg-muted text-muted-foreground hover:bg-muted/80 focus:outline-none'
+              )}
+              aria-label={`Show ${hiddenCount} more tags`}
             >
-              #{shouldHighlight ? highlightText(tag, highlightQuery) : tag}
+              +{hiddenCount}
             </button>
-            {onTagRemove && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onTagRemove(tag)
-                }}
-                aria-label={`Remove tag ${tag}`}
-                className={cn(
-                  'pr-1.5 pl-0.5 py-0.5',
-                  'opacity-70 hover:opacity-100',
-                  'focus:outline-none rounded'
-                )}
-              >
-                <X className="h-3 w-3" />
-              </button>
-            )}
-          </span>
-        )
-      })}
+          </HoverCardTrigger>
+          <HoverCardContent align="start" className="w-auto max-w-xs p-2">
+            <div className="flex flex-wrap gap-1">
+              {tags.slice(visible).map((tag) => (
+                <MeasuredTagPill
+                  key={tag}
+                  tag={tag}
+                  meta={tagMetaMap?.get(tag.toLowerCase())}
+                  onTagClick={onTagClick}
+                  onTagRemove={onTagRemove}
+                />
+              ))}
+            </div>
+          </HoverCardContent>
+        </HoverCard>
+      )}
     </div>
   )
 })

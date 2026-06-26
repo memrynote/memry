@@ -116,9 +116,11 @@ describe('folder-view property cells', () => {
     fireEvent.click(screen.getByRole('button', { name: new RegExp('Work/Plans') }))
     expect(onFolder).toHaveBeenCalled()
 
-    fireEvent.click(screen.getByRole('button', { name: /#work/ }))
+    fireEvent.click(screen.getByText('work'))
     expect(onTag).toHaveBeenCalledWith('work')
-    fireEvent.click(screen.getByRole('button', { name: 'Remove tag urgent' }))
+    const urgentPill = screen.getByText('urgent').closest('button')
+    fireEvent.mouseEnter(urgentPill as HTMLElement)
+    fireEvent.click(screen.getByRole('button', { name: 'Remove tag: urgent' }))
     expect(onRemove).toHaveBeenCalledWith('urgent')
 
     expect(screen.getByRole('link', { name: /not a url/ })).toHaveAttribute('href', 'not a url')

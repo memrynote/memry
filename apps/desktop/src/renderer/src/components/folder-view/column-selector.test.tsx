@@ -141,7 +141,10 @@ describe('ColumnSelector', () => {
 
     const { container } = render(
       <ColumnSelector
-        columns={[{ id: 'title', width: 250 }]}
+        columns={[
+          { id: 'title', width: 250 },
+          { id: 'status', width: 120 }
+        ]}
         builtInColumns={builtInColumns}
         availableProperties={availableProperties}
         onColumnsChange={onColumnsChange}
@@ -159,14 +162,17 @@ describe('ColumnSelector', () => {
     fireEvent.click(container.querySelector('#col-priority')!)
     expect(onColumnsChange).toHaveBeenCalledWith([
       { id: 'title', width: 250 },
+      { id: 'status', width: 120 },
       { id: 'priority', width: 120 }
     ])
 
     fireEvent.change(screen.getByPlaceholderText('searchColumns'), { target: { value: '' } })
-    fireEvent.click(container.querySelector('#col-title')!)
-    expect(onColumnsChange).toHaveBeenLastCalledWith([])
+    // Title is locked (always visible) — it has no toggle checkbox.
+    expect(container.querySelector('#col-title')).toBeNull()
+    fireEvent.click(container.querySelector('#col-status')!)
+    expect(onColumnsChange).toHaveBeenLastCalledWith([{ id: 'title', width: 250 }])
 
-    fireEvent.change(screen.getByLabelText('summary selector'), { target: { value: 'none' } })
+    fireEvent.change(screen.getAllByLabelText('summary selector')[0], { target: { value: 'none' } })
     expect(onSummaryChange).toHaveBeenCalledWith('title', undefined)
   })
 

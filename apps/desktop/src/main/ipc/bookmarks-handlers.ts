@@ -93,6 +93,25 @@ function resolveBookmarkItem(bookmark: Bookmark): BookmarkWithItem {
       break
     }
 
+    case BookmarkItemTypes.FOLDER: {
+      // Folder identity is its path; title is the last path segment.
+      // ponytail: skip an existence check — a stale folder bookmark just opens
+      // an empty folder view; add a check if dead links become a problem.
+      const path = bookmark.itemId
+      itemTitle = path.split('/').pop() || path
+      itemExists = true
+      itemMeta = { path }
+      break
+    }
+
+    case BookmarkItemTypes.TAG: {
+      // Tag identity is its name; no DB lookup needed.
+      // ponytail: see FOLDER note re: existence check.
+      itemTitle = bookmark.itemId
+      itemExists = true
+      break
+    }
+
     // For future item types (image, pdf, audio, etc.)
     // We'll add resolution logic when those features are implemented
     default: {

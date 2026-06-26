@@ -1,4 +1,5 @@
 import { useT } from '@memry/i18n/renderer'
+import { Checkbox } from '@/components/ui/checkbox'
 import type { CalendarSourceRecord } from '@/services/calendar-service'
 
 interface CalendarSidebarProps {
@@ -32,21 +33,19 @@ export function CalendarSidebar({
 
           <label className="flex items-center justify-between gap-3 text-sm text-foreground">
             <span>{t('filter.memry-items')}</span>
-            <input
-              type="checkbox"
+            <Checkbox
               aria-label={t('filter.memry-items')}
               checked={showMemryItems}
-              onChange={onToggleMemryItems}
+              onCheckedChange={onToggleMemryItems}
             />
           </label>
 
           <label className="flex items-center justify-between gap-3 text-sm text-foreground">
             <span>{t('filter.imported-calendars')}</span>
-            <input
-              type="checkbox"
+            <Checkbox
               aria-label={t('filter.imported-calendars')}
               checked={showImportedCalendars}
-              onChange={onToggleImportedCalendars}
+              onCheckedChange={onToggleImportedCalendars}
             />
           </label>
         </div>
@@ -65,12 +64,11 @@ export function CalendarSidebar({
                 className="flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-card/70 px-3 py-2 text-sm text-foreground"
               >
                 <span>{source.title}</span>
-                <input
-                  type="checkbox"
+                <Checkbox
                   aria-label={source.title}
                   checked={selectedImportedSourceIds.includes(source.id)}
                   disabled={!showImportedCalendars}
-                  onChange={() => onToggleImportedSource(source.id)}
+                  onCheckedChange={() => onToggleImportedSource(source.id)}
                 />
               </label>
             ))

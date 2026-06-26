@@ -6,6 +6,7 @@ import { useDisplayDensity } from '@/hooks/use-display-density'
 import { useTabActions } from '@/contexts/tabs/context'
 import { FolderListView } from '@/components/folder-view/folder-list-view'
 import { FolderGalleryView } from '@/components/folder-view/folder-gallery-view'
+import type { TagMetaMap } from '@/components/folder-view/note-card-pieces'
 import { FolderTableView } from '@/components/folder-view/folder-table-view'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Folder as FolderIcon } from '@/lib/icons/icon-map'
@@ -54,10 +55,10 @@ export function FolderWidget({ config }: WidgetComponentProps): React.JSX.Elemen
     if (idx >= 0 && idx !== activeViewIndex) setActiveViewIndex(idx)
   }, [viewName, views, activeViewIndex, setActiveViewIndex])
 
-  const tagColorMap = useMemo(() => {
-    const map = new Map<string, string>()
+  const tagMetaMap = useMemo<TagMetaMap>(() => {
+    const map: TagMetaMap = new Map()
     for (const tag of allTags) {
-      map.set(tag.tag.toLowerCase(), tag.color)
+      map.set(tag.tag.toLowerCase(), { color: tag.color, icon: tag.icon ?? null })
     }
     return map
   }, [allTags])
@@ -135,7 +136,7 @@ export function FolderWidget({ config }: WidgetComponentProps): React.JSX.Elemen
       ) : viewType === 'grid' ? (
         <FolderGalleryView
           notes={notes}
-          tagColorMap={tagColorMap}
+          tagMetaMap={tagMetaMap}
           onNoteOpen={handleNoteOpen}
           className="h-full"
         />
@@ -143,7 +144,7 @@ export function FolderWidget({ config }: WidgetComponentProps): React.JSX.Elemen
         <FolderListView
           notes={notes}
           density={density}
-          tagColorMap={tagColorMap}
+          tagMetaMap={tagMetaMap}
           onNoteOpen={handleNoteOpen}
           className="h-full"
         />

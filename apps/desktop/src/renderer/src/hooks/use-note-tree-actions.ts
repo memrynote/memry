@@ -76,6 +76,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
 
   // Folder icon picker state
   const [iconPickerFolderPath, setIconPickerFolderPath] = useState<string | null>(null)
+  const [iconPickerNoteId, setIconPickerNoteId] = useState<string | null>(null)
 
   // ---- Selection handling ----
 
@@ -109,12 +110,13 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
   )
 
   const handleOpenFolderView = useCallback(
-    (folderPath: string) => {
+    (folderPath: string, icon?: string | null) => {
       const folderName = folderPath.split('/').pop() || 'Folder'
       openTab({
         type: 'folder',
         title: folderName,
         icon: 'folder',
+        emoji: icon ?? undefined,
         path: `/folder/${encodeURIComponent(folderPath)}`,
         entityId: folderPath,
         isPinned: false,
@@ -908,6 +910,8 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
     // Icon picker
     iconPickerFolderPath,
     setIconPickerFolderPath,
+    iconPickerNoteId,
+    setIconPickerNoteId,
 
     // Move / Drag-drop
     isMoving,

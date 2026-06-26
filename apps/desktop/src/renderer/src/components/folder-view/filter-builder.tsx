@@ -6,7 +6,7 @@
  */
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
-import { Filter, Plus, X, Trash2 } from '@/lib/icons'
+import { Filter, Plus, X } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -18,7 +18,6 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select'
-import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
 import {
   countFilterConditions,
@@ -434,17 +433,6 @@ export function FilterBuilder({
     [state, updateState]
   )
 
-  // Clear all filters
-  const handleClearAll = useCallback(() => {
-    updateState({
-      logic: 'and',
-      conditions: [],
-      groups: []
-    })
-  }, [updateState])
-
-  const hasFilters = state.conditions.length > 0 || state.groups.length > 0
-
   return (
     <TooltipProvider>
       <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -452,13 +440,17 @@ export function FilterBuilder({
           <TooltipTrigger asChild>
             <PopoverTrigger asChild>
               <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
-                className={cn('gap-1.5 px-2', filterCount > 0 && 'border-primary', className)}
+                className={cn(
+                  'gap-1.5 px-2 text-muted-foreground',
+                  filterCount > 0 && 'text-foreground',
+                  className
+                )}
               >
-                <Filter className="h-4 w-4" />
+                <Filter className="h-3.5 w-3.5" />
                 {filterCount > 0 && (
-                  <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">
+                  <Badge variant="secondary" className="ms-1 h-5 px-1.5 text-[10px]">
                     {filterCount}
                   </Badge>
                 )}
@@ -470,159 +462,121 @@ export function FilterBuilder({
           </TooltipContent>
         </Tooltip>
 
-        <PopoverContent align="start" className="w-[480px] p-0">
-          {/* Header */}
-          <div className="flex items-center justify-between px-3 py-2 border-b">
-            <span className="text-sm font-medium">
-              {tPhaseF('phaseF.componentsFolderViewFilterBuilder.filters')}
+        <PopoverContent align="start" className="w-[344px] overflow-clip p-0">
+          {/* Header — title + Match logic chip */}
+          <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
+            <span className="text-xs font-semibold text-foreground">
+              {tPhaseF('phaseF.componentsFolderViewFilterBuilder.filter')}
             </span>
-            {hasFilters && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive"
-                onClick={handleClearAll}
-              >
-                <Trash2 className="h-3.5 w-3.5 mr-1" />
-
-                {tPhaseF('phaseF.componentsFolderViewFilterBuilder.clearAll')}
-              </Button>
-            )}
+            <div className="grow" />
+            <span className="text-[11px] text-muted-foreground">
+              {tPhaseF('phaseF.componentsFolderViewFilterBuilder.match')}
+            </span>
+            <Select value={state.logic} onValueChange={handleLogicChange}>
+              <SelectTrigger className="flex h-[22px] w-auto items-center justify-start gap-1 rounded-md border-0 bg-muted px-1.5 text-[11px] font-semibold text-foreground [&>svg:last-child]:h-2.5 [&>svg:last-child]:w-2.5">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="and" className="text-xs">
+                  {tPhaseF('phaseF.componentsFolderViewFilterBuilder.all')}
+                </SelectItem>
+                <SelectItem value="or" className="text-xs">
+                  {tPhaseF('phaseF.componentsFolderViewFilterBuilder.any')}
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
-          {/* Content */}
-          <div className="p-3 max-h-[400px] overflow-y-auto">
-            {!hasFilters ? (
-              /* Empty state */
-              <div className="text-center py-6 text-sm text-muted-foreground">
-                <Filter className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p>{tPhaseF('phaseF.componentsFolderViewFilterBuilder.noFiltersApplied')}</p>
-                <p className="text-xs mt-1">
-                  {tPhaseF(
-                    'phaseF.componentsFolderViewFilterBuilder.addFiltersToNarrowDownYourNotes'
-                  )}
-                </p>
-              </div>
-            ) : (
-              <>
-                {/* Logic selector */}
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-xs text-muted-foreground">
-                    {tPhaseF('phaseF.componentsFolderViewFilterBuilder.match')}
+          {/* Conditions */}
+          <div className="flex max-h-[400px] flex-col gap-1.5 overflow-y-auto px-3 py-2.5">
+            {/* Top-level conditions */}
+            {state.conditions.map((condition) => (
+              <FilterRow
+                key={condition.id}
+                condition={condition}
+                availableProperties={propertyInfos}
+                onChange={(updated) => handleUpdateCondition(condition.id, updated)}
+                onRemove={() => handleRemoveCondition(condition.id)}
+              />
+            ))}
+
+            {/* Nested groups */}
+            {state.groups.map((group) => (
+              <div key={group.id} className="flex flex-col gap-1.5 border-s-2 border-border ps-2.5">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] text-muted-foreground">
+                    {tPhaseF('phaseF.componentsFolderViewFilterBuilder.match2')}
                   </span>
-                  <Select value={state.logic} onValueChange={handleLogicChange}>
-                    <SelectTrigger className="w-[100px] h-7 text-xs">
+                  <Select
+                    value={group.logic}
+                    onValueChange={(v) => handleGroupLogicChange(group.id, v as 'and' | 'or')}
+                  >
+                    <SelectTrigger className="flex h-[22px] w-auto items-center justify-start gap-1 rounded-md border-0 bg-muted px-1.5 text-[11px] font-semibold text-foreground [&>svg:last-child]:h-2.5 [&>svg:last-child]:w-2.5">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="and" className="text-xs">
-                        {tPhaseF('phaseF.componentsFolderViewFilterBuilder.allAnd')}
+                        {tPhaseF('phaseF.componentsFolderViewFilterBuilder.all')}
                       </SelectItem>
                       <SelectItem value="or" className="text-xs">
-                        {tPhaseF('phaseF.componentsFolderViewFilterBuilder.anyOr')}
+                        {tPhaseF('phaseF.componentsFolderViewFilterBuilder.any')}
                       </SelectItem>
                     </SelectContent>
                   </Select>
-                  <span className="text-xs text-muted-foreground">
-                    {tPhaseF('phaseF.componentsFolderViewFilterBuilder.ofTheFollowing')}
-                  </span>
+                  <div className="grow" />
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveGroup(group.id)}
+                    aria-label={tPhaseF('phaseF.componentsFolderViewFilterBuilder.removeGroup')}
+                    className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground/70 transition-colors hover:text-foreground"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
                 </div>
 
-                {/* Top-level conditions */}
-                {state.conditions.map((condition) => (
+                {group.conditions.map((condition) => (
                   <FilterRow
                     key={condition.id}
                     condition={condition}
                     availableProperties={propertyInfos}
-                    onChange={(updated) => handleUpdateCondition(condition.id, updated)}
-                    onRemove={() => handleRemoveCondition(condition.id)}
+                    onChange={(updated) =>
+                      handleUpdateGroupCondition(group.id, condition.id, updated)
+                    }
+                    onRemove={() => handleRemoveGroupCondition(group.id, condition.id)}
                   />
                 ))}
 
-                {/* Nested groups */}
-                {state.groups.map((group) => (
-                  <div key={group.id} className="mt-2 pl-3 border-l-2 border-muted-foreground/20">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs text-muted-foreground">
-                        {tPhaseF('phaseF.componentsFolderViewFilterBuilder.match2')}
-                      </span>
-                      <Select
-                        value={group.logic}
-                        onValueChange={(v) => handleGroupLogicChange(group.id, v as 'and' | 'or')}
-                      >
-                        <SelectTrigger className="w-[80px] h-6 text-[10px]">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="and" className="text-xs">
-                            {tPhaseF('phaseF.componentsFolderViewFilterBuilder.all')}
-                          </SelectItem>
-                          <SelectItem value="or" className="text-xs">
-                            {tPhaseF('phaseF.componentsFolderViewFilterBuilder.any')}
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <span className="text-xs text-muted-foreground flex-1">
-                        {tPhaseF('phaseF.componentsFolderViewFilterBuilder.of')}
-                      </span>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                        onClick={() => handleRemoveGroup(group.id)}
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-
-                    {group.conditions.map((condition) => (
-                      <FilterRow
-                        key={condition.id}
-                        condition={condition}
-                        availableProperties={propertyInfos}
-                        onChange={(updated) =>
-                          handleUpdateGroupCondition(group.id, condition.id, updated)
-                        }
-                        onRemove={() => handleRemoveGroupCondition(group.id, condition.id)}
-                        nestingLevel={1}
-                      />
-                    ))}
-
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 px-2 text-[10px] text-muted-foreground ml-4 mt-1"
-                      onClick={() => handleAddGroupCondition(group.id)}
-                    >
-                      <Plus className="h-3 w-3 mr-1" />
-
-                      {tPhaseF('phaseF.componentsFolderViewFilterBuilder.addCondition')}
-                    </Button>
-                  </div>
-                ))}
-              </>
-            )}
+                <button
+                  type="button"
+                  onClick={() => handleAddGroupCondition(group.id)}
+                  className="flex items-center gap-1 text-[11.5px] font-medium text-[var(--tint)]"
+                >
+                  <Plus className="h-3 w-3" />
+                  {tPhaseF('phaseF.componentsFolderViewFilterBuilder.addCondition')}
+                </button>
+              </div>
+            ))}
           </div>
 
-          {/* Footer with add buttons */}
-          <Separator />
-          <div className="flex items-center gap-2 p-2">
-            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={handleAddCondition}>
-              <Plus className="h-3.5 w-3.5 mr-1" />
-
+          {/* Footer — add buttons */}
+          <div className="flex items-center gap-3.5 border-t border-border px-3 py-2.5">
+            <button
+              type="button"
+              onClick={handleAddCondition}
+              className="flex items-center gap-1 text-xs font-semibold text-[var(--tint)]"
+            >
+              <Plus className="h-3.5 w-3.5" />
               {tPhaseF('phaseF.componentsFolderViewFilterBuilder.addFilter')}
-            </Button>
+            </button>
             {state.groups.length < 3 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs text-muted-foreground"
+              <button
+                type="button"
                 onClick={handleAddGroup}
+                className="flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
               >
-                <Plus className="h-3.5 w-3.5 mr-1" />
-
+                <Plus className="h-3.5 w-3.5" />
                 {tPhaseF('phaseF.componentsFolderViewFilterBuilder.addGroup')}
-              </Button>
+              </button>
             )}
           </div>
         </PopoverContent>

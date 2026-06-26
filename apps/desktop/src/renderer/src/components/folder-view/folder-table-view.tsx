@@ -84,10 +84,12 @@ import {
   TextCell,
   type PropertyType
 } from './property-cell'
+import type { TagMetaMap } from './note-card-pieces'
 import { SortableColumnHeader } from './sortable-column-header'
 import { RowContextMenu } from './row-context-menu'
 import { FolderViewEmptyState } from './folder-view-empty-state'
 import { SummaryRow } from './summary-row'
+import { SelectionCheckbox, SELECT_COLUMN_WIDTH, type SelectionState } from './selection-checkbox'
 
 /**
  * Sort order configuration (matches .folder.md format)
@@ -129,6 +131,8 @@ interface FolderTableViewProps {
   onTagClick?: (tag: string) => void
   /** Called when a tag is removed */
   onTagRemove?: (noteId: string, tag: string) => void
+  /** Tag color + icon, keyed by lowercased tag name */
+  tagMetaMap?: TagMetaMap
   /** Called when a property value is updated */
   onPropertyUpdate?: (noteId: string, propertyId: string, value: unknown) => void
   /** Called when column config changes (resize, reorder) */
@@ -271,6 +275,7 @@ export function FolderTableView({
   onFolderClick,
   onTagClick,
   onTagRemove,
+  tagMetaMap,
   onPropertyUpdate,
   onColumnsChange,
   onDisplayNameChange,
@@ -296,6 +301,17 @@ export function FolderTableView({
   const [sorting, setSorting] = useState<SortingState>(() =>
     orderConfigToSortingState(initialSorting)
   )
+
+  // Sync external sort changes (e.g. the header Sort control writing view.order)
+  // into the internal state. Render-phase to match the no-effect convention;
+  // keyed on a serialized signature so a header-click round-trip back through
+  // view.order doesn't fight the table's own update.
+  const [sortSig, setSortSig] = useState(() => JSON.stringify(initialSorting ?? []))
+  const incomingSortSig = JSON.stringify(initialSorting ?? [])
+  if (sortSig !== incomingSortSig) {
+    setSortSig(incomingSortSig)
+    setSorting(orderConfigToSortingState(initialSorting))
+  }
 
   // ============================================================================
   // Keyboard Navigation State (Phase 17) & Selection (Phase 19)
@@ -440,11 +456,11 @@ export function FolderTableView({
                 }
               : undefined
           }
-          highlightQuery={highlightQuery}
+          tagMetaMap={tagMetaMap}
         />
       )
     },
-    [onTagClick, onTagRemove, highlightQuery]
+    [onTagClick, onTagRemove, tagMetaMap]
   )
 
   // Memoized cell renderer for date columns
@@ -1006,6 +1022,34 @@ export function FolderTableView({
     )
   }
 
+  // Select-all / per-row checkbox state for the leading selection column.
+  // `rows` here is the filtered + sorted leaf set, so "select all" matches what
+  // the user actually sees.
+  const selectedVisibleCount = rows.reduce(
+    (n, r) => n + (selectedRowIds.has(r.original.id) ? 1 : 0),
+    0
+  )
+  const headerSelectState: SelectionState =
+    selectedVisibleCount === 0
+      ? 'unchecked'
+      : selectedVisibleCount === rows.length
+        ? 'checked'
+        : 'indeterminate'
+  const selectionActive = selectedRowIds.size > 0
+  const toggleSelectAll = (): void => {
+    setSelectedRowIds(
+      headerSelectState === 'checked' ? new Set() : new Set(rows.map((r) => r.original.id))
+    )
+  }
+  const toggleRowSelection = (rowId: string): void => {
+    setSelectedRowIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(rowId)) next.delete(rowId)
+      else next.add(rowId)
+      return next
+    })
+  }
+
   return (
     <DndContext
       sensors={sensors}
@@ -1030,7 +1074,7 @@ export function FolderTableView({
           style={{
             display: 'grid',
             width: '100%',
-            minWidth: Math.max(totalColumnsWidth, 100)
+            minWidth: Math.max(totalColumnsWidth + SELECT_COLUMN_WIDTH, 100)
           }}
           className="text-sm"
         >
@@ -1046,6 +1090,18 @@ export function FolderTableView({
           >
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id} style={{ display: 'flex', width: '100%' }}>
+                {/* Leading select-all checkbox column (not part of resizable columns) */}
+                <th
+                  style={{ width: SELECT_COLUMN_WIDTH }}
+                  className="flex flex-shrink-0 items-center justify-center"
+                >
+                  <SelectionCheckbox
+                    state={headerSelectState}
+                    onToggle={toggleSelectAll}
+                    alwaysVisible
+                    label={tPhaseF('phaseF.componentsFolderViewFolderTableView.selectAll')}
+                  />
+                </th>
                 <SortableContext items={columnIds} strategy={horizontalListSortingStrategy}>
                   {headerGroup.headers.map((header) => {
                     const config = columnConfigMap.get(header.column.id) || {
@@ -1115,6 +1171,7 @@ export function FolderTableView({
                       transform: `translateY(${virtualRow.start}px)`
                     }}
                     className={cn(
+                      'group/row',
                       'border-b border-border/40',
                       'transition-colors',
                       'items-center',
@@ -1131,6 +1188,18 @@ export function FolderTableView({
                     onClick={(e) => handleRowClick(virtualRow.index, row.original.id, e)}
                     onDoubleClick={() => onNoteOpen?.(row.original.id)}
                   >
+                    {/* Leading per-row checkbox (reveals on hover or while a selection is active) */}
+                    <td
+                      style={{ width: SELECT_COLUMN_WIDTH }}
+                      className="flex flex-shrink-0 items-center justify-center"
+                    >
+                      <SelectionCheckbox
+                        state={isSelected ? 'checked' : 'unchecked'}
+                        onToggle={() => toggleRowSelection(row.original.id)}
+                        alwaysVisible={selectionActive}
+                        label={tPhaseF('phaseF.componentsFolderViewFolderTableView.selectRow')}
+                      />
+                    </td>
                     {row.getVisibleCells().map((cell, cellIndex) => {
                       const isLastCell = cellIndex === row.getVisibleCells().length - 1
                       return (
@@ -1174,6 +1243,7 @@ export function FolderTableView({
               formulas={formulas}
               density={density}
               showColumnBorders={showColumnBorders}
+              hasLeadingColumn
               columnWidths={Object.fromEntries(
                 table.getAllColumns().map((col) => [col.id, col.getSize()])
               )}

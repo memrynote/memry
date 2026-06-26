@@ -10,6 +10,8 @@ import { useMemo, useState } from 'react'
 import { Download, FolderInput, Link, Tag, Trash2, X } from '@/lib/icons'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Input } from '@/components/ui/input'
+import { NoteIconDisplay } from '@/lib/render-note-icon'
+import type { TagMetaMap } from '@/components/folder-view/note-card-pieces'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
 
@@ -18,6 +20,8 @@ interface BulkActionBarProps {
   count: number
   /** Existing tag names for add-tag suggestions */
   availableTags?: string[]
+  /** Per-tag icon + color (keyed by lowercased name) for suggestion glyphs */
+  tagMeta?: TagMetaMap
   onMove: () => void
   onCopyLinks: () => void
   onAddTag: (tag: string) => void
@@ -57,6 +61,7 @@ function Divider(): React.JSX.Element {
 export function BulkActionBar({
   count,
   availableTags = [],
+  tagMeta,
   onMove,
   onCopyLinks,
   onAddTag,
@@ -90,6 +95,7 @@ export function BulkActionBar({
         label={t('bulkActions.addTag')}
         placeholder={t('bulkActions.tagNamePlaceholder')}
         availableTags={availableTags}
+        tagMeta={tagMeta}
         onAddTag={onAddTag}
       />
       <BarButton icon={Download} label={t('bulkActions.export')} onClick={onExport} />
@@ -114,6 +120,7 @@ interface AddTagButtonProps {
   label: string
   placeholder: string
   availableTags: string[]
+  tagMeta?: TagMetaMap
   onAddTag: (tag: string) => void
 }
 
@@ -121,6 +128,7 @@ function AddTagButton({
   label,
   placeholder,
   availableTags,
+  tagMeta,
   onAddTag
 }: AddTagButtonProps): React.JSX.Element {
   const [open, setOpen] = useState(false)
@@ -167,17 +175,27 @@ function AddTagButton({
         />
         {suggestions.length > 0 && (
           <div className="mt-1 max-h-40 overflow-y-auto">
-            {suggestions.map((tag) => (
-              <button
-                key={tag}
-                type="button"
-                onClick={() => apply(tag)}
-                className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-start text-xs text-foreground transition-colors hover:bg-muted"
-              >
-                <Tag className="size-3 shrink-0 text-muted-foreground" />
-                <span className="truncate">{tag}</span>
-              </button>
-            ))}
+            {suggestions.map((tag) => {
+              const icon = tagMeta?.get(tag.toLowerCase())?.icon
+              return (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() => apply(tag)}
+                  className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-start text-xs text-foreground transition-colors hover:bg-muted"
+                >
+                  {icon ? (
+                    <NoteIconDisplay
+                      value={icon}
+                      className="size-3.5 shrink-0 text-center text-[13px] leading-none"
+                    />
+                  ) : (
+                    <Tag className="size-3 shrink-0 text-muted-foreground" />
+                  )}
+                  <span className="truncate">{tag}</span>
+                </button>
+              )
+            })}
           </div>
         )}
       </PopoverContent>

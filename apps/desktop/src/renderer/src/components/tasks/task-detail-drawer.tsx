@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, useMemo, memo, useCallback } from 'react'
 import { useT } from '@memry/i18n/renderer'
 import { cn } from '@/lib/utils'
-import { useDayPanel } from '@/contexts/day-panel-context'
 import { useResizablePanel } from '@/hooks/use-resizable-panel'
 import { PanelResizeRail } from '@/components/ui/panel-resize-rail'
 import { type Task, type Priority, type RepeatConfig } from '@/data/task-model'
@@ -120,7 +119,6 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
   onDeleteTask
 }: TaskDetailDrawerProps): React.JSX.Element {
   const { t, i18n } = useT('tasks')
-  const { isOpen: isDayPanelOpen, width: dayPanelWidth } = useDayPanel()
   const { width, setWidth, isResizing, setIsResizing } = useResizablePanel({
     storageKey: TASK_DETAIL_WIDTH_KEY,
     defaultPx: TASK_DETAIL_WIDTH_DEFAULT_PX,
@@ -288,14 +286,14 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
       aria-label={t('task.details')}
       aria-hidden={!isOpen}
       className={cn(
-        'fixed top-[37px] bottom-0 z-10 border-s bg-surface overflow-hidden',
-        'transition-[opacity,right] duration-200 ease-out',
-        !isResizing && 'transition-[width,opacity,right] duration-200 ease-out',
+        // ponytail: absolute (not fixed) so the drawer stays inside its own pane in split view
+        'absolute inset-y-0 end-0 z-10 border-s bg-surface overflow-hidden',
+        'transition-[opacity] duration-200 ease-out',
+        !isResizing && 'transition-[width,opacity] duration-200 ease-out',
         isOpen ? 'opacity-100 border-border' : 'opacity-0 border-transparent'
       )}
       style={{
-        width: isOpen ? `${width}px` : 0,
-        right: isDayPanelOpen ? `${dayPanelWidth}px` : 0
+        width: isOpen ? `${width}px` : 0
       }}
     >
       <div

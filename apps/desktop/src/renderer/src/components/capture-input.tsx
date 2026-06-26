@@ -23,6 +23,7 @@ import {
 } from '@/lib/voice-recording-readiness'
 import { prepareVoiceMemoAudio } from '@/lib/voice-memo-audio'
 import { VoiceRecorder, type VoiceRecorderHandle } from './voice-recorder'
+import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts-base'
 import { useT } from '@memry/i18n/renderer'
 
 /**
@@ -128,6 +129,14 @@ export function CaptureInput({
   const captureVoice = useCaptureVoice()
   const captureImage = useCaptureImage()
   const { open: openSettings } = useSettingsModal()
+
+  useKeyboardShortcuts([
+    {
+      key: 'q',
+      action: () => textareaRef.current?.focus(),
+      description: tPhaseF('phaseF.componentsCaptureInput.focusShortcut')
+    }
+  ])
 
   const isCapturing =
     captureText.isPending ||
@@ -420,6 +429,18 @@ export function CaptureInput({
           />
 
           <div className={cn('flex shrink-0 items-center', compact ? 'gap-0.5' : 'gap-1')}>
+            <span
+              className={cn(
+                'rounded-[3px] px-1 bg-foreground/5 border border-border transition-opacity duration-150',
+                isFocused
+                  ? 'opacity-0 pointer-events-none w-0 overflow-hidden border-0 px-0'
+                  : 'opacity-100'
+              )}
+            >
+              <span className="text-[9px] text-text-tertiary font-[family-name:var(--font-mono)] font-medium leading-3">
+                {tPhaseF('phaseF.componentsCaptureInput.q')}
+              </span>
+            </span>
             <button
               onClick={handleAttachClick}
               disabled={isCapturing}

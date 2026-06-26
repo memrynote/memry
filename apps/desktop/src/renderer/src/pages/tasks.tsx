@@ -18,6 +18,7 @@ import {
 } from '@/components/tasks/filters'
 import { cn } from '@/lib/utils'
 import { PageToolbar } from '@/components/ui/page-toolbar'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   getFilteredTasks,
   getDefaultTodoStatus,
@@ -905,48 +906,55 @@ export const TasksPage = ({
             />
 
             {/* Filter Button */}
-            <FilterDropdown
-              open={isFilterDropdownOpen}
-              onOpenChange={setIsFilterDropdownOpen}
-              filters={filters}
-              onUpdateFilters={updateFiltersAndClearSaved}
-              onClearFilters={clearFiltersAndClearSaved}
-              tasks={baseFilteredTasks}
-              projects={projects}
-              savedFilters={savedFilters}
-              activeSavedFilterId={activeSavedFilterId}
-              hasActiveFilters={filtersActive}
-              onDeleteSavedFilter={handleDeleteSavedFilter}
-              onApplySavedFilter={handleApplySavedFilter}
-              onSaveFilter={(name) => handleSaveFilter(name, filters, sort)}
-              onToggleStarFilter={toggleStarFilter}
-              statuses={currentProjectStatuses}
-            >
-              <button
-                type="button"
-                className={cn(
-                  'flex items-center shrink-0 rounded-[5px] py-1 px-2 gap-1 border transition-colors',
-                  isFilterDropdownOpen || filtersActive
-                    ? 'border-foreground/20 bg-foreground/5 text-foreground/90'
-                    : 'border-border text-muted-foreground hover:bg-surface-active/50'
-                )}
-              >
-                <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-                  <path
-                    d="M2 3h9M3.5 6.5h6M5 10h3"
-                    stroke="currentColor"
-                    strokeWidth="1.1"
-                    strokeLinecap="round"
-                  />
-                </svg>
-                <span className="text-[12px] font-medium">{t('filters.filter')}</span>
-                {filtersActive && (
-                  <span className="flex items-center justify-center size-[14px] rounded-full bg-foreground text-background text-[9px] font-bold">
-                    {countActiveFilters(filters)}
-                  </span>
-                )}
-              </button>
-            </FilterDropdown>
+            <TooltipProvider delayDuration={0}>
+              <Tooltip>
+                <FilterDropdown
+                  open={isFilterDropdownOpen}
+                  onOpenChange={setIsFilterDropdownOpen}
+                  filters={filters}
+                  onUpdateFilters={updateFiltersAndClearSaved}
+                  onClearFilters={clearFiltersAndClearSaved}
+                  tasks={baseFilteredTasks}
+                  projects={projects}
+                  savedFilters={savedFilters}
+                  activeSavedFilterId={activeSavedFilterId}
+                  hasActiveFilters={filtersActive}
+                  onDeleteSavedFilter={handleDeleteSavedFilter}
+                  onApplySavedFilter={handleApplySavedFilter}
+                  onSaveFilter={(name) => handleSaveFilter(name, filters, sort)}
+                  onToggleStarFilter={toggleStarFilter}
+                  statuses={currentProjectStatuses}
+                >
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label={t('filters.filter')}
+                      className={cn(
+                        'flex items-center justify-center shrink-0 rounded-[5px] p-1.5 gap-1 transition-colors',
+                        isFilterDropdownOpen || filtersActive
+                          ? 'bg-foreground/5 text-foreground/90'
+                          : 'text-muted-foreground hover:bg-surface-active/50'
+                      )}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 13 13" fill="none">
+                        <path
+                          d="M2 3h9M3.5 6.5h6M5 10h3"
+                          stroke="currentColor"
+                          strokeWidth="1.1"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                      {filtersActive && (
+                        <span className="flex items-center justify-center size-[14px] rounded-full bg-foreground text-background text-[9px] font-bold">
+                          {countActiveFilters(filters)}
+                        </span>
+                      )}
+                    </button>
+                  </TooltipTrigger>
+                </FilterDropdown>
+                <TooltipContent side="bottom">{t('filters.filter')}</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
 
             {/* Group By Button */}
             <GroupByDropdown sort={sort} onChange={updateSort} />
@@ -971,7 +979,7 @@ export const TasksPage = ({
                       : 'text-text-tertiary hover:text-text-secondary'
                   )}
                 >
-                  <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                  <svg width="14" height="14" viewBox="0 0 13 13" fill="none">
                     <path
                       d="M2 3.5h9M2 6.5h9M2 9.5h9"
                       stroke="currentColor"
@@ -994,7 +1002,7 @@ export const TasksPage = ({
                         : 'text-text-tertiary hover:text-text-secondary'
                     )}
                   >
-                    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                    <svg width="14" height="14" viewBox="0 0 13 13" fill="none">
                       <rect x="1.5" y="2" width="2.5" height="9" rx="0.75" stroke="currentColor" />
                       <rect
                         x="5.25"

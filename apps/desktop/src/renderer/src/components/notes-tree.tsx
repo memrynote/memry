@@ -12,7 +12,6 @@ import {
 import { getI18n } from 'react-i18next'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import {
-  TreeIcon,
   TreeLabel,
   TreeNode,
   TreeNodeContent,
@@ -33,10 +32,12 @@ import {
 } from '@/components/note-tree-internal'
 import {
   getDisplayName,
+  getFileExtensionLabel,
   getFileIcon,
   collectAllFolderIds,
   type FolderNode
 } from '@/components/notes-tree-utils'
+import { IconPickerButton } from '@/components/icon-picker-button'
 import type { NoteListItem } from '@/hooks/use-notes-query'
 import {
   Pencil,
@@ -52,6 +53,7 @@ import {
   Smile
 } from '@/lib/icons'
 import { ContextMenuItem, ContextMenuSeparator } from '@/components/ui/context-menu'
+import { BookmarkMenuItem } from '@/components/sidebar/bookmark-menu-item'
 import { shouldVirtualize } from '@/lib/virtualized-tree-utils'
 import {
   VirtualizedNotesTree,
@@ -276,24 +278,41 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
               {!isPartOfSelection && (
                 <>
                   <ContextMenuItem onClick={() => actions.handleRenameClick(note)}>
-                    <Pencil className="mr-2 h-4 w-4" />
+                    <Pencil className="me-2 h-4 w-4" />
                     {t('tree.actions.rename')}
                   </ContextMenuItem>
                   <ContextMenuSeparator />
+                  <ContextMenuItem onClick={() => actions.setIconPickerNoteId(note.id)}>
+                    <Smile className="me-2 h-4 w-4" />
+                    {t('tree.actions.setIcon')}
+                  </ContextMenuItem>
+                  {note.emoji && (
+                    <ContextMenuItem
+                      onClick={() =>
+                        void data.mutations.updateNote.mutateAsync({ id: note.id, emoji: null })
+                      }
+                    >
+                      <X className="me-2 h-4 w-4" />
+                      {t('tree.actions.removeIcon')}
+                    </ContextMenuItem>
+                  )}
+                  <ContextMenuSeparator />
                   <ContextMenuItem onClick={() => void actions.handleOpenExternal(note)}>
-                    <ExternalLink className="mr-2 h-4 w-4" />
+                    <ExternalLink className="me-2 h-4 w-4" />
                     {t('tree.actions.openExternal')}
                   </ContextMenuItem>
                   <ContextMenuItem onClick={() => void actions.handleRevealInFinder(note)}>
-                    <FolderOpen className="mr-2 h-4 w-4" />
+                    <FolderOpen className="me-2 h-4 w-4" />
                     {t('tree.actions.revealInFinder')}
                   </ContextMenuItem>
+                  <ContextMenuSeparator />
+                  <BookmarkMenuItem itemType="note" itemId={note.id} />
                   <ContextMenuSeparator />
                   <ContextMenuItem
                     variant="destructive"
                     onClick={() => actions.handleDeleteClick(note)}
                   >
-                    <Trash2 className="mr-2 h-4 w-4" />
+                    <Trash2 className="me-2 h-4 w-4" />
                     {tCommon('button.delete')}
                   </ContextMenuItem>
                 </>
@@ -307,7 +326,18 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
             </>
           }
         >
-          <TreeIcon icon={getFileIcon(note)} />
+          <IconPickerButton
+            leading={<div className="h-4 w-4" />}
+            hasIcon={!!note.emoji}
+            onIconChange={(icon) =>
+              void data.mutations.updateNote.mutateAsync({ id: note.id, emoji: icon })
+            }
+            ariaLabel={t('tree.actions.setIcon')}
+            pickerOpen={actions.iconPickerNoteId === note.id}
+            onPickerOpenChange={(open) => actions.setIconPickerNoteId(open ? note.id : null)}
+          >
+            {getFileIcon(note)}
+          </IconPickerButton>
           {isBeingRenamed ? (
             <input
               ref={renameCallbackRef}
@@ -330,7 +360,14 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
               className="flex-1 h-5 px-1 text-sm bg-background border border-input rounded focus:outline-none"
             />
           ) : (
-            <TreeLabel>{getDisplayName(note.path)}</TreeLabel>
+            <>
+              <TreeLabel>{getDisplayName(note.path)}</TreeLabel>
+              {getFileExtensionLabel(note) && (
+                <span className="ms-2 shrink-0 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/50">
+                  {getFileExtensionLabel(note)}
+                </span>
+              )}
+            </>
           )}
           {note.localOnly && <Monitor className="ml-1 h-3 w-3 shrink-0 text-muted-foreground/60" />}
         </TreeNodeTrigger>
@@ -389,6 +426,8 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
                 </ContextMenuItem>
               )}
               <ContextMenuSeparator />
+              <BookmarkMenuItem itemType="folder" itemId={folder.path} />
+              <ContextMenuSeparator />
               <ContextMenuItem onClick={() => actions.handleRenameFolderClick(folder.path)}>
                 <Pencil className="mr-2 h-4 w-4" />
                 {t('tree.actions.rename')}
@@ -442,7 +481,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation()
-                    actions.handleOpenFolderView(folder.path)
+                    actions.handleOpenFolderView(folder.path, folder.icon)
                   }}
                   className="p-1 cursor-pointer rounded"
                   aria-label={t('tree.aria.openFolderView')}
@@ -505,6 +544,9 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
           onClearFolderTemplate={(...args) => void actions.handleClearFolderTemplate(...args)}
           folderTemplateNames={data.folderTemplateNames}
           onSetFolderIcon={(path, icon) => void data.setFolderIcon(path, icon)}
+          onSetNoteIcon={(id, icon) =>
+            void data.mutations.updateNote.mutateAsync({ id, emoji: icon })
+          }
           noteMap={data.noteMap}
           isDragDisabled={
             !!actions.renamingNoteId || !!actions.renamingFolderPath || actions.isMoving
@@ -539,7 +581,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
               )
             )}
             {data.tree.rootNotes.map((note, index) =>
-              renderNote(note, 1, index === data.tree.rootNotes.length - 1, true)
+              renderNote(note, 0, index === data.tree.rootNotes.length - 1, true)
             )}
           </TreeView>
         </TreeProvider>

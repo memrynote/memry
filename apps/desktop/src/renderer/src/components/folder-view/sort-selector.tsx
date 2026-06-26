@@ -131,13 +131,13 @@ export function SortSelector({
                 variant="ghost"
                 size="sm"
                 className={cn(
-                  'h-auto gap-1 rounded-[5px] border border-border px-2 py-1 text-muted-foreground hover:bg-surface-active/50 hover:text-foreground',
+                  'h-auto gap-1 rounded-[5px] px-2 py-1 text-muted-foreground hover:bg-surface-active/50 hover:text-foreground',
                   isSorted &&
-                    'border-foreground/20 bg-foreground/5 text-foreground/90 hover:bg-foreground/5 hover:text-foreground/90',
+                    'bg-foreground/5 text-foreground/90 hover:bg-foreground/5 hover:text-foreground/90',
                   className
                 )}
               >
-                <ArrowUpDown className="size-3" />
+                <ArrowUpDown className="size-3.5" />
                 {isSorted && (
                   <button
                     type="button"

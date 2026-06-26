@@ -3,44 +3,23 @@
  * Kept tiny and dependency-free so the views render notes consistently.
  */
 
-import { cn } from '@/lib/utils'
+import type { Tag } from '@/components/note/tags-row/TagChip'
 
-const HEX6 = /^#([0-9a-f]{6})$/i
+/** Color + icon for a tag, keyed by lowercased tag name. */
+export interface TagMeta {
+  color: string
+  icon: string | null
+}
+
+export type TagMetaMap = Map<string, TagMeta>
 
 /**
- * A note tag rendered as a tinted pill. Uses the tag's custom color when it is a
- * valid 6-digit hex, otherwise falls back to the neutral muted token.
+ * Build the shared {@link Tag} model that {@link TagChip} renders, from a bare
+ * folder-view tag string and its metadata. Keeps tag pills identical to the
+ * sidebar / note tags (same colors + icon) everywhere in the app.
  */
-export function NoteTagPill({
-  tag,
-  color,
-  onClick
-}: {
-  tag: string
-  color?: string
-  onClick?: () => void
-}): React.JSX.Element {
-  const tinted = !!color && HEX6.test(color)
-  return (
-    <button
-      type="button"
-      onClick={
-        onClick
-          ? (e) => {
-              e.stopPropagation()
-              onClick()
-            }
-          : undefined
-      }
-      className={cn(
-        'inline-flex h-[18px] shrink-0 items-center rounded-full px-[7px] text-[10.5px] font-medium transition-colors',
-        !tinted && 'bg-muted text-muted-foreground hover:bg-muted/80'
-      )}
-      style={tinted ? { backgroundColor: `${color}24`, color } : undefined}
-    >
-      #{tag}
-    </button>
-  )
+export function toTagChip(tag: string, meta?: TagMeta): Tag {
+  return { id: tag, name: tag, color: meta?.color ?? '', icon: meta?.icon ?? null }
 }
 
 // Theme-aware pastel cover backgrounds (mapped from --card-* tokens in base.css).

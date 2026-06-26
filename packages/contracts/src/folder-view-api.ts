@@ -325,6 +325,9 @@ export interface ViewConfig {
 
   /** Show summary row */
   showSummaries?: boolean
+
+  /** Show vertical borders between columns */
+  columnBorders?: boolean
 }
 
 export const ViewConfigSchema = z.object({
@@ -336,7 +339,8 @@ export const ViewConfigSchema = z.object({
   order: z.array(OrderConfigSchema).optional(),
   groupBy: GroupByConfigSchema.optional(),
   limit: z.number().int().min(1).max(10000).optional(),
-  showSummaries: z.boolean().optional()
+  showSummaries: z.boolean().optional(),
+  columnBorders: z.boolean().optional()
 })
 
 // ============================================================================

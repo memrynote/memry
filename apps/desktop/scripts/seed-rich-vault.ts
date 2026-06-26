@@ -248,6 +248,55 @@ const notes: NoteSeed[] = [
   }
 ]
 
+// bulk filler notes (~5x): reuse existing folders/tags/emojis/props so they
+// index cleanly; numbered titles keep filenames unique within a folder.
+// ponytail: pool-and-cycle generator, no per-note prose; swap pools to retheme.
+const pick = <T>(arr: T[], i: number): T => arr[i % arr.length]
+const fillerFolders = ['Work', 'Work/Projects', 'Personal', 'Reading', 'Recipes']
+const fillerEmojis = ['📝', '✅', '🔖', '🌱', '🧪', '📈', '🧭', '🍵', '🛠️', '📎']
+const fillerTags = [
+  ['work', 'idea'],
+  ['idea'],
+  ['health'],
+  ['reading'],
+  ['recipe'],
+  ['work', 'meeting']
+]
+const fillerStatus = ['Active', 'In Progress', 'Done', 'Blocked']
+const fillerTitles = [
+  'Sprint Retro',
+  'Bug Triage',
+  'Feature Spike',
+  'Customer Feedback',
+  'Release Checklist',
+  'Architecture Notes',
+  'Weekly Review',
+  'Trip Planning',
+  'Garden Log',
+  'Workout Plan',
+  'Book Highlights',
+  'Podcast Notes',
+  'Pasta Carbonara',
+  'Sourdough Loaf',
+  'Cold Brew',
+  'Meeting Prep',
+  'Research Dump',
+  'Idea Parking Lot'
+]
+const FILLER_COUNT = 36
+for (let i = 0; i < FILLER_COUNT; i++) {
+  const base = pick(fillerTitles, i)
+  notes.push({
+    nid: noteId(),
+    folder: pick(fillerFolders, i),
+    title: base, // ponytail: unique within folder — base repeats every 18, folder every 5
+    emoji: pick(fillerEmojis, i),
+    tags: pick(fillerTags, i),
+    props: i % 3 === 0 ? { Status: pick(fillerStatus, i), Rating: (i % 5) + 1 } : {},
+    body: `# ${base}\n\nNotes for ${base.toLowerCase()}.\n\n- Point one\n- Point two\n- Point three\n\nLinks back to [[Q3 Roadmap]]. ${pick(['#idea', '#work', '#health', '#reading'], i)}`
+  })
+}
+
 notes.forEach(writeNote)
 
 // ---------------------------------------------------------------------------
