@@ -656,6 +656,30 @@ describe('settings section coverage', () => {
     expect(toast.success).toHaveBeenCalledWith('ai.inline.disabled')
   })
 
+  it('reports Ollama as unreachable instead of falsely connected', async () => {
+    window.electron.ipcRenderer.invoke = vi.fn(async (channel: string) => {
+      if (channel === 'ai-inline:get-settings') {
+        return { enabled: true, provider: 'ollama', model: 'llama3.2', apiKey: '', baseUrl: '' }
+      }
+      if (channel === 'ai-inline:get-server-port') return null
+      if (channel === 'ai-inline:start-server') return { success: true, port: 59185 }
+      if (channel === 'ai-inline:list-ollama-models')
+        return { success: false, error: 'fetch failed' }
+      return null
+    }) as typeof window.electron.ipcRenderer.invoke
+
+    render(<AIInlineSettings />)
+    await screen.findByText('ai.inline.connection')
+
+    fireEvent.click(screen.getByText('ai.inline.test'))
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(
+        'Ollama is not running. Start it with "ollama serve" and try again.'
+      )
+    )
+    expect(toast.success).not.toHaveBeenCalledWith('ai.inline.connected {"port":59185}')
+  })
+
   it('loads and updates local agent provider settings', async () => {
     render(<AgentProvidersSection />)
 

@@ -69,6 +69,7 @@ export function entrySnippet(content: string, max = 140): string {
   const text = content
     .replace(/^---\n[\s\S]*?\n---\n?/, '')
     .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/\[\[([^\]]*)\]\]/g, '$1')
     .replace(/[#>*_`~]/g, '')
     .replace(/\s+/g, ' ')
     .trim()

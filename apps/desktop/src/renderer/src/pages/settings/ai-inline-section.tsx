@@ -13,6 +13,7 @@ import {
 import { Loader2, Eye, EyeOff } from '@/lib/icons'
 import { toast } from 'sonner'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { friendlyError } from '@/hooks/use-ai-inline'
 import { createLogger } from '@/lib/logger'
 import type { AIInlineSettings } from '@memry/contracts/ai-inline-channels'
 import { AI_INLINE_SETTINGS_DEFAULTS } from '@memry/contracts/ai-inline-channels'
@@ -133,33 +134,41 @@ export function AIInlineSettings(): React.JSX.Element {
   const handleTestConnection = useCallback(async () => {
     setIsTesting(true)
     try {
-      const stopResult = (await window.electron.ipcRenderer.invoke('ai-inline:stop-server')) as {
-        success: boolean
-      }
-      if (!stopResult.success) {
-        toast.error(t('ai.inline.stopFailed'))
-        return
-      }
-
+      // No stop-first: startChatServer reuses the running port when settings are
+      // unchanged, so the proxy port stays stable instead of incrementing each test.
       const startResult = (await window.electron.ipcRenderer.invoke('ai-inline:start-server')) as {
         success: boolean
         port?: number
         error?: string
       }
 
-      if (startResult.success && startResult.port) {
-        setServerPort(startResult.port)
-        toast.success(t('ai.inline.connected', { port: startResult.port }))
-      } else {
+      if (!startResult.success || !startResult.port) {
         setServerPort(null)
-        toast.error(startResult.error ?? t('ai.inline.connectFailed'))
+        toast.error(extractErrorMessage(startResult.error, t('ai.inline.connectFailed')))
+        return
       }
+
+      // The proxy starts without ever contacting the provider, so a running port does
+      // not prove Ollama is reachable. Probe it for real before showing "connected".
+      if (settings.provider === 'ollama') {
+        const probe = (await window.electron.ipcRenderer.invoke(
+          'ai-inline:list-ollama-models'
+        )) as { success: boolean; error?: string }
+        if (!probe.success) {
+          setServerPort(null)
+          toast.error(friendlyError(probe.error ?? t('ai.inline.connectFailed'), 'ollama'))
+          return
+        }
+      }
+
+      setServerPort(startResult.port)
+      toast.success(t('ai.inline.connected', { port: startResult.port }))
     } catch (error) {
       toast.error(extractErrorMessage(error, t('ai.inline.testFailed')))
     } finally {
       setIsTesting(false)
     }
-  }, [t])
+  }, [settings.provider, t])
 
   if (isLoading) {
     return (

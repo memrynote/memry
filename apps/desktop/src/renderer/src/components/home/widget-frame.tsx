@@ -61,11 +61,11 @@ export function WidgetFrame({
       {/* Header is the drag handle (react-grid-layout draggableHandle=".widget-drag-handle").
           Interactive controls carry .widget-no-drag so a click on them doesn't start a drag. */}
       <div
-        className="widget-drag-handle flex cursor-grab items-center gap-2 border-b px-3.5 py-2.5"
+        className="widget-drag-handle flex cursor-grab items-center gap-2 px-3.5 py-2.5"
         aria-label={t('home.widget.dragAria')}
       >
         {Icon && <Icon className="size-4 shrink-0 text-[var(--tint)]" aria-hidden="true" />}
-        <span className="truncate text-[11px] font-semibold uppercase tracking-[0.07em] text-[var(--text-secondary)]">
+        <span className="truncate text-[11px] font-semibold uppercase tracking-[0.07em] text-[var(--text-tertiary)]">
           {title}
         </span>
         {HeaderFilter && (

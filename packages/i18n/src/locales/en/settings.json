@@ -816,6 +816,7 @@
       "onenote": "Import OneNote notebooks (requires a Microsoft account)"
     },
     "action": "Import",
+    "select": "Select an app to import from…",
     "stats": {
       "notes": "{count, plural, one {# note} other {# notes}}",
       "projects": "{count, plural, one {# project} other {# projects}}",

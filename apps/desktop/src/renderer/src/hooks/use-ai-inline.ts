@@ -16,9 +16,9 @@ export interface AIInlineState {
   retry: () => void
 }
 
-function friendlyError(raw: string, provider: string): string {
+export function friendlyError(raw: string, provider: string): string {
   const lower = raw.toLowerCase()
-  if (lower.includes('econnrefused') && provider === 'ollama') {
+  if ((lower.includes('econnrefused') || lower.includes('fetch failed')) && provider === 'ollama') {
     return 'Ollama is not running. Start it with "ollama serve" and try again.'
   }
   if (lower.includes('api key') || lower.includes('unauthorized') || lower.includes('401')) {
