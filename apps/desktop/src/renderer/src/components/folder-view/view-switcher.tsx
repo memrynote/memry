@@ -2,32 +2,29 @@ import { getI18n } from 'react-i18next'
 /**
  * View Switcher Component
  *
- * Dropdown-based view selector for folder view with management capabilities.
- * Supports multiple named views, creation, renaming, duplication, and deletion.
+ * Popover-based view selector for folder view with management capabilities.
+ * Two screens: a saved-views list and a Paper-style view editor (name + layout).
+ * The editor is fully live — every change is persisted as it is made, so there
+ * is no Save button. Creating a new view creates it immediately and drops into
+ * the same live editor.
  */
 
 import { useState, useCallback } from 'react'
-import { Plus, ChevronDown, Pencil, Copy, Star, Trash2, Check, MoreHorizontal } from '@/lib/icons'
+import {
+  Plus,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Copy,
+  Star,
+  Trash2,
+  Check,
+  Rows2,
+  List,
+  LayoutGrid
+} from '@/lib/icons'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-  DropdownMenuSubContent
-} from '@/components/ui/dropdown-menu'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,7 +36,6 @@ import {
   AlertDialogTitle
 } from '@/components/ui/alert-dialog'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 import { DEFAULT_COLUMNS } from '@memry/contracts/folder-view-api'
 import type { ViewConfig } from '@/hooks/use-folder-view'
@@ -54,6 +50,8 @@ const log = createLogger('Component:ViewSwitcher')
 // Types
 // ============================================================================
 
+type ViewType = ViewConfig['type']
+
 interface ViewSwitcherProps {
   /** All views for this folder */
   views: ViewConfig[]
@@ -67,6 +65,8 @@ interface ViewSwitcherProps {
   onAddView: (view: ViewConfig) => Promise<void>
   /** Called when user updates a view */
   onUpdateView: (view: Partial<ViewConfig>) => Promise<void>
+  /** Called when user renames a view in place by index */
+  onRenameView: (index: number, newName: string) => Promise<void>
   /** Called when user sets a view as default */
   onSetViewAsDefault: (index: number) => Promise<void>
   /** Called when user deletes a view */
@@ -74,6 +74,12 @@ interface ViewSwitcherProps {
   /** Additional CSS classes */
   className?: string
 }
+
+const LAYOUT_OPTIONS: { type: ViewType; icon: typeof Rows2; labelKey: string }[] = [
+  { type: 'table', icon: Rows2, labelKey: 'phaseF.componentsFolderViewViewSwitcher.table' },
+  { type: 'list', icon: List, labelKey: 'phaseF.componentsFolderViewViewSwitcher.list' },
+  { type: 'grid', icon: LayoutGrid, labelKey: 'phaseF.componentsFolderViewViewSwitcher.gallery' }
+]
 
 // ============================================================================
 // ViewSwitcher Component
@@ -86,67 +92,109 @@ export function ViewSwitcher({
   onViewChange,
   onAddView,
   onUpdateView,
+  onRenameView,
   onSetViewAsDefault,
   onDeleteView,
   className
 }: ViewSwitcherProps): React.JSX.Element {
   const { t: tPhaseF } = useT('notes')
-  // Dropdown open state
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
 
-  // Dialog states
-  const [isNewViewDialogOpen, setIsNewViewDialogOpen] = useState(false)
-  const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false)
+  // Popover + screen state
+  const [isOpen, setIsOpen] = useState(false)
+  const [screen, setScreen] = useState<'list' | 'editor'>('list')
+
+  // Editor targets a view by index (stable across in-place renames while open)
+  const [editorIndex, setEditorIndex] = useState(-1)
+  const [formName, setFormName] = useState('')
+  const [formType, setFormType] = useState<ViewType>('table')
+  const [isDeleting, setIsDeleting] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const [selectedViewForAction, setSelectedViewForAction] = useState<{
-    index: number
-    view: ViewConfig
-  } | null>(null)
+  const [deleteTargetName, setDeleteTargetName] = useState<string | null>(null)
 
-  // Form states
-  const [newViewName, setNewViewName] = useState('')
-  const [copyFromCurrent, setCopyFromCurrent] = useState(true)
-  const [renameValue, setRenameValue] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const editingView = editorIndex >= 0 && editorIndex < views.length ? views[editorIndex] : null
+
+  // ============================================================================
+  // Helpers
+  // ============================================================================
+
+  const makeUniqueName = useCallback(
+    (base: string) => {
+      let name = base
+      let n = 1
+      while (views.some((v) => v.name.toLowerCase() === name.toLowerCase())) {
+        n++
+        name = `${base} ${n}`
+      }
+      return name
+    },
+    [views]
+  )
+
+  const resetEditor = useCallback(() => {
+    setScreen('list')
+    setEditorIndex(-1)
+    setFormName('')
+  }, [])
+
+  const handleOpenChange = useCallback(
+    (open: boolean) => {
+      setIsOpen(open)
+      if (!open) resetEditor()
+    },
+    [resetEditor]
+  )
 
   // ============================================================================
   // Handlers
   // ============================================================================
 
-  /**
-   * Handle selecting a view from dropdown
-   */
   const handleSelectView = useCallback(
     (index: number) => {
       onViewChange(index)
-      setIsDropdownOpen(false)
+      setIsOpen(false)
     },
     [onViewChange]
   )
 
   /**
-   * Handle creating a new view
+   * Open the editor for an existing view. Switch to it immediately so that live
+   * layout edits (which mutate the active view) target this view.
    */
-  const handleCreateView = useCallback(async () => {
-    if (!newViewName.trim()) return
+  const openEdit = useCallback(
+    (index: number) => {
+      const view = views[index]
+      if (!view) return
+      if (index !== activeViewIndex) onViewChange(index)
+      setEditorIndex(index)
+      setFormName(view.name)
+      setFormType(view.type)
+      setScreen('editor')
+    },
+    [views, activeViewIndex, onViewChange]
+  )
 
-    setIsSubmitting(true)
+  /**
+   * Create a new view immediately (copying the current view's config), then
+   * drop into the live editor on it. No separate create form / Save button.
+   */
+  const handleCreateNew = useCallback(async () => {
+    const name = makeUniqueName(tPhaseF('phaseF.componentsFolderViewViewSwitcher.newView'))
+    const baseConfig: ViewConfig = activeView
+      ? { ...activeView, name, default: false }
+      : {
+          name,
+          type: 'table',
+          columns: DEFAULT_COLUMNS,
+          order: [{ property: 'modified', direction: 'desc' }]
+        }
+    // setView appends, so the new view lands at the current end of the list.
+    const newIndex = views.length
     try {
-      const baseConfig: ViewConfig =
-        copyFromCurrent && activeView
-          ? { ...activeView, name: newViewName.trim(), default: false }
-          : {
-              name: newViewName.trim(),
-              type: 'table',
-              columns: DEFAULT_COLUMNS,
-              order: [{ property: 'modified', direction: 'desc' }]
-            }
-
       await onAddView(baseConfig)
-
-      setIsNewViewDialogOpen(false)
-      setNewViewName('')
-      setCopyFromCurrent(true)
+      setEditorIndex(newIndex)
+      setFormName(name)
+      setFormType(baseConfig.type)
+      setScreen('editor')
     } catch (err) {
       log.error('Failed to create view', err)
       toast.error(
@@ -155,360 +203,258 @@ export function ViewSwitcher({
           getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToCreateView')
         )
       )
-    } finally {
-      setIsSubmitting(false)
     }
-  }, [newViewName, copyFromCurrent, activeView, onAddView])
+  }, [makeUniqueName, activeView, onAddView, tPhaseF, views])
 
   /**
-   * Handle renaming a view
+   * Persist the name on every keystroke. `onRenameView` updates the cache
+   * immediately and debounces the disk write; it skips empty/duplicate names.
    */
-  const handleRenameView = useCallback(async () => {
-    if (!renameValue.trim() || !selectedViewForAction) return
-
-    // Check for duplicate names
-    const nameExists = views.some(
-      (v, i) =>
-        i !== selectedViewForAction.index &&
-        v.name.toLowerCase() === renameValue.trim().toLowerCase()
-    )
-    if (nameExists) {
-      // Could show an error toast here
-      return
-    }
-
-    setIsSubmitting(true)
-    try {
-      // First switch to this view if not active
-      if (selectedViewForAction.index !== activeViewIndex) {
-        onViewChange(selectedViewForAction.index)
-      }
-
-      // Update the view name
-      await onUpdateView({ name: renameValue.trim() })
-      setIsRenameDialogOpen(false)
-      setSelectedViewForAction(null)
-      setRenameValue('')
-    } finally {
-      setIsSubmitting(false)
-    }
-  }, [renameValue, selectedViewForAction, views, activeViewIndex, onViewChange, onUpdateView])
+  const handleNameChange = useCallback(
+    (value: string) => {
+      setFormName(value)
+      if (editorIndex >= 0) void onRenameView(editorIndex, value)
+    },
+    [editorIndex, onRenameView]
+  )
 
   /**
-   * Handle duplicating a view
+   * On blur, reconcile the field to the persisted name so any unsaved empty or
+   * duplicate trailing text is discarded.
    */
-  const handleDuplicateView = useCallback(
-    async (view: ViewConfig) => {
+  const handleNameBlur = useCallback(() => {
+    if (editingView) setFormName(editingView.name)
+  }, [editingView])
+
+  /**
+   * Apply a layout change live to the (active) edited view.
+   */
+  const handleLayoutChange = useCallback(
+    (type: ViewType) => {
+      if (!editingView) return
+      setFormType(type)
+      void onUpdateView({ type })
+    },
+    [editingView, onUpdateView]
+  )
+
+  const duplicateView = useCallback(
+    async (view: ViewConfig | null) => {
+      if (!view) return
       const baseName = view.name.replace(/\s*\(copy(?:\s*\d+)?\)$/, '')
       let copyNumber = 1
       let newName = `${baseName} (copy)`
-
-      // Find unique name
       while (views.some((v) => v.name.toLowerCase() === newName.toLowerCase())) {
         copyNumber++
         newName = `${baseName} (copy ${copyNumber})`
       }
-
-      await onAddView({
-        ...view,
-        name: newName,
-        default: false
-      })
+      await onAddView({ ...view, name: newName, default: false })
+      setIsOpen(false)
+      resetEditor()
     },
-    [views, onAddView]
+    [views, onAddView, resetEditor]
   )
 
-  /**
-   * Handle setting a view as default
-   */
-  const handleSetDefault = useCallback(
-    async (index: number) => {
-      await onSetViewAsDefault(index)
-    },
-    [onSetViewAsDefault]
-  )
-
-  /**
-   * Handle deleting a view
-   */
-  const handleDeleteView = useCallback(async () => {
-    if (!selectedViewForAction) return
-
-    setIsSubmitting(true)
-    try {
-      await onDeleteView(selectedViewForAction.view.name)
-      setIsDeleteDialogOpen(false)
-      setSelectedViewForAction(null)
-    } finally {
-      setIsSubmitting(false)
-    }
-  }, [selectedViewForAction, onDeleteView])
-
-  /**
-   * Open rename dialog for a view
-   */
-  const openRenameDialog = useCallback((index: number, view: ViewConfig) => {
-    setSelectedViewForAction({ index, view })
-    setRenameValue(view.name)
-    setIsRenameDialogOpen(true)
-    setIsDropdownOpen(false)
-  }, [])
-
-  /**
-   * Open delete confirmation dialog
-   */
-  const openDeleteDialog = useCallback((index: number, view: ViewConfig) => {
-    setSelectedViewForAction({ index, view })
+  const requestDelete = useCallback((name: string) => {
+    setDeleteTargetName(name)
     setIsDeleteDialogOpen(true)
-    setIsDropdownOpen(false)
   }, [])
 
-  /**
-   * Open new view dialog
-   */
-  const openNewViewDialog = useCallback(() => {
-    setIsNewViewDialogOpen(true)
-    setIsDropdownOpen(false)
-  }, [])
+  const handleSetDefault = useCallback(async () => {
+    if (editorIndex < 0) return
+    await onSetViewAsDefault(editorIndex)
+    setIsOpen(false)
+    resetEditor()
+  }, [editorIndex, onSetViewAsDefault, resetEditor])
+
+  const handleDeleteView = useCallback(async () => {
+    if (!deleteTargetName) return
+    setIsDeleting(true)
+    try {
+      await onDeleteView(deleteTargetName)
+      setIsDeleteDialogOpen(false)
+      setIsOpen(false)
+      resetEditor()
+    } finally {
+      setIsDeleting(false)
+    }
+  }, [deleteTargetName, onDeleteView, resetEditor])
 
   // ============================================================================
   // Render
   // ============================================================================
 
+  const canDelete = views.length > 1
+
   return (
     <>
-      <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
-        {/* Trigger Button */}
-        <DropdownMenuTrigger asChild>
+      <Popover open={isOpen} onOpenChange={handleOpenChange}>
+        <PopoverTrigger asChild>
           <Button variant="ghost" size="sm" className={cn('gap-2 h-8', className)}>
             <span className="max-w-[150px] truncate">{activeView?.name ?? 'Select View'}</span>
             <ChevronDown className="h-4 w-4 opacity-50" />
           </Button>
-        </DropdownMenuTrigger>
+        </PopoverTrigger>
 
-        {/* Dropdown Content */}
-        <DropdownMenuContent align="end" className="w-64">
-          {/* View List */}
-          {views.map((view, index) => {
-            const isActive = index === activeViewIndex
-            const isDefault = view.default === true
-            const canDelete = views.length > 1
-
-            return (
-              <DropdownMenuSub key={view.name}>
-                {/* View Row with Submenu */}
-                <div className="flex items-center">
-                  {/* Main clickable area - selects the view */}
-                  <DropdownMenuItem
-                    className="flex-1 pr-0"
-                    onSelect={(e) => {
-                      e.preventDefault()
-                      handleSelectView(index)
-                    }}
+        <PopoverContent align="end" className="w-72 p-0">
+          {screen === 'list' ? (
+            <div className="flex flex-col p-1.5">
+              {views.map((view, index) => {
+                const isActive = index === activeViewIndex
+                const isDefault = view.default === true
+                return (
+                  <div
+                    key={view.name}
+                    className={cn(
+                      'group flex items-center gap-1 rounded-md',
+                      isActive ? 'bg-accent' : 'hover:bg-accent'
+                    )}
                   >
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      {/* Checkmark for active view */}
-                      {isActive ? (
-                        <Check className="h-4 w-4 flex-shrink-0" />
-                      ) : (
-                        <span className="w-4 flex-shrink-0" />
-                      )}
-
-                      {/* View name */}
-                      <span className="truncate">{view.name}</span>
-
-                      {/* Default badge */}
-                      {isDefault && (
-                        <Badge
-                          variant="secondary"
-                          className="h-5 px-1.5 text-[10px] font-normal flex-shrink-0"
-                        >
-                          {tPhaseF('phaseF.componentsFolderViewViewSwitcher.default')}
-                        </Badge>
-                      )}
-                    </div>
-                  </DropdownMenuItem>
-
-                  {/* Actions submenu trigger */}
-                  <DropdownMenuSubTrigger className="px-2 py-1.5 ml-0 data-[state=open]:bg-accent">
-                    <MoreHorizontal className="h-4 w-4" />
-                  </DropdownMenuSubTrigger>
-                </div>
-
-                {/* Actions Submenu */}
-                <DropdownMenuSubContent sideOffset={2} className="w-44">
-                  <DropdownMenuItem onSelect={() => openRenameDialog(index, view)}>
-                    <Pencil className="mr-2 h-4 w-4" />
-
-                    {tPhaseF('phaseF.componentsFolderViewViewSwitcher.rename')}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      void handleDuplicateView(view)
-                      setIsDropdownOpen(false)
-                    }}
-                  >
-                    <Copy className="mr-2 h-4 w-4" />
-
-                    {tPhaseF('phaseF.componentsFolderViewViewSwitcher.duplicate')}
-                  </DropdownMenuItem>
-                  {!isDefault && (
-                    <DropdownMenuItem
-                      onSelect={() => {
-                        void handleSetDefault(index)
-                        setIsDropdownOpen(false)
-                      }}
+                    <button
+                      type="button"
+                      onClick={() => handleSelectView(index)}
+                      className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 text-start"
                     >
-                      <Star className="mr-2 h-4 w-4" />
+                      {isActive ? (
+                        <Check
+                          className="h-3.5 w-3.5 flex-shrink-0 text-[var(--tint)]"
+                          strokeWidth={2.5}
+                        />
+                      ) : (
+                        <span className="w-3.5 flex-shrink-0" />
+                      )}
+                      <span className="truncate text-[13px] font-medium text-foreground">
+                        {view.name}
+                      </span>
+                      {isDefault && (
+                        <span className="flex-shrink-0 rounded-sm bg-[var(--tint)]/15 px-1.5 py-px text-[9.5px] font-semibold uppercase tracking-wide text-[var(--tint)]">
+                          {tPhaseF('phaseF.componentsFolderViewViewSwitcher.default')}
+                        </span>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openEdit(index)}
+                      aria-label={tPhaseF('phaseF.componentsFolderViewViewSwitcher.viewActions')}
+                      className="me-1 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-sm text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                )
+              })}
 
-                      {tPhaseF('phaseF.componentsFolderViewViewSwitcher.setAsDefault')}
-                    </DropdownMenuItem>
-                  )}
-                  {canDelete && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        variant="destructive"
-                        onSelect={() => openDeleteDialog(index, view)}
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
+              <div className="mx-1 my-1 h-px bg-border" />
 
-                        {tPhaseF('phaseF.componentsFolderViewViewSwitcher.delete')}
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
-            )
-          })}
-
-          <DropdownMenuSeparator />
-
-          {/* Create New View */}
-          <DropdownMenuItem onSelect={openNewViewDialog}>
-            <Plus className="mr-2 h-4 w-4" />
-
-            {tPhaseF('phaseF.componentsFolderViewViewSwitcher.createNewView')}
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      {/* New View Dialog */}
-      <Dialog open={isNewViewDialogOpen} onOpenChange={setIsNewViewDialogOpen}>
-        <DialogContent className="sm:max-w-[400px]">
-          <DialogHeader>
-            <DialogTitle>
-              {tPhaseF('phaseF.componentsFolderViewViewSwitcher.createNewView2')}
-            </DialogTitle>
-            <DialogDescription>
-              {tPhaseF(
-                'phaseF.componentsFolderViewViewSwitcher.createANewViewWithCustomColumnsFiltersAndSorting'
-              )}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="view-name">
-                {tPhaseF('phaseF.componentsFolderViewViewSwitcher.viewName')}
-              </Label>
-              <Input
-                id="view-name"
-                value={newViewName}
-                onChange={(e) => setNewViewName(e.target.value)}
-                placeholder={tPhaseF('phaseF.componentsFolderViewViewSwitcher.myCustomView')}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && newViewName.trim()) {
-                    void handleCreateView()
-                  }
-                }}
-              />
+              <button
+                type="button"
+                onClick={() => void handleCreateNew()}
+                className="flex items-center gap-2.5 rounded-md px-2 py-1.5 text-start text-[13px] text-foreground hover:bg-accent"
+              >
+                <Plus className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
+                {tPhaseF('phaseF.componentsFolderViewViewSwitcher.newView')}
+              </button>
             </div>
-            <div className="grid gap-2">
-              <Label>{tPhaseF('phaseF.componentsFolderViewViewSwitcher.baseConfiguration')}</Label>
-              <div className="flex flex-col gap-2">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="base-config"
-                    checked={copyFromCurrent}
-                    onChange={() => setCopyFromCurrent(true)}
-                    className="h-4 w-4"
-                  />
-                  <span className="text-sm">
-                    {tPhaseF('phaseF.componentsFolderViewViewSwitcher.copyFromCurrentView')}
-                  </span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="base-config"
-                    checked={!copyFromCurrent}
-                    onChange={() => setCopyFromCurrent(false)}
-                    className="h-4 w-4"
-                  />
-                  <span className="text-sm">
-                    {tPhaseF('phaseF.componentsFolderViewViewSwitcher.startFreshDefaultColumns')}
-                  </span>
-                </label>
+          ) : (
+            <div className="flex flex-col gap-3 p-3.5">
+              {/* Header */}
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setScreen('list')}
+                  aria-label={tPhaseF('phaseF.componentsFolderViewViewSwitcher.cancel')}
+                  className="-ms-1 flex h-6 w-6 items-center justify-center rounded-sm text-muted-foreground hover:bg-accent"
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                </button>
+                <span className="truncate text-[13px] font-semibold">{formName}</span>
+              </div>
+
+              {/* Name */}
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  {tPhaseF('phaseF.componentsFolderViewViewSwitcher.name')}
+                </span>
+                <Input
+                  autoFocus
+                  value={formName}
+                  onChange={(e) => handleNameChange(e.target.value)}
+                  onFocus={(e) => e.target.select()}
+                  onBlur={handleNameBlur}
+                  placeholder={tPhaseF('phaseF.componentsFolderViewViewSwitcher.myCustomView')}
+                  className="h-8 text-[13px]"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') e.currentTarget.blur()
+                  }}
+                />
+              </div>
+
+              {/* Layout */}
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  {tPhaseF('phaseF.componentsFolderViewViewSwitcher.layout')}
+                </span>
+                <div className="flex gap-2">
+                  {LAYOUT_OPTIONS.map((opt) => {
+                    const Icon = opt.icon
+                    const selected = formType === opt.type
+                    return (
+                      <button
+                        key={opt.type}
+                        type="button"
+                        onClick={() => handleLayoutChange(opt.type)}
+                        aria-pressed={selected}
+                        className={cn(
+                          'flex flex-1 flex-col items-center gap-1.5 rounded-lg border px-2 py-2.5 transition-colors',
+                          selected
+                            ? 'border-[var(--tint)] bg-[var(--tint)]/10 text-[var(--tint)]'
+                            : 'border-border bg-background text-muted-foreground hover:bg-accent'
+                        )}
+                      >
+                        <Icon className="h-[18px] w-[18px]" />
+                        <span className="text-xs font-medium">{tPhaseF(opt.labelKey)}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Secondary actions */}
+              <div className="h-px w-full bg-border" />
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12.5px]">
+                <button
+                  type="button"
+                  onClick={() => void duplicateView(editingView)}
+                  className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground"
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                  {tPhaseF('phaseF.componentsFolderViewViewSwitcher.duplicate')}
+                </button>
+                {!editingView?.default && (
+                  <button
+                    type="button"
+                    onClick={() => void handleSetDefault()}
+                    className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground"
+                  >
+                    <Star className="h-3.5 w-3.5" />
+                    {tPhaseF('phaseF.componentsFolderViewViewSwitcher.setAsDefault')}
+                  </button>
+                )}
+                {canDelete && (
+                  <button
+                    type="button"
+                    onClick={() => editingView && requestDelete(editingView.name)}
+                    className="flex items-center gap-1.5 text-destructive hover:text-destructive/80"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    {tPhaseF('phaseF.componentsFolderViewViewSwitcher.delete')}
+                  </button>
+                )}
               </div>
             </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsNewViewDialogOpen(false)}>
-              {tPhaseF('phaseF.componentsFolderViewViewSwitcher.cancel')}
-            </Button>
-            <Button
-              onClick={() => void handleCreateView()}
-              disabled={!newViewName.trim() || isSubmitting}
-            >
-              {isSubmitting ? 'Creating...' : 'Create'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Rename View Dialog */}
-      <Dialog open={isRenameDialogOpen} onOpenChange={setIsRenameDialogOpen}>
-        <DialogContent className="sm:max-w-[400px]">
-          <DialogHeader>
-            <DialogTitle>
-              {tPhaseF('phaseF.componentsFolderViewViewSwitcher.renameView')}
-            </DialogTitle>
-            <DialogDescription>
-              {tPhaseF('phaseF.componentsFolderViewViewSwitcher.enterANewNameForThisView')}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="rename-view">
-                {tPhaseF('phaseF.componentsFolderViewViewSwitcher.viewName2')}
-              </Label>
-              <Input
-                id="rename-view"
-                value={renameValue}
-                onChange={(e) => setRenameValue(e.target.value)}
-                placeholder={tPhaseF('phaseF.componentsFolderViewViewSwitcher.viewName3')}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && renameValue.trim()) {
-                    void handleRenameView()
-                  }
-                }}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsRenameDialogOpen(false)}>
-              {tPhaseF('phaseF.componentsFolderViewViewSwitcher.cancel2')}
-            </Button>
-            <Button
-              onClick={() => void handleRenameView()}
-              disabled={!renameValue.trim() || isSubmitting}
-            >
-              {isSubmitting ? 'Saving...' : 'Save'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          )}
+        </PopoverContent>
+      </Popover>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
@@ -519,7 +465,7 @@ export function ViewSwitcher({
             </AlertDialogTitle>
             <AlertDialogDescription>
               {tPhaseF('phaseF.componentsFolderViewViewSwitcher.areYouSureYouWantToDelete')}
-              {selectedViewForAction?.view.name}"?{' '}
+              {deleteTargetName}"?{' '}
               {tPhaseF('phaseF.componentsFolderViewViewSwitcher.thisActionCannotBeUndone')}
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -531,7 +477,7 @@ export function ViewSwitcher({
               onClick={() => void handleDeleteView()}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {isSubmitting ? 'Deleting...' : 'Delete'}
+              {isDeleting ? 'Deleting...' : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -22,6 +22,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { cn } from '@/lib/utils'
 import { notesService } from '@/services/notes-service'
 import { useAISettingsContext } from '@/contexts/ai-settings-context'
@@ -34,6 +35,8 @@ import { useT } from '@memry/i18n/renderer'
 interface FolderItem {
   path: string
   displayName: string
+  /** Custom folder icon (raw emoji or "icon:Name"); falls back to the default glyph */
+  icon?: string | null
   isRoot?: boolean
   isSuggestion?: boolean
   confidence?: number
@@ -164,6 +167,7 @@ function MoveToFolderDialogSession({
   const folderItems = useMemo((): FolderItem[] => {
     const items: FolderItem[] = []
     const query = searchQuery.toLowerCase()
+    const iconByPath = new Map(allFolders.map((f) => [f.path, f.icon ?? null]))
 
     // Add AI suggestions section (if not searching)
     if (!searchQuery && suggestions.length > 0) {
@@ -174,6 +178,7 @@ function MoveToFolderDialogSession({
         items.push({
           path: s.path,
           displayName: s.path || 'Notes (root)',
+          icon: iconByPath.get(s.path) ?? null,
           isSuggestion: true,
           confidence: s.confidence,
           reason: s.reason
@@ -217,7 +222,8 @@ function MoveToFolderDialogSession({
 
       allFolderItems.push({
         path,
-        displayName: path
+        displayName: path,
+        icon: iconByPath.get(path) ?? null
       })
     })
 
@@ -408,7 +414,14 @@ function MoveToFolderDialogSession({
                           <span className="text-xs text-muted-foreground w-4 text-center">
                             {index + 1}
                           </span>
-                          <Folder className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          {item.icon ? (
+                            <NoteIconDisplay
+                              value={item.icon}
+                              className="h-4 w-4 flex-shrink-0 text-center text-[15px] leading-none"
+                            />
+                          ) : (
+                            <Folder className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          )}
                           <span className="flex-1 truncate">{item.displayName}</span>
                           {item.confidence && item.confidence > 0.7 && (
                             <span className="text-xs text-amber-500">
@@ -454,7 +467,14 @@ function MoveToFolderDialogSession({
                           !isSelected && !isCurrent && 'hover:bg-muted/50'
                         )}
                       >
-                        <Folder className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        {item.icon ? (
+                          <NoteIconDisplay
+                            value={item.icon}
+                            className="h-4 w-4 flex-shrink-0 text-center text-[15px] leading-none"
+                          />
+                        ) : (
+                          <Folder className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        )}
                         <span className="flex-1 truncate">
                           {searchQuery
                             ? highlightMatch(item.displayName, searchQuery)

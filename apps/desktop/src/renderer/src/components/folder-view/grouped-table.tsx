@@ -91,10 +91,12 @@ import {
   TextCell,
   type PropertyType
 } from './property-cell'
+import type { TagMetaMap } from './note-card-pieces'
 import { SortableColumnHeader } from './sortable-column-header'
 import { RowContextMenu } from './row-context-menu'
 import { FolderViewEmptyState } from './folder-view-empty-state'
 import { SummaryRow } from './summary-row'
+import { SelectionCheckbox, SELECT_COLUMN_WIDTH, type SelectionState } from './selection-checkbox'
 
 // ============================================================================
 // Types
@@ -142,6 +144,8 @@ interface GroupedTableProps {
   onTagClick?: (tag: string) => void
   /** Called when a tag is removed */
   onTagRemove?: (noteId: string, tag: string) => void
+  /** Tag color + icon, keyed by lowercased tag name */
+  tagMetaMap?: TagMetaMap
   /** Called when a property value is updated */
   onPropertyUpdate?: (noteId: string, propertyId: string, value: unknown) => void
   /** Called when column config changes (resize, reorder) */
@@ -311,6 +315,7 @@ export function GroupedTable({
   onFolderClick,
   onTagClick,
   onTagRemove,
+  tagMetaMap,
   onPropertyUpdate,
   onColumnsChange,
   onDisplayNameChange,
@@ -339,6 +344,16 @@ export function GroupedTable({
   const [sorting, setSorting] = useState<SortingState>(() =>
     orderConfigToSortingState(initialSorting)
   )
+
+  // Sync external sort changes (e.g. the header Sort control writing view.order)
+  // into the internal state. Render-phase keyed on a serialized signature so a
+  // header-click round-trip back through view.order doesn't fight the update.
+  const [sortSig, setSortSig] = useState(() => JSON.stringify(initialSorting ?? []))
+  const incomingSortSig = JSON.stringify(initialSorting ?? [])
+  if (sortSig !== incomingSortSig) {
+    setSortSig(incomingSortSig)
+    setSorting(orderConfigToSortingState(initialSorting))
+  }
 
   // Grouping state - derived from groupBy prop
   const grouping: GroupingState = useMemo(() => {
@@ -479,11 +494,11 @@ export function GroupedTable({
                 }
               : undefined
           }
-          highlightQuery={highlightQuery}
+          tagMetaMap={tagMetaMap}
         />
       )
     },
-    [onTagClick, onTagRemove, highlightQuery]
+    [onTagClick, onTagRemove, tagMetaMap]
   )
 
   const renderDateCell = useCallback((info: CellContext<NoteWithProperties, unknown>) => {
@@ -1023,6 +1038,34 @@ export function GroupedTable({
     )
   }
 
+  // Select-all / per-row checkbox state for the leading selection column.
+  // Only leaf (non-group) rows count toward selection.
+  const leafRows = rows.filter((r) => !r.getIsGrouped())
+  const selectedVisibleCount = leafRows.reduce(
+    (n, r) => n + (selectedRowIds.has(r.original.id) ? 1 : 0),
+    0
+  )
+  const headerSelectState: SelectionState =
+    selectedVisibleCount === 0
+      ? 'unchecked'
+      : selectedVisibleCount === leafRows.length
+        ? 'checked'
+        : 'indeterminate'
+  const selectionActive = selectedRowIds.size > 0
+  const toggleSelectAll = (): void => {
+    setSelectedRowIds(
+      headerSelectState === 'checked' ? new Set() : new Set(leafRows.map((r) => r.original.id))
+    )
+  }
+  const toggleRowSelection = (rowId: string): void => {
+    setSelectedRowIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(rowId)) next.delete(rowId)
+      else next.add(rowId)
+      return next
+    })
+  }
+
   return (
     <DndContext
       sensors={sensors}
@@ -1042,7 +1085,7 @@ export function GroupedTable({
           style={{
             display: 'grid',
             width: '100%',
-            minWidth: Math.max(totalColumnsWidth, 100)
+            minWidth: Math.max(totalColumnsWidth + SELECT_COLUMN_WIDTH, 100)
           }}
           className="text-sm"
         >
@@ -1058,6 +1101,18 @@ export function GroupedTable({
           >
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id} style={{ display: 'flex', width: '100%' }}>
+                {/* Leading select-all checkbox column (not part of resizable columns) */}
+                <th
+                  style={{ width: SELECT_COLUMN_WIDTH }}
+                  className="flex flex-shrink-0 items-center justify-center"
+                >
+                  <SelectionCheckbox
+                    state={headerSelectState}
+                    onToggle={toggleSelectAll}
+                    alwaysVisible
+                    label={tPhaseF('phaseF.componentsFolderViewGroupedTable.selectAll')}
+                  />
+                </th>
                 <SortableContext items={columnIds} strategy={horizontalListSortingStrategy}>
                   {headerGroup.headers.map((header) => {
                     const config = columnConfigMap.get(header.column.id) || {
@@ -1152,6 +1207,7 @@ export function GroupedTable({
                       paddingLeft: isInGroup ? '24px' : undefined
                     }}
                     className={cn(
+                      'group/row',
                       'border-b border-border/40',
                       'transition-colors',
                       'items-center',
@@ -1165,6 +1221,18 @@ export function GroupedTable({
                     onClick={(e) => handleRowClick(virtualRow.index, row.original.id, e)}
                     onDoubleClick={() => onNoteOpen?.(row.original.id)}
                   >
+                    {/* Leading per-row checkbox (reveals on hover or while a selection is active) */}
+                    <td
+                      style={{ width: SELECT_COLUMN_WIDTH }}
+                      className="flex flex-shrink-0 items-center justify-center"
+                    >
+                      <SelectionCheckbox
+                        state={isSelected ? 'checked' : 'unchecked'}
+                        onToggle={() => toggleRowSelection(row.original.id)}
+                        alwaysVisible={selectionActive}
+                        label={tPhaseF('phaseF.componentsFolderViewGroupedTable.selectRow')}
+                      />
+                    </td>
                     {row.getVisibleCells().map((cell, cellIndex) => {
                       const isLastCell = cellIndex === row.getVisibleCells().length - 1
                       const adjustedWidth =
@@ -1208,6 +1276,7 @@ export function GroupedTable({
               formulas={formulas}
               density={density}
               showColumnBorders={showColumnBorders}
+              hasLeadingColumn
               columnWidths={Object.fromEntries(
                 table.getAllColumns().map((col) => [col.id, col.getSize()])
               )}
@@ -1283,7 +1352,7 @@ const GroupHeaderRow = memo(function GroupHeaderRow({
       style={{
         display: 'flex',
         width: '100%',
-        minWidth: Math.max(totalColumnsWidth, 100),
+        minWidth: Math.max(totalColumnsWidth + SELECT_COLUMN_WIDTH, 100),
         position: 'absolute',
         transform: `translateY(${virtualRow.start}px)`
       }}
@@ -1294,6 +1363,8 @@ const GroupHeaderRow = memo(function GroupHeaderRow({
       )}
       onClick={() => row.toggleExpanded()}
     >
+      {/* Spacer matching the leading selection-checkbox column */}
+      <td style={{ width: SELECT_COLUMN_WIDTH }} className="flex-shrink-0" aria-hidden="true" />
       <td
         className={cn(
           'flex items-center gap-2 flex-1',

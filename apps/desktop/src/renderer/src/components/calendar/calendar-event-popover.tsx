@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useT } from '@memry/i18n/renderer'
 
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Textarea } from '@/components/ui/textarea'
@@ -272,11 +273,9 @@ export function CalendarEventPopover({
                 <CalendarIcon size={14} />
                 {t('time.all-day')}
               </span>
-              <input
-                type="checkbox"
+              <Checkbox
                 checked={draft.isAllDay}
-                onChange={(e) => handleAllDayToggle(e.target.checked)}
-                className="size-4"
+                onCheckedChange={(checked) => handleAllDayToggle(checked === true)}
                 aria-label={t('time.all-day')}
               />
             </label>

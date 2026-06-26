@@ -72,7 +72,9 @@ const mainNav: {
 function SidebarHeaderContent() {
   // Empty h-9 spacer to reserve room for the viewport-fixed WindowControls
   // overlay (see App.tsx). Sidebar content starts below the chrome row.
-  return <SidebarHeader className="h-9 shrink-0" />
+  // drag-region: the chrome overlay is only --chrome-width (180px) wide, so the
+  // strip from there to the sidebar's right edge must drag the window itself.
+  return <SidebarHeader className="drag-region h-9 shrink-0" />
 }
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
@@ -228,6 +230,27 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
   // Handle bookmark click - navigate to bookmarked item
   const handleBookmarkClick = useCallback(
     (bookmark: BookmarkWithItem) => {
+      // Folders open as a folder-view tab; tags drill down in the sidebar.
+      if (bookmark.itemType === BookmarkItemTypes.FOLDER) {
+        openTab({
+          type: 'folder',
+          title: bookmark.itemTitle || 'Folder',
+          icon: 'folder',
+          emoji: bookmark.itemMeta?.emoji,
+          path: `/folder/${encodeURIComponent(bookmark.itemId)}`,
+          entityId: bookmark.itemId,
+          isPinned: false,
+          isModified: false,
+          isPreview: false,
+          isDeleted: false
+        })
+        return
+      }
+      if (bookmark.itemType === BookmarkItemTypes.TAG) {
+        openTag(bookmark.itemId, '')
+        return
+      }
+
       // Map bookmark item type to tab type
       const itemTypeToTabType: Record<string, TabType> = {
         [BookmarkItemTypes.NOTE]: 'note',
@@ -246,7 +269,7 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
       }
       openSidebarItem(item)
     },
-    [openSidebarItem]
+    [openSidebarItem, openTab, openTag]
   )
 
   // Main sidebar content (shown when not drilling down)

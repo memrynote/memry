@@ -22,37 +22,11 @@ vi.mock('@/lib/logger', () => ({
   createLogger: () => ({ error: vi.fn() })
 }))
 
-vi.mock('@/components/ui/dropdown-menu', () => ({
-  DropdownMenu: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DropdownMenuTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  DropdownMenuContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DropdownMenuSeparator: () => <hr />,
-  DropdownMenuSub: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DropdownMenuSubTrigger: ({ children }: { children: React.ReactNode }) => (
-    <button type="button">{children}</button>
-  ),
-  DropdownMenuSubContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DropdownMenuItem: ({
-    children,
-    onSelect
-  }: {
-    children: React.ReactNode
-    onSelect?: (event: { preventDefault: () => void }) => void
-  }) => (
-    <button type="button" onClick={() => onSelect?.({ preventDefault: vi.fn() })}>
-      {children}
-    </button>
-  )
-}))
-
-vi.mock('@/components/ui/dialog', () => ({
-  Dialog: ({ open, children }: { open: boolean; children: React.ReactNode }) =>
-    open ? <div role="dialog">{children}</div> : null,
-  DialogContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DialogHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DialogTitle: ({ children }: { children: React.ReactNode }) => <h2>{children}</h2>,
-  DialogDescription: ({ children }: { children: React.ReactNode }) => <p>{children}</p>,
-  DialogFooter: ({ children }: { children: React.ReactNode }) => <div>{children}</div>
+// Popover renders trigger + content inline so both screens are reachable in tests.
+vi.mock('@/components/ui/popover', () => ({
+  Popover: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  PopoverTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  PopoverContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>
 }))
 
 vi.mock('@/components/ui/alert-dialog', () => ({
@@ -103,6 +77,7 @@ function renderSwitcher(overrides: Partial<React.ComponentProps<typeof ViewSwitc
     onViewChange: vi.fn(),
     onAddView: vi.fn().mockResolvedValue(undefined),
     onUpdateView: vi.fn().mockResolvedValue(undefined),
+    onRenameView: vi.fn().mockResolvedValue(undefined),
     onSetViewAsDefault: vi.fn().mockResolvedValue(undefined),
     onDeleteView: vi.fn().mockResolvedValue(undefined),
     ...overrides
@@ -113,51 +88,80 @@ function renderSwitcher(overrides: Partial<React.ComponentProps<typeof ViewSwitc
 }
 
 describe('ViewSwitcher', () => {
-  it('selects, duplicates, sets default, and deletes views', async () => {
+  it('selects a view from the list', () => {
+    const props = renderSwitcher()
+    fireEvent.click(screen.getByRole('button', { name: 'Board' }))
+    expect(props.onViewChange).toHaveBeenCalledWith(1)
+  })
+
+  it('creates a new view immediately by copying the current view', async () => {
     const props = renderSwitcher()
 
-    fireEvent.click(screen.getByRole('button', { name: /Board/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'newView' }))
+
+    await waitFor(() =>
+      expect(props.onAddView).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'newView', type: 'table', default: false })
+      )
+    )
+  })
+
+  it('renames a view in place on every keystroke (no save button)', async () => {
+    const props = renderSwitcher()
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'viewActions' })[1])
     expect(props.onViewChange).toHaveBeenCalledWith(1)
 
-    fireEvent.click(screen.getAllByRole('button', { name: /duplicate/ })[0])
+    const input = screen.getByDisplayValue('Board')
+    fireEvent.change(input, { target: { value: 'Boar' } })
+    fireEvent.change(input, { target: { value: 'Boardd' } })
+
+    await waitFor(() => {
+      expect(props.onRenameView).toHaveBeenCalledWith(1, 'Boar')
+      expect(props.onRenameView).toHaveBeenCalledWith(1, 'Boardd')
+    })
+  })
+
+  it('applies a layout change live on click (no save button)', () => {
+    const props = renderSwitcher()
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'viewActions' })[1])
+    fireEvent.click(screen.getByRole('button', { name: 'list' }))
+
+    expect(props.onUpdateView).toHaveBeenCalledWith({ type: 'list' })
+  })
+
+  it('duplicates a view from the editor', async () => {
+    const props = renderSwitcher()
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'viewActions' })[0])
+    fireEvent.click(screen.getByRole('button', { name: 'duplicate' }))
+
     await waitFor(() =>
       expect(props.onAddView).toHaveBeenCalledWith(
         expect.objectContaining({ name: 'Table (copy)', default: false })
       )
     )
-
-    fireEvent.click(screen.getByRole('button', { name: /setAsDefault/ }))
-    await waitFor(() => expect(props.onSetViewAsDefault).toHaveBeenCalledWith(1))
-
-    fireEvent.click(screen.getAllByRole('button', { name: /delete/ })[1])
-    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
-    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Delete' }))
-    await waitFor(() => expect(props.onDeleteView).toHaveBeenCalledWith('Board'))
   })
 
-  it('creates fresh views and renames non-active views', async () => {
+  it('sets a non-default view as default from the editor', async () => {
     const props = renderSwitcher()
 
-    fireEvent.click(screen.getByRole('button', { name: /createNewView/ }))
-    fireEvent.change(screen.getByLabelText('viewName'), { target: { value: 'Research' } })
-    fireEvent.click(screen.getByLabelText('startFreshDefaultColumns'))
-    fireEvent.click(screen.getByRole('button', { name: 'Create' }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'viewActions' })[1])
+    fireEvent.click(screen.getByRole('button', { name: 'setAsDefault' }))
 
-    await waitFor(() =>
-      expect(props.onAddView).toHaveBeenCalledWith(
-        expect.objectContaining({
-          name: 'Research',
-          type: 'table',
-          order: [{ property: 'modified', direction: 'desc' }]
-        })
-      )
-    )
+    await waitFor(() => expect(props.onSetViewAsDefault).toHaveBeenCalledWith(1))
+  })
 
-    fireEvent.click(screen.getAllByRole('button', { name: /rename/ })[1])
-    fireEvent.change(screen.getByLabelText('viewName2'), { target: { value: 'Planning' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+  it('deletes a view via confirmation', async () => {
+    const props = renderSwitcher()
 
-    await waitFor(() => expect(props.onViewChange).toHaveBeenCalledWith(1))
-    expect(props.onUpdateView).toHaveBeenCalledWith({ name: 'Planning' })
+    fireEvent.click(screen.getAllByRole('button', { name: 'viewActions' })[1])
+    fireEvent.click(screen.getByRole('button', { name: 'delete' }))
+
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Delete' }))
+
+    await waitFor(() => expect(props.onDeleteView).toHaveBeenCalledWith('Board'))
   })
 })

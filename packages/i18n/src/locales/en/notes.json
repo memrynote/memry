@@ -42,7 +42,9 @@
       "setIcon": "Set Icon",
       "removeIcon": "Remove Icon",
       "deleteSelectedNotes": "Delete {count} Notes",
-      "deleteSelectedItems": "Delete {count} items"
+      "deleteSelectedItems": "Delete {count} items",
+      "bookmark": "Bookmark",
+      "removeFromBookmarks": "Remove from Bookmarks"
     },
     "deleteDialog": {
       "noteTitle": "Delete Note",
@@ -345,6 +347,9 @@
     },
     "componentsFolderViewColumnSelector": {
       "properties": "Properties",
+      "display": "Display",
+      "showSummaries": "Show summaries",
+      "columnBorders": "Column borders",
       "searchColumns": "Search columns...",
       "noMatchingColumns": "No matching columns",
       "formulas": "FORMULAS",
@@ -375,17 +380,21 @@
       "of": "of:",
       "addCondition": "Add condition",
       "addFilter": "Add filter",
-      "addGroup": "Add group"
+      "addGroup": "Add group",
+      "removeGroup": "Remove group"
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "Built-in",
       "properties": "Properties",
       "placeholderProperty": "Property",
       "placeholderOperator": "Operator",
-      "placeholderValue": "Value"
+      "placeholderValue": "Value",
+      "removeFilter": "Remove filter"
     },
     "componentsFolderViewFolderTableView": {
-      "notesTable": "Notes table"
+      "notesTable": "Notes table",
+      "selectAll": "Select all notes",
+      "selectRow": "Select note"
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "Search notes...",
@@ -417,7 +426,9 @@
     },
     "componentsFolderViewGroupedTable": {
       "groupedNotesTable": "Grouped notes table",
-      "more": "more"
+      "more": "more",
+      "selectAll": "Select all notes",
+      "selectRow": "Select note"
     },
     "componentsFolderViewMoveToFolderDialog": {
       "searchFolders": "Search folders...",
@@ -449,6 +460,7 @@
     },
     "componentsFolderViewViewSwitcher": {
       "default": "default",
+      "viewActions": "View actions",
       "rename": "Rename",
       "duplicate": "Duplicate",
       "setAsDefault": "Set as Default",
@@ -470,7 +482,15 @@
       "deleteView": "Delete View",
       "areYouSureYouWantToDelete": "Are you sure you want to delete \"",
       "thisActionCannotBeUndone": "This action cannot be undone.",
-      "cancel3": "Cancel"
+      "cancel3": "Cancel",
+      "newView": "New view",
+      "name": "Name",
+      "layout": "Layout",
+      "table": "Table",
+      "list": "List",
+      "gallery": "Gallery",
+      "createView": "Create view",
+      "save": "Save"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "Failed to load PDF: ",
@@ -719,6 +739,7 @@
     "tagNamePlaceholder": "Tag name",
     "export": "Export",
     "delete": "Delete",
-    "clearAria": "Clear selection"
+    "clearAria": "Clear selection",
+    "copiedLinks": "Copied {count, plural, one {# link} other {# links}}"
   }
 }

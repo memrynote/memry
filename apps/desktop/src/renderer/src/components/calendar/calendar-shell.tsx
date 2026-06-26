@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useT } from '@memry/i18n/renderer'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { RefreshCw, SlidersHorizontal } from '@/lib/icons'
 import { CalendarDayView } from './calendar-day-view'
@@ -179,20 +180,18 @@ export function CalendarShell({
             </h2>
             <label className="flex items-center justify-between gap-3 text-sm text-foreground">
               <span>{t('filter.memry-items')}</span>
-              <input
-                type="checkbox"
+              <Checkbox
                 aria-label={t('filter.memry-items')}
                 checked={showMemryItems}
-                onChange={onToggleMemryItems}
+                onCheckedChange={onToggleMemryItems}
               />
             </label>
             <label className="flex items-center justify-between gap-3 text-sm text-foreground">
               <span>{t('filter.imported-calendars')}</span>
-              <input
-                type="checkbox"
+              <Checkbox
                 aria-label={t('filter.imported-calendars')}
                 checked={showImportedCalendars}
-                onChange={onToggleImportedCalendars}
+                onCheckedChange={onToggleImportedCalendars}
               />
             </label>
           </div>
@@ -217,11 +216,10 @@ export function CalendarShell({
                     />
                     {label}
                   </span>
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     aria-label={label}
                     checked={selectedVisualTypes.includes(visualType)}
-                    onChange={() => onToggleVisualType(visualType)}
+                    onCheckedChange={() => onToggleVisualType(visualType)}
                   />
                 </label>
               )
@@ -239,12 +237,11 @@ export function CalendarShell({
                   className="flex items-center justify-between gap-3 text-sm text-foreground"
                 >
                   <span>{source.title}</span>
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     aria-label={source.title}
                     checked={selectedImportedSourceIds.includes(source.id)}
                     disabled={!showImportedCalendars}
-                    onChange={() => onToggleImportedSource(source.id)}
+                    onCheckedChange={() => onToggleImportedSource(source.id)}
                   />
                 </label>
               ))}

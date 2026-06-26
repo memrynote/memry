@@ -180,15 +180,15 @@ export function GroupBySelector({
           <TooltipTrigger asChild>
             <PopoverTrigger asChild>
               <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
                 className={cn(
-                  'gap-1.5 px-2',
-                  isGrouped && 'bg-primary/10 border-primary/30',
+                  'gap-1.5 px-2 text-muted-foreground',
+                  isGrouped && 'bg-primary/10',
                   className
                 )}
               >
-                <Layers className="h-4 w-4" />
+                <Layers className="h-3.5 w-3.5" />
                 {isGrouped && (
                   <button
                     type="button"

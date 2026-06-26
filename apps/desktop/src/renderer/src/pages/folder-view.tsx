@@ -5,11 +5,13 @@
  * Supports multiple views, filtering, and sorting.
  */
 
-import { useMemo, useState, useLayoutEffect, useCallback, useRef } from 'react'
-import { ArrowLeft, Folder, LayoutGrid, List, Plus, Rows2, Settings2 } from '@/lib/icons'
+import { Fragment, useMemo, useState, useLayoutEffect, useCallback, useRef } from 'react'
+import { ChevronRight, Plus, Search, X } from '@/lib/icons'
 
 import { useDebouncedValue } from '@/hooks/use-task-filters'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Skeleton } from '@/components/ui/skeleton'
 import { FolderViewEmptyState } from '@/components/folder-view/folder-view-empty-state'
 import {
@@ -22,27 +24,24 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from '@/components/ui/alert-dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuCheckboxItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger
-} from '@/components/ui/dropdown-menu'
-import { useDisplayDensity } from '@/hooks/use-display-density'
 import { useTabs } from '@/contexts/tabs'
 import { useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
 import { FolderTableView } from '@/components/folder-view/folder-table-view'
 import { GroupedTable } from '@/components/folder-view/grouped-table'
-import { FolderViewToolbar } from '@/components/folder-view/folder-view-toolbar'
+import { ColumnSelector } from '@/components/folder-view/column-selector'
+import { FilterBuilder } from '@/components/folder-view/filter-builder'
+import { GroupBySelector } from '@/components/folder-view/group-by-selector'
+import { SortSelector } from '@/components/folder-view/sort-selector'
+import { FolderEmojiChip } from '@/components/folder-view/folder-emoji-chip'
 import { FolderListView } from '@/components/folder-view/folder-list-view'
 import { FolderGalleryView } from '@/components/folder-view/folder-gallery-view'
+import { BulkActionBar } from '@/components/folder-view/bulk-action-bar'
+import type { TagMetaMap } from '@/components/folder-view/note-card-pieces'
 import { ViewSwitcher } from '@/components/folder-view/view-switcher'
 import { cn } from '@/lib/utils'
 import { MoveToFolderDialog } from '@/components/folder-view/move-to-folder-dialog'
 import { useFolderView } from '@/hooks/use-folder-view'
-import { useNoteMutations, useNoteTagsQuery } from '@/hooks/use-notes-query'
+import { useNoteMutations, useNoteTagsQuery, useNoteFoldersQuery } from '@/hooks/use-notes-query'
 import { notesService } from '@/services/notes-service'
 import {
   DEFAULT_COLUMNS,
@@ -51,6 +50,8 @@ import {
   type GroupByConfig
 } from '@memry/contracts/folder-view-api'
 import { createLogger } from '@/lib/logger'
+import { extractErrorMessage } from '@/lib/ipc-error'
+import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
 
 const log = createLogger('Page:FolderView')
@@ -70,6 +71,7 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
   const { openTab, closeTab, getActiveTab } = useTabs()
   const { openTag } = useSidebarDrillDown()
   const { tags: allTags } = useNoteTagsQuery()
+  const { folders, setFolderIcon } = useNoteFoldersQuery()
 
   // Use mutations hook for creating new notes (with folder template support)
   const { createNote } = useNoteMutations()
@@ -89,13 +91,13 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
     updateView,
     addView,
     deleteView,
+    renameView,
     setViewAsDefault,
     updateColumns,
     updateSorting,
     updateFilters,
     updateDisplayName,
     updateSummaryConfig,
-    toggleShowSummaries,
     updateGroupBy,
     availableProperties,
     builtInColumns,
@@ -116,12 +118,6 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
 
   // Active view render mode (table / list / grid) — persisted via the view config.
   const viewType = activeView?.type ?? 'table'
-  const handleViewTypeChange = useCallback(
-    (type: 'table' | 'list' | 'grid') => {
-      void updateView({ type })
-    },
-    [updateView]
-  )
 
   // Delete confirmation dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -136,9 +132,6 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
   // ============================================================================
   // Phase 21: View Settings State
   // ============================================================================
-
-  /** Display density (comfortable/compact) - persisted via hook */
-  const { density, setDensity } = useDisplayDensity()
 
   // ============================================================================
   // Selection State (Phase 19 - Lifted for virtualization persistence)
@@ -180,6 +173,10 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
   const [searchQuery, setSearchQuery] = useState('')
   const debouncedSearchQuery = useDebouncedValue(searchQuery, 200)
 
+  // Search icon toggles an inline input; stays open while a query is active.
+  const [searchOpen, setSearchOpen] = useState(false)
+  const showSearch = searchOpen || searchQuery.length > 0
+
   // Compute which columns should be highlighted based on search query
   const highlightedColumns = useMemo(() => {
     if (!columnSearchQuery) return []
@@ -202,20 +199,21 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
     return [...builtInMatches, ...propMatches].filter((id) => visibleIds.includes(id))
   }, [columnSearchQuery, builtInColumns, availableProperties, activeView])
 
-  // Get folder display name
-  const folderName = useMemo(() => {
-    if (!folderPath) return 'Notes'
-    const parts = folderPath.split('/')
-    return parts[parts.length - 1] || 'Notes'
+  // Breadcrumb trail starting at the real folder: ancestor folders › current folder
+  const breadcrumbs = useMemo(() => {
+    const segments = folderPath ? folderPath.split('/').filter(Boolean) : []
+    if (segments.length === 0) return [{ label: 'Notes', path: null }]
+    return segments.map((segment, i) => ({
+      label: segment,
+      path: segments.slice(0, i + 1).join('/') as string | null
+    }))
   }, [folderPath])
 
-  // Get parent folder for back navigation
-  const parentFolder = useMemo(() => {
-    if (!folderPath) return null
-    const parts = folderPath.split('/')
-    if (parts.length <= 1) return null
-    return parts.slice(0, -1).join('/')
-  }, [folderPath])
+  // Current folder's custom icon (raw emoji or "icon:Name"), null = default glyph
+  const folderIcon = useMemo(
+    () => folders.find((f) => f.path === folderPath)?.icon ?? null,
+    [folders, folderPath]
+  )
 
   // T116: Create property types map from available properties
   const propertyTypesMap = useMemo(() => {
@@ -237,10 +235,10 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
     return map
   }, [availableProperties])
 
-  const tagColorMap = useMemo(() => {
-    const map = new Map<string, string>()
+  const tagMetaMap = useMemo<TagMetaMap>(() => {
+    const map: TagMetaMap = new Map()
     for (const tag of allTags) {
-      map.set(tag.tag.toLowerCase(), tag.color)
+      map.set(tag.tag.toLowerCase(), { color: tag.color, icon: tag.icon ?? null })
     }
     return map
   }, [allTags])
@@ -286,10 +284,10 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
   // Handle clicking a tag
   const handleTagClick = useCallback(
     (tag: string): void => {
-      const color = tagColorMap.get(tag.toLowerCase()) ?? ''
+      const color = tagMetaMap.get(tag.toLowerCase())?.color ?? ''
       openTag(tag, color)
     },
-    [openTag, tagColorMap]
+    [openTag, tagMetaMap]
   )
 
   const handleTagRemove = useCallback(
@@ -430,22 +428,23 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
     }
   }, [notesToDelete, removeNotesOptimistically, refresh, EXIT_ANIMATION_DURATION])
 
-  // Handle navigating to parent folder
-  const handleNavigateUp = (): void => {
-    if (parentFolder !== null) {
+  // Navigate to a breadcrumb ancestor folder
+  const handleBreadcrumbNav = useCallback(
+    (path: string, label: string): void => {
       openTab({
         type: 'folder',
-        title: parentFolder.split('/').pop() || 'Notes',
+        title: label,
         icon: 'folder',
-        path: `/folder/${encodeURIComponent(parentFolder)}`,
-        entityId: parentFolder,
+        path: `/folder/${encodeURIComponent(path)}`,
+        entityId: path,
         isPinned: false,
         isModified: false,
         isPreview: false,
         isDeleted: false
       })
-    }
-  }
+    },
+    [openTab]
+  )
 
   // ============================================================================
   // Phase 20: Empty State Handlers
@@ -495,152 +494,235 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
   // Phase 21: Toolbar Action Handlers
   // ============================================================================
 
+  // ============================================================================
+  // Bulk Action Bar Handlers (floating toolbar shown while rows are selected)
+  // ============================================================================
+
+  const tagNames = useMemo(() => allTags.map((tag) => tag.tag), [allTags])
+
+  const handleClearSelection = useCallback(() => setSelectedRowIds(new Set()), [])
+
+  const handleCopyLinks = useCallback(async () => {
+    const ids = Array.from(selectedRowIds)
+    if (ids.length === 0) return
+    try {
+      await navigator.clipboard.writeText(ids.map((id) => `memry://note/${id}`).join('\n'))
+      toast.success(t('bulkActions.copiedLinks', { count: ids.length }))
+    } catch (err) {
+      log.error('Failed to copy links', err)
+      toast.error(extractErrorMessage(err, t('phaseI.errors.failedToCopyLink')))
+    }
+  }, [selectedRowIds, t])
+
+  const handleBulkAddTag = useCallback(
+    async (tag: string) => {
+      const ids = Array.from(selectedRowIds)
+      if (ids.length === 0 || !tag) return
+      await Promise.all(
+        ids.map((id) => {
+          const note = notes.find((n) => n.id === id)
+          if (!note || note.tags.includes(tag)) return Promise.resolve()
+          return updateNoteTags(id, [...note.tags, tag])
+        })
+      )
+    },
+    [selectedRowIds, notes, updateNoteTags]
+  )
+
+  // ponytail: per-note native save dialog (cancel aborts the run). A single-folder
+  // bulk export needs a directory-picker IPC + ExportNoteInput.outputPath — add then.
+  const handleBulkExport = useCallback(async () => {
+    for (const id of Array.from(selectedRowIds)) {
+      const result = await notesService.exportHtml({ noteId: id })
+      if (result.error === 'Export cancelled') break
+    }
+  }, [selectedRowIds])
+
   return (
     <div className="flex flex-col h-full w-full min-w-0 max-w-full overflow-hidden">
       {/* Header - min-w-0 breaks minimum content size chain to prevent table from pushing it */}
-      <header className="flex items-center gap-3 px-4 py-3 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex-shrink-0 min-w-0 overflow-hidden">
-        {/* Back button */}
-        {parentFolder !== null && (
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleNavigateUp}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        )}
+      <header className="flex h-14 items-center gap-3 px-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex-shrink-0 min-w-0 overflow-hidden text-xs antialiased">
+        {/* Folder icon box — shows the folder's custom icon, click to change */}
+        <FolderEmojiChip
+          icon={folderIcon}
+          onIconChange={(icon) => void setFolderIcon(folderPath ?? '', icon)}
+        />
 
-        {/* Folder icon and name */}
-        <div className="flex items-center gap-2 min-w-0">
-          <Folder className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-          <h1 className="text-lg font-semibold truncate">{folderName}</h1>
+        {/* Breadcrumb trail + note count */}
+        <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
+          {breadcrumbs.map((crumb, i) => {
+            const isLast = i === breadcrumbs.length - 1
+            const crumbPath = crumb.path
+            return (
+              <Fragment key={crumbPath ?? 'root'}>
+                {i > 0 && (
+                  <ChevronRight className="size-3 flex-shrink-0 text-muted-foreground/50" />
+                )}
+                {crumbPath !== null && !isLast ? (
+                  <button
+                    type="button"
+                    onClick={() => handleBreadcrumbNav(crumbPath, crumb.label)}
+                    className="truncate font-medium text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    {crumb.label}
+                  </button>
+                ) : (
+                  <span
+                    className={cn(
+                      'truncate font-medium',
+                      isLast ? 'text-foreground/80' : 'text-muted-foreground'
+                    )}
+                  >
+                    {crumb.label}
+                  </span>
+                )}
+              </Fragment>
+            )
+          })}
+          <span className="flex-shrink-0 font-medium text-muted-foreground/50">·</span>
+          <span className="flex-shrink-0 whitespace-nowrap font-medium text-text-tertiary">
+            {isLoading ? (
+              <Skeleton className="h-3.5 w-16" />
+            ) : totalNotes < unfilteredCount ? (
+              `${totalNotes} of ${unfilteredCount} notes`
+            ) : (
+              `${totalNotes} notes`
+            )}
+          </span>
         </div>
-
-        {/* Note count (T100 - already implemented) */}
-        <span className="text-sm text-muted-foreground">
-          {isLoading ? (
-            <Skeleton className="h-4 w-16" />
-          ) : totalNotes < unfilteredCount ? (
-            `${totalNotes} of ${unfilteredCount} notes`
-          ) : (
-            `${totalNotes} notes`
-          )}
-        </span>
-
-        {/* T098: New Note button */}
-        <button
-          type="button"
-          onClick={() => void handleCreateNote()}
-          title={tPhaseF('phaseF.pagesFolderView.createNewNote')}
-          className="flex h-8 items-center gap-1.5 rounded-md bg-[var(--tint)] px-3 text-[12.5px] font-semibold text-[var(--tint-foreground)] transition-colors hover:bg-[var(--tint-hover)]"
-        >
-          <Plus className="size-3.5" />
-          {tPhaseF('phaseF.pagesFolderView.createNewNote')}
-        </button>
 
         {/* Spacer */}
         <div className="flex-1" />
 
-        {/* View Switcher */}
-        <ViewSwitcher
-          views={views}
-          activeViewIndex={activeViewIndex}
-          activeView={activeView}
-          onViewChange={setActiveViewIndex}
-          onAddView={addView}
-          onUpdateView={updateView}
-          onSetViewAsDefault={setViewAsDefault}
-          onDeleteView={deleteView}
-        />
-
-        {/* View type switcher: Table / List / Board / Gallery */}
-        <div className="flex items-center gap-0.5 rounded-md border p-0.5">
-          {(
-            [
-              { type: 'table', Icon: Rows2, label: 'Table' },
-              { type: 'list', Icon: List, label: 'List' },
-              { type: 'grid', Icon: LayoutGrid, label: 'Gallery' }
-            ] as const
-          ).map(({ type, Icon, label }) => {
-            const active = viewType === type
-            return (
+        {/* Actions cluster — order: search · sort · filter · properties · group | saved views | new note */}
+        <div className="flex flex-shrink-0 items-center gap-1.5">
+          {/* Search — icon expands to an inline input, stays open while a query is active */}
+          {showSearch ? (
+            <div className="relative w-48">
+              <Search className="pointer-events-none absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                autoFocus
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onBlur={() => {
+                  if (!searchQuery) setSearchOpen(false)
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    setSearchQuery('')
+                    setSearchOpen(false)
+                  }
+                }}
+                placeholder={tPhaseF('phaseF.componentsFolderViewFolderViewToolbar.searchNotes')}
+                className="h-8 ps-8 pe-8 text-sm"
+              />
               <button
-                key={type}
                 type="button"
-                title={label}
-                aria-pressed={active}
-                onClick={() => handleViewTypeChange(type)}
-                className={cn(
-                  'flex h-7 items-center gap-1.5 rounded-[5px] px-2 text-xs font-medium transition-colors',
-                  active
-                    ? 'bg-muted text-foreground'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
+                onClick={() => {
+                  setSearchQuery('')
+                  setSearchOpen(false)
+                }}
+                className="absolute end-2 top-1/2 size-4 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+                aria-label={tPhaseF('phaseF.componentsFolderViewFolderViewToolbar.clearSearch')}
               >
-                <Icon className="size-3.5" />
-                {active && <span>{label}</span>}
+                <X className="size-4" />
               </button>
-            )
-          })}
+            </div>
+          ) : (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="gap-1.5 px-2"
+                    onClick={() => setSearchOpen(true)}
+                    aria-label={tPhaseF('phaseF.componentsFolderViewFolderViewToolbar.searchNotes')}
+                  >
+                    <Search className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  {tPhaseF('phaseF.componentsFolderViewFolderViewToolbar.searchNotes')}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+
+          {/* Sort */}
+          <SortSelector
+            order={activeView?.order}
+            availableProperties={availableProperties}
+            builtInColumns={builtInColumns}
+            onSortingChange={(...args) => void updateSorting(...args)}
+          />
+
+          {/* Filter */}
+          <FilterBuilder
+            filters={activeView?.filters as FilterExpression | undefined}
+            availableProperties={availableProperties}
+            builtInColumns={builtInColumns}
+            onFiltersChange={(...args) => void updateFilters(...args)}
+          />
+
+          {/* Properties */}
+          <ColumnSelector
+            columns={activeView?.columns ?? DEFAULT_COLUMNS}
+            builtInColumns={builtInColumns}
+            availableProperties={availableProperties}
+            formulas={formulas}
+            onColumnsChange={(...args) => void updateColumns(...args)}
+            onSearchChange={setColumnSearchQuery}
+            onFormulaAdd={addFormula}
+            onFormulaEdit={updateFormula}
+            onFormulaDelete={deleteFormula}
+            sampleNote={sampleNote}
+            summaries={summaries}
+            onSummaryChange={(...args) => void updateSummaryConfig(...args)}
+            showSummaries={activeView?.showSummaries ?? false}
+            onToggleSummaries={() => void updateView({ showSummaries: !activeView?.showSummaries })}
+            columnBorders={activeView?.columnBorders ?? false}
+            onToggleColumnBorders={() =>
+              void updateView({ columnBorders: !activeView?.columnBorders })
+            }
+          />
+
+          {/* Group */}
+          <GroupBySelector
+            groupBy={activeView?.groupBy as GroupByConfig | undefined}
+            availableProperties={availableProperties}
+            builtInColumns={builtInColumns}
+            onGroupByChange={(...args) => void updateGroupBy(...args)}
+          />
+
+          {/* Divider */}
+          <div className="h-4 w-px flex-shrink-0 bg-border" />
+
+          {/* Saved views */}
+          <ViewSwitcher
+            views={views}
+            activeViewIndex={activeViewIndex}
+            activeView={activeView}
+            onViewChange={setActiveViewIndex}
+            onAddView={addView}
+            onUpdateView={updateView}
+            onRenameView={renameView}
+            onSetViewAsDefault={setViewAsDefault}
+            onDeleteView={deleteView}
+          />
+
+          {/* New Note button */}
+          <button
+            type="button"
+            onClick={() => void handleCreateNote()}
+            title={tPhaseF('phaseF.pagesFolderView.createNewNote')}
+            className="flex h-8 items-center gap-1.5 rounded-md bg-[var(--tint)] px-3 text-[12.5px] font-semibold text-[var(--tint-foreground)] shadow-sm transition-colors hover:bg-[var(--tint-hover)]"
+          >
+            <Plus className="size-3.5" />
+            {tPhaseF('phaseF.pagesFolderView.createNewNote')}
+          </button>
         </div>
-
-        {/* T099: View Settings dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              title={tPhaseF('phaseF.pagesFolderView.viewSettings')}
-            >
-              <Settings2 className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuLabel>
-              {tPhaseF('phaseF.pagesFolderView.displayDensity')}
-            </DropdownMenuLabel>
-            <DropdownMenuCheckboxItem
-              checked={density === 'comfortable'}
-              onCheckedChange={() => setDensity('comfortable')}
-            >
-              {tPhaseF('phaseF.pagesFolderView.comfortable')}
-            </DropdownMenuCheckboxItem>
-            <DropdownMenuCheckboxItem
-              checked={density === 'compact'}
-              onCheckedChange={() => setDensity('compact')}
-            >
-              {tPhaseF('phaseF.pagesFolderView.compact')}
-            </DropdownMenuCheckboxItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuCheckboxItem
-              checked={activeView?.showSummaries ?? false}
-              onCheckedChange={() => void toggleShowSummaries()}
-            >
-              {tPhaseF('phaseF.pagesFolderView.showSummaries')}
-            </DropdownMenuCheckboxItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
       </header>
-
-      {/* Toolbar - min-w-0 and overflow-hidden to stay within viewport */}
-      <FolderViewToolbar
-        columns={activeView?.columns ?? DEFAULT_COLUMNS}
-        builtInColumns={builtInColumns}
-        availableProperties={availableProperties}
-        formulas={formulas}
-        filters={activeView?.filters as FilterExpression | undefined}
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        onColumnsChange={(...args) => void updateColumns(...args)}
-        onFiltersChange={(...args) => void updateFilters(...args)}
-        onColumnSearchChange={setColumnSearchQuery}
-        onFormulaAdd={addFormula}
-        onFormulaEdit={updateFormula}
-        onFormulaDelete={deleteFormula}
-        sampleNote={sampleNote}
-        summaries={summaries}
-        onSummaryChange={(...args) => void updateSummaryConfig(...args)}
-        groupBy={activeView?.groupBy as GroupByConfig | undefined}
-        onGroupByChange={(...args) => void updateGroupBy(...args)}
-        className="flex-shrink-0 min-w-0 overflow-hidden"
-      />
 
       {/* Content - relative container for absolute positioned table */}
       <div className="flex-1 relative min-w-0">
@@ -671,8 +753,8 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
             <FolderListView
               notes={notes}
               searchQuery={debouncedSearchQuery}
-              density={density}
-              tagColorMap={tagColorMap}
+              density="compact"
+              tagMetaMap={tagMetaMap}
               onNoteOpen={handleNoteOpen}
               onTagClick={handleTagClick}
               onCreateNote={() => void handleCreateNote()}
@@ -683,7 +765,7 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
             <FolderGalleryView
               notes={notes}
               searchQuery={debouncedSearchQuery}
-              tagColorMap={tagColorMap}
+              tagMetaMap={tagMetaMap}
               onNoteOpen={handleNoteOpen}
               onTagClick={handleTagClick}
               onCreateNote={() => void handleCreateNote()}
@@ -708,6 +790,7 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
               onFolderClick={handleFolderClick}
               onTagClick={handleTagClick}
               onTagRemove={handleTagRemove}
+              tagMetaMap={tagMetaMap}
               onPropertyUpdate={(...args) => void updateNoteProperty(...args)}
               onColumnsChange={(...args) => void updateColumns(...args)}
               onSortingChange={(...args) => void updateSorting(...args)}
@@ -717,8 +800,8 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
               onCreateNote={(...args) => void handleCreateNote(...args)}
               onClearAll={handleClearAll}
               highlightedColumns={highlightedColumns}
-              density={density}
-              showColumnBorders={true}
+              density="compact"
+              showColumnBorders={activeView?.columnBorders ?? false}
               showSummaries={activeView?.showSummaries ?? false}
               summaries={summaries}
               exitingRowIds={exitingRowIds}
@@ -741,6 +824,7 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
               onFolderClick={handleFolderClick}
               onTagClick={handleTagClick}
               onTagRemove={handleTagRemove}
+              tagMetaMap={tagMetaMap}
               onPropertyUpdate={(...args) => void updateNoteProperty(...args)}
               onColumnsChange={(...args) => void updateColumns(...args)}
               onSortingChange={(...args) => void updateSorting(...args)}
@@ -750,8 +834,8 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
               onCreateNote={(...args) => void handleCreateNote(...args)}
               onClearAll={handleClearAll}
               highlightedColumns={highlightedColumns}
-              density={density}
-              showColumnBorders={true}
+              density="compact"
+              showColumnBorders={activeView?.columnBorders ?? false}
               showSummaries={activeView?.showSummaries ?? false}
               summaries={summaries}
               exitingRowIds={exitingRowIds}
@@ -759,6 +843,29 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
             />
           )}
         </div>
+
+        {/* Floating bulk action bar — table/grouped views, while rows are selected */}
+        {selectedRowIds.size > 0 &&
+          viewType !== 'list' &&
+          viewType !== 'grid' &&
+          !folderNotFound &&
+          !error &&
+          !isLoading && (
+            <div className="pointer-events-none absolute inset-x-0 bottom-6 z-20 flex justify-center px-4">
+              <BulkActionBar
+                className="pointer-events-auto"
+                count={selectedRowIds.size}
+                availableTags={tagNames}
+                tagMeta={tagMetaMap}
+                onMove={() => handleMoveRequest(Array.from(selectedRowIds))}
+                onCopyLinks={() => void handleCopyLinks()}
+                onAddTag={(tag) => void handleBulkAddTag(tag)}
+                onExport={() => void handleBulkExport()}
+                onDelete={() => handleDeleteRequest(Array.from(selectedRowIds))}
+                onClear={handleClearSelection}
+              />
+            </div>
+          )}
       </div>
 
       {/* Delete Confirmation Dialog */}

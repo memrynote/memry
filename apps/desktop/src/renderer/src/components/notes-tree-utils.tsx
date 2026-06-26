@@ -1,4 +1,5 @@
 import { FileText, FileType2, Image, Music, Video } from '@/lib/icons'
+import { getExtension } from '@memry/shared/file-types'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
 import type { FolderInfo } from '../../../preload/index.d'
 import type { NoteListItem } from '@/hooks/use-notes-query'
@@ -200,6 +201,16 @@ export function collectAllFolderIds(tree: TreeStructure): string[] {
 // ============================================================================
 // Icon Utilities
 // ============================================================================
+
+/**
+ * Uppercase extension label for non-markdown vault files (e.g. PDF, MP3, WAV).
+ * Returns null for markdown notes and unknown files so the sidebar shows no badge.
+ */
+export function getFileExtensionLabel(note: NoteListItem): string | null {
+  if (!note.fileType || note.fileType === 'markdown') return null
+  const ext = getExtension(note.path)
+  return ext ? ext.toUpperCase() : null
+}
 
 export function getFileIcon(note: NoteListItem): React.ReactElement {
   if (note.emoji) {

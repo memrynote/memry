@@ -108,12 +108,12 @@ export function FolderViewToolbar({
     >
       {/* Global Search Input - responsive width with min/max constraints */}
       <div className="relative w-48 min-w-32 max-w-64 flex-shrink">
-        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
         <Input
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder={tPhaseF('phaseF.componentsFolderViewFolderViewToolbar.searchNotes')}
-          className="h-8 pl-8 pr-8 text-sm w-full"
+          className="pl-8 pr-8 w-full"
         />
         {searchQuery && (
           <button

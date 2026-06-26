@@ -13,6 +13,8 @@ import {
   Image,
   FileAudio,
   File,
+  Folder,
+  Hash,
   MoreHorizontal,
   Trash2
 } from '@/lib/icons'
@@ -52,6 +54,10 @@ function getBookmarkIcon(itemType: string) {
       return Calendar
     case BookmarkItemTypes.TASK:
       return CheckSquare
+    case BookmarkItemTypes.FOLDER:
+      return Folder
+    case BookmarkItemTypes.TAG:
+      return Hash
     case BookmarkItemTypes.IMAGE:
       return Image
     case BookmarkItemTypes.AUDIO:
@@ -72,7 +78,8 @@ function getBookmarkIconColor(_itemType: string): string {
 const bookmarkItemTypeToTabType: Record<string, TabType> = {
   [BookmarkItemTypes.NOTE]: 'note',
   [BookmarkItemTypes.JOURNAL]: 'journal',
-  [BookmarkItemTypes.TASK]: 'tasks'
+  [BookmarkItemTypes.TASK]: 'tasks',
+  [BookmarkItemTypes.FOLDER]: 'folder'
 }
 
 export function SidebarBookmarkList({

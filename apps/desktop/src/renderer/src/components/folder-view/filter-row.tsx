@@ -6,7 +6,8 @@
  */
 
 import { useCallback, useMemo } from 'react'
-import { X, Calendar as CalendarIcon } from '@/lib/icons'
+import { X, type AppIcon } from '@/lib/icons'
+import { getColumnIcon } from './column-icons'
 import { format } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -50,8 +51,6 @@ interface FilterRowProps {
   onChange: (condition: FilterCondition) => void
   /** Called when the condition should be removed */
   onRemove: () => void
-  /** Visual nesting level (0-2) */
-  nestingLevel?: number
   /** Additional CSS classes */
   className?: string
 }
@@ -69,6 +68,21 @@ const BUILT_IN_PROPERTIES: PropertyInfo[] = [
   { id: 'wordCount', name: 'Word Count', type: 'number' }
 ]
 
+/** Shared chip styling for the property + operator selectors. */
+const CHIP =
+  'flex h-[26px] w-auto items-center gap-1 whitespace-nowrap rounded-md border-border bg-muted/50 px-2 text-[11.5px]'
+
+/** Leading property icon (receives a pre-resolved icon as a prop). */
+function PropertyIcon({
+  icon: Icon,
+  className
+}: {
+  icon: AppIcon
+  className?: string
+}): React.JSX.Element {
+  return <Icon className={cn('h-3 w-3 shrink-0 text-muted-foreground', className)} />
+}
+
 // ============================================================================
 // Component
 // ============================================================================
@@ -81,7 +95,6 @@ export function FilterRow({
   availableProperties,
   onChange,
   onRemove,
-  nestingLevel = 0,
   className
 }: FilterRowProps): React.JSX.Element {
   const { t: tPhaseF } = useT('notes')
@@ -154,14 +167,17 @@ export function FilterRow({
     [condition, onChange]
   )
 
-  // Indentation based on nesting level
-  const indentClass = nestingLevel > 0 ? `ml-${nestingLevel * 4}` : ''
-
   return (
-    <div className={cn('flex items-center gap-2 py-1.5', indentClass, className)}>
-      {/* Property Selector */}
+    <div className={cn('flex items-center gap-1.5', className)}>
+      {/* Property Selector — chip with a leading type icon */}
       <Select value={condition.property} onValueChange={handlePropertyChange}>
-        <SelectTrigger className="w-[140px] h-8 text-xs">
+        <SelectTrigger
+          className={cn(
+            CHIP,
+            // SelectValue renders the selected item (icon + name); hide only the chevron.
+            'justify-start font-medium text-foreground [&>svg:last-child]:hidden'
+          )}
+        >
           <SelectValue
             placeholder={tPhaseF('phaseF.componentsFolderViewFilterRow.placeholderProperty')}
           />
@@ -173,7 +189,10 @@ export function FilterRow({
           </div>
           {BUILT_IN_PROPERTIES.map((prop) => (
             <SelectItem key={prop.id} value={prop.id} className="text-xs">
-              {prop.name}
+              <span className="flex items-center gap-2">
+                <PropertyIcon icon={getColumnIcon(prop.id)} className="h-3.5 w-3.5" />
+                {prop.name}
+              </span>
             </SelectItem>
           ))}
 
@@ -185,7 +204,10 @@ export function FilterRow({
               </div>
               {availableProperties.map((prop) => (
                 <SelectItem key={prop.id} value={prop.id} className="text-xs">
-                  {prop.name}
+                  <span className="flex items-center gap-2">
+                    <PropertyIcon icon={getColumnIcon(prop.id)} className="h-3.5 w-3.5" />
+                    {prop.name}
+                  </span>
                 </SelectItem>
               ))}
             </>
@@ -193,9 +215,14 @@ export function FilterRow({
         </SelectContent>
       </Select>
 
-      {/* Operator Selector */}
+      {/* Operator Selector — chip with a trailing chevron */}
       <Select value={condition.operator} onValueChange={handleOperatorChange}>
-        <SelectTrigger className="w-[130px] h-8 text-xs">
+        <SelectTrigger
+          className={cn(
+            CHIP,
+            'justify-start text-muted-foreground [&>svg:last-child]:h-3 [&>svg:last-child]:w-3'
+          )}
+        >
           <SelectValue
             placeholder={tPhaseF('phaseF.componentsFolderViewFilterRow.placeholderOperator')}
           />
@@ -221,15 +248,15 @@ export function FilterRow({
       {/* Spacer when no value needed */}
       {!needsValue && <div className="flex-1" />}
 
-      {/* Remove Button */}
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+      {/* Remove */}
+      <button
+        type="button"
         onClick={onRemove}
+        aria-label={tPhaseF('phaseF.componentsFolderViewFilterRow.removeFilter')}
+        className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground/70 transition-colors hover:text-foreground"
       >
-        <X className="h-4 w-4" />
-      </Button>
+        <X className="h-3.5 w-3.5" />
+      </button>
     </div>
   )
 }
@@ -254,7 +281,7 @@ function ValueInput({ type, value, onChange }: ValueInputProps): React.JSX.Eleme
           type="number"
           value={(value as number) ?? ''}
           onChange={(e) => onChange(e.target.value ? Number(e.target.value) : '')}
-          className="w-[100px] h-8 text-xs"
+          className="h-[26px] flex-1 min-w-0 rounded-md border-border bg-transparent px-2 text-[11.5px] text-foreground [font-variant-numeric:tabular-nums]"
           placeholder={tPhaseF('phaseF.componentsFolderViewFilterRow.placeholderValue')}
         />
       )
@@ -276,7 +303,7 @@ function ValueInput({ type, value, onChange }: ValueInputProps): React.JSX.Eleme
           type="text"
           value={stringifyUnknown(value)}
           onChange={(e) => onChange(e.target.value)}
-          className="flex-1 h-8 text-xs min-w-[100px]"
+          className="h-[26px] flex-1 min-w-0 rounded-md border-border bg-transparent px-2 text-[11.5px] text-foreground"
           placeholder={tPhaseF('phaseF.componentsFolderViewFilterRow.placeholderValue')}
         />
       )
@@ -315,11 +342,10 @@ function DateValueInput({ value, onChange }: DateValueInputProps): React.JSX.Ele
           variant="outline"
           size="sm"
           className={cn(
-            'w-[130px] h-8 justify-start text-left text-xs font-normal',
+            'h-[26px] flex-1 justify-start rounded-md border-border bg-transparent px-2 text-start text-[11.5px] font-normal text-foreground',
             !dateValue && 'text-muted-foreground'
           )}
         >
-          <CalendarIcon className="mr-2 h-3.5 w-3.5" />
           {dateValue ? format(dateValue, 'MMM d, yyyy') : 'Pick a date'}
         </Button>
       </PopoverTrigger>

@@ -1,4 +1,5 @@
 import { isIconValue, parseIconName } from '@/components/note/note-title/emoji-icon-utils'
+import { cn } from '@/lib/utils'
 import { HugeIconByName } from './hugeicon-renderer'
 
 export function NoteIconDisplay({
@@ -11,5 +12,9 @@ export function NoteIconDisplay({
   if (isIconValue(value)) {
     return <HugeIconByName name={parseIconName(value)} className={className} />
   }
-  return <span className={className}>{value}</span>
+  return (
+    <span className={cn('inline-flex items-center justify-center leading-none', className)}>
+      {value}
+    </span>
+  )
 }

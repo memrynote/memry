@@ -70,6 +70,46 @@ export const findTabById = (state: TabSystemState, tabId: string): FoundTab | nu
 }
 
 // =============================================================================
+// NAVIGATION HISTORY
+// =============================================================================
+
+/**
+ * A single entry in a Chrome-style back/forward history menu.
+ */
+export interface HistoryEntry {
+  tab: Tab
+  /** Number of navBack/navForward calls needed to land on this entry. */
+  steps: number
+}
+
+/**
+ * Build the Chrome-style back/forward history list for a group: still-open tabs
+ * only, nearest-first, each annotated with how many nav steps reach it.
+ *
+ * `steps = entries.length + 1` is correct even with stale ids because NAV_BACK /
+ * NAV_FORWARD discard any closed-tab ids they pass and land on the next still-open
+ * tab — so the k-th valid entry (0-indexed) is reached by exactly k+1 calls.
+ */
+export const buildHistoryEntries = (
+  state: TabSystemState,
+  groupId: string,
+  direction: 'back' | 'forward',
+  limit = 10
+): HistoryEntry[] => {
+  const group = state.tabGroups[groupId]
+  if (!group) return []
+  const stack = direction === 'back' ? group.back : group.forward
+  const entries: HistoryEntry[] = []
+  // End of both stacks is the nearest neighbour (NAV_BACK/NAV_FORWARD pop from the end).
+  for (let i = stack.length - 1; i >= 0 && entries.length < limit; i--) {
+    const found = findTabById(state, stack[i])
+    if (!found) continue // skip closed tabs, exactly like the reducer does
+    entries.push({ tab: found.tab, steps: entries.length + 1 })
+  }
+  return entries
+}
+
+// =============================================================================
 // TAB ICON MAPPING
 // =============================================================================
 

@@ -7,9 +7,7 @@ import {
   FilePdf,
   Image,
   Link2,
-  List,
   Mic,
-  Rows2,
   Scissors,
   Search,
   Share2,
@@ -26,7 +24,6 @@ import { CaptureInput } from '@/components/capture-input'
 import { Picker } from '@/components/ui/picker'
 import { useInboxNotifications } from '@/hooks/use-inbox-notifications'
 import { useInboxJobs, useInboxList } from '@/hooks/use-inbox'
-import { useDisplayDensity } from '@/hooks/use-display-density'
 import { useInboxRemindersPanel } from '@/hooks/use-inbox-reminders-panel'
 import { useActiveTab } from '@/contexts/tabs'
 import type { InboxItemType } from '@memry/contracts/inbox-api'
@@ -75,7 +72,6 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   const archivedSearchRef = useRef<HTMLInputElement>(null)
   useInboxNotifications()
   const { items } = useInboxList()
-  const { density, toggleDensity, isComfortable } = useDisplayDensity()
   const { upcomingCount } = useInboxRemindersPanel()
   const { activeCount: activeJobCount, failedCount: failedJobCount } = useInboxJobs(
     items.map((item) => item.id)
@@ -220,7 +216,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                 title={t('view.processInboxTitle')}
                 className="flex items-center shrink-0 rounded-[5px] py-1 px-2.5 gap-1.5 bg-amber-500/[0.08] border border-amber-500/20 text-amber-500 transition-colors hover:bg-amber-500/[0.12]"
               >
-                <Check className="size-3" />
+                <Check className="size-3.5" />
                 <span className="text-[12px] leading-4 font-medium">{t('view.triageButton')}</span>
                 <span className="flex items-center justify-center rounded-[10px] py-px px-1.5 bg-amber-500/15 text-[11px] leading-3.5 font-semibold">
                   {items.length}
@@ -250,7 +246,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                   }
                 }}
               >
-                <Search className="size-3 shrink-0" />
+                <Search className="size-3.5 shrink-0" />
                 <input
                   ref={archivedSearchRef}
                   type="text"
@@ -295,13 +291,13 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                         : t('view.snoozed.show')
                   }
                   className={cn(
-                    'flex items-center shrink-0 rounded-[5px] py-1 px-2 gap-1 border transition-colors',
+                    'flex items-center justify-center shrink-0 rounded-[5px] py-1 px-2 gap-1 transition-colors',
                     showSnoozedItems
-                      ? 'border-foreground/20 bg-foreground/5 text-foreground/90'
-                      : 'border-border text-muted-foreground hover:bg-surface-active/50'
+                      ? 'bg-foreground/5 text-foreground/90'
+                      : 'text-muted-foreground hover:bg-surface-active/50'
                   )}
                 >
-                  <AlarmClock className="size-3" />
+                  <AlarmClock className="size-3.5" />
                   {upcomingCount > 0 && (
                     <span
                       className={cn(
@@ -332,13 +328,13 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                           : t('view.filter.byType')
                       }
                       className={cn(
-                        'flex items-center shrink-0 rounded-[5px] py-1 px-2 gap-1 border transition-colors',
+                        'flex items-center justify-center shrink-0 rounded-[5px] py-1 px-2 gap-1 transition-colors',
                         isFilterOpen || hasActiveFilters
-                          ? 'border-foreground/20 bg-foreground/5 text-foreground/90'
-                          : 'border-border text-muted-foreground hover:bg-surface-active/50'
+                          ? 'bg-foreground/5 text-foreground/90'
+                          : 'text-muted-foreground hover:bg-surface-active/50'
                       )}
                     >
-                      <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                      <svg width="14" height="14" viewBox="0 0 13 13" fill="none">
                         <path
                           d="M2 3h9M3.5 6.5h6M5 10h3"
                           stroke="currentColor"
@@ -346,7 +342,6 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                           strokeLinecap="round"
                         />
                       </svg>
-                      <span className="text-[12px] font-medium">{t('view.filter.button')}</span>
                       {hasActiveFilters && (
                         <span className="flex items-center justify-center size-[14px] rounded-full bg-foreground text-background text-[9px] font-bold">
                           {selectedTypes.size}
@@ -390,23 +385,6 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                     )}
                   </Picker.Content>
                 </Picker>
-
-                <button
-                  type="button"
-                  onClick={toggleDensity}
-                  title={
-                    isComfortable ? t('view.density.toCompact') : t('view.density.toComfortable')
-                  }
-                  aria-label={
-                    isComfortable ? t('view.density.toCompact') : t('view.density.toComfortable')
-                  }
-                  className={cn(
-                    'flex items-center justify-center shrink-0 rounded-[5px] py-1 px-2 border transition-colors',
-                    'border-border text-muted-foreground hover:bg-surface-active/50'
-                  )}
-                >
-                  {isComfortable ? <Rows2 className="size-3" /> : <List className="size-3" />}
-                </button>
               </>
             )}
           </PageToolbar>
@@ -434,7 +412,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                 className={className}
                 selectedTypes={selectedTypes}
                 showSnoozedItems={showSnoozedItems}
-                density={density}
+                density="compact"
                 focusItemId={focusInboxItemId}
                 {...{ focusToken }}
               />

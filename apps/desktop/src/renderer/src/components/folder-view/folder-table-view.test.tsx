@@ -250,6 +250,28 @@ describe('FolderTableView', () => {
     expect(screen.getByText('summary 2')).toBeInTheDocument()
   })
 
+  it('drives selection from the select-all header and per-row checkboxes', () => {
+    const onSelectionChange = vi.fn()
+    render(
+      <FolderTableView notes={notes} columns={columns} onSelectionChange={onSelectionChange} />
+    )
+
+    const selectAll = screen.getByRole('checkbox', { name: 'selectAll' })
+    fireEvent.click(selectAll)
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['note-1', 'note-2']))
+
+    // Clicking again while fully checked clears the selection.
+    fireEvent.click(selectAll)
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set())
+
+    const rowBoxes = screen.getAllByRole('checkbox', { name: 'selectRow' })
+    expect(rowBoxes).toHaveLength(2)
+    fireEvent.click(rowBoxes[1])
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['note-2']))
+    fireEvent.click(rowBoxes[1])
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set())
+  })
+
   it('renders loading, empty, and no-results states', () => {
     const onCreateNote = vi.fn()
     const onClearAll = vi.fn()
@@ -472,6 +494,29 @@ describe('GroupedTable', () => {
     expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['note-1']))
 
     fireEvent.keyDown(grid, { key: 'ArrowDown' })
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['note-2']))
+  })
+
+  it('drives grouped selection from the select-all header and per-row checkboxes', () => {
+    const onSelectionChange = vi.fn()
+    render(
+      <GroupedTable
+        notes={notes}
+        columns={columns}
+        groupBy={{ property: 'status' } as any}
+        onSelectionChange={onSelectionChange}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'selectAll' }))
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['note-1', 'note-2']))
+
+    expect(screen.getAllByRole('checkbox', { name: 'selectRow' })).toHaveLength(2)
+    const grid = screen.getByRole('grid', { name: 'groupedNotesTable' })
+    const note1Box = grid
+      .querySelector('[data-row-id="note-1"]')!
+      .querySelector('[role="checkbox"]') as HTMLElement
+    fireEvent.click(note1Box)
     expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['note-2']))
   })
 

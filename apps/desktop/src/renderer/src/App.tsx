@@ -503,6 +503,11 @@ function App(): React.JSX.Element {
                               </SidebarInset>
                             </SidebarDrillDownProvider>
                             <TaskDragOverlay projects={projectsWithCounts} />
+                            {/* Last child so paint order puts the chrome overlay above the
+                                tab-bar's drag-region (OS-level -webkit-app-region hit test picks
+                                the topmost layer; a drag-region painted over no-drag children eats
+                                clicks). Lives inside TabProvider for useTabs() back/forward nav. */}
+                            <WindowControls className="pointer-events-auto fixed top-0 start-0 z-[60] w-[var(--chrome-width)]" />
                           </SelectedFolderProvider>
                         </SettingsModalProvider>
                       </TabPersistenceManager>
@@ -560,10 +565,6 @@ function App(): React.JSX.Element {
               {mainContent}
             </DroppedPriorityProvider>
           </DragProvider>
-          {/* Last child so paint order puts the chrome overlay above the tab-bar's
-              drag-region (OS-level -webkit-app-region hit test picks the topmost
-              layer; a drag-region painted over no-drag children eats clicks). */}
-          <WindowControls className="pointer-events-auto fixed top-0 start-0 z-[60] w-[var(--chrome-width)]" />
         </SidebarProvider>
         <Toaster />
       </ThemeSyncManager>

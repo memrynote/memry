@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   getActiveTab: vi.fn(),
   openTag: vi.fn(),
   setDensity: vi.fn(),
+  setFolderIcon: vi.fn(),
   createNote: vi.fn(),
   moveNote: vi.fn(),
   deleteNote: vi.fn(),
@@ -68,7 +69,12 @@ vi.mock('@/hooks/use-display-density', async (importOriginal) => ({
 
 vi.mock('@/hooks/use-notes-query', () => ({
   useNoteTagsQuery: () => ({ tags: [{ tag: 'work', color: 'blue' }] }),
+  useNoteFoldersQuery: () => ({ folders: [], setFolderIcon: mocks.setFolderIcon }),
   useNoteMutations: () => ({ createNote: { mutateAsync: mocks.createNote } })
+}))
+
+vi.mock('@/components/folder-view/folder-emoji-chip', () => ({
+  FolderEmojiChip: () => <div data-testid="folder-emoji-chip" />
 }))
 
 vi.mock('@/services/notes-service', () => ({
@@ -205,36 +211,24 @@ vi.mock('@/components/folder-view/folder-view-empty-state', () => ({
   )
 }))
 
-vi.mock('@/components/folder-view/folder-view-toolbar', () => ({
-  FolderViewToolbar: ({
-    onSearchChange,
-    onColumnSearchChange,
+vi.mock('@/components/folder-view/column-selector', () => ({
+  ColumnSelector: ({
     onColumnsChange,
-    onFiltersChange,
+    onSearchChange,
     onFormulaAdd,
-    onSummaryChange,
-    onGroupByChange
+    onSummaryChange
   }: {
-    onSearchChange: (value: string) => void
-    onColumnSearchChange: (value: string) => void
     onColumnsChange: (columns: unknown) => void
-    onFiltersChange: (filters: unknown) => void
+    onSearchChange: (value: string) => void
     onFormulaAdd: (formula: unknown) => void
     onSummaryChange: (summary: unknown) => void
-    onGroupByChange: (groupBy: unknown) => void
   }) => (
     <div>
-      <button type="button" onClick={() => onSearchChange('memo')}>
-        Search folder
-      </button>
-      <button type="button" onClick={() => onColumnSearchChange('title')}>
+      <button type="button" onClick={() => onSearchChange('title')}>
         Search columns
       </button>
       <button type="button" onClick={() => onColumnsChange([])}>
         Change columns
-      </button>
-      <button type="button" onClick={() => onFiltersChange({ op: 'and', conditions: [] })}>
-        Change filters
       </button>
       <button type="button" onClick={() => onFormulaAdd({ id: 'f1' })}>
         Add formula
@@ -242,10 +236,34 @@ vi.mock('@/components/folder-view/folder-view-toolbar', () => ({
       <button type="button" onClick={() => onSummaryChange({ title: 'count' })}>
         Change summary
       </button>
-      <button type="button" onClick={() => onGroupByChange({ columnId: 'rating' })}>
-        Group folder
-      </button>
     </div>
+  )
+}))
+
+vi.mock('@/components/folder-view/filter-builder', () => ({
+  FilterBuilder: ({ onFiltersChange }: { onFiltersChange: (filters: unknown) => void }) => (
+    <button type="button" onClick={() => onFiltersChange({ op: 'and', conditions: [] })}>
+      Change filters
+    </button>
+  )
+}))
+
+vi.mock('@/components/folder-view/group-by-selector', () => ({
+  GroupBySelector: ({ onGroupByChange }: { onGroupByChange: (groupBy: unknown) => void }) => (
+    <button type="button" onClick={() => onGroupByChange({ columnId: 'rating' })}>
+      Group folder
+    </button>
+  )
+}))
+
+vi.mock('@/components/folder-view/sort-selector', () => ({
+  SortSelector: ({ onSortingChange }: { onSortingChange: (order: unknown) => void }) => (
+    <button
+      type="button"
+      onClick={() => onSortingChange([{ property: 'title', direction: 'asc' }])}
+    >
+      Sort header
+    </button>
   )
 }))
 

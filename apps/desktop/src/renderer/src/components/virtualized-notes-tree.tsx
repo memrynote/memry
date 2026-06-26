@@ -50,7 +50,9 @@ import {
 } from '@/components/ui/context-menu'
 import { getTabIconForFileType, type FileType } from '@memry/shared/file-types'
 import { FolderIconButton } from '@/components/folder-icon-button'
+import { IconPickerButton } from '@/components/icon-picker-button'
 import { getDisplayName, getFileIcon } from '@/components/notes-tree-utils'
+import { BookmarkMenuItem } from '@/components/sidebar/bookmark-menu-item'
 import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
@@ -115,6 +117,8 @@ interface VirtualizedNotesTreeProps {
   folderTemplateNames?: Map<string, string>
   /** Callback when setting folder icon */
   onSetFolderIcon?: (folderPath: string, icon: string | null) => void
+  /** Callback when setting a note's icon (emoji) */
+  onSetNoteIcon?: (noteId: string, icon: string | null) => void
   /** Map of note IDs to notes for quick lookup */
   noteMap: Map<string, NoteListItem>
   /** Whether drag operations are disabled */
@@ -182,7 +186,7 @@ interface FolderRowProps {
   draggable: boolean
   onToggleExpand: (folderId: string) => void
   onSelect: (folderId: string, event: React.MouseEvent) => void
-  onOpenFolderView?: (folderPath: string) => void
+  onOpenFolderView?: (folderPath: string, icon?: string | null) => void
   onCreateNote?: (folderPath: string) => void
   onCreateFolder?: (folderPath: string) => void
   onRenameFolder?: (folderPath: string) => void
@@ -267,9 +271,9 @@ function FolderRow({
   const handleOpenFolderViewClick = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation()
-      onOpenFolderView?.(item.folder.path)
+      onOpenFolderView?.(item.folder.path, item.folder.icon)
     },
-    [item.folder.path, onOpenFolderView]
+    [item.folder.path, item.folder.icon, onOpenFolderView]
   )
 
   const handleDragStart = useCallback(
@@ -417,6 +421,8 @@ function FolderRow({
               </ContextMenuItem>
             )}
             <ContextMenuSeparator />
+            <BookmarkMenuItem itemType="folder" itemId={item.folder.path} />
+            <ContextMenuSeparator />
             <ContextMenuItem onClick={() => onRenameFolder?.(item.folder.path)}>
               <Pencil className="me-2 h-4 w-4" />
               {t('tree.actions.rename')}
@@ -450,6 +456,9 @@ interface NoteRowProps {
   onDeleteNote?: (note: NoteListItem) => void
   onOpenExternal?: (note: NoteListItem) => void
   onRevealInFinder?: (note: NoteListItem) => void
+  onSetNoteIcon?: (noteId: string, icon: string | null) => void
+  iconPickerNoteId?: string | null
+  onIconPickerOpenChange?: (noteId: string | null) => void
   onBulkDelete?: () => void
   onDragStart: (e: React.DragEvent, itemId: string) => void
   onDragEnd: () => void
@@ -473,6 +482,9 @@ function NoteRow({
   onDeleteNote,
   onOpenExternal,
   onRevealInFinder,
+  onSetNoteIcon,
+  iconPickerNoteId,
+  onIconPickerOpenChange,
   onBulkDelete,
   onDragStart,
   onDragEnd,
@@ -538,7 +550,7 @@ function NoteRow({
             isDragging && 'opacity-50',
             draggable && 'cursor-default'
           )}
-          style={{ paddingLeft: `${item.level * 16 + 8 + 20}px` }} // Extra indent for no expander
+          style={{ paddingLeft: `${item.level * 16 + 8}px` }} // Icon button's leading slot replaces the expander gap
           onClick={handleClick}
           onDoubleClick={handleDoubleClick}
           onKeyDown={handleKeyDown}
@@ -564,8 +576,17 @@ function NoteRow({
             />
           )}
 
-          {/* Note icon or emoji */}
-          {getFileIcon(item.note)}
+          {/* Note icon or emoji — click to set a custom icon/emoji */}
+          <IconPickerButton
+            leading={<div className="h-4 w-4" />}
+            hasIcon={!!item.note.emoji}
+            onIconChange={(icon) => onSetNoteIcon?.(item.note.id, icon)}
+            ariaLabel={t('tree.actions.setIcon')}
+            pickerOpen={iconPickerNoteId === item.note.id}
+            onPickerOpenChange={(open) => onIconPickerOpenChange?.(open ? item.note.id : null)}
+          >
+            {getFileIcon(item.note)}
+          </IconPickerButton>
 
           {/* Note name */}
           <span className="sidebar-label-fade text-sm flex-1">
@@ -600,6 +621,17 @@ function NoteRow({
               {t('tree.actions.rename')}
             </ContextMenuItem>
             <ContextMenuSeparator />
+            <ContextMenuItem onClick={() => onIconPickerOpenChange?.(item.note.id)}>
+              <Smile className="me-2 h-4 w-4" />
+              {t('tree.actions.setIcon')}
+            </ContextMenuItem>
+            {item.note.emoji && (
+              <ContextMenuItem onClick={() => onSetNoteIcon?.(item.note.id, null)}>
+                <X className="me-2 h-4 w-4" />
+                {t('tree.actions.removeIcon')}
+              </ContextMenuItem>
+            )}
+            <ContextMenuSeparator />
             <ContextMenuItem onClick={() => onOpenExternal?.(item.note)}>
               <ExternalLink className="me-2 h-4 w-4" />
               {t('tree.actions.openExternal')}
@@ -608,6 +640,8 @@ function NoteRow({
               <FolderOpen className="me-2 h-4 w-4" />
               {t('tree.actions.revealInFinder')}
             </ContextMenuItem>
+            <ContextMenuSeparator />
+            <BookmarkMenuItem itemType="note" itemId={item.note.id} />
             <ContextMenuSeparator />
             <ContextMenuItem
               className="text-destructive focus:text-destructive"
@@ -646,6 +680,7 @@ export function VirtualizedNotesTree({
   onClearFolderTemplate,
   folderTemplateNames,
   onSetFolderIcon,
+  onSetNoteIcon,
   noteMap,
   isDragDisabled = false,
   className,
@@ -693,6 +728,9 @@ export function VirtualizedNotesTree({
 
   // Folder icon picker state
   const [iconPickerFolderPath, setIconPickerFolderPath] = useState<string | null>(null)
+
+  // Note icon picker state
+  const [iconPickerNoteId, setIconPickerNoteId] = useState<string | null>(null)
 
   // Anchor for shift-click range selection
   const [anchorId, setAnchorId] = useState<string | null>(null)
@@ -849,12 +887,13 @@ export function VirtualizedNotesTree({
 
   // Handle opening folder view from hover icon
   const handleOpenFolderView = useCallback(
-    (folderPath: string) => {
+    (folderPath: string, icon?: string | null) => {
       const folderName = folderPath.split('/').pop() || 'Folder'
       openTab({
         type: 'folder',
         title: folderName,
         icon: 'folder',
+        emoji: icon ?? undefined,
         path: `/folder/${encodeURIComponent(folderPath)}`,
         entityId: folderPath,
         isPinned: false,
@@ -1043,6 +1082,9 @@ export function VirtualizedNotesTree({
                   onDeleteNote={onDeleteNote}
                   onOpenExternal={onOpenExternal}
                   onRevealInFinder={onRevealInFinder}
+                  onSetNoteIcon={onSetNoteIcon}
+                  iconPickerNoteId={iconPickerNoteId}
+                  onIconPickerOpenChange={setIconPickerNoteId}
                   onBulkDelete={onBulkDelete}
                   onDragStart={handleDragStart}
                   onDragEnd={handleDragEnd}

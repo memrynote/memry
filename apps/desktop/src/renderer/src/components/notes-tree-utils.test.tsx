@@ -11,6 +11,7 @@ import {
   buildTreeFromNotes,
   collectAllFolderIds,
   getFileIcon,
+  getFileExtensionLabel,
   type FolderNode,
   type TreeStructure
 } from './notes-tree-utils'
@@ -311,5 +312,32 @@ describe('getFileIcon', () => {
     const note = createNote({ emoji: null })
     const { container } = render(getFileIcon(note))
     expect(container.querySelector('svg')).toBeTruthy()
+  })
+})
+
+// ============================================================================
+// getFileExtensionLabel
+// ============================================================================
+
+describe('getFileExtensionLabel', () => {
+  it('returns null for markdown notes', () => {
+    expect(getFileExtensionLabel(createNote({ path: 'notes/note.md' }))).toBeNull()
+  })
+
+  it('returns uppercase extension for non-markdown files', () => {
+    expect(
+      getFileExtensionLabel(
+        createNote({ path: 'notes/song.mp3', fileType: 'audio' as NoteListItem['fileType'] })
+      )
+    ).toBe('MP3')
+    expect(
+      getFileExtensionLabel(
+        createNote({ path: 'notes/doc.pdf', fileType: 'pdf' as NoteListItem['fileType'] })
+      )
+    ).toBe('PDF')
+  })
+
+  it('returns null when fileType is missing', () => {
+    expect(getFileExtensionLabel(createNote({ path: 'notes/mystery.xyz' }))).toBeNull()
   })
 })

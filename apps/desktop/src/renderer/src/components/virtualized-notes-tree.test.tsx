@@ -1,6 +1,6 @@
 import type React from 'react'
 import { createRef } from 'react'
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -66,6 +66,31 @@ vi.mock('@/components/folder-icon-button', () => ({
       }}
     >
       {icon ?? 'folder'}
+    </button>
+  )
+}))
+
+vi.mock('@/components/icon-picker-button', () => ({
+  IconPickerButton: ({
+    children,
+    hasIcon,
+    onIconChange,
+    ariaLabel
+  }: {
+    children: React.ReactNode
+    hasIcon: boolean
+    onIconChange: (icon: string | null) => void
+    ariaLabel: string
+  }) => (
+    <button
+      type="button"
+      aria-label={ariaLabel}
+      onClick={(event) => {
+        event.stopPropagation()
+        onIconChange(hasIcon ? null : 'icon:Star')
+      }}
+    >
+      {children}
     </button>
   )
 }))
@@ -140,6 +165,7 @@ const renderTree = (overrides: Partial<React.ComponentProps<typeof VirtualizedNo
     onSetFolderTemplate: vi.fn(),
     onClearFolderTemplate: vi.fn(),
     onSetFolderIcon: vi.fn(),
+    onSetNoteIcon: vi.fn(),
     folderTemplateNames: new Map([['Work', 'Daily']]),
     ...overrides
   }
@@ -290,8 +316,11 @@ describe('VirtualizedNotesTree', () => {
     await user.click(screen.getByRole('button', { name: 'Clear Default Template' }))
     expect(props.onClearFolderTemplate).toHaveBeenCalledWith('Work')
 
-    await user.click(screen.getByRole('button', { name: 'Remove Icon' }))
+    const removeIconButtons = screen.getAllByRole('button', { name: 'Remove Icon' })
+    await user.click(removeIconButtons[0])
     expect(props.onSetFolderIcon).toHaveBeenCalledWith('Work', null)
+    await user.click(removeIconButtons[1])
+    expect(props.onSetNoteIcon).toHaveBeenCalledWith('note-work', null)
 
     const renameButtons = screen.getAllByRole('button', { name: 'Rename' })
     await user.click(renameButtons[0])
@@ -310,6 +339,16 @@ describe('VirtualizedNotesTree', () => {
     expect(props.onDeleteFolder).toHaveBeenCalledWith('Work')
     await user.click(deleteButtons[1])
     expect(props.onDeleteNote).toHaveBeenCalledWith(workNote)
+  })
+
+  it('changes a note icon from its inline icon button', async () => {
+    const user = userEvent.setup()
+    const props = renderTree({ tree: iconTree, selectedIds: ['note-work'] })
+
+    const noteRow = screen.getByText('Alpha').closest('[role="treeitem"]') as HTMLElement
+    // workNote has an emoji, so the icon button reports hasIcon and clears it on click
+    await user.click(within(noteRow).getByRole('button', { name: 'Set Icon' }))
+    expect(props.onSetNoteIcon).toHaveBeenCalledWith('note-work', null)
   })
 
   it('handles storage failures and disabled drag without moving items', () => {

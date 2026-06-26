@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { Loader2 } from '@/lib/icons'
 import { useT } from '@memry/i18n/renderer'
@@ -121,11 +122,9 @@ export function VaultPickerStep({
           return (
             <li key={vault.vaultUuid}>
               <label className="flex items-center gap-3 rounded-md border border-border px-3 py-2.5 cursor-pointer hover:bg-muted/50">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={isChecked}
-                  onChange={() => toggle(vault.vaultUuid)}
-                  className="size-4"
+                  onCheckedChange={() => toggle(vault.vaultUuid)}
                   aria-label={vault.vaultUuid}
                 />
                 <span className="flex-1 text-start text-sm">

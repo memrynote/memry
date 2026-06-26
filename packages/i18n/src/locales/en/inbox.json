@@ -304,7 +304,9 @@
       "recordVoiceMemo2": "Record voice memo",
       "alreadyCaptured": "Already captured: “",
       "rdquo": "rdquo;",
-      "captureAnyway": "Capture Anyway"
+      "captureAnyway": "Capture Anyway",
+      "focusShortcut": "Focus capture input",
+      "q": "Q"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Choose folder",

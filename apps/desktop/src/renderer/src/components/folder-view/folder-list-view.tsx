@@ -13,13 +13,14 @@ import { FileText } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import type { NoteWithProperties } from '@memry/contracts/folder-view-api'
 import { FolderViewEmptyState } from './folder-view-empty-state'
-import { NoteTagPill, formatRelative } from './note-card-pieces'
+import { TagChip } from '@/components/note/tags-row/TagChip'
+import { toTagChip, formatRelative, type TagMetaMap } from './note-card-pieces'
 
 export interface FolderListViewProps {
   notes: NoteWithProperties[]
   searchQuery?: string
   density?: 'comfortable' | 'compact'
-  tagColorMap: Map<string, string>
+  tagMetaMap: TagMetaMap
   onNoteOpen: (noteId: string) => void
   onTagClick?: (tag: string) => void
   onCreateNote?: () => void
@@ -31,7 +32,7 @@ export function FolderListView({
   notes,
   searchQuery,
   density = 'comfortable',
-  tagColorMap,
+  tagMetaMap,
   onNoteOpen,
   onTagClick,
   onCreateNote,
@@ -88,10 +89,9 @@ export function FolderListView({
           </span>
           <div className="flex shrink-0 items-center gap-1.5">
             {note.tags.slice(0, 3).map((tag) => (
-              <NoteTagPill
+              <TagChip
                 key={tag}
-                tag={tag}
-                color={tagColorMap.get(tag.toLowerCase())}
+                tag={toTagChip(tag, tagMetaMap.get(tag.toLowerCase()))}
                 onClick={onTagClick ? () => onTagClick(tag) : undefined}
               />
             ))}

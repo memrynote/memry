@@ -13,9 +13,10 @@
 
 import { useState, useMemo, useCallback } from 'react'
 import { useT } from '@memry/i18n/renderer'
-import { SlidersHorizontal, Search, Plus, Pencil, Trash2 } from '@/lib/icons'
+import { SlidersHorizontal, Search, Plus, Pencil, Trash2, Lock, type AppIcon } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import {
@@ -37,6 +38,7 @@ import {
 } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
+import { getColumnIcon } from './column-icons'
 import { FormulaEditorModal } from './formula-editor-modal'
 import { getSummaryTypesForColumn, getSummaryTypeLabel } from '@/lib/summary-evaluator'
 import type {
@@ -91,6 +93,14 @@ interface ColumnSelectorProps {
   summaries?: Record<string, SummaryConfig>
   /** Called when summary config changes for a column */
   onSummaryChange?: (columnId: string, config: SummaryConfig | undefined) => void
+  /** Whether the summary row is shown for the current view */
+  showSummaries?: boolean
+  /** Toggle the summary row for the current view */
+  onToggleSummaries?: () => void
+  /** Whether vertical column borders are shown for the current view */
+  columnBorders?: boolean
+  /** Toggle vertical column borders for the current view */
+  onToggleColumnBorders?: () => void
   /** Additional CSS classes */
   className?: string
 }
@@ -136,6 +146,10 @@ export function ColumnSelector({
   sampleNote,
   summaries = EMPTY_SUMMARIES,
   onSummaryChange,
+  showSummaries = false,
+  onToggleSummaries,
+  columnBorders = false,
+  onToggleColumnBorders,
   className
 }: ColumnSelectorProps): React.JSX.Element {
   const { t: tPhaseF } = useT('notes')
@@ -315,8 +329,12 @@ export function ColumnSelector({
         <Tooltip>
           <TooltipTrigger asChild>
             <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className={cn('gap-1.5 px-2', className)}>
-                <SlidersHorizontal className="h-4 w-4" />
+              <Button
+                variant="ghost"
+                size="sm"
+                className={cn('gap-1.5 px-2 text-muted-foreground', className)}
+              >
+                <SlidersHorizontal className="h-3.5 w-3.5" />
               </Button>
             </PopoverTrigger>
           </TooltipTrigger>
@@ -325,16 +343,43 @@ export function ColumnSelector({
           </TooltipContent>
         </Tooltip>
 
-        <PopoverContent align="start" className="w-72 p-0">
+        <PopoverContent align="start" className="w-72 overflow-hidden p-0">
+          {/* Display header */}
+          <div className="border-b px-3 py-2">
+            <span className="text-xs font-semibold text-foreground">
+              {tPhaseF('phaseF.componentsFolderViewColumnSelector.display')}
+            </span>
+          </div>
+
+          {/* Display toggles */}
+          {(onToggleSummaries || onToggleColumnBorders) && (
+            <div className="flex flex-col gap-2.5 border-b px-3 py-2.5">
+              {onToggleSummaries && (
+                <ToggleRow
+                  label={tPhaseF('phaseF.componentsFolderViewColumnSelector.showSummaries')}
+                  checked={showSummaries}
+                  onToggle={onToggleSummaries}
+                />
+              )}
+              {onToggleColumnBorders && (
+                <ToggleRow
+                  label={tPhaseF('phaseF.componentsFolderViewColumnSelector.columnBorders')}
+                  checked={columnBorders}
+                  onToggle={onToggleColumnBorders}
+                />
+              )}
+            </div>
+          )}
+
           {/* Search input */}
-          <div className="p-2 border-b">
+          <div className="border-b p-2">
             <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute start-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder={tPhaseF('phaseF.componentsFolderViewColumnSelector.searchColumns')}
                 value={searchQuery}
                 onChange={(e) => handleSearchChange(e.target.value)}
-                className="h-8 pl-8 text-sm"
+                className="h-8 ps-8 text-sm"
               />
             </div>
           </div>
@@ -349,11 +394,17 @@ export function ColumnSelector({
               <>
                 {/* All columns (built-in + properties) in a flat list */}
                 {allColumns.length > 0 && (
-                  <div className="py-1">
+                  <div className="px-1.5 py-1.5">
+                    <div className="px-1.5 pb-1 pt-1">
+                      <span className="text-[10px] font-bold uppercase tracking-[0.06em] text-muted-foreground">
+                        {tPhaseF('phaseF.componentsFolderViewColumnSelector.properties')}
+                      </span>
+                    </div>
                     {allColumns.map((col) => (
                       <ColumnItem
                         key={col.id}
                         id={col.id}
+                        icon={getColumnIcon(col.id)}
                         label={col.label}
                         subtitle={col.subtitle}
                         checked={isColumnVisible(col.id)}
@@ -501,7 +552,8 @@ function ColumnItem({
   onCheckedChange,
   columnType,
   summaryConfig,
-  onSummaryChange
+  onSummaryChange,
+  icon: Icon
 }: {
   id: string
   label: string
@@ -511,34 +563,64 @@ function ColumnItem({
   columnType?: string
   summaryConfig?: SummaryConfig
   onSummaryChange?: (config: SummaryConfig | undefined) => void
+  icon: AppIcon
 }): React.JSX.Element {
   const showSummarySelector = checked && onSummaryChange && columnType
+  // Title is always visible — show a lock instead of a toggle.
+  const locked = id === 'title'
 
   return (
-    <div
-      className={cn('flex items-center gap-2 px-3 py-1.5', 'hover:bg-muted/50 transition-colors')}
-    >
+    <div className="flex items-center gap-2 rounded-md px-1.5 py-1 transition-colors hover:bg-muted/50">
       <label
-        htmlFor={`col-${id}`}
-        className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer"
+        htmlFor={locked ? undefined : `col-${id}`}
+        className={cn('flex min-w-0 flex-1 items-center gap-2', !locked && 'cursor-pointer')}
       >
-        <Checkbox
-          id={`col-${id}`}
-          checked={checked}
-          onCheckedChange={(checked) => onCheckedChange(checked === true)}
-        />
-        <div className="flex-1 min-w-0">
-          <span className="text-sm truncate block" title={label}>
+        <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+        <div className="min-w-0 flex-1">
+          <span
+            className={cn('block truncate text-xs', !checked && 'text-muted-foreground')}
+            title={label}
+          >
             {label}
           </span>
           {subtitle && (
-            <span className="text-xs text-muted-foreground truncate block">{subtitle}</span>
+            <span className="block truncate text-[11px] text-muted-foreground">{subtitle}</span>
           )}
         </div>
       </label>
       {showSummarySelector && (
         <SummarySelect columnType={columnType} value={summaryConfig} onChange={onSummaryChange} />
       )}
+      {locked ? (
+        <Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
+      ) : (
+        <Checkbox
+          id={`col-${id}`}
+          checked={checked}
+          onCheckedChange={(checked) => onCheckedChange(checked === true)}
+          className="shrink-0"
+        />
+      )}
+    </div>
+  )
+}
+
+/**
+ * Display option toggle row (label + switch)
+ */
+function ToggleRow({
+  label,
+  checked,
+  onToggle
+}: {
+  label: string
+  checked: boolean
+  onToggle: () => void
+}): React.JSX.Element {
+  return (
+    <div className="flex items-center justify-between">
+      <span className="text-xs text-foreground">{label}</span>
+      <Switch checked={checked} onCheckedChange={onToggle} />
     </div>
   )
 }

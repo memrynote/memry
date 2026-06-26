@@ -1,7 +1,7 @@
 /**
  * LabeledCheckbox Component
  *
- * A styled checkbox with label, using the warm amber accent color.
+ * A styled checkbox with label, using the user's accent color.
  * Designed for dialog footers and form sections.
  */
 
@@ -43,13 +43,7 @@ export function LabeledCheckbox({
         checked={checked}
         onCheckedChange={(value) => onCheckedChange(value === true)}
         disabled={disabled}
-        className={cn(
-          'mt-0.5',
-          'border-muted-foreground/30',
-          'data-[state=checked]:bg-amber-600 data-[state=checked]:border-amber-600',
-          'dark:data-[state=checked]:bg-amber-500 dark:data-[state=checked]:border-amber-500',
-          'transition-colors'
-        )}
+        className={cn('mt-0.5', 'border-muted-foreground/30', 'transition-colors')}
       />
       <div className="flex flex-col">
         <span

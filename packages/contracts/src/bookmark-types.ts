@@ -6,6 +6,8 @@ export const BookmarkItemTypes = {
   NOTE: 'note',
   JOURNAL: 'journal',
   TASK: 'task',
+  FOLDER: 'folder',
+  TAG: 'tag',
   IMAGE: 'image',
   PDF: 'pdf',
   AUDIO: 'audio',

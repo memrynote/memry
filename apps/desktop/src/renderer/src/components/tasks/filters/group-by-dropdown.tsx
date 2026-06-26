@@ -1,8 +1,20 @@
 import { useCallback } from 'react'
 
 import { useT } from '@memry/i18n/renderer'
-import { Layers, ArrowUp, ArrowDown } from '@/lib/icons'
+import {
+  Layers,
+  ArrowUp,
+  ArrowDown,
+  Flag,
+  CircleDashed,
+  Calendar,
+  Clock,
+  Type,
+  Folder,
+  CheckCircle
+} from '@/lib/icons'
 import { Picker } from '@/components/ui/picker'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import type { TaskSort, SortField, SortDirection } from '@/data/tasks-data'
 import { defaultSort } from '@/data/tasks-data'
@@ -21,6 +33,16 @@ const GROUP_FIELD_LABELS: Record<SortField, string> = {
   title: 'Title',
   project: 'Project',
   completedAt: 'Completed'
+}
+
+const GROUP_FIELD_ICONS: Record<SortField, React.ComponentType<{ size?: number }>> = {
+  dueDate: Calendar,
+  priority: Flag,
+  status: CircleDashed,
+  createdAt: Clock,
+  title: Type,
+  project: Folder,
+  completedAt: CheckCircle
 }
 
 const VISIBLE_FIELDS: SortField[] = [
@@ -61,33 +83,43 @@ export const GroupByDropdown = ({
 
   return (
     <Picker value={sort.field} onValueChange={handleSelectField} closeOnSelect={false}>
-      <Picker.Trigger asChild>
-        <button
-          type="button"
-          aria-label={t('filters.groupByOptions')}
-          className={cn(
-            'flex items-center shrink-0 rounded-[5px] py-1 px-2 gap-1 border transition-colors',
-            isNonDefault
-              ? 'border-foreground/20 bg-foreground/5 text-foreground/90'
-              : 'border-border text-muted-foreground hover:bg-surface-active/50',
-            className
-          )}
-        >
-          <Layers size={13} />
-          <span className="text-[12px]">{t('filters.groupBy')}</span>
-        </button>
-      </Picker.Trigger>
+      <TooltipProvider delayDuration={0}>
+        <Tooltip>
+          <Picker.Trigger asChild>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                aria-label={t('filters.groupByOptions')}
+                className={cn(
+                  'flex items-center justify-center shrink-0 rounded-[5px] p-1.5 transition-colors',
+                  isNonDefault
+                    ? 'bg-foreground/5 text-foreground/90'
+                    : 'text-muted-foreground hover:bg-surface-active/50',
+                  className
+                )}
+              >
+                <Layers size={14} />
+              </button>
+            </TooltipTrigger>
+          </Picker.Trigger>
+          <TooltipContent side="bottom">{t('filters.groupBy')}</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
       <Picker.Content width="auto" align="end" sideOffset={8}>
         <Picker.List>
-          {VISIBLE_FIELDS.map((field) => (
-            <Picker.Item
-              key={field}
-              value={field}
-              label={GROUP_FIELD_LABELS[field]}
-              indicator="check"
-              indicatorColor="var(--primary)"
-            />
-          ))}
+          {VISIBLE_FIELDS.map((field) => {
+            const Icon = GROUP_FIELD_ICONS[field]
+            return (
+              <Picker.Item
+                key={field}
+                value={field}
+                label={GROUP_FIELD_LABELS[field]}
+                icon={<Icon size={14} />}
+                indicator="check"
+                indicatorColor="var(--primary)"
+              />
+            )
+          })}
         </Picker.List>
         <Picker.Footer>
           <div className="p-1">

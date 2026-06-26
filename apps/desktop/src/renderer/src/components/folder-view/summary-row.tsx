@@ -9,6 +9,7 @@
 
 import { useMemo } from 'react'
 import { cn } from '@/lib/utils'
+import { SELECT_COLUMN_WIDTH } from './selection-checkbox'
 import {
   getColumnValues,
   computeSummary,
@@ -38,6 +39,8 @@ interface SummaryRowProps {
   density: 'compact' | 'comfortable'
   /** Whether to show column borders */
   showColumnBorders: boolean
+  /** Reserve a leading spacer to stay aligned with the table's selection-checkbox column */
+  hasLeadingColumn?: boolean
   /** Column widths (from table state) */
   columnWidths?: Record<string, number>
 }
@@ -56,6 +59,7 @@ export function SummaryRow({
   formulas,
   density,
   showColumnBorders,
+  hasLeadingColumn,
   columnWidths
 }: SummaryRowProps): React.JSX.Element | null {
   // Compute summaries for all configured columns
@@ -103,6 +107,9 @@ export function SummaryRow({
       className="bg-muted/50 border-t-2 border-border"
     >
       <tr style={{ display: 'flex', width: '100%' }} className="items-center">
+        {hasLeadingColumn && (
+          <td style={{ width: SELECT_COLUMN_WIDTH }} className="flex-shrink-0" aria-hidden="true" />
+        )}
         {columns.map((column, index) => {
           const summary = computedSummaries[column.id]
           const width = columnWidths?.[column.id] ?? column.width ?? 120
