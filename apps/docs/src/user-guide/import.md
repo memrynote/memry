@@ -19,6 +19,7 @@ Each importer writes into its own top-level folder (`Notion/`, `Bear/`, `Evernot
 | Apple Journal | HTML export                     | Notes   | [Apple Journal](#importing-from-apple-journal)         |
 | CSV           | `.csv` file                     | Notes   | [CSV](#importing-from-csv)                             |
 | OneNote       | Microsoft Graph (account)       | Notes   | [OneNote](#importing-from-onenote)                     |
+| Raindrop      | Bookmark CSV `.csv`             | Inbox   | [Raindrop](#importing-from-raindrop)                   |
 | Todoist       | Project CSV `.csv`              | Tasks   | See [Import from Todoist](./tasks/import-todoist.md)   |
 | TickTick      | Backup CSV `.csv`               | Tasks   | See [Import from TickTick](./tasks/import-ticktick.md) |
 
@@ -221,6 +222,28 @@ Import an arbitrary `.csv` as notes — one note per row. A **preview** shows th
 **Conventions:** the first row must be a header row; rows with an empty title are skipped and counted; all property values import as strings.
 
 **Limitations:** an interactive column-mapping step (choose the title column, body template, target folder) is a planned enhancement — for now the conventions above apply automatically.
+
+## Importing from Raindrop
+
+Import a [Raindrop.io](https://raindrop.io) bookmark export. Unlike the other sources, Raindrop bookmarks land in your **Inbox** as link items (not in a folder), ready to triage or file. A **preview** shows how many bookmarks will be imported.
+
+1. In Raindrop, open **Settings → Export** and export your collections as **CSV**.
+2. Open **Settings → Import** in memrynote and click **Import** next to **Raindrop**.
+3. Select your `.csv` export (you can pick more than one) and review the preview, then confirm.
+
+| Raindrop            | memrynote                                    |
+| ------------------- | -------------------------------------------- |
+| Each bookmark       | A `link` item in the **Inbox**               |
+| Title               | Item title (falls back to the URL)           |
+| Note + excerpt      | Item content                                 |
+| Collection (folder) | Tag (the `Unsorted` collection is dropped)   |
+| Tags                | Item tags                                    |
+| Created date        | Preserved on the item                        |
+| Cover image         | Kept in the item's metadata (not downloaded) |
+
+**Conventions:** the first row must be the header row (`id,title,note,excerpt,url,folder,tags,created,cover,highlights,favorite`); rows without a URL are skipped and counted.
+
+**Limitations:** cover images are referenced by URL, not downloaded; the import is additive and does not de-duplicate against bookmarks already in your inbox.
 
 ## Importing from OneNote
 
