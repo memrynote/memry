@@ -31,6 +31,9 @@ import { InboxListView } from './inbox/inbox-list-view'
 import { InboxHealthView } from './inbox/inbox-health-view'
 import { InboxArchivedView } from './inbox/inbox-archived-view'
 import { TriageView } from './inbox/triage-view'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Page:Inbox')
 
 const INBOX_ITEM_TYPES: InboxItemType[] = [
   'link',
@@ -76,6 +79,15 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   const { activeCount: activeJobCount, failedCount: failedJobCount } = useInboxJobs(
     items.map((item) => item.id)
   )
+
+  // Failed processing jobs are logged, not surfaced in the UI — a failed link
+  // fetch just leaves the item with its existing content, which isn't actionable
+  // by the user.
+  useEffect(() => {
+    if (failedJobCount > 0) {
+      log.warn(`${failedJobCount} inbox processing job(s) failed`)
+    }
+  }, [failedJobCount])
 
   const activeTab = useActiveTab()
   const focusInboxItemId =
@@ -389,20 +401,12 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
             )}
           </PageToolbar>
 
-          {currentView === 'inbox' && (activeJobCount > 0 || failedJobCount > 0) && (
+          {currentView === 'inbox' && activeJobCount > 0 && (
             <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border/60 bg-surface/60 text-[12px] leading-4">
-              {activeJobCount > 0 && (
-                <span className="flex items-center gap-1.5 text-text-secondary">
-                  <span className="size-1.5 rounded-full bg-amber-500 animate-pulse" />
-                  {t('view.jobs.running', { count: activeJobCount })}
-                </span>
-              )}
-              {failedJobCount > 0 && (
-                <span className="flex items-center gap-1.5 text-rose-500">
-                  <span className="size-1.5 rounded-full bg-current" />
-                  {t('view.jobs.failed', { count: failedJobCount })}
-                </span>
-              )}
+              <span className="flex items-center gap-1.5 text-text-secondary">
+                <span className="size-1.5 rounded-full bg-amber-500 animate-pulse" />
+                {t('view.jobs.running', { count: activeJobCount })}
+              </span>
             </div>
           )}
 

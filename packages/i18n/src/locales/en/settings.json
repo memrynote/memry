@@ -812,6 +812,7 @@
       "roam": "Import a Roam Research graph (.json) with nested outlines",
       "apple-journal": "Import an Apple Journal HTML export as dated notes",
       "csv": "Import a .csv file — one note per row, columns become properties",
+      "raindrop": "Import a Raindrop.io bookmark export (.csv) — bookmarks land in the inbox",
       "apple-notes": "Import from the Apple Notes database (NoteStore.sqlite, macOS)",
       "onenote": "Import OneNote notebooks (requires a Microsoft account)"
     },
@@ -823,6 +824,8 @@
       "tasks": "{count, plural, one {# task} other {# tasks}}",
       "subtasks": "{count, plural, one {# sub-task} other {# sub-tasks}}",
       "reminders": "{count, plural, one {# reminder} other {# reminders}}",
+      "bookmarks": "{count, plural, one {# bookmark} other {# bookmarks}}",
+      "withTags": "{count} tagged",
       "withDueDate": "{count} dated",
       "comments": "{count, plural, one {# comment} other {# comments}}",
       "skipped": "{count} skipped"

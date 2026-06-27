@@ -194,6 +194,10 @@ vi.mock('./inbox/triage-view', () => ({
   )
 }))
 
+vi.mock('@/lib/logger', () => ({
+  createLogger: () => ({ warn: vi.fn(), error: vi.fn(), info: vi.fn(), debug: vi.fn() })
+}))
+
 describe('InboxPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -213,7 +217,8 @@ describe('InboxPage', () => {
 
     expect(screen.getByTestId('inbox-list')).toHaveAttribute('data-snoozed', 'false')
     expect(screen.getByText('view.jobs.running:1')).toBeInTheDocument()
-    expect(screen.getByText('view.jobs.failed:1')).toBeInTheDocument()
+    // Failed jobs are logged, not surfaced in the UI.
+    expect(screen.queryByText('view.jobs.failed:1')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByText('capture ok'))
     fireEvent.click(screen.getByText('capture fail'))

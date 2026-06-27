@@ -19,6 +19,7 @@ Each importer writes into its own top-level folder (`Notion/`, `Bear/`, `Evernot
 | Apple Journal | HTML export                     | Notes   | [Apple Journal](#importing-from-apple-journal)         |
 | CSV           | `.csv` file                     | Notes   | [CSV](#importing-from-csv)                             |
 | OneNote       | Microsoft Graph (account)       | Notes   | [OneNote](#importing-from-onenote)                     |
+| Raindrop      | Bookmark CSV `.csv`             | Inbox   | [Raindrop](#importing-from-raindrop)                   |
 | Todoist       | Project CSV `.csv`              | Tasks   | See [Import from Todoist](./tasks/import-todoist.md)   |
 | TickTick      | Backup CSV `.csv`               | Tasks   | See [Import from TickTick](./tasks/import-ticktick.md) |
 
@@ -221,6 +222,29 @@ Import an arbitrary `.csv` as notes — one note per row. A **preview** shows th
 **Conventions:** the first row must be a header row; rows with an empty title are skipped and counted; all property values import as strings.
 
 **Limitations:** an interactive column-mapping step (choose the title column, body template, target folder) is a planned enhancement — for now the conventions above apply automatically.
+
+## Importing from Raindrop
+
+Import a [Raindrop.io](https://raindrop.io) bookmark export. Unlike the other sources, Raindrop bookmarks land in your **Inbox** as link items (not in a folder), ready to triage or file. A **preview** shows how many bookmarks will be imported. After import, memrynote fetches each bookmark's **readable article content** in the background — the same reader used when you paste a link — so items fill in with the full page text over time.
+
+1. In Raindrop, open **Settings → Export** and export your collections as **CSV**.
+2. Open **Settings → Import** in memrynote and click **Import** next to **Raindrop**.
+3. Select your `.csv` export (you can pick more than one) and review the preview, then confirm.
+
+| Raindrop            | memrynote                                                                               |
+| ------------------- | --------------------------------------------------------------------------------------- |
+| Each bookmark       | A `link` item in the **Inbox**                                                          |
+| Page contents       | Readable article fetched in the background and saved as the item body                   |
+| Title               | Item title (falls back to the URL; the background fetch never replaces it)              |
+| Note + excerpt      | Initial item body, kept as a fallback if the fetch fails                                |
+| Collection (folder) | Tag (the `Unsorted` collection is dropped)                                              |
+| Tags                | Item tags                                                                               |
+| Created date        | Preserved on the item                                                                   |
+| Cover image         | Kept in metadata; a hero image from the fetched page becomes a thumbnail when available |
+
+**Conventions:** the first row must be the header row (`id,title,note,excerpt,url,folder,tags,created,cover,highlights,favorite`); rows without a URL are skipped and counted.
+
+**Limitations:** article content is fetched one bookmark at a time in the background, so a very large export fills in gradually (it resumes across restarts); pages that can't be fetched or extracted — some social links such as TikTok, or paywalled/login-gated pages — keep their CSV excerpt. The import is additive and does not de-duplicate against bookmarks already in your inbox.
 
 ## Importing from OneNote
 
