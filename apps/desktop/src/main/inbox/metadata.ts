@@ -70,6 +70,14 @@ const MAX_HTML_SIZE = 10 * 1024 * 1024
  * loses all metadata. Electron's net.fetch uses Chrome's TLS fingerprint
  * and passes those passive checks. Falls back to global fetch outside
  * Electron (node-side tests).
+ *
+ * ponytail: known limitation — when a server replies with an HTTP status
+ * outside 200-599 (e.g. LinkedIn's 999, or 0 on an opaque redirect), net.fetch
+ * throws `RangeError: init["status"] must be in the range of 200 to 599` from
+ * inside its own response event, so it can't be caught here. It surfaces to the
+ * global unhandledRejection handler (index.ts) and the calling job falls back
+ * gracefully (the inbox item keeps its existing content). Upgrade path: switch
+ * to net.request and clamp the status ourselves if these need to be silenced.
  */
 async function chromiumFetch(url: string, init: RequestInit): Promise<Response> {
   try {
