@@ -5,7 +5,7 @@ dmg:
   size: 3g
 extraResources:
   - from: .env.production
-    to: .env
+    to: app.env
   - from: node_modules
     to: node_modules
     filter:

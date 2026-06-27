@@ -201,9 +201,11 @@ function resolveMemryEnvironment(): MemryEnvironment {
 }
 
 // Load runtime env before any env access. Unpackaged builds use explicit
-// .env.<environment> files; packaged apps receive Resources/.env.
+// .env.<environment> files; packaged apps receive Resources/app.env (not
+// .env — Windows Defender locks any file literally named .env, breaking
+// packaging with EBUSY).
 const envPath = app.isPackaged
-  ? join(process.resourcesPath, '.env')
+  ? join(process.resourcesPath, 'app.env')
   : join(app.getAppPath(), `.env.${resolveMemryEnvironment()}`)
 
 const envResult = config({ path: envPath, quiet: true })

@@ -26,8 +26,10 @@ asarUnpack:
   - resources/**
 afterPack: scripts/prune-packaged-app.mjs
 extraResources:
+  # ponytail: shipped as app.env, not .env — Windows Defender locks any file
+  # literally named .env (credential scan) → EBUSY during packaging.
   - from: .env.production
-    to: .env
+    to: app.env
 win:
   executableName: Memrynote
 nsis:

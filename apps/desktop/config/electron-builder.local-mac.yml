@@ -3,4 +3,4 @@ mac:
   forceCodeSigning: true
 extraResources:
   - from: .env.production
-    to: .env
+    to: app.env
