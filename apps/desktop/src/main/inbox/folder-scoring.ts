@@ -29,6 +29,8 @@ export interface FolderSignals {
   tagMatches?: Map<string, number>
   /** Folders to drop from the results (e.g. the note's current folder). */
   exclude?: Iterable<string>
+  /** Drop folders whose blended confidence is below this floor. */
+  minConfidence?: number
   /** Max number of folders to return. */
   limit?: number
 }
@@ -131,7 +133,7 @@ function aggregateSimilarity(hits: FolderHit[]): Map<string, SimAggregate> {
  * — that is what keeps cold-start and folder-centric suggestions working.
  */
 export function scoreFolders(input: FolderSignals): FolderScore[] {
-  const { hits = [], nameMatches, tagMatches, exclude, limit } = input
+  const { hits = [], nameMatches, tagMatches, exclude, minConfidence = 0, limit } = input
   const excluded = new Set(exclude ?? [])
 
   const simByFolder = aggregateSimilarity(hits)
@@ -165,9 +167,12 @@ export function scoreFolders(input: FolderSignals): FolderScore[] {
     }
     if (weight === 0) continue
 
+    const confidence = weighted / weight
+    if (confidence < minConfidence) continue
+
     scores.push({
       path,
-      confidence: weighted / weight,
+      confidence,
       support: sim?.support ?? 0,
       topNoteTitle: sim?.topNoteTitle,
       components: { sim: simScore, name: nameScore, tag: tagScore }

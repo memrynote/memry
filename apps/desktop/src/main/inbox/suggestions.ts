@@ -571,6 +571,13 @@ function collectFolderFallbacks(
 const SIMILAR_NOTE_LIMIT = 20
 
 /**
+ * Folder suggestions below this blended confidence are suppressed. Folder
+ * filing is a higher-stakes guess than showing a similar note, so it gets a
+ * stricter floor than the note-link feature (Codex #4/#18).
+ */
+const FOLDER_MIN_CONFIDENCE = 0.45
+
+/**
  * Split text into a set of lowercase word tokens for lexical matching.
  * ponytail: exact-token match, no stemming — singular/plural won't match.
  */
@@ -738,6 +745,7 @@ export async function getSuggestions(itemId: string): Promise<FilingSuggestion[]
         })),
         nameMatches: computeNameMatches(tokenize(content)),
         tagMatches: computeTagMatches(itemTags),
+        minConfidence: FOLDER_MIN_CONFIDENCE,
         limit: MAX_SUGGESTIONS
       })
       for (const score of folderScores) {
@@ -979,6 +987,7 @@ export async function getNoteFolderSuggestions(noteId: string): Promise<FolderSu
         nameMatches: computeNameMatches(tokenize(content)),
         tagMatches: computeTagMatches(noteTagList),
         exclude: seenFolders,
+        minConfidence: FOLDER_MIN_CONFIDENCE,
         limit: MAX_SUGGESTIONS
       })
 

@@ -130,6 +130,23 @@ describe('scoreFolders', () => {
     expect(scored[0]?.topNoteTitle).toBe('Risotto')
   })
 
+  it('drops folders below the minimum confidence', () => {
+    // Per-feature margin: folder suggestions get a floor; a lone weak hit is
+    // suppressed while a strong cluster survives.
+    const scored = scoreFolders({
+      hits: [
+        { folder: 'strong', similarity: 0.8 },
+        { folder: 'strong', similarity: 0.8 },
+        { folder: 'strong', similarity: 0.8 },
+        { folder: 'weak', similarity: 0.5 }
+      ],
+      minConfidence: 0.5
+    })
+
+    expect(scored.find((s) => s.path === 'strong')).toBeDefined()
+    expect(scored.find((s) => s.path === 'weak')).toBeUndefined()
+  })
+
   it('returns nothing for no signals', () => {
     expect(scoreFolders({ hits: [] })).toEqual([])
   })
