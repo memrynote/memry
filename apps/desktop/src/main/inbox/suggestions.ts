@@ -11,9 +11,14 @@
 import { BrowserWindow } from 'electron'
 import { createLogger } from '../lib/logger'
 import { getDatabase, requireDatabase, getIndexDatabase, getRawIndexDatabase } from '../database'
-import { inboxItems, filingHistory, suggestionFeedback } from '@memry/db-schema/schema/inbox'
-import { noteCache } from '@memry/db-schema/schema/notes-cache'
-import { eq, desc, sql } from 'drizzle-orm'
+import {
+  inboxItems,
+  inboxItemTags,
+  filingHistory,
+  suggestionFeedback
+} from '@memry/db-schema/schema/inbox'
+import { noteCache, noteTags } from '@memry/db-schema/schema/notes-cache'
+import { eq, desc, sql, inArray } from 'drizzle-orm'
 import { generateId } from '../lib/id'
 import { getSetting } from '@main/database/queries/settings'
 import { listNotesFromCache } from '@main/database/queries/notes'
@@ -26,6 +31,7 @@ import {
   initEmbeddingModel
 } from '../lib/embeddings'
 import type { FilingSuggestion, SuggestedNote } from '@memry/contracts/inbox-api'
+import { scoreFolders, type FolderScore } from './folder-scoring'
 
 const log = createLogger('Inbox:Suggestions')
 
@@ -338,39 +344,47 @@ async function findSimilarNotes(content: string, limit: number = 5): Promise<Sim
       return []
     }
 
-    // Convert to SimilarNote format with note info
+    // Keep only close-enough hits, then fetch all their note info in one
+    // query (avoids an N+1 lookup per KNN hit).
+    const nearby = results.filter((row) => row.distance <= MAX_DISTANCE_THRESHOLD)
+    if (nearby.length === 0) return []
+
+    const infoById = new Map<
+      string,
+      { path: string; title: string; snippet: string | null; emoji: string | null }
+    >()
+    const rows = indexDb
+      .select({
+        id: noteCache.id,
+        path: noteCache.path,
+        title: noteCache.title,
+        snippet: noteCache.snippet,
+        emoji: noteCache.emoji
+      })
+      .from(noteCache)
+      .where(
+        inArray(
+          noteCache.id,
+          nearby.map((row) => row.note_id)
+        )
+      )
+      .all()
+    for (const row of rows) infoById.set(row.id, row)
+
+    // Preserve KNN (distance) order from `nearby`.
     const similarities: SimilarNote[] = []
-
-    for (const row of results) {
-      // Skip if distance is too high (not similar enough)
-      if (row.distance > MAX_DISTANCE_THRESHOLD) continue
-
-      // Get note info from cache (including snippet for note-level suggestions)
-      const noteInfo = indexDb
-        .select({
-          path: noteCache.path,
-          title: noteCache.title,
-          snippet: noteCache.snippet,
-          emoji: noteCache.emoji
-        })
-        .from(noteCache)
-        .where(eq(noteCache.id, row.note_id))
-        .get()
-
-      if (noteInfo) {
-        // Convert distance to similarity score (0-1, higher = more similar)
-        // Cosine distance ranges from 0 (identical) to 2 (opposite)
-        const similarityScore = 1 - row.distance / 2
-
-        similarities.push({
-          noteId: row.note_id,
-          notePath: noteInfo.path,
-          noteTitle: noteInfo.title,
-          score: similarityScore,
-          snippet: noteInfo.snippet || '',
-          emoji: noteInfo.emoji ?? null
-        })
-      }
+    for (const row of nearby) {
+      const info = infoById.get(row.note_id)
+      if (!info) continue
+      similarities.push({
+        noteId: row.note_id,
+        notePath: info.path,
+        noteTitle: info.title,
+        // Cosine distance ranges 0 (identical)..2 (opposite) → similarity 0..1.
+        score: 1 - row.distance / 2,
+        snippet: info.snippet || '',
+        emoji: info.emoji ?? null
+      })
     }
 
     return similarities
@@ -553,6 +567,119 @@ function collectFolderFallbacks(
   return out
 }
 
+/** Max KNN neighbours to pull for folder aggregation (raised for clustering). */
+const SIMILAR_NOTE_LIMIT = 20
+
+/**
+ * Split text into a set of lowercase word tokens for lexical matching.
+ * ponytail: exact-token match, no stemming — singular/plural won't match.
+ */
+function tokenize(text: string): Set<string> {
+  const tokens = new Set<string>()
+  for (const raw of text.toLowerCase().split(/[^a-z0-9]+/)) {
+    if (raw.length >= 2) tokens.add(raw)
+  }
+  return tokens
+}
+
+/** Distinct folders that currently hold notes (derived from note paths). */
+function getDistinctFolders(): string[] {
+  try {
+    const indexDb = requireIndexDatabase()
+    const rows = indexDb.selectDistinct({ path: noteCache.path }).from(noteCache).all()
+    const folders = new Set<string>()
+    for (const row of rows) folders.add(getFolderFromPath(row.path))
+    return [...folders]
+  } catch {
+    return []
+  }
+}
+
+/**
+ * Score each folder by how many of its name tokens appear in the item, so the
+ * folder NAME is a signal (and cold-start works before any embeddings exist).
+ * Returns only folders with a non-zero match.
+ */
+function computeNameMatches(itemTokens: Set<string>): Map<string, number> {
+  const matches = new Map<string, number>()
+  if (itemTokens.size === 0) return matches
+
+  for (const folder of getDistinctFolders()) {
+    if (!folder) continue
+    const folderTokens = tokenize(folder.replace(/\//g, ' '))
+    if (folderTokens.size === 0) continue
+    let hit = 0
+    for (const token of folderTokens) if (itemTokens.has(token)) hit++
+    if (hit > 0) matches.set(folder, hit / folderTokens.size)
+  }
+  return matches
+}
+
+/**
+ * Score each folder by how many of the item's tags also appear on notes inside
+ * it. Member tags stand in for the folder-level tags Memry does not store.
+ * Returns only folders with a non-zero overlap.
+ */
+function computeTagMatches(itemTags: string[]): Map<string, number> {
+  const matches = new Map<string, number>()
+  const tags = itemTags.filter(Boolean)
+  if (tags.length === 0) return matches
+
+  try {
+    const indexDb = requireIndexDatabase()
+    const rows = indexDb
+      .select({ path: noteCache.path, tag: noteTags.tag })
+      .from(noteTags)
+      .innerJoin(noteCache, eq(noteTags.noteId, noteCache.id))
+      .where(inArray(noteTags.tag, tags))
+      .all()
+
+    const perFolder = new Map<string, Set<string>>()
+    for (const row of rows) {
+      const folder = getFolderFromPath(row.path)
+      const set = perFolder.get(folder) ?? new Set<string>()
+      set.add(row.tag)
+      perFolder.set(folder, set)
+    }
+    for (const [folder, tagSet] of perFolder) {
+      matches.set(folder, tagSet.size / tags.length)
+    }
+  } catch {
+    return matches
+  }
+  return matches
+}
+
+/** The tags applied to one note, read from the index DB ([] on any error). */
+function getNoteTagsFromIndex(noteId: string): string[] {
+  try {
+    return requireIndexDatabase()
+      .select({ tag: noteTags.tag })
+      .from(noteTags)
+      .where(eq(noteTags.noteId, noteId))
+      .all()
+      .map((row) => row.tag)
+  } catch {
+    return []
+  }
+}
+
+/** Build a human reason for a folder suggestion from its dominant signal. */
+function folderReason(score: FolderScore): string {
+  if (score.topNoteTitle) {
+    return score.path
+      ? `Similar to "${score.topNoteTitle}" in ${score.path}`
+      : `Similar to "${score.topNoteTitle}" in root`
+  }
+  if (score.components.name > 0) {
+    return score.path ? `Folder name matches "${score.path}"` : 'Matches the root folder'
+  }
+  if (score.components.tag > 0) {
+    return score.path ? `Shared tags with notes in ${score.path}` : 'Shared tags with root notes'
+  }
+  return score.path ? `Suggested folder ${score.path}` : 'Root folder'
+}
+
 // ============================================================================
 // Suggestion Generation
 // ============================================================================
@@ -593,49 +720,58 @@ export async function getSuggestions(itemId: string): Promise<FilingSuggestion[]
     const noteSuggestions: FilingSuggestion[] = []
 
     if (content.length >= MIN_CONTENT_LENGTH) {
-      const similarNotes = await findSimilarNotes(content, 8)
+      const similarNotes = await findSimilarNotes(content, SIMILAR_NOTE_LIMIT)
 
+      // Folder suggestions: aggregate similarity hits + folder name + member
+      // tags into folder-centric scores (a cluster beats a single fluke).
+      const itemTags = db
+        .select({ tag: inboxItemTags.tag })
+        .from(inboxItemTags)
+        .where(eq(inboxItemTags.itemId, itemId))
+        .all()
+        .map((row) => row.tag)
+      const folderScores = scoreFolders({
+        hits: similarNotes.map((note) => ({
+          folder: getFolderFromPath(note.notePath),
+          similarity: note.score,
+          noteTitle: note.noteTitle
+        })),
+        nameMatches: computeNameMatches(tokenize(content)),
+        tagMatches: computeTagMatches(itemTags),
+        limit: MAX_SUGGESTIONS
+      })
+      for (const score of folderScores) {
+        const destKey = score.path || 'root'
+        if (seenDestinations.has(destKey)) continue
+        seenDestinations.add(destKey)
+        suggestions.push({
+          destination: { type: 'folder', path: score.path },
+          confidence: score.confidence,
+          reason: folderReason(score),
+          suggestedTags: []
+        })
+      }
+
+      // Note-level suggestions: "link to this note" (precision@1, unchanged).
       for (const note of similarNotes) {
-        // 1a. Folder suggestion (existing behavior)
-        const folder = getFolderFromPath(note.notePath)
-        const destKey = folder || 'root'
-
-        if (!seenDestinations.has(destKey) && suggestions.length < MAX_SUGGESTIONS) {
-          seenDestinations.add(destKey)
-
-          suggestions.push({
-            destination: {
-              type: 'folder',
-              path: folder
-            },
-            confidence: note.score,
-            reason: folder
-              ? `Similar to "${note.noteTitle}" in ${folder}`
-              : `Similar to "${note.noteTitle}" in root`,
-            suggestedTags: []
-          })
+        if (noteSuggestions.length >= MAX_NOTE_SUGGESTIONS) break
+        const suggestedNote: SuggestedNote = {
+          id: note.noteId,
+          title: note.noteTitle,
+          snippet: note.snippet.slice(0, 150),
+          emoji: note.emoji
         }
-
-        // 1b. Note-level suggestion: "link to this note"
-        if (noteSuggestions.length < MAX_NOTE_SUGGESTIONS) {
-          const suggestedNote: SuggestedNote = {
-            id: note.noteId,
-            title: note.noteTitle,
-            snippet: note.snippet.slice(0, 150),
-            emoji: note.emoji
-          }
-          noteSuggestions.push({
-            destination: {
-              type: 'note',
-              noteId: note.noteId,
-              noteTitle: note.noteTitle
-            },
-            confidence: note.score,
-            reason: `Similar content (${Math.round(note.score * 100)}% match)`,
-            suggestedTags: [],
-            suggestedNote
-          })
-        }
+        noteSuggestions.push({
+          destination: {
+            type: 'note',
+            noteId: note.noteId,
+            noteTitle: note.noteTitle
+          },
+          confidence: note.score,
+          reason: `Similar content (${Math.round(note.score * 100)}% match)`,
+          suggestedTags: [],
+          suggestedNote
+        })
       }
     }
 
@@ -828,26 +964,31 @@ export async function getNoteFolderSuggestions(noteId: string): Promise<FolderSu
     // Build content for similarity search
     const content = [note.title, note.content].filter(Boolean).join('\n\n')
 
-    // 1. Find similar notes and suggest their folders
+    // 1. Score candidate folders from similar notes + folder name + member
+    //    tags, excluding the note's current folder.
     if (content.length >= MIN_CONTENT_LENGTH) {
-      const similarNotes = await findSimilarNotes(content, 10)
+      const similarNotes = await findSimilarNotes(content, SIMILAR_NOTE_LIMIT)
+      const noteTagList = getNoteTagsFromIndex(noteId)
 
-      for (const similar of similarNotes) {
-        // Skip notes in the same folder
-        const folder = getFolderFromPath(similar.notePath)
-        if (seenFolders.has(folder)) continue
+      const folderScores = scoreFolders({
+        hits: similarNotes.map((similar) => ({
+          folder: getFolderFromPath(similar.notePath),
+          similarity: similar.score,
+          noteTitle: similar.noteTitle
+        })),
+        nameMatches: computeNameMatches(tokenize(content)),
+        tagMatches: computeTagMatches(noteTagList),
+        exclude: seenFolders,
+        limit: MAX_SUGGESTIONS
+      })
 
-        seenFolders.add(folder)
-
+      for (const score of folderScores) {
+        seenFolders.add(score.path)
         suggestions.push({
-          path: folder,
-          confidence: similar.score,
-          reason: folder
-            ? `Similar to "${similar.noteTitle}" in ${folder}`
-            : `Similar to "${similar.noteTitle}" in root`
+          path: score.path,
+          confidence: score.confidence,
+          reason: folderReason(score)
         })
-
-        if (suggestions.length >= MAX_SUGGESTIONS) break
       }
     }
 
