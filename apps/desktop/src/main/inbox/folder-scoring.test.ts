@@ -12,7 +12,7 @@ describe('scoreFolders', () => {
       { folder: 'misc', similarity: 0.7 }
     ]
 
-    const scored = scoreFolders(hits)
+    const scored = scoreFolders({ hits })
 
     expect(scored[0]?.path).toBe('recipes')
     expect(scored[0]!.confidence).toBeGreaterThan(scored[1]!.confidence)
@@ -28,7 +28,7 @@ describe('scoreFolders', () => {
       { folder: 'recipes', similarity: 0.7 }
     ]
 
-    const scored = scoreFolders(hits)
+    const scored = scoreFolders({ hits })
 
     expect(scored[0]?.path).toBe('recipes')
   })
@@ -41,7 +41,7 @@ describe('scoreFolders', () => {
       { folder: 'projects/ProjectA/sub3', similarity: 0.6 }
     ]
 
-    const scored = scoreFolders(hits)
+    const scored = scoreFolders({ hits })
     const parent = scored.find((s) => s.path === 'projects/ProjectA')
     const leaf = scored.find((s) => s.path === 'projects/ProjectA/sub1')
 
@@ -50,15 +50,87 @@ describe('scoreFolders', () => {
   })
 
   it('does not vacuum all evidence into the root folder', () => {
-    // Two top-level folders each with a hit; root ('') must not collect both
-    // and win — ancestor rollup stops before root.
     const hits: FolderHit[] = [
       { folder: 'recipes', similarity: 0.6 },
       { folder: 'travel', similarity: 0.6 }
     ]
 
-    const scored = scoreFolders(hits)
+    const scored = scoreFolders({ hits })
 
     expect(scored.find((s) => s.path === '')).toBeUndefined()
+  })
+
+  it('surfaces a folder matched only by name, even with zero similarity hits', () => {
+    // Cold-start / folder-centric: the folder name itself is a signal.
+    const scored = scoreFolders({
+      hits: [],
+      nameMatches: new Map([['recipes', 0.9]])
+    })
+
+    expect(scored[0]?.path).toBe('recipes')
+    expect(scored[0]!.confidence).toBeGreaterThan(0.5)
+  })
+
+  it('lets a strong name match lift a folder above a same-similarity folder', () => {
+    const scored = scoreFolders({
+      hits: [
+        { folder: 'recipes', similarity: 0.5 },
+        { folder: 'misc', similarity: 0.5 }
+      ],
+      nameMatches: new Map([['recipes', 0.9]])
+    })
+
+    expect(scored[0]?.path).toBe('recipes')
+  })
+
+  it('blends member-tag overlap as a folder signal', () => {
+    const scored = scoreFolders({
+      hits: [],
+      tagMatches: new Map([['cooking', 0.8]])
+    })
+
+    expect(scored[0]?.path).toBe('cooking')
+    expect(scored[0]!.confidence).toBeGreaterThan(0.4)
+  })
+
+  it('excludes folders in the exclude set', () => {
+    const scored = scoreFolders({
+      hits: [
+        { folder: 'recipes', similarity: 0.6 },
+        { folder: 'current', similarity: 0.9 }
+      ],
+      exclude: ['current']
+    })
+
+    expect(scored.find((s) => s.path === 'current')).toBeUndefined()
+    expect(scored[0]?.path).toBe('recipes')
+  })
+
+  it('caps results at limit', () => {
+    const scored = scoreFolders({
+      hits: [
+        { folder: 'a', similarity: 0.6 },
+        { folder: 'b', similarity: 0.55 },
+        { folder: 'c', similarity: 0.5 }
+      ],
+      limit: 2
+    })
+
+    expect(scored).toHaveLength(2)
+  })
+
+  it('carries the best matching note title for reason text', () => {
+    const scored = scoreFolders({
+      hits: [
+        { folder: 'recipes', similarity: 0.6, noteTitle: 'Pasta' },
+        { folder: 'recipes', similarity: 0.8, noteTitle: 'Risotto' }
+      ]
+    })
+
+    expect(scored[0]?.topNoteTitle).toBe('Risotto')
+  })
+
+  it('returns nothing for no signals', () => {
+    expect(scoreFolders({ hits: [] })).toEqual([])
   })
 })
