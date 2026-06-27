@@ -1,7 +1,6 @@
 export interface CalendarEventDraft {
   title: string
   description: string
-  location: string
   isAllDay: boolean
   startAt: string
   endAt: string

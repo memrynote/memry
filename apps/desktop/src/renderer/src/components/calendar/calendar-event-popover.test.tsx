@@ -96,7 +96,6 @@ vi.mock('./calendar-event-metadata', () => ({
 const baseDraft: CalendarEventDraft = {
   title: 'Planning',
   description: 'Notes',
-  location: '',
   startAt: '2026-05-10T09:00',
   endAt: '2026-05-10T10:00',
   isAllDay: false,
@@ -146,13 +145,9 @@ describe('CalendarEventPopover', () => {
     })
     expect(onDraftChange).toHaveBeenCalledWith({ ...baseDraft, title: 'Updated planning' })
 
-    fireEvent.change(screen.getByPlaceholderText('form.location-placeholder'), {
-      target: { value: 'Office' }
-    })
     fireEvent.change(screen.getByPlaceholderText('form.notes-url-placeholder'), {
       target: { value: 'Bring deck' }
     })
-    expect(onDraftChange).toHaveBeenCalledWith({ ...baseDraft, location: 'Office' })
     expect(onDraftChange).toHaveBeenCalledWith({ ...baseDraft, description: 'Bring deck' })
 
     fireEvent.click(screen.getByRole('checkbox', { name: 'time.all-day' }))

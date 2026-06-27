@@ -261,13 +261,6 @@ export function CalendarEventPopover({
               disabled={isSaving}
             />
 
-            <Input
-              placeholder={t('form.location-placeholder')}
-              value={draft.location}
-              onChange={(e) => onDraftChange({ ...draft, location: e.target.value })}
-              disabled={isSaving}
-            />
-
             <label className="flex items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm">
               <span className="flex items-center gap-2 text-muted-foreground">
                 <CalendarIcon size={14} />

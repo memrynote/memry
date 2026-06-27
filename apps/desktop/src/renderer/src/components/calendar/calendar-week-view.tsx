@@ -54,12 +54,6 @@ interface CalendarWeekViewProps {
   onSelectItem?: (item: CalendarProjectionItem, rect: AnchorRect) => void
   onDeleteItem?: (item: CalendarProjectionItem) => void
   onQuickSave?: (draft: CalendarEventDraft) => void | Promise<void>
-  onCreateEventWithRange?: (
-    startAt: string,
-    endAt: string,
-    isAllDay: boolean,
-    anchorRect: AnchorRect
-  ) => void
   onVisibleDayStartChange?: (dayIndex: number, startDate: string) => void
   todayRequestKey?: number
 }
@@ -71,7 +65,6 @@ export function CalendarWeekView({
   onSelectItem,
   onDeleteItem,
   onQuickSave,
-  onCreateEventWithRange,
   onVisibleDayStartChange,
   todayRequestKey
 }: CalendarWeekViewProps): React.JSX.Element {
@@ -430,15 +423,6 @@ export function CalendarWeekView({
                           clearSelection()
                         }}
                         onDismiss={clearSelection}
-                        onOpenFullEditor={(draft) => {
-                          onCreateEventWithRange?.(
-                            draft.startAt,
-                            draft.endAt,
-                            false,
-                            selection.anchorRect
-                          )
-                          clearSelection()
-                        }}
                       />
                     </>
                   )}

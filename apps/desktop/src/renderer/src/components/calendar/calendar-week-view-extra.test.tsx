@@ -104,13 +104,10 @@ vi.mock('./marquee-selection-overlay', () => ({
 }))
 
 vi.mock('./calendar-quick-create-dialog', () => ({
-  CalendarQuickCreateDialog: ({ startAt, endAt, onSave, onOpenFullEditor, onDismiss }: any) => (
+  CalendarQuickCreateDialog: ({ startAt, endAt, onSave, onDismiss }: any) => (
     <div role="dialog" aria-label="quick create">
       <button type="button" onClick={() => onSave({ title: 'Quick', startAt, endAt })}>
         quick save
-      </button>
-      <button type="button" onClick={() => onOpenFullEditor({ startAt, endAt })}>
-        quick full
       </button>
       <button type="button" onClick={onDismiss}>
         quick dismiss
@@ -200,7 +197,6 @@ describe('CalendarWeekView extra coverage', () => {
 
   it('renders drag and settled marquee states and forwards quick-create actions', async () => {
     const onQuickSave = vi.fn()
-    const onCreateEventWithRange = vi.fn()
     mocks.selection = {
       columnIndex: 0,
       top: 48,
@@ -217,7 +213,6 @@ describe('CalendarWeekView extra coverage', () => {
         items={[]}
         selectedItemId={null}
         onQuickSave={onQuickSave}
-        onCreateEventWithRange={onCreateEventWithRange}
       />
     )
 
@@ -230,7 +225,6 @@ describe('CalendarWeekView extra coverage', () => {
         items={[]}
         selectedItemId={null}
         onQuickSave={onQuickSave}
-        onCreateEventWithRange={onCreateEventWithRange}
       />
     )
 
@@ -240,12 +234,5 @@ describe('CalendarWeekView extra coverage', () => {
       startAt: '2026-05-10T01:00:00.000Z',
       endAt: '2026-05-10T03:00:00.000Z'
     })
-    fireEvent.click(screen.getByRole('button', { name: 'quick full' }))
-    expect(onCreateEventWithRange).toHaveBeenCalledWith(
-      '2026-05-10T01:00:00.000Z',
-      '2026-05-10T03:00:00.000Z',
-      false,
-      { x: 10, y: 20, width: 100, height: 40 }
-    )
   })
 })
