@@ -44,6 +44,7 @@ describe('mapRows', () => {
       metadata: {
         url: 'https://example.com',
         excerpt: 'My excerpt',
+        note: 'My note',
         folder: 'Reading',
         favorite: true,
         heroImage: 'https://cover',

@@ -31,6 +31,7 @@ export interface ApplyDeps {
 async function defaultDeps(): Promise<ApplyDeps> {
   const { requireDatabase } = await import('../../database')
   const { insertItemWithTags, emitCapturedAndSync } = await import('../../inbox/domain')
+  const { queueInboxArticleExtractJob } = await import('../../inbox/jobs')
   const { generateId } = await import('../../lib/id')
 
   const db = requireDatabase()
@@ -56,6 +57,16 @@ async function defaultDeps(): Promise<ApplyDeps> {
       // ponytail: emits a captured event + sync write per row; fine at export scale.
       // Batch the projection/sync refresh only if a very large export visibly stutters.
       emitCapturedAndSync(row, tags)
+
+      // Pull in the page's readable article content in the background, using the
+      // same durable defuddle job the paste-a-link flow uses. It enriches `content`
+      // (CSV note + excerpt stay the fallback if extraction fails) and leaves the
+      // Raindrop-curated title + tags untouched. http(s) only.
+      // ponytail: queue is single-threaded ~10-15s/URL; huge exports enrich over
+      // time in the background — acceptable, mirrors pasting N links.
+      if (/^https?:\/\//i.test(item.sourceUrl)) {
+        queueInboxArticleExtractJob(row.id, item.sourceUrl)
+      }
     }
   }
 }

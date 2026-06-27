@@ -45,6 +45,9 @@ export function mapRows(rows: RaindropRow[], opts: { now: string }): RaindropImp
       metadata: {
         url,
         excerpt: row.excerpt.trim(),
+        // Preserve the user's own annotation: the background article-extract job
+        // overwrites `content` with the full page, but merges (keeps) metadata.
+        note: row.note.trim(),
         folder: row.folder.trim(),
         favorite: row.favorite,
         heroImage: row.cover.trim(),

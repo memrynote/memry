@@ -26,6 +26,7 @@ export interface InboxItemPlan {
   metadata: {
     url: string
     excerpt: string
+    note: string
     folder: string
     favorite: boolean
     heroImage: string
