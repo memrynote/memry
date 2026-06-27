@@ -10,6 +10,14 @@ const Toaster = ({ ...props }: ToasterProps) => {
     <Sonner
       theme={theme as ToasterProps['theme']}
       className="toaster group"
+      style={
+        {
+          // ponytail: sonner v2 reads these for the toast bg; classNames lose the specificity tie → set the vars it reads
+          '--normal-bg': 'var(--background)',
+          '--normal-text': 'var(--foreground)',
+          '--normal-border': 'var(--border)'
+        } as React.CSSProperties
+      }
       toastOptions={{
         classNames: {
           toast:

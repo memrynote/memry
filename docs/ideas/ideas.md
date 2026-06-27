@@ -6,10 +6,7 @@
 - [Contextual resurfacing by relevance](#contextual-resurfacing-by-relevance)
 - [Inbox segmentation and triage](#inbox-segmentation-and-triage)
 - [Structure without folder rigidity](#structure-without-folder-rigidity)
-- [Google Docs for markdown files](#google-docs-for-markdown-files)
-- [One-way Google Calendar sync](#one-way-google-calendar-sync)
 - [Streamlined onboarding without AI noise](#streamlined-onboarding-without-ai-noise)
-- [Import from other note apps (Google Keep first)](#import-from-other-note-apps-google-keep-first)
 - [Scheduled review and priority buckets](#scheduled-review-and-priority-buckets)
 - [Bulk URL import via CSV](#bulk-url-import-via-csv)
 
@@ -205,99 +202,6 @@ Do not make MemryNote a Notion clone. The goal is flexible organization on top o
 portable local notes: folders for disk structure, links for relationships, tags
 and properties for grouping, and collections for saved perspectives.
 
-## Google Docs for markdown files
-
-Source: Kaan's product note, June 2026.
-
-### User signal
-
-"I need Google Docs but just for markdown files." The collaboration workflow people
-already trust in Google Docs — comments, suggestions, history — but on top of portable
-local Markdown instead of a proprietary document silo.
-
-### Product direction
-
-Bring the Google Docs collaboration loop to Markdown notes:
-
-- Multiplayer comments: comment threads that sync across devices and collaborators,
-  including resolving comments and keeping the resolved state in sync.
-- Suggestion mode: propose edits without changing the underlying text until accepted,
-  building on the existing CriticMarkup review surface.
-- Edit mode: the normal direct-editing default, with a clear switch between editing
-  and suggesting.
-- Edit history: see how a note changed over time and who changed it.
-- Some sense of multi edits: multiple pending edits/suggestions on the same note that
-  can be reviewed and applied individually or together.
-- Easy CLI access: the same notes and collaboration state reachable from the command
-  line, not only the desktop app.
-
-### Important boundary
-
-The files stay plain Markdown on disk. Collaboration metadata (comments, suggestions,
-history) must not break portability — a note opened outside MemryNote should still be
-a readable Markdown file.
-
-## One-way Google Calendar sync
-
-Source: app feedback from Aurelie Kabore asking for a one-way Google Calendar sync
-option.
-
-### User signal
-
-She wants tasks and appointments to live in MemryNote, but only appointments to push
-out to Google Calendar. Today the sync is two-way, so anything with a date — both
-appointments and tasks that have a due date — flows to Google and stays in step in both
-directions. She wants tasks to stay private to MemryNote while still surfacing
-appointments in Google.
-
-Her follow-up spelled out the workflow behind this. The task manager is the daily
-driver: she looks at it to know what she is doing today. The calendar is for
-availability only — when she is free for meetings — and never for tasks. She runs a
-one-way feed from Google Calendar into her task manager so appointments show up
-alongside tasks in one place. MemryNote's two-way push is the inverse direction of how
-she works.
-
-The deeper reason two-way is a problem: her dated tasks are flexible, not commitments.
-She may schedule a task for a given day at the start of the week, but that is a "would
-like to" not a "have to" — subject to change. Pushing those tentative, movable tasks
-into the calendar makes it messy and misrepresents her real availability. Due dates
-stay valuable in the task manager; they should just never leave it.
-
-### Current behavior
-
-- Sync is two-way: appointments and dated tasks both flow to Google Calendar and stay
-  in step in both directions.
-- A task only syncs to Google if it has a due date. Tasks without a due date never
-  leave MemryNote.
-- Workaround available today: keep due dates off tasks to get the appointments-only
-  split, but that gives up due dates as a feature.
-
-### Product direction
-
-Add an explicit sync-direction and scope control instead of relying on the
-no-due-date workaround:
-
-- One-way (push only): MemryNote → Google Calendar, no inbound changes.
-- Item-type scope: choose what pushes out — appointments only, tasks only, or both.
-- Per-calendar mapping so appointments and tasks can route to different Google
-  calendars or stay local.
-- Keep two-way as the default; make direction and scope a clear, visible setting.
-
-### Follow-up validation
-
-Aurelie replied with the full workflow above (task manager as daily driver, calendar
-for availability only, flexible due dates that should not clog the calendar). Confirmed
-her workflow is valid and not an edge case, and committed to ship one-way /
-appointments-only sync before launch — direction is a real, supported control, not just
-the no-due-date workaround. Scope is now well understood; this moves from "on the list"
-to a launch-blocking commitment.
-
-### Important boundary
-
-Do not silently change what syncs. Direction and item-type scope must be explicit and
-visible, so users always know what leaves MemryNote and what stays local. Tasks should
-never appear in Google Calendar unless the user opts in.
-
 ## Streamlined onboarding without AI noise
 
 Source: Reddit feedback comparing MemryNote favorably to Saner AI, but put off by
@@ -326,31 +230,6 @@ asked directly whether MemryNote has thought about a streamlined onboarding.
 
 AI must stay quiet and useful, not chatty and needy. The edge here is restraint: an
 empty app should feel calm. This positioning is a feature, not a gap.
-
-## Import from other note apps (Google Keep first)
-
-Source: Reddit feedback from a user who dumps random notes into Google Keep and wants
-to bring them into MemryNote.
-
-### User signal
-
-The user has a tendency to dump random notes into Google Keep — sometimes continuous
-prose, sometimes a to-do list — and wants to import and sort those into MemryNote.
-
-### Product direction
-
-- Build import for several note apps, with Google Keep as one of the first supported
-  sources.
-- Handle both shapes Keep produces: continuous free-text notes and checklist / to-do
-  notes.
-- Imported items should land in the inbox for triage rather than auto-filing, so the
-  user decides what becomes a note, task, or reference. This reuses the inbox
-  segmentation and triage model.
-
-### Important boundary
-
-Import should not silently scatter content across the app. Bring it in as reviewable
-material the user can sort, consistent with the capture-then-triage model.
 
 ## Scheduled review and priority buckets
 
