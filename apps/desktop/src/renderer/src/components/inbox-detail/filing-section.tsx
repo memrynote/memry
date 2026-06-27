@@ -4,13 +4,22 @@
  */
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { Folder, Sparkles, Loader2, ChevronDown, Check, FileText, Search, Plus } from '@/lib/icons'
+import {
+  Folder,
+  Sparkles,
+  Loader2,
+  ChevronDown,
+  Check,
+  FileText,
+  Search,
+  Plus,
+  Link2
+} from '@/lib/icons'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useT } from '@memry/i18n/renderer'
 
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Input } from '@/components/ui/input'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { TagAutocomplete } from '@/components/filing/tag-autocomplete'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { LinkInput } from './link-input'
@@ -67,6 +76,7 @@ export const FilingSection = ({
   const [showAllFolders, setShowAllFolders] = useState(false)
   const [folderSearch, setFolderSearch] = useState('')
   const [isCreatingFolder, setIsCreatingFolder] = useState(false)
+  const [showLinks, setShowLinks] = useState(false)
 
   // Fetch real folders from vault
   const { data: vaultFolders = [] } = useQuery({
@@ -334,7 +344,7 @@ export const FilingSection = ({
                 />
               </div>
 
-              <ScrollArea className="max-h-56">
+              <div className="max-h-56 overflow-y-auto">
                 {/* Suggested */}
                 {suggestedFolders.length > 0 && !folderSearch.trim() && (
                   <div className="flex flex-col py-1">
@@ -432,7 +442,7 @@ export const FilingSection = ({
                     })
                   )}
                 </div>
-              </ScrollArea>
+              </div>
             </PopoverContent>
           </Popover>
         </div>
@@ -449,64 +459,88 @@ export const FilingSection = ({
         />
       </div>
 
-      {/* Link to note */}
+      {/* Link to note — collapsed by default to keep the panel calm */}
       <div className="flex flex-col gap-2 py-4 px-5 border-b border-border">
-        <div className="flex items-center justify-between">
-          <span className="text-[11px] [letter-spacing:0.05em] uppercase text-text-tertiary font-medium leading-3.5">
-            {t('detail.linkToNote')}
-          </span>
-          {noteSuggestions.length > 0 && (
-            <div className="flex items-center gap-1 text-[11px] text-[var(--tint)]">
-              <Sparkles className="size-3" />
-              <span>{t('detail.ai')}</span>
+        {!(showLinks || linkedNotes.length > 0) ? (
+          <button
+            type="button"
+            onClick={() => setShowLinks(true)}
+            className="flex items-center justify-between w-full rounded-md py-2 px-3 bg-foreground/[0.02] border border-border text-start transition-colors hover:bg-foreground/[0.03]"
+          >
+            <span className="flex items-center gap-2 text-[13px] leading-4 text-muted-foreground">
+              <Link2 className="size-3.5 shrink-0" aria-hidden="true" />
+              {t('detail.linkANote')}
+            </span>
+            {noteSuggestions.length > 0 && (
+              <span className="flex items-center gap-1 text-[11px] text-[var(--tint)]">
+                <Sparkles className="size-3" />
+                {t('detail.suggestedCount', { count: noteSuggestions.length })}
+              </span>
+            )}
+          </button>
+        ) : (
+          <>
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] [letter-spacing:0.05em] uppercase text-text-tertiary font-medium leading-3.5">
+                {t('detail.linkToNote')}
+              </span>
+              {noteSuggestions.length > 0 && (
+                <div className="flex items-center gap-1 text-[11px] text-[var(--tint)]">
+                  <Sparkles className="size-3" />
+                  <span>{t('detail.ai')}</span>
+                </div>
+              )}
             </div>
-          )}
-        </div>
 
-        {/* AI Note Suggestions */}
-        {noteSuggestions.length > 0 && (
-          <div className="space-y-1.5">
-            {noteSuggestions.map((suggestion, index) => {
-              const isLinked = linkedNotes.some((ln) => ln.id === suggestion.note.id)
-              const bgOpacity = [0.05, 0.02, 0.01][index] ?? 0.01
-              const borderOpacity = [0.12, 0.06, 0.03][index] ?? 0.03
-              const band = confidenceBand(suggestion.confidence)
-              return (
-                <button
-                  key={suggestion.note.id}
-                  onClick={() => handleLinkSuggestedNote(suggestion.note)}
-                  className="w-full flex items-center gap-2 rounded-md px-3 py-2.5 text-start transition-colors border border-dashed"
-                  style={{
-                    backgroundColor: `color-mix(in srgb, var(--tint) ${Math.round(bgOpacity * 100)}%, transparent)`,
-                    borderColor: isLinked
-                      ? `color-mix(in srgb, var(--tint) 50%, transparent)`
-                      : `color-mix(in srgb, var(--tint) ${Math.round(borderOpacity * 100)}%, transparent)`
-                  }}
-                >
-                  {suggestion.note.emoji ? (
-                    <NoteIconDisplay value={suggestion.note.emoji} className="size-3.5 shrink-0" />
-                  ) : (
-                    <FileText className="size-3.5 shrink-0 text-muted-foreground" />
-                  )}
-                  <span className="truncate text-[13px] leading-4 font-medium text-foreground flex-1 min-w-0">
-                    {suggestion.note.title}
-                  </span>
-                  {isLinked && <Check className="size-3 shrink-0 text-[var(--tint)]" />}
-                  <span className="text-[10px] leading-3 text-muted-foreground/40 shrink-0">
-                    {band === 'strong'
-                      ? t('detail.match.strong')
-                      : band === 'likely'
-                        ? t('detail.match.likely')
-                        : t('detail.match.weak')}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
+            {/* AI Note Suggestions */}
+            {noteSuggestions.length > 0 && (
+              <div className="space-y-1.5">
+                {noteSuggestions.map((suggestion, index) => {
+                  const isLinked = linkedNotes.some((ln) => ln.id === suggestion.note.id)
+                  const bgOpacity = [0.05, 0.02, 0.01][index] ?? 0.01
+                  const borderOpacity = [0.12, 0.06, 0.03][index] ?? 0.03
+                  const band = confidenceBand(suggestion.confidence)
+                  return (
+                    <button
+                      key={suggestion.note.id}
+                      onClick={() => handleLinkSuggestedNote(suggestion.note)}
+                      className="w-full flex items-center gap-2 rounded-md px-3 py-2.5 text-start transition-colors border border-dashed"
+                      style={{
+                        backgroundColor: `color-mix(in srgb, var(--tint) ${Math.round(bgOpacity * 100)}%, transparent)`,
+                        borderColor: isLinked
+                          ? `color-mix(in srgb, var(--tint) 50%, transparent)`
+                          : `color-mix(in srgb, var(--tint) ${Math.round(borderOpacity * 100)}%, transparent)`
+                      }}
+                    >
+                      {suggestion.note.emoji ? (
+                        <NoteIconDisplay
+                          value={suggestion.note.emoji}
+                          className="size-3.5 shrink-0"
+                        />
+                      ) : (
+                        <FileText className="size-3.5 shrink-0 text-muted-foreground" />
+                      )}
+                      <span className="truncate text-[13px] leading-4 font-medium text-foreground flex-1 min-w-0">
+                        {suggestion.note.title}
+                      </span>
+                      {isLinked && <Check className="size-3 shrink-0 text-[var(--tint)]" />}
+                      <span className="text-[10px] leading-3 text-muted-foreground/40 shrink-0">
+                        {band === 'strong'
+                          ? t('detail.match.strong')
+                          : band === 'likely'
+                            ? t('detail.match.likely')
+                            : t('detail.match.weak')}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* Link notes search input */}
+            <LinkInput linkedNotes={linkedNotes} onLinkedNotesChange={onLinkedNotesChange} />
+          </>
         )}
-
-        {/* Link notes search input */}
-        <LinkInput linkedNotes={linkedNotes} onLinkedNotesChange={onLinkedNotesChange} />
       </div>
     </div>
   )

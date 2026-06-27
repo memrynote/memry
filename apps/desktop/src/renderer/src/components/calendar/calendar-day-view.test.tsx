@@ -88,14 +88,12 @@ vi.mock('./calendar-item-chip', () => ({
 vi.mock('./calendar-quick-create-dialog', () => ({
   CalendarQuickCreateDialog: ({
     onDismiss,
-    onOpenFullEditor,
     onSave,
     startAt,
     endAt,
     isAllDay
   }: {
     onDismiss: () => void
-    onOpenFullEditor: (draft: { startAt: string; endAt: string }) => void
     onSave: (draft: { title: string; startAt: string; endAt: string; isAllDay: boolean }) => void
     startAt: string
     endAt: string
@@ -110,9 +108,6 @@ vi.mock('./calendar-quick-create-dialog', () => ({
         onClick={() => onSave({ title: 'Quick event', startAt, endAt, isAllDay })}
       >
         quick save
-      </button>
-      <button type="button" onClick={() => onOpenFullEditor({ startAt, endAt })}>
-        open full editor
       </button>
       <button type="button" onClick={onDismiss}>
         dismiss quick create
@@ -208,7 +203,6 @@ describe('CalendarDayView', () => {
       anchorRect: { x: 10, y: 20, width: 30, height: 40 }
     }
     const onQuickSave = vi.fn().mockResolvedValue(undefined)
-    const onCreateEventWithRange = vi.fn()
 
     render(
       <CalendarDayView
@@ -216,7 +210,6 @@ describe('CalendarDayView', () => {
         items={[]}
         selectedItemId={null}
         onQuickSave={onQuickSave}
-        onCreateEventWithRange={onCreateEventWithRange}
       />
     )
 
@@ -234,17 +227,8 @@ describe('CalendarDayView', () => {
     )
     expect(mocks.marquee.clearSelection).toHaveBeenCalledTimes(1)
 
-    fireEvent.click(screen.getByText('open full editor'))
-    expect(onCreateEventWithRange).toHaveBeenCalledWith(
-      '2026-05-14T11:00',
-      '2026-05-14T12:00',
-      false,
-      { x: 10, y: 20, width: 30, height: 40 }
-    )
-    expect(mocks.marquee.clearSelection).toHaveBeenCalledTimes(2)
-
     fireEvent.click(screen.getByText('dismiss quick create'))
-    expect(mocks.marquee.clearSelection).toHaveBeenCalledTimes(3)
+    expect(mocks.marquee.clearSelection).toHaveBeenCalledTimes(2)
   })
 
   it('shows the marquee overlay while dragging without opening quick create', () => {

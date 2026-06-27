@@ -21,12 +21,6 @@ interface CalendarMonthViewProps {
   onSelectItem?: (item: CalendarProjectionItem, rect: AnchorRect) => void
   onDeleteItem?: (item: CalendarProjectionItem) => void
   onQuickSave?: (draft: CalendarEventDraft) => void | Promise<void>
-  onCreateEventWithRange?: (
-    startAt: string,
-    endAt: string,
-    isAllDay: boolean,
-    anchorRect: AnchorRect
-  ) => void
 }
 
 export function CalendarMonthView({
@@ -35,8 +29,7 @@ export function CalendarMonthView({
   selectedItemId,
   onSelectItem,
   onDeleteItem,
-  onQuickSave,
-  onCreateEventWithRange
+  onQuickSave
 }: CalendarMonthViewProps): React.JSX.Element {
   const { t, i18n } = useT('calendar')
   const gridDays = getMonthGridDays(anchorDate)
@@ -86,7 +79,7 @@ export function CalendarMonthView({
               key={day}
               data-date={day}
               className={cn(
-                'flex flex-col gap-1 border-b border-r border-border p-1 @xl:p-2',
+                'flex flex-col gap-1 border-b border-e border-border p-1 @xl:p-2',
                 inMonth ? (weekend ? 'bg-muted/30' : 'bg-background') : 'bg-muted/50',
                 (isSelected || isDragSelected) && 'ring-2 ring-inset ring-tint/40 bg-tint/10'
               )}
@@ -140,10 +133,6 @@ export function CalendarMonthView({
             clearSelection()
           }}
           onDismiss={clearSelection}
-          onOpenFullEditor={(draft) => {
-            onCreateEventWithRange?.(draft.startAt, draft.endAt, true, selection.anchorRect)
-            clearSelection()
-          }}
         />
       )}
     </div>

@@ -9,8 +9,7 @@ const baseProps = {
   endAt: '2026-04-14T15:30',
   isAllDay: false,
   onSave: vi.fn(),
-  onDismiss: vi.fn(),
-  onOpenFullEditor: vi.fn()
+  onDismiss: vi.fn()
 }
 
 describe('CalendarQuickCreateDialog', () => {
@@ -92,16 +91,6 @@ describe('CalendarQuickCreateDialog', () => {
     await userEvent.click(screen.getByTestId('quick-create-save'))
     expect(await screen.findByTestId('quick-create-error')).toHaveTextContent(/DB write failed/)
     expect(onDismiss).not.toHaveBeenCalled()
-  })
-
-  it('calls onOpenFullEditor with current draft when "Add details" clicked', async () => {
-    const onOpenFullEditor = vi.fn()
-    render(<CalendarQuickCreateDialog {...baseProps} onOpenFullEditor={onOpenFullEditor} />)
-    const input = screen.getByPlaceholderText('New Event')
-    await userEvent.type(input, 'Design review')
-    await userEvent.click(screen.getByText('Add details'))
-    expect(onOpenFullEditor).toHaveBeenCalledOnce()
-    expect(onOpenFullEditor.mock.calls[0][0].title).toBe('Design review')
   })
 
   it('displays all-day format when isAllDay is true', () => {

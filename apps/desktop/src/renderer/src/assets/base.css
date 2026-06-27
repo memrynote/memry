@@ -263,6 +263,16 @@
   min-height: 0;
 }
 
+/* BlockNote renders the side-menu plus + drag-handle icons at a hardcoded
+   size={24}. The bundled @blocknote/shadcn/style.css reverts svg width/height
+   to that attribute via `svg:not([class*=size-]){width:revert}`, and is
+   JS-imported (loads after this file), so `!important` is required to win —
+   same reason as the block-group rule above. ponytail: bump to resize. */
+:root .bn-side-menu svg {
+  width: 16px !important;
+  height: 16px !important;
+}
+
 /* Sticky toolbar mode - toolbar fixed at top of editor */
 .sticky-toolbar-enabled .bn-container {
   display: flex;

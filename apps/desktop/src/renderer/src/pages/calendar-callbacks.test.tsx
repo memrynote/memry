@@ -101,7 +101,6 @@ vi.mock('@/components/calendar', () => ({
     const draft = {
       title: 'Draft title',
       description: 'Description',
-      location: 'Office',
       isAllDay: false,
       startAt: '2026-05-10T09:00',
       endAt: '2026-05-10T10:00',
@@ -154,12 +153,6 @@ vi.mock('@/components/calendar', () => ({
         </button>
         <button type="button" onClick={() => props.onCreateEvent(rect)}>
           create event
-        </button>
-        <button
-          type="button"
-          onClick={() => props.onCreateEventWithRange('2026-05-11', '2026-05-12', true, rect)}
-        >
-          range event
         </button>
         <button type="button" onClick={() => props.onPopoverDraftChange(draft)}>
           draft change
@@ -510,11 +503,6 @@ describe('CalendarPage callback coverage', () => {
 
     fireEvent.click(screen.getByText('quick save'))
     await waitFor(() => expect(mocks.createEvent).toHaveBeenCalledTimes(2))
-
-    fireEvent.click(screen.getByText('range event'))
-    expect(screen.getByTestId('popover-mode')).toHaveTextContent('create')
-    fireEvent.click(screen.getByText('dismiss popover'))
-    expect(screen.queryByTestId('popover-mode')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByText('select task'))
     expect(screen.getByText('task popover:Task due')).toBeInTheDocument()

@@ -26,6 +26,8 @@ import { DetailHeader } from './detail-header'
 import { NoteDetail } from './note-detail'
 import { FilingSection, useFilingState } from './filing-section'
 import { ConvertActions } from './convert-actions'
+import { TypeSelector } from './type-selector'
+import { NOTE_ONLY_TYPES, type ConvertType } from './convert-types'
 import { useAISettingsContext } from '@/contexts/ai-settings-context'
 import { useRetryTranscription, useUpdateInboxItem } from '@/hooks/use-inbox'
 import { isMac, isInputFocused } from '@/hooks/use-keyboard-shortcuts'
@@ -141,11 +143,15 @@ export const InboxDetailPanel = ({
   const containerRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
 
-  // Reset manual height during render when the displayed item changes.
+  // What the captured item becomes: note (file to folder) / task / event / reminder.
+  const [selectedType, setSelectedType] = useState<ConvertType>('note')
+
+  // Reset manual height and selected type during render when the item changes.
   const [storedItemId, setStoredItemId] = useState(item?.id)
   if (storedItemId !== item?.id) {
     setStoredItemId(item?.id)
     setManualContentHeight(null)
+    setSelectedType('note')
   }
 
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
@@ -242,6 +248,9 @@ export const InboxDetailPanel = ({
         return
       }
 
+      // Filing shortcuts only apply to the note (file-to-folder) path.
+      if (selectedType !== 'note') return
+
       // Cmd/Ctrl + Enter to file
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
         e.preventDefault()
@@ -267,6 +276,7 @@ export const InboxDetailPanel = ({
     isOpen,
     canFile,
     item,
+    selectedType,
     suggestedFoldersForShortcut,
     setSelectedFolder,
     onClose,
@@ -471,26 +481,32 @@ export const InboxDetailPanel = ({
                     </div>
                   </div>
 
-                  {/* Filing Section — fills remaining space */}
+                  {/* Type selector + type-driven body — fills remaining space */}
                   <div className="flex-1 min-h-0 overflow-y-auto">
-                    <FilingSection
-                      item={item}
-                      selectedFolder={selectedFolder}
-                      tags={tags}
-                      linkedNotes={linkedNotes}
-                      onFolderSelect={handleFolderSelect}
-                      onTagsChange={setTags}
-                      onLinkedNotesChange={setLinkedNotes}
-                    />
+                    <div className="px-5 pt-4">
+                      <TypeSelector
+                        value={selectedType}
+                        onChange={setSelectedType}
+                        noteOnly={NOTE_ONLY_TYPES.includes(item.type)}
+                      />
+                    </div>
+                    {selectedType === 'note' ? (
+                      <FilingSection
+                        item={item}
+                        selectedFolder={selectedFolder}
+                        tags={tags}
+                        linkedNotes={linkedNotes}
+                        onFolderSelect={handleFolderSelect}
+                        onTagsChange={setTags}
+                        onLinkedNotesChange={setLinkedNotes}
+                      />
+                    ) : (
+                      <ConvertActions item={item} type={selectedType} onConverted={onClose} />
+                    )}
                   </div>
                 </>
               )}
             </div>
-
-            {/* Convert actions */}
-            {!readOnly && item.type !== 'reminder' && (
-              <ConvertActions item={item} onConverted={onClose} />
-            )}
 
             {/* Footer */}
             <div className="shrink-0 px-5 py-3 border-t border-border flex flex-col gap-1.5">
@@ -533,23 +549,27 @@ export const InboxDetailPanel = ({
                       <Archive className="size-4 me-1.5" aria-hidden="true" />
                       {t('detail.archive')}
                     </Button>
-                    <Button
-                      onClick={() => void handleFileItem()}
-                      disabled={!canFile || isFilingLoading}
-                      className="flex-1 bg-tint hover:bg-tint-hover text-tint-foreground border-0"
-                    >
-                      {isFilingLoading ? (
-                        <Loader2 className="size-4 animate-spin me-1.5" aria-hidden="true" />
-                      ) : (
-                        <Check className="size-4 me-1.5" aria-hidden="true" />
-                      )}
-                      {t('detail.file')}
-                      <kbd className="ms-2 text-[11px] opacity-60">{modifierKeyDisplay}⏎</kbd>
-                    </Button>
+                    {selectedType === 'note' && (
+                      <Button
+                        onClick={() => void handleFileItem()}
+                        disabled={!canFile || isFilingLoading}
+                        className="flex-1 bg-tint hover:bg-tint-hover text-tint-foreground border-0"
+                      >
+                        {isFilingLoading ? (
+                          <Loader2 className="size-4 animate-spin me-1.5" aria-hidden="true" />
+                        ) : (
+                          <Check className="size-4 me-1.5" aria-hidden="true" />
+                        )}
+                        {t('detail.file')}
+                        <kbd className="ms-2 text-[11px] opacity-60">{modifierKeyDisplay}⏎</kbd>
+                      </Button>
+                    )}
                   </div>
-                  <p className="text-[10px] text-muted-foreground/50 text-center w-full">
-                    {keyboardHint}
-                  </p>
+                  {selectedType === 'note' && (
+                    <p className="text-[10px] text-muted-foreground/50 text-center w-full">
+                      {keyboardHint}
+                    </p>
+                  )}
                 </>
               )}
             </div>

@@ -10,8 +10,16 @@ const tagMocks = vi.hoisted(() => ({
   getChildTags: vi.fn()
 }))
 
+const tagDefMocks = vi.hoisted(() => ({
+  tags: [] as Array<{ name: string; color?: string; icon?: string | null }>
+}))
+
 vi.mock('@/hooks/use-all-tags', () => ({
   useAllTags: () => tagMocks
+}))
+
+vi.mock('@/hooks/use-tags', () => ({
+  useTags: () => tagDefMocks
 }))
 
 vi.mock('@memry/i18n/renderer', () => ({
@@ -40,6 +48,7 @@ describe('TagAutocomplete', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    tagDefMocks.tags = []
     tagMocks.searchTags.mockReturnValue([
       { name: 'work', count: 9, source: 'notes' },
       { name: 'workflow', count: 3, source: 'inbox' }
@@ -75,6 +84,34 @@ describe('TagAutocomplete', () => {
     await user.click(within(listbox).getByText('focus'))
 
     expect(onTagsChange).toHaveBeenCalledWith(['existing', 'focus'])
+  })
+
+  it('shows a suggestion with its saved color and icon', async () => {
+    const user = userEvent.setup()
+    tagMocks.getPopularTags.mockReturnValue([
+      { name: 'project', count: 12, color: '#ff0000', source: 'notes' }
+    ])
+    tagDefMocks.tags = [{ name: 'project', icon: '🚀' }]
+
+    render(<TagAutocomplete tags={[]} onTagsChange={onTagsChange} />)
+
+    await user.click(screen.getByRole('combobox', { name: 'addTags' }))
+    const listbox = await screen.findByRole('listbox', { name: 'tagSuggestions' })
+
+    const pill = within(listbox).getByText('project')
+    expect(pill).toHaveStyle({ color: '#ff0000' })
+    expect(within(listbox).getByText('🚀')).toBeInTheDocument()
+  })
+
+  it('shows the saved color and icon on a selected tag pill', () => {
+    tagDefMocks.tags = [{ name: 'existing', color: '#00ff00', icon: '📚' }]
+
+    render(<TagAutocomplete tags={['existing']} onTagsChange={onTagsChange} />)
+
+    const pill = screen.getByRole('listitem')
+    expect(pill).toHaveTextContent('existing')
+    expect(pill).toHaveStyle({ color: '#00ff00' })
+    expect(within(pill).getByText('📚')).toBeInTheDocument()
   })
 
   it('creates tags from delimiters, keyboard selection, hierarchy search, and backspace removal', async () => {

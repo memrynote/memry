@@ -16,7 +16,6 @@ interface CalendarQuickCreateDialogProps {
   isAllDay: boolean
   onSave: (draft: CalendarEventDraft) => void | Promise<void>
   onDismiss: () => void
-  onOpenFullEditor: (draft: CalendarEventDraft) => void
 }
 
 function formatTime(value: string): string {
@@ -64,11 +63,9 @@ export function CalendarQuickCreateDialog({
   endAt,
   isAllDay,
   onSave,
-  onDismiss,
-  onOpenFullEditor
+  onDismiss
 }: CalendarQuickCreateDialogProps): React.JSX.Element {
   const [title, setTitle] = useState('')
-  const [location, setLocation] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const titleRef = useRef<HTMLInputElement>(null)
@@ -83,7 +80,6 @@ export function CalendarQuickCreateDialog({
     return {
       title,
       description: '',
-      location,
       isAllDay,
       startAt,
       endAt,
@@ -156,14 +152,6 @@ export function CalendarQuickCreateDialog({
             className="mb-2"
           />
 
-          <Input
-            placeholder={t('form.location-placeholder')}
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-            disabled={isSubmitting}
-            className="mb-3"
-          />
-
           {errorMessage && (
             <p
               data-testid="quick-create-error"
@@ -174,40 +162,30 @@ export function CalendarQuickCreateDialog({
             </p>
           )}
 
-          <div className="flex items-center justify-between">
-            <button
+          <div className="flex items-center justify-end gap-2">
+            <Button
               type="button"
-              className="text-xs text-primary underline-offset-2 hover:underline"
-              onClick={() => onOpenFullEditor(buildDraft())}
+              variant="ghost"
+              size="sm"
+              onClick={onDismiss}
+              disabled={isSubmitting}
             >
-              {t('form.add-details')}
-            </button>
-
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={onDismiss}
-                disabled={isSubmitting}
-              >
-                {tCommon('button.cancel')}
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                data-testid="quick-create-save"
-                disabled={!title.trim() || isSubmitting}
-                onPointerDown={(e) => {
-                  if (e.button !== 0) return
-                  e.preventDefault()
-                  void submit()
-                }}
-                onClick={() => void submit()}
-              >
-                {isSubmitting ? tCommon('state.saving') : tCommon('button.save')}
-              </Button>
-            </div>
+              {tCommon('button.cancel')}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              data-testid="quick-create-save"
+              disabled={!title.trim() || isSubmitting}
+              onPointerDown={(e) => {
+                if (e.button !== 0) return
+                e.preventDefault()
+                void submit()
+              }}
+              onClick={() => void submit()}
+            >
+              {isSubmitting ? tCommon('state.saving') : tCommon('button.save')}
+            </Button>
           </div>
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>

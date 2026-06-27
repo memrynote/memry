@@ -32,12 +32,6 @@ interface CalendarDayViewProps {
   onSelectItem?: (item: CalendarProjectionItem, rect: AnchorRect) => void
   onDeleteItem?: (item: CalendarProjectionItem) => void
   onQuickSave?: (draft: CalendarEventDraft) => void | Promise<void>
-  onCreateEventWithRange?: (
-    startAt: string,
-    endAt: string,
-    isAllDay: boolean,
-    anchorRect: AnchorRect
-  ) => void
 }
 
 export function CalendarDayView({
@@ -46,8 +40,7 @@ export function CalendarDayView({
   selectedItemId,
   onSelectItem,
   onDeleteItem,
-  onQuickSave,
-  onCreateEventWithRange
+  onQuickSave
 }: CalendarDayViewProps): React.JSX.Element {
   const {
     settings: { clockFormat }
@@ -188,15 +181,6 @@ export function CalendarDayView({
                     clearSelection()
                   }}
                   onDismiss={clearSelection}
-                  onOpenFullEditor={(draft) => {
-                    onCreateEventWithRange?.(
-                      draft.startAt,
-                      draft.endAt,
-                      false,
-                      selection.anchorRect
-                    )
-                    clearSelection()
-                  }}
                 />
               </>
             )}

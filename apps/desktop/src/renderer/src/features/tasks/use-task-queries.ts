@@ -132,7 +132,7 @@ function attachSubtaskIds(tasks: UiTask[]): UiTask[] {
   })
 }
 
-function dbProjectToUiProject(
+export function dbProjectToUiProject(
   dbProject: Project | ProjectWithStats | (Project & { statuses: Status[] })
 ): UiProject {
   return {
