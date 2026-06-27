@@ -10,6 +10,7 @@ import { evernoteImporter } from './evernote/evernote-importer'
 import { roamImporter } from './roam/roam-importer'
 import { appleJournalImporter } from './apple-journal/apple-journal-importer'
 import { csvImporter } from './csv/csv-importer'
+import { raindropImporter } from './raindrop/raindrop-importer'
 import { appleNotesImporter } from './apple-notes/apple-notes-importer'
 
 let registered = false
@@ -29,6 +30,7 @@ export function registerBuiltinImporters(): void {
   registerImporter(roamImporter)
   registerImporter(appleJournalImporter)
   registerImporter(csvImporter)
+  registerImporter(raindropImporter)
   // Apple Notes reads the local macOS NoteStore.sqlite — gate to macOS only.
   if (process.platform === 'darwin') {
     registerImporter(appleNotesImporter)
