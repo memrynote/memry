@@ -1,6 +1,7 @@
 import { parseHTML } from 'linkedom'
 import { Defuddle } from 'defuddle/node'
 import { mapToArticleCapture, type ArticleCapture, type DefuddleLikeResult } from './map.ts'
+import { quietDefuddleUrlNoise } from './quiet-url-noise.ts'
 
 export async function extractFromHtml(
   html: string,
@@ -8,6 +9,8 @@ export async function extractFromHtml(
   opts: { now?: string } = {}
 ): Promise<ArticleCapture> {
   const { document } = parseHTML(html)
-  const result = (await Defuddle(document, url, { markdown: true })) as DefuddleLikeResult
+  const result = (await quietDefuddleUrlNoise(() =>
+    Defuddle(document, url, { markdown: true })
+  )) as DefuddleLikeResult
   return mapToArticleCapture(result, url, opts)
 }
