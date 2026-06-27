@@ -1,89 +1,101 @@
 /**
- * Convert Actions — inbox detail panel
+ * Convert form — inbox detail panel.
  *
- * Compact Note · Task · Event · Reminder row. Each non-note action opens a
- * small popover form. Binary items (image/pdf/video/clip) can only become a
- * note, so the other actions are disabled with a tooltip. Voice converts via
- * its transcription, so it is NOT treated as binary here.
+ * Renders the inline form for a single target type (task / event / reminder),
+ * chosen by the panel's TypeSelector. The "note" target is handled by the
+ * filing section + File button, not here. Each form owns its own submit so the
+ * conversion mutations stay encapsulated in this component.
  */
 
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { FileText, ListTodo, CalendarClock, Bell } from '@/lib/icons'
 import { useT } from '@memry/i18n/renderer'
 
+import { Bell, BellRing } from '@/lib/icons'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import { DatePickerCalendar } from '@/components/tasks/date-picker-calendar'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '@/components/ui/select'
+import { TimePicker } from '@/components/tasks/time-picker'
+import { InteractivePriorityBadge } from '@/components/tasks/interactive-priority-badge'
+import { InteractiveDueDateBadge } from '@/components/tasks/interactive-due-date-badge'
+import { InteractiveProjectBadge } from '@/components/tasks/interactive-project-badge'
+import { ReminderPicker } from '@/components/reminder'
+import { formatReminderDate } from '@/components/reminder/reminder-presets'
+import { useGeneralSettings } from '@/hooks/use-general-settings'
+import { dbProjectToUiProject } from '@/features/tasks/use-task-queries'
 import { tasksService } from '@/services/tasks-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import {
-  useConvertToNote,
   useConvertToTask,
   useConvertToEvent,
   useConvertToReminder
 } from '@/hooks/use-inbox-mutations'
+import { useCreateReminder } from '@/hooks/use-reminders'
+import type { Priority } from '@/data/task-model'
 import type { InboxItem, InboxItemListItem } from '@/types'
+import type { ConvertType } from './convert-types'
 
 type ConvertItem = InboxItem | InboxItemListItem
 
-// Items with no usable text body: they can only become a plain note. Mirrors
-// isNoteOnlyType in the main process (voice is excluded — transcription is text).
-const NOTE_ONLY_TYPES = ['image', 'pdf', 'video', 'clip']
+const PRIORITY_TO_NUM: Record<Priority, number> = {
+  none: 0,
+  low: 1,
+  medium: 2,
+  high: 3,
+  urgent: 4
+}
 
-const PRIORITY_OPTIONS = [
-  { value: 0, key: 'priorityNone' },
-  { value: 1, key: 'priorityLow' },
-  { value: 2, key: 'priorityMedium' },
-  { value: 3, key: 'priorityHigh' },
-  { value: 4, key: 'priorityUrgent' }
-] as const
+function combineDateTime(date: Date, time: string): string {
+  const [hours, minutes] = time.split(':').map(Number)
+  const at = new Date(date)
+  at.setHours(hours, minutes, 0, 0)
+  return at.toISOString()
+}
 
-function toIso(localValue: string): string {
-  return new Date(localValue).toISOString()
+function formatDateValue(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 interface ConvertActionsProps {
   item: ConvertItem
+  type: Exclude<ConvertType, 'note'>
   onConverted: () => void
 }
 
-export const ConvertActions = ({ item, onConverted }: ConvertActionsProps): React.JSX.Element => {
+export const ConvertActions = ({
+  item,
+  type,
+  onConverted
+}: ConvertActionsProps): React.JSX.Element => {
   const { t } = useT('inbox')
-  const isNoteOnly = NOTE_ONLY_TYPES.includes(item.type)
 
-  const convertNote = useConvertToNote()
   const convertTask = useConvertToTask()
   const convertEvent = useConvertToEvent()
   const convertReminder = useConvertToReminder()
-  const isPending =
-    convertNote.isPending ||
-    convertTask.isPending ||
-    convertEvent.isPending ||
-    convertReminder.isPending
+  const createReminder = useCreateReminder()
+  const isPending = convertTask.isPending || convertEvent.isPending || convertReminder.isPending
+  const {
+    settings: { clockFormat }
+  } = useGeneralSettings()
 
-  const [openForm, setOpenForm] = useState<'task' | 'event' | 'reminder' | null>(null)
-
-  // Task form state
+  // Task form state — mirrors the task detail drawer (status is intentionally omitted).
   const [projectId, setProjectId] = useState('')
-  const [dueDate, setDueDate] = useState('')
-  const [dueTime, setDueTime] = useState('')
-  const [priority, setPriority] = useState('0')
+  const [dueDate, setDueDate] = useState<Date | null>(null)
+  const [dueTime, setDueTime] = useState<string | null>(null)
+  const [priority, setPriority] = useState<Priority>('none')
+  const [remindAt, setRemindAt] = useState<Date | null>(null)
+  const [remindNote, setRemindNote] = useState<string | null>(null)
 
   // Event form state
-  const [startAt, setStartAt] = useState('')
-  const [endAt, setEndAt] = useState('')
+  const [eventDate, setEventDate] = useState<Date | undefined>(undefined)
+  const [startTime, setStartTime] = useState<string | null>('09:00')
+  const [endTime, setEndTime] = useState<string | null>('10:00')
   const [isAllDay, setIsAllDay] = useState(false)
   const [location, setLocation] = useState('')
 
@@ -93,9 +105,12 @@ export const ConvertActions = ({ item, onConverted }: ConvertActionsProps): Reac
 
   const { data: projects = [] } = useQuery({
     queryKey: ['tasks', 'projects'],
-    queryFn: async () => (await tasksService.listProjects()).projects,
-    enabled: !isNoteOnly
+    queryFn: async () => (await tasksService.listProjects()).projects.map(dbProjectToUiProject),
+    enabled: type === 'task'
   })
+
+  // Default to the inbox project so the badge reads like the task drawer (never empty).
+  const effectiveProjectId = projectId || (projects.find((p) => p.isDefault)?.id ?? '')
 
   async function run<R extends { success: boolean; error?: string }>(
     promise: Promise<R>,
@@ -108,42 +123,55 @@ export const ConvertActions = ({ item, onConverted }: ConvertActionsProps): Reac
         return
       }
       toast.success(t('convert.success', { target: targetLabel }))
-      setOpenForm(null)
       onConverted()
     } catch (error) {
       toast.error(t('convert.failed', { error: extractErrorMessage(error) }))
     }
   }
 
-  const handleNote = (): Promise<void> => run(convertNote.mutateAsync(item.id), t('convert.note'))
-
-  const handleTask = (): Promise<void> =>
-    run(
-      convertTask.mutateAsync({
+  const handleTask = async (): Promise<void> => {
+    try {
+      const result = await convertTask.mutateAsync({
         itemId: item.id,
         input: {
-          projectId: projectId || undefined,
-          dueDate: dueDate || null,
+          projectId: effectiveProjectId || undefined,
+          dueDate: dueDate ? formatDateValue(dueDate) : null,
           dueTime: dueTime || null,
-          priority: Number(priority)
+          priority: PRIORITY_TO_NUM[priority]
         }
-      }),
-      t('convert.task')
-    )
+      })
+      if (!result.success || !result.taskId) {
+        toast.error(t('convert.failed', { error: result.error ?? '' }))
+        return
+      }
+      // Reminders attach to a task, so they can only be created after conversion.
+      if (remindAt) {
+        await createReminder.mutateAsync({
+          targetType: 'task',
+          targetId: result.taskId,
+          remindAt: remindAt.toISOString(),
+          note: remindNote ?? undefined
+        })
+      }
+      toast.success(t('convert.success', { target: t('convert.task') }))
+      onConverted()
+    } catch (error) {
+      toast.error(t('convert.failed', { error: extractErrorMessage(error) }))
+    }
+  }
 
-  const handleEvent = (): Promise<void> =>
-    run(
+  const handleEvent = (): Promise<void> => {
+    if (!eventDate) return Promise.resolve()
+    const startAt = combineDateTime(eventDate, isAllDay ? '00:00' : (startTime ?? '09:00'))
+    const endAt = isAllDay ? null : combineDateTime(eventDate, endTime ?? startTime ?? '10:00')
+    return run(
       convertEvent.mutateAsync({
         itemId: item.id,
-        input: {
-          startAt: toIso(startAt),
-          endAt: endAt ? toIso(endAt) : null,
-          isAllDay,
-          location: location || null
-        }
+        input: { startAt, endAt, isAllDay, location: location || null }
       }),
       t('convert.event')
     )
+  }
 
   const handleReminder = (): Promise<void> => {
     if (!remindDate) return Promise.resolve()
@@ -157,216 +185,143 @@ export const ConvertActions = ({ item, onConverted }: ConvertActionsProps): Reac
   }
 
   return (
-    <TooltipProvider>
-      <div className="flex flex-col gap-2 py-4 px-5 border-b border-border">
-        <span className="text-[11px] [letter-spacing:0.05em] uppercase text-text-tertiary font-medium leading-3.5">
-          {t('convert.title')}
-        </span>
-        <div className="grid grid-cols-4 gap-1.5">
-          {/* Note — always available */}
+    <div className="flex flex-col gap-2.5 py-4 px-5 border-b border-border">
+      {type === 'task' && (
+        <>
+          {/* Mirrors the task detail drawer property grid (status omitted). */}
+          <div className="flex flex-col">
+            <PropRow label={t('convert.priority')}>
+              <InteractivePriorityBadge
+                priority={priority}
+                onPriorityChange={setPriority}
+                compact
+              />
+            </PropRow>
+            <PropRow label={t('convert.dueDate')}>
+              <InteractiveDueDateBadge
+                dueDate={dueDate}
+                dueTime={dueTime}
+                onDateChange={setDueDate}
+                onTimeChange={setDueTime}
+              />
+            </PropRow>
+            <PropRow label={t('convert.reminder')}>
+              <ReminderPicker
+                onSelect={(date, _title, note) => {
+                  setRemindAt(date)
+                  setRemindNote(note ?? null)
+                }}
+                presetType="standard"
+                showNote
+                trigger={
+                  <button
+                    type="button"
+                    aria-label={
+                      remindAt
+                        ? formatReminderDate(remindAt, clockFormat)
+                        : t('convert.setReminder')
+                    }
+                    className={cn(
+                      'flex items-center gap-1.5 cursor-pointer whitespace-nowrap rounded-[5px] py-[3px] px-2 border border-solid',
+                      'border-foreground/10 bg-foreground/[0.03] dark:bg-foreground/[0.06]',
+                      'transition-opacity hover:opacity-80 focus-visible:outline-none',
+                      remindAt ? 'text-text-secondary' : 'text-text-tertiary'
+                    )}
+                  >
+                    {remindAt ? (
+                      <BellRing className="size-3 shrink-0 text-amber-500" />
+                    ) : (
+                      <Bell className="size-3 shrink-0" />
+                    )}
+                    <span className="text-[12px] leading-4">
+                      {remindAt
+                        ? formatReminderDate(remindAt, clockFormat, true)
+                        : t('convert.setReminder')}
+                    </span>
+                  </button>
+                }
+              />
+            </PropRow>
+            <PropRow label={t('convert.project')}>
+              <InteractiveProjectBadge
+                projectId={effectiveProjectId}
+                projects={projects}
+                onProjectChange={setProjectId}
+              />
+            </PropRow>
+          </div>
           <Button
-            variant="outline"
             size="sm"
             disabled={isPending}
-            onClick={() => void handleNote()}
-            className="flex items-center justify-center gap-1.5 text-[12px]"
+            onClick={() => void handleTask()}
+            className="bg-tint hover:bg-tint-hover text-tint-foreground border-0"
           >
-            <FileText className="size-3.5" aria-hidden="true" />
-            {t('convert.note')}
+            {t('convert.addTask')}
           </Button>
+        </>
+      )}
 
-          {/* Task */}
-          <ConvertButton
-            label={t('convert.task')}
-            icon={<ListTodo className="size-3.5" aria-hidden="true" />}
-            disabled={isNoteOnly || isPending}
-            disabledHint={t('convert.binaryOnlyNote')}
-            open={openForm === 'task'}
-            onOpenChange={(open) => setOpenForm(open ? 'task' : null)}
-          >
-            <div className="flex flex-col gap-2.5">
-              <Field label={t('convert.project')}>
-                <Select value={projectId} onValueChange={setProjectId}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder={t('convert.inboxProject')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {projects.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
-              <div className="grid grid-cols-2 gap-2">
-                <Field label={t('convert.dueDate')}>
-                  <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
-                </Field>
-                <Field label={t('convert.dueTime')}>
-                  <Input type="time" value={dueTime} onChange={(e) => setDueTime(e.target.value)} />
-                </Field>
-              </div>
-              <Field label={t('convert.priority')}>
-                <Select value={priority} onValueChange={setPriority}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PRIORITY_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.value} value={String(opt.value)}>
-                        {t(`convert.${opt.key}`)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
-              <Button
-                size="sm"
-                disabled={isPending}
-                onClick={() => void handleTask()}
-                className="bg-tint hover:bg-tint-hover text-tint-foreground border-0"
-              >
-                {t('convert.create')}
-              </Button>
-            </div>
-          </ConvertButton>
-
-          {/* Event */}
-          <ConvertButton
-            label={t('convert.event')}
-            icon={<CalendarClock className="size-3.5" aria-hidden="true" />}
-            disabled={isNoteOnly || isPending}
-            disabledHint={t('convert.binaryOnlyNote')}
-            open={openForm === 'event'}
-            onOpenChange={(open) => setOpenForm(open ? 'event' : null)}
-          >
-            <div className="flex flex-col gap-2.5">
+      {type === 'event' && (
+        <>
+          <Field label={t('convert.date')}>
+            <DatePickerCalendar
+              selected={eventDate}
+              onSelect={setEventDate}
+              className="rounded-md border p-2"
+            />
+          </Field>
+          {!isAllDay && (
+            <div className="grid grid-cols-2 gap-2">
               <Field label={t('convert.start')}>
-                <Input
-                  type="datetime-local"
-                  value={startAt}
-                  onChange={(e) => setStartAt(e.target.value)}
-                />
+                <TimePicker value={startTime} onChange={setStartTime} />
               </Field>
               <Field label={t('convert.end')}>
-                <Input
-                  type="datetime-local"
-                  value={endAt}
-                  onChange={(e) => setEndAt(e.target.value)}
-                />
+                <TimePicker value={endTime} onChange={setEndTime} />
               </Field>
-              <label className="flex items-center gap-2 text-[13px] text-foreground">
-                <Checkbox checked={isAllDay} onCheckedChange={(v) => setIsAllDay(v === true)} />
-                {t('convert.allDay')}
-              </label>
-              <Field label={t('convert.location')}>
-                <Input value={location} onChange={(e) => setLocation(e.target.value)} />
-              </Field>
-              <Button
-                size="sm"
-                disabled={!startAt || isPending}
-                onClick={() => void handleEvent()}
-                className="bg-tint hover:bg-tint-hover text-tint-foreground border-0"
-              >
-                {t('convert.create')}
-              </Button>
             </div>
-          </ConvertButton>
-
-          {/* Reminder */}
-          <ConvertButton
-            label={t('convert.reminder')}
-            icon={<Bell className="size-3.5" aria-hidden="true" />}
-            disabled={isNoteOnly || isPending}
-            disabledHint={t('convert.binaryOnlyNote')}
-            open={openForm === 'reminder'}
-            onOpenChange={(open) => setOpenForm(open ? 'reminder' : null)}
-            contentClassName="w-72 p-3"
+          )}
+          <label className="flex items-center gap-2 text-[13px] text-foreground">
+            <Checkbox checked={isAllDay} onCheckedChange={(v) => setIsAllDay(v === true)} />
+            {t('convert.allDay')}
+          </label>
+          <Field label={t('convert.location')}>
+            <Input value={location} onChange={(e) => setLocation(e.target.value)} />
+          </Field>
+          <Button
+            size="sm"
+            disabled={!eventDate || isPending}
+            onClick={() => void handleEvent()}
+            className="bg-tint hover:bg-tint-hover text-tint-foreground border-0"
           >
-            <div className="flex flex-col gap-2.5">
-              <Field label={t('convert.remindAt')}>
-                <DatePickerCalendar
-                  selected={remindDate}
-                  onSelect={setRemindDate}
-                  disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
-                  className="rounded-md border p-2"
-                />
-              </Field>
-              <Field label={t('convert.time')}>
-                <Input
-                  type="time"
-                  value={remindTime}
-                  onChange={(e) => setRemindTime(e.target.value)}
-                />
-              </Field>
-              <Button
-                size="sm"
-                disabled={!remindDate || isPending}
-                onClick={() => void handleReminder()}
-                className="bg-tint hover:bg-tint-hover text-tint-foreground border-0"
-              >
-                {t('convert.create')}
-              </Button>
-            </div>
-          </ConvertButton>
-        </div>
-      </div>
-    </TooltipProvider>
-  )
-}
+            {t('convert.addEvent')}
+          </Button>
+        </>
+      )}
 
-interface ConvertButtonProps {
-  label: string
-  icon: React.ReactNode
-  disabled: boolean
-  disabledHint: string
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  children: React.ReactNode
-  contentClassName?: string
-}
-
-function ConvertButton({
-  label,
-  icon,
-  disabled,
-  disabledHint,
-  open,
-  onOpenChange,
-  children,
-  contentClassName = 'w-64 p-3'
-}: ConvertButtonProps): React.JSX.Element {
-  const trigger = (
-    <Button
-      variant="outline"
-      size="sm"
-      disabled={disabled}
-      className="flex items-center justify-center gap-1.5 text-[12px] w-full"
-    >
-      {icon}
-      {label}
-    </Button>
-  )
-
-  if (disabled) {
-    return (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span className="inline-flex">{trigger}</span>
-        </TooltipTrigger>
-        <TooltipContent>{disabledHint}</TooltipContent>
-      </Tooltip>
-    )
-  }
-
-  return (
-    <Popover open={open} onOpenChange={onOpenChange}>
-      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-      <PopoverContent align="start" className={contentClassName}>
-        {children}
-      </PopoverContent>
-    </Popover>
+      {type === 'reminder' && (
+        <>
+          <Field label={t('convert.remindAt')}>
+            <DatePickerCalendar
+              selected={remindDate}
+              onSelect={setRemindDate}
+              disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+              className="rounded-md border p-2"
+            />
+          </Field>
+          <Field label={t('convert.time')}>
+            <TimePicker value={remindTime} onChange={(v) => setRemindTime(v ?? '09:00')} />
+          </Field>
+          <Button
+            size="sm"
+            disabled={!remindDate || isPending}
+            onClick={() => void handleReminder()}
+            className="bg-tint hover:bg-tint-hover text-tint-foreground border-0"
+          >
+            {t('convert.setReminder')}
+          </Button>
+        </>
+      )}
+    </div>
   )
 }
 
@@ -382,5 +337,21 @@ function Field({
       {label}
       <div className="normal-case [letter-spacing:normal]">{children}</div>
     </label>
+  )
+}
+
+// Label-left / control-right row, matching the task detail drawer property grid.
+function PropRow({
+  label,
+  children
+}: {
+  label: string
+  children: React.ReactNode
+}): React.JSX.Element {
+  return (
+    <div className="flex items-center py-1.5">
+      <span className="text-[12px] w-[90px] shrink-0 text-text-tertiary leading-4">{label}</span>
+      {children}
+    </div>
   )
 }

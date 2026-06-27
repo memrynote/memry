@@ -109,6 +109,10 @@ vi.mock('./convert-actions', () => ({
   ConvertActions: () => null
 }))
 
+vi.mock('./type-selector', () => ({
+  TypeSelector: () => null
+}))
+
 vi.mock('./filing-section', async () => {
   const React = await vi.importActual<typeof import('react')>('react')
   return {

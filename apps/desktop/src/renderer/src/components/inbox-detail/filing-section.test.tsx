@@ -19,10 +19,6 @@ vi.mock('@/components/ui/popover', () => ({
   PopoverContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>
 }))
 
-vi.mock('@/components/ui/scroll-area', () => ({
-  ScrollArea: ({ children }: { children: React.ReactNode }) => <div>{children}</div>
-}))
-
 vi.mock('@/components/filing/tag-autocomplete', () => ({
   TagAutocomplete: ({
     tags,
@@ -128,8 +124,11 @@ describe('FilingSection', () => {
     )
 
     expect(await screen.findAllByText('Projects / memrynote')).not.toHaveLength(0)
-    expect(screen.getByText('memrynote research')).toBeInTheDocument()
     expect(screen.getByText('ai tags research,link')).toBeInTheDocument()
+
+    // Links collapse by default — expand to reveal AI note suggestions.
+    await userEvent.click(screen.getByRole('button', { name: /linkANote/i }))
+    expect(screen.getByText('memrynote research')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('searchOrCreateFolder')).toHaveClass(
       'h-5',
       'border-0',
