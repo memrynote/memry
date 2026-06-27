@@ -32,6 +32,7 @@ import {
 } from '../lib/embeddings'
 import type { FilingSuggestion, SuggestedNote } from '@memry/contracts/inbox-api'
 import { scoreFolders, type FolderScore } from './folder-scoring'
+import { buildEmbeddingInput } from '../lib/embedding-input'
 
 const log = createLogger('Inbox:Suggestions')
 
@@ -720,8 +721,8 @@ export async function getSuggestions(itemId: string): Promise<FilingSuggestion[]
     const suggestions: FilingSuggestion[] = []
     const seenDestinations = new Set<string>()
 
-    // Build content for similarity search
-    const content = [item.title, item.content].filter(Boolean).join('\n\n')
+    // Build content for similarity search (symmetric with stored embeddings).
+    const content = buildEmbeddingInput({ title: item.title, content: item.content })
 
     // 1. Find similar notes → suggest both folders AND direct note links
     const noteSuggestions: FilingSuggestion[] = []
@@ -969,8 +970,8 @@ export async function getNoteFolderSuggestions(noteId: string): Promise<FolderSu
     // Always exclude current folder
     seenFolders.add(currentFolder)
 
-    // Build content for similarity search
-    const content = [note.title, note.content].filter(Boolean).join('\n\n')
+    // Build content for similarity search (symmetric with stored embeddings).
+    const content = buildEmbeddingInput({ title: note.title, content: note.content })
 
     // 1. Score candidate folders from similar notes + folder name + member
     //    tags, excluding the note's current folder.
