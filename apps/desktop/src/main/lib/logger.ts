@@ -12,9 +12,18 @@ log.transports.console.format = '{h}:{i}:{s}.{ms} [{level}] [{scope}] {text}'
 log.errorHandler.startCatching({
   showDialog: false,
   onError({ error }) {
+    // Benign, contained: electron's net.fetch throws this RangeError from inside
+    // its own response event when a server returns an HTTP status outside 200-599
+    // (e.g. LinkedIn's 999, or 0 on an opaque redirect). It can't be caught at the
+    // call site; the fetch fails and callers degrade gracefully. Returning false
+    // tells electron-log to skip it. See chromiumFetch in main/inbox/metadata.ts.
+    if (error?.message?.includes('must be in the range of 200 to 599')) {
+      return false
+    }
     if (error?.message?.includes('EIO')) {
       log.transports.console.level = false
     }
+    return undefined
   }
 })
 

@@ -10,6 +10,8 @@ describe('quietDefuddleUrlNoise', () => {
       // What defuddle emits per relative link (caught internally, just noisy):
       console.error('Failed to parse URL: /yatirim-fonu--104761', new TypeError('Invalid URL'))
       console.warn('Failed to parse URL:', new TypeError('Invalid URL'))
+      // Defuddle's structured async-extraction error (e.g. a blocked Reddit fetch):
+      console.error('Defuddle', 'Error in async extraction:', new Error('Failed to fetch: 403'))
       // A genuinely useful log must still get through:
       console.error('something genuinely important')
     })
@@ -17,6 +19,7 @@ describe('quietDefuddleUrlNoise', () => {
     const errMsgs = errSpy.mock.calls.map((c) => String(c[0]))
     expect(errMsgs).toContain('something genuinely important')
     expect(errMsgs.some((m) => m.includes('Failed to parse URL'))).toBe(false)
+    expect(errMsgs.some((m) => m === 'Defuddle')).toBe(false)
     expect(warnSpy.mock.calls.some((c) => String(c[0]).includes('Failed to parse URL'))).toBe(false)
 
     errSpy.mockRestore()

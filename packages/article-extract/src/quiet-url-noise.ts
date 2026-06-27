@@ -1,19 +1,22 @@
 /**
- * Defuddle resolves relative canonical / og:url / in-content links with
- * `new URL(href)` (no base argument). On pages full of relative links — forums,
- * wikis, etc. — every one throws, and defuddle catches it but logs a full
- * `Failed to parse URL` stack via `console.error` / `console.warn`. The errors
- * are harmless (extraction still completes) but spam the log, especially when a
- * bulk import extracts hundreds of pages at once.
+ * Defuddle logs its own caught-but-noisy errors via `console.error` /
+ * `console.warn`, and a bulk import extracting hundreds of pages turns that into
+ * a wall of red. Two shapes, both harmless (extraction still completes):
+ *   - `console.error('Defuddle', 'Error in async extraction:', err)` — e.g. a
+ *     dead/blocked link it tried to fetch (Reddit 403, etc.).
+ *   - `console.error('Failed to parse URL: ...', err)` / `console.warn(...)` —
+ *     relative canonical/og:url/in-content links resolved with `new URL()` and no
+ *     base, which throw on forum/wiki pages full of relative links.
  *
- * Run defuddle inside this wrapper to swallow just those lines. Everything else
- * still logs. The desktop inbox job processor is single-threaded, so temporarily
- * swapping `console` here can't race other work.
+ * Run defuddle inside this wrapper to swallow just defuddle's own lines.
+ * Everything else still logs. The desktop inbox job processor is single-threaded,
+ * so temporarily swapping `console` here can't race other work.
  */
 const URL_PARSE_NOISE = 'Failed to parse URL'
 
-function isUrlParseNoise(args: unknown[]): boolean {
-  return typeof args[0] === 'string' && args[0].includes(URL_PARSE_NOISE)
+function isDefuddleNoise(args: unknown[]): boolean {
+  const first = args[0]
+  return typeof first === 'string' && (first === 'Defuddle' || first.includes(URL_PARSE_NOISE))
 }
 
 export async function quietDefuddleUrlNoise<T>(run: () => Promise<T>): Promise<T> {
@@ -22,7 +25,7 @@ export async function quietDefuddleUrlNoise<T>(run: () => Promise<T>): Promise<T
   const filter =
     (orig: (...args: unknown[]) => void) =>
     (...args: unknown[]): void => {
-      if (isUrlParseNoise(args)) return
+      if (isDefuddleNoise(args)) return
       orig(...args)
     }
   console.error = filter(origError)
