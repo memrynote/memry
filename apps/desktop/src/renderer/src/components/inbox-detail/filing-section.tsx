@@ -15,6 +15,7 @@ import { TagAutocomplete } from '@/components/filing/tag-autocomplete'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { LinkInput } from './link-input'
 import { cn } from '@/lib/utils'
+import { confidenceBand } from '@/lib/confidence-band'
 import { useAISettingsContext } from '@/contexts/ai-settings-context'
 import type { InboxItem, InboxItemListItem, Folder as FolderType, LinkedNote } from '@/types'
 import { createLogger } from '@/lib/logger'
@@ -469,6 +470,7 @@ export const FilingSection = ({
               const isLinked = linkedNotes.some((ln) => ln.id === suggestion.note.id)
               const bgOpacity = [0.05, 0.02, 0.01][index] ?? 0.01
               const borderOpacity = [0.12, 0.06, 0.03][index] ?? 0.03
+              const band = confidenceBand(suggestion.confidence)
               return (
                 <button
                   key={suggestion.note.id}
@@ -491,7 +493,11 @@ export const FilingSection = ({
                   </span>
                   {isLinked && <Check className="size-3 shrink-0 text-[var(--tint)]" />}
                   <span className="text-[10px] leading-3 text-muted-foreground/40 shrink-0">
-                    {Math.round(suggestion.confidence * 100)}%
+                    {band === 'strong'
+                      ? t('detail.match.strong')
+                      : band === 'likely'
+                        ? t('detail.match.likely')
+                        : t('detail.match.weak')}
                   </span>
                 </button>
               )
