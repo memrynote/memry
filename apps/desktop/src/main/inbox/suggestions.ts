@@ -481,6 +481,78 @@ function getRecentFilingDestinations(limit: number = 5): { path: string; count: 
   }
 }
 
+/**
+ * Confidence for a folder surfaced by filing-history patterns.
+ * More prior filings → higher confidence, capped at 0.7.
+ */
+function filingHistoryConfidence(count: number): number {
+  return Math.min(0.7, 0.3 + count * 0.1)
+}
+
+/**
+ * Confidence for a folder surfaced only by recent-destination frequency.
+ * Weaker signal than history patterns, capped at 0.5.
+ */
+function recentDestinationConfidence(count: number): number {
+  return Math.min(0.5, 0.2 + count * 0.05)
+}
+
+/** A folder candidate produced by the history → recents fallback ladder. */
+interface FolderFallbackCandidate {
+  path: string
+  confidence: number
+  tags: string[]
+  /** Filing action recorded for the pattern ('folder' for recents). */
+  action: string
+  source: 'history' | 'recent'
+  count: number
+}
+
+/**
+ * Shared fallback ladder for folder suggestions: filing-history patterns
+ * first, then recent destinations. Skips any folder already in `seen`
+ * (mutating it as it goes) and returns at most `limit` candidates in order.
+ * Callers map these to their own suggestion shape and reason text.
+ */
+function collectFolderFallbacks(
+  itemType: string,
+  seen: Set<string>,
+  limit: number
+): FolderFallbackCandidate[] {
+  const out: FolderFallbackCandidate[] = []
+  if (limit <= 0) return out
+
+  for (const pattern of getFilingPatterns(itemType)) {
+    if (seen.has(pattern.destination)) continue
+    seen.add(pattern.destination)
+    out.push({
+      path: pattern.destination,
+      confidence: filingHistoryConfidence(pattern.count),
+      tags: pattern.tags,
+      action: pattern.action,
+      source: 'history',
+      count: pattern.count
+    })
+    if (out.length >= limit) return out
+  }
+
+  for (const dest of getRecentFilingDestinations(5)) {
+    if (seen.has(dest.path)) continue
+    seen.add(dest.path)
+    out.push({
+      path: dest.path,
+      confidence: recentDestinationConfidence(dest.count),
+      tags: [],
+      action: 'folder',
+      source: 'recent',
+      count: dest.count
+    })
+    if (out.length >= limit) return out
+  }
+
+  return out
+}
+
 // ============================================================================
 // Suggestion Generation
 // ============================================================================
@@ -567,52 +639,28 @@ export async function getSuggestions(itemId: string): Promise<FilingSuggestion[]
       }
     }
 
-    // 2. If we don't have enough suggestions, add from filing history
-    if (suggestions.length < MAX_SUGGESTIONS) {
-      const patterns = getFilingPatterns(item.type)
-
-      for (const pattern of patterns) {
-        if (seenDestinations.has(pattern.destination)) continue
-
-        seenDestinations.add(pattern.destination)
-        const confidence = Math.min(0.7, 0.3 + pattern.count * 0.1)
-
-        suggestions.push({
-          destination: {
-            type: pattern.action as 'folder' | 'note' | 'new-note',
-            path: pattern.destination
-          },
-          confidence,
-          reason: `You've filed ${pattern.count} similar ${item.type}s here`,
-          suggestedTags: pattern.tags
-        })
-
-        if (suggestions.length >= MAX_SUGGESTIONS) break
-      }
-    }
-
-    // 3. If still not enough, add most recent filing destinations
-    if (suggestions.length < MAX_SUGGESTIONS) {
-      const recentDests = getRecentFilingDestinations(5)
-
-      for (const dest of recentDests) {
-        if (seenDestinations.has(dest.path)) continue
-
-        seenDestinations.add(dest.path)
-        const confidence = Math.min(0.5, 0.2 + dest.count * 0.05)
-
-        suggestions.push({
-          destination: {
-            type: 'folder',
-            path: dest.path
-          },
-          confidence,
-          reason: `Recently used (${dest.count} items)`,
-          suggestedTags: []
-        })
-
-        if (suggestions.length >= MAX_SUGGESTIONS) break
-      }
+    // 2 & 3. Backfill from the shared history → recents fallback ladder.
+    const fallbacks = collectFolderFallbacks(
+      item.type,
+      seenDestinations,
+      MAX_SUGGESTIONS - suggestions.length
+    )
+    for (const fallback of fallbacks) {
+      suggestions.push({
+        destination: {
+          type:
+            fallback.source === 'history'
+              ? (fallback.action as 'folder' | 'note' | 'new-note')
+              : 'folder',
+          path: fallback.path
+        },
+        confidence: fallback.confidence,
+        reason:
+          fallback.source === 'history'
+            ? `You've filed ${fallback.count} similar ${item.type}s here`
+            : `Recently used (${fallback.count} items)`,
+        suggestedTags: fallback.tags
+      })
     }
 
     // Sort folder suggestions by confidence, then append note suggestions
@@ -803,44 +851,21 @@ export async function getNoteFolderSuggestions(noteId: string): Promise<FolderSu
       }
     }
 
-    // 2. If we don't have enough suggestions, add from filing history
-    if (suggestions.length < MAX_SUGGESTIONS) {
-      const patterns = getFilingPatterns('note')
-
-      for (const pattern of patterns) {
-        if (seenFolders.has(pattern.destination)) continue
-
-        seenFolders.add(pattern.destination)
-        const confidence = Math.min(0.7, 0.3 + pattern.count * 0.1)
-
-        suggestions.push({
-          path: pattern.destination,
-          confidence,
-          reason: `You've moved ${pattern.count} notes here before`
-        })
-
-        if (suggestions.length >= MAX_SUGGESTIONS) break
-      }
-    }
-
-    // 3. If still not enough, add most recent filing destinations
-    if (suggestions.length < MAX_SUGGESTIONS) {
-      const recentDests = getRecentFilingDestinations(5)
-
-      for (const dest of recentDests) {
-        if (seenFolders.has(dest.path)) continue
-
-        seenFolders.add(dest.path)
-        const confidence = Math.min(0.5, 0.2 + dest.count * 0.05)
-
-        suggestions.push({
-          path: dest.path,
-          confidence,
-          reason: `Recently used (${dest.count} items)`
-        })
-
-        if (suggestions.length >= MAX_SUGGESTIONS) break
-      }
+    // 2 & 3. Backfill from the shared history → recents fallback ladder.
+    const fallbacks = collectFolderFallbacks(
+      'note',
+      seenFolders,
+      MAX_SUGGESTIONS - suggestions.length
+    )
+    for (const fallback of fallbacks) {
+      suggestions.push({
+        path: fallback.path,
+        confidence: fallback.confidence,
+        reason:
+          fallback.source === 'history'
+            ? `You've moved ${fallback.count} notes here before`
+            : `Recently used (${fallback.count} items)`
+      })
     }
 
     // Sort by confidence
