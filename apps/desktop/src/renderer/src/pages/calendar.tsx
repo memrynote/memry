@@ -104,7 +104,6 @@ function createDraftFromAnchor(anchorDate: string): CalendarEventDraft {
   return {
     title: '',
     description: '',
-    location: '',
     isAllDay: false,
     startAt: `${anchorDate}T09:00`,
     endAt: `${anchorDate}T10:00`,
@@ -116,7 +115,6 @@ function createDraftFromItem(item: CalendarProjectionItem): CalendarEventDraft {
   return {
     title: item.title,
     description: item.descriptionPreview ?? '',
-    location: '',
     isAllDay: item.isAllDay,
     startAt: item.isAllDay
       ? toLocalDateInputValue(item.startAt)
@@ -134,7 +132,6 @@ function toCreatePayload(draft: CalendarEventDraft) {
   return {
     title: draft.title.trim(),
     description: draft.description.trim() || null,
-    location: draft.location.trim() || null,
     startAt: localInputToIso(draft.startAt, draft.isAllDay),
     endAt: draft.endAt ? localInputToIso(draft.endAt, draft.isAllDay) : null,
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
@@ -373,7 +370,6 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
       ? ({
           title: record.title,
           description: record.description ?? '',
-          location: record.location ?? '',
           isAllDay: record.isAllDay,
           startAt: record.isAllDay
             ? toLocalDateInputValue(record.startAt)
@@ -632,28 +628,6 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     await queryClient.invalidateQueries({ queryKey: ['calendar', 'range'] })
   }
 
-  const handleCreateEventWithRange = (
-    startAt: string,
-    endAt: string,
-    isAllDay: boolean,
-    anchorRect: AnchorRect
-  ) => {
-    setPopoverState({
-      mode: 'create',
-      eventId: null,
-      draft: {
-        title: '',
-        description: '',
-        location: '',
-        isAllDay,
-        startAt,
-        endAt,
-        targetCalendarId: null
-      },
-      anchorRect
-    })
-  }
-
   const selectedItemId =
     popoverState?.eventId ??
     taskPopoverState?.item.sourceId ??
@@ -747,7 +721,6 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
         onWeekVisibleRangeChange={(startDate) => setAnchorDate(startDate)}
         onPopoverSave={() => void handlePopoverSave()}
         onQuickSave={handleQuickSave}
-        onCreateEventWithRange={handleCreateEventWithRange}
       />
       {taskPopoverState && (
         <CalendarTaskPopover

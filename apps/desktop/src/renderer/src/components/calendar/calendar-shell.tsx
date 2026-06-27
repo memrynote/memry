@@ -75,12 +75,6 @@ interface CalendarShellProps {
   onAnchorChange?: (date: string) => void
   onWeekVisibleRangeChange?: (startDate: string) => void
   onQuickSave?: (draft: CalendarEventDraft) => void | Promise<void>
-  onCreateEventWithRange?: (
-    startAt: string,
-    endAt: string,
-    isAllDay: boolean,
-    anchorRect: AnchorRect
-  ) => void
 }
 
 export function CalendarShell({
@@ -121,8 +115,7 @@ export function CalendarShell({
   onPopoverSave,
   onAnchorChange,
   onWeekVisibleRangeChange,
-  onQuickSave,
-  onCreateEventWithRange
+  onQuickSave
 }: CalendarShellProps): React.JSX.Element {
   const viewProps = { anchorDate, items, selectedItemId, onSelectItem }
   const chipViewProps = { ...viewProps, onDeleteItem }
@@ -279,25 +272,16 @@ export function CalendarShell({
             {t('state.loading-calendar')}
           </div>
         ) : view === 'day' ? (
-          <CalendarDayView
-            {...chipViewProps}
-            onQuickSave={onQuickSave}
-            onCreateEventWithRange={onCreateEventWithRange}
-          />
+          <CalendarDayView {...chipViewProps} onQuickSave={onQuickSave} />
         ) : view === 'week' ? (
           <CalendarWeekView
             {...chipViewProps}
             todayRequestKey={todayRequestKey}
             onQuickSave={onQuickSave}
-            onCreateEventWithRange={onCreateEventWithRange}
             onVisibleDayStartChange={(_, startDate) => onWeekVisibleRangeChange?.(startDate)}
           />
         ) : view === 'month' ? (
-          <CalendarMonthView
-            {...chipViewProps}
-            onQuickSave={onQuickSave}
-            onCreateEventWithRange={onCreateEventWithRange}
-          />
+          <CalendarMonthView {...chipViewProps} onQuickSave={onQuickSave} />
         ) : (
           <CalendarYearView
             {...viewProps}

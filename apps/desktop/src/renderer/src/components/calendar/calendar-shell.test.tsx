@@ -74,17 +74,10 @@ vi.mock('./calendar-day-view', () => ({
 
 vi.mock('./calendar-week-view', () => ({
   CalendarWeekView: ({
-    onCreateEventWithRange,
     onQuickSave,
     onSelectItem,
     onVisibleDayStartChange
   }: {
-    onCreateEventWithRange?: (
-      startAt: string,
-      endAt: string,
-      isAllDay: boolean,
-      rect: { x: number; y: number; width: number; height: number }
-    ) => void
     onQuickSave?: (draft: CalendarEventDraft) => void
     onSelectItem: (
       item: { id: string; title: string },
@@ -107,23 +100,9 @@ vi.mock('./calendar-week-view', () => ({
       <button
         type="button"
         onClick={() =>
-          onCreateEventWithRange?.('2026-05-14T09:00:00.000Z', '2026-05-14T10:00:00.000Z', false, {
-            x: 4,
-            y: 5,
-            width: 6,
-            height: 7
-          })
-        }
-      >
-        create range
-      </button>
-      <button
-        type="button"
-        onClick={() =>
           onQuickSave?.({
             title: 'Quick',
             description: '',
-            location: '',
             startAt: '2026-05-14T09:00',
             endAt: '2026-05-14T10:00',
             isAllDay: false,
@@ -177,7 +156,6 @@ vi.mock('./calendar-event-popover', () => ({
           onDraftChange({
             title: 'Changed',
             description: '',
-            location: '',
             startAt: '2026-05-14T09:00',
             endAt: '2026-05-14T10:00',
             isAllDay: false,
@@ -262,7 +240,6 @@ function createProps(overrides: Partial<React.ComponentProps<typeof CalendarShel
     onAnchorChange: vi.fn(),
     onWeekVisibleRangeChange: vi.fn(),
     onQuickSave: vi.fn(),
-    onCreateEventWithRange: vi.fn(),
     ...overrides
   } satisfies React.ComponentProps<typeof CalendarShell>
 }
@@ -282,7 +259,6 @@ describe('CalendarShell', () => {
         draft: {
           title: 'Draft',
           description: '',
-          location: '',
           startAt: '2026-05-14T09:00',
           endAt: '2026-05-14T10:00',
           isAllDay: false,
@@ -321,19 +297,12 @@ describe('CalendarShell', () => {
 
     await user.click(screen.getByRole('button', { name: 'select week item' }))
     await user.click(screen.getByRole('button', { name: 'visible week' }))
-    await user.click(screen.getByRole('button', { name: 'create range' }))
     await user.click(screen.getByRole('button', { name: 'quick save' }))
     expect(props.onSelectItem).toHaveBeenCalledWith(
       { id: 'event-1', title: 'Event' },
       { x: 0, y: 1, width: 2, height: 3 }
     )
     expect(props.onWeekVisibleRangeChange).toHaveBeenCalledWith('2026-05-18')
-    expect(props.onCreateEventWithRange).toHaveBeenCalledWith(
-      '2026-05-14T09:00:00.000Z',
-      '2026-05-14T10:00:00.000Z',
-      false,
-      { x: 4, y: 5, width: 6, height: 7 }
-    )
     expect(props.onQuickSave).toHaveBeenCalledWith(expect.objectContaining({ title: 'Quick' }))
 
     await user.click(screen.getByRole('button', { name: 'change draft' }))
