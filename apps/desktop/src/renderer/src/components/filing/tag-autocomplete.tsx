@@ -8,6 +8,8 @@ import { Plus } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 import { useAllTags } from '@/hooks/use-all-tags'
+import { useTags } from '@/hooks/use-tags'
+import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { COLOR_NAMES, getTagColors } from '@/components/note/tags-row/tag-colors'
 import { useT } from '@memry/i18n/renderer'
 
@@ -23,15 +25,24 @@ function getColorForTag(tagName: string): string {
 // TagPill — inline pill for selected tags
 // =============================================================================
 
-const TagPill = ({ tag }: { tag: string }): React.JSX.Element => {
-  const colors = getTagColors(getColorForTag(tag))
+const TagPill = ({
+  tag,
+  color,
+  icon
+}: {
+  tag: string
+  color?: string
+  icon?: string | null
+}): React.JSX.Element => {
+  const colors = getTagColors(color ?? '', tag)
 
   return (
     <span
       role="listitem"
-      className="inline-flex items-center rounded-[10px] py-0.5 px-2 text-[11px] leading-3.5 tag-pill-enter motion-reduce:animate-none"
+      className="inline-flex items-center gap-1 rounded-[10px] py-0.5 px-2 text-[11px] leading-3.5 tag-pill-enter motion-reduce:animate-none"
       style={{ backgroundColor: `${colors.text}15`, color: colors.text }}
     >
+      {icon ? <NoteIconDisplay value={icon} className="size-3 text-[11px] leading-none" /> : null}
       {tag}
     </span>
   )
@@ -77,6 +88,11 @@ export const TagAutocomplete = ({
   const containerRef = useRef<HTMLDivElement>(null)
 
   const { searchTags, getPopularTags, getChildTags } = useAllTags()
+  const { tags: tagDefs } = useTags()
+
+  // Saved color + icon per tag name, so suggestions and selected pills reflect
+  // the user's chosen color/icon rather than a hashed default.
+  const metaByName = useMemo(() => new Map(tagDefs.map((d) => [d.name, d])), [tagDefs])
 
   const trimmedInput = inputValue.trim()
 
@@ -315,7 +331,8 @@ export const TagAutocomplete = ({
         </div>
         {itemsToShow.map((tag, i) => {
           const idx = aiCount + i
-          const colors = getTagColors(getColorForTag(tag.name))
+          const colors = getTagColors(tag.color ?? '', tag.name)
+          const icon = metaByName.get(tag.name)?.icon
           return (
             <button
               key={tag.name}
@@ -328,9 +345,12 @@ export const TagAutocomplete = ({
               )}
             >
               <span
-                className="inline-flex items-center rounded-[10px] py-0.5 px-2 text-[11px] leading-3.5"
+                className="inline-flex items-center gap-1 rounded-[10px] py-0.5 px-2 text-[11px] leading-3.5"
                 style={{ backgroundColor: `${colors.text}15`, color: colors.text }}
               >
+                {icon ? (
+                  <NoteIconDisplay value={icon} className="size-3 text-[11px] leading-none" />
+                ) : null}
                 {tag.name}
               </span>
             </button>
@@ -391,9 +411,10 @@ export const TagAutocomplete = ({
           role="list"
           aria-label={tPhaseF('phaseF.componentsFilingTagAutocomplete.selectedTags')}
         >
-          {tags.map((tag) => (
-            <TagPill key={tag} tag={tag} />
-          ))}
+          {tags.map((tag) => {
+            const def = metaByName.get(tag)
+            return <TagPill key={tag} tag={tag} color={def?.color} icon={def?.icon} />
+          })}
           <input
             ref={inputRef}
             type="text"

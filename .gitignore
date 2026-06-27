@@ -24,6 +24,9 @@ electron-builder.env
 .dev.vars
 private.pem
 public.pem
+*.p12
+*.cer
+*.certSigningRequest
 
 # Databases
 identifier.sqlite

@@ -167,10 +167,17 @@ describe('more zero-covered renderer surfaces', () => {
     const onTimeChange = vi.fn()
     const onColorChange = vi.fn()
     const { rerender } = render(<TimePicker value={null} onChange={onTimeChange} />)
-    expect(screen.getByText('phaseF.componentsTasksTimePicker.selectTime2')).toBeInTheDocument()
+    const timeInput = screen.getByLabelText('phaseF.componentsTasksTimePicker.selectTime')
+    expect(timeInput).toHaveValue('')
+
+    // Native input accepts any minute, not just :00/:30
+    fireEvent.change(timeInput, { target: { value: '12:22' } })
+    expect(onTimeChange).toHaveBeenCalledWith('12:22')
 
     rerender(<TimePicker value="13:30" onChange={onTimeChange} />)
-    expect(screen.getAllByText('1:30 PM')).toHaveLength(2)
+    expect(screen.getByLabelText('phaseF.componentsTasksTimePicker.selectTime')).toHaveValue(
+      '13:30'
+    )
     fireEvent.click(
       screen.getByRole('button', { name: 'phaseF.componentsTasksTimePicker.clearTime' })
     )
