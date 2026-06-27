@@ -382,13 +382,14 @@ jobs:
             printf 'GOOGLE_CALENDAR_CLIENT_ID=%s\n' "$GOOGLE_CALENDAR_CLIENT_ID"
           } > apps/desktop/.env.production
 
-      # The packaged credential file ships as resources/app.env (see
-      # electron-builder configs + apps/desktop/src/main/index.ts). It is
-      # deliberately NOT named .env: Windows Defender grabs an exclusive handle
-      # on any freshly written file literally named .env (credential scan),
-      # which made electron-builder's copyfile fail deterministically with
-      # "EBUSY: resource busy or locked". Renaming removes the trigger, so no
-      # Defender-disable hack or packaging retry loop is needed.
+      # The runtime env is staged + shipped as resources/app-config, a filename
+      # with no .env token (see scripts/build-packaged-app.js, the
+      # electron-builder configs, and apps/desktop/src/main/index.ts). Windows
+      # Defender holds an exclusive handle on .env* files (credential scan), so
+      # electron-builder's copyfile of the .env-named SOURCE failed
+      # deterministically with "EBUSY: resource busy or locked" on the hosted
+      # runner. A neutral filename removes the trigger, so no Defender-disable
+      # hack or packaging retry loop is needed.
       - name: Build Windows artifacts
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

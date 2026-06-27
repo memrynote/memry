@@ -2,5 +2,5 @@ extends: config/electron-builder.yml
 mac:
   forceCodeSigning: true
 extraResources:
-  - from: .env.production
-    to: app.env
+  - from: app-config
+    to: app-config

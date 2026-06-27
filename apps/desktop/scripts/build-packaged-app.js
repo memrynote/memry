@@ -25,6 +25,11 @@ const distDir = path.join(appRoot, 'dist')
 const defaultConfigPath = 'config/electron-builder.staged.yml'
 const runtimeEnvName = 'production'
 const runtimeEnvFile = `.env.${runtimeEnvName}`
+// Staged + packaged under a neutral name (no .env token). Windows Defender holds
+// an exclusive handle on .env* files (credential scan), so electron-builder's
+// copyfile of a .env-named source fails with EBUSY on the hosted runner. The
+// electron-builder configs copy from this name; src/main/index.ts reads it back.
+const packagedRuntimeEnvName = 'app-config'
 const nativeModules = ['better-sqlite3', 'classic-level', 'keytar']
 const generateIconsScript = path.join(appRoot, 'scripts', 'generate-icons.mjs')
 const osxSignWalkPatchScript = path.join(appRoot, 'scripts', 'patch-osx-sign-walk.js')
@@ -247,7 +252,10 @@ function main() {
   syncIntoStage('config')
   syncIntoStage('out')
   syncIntoStage('scripts')
-  syncIntoStage(runtimeEnvFile)
+  // Stage the runtime env under the neutral name electron-builder copies from.
+  fs.cpSync(path.join(appRoot, runtimeEnvFile), path.join(stageDir, packagedRuntimeEnvName), {
+    force: true
+  })
   removePath(path.join(stageDir, 'node_modules', '@memry', 'desktop'))
   removePath(path.join(stageDir, 'electron-builder.env'))
   execFileSync(

@@ -4,8 +4,8 @@ npmRebuild: true
 dmg:
   size: 3g
 extraResources:
-  - from: .env.production
-    to: app.env
+  - from: app-config
+    to: app-config
   - from: node_modules
     to: node_modules
     filter:

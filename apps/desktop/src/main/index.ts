@@ -201,11 +201,12 @@ function resolveMemryEnvironment(): MemryEnvironment {
 }
 
 // Load runtime env before any env access. Unpackaged builds use explicit
-// .env.<environment> files; packaged apps receive Resources/app.env (not
-// .env — Windows Defender locks any file literally named .env, breaking
-// packaging with EBUSY).
+// .env.<environment> files; packaged apps receive Resources/app-config. The
+// packaged file deliberately has no .env token: Windows Defender locks .env*
+// files (credential scan), which broke packaging with EBUSY. See
+// scripts/build-packaged-app.js + config/electron-builder*.yml.
 const envPath = app.isPackaged
-  ? join(process.resourcesPath, 'app.env')
+  ? join(process.resourcesPath, 'app-config')
   : join(app.getAppPath(), `.env.${resolveMemryEnvironment()}`)
 
 const envResult = config({ path: envPath, quiet: true })
