@@ -24,6 +24,7 @@ import {
 } from '@/components/calendar/date-utils'
 import { useCalendarRange } from '@/hooks/use-calendar-range'
 import { useDeleteCalendarEvent } from '@/hooks/use-calendar-mutations'
+import { useUndoTracker } from '@/hooks/use-undo'
 import {
   calendarService,
   promoteExternalCalendarEvent,
@@ -224,6 +225,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
   const [promoteError, setPromoteError] = useState<string | null>(null)
   const [pendingDelete, setPendingDelete] = useState<CalendarProjectionItem | null>(null)
   const deleteMutation = useDeleteCalendarEvent()
+  const { registerUndo } = useUndoTracker()
 
   const { openForDayView, closeForDayView, setDate: setDayPanelDate } = useDayPanel()
 
@@ -628,6 +630,42 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     await queryClient.invalidateQueries({ queryKey: ['calendar', 'range'] })
   }
 
+  const commitEventTimes = async (id: string, startAt: string, endAt: string | null) => {
+    const result = await calendarService.updateEvent({
+      id,
+      startAt,
+      endAt,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+      isAllDay: false
+    })
+    if (!result.success) {
+      throw new Error(result.error ?? 'Could not update event.')
+    }
+    await queryClient.invalidateQueries({ queryKey: ['calendar', 'range'] })
+  }
+
+  const handleMoveEvent = async (item: CalendarProjectionItem, startAt: string, endAt: string) => {
+    const previousStartAt = item.startAt
+    const previousEndAt = item.endAt
+    try {
+      await commitEventTimes(item.sourceId, startAt, endAt)
+      // Register undo so Cmd+Z restores the previous time (handled globally in App.tsx).
+      registerUndo(getI18n().getFixedT(null, 'calendar')('undo.moveEvent'), () => {
+        void commitEventTimes(item.sourceId, previousStartAt, previousEndAt).catch((err) => {
+          log.error('Failed to undo calendar event move', {
+            eventId: item.sourceId,
+            error: extractErrorMessage(err, 'Could not update event.')
+          })
+        })
+      })
+    } catch (err) {
+      log.error('Failed to move calendar event', {
+        eventId: item.sourceId,
+        error: extractErrorMessage(err, 'Could not update event.')
+      })
+    }
+  }
+
   const selectedItemId =
     popoverState?.eventId ??
     taskPopoverState?.item.sourceId ??
@@ -705,6 +743,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
         }
         onSelectItem={(...args) => void handleSelectItem(...args)}
         onDeleteItem={handleDeleteItem}
+        onMoveEvent={handleMoveEvent}
         inboxSnoozePopoverState={inboxSnoozePopoverState}
         onInboxSnoozeOpenInInbox={handleInboxSnoozeOpenInInbox}
         onInboxSnoozeUnsnooze={handleInboxSnoozeUnsnooze}

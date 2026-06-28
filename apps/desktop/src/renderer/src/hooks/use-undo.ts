@@ -170,7 +170,6 @@ export const useUndoTracker = (): UseUndoTrackerReturn => {
   const undo = useCallback((): boolean => {
     const entry = popUndoEntry()
     if (!entry) {
-      toast.info(t('toast.nothingToUndo'))
       return false
     }
 
@@ -223,7 +222,7 @@ export const useUndoKeyboardShortcut = (): void => {
           return // Let native text undo work
         }
 
-        // Check if there's something to undo
+        // Check if there's something to undo. Nothing to undo → do nothing (no toast).
         const entry = getLastUndoEntry()
         if (entry) {
           e.preventDefault()
@@ -237,10 +236,6 @@ export const useUndoKeyboardShortcut = (): void => {
               toast.error(t('toast.undoFailed'))
             }
           }
-        } else {
-          // Still prevent default but show info
-          e.preventDefault()
-          toast.info(t('toast.nothingToUndo'), { duration: 2000 })
         }
       }
     }

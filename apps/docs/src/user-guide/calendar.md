@@ -52,12 +52,15 @@ The toggle is vault-wide per property name — enabling it for "Deadline" once s
 
 ## Drag to Reschedule
 
-Drag an event or task chip to a new slot:
+On the day and week timelines, drag an **event** to reschedule it:
 
-- **Day / week views** — drag vertically to change time, horizontally to change day
-- **Month view** — drag to a different date
+- Drag vertically to change the time.
+- In week view, drag across columns to move it to another day.
+- Drag the top or bottom edge to change the start or end time (resize).
 
-Recurring events ask whether to update **this occurrence** or the **series** (same UX as recurring tasks).
+Times snap to 15-minute steps. Only events are draggable — task, reminder, and note chips stay put. If the event is linked to a connected Google calendar, the new time syncs there too.
+
+Press **Cmd/Ctrl+Z** to undo a move or resize.
 
 ## External Calendar Integration
 

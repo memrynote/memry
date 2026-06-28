@@ -12,6 +12,7 @@ import { MarqueeSelectionOverlay } from './marquee-selection-overlay'
 import { CalendarQuickCreateDialog } from './calendar-quick-create-dialog'
 import { assignLanes } from './overlap-layout'
 import { useTimeGridMarquee } from './use-time-grid-marquee'
+import { useEventDrag, isEventMovable, isEventResizable } from './use-event-drag'
 import { useScrollToCurrentTime } from './use-scroll-to-current-time'
 import { useWeekInfiniteScroll } from './use-week-infinite-scroll'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
@@ -53,6 +54,11 @@ interface CalendarWeekViewProps {
   selectedItemId: string | null
   onSelectItem?: (item: CalendarProjectionItem, rect: AnchorRect) => void
   onDeleteItem?: (item: CalendarProjectionItem) => void
+  onMoveEvent?: (
+    item: CalendarProjectionItem,
+    startAt: string,
+    endAt: string
+  ) => void | Promise<void>
   onQuickSave?: (draft: CalendarEventDraft) => void | Promise<void>
   onVisibleDayStartChange?: (dayIndex: number, startDate: string) => void
   todayRequestKey?: number
@@ -64,6 +70,7 @@ export function CalendarWeekView({
   selectedItemId,
   onSelectItem,
   onDeleteItem,
+  onMoveEvent,
   onQuickSave,
   onVisibleDayStartChange,
   todayRequestKey
@@ -152,6 +159,34 @@ export function CalendarWeekView({
     columnCount: virtualizer.options.count,
     getColumnElement
   })
+
+  const columnIndexAtClientX = useCallback(
+    (clientX: number): number | null => {
+      const grid = gridRef.current
+      if (!grid) return null
+      const x = clientX - grid.getBoundingClientRect().left
+      for (const vi of virtualizer.getVirtualItems()) {
+        if (x >= vi.start && x < vi.start + vi.size) return vi.index
+      }
+      return null
+    },
+    [virtualizer]
+  )
+
+  const { drag, startMove, startResize, wasDragged } = useEventDrag({
+    gridRef,
+    dateForColumn,
+    columnIndexAtClientX,
+    onCommit: (item, startAt, endAt) => onMoveEvent?.(item, startAt, endAt)
+  })
+
+  const handleChipClick = useCallback(
+    (item: CalendarProjectionItem, rect: AnchorRect) => {
+      if (wasDragged()) return
+      onSelectItem?.(item, rect)
+    },
+    [onSelectItem, wasDragged]
+  )
 
   const weekContainsToday = useMemo(() => {
     for (let i = 0; i < 7; i++) {
@@ -360,16 +395,24 @@ export function CalendarWeekView({
                     const pos = getEventPosition(item)
                     const widthPct = 100 / laneCount
                     const leftPct = lane * widthPct
+                    const movable = isEventMovable(item)
+                    const resizable = isEventResizable(item)
+                    const isDraggingThis = drag?.projectionId === item.projectionId
                     return (
                       <div
                         key={item.projectionId}
-                        className="absolute z-10 px-0.5"
+                        className={cn(
+                          'absolute z-10 px-0.5',
+                          movable && 'cursor-grab',
+                          isDraggingThis && 'opacity-40'
+                        )}
                         style={{
                           top: pos.top,
                           height: pos.height,
                           left: `${leftPct}%`,
                           width: `${widthPct}%`
                         }}
+                        onMouseDown={movable ? (e) => startMove(e, item, vi.index) : undefined}
                       >
                         <CalendarItemChip
                           item={item}
@@ -377,9 +420,21 @@ export function CalendarWeekView({
                           isSelected={
                             item.sourceType === 'event' && item.sourceId === selectedItemId
                           }
-                          onClick={onSelectItem}
+                          onClick={handleChipClick}
                           onDeleteItem={onDeleteItem}
                         />
+                        {resizable && (
+                          <>
+                            <div
+                              className="absolute inset-x-0 top-0 h-1.5 cursor-ns-resize"
+                              onMouseDown={(e) => startResize(e, item, vi.index, 'start')}
+                            />
+                            <div
+                              className="absolute inset-x-0 bottom-0 h-1.5 cursor-ns-resize"
+                              onMouseDown={(e) => startResize(e, item, vi.index, 'end')}
+                            />
+                          </>
+                        )}
                       </div>
                     )
                   })}
@@ -429,6 +484,26 @@ export function CalendarWeekView({
                 </div>
               )
             })}
+
+            {drag &&
+              (() => {
+                const targetColumn = virtualItems.find((v) => v.index === drag.columnIndex)
+                const draggedItem = items.find((it) => it.projectionId === drag.projectionId)
+                if (!targetColumn || !draggedItem) return null
+                return (
+                  <div
+                    className="pointer-events-none absolute z-30 px-0.5"
+                    style={{
+                      left: targetColumn.start,
+                      width: targetColumn.size,
+                      top: drag.top,
+                      height: drag.height
+                    }}
+                  >
+                    <CalendarItemChip item={draggedItem} clockFormat={clockFormat} isSelected />
+                  </div>
+                )
+              })()}
           </div>
         </div>
       </div>

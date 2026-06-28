@@ -69,6 +69,11 @@ interface CalendarShellProps {
   onToggleVisualType: (visualType: CalendarProjectionVisualType) => void
   onSelectItem: (item: CalendarProjectionItem, rect: AnchorRect) => void
   onDeleteItem?: (item: CalendarProjectionItem) => void
+  onMoveEvent?: (
+    item: CalendarProjectionItem,
+    startAt: string,
+    endAt: string
+  ) => void | Promise<void>
   onPopoverDismiss: () => void
   onPopoverDraftChange: (draft: CalendarEventDraft) => void
   onPopoverSave: () => void
@@ -110,6 +115,7 @@ export function CalendarShell({
   onToggleVisualType,
   onSelectItem,
   onDeleteItem,
+  onMoveEvent,
   onPopoverDismiss,
   onPopoverDraftChange,
   onPopoverSave,
@@ -272,10 +278,11 @@ export function CalendarShell({
             {t('state.loading-calendar')}
           </div>
         ) : view === 'day' ? (
-          <CalendarDayView {...chipViewProps} onQuickSave={onQuickSave} />
+          <CalendarDayView {...chipViewProps} onMoveEvent={onMoveEvent} onQuickSave={onQuickSave} />
         ) : view === 'week' ? (
           <CalendarWeekView
             {...chipViewProps}
+            onMoveEvent={onMoveEvent}
             todayRequestKey={todayRequestKey}
             onQuickSave={onQuickSave}
             onVisibleDayStartChange={(_, startDate) => onWeekVisibleRangeChange?.(startDate)}

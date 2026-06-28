@@ -5,8 +5,10 @@ import { isToday, toLocalDateKey } from './date-utils'
 import { assignLanes } from './overlap-layout'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { formatHour } from '@/lib/time-format'
+import { cn } from '@/lib/utils'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
 import { useTimeGridMarquee } from './use-time-grid-marquee'
+import { useEventDrag, isEventMovable, isEventResizable } from './use-event-drag'
 import { MarqueeSelectionOverlay } from './marquee-selection-overlay'
 import { CalendarQuickCreateDialog } from './calendar-quick-create-dialog'
 import { useScrollToCurrentTime } from './use-scroll-to-current-time'
@@ -31,6 +33,11 @@ interface CalendarDayViewProps {
   selectedItemId: string | null
   onSelectItem?: (item: CalendarProjectionItem, rect: AnchorRect) => void
   onDeleteItem?: (item: CalendarProjectionItem) => void
+  onMoveEvent?: (
+    item: CalendarProjectionItem,
+    startAt: string,
+    endAt: string
+  ) => void | Promise<void>
   onQuickSave?: (draft: CalendarEventDraft) => void | Promise<void>
 }
 
@@ -40,6 +47,7 @@ export function CalendarDayView({
   selectedItemId,
   onSelectItem,
   onDeleteItem,
+  onMoveEvent,
   onQuickSave
 }: CalendarDayViewProps): React.JSX.Element {
   const {
@@ -53,6 +61,18 @@ export function CalendarDayView({
     gridRef,
     dateForColumn
   })
+  const { drag, startMove, startResize, wasDragged } = useEventDrag({
+    gridRef,
+    dateForColumn,
+    onCommit: (item, startAt, endAt) => onMoveEvent?.(item, startAt, endAt)
+  })
+  const handleChipClick = useCallback(
+    (item: CalendarProjectionItem, rect: AnchorRect) => {
+      if (wasDragged()) return
+      onSelectItem?.(item, rect)
+    },
+    [onSelectItem, wasDragged]
+  )
   const today = isToday(anchorDate)
   useScrollToCurrentTime(scrollRef, today)
   const dayItems = items.filter((item) => toLocalDateKey(item.startAt) === anchorDate)
@@ -120,27 +140,61 @@ export function CalendarDayView({
               const pos = getEventPosition(item)
               const widthPct = 100 / laneCount
               const leftPct = lane * widthPct
+              const movable = isEventMovable(item)
+              const resizable = isEventResizable(item)
+              const isDraggingThis = drag?.projectionId === item.projectionId
               return (
                 <div
                   key={item.projectionId}
-                  className="absolute z-10 px-0.5 @xl:px-1"
+                  className={cn(
+                    'absolute z-10 px-0.5 @xl:px-1',
+                    movable && 'cursor-grab',
+                    isDraggingThis && 'opacity-40'
+                  )}
                   style={{
                     top: pos.top,
                     height: pos.height,
                     left: `${leftPct}%`,
                     width: `${widthPct}%`
                   }}
+                  onMouseDown={movable ? (e) => startMove(e, item, 0) : undefined}
                 >
                   <CalendarItemChip
                     item={item}
                     clockFormat={clockFormat}
                     isSelected={item.sourceType === 'event' && item.sourceId === selectedItemId}
-                    onClick={onSelectItem}
+                    onClick={handleChipClick}
                     onDeleteItem={onDeleteItem}
                   />
+                  {resizable && (
+                    <>
+                      <div
+                        className="absolute inset-x-0 top-0 h-1.5 cursor-ns-resize"
+                        onMouseDown={(e) => startResize(e, item, 0, 'start')}
+                      />
+                      <div
+                        className="absolute inset-x-0 bottom-0 h-1.5 cursor-ns-resize"
+                        onMouseDown={(e) => startResize(e, item, 0, 'end')}
+                      />
+                    </>
+                  )}
                 </div>
               )
             })}
+
+            {drag &&
+              (() => {
+                const draggedItem = items.find((it) => it.projectionId === drag.projectionId)
+                if (!draggedItem) return null
+                return (
+                  <div
+                    className="pointer-events-none absolute inset-x-0 z-30 px-0.5 @xl:px-1"
+                    style={{ top: drag.top, height: drag.height }}
+                  >
+                    <CalendarItemChip item={draggedItem} clockFormat={clockFormat} isSelected />
+                  </div>
+                )
+              })()}
 
             {today && (
               <div
