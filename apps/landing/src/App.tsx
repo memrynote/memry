@@ -29,7 +29,18 @@ import { AuthCallbackPage } from '@/pages/AuthCallback'
 import {
   ObsidianAlternativePage,
   NotionAlternativePage,
-  NotePlanAlternativePage
+  NotePlanAlternativePage,
+  CapacitiesAlternativePage,
+  EvernoteAlternativePage,
+  LogseqAlternativePage,
+  AnytypeAlternativePage,
+  AppleNotesAlternativePage,
+  BearAlternativePage,
+  RoamAlternativePage,
+  OneNoteAlternativePage,
+  UpNoteAlternativePage,
+  JoplinAlternativePage,
+  GoogleKeepAlternativePage
 } from '@/pages/AlternativePage'
 import { AlternativesHubPage } from '@/pages/AlternativesHubPage'
 import { RequireAuth } from '@/components/account/RequireAuth'
@@ -149,6 +160,17 @@ function AppContent() {
           <Route path="/obsidian-alternative" element={<ObsidianAlternativePage />} />
           <Route path="/notion-alternative" element={<NotionAlternativePage />} />
           <Route path="/noteplan-alternative" element={<NotePlanAlternativePage />} />
+          <Route path="/capacities-alternative" element={<CapacitiesAlternativePage />} />
+          <Route path="/evernote-alternative" element={<EvernoteAlternativePage />} />
+          <Route path="/logseq-alternative" element={<LogseqAlternativePage />} />
+          <Route path="/anytype-alternative" element={<AnytypeAlternativePage />} />
+          <Route path="/apple-notes-alternative" element={<AppleNotesAlternativePage />} />
+          <Route path="/bear-alternative" element={<BearAlternativePage />} />
+          <Route path="/roam-research-alternative" element={<RoamAlternativePage />} />
+          <Route path="/onenote-alternative" element={<OneNoteAlternativePage />} />
+          <Route path="/upnote-alternative" element={<UpNoteAlternativePage />} />
+          <Route path="/joplin-alternative" element={<JoplinAlternativePage />} />
+          <Route path="/google-keep-alternative" element={<GoogleKeepAlternativePage />} />
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/changelog" element={<ChangelogPage />} />

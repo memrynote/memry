@@ -30,7 +30,18 @@ import { AccountLayout } from '@/components/account/AccountLayout'
 import {
   ObsidianAlternativePage,
   NotionAlternativePage,
-  NotePlanAlternativePage
+  NotePlanAlternativePage,
+  CapacitiesAlternativePage,
+  EvernoteAlternativePage,
+  LogseqAlternativePage,
+  AnytypeAlternativePage,
+  AppleNotesAlternativePage,
+  BearAlternativePage,
+  RoamAlternativePage,
+  OneNoteAlternativePage,
+  UpNoteAlternativePage,
+  JoplinAlternativePage,
+  GoogleKeepAlternativePage
 } from '@/pages/AlternativePage'
 import { AlternativesHubPage } from '@/pages/AlternativesHubPage'
 import { NotFound } from '@/pages/NotFound'
@@ -61,6 +72,17 @@ const ROUTE_MAP: Record<string, () => ReactNode> = {
   '/obsidian-alternative': () => <ObsidianAlternativePage />,
   '/notion-alternative': () => <NotionAlternativePage />,
   '/noteplan-alternative': () => <NotePlanAlternativePage />,
+  '/capacities-alternative': () => <CapacitiesAlternativePage />,
+  '/evernote-alternative': () => <EvernoteAlternativePage />,
+  '/logseq-alternative': () => <LogseqAlternativePage />,
+  '/anytype-alternative': () => <AnytypeAlternativePage />,
+  '/apple-notes-alternative': () => <AppleNotesAlternativePage />,
+  '/bear-alternative': () => <BearAlternativePage />,
+  '/roam-research-alternative': () => <RoamAlternativePage />,
+  '/onenote-alternative': () => <OneNoteAlternativePage />,
+  '/upnote-alternative': () => <UpNoteAlternativePage />,
+  '/joplin-alternative': () => <JoplinAlternativePage />,
+  '/google-keep-alternative': () => <GoogleKeepAlternativePage />,
   '/pricing': () => <PricingPage />,
   '/changelog': () => <ChangelogPage />,
   '/roadmap': () => <RoadmapPage />,

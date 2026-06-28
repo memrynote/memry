@@ -285,3 +285,47 @@ export function NotionAlternativePage() {
 export function NotePlanAlternativePage() {
   return <AlternativePage config={byKey('noteplanAlternative')} />
 }
+
+export function CapacitiesAlternativePage() {
+  return <AlternativePage config={byKey('capacitiesAlternative')} />
+}
+
+export function EvernoteAlternativePage() {
+  return <AlternativePage config={byKey('evernoteAlternative')} />
+}
+
+export function LogseqAlternativePage() {
+  return <AlternativePage config={byKey('logseqAlternative')} />
+}
+
+export function AnytypeAlternativePage() {
+  return <AlternativePage config={byKey('anytypeAlternative')} />
+}
+
+export function AppleNotesAlternativePage() {
+  return <AlternativePage config={byKey('appleNotesAlternative')} />
+}
+
+export function BearAlternativePage() {
+  return <AlternativePage config={byKey('bearAlternative')} />
+}
+
+export function RoamAlternativePage() {
+  return <AlternativePage config={byKey('roamAlternative')} />
+}
+
+export function OneNoteAlternativePage() {
+  return <AlternativePage config={byKey('onenoteAlternative')} />
+}
+
+export function UpNoteAlternativePage() {
+  return <AlternativePage config={byKey('upnoteAlternative')} />
+}
+
+export function JoplinAlternativePage() {
+  return <AlternativePage config={byKey('joplinAlternative')} />
+}
+
+export function GoogleKeepAlternativePage() {
+  return <AlternativePage config={byKey('googleKeepAlternative')} />
+}
