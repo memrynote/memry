@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Check, Minus, X } from 'lucide-react'
+import { Check, Minus, Plus, X } from 'lucide-react'
 import { Container } from '@/components/layout/Container'
 import { PageHead } from '@/components/shared/PageHead'
 import { Button } from '@/components/ui/button'
@@ -50,7 +50,7 @@ function MobileValue({ value }: { value: AltCell }) {
 function AlternativePage({ config }: { config: AlternativeConfig }) {
   return (
     <>
-      <PageHead page={config.pageKey} />
+      <PageHead page={config.pageKey} faqs={config.faqs} />
 
       <section className="pt-28 pb-12 md:pt-36 md:pb-16">
         <Container size="md">
@@ -152,7 +152,98 @@ function AlternativePage({ config }: { config: AlternativeConfig }) {
         </Container>
       </section>
 
-      <section className="py-20 zone-transition">
+      <section className="py-16 zone-transition">
+        <Container size="md">
+          <div className="mx-auto max-w-3xl space-y-12">
+            {config.sections.map((section) => (
+              <motion.div key={section.heading} {...REVEAL}>
+                <h2 className="font-serif text-2xl text-ink md:text-3xl">{section.heading}</h2>
+                <p className="mt-4 text-lg leading-relaxed text-muted">{section.body}</p>
+              </motion.div>
+            ))}
+          </div>
+        </Container>
+      </section>
+
+      <section className="py-16">
+        <Container size="md">
+          <motion.h2 {...REVEAL} className="display-section text-ink">
+            Pricing: memrynote vs{' '}
+            <span className="italic text-terracotta">{config.competitor}</span>
+          </motion.h2>
+          <motion.div {...REVEAL} className="mt-10 grid gap-4 sm:grid-cols-2">
+            <div className="rounded-sm border border-terracotta/30 bg-terracotta/5 p-6">
+              <p className="font-serif text-lg italic text-terracotta">memrynote</p>
+              <p className="mt-2 leading-relaxed text-ink">{config.pricing.memry}</p>
+            </div>
+            <div className="rounded-sm border border-border/60 bg-paper/60 p-6">
+              <p className="font-serif text-lg text-ink/80">{config.competitor}</p>
+              <p className="mt-2 leading-relaxed text-muted">{config.pricing.competitor}</p>
+            </div>
+          </motion.div>
+        </Container>
+      </section>
+
+      <section className="py-16 zone-transition">
+        <Container size="md">
+          <motion.div
+            {...REVEAL}
+            className="mx-auto max-w-3xl rounded-sm border border-ink/10 bg-paper-alt/50 p-8"
+          >
+            <h2 className="font-serif text-2xl text-ink">
+              When {config.competitor} is the better choice
+            </h2>
+            <p className="mt-4 text-lg leading-relaxed text-muted">{config.whenCompetitorWins}</p>
+          </motion.div>
+        </Container>
+      </section>
+
+      <section className="py-16">
+        <Container size="md">
+          <motion.div {...REVEAL} className="mx-auto max-w-3xl">
+            <h2 className="display-section text-ink">
+              Switch from <span className="italic text-terracotta">{config.competitor}</span>
+            </h2>
+            <ol className="mt-8 space-y-4">
+              {config.migration.steps.map((step, i) => (
+                <li key={step} className="flex gap-4">
+                  <span className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-terracotta/10 font-mono-accent text-xs text-terracotta">
+                    {i + 1}
+                  </span>
+                  <p className="leading-relaxed text-muted">{step}</p>
+                </li>
+              ))}
+            </ol>
+            {config.migration.importer && (
+              <p className="mt-6 text-sm leading-relaxed text-muted/70">
+                memrynote includes a built-in {config.migration.importer} importer in Settings →
+                Import.
+              </p>
+            )}
+          </motion.div>
+        </Container>
+      </section>
+
+      <section className="py-16 zone-transition">
+        <Container size="md">
+          <motion.h2 {...REVEAL} className="display-section text-ink">
+            {config.competitor} alternative <span className="italic text-terracotta">FAQ</span>
+          </motion.h2>
+          <div className="mx-auto mt-10 max-w-3xl divide-y divide-ink/10">
+            {config.faqs.map((faq) => (
+              <details key={faq.question} className="group py-5">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-serif text-lg text-ink">
+                  {faq.question}
+                  <Plus className="h-4 w-4 flex-none text-terracotta transition-transform group-open:rotate-45" />
+                </summary>
+                <p className="mt-3 leading-relaxed text-muted">{faq.answer}</p>
+              </details>
+            ))}
+          </div>
+        </Container>
+      </section>
+
+      <section className="py-20">
         <Container size="md">
           <motion.div {...REVEAL} className="text-center">
             <h2 className="display-section text-ink">

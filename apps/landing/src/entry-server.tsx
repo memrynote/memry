@@ -32,6 +32,7 @@ import {
   NotionAlternativePage,
   NotePlanAlternativePage
 } from '@/pages/AlternativePage'
+import { AlternativesHubPage } from '@/pages/AlternativesHubPage'
 import { NotFound } from '@/pages/NotFound'
 
 // Account routes are gated by RequireAuth, which renders null until the client is
@@ -56,6 +57,7 @@ const ROUTE_MAP: Record<string, () => ReactNode> = {
   '/download/desktop': () => <DownloadDesktopPage />,
   '/use-cases': () => <UseCasesPage />,
   '/security': () => <SecurityPage />,
+  '/alternatives': () => <AlternativesHubPage />,
   '/obsidian-alternative': () => <ObsidianAlternativePage />,
   '/notion-alternative': () => <NotionAlternativePage />,
   '/noteplan-alternative': () => <NotePlanAlternativePage />,

@@ -31,6 +31,7 @@ import {
   NotionAlternativePage,
   NotePlanAlternativePage
 } from '@/pages/AlternativePage'
+import { AlternativesHubPage } from '@/pages/AlternativesHubPage'
 import { RequireAuth } from '@/components/account/RequireAuth'
 import { AccountLayout } from '@/components/account/AccountLayout'
 import { ProfileSection } from '@/pages/account/ProfileSection'
@@ -144,6 +145,7 @@ function AppContent() {
           <Route path="/download/desktop" element={<DownloadDesktopPage />} />
           <Route path="/use-cases" element={<UseCasesPage />} />
           <Route path="/security" element={<SecurityPage />} />
+          <Route path="/alternatives" element={<AlternativesHubPage />} />
           <Route path="/obsidian-alternative" element={<ObsidianAlternativePage />} />
           <Route path="/notion-alternative" element={<NotionAlternativePage />} />
           <Route path="/noteplan-alternative" element={<NotePlanAlternativePage />} />

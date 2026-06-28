@@ -121,6 +121,12 @@ export const PAGE_META: Record<string, PageMeta> = {
       'Seven-day money-back guarantee on every paid Sync plan, including Believer. Requests processed through Paddle, refunded to your original payment method.',
     path: '/refund'
   },
+  alternativesHub: {
+    title: 'memrynote alternatives — how it compares',
+    description:
+      'See how memrynote compares to Obsidian, Notion, NotePlan, and more — a local-first, end-to-end encrypted notes, tasks, calendar, and journal app with plain Markdown files you own.',
+    path: '/alternatives'
+  },
   obsidianAlternative: {
     title: 'Obsidian alternative — memrynote',
     description:
@@ -277,6 +283,28 @@ export function getWebsiteJsonLd(): string {
     '@context': 'https://schema.org',
     ...getWebsiteJsonLdObject(),
     '@type': 'WebSite'
+  })
+}
+
+// Per-page graph for competitor alternative pages: the product (SoftwareApplication) plus
+// the page's named-competitor FAQ. Google retired FAQ rich results (May 2026), but this
+// still feeds AI-search citation (AI Overviews / ChatGPT / Perplexity) on high-intent pages.
+export function getAlternativeJsonLd(
+  faqs: readonly { question: string; answer: string }[]
+): string {
+  return JSON.stringify({
+    '@context': 'https://schema.org',
+    '@graph': [
+      getSoftwareApplicationJsonLdObject(),
+      {
+        '@type': 'FAQPage',
+        mainEntity: faqs.map((faq) => ({
+          '@type': 'Question',
+          name: faq.question,
+          acceptedAnswer: { '@type': 'Answer', text: faq.answer }
+        }))
+      }
+    ]
   })
 }
 

@@ -152,6 +152,7 @@ export const FOOTER_LINKS = {
     { label: 'Security', href: '/security' }
   ],
   compare: [
+    { label: 'All alternatives', href: '/alternatives' },
     { label: 'Obsidian alternative', href: '/obsidian-alternative' },
     { label: 'Notion alternative', href: '/notion-alternative' },
     { label: 'NotePlan alternative', href: '/noteplan-alternative' }
