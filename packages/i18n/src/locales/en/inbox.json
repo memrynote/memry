@@ -200,6 +200,11 @@
     "voiceTitlePlaceholder": "Name this voice memo...",
     "fileTo": "File to",
     "ai": "AI",
+    "match": {
+      "strong": "Strong match",
+      "likely": "Likely match",
+      "weak": "Weak match"
+    },
     "selectFolder": "Select folder",
     "searchOrCreateFolder": "Search or create with /...",
     "suggested": "Suggested",

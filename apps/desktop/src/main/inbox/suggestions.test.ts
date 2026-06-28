@@ -496,4 +496,118 @@ describe('inbox suggestions', () => {
       })
     ])
   })
+
+  // ==========================================================================
+  // Folder-centric scoring (end-to-end through getSuggestions)
+  // ==========================================================================
+  it('ranks a clustered folder above a single-fluke folder end-to-end', async () => {
+    const now = new Date().toISOString()
+    const { rawDb, statement } = createRawDbMock()
+    // 'misc' is the single closest hit; 'recipes' has three solid hits.
+    statement.all.mockReturnValue([
+      { note_id: 'misc-x', distance: 0.2 },
+      { note_id: 'rec-a', distance: 0.3 },
+      { note_id: 'rec-b', distance: 0.3 },
+      { note_id: 'rec-c', distance: 0.3 }
+    ])
+    vi.mocked(getRawIndexDatabase).mockReturnValue(rawDb as never)
+    mockIsModelLoaded.mockReturnValue(true)
+    mockGenerateEmbedding.mockResolvedValue(new Float32Array([0.1, 0.2]))
+
+    testDb.db
+      .insert(inboxItems)
+      .values({
+        id: 'item-pasta',
+        type: 'link',
+        title: 'Dinner',
+        content: 'cook something with tomato',
+        createdAt: now,
+        modifiedAt: now
+      })
+      .run()
+    indexDb.db
+      .insert(noteCache)
+      .values([
+        { id: 'misc-x', path: 'notes/misc/x.md', title: 'X', createdAt: now, modifiedAt: now },
+        { id: 'rec-a', path: 'notes/recipes/a.md', title: 'A', createdAt: now, modifiedAt: now },
+        { id: 'rec-b', path: 'notes/recipes/b.md', title: 'B', createdAt: now, modifiedAt: now },
+        { id: 'rec-c', path: 'notes/recipes/c.md', title: 'C', createdAt: now, modifiedAt: now }
+      ])
+      .run()
+
+    const suggestions = await getSuggestions('item-pasta')
+    const folders = suggestions.filter((s) => s.destination.type === 'folder')
+
+    expect(folders[0]?.destination.path).toBe('recipes')
+    expect(folders.find((f) => f.destination.path === 'misc')?.confidence ?? 1).toBeLessThan(
+      folders[0]!.confidence
+    )
+  })
+
+  it('suggests a folder by name match when there is no embedding hit', async () => {
+    const now = new Date().toISOString()
+    const { rawDb, statement } = createRawDbMock()
+    statement.all.mockReturnValue([])
+    vi.mocked(getRawIndexDatabase).mockReturnValue(rawDb as never)
+    mockIsModelLoaded.mockReturnValue(false)
+    // generateEmbedding unmocked → undefined → no similarity hits (cold start).
+
+    testDb.db
+      .insert(inboxItems)
+      .values({
+        id: 'item-rec',
+        type: 'link',
+        title: 'Recipes',
+        content: 'pasta night ideas',
+        createdAt: now,
+        modifiedAt: now
+      })
+      .run()
+    indexDb.db
+      .insert(noteCache)
+      .values({
+        id: 'r1',
+        path: 'notes/recipes/old.md',
+        title: 'Old',
+        createdAt: now,
+        modifiedAt: now
+      })
+      .run()
+
+    const suggestions = await getSuggestions('item-rec')
+    const folders = suggestions.filter((s) => s.destination.type === 'folder')
+
+    expect(folders.some((f) => f.destination.path === 'recipes')).toBe(true)
+  })
+
+  it('suppresses a folder whose only hit is below the confidence floor', async () => {
+    const now = new Date().toISOString()
+    const { rawDb, statement } = createRawDbMock()
+    // distance 0.9 → similarity 0.55 → lone-hit 0.55*0.7 = 0.385 < 0.45 floor.
+    statement.all.mockReturnValue([{ note_id: 'w1', distance: 0.9 }])
+    vi.mocked(getRawIndexDatabase).mockReturnValue(rawDb as never)
+    mockIsModelLoaded.mockReturnValue(true)
+    mockGenerateEmbedding.mockResolvedValue(new Float32Array([0.1, 0.2]))
+
+    testDb.db
+      .insert(inboxItems)
+      .values({
+        id: 'item-weak',
+        type: 'link',
+        title: 'Zzz',
+        content: 'unrelated musings here',
+        createdAt: now,
+        modifiedAt: now
+      })
+      .run()
+    indexDb.db
+      .insert(noteCache)
+      .values({ id: 'w1', path: 'notes/qqq/w.md', title: 'W', createdAt: now, modifiedAt: now })
+      .run()
+
+    const suggestions = await getSuggestions('item-weak')
+    const folders = suggestions.filter((s) => s.destination.type === 'folder')
+
+    expect(folders.find((f) => f.destination.path === 'qqq')).toBeUndefined()
+  })
 })
