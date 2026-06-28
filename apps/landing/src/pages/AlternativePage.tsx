@@ -184,20 +184,6 @@ function AlternativePage({ config }: { config: AlternativeConfig }) {
         </Container>
       </section>
 
-      <section className="py-16 zone-transition">
-        <Container size="md">
-          <motion.div
-            {...REVEAL}
-            className="mx-auto max-w-3xl rounded-sm border border-ink/10 bg-paper-alt/50 p-8"
-          >
-            <h2 className="font-serif text-2xl text-ink">
-              When {config.competitor} is the better choice
-            </h2>
-            <p className="mt-4 text-lg leading-relaxed text-muted">{config.whenCompetitorWins}</p>
-          </motion.div>
-        </Container>
-      </section>
-
       <section className="py-16">
         <Container size="md">
           <motion.div {...REVEAL} className="mx-auto max-w-3xl">

@@ -34,7 +34,6 @@ describe('competitor alternative pages', () => {
       assert.ok(alt.faqs.length >= 3, `${alt.competitor}: needs >= 3 FAQs`)
       assert.ok(alt.pricing.memry, `${alt.competitor}: pricing.memry required`)
       assert.ok(alt.pricing.competitor, `${alt.competitor}: pricing.competitor required`)
-      assert.ok(alt.whenCompetitorWins, `${alt.competitor}: whenCompetitorWins required`)
       assert.ok(alt.migration.steps.length >= 1, `${alt.competitor}: needs >= 1 migration step`)
     }
   })

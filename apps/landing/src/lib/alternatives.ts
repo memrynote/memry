@@ -27,8 +27,6 @@ export type AlternativeConfig = {
   rows: readonly AltRow[]
   pricing: { memry: string; competitor: string }
   reasons: readonly { title: string; body: string }[]
-  // Honest "when the competitor is the better pick" paragraph — builds trust, lifts conversion.
-  whenCompetitorWins: string
   // One-click migration via an in-app importer; null when memrynote opens the files directly.
   migration: { importer: string | null; steps: readonly string[] }
   faqs: readonly { question: string; answer: string }[]
@@ -98,8 +96,6 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       memry: 'Free, local-first forever. Encrypted sync from $5/mo.',
       competitor: 'Free for personal use. Obsidian Sync from ~$4/mo; commercial use $50/yr.'
     },
-    whenCompetitorWins:
-      'Obsidian is the better pick if you want the largest plugin ecosystem in note-taking, a mature mobile app today, or a very specific community plugin for a niche workflow. memrynote trades that breadth for a complete, built-in workspace you do not have to assemble yourself.',
     migration: {
       importer: null,
       steps: [
@@ -191,8 +187,6 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       memry: 'Free, local-first forever. Encrypted sync from $5/mo.',
       competitor: 'Free personal tier; paid plans from $10/user/mo.'
     },
-    whenCompetitorWins:
-      'Notion is the better pick for teams that need real-time multiplayer editing, relational databases, and shared wikis with many collaborators. memrynote is built for a private, single-person second brain — if your priority is collaboration over privacy and ownership, Notion fits better.',
     migration: {
       importer: 'Notion',
       steps: [
@@ -284,8 +278,6 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       memry: 'Free, local-first forever. Encrypted sync from $5/mo.',
       competitor: 'Subscription from ~$7/mo (no free tier for full features).'
     },
-    whenCompetitorWins:
-      'NotePlan is the better pick if you live entirely inside the Apple ecosystem and want deep Apple Calendar and Reminders integration plus a polished iPhone and iPad app today. memrynote’s advantage is cross-platform reach and encrypted, platform-independent sync.',
     migration: {
       importer: null,
       steps: [
@@ -377,8 +369,6 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       memry: 'Free, local-first forever. Encrypted sync from $5/mo.',
       competitor: 'Free tier available; Pro ~$9.99/mo (as of mid-2026).'
     },
-    whenCompetitorWins:
-      'Capacities is the better pick if you want a mobile app on iOS and Android today, a flexible object-type system for modelling people, books, and custom knowledge types, or a built-in AI writing assistant. Its visual, database-style interface suits users who prefer organising knowledge as typed objects rather than plain-text notes.',
     migration: {
       importer: null,
       steps: [
@@ -470,8 +460,6 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       memry: 'Free, local-first forever. Encrypted sync from $5/mo.',
       competitor: 'Free (50 notes, 1 device); paid plans from ~$8.25/mo annually (as of mid-2026).'
     },
-    whenCompetitorWins:
-      'Evernote is the better pick if you need polished iOS and Android apps with offline access, a best-in-class web clipper, or OCR that searches text inside images and scans. It also wins on ecosystem integrations and email-to-note capture. memrynote’s advantages are privacy, ownership, and a broader built-in workspace; it does not yet have a mobile app.',
     migration: {
       importer: 'Evernote',
       steps: [
@@ -564,8 +552,6 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       competitor:
         'Free and open source for local use; Logseq Sync ~$5/mo (E2E encrypted), as of mid-2026.'
     },
-    whenCompetitorWins:
-      'Logseq is the better pick if the outliner block model is how you naturally think — every bullet a first-class node with its own properties and back-references. It is entirely free for local use with no paid tier for core features, has a large community plugin ecosystem, and ships a mobile app. If block-graph depth and zero cost matter most, Logseq wins.',
     migration: {
       importer: null,
       steps: [
@@ -657,8 +643,6 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       memry: 'Free, local-first forever. Encrypted sync from $5/mo.',
       competitor: 'Free plan (~1 GB network storage); paid plans from ~$4/mo (as of mid-2026).'
     },
-    whenCompetitorWins:
-      'Anytype is the better pick if you want iOS and Android apps today, a rich object and relational model for building personal databases, or peer-to-peer sync that routes data directly between your devices without a central server. memrynote has no mobile app yet and is single-user only, so Anytype wins if mobile access or collaboration is a priority.',
     migration: {
       importer: null,
       steps: [
@@ -751,8 +735,6 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       competitor:
         'Free with any Apple device; iCloud+ storage from $0.99/mo beyond the 5 GB free tier.'
     },
-    whenCompetitorWins:
-      'Apple Notes is the better pick if you live entirely within the Apple ecosystem and want tight iPhone, iPad, and Apple Pencil integration with a polished mobile app today. It is also free with any Apple device. memrynote’s advantage is cross-platform reach, plain-file ownership, a real task system, and encrypted sync that does not depend on iCloud.',
     migration: {
       importer: 'Apple Notes',
       steps: [
@@ -844,8 +826,6 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       memry: 'Free, local-first forever. Encrypted sync from $5/mo.',
       competitor: 'Free tier; Bear Pro ~$2.99/mo or ~$29.99/yr (as of mid-2026).'
     },
-    whenCompetitorWins:
-      'Bear is the better pick if you want a beautiful Apple-native writing experience with iPhone and iPad apps today, tight Apple ecosystem integration, and a focused, distraction-free editor. memrynote’s advantages are cross-platform reach, a built-in task and calendar workspace, plain-file ownership, and end-to-end encrypted sync; it has no mobile app yet.',
     migration: {
       importer: 'Bear',
       steps: [
@@ -937,8 +917,6 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       memry: 'Free, local-first forever. Encrypted sync from $5/mo.',
       competitor: '~$15/mo or ~$165/yr; no ongoing free tier (as of mid-2026).'
     },
-    whenCompetitorWins:
-      'Roam Research is the better pick for power users who live in block references, datalog queries, and dense networked thought, or who need real-time collaboration on a shared graph. Its block-level granularity and query engine go deeper than memrynote’s document-and-wiki-link model. If that depth is the point, Roam wins.',
     migration: {
       importer: 'Roam',
       steps: [
@@ -1030,8 +1008,6 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       memry: 'Free, local-first forever. Encrypted sync from $5/mo.',
       competitor: 'Free with a Microsoft account (uses OneDrive storage).'
     },
-    whenCompetitorWins:
-      'OneNote is the better pick if you want a free freeform canvas with ink and handwriting, mobile apps on every platform, real-time collaboration, or deep Microsoft 365 integration. memrynote’s advantages are Markdown ownership, zero-knowledge privacy, and an integrated notes-tasks-calendar-journal workflow; it has no mobile app or freeform canvas yet.',
     migration: {
       importer: null,
       steps: [
@@ -1123,8 +1099,6 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       memry: 'Free, local-first forever. Encrypted sync from $5/mo.',
       competitor: 'Free up to 50 notes; Premium ~$1.99/mo or ~$39.99 lifetime (as of mid-2026).'
     },
-    whenCompetitorWins:
-      'UpNote is the better choice if you need iOS or Android apps — memrynote is desktop-only for now. Its lifetime plan is one of the cheapest in the category, and its sync is fast and effortless across all platforms with no configuration.',
     migration: {
       importer: null,
       steps: [
@@ -1224,8 +1198,6 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       memry: 'Free, local-first forever. Encrypted sync from $5/mo.',
       competitor: 'App is free and open source; Joplin Cloud from ~€3/mo (as of mid-2026).'
     },
-    whenCompetitorWins:
-      'Joplin is the better choice if you need mobile apps — it has polished Android and iOS clients while memrynote is desktop-only for now. It also wins if you want to sync notes to Dropbox, OneDrive, or your own WebDAV or Nextcloud server, or if you rely on its large plugin ecosystem and long-established community.',
     migration: {
       importer: null,
       steps: [
@@ -1317,8 +1289,6 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       memry: 'Free, local-first forever. Encrypted sync from $5/mo.',
       competitor: 'Free (uses your Google account storage).'
     },
-    whenCompetitorWins:
-      'Google Keep is the better pick if you want frictionless mobile capture, instant sync across phones and the web, real-time sharing with others, or tight integration with Gmail and Google Calendar — all for free. memrynote’s advantages are privacy, ownership, and a real notes-tasks-calendar-journal workspace; it has no mobile app yet.',
     migration: {
       importer: 'Google Keep',
       steps: [
