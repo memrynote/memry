@@ -402,6 +402,10 @@ export const SettingsChannels = {
     GET_CALENDAR_SETTINGS: 'settings:getCalendarSettings',
     /** Update calendar preferences (partial merge) */
     SET_CALENDAR_SETTINGS: 'settings:setCalendarSettings',
+    /** Get feature module toggles (home/inbox/journal/tasks/calendar/graph) */
+    GET_FEATURES_SETTINGS: 'settings:getFeaturesSettings',
+    /** Update feature module toggles (partial merge) */
+    SET_FEATURES_SETTINGS: 'settings:setFeaturesSettings',
     /** Store API key in OS keychain (never in DB) */
     SET_API_KEY: 'settings:setApiKey',
     /** Test API provider connection */
