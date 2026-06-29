@@ -14,6 +14,7 @@
     "./cbor-ordering": "./src/cbor-ordering.ts",
     "./crypto": "./src/crypto.ts",
     "./feedback-api": "./src/feedback-api.ts",
+    "./feature-flags": "./src/feature-flags.ts",
     "./folder-view-api": "./src/folder-view-api.ts",
     "./graph-api": "./src/graph-api.ts",
     "./inbox-api": "./src/inbox-api.ts",

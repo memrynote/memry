@@ -195,6 +195,30 @@ export const CALENDAR_GOOGLE_SETTINGS_DEFAULTS: CalendarGoogleSettings = {
 }
 
 // ============================================================================
+// Features Settings (optional module toggles)
+// ============================================================================
+
+export const FeaturesSettingsSchema = z.object({
+  home: z.boolean(),
+  inbox: z.boolean(),
+  journal: z.boolean(),
+  tasks: z.boolean(),
+  calendar: z.boolean(),
+  graph: z.boolean()
+})
+
+export type FeaturesSettings = z.infer<typeof FeaturesSettingsSchema>
+
+export const FEATURES_SETTINGS_DEFAULTS: FeaturesSettings = {
+  home: true,
+  inbox: true,
+  journal: true,
+  tasks: true,
+  calendar: true,
+  graph: true
+}
+
+// ============================================================================
 // Backup Settings
 // ============================================================================
 

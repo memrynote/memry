@@ -9,7 +9,7 @@
 In Settings → Templates today:
 
 1. **No way to see inside a template.** Built-in rows show only icon + name + description and a 🔒; there is no click handler and no menu, so users cannot view the actual content/properties. Custom rows only expose Edit/Duplicate/Delete.
-2. **"New" opens the editor tab *behind* the still-open settings modal.** `handleCreateTemplate` calls `openTab(...)` but never closes the settings `Dialog`, so the new `template-editor` tab is hidden behind the modal. `handleEditTemplate` has the same problem.
+2. **"New" opens the editor tab _behind_ the still-open settings modal.** `handleCreateTemplate` calls `openTab(...)` but never closes the settings `Dialog`, so the new `template-editor` tab is hidden behind the modal. `handleEditTemplate` has the same problem.
 
 ## Goal
 

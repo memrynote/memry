@@ -3,6 +3,7 @@ import type {
   CalendarGoogleSettings,
   CalendarSettings,
   EditorSettings,
+  FeaturesSettings,
   GeneralSettings,
   KeyboardShortcuts,
   SyncSettings,
@@ -291,6 +292,13 @@ export const settingsRpc = defineDomain({
     }),
     setCalendarSettings: defineMethod<(settings: Partial<CalendarSettings>) => SuccessResponse>({
       channel: SettingsChannels.invoke.SET_CALENDAR_SETTINGS,
+      params: ['settings']
+    }),
+    getFeaturesSettings: defineMethod<() => Promise<FeaturesSettings>>({
+      channel: SettingsChannels.invoke.GET_FEATURES_SETTINGS
+    }),
+    setFeaturesSettings: defineMethod<(settings: Partial<FeaturesSettings>) => SuccessResponse>({
+      channel: SettingsChannels.invoke.SET_FEATURES_SETTINGS,
       params: ['settings']
     }),
     registerGlobalCapture: defineMethod<

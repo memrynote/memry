@@ -28,6 +28,7 @@ import {
 import { buildDayDots } from '@/components/calendar/day-dots'
 import { formatDateToISO, parseISODate, getTodayString } from '@/lib/journal-utils'
 import { useT } from '@memry/i18n/renderer'
+import { useFeatureFlags } from '@/hooks/use-feature-flags'
 
 interface GlobalDayPanelProps {
   className?: string
@@ -122,6 +123,7 @@ function GlobalDayPanelContent({ width }: { width: number }): React.JSX.Element 
   const activeTab = useActiveTab()
   const { setAnchorDate } = useCalendarView()
   const { settings: calendarPrefs } = useCalendarPreferences()
+  const { isEnabled } = useFeatureFlags()
   const isCalendarTabActive = activeTab?.type === 'calendar'
 
   const [hoveredEvent, setHoveredEvent] = useState<{ date: string; color: string | null }>({
@@ -169,7 +171,10 @@ function GlobalDayPanelContent({ width }: { width: number }): React.JSX.Element 
     return map
   }, [heatmapData])
 
-  const dayDotsData = useMemo(() => buildDayDots(eventItems), [eventItems])
+  const dayDotsData = useMemo(
+    () => (isEnabled('calendar') ? buildDayDots(eventItems) : {}),
+    [isEnabled, eventItems]
+  )
 
   const navigateToJournal = useCallback(
     (date: string) => {

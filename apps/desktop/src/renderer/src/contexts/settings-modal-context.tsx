@@ -19,6 +19,7 @@ export type SettingsSection =
   | 'shortcuts'
   | 'command-line'
   | 'account'
+  | 'features'
 
 export type SettingsFocusTarget = 'voice-local-model'
 

@@ -15,7 +15,8 @@ import {
   User,
   CalendarDays,
   Terminal,
-  Import
+  Import,
+  LayoutGrid
 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { GeneralSettings } from './settings/general-section'
@@ -34,11 +35,14 @@ import { ShortcutsSettings } from './settings/shortcuts-section'
 import { AccountSettings } from './settings/account-section'
 import { CommandLineSettings } from './settings/command-line-section'
 import { ImportSettings } from './settings/import-section'
+import { FeaturesSection } from './settings/features-section'
 import { useSettingsModal } from '@/contexts/settings-modal-context'
+import { useFeatureFlags } from '@/hooks/use-feature-flags'
 import { useT } from '@memry/i18n/renderer'
 
 export function SettingsPage() {
   const { activeSection, focusTarget, focusRequestId, setActiveSection } = useSettingsModal()
+  const { flags } = useFeatureFlags()
   const { t } = useT('settings')
   const isAssistantSection =
     activeSection === 'ai' || activeSection === 'agent-providers' || activeSection === 'agent-mcp'
@@ -77,19 +81,28 @@ export function SettingsPage() {
             icon={<BookOpen className="w-3.5 h-3.5" />}
             label={t('page.nav.items.journal')}
             isActive={activeSection === 'journal'}
+            disabled={!flags.journal}
             onClick={() => setActiveSection('journal')}
           />
           <SettingsNavItem
             icon={<ListChecks className="w-3.5 h-3.5" />}
             label={t('page.nav.items.tasks')}
             isActive={activeSection === 'tasks'}
+            disabled={!flags.tasks}
             onClick={() => setActiveSection('tasks')}
           />
           <SettingsNavItem
             icon={<CalendarDays className="w-3.5 h-3.5" />}
             label={t('page.nav.items.calendar')}
             isActive={activeSection === 'calendar'}
+            disabled={!flags.calendar}
             onClick={() => setActiveSection('calendar')}
+          />
+          <SettingsNavItem
+            icon={<LayoutGrid className="w-3.5 h-3.5" />}
+            label={t('page.nav.items.features')}
+            isActive={activeSection === 'features'}
+            onClick={() => setActiveSection('features')}
           />
         </SettingsNavGroup>
 
@@ -182,6 +195,7 @@ export function SettingsPage() {
             {activeSection === 'shortcuts' && <ShortcutsSettings />}
             {activeSection === 'command-line' && <CommandLineSettings />}
             {activeSection === 'account' && <AccountSettings />}
+            {activeSection === 'features' && <FeaturesSection />}
           </div>
         </ScrollArea>
       </div>
@@ -205,23 +219,34 @@ interface SettingsNavItemProps {
   label: string
   isActive: boolean
   onClick: () => void
+  disabled?: boolean
 }
 
-function SettingsNavItem({ icon, label, isActive, onClick }: SettingsNavItemProps) {
+function SettingsNavItem({
+  icon,
+  label,
+  isActive,
+  onClick,
+  disabled = false
+}: SettingsNavItemProps) {
   return (
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
+      aria-disabled={disabled}
       className={cn(
         'relative flex items-center h-7 shrink-0 rounded-[5px] px-3 transition-colors',
-        isActive
-          ? 'bg-sidebar-accent text-foreground font-medium'
-          : 'text-muted-foreground hover:bg-sidebar-accent'
+        disabled
+          ? 'opacity-50 text-muted-foreground cursor-not-allowed'
+          : isActive
+            ? 'bg-sidebar-accent text-foreground font-medium'
+            : 'text-muted-foreground hover:bg-sidebar-accent'
       )}
     >
       <span className="shrink-0 text-muted-foreground">{icon}</span>
       <span className="ps-2 text-[13px]/4 font-medium">{label}</span>
-      {isActive && (
+      {isActive && !disabled && (
         <span className="absolute start-0 top-1/2 -translate-y-1/2 w-[3px] h-4 bg-[var(--tint)] rounded-e-sm" />
       )}
     </button>
