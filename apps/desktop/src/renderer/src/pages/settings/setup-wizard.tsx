@@ -16,6 +16,7 @@ import { LinkingPending } from '@/components/sync/linking-pending'
 import { VaultPickerStep } from '@/components/sync/vault-picker-step'
 
 const MEMRY_ICON_SRC = new URL('../../../../../build/icon.png', import.meta.url).href
+const MEMRY_PRICING_URL = 'https://memrynote.com/pricing'
 
 const STEP_KEYS = ['setup.steps.signIn', 'setup.steps.verify', 'setup.steps.link'] as const
 const STEP_MAP: Record<WizardStep, number> = {
@@ -237,10 +238,6 @@ export function SetupWizard(): React.JSX.Element {
             <div className="text-[13px]/4.5 text-muted-foreground">
               {t('setup.signIn.description')}
             </div>
-            <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-[11px]/4 font-medium text-muted-foreground">
-              <Lock className="size-3" aria-hidden="true" />
-              {t('account.identity.encrypted')}
-            </span>
           </div>
 
           <EmailEntryForm onSubmit={handleEmailSubmit} isLoading={isLoading} error={wizardError} />
@@ -261,6 +258,19 @@ export function SetupWizard(): React.JSX.Element {
             isLoading={isLoading}
             error={wizardError}
           />
+
+          <p className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1 pt-1 text-[11px]/4 text-muted-foreground/70">
+            <Lock className="size-3 shrink-0" aria-hidden="true" />
+            {t('setup.signIn.paidPlan')}
+            <a
+              href={MEMRY_PRICING_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-[var(--tint)] underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              {t('setup.signIn.seePlans')}
+            </a>
+          </p>
         </div>
       )}
 

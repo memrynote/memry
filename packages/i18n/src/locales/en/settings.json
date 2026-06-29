@@ -522,6 +522,8 @@
       "title": "Set up Sync",
       "description": "Create an account to sync your data across devices with end-to-end encryption.",
       "or": "or",
+      "paidPlan": "Sync is a paid plan.",
+      "seePlans": "See plans",
       "errors": {
         "sendCode": "Failed to send code",
         "googleStart": "Failed to start Google sign-in"

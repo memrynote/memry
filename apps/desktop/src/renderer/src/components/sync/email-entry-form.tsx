@@ -45,10 +45,7 @@ export function EmailEntryForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <div className="space-y-2.5">
-        <Label
-          htmlFor="email"
-          className="uppercase tracking-[0.05em] text-[11px]/3.5 font-medium text-muted-foreground"
-        >
+        <Label htmlFor="email" className="sr-only">
           {t('setup.email.label')}
         </Label>
         <Input
@@ -74,7 +71,7 @@ export function EmailEntryForm({
       </div>
       <Button
         type="submit"
-        className="w-full h-9 bg-background text-foreground border border-border hover:bg-accent"
+        className="w-full h-9 bg-[var(--tint)] text-[var(--tint-foreground)] shadow-sm hover:bg-[var(--tint-hover)]"
         disabled={isLoading || !email.trim()}
       >
         {isLoading ? (
