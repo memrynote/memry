@@ -19,6 +19,7 @@ vi.mock('driver.js', () => ({
 vi.mock('driver.js/dist/driver.css', () => ({}))
 vi.mock('../onboarding/tour.css', () => ({}))
 vi.mock('@memry/i18n/renderer', () => ({ useT: () => ({ t: (k: string) => k }) }))
+vi.mock('@/contexts/day-panel-context', () => ({ useDayPanel: () => ({ open: vi.fn() }) }))
 
 import { useFirstRunTour, TOUR_KEY } from './use-first-run-tour'
 
@@ -36,6 +37,11 @@ describe('useFirstRunTour', () => {
         removeEventListener: vi.fn()
       })
     )
+    // run the deferred drive synchronously
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
+      cb(0)
+      return 0
+    })
   })
 
   it('starts the tour when the flag is unset', () => {

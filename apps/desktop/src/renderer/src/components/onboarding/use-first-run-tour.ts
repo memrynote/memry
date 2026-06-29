@@ -3,6 +3,7 @@ import { driver, type DriveStep } from 'driver.js'
 import 'driver.js/dist/driver.css'
 import './tour.css'
 import { useT } from '@memry/i18n/renderer'
+import { useDayPanel } from '@/contexts/day-panel-context'
 
 export const TOUR_KEY = 'memry:onboarding:tour:v1'
 
@@ -16,12 +17,17 @@ export const TOUR_KEY = 'memry:onboarding:tour:v1'
  */
 export function useFirstRunTour(): void {
   const { t } = useT('common')
+  const { open: openDayPanel } = useDayPanel()
   const startedRef = useRef(false)
 
   useEffect(() => {
     if (startedRef.current) return
     if (localStorage.getItem(TOUR_KEY)) return
     startedRef.current = true
+
+    // Open the right Day Panel so its calendar + Agent steps have live targets,
+    // even for returning users whose saved layout has it closed.
+    openDayPanel()
 
     const prefersReducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches
 
@@ -137,21 +143,25 @@ export function useFirstRunTour(): void {
       }
     ]
 
-    const visibleSteps = steps.filter(
-      (step) => typeof step.element !== 'string' || document.querySelector(step.element) !== null
-    )
+    // Defer one frame so the just-opened Day Panel has mounted before we test
+    // for each step's target element.
+    requestAnimationFrame(() => {
+      const visibleSteps = steps.filter(
+        (step) => typeof step.element !== 'string' || document.querySelector(step.element) !== null
+      )
 
-    const tour = driver({
-      showProgress: true,
-      animate: !prefersReducedMotion,
-      allowClose: true,
-      steps: visibleSteps,
-      onDestroyed: () => {
-        // ponytail: localStorage, app-wide once; move to a per-vault setting if we ever need to re-show per vault
-        localStorage.setItem(TOUR_KEY, '1')
-      }
+      const tour = driver({
+        showProgress: true,
+        animate: !prefersReducedMotion,
+        allowClose: true,
+        steps: visibleSteps,
+        onDestroyed: () => {
+          // ponytail: localStorage, app-wide once; move to a per-vault setting if we ever need to re-show per vault
+          localStorage.setItem(TOUR_KEY, '1')
+        }
+      })
+
+      tour.drive()
     })
-
-    tour.drive()
-  }, [t])
+  }, [t, openDayPanel])
 }
