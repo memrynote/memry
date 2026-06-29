@@ -97,6 +97,7 @@ export function SidebarTabs({
           {aiEnabled && (
             <SidebarTabButton
               active={resolvedActive === 'agent'}
+              dataTour="rsb-agent"
               label={agentTabLabel}
               onClick={() => {
                 window.dispatchEvent(new Event('memry:agent-surface-opened'))
@@ -289,17 +290,20 @@ function SidebarTabButton({
   active,
   label,
   onClick,
-  children
+  children,
+  dataTour
 }: {
   active: boolean
   label: string
   onClick: () => void
   children: ReactNode
+  dataTour?: string
 }): React.JSX.Element {
   return (
     <button
       type="button"
       role="tab"
+      data-tour={dataTour}
       aria-label={label}
       aria-selected={active}
       title={label}

@@ -2,10 +2,11 @@ import { renderHook } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const driveSpy = vi.fn()
-let capturedConfig: { onDestroyed?: () => void } | undefined
+type TourConfig = { onDestroyed?: () => void; steps?: { element?: string }[] }
+let capturedConfig: TourConfig | undefined
 
 vi.mock('driver.js', () => ({
-  driver: (config: { onDestroyed?: () => void }) => {
+  driver: (config: TourConfig) => {
     capturedConfig = config
     return { drive: driveSpy }
   }
@@ -48,5 +49,19 @@ describe('useFirstRunTour', () => {
     localStorage.setItem(TOUR_KEY, '1')
     renderHook(() => useFirstRunTour())
     expect(driveSpy).not.toHaveBeenCalled()
+  })
+
+  it('keeps only the welcome step and steps whose target is mounted', () => {
+    document.body.innerHTML = '<button data-tour="new-note">new</button>'
+    renderHook(() => useFirstRunTour())
+
+    const steps = capturedConfig?.steps ?? []
+    // welcome step has no element; new-note is mounted; everything else is absent
+    expect(steps.some((s) => s.element === undefined)).toBe(true)
+    expect(steps.some((s) => s.element === '[data-tour="new-note"]')).toBe(true)
+    expect(steps.some((s) => s.element === '[data-tour="nav-inbox"]')).toBe(false)
+    expect(steps).toHaveLength(2)
+
+    document.body.innerHTML = ''
   })
 })

@@ -287,6 +287,7 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
       {/* SCROLLABLE SECTION - Collections, Bookmarks, Tags — entire area is drop target */}
       <div
         ref={sidebarScrollRef}
+        data-tour="sidebar-collections"
         className="relative flex-1 min-h-0 overflow-y-auto scrollbar-thin group-data-[collapsible=icon]:overflow-hidden"
         {...dropHandlers}
       >

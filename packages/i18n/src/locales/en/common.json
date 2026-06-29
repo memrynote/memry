@@ -579,28 +579,48 @@
   },
   "onboarding": {
     "welcome": {
-      "title": "Welcome to Memry",
+      "title": "Welcome to MemryNote",
       "body": "Your private, offline-first home. Notes are end-to-end encrypted — they never leave your device unencrypted."
     },
     "newNote": {
       "title": "Create your first note",
       "body": "Start here. Everything you write is stored locally, first."
     },
-    "sidebarNav": {
-      "title": "Find your way around",
-      "body": "Notes, Inbox, Calendar, and Tasks all live in this sidebar."
-    },
     "inbox": {
       "title": "Capture anything",
       "body": "Drop quick thoughts into the Inbox — it helps you file them into the right folder."
+    },
+    "journal": {
+      "title": "Keep a journal",
+      "body": "Open the Journal for date-based notes and a log of your day."
     },
     "calendar": {
       "title": "See your time",
       "body": "Your notes and tasks, laid out on a timeline."
     },
-    "settings": {
-      "title": "Sync and make it yours",
-      "body": "Turn on end-to-end encrypted sync and pick your theme here."
+    "tasks": {
+      "title": "Track your tasks",
+      "body": "Manage to-dos, due dates, and projects under Tasks."
+    },
+    "collections": {
+      "title": "Collections, bookmarks & tags",
+      "body": "Organize notes into folders, pin bookmarks, and browse by tag — all here."
+    },
+    "dayPanel": {
+      "title": "Your day, beside your work",
+      "body": "The side panel keeps a calendar and your day view next to whatever you're reading."
+    },
+    "agentChat": {
+      "title": "Chat with the AI agent",
+      "body": "Switch to the Agent tab to ask MemryNote's assistant about your vault."
+    },
+    "sync": {
+      "title": "Private, encrypted sync",
+      "body": "Turn on end-to-end encrypted sync to keep every device in step."
+    },
+    "feedback": {
+      "title": "Tell us what you think",
+      "body": "Send feedback straight to the team from here."
     }
   }
 }

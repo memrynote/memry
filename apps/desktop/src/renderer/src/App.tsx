@@ -486,7 +486,7 @@ function App(): React.JSX.Element {
         projects={projectsWithCounts}
         getOrderedTasks={taskOrder.getOrderedTasks}
       >
-        <DayPanelProvider>
+        <DayPanelProvider defaultOpen={true}>
           <CalendarViewProvider>
             <AISettingsProvider>
               <AIInlineProvider>
