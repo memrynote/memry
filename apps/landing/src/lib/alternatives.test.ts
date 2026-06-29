@@ -7,15 +7,22 @@ import { FOOTER_LINKS } from './constants.ts'
 import { buildLlmsTxt } from './crawl-files.ts'
 
 describe('competitor alternative pages', () => {
-  it('wires every config to PAGE_META, a clean URL, and the footer', () => {
+  it('wires every config to PAGE_META and a clean URL, and links the hub from the footer', () => {
+    const altPaths = new Set(ALTERNATIVES.map((alt) => PAGE_META[alt.pageKey].path))
     for (const alt of ALTERNATIVES) {
       const meta = PAGE_META[alt.pageKey]
       assert.ok(meta, `PAGE_META missing for ${alt.pageKey}`)
       assert.ok(meta.path.endsWith('-alternative'), `${meta.path} should end with -alternative`)
-      assert.ok(
-        FOOTER_LINKS.compare.some((link) => link.href === meta.path),
-        `footer compare link missing for ${meta.path}`
-      )
+    }
+    // Footer carries the hub + a marquee subset, not all 14; the long tail lives on /alternatives.
+    assert.ok(
+      FOOTER_LINKS.compare.some((link) => link.href === '/alternatives'),
+      'footer compare must link the /alternatives hub'
+    )
+    for (const link of FOOTER_LINKS.compare) {
+      if (link.href.endsWith('-alternative')) {
+        assert.ok(altPaths.has(link.href), `footer marquee link has no page: ${link.href}`)
+      }
     }
   })
 

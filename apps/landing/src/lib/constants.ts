@@ -151,22 +151,13 @@ export const FOOTER_LINKS = {
     { label: 'Changelog', href: '/changelog' },
     { label: 'Security', href: '/security' }
   ],
+  // Footer shows only marquee competitors; the long tail lives on the /alternatives hub.
   compare: [
-    { label: 'All alternatives', href: '/alternatives' },
     { label: 'Obsidian alternative', href: '/obsidian-alternative' },
     { label: 'Notion alternative', href: '/notion-alternative' },
-    { label: 'NotePlan alternative', href: '/noteplan-alternative' },
-    { label: 'Capacities alternative', href: '/capacities-alternative' },
     { label: 'Evernote alternative', href: '/evernote-alternative' },
-    { label: 'Logseq alternative', href: '/logseq-alternative' },
-    { label: 'Anytype alternative', href: '/anytype-alternative' },
     { label: 'Apple Notes alternative', href: '/apple-notes-alternative' },
-    { label: 'Bear alternative', href: '/bear-alternative' },
-    { label: 'Roam Research alternative', href: '/roam-research-alternative' },
-    { label: 'OneNote alternative', href: '/onenote-alternative' },
-    { label: 'UpNote alternative', href: '/upnote-alternative' },
-    { label: 'Joplin alternative', href: '/joplin-alternative' },
-    { label: 'Google Keep alternative', href: '/google-keep-alternative' }
+    { label: 'All alternatives', href: '/alternatives' }
   ],
   resources: [
     { label: 'Docs', href: DOCS_URL },
