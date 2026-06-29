@@ -3,7 +3,8 @@ import { electronAPI } from '@electron-toolkit/preload'
 import {
   AppChannels,
   LocaleChannels,
-  type AppNavigationCommandEvent
+  type AppNavigationCommandEvent,
+  type AppMenuCommandEvent
 } from '@memry/contracts/ipc-channels'
 import type { Locale, LocaleApi } from '@memry/contracts/locale-api'
 import { createLogger } from './lib/logger'
@@ -117,6 +118,8 @@ export const api = {
 
   onAppNavigationCommand: (callback: (command: AppNavigationCommandEvent) => void) =>
     subscribe<AppNavigationCommandEvent>(AppChannels.events.NAVIGATION_COMMAND, callback),
+  onMenuCommand: (callback: (event: AppMenuCommandEvent) => void) =>
+    subscribe<AppMenuCommandEvent>(AppChannels.events.MENU_COMMAND, callback),
   onLocaleChanged: (callback: (locale: Locale) => void) =>
     subscribe<Locale>(LocaleChannels.Changed, callback),
   onMainInvoke: (callback: (payload: MainInvokePayload) => void | Promise<void>) =>
