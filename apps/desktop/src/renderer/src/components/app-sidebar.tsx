@@ -476,7 +476,7 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
           items={mainNav}
           isActive={isActiveItem}
           onNavClick={handleNavClick}
-          isDisabled={(page) => !isEnabled(page)}
+          isDisabled={(page) => page !== 'home' && !isEnabled(page)}
           inboxCount={inboxCount}
           todayTasksCount={todayTasksCount}
         />

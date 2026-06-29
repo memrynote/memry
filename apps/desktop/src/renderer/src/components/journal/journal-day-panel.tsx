@@ -26,6 +26,7 @@ import { createLogger } from '@/lib/logger'
 import { getEventBaseColor } from '@/lib/event-type-colors'
 import { formatTimeOfDay, type ClockFormat } from '@/lib/time-format'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
+import { useFeatureFlags } from '@/hooks/use-feature-flags'
 import { useT } from '@memry/i18n/renderer'
 
 const log = createLogger('JournalDayPanel')
@@ -248,6 +249,7 @@ interface JournalDayPanelProps {
 
 export function JournalDayPanel({ date, className, onHoverColor }: JournalDayPanelProps) {
   const { t, i18n } = useT('journal')
+  const { isEnabled } = useFeatureFlags()
   const [isCollapsed, setIsCollapsed] = useState(false)
   const { projects } = useTasksContext()
   const { openTab } = useTabActions()
@@ -299,7 +301,8 @@ export function JournalDayPanel({ date, className, onHoverColor }: JournalDayPan
         log.error('Failed to fetch tasks for date', date, err)
         return []
       }
-    }
+    },
+    enabled: isEnabled('tasks')
   })
 
   const { data: overdueCount = 0 } = useQuery({
@@ -313,7 +316,7 @@ export function JournalDayPanel({ date, className, onHoverColor }: JournalDayPan
         return 0
       }
     },
-    enabled: isToday
+    enabled: isToday && isEnabled('tasks')
   })
 
   useEffect(() => {
@@ -396,7 +399,8 @@ export function JournalDayPanel({ date, className, onHoverColor }: JournalDayPan
     [openTab, t]
   )
 
-  const hasContent = schedule.length > 0 || tasks.length > 0
+  const hasContent =
+    (isEnabled('calendar') && schedule.length > 0) || (isEnabled('tasks') && tasks.length > 0)
   if (!hasContent) return null
 
   return (
@@ -419,7 +423,7 @@ export function JournalDayPanel({ date, className, onHoverColor }: JournalDayPan
 
       {!isCollapsed && (
         <>
-          {schedule.length > 0 && (
+          {isEnabled('calendar') && schedule.length > 0 && (
             <div className="flex flex-col gap-1">
               {schedule.map((event) => (
                 <ScheduleRow key={event.id} event={event} onHoverColor={onHoverColor} />
@@ -427,7 +431,7 @@ export function JournalDayPanel({ date, className, onHoverColor }: JournalDayPan
             </div>
           )}
 
-          {tasks.length > 0 && (
+          {isEnabled('tasks') && tasks.length > 0 && (
             <div className="flex flex-col pt-1 gap-1.5">
               <div className="flex items-center justify-between">
                 <span className="tracking-[0.06em] uppercase inline-block text-muted-foreground font-semibold text-[11px]">

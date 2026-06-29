@@ -51,6 +51,7 @@ import { formatDateKey } from '@/lib/task-utils'
 import { editorSchema } from './editor-schema'
 import { analyzeTaskIntents } from './scan-task-intents'
 import { useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
+import { useFeatureFlags } from '@/hooks/use-feature-flags'
 import {
   ReviewFormattingToolbar,
   ReviewFormattingToolbarController
@@ -161,6 +162,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   const { openTag } = useSidebarDrillDown()
   const { enabled: aiEnabled } = useAISettingsContext()
   const { port: aiPort, error: aiError, retry: retryAI } = useAIInlineContext()
+  const { isEnabled: isFeatureEnabled } = useFeatureFlags()
   const resolvedPlaceholder = placeholder ?? t('editor.content.placeholder')
 
   const tasksCtx = useTasksOptional()
@@ -1188,7 +1190,9 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                 group: t('editor.callout.group'),
                 subtext: t('editor.callout.subtext')
               })
-              const taskItem = getTaskSlashMenuItem(editor, noteId)
+              const taskItem = isFeatureEnabled('tasks')
+                ? getTaskSlashMenuItem(editor, noteId)
+                : null
               // `/date` and `/remind` both surface the same two-row Date group:
               // a plain date and a "Remind me — <subtitle>" (aliases overlap so
               // either trigger shows both). Selecting inserts a configurable pill.
@@ -1215,7 +1219,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
               const all = orderSlashMenuItemsByGroup([
                 ...defaults,
                 calloutItem,
-                taskItem,
+                ...(taskItem ? [taskItem] : []),
                 ...dateItems,
                 ...aiItems
               ])

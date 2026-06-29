@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { useT } from '@memry/i18n/renderer'
+import { useFeatureFlags } from '@/hooks/use-feature-flags'
 import { useTriageQueue } from '@/hooks/use-triage-queue'
 import { useInboxStats } from '@/hooks/use-inbox'
 import { useUndoableAction } from '@/hooks/use-undoable-action'
@@ -31,6 +32,7 @@ interface TriageViewProps {
 export function TriageView({ onExit }: TriageViewProps): React.JSX.Element | null {
   const { t } = useT('inbox')
   const { t: tCommon } = useT('common')
+  const { isEnabled } = useFeatureFlags()
   const { state, actions } = useTriageQueue()
   const { stats } = useInboxStats()
   const { archiveWithUndo } = useUndoableAction()
@@ -298,6 +300,7 @@ export function TriageView({ onExit }: TriageViewProps): React.JSX.Element | nul
         onExpandToNote={handleExpandToNote}
         onOpenTarget={handleOpenTarget}
         disabled={isAnimating}
+        tasksEnabled={isEnabled('tasks')}
       />
     </div>
   )

@@ -24,6 +24,7 @@ interface TriageActionBarProps {
   onExpandToNote: () => void
   onOpenTarget?: () => void
   disabled?: boolean
+  tasksEnabled?: boolean
 }
 
 interface ActionDef {
@@ -53,7 +54,8 @@ export function TriageActionBar({
   onConvertToTask,
   onExpandToNote,
   onOpenTarget,
-  disabled = false
+  disabled = false,
+  tasksEnabled = true
 }: TriageActionBarProps): React.JSX.Element {
   const { t } = useT('inbox')
   const isReminder = itemType === 'reminder'
@@ -86,13 +88,17 @@ export function TriageActionBar({
         colorVar: ACTION_STYLES.discard,
         action: onDiscard
       },
-      {
-        key: 'T',
-        label: t('triage.action.toTask'),
-        icon: <CheckSquare className="size-5" />,
-        colorVar: ACTION_STYLES.task,
-        action: onConvertToTask
-      },
+      ...(tasksEnabled
+        ? [
+            {
+              key: 'T',
+              label: t('triage.action.toTask'),
+              icon: <CheckSquare className="size-5" />,
+              colorVar: ACTION_STYLES.task,
+              action: onConvertToTask
+            }
+          ]
+        : []),
       {
         key: 'N',
         label: t('triage.action.toNote'),
@@ -115,7 +121,7 @@ export function TriageActionBar({
         picker: 'snooze' as ActivePicker
       }
     ]
-  }, [isReminder, onDiscard, onConvertToTask, onExpandToNote, onOpenTarget, t])
+  }, [isReminder, tasksEnabled, onDiscard, onConvertToTask, onExpandToNote, onOpenTarget, t])
 
   useEffect(() => {
     if (disabled) return
