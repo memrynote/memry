@@ -20,7 +20,6 @@ export type InboxJobType =
   | 'thumbnail-generation'
   | 'article-extract'
 export type InboxJobStatus = 'pending' | 'running' | 'failed' | 'complete'
-export type TriageAction = 'discard' | 'convert-to-task' | 'expand-to-note' | 'file' | 'defer'
 
 export interface LinkMetadata {
   url: string

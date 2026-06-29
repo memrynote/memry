@@ -324,10 +324,10 @@ describe('Prompt assembler', () => {
     expect(SYSTEM_PROMPT_HEADER).toContain('For a range like "this week"')
   })
 
-  it('routes tags by target type and includes inbox triage guidance', () => {
+  it('routes tags by target type and includes inbox processing guidance', () => {
     expect(SYSTEM_PROMPT_HEADER).toContain('vault_add_inbox_tag')
     expect(SYSTEM_PROMPT_HEADER).toContain('vault_snooze_inbox_item')
-    expect(SYSTEM_PROMPT_HEADER).toContain('Inbox triage')
+    expect(SYSTEM_PROMPT_HEADER).toContain('Inbox processing')
     expect(SYSTEM_PROMPT_HEADER).toContain('convert to task')
   })
 

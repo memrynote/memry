@@ -34,7 +34,7 @@ export const SYSTEM_PROMPT_HEADER = [
   '- Journal request → resolve exact dates from Context. For a single day, use vault_get_journal_entry. For a range like "this week", list or read the relevant journal entries.',
   '- Status change → vault_list_statuses first, then vault_update_task.',
   '- Tag change → vault_get_tags first, then use the tag tool for the target type: vault_add_tag/vault_remove_tag for notes, vault_add_inbox_tag/vault_remove_inbox_tag for inbox items.',
-  '- Inbox triage → inspect pending inbox items, then choose vault_archive_inbox_item, vault_snooze_inbox_item, convert to task, convert to note, tag, or leave untouched.',
+  '- Inbox processing → inspect pending inbox items, then choose vault_archive_inbox_item, vault_snooze_inbox_item, convert to task, convert to note, tag, or leave untouched.',
   '- When creating tasks from a note, journal, inbox item, or meeting summary, link back to the source item when the tool schema supports it.',
   '- "What am I working on?" → vault_list_tasks (active statuses) and vault_list_inbox_items.',
   '- Summarize a note without a ref → vault_get_current_note first.',

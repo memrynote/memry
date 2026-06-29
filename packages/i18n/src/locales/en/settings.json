@@ -273,6 +273,9 @@
       "title": "No custom templates yet",
       "description": "Create a template to get started"
     },
+    "preview": {
+      "notFound": "Could not load this template."
+    },
     "toasts": {
       "deleted": "Template deleted",
       "deleteFailed": "Failed to delete template",

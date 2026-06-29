@@ -184,16 +184,6 @@ vi.mock('./inbox/inbox-archived-view', () => ({
   )
 }))
 
-vi.mock('./inbox/triage-view', () => ({
-  TriageView: ({ onExit }: { onExit: () => void }) => (
-    <div data-testid="triage-view">
-      <button type="button" onClick={onExit}>
-        exit triage
-      </button>
-    </div>
-  )
-}))
-
 vi.mock('@/lib/logger', () => ({
   createLogger: () => ({ warn: vi.fn(), error: vi.fn(), info: vi.fn(), debug: vi.fn() })
 }))
@@ -266,30 +256,6 @@ describe('InboxPage', () => {
 
     fireEvent.click(screen.getByText('segment archived'))
     expect(screen.getByTestId('archived-view')).toHaveAttribute('data-query', '')
-  })
-
-  it('enters and exits triage from button, keyboard shortcuts, and custom event', () => {
-    render(<InboxPage />)
-
-    fireEvent.click(screen.getByTitle('view.processInboxTitle'))
-    expect(screen.getByTestId('triage-view')).toBeInTheDocument()
-
-    fireEvent.keyDown(window, { key: 'Escape' })
-    expect(screen.queryByTestId('triage-view')).not.toBeInTheDocument()
-
-    fireEvent.keyDown(window, { key: 'p', metaKey: true })
-    expect(screen.getByTestId('triage-view')).toBeInTheDocument()
-
-    fireEvent.keyDown(window, { key: 'p', ctrlKey: true })
-    expect(screen.queryByTestId('triage-view')).not.toBeInTheDocument()
-
-    act(() => {
-      window.dispatchEvent(new Event('memry:enter-triage'))
-    })
-    expect(screen.getByTestId('triage-view')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByText('exit triage'))
-    expect(screen.queryByTestId('triage-view')).not.toBeInTheDocument()
   })
 
   it('consumes focused inbox item state once and reveals snoozed inbox rows', async () => {

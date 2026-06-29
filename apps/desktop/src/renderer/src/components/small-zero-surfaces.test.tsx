@@ -3,7 +3,6 @@ import { type ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { JournalHeaderActions } from './journal/journal-header-actions'
-import { TriageSnoozePicker } from './inbox/triage-snooze-picker'
 import { WikiLinkMenu, type WikiLinkSuggestionItem } from './note/content-area/wiki-link-menu'
 import { WikiLinkPreviewCard } from './note/content-area/wiki-link-preview-card'
 import { TabPane } from './split-view/tab-pane'
@@ -203,18 +202,6 @@ describe('small zero-line renderer surfaces', () => {
     expect(onMouseLeave).toHaveBeenCalled()
     expect(onNoteClick).toHaveBeenCalledWith('Previewed')
     expect(onTagClick).toHaveBeenCalledWith('work', '#22c55e')
-  })
-
-  it('drives triage snooze presets and cancel', () => {
-    const onSelect = vi.fn()
-    const onCancel = vi.fn()
-
-    render(<TriageSnoozePicker onSelect={onSelect} onCancel={onCancel} />)
-    fireEvent.click(screen.getAllByRole('button')[0])
-    fireEvent.click(screen.getByRole('button', { name: 'cancel' }))
-
-    expect(onSelect).toHaveBeenCalledWith(expect.stringMatching(/T/))
-    expect(onCancel).toHaveBeenCalledTimes(1)
   })
 
   it('drives journal header month navigation and entry actions', () => {

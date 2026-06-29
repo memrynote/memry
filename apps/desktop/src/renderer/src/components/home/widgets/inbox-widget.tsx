@@ -105,7 +105,7 @@ export function InboxWidget({ config, size }: WidgetComponentProps): React.JSX.E
           <button
             type="button"
             data-testid="inbox-archive"
-            aria-label={tInbox('triage.action.archive')}
+            aria-label={tInbox('quickActions.archiveItem')}
             className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-muted/60 hover:text-foreground"
             onClick={() => archive.mutate(item.id)}
           >

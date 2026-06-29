@@ -27,11 +27,12 @@ asarUnpack:
   - resources/**
 afterPack: scripts/prune-packaged-app.mjs
 extraResources:
-  # ponytail: staged + shipped as app-config (no .env token). Windows Defender
-  # holds an exclusive handle on .env* files (credential scan), so packaging the
-  # .env-named SOURCE failed with EBUSY on the hosted runner regardless of the
-  # destination name. A neutral filename sidesteps the scanner entirely.
-  # build-packaged-app.js stages apps/desktop/.env.production -> app-config.
+  # ponytail: shipped as app-config (no .env token) so Defender's .env credential
+  # scan never locks the source. build-packaged-app.js stages
+  # apps/desktop/.env.production -> app-config. Declare app-config ONLY here:
+  # configs that `extends` this one must not re-add it, or electron-builder's
+  # deepAssign concats the arrays (its Set dedup misses distinct {from,to}
+  # objects) and copies app-config twice -> Windows EBUSY during packaging.
   - from: app-config
     to: app-config
 win:

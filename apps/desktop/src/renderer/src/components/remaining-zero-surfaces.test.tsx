@@ -12,7 +12,6 @@ import { useClickOutside } from './note/note-title/use-click-outside'
 import { SortableProjectList } from './sidebar/sortable-project-list'
 import { SplitLayoutRenderer } from './split-view/split-layout-renderer'
 import { EditRepeatingTaskDialog } from './tasks/edit-repeating-task-dialog'
-import { TriageItemCard } from './inbox/triage-item-card'
 import {
   Breadcrumb,
   BreadcrumbEllipsis,
@@ -365,7 +364,7 @@ describe('remaining zero renderer surfaces', () => {
     expect(onClose).toHaveBeenCalled()
   })
 
-  it('renders sortable projects, split layouts, triage cards, and UI wrappers', () => {
+  it('renders sortable projects, split layouts, and UI wrappers', () => {
     const project = {
       id: 'project-1',
       name: 'Work',
@@ -450,19 +449,6 @@ describe('remaining zero renderer surfaces', () => {
     })
     expect(screen.getByText('pane:group-1:true:true')).toBeInTheDocument()
     expect(screen.getByText('pane:group-2:false:false')).toBeInTheDocument()
-
-    const baseItem = {
-      id: 'item-1',
-      type: 'note',
-      title: 'Captured note',
-      tags: ['work'],
-      createdAt: '2026-05-10T00:00:00.000Z'
-    } as any
-    const { rerender: rerenderCard } = render(<TriageItemCard item={baseItem} />)
-    expect(screen.getByText('Captured note')).toBeInTheDocument()
-    expect(screen.getByText('work')).toBeInTheDocument()
-    rerenderCard(<TriageItemCard item={{ ...baseItem, type: 'link', tags: [] }} />)
-    expect(screen.queryByText('Captured note')).not.toBeInTheDocument()
 
     render(
       <Breadcrumb>

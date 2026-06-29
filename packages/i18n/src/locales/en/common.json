@@ -527,7 +527,7 @@
       "inboxAllTypes": "All types",
       "inboxOlder": "{count, plural, one {# older} other {# older}}",
       "inboxOldest": "oldest {count, plural, one {# day} other {# days}}",
-      "triageInbox": "Triage inbox",
+      "openInbox": "Open inbox",
       "folder": "Folder",
       "untitled": "Untitled",
       "folderPickPrompt": "Pick a folder",
@@ -560,7 +560,6 @@
     },
     "header": {
       "tasksDue": "{count, plural, one {# task due today} other {# tasks due today}}",
-      "toTriage": "{count} to triage",
       "events": "{count, plural, one {# event} other {# events}}"
     },
     "edit": "Edit",
