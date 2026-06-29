@@ -21,7 +21,7 @@ import {
   File,
   LayoutTemplate,
   FileType2,
-  GitGraph,
+  ChartRelationship,
   Image,
   Music,
   Video,
@@ -66,7 +66,7 @@ const ICON_COMPONENTS: Record<string, React.ComponentType<{ className?: string }
   'file-image': Image,
   'file-audio': Music,
   'file-video': Video,
-  'git-graph': GitGraph,
+  graph: ChartRelationship,
   bot: Bot
 }
 
@@ -90,7 +90,7 @@ const TYPE_TO_ICON: Record<TabType, string> = {
   collection: 'bookmark',
   'template-editor': 'layout-template',
   templates: 'layout-template',
-  graph: 'git-graph',
+  graph: 'graph',
   'agent-chat': 'bot'
 }
 

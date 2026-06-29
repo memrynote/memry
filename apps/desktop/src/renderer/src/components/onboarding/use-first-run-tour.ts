@@ -55,37 +55,10 @@ export function useFirstRunTour(): void {
         }
       },
       {
-        element: '[data-tour="nav-inbox"]',
+        element: '[data-tour="sidebar-nav"]',
         popover: {
-          title: t('onboarding.inbox.title'),
-          description: t('onboarding.inbox.body'),
-          side: 'right',
-          align: 'start'
-        }
-      },
-      {
-        element: '[data-tour="nav-journal"]',
-        popover: {
-          title: t('onboarding.journal.title'),
-          description: t('onboarding.journal.body'),
-          side: 'right',
-          align: 'start'
-        }
-      },
-      {
-        element: '[data-tour="nav-calendar"]',
-        popover: {
-          title: t('onboarding.calendar.title'),
-          description: t('onboarding.calendar.body'),
-          side: 'right',
-          align: 'start'
-        }
-      },
-      {
-        element: '[data-tour="nav-tasks"]',
-        popover: {
-          title: t('onboarding.tasks.title'),
-          description: t('onboarding.tasks.body'),
+          title: t('onboarding.nav.title'),
+          description: t('onboarding.nav.body'),
           side: 'right',
           align: 'start'
         }
@@ -139,6 +112,15 @@ export function useFirstRunTour(): void {
           description: t('onboarding.feedback.body'),
           side: 'top',
           align: 'start'
+        }
+      },
+      {
+        element: '[data-tour="settings"]',
+        popover: {
+          title: t('onboarding.settings.title'),
+          description: t('onboarding.settings.body'),
+          side: 'top',
+          align: 'end'
         }
       }
     ]

@@ -48,14 +48,3 @@ export const SidebarCalendar = createSvgIcon(
 )
 
 export const SidebarTasks = CheckSquare3
-
-export const SidebarGraph = createSvgIcon(
-  <>
-    <circle cx="7.5" cy="3.5" r="2" />
-    <circle cx="3" cy="11.5" r="2" />
-    <circle cx="12" cy="11.5" r="2" />
-    <path d="M6.2 5.2l-2 4.5" />
-    <path d="M8.8 5.2l2 4.5" />
-  </>,
-  'SidebarGraph'
-)

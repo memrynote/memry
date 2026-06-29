@@ -11,6 +11,8 @@ import {
   ChevronsUp,
   FilePlus,
   FolderPlus,
+  ChartRelationship,
+  Home,
   Plus,
   Settings,
   Upload
@@ -66,10 +68,12 @@ const mainNav: {
   page: AppPage
   icon: typeof SidebarInbox
 }[] = [
+  { title: 'Home', page: 'home', icon: Home },
   { title: 'Inbox', page: 'inbox', icon: SidebarInbox },
   { title: 'Journal', page: 'journal', icon: SidebarJournal },
   { title: 'Calendar', page: 'calendar', icon: Calendar2 },
-  { title: 'Tasks', page: 'tasks', icon: SidebarTasks }
+  { title: 'Tasks', page: 'tasks', icon: SidebarTasks },
+  { title: 'Graph', page: 'graph', icon: ChartRelationship }
 ]
 
 function SidebarHeaderContent() {
@@ -202,6 +206,7 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
 
     // Map page to tab type and title
     const pageToTabType: Record<AppPage, TabType> = {
+      home: 'home',
       inbox: 'inbox',
       calendar: 'calendar',
       journal: 'journal',
@@ -209,6 +214,7 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
       graph: 'graph'
     }
     const pageToTitle: Record<AppPage, string> = {
+      home: 'Home',
       inbox: 'Inbox',
       calendar: 'Calendar',
       journal: 'Journal',
@@ -483,6 +489,7 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
           ) : authState.status === 'checking' ? null : (
             <button
               type="button"
+              data-tour="sync-status"
               onClick={handleSyncClick}
               aria-label={tPhaseF('phaseF.componentsAppSidebar.syncDisabled')}
               title={tPhaseF('phaseF.componentsAppSidebar.syncDisabled2')}

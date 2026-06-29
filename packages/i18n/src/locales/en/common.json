@@ -586,21 +586,9 @@
       "title": "Create your first note",
       "body": "Start here. Everything you write is stored locally, first."
     },
-    "inbox": {
-      "title": "Capture anything",
-      "body": "Drop quick thoughts into the Inbox — it helps you file them into the right folder."
-    },
-    "journal": {
-      "title": "Keep a journal",
-      "body": "Open the Journal for date-based notes and a log of your day."
-    },
-    "calendar": {
-      "title": "See your time",
-      "body": "Your notes and tasks, laid out on a timeline."
-    },
-    "tasks": {
-      "title": "Track your tasks",
-      "body": "Manage to-dos, due dates, and projects under Tasks."
+    "nav": {
+      "title": "Your workspaces",
+      "body": "Inbox to capture, Journal for daily notes, Calendar for your timeline, Tasks for to-dos, and Graph to see how it all connects."
     },
     "collections": {
       "title": "Collections, bookmarks & tags",
@@ -621,6 +609,10 @@
     "feedback": {
       "title": "Tell us what you think",
       "body": "Send feedback straight to the team from here."
+    },
+    "settings": {
+      "title": "Settings & imports",
+      "body": "Import your notes from 12+ apps — Obsidian, Notion, Apple Notes, Evernote and more — and tune everything else in Settings."
     }
   }
 }
