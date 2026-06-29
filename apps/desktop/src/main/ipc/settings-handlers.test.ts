@@ -546,7 +546,7 @@ describe('settings-handlers', () => {
     ;(settingsQueries.getSetting as Mock).mockReturnValueOnce('{bad json')
 
     const generalSettings = await invokeHandler(SettingsChannels.invoke.GET_GENERAL_SETTINGS)
-    expect(generalSettings).toEqual(expect.objectContaining({ theme: 'system' }))
+    expect(generalSettings).toEqual(expect.objectContaining({ theme: 'white' }))
     expect(settingsQueries.deleteSetting).toHaveBeenCalledWith({}, 'general')
 
     await invokeHandler(SettingsChannels.invoke.SET_EDITOR_SETTINGS, { width: 'wide' })
