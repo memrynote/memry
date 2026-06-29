@@ -98,11 +98,7 @@ export function TemplatesSettings() {
   const customTemplates = templates.filter((t) => !t.isBuiltIn)
 
   if (previewId) {
-    return (
-      <div className="flex flex-col text-xs/4">
-        <TemplatePreview templateId={previewId} onBack={() => setPreviewId(null)} />
-      </div>
-    )
+    return <TemplatePreview templateId={previewId} onBack={() => setPreviewId(null)} />
   }
 
   return (
@@ -263,7 +259,7 @@ function TemplateRow({ template, onSelect, onEdit, onDuplicate, onDelete }: Temp
           )}
         </div>
       </div>
-      <div className="flex items-center gap-1 shrink-0 ms-4" onClick={(e) => e.stopPropagation()}>
+      <div className="flex items-center gap-1 shrink-0 ms-4">
         {template.isBuiltIn ? (
           <Lock className="w-3.5 h-3.5 text-muted-foreground/50" />
         ) : (
@@ -276,7 +272,7 @@ function TemplateRow({ template, onSelect, onEdit, onDuplicate, onDelete }: Temp
                 <MoreHorizontal className="w-3.5 h-3.5" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
               <DropdownMenuItem onClick={onEdit}>
                 <Pencil className="w-4 h-4 me-2" />
                 {t('templates.actions.edit')}

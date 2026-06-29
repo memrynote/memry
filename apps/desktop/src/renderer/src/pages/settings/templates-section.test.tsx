@@ -77,7 +77,17 @@ vi.mock('@/components/settings/settings-primitives', () => ({
 vi.mock('@/components/ui/dropdown-menu', () => ({
   DropdownMenu: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   DropdownMenuTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  DropdownMenuContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  // Faithful to production: the real DropdownMenuContent carries the stopPropagation
+  // that keeps menu-item clicks (which bubble through the React tree even when portaled)
+  // from reaching the row's onSelect. The mock applies the same onClick so the test
+  // exercises the real guard rather than a fabricated one in DropdownMenuItem.
+  DropdownMenuContent: ({
+    children,
+    onClick
+  }: {
+    children: React.ReactNode
+    onClick?: (e: React.MouseEvent) => void
+  }) => <div onClick={onClick}>{children}</div>,
   DropdownMenuItem: ({
     children,
     onClick
@@ -126,7 +136,6 @@ vi.mock('./template-preview', () => ({
 describe('TemplatesSettings', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    closeSettings.mockClear()
     isLoadingState = false
     templatesState = [
       {
@@ -262,5 +271,14 @@ describe('TemplatesSettings — drill-in preview', () => {
     fireEvent.click(screen.getByText('back'))
     expect(screen.queryByTestId('template-preview')).not.toBeInTheDocument()
     expect(screen.getByText('templates.actions.new')).toBeInTheDocument()
+  })
+
+  it('clicking a dropdown menu item does not drill into preview', async () => {
+    const user = userEvent.setup()
+    render(<TemplatesSettings />)
+    // DropdownMenuContent's stopPropagation keeps the menu-item click from reaching
+    // the row's onSelect (matches production); clicking Duplicate must not drill in.
+    await user.click(screen.getByRole('button', { name: /templates.actions.duplicate/ }))
+    expect(screen.queryByTestId('template-preview')).not.toBeInTheDocument()
   })
 })

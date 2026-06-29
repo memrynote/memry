@@ -61,4 +61,16 @@ describe('TemplatePreview', () => {
     fireEvent.click(screen.getByText('templates.header.title'))
     expect(onBack).toHaveBeenCalledTimes(1)
   })
+
+  it('shows not-found message (not spinner) when template resolves to null', async () => {
+    getTemplateMock.mockResolvedValue(null)
+    const onBack = vi.fn()
+    renderWithQuery(<TemplatePreview templateId="unknown" onBack={onBack} />)
+    // not-found branch renders (spinner is the else branch — cannot coexist)
+    await waitFor(() => expect(screen.getByText('templates.preview.notFound')).toBeInTheDocument())
+    expect(screen.queryByTestId('content-area')).not.toBeInTheDocument()
+    // back button still present and functional
+    fireEvent.click(screen.getByText('templates.header.title'))
+    expect(onBack).toHaveBeenCalledTimes(1)
+  })
 })

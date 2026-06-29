@@ -28,10 +28,14 @@ export function TemplatePreview({ templateId, onBack }: TemplatePreviewProps) {
         </Button>
       </div>
 
-      {isLoading || !template ? (
+      {isLoading ? (
         <div className="flex items-center justify-center py-12 text-muted-foreground">
           <Loader2 className="w-5 h-5 animate-spin" />
         </div>
+      ) : !template ? (
+        <p className="py-12 text-center text-xs/4 text-muted-foreground">
+          {t('templates.preview.notFound')}
+        </p>
       ) : (
         <>
           <div className="flex items-center gap-2.5 mb-1">
