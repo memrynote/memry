@@ -194,8 +194,7 @@
     },
     "groups": {
       "layout": "Layout",
-      "toolbar": "Verktygsfält",
-      "writing": "Skrivande"
+      "toolbar": "Verktygsfält"
     },
     "width": {
       "label": "Redigerarens bredd",
@@ -211,22 +210,6 @@
       "label": "Klistrigt formateringsverktygsfält",
       "description": "Visa alltid verktygsfält ovanför redigeraren",
       "error": "Kunde inte uppdatera verktygsfältsläge"
-    },
-    "spellCheck": {
-      "label": "Stavningskontroll",
-      "description": "Understryk felstavade ord medan du skriver",
-      "error": "Kunde inte uppdatera stavningskontroll"
-    },
-    "autoSaveDelay": {
-      "label": "Automatisk sparfördröjning",
-      "description": "Väntetid efter att skrivingen har stoppat innan sparande",
-      "seconds": "{seconds}s",
-      "error": "Kunde inte uppdatera automatisk sparfördröjning"
-    },
-    "wordCount": {
-      "label": "Ordantal",
-      "description": "Visa ordantal i redigeringsprogrammets sidfot",
-      "error": "Misslyckades med att uppdatera visning av ordantal"
     }
   },
   "templates": {

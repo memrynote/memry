@@ -194,8 +194,7 @@
     },
     "groups": {
       "layout": "Bố cục",
-      "toolbar": "Thanh công cụ",
-      "writing": "Viết"
+      "toolbar": "Thanh công cụ"
     },
     "width": {
       "label": "Chiều rộng trình soạn thảo",
@@ -211,22 +210,6 @@
       "label": "Thanh công cụ định dạng cố định",
       "description": "Luôn hiển thị thanh công cụ phía trên trình soạn thảo",
       "error": "Không thể cập nhật chế độ thanh công cụ"
-    },
-    "spellCheck": {
-      "label": "Kiểm tra chính tả",
-      "description": "Gạch chân từ sai chính tả khi gõ",
-      "error": "Không thể cập nhật kiểm tra chính tả"
-    },
-    "autoSaveDelay": {
-      "label": "Khoảng thời gian tự động lưu",
-      "description": "Thời gian chờ sau khi ngừng gõ trước khi lưu",
-      "seconds": "{seconds}s",
-      "error": "Không thể cập nhật khoảng thời gian tự động lưu"
-    },
-    "wordCount": {
-      "label": "Đếm từ",
-      "description": "Hiển thị số từ trong chân trang của trình chỉnh sửa",
-      "error": "Cập nhật hiển thị số từ thất bại"
     }
   },
   "templates": {

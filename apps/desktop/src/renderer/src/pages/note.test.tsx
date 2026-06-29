@@ -211,7 +211,7 @@ vi.mock('@/hooks/use-bookmarks', () => ({
 
 vi.mock('@/hooks/use-editor-settings', () => ({
   useEditorSettings: () => ({
-    settings: { toolbarMode: 'floating', spellCheck: true, autoSaveDelay: 25, width: 'medium' }
+    settings: { toolbarMode: 'floating', width: 'medium' }
   })
 }))
 
@@ -666,7 +666,7 @@ describe('NotePage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Change markdown' }))
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(25)
+      await vi.advanceTimersByTimeAsync(1000)
     })
 
     expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-1', content: '# Changed' })

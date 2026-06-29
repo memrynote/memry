@@ -194,8 +194,7 @@
     },
     "groups": {
       "layout": "Rozložení",
-      "toolbar": "Panel nástrojů",
-      "writing": "Psaní"
+      "toolbar": "Panel nástrojů"
     },
     "width": {
       "label": "Šířka editoru",
@@ -211,22 +210,6 @@
       "label": "Sticky Formating Toolbar",
       "description": "Vždy zobrazovat panel nástrojů nad editorem",
       "error": "Aktualizace režimu panelu nástrojů se nezdařila"
-    },
-    "spellCheck": {
-      "label": "Kontrola pravopisu",
-      "description": "Při psaní podtrhávejte chybně napsaná slova",
-      "error": "Aktualizace kontroly pravopisu se nezdařila"
-    },
-    "autoSaveDelay": {
-      "label": "Zpoždění automatického ukládání",
-      "description": "Čekací doba po zastavení psaní před uložením",
-      "seconds": "{seconds}s",
-      "error": "Aktualizace zpoždění automatického ukládání se nezdařila"
-    },
-    "wordCount": {
-      "label": "Počet slov",
-      "description": "Zobrazit počet slov v zápatí editoru",
-      "error": "Aktualizace zobrazení počtu slov se nezdařila"
     }
   },
   "templates": {

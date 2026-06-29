@@ -1282,9 +1282,6 @@ export interface GeneralSettingsDTO {
 
 export interface EditorSettingsDTO {
   width: 'narrow' | 'medium' | 'wide'
-  spellCheck: boolean
-  autoSaveDelay: number
-  showWordCount: boolean
   toolbarMode: 'floating' | 'sticky'
 }
 

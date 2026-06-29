@@ -194,8 +194,7 @@
     },
     "groups": {
       "layout": "Indeling",
-      "toolbar": "Werkbalk",
-      "writing": "Schrijven"
+      "toolbar": "Werkbalk"
     },
     "width": {
       "label": "Editorbreedte",
@@ -211,22 +210,6 @@
       "label": "Vaste opmaakwerkbalk",
       "description": "Toon altijd de werkbalk boven de editor",
       "error": "Kan de werkbalkmodus niet updaten"
-    },
-    "spellCheck": {
-      "label": "Spellingcontrole",
-      "description": "Onderstreep verkeerd gespelde woorden tijdens het typen",
-      "error": "Kan de spellingcontrole niet updaten"
-    },
-    "autoSaveDelay": {
-      "label": "Vertraging automatisch opslaan",
-      "description": "Wachttijd nadat het typen stopt voordat u opslaat",
-      "seconds": "{seconds}s",
-      "error": "Kan de vertraging voor automatisch opslaan niet updaten"
-    },
-    "wordCount": {
-      "label": "Aantal woorden",
-      "description": "Toon het aantal woorden in de voettekst van de editor",
-      "error": "Kan de weergave van het aantal woorden niet updaten"
     }
   },
   "templates": {

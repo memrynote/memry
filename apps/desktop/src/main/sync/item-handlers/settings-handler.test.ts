@@ -27,9 +27,6 @@ const mockReadPreferences = vi.fn(() => ({
   createInSelectedFolder: true,
   editor: {
     width: 'medium',
-    spellCheck: true,
-    autoSaveDelay: 1000,
-    showWordCount: false,
     toolbarMode: 'floating'
   }
 }))
@@ -120,7 +117,7 @@ describe('settingsHandler.applyUpsert', () => {
 
   it('#given merged settings with editor fields #then writes editor to config.json', () => {
     mockGetSettings.mockReturnValue({
-      editor: { width: 'wide', spellCheck: false }
+      editor: { width: 'wide' }
     })
 
     const data: SettingsSyncPayload = {
@@ -132,7 +129,6 @@ describe('settingsHandler.applyUpsert', () => {
 
     const prefsArg = mockWritePreferences.mock.calls[0][1]
     expect(prefsArg.editor.width).toBe('wide')
-    expect(prefsArg.editor.spellCheck).toBe(false)
   })
 
   it('#given applyUpsert called #then broadcasts CHANGED events for general + editor', () => {

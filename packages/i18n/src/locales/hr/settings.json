@@ -194,8 +194,7 @@
     },
     "groups": {
       "layout": "Izgled",
-      "toolbar": "Alatna traka",
-      "writing": "Pisanje"
+      "toolbar": "Alatna traka"
     },
     "width": {
       "label": "Širina uređivača",
@@ -211,22 +210,6 @@
       "label": "Alatna traka za ljepljivo oblikovanje",
       "description": "Uvijek prikaži alatnu traku iznad uređivača",
       "error": "Ažuriranje načina alatne trake nije uspjelo"
-    },
-    "spellCheck": {
-      "label": "Provjera pravopisa",
-      "description": "Podcrtajte pogrešno napisane riječi dok upisujete",
-      "error": "Ažuriranje provjere pravopisa nije uspjelo"
-    },
-    "autoSaveDelay": {
-      "label": "Odgoda automatskog spremanja",
-      "description": "Vrijeme čekanja nakon prestanka tipkanja prije spremanja",
-      "seconds": "{seconds}s",
-      "error": "Ažuriranje odgode automatskog spremanja nije uspjelo"
-    },
-    "wordCount": {
-      "label": "Broj riječi",
-      "description": "Prikaži broj riječi u podnožju uređivača",
-      "error": "Nije uspjelo ažuriranje prikaza broja riječi"
     }
   },
   "templates": {

@@ -194,8 +194,7 @@
     },
     "groups": {
       "layout": "版面配置",
-      "toolbar": "工具列",
-      "writing": "寫作"
+      "toolbar": "工具列"
     },
     "width": {
       "label": "編輯器寬度",
@@ -211,22 +210,6 @@
       "label": "固定格式工具列",
       "description": "總是在編輯器上方顯示工具列",
       "error": "更新工具列模式失敗"
-    },
-    "spellCheck": {
-      "label": "拼字檢查",
-      "description": "輸入時在錯別字下方加底線",
-      "error": "更新拼字檢查失敗"
-    },
-    "autoSaveDelay": {
-      "label": "自動儲存延遲",
-      "description": "停止輸入後等待多久再儲存",
-      "seconds": "{seconds}s",
-      "error": "更新自動儲存延遲失敗"
-    },
-    "wordCount": {
-      "label": "字數統計",
-      "description": "在編輯頁尾顯示字數",
-      "error": "無法更新字數顯示"
     }
   },
   "templates": {

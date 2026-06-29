@@ -194,8 +194,7 @@
     },
     "groups": {
       "layout": "Elrendezés",
-      "toolbar": "Eszköztár",
-      "writing": "Írás"
+      "toolbar": "Eszköztár"
     },
     "width": {
       "label": "Szerkesztő szélessége",
@@ -211,22 +210,6 @@
       "label": "Ragadós formázási eszköztár",
       "description": "Mindig jelenítse meg az eszköztárat a szerkesztő felett",
       "error": "Nem sikerült frissíteni az eszköztár módot"
-    },
-    "spellCheck": {
-      "label": "Helyesírás-ellenőrzés",
-      "description": "A hibásan írt szavak aláhúzása gépelés közben",
-      "error": "Nem sikerült frissíteni a helyesírás-ellenőrzést"
-    },
-    "autoSaveDelay": {
-      "label": "Automatikus mentés késleltetése",
-      "description": "A mentés előtt a gépelés utáni várakozási idő leáll",
-      "seconds": "{seconds}s",
-      "error": "Nem sikerült frissíteni az automatikus mentési késleltetést"
-    },
-    "wordCount": {
-      "label": "Szószám",
-      "description": "Szószám megjelenítése a szerkesztő láblécében",
-      "error": "Nem sikerült frissíteni a szószám kijelzőjét"
     }
   },
   "templates": {

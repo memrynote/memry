@@ -48,10 +48,7 @@ const mocks = vi.hoisted(() => ({
   editorSettings: {
     settings: {
       width: 'medium',
-      toolbarMode: 'floating',
-      spellCheck: true,
-      autoSaveDelay: 5000,
-      showWordCount: false
+      toolbarMode: 'floating'
     },
     isLoading: false,
     updateSettings: vi.fn()
@@ -609,17 +606,12 @@ describe('settings section coverage', () => {
       })
     )
 
-    fireEvent.click(screen.getByText('slider'))
-    await waitFor(() =>
-      expect(mocks.editorSettings.updateSettings).toHaveBeenCalledWith({ autoSaveDelay: 12000 })
-    )
-
     fireEvent.click(screen.getByText('Daily template'))
     await waitFor(() =>
       expect(mocks.journalSettings.setDefaultTemplate).toHaveBeenCalledWith('daily')
     )
 
-    fireEvent.click(screen.getAllByRole('switch')[5])
+    fireEvent.click(screen.getAllByRole('switch')[3])
     await waitFor(() =>
       expect(mocks.journalSettings.updateSettings).toHaveBeenCalledWith({
         showAIConnections: true

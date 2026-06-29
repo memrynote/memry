@@ -194,8 +194,7 @@
     },
     "groups": {
       "layout": "Tata Letak",
-      "toolbar": "Bilah Alat",
-      "writing": "Menulis"
+      "toolbar": "Bilah Alat"
     },
     "width": {
       "label": "Lebar Penyunting",
@@ -211,22 +210,6 @@
       "label": "Bilah Alat Pemformatan Lengket",
       "description": "Selalu tampilkan toolbar di atas editor",
       "error": "Gagal memperbarui mode bilah alat"
-    },
-    "spellCheck": {
-      "label": "Periksa Ejaan",
-      "description": "Garis bawahi kata-kata yang salah eja saat mengetik",
-      "error": "Gagal memperbarui pemeriksaan ejaan"
-    },
-    "autoSaveDelay": {
-      "label": "Penundaan Simpan Otomatis",
-      "description": "Tunggu beberapa saat setelah pengetikan berhenti sebelum menyimpan",
-      "seconds": "{seconds}s",
-      "error": "Gagal memperbarui penundaan penyimpanan otomatis"
-    },
-    "wordCount": {
-      "label": "Jumlah Kata",
-      "description": "Tampilkan jumlah kata di footer editor",
-      "error": "Gagal memperbarui tampilan jumlah kata"
     }
   },
   "templates": {

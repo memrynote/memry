@@ -49,9 +49,6 @@ describe('SyncedSettingsSchema', () => {
     const result = SyncedSettingsSchema.safeParse({
       editor: {
         width: 'wide',
-        spellCheck: false,
-        autoSaveDelay: 2000,
-        showWordCount: true,
         toolbarMode: 'sticky'
       }
     })
@@ -207,11 +204,11 @@ describe('SettingsSyncPayloadSchema', () => {
     const result = SettingsSyncPayloadSchema.safeParse({
       settings: {
         general: { theme: 'dark' },
-        editor: { autoSaveDelay: 1000 }
+        editor: { width: 'wide' }
       },
       fieldClocks: {
         'general.theme': { 'device-a': 2 },
-        'editor.autoSaveDelay': { 'device-a': 1 }
+        'editor.width': { 'device-a': 1 }
       }
     })
     expect(result.success).toBe(true)

@@ -29,9 +29,6 @@ describe('VaultPreferencesSchema', () => {
       createInSelectedFolder: false,
       editor: {
         width: 'wide' as const,
-        spellCheck: false,
-        autoSaveDelay: 2000,
-        showWordCount: true,
         toolbarMode: 'sticky' as const
       }
     }
@@ -82,9 +79,6 @@ describe('readPreferences', () => {
         createInSelectedFolder: true,
         editor: {
           width: 'wide',
-          spellCheck: true,
-          autoSaveDelay: 1000,
-          showWordCount: false,
           toolbarMode: 'floating'
         }
       }
@@ -160,7 +154,7 @@ describe('readPreferences', () => {
 
     const prefs = readPreferences(vaultPath)
     expect(prefs.editor.width).toBe('narrow')
-    expect(prefs.editor.spellCheck).toBe(VAULT_PREFERENCES_DEFAULTS.editor.spellCheck)
+    expect(prefs.editor.toolbarMode).toBe(VAULT_PREFERENCES_DEFAULTS.editor.toolbarMode)
   })
 })
 
@@ -200,7 +194,7 @@ describe('writePreferences', () => {
 
     const raw = JSON.parse(fs.readFileSync(path.join(vaultPath, MEMRY_DIR, 'config.json'), 'utf-8'))
     expect(raw.preferences.editor.width).toBe('wide')
-    expect(raw.preferences.editor.spellCheck).toBe(VAULT_PREFERENCES_DEFAULTS.editor.spellCheck)
+    expect(raw.preferences.editor.toolbarMode).toBe(VAULT_PREFERENCES_DEFAULTS.editor.toolbarMode)
   })
 
   it('#given write then read #then round-trips correctly', () => {
@@ -230,6 +224,6 @@ describe('writePreferences', () => {
     expect(prefs.theme).toBe('dark')
     expect(prefs.language).toBe('tr')
     expect(prefs.editor.width).toBe('narrow')
-    expect(prefs.editor.spellCheck).toBe(true)
+    expect(prefs.editor.toolbarMode).toBe('floating')
   })
 })

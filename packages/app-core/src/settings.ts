@@ -71,9 +71,6 @@ const settingsGroupDefaults: Record<SettingsGroupName, Record<string, unknown>> 
   },
   editor: {
     width: 'medium',
-    spellCheck: true,
-    autoSaveDelay: 1000,
-    showWordCount: false,
     toolbarMode: 'floating'
   },
   tasks: {

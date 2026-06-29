@@ -194,8 +194,7 @@
     },
     "groups": {
       "layout": "Layout",
-      "toolbar": "Toolbar",
-      "writing": "Pagsusulat"
+      "toolbar": "Toolbar"
     },
     "width": {
       "label": "Lapad ng Editor",
@@ -211,22 +210,6 @@
       "label": "Sticky Formatting Toolbar",
       "description": "Palaging ipakita ang toolbar sa itaas ng editor",
       "error": "Nabigong i-update ang toolbar mode"
-    },
-    "spellCheck": {
-      "label": "Spell Check",
-      "description": "Salungguhitan ang mga salitang mali ang spelling habang nagta-type",
-      "error": "Nabigong i-update ang spell check"
-    },
-    "autoSaveDelay": {
-      "label": "Pagkaantala ng Auto-Save",
-      "description": "Ang oras ng paghihintay pagkatapos huminto ang pag-type bago i-save",
-      "seconds": "{seconds}s",
-      "error": "Nabigong i-update ang pagkaantala ng auto-save"
-    },
-    "wordCount": {
-      "label": "Bilang ng Salita",
-      "description": "Ipakita ang bilang ng salita sa footer ng editor",
-      "error": "Nabigong i-update ang display ng bilang ng salita"
     }
   },
   "templates": {

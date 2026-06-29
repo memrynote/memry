@@ -194,8 +194,7 @@
     },
     "groups": {
       "layout": "Susun atur",
-      "toolbar": "Bar alat",
-      "writing": "Menulis"
+      "toolbar": "Bar alat"
     },
     "width": {
       "label": "Lebar Editor",
@@ -211,22 +210,6 @@
       "label": "Bar Alat Pemformatan Melekit",
       "description": "Sentiasa tunjukkan bar alat di atas editor",
       "error": "Gagal mengemas kini mod bar alat"
-    },
-    "spellCheck": {
-      "label": "Semak Ejaan",
-      "description": "Gariskan perkataan yang salah eja semasa menaip",
-      "error": "Gagal mengemas kini semakan ejaan"
-    },
-    "autoSaveDelay": {
-      "label": "Kelewatan Auto-Simpan",
-      "description": "Masa tunggu selepas menaip berhenti sebelum menyimpan",
-      "seconds": "{seconds}s",
-      "error": "Gagal mengemas kini kelewatan autosimpan"
-    },
-    "wordCount": {
-      "label": "Bilangan Perkataan",
-      "description": "Tunjukkan bilangan perkataan dalam pengaki editor",
-      "error": "Gagal mengemas kini paparan bilangan perkataan"
     }
   },
   "templates": {

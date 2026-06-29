@@ -48,9 +48,6 @@ export const GENERAL_SETTINGS_DEFAULTS: GeneralSettings = {
 
 export const EditorSettingsSchema = z.object({
   width: z.enum(['narrow', 'medium', 'wide']),
-  spellCheck: z.boolean(),
-  autoSaveDelay: z.number().int().min(0).max(30000),
-  showWordCount: z.boolean(),
   toolbarMode: z.enum(['floating', 'sticky'])
 })
 
@@ -58,9 +55,6 @@ export type EditorSettings = z.infer<typeof EditorSettingsSchema>
 
 export const EDITOR_SETTINGS_DEFAULTS: EditorSettings = {
   width: 'medium',
-  spellCheck: true,
-  autoSaveDelay: 1000,
-  showWordCount: false,
   toolbarMode: 'floating'
 }
 

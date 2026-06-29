@@ -96,22 +96,22 @@ When Home is disabled, the home tab is never opened. Default landing becomes an 
 
 ## File touch-list
 
-| Area | File |
-|---|---|
-| Schema + defaults | `packages/contracts/src/settings-schemas.ts` |
-| Channel | `packages/contracts/src/ipc-channels.ts` |
-| Main handlers | `apps/desktop/src/main/ipc/settings-handlers.ts` |
-| Renderer hook (new) | `apps/desktop/src/renderer/src/hooks/use-feature-flags.ts` |
-| Settings section id | `apps/desktop/src/renderer/src/contexts/settings-modal-context.tsx` |
-| Settings page nav + body | `apps/desktop/src/renderer/src/pages/settings.tsx` |
-| Features section (new) | `apps/desktop/src/renderer/src/pages/settings/features-section.tsx` |
-| Sidebar nav array + click | `apps/desktop/src/renderer/src/components/app-sidebar.tsx` |
-| Sidebar item ghost style | `apps/desktop/src/renderer/src/components/sidebar/sidebar-nav.tsx` |
-| Tab-open guard | `apps/desktop/src/renderer/src/hooks/use-sidebar-navigation.ts`, `contexts/tabs/*` |
-| Session restore filter | `apps/desktop/src/renderer/src/contexts/tabs/persistence/*` |
-| Day panel gating | `apps/desktop/src/renderer/src/components/journal/journal-day-panel.tsx`, `components/day-panel/global-day-panel.tsx` |
-| Inbox convert gating | inbox renderer (locate `convertToTask`) |
-| Task creation gating | `/task` slash (`getTaskSlashMenuItem`) + quick-add (locate) |
-| Landing fallback | `App.tsx` / tabs provider init (locate) |
-| i18n | new keys for the Features section + ghosted-item tooltip |
-| Regenerate | `pnpm ipc:generate` → `pnpm ipc:check` |
+| Area                      | File                                                                                                                  |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Schema + defaults         | `packages/contracts/src/settings-schemas.ts`                                                                          |
+| Channel                   | `packages/contracts/src/ipc-channels.ts`                                                                              |
+| Main handlers             | `apps/desktop/src/main/ipc/settings-handlers.ts`                                                                      |
+| Renderer hook (new)       | `apps/desktop/src/renderer/src/hooks/use-feature-flags.ts`                                                            |
+| Settings section id       | `apps/desktop/src/renderer/src/contexts/settings-modal-context.tsx`                                                   |
+| Settings page nav + body  | `apps/desktop/src/renderer/src/pages/settings.tsx`                                                                    |
+| Features section (new)    | `apps/desktop/src/renderer/src/pages/settings/features-section.tsx`                                                   |
+| Sidebar nav array + click | `apps/desktop/src/renderer/src/components/app-sidebar.tsx`                                                            |
+| Sidebar item ghost style  | `apps/desktop/src/renderer/src/components/sidebar/sidebar-nav.tsx`                                                    |
+| Tab-open guard            | `apps/desktop/src/renderer/src/hooks/use-sidebar-navigation.ts`, `contexts/tabs/*`                                    |
+| Session restore filter    | `apps/desktop/src/renderer/src/contexts/tabs/persistence/*`                                                           |
+| Day panel gating          | `apps/desktop/src/renderer/src/components/journal/journal-day-panel.tsx`, `components/day-panel/global-day-panel.tsx` |
+| Inbox convert gating      | inbox renderer (locate `convertToTask`)                                                                               |
+| Task creation gating      | `/task` slash (`getTaskSlashMenuItem`) + quick-add (locate)                                                           |
+| Landing fallback          | `App.tsx` / tabs provider init (locate)                                                                               |
+| i18n                      | new keys for the Features section + ghosted-item tooltip                                                              |
+| Regenerate                | `pnpm ipc:generate` → `pnpm ipc:check`                                                                                |

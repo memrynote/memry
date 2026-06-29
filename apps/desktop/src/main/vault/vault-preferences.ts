@@ -8,9 +8,6 @@ import {
 
 const EditorPreferencesSchema = z.object({
   width: z.enum(['narrow', 'medium', 'wide']),
-  spellCheck: z.boolean(),
-  autoSaveDelay: z.number().int().min(0).max(30000),
-  showWordCount: z.boolean(),
   toolbarMode: z.enum(['floating', 'sticky'])
 })
 
@@ -29,9 +26,6 @@ export type EditorPreferences = z.infer<typeof EditorPreferencesSchema>
 
 export const EDITOR_PREFERENCES_DEFAULTS: EditorPreferences = {
   width: EDITOR_SETTINGS_DEFAULTS.width,
-  spellCheck: EDITOR_SETTINGS_DEFAULTS.spellCheck,
-  autoSaveDelay: EDITOR_SETTINGS_DEFAULTS.autoSaveDelay,
-  showWordCount: EDITOR_SETTINGS_DEFAULTS.showWordCount,
   toolbarMode: EDITOR_SETTINGS_DEFAULTS.toolbarMode
 }
 

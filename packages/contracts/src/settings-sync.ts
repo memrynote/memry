@@ -18,9 +18,6 @@ export const SyncedSettingsSchema = z.object({
   editor: z
     .object({
       width: z.enum(['narrow', 'medium', 'wide']).optional(),
-      spellCheck: z.boolean().optional(),
-      autoSaveDelay: z.number().optional(),
-      showWordCount: z.boolean().optional(),
       toolbarMode: z.enum(['floating', 'sticky']).optional()
     })
     .optional(),

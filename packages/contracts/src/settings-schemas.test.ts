@@ -182,40 +182,6 @@ describe('EditorSettingsSchema', () => {
     }
   })
 
-  it('rejects negative autoSaveDelay', () => {
-    const result = EditorSettingsSchema.safeParse({
-      ...EDITOR_SETTINGS_DEFAULTS,
-      autoSaveDelay: -1
-    })
-    expect(result.success).toBe(false)
-  })
-
-  it('rejects autoSaveDelay above 30000', () => {
-    const result = EditorSettingsSchema.safeParse({
-      ...EDITOR_SETTINGS_DEFAULTS,
-      autoSaveDelay: 30001
-    })
-    expect(result.success).toBe(false)
-  })
-
-  it('accepts autoSaveDelay at boundaries', () => {
-    const low = EditorSettingsSchema.safeParse({ ...EDITOR_SETTINGS_DEFAULTS, autoSaveDelay: 0 })
-    expect(low.success).toBe(true)
-    const high = EditorSettingsSchema.safeParse({
-      ...EDITOR_SETTINGS_DEFAULTS,
-      autoSaveDelay: 30000
-    })
-    expect(high.success).toBe(true)
-  })
-
-  it('rejects non-integer autoSaveDelay', () => {
-    const result = EditorSettingsSchema.safeParse({
-      ...EDITOR_SETTINGS_DEFAULTS,
-      autoSaveDelay: 1500.5
-    })
-    expect(result.success).toBe(false)
-  })
-
   it('rejects invalid toolbarMode enum', () => {
     const result = EditorSettingsSchema.safeParse({
       ...EDITOR_SETTINGS_DEFAULTS,

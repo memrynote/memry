@@ -194,8 +194,7 @@
     },
     "groups": {
       "layout": "Aspect",
-      "toolbar": "Bara de instrumente",
-      "writing": "Scrierea"
+      "toolbar": "Bara de instrumente"
     },
     "width": {
       "label": "Lățimea editorului",
@@ -211,22 +210,6 @@
       "label": "Bara de instrumente Sticky Formatting",
       "description": "Afișați întotdeauna bara de instrumente deasupra editorului",
       "error": "Nu s-a putut actualiza modul bară de instrumente"
-    },
-    "spellCheck": {
-      "label": "Verificare ortografică",
-      "description": "Subliniați cuvintele scrise greșit în timp ce introduceți text",
-      "error": "Nu s-a putut actualiza verificarea ortografică"
-    },
-    "autoSaveDelay": {
-      "label": "Întârziere pentru salvare automată",
-      "description": "Așteptați timp după ce se oprește tastarea înainte de a salva",
-      "seconds": "{seconds}s",
-      "error": "Nu s-a putut actualiza întârzierea de salvare automată"
-    },
-    "wordCount": {
-      "label": "Număr de cuvinte",
-      "description": "Afișați numărul de cuvinte în subsolul editorului",
-      "error": "Nu s-a actualizat afișarea numărului de cuvinte"
     }
   },
   "templates": {
