@@ -576,5 +576,31 @@
     "noTasksYet": "No tasks yet.",
     "noEventsYet": "No events today.",
     "noJournalEntriesYet": "No journal entries yet."
+  },
+  "onboarding": {
+    "welcome": {
+      "title": "Welcome to Memry",
+      "body": "Your private, offline-first home. Notes are end-to-end encrypted — they never leave your device unencrypted."
+    },
+    "newNote": {
+      "title": "Create your first note",
+      "body": "Start here. Everything you write is stored locally, first."
+    },
+    "sidebarNav": {
+      "title": "Find your way around",
+      "body": "Notes, Inbox, Calendar, and Tasks all live in this sidebar."
+    },
+    "inbox": {
+      "title": "Capture anything",
+      "body": "Drop quick thoughts into the Inbox — it helps you file them into the right folder."
+    },
+    "calendar": {
+      "title": "See your time",
+      "body": "Your notes and tasks, laid out on a timeline."
+    },
+    "settings": {
+      "title": "Sync and make it yours",
+      "body": "Turn on end-to-end encrypted sync and pick your theme here."
+    }
   }
 }
