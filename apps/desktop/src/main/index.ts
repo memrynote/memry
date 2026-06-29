@@ -1266,8 +1266,16 @@ app.on('before-quit', (event) => {
 
   // Set timeout to force exit if shutdown takes too long
   const shutdownTimeout = setTimeout(() => {
-    shutdownLog.error('timeout - forcing exit')
-    app.exit(1)
+    // If the user asked to install an update, still hand off to Squirrel/NSIS
+    // rather than app.exit() — a hard exit skips the install (and bypasses
+    // autoInstallOnAppQuit), so the update never applies and the app re-prompts.
+    if (isQuitAndInstallRequested()) {
+      shutdownLog.error('cleanup timed out; installing downloaded update anyway')
+      performQuitAndInstall()
+    } else {
+      shutdownLog.error('timeout - forcing exit')
+      app.exit(1)
+    }
   }, 5000) // 5 second timeout
 
   // Flush pending saves from all renderer windows before closing vault
@@ -1325,7 +1333,14 @@ app.on('before-quit', (event) => {
     .catch((error) => {
       shutdownLog.error('error during cleanup:', error)
       clearTimeout(shutdownTimeout)
-      app.exit(1)
+      // Same as the timeout path: a pending install must survive a failed
+      // cleanup, otherwise the hard exit drops the update and the loop returns.
+      if (isQuitAndInstallRequested()) {
+        shutdownLog.error('cleanup failed; installing downloaded update anyway')
+        performQuitAndInstall()
+      } else {
+        app.exit(1)
+      }
     })
 })
 
