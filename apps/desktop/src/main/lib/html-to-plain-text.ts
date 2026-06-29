@@ -24,13 +24,22 @@ function decodeEntities(text: string): string {
   })
 }
 
+// Marks where a heading starts so a blank line can be restored before it after
+// all other blank lines are collapsed. NUL never appears in feed HTML text.
+const HEADING_MARK = '\u0000'
+
 /**
  * Convert an HTML fragment (e.g. GitHub-rendered release notes from the
  * electron-updater atom feed) into readable plain text for the native update
  * dialog, which renders its `detail` field as plain text only.
+ *
+ * Bullets are single-spaced; a blank line is added only before section
+ * headings (New Features, Bug Fixes…), so the non-scrollable dialog stays
+ * compact instead of double-spacing every release-note item.
  */
 export function htmlToPlainText(input: string): string {
   const withBreaks = input
+    .replace(/<h[1-6][^>]*>/gi, HEADING_MARK)
     .replace(/<li[^>]*>/gi, '• ')
     .replace(/<\/(p|div|li|ul|ol|h[1-6]|blockquote|tr)>/gi, '\n')
     .replace(/<br\s*\/?>/gi, '\n')
@@ -39,6 +48,7 @@ export function htmlToPlainText(input: string): string {
 
   return decodeEntities(stripped)
     .replace(/[ \t]+\n/g, '\n')
-    .replace(/\n{3,}/g, '\n\n')
+    .replace(/\n{2,}/g, '\n') // single-space everything (loose lists wrap each <li> in a <p>)
+    .replace(/\n*\u0000/g, '\n\n') // blank line only before section headings
     .trim()
 }

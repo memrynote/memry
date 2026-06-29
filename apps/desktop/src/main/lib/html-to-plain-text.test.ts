@@ -26,8 +26,16 @@ describe('htmlToPlainText', () => {
     ).toBe('Fixed #529 and foo')
   })
 
-  it('collapses excess blank lines and trims', () => {
-    expect(htmlToPlainText('  <p>One</p>\n\n\n\n<p>Two</p>  ')).toBe('One\n\nTwo')
+  it('single-spaces blocks, keeping a blank line only before headings', () => {
+    expect(htmlToPlainText('  <p>One</p>\n\n\n\n<p>Two</p>  ')).toBe('One\nTwo')
+  })
+
+  it('single-spaces loose-list bullets and blanks only before section headings', () => {
+    const html =
+      '<h2>New Features</h2><ul><li><p>Feature one (#1)</p></li><li><p>Feature two (#2)</p></li></ul><h2>Bug Fixes</h2><ul><li><p>Bug one (#3)</p></li></ul>'
+    expect(htmlToPlainText(html)).toBe(
+      'New Features\n• Feature one (#1)\n• Feature two (#2)\n\nBug Fixes\n• Bug one (#3)'
+    )
   })
 
   it('passes plain text through unchanged', () => {
