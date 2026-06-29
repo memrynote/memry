@@ -12,7 +12,8 @@ export const sendEmail = async (
   to: string,
   subject: string,
   html: string,
-  apiKey: string
+  apiKey: string,
+  replyTo?: string
 ): Promise<void> => {
   if (!EMAIL_RE.test(to)) {
     throw new AppError(ErrorCodes.VALIDATION_INVALID_EMAIL, `Invalid email address: ${to}`, 400)
@@ -30,7 +31,13 @@ export const sendEmail = async (
         Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ from: FROM_ADDRESS, to, subject, html })
+      body: JSON.stringify({
+        from: FROM_ADDRESS,
+        to,
+        subject,
+        html,
+        ...(replyTo && EMAIL_RE.test(replyTo) ? { reply_to: replyTo } : {})
+      })
     })
 
     if (!response.ok) {

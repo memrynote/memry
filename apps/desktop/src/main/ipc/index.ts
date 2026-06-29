@@ -27,6 +27,7 @@ import { registerAIInlineHandlers, unregisterAIInlineHandlers } from './ai-inlin
 import { registerAccountHandlers, unregisterAccountHandlers } from './account-handlers'
 import { registerCrdtIpcHandlers } from './crdt-handlers'
 import { registerTelemetryHandlers, unregisterTelemetryHandlers } from './telemetry-handlers'
+import { registerFeedbackHandlers, unregisterFeedbackHandlers } from './feedback-handlers'
 import { registerUpdaterHandlers, unregisterUpdaterHandlers } from './updater-handlers'
 import { registerAgentMcpHandlers, unregisterAgentMcpHandlers } from './agent-mcp-handlers'
 import { registerImportHandlers, unregisterImportHandlers } from './import-handlers'
@@ -140,6 +141,9 @@ export function registerAllHandlers(deps?: IpcDeps): void {
   // Register telemetry handlers (anonymous-safe, no auth required)
   registerTelemetryHandlers()
 
+  // Register feedback handlers (anonymous-safe, no auth required)
+  registerFeedbackHandlers()
+
   // Register Agent MCP settings/status handlers
   registerAgentMcpHandlers()
 
@@ -183,6 +187,7 @@ export function unregisterAllHandlers(): void {
   unregisterAccountHandlers()
   unregisterUpdaterHandlers()
   unregisterTelemetryHandlers()
+  unregisterFeedbackHandlers()
   unregisterAgentMcpHandlers()
   unregisterImportHandlers()
   unregisterHomePageHandlers()
@@ -223,6 +228,7 @@ export { registerGraphHandlers, unregisterGraphHandlers } from './graph-handlers
 export { registerAIInlineHandlers, unregisterAIInlineHandlers } from './ai-inline-handlers'
 export { registerUpdaterHandlers, unregisterUpdaterHandlers } from './updater-handlers'
 export { registerTelemetryHandlers, unregisterTelemetryHandlers } from './telemetry-handlers'
+export { registerFeedbackHandlers, unregisterFeedbackHandlers } from './feedback-handlers'
 export { registerAgentMcpHandlers, unregisterAgentMcpHandlers } from './agent-mcp-handlers'
 export { registerImportHandlers, unregisterImportHandlers } from './import-handlers'
 export { registerHomePageHandlers, unregisterHomePageHandlers } from './home-page-handlers'

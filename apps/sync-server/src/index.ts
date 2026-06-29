@@ -9,6 +9,7 @@ import { auth } from './routes/auth'
 import { blob } from './routes/blob'
 import { calendarChannels } from './routes/calendar-channels'
 import { devices } from './routes/devices'
+import { feedback } from './routes/feedback'
 import { linking } from './routes/linking'
 import { sync } from './routes/sync'
 import { telemetry } from './routes/telemetry'
@@ -161,6 +162,7 @@ app.route('/devices', devices)
 app.route('/sync', sync)
 app.route('/sync', blob)
 app.route('/telemetry', telemetry)
+app.route('/feedback', feedback)
 app.route('/webhooks', webhooks)
 app.route('/calendar/channels', calendarChannels)
 
