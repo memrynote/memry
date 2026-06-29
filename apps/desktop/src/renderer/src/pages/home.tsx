@@ -1,14 +1,21 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import '@/components/home/widgets'
 import { HomeHeader } from '@/components/home/home-header'
 import { BoardGrid } from '@/components/home/board-grid'
 import { BoardEmptyState } from '@/components/home/board-empty-state'
+import { HomeDisabledLauncher } from '@/components/home/home-disabled-launcher'
 import { useHomeBoards } from '@/hooks/use-home-boards'
+import { useFeatureFlags } from '@/hooks/use-feature-flags'
 import { addWidget } from '@/lib/home/layout-reducer'
 import { createWidget as makeWidget } from '@/lib/home/widget-registry'
 import type { HomePage, WidgetType } from '@/lib/home/types'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useT } from '@memry/i18n/renderer'
+import { useTabs } from '@/contexts/tabs'
+import { notesService } from '@/services/notes-service'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Page:Home')
 
 const DEFAULT_WIDGETS: WidgetType[] = ['recently-edited', 'bookmarks']
 
@@ -26,6 +33,30 @@ function asLocalPage(page: {
 
 export default function HomePage(): React.JSX.Element {
   const { t } = useT('common')
+  const { flags } = useFeatureFlags()
+  const { openTab } = useTabs()
+
+  const handleCreateNote = useCallback(async () => {
+    try {
+      const result = await notesService.create({ title: 'Untitled', content: '' })
+      if (result.success && result.note) {
+        openTab({
+          type: 'note',
+          title: result.note.title || 'Untitled',
+          icon: 'file-text',
+          path: `/note/${result.note.id}`,
+          entityId: result.note.id,
+          isPinned: false,
+          isModified: false,
+          isPreview: false,
+          isDeleted: false
+        })
+      }
+    } catch (error) {
+      log.error('Failed to create new note:', error)
+    }
+  }, [openTab])
+
   const [galleryOpen, setGalleryOpen] = useState(false)
   const {
     boards,
@@ -52,6 +83,10 @@ export default function HomePage(): React.JSX.Element {
       setActiveBoardId(board.id)
     })()
   }, [isLoading, boards.length, createBoard, updateWidgets, setActiveBoardId, t])
+
+  if (!flags.home) {
+    return <HomeDisabledLauncher onCreateNote={() => void handleCreateNote()} />
+  }
 
   const localBoards = boards.map(asLocalPage)
   const localActive = activeBoard ? asLocalPage(activeBoard) : null
