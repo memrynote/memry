@@ -11,6 +11,7 @@ import {
   Scissors,
   Search,
   Share2,
+  Sparkles,
   Video,
   X
 } from '@/lib/icons'
@@ -31,6 +32,7 @@ import { InboxListView } from './inbox/inbox-list-view'
 import { InboxHealthView } from './inbox/inbox-health-view'
 import { InboxArchivedView } from './inbox/inbox-archived-view'
 import { TriageView } from './inbox/triage-view'
+import { Triage2View } from './inbox/triage2-view'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('Page:Inbox')
@@ -67,6 +69,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   const { t } = useT('inbox')
   const [currentView, setCurrentView] = useState<InboxView>('inbox')
   const [isTriageMode, setIsTriageMode] = useState(false)
+  const [isTriage2Mode, setIsTriage2Mode] = useState(false)
   const [selectedTypes, setSelectedTypes] = useState<Set<InboxItemType>>(new Set())
   const [showSnoozedItems, setShowSnoozedItems] = useState(false)
   const [isFilterOpen, setIsFilterOpen] = useState(false)
@@ -104,6 +107,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
     lastConsumedFocusTokenRef.current = focusToken
     const focusTimer = window.setTimeout(() => {
       setIsTriageMode(false)
+      setIsTriage2Mode(false)
       setShowSnoozedItems(true)
       setCurrentView('inbox')
     }, 0)
@@ -157,9 +161,13 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
 
   const enterTriage = useCallback(() => setIsTriageMode(true), [])
   const exitTriage = useCallback(() => setIsTriageMode(false), [])
+  const enterTriage2 = useCallback(() => setIsTriage2Mode(true), [])
+  const exitTriage2 = useCallback(() => setIsTriage2Mode(false), [])
 
   useEffect(() => {
     const handler = (e: KeyboardEvent): void => {
+      // Triage 2 owns all keys while it's open.
+      if (isTriage2Mode) return
       if ((e.metaKey || e.ctrlKey) && e.key === 'p') {
         e.preventDefault()
         if (isTriageMode) {
@@ -175,7 +183,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [isTriageMode, enterTriage, exitTriage])
+  }, [isTriageMode, isTriage2Mode, enterTriage, exitTriage])
 
   const closeArchivedSearch = useCallback(() => {
     setArchivedSearchQuery('')
@@ -207,6 +215,8 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
     <>
       {isTriageMode ? (
         <TriageView onExit={exitTriage} />
+      ) : isTriage2Mode ? (
+        <Triage2View onExit={exitTriage2} />
       ) : (
         <div className="flex h-full flex-col">
           <PageToolbar className="px-2 py-1 min-h-[38px] border-b-0">
@@ -231,6 +241,21 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                 <Check className="size-3.5" />
                 <span className="text-[12px] leading-4 font-medium">{t('view.triageButton')}</span>
                 <span className="flex items-center justify-center rounded-[10px] py-px px-1.5 bg-amber-500/15 text-[11px] leading-3.5 font-semibold">
+                  {items.length}
+                </span>
+              </button>
+            )}
+
+            {currentView === 'inbox' && items.length > 0 && (
+              <button
+                type="button"
+                onClick={enterTriage2}
+                title={t('view.triage2Title')}
+                className="flex items-center shrink-0 rounded-[5px] py-1 px-2.5 gap-1.5 bg-foreground/[0.05] border border-border text-foreground/80 transition-colors hover:bg-foreground/[0.09]"
+              >
+                <Sparkles className="size-3.5" />
+                <span className="text-[12px] leading-4 font-medium">{t('view.triage2Button')}</span>
+                <span className="flex items-center justify-center rounded-[10px] py-px px-1.5 bg-foreground/10 text-[11px] leading-3.5 font-semibold">
                   {items.length}
                 </span>
               </button>

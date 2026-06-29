@@ -7,6 +7,8 @@
       "ariaLabel": "Inbox view selection"
     },
     "triageButton": "Triage",
+    "triage2Button": "Triage 2",
+    "triage2Title": "Sort your inbox, one item at a time",
     "processInboxTitle": "Process inbox (Cmd+P)",
     "itemCaptured": "Item captured",
     "searchArchivedTitle": "Search archived items",
@@ -118,7 +120,6 @@
     "exitAria": "Exit triage mode",
     "position": "{current} of {total}",
     "action": {
-      "discard": "Discard",
       "archive": "Archive",
       "open": "Open",
       "toTask": "To Task",
@@ -140,6 +141,43 @@
       "motivation2": "Clear inbox, clear mind.",
       "motivation3": "Decision debt: paid in full.",
       "motivation4": "That felt good, didn't it?"
+    }
+  },
+  "triage2": {
+    "exit": "Exit triage",
+    "progress": "{current} of {total}",
+    "allDone": "All done",
+    "loading": "Preparing your inbox…",
+    "prompt": "Where should this go?",
+    "skip": "Skip",
+    "back": "Back",
+    "dest": {
+      "note": "Note",
+      "task": "Task",
+      "event": "Calendar",
+      "reminder": "Reminder"
+    },
+    "preset": {
+      "tonight": "Tonight",
+      "tomorrow": "Tomorrow",
+      "nextWeek": "Next week"
+    },
+    "whenEvent": "When is this happening?",
+    "whenReminder": "When should we remind you?",
+    "confirmEvent": "Add to calendar",
+    "confirmReminder": "Set reminder",
+    "invalidDate": "Pick a valid date and time",
+    "pastDate": "Pick a time in the future",
+    "actionFailed": "Couldn't sort that item",
+    "doneTitle": "Inbox triaged",
+    "doneBody": "{count, plural, one {# item sorted} other {# items sorted}}",
+    "doneButton": "Done",
+    "tally": {
+      "note": "{count, plural, one {# note} other {# notes}}",
+      "task": "{count, plural, one {# task} other {# tasks}}",
+      "event": "{count, plural, one {# event} other {# events}}",
+      "reminder": "{count, plural, one {# reminder} other {# reminders}}",
+      "skipped": "{count, plural, one {# skipped} other {# skipped}}"
     }
   },
   "bulk": {

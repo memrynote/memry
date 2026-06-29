@@ -1,15 +1,7 @@
 import { useEffect, useMemo } from 'react'
 import { useT } from '@memry/i18n/renderer'
 import { isInputFocused } from '@/hooks/use-keyboard-shortcuts'
-import {
-  Trash2,
-  CheckSquare,
-  FileText,
-  FolderOpen,
-  Clock,
-  ExternalLink,
-  Archive03
-} from '@/lib/icons'
+import { CheckSquare, FileText, FolderOpen, Clock, ExternalLink, Archive03 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import type { InboxItemType } from '@memry/contracts/inbox-api'
 
@@ -36,7 +28,6 @@ interface ActionDef {
 }
 
 const ACTION_STYLES = {
-  discard: 'var(--destructive)',
   task: 'var(--accent-purple)',
   note: 'var(--accent-green)',
   file: 'var(--accent-orange)',
@@ -79,13 +70,6 @@ export function TriageActionBar({
     }
 
     return [
-      {
-        key: 'D',
-        label: t('triage.action.discard'),
-        icon: <Trash2 className="size-5" />,
-        colorVar: ACTION_STYLES.discard,
-        action: onDiscard
-      },
       {
         key: 'T',
         label: t('triage.action.toTask'),
