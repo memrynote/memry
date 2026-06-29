@@ -40,15 +40,6 @@ export type InboxJobType =
   | 'article-extract'
 export type InboxJobStatus = 'pending' | 'running' | 'failed' | 'complete'
 
-export type TriageAction = 'discard' | 'convert-to-task' | 'expand-to-note' | 'file' | 'defer'
-
-export interface TriageState {
-  currentIndex: number
-  totalItems: number
-  currentItem: InboxItem | null
-  completedCount: number
-}
-
 // ============================================================================
 // Metadata Types
 // ============================================================================

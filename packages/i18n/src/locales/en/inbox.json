@@ -6,8 +6,6 @@
       "insights": "Insights",
       "ariaLabel": "Inbox view selection"
     },
-    "triageButton": "Triage",
-    "processInboxTitle": "Process inbox (Cmd+P)",
     "itemCaptured": "Item captured",
     "searchArchivedTitle": "Search archived items",
     "searchPlaceholder": "Search...",
@@ -111,36 +109,6 @@
     "archivedItems": "{count, plural, one {Archived # item} other {Archived # items}}",
     "snoozedUntil": "Snoozed until {time}",
     "snoozedItemsUntil": "{count, plural, one {Snoozed # item until {time}} other {Snoozed # items until {time}}}"
-  },
-  "triage": {
-    "modeTitle": "Triage Mode",
-    "exitHint": "Esc to exit",
-    "exitAria": "Exit triage mode",
-    "position": "{current} of {total}",
-    "action": {
-      "discard": "Discard",
-      "archive": "Archive",
-      "open": "Open",
-      "toTask": "To Task",
-      "toNote": "To Note",
-      "file": "File",
-      "snooze": "Snooze",
-      "cancel": "Cancel"
-    },
-    "snoozeUntil": "Snooze until...",
-    "complete": {
-      "title": "Inbox Zero",
-      "processed": "{count, plural, one {# item processed} other {# items processed}}",
-      "streak": "streak",
-      "streakCount": "{count} streak",
-      "dayProcessingStreak": "{count, plural, one {# day processing streak} other {# day processing streak}}",
-      "back": "Back to Inbox",
-      "motivation0": "Your future self thanks you.",
-      "motivation1": "Everything in its place.",
-      "motivation2": "Clear inbox, clear mind.",
-      "motivation3": "Decision debt: paid in full.",
-      "motivation4": "That felt good, didn't it?"
-    }
   },
   "bulk": {
     "selected": "{count} selected",

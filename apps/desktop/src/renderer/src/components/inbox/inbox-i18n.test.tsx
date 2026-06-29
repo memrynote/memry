@@ -4,7 +4,6 @@ import { I18nextProvider } from 'react-i18next'
 import type { i18n as I18nInstance } from 'i18next'
 import { createRendererI18n } from '@memry/i18n/renderer'
 import { InboxSegmentControl } from './inbox-segment-control'
-import { TriageActionBar } from './triage-action-bar'
 import { InboxZeroState } from '@/components/empty-state/inbox-zero-state'
 
 describe('inbox i18n', () => {
@@ -37,27 +36,6 @@ describe('inbox i18n', () => {
 
     expect(screen.getByText('Gelen kutusu')).toBeInTheDocument()
     expect(screen.getByText('Arşivlendi')).toBeInTheDocument()
-  })
-
-  it('renders triage action labels from the inbox namespace', () => {
-    render(
-      <I18nextProvider i18n={i18nEn}>
-        <TriageActionBar
-          itemType="note"
-          activePicker={null}
-          onPickerChange={() => {}}
-          onDiscard={() => {}}
-          onConvertToTask={() => {}}
-          onExpandToNote={() => {}}
-        />
-      </I18nextProvider>
-    )
-
-    expect(screen.getByText('Discard')).toBeInTheDocument()
-    expect(screen.getByText('To Task')).toBeInTheDocument()
-    expect(screen.getByText('To Note')).toBeInTheDocument()
-    expect(screen.getByText('File')).toBeInTheDocument()
-    expect(screen.getByText('Snooze')).toBeInTheDocument()
   })
 
   it('renders inbox zero copy through i18n', () => {

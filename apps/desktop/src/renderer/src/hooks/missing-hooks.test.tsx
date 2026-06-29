@@ -22,7 +22,6 @@ import { useKeyboardSettings } from './use-keyboard-settings'
 import { useSearchShortcut } from './use-search-shortcut'
 import { useSettingsShortcut } from './use-settings-shortcut'
 import { useStorageUsage } from './use-storage-usage'
-import { useTriageQueue } from './use-triage-queue'
 import { useUndoableAction } from './use-undoable-action'
 import { AISettingsProvider } from '@/contexts/ai-settings-context'
 import { getAIConnections } from '@/services/ai-connections-service'
@@ -565,34 +564,6 @@ describe('state and settings hooks', () => {
     localStorage.setItem('expandedTasks-b', JSON.stringify(['other']))
     rerender({ keyName: 'b' })
     expect(result.current.expandedIds).toEqual(new Set(['other']))
-  })
-
-  it('runs triage queue actions and records completed items', async () => {
-    const { result } = renderHook(() => useTriageQueue())
-
-    expect(result.current.state.currentItem?.id).toBe('item-1')
-    await act(async () => {
-      await result.current.actions.discard()
-    })
-    expect(mocks.inbox.archive).toHaveBeenCalledWith('item-1')
-    expect(result.current.lastAction).toBe('discard')
-    expect(result.current.state.completedCount).toBe(1)
-
-    await act(async () => {
-      await result.current.actions.convertToTask()
-      result.current.actions.skip()
-      result.current.actions.reset()
-    })
-    expect(mocks.inbox.convertToTask).toHaveBeenCalled()
-    expect(result.current.state.completedCount).toBe(0)
-
-    mocks.inbox.file.mockResolvedValueOnce({ success: false, error: 'file failed' })
-    await expect(
-      result.current.actions.file({
-        itemId: 'item-1',
-        destination: { type: 'folder', path: '' }
-      } as never)
-    ).rejects.toThrow('file failed')
   })
 
   it('manages storage usage success and failure states', async () => {
