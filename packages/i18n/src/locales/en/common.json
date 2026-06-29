@@ -214,7 +214,11 @@
       "new": "New",
       "newItemMenu": "Create new…",
       "syncDisabled": "Sync disabled",
-      "syncDisabled2": "Sync disabled"
+      "syncDisabled2": "Sync disabled",
+      "updateAvailable": "Update",
+      "updateDownloading": "Downloading…",
+      "updateDownloadingPercent": "Downloading {percent}%",
+      "updateRestart": "Restart"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Resize Day Panel",

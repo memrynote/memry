@@ -31,6 +31,7 @@ import { SidebarNav } from '@/components/sidebar/sidebar-nav'
 import { SidebarSection } from '@/components/sidebar-section'
 import { NotesTree, type NotesTreeActions } from '@/components/notes-tree'
 import { SidebarTagList } from '@/components/sidebar/sidebar-tag-list'
+import { SidebarUpdateButton } from '@/components/sidebar/sidebar-update-button'
 import { SidebarBookmarkList } from '@/components/sidebar/sidebar-bookmark-list'
 import { SidebarDrillDownContainer } from '@/components/sidebar/sidebar-drill-down-container'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -466,6 +467,7 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
         <SidebarDrillDownContainer>{mainContent}</SidebarDrillDownContainer>
       </SidebarContent>
       <SidebarFooter className="gap-0 p-2">
+        <SidebarUpdateButton />
         <div className="flex items-center gap-1">
           {authState.status === 'authenticated' ? (
             <div className="shrink-0 w-7 [&>button]:w-7 [&>button]:justify-center">
