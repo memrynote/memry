@@ -9,6 +9,23 @@ import { getGroupIdsFromLayout } from '@/components/split-view/layout-helpers'
 import type { PersistedTabState, PersistedTabGroup, PersistedTab } from './types'
 import { STORAGE_VERSION } from './types'
 import { migratePersistedState } from './migrations'
+import { featureForTabType } from '@memry/contracts/feature-flags'
+import type { FeaturesSettings } from '@memry/contracts/settings-schemas'
+
+// =============================================================================
+// FEATURE FILTER
+// =============================================================================
+
+/**
+ * Returns true when a tab of the given type should be restored given the
+ * current feature flags.  `home` is always kept (it is the neutral launcher).
+ * Non-feature tabs (note, settings, …) are always kept.
+ */
+export function isRestorableTabType(type: string, flags: FeaturesSettings): boolean {
+  const feature = featureForTabType(type)
+  if (feature === null || feature === 'home') return true
+  return flags[feature]
+}
 
 // =============================================================================
 // SERIALIZE
@@ -66,7 +83,10 @@ export const serializeTabState = (state: TabSystemState): PersistedTabState => {
  * Deserialize tab state from storage
  * Applies migrations and validates data
  */
-export const deserializeTabState = (persisted: PersistedTabState): Partial<TabSystemState> => {
+export const deserializeTabState = (
+  persisted: PersistedTabState,
+  flags?: FeaturesSettings
+): Partial<TabSystemState> => {
   // Apply migrations if needed
   const migrated = migratePersistedState(persisted)
 
@@ -75,8 +95,12 @@ export const deserializeTabState = (persisted: PersistedTabState): Partial<TabSy
   const persistedTabGroups = migrated.tabGroups
 
   for (const [groupId, group] of Object.entries(persistedTabGroups)) {
+    // Filter out tabs whose feature is disabled before hydrating
+    const source = flags
+      ? group.tabs.filter((tab: PersistedTab) => isRestorableTabType(tab.type, flags))
+      : group.tabs
     // Convert persisted tabs to full tabs
-    const tabs: Tab[] = group.tabs.map((tab: PersistedTab) => ({
+    const tabs: Tab[] = source.map((tab: PersistedTab) => ({
       ...tab,
       isModified: false,
       isPreview: false,
@@ -146,12 +170,15 @@ export const deserializeTabState = (persisted: PersistedTabState): Partial<TabSy
  * Extract only pinned tabs from persisted state
  * Used when full restore is disabled
  */
-export const extractPinnedTabs = (persisted: PersistedTabState): Tab[] => {
+export const extractPinnedTabs = (
+  persisted: PersistedTabState,
+  flags?: FeaturesSettings
+): Tab[] => {
   const pinnedTabs: Tab[] = []
 
   for (const group of Object.values(persisted.tabGroups)) {
     for (const tab of group.tabs) {
-      if (tab.isPinned) {
+      if (tab.isPinned && (flags ? isRestorableTabType(tab.type, flags) : true)) {
         pinnedTabs.push({
           ...tab,
           isModified: false,
