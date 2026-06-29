@@ -68,6 +68,7 @@ export function SyncStatus({ onOpenSettings, iconOnly }: SyncStatusProps): React
       <PopoverTrigger asChild>
         <SidebarMenuButton
           size="sm"
+          data-tour="sync-status"
           tooltip={label}
           aria-label={`Sync status: ${label}`}
           className={cn('text-muted-foreground', hasIssues && 'text-destructive')}

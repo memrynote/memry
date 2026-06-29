@@ -11,6 +11,8 @@ import {
   ChevronsUp,
   FilePlus,
   FolderPlus,
+  ChartRelationship,
+  Home,
   Plus,
   Settings,
   Upload
@@ -57,6 +59,7 @@ import { createLogger } from '@/lib/logger'
 import { useFileDrop } from '@/hooks/use-file-drop'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useT } from '@memry/i18n/renderer'
+import { useFirstRunTour } from '@/components/onboarding/use-first-run-tour'
 
 const log = createLogger('Component:AppSidebar')
 
@@ -65,10 +68,12 @@ const mainNav: {
   page: AppPage
   icon: typeof SidebarInbox
 }[] = [
+  { title: 'Home', page: 'home', icon: Home },
   { title: 'Inbox', page: 'inbox', icon: SidebarInbox },
   { title: 'Journal', page: 'journal', icon: SidebarJournal },
   { title: 'Calendar', page: 'calendar', icon: Calendar2 },
-  { title: 'Tasks', page: 'tasks', icon: SidebarTasks }
+  { title: 'Tasks', page: 'tasks', icon: SidebarTasks },
+  { title: 'Graph', page: 'graph', icon: ChartRelationship }
 ]
 
 function SidebarHeaderContent() {
@@ -150,6 +155,9 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
   // Tab navigation hook
   const { openSidebarItem, isActiveItem } = useSidebarNavigation()
 
+  // First-launch interactive tour (runs once per install)
+  useFirstRunTour()
+
   // Tab actions for opening new notes (stable reference, won't cause re-renders)
   const { openTab } = useTabActions()
 
@@ -198,6 +206,7 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
 
     // Map page to tab type and title
     const pageToTabType: Record<AppPage, TabType> = {
+      home: 'home',
       inbox: 'inbox',
       calendar: 'calendar',
       journal: 'journal',
@@ -205,6 +214,7 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
       graph: 'graph'
     }
     const pageToTitle: Record<AppPage, string> = {
+      home: 'Home',
       inbox: 'Inbox',
       calendar: 'Calendar',
       journal: 'Journal',
@@ -283,6 +293,7 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
       {/* SCROLLABLE SECTION - Collections, Bookmarks, Tags — entire area is drop target */}
       <div
         ref={sidebarScrollRef}
+        data-tour="sidebar-collections"
         className="relative flex-1 min-h-0 overflow-y-auto scrollbar-thin group-data-[collapsible=icon]:overflow-hidden"
         {...dropHandlers}
       >
@@ -421,6 +432,7 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
           <div className="flex flex-1 items-center h-[30px] rounded-[5px] bg-sidebar-surface overflow-hidden">
             <button
               type="button"
+              data-tour="new-note"
               onClick={() => void handleNewNote()}
               className="flex flex-1 items-center justify-center gap-2 h-full hover:bg-black/[0.06] dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
               title={tPhaseF('phaseF.componentsAppSidebar.newNoteN')}
@@ -477,6 +489,7 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
           ) : authState.status === 'checking' ? null : (
             <button
               type="button"
+              data-tour="sync-status"
               onClick={handleSyncClick}
               aria-label={tPhaseF('phaseF.componentsAppSidebar.syncDisabled')}
               title={tPhaseF('phaseF.componentsAppSidebar.syncDisabled2')}
@@ -493,6 +506,7 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
             <TooltipTrigger asChild>
               <button
                 type="button"
+                data-tour="settings"
                 onClick={() => openSettings()}
                 aria-label={settingsLabel}
                 title={settingsLabel}

@@ -42,9 +42,9 @@ import {
   Download,
   AlarmClock,
   Monitor,
-  Maximize
+  Maximize,
+  ChartRelationship
 } from '@/lib/icons'
-import { SidebarGraph } from '@/lib/icons/sidebar-nav-icons'
 import { Button } from '@/components/ui/button'
 import { Picker } from '@/components/ui/picker'
 import { Switch } from '@/components/ui/switch'
@@ -983,7 +983,7 @@ export function NotePage({ noteId }: NotePageProps) {
                   ? t('editor.toolbar.hideLocalGraph')
                   : t('editor.toolbar.showLocalGraph')
               }
-              icon={<SidebarGraph className="size-4" />}
+              icon={<ChartRelationship className="size-4" />}
             />
             <Picker.Item
               value="version-history"
@@ -1175,7 +1175,7 @@ export function NotePage({ noteId }: NotePageProps) {
                 openTab({
                   type: 'graph',
                   title: 'Graph',
-                  icon: 'git-graph',
+                  icon: 'graph',
                   path: '/graph',
                   isPinned: false,
                   isModified: false,

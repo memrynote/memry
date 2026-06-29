@@ -271,7 +271,8 @@ import {
   DashedLineCircleIcon,
   Progress03Icon,
   Pdf01Icon,
-  ArrowTurnBackwardIcon
+  ArrowTurnBackwardIcon,
+  ChartRelationshipIcon
 } from '@hugeicons/core-free-icons'
 import { createIcon } from './create-icon'
 
@@ -363,6 +364,7 @@ export const Trash2 = createIcon(Delete01Icon)
 export const Download = createIcon(Download01Icon)
 export const Upload = createIcon(Upload01Icon)
 export const Share = createIcon(Share01Icon)
+export const ChartRelationship = createIcon(ChartRelationshipIcon)
 export const Share2 = createIcon(Share02Icon)
 export const Link = createIcon(Link01Icon)
 export const Link2 = createIcon(Link02Icon)

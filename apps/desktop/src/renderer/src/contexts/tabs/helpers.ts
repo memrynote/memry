@@ -133,7 +133,7 @@ const TAB_ICONS: Record<TabType, string> = {
   collection: 'bookmark',
   'template-editor': 'layout-template',
   templates: 'layout-template',
-  graph: 'git-graph',
+  graph: 'graph',
   'agent-chat': 'bot'
 }
 

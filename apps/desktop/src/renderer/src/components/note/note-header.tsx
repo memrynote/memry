@@ -1,6 +1,6 @@
 import { memo } from 'react'
 import { cn } from '@/lib/utils'
-import { Bookmark, MoreHorizontal, History, Monitor, GitGraph } from '@/lib/icons'
+import { Bookmark, MoreHorizontal, History, Monitor, ChartRelationship } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -89,7 +89,7 @@ export const NoteHeader = memo(function NoteHeader({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={onToggleLocalGraph}>
-              <GitGraph className="mr-2 h-4 w-4" />
+              <ChartRelationship className="mr-2 h-4 w-4" />
               {isLocalGraphOpen
                 ? t('editor.toolbar.hideLocalGraph')
                 : t('editor.toolbar.showLocalGraph')}

@@ -576,5 +576,43 @@
     "noTasksYet": "No tasks yet.",
     "noEventsYet": "No events today.",
     "noJournalEntriesYet": "No journal entries yet."
+  },
+  "onboarding": {
+    "welcome": {
+      "title": "Welcome to MemryNote",
+      "body": "Your private, offline-first home. Notes are end-to-end encrypted — they never leave your device unencrypted."
+    },
+    "newNote": {
+      "title": "Create your first note",
+      "body": "Start here. Everything you write is stored locally, first."
+    },
+    "nav": {
+      "title": "Your workspaces",
+      "body": "Inbox to capture, Journal for daily notes, Calendar for your timeline, Tasks for to-dos, and Graph to see how it all connects."
+    },
+    "collections": {
+      "title": "Collections, bookmarks & tags",
+      "body": "Organize notes into folders, pin bookmarks, and browse by tag — all here."
+    },
+    "dayPanel": {
+      "title": "Your day, beside your work",
+      "body": "The side panel keeps a calendar and your day view next to whatever you're reading."
+    },
+    "agentChat": {
+      "title": "Chat with the AI agent",
+      "body": "Switch to the Agent tab to ask MemryNote's assistant about your vault."
+    },
+    "sync": {
+      "title": "Private, encrypted sync",
+      "body": "Turn on end-to-end encrypted sync to keep every device in step."
+    },
+    "feedback": {
+      "title": "Tell us what you think",
+      "body": "Send feedback straight to the team from here."
+    },
+    "settings": {
+      "title": "Settings & imports",
+      "body": "Import your notes from 12+ apps — Obsidian, Notion, Apple Notes, Evernote and more — and tune everything else in Settings."
+    }
   }
 }

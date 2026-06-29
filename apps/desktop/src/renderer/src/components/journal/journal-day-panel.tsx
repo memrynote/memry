@@ -183,7 +183,7 @@ function TaskRow({
         </div>
         <span
           className={cn(
-            'text-[13px] font-medium truncate min-w-0 text-left',
+            'text-[13px] font-medium truncate min-w-0 text-start',
             isCompleted
               ? 'text-muted-foreground/60 line-through [text-underline-position:from-font]'
               : 'text-foreground/90'
@@ -194,7 +194,7 @@ function TaskRow({
       </div>
 
       {(task.subtaskCount ?? 0) > 0 && (
-        <div className="pl-[52px]">
+        <div className="ps-[52px]">
           <SubtaskProgressIndicator
             completed={task.completedSubtaskCount ?? 0}
             total={task.subtaskCount ?? 0}
@@ -216,7 +216,7 @@ function ScheduleRow({ event, onHoverColor }: ScheduleRowProps) {
 
   return (
     <div
-      className="flex flex-col gap-0.5 rounded-r border-l-2 py-1 pl-2.5 transition-colors hover:bg-accent/40"
+      className="flex flex-col gap-0.5 rounded-e border-s-2 py-1 ps-2.5 transition-colors hover:bg-accent/40"
       style={{ borderColor }}
       onMouseEnter={() => onHoverColor?.(borderColor)}
       onMouseLeave={() => onHoverColor?.(null)}
@@ -421,14 +421,6 @@ export function JournalDayPanel({ date, className, onHoverColor }: JournalDayPan
         <>
           {schedule.length > 0 && (
             <div className="flex flex-col gap-1">
-              <div className="flex items-center justify-between">
-                <span className="tracking-[0.06em] uppercase inline-block text-muted-foreground font-semibold text-[11px]">
-                  {t('section.schedule')}
-                </span>
-                <span className="text-[11px] text-muted-foreground tabular-nums">
-                  {schedule.length}
-                </span>
-              </div>
               {schedule.map((event) => (
                 <ScheduleRow key={event.id} event={event} onHoverColor={onHoverColor} />
               ))}

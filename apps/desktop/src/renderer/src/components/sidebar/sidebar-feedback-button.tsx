@@ -74,6 +74,7 @@ export function SidebarFeedbackButton() {
         <TooltipTrigger asChild>
           <button
             type="button"
+            data-tour="feedback"
             onClick={() => setOpen(true)}
             aria-label={label}
             title={label}

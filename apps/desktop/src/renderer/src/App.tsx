@@ -81,7 +81,7 @@ export type TaskViewId = 'all' | 'today' | 'completed'
 export type TaskSelectionType = 'view' | 'project'
 
 // Combined page type for routing
-export type AppPage = BasePage | 'tasks'
+export type AppPage = BasePage | 'tasks' | 'home'
 
 // =============================================================================
 // THEME SYNC MANAGER (inside ThemeProvider)
@@ -486,7 +486,7 @@ function App(): React.JSX.Element {
         projects={projectsWithCounts}
         getOrderedTasks={taskOrder.getOrderedTasks}
       >
-        <DayPanelProvider>
+        <DayPanelProvider defaultOpen={true}>
           <CalendarViewProvider>
             <AISettingsProvider>
               <AIInlineProvider>
