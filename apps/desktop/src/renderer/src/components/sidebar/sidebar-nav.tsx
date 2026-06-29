@@ -5,6 +5,7 @@ import {
   SidebarMenuButton,
   SidebarMenuBadge
 } from '@/components/ui/sidebar'
+import { cn } from '@/lib/utils'
 import type { AppPage } from '@/App'
 import type { SidebarItem, TabType } from '@/contexts/tabs/types'
 
@@ -18,6 +19,7 @@ interface SidebarNavProps {
   items: NavItem[]
   isActive: (item: SidebarItem) => boolean
   onNavClick: (page: AppPage) => (e: React.MouseEvent) => void
+  isDisabled: (page: AppPage) => boolean
   inboxCount: number
   todayTasksCount: number
 }
@@ -26,6 +28,7 @@ export function SidebarNav({
   items,
   isActive,
   onNavClick,
+  isDisabled,
   inboxCount,
   todayTasksCount
 }: SidebarNavProps) {
@@ -39,16 +42,26 @@ export function SidebarNav({
             path: `/${item.page}`
           }
           const active = isActive(sidebarItem)
-          const badgeCount =
-            item.page === 'inbox' ? inboxCount : item.page === 'tasks' ? todayTasksCount : 0
+          const disabled = isDisabled(item.page)
+          const badgeCount = disabled
+            ? 0
+            : item.page === 'inbox'
+              ? inboxCount
+              : item.page === 'tasks'
+                ? todayTasksCount
+                : 0
 
           return (
             <SidebarMenuItem key={item.page}>
               <SidebarMenuButton
-                isActive={active}
+                isActive={!disabled && active}
+                aria-disabled={disabled}
                 data-tour={`nav-${item.page}`}
                 onClick={onNavClick(item.page)}
-                className="h-7 rounded-[5px] p-0 ps-1 pe-2.5 gap-1.5 text-[13px] leading-4 font-medium text-sidebar-foreground"
+                className={cn(
+                  'h-7 rounded-[5px] p-0 ps-1 pe-2.5 gap-1.5 text-[13px] leading-4 font-medium text-sidebar-foreground',
+                  disabled && 'opacity-50 text-muted-foreground'
+                )}
               >
                 <item.icon />
                 <span>{item.title}</span>

@@ -43,6 +43,7 @@ import { NewItemMenuItems } from '@/components/tabs/new-item-menu-items'
 import { useSelectedFolder } from '@/contexts/selected-folder-context'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
+import { useFeatureFlags } from '@/hooks/use-feature-flags'
 import { useTabActions } from '@/contexts/tabs'
 import { useSettingsModal } from '@/contexts/settings-modal-context'
 import { notesService } from '@/services/notes-service'
@@ -154,6 +155,7 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
 
   // Tab navigation hook
   const { openSidebarItem, isActiveItem } = useSidebarNavigation()
+  const { isEnabled } = useFeatureFlags()
 
   // First-launch interactive tour (runs once per install)
   useFirstRunTour()
@@ -474,6 +476,7 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
           items={mainNav}
           isActive={isActiveItem}
           onNavClick={handleNavClick}
+          isDisabled={(page) => !isEnabled(page)}
           inboxCount={inboxCount}
           todayTasksCount={todayTasksCount}
         />

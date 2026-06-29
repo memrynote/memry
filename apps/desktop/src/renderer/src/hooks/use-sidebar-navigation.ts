@@ -18,6 +18,10 @@ import {
 import { SINGLETON_TAB_TYPES } from '@/contexts/tabs/types'
 import type { Tab, TabSystemState, SidebarItem } from '@/contexts/tabs/types'
 import { useIsItemActive } from './use-is-item-active'
+import { useFeatureFlags } from './use-feature-flags'
+import { useSettingsModal } from '@/contexts/settings-modal-context'
+import { featureForTabType } from '@memry/contracts/feature-flags'
+import type { FeaturesSettings } from '@memry/contracts/settings-schemas'
 
 // =============================================================================
 // TYPES
@@ -41,6 +45,19 @@ export interface OpenSidebarItemOptions {
 interface FoundTabResult {
   tab: Tab
   groupId: string
+}
+
+// =============================================================================
+// PURE HELPERS
+// =============================================================================
+
+/**
+ * Returns true when the given tab type maps to a feature that is currently
+ * disabled, meaning navigation should redirect to Settings → Features instead.
+ */
+export function shouldRedirectToFeatures(type: string, flags: FeaturesSettings): boolean {
+  const feature = featureForTabType(type)
+  return feature !== null && !flags[feature]
 }
 
 // =============================================================================
@@ -127,6 +144,10 @@ export const useSidebarNavigation = () => {
   // PERFORMANCE: Optimized active item checking - stable callback reference
   const isActiveItem = useIsItemActive()
 
+  // Feature flags + settings modal for the disabled-feature redirect guard
+  const { flags } = useFeatureFlags()
+  const { open: openSettings } = useSettingsModal()
+
   // Use refs for state to avoid recreating callbacks
   const stateRef = useRef(state)
   useEffect(() => {
@@ -138,6 +159,12 @@ export const useSidebarNavigation = () => {
    */
   const openSidebarItem = useCallback(
     (item: SidebarItem, options: OpenSidebarItemOptions = {}) => {
+      // Guard: redirect disabled features to Settings → Features instead of opening a tab
+      if (shouldRedirectToFeatures(item.type, flags)) {
+        openSettings('features')
+        return
+      }
+
       const { inBackground, toTheSide } = options
       const currentState = stateRef.current
 
@@ -166,7 +193,7 @@ export const useSidebarNavigation = () => {
         openTab(tabData, { background: inBackground })
       }
     },
-    [openTab, setActiveTab, splitView]
+    [openTab, setActiveTab, splitView, flags, openSettings]
   )
 
   /**
