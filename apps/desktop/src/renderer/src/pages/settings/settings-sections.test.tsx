@@ -720,22 +720,20 @@ describe('settings section coverage', () => {
     expect(apiKeyInput).not.toBeNull()
     fireEvent.change(apiKeyInput as HTMLInputElement, { target: { value: 'local-secret' } })
 
-    fireEvent.click(screen.getByRole('button', { name: 'agentProviders.actions.save' }))
-    await waitFor(() =>
-      expect(window.api.agent.setLocalProviderSettings).toHaveBeenCalledWith({
-        preset: 'lm_studio',
-        baseUrl: 'https://models.example.com/v1',
-        model: 'qwen2.5',
-        allowNonLoopback: true,
-        apiKey: 'local-secret'
-      })
+    // Edits auto-save (debounced) — no Save button — then the connection is re-checked.
+    await waitFor(
+      () =>
+        expect(window.api.agent.setLocalProviderSettings).toHaveBeenCalledWith({
+          preset: 'lm_studio',
+          baseUrl: 'https://models.example.com/v1',
+          model: 'qwen2.5',
+          allowNonLoopback: true,
+          apiKey: 'local-secret'
+        }),
+      { timeout: 2000 }
     )
-
-    fireEvent.click(screen.getByRole('button', { name: 'agentProviders.actions.test' }))
-    await screen.findByText('agentProviders.status.toolsDisabled')
-
-    fireEvent.click(screen.getByRole('button', { name: 'agentProviders.actions.probe' }))
-    await screen.findByText('agentProviders.status.fullTools')
+    expect(window.api.agent.testLocalProvider).toHaveBeenCalled()
+    await screen.findByText('agentProviders.status.connected', undefined, { timeout: 2000 })
   })
 
   it('installs the terminal command from command line settings', async () => {

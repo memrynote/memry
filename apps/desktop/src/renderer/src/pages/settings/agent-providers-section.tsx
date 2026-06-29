@@ -45,6 +45,7 @@ export function AgentProvidersSection({
   const [models, setModels] = useState<string[]>([])
   const [status, setStatus] = useState<AgentLocalProviderProbeResult | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
+  const [dirty, setDirty] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -61,6 +62,31 @@ export function AgentProvidersSection({
     }
   }, [])
 
+  // Auto-save edits (debounced), then re-check the connection and surface any error inline.
+  useEffect(() => {
+    if (!dirty || !settings) return
+    const handle = setTimeout(() => {
+      void (async () => {
+        setBusy('save')
+        try {
+          const saved = await window.api.agent.setLocalProviderSettings({
+            preset: settings.preset,
+            baseUrl: settings.baseUrl,
+            model: settings.model,
+            allowNonLoopback: settings.allowNonLoopback,
+            apiKey: apiKey || undefined
+          })
+          setSettings(saved)
+          setDirty(false)
+          setStatus(await window.api.agent.testLocalProvider())
+        } finally {
+          setBusy(null)
+        }
+      })()
+    }, 600)
+    return () => clearTimeout(handle)
+  }, [dirty, settings, apiKey])
+
   const nonLoopback = useMemo(() => {
     if (!settings) return false
     try {
@@ -74,6 +100,7 @@ export function AgentProvidersSection({
   const updateSetting = useCallback(
     <K extends keyof AgentLocalProviderSettings>(key: K, value: AgentLocalProviderSettings[K]) => {
       setSettings((current) => (current ? { ...current, [key]: value } : current))
+      setDirty(true)
     },
     []
   )
@@ -84,25 +111,13 @@ export function AgentProvidersSection({
       const baseUrl = preset === 'custom' ? current.baseUrl : PRESET_DEFAULTS[preset]
       return { ...current, preset, baseUrl }
     })
+    setDirty(true)
   }, [])
 
-  const save = useCallback(async () => {
-    if (!settings) return
-    setBusy('save')
-    try {
-      const saved = await window.api.agent.setLocalProviderSettings({
-        preset: settings.preset,
-        baseUrl: settings.baseUrl,
-        model: settings.model,
-        allowNonLoopback: settings.allowNonLoopback,
-        apiKey: apiKey || undefined
-      })
-      setSettings(saved)
-      setApiKey('')
-    } finally {
-      setBusy(null)
-    }
-  }, [apiKey, settings])
+  const updateApiKey = useCallback((value: string) => {
+    setApiKey(value)
+    setDirty(true)
+  }, [])
 
   const changeToolApprovalMode = useCallback(async (toolApprovalMode: AgentToolApprovalMode) => {
     setPreferences((current) => (current ? { ...current, toolApprovalMode } : current))
@@ -126,23 +141,8 @@ export function AgentProvidersSection({
     }
   }, [])
 
-  const testConnection = useCallback(async () => {
-    setBusy('test')
-    try {
-      setStatus(await window.api.agent.testLocalProvider())
-    } finally {
-      setBusy(null)
-    }
-  }, [])
-
-  const probeTools = useCallback(async () => {
-    setBusy('probe')
-    try {
-      setStatus(await window.api.agent.probeLocalProvider())
-    } finally {
-      setBusy(null)
-    }
-  }, [])
+  const connectionError =
+    status && (!status.connected || !status.modelAvailable) ? status.detail : null
 
   if (!settings || !preferences) return null
 
@@ -152,7 +152,6 @@ export function AgentProvidersSection({
         <SettingsHeader
           title={t('agentProviders.header.title')}
           subtitle={t('agentProviders.header.subtitle')}
-          action={<StatusBadge status={status} />}
         />
       )}
 
@@ -286,57 +285,31 @@ export function AgentProvidersSection({
           <Input
             value={apiKey}
             type="password"
-            onChange={(event) => setApiKey(event.target.value)}
+            onChange={(event) => updateApiKey(event.target.value)}
             className="h-8 text-xs"
           />
         </SettingRowTall>
-      </SettingsGroup>
-
-      <SettingsGroup label={t('agentProviders.groups.actions')}>
-        <SettingRow label={t('agentProviders.actions.save')}>
-          <Button type="button" size="sm" onClick={() => void save()} disabled={busy === 'save'}>
-            {t('agentProviders.actions.save')}
-          </Button>
-        </SettingRow>
-        <SettingRow label={t('agentProviders.actions.test')}>
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={() => void testConnection()}
-            disabled={busy === 'test'}
-          >
-            {t('agentProviders.actions.test')}
-          </Button>
-        </SettingRow>
-        <SettingRow label={t('agentProviders.actions.probe')}>
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={() => void probeTools()}
-            disabled={busy === 'probe'}
-          >
-            {t('agentProviders.actions.probe')}
-          </Button>
-        </SettingRow>
+        {(busy === 'save' || status) && (
+          <SettingRow label={t('agentProviders.status.label')}>
+            {busy === 'save' ? (
+              <span className="text-xs/4 text-muted-foreground">
+                {t('agentProviders.status.checking')}
+              </span>
+            ) : connectionError ? (
+              <span
+                className="max-w-60 truncate text-xs/4 text-destructive"
+                title={connectionError}
+              >
+                {connectionError}
+              </span>
+            ) : (
+              <span className="text-xs/4 text-green-600">
+                {t('agentProviders.status.connected')}
+              </span>
+            )}
+          </SettingRow>
+        )}
       </SettingsGroup>
     </div>
-  )
-}
-
-function StatusBadge({ status }: { status: AgentLocalProviderProbeResult | null }) {
-  const { t } = useT('settings')
-  if (!status) return null
-  const label = status.toolsEnabled
-    ? t('agentProviders.status.fullTools')
-    : status.connected
-      ? t('agentProviders.status.toolsDisabled')
-      : t('agentProviders.status.disconnected')
-
-  return (
-    <span className="rounded-md border border-border bg-muted/50 px-2 py-1 text-xs/4 text-muted-foreground">
-      {label}
-    </span>
   )
 }
