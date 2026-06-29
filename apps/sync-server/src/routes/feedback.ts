@@ -7,9 +7,6 @@ import { createRateLimiter } from '../middleware/rate-limit'
 import { sendEmail } from '../services/email'
 import type { AppContext } from '../types'
 
-// ponytail: hardcoded recipient — move to an env var if it must change without a deploy.
-const FEEDBACK_RECIPIENT = 'kaan@memrynote.com'
-
 const escapeHtml = (value: string): string =>
   value
     .replace(/&/g, '&amp;')
@@ -62,11 +59,16 @@ feedback.post('/', async (c) => {
     throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid feedback payload', 400)
   }
 
+  const recipient = c.env.FEEDBACK_RECIPIENT
+  if (!recipient) {
+    throw new AppError(ErrorCodes.INTERNAL_ERROR, 'Feedback recipient not configured', 500)
+  }
+
   const { message, email, appVersion, platform } = parsed.data
   const subject = `Memry feedback from ${email ?? 'anonymous'}`
   const html = buildFeedbackHtml({ message, email, appVersion, platform })
 
-  await sendEmail(FEEDBACK_RECIPIENT, subject, html, c.env.RESEND_API_KEY, email)
+  await sendEmail(recipient, subject, html, c.env.RESEND_API_KEY, email)
 
   return c.json({ success: true }, 202)
 })

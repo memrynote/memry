@@ -2,6 +2,8 @@
 JWT_PUBLIC_KEY=replace-me
 JWT_PRIVATE_KEY=replace-me
 RESEND_API_KEY=replace-me
+# Recipient address for in-app feedback submissions (POST /feedback).
+FEEDBACK_RECIPIENT=replace-me
 GOOGLE_CLIENT_ID=replace-with-real-google-client-id.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=replace-me
 GOOGLE_REDIRECT_URI=replace-with-registered-google-redirect-uri

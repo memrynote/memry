@@ -24,6 +24,7 @@ function createEnv(overrides?: Record<string, unknown>) {
     JWT_PUBLIC_KEY: '',
     JWT_PRIVATE_KEY: '',
     RESEND_API_KEY: 'test-resend-key',
+    FEEDBACK_RECIPIENT: 'kaan@memrynote.com',
     OTP_HMAC_KEY: '',
     RECOVERY_DUMMY_SECRET: '',
     WEBHOOK_HMAC_KEY: '',
@@ -86,6 +87,14 @@ describe('POST /feedback', () => {
     const response = await post({ message: '   ' }, env)
 
     expect(response.status).toBe(400)
+    expect(sendEmailMock).not.toHaveBeenCalled()
+  })
+
+  it('returns 500 and sends no email when the recipient is not configured', async () => {
+    const env = createEnv({ FEEDBACK_RECIPIENT: '' })
+    const response = await post({ message: 'hi' }, env)
+
+    expect(response.status).toBe(500)
     expect(sendEmailMock).not.toHaveBeenCalled()
   })
 })
