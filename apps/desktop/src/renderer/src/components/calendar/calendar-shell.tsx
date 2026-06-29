@@ -63,6 +63,7 @@ interface CalendarShellProps {
   onToday: () => void
   todayRequestKey?: number
   onCreateEvent: (anchorRect: AnchorRect) => void
+  onSearchJump: (item: CalendarProjectionItem) => void
   onToggleMemryItems: () => void
   onToggleImportedCalendars: () => void
   onToggleImportedSource: (sourceId: string) => void
@@ -109,6 +110,7 @@ export function CalendarShell({
   onToday,
   todayRequestKey,
   onCreateEvent,
+  onSearchJump,
   onToggleMemryItems,
   onToggleImportedCalendars,
   onToggleImportedSource,
@@ -264,6 +266,7 @@ export function CalendarShell({
         onNext={onNext}
         onToday={onToday}
         onCreateEvent={onCreateEvent}
+        onSearchJump={onSearchJump}
         extraActions={
           <>
             {refreshButton}
