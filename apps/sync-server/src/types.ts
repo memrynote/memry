@@ -10,6 +10,7 @@ export type Bindings = {
   JWT_PUBLIC_KEY: string
   JWT_PRIVATE_KEY: string
   RESEND_API_KEY: string
+  FEEDBACK_RECIPIENT: string
   OTP_HMAC_KEY: string
   GOOGLE_CLIENT_ID: string
   GOOGLE_CLIENT_SECRET: string

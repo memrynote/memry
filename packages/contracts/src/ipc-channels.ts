@@ -472,6 +472,20 @@ export type AccountInvokeChannel =
   (typeof AccountChannels.invoke)[keyof typeof AccountChannels.invoke]
 
 // ============================================================================
+// Feedback Channels
+// ============================================================================
+
+export const FeedbackChannels = {
+  invoke: {
+    /** Submit beta feedback (anonymous-friendly; emailed to the team) */
+    SUBMIT: 'feedback:submit'
+  }
+} as const
+
+export type FeedbackInvokeChannel =
+  (typeof FeedbackChannels.invoke)[keyof typeof FeedbackChannels.invoke]
+
+// ============================================================================
 // Data Management Channels
 // ============================================================================
 

@@ -32,6 +32,7 @@ import { SidebarSection } from '@/components/sidebar-section'
 import { NotesTree, type NotesTreeActions } from '@/components/notes-tree'
 import { SidebarTagList } from '@/components/sidebar/sidebar-tag-list'
 import { SidebarUpdateButton } from '@/components/sidebar/sidebar-update-button'
+import { SidebarFeedbackButton } from '@/components/sidebar/sidebar-feedback-button'
 import { SidebarBookmarkList } from '@/components/sidebar/sidebar-bookmark-list'
 import { SidebarDrillDownContainer } from '@/components/sidebar/sidebar-drill-down-container'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -487,6 +488,7 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
           <div className="flex-1 min-w-0">
             <VaultSwitcher />
           </div>
+          <SidebarFeedbackButton />
           <Tooltip>
             <TooltipTrigger asChild>
               <button

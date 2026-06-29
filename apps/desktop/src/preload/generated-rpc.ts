@@ -288,6 +288,9 @@ export function createGeneratedRpcApi({
       "getSettings": (() => invoke("telemetry:getSettings")) as GeneratedRpcApi["telemetry"]["getSettings"],
       "setEnabled": ((enabled) => invoke("telemetry:setEnabled", enabled)) as GeneratedRpcApi["telemetry"]["setEnabled"],
     },
+    "feedback": {
+      "submit": ((input) => invoke("feedback:submit", input)) as GeneratedRpcApi["feedback"]["submit"],
+    },
   }
 
   for (const [eventName, channel] of Object.entries(eventChannels)) {
