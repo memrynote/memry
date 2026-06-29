@@ -53,4 +53,12 @@ describe('importer registry', () => {
     expect(meta.find((m) => m.id === 'with-preview')?.supportsPreview).toBe(true)
     expect(meta[0].fileSpec).toEqual({ label: 'Fake', extensions: ['zip'], allowMultiple: false })
   })
+
+  it('sorts metadata alphabetically by name regardless of registration order', () => {
+    registerImporter({ ...fake, id: 'zebra', name: 'Zebra' })
+    registerImporter({ ...fake, id: 'apple', name: 'Apple' })
+    registerImporter({ ...fake, id: 'mango', name: 'Mango' })
+
+    expect(listImporterMeta().map((m) => m.name)).toEqual(['Apple', 'Mango', 'Zebra'])
+  })
 })
