@@ -24,12 +24,15 @@
 ### Task 1: Feature-flags contract (schema + channel + mapping)
 
 **Files:**
+
 - Modify: `packages/contracts/src/settings-schemas.ts` (append a new group after the Calendar group ~line 179)
 - Create: `packages/contracts/src/feature-flags.ts`
 - Modify: `packages/contracts/src/ipc-channels.ts` (add two keys to `SettingsChannels.invoke`, after `SET_CALENDAR_SETTINGS` ~line 404)
-- Test: `packages/contracts/src/feature-flags.test.ts`
+- Modify: `packages/contracts/package.json` (add `"./feature-flags": "./src/feature-flags.ts"` to the explicit `exports` map — there is NO wildcard, so a new module must be listed or `@memry/contracts/feature-flags` fails to resolve in typecheck/build)
+- Test: `packages/contracts/src/feature-flags.test.ts` (runs via the desktop **shared** vitest project — contracts has no test runner of its own)
 
 **Interfaces:**
+
 - Produces: `FeaturesSettingsSchema`, `type FeaturesSettings`, `FEATURES_SETTINGS_DEFAULTS`, `type FeatureKey`, `FEATURE_KEYS`, `featureForTabType(type: string): FeatureKey | null`.
 - Produces: channels `SettingsChannels.invoke.GET_FEATURES_SETTINGS = 'settings:getFeaturesSettings'`, `SET_FEATURES_SETTINGS = 'settings:setFeaturesSettings'`.
 
@@ -71,7 +74,7 @@ describe('feature flags', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm --filter @memry/contracts test -- feature-flags`
+Run: `pnpm --filter @memry/desktop test:shared feature-flags`
 Expected: FAIL — `featureForTabType`/`FEATURE_KEYS` not exported; schema not defined.
 
 - [ ] **Step 3: Add the schema group** (append to `packages/contracts/src/settings-schemas.ts`)
@@ -120,6 +123,12 @@ export function featureForTabType(type: string): FeatureKey | null {
 }
 ```
 
+Then register the subpath export in `packages/contracts/package.json` (the `exports` map has no wildcard, so the new module must be listed explicitly — add alphabetically near the other `./` entries):
+
+```json
+    "./feature-flags": "./src/feature-flags.ts",
+```
+
 - [ ] **Step 5: Add the IPC channels** (insert in `packages/contracts/src/ipc-channels.ts` after `SET_CALENDAR_SETTINGS`)
 
 ```ts
@@ -131,7 +140,7 @@ export function featureForTabType(type: string): FeatureKey | null {
 
 - [ ] **Step 6: Run test to verify it passes**
 
-Run: `pnpm --filter @memry/contracts test -- feature-flags`
+Run: `pnpm --filter @memry/desktop test:shared feature-flags`
 Expected: PASS (4 tests).
 
 - [ ] **Step 7: Commit**
@@ -146,37 +155,42 @@ git commit -m "feat(features): add feature-flags settings schema, channels, tab 
 ### Task 2: Main-process handlers + IPC regen
 
 **Files:**
+
 - Modify: `apps/desktop/src/main/ipc/settings-handlers.ts` (register pair inside `registerSettingsHandlers()` near the Calendar pair ~line 828; add `removeHandler` pair in teardown ~line 990; import the defaults)
 - Modify (generated): `apps/desktop/src/preload/generated-rpc.ts`, `apps/desktop/src/preload/index.d.ts` via `pnpm ipc:generate`
 
 **Interfaces:**
+
 - Consumes: `FEATURES_SETTINGS_DEFAULTS` (Task 1), `SettingsChannels.invoke.GET/SET_FEATURES_SETTINGS` (Task 1).
 - Produces: `window.api.settings.getFeaturesSettings()` / `setFeaturesSettings(updates)` in the renderer types.
 
 - [ ] **Step 1: Add the import** (top of `settings-handlers.ts`, alongside the existing `CALENDAR_SETTINGS_DEFAULTS` import)
 
 ```ts
-import { FEATURES_SETTINGS_DEFAULTS, type FeaturesSettings } from '@memry/contracts/settings-schemas'
+import {
+  FEATURES_SETTINGS_DEFAULTS,
+  type FeaturesSettings
+} from '@memry/contracts/settings-schemas'
 ```
 
 - [ ] **Step 2: Register the handler pair** (inside `registerSettingsHandlers()`, right after the calendar pair at ~828)
 
 ```ts
-  ipcMain.handle(SettingsChannels.invoke.GET_FEATURES_SETTINGS, () =>
-    readGroupSettings('features', FEATURES_SETTINGS_DEFAULTS)
-  )
-  ipcMain.handle(
-    SettingsChannels.invoke.SET_FEATURES_SETTINGS,
-    (_event, updates: Partial<FeaturesSettings>) =>
-      writeGroupSettings('features', FEATURES_SETTINGS_DEFAULTS, updates)
-  )
+ipcMain.handle(SettingsChannels.invoke.GET_FEATURES_SETTINGS, () =>
+  readGroupSettings('features', FEATURES_SETTINGS_DEFAULTS)
+)
+ipcMain.handle(
+  SettingsChannels.invoke.SET_FEATURES_SETTINGS,
+  (_event, updates: Partial<FeaturesSettings>) =>
+    writeGroupSettings('features', FEATURES_SETTINGS_DEFAULTS, updates)
+)
 ```
 
 - [ ] **Step 3: Add teardown** (in the unregister block ~990, beside the other `removeHandler` calls)
 
 ```ts
-  ipcMain.removeHandler(SettingsChannels.invoke.GET_FEATURES_SETTINGS)
-  ipcMain.removeHandler(SettingsChannels.invoke.SET_FEATURES_SETTINGS)
+ipcMain.removeHandler(SettingsChannels.invoke.GET_FEATURES_SETTINGS)
+ipcMain.removeHandler(SettingsChannels.invoke.SET_FEATURES_SETTINGS)
 ```
 
 - [ ] **Step 4: Regenerate + validate the IPC boundary**
@@ -201,10 +215,12 @@ git commit -m "feat(features): main-process get/set features settings handlers"
 ### Task 3: Renderer `use-feature-flags` hook
 
 **Files:**
+
 - Create: `apps/desktop/src/renderer/src/hooks/use-feature-flags.ts`
 - Test: `apps/desktop/src/renderer/src/hooks/use-feature-flags.test.ts`
 
 **Interfaces:**
+
 - Consumes: `window.api.settings.getFeaturesSettings/setFeaturesSettings` (Task 2), `FEATURES_SETTINGS_DEFAULTS`, `FeaturesSettings`, `FeatureKey` (Task 1).
 - Produces: `useFeatureFlags(): { flags: FeaturesSettings; isLoading: boolean; isEnabled: (f: FeatureKey) => boolean; setFlag: (f: FeatureKey, value: boolean) => Promise<boolean> }`.
 
@@ -325,24 +341,21 @@ export function useFeatureFlags(): UseFeatureFlagsReturn {
     return unsubscribe
   }, [])
 
-  const setFlag = useCallback(
-    async (feature: FeatureKey, value: boolean): Promise<boolean> => {
-      const updates = { [feature]: value } as Partial<FeaturesSettings>
-      try {
-        const result = await window.api.settings.setFeaturesSettings(updates)
-        if (result.success) {
-          setFlags((prev) => ({ ...prev, ...updates }))
-          return true
-        }
-        setError(result.error ?? 'Update failed')
-        return false
-      } catch (err) {
-        setError(extractErrorMessage(err, 'Failed to update features'))
-        return false
+  const setFlag = useCallback(async (feature: FeatureKey, value: boolean): Promise<boolean> => {
+    const updates = { [feature]: value } as Partial<FeaturesSettings>
+    try {
+      const result = await window.api.settings.setFeaturesSettings(updates)
+      if (result.success) {
+        setFlags((prev) => ({ ...prev, ...updates }))
+        return true
       }
-    },
-    []
-  )
+      setError(result.error ?? 'Update failed')
+      return false
+    } catch (err) {
+      setError(extractErrorMessage(err, 'Failed to update features'))
+      return false
+    }
+  }, [])
 
   const isEnabled = useCallback((feature: FeatureKey) => flags[feature], [flags])
 
@@ -367,6 +380,7 @@ git commit -m "feat(features): use-feature-flags renderer hook"
 ### Task 4: Settings → Features section UI
 
 **Files:**
+
 - Modify: `apps/desktop/src/renderer/src/contexts/settings-modal-context.tsx` (add `'features'` to `SettingsSection` union ~line 4)
 - Create: `apps/desktop/src/renderer/src/pages/settings/features-section.tsx`
 - Modify: `apps/desktop/src/renderer/src/pages/settings.tsx` (import + nav item in Workspace group ~line 93 + body conditional ~line 168)
@@ -374,6 +388,7 @@ git commit -m "feat(features): use-feature-flags renderer hook"
 - Test: `apps/desktop/src/renderer/src/pages/settings/features-section.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `useFeatureFlags` (Task 3), `useSettingsModal().open('features')` deep-link target (Task 6 / Task 5 callers).
 - Produces: `FeaturesSettings` section component default-exported as `FeaturesSettings` named export `function FeaturesSection()`.
 
@@ -446,10 +461,7 @@ export function FeaturesSection() {
 
   return (
     <div>
-      <SettingsHeader
-        title={t('features.title')}
-        description={t('features.description')}
-      />
+      <SettingsHeader title={t('features.title')} description={t('features.description')} />
       <SettingsGroup>
         {FEATURE_KEYS.map((key: FeatureKey) => (
           <SettingRow
@@ -482,18 +494,20 @@ import { FeaturesSection } from './settings/features-section'
 Add the nav item inside the Workspace `SettingsNavGroup` (after the General item ~line 63; pick an existing icon, e.g. `LayoutGrid` from the icon set used in this file):
 
 ```tsx
-          <SettingsNavItem
-            icon={<LayoutGrid className="w-3.5 h-3.5" />}
-            label={t('page.nav.items.features')}
-            isActive={activeSection === 'features'}
-            onClick={() => setActiveSection('features')}
-          />
+<SettingsNavItem
+  icon={<LayoutGrid className="w-3.5 h-3.5" />}
+  label={t('page.nav.items.features')}
+  isActive={activeSection === 'features'}
+  onClick={() => setActiveSection('features')}
+/>
 ```
 
 Add the body conditional (in the conditional chain ~line 168):
 
 ```tsx
-            {activeSection === 'features' && <FeaturesSection />}
+{
+  activeSection === 'features' && <FeaturesSection />
+}
 ```
 
 - [ ] **Step 6: Add i18n keys** (in the `settings` namespace JSON; `en` is mandatory)
@@ -535,12 +549,14 @@ git commit -m "feat(features): Settings → Features toggle section"
 ### Task 5: Sidebar ghost + central open guard
 
 **Files:**
+
 - Modify: `apps/desktop/src/renderer/src/hooks/use-sidebar-navigation.ts` (gate `openSidebarItem`)
 - Modify: `apps/desktop/src/renderer/src/components/app-sidebar.tsx` (compute disabled per item, pass to `SidebarNav`)
 - Modify: `apps/desktop/src/renderer/src/components/sidebar/sidebar-nav.tsx` (ghost style + `aria-disabled`)
 - Test: `apps/desktop/src/renderer/src/hooks/use-sidebar-navigation.test.ts`
 
 **Interfaces:**
+
 - Consumes: `useFeatureFlags` (Task 3), `featureForTabType` (Task 1), `useSettingsModal().open` (Task 4).
 - Produces: `SidebarNav` gains prop `isDisabled: (page: AppPage) => boolean`.
 
@@ -555,7 +571,12 @@ import { shouldRedirectToFeatures } from './use-sidebar-navigation'
 
 describe('shouldRedirectToFeatures', () => {
   const flags = {
-    home: true, inbox: true, journal: true, tasks: false, calendar: true, graph: true
+    home: true,
+    inbox: true,
+    journal: true,
+    tasks: false,
+    calendar: true,
+    graph: true
   }
   it('redirects a disabled feature tab', () => {
     expect(shouldRedirectToFeatures('tasks', flags)).toBe(true)
@@ -589,19 +610,19 @@ export function shouldRedirectToFeatures(type: string, flags: FeaturesSettings):
 Inside the hook, read flags + settings modal and guard at the top of `openSidebarItem`:
 
 ```ts
-  const { flags } = useFeatureFlags()
-  const { open: openSettings } = useSettingsModal()
+const { flags } = useFeatureFlags()
+const { open: openSettings } = useSettingsModal()
 
-  const openSidebarItem = useCallback(
-    (item: SidebarItem, ...rest) => {
-      if (shouldRedirectToFeatures(item.type, flags)) {
-        openSettings('features')
-        return
-      }
-      // ...existing open logic unchanged
-    },
-    [flags, openSettings /* , ...existing deps */]
-  )
+const openSidebarItem = useCallback(
+  (item: SidebarItem, ...rest) => {
+    if (shouldRedirectToFeatures(item.type, flags)) {
+      openSettings('features')
+      return
+    }
+    // ...existing open logic unchanged
+  },
+  [flags, openSettings /* , ...existing deps */]
+)
 ```
 
 (Keep the existing body of `openSidebarItem` verbatim below the guard; only the early-return is new.)
@@ -611,7 +632,7 @@ Inside the hook, read flags + settings modal and guard at the top of `openSideba
 In `app-sidebar.tsx`, add near the top of the component:
 
 ```tsx
-  const { isEnabled } = useFeatureFlags()
+const { isEnabled } = useFeatureFlags()
 ```
 
 Pass to `SidebarNav` (the existing render ~473):
@@ -636,14 +657,14 @@ interface SidebarNavProps {
 Inside the `.map`, after `const active = isActive(sidebarItem)`:
 
 ```tsx
-          const disabled = isDisabled(item.page)
-          const badgeCount = disabled
-            ? 0
-            : item.page === 'inbox'
-              ? inboxCount
-              : item.page === 'tasks'
-                ? todayTasksCount
-                : 0
+const disabled = isDisabled(item.page)
+const badgeCount = disabled
+  ? 0
+  : item.page === 'inbox'
+    ? inboxCount
+    : item.page === 'tasks'
+      ? todayTasksCount
+      : 0
 ```
 
 On `SidebarMenuButton`, merge a ghost class + aria:
@@ -680,11 +701,13 @@ git commit -m "feat(features): ghost disabled sidebar items + redirect to Featur
 ### Task 6: Session-restore filter
 
 **Files:**
+
 - Modify: `apps/desktop/src/renderer/src/contexts/tabs/persistence/serialization.ts` (filter in `deserializeTabState` + `extractPinnedTabs`)
 - Modify: `apps/desktop/src/renderer/src/contexts/tabs/persistence/hooks.ts` (pass current flags into the filter from `useSessionRestore`)
 - Test: `apps/desktop/src/renderer/src/contexts/tabs/persistence/serialization.test.ts`
 
 **Interfaces:**
+
 - Consumes: `featureForTabType` (Task 1), `FeaturesSettings` (Task 1).
 - Produces: `deserializeTabState(persisted, flags?: FeaturesSettings)` — when `flags` given, drops tabs whose feature is disabled (except `home`, the always-kept launcher).
 
@@ -698,7 +721,12 @@ import { describe, it, expect } from 'vitest'
 import { isRestorableTabType } from './serialization'
 
 const flags = {
-  home: false, inbox: false, journal: true, tasks: true, calendar: true, graph: true
+  home: false,
+  inbox: false,
+  journal: true,
+  tasks: true,
+  calendar: true,
+  graph: true
 }
 
 describe('isRestorableTabType', () => {
@@ -780,11 +808,11 @@ export const extractPinnedTabs = (
 - [ ] **Step 4: Pass flags from `useSessionRestore`** (`hooks.ts`)
 
 ```ts
-  const { flags } = useFeatureFlags()
-  // ...
-  const restored = deserializeTabState(persisted, flags)
-  // ...and in the pinned branch:
-  const pinnedTabs = extractPinnedTabs(persisted, flags)
+const { flags } = useFeatureFlags()
+// ...
+const restored = deserializeTabState(persisted, flags)
+// ...and in the pinned branch:
+const pinnedTabs = extractPinnedTabs(persisted, flags)
 ```
 
 - [ ] **Step 5: Run test + typecheck**
@@ -804,11 +832,13 @@ git commit -m "feat(features): drop disabled-feature tabs on session restore"
 ### Task 7: Home page empty "Create note" launcher when Home is off
 
 **Files:**
+
 - Modify: `apps/desktop/src/renderer/src/pages/home.tsx` (branch on `flags.home`)
 - Create: `apps/desktop/src/renderer/src/components/home/home-disabled-launcher.tsx`
 - Test: `apps/desktop/src/renderer/src/components/home/home-disabled-launcher.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `useFeatureFlags` (Task 3), the existing "new note" creation handler (locate — see Step 4).
 - Produces: `HomeDisabledLauncher` — centered `+ Create note` CTA.
 
@@ -871,13 +901,13 @@ export function HomeDisabledLauncher({ onCreateNote }: HomeDisabledLauncherProps
 Locate the existing new-note creation handler used by the sidebar "+" button: `git grep -nE 'createNote|newNote|onCreateNote' apps/desktop/src/renderer/src/components/app-sidebar.tsx apps/desktop/src/renderer/src/services`. Reuse that exact handler (it creates a blank note and opens its tab). Then at the top of the `Home` component body:
 
 ```tsx
-  const { flags } = useFeatureFlags()
-  const createNote = useCreateNote() // the located new-note handler/hook
+const { flags } = useFeatureFlags()
+const createNote = useCreateNote() // the located new-note handler/hook
 
-  if (!flags.home) {
-    return <HomeDisabledLauncher onCreateNote={createNote} />
-  }
-  // ...existing dashboard render unchanged
+if (!flags.home) {
+  return <HomeDisabledLauncher onCreateNote={createNote} />
+}
+// ...existing dashboard render unchanged
 ```
 
 - [ ] **Step 5: Add i18n keys** (`home` namespace, `en`)
@@ -906,6 +936,7 @@ git commit -m "feat(features): empty create-note launcher when Home is disabled"
 ### Task 8: Gate creation, conversion, and day-panel actions
 
 **Files:**
+
 - Modify: `apps/desktop/src/renderer/src/components/note/content-area/ContentArea.tsx:1191` (gate `getTaskSlashMenuItem` by `flags.tasks`)
 - Modify: `apps/desktop/src/renderer/src/pages/inbox/triage-view.tsx` (pass `tasksEnabled`) + `apps/desktop/src/renderer/src/components/inbox/triage-action-bar.tsx` (drop the `T`/to-task action when disabled)
 - Modify: `apps/desktop/src/renderer/src/components/journal/journal-day-panel.tsx` (gate tasks section by `flags.tasks`, schedule section by `flags.calendar`)
@@ -913,6 +944,7 @@ git commit -m "feat(features): empty create-note launcher when Home is disabled"
 - Test: `apps/desktop/src/renderer/src/components/inbox/triage-action-bar.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `useFeatureFlags` (Task 3).
 - Produces: `TriageActionBar` gains prop `tasksEnabled: boolean`.
 
@@ -957,20 +989,20 @@ Expected: FAIL — `tasksEnabled` not a prop; action always present.
 Add `tasksEnabled: boolean` to `TriageActionBarProps`, then filter the actions array so the `T` entry is dropped when disabled:
 
 ```tsx
-  const actions = [
-    /* ...other actions... */
-    ...(tasksEnabled
-      ? [
-          {
-            key: 'T',
-            label: t('triage.action.toTask'),
-            icon: <CheckSquare className="size-5" />,
-            colorVar: ACTION_STYLES.task,
-            action: onConvertToTask
-          }
-        ]
-      : [])
-  ]
+const actions = [
+  /* ...other actions... */
+  ...(tasksEnabled
+    ? [
+        {
+          key: 'T',
+          label: t('triage.action.toTask'),
+          icon: <CheckSquare className="size-5" />,
+          colorVar: ACTION_STYLES.task,
+          action: onConvertToTask
+        }
+      ]
+    : [])
+]
 ```
 
 Pass it from `triage-view.tsx`:
@@ -984,10 +1016,10 @@ Pass it from `triage-view.tsx`:
 - [ ] **Step 4: Gate the `/task` slash item** (`ContentArea.tsx` ~1191)
 
 ```tsx
-  const featureFlags = useFeatureFlags()
-  // ...where slash items are assembled:
-  const taskItem = featureFlags.isEnabled('tasks') ? getTaskSlashMenuItem(editor, noteId) : null
-  // ...then include taskItem in the menu only when non-null (filter Boolean on the items array)
+const featureFlags = useFeatureFlags()
+// ...where slash items are assembled:
+const taskItem = featureFlags.isEnabled('tasks') ? getTaskSlashMenuItem(editor, noteId) : null
+// ...then include taskItem in the menu only when non-null (filter Boolean on the items array)
 ```
 
 - [ ] **Step 5: Gate the day-panel sections** (`journal-day-panel.tsx`)
@@ -1007,8 +1039,8 @@ Also guard the React-Query task fetch so it doesn't run when disabled — add `e
 Where `useCalendarRange` feeds `buildDayDots`, short-circuit to no dots when calendar is off:
 
 ```tsx
-  const { isEnabled } = useFeatureFlags()
-  const dotData = isEnabled('calendar') ? buildDayDots(calendarItems) : EMPTY_DOTS
+const { isEnabled } = useFeatureFlags()
+const dotData = isEnabled('calendar') ? buildDayDots(calendarItems) : EMPTY_DOTS
 ```
 
 (Define `const EMPTY_DOTS = {}` or the empty shape `buildDayDots` returns; check its return type.)
@@ -1033,7 +1065,7 @@ git commit -m "feat(features): gate task slash/convert + day-panel tasks/calenda
 
 - [ ] **Step 1: Run the renderer + contracts suites**
 
-Run: `pnpm --filter @memry/contracts test && pnpm --filter @memry/desktop test:renderer`
+Run: `pnpm --filter @memry/desktop test:shared && pnpm --filter @memry/desktop test:renderer`
 Expected: all green (pre-existing unrelated failures noted in CLAUDE.md are exempt).
 
 - [ ] **Step 2: Static gates**
@@ -1044,6 +1076,7 @@ Expected: clean.
 - [ ] **Step 3: Manual GUI QA** (`pnpm dev`)
 
 Verify each, toggling in Settings → Features:
+
 - Tasks off → sidebar Tasks ghosted; clicking it opens Settings → Features; `/task` slash item gone; inbox "To task" action gone; day-panel tasks section gone; right-panel shows no tasks.
 - Calendar off → sidebar Calendar ghosted; day-panel schedule gone; month dots gone.
 - Inbox/Journal/Graph off → ghosted + page unreachable (sidebar click + restart-with-restored-tab both redirect/drop).
@@ -1060,6 +1093,7 @@ Expected: docs gate passes.
 ## Self-Review
 
 **Spec coverage:**
+
 - Data model → Task 1 (schema/defaults/mapping) + Task 2 (handlers). ✓
 - Settings Features section → Task 4. ✓
 - Sidebar ghost + redirect → Task 5. ✓
@@ -1068,6 +1102,7 @@ Expected: docs gate passes.
 - Testing → per-task TDD + Task 9. ✓
 
 **Residual enforcement gaps (acceptable for v1, called out, not silently dropped):**
+
 - `memry://open?item=` deep-links to an inbox item when Inbox is disabled are not guarded (the deep-link opens the item directly, not via `openSidebarItem`). Low-risk; add a guard in the deep-link handler if it surfaces in QA. `// ponytail: deep-link guard deferred — main entry points (sidebar + restore) covered`.
 
 **Placeholder scan:** no TBD/TODO. Two explicit "locate" steps (Task 7 Step 4 new-note handler; Task 8 prop shapes) carry the exact `git grep` to run — concrete actions, not content placeholders.
