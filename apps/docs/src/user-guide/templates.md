@@ -13,6 +13,12 @@ Open from the sidebar (or via [Settings → Templates](/user-guide/settings#temp
 
 Each template shows an icon, name, short description, and a usage count.
 
+## Previewing a Template
+
+Click any template in the gallery to open a **read-only preview** — its full content and properties, rendered inline without leaving Settings. Built-in templates show a lock badge. Use the back arrow to return to the list.
+
+Creating a new template, or editing a custom one, opens it in its own editor tab; the Settings panel closes so the editor is in focus.
+
 ## Built-in Templates
 
 memrynote ships with starter templates for common patterns:

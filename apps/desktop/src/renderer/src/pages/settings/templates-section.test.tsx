@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -9,6 +9,7 @@ const deleteTemplate = vi.fn()
 const duplicateTemplate = vi.fn()
 const toastSuccess = vi.fn()
 const toastError = vi.fn()
+const closeSettings = vi.fn()
 
 let templatesState: Array<{
   id: string
@@ -39,6 +40,10 @@ vi.mock('@/hooks/use-templates', () => ({
 
 vi.mock('@/contexts/tabs', () => ({
   useTabs: () => ({ openTab })
+}))
+
+vi.mock('@/contexts/settings-modal-context', () => ({
+  useSettingsModal: () => ({ close: closeSettings })
 }))
 
 vi.mock('sonner', () => ({
@@ -72,7 +77,17 @@ vi.mock('@/components/settings/settings-primitives', () => ({
 vi.mock('@/components/ui/dropdown-menu', () => ({
   DropdownMenu: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   DropdownMenuTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  DropdownMenuContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  // Faithful to production: the real DropdownMenuContent carries the stopPropagation
+  // that keeps menu-item clicks (which bubble through the React tree even when portaled)
+  // from reaching the row's onSelect. The mock applies the same onClick so the test
+  // exercises the real guard rather than a fabricated one in DropdownMenuItem.
+  DropdownMenuContent: ({
+    children,
+    onClick
+  }: {
+    children: React.ReactNode
+    onClick?: (e: React.MouseEvent) => void
+  }) => <div onClick={onClick}>{children}</div>,
   DropdownMenuItem: ({
     children,
     onClick
@@ -107,6 +122,14 @@ vi.mock('@/components/ui/alert-dialog', () => ({
     <button type="button" onClick={onClick}>
       {children}
     </button>
+  )
+}))
+
+vi.mock('./template-preview', () => ({
+  TemplatePreview: ({ templateId, onBack }: { templateId: string; onBack: () => void }) => (
+    <div data-testid="template-preview" data-template-id={templateId}>
+      <button onClick={onBack}>back</button>
+    </div>
   )
 }))
 
@@ -210,5 +233,52 @@ describe('TemplatesSettings', () => {
     await user.type(screen.getByRole('textbox'), 'Copy')
     await user.click(screen.getAllByRole('button', { name: 'templates.actions.duplicate' }).at(-1)!)
     await waitFor(() => expect(toastError).toHaveBeenCalledWith('templates.toasts.duplicateFailed'))
+  })
+
+  it('closes settings modal when creating a template', async () => {
+    const user = userEvent.setup()
+    render(<TemplatesSettings />)
+    await user.click(screen.getByRole('button', { name: /templates.actions.new/ }))
+    expect(closeSettings).toHaveBeenCalledTimes(1)
+    expect(openTab).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'template-editor', path: '/templates/new' })
+    )
+  })
+
+  it('closes settings modal when editing a template', async () => {
+    const user = userEvent.setup()
+    render(<TemplatesSettings />)
+    await user.click(screen.getByRole('button', { name: /templates.actions.edit/ }))
+    expect(closeSettings).toHaveBeenCalledTimes(1)
+    expect(openTab).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'template-editor', path: '/templates/custom' })
+    )
+  })
+})
+
+describe('TemplatesSettings — drill-in preview', () => {
+  it('replaces the list with a preview when a row is clicked', () => {
+    render(<TemplatesSettings />)
+    fireEvent.click(screen.getByText('Meeting Notes'))
+    const preview = screen.getByTestId('template-preview')
+    expect(preview).toHaveAttribute('data-template-id', 'custom')
+    expect(screen.queryByText('templates.actions.new')).not.toBeInTheDocument()
+  })
+
+  it('returns to the list from the preview via back', () => {
+    render(<TemplatesSettings />)
+    fireEvent.click(screen.getByText('Meeting Notes'))
+    fireEvent.click(screen.getByText('back'))
+    expect(screen.queryByTestId('template-preview')).not.toBeInTheDocument()
+    expect(screen.getByText('templates.actions.new')).toBeInTheDocument()
+  })
+
+  it('clicking a dropdown menu item does not drill into preview', async () => {
+    const user = userEvent.setup()
+    render(<TemplatesSettings />)
+    // DropdownMenuContent's stopPropagation keeps the menu-item click from reaching
+    // the row's onSelect (matches production); clicking Duplicate must not drill in.
+    await user.click(screen.getByRole('button', { name: /templates.actions.duplicate/ }))
+    expect(screen.queryByTestId('template-preview')).not.toBeInTheDocument()
   })
 })
