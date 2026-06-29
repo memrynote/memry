@@ -27,8 +27,23 @@
         "vault": "Vault",
         "tags": "Tags",
         "properties": "Properties",
-        "import": "Import"
+        "import": "Import",
+        "features": "Features"
       }
+    }
+  },
+  "features": {
+    "header": {
+      "title": "Features",
+      "subtitle": "Turn parts of the app on or off. Off = ghosted in the sidebar and disabled everywhere."
+    },
+    "items": {
+      "home": { "label": "Home", "description": "Landing dashboard" },
+      "inbox": { "label": "Inbox", "description": "Quick capture and triage" },
+      "journal": { "label": "Journal", "description": "Daily notes" },
+      "tasks": { "label": "Tasks", "description": "To-dos and due dates" },
+      "calendar": { "label": "Calendar", "description": "Events and schedule" },
+      "graph": { "label": "Graph", "description": "Note connections" }
     }
   },
   "general": {

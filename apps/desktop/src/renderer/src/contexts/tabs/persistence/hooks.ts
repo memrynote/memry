@@ -12,6 +12,7 @@ import { serializeTabState, deserializeTabState, extractPinnedTabs } from './ser
 import type { TabStorage } from './types'
 import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import { createLogger } from '@/lib/logger'
+import { useFeatureFlags } from '@/hooks/use-feature-flags'
 
 const log = createLogger('TabPersistence:Hooks')
 const FLUSH_REGISTRY_KEY = 'tab-state'
@@ -127,6 +128,7 @@ export const useSessionRestore = (
 ): UseSessionRestoreResult => {
   const { storage = getDefaultStorage(), autoRestore = true } = options
   const { dispatch, state } = useTabs()
+  const { flags, isLoading: flagsLoading } = useFeatureFlags()
   const hasRestoredRef = useRef(false)
 
   const restoreSession = useCallback(async (): Promise<void> => {
@@ -137,13 +139,13 @@ export const useSessionRestore = (
 
       if (persisted) {
         if (state.settings.restoreSessionOnStart) {
-          const restored = deserializeTabState(persisted)
+          const restored = deserializeTabState(persisted, flags)
           dispatch({
             type: 'RESTORE_SESSION',
             payload: restored as TabSystemState
           })
         } else {
-          const pinnedTabs = extractPinnedTabs(persisted)
+          const pinnedTabs = extractPinnedTabs(persisted, flags)
           if (pinnedTabs.length > 0) {
             for (const tab of pinnedTabs) {
               dispatch({
@@ -178,7 +180,7 @@ export const useSessionRestore = (
       log.error('Failed to restore session:', error)
       throw error instanceof Error ? error : new Error('Failed to restore session')
     }
-  }, [storage, state.settings.restoreSessionOnStart, dispatch])
+  }, [storage, state.settings.restoreSessionOnStart, dispatch, flags])
 
   const [autoRestoreState, setAutoRestoreState] = useState<{
     pending: boolean
@@ -186,7 +188,7 @@ export const useSessionRestore = (
   }>(() => ({ pending: autoRestore, error: null }))
 
   useEffect(() => {
-    if (!autoRestore) return
+    if (!autoRestore || flagsLoading) return
 
     let cancelled = false
 
@@ -206,7 +208,7 @@ export const useSessionRestore = (
     return () => {
       cancelled = true
     }
-  }, [autoRestore, restoreSession])
+  }, [autoRestore, flagsLoading, restoreSession])
 
   const restoreMutation = useMutation({
     mutationFn: restoreSession

@@ -574,7 +574,11 @@
     "noNotesYet": "No notes yet.",
     "noTasksYet": "No tasks yet.",
     "noEventsYet": "No events today.",
-    "noJournalEntriesYet": "No journal entries yet."
+    "noJournalEntriesYet": "No journal entries yet.",
+    "disabled": {
+      "createNote": "Create note",
+      "hint": "Nothing open. Start a note."
+    }
   },
   "onboarding": {
     "welcome": {
