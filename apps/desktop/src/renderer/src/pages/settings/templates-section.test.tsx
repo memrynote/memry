@@ -9,6 +9,7 @@ const deleteTemplate = vi.fn()
 const duplicateTemplate = vi.fn()
 const toastSuccess = vi.fn()
 const toastError = vi.fn()
+const closeSettings = vi.fn()
 
 let templatesState: Array<{
   id: string
@@ -39,6 +40,10 @@ vi.mock('@/hooks/use-templates', () => ({
 
 vi.mock('@/contexts/tabs', () => ({
   useTabs: () => ({ openTab })
+}))
+
+vi.mock('@/contexts/settings-modal-context', () => ({
+  useSettingsModal: () => ({ close: closeSettings })
 }))
 
 vi.mock('sonner', () => ({
@@ -113,6 +118,7 @@ vi.mock('@/components/ui/alert-dialog', () => ({
 describe('TemplatesSettings', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    closeSettings.mockClear()
     isLoadingState = false
     templatesState = [
       {
@@ -210,5 +216,25 @@ describe('TemplatesSettings', () => {
     await user.type(screen.getByRole('textbox'), 'Copy')
     await user.click(screen.getAllByRole('button', { name: 'templates.actions.duplicate' }).at(-1)!)
     await waitFor(() => expect(toastError).toHaveBeenCalledWith('templates.toasts.duplicateFailed'))
+  })
+
+  it('closes settings modal when creating a template', async () => {
+    const user = userEvent.setup()
+    render(<TemplatesSettings />)
+    await user.click(screen.getByRole('button', { name: /templates.actions.new/ }))
+    expect(closeSettings).toHaveBeenCalledTimes(1)
+    expect(openTab).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'template-editor', path: '/templates/new' })
+    )
+  })
+
+  it('closes settings modal when editing a template', async () => {
+    const user = userEvent.setup()
+    render(<TemplatesSettings />)
+    await user.click(screen.getByRole('button', { name: /templates.actions.edit/ }))
+    expect(closeSettings).toHaveBeenCalledTimes(1)
+    expect(openTab).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'template-editor', path: '/templates/custom' })
+    )
   })
 })

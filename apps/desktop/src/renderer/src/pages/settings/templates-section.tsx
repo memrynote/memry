@@ -20,6 +20,7 @@ import {
 import { FileText, Plus, MoreHorizontal, Pencil, Copy, Trash2, Lock } from '@/lib/icons'
 import { useTemplates } from '@/hooks/use-templates'
 import { useTabs } from '@/contexts/tabs'
+import { useSettingsModal } from '@/contexts/settings-modal-context'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
 import { SettingsHeader, SettingsGroup } from '@/components/settings/settings-primitives'
@@ -29,11 +30,13 @@ export function TemplatesSettings() {
   const { t: tCommon } = useT('common')
   const { templates, isLoading, deleteTemplate, duplicateTemplate } = useTemplates()
   const { openTab } = useTabs()
+  const { close: closeSettings } = useSettingsModal()
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [duplicateName, setDuplicateName] = useState('')
   const [duplicateId, setDuplicateId] = useState<string | null>(null)
 
   const handleCreateTemplate = useCallback(() => {
+    closeSettings()
     openTab({
       type: 'template-editor',
       title: t('templates.newTemplateTitle'),
@@ -44,10 +47,11 @@ export function TemplatesSettings() {
       isPreview: false,
       isDeleted: false
     })
-  }, [openTab, t])
+  }, [closeSettings, openTab, t])
 
   const handleEditTemplate = useCallback(
     (id: string, name: string) => {
+      closeSettings()
       openTab({
         type: 'template-editor',
         title: name,
@@ -60,7 +64,7 @@ export function TemplatesSettings() {
         isDeleted: false
       })
     },
-    [openTab]
+    [closeSettings, openTab]
   )
 
   const handleDeleteTemplate = useCallback(async () => {
