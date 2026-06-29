@@ -228,6 +228,7 @@ function createProps(overrides: Partial<React.ComponentProps<typeof CalendarShel
     onNext: vi.fn(),
     onToday: vi.fn(),
     onCreateEvent: vi.fn(),
+    onSearchJump: vi.fn(),
     onToggleMemryItems: vi.fn(),
     onToggleImportedCalendars: vi.fn(),
     onToggleImportedSource: vi.fn(),

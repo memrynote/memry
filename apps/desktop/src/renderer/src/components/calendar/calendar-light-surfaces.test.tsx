@@ -52,6 +52,12 @@ vi.mock('@/contexts/calendar-view-context', () => ({
   useCalendarView: () => calendarView
 }))
 
+// CalendarSearch self-fetches via react-query; stub it so this toolbar-action
+// test needs no QueryClient provider.
+vi.mock('./calendar-search', () => ({
+  CalendarSearch: () => <button type="button">search</button>
+}))
+
 vi.mock('@/hooks/use-calendar-preferences', () => ({
   useCalendarPreferences: () => calendarPreferences,
   resolveDayCellClickBehavior: (settings: Record<string, unknown>, isCalendarTabActive: boolean) =>
@@ -207,6 +213,7 @@ describe('calendar lightweight surfaces', () => {
         onNext={onNext}
         onToday={onToday}
         onCreateEvent={onCreateEvent}
+        onSearchJump={vi.fn()}
         extraActions={<button type="button">extra action</button>}
       />
     )

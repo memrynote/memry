@@ -1,7 +1,9 @@
 import { useT } from '@memry/i18n/renderer'
 import { Button } from '@/components/ui/button'
-import { ChevronLeft, ChevronRight, Plus, Search } from '@/lib/icons'
+import { ChevronLeft, ChevronRight, Plus } from '@/lib/icons'
+import type { CalendarProjectionItem } from '@/services/calendar-service'
 import { addLocalDays, getStartOfWeek, parseLocalDate } from './date-utils'
+import { CalendarSearch } from './calendar-search'
 import type { AnchorRect } from './types'
 
 export type CalendarWorkspaceView = 'day' | 'week' | 'month' | 'year'
@@ -23,6 +25,7 @@ interface CalendarToolbarProps {
   onNext: () => void
   onToday: () => void
   onCreateEvent: (anchorRect: AnchorRect) => void
+  onSearchJump: (item: CalendarProjectionItem) => void
   extraActions?: React.ReactNode
 }
 
@@ -70,10 +73,10 @@ export function CalendarToolbar({
   onNext,
   onToday,
   onCreateEvent,
+  onSearchJump,
   extraActions
 }: CalendarToolbarProps): React.JSX.Element {
   const { t, i18n } = useT('calendar')
-  const { t: tCommon } = useT('common')
   const anchorParsed = parseLocalDate(anchorDate)
   const monthName = new Intl.DateTimeFormat(i18n.language, { month: 'long' }).format(anchorParsed)
   const yearStr = String(anchorParsed.getFullYear())
@@ -117,13 +120,7 @@ export function CalendarToolbar({
 
         <div className="flex items-center gap-1.5">
           {extraActions}
-          <button
-            type="button"
-            className="flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground"
-            aria-label={tCommon('action.search')}
-          >
-            <Search className="size-4" />
-          </button>
+          <CalendarSearch onJump={onSearchJump} />
         </div>
       </div>
 

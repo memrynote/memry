@@ -490,6 +490,20 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     setPendingPromote({ item, anchorRect: rect })
   }
 
+  // Search jump: focus the item's day, then open its popover. The item is already
+  // in hand from search, so selection happens immediately without waiting for the
+  // range refetch (mirrors the Agent-Chat calendar focus flow).
+  const handleSearchJump = (item: CalendarProjectionItem) => {
+    setView('day')
+    setAnchorDate(toLocalDateString(new Date(item.startAt)))
+    void handleSelectItem(item, {
+      x: window.innerWidth / 2,
+      y: Math.max(120, window.innerHeight / 3),
+      width: 1,
+      height: 1
+    })
+  }
+
   const handleNoteOpen = (noteId: string, anchorId?: string | null) => {
     const tCalendar = getI18n().getFixedT(null, 'calendar')
     setNotePopoverState(null)
@@ -716,6 +730,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
         onPrevious={handlePrevious}
         onNext={handleNext}
         onToday={handleToday}
+        onSearchJump={handleSearchJump}
         todayRequestKey={todayRequestKey}
         onCreateEvent={(anchorRect) =>
           setPopoverState({

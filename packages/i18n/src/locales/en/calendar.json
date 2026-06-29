@@ -16,6 +16,12 @@
     "next-month": "Next month",
     "today": "Today"
   },
+  "search": {
+    "open": "Search calendar",
+    "close": "Close search",
+    "placeholder": "Search events, tasks, reminders…",
+    "no-results": "No matches"
+  },
   "filter": {
     "filter-calendars": "Filter calendars",
     "sources": "Sources",

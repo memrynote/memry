@@ -30,6 +30,15 @@ clickable target for opening or editing events.
 | Journal entries                             | A small badge / dot on dates with entries |
 | Notes with a calendar-enabled date property | All-day note chips on the property's date |
 
+## Search
+
+Click the search icon in the toolbar to reveal a search box. Type to filter everything
+the calendar shows — events, tasks, reminders, notes, and snoozed inbox items — by title
+or description, regardless of which date you're currently viewing. Matches appear in a
+dropdown, sorted by how close they are to today. Selecting a result jumps the calendar to
+that item's day and opens its detail popover. Press `Enter` to jump to the top match or
+`Escape` to close.
+
 ## Quick Create
 
 Click an empty time slot (day / week views) or a date cell (month) to create an event inline. The popover lets you set:
