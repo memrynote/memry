@@ -1,3 +1,4 @@
+import { ALTERNATIVES } from './alternatives'
 import { BASE_URL, PAGE_META } from './seo'
 
 function toAbsoluteUrl(path: string) {
@@ -69,9 +70,11 @@ export function buildLlmsTxt(): string {
     '',
     '## Comparisons',
     '',
-    page('/obsidian-alternative', PAGE_META.obsidianAlternative.description),
-    page('/notion-alternative', PAGE_META.notionAlternative.description),
-    page('/noteplan-alternative', PAGE_META.noteplanAlternative.description),
+    page('/alternatives', PAGE_META.alternativesHub.description),
+    ...ALTERNATIVES.map((alt) => {
+      const meta = PAGE_META[alt.pageKey]
+      return page(meta.path, meta.description)
+    }),
     '',
     '## Feature pages',
     '',

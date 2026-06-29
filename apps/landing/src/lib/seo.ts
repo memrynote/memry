@@ -121,6 +121,12 @@ export const PAGE_META: Record<string, PageMeta> = {
       'Seven-day money-back guarantee on every paid Sync plan, including Believer. Requests processed through Paddle, refunded to your original payment method.',
     path: '/refund'
   },
+  alternativesHub: {
+    title: 'memrynote alternatives — how it compares',
+    description:
+      'See how memrynote compares to Obsidian, Notion, NotePlan, and more — a local-first, end-to-end encrypted notes, tasks, calendar, and journal app with plain Markdown files you own.',
+    path: '/alternatives'
+  },
   obsidianAlternative: {
     title: 'Obsidian alternative — memrynote',
     description:
@@ -138,6 +144,72 @@ export const PAGE_META: Record<string, PageMeta> = {
     description:
       'A cross-platform NotePlan alternative for Windows, macOS, and Linux. Notes, tasks, calendar, and a daily journal in one local-first app with end-to-end encrypted sync.',
     path: '/noteplan-alternative'
+  },
+  capacitiesAlternative: {
+    title: 'Capacities alternative — memrynote',
+    description:
+      'memrynote is the local-first Capacities alternative: plain Markdown files you own, built-in tasks, calendar, journal, and end-to-end encrypted sync.',
+    path: '/capacities-alternative'
+  },
+  evernoteAlternative: {
+    title: 'Evernote alternative — memrynote',
+    description:
+      'Switch from Evernote to memrynote: end-to-end encrypted, local Markdown files, no note cap, built-in tasks and calendar. Free for local use.',
+    path: '/evernote-alternative'
+  },
+  logseqAlternative: {
+    title: 'Logseq alternative — memrynote',
+    description:
+      'A local-first Logseq alternative — notes as Markdown files, built-in tasks, calendar, and zero-knowledge E2E encrypted sync. Open source.',
+    path: '/logseq-alternative'
+  },
+  anytypeAlternative: {
+    title: 'Anytype alternative — memrynote',
+    description:
+      'Local-first Anytype alternative — open Markdown files, built-in tasks, calendar, and E2E encrypted sync. Free on macOS, Windows, and Linux.',
+    path: '/anytype-alternative'
+  },
+  appleNotesAlternative: {
+    title: 'Apple Notes alternative — memrynote',
+    description:
+      'A cross-platform Apple Notes alternative: plain Markdown files, real tasks and calendar, E2E encrypted sync. Free on macOS, Windows, and Linux.',
+    path: '/apple-notes-alternative'
+  },
+  bearAlternative: {
+    title: 'Bear alternative — memrynote',
+    description:
+      'The Bear alternative for Windows and Linux — plain Markdown files, built-in tasks, calendar, journal, and zero-knowledge encrypted sync.',
+    path: '/bear-alternative'
+  },
+  roamAlternative: {
+    title: 'Roam Research alternative — memrynote',
+    description:
+      'Free local Markdown notes, tasks, and calendar with E2E encrypted sync from $5/mo. Switch from Roam Research and own your files.',
+    path: '/roam-research-alternative'
+  },
+  onenoteAlternative: {
+    title: 'OneNote alternative — memrynote',
+    description:
+      'Leave Microsoft OneNote for memrynote: plain Markdown files you own, end-to-end encrypted sync, plus built-in tasks, calendar, and journal.',
+    path: '/onenote-alternative'
+  },
+  upnoteAlternative: {
+    title: 'UpNote alternative — memrynote',
+    description:
+      'An UpNote alternative with plain Markdown files you own, end-to-end encrypted sync, and built-in tasks, calendar, and journal. Open source.',
+    path: '/upnote-alternative'
+  },
+  joplinAlternative: {
+    title: 'Joplin alternative — memrynote',
+    description:
+      'An open-source Joplin alternative with E2E encryption, built-in tasks, calendar, and journal. Local-first, offline, plain Markdown files.',
+    path: '/joplin-alternative'
+  },
+  googleKeepAlternative: {
+    title: 'Google Keep alternative — memrynote',
+    description:
+      'A private Google Keep alternative with local Markdown files, end-to-end encrypted sync, tasks, a calendar, and a daily journal. Free for local use.',
+    path: '/google-keep-alternative'
   }
 }
 
@@ -277,6 +349,28 @@ export function getWebsiteJsonLd(): string {
     '@context': 'https://schema.org',
     ...getWebsiteJsonLdObject(),
     '@type': 'WebSite'
+  })
+}
+
+// Per-page graph for competitor alternative pages: the product (SoftwareApplication) plus
+// the page's named-competitor FAQ. Google retired FAQ rich results (May 2026), but this
+// still feeds AI-search citation (AI Overviews / ChatGPT / Perplexity) on high-intent pages.
+export function getAlternativeJsonLd(
+  faqs: readonly { question: string; answer: string }[]
+): string {
+  return JSON.stringify({
+    '@context': 'https://schema.org',
+    '@graph': [
+      getSoftwareApplicationJsonLdObject(),
+      {
+        '@type': 'FAQPage',
+        mainEntity: faqs.map((faq) => ({
+          '@type': 'Question',
+          name: faq.question,
+          acceptedAnswer: { '@type': 'Answer', text: faq.answer }
+        }))
+      }
+    ]
   })
 }
 

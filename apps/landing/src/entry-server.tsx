@@ -30,8 +30,20 @@ import { AccountLayout } from '@/components/account/AccountLayout'
 import {
   ObsidianAlternativePage,
   NotionAlternativePage,
-  NotePlanAlternativePage
+  NotePlanAlternativePage,
+  CapacitiesAlternativePage,
+  EvernoteAlternativePage,
+  LogseqAlternativePage,
+  AnytypeAlternativePage,
+  AppleNotesAlternativePage,
+  BearAlternativePage,
+  RoamAlternativePage,
+  OneNoteAlternativePage,
+  UpNoteAlternativePage,
+  JoplinAlternativePage,
+  GoogleKeepAlternativePage
 } from '@/pages/AlternativePage'
+import { AlternativesHubPage } from '@/pages/AlternativesHubPage'
 import { NotFound } from '@/pages/NotFound'
 
 // Account routes are gated by RequireAuth, which renders null until the client is
@@ -56,9 +68,21 @@ const ROUTE_MAP: Record<string, () => ReactNode> = {
   '/download/desktop': () => <DownloadDesktopPage />,
   '/use-cases': () => <UseCasesPage />,
   '/security': () => <SecurityPage />,
+  '/alternatives': () => <AlternativesHubPage />,
   '/obsidian-alternative': () => <ObsidianAlternativePage />,
   '/notion-alternative': () => <NotionAlternativePage />,
   '/noteplan-alternative': () => <NotePlanAlternativePage />,
+  '/capacities-alternative': () => <CapacitiesAlternativePage />,
+  '/evernote-alternative': () => <EvernoteAlternativePage />,
+  '/logseq-alternative': () => <LogseqAlternativePage />,
+  '/anytype-alternative': () => <AnytypeAlternativePage />,
+  '/apple-notes-alternative': () => <AppleNotesAlternativePage />,
+  '/bear-alternative': () => <BearAlternativePage />,
+  '/roam-research-alternative': () => <RoamAlternativePage />,
+  '/onenote-alternative': () => <OneNoteAlternativePage />,
+  '/upnote-alternative': () => <UpNoteAlternativePage />,
+  '/joplin-alternative': () => <JoplinAlternativePage />,
+  '/google-keep-alternative': () => <GoogleKeepAlternativePage />,
   '/pricing': () => <PricingPage />,
   '/changelog': () => <ChangelogPage />,
   '/roadmap': () => <RoadmapPage />,

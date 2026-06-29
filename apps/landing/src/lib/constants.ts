@@ -151,10 +151,13 @@ export const FOOTER_LINKS = {
     { label: 'Changelog', href: '/changelog' },
     { label: 'Security', href: '/security' }
   ],
+  // Footer shows only marquee competitors; the long tail lives on the /alternatives hub.
   compare: [
     { label: 'Obsidian alternative', href: '/obsidian-alternative' },
     { label: 'Notion alternative', href: '/notion-alternative' },
-    { label: 'NotePlan alternative', href: '/noteplan-alternative' }
+    { label: 'Evernote alternative', href: '/evernote-alternative' },
+    { label: 'Apple Notes alternative', href: '/apple-notes-alternative' },
+    { label: 'All alternatives', href: '/alternatives' }
   ],
   resources: [
     { label: 'Docs', href: DOCS_URL },

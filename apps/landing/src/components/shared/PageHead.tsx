@@ -1,5 +1,6 @@
 import { Helmet } from 'react-helmet-async'
 import {
+  getAlternativeJsonLd,
   getBreadcrumbJsonLd,
   getCanonicalUrl,
   getJsonLd,
@@ -15,9 +16,11 @@ import {
 interface PageHeadProps {
   page: keyof typeof PAGE_META
   jsonLd?: boolean
+  // When set (competitor alternative pages), emits a SoftwareApplication + FAQPage graph.
+  faqs?: readonly { question: string; answer: string }[]
 }
 
-export function PageHead({ page, jsonLd }: PageHeadProps) {
+export function PageHead({ page, jsonLd, faqs }: PageHeadProps) {
   const meta = PAGE_META[page]
   const canonical = getCanonicalUrl(meta.path)
   const breadcrumb = getBreadcrumbJsonLd(page)
@@ -47,6 +50,9 @@ export function PageHead({ page, jsonLd }: PageHeadProps) {
       <meta name="twitter:image:alt" content={SOCIAL_IMAGE_ALT} />
 
       {jsonLd && <script type="application/ld+json">{getJsonLd()}</script>}
+      {faqs && faqs.length > 0 && (
+        <script type="application/ld+json">{getAlternativeJsonLd(faqs)}</script>
+      )}
       {breadcrumb && <script type="application/ld+json">{breadcrumb}</script>}
     </Helmet>
   )
