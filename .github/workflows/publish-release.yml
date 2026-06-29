@@ -384,12 +384,21 @@ jobs:
 
       # The runtime env is staged + shipped as resources/app-config, a filename
       # with no .env token (see scripts/build-packaged-app.js, the
-      # electron-builder configs, and apps/desktop/src/main/index.ts). Windows
-      # Defender holds an exclusive handle on .env* files (credential scan), so
-      # electron-builder's copyfile of the .env-named SOURCE failed
-      # deterministically with "EBUSY: resource busy or locked" on the hosted
-      # runner. A neutral filename removes the trigger, so no Defender-disable
-      # hack or packaging retry loop is needed.
+      # electron-builder configs, and apps/desktop/src/main/index.ts). The
+      # neutral name dodges Defender's .env-extension heuristic, but Defender
+      # also scans by CONTENT: app-config holds SYNC_SERVER_URL +
+      # GOOGLE_CALENDAR_CLIENT_ID (credential-shaped key=value lines), so
+      # real-time scanning still grabbed a transient handle and electron-builder's
+      # copyfile of the SOURCE failed with "EBUSY: resource busy or locked".
+      # Excluding the build tree from real-time scanning removes the lock at the
+      # source. Best-effort: if a hardened runner ever rejects it, the build
+      # still runs (and falls back to the prior transient behavior).
+      - name: Exclude build tree from Defender real-time scanning
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          Add-MpPreference -ExclusionPath '${{ github.workspace }}'
+
       - name: Build Windows artifacts
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
