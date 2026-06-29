@@ -30,7 +30,7 @@ export function SidebarNav({
   todayTasksCount
 }: SidebarNavProps) {
   return (
-    <SidebarGroup className="shrink-0 py-1.5 pb-0">
+    <SidebarGroup data-tour="sidebar-nav" className="shrink-0 py-1.5 pb-0">
       <SidebarMenu>
         {items.map((item) => {
           const sidebarItem: SidebarItem = {
@@ -46,8 +46,9 @@ export function SidebarNav({
             <SidebarMenuItem key={item.page}>
               <SidebarMenuButton
                 isActive={active}
+                data-tour={`nav-${item.page}`}
                 onClick={onNavClick(item.page)}
-                className="h-7 rounded-[5px] p-0 pl-1 pr-2.5 gap-1.5 text-[13px] leading-4 font-medium text-sidebar-foreground"
+                className="h-7 rounded-[5px] p-0 ps-1 pe-2.5 gap-1.5 text-[13px] leading-4 font-medium text-sidebar-foreground"
               >
                 <item.icon />
                 <span>{item.title}</span>

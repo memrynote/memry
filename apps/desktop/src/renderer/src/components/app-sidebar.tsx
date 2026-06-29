@@ -57,6 +57,7 @@ import { createLogger } from '@/lib/logger'
 import { useFileDrop } from '@/hooks/use-file-drop'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useT } from '@memry/i18n/renderer'
+import { useFirstRunTour } from '@/components/onboarding/use-first-run-tour'
 
 const log = createLogger('Component:AppSidebar')
 
@@ -149,6 +150,9 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
 
   // Tab navigation hook
   const { openSidebarItem, isActiveItem } = useSidebarNavigation()
+
+  // First-launch interactive tour (runs once per install)
+  useFirstRunTour()
 
   // Tab actions for opening new notes (stable reference, won't cause re-renders)
   const { openTab } = useTabActions()
@@ -421,6 +425,7 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
           <div className="flex flex-1 items-center h-[30px] rounded-[5px] bg-sidebar-surface overflow-hidden">
             <button
               type="button"
+              data-tour="new-note"
               onClick={() => void handleNewNote()}
               className="flex flex-1 items-center justify-center gap-2 h-full hover:bg-black/[0.06] dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
               title={tPhaseF('phaseF.componentsAppSidebar.newNoteN')}
@@ -493,6 +498,7 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
             <TooltipTrigger asChild>
               <button
                 type="button"
+                data-tour="settings"
                 onClick={() => openSettings()}
                 aria-label={settingsLabel}
                 title={settingsLabel}
