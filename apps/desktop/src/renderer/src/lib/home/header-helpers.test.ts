@@ -22,14 +22,11 @@ describe('getGreetingKey', () => {
 
 describe('buildHeaderMetrics', () => {
   it('keeps order and drops zero/negative counts', () => {
-    expect(buildHeaderMetrics({ tasksDue: 4, toTriage: 7, events: 2 })).toEqual([
+    expect(buildHeaderMetrics({ tasksDue: 4, events: 2 })).toEqual([
       { key: 'tasksDue', count: 4 },
-      { key: 'toTriage', count: 7 },
       { key: 'events', count: 2 }
     ])
-    expect(buildHeaderMetrics({ tasksDue: 0, toTriage: 7, events: 0 })).toEqual([
-      { key: 'toTriage', count: 7 }
-    ])
-    expect(buildHeaderMetrics({ tasksDue: 0, toTriage: 0, events: 0 })).toEqual([])
+    expect(buildHeaderMetrics({ tasksDue: 0, events: 3 })).toEqual([{ key: 'events', count: 3 }])
+    expect(buildHeaderMetrics({ tasksDue: 0, events: 0 })).toEqual([])
   })
 })

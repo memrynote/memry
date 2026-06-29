@@ -34,7 +34,7 @@ export function InboxWidgetFooter({ config, size }: WidgetComponentProps): React
       )}
       <button
         type="button"
-        data-testid="inbox-triage"
+        data-testid="inbox-open"
         onClick={() =>
           openTab({
             type: 'inbox',
@@ -49,7 +49,7 @@ export function InboxWidgetFooter({ config, size }: WidgetComponentProps): React
         }
         className="inline-flex shrink-0 items-center gap-1 font-semibold text-[var(--tint)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--tint-ring)]"
       >
-        {t('home.widget.triageInbox')}
+        {t('home.widget.openInbox')}
         <ArrowRight className="size-3" aria-hidden="true" />
       </button>
     </div>

@@ -9,11 +9,10 @@ export function getGreetingKey(hour: number): GreetingKey {
   return 'evening'
 }
 
-export type HeaderMetricKey = 'tasksDue' | 'toTriage' | 'events'
+export type HeaderMetricKey = 'tasksDue' | 'events'
 
 export interface HeaderMetricCounts {
   tasksDue: number
-  toTriage: number
   events: number
 }
 
@@ -27,7 +26,6 @@ export function buildHeaderMetrics(counts: HeaderMetricCounts): HeaderMetric[] {
   return (
     [
       { key: 'tasksDue', count: counts.tasksDue },
-      { key: 'toTriage', count: counts.toTriage },
       { key: 'events', count: counts.events }
     ] as const
   )

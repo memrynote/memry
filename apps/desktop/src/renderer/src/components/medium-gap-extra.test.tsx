@@ -2,7 +2,6 @@ import { act, fireEvent, render, renderHook, screen, within } from '@testing-lib
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ActiveFiltersBar } from './tasks/filters/active-filters-bar'
-import { TriageActionBar } from './inbox/triage-action-bar'
 import { ExpandChevron } from './tasks/expand-chevron'
 import { SortableSubtaskList } from './tasks/sortable-subtask-list'
 import { detectClusters, getClusterKey } from '@/lib/ai-clustering'
@@ -407,82 +406,6 @@ describe('medium gap renderer surfaces', () => {
     expect(onUpdateFilters).toHaveBeenCalledWith({ search: '' })
     expect(onSaveFilter).toHaveBeenCalled()
     expect(onClearAll).toHaveBeenCalled()
-  })
-
-  it('drives triage action buttons and keyboard shortcuts for normal and reminder items', () => {
-    const onPickerChange = vi.fn()
-    const onDiscard = vi.fn()
-    const onConvertToTask = vi.fn()
-    const onExpandToNote = vi.fn()
-    const onOpenTarget = vi.fn()
-
-    const { rerender } = render(
-      <TriageActionBar
-        itemType="link"
-        activePicker={null}
-        onPickerChange={onPickerChange}
-        onDiscard={onDiscard}
-        onConvertToTask={onConvertToTask}
-        onExpandToNote={onExpandToNote}
-        onOpenTarget={onOpenTarget}
-      />
-    )
-
-    fireEvent.keyDown(window, { key: 'f' })
-    expect(onPickerChange).toHaveBeenCalledWith('file')
-
-    rerender(
-      <TriageActionBar
-        itemType="link"
-        activePicker="file"
-        onPickerChange={onPickerChange}
-        onDiscard={onDiscard}
-        onConvertToTask={onConvertToTask}
-        onExpandToNote={onExpandToNote}
-        onOpenTarget={onOpenTarget}
-      />
-    )
-    fireEvent.keyDown(window, { key: 'Escape' })
-    expect(onPickerChange).toHaveBeenCalledWith(null)
-
-    fireEvent.keyDown(window, { key: 't' })
-    fireEvent.keyDown(window, { key: 'n' })
-    fireEvent.keyDown(window, { key: 'd' })
-    expect(onConvertToTask).toHaveBeenCalled()
-    expect(onExpandToNote).toHaveBeenCalled()
-    expect(onDiscard).toHaveBeenCalled()
-
-    const snoozeButton = within(screen.getByText('S').closest('button')!).getByText('S')
-    fireEvent.click(snoozeButton)
-    expect(onPickerChange).toHaveBeenCalledWith('snooze')
-
-    rerender(
-      <TriageActionBar
-        itemType="reminder"
-        activePicker={null}
-        onPickerChange={onPickerChange}
-        onDiscard={onDiscard}
-        onConvertToTask={onConvertToTask}
-        onExpandToNote={onExpandToNote}
-        onOpenTarget={onOpenTarget}
-      />
-    )
-    fireEvent.keyDown(window, { key: 'o' })
-    expect(onOpenTarget).toHaveBeenCalled()
-
-    rerender(
-      <TriageActionBar
-        itemType="reminder"
-        activePicker={null}
-        onPickerChange={onPickerChange}
-        onDiscard={onDiscard}
-        onConvertToTask={onConvertToTask}
-        onExpandToNote={onExpandToNote}
-        disabled
-      />
-    )
-    fireEvent.keyDown(window, { key: 'd' })
-    expect(onDiscard).toHaveBeenCalledTimes(1)
   })
 
   it('handles expandable chevrons and sortable subtask drag outcomes', () => {

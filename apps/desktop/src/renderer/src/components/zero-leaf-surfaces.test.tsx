@@ -4,7 +4,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ArchiveConfirmationDialog } from './bulk/archive-confirmation-dialog'
 import { FindBar } from './find-bar/find-bar'
 import { KeyboardShortcutsModal } from './keyboard-shortcuts-modal'
-import { TriageComplete } from './inbox/triage-complete'
 import { EditorErrorBoundary } from './note/editor-error-boundary'
 import {
   createHashTagSpacePlugin,
@@ -105,10 +104,6 @@ vi.mock('./tasks/kanban/kanban-card', () => ({
       kanban-card:{task.title}:{project?.name}:{String(isDone)}
     </div>
   )
-}))
-
-vi.mock('./inbox/streak-badge', () => ({
-  StreakBadge: ({ streak }: { streak: number }) => <span>streak:{streak}</span>
 }))
 
 vi.mock('@/lib/task-utils', async () => {
@@ -286,18 +281,9 @@ describe('zero-covered leaf surfaces', () => {
     expect(onCreateProject).toHaveBeenCalled()
   })
 
-  it('animates triage completion and confirms archive actions', () => {
-    vi.useFakeTimers()
-    const onReturnToInbox = vi.fn()
+  it('confirms archive actions', () => {
     const onConfirm = vi.fn()
     const onCancel = vi.fn()
-
-    render(<TriageComplete processedCount={7} streak={3} onReturnToInbox={onReturnToInbox} />)
-    act(() => vi.advanceTimersByTime(950))
-    expect(screen.getByText('triage.complete.processed:7')).toBeInTheDocument()
-    expect(screen.getByText('streak:3')).toBeInTheDocument()
-    fireEvent.click(screen.getByText('triage.complete.back'))
-    expect(onReturnToInbox).toHaveBeenCalled()
 
     render(
       <ArchiveConfirmationDialog isOpen itemCount={4} onConfirm={onConfirm} onCancel={onCancel} />
