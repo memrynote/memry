@@ -15,7 +15,8 @@ import {
   User,
   CalendarDays,
   Terminal,
-  Import
+  Import,
+  LayoutGrid
 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { GeneralSettings } from './settings/general-section'
@@ -34,6 +35,7 @@ import { ShortcutsSettings } from './settings/shortcuts-section'
 import { AccountSettings } from './settings/account-section'
 import { CommandLineSettings } from './settings/command-line-section'
 import { ImportSettings } from './settings/import-section'
+import { FeaturesSection } from './settings/features-section'
 import { useSettingsModal } from '@/contexts/settings-modal-context'
 import { useT } from '@memry/i18n/renderer'
 
@@ -90,6 +92,12 @@ export function SettingsPage() {
             label={t('page.nav.items.calendar')}
             isActive={activeSection === 'calendar'}
             onClick={() => setActiveSection('calendar')}
+          />
+          <SettingsNavItem
+            icon={<LayoutGrid className="w-3.5 h-3.5" />}
+            label={t('page.nav.items.features')}
+            isActive={activeSection === 'features'}
+            onClick={() => setActiveSection('features')}
           />
         </SettingsNavGroup>
 
@@ -182,6 +190,7 @@ export function SettingsPage() {
             {activeSection === 'shortcuts' && <ShortcutsSettings />}
             {activeSection === 'command-line' && <CommandLineSettings />}
             {activeSection === 'account' && <AccountSettings />}
+            {activeSection === 'features' && <FeaturesSection />}
           </div>
         </ScrollArea>
       </div>
