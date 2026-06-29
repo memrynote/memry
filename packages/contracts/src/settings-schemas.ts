@@ -31,7 +31,7 @@ export type GeneralSettings = z.infer<typeof GeneralSettingsSchema>
 export const DEFAULT_ACCENT_COLOR = '#f97316'
 
 export const GENERAL_SETTINGS_DEFAULTS: GeneralSettings = {
-  theme: 'system',
+  theme: 'white',
   fontSize: 'medium',
   fontFamily: 'system',
   accentColor: DEFAULT_ACCENT_COLOR,

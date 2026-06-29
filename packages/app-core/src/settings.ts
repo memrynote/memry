@@ -59,7 +59,7 @@ const settingsKeys = {
 
 const settingsGroupDefaults: Record<SettingsGroupName, Record<string, unknown>> = {
   general: {
-    theme: 'system',
+    theme: 'white',
     fontSize: 'medium',
     fontFamily: 'system',
     accentColor: '#6366f1',
