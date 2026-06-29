@@ -24,6 +24,7 @@ import { useSettingsModal } from '@/contexts/settings-modal-context'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
 import { SettingsHeader, SettingsGroup } from '@/components/settings/settings-primitives'
+import { TemplatePreview } from './template-preview'
 
 export function TemplatesSettings() {
   const { t } = useT('settings')
@@ -34,6 +35,7 @@ export function TemplatesSettings() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [duplicateName, setDuplicateName] = useState('')
   const [duplicateId, setDuplicateId] = useState<string | null>(null)
+  const [previewId, setPreviewId] = useState<string | null>(null)
 
   const handleCreateTemplate = useCallback(() => {
     closeSettings()
@@ -95,6 +97,14 @@ export function TemplatesSettings() {
   const builtInTemplates = templates.filter((t) => t.isBuiltIn)
   const customTemplates = templates.filter((t) => !t.isBuiltIn)
 
+  if (previewId) {
+    return (
+      <div className="flex flex-col text-xs/4">
+        <TemplatePreview templateId={previewId} onBack={() => setPreviewId(null)} />
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col text-xs/4">
       <SettingsHeader
@@ -123,6 +133,7 @@ export function TemplatesSettings() {
                 <TemplateRow
                   key={template.id}
                   template={template}
+                  onSelect={() => setPreviewId(template.id)}
                   onEdit={() => handleEditTemplate(template.id, template.name)}
                   onDuplicate={() => {
                     setDuplicateId(template.id)
@@ -140,6 +151,7 @@ export function TemplatesSettings() {
                 <TemplateRow
                   key={template.id}
                   template={template}
+                  onSelect={() => setPreviewId(template.id)}
                   onEdit={() => handleEditTemplate(template.id, template.name)}
                   onDuplicate={() => {
                     setDuplicateId(template.id)
@@ -217,16 +229,29 @@ interface TemplateRowProps {
     icon?: string | null
     isBuiltIn: boolean
   }
+  onSelect: () => void
   onEdit: () => void
   onDuplicate: () => void
   onDelete: (() => void) | null
 }
 
-function TemplateRow({ template, onEdit, onDuplicate, onDelete }: TemplateRowProps) {
+function TemplateRow({ template, onSelect, onEdit, onDuplicate, onDelete }: TemplateRowProps) {
   const { t } = useT('settings')
 
   return (
-    <div className="flex items-center justify-between h-11 py-3 px-4 shrink-0 group">
+    <div
+      role="button"
+      tabIndex={0}
+      aria-label={template.name}
+      onClick={onSelect}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onSelect()
+        }
+      }}
+      className="flex items-center justify-between h-11 py-3 px-4 shrink-0 group cursor-pointer hover:bg-muted/40"
+    >
       <div className="flex items-center gap-2.5 min-w-0">
         <span className="text-muted-foreground shrink-0">
           {template.icon || <FileText className="w-3.5 h-3.5" />}
@@ -238,13 +263,16 @@ function TemplateRow({ template, onEdit, onDuplicate, onDelete }: TemplateRowPro
           )}
         </div>
       </div>
-      <div className="flex items-center gap-1 shrink-0 ms-4">
+      <div className="flex items-center gap-1 shrink-0 ms-4" onClick={(e) => e.stopPropagation()}>
         {template.isBuiltIn ? (
           <Lock className="w-3.5 h-3.5 text-muted-foreground/50" />
         ) : (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="p-1 rounded text-muted-foreground/50 opacity-0 group-hover:opacity-100 hover:text-foreground transition-all">
+              <button
+                onClick={(e) => e.stopPropagation()}
+                className="p-1 rounded text-muted-foreground/50 opacity-0 group-hover:opacity-100 hover:text-foreground transition-all"
+              >
                 <MoreHorizontal className="w-3.5 h-3.5" />
               </button>
             </DropdownMenuTrigger>

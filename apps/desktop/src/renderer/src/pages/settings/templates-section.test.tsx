@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -112,6 +112,14 @@ vi.mock('@/components/ui/alert-dialog', () => ({
     <button type="button" onClick={onClick}>
       {children}
     </button>
+  )
+}))
+
+vi.mock('./template-preview', () => ({
+  TemplatePreview: ({ templateId, onBack }: { templateId: string; onBack: () => void }) => (
+    <div data-testid="template-preview" data-template-id={templateId}>
+      <button onClick={onBack}>back</button>
+    </div>
   )
 }))
 
@@ -236,5 +244,23 @@ describe('TemplatesSettings', () => {
     expect(openTab).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'template-editor', path: '/templates/custom' })
     )
+  })
+})
+
+describe('TemplatesSettings — drill-in preview', () => {
+  it('replaces the list with a preview when a row is clicked', () => {
+    render(<TemplatesSettings />)
+    fireEvent.click(screen.getByText('Meeting Notes'))
+    const preview = screen.getByTestId('template-preview')
+    expect(preview).toHaveAttribute('data-template-id', 'custom')
+    expect(screen.queryByText('templates.actions.new')).not.toBeInTheDocument()
+  })
+
+  it('returns to the list from the preview via back', () => {
+    render(<TemplatesSettings />)
+    fireEvent.click(screen.getByText('Meeting Notes'))
+    fireEvent.click(screen.getByText('back'))
+    expect(screen.queryByTestId('template-preview')).not.toBeInTheDocument()
+    expect(screen.getByText('templates.actions.new')).toBeInTheDocument()
   })
 })
