@@ -2,7 +2,12 @@ import { renderHook } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const driveSpy = vi.fn()
-type TourConfig = { onDestroyed?: () => void; steps?: { element?: string }[] }
+type TourStep = {
+  element?: string
+  onHighlightStarted?: () => void
+  onDeselected?: () => void
+}
+type TourConfig = { onDestroyed?: () => void; steps?: TourStep[] }
 let capturedConfig: TourConfig | undefined
 
 vi.mock('driver.js', () => ({
@@ -61,6 +66,30 @@ describe('useFirstRunTour', () => {
     expect(steps.some((s) => s.element === '[data-tour="new-note"]')).toBe(true)
     expect(steps.some((s) => s.element === '[data-tour="nav-inbox"]')).toBe(false)
     expect(steps).toHaveLength(2)
+
+    document.body.innerHTML = ''
+  })
+
+  it('drives the right-sidebar tabs: agent step opens Agent, restores Day on exit', () => {
+    const dayClick = vi.fn()
+    const agentClick = vi.fn()
+    document.body.innerHTML =
+      '<button data-tour="rsb-day"></button>' +
+      '<button data-tour="rsb-agent"></button>' +
+      '<div data-slot="day-panel-inner"></div>'
+    document.querySelector('[data-tour="rsb-day"]')?.addEventListener('click', dayClick)
+    document.querySelector('[data-tour="rsb-agent"]')?.addEventListener('click', agentClick)
+
+    renderHook(() => useFirstRunTour())
+
+    const agentStep = capturedConfig?.steps?.find((s) => s.element === '[data-tour="rsb-agent"]')
+    expect(agentStep).toBeDefined()
+
+    agentStep?.onHighlightStarted?.()
+    expect(agentClick).toHaveBeenCalledTimes(1)
+
+    agentStep?.onDeselected?.()
+    expect(dayClick).toHaveBeenCalledTimes(1)
 
     document.body.innerHTML = ''
   })

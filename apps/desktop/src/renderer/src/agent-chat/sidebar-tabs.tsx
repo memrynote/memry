@@ -89,6 +89,7 @@ export function SidebarTabs({
         >
           <SidebarTabButton
             active={resolvedActive === 'day'}
+            dataTour="rsb-day"
             label={dayTabLabel}
             onClick={() => setActive('day')}
           >

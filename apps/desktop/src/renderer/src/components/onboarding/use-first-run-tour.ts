@@ -25,6 +25,13 @@ export function useFirstRunTour(): void {
 
     const prefersReducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches
 
+    // Drive the right Day Panel's tabs by clicking the real tab buttons, so the
+    // tour reuses the app's own handlers instead of reaching into tab state.
+    const clickTourTarget = (selector: string): void => {
+      const el = document.querySelector(selector)
+      if (el instanceof HTMLElement) el.click()
+    }
+
     const steps: DriveStep[] = [
       {
         popover: {
@@ -88,6 +95,8 @@ export function useFirstRunTour(): void {
       },
       {
         element: '[data-slot="day-panel-inner"]',
+        // Make sure the calendar (day) tab is showing for this step.
+        onHighlightStarted: () => clickTourTarget('[data-tour="rsb-day"]'),
         popover: {
           title: t('onboarding.dayPanel.title'),
           description: t('onboarding.dayPanel.body'),
@@ -97,6 +106,10 @@ export function useFirstRunTour(): void {
       },
       {
         element: '[data-tour="rsb-agent"]',
+        // Open the Agent tab while this step is shown, then restore the calendar
+        // (day) tab as the default resting state when leaving the step.
+        onHighlightStarted: () => clickTourTarget('[data-tour="rsb-agent"]'),
+        onDeselected: () => clickTourTarget('[data-tour="rsb-day"]'),
         popover: {
           title: t('onboarding.agentChat.title'),
           description: t('onboarding.agentChat.body'),
