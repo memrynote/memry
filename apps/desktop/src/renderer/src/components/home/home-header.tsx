@@ -2,7 +2,6 @@ import { Fragment } from 'react'
 import { useT } from '@memry/i18n/renderer'
 import { useTaskWorkspaceData } from '@/features/tasks/use-task-queries'
 import { getTaskCounts } from '@/lib/task-utils/task-view-helpers'
-import { useInboxList } from '@/hooks/use-inbox-queries'
 import { useCalendarRange } from '@/hooks/use-calendar-range'
 import { getGreetingKey, buildHeaderMetrics } from '@/lib/home/header-helpers'
 import type { HomePage, WidgetType } from '@/lib/home/types'
@@ -40,7 +39,7 @@ interface HomeHeaderProps {
 
 /**
  * Home page header: time-of-day greeting, today's date, live metrics
- * (tasks due today · to triage · events), and a layout switcher dropdown.
+ * (tasks due today · events), and a layout switcher dropdown.
  */
 export function HomeHeader({
   boards,
@@ -57,7 +56,6 @@ export function HomeHeader({
 
   const { tasks, projects } = useTaskWorkspaceData({ enabled: true })
   const tasksDue = getTaskCounts(tasks, 'today', 'view', projects).dueToday
-  const { total: toTriage } = useInboxList({})
   const { items } = useCalendarRange(todayRangeIso())
 
   const activeName = boards.find((b) => b.id === activeBoardId)?.name ?? t('home.board.label')
@@ -71,7 +69,7 @@ export function HomeHeader({
     month: 'long',
     day: 'numeric'
   })
-  const metrics = buildHeaderMetrics({ tasksDue, toTriage, events: items.length })
+  const metrics = buildHeaderMetrics({ tasksDue, events: items.length })
 
   return (
     <div className="flex items-end justify-between px-6 pt-7 pb-5.5 [font-synthesis:none] antialiased">

@@ -560,7 +560,6 @@
     },
     "header": {
       "tasksDue": "{count, plural, one {# task due today} other {# tasks due today}}",
-      "toTriage": "{count} to triage",
       "events": "{count, plural, one {# event} other {# events}}"
     },
     "edit": "Edit",
