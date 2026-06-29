@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { QrCode, KeyRound, AlertTriangle } from '@/lib/icons'
+import { QrCode, KeyRound, AlertTriangle, Lock } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { extractErrorMessage } from '@/lib/ipc-error'
@@ -14,6 +14,9 @@ import { RecoveryPhraseInput } from '@/components/sync/recovery-phrase-input'
 import { LinkingCodeEntry } from '@/components/sync/linking-code-entry'
 import { LinkingPending } from '@/components/sync/linking-pending'
 import { VaultPickerStep } from '@/components/sync/vault-picker-step'
+
+const MEMRY_ICON_SRC = new URL('../../../../../build/icon.png', import.meta.url).href
+const MEMRY_PRICING_URL = 'https://memrynote.com/pricing'
 
 const STEP_KEYS = ['setup.steps.signIn', 'setup.steps.verify', 'setup.steps.link'] as const
 const STEP_MAP: Record<WizardStep, number> = {
@@ -222,7 +225,13 @@ export function SetupWizard(): React.JSX.Element {
 
       {wizardStep === 'sign-in' && (
         <div className="wizard-step-enter space-y-6 text-center">
-          <div className="flex flex-col pb-7 gap-1.5">
+          <div className="flex flex-col items-center pb-7 gap-1.5">
+            <img
+              src={MEMRY_ICON_SRC}
+              alt=""
+              aria-hidden="true"
+              className="mb-2 size-10 rounded-[10px]"
+            />
             <div className="tracking-[-0.02em] font-semibold text-xl/6.5 text-foreground">
               {t('setup.signIn.title')}
             </div>
@@ -249,6 +258,19 @@ export function SetupWizard(): React.JSX.Element {
             isLoading={isLoading}
             error={wizardError}
           />
+
+          <p className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1 pt-1 text-[11px]/4 text-muted-foreground/70">
+            <Lock className="size-3 shrink-0" aria-hidden="true" />
+            {t('setup.signIn.paidPlan')}
+            <a
+              href={MEMRY_PRICING_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-[var(--tint)] underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              {t('setup.signIn.seePlans')}
+            </a>
+          </p>
         </div>
       )}
 
