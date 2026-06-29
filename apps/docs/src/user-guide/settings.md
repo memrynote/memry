@@ -113,12 +113,6 @@ A **Create Template** button opens the [template editor](/user-guide/templates).
 
 **Sticky / Floating** controls whether the formatting toolbar stays pinned to the top or floats above selections.
 
-### Writing
-
-- **Spell Check** — toggle browser spellcheck
-- **Auto-Save Delay** — slider 0–30 seconds (default ~1s); content flushes sooner on tab close, app quit, or sync
-- **Show Word Count** — display word count in the editor footer
-
 ---
 
 ## Journal
@@ -322,7 +316,7 @@ Create, rename, recolor, and reorder property options.
 Settings persist via Zod schemas in `packages/contracts/settings-schemas.ts`. Notable keys:
 
 - General: `theme`, `fontSize`, `fontFamily`, `accentColor`, `startOnBoot`, `language`, `clockFormat`, `createInSelectedFolder`
-- Editor: `width`, `spellCheck`, `autoSaveDelay`, `showWordCount`, `toolbarMode`
+- Editor: `width`, `toolbarMode`
 - Tasks: `defaultProjectId`, `defaultSortOrder`, `weekStartDay`, `staleInboxDays`
 - Calendar: `dayCellClickBehavior`, `calendarPageClickOverride`
 - AI: `enabled`, `provider`, `model`

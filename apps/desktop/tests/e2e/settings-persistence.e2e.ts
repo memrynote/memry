@@ -19,9 +19,6 @@ test.describe('Settings persistence E2E', () => {
         }),
         api.settings.setEditorSettings({
           width: 'wide',
-          spellCheck: false,
-          autoSaveDelay: 750,
-          showWordCount: true,
           toolbarMode: 'sticky'
         }),
         api.settings.setTaskSettings({
@@ -83,9 +80,6 @@ test.describe('Settings persistence E2E', () => {
     })
     expect(settings.editor).toMatchObject({
       width: 'wide',
-      spellCheck: false,
-      autoSaveDelay: 750,
-      showWordCount: true,
       toolbarMode: 'sticky'
     })
     expect(settings.tasks).toMatchObject({

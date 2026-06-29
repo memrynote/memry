@@ -222,7 +222,7 @@ export function NotePage({ noteId }: NotePageProps) {
     [reminderActions]
   )
 
-  // Editor settings (toolbar mode, width, spellCheck, autoSaveDelay, showWordCount)
+  // Editor settings (toolbar mode, width)
   const { settings: editorSettings } = useEditorSettings()
 
   const NOTE_CONTENT_WIDTH = { narrow: '640px', medium: '640px', wide: '864px' } as const
@@ -537,7 +537,7 @@ export function NotePage({ noteId }: NotePageProps) {
         clearTimeout(saveTimeoutRef.current)
       }
 
-      // Debounce save (configurable via editor settings, default 1000ms)
+      // Debounce save (fixed 1000ms)
       saveTimeoutRef.current = setTimeout(() => {
         void (async () => {
           isSavingRef.current = true
@@ -555,18 +555,9 @@ export function NotePage({ noteId }: NotePageProps) {
             isSavingRef.current = false
           }
         })()
-      }, editorSettings.autoSaveDelay)
+      }, 1000)
     },
-    [
-      noteId,
-      note,
-      isDeleted,
-      editorSettings.autoSaveDelay,
-      t,
-      updateNote,
-      isLocalGraphOpen,
-      queryClient
-    ]
+    [noteId, note, isDeleted, t, updateNote, isLocalGraphOpen, queryClient]
   )
 
   const handleContentChange = useCallback((_blocks: Block[]) => {
@@ -1124,7 +1115,6 @@ export function NotePage({ noteId }: NotePageProps) {
               contentType="markdown"
               placeholder={t('editor.content.placeholder')}
               stickyToolbar={editorSettings.toolbarMode === 'sticky'}
-              spellCheck={editorSettings.spellCheck}
               onContentChange={handleContentChange}
               onMarkdownChange={handleMarkdownChange}
               onHeadingsChange={handleHeadingsChange}

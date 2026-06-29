@@ -194,8 +194,7 @@
     },
     "groups": {
       "layout": "Disposition",
-      "toolbar": "Barre d'outils",
-      "writing": "Écriture"
+      "toolbar": "Barre d'outils"
     },
     "width": {
       "label": "Largeur de l'éditeur",
@@ -211,22 +210,6 @@
       "label": "Barre d'outils de formatage collante",
       "description": "Toujours afficher la barre d'outils au-dessus de l'éditeur",
       "error": "Échec de la mise à jour du mode barre d'outils"
-    },
-    "spellCheck": {
-      "label": "Vérification orthographique",
-      "description": "Soulignez les mots mal orthographiés lors de la saisie",
-      "error": "Échec de la mise à jour de la vérification orthographique"
-    },
-    "autoSaveDelay": {
-      "label": "Délai d'enregistrement automatique",
-      "description": "Temps d'attente après l'arrêt de la saisie avant d'enregistrer",
-      "seconds": "{seconds}s",
-      "error": "Échec de la mise à jour du délai de sauvegarde automatique"
-    },
-    "wordCount": {
-      "label": "Nombre de mots",
-      "description": "Afficher le nombre de mots dans le pied de page de l'éditeur",
-      "error": "Échec de la mise à jour de l'affichage du nombre de mots"
     }
   },
   "templates": {

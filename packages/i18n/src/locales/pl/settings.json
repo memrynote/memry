@@ -194,8 +194,7 @@
     },
     "groups": {
       "layout": "Układ",
-      "toolbar": "Pasek narzędzi",
-      "writing": "Pisanie"
+      "toolbar": "Pasek narzędzi"
     },
     "width": {
       "label": "Szerokość edytora",
@@ -211,22 +210,6 @@
       "label": "Przyklejony pasek narzędzi formatowania",
       "description": "Zawsze pokazuj pasek narzędzi nad edytorem",
       "error": "Nie udało się zaktualizować trybu paska narzędzi"
-    },
-    "spellCheck": {
-      "label": "Sprawdzanie pisowni",
-      "description": "Podczas pisania podkreślaj błędnie napisane słowa",
-      "error": "Nie udało się zaktualizować sprawdzania pisowni"
-    },
-    "autoSaveDelay": {
-      "label": "Opóźnienie automatycznego zapisu",
-      "description": "Czas oczekiwania po wpisaniu zatrzymuje się przed zapisaniem",
-      "seconds": "{seconds}s",
-      "error": "Nie udało się zaktualizować opóźnienia automatycznego zapisywania"
-    },
-    "wordCount": {
-      "label": "Liczba słów",
-      "description": "Pokaż liczbę słów w stopce edytora",
-      "error": "Nie udało się zaktualizować wyświetlania liczby słów"
     }
   },
   "templates": {

@@ -194,8 +194,7 @@
     },
     "groups": {
       "layout": "레이아웃",
-      "toolbar": "툴바",
-      "writing": "글쓰기"
+      "toolbar": "툴바"
     },
     "width": {
       "label": "편집기 너비",
@@ -211,22 +210,6 @@
       "label": "고정 서식 도구 모음",
       "description": "항상 편집기 위에 도구 모음 표시",
       "error": "도구 모음 모드를 업데이트하지 못했습니다."
-    },
-    "spellCheck": {
-      "label": "맞춤법 검사",
-      "description": "입력하는 동안 철자가 틀린 단어에 밑줄을 긋습니다.",
-      "error": "맞춤법 검사를 업데이트하지 못했습니다."
-    },
-    "autoSaveDelay": {
-      "label": "자동 저장 지연",
-      "description": "입력이 중지된 후 저장되기까지 대기 시간",
-      "seconds": "{seconds}s",
-      "error": "자동 저장 지연을 업데이트하지 못했습니다."
-    },
-    "wordCount": {
-      "label": "단어 수",
-      "description": "편집기 바닥글에 단어 수 표시",
-      "error": "단어 수 표시를 업데이트하지 못했습니다."
     }
   },
   "templates": {

@@ -277,9 +277,8 @@ memry settings group voiceTranscription
 memry settings set-group voiceTranscription '{"provider":"openai"}'
 memry settings ai
 memry settings set-ai false
-memry settings get editor.spellcheck
-memry settings set editor.spellcheck true
-memry settings delete editor.spellcheck --yes
+memry settings get editor.width
+memry settings set editor.width wide
 ```
 
 Settings values are stored in the vault data database and parsed as JSON-compatible CLI values where possible. `settings group` reads the same settings groups used by the desktop app and merges stored values with app defaults. Supported groups are `general`, `editor`, `tasks`, `keyboard`, `sync`, `backup`, `graph`, `calendar`, `calendar.google`, `voiceTranscription`, `journal`, `tabs`, and `noteEditor`. AI settings currently mirror the desktop app's local embedding toggle stored at `ai.enabled`; model load, reindexing, voice model status/download, voice recording readiness, and OpenAI voice API key storage remain desktop-runtime or keychain operations.

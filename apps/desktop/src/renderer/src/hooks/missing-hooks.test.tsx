@@ -246,9 +246,6 @@ beforeEach(() => {
   api.settings.setJournalSettings = vi.fn().mockResolvedValue({ success: true })
   api.settings.getEditorSettings = vi.fn().mockResolvedValue({
     width: 'wide',
-    spellCheck: false,
-    autoSaveDelay: 1500,
-    showWordCount: true,
     toolbarMode: 'fixed'
   })
   api.settings.setEditorSettings = vi.fn().mockResolvedValue({ success: true })
@@ -619,9 +616,9 @@ describe('state and settings hooks', () => {
     await waitFor(() => expect(editor.result.current.isLoading).toBe(false))
     expect(editor.result.current.settings.width).toBe('wide')
     await act(async () => {
-      await editor.result.current.updateSettings({ showWordCount: false })
+      await editor.result.current.updateSettings({ width: 'narrow' })
     })
-    expect(window.api.settings.setEditorSettings).toHaveBeenCalledWith({ showWordCount: false })
+    expect(window.api.settings.setEditorSettings).toHaveBeenCalledWith({ width: 'narrow' })
     act(() => settingsChanged?.({ key: 'editor', value: { toolbarMode: 'floating' } }))
     expect(editor.result.current.settings.toolbarMode).toBe('floating')
 
@@ -630,7 +627,7 @@ describe('state and settings hooks', () => {
       error: 'editor failed'
     })
     await act(async () => {
-      await editor.result.current.updateSettings({ spellCheck: true })
+      await editor.result.current.updateSettings({ width: 'medium' })
     })
     expect(editor.result.current.error).toBe('editor failed')
 

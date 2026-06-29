@@ -194,8 +194,7 @@
     },
     "groups": {
       "layout": "Düzen",
-      "toolbar": "Araç Çubuğu",
-      "writing": "Yazma"
+      "toolbar": "Araç Çubuğu"
     },
     "width": {
       "label": "Düzenleyici Genişliği",
@@ -211,22 +210,6 @@
       "label": "Yapışkan Biçimlendirme Araç Çubuğu",
       "description": "Araç çubuğunu her zaman düzenleyicinin üzerinde göster",
       "error": "Araç çubuğu modu güncellenemedi"
-    },
-    "spellCheck": {
-      "label": "Yazım Denetimi",
-      "description": "Yazarken yanlış yazılan kelimelerin altını çizin",
-      "error": "Yazım denetimi güncellenemedi"
-    },
-    "autoSaveDelay": {
-      "label": "Otomatik Kaydetme Gecikmesi",
-      "description": "Yazdıktan sonra kaydetmeden önce bekleme süresi durur",
-      "seconds": "{seconds}s",
-      "error": "Otomatik kaydetme gecikmesi güncellenemedi"
-    },
-    "wordCount": {
-      "label": "Kelime Sayısı",
-      "description": "Düzenleyici altbilgisinde kelime sayısını göster",
-      "error": "Kelime sayısı ekranı güncellenemedi"
     }
   },
   "templates": {

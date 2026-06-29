@@ -194,8 +194,7 @@
     },
     "groups": {
       "layout": "レイアウト",
-      "toolbar": "ツールバー",
-      "writing": "執筆"
+      "toolbar": "ツールバー"
     },
     "width": {
       "label": "エディターの幅",
@@ -211,22 +210,6 @@
       "label": "スティッキー書式設定ツールバー",
       "description": "ツールバーを常にエディターの上に表示する",
       "error": "ツールバーモードの更新に失敗しました"
-    },
-    "spellCheck": {
-      "label": "スペルチェック",
-      "description": "入力中にスペルミスの単語に下線を引く",
-      "error": "スペルチェックの更新に失敗しました"
-    },
-    "autoSaveDelay": {
-      "label": "自動保存の遅延",
-      "description": "入力を停止してから保存するまでの待ち時間",
-      "seconds": "{seconds}",
-      "error": "自動保存の遅延を更新できませんでした"
-    },
-    "wordCount": {
-      "label": "単語数",
-      "description": "エディターのフッターに単語数を表示する",
-      "error": "単語数表示の更新に失敗しました"
     }
   },
   "templates": {

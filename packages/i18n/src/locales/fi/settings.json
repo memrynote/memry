@@ -194,8 +194,7 @@
     },
     "groups": {
       "layout": "Asettelu",
-      "toolbar": "Työkalupalkki",
-      "writing": "Kirjoittaminen"
+      "toolbar": "Työkalupalkki"
     },
     "width": {
       "label": "Editor Leveys",
@@ -211,22 +210,6 @@
       "label": "Sticky Formatting Toolbar",
       "description": "Näytä työkalupalkki aina editorin yläpuolella",
       "error": "Työkalupalkkitilan päivittäminen epäonnistui"
-    },
-    "spellCheck": {
-      "label": "Oikeinkirjoituksen tarkistus",
-      "description": "Alleviivaa väärin kirjoitetut sanat kirjoittaessasi",
-      "error": "Oikoluvun päivitys epäonnistui"
-    },
-    "autoSaveDelay": {
-      "label": "Automaattisen tallennuksen viive",
-      "description": "Odota aikaa kirjoittamisen jälkeen ennen tallentamista",
-      "seconds": "{seconds}s",
-      "error": "Automaattisen tallennuksen viiveen päivittäminen epäonnistui"
-    },
-    "wordCount": {
-      "label": "Sanamäärä",
-      "description": "Näytä sanamäärä editorin alatunnisteessa",
-      "error": "Sanamäärän näytön päivittäminen epäonnistui"
     }
   },
   "templates": {

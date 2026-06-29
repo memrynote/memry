@@ -194,8 +194,7 @@
     },
     "groups": {
       "layout": "Layout",
-      "toolbar": "Symbolleiste",
-      "writing": "Schreiben"
+      "toolbar": "Symbolleiste"
     },
     "width": {
       "label": "Editorbreite",
@@ -211,22 +210,6 @@
       "label": "Sticky-Formatierungssymbolleiste",
       "description": "Symbolleiste immer über dem Editor anzeigen",
       "error": "Der Symbolleistenmodus konnte nicht aktualisiert werden"
-    },
-    "spellCheck": {
-      "label": "Rechtschreibprüfung",
-      "description": "Unterstreichen Sie falsch geschriebene Wörter beim Tippen",
-      "error": "Die Rechtschreibprüfung konnte nicht aktualisiert werden"
-    },
-    "autoSaveDelay": {
-      "label": "Verzögerung beim automatischen Speichern",
-      "description": "Warten Sie nach dem Stoppen der Eingabe, bevor Sie speichern",
-      "seconds": "{seconds}s",
-      "error": "Die Verzögerung beim automatischen Speichern konnte nicht aktualisiert werden"
-    },
-    "wordCount": {
-      "label": "Wortanzahl",
-      "description": "Wortanzahl in der Fußzeile des Editors anzeigen",
-      "error": "Die Anzeige der Wortanzahl konnte nicht aktualisiert werden"
     }
   },
   "templates": {

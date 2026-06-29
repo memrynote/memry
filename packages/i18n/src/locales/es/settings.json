@@ -194,8 +194,7 @@
     },
     "groups": {
       "layout": "Diseño",
-      "toolbar": "Barra de herramientas",
-      "writing": "escribiendo"
+      "toolbar": "Barra de herramientas"
     },
     "width": {
       "label": "Ancho del editor",
@@ -211,22 +210,6 @@
       "label": "Barra de herramientas de formato fijo",
       "description": "Mostrar siempre la barra de herramientas encima del editor",
       "error": "No se pudo actualizar el modo de la barra de herramientas"
-    },
-    "spellCheck": {
-      "label": "Revisión ortográfica",
-      "description": "Subrayar palabras mal escritas al escribir",
-      "error": "No se pudo actualizar el corrector ortográfico"
-    },
-    "autoSaveDelay": {
-      "label": "Retraso de guardado automático",
-      "description": "El tiempo de espera después de escribir se detiene antes de guardar",
-      "seconds": "{seconds}s",
-      "error": "No se pudo actualizar el retraso de guardado automático"
-    },
-    "wordCount": {
-      "label": "Conteo de palabras",
-      "description": "Mostrar el recuento de palabras en el pie de página del editor",
-      "error": "No se pudo actualizar la visualización del recuento de palabras"
     }
   },
   "templates": {

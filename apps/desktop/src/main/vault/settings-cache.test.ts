@@ -53,9 +53,6 @@ describe('populateSettingsCacheFromConfig', () => {
         createInSelectedFolder: false,
         editor: {
           width: 'wide',
-          spellCheck: false,
-          autoSaveDelay: 2000,
-          showWordCount: true,
           toolbarMode: 'sticky'
         }
       }
@@ -79,7 +76,6 @@ describe('populateSettingsCacheFromConfig', () => {
     expect(editorRaw).toBeTruthy()
     const editor = JSON.parse(editorRaw!)
     expect(editor.width).toBe('wide')
-    expect(editor.spellCheck).toBe(false)
     expect(editor.toolbarMode).toBe('sticky')
   })
 

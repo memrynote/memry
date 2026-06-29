@@ -1,6 +1,5 @@
 import { useCallback } from 'react'
 import { Switch } from '@/components/ui/switch'
-import { Slider } from '@/components/ui/slider'
 import {
   Select,
   SelectContent,
@@ -15,7 +14,6 @@ import {
   SettingsHeader,
   SettingsGroup,
   SettingRow,
-  SettingRowTall,
   ACCENT_SWITCH,
   COMPACT_SELECT
 } from '@/components/settings/settings-primitives'
@@ -40,30 +38,6 @@ export function EditorSettings() {
     [t, updateSettings]
   )
 
-  const handleSpellCheckChange = useCallback(
-    async (enabled: boolean) => {
-      const success = await updateSettings({ spellCheck: enabled })
-      if (!success) toast.error(t('editor.spellCheck.error'))
-    },
-    [t, updateSettings]
-  )
-
-  const handleAutoSaveDelayChange = useCallback(
-    async (value: number[]) => {
-      const success = await updateSettings({ autoSaveDelay: value[0] })
-      if (!success) toast.error(t('editor.autoSaveDelay.error'))
-    },
-    [t, updateSettings]
-  )
-
-  const handleWordCountChange = useCallback(
-    async (enabled: boolean) => {
-      const success = await updateSettings({ showWordCount: enabled })
-      if (!success) toast.error(t('editor.wordCount.error'))
-    },
-    [t, updateSettings]
-  )
-
   if (isLoading) {
     return (
       <div className="flex flex-col">
@@ -71,8 +45,6 @@ export function EditorSettings() {
       </div>
     )
   }
-
-  const autoSaveSeconds = Math.round(settings.autoSaveDelay / 1000)
 
   return (
     <div className="flex flex-col text-xs/4">
@@ -104,49 +76,6 @@ export function EditorSettings() {
           <Switch
             checked={settings.toolbarMode === 'sticky'}
             onCheckedChange={(...args) => void handleToolbarModeChange(...args)}
-            className={ACCENT_SWITCH}
-          />
-        </SettingRow>
-      </SettingsGroup>
-
-      <SettingsGroup label={t('editor.groups.writing')}>
-        <SettingRow
-          label={t('editor.spellCheck.label')}
-          description={t('editor.spellCheck.description')}
-        >
-          <Switch
-            checked={settings.spellCheck}
-            onCheckedChange={(...args) => void handleSpellCheckChange(...args)}
-            className={ACCENT_SWITCH}
-          />
-        </SettingRow>
-
-        <SettingRowTall
-          label={t('editor.autoSaveDelay.label')}
-          description={t('editor.autoSaveDelay.description')}
-        >
-          <div className="flex items-center gap-3">
-            <Slider
-              min={0}
-              max={30000}
-              step={1000}
-              value={[settings.autoSaveDelay]}
-              onValueCommit={(...args) => void handleAutoSaveDelayChange(...args)}
-              className="flex-1 max-w-xs"
-            />
-            <span className="text-xs/4 font-medium text-muted-foreground w-8 text-end shrink-0">
-              {t('editor.autoSaveDelay.seconds', { seconds: autoSaveSeconds })}
-            </span>
-          </div>
-        </SettingRowTall>
-
-        <SettingRow
-          label={t('editor.wordCount.label')}
-          description={t('editor.wordCount.description')}
-        >
-          <Switch
-            checked={settings.showWordCount}
-            onCheckedChange={(...args) => void handleWordCountChange(...args)}
             className={ACCENT_SWITCH}
           />
         </SettingRow>

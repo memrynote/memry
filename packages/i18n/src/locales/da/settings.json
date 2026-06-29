@@ -194,8 +194,7 @@
     },
     "groups": {
       "layout": "Layout",
-      "toolbar": "Værktøjslinje",
-      "writing": "Skrivning"
+      "toolbar": "Værktøjslinje"
     },
     "width": {
       "label": "Redaktørbredde",
@@ -211,22 +210,6 @@
       "label": "Sticky Formateringsværktøjslinje",
       "description": "Vis altid værktøjslinjen over editoren",
       "error": "Kunne ikke opdatere værktøjslinjetilstand"
-    },
-    "spellCheck": {
-      "label": "Stavekontrol",
-      "description": "Understreg forkert stavede ord, mens du skriver",
-      "error": "Kunne ikke opdatere stavekontrol"
-    },
-    "autoSaveDelay": {
-      "label": "Auto-Save Delay",
-      "description": "Ventetid efter indtastning stopper, før du gemmer",
-      "seconds": "{seconds}s",
-      "error": "Kunne ikke opdatere den automatiske lagringsforsinkelse"
-    },
-    "wordCount": {
-      "label": "Ordtælling",
-      "description": "Vis ordantal i editorens sidefod",
-      "error": "Kunne ikke opdatere visningen af ordtal"
     }
   },
   "templates": {

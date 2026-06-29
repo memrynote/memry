@@ -194,8 +194,7 @@
     },
     "groups": {
       "layout": "布局",
-      "toolbar": "工具栏",
-      "writing": "写作"
+      "toolbar": "工具栏"
     },
     "width": {
       "label": "编辑器宽度",
@@ -211,22 +210,6 @@
       "label": "固定格式工具栏",
       "description": "始终在编辑器上方显示工具栏",
       "error": "更新工具栏模式失败"
-    },
-    "spellCheck": {
-      "label": "拼写检查",
-      "description": "输入时为拼写错误的单词加下划线",
-      "error": "更新拼写检查失败"
-    },
-    "autoSaveDelay": {
-      "label": "自动保存延迟",
-      "description": "停止输入后等待一段时间再保存",
-      "seconds": "{seconds}s",
-      "error": "更新自动保存延迟失败"
-    },
-    "wordCount": {
-      "label": "字数统计",
-      "description": "在编辑器底部显示字数",
-      "error": "更新字数显示失败"
     }
   },
   "templates": {

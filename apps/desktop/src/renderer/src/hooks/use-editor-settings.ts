@@ -5,9 +5,6 @@ import { getI18n } from 'react-i18next'
 
 const DEFAULTS: EditorSettingsDTO = {
   width: 'medium',
-  spellCheck: true,
-  autoSaveDelay: 1000,
-  showWordCount: false,
   toolbarMode: 'floating'
 }
 

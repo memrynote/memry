@@ -194,8 +194,7 @@
     },
     "groups": {
       "layout": "Disposizione",
-      "toolbar": "Barra degli strumenti",
-      "writing": "Scrivere"
+      "toolbar": "Barra degli strumenti"
     },
     "width": {
       "label": "Larghezza dell'editor",
@@ -211,22 +210,6 @@
       "label": "Barra degli strumenti di formattazione fissa",
       "description": "Mostra sempre la barra degli strumenti sopra l'editor",
       "error": "Impossibile aggiornare la modalità della barra degli strumenti"
-    },
-    "spellCheck": {
-      "label": "Controllo ortografico",
-      "description": "Sottolinea le parole errate durante la digitazione",
-      "error": "Impossibile aggiornare il controllo ortografico"
-    },
-    "autoSaveDelay": {
-      "label": "Ritardo salvataggio automatico",
-      "description": "Il tempo di attesa dopo l'interruzione della digitazione prima del salvataggio",
-      "seconds": "{seconds}s",
-      "error": "Impossibile aggiornare il ritardo del salvataggio automatico"
-    },
-    "wordCount": {
-      "label": "Conteggio parole",
-      "description": "Mostra il conteggio delle parole nel piè di pagina dell'editor",
-      "error": "Impossibile aggiornare la visualizzazione del conteggio delle parole"
     }
   },
   "templates": {

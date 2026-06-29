@@ -201,8 +201,7 @@
     },
     "groups": {
       "layout": "Layout",
-      "toolbar": "Toolbar",
-      "writing": "Writing"
+      "toolbar": "Toolbar"
     },
     "width": {
       "label": "Editor Width",
@@ -218,22 +217,6 @@
       "label": "Sticky Formatting Toolbar",
       "description": "Always show toolbar above the editor",
       "error": "Failed to update toolbar mode"
-    },
-    "spellCheck": {
-      "label": "Spell Check",
-      "description": "Underline misspelled words while typing",
-      "error": "Failed to update spell check"
-    },
-    "autoSaveDelay": {
-      "label": "Auto-Save Delay",
-      "description": "Wait time after typing stops before saving",
-      "seconds": "{seconds}s",
-      "error": "Failed to update auto-save delay"
-    },
-    "wordCount": {
-      "label": "Word Count",
-      "description": "Show word count in the editor footer",
-      "error": "Failed to update word count display"
     }
   },
   "templates": {
