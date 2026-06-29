@@ -13,7 +13,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Switch } from '@/components/ui/switch'
-import { CreditCard, ExternalLink, RefreshCw } from '@/lib/icons'
+import { CreditCard, ExternalLink, Lock, RefreshCw } from '@/lib/icons'
 import { toast } from 'sonner'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useAuth } from '@/contexts/auth-context'
@@ -131,7 +131,6 @@ export function AccountSettings() {
   const [showSignOutDialog, setShowSignOutDialog] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
   const [showLinkingQr, setShowLinkingQr] = useState(false)
-  const [isRefreshing, setIsRefreshing] = useState(false)
   const [isBillingRefreshing, setIsBillingRefreshing] = useState(false)
   const [isCheckoutStarting, setIsCheckoutStarting] = useState(false)
   const [isPortalOpening, setIsPortalOpening] = useState(false)
@@ -139,14 +138,11 @@ export function AccountSettings() {
 
   const loadStorage = useCallback(async () => {
     if (state.status !== 'authenticated') return
-    setIsRefreshing(true)
     try {
       const result = await window.api.syncOps.getStorageBreakdown()
       setStorage(result)
     } catch {
       /* storage is non-critical */
-    } finally {
-      setIsRefreshing(false)
     }
   }, [state.status])
 
@@ -281,29 +277,48 @@ export function AccountSettings() {
     <div className="flex flex-col text-xs/4">
       <SettingsHeader title={t('account.header.title')} subtitle={t('account.header.subtitle')} />
 
-      <SettingsGroup label={t('account.groups.identity')}>
-        <div className="flex items-center gap-3 h-14 py-3 px-4">
-          <div
-            className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-white text-sm font-semibold"
-            style={{ backgroundColor: 'var(--tint)' }}
-          >
-            {initial}
-          </div>
-          <div className="flex flex-col gap-px min-w-0">
-            <span className="font-medium text-[13px]/4 text-foreground truncate">
-              {email ?? t('account.identity.unknown')}
-            </span>
-            <span className="text-xs/4 text-muted-foreground">
+      <div className="mb-6 flex items-center gap-3.5 rounded-lg border border-border bg-surface-active px-4 py-3.5">
+        <div
+          className="flex size-11 shrink-0 items-center justify-center rounded-full text-base font-semibold text-white"
+          style={{ backgroundColor: 'var(--tint)' }}
+        >
+          {initial}
+        </div>
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span className="truncate text-[13px]/4 font-medium text-foreground">
+            {email ?? t('account.identity.unknown')}
+          </span>
+          <span className="flex items-center gap-1.5 text-xs/4 text-muted-foreground">
+            <span className="truncate">
               {billing ? t(`account.billing.plans.${billing.plan}`) : t('account.billing.checking')}
             </span>
-          </div>
+            <span aria-hidden="true" className="text-muted-foreground/40">
+              ·
+            </span>
+            <span className="inline-flex shrink-0 items-center gap-1">
+              <Lock className="size-3" aria-hidden="true" />
+              {t('account.identity.encrypted')}
+            </span>
+          </span>
         </div>
-      </SettingsGroup>
+        <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-border bg-background px-2.5 py-1 text-[11px]/4 font-medium text-muted-foreground">
+          <span
+            className={`size-1.5 rounded-full ${syncStatus.dotColor} ${
+              syncStatus.isAnimating ? 'motion-safe:animate-pulse' : ''
+            }`}
+          />
+          {syncStatus.label}
+        </span>
+      </div>
 
       <SettingsGroup label={t('account.groups.sync')}>
         <div className="flex items-center justify-between h-11 px-4 shrink-0">
           <div className="flex items-center gap-2">
-            <div className={`shrink-0 rounded-sm size-2 ${syncStatus.dotColor}`} />
+            <div
+              className={`size-2 shrink-0 rounded-full ${syncStatus.dotColor} ${
+                syncStatus.isAnimating ? 'motion-safe:animate-pulse' : ''
+              }`}
+            />
             <div className="flex flex-col gap-px">
               <span className="font-medium text-[13px]/4 text-foreground">{syncStatus.label}</span>
               <span className="text-xs/4 text-muted-foreground">
@@ -353,15 +368,52 @@ export function AccountSettings() {
             )}
           </div>
 
-          {billing && (
-            <div className="grid gap-2 text-xs/4 text-muted-foreground sm:grid-cols-2">
-              <div>
-                <span className="font-medium text-foreground">
+          {storage && (
+            <div className="space-y-2">
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="text-xs/4 text-muted-foreground">
                   {t('account.billing.labels.storage')}
-                </span>{' '}
-                {formatBytes(billing.usage.storageUsed)} /{' '}
-                {formatBytes(billing.limits.storageLimit)}
+                </span>
+                <span className="text-[13px]/4 font-medium text-foreground">
+                  {t('account.storage.used', {
+                    used: formatBytes(storage.used),
+                    limit: formatBytes(storage.limit)
+                  })}
+                </span>
               </div>
+              <div className="flex h-2 overflow-hidden rounded-full bg-muted">
+                {Object.entries(storage.breakdown).map(([key, bytes]) => {
+                  const pct = storage.limit > 0 ? (bytes / storage.limit) * 100 : 0
+                  return (
+                    <div
+                      key={key}
+                      className="h-full first:rounded-s-full last:rounded-e-full"
+                      style={{
+                        width: `${pct}%`,
+                        backgroundColor: STORAGE_COLORS[key] ?? '#8c8c8c'
+                      }}
+                    />
+                  )
+                })}
+              </div>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                {Object.entries(storage.breakdown).map(([key]) => (
+                  <div key={key} className="flex items-center gap-1.5">
+                    <span
+                      className="size-2 shrink-0 rounded-full"
+                      style={{ backgroundColor: STORAGE_COLORS[key] ?? '#8c8c8c' }}
+                    />
+                    <span className="text-xs/4 text-muted-foreground">
+                      {storageCategoryLabels[key] ?? key}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {billing && (
+            <div className="grid gap-2 text-xs/4 text-muted-foreground sm:grid-cols-3">
               <div>
                 <span className="font-medium text-foreground">
                   {t('account.billing.labels.maxFile')}
@@ -439,60 +491,6 @@ export function AccountSettings() {
           </div>
         </div>
       </SettingsGroup>
-
-      {storage && (
-        <SettingsGroup label={t('account.groups.storage')}>
-          <div className="py-3 px-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="font-semibold text-[13px]/4 text-foreground">
-                {t('account.storage.used', {
-                  used: formatBytes(storage.used),
-                  limit: formatBytes(storage.limit)
-                })}
-              </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => void loadStorage()}
-                disabled={isRefreshing}
-                className="h-7 w-7 p-0"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-              </Button>
-            </div>
-
-            <div className="h-2 rounded-full bg-muted overflow-hidden flex">
-              {Object.entries(storage.breakdown).map(([key, bytes]) => {
-                const pct = storage.limit > 0 ? (bytes / storage.limit) * 100 : 0
-                return (
-                  <div
-                    key={key}
-                    className="h-full first:rounded-s-full last:rounded-e-full"
-                    style={{
-                      width: `${pct}%`,
-                      backgroundColor: STORAGE_COLORS[key] ?? '#8c8c8c'
-                    }}
-                  />
-                )
-              })}
-            </div>
-
-            <div className="flex items-center gap-4 flex-wrap">
-              {Object.entries(storage.breakdown).map(([key, _bytes]) => (
-                <div key={key} className="flex items-center gap-1.5">
-                  <span
-                    className="w-2 h-2 rounded-full shrink-0"
-                    style={{ backgroundColor: STORAGE_COLORS[key] ?? '#8c8c8c' }}
-                  />
-                  <span className="text-xs/4 text-muted-foreground">
-                    {storageCategoryLabels[key] ?? key}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </SettingsGroup>
-      )}
 
       <SettingsGroup label={t('account.groups.devices')}>
         <DeviceList onLinkDevice={() => setShowLinkingQr(true)} />

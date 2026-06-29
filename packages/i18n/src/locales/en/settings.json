@@ -415,7 +415,8 @@
       "devices": "Devices"
     },
     "identity": {
-      "unknown": "Unknown"
+      "unknown": "Unknown",
+      "encrypted": "End-to-end encrypted"
     },
     "sync": {
       "lastSynced": "Last synced {time}",

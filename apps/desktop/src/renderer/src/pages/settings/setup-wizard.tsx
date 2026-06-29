@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { QrCode, KeyRound, AlertTriangle } from '@/lib/icons'
+import { QrCode, KeyRound, AlertTriangle, Lock } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { extractErrorMessage } from '@/lib/ipc-error'
@@ -14,6 +14,8 @@ import { RecoveryPhraseInput } from '@/components/sync/recovery-phrase-input'
 import { LinkingCodeEntry } from '@/components/sync/linking-code-entry'
 import { LinkingPending } from '@/components/sync/linking-pending'
 import { VaultPickerStep } from '@/components/sync/vault-picker-step'
+
+const MEMRY_ICON_SRC = new URL('../../../../../build/icon.png', import.meta.url).href
 
 const STEP_KEYS = ['setup.steps.signIn', 'setup.steps.verify', 'setup.steps.link'] as const
 const STEP_MAP: Record<WizardStep, number> = {
@@ -222,13 +224,23 @@ export function SetupWizard(): React.JSX.Element {
 
       {wizardStep === 'sign-in' && (
         <div className="wizard-step-enter space-y-6 text-center">
-          <div className="flex flex-col pb-7 gap-1.5">
+          <div className="flex flex-col items-center pb-7 gap-1.5">
+            <img
+              src={MEMRY_ICON_SRC}
+              alt=""
+              aria-hidden="true"
+              className="mb-2 size-10 rounded-[10px]"
+            />
             <div className="tracking-[-0.02em] font-semibold text-xl/6.5 text-foreground">
               {t('setup.signIn.title')}
             </div>
             <div className="text-[13px]/4.5 text-muted-foreground">
               {t('setup.signIn.description')}
             </div>
+            <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-[11px]/4 font-medium text-muted-foreground">
+              <Lock className="size-3" aria-hidden="true" />
+              {t('account.identity.encrypted')}
+            </span>
           </div>
 
           <EmailEntryForm onSubmit={handleEmailSubmit} isLoading={isLoading} error={wizardError} />
