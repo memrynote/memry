@@ -9,7 +9,6 @@ export * from './journal-editor'
 export * from './editor-toolbar'
 export * from './ai-connections-panel'
 export * from './todays-notes'
-export * from './day-context-sidebar'
 
 // Breadcrumb Navigation
 export * from './date-breadcrumb'
