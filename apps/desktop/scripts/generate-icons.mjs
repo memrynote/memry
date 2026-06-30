@@ -15,6 +15,14 @@ const PROFILE_IMAGE_DARK_PATH = join(BRAND_DIR, 'social', 'profile-image-dark.pn
 const PROFILE_SQUARE_DARK_PATH = join(BRAND_DIR, 'social', 'profile-square-dark.png')
 const PROFILE_RECTANGLE_DARK_PATH = join(BRAND_DIR, 'social', 'profile-rectangle-dark.png')
 const EXTENSION_ICON_DIR = join(__dirname, '..', '..', 'extension', 'public', 'icon')
+const EXTENSION_STORE_ICON_PATH = join(
+  __dirname,
+  '..',
+  '..',
+  'extension',
+  'store',
+  'store-icon-128.png'
+)
 const EXTENSION_ICON_SIZES = [16, 32, 48, 96, 128]
 const EXTENSION_LOGO_FILL = 0.96 // mark width as fraction of frame; wide mark on transparent bg
 const CANVAS_SIZE = 1024
@@ -358,6 +366,14 @@ async function generateExtensionIcons() {
   console.log('  apps/extension/public/icon/{16,32,48,96,128}.png')
 }
 
+async function generateExtensionStoreIcon(theme) {
+  // Chrome Web Store listing icon — same depth/shadow tile as the app icon, rendered at 128px.
+  mkdirSync(dirname(EXTENSION_STORE_ICON_PATH), { recursive: true })
+  const buf = await renderPng(128, theme)
+  writeFileSync(EXTENSION_STORE_ICON_PATH, buf)
+  console.log('  apps/extension/store/store-icon-128.png')
+}
+
 async function main() {
   mkdirSync(BUILD_DIR, { recursive: true })
   const iconTheme = ICON_THEMES[ICON_THEME_NAME]
@@ -368,7 +384,8 @@ async function main() {
     generatePng(iconTheme),
     generateProfileImage(),
     generateProfileRectangle(),
-    generateExtensionIcons()
+    generateExtensionIcons(),
+    generateExtensionStoreIcon(iconTheme)
   ])
   console.log('Done.')
 }
