@@ -20,6 +20,17 @@ pnpm --filter @memry/extension lint
 3. **Load unpacked** → select `apps/extension/.output/chrome-mv3`.
 4. Keep the load path stable so the extension ID (and pairing) survives reloads.
 
+## Build for Safari (macOS)
+
+Safari ships the extension inside a native macOS app. WXT builds the bundle; Xcode wraps it.
+
+1. `pnpm --filter @memry/extension build:safari` → `.output/safari-mv3` (MV3, matching the
+   Chrome/Firefox source).
+2. Wrap it into the macOS container app (see the Xcode project at `apps/extension/safari/`).
+
+`build:safari` only produces the web bundle — the native app, signing, and App Store
+submission are covered by the Safari release runbook below.
+
 ## Manual QA (the Phase-3 acceptance gate — human-required)
 
 Run the desktop app first: `pnpm dev`.
