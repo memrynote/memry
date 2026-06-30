@@ -49,6 +49,7 @@ import { SettingsModalProvider, useSettingsModal } from '@/contexts/settings-mod
 import { SettingsModal } from '@/components/settings-modal'
 import { useFolderViewEvents } from '@/hooks/use-folder-view-events'
 import { useFlushOnQuit } from '@/hooks/use-flush-on-quit'
+import { useMenuCommands } from '@/hooks/use-menu-commands'
 import { tasksService, queueTaskReorder } from '@/services/tasks-service'
 import { notesService } from '@/services/notes-service'
 import { VaultOnboarding } from '@/components/vault-onboarding'
@@ -218,6 +219,10 @@ const AppContent = (): React.JSX.Element => {
   const toggleShortcutsDialog = useCallback(() => setShowShortcutsDialog((prev) => !prev), [])
   useSearchShortcut(toggleSearch)
   useHintActivation()
+  useMenuCommands({
+    onNewNote: () => void handleNewNote(),
+    onOpenSearch: () => setSearchOpen(true)
+  })
 
   useEffect(() => {
     const openSearch = () => setSearchOpen(true)

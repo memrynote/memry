@@ -1,10 +1,14 @@
 {
   "app": {
-    "quit": "Quit"
+    "quit": "Quit",
+    "preferences": "Settings…"
   },
   "file": {
     "label": "File",
     "newNote": "New Note",
+    "openQuickly": "Open Quickly…",
+    "exportPdf": "Export to PDF…",
+    "closeTab": "Close Tab",
     "close": "Close Window"
   },
   "navigation": {
@@ -18,12 +22,51 @@
     "cut": "Cut",
     "copy": "Copy",
     "paste": "Paste",
-    "selectAll": "Select All"
+    "selectAll": "Select All",
+    "find": "Find",
+    "speech": "Speech"
+  },
+  "insert": {
+    "label": "Insert",
+    "codeBlock": "Code Block",
+    "table": "Table",
+    "bulletList": "Bullet List",
+    "numberedList": "Numbered List",
+    "taskList": "Task List",
+    "attachment": "Insert Attachment…"
+  },
+  "format": {
+    "label": "Format",
+    "heading1": "Heading 1",
+    "heading2": "Heading 2",
+    "heading3": "Heading 3",
+    "body": "Body",
+    "bold": "Bold",
+    "italic": "Italics",
+    "code": "Code",
+    "highlight": "Highlight",
+    "strikethrough": "Strikethrough"
   },
   "view": {
     "label": "View",
     "reload": "Reload",
     "toggleDevTools": "Toggle Developer Tools",
-    "toggleFullscreen": "Toggle Full Screen"
+    "toggleFullscreen": "Toggle Full Screen",
+    "toggleSidebar": "Toggle Sidebar",
+    "toggleDayPanel": "Toggle Day Panel",
+    "theme": "Theme",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "themeWhite": "Paper",
+    "themeSystem": "System"
+  },
+  "window": {
+    "label": "Window"
+  },
+  "help": {
+    "label": "Help",
+    "documentation": "Documentation",
+    "shortcuts": "Keyboard Shortcuts",
+    "about": "About MemryNote"
   }
 }
