@@ -477,8 +477,15 @@ export function deserializePropertyValue(value: string | null, type: PropertyTyp
  * @returns Truncated content with ellipsis if needed
  */
 export function createSnippet(content: string, maxLength = 200): string {
-  // Remove HTML comment markers (memry block-nesting/colors/file annotations)
-  let cleaned = content.replace(/<!--[\s\S]*?-->/g, '')
+  // Remove HTML comment markers (memry block-nesting/colors/file annotations).
+  // Loop until stable: one pass can re-form `<!-- -->` from the text left on
+  // either side of a removed comment.
+  let cleaned = content
+  let previousCleaned: string
+  do {
+    previousCleaned = cleaned
+    cleaned = cleaned.replace(/<!--[\s\S]*?-->/g, '')
+  } while (cleaned !== previousCleaned)
 
   // Remove markdown headers
   cleaned = cleaned.replace(/^#+\s+/gm, '')

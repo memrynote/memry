@@ -288,6 +288,7 @@ const createActions = (overrides: Record<string, unknown> = {}) => ({
   handleSetFolderTemplate: vi.fn(),
   handleClearFolderTemplate: vi.fn(),
   setIconPickerFolderPath: vi.fn(),
+  setIconPickerNoteId: vi.fn(),
   handleRenameFolderClick: vi.fn(),
   handleDeleteFolderClick: vi.fn(),
   handleOpenFolderView: vi.fn(),
@@ -374,7 +375,7 @@ describe('NotesTree isolated coverage', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'set folder icon' })[0])
     fireEvent.click(screen.getAllByRole('button', { name: 'open icon picker' })[0])
     fireEvent.click(screen.getAllByRole('button', { name: 'close icon picker' })[0])
-    expect(mocks.actions.handleOpenFolderView).toHaveBeenCalledWith('Work')
+    expect(mocks.actions.handleOpenFolderView).toHaveBeenCalledWith('Work', 'star')
     expect(mocks.data.setFolderIcon).toHaveBeenCalledWith('Work', 'rocket')
     expect(mocks.actions.setIconPickerFolderPath).toHaveBeenCalledWith(null)
 

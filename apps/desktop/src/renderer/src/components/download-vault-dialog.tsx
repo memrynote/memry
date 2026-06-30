@@ -26,12 +26,10 @@ export function DownloadVaultDialog({ vault, onClose }: DownloadVaultDialogProps
   const [parentPath, setParentPath] = useState<string | null>(null)
   const [downloading, setDownloading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [prevVaultUuid, setPrevVaultUuid] = useState(vault?.vaultUuid)
 
-  // Reset transient state when the dialog switches to a different vault
-  // (React's "adjust state during render" pattern instead of an effect).
-  if (vault?.vaultUuid !== prevVaultUuid) {
-    setPrevVaultUuid(vault?.vaultUuid)
+  const [lastVaultUuid, setLastVaultUuid] = useState(vault?.vaultUuid)
+  if (vault?.vaultUuid !== lastVaultUuid) {
+    setLastVaultUuid(vault?.vaultUuid)
     setParentPath(null)
     setDownloading(false)
     setError(null)
@@ -88,7 +86,7 @@ export function DownloadVaultDialog({ vault, onClose }: DownloadVaultDialogProps
             <Button
               variant="outline"
               size="sm"
-              onClick={handleChangeLocation}
+              onClick={() => void handleChangeLocation()}
               disabled={downloading}
             >
               {t('phaseF.componentsVaultSwitcher.changeLocation')}
@@ -100,7 +98,7 @@ export function DownloadVaultDialog({ vault, onClose }: DownloadVaultDialogProps
           <Button variant="outline" onClick={onClose} disabled={downloading}>
             {t('phaseF.componentsVaultSwitcher.cancel')}
           </Button>
-          <Button onClick={handleDownload} disabled={downloading}>
+          <Button onClick={() => void handleDownload()} disabled={downloading}>
             {downloading && <Loader2 className="size-3.5 animate-spin" />}
             {t('phaseF.componentsVaultSwitcher.download')}
           </Button>

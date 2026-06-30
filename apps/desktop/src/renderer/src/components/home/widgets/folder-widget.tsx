@@ -1,5 +1,5 @@
 import type React from 'react'
-import { useEffect, useMemo } from 'react'
+import { useMemo } from 'react'
 import { useFolderView } from '@/hooks/use-folder-view'
 import { useNoteTagsQuery } from '@/hooks/use-notes-query'
 import { useDisplayDensity } from '@/hooks/use-display-density'
@@ -30,10 +30,7 @@ export function FolderWidget({ config }: WidgetComponentProps): React.JSX.Elemen
   const viewName = typeof config.viewName === 'string' ? config.viewName : undefined
 
   const {
-    views,
     activeView,
-    activeViewIndex,
-    setActiveViewIndex,
     notes,
     availableProperties,
     formulasMap,
@@ -43,17 +40,10 @@ export function FolderWidget({ config }: WidgetComponentProps): React.JSX.Elemen
     updateDisplayName,
     isLoading,
     error
-  } = useFolderView({ folderPath })
+  } = useFolderView({ folderPath, initialViewName: viewName })
   const { tags: allTags } = useNoteTagsQuery()
   const { density } = useDisplayDensity()
   const { openTab } = useTabActions()
-
-  // Honor the widget's saved-view selection (config.viewName) over the folder's default.
-  useEffect(() => {
-    if (!viewName) return
-    const idx = views.findIndex((v) => v.name === viewName)
-    if (idx >= 0 && idx !== activeViewIndex) setActiveViewIndex(idx)
-  }, [viewName, views, activeViewIndex, setActiveViewIndex])
 
   const tagMetaMap = useMemo<TagMetaMap>(() => {
     const map: TagMetaMap = new Map()

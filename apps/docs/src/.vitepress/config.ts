@@ -146,6 +146,7 @@ function unifiedSidebar() {
           items: [
             { text: 'Settings Reference', link: '/user-guide/settings' },
             { text: 'CLI Reference', link: '/user-guide/cli-reference' },
+            { text: 'Menu Bar', link: '/user-guide/menu-bar' },
             { text: 'Keyboard Shortcuts', link: '/user-guide/keyboard-shortcuts' }
           ]
         }

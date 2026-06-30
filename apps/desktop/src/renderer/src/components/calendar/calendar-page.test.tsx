@@ -34,7 +34,8 @@ const {
   mockUseActiveTab: vi.fn()
 }))
 
-vi.mock('@/hooks/use-calendar-range', () => ({
+vi.mock('@/hooks/use-calendar-range', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/hooks/use-calendar-range')>()),
   useCalendarRange: mockUseCalendarRange
 }))
 

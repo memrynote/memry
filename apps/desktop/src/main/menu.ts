@@ -1,6 +1,9 @@
-import { app, BrowserWindow, Menu, type MenuItemConstructorOptions } from 'electron'
+import { app, BrowserWindow, dialog, Menu, shell, type MenuItemConstructorOptions } from 'electron'
+import { AppChannels } from '@memry/contracts/ipc-channels'
 import type { I18nInstance } from '@memry/i18n/main'
 import { sendAppNavigationDirection } from './app-navigation-command'
+
+const DOCS_URL = 'https://memrynote.com'
 
 interface EditableContextMenuParams {
   isEditable?: boolean
@@ -21,25 +24,65 @@ function sendNavigationToFocusedWindow(direction: 'back' | 'forward'): void {
   sendAppNavigationDirection(window.webContents, direction)
 }
 
+/** Send a menu command to the focused window's renderer (see use-menu-commands.ts). */
+function sendMenuCommand(command: string): void {
+  const window = BrowserWindow.getFocusedWindow()
+  if (!window || window.webContents.isDestroyed()) return
+
+  window.webContents.send(AppChannels.events.MENU_COMMAND, { command })
+}
+
 export function buildAppMenu(i18n: I18nInstance): Menu {
   const t = i18n.getFixedT(null, 'menu')
+  const isMac = process.platform === 'darwin'
+
+  // Bridge item: a click that dispatches a command to the renderer. No
+  // accelerator — the renderer/editor already owns the shortcuts, so adding one
+  // here would double-fire.
+  const cmd = (command: string, label: string): MenuItemConstructorOptions => ({
+    label,
+    click: () => sendMenuCommand(command)
+  })
+
+  const aboutItem: MenuItemConstructorOptions =
+    process.platform === 'win32'
+      ? {
+          label: t('help.about'),
+          click: () =>
+            void dialog.showMessageBox({
+              type: 'info',
+              title: t('help.about'),
+              message: app.name,
+              detail: `Version ${app.getVersion()}`
+            })
+        }
+      : { role: 'about' }
 
   const template: MenuItemConstructorOptions[] = [
-    ...(process.platform === 'darwin'
+    ...(isMac
       ? [
           {
             label: app.name,
-            submenu: [{ label: t('app.quit'), role: 'quit' as const }]
+            submenu: [
+              { role: 'about' as const },
+              { type: 'separator' as const },
+              cmd('app.preferences', t('app.preferences')),
+              { type: 'separator' as const },
+              { role: 'services' as const },
+              { type: 'separator' as const },
+              { role: 'hide' as const },
+              { role: 'hideOthers' as const },
+              { role: 'unhide' as const },
+              { type: 'separator' as const },
+              { label: t('app.quit'), role: 'quit' as const }
+            ]
           }
         ]
       : []),
     {
       label: t('file.label'),
       submenu: [
-        {
-          label: t('file.newNote'),
-          accelerator: 'CmdOrCtrl+N'
-        },
+        cmd('file.newNote', t('file.newNote')),
         {
           label: t('navigation.back'),
           accelerator: 'CmdOrCtrl+[',
@@ -54,8 +97,13 @@ export function buildAppMenu(i18n: I18nInstance): Menu {
           acceleratorWorksWhenHidden: true,
           click: () => sendNavigationToFocusedWindow('forward')
         },
+        cmd('file.openQuickly', t('file.openQuickly')),
         { type: 'separator' },
-        { label: t('file.close'), role: 'close' }
+        cmd('file.exportPdf', t('file.exportPdf')),
+        { type: 'separator' },
+        cmd('file.closeTab', t('file.closeTab')),
+        { label: t('file.close'), role: 'close' },
+        ...(isMac ? [] : [{ type: 'separator' as const }, { role: 'quit' as const }])
       ]
     },
     {
@@ -67,8 +115,48 @@ export function buildAppMenu(i18n: I18nInstance): Menu {
         { label: t('edit.cut'), role: 'cut' },
         { label: t('edit.copy'), role: 'copy' },
         { label: t('edit.paste'), role: 'paste' },
+        { role: 'pasteAndMatchStyle' },
+        { role: 'delete' },
+        { label: t('edit.selectAll'), role: 'selectAll', accelerator: 'CmdOrCtrl+A' },
         { type: 'separator' },
-        { label: t('edit.selectAll'), role: 'selectAll', accelerator: 'CmdOrCtrl+A' }
+        cmd('edit.find', t('edit.find')),
+        ...(isMac
+          ? [
+              { type: 'separator' as const },
+              {
+                label: t('edit.speech'),
+                submenu: [{ role: 'startSpeaking' as const }, { role: 'stopSpeaking' as const }]
+              }
+            ]
+          : [])
+      ]
+    },
+    {
+      label: t('insert.label'),
+      submenu: [
+        cmd('insert.codeBlock', t('insert.codeBlock')),
+        cmd('insert.table', t('insert.table')),
+        { type: 'separator' },
+        cmd('insert.bulletList', t('insert.bulletList')),
+        cmd('insert.numberedList', t('insert.numberedList')),
+        cmd('insert.taskList', t('insert.taskList')),
+        { type: 'separator' },
+        cmd('insert.attachment', t('insert.attachment'))
+      ]
+    },
+    {
+      label: t('format.label'),
+      submenu: [
+        cmd('format.heading1', t('format.heading1')),
+        cmd('format.heading2', t('format.heading2')),
+        cmd('format.heading3', t('format.heading3')),
+        cmd('format.body', t('format.body')),
+        { type: 'separator' },
+        cmd('format.bold', t('format.bold')),
+        cmd('format.italic', t('format.italic')),
+        cmd('format.code', t('format.code')),
+        cmd('format.highlight', t('format.highlight')),
+        cmd('format.strikethrough', t('format.strikethrough'))
       ]
     },
     {
@@ -77,7 +165,34 @@ export function buildAppMenu(i18n: I18nInstance): Menu {
         { label: t('view.reload'), role: 'reload' },
         { label: t('view.toggleDevTools'), role: 'toggleDevTools' },
         { type: 'separator' },
-        { label: t('view.toggleFullscreen'), role: 'togglefullscreen' }
+        { role: 'resetZoom' },
+        { role: 'zoomIn' },
+        { role: 'zoomOut' },
+        { type: 'separator' },
+        { label: t('view.toggleFullscreen'), role: 'togglefullscreen' },
+        { type: 'separator' },
+        cmd('view.toggleSidebar', t('view.toggleSidebar')),
+        cmd('view.toggleDayPanel', t('view.toggleDayPanel')),
+        { type: 'separator' },
+        {
+          label: t('view.theme'),
+          submenu: [
+            cmd('view.theme.light', t('view.themeLight')),
+            cmd('view.theme.dark', t('view.themeDark')),
+            cmd('view.theme.white', t('view.themeWhite')),
+            cmd('view.theme.system', t('view.themeSystem'))
+          ]
+        }
+      ]
+    },
+    { role: 'windowMenu', label: t('window.label') },
+    {
+      role: 'help',
+      label: t('help.label'),
+      submenu: [
+        ...(isMac ? [] : [aboutItem, { type: 'separator' as const }]),
+        { label: t('help.documentation'), click: () => void shell.openExternal(DOCS_URL) },
+        cmd('view.shortcuts', t('help.shortcuts'))
       ]
     }
   ]

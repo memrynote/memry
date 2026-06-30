@@ -82,7 +82,7 @@ export function getTaskSlashMenuItem(editor: unknown, noteId?: string) {
         // Re-fetch fresh: the block reference captured before the awaits above
         // may be stale by now.
         const freshBlock = taskEditor.getBlock(blockId) ?? currentBlock
-        const currentTitle = (freshBlock.props?.title as string) || parsed.title || text
+        const currentTitle = freshBlock.props?.title || parsed.title || text
         taskEditor.updateBlock(freshBlock, {
           type: 'taskBlock',
           props: { taskId: result.task.id, title: currentTitle, checked: false }

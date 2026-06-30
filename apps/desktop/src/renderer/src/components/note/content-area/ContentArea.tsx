@@ -106,7 +106,7 @@ function findBlockWithLinkMention(
   return null
 }
 
-function findBookmarkBlock(blocks: any[], url: string): any | null {
+function findBookmarkBlock(blocks: any[], url: string): any {
   for (const block of blocks) {
     if (block.type === 'bookmark' && block.props?.url === url) return block
     if (block.children?.length) {

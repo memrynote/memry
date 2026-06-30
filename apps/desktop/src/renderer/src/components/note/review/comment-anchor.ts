@@ -1,4 +1,5 @@
 import type { CriticMarkupMark } from '@memry/shared'
+import type { EditorState } from '@tiptap/pm/state'
 import {
   editorOffsetToMarkdownSourceOffset,
   proseMirrorDocPosToEditorOffset
@@ -13,7 +14,7 @@ import {
 export function findCommentDraftStart(
   plainMarkdown: string,
   draft: { text: string; from?: number },
-  editor: any | null,
+  editor: { _tiptapEditor?: { state: EditorState } } | null,
   existingMarks: CriticMarkupMark[]
 ): number {
   const tiptap = editor?._tiptapEditor

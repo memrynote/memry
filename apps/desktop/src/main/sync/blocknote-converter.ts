@@ -279,7 +279,7 @@ async function parseContentWithColorMarkers(
       parsed[0].props = { ...parsed[0].props, ...pendingColors }
     }
     pendingColors = null
-    blocks.push(...(parsed as Block[]))
+    blocks.push(...parsed)
     buffer = []
   }
 

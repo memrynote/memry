@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type RefObject } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState, type RefObject } from 'react'
 import { MessageCircle } from '@/lib/icons'
 import type { CriticMarkupReviewController } from './use-critic-markup-review'
 import { useT } from '@memry/i18n/renderer'
@@ -86,11 +86,7 @@ export function ReviewBadgeLayer({
   )
 
   useEffect(() => {
-    if (!active) {
-      setGroups([])
-      setPanel(null)
-      return
-    }
+    if (!active) return
     const container = containerRef.current
     if (!container) return
 
@@ -199,8 +195,10 @@ export function ReviewBadgeLayer({
   }, [containerRef, panel])
 
   // While the rail is hidden, host the comment composer in a flyout placed
-  // under the selected text instead of the (invisible) rail.
-  useEffect(() => {
+  // under the selected text instead of the (invisible) rail. This positions a
+  // flyout from live DOM rects, so it runs as a layout effect (measured before
+  // paint, the correct hook for reading geometry).
+  useLayoutEffect(() => {
     if (!active || !review.activeDraft) {
       setDraftPanel(null)
       return
@@ -249,12 +247,23 @@ export function ReviewBadgeLayer({
     return () => syncInlineHoverClass(null)
   }, [active, review.hoveredMarkId])
 
-  useEffect(() => {
-    if (!panel) return
-    const blockGone = !groups.some((group) => group.blockId === panel.blockId)
-    const marksGone = panel.markIds.every((id) => !marksById.has(id))
-    if (blockGone || marksGone) setPanel(null)
-  }, [groups, marksById, panel])
+  // Adjust stale state during render instead of via effects: drop computed badge
+  // state while inactive, and close the panel once its block or marks disappear.
+  if (!active && (groups.length > 0 || panel !== null)) {
+    setGroups([])
+    setPanel(null)
+  } else if (
+    panel &&
+    (!groups.some((group) => group.blockId === panel.blockId) ||
+      panel.markIds.every((id) => !marksById.has(id)))
+  ) {
+    setPanel(null)
+  }
+  // If the mark being edited was removed, fall back to no active editor.
+  const activeEditingMarkId =
+    editingMarkId !== null && review.marks.some((mark) => mark.id === editingMarkId)
+      ? editingMarkId
+      : null
 
   const showDraftFlyout = Boolean(review.activeDraft && draftPanel)
   if (!active || (groups.length === 0 && !showDraftFlyout)) return null
@@ -338,7 +347,7 @@ export function ReviewBadgeLayer({
               review={review}
               targetId={targetId}
               isExpanded={expandedMarkIds.has(mark.id)}
-              isEditing={editingMarkId === mark.id}
+              isEditing={activeEditingMarkId === mark.id}
               onToggleExpand={toggleExpandedMark}
               onEditingChange={setEditingMarkId}
             />

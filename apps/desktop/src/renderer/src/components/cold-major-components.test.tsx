@@ -723,7 +723,11 @@ describe('cold major renderer components', () => {
       expect.objectContaining({ value: '2026-05-10T00:00:00.000Z' })
     )
 
-    fireEvent.click(screen.getByRole('button', { name: '' }))
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'phaseF.componentsFolderViewFilterRow.removeFilter'
+      })
+    )
     expect(onRemove).toHaveBeenCalled()
   })
 

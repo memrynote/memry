@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useCallback, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 import { useActiveHeading } from '@/hooks/use-active-heading'
 import { useReviewRailShift } from '@/hooks/use-review-rail-shift'
@@ -68,11 +68,9 @@ export function NoteLayout({
   const resolvedContentWidth = contentWidth ?? '64rem'
   const { shiftStyle, railHidden, setContentEl } = useReviewRailShift(scrollEl, {
     railEnabled: hasSideRail,
-    fullWidth
+    fullWidth,
+    onRailHiddenChange
   })
-  useEffect(() => {
-    onRailHiddenChange?.(railHidden)
-  }, [onRailHiddenChange, railHidden])
 
   // Full width keeps the reserved grid column; otherwise the rail hangs off the
   // centered content column and the group is shifted Notion-style.

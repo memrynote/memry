@@ -58,7 +58,7 @@ export async function getSyncVaultHeaders(): Promise<Record<string, string>> {
       import('../database'),
       import('../agent/storage/vault-id')
     ])
-    const vaultId = await getOrCreateVaultUuid(getDatabase())
+    const vaultId = getOrCreateVaultUuid(getDatabase())
     return vaultId ? { 'X-Memry-Vault-Id': vaultId } : {}
   } catch {
     return {}

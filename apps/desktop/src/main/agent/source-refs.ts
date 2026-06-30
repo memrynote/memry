@@ -507,7 +507,7 @@ function toolResultPayloads(result: unknown): unknown[] {
   return payloads
 }
 
-function parseJson(value: string): unknown | undefined {
+function parseJson(value: string): unknown {
   try {
     return JSON.parse(value)
   } catch {

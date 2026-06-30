@@ -18,9 +18,14 @@ export interface AppNavigationCommandEvent {
   direction: AppNavigationDirection
 }
 
+export interface AppMenuCommandEvent {
+  command: string
+}
+
 export const AppChannels = {
   events: {
-    NAVIGATION_COMMAND: 'app:navigation-command'
+    NAVIGATION_COMMAND: 'app:navigation-command',
+    MENU_COMMAND: 'app:menu-command'
   }
 } as const
 

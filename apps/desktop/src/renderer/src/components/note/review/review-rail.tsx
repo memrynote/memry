@@ -81,6 +81,13 @@ export function ReviewRail({ review, targetId }: ReviewRailProps) {
     [railItemPositions, review.markPositions, review.marks]
   )
   const activeDraftTop = railItemPositions[REVIEW_RAIL_DRAFT_ID] ?? review.activeDraft?.top ?? 0
+  // If the mark being edited was removed (suggestion accepted/rejected), fall
+  // back to no active editor instead of pointing at a stale id. Derived during
+  // render rather than reset in an effect.
+  const activeEditingMarkId =
+    editingMarkId !== null && review.marks.some((mark) => mark.id === editingMarkId)
+      ? editingMarkId
+      : null
 
   useLayoutEffect(() => {
     const inner = innerRef.current
@@ -137,7 +144,7 @@ export function ReviewRail({ review, targetId }: ReviewRailProps) {
             review={review}
             targetId={targetId}
             isExpanded={expandedMarkIds.has(mark.id)}
-            isEditing={editingMarkId === mark.id}
+            isEditing={activeEditingMarkId === mark.id}
             onToggleExpand={toggleExpandedMark}
             onEditingChange={setEditingMarkId}
             style={{ top }}

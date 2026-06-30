@@ -280,6 +280,19 @@ export function NotePage({ noteId }: NotePageProps) {
     isActiveNote
   )
 
+  // Native menu bar: Edit > Find and File > Export to PDF target the active note.
+  useEffect(() => {
+    if (!isActiveNote) return
+    const onFind = (): void => findInPage.open()
+    const onExport = (): void => setIsExportDialogOpen(true)
+    window.addEventListener('memry:menu-find', onFind)
+    window.addEventListener('memry:menu-export', onExport)
+    return () => {
+      window.removeEventListener('memry:menu-find', onFind)
+      window.removeEventListener('memry:menu-export', onExport)
+    }
+  }, [isActiveNote, findInPage])
+
   // Content tracking for change detection
   if (storedNoteIdForContent !== noteId) {
     setStoredNoteIdForContent(noteId)

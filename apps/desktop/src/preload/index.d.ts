@@ -3,7 +3,7 @@ import type { GeneratedRpcApi } from '@memry/rpc'
 import type * as InboxRpc from '@memry/rpc/inbox'
 import type * as NotesRpc from '@memry/rpc/notes'
 import type * as TasksRpc from '@memry/rpc/tasks'
-import type { AppNavigationCommandEvent } from '@memry/contracts/ipc-channels'
+import type { AppNavigationCommandEvent, AppMenuCommandEvent } from '@memry/contracts/ipc-channels'
 import type { AgentMcpStatus } from '@memry/contracts/agent-mcp-channels'
 import type {
   AgentEvent,
@@ -1871,6 +1871,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
   onUpdaterStateChanged: (callback: (state: AppUpdateState) => void) => () => void
   onImportProgress: (callback: (event: ImportProgressEvent) => void) => () => void
   onAppNavigationCommand: (callback: (command: AppNavigationCommandEvent) => void) => () => void
+  onMenuCommand: (callback: (event: AppMenuCommandEvent) => void) => () => void
   onLocaleChanged: (callback: (locale: Locale) => void) => () => void
   onMainInvoke: (callback: (payload: MainInvokePayload) => void | Promise<void>) => () => void
   respondToMainInvoke: (requestId: string, response: unknown) => void

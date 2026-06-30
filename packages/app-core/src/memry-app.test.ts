@@ -643,7 +643,7 @@ test('opens a standalone vault and exposes core note, journal, task, inbox, and 
     toolbarMode: 'sticky'
   })
   assert.deepEqual(await app.settings.getGroup('general'), {
-    theme: 'system',
+    theme: 'white',
     fontSize: 'medium',
     fontFamily: 'system',
     accentColor: '#6366f1',

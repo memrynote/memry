@@ -3,7 +3,6 @@ import { Button } from '@/components/ui/button'
 import { ChevronLeft, ChevronRight, Plus } from '@/lib/icons'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
 import { parseLocalDate } from './date-utils'
-import { getSubLabel } from './calendar-toolbar-utils'
 import { CalendarSearch } from './calendar-search'
 import type { AnchorRect } from './types'
 

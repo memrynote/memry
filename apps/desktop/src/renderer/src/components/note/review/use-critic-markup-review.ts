@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { EditorState } from '@tiptap/pm/state'
+import type { EditorView } from '@tiptap/pm/view'
 import {
   deleteCriticMark,
   parseCriticMarkup,
@@ -22,6 +24,9 @@ interface UseCriticMarkupReviewParams {
   markdown: string
   onMarkdownChange: (markdown: string) => void
 }
+
+type TiptapEditor = { state: EditorState; view: EditorView }
+type BlockNoteHost = { _tiptapEditor?: TiptapEditor }
 
 interface CommentDraft {
   text: string
@@ -62,7 +67,7 @@ export interface CriticMarkupReviewController {
   markPositions: Record<string, number>
   handlePlainMarkdownChange: (plainMarkdown: string) => string
   persistCurrentMarkdown: () => void
-  handleEditorReady: (editor: any | null) => void
+  handleEditorReady: (editor: unknown) => void
   openCommentComposer: (selection: ReviewSelection) => void
   cancelCommentDraft: () => void
   getActiveDraftSelectionRect: () => DraftSelectionRect | null
@@ -93,7 +98,7 @@ export function useCriticMarkupReview({
   const plainMarkdownRef = useRef(parsed.plainText)
   const marksRef = useRef(parsed.marks)
   const activeDraftRef = useRef<CommentDraft | null>(null)
-  const editorRef = useRef<any | null>(null)
+  const editorRef = useRef<BlockNoteHost | null>(null)
   const emittedMarkdownsRef = useRef<string[]>([])
   const undoStackRef = useRef<ReviewUndoEntry[]>([])
 
@@ -110,10 +115,12 @@ export function useCriticMarkupReview({
     undoStackRef.current = []
     plainMarkdownRef.current = parsed.plainText
     marksRef.current = parsed.marks
+    /* eslint-disable react-hooks/set-state-in-effect, react-you-might-not-need-an-effect/no-pass-data-to-parent, react-you-might-not-need-an-effect/no-derived-state, react-you-might-not-need-an-effect/no-adjust-state-on-prop-change -- genuine external sync: resync local review state from incoming CRDT markdown only when it differs from what we last emitted (guarded above), while also resetting the undo stack and mirror refs; this cannot be computed during render */
     setPlainMarkdown(parsed.plainText)
     setMarks(parsed.marks)
     setHoveredMarkId(null)
     setMarkPositions({})
+    /* eslint-enable react-hooks/set-state-in-effect, react-you-might-not-need-an-effect/no-pass-data-to-parent, react-you-might-not-need-an-effect/no-derived-state, react-you-might-not-need-an-effect/no-adjust-state-on-prop-change */
   }, [markdown, parsed.plainText, parsed.marks])
 
   const persist = useCallback(
@@ -146,8 +153,8 @@ export function useCriticMarkupReview({
     onMarkdownChange(serialized)
   }, [onMarkdownChange])
 
-  const handleEditorReady = useCallback((editor: any | null) => {
-    editorRef.current = editor
+  const handleEditorReady = useCallback((editor: unknown) => {
+    editorRef.current = editor as BlockNoteHost | null
   }, [])
 
   const openCommentComposer = useCallback((selection: ReviewSelection) => {
@@ -491,7 +498,7 @@ function rememberEmittedMarkdown(emittedMarkdowns: string[], markdown: string): 
 }
 
 function replaceEditorPlainMarkdown(
-  editor: any | null,
+  editor: BlockNoteHost | null,
   currentPlainMarkdown: string,
   nextPlainMarkdown: string
 ): void {
@@ -519,7 +526,7 @@ function replaceEditorPlainMarkdown(
 }
 
 function dispatchTextReplacement(
-  tiptap: any,
+  tiptap: TiptapEditor,
   range: { from: number; to: number },
   replacement: string
 ): void {

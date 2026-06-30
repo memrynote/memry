@@ -771,6 +771,11 @@ void app.whenReady().then(async () => {
 
   mainI18n = await bootI18n()
   setMainI18n(mainI18n)
+  app.setAboutPanelOptions({
+    applicationName: 'MemryNote',
+    applicationVersion: app.getVersion(),
+    copyright: `© ${new Date().getFullYear()} MemryNote`
+  })
   Menu.setApplicationMenu(buildAppMenu(mainI18n))
 
   // Initialize telemetry runtime before handlers so registerTelemetryHandlers

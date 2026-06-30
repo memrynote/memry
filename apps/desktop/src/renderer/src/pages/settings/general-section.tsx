@@ -352,7 +352,7 @@ export function GeneralSettings() {
         >
           <Switch
             checked={telemetryEnabled}
-            onCheckedChange={handleTelemetryChange}
+            onCheckedChange={(checked) => void handleTelemetryChange(checked)}
             className={ACCENT_SWITCH}
           />
         </SettingRow>
