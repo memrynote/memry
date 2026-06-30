@@ -185,8 +185,26 @@ export async function navigateTo(
   await page.waitForTimeout(300)
 }
 
-export function dismissFirstRunOnboarding(_page: Page, _timeout = 3000): Promise<void> {
-  return Promise.resolve()
+/**
+ * Dismiss the first-run onboarding tour (driver.js). Its full-screen overlay
+ * intercepts pointer events, so leaving it up makes nearly every interaction
+ * time out. Escape closes the tour (allowClose); its onDestroyed persists the
+ * seen-flag. We also set the flag explicitly so a later remount can't re-show it.
+ */
+export async function dismissFirstRunOnboarding(page: Page, timeout = 5000): Promise<void> {
+  const TOUR_KEY = 'memry:onboarding:tour:v1'
+  const overlay = page.locator('.driver-popover, .driver-overlay').first()
+  try {
+    await overlay.waitFor({ state: 'visible', timeout: 3000 })
+  } catch {
+    // Tour never appeared (already dismissed or not first-run). Persist the flag
+    // and continue.
+    await page.evaluate((key) => localStorage.setItem(key, '1'), TOUR_KEY).catch(() => {})
+    return
+  }
+  await page.keyboard.press('Escape')
+  await overlay.waitFor({ state: 'hidden', timeout }).catch(() => {})
+  await page.evaluate((key) => localStorage.setItem(key, '1'), TOUR_KEY).catch(() => {})
 }
 
 /**
