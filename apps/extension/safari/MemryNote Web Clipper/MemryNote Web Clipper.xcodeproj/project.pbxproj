@@ -1,0 +1,649 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		B8E407402FF4859E00366F6F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8E4073F2FF4859E00366F6F /* AppDelegate.swift */; };
+		B8E407442FF4859E00366F6F /* Main.html in Resources */ = {isa = PBXBuildFile; fileRef = B8E407422FF4859E00366F6F /* Main.html */; };
+		B8E407462FF4859E00366F6F /* Icon.png in Resources */ = {isa = PBXBuildFile; fileRef = B8E407452FF4859E00366F6F /* Icon.png */; };
+		B8E407482FF4859E00366F6F /* Style.css in Resources */ = {isa = PBXBuildFile; fileRef = B8E407472FF4859E00366F6F /* Style.css */; };
+		B8E4074A2FF4859E00366F6F /* Script.js in Resources */ = {isa = PBXBuildFile; fileRef = B8E407492FF4859E00366F6F /* Script.js */; };
+		B8E4074C2FF4859E00366F6F /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8E4074B2FF4859E00366F6F /* ViewController.swift */; };
+		B8E4074F2FF4859E00366F6F /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = B8E4074D2FF4859E00366F6F /* Main.storyboard */; };
+		B8E407512FF4859F00366F6F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B8E407502FF4859F00366F6F /* Assets.xcassets */; };
+		B8E407582FF4859F00366F6F /* MemryNote Web Clipper Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = B8E407572FF4859F00366F6F /* MemryNote Web Clipper Extension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		B8E4075D2FF4859F00366F6F /* SafariWebExtensionHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8E4075C2FF4859F00366F6F /* SafariWebExtensionHandler.swift */; };
+		B8E407722FF4859F00366F6F /* background.js in Resources */ = {isa = PBXBuildFile; fileRef = B8E407692FF4859F00366F6F /* background.js */; };
+		B8E407732FF4859F00366F6F /* popup.html in Resources */ = {isa = PBXBuildFile; fileRef = B8E4076A2FF4859F00366F6F /* popup.html */; };
+		B8E407742FF4859F00366F6F /* chunks in Resources */ = {isa = PBXBuildFile; fileRef = B8E4076B2FF4859F00366F6F /* chunks */; };
+		B8E407752FF4859F00366F6F /* content-scripts in Resources */ = {isa = PBXBuildFile; fileRef = B8E4076C2FF4859F00366F6F /* content-scripts */; };
+		B8E407762FF4859F00366F6F /* manifest.json in Resources */ = {isa = PBXBuildFile; fileRef = B8E4076D2FF4859F00366F6F /* manifest.json */; };
+		B8E407772FF4859F00366F6F /* options.html in Resources */ = {isa = PBXBuildFile; fileRef = B8E4076E2FF4859F00366F6F /* options.html */; };
+		B8E407782FF4859F00366F6F /* icon in Resources */ = {isa = PBXBuildFile; fileRef = B8E4076F2FF4859F00366F6F /* icon */; };
+		B8E407792FF4859F00366F6F /* extension.png in Resources */ = {isa = PBXBuildFile; fileRef = B8E407702FF4859F00366F6F /* extension.png */; };
+		B8E4077A2FF4859F00366F6F /* assets in Resources */ = {isa = PBXBuildFile; fileRef = B8E407712FF4859F00366F6F /* assets */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		B8E407592FF4859F00366F6F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B8E407342FF4859E00366F6F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B8E407562FF4859F00366F6F;
+			remoteInfo = "MemryNote Web Clipper Extension";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		B8E407642FF4859F00366F6F /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				B8E407582FF4859F00366F6F /* MemryNote Web Clipper Extension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		B8E4073C2FF4859E00366F6F /* MemryNote Web Clipper.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "MemryNote Web Clipper.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		B8E4073F2FF4859E00366F6F /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		B8E407432FF4859E00366F6F /* Base */ = {isa = PBXFileReference; lastKnownFileType = text.html; name = Base; path = Base.lproj/Main.html; sourceTree = "<group>"; };
+		B8E407452FF4859E00366F6F /* Icon.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Icon.png; sourceTree = "<group>"; };
+		B8E407472FF4859E00366F6F /* Style.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = Style.css; sourceTree = "<group>"; };
+		B8E407492FF4859E00366F6F /* Script.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = Script.js; sourceTree = "<group>"; };
+		B8E4074B2FF4859E00366F6F /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
+		B8E4074E2FF4859E00366F6F /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
+		B8E407502FF4859F00366F6F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		B8E407522FF4859F00366F6F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		B8E407572FF4859F00366F6F /* MemryNote Web Clipper Extension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "MemryNote Web Clipper Extension.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
+		B8E4075C2FF4859F00366F6F /* SafariWebExtensionHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafariWebExtensionHandler.swift; sourceTree = "<group>"; };
+		B8E4075E2FF4859F00366F6F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		B8E407692FF4859F00366F6F /* background.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; name = background.js; path = Resources/background.js; sourceTree = "<group>"; };
+		B8E4076A2FF4859F00366F6F /* popup.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; name = popup.html; path = Resources/popup.html; sourceTree = "<group>"; };
+		B8E4076B2FF4859F00366F6F /* chunks */ = {isa = PBXFileReference; lastKnownFileType = folder; name = chunks; path = Resources/chunks; sourceTree = "<group>"; };
+		B8E4076C2FF4859F00366F6F /* content-scripts */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "content-scripts"; path = "Resources/content-scripts"; sourceTree = "<group>"; };
+		B8E4076D2FF4859F00366F6F /* manifest.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = manifest.json; path = Resources/manifest.json; sourceTree = "<group>"; };
+		B8E4076E2FF4859F00366F6F /* options.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; name = options.html; path = Resources/options.html; sourceTree = "<group>"; };
+		B8E4076F2FF4859F00366F6F /* icon */ = {isa = PBXFileReference; lastKnownFileType = folder; name = icon; path = Resources/icon; sourceTree = "<group>"; };
+		B8E407702FF4859F00366F6F /* extension.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = extension.png; path = Resources/extension.png; sourceTree = "<group>"; };
+		B8E407712FF4859F00366F6F /* assets */ = {isa = PBXFileReference; lastKnownFileType = folder; name = assets; path = Resources/assets; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		B8E407392FF4859E00366F6F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B8E407542FF4859F00366F6F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		B8E407332FF4859E00366F6F = {
+			isa = PBXGroup;
+			children = (
+				B8E4073E2FF4859E00366F6F /* MemryNote Web Clipper */,
+				B8E4075B2FF4859F00366F6F /* MemryNote Web Clipper Extension */,
+				B8E4073D2FF4859E00366F6F /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		B8E4073D2FF4859E00366F6F /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				B8E4073C2FF4859E00366F6F /* MemryNote Web Clipper.app */,
+				B8E407572FF4859F00366F6F /* MemryNote Web Clipper Extension.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		B8E4073E2FF4859E00366F6F /* MemryNote Web Clipper */ = {
+			isa = PBXGroup;
+			children = (
+				B8E4073F2FF4859E00366F6F /* AppDelegate.swift */,
+				B8E4074B2FF4859E00366F6F /* ViewController.swift */,
+				B8E4074D2FF4859E00366F6F /* Main.storyboard */,
+				B8E407502FF4859F00366F6F /* Assets.xcassets */,
+				B8E407522FF4859F00366F6F /* Info.plist */,
+				B8E407412FF4859E00366F6F /* Resources */,
+			);
+			path = "MemryNote Web Clipper";
+			sourceTree = "<group>";
+		};
+		B8E407412FF4859E00366F6F /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				B8E407422FF4859E00366F6F /* Main.html */,
+				B8E407452FF4859E00366F6F /* Icon.png */,
+				B8E407472FF4859E00366F6F /* Style.css */,
+				B8E407492FF4859E00366F6F /* Script.js */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		B8E4075B2FF4859F00366F6F /* MemryNote Web Clipper Extension */ = {
+			isa = PBXGroup;
+			children = (
+				B8E407682FF4859F00366F6F /* Resources */,
+				B8E4075C2FF4859F00366F6F /* SafariWebExtensionHandler.swift */,
+				B8E4075E2FF4859F00366F6F /* Info.plist */,
+			);
+			path = "MemryNote Web Clipper Extension";
+			sourceTree = "<group>";
+		};
+		B8E407682FF4859F00366F6F /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				B8E407692FF4859F00366F6F /* background.js */,
+				B8E4076A2FF4859F00366F6F /* popup.html */,
+				B8E4076B2FF4859F00366F6F /* chunks */,
+				B8E4076C2FF4859F00366F6F /* content-scripts */,
+				B8E4076D2FF4859F00366F6F /* manifest.json */,
+				B8E4076E2FF4859F00366F6F /* options.html */,
+				B8E4076F2FF4859F00366F6F /* icon */,
+				B8E407702FF4859F00366F6F /* extension.png */,
+				B8E407712FF4859F00366F6F /* assets */,
+			);
+			name = Resources;
+			path = "MemryNote Web Clipper Extension";
+			sourceTree = SOURCE_ROOT;
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		B8E4073B2FF4859E00366F6F /* MemryNote Web Clipper */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B8E407652FF4859F00366F6F /* Build configuration list for PBXNativeTarget "MemryNote Web Clipper" */;
+			buildPhases = (
+				B8E407382FF4859E00366F6F /* Sources */,
+				B8E407392FF4859E00366F6F /* Frameworks */,
+				B8E4073A2FF4859E00366F6F /* Resources */,
+				B8E407642FF4859F00366F6F /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				B8E4075A2FF4859F00366F6F /* PBXTargetDependency */,
+			);
+			name = "MemryNote Web Clipper";
+			packageProductDependencies = (
+			);
+			productName = "MemryNote Web Clipper";
+			productReference = B8E4073C2FF4859E00366F6F /* MemryNote Web Clipper.app */;
+			productType = "com.apple.product-type.application";
+		};
+		B8E407562FF4859F00366F6F /* MemryNote Web Clipper Extension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B8E407612FF4859F00366F6F /* Build configuration list for PBXNativeTarget "MemryNote Web Clipper Extension" */;
+			buildPhases = (
+				B8E407532FF4859F00366F6F /* Sources */,
+				B8E407542FF4859F00366F6F /* Frameworks */,
+				B8E407552FF4859F00366F6F /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "MemryNote Web Clipper Extension";
+			packageProductDependencies = (
+			);
+			productName = "MemryNote Web Clipper Extension";
+			productReference = B8E407572FF4859F00366F6F /* MemryNote Web Clipper Extension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		B8E407342FF4859E00366F6F /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2660;
+				LastUpgradeCheck = 2660;
+				TargetAttributes = {
+					B8E4073B2FF4859E00366F6F = {
+						CreatedOnToolsVersion = 26.6;
+					};
+					B8E407562FF4859F00366F6F = {
+						CreatedOnToolsVersion = 26.6;
+					};
+				};
+			};
+			buildConfigurationList = B8E407372FF4859E00366F6F /* Build configuration list for PBXProject "MemryNote Web Clipper" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = B8E407332FF4859E00366F6F;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = B8E4073D2FF4859E00366F6F /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				B8E4073B2FF4859E00366F6F /* MemryNote Web Clipper */,
+				B8E407562FF4859F00366F6F /* MemryNote Web Clipper Extension */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		B8E4073A2FF4859E00366F6F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B8E407462FF4859E00366F6F /* Icon.png in Resources */,
+				B8E4074F2FF4859E00366F6F /* Main.storyboard in Resources */,
+				B8E4074A2FF4859E00366F6F /* Script.js in Resources */,
+				B8E407442FF4859E00366F6F /* Main.html in Resources */,
+				B8E407512FF4859F00366F6F /* Assets.xcassets in Resources */,
+				B8E407482FF4859E00366F6F /* Style.css in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B8E407552FF4859F00366F6F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B8E407742FF4859F00366F6F /* chunks in Resources */,
+				B8E407722FF4859F00366F6F /* background.js in Resources */,
+				B8E407782FF4859F00366F6F /* icon in Resources */,
+				B8E4077A2FF4859F00366F6F /* assets in Resources */,
+				B8E407762FF4859F00366F6F /* manifest.json in Resources */,
+				B8E407732FF4859F00366F6F /* popup.html in Resources */,
+				B8E407792FF4859F00366F6F /* extension.png in Resources */,
+				B8E407752FF4859F00366F6F /* content-scripts in Resources */,
+				B8E407772FF4859F00366F6F /* options.html in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		B8E407382FF4859E00366F6F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B8E4074C2FF4859E00366F6F /* ViewController.swift in Sources */,
+				B8E407402FF4859E00366F6F /* AppDelegate.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B8E407532FF4859F00366F6F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B8E4075D2FF4859F00366F6F /* SafariWebExtensionHandler.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		B8E4075A2FF4859F00366F6F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B8E407562FF4859F00366F6F /* MemryNote Web Clipper Extension */;
+			targetProxy = B8E407592FF4859F00366F6F /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXVariantGroup section */
+		B8E407422FF4859E00366F6F /* Main.html */ = {
+			isa = PBXVariantGroup;
+			children = (
+				B8E407432FF4859E00366F6F /* Base */,
+			);
+			name = Main.html;
+			sourceTree = "<group>";
+		};
+		B8E4074D2FF4859E00366F6F /* Main.storyboard */ = {
+			isa = PBXVariantGroup;
+			children = (
+				B8E4074E2FF4859E00366F6F /* Base */,
+			);
+			name = Main.storyboard;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		B8E4075F2FF4859F00366F6F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.5;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		B8E407602FF4859F00366F6F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.5;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		B8E407622FF4859F00366F6F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "MemryNote Web Clipper Extension/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "MemryNote Web Clipper Extension";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 10.14;
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.memrynote.web-clipper.Extension";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		B8E407632FF4859F00366F6F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "MemryNote Web Clipper Extension/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "MemryNote Web Clipper Extension";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 10.14;
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.memrynote.web-clipper.Extension";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		B8E407662FF4859F00366F6F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TV343Q4W8A;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_INCOMING_NETWORK_CONNECTIONS = NO;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
+				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = NO;
+				ENABLE_RESOURCE_ACCESS_BLUETOOTH = NO;
+				ENABLE_RESOURCE_ACCESS_CALENDARS = NO;
+				ENABLE_RESOURCE_ACCESS_CAMERA = NO;
+				ENABLE_RESOURCE_ACCESS_CONTACTS = NO;
+				ENABLE_RESOURCE_ACCESS_LOCATION = NO;
+				ENABLE_RESOURCE_ACCESS_PRINTING = NO;
+				ENABLE_RESOURCE_ACCESS_USB = NO;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "MemryNote Web Clipper/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "MemryNote Web Clipper";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSMainStoryboardFile = Main;
+				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+					"-framework",
+					WebKit,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.memrynote.web-clipper";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		B8E407672FF4859F00366F6F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TV343Q4W8A;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_INCOMING_NETWORK_CONNECTIONS = NO;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
+				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = NO;
+				ENABLE_RESOURCE_ACCESS_BLUETOOTH = NO;
+				ENABLE_RESOURCE_ACCESS_CALENDARS = NO;
+				ENABLE_RESOURCE_ACCESS_CAMERA = NO;
+				ENABLE_RESOURCE_ACCESS_CONTACTS = NO;
+				ENABLE_RESOURCE_ACCESS_LOCATION = NO;
+				ENABLE_RESOURCE_ACCESS_PRINTING = NO;
+				ENABLE_RESOURCE_ACCESS_USB = NO;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "MemryNote Web Clipper/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "MemryNote Web Clipper";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSMainStoryboardFile = Main;
+				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+					"-framework",
+					WebKit,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.memrynote.web-clipper";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		B8E407372FF4859E00366F6F /* Build configuration list for PBXProject "MemryNote Web Clipper" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B8E4075F2FF4859F00366F6F /* Debug */,
+				B8E407602FF4859F00366F6F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B8E407612FF4859F00366F6F /* Build configuration list for PBXNativeTarget "MemryNote Web Clipper Extension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B8E407622FF4859F00366F6F /* Debug */,
+				B8E407632FF4859F00366F6F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B8E407652FF4859F00366F6F /* Build configuration list for PBXNativeTarget "MemryNote Web Clipper" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B8E407662FF4859F00366F6F /* Debug */,
+				B8E407672FF4859F00366F6F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = B8E407342FF4859E00366F6F /* Project object */;
+}

@@ -1,0 +1,10 @@
+# Xcode per-user state
+xcuserdata/
+*.xcuserstate
+.DS_Store
+
+# Web extension bundle copied in by the converter (--copy-resources).
+# Regenerate before archiving:
+#   pnpm --filter @memry/extension build:safari
+#   xcrun safari-web-extension-converter --rebuild-project "MemryNote Web Clipper" --macos-only
+MemryNote Web Clipper/MemryNote Web Clipper Extension/Resources/
