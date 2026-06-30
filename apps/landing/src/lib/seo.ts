@@ -10,7 +10,7 @@ export const SOCIAL_IMAGE_URL = `${BASE_URL}${SOCIAL_IMAGE_PATH}`
 export const SOCIAL_IMAGE_WIDTH = '1200'
 export const SOCIAL_IMAGE_HEIGHT = '630'
 export const SOCIAL_IMAGE_ALT =
-  'memrynote social preview with the headline Your thoughts, beautifully organized.'
+  'memrynote social preview with the headline Everything, in one private place.'
 
 interface PageMeta {
   title: string
