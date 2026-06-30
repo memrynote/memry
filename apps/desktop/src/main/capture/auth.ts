@@ -8,6 +8,20 @@ export interface CaptureAuthHeaders {
 
 type Result = { ok: true } | { ok: false; reason: string }
 
+// Capture pairing accepts browser-extension origins only — Chromium (chrome-extension://),
+// Firefox (moz-extension://), and Safari (safari-web-extension://). Single source of truth
+// so the two pairing guards can't drift.
+const EXTENSION_ORIGIN_PREFIXES = [
+  'chrome-extension://',
+  'moz-extension://',
+  'safari-web-extension://'
+]
+
+export function isExtensionOrigin(origin: string | undefined): boolean {
+  if (!origin) return false
+  return EXTENSION_ORIGIN_PREFIXES.some((prefix) => origin.startsWith(prefix))
+}
+
 function tokenEquals(a: string, b: string): boolean {
   const ab = Buffer.from(a)
   const bb = Buffer.from(b)
