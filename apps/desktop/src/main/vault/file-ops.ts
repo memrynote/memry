@@ -32,8 +32,10 @@ export async function atomicWrite(filePath: string, content: string): Promise<vo
     // Ensure directory exists
     await ensureDirectory(dir)
 
-    // Write to temporary file
-    await writeFile(tempPath, content, 'utf-8')
+    // Write to the uniquely-named temp file exclusively (wx) with owner-only
+    // permissions, so a pre-existing symlink in a shared directory can't be
+    // followed and the temp contents can't be read by other users.
+    await writeFile(tempPath, content, { encoding: 'utf-8', mode: 0o600, flag: 'wx' })
 
     // Atomic rename (overwrites existing file)
     await rename(tempPath, filePath)

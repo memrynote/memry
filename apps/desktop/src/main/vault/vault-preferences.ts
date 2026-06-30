@@ -1,4 +1,5 @@
 import fs from 'fs'
+import { randomUUID } from 'crypto'
 import { z } from 'zod'
 import { getConfigPath } from './init'
 import {
@@ -109,7 +110,25 @@ export function writePreferences(
     preferences: merged
   }
 
-  fs.writeFileSync(configPath, JSON.stringify(newConfig, null, 2), 'utf-8')
+  // Atomic write: create a uniquely-named temp file exclusively (wx) with
+  // owner-only permissions, then rename it over the config. This avoids
+  // following a shared-dir symlink and never leaves a half-written config.
+  const tempPath = `${configPath}.${randomUUID()}.tmp`
+  const fd = fs.openSync(tempPath, 'wx', 0o600)
+  try {
+    fs.writeFileSync(fd, JSON.stringify(newConfig, null, 2), 'utf-8')
+    fs.closeSync(fd)
+    fs.renameSync(tempPath, configPath)
+  } catch (error) {
+    try {
+      fs.closeSync(fd)
+    } catch {
+      // already closed
+    }
+    fs.rmSync(tempPath, { force: true })
+    throw error
+  }
+
   return merged
 }
 

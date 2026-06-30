@@ -19,6 +19,43 @@ function errorMessage(error: unknown): string {
   return 'Import error'
 }
 
+/**
+ * Validate a remote asset URL before fetching it into the vault.
+ *
+ * Restricts downloads to https and rejects loopback / private / link-local
+ * hosts, so a malicious imported document can't drive an SSRF or write bytes
+ * read from an internal service into the user's attachments folder.
+ *
+ * Returns the parsed URL when safe, or null when the reference must be skipped.
+ */
+function safeRemoteAssetUrl(ref: string): URL | null {
+  let url: URL
+  try {
+    url = new URL(ref)
+  } catch {
+    return null
+  }
+  if (url.protocol !== 'https:') return null
+  const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, '')
+  if (
+    host === 'localhost' ||
+    host.endsWith('.localhost') ||
+    host === '0.0.0.0' ||
+    host === '::1' ||
+    host === '::' ||
+    /^127\./.test(host) ||
+    /^10\./.test(host) ||
+    /^192\.168\./.test(host) ||
+    /^169\.254\./.test(host) ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(host) ||
+    /^fe80:/i.test(host) ||
+    /^f[cd][0-9a-f]{2}:/i.test(host)
+  ) {
+    return null
+  }
+  return url
+}
+
 /** Extract <title> text from a parsed document, falling back to the sanitized filename. */
 function extractTitle(doc: Document, absPath: string): string {
   const titleEl = doc.querySelector('title')
@@ -159,9 +196,14 @@ export const htmlImporter: Importer = {
                 continue
               }
             } else if (kind === 'http') {
+              const safeUrl = safeRemoteAssetUrl(ref)
+              if (!safeUrl) {
+                ctx.reportSkipped(ref, 'unsafe URL')
+                continue
+              }
               let resp: Response
               try {
-                resp = await fetch(ref)
+                resp = await fetch(safeUrl.href)
               } catch (err) {
                 ctx.reportSkipped(ref, errorMessage(err))
                 continue

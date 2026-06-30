@@ -13,8 +13,19 @@ function normalizeGeneratedText(text: string) {
   return text.replace(/\r\n?/g, '\n')
 }
 
+// JSON.stringify produces a valid JS string literal except it leaves U+2028 and
+// U+2029 unescaped — they are line terminators inside JS source. Escape them so
+// an interpolated value can never break out of the generated string literal.
+function escapeLineSeparators(json: string) {
+  return json.replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029')
+}
+
+function jsStringLiteral(value: string) {
+  return escapeLineSeparators(JSON.stringify(value))
+}
+
 function renderPropertyKey(name: string) {
-  return JSON.stringify(name)
+  return jsStringLiteral(name)
 }
 
 function collectEventChannels() {
@@ -75,10 +86,10 @@ function renderMethod(
   const runner = spec.implementation
     ? `(${spec.implementation})`
     : spec.mode === 'sync'
-      ? `(() => invokeSync(${JSON.stringify(spec.channel)}))`
-      : `((${params}) => invoke(${JSON.stringify(spec.channel)}${argsSuffix}))`
+      ? `(() => invokeSync(${jsStringLiteral(spec.channel)}))`
+      : `((${params}) => invoke(${jsStringLiteral(spec.channel)}${argsSuffix}))`
 
-  return `      ${renderPropertyKey(methodName)}: ${runner} as GeneratedRpcApi[${JSON.stringify(domainName)}][${JSON.stringify(methodName)}],`
+  return `      ${renderPropertyKey(methodName)}: ${runner} as GeneratedRpcApi[${jsStringLiteral(domainName)}][${jsStringLiteral(methodName)}],`
 }
 
 function generateOutput() {
@@ -89,7 +100,7 @@ function generateOutput() {
     "import type { GeneratedRpcApi } from '@memry/rpc'",
     "import type { MainIpcInvokeArgs, MainIpcInvokeChannel, MainIpcInvokeResult } from '../main/ipc/generated-ipc-invoke-map'",
     '',
-    `const eventChannels = ${JSON.stringify(collectEventChannels(), null, 2)} as const`,
+    `const eventChannels = ${escapeLineSeparators(JSON.stringify(collectEventChannels(), null, 2))} as const`,
     '',
     'export interface GeneratedRpcDeps {',
     '  invoke<C extends MainIpcInvokeChannel>(',
