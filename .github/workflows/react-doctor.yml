@@ -43,7 +43,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: millionco/react-doctor@v1
+      - uses: millionco/react-doctor@v2
         with:
           # On push to `main` React Doctor scans the whole repo as an advisory
           # health-score trend, so it must not fail the run (several findings,
