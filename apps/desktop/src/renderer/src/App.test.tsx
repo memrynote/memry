@@ -51,7 +51,8 @@ vi.mock('@tanstack/react-query', () => ({
 vi.mock('next-themes', () => ({
   ThemeProvider: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="theme-provider">{children}</div>
-  )
+  ),
+  useTheme: () => ({ setTheme: vi.fn() })
 }))
 
 vi.mock('@/lib/icons', () => ({
@@ -266,7 +267,8 @@ vi.mock('@/components/ui/sidebar', () => ({
     <main data-testid="sidebar-inset" className={className}>
       {children}
     </main>
-  )
+  ),
+  useSidebar: () => ({ toggleSidebar: vi.fn() })
 }))
 
 vi.mock('@/components/window-controls', () => ({

@@ -94,6 +94,7 @@ const MemryFilePlayer = forwardRef<HTMLVideoElement, MemryFilePlayerProps>(
     },
     ref
   ) => {
+    const { t } = useT('common')
     const videoRef = useRef<HTMLVideoElement | null>(null)
     const setVideoRef = useCallback(
       (video: HTMLVideoElement | null): void => {
@@ -172,7 +173,7 @@ const MemryFilePlayer = forwardRef<HTMLVideoElement, MemryFilePlayerProps>(
         onError={onError}
         onTimeUpdate={handleTimeUpdate}
         playsInline
-        aria-label="Video"
+        aria-label={t('media.video')}
       >
         <track kind="captions" />
       </video>

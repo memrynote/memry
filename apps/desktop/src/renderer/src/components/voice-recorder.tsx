@@ -71,8 +71,7 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
     const audioContextRef = useRef<AudioContext | null>(null)
     const analyserRef = useRef<AnalyserNode | null>(null)
     const rafRef = useRef<number | null>(null)
-    const barsRef = useRef<number[]>([])
-    if (barsRef.current.length === 0) barsRef.current = createWaveformBars()
+    const barsRef = useRef<number[]>(createWaveformBars())
 
     const cleanupAudio = useCallback(() => {
       if (rafRef.current) {

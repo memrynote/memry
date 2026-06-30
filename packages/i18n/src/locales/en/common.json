@@ -14,6 +14,9 @@
     "copy": "Copy",
     "create": "Create"
   },
+  "media": {
+    "video": "Video"
+  },
   "state": {
     "loading": "Loading…",
     "saving": "Saving…",

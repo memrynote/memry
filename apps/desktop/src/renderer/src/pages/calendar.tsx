@@ -668,16 +668,14 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
         void commitEventTimes(item.sourceId, previousStartAt, previousEndAt).catch((err) => {
           log.error('Failed to undo calendar event move', {
             eventId: item.sourceId,
-            // TODO(i18n): wrap in t()
-            error: extractErrorMessage(err, 'Could not update event.')
+            error: extractErrorMessage(err)
           })
         })
       })
     } catch (err) {
       log.error('Failed to move calendar event', {
         eventId: item.sourceId,
-        // TODO(i18n): wrap in t()
-        error: extractErrorMessage(err, 'Could not update event.')
+        error: extractErrorMessage(err)
       })
     }
   }

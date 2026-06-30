@@ -50,7 +50,7 @@ describe('http-client', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockGetDatabase.mockReturnValue(mockDb)
-    mockGetOrCreateVaultUuid.mockResolvedValue('vault-1')
+    mockGetOrCreateVaultUuid.mockReturnValue('vault-1')
   })
 
   describe('syncFetch', () => {
