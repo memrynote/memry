@@ -365,7 +365,8 @@ vi.mock('@/lib/logger', () => ({
 vi.mock('react-i18next', () => ({
   getI18n: () => ({
     getFixedT: () => (key: string) => key
-  })
+  }),
+  useTranslation: () => ({ t: (key: string) => key })
 }))
 
 function renderPage(): ReturnType<typeof render> {

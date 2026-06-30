@@ -1956,7 +1956,7 @@ test('runs core commands against a vault and prints JSON output', async () => {
     theme?: string
     language?: string
   }
-  assert.equal(generalSettings.theme, 'system')
+  assert.equal(generalSettings.theme, 'white')
   assert.equal(generalSettings.language, 'tr')
 
   const updateGroupCode = await runCli(

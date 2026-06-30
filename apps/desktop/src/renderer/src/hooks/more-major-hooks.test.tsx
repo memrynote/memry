@@ -127,6 +127,10 @@ vi.mock('./use-is-item-active', () => ({
   useIsItemActive: () => mocks.activeItem
 }))
 
+vi.mock('@/contexts/settings-modal-context', () => ({
+  useSettingsModal: () => ({ open: vi.fn() })
+}))
+
 import { DENSITY_CONFIG, densityClasses, useDisplayDensity } from './use-display-density'
 import { useInboxNotifications } from './use-inbox-notifications'
 import { useMonthEntries } from './use-journal-month'
