@@ -52,6 +52,7 @@ vi.mock('electron', () => ({
 }))
 
 import { createEmbeddingProjector } from './embedding-projector'
+import { EMBEDDING_INPUT_VERSION } from '../../lib/embedding-input'
 
 describe('embedding projector', () => {
   beforeEach(() => {
@@ -81,6 +82,12 @@ describe('embedding projector', () => {
   it('reconcile removes embeddings for notes that no longer exist', async () => {
     const run = vi.fn()
     const prepare = vi.fn(() => ({ run }))
+
+    // Embedding input version already current → skip the migration rebuild and
+    // exercise only the stale-row reconcile delete.
+    getSetting.mockImplementation((_db: unknown, key: string) =>
+      key === 'ai.embeddingInputVersion' ? String(EMBEDDING_INPUT_VERSION) : 'true'
+    )
 
     getRawIndexDatabase.mockReturnValue({ prepare })
     getIndexDatabase.mockReturnValue({

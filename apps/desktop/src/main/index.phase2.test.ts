@@ -233,7 +233,9 @@ vi.mock('./vault/file-ops', () => ({
 }))
 
 vi.mock('./updater', () => ({
-  initializeUpdater: initializeUpdaterMock
+  initializeUpdater: initializeUpdaterMock,
+  isQuitAndInstallRequested: vi.fn(() => false),
+  performQuitAndInstall: vi.fn()
 }))
 
 vi.mock('./app-navigation-command', () => ({

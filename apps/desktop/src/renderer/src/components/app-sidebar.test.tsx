@@ -30,6 +30,10 @@ vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({ t: (key: string) => key.split('.').at(-1) ?? key })
 }))
 
+vi.mock('@/components/onboarding/use-first-run-tour', () => ({
+  useFirstRunTour: () => {}
+}))
+
 vi.mock('sonner', () => ({
   toast: {
     success: vi.fn(),
@@ -175,6 +179,10 @@ vi.mock('@/components/sidebar/sidebar-drill-down-container', () => ({
 
 vi.mock('@/components/sidebar/sidebar-update-button', () => ({
   SidebarUpdateButton: () => null
+}))
+
+vi.mock('@/components/sidebar/sidebar-feedback-button', () => ({
+  SidebarFeedbackButton: () => null
 }))
 
 vi.mock('@/contexts/selected-folder-context', () => ({

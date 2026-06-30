@@ -966,7 +966,7 @@ describe('settings-handlers', () => {
       )
 
       expect(result).toEqual({
-        theme: 'system',
+        theme: 'white',
         accentColor: GENERAL_SETTINGS_DEFAULTS.accentColor
       })
     })

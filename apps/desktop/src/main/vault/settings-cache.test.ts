@@ -88,7 +88,7 @@ describe('populateSettingsCacheFromConfig', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const generalRaw = getSetting(testDb.db as any, 'general')
     const general = JSON.parse(generalRaw!)
-    expect(general.theme).toBe('system')
+    expect(general.theme).toBe(GENERAL_SETTINGS_DEFAULTS.theme)
     expect(general.accentColor).toBe(GENERAL_SETTINGS_DEFAULTS.accentColor)
   })
 
@@ -202,7 +202,7 @@ describe('migrateSettingsToConfig', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const generalRaw = getSetting(testDb.db as any, 'general')
     const general = JSON.parse(generalRaw!)
-    expect(general.theme).toBe('system')
+    expect(general.theme).toBe(GENERAL_SETTINGS_DEFAULTS.theme)
   })
 })
 

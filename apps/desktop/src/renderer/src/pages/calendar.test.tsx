@@ -10,6 +10,7 @@ import {
   type TabType
 } from '@/contexts/tabs'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
+import { SettingsModalProvider } from '@/contexts/settings-modal-context'
 import { SidebarNav } from '@/components/sidebar/sidebar-nav'
 import { NewTabMenu } from '@/components/tabs/new-tab-menu'
 import { TabContent } from '@/components/split-view/tab-content'
@@ -130,6 +131,7 @@ function SidebarCalendarHarness() {
           }
         ]}
         isActive={() => false}
+        isDisabled={() => false}
         onNavClick={() => () => openSidebarItem(CALENDAR_ITEM)}
         inboxCount={0}
         todayTasksCount={0}
@@ -178,11 +180,13 @@ describe('Calendar workspace navigation', () => {
     const user = userEvent.setup()
 
     renderWithProviders(
-      <SidebarProvider>
-        <TabProvider>
-          <SidebarCalendarHarness />
-        </TabProvider>
-      </SidebarProvider>
+      <SettingsModalProvider>
+        <SidebarProvider>
+          <TabProvider>
+            <SidebarCalendarHarness />
+          </TabProvider>
+        </SidebarProvider>
+      </SettingsModalProvider>
     )
 
     await user.click(screen.getByRole('button', { name: 'Split' }))

@@ -198,10 +198,12 @@ describe('FolderTableView', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Work' }))
     expect(onFolderClick).toHaveBeenCalledWith('Work')
 
-    fireEvent.click(screen.getByRole('button', { name: /#work/ }))
+    fireEvent.click(screen.getByRole('option', { name: 'work' }))
     expect(onTagClick).toHaveBeenCalledWith('work')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Remove tag alpha' }))
+    const alphaTag = screen.getByRole('option', { name: 'alpha' })
+    fireEvent.mouseEnter(alphaTag)
+    fireEvent.click(screen.getByRole('button', { name: 'removeAria' }))
     expect(onTagRemove).toHaveBeenCalledWith('note-1', 'alpha')
 
     fireEvent.click(screen.getByRole('button', { name: 'Title' }))

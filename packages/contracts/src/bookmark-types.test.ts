@@ -11,6 +11,8 @@ describe('BookmarkItemTypes', () => {
       NOTE: 'note',
       JOURNAL: 'journal',
       TASK: 'task',
+      FOLDER: 'folder',
+      TAG: 'tag',
       IMAGE: 'image',
       PDF: 'pdf',
       AUDIO: 'audio',
@@ -25,6 +27,8 @@ describe('BookmarkItemTypes', () => {
       BookmarkItemTypes.NOTE,
       BookmarkItemTypes.JOURNAL,
       BookmarkItemTypes.TASK,
+      BookmarkItemTypes.FOLDER,
+      BookmarkItemTypes.TAG,
       BookmarkItemTypes.IMAGE,
       BookmarkItemTypes.PDF,
       BookmarkItemTypes.AUDIO,
@@ -32,7 +36,7 @@ describe('BookmarkItemTypes', () => {
       BookmarkItemTypes.CANVAS,
       BookmarkItemTypes.FILE
     ]
-    expect(values).toHaveLength(9)
+    expect(values).toHaveLength(11)
   })
 
   it('values are unique lowercase strings', () => {
