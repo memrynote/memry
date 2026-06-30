@@ -11,8 +11,8 @@ import { initialState, reducer, selectPhase } from '@/lib/popup-state'
 import { EditableTitle } from '@/components/EditableTitle'
 import { PropertyRows } from '@/components/PropertyRows'
 import { TagEditor } from '@/components/TagEditor'
-import { Excerpt } from '@/components/Excerpt'
 import { PrimaryButton } from '@/components/PrimaryButton'
+import { ThemeToggle } from '@/components/ThemeToggle'
 
 const isMac = navigator.platform.toLowerCase().includes('mac')
 const SUBMIT_HINT = isMac ? '⌘ ↵' : 'Ctrl ↵'
@@ -135,13 +135,16 @@ export default function App() {
             memrynote
           </span>
         </div>
-        {state.connection !== 'app-closed' && (
-          <div className="flex items-center gap-1.5" title={status.label}>
-            <span className={`size-1.5 rounded-full ${status.tone}`} aria-hidden />
-            <span className="text-[11px] font-medium text-text-tertiary">Inbox</span>
-            <span className="sr-only">{status.label}</span>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {state.connection !== 'app-closed' && (
+            <div className="flex items-center gap-1.5" title={status.label}>
+              <span className={`size-1.5 rounded-full ${status.tone}`} aria-hidden />
+              <span className="text-[11px] font-medium text-text-tertiary">Inbox</span>
+              <span className="sr-only">{status.label}</span>
+            </div>
+          )}
+          <ThemeToggle />
+        </div>
       </header>
 
       <main className="flex-1 overflow-y-auto">
@@ -222,8 +225,6 @@ export default function App() {
                     Couldn't read the article — saving the link and title.
                   </p>
                 )}
-
-                <Excerpt text={draft.excerpt} />
 
                 <TagEditor
                   tags={draft.tags ?? []}
