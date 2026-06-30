@@ -97,6 +97,7 @@ export function initVault(vaultPath: string): void {
   try {
     fs.writeFileSync(configPath, JSON.stringify(DEFAULT_CONFIG, null, 2), {
       encoding: 'utf-8',
+      mode: 0o600,
       flag: 'wx'
     })
   } catch (error) {

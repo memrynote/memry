@@ -44,7 +44,15 @@ export function htmlToPlainText(input: string): string {
     .replace(/<\/(p|div|li|ul|ol|h[1-6]|blockquote|tr)>/gi, '\n')
     .replace(/<br\s*\/?>/gi, '\n')
 
-  const stripped = withBreaks.replace(/<[^>]+>/g, '')
+  // Strip tags in a loop until the string stops changing: a single pass can
+  // leave a re-formed tag when removing one match brings its neighbours
+  // together (e.g. `<<a>script>` collapses to `<script>` after one replace).
+  let stripped = withBreaks
+  let previous: string
+  do {
+    previous = stripped
+    stripped = stripped.replace(/<[^>]+>/g, '')
+  } while (stripped !== previous)
 
   return decodeEntities(stripped)
     .replace(/[ \t]+\n/g, '\n')

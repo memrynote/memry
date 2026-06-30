@@ -27,8 +27,16 @@ export function snippet(content: string): string {
 }
 
 function stripMarkup(markdown: string): string {
-  return markdown
-    .replace(/<!--[\s\S]*?-->/g, '') // memry block/colors/file markers + any HTML comment
+  // Remove HTML comments in a loop until stable: one pass can re-form `<!-- -->`
+  // from the text left on either side of a removed comment.
+  let withoutComments = markdown
+  let previous: string
+  do {
+    previous = withoutComments
+    withoutComments = withoutComments.replace(/<!--[\s\S]*?-->/g, '') // memry block/colors/file markers + any HTML comment
+  } while (withoutComments !== previous)
+
+  return withoutComments
     .replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, '$2') // wiki link w/ alias → alias
     .replace(/\[\[([^\]]+)\]\]/g, '$1') // wiki link → target
     .replace(/```[\s\S]*?```/g, (block) => block.replace(/```/g, '')) // fenced code → inner text
