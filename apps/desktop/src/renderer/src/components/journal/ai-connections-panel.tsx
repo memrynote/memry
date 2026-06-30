@@ -76,8 +76,7 @@ export const AIConnectionsPanel = memo(function AIConnectionsPanel({
   const hiddenCount = connections.length - maxItems
 
   return (
-    <div
-      role="region"
+    <section
       aria-label={t('section.aiConnections')}
       aria-live="polite"
       className="rounded-md border border-border/40 bg-card overflow-hidden"
@@ -115,6 +114,7 @@ export const AIConnectionsPanel = memo(function AIConnectionsPanel({
             {/* Expand/Collapse Button */}
             {hiddenCount > 0 && (
               <button
+                type="button"
                 onClick={() => setIsExpanded(!isExpanded)}
                 className={cn(
                   'w-full py-2 px-3 mt-1',
@@ -138,7 +138,7 @@ export const AIConnectionsPanel = memo(function AIConnectionsPanel({
           </div>
         )}
       </div>
-    </div>
+    </section>
   )
 })
 
@@ -222,9 +222,10 @@ function ConnectionItem({ connection, onClick }: ConnectionItemProps): React.JSX
 
   return (
     <button
+      type="button"
       onClick={onClick}
       className={cn(
-        'w-full text-left p-3 rounded-md',
+        'w-full text-start p-3 rounded-md',
         'bg-muted/30 hover:bg-muted/60',
         'border border-transparent hover:border-border/40',
         'transition-all duration-150',
@@ -244,12 +245,12 @@ function ConnectionItem({ connection, onClick }: ConnectionItemProps): React.JSX
       </div>
 
       {/* Preview text */}
-      <p className="text-xs text-muted-foreground line-clamp-2 mb-2 pl-6 italic">
+      <p className="text-xs text-muted-foreground line-clamp-2 mb-2 ps-6 italic">
         "{connection.preview}"
       </p>
 
       {/* Bottom row: Arrow only */}
-      <div className="flex items-center justify-end pl-6">
+      <div className="flex items-center justify-end ps-6">
         <ChevronRight className="size-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
       </div>
     </button>

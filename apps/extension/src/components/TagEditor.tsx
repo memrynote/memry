@@ -43,6 +43,7 @@ export function TagEditor({
         </button>
       ))}
       <input
+        aria-label="Add tag"
         value={draft}
         disabled={disabled}
         onChange={(e) => setDraft(e.target.value)}

@@ -15,6 +15,7 @@ type TokenKind = 'date' | 'priority' | 'project' | 'plain'
 interface Token {
   text: string
   kind: TokenKind
+  start: number
 }
 
 const TOKEN_STYLES: Record<Exclude<TokenKind, 'plain'>, string> = {
@@ -45,22 +46,22 @@ function tokenize(input: string): Token[] {
   for (const match of input.matchAll(regex)) {
     const start = match.index
     if (start > lastIndex) {
-      tokens.push({ text: input.slice(lastIndex, start), kind: 'plain' })
+      tokens.push({ text: input.slice(lastIndex, start), kind: 'plain', start: lastIndex })
     }
 
     const raw = match[0]
     if (raw.startsWith('!!')) {
-      tokens.push({ text: raw, kind: 'priority' })
+      tokens.push({ text: raw, kind: 'priority', start })
     } else if (raw.startsWith('!')) {
-      tokens.push({ text: raw, kind: 'date' })
+      tokens.push({ text: raw, kind: 'date', start })
     } else {
-      tokens.push({ text: raw, kind: 'project' })
+      tokens.push({ text: raw, kind: 'project', start })
     }
     lastIndex = start + raw.length
   }
 
   if (lastIndex < input.length) {
-    tokens.push({ text: input.slice(lastIndex), kind: 'plain' })
+    tokens.push({ text: input.slice(lastIndex), kind: 'plain', start: lastIndex })
   }
 
   return tokens
@@ -71,10 +72,10 @@ const TokenOverlay = ({ value }: { value: string }): React.JSX.Element => {
 
   return (
     <span>
-      {tokens.map((token, i) => {
+      {tokens.map((token) => {
         if (token.kind === 'plain') {
           return (
-            <span key={i} className="text-text-primary">
+            <span key={token.start} className="text-text-primary">
               {token.text}
             </span>
           )
@@ -85,14 +86,14 @@ const TokenOverlay = ({ value }: { value: string }): React.JSX.Element => {
           const colorClass =
             PRIORITY_COLORS[keyword] ?? 'text-task-priority-high bg-task-priority-high/10'
           return (
-            <span key={i} className={cn(TOKEN_STYLES.priority, colorClass)}>
+            <span key={token.start} className={cn(TOKEN_STYLES.priority, colorClass)}>
               {token.text}
             </span>
           )
         }
 
         return (
-          <span key={i} className={TOKEN_STYLES[token.kind]}>
+          <span key={token.start} className={TOKEN_STYLES[token.kind]}>
             {token.text}
           </span>
         )
@@ -474,7 +475,7 @@ export const QuickAddInput = ({
 
           <div
             className={cn(
-              'flex items-center ml-auto shrink-0 transition-opacity duration-150',
+              'flex items-center ms-auto shrink-0 transition-opacity duration-150',
               isFocused ? 'opacity-0 pointer-events-none' : 'opacity-100'
             )}
           >

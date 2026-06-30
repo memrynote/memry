@@ -272,12 +272,13 @@ function ViewCard({
   )
 }
 
+const KANBAN_COLS = [
+  { label: 'To do', count: 4, active: false },
+  { label: 'Doing', count: 2, active: true },
+  { label: 'Done', count: 7, active: false }
+]
+
 function KanbanViewCard() {
-  const cols = [
-    { label: 'To do', count: 4, active: false },
-    { label: 'Doing', count: 2, active: true },
-    { label: 'Done', count: 7, active: false }
-  ]
   return (
     <ViewCard
       label="Kanban"
@@ -286,7 +287,7 @@ function KanbanViewCard() {
     >
       <div className="rounded-xl border border-border/60 bg-paper p-3">
         <div className="grid grid-cols-3 gap-2">
-          {cols.map((col) => (
+          {KANBAN_COLS.map((col) => (
             <div
               key={col.label}
               className={cn(
@@ -315,24 +316,27 @@ function KanbanViewCard() {
   )
 }
 
+const CALENDAR_DAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
+
+const CALENDAR_TASKS: Record<number, { tone: 'terracotta' | 'sage' | 'amber'; label: string }[]> = {
+  1: [{ tone: 'terracotta', label: 'Spec' }],
+  3: [{ tone: 'sage', label: 'Standup' }],
+  5: [
+    { tone: 'amber', label: 'Review' },
+    { tone: 'terracotta', label: 'Demo' }
+  ],
+  9: [{ tone: 'sage', label: 'Retro' }],
+  11: [{ tone: 'terracotta', label: 'Ship' }]
+}
+
+const CALENDAR_TONE_CLASS: Record<'terracotta' | 'sage' | 'amber', string> = {
+  terracotta: 'bg-terracotta/15 text-terracotta',
+  sage: 'bg-sage/15 text-sage',
+  amber: 'bg-amber-500/15 text-amber-700'
+}
+
 function CalendarViewCard() {
-  const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
   const cells = Array.from({ length: 14 })
-  const tasks: Record<number, { tone: 'terracotta' | 'sage' | 'amber'; label: string }[]> = {
-    1: [{ tone: 'terracotta', label: 'Spec' }],
-    3: [{ tone: 'sage', label: 'Standup' }],
-    5: [
-      { tone: 'amber', label: 'Review' },
-      { tone: 'terracotta', label: 'Demo' }
-    ],
-    9: [{ tone: 'sage', label: 'Retro' }],
-    11: [{ tone: 'terracotta', label: 'Ship' }]
-  }
-  const toneClass: Record<'terracotta' | 'sage' | 'amber', string> = {
-    terracotta: 'bg-terracotta/15 text-terracotta',
-    sage: 'bg-sage/15 text-sage',
-    amber: 'bg-amber-500/15 text-amber-700'
-  }
   return (
     <ViewCard
       label="Calendar"
@@ -341,7 +345,7 @@ function CalendarViewCard() {
     >
       <div className="rounded-xl border border-border/60 bg-paper p-3">
         <div className="grid grid-cols-7 gap-1 pb-2">
-          {days.map((d, i) => (
+          {CALENDAR_DAYS.map((d, i) => (
             <span
               key={i}
               className="text-center font-mono-accent text-[10px] uppercase tracking-[0.18em] text-muted"
@@ -358,12 +362,12 @@ function CalendarViewCard() {
             >
               <div className="text-[9px] text-muted/60">{i + 1}</div>
               <div className="mt-0.5 space-y-0.5">
-                {(tasks[i] ?? []).map((t, j) => (
+                {(CALENDAR_TASKS[i] ?? []).map((t, j) => (
                   <div
                     key={j}
                     className={cn(
                       'truncate rounded px-1 py-0.5 font-mono-accent text-[8px]',
-                      toneClass[t.tone]
+                      CALENDAR_TONE_CLASS[t.tone]
                     )}
                   >
                     {t.label}
@@ -378,18 +382,20 @@ function CalendarViewCard() {
   )
 }
 
+const LIST_ROWS = [
+  { title: 'Draft Q3 launch plan', priority: 'high', due: 'Mon', done: false },
+  { title: 'Wire calendar drag-drop', priority: 'urgent', due: 'Today', done: false },
+  { title: 'Review onboarding copy', priority: 'medium', due: 'Wed', done: false },
+  { title: 'Ship sync engine', priority: 'medium', due: 'Yesterday', done: true }
+] as const
+
+const LIST_DOT: Record<(typeof LIST_ROWS)[number]['priority'], string> = {
+  urgent: 'bg-terracotta',
+  high: 'bg-amber-500',
+  medium: 'bg-sage'
+}
+
 function ListViewCard() {
-  const rows = [
-    { title: 'Draft Q3 launch plan', priority: 'high', due: 'Mon', done: false },
-    { title: 'Wire calendar drag-drop', priority: 'urgent', due: 'Today', done: false },
-    { title: 'Review onboarding copy', priority: 'medium', due: 'Wed', done: false },
-    { title: 'Ship sync engine', priority: 'medium', due: 'Yesterday', done: true }
-  ] as const
-  const dot: Record<(typeof rows)[number]['priority'], string> = {
-    urgent: 'bg-terracotta',
-    high: 'bg-amber-500',
-    medium: 'bg-sage'
-  }
   return (
     <ViewCard
       label="List"
@@ -398,7 +404,7 @@ function ListViewCard() {
     >
       <div className="overflow-hidden rounded-xl border border-border/60 bg-paper">
         <ul className="divide-y divide-border/40">
-          {rows.map((row) => (
+          {LIST_ROWS.map((row) => (
             <li key={row.title} className="flex items-center gap-3 px-3 py-2.5 text-[13px]">
               <span
                 className={cn(
@@ -408,7 +414,7 @@ function ListViewCard() {
               >
                 {row.done && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
               </span>
-              <span className={cn('h-2 w-2 shrink-0 rounded-full', dot[row.priority])} />
+              <span className={cn('h-2 w-2 shrink-0 rounded-full', LIST_DOT[row.priority])} />
               <span className={cn('flex-1 truncate', row.done && 'text-ink/45 line-through')}>
                 {row.title}
               </span>
@@ -450,13 +456,14 @@ function TaskDetailShowcase() {
   )
 }
 
+const TASK_DETAIL_SUBTASKS: { title: string; done: boolean }[] = [
+  { title: 'Outline the spec', done: true },
+  { title: 'Wire the API endpoints', done: true },
+  { title: 'Build the renderer', done: false }
+]
+
 function TaskDetailCard() {
-  const subtasks: { title: string; done: boolean }[] = [
-    { title: 'Outline the spec', done: true },
-    { title: 'Wire the API endpoints', done: true },
-    { title: 'Build the renderer', done: false }
-  ]
-  const completed = subtasks.filter((s) => s.done).length
+  const completed = TASK_DETAIL_SUBTASKS.filter((s) => s.done).length
   return (
     <motion.article
       {...fadeUp}
@@ -488,20 +495,20 @@ function TaskDetailCard() {
       <div className="mt-6 rounded-xl border border-border/60 bg-paper-alt/50 p-5">
         <div className="flex items-center justify-between">
           <span className="font-mono-accent text-[10px] uppercase tracking-[0.22em] text-muted">
-            Subtasks · {completed} of {subtasks.length}
+            Subtasks · {completed} of {TASK_DETAIL_SUBTASKS.length}
           </span>
           <span className="font-mono-accent text-[11px] text-terracotta">
-            {Math.round((completed / subtasks.length) * 100)}%
+            {Math.round((completed / TASK_DETAIL_SUBTASKS.length) * 100)}%
           </span>
         </div>
         <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-paper">
           <div
             className="h-full rounded-full bg-terracotta"
-            style={{ width: `${(completed / subtasks.length) * 100}%` }}
+            style={{ width: `${(completed / TASK_DETAIL_SUBTASKS.length) * 100}%` }}
           />
         </div>
         <ul className="mt-4 space-y-2">
-          {subtasks.map((s) => (
+          {TASK_DETAIL_SUBTASKS.map((s) => (
             <li key={s.title} className="flex items-start gap-2.5 text-[14px]">
               <span
                 className={cn(
@@ -533,25 +540,27 @@ function TaskDetailCard() {
   )
 }
 
+const SMART_FILTERS: {
+  label: string
+  tone: 'terracotta' | 'sage' | 'amber' | 'ink'
+  active?: boolean
+}[] = [
+  { label: 'priority: urgent', tone: 'terracotta', active: true },
+  { label: 'project: launch', tone: 'terracotta' },
+  { label: 'due: this week', tone: 'amber', active: true },
+  { label: 'status: doing', tone: 'sage' },
+  { label: 'tag: #blocker', tone: 'terracotta' },
+  { label: 'no project', tone: 'ink' }
+]
+
+const SMART_FILTERS_TONE_CLASS: Record<'terracotta' | 'sage' | 'amber' | 'ink', string> = {
+  terracotta: 'border-terracotta/30 bg-terracotta/8 text-terracotta',
+  sage: 'border-sage/30 bg-sage/10 text-sage',
+  amber: 'border-amber-500/30 bg-amber-500/10 text-amber-700',
+  ink: 'border-border/60 bg-paper-alt/60 text-ink/70'
+}
+
 function SmartFiltersCard() {
-  const filters: {
-    label: string
-    tone: 'terracotta' | 'sage' | 'amber' | 'ink'
-    active?: boolean
-  }[] = [
-    { label: 'priority: urgent', tone: 'terracotta', active: true },
-    { label: 'project: launch', tone: 'terracotta' },
-    { label: 'due: this week', tone: 'amber', active: true },
-    { label: 'status: doing', tone: 'sage' },
-    { label: 'tag: #blocker', tone: 'terracotta' },
-    { label: 'no project', tone: 'ink' }
-  ]
-  const toneClass: Record<'terracotta' | 'sage' | 'amber' | 'ink', string> = {
-    terracotta: 'border-terracotta/30 bg-terracotta/8 text-terracotta',
-    sage: 'border-sage/30 bg-sage/10 text-sage',
-    amber: 'border-amber-500/30 bg-amber-500/10 text-amber-700',
-    ink: 'border-border/60 bg-paper-alt/60 text-ink/70'
-  }
   return (
     <motion.article
       {...fadeUp}
@@ -563,12 +572,12 @@ function SmartFiltersCard() {
         Combine priority, project, status, dates, and tags. Stack as many as you need.
       </p>
       <div className="mt-5 flex flex-wrap gap-2">
-        {filters.map((f) => (
+        {SMART_FILTERS.map((f) => (
           <span
             key={f.label}
             className={cn(
               'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono-accent text-[11px]',
-              toneClass[f.tone],
+              SMART_FILTERS_TONE_CLASS[f.tone],
               f.active && 'ring-1 ring-current'
             )}
           >
@@ -581,18 +590,20 @@ function SmartFiltersCard() {
   )
 }
 
+const SAVED_PRESETS = [
+  { title: 'Today, urgent', count: 3, tone: 'terracotta' as const },
+  { title: 'This week, launch', count: 12, tone: 'sage' as const },
+  { title: 'Blocked', count: 4, tone: 'amber' as const },
+  { title: 'No due date', count: 27, tone: 'terracotta' as const }
+]
+
+const SAVED_PRESETS_DOT: Record<(typeof SAVED_PRESETS)[number]['tone'], string> = {
+  terracotta: 'bg-terracotta',
+  sage: 'bg-sage',
+  amber: 'bg-amber-500'
+}
+
 function SavedPresetsCard() {
-  const presets = [
-    { title: 'Today, urgent', count: 3, tone: 'terracotta' as const },
-    { title: 'This week, launch', count: 12, tone: 'sage' as const },
-    { title: 'Blocked', count: 4, tone: 'amber' as const },
-    { title: 'No due date', count: 27, tone: 'terracotta' as const }
-  ]
-  const dot: Record<(typeof presets)[number]['tone'], string> = {
-    terracotta: 'bg-terracotta',
-    sage: 'bg-sage',
-    amber: 'bg-amber-500'
-  }
   return (
     <motion.article
       {...fadeUp}
@@ -604,13 +615,13 @@ function SavedPresetsCard() {
         Pin your favorite filter combinations. They live in the sidebar, ready when you are.
       </p>
       <ul className="mt-5 space-y-2">
-        {presets.map((p) => (
+        {SAVED_PRESETS.map((p) => (
           <li
             key={p.title}
             className="flex items-center justify-between rounded-lg border border-border/50 bg-paper-alt/40 px-3 py-2.5 text-[13px]"
           >
             <span className="flex items-center gap-2.5">
-              <span className={cn('h-2 w-2 rounded-full', dot[p.tone])} />
+              <span className={cn('h-2 w-2 rounded-full', SAVED_PRESETS_DOT[p.tone])} />
               <span className="text-ink/85">{p.title}</span>
             </span>
             <span className="font-mono-accent text-[11px] text-muted">{p.count}</span>
@@ -705,6 +716,12 @@ function QuickAddShowcase() {
   )
 }
 
+const PARSED_ROW_DOT: Record<'terracotta' | 'sage' | 'amber', string> = {
+  terracotta: 'bg-terracotta',
+  sage: 'bg-sage',
+  amber: 'bg-amber-500'
+}
+
 function ParsedRow({
   label,
   value,
@@ -714,14 +731,9 @@ function ParsedRow({
   value: string
   tone: 'terracotta' | 'sage' | 'amber'
 }) {
-  const dot: Record<typeof tone, string> = {
-    terracotta: 'bg-terracotta',
-    sage: 'bg-sage',
-    amber: 'bg-amber-500'
-  }
   return (
     <div className="flex items-center gap-2.5 rounded-lg border border-border/50 bg-paper-alt/40 px-3 py-2">
-      <span className={cn('h-1.5 w-1.5 rounded-full', dot[tone])} />
+      <span className={cn('h-1.5 w-1.5 rounded-full', PARSED_ROW_DOT[tone])} />
       <span className="font-mono-accent text-[10px] uppercase tracking-[0.16em] text-muted">
         {label}
       </span>

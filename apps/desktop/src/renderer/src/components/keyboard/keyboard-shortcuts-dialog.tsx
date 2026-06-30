@@ -38,7 +38,7 @@ const DIALOG_DESCRIPTION =
 const COMBO_OR_LABEL = 'or'
 const SEQUENCE_THEN_LABEL = 'then'
 
-export const getShortcutGroups = (): ShortcutGroup[] => {
+const getShortcutGroups = (): ShortcutGroup[] => {
   const mod = isMac ? '⌘' : 'Ctrl'
   const shift = isMac ? '⇧' : 'Shift'
   const alt = isMac ? '⌥' : 'Alt'
@@ -192,7 +192,7 @@ const ShortcutCombo = ({ keys }: { keys: string[] }): React.JSX.Element => (
 const ShortcutCombos = ({ combos }: { combos: string[][] }): React.JSX.Element => (
   <div className="flex flex-wrap items-center justify-end gap-1.5">
     {combos.map((keys, index) => (
-      <span key={`${keys.join('-')}-${index}`} className="inline-flex items-center gap-1.5">
+      <span key={keys.join('-')} className="inline-flex items-center gap-1.5">
         {index > 0 && (
           <span className="text-[11px] text-muted-foreground/60">{COMBO_OR_LABEL}</span>
         )}

@@ -164,6 +164,7 @@ function ShortcutRow({
           ) : (
             <div className="flex items-center gap-1">
               <button
+                type="button"
                 onClick={startCapture}
                 className="flex items-center gap-0.5 hover:opacity-70 transition-opacity"
                 title={t('shortcuts.rebindTitle')}
@@ -171,8 +172,8 @@ function ShortcutRow({
                 <KbdGroup>
                   {formatBinding(effectiveBinding)
                     .split(' ')
-                    .map((part, i) => (
-                      <Kbd key={i}>{part}</Kbd>
+                    .map((part) => (
+                      <Kbd key={part}>{part}</Kbd>
                     ))}
                 </KbdGroup>
               </button>
@@ -324,18 +325,20 @@ function GlobalCaptureRow({
             <div className="flex items-center gap-1">
               {binding ? (
                 <button
+                  type="button"
                   onClick={startCapture}
                   className="flex items-center gap-0.5 hover:opacity-70 transition-opacity"
                   title={t('shortcuts.rebindTitle')}
                 >
                   <KbdGroup>
-                    {getGlobalCaptureParts(binding).map((part, i) => (
-                      <Kbd key={i}>{part}</Kbd>
+                    {getGlobalCaptureParts(binding).map((part) => (
+                      <Kbd key={part}>{part}</Kbd>
                     ))}
                   </KbdGroup>
                 </button>
               ) : (
                 <button
+                  type="button"
                   onClick={startCapture}
                   className="text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded border border-dashed border-border"
                 >

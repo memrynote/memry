@@ -92,6 +92,7 @@ export function RecoveryPhraseConfirm({
                 onChange={(e) => handleChange(slotIndex, e.target.value)}
                 onBlur={() => handleBlur(slotIndex)}
                 placeholder={t('setup.recovery.wordPlaceholder', { index: wordIndex + 1 })}
+                aria-label={t('setup.recovery.wordPlaceholder', { index: wordIndex + 1 })}
                 autoFocus={slotIndex === 0}
                 className={cn(
                   'flex-1 h-9 rounded-lg px-3.5 font-mono text-sm/4.5 bg-foreground/[0.03] border outline-none transition-colors',

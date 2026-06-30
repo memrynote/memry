@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-export const SUPPORTED_LOCALES = [
+const SUPPORTED_LOCALES = [
   'ar',
   'cs',
   'da',
@@ -50,7 +50,7 @@ function readJson(filePath) {
   return JSON.parse(raw)
 }
 
-export function loadNamespaces(workspaceRoot = defaultWorkspaceRoot()) {
+function loadNamespaces(workspaceRoot = defaultWorkspaceRoot()) {
   const configPath = path.join(workspaceRoot, 'packages/i18n/src/shared/config.ts')
   const configText = fs.readFileSync(configPath, 'utf8')
   const match = configText.match(CONFIG_ARRAY_RE)
@@ -141,10 +141,6 @@ export function flattenLocale(localeResources) {
   }
 
   return keys
-}
-
-export function hasEnglishKey(key, englishKeys) {
-  return englishKeys.has(key)
 }
 
 export function compareLocaleCompleteness({ englishKeys, localeKeys }) {

@@ -36,7 +36,7 @@ export function CleanNeutralFAQ() {
             <Accordion type="single" collapsible className="w-full">
               {FAQ_ITEMS.map((item, i) => (
                 <AccordionItem
-                  key={i}
+                  key={item.question}
                   value={`faq-${i}`}
                   className="border-b border-border/60 last:border-0 rounded-none px-0 bg-transparent data-[state=open]:bg-transparent"
                 >

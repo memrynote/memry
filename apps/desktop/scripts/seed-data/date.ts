@@ -37,5 +37,3 @@ export function seedPastISOAt(
 export function seedDateOnly(days: number, seedDay = SEED_DAY): string {
   return seedISOAt(days, 12, 0, seedDay).slice(0, 10)
 }
-
-export const seedTodayISO = SEED_DAY.toISOString()

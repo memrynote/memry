@@ -60,8 +60,7 @@ export const TodaysNotesSection = memo(function TodaysNotesSection({
   }
 
   return (
-    <div
-      role="region"
+    <section
       aria-label={t('section.todaysNotes')}
       aria-live="polite"
       className="rounded-md border border-border/40 bg-card overflow-hidden"
@@ -89,6 +88,7 @@ export const TodaysNotesSection = memo(function TodaysNotesSection({
             {/* Expand/Collapse Button */}
             {hiddenCount > 0 && (
               <button
+                type="button"
                 onClick={() => setIsExpanded(!isExpanded)}
                 className={cn(
                   'w-full py-2 px-3 mt-1',
@@ -119,7 +119,7 @@ export const TodaysNotesSection = memo(function TodaysNotesSection({
           </div>
         )}
       </div>
-    </div>
+    </section>
   )
 })
 
@@ -190,9 +190,10 @@ function NoteItem({ note, isActive, onClick }: NoteItemProps): React.JSX.Element
 
   return (
     <button
+      type="button"
       onClick={onClick}
       className={cn(
-        'w-full text-left p-3 rounded-md',
+        'w-full text-start p-3 rounded-md',
         'border transition-all duration-150',
         'group cursor-pointer',
         isActive
@@ -240,7 +241,7 @@ function EmptyState({ onCreate }: EmptyStateProps): React.JSX.Element {
       <p className="text-xs text-muted-foreground/70 mb-4">{t('empty.startDocumenting')}</p>
       {onCreate && (
         <Button variant="outline" size="sm" onClick={onCreate}>
-          <Plus className="size-4 mr-2" />
+          <Plus className="size-4 me-2" />
           {t('action.createNote')}
         </Button>
       )}

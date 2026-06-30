@@ -69,6 +69,7 @@ export function HugeIconGrid({ onSelect }: HugeIconGridProps): React.JSX.Element
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={t('menus.emoji.searchPlaceholder')}
+                aria-label={t('menus.emoji.searchPlaceholder')}
                 autoComplete="off"
                 className={cn(
                   'block w-full border-0 outline-none appearance-none',
@@ -86,7 +87,7 @@ export function HugeIconGrid({ onSelect }: HugeIconGridProps): React.JSX.Element
                   borderRadius: 10
                 }}
               />
-              <span className="pointer-events-none absolute left-[.7em] top-1/2 -translate-y-1/2 z-[1] flex text-[color:rgba(var(--em-rgb-color,34,36,39),.7)] dark:text-[color:rgba(var(--em-rgb-color,222,222,221),.7)]">
+              <span className="pointer-events-none absolute start-[.7em] top-1/2 -translate-y-1/2 z-[1] flex text-[color:rgba(var(--em-rgb-color,34,36,39),.7)] dark:text-[color:rgba(var(--em-rgb-color,222,222,221),.7)]">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 20 20"
@@ -99,7 +100,8 @@ export function HugeIconGrid({ onSelect }: HugeIconGridProps): React.JSX.Element
                 <button
                   type="button"
                   onClick={handleClearSearch}
-                  className="absolute right-[.7em] top-1/2 -translate-y-1/2 z-[1] flex text-[color:rgba(var(--em-rgb-color,34,36,39),.7)] dark:text-[color:rgba(var(--em-rgb-color,222,222,221),.7)] hover:opacity-80"
+                  aria-label={t('menus.emoji.clearSearch')}
+                  className="absolute end-[.7em] top-1/2 -translate-y-1/2 z-[1] flex text-[color:rgba(var(--em-rgb-color,34,36,39),.7)] dark:text-[color:rgba(var(--em-rgb-color,222,222,221),.7)] hover:opacity-80"
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -118,7 +120,7 @@ export function HugeIconGrid({ onSelect }: HugeIconGridProps): React.JSX.Element
       {/* Grid — mirrors emoji-mart: .scroll with padding-left via padding-lr, scrollbar in sidebar-width space */}
       <div
         ref={scrollRef}
-        className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto pl-[var(--padding)] pr-0"
+        className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto ps-[var(--padding)] pe-0"
       >
         {isLoading ? (
           <div className="flex items-center justify-center h-full text-muted-foreground">
@@ -142,7 +144,7 @@ export function HugeIconGrid({ onSelect }: HugeIconGridProps): React.JSX.Element
               return (
                 <div
                   key={virtualRow.index}
-                  className="absolute left-0 top-0 flex w-full justify-between"
+                  className="absolute start-0 top-0 flex w-full justify-between"
                   style={{
                     height: ROW_HEIGHT,
                     transform: `translateY(${virtualRow.start}px)`

@@ -8,7 +8,7 @@ const FORBIDDEN_PATHS = new Set(
   )
 )
 
-export function ensureSafeVaultPath(vaultPath: string): string {
+function ensureSafeVaultPath(vaultPath: string): string {
   const absolute = resolve(vaultPath)
 
   if (FORBIDDEN_PATHS.has(absolute)) {

@@ -69,6 +69,12 @@ function getFileIcon(mimeType: string): React.ReactNode {
   return <File className="h-5 w-5 text-gray-500" />
 }
 
+const PDF_LOADING_INDICATOR = (
+  <div className="flex h-48 items-center justify-center">
+    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+  </div>
+)
+
 // ============================================================================
 // PDF Preview Component with Collapsible Sidebar
 // ============================================================================
@@ -183,6 +189,7 @@ function PdfPreview({ url, name }: PdfPreviewProps) {
                   {Array.from({ length: numPages }, (_, i) => (
                     <button
                       key={i + 1}
+                      type="button"
                       onClick={() => goToPage(i + 1)}
                       className={cn(
                         'w-full rounded border-2 overflow-hidden transition-all hover:border-primary/50',
@@ -215,11 +222,7 @@ function PdfPreview({ url, name }: PdfPreviewProps) {
               file={url}
               onLoadSuccess={handleLoadSuccess}
               onLoadError={handleLoadError}
-              loading={
-                <div className="flex h-48 items-center justify-center">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div>
-              }
+              loading={PDF_LOADING_INDICATOR}
             >
               <Page
                 pageNumber={currentPage}
@@ -384,7 +387,15 @@ function AudioPreview({ url, name }: FilePreviewProps) {
             <p className="truncate text-sm font-medium">{name}</p>
           </div>
         </div>
-        <audio controls preload="metadata" src={url} className="h-9 w-full min-w-0 sm:max-w-xs" />
+        <audio
+          controls
+          preload="metadata"
+          src={url}
+          aria-label={name}
+          className="h-9 w-full min-w-0 sm:max-w-xs"
+        >
+          <track kind="captions" />
+        </audio>
       </div>
       {activeTransfer && activeTransfer.status !== 'completed' && (
         <SyncProgressOverlay

@@ -19,7 +19,8 @@ export { EmptyPaneState } from './empty-pane-state'
 export { ResizeHandle } from './resize-handle'
 
 // Drop zones (drag-to-split)
-export { DropZone, getDropZoneLabel, type DropZonePosition } from './drop-zone'
+export { DropZone, type DropZonePosition } from './drop-zone'
+export { getDropZoneLabel } from './drop-zone-label'
 export { SplitDropZones } from './split-drop-zones'
 export { SplitPreview } from './split-preview'
 

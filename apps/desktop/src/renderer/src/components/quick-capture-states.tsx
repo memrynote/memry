@@ -36,6 +36,7 @@ export function CaptureError({ message, onDismiss }: CaptureErrorProps): React.J
     <div className="flex items-center gap-2 px-4 py-1.5">
       <span className="flex-1 text-xs text-destructive truncate">{message}</span>
       <button
+        type="button"
         onClick={onDismiss}
         className="shrink-0 rounded p-0.5 text-muted-foreground/50 hover:text-foreground transition-colors"
         aria-label={tPhaseF('phaseF.componentsQuickCaptureStates.dismissError')}
@@ -82,12 +83,14 @@ export function CaptureDuplicate({
       </p>
       <div className="flex gap-2">
         <button
+          type="button"
           onClick={onForce}
           className="rounded-md border border-border px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted"
         >
           {tPhaseF('phaseF.componentsQuickCaptureStates.captureAnyway')}
         </button>
         <button
+          type="button"
           onClick={onClose}
           className="rounded-md bg-accent-orange px-2.5 py-1 text-xs font-medium text-white transition-colors hover:opacity-90"
         >

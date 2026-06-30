@@ -37,14 +37,13 @@ const TagPill = ({
   const colors = getTagColors(color ?? '', tag)
 
   return (
-    <span
-      role="listitem"
+    <li
       className="inline-flex items-center gap-1 rounded-[10px] py-0.5 px-2 text-[11px] leading-3.5 tag-pill-enter motion-reduce:animate-none"
       style={{ backgroundColor: `${colors.text}15`, color: colors.text }}
     >
       {icon ? <NoteIconDisplay value={icon} className="size-3 text-[11px] leading-none" /> : null}
       {tag}
-    </span>
+    </li>
   )
 }
 
@@ -402,13 +401,12 @@ export const TagAutocomplete = ({
       </span>
 
       <div className="relative">
-        <div
+        <menu
           className={cn(
             'flex items-center flex-wrap rounded-md py-2 px-3 gap-1.5 bg-foreground/[0.02] border transition-colors cursor-text',
             isFocused ? 'border-[var(--accent-purple)]/30' : 'border-border'
           )}
           onClick={() => inputRef.current?.focus()}
-          role="list"
           aria-label={tPhaseF('phaseF.componentsFilingTagAutocomplete.selectedTags')}
         >
           {tags.map((tag) => {
@@ -439,7 +437,7 @@ export const TagAutocomplete = ({
             autoComplete="off"
             className="flex-1 min-w-[60px] bg-transparent border-0 p-0 text-xs text-foreground placeholder:text-muted-foreground/30 outline-none focus:outline-none"
           />
-        </div>
+        </menu>
 
         {showDropdown && (
           <div

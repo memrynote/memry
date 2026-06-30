@@ -108,7 +108,12 @@ export function SummaryRow({
     >
       <tr style={{ display: 'flex', width: '100%' }} className="items-center">
         {hasLeadingColumn && (
-          <td style={{ width: SELECT_COLUMN_WIDTH }} className="flex-shrink-0" aria-hidden="true" />
+          <td
+            style={{ width: SELECT_COLUMN_WIDTH }}
+            className="flex-shrink-0"
+            aria-hidden="true"
+            tabIndex={-1}
+          />
         )}
         {columns.map((column, index) => {
           const summary = computedSummaries[column.id]

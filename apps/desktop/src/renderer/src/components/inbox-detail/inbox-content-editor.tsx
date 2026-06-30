@@ -148,7 +148,7 @@ export const InboxContentEditor = memo(function InboxContentEditor({
   )
 
   return (
-    <div
+    <section
       className={cn(
         'inbox-content-editor prose prose-sm dark:prose-invert max-w-none',
         'min-h-[300px] flex flex-col',
@@ -157,7 +157,6 @@ export const InboxContentEditor = memo(function InboxContentEditor({
         editable && 'cursor-text',
         className
       )}
-      role="region"
       aria-label={tPhaseF('phaseF.componentsInboxDetailInboxContentEditor.contentEditor')}
       onMouseDown={handleContainerMouseDown}
     >
@@ -167,7 +166,7 @@ export const InboxContentEditor = memo(function InboxContentEditor({
         onChange={() => void handleChange()}
         theme={editorTheme}
       />
-    </div>
+    </section>
   )
 })
 

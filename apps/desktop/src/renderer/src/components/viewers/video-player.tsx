@@ -172,7 +172,10 @@ const MemryFilePlayer = forwardRef<HTMLVideoElement, MemryFilePlayerProps>(
         onError={onError}
         onTimeUpdate={handleTimeUpdate}
         playsInline
-      />
+        aria-label="Video"
+      >
+        <track kind="captions" />
+      </video>
     )
   }
 )

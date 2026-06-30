@@ -190,6 +190,7 @@ export function TagSuggestionPopover({
         return (
           <button
             key={item.tag}
+            type="button"
             className={cn(
               'flex w-full cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none',
               'hover:bg-accent hover:text-accent-foreground',
@@ -207,7 +208,7 @@ export function TagSuggestionPopover({
               className="h-3 w-3 shrink-0 rounded-full"
               style={{ backgroundColor: colors.text }}
             />
-            <span className="flex-1 font-medium text-left">#{item.tag}</span>
+            <span className="flex-1 font-medium text-start">#{item.tag}</span>
             <span className="text-xs text-muted-foreground">({item.count})</span>
           </button>
         )

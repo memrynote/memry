@@ -25,6 +25,7 @@ export function FilterSearchHeader({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
+        aria-label={placeholder}
         className="flex-1 min-w-0 bg-transparent text-[13px] text-foreground placeholder:text-muted-foreground/40 outline-none leading-4"
         onClick={(e) => e.stopPropagation()}
       />

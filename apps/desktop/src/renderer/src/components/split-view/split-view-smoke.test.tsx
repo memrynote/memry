@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { DropZone, getDropZoneLabel } from './drop-zone'
+import { DropZone } from './drop-zone'
+import { getDropZoneLabel } from './drop-zone-label'
 import { EmptyPaneState } from './empty-pane-state'
 import { applyLayoutPreset, layoutPresets } from './layout-presets'
 import { SplitPreview } from './split-preview'

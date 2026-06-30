@@ -250,12 +250,6 @@ export function ReviewBadgeLayer({
   }, [active, review.hoveredMarkId])
 
   useEffect(() => {
-    if (editingMarkId && !review.marks.some((mark) => mark.id === editingMarkId)) {
-      setEditingMarkId(null)
-    }
-  }, [editingMarkId, review.marks])
-
-  useEffect(() => {
     if (!panel) return
     const blockGone = !groups.some((group) => group.blockId === panel.blockId)
     const marksGone = panel.markIds.every((id) => !marksById.has(id))

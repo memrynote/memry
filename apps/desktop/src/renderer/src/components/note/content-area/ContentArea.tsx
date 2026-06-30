@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { createPortal } from 'react-dom'
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import {
   SuggestionMenuController,
   GridSuggestionMenuController,
@@ -610,11 +610,10 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     editor,
     { onInsertDate: insertDatePill }
   )
-  const MentionSuggestionMenu = useMemo(
-    () =>
-      function BoundMentionMenu(props: SuggestionMenuProps<MentionSuggestionItem>) {
-        return <MentionMenu {...props} hasMore={mentionHasMore} onShowMore={showMore} />
-      },
+  const MentionSuggestionMenu = useCallback(
+    function BoundMentionMenu(props: SuggestionMenuProps<MentionSuggestionItem>) {
+      return <MentionMenu {...props} hasMore={mentionHasMore} onShowMore={showMore} />
+    },
     [mentionHasMore, showMore]
   )
 
@@ -1081,7 +1080,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       {aiEnabled && aiError && (
         <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-800/40">
           <span className="truncate">{aiError}</span>
-          <button onClick={retryAI} className="shrink-0 underline hover:no-underline">
+          <button type="button" onClick={retryAI} className="shrink-0 underline hover:no-underline">
             {tCommon('button.retry')}
           </button>
         </div>

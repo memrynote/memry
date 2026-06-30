@@ -104,6 +104,7 @@ export function DefaultTemplateIndicator({
           </div>
           <div className="flex items-center gap-3 mt-1">
             <button
+              type="button"
               onClick={onChangeTemplate}
               className={cn(
                 'text-xs font-medium',
@@ -118,6 +119,7 @@ export function DefaultTemplateIndicator({
             </button>
             <span className="text-amber-400/60 dark:text-amber-600/60">·</span>
             <button
+              type="button"
               onClick={onStartBlank}
               className={cn(
                 'text-xs font-medium',

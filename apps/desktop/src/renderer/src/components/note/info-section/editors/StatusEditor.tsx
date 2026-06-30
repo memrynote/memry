@@ -113,6 +113,7 @@ export function StatusEditor({
                     <input
                       autoFocus
                       type="text"
+                      aria-label={t('properties.optionName')}
                       value={newOptionName}
                       onChange={(e) => setNewOptionName(e.target.value)}
                       onKeyDown={(e) => {

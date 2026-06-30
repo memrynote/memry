@@ -514,6 +514,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({
         onKeyDown={handleTitleKeyDown}
         className="grow shrink min-w-0 bg-transparent text-[13px] font-medium outline-none text-foreground/90 placeholder:text-muted-foreground"
         placeholder={tPhaseF('phaseF.componentsNoteContentAreaTaskBlockTaskBlockRenderer.taskName')}
+        aria-label={tPhaseF('phaseF.componentsNoteContentAreaTaskBlockTaskBlockRenderer.taskName')}
       />
     ),
     [editTitle, handleTitleBlur, handleTitleKeyDown, tPhaseF, handleTitleChange]
@@ -562,7 +563,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({
         contentEditable={false}
         className={cn(
           'flex items-center gap-3 rounded-md bg-stone-100 py-[7px] text-sm text-muted-foreground opacity-60 dark:bg-stone-800/50',
-          parentTaskId && 'ml-7'
+          parentTaskId && 'ms-7'
         )}
       >
         <AlertTriangle className="size-4 text-amber-500" />
@@ -573,7 +574,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({
         <button
           type="button"
           onClick={handleRemoveGhost}
-          className="ml-auto rounded p-0.5 hover:bg-stone-200 dark:hover:bg-stone-700"
+          className="ms-auto rounded p-0.5 hover:bg-stone-200 dark:hover:bg-stone-700"
         >
           <X className="size-3" />
         </button>
@@ -592,7 +593,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({
         contentEditable={false}
         className={cn(
           'flex items-center gap-3 rounded-md py-[7px] text-sm text-muted-foreground',
-          parentTaskId && 'ml-7'
+          parentTaskId && 'ms-7'
         )}
       >
         <Loader2 className="size-4 animate-spin" />
@@ -609,7 +610,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({
       className="w-full outline-none [&_*]:outline-none"
     >
       <style>{BLOCKNOTE_OVERRIDES}</style>
-      <div className={cn(parentTaskId && 'ml-7')}>
+      <div className={cn(parentTaskId && 'ms-7')}>
         <TaskRow
           task={rowTask}
           project={rowProject}

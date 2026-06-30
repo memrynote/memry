@@ -12,6 +12,13 @@ import { ExternalLink, AlertCircle, Loader2 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import type { SocialMetadata, InboxMetadata } from '@/types'
 import { useT } from '@memry/i18n/renderer'
+import {
+  type SocialPlatform,
+  detectPlatformFromUrl,
+  extractHandleFromUrl,
+  getPlatformName,
+  getPlatformColor
+} from './social-card-utils'
 
 // ============================================================================
 // Types
@@ -39,70 +46,6 @@ interface SocialPreviewProps {
   sourceUrl: string | null
   processingStatus: string
   metadata: InboxMetadata | null
-}
-
-// ============================================================================
-// Platform Detection from URL
-// ============================================================================
-
-type SocialPlatform = 'twitter' | 'other'
-
-function getHostname(url: string | null): string | null {
-  if (!url) return null
-
-  try {
-    return new URL(url).hostname.toLowerCase() || null
-  } catch {
-    if (typeof document === 'undefined') return null
-
-    const anchor = document.createElement('a')
-    anchor.href = url
-    return anchor.hostname.toLowerCase() || null
-  }
-}
-
-function getPathname(url: string | null): string {
-  if (!url) return ''
-
-  try {
-    return new URL(url).pathname
-  } catch {
-    if (typeof document === 'undefined') return ''
-
-    const anchor = document.createElement('a')
-    anchor.href = url
-    return anchor.pathname
-  }
-}
-
-function isTwitterHostname(hostname: string | null): boolean {
-  if (!hostname) return false
-
-  return (
-    hostname === 'twitter.com' ||
-    hostname.endsWith('.twitter.com') ||
-    hostname === 'x.com' ||
-    hostname.endsWith('.x.com')
-  )
-}
-
-function detectPlatformFromUrl(url: string | null): SocialPlatform {
-  if (isTwitterHostname(getHostname(url))) return 'twitter'
-
-  return 'other'
-}
-
-/**
- * Extract handle from URL
- */
-function extractHandleFromUrl(url: string | null): string {
-  if (!url) return ''
-
-  const hostname = getHostname(url)
-  if (!isTwitterHostname(hostname)) return ''
-
-  const pathParts = getPathname(url).split('/').filter(Boolean)
-  return pathParts[0] ? `@${pathParts[0]}` : ''
 }
 
 // ============================================================================
@@ -137,33 +80,21 @@ const PlatformIcon = ({
   }
 }
 
-/**
- * Get platform display name
- */
-function getPlatformName(platform: SocialPlatform): string {
-  switch (platform) {
-    case 'twitter':
-      return 'X'
-    default:
-      return 'Social'
-  }
-}
-
-/**
- * Get platform color for accents
- */
-function getPlatformColor(platform: SocialPlatform): string {
-  switch (platform) {
-    case 'twitter':
-      return 'text-[#1DA1F2]'
-    default:
-      return 'text-[var(--muted-foreground)]'
-  }
-}
-
 // ============================================================================
 // Author Avatar Component
 // ============================================================================
+
+const sizeClasses = {
+  sm: 'size-6',
+  md: 'size-10',
+  lg: 'size-14'
+}
+
+const textSizeClasses = {
+  sm: 'text-xs',
+  md: 'text-base',
+  lg: 'text-xl'
+}
 
 const AuthorAvatar = ({
   avatarUrl,
@@ -181,18 +112,6 @@ const AuthorAvatar = ({
   if (storedAvatarUrl !== avatarUrl) {
     setStoredAvatarUrl(avatarUrl)
     setImageError(false)
-  }
-
-  const sizeClasses = {
-    sm: 'size-6',
-    md: 'size-10',
-    lg: 'size-14'
-  }
-
-  const textSizeClasses = {
-    sm: 'text-xs',
-    md: 'text-base',
-    lg: 'text-xl'
   }
 
   // Show avatar image if available
@@ -505,13 +424,5 @@ export const SocialCardContent = ({
   }
 }
 
-export {
-  SocialPreview,
-  PlatformIcon,
-  AuthorAvatar,
-  getPlatformName,
-  getPlatformColor,
-  detectPlatformFromUrl,
-  extractHandleFromUrl
-}
+export { SocialPreview, PlatformIcon, AuthorAvatar }
 export type { SocialCardContentProps, SocialPreviewProps }

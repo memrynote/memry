@@ -84,6 +84,7 @@ export function FilePreviewCard({
       </div>
 
       <button
+        type="button"
         onClick={onClear}
         className="shrink-0 rounded p-0.5 text-muted-foreground/30 hover:text-foreground/60 transition-colors"
         aria-label={tPhaseF('phaseF.componentsQuickCaptureImagePreview.removeAttachment')}

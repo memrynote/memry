@@ -3,15 +3,13 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ListView } from './list-view'
+import { AuthorAvatar, SocialCardContent, SocialPreview } from './social-card'
 import {
-  AuthorAvatar,
-  SocialCardContent,
-  SocialPreview,
   detectPlatformFromUrl,
   extractHandleFromUrl,
   getPlatformColor,
   getPlatformName
-} from './social-card'
+} from './social-card-utils'
 import { OutlineInfoPanel } from './shared/outline-info-panel'
 
 vi.mock('@memry/i18n/renderer', () => ({

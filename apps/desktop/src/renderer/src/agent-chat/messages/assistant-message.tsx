@@ -11,7 +11,8 @@ import {
 } from '@/components/ai-elements/message'
 import { Source, Sources, SourcesContent, SourcesTrigger } from '@/components/ai-elements/sources'
 import { cn } from '@/lib/utils'
-import { MemryLink, MemryLinkIcon, memryLinkClassName, useMemryLinkNavigation } from './memry-links'
+import { MemryLink, MemryLinkIcon, useMemryLinkNavigation } from './memry-links'
+import { memryLinkClassName } from './memry-links-constants'
 
 type AssistantMessageModel = Message & {
   content: Extract<Message['content'], { role: 'assistant' }>

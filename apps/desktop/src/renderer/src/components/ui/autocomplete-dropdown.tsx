@@ -50,8 +50,8 @@ export function AutocompleteDropdown({
   className
 }: AutocompleteDropdownProps): React.JSX.Element | null {
   const { t: tPhaseF } = useT('common')
-  const listRef = useRef<HTMLUListElement>(null)
-  const selectedRef = useRef<HTMLLIElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
+  const selectedRef = useRef<HTMLDivElement>(null)
 
   // Auto-scroll selected item into view
   useEffect(() => {
@@ -76,7 +76,7 @@ export function AutocompleteDropdown({
         className
       )}
     >
-      <ul
+      <div
         ref={listRef}
         className="max-h-48 overflow-y-auto py-1"
         role="listbox"
@@ -87,7 +87,7 @@ export function AutocompleteDropdown({
           const isFunction = suggestion.type === 'function'
 
           return (
-            <li
+            <div
               key={suggestion.label}
               ref={isSelected ? selectedRef : null}
               role="option"
@@ -124,10 +124,10 @@ export function AutocompleteDropdown({
               {suggestion.signature && (
                 <span className="text-muted-foreground">{suggestion.signature}</span>
               )}
-            </li>
+            </div>
           )
         })}
-      </ul>
+      </div>
 
       {/* Hint footer */}
       <div className="px-3 py-1 text-[10px] text-muted-foreground border-t bg-muted/30">

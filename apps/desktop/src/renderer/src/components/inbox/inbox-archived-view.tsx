@@ -57,7 +57,7 @@ function ArchivedListItem({
   }
 
   return (
-    <div
+    <li
       className={cn(
         'group relative w-full',
         'flex items-center',
@@ -69,7 +69,6 @@ function ArchivedListItem({
         'hover:bg-muted/50',
         isFocused && 'bg-muted'
       )}
-      role="listitem"
       aria-label={t('list.itemAria', { type: typeLabels[item.type], title: displayTitle })}
       onClick={() => onPreview(item.id)}
       data-item-id={item.id}
@@ -97,7 +96,7 @@ function ArchivedListItem({
 
       <span
         className={cn(
-          'shrink-0 w-9 text-right tabular-nums',
+          'shrink-0 w-9 text-end tabular-nums',
           densityConfig.metaSize,
           'text-muted-foreground/60'
         )}
@@ -151,7 +150,7 @@ function ArchivedListItem({
           {isDeleting ? <Loader2 className="size-3.5" /> : <Trash2 className="size-3.5" />}
         </button>
       </div>
-    </div>
+    </li>
   )
 }
 
@@ -276,7 +275,7 @@ export function InboxArchivedView({
             </p>
           </div>
         ) : (
-          <div className="space-y-1" role="list" aria-label={t('view.archivedItemsAria')}>
+          <ul className="space-y-1" aria-label={t('view.archivedItemsAria')}>
             {groupedItems.map((group) => {
               const sectionTitle =
                 group.period === 'TODAY'
@@ -314,7 +313,7 @@ export function InboxArchivedView({
                 </InboxListSection>
               )
             })}
-          </div>
+          </ul>
         )}
 
         {hasMore && (

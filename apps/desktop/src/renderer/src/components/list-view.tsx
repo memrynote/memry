@@ -50,7 +50,7 @@ const ListView = ({
   isPreviewOpen = false
 }: ListViewProps): React.JSX.Element => {
   const { t } = useT('inbox')
-  const containerRef = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLUListElement>(null)
   const groupedItems = groupItemsByTimePeriod(items)
   const densityConfig = DENSITY_CONFIG[density]
 
@@ -413,10 +413,9 @@ const ListView = ({
   )
 
   return (
-    <div
+    <ul
       ref={containerRef}
       className={densityConfig.sectionSpacing}
-      role="list"
       aria-label={t('list.ariaLabel')}
     >
       {/* Time-grouped items */}
@@ -465,7 +464,7 @@ const ListView = ({
           </InboxListSection>
         )
       })}
-    </div>
+    </ul>
   )
 }
 

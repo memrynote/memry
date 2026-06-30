@@ -25,9 +25,7 @@ import {
   Video
 } from '@/lib/icons'
 import { SidebarCalendar, SidebarJournal, SidebarTasks } from '@/lib/icons/sidebar-nav-icons'
-
-const memryLinkClassName =
-  'text-[#81B4E5] hover:underline hover:decoration-dotted underline-offset-2'
+import { memryLinkClassName } from './memry-links-constants'
 
 type OpenableTab = Omit<Tab, 'id' | 'openedAt' | 'lastAccessedAt'>
 
@@ -371,5 +369,3 @@ function textFromLink(link: HTMLAnchorElement): string | undefined {
   const text = link.querySelector('[data-agent-link-label]')?.textContent?.trim()
   return text || undefined
 }
-
-export { memryLinkClassName }

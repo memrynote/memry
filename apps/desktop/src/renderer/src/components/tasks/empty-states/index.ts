@@ -1,3 +1,4 @@
 export { CelebrationEmptyState, SimpleEmptyState, PlanningEmptyState } from './section-empty-states'
 
-export { CollapsedEmptySection, getCollapsedEmptyProps } from './collapsed-empty-section'
+export { CollapsedEmptySection } from './collapsed-empty-section'
+export { getCollapsedEmptyProps } from './collapsed-empty-presets'

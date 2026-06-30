@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Loader2 } from '@/lib/icons'
 
 import {
@@ -26,12 +26,16 @@ export function DownloadVaultDialog({ vault, onClose }: DownloadVaultDialogProps
   const [parentPath, setParentPath] = useState<string | null>(null)
   const [downloading, setDownloading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [prevVaultUuid, setPrevVaultUuid] = useState(vault?.vaultUuid)
 
-  useEffect(() => {
+  // Reset transient state when the dialog switches to a different vault
+  // (React's "adjust state during render" pattern instead of an effect).
+  if (vault?.vaultUuid !== prevVaultUuid) {
+    setPrevVaultUuid(vault?.vaultUuid)
     setParentPath(null)
     setDownloading(false)
     setError(null)
-  }, [vault?.vaultUuid])
+  }
 
   if (!vault) return null
 
@@ -47,10 +51,7 @@ export function DownloadVaultDialog({ vault, onClose }: DownloadVaultDialogProps
     setDownloading(true)
     setError(null)
     try {
-      const result = await window.api.vault.downloadRemote(
-        vault.vaultUuid,
-        parentPath ?? undefined
-      )
+      const result = await window.api.vault.downloadRemote(vault.vaultUuid, parentPath ?? undefined)
       if (!result.success) {
         setError(result.error ?? t('phaseF.componentsVaultSwitcher.downloadFailed'))
         setDownloading(false)

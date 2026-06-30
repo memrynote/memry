@@ -73,9 +73,9 @@ export function InboxStatsCards({ stats }: InboxStatsCardsProps): React.JSX.Elem
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      {cards.map((card, index) => (
+      {cards.map((card) => (
         <div
-          key={index}
+          key={card.label}
           className={cn(
             'p-4 rounded-xl border border-border/50',
             'flex flex-col justify-between h-28',

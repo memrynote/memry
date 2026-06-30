@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { HelmetProvider } from 'react-helmet-async'
 import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
@@ -86,10 +86,8 @@ function ScrollToHash() {
 
 function ScrollDepthAnalytics() {
   const { pathname } = useLocation()
-  const firedDepthsRef = useRef<Set<number>>(new Set())
-
   useEffect(() => {
-    firedDepthsRef.current = new Set()
+    const firedDepths = new Set<number>()
     let frame = 0
 
     const measure = () => {
@@ -98,8 +96,8 @@ function ScrollDepthAnalytics() {
       const depth = maxScroll <= 0 ? 100 : Math.min((window.scrollY / maxScroll) * 100, 100)
 
       for (const { depth: threshold, event } of SCROLL_DEPTH_EVENTS) {
-        if (depth >= threshold && !firedDepthsRef.current.has(threshold)) {
-          firedDepthsRef.current.add(threshold)
+        if (depth >= threshold && !firedDepths.has(threshold)) {
+          firedDepths.add(threshold)
           trackLandingEvent(event, `scroll:${threshold}`)
         }
       }

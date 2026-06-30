@@ -19,8 +19,8 @@ export const HintOverlay = (): React.JSX.Element | null => {
         pointerEvents: 'none'
       }}
     >
-      {state.hints.map((hint, i) => (
-        <HintBadge key={i} hint={hint} typedChars={state.typedChars} />
+      {state.hints.map((hint) => (
+        <HintBadge key={hint.label} hint={hint} typedChars={state.typedChars} />
       ))}
     </div>,
     document.body

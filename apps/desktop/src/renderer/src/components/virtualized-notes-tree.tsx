@@ -467,6 +467,8 @@ interface NoteRowProps {
   onDrop: (e: React.DragEvent) => void
 }
 
+const NOTE_ICON_SPACER = <div className="h-4 w-4" />
+
 function NoteRow({
   item,
   isSelected,
@@ -578,7 +580,7 @@ function NoteRow({
 
           {/* Note icon or emoji — click to set a custom icon/emoji */}
           <IconPickerButton
-            leading={<div className="h-4 w-4" />}
+            leading={NOTE_ICON_SPACER}
             hasIcon={!!item.note.emoji}
             onIconChange={(icon) => onSetNoteIcon?.(item.note.id, icon)}
             ariaLabel={t('tree.actions.setIcon')}

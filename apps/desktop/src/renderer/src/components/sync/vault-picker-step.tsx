@@ -12,6 +12,9 @@ interface VaultPickerStepProps {
   onError: (error: string) => void
 }
 
+const formatDate = (createdAt?: number | null): string =>
+  createdAt ? new Date(createdAt * 1000).toLocaleDateString() : ''
+
 /**
  * Multi-vault linking picker (shown when the linked account has 2+ vaults).
  * The user picks a parent folder and checks which server vault(s) to pull;
@@ -73,21 +76,17 @@ export function VaultPickerStep({
     }
   }, [folderPath, selected, vaults, submitting, sessionId, onError, t])
 
-  const formatDate = (createdAt?: number | null): string =>
-    createdAt ? new Date(createdAt * 1000).toLocaleDateString() : ''
-
   if (submitting) {
     return (
-      <div
+      <output
         className="wizard-step-enter flex flex-col items-center justify-center py-12 gap-4"
-        role="status"
         aria-live="polite"
       >
         <Loader2 className="w-10 h-10 animate-spin text-[var(--tint)]" aria-hidden="true" />
         <p className="font-serif text-[15px] text-muted-foreground">
           {t('setup.linking.pendingSuccess')}
         </p>
-      </div>
+      </output>
     )
   }
 

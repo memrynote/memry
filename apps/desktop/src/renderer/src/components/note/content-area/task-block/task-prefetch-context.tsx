@@ -49,21 +49,23 @@ export function TaskPrefetchProvider({
 }): ReactElement {
   const [tasksById, setTasksById] = useState<Map<string, Task>>(() => new Map())
   const [status, setStatus] = useState<'loading' | 'ready'>('loading')
+  const [prevNoteId, setPrevNoteId] = useState(noteId)
 
-  // Data-fetch effect: linked tasks must be re-fetched whenever the note
-  // changes, and the cache state they populate isn't derivable during render —
-  // the legitimate exception to no-adjust-state-on-prop-change.
-  /* eslint-disable react-you-might-not-need-an-effect/no-adjust-state-on-prop-change */
-  useEffect(() => {
-    let cancelled = false
+  // Clear the cache synchronously when the note changes, at render time rather
+  // than in an effect, so blocks never read another note's tasks for a frame.
+  if (noteId !== prevNoteId) {
+    setPrevNoteId(noteId)
     setTasksById(new Map())
+    setStatus(noteId ? 'loading' : 'ready')
+  }
 
-    if (!noteId) {
-      setStatus('ready')
-      return
-    }
+  // Data-fetch effect: linked tasks are re-fetched whenever the note changes;
+  // the cache they populate isn't derivable during render. Only the async
+  // callbacks set state here, so this is not a synchronous prop-driven reset.
+  useEffect(() => {
+    if (!noteId) return
 
-    setStatus('loading')
+    let cancelled = false
     void (async () => {
       try {
         const tasks = await tasksService.getLinkedTasks(noteId)
@@ -81,7 +83,6 @@ export function TaskPrefetchProvider({
       cancelled = true
     }
   }, [noteId])
-  /* eslint-enable react-you-might-not-need-an-effect/no-adjust-state-on-prop-change */
 
   const value = useMemo<TaskPrefetchValue>(
     () => ({ status, getCached: (taskId: string) => tasksById.get(taskId) }),

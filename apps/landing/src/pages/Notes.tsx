@@ -312,14 +312,16 @@ function SurfaceCard({
   )
 }
 
+const SLASH_COMMAND_ITEMS: { icon: LucideIcon; label: string; hint: string; active?: boolean }[] = [
+  { icon: Type, label: 'Heading 1', hint: 'H1' },
+  { icon: ListChecks, label: 'Task list', hint: '/task', active: true },
+  { icon: TableIcon, label: 'Table', hint: '/table' },
+  { icon: Code, label: 'Code block', hint: '```' },
+  { icon: Quote, label: 'Quote', hint: '/quote' }
+]
+
 function SlashCommandMock() {
-  const items: { icon: LucideIcon; label: string; hint: string; active?: boolean }[] = [
-    { icon: Type, label: 'Heading 1', hint: 'H1' },
-    { icon: ListChecks, label: 'Task list', hint: '/task', active: true },
-    { icon: TableIcon, label: 'Table', hint: '/table' },
-    { icon: Code, label: 'Code block', hint: '```' },
-    { icon: Quote, label: 'Quote', hint: '/quote' }
-  ]
+  const items = SLASH_COMMAND_ITEMS
   return (
     <SurfaceCard
       label="Slash commands"
@@ -372,17 +374,26 @@ function BubbleMenuMock() {
             </span>
             <span className="absolute -top-12 left-1/2 -translate-x-1/2 rounded-full border border-border/70 bg-card px-2 py-1.5 shadow-card">
               <span className="flex items-center gap-1 text-[12px] font-medium text-ink">
-                <button className="rounded px-1.5 py-0.5 font-mono-accent hover:bg-paper-alt">
+                <button
+                  type="button"
+                  className="rounded px-1.5 py-0.5 font-mono-accent hover:bg-paper-alt"
+                >
                   B
                 </button>
-                <button className="rounded px-1.5 py-0.5 font-mono-accent italic hover:bg-paper-alt">
+                <button
+                  type="button"
+                  className="rounded px-1.5 py-0.5 font-mono-accent italic hover:bg-paper-alt"
+                >
                   I
                 </button>
                 <span className="h-3 w-px bg-border" />
-                <button className="rounded px-1.5 py-0.5 text-terracotta hover:bg-paper-alt">
+                <button
+                  type="button"
+                  className="rounded px-1.5 py-0.5 text-terracotta hover:bg-paper-alt"
+                >
                   <Link2 className="h-3.5 w-3.5" />
                 </button>
-                <button className="rounded px-1.5 py-0.5 hover:bg-paper-alt">
+                <button type="button" className="rounded px-1.5 py-0.5 hover:bg-paper-alt">
                   <Hash className="h-3.5 w-3.5" />
                 </button>
               </span>
@@ -464,12 +475,14 @@ function ConnectEveryIdea() {
   )
 }
 
+const WIKI_LINK_SUGGESTIONS = [
+  { title: 'zettelkasten-method', hint: 'Aliases: zk, slip-box' },
+  { title: 'zone-of-proximal-development', hint: 'Tags: #learning' },
+  { title: 'zero-to-one — Peter Thiel', hint: 'Folder: reading-notes' }
+]
+
 function WikiLinkMock() {
-  const suggestions = [
-    { title: 'zettelkasten-method', hint: 'Aliases: zk, slip-box' },
-    { title: 'zone-of-proximal-development', hint: 'Tags: #learning' },
-    { title: 'zero-to-one — Peter Thiel', hint: 'Folder: reading-notes' }
-  ]
+  const suggestions = WIKI_LINK_SUGGESTIONS
   return (
     <motion.article
       {...fadeUp}
@@ -502,6 +515,7 @@ function WikiLinkMock() {
           </p>
           {suggestions.map((s, i) => (
             <button
+              type="button"
               key={s.title}
               className={cn(
                 'flex w-full items-center justify-between gap-3 px-4 py-2.5 text-start text-sm',
@@ -548,21 +562,24 @@ function BacklinksPanelMock() {
   )
 }
 
-function TagClusterMock() {
-  const tags = [
-    { label: '#pkm', count: 38, tone: 'terracotta' },
-    { label: '#writing', count: 24, tone: 'sage' },
-    { label: '#reading', count: 19, tone: 'amber' },
-    { label: '#research', count: 12, tone: 'terracotta' },
-    { label: '#daily', count: 117, tone: 'sage' },
-    { label: '#ideas', count: 64, tone: 'terracotta' }
-  ] as const
+const TAG_CLUSTER_TAGS = [
+  { label: '#pkm', count: 38, tone: 'terracotta' },
+  { label: '#writing', count: 24, tone: 'sage' },
+  { label: '#reading', count: 19, tone: 'amber' },
+  { label: '#research', count: 12, tone: 'terracotta' },
+  { label: '#daily', count: 117, tone: 'sage' },
+  { label: '#ideas', count: 64, tone: 'terracotta' }
+] as const
 
-  const toneClass: Record<(typeof tags)[number]['tone'], string> = {
-    terracotta: 'border-terracotta/30 bg-terracotta/8 text-terracotta',
-    sage: 'border-sage/30 bg-sage/10 text-sage',
-    amber: 'border-amber-500/30 bg-amber-500/10 text-amber-700'
-  }
+const TAG_CLUSTER_TONE_CLASS: Record<(typeof TAG_CLUSTER_TAGS)[number]['tone'], string> = {
+  terracotta: 'border-terracotta/30 bg-terracotta/8 text-terracotta',
+  sage: 'border-sage/30 bg-sage/10 text-sage',
+  amber: 'border-amber-500/30 bg-amber-500/10 text-amber-700'
+}
+
+function TagClusterMock() {
+  const tags = TAG_CLUSTER_TAGS
+  const toneClass = TAG_CLUSTER_TONE_CLASS
 
   return (
     <motion.article

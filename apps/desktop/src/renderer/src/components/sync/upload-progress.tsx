@@ -31,7 +31,7 @@ export const UploadProgress = memo(function UploadProgress({
   const isActive = !isComplete && !isFailed
 
   return (
-    <div
+    <output
       className={cn(
         'flex items-center gap-2.5 rounded-md border px-3 py-2 text-sm',
         isComplete && 'border-green-500/30 bg-green-500/5',
@@ -39,7 +39,6 @@ export const UploadProgress = memo(function UploadProgress({
         isActive && 'border-border bg-muted/30',
         className
       )}
-      role="status"
       aria-label={`Upload ${fileName}: ${STATUS_LABELS[status] ?? status} ${progress}%`}
     >
       {isComplete ? (
@@ -91,6 +90,6 @@ export const UploadProgress = memo(function UploadProgress({
           <X className="h-3 w-3" aria-hidden="true" />
         </Button>
       )}
-    </div>
+    </output>
   )
 })

@@ -111,12 +111,6 @@ export function ReviewRail({ review, targetId }: ReviewRailProps) {
     return () => syncInlineHoverClass(null)
   }, [review.hoveredMarkId])
 
-  useEffect(() => {
-    if (editingMarkId && !review.marks.some((mark) => mark.id === editingMarkId)) {
-      setEditingMarkId(null)
-    }
-  }, [editingMarkId, review.marks])
-
   return (
     <aside aria-label={t('comments.railAria')} data-marquee-ignore className="review-rail">
       <div ref={innerRef} className="review-rail-inner">

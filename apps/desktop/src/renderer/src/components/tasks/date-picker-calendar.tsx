@@ -1,10 +1,10 @@
 import { useState, useMemo, useCallback } from 'react'
-import { getISOWeek } from 'date-fns'
 
 import { ChevronLeft, ChevronRight } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { withAlpha } from '@/lib/color'
 import { useT } from '@memry/i18n/renderer'
+import { getISOWeekNumber } from './date-picker-calendar-utils'
 
 interface ActivityData {
   [dateISO: string]: number
@@ -21,10 +21,6 @@ interface DatePickerCalendarProps {
   className?: string
   showWeekNumbers?: boolean
   onTodayClick?: () => void
-}
-
-export function getISOWeekNumber(date: Date): number {
-  return getISOWeek(date)
 }
 
 const ACTIVITY_DOT_COLORS = [

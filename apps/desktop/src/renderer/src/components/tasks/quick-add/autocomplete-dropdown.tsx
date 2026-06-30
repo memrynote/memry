@@ -26,16 +26,19 @@ interface AutocompleteDropdownProps {
 // AUTOCOMPLETE HEADER
 // ============================================================================
 
+const AUTOCOMPLETE_HEADERS: Record<
+  NonNullable<AutocompleteType>,
+  { icon: React.ReactNode; label: string }
+> = {
+  date: { icon: <Calendar className="size-3.5" />, label: 'Due Date' },
+  priority: { icon: <Flag className="size-3.5" />, label: 'Priority' },
+  project: { icon: <Folder className="size-3.5" />, label: 'Project' }
+}
+
 const AutocompleteHeader = ({ type }: { type: AutocompleteType }): React.JSX.Element | null => {
   if (!type) return null
 
-  const headers: Record<NonNullable<AutocompleteType>, { icon: React.ReactNode; label: string }> = {
-    date: { icon: <Calendar className="size-3.5" />, label: 'Due Date' },
-    priority: { icon: <Flag className="size-3.5" />, label: 'Priority' },
-    project: { icon: <Folder className="size-3.5" />, label: 'Project' }
-  }
-
-  const header = headers[type]
+  const header = AUTOCOMPLETE_HEADERS[type]
 
   return (
     <div className="flex items-center py-2 px-3 gap-1.5 border-b border-border">
@@ -84,7 +87,7 @@ const OptionItem = ({
         {option.label}
       </span>
       {showValue && (
-        <span className="ml-auto text-[11px] leading-3.5 tabular-nums text-text-tertiary">
+        <span className="ms-auto text-[11px] leading-3.5 tabular-nums text-text-tertiary">
           {option.value}
         </span>
       )}
@@ -165,7 +168,7 @@ export const AutocompleteDropdown = ({
   return (
     <div
       className={cn(
-        'absolute top-full left-0 mt-1 w-[220px]',
+        'absolute top-full start-0 mt-1 w-[220px]',
         'bg-popover rounded-md border border-border shadow-[var(--shadow-card-hover)]',
         'z-50 overflow-clip',
         'text-[12px] leading-4 [font-synthesis:none]',

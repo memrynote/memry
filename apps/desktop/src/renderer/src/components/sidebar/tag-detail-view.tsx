@@ -206,7 +206,10 @@ export function TagDetailView({ tag, color, className }: TagDetailViewProps): Re
           {tag.includes('/') ? (
             <span className="inline-flex items-center gap-0.5 align-middle">
               {tag.split('/').map((segment, i, arr) => (
-                <span key={i} className="inline-flex items-center gap-0.5">
+                <span
+                  key={arr.slice(0, i + 1).join('/')}
+                  className="inline-flex items-center gap-0.5"
+                >
                   {i > 0 && <span className="text-muted-foreground/40 text-xs">/</span>}
                   <span className={i < arr.length - 1 ? 'text-muted-foreground' : ''}>
                     {segment}
@@ -385,6 +388,7 @@ function NoteItem({ note, isPinned, onClick, onPin, onUnpin }: NoteItemProps): R
           <Tooltip>
             <TooltipTrigger asChild>
               <button
+                type="button"
                 onClick={handlePinClick}
                 className={cn(
                   'flex size-5 items-center justify-center rounded-sm transition-all hover:bg-accent',
@@ -498,6 +502,7 @@ function TagOverflowMenu({
                 return (
                   <button
                     key={c}
+                    type="button"
                     className={cn(
                       'w-6 h-6 rounded-full border-2 transition-transform hover:scale-110',
                       c === color ? 'ring-2 ring-primary ring-offset-2' : ''
@@ -506,6 +511,7 @@ function TagOverflowMenu({
                     onClick={() => void handleColorChange(c)}
                     disabled={isUpdatingColor}
                     title={c}
+                    aria-label={c}
                   />
                 )
               })}

@@ -296,7 +296,7 @@ function VersionHistorySession({
             onClick={() => setShowPreview(!showPreview)}
             disabled={!selectedVersion}
           >
-            {showPreview ? <EyeOff className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
+            {showPreview ? <EyeOff className="me-2 h-4 w-4" /> : <Eye className="me-2 h-4 w-4" />}
             {showPreview ? t('versionHistory.hidePreview') : t('versionHistory.showPreview')}
           </Button>
         </div>
@@ -341,10 +341,11 @@ function VersionHistorySession({
 
                     return (
                       <button
+                        type="button"
                         key={version.id}
                         onClick={() => void handleSelectVersion(version.id)}
                         className={cn(
-                          'w-full text-left px-3 py-2.5 rounded-md transition-colors',
+                          'w-full text-start px-3 py-2.5 rounded-md transition-colors',
                           'hover:bg-muted/50 focus-visible:outline-none',
                           isSelected && 'bg-muted'
                         )}
@@ -437,7 +438,7 @@ function VersionHistorySession({
                           size="sm"
                           onClick={() => setRestoreDialogOpen(true)}
                         >
-                          <RotateCcw className="mr-2 h-4 w-4" />
+                          <RotateCcw className="me-2 h-4 w-4" />
                           {t('versionHistory.restore')}
                         </Button>
                       </div>
@@ -477,12 +478,12 @@ function VersionHistorySession({
             <AlertDialogAction onClick={() => void handleRestore()} disabled={restoring}>
               {restoring ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="me-2 h-4 w-4 animate-spin" />
                   {t('versionHistory.restoring')}
                 </>
               ) : (
                 <>
-                  <RotateCcw className="mr-2 h-4 w-4" />
+                  <RotateCcw className="me-2 h-4 w-4" />
                   {t('versionHistory.restore')}
                 </>
               )}
@@ -504,7 +505,7 @@ function VersionHistorySession({
               onClick={() => void handleDelete()}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              <Trash2 className="mr-2 h-4 w-4" />
+              <Trash2 className="me-2 h-4 w-4" />
               {tCommon('button.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -156,9 +156,8 @@ export function FolderViewEmptyState({
   const description = variant === 'error' && errorMessage ? errorMessage : config.description
 
   return (
-    <div
+    <output
       className={cn('flex flex-col items-center justify-center py-16 px-4 text-center', className)}
-      role="status"
       aria-live="polite"
     >
       {/* Icon */}
@@ -179,7 +178,7 @@ export function FolderViewEmptyState({
           {config.actionLabel}
         </Button>
       )}
-    </div>
+    </output>
   )
 }
 

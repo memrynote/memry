@@ -69,6 +69,7 @@ export function PanelResizeRail({
 
   return (
     <button
+      type="button"
       aria-label={ariaLabel}
       tabIndex={-1}
       onMouseDown={handleMouseDown}

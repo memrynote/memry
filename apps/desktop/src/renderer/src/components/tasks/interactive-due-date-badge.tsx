@@ -18,6 +18,19 @@ interface InteractiveDueDateBadgeProps {
   className?: string
 }
 
+const handleTriggerClick = (e: React.MouseEvent): void => {
+  e.stopPropagation()
+}
+
+const badgeStyles: Record<string, string> = {
+  overdue: 'text-task-due-overdue bg-task-due-overdue-bg/60 border-task-due-overdue/40',
+  today: 'text-task-due-today bg-task-due-today-bg/60 border-task-due-today/40',
+  tomorrow: 'text-task-due-tomorrow bg-task-due-tomorrow-bg/60 border-task-due-tomorrow/40',
+  upcoming: 'text-task-due-upcoming bg-task-due-upcoming/[0.06] border-task-due-upcoming/40',
+  later: 'text-text-tertiary bg-foreground/[0.03] dark:bg-foreground/[0.06] border-foreground/10',
+  none: 'text-text-tertiary bg-foreground/[0.03] dark:bg-foreground/[0.06] border-foreground/10'
+}
+
 export const InteractiveDueDateBadge = ({
   dueDate,
   dueTime,
@@ -41,10 +54,6 @@ export const InteractiveDueDateBadge = ({
     return dueTime ? `${short} ${formatTime(dueTime, clockFormat)}` : short
   }, [dueDate, dueTime, clockFormat])
 
-  const handleTriggerClick = (e: React.MouseEvent): void => {
-    e.stopPropagation()
-  }
-
   const handleSelect = React.useCallback(
     (date: Date | null): void => {
       onDateChange(date)
@@ -55,15 +64,6 @@ export const InteractiveDueDateBadge = ({
   )
 
   const dateStatus = status?.status ?? 'none'
-
-  const badgeStyles: Record<string, string> = {
-    overdue: 'text-task-due-overdue bg-task-due-overdue-bg/60 border-task-due-overdue/40',
-    today: 'text-task-due-today bg-task-due-today-bg/60 border-task-due-today/40',
-    tomorrow: 'text-task-due-tomorrow bg-task-due-tomorrow-bg/60 border-task-due-tomorrow/40',
-    upcoming: 'text-task-due-upcoming bg-task-due-upcoming/[0.06] border-task-due-upcoming/40',
-    later: 'text-text-tertiary bg-foreground/[0.03] dark:bg-foreground/[0.06] border-foreground/10',
-    none: 'text-text-tertiary bg-foreground/[0.03] dark:bg-foreground/[0.06] border-foreground/10'
-  }
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>

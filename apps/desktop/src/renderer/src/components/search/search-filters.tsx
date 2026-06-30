@@ -122,7 +122,7 @@ export function SearchFilters({
             >
               <Icon className="size-3.5" />
               <span>{label}</span>
-              <kbd className="text-[9px] opacity-50 ml-0.5">{shortcut}</kbd>
+              <kbd className="text-[9px] opacity-50 ms-0.5">{shortcut}</kbd>
             </button>
           )
         })}
@@ -130,7 +130,7 @@ export function SearchFilters({
         <button
           type="button"
           onClick={() => setExpanded((p) => !p)}
-          className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs ml-auto
+          className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs ms-auto
             transition-colors duration-75
             ${
               expanded
@@ -180,6 +180,7 @@ export function SearchFilters({
             <div className="relative">
               <input
                 type="text"
+                aria-label={tPhaseF('phaseF.componentsSearchSearchFilters.filterByTag')}
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}
                 placeholder={tPhaseF('phaseF.componentsSearchSearchFilters.filterByTag')}
@@ -197,7 +198,7 @@ export function SearchFilters({
                       key={tag}
                       type="button"
                       onClick={() => handleTagSelect(tag)}
-                      className="block w-full text-left px-2 py-1 text-xs text-muted-foreground
+                      className="block w-full text-start px-2 py-1 text-xs text-muted-foreground
                         hover:bg-muted"
                     >
                       {tag}

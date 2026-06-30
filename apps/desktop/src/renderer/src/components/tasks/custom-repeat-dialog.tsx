@@ -75,7 +75,7 @@ const DayOfWeekPicker = ({ selectedDays, onChange }: DayOfWeekPickerProps): Reac
       <div className="flex gap-1">
         {SHORT_DAY_NAMES.map((name, index) => (
           <button
-            key={index}
+            key={name}
             type="button"
             onClick={() => handleToggleDay(index)}
             className={cn(
@@ -194,7 +194,7 @@ const MonthlyRepeatOptions = ({
           </SelectTrigger>
           <SelectContent>
             {DAY_NAMES.map((name, index) => (
-              <SelectItem key={index} value={index.toString()}>
+              <SelectItem key={name} value={index.toString()}>
                 {name}
               </SelectItem>
             ))}
@@ -265,11 +265,11 @@ const RepeatEndOptions = ({
               size="sm"
               disabled={endType !== 'date'}
               className={cn(
-                'w-[140px] justify-start text-left font-normal',
+                'w-[140px] justify-start text-start font-normal',
                 !endDate && 'text-muted-foreground'
               )}
             >
-              <CalendarIcon className="mr-2 size-4" />
+              <CalendarIcon className="me-2 size-4" />
               {endDate ? format(endDate, 'MMM d, yyyy') : 'Pick a date'}
             </Button>
           </PopoverTrigger>
@@ -346,12 +346,12 @@ const RepeatPreview = ({ config, startDate }: RepeatPreviewProps): React.JSX.Ele
       <p className="text-xs text-muted-foreground">{previewHeader}</p>
       <ul className="flex flex-col gap-1 text-sm">
         {occurrences.map((date, index) => (
-          <li key={index} className="flex items-center gap-2">
+          <li key={date.getTime()} className="flex items-center gap-2">
             <span className="text-muted-foreground">•</span>
             <span>
               {format(date, 'EEE, MMM d, yyyy')}
               {config.endType === 'count' && config.endCount && (
-                <span className="text-muted-foreground ml-2">
+                <span className="text-muted-foreground ms-2">
                   ({index + 1} {tPhaseF('phaseF.componentsTasksCustomRepeatDialog.of')}
                   {config.endCount})
                 </span>

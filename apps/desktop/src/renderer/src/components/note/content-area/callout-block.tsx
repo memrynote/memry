@@ -20,7 +20,7 @@ const CALLOUT_TYPES = [
     color: 'text-blue-500',
     bg: 'bg-blue-500/10',
     darkBg: 'dark:bg-blue-500/20',
-    border: 'border-l-blue-500'
+    border: 'border-s-blue-500'
   },
   {
     value: 'warning' as const,
@@ -29,7 +29,7 @@ const CALLOUT_TYPES = [
     color: 'text-amber-500',
     bg: 'bg-amber-500/10',
     darkBg: 'dark:bg-amber-500/20',
-    border: 'border-l-amber-500'
+    border: 'border-s-amber-500'
   },
   {
     value: 'error' as const,
@@ -38,7 +38,7 @@ const CALLOUT_TYPES = [
     color: 'text-red-500',
     bg: 'bg-red-500/10',
     darkBg: 'dark:bg-red-500/20',
-    border: 'border-l-red-500'
+    border: 'border-s-red-500'
   },
   {
     value: 'success' as const,
@@ -47,7 +47,7 @@ const CALLOUT_TYPES = [
     color: 'text-green-500',
     bg: 'bg-green-500/10',
     darkBg: 'dark:bg-green-500/20',
-    border: 'border-l-green-500'
+    border: 'border-s-green-500'
   }
 ] as const
 
@@ -92,7 +92,7 @@ function CalloutBlockRenderer({ block, editor, contentRef }: CalloutBlockRendere
   return (
     <div
       className={cn(
-        'flex items-center rounded-md border-l-4 px-3 py-2',
+        'flex items-center rounded-md border-s-4 px-3 py-2',
         calloutType.bg,
         calloutType.darkBg,
         calloutType.border
@@ -101,17 +101,17 @@ function CalloutBlockRenderer({ block, editor, contentRef }: CalloutBlockRendere
     >
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <div
+          <button
+            type="button"
             className={cn(
-              'mr-3 flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded',
+              'me-3 flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded',
               calloutType.color
             )}
             contentEditable={false}
-            role="button"
             aria-label={t('editor.callout.changeType')}
           >
             <Icon className="h-[18px] w-[18px]" />
-          </div>
+          </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" sideOffset={8}>
           <DropdownMenuLabel>{t('editor.callout.menuLabel')}</DropdownMenuLabel>

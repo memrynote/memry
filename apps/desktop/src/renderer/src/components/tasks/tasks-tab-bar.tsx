@@ -46,10 +46,13 @@ export const TasksTabBar = ({
   className
 }: TasksTabBarProps): React.JSX.Element => {
   const { t } = useT('tasks')
-  const tabRefs = useRef<Map<TasksInternalTab, HTMLButtonElement>>(new Map())
+  const tabRefs = useRef<Map<TasksInternalTab, HTMLButtonElement> | null>(null)
+  if (tabRefs.current === null) {
+    tabRefs.current = new Map()
+  }
 
   const focusTab = useCallback((tabId: TasksInternalTab) => {
-    tabRefs.current.get(tabId)?.focus()
+    tabRefs.current?.get(tabId)?.focus()
   }, [])
 
   const handleKeyDown = useCallback(
@@ -85,9 +88,9 @@ export const TasksTabBar = ({
   const setTabRef = useCallback(
     (tabId: TasksInternalTab) => (el: HTMLButtonElement | null) => {
       if (el) {
-        tabRefs.current.set(tabId, el)
+        tabRefs.current?.set(tabId, el)
       } else {
-        tabRefs.current.delete(tabId)
+        tabRefs.current?.delete(tabId)
       }
     },
     []

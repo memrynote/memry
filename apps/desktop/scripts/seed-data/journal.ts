@@ -1,6 +1,6 @@
 import { generateJournalId } from '../../src/main/lib/id'
 import type { NoteFile } from '../seed-vault/file-writer'
-import { seedDateOnly, seedTodayISO } from './date'
+import { seedDateOnly } from './date'
 
 interface JournalSpec {
   date: string
@@ -261,8 +261,6 @@ Small win: took a longer walk after lunch and came back with a clearer head.`
   }
 ]
 
-const TODAY_ISO = seedTodayISO
-
 const dateToCreatedISO = (date: string): string => {
   const d = new Date(date + 'T08:30:00.000Z')
   return d.toISOString()
@@ -287,5 +285,3 @@ export const JOURNAL_NOTES: NoteFile[] = ENTRIES.map((entry) => ({
   },
   body: entry.body
 }))
-
-export const JOURNAL_TODAY_ISO = TODAY_ISO

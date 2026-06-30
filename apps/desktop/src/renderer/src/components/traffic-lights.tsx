@@ -9,21 +9,21 @@ interface TrafficLightsProps {
   compact?: boolean
 }
 
+const handleClose = () => {
+  window.api.windowClose()
+}
+
+const handleMinimize = () => {
+  window.api.windowMinimize()
+}
+
+const handleMaximize = () => {
+  window.api.windowMaximize()
+}
+
 export function TrafficLights({ className, compact = false }: TrafficLightsProps) {
   const { t: tPhaseF } = useT('common')
   const [isHovered, setIsHovered] = React.useState(false)
-
-  const handleClose = () => {
-    window.api.windowClose()
-  }
-
-  const handleMinimize = () => {
-    window.api.windowMinimize()
-  }
-
-  const handleMaximize = () => {
-    window.api.windowMaximize()
-  }
 
   const buttonSize = compact ? 'size-2.5' : 'size-3.5'
   const iconSize = compact ? 'size-2.5' : 'size-3.5'
@@ -40,6 +40,7 @@ export function TrafficLights({ className, compact = false }: TrafficLightsProps
     >
       {/* Close button - Red */}
       <button
+        type="button"
         onClick={handleClose}
         className={cn(
           'group relative rounded-full bg-[#FF5F57] hover:bg-[#FF5F57] transition-colors focus:outline-none',
@@ -62,6 +63,7 @@ export function TrafficLights({ className, compact = false }: TrafficLightsProps
 
       {/* Minimize button - Yellow */}
       <button
+        type="button"
         onClick={handleMinimize}
         className={cn(
           'group relative rounded-full bg-[#FEBC2E] hover:bg-[#FEBC2E] transition-colors focus:outline-none',
@@ -84,6 +86,7 @@ export function TrafficLights({ className, compact = false }: TrafficLightsProps
 
       {/* Maximize button - Green */}
       <button
+        type="button"
         onClick={handleMaximize}
         className={cn(
           'group relative rounded-full bg-[#28C840] hover:bg-[#28C840] transition-colors focus:outline-none',

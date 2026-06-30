@@ -328,6 +328,7 @@ const ProjectModalDialog = ({
               <textarea
                 value={formData.description}
                 onChange={handleDescriptionChange}
+                aria-label={tPhaseF('phaseF.componentsTasksProjectModal.descriptionOptional')}
                 placeholder={tPhaseF(
                   'phaseF.componentsTasksProjectModal.briefDescriptionOfThisProject'
                 )}

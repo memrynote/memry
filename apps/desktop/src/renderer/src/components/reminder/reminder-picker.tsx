@@ -45,6 +45,14 @@ export interface ReminderPickerProps {
 
 type PickerMode = 'presets' | 'custom' | 'edit'
 
+const SIZE_CLASSES = {
+  sm: 'h-7 px-2 text-xs',
+  md: 'h-8 px-3 text-sm',
+  lg: 'h-10 px-4'
+}
+
+const CUSTOM_PICKER_TRAILING = <ChevronRight className="size-4 text-muted-foreground" />
+
 export function ReminderPicker({
   onSelect,
   presetType = 'standard',
@@ -139,11 +147,7 @@ export function ReminderPicker({
     if (preset) handlePresetSelect(preset)
   }
 
-  const sizeClasses = {
-    sm: 'h-7 px-2 text-xs',
-    md: 'h-8 px-3 text-sm',
-    lg: 'h-10 px-4'
-  }
+  const sizeClasses = SIZE_CLASSES
 
   return (
     <Picker
@@ -192,7 +196,7 @@ export function ReminderPicker({
                 value="pick-custom"
                 label={tPhaseF('phaseF.componentsReminderReminderPicker.pickDateTime')}
                 icon={<Calendar className="size-4" />}
-                trailing={<ChevronRight className="size-4 text-muted-foreground" />}
+                trailing={CUSTOM_PICKER_TRAILING}
               />
             </Picker.List>
 
@@ -266,6 +270,7 @@ export function ReminderPicker({
         ) : (
           <div className="p-2">
             <button
+              type="button"
               onClick={() => (mode === 'edit' ? resetState() : setMode('presets'))}
               className="mb-2 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
             >
@@ -349,5 +354,3 @@ export function ReminderPicker({
     </Picker>
   )
 }
-
-export { standardPresets, journalPresets } from './reminder-presets'

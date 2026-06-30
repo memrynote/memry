@@ -34,6 +34,10 @@ function MemryMark({ className }: { className?: string }): React.JSX.Element {
   )
 }
 
+const handleHelp = (): void => {
+  window.open('https://docs.memrynote.com', '_blank', 'noopener,noreferrer')
+}
+
 export function VaultOnboarding(): React.JSX.Element {
   const { t, i18n } = useT('common')
   const { selectVault, switchVault, isLoading, error } = useVault()
@@ -68,10 +72,6 @@ export function VaultOnboarding(): React.JSX.Element {
         result: 'success'
       })
     }
-  }
-
-  const handleHelp = (): void => {
-    window.open('https://docs.memrynote.com', '_blank', 'noopener,noreferrer')
   }
 
   const handleLocaleChange = useCallback(

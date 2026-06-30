@@ -296,6 +296,7 @@ export const FilingSection = ({
           >
             <PopoverTrigger asChild>
               <button
+                type="button"
                 className={cn(
                   'flex items-center w-full rounded-md py-2 px-3 transition-colors',
                   hasAISuggestions
@@ -355,6 +356,7 @@ export const FilingSection = ({
                       const isSelected = selectedFolder?.id === folder.id
                       return (
                         <button
+                          type="button"
                           key={folder.id || 'root-suggested'}
                           onClick={() => {
                             onFolderSelect(folder)
@@ -393,6 +395,7 @@ export const FilingSection = ({
                 >
                   {canCreateFolder && (
                     <button
+                      type="button"
                       onClick={() => void handleCreateFolder()}
                       disabled={isCreatingFolder}
                       className="flex items-center gap-2 py-1.5 px-3 mx-1 text-start transition-colors hover:bg-[var(--tint)]/[0.06] rounded-sm disabled:opacity-50"
@@ -416,6 +419,7 @@ export const FilingSection = ({
                       const isSelected = selectedFolder?.id === folder.id
                       return (
                         <button
+                          type="button"
                           key={folder.id}
                           onClick={() => {
                             onFolderSelect(folder)
@@ -502,6 +506,7 @@ export const FilingSection = ({
                   const band = confidenceBand(suggestion.confidence)
                   return (
                     <button
+                      type="button"
                       key={suggestion.note.id}
                       onClick={() => handleLinkSuggestedNote(suggestion.note)}
                       className="w-full flex items-center gap-2 rounded-md px-3 py-2.5 text-start transition-colors border border-dashed"

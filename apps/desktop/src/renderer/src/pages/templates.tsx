@@ -55,6 +55,18 @@ interface TemplateListItem {
 // Template Icon Component - Renders emoji or fallback
 // ============================================================================
 
+const sizeClasses = {
+  sm: 'text-base',
+  md: 'text-xl',
+  lg: 'text-2xl'
+}
+
+const iconSizes = {
+  sm: 'w-4 h-4',
+  md: 'w-5 h-5',
+  lg: 'w-6 h-6'
+}
+
 function TemplateIcon({
   icon,
   size = 'md',
@@ -64,20 +76,8 @@ function TemplateIcon({
   size?: 'sm' | 'md' | 'lg'
   className?: string
 }) {
-  const sizeClasses = {
-    sm: 'text-base',
-    md: 'text-xl',
-    lg: 'text-2xl'
-  }
-
   if (icon) {
     return <span className={cn(sizeClasses[size], className)}>{icon}</span>
-  }
-
-  const iconSizes = {
-    sm: 'w-4 h-4',
-    md: 'w-5 h-5',
-    lg: 'w-6 h-6'
   }
 
   return <FileText className={cn(iconSizes[size], 'text-muted-foreground/50', className)} />
@@ -204,7 +204,7 @@ export function TemplatesPage() {
         {totalCount > 0 && (
           <div
             className={cn(
-              'absolute -right-4 lg:right-8 top-4 lg:top-8',
+              'absolute -end-4 lg:end-8 top-4 lg:top-8',
               'text-[7rem] lg:text-[9rem]',
               'font-display font-light leading-none',
               'text-foreground/[0.025] dark:text-foreground/[0.035]',
@@ -552,7 +552,7 @@ function EmptyTemplatesState({ onCreateTemplate }: EmptyTemplatesStateProps) {
           {/* Floating plus indicator */}
           <div
             className={cn(
-              'absolute -bottom-1.5 -right-1.5',
+              'absolute -bottom-1.5 -end-1.5',
               'w-6 h-6 rounded-md',
               'bg-amber-500 dark:bg-amber-400',
               'flex items-center justify-center',

@@ -120,9 +120,8 @@ export default function HomePage(): React.JSX.Element {
         onAddWidget={handleAddWidget}
       />
       {isLoading && (
-        <div
+        <output
           data-testid="home-board-loading"
-          role="status"
           aria-busy="true"
           aria-label={t('state.loading')}
           className="min-h-0 flex-1 overflow-auto px-6 py-6"
@@ -136,7 +135,7 @@ export default function HomePage(): React.JSX.Element {
             <Skeleton className="col-span-1 h-full" />
             <Skeleton className="col-span-1 h-full" />
           </div>
-        </div>
+        </output>
       )}
       {!isLoading && localActive && (
         <div className="min-h-0 flex-1 overflow-auto px-6 py-6">

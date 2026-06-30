@@ -159,14 +159,13 @@ export function DeviceList({ onLinkDevice }: DeviceListProps): React.JSX.Element
 
   if (loading) {
     return (
-      <div
+      <output
         className="flex items-center gap-2 py-4 text-xs text-muted-foreground"
-        role="status"
         aria-label={t('devices.loadingAria')}
       >
         <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
         {t('devices.loading')}
-      </div>
+      </output>
     )
   }
 
@@ -180,6 +179,7 @@ export function DeviceList({ onLinkDevice }: DeviceListProps): React.JSX.Element
           <>
             <div className="h-px bg-border shrink-0" />
             <button
+              type="button"
               onClick={onLinkDevice}
               className="flex items-center gap-2.5 h-12 px-4 text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
@@ -250,6 +250,7 @@ export function DeviceList({ onLinkDevice }: DeviceListProps): React.JSX.Element
                       </DropdownMenuContent>
                     </DropdownMenu>
                     <button
+                      type="button"
                       onClick={() => setRemoveTarget(device)}
                       className="text-xs text-destructive hover:text-destructive/80 transition-colors"
                     >
@@ -266,6 +267,7 @@ export function DeviceList({ onLinkDevice }: DeviceListProps): React.JSX.Element
           <>
             <div className="h-px bg-border shrink-0" />
             <button
+              type="button"
               className="flex items-center justify-center gap-1.5 h-10 text-xs text-muted-foreground hover:text-foreground transition-colors"
               onClick={() => setExpanded((prev) => !prev)}
               aria-expanded={expanded}
@@ -292,6 +294,7 @@ export function DeviceList({ onLinkDevice }: DeviceListProps): React.JSX.Element
           <>
             <div className="h-px bg-border shrink-0" />
             <button
+              type="button"
               onClick={onLinkDevice}
               className="flex items-center gap-2.5 h-12 px-4 text-xs text-muted-foreground hover:text-foreground transition-colors"
             >

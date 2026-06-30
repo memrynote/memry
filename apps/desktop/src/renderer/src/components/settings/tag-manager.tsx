@@ -226,7 +226,10 @@ export function TagManager() {
                   </span>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <button className="p-1 rounded text-muted-foreground/50 opacity-0 group-hover:opacity-100 hover:text-foreground transition-all">
+                      <button
+                        type="button"
+                        className="p-1 rounded text-muted-foreground/50 opacity-0 group-hover:opacity-100 hover:text-foreground transition-all"
+                      >
                         <MoreHorizontal className="w-3.5 h-3.5" />
                       </button>
                     </DropdownMenuTrigger>
@@ -344,6 +347,7 @@ export function TagManager() {
                     <button
                       key={colorName}
                       type="button"
+                      aria-label={colorName}
                       onClick={() => void handleColorChange(colorName)}
                       className={cn(
                         'w-7 h-7 rounded-full transition-all hover:scale-110',

@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label'
 import { Loader2 } from '@/lib/icons'
 import { useT } from '@memry/i18n/renderer'
 
-const emailSchema = z.string().email()
+const emailSchema = z.email()
 
 interface EmailEntryFormProps {
   onSubmit: (email: string) => void

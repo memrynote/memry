@@ -10,6 +10,12 @@ const TABS = [
   { to: '/account/sync', label: 'Sync' }
 ]
 
+const linkClass = ({ isActive }: { isActive: boolean }) =>
+  cn(
+    'block rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+    isActive ? 'bg-paper-alt text-ink' : 'text-muted hover:text-ink'
+  )
+
 export function AccountLayout() {
   const { api, signOutLocal } = useAuth()
   const navigate = useNavigate()
@@ -24,12 +30,6 @@ export function AccountLayout() {
     trackLandingEvent('landing_account_signout', 'account:logout')
     navigate('/')
   }
-
-  const linkClass = ({ isActive }: { isActive: boolean }) =>
-    cn(
-      'block rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-      isActive ? 'bg-paper-alt text-ink' : 'text-muted hover:text-ink'
-    )
 
   return (
     <main className="py-24">

@@ -442,6 +442,7 @@ export function CaptureInput({
               </span>
             </span>
             <button
+              type="button"
               onClick={handleAttachClick}
               disabled={isCapturing}
               className={cn(
@@ -459,6 +460,7 @@ export function CaptureInput({
 
             {aiEnabled && (
               <button
+                type="button"
                 onClick={() => void handleMicClick()}
                 disabled={isCapturing}
                 className={cn(
@@ -482,9 +484,11 @@ export function CaptureInput({
               onChange={(...args) => void handleFileSelect(...args)}
               className="hidden"
               aria-hidden="true"
+              tabIndex={-1}
             />
 
             <button
+              type="button"
               onClick={() => void handleSubmit()}
               disabled={!value.trim() || isCapturing}
               className={cn(
@@ -545,6 +549,7 @@ export function CaptureInput({
             {tPhaseF('phaseF.componentsCaptureInput.rdquo')}
           </p>
           <button
+            type="button"
             onClick={() => void handleSubmit(true)}
             className="shrink-0 text-xs font-medium text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300"
           >

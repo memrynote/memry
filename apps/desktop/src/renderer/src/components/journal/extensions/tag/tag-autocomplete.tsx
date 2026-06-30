@@ -137,6 +137,7 @@ export const TagAutocomplete = forwardRef<
               </div>
               {items.map((item, index) => (
                 <button
+                  type="button"
                   key={item.name}
                   className={cn(
                     'tag-autocomplete-item',
@@ -163,6 +164,7 @@ export const TagAutocomplete = forwardRef<
           {query && query.trim() && (
             <div className={items.length > 0 ? 'border-t pt-1 mt-1' : ''}>
               <button
+                type="button"
                 className={cn(
                   'relative flex w-full cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none',
                   'text-primary hover:bg-accent hover:text-accent-foreground',

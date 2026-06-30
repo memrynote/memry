@@ -2,8 +2,7 @@ import { createContext, useContext, useState, useCallback, useEffect, type React
 import type { HintModeState, HintModeContextType } from './types'
 import { scanClickableElements } from '@/lib/dom-scanner'
 import { assignLabels } from '@/lib/label-assigner'
-
-export const hintModeActiveRef: { current: boolean } = { current: false }
+import { hintModeActiveRef } from './active-ref'
 
 const INITIAL_STATE: HintModeState = {
   isActive: false,

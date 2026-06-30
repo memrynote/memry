@@ -103,6 +103,7 @@ export function NumberEditor({
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}
       placeholder={placeholder ?? t('properties.empty')}
+      aria-label={t('properties.types.number')}
       className={cn(
         'w-24 bg-transparent border-none p-0',
         'text-[13px] text-foreground',

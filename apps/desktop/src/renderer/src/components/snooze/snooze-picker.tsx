@@ -51,6 +51,26 @@ export interface SnoozePickerProps {
 }
 
 // ============================================================================
+// Helpers
+// ============================================================================
+
+// Get icon for preset
+const getPresetIcon = (presetId: string) => {
+  switch (presetId) {
+    case 'later-today':
+      return <Moon className="h-4 w-4" />
+    case 'tomorrow':
+      return <Sun className="h-4 w-4" />
+    case 'this-weekend':
+      return <CalendarDays className="h-4 w-4" />
+    case 'next-week':
+      return <CalendarClock className="h-4 w-4" />
+    default:
+      return <Clock className="h-4 w-4" />
+  }
+}
+
+// ============================================================================
 // Component
 // ============================================================================
 
@@ -81,22 +101,6 @@ export function SnoozePicker({
     setIsOpen(open)
   }
 
-  // Get icon for preset
-  const getPresetIcon = (presetId: string) => {
-    switch (presetId) {
-      case 'later-today':
-        return <Moon className="h-4 w-4" />
-      case 'tomorrow':
-        return <Sun className="h-4 w-4" />
-      case 'this-weekend':
-        return <CalendarDays className="h-4 w-4" />
-      case 'next-week':
-        return <CalendarClock className="h-4 w-4" />
-      default:
-        return <Clock className="h-4 w-4" />
-    }
-  }
-
   // Default trigger
   const defaultTrigger = (
     <Button
@@ -108,7 +112,7 @@ export function SnoozePicker({
     >
       <Clock className="h-4 w-4" />
       {size !== 'icon' && (
-        <span className="ml-2">{tPhaseF('phaseF.componentsSnoozeSnoozePicker.snooze2')}</span>
+        <span className="ms-2">{tPhaseF('phaseF.componentsSnoozeSnoozePicker.snooze2')}</span>
       )}
     </Button>
   )
@@ -150,7 +154,7 @@ export function SnoozePicker({
           >
             <CalendarDays className="h-4 w-4" />
             <span>{tPhaseF('phaseF.componentsSnoozeSnoozePicker.pickDateTime')}</span>
-            <ChevronRight className="h-4 w-4 ml-auto" />
+            <ChevronRight className="h-4 w-4 ms-auto" />
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -339,7 +343,7 @@ export function QuickSnoozeButton({
       className={showLabel ? undefined : 'p-1.5 h-auto'}
       aria-label={tPhaseF('phaseF.componentsSnoozeSnoozePicker.snooze4')}
     >
-      <Clock className={showLabel ? 'h-4 w-4 mr-1' : 'h-4 w-4'} />
+      <Clock className={showLabel ? 'h-4 w-4 me-1' : 'h-4 w-4'} />
       {showLabel && label}
     </Button>
   )

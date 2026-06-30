@@ -25,6 +25,13 @@ const TYPE_ICONS: Record<ContentType, typeof FileText> = {
   inbox: Inbox
 }
 
+const priorityColors: Record<number, string> = {
+  4: 'text-red-500',
+  3: 'text-orange-500',
+  2: 'text-yellow-500',
+  1: 'text-blue-400'
+}
+
 function HighlightedText({ text, query }: { text: string; query: string }): React.JSX.Element {
   const segments = highlightTerms(stripMarkTags(text), query)
   return (
@@ -82,12 +89,6 @@ function JournalMetadata({ meta }: { meta: JournalResultMetadata }): React.JSX.E
 
 function TaskMetadata({ meta }: { meta: TaskResultMetadata }): React.JSX.Element {
   const { t: tPhaseF } = useT('common')
-  const priorityColors: Record<number, string> = {
-    4: 'text-red-500',
-    3: 'text-orange-500',
-    2: 'text-yellow-500',
-    1: 'text-blue-400'
-  }
   return (
     <div className="flex items-center gap-2 text-xs text-text-tertiary mt-0.5">
       <span

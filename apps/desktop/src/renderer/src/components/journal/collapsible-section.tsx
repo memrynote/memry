@@ -70,7 +70,7 @@ export const CollapsibleSection = memo(function CollapsibleSection({
         className={cn(
           'w-full flex items-center justify-between px-4 py-3',
           'hover:bg-muted/40 transition-colors duration-150',
-          'text-left focus-visible:outline-none'
+          'text-start focus-visible:outline-none'
         )}
       >
         <div className="flex items-center gap-2">
@@ -94,9 +94,8 @@ export const CollapsibleSection = memo(function CollapsibleSection({
       </button>
 
       {/* Content - animated */}
-      <div
+      <section
         id={contentId}
-        role="region"
         aria-labelledby={headerId}
         aria-hidden={isCollapsed}
         style={{
@@ -111,7 +110,7 @@ export const CollapsibleSection = memo(function CollapsibleSection({
         <div ref={contentRef} className="px-4 pb-4 pt-1 border-t border-border/30">
           {children}
         </div>
-      </div>
+      </section>
     </div>
   )
 })

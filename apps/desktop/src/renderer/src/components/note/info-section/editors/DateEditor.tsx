@@ -96,6 +96,7 @@ export function DateEditor({ value, onChange, onBlur, autoFocus = true }: DateEd
       onChange={handleChange}
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}
+      aria-label={tPhaseF('phaseF.componentsNoteInfoSectionEditorsDateeditor.ddMmYyyy')}
       placeholder={tPhaseF('phaseF.componentsNoteInfoSectionEditorsDateeditor.ddMmYyyy')}
       className={cn(
         'w-full bg-transparent p-0',

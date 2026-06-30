@@ -102,7 +102,7 @@ export function SecurityShowcase() {
             <div className="font-serif text-lg text-ink-inverted leading-relaxed space-y-1">
               {CLEAR_TEXT_LINES.map((line, i) => (
                 <motion.p
-                  key={i}
+                  key={line}
                   initial={{ opacity: 0 }}
                   animate={isInView ? { opacity: 1 } : undefined}
                   transition={{ delay: 0.5 + i * 0.12, duration: 0.5 }}

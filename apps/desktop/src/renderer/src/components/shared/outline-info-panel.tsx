@@ -143,7 +143,7 @@ export const OutlineInfoPanel = memo(function OutlineInfoPanel({
       ref={containerRef}
       className={cn(
         'outline-indicator',
-        'absolute right-4 top-32',
+        'absolute end-4 top-32',
         'hidden md:block z-40',
         className
       )}
@@ -178,7 +178,7 @@ export const OutlineInfoPanel = memo(function OutlineInfoPanel({
 
           {headings.length > 0 && (
             <div
-              className="vertical-connector ml-1.5 mt-1"
+              className="vertical-connector ms-1.5 mt-1"
               style={{
                 width: '1px',
                 height: `${verticalLineHeight}px`,
@@ -226,11 +226,12 @@ export const OutlineInfoPanel = memo(function OutlineInfoPanel({
 
                   return (
                     <button
+                      type="button"
                       key={heading.id}
                       data-heading-id={heading.id}
                       onClick={() => handleClick(heading.id)}
                       className={cn(
-                        'flex items-center rounded-sm py-[3px] px-1.5 gap-1.5 text-left',
+                        'flex items-center rounded-sm py-[3px] px-1.5 gap-1.5 text-start',
                         'transition-colors duration-150',
                         'focus:outline-none',
                         !isActive && 'hover:bg-[var(--surface-active)]/50'

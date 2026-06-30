@@ -108,7 +108,7 @@ function collapseWhitespace(value) {
   return value.replace(/\s+/g, ' ').trim()
 }
 
-export function hasI18nTodoNear(sourceText, line) {
+function hasI18nTodoNear(sourceText, line) {
   const lines = sourceText.split(/\r?\n/)
   const sameLine = lines[line - 1] ?? ''
   const previousLine = lines[line - 2] ?? ''

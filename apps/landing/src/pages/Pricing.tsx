@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from 'react'
+import { Fragment, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Check, ArrowRight, ShieldCheck, ExternalLink } from 'lucide-react'
@@ -57,21 +57,20 @@ const ASSURANCES = ['Cancel anytime', 'VAT handled by Paddle', 'Prices in USD']
 
 export function PricingPage() {
   const [cadence, setCadence] = useState<Cadence>('annual')
-  const [checkout, setCheckout] = useState<CheckoutState>({
-    pendingKey: null,
-    error: null,
-    notice: null
-  })
-  useEffect(() => {
+  const [checkout, setCheckout] = useState<CheckoutState>(() => {
+    if (typeof window === 'undefined') {
+      return { pendingKey: null, error: null, notice: null }
+    }
     const params = new URLSearchParams(window.location.search)
     if (params.get('checkout') === 'success') {
-      setCheckout({
+      return {
         pendingKey: null,
         error: null,
         notice: { type: 'success', transactionId: params.get('transactionId') }
-      })
+      }
     }
-  }, [])
+    return { pendingKey: null, error: null, notice: null }
+  })
 
   const handleCheckout = async (tier: SyncPlanTier) => {
     if (!PURCHASES_ENABLED || !tier.checkoutPlanId) return

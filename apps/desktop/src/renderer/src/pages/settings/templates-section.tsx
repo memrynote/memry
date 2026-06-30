@@ -266,6 +266,7 @@ function TemplateRow({ template, onSelect, onEdit, onDuplicate, onDelete }: Temp
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
+                type="button"
                 onClick={(e) => e.stopPropagation()}
                 className="p-1 rounded text-muted-foreground/50 opacity-0 group-hover:opacity-100 hover:text-foreground transition-all"
               >

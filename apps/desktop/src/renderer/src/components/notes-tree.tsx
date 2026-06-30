@@ -61,6 +61,8 @@ import {
 } from '@/components/virtualized-notes-tree'
 import { useT } from '@memry/i18n/renderer'
 
+const LEADING_SPACER = <div className="h-4 w-4" />
+
 // ============================================================================
 // Main Component
 // ============================================================================
@@ -319,7 +321,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
               )}
               {isPartOfSelection && (
                 <ContextMenuItem variant="destructive" onClick={actions.handleBulkDelete}>
-                  <Trash2 className="mr-2 h-4 w-4" />
+                  <Trash2 className="me-2 h-4 w-4" />
                   {t('tree.actions.deleteSelectedNotes', { count: selectedIds.length })}
                 </ContextMenuItem>
               )}
@@ -327,7 +329,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
           }
         >
           <IconPickerButton
-            leading={<div className="h-4 w-4" />}
+            leading={LEADING_SPACER}
             hasIcon={!!note.emoji}
             onIconChange={(icon) =>
               void data.mutations.updateNote.mutateAsync({ id: note.id, emoji: icon })
@@ -342,6 +344,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
             <input
               ref={renameCallbackRef}
               type="text"
+              aria-label={t('tree.actions.rename')}
               value={actions.renameValue}
               onChange={(e) => actions.handleRenameInputChange(note.id, e.target.value)}
               onKeyDown={(e) => {
@@ -369,7 +372,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
               )}
             </>
           )}
-          {note.localOnly && <Monitor className="ml-1 h-3 w-3 shrink-0 text-muted-foreground/60" />}
+          {note.localOnly && <Monitor className="ms-1 h-3 w-3 shrink-0 text-muted-foreground/60" />}
         </TreeNodeTrigger>
       </TreeNode>
     )
@@ -393,35 +396,35 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
           contextMenuContent={
             <>
               <ContextMenuItem onClick={() => void actions.handleCreateNoteInFolder(folder.path)}>
-                <FilePlus className="mr-2 h-4 w-4" />
+                <FilePlus className="me-2 h-4 w-4" />
                 {t('tree.actions.newNote')}
               </ContextMenuItem>
               <ContextMenuItem onClick={() => void actions.handleCreateSubfolder(folder.path)}>
-                <FolderPlus className="mr-2 h-4 w-4" />
+                <FolderPlus className="me-2 h-4 w-4" />
                 {t('tree.actions.newFolder')}
               </ContextMenuItem>
               <ContextMenuSeparator />
               <ContextMenuItem onClick={() => actions.handleSetFolderTemplate(folder.path)}>
-                <LayoutTemplate className="mr-2 h-4 w-4" />
+                <LayoutTemplate className="me-2 h-4 w-4" />
                 {t('tree.actions.setDefaultTemplate')}
                 {data.folderTemplateNames.get(folder.path) && (
-                  <span className="ml-1 text-muted-foreground">
+                  <span className="ms-1 text-muted-foreground">
                     ({data.folderTemplateNames.get(folder.path)})
                   </span>
                 )}
               </ContextMenuItem>
               <ContextMenuItem onClick={() => void actions.handleClearFolderTemplate(folder.path)}>
-                <X className="mr-2 h-4 w-4" />
+                <X className="me-2 h-4 w-4" />
                 {t('tree.actions.clearDefaultTemplate')}
               </ContextMenuItem>
               <ContextMenuSeparator />
               <ContextMenuItem onClick={() => actions.setIconPickerFolderPath(folder.path)}>
-                <Smile className="mr-2 h-4 w-4" />
+                <Smile className="me-2 h-4 w-4" />
                 {t('tree.actions.setIcon')}
               </ContextMenuItem>
               {folder.icon && (
                 <ContextMenuItem onClick={() => void data.setFolderIcon(folder.path, null)}>
-                  <X className="mr-2 h-4 w-4" />
+                  <X className="me-2 h-4 w-4" />
                   {t('tree.actions.removeIcon')}
                 </ContextMenuItem>
               )}
@@ -429,14 +432,14 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
               <BookmarkMenuItem itemType="folder" itemId={folder.path} />
               <ContextMenuSeparator />
               <ContextMenuItem onClick={() => actions.handleRenameFolderClick(folder.path)}>
-                <Pencil className="mr-2 h-4 w-4" />
+                <Pencil className="me-2 h-4 w-4" />
                 {t('tree.actions.rename')}
               </ContextMenuItem>
               <ContextMenuItem
                 variant="destructive"
                 onClick={() => actions.handleDeleteFolderClick(folder.path)}
               >
-                <Trash2 className="mr-2 h-4 w-4" />
+                <Trash2 className="me-2 h-4 w-4" />
                 {tCommon('button.delete')}
               </ContextMenuItem>
             </>
@@ -456,6 +459,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
             <input
               ref={folderRenameCallbackRef}
               type="text"
+              aria-label={t('tree.actions.rename')}
               value={actions.folderRenameValue}
               onChange={(e) => actions.setFolderRenameValue(e.target.value)}
               onKeyDown={(e) => {
@@ -476,7 +480,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
           ) : (
             <div className="group/folder flex flex-1 items-center min-w-0">
               <TreeLabel className="flex-1">{folder.name}</TreeLabel>
-              <div className="flex items-center opacity-0 group-hover/folder:opacity-100 transition-opacity ml-auto">
+              <div className="flex items-center opacity-0 group-hover/folder:opacity-100 transition-opacity ms-auto">
                 <button
                   type="button"
                   onClick={(e) => {

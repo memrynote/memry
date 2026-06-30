@@ -273,13 +273,14 @@ function ShowcaseCard({
   )
 }
 
+const greetings: { icon: LucideIcon; time: string; text: string; active?: boolean }[] = [
+  { icon: Sun, time: '06:00', text: 'Good morning, Kaan.' },
+  { icon: Sun, time: '12:00', text: 'Hope the day is going well.' },
+  { icon: Moon, time: '20:00', text: 'Good evening, Kaan.', active: true },
+  { icon: Moon, time: '23:30', text: 'Late night thoughts?' }
+]
+
 function GreetingMock() {
-  const greetings: { icon: LucideIcon; time: string; text: string; active?: boolean }[] = [
-    { icon: Sun, time: '06:00', text: 'Good morning, Kaan.' },
-    { icon: Sun, time: '12:00', text: 'Hope the day is going well.' },
-    { icon: Moon, time: '20:00', text: 'Good evening, Kaan.', active: true },
-    { icon: Moon, time: '23:30', text: 'Late night thoughts?' }
-  ]
   return (
     <ShowcaseCard
       label="Greeting"
@@ -357,9 +358,10 @@ function MonthlyStatsMock() {
   )
 }
 
+const months = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D']
+const counts = [12, 18, 22, 14, 14, 0, 0, 0, 0, 0, 0, 0]
+
 function YearlyOverviewMock() {
-  const months = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D']
-  const counts = [12, 18, 22, 14, 14, 0, 0, 0, 0, 0, 0, 0]
   return (
     <ShowcaseCard
       label="Year overview"
@@ -533,12 +535,13 @@ function FloatingDayPeekMock() {
   )
 }
 
+const templates = [
+  { label: 'Morning pages', hint: '3 free-write prompts' },
+  { label: 'Decision log', hint: 'Context · options · choice' },
+  { label: 'Gratitude', hint: '3 things, 1 person' }
+]
+
 function TemplatePickerMock() {
-  const templates = [
-    { label: 'Morning pages', hint: '3 free-write prompts' },
-    { label: 'Decision log', hint: 'Context · options · choice' },
-    { label: 'Gratitude', hint: '3 things, 1 person' }
-  ]
   return (
     <motion.article
       {...fadeUp}
@@ -637,8 +640,9 @@ function ActivityHeatmapShowcase() {
   )
 }
 
+const days = ['M', '', 'W', '', 'F', '', 'S']
+
 function HeatmapGrid() {
-  const days = ['M', '', 'W', '', 'F', '', 'S']
   const weeks = 12
   const cells: number[] = []
   for (let i = 0; i < weeks * 7; i += 1) {

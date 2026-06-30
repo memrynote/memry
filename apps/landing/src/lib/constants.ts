@@ -13,9 +13,6 @@ import {
   FileText,
   CheckSquare,
   Calendar,
-  FolderOpen,
-  Lock,
-  Zap,
   Briefcase,
   GraduationCap,
   Laptop,
@@ -31,19 +28,12 @@ import {
 } from 'lucide-react'
 
 export const GITHUB_URL = 'https://github.com/memrynote/memry'
-export const GITHUB_RELEASES_URL = `${GITHUB_URL}/releases`
 export const GITHUB_STARS = 21
 export const REDDIT_URL = 'https://www.reddit.com/r/MemryNote/'
-export const DOCS_URL = 'https://docs.memrynote.com'
+const DOCS_URL = 'https://docs.memrynote.com'
 export const TWITTER_DEV_URL = 'https://x.com/h4yfans'
 export const DESKTOP_RELEASE_TIMING = 'Coming at the end of June'
 export const CHECKOUT_RELEASE_TIMING = 'Purchases open at the end of June'
-
-export const NAV_LINKS = [
-  { label: 'Use Cases', href: '/use-cases' },
-  { label: 'Pricing', href: '/pricing' },
-  { label: 'Security', href: '/security' }
-] as const
 
 type LandingDropdownItemBase = {
   label: string
@@ -172,25 +162,6 @@ export const FOOTER_LINKS = {
   ]
 } as const
 
-export const VALUE_PROPS = [
-  {
-    icon: FolderOpen,
-    title: 'Your Data',
-    description: 'Plain Markdown files in a folder you choose. Portable, readable, yours forever.'
-  },
-  {
-    icon: Lock,
-    title: 'Private & Secure',
-    description: "Your data stays on your device, encrypted end-to-end. Even we can't read it."
-  },
-  {
-    icon: Zap,
-    title: 'Instant Search',
-    description:
-      'Find anything across all your notes in milliseconds. No loading spinners, no cloud lag.'
-  }
-] as const
-
 export const FEATURES = [
   {
     id: 'inbox',
@@ -295,74 +266,6 @@ export const COMPARISON_DATA = {
   ],
   footnote: ''
 } as const
-
-export const PRICING_TIERS = [
-  {
-    name: 'Free',
-    price: '$0',
-    period: 'forever',
-    description: 'All local features.',
-    features: [
-      'Notes, tasks, inbox, and journal',
-      'Local vault on your device',
-      'Full-text search',
-      'Markdown export',
-      'No account required'
-    ],
-    cta: 'Start free',
-    highlighted: false
-  },
-  {
-    name: 'Plus',
-    price: '$5',
-    period: '/month',
-    yearlyPrice: '$4/month billed yearly',
-    description: 'Personal sync for one vault.',
-    features: [
-      'Everything in Free',
-      '1 GB encrypted sync storage',
-      '1 synced vault',
-      '5 MB per file',
-      '30 days of version history'
-    ],
-    cta: 'Join Waitlist',
-    highlighted: false
-  },
-  {
-    name: 'Pro',
-    price: '$10',
-    period: '/month',
-    yearlyPrice: '$8/month billed yearly',
-    description: 'More room for heavy sync.',
-    features: [
-      'Everything in Plus',
-      '10 GB encrypted sync storage',
-      '10 synced vaults',
-      '200 MB per file',
-      '365 days of version history'
-    ],
-    cta: 'Join Waitlist',
-    highlighted: false
-  },
-  {
-    name: 'Believer',
-    price: '$500',
-    period: 'paid once',
-    description: 'Support memrynote.',
-    features: [
-      'Everything in Pro',
-      '50 GB encrypted sync storage',
-      'Unlimited vaults',
-      '200 MB per file',
-      '365 days of version history',
-      'Early access to new features',
-      'Your name in the credits',
-      'Help keep memrynote independent'
-    ],
-    cta: 'Support memrynote',
-    highlighted: true
-  }
-] as const
 
 export const FAQ_ITEMS = [
   {

@@ -256,17 +256,17 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
 
   const rangeQuery = useCalendarRange(rangeInput)
 
-  const sourcesQuery = useQuery({
+  const { data: sourcesData, isLoading: sourcesIsLoading } = useQuery({
     queryKey: ['calendar', 'sources'],
     queryFn: () => calendarService.listSources({})
   })
 
   const importedSources = useMemo(
     () =>
-      (sourcesQuery.data?.sources ?? []).filter(
+      (sourcesData?.sources ?? []).filter(
         (source) => source.kind === 'calendar' && !source.isMemryManaged
       ),
-    [sourcesQuery.data?.sources]
+    [sourcesData?.sources]
   )
 
   useEffect(() => {
@@ -709,7 +709,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
         anchorDate={anchorDate}
         items={filteredItems}
         importedSources={importedSources}
-        isLoading={rangeQuery.isLoading || sourcesQuery.isLoading}
+        isLoading={rangeQuery.isLoading || sourcesIsLoading}
         showMemryItems={showMemryItems}
         showImportedCalendars={showImportedCalendars}
         selectedImportedSourceIds={selectedImportedSourceIds}

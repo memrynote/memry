@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { DateMentionPopover, remindOptions, type DateMentionValue } from './date-mention-popover'
+import { DateMentionPopover, type DateMentionValue } from './date-mention-popover'
+import { remindOptions } from './date-mention-options'
 
 vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({

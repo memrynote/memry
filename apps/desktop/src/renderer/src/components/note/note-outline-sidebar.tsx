@@ -29,7 +29,7 @@ export const NoteOutlineSidebar = memo(function NoteOutlineSidebar({
   )
 
   return (
-    <div className="flex flex-col w-[200px] shrink-0 pt-12 pr-6 pb-10 gap-4">
+    <div className="flex flex-col w-[200px] shrink-0 pt-12 pe-6 pb-10 gap-4">
       {/* Header */}
       <div className="flex items-center pb-3 gap-1.5 border-b border-[var(--border)]">
         <span className="text-[11px] tracking-[0.06em] uppercase text-text-tertiary font-sans font-semibold leading-3.5">
@@ -47,12 +47,13 @@ export const NoteOutlineSidebar = memo(function NoteOutlineSidebar({
             return (
               <button
                 key={heading.id}
+                type="button"
                 data-heading-id={heading.id}
                 onClick={() => handleClick(heading.id)}
                 className={cn(
-                  'flex items-center rounded-md py-1.5 px-2 gap-2 text-left',
+                  'flex items-center rounded-md py-1.5 px-2 gap-2 text-start',
                   'transition-colors duration-150',
-                  isSubHeading && 'pl-6',
+                  isSubHeading && 'ps-6',
                   !isActive && 'hover:bg-[var(--surface-active)]/50'
                 )}
               >

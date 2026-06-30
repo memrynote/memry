@@ -5,6 +5,7 @@
 
 import { useDroppable } from '@dnd-kit/core'
 import { cn } from '@/lib/utils'
+import { getDropZoneLabel } from './drop-zone-label'
 
 export type DropZonePosition = 'left' | 'right' | 'top' | 'bottom' | 'center'
 
@@ -15,24 +16,6 @@ interface DropZoneProps {
   groupId: string
   /** CSS positioning classes */
   className: string
-}
-
-/**
- * Get label for drop zone
- */
-export const getDropZoneLabel = (zone: DropZonePosition): string => {
-  switch (zone) {
-    case 'left':
-      return 'Split Left'
-    case 'right':
-      return 'Split Right'
-    case 'top':
-      return 'Split Up'
-    case 'bottom':
-      return 'Split Down'
-    case 'center':
-      return 'Move Here'
-  }
 }
 
 /**

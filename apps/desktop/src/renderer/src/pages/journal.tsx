@@ -109,6 +109,8 @@ interface JournalPageProps {
   className?: string
 }
 
+const JOURNAL_CONTENT_WIDTH = { narrow: '640px', medium: '640px', wide: '864px' } as const
+
 export function JournalPage({ className }: JournalPageProps): React.JSX.Element {
   const { t, i18n: _i18n } = useT('journal')
   const { t: commonT } = useT('common')
@@ -192,7 +194,6 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   // Editor settings
   const { settings: editorSettings } = useEditorSettings()
 
-  const JOURNAL_CONTENT_WIDTH = { narrow: '640px', medium: '640px', wide: '864px' } as const
   const journalContentWidth = isFullWidth
     ? undefined
     : (JOURNAL_CONTENT_WIDTH[editorSettings.width] ?? '640px')

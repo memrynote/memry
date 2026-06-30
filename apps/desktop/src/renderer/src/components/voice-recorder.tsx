@@ -71,7 +71,8 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
     const audioContextRef = useRef<AudioContext | null>(null)
     const analyserRef = useRef<AnalyserNode | null>(null)
     const rafRef = useRef<number | null>(null)
-    const barsRef = useRef<number[]>(createWaveformBars())
+    const barsRef = useRef<number[]>([])
+    if (barsRef.current.length === 0) barsRef.current = createWaveformBars()
 
     const cleanupAudio = useCallback(() => {
       if (rafRef.current) {
@@ -395,6 +396,7 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
         </div>
 
         <button
+          type="button"
           onClick={handleCancel}
           className={cn(
             'flex size-7 shrink-0 items-center justify-center rounded-md',
@@ -407,6 +409,7 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
         </button>
 
         <button
+          type="button"
           onClick={handleStop}
           className={cn(
             'flex size-7 shrink-0 items-center justify-center rounded-md',

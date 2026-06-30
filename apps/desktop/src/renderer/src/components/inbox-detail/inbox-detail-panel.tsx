@@ -364,8 +364,7 @@ export const InboxDetailPanel = ({
   const keyboardHint = t('detail.keyboardHint', { modifier: modifierKeyDisplay })
 
   return (
-    <div
-      role="complementary"
+    <aside
       aria-label={t('detail.ariaLabel')}
       aria-hidden={!isOpen}
       data-testid="inbox-detail-panel"
@@ -432,6 +431,7 @@ export const InboxDetailPanel = ({
                         }}
                         className="text-[15px] leading-5 font-medium text-foreground mb-3.5 w-full bg-transparent focus:outline-none border-b border-transparent focus:border-muted-foreground/20 transition-colors"
                         placeholder={t('detail.voiceTitlePlaceholder')}
+                        aria-label={t('detail.voiceTitlePlaceholder')}
                       />
                     ) : (
                       item.type !== 'link' &&
@@ -587,6 +587,6 @@ export const InboxDetailPanel = ({
           ariaLabel={t('detail.resize')}
         />
       )}
-    </div>
+    </aside>
   )
 }
