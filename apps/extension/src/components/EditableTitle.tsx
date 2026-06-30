@@ -19,7 +19,7 @@ export function EditableTitle({
         if (e.key === 'Enter') e.preventDefault()
       }}
       placeholder="Untitled"
-      className="w-full resize-none bg-transparent font-sans text-[19px] font-medium leading-snug tracking-[-0.01em] text-foreground outline-none [field-sizing:content] placeholder:font-normal placeholder:text-text-tertiary"
+      className="w-full resize-none bg-transparent font-sans text-[14px] font-semibold leading-snug tracking-[-0.01em] text-foreground outline-none [field-sizing:content] placeholder:font-normal placeholder:text-text-tertiary"
     />
   )
 }
