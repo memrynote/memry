@@ -7,7 +7,14 @@ type DiagnosticLevel = 'debug' | 'info' | 'warn' | 'error'
 const SAFE_TOKEN = /^(?!.*@)(?!.*:\/\/)(?!.*[/\\]).{1,64}$/
 
 const toSafeToken = (value: unknown, fallback: string): string => {
-  const raw = value instanceof Error ? value.name : String(value ?? '')
+  const raw =
+    value instanceof Error
+      ? value.name
+      : typeof value === 'string'
+        ? value
+        : typeof value === 'number' || typeof value === 'boolean'
+          ? String(value)
+          : ''
   const token = raw.replace(/[^A-Za-z0-9_.:-]/g, '_').slice(0, 64)
   return SAFE_TOKEN.test(token) ? token : fallback
 }
@@ -79,8 +86,8 @@ export const startActiveHeartbeat = (isFocused: () => boolean): void => {
       metrics: { activeSeconds: HEARTBEAT_INTERVAL_MS / 1000 }
     })
   }, HEARTBEAT_INTERVAL_MS)
-  if (typeof (heartbeatTimer as NodeJS.Timeout).unref === 'function') {
-    ;(heartbeatTimer as NodeJS.Timeout).unref()
+  if (typeof heartbeatTimer.unref === 'function') {
+    heartbeatTimer.unref()
   }
 }
 

@@ -1,4 +1,6 @@
 import type { BlockNoteEditor } from '@blocknote/core'
+import type { EditorState } from '@tiptap/pm/state'
+import type { EditorView } from '@tiptap/pm/view'
 import { useEffect, useRef, type MouseEvent, type PointerEvent } from 'react'
 import {
   BasicTextStyleButton,
@@ -49,7 +51,7 @@ export function ReviewFormattingToolbar({
     selector: ({ editor }) => {
       const state = getProseMirrorState(editor as BlockNoteEditor)
       const selection = state?.selection
-      return Boolean(selection && !selection.empty && selection.node)
+      return Boolean(selection && !selection.empty && (selection as { node?: unknown }).node)
     }
   })
 
@@ -123,10 +125,12 @@ function ReviewToolbarButton({ onSelect }: { onSelect?: (selection: ReviewSelect
     }
   })
   if (selectionState.isMultiBlock) {
+    // eslint-disable-next-line react-hooks/refs -- caches last single-block selection across renders so the comment button can reopen on a selection BlockNote has already cleared
     lastSelectionRef.current = null
   } else {
     const selected = getSelectableSelection(selectionState.selection)
     if (selected) {
+      // eslint-disable-next-line react-hooks/refs -- same selection cache; persists the prior frame's selection
       lastSelectionRef.current = selected
     }
   }
@@ -168,9 +172,9 @@ function ReviewToolbarButton({ onSelect }: { onSelect?: (selection: ReviewSelect
 
   const label = t('comments.toolbarComment')
   const Icon = MessageCircle
-  const renderSelection =
-    getSelectableSelection(selectionState.selection) ??
-    getSelectableSelection(lastSelectionRef.current)
+  // eslint-disable-next-line react-hooks/refs -- reads cached last single-block selection (written above) as a render fallback
+  const cachedSelection = getSelectableSelection(lastSelectionRef.current)
+  const renderSelection = getSelectableSelection(selectionState.selection) ?? cachedSelection
   const isDisabled = !renderSelection
 
   const getActionSelection = (): ReviewSelection | null => {
@@ -256,7 +260,7 @@ function getEditorSelection(editor: BlockNoteEditor): ReviewSelection {
   return getEditorSelectionFromState(editor, state)
 }
 
-function getEditorSelectionFromState(editor: BlockNoteEditor, state: any): ReviewSelection {
+function getEditorSelectionFromState(editor: BlockNoteEditor, state: EditorState): ReviewSelection {
   const selection = state.selection
   if (selection.empty) return { text: '', isEmpty: true }
 
@@ -269,8 +273,15 @@ function getEditorSelectionFromState(editor: BlockNoteEditor, state: any): Revie
   }
 }
 
-function getProseMirrorState(editor: BlockNoteEditor) {
-  return (editor as any)._tiptapEditor?.state ?? (editor as any).prosemirrorState
+type TiptapHost = {
+  _tiptapEditor?: { state?: EditorState; view?: EditorView; editorView?: EditorView }
+  prosemirrorState?: EditorState
+  prosemirrorView?: EditorView
+}
+
+function getProseMirrorState(editor: BlockNoteEditor): EditorState {
+  const host = editor as unknown as TiptapHost
+  return (host._tiptapEditor?.state ?? host.prosemirrorState) as EditorState
 }
 
 function getSelectionTop(editor: BlockNoteEditor, from: number): number | undefined {
@@ -316,19 +327,20 @@ function getDomEditorSelection(editor: BlockNoteEditor): ReviewSelection | null 
   }
 }
 
-function getProseMirrorView(editor: BlockNoteEditor) {
-  const tiptap = (editor as any)._tiptapEditor
+function getProseMirrorView(editor: BlockNoteEditor): EditorView | undefined {
+  const host = editor as unknown as TiptapHost
+  const tiptap = host._tiptapEditor
   // TipTap 3.x `editor.view` returns a Proxy that THROWS on any property access
   // (e.g. `.dom`) until the ProseMirror view is mounted, so `view?.dom` can't
   // short-circuit — the Proxy is non-null. `editorView` is the real view and is
   // only set once mounted; guard on it so reads during the pre-mount render
   // window get `undefined` instead of crashing the editor (issue #541).
   if (tiptap && !tiptap.editorView) return undefined
-  return tiptap?.view ?? (editor as any).prosemirrorView
+  return tiptap?.view ?? host.prosemirrorView
 }
 
 function getProseMirrorViewDom(editor: BlockNoteEditor): HTMLElement | undefined {
-  return getProseMirrorView(editor)?.dom as HTMLElement | undefined
+  return getProseMirrorView(editor)?.dom
 }
 
 function hasMultiBlockDomSelection(editor: BlockNoteEditor): boolean {

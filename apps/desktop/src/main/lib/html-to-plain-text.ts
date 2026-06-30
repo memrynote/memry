@@ -54,9 +54,12 @@ export function htmlToPlainText(input: string): string {
     stripped = stripped.replace(/<[^>]+>/g, '')
   } while (stripped !== previous)
 
-  return decodeEntities(stripped)
-    .replace(/[ \t]+\n/g, '\n')
-    .replace(/\n{2,}/g, '\n') // single-space everything (loose lists wrap each <li> in a <p>)
-    .replace(/\n*\u0000/g, '\n\n') // blank line only before section headings
-    .trim()
+  return (
+    decodeEntities(stripped)
+      .replace(/[ \t]+\n/g, '\n')
+      .replace(/\n{2,}/g, '\n') // single-space everything (loose lists wrap each <li> in a <p>)
+      // eslint-disable-next-line no-control-regex -- intentional control-char stripping
+      .replace(/\n*\u0000/g, '\n\n') // blank line only before section headings
+      .trim()
+  )
 }

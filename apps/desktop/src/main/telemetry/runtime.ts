@@ -103,7 +103,7 @@ const computeInitialEnabled = (
 const wrapFetch = (custom?: TelemetryFetch): TelemetryFetch => {
   if (custom) return custom
   return async (input, init) => {
-    const response = await net.fetch(input.toString(), init as RequestInit | undefined)
+    const response = await net.fetch(input.toString(), init)
     return response
   }
 }

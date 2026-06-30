@@ -249,8 +249,17 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
     })
   }, [activeTab?.entityId, activeTab?.title, activeTab?.type, t])
 
-  useEffect(() => {
-    const activeConversation = conversationId ? agent?.state.conversations[conversationId] : null
+  const conversations = agent?.state.conversations
+  const activeConversation = conversationId ? conversations?.[conversationId] : null
+  const [syncedConversation, setSyncedConversation] = useState<{
+    conversations: typeof conversations
+    conversationId: typeof conversationId
+  } | null>(null)
+  if (
+    syncedConversation?.conversations !== conversations ||
+    syncedConversation?.conversationId !== conversationId
+  ) {
+    setSyncedConversation({ conversations, conversationId })
     if (activeConversation) {
       setSelectedProvider(activeConversation.backend)
       if (isCliProvider(activeConversation.backend)) {
@@ -260,7 +269,7 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
         }))
       }
     }
-  }, [agent?.state.conversations, conversationId])
+  }
 
   useEffect(() => {
     const focusTimer = window.setTimeout(() => {

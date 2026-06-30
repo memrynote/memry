@@ -60,13 +60,17 @@ export function CustomColorSwatch({
   // the OS picker down on the first move. React's onChange stays local, tracking
   // the in-progress color so the controlled input follows the drag.
   const [draft, setDraft] = useState(isCustom ? value : '#888888')
-  useEffect(() => {
+  const [lastSyncedValue, setLastSyncedValue] = useState(value)
+  if (value !== lastSyncedValue) {
+    setLastSyncedValue(value)
     setDraft(isHexColor(value) ? value : '#888888')
-  }, [value])
+  }
 
   const inputRef = useRef<HTMLInputElement>(null)
   const onChangeRef = useRef(onChange)
-  onChangeRef.current = onChange
+  useEffect(() => {
+    onChangeRef.current = onChange
+  }, [onChange])
   useEffect(() => {
     const el = inputRef.current
     if (!el) return

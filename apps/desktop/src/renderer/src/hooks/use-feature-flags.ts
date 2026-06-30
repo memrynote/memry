@@ -26,6 +26,7 @@ export function useFeatureFlags(): UseFeatureFlagsReturn {
         const result = await window.api.settings.getFeaturesSettings()
         if (mounted) setFlags(result)
       } catch (err) {
+        // TODO(i18n): wrap in t()
         if (mounted) setError(extractErrorMessage(err, 'Failed to load features'))
       } finally {
         if (mounted) setIsLoading(false)
@@ -57,6 +58,7 @@ export function useFeatureFlags(): UseFeatureFlagsReturn {
       setError(result.error ?? 'Update failed')
       return false
     } catch (err) {
+      // TODO(i18n): wrap in t()
       setError(extractErrorMessage(err, 'Failed to update features'))
       return false
     }

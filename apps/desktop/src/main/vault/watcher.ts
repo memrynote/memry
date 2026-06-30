@@ -418,7 +418,7 @@ export class VaultWatcher {
     if (isJournalPath(relativePath)) {
       const journalDate = extractJournalDate(relativePath)
       enqueueJournalCreate(parsed.frontmatter.id, journalDate)
-      initializeJournalCrdt(parsed.frontmatter.id, journalDate, tags)
+      void initializeJournalCrdt(parsed.frontmatter.id, journalDate, tags)
     } else {
       syncNoteCreate(
         parsed.frontmatter.id,

@@ -3,6 +3,12 @@ interface OffsetMap {
   editorToSource: Array<number | null>
 }
 
+interface ProseMirrorDocLike {
+  content?: { size?: number }
+  nodeSize?: number
+  textBetween?(from: number, to: number, blockSeparator?: string): string
+}
+
 export function markdownSourceOffsetToEditorOffset(
   markdown: string,
   sourceOffset: number
@@ -28,13 +34,19 @@ export function editorOffsetToMarkdownSourceOffset(
   return map.editorToSource[editorOffset] ?? null
 }
 
-export function proseMirrorDocPosToEditorOffset(doc: any, targetPos: number): number | null {
+export function proseMirrorDocPosToEditorOffset(
+  doc: ProseMirrorDocLike,
+  targetPos: number
+): number | null {
   const maxPos = proseMirrorDocContentSize(doc)
   if (targetPos < 0 || targetPos > maxPos) return null
   return proseMirrorTextBetween(doc, 0, targetPos).length
 }
 
-export function editorOffsetToProseMirrorDocPos(doc: any, editorOffset: number): number | null {
+export function editorOffsetToProseMirrorDocPos(
+  doc: ProseMirrorDocLike,
+  editorOffset: number
+): number | null {
   const maxPos = proseMirrorDocContentSize(doc)
   const fullLength = proseMirrorTextBetween(doc, 0, maxPos).length
   if (editorOffset < 0 || editorOffset > fullLength) return null
@@ -57,7 +69,7 @@ export function editorOffsetToProseMirrorDocPos(doc: any, editorOffset: number):
   return best
 }
 
-export function proseMirrorVisibleText(doc: any): string {
+export function proseMirrorVisibleText(doc: ProseMirrorDocLike): string {
   return proseMirrorTextBetween(doc, 0, proseMirrorDocContentSize(doc))
 }
 
@@ -276,10 +288,10 @@ function trailingNewlineRunStart(markdown: string): number | null {
   return index
 }
 
-function proseMirrorDocContentSize(doc: any): number {
+function proseMirrorDocContentSize(doc: ProseMirrorDocLike): number {
   return doc?.content?.size ?? Math.max(0, (doc?.nodeSize ?? 2) - 2)
 }
 
-function proseMirrorTextBetween(doc: any, from: number, to: number): string {
+function proseMirrorTextBetween(doc: ProseMirrorDocLike, from: number, to: number): string {
   return doc?.textBetween?.(from, to, '\n') ?? ''
 }
