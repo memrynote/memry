@@ -41,6 +41,14 @@ describe('pairing', () => {
     expect(isOriginAllowed('https://evil.com')).toBe(false)
   })
 
+  it('claims pairing for a Firefox moz-extension origin', async () => {
+    const { openPairingWindow, claimPairing, isOriginAllowed } = await import('./pairing')
+    openPairingWindow()
+    const res = await claimPairing('moz-extension://abc')
+    expect(res?.token).toHaveLength(64)
+    expect(isOriginAllowed('moz-extension://abc')).toBe(true)
+  })
+
   it('rotate clears the allowlist and changes the token', async () => {
     const { openPairingWindow, claimPairing, rotateCaptureToken, isOriginAllowed } =
       await import('./pairing')

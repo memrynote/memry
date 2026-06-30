@@ -168,6 +168,17 @@ describe('capture server', () => {
     expect((await r.json()).error).toBe('origin-not-allowed')
   })
 
+  it('/pair/request for an allowlisted Firefox moz-extension origin → 200 already-paired', async () => {
+    origins.add('moz-extension://ext-firefox')
+    const r = await req(port, '/pair/request', {
+      method: 'POST',
+      headers: { Origin: 'moz-extension://ext-firefox', 'X-Memry-Capture': '1' }
+    })
+    expect(r.status).toBe(200)
+    expect((await r.json()).status).toBe('already-paired')
+    expect(openPairingWindowMock).toHaveBeenCalledTimes(1)
+  })
+
   it('/pair/request missing X-Memry-Capture header → 401 missing-capture-header', async () => {
     const r = await req(port, '/pair/request', {
       method: 'POST',

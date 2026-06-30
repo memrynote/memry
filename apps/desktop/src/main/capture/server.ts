@@ -9,7 +9,7 @@ import {
   openPairingWindow,
   unpairCapture
 } from './pairing'
-import { validateCaptureRequest } from './auth'
+import { validateCaptureRequest, isExtensionOrigin } from './auth'
 import { createLogger } from '../lib/logger'
 
 const log = createLogger('Capture:Server')
@@ -77,7 +77,7 @@ async function handle(req: http.IncomingMessage, res: http.ServerResponse): Prom
       json(res, 400, { error: 'missing-origin' })
       return
     }
-    if (!origin.startsWith('chrome-extension://')) {
+    if (!isExtensionOrigin(origin)) {
       json(res, 403, { error: 'origin-not-allowed' })
       return
     }

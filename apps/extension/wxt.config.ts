@@ -15,6 +15,22 @@ export default defineConfig({
         suggested_key: { default: 'Ctrl+Shift+S', mac: 'Command+Shift+S' },
         description: 'Capture this page to MemryNote'
       }
+    },
+    // ponytail: stable gecko id → storage.local pairing token survives reloads; required for AMO.
+    // Firefox builds target MV3 (--mv3) so browser.action/host_permissions match the Chrome source unchanged.
+    browser_specific_settings: {
+      // min versions = where data_collection_permissions is honored (FF 140 / Android 142),
+      // not where MV3 starts — avoids the AMO "key ignored below this version" warning.
+      gecko: {
+        id: 'web-clipper@memrynote.com',
+        strict_min_version: '140.0',
+        // AMO requires this for new add-ons (since 2025-11-03). Captures go only to the
+        // user's own desktop app on 127.0.0.1 — nothing is collected by the developer.
+        data_collection_permissions: { required: ['none'] }
+      },
+      gecko_android: {
+        strict_min_version: '142.0'
+      }
     }
   },
   vite: () => ({

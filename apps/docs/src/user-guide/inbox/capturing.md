@@ -64,6 +64,11 @@ If voice transcription setup is incomplete, memrynote takes you to AI settings b
 The memrynote browser extension captures the page you're reading straight into your inbox. Web clips
 appear under the **clips** content type filter.
 
+### Supported browsers
+
+The extension is a single cross-browser build that runs on Chrome, Edge, and Firefox (version 140 or
+newer). Pairing and all capture modes work the same on each.
+
 ### Pairing
 
 The extension talks to the desktop app over a local loopback connection — nothing leaves your

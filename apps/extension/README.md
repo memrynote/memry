@@ -20,6 +20,37 @@ pnpm --filter @memry/extension lint
 3. **Load unpacked** → select `apps/extension/.output/chrome-mv3`.
 4. Keep the load path stable so the extension ID (and pairing) survives reloads.
 
+## Load temporary add-on in Firefox
+
+Same WXT source, MV3 build (`--mv3` keeps `browser.action`/`host_permissions`
+matching the Chrome source). Stable id comes from `browser_specific_settings.gecko`.
+
+1. `pnpm --filter @memry/extension build:firefox`
+2. Firefox → `about:debugging#/runtime/this-firefox`.
+3. **Load Temporary Add-on…** → select `apps/extension/.output/firefox-mv3/manifest.json`.
+4. Requires Firefox ≥ 140 (`strict_min_version`, the floor for AMO's
+   `data_collection_permissions`). The `Ctrl+Shift+S` command may
+   clash with Firefox's screenshot shortcut — rebind it under
+   `about:addons → ⚙ → Manage Extension Shortcuts` if it doesn't fire; the popup
+   button works regardless.
+
+`pnpm --filter @memry/extension dev:firefox` launches a dev Firefox with
+auto-reload (via web-ext). `zip:firefox` produces a signable artifact when you
+take it to AMO.
+
+## Load unpacked in Edge
+
+Edge is Chromium, so the Chrome build already runs on it (same
+`chrome-extension://` origin → capture pairing works unchanged). The `:edge`
+scripts just produce a separately-named artifact for the Edge Add-ons store.
+
+1. `pnpm --filter @memry/extension build:edge`
+2. Edge → `edge://extensions` → enable **Developer mode**.
+3. **Load unpacked** → select `apps/extension/.output/edge-mv3`.
+
+`zip:edge` produces `.output/*-edge.zip` for submission to the Microsoft Edge
+Add-ons store.
+
 ## Manual QA (the Phase-3 acceptance gate — human-required)
 
 Run the desktop app first: `pnpm dev`.

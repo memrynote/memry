@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto'
 import keytar from 'keytar'
 import { store } from '../store'
+import { isExtensionOrigin } from './auth'
 
 const SERVICE = 'com.memry.capture'
 const ACCOUNT = 'pairing-token'
@@ -71,7 +72,7 @@ export function isPairingWindowOpen(now = Date.now()): boolean {
 
 export async function claimPairing(origin: string): Promise<{ token: string } | null> {
   if (!isPairingWindowOpen()) return null
-  if (!origin.startsWith('chrome-extension://')) return null
+  if (!isExtensionOrigin(origin)) return null
   const list = allowlist()
   if (!list.includes(origin)) store.set(ALLOWLIST_KEY, [...list, origin])
   claimWindowUntil = 0 // single claim closes the window
