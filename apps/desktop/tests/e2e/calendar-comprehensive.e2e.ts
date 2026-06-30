@@ -200,10 +200,13 @@ test.describe('Calendar — comprehensive coverage', () => {
       await cal.open()
       await cal.switchView('Day')
 
+      // NOTE: the event popover currently has no location input (only title,
+      // all-day, start/end, notes), so we don't set a location here. See
+      // docs/eng/e2e-residual-failures.md — whether the editor should support
+      // location is an open product question.
       await cal.createEvent({
         title,
-        description: 'Discuss roadmap',
-        location: 'Zoom'
+        description: 'Discuss roadmap'
       })
 
       await expect(cal.eventChip(title).first()).toBeVisible()

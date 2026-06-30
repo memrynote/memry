@@ -351,7 +351,11 @@ function reviewRail(page: Page) {
 }
 
 function commentComposer(page: Page) {
-  return reviewRail(page).locator('.critic-comment-composer').first()
+  // The draft composer opens in a floating flyout (role="dialog") positioned
+  // near the selection, not inside the rail aside — expectComposerNearSelectedTop
+  // relies on that positioning. Earlier this looked inside reviewRail() and so
+  // never matched the live composer.
+  return page.locator('.critic-review-flyout-draft .critic-comment-composer').first()
 }
 
 async function expectComposerNearSelectedTop(page: Page, selectedTop: number): Promise<void> {

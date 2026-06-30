@@ -119,7 +119,7 @@ test.describe('Calendar milestone e2e', () => {
   test('shows the same projection in the global journal day panel', async ({ page }) => {
     await openCalendarWorkspace(page)
 
-    await page.getByRole('button', { name: 'Day Panel' }).click()
+    await page.getByRole('button', { name: 'Day Panel', exact: true }).click()
     const dayPanel = page.locator('[data-slot="day-panel-inner"]')
     const scheduleHeading = dayPanel.getByText('Schedule')
     await scheduleHeading.scrollIntoViewIfNeeded()
