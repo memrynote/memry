@@ -27,6 +27,7 @@ import { registerAllHandlers } from './ipc'
 import { applyGlobalCaptureShortcut } from './ipc/settings-handlers'
 import {
   autoOpenLastVault,
+  beginVaultShutdown,
   closeVault,
   getStatus as getVaultStatus,
   onVaultStatusChanged
@@ -1270,6 +1271,11 @@ app.on('before-quit', (event) => {
 
   event.preventDefault()
 
+  // Stop broadcasting vault status to the renderer: the window is on its way
+  // out, and a closeVault() during cleanup would otherwise flip the UI to the
+  // vault picker (isOpen:false) right before the app quits/installs.
+  beginVaultShutdown()
+
   shutdownLog.info('starting graceful shutdown...')
 
   // Set timeout to force exit if shutdown takes too long
@@ -1335,7 +1341,12 @@ app.on('before-quit', (event) => {
         shutdownLog.info('installing downloaded update and relaunching')
         performQuitAndInstall()
       } else {
-        app.exit(0)
+        // Quit (not app.exit) so the `quit` event fires. app.exit() bypasses it,
+        // which silently disables electron-updater's autoInstallOnAppQuit — a
+        // downloaded-but-not-yet-installed update would never apply on a normal
+        // quit. The re-entrant before-quit returns early (isShuttingDown), so
+        // this completes the quit instead of re-running cleanup.
+        app.quit()
       }
     })
     .catch((error) => {

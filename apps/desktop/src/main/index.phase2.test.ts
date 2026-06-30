@@ -142,6 +142,7 @@ vi.mock('./ipc/settings-handlers', () => ({
 
 vi.mock('./vault', () => ({
   autoOpenLastVault: autoOpenLastVaultMock,
+  beginVaultShutdown: vi.fn(),
   closeVault: closeVaultMock,
   getStatus: getVaultStatusMock,
   onVaultStatusChanged: onVaultStatusChangedMock
@@ -1182,6 +1183,59 @@ describe('main index phase2 exports', () => {
     expect(disposeTelemetryRuntimeMock).toHaveBeenCalled()
     expect(stopSyncRuntimeMock).toHaveBeenCalled()
     expect(closeVaultMock).toHaveBeenCalled()
+  })
+
+  it('terminates via app.quit (not app.exit) after graceful shutdown so update-on-quit can run', async () => {
+    vi.useFakeTimers()
+    whenReadyMock.mockResolvedValue(undefined)
+
+    await importMainModule()
+    await flushReadyWork()
+    const { app } = await import('electron')
+
+    const beforeQuitHandler = appOnMock.mock.calls.find(
+      ([event]) => event === 'before-quit'
+    )?.[1] as (event: { preventDefault: () => void }) => void
+    beforeQuitHandler({ preventDefault: vi.fn() })
+
+    const flushHandler = ipcMainOnMock.mock.calls.find(
+      ([event]) => event === 'app:flush-done'
+    )?.[1] as () => void
+    flushHandler()
+    for (let i = 0; i < 25; i++) {
+      await Promise.resolve()
+    }
+
+    expect(app.quit).toHaveBeenCalled()
+    expect(app.exit).not.toHaveBeenCalled()
+  })
+
+  it('hands off to performQuitAndInstall when an update install was requested', async () => {
+    vi.useFakeTimers()
+    whenReadyMock.mockResolvedValue(undefined)
+
+    await importMainModule()
+    await flushReadyWork()
+    const { app } = await import('electron')
+    const updater = await import('./updater')
+    vi.mocked(updater.isQuitAndInstallRequested).mockReturnValueOnce(true)
+
+    const beforeQuitHandler = appOnMock.mock.calls.find(
+      ([event]) => event === 'before-quit'
+    )?.[1] as (event: { preventDefault: () => void }) => void
+    beforeQuitHandler({ preventDefault: vi.fn() })
+
+    const flushHandler = ipcMainOnMock.mock.calls.find(
+      ([event]) => event === 'app:flush-done'
+    )?.[1] as () => void
+    flushHandler()
+    for (let i = 0; i < 25; i++) {
+      await Promise.resolve()
+    }
+
+    expect(updater.performQuitAndInstall).toHaveBeenCalled()
+    expect(app.quit).not.toHaveBeenCalled()
+    expect(app.exit).not.toHaveBeenCalled()
   })
 
   it('creates close snapshots for open CRDT notes during graceful shutdown', async () => {

@@ -76,7 +76,17 @@ let currentStatus: VaultStatus = {
 }
 let agentHandle: AgentHandle | null = null
 let agentStartupPromise: Promise<void> | null = null
+let isShuttingDown = false
 const statusListeners = new Set<(status: VaultStatus) => void>()
+
+/**
+ * Mark the app as shutting down so vault status changes (e.g. closeVault during
+ * graceful shutdown) stop reaching the renderer. Prevents the UI flipping to the
+ * vault picker while the app is quitting/installing an update.
+ */
+export function beginVaultShutdown(): void {
+  isShuttingDown = true
+}
 
 export function onVaultStatusChanged(listener: (status: VaultStatus) => void): () => void {
   statusListeners.add(listener)
@@ -170,6 +180,7 @@ export function updateStatus(updates: Partial<VaultStatus>): void {
  */
 function emitStatusChanged(): void {
   statusListeners.forEach((listener) => listener(currentStatus))
+  if (isShuttingDown) return
   BrowserWindow.getAllWindows().forEach((win) => {
     win.webContents.send('vault:status-changed', currentStatus)
   })
