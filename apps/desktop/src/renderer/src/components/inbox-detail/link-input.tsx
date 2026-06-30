@@ -91,7 +91,7 @@ const SearchResultItem = ({
       onClick={() => onSelect(note)}
       onMouseEnter={onMouseEnter}
       className={cn(
-        'w-full flex items-center gap-2 px-3 py-2 mx-1 my-0.5 rounded-sm text-left',
+        'w-full flex items-center gap-2 px-3 py-2 mx-1 my-0.5 rounded-sm text-start',
         'transition-colors duration-75',
         isHighlighted ? 'bg-foreground/[0.03]' : 'hover:bg-foreground/[0.03]'
       )}
@@ -262,12 +262,14 @@ export const LinkInput = ({
           <input
             ref={inputRef}
             type="text"
+            role="combobox"
             placeholder={t('detail.linkNotesPlaceholder')}
             value={searchQuery}
             onChange={handleInputChange}
             onFocus={handleInputFocus}
             onKeyDown={handleKeyDown}
             aria-label={t('detail.searchNotesAria')}
+            aria-controls="link-input-listbox"
             aria-expanded={isDropdownOpen}
             aria-haspopup="listbox"
             aria-autocomplete="list"
@@ -281,6 +283,7 @@ export const LinkInput = ({
           <div
             ref={dropdownRef}
             className="absolute z-50 w-full mt-1 p-0 rounded-md border border-border bg-popover shadow-[0_8px_24px_rgba(0,0,0,0.25)] max-h-48 overflow-y-auto"
+            id="link-input-listbox"
             role="listbox"
           >
             {isSearching ? (

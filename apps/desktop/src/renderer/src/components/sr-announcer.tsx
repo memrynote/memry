@@ -1,25 +1,10 @@
 import { useEffect, useState, useCallback } from 'react'
+import { registerAnnounceCallback } from './sr-announcer-queue'
 
 /**
  * Screen Reader Announcer component
  * Uses an aria-live region to announce messages to screen readers
  */
-
-// Global announcement queue
-let announceQueue: string[] = []
-let announceCallback: ((message: string) => void) | null = null
-
-/**
- * Queue a message to be announced by the screen reader
- * Can be called from anywhere in the app
- */
-export const announceToScreenReader = (message: string): void => {
-  if (announceCallback) {
-    announceCallback(message)
-  } else {
-    announceQueue.push(message)
-  }
-}
 
 interface SRAnnouncerProps {
   className?: string
@@ -45,21 +30,12 @@ const SRAnnouncer = ({ className }: SRAnnouncerProps): React.JSX.Element => {
 
   // Register the callback on mount
   useEffect(() => {
-    announceCallback = announce
-
-    // Process any queued announcements
-    announceQueue.forEach(announce)
-    announceQueue = []
-
-    return () => {
-      announceCallback = null
-    }
+    return registerAnnounceCallback(announce)
   }, [announce])
 
   return (
-    <div
+    <output
       id="sr-announcer"
-      role="status"
       aria-live="polite"
       aria-atomic="true"
       className={className}
@@ -77,7 +53,7 @@ const SRAnnouncer = ({ className }: SRAnnouncerProps): React.JSX.Element => {
       }}
     >
       {announcement}
-    </div>
+    </output>
   )
 }
 

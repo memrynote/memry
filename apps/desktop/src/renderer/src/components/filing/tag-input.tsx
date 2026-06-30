@@ -174,15 +174,14 @@ const TagInput = ({ tags, suggestedTags, onTagsChange }: TagInputProps): React.J
 
         {/* Current Tags */}
         {tags.length > 0 && (
-          <div
+          <menu
             className="flex flex-wrap gap-1.5"
-            role="list"
             aria-label={tPhaseF('phaseF.componentsFilingTagInput.selectedTags')}
           >
             {tags.map((tag) => (
               <TagPill key={tag} tag={tag} onRemove={removeTag} variant="selected" />
             ))}
-          </div>
+          </menu>
         )}
       </div>
 

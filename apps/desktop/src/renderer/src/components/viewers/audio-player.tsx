@@ -176,7 +176,9 @@ export function AudioPlayer({
 
   return (
     <div className={cn('flex h-full flex-col bg-muted/20 min-h-0', className)}>
-      <audio ref={audioRef} src={src} preload="metadata" />
+      <audio ref={audioRef} src={src} preload="metadata" aria-label={fileName}>
+        <track kind="captions" />
+      </audio>
 
       {/* Main content - player first, transcript directly below */}
       <div className="flex-1 min-h-0 overflow-y-auto p-8">

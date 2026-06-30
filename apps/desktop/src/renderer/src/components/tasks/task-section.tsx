@@ -68,7 +68,6 @@ export const TaskSection = ({
 
   return (
     <section
-      role="region"
       className={cn(
         'flex flex-col transition-all duration-200',
         isDropTarget && 'ring-2 ring-primary/25 bg-primary/[0.04] rounded-md',

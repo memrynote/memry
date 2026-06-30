@@ -122,6 +122,7 @@ export function WikiLinkMenu({
 
         return (
           <button
+            type="button"
             key={`${item.type}-${item.id}-${item.target}`}
             className={itemClassName}
             onClick={() => onItemClick?.({ ...item, insertMode: 'wikiLink' })}

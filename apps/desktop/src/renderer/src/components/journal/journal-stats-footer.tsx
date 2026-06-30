@@ -62,9 +62,9 @@ export const JournalStatsFooter = memo(function JournalStatsFooter({
   const modifiedDate = formatDate(modifiedAt || createdAt, i18n.language)
 
   return (
-    <div
+    <footer
       className={cn(
-        'sticky bottom-0 left-0 right-0',
+        'sticky bottom-0 start-0 end-0',
         'border-t border-border/40 bg-background/95 backdrop-blur-sm',
         'px-4 py-2',
         'flex items-center justify-center gap-6',
@@ -72,7 +72,6 @@ export const JournalStatsFooter = memo(function JournalStatsFooter({
         'z-10',
         className
       )}
-      role="contentinfo"
       aria-label={t('aria.documentStatistics')}
     >
       {/* Word Count */}
@@ -110,7 +109,7 @@ export const JournalStatsFooter = memo(function JournalStatsFooter({
         <Calendar className="size-3.5" aria-hidden="true" />
         <span>{t('stats.modified', { date: modifiedDate })}</span>
       </div>
-    </div>
+    </footer>
   )
 })
 

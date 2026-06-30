@@ -198,7 +198,8 @@
     "componentsTasksDatePickerContent": {
       "removeDate": "Remove date",
       "clearTime": "Clear time",
-      "addTime": "Add time"
+      "addTime": "Add time",
+      "time": "Time"
     },
     "componentsTasksDeleteProjectDialog": {
       "delete": "Delete \"",

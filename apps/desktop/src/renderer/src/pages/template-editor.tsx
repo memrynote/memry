@@ -194,15 +194,18 @@ function TemplateEditorForm({
   }, [name, description, icon, tags, properties, content])
 
   // Convert tags to UI format
-  const pendingTagColorsRef = useRef(new Map<string, string>())
+  const pendingTagColorsRef = useRef<Map<string, string> | null>(null)
+  if (pendingTagColorsRef.current === null) {
+    pendingTagColorsRef.current = new Map<string, string>()
+  }
 
   const tagColorMap = useMemo(() => {
     const map = new Map<string, string>()
     for (const t of allAvailableTags) {
       map.set(t.tag, t.color)
     }
-    for (const key of pendingTagColorsRef.current.keys()) {
-      if (map.has(key)) pendingTagColorsRef.current.delete(key)
+    for (const key of pendingTagColorsRef.current!.keys()) {
+      if (map.has(key)) pendingTagColorsRef.current!.delete(key)
     }
     return map
   }, [allAvailableTags])
@@ -211,7 +214,7 @@ function TemplateEditorForm({
     return tags.map((tagName) => ({
       id: tagName,
       name: tagName,
-      color: tagColorMap.get(tagName) ?? pendingTagColorsRef.current.get(tagName) ?? ''
+      color: tagColorMap.get(tagName) ?? pendingTagColorsRef.current!.get(tagName) ?? ''
     }))
   }, [tags, tagColorMap])
 
@@ -341,7 +344,7 @@ function TemplateEditorForm({
   const handleCreateTag = useCallback(
     (tagName: string, color: string) => {
       if (isBuiltIn) return
-      pendingTagColorsRef.current.set(tagName.toLowerCase(), color)
+      pendingTagColorsRef.current!.set(tagName.toLowerCase(), color)
       if (!tags.includes(tagName)) {
         setTags([...tags, tagName])
       }
@@ -442,9 +445,9 @@ function TemplateEditorForm({
         {!isBuiltIn && (
           <Button onClick={() => void handleSave()} disabled={isSaving || (!isNew && !isModified)}>
             {isSaving ? (
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              <Loader2 className="w-4 h-4 me-2 animate-spin" />
             ) : (
-              <Save className="w-4 h-4 mr-2" />
+              <Save className="w-4 h-4 me-2" />
             )}
             {isNew ? 'Create Template' : 'Save Changes'}
           </Button>
@@ -464,6 +467,7 @@ function TemplateEditorForm({
                 id="description"
                 value={description}
                 onChange={(e) => !isBuiltIn && setDescription(e.target.value)}
+                aria-label={tPhaseF('phaseF.pagesTemplateEditor.description')}
                 placeholder={tPhaseF('phaseF.pagesTemplateEditor.briefDescriptionOfThisTemplate')}
                 className="mt-1.5 w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 resize-none"
                 rows={2}

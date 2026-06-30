@@ -121,7 +121,7 @@ export function DatePickerContent({
               >
                 {preset.label}
               </span>
-              <span className="text-[11px] ml-auto text-text-tertiary leading-3.5">
+              <span className="text-[11px] ms-auto text-text-tertiary leading-3.5">
                 {preset.dateLabel}
               </span>
             </button>
@@ -155,6 +155,7 @@ export function DatePickerContent({
                   type="time"
                   value={time ?? ''}
                   onChange={(e) => onTimeChange?.(e.target.value || null)}
+                  aria-label={tPhaseF('phaseF.componentsTasksDatePickerContent.time')}
                   className={cn(
                     'bg-transparent text-[12px] leading-4 text-foreground',
                     'focus:outline-none [&::-webkit-calendar-picker-indicator]:hidden'

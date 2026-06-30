@@ -140,6 +140,7 @@ export default function App() {
           </p>
           <div className="flex gap-2">
             <input
+              aria-label="Port override"
               value={port}
               onChange={(e) => setPort(e.target.value)}
               inputMode="numeric"

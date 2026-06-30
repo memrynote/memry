@@ -441,40 +441,40 @@ export const TreeProvider = ({
     ]
   )
 
+  const treeContextValue = {
+    expandedIds,
+    selectedIds: currentSelectedIds,
+    focusedId,
+    dragState,
+    toggleExpanded,
+    handleSelection,
+    setFocusedId,
+    registerNode,
+    unregisterNode,
+    getVisibleNodes,
+    getNodeInfo,
+    expandNode,
+    collapseNode,
+    expandAll,
+    expandNodes,
+    collapseAll,
+    setDragState,
+    handleDrop,
+    setNodeIcon,
+    getEffectiveIcon,
+    draggable,
+    onMove,
+    onIconChange,
+    showLines,
+    showIcons,
+    selectable,
+    multiSelect,
+    indent,
+    animateExpand
+  }
+
   return (
-    <TreeContext.Provider
-      value={{
-        expandedIds,
-        selectedIds: currentSelectedIds,
-        focusedId,
-        dragState,
-        toggleExpanded,
-        handleSelection,
-        setFocusedId,
-        registerNode,
-        unregisterNode,
-        getVisibleNodes,
-        getNodeInfo,
-        expandNode,
-        collapseNode,
-        expandAll,
-        expandNodes,
-        collapseAll,
-        setDragState,
-        handleDrop,
-        setNodeIcon,
-        getEffectiveIcon,
-        draggable,
-        onMove,
-        onIconChange,
-        showLines,
-        showIcons,
-        selectable,
-        multiSelect,
-        indent,
-        animateExpand
-      }}
-    >
+    <TreeContext.Provider value={treeContextValue}>
       <LazyMotion features={domAnimation}>
         <div className={cn('w-full', className)}>{children}</div>
       </LazyMotion>
@@ -545,22 +545,22 @@ export const TreeNode = ({
     currentPath[level - 1] = isLast
   }
 
+  const treeNodeContextValue = {
+    nodeId,
+    parentId,
+    level,
+    isLast,
+    parentPath: currentPath,
+    hasChildren,
+    acceptsDropInside,
+    hideLines: hideLinesProp,
+    customIcon,
+    inheritedIcon,
+    setCustomIcon
+  }
+
   return (
-    <TreeNodeContext.Provider
-      value={{
-        nodeId,
-        parentId,
-        level,
-        isLast,
-        parentPath: currentPath,
-        hasChildren,
-        acceptsDropInside,
-        hideLines: hideLinesProp,
-        customIcon,
-        inheritedIcon,
-        setCustomIcon
-      }}
-    >
+    <TreeNodeContext.Provider value={treeNodeContextValue}>
       <div className={cn('select-none pb-px', className)} {...props}>
         {children}
       </div>
@@ -805,7 +805,7 @@ export const TreeNodeTrigger = ({
             data-tree-node-id={nodeId}
             draggable={draggable}
             className={cn(
-              'group relative flex cursor-pointer items-center rounded-[5px] h-7 pr-2.5 ml-(--tree-indent) pl-1 gap-1.5 outline-none text-sidebar-foreground',
+              'group relative flex cursor-pointer items-center rounded-[5px] h-7 pe-2.5 ms-(--tree-indent) ps-1 gap-1.5 outline-none text-sidebar-foreground',
               'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
               'focus:bg-sidebar-accent focus:text-sidebar-accent-foreground',
               isSelected && 'bg-sidebar-accent text-sidebar-accent-foreground font-medium',
@@ -837,7 +837,7 @@ export const TreeNodeTrigger = ({
             {/* Drop indicator - before */}
             {isDropTarget && dropPosition === 'before' && (
               <div
-                className="absolute left-2 right-2 -top-0.5 h-0.5 rounded-full bg-primary"
+                className="absolute start-2 end-2 -top-0.5 h-0.5 rounded-full bg-primary"
                 aria-hidden="true"
               />
             )}
@@ -845,7 +845,7 @@ export const TreeNodeTrigger = ({
             {/* Drop indicator - after */}
             {isDropTarget && dropPosition === 'after' && (
               <div
-                className="absolute left-2 right-2 -bottom-0.5 h-0.5 rounded-full bg-primary"
+                className="absolute start-2 end-2 -bottom-0.5 h-0.5 rounded-full bg-primary"
                 aria-hidden="true"
               />
             )}
@@ -870,7 +870,7 @@ export const TreeNodeTrigger = ({
             // Default icon menu
             <>
               <ContextMenuItem onClick={handleSetIconClick}>
-                <Palette className="mr-2 h-4 w-4" />
+                <Palette className="me-2 h-4 w-4" />
 
                 {tPhaseF('phaseF.componentsKiboUiTreeIndex.setIcon')}
               </ContextMenuItem>
@@ -917,7 +917,7 @@ export const TreeLines = () => {
     <div className="pointer-events-none absolute top-0 bottom-0" style={{ left: -marginOffset }}>
       {Array.from({ length: level }, (_, index) => (
         <div
-          className="absolute top-0 bottom-0 border-sidebar-border/50 border-l"
+          className="absolute top-0 bottom-0 border-sidebar-border/50 border-s"
           key={`indent-${index}`}
           style={{ left: index * indentPx + 12 }}
         />

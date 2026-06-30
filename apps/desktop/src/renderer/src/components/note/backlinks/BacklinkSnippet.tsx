@@ -13,7 +13,6 @@ export function BacklinkSnippet({ mention, className }: BacklinkSnippetProps) {
 
   const parts: React.ReactNode[] = []
   let lastIndex = 0
-  let key = 0
 
   for (const match of snippet.matchAll(WIKILINK_RE)) {
     const matchIndex = match.index
@@ -21,7 +20,7 @@ export function BacklinkSnippet({ mention, className }: BacklinkSnippetProps) {
       parts.push(snippet.slice(lastIndex, matchIndex))
     }
     parts.push(
-      <span key={key++} className="text-muted-foreground">
+      <span key={`wikilink-${matchIndex}`} className="text-muted-foreground">
         {match[0]}
       </span>
     )

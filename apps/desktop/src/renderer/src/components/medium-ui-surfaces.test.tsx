@@ -9,10 +9,8 @@ import { SidebarNavItem } from '@/components/sidebar/sidebar-nav-item'
 import { SidebarItemContextMenu } from '@/components/sidebar/sidebar-item-context-menu'
 import { StorageUsageBar } from '@/components/settings/storage-usage-bar'
 import { CelebrationProgress } from '@/components/tasks/celebration-progress'
-import {
-  CollapsedEmptySection,
-  getCollapsedEmptyProps
-} from '@/components/tasks/empty-states/collapsed-empty-section'
+import { CollapsedEmptySection } from '@/components/tasks/empty-states/collapsed-empty-section'
+import { getCollapsedEmptyProps } from '@/components/tasks/empty-states/collapsed-empty-presets'
 import {
   CelebrationEmptyState,
   PlanningEmptyState,

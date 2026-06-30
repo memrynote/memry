@@ -5,7 +5,7 @@
  * and editorial styling. Used in dialogs and selection interfaces.
  */
 
-import { useState, createContext, useContext } from 'react'
+import { useState, useMemo, createContext, useContext } from 'react'
 import { Check, ChevronRight, FileText } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 
@@ -65,15 +65,16 @@ export function SelectableListSection({
   className
 }: SelectableListSectionProps) {
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed)
+  const contextValue = useMemo(() => ({ selectedId, onSelect }), [selectedId, onSelect])
 
   return (
-    <SelectableListContext.Provider value={{ selectedId, onSelect }}>
+    <SelectableListContext.Provider value={contextValue}>
       <div className={className}>
         <button
           type="button"
           onClick={() => collapsible && setIsCollapsed(!isCollapsed)}
           className={cn(
-            'flex items-center gap-2 mb-2 w-full text-left',
+            'flex items-center gap-2 mb-2 w-full text-start',
             collapsible && 'cursor-pointer group'
           )}
           disabled={!collapsible}
@@ -141,7 +142,7 @@ export function SelectableListItem({
       type="button"
       onClick={() => onSelect(id)}
       className={cn(
-        'group relative w-full text-left',
+        'group relative w-full text-start',
         'flex items-center gap-3',
         'px-3 py-2.5 rounded-md',
         'transition-all duration-150 ease-out',
@@ -226,7 +227,7 @@ export function StandaloneSelectableItem({
       type="button"
       onClick={onClick}
       className={cn(
-        'group relative w-full text-left',
+        'group relative w-full text-start',
         'flex items-center gap-3',
         'px-3 py-2.5 rounded-md',
         'transition-all duration-150 ease-out',

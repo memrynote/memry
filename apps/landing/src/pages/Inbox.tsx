@@ -279,14 +279,15 @@ function SurfaceCard({
   )
 }
 
+const omniboxItems: { icon: LucideIcon; label: string; hint: string; active?: boolean }[] = [
+  { icon: Link2, label: 'Capture URL from clipboard', hint: '↵', active: true },
+  { icon: Mic, label: 'Start voice memo', hint: 'V' },
+  { icon: FileText, label: 'New plain note', hint: 'N' },
+  { icon: ImageIcon, label: 'Paste screenshot', hint: '⌘V' },
+  { icon: Clock, label: 'Snooze last capture', hint: 'S' }
+]
+
 function HotkeyOmniboxMock() {
-  const items: { icon: LucideIcon; label: string; hint: string; active?: boolean }[] = [
-    { icon: Link2, label: 'Capture URL from clipboard', hint: '↵', active: true },
-    { icon: Mic, label: 'Start voice memo', hint: 'V' },
-    { icon: FileText, label: 'New plain note', hint: 'N' },
-    { icon: ImageIcon, label: 'Paste screenshot', hint: '⌘V' },
-    { icon: Clock, label: 'Snooze last capture', hint: 'S' }
-  ]
   return (
     <SurfaceCard
       label="Hotkey omnibox"
@@ -301,7 +302,7 @@ function HotkeyOmniboxMock() {
           </span>
         </div>
         <ul className="space-y-0.5 border-t border-border/40 pt-1">
-          {items.map((item) => (
+          {omniboxItems.map((item) => (
             <li
               key={item.label}
               className={cn(
@@ -419,34 +420,34 @@ function AICluster() {
   )
 }
 
-function ClusterPanelMock() {
-  const clusters = [
-    {
-      title: 'Reading · AI papers',
-      count: 5,
-      preview: 'A Generalist Agent · Toolformer · Chain-of-Thought · ...',
-      tone: 'terracotta' as const
-    },
-    {
-      title: 'Trip · Lisbon 2026',
-      count: 3,
-      preview: 'Hotel confirmation · Belém walking tour · Pastel de nata list',
-      tone: 'sage' as const
-    },
-    {
-      title: 'PKM tools',
-      count: 4,
-      preview: 'Logseq vs memrynote · Obsidian dataview · Heptabase canvas...',
-      tone: 'amber' as const
-    }
-  ]
-
-  const toneClass: Record<(typeof clusters)[number]['tone'], string> = {
-    terracotta: 'bg-terracotta/10 text-terracotta',
-    sage: 'bg-sage/15 text-sage',
-    amber: 'bg-amber-500/15 text-amber-700'
+const clusters = [
+  {
+    title: 'Reading · AI papers',
+    count: 5,
+    preview: 'A Generalist Agent · Toolformer · Chain-of-Thought · ...',
+    tone: 'terracotta' as const
+  },
+  {
+    title: 'Trip · Lisbon 2026',
+    count: 3,
+    preview: 'Hotel confirmation · Belém walking tour · Pastel de nata list',
+    tone: 'sage' as const
+  },
+  {
+    title: 'PKM tools',
+    count: 4,
+    preview: 'Logseq vs memrynote · Obsidian dataview · Heptabase canvas...',
+    tone: 'amber' as const
   }
+]
 
+const clusterToneClass: Record<(typeof clusters)[number]['tone'], string> = {
+  terracotta: 'bg-terracotta/10 text-terracotta',
+  sage: 'bg-sage/15 text-sage',
+  amber: 'bg-amber-500/15 text-amber-700'
+}
+
+function ClusterPanelMock() {
   return (
     <motion.article
       {...fadeUp}
@@ -471,7 +472,7 @@ function ClusterPanelMock() {
             <span
               className={cn(
                 'inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl',
-                toneClass[c.tone]
+                clusterToneClass[c.tone]
               )}
             >
               <Sparkles className="h-4 w-4" strokeWidth={1.8} />
@@ -485,7 +486,10 @@ function ClusterPanelMock() {
               </p>
               <p className="mt-0.5 truncate text-[12px] text-muted">{c.preview}</p>
             </div>
-            <button className="shrink-0 rounded-full border border-border/60 bg-card px-3 py-1 font-mono-accent text-[11px] text-ink/80 hover:bg-paper-alt">
+            <button
+              type="button"
+              className="shrink-0 rounded-full border border-border/60 bg-card px-3 py-1 font-mono-accent text-[11px] text-ink/80 hover:bg-paper-alt"
+            >
               File all
             </button>
           </li>
@@ -498,18 +502,20 @@ function ClusterPanelMock() {
   )
 }
 
+const TAG_SUGGESTIONS = [
+  { label: '#ai-papers', tone: 'terracotta' as const },
+  { label: '#reading', tone: 'sage' as const },
+  { label: '#research', tone: 'terracotta' as const },
+  { label: '#agents', tone: 'amber' as const }
+]
+
+const TAG_SUGGESTION_TONE_CLASS: Record<(typeof TAG_SUGGESTIONS)[number]['tone'], string> = {
+  terracotta: 'border-terracotta/30 bg-terracotta/8 text-terracotta',
+  sage: 'border-sage/30 bg-sage/10 text-sage',
+  amber: 'border-amber-500/30 bg-amber-500/10 text-amber-700'
+}
+
 function TagSuggestionsMock() {
-  const tags = [
-    { label: '#ai-papers', tone: 'terracotta' as const },
-    { label: '#reading', tone: 'sage' as const },
-    { label: '#research', tone: 'terracotta' as const },
-    { label: '#agents', tone: 'amber' as const }
-  ]
-  const toneClass: Record<(typeof tags)[number]['tone'], string> = {
-    terracotta: 'border-terracotta/30 bg-terracotta/8 text-terracotta',
-    sage: 'border-sage/30 bg-sage/10 text-sage',
-    amber: 'border-amber-500/30 bg-amber-500/10 text-amber-700'
-  }
   return (
     <motion.article
       {...fadeUp}
@@ -521,12 +527,12 @@ function TagSuggestionsMock() {
         memrynote proposes tags based on content. Accept with a tap, or type your own.
       </p>
       <div className="mt-5 flex flex-wrap gap-2">
-        {tags.map((tag) => (
+        {TAG_SUGGESTIONS.map((tag) => (
           <span
             key={tag.label}
             className={cn(
               'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono-accent text-[12px]',
-              toneClass[tag.tone]
+              TAG_SUGGESTION_TONE_CLASS[tag.tone]
             )}
           >
             <Hash className="h-3 w-3" strokeWidth={2} />
@@ -541,13 +547,14 @@ function TagSuggestionsMock() {
   )
 }
 
+const SNOOZE_OPTIONS = [
+  { label: 'Later today', meta: '18:00' },
+  { label: 'Tomorrow morning', meta: 'Sat 09:00' },
+  { label: 'Next week', meta: 'Mon, May 25' },
+  { label: 'Pick a date', meta: '…' }
+]
+
 function SnoozeMock() {
-  const options = [
-    { label: 'Later today', meta: '18:00' },
-    { label: 'Tomorrow morning', meta: 'Sat 09:00' },
-    { label: 'Next week', meta: 'Mon, May 25' },
-    { label: 'Pick a date', meta: '…' }
-  ]
   return (
     <motion.article
       {...fadeUp}
@@ -561,7 +568,7 @@ function SnoozeMock() {
       </p>
       <div className="mt-5 overflow-hidden rounded-xl border border-border/60 bg-paper">
         <ul className="divide-y divide-border/40">
-          {options.map((o, i) => (
+          {SNOOZE_OPTIONS.map((o, i) => (
             <li
               key={o.label}
               className={cn(
@@ -582,15 +589,15 @@ function SnoozeMock() {
   )
 }
 
-function FilingFlow() {
-  const destinations = [
-    { icon: FileText, label: 'Note' },
-    { icon: FolderOpen, label: 'Folder' },
-    { icon: CheckSquare, label: 'Task' },
-    { icon: Archive, label: 'Archive' },
-    { icon: MoonStar, label: 'Snooze' }
-  ] as const
+const FILING_DESTINATIONS = [
+  { icon: FileText, label: 'Note' },
+  { icon: FolderOpen, label: 'Folder' },
+  { icon: CheckSquare, label: 'Task' },
+  { icon: Archive, label: 'Archive' },
+  { icon: MoonStar, label: 'Snooze' }
+] as const
 
+function FilingFlow() {
   return (
     <section className="py-24 md:py-28">
       <Container>
@@ -607,7 +614,7 @@ function FilingFlow() {
               source link, original file, and metadata travel along with it.
             </p>
             <div className="mt-7 flex flex-wrap gap-2">
-              {destinations.map((d) => (
+              {FILING_DESTINATIONS.map((d) => (
                 <span
                   key={d.label}
                   className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-card px-3 py-1.5 text-sm text-ink/85 shadow-sm"

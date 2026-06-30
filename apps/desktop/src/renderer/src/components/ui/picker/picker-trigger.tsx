@@ -73,5 +73,3 @@ export const PickerTrigger = React.forwardRef<HTMLButtonElement, PickerTriggerPr
   }
 )
 PickerTrigger.displayName = 'PickerTrigger'
-
-export { pickerTriggerVariants }

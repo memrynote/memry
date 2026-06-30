@@ -87,7 +87,7 @@ function NoteErrorState({ error, onRetry }: { error: string; onRetry?: () => voi
         <p className="text-destructive font-medium">{t('page.error.title')}</p>
         <p className="text-sm text-muted-foreground">{error}</p>
         {onRetry && (
-          <button onClick={onRetry} className="text-sm text-primary hover:underline">
+          <button type="button" onClick={onRetry} className="text-sm text-primary hover:underline">
             {tCommon('button.retry')}
           </button>
         )}
@@ -116,6 +116,8 @@ function NoteEmptyState() {
 // ============================================================================
 // Main Component
 // ============================================================================
+
+const NOTE_CONTENT_WIDTH = { narrow: '640px', medium: '640px', wide: '864px' } as const
 
 export function NotePage({ noteId }: NotePageProps) {
   const { t } = useT('notes')
@@ -225,7 +227,6 @@ export function NotePage({ noteId }: NotePageProps) {
   // Editor settings (toolbar mode, width)
   const { settings: editorSettings } = useEditorSettings()
 
-  const NOTE_CONTENT_WIDTH = { narrow: '640px', medium: '640px', wide: '864px' } as const
   const isFullWidth = note?.frontmatter.fullWidth === true
   const noteContentWidth = isFullWidth
     ? undefined

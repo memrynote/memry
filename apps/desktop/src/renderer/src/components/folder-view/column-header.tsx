@@ -249,9 +249,9 @@ export function ColumnHeader({
     const showIndex = totalSortedColumns > 1 && sortIndex !== undefined
 
     return (
-      <span className="ml-1 text-muted-foreground/70 whitespace-nowrap">
+      <span className="ms-1 text-muted-foreground/70 whitespace-nowrap">
         {arrow}
-        {showIndex && <sup className="text-[10px] ml-0.5">{sortIndex}</sup>}
+        {showIndex && <sup className="text-[10px] ms-0.5">{sortIndex}</sup>}
       </span>
     )
   }
@@ -259,7 +259,7 @@ export function ColumnHeader({
   return (
     <th
       className={cn(
-        'px-3 py-2 text-left font-medium text-muted-foreground',
+        'px-3 py-2 text-start font-medium text-muted-foreground',
         'select-none relative group',
         canSort && !isEditing && 'cursor-pointer hover:bg-muted/50',
         header.column.getIsResizing() && 'bg-muted/30',
@@ -281,7 +281,7 @@ export function ColumnHeader({
               'flex-shrink-0 cursor-grab active:cursor-grabbing',
               'opacity-0 group-hover:opacity-100 transition-opacity',
               'text-muted-foreground/50 hover:text-muted-foreground',
-              '-ml-1 mr-0.5'
+              '-ms-1 me-0.5'
             )}
             title={tPhaseF('phaseF.componentsFolderViewColumnHeader.dragToReorderColumn')}
           >
@@ -301,6 +301,7 @@ export function ColumnHeader({
             onKeyDown={handleKeyDown}
             onBlur={handleBlur}
             onClick={(e) => e.stopPropagation()}
+            aria-label={tPhaseF('phaseF.componentsFolderViewColumnHeader.editColumnName')}
             className={cn(
               'flex-1 min-w-0 px-1 py-0.5 -mx-1 -my-0.5',
               'bg-background border border-primary rounded text-sm',
@@ -327,7 +328,7 @@ export function ColumnHeader({
         onTouchStart={handleResize}
         onClick={(e) => e.stopPropagation()}
         className={cn(
-          'absolute right-0 top-0 h-full w-1 cursor-col-resize select-none touch-none',
+          'absolute end-0 top-0 h-full w-1 cursor-col-resize select-none touch-none',
           'opacity-0 group-hover:opacity-100 hover:bg-primary/50',
           header.column.getIsResizing() && 'opacity-100 bg-primary'
         )}

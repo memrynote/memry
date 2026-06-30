@@ -61,7 +61,7 @@ export function FolderListView({
   const rowH = density === 'compact' ? 'h-8' : 'h-10'
 
   return (
-    <div className={cn('h-full overflow-auto py-1', className)} role="list">
+    <menu className={cn('h-full overflow-auto py-1', className)}>
       {visible.map((note) => (
         <div
           key={note.id}
@@ -105,7 +105,7 @@ export function FolderListView({
           </span>
         </div>
       ))}
-    </div>
+    </menu>
   )
 }
 

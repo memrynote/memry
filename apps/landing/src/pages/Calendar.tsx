@@ -313,9 +313,9 @@ function SurfaceCard({
   )
 }
 
-function WeekMiniMock() {
-  const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
-  const blocks: { day: number; top: number; h: number; tone: 'terracotta' | 'sage' | 'amber' }[] = [
+const weekDays = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
+const weekBlocks: { day: number; top: number; h: number; tone: 'terracotta' | 'sage' | 'amber' }[] =
+  [
     { day: 0, top: 10, h: 18, tone: 'sage' },
     { day: 1, top: 30, h: 22, tone: 'terracotta' },
     { day: 2, top: 18, h: 28, tone: 'amber' },
@@ -324,11 +324,13 @@ function WeekMiniMock() {
     { day: 5, top: 40, h: 14, tone: 'amber' },
     { day: 6, top: 60, h: 18, tone: 'sage' }
   ]
-  const tone: Record<'terracotta' | 'sage' | 'amber', string> = {
-    terracotta: 'bg-terracotta/25 border-terracotta/50',
-    sage: 'bg-sage/25 border-sage/50',
-    amber: 'bg-amber-500/25 border-amber-500/50'
-  }
+const weekTone: Record<'terracotta' | 'sage' | 'amber', string> = {
+  terracotta: 'bg-terracotta/25 border-terracotta/50',
+  sage: 'bg-sage/25 border-sage/50',
+  amber: 'bg-amber-500/25 border-amber-500/50'
+}
+
+function WeekMiniMock() {
   return (
     <SurfaceCard
       label="Week view"
@@ -337,7 +339,7 @@ function WeekMiniMock() {
     >
       <div className="rounded-xl border border-border/60 bg-paper p-3">
         <div className="grid grid-cols-7 gap-1 pb-2 text-center font-mono-accent text-[9px] uppercase tracking-wider text-muted">
-          {days.map((d, i) => (
+          {weekDays.map((d, i) => (
             <span
               key={`${d}-${i}`}
               className={cn(i === 2 && 'rounded-full bg-terracotta px-1 text-white')}
@@ -347,20 +349,20 @@ function WeekMiniMock() {
           ))}
         </div>
         <div className="grid h-32 grid-cols-7 gap-1">
-          {days.map((_, i) => (
+          {weekDays.map((day, i) => (
             <div
-              key={i}
+              key={`${day}-${i}`}
               className={cn(
                 'relative rounded-md border border-border/30 bg-paper-alt/40',
                 i === 2 && 'ring-1 ring-terracotta/30'
               )}
             >
-              {blocks
+              {weekBlocks
                 .filter((b) => b.day === i)
                 .map((b, idx) => (
                   <span
                     key={idx}
-                    className={cn('absolute inset-x-0.5 rounded border', tone[b.tone])}
+                    className={cn('absolute inset-x-0.5 rounded border', weekTone[b.tone])}
                     style={{ top: `${b.top}%`, height: `${b.h}%` }}
                   />
                 ))}
@@ -372,19 +374,20 @@ function WeekMiniMock() {
   )
 }
 
+const dayItems: { time: string; label: string; tone: 'terracotta' | 'sage' | 'amber' }[] = [
+  { time: '08:30', label: 'Journal entry', tone: 'amber' },
+  { time: '09:00', label: 'Standup', tone: 'sage' },
+  { time: '10:00', label: 'Deep work · spec', tone: 'terracotta' },
+  { time: '13:00', label: 'Customer call', tone: 'sage' },
+  { time: '15:30', label: 'Ship beta', tone: 'terracotta' }
+]
+const dayTone: Record<'terracotta' | 'sage' | 'amber', string> = {
+  terracotta: 'border-terracotta bg-terracotta/10 text-terracotta',
+  sage: 'border-sage bg-sage/10 text-sage',
+  amber: 'border-amber-500 bg-amber-500/10 text-amber-700'
+}
+
 function DayMiniMock() {
-  const items: { time: string; label: string; tone: 'terracotta' | 'sage' | 'amber' }[] = [
-    { time: '08:30', label: 'Journal entry', tone: 'amber' },
-    { time: '09:00', label: 'Standup', tone: 'sage' },
-    { time: '10:00', label: 'Deep work · spec', tone: 'terracotta' },
-    { time: '13:00', label: 'Customer call', tone: 'sage' },
-    { time: '15:30', label: 'Ship beta', tone: 'terracotta' }
-  ]
-  const tone: Record<'terracotta' | 'sage' | 'amber', string> = {
-    terracotta: 'border-terracotta bg-terracotta/10 text-terracotta',
-    sage: 'border-sage bg-sage/10 text-sage',
-    amber: 'border-amber-500 bg-amber-500/10 text-amber-700'
-  }
   return (
     <SurfaceCard
       label="Day view"
@@ -393,13 +396,13 @@ function DayMiniMock() {
     >
       <div className="rounded-xl border border-border/60 bg-paper p-1.5">
         <ul className="divide-y divide-border/40">
-          {items.map((i) => (
+          {dayItems.map((i) => (
             <li key={i.time} className="flex items-center gap-3 px-3 py-2">
               <span className="w-12 font-mono-accent text-[11px] text-muted">{i.time}</span>
               <span
                 className={cn(
                   'flex-1 rounded-md border-s-2 bg-paper-alt/40 px-2 py-1 text-[12px]',
-                  tone[i.tone]
+                  dayTone[i.tone]
                 )}
               >
                 {i.label}

@@ -114,6 +114,7 @@ export function UrlEditor({
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
+        aria-label={t('properties.types.url')}
         className={cn(
           'flex-1 bg-transparent p-0',
           'text-[13px] text-foreground leading-tight',

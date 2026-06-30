@@ -249,6 +249,7 @@ export default function App() {
                     {/* Uncontrolled: untouched keeps the original rich HTML on save; editing
                         replaces it with the user's plain text. Edit-to-save lives in the app. */}
                     <textarea
+                      aria-label="Content"
                       key={draft.properties.source}
                       defaultValue={stripHtml(draft.contentMarkdown)}
                       disabled={!editable}

@@ -131,6 +131,7 @@ export const WikiLinkAutocomplete = forwardRef<
               </div>
               {recentPages.map((item, index) => (
                 <button
+                  type="button"
                   key={item.id}
                   className={cn(
                     'wiki-link-autocomplete-item',
@@ -159,6 +160,7 @@ export const WikiLinkAutocomplete = forwardRef<
                 const actualIndex = index + 3
                 return (
                   <button
+                    type="button"
                     key={item.id}
                     className={cn(
                       'wiki-link-autocomplete-item',
@@ -185,6 +187,7 @@ export const WikiLinkAutocomplete = forwardRef<
       {/* Create New Page Option - always shown */}
       <div className="border-t pt-1 mt-1">
         <button
+          type="button"
           className={cn(
             'relative flex w-full cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none',
             'text-primary hover:bg-accent hover:text-accent-foreground',

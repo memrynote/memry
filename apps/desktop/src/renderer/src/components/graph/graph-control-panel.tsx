@@ -100,8 +100,9 @@ export function GraphControlPanel({
     <>
       {/* Gear toggle — always visible */}
       <button
+        type="button"
         onClick={() => setIsOpen((v) => !v)}
-        className="absolute right-3 top-3 z-50 flex size-8 items-center justify-center rounded-md border border-border bg-popover/95 backdrop-blur-sm shadow-card transition-colors hover:bg-accent"
+        className="absolute end-3 top-3 z-50 flex size-8 items-center justify-center rounded-md border border-border bg-popover/95 backdrop-blur-sm shadow-card transition-colors hover:bg-accent"
         title={isOpen ? t('control.hide-settings') : t('control.show-settings')}
       >
         <Settings
@@ -111,7 +112,7 @@ export function GraphControlPanel({
 
       {/* Sliding drawer */}
       <div
-        className={`absolute right-0 top-0 z-40 w-[260px] max-h-full border-l border-border bg-popover/95 backdrop-blur-sm rounded-bl-lg overflow-y-auto transition-transform duration-250 ease-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
+        className={`absolute end-0 top-0 z-40 w-[260px] max-h-full border-s border-border bg-popover/95 backdrop-blur-sm rounded-bl-lg overflow-y-auto transition-transform duration-250 ease-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
       >
         <div className="p-3 space-y-0.5">
           {isFiltered && (
@@ -140,7 +141,7 @@ export function GraphControlPanel({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-5 w-5 p-0 ml-auto shrink-0"
+                className="h-5 w-5 p-0 ms-auto shrink-0"
                 onClick={() => dispatch({ type: 'CLEAR_FOCUS' })}
                 aria-label={t('control.clear-focus')}
               >
@@ -153,11 +154,11 @@ export function GraphControlPanel({
           <PanelSection title={t('control.filters')} defaultOpen>
             <div className="space-y-2.5">
               <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
+                <Search className="absolute start-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
                 <Input
                   ref={inputRef}
                   placeholder={t('search.placeholder')}
-                  className="h-8 pl-8 pr-8 text-xs bg-background border-border"
+                  className="h-8 ps-8 pe-8 text-xs bg-background border-border"
                   value={filterState.searchQuery}
                   onChange={(e) => dispatch({ type: 'SET_SEARCH_QUERY', query: e.target.value })}
                 />
@@ -165,7 +166,7 @@ export function GraphControlPanel({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="absolute right-1 top-1/2 -translate-y-1/2 h-5 w-5 p-0"
+                    className="absolute end-1 top-1/2 -translate-y-1/2 h-5 w-5 p-0"
                     onClick={() => dispatch({ type: 'SET_SEARCH_QUERY', query: '' })}
                     aria-label={t('search.clear')}
                   >
@@ -239,7 +240,7 @@ function PanelSection({
         <span className="text-[11px] font-medium text-foreground">{title}</span>
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <div className="pb-2 pl-1">{children}</div>
+        <div className="pb-2 ps-1">{children}</div>
       </CollapsibleContent>
     </Collapsible>
   )

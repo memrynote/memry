@@ -70,6 +70,7 @@ export function LongTextEditor({
   return (
     <textarea
       ref={textareaRef}
+      aria-label={placeholder ?? t('properties.empty')}
       value={localValue}
       onChange={handleChange}
       onBlur={handleBlur}

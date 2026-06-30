@@ -94,6 +94,7 @@ export function RecoveryPhraseInput({
             placeholder={t('setup.recovery.inputPlaceholder')}
             rows={4}
             autoFocus
+            aria-label={t('setup.recovery.inputLabel')}
             aria-describedby={error ? 'recovery-error' : undefined}
             aria-invalid={!!error}
             className={cn(

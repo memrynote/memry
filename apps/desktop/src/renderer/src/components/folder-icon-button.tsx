@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { Folder, FolderOpen, ArrowRight } from '@/lib/icons'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { IconPickerButton } from '@/components/icon-picker-button'
@@ -33,21 +34,25 @@ export function FolderIconButton({
   )
 
   // Chevron lets the click bubble to the row, which handles expand/collapse.
-  const chevron = hasChildren ? (
-    <button
-      type="button"
-      className="flex h-4 w-4 items-center justify-center cursor-pointer rounded"
-      aria-label={isExpanded ? 'Collapse folder' : 'Expand folder'}
-    >
-      <ArrowRight
-        className={cn(
-          'h-3 w-3 text-muted-foreground/60 transition-transform ',
-          isExpanded && 'rotate-90'
-        )}
-      />
-    </button>
-  ) : (
-    <div className="h-4 w-4" />
+  const chevron = useMemo(
+    () =>
+      hasChildren ? (
+        <button
+          type="button"
+          className="flex h-4 w-4 items-center justify-center cursor-pointer rounded"
+          aria-label={isExpanded ? 'Collapse folder' : 'Expand folder'}
+        >
+          <ArrowRight
+            className={cn(
+              'h-3 w-3 text-muted-foreground/60 transition-transform ',
+              isExpanded && 'rotate-90'
+            )}
+          />
+        </button>
+      ) : (
+        <div className="h-4 w-4" />
+      ),
+    [hasChildren, isExpanded]
   )
 
   return (

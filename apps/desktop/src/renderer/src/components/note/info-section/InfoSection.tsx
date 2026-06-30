@@ -153,9 +153,8 @@ export const InfoSection = memo(function InfoSection({
   const showAddBtn = !hideAddButton && !isInline
 
   return (
-    <div
+    <section
       className={cn('flex flex-col', variant === 'default' && 'border-t border-b border-border')}
-      role="region"
       aria-label={t('properties.noteAria')}
     >
       {/* Toggle Header — hidden in inline mode */}
@@ -191,7 +190,7 @@ export const InfoSection = memo(function InfoSection({
             modifiers={[restrictToVerticalAxis, restrictToParentElement]}
           >
             <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
-              <div role="list" aria-label={t('properties.listAria')}>
+              <ul aria-label={t('properties.listAria')}>
                 {properties.map((property) => (
                   <PropertyRow
                     key={property.id}
@@ -206,7 +205,7 @@ export const InfoSection = memo(function InfoSection({
                     isSortable={isSortable}
                   />
                 ))}
-              </div>
+              </ul>
             </SortableContext>
           </DndContext>
 
@@ -233,6 +232,6 @@ export const InfoSection = memo(function InfoSection({
           )}
         </div>
       )}
-    </div>
+    </section>
   )
 })

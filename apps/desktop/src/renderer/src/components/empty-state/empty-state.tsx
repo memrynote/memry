@@ -17,7 +17,7 @@ const EmptyState = ({
   className
 }: EmptyStateProps): React.JSX.Element => {
   return (
-    <div
+    <output
       className={cn(
         'flex flex-col items-center justify-center h-full w-full px-4',
         'transition-all duration-150 ease-out',
@@ -26,7 +26,6 @@ const EmptyState = ({
           : 'opacity-100 scale-100 animate-in fade-in duration-300 motion-reduce:animate-none',
         className
       )}
-      role="status"
       aria-live="polite"
     >
       <InboxZeroState
@@ -34,7 +33,7 @@ const EmptyState = ({
         processedThisWeek={processedThisWeek}
         currentStreak={currentStreak}
       />
-    </div>
+    </output>
   )
 }
 

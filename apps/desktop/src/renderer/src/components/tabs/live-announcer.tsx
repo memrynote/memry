@@ -10,9 +10,9 @@ export const LiveAnnouncer = ({ groupId }: LiveAnnouncerProps): React.JSX.Elemen
   const announcement = activeTab ? `${activeTab.title} tab activated` : ''
 
   return (
-    <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+    <output aria-live="polite" aria-atomic="true" className="sr-only">
       {announcement}
-    </div>
+    </output>
   )
 }
 

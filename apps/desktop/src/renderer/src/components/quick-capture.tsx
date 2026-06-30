@@ -10,7 +10,7 @@ import { QuickCaptureFooter } from './quick-capture-footer'
 import { CaptureSuccess, CaptureError, CaptureDuplicate } from './quick-capture-states'
 import { LinkPreviewCard } from './quick-capture-link-preview'
 import { FilePreviewCard, formatFileSize } from './quick-capture-image-preview'
-import { detectPlatformFromUrl, extractHandleFromUrl } from './social-card'
+import { detectPlatformFromUrl, extractHandleFromUrl } from './social-card-utils'
 import { createLogger } from '@/lib/logger'
 import { useAISettingsContext } from '@/contexts/ai-settings-context'
 import {

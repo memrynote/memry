@@ -1,6 +1,6 @@
 import { generateNoteId } from '../../src/main/lib/id'
 import type { NoteFile } from '../seed-vault/file-writer'
-import { seedPastISOAt, seedTodayISO } from './date'
+import { seedPastISOAt } from './date'
 
 const dayOffset = (days: number, hour = 12): string => {
   return seedPastISOAt(days, hour, 30)
@@ -2169,8 +2169,6 @@ Pair with [[Kitchen Confidential]] for the *travel-as-eating* mindset.
   }
 ]
 
-const TODAY_ISO = seedTodayISO
-
 export const NOTES: NoteFile[] = SPECS.map((spec) => {
   const created = dayOffset(spec.daysAgoCreated)
   const modified = dayOffset(spec.daysAgoModified)
@@ -2189,5 +2187,3 @@ export const NOTES: NoteFile[] = SPECS.map((spec) => {
     body: spec.body
   }
 })
-
-export const TODAY_REFERENCE_ISO = TODAY_ISO

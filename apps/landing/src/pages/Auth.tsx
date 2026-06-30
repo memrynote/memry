@@ -9,6 +9,11 @@ import { registerWebDevice } from '@/lib/account/auth-client'
 import { SYNC_SERVER_URL, WEB_OAUTH_REDIRECT_PATH } from '@/lib/account/config'
 import { trackLandingEvent } from '@/lib/analytics'
 
+function continueWithGoogle() {
+  const redirectUri = `${window.location.origin}${WEB_OAUTH_REDIRECT_PATH}`
+  window.location.href = `${SYNC_SERVER_URL}/auth/oauth/google?redirect_uri=${encodeURIComponent(redirectUri)}`
+}
+
 export function AuthPage() {
   const { api, storage, refreshSignedIn } = useAuth()
   const navigate = useNavigate()
@@ -51,11 +56,6 @@ export function AuthPage() {
     } finally {
       setBusy(false)
     }
-  }
-
-  function continueWithGoogle() {
-    const redirectUri = `${window.location.origin}${WEB_OAUTH_REDIRECT_PATH}`
-    window.location.href = `${SYNC_SERVER_URL}/auth/oauth/google?redirect_uri=${encodeURIComponent(redirectUri)}`
   }
 
   return (

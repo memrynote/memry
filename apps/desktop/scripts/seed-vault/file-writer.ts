@@ -18,7 +18,7 @@ function serialize(frontmatter: Record<string, unknown>, body: string): string {
   return matter.stringify(body.trim(), cleanFrontmatter).replace(/(?:\r?\n)+$/g, '') + '\n'
 }
 
-export function writeNoteFile(vaultRoot: string, file: NoteFile): void {
+function writeNoteFile(vaultRoot: string, file: NoteFile): void {
   const absolute = resolve(vaultRoot, file.relativePath)
   mkdirSync(dirname(absolute), { recursive: true })
   writeFileSync(absolute, serialize(file.frontmatter, file.body), 'utf8')

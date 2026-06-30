@@ -417,6 +417,7 @@ export function SidebarTagList({
           <input
             ref={searchInputRef}
             type="text"
+            aria-label={tPhaseF('phaseF.componentsSidebarSidebarTagList.filterTags')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={handleSearchKeyDown}

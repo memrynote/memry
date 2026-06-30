@@ -87,7 +87,7 @@ export const DeleteProjectDialog = ({
                   {/* Radio Options */}
                   <div className="space-y-2">
                     {/* Option: Move to Personal */}
-                    <label
+                    <div
                       className={cn(
                         'flex cursor-pointer items-center gap-3 rounded-sm border p-3 transition-colors',
                         selectedOption === 'move'
@@ -117,10 +117,10 @@ export const DeleteProjectDialog = ({
                           'phaseF.componentsTasksDeleteProjectDialog.moveTasksToPersonalProject'
                         )}
                       </span>
-                    </label>
+                    </div>
 
                     {/* Option: Delete tasks */}
-                    <label
+                    <div
                       className={cn(
                         'flex cursor-pointer items-center gap-3 rounded-sm border p-3 transition-colors',
                         selectedOption === 'delete'
@@ -150,7 +150,7 @@ export const DeleteProjectDialog = ({
                           'phaseF.componentsTasksDeleteProjectDialog.deleteAllTasksPermanently'
                         )}
                       </span>
-                    </label>
+                    </div>
                   </div>
                 </>
               ) : (

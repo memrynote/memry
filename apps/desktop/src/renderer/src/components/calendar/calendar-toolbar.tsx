@@ -2,7 +2,7 @@ import { useT } from '@memry/i18n/renderer'
 import { Button } from '@/components/ui/button'
 import { ChevronLeft, ChevronRight, Plus } from '@/lib/icons'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
-import { addLocalDays, getStartOfWeek, parseLocalDate } from './date-utils'
+import { parseLocalDate } from './date-utils'
 import { CalendarSearch } from './calendar-search'
 import type { AnchorRect } from './types'
 
@@ -27,42 +27,6 @@ interface CalendarToolbarProps {
   onCreateEvent: (anchorRect: AnchorRect) => void
   onSearchJump: (item: CalendarProjectionItem) => void
   extraActions?: React.ReactNode
-}
-
-export function getSubLabel(
-  view: CalendarWorkspaceView,
-  anchorDate: string,
-  locale?: string
-): string {
-  const date = parseLocalDate(anchorDate)
-
-  if (view === 'day') {
-    return new Intl.DateTimeFormat(locale, { weekday: 'long' }).format(date)
-  }
-
-  if (view === 'week') {
-    const start = parseLocalDate(getStartOfWeek(anchorDate))
-    const end = parseLocalDate(addLocalDays(getStartOfWeek(anchorDate), 6))
-    const fmt = new Intl.DateTimeFormat(locale, {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    })
-    return `${fmt.format(start)} – ${fmt.format(end)}`
-  }
-
-  if (view === 'month') {
-    const first = new Date(date.getFullYear(), date.getMonth(), 1)
-    const last = new Date(date.getFullYear(), date.getMonth() + 1, 0)
-    const fmt = new Intl.DateTimeFormat(locale, {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    })
-    return `${fmt.format(first)} – ${fmt.format(last)}`
-  }
-
-  return String(date.getFullYear())
 }
 
 export function CalendarToolbar({

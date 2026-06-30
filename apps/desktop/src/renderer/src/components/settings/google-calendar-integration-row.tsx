@@ -40,17 +40,17 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
   // connected users would see the modal re-pop every time status refetches).
   const onboardingPromptShownRef = useRef(false)
 
-  const statusQuery = useQuery({
+  const { data: statusData } = useQuery({
     queryKey: GOOGLE_STATUS_QUERY_KEY,
     queryFn: () => getGoogleCalendarStatus()
   })
 
-  const sourcesQuery = useQuery({
+  const { data: sourcesData } = useQuery({
     queryKey: GOOGLE_SOURCES_QUERY_KEY,
     queryFn: () => calendarService.listSources({ provider: 'google', kind: 'calendar' })
   })
 
-  const googleSettingsQuery = useQuery({
+  const { data: googleSettingsData, isLoading: googleSettingsIsLoading } = useQuery({
     queryKey: GOOGLE_SETTINGS_QUERY_KEY,
     queryFn: () => window.api.settings.getCalendarGoogleSettings()
   })
@@ -139,7 +139,7 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
   // per mount via the ref above; settings.onboardingCompleted flips to true
   // on confirm/skip so later mounts stay quiet.
   useEffect(() => {
-    if (!statusQuery.data?.connected) return
+    if (!statusData?.connected) return
     if (onboardingPromptShownRef.current) return
     let cancelled = false
     void window.api.settings.getCalendarGoogleSettings().then((settings) => {
@@ -152,14 +152,14 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
     return () => {
       cancelled = true
     }
-  }, [statusQuery.data?.connected])
+  }, [statusData?.connected])
 
   const importedSources = useMemo(
-    () => (sourcesQuery.data?.sources ?? []).filter((source) => !source.isMemryManaged),
-    [sourcesQuery.data?.sources]
+    () => (sourcesData?.sources ?? []).filter((source) => !source.isMemryManaged),
+    [sourcesData?.sources]
   )
-  const status = statusQuery.data
-  const pushEventsToGoogle = googleSettingsQuery.data?.pushEventsToGoogle ?? true
+  const status = statusData
+  const pushEventsToGoogle = googleSettingsData?.pushEventsToGoogle ?? true
   const reconnectRequired = Boolean(
     status?.accounts?.some((account) => account.status === 'reconnect_required')
   )
@@ -333,7 +333,7 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
             </div>
             <Switch
               checked={pushEventsToGoogle}
-              disabled={pushSettingMutation.isPending || googleSettingsQuery.isLoading}
+              disabled={pushSettingMutation.isPending || googleSettingsIsLoading}
               onCheckedChange={(checked) => pushSettingMutation.mutate(checked)}
               aria-label={t('integrations.googleCalendar.pushToGoogle.label')}
             />

@@ -15,7 +15,7 @@ function firstItems(items, limit = 20) {
   return items.slice(0, limit)
 }
 
-export function toJsonReport(result) {
+function toJsonReport(result) {
   return {
     exitCode: result.exitCode,
     filesScanned: result.scan.files.length,

@@ -103,14 +103,13 @@ export function TagChip({ tag, onRemove, onClick, isSelected, isFocused, disable
   }
 
   return (
-    <span
-      role="listitem"
+    <li
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       className={pillClasses}
       style={pillStyle}
     >
       {content}
-    </span>
+    </li>
   )
 }

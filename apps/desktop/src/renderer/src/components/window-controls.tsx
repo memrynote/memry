@@ -47,12 +47,12 @@ export function WindowControls({ className }: WindowControlsProps): React.JSX.El
   }
 
   return (
-    <div className={cn('drag-region flex items-center gap-2 shrink-0 h-9 pl-3 pr-2', className)}>
+    <div className={cn('drag-region flex items-center gap-2 shrink-0 h-9 ps-3 pe-2', className)}>
       <div className="no-drag flex items-center">
         <TrafficLights />
       </div>
 
-      <div className="no-drag flex items-center gap-0.5 ml-1">
+      <div className="no-drag flex items-center gap-0.5 ms-1">
         <Tooltip>
           <TooltipTrigger asChild>
             <SidebarTrigger className="text-text-tertiary hover:text-foreground transition-colors duration-150" />
@@ -98,8 +98,8 @@ export function WindowControls({ className }: WindowControlsProps): React.JSX.El
             </button>
           </ContextMenuTrigger>
           <ContextMenuContent className="w-64">
-            {backEntries.map((e, i) => (
-              <ContextMenuItem key={`${e.tab.id}-${i}`} onSelect={() => goBackSteps(e.steps)}>
+            {backEntries.map((e) => (
+              <ContextMenuItem key={`${e.tab.id}-${e.steps}`} onSelect={() => goBackSteps(e.steps)}>
                 <TabIcon
                   type={e.tab.type}
                   icon={e.tab.icon}
@@ -132,8 +132,11 @@ export function WindowControls({ className }: WindowControlsProps): React.JSX.El
             </button>
           </ContextMenuTrigger>
           <ContextMenuContent className="w-64">
-            {forwardEntries.map((e, i) => (
-              <ContextMenuItem key={`${e.tab.id}-${i}`} onSelect={() => goForwardSteps(e.steps)}>
+            {forwardEntries.map((e) => (
+              <ContextMenuItem
+                key={`${e.tab.id}-${e.steps}`}
+                onSelect={() => goForwardSteps(e.steps)}
+              >
                 <TabIcon
                   type={e.tab.type}
                   icon={e.tab.icon}

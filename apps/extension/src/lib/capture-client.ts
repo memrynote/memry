@@ -1,7 +1,7 @@
 import type { ArticleCapture } from '@memry/article-extract'
 
-export const DEFAULT_PORT = 7849
-export const PROBE_RANGE = 8
+const DEFAULT_PORT = 7849
+const PROBE_RANGE = 8
 export const PROBE_PORTS = Array.from({ length: PROBE_RANGE }, (_, i) => DEFAULT_PORT + i)
 
 const CAPTURE_HEADER = 'X-Memry-Capture'
@@ -9,13 +9,13 @@ const CAPTURE_HEADER = 'X-Memry-Capture'
 export function pingUrl(port: number): string {
   return `http://127.0.0.1:${port}/ping`
 }
-export function claimUrl(port: number): string {
+function claimUrl(port: number): string {
   return `http://127.0.0.1:${port}/pair/claim`
 }
 export function pairRequestUrl(port: number): string {
   return `http://127.0.0.1:${port}/pair/request`
 }
-export function captureUrl(port: number): string {
+function captureUrl(port: number): string {
   return `http://127.0.0.1:${port}/capture`
 }
 export function revokeUrl(port: number): string {

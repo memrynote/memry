@@ -27,6 +27,13 @@ interface SelectionCheckboxProps {
 // COMPONENT
 // ============================================================================
 
+const handleKeyDown = (e: React.KeyboardEvent): void => {
+  // Prevent row click when pressing space/enter on checkbox
+  if (e.key === ' ' || e.key === 'Enter') {
+    e.stopPropagation()
+  }
+}
+
 /**
  * Checkbox component that supports the indeterminate state
  * Used for "select all" functionality where some items are selected
@@ -56,13 +63,6 @@ export const SelectionCheckbox = ({
   const handleClick = (e: React.MouseEvent): void => {
     e.stopPropagation()
     onClick?.(e)
-  }
-
-  const handleKeyDown = (e: React.KeyboardEvent): void => {
-    // Prevent row click when pressing space/enter on checkbox
-    if (e.key === ' ' || e.key === 'Enter') {
-      e.stopPropagation()
-    }
   }
 
   return (

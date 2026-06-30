@@ -169,6 +169,7 @@ const TaskCreationPopoverForm: FC<TaskCreationPopoverFormProps> = ({
               type="button"
               onClick={() => setPriority(opt.value)}
               title={opt.label}
+              aria-label={opt.label}
               className={cn(
                 'size-5 rounded-full transition-all',
                 opt.color,
@@ -189,6 +190,9 @@ const TaskCreationPopoverForm: FC<TaskCreationPopoverFormProps> = ({
           type="date"
           value={dueDate}
           onChange={(e) => setDueDate(e.target.value)}
+          aria-label={tPhaseF(
+            'phaseF.componentsNoteContentAreaTaskBlockTaskCreationPopover.dueDate'
+          )}
           className={cn(
             'w-full rounded-md border bg-transparent px-2 py-1.5 text-sm',
             'focus:outline-none focus:ring-1 focus:ring-ring'

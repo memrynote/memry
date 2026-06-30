@@ -400,6 +400,7 @@ function MoveToFolderDialogSession({
                       return (
                         <button
                           key={`suggestion-${item.path}`}
+                          type="button"
                           data-selected={isSelected}
                           disabled={isCurrent}
                           onClick={() => void (!isCurrent && handleMove(item.path))}
@@ -456,6 +457,7 @@ function MoveToFolderDialogSession({
                     return (
                       <button
                         key={`folder-${item.path}`}
+                        type="button"
                         data-selected={isSelected}
                         disabled={isCurrent}
                         onClick={() => void (!isCurrent && handleMove(item.path))}
@@ -503,6 +505,7 @@ function MoveToFolderDialogSession({
               {canCreateFolder && (
                 <div className="border-t pt-2 mt-2">
                   <button
+                    type="button"
                     data-selected={selectedIndex === folderItems.length}
                     onClick={() => void handleCreateAndMove()}
                     className={cn(

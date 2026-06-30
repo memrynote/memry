@@ -201,6 +201,7 @@ export function AppearanceSettings() {
               <button
                 key={preset.value}
                 type="button"
+                aria-label={t(preset.labelKey)}
                 onClick={() => void handleAccentChange(preset.value)}
                 className="size-6 rounded-xl shrink-0 transition-all duration-150 cursor-pointer hover:scale-110 focus-visible:outline-none"
                 style={{

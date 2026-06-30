@@ -78,4 +78,4 @@ function Pill({
   )
 }
 
-export { Pill, pillVariants, type PillProps, type PillColor }
+export { Pill, type PillProps, type PillColor }

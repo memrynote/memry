@@ -67,6 +67,7 @@ export function TextEditor({
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}
       placeholder={placeholder ?? t('properties.empty')}
+      aria-label={placeholder ?? t('properties.empty')}
       className={cn(
         'w-full bg-transparent border-none p-0',
         'text-[13px] text-foreground',

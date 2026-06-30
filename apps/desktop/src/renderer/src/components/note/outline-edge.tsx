@@ -115,7 +115,7 @@ export const OutlineEdge = memo(function OutlineEdge({
       ref={containerRef}
       className={cn(
         'outline-indicator',
-        'absolute right-4 top-1/2 -translate-y-1/2',
+        'absolute end-4 top-1/2 -translate-y-1/2',
         'hidden md:block z-40',
         className
       )}
@@ -150,7 +150,7 @@ export const OutlineEdge = memo(function OutlineEdge({
 
           {/* Vertical connector line */}
           <div
-            className="vertical-connector ml-1.5 mt-1"
+            className="vertical-connector ms-1.5 mt-1"
             style={{
               width: '1px',
               height: `${verticalLineHeight}px`,
@@ -178,18 +178,19 @@ export const OutlineEdge = memo(function OutlineEdge({
               return (
                 <button
                   key={heading.id}
+                  type="button"
                   data-heading-id={heading.id}
                   onClick={() => handleClick(heading.id)}
                   className={cn(
-                    'w-full text-left px-3 py-1.5 text-sm',
+                    'w-full text-start px-3 py-1.5 text-sm',
                     'transition-colors duration-150',
                     'hover:bg-stone-100 dark:hover:bg-stone-800',
                     'focus:outline-none focus:bg-stone-100 dark:focus:bg-stone-800',
                     // Indentation based on level
                     heading.level === 1 && 'font-medium text-stone-900 dark:text-stone-100',
-                    heading.level === 2 && 'pl-5 text-stone-700 dark:text-stone-300',
-                    heading.level === 3 && 'pl-7 text-xs text-stone-600 dark:text-stone-400',
-                    heading.level >= 4 && 'pl-9 text-xs text-stone-500 dark:text-stone-500',
+                    heading.level === 2 && 'ps-5 text-stone-700 dark:text-stone-300',
+                    heading.level === 3 && 'ps-7 text-xs text-stone-600 dark:text-stone-400',
+                    heading.level >= 4 && 'ps-9 text-xs text-stone-500 dark:text-stone-500',
                     // Active state - highlighted
                     isActive &&
                       'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium'

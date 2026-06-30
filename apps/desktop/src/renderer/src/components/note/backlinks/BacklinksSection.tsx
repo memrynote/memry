@@ -133,12 +133,12 @@ export function BacklinksSection({
   return (
     <section
       className="flex flex-col gap-1"
-      role="region"
       aria-label={t('backlinks.sectionAria')}
       aria-busy={isLoading}
     >
       <div className="flex items-center justify-between">
         <button
+          type="button"
           onClick={collapsible ? toggleCollapse : undefined}
           className={cn(
             'flex items-center gap-1.5',
@@ -168,6 +168,7 @@ export function BacklinksSection({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
+                type="button"
                 className={cn(
                   'inline-flex items-center gap-1 px-1.5 py-0.5',
                   'text-[11px] text-text-tertiary',
@@ -196,12 +197,7 @@ export function BacklinksSection({
       </div>
 
       {!isCollapsed && (
-        <div
-          id="backlinks-content"
-          aria-live="polite"
-          role="list"
-          aria-label={t('backlinks.listAria')}
-        >
+        <menu id="backlinks-content" aria-live="polite" aria-label={t('backlinks.listAria')}>
           {isLoading ? (
             <BacklinksLoadingState />
           ) : (
@@ -219,6 +215,7 @@ export function BacklinksSection({
 
               {hasMore && remainingCount > 0 && (
                 <button
+                  type="button"
                   onClick={handleShowMore}
                   className={cn(
                     'w-full py-1.5 mt-0.5',
@@ -234,7 +231,7 @@ export function BacklinksSection({
               )}
             </>
           )}
-        </div>
+        </menu>
       )}
     </section>
   )

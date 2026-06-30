@@ -3,7 +3,8 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { CalendarSidebar } from './calendar-sidebar'
-import { CalendarToolbar, getSubLabel } from './calendar-toolbar'
+import { CalendarToolbar } from './calendar-toolbar'
+import { getSubLabel } from './calendar-toolbar-utils'
 import { GlobalDayPanel } from '@/components/day-panel/global-day-panel'
 
 const dayPanel = vi.hoisted(() => ({

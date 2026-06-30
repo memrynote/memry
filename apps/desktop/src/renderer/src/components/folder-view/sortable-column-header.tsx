@@ -282,6 +282,7 @@ export function SortableColumnHeader({
             type="text"
             autoFocus
             value={editValue}
+            aria-label={tPhaseF('phaseF.componentsFolderViewSortableColumnHeader.editColumnName')}
             onChange={(e) => setEditValue(e.target.value)}
             onFocus={(e) => e.currentTarget.select()}
             onKeyDown={handleKeyDown}

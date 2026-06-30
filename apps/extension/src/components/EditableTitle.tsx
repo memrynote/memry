@@ -9,6 +9,7 @@ export function EditableTitle({
 }) {
   return (
     <textarea
+      aria-label="Title"
       value={value}
       disabled={disabled}
       rows={1}

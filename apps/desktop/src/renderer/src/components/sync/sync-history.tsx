@@ -63,7 +63,7 @@ function HistoryRow({ entry }: { entry: SyncHistoryEntry }): React.JSX.Element {
           {entrySummary(entry)}
         </span>
         {duration && (
-          <span className="text-xs text-muted-foreground ml-1.5">
+          <span className="text-xs text-muted-foreground ms-1.5">
             &{tPhaseF('phaseF.componentsSyncSyncHistory.middot')}
             {duration}
           </span>
@@ -93,7 +93,7 @@ function HistoryRow({ entry }: { entry: SyncHistoryEntry }): React.JSX.Element {
         {row}
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <div className="ml-7 mb-2 p-2 rounded bg-destructive/10 text-xs text-destructive break-all">
+        <div className="ms-7 mb-2 p-2 rounded bg-destructive/10 text-xs text-destructive break-all">
           {error}
         </div>
       </CollapsibleContent>
@@ -166,13 +166,12 @@ export function SyncHistoryPanel(): React.JSX.Element {
       </div>
 
       {isLoading && entries.length === 0 ? (
-        <div
+        <output
           className="flex items-center justify-center py-8"
-          role="status"
           aria-label={tPhaseF('phaseF.componentsSyncSyncHistory.loadingSyncHistory')}
         >
           <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" aria-hidden="true" />
-        </div>
+        </output>
       ) : entries.length === 0 ? (
         <p className="text-sm text-muted-foreground text-center py-8">
           {tPhaseF('phaseF.componentsSyncSyncHistory.noSyncActivityYet')}
@@ -188,7 +187,7 @@ export function SyncHistoryPanel(): React.JSX.Element {
       {hasMore && entries.length > 0 && (
         <div className="flex justify-center">
           <Button variant="ghost" size="sm" onClick={loadMore} disabled={isLoading}>
-            {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : null}
+            {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin me-1.5" /> : null}
 
             {tPhaseF('phaseF.componentsSyncSyncHistory.loadMore')}
           </Button>

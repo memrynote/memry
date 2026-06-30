@@ -5,7 +5,7 @@ export const SITE_NAME = 'memrynote'
 export const ALTERNATE_SITE_NAMES = ['Memry Note', 'memrynote.com'] as const
 // Brand handle (matches index.html). The founder's personal handle is TWITTER_DEV_URL in constants.
 export const TWITTER_HANDLE = '@memrynote'
-export const SOCIAL_IMAGE_PATH = '/og-image.png'
+const SOCIAL_IMAGE_PATH = '/og-image.png'
 export const SOCIAL_IMAGE_URL = `${BASE_URL}${SOCIAL_IMAGE_PATH}`
 export const SOCIAL_IMAGE_WIDTH = '1200'
 export const SOCIAL_IMAGE_HEIGHT = '630'

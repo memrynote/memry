@@ -27,7 +27,7 @@ export const DownloadProgress = memo(function DownloadProgress({
   const isActive = !isComplete && !isFailed
 
   return (
-    <div
+    <output
       className={cn(
         'flex items-center gap-2.5 rounded-md border px-3 py-2 text-sm',
         isComplete && 'border-green-500/30 bg-green-500/5',
@@ -35,7 +35,6 @@ export const DownloadProgress = memo(function DownloadProgress({
         isActive && 'border-border bg-muted/30',
         className
       )}
-      role="status"
       aria-label={`Download ${fileName}: ${STATUS_LABELS[status] ?? status} ${progress}%`}
     >
       {isComplete ? (
@@ -75,6 +74,6 @@ export const DownloadProgress = memo(function DownloadProgress({
           {STATUS_LABELS[status] ?? status}
         </p>
       </div>
-    </div>
+    </output>
   )
 })

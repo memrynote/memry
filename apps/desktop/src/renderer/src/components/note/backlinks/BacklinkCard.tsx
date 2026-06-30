@@ -27,6 +27,7 @@ export function BacklinkCard({ backlink, defaultExpanded = false, onClick }: Bac
         )}
       >
         <button
+          type="button"
           onClick={() => setIsExpanded(!isExpanded)}
           className="flex items-center gap-1.5 flex-1 min-w-0 focus:outline-none focus-visible:ring-1 focus-visible:ring-border rounded"
           aria-expanded={isExpanded}
@@ -67,20 +68,14 @@ export function BacklinkCard({ backlink, defaultExpanded = false, onClick }: Bac
       </div>
 
       {isExpanded && mentions.length > 0 && (
-        <div className="ml-5 flex flex-col gap-px" role="list">
+        <div className="ms-5 flex flex-col gap-px" role="list">
           {mentions.map((mention) => (
-            <div
+            <button
+              type="button"
               key={mention.id}
-              role="button"
-              tabIndex={0}
               onClick={() => onClick(noteId, mention)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault()
-                  onClick(noteId, mention)
-                }
-              }}
               className={cn(
+                'block w-full text-start',
                 'rounded px-1.5 py-1',
                 'hover:bg-surface-active/30',
                 'transition-colors duration-150',
@@ -89,7 +84,7 @@ export function BacklinkCard({ backlink, defaultExpanded = false, onClick }: Bac
               )}
             >
               <BacklinkSnippet mention={mention} />
-            </div>
+            </button>
           ))}
         </div>
       )}

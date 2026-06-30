@@ -131,7 +131,7 @@ export const SidebarSection = ({
             aria-label={`${label} section, ${isExpanded ? 'expanded' : 'collapsed'}${totalCount !== undefined ? `, ${totalCount} items` : ''}`}
             tabIndex={0}
           >
-            <span className="truncate text-left uppercase">{label}</span>
+            <span className="truncate text-start uppercase">{label}</span>
             <SectionChevron expanded={isExpanded} />
 
             {!isExpanded && totalCount !== undefined && totalCount > 0 && (
@@ -143,7 +143,7 @@ export const SidebarSection = ({
 
           {actions && (
             <div
-              className="flex shrink-0 items-center gap-0.5 pr-2 opacity-0 group-hover/section:opacity-100 transition-opacity duration-150"
+              className="flex shrink-0 items-center gap-0.5 pe-2 opacity-0 group-hover/section:opacity-100 transition-opacity duration-150"
               onClick={(e) => e.stopPropagation()}
             >
               {actions}
@@ -152,9 +152,8 @@ export const SidebarSection = ({
         </div>
 
         {/* Accordion content */}
-        <div
+        <section
           id={contentId}
-          role="region"
           aria-labelledby={headerId}
           aria-hidden={!isExpanded}
           className={cn(
@@ -165,7 +164,7 @@ export const SidebarSection = ({
           <div className="overflow-hidden">
             <SidebarMenu className="gap-0">{children}</SidebarMenu>
           </div>
-        </div>
+        </section>
       </SidebarGroup>
     </div>
   )

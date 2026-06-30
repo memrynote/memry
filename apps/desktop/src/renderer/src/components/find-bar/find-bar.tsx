@@ -44,7 +44,7 @@ export const FindBar = memo(function FindBar({
   return (
     <div
       className={cn(
-        'absolute right-4 top-14 z-30',
+        'absolute end-4 top-14 z-30',
         'transition-all duration-100 ease-out',
         isOpen
           ? 'opacity-100 translate-y-0 pointer-events-auto'
@@ -67,6 +67,7 @@ export const FindBar = memo(function FindBar({
           onChange={(e) => onQueryChange(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={tPhaseF('phaseF.componentsFindBarFindBar.findReplaceAsk')}
+          aria-label={tPhaseF('phaseF.componentsFindBarFindBar.findReplaceAsk')}
           tabIndex={isOpen ? 0 : -1}
           className={cn(
             'w-52 h-7 text-sm bg-transparent',
@@ -82,6 +83,7 @@ export const FindBar = memo(function FindBar({
         )}
 
         <button
+          type="button"
           onClick={onClose}
           tabIndex={isOpen ? 0 : -1}
           className="p-0.5 rounded hover:bg-muted/60 text-muted-foreground/50 hover:text-muted-foreground transition-colors"

@@ -546,11 +546,17 @@ function ApprovalCardLarge() {
       </label>
 
       <div className="mt-5 flex items-center justify-end gap-2.5">
-        <button className="inline-flex items-center gap-2 rounded-full border border-dark-border bg-transparent px-4 py-2 text-[13px] font-medium text-dark-muted hover:text-ink-inverted">
+        <button
+          type="button"
+          className="inline-flex items-center gap-2 rounded-full border border-dark-border bg-transparent px-4 py-2 text-[13px] font-medium text-dark-muted hover:text-ink-inverted"
+        >
           <X className="h-4 w-4" strokeWidth={2} />
           Decline
         </button>
-        <button className="inline-flex items-center gap-2 rounded-full bg-terracotta px-4 py-2 text-[13px] font-medium text-paper">
+        <button
+          type="button"
+          className="inline-flex items-center gap-2 rounded-full bg-terracotta px-4 py-2 text-[13px] font-medium text-paper"
+        >
           <CheckCircle2 className="h-4 w-4" strokeWidth={2} />
           Approve write
         </button>
@@ -617,18 +623,18 @@ function ConversationSettingsCard() {
   )
 }
 
+const clients = [
+  { name: 'Claude CLI', scope: 'read · write (this convo)', tone: 'terracotta' },
+  { name: 'Codex CLI', scope: 'read only', tone: 'sage' },
+  { name: 'Ollama (local)', scope: 'read only', tone: 'sage' }
+] as const
+
+const dot: Record<'terracotta' | 'sage', string> = {
+  terracotta: 'bg-terracotta',
+  sage: 'bg-sage'
+}
+
 function ConnectedAgentsCard() {
-  const clients = [
-    { name: 'Claude CLI', scope: 'read · write (this convo)', tone: 'terracotta' },
-    { name: 'Codex CLI', scope: 'read only', tone: 'sage' },
-    { name: 'Ollama (local)', scope: 'read only', tone: 'sage' }
-  ] as const
-
-  const dot: Record<'terracotta' | 'sage', string> = {
-    terracotta: 'bg-terracotta',
-    sage: 'bg-sage'
-  }
-
   return (
     <motion.article
       {...fadeUp}

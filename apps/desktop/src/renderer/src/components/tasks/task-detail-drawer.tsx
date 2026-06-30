@@ -281,8 +281,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
   )
 
   return (
-    <div
-      role="complementary"
+    <aside
       aria-label={t('task.details')}
       aria-hidden={!isOpen}
       className={cn(
@@ -310,6 +309,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                 onChange={(e) => onUpdateTask?.(task.id, { title: e.target.value })}
                 className="flex-1 min-w-0 text-[14px] font-medium text-text-primary bg-transparent outline-none truncate"
                 placeholder={t('task.namePlaceholder')}
+                aria-label={t('task.namePlaceholder')}
               />
               <button
                 type="button"
@@ -387,6 +387,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                 placeholder={t('task.descriptionPlaceholder')}
                 rows={3}
                 className="text-[13px] leading-5 text-text-secondary bg-transparent outline-none resize-none placeholder:text-text-tertiary"
+                aria-label={t('task.description')}
               />
             </div>
 
@@ -469,6 +470,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                       }
                     }}
                     placeholder={t('drawer.subIssuePlaceholder')}
+                    aria-label={t('drawer.subIssuePlaceholder')}
                     className="flex-1 text-[12px] leading-4 text-text-primary placeholder:text-text-tertiary bg-transparent outline-none"
                   />
                 </div>
@@ -569,6 +571,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                       }
                     }}
                     placeholder={t('drawer.searchRelated')}
+                    aria-label={t('drawer.searchRelated')}
                     className="text-[12px] leading-4 text-text-primary placeholder:text-text-tertiary bg-foreground/[0.03] rounded-md py-1.5 px-2.5 outline-none border border-border focus:border-ring"
                   />
                   <div className="max-h-[160px] overflow-y-auto scrollbar-thin flex flex-col gap-0.5">
@@ -662,6 +665,6 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
           ariaLabel={t('drawer.resize')}
         />
       )}
-    </div>
+    </aside>
   )
 })

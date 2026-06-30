@@ -101,9 +101,8 @@ function QrDisplay({
 
   if (qrState === 'loading') {
     return (
-      <div
+      <output
         className="flex flex-col items-center justify-center py-12 gap-3"
-        role="status"
         aria-label={t('qrLinking.generatingAria')}
       >
         <Loader2
@@ -111,7 +110,7 @@ function QrDisplay({
           aria-hidden="true"
         />
         <p className="text-sm text-muted-foreground">{t('qrLinking.generating')}</p>
-      </div>
+      </output>
     )
   }
 

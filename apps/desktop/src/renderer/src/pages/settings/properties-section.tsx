@@ -298,6 +298,7 @@ function PropertyManager() {
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <button
+                        type="button"
                         onClick={(e) => e.stopPropagation()}
                         className="p-1 rounded text-muted-foreground/50 opacity-0 group-hover:opacity-100 hover:text-foreground transition-all"
                       >
@@ -330,6 +331,7 @@ function PropertyManager() {
                                 {cat.label}
                               </span>
                               <button
+                                type="button"
                                 onClick={() => {
                                   setAddingStatusOption({
                                     propertyName: def.name,
@@ -444,6 +446,7 @@ function PropertyManager() {
                         </div>
                       ) : (
                         <button
+                          type="button"
                           onClick={() => {
                             setAddingOption(def.name)
                             setNewOptionName('')
@@ -510,6 +513,7 @@ function PropertyManager() {
                       )}
                       style={{ backgroundColor: clrs.background }}
                       title={colorName}
+                      aria-label={colorName}
                     />
                   )
                 })}
@@ -558,6 +562,7 @@ function OptionRow({
         className="w-2.5 h-2.5 rounded-full shrink-0 hover:scale-125 transition-transform"
         style={{ backgroundColor: colors.text }}
         title={t('properties.changeColorTitle')}
+        aria-label={t('properties.changeColorTitle')}
       />
       {isEditing ? (
         <Input
@@ -584,6 +589,7 @@ function OptionRow({
       )}
       <div className="flex items-center gap-0.5 opacity-0 group-hover/option:opacity-100 transition-opacity">
         <button
+          type="button"
           onClick={onStartEdit}
           className="p-0.5 rounded text-muted-foreground/50 hover:text-foreground"
           title={t('properties.renameTitle')}
@@ -591,6 +597,7 @@ function OptionRow({
           <Pencil className="w-3 h-3" />
         </button>
         <button
+          type="button"
           onClick={onRemove}
           className="p-0.5 rounded text-muted-foreground/50 hover:text-destructive"
           title={t('properties.removeTitle')}

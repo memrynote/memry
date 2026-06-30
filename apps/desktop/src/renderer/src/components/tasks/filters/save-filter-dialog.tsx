@@ -171,8 +171,8 @@ export const SaveFilterDialog = ({
             </Label>
             <ul className="text-sm space-y-1">
               {filterSummary.length > 0 ? (
-                filterSummary.map((item, index) => (
-                  <li key={index} className="text-muted-foreground">
+                filterSummary.map((item) => (
+                  <li key={item} className="text-muted-foreground">
                     • {item}
                   </li>
                 ))

@@ -19,6 +19,7 @@ function Row({
         {label}
       </span>
       <input
+        aria-label={label}
         value={value}
         disabled={disabled}
         onChange={(e) => onChange(e.target.value)}

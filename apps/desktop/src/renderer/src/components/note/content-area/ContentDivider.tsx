@@ -15,14 +15,13 @@ interface ContentDividerProps {
  */
 export function ContentDivider({ className }: ContentDividerProps) {
   return (
-    <div
+    <hr
       className={cn(
-        'w-full h-px',
+        'w-full h-px border-0',
         'bg-stone-200',
         'my-6', // 24px margin
         className
       )}
-      role="separator"
       aria-orientation="horizontal"
     />
   )

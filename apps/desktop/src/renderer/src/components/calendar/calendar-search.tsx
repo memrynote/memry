@@ -33,15 +33,15 @@ export function CalendarSearch({ onJump }: CalendarSearchProps): React.JSX.Eleme
     }
   }, [])
 
-  const rangeQuery = useQuery({
+  const { data: rangeData, isLoading: rangeIsLoading } = useQuery({
     queryKey: calendarRangeKeys.range(range),
     queryFn: () => calendarService.getRange(range),
     enabled: open
   })
 
   const results = useMemo(
-    () => filterCalendarItems(rangeQuery.data?.items ?? [], query, nowMs),
-    [rangeQuery.data, query, nowMs]
+    () => filterCalendarItems(rangeData?.items ?? [], query, nowMs),
+    [rangeData, query, nowMs]
   )
 
   const dateFormatter = useMemo(
@@ -127,7 +127,7 @@ export function CalendarSearch({ onJump }: CalendarSearchProps): React.JSX.Eleme
         <div className="absolute end-0 top-full z-50 mt-2 max-h-80 w-80 overflow-y-auto rounded-xl border border-border bg-popover p-1 shadow-lg">
           {results.length === 0 ? (
             <p className="px-3 py-6 text-center text-sm text-muted-foreground">
-              {rangeQuery.isLoading ? t('state.preparing') : t('search.no-results')}
+              {rangeIsLoading ? t('state.preparing') : t('search.no-results')}
             </p>
           ) : (
             results.map((item) => (

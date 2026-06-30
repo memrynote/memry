@@ -217,6 +217,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                 onKeyDown={(e) => {
                   if (e.key === 'Escape') closeArchivedSearch()
                 }}
+                aria-label={t('view.searchArchivedTitle')}
                 placeholder={t('view.searchPlaceholder')}
                 className={cn(
                   'min-w-0 bg-transparent text-[12px] leading-4 outline-none border-none ring-0 shadow-none text-foreground placeholder:text-muted-foreground/40',

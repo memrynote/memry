@@ -112,6 +112,7 @@ export function SidebarFeedbackButton() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                aria-label={t('phaseF.componentsAppSidebar.feedbackEmailHint')}
                 placeholder={t('phaseF.componentsAppSidebar.feedbackEmailHint')}
                 className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               />

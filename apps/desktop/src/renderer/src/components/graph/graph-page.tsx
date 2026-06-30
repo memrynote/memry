@@ -123,11 +123,7 @@ function GraphEmptyState(): React.JSX.Element {
   const { t } = useT('graph')
 
   return (
-    <div
-      className="flex h-full flex-col items-center justify-center"
-      role="status"
-      aria-live="polite"
-    >
+    <output className="flex h-full flex-col items-center justify-center" aria-live="polite">
       <div className="max-w-sm text-center space-y-6">
         <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-accent-cyan/10">
           <Network className="size-7 text-accent-cyan" strokeWidth={1.5} />
@@ -138,7 +134,7 @@ function GraphEmptyState(): React.JSX.Element {
           <p className="text-sm text-muted-foreground leading-relaxed">{t('empty.description')}</p>
         </div>
 
-        <div className="space-y-3 text-left">
+        <div className="space-y-3 text-start">
           <div className="flex items-start gap-3 rounded-md border border-border/50 p-3">
             <Link2 className="size-4 mt-0.5 text-accent-cyan shrink-0" />
             <div>
@@ -157,6 +153,6 @@ function GraphEmptyState(): React.JSX.Element {
           </div>
         </div>
       </div>
-    </div>
+    </output>
   )
 }

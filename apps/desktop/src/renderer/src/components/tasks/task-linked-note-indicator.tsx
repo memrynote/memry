@@ -41,6 +41,10 @@ const getRelatedNoteIds = (linkedNoteIds: string[], sourceNoteId: string | null)
   return sourceNoteId ? [sourceNoteId] : []
 }
 
+const stopRowInteraction = (event: React.SyntheticEvent): void => {
+  event.stopPropagation()
+}
+
 const RelatedItemIcon = ({
   fileType,
   className
@@ -131,10 +135,6 @@ export function TaskLinkedNoteIndicator({
   const handleOpenNote = (event: React.MouseEvent<HTMLButtonElement>): void => {
     event.stopPropagation()
     onNoteClick?.(primaryNoteId)
-  }
-
-  const stopRowInteraction = (event: React.SyntheticEvent): void => {
-    event.stopPropagation()
   }
 
   const isExpanded = hasMultipleNotes && isMenuOpen

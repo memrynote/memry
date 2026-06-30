@@ -121,13 +121,19 @@ export function RefPicker({
 }: RefPickerProps): React.JSX.Element {
   const { t } = useT('common')
   const [results, setResults] = useState<RefPickerResult[]>([])
+  const [prevQuery, setPrevQuery] = useState(query)
+
+  // Clear stale results synchronously at render when the query changes, so
+  // keyboard selection never targets a previous query's refs while async
+  // sources reload (render-time reset instead of a synchronous effect reset).
+  if (query !== prevQuery) {
+    setPrevQuery(query)
+    setResults([])
+  }
 
   useEffect(() => {
     const text = query.trim()
     let cancelled = false
-    // Keep keyboard selection from targeting stale refs while async sources reload.
-    // eslint-disable-next-line react-hooks/set-state-in-effect, react-you-might-not-need-an-effect/no-adjust-state-on-prop-change
-    setResults([])
     onItemsChange([])
     onSelectedIndexChange(-1)
 
@@ -149,6 +155,7 @@ export function RefPicker({
   return (
     <div
       role="listbox"
+      tabIndex={-1}
       className="absolute inset-x-2 bottom-full z-50 mb-2 max-h-64 overflow-y-auto rounded-md border border-sidebar-border bg-popover p-1 text-popover-foreground shadow-md"
       onKeyDown={(event) => {
         if (event.key === 'Escape') onClose()

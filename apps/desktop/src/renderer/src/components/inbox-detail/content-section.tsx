@@ -478,13 +478,16 @@ const VoicePreview = ({
         ref={audioRef}
         src={audioUrl ?? undefined}
         preload="metadata"
+        aria-label={t('content.voiceMemo')}
         onPlay={() => setIsPlaying(true)}
         onPause={() => setIsPlaying(false)}
         onEnded={() => setIsPlaying(false)}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
         onError={handleAudioError}
-      />
+      >
+        <track kind="captions" />
+      </audio>
 
       {audioError && (
         <div className="flex items-center gap-2 p-3 bg-destructive/10 rounded-md text-sm text-destructive">
@@ -496,6 +499,7 @@ const VoicePreview = ({
       {audioUrl ? (
         <div className="flex items-center rounded-[10px] gap-2.5 bg-muted-foreground/[0.04] border border-muted-foreground/10 py-2.5 px-3.5">
           <button
+            type="button"
             onClick={() => void handlePlayPause()}
             className="flex items-center justify-center rounded-full bg-muted-foreground shrink-0 size-8 hover:opacity-90 transition-opacity"
             aria-label={isPlaying ? t('content.pause') : t('content.play')}
@@ -579,6 +583,7 @@ const VoicePreview = ({
           )}
           {transcription && (
             <button
+              type="button"
               onClick={() => void handleCopyTranscription()}
               className="ms-auto text-muted-foreground hover:text-foreground transition-colors"
               aria-label={t('content.copyTranscription')}
@@ -601,6 +606,7 @@ const VoicePreview = ({
             <span className="text-destructive text-xs">{t('list.transcriptionFailed')}</span>
             {onRetryTranscription && (
               <button
+                type="button"
                 onClick={onRetryTranscription}
                 disabled={isRetrying}
                 className="text-muted-foreground hover:text-foreground text-xs flex items-center gap-1 transition-colors disabled:opacity-50"
@@ -683,6 +689,7 @@ const VideoPreview = ({ item }: VideoPreviewProps): React.JSX.Element => {
       {videoUrl ? (
         <div className="relative overflow-hidden rounded-md bg-black">
           <video src={videoUrl} controls className="w-full max-h-[400px]" preload="metadata">
+            <track kind="captions" />
             {t('content.unsupportedVideo')}
           </video>
         </div>

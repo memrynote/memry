@@ -281,7 +281,9 @@ export function VideoScene({
                 onSeeked={reportModalProgress}
                 onPlay={handleModalPlay}
                 onPause={handleModalPause}
-              />
+              >
+                <track kind="captions" />
+              </video>
               <div
                 aria-hidden="true"
                 onPointerDown={handleModalSeekPointerDown}
@@ -336,7 +338,9 @@ export function VideoScene({
           onPlay={handleInlinePlay}
           onPause={handleInlinePause}
           onClick={(event) => event.stopPropagation()}
-        />
+        >
+          <track kind="captions" />
+        </video>
         <div className="absolute top-3 end-3 z-10 flex gap-2" aria-hidden={expanded}>
           <button
             type="button"

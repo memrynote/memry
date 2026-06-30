@@ -26,6 +26,14 @@ export type MentionMenuProps = SuggestionMenuProps<MentionSuggestionItem> & {
   onShowMore: () => void
 }
 
+const itemClassName = (isSelected: boolean): string =>
+  cn(
+    'mention-menu-item',
+    'relative flex w-full cursor-pointer select-none items-center gap-2 rounded-[5px] px-2 py-1.5 text-start text-muted-foreground outline-none transition-colors',
+    'hover:bg-accent focus:outline-none',
+    isSelected && 'bg-accent'
+  )
+
 export function MentionMenu({
   items,
   loadingState,
@@ -78,14 +86,6 @@ export function MentionMenu({
   const hasDateGroup = items.some((item) => item.kind === 'date' || item.kind === 'remind')
   const firstNoteIndex = items.findIndex((item) => item.kind === 'note')
 
-  const itemClassName = (isSelected: boolean): string =>
-    cn(
-      'mention-menu-item',
-      'relative flex w-full cursor-pointer select-none items-center gap-2 rounded-[5px] px-2 py-1.5 text-start text-muted-foreground outline-none transition-colors',
-      'hover:bg-accent focus:outline-none',
-      isSelected && 'bg-accent'
-    )
-
   return (
     <div
       className={cn(
@@ -110,7 +110,7 @@ export function MentionMenu({
           if (item.kind === 'date-hint') {
             return (
               <div
-                key={`date-hint-${index}`}
+                key="date-hint"
                 className="mention-menu-hint flex items-center gap-2 rounded-[5px] px-2 py-1.5 text-muted-foreground"
               >
                 <Clock className="size-3.5 shrink-0" />
@@ -122,7 +122,8 @@ export function MentionMenu({
           if (item.kind === 'date') {
             return (
               <button
-                key={`date-${index}`}
+                key="date"
+                type="button"
                 className={itemClassName(isSelected)}
                 role="option"
                 aria-selected={isSelected}
@@ -137,7 +138,8 @@ export function MentionMenu({
           if (item.kind === 'remind') {
             return (
               <button
-                key={`remind-${index}`}
+                key="remind"
+                type="button"
                 className={itemClassName(isSelected)}
                 role="option"
                 aria-selected={isSelected}
@@ -152,13 +154,14 @@ export function MentionMenu({
 
           const divider =
             hasDateGroup && index === firstNoteIndex ? (
-              <div role="separator" className="my-1 h-px bg-border" />
+              <hr className="my-1 h-px border-0 bg-border" />
             ) : null
 
           return (
             <Fragment key={`note-${item.id}`}>
               {divider}
               <button
+                type="button"
                 className={itemClassName(isSelected)}
                 role="option"
                 aria-selected={isSelected}
@@ -173,6 +176,7 @@ export function MentionMenu({
 
         {hasMore && (
           <button
+            type="button"
             className={cn(
               'mention-menu-more mt-1 flex w-full cursor-pointer select-none items-center gap-2',
               'rounded-[5px] px-2 py-1.5 text-xs text-muted-foreground outline-none transition-colors',

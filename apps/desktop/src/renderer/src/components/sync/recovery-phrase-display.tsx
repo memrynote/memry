@@ -69,11 +69,10 @@ export function RecoveryPhraseDisplay({
         className="mb-5 rounded-lg bg-foreground/[0.02] border border-foreground/[0.06]"
         aria-label={t('setup.recovery.wordsAria')}
       >
-        <div className="flex flex-wrap gap-1.5 p-4" role="list">
+        <ul className="flex flex-wrap gap-1.5 p-4">
           {words.map((word, i) => (
-            <div
+            <li
               key={`${i}-${word}`}
-              role="listitem"
               className="flex items-center w-27.5 py-1 gap-1.5 shrink-0"
               aria-label={t('setup.recovery.wordAria', { index: i + 1, word })}
             >
@@ -81,9 +80,9 @@ export function RecoveryPhraseDisplay({
                 {i + 1}
               </span>
               <span className="font-mono text-[13px]/4 text-foreground select-all">{word}</span>
-            </div>
+            </li>
           ))}
-        </div>
+        </ul>
         <div className="border-t border-foreground/[0.06] px-4 py-2.5 flex justify-end">
           <Button
             variant="ghost"

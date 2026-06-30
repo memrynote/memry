@@ -132,9 +132,8 @@ export const KanbanColumn = ({
   }
 
   return (
-    <div
+    <section
       className="flex flex-col w-[272px] shrink-0 gap-1.5"
-      role="region"
       aria-label={`${column.title} column, ${tasks.length} tasks`}
     >
       {/* Column header — outside the bordered card area */}
@@ -251,12 +250,13 @@ export const KanbanColumn = ({
               onKeyDown={handleAddKeyDown}
               onBlur={handleAddSubmit}
               placeholder={tPhaseF('phaseF.componentsTasksKanbanKanbanColumn.taskTitle')}
+              aria-label={tPhaseF('phaseF.componentsTasksKanbanKanbanColumn.taskTitle')}
               autoFocus
               className="w-full rounded-md border border-border bg-card px-2.5 py-1.5 text-[13px] text-foreground placeholder:text-text-tertiary outline-none"
             />
           </div>
         )}
       </div>
-    </div>
+    </section>
   )
 }

@@ -1364,7 +1364,12 @@ const GroupHeaderRow = memo(function GroupHeaderRow({
       onClick={() => row.toggleExpanded()}
     >
       {/* Spacer matching the leading selection-checkbox column */}
-      <td style={{ width: SELECT_COLUMN_WIDTH }} className="flex-shrink-0" aria-hidden="true" />
+      <td
+        style={{ width: SELECT_COLUMN_WIDTH }}
+        className="flex-shrink-0"
+        aria-hidden="true"
+        tabIndex={-1}
+      />
       <td
         className={cn(
           'flex items-center gap-2 flex-1',

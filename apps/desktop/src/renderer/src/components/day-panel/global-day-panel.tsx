@@ -86,6 +86,7 @@ function DayPanelResizeRail() {
 
   return (
     <button
+      type="button"
       aria-label={tPhaseF('phaseF.componentsDayPanelGlobalDayPanel.resizeDayPanel')}
       tabIndex={-1}
       onMouseDown={handleMouseDown}
@@ -237,6 +238,20 @@ function GlobalDayPanelContent({ width }: { width: number }): React.JSX.Element 
     navigateToJournal(today)
   }, [calendarPrefs, isCalendarTabActive, setDate, navigateToCalendar, navigateToJournal])
 
+  const endAccessory = useMemo(
+    () => (
+      <TooltipProvider delayDuration={300}>
+        <TabBarAction
+          icon={<PanelRightIcon className="w-4 h-4 text-tint transition-colors duration-150" />}
+          tooltip={tCommon('phaseF.componentsTabsTabBarWithDrag.dayPanel')}
+          onClick={toggle}
+          isActive
+        />
+      </TooltipProvider>
+    ),
+    [tCommon, toggle]
+  )
+
   return (
     <div
       data-slot="day-panel-inner"
@@ -245,19 +260,7 @@ function GlobalDayPanelContent({ width }: { width: number }): React.JSX.Element 
     >
       <DayPanelResizeRail />
 
-      <SidebarTabs
-        dayLabel={dayPanelLabel}
-        endAccessory={
-          <TooltipProvider delayDuration={300}>
-            <TabBarAction
-              icon={<PanelRightIcon className="w-4 h-4 text-tint transition-colors duration-150" />}
-              tooltip={tCommon('phaseF.componentsTabsTabBarWithDrag.dayPanel')}
-              onClick={toggle}
-              isActive
-            />
-          </TooltipProvider>
-        }
-      >
+      <SidebarTabs dayLabel={dayPanelLabel} endAccessory={endAccessory}>
         {{
           day: (
             <div className="h-full overflow-y-auto pt-3">

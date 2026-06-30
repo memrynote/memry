@@ -44,6 +44,7 @@ export function RatingEditor({ value, onChange, maxRating = 5 }: RatingEditorPro
   return (
     <div
       role="slider"
+      tabIndex={-1}
       aria-valuemin={0}
       aria-valuemax={maxRating}
       aria-valuenow={value}

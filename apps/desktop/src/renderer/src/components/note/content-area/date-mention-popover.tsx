@@ -14,6 +14,7 @@ import type { ClockFormat } from '@/lib/time-format'
 import { cn } from '@/lib/utils'
 import { Check, ChevronRight, Trash2 } from '@/lib/icons'
 import { useT } from '@memry/i18n/renderer'
+import { remindOptions } from './date-mention-options'
 
 export interface DateMentionValue {
   dateISO: string
@@ -55,35 +56,6 @@ function timeFormatOptions(
     { value: 'system', label: `Default (${clockFormatLabel(clockFormat)})` },
     { value: '12h', label: '12 hour' },
     { value: '24h', label: '24 hour' }
-  ]
-}
-
-// The Remind option list is dynamic on `hasTime` — matching Notion. With no
-// time, sub-hour offsets are meaningless and "at" reads as "On day of event".
-export function remindOptions(
-  hasTime: boolean
-): ReadonlyArray<{ value: RemindOffset; label: string }> {
-  if (!hasTime) {
-    return [
-      { value: 'none', label: 'None' },
-      { value: 'at', label: 'On day of event (09:00)' },
-      { value: '1d', label: '1 day before (09:00)' },
-      { value: '2d', label: '2 days before (09:00)' },
-      { value: '1w', label: '1 week before (09:00)' }
-    ]
-  }
-  return [
-    { value: 'none', label: 'None' },
-    { value: 'at', label: 'At time of event' },
-    { value: '5m', label: '5 minutes before' },
-    { value: '10m', label: '10 minutes before' },
-    { value: '15m', label: '15 minutes before' },
-    { value: '30m', label: '30 minutes before' },
-    { value: '1h', label: '1 hour before' },
-    { value: '2h', label: '2 hours before' },
-    { value: '1d', label: '1 day before (09:00)' },
-    { value: '2d', label: '2 days before (09:00)' },
-    { value: '1w', label: '1 week before (09:00)' }
   ]
 }
 
@@ -146,25 +118,24 @@ function RowSelect<T extends string>({
         </span>
       </button>
       {open && (
-        <ul role="listbox" className="mt-1 rounded-md border p-1">
+        <div role="listbox" className="mt-1 rounded-md border p-1">
           {options.map((o) => (
-            <li key={o.value}>
-              <button
-                type="button"
-                role="option"
-                aria-selected={o.value === value}
-                onClick={() => {
-                  onSelect(o.value)
-                  setOpen(false)
-                }}
-                className="flex w-full items-center justify-between rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
-              >
-                {o.label}
-                {o.value === value && <Check className="h-4 w-4" />}
-              </button>
-            </li>
+            <button
+              key={o.value}
+              type="button"
+              role="option"
+              aria-selected={o.value === value}
+              onClick={() => {
+                onSelect(o.value)
+                setOpen(false)
+              }}
+              className="flex w-full items-center justify-between rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
+            >
+              {o.label}
+              {o.value === value && <Check className="h-4 w-4" />}
+            </button>
           ))}
-        </ul>
+        </div>
       )}
     </div>
   )

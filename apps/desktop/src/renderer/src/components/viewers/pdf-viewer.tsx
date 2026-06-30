@@ -42,6 +42,12 @@ interface PdfViewerProps {
   className?: string
 }
 
+const PDF_LOADING = (
+  <div className="flex h-[600px] items-center justify-center">
+    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+  </div>
+)
+
 // ============================================================================
 // PDF Viewer Component
 // ============================================================================
@@ -221,7 +227,7 @@ export function PdfViewer({ src, className }: PdfViewerProps) {
       <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* Thumbnail sidebar */}
         {sidebarOpen && (
-          <div className="w-[140px] border-r border-border bg-muted/30 flex-shrink-0 hidden sm:block">
+          <div className="w-[140px] border-e border-border bg-muted/30 flex-shrink-0 hidden sm:block">
             <ScrollArea className="h-full">
               <div className="p-2 space-y-2">
                 {!loading && (
@@ -229,6 +235,7 @@ export function PdfViewer({ src, className }: PdfViewerProps) {
                     {Array.from({ length: numPages }, (_, i) => (
                       <button
                         key={i + 1}
+                        type="button"
                         onClick={() => goToPage(i + 1)}
                         className={cn(
                           'w-full rounded border-2 overflow-hidden transition-all hover:border-primary/50',
@@ -262,11 +269,7 @@ export function PdfViewer({ src, className }: PdfViewerProps) {
               file={src}
               onLoadSuccess={handleLoadSuccess}
               onLoadError={handleLoadError}
-              loading={
-                <div className="flex h-[600px] items-center justify-center">
-                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                </div>
-              }
+              loading={PDF_LOADING}
             >
               <Page
                 pageNumber={currentPage}

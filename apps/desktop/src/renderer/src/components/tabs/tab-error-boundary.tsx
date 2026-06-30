@@ -71,6 +71,7 @@ class TabErrorBoundaryImpl extends Component<
               </code>
             )}
             <button
+              type="button"
               onClick={this.handleRetry}
               className="flex items-center gap-2 px-4 py-2 bg-tint text-tint-foreground rounded-md hover:bg-tint-hover transition-colors"
             >

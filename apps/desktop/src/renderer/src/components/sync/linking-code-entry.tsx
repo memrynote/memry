@@ -116,6 +116,7 @@ export function LinkingCodeEntry({
           </div>
           <textarea
             id="linking-code"
+            aria-label={t('setup.linking.codeLabel')}
             value={code}
             onChange={(e) => {
               setCode(e.target.value)

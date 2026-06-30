@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Command } from 'cmdk'
 import type {
   SearchResultGroup as SearchResultGroupType,
@@ -34,17 +34,20 @@ export function SearchResultGroup({
   const visibleResults = expanded ? group.results : group.results.slice(0, initialLimit)
   const hasMore = group.results.length > initialLimit
 
+  const heading = useMemo(
+    () => (
+      <div className="flex items-center justify-between px-1">
+        <span className="text-xs font-semibold uppercase tracking-wider text-text-tertiary">
+          {TYPE_LABELS[group.type]}
+        </span>
+        <span className="text-xs tabular-nums text-text-tertiary">{group.totalInGroup}</span>
+      </div>
+    ),
+    [group.type, group.totalInGroup]
+  )
+
   return (
-    <Command.Group
-      heading={
-        <div className="flex items-center justify-between px-1">
-          <span className="text-xs font-semibold uppercase tracking-wider text-text-tertiary">
-            {TYPE_LABELS[group.type]}
-          </span>
-          <span className="text-xs tabular-nums text-text-tertiary">{group.totalInGroup}</span>
-        </div>
-      }
-    >
+    <Command.Group heading={heading}>
       {visibleResults.map((item) => (
         <SearchResultItem key={item.id} item={item} query={query} onSelect={onSelect} />
       ))}

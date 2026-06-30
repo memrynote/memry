@@ -99,6 +99,12 @@ interface TasksPageProps {
 // MAIN TASKS PAGE COMPONENT
 // ============================================================================
 
+const _handleProjectSettings = (): void => {
+  // Project settings are now handled in AppSidebar
+  // This is kept for the settings button in the header
+  // We could emit an event or use a context here
+}
+
 export const TasksPage = ({
   className,
   selectedId,
@@ -461,12 +467,6 @@ export const TasksPage = ({
   // Selection change handler (kept for interface compatibility)
   const _handleSelectView = (id: string): void => {
     onSelectionChange(id, 'view')
-  }
-
-  const _handleProjectSettings = (): void => {
-    // Project settings are now handled in AppSidebar
-    // This is kept for the settings button in the header
-    // We could emit an event or use a context here
   }
 
   // ========== PROJECT HANDLERS ==========

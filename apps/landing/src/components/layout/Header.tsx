@@ -414,7 +414,9 @@ function MobileNavLink({
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [mobileExpandedSection, setMobileExpandedSection] = useState<MobileDropdownKey | null>(null)
-  const [headerScrolled, setHeaderScrolled] = useState(false)
+  const [headerScrolled, setHeaderScrolled] = useState(
+    () => typeof window !== 'undefined' && window.scrollY > 12
+  )
   const location = useLocation()
   const navigate = useNavigate()
   const scrollToSection = useScrollToSection()
@@ -437,7 +439,6 @@ export function Header() {
       setHeaderScrolled(window.scrollY > 12)
     }
 
-    updateHeaderSurface()
     window.addEventListener('scroll', updateHeaderSurface, { passive: true })
 
     return () => window.removeEventListener('scroll', updateHeaderSurface)

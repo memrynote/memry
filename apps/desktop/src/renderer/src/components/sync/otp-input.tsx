@@ -123,14 +123,13 @@ function OtpInputSession({
       </div>
 
       {isVerifying && (
-        <div
+        <output
           className="flex items-center justify-center gap-2 text-sm text-muted-foreground"
-          role="status"
           aria-label={t('setup.otp.verifying')}
         >
           <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
           {t('setup.otp.verifying')}
-        </div>
+        </output>
       )}
 
       {error && (

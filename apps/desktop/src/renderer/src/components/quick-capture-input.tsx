@@ -108,6 +108,7 @@ export function QuickCaptureInput({
       <div className="flex items-center gap-0.5 mt-[2px]">
         {voiceEnabled && (
           <button
+            type="button"
             onClick={onStartRecording}
             disabled={isCapturing}
             className={cn(
@@ -124,6 +125,7 @@ export function QuickCaptureInput({
         )}
 
         <button
+          type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={isCapturing}
           className={cn(
@@ -146,6 +148,7 @@ export function QuickCaptureInput({
         onChange={handleFileSelect}
         className="hidden"
         aria-hidden="true"
+        tabIndex={-1}
       />
     </div>
   )

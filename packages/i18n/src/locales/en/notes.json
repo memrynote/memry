@@ -343,7 +343,8 @@
   },
   "phaseF": {
     "componentsFolderViewColumnHeader": {
-      "dragToReorderColumn": "Drag to reorder column"
+      "dragToReorderColumn": "Drag to reorder column",
+      "editColumnName": "Edit column name"
     },
     "componentsFolderViewColumnSelector": {
       "properties": "Properties",
@@ -456,7 +457,8 @@
     },
     "componentsFolderViewSortableColumnHeader": {
       "dragToReorderColumn": "Drag to reorder column",
-      "resizeColumn": "Resize column"
+      "resizeColumn": "Resize column",
+      "editColumnName": "Edit column name"
     },
     "componentsFolderViewViewSwitcher": {
       "default": "default",

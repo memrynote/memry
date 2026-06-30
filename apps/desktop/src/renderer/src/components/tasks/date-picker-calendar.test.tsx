@@ -1,7 +1,8 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 
-import { DatePickerCalendar, getISOWeekNumber } from './date-picker-calendar'
+import { DatePickerCalendar } from './date-picker-calendar'
+import { getISOWeekNumber } from './date-picker-calendar-utils'
 
 const renderCalendar = (
   overrides: Partial<{
