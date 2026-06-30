@@ -117,7 +117,7 @@ export interface VaultServiceHandles {
       tag?: string
       limit?: number
     }): Promise<TaskSummary[]>
-    get(id: string): Promise<unknown | null>
+    get(id: string): Promise<unknown>
     create(input: {
       title: string
       project_id?: string | null
@@ -181,7 +181,7 @@ export interface VaultServiceHandles {
   }
   projects: {
     list(): Promise<ProjectSummary[]>
-    get(id: string): Promise<unknown | null>
+    get(id: string): Promise<unknown>
     create(input: {
       name: string
       description?: string | null
@@ -249,7 +249,7 @@ export interface VaultServiceHandles {
   }
   inbox: {
     list(input: { unread_only?: boolean }): Promise<InboxSummary[]>
-    get(id: string): Promise<unknown | null>
+    get(id: string): Promise<unknown>
     add(input: { source: string; title: string; content: string }): Promise<{ id: string }>
     update(input: { id: string; title?: string; content?: string }): Promise<{ id: string }>
     snooze(input: { id: string; snooze_until: string; reason?: string }): Promise<{ id: string }>

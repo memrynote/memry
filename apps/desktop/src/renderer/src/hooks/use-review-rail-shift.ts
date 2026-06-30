@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 
 const RAIL_WIDTH = 340
 const RAIL_GAP = 48
@@ -8,6 +8,8 @@ const MIN_PAD = 32
 interface ReviewRailShiftOptions {
   railEnabled: boolean
   fullWidth: boolean
+  /** Notified at the measurement source whenever the effective rail-hidden state changes. */
+  onRailHiddenChange?: (hidden: boolean) => void
 }
 
 interface ReviewRailShiftResult {
@@ -28,17 +30,37 @@ interface ReviewRailShiftResult {
  */
 export function useReviewRailShift(
   scrollEl: HTMLElement | null,
-  { railEnabled, fullWidth }: ReviewRailShiftOptions
+  { railEnabled, fullWidth, onRailHiddenChange }: ReviewRailShiftOptions
 ): ReviewRailShiftResult {
   const [contentEl, setContentEl] = useState<HTMLElement | null>(null)
   const [shiftPx, setShiftPx] = useState(0)
   const [railHidden, setRailHidden] = useState(false)
   const frameRef = useRef<number | null>(null)
+  const onRailHiddenChangeRef = useRef(onRailHiddenChange)
+  const lastEmittedHiddenRef = useRef<boolean | null>(null)
+
+  useEffect(() => {
+    onRailHiddenChangeRef.current = onRailHiddenChange
+  }, [onRailHiddenChange])
 
   const active = railEnabled && !fullWidth
 
-  useEffect(() => {
-    if (!active || !scrollEl || !contentEl) return
+  // Layout-measurement subscription: reads geometry and writes the resulting
+  // shift + rail visibility, so it runs as a layout effect (the correct hook for
+  // measuring the DOM). The parent is notified at this measurement source via
+  // onRailHiddenChange rather than mirroring the returned state back up.
+  useLayoutEffect(() => {
+    const emit = (hidden: boolean): void => {
+      if (lastEmittedHiddenRef.current === hidden) return
+      lastEmittedHiddenRef.current = hidden
+      onRailHiddenChangeRef.current?.(hidden)
+    }
+
+    if (!active) {
+      emit(false)
+      return
+    }
+    if (!scrollEl || !contentEl) return
 
     const compute = () => {
       frameRef.current = null
@@ -48,6 +70,7 @@ export function useReviewRailShift(
       const contentLeft = Math.max(MIN_PAD, idealLeft)
       const hidden = contentLeft + contentWidth + GROUP_EXTRA > containerWidth - MIN_PAD
       setRailHidden(hidden)
+      emit(hidden)
       setShiftPx(hidden ? 0 : Math.max(0, (containerWidth - contentWidth) / 2 - contentLeft))
     }
     const schedule = () => {

@@ -121,7 +121,7 @@ async function handle(req: http.IncomingMessage, res: http.ServerResponse): Prom
     let body: string
     try {
       body = await readBody(req)
-    } catch (err) {
+    } catch {
       json(res, 413, { error: 'payload-too-large' })
       return
     }

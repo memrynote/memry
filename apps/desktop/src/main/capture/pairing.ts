@@ -53,7 +53,7 @@ export async function unpairCapture(): Promise<void> {
 
 function allowlist(): string[] {
   const raw = store.get(ALLOWLIST_KEY)
-  return Array.isArray(raw) ? (raw as string[]) : []
+  return Array.isArray(raw) ? raw : []
 }
 
 export function isOriginAllowed(origin: string | undefined): boolean {

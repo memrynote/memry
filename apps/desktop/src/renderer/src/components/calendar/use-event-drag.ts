@@ -129,7 +129,6 @@ interface UseEventDragResult {
 }
 
 export function useEventDrag({
-  gridRef,
   dateForColumn,
   columnIndexAtClientX,
   hourHeight = HOUR_HEIGHT,
@@ -265,7 +264,7 @@ export function useEventDrag({
       setDrag(null)
       return
     }
-    Promise.resolve(onCommit(item, last.startAt, last.endAt)).finally(() => setDrag(null))
+    void Promise.resolve(onCommit(item, last.startAt, last.endAt)).finally(() => setDrag(null))
   }, [onCommit])
 
   useEffect(() => {

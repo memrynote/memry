@@ -104,6 +104,8 @@ interface UseFolderViewOptions {
   folderPath: string
   /** Initial page size */
   pageSize?: number
+  /** Saved view name to activate on load, preferred over the folder default (e.g. Home widget config). */
+  initialViewName?: string
 }
 
 /** Formula info for column selector */
@@ -223,7 +225,8 @@ interface UseFolderViewResult {
  */
 export function useFolderView({
   folderPath,
-  pageSize = 100
+  pageSize = 100,
+  initialViewName
 }: UseFolderViewOptions): UseFolderViewResult {
   const queryClient = useQueryClient()
 
@@ -300,10 +303,15 @@ export function useFolderView({
   // Sync activeViewIndex when views load (only on initial load or invalidation).
   // Done during render via the React-recommended "adjusting state when a prop changes"
   // pattern instead of an effect, so we avoid no-derived-state warnings.
-  const [initFolderPath, setInitFolderPath] = useState<string | null>(null)
-  if (viewsQuery.data && initFolderPath !== folderPath) {
-    setInitFolderPath(folderPath)
-    setActiveViewIndex(viewsQuery.data.defaultIndex)
+  // When initialViewName is provided (Home widget), prefer the named view over the default.
+  const [initKey, setInitKey] = useState<string | null>(null)
+  const desiredInitKey = `${folderPath}::${initialViewName ?? ''}`
+  if (viewsQuery.data && initKey !== desiredInitKey) {
+    setInitKey(desiredInitKey)
+    const namedIndex = initialViewName
+      ? viewsQuery.data.views.findIndex((view) => view.name === initialViewName)
+      : -1
+    setActiveViewIndex(namedIndex >= 0 ? namedIndex : viewsQuery.data.defaultIndex)
   }
 
   // Get active view

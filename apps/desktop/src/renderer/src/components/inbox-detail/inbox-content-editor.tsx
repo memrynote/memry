@@ -89,7 +89,9 @@ export const InboxContentEditor = memo(function InboxContentEditor({
       try {
         // Inbox content is markdown (article extraction, captured text, screenshots).
         // Parse it like the note page so bold/headings/links render instead of raw `**…**`.
-        const blocks = await editor.tryParseMarkdownToBlocks(initialContent)
+        // BlockNote's parse/serialize helpers resolve asynchronously at runtime
+        // even though their types are synchronous, so await a wrapped Promise.
+        const blocks = await Promise.resolve(editor.tryParseMarkdownToBlocks(initialContent))
         if (blocks.length > 0) {
           editor.replaceBlocks(editor.document, blocks)
         }
@@ -110,7 +112,7 @@ export const InboxContentEditor = memo(function InboxContentEditor({
       onTitleChange?.(extractTitleFromBlocks(editor.document))
 
       if (onContentChange) {
-        const markdown = await editor.blocksToMarkdownLossy(editor.document)
+        const markdown = await Promise.resolve(editor.blocksToMarkdownLossy(editor.document))
         onContentChange(markdown)
       }
     } catch (error) {

@@ -134,7 +134,7 @@ export interface ContentAreaProps {
     plainMarkdown: string
     marks: import('@memry/shared').CriticMarkupMark[]
     hoveredMarkId: string | null
-    onEditorReady?: (editor: unknown | null) => void
+    onEditorReady?: (editor: unknown) => void
     onAddComment?: (selection: ReviewSelection) => void
     getMarkdownSourceOffsetForEditorOffset?: (editorOffset: number) => number | null
     getEditorOffsetForMarkdownSourceOffset?: (sourceOffset: number) => number | null

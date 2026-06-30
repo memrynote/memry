@@ -208,18 +208,22 @@ export function AISettings({
     return unsubscribe
   }, [t])
 
+  // The active focus request for this row, derived from props during render
+  // (React-recommended "adjust state on prop change" pattern). The timer effect
+  // below clears it after the heartbeat animation completes.
+  const voiceModelFocusSignal =
+    focusTarget === 'voice-local-model' && !isLoading ? focusRequestId : null
+  const [lastVoiceModelFocusSignal, setLastVoiceModelFocusSignal] = useState<number | null>(null)
+  if (voiceModelFocusSignal !== lastVoiceModelFocusSignal) {
+    setLastVoiceModelFocusSignal(voiceModelFocusSignal)
+    setVoiceModelFocusRequestId(voiceModelFocusSignal)
+  }
+
   useEffect(() => {
-    if (focusTarget !== 'voice-local-model') {
-      setVoiceModelFocusRequestId(null)
-      return
-    }
-
-    if (isLoading) return
-
-    setVoiceModelFocusRequestId(focusRequestId)
+    if (voiceModelFocusRequestId === null) return
     const timeout = window.setTimeout(() => setVoiceModelFocusRequestId(null), 2700)
     return () => window.clearTimeout(timeout)
-  }, [focusTarget, focusRequestId, isLoading])
+  }, [voiceModelFocusRequestId])
 
   const handleToggleEnabled = useCallback(
     async (enabled: boolean) => {
