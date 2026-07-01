@@ -14,8 +14,10 @@ the same investigation isn't repeated and the same dead-end isn't re-shipped.
   **~2.5 min** before the app reopens. Goal was <10s.
 - **Root cause:** macOS Squirrel/ShipIt code-signature-**verifies every sealed
   file in the bundle 2–3× at install time**, and the app ships **~641 MB of
-  `node_modules` loose (~40,000 files)**. Verify time is O(file count). Total
-  bundle is ~977 MB.
+  `node_modules` loose (52,474 files)**. Verify time is O(file count). Total
+  bundle is ~977 MB. The single biggest file-count offender is one **unused**
+  icon package (`@tabler/icons`, 11,245 SVGs = ~21% of all files) — not the ML
+  deps, and not the model weights (those download at runtime, not bundled).
 - **The graceful-shutdown/cleanup path is NOT the bottleneck** (measured **12 ms**).
   Prior PRs (#570, #649) optimized that path on the assumption it was slow. It
   wasn't. **Do not re-optimize shutdown/cleanup for update speed.**
@@ -57,8 +59,31 @@ Memrynote.app                       977 MB total
 ├─ Contents/Frameworks              255 MB  (Electron — normal, few large files)
 └─ Contents/Resources
    ├─ app.asar                       59 MB  (our app code only — NO node_modules)
-   └─ node_modules                  641 MB  (~40k LOOSE files) ← drives verify time
+   └─ node_modules                  641 MB  (52,474 LOOSE files) ← file count drives verify
 ```
+
+### What drives the file count (this is the real lever, not bytes)
+
+Verify time scales with **file count**, so the packages that ship the most
+*files* matter more than the ones that ship the most *bytes*.
+
+- **ML model weights are NOT bundled** — `@huggingface/transformers` downloads
+  them at runtime to `userData/models/transformers`. The ML deps are big in
+  *bytes* but small in *files* (`@huggingface` 272 files, `onnxruntime` ~600,
+  `sharp` 44). Shrinking "the models" is a non-lever; they aren't here.
+- **The file-count driver is `@tabler/icons` (the non-react package): 11,245
+  raw SVG files (~48 MB) = ~21% of the entire bundle's file count — and it is
+  NEVER imported at runtime** (only `@tabler/icons-react`, which inlines its own
+  SVGs, is used). Pure dead weight pulled in transitively.
+- Other tiny-file offenders: `es-toolkit` (~2,767 files), `lucide-react`
+  (~1,932), and `shiki` shipped ~3× (a 2.5.0 copy leaks from a VitePress
+  devDep).
+- Byte-heavy but file-light (leave alone for verify, but note for download
+  size): triplicated onnxruntime engine (native dylib 30 MB + `onnxruntime-web`
+  WASM ~43 MB + transformers' own ort-wasm 21 MB), `sharp`/libvips (15 MB),
+  plus clear junk — `classic-level/build/Release/leveldb.a` (13 MB static-lib
+  artifact), the `typescript` compiler (~15 MB, a devDep leaking transitively),
+  and giant `.d.ts` files.
 
 ---
 
@@ -66,7 +91,7 @@ Memrynote.app                       977 MB total
 
 ### 1. Packing `node_modules` into `app.asar`
 
-This is the intuitive fix (one sealed file instead of 40k → verify collapses).
+This is the intuitive fix (one sealed file instead of ~52k → verify collapses).
 **It cannot be done here with config alone.** Reason:
 
 - electron-builder decides which `node_modules` to bundle via its **production-
@@ -105,23 +130,36 @@ Already 12 ms. There is nothing to win there. (This is what #570/#649 did.)
 
 ## Viable paths forward (ranked by effort vs. payoff)
 
-1. **Shrink the 641 MB (best real win).** The bytes, not just the file count,
-   matter for verify + download. Biggest contributors are ML/native deps
-   (`@huggingface/transformers`, `onnxruntime-node`, `sharp`, `@emoji-mart/data`).
-   Downloading some models on-demand instead of bundling could cut the app to
-   ~400 MB and updates to roughly **60–90 s**. This is a feature change, not a
-   build tweak.
-2. **Prune the loose node_modules (safe, modest).** Drop non-runtime junk that
-   leaks into the shipped tree (`@cloudflare/workers-types` ~9.5 MB is a
-   types-only devDep; also non-macOS prebuilds, docs, source maps). Keeps the
-   working architecture. Expected ~641 MB → ~450 MB, roughly **~110 s**.
-3. **Fix electron-builder's collector (uncertain).** Strip `workspace:*` from
-   the staged `package.json` before packaging and/or force pnpm detection so the
-   collector resolves deps and asar packing becomes possible. Deep, only
-   verifiable via signed CI builds, no guarantee. If it works, ~30–45 s.
+Verify time is **file-count-bound**, so target the packages shipping the most
+*files*, not the most bytes. (Downloading "the models" is a non-lever — they
+aren't bundled.)
+
+1. **Exclude unused tiny-file packages (best win, low risk).** Add
+   `extraResources` filters in `config/electron-builder.staged.yml` and
+   `config/electron-builder.staged-local-mac.yml` to drop packages that ship
+   many files but aren't used at runtime:
+   - `!**/@tabler/icons/**` — the bare package, **11,245 SVGs, ~21% of the file
+     count, never imported** (keep `@tabler/icons-react`). Single biggest win.
+   - trim the triplicated `shiki` (the VitePress-devDep 2.5.0 copy), and audit
+     `es-toolkit` / `lucide-react` for unused bulk.
+   Cutting `@tabler/icons` alone removes ~21% of the files Squirrel verifies.
+   Verify locally with the `--dir` build recipe below (count files in
+   `Resources/node_modules` before/after).
+2. **Prune byte-junk (helps download size, minor on verify).** Drop the
+   `classic-level` `leveldb.a` static-lib artifact (13 MB), the leaked
+   `typescript` compiler (~15 MB), `.d.ts` files, source maps, non-macOS
+   prebuilds, and the unused `onnxruntime-web` WASM (~43 MB — desktop uses the
+   native `onnxruntime-node` backend; **verify transformers.js doesn't fall back
+   to it before removing**). Few files, so small verify win, but a leaner
+   download.
+3. **Fix electron-builder's collector (uncertain, biggest ceiling).** Strip
+   `workspace:*` from the staged `package.json` before packaging and/or force
+   pnpm detection so the collector resolves deps and asar packing becomes
+   possible. Deep, only verifiable via signed CI builds, no guarantee. If it
+   works, one sealed file ⇒ ~30–45 s.
 
 **Reality check:** sub-10s is not reachable with Squirrel.Mac at this size —
-verification of a signed bundle is O(files × bytes) and lives inside Apple's
+verification of a signed bundle is O(file count) and lives inside Apple's
 `Squirrel.framework`, not our code. Slack/VS Code/Notion all take 30–90 s for a
 full auto-update swap.
 
