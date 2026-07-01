@@ -3,28 +3,7 @@ beforeBuild: ./scripts/before-build-external-node-modules.cjs
 npmRebuild: true
 dmg:
   size: 3g
-# app-config is declared once in the base config (config/electron-builder.yml).
-# Re-declaring it here survives electron-builder's extends-merge as a DUPLICATE:
-# deepAssign concats the extraResources arrays and its `new Set()` dedup compares
-# object identity, so two distinct {from,to} objects both remain. electron-builder
-# then copies app-config to the same destination twice concurrently — POSIX
-# tolerates it, but Windows' file lock throws "EBUSY: resource busy or locked" and
-# kills the release. Only add the staged-specific node_modules here.
-extraResources:
-  - from: node_modules
-    to: node_modules
-    filter:
-      - '**/*'
-      - '.pnpm'
-      - '.pnpm/**/*'
-      - '.modules.yaml'
-      - '!**/*.map'
-      - '!**/*.a'
-      - '!**/*.o'
-      - '!**/{coverage,doc,docs,example,examples,test,tests,__tests__}/**'
-      - '!**/re2/vendor/**'
-      - '!**/build/Release/obj.target/**'
-      - '!electron'
-      - '!electron/**/*'
-      - '!**/node_modules/electron'
-      - '!**/node_modules/electron/**/*'
+# node_modules is no longer copied loose as extraResources. The base config packs
+# it into app.asar (natives unpacked via asarUnpack) so macOS Squirrel verifies a
+# handful of sealed files at install time instead of ~40k loose ones. app-config
+# is inherited from the base config's extraResources (declared once there).
