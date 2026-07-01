@@ -123,6 +123,18 @@ coherent across sign-in.
 - **Auth never blocks telemetry**: a missing or invalid bearer falls back to anonymous. Batches
   are never rejected for auth reasons.
 
+### Batch Validation & Retry
+
+Each `/telemetry/batch` payload is schema-validated on the sync server. A malformed batch is
+rejected with `400 VALIDATION_ERROR`. The server logs the failing field paths (Zod path + issue
+code only — never the field values, which may hold the raw identifiers the schema is designed to
+strip) so rejections are diagnosable without leaking data.
+
+The desktop client treats a permanent `4xx` (any `4xx` except `429`) as unrecoverable and drops
+that batch, so one malformed event cannot wedge the queue head and replay the same rejected batch
+on every flush. Transient failures — `5xx`, `429`, and network errors — leave the batch queued for
+a later retry.
+
 ### Autosave Event Throttling
 
 `note_updated` and `journal_updated` events fired by the autosave path are throttled to at most
