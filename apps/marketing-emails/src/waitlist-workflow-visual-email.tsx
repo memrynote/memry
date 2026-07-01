@@ -56,12 +56,12 @@ export const WaitlistWorkflowVisualEmail: EmailComponent = (props) => {
           <Text style={styles.logoRow}>
             <Img
               src={brandIconUrl}
-              alt="MemryNote"
+              alt="Memrynote"
               width="24"
               height="24"
               style={styles.logoIcon}
             />
-            <span style={styles.logoWordmark}>MemryNote</span>
+            <span style={styles.logoWordmark}>Memrynote</span>
           </Text>
 
           <Hr style={styles.headerHr} />
@@ -80,7 +80,7 @@ export const WaitlistWorkflowVisualEmail: EmailComponent = (props) => {
           </Text>
           <Screenshot
             url={noteTasksScreenshotUrl}
-            alt="A MemryNote note with real tasks inside it"
+            alt="A Memrynote note with real tasks inside it"
             placeholderLabel="Screenshot of a note with tasks inside it"
             height={450}
           />
@@ -91,7 +91,7 @@ export const WaitlistWorkflowVisualEmail: EmailComponent = (props) => {
           </Text>
           <Screenshot
             url={tasksPageScreenshotUrl}
-            alt="The MemryNote task page collecting tasks from all notes"
+            alt="The Memrynote task page collecting tasks from all notes"
             placeholderLabel="Screenshot of the task page"
             height={421}
           />
@@ -103,7 +103,7 @@ export const WaitlistWorkflowVisualEmail: EmailComponent = (props) => {
           </Text>
           <Screenshot
             url={calendarScreenshotUrl}
-            alt="The MemryNote calendar with notes and tasks on their dates"
+            alt="The Memrynote calendar with notes and tasks on their dates"
             placeholderLabel="Screenshot of the calendar view"
             height={433}
           />
@@ -131,7 +131,7 @@ export const WaitlistWorkflowVisualEmail: EmailComponent = (props) => {
           <Hr style={styles.hr} />
 
           <Text style={styles.footer}>
-            You&apos;re getting this because you joined the MemryNote waitlist. Reply to me at{' '}
+            You&apos;re getting this because you joined the Memrynote waitlist. Reply to me at{' '}
             <Link href={`mailto:${replyToEmail}`} style={styles.footerLink}>
               {replyToEmail}
             </Link>{' '}

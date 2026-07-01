@@ -70,7 +70,7 @@ export function AuthPage() {
         <Container size="sm">
           <div className="mx-auto max-w-sm rounded-2xl border border-border bg-card p-8 shadow-card">
             <h1 className="font-editorial text-xl tracking-[-0.01em]">
-              {toCheckout ? 'Sign in to continue' : 'Sign in to MemryNote'}
+              {toCheckout ? 'Sign in to continue' : 'Sign in to Memrynote'}
             </h1>
             {toCheckout ? (
               <p className="mt-2 text-sm text-muted">

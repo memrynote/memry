@@ -3,11 +3,11 @@ import { WAITLIST_CAMPAIGNS } from './tracking-links'
 
 export const scatteredWorkflowContent = {
   subject: 'Your notes, tasks, calendar, and journal should not live in four places',
-  preview: 'The problem MemryNote is built around.',
+  preview: 'The problem Memrynote is built around.',
   intro: [
     'Second email from me before launch.',
     'The thing I kept running into: notes in one app, tasks in another, calendar somewhere else, journal in a different place. Then I would spend half my day remembering where I put the work.',
-    'MemryNote is built around a simpler idea: capture the thing once, then keep it connected.'
+    'Memrynote is built around a simpler idea: capture the thing once, then keep it connected.'
   ],
   listTitle: 'The first version focuses on a few pieces:',
   bullets: [
@@ -24,11 +24,11 @@ export const scatteredWorkflowContent = {
 } as const satisfies WaitlistProgramEmailContent
 
 export const workflowContent = {
-  subject: 'How tasks, journal, and calendar connect in MemryNote',
+  subject: 'How tasks, journal, and calendar connect in Memrynote',
   preview: 'A practical look at the daily workflow.',
   intro: [
     'This week I want to show the daily loop.',
-    'In MemryNote, tasks can live inside notes. Daily journal entries can point back to real work. Calendar dates stay visible without becoming another app you have to maintain.'
+    'In Memrynote, tasks can live inside notes. Daily journal entries can point back to real work. Calendar dates stay visible without becoming another app you have to maintain.'
   ],
   listTitle: 'The flow I care about:',
   bullets: [
@@ -46,10 +46,10 @@ export const workflowContent = {
 
 export const localFirstAiContent = {
   subject: 'Local-first, private by default, AI when useful',
-  preview: 'How MemryNote handles privacy, offline work, and the agent.',
+  preview: 'How Memrynote handles privacy, offline work, and the agent.',
   intro: [
     'A lot of people on the waitlist asked the same privacy question, so I want to answer it clearly.',
-    'MemryNote is local-first. Your vault starts on your machine. It works offline. Sync is optional and end-to-end encrypted when you turn it on.'
+    'Memrynote is local-first. Your vault starts on your machine. It works offline. Sync is optional and end-to-end encrypted when you turn it on.'
   ],
   listTitle: 'The shape is:',
   bullets: [
@@ -59,17 +59,17 @@ export const localFirstAiContent = {
     'AI agent only when you ask for it'
   ],
   outro: [
-    'I want MemryNote to feel boring in the right ways: fast, private, offline, no cloud lock-in.',
+    'I want Memrynote to feel boring in the right ways: fast, private, offline, no cloud lock-in.',
     'Next week I will send launch-week details for waitlist folks.'
   ],
   campaign: WAITLIST_CAMPAIGNS.localFirstAi
 } as const satisfies WaitlistProgramEmailContent
 
 export const launchWeekContent = {
-  subject: 'MemryNote launches next week',
+  subject: 'Memrynote launches next week',
   preview: 'What waitlist members get on launch day.',
   intro: [
-    'MemryNote launches next week.',
+    'Memrynote launches next week.',
     'The desktop app is free to download. The paid plan is for encrypted sync across devices. Waitlist members get 25% off your first year on an annual plan.'
   ],
   listTitle: 'On launch day I will send:',
@@ -88,10 +88,10 @@ export const launchWeekContent = {
 } as const satisfies WaitlistProgramEmailContent
 
 export const gettingStartedContent = {
-  subject: 'First 10 minutes in MemryNote',
+  subject: 'First 10 minutes in Memrynote',
   preview: 'What to do after download.',
   intro: [
-    'If you downloaded MemryNote, start small.',
+    'If you downloaded Memrynote, start small.',
     'The app gets useful fastest when you bring one real workflow into it instead of trying to migrate everything.',
     'Here is the path I recommend for the first 10 minutes.'
   ],
@@ -111,10 +111,10 @@ export const gettingStartedContent = {
 } as const satisfies WaitlistProgramEmailContent
 
 export const useCasesContent = {
-  subject: 'Four ways to use MemryNote',
+  subject: 'Four ways to use Memrynote',
   preview: 'Builders, founders, researchers, and students use the same core loop.',
   intro: [
-    'A few people asked what MemryNote is best for after the first day.',
+    'A few people asked what Memrynote is best for after the first day.',
     'The honest answer: it is strongest when notes and action keep touching each other.',
     'Here are four good starting patterns.'
   ],
@@ -133,11 +133,11 @@ export const useCasesContent = {
 } as const satisfies WaitlistProgramEmailContent
 
 export const welcomeContent = {
-  subject: "You're on the MemryNote waitlist",
+  subject: "You're on the Memrynote waitlist",
   preview: 'Quick note on what to expect before launch.',
   intro: [
-    'Thanks for joining the MemryNote waitlist. This is the welcome note so you know what to expect.',
-    'MemryNote ships end of June. Local-first notes, tasks, journal, and calendar in one app. Your data stays on your machine.'
+    'Thanks for joining the Memrynote waitlist. This is the welcome note so you know what to expect.',
+    'Memrynote ships end of June. Local-first notes, tasks, journal, and calendar in one app. Your data stays on your machine.'
   ],
   listTitle: "What you'll get from me before launch:",
   bullets: [
@@ -147,18 +147,18 @@ export const welcomeContent = {
     'a way to reply directly to me if you have questions'
   ],
   outro: [
-    'If you want to get a head start, hit reply and tell me what you hope MemryNote replaces for you. I read every reply.',
+    'If you want to get a head start, hit reply and tell me what you hope Memrynote replaces for you. I read every reply.',
     'That is it for today.'
   ],
   campaign: WAITLIST_CAMPAIGNS.welcome
 } as const satisfies WaitlistProgramEmailContent
 
 export const migrationGuideContent = {
-  subject: 'Bringing your existing notes into MemryNote',
+  subject: 'Bringing your existing notes into Memrynote',
   preview: 'Notion, Obsidian, Apple Notes — here is the import path.',
   intro: [
     'A few people asked how to bring existing notes in. Short answer: do not migrate everything on day one.',
-    'MemryNote is strongest when notes and action keep touching each other. A full import drops a lot of context that you would have rebuilt anyway.'
+    'Memrynote is strongest when notes and action keep touching each other. A full import drops a lot of context that you would have rebuilt anyway.'
   ],
   listTitle: 'The cleanest path per source app:',
   bullets: [
@@ -175,10 +175,10 @@ export const migrationGuideContent = {
 } as const satisfies WaitlistProgramEmailContent
 
 export const syncConversionContent = {
-  subject: 'Why MemryNote sync is end-to-end encrypted',
+  subject: 'Why Memrynote sync is end-to-end encrypted',
   preview: 'How sync works without the server seeing your notes.',
   intro: [
-    'You downloaded MemryNote. If you have been thinking about turning sync on but holding off, here is the short version of how it works.',
+    'You downloaded Memrynote. If you have been thinking about turning sync on but holding off, here is the short version of how it works.',
     'Notes are encrypted on your device before sync leaves. The server stores opaque encrypted blobs. Only your devices hold the keys.'
   ],
   listTitle: 'The shape:',
@@ -200,14 +200,14 @@ export const feedbackContent = {
   subject: 'What should I fix next?',
   preview: 'Reply with bugs, sharp edges, or the thing you wanted most.',
   intro: [
-    "Now that MemryNote is in people's hands, direct feedback is the most useful thing.",
+    "Now that Memrynote is in people's hands, direct feedback is the most useful thing.",
     'I am especially interested in anything that made you hesitate: confusing setup, missing import path, rough sync flow, unclear pricing, or a feature you expected to find but did not.'
   ],
   listTitle: 'Send me:',
   bullets: [
     'one bug that blocked you',
     'one workflow that felt slower than your current app',
-    'one feature that would make MemryNote easier to recommend',
+    'one feature that would make Memrynote easier to recommend',
     'one sentence I should use to explain the product better'
   ],
   outro: [

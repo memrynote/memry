@@ -68,7 +68,7 @@ export const WaitlistTasksDeepDiveEmail: EmailComponent = (props) => {
           </Text>
           <Screenshot
             url={quickAddScreenshotUrl}
-            alt="MemryNote quick-add parsing a natural-language due date"
+            alt="Memrynote quick-add parsing a natural-language due date"
             placeholderLabel="Screenshot of quick-add parsing a natural-language date"
           />
 
@@ -102,7 +102,7 @@ export const WaitlistTasksDeepDiveEmail: EmailComponent = (props) => {
           </Text>
           <Screenshot
             url={calendarTasksScreenshotUrl}
-            alt="The MemryNote calendar showing task chips on their due dates"
+            alt="The Memrynote calendar showing task chips on their due dates"
             placeholderLabel="Screenshot of tasks on the calendar"
           />
 
@@ -131,7 +131,7 @@ export const WaitlistTasksDeepDiveEmail: EmailComponent = (props) => {
           <Hr style={styles.hr} />
 
           <Text style={styles.footer}>
-            You&apos;re getting this because you joined the MemryNote waitlist. Reply to me at{' '}
+            You&apos;re getting this because you joined the Memrynote waitlist. Reply to me at{' '}
             <Link href={`mailto:${replyToEmail}`} style={styles.footerLink}>
               {replyToEmail}
             </Link>{' '}

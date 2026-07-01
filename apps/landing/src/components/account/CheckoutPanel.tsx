@@ -251,7 +251,7 @@ function OrderSummary({
 
       {status === 'success' && (
         <p role="status" className="mt-4 text-sm text-sage">
-          Payment complete. Return to MemryNote to finish activation.
+          Payment complete. Return to Memrynote to finish activation.
         </p>
       )}
       {status === 'canceled' && (
@@ -290,13 +290,13 @@ export function NoTokenNotice() {
       <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-terracotta/10 text-terracotta">
         <Lock className="h-5 w-5" strokeWidth={2} />
       </span>
-      <h1 className="font-editorial mt-5 text-xl tracking-[-0.01em]">Open MemryNote to upgrade</h1>
+      <h1 className="font-editorial mt-5 text-xl tracking-[-0.01em]">Open Memrynote to upgrade</h1>
       <p className="mt-3 text-sm text-muted">
         Start checkout from <strong className="font-medium text-ink">Settings → Account</strong> in
-        the MemryNote desktop app so we can link the purchase to your account.
+        the Memrynote desktop app so we can link the purchase to your account.
       </p>
       <Button asChild className="mt-6 w-full">
-        <Link to="/download/desktop">Download MemryNote</Link>
+        <Link to="/download/desktop">Download Memrynote</Link>
       </Button>
     </div>
   )

@@ -15,7 +15,7 @@ import {
 import { trackedMemryUrl, WAITLIST_CAMPAIGNS } from './tracking-links'
 
 export const waitlistLaunchDayContent = {
-  subject: 'MemryNote is live',
+  subject: 'Memrynote is live',
   preview: 'Download link, waitlist code, and a note from me.'
 } as const
 
@@ -68,18 +68,18 @@ export const WaitlistLaunchDayEmail: EmailComponent = (props) => {
         <Container style={styles.container}>
           <Text style={styles.paragraph}>{greeting}</Text>
 
-          <Text style={styles.paragraph}>MemryNote is live.</Text>
+          <Text style={styles.paragraph}>Memrynote is live.</Text>
 
           <Hero url={heroImageUrl} />
 
           <Text style={styles.paragraph}>The desktop app is free. Download it here:</Text>
 
           <Button href={downloadUrl} style={styles.button}>
-            Download MemryNote
+            Download Memrynote
           </Button>
 
           <Text style={styles.paragraph}>
-            Sync across devices is the paid plan. As a waitlist member, you get 25% off MemryNote
+            Sync across devices is the paid plan. As a waitlist member, you get 25% off Memrynote
             Sync annual — for the life of your subscription — if you claim before {discountExpiry}.
           </Text>
 
@@ -87,7 +87,7 @@ export const WaitlistLaunchDayEmail: EmailComponent = (props) => {
             <Text style={styles.calloutLabel}>Your waitlist code</Text>
             <Text style={styles.calloutCode}>{discountCode}</Text>
             <Text style={styles.calloutDetail}>
-              25% off MemryNote Sync annual, lifetime renewals.
+              25% off Memrynote Sync annual, lifetime renewals.
             </Text>
             <Text style={styles.calloutExpiry}>Expires {discountExpiry}.</Text>
           </Section>
@@ -120,7 +120,7 @@ export const WaitlistLaunchDayEmail: EmailComponent = (props) => {
           <Hr style={styles.hr} />
 
           <Text style={styles.footer}>
-            You&apos;re getting this because you joined the MemryNote waitlist. Reply to me at{' '}
+            You&apos;re getting this because you joined the Memrynote waitlist. Reply to me at{' '}
             <Link href={`mailto:${replyToEmail}`} style={styles.footerLink}>
               {replyToEmail}
             </Link>{' '}
@@ -141,7 +141,7 @@ function Hero({ url }: { url: string }) {
     return (
       <Img
         src={url}
-        alt="MemryNote running on a desktop — the editor with a real note open"
+        alt="Memrynote running on a desktop — the editor with a real note open"
         width="560"
         height="360"
         style={styles.image}
@@ -152,7 +152,7 @@ function Hero({ url }: { url: string }) {
   return (
     <Section style={styles.placeholder}>
       <Text style={styles.placeholderLabel}>
-        Launch hero: MemryNote running on macOS or Windows
+        Launch hero: Memrynote running on macOS or Windows
       </Text>
       <Text style={styles.placeholderHint}>
         560×360 hosted PNG or JPG, under 200KB. Replace before sending.

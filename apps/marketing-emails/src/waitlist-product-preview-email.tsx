@@ -3,7 +3,7 @@ import { Body, Container, Head, Hr, Html, Img, Link, Preview, Section, Text } fr
 import { trackedMemryUrl, WAITLIST_CAMPAIGNS } from './tracking-links'
 
 export const waitlistProductPreviewContent = {
-  subject: 'what MemryNote actually looks like',
+  subject: 'what Memrynote actually looks like',
   preview: 'The editor, the local-first foundation, and a question for you.'
 } as const
 
@@ -43,7 +43,7 @@ export const WaitlistProductPreviewEmail: EmailComponent = (props) => {
           <Text style={styles.paragraph}>{greeting}</Text>
 
           <Text style={styles.paragraph}>
-            MemryNote launches at the end of June. This week I want to show the editor.
+            Memrynote launches at the end of June. This week I want to show the editor.
           </Text>
 
           <Text style={styles.paragraph}>Here&apos;s what the editor looks like:</Text>
@@ -87,7 +87,7 @@ export const WaitlistProductPreviewEmail: EmailComponent = (props) => {
           <Hr style={styles.hr} />
 
           <Text style={styles.footer}>
-            You&apos;re getting this because you joined the MemryNote waitlist. Reply to me at{' '}
+            You&apos;re getting this because you joined the Memrynote waitlist. Reply to me at{' '}
             <Link href={`mailto:${replyToEmail}`} style={styles.footerLink}>
               {replyToEmail}
             </Link>{' '}
@@ -108,7 +108,7 @@ function Screenshot({ url }: { url: string }) {
     return (
       <Img
         src={url}
-        alt="The MemryNote editor with a real note open"
+        alt="The Memrynote editor with a real note open"
         width="560"
         height="360"
         style={styles.image}
@@ -119,7 +119,7 @@ function Screenshot({ url }: { url: string }) {
   return (
     <Section style={styles.placeholder}>
       <Text style={styles.placeholderLabel}>
-        Screenshot of the MemryNote editor with a real note open
+        Screenshot of the Memrynote editor with a real note open
       </Text>
       <Text style={styles.placeholderHint}>
         560×360 hosted PNG or JPG, under 200KB. Replace before sending.
