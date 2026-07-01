@@ -1,6 +1,7 @@
 # Auto-update slow restart — investigation record
 
-Status: **open problem, root cause understood, one big fix ruled out.**
+Status: **root cause corrected (file COUNT, not ML bytes); first prune shipped
+(`@tabler/icons`, ~21% of files); more file-count pruning available.**
 Last updated: 2026-07-01.
 
 Read this before touching the auto-update / packaging path again. It exists so
@@ -13,14 +14,23 @@ the same investigation isn't repeated and the same dead-end isn't re-shipped.
 - **Symptom:** on macOS, clicking **Restart** after a downloaded update takes
   **~2.5 min** before the app reopens. Goal was <10s.
 - **Root cause:** macOS Squirrel/ShipIt code-signature-**verifies every sealed
-  file in the bundle 2–3× at install time**, and the app ships **~641 MB of
-  `node_modules` loose (52,474 files)**. Verify time is O(file count). Total
-  bundle is ~977 MB. The single biggest file-count offender is one **unused**
-  icon package (`@tabler/icons`, 11,245 SVGs = ~21% of all files) — not the ML
-  deps, and not the model weights (those download at runtime, not bundled).
+  file in the bundle**, and the app ships `node_modules` loose. The bundle seals
+  **~52,000 files**. Verify time is O(file count), and it runs **3× per update**:
+  once **in-process** before the window closes (~30 s), once **pre-swap** in
+  ShipIt (~60 s), once **post-swap** in ShipIt (~50 s).
+- **The dominant file-count driver is NOT the ML deps** (an earlier version of
+  this doc blamed them — wrong). Measured on the installed bundle, the ML deps
+  are tiny by _file count_: `@huggingface` 272, `onnxruntime` 600, `sharp` 44.
+  They are large in _bytes_ (download), but bytes ≠ verify cost. The real driver
+  is **thousands of tiny-file packages**, led by **`@tabler/icons` (11,245 raw
+  SVGs, ~21% of the whole bundle) — which is never imported at runtime** (only
+  `@tabler/icons-react` is used, and it inlines its own SVGs). See "Prune" below.
 - **The graceful-shutdown/cleanup path is NOT the bottleneck** (measured **12 ms**).
   Prior PRs (#570, #649) optimized that path on the assumption it was slow. It
-  wasn't. **Do not re-optimize shutdown/cleanup for update speed.**
+  wasn't. **Do not re-optimize shutdown/cleanup for update speed.** The
+  ">1 min to close the window" symptom is the **in-process verify** (~30 s), made
+  worse by an `App Still Running` abort/retry race that re-verifies from scratch
+  (see below) — neither is our cleanup code.
 - **The obvious fix — pack `node_modules` into `app.asar` — DOES NOT WORK in
   this repo** and shipping it broke a release (PR #654 → reverted by #656).
   See "Dead-ends" below before trying it again.
@@ -33,13 +43,13 @@ the same investigation isn't repeated and the same dead-end isn't re-shipped.
 
 ### Where the time goes (measured on a real 2026.701.x install)
 
-| Phase | Time | Evidence |
-|---|---|---|
-| Graceful cleanup (vault close, write-back flush) | **~12 ms** | `main.log`: `installing…` → `cleanup complete` |
-| `autoUpdater.quitAndInstall` unzips 256 MB → 977 MB (old process still alive) | ~30 s | `main.log` → ShipIt start |
-| ShipIt code-sign-**verifies the 977 MB bundle** before the swap | ~63 s | `ShipIt_stderr.log`: `Beginning installation` → `Moving bundle` |
-| ShipIt swaps (a move, ~4 ms) + re-verifies the installed bundle | ~50 s | `ShipIt_stderr.log` → `launching` |
-| Relaunch + cold boot | ~5 s | `main.log` new process |
+| Phase                                                                         | Time       | Evidence                                                        |
+| ----------------------------------------------------------------------------- | ---------- | --------------------------------------------------------------- |
+| Graceful cleanup (vault close, write-back flush)                              | **~12 ms** | `main.log`: `installing…` → `cleanup complete`                  |
+| `autoUpdater.quitAndInstall` unzips 256 MB → 977 MB (old process still alive) | ~30 s      | `main.log` → ShipIt start                                       |
+| ShipIt code-sign-**verifies the 977 MB bundle** before the swap               | ~63 s      | `ShipIt_stderr.log`: `Beginning installation` → `Moving bundle` |
+| ShipIt swaps (a move, ~4 ms) + re-verifies the installed bundle               | ~50 s      | `ShipIt_stderr.log` → `launching`                               |
+| Relaunch + cold boot                                                          | ~5 s       | `main.log` new process                                          |
 
 The swap itself is instant (a directory move). The cost is **signature
 verification**, which walks every file listed in `_CodeSignature/CodeResources`
@@ -52,38 +62,38 @@ verification**, which walks every file listed in `_CodeSignature/CodeResources`
 - Squirrel installer log: `~/Library/Caches/com.memrynote.memry.ShipIt/ShipIt_stderr.log`
   — the authoritative source for install-phase timing.
 
-### Bundle composition
+### Bundle composition — by FILE COUNT (what verify actually costs)
+
+Total sealed files in `Memrynote.app`: **52,744** (52,474 under `node_modules`).
+Verify is O(file count), so the packages that ship the most _files_ dominate —
+not the ones with the most _bytes_. Top offenders (`.pnpm` subtree file counts):
 
 ```
-Memrynote.app                       977 MB total
-├─ Contents/Frameworks              255 MB  (Electron — normal, few large files)
-└─ Contents/Resources
-   ├─ app.asar                       59 MB  (our app code only — NO node_modules)
-   └─ node_modules                  641 MB  (52,474 LOOSE files) ← file count drives verify
+@tabler/icons          11,245 files  ← DEAD: 0 runtime imports (only -react is used)
+@tabler/icons-react     6,157 files  ← used
+es-toolkit              2,767 files
+lucide-react            1,932 files
+drizzle-orm             1,778 files
+openai                  1,072 files
+lodash                  1,051 files
+chrono-node             1,003 files
+shiki  (×3: 2.5.0/3.23.0/4.0.2 + langs)  ~700 each  ← triplicated; 2.5.0 leaks from vitepress (devDep)
+--- for contrast, the doc's old ML suspects: ---
+onnxruntime               600 files
+@huggingface              272 files   (big in BYTES, negligible in FILE COUNT)
+sharp                      44 files
 ```
 
-### What drives the file count (this is the real lever, not bytes)
+### The `App Still Running` abort/retry race (secondary, doubles the worst case)
 
-Verify time scales with **file count**, so the packages that ship the most
-*files* matter more than the ones that ship the most *bytes*.
-
-- **ML model weights are NOT bundled** — `@huggingface/transformers` downloads
-  them at runtime to `userData/models/transformers`. The ML deps are big in
-  *bytes* but small in *files* (`@huggingface` 272 files, `onnxruntime` ~600,
-  `sharp` 44). Shrinking "the models" is a non-lever; they aren't here.
-- **The file-count driver is `@tabler/icons` (the non-react package): 11,245
-  raw SVG files (~48 MB) = ~21% of the entire bundle's file count — and it is
-  NEVER imported at runtime** (only `@tabler/icons-react`, which inlines its own
-  SVGs, is used). Pure dead weight pulled in transitively.
-- Other tiny-file offenders: `es-toolkit` (~2,767 files), `lucide-react`
-  (~1,932), and `shiki` shipped ~3× (a 2.5.0 copy leaks from a VitePress
-  devDep).
-- Byte-heavy but file-light (leave alone for verify, but note for download
-  size): triplicated onnxruntime engine (native dylib 30 MB + `onnxruntime-web`
-  WASM ~43 MB + transformers' own ort-wasm 21 MB), `sharp`/libvips (15 MB),
-  plus clear junk — `classic-level/build/Release/leveldb.a` (13 MB static-lib
-  artifact), the `typescript` compiler (~15 MB, a devDep leaking transitively),
-  and giant `.d.ts` files.
+In a chained multi-version update, ShipIt can begin verifying, spend ~40 s, then
+find a (relaunched) instance still running → `SQRLInstallerErrorDomain Code=-9`
+→ abort and **re-verify the whole bundle from scratch** on retry. Real example
+(`ShipIt_stderr.log`, 2026-07-01 08:29): verify 44 s → abort → retry at 08:30:44
+→ verify again. No `app.relaunch()` in our code; looks like consecutive
+auto-updates racing. Not hit on a single steady-state Restart, but it explains
+the pathological ">2 min" cases. Fixing this doesn't speed the happy path — only
+shrinking the file count does.
 
 ---
 
@@ -91,7 +101,7 @@ Verify time scales with **file count**, so the packages that ship the most
 
 ### 1. Packing `node_modules` into `app.asar`
 
-This is the intuitive fix (one sealed file instead of ~52k → verify collapses).
+This is the intuitive fix (one sealed file instead of 40k → verify collapses).
 **It cannot be done here with config alone.** Reason:
 
 - electron-builder decides which `node_modules` to bundle via its **production-
@@ -101,7 +111,7 @@ This is the intuitive fix (one sealed file instead of ~52k → verify collapses)
   - the staged `package.json` (produced by `pnpm deploy`) carries `workspace:*`
     dependencies (e.g. `@memry/i18n`).
 - So electron-builder packs **zero** `node_modules` into `app.asar`. That is
-  *why* the app ships `node_modules` loose via `extraResources` in
+  _why_ the app ships `node_modules` loose via `extraResources` in
   `config/electron-builder.staged-local-mac.yml` — **the loose copy is
   load-bearing.** Remove it and you get a dependency-less app on all three
   platforms.
@@ -130,36 +140,27 @@ Already 12 ms. There is nothing to win there. (This is what #570/#649 did.)
 
 ## Viable paths forward (ranked by effort vs. payoff)
 
-Verify time is **file-count-bound**, so target the packages shipping the most
-*files*, not the most bytes. (Downloading "the models" is a non-lever — they
-aren't bundled.)
-
-1. **Exclude unused tiny-file packages (best win, low risk).** Add
-   `extraResources` filters in `config/electron-builder.staged.yml` and
-   `config/electron-builder.staged-local-mac.yml` to drop packages that ship
-   many files but aren't used at runtime:
-   - `!**/@tabler/icons/**` — the bare package, **11,245 SVGs, ~21% of the file
-     count, never imported** (keep `@tabler/icons-react`). Single biggest win.
-   - trim the triplicated `shiki` (the VitePress-devDep 2.5.0 copy), and audit
-     `es-toolkit` / `lucide-react` for unused bulk.
-   Cutting `@tabler/icons` alone removes ~21% of the files Squirrel verifies.
-   Verify locally with the `--dir` build recipe below (count files in
-   `Resources/node_modules` before/after).
-2. **Prune byte-junk (helps download size, minor on verify).** Drop the
-   `classic-level` `leveldb.a` static-lib artifact (13 MB), the leaked
-   `typescript` compiler (~15 MB), `.d.ts` files, source maps, non-macOS
-   prebuilds, and the unused `onnxruntime-web` WASM (~43 MB — desktop uses the
-   native `onnxruntime-node` backend; **verify transformers.js doesn't fall back
-   to it before removing**). Few files, so small verify win, but a leaner
-   download.
-3. **Fix electron-builder's collector (uncertain, biggest ceiling).** Strip
-   `workspace:*` from the staged `package.json` before packaging and/or force
-   pnpm detection so the collector resolves deps and asar packing becomes
-   possible. Deep, only verifiable via signed CI builds, no guarantee. If it
-   works, one sealed file ⇒ ~30–45 s.
+0. **Prune tiny-file packages from the shipped tree (DONE for icons — best
+   effort:payoff).** Verify is O(file count), so dropping a dead package that
+   ships thousands of tiny files is a direct, risk-free win. Added
+   `- '!**/@tabler/icons/**'` to the `node_modules` `extraResources` filter in
+   `electron-builder.staged-local-mac.yml` + `electron-builder.staged.yml`
+   (keeps `@tabler/icons-react`, which inlines its own SVGs). Drops **~11,245
+   files (~21%)** off every one of the 3 verify passes. Next candidates: dedupe
+   `shiki` (leaks 3 versions; 2.5.0 is a vitepress devDep that shouldn't be in
+   the prod tree at all), and audit whether we need both `lucide-react` **and**
+   `@tabler/icons-react`.
+1. **Shrink the bytes (helps download, not verify).** ML/native deps
+   (`@huggingface/transformers`, `onnxruntime-node`, `sharp`) are heavy in bytes
+   but negligible in file count — lazy-downloading models cuts _download_ size,
+   not verify time. Feature change; do it for bandwidth, not restart speed.
+2. **Fix electron-builder's collector (uncertain).** Strip `workspace:*` from
+   the staged `package.json` before packaging and/or force pnpm detection so the
+   collector resolves deps and asar packing becomes possible. Deep, only
+   verifiable via signed CI builds, no guarantee. If it works, ~30–45 s.
 
 **Reality check:** sub-10s is not reachable with Squirrel.Mac at this size —
-verification of a signed bundle is O(file count) and lives inside Apple's
+verification of a signed bundle is O(files × bytes) and lives inside Apple's
 `Squirrel.framework`, not our code. Slack/VS Code/Notion all take 30–90 s for a
 full auto-update swap.
 
@@ -194,6 +195,7 @@ rm -f apps/desktop/.env.production
 ```
 
 Gotchas:
+
 - Local **signed** builds fail with `codesign: ambiguous` if the login keychain
   has a **duplicate** "Developer ID Application" cert — delete the dupe in
   Keychain Access, or use `CSC_IDENTITY_AUTO_DISCOVERY=false` for structural tests.
