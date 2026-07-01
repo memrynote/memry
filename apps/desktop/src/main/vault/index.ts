@@ -179,8 +179,13 @@ export function updateStatus(updates: Partial<VaultStatus>): void {
  * Emit vault status changed event to all windows
  */
 function emitStatusChanged(): void {
-  statusListeners.forEach((listener) => listener(currentStatus))
+  // During shutdown, suppress ALL consumers — both the main-process listeners
+  // (e.g. the window-resize listener that would shrink the window to the vault
+  // picker size) and the renderer broadcast. The gate must be first: a
+  // closeVault() during graceful shutdown flips status to isOpen:false, and
+  // nothing should react to it while the app is quitting/installing.
   if (isShuttingDown) return
+  statusListeners.forEach((listener) => listener(currentStatus))
   BrowserWindow.getAllWindows().forEach((win) => {
     win.webContents.send('vault:status-changed', currentStatus)
   })

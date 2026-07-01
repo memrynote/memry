@@ -230,7 +230,9 @@
       "updateAvailable": "Update",
       "updateDownloading": "Downloading…",
       "updateDownloadingPercent": "Downloading {percent}%",
-      "updateRestart": "Restart"
+      "updateRestart": "Restart",
+      "updateInstallingTitle": "Installing update",
+      "updateInstallingSubtitle": "MemryNote will restart automatically."
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Resize Day Panel",

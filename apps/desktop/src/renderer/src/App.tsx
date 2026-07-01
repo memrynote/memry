@@ -53,6 +53,8 @@ import { useMenuCommands } from '@/hooks/use-menu-commands'
 import { tasksService, queueTaskReorder } from '@/services/tasks-service'
 import { notesService } from '@/services/notes-service'
 import { VaultOnboarding } from '@/components/vault-onboarding'
+import { UpdatingScreen } from '@/components/updating-screen'
+import { useAppUpdater } from '@/hooks/use-app-updater'
 import { useThemeSync } from '@/hooks/use-theme-sync'
 import { trackTelemetry } from '@/lib/telemetry'
 import type { TelemetrySurface } from '@memry/contracts/telemetry-api'
@@ -361,6 +363,10 @@ function App(): React.JSX.Element {
   // Flush pending saves when main process requests it (Cmd+Q, window close)
   useFlushOnQuit()
 
+  // Update state - show a dedicated "Installing update…" screen while quitting to
+  // install, so vault teardown never surfaces as a broken picker / frozen window.
+  const { state: updaterState } = useAppUpdater()
+
   // Vault state - check if vault is open
   const { status: vaultStatus, isLoading: vaultLoading } = useVault()
   const isVaultOpen = vaultStatus?.isOpen ?? false
@@ -526,6 +532,12 @@ function App(): React.JSX.Element {
       </TasksProvider>
     </TabErrorBoundary>
   )
+
+  // Highest priority: once the user triggered install, keep this screen up
+  // through the whole quit/relaunch regardless of vault state.
+  if (updaterState.status === 'installing') {
+    return <UpdatingScreen version={updaterState.availableVersion} />
+  }
 
   if (vaultLoading) {
     return (

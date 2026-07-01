@@ -1218,7 +1218,10 @@ describe('main index phase2 exports', () => {
     await flushReadyWork()
     const { app } = await import('electron')
     const updater = await import('./updater')
-    vi.mocked(updater.isQuitAndInstallRequested).mockReturnValueOnce(true)
+    // Install-requested is read twice in the success path: once to pick the
+    // skip-final-sync path, once at completion. Use two once's (not a persistent
+    // mockReturnValue) so the flag doesn't leak into later tests.
+    vi.mocked(updater.isQuitAndInstallRequested).mockReturnValueOnce(true).mockReturnValueOnce(true)
 
     const beforeQuitHandler = appOnMock.mock.calls.find(
       ([event]) => event === 'before-quit'
@@ -1234,6 +1237,8 @@ describe('main index phase2 exports', () => {
     }
 
     expect(updater.performQuitAndInstall).toHaveBeenCalled()
+    // Update path skips the unbounded final network push.
+    expect(stopSyncRuntimeMock).toHaveBeenCalledWith({ skipFinalSync: true })
     expect(app.quit).not.toHaveBeenCalled()
     expect(app.exit).not.toHaveBeenCalled()
   })
