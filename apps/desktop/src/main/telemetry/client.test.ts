@@ -174,6 +174,52 @@ describe('createTelemetryClient', () => {
     expect(client.getQueueDepth()).toBe(2)
   })
 
+  it('drops the batch on a 400 so a poison-pill event cannot wedge the queue', async () => {
+    // #given a server that permanently rejects the payload
+    const fetchMock = vi.fn(async () => new Response('bad', { status: 400 }))
+    const { deps } = createDeps({ fetch: fetchMock as unknown as TelemetryClientDeps['fetch'] })
+    const client = createTelemetryClient(deps)
+    client.track(buildEvent('11111111-1111-1111-1111-111111111111'))
+    client.track(buildEvent('22222222-2222-2222-2222-222222222222'))
+
+    // #when flushing
+    const result = await client.flush('manual')
+
+    // #then the rejected batch is dropped, not retried forever
+    expect(result.success).toBe(false)
+    expect(client.getQueueDepth()).toBe(0)
+  })
+
+  it('keeps the batch queued on a 429 rate-limit for a later retry', async () => {
+    // #given a transient rate-limit response
+    const fetchMock = vi.fn(async () => new Response('slow down', { status: 429 }))
+    const { deps } = createDeps({ fetch: fetchMock as unknown as TelemetryClientDeps['fetch'] })
+    const client = createTelemetryClient(deps)
+    client.track(buildEvent('11111111-1111-1111-1111-111111111111'))
+
+    // #when flushing
+    const result = await client.flush('manual')
+
+    // #then the batch stays queued because 429 is retryable
+    expect(result.success).toBe(false)
+    expect(client.getQueueDepth()).toBe(1)
+  })
+
+  it('keeps the batch queued on a 500 server error for a later retry', async () => {
+    // #given a transient server error
+    const fetchMock = vi.fn(async () => new Response('oops', { status: 500 }))
+    const { deps } = createDeps({ fetch: fetchMock as unknown as TelemetryClientDeps['fetch'] })
+    const client = createTelemetryClient(deps)
+    client.track(buildEvent('11111111-1111-1111-1111-111111111111'))
+
+    // #when flushing
+    const result = await client.flush('manual')
+
+    // #then the batch stays queued because 5xx is retryable
+    expect(result.success).toBe(false)
+    expect(client.getQueueDepth()).toBe(1)
+  })
+
   it('setEnabled(false) drops queued events and short-circuits future tracks', () => {
     // #given a client with queued events
     const { deps } = createDeps()

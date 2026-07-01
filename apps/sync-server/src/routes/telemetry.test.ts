@@ -190,6 +190,27 @@ describe('POST /telemetry/batch', () => {
     expect(response.status).toBe(400)
   })
 
+  it('logs the failing field path (not its value) when the batch is invalid', async () => {
+    // #given an event whose action value trips the privacy dimension guard (contains a slash)
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const { env } = createEnv()
+    const request = new Request('http://localhost/telemetry/batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...sampleBatch, events: [{ ...sampleEvent, action: 'opened/path' }] })
+    })
+
+    // #when posting
+    const response = await app.request(request, {}, env)
+
+    // #then it 400s and the log names the offending field but never leaks its value
+    expect(response.status).toBe(400)
+    const logged = warnSpy.mock.calls.map((call) => String(call[0])).join('\n')
+    expect(logged).toContain('events.0.action')
+    expect(logged).not.toContain('opened/path')
+    warnSpy.mockRestore()
+  })
+
   it('returns 400 for malformed JSON bodies', async () => {
     // #given an invalid JSON body
     const { env } = createEnv()

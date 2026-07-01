@@ -122,7 +122,20 @@ export const createTelemetryClient = (deps: TelemetryClientDeps): TelemetryClien
       })
 
       if (!response.ok) {
-        logger.warn('Telemetry batch rejected', { status: response.status, reason })
+        // A 4xx (except 429 rate limit) means the server permanently rejects this
+        // payload — e.g. a validation failure. Keeping it re-sends the same head-of-
+        // queue batch every flush, wedging the pipeline behind one bad event. Drop it.
+        // 5xx and 429 are transient, so leave those queued for a later retry.
+        const permanentlyRejected =
+          response.status >= 400 && response.status < 500 && response.status !== 429
+        if (permanentlyRejected) {
+          queue.splice(0, batchSize)
+        }
+        logger.warn('Telemetry batch rejected', {
+          status: response.status,
+          reason,
+          dropped: permanentlyRejected
+        })
         return {
           success: false,
           attempted: batchSize,
