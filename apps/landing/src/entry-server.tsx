@@ -41,9 +41,11 @@ import {
   OneNoteAlternativePage,
   UpNoteAlternativePage,
   JoplinAlternativePage,
-  GoogleKeepAlternativePage
+  GoogleKeepAlternativePage,
+  TanaAlternativePage,
+  HeptabaseAlternativePage
 } from '@/pages/AlternativePage'
-import { AlternativesHubPage } from '@/pages/AlternativesHubPage'
+import { ComparePage } from '@/pages/ComparePage'
 import { NotFound } from '@/pages/NotFound'
 
 // Account routes are gated by RequireAuth, which renders null until the client is
@@ -68,7 +70,7 @@ const ROUTE_MAP: Record<string, () => ReactNode> = {
   '/download/desktop': () => <DownloadDesktopPage />,
   '/use-cases': () => <UseCasesPage />,
   '/security': () => <SecurityPage />,
-  '/alternatives': () => <AlternativesHubPage />,
+  '/compare': () => <ComparePage />,
   '/obsidian-alternative': () => <ObsidianAlternativePage />,
   '/notion-alternative': () => <NotionAlternativePage />,
   '/noteplan-alternative': () => <NotePlanAlternativePage />,
@@ -83,6 +85,8 @@ const ROUTE_MAP: Record<string, () => ReactNode> = {
   '/upnote-alternative': () => <UpNoteAlternativePage />,
   '/joplin-alternative': () => <JoplinAlternativePage />,
   '/google-keep-alternative': () => <GoogleKeepAlternativePage />,
+  '/tana-alternative': () => <TanaAlternativePage />,
+  '/heptabase-alternative': () => <HeptabaseAlternativePage />,
   '/pricing': () => <PricingPage />,
   '/changelog': () => <ChangelogPage />,
   '/roadmap': () => <RoadmapPage />,

@@ -70,7 +70,7 @@ export function buildLlmsTxt(): string {
     '',
     '## Comparisons',
     '',
-    page('/alternatives', PAGE_META.alternativesHub.description),
+    page('/compare', PAGE_META.compare.description),
     ...ALTERNATIVES.map((alt) => {
       const meta = PAGE_META[alt.pageKey]
       return page(meta.path, meta.description)

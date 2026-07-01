@@ -315,3 +315,11 @@ export function JoplinAlternativePage() {
 export function GoogleKeepAlternativePage() {
   return <AlternativePage config={byKey('googleKeepAlternative')} />
 }
+
+export function TanaAlternativePage() {
+  return <AlternativePage config={byKey('tanaAlternative')} />
+}
+
+export function HeptabaseAlternativePage() {
+  return <AlternativePage config={byKey('heptabaseAlternative')} />
+}

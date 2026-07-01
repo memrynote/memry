@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
-import { ALTERNATIVES } from './alternatives.ts'
+import { ALTERNATIVES, COMPARE_CARDS } from './alternatives.ts'
 import { PAGE_META } from './seo.ts'
 import { FOOTER_LINKS } from './constants.ts'
 import { buildLlmsTxt } from './crawl-files.ts'
@@ -14,10 +14,10 @@ describe('competitor alternative pages', () => {
       assert.ok(meta, `PAGE_META missing for ${alt.pageKey}`)
       assert.ok(meta.path.endsWith('-alternative'), `${meta.path} should end with -alternative`)
     }
-    // Footer carries the hub + a marquee subset, not all 14; the long tail lives on /alternatives.
+    // Footer carries the hub + a marquee subset, not all of them; the long tail lives on /compare.
     assert.ok(
-      FOOTER_LINKS.compare.some((link) => link.href === '/alternatives'),
-      'footer compare must link the /alternatives hub'
+      FOOTER_LINKS.compare.some((link) => link.href === '/compare'),
+      'footer compare must link the /compare hub'
     )
     for (const link of FOOTER_LINKS.compare) {
       if (link.href.endsWith('-alternative')) {
@@ -42,6 +42,15 @@ describe('competitor alternative pages', () => {
       assert.ok(alt.pricing.memry, `${alt.competitor}: pricing.memry required`)
       assert.ok(alt.pricing.competitor, `${alt.competitor}: pricing.competitor required`)
       assert.ok(alt.migration.steps.length >= 1, `${alt.competitor}: needs >= 1 migration step`)
+    }
+  })
+
+  it('gives every alternative a /compare card (logo + tagline)', () => {
+    for (const alt of ALTERNATIVES) {
+      const card = COMPARE_CARDS[alt.pageKey]
+      assert.ok(card, `COMPARE_CARDS missing for ${alt.pageKey}`)
+      assert.ok(card.logo.trim(), `${alt.competitor}: card logo required`)
+      assert.ok(card.tagline.trim(), `${alt.competitor}: card tagline required`)
     }
   })
 
