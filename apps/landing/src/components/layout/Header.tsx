@@ -18,23 +18,6 @@ import { cn } from '@/lib/utils'
 import { scrollToLandingTarget } from '@/lib/smooth-scroll'
 import { trackLandingEvent, type LandingEventName } from '@/lib/analytics'
 
-function useScrollToSection() {
-  const navigate = useNavigate()
-  const location = useLocation()
-
-  return (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
-    e.preventDefault()
-    const id = href.replace('#', '')
-    const element = document.getElementById(id)
-
-    if (element) {
-      scrollToLandingTarget(element)
-    } else if (location.pathname !== '/') {
-      navigate('/' + href)
-    }
-  }
-}
-
 function isExternalHref(href: string) {
   return href.startsWith('http')
 }
@@ -419,7 +402,6 @@ export function Header() {
   )
   const location = useLocation()
   const navigate = useNavigate()
-  const scrollToSection = useScrollToSection()
   const showHeaderSurface = headerScrolled || mobileMenuOpen
 
   const closeMobileMenu = () => {
@@ -478,9 +460,6 @@ export function Header() {
                 <span className="block font-geist text-2xl font-medium tracking-tight text-ink transition-colors group-hover:text-terracotta">
                   memrynote
                 </span>
-                <span className="rounded-full bg-terracotta/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-terracotta max-[430px]:hidden">
-                  Preview
-                </span>
               </span>
             </div>
           </Link>
@@ -497,16 +476,13 @@ export function Header() {
             <ThemeToggle />
             <GitHubStarWidget />
             <Button variant="default" size="sm" className="rounded-full px-6" asChild>
-              <a
-                href="#waitlist"
-                onClick={(e) => {
-                  trackLandingEvent('landing_nav_click', 'nav:join')
-                  scrollToSection(e, '#waitlist')
-                }}
+              <Link
+                to="/download/desktop"
+                onClick={() => trackLandingEvent('landing_download_click', 'nav:download')}
               >
-                Join
+                Download
                 <ArrowUpRight className="w-4 h-4" />
-              </a>
+              </Link>
             </Button>
           </div>
 
@@ -563,16 +539,15 @@ export function Header() {
                   />
                 ))}
                 <Button variant="default" className="mt-1 h-10 w-full rounded-full" asChild>
-                  <a
-                    href="#waitlist"
-                    onClick={(e) => {
-                      trackLandingEvent('landing_nav_click', 'mobile-nav:join')
-                      scrollToSection(e, '#waitlist')
+                  <Link
+                    to="/download/desktop"
+                    onClick={() => {
+                      trackLandingEvent('landing_download_click', 'mobile-nav:download')
                       closeMobileMenu()
                     }}
                   >
-                    Join
-                  </a>
+                    Download
+                  </Link>
                 </Button>
               </div>
             </Container>

@@ -1,4 +1,3 @@
-import { useSyncExternalStore } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
@@ -31,10 +30,12 @@ import {
   AccordionItem,
   AccordionTrigger
 } from '@/components/ui/accordion'
-import { DESKTOP_RELEASE_TIMING, GITHUB_URL } from '@/lib/constants'
+import { GITHUB_URL } from '@/lib/constants'
 import { BLUR_REVEAL_ANIMATE, BLUR_REVEAL_INITIAL, BLUR_REVEAL_TRANSITION } from '@/lib/motion'
 import { cn } from '@/lib/utils'
 import { trackLandingEvent } from '@/lib/analytics'
+import { DownloadButton } from '@/components/shared/DownloadCTA'
+import { downloadHref, useDetectedOS, type DetectedOS } from '@/lib/download'
 
 const EASE_OUT_EXPO = [0.16, 1, 0.3, 1] as const
 
@@ -53,24 +54,6 @@ const stagger = {
 const fadeUpVariant = {
   hidden: { opacity: 0, y: 18 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.55, ease: EASE_OUT_EXPO } }
-}
-
-type DetectedOS = 'mac' | 'windows' | 'linux' | null
-
-function detectOS(): DetectedOS {
-  if (typeof navigator === 'undefined') return null
-  const ua = navigator.userAgent
-  if (/Mac/i.test(ua)) return 'mac'
-  if (/Win/i.test(ua)) return 'windows'
-  if (/Linux|X11/i.test(ua)) return 'linux'
-  return null
-}
-
-const subscribeOS = () => () => {}
-const getServerOS = (): DetectedOS => null
-
-function useDetectedOS(): DetectedOS {
-  return useSyncExternalStore(subscribeOS, detectOS, getServerOS)
 }
 
 export function DownloadDesktopPage() {
@@ -118,21 +101,18 @@ function DesktopHero() {
         >
           <span className="inline-flex items-center gap-2 font-mono-accent text-[11px] uppercase tracking-[0.28em] text-muted">
             <Download className="h-3 w-3" strokeWidth={2} />
-            Desktop app · Coming soon
+            Desktop app · Available now
           </span>
           <h1 className="mt-4 font-serif text-4xl font-normal leading-[1.05] text-ink text-balance md:text-6xl">
             memrynote for <span className="italic text-terracotta">Desktop.</span>
           </h1>
           <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-muted md:text-lg">
-            A local-first PKM that lives on your machine. Desktop installers for macOS, Windows, and
-            Linux are coming at the end of June.
+            A local-first PKM that lives on your machine. Free, open source, and available for
+            macOS, Windows, and Linux.
           </p>
 
           <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Button size="lg" className="rounded-full px-7" disabled>
-              <Download className="h-4 w-4" />
-              {DESKTOP_RELEASE_TIMING}
-            </Button>
+            <DownloadButton location="download-hero" className="px-7" />
             <Button
               size="lg"
               variant="ghost"
@@ -162,7 +142,7 @@ function DesktopHero() {
             </span>
             <span className="inline-flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-              End of June
+              Free forever
             </span>
           </div>
         </motion.div>
@@ -238,7 +218,7 @@ function PlatformGrid({ detected }: { detected: DetectedOS }) {
             Three platforms. <span className="italic text-terracotta">One vault.</span>
           </h2>
           <p className="mt-5 text-lg leading-relaxed text-muted">
-            Installers are coming at the end of June. Platform support is ready for the machines
+            Signed builds for macOS, Windows, and Linux, with automatic updates. Pick your platform
             below.
           </p>
         </motion.div>
@@ -256,7 +236,7 @@ function PlatformGrid({ detected }: { detected: DetectedOS }) {
         </motion.div>
 
         <p className="mt-8 text-center font-mono-accent text-[11px] uppercase tracking-[0.18em] text-muted/70">
-          Installer binaries land at the end of June. Source stays open on GitHub.
+          Automatic updates keep you current. Source stays open on GitHub.
         </p>
       </Container>
     </section>
@@ -301,21 +281,57 @@ function PlatformCard({ platform, highlighted }: { platform: PlatformInfo; highl
         </div>
       </div>
 
-      <div className="mt-auto pt-7">
+      <div className="mt-auto space-y-2 pt-7">
         <Button
           size="lg"
           variant={highlighted ? 'default' : 'outline'}
-          disabled
           className={cn(
             'w-full rounded-full',
             highlighted
               ? 'bg-terracotta text-white shadow-[0_16px_34px_-14px_rgba(255,103,26,0.7)]'
               : 'border-ink/15 bg-paper-alt/40 text-ink'
           )}
+          asChild
         >
-          <Download className="h-4 w-4" />
-          End of June
+          <a
+            href={downloadHref(platform.id === 'mac' ? 'mac-arm64' : platform.id)}
+            onClick={() =>
+              trackLandingEvent(
+                'landing_download_click',
+                `download:${platform.id === 'mac' ? 'mac-arm64' : platform.id}:platform-card`
+              )
+            }
+          >
+            <Download className="h-4 w-4" />
+            {platform.id === 'mac'
+              ? 'Download for Apple Silicon'
+              : platform.id === 'windows'
+                ? 'Download .exe'
+                : 'Download .AppImage'}
+          </a>
         </Button>
+        {platform.id === 'mac' && (
+          <a
+            href={downloadHref('mac-x64')}
+            onClick={() =>
+              trackLandingEvent('landing_download_click', 'download:mac-x64:platform-card')
+            }
+            className="block text-center font-mono-accent text-[11px] uppercase tracking-[0.16em] text-muted transition-colors hover:text-terracotta"
+          >
+            Download for Intel
+          </a>
+        )}
+        {platform.id === 'linux' && (
+          <a
+            href={downloadHref('linux-deb')}
+            onClick={() =>
+              trackLandingEvent('landing_download_click', 'download:linux-deb:platform-card')
+            }
+            className="block text-center font-mono-accent text-[11px] uppercase tracking-[0.16em] text-muted transition-colors hover:text-terracotta"
+          >
+            Download .deb
+          </a>
+        )}
       </div>
     </motion.article>
   )
@@ -585,8 +601,8 @@ function SystemRequirements() {
 const INSTALL_STEPS = [
   {
     number: '01',
-    title: 'Waitlist',
-    body: 'Join the waitlist now. Desktop installers for every platform are coming at the end of June.'
+    title: 'Download',
+    body: 'Grab the installer for your platform. Signed builds for macOS, Windows, and Linux.'
   },
   {
     number: '02',
@@ -653,16 +669,14 @@ function ReleaseChannel() {
           <div>
             <Eyebrow>Release channel</Eyebrow>
             <h2 className="mt-3 font-serif text-3xl text-ink md:text-4xl">
-              Coming <span className="italic text-terracotta">at the end of June.</span>
+              Live <span className="italic text-terracotta">now.</span>
             </h2>
             <p className="mt-4 max-w-md text-sm leading-relaxed text-muted">
-              Public installers are not live yet. The source is open now, and signed macOS, Windows,
-              and Linux builds arrive at the end of June.
+              Signed macOS, Windows, and Linux builds are available now, with automatic updates. The
+              source stays open.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
-              <Button variant="default" className="rounded-full px-5" disabled>
-                {DESKTOP_RELEASE_TIMING}
-              </Button>
+              <DownloadButton location="release-channel" size="default" className="px-5" />
               <Button
                 variant="ghost"
                 className="rounded-full px-5 text-ink hover:bg-paper-alt"
@@ -687,7 +701,7 @@ function ReleaseChannel() {
               'Open issues against the public repo',
               'Submit PRs through the normal flow',
               'Desktop installers target macOS, Windows, and Linux',
-              'Public builds arrive at the end of June'
+              'Automatic updates keep every platform current'
             ].map((item) => (
               <li key={item} className="flex items-start gap-3">
                 <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-sage" strokeWidth={2} />
@@ -715,7 +729,7 @@ const DOWNLOAD_FAQ = [
   {
     question: 'How do I update memrynote?',
     answer:
-      'Public installers are coming at the end of June. After launch, updates will ship as signed desktop releases and your vault folder stays untouched between updates.'
+      'memrynote checks for updates automatically and installs signed desktop releases in the background. Your vault folder stays untouched between updates.'
   },
   {
     question: 'Can I import from Obsidian or Notion?',
@@ -778,22 +792,14 @@ function DownloadFinalCta() {
       <Container size="md">
         <motion.div {...fadeUp} className="text-center">
           <h2 className="mx-auto max-w-2xl font-serif text-4xl font-normal leading-tight text-ink text-balance md:text-5xl">
-            Desktop app coming <span className="italic text-terracotta">at the end of June.</span>
+            Your second brain, <span className="italic text-terracotta">on your machine.</span>
           </h2>
           <p className="mx-auto mt-5 max-w-xl text-lg text-muted leading-relaxed">
-            Free, local, open source. Join the waitlist now; installers are not live yet.
+            Free, local, open source. Download memrynote and pick a vault in under a minute.
           </p>
 
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Button size="lg" className="rounded-full px-8" asChild>
-              <Link
-                to="/#waitlist"
-                onClick={() => trackLandingEvent('landing_nav_click', 'download:waitlist')}
-              >
-                Join waitlist
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
+            <DownloadButton location="download-final" />
             <Button
               size="lg"
               variant="ghost"

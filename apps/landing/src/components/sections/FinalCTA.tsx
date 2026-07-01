@@ -1,11 +1,10 @@
 import { motion } from 'framer-motion'
 import { Container } from '@/components/layout/Container'
-import { WaitlistForm } from '@/components/shared/WaitlistForm'
-import { DESKTOP_RELEASE_TIMING } from '@/lib/constants'
+import { DownloadCTA } from '@/components/shared/DownloadCTA'
 
 export function FinalCTA() {
   return (
-    <section id="waitlist" className="zone-dark py-32 relative overflow-hidden">
+    <section className="zone-dark py-32 relative overflow-hidden">
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
@@ -27,21 +26,13 @@ export function FinalCTA() {
             ⁂
           </p>
           <h2 className="font-serif text-6xl md:text-7xl font-normal text-ink-inverted mb-6">
-            Join the <span className="italic text-terracotta">waitlist.</span>
+            Get <span className="italic text-terracotta">memrynote.</span>
           </h2>
           <p className="text-xl text-dark-muted font-sans mb-12 max-w-lg mx-auto leading-relaxed">
-            Desktop app {DESKTOP_RELEASE_TIMING.toLowerCase()}.
+            Free, local-first, and open source. Yours in under a minute.
           </p>
 
-          <div className="conic-border rounded-xl overflow-hidden bg-dark-surface max-w-md mx-auto">
-            <div className="p-1">
-              <WaitlistForm variant="centered" />
-            </div>
-          </div>
-
-          <p className="text-sm text-dark-muted/60 mt-6 font-mono-accent">
-            We'll never spam. Unsubscribe anytime.
-          </p>
+          <DownloadCTA location="home-final" tone="inverted" />
 
           <p className="mt-16 font-mono-accent text-[10px] uppercase tracking-[0.3em] text-dark-muted/50">
             memrynote · local-first · open source · <span className="italic normal-case">fin.</span>

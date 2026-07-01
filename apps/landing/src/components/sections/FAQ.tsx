@@ -28,7 +28,7 @@ export function CleanNeutralFAQ() {
               Questions & <span className="italic text-terracotta">answers.</span>
             </h2>
             <p className="mt-4 text-lg leading-relaxed text-muted">
-              Everything you need to know before joining the waitlist.
+              Everything you need to know before you download.
             </p>
           </motion.div>
 

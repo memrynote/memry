@@ -44,7 +44,7 @@ type CheckoutNotice =
   | { type: 'canceled' }
   | { type: 'desktop'; url: string }
 
-const PURCHASES_ENABLED = false
+const PURCHASES_ENABLED = true
 
 const fadeUp = {
   initial: { opacity: 0, y: 20 },
@@ -456,12 +456,12 @@ function TierCard({
             aria-label={`${tier.cta} ${CHECKOUT_RELEASE_TIMING.toLowerCase()}`}
             className={ctaClass}
           >
-            Coming at the end of June
+            {CHECKOUT_RELEASE_TIMING}
           </Button>
         ) : !isCheckoutEnabled ? (
           <Button variant="outline" size="lg" className={ctaClass} asChild>
             <Link
-              to="/#waitlist"
+              to="/download/desktop"
               onClick={() =>
                 trackLandingEvent('landing_pricing_cta_click', pricingTarget(tier.id, cadence))
               }
@@ -779,7 +779,7 @@ function LimitMatrix({
                               asChild
                             >
                               <Link
-                                to="/#waitlist"
+                                to="/download/desktop"
                                 onClick={() =>
                                   trackLandingEvent(
                                     'landing_pricing_cta_click',
@@ -801,7 +801,7 @@ function LimitMatrix({
                                 !isRecommended && 'border-ink/20 bg-transparent'
                               )}
                             >
-                              {PURCHASES_ENABLED ? tier.cta : 'End of June'}
+                              {PURCHASES_ENABLED ? tier.cta : CHECKOUT_RELEASE_TIMING}
                             </Button>
                           )}
                         </div>
@@ -934,8 +934,8 @@ function FinalCta() {
 
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Button size="lg" className="rounded-sm px-8" asChild>
-              <Link to="/#waitlist">
-                Join the waitlist
+              <Link to="/download/desktop">
+                Download
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
