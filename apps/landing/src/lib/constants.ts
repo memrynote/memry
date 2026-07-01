@@ -321,20 +321,20 @@ export const ROADMAP_DATA = {
         'Local vault with Markdown notes, backlinks, and global search',
         'Inbox capture for text, URLs, images, and voice',
         'Tasks, projects, subtasks, recurring rules, and multiple views',
-        'Daily journal with templates and day context',
+        'Daily journal, calendar week view, and reminders',
         'End-to-end encrypted sync for notes and journals',
-        'Calendar week view, snoozed inbox items, and reminders',
-        'Voice memos with transcription and related items',
-        'Agent Chat mentions, per-turn permissions, and MemryNote CLI'
+        'Web clipper for Chrome, Firefox, and Edge',
+        'Importers for Obsidian, Notion, Roam, Bear, Evernote, and more',
+        'Agent Chat, voice memos with transcription, and MemryNote CLI'
       ]
     },
     {
       status: 'in-progress' as const,
       title: 'Building now',
-      caption: 'The next work is focused on better capture, migration, and agent reliability.',
+      caption: 'The next work is focused on wider clipping and agent reliability.',
       items: [
-        'Web clipper for pages, highlights, and snippets',
-        'Importers for Obsidian, Notion, Roam, and Markdown folders',
+        'Safari web clipper support',
+        'Browser store listings: Chrome Web Store, Firefox Add-ons, Edge',
         'Optional AI Agent polish: provider settings, streaming, approvals'
       ]
     },

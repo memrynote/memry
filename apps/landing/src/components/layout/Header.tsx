@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { Menu, X, ArrowUpRight, ChevronDown, type LucideIcon } from 'lucide-react'
+import { Menu, X, ChevronDown, type LucideIcon } from 'lucide-react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
@@ -17,6 +17,7 @@ import {
 import { cn } from '@/lib/utils'
 import { scrollToLandingTarget } from '@/lib/smooth-scroll'
 import { trackLandingEvent, type LandingEventName } from '@/lib/analytics'
+import { useAuth } from '@/contexts/auth-context'
 
 function isExternalHref(href: string) {
   return href.startsWith('http')
@@ -402,7 +403,12 @@ export function Header() {
   )
   const location = useLocation()
   const navigate = useNavigate()
+  const { isSignedIn } = useAuth()
   const showHeaderSurface = headerScrolled || mobileMenuOpen
+  // ponytail: signed out → /auth (sign-in/up); signed in → billing. Label stays "Account" either way.
+  const accountHref = isSignedIn ? '/account/billing' : '/auth'
+  const accountLabel = 'Account'
+  const accountTarget = isSignedIn ? 'nav:account' : 'nav:sign-in'
 
   const closeMobileMenu = () => {
     setMobileMenuOpen(false)
@@ -475,13 +481,12 @@ export function Header() {
           <div className="hidden md:flex items-center gap-3">
             <ThemeToggle />
             <GitHubStarWidget />
-            <Button variant="default" size="sm" className="rounded-full px-6" asChild>
+            <Button variant="ghost" size="sm" className="rounded-full px-4" asChild>
               <Link
-                to="/download/desktop"
-                onClick={() => trackLandingEvent('landing_download_click', 'nav:download')}
+                to={accountHref}
+                onClick={() => trackLandingEvent('landing_nav_click', accountTarget)}
               >
-                Download
-                <ArrowUpRight className="w-4 h-4" />
+                {accountLabel}
               </Link>
             </Button>
           </div>
@@ -538,17 +543,11 @@ export function Header() {
                     onNavigate={closeMobileMenu}
                   />
                 ))}
-                <Button variant="default" className="mt-1 h-10 w-full rounded-full" asChild>
-                  <Link
-                    to="/download/desktop"
-                    onClick={() => {
-                      trackLandingEvent('landing_download_click', 'mobile-nav:download')
-                      closeMobileMenu()
-                    }}
-                  >
-                    Download
-                  </Link>
-                </Button>
+                <MobileNavLink
+                  href={accountHref}
+                  label={accountLabel}
+                  onNavigate={closeMobileMenu}
+                />
               </div>
             </Container>
           </motion.div>
