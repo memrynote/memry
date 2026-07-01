@@ -1,169 +1,85 @@
 <div align="center">
 
-<img src="apps/landing/public/favicon.svg" width="96" alt="Memry logo" />
+<img src="apps/desktop/build/icon.png" width="128" alt="MemryNote logo" />
 
-# Memry
+# MemryNote
 
-**Your second brain — offline-first, end-to-end encrypted, agent-native.**
+### The second brain that lives on your machine — not someone else's cloud.
 
-Notes, tasks, projects, journal, calendar, and an AI agent that actually has context on your work. All on your machine. None of it on someone else's server.
+Notes, tasks, projects, journal, calendar, and an AI agent that actually knows your work.
+All on your disk. End-to-end encrypted. Every feature a toggle.
 
-[![Release](https://img.shields.io/github/v/release/memrynote/memry?include_prereleases&sort=semver)](https://github.com/memrynote/memry/releases)
-[![CI](https://github.com/memrynote/memry/actions/workflows/ci.yml/badge.svg)](https://github.com/memrynote/memry/actions/workflows/ci.yml)
+[Download](https://github.com/memrynote/memry/releases/latest) · [Website](https://memrynote.com) · [Docs](https://docs.memrynote.com)
+
+[![Release](https://img.shields.io/github/v/release/memrynote/memry)](https://github.com/memrynote/memry/releases)
 [![codecov](https://codecov.io/gh/memrynote/memry/branch/main/graph/badge.svg)](https://codecov.io/gh/memrynote/memry)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Standard Readme](https://img.shields.io/badge/readme%20style-standard-brightgreen.svg)](https://github.com/RichardLitt/standard-readme)
-[![Electron](https://img.shields.io/badge/built%20with-Electron-47848F.svg)](https://www.electronjs.org/)
-[![React 19](https://img.shields.io/badge/React-19-61DAFB.svg)](https://react.dev/)
-
-[Website](https://memrynote.com) · [Docs](https://docs.memrynote.com) · [Join the waitlist](https://memrynote.com/#waitlist)
 
 </div>
 
----
-
-> **Release status:** Current GitHub releases are not stable and are not ready for daily use. Please do not expect Memry to be usable yet. Join the [waitlist](https://memrynote.com/#waitlist); I'll announce the public-ready build when it's ready. ETA: end of July.
-
-Hi — I'm **[Kaan](https://x.com/h4yfans)**, the developer behind Memry. For years I bounced between four apps just to get through the day — inbox in one, calendar in another, notes somewhere else, tasks in a fourth — and with ADHD that constant jumping around drained me before I'd even started working. I wanted one calm place that held all of it: inbox, notes, daily journal, tasks, projects, calendar, and an AI agent that actually knows what I'm working on. And because not everyone needs every piece, every feature is a toggle — don't use a calendar? Turn it off. Not into AI? Turn that off too. Memry is the app I wish I'd had years ago, so I shipped it myself.
-
 <div align="center">
-memrynote: with note, inbox, task, and the calendar in one split pane</div>
 
-<img width="2684" height="1374" alt="home2-4split" src="https://github.com/user-attachments/assets/c4cf9a40-97df-45cd-907e-1b3b54280001" />
+**Most note apps are a SaaS wearing a text editor. MemryNote is the opposite bet.**
 
-## Table of Contents
+</div>
 
-- [Why Memry](#why-memry)
-- [Features](#features)
-- [Screenshots](#screenshots)
-- [Install](#install)
-- [Build from Source](#build-from-source)
-- [Roadmap](#roadmap)
-- [Community](#community)
-- [License](#license)
-
-## Why Memry
-
-Most note apps want to be a SaaS. Your knowledge ends up on their servers, hostage to their pricing tiers, their outages, and their AI training data pipelines.
-
-Memry is the opposite bet:
-
-- **Local-first.** Your vault lives on disk. Works offline. Always.
-- **End-to-end encrypted sync.** XChaCha20-Poly1305 + Ed25519 + Argon2id. The server stores ciphertext blobs it can't read.
-- **Agent-native.** Bring your own model — Claude CLI, Codex CLI, local LLMs, or OpenAI-compatible endpoints. The agent gets read/write access to your vault through a localhost MCP server.
-- **One app, six surfaces.** Notes, tasks, projects, daily journal, calendar, inbox — instead of stitching seven tools together.
-
-Built for people who want Obsidian's local-first ethos, Notion's range, and an AI that actually knows what they're working on.
-
-## Features
-
-### Notes
-
-Block-based editor. Markdown round-trip. Backlinks. Tags. Wiki-style search. Files on disk, not in a database you can't migrate out of.
-
-### Tasks & Projects
-
-Real task management — due dates, priorities, projects, recurrence — without a separate app. Field-level CRDT merge means edits on two devices don't blow each other away.
-
-### Daily Journal
-
-One file per day. Templates. Frontmatter. Quick capture. The kind of journal you'll actually keep, because it's three keystrokes to open.
-
-### Calendar
-
-Time-block your tasks. See your day at a glance. Drag to reschedule.
-
-### Inbox
-
-Capture first, organize later. Email-yourself-a-note, but to your own vault.
-
-### AI Agent
-
-Talk to your vault. The agent can read, draft, refactor, and link notes across the whole workspace. Approval UI for writes. Switch providers per conversation. Reasoning level and model are conversation settings, not buried in preferences.
-
-### Sync
-
-Optional, end-to-end encrypted, running on Cloudflare Workers + R2. Multi-device. Conflict resolution via CRDTs for notes/journals and per-field vector clocks for tasks/projects. The server is a ciphertext relay — sign out and your data is unreadable to anyone but you.
-
-## Screenshots
-
-<details>
-<summary>View screenshots</summary>
-
-> _Screenshot: Notes view with backlinks panel._
->
-> ![Memry notes view in dark mode](apps/landing/public/screenshots/note_black.png)
-
-> _Screenshot: Tasks board with calendar peek._
->
-> ![Memry tasks board in dark mode](apps/landing/public/screenshots/task_black.png)
-
-> _Screenshot: Daily journal with templates._
->
-> ![Memry daily journal in dark mode](apps/landing/public/screenshots/journal_black.png)
-
-> _Screenshot: AI Agent chat with vault context and approval UI._
->
-> ![Memry AI Agent chat in dark mode](apps/landing/public/screenshots/note_black.png)
-
-> _Screenshot: Calendar view with task time-blocking._
->
-> ![Memry calendar view in dark mode](apps/landing/public/screenshots/calendar_black.png)
-
-</details>
+<img width="2684" alt="MemryNote — note, inbox, task, and calendar in one split pane" src="https://github.com/user-attachments/assets/c4cf9a40-97df-45cd-907e-1b3b54280001" />
 
 ## Install
 
-### Desktop app
+**macOS (Homebrew)**
 
-Public-ready desktop installers for macOS, Windows, and Linux are expected by the end of July.
-
-Current GitHub releases are unstable preview builds. Join the [waitlist](https://memrynote.com/#waitlist) for the launch announcement before using Memry as a daily workspace.
-
-### Build from Source
-
-Requires Node 24 (see `.nvmrc`) and pnpm 11 (the repo pins `pnpm@11.5.2` via corepack).
-
-```bash
-git clone https://github.com/memrynote/memry.git
-cd memry
-pnpm install
-pnpm dev
+```sh
+brew install --cask memrynote/tap/memry
 ```
 
-That's it. The Electron app launches with hot reload.
+**macOS · Windows · Linux** — grab the installer from the [latest release](https://github.com/memrynote/memry/releases/latest).
 
-For the landing site, docs, or sync server, see [CLAUDE.md](CLAUDE.md).
+That's it. Open it, point it at a folder, and your vault is yours.
+
+## What's inside
+
+Six surfaces, one app. Turn off anything you don't use.
+
+- **Notes** — Block editor, markdown on disk, backlinks, tags, instant search.
+- **Tasks & Projects** — Due dates, priorities, recurrence. CRDT merge, so two devices never clobber each other.
+- **Journal** — One file a day. Open in three keystrokes.
+- **Calendar** — Time-block your tasks. Drag to reschedule.
+- **Inbox** — Capture now, sort later.
+- **AI Agent** — Bring your own model (Claude, Codex, local LLMs). It reads and writes your vault — with an approval step for every write.
+- **Sync** — Optional, end-to-end encrypted, multi-device. The server only ever sees ciphertext.
+
+## Why it stays yours
+
+- **Local-first.** Your vault is files on disk. Works offline. Always.
+- **End-to-end encrypted.** XChaCha20-Poly1305 + Ed25519 + Argon2id. Sign out and it's unreadable to anyone but you — including us.
+- **Agent-native.** The agent reaches your vault through a localhost MCP server. No third-party sees your notes.
+- **Yours to leave.** Markdown on disk means you can walk out the door with your data any time.
+
+## A note from me
+
+I'm [Kaan](https://x.com/h4yfans). For years I bounced between four apps just to get through a day — and with ADHD, that jumping drained me before I'd started. I wanted one calm place that held all of it _and_ an agent that already knew my work. Nothing did it without renting my brain back to me from a server I didn't control. So I built MemryNote. It's the app I wish I'd had.
+
+## Build from source
+
+Want to run it locally, hack on it, or contribute? See **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)**.
 
 ## Roadmap
 
-- Mobile (iOS / Android) with full E2E sync parity
-- Plugin API
-- Public vault sharing (encrypted, view-only)
-- More agent backends (Ollama, llama.cpp, Mistral)
+https://memrynote.com/roadmap
 
 ## Community
 
-- **Twitter / X**: [@memrynote](https://twitter.com/memrynote)
-- **GitHub Issues**: bugs, feature requests, weird ideas
-- **Email**: hi@memrynote.com
+[@X](https://twitter.com/h4yfans) · [Issues](https://github.com/memrynote/memry/issues) · kaan@memrynote.com
 
-If you ship a workflow you love, tell us. If something is broken, tell us louder.
-
----
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/image?repos=memrynote/memry&type=date&legend=top-left)](https://www.star-history.com/?repos=memrynote%2Fmemry&type=date&legend=top-left)
+Ship a workflow you love? Tell us. Something broken? Tell us louder.
 
 ---
 
 <div align="center">
-<sub>Private by design, open at heart.</sub>
+
+[![Star History Chart](https://api.star-history.com/image?repos=memrynote/memry&type=date&legend=top-left)](https://www.star-history.com/?repos=memrynote%2Fmemry&type=date&legend=top-left)
+
+<sub>GPL-3.0 © MemryNote contributors — private by design, open at heart.</sub>
+
 </div>
-
-## License
-
-MIT © Memry contributors
-
-See [LICENSE](LICENSE) for the legal text.
