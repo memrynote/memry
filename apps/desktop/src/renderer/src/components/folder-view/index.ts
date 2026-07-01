@@ -1,7 +1,7 @@
 /**
  * Folder View Components
  *
- * Obsidian Bases-like database view for folders.
+ * Database view for folders.
  * Displays notes in a table format with sortable columns and filters.
  */
 

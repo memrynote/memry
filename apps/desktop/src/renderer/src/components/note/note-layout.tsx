@@ -73,7 +73,7 @@ export function NoteLayout({
   })
 
   // Full width keeps the reserved grid column; otherwise the rail hangs off the
-  // centered content column and the group is shifted Notion-style.
+  // centered content column and the group is shifted as a unit.
   const showGridRail = hasSideRail && fullWidth
   const showCanvasRail = hasSideRail && !fullWidth && !railHidden
   const canvasStyle = showGridRail

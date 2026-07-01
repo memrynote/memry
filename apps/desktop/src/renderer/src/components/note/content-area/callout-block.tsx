@@ -185,7 +185,7 @@ export function getCalloutSlashMenuItem(
 }
 
 // ============================================================================
-// Callout Block Serialization (Obsidian-style: > [!type]\n> content)
+// Callout Block Serialization (> [!type]\n> content)
 // ============================================================================
 
 // Matches a callout block: starts with > [!type], followed by consecutive > lines

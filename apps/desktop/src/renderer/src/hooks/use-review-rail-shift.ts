@@ -22,7 +22,7 @@ interface ReviewRailShiftResult {
 }
 
 /**
- * Notion-style review rail shift: content stays centered at its max width and,
+ * Review rail shift: content stays centered at its max width and,
  * when the rail is visible, the whole content + gap + rail group is centered as
  * a unit by shifting the content column left with a transform. The shift clamps
  * so the content's inline-start edge keeps at least MIN_PAD, and the rail hides

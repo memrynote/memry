@@ -7,7 +7,7 @@ export interface VaultStoreLayout {
   rootPath: string
   notesFolder: string
   journalFolder: string
-  /** Obsidian-style date format for journal filenames; defaults to YYYY-MM-DD */
+  /** Configurable date format for journal filenames; defaults to YYYY-MM-DD */
   journalDateFormat?: string
 }
 

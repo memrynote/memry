@@ -116,7 +116,7 @@
 }
 
 /* ===== PROSEMIRROR OVERRIDES ===== */
-/* ProseMirror disables ligatures by default — re-enable for Notion-like text density */
+/* ProseMirror disables ligatures by default — re-enable for denser text */
 :root .bn-editor .ProseMirror {
   font-variant-ligatures: normal;
   font-feature-settings: normal;
@@ -415,7 +415,7 @@
   pointer-events: auto;
 }
 
-/* Notion-style review canvas: the content column stays centered at its max
+/* Review canvas: the content column stays centered at its max
    width; when the rail is visible the whole content + gap + rail group is
    centered as a unit by shifting the column with an animated transform. */
 .review-canvas {
@@ -2407,7 +2407,7 @@ del.bn-inline-content {
   opacity: 0.8;
 }
 
-/* Link mention — Notion-style inline token: favicon + site name + title.
+/* Link mention — inline token: favicon + site name + title.
    The `.bn-shadcn .bn-editor a` prefix is required to beat BlockNote's
    `.bn-shadcn .bn-editor a { color: revert; text-decoration: revert }`,
    which otherwise paints the whole token browser-default blue/underlined. */
@@ -2458,7 +2458,7 @@ del.bn-inline-content {
   text-decoration-color: color-mix(in srgb, var(--muted-foreground) 50%, transparent);
 }
 
-/* Date mention — Notion-style inline date/reminder token: dimmed `@` +
+/* Date mention — inline date/reminder token: dimmed `@` +
    relative label (Today/Tomorrow/…). A date-only pill (data-remind="none") is
    muted and label-only. When a reminder is set the pill turns blue and gains an
    alarm icon — blue + the alarm read as the reminder affordance (matches
