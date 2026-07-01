@@ -1,7 +1,7 @@
 import { useRef, type ReactNode } from 'react'
 import { motion, useInView } from 'framer-motion'
 import { Container } from '@/components/layout/Container'
-import { WaitlistForm } from '@/components/shared/WaitlistForm'
+import { DownloadCTA } from '@/components/shared/DownloadCTA'
 
 const BENEFITS = ['Open source', 'Own your data', 'No account required', 'End-to-end encrypted']
 
@@ -79,13 +79,12 @@ export function Hero() {
           </motion.p>
 
           <motion.div
-            className="mx-auto mt-8 max-w-md"
-            id="waitlist"
+            className="mx-auto mt-8"
             initial={{ opacity: 0, y: 12 }}
             animate={isInView ? { opacity: 1, y: 0 } : undefined}
             transition={{ ...LINE_TRANSITION, delay: 0.55 }}
           >
-            <WaitlistForm variant="hero" />
+            <DownloadCTA location="hero" />
           </motion.div>
 
           <motion.p

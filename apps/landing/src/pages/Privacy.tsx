@@ -124,8 +124,8 @@ export function PrivacyPage() {
           desktop app activity.
         </p>
         <p>
-          If you join the waitlist or contact us, we store the email address you submit so we can
-          reply or send the messages you opted into. We may track delivery, opens, clicks, and
+          If you contact us or sign up for an account, we store the email address you submit so we
+          can reply or send the messages you opted into. We may track delivery, opens, clicks, and
           unsubscribes for those emails so we can understand whether the campaign is working.
         </p>
 
@@ -176,7 +176,7 @@ export function PrivacyPage() {
           </li>
           <li>
             <strong>Resend or a similar transactional email provider</strong> — delivers sign-up,
-            waitlist, billing, and security emails.
+            billing, and security emails.
           </li>
           <li>
             <strong>PostHog</strong> — collects privacy-masked website analytics, session replay,

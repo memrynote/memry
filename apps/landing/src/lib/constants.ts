@@ -32,8 +32,7 @@ export const GITHUB_STARS = 21
 export const REDDIT_URL = 'https://www.reddit.com/r/MemryNote/'
 const DOCS_URL = 'https://docs.memrynote.com'
 export const TWITTER_DEV_URL = 'https://x.com/h4yfans'
-export const DESKTOP_RELEASE_TIMING = 'Coming at the end of June'
-export const CHECKOUT_RELEASE_TIMING = 'Purchases open at the end of June'
+export const CHECKOUT_RELEASE_TIMING = 'Coming soon'
 
 type LandingDropdownItemBase = {
   label: string
@@ -114,7 +113,7 @@ export const DOWNLOAD_NAV_ITEMS: readonly LandingDropdownItem[] = [
   },
   {
     label: 'memrynote for Desktop',
-    description: DESKTOP_RELEASE_TIMING,
+    description: 'macOS · Windows · Linux',
     href: '/download/desktop',
     icon: Monitor
   },
@@ -304,15 +303,15 @@ export const FAQ_ITEMS = [
       'Yes! We will support importing from Obsidian (direct vault), Notion (export), Roam Research, and plain Markdown folders. Your existing knowledge base can move with you.'
   },
   {
-    question: 'When will memrynote launch?',
+    question: 'Is memrynote available now?',
     answer:
-      'The desktop app is coming at the end of June. Waitlist members get first access and can help shape the product before launch.'
+      'Yes. The desktop app is available now — download the free, local-first app for macOS, Windows, or Linux and pick a vault in under a minute.'
   }
 ] as const
 
 export const ROADMAP_DATA = {
-  releaseDate: 'End of June 2026',
-  earlyAccess: 'Desktop app coming at the end of June',
+  releaseDate: 'Available now',
+  earlyAccess: 'The desktop app is available now',
   phases: [
     {
       status: 'done' as const,

@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
 import { ArrowRight } from 'lucide-react'
 import { Container } from '@/components/layout/Container'
-import { WaitlistForm } from '@/components/shared/WaitlistForm'
+import { DownloadCTA } from '@/components/shared/DownloadCTA'
 import { PageHead } from '@/components/shared/PageHead'
 import { USE_CASES } from '@/lib/constants'
 import { BLUR_REVEAL_ANIMATE, BLUR_REVEAL_INITIAL, BLUR_REVEAL_TRANSITION } from '@/lib/motion'
@@ -213,9 +213,9 @@ export function UseCasesPage() {
           >
             <h2 className="font-serif text-4xl md:text-5xl text-ink mb-6">Ready to simplify?</h2>
             <p className="text-xl text-muted font-sans mb-12 max-w-lg mx-auto leading-relaxed">
-              Join the waitlist and be first to experience a calmer way to work.
+              Download memrynote and experience a calmer way to work.
             </p>
-            <WaitlistForm variant="centered" />
+            <DownloadCTA location="usecases-final" />
           </motion.div>
         </Container>
       </section>

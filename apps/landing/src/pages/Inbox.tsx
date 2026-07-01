@@ -117,8 +117,8 @@ function InboxHero() {
 
           <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Button size="lg" className="rounded-full px-7" asChild>
-              <Link to="/#waitlist">
-                Join the waitlist
+              <Link to="/download/desktop">
+                Download
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
@@ -1039,8 +1039,8 @@ function FinalCta() {
 
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Button size="lg" className="rounded-full px-8" asChild>
-              <Link to="/#waitlist">
-                Join the waitlist
+              <Link to="/download/desktop">
+                Download
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>

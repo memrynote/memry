@@ -49,7 +49,7 @@ import {
 import { motion } from 'framer-motion'
 import { Container } from '@/components/layout/Container'
 import { SectionHeading } from '@/components/shared/SectionHeading'
-import { WaitlistForm } from '@/components/shared/WaitlistForm'
+import { DownloadCTA } from '@/components/shared/DownloadCTA'
 import { PageHead } from '@/components/shared/PageHead'
 import { BLUR_REVEAL_ANIMATE, BLUR_REVEAL_INITIAL, BLUR_REVEAL_TRANSITION } from '@/lib/motion'
 
@@ -633,9 +633,9 @@ export function FeaturesPage() {
           >
             <h2 className="font-serif text-3xl text-ink mb-4">Ready to get started?</h2>
             <p className="text-lg text-muted font-serif mb-8">
-              Join the waitlist for early access.
+              Free, local-first, and open source.
             </p>
-            <WaitlistForm variant="centered" />
+            <DownloadCTA location="features-final" />
           </motion.div>
         </Container>
       </section>
