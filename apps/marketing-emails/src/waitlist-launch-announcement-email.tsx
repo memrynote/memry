@@ -72,7 +72,7 @@ export const WaitlistLaunchAnnouncementEmail: EmailComponent = (props) => {
           <Section style={styles.brandRow}>
             <Img
               src={brandIconUrl}
-              alt="MemryNote"
+              alt="Memrynote"
               width="32"
               height="32"
               style={styles.brandIcon}
@@ -85,12 +85,12 @@ export const WaitlistLaunchAnnouncementEmail: EmailComponent = (props) => {
 
           <Text style={styles.paragraph}>{greeting}</Text>
           <Text style={styles.paragraph}>
-            You joined the MemryNote waitlist, so I wanted to send a short note: MemryNote launches
+            You joined the Memrynote waitlist, so I wanted to send a short note: Memrynote launches
             at the {launchWindow}.
           </Text>
           <Text style={styles.paragraph}>
             I am building it for people who are tired of splitting their thinking across notes,
-            tasks, inboxes, calendars, and journals. MemryNote keeps those pieces in one local-first
+            tasks, inboxes, calendars, and journals. Memrynote keeps those pieces in one local-first
             workspace, with AI available when it helps.
           </Text>
 
@@ -105,11 +105,11 @@ export const WaitlistLaunchAnnouncementEmail: EmailComponent = (props) => {
           </Section>
 
           <Text style={styles.paragraph}>
-            Over the next few weeks, I will send short updates showing the core parts of MemryNote:
+            Over the next few weeks, I will send short updates showing the core parts of Memrynote:
             inbox, notes, tasks, journal, calendar, and the agent.
           </Text>
           <Text style={styles.paragraph}>
-            One useful thing you can do now: reply and tell me what you hope MemryNote replaces for
+            One useful thing you can do now: reply and tell me what you hope Memrynote replaces for
             you. I read every reply.
           </Text>
 
@@ -120,12 +120,12 @@ export const WaitlistLaunchAnnouncementEmail: EmailComponent = (props) => {
           <Text style={styles.signature}>
             Kaan
             <br />
-            Founder, MemryNote
+            Founder, Memrynote
           </Text>
 
           <Hr style={styles.hr} />
           <Text style={styles.footer}>
-            You are receiving this because you joined the MemryNote waitlist. Reply directly at{' '}
+            You are receiving this because you joined the Memrynote waitlist. Reply directly at{' '}
             <Link href={`mailto:${replyToEmail}`} style={styles.footerLink}>
               {replyToEmail}
             </Link>
@@ -146,7 +146,7 @@ function MediaSlot({ imageUrl }: { imageUrl: string }) {
     return (
       <Img
         src={imageUrl}
-        alt="MemryNote product preview"
+        alt="Memrynote product preview"
         width="560"
         height="355"
         style={styles.image}

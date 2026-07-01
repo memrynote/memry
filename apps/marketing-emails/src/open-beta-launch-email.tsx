@@ -15,7 +15,7 @@ import {
 import { trackedMemryUrl, WAITLIST_CAMPAIGNS } from './tracking-links'
 
 export const openBetaLaunchContent = {
-  subject: 'MemryNote is now in open beta',
+  subject: 'Memrynote is now in open beta',
   preview: 'One private place for notes, tasks, calendar, and journal — free to download today.'
 } as const
 
@@ -67,7 +67,7 @@ export const OpenBetaLaunchEmail: EmailComponent = (props) => {
         <Container style={styles.card}>
           <Section style={styles.header}>
             <Link href={homeUrl} style={styles.logoLink}>
-              <Img src={logoUrl} alt="MemryNote" width="145" height="20" style={styles.logoImage} />
+              <Img src={logoUrl} alt="Memrynote" width="145" height="20" style={styles.logoImage} />
             </Link>
           </Section>
 
@@ -75,12 +75,12 @@ export const OpenBetaLaunchEmail: EmailComponent = (props) => {
             <Text style={styles.paragraph}>{greeting}</Text>
 
             <Text style={styles.paragraph}>
-              MemryNote is now in open beta. Anyone can download it today — no invite, no waitlist.
+              Memrynote is now in open beta. Anyone can download it today — no invite, no waitlist.
             </Text>
 
             <Text style={styles.paragraph}>
               <strong>
-                MemryNote brings your notes, tasks, calendar, and journal into one calm, private
+                Memrynote brings your notes, tasks, calendar, and journal into one calm, private
                 desktop app — local-first, end-to-end encrypted, and free during the open beta.
               </strong>
             </Text>
@@ -92,7 +92,7 @@ export const OpenBetaLaunchEmail: EmailComponent = (props) => {
 
             <Section style={styles.buttonRow}>
               <Button href={downloadUrl} style={styles.button}>
-                Download MemryNote
+                Download Memrynote
               </Button>
             </Section>
 
@@ -136,12 +136,12 @@ export const OpenBetaLaunchEmail: EmailComponent = (props) => {
 
           <Section style={styles.footer}>
             <Section style={styles.footerLogo}>
-              <Img src={iconUrl} alt="MemryNote" width="34" height="27" style={styles.logoImage} />
+              <Img src={iconUrl} alt="Memrynote" width="34" height="27" style={styles.logoImage} />
             </Section>
 
             <Text style={styles.footerLinks}>
               <Link href={footerDownloadUrl} style={styles.footerLink}>
-                Download MemryNote
+                Download Memrynote
               </Link>{' '}
               ·{' '}
               <Link href={docsUrl} style={styles.footerLink}>
@@ -153,7 +153,7 @@ export const OpenBetaLaunchEmail: EmailComponent = (props) => {
               </Link>
             </Text>
 
-            <Text style={styles.footerLine}>© 2026 MemryNote</Text>
+            <Text style={styles.footerLine}>© 2026 Memrynote</Text>
 
             <Text style={styles.footerUnsubscribe}>
               <Link href={unsubscribeUrl} style={styles.footerLink}>
@@ -173,7 +173,7 @@ function Hero({ url, href }: { url: string; href: string }) {
       <Link href={href} style={styles.heroLink}>
         <Img
           src={url}
-          alt="MemryNote — notes, tasks, calendar, and journal in one desktop app"
+          alt="Memrynote — notes, tasks, calendar, and journal in one desktop app"
           width="570"
           style={styles.heroImage}
         />
@@ -183,7 +183,7 @@ function Hero({ url, href }: { url: string; href: string }) {
 
   return (
     <Section style={styles.placeholder}>
-      <Text style={styles.placeholderLabel}>Hero: MemryNote running on macOS or Windows</Text>
+      <Text style={styles.placeholderLabel}>Hero: Memrynote running on macOS or Windows</Text>
       <Text style={styles.placeholderHint}>
         1140×740 hosted PNG or JPG, under 300KB, shown at 570px. Replace before sending.
       </Text>

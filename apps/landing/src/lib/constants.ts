@@ -273,7 +273,7 @@ export const ROADMAP_DATA = {
         'End-to-end encrypted sync for notes and journals',
         'Web clipper for Chrome, Firefox, and Edge',
         'Importers for Obsidian, Notion, Roam, Bear, Evernote, and more',
-        'Agent Chat, voice memos with transcription, and MemryNote CLI'
+        'Agent Chat, voice memos with transcription, and Memrynote CLI'
       ]
     },
     {

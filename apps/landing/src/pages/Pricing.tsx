@@ -125,12 +125,12 @@ function CheckoutNoticeBanner({ notice }: { notice: CheckoutNotice | null }) {
 
   const body =
     notice.type === 'success'
-      ? 'MemryNote will activate hosted sync after Paddle confirms the transaction.'
+      ? 'Memrynote will activate hosted sync after Paddle confirms the transaction.'
       : notice.type === 'pending'
-        ? 'Paddle is confirming the purchase. If MemryNote is open, refresh billing in Account.'
+        ? 'Paddle is confirming the purchase. If Memrynote is open, refresh billing in Account.'
         : notice.type === 'failed'
-          ? 'The payment was not completed. You can try again from MemryNote when ready.'
-          : 'No charge was made. Start again from MemryNote when you are ready.'
+          ? 'The payment was not completed. You can try again from Memrynote when ready.'
+          : 'No charge was made. Start again from Memrynote when you are ready.'
 
   const transactionId =
     notice.type === 'success' || notice.type === 'pending' ? notice.transactionId : null
@@ -159,7 +159,7 @@ function CheckoutNoticeBanner({ notice }: { notice: CheckoutNotice | null }) {
             >
               <a href={openMemryUrl}>
                 <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-                Open MemryNote
+                Open Memrynote
               </a>
             </Button>
           )}

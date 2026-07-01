@@ -32,7 +32,8 @@ interface LaunchedGroup {
 const ACTIVE_ITEMS: RoadmapItem[] = [
   {
     title: 'Safari web clipper',
-    caption: 'Extend page, highlight, and snippet clipping to Safari alongside Chrome, Firefox, and Edge.'
+    caption:
+      'Extend page, highlight, and snippet clipping to Safari alongside Chrome, Firefox, and Edge.'
   },
   {
     title: 'Browser extension store listings',
@@ -76,7 +77,7 @@ const PLANNED_ITEMS: RoadmapItem[] = [
   },
   {
     title: 'Plugin API',
-    caption: 'Extend MemryNote with your own tools, integrations, and views.'
+    caption: 'Extend Memrynote with your own tools, integrations, and views.'
   },
   {
     title: 'Templates marketplace',
@@ -138,7 +139,7 @@ const LAUNCHED_GROUPS: LaunchedGroup[] = [
         title: 'Voice memos with transcription and related items',
         caption: 'Inline recorder, transcript previews, and audio-aware mention picker.'
       },
-      { title: 'MemryNote CLI' },
+      { title: 'Memrynote CLI' },
       { title: 'Landing demo refresh, founder story, and event analytics' }
     ]
   },

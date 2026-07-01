@@ -3,7 +3,7 @@ import { Body, Container, Head, Hr, Html, Link, Preview, Text } from 'react-emai
 import { trackedMemryUrl, WAITLIST_CAMPAIGNS } from './tracking-links'
 
 export const waitlistLaunchPlainContent = {
-  subject: 'MemryNote ships end of June',
+  subject: 'Memrynote ships end of June',
   preview: '6 weeks out. Here is the plan.'
 } as const
 
@@ -41,12 +41,12 @@ export const WaitlistLaunchPlainEmail: EmailComponent = (props) => {
           <Text style={styles.paragraph}>{greeting}</Text>
 
           <Text style={styles.paragraph}>
-            Thanks for joining the MemryNote waitlist. Quick update: we&apos;re shipping end of
+            Thanks for joining the Memrynote waitlist. Quick update: we&apos;re shipping end of
             June.
           </Text>
 
           <Text style={styles.paragraph}>
-            MemryNote is the notes app I wanted but couldn&apos;t find. Local-first, end-to-end
+            Memrynote is the notes app I wanted but couldn&apos;t find. Local-first, end-to-end
             encrypted, your data stays on your machine. Optional sync across devices if you want it.
           </Text>
 
@@ -60,7 +60,7 @@ export const WaitlistLaunchPlainEmail: EmailComponent = (props) => {
 
           <Text style={styles.paragraphAfterList}>
             That&apos;s it for today. Hit reply if you have questions or if there&apos;s a specific
-            thing you want MemryNote to do. I read every reply.
+            thing you want Memrynote to do. I read every reply.
           </Text>
 
           <Text style={styles.signature}>
@@ -77,7 +77,7 @@ export const WaitlistLaunchPlainEmail: EmailComponent = (props) => {
           <Hr style={styles.hr} />
 
           <Text style={styles.footer}>
-            You&apos;re getting this because you joined the MemryNote waitlist. Reply to me at{' '}
+            You&apos;re getting this because you joined the Memrynote waitlist. Reply to me at{' '}
             <Link href={`mailto:${replyToEmail}`} style={styles.footerLink}>
               {replyToEmail}
             </Link>{' '}

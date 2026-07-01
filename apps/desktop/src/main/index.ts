@@ -775,9 +775,9 @@ void app.whenReady().then(async () => {
   // setAboutPanelOptions is macOS/Linux only (undefined on Windows).
   if (typeof app.setAboutPanelOptions === 'function') {
     app.setAboutPanelOptions({
-      applicationName: 'MemryNote',
+      applicationName: 'Memrynote',
       applicationVersion: app.getVersion(),
-      copyright: `© ${new Date().getFullYear()} MemryNote`
+      copyright: `© ${new Date().getFullYear()} Memrynote`
     })
   }
   Menu.setApplicationMenu(buildAppMenu(mainI18n))

@@ -98,7 +98,7 @@ function createWaitlistProgramEmail(content: WaitlistProgramEmailContent): Email
             <Hr style={styles.hr} />
 
             <Text style={styles.footer}>
-              You&apos;re getting this because you joined the MemryNote waitlist. Reply to me at{' '}
+              You&apos;re getting this because you joined the Memrynote waitlist. Reply to me at{' '}
               <Link href={`mailto:${replyToEmail}`} style={styles.footerLink}>
                 {replyToEmail}
               </Link>{' '}

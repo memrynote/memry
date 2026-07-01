@@ -3,7 +3,7 @@ import { Body, Button, Container, Head, Hr, Html, Link, Preview, Text } from 're
 import { trackedMemryUrl, WAITLIST_CAMPAIGNS } from './tracking-links'
 
 export const waitlistLastCallContent = {
-  subject: 'Your MemryNote waitlist code expires tonight',
+  subject: 'Your Memrynote waitlist code expires tonight',
   preview: 'Last reminder for the waitlist annual discount.'
 } as const
 
@@ -56,10 +56,10 @@ export const WaitlistLastCallEmail: EmailComponent = (props) => {
         <Container style={styles.container}>
           <Text style={styles.paragraph}>{greeting}</Text>
 
-          <Text style={styles.paragraph}>Your MemryNote waitlist code expires in {daysLeft}.</Text>
+          <Text style={styles.paragraph}>Your Memrynote waitlist code expires in {daysLeft}.</Text>
 
           <Text style={styles.paragraph}>
-            <span style={styles.inlineCode}>{discountCode}</span> — 25% off MemryNote Sync annual,
+            <span style={styles.inlineCode}>{discountCode}</span> — 25% off Memrynote Sync annual,
             lifetime renewals.
           </Text>
 
@@ -70,7 +70,7 @@ export const WaitlistLastCallEmail: EmailComponent = (props) => {
           </Button>
 
           <Text style={styles.paragraph}>
-            If MemryNote isn&apos;t for you, no hard feelings. Reply and tell me what&apos;s missing
+            If Memrynote isn&apos;t for you, no hard feelings. Reply and tell me what&apos;s missing
             — I read every one.
           </Text>
 
@@ -88,7 +88,7 @@ export const WaitlistLastCallEmail: EmailComponent = (props) => {
           <Hr style={styles.hr} />
 
           <Text style={styles.footer}>
-            You&apos;re getting this because you joined the MemryNote waitlist. Reply to me at{' '}
+            You&apos;re getting this because you joined the Memrynote waitlist. Reply to me at{' '}
             <Link href={`mailto:${replyToEmail}`} style={styles.footerLink}>
               {replyToEmail}
             </Link>{' '}
