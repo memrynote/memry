@@ -26,11 +26,20 @@ function cadenceSuffix(label: 'Monthly' | 'Yearly' | 'One-time') {
 interface CheckoutPanelProps {
   token: string | null
   onTokenMissing?: ReactNode
+  initialPlan?: CheckoutPlanId
+  initialCadence?: PaddleCheckoutCadence
 }
 
-export function CheckoutPanel({ token, onTokenMissing }: CheckoutPanelProps) {
-  const [plan, setPlan] = useState<CheckoutPlanId>('pro')
-  const [cadence, setCadence] = useState<PaddleCheckoutCadence>('annual')
+export function CheckoutPanel({
+  token,
+  onTokenMissing,
+  initialPlan = 'pro',
+  initialCadence = 'annual'
+}: CheckoutPanelProps) {
+  const [plan, setPlan] = useState<CheckoutPlanId>(initialPlan)
+  const [cadence, setCadence] = useState<PaddleCheckoutCadence>(() =>
+    normalizeCadenceForPlan(initialPlan, initialCadence)
+  )
   const [status, setStatus] = useState<CheckoutStatus>('idle')
   const [error, setError] = useState<string | null>(null)
   const completedRef = useRef(false)

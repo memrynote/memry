@@ -1,5 +1,5 @@
 import { Fragment, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Check, ArrowRight, ShieldCheck, ExternalLink } from 'lucide-react'
 import { Container } from '@/components/layout/Container'
@@ -17,23 +17,17 @@ import {
   LIFECYCLE_STAGES,
   PRICING_FAQ_ITEMS,
   CHECKOUT_RELEASE_TIMING,
-  type CheckoutPlanId,
   type PlanComparisonValue,
   type SyncPlanTier,
   type LifecycleTone
 } from '@/lib/constants'
-import {
-  buildMemryBillingCompleteUrl,
-  buildMemryBillingStartUrl,
-  type PaddleCheckoutCadence
-} from '@/lib/paddle-checkout'
+import { buildMemryBillingCompleteUrl, type PaddleCheckoutCadence } from '@/lib/paddle-checkout'
 import { cn } from '@/lib/utils'
 import { BLUR_REVEAL_ANIMATE, BLUR_REVEAL_INITIAL, BLUR_REVEAL_TRANSITION } from '@/lib/motion'
 import { trackLandingEvent } from '@/lib/analytics'
 
 type Cadence = 'monthly' | 'annual'
 type CheckoutState = {
-  pendingKey: string | null
   error: string | null
   notice: CheckoutNotice | null
 }
@@ -42,7 +36,6 @@ type CheckoutNotice =
   | { type: 'pending'; transactionId: string | null }
   | { type: 'failed' }
   | { type: 'canceled' }
-  | { type: 'desktop'; url: string }
 
 const PURCHASES_ENABLED = true
 
@@ -56,37 +49,29 @@ const fadeUp = {
 const ASSURANCES = ['Cancel anytime', 'VAT handled by Paddle', 'Prices in USD']
 
 export function PricingPage() {
+  const navigate = useNavigate()
   const [cadence, setCadence] = useState<Cadence>('annual')
-  const [checkout, setCheckout] = useState<CheckoutState>(() => {
+  const [checkout] = useState<CheckoutState>(() => {
     if (typeof window === 'undefined') {
-      return { pendingKey: null, error: null, notice: null }
+      return { error: null, notice: null }
     }
     const params = new URLSearchParams(window.location.search)
     if (params.get('checkout') === 'success') {
       return {
-        pendingKey: null,
         error: null,
         notice: { type: 'success', transactionId: params.get('transactionId') }
       }
     }
-    return { pendingKey: null, error: null, notice: null }
+    return { error: null, notice: null }
   })
 
-  const handleCheckout = async (tier: SyncPlanTier) => {
+  const handleCheckout = (tier: SyncPlanTier) => {
     if (!PURCHASES_ENABLED || !tier.checkoutPlanId) return
 
     const checkoutCadence = getCheckoutCadence(tier, cadence)
-    const pendingKey = getCheckoutKey(tier.checkoutPlanId, checkoutCadence)
-    const desktopUrl = buildMemryBillingStartUrl(tier.checkoutPlanId, checkoutCadence)
-
     trackLandingEvent('landing_pricing_cta_click', pricingTarget(tier.id, checkoutCadence))
-    setCheckout({ pendingKey, error: null, notice: { type: 'desktop', url: desktopUrl } })
-    window.location.href = desktopUrl
-    window.setTimeout(() => {
-      setCheckout((current) =>
-        current.pendingKey === pendingKey ? { ...current, pendingKey: null } : current
-      )
-    }, 1000)
+    const params = new URLSearchParams({ plan: tier.checkoutPlanId, cadence: checkoutCadence })
+    navigate(`/checkout?${params.toString()}`)
   }
 
   return (
@@ -115,10 +100,6 @@ function getCheckoutCadence(tier: SyncPlanTier, cadence: Cadence): PaddleCheckou
   return tier.id === 'believer' ? 'lifetime' : cadence
 }
 
-function getCheckoutKey(planId: CheckoutPlanId, cadence: PaddleCheckoutCadence) {
-  return `${planId}:${cadence}`
-}
-
 function pricingTarget(tierId: string, cadence: string) {
   return `pricing:${tierId}:${cadence}`
 }
@@ -140,9 +121,7 @@ function CheckoutNoticeBanner({ notice }: { notice: CheckoutNotice | null }) {
         ? 'Activation pending'
         : notice.type === 'failed'
           ? 'Payment failed'
-          : notice.type === 'canceled'
-            ? 'Checkout canceled'
-            : 'Open MemryNote to continue'
+          : 'Checkout canceled'
 
   const body =
     notice.type === 'success'
@@ -151,9 +130,7 @@ function CheckoutNoticeBanner({ notice }: { notice: CheckoutNotice | null }) {
         ? 'Paddle is confirming the purchase. If MemryNote is open, refresh billing in Account.'
         : notice.type === 'failed'
           ? 'The payment was not completed. You can try again from MemryNote when ready.'
-          : notice.type === 'canceled'
-            ? 'No charge was made. Start again from MemryNote when you are ready.'
-            : 'MemryNote desktop signs the checkout request so the purchase lands on your account.'
+          : 'No charge was made. Start again from MemryNote when you are ready.'
 
   const transactionId =
     notice.type === 'success' || notice.type === 'pending' ? notice.transactionId : null
@@ -173,16 +150,14 @@ function CheckoutNoticeBanner({ notice }: { notice: CheckoutNotice | null }) {
             <p className="font-mono-accent text-[11px] uppercase tracking-[0.18em]">{title}</p>
             <p className="mt-1 text-ink/75">{body}</p>
           </div>
-          {(notice.type === 'success' ||
-            notice.type === 'pending' ||
-            notice.type === 'desktop') && (
+          {(notice.type === 'success' || notice.type === 'pending') && (
             <Button
               variant="outline"
               size="sm"
               className="shrink-0 rounded-sm border-ink/20 bg-transparent text-ink hover:bg-paper-alt"
               asChild
             >
-              <a href={notice.type === 'desktop' ? notice.url : openMemryUrl}>
+              <a href={openMemryUrl}>
                 <ExternalLink className="h-3.5 w-3.5" aria-hidden />
                 Open MemryNote
               </a>
@@ -318,17 +293,7 @@ function TierGrid({
                   tier.emphasis === 'founding' && 'xl:border-s-0'
                 )}
               >
-                <TierCard
-                  tier={tier}
-                  cadence={cadence}
-                  isPending={
-                    PURCHASES_ENABLED &&
-                    !!tier.checkoutPlanId &&
-                    checkout.pendingKey ===
-                      getCheckoutKey(tier.checkoutPlanId, getCheckoutCadence(tier, cadence))
-                  }
-                  onCheckout={() => onCheckout(tier)}
-                />
+                <TierCard tier={tier} cadence={cadence} onCheckout={() => onCheckout(tier)} />
               </div>
             ))}
           </div>
@@ -364,19 +329,16 @@ function TierGrid({
 function TierCard({
   tier,
   cadence,
-  isPending,
   onCheckout
 }: {
   tier: SyncPlanTier
   cadence: Cadence
-  isPending: boolean
   onCheckout: () => void
 }) {
   const isFounding = tier.emphasis === 'founding'
   const isRecommended = tier.emphasis === 'recommended'
   const isCheckoutEnabled = PURCHASES_ENABLED && !!tier.checkoutPlanId
   const isCheckoutUnavailable = !PURCHASES_ENABLED && !!tier.checkoutPlanId
-  const ctaLabel = isPending ? 'Opening checkout...' : tier.cta
 
   const ctaClass = isRecommended
     ? 'w-full rounded-sm bg-terracotta text-white hover:bg-terracotta-dark'
@@ -473,12 +435,11 @@ function TierCard({
           <Button
             variant={isRecommended ? 'default' : 'outline'}
             size="lg"
-            disabled={isPending}
             onClick={onCheckout}
-            aria-label={ctaLabel}
+            aria-label={tier.cta}
             className={ctaClass}
           >
-            {ctaLabel}
+            {tier.cta}
           </Button>
         )}
       </div>

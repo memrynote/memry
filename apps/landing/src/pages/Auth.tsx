@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { PageHead } from '@/components/shared/PageHead'
@@ -7,9 +7,11 @@ import { Container } from '@/components/layout/Container'
 import { useAuth } from '@/contexts/auth-context'
 import { registerWebDevice } from '@/lib/account/auth-client'
 import { SYNC_SERVER_URL, WEB_OAUTH_REDIRECT_PATH } from '@/lib/account/config'
+import { OAUTH_NEXT_STORAGE_KEY, safeNextPath } from '@/lib/account/next-path'
 import { trackLandingEvent } from '@/lib/analytics'
 
-function continueWithGoogle() {
+function continueWithGoogle(next: string | null) {
+  sessionStorage.setItem(OAUTH_NEXT_STORAGE_KEY, next ?? '')
   const redirectUri = `${window.location.origin}${WEB_OAUTH_REDIRECT_PATH}`
   window.location.href = `${SYNC_SERVER_URL}/auth/oauth/google?redirect_uri=${encodeURIComponent(redirectUri)}`
 }
@@ -17,6 +19,9 @@ function continueWithGoogle() {
 export function AuthPage() {
   const { api, storage, refreshSignedIn } = useAuth()
   const navigate = useNavigate()
+  const [params] = useSearchParams()
+  const next = params.get('next')
+  const toCheckout = safeNextPath(next).startsWith('/checkout')
   const [email, setEmail] = useState('')
   const [code, setCode] = useState('')
   const [step, setStep] = useState<'email' | 'code'>('email')
@@ -50,7 +55,7 @@ export function AuthPage() {
       await registerWebDevice({ setupToken: res.setupToken, baseUrl: SYNC_SERVER_URL, storage })
       refreshSignedIn()
       trackLandingEvent('landing_account_signin', 'auth:otp')
-      navigate('/account/profile')
+      navigate(safeNextPath(next))
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Invalid code')
     } finally {
@@ -64,15 +69,18 @@ export function AuthPage() {
       <main className="py-24">
         <Container size="sm">
           <div className="mx-auto max-w-sm rounded-2xl border border-border bg-card p-8 shadow-card">
-            <h1 className="font-editorial text-xl tracking-[-0.01em]">Sign in to MemryNote</h1>
+            <h1 className="font-editorial text-xl tracking-[-0.01em]">
+              {toCheckout ? 'Sign in to continue' : 'Sign in to MemryNote'}
+            </h1>
+            {toCheckout ? (
+              <p className="mt-2 text-sm text-muted">
+                Log in first to choose your plan and check out.
+              </p>
+            ) : null}
             {error ? <p className="mt-3 text-sm text-red-500">{error}</p> : null}
             {step === 'email' ? (
               <div className="mt-6 space-y-3">
-                <Input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
+                <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
                 <Button className="w-full" disabled={busy || !email} onClick={requestCode}>
                   {busy ? 'Sending…' : 'Email me a code'}
                 </Button>
@@ -98,7 +106,7 @@ export function AuthPage() {
             <Button
               variant="outline"
               className="inline-flex w-full items-center justify-center gap-2"
-              onClick={continueWithGoogle}
+              onClick={() => continueWithGoogle(next)}
             >
               <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
                 <path
