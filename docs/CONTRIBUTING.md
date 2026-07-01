@@ -27,13 +27,13 @@ pnpm dev
 
 Memry is a pnpm monorepo:
 
-| Package | Description |
-| --- | --- |
-| `apps/desktop` | Electron + React desktop app |
-| `apps/sync-server` | Cloudflare Workers sync server |
-| `packages/contracts` | Shared TypeScript contracts |
+| Package              | Description                    |
+| -------------------- | ------------------------------ |
+| `apps/desktop`       | Electron + React desktop app   |
+| `apps/sync-server`   | Cloudflare Workers sync server |
+| `packages/contracts` | Shared TypeScript contracts    |
 | `packages/db-schema` | Drizzle ORM schema definitions |
-| `packages/shared` | Shared utilities |
+| `packages/shared`    | Shared utilities               |
 
 ## Development Workflow
 
@@ -129,4 +129,4 @@ Open a [GitHub issue](https://github.com/memrynote/memry/issues/new) with:
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the [GNU General Public License v3.0](../LICENSE).
+By contributing, you agree that your contributions will be licensed under the [MIT License](../LICENSE).

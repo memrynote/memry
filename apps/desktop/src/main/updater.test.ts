@@ -231,7 +231,8 @@ describe('updater', () => {
     await flushAsyncWork()
 
     expect(updater.getUpdateState()).toMatchObject({
-      status: 'downloaded',
+      // Clicking Restart flips the UI to the "installing" screen immediately.
+      status: 'installing',
       availableVersion: 'v1.2.5',
       releaseNotes: 'Ready to install',
       downloadProgressPercent: 100
@@ -265,5 +266,7 @@ describe('updater', () => {
     // then does Squirrel install + relaunch.
     updater.performQuitAndInstall()
     expect(mocks.autoUpdater.quitAndInstall).toHaveBeenCalledTimes(1)
+    // Silent install (/S) + relaunch (--force-run) on Windows NSIS.
+    expect(mocks.autoUpdater.quitAndInstall).toHaveBeenCalledWith(true, true)
   })
 })

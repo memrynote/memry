@@ -173,6 +173,10 @@ export function quitAndInstall(): void {
 
   logger.info('quitting to install update', { version: state.availableVersion })
   quitAndInstallRequested = true
+  // Flip the UI to a dedicated "Installing update…" screen immediately, before the
+  // window starts tearing down. Without this the frozen window (and any vault
+  // teardown underneath) reads as a hang / broken vault picker.
+  setState({ status: 'installing' })
   // Trigger the app's graceful shutdown first. Calling autoUpdater.quitAndInstall()
   // directly here is cancelled by the before-quit handler (event.preventDefault +
   // app.exit), so the update never installs and the app re-prompts on every launch.
@@ -186,8 +190,11 @@ export function isQuitAndInstallRequested(): boolean {
 
 // Performs the real Squirrel/NSIS install + relaunch. Must run only after the
 // app's graceful shutdown (vault close, write-back flush) has completed.
+// (isSilent=true, isForceRunAfter=true): install with no visible NSIS window
+// (adds /S) and relaunch afterwards (adds --force-run). macOS Squirrel relaunches
+// regardless; the flags only affect the Windows NSIS installer.
 export function performQuitAndInstall(): void {
-  autoUpdater.quitAndInstall()
+  autoUpdater.quitAndInstall(true, true)
 }
 
 function setState(patch: Partial<AppUpdateState>): void {

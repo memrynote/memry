@@ -1324,6 +1324,14 @@ app.on('before-quit', (event) => {
       return disposeTelemetryRuntime()
     })
     .then(() => {
+      // When installing an update, skip the final CRDT snapshot push: it's an
+      // unbounded network round-trip that can stall shutdown for tens of seconds
+      // (and the installer is about to swap the binary anyway). The next launch
+      // syncs. A normal quit still pushes so nothing is left unsynced.
+      if (isQuitAndInstallRequested()) {
+        shutdownLog.info('stopping sync runtime (skip final push for update)...')
+        return stopSyncRuntime({ skipFinalSync: true })
+      }
       shutdownLog.info('stopping sync runtime...')
       return stopSyncRuntime()
     })

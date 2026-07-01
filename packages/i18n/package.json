@@ -2,7 +2,7 @@
   "name": "@memry/i18n",
   "version": "0.1.0",
   "private": true,
-  "license": "GPL-3.0",
+  "license": "MIT",
   "type": "module",
   "exports": {
     "./main": "./src/main/index.ts",
