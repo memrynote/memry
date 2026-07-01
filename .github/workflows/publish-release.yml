@@ -790,3 +790,74 @@ jobs:
           console.log(`Published ${release.name}: ${release.url}`)
           console.log(`Assets: ${release.assets.length}`)
           NODE
+
+  update-homebrew-tap:
+    name: Bump Homebrew cask
+    needs:
+      - setup-release
+      - publish-release
+    if: ${{ !inputs.dry_run }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Generate and push cask
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # PAT with contents:write on memrynote/homebrew-tap; GITHUB_TOKEN cannot
+          # write to a different repo.
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          TAG: ${{ needs.setup-release.outputs.tag }}
+          APP_VERSION: ${{ needs.setup-release.outputs.app_version }}
+        run: |
+          set -euo pipefail
+          if [ -z "${HOMEBREW_TAP_TOKEN:-}" ]; then
+            echo "::error::Set HOMEBREW_TAP_TOKEN (PAT with contents:write on memrynote/homebrew-tap) to auto-bump the cask."
+            exit 1
+          fi
+
+          work="$RUNNER_TEMP/cask"
+          mkdir -p "$work"
+
+          # Names the cask url will resolve to; if electron-builder ever renames
+          # the DMG, gh release download fails loudly here instead of shipping a
+          # 404 cask.
+          arm_dmg="Memrynote-${APP_VERSION}-arm64.dmg"
+          x64_dmg="Memrynote-${APP_VERSION}-x64.dmg"
+
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" \
+            --pattern "$arm_dmg" --pattern "$x64_dmg" --dir "$work" --clobber
+
+          sha_arm="$(sha256sum "$work/$arm_dmg" | cut -d' ' -f1)"
+          sha_x64="$(sha256sum "$work/$x64_dmg" | cut -d' ' -f1)"
+
+          node scripts/generate-homebrew-cask.mjs \
+            --tag "$TAG" \
+            --app-version "$APP_VERSION" \
+            --sha-arm "$sha_arm" \
+            --sha-x64 "$sha_x64" \
+            > "$work/memry.rb"
+
+          git clone --depth 1 \
+            "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/memrynote/homebrew-tap.git" \
+            "$work/tap"
+          cp "$work/memry.rb" "$work/tap/Casks/memry.rb"
+
+          cd "$work/tap"
+          git config user.name "memry-release-bot"
+          git config user.email "release-bot@memrynote.com"
+          git add Casks/memry.rb
+          if git diff --staged --quiet; then
+            echo "Cask already up to date for ${TAG}."
+          else
+            git commit -m "chore: bump memry cask to ${TAG}"
+            git push
+          fi
