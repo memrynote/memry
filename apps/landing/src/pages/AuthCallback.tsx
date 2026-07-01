@@ -4,6 +4,7 @@ import { Container } from '@/components/layout/Container'
 import { useAuth } from '@/contexts/auth-context'
 import { registerWebDevice } from '@/lib/account/auth-client'
 import { SYNC_SERVER_URL } from '@/lib/account/config'
+import { OAUTH_NEXT_STORAGE_KEY, safeNextPath } from '@/lib/account/next-path'
 import { trackLandingEvent } from '@/lib/analytics'
 
 export function AuthCallbackPage() {
@@ -29,7 +30,9 @@ export function AuthCallbackPage() {
         await registerWebDevice({ setupToken: res.setupToken, baseUrl: SYNC_SERVER_URL, storage })
         refreshSignedIn()
         trackLandingEvent('landing_account_signin', 'auth:google')
-        navigate('/account/profile', { replace: true })
+        const stored = sessionStorage.getItem(OAUTH_NEXT_STORAGE_KEY)
+        sessionStorage.removeItem(OAUTH_NEXT_STORAGE_KEY)
+        navigate(safeNextPath(stored), { replace: true })
       } catch (e) {
         setCallbackError(e instanceof Error ? e.message : 'Sign-in failed')
       }

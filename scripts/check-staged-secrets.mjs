@@ -86,6 +86,15 @@ function isSourceCodeReferenceValue(filePath, value) {
 
   const normalized = normalizeValue(value)
 
+  // JSX expression container / object shorthand: `{ident}` wraps a code
+  // reference, not a secret literal. Unwrap one layer and re-check the inner
+  // expression. A quoted string inside stays flagged (isQuotedValue guard),
+  // and real secret formats are caught by tokenPatterns regardless.
+  const jsxInner = normalized.match(/^\{\s*(.+?)\s*\}$/)
+  if (jsxInner && !isQuotedValue(jsxInner[1])) {
+    return isSourceCodeReferenceValue(filePath, jsxInner[1])
+  }
+
   return (
     isTypeScriptTypeValue(normalized) ||
     /^[A-Za-z_$][\w$]*$/.test(normalized) ||
