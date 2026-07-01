@@ -1,7 +1,19 @@
 import { useState, useCallback, useRef, useMemo } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical, Trash2, Calendar } from '@/lib/icons'
+import {
+  GripVertical,
+  Trash2,
+  Calendar,
+  Type,
+  Hash,
+  CheckSquare,
+  List,
+  Tags,
+  Link,
+  Star,
+  type AppIcon
+} from '@/lib/icons'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { Property } from './types'
@@ -27,6 +39,18 @@ import { useT } from '@memry/i18n/renderer'
 import { useCalendarProperties } from '@/hooks/use-calendar-properties'
 import { getEventBaseColor } from '@/lib/event-type-colors'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+
+const PROPERTY_TYPE_ICONS: Record<string, AppIcon> = {
+  text: Type,
+  number: Hash,
+  checkbox: CheckSquare,
+  date: Calendar,
+  select: List,
+  multiselect: Tags,
+  status: List,
+  url: Link,
+  rating: Star
+}
 
 interface PropertyValueRendererProps {
   property: Property
@@ -304,8 +328,10 @@ export function PropertyRow({
     transition: transition || 'transform 150ms ease'
   }
 
-  const showDragHandle = isDragEnabled && !isEditingName && (isNameHovered || isDragging)
+  const showDragHandle =
+    isDragEnabled && !isEditingName && !isEditing && (isNameHovered || isDragging)
   const isAlwaysInteractive = property.type === 'checkbox' || SELECT_TYPES.has(property.type)
+  const PropertyTypeIcon = PROPERTY_TYPE_ICONS[property.type] ?? Type
 
   // Handle autoFocus - start editing when mounted with autoFocus. Computed
   // during render so the React linter can verify state isn't redundantly
@@ -373,13 +399,24 @@ export function PropertyRow({
       )}
     >
       <div
-        className="flex items-center"
+        className={cn(
+          'flex items-center rounded -ms-1 me-2 ps-1 pe-1 py-0.5 -my-0.5 transition-colors',
+          isDragEnabled && !isEditingName && 'hover:bg-surface'
+        )}
         onMouseEnter={() => setIsNameHovered(true)}
         onMouseLeave={() => setIsNameHovered(false)}
       >
-        {/* Drag Handle — fixed w-5 slot, empty at rest for a clean editorial look */}
-        <div className="flex items-center w-5 shrink-0">
-          {showDragHandle && (
+        {/* Leading slot — property type icon at rest, crossfades to drag handle on hover */}
+        <div className="relative flex h-4 w-5 shrink-0 items-center">
+          <PropertyTypeIcon
+            aria-hidden
+            className={cn(
+              'absolute start-0 top-1/2 h-3.5 w-3.5 -translate-y-1/2 transition-opacity duration-150',
+              showDragHandle ? 'opacity-0' : 'opacity-100',
+              isEditing || isEditingName ? 'text-tint' : 'text-text-tertiary'
+            )}
+          />
+          {isDragEnabled && (
             <button
               type="button"
               {...attributes}
@@ -387,11 +424,10 @@ export function PropertyRow({
               data-drag-handle
               aria-label={`${t('properties.dragAria')}: ${property.name}`}
               className={cn(
-                'flex items-center justify-center',
-                'cursor-grab text-text-tertiary',
-                'hover:text-muted-foreground',
-                'active:cursor-grabbing',
-                'touch-none'
+                'absolute start-0 top-1/2 flex h-4 -translate-y-1/2 items-center justify-center',
+                'cursor-grab text-text-tertiary transition-opacity duration-150',
+                'hover:text-muted-foreground active:cursor-grabbing touch-none',
+                showDragHandle ? 'opacity-100' : 'pointer-events-none opacity-0'
               )}
             >
               <GripVertical className="h-3.5 w-3.5" />
