@@ -2,9 +2,13 @@
 
 Status: **root cause corrected (file COUNT, not ML bytes). First prune attempt
 (`extraResources` filter excluding `@tabler/icons`) BROKE macOS codesign and was
-reverted — dangling symlink, see Dead-end #5. File-count pruning is still the
-right direction, but must remove the symlink too / prune in the staged tree.**
-Last updated: 2026-07-01.
+reverted — dangling symlink, see Dead-end #5. SUPERSEDED by a cleaner fix:
+`@tabler/icons-react` turned out to have ZERO source imports (icons migrated to
+hugeicons long ago), so the dep was simply removed from `package.json` — no
+staged-tree prune needed. `lucide-react` (renderer-only, Vite-bundled) moved to
+devDependencies. Verified locally: bundle 52,744 → 35,768 files (−32%), no
+dangling symlinks, runtime-deps gate green.**
+Last updated: 2026-07-02.
 
 Read this before touching the auto-update / packaging path again. It exists so
 the same investigation isn't repeated and the same dead-end isn't re-shipped.
@@ -71,8 +75,8 @@ Verify is O(file count), so the packages that ship the most _files_ dominate —
 not the ones with the most _bytes_. Top offenders (`.pnpm` subtree file counts):
 
 ```
-@tabler/icons          11,245 files  ← DEAD: 0 runtime imports (only -react is used)
-@tabler/icons-react     6,157 files  ← used
+@tabler/icons          11,245 files  ← DEAD (removed 2026-07-02, see path 0)
+@tabler/icons-react     6,157 files  ← ALSO DEAD: 0 source imports (icons use hugeicons via @/lib/icons)
 es-toolkit              2,767 files
 lucide-react            1,932 files
 drizzle-orm             1,778 files
@@ -156,19 +160,25 @@ staged tree instead and sweep broken symlinks (`find … -xtype l -delete`).
 
 ## Viable paths forward (ranked by effort vs. payoff)
 
-0. **Prune tiny-file packages from the shipped tree (right direction; first
-   attempt reverted).** Verify is O(file count), so dropping a dead package that
-   ships thousands of tiny files is a direct win — **but you cannot do it with a
-   plain `extraResources` filter exclusion.** Excluding `@tabler/icons`'s files
-   leaves a **dangling symlink** (`@tabler/icons-react/node_modules/@tabler/icons`
-   → the now-removed store copy), and macOS `codesign --deep --strict` fails on
-   it (Dead-end #5). The correct approach is to prune in the **staged node_modules
-   tree** before electron-builder packages — delete both the store dir _and_ the
-   dangling symlink(s) that point into it (e.g. a step in `build-packaged-app.js`
-   after `pnpm deploy`, or `find … -xtype l -delete` to sweep broken links).
-   ~11,245 files (~21%) is still the prize. Same care applies to the next
-   candidates: dedupe `shiki` (3 versions; 2.5.0 leaks from the vitepress devDep),
-   and audit whether both `lucide-react` **and** `@tabler/icons-react` are needed.
+0. **DONE (2026-07-02): remove dead icon deps from `package.json` — the clean
+   version of the prune.** The earlier analysis assumed `@tabler/icons-react`
+   was used; it is NOT — desktop icons go through hugeicons via
+   `@/lib/icons/icon-map.ts`, and the only `tabler` match in source is Spanish
+   `"tablero kanban"` in a locale file. So instead of pruning the staged tree:
+   - deleted `@tabler/icons-react` from `dependencies` (removes it AND its
+     11,245-file `@tabler/icons` dep from `pnpm deploy --prod`; no symlink left
+     behind, Dead-end #5 cannot recur);
+   - moved `lucide-react` to `devDependencies` (renderer-only, Vite bundles the
+     ~12 icons used by shadcn/ui primitives — same treatment hugeicons already
+     had; 1,932 loose files gone).
+     Verified via the local `--dir` build recipe below: bundle file count
+     **52,744 → 35,768 (−16,976, −32%)**, zero dangling symlinks, and
+     `check-packaged-runtime-deps.js` resolves all natives. Expected restart
+     impact: verify is O(file count), so ~99 s of verify should drop to ~67 s
+     (total restart ~1m48s → roughly ~1m15s). Needs confirmation on a real signed
+     release. Remaining candidates for the same treatment: dedupe `shiki`
+     (3 versions; 2.5.0 leaks from the vitepress devDep), audit `es-toolkit`
+     (2,767 files) — those DO need the staged-tree prune since they're real deps.
 1. **Shrink the bytes (helps download, not verify).** ML/native deps
    (`@huggingface/transformers`, `onnxruntime-node`, `sharp`) are heavy in bytes
    but negligible in file count — lazy-downloading models cuts _download_ size,

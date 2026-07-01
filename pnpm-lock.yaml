@@ -120,9 +120,6 @@ importers:
       '@streamdown/mermaid':
         specifier: ^1.0.2
         version: 1.0.2(react@19.2.4)
-      '@tabler/icons-react':
-        specifier: ^3.44.0
-        version: 3.44.0(react@19.2.4)
       '@tiptap/extension-link':
         specifier: ^3.14.0
         version: 3.19.0(@tiptap/core@3.19.0(@tiptap/pm@3.19.0))(@tiptap/pm@3.19.0)
@@ -177,9 +174,6 @@ importers:
       libsodium-wrappers-sumo:
         specifier: ^0.8.2
         version: 0.8.2
-      lucide-react:
-        specifier: ^0.562.0
-        version: 0.562.0(react@19.2.4)
       marked:
         specifier: ^17.0.1
         version: 17.0.1
@@ -619,6 +613,9 @@ importers:
       level:
         specifier: ^10.0.0
         version: 10.0.0
+      lucide-react:
+        specifier: ^0.562.0
+        version: 0.562.0(react@19.2.4)
       motion:
         specifier: ^12.23.26
         version: 12.34.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -4053,14 +4050,6 @@ packages:
   '@szmarczak/http-timer@4.0.6':
     resolution: {integrity: sha512-4BAffykYOgO+5nzBWYwE3W90sBgLJoUPRWWcL8wlyiM8IB8ipJz3UMJ9KXQd1RKQXpKp8Tutn80HZtWsu2u76w==}
     engines: {node: '>=10'}
-
-  '@tabler/icons-react@3.44.0':
-    resolution: {integrity: sha512-8+rvzBbVm/1Z3sG3x7GUNAaxIKxwgz8xaMhRs23nrCnMTKRFAhEC+82zAIFeAA0seXdrAGX5HFCkaLpGK2rVHg==}
-    peerDependencies:
-      react: '>= 16'
-
-  '@tabler/icons@3.44.0':
-    resolution: {integrity: sha512-Wn0AOZG9sg0L+bjfMqq4eNhC6pQjIrk94LvvWYNYkY8KH8wC3YILRzQlrnVJc4FUeMxH/AK97QsYCX35H3LndA==}
 
   '@tailwindcss/node@4.1.18':
     resolution: {integrity: sha512-DoR7U1P7iYhw16qJ49fgXUlry1t4CpXeErJHnQ44JgTSKMaZUdf17cfn5mHchfJ4KRBZRFA/Coo+MUF5+gOaCQ==}
@@ -15080,13 +15069,6 @@ snapshots:
   '@szmarczak/http-timer@4.0.6':
     dependencies:
       defer-to-connect: 2.0.1
-
-  '@tabler/icons-react@3.44.0(react@19.2.4)':
-    dependencies:
-      '@tabler/icons': 3.44.0
-      react: 19.2.4
-
-  '@tabler/icons@3.44.0': {}
 
   '@tailwindcss/node@4.1.18':
     dependencies:
