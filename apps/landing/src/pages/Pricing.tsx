@@ -142,18 +142,18 @@ function CheckoutNoticeBanner({ notice }: { notice: CheckoutNotice | null }) {
           ? 'Payment failed'
           : notice.type === 'canceled'
             ? 'Checkout canceled'
-            : 'Open Memry to continue'
+            : 'Open MemryNote to continue'
 
   const body =
     notice.type === 'success'
-      ? 'Memry will activate hosted sync after Paddle confirms the transaction.'
+      ? 'MemryNote will activate hosted sync after Paddle confirms the transaction.'
       : notice.type === 'pending'
-        ? 'Paddle is confirming the purchase. If Memry is open, refresh billing in Account.'
+        ? 'Paddle is confirming the purchase. If MemryNote is open, refresh billing in Account.'
         : notice.type === 'failed'
-          ? 'The payment was not completed. You can try again from Memry when ready.'
+          ? 'The payment was not completed. You can try again from MemryNote when ready.'
           : notice.type === 'canceled'
-            ? 'No charge was made. Start again from Memry when you are ready.'
-            : 'Memry desktop signs the checkout request so the purchase lands on your account.'
+            ? 'No charge was made. Start again from MemryNote when you are ready.'
+            : 'MemryNote desktop signs the checkout request so the purchase lands on your account.'
 
   const transactionId =
     notice.type === 'success' || notice.type === 'pending' ? notice.transactionId : null
@@ -184,7 +184,7 @@ function CheckoutNoticeBanner({ notice }: { notice: CheckoutNotice | null }) {
             >
               <a href={notice.type === 'desktop' ? notice.url : openMemryUrl}>
                 <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-                Open Memry
+                Open MemryNote
               </a>
             </Button>
           )}

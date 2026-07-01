@@ -31,12 +31,12 @@ interface LaunchedGroup {
 
 const ACTIVE_ITEMS: RoadmapItem[] = [
   {
-    title: 'Web clipper',
-    caption: 'Save pages, highlights, and snippets straight into your Inbox from any browser.'
+    title: 'Safari web clipper',
+    caption: 'Extend page, highlight, and snippet clipping to Safari alongside Chrome, Firefox, and Edge.'
   },
   {
-    title: 'Importers',
-    caption: 'Bring your knowledge base over from Obsidian, Notion, Roam, or any Markdown folder.'
+    title: 'Browser extension store listings',
+    caption: 'Publish the clipper to the Chrome Web Store, Firefox Add-ons, and Edge Add-ons.'
   },
   {
     title: 'Optional AI Agent public release polish',
@@ -76,7 +76,7 @@ const PLANNED_ITEMS: RoadmapItem[] = [
   },
   {
     title: 'Plugin API',
-    caption: 'Extend Memry with your own tools, integrations, and views.'
+    caption: 'Extend MemryNote with your own tools, integrations, and views.'
   },
   {
     title: 'Templates marketplace',
@@ -90,6 +90,42 @@ const PLANNED_ITEMS: RoadmapItem[] = [
 
 const LAUNCHED_GROUPS: LaunchedGroup[] = [
   {
+    period: 'July 2026',
+    items: [
+      {
+        title: 'Public launch',
+        caption:
+          'Direct downloads for macOS, Windows, and Linux, with purchases open and the waitlist retired.'
+      },
+      { title: 'Web clipper for Firefox and Edge' },
+      { title: 'Chrome Web Store publish pipeline' },
+      { title: 'Persistent Connect Google Calendar prompt' },
+      { title: 'Property-type icon doubles as a drag handle in properties' },
+      { title: 'Faster macOS auto-updates via app.asar repack' }
+    ]
+  },
+  {
+    period: 'June 2026',
+    items: [
+      {
+        title: 'Web clipper',
+        caption: 'Capture pages, highlights, and snippets straight into your Inbox from Chrome.'
+      },
+      {
+        title: 'Importers',
+        caption:
+          'Bring your vault over from Obsidian, Notion, Roam, Bear, Evernote, Apple Notes, Google Keep, Todoist, TickTick, Raindrop, and CSV.'
+      },
+      { title: 'Optional per-module toggles to turn features on or off' },
+      { title: 'First-run interactive onboarding tour' },
+      { title: 'Account and sync settings redesign' },
+      { title: 'Agent provider auto-save with inline connection checks' },
+      { title: 'Calendar drag-and-drop event reschedule and resize' },
+      { title: 'Broad native application menu bar' },
+      { title: 'Default white theme for new users' }
+    ]
+  },
+  {
     period: 'May 2026',
     items: [
       {
@@ -102,7 +138,7 @@ const LAUNCHED_GROUPS: LaunchedGroup[] = [
         title: 'Voice memos with transcription and related items',
         caption: 'Inline recorder, transcript previews, and audio-aware mention picker.'
       },
-      { title: 'Memry CLI' },
+      { title: 'MemryNote CLI' },
       { title: 'Landing demo refresh, founder story, and event analytics' }
     ]
   },

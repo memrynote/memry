@@ -88,7 +88,7 @@ export async function openPaddleCheckout(
 ) {
   const normalizedCheckoutToken = checkoutToken?.trim()
   if (!normalizedCheckoutToken) {
-    throw new Error('Open Memry and sign in from Account to start hosted sync.')
+    throw new Error('Open MemryNote and sign in from Account to start hosted sync.')
   }
 
   const response = await fetch('/api/paddle-checkout', {

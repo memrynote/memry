@@ -2,7 +2,7 @@ import { FAQ_ITEMS, FEATURES, GITHUB_URL, REDDIT_URL, TWITTER_DEV_URL } from './
 
 export const BASE_URL = 'https://memrynote.com'
 export const SITE_NAME = 'memrynote'
-export const ALTERNATE_SITE_NAMES = ['Memry Note', 'memrynote.com'] as const
+export const ALTERNATE_SITE_NAMES = ['MemryNote', 'memrynote.com'] as const
 // Brand handle (matches index.html). The founder's personal handle is TWITTER_DEV_URL in constants.
 export const TWITTER_HANDLE = '@memrynote'
 // Versioned by FILENAME, not a `?v=` query: Facebook and several scrapers ignore
