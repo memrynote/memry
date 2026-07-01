@@ -51,7 +51,7 @@ export interface VaultConfig {
   /** Default folder for newly created notes; '' = vault root */
   defaultNoteFolder: string
   journalFolder: string
-  /** Obsidian-style date format for journal filenames (e.g. 'YYYY-MM-DD') */
+  /** Configurable date format for journal filenames (e.g. 'YYYY-MM-DD') */
   journalDateFormat: string
   attachmentsFolder: string
 }

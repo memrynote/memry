@@ -9,7 +9,7 @@ import { getJournalConfig } from '@main/vault/journal-config'
 // Journal Entry Utilities
 //
 // A journal entry is a direct child of the configured journal folder whose
-// filename matches the configured Obsidian-style date format. Config comes from
+// filename matches the configured journal date format. Config comes from
 // the journal-config holder, kept in sync by the vault's getConfig().
 // ============================================================================
 

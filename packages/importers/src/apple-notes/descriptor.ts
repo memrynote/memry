@@ -1,7 +1,7 @@
 /**
  * protobufjs JSON descriptor for the Apple Notes note body.
  *
- * Ported from the Obsidian Apple Notes importer (MIT, Three Planets Software).
+ * Ported from the Three Planets Software Apple Notes importer (MIT).
  * Only the message graph reachable from `ciofecaforensics.Document` is kept,
  * which is everything required to decode a note body (Document → Note →
  * AttributeRun → ParagraphStyle/Font/Color/AttachmentInfo). The mergeable-data

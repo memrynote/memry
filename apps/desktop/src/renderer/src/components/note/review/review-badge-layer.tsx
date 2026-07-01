@@ -37,7 +37,7 @@ const PANEL_ANCHOR_GAP = 4
 const DRAFT_HIGHLIGHT_NAME = 'critic-comment-draft'
 
 /**
- * Notion-style fallback for narrow windows: when the review rail no longer
+ * Fallback for narrow windows: when the review rail no longer
  * fits, each block containing review marks gets an inline badge (icon +
  * count) at its logical end. Clicking the badge or the marked text opens a
  * flyout panel under the anchor listing the block's review cards.

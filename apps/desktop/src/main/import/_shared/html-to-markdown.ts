@@ -1,7 +1,7 @@
 /**
  * Generic jsdom-based HTML → Markdown converter shared across importers.
  *
- * Extracted from the Notion importer's hand-rolled converter so HTML, Evernote,
+ * Extracted from an existing importer's hand-rolled converter so HTML, Evernote,
  * Apple Journal and OneNote can reuse one DOM walker. Source-specific behaviour
  * (wikilink resolution, attachment lookup, blocks to drop) is supplied through
  * {@link HtmlToMarkdownHooks}; with no hooks the converter emits portable
@@ -61,7 +61,7 @@ export function percentDecodeRef(ref: string): string {
   }
 }
 
-/** Strip leading `../` segments and percent-decode a local ref (Notion layout). */
+/** Strip leading `../` segments and percent-decode a local ref (export layout). */
 export function decodeRef(ref: string): string {
   return percentDecodeRef(ref.replace(/^(\.\.\/)+/, ''))
 }

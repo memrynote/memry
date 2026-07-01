@@ -1,6 +1,6 @@
 import { type RemindOffset } from '@memry/shared/date-mention'
 
-// The Remind option list is dynamic on `hasTime` — matching Notion. With no
+// The Remind option list is dynamic on `hasTime`. With no
 // time, sub-hour offsets are meaningless and "at" reads as "On day of event".
 export function remindOptions(
   hasTime: boolean

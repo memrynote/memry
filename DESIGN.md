@@ -127,7 +127,7 @@ carried by beige paper (#f6f5f0), near-black ink (#1a1a1a), and editorial serifs
 not by decoration.
 
 The palette runs three theme bodies from one set of token names: **Warm** (default,
-beige paper), **White** (Notion-clean, cooler neutrals), and **Dark** (neutral
+beige paper), **White** (clean, cooler neutrals), and **Dark** (neutral
 charcoal #191919, muted warm text). Brand identity is carried by a single warm
 accent — **terracotta #ff671a** — used sparingly and deliberately. Inside the app,
 each user owns their own accent via a runtime `--tint` (default indigo #6366f1) for

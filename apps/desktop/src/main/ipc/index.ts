@@ -147,7 +147,7 @@ export function registerAllHandlers(deps?: IpcDeps): void {
   // Register Agent MCP settings/status handlers
   registerAgentMcpHandlers()
 
-  // Register generic import handlers (Notion + future importers)
+  // Register generic import handlers
   registerImportHandlers()
 
   // Register home page handlers

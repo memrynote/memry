@@ -1,7 +1,7 @@
 /**
  * Convert a decoded Apple Notes document into Markdown.
  *
- * Ported in spirit from the Obsidian Apple Notes importer's NoteConverter, but
+ * Ported in spirit from the Three Planets Software Apple Notes importer's NoteConverter, but
  * scoped to v1: text formatting (headings, bold/italic, strikethrough, lists,
  * checkboxes, monospace, blockquote, links) plus inline image attachments.
  *

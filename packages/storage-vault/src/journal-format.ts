@@ -1,5 +1,5 @@
 /**
- * Obsidian-style journal filename date formats.
+ * Journal filename date formats.
  *
  * A journal (daily note) filename is derived from a date using a format string
  * built from these tokens:

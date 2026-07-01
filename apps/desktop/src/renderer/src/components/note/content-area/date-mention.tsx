@@ -9,7 +9,7 @@ import {
 } from '@memry/shared/date-mention'
 import { formatTimeOfDay, type ClockFormat } from '@/lib/time-format'
 
-// Notion-style inline alarm icon (raw DOM render, so SVG markup rather than the
+// Inline alarm icon (raw DOM render, so SVG markup rather than the
 // React icon component). Only reminder pills show it; a date-only pill renders
 // label-only. Stroke uses currentColor → inherits the pill's blue.
 const ALARM_SVG =
@@ -39,7 +39,7 @@ function absoluteDate(d: Date): string {
   return `${d.getDate()} ${month}, ${d.getFullYear()}`
 }
 
-// Notion-style relative day. Future: Today / Tomorrow / This <Weekday> /
+// Relative day. Future: Today / Tomorrow / This <Weekday> /
 // Next <Weekday>. Past mirrors it: Yesterday / bare weekday earlier this week /
 // Last <Weekday>. Anything further out falls back to an absolute date.
 function formatRelativeDay(d: Date, now: Date, weekStartsOn: 0 | 1): string {

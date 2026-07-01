@@ -569,7 +569,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     fullWidth: isFullWidth
   })
   // Full width keeps the reserved grid column; otherwise the rail hangs off the
-  // centered content column and the group is shifted Notion-style.
+  // centered content column and the group is shifted as a unit.
   const showGridRail = hasReviewContent && isFullWidth
   const showCanvasRail = hasReviewContent && !isFullWidth && !railHidden
   const handleContentChange = useCallback((_newBlocks: Block[]) => {}, [])

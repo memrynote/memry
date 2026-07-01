@@ -39,7 +39,7 @@ interface InboxContentEditorProps {
  * InboxContentEditor - BlockNote-based rich text editor for inbox items
  *
  * Features:
- * - Block-based editing (Notion-style)
+ * - Block-based editing
  * - Slash commands for inserting blocks
  * - Formatting toolbar on text selection
  * - Auto-saves on content change

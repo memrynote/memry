@@ -11,7 +11,7 @@ Tailwind v4 `@theme inline` maps every CSS variable to a Tailwind utility class.
 | Theme | Selector | Character |
 |-------|----------|-----------|
 | Warm (default) | `:root` | Beige paper, warm greys, near-black text |
-| White | `.white` | Notion-inspired clean white, cooler neutrals |
+| White | `.white` | Clean white, cooler neutrals |
 | Dark | `.dark` | Neutral charcoal, muted warm text |
 
 User-customizable accent via `--tint` derived from `--user-accent-color` with `color-mix()`.

@@ -1298,7 +1298,7 @@ People who already journal but resent their tool. Bonus: programmers, researcher
 ## Anti-patterns
 
 - No paid ads. Not yet.
-- No "Notion alternative" framing. We are *not* Notion.
+- No "cheaper alternative" framing. We stand on our own.
 
 #projects/memry #gtm
 `
