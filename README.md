@@ -53,7 +53,7 @@ Memry is the opposite bet:
 - **Agent-native.** Bring your own model — Claude CLI, Codex CLI, local LLMs, or OpenAI-compatible endpoints. The agent gets read/write access to your vault through a localhost MCP server.
 - **One app, six surfaces.** Notes, tasks, projects, daily journal, calendar, inbox — instead of stitching seven tools together.
 
-Built for people who want Obsidian's local-first ethos, Notion's range, and an AI that actually knows what they're working on.
+Built for people who want a local-first, private home with room for everything they think about — and an AI that actually knows what they're working on.
 
 ## Features
 

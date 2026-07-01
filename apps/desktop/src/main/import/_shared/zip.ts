@@ -27,7 +27,7 @@ export function assertSafeEntryPath(entryPath: string): void {
 
 /**
  * Iterate every file entry across the given zip files, recursing into a nested
- * `.zip` only when it sits at the root of its parent archive (Notion exports
+ * `.zip` only when it sits at the root of its parent archive (some exports
  * wrap content in `Export-….zip → …-Part-N.zip`). Non-root zips are treated as
  * ordinary attachments and surfaced as entries.
  */

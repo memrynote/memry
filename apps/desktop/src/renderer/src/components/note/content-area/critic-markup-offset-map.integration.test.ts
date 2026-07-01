@@ -200,13 +200,13 @@ const INLINE_ATOM_FIXTURES: Array<{
     ]
   },
   {
-    annotated: '⟦1. ⟧HN post ⟦[[⟧Conference Talk⟦]]⟧ for version\n\n⟦2. ⟧second item ends Notion.',
+    annotated: '⟦1. ⟧HN post ⟦[[⟧Conference Talk⟦]]⟧ for version\n\n⟦2. ⟧second item ends here.',
     blocks: [
       {
         type: 'numberedListItem',
         content: ['HN post ', createWikiLinkInlineContent('Conference Talk', ''), ' for version']
       },
-      { type: 'numberedListItem', content: ['second item ends Notion.'] }
+      { type: 'numberedListItem', content: ['second item ends here.'] }
     ]
   },
   {
