@@ -54,9 +54,10 @@ export function Footer() {
           <div className="col-span-2 md:col-span-2 pe-8">
             <Link
               to="/"
-              className="inline-block mb-6 group"
+              className="inline-flex items-center gap-2 mb-6 group"
               onClick={() => trackLandingEvent('landing_nav_click', 'footer:logo')}
             >
+              <img src="/favicon.svg" alt="" className="h-7 w-7" />
               <span className="font-serif text-3xl font-medium text-ink group-hover:text-terracotta transition-colors">
                 memrynote
               </span>

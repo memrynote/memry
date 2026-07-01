@@ -4,7 +4,9 @@ import {
   CalendarDays,
   FileText,
   GitBranch,
+  Globe,
   Lock,
+  Rocket,
   Search,
   type LucideIcon
 } from 'lucide-react'
@@ -24,6 +26,42 @@ interface ChangelogEntry {
 }
 
 const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  {
+    period: 'July 2026',
+    title: 'Public launch',
+    summary: 'memrynote opened its doors.',
+    icon: Rocket,
+    highlights: [
+      'Public downloads for macOS, Windows, and Linux',
+      'Signed builds with automatic updates',
+      'memrynote Sync plans and checkout',
+      'Homebrew cask install',
+      'Web clipper published to browser stores',
+      'Alternatives hub and comparison guides'
+    ]
+  },
+  {
+    period: 'June 2026',
+    title: 'Web clipper, importers, and a home that fits you',
+    summary: 'Getting your content in — and shaping the vault around you.',
+    icon: Globe,
+    highlights: [
+      'Web clipper for Chrome, Firefox, and Edge',
+      'One-click article extraction',
+      'Selection and full-page screenshot capture',
+      'Offline capture queue and keyboard shortcuts',
+      'Importers for Apple Notes, Bear, Evernote, and Notion',
+      'Google Keep, Todoist, TickTick, and Raindrop imports',
+      'Unified, pluggable import framework',
+      'Resizable home dashboard with widgets',
+      'Folder List, Board, and Gallery views',
+      'Calendar drag-to-reschedule and resize',
+      'Calendar toolbar search',
+      'Custom tag colors and per-tag icons',
+      'First-run interactive tour',
+      'Broad native menu bar'
+    ]
+  },
   {
     period: 'May 2026',
     title: 'Agent Chat, memrynote CLI, and voice workflows',
