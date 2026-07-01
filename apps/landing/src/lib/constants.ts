@@ -325,7 +325,7 @@ export const ROADMAP_DATA = {
         'End-to-end encrypted sync for notes and journals',
         'Calendar week view, snoozed inbox items, and reminders',
         'Voice memos with transcription and related items',
-        'Agent Chat mentions, per-turn permissions, and Memry CLI'
+        'Agent Chat mentions, per-turn permissions, and MemryNote CLI'
       ]
     },
     {

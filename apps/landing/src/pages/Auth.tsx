@@ -64,7 +64,7 @@ export function AuthPage() {
       <main className="py-24">
         <Container size="sm">
           <div className="mx-auto max-w-sm rounded-2xl border border-border bg-card p-8 shadow-card">
-            <h1 className="font-editorial text-xl tracking-[-0.01em]">Sign in to Memry</h1>
+            <h1 className="font-editorial text-xl tracking-[-0.01em]">Sign in to MemryNote</h1>
             {error ? <p className="mt-3 text-sm text-red-500">{error}</p> : null}
             {step === 'email' ? (
               <div className="mt-6 space-y-3">

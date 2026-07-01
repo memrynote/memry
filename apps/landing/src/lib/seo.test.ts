@@ -58,7 +58,7 @@ describe('landing SEO signals', () => {
     assert.equal(website['@context'], 'https://schema.org')
     assert.equal(website['@type'], 'WebSite')
     assert.equal(website.name, 'memrynote')
-    assert.deepEqual(website.alternateName, ['Memry Note', 'memrynote.com'])
+    assert.deepEqual(website.alternateName, ['MemryNote', 'memrynote.com'])
     assert.equal(website.url, 'https://memrynote.com/')
     assert.equal(website.potentialAction, undefined)
   })
