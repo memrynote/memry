@@ -2,7 +2,7 @@
   "name": "@memry/desktop",
   "version": "1.0.0",
   "private": true,
-  "license": "GPL-3.0",
+  "license": "MIT",
   "description": "memrynote desktop app",
   "main": "./out/main/index.js",
   "engines": {

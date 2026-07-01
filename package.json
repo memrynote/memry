@@ -1,7 +1,7 @@
 {
   "name": "memry-workspace",
   "private": true,
-  "license": "GPL-3.0",
+  "license": "MIT",
   "packageManager": "pnpm@11.5.2",
   "scripts": {
     "repair:links": "node scripts/repair-package-links.js .",
