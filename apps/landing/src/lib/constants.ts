@@ -140,13 +140,13 @@ export const FOOTER_LINKS = {
     { label: 'Changelog', href: '/changelog' },
     { label: 'Security', href: '/security' }
   ],
-  // Footer shows only marquee competitors; the long tail lives on the /alternatives hub.
+  // Footer shows only marquee competitors; the long tail lives on the /compare hub.
   compare: [
     { label: 'Obsidian alternative', href: '/obsidian-alternative' },
     { label: 'Notion alternative', href: '/notion-alternative' },
     { label: 'Evernote alternative', href: '/evernote-alternative' },
     { label: 'Apple Notes alternative', href: '/apple-notes-alternative' },
-    { label: 'All alternatives', href: '/alternatives' }
+    { label: 'Compare all', href: '/compare' }
   ],
   resources: [
     { label: 'Docs', href: DOCS_URL },
@@ -213,58 +213,6 @@ export const FEATURES = [
     screenshot: 'calendar'
   }
 ] as const
-
-export const COMPARISON_DATA = {
-  headers: ['', 'memrynote', 'Notion', 'Obsidian', 'Logseq'],
-  rows: [
-    { feature: 'Local-first', memry: true, notion: false, obsidian: true, logseq: true },
-    {
-      feature: 'Full task system',
-      memry: true,
-      notion: true,
-      obsidian: 'partial' as const,
-      logseq: 'partial' as const
-    },
-    {
-      feature: 'Daily journal',
-      memry: true,
-      notion: 'partial' as const,
-      obsidian: 'partial' as const,
-      logseq: true
-    },
-    {
-      feature: 'Inbox / quick capture',
-      memry: true,
-      notion: false,
-      obsidian: 'partial' as const,
-      logseq: 'partial' as const
-    },
-    { feature: 'Markdown files', memry: true, notion: false, obsidian: true, logseq: true },
-    { feature: 'Free tier', memry: true, notion: 'partial' as const, obsidian: true, logseq: true },
-    {
-      feature: 'End-to-end encryption',
-      memry: true,
-      notion: false,
-      obsidian: true,
-      logseq: false
-    },
-    {
-      feature: 'Calendar sync',
-      memry: true,
-      notion: 'partial' as const,
-      obsidian: false,
-      logseq: false
-    },
-    {
-      feature: 'All-in-one (no plugins needed)',
-      memry: true,
-      notion: true,
-      obsidian: false,
-      logseq: 'partial' as const
-    }
-  ],
-  footnote: ''
-} as const
 
 export const FAQ_ITEMS = [
   {

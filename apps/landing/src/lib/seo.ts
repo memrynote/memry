@@ -128,11 +128,11 @@ export const PAGE_META: Record<string, PageMeta> = {
       'Seven-day money-back guarantee on every paid Sync plan, including Believer. Requests processed through Paddle, refunded to your original payment method.',
     path: '/refund'
   },
-  alternativesHub: {
-    title: 'memrynote alternatives — how it compares',
+  compare: {
+    title: 'Compare memrynote — how it stacks up',
     description:
-      'See how memrynote compares to Obsidian, Notion, NotePlan, and more — a local-first, end-to-end encrypted notes, tasks, calendar, and journal app with plain Markdown files you own.',
-    path: '/alternatives'
+      'See how memrynote compares to Obsidian, Notion, Evernote, Tana, Heptabase, and more — a local-first, end-to-end encrypted notes, tasks, calendar, and journal app with plain Markdown files you own.',
+    path: '/compare'
   },
   obsidianAlternative: {
     title: 'Obsidian alternative — memrynote',
@@ -217,6 +217,18 @@ export const PAGE_META: Record<string, PageMeta> = {
     description:
       'A private Google Keep alternative with local Markdown files, end-to-end encrypted sync, tasks, a calendar, and a daily journal. Free for local use.',
     path: '/google-keep-alternative'
+  },
+  tanaAlternative: {
+    title: 'Tana alternative — memrynote',
+    description:
+      'A private, local-first Tana alternative — plain Markdown files you own, end-to-end encrypted sync, and built-in tasks, calendar, and journal. Open source, offline.',
+    path: '/tana-alternative'
+  },
+  heptabaseAlternative: {
+    title: 'Heptabase alternative — memrynote',
+    description:
+      'A local-first Heptabase alternative with plain Markdown files you own, end-to-end encrypted sync, and built-in tasks, a calendar, and a daily journal. Open source.',
+    path: '/heptabase-alternative'
   }
 }
 

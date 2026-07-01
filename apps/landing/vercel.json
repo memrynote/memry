@@ -12,7 +12,8 @@
       "has": [{ "type": "host", "value": "www.memrynote.com" }],
       "destination": "https://memrynote.com/:path",
       "permanent": true
-    }
+    },
+    { "source": "/alternatives", "destination": "/compare", "permanent": true }
   ],
   "headers": [
     {

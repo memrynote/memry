@@ -370,11 +370,11 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       competitor: 'Free tier available; Pro ~$9.99/mo (as of mid-2026).'
     },
     migration: {
-      importer: null,
+      importer: 'Markdown',
       steps: [
         'In Capacities, export your space as Markdown from the space settings or export menu.',
-        'Point memrynote at the folder of exported .md files — your notes and internal links carry over as plain text.',
-        'Optionally enable end-to-end encrypted sync to access the same vault across your devices.'
+        'Open memrynote → Settings → Import, choose the Markdown importer, and select the exported .md files.',
+        'Your notes and internal links land in your vault as plain text; optionally enable end-to-end encrypted sync across your devices.'
       ]
     },
     faqs: [
@@ -644,18 +644,18 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       competitor: 'Free plan (~1 GB network storage); paid plans from ~$4/mo (as of mid-2026).'
     },
     migration: {
-      importer: null,
+      importer: 'Markdown',
       steps: [
         'In Anytype, go to Space Settings → Export and choose Markdown to export your objects as .md files.',
-        'Point memrynote at the exported folder — notes open immediately as plain Markdown with no conversion step.',
-        'Optionally enable end-to-end encrypted sync to share the vault across your macOS, Windows, and Linux devices.'
+        'Open memrynote → Settings → Import, choose the Markdown importer, and select the exported .md files.',
+        'Your objects arrive as plain Markdown notes; optionally enable end-to-end encrypted sync across your macOS, Windows, and Linux devices.'
       ]
     },
     faqs: [
       {
         question: 'Can I import my Anytype data into memrynote?',
         answer:
-          'memrynote does not have a dedicated Anytype importer. Export your Anytype spaces as Markdown from Space Settings → Export, then point memrynote at the resulting folder. Your notes open immediately as plain .md files.'
+          'Yes. memrynote does not have a dedicated Anytype importer, but it does have a built-in Markdown importer. Export your Anytype spaces as Markdown from Space Settings → Export, then open memrynote → Settings → Import, choose the Markdown importer, and select the files.'
       },
       {
         question: 'How are memrynote and Anytype different if both are local-first and encrypted?',
@@ -1100,11 +1100,11 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       competitor: 'Free up to 50 notes; Premium ~$1.99/mo or ~$39.99 lifetime (as of mid-2026).'
     },
     migration: {
-      importer: null,
+      importer: 'Markdown',
       steps: [
         'In UpNote, open Settings → Export and choose Markdown; UpNote saves each note as a .md file and mirrors your notebooks as folders.',
-        'Open memrynote and point a new vault at the exported folder — memrynote reads .md files directly, with no import wizard.',
-        'Confirm attachments: UpNote copies images alongside the .md files; set memrynote’s attachment folder to the same location.'
+        'Open memrynote → Settings → Import, choose the Markdown importer, and select the exported .md files.',
+        'Notes and notebook structure carry over, along with the images UpNote copies alongside the .md files.'
       ]
     },
     faqs: [
@@ -1199,11 +1199,11 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       competitor: 'App is free and open source; Joplin Cloud from ~€3/mo (as of mid-2026).'
     },
     migration: {
-      importer: null,
+      importer: 'Markdown',
       steps: [
         'In Joplin, choose File → Export all → MD - Markdown + Front Matter; Joplin writes each note as a .md file and copies attachments into a resources subfolder.',
-        'Copy the exported folder to wherever you want your memrynote vault to live.',
-        'In memrynote, choose Open vault and select that folder — notes, titles, tags, and attachments are read from the plain .md files immediately.'
+        'Open memrynote → Settings → Import, choose the Markdown importer, and select the exported .md files.',
+        'Notes, titles, tags, and attachments carry over from the plain .md files; optionally enable end-to-end encrypted sync.'
       ]
     },
     faqs: [
@@ -1320,5 +1320,257 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       }
     ],
     footnote: COMPARISON_FOOTNOTE
+  },
+  {
+    pageKey: 'tanaAlternative',
+    competitor: 'Tana',
+    eyebrow: 'Tana alternative',
+    heading: 'The Tana alternative with',
+    headingAccent: 'local Markdown files and privacy by default.',
+    intro:
+      'memrynote is a local-first, private alternative to Tana. Tana is a powerful supertag-driven outliner, but it lives in the cloud, is not end-to-end encrypted, and keeps your knowledge in a proprietary graph you can only fully use inside Tana. memrynote stores every note as a plain Markdown file in a folder you own, encrypts sync with XChaCha20-Poly1305 so the server only ever holds ciphertext, and works fully offline without an account. It ships notes with wiki-links and backlinks, tasks with projects and Kanban views, a calendar, a daily journal, and a capture inbox as first-class features — no schema to design first. It runs on macOS, Windows, and Linux, is open source, and is free for local use.',
+    rows: [
+      { feature: 'Local Markdown files you own', memry: true, competitor: false },
+      { feature: 'Works fully offline', memry: true, competitor: 'partial' },
+      { feature: 'End-to-end encryption', memry: true, competitor: false },
+      { feature: 'Built-in tasks & projects', memry: true, competitor: 'partial' },
+      { feature: 'Built-in calendar', memry: true, competitor: 'partial' },
+      { feature: 'Daily journal / daily notes', memry: true, competitor: true },
+      { feature: 'Supertags & flexible schema', memry: 'partial', competitor: true },
+      { feature: 'AI-native features', memry: 'partial', competitor: true },
+      { feature: 'Open source', memry: true, competitor: false }
+    ],
+    reasons: [
+      {
+        title: 'Files you own',
+        body: 'Every note is a plain .md file in a folder you control — not nodes locked inside a proprietary cloud graph.'
+      },
+      {
+        title: 'Private by default',
+        body: 'Zero-knowledge end-to-end encryption: the server only ever holds ciphertext and your keys never leave your devices.'
+      },
+      {
+        title: 'No schema to design',
+        body: 'Tasks, a calendar, a journal, and an inbox work out of the box — no supertags to model before you can start.'
+      },
+      {
+        title: 'Offline & open',
+        body: 'The whole workspace runs locally with no account, and the app is open source on macOS, Windows, and Linux.'
+      }
+    ],
+    sections: [
+      {
+        heading: 'Is memrynote a good Tana alternative?',
+        body: 'Yes, if you want privacy and portable files more than a cloud outliner. Tana is excellent at supertag-driven, database-style structure, but it stores your knowledge in a proprietary cloud graph and is not end-to-end encrypted. memrynote keeps every note as a plain Markdown file you own, encrypts sync so the server only holds ciphertext, and works fully offline. It also ships tasks, a calendar, and a journal as ready-made features, so you spend less time building schema and more time writing.'
+      },
+      {
+        heading: 'Plain Markdown files versus Tana’s cloud graph',
+        body: 'Tana models everything as nodes and supertags inside its own cloud database — powerful, but your content only truly lives inside Tana, and export is limited. memrynote stores each note as a portable .md file in a folder you point to, readable in VS Code, iA Writer, or any editor, and versionable with git. Front-matter properties, wiki-links, and backlinks travel with the files, so your knowledge base is never trapped in one app.'
+      },
+      {
+        heading: 'A ready-made workspace, not a schema you build',
+        body: 'In Tana, tasks, calendars, and dashboards are things you assemble from supertags and fields. memrynote ships them as dedicated features: task management with projects, statuses, subtasks, and Kanban, List, and Calendar views, plus a daily journal and a capture inbox. You get a complete daily workflow immediately, without designing a data model first.'
+      },
+      {
+        heading: 'Privacy, encryption, and offline access compared',
+        body: 'Tana runs in the cloud and is not end-to-end encrypted, so the service can read your workspace, and full offline use is limited. memrynote is offline-first and encrypts every note on your device with XChaCha20-Poly1305 before sync, using zero-knowledge keys the server never receives. Local use needs no account or connection; encrypted sync is an optional upgrade, never a requirement to open your own notes.'
+      }
+    ],
+    pricing: {
+      memry: 'Free, local-first forever. Encrypted sync from $5/mo.',
+      competitor: 'Free plan available; paid plans from ~$10/mo (as of mid-2026).'
+    },
+    migration: {
+      importer: 'Markdown',
+      steps: [
+        'In Tana, export your nodes to Markdown (or copy them out as plain text).',
+        'Open memrynote → Settings → Import, choose the Markdown importer, and select the exported .md files.',
+        'Your nodes arrive as plain Markdown notes; optionally enable end-to-end encrypted sync across your devices.'
+      ]
+    },
+    faqs: [
+      {
+        question: 'How are memrynote and Tana different?',
+        answer:
+          'Tana is a cloud supertag outliner that stores your knowledge as nodes in a proprietary graph and is not end-to-end encrypted. memrynote is local-first: every note is a plain Markdown file you own, sync is zero-knowledge encrypted, and it works fully offline. memrynote also bundles tasks, a calendar, and a journal as ready-made features rather than schema you design.'
+      },
+      {
+        question: 'Can I move my Tana workspace to memrynote?',
+        answer:
+          'Yes. memrynote does not have a dedicated Tana importer, but it does have a built-in Markdown importer. Export your Tana nodes to Markdown, then open memrynote → Settings → Import, choose the Markdown importer, and select the files.'
+      },
+      {
+        question: 'Is Tana end-to-end encrypted?',
+        answer:
+          'No. Tana runs in the cloud and is not end-to-end encrypted, so the service can technically read your workspace. memrynote encrypts every note on your device with XChaCha20-Poly1305 and zero-knowledge keys — the server only ever stores ciphertext.'
+      },
+      {
+        question: 'Does memrynote work offline like a desktop app?',
+        answer:
+          'Yes. memrynote is offline-first: the full workspace — notes, tasks, calendar, journal — runs locally with no account and no connection. Sync is an optional encrypted upgrade.'
+      }
+    ],
+    footnote: COMPARISON_FOOTNOTE
+  },
+  {
+    pageKey: 'heptabaseAlternative',
+    competitor: 'Heptabase',
+    eyebrow: 'Heptabase alternative',
+    heading: 'The Heptabase alternative with',
+    headingAccent: 'plain Markdown files and a built-in daily workspace.',
+    intro:
+      'memrynote is a local-first alternative to Heptabase for people who want to own their files and run their whole day in one app. Heptabase is a beautiful visual canvas for learning and research, where notes live as cards on infinite whiteboards — but it stores your content in its own cloud format and is not end-to-end encrypted. memrynote keeps every note as a plain Markdown file in a folder you own, encrypts sync with XChaCha20-Poly1305 so the server only holds ciphertext, and ships notes, tasks, a calendar, a daily journal, and a capture inbox as first-class features. It runs on macOS, Windows, and Linux, is open source, and is free for local use. Heptabase remains the stronger choice for spatial, whiteboard-first thinking; memrynote wins on file ownership, privacy, and an integrated task-and-calendar workflow.',
+    rows: [
+      { feature: 'Local Markdown files you own', memry: true, competitor: false },
+      { feature: 'Works fully offline', memry: true, competitor: true },
+      { feature: 'End-to-end encryption', memry: true, competitor: false },
+      { feature: 'Visual whiteboard / canvas', memry: false, competitor: true },
+      { feature: 'Built-in task management', memry: true, competitor: 'partial' },
+      { feature: 'Built-in calendar & daily journal', memry: true, competitor: 'partial' },
+      { feature: 'Inbox / quick capture', memry: true, competitor: 'partial' },
+      { feature: 'Mobile app (iOS & Android)', memry: false, competitor: true },
+      { feature: 'Open source', memry: true, competitor: false }
+    ],
+    reasons: [
+      {
+        title: 'Files you own',
+        body: 'Notes are plain Markdown in a folder you control — readable in any editor, versionable with git, never trapped in a cloud whiteboard.'
+      },
+      {
+        title: 'A complete daily workspace',
+        body: 'Tasks, a calendar, a daily journal, and an inbox are built in — not just cards to arrange on a canvas.'
+      },
+      {
+        title: 'Encrypted & private',
+        body: 'Zero-knowledge, end-to-end encrypted sync, so the server only ever holds ciphertext and your keys stay on your devices.'
+      },
+      {
+        title: 'Open & cross-platform',
+        body: 'Open source on macOS, Windows, and Linux, with notes as portable Markdown you can read anywhere.'
+      }
+    ],
+    sections: [
+      {
+        heading: 'Is memrynote a good Heptabase alternative?',
+        body: 'Yes, if you value owning your files and running tasks, a calendar, and a journal in one place. Heptabase is a superb visual canvas for connecting ideas spatially, but it keeps your content in a proprietary cloud format and is not end-to-end encrypted. memrynote stores every note as a plain Markdown file you own, encrypts sync so the server only holds ciphertext, and ships a complete daily workspace. If your thinking is whiteboard-first, keep Heptabase; if it is document- and workflow-first, memrynote is the better home.'
+      },
+      {
+        heading: 'Plain Markdown files versus Heptabase cards',
+        body: 'Heptabase organises notes as cards on infinite whiteboards, stored in its own cloud format. It is powerful for spatial reasoning, but your content lives inside Heptabase and only leaves via export. memrynote stores each note as a portable .md file in a folder you point to, readable in any editor and versionable with git. Wiki-links, backlinks, and front-matter properties travel with the files, so your library is yours from day one.'
+      },
+      {
+        heading: 'Tasks, calendar, and journal in one app',
+        body: 'Heptabase centres on visual notes; task management, a full calendar, and structured planning are limited or added-on. memrynote ships tasks with projects, custom statuses, subtasks, and Kanban, List, and Calendar views, plus a daily journal and a capture inbox as native features. One app covers reading, writing, and planning instead of pairing a canvas with separate tools.'
+      },
+      {
+        heading: 'Privacy, encryption, and ownership compared',
+        body: 'Heptabase supports offline use but is not end-to-end encrypted, so the service can read your content. memrynote encrypts every note on your device with XChaCha20-Poly1305 before sync, using zero-knowledge keys the server never receives, and works fully offline with no account. The deeper difference is ownership: memrynote’s Markdown files are readable by any tool, while Heptabase’s cards need the app to open them.'
+      }
+    ],
+    pricing: {
+      memry: 'Free, local-first forever. Encrypted sync from $5/mo.',
+      competitor: 'Paid from ~$8.99/mo billed annually; no permanent free tier (as of mid-2026).'
+    },
+    migration: {
+      importer: 'Markdown',
+      steps: [
+        'In Heptabase, export your cards or whiteboards as Markdown.',
+        'Open memrynote → Settings → Import, choose the Markdown importer, and select the exported .md files.',
+        'Your cards arrive as plain Markdown notes; optionally enable end-to-end encrypted sync across your devices.'
+      ]
+    },
+    faqs: [
+      {
+        question: 'How are memrynote and Heptabase different?',
+        answer:
+          'Heptabase is a visual, whiteboard-first note app that stores cards in its own cloud format and is not end-to-end encrypted. memrynote is local-first: every note is a plain Markdown file you own, sync is zero-knowledge encrypted, and it bundles tasks, a calendar, and a journal as first-class features. Heptabase is stronger for spatial thinking; memrynote is stronger for file ownership and an integrated workflow.'
+      },
+      {
+        question: 'Can I move my Heptabase notes to memrynote?',
+        answer:
+          'Yes. memrynote does not have a dedicated Heptabase importer, but it does have a built-in Markdown importer. Export your cards or whiteboards as Markdown, then open memrynote → Settings → Import, choose the Markdown importer, and select the files.'
+      },
+      {
+        question: 'Does memrynote have a visual whiteboard like Heptabase?',
+        answer:
+          'Not today. memrynote is document-first, with wiki-links and backlinks connecting your notes into a graph rather than an infinite canvas. If a spatial whiteboard is central to how you think, Heptabase is the better fit; if owning portable files and running tasks and a calendar matters more, memrynote is.'
+      },
+      {
+        question: 'Is Heptabase end-to-end encrypted?',
+        answer:
+          'No. Heptabase syncs through its cloud without end-to-end encryption, so the service can read your content. memrynote encrypts every note on your device with XChaCha20-Poly1305 and zero-knowledge keys — the server only ever stores ciphertext.'
+      }
+    ],
+    footnote: COMPARISON_FOOTNOTE
   }
 ]
+
+// Card metadata for the /compare hub grid. Keyed by pageKey; `logo` is a file in
+// public/compare-logos, `tagline` is the short "us vs them" contrast shown on the card.
+// A test asserts every ALTERNATIVES entry has a card here, so the grid never drifts.
+export const COMPARE_CARDS: Record<string, { logo: string; tagline: string }> = {
+  obsidianAlternative: {
+    logo: 'obsidian.svg',
+    tagline: 'Built-in tasks & calendar vs a plugin-built Markdown vault'
+  },
+  notionAlternative: {
+    logo: 'notion.png',
+    tagline: 'Local files you own vs an all-in-one cloud database'
+  },
+  noteplanAlternative: {
+    logo: 'noteplan.png',
+    tagline: 'Windows, macOS & Linux vs an Apple-only planner'
+  },
+  capacitiesAlternative: {
+    logo: 'capacities.png',
+    tagline: 'Plain Markdown files vs a cloud object database'
+  },
+  evernoteAlternative: {
+    logo: 'evernote.svg',
+    tagline: 'Encrypted files you own vs a legacy note cloud'
+  },
+  logseqAlternative: {
+    logo: 'logseq.png',
+    tagline: 'A document-first workspace vs an outliner graph'
+  },
+  anytypeAlternative: {
+    logo: 'anytype.png',
+    tagline: 'Open Markdown files vs a proprietary object store'
+  },
+  appleNotesAlternative: {
+    logo: 'apple-notes.png',
+    tagline: 'Cross-platform & encrypted vs the Apple-only default'
+  },
+  bearAlternative: {
+    logo: 'bear.png',
+    tagline: 'Tasks, calendar & Windows vs an Apple writing app'
+  },
+  roamAlternative: {
+    logo: 'roam-research.png',
+    tagline: 'Local files, no subscription vs a cloud thought graph'
+  },
+  onenoteAlternative: {
+    logo: 'onenote.png',
+    tagline: 'Plain Markdown you own vs a Microsoft notebook'
+  },
+  upnoteAlternative: {
+    logo: 'upnote.png',
+    tagline: 'Open files & encryption vs a tidy note app'
+  },
+  joplinAlternative: {
+    logo: 'joplin.svg',
+    tagline: 'One integrated workspace vs open-source note sync'
+  },
+  googleKeepAlternative: {
+    logo: 'google-keep.svg',
+    tagline: 'A private local vault vs quick Google sticky notes'
+  },
+  tanaAlternative: {
+    logo: 'tana.png',
+    tagline: 'Local Markdown & privacy vs a supertag-powered outliner'
+  },
+  heptabaseAlternative: {
+    logo: 'heptabase.png',
+    tagline: 'An all-in-one daily workspace vs a visual canvas'
+  }
+}

@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useEffect } from 'react'
 import { HelmetProvider } from 'react-helmet-async'
 import { Header } from '@/components/layout/Header'
@@ -40,9 +40,11 @@ import {
   OneNoteAlternativePage,
   UpNoteAlternativePage,
   JoplinAlternativePage,
-  GoogleKeepAlternativePage
+  GoogleKeepAlternativePage,
+  TanaAlternativePage,
+  HeptabaseAlternativePage
 } from '@/pages/AlternativePage'
-import { AlternativesHubPage } from '@/pages/AlternativesHubPage'
+import { ComparePage } from '@/pages/ComparePage'
 import { RequireAuth } from '@/components/account/RequireAuth'
 import { AccountLayout } from '@/components/account/AccountLayout'
 import { ProfileSection } from '@/pages/account/ProfileSection'
@@ -154,7 +156,8 @@ function AppContent() {
           <Route path="/download/desktop" element={<DownloadDesktopPage />} />
           <Route path="/use-cases" element={<UseCasesPage />} />
           <Route path="/security" element={<SecurityPage />} />
-          <Route path="/alternatives" element={<AlternativesHubPage />} />
+          <Route path="/compare" element={<ComparePage />} />
+          <Route path="/alternatives" element={<Navigate to="/compare" replace />} />
           <Route path="/obsidian-alternative" element={<ObsidianAlternativePage />} />
           <Route path="/notion-alternative" element={<NotionAlternativePage />} />
           <Route path="/noteplan-alternative" element={<NotePlanAlternativePage />} />
@@ -169,6 +172,8 @@ function AppContent() {
           <Route path="/upnote-alternative" element={<UpNoteAlternativePage />} />
           <Route path="/joplin-alternative" element={<JoplinAlternativePage />} />
           <Route path="/google-keep-alternative" element={<GoogleKeepAlternativePage />} />
+          <Route path="/tana-alternative" element={<TanaAlternativePage />} />
+          <Route path="/heptabase-alternative" element={<HeptabaseAlternativePage />} />
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/changelog" element={<ChangelogPage />} />
