@@ -23,32 +23,8 @@ files:
   - '!**/*.tsbuildinfo'
   - '!node_modules/**/*.map'
   - '!node_modules/**/{coverage,doc,docs,example,examples,test,tests,__tests__}/**'
-  # node_modules is now packed into app.asar; carry over the prune filters the
-  # loose-copy config used so build artifacts and unused vendor source stay out
-  # of the archive (smaller asar, fewer sealed files).
-  - '!node_modules/**/*.{a,o}'
-  - '!node_modules/**/re2/vendor/**'
-  - '!node_modules/**/build/Release/obj.target/**'
-  # Electron is a devDependency and must never be packed into the app; the
-  # production deploy tree should not contain it, but guard against leakage.
-  - '!node_modules/electron/**'
-  - '!node_modules/**/node_modules/electron/**'
 asarUnpack:
   - resources/**
-  # Native modules load their .node / .dylib by absolute path (dlopen /
-  # sqlite loadExtension), which cannot resolve inside the asar archive. Unpack
-  # each native package whole so its JS __dirname and its companion binary stay
-  # co-located under app.asar.unpacked (a bare '**/*.node' would leave dylibs
-  # like libvips / libonnxruntime / vec0.dylib stranded inside the archive).
-  - '**/*.node'
-  - '**/node_modules/@img/**'
-  - '**/node_modules/sharp/**'
-  - '**/node_modules/better-sqlite3/**'
-  - '**/node_modules/keytar/**'
-  - '**/node_modules/classic-level/**'
-  - '**/node_modules/onnxruntime-node/**'
-  - '**/node_modules/sqlite-vec*/**'
-  - '**/node_modules/re2/**'
 afterPack: scripts/prune-packaged-app.mjs
 extraResources:
   # ponytail: shipped as app-config (no .env token) so Defender's .env credential
