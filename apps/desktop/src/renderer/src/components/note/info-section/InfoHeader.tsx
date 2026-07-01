@@ -32,7 +32,7 @@ export function InfoHeader({ isExpanded, onToggle, propertyCount = 0 }: InfoHead
       />
       <span
         className={cn(
-          'text-[11px] font-semibold uppercase tracking-[0.09em] leading-4 transition-colors duration-150',
+          'text-[11px] tracking-[0.09em] leading-4 transition-colors duration-150',
           isExpanded ? 'text-text-secondary' : 'text-text-tertiary',
           'group-hover/info-header:text-text-secondary'
         )}

@@ -153,10 +153,7 @@ export const InfoSection = memo(function InfoSection({
   const showAddBtn = !hideAddButton && !isInline
 
   return (
-    <section
-      className={cn('flex flex-col', variant === 'default' && 'border-t border-b border-border')}
-      aria-label={t('properties.noteAria')}
-    >
+    <section className="flex flex-col" aria-label={t('properties.noteAria')}>
       {/* Toggle Header — hidden in inline mode */}
       {!isInline && (
         <InfoHeader
