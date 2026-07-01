@@ -3,20 +3,7 @@ beforeBuild: ./scripts/before-build-external-node-modules.cjs
 npmRebuild: true
 dmg:
   size: 3g
-extraResources:
-  - from: app-config
-    to: app-config
-  - from: node_modules
-    to: node_modules
-    filter:
-      - '**/*'
-      - '.pnpm'
-      - '.pnpm/**/*'
-      - '.modules.yaml'
-      - '!**/*.map'
-      - '!**/{coverage,doc,docs,example,examples,test,tests,__tests__}/**'
-      - '!**/re2/vendor/**'
-      - '!electron'
-      - '!electron/**/*'
-      - '!**/node_modules/electron'
-      - '!**/node_modules/electron/**/*'
+# node_modules is packed into app.asar by the base config (natives unpacked via
+# asarUnpack), not copied loose here — this is what cuts Squirrel's per-file
+# install verification from ~2min to seconds. app-config is inherited from
+# local-mac.yml's extraResources.
