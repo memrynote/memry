@@ -67,6 +67,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: 'Paddle is not configured' })
   }
 
+  // ponytail: temp diagnostic — remove once checkout works. Never logs the full secret.
+  console.error(
+    '[paddle-checkout][diag]',
+    JSON.stringify({
+      environment: paddleEnvironment,
+      keyLength: apiKey.length,
+      keyPrefix: apiKey.slice(0, 16),
+      keyLast4: apiKey.slice(-4),
+      wellFormed: /^pdl_(live|sdbx)_apikey_[A-Za-z0-9]+$/.test(apiKey),
+      hasWhitespace: /\s/.test(apiKey)
+    })
+  )
+
   const intent = await parsePaddleCheckoutIntent(getRequestBody(req), process.env)
   if (!intent) {
     return res.status(400).json({ error: 'Invalid checkout request' })
