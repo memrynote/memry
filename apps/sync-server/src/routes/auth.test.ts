@@ -785,6 +785,47 @@ describe('auth routes', () => {
       const json = (await res.json()) as { error: { code: string } }
       expect(json.error.code).toBe(ErrorCodes.VALIDATION_ERROR)
     })
+
+    it('should use the desktop client for loopback redirects when configured', async () => {
+      const envWithDesktop = {
+        ...env,
+        GOOGLE_DESKTOP_CLIENT_ID: 'mock-desktop-client-id',
+        GOOGLE_DESKTOP_CLIENT_SECRET: 'mock-desktop-client-secret'
+      }
+      const res = await app.request(
+        `/auth/oauth/google?redirect_uri=${encodeURIComponent('http://127.0.0.1:54321/callback')}`,
+        { method: 'GET' },
+        envWithDesktop
+      )
+
+      expect(res.status).toBe(302)
+      const location = res.headers.get('Location') ?? ''
+      expect(location).toContain('client_id=mock-desktop-client-id')
+      expect(location).not.toContain('client_id=mock-google-client-id')
+    })
+
+    it('should fall back to the web client for loopback redirects when desktop client is unset', async () => {
+      const res = await app.request(
+        `/auth/oauth/google?redirect_uri=${encodeURIComponent('http://127.0.0.1:54321/callback')}`,
+        { method: 'GET' },
+        env
+      )
+
+      expect(res.status).toBe(302)
+      expect(res.headers.get('Location') ?? '').toContain('client_id=mock-google-client-id')
+    })
+
+    it('should fall back to the web client for loopback when desktop secret is missing', async () => {
+      const envIdOnly = { ...env, GOOGLE_DESKTOP_CLIENT_ID: 'mock-desktop-client-id' }
+      const res = await app.request(
+        `/auth/oauth/google?redirect_uri=${encodeURIComponent('http://127.0.0.1:54321/callback')}`,
+        { method: 'GET' },
+        envIdOnly
+      )
+
+      expect(res.status).toBe(302)
+      expect(res.headers.get('Location') ?? '').toContain('client_id=mock-google-client-id')
+    })
   })
 
   // ==========================================================================
@@ -800,6 +841,38 @@ describe('auth routes', () => {
           json: () => Promise.resolve({ id_token: 'mock-id-token' })
         })
       )
+    })
+
+    it('should exchange the code with the desktop client for loopback redirects', async () => {
+      // #given a loopback redirect carried in the OAuth state
+      const fetchSpy = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ id_token: 'mock-id-token' })
+      })
+      vi.stubGlobal('fetch', fetchSpy)
+      vi.mocked(jwtVerify).mockResolvedValueOnce({
+        payload: { type: 'oauth_state', redirect_uri: 'http://127.0.0.1:5000/callback' }
+      } as never)
+
+      const envWithDesktop = {
+        ...env,
+        GOOGLE_DESKTOP_CLIENT_ID: 'mock-desktop-client-id',
+        GOOGLE_DESKTOP_CLIENT_SECRET: 'mock-desktop-client-secret'
+      }
+
+      // #when
+      const res = await app.request(
+        '/auth/oauth/google/callback',
+        jsonPost('/auth/oauth/google/callback', { code: 'auth-code', state: 'valid-state' }),
+        envWithDesktop
+      )
+
+      // #then the token exchange uses the desktop credential, not the web one
+      expect(res.status).toBe(200)
+      const sentBody = (fetchSpy.mock.calls[0][1] as { body: URLSearchParams }).body
+      const params = new URLSearchParams(sentBody.toString())
+      expect(params.get('client_id')).toBe('mock-desktop-client-id')
+      expect(params.get('client_secret')).toBe('mock-desktop-client-secret')
     })
 
     it('should return 200 with setupToken and isNewUser on valid callback', async () => {

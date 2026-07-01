@@ -15,6 +15,8 @@ export type Bindings = {
   GOOGLE_CLIENT_ID: string
   GOOGLE_CLIENT_SECRET: string
   GOOGLE_REDIRECT_URI: string
+  GOOGLE_DESKTOP_CLIENT_ID?: string
+  GOOGLE_DESKTOP_CLIENT_SECRET?: string
   WEB_OAUTH_REDIRECT_URI?: string
   MIN_APP_VERSION: string
   RECOVERY_DUMMY_SECRET: string
