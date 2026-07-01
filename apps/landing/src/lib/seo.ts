@@ -5,7 +5,14 @@ export const SITE_NAME = 'memrynote'
 export const ALTERNATE_SITE_NAMES = ['Memry Note', 'memrynote.com'] as const
 // Brand handle (matches index.html). The founder's personal handle is TWITTER_DEV_URL in constants.
 export const TWITTER_HANDLE = '@memrynote'
-const SOCIAL_IMAGE_PATH = '/og-image.png?v=2'
+// Versioned by FILENAME, not a `?v=` query: Facebook and several scrapers ignore
+// query strings on og:image, so a query bust is unreliable — a distinct path is not.
+// To refresh the social card: export the new image to og-image-v3.png, bump this path
+// and index.html, then FORCE a re-scrape. X/Facebook cache the preview per page URL for
+// ~7 days and X retired its Card Validator, so editing the image URL alone won't refresh
+// an already-cached card — share the page URL once with a throwaway query (e.g.
+// memrynote.com/?r=1) to make the scraper treat it as new, or wait out the TTL.
+const SOCIAL_IMAGE_PATH = '/og-image-v2.png'
 export const SOCIAL_IMAGE_URL = `${BASE_URL}${SOCIAL_IMAGE_PATH}`
 export const SOCIAL_IMAGE_WIDTH = '1200'
 export const SOCIAL_IMAGE_HEIGHT = '630'
