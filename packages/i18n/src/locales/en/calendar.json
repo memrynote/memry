@@ -93,6 +93,20 @@
     "skip": "Skip",
     "use-this-calendar": "Use this calendar"
   },
+  "connect-prompt": {
+    "pill": "Connect Google",
+    "aria": "Connect Google Calendar",
+    "title": "Finish connecting to Google Calendar",
+    "body": "Connect your Google account to do more with your calendar:",
+    "bullets": {
+      "events": "See your Google events beside notes and tasks",
+      "sync": "Create and edit events, synced both ways",
+      "schedule": "Schedule tasks and notes on your calendar"
+    },
+    "continue": "Continue with Google",
+    "dismiss": "Dismiss",
+    "error": "Could not connect Google Calendar. Try again."
+  },
   "metadata": {
     "attendees": "Attendees",
     "attendees-count": "Attendees ({count})",
