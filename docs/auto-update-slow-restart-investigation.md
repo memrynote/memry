@@ -1,7 +1,9 @@
 # Auto-update slow restart — investigation record
 
-Status: **root cause corrected (file COUNT, not ML bytes); first prune shipped
-(`@tabler/icons`, ~21% of files); more file-count pruning available.**
+Status: **root cause corrected (file COUNT, not ML bytes). First prune attempt
+(`extraResources` filter excluding `@tabler/icons`) BROKE macOS codesign and was
+reverted — dangling symlink, see Dead-end #5. File-count pruning is still the
+right direction, but must remove the symlink too / prune in the staged tree.**
 Last updated: 2026-07-01.
 
 Read this before touching the auto-update / packaging path again. It exists so
@@ -136,20 +138,37 @@ separate from the `files` glob.
 
 Already 12 ms. There is nothing to win there. (This is what #570/#649 did.)
 
+### 5. Excluding a package via the `extraResources` `filter` (dangling symlink)
+
+Adding `- '!**/@tabler/icons/**'` to the `node_modules` filter (commit
+`fc616a02`, both staged configs) **broke the signed macOS release** — both archs
+failed at `codesign --deep --strict` (`No such file or directory`). Cause: pnpm
+lays out `@tabler/icons-react/node_modules/@tabler/icons` as a **symlink** to the
+`.pnpm` store copy. The filter glob `**/@tabler/icons/**` removes the store copy's
+files but **not the symlink entry itself** (the entry has no path segment after
+`icons/` to match), so the packaged bundle ships a dangling symlink. `codesign`
+walks it and dies. Linux has no codesign → it passed, masking the problem on that
+runner. **Reverted the config lines** (kept the corrected analysis). Lesson: never
+drop a package that has an inbound symlink via a `filter` exclusion — prune the
+staged tree instead and sweep broken symlinks (`find … -xtype l -delete`).
+
 ---
 
 ## Viable paths forward (ranked by effort vs. payoff)
 
-0. **Prune tiny-file packages from the shipped tree (DONE for icons — best
-   effort:payoff).** Verify is O(file count), so dropping a dead package that
-   ships thousands of tiny files is a direct, risk-free win. Added
-   `- '!**/@tabler/icons/**'` to the `node_modules` `extraResources` filter in
-   `electron-builder.staged-local-mac.yml` + `electron-builder.staged.yml`
-   (keeps `@tabler/icons-react`, which inlines its own SVGs). Drops **~11,245
-   files (~21%)** off every one of the 3 verify passes. Next candidates: dedupe
-   `shiki` (leaks 3 versions; 2.5.0 is a vitepress devDep that shouldn't be in
-   the prod tree at all), and audit whether we need both `lucide-react` **and**
-   `@tabler/icons-react`.
+0. **Prune tiny-file packages from the shipped tree (right direction; first
+   attempt reverted).** Verify is O(file count), so dropping a dead package that
+   ships thousands of tiny files is a direct win — **but you cannot do it with a
+   plain `extraResources` filter exclusion.** Excluding `@tabler/icons`'s files
+   leaves a **dangling symlink** (`@tabler/icons-react/node_modules/@tabler/icons`
+   → the now-removed store copy), and macOS `codesign --deep --strict` fails on
+   it (Dead-end #5). The correct approach is to prune in the **staged node_modules
+   tree** before electron-builder packages — delete both the store dir _and_ the
+   dangling symlink(s) that point into it (e.g. a step in `build-packaged-app.js`
+   after `pnpm deploy`, or `find … -xtype l -delete` to sweep broken links).
+   ~11,245 files (~21%) is still the prize. Same care applies to the next
+   candidates: dedupe `shiki` (3 versions; 2.5.0 leaks from the vitepress devDep),
+   and audit whether both `lucide-react` **and** `@tabler/icons-react` are needed.
 1. **Shrink the bytes (helps download, not verify).** ML/native deps
    (`@huggingface/transformers`, `onnxruntime-node`, `sharp`) are heavy in bytes
    but negligible in file count — lazy-downloading models cuts _download_ size,
