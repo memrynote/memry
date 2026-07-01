@@ -81,6 +81,8 @@ interface CalendarShellProps {
   onAnchorChange?: (date: string) => void
   onWeekVisibleRangeChange?: (startDate: string) => void
   onQuickSave?: (draft: CalendarEventDraft) => void | Promise<void>
+  /** Toolbar CTA shown while Google Calendar is unlinked; injected by the page so the shell stays query-free. */
+  googleConnectAction?: React.ReactNode
 }
 
 export function CalendarShell({
@@ -123,7 +125,8 @@ export function CalendarShell({
   onPopoverSave,
   onAnchorChange,
   onWeekVisibleRangeChange,
-  onQuickSave
+  onQuickSave,
+  googleConnectAction
 }: CalendarShellProps): React.JSX.Element {
   const viewProps = { anchorDate, items, selectedItemId, onSelectItem }
   const chipViewProps = { ...viewProps, onDeleteItem }
@@ -269,6 +272,7 @@ export function CalendarShell({
         onSearchJump={onSearchJump}
         extraActions={
           <>
+            {googleConnectAction}
             {refreshButton}
             {filterPopover}
           </>

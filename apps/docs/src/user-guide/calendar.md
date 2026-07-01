@@ -77,6 +77,10 @@ If a Google Calendar account is linked in [Settings → Integrations](/user-guid
 
 External events are **read-mostly**: titles and times sync in. Inline edits propagate back if the integration supports it.
 
+### Connecting from the calendar
+
+While no Google account is linked, the calendar toolbar shows a **Connect Google** button. It opens a short prompt covering what a linked calendar unlocks — seeing your Google events beside notes and tasks, two-way sync, and scheduling tasks and notes on your calendar — then runs the same connect flow as Settings. The button disappears once an account is connected.
+
 ### Sync Direction
 
 By default Google Calendar sync is **two-way**: events, tasks, reminders, and snoozes you create in memrynote are pushed up to Google, and changes made in Google flow back into memrynote.

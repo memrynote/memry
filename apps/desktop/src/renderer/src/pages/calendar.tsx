@@ -37,6 +37,7 @@ import { useDayPanel } from '@/contexts/day-panel-context'
 import { useCalendarView } from '@/contexts/calendar-view-context'
 import { useActiveTab, useTabActions } from '@/contexts/tabs'
 import { DeleteCalendarEventDialog } from '@/components/calendar/delete-calendar-event-dialog'
+import { GoogleCalendarConnectPrompt } from '@/components/calendar/google-calendar-connect-prompt'
 import { inboxService } from '@/services/inbox-service'
 import { getI18n } from 'react-i18next'
 
@@ -775,6 +776,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
         onWeekVisibleRangeChange={(startDate) => setAnchorDate(startDate)}
         onPopoverSave={() => void handlePopoverSave()}
         onQuickSave={handleQuickSave}
+        googleConnectAction={<GoogleCalendarConnectPrompt />}
       />
       {taskPopoverState && (
         <CalendarTaskPopover
