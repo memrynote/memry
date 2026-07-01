@@ -58,7 +58,7 @@ import {
 } from '../services/entitlements'
 import { captureBusinessEvent, safeWaitUntil } from '../services/posthog'
 import { deleteUserData } from '../services/account-deletion'
-import type { AppContext } from '../types'
+import type { AppContext, Bindings } from '../types'
 
 const logger = createLogger('Auth')
 
@@ -185,6 +185,30 @@ export const verifyOAuthState = async (
   return { redirectUri: payload.redirect_uri as string | undefined }
 }
 
+const isLoopbackRedirect = (uri: string): boolean =>
+  /^http:\/\/127\.0\.0\.1(:\d+)?(\/.*)?$/.test(uri)
+
+// Google requires a "Desktop app" OAuth client for the 127.0.0.1 loopback the
+// desktop app uses, and a "Web application" client for the site's https
+// redirect. Same code path, different credential — pick by redirect type.
+// Falls back to the web client when the desktop client isn't configured.
+const resolveGoogleClient = (
+  env: Bindings,
+  redirectUri: string
+): { clientId: string; clientSecret: string } => {
+  if (
+    isLoopbackRedirect(redirectUri) &&
+    env.GOOGLE_DESKTOP_CLIENT_ID &&
+    env.GOOGLE_DESKTOP_CLIENT_SECRET
+  ) {
+    return {
+      clientId: env.GOOGLE_DESKTOP_CLIENT_ID,
+      clientSecret: env.GOOGLE_DESKTOP_CLIENT_SECRET
+    }
+  }
+  return { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET }
+}
+
 export const auth = new Hono<AppContext>()
 
 // POST /otp/request
@@ -270,8 +294,7 @@ auth.get('/oauth/:provider', async (c) => {
   const clientRedirectUri = c.req.query('redirect_uri')
   const redirectUri = clientRedirectUri ?? c.env.GOOGLE_REDIRECT_URI
 
-  const isLoopback =
-    clientRedirectUri != null && /^http:\/\/127\.0\.0\.1(:\d+)?(\/.*)?$/.test(clientRedirectUri)
+  const isLoopback = clientRedirectUri != null && isLoopbackRedirect(clientRedirectUri)
   const isConfiguredWeb =
     clientRedirectUri != null && clientRedirectUri === c.env.WEB_OAUTH_REDIRECT_URI
 
@@ -284,9 +307,10 @@ auth.get('/oauth/:provider', async (c) => {
   }
 
   const state = await generateOAuthState(c.env.JWT_PRIVATE_KEY, redirectUri)
+  const { clientId } = resolveGoogleClient(c.env, redirectUri)
 
   const params = new URLSearchParams({
-    client_id: c.env.GOOGLE_CLIENT_ID,
+    client_id: clientId,
     redirect_uri: redirectUri,
     response_type: 'code',
     scope: 'openid email profile',
@@ -314,14 +338,15 @@ auth.post('/oauth/:provider/callback', async (c) => {
 
   const statePayload = await verifyOAuthState(state, c.env.JWT_PUBLIC_KEY)
   const redirectUri = statePayload.redirectUri ?? c.env.GOOGLE_REDIRECT_URI
+  const { clientId, clientSecret } = resolveGoogleClient(c.env, redirectUri)
 
   const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
       code,
-      client_id: c.env.GOOGLE_CLIENT_ID,
-      client_secret: c.env.GOOGLE_CLIENT_SECRET,
+      client_id: clientId,
+      client_secret: clientSecret,
       redirect_uri: redirectUri,
       grant_type: 'authorization_code'
     })
@@ -336,7 +361,7 @@ auth.post('/oauth/:provider/callback', async (c) => {
     throw new AppError(ErrorCodes.AUTH_INVALID_TOKEN, 'No ID token in response', 401)
   }
 
-  const claims = await validateGoogleIdToken(tokenData.id_token, c.env.GOOGLE_CLIENT_ID)
+  const claims = await validateGoogleIdToken(tokenData.id_token, clientId)
 
   const { user, isNewUser } = await getOrCreateUserByEmail(c.env.DB, claims.email, {
     authMethod: 'oauth',
