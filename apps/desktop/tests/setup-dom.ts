@@ -74,6 +74,25 @@ const createMockApi = () => ({
   // Native context menu bridge (main-process IPC in production)
   showContextMenu: vi.fn().mockResolvedValue(null),
 
+  // Auto-updater API (used by useAppUpdater on mount)
+  updater: {
+    getState: vi.fn().mockResolvedValue({
+      currentVersion: '0.0.0',
+      status: 'unavailable',
+      updateSupported: false,
+      availableVersion: null,
+      releaseName: null,
+      releaseDate: null,
+      releaseNotes: null,
+      downloadProgressPercent: null,
+      lastCheckedAt: null,
+      error: null
+    }),
+    checkForUpdates: vi.fn().mockResolvedValue({ status: 'up-to-date' }),
+    downloadUpdate: vi.fn().mockResolvedValue({ status: 'downloaded' }),
+    quitAndInstall: vi.fn().mockResolvedValue(undefined)
+  },
+
   // Vault API
   vault: {
     select: vi.fn().mockResolvedValue({ success: true, path: '/mock/vault' }),
@@ -510,7 +529,8 @@ const createMockApi = () => ({
   onReminderDismissed: vi.fn().mockReturnValue(() => {}),
   onReminderSnoozed: vi.fn().mockReturnValue(() => {}),
   onReminderClicked: vi.fn().mockReturnValue(() => {}),
-  onInboxOpenItem: vi.fn().mockReturnValue(() => {})
+  onInboxOpenItem: vi.fn().mockReturnValue(() => {}),
+  onUpdaterStateChanged: vi.fn().mockReturnValue(() => {})
 })
 
 if (typeof window === 'undefined') {
