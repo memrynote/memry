@@ -225,7 +225,7 @@ export function buildReleaseNotesPrompt({ finalTag, pullRequests }) {
     '- Start every bullet with one relevant emoji, then a concise title, an em dash, and the explanation.',
     '- Use exactly these sections: ## New Features, ## Improvements, ## Fixes.',
     '- Leave a section empty if no provided change belongs there.',
-    '- If no change is user-facing, output only the "## Improvements" section with a single bullet "- ✨ General improvements — performance and stability updates." and leave the other sections empty.',
+    '- If no change is user-facing, keep all three headings and populate only "## Improvements" with a single bullet "- ✨ General improvements — performance and stability updates.", leaving "## New Features" and "## Fixes" with no bullets.',
     '- Do not include a Changelog section.',
     '- Return Markdown only. Do not wrap the answer in a code fence.',
     '- Begin the response with the "## New Features" heading. Add no greeting, preamble, or closing remarks.',

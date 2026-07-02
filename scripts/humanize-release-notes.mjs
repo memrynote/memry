@@ -108,8 +108,6 @@ async function runCli() {
     return
   }
 
-  writeCuratedReleaseNotes({ appVersion: preview.appVersion, markdown: humanizedMarkdown })
-
   if (!options.yes) {
     const confirmed = await confirmEdit()
     if (!confirmed) {
@@ -118,6 +116,8 @@ async function runCli() {
       return
     }
   }
+
+  writeCuratedReleaseNotes({ appVersion: preview.appVersion, markdown: humanizedMarkdown })
 
   const notesFile = writeTempNotes(finalBody)
   try {

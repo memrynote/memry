@@ -163,6 +163,19 @@ describe('release notes helpers', () => {
     )
   })
 
+  it('accepts the no-user-facing-changes fallback shape', () => {
+    const markdown = [
+      '## New Features',
+      '',
+      '## Improvements',
+      '- ✨ General improvements — performance and stability updates.',
+      '',
+      '## Fixes'
+    ].join('\n')
+
+    assert.equal(validateHumanizedReleaseMarkdown(markdown), markdown)
+  })
+
   it('builds a deterministic changelog separate from AI prose', () => {
     const changelog = buildChangelogSection({
       compareUrl: 'https://github.com/memrynote/memry/compare/v2026-05-01...v2026-05-08',
