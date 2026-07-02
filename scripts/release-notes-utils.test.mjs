@@ -115,22 +115,19 @@ describe('release notes helpers', () => {
   it('validates humanized markdown shape before editing a release', () => {
     const markdown = [
       '## New Features',
-      '- 📑 Table of Contents Shortcut — Open note outlines faster. (#124)',
+      '- 📑 Table of Contents Shortcut — Open note outlines faster.',
       '',
-      '## Bug Fixes',
-      '- 🔗 Better Media Paths — PDF links resolve more consistently. (#125)',
+      '## Improvements',
+      '- 🚀 Faster Startup — The app opens more quickly.',
       '',
-      '## Documentation',
-      '- 📚 Clearer Setup Guide — Local AI setup notes are easier to follow. (#126)',
-      '',
-      '## Chores',
-      '- 🧹 Release Maintenance — Build script housekeeping. (#127)'
+      '## Fixes',
+      '- 🔗 Better Media Paths — PDF links resolve more consistently.'
     ].join('\n')
 
     assert.equal(validateHumanizedReleaseMarkdown(markdown), markdown)
     assert.throws(
       () => validateHumanizedReleaseMarkdown('## New Features\n- Missing sections'),
-      /Bug Fixes/
+      /Improvements/
     )
     assert.throws(
       () => validateHumanizedReleaseMarkdown(`${markdown}\n\n## Changelog`),
@@ -141,17 +138,42 @@ describe('release notes helpers', () => {
         validateHumanizedReleaseMarkdown(
           [
             '## New Features',
-            '📑 Table of Contents Shortcut — Open note outlines faster. (#124)',
+            '📑 No bullet dash — nope.',
             '',
-            '## Bug Fixes',
+            '## Improvements',
             '',
-            '## Documentation',
-            '',
-            '## Chores'
+            '## Fixes'
           ].join('\n')
         ),
       /must be Markdown bullets/
     )
+    assert.throws(
+      () =>
+        validateHumanizedReleaseMarkdown(
+          [
+            '## New Features',
+            '- 📑 Table of Contents Shortcut — Open note outlines faster. (#124)',
+            '',
+            '## Improvements',
+            '',
+            '## Fixes'
+          ].join('\n')
+        ),
+      /must not include a PR or issue number/
+    )
+  })
+
+  it('accepts the no-user-facing-changes fallback shape', () => {
+    const markdown = [
+      '## New Features',
+      '',
+      '## Improvements',
+      '- ✨ General improvements — performance and stability updates.',
+      '',
+      '## Fixes'
+    ].join('\n')
+
+    assert.equal(validateHumanizedReleaseMarkdown(markdown), markdown)
   })
 
   it('builds a deterministic changelog separate from AI prose', () => {
@@ -178,16 +200,13 @@ describe('release notes helpers', () => {
   it('builds final release notes with marker, prose, and changelog', () => {
     const humanized = [
       '## New Features',
-      '- 📑 Table of Contents Shortcut — Open note outlines faster. (#124)',
+      '- 📑 Table of Contents Shortcut — Open note outlines faster.',
       '',
-      '## Bug Fixes',
-      '- 🔗 Better Media Paths — PDF links resolve more consistently. (#125)',
+      '## Improvements',
+      '- 🚀 Faster Startup — The app opens more quickly.',
       '',
-      '## Documentation',
-      '- 📚 Clearer Setup Guide — Local AI setup notes are easier to follow. (#126)',
-      '',
-      '## Chores',
-      '- 🧹 Release Maintenance — Build script housekeeping. (#127)'
+      '## Fixes',
+      '- 🔗 Better Media Paths — PDF links resolve more consistently.'
     ].join('\n')
 
     const body = buildHumanizedReleaseBody({

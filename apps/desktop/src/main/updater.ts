@@ -295,6 +295,15 @@ function buildPromptDetail(info: UpdateInfo, fallback: string): string {
   return `${fallback}\n\n${t('dialog.update.releaseNotesLabel')}\n${trimmedNotes}`
 }
 
+function stripDeveloperChangelog(text: string): string {
+  const lines = text.split('\n')
+  const index = lines.findIndex((line) => line.trim().toLowerCase() === 'changelog')
+  if (index === -1) {
+    return text
+  }
+  return lines.slice(0, index).join('\n').trimEnd()
+}
+
 function normalizeReleaseNotes(info: UpdateInfo): string | null {
   const { releaseNotes } = info
 
@@ -303,13 +312,13 @@ function normalizeReleaseNotes(info: UpdateInfo): string | null {
   }
 
   if (typeof releaseNotes === 'string') {
-    return htmlToPlainText(releaseNotes) || null
+    return stripDeveloperChangelog(htmlToPlainText(releaseNotes)) || null
   }
 
   const combined = releaseNotes
     .map((entry) => {
       const heading = entry.version ? `${formatAppVersionForDisplay(entry.version)}\n` : ''
-      return `${heading}${htmlToPlainText(entry.note ?? '')}`.trim()
+      return `${heading}${stripDeveloperChangelog(htmlToPlainText(entry.note ?? ''))}`.trim()
     })
     .filter(Boolean)
     .join('\n\n')
