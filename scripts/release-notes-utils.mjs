@@ -1,6 +1,6 @@
 export const HUMANIZED_RELEASE_MARKER = 'memry-humanized-release-notes'
 
-const requiredHumanizedSections = ['New Features', 'Bug Fixes', 'Documentation', 'Chores']
+const requiredHumanizedSections = ['New Features', 'Improvements', 'Fixes']
 
 function stripHtmlComments(text) {
   let output = ''
@@ -157,8 +157,10 @@ export function validateHumanizedReleaseMarkdown(markdown = '') {
 
   const bulletLines = contentLines.filter((line) => line.startsWith('- '))
   for (const line of bulletLines) {
-    if (!/#\d+\b/.test(line)) {
-      throw new Error(`Humanized release note bullet is missing a PR number: ${line}`)
+    if (/#\d+\b/.test(line)) {
+      throw new Error(
+        `Humanized release note bullet must not include a PR or issue number: ${line}`
+      )
     }
   }
 
@@ -206,18 +208,24 @@ export function buildReleaseNotesPrompt({ finalTag, pullRequests }) {
   }
 
   return [
-    'You are writing Memry release notes.',
+    'You are writing Memry desktop release notes for end users.',
+    '',
+    'Audience: people using the Memry desktop app. They do not care about the',
+    'marketing website, browser extension, internal refactors, or developer tooling.',
     '',
     'Rules:',
-    '- Do not invent changes.',
-    '- Use only the provided PR titles, labels, authors, and release notes.',
+    '- Do not invent changes. Use only the provided PR titles, labels, authors, and release notes.',
+    '- Include only changes that affect the desktop app or the sync experience for end users.',
+    '- Judge relevance from each PR title scope and labels. Keep changes scoped to desktop, sync-server, or sync, plus cross-cutting user-facing features.',
+    '- Skip changes scoped to the landing site, browser extension or web clipper, brand or rename, documentation, CI, tests, chores, and schema-only or internal refactors.',
+    '- Do not include any PR numbers, issue numbers, or commit hashes.',
     '- Rewrite technical PR names into short human-friendly release-note bullets.',
     '- Keep each bullet to one sentence.',
     '- Every release-note item must be a Markdown bullet line starting with "- ".',
     '- Start every bullet with one relevant emoji, then a concise title, an em dash, and the explanation.',
-    '- Every bullet must include one or more PR numbers.',
-    '- Use exactly these sections: ## New Features, ## Bug Fixes, ## Documentation, ## Chores.',
-    '- Leave a section empty if no provided PR belongs there.',
+    '- Use exactly these sections: ## New Features, ## Improvements, ## Fixes.',
+    '- Leave a section empty if no provided change belongs there.',
+    '- If no change is user-facing, output only the "## Improvements" section with a single bullet "- ✨ General improvements — performance and stability updates." and leave the other sections empty.',
     '- Do not include a Changelog section.',
     '- Return Markdown only. Do not wrap the answer in a code fence.',
     '- Begin the response with the "## New Features" heading. Add no greeting, preamble, or closing remarks.',
