@@ -67,17 +67,15 @@ export const BulkActionDropdown = <T extends string | number = string>({
       <DropdownMenuTrigger
         disabled={disabled}
         className={cn(
-          'flex items-center gap-1.5 rounded-sm border px-3 py-1.5 text-sm font-medium',
-          'bg-background border-border hover:bg-accent text-foreground',
-          'transition-colors duration-150',
+          'flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[12.5px] font-medium text-foreground transition-colors hover:bg-muted',
           'focus-visible:outline-none',
           'disabled:cursor-not-allowed disabled:opacity-50',
           className
         )}
       >
         {icon}
-        <span className="hidden sm:inline">{label}</span>
-        <ChevronDown className="size-3 ml-0.5" />
+        {label}
+        <ChevronDown className="size-3 ms-0.5" />
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="start" className="min-w-[200px]">
@@ -102,7 +100,7 @@ export const BulkActionDropdown = <T extends string | number = string>({
             >
               {option.icon && (
                 <span
-                  className="mr-2 flex items-center"
+                  className="me-2 flex items-center"
                   style={option.color ? { color: option.color } : undefined}
                 >
                   {option.icon}

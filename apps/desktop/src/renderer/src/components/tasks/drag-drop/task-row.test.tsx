@@ -1,6 +1,6 @@
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 
 import { TaskRow } from './task-row'
 import { notesService } from '@/services/notes-service'
@@ -381,6 +381,61 @@ describe('TaskRow — Overlay Theme Styling', () => {
     expect(overlay.className).toContain('bg-card')
     expect(overlay.className).toContain('border-[#4C9EFF]')
     expect(overlay.className).not.toContain('bg-[#27272A]')
+  })
+})
+
+describe('TaskRow — Multi-select', () => {
+  it('renders a selection checkbox when onToggleSelect is provided, even outside selection mode', () => {
+    render(<TaskRow {...defaultProps} onToggleSelect={vi.fn()} />)
+
+    expect(screen.getByRole('checkbox', { name: 'Select Test Task' })).toBeInTheDocument()
+  })
+
+  it('does not render a selection checkbox without onToggleSelect', () => {
+    render(<TaskRow {...defaultProps} />)
+
+    expect(screen.queryByRole('checkbox', { name: /select/i })).not.toBeInTheDocument()
+  })
+
+  it('toggles selection when the checkbox is clicked without opening the row', async () => {
+    const user = userEvent.setup()
+    const onToggleSelect = vi.fn()
+    const onClick = vi.fn()
+    render(<TaskRow {...defaultProps} onClick={onClick} onToggleSelect={onToggleSelect} />)
+
+    await user.click(screen.getByRole('checkbox', { name: 'Select Test Task' }))
+
+    expect(onToggleSelect).toHaveBeenCalledWith('task-1')
+    expect(onClick).not.toHaveBeenCalled()
+  })
+
+  it('cmd/ctrl+click toggles selection instead of opening the row', () => {
+    const onToggleSelect = vi.fn()
+    const onClick = vi.fn()
+    render(<TaskRow {...defaultProps} onClick={onClick} onToggleSelect={onToggleSelect} />)
+
+    fireEvent.click(screen.getByLabelText(/^Task: Test Task/), { metaKey: true })
+
+    expect(onToggleSelect).toHaveBeenCalledWith('task-1')
+    expect(onClick).not.toHaveBeenCalled()
+  })
+
+  it('shift+click starts a range selection even before selection mode', () => {
+    const onShiftSelect = vi.fn()
+    const onClick = vi.fn()
+    render(
+      <TaskRow
+        {...defaultProps}
+        onClick={onClick}
+        onToggleSelect={vi.fn()}
+        onShiftSelect={onShiftSelect}
+      />
+    )
+
+    fireEvent.click(screen.getByLabelText(/^Task: Test Task/), { shiftKey: true })
+
+    expect(onShiftSelect).toHaveBeenCalledWith('task-1')
+    expect(onClick).not.toHaveBeenCalled()
   })
 })
 

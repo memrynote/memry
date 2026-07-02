@@ -26,9 +26,9 @@ interface BulkActionButtonProps {
 // ============================================================================
 
 const variantStyles: Record<BulkActionVariant, string> = {
-  default: 'bg-background border-border hover:bg-accent text-foreground',
-  secondary: 'bg-background border-border hover:bg-accent text-muted-foreground',
-  danger: 'bg-background border-destructive/30 hover:bg-destructive/10 text-destructive'
+  default: 'text-foreground hover:bg-muted',
+  secondary: 'text-foreground hover:bg-muted',
+  danger: 'text-destructive hover:bg-destructive/10'
 }
 
 /**
@@ -65,8 +65,7 @@ export const BulkActionButton = ({
       onKeyDown={handleKeyDown}
       disabled={disabled}
       className={cn(
-        'flex items-center gap-1.5 rounded-sm border px-3 py-1.5 text-sm font-medium',
-        'transition-colors duration-150',
+        'flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[12.5px] font-medium transition-colors',
         'focus-visible:outline-none',
         'disabled:cursor-not-allowed disabled:opacity-50',
         variantStyles[variant],
@@ -75,7 +74,7 @@ export const BulkActionButton = ({
       aria-label={label}
     >
       {icon}
-      <span className="hidden sm:inline">{label}</span>
+      {label}
     </button>
   )
 }
