@@ -80,7 +80,10 @@ export default defineConfig({
         // optional speedup; the repo never builds it (allowBuilds: re2: false),
         // so keep it external WITHOUT shipping it — the require throws and
         // metascraper falls back to RegExp, exactly as it does today.
-        external: ['better-sqlite3', 'jsdom', 'canvas', 're2'],
+        // Same deal for `ws`: it optionally requires bufferutil + utf-8-validate
+        // as native accelerators; they are never installed, so keep them external
+        // and let ws fall back to its JS implementation.
+        external: ['better-sqlite3', 'jsdom', 'canvas', 're2', 'bufferutil', 'utf-8-validate'],
         output: {
           // Keep each bundled npm package in its own chunk. The main process is
           // CJS output, and rollup's default chunking can split a package's
