@@ -206,6 +206,39 @@ describe('updater', () => {
     expect(updater.getUpdateState().releaseNotes).toBe('Fixes\n• Sync fix\n• Calendar fix')
   })
 
+  it('strips the developer changelog from string release notes', async () => {
+    const updater = await loadUpdater()
+    updater.initializeUpdater()
+    mocks.autoUpdater.emit('update-available', {
+      version: '1.2.4',
+      releaseNotes:
+        '<h2>Fixes</h2><ul><li>Sync fix</li></ul><h2>Changelog</h2><p>Full Changelog: https://x</p><p>#123 title @a</p>'
+    })
+    expect(updater.getUpdateState().releaseNotes).toBe('Fixes\n• Sync fix')
+  })
+
+  it('strips the developer changelog from array release notes', async () => {
+    const updater = await loadUpdater()
+    updater.initializeUpdater()
+    mocks.autoUpdater.emit('update-available', {
+      version: '1.2.4',
+      releaseNotes: [
+        { note: '<h2>Fixes</h2><ul><li>Sync fix</li></ul><h2>Changelog</h2><p>#1 x</p>' }
+      ]
+    })
+    expect(updater.getUpdateState().releaseNotes).toBe('Fixes\n• Sync fix')
+  })
+
+  it('leaves curated-only notes untouched', async () => {
+    const updater = await loadUpdater()
+    updater.initializeUpdater()
+    mocks.autoUpdater.emit('update-available', {
+      version: '1.2.4',
+      releaseNotes: '<h2>New Features</h2><ul><li>Calendar sync</li></ul>'
+    })
+    expect(updater.getUpdateState().releaseNotes).toBe('New Features\n• Calendar sync')
+  })
+
   it('coalesces manual checks and downloads, then installs downloaded updates', async () => {
     const updater = await loadUpdater()
     updater.initializeUpdater()
