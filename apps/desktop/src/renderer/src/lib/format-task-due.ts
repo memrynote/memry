@@ -1,3 +1,5 @@
+import { formatDate } from '@/lib/format-date'
+
 export type DueRelative = 'today' | 'tomorrow' | 'this-week' | 'absolute'
 
 export interface FormatTaskDueInput {
@@ -80,7 +82,7 @@ function weekdayShort(d: Date): string {
 }
 
 function absoluteDate(d: Date): string {
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  return formatDate(d)
 }
 
 function formatTime(hhmm: string): string {

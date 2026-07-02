@@ -8,7 +8,8 @@
 import { useCallback, useMemo } from 'react'
 import { X, type AppIcon } from '@/lib/icons'
 import { getColumnIcon } from './column-icons'
-import { format } from 'date-fns'
+import { formatDate } from '@/lib/format-date'
+import { useDateFormat } from '@/hooks/use-date-format'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DatePickerCalendar } from '@/components/tasks/date-picker-calendar'
@@ -320,6 +321,7 @@ interface DateValueInputProps {
 }
 
 function DateValueInput({ value, onChange }: DateValueInputProps): React.JSX.Element {
+  const dateFormat = useDateFormat()
   // Parse the value to a Date
   const dateValue = useMemo(() => {
     if (!value) return undefined
@@ -346,7 +348,7 @@ function DateValueInput({ value, onChange }: DateValueInputProps): React.JSX.Ele
             !dateValue && 'text-muted-foreground'
           )}
         >
-          {dateValue ? format(dateValue, 'MMM d, yyyy') : 'Pick a date'}
+          {dateValue ? formatDate(dateValue, dateFormat) : 'Pick a date'}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[296px] p-3" align="start">

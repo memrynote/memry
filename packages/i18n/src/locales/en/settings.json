@@ -106,6 +106,17 @@
       },
       "error": "Failed to update time format"
     },
+    "dateFormat": {
+      "label": "Date Format",
+      "description": "How calendar dates are displayed",
+      "options": {
+        "MM/DD/YYYY": "MM/DD/YYYY (US)",
+        "DD/MM/YYYY": "DD/MM/YYYY",
+        "YYYY-MM-DD": "YYYY-MM-DD (ISO)",
+        "DD.MM.YYYY": "DD.MM.YYYY"
+      },
+      "error": "Failed to update date format"
+    },
     "tabs": {
       "restoreSession": {
         "label": "Restore Session on Start",

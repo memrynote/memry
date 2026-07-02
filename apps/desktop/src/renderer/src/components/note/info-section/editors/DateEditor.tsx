@@ -1,111 +1,95 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
-import { parse, isValid, format } from 'date-fns'
+import { useCallback, useState } from 'react'
 import { cn } from '@/lib/utils'
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
+import { Input } from '@/components/ui/input'
+import { DatePickerCalendar } from '@/components/tasks/date-picker-calendar'
+import { useDateFormat } from '@/hooks/use-date-format'
+import { useTaskPreferences } from '@/hooks/use-task-preferences'
+import { formatDate, parseDateInput } from '@/lib/format-date'
 import { useT } from '@memry/i18n/renderer'
 
 interface DateEditorProps {
   value: Date | null
   onChange: (value: Date | null) => void
-  onBlur?: () => void
-  autoFocus?: boolean
+  defaultOpen?: boolean
 }
 
-// Strict date format: dd.mm.yyyy
-const DATE_FORMAT = 'dd.MM.yyyy'
-const DATE_PATTERN = /^\d{2}\.\d{2}\.\d{4}$/
+// Self-managed like the select/status editors: the trigger stays mounted and
+// Radix owns open/close, so the picker reopens on every click. (An earlier
+// controlled-open version that unmounted on close couldn't be reopened without
+// a remount.)
+export function DateEditor({ value, onChange, defaultOpen = false }: DateEditorProps) {
+  const { t } = useT('notes')
+  const dateFormat = useDateFormat()
+  const { settings: taskPrefs } = useTaskPreferences()
+  const weekStartsOn = taskPrefs.weekStartDay === 'sunday' ? 0 : 1
 
-export function DateEditor({ value, onChange, onBlur, autoFocus = true }: DateEditorProps) {
-  const { t: tPhaseF } = useT('notes')
-  const inputRef = useRef<HTMLInputElement>(null)
-  const [draftValue, setDraftValue] = useState<string | null>(null)
-  const storedValue = value ? format(value, DATE_FORMAT) : ''
+  const [open, setOpen] = useState(defaultOpen)
+  const [draft, setDraft] = useState('')
 
-  useEffect(() => {
-    if (autoFocus && inputRef.current) {
-      inputRef.current.focus()
-      inputRef.current.select()
-    }
-  }, [autoFocus])
-
-  const validateAndParse = useCallback((input: string): Date | null => {
-    if (!input) return null
-    if (!DATE_PATTERN.test(input)) return null
-    const parsed = parse(input, DATE_FORMAT, new Date())
-    if (!isValid(parsed)) return null
-    if (format(parsed, DATE_FORMAT) !== input) return null
-    return parsed
-  }, [])
-
-  const inputValue = draftValue ?? storedValue
-  const isValidFormat = !inputValue || validateAndParse(inputValue) !== null
-
-  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setDraftValue(e.target.value)
-  }, [])
-
-  const handleBlur = useCallback(() => {
-    const parsed = validateAndParse(inputValue)
-    const valid = !inputValue || parsed !== null
-    if (!valid) {
-      setDraftValue(null)
-      onBlur?.()
-      return
-    }
-    if (!inputValue) {
-      onChange(null)
-    } else if (parsed) {
-      onChange(parsed)
-    }
-    setDraftValue(null)
-    onBlur?.()
-  }, [inputValue, validateAndParse, onChange, onBlur])
-
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter') {
-        e.preventDefault()
-        const parsed = validateAndParse(inputValue)
-        const valid = !inputValue || parsed !== null
-        if (!valid) {
-          setDraftValue(null)
-          onBlur?.()
-          return
-        }
-        if (!inputValue) {
-          onChange(null)
-        } else if (parsed) {
-          onChange(parsed)
-        }
-        setDraftValue(null)
-        onBlur?.()
-      }
-      if (e.key === 'Escape') {
-        e.preventDefault()
-        setDraftValue(null)
-        onBlur?.()
-      }
+  const handleOpenChange = useCallback(
+    (next: boolean) => {
+      // Seed the text field with the current value each time it opens.
+      if (next) setDraft(value ? formatDate(value, dateFormat) : '')
+      setOpen(next)
     },
-    [inputValue, validateAndParse, onChange, onBlur]
+    [value, dateFormat]
   )
 
+  const parsedDraft = draft ? parseDateInput(draft, dateFormat) : null
+  const isValidFormat = !draft || parsedDraft !== null
+
+  const commitText = useCallback(() => {
+    if (!draft) {
+      onChange(null)
+      setOpen(false)
+      return
+    }
+    if (parsedDraft) {
+      onChange(parsedDraft)
+      setOpen(false)
+    }
+    // invalid: keep open, red border shows
+  }, [draft, parsedDraft, onChange])
+
   return (
-    <input
-      ref={inputRef}
-      type="text"
-      value={inputValue}
-      onChange={handleChange}
-      onBlur={handleBlur}
-      onKeyDown={handleKeyDown}
-      aria-label={tPhaseF('phaseF.componentsNoteInfoSectionEditorsDateeditor.ddMmYyyy')}
-      placeholder={tPhaseF('phaseF.componentsNoteInfoSectionEditorsDateeditor.ddMmYyyy')}
-      className={cn(
-        'w-full bg-transparent p-0',
-        'text-[13px] text-foreground',
-        'placeholder:text-muted-foreground/30',
-        'outline-none focus:ring-0 shadow-none',
-        // Red border + background when format is invalid
-        !isValidFormat && 'border border-red-500 bg-red-500/10 rounded px-1 -mx-1'
-      )}
-    />
+    <Popover open={open} onOpenChange={handleOpenChange}>
+      <PopoverTrigger asChild>
+        <button type="button" className="w-full text-start text-[13px] leading-4 text-foreground">
+          {value ? (
+            formatDate(value, dateFormat)
+          ) : (
+            <span className="text-text-tertiary">{t('properties.empty')}</span>
+          )}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-[240px] p-2">
+        <Input
+          autoFocus
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              commitText()
+            }
+          }}
+          aria-label={dateFormat}
+          placeholder={dateFormat}
+          className={cn('h-7', !isValidFormat && 'border-red-500 bg-red-500/10')}
+        />
+        <DatePickerCalendar
+          selected={value ?? undefined}
+          onSelect={(d) => {
+            if (d) {
+              onChange(d)
+              setOpen(false)
+            }
+          }}
+          weekStartsOn={weekStartsOn}
+          className="pt-2"
+        />
+      </PopoverContent>
+    </Popover>
   )
 }

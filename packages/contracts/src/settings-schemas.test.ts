@@ -155,6 +155,14 @@ describe('GeneralSettingsSchema', () => {
     expect(result.success).toBe(false)
   })
 
+  it('rejects invalid dateFormat enum', () => {
+    const result = GeneralSettingsSchema.safeParse({
+      ...GENERAL_SETTINGS_DEFAULTS,
+      dateFormat: 'MMDDYYYY'
+    })
+    expect(result.success).toBe(false)
+  })
+
   it('rejects missing required boolean field', () => {
     const { startOnBoot: _omit, ...rest } = GENERAL_SETTINGS_DEFAULTS
     const result = GeneralSettingsSchema.safeParse(rest)

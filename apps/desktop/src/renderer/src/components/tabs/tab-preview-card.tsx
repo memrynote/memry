@@ -1,7 +1,8 @@
 import { memo } from 'react'
 import type { WikiLinkPreview } from '@/services/notes-service'
 import { getTagColors, withAlpha } from '../note/tags-row/tag-colors'
-import { format } from 'date-fns'
+import { formatDate } from '@/lib/format-date'
+import { useDateFormat } from '@/hooks/use-date-format'
 import { FileText } from '@/lib/icons'
 import { useT } from '@memry/i18n/renderer'
 
@@ -17,6 +18,7 @@ export const TabPreviewCard = memo(function TabPreviewCard({
   isLoading = false
 }: TabPreviewCardProps) {
   const { t: tPhaseF } = useT('common')
+  const dateFormat = useDateFormat()
   if (isLoading) {
     return (
       <div data-testid="tab-preview-skeleton" className="flex flex-col gap-2 p-3.5">
@@ -93,7 +95,7 @@ export const TabPreviewCard = memo(function TabPreviewCard({
 
       <div className="flex justify-end">
         <span className="text-[11px]/3.5" style={{ color: 'var(--text-tertiary)' }}>
-          {format(new Date(preview.createdAt), 'MMM d, yyyy')}
+          {formatDate(new Date(preview.createdAt), dateFormat)}
         </span>
       </div>
     </div>

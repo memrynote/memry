@@ -118,6 +118,14 @@ export function GeneralSettings() {
     [t, updateGeneralSettings]
   )
 
+  const handleDateFormatChange = useCallback(
+    async (value: 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY-MM-DD' | 'DD.MM.YYYY') => {
+      const success = await updateGeneralSettings({ dateFormat: value })
+      if (!success) toast.error(t('general.dateFormat.error'))
+    },
+    [t, updateGeneralSettings]
+  )
+
   const handleLocaleChange = useCallback(
     async (locale: Locale) => {
       setIsChangingLocale(true)
@@ -280,6 +288,38 @@ export function GeneralSettings() {
             <SelectContent>
               <SelectItem value="12h">{t('general.clockFormat.options.12h')}</SelectItem>
               <SelectItem value="24h">{t('general.clockFormat.options.24h')}</SelectItem>
+            </SelectContent>
+          </Select>
+        </SettingRow>
+
+        <SettingRow
+          label={t('general.dateFormat.label')}
+          description={t('general.dateFormat.description')}
+        >
+          <Select
+            value={generalSettings.dateFormat}
+            onValueChange={(value) =>
+              void handleDateFormatChange(
+                value as 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY-MM-DD' | 'DD.MM.YYYY'
+              )
+            }
+          >
+            <SelectTrigger className={COMPACT_SELECT}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="MM/DD/YYYY">
+                {t('general.dateFormat.options.MM/DD/YYYY')}
+              </SelectItem>
+              <SelectItem value="DD/MM/YYYY">
+                {t('general.dateFormat.options.DD/MM/YYYY')}
+              </SelectItem>
+              <SelectItem value="YYYY-MM-DD">
+                {t('general.dateFormat.options.YYYY-MM-DD')}
+              </SelectItem>
+              <SelectItem value="DD.MM.YYYY">
+                {t('general.dateFormat.options.DD.MM.YYYY')}
+              </SelectItem>
             </SelectContent>
           </Select>
         </SettingRow>

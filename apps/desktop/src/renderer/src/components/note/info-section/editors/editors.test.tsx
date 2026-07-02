@@ -70,6 +70,31 @@ vi.mock('@/components/ui/picker', () => {
   }
 })
 
+// DateEditor is self-managed via Radix Popover; mock it (like the picker) so its
+// content renders in jsdom, and stub the settings hooks it reads.
+vi.mock('@/hooks/use-date-format', () => ({ useDateFormat: () => 'DD.MM.YYYY' }))
+
+vi.mock('@/hooks/use-task-preferences', () => ({
+  useTaskPreferences: () => ({
+    settings: {
+      defaultProjectId: null,
+      defaultSortOrder: 'manual',
+      weekStartDay: 'monday',
+      staleInboxDays: 7
+    },
+    isLoading: false,
+    error: null,
+    updateSettings: () => Promise.resolve(true)
+  })
+}))
+
+vi.mock('@/components/ui/popover', () => ({
+  Popover: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  PopoverTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  PopoverContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  PopoverAnchor: ({ children }: { children: React.ReactNode }) => <div>{children}</div>
+}))
+
 const options = [
   { value: 'Todo', color: 'stone' },
   { value: 'Done', color: 'green' }
@@ -119,10 +144,8 @@ describe('note info property editors', () => {
     fireEvent.blur(numberInput)
     expect(onNumberChange).toHaveBeenCalledWith(-4.5)
 
-    rerender(<DateEditor value={null} onChange={onDateChange} onBlur={onBlur} autoFocus={false} />)
-    const dateInput = screen.getByPlaceholderText(
-      'phaseF.componentsNoteInfoSectionEditorsDateeditor.ddMmYyyy'
-    )
+    rerender(<DateEditor value={null} onChange={onDateChange} defaultOpen />)
+    const dateInput = screen.getByPlaceholderText('DD.MM.YYYY')
     fireEvent.change(dateInput, { target: { value: '31.02.2026' } })
     fireEvent.keyDown(dateInput, { key: 'Enter' })
     expect(onDateChange).not.toHaveBeenCalled()

@@ -14,7 +14,6 @@ import {
   Star,
   type AppIcon
 } from '@/lib/icons'
-import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { Property } from './types'
 import {
@@ -69,13 +68,6 @@ function PropertyValueDisplay({ property }: { property: Property }) {
   }
 
   switch (property.type) {
-    case 'date':
-      return (
-        <span className="text-[13px] text-foreground font-sans leading-4">
-          {format(new Date(value as string | number | Date), 'dd.MM.yyyy')}
-        </span>
-      )
-
     case 'url':
       return (
         <span className="text-[13px] text-tint font-sans leading-4 truncate max-w-[200px] hover:underline">
@@ -120,15 +112,6 @@ function PropertyValueEditor({
         />
       )
 
-    case 'date':
-      return (
-        <DateEditor
-          value={property.value ? new Date(property.value as string | number | Date) : null}
-          onChange={(date) => onValueChange(date?.toISOString() ?? null)}
-          onBlur={onEndEdit}
-        />
-      )
-
     case 'url':
       return (
         <UrlEditor
@@ -150,6 +133,11 @@ function PropertyValueEditor({
 }
 
 const SELECT_TYPES = new Set(['select', 'multiselect', 'status'])
+
+// Types that manage their own popup/toggle and never use the inline text-edit
+// (isEditing) path — so their type icon must not show the editing tint.
+const isAlwaysInteractiveType = (type: string): boolean =>
+  type === 'checkbox' || type === 'date' || SELECT_TYPES.has(type)
 
 function SelectPropertyRenderer({
   property,
@@ -273,6 +261,16 @@ function PropertyValueRenderer({
     )
   }
 
+  if (property.type === 'date') {
+    return (
+      <DateEditor
+        value={property.value ? new Date(property.value as string | number | Date) : null}
+        onChange={(date) => onValueChange(date?.toISOString() ?? null)}
+        defaultOpen={autoOpen}
+      />
+    )
+  }
+
   if (isEditing) {
     return (
       <PropertyValueEditor
@@ -307,9 +305,7 @@ export function PropertyRow({
 }: PropertyRowProps) {
   const { t } = useT('notes')
   const { isEnabled, setEnabled } = useCalendarProperties()
-  const [isEditing, setIsEditing] = useState(
-    autoFocus && property.type !== 'checkbox' && !SELECT_TYPES.has(property.type)
-  )
+  const [isEditing, setIsEditing] = useState(autoFocus && !isAlwaysInteractiveType(property.type))
   const [isEditingName, setIsEditingName] = useState(false)
   const [editedName, setEditedName] = useState(property.name)
   const [isHovered, setIsHovered] = useState(false)
@@ -330,7 +326,7 @@ export function PropertyRow({
 
   const showDragHandle =
     isDragEnabled && !isEditingName && !isEditing && (isNameHovered || isDragging)
-  const isAlwaysInteractive = property.type === 'checkbox' || SELECT_TYPES.has(property.type)
+  const isAlwaysInteractive = isAlwaysInteractiveType(property.type)
   const PropertyTypeIcon = PROPERTY_TYPE_ICONS[property.type] ?? Type
 
   // Handle autoFocus - start editing when mounted with autoFocus. Computed

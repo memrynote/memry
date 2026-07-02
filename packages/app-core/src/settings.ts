@@ -67,7 +67,8 @@ const settingsGroupDefaults: Record<SettingsGroupName, Record<string, unknown>> 
     language: 'en',
     onboardingCompleted: false,
     createInSelectedFolder: true,
-    clockFormat: '12h'
+    clockFormat: '12h',
+    dateFormat: 'DD.MM.YYYY'
   },
   editor: {
     width: 'medium',
