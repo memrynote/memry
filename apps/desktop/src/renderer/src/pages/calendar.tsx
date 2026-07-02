@@ -215,8 +215,13 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     typeof activeTab?.viewState?.focusDate === 'string' ? activeTab.viewState.focusDate : null
   const calendarFocusToken =
     typeof activeTab?.viewState?.focusedAt === 'number' ? activeTab.viewState.focusedAt : null
+  const calendarCreateEventToken =
+    typeof activeTab?.viewState?.createEventAt === 'number'
+      ? activeTab.viewState.createEventAt
+      : null
   const consumedCalendarNavigationRef = useRef<number | null>(null)
   const openedCalendarFocusRef = useRef<number | null>(null)
+  const consumedCreateEventRef = useRef<number | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [pendingPromote, setPendingPromote] = useState<{
     item: CalendarProjectionItem
@@ -339,6 +344,26 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     })
   }, [calendarFocusEventId, calendarFocusToken, filteredItems, rangeQuery.isLoading])
   /* eslint-enable react-you-might-not-need-an-effect/no-derived-state, react-you-might-not-need-an-effect/no-event-handler, react-you-might-not-need-an-effect/no-chain-state-updates */
+
+  // Sidebar "Calendar" click asks for the new-event popover (same as the toolbar +).
+  // The nonce re-fires this on every click, even when the tab is already open.
+  useEffect(() => {
+    if (calendarCreateEventToken === null) return
+    if (consumedCreateEventRef.current === calendarCreateEventToken) return
+
+    consumedCreateEventRef.current = calendarCreateEventToken
+    setPopoverState({
+      mode: 'create',
+      eventId: null,
+      draft: createDraftFromAnchor(anchorDate),
+      anchorRect: {
+        x: window.innerWidth / 2,
+        y: Math.max(120, window.innerHeight / 3),
+        width: 1,
+        height: 1
+      }
+    })
+  }, [anchorDate, calendarCreateEventToken])
 
   const handlePrevious = () => {
     setAnchorDate((current) => {

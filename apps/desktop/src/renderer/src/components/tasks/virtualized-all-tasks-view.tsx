@@ -47,6 +47,8 @@ interface VirtualizedAllTasksViewProps {
       projectId: string | null
     }
   ) => void
+  /** Focus the toolbar quick-add input (empty-state Add task button). */
+  onFocusQuickAdd?: () => void
   className?: string
   isSelectionMode?: boolean
   selectedIds?: Set<string>
@@ -232,6 +234,7 @@ export const VirtualizedAllTasksView = ({
   onTaskClick,
   onNoteClick,
   onQuickAdd,
+  onFocusQuickAdd,
   className,
   isSelectionMode = false,
   selectedIds,
@@ -359,7 +362,10 @@ export const VirtualizedAllTasksView = ({
   if (isEmpty) {
     return (
       <div className={cn('flex-1 overflow-auto pt-4', className)}>
-        <TaskEmptyState variant="all" onAddTask={() => onQuickAdd('New Task')} />
+        <TaskEmptyState
+          variant="all"
+          onAddTask={onFocusQuickAdd ?? (() => onQuickAdd('New Task'))}
+        />
       </div>
     )
   }

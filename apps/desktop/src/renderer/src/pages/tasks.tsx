@@ -256,6 +256,18 @@ export const TasksPage = ({
     [updateTaskViewState]
   )
 
+  // Quick-add focus: viewState.focusQuickAddAt is the single source of truth, fed to
+  // QuickAddInput.focusSignal. Both the sidebar "Tasks" click and the empty-state
+  // "Add task" button stamp a fresh timestamp, so the input refocuses each time.
+  const focusQuickAddSignal =
+    typeof taskTabViewState.focusQuickAddAt === 'number'
+      ? taskTabViewState.focusQuickAddAt
+      : undefined
+  const focusQuickAdd = useCallback(
+    () => updateTaskViewState({ focusQuickAddAt: Date.now() }),
+    [updateTaskViewState]
+  )
+
   // Saved filters
   const {
     savedFilters,
@@ -903,6 +915,7 @@ export const TasksPage = ({
               onOpenModal={handleOpenAddTaskModal}
               projects={projects}
               projectColor={quickAddProjectColor}
+              focusSignal={focusQuickAddSignal}
             />
 
             {/* Filter Button */}
@@ -1065,6 +1078,7 @@ export const TasksPage = ({
                 onUpdateTask={handleUpdateTask}
                 onToggleSubtaskComplete={subtaskManagement.handleCompleteSubtask}
                 onQuickAdd={handleQuickAdd}
+                onFocusQuickAdd={focusQuickAdd}
                 onTaskClick={handleTaskClick}
                 onNoteClick={(...args) => void handleNoteClick(...args)}
                 selectedTaskId={detailTaskId}
@@ -1102,6 +1116,7 @@ export const TasksPage = ({
                   onUpdateTask={handleUpdateTask}
                   onToggleSubtaskComplete={subtaskManagement.handleCompleteSubtask}
                   onQuickAdd={handleQuickAdd}
+                  onFocusQuickAdd={focusQuickAdd}
                   onTaskClick={handleTaskClick}
                   onNoteClick={(...args) => void handleNoteClick(...args)}
                   selectedTaskId={detailTaskId}

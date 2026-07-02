@@ -26,6 +26,8 @@ interface TaskListProps {
       projectId: string | null
     }
   ) => void
+  /** Focus the toolbar quick-add input (used by the empty-state Add task button). */
+  onFocusQuickAdd?: () => void
   className?: string
   // Selection props
   isSelectionMode?: boolean
@@ -59,6 +61,7 @@ export const TaskList = ({
   onTaskClick,
   onNoteClick,
   onQuickAdd,
+  onFocusQuickAdd,
   className,
   // Selection props
   isSelectionMode = false,
@@ -113,6 +116,7 @@ export const TaskList = ({
       onTaskClick={onTaskClick}
       onNoteClick={onNoteClick}
       onQuickAdd={onQuickAdd}
+      onFocusQuickAdd={onFocusQuickAdd}
       className={className}
       storageKey={selectedId}
       isSelectionMode={isSelectionMode}

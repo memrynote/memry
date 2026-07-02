@@ -337,4 +337,6 @@ export interface SidebarItem {
   count?: number
   /** Nested children items */
   children?: SidebarItem[]
+  /** Per-view intent delivered on open (e.g. focus input, show popover) */
+  viewState?: Record<string, unknown>
 }

@@ -87,6 +87,10 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   }, [failedJobCount])
 
   const activeTab = useActiveTab()
+  const focusCaptureSignal =
+    typeof activeTab?.viewState?.focusCaptureAt === 'number'
+      ? activeTab.viewState.focusCaptureAt
+      : undefined
   const focusInboxItemId =
     typeof activeTab?.viewState?.focusInboxItemId === 'string'
       ? activeTab.viewState.focusInboxItemId
@@ -171,6 +175,15 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
     [closeArchivedSearch]
   )
 
+  // Sidebar "Inbox" click asks to capture: surface the capture bar (CaptureInput
+  // then focuses itself via focusSignal). Re-fires on every click via the nonce.
+  // Deferred setState matches the focus-item effect above and avoids a cascade render.
+  useEffect(() => {
+    if (!focusCaptureSignal) return
+    const timer = window.setTimeout(() => setCurrentView('inbox'), 0)
+    return () => window.clearTimeout(timer)
+  }, [focusCaptureSignal])
+
   return (
     <>
       <div className="flex h-full flex-col">
@@ -181,6 +194,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
             <CaptureInput
               compact
               density="compact"
+              focusSignal={focusCaptureSignal}
               onCaptureSuccess={() => toast.success(t('view.itemCaptured'))}
               onCaptureError={(errorMsg) => toast.error(errorMsg)}
             />
