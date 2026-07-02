@@ -125,53 +125,45 @@ describe('release notes helpers', () => {
     ].join('\n')
 
     assert.equal(validateHumanizedReleaseMarkdown(markdown), markdown)
-    assert.throws(
-      () => validateHumanizedReleaseMarkdown('## New Features\n- Missing sections'),
-      /Improvements/
-    )
+
+    // A subset of sections is valid — sections with no items are simply omitted.
+    const fixesOnly = '## Fixes\n- 🐛 Crash Fixed — no more crashes on launch.'
+    assert.equal(validateHumanizedReleaseMarkdown(fixesOnly), fixesOnly)
+
     assert.throws(
       () => validateHumanizedReleaseMarkdown(`${markdown}\n\n## Changelog`),
       /Changelog/
     )
     assert.throws(
-      () =>
-        validateHumanizedReleaseMarkdown(
-          [
-            '## New Features',
-            '📑 No bullet dash — nope.',
-            '',
-            '## Improvements',
-            '',
-            '## Fixes'
-          ].join('\n')
-        ),
+      () => validateHumanizedReleaseMarkdown('## New Features\n📑 No bullet dash — nope.'),
       /must be Markdown bullets/
+    )
+    assert.throws(
+      () => validateHumanizedReleaseMarkdown('## Fixes\n- 🐛 Fixed a thing. (#124)'),
+      /must not include a PR or issue number/
     )
     assert.throws(
       () =>
         validateHumanizedReleaseMarkdown(
           [
             '## New Features',
-            '- 📑 Table of Contents Shortcut — Open note outlines faster. (#124)',
             '',
             '## Improvements',
-            '',
-            '## Fixes'
+            '- 🚀 Faster Startup — quicker launches.'
           ].join('\n')
         ),
-      /must not include a PR or issue number/
+      /Omit the empty "New Features" section/
+    )
+    assert.throws(
+      () =>
+        validateHumanizedReleaseMarkdown('## Random Stuff\n- 🚀 Nope — not an allowed section.'),
+      /Unexpected release note section/
     )
   })
 
-  it('accepts the no-user-facing-changes fallback shape', () => {
-    const markdown = [
-      '## New Features',
-      '',
-      '## Improvements',
-      '- ✨ General improvements — performance and stability updates.',
-      '',
-      '## Fixes'
-    ].join('\n')
+  it('accepts the no-user-facing-changes fallback shape (single section)', () => {
+    const markdown =
+      '## Improvements\n- ✨ General improvements — performance and stability updates.'
 
     assert.equal(validateHumanizedReleaseMarkdown(markdown), markdown)
   })

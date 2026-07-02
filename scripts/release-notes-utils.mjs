@@ -1,6 +1,6 @@
 export const HUMANIZED_RELEASE_MARKER = 'memry-humanized-release-notes'
 
-const requiredHumanizedSections = ['New Features', 'Improvements', 'Fixes']
+const allowedHumanizedSections = ['New Features', 'Improvements', 'Fixes']
 
 function stripHtmlComments(text) {
   let output = ''
@@ -130,37 +130,60 @@ export function buildCompareUrl({ compareBaseUrl, finalTag, previousTag }) {
 
 export function validateHumanizedReleaseMarkdown(markdown = '') {
   const trimmed = markdown.trim()
+  const lines = trimmed.split('\n').map((line) => line.trim())
 
-  for (const section of requiredHumanizedSections) {
-    const sectionPattern = new RegExp(`^##\\s+${escapeRegExp(section)}\\s*$`, 'm')
-    if (!sectionPattern.test(trimmed)) {
-      throw new Error(`Humanized release notes must include a "${section}" section`)
+  const sections = []
+  let current = null
+  for (const line of lines) {
+    if (!line) {
+      continue
     }
-  }
 
-  if (/^##\s+Changelog\s*$/im.test(trimmed)) {
-    throw new Error('Humanized release notes must not include the Changelog section')
-  }
+    const heading = /^##\s+(.+?)\s*$/.exec(line)
+    if (heading) {
+      current = { title: heading[1], bullets: [] }
+      sections.push(current)
+      continue
+    }
 
-  const contentLines = trimmed
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .filter((line) => !line.startsWith('## '))
+    if (!current) {
+      throw new Error(`Humanized release notes must start with a section heading: ${line}`)
+    }
 
-  const nonBulletLines = contentLines.filter((line) => !line.startsWith('- '))
-  if (nonBulletLines.length > 0) {
-    throw new Error(
-      `Humanized release note items must be Markdown bullets starting with "- ": ${nonBulletLines[0]}`
-    )
-  }
-
-  const bulletLines = contentLines.filter((line) => line.startsWith('- '))
-  for (const line of bulletLines) {
-    if (/#\d+\b/.test(line)) {
+    if (!line.startsWith('- ')) {
       throw new Error(
-        `Humanized release note bullet must not include a PR or issue number: ${line}`
+        `Humanized release note items must be Markdown bullets starting with "- ": ${line}`
       )
+    }
+
+    current.bullets.push(line)
+  }
+
+  if (sections.length === 0) {
+    throw new Error('Humanized release notes must include at least one section')
+  }
+
+  for (const section of sections) {
+    if (section.title === 'Changelog') {
+      throw new Error('Humanized release notes must not include the Changelog section')
+    }
+
+    if (!allowedHumanizedSections.includes(section.title)) {
+      throw new Error(`Unexpected release note section: ${section.title}`)
+    }
+
+    if (section.bullets.length === 0) {
+      throw new Error(
+        `Omit the empty "${section.title}" section instead of leaving it with no items`
+      )
+    }
+
+    for (const bullet of section.bullets) {
+      if (/#\d+\b/.test(bullet)) {
+        throw new Error(
+          `Humanized release note bullet must not include a PR or issue number: ${bullet}`
+        )
+      }
     }
   }
 
@@ -223,12 +246,12 @@ export function buildReleaseNotesPrompt({ finalTag, pullRequests }) {
     '- Keep each bullet to one sentence.',
     '- Every release-note item must be a Markdown bullet line starting with "- ".',
     '- Start every bullet with one relevant emoji, then a concise title, an em dash, and the explanation.',
-    '- Use exactly these sections: ## New Features, ## Improvements, ## Fixes.',
-    '- Leave a section empty if no provided change belongs there.',
-    '- If no change is user-facing, keep all three headings and populate only "## Improvements" with a single bullet "- ✨ General improvements — performance and stability updates.", leaving "## New Features" and "## Fixes" with no bullets.',
+    '- Group items under these headings, in this order: ## New Features, ## Improvements, ## Fixes.',
+    '- Include a heading only when it has at least one item. Omit any heading that would be empty.',
+    '- If no change is user-facing, output a single "## Improvements" section with one bullet "- ✨ General improvements — performance and stability updates." and no other headings.',
     '- Do not include a Changelog section.',
     '- Return Markdown only. Do not wrap the answer in a code fence.',
-    '- Begin the response with the "## New Features" heading. Add no greeting, preamble, or closing remarks.',
+    '- Start the response with the first non-empty heading. Add no greeting, preamble, or closing remarks.',
     '',
     'Input JSON:',
     JSON.stringify(input, null, 2)
@@ -344,8 +367,4 @@ function readRequiredValue(argv, index, flag) {
     throw new Error(`${flag} requires a value`)
   }
   return value
-}
-
-function escapeRegExp(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
