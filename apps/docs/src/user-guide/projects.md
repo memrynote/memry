@@ -29,6 +29,8 @@ Each project owns its own ordered list of statuses. A status has:
 
 Status types matter for cross-project views: "All Tasks → kanban grouped by status" maps `memrynote's status type`, not raw status names.
 
+The built-in **Inbox** project ships with `To Do / In Progress / Done` by default, so quick-captured tasks land in the same three lanes as any project you create.
+
 ### Editing Statuses
 
 Open the project header menu and choose **Edit statuses**. From there you can:
