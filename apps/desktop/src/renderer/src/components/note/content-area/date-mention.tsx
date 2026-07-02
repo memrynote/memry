@@ -8,6 +8,7 @@ import {
   type RemindOffset
 } from '@memry/shared/date-mention'
 import { formatTimeOfDay, type ClockFormat } from '@/lib/time-format'
+import { getWeekStartsOn } from '@/lib/week-start'
 
 // Inline alarm icon (raw DOM render, so SVG markup rather than the
 // React icon component). Only reminder pills show it; a date-only pill renders
@@ -19,14 +20,13 @@ function startOfDay(d: Date): number {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
 }
 
-// Pill prefs are pushed in from React (useDateMentionPrefs) because the inline
-// content renders as raw DOM with no hook/settings access. weekStartsOn: 0 =
-// Sunday, 1 = Monday. clockFormat undefined → OS-locale time (the fallback).
-let prefWeekStartsOn: 0 | 1 = 1
+// Clock format is pushed in from React (useDateMentionPrefs) because the inline
+// content renders as raw DOM with no hook/settings access. clockFormat undefined
+// → OS-locale time (the fallback). Week start comes from the global cache
+// (getWeekStartsOn): 0 = Sunday, 1 = Monday.
 let prefClockFormat: ClockFormat | undefined
 
-export function setDateMentionPrefs(p: { weekStartsOn?: 0 | 1; clockFormat?: ClockFormat }): void {
-  if (p.weekStartsOn !== undefined) prefWeekStartsOn = p.weekStartsOn
+export function setDateMentionPrefs(p: { clockFormat?: ClockFormat }): void {
   if (p.clockFormat !== undefined) prefClockFormat = p.clockFormat
 }
 
@@ -74,7 +74,7 @@ export function formatDateMentionLabel(
   opts: DateMentionLabelOptions = {}
 ): string {
   const now = opts.now ?? new Date()
-  const weekStartsOn = opts.weekStartsOn ?? prefWeekStartsOn
+  const weekStartsOn = opts.weekStartsOn ?? getWeekStartsOn()
   const systemClock = opts.clockFormat ?? prefClockFormat
   // A per-block 12h/24h override wins; 'system' (and unset) inherit the setting.
   const clockFormat: ClockFormat | undefined =

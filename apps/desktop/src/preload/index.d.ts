@@ -1288,7 +1288,6 @@ export interface EditorSettingsDTO {
 export interface TaskSettingsDTO {
   defaultProjectId: string | null
   defaultSortOrder: 'manual' | 'dueDate' | 'priority' | 'createdAt'
-  weekStartDay: 'sunday' | 'monday'
   staleInboxDays: number
 }
 

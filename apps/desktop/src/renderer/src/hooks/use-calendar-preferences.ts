@@ -88,3 +88,13 @@ export function resolveDayCellClickBehavior(
   }
   return settings.dayCellClickBehavior
 }
+
+export function weekStartsOnFromSettings(settings: CalendarSettings): 0 | 1 {
+  return settings.weekStartDay === 'sunday' ? 0 : 1
+}
+
+// Reactive first-day-of-week for calendar UI. 0 = Sunday, 1 = Monday.
+export function useWeekStartsOn(): 0 | 1 {
+  const { settings } = useCalendarPreferences()
+  return weekStartsOnFromSettings(settings)
+}

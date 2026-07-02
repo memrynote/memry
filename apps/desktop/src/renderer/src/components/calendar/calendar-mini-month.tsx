@@ -5,17 +5,14 @@ import { ChevronLeft, ChevronRight } from '@/lib/icons'
 import {
   addLocalMonths,
   getMonthGridDays,
+  getWeekdayLabels,
   isToday,
   isSameMonth,
   parseLocalDate,
   toLocalDateKey
 } from './date-utils'
+import { useWeekStartsOn } from '@/hooks/use-calendar-preferences'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
-
-function getWeekdayHeaders(locale: string): string[] {
-  const formatter = new Intl.DateTimeFormat(locale, { weekday: 'short' })
-  return Array.from({ length: 7 }, (_, i) => formatter.format(new Date(2020, 5, 7 + i)))
-}
 
 interface CalendarMiniMonthProps {
   anchorDate: string
@@ -31,14 +28,18 @@ export function CalendarMiniMonth({
   onMonthChange
 }: CalendarMiniMonthProps): React.JSX.Element {
   const { t, i18n } = useT('calendar')
+  const weekStartsOn = useWeekStartsOn()
   const date = parseLocalDate(anchorDate)
   const monthLabel = new Intl.DateTimeFormat(i18n.language, {
     month: 'long',
     year: 'numeric'
   }).format(date)
-  const dayHeaders = useMemo(() => getWeekdayHeaders(i18n.language), [i18n.language])
+  const dayHeaders = useMemo(
+    () => getWeekdayLabels(i18n.language, weekStartsOn),
+    [i18n.language, weekStartsOn]
+  )
 
-  const gridDays = getMonthGridDays(anchorDate)
+  const gridDays = getMonthGridDays(anchorDate, weekStartsOn)
   const daysWithEvents = new Set(items.map((item) => toLocalDateKey(item.startAt)))
 
   return (

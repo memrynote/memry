@@ -5,13 +5,15 @@ import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { formatTimeOfDay } from '@/lib/time-format'
 import { cn } from '@/lib/utils'
 import {
-  getMonthGridDaysMondayStart,
+  getMonthGridDaysFixed,
+  getWeekdayLabels,
   isToday,
   isSameMonth,
   parseLocalDate,
   toLocalDateKey,
   toLocalDateString
 } from './date-utils'
+import { useWeekStartsOn } from '@/hooks/use-calendar-preferences'
 import { EVENT_TYPE_COLORS } from '@/lib/event-type-colors'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
 import type { CalendarWorkspaceView } from './calendar-toolbar'
@@ -25,11 +27,6 @@ function formatPopoverDate(day: string, locale: string): string {
     month: 'long',
     day: 'numeric'
   }).format(parseLocalDate(day))
-}
-
-function getMondayWeekdayHeaders(locale: string): string[] {
-  const formatter = new Intl.DateTimeFormat(locale, { weekday: 'narrow' })
-  return Array.from({ length: 7 }, (_, i) => formatter.format(new Date(2020, 5, 1 + i)))
 }
 
 interface CalendarYearViewProps {
@@ -51,6 +48,7 @@ export function CalendarYearView({
     settings: { clockFormat }
   } = useGeneralSettings()
   const { t, i18n } = useT('calendar')
+  const weekStartsOn = useWeekStartsOn()
   const [popoverDay, setPopoverDay] = useState<string | null>(null)
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -75,12 +73,15 @@ export function CalendarYearView({
         return {
           monthAnchor,
           label: new Intl.DateTimeFormat(i18n.language, { month: 'long' }).format(monthDate),
-          gridDays: getMonthGridDaysMondayStart(monthAnchor)
+          gridDays: getMonthGridDaysFixed(monthAnchor, weekStartsOn)
         }
       }),
-    [i18n.language, year]
+    [i18n.language, year, weekStartsOn]
   )
-  const dayHeaders = useMemo(() => getMondayWeekdayHeaders(i18n.language), [i18n.language])
+  const dayHeaders = useMemo(
+    () => getWeekdayLabels(i18n.language, weekStartsOn, 'narrow'),
+    [i18n.language, weekStartsOn]
+  )
 
   const itemsByDay = useMemo(() => {
     const map = new Map<string, CalendarProjectionItem[]>()
@@ -215,7 +216,7 @@ export function CalendarYearView({
                   <button
                     key={item.projectionId}
                     type="button"
-                    className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-surface-active"
+                    className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-start hover:bg-surface-active"
                     onClick={(event) => {
                       const rect = event.currentTarget.getBoundingClientRect()
                       onSelectItem?.(item, {

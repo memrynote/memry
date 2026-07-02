@@ -76,7 +76,6 @@ const settingsGroupDefaults: Record<SettingsGroupName, Record<string, unknown>> 
   tasks: {
     defaultProjectId: null,
     defaultSortOrder: 'manual',
-    weekStartDay: 'monday',
     staleInboxDays: 7
   },
   keyboard: {
@@ -102,7 +101,8 @@ const settingsGroupDefaults: Record<SettingsGroupName, Record<string, unknown>> 
   },
   calendar: {
     dayCellClickBehavior: 'journal',
-    calendarPageClickOverride: 'calendar'
+    calendarPageClickOverride: 'calendar',
+    weekStartDay: 'monday'
   },
   'calendar.google': {
     defaultTargetCalendarId: null,

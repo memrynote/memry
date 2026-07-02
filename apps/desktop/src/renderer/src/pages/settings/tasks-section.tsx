@@ -7,7 +7,6 @@ import {
   SelectValue
 } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useTaskPreferences } from '@/hooks/use-task-preferences'
 import { useTasksContext } from '@/contexts/tasks'
 import { toast } from 'sonner'
@@ -47,16 +46,6 @@ export function TasksSettings() {
       const sortOrder = value as 'manual' | 'dueDate' | 'priority' | 'createdAt'
       const success = await updateSettings({ defaultSortOrder: sortOrder })
       if (!success) toast.error(t('tasks.sortOrder.error'))
-    },
-    [t, updateSettings]
-  )
-
-  const handleWeekStartChange = useCallback(
-    async (value: string) => {
-      if (!value) return
-      const weekStart = value as 'sunday' | 'monday'
-      const success = await updateSettings({ weekStartDay: weekStart })
-      if (!success) toast.error(t('tasks.weekStart.error'))
     },
     [t, updateSettings]
   )
@@ -131,35 +120,6 @@ export function TasksSettings() {
               ))}
             </SelectContent>
           </Select>
-        </SettingRow>
-      </SettingsGroup>
-
-      <SettingsGroup label={t('tasks.groups.calendar')}>
-        <SettingRow
-          label={t('tasks.weekStart.label')}
-          description={t('tasks.weekStart.description')}
-        >
-          <ToggleGroup
-            type="single"
-            value={settings.weekStartDay}
-            onValueChange={(...args) => void handleWeekStartChange(...args)}
-            className="gap-0 rounded-md border border-border overflow-clip"
-          >
-            <ToggleGroupItem
-              value="sunday"
-              aria-label={t('tasks.weekStart.options.sunday')}
-              className="rounded-none border-none px-3 h-7 text-xs/4 font-medium data-[state=on]:bg-[var(--tint)] data-[state=on]:text-white"
-            >
-              {t('tasks.weekStart.options.sunday')}
-            </ToggleGroupItem>
-            <ToggleGroupItem
-              value="monday"
-              aria-label={t('tasks.weekStart.options.monday')}
-              className="rounded-none border-none border-s border-border px-3 h-7 text-xs/4 font-medium data-[state=on]:bg-[var(--tint)] data-[state=on]:text-white"
-            >
-              {t('tasks.weekStart.options.monday')}
-            </ToggleGroupItem>
-          </ToggleGroup>
         </SettingRow>
       </SettingsGroup>
 

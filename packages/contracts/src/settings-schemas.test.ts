@@ -36,6 +36,8 @@ import {
   TestConnectionResultSchema,
   CalendarGoogleSettingsSchema,
   CALENDAR_GOOGLE_SETTINGS_DEFAULTS,
+  CalendarSettingsSchema,
+  CALENDAR_SETTINGS_DEFAULTS,
   DEFAULT_ACCENT_COLOR
 } from './settings-schemas'
 
@@ -216,14 +218,6 @@ describe('TaskSettingsSchema', () => {
     }
   })
 
-  it('rejects invalid weekStartDay', () => {
-    const result = TaskSettingsSchema.safeParse({
-      ...TASK_SETTINGS_DEFAULTS,
-      weekStartDay: 'wednesday'
-    })
-    expect(result.success).toBe(false)
-  })
-
   it('rejects staleInboxDays below 1', () => {
     const result = TaskSettingsSchema.safeParse({
       ...TASK_SETTINGS_DEFAULTS,
@@ -244,6 +238,21 @@ describe('TaskSettingsSchema', () => {
     const result = TaskSettingsSchema.safeParse({
       ...TASK_SETTINGS_DEFAULTS,
       staleInboxDays: 5.5
+    })
+    expect(result.success).toBe(false)
+  })
+})
+
+describe('CalendarSettingsSchema', () => {
+  it('accepts the shipped default payload', () => {
+    const result = CalendarSettingsSchema.safeParse(CALENDAR_SETTINGS_DEFAULTS)
+    expect(result.success).toBe(true)
+  })
+
+  it('rejects invalid weekStartDay', () => {
+    const result = CalendarSettingsSchema.safeParse({
+      ...CALENDAR_SETTINGS_DEFAULTS,
+      weekStartDay: 'wednesday'
     })
     expect(result.success).toBe(false)
   })

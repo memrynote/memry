@@ -56,6 +56,7 @@ import { VaultOnboarding } from '@/components/vault-onboarding'
 import { UpdatingScreen } from '@/components/updating-screen'
 import { useAppUpdater } from '@/hooks/use-app-updater'
 import { useThemeSync } from '@/hooks/use-theme-sync'
+import { useWeekStartSync } from '@/hooks/use-week-start-sync'
 import { trackTelemetry } from '@/lib/telemetry'
 import type { TelemetrySurface } from '@memry/contracts/telemetry-api'
 import { useActiveTab } from '@/contexts/tabs'
@@ -92,6 +93,7 @@ export type AppPage = BasePage | 'tasks' | 'home'
 
 function ThemeSyncManager({ children }: { children: React.ReactNode }): React.JSX.Element {
   useThemeSync()
+  useWeekStartSync()
   return <>{children}</>
 }
 

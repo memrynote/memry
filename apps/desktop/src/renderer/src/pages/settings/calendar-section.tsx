@@ -6,6 +6,7 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useCalendarPreferences } from '@/hooks/use-calendar-preferences'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
@@ -50,6 +51,16 @@ export function CalendarSettingsSection() {
     [t, updateSettings]
   )
 
+  const handleWeekStartChange = useCallback(
+    async (value: string) => {
+      if (!value) return
+      const next = value as CalendarSettings['weekStartDay']
+      const success = await updateSettings({ weekStartDay: next })
+      if (!success) toast.error(t('calendar.weekStart.error'))
+    },
+    [t, updateSettings]
+  )
+
   if (isLoading) {
     return (
       <div className="flex flex-col">
@@ -64,6 +75,35 @@ export function CalendarSettingsSection() {
   return (
     <div className="flex flex-col text-xs/4">
       <SettingsHeader title={t('calendar.header.title')} subtitle={t('calendar.header.subtitle')} />
+
+      <SettingsGroup label={t('calendar.groups.weekStart')}>
+        <SettingRow
+          label={t('calendar.weekStart.label')}
+          description={t('calendar.weekStart.description')}
+        >
+          <ToggleGroup
+            type="single"
+            value={settings.weekStartDay}
+            onValueChange={(...args) => void handleWeekStartChange(...args)}
+            className="gap-0 rounded-md border border-border overflow-clip"
+          >
+            <ToggleGroupItem
+              value="sunday"
+              aria-label={t('calendar.weekStart.options.sunday')}
+              className="rounded-none border-none px-3 h-7 text-xs/4 font-medium data-[state=on]:bg-[var(--tint)] data-[state=on]:text-white"
+            >
+              {t('calendar.weekStart.options.sunday')}
+            </ToggleGroupItem>
+            <ToggleGroupItem
+              value="monday"
+              aria-label={t('calendar.weekStart.options.monday')}
+              className="rounded-none border-none border-s border-border px-3 h-7 text-xs/4 font-medium data-[state=on]:bg-[var(--tint)] data-[state=on]:text-white"
+            >
+              {t('calendar.weekStart.options.monday')}
+            </ToggleGroupItem>
+          </ToggleGroup>
+        </SettingRow>
+      </SettingsGroup>
 
       <SettingsGroup label={t('calendar.groups.dayCellClick')}>
         <SettingRow

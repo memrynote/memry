@@ -142,10 +142,6 @@ Show or hide journal sidebar panes:
 - **Default Project** — which project new tasks are assigned to
 - **Default Sort Order** — manual, due date, priority, or created date
 
-### Calendar
-
-**Week Start** — Sunday or Monday.
-
 ### Inbox
 
 **Stale Inbox Days** — number of days a task can sit in the inbox before being flagged stale (1–90).
@@ -153,6 +149,10 @@ Show or hide journal sidebar panes:
 ---
 
 ## Calendar
+
+### Week Start
+
+**Week Start** — Sunday or Monday. Sets the first day of the week everywhere in memrynote: the Calendar month, year, and mini views, the sidebar mini-calendar, task date pickers, task week filters, and relative date labels.
 
 ### Day Cell Click Behavior
 
@@ -317,8 +317,8 @@ Settings persist via Zod schemas in `packages/contracts/settings-schemas.ts`. No
 
 - General: `theme`, `fontSize`, `fontFamily`, `accentColor`, `startOnBoot`, `language`, `clockFormat`, `createInSelectedFolder`
 - Editor: `width`, `toolbarMode`
-- Tasks: `defaultProjectId`, `defaultSortOrder`, `weekStartDay`, `staleInboxDays`
-- Calendar: `dayCellClickBehavior`, `calendarPageClickOverride`
+- Tasks: `defaultProjectId`, `defaultSortOrder`, `staleInboxDays`
+- Calendar: `dayCellClickBehavior`, `calendarPageClickOverride`, `weekStartDay`
 - AI: `enabled`, `provider`, `model`
 - Voice Transcription: `provider`
 - Keyboard Shortcuts: `overrides` (keybinding map), `globalCapture`

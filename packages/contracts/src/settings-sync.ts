@@ -25,10 +25,14 @@ export const SyncedSettingsSchema = z.object({
     .object({
       defaultProjectId: z.string().nullable().optional(),
       defaultSortOrder: z.enum(['manual', 'dueDate', 'priority', 'createdAt']).optional(),
-      weekStartDay: z.enum(['sunday', 'monday']).optional(),
       staleInboxDays: z.number().optional(),
       showCompleted: z.boolean().optional(),
       sortBy: z.string().optional()
+    })
+    .optional(),
+  calendar: z
+    .object({
+      weekStartDay: z.enum(['sunday', 'monday']).optional()
     })
     .optional(),
   keyboard: z
