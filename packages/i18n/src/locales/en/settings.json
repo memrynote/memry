@@ -395,7 +395,8 @@
       "loading": "Loading settings..."
     },
     "groups": {
-      "dayCellClick": "Day Cell Click"
+      "dayCellClick": "Day Cell Click",
+      "notes": "Notes"
     },
     "defaultBehavior": {
       "label": "Default behavior",
@@ -406,6 +407,11 @@
       "label": "Calendar page override",
       "description": "Behavior when the Calendar tab is active (defaults to Open Calendar)",
       "error": "Failed to update calendar page override"
+    },
+    "showNotesOnCalendar": {
+      "label": "Show notes on calendar",
+      "description": "Show every note on the calendar as an all-day item on the day it was created",
+      "error": "Failed to update show notes on calendar"
     },
     "options": {
       "openJournal": "Open Journal",

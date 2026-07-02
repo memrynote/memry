@@ -152,7 +152,8 @@ export default defineConfig(
   {
     files: [
       'apps/desktop/src/main/ipc/notes-handlers.ts',
-      'apps/desktop/src/main/ipc/settings-handlers.ts'
+      'apps/desktop/src/main/ipc/settings-handlers.ts',
+      'apps/desktop/src/main/ipc/calendar-handlers.ts'
     ],
     rules: {
       // TODO(phase-2): drop these overrides once IPC handler files are split (Phase 2 registerCommand rollout)

@@ -26,6 +26,7 @@ import {
   toStartOfLocalDayIso
 } from '@/components/calendar/date-utils'
 import { buildDayDots } from '@/components/calendar/day-dots'
+import { buildDaySummaries } from '@/components/calendar/day-summary'
 import { formatDateToISO, parseISODate, getTodayString } from '@/lib/journal-utils'
 import { useT } from '@memry/i18n/renderer'
 import { useFeatureFlags } from '@/hooks/use-feature-flags'
@@ -177,6 +178,26 @@ function GlobalDayPanelContent({ width }: { width: number }): React.JSX.Element 
     [isEnabled, eventItems]
   )
 
+  // On non-calendar tabs (e.g. Journal) the calendar shows journal-activity dots.
+  // Also surface a notes dot there so days with notes are visible alongside activity.
+  const noteDayDotsData = useMemo(
+    () =>
+      isEnabled('calendar')
+        ? buildDayDots(
+            eventItems.filter(
+              (item) => item.visualType === 'note' || item.visualType === 'note_date'
+            )
+          )
+        : {},
+    [isEnabled, eventItems]
+  )
+
+  // Per-day rollup for the day-cell hover summary (notes/journal/tasks/events/reminders).
+  const daySummaryData = useMemo(
+    () => (isEnabled('calendar') ? buildDaySummaries(eventItems, journalActivityData) : {}),
+    [isEnabled, eventItems, journalActivityData]
+  )
+
   const navigateToJournal = useCallback(
     (date: string) => {
       openTab({
@@ -269,7 +290,8 @@ function GlobalDayPanelContent({ width }: { width: number }): React.JSX.Element 
                   selected={selectedDateObj}
                   onSelect={handleDateSelect}
                   activityData={isCalendarTabActive ? undefined : journalActivityData}
-                  dayDots={isCalendarTabActive ? dayDotsData : undefined}
+                  dayDots={isCalendarTabActive ? dayDotsData : noteDayDotsData}
+                  daySummary={daySummaryData}
                   hoveredEventColor={hoveredEventColor}
                   className="w-full"
                   showWeekNumbers

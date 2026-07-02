@@ -571,6 +571,57 @@ describe('getCalendarRangeProjection', () => {
     expect(items.some((i) => i.sourceType === 'note')).toBe(false)
   })
 
+  it('plots regular notes by their created date when showNotesByCreated is on', () => {
+    indexDbResult.db.run(sql`
+      INSERT INTO note_cache (id, path, title, file_type, created_at, modified_at)
+      VALUES (${'n-created'}, ${'notes/idea.md'}, ${'Idea'}, ${'markdown'}, ${'2026-06-15T09:00:00.000Z'}, ${'2026-06-15T09:00:00.000Z'})
+    `)
+    // Journal entry (date set) must NOT be double-plotted by its created date.
+    indexDbResult.db.run(sql`
+      INSERT INTO note_cache (id, path, title, file_type, date, created_at, modified_at)
+      VALUES (${'j1'}, ${'journal/2026-06-16.md'}, ${'2026-06-16'}, ${'markdown'}, ${'2026-06-16'}, ${'2026-06-16T09:00:00.000Z'}, ${'2026-06-16T09:00:00.000Z'})
+    `)
+
+    const { items } = getCalendarRangeProjection(
+      db as unknown as DataDb,
+      indexDb,
+      {
+        startAt: '2026-06-01T00:00:00.000Z',
+        endAt: '2026-07-01T00:00:00.000Z',
+        includeUnselectedSources: false
+      },
+      [],
+      true
+    )
+
+    const note = items.find((i) => i.projectionId === 'note-created:n-created')
+    expect(note).toBeDefined()
+    expect(note!.sourceType).toBe('note')
+    expect(note!.title).toBe('Idea')
+    expect(note!.isAllDay).toBe(true)
+    expect(items.some((i) => i.projectionId === 'note-created:j1')).toBe(false)
+  })
+
+  it('omits created-date notes when showNotesByCreated is off', () => {
+    indexDbResult.db.run(sql`
+      INSERT INTO note_cache (id, path, title, file_type, created_at, modified_at)
+      VALUES (${'n-created'}, ${'notes/idea.md'}, ${'Idea'}, ${'markdown'}, ${'2026-06-15T09:00:00.000Z'}, ${'2026-06-15T09:00:00.000Z'})
+    `)
+
+    const { items } = getCalendarRangeProjection(
+      db as unknown as DataDb,
+      indexDb,
+      {
+        startAt: '2026-06-01T00:00:00.000Z',
+        endAt: '2026-07-01T00:00:00.000Z',
+        includeUnselectedSources: false
+      },
+      []
+    )
+
+    expect(items.some((i) => i.projectionId.startsWith('note-created:'))).toBe(false)
+  })
+
   it('excludes a note date property that falls outside the query window', () => {
     indexDbResult.db.run(sql`
       INSERT INTO note_cache (id, path, title, file_type, created_at, modified_at)

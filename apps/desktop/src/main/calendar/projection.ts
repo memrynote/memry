@@ -543,11 +543,68 @@ function loadNoteDatePropertyItems(
   })
 }
 
+// When the global "show notes on calendar" setting is on, plot every regular note
+// as an all-day chip on its creation day. Reads the existing created_at instant —
+// nothing is written to the note. Journals (date != null) already appear via their
+// journal date, and non-markdown files are excluded.
+function loadNotesByCreatedDate(
+  indexDb: IndexDb,
+  input: GetCalendarRangeInput
+): CalendarProjectionItem[] {
+  const rows = indexDb
+    .select({
+      id: noteCache.id,
+      title: noteCache.title,
+      createdAt: noteCache.createdAt
+    })
+    .from(noteCache)
+    .where(
+      and(
+        eq(noteCache.fileType, 'markdown'),
+        isNull(noteCache.date),
+        gte(noteCache.createdAt, input.startAt),
+        lt(noteCache.createdAt, input.endAt)
+      )
+    )
+    .all()
+
+  const editability: CalendarProjectionEditability = {
+    canMove: false,
+    canResize: false,
+    canEditText: false,
+    canDelete: false
+  }
+
+  return rows.flatMap((row) => {
+    const dateStr = localDayOfDateValue(row.createdAt)
+    if (dateStr === null) return []
+    return [
+      {
+        projectionId: `note-created:${row.id}`,
+        sourceType: 'note' as const,
+        sourceId: row.id,
+        title: row.title,
+        descriptionPreview: null,
+        startAt: toLocalInstant(dateStr, null),
+        endAt: toLocalAllDayEnd(dateStr),
+        isAllDay: true,
+        timezone: LOCAL_TIMEZONE,
+        visualType: 'note' as const,
+        editability,
+        source: nativeSource('memrynote Notes'),
+        binding: null,
+        snoozeOffsetMinutes: null
+      }
+    ]
+  })
+}
+
 export function getCalendarRangeProjection(
   db: DataDb,
   indexDb: IndexDb,
   input: GetCalendarRangeInput,
-  enabledNames: string[]
+  enabledNames: string[],
+  showNotesByCreated = false
 ): CalendarRangeResponse {
   const items = sortProjectionItems([
     ...loadMemryEvents(db, input),
@@ -556,7 +613,8 @@ export function getCalendarRangeProjection(
     ...loadNoteDateReminderItems(db, indexDb, input),
     ...loadInboxSnoozeItems(db, input),
     ...loadExternalEvents(db, input),
-    ...loadNoteDatePropertyItems(indexDb, enabledNames, input)
+    ...loadNoteDatePropertyItems(indexDb, enabledNames, input),
+    ...(showNotesByCreated ? loadNotesByCreatedDate(indexDb, input) : [])
   ])
 
   return { items }
