@@ -5,6 +5,7 @@ import { KEYCHAIN_ENTRIES } from '@memry/contracts/crypto'
 import { createCrdtSyncAdapter, createSyncAdapterRegistry } from '@memry/sync-core'
 import { syncDevices } from '@memry/db-schema/schema/sync-devices'
 import { getDatabase, type DataDb } from '../database'
+import { isAppShuttingDown } from '../app-shutdown'
 import { createLogger } from '../lib/logger'
 import {
   getDevicePublicKey as deriveDevicePublicKey,
@@ -182,6 +183,11 @@ async function seedExistingCrdtDocs(
 }
 
 export async function startSyncRuntime(): Promise<SyncEngine | null> {
+  // Never spin up (or re-arm) the sync runtime once app shutdown has begun.
+  // In-flight startup work or a late IPC can otherwise restart it mid-shutdown,
+  // right after before-quit already stopped it. Return any existing engine so
+  // callers behave as if the runtime were already up.
+  if (isAppShuttingDown()) return runtime?.engine ?? null
   if (runtime) return runtime.engine
   if (startPromise) return startPromise
 

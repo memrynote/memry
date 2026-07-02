@@ -64,6 +64,7 @@ import {
 } from './sync/certificate-pinning'
 import { getCrdtProvider } from './sync/crdt-provider'
 import { stopSyncRuntime } from './sync/runtime'
+import { beginAppShutdown, isAppShuttingDown } from './app-shutdown'
 import { getValidAccessToken } from './sync/token-manager'
 import { getNoteCacheById } from '@main/database/queries/notes'
 import { getIndexDatabase } from './database/client'
@@ -984,6 +985,13 @@ void app.whenReady().then(async () => {
   // The renderer subscribes to vault status events and updates automatically.
   void autoOpenLastVault()
     .then(async () => {
+      // autoOpenLastVault blocks on the vault's first fullSync; if the user quit
+      // during it, shutdown has already stopped these services — do not re-arm
+      // them here (that was the mid-shutdown capture-server/scheduler restart).
+      if (isAppShuttingDown()) {
+        mainLog.info('skipping post-vault-open startup: app is shutting down')
+        return
+      }
       try {
         checkDueItemsOnStartup()
         startSnoozeScheduler()
@@ -1275,6 +1283,11 @@ app.on('before-quit', (event) => {
   // out, and a closeVault() during cleanup would otherwise flip the UI to the
   // vault picker (isOpen:false) right before the app quits/installs.
   beginVaultShutdown()
+
+  // Latch app shutdown so in-flight startup work (a slow first fullSync inside
+  // autoOpenLastVault) can't re-arm the sync runtime / capture server after the
+  // cleanup below stops them. Must be set before the async cleanup chain yields.
+  beginAppShutdown()
 
   shutdownLog.info('starting graceful shutdown...')
 
