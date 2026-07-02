@@ -85,7 +85,19 @@ if [ "$TARGET" = "electron" ]; then
   fi
 
   echo "[native] rebuilding $MODULES for Electron..."
-  pnpm exec electron-rebuild -f -o "$MODULES"
+  # Run @electron/rebuild's CLI directly with node instead of `pnpm exec`:
+  # pnpm's pre-exec deps-status check can decide to `pnpm install --production`,
+  # which prunes devDependencies — and the build toolchain (electron, vite,
+  # @electron/rebuild itself) lives there. Same technique as build-packaged-app.js.
+  ELECTRON_REBUILD_CLI="$(node -e "
+    const path = require('path')
+    const { createRequire } = require('module')
+    const marker = path.join('@electron', 'rebuild')
+    const main = createRequire(path.join('$APP_ROOT', 'package.json')).resolve('@electron/rebuild')
+    const i = main.lastIndexOf(marker)
+    process.stdout.write(path.join(main.slice(0, i + marker.length), 'lib', 'cli.js'))
+  ")"
+  node "$ELECTRON_REBUILD_CLI" -f -o "$MODULES"
 else
   echo "[native] rebuilding $MODULES for Node $(node -v)..."
   for mod in ${MODULES//,/ }; do
