@@ -33,7 +33,14 @@ describe('database defaults', () => {
       .where(eq(statuses.projectId, 'inbox'))
       .all()
 
-    expect(inboxStatuses).toHaveLength(2)
+    expect(inboxStatuses).toHaveLength(3)
+    expect(inboxStatuses.map((s) => s.name)).toEqual(['To Do', 'In Progress', 'Done'])
+
+    const inProgress = inboxStatuses.find((s) => s.id === 'inbox-in-progress')
+    expect(inProgress).toBeDefined()
+    expect(inProgress?.position).toBe(1)
+    expect(inProgress?.isDone).toBe(false)
+    expect(inProgress?.isDefault).toBe(false)
   })
 
   it('is idempotent', () => {
@@ -48,6 +55,6 @@ describe('database defaults', () => {
       .all()
 
     expect(inboxProjects).toHaveLength(1)
-    expect(inboxStatuses).toHaveLength(2)
+    expect(inboxStatuses).toHaveLength(3)
   })
 })
