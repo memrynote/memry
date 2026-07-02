@@ -21,14 +21,14 @@ describe('telemetry diagnostics', () => {
     trackMainEventMock.mockReset()
   })
 
-  it('emits sanitized main-process errors without raw messages', () => {
-    // #given an error containing private-looking text in the message
+  it('emits a stack for main-process errors but never the raw message', () => {
+    // #given an error whose message embeds a private note path
     const error = new TypeError('failed at /Users/kaan/private-note.md')
 
     // #when tracking the error
     trackMainError('main_process', 'unhandled_exception', error)
 
-    // #then only stable diagnostic metadata is sent
+    // #then stable metadata + a stack (code locations) are sent, never the message
     expect(trackMainEventMock).toHaveBeenCalledWith(
       'app_error_seen',
       expect.objectContaining({
@@ -37,10 +37,14 @@ describe('telemetry diagnostics', () => {
         objectType: 'exception',
         source: 'main_process',
         result: 'failed',
-        errorCode: 'TypeError'
+        errorCode: 'TypeError',
+        error: expect.objectContaining({ stack: expect.stringContaining('at ') })
       })
     )
-    expect(JSON.stringify(trackMainEventMock.mock.calls[0])).not.toContain('private-note')
+    const serialized = JSON.stringify(trackMainEventMock.mock.calls[0])
+    // message header is stripped; home paths in stack frames are scrubbed
+    expect(serialized).not.toContain('private-note')
+    expect(serialized).not.toContain('/Users/')
   })
 
   it('emits structured remote log breadcrumbs', () => {

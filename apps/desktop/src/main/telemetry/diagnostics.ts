@@ -1,4 +1,5 @@
 import type { TelemetryResult } from '@memry/contracts/telemetry-api'
+import { buildErrorDetail } from '@memry/contracts/telemetry-api'
 
 import { trackMainEvent, type TrackMainEventOptions } from './track'
 
@@ -40,7 +41,8 @@ export const trackMainError = (source: string, action: string, error: unknown): 
     objectType: 'exception',
     source: toSafeToken(source, 'main_process'),
     result: 'failed',
-    errorCode: toErrorCode(error)
+    errorCode: toErrorCode(error),
+    error: buildErrorDetail(error)
   })
 }
 

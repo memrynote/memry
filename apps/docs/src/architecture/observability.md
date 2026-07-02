@@ -53,9 +53,12 @@ Recognized surfaces (`TelemetrySurface` in `packages/contracts/telemetry-api`):
 - Identifiers (note IDs, task IDs, project IDs)
 - Search queries
 - Tag names
-- File paths
+- User file paths and note filenames
+- Exception messages (a desktop error message can embed a note title or content)
 
-The contract uses string-typed enums for surfaces and actions; arbitrary strings can't sneak through.
+The contract uses string-typed enums for surfaces and actions; arbitrary strings can't sneak
+through. The one exception is error diagnostics, which additionally ship a redacted **stack trace**
+of code locations (never the message) — see [Error Reporting](#error-reporting).
 
 ## Tracking Pattern
 
@@ -143,13 +146,26 @@ high-frequency editor flushes from inflating event counts.
 
 ## Error Reporting
 
-Desktop error reporting follows the same product telemetry setting. Captured errors include process
-area, component/source, action, phase, and stable error codes. They do not include note content,
-titles, file paths, search text, stack traces, or raw exception messages.
+Desktop error reporting follows the same product telemetry setting. Each captured error ships
+stable metadata — process area, component/source, action, phase, and the error's class name
+(`errorCode`) — plus a **redacted stack trace** and, for React boundaries, the component stack.
 
-Sync-server error reporting is server-side and uses only sanitized routing metadata: method,
-normalized path, route area, source, action, status code, error type, and error code. Dynamic path
-segments and query strings are removed before export.
+The free-form exception **message is never sent**: on the desktop it can embed a note title,
+filename, or content. The stack is reduced to code-location frames only — the leading
+`Name: message` header line is stripped — so a crash shows up as, for example, `TypeError` at
+`pushRecords (…/sync-engine.js:120)`: the source location, never the note. Frame file paths are
+app source/bundle locations (not user files); any home-directory prefix (`/Users/<name>`,
+`C:\Users\<name>`) is rewritten to `~`, and emails, UUIDs, JWTs, and bearer tokens are scrubbed
+from anything that ships.
+
+Sync-server error reporting is server-side. Because the sync server is end-to-end-blind (it only
+ever holds ciphertext), its own error strings are operational and are sent in full — redacted for
+stray identifiers — along with stack frames parsed from the real stack; this is what makes sync
+failures debuggable. Server errors are attributed to the signed-in `userId` (plus device and vault
+ids when present) so a failure can be traced to the account that hit it. Dynamic path segments and
+query strings are normalized away. Expected handled `4xx` responses (e.g. `SYNC_PAYMENT_REQUIRED`)
+are still counted as `server_error_seen` but do not open PostHog `$exception` issues, keeping Error
+Tracking focused on real failures.
 
 ## Server Configuration
 

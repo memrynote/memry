@@ -1,9 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { redactSensitive } from '@memry/contracts/telemetry-api'
+
 import {
   captureBusinessEvent,
   captureServerError,
   captureServerLog,
+  toPostHogExceptionEvent,
   waitUntilWithPostHog
 } from './posthog'
 
@@ -55,13 +58,15 @@ afterEach(() => {
 })
 
 describe('sync-server PostHog capture', () => {
-  it('captures sanitized server errors without raw messages, ids, or query strings', async () => {
+  it('captures server errors with a redacted message, scrubbing raw ids and query strings', async () => {
     // #given a configured PostHog project and an error with sensitive-looking details
     const fetchMock = vi.fn(
       async () => new Response(JSON.stringify({ status: 1 }), { status: 200 })
     )
     vi.stubGlobal('fetch', fetchMock)
-    const error = Object.assign(new Error(`private-note-title ${UUID}`), {
+    // Server-side error message (the sync server is E2E-blind — it only ever holds
+    // ciphertext, so its own error strings are operational, never note content).
+    const error = Object.assign(new Error(`record decode failed ${UUID}`), {
       name: 'QuotaFailure',
       code: 'STORAGE_QUOTA_EXCEEDED',
       statusCode: 507
@@ -119,14 +124,17 @@ describe('sync-server PostHog capture', () => {
       service_name: 'memry-sync-server',
       environment: 'development',
       $exception_type: 'QuotaFailure',
-      $exception_message: 'memry-sync-server:ErrorHandler:request_failed:STORAGE_QUOTA_EXCEEDED'
+      // The server's own message is surfaced (with structured PII redacted) instead
+      // of a synthetic diagnostic string, so the error is debuggable in Error Tracking.
+      $exception_message: 'record decode failed <uuid>'
     })
     expect(exceptionEvent?.properties.$exception_list).toEqual([
       expect.objectContaining({
         type: 'QuotaFailure',
-        value: 'memry-sync-server:ErrorHandler:request_failed:STORAGE_QUOTA_EXCEEDED'
+        value: 'record decode failed <uuid>'
       })
     ])
+    expect(body.batch[0].properties.error_message).toBe('record decode failed <uuid>')
     const logsBody = readPostHogLogsBody()
     expect(logsBody.resourceLogs[0].resource.attributes).toEqual(
       expect.arrayContaining([
@@ -142,9 +150,13 @@ describe('sync-server PostHog capture', () => {
     })
     const payloadText = JSON.stringify(body)
     const logsPayloadText = JSON.stringify(logsBody)
+    // Structured identifiers (raw UUID, path query token) are still scrubbed everywhere.
     expect(payloadText).not.toContain(UUID)
-    expect(payloadText).not.toContain('private-note-title')
     expect(payloadText).not.toContain('secret-token')
+    // The redacted server message text is intentionally present on the event/exception.
+    expect(payloadText).toContain('record decode failed')
+    expect(payloadText).toContain('<uuid>')
+    // Logs keep the synthetic diagnostic body — no raw message or identifiers leak there.
     expect(logsPayloadText).not.toContain(UUID)
     expect(logsPayloadText).not.toContain('private-note-title')
     expect(logsPayloadText).not.toContain('secret-token')
@@ -302,5 +314,94 @@ describe('sync-server PostHog capture', () => {
     })
     expect(JSON.stringify(body)).not.toContain(UUID)
     expect(JSON.stringify(body)).not.toContain('broadcast failed')
+  })
+})
+
+describe('sync-server error detail', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('redactSensitive scrubs emails, uuids, jwts, bearer tokens, and home paths', () => {
+    expect(redactSensitive('user kaan94karaca@gmail.com failed')).toBe('user <email> failed')
+    expect(redactSensitive('id 550e8400-e29b-41d4-a716-446655440000 missing')).toBe(
+      'id <uuid> missing'
+    )
+    expect(redactSensitive('token eyJhbGciOi.eyJzdWIi.SflKxwRJ end')).toBe('token <jwt> end')
+    expect(redactSensitive('Authorization: Bearer abc.def.ghi123')).toContain('Bearer <token>')
+    expect(redactSensitive('at fn (/Users/kaan/vault/note.md:1:1)')).toBe(
+      'at fn (~/vault/note.md:1:1)'
+    )
+  })
+
+  it('parses a real stack trace into $exception frames and keeps the real message', () => {
+    // #given an exception input carrying a real (redacted) V8 stack trace
+    const event = toPostHogExceptionEvent({
+      distinctId: 'user_1',
+      serviceName: 'memry-sync-server',
+      type: 'TypeError',
+      message: 'Cannot read properties of undefined (reading foo)',
+      source: 'sync',
+      action: 'push',
+      handled: false,
+      platform: 'node:javascript',
+      stack:
+        'TypeError: Cannot read properties of undefined (reading foo)\n' +
+        '    at pushRecords (~/apps/sync-server/src/routes/sync.ts:120:15)\n' +
+        '    at async handler (~/apps/sync-server/src/index.ts:88:5)',
+      properties: {}
+    })
+
+    // #then the real message is preserved and frames are parsed (not the synthetic stub)
+    expect(event.properties.$exception_message).toBe(
+      'Cannot read properties of undefined (reading foo)'
+    )
+    const list = event.properties.$exception_list as Array<{
+      value: string
+      stacktrace: { frames: Array<{ filename: string; function: string; lineno: number }> }
+    }>
+    const frames = list[0].stacktrace.frames
+    expect(frames).toHaveLength(2)
+    // V8 lists most-recent first; frames are reversed → deepest call is last
+    expect(frames[frames.length - 1]).toMatchObject({
+      function: 'pushRecords',
+      filename: '~/apps/sync-server/src/routes/sync.ts',
+      lineno: 120
+    })
+  })
+
+  it('attributes errors to the signed-in user and suppresses $exception for expected 4xx', async () => {
+    // #given a configured project and an expected paid-gate rejection for a signed-in user
+    const fetchMock = vi.fn(
+      async () => new Response(JSON.stringify({ status: 1 }), { status: 200 })
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    // #when capturing a handled 402 with a userId
+    await captureServerError(env, {
+      error: new Error('Active sync subscription required'),
+      method: 'POST',
+      path: '/sync/records/push',
+      source: 'ErrorHandler',
+      action: 'request_failed',
+      statusCode: 402,
+      errorCode: 'SYNC_PAYMENT_REQUIRED',
+      handled: true,
+      userId: 'user_paid_1'
+    })
+
+    // #then only the counting event is emitted (no $exception noise) and it is user-attributed
+    const body = readPostHogBody()
+    expect(body.batch).toHaveLength(1)
+    expect(body.batch[0]).toMatchObject({
+      event: 'server_error_seen',
+      distinct_id: 'user_paid_1'
+    })
+    expect(body.batch[0].properties).toMatchObject({
+      error_code: 'SYNC_PAYMENT_REQUIRED',
+      status_code: 402,
+      user_id: 'user_paid_1'
+    })
+    expect(body.batch.find((e) => e.event === '$exception')).toBeUndefined()
   })
 })

@@ -1,4 +1,5 @@
 import type { TelemetryBatch, TelemetryEvent } from '@memry/contracts/telemetry-api'
+import { redactSensitive } from '@memry/contracts/telemetry-api'
 
 import { AppError, ErrorCodes } from '../lib/errors'
 import type { Bindings } from '../types'
@@ -223,6 +224,15 @@ export const toPostHogEvent = (
   addNumberProperty(properties, 'value', metrics.value)
   addNumberProperty(properties, 'client_queue_depth', batch.clientQueueDepth)
 
+  // Desktop error detail: stack frames + component stack only (never a message —
+  // it could contain a note title/content). Re-redact defensively.
+  if (event.error?.stack) {
+    properties.error_stack = redactSensitive(event.error.stack)
+  }
+  if (event.error?.componentStack) {
+    properties.error_component_stack = redactSensitive(event.error.componentStack)
+  }
+
   return {
     event: event.name,
     distinct_id: overrideDistinctId ?? desktopDistinctId(batch, installHash, environment),
@@ -255,6 +265,10 @@ const getStringProperty = (
   return typeof value === 'string' ? value : undefined
 }
 
+// The full stack / component stack belong on the $exception, not on every log
+// line — keep them out of OTLP log attributes to avoid bloating log records.
+const HEAVY_LOG_KEYS = new Set(['error_stack', 'error_component_stack'])
+
 const toPrimitiveLogAttributes = (
   event: PostHogEventPayload
 ): Record<string, PostHogLogAttributeValue> => {
@@ -263,6 +277,7 @@ const toPrimitiveLogAttributes = (
   }
 
   for (const [key, value] of Object.entries(event.properties)) {
+    if (HEAVY_LOG_KEYS.has(key)) continue
     if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
       attributes[key] = value
     }
@@ -300,21 +315,36 @@ const toDesktopLogRecord = (event: PostHogEventPayload): PostHogLogRecordInput |
   }
 }
 
+// Desktop actions that originate from global crash handlers are genuinely
+// unhandled; everything else (React error boundaries, etc.) was caught.
+const UNHANDLED_DESKTOP_ACTIONS = new Set([
+  'window_error',
+  'unhandled_rejection',
+  'uncaught_exception',
+  'boot_failed',
+  'render_process_gone',
+  'child_process_gone'
+])
+
 const toDesktopExceptionEvent = (event: PostHogEventPayload): PostHogEventPayload | null => {
   if (event.event !== 'app_error_seen') return null
   const source = getStringProperty(event.properties, 'source') ?? 'desktop'
   const action = getStringProperty(event.properties, 'action') ?? 'error'
   const errorCode = getStringProperty(event.properties, 'error_code') ?? 'DesktopError'
+  const stack = getStringProperty(event.properties, 'error_stack')
   return toPostHogExceptionEvent({
     distinctId: event.distinct_id,
     timestamp: event.timestamp,
     serviceName: DESKTOP_SERVICE_NAME,
     environment: getStringProperty(event.properties, 'environment'),
     type: errorCode,
+    // Never the message — desktop crash messages can embed note content. The
+    // synthetic label + real stack frames give the code location instead.
     message: `${DESKTOP_SERVICE_NAME}:${source}:${action}:${errorCode}`,
+    stack,
     source,
     action,
-    handled: true,
+    handled: !UNHANDLED_DESKTOP_ACTIONS.has(action),
     platform: source === 'renderer' ? 'web:javascript' : 'node:javascript',
     properties: event.properties
   })

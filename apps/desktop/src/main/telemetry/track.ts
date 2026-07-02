@@ -1,4 +1,5 @@
 import type {
+  TelemetryEvent,
   TelemetryEventName,
   TelemetryResult,
   TelemetrySurface
@@ -27,6 +28,7 @@ export interface TrackMainEventOptions {
     value?: number
   }
   dimensions?: Record<string, string>
+  error?: TelemetryEvent['error']
 }
 
 /**
@@ -48,7 +50,8 @@ export const trackMainEvent = (name: TelemetryEventName, options: TrackMainEvent
       result: options.result,
       errorCode: options.errorCode,
       metrics: options.metrics,
-      dimensions: options.dimensions
+      dimensions: options.dimensions,
+      error: options.error
     })
   } catch (error) {
     logger.warn('Failed to emit telemetry event', { name, error })

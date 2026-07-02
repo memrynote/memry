@@ -15,14 +15,15 @@ describe('renderer telemetry diagnostics', () => {
     trackTelemetryMock.mockReset()
   })
 
-  it('emits sanitized renderer errors without raw messages', () => {
-    // #given an error with private-looking message text
+  it('emits a stack for renderer errors but never the raw message', () => {
+    // #given an error whose message embeds a private note path
     const error = new TypeError('failed at /Users/kaan/private-note.md')
 
     // #when tracking it
     trackRendererError('unhandled_rejection', error)
 
-    // #then only stable metadata leaves the renderer
+    // #then stable metadata + a stack (code locations) leave the renderer,
+    //   but the message text (which held the note path) never does
     expect(trackTelemetryMock).toHaveBeenCalledWith(
       'app_error_seen',
       expect.objectContaining({
@@ -31,10 +32,14 @@ describe('renderer telemetry diagnostics', () => {
         objectType: 'exception',
         source: 'renderer',
         result: 'failed',
-        errorCode: 'TypeError'
+        errorCode: 'TypeError',
+        error: expect.objectContaining({ stack: expect.stringContaining('at ') })
       })
     )
-    expect(JSON.stringify(trackTelemetryMock.mock.calls[0])).not.toContain('private-note')
+    const serialized = JSON.stringify(trackTelemetryMock.mock.calls[0])
+    // message header is stripped; home paths in stack frames are scrubbed
+    expect(serialized).not.toContain('private-note')
+    expect(serialized).not.toContain('/Users/')
   })
 
   it('emits structured renderer logs', () => {
