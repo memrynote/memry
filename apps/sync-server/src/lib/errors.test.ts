@@ -68,6 +68,7 @@ describe('sync-server error utilities', () => {
     )
     const context = {
       json,
+      get: () => undefined,
       env: {
         POSTHOG_API_KEY: 'phc_test_project',
         POSTHOG_HOST: 'https://us.i.posthog.com',
@@ -84,7 +85,7 @@ describe('sync-server error utilities', () => {
       }
     } as unknown as Parameters<typeof errorHandler>[1]
 
-    const response = errorHandler(new Error('private-note-title'), context)
+    const response = errorHandler(new Error('record decode failed'), context)
     await scheduled[0]
 
     expect(response.status).toBe(500)
@@ -101,10 +102,12 @@ describe('sync-server error utilities', () => {
       path: '/sync/records/push/:value',
       error_code: 'UNHANDLED_ERROR',
       status_code: 500,
-      handled: 0
+      handled: 0,
+      error_message: 'record decode failed'
     })
     const payloadText = JSON.stringify(body)
+    // Path identifiers stay scrubbed; the server's own (redacted) message is surfaced.
     expect(payloadText).not.toContain('550e8400-e29b-41d4-a716-446655440000')
-    expect(payloadText).not.toContain('private-note-title')
+    expect(payloadText).toContain('record decode failed')
   })
 })

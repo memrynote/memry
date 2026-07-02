@@ -1,3 +1,5 @@
+import { redactSensitive } from '@memry/contracts/telemetry-api'
+
 import { createLogger } from '../lib/logger'
 import type { Bindings } from '../types'
 
@@ -94,6 +96,9 @@ export interface ServerErrorCaptureInput {
   statusCode?: number
   errorCode?: string
   handled: boolean
+  userId?: string
+  deviceId?: string
+  vaultId?: string
 }
 
 export interface ServerLogCaptureInput {
@@ -130,6 +135,8 @@ export interface PostHogExceptionInput {
   action: string
   handled: boolean
   platform: PostHogExceptionPlatform
+  /** Real (already redacted) stack trace; parsed into frames when present. */
+  stack?: string
   properties: Record<string, PostHogPropertyValue>
 }
 
@@ -308,11 +315,59 @@ export const toPostHogBatchPayload = (
   batch
 })
 
+const truncate = (value: string, max: number): string =>
+  value.length > max ? value.slice(0, max) : value
+
+const MAX_STACK_FRAMES = 40
+// Matches V8 stack lines: "    at fn (file:line:col)" or "    at file:line:col".
+const STACK_LINE_PATTERN = /^\s*at\s+(?:(.+?)\s+\()?(.+?):(\d+):(\d+)\)?\s*$/
+
+const parseStackFrames = (
+  stack: string,
+  platform: PostHogExceptionPlatform,
+  fallbackFilename: string
+): PostHogPropertyValue[] => {
+  const frames: PostHogPropertyValue[] = []
+  for (const line of stack.split('\n')) {
+    const match = STACK_LINE_PATTERN.exec(line)
+    if (!match) continue
+    const [, fn, file, lineno, colno] = match
+    frames.push({
+      platform,
+      filename: file ? truncate(file, 300) : fallbackFilename,
+      function: fn ? truncate(fn, 200) : '<anonymous>',
+      lineno: Number(lineno),
+      colno: Number(colno),
+      in_app: true
+    })
+    if (frames.length >= MAX_STACK_FRAMES) break
+  }
+  // V8 lists the most-recent call first; PostHog renders frames most-recent
+  // last, so reverse to match.
+  return frames.reverse()
+}
+
 export const toPostHogExceptionEvent = (input: PostHogExceptionInput): PostHogEventPayload => {
   const exceptionType = safeLabel(input.type, 'Error')
-  const exceptionMessage = safeLabel(input.message, 'memry_error')
+  const exceptionMessage = truncate(input.message, 500) || 'memry_error'
   const source = safeLabel(input.source, 'diagnostics')
   const action = safeLabel(input.action, 'error')
+
+  const parsedFrames = input.stack
+    ? parseStackFrames(input.stack, input.platform, input.serviceName)
+    : []
+  const frames: PostHogPropertyValue[] =
+    parsedFrames.length > 0
+      ? parsedFrames
+      : [
+          {
+            platform: input.platform,
+            filename: input.serviceName,
+            module: source,
+            function: action,
+            in_app: true
+          }
+        ]
 
   return {
     event: '$exception',
@@ -335,15 +390,7 @@ export const toPostHogExceptionEvent = (input: PostHogExceptionInput): PostHogEv
           },
           stacktrace: {
             type: 'raw',
-            frames: [
-              {
-                platform: input.platform,
-                filename: input.serviceName,
-                module: source,
-                function: action,
-                in_app: true
-              }
-            ]
+            frames
           }
         }
       ]
@@ -406,7 +453,20 @@ export const captureServerError = async (
 ): Promise<void> => {
   const path = normalizeServerPath(input.path)
   const timestamp = new Date().toISOString()
-  const distinctId = serverDistinctId(env)
+  // Attribute the error to the signed-in user when known so it is traceable to a
+  // real (paying) account; fall back to the synthetic server id for anon requests.
+  const distinctId = input.userId ?? serverDistinctId(env)
+  const status = input.statusCode ?? getStatusCode(input.error, 500)
+  const rawMessage =
+    input.error instanceof Error
+      ? input.error.message
+      : typeof input.error === 'string'
+        ? input.error
+        : undefined
+  const rawStack = input.error instanceof Error ? input.error.stack : undefined
+  const realMessage = rawMessage ? truncate(redactSensitive(rawMessage), 500) : undefined
+  const realStack = rawStack ? truncate(redactSensitive(rawStack), 4000) : undefined
+
   const properties: Record<string, PostHogPropertyValue> = {
     service_name: SERVER_SERVICE_NAME,
     environment: safeLabel(env.ENVIRONMENT, 'unknown'),
@@ -421,8 +481,12 @@ export const captureServerError = async (
       input.errorCode ?? getErrorCode(input.error, 'UNHANDLED_ERROR'),
       'UNHANDLED_ERROR'
     ),
-    status_code: input.statusCode ?? getStatusCode(input.error, 500),
-    handled: input.handled ? 1 : 0
+    status_code: status,
+    handled: input.handled ? 1 : 0,
+    ...(realMessage ? { error_message: realMessage } : {}),
+    ...(input.userId ? { user_id: input.userId } : {}),
+    ...(input.deviceId ? { device_id: input.deviceId } : {}),
+    ...(input.vaultId ? { vault_id: input.vaultId } : {})
   }
   const event: PostHogEventPayload = {
     event: 'server_error_seen',
@@ -430,18 +494,20 @@ export const captureServerError = async (
     timestamp,
     properties
   }
+  const diagnosticBody = toDiagnosticBody(
+    SERVER_SERVICE_NAME,
+    String(properties.source),
+    String(properties.action),
+    String(properties.error_code)
+  )
   const exceptionEvent = toPostHogExceptionEvent({
     distinctId,
     timestamp,
     serviceName: SERVER_SERVICE_NAME,
     environment: safeLabel(env.ENVIRONMENT, 'unknown'),
     type: String(properties.error_type),
-    message: toDiagnosticBody(
-      SERVER_SERVICE_NAME,
-      String(properties.source),
-      String(properties.action),
-      String(properties.error_code)
-    ),
+    message: realMessage ?? diagnosticBody,
+    stack: realStack,
     source: String(properties.source),
     action: String(properties.action),
     handled: input.handled,
@@ -454,12 +520,7 @@ export const captureServerError = async (
     distinctId,
     timestamp,
     level: 'error',
-    body: toDiagnosticBody(
-      SERVER_SERVICE_NAME,
-      String(properties.source),
-      String(properties.action),
-      String(properties.error_code)
-    ),
+    body: diagnosticBody,
     attributes: {
       event_name: event.event,
       method: String(properties.method),
@@ -474,10 +535,13 @@ export const captureServerError = async (
     }
   }
 
-  await Promise.all([
-    sendPostHogBatch(env, [event, exceptionEvent]),
-    sendPostHogLogs(env, [logRecord])
-  ])
+  // Expected client errors (handled 4xx such as SYNC_PAYMENT_REQUIRED /
+  // VALIDATION_ERROR) still count as server_error_seen but must NOT open
+  // $exception issues — that noise buries real unhandled failures in Error Tracking.
+  const reportException = status >= 500 || !input.handled
+  const batchEvents = reportException ? [event, exceptionEvent] : [event]
+
+  await Promise.all([sendPostHogBatch(env, batchEvents), sendPostHogLogs(env, [logRecord])])
 }
 
 export const captureServerLog = async (

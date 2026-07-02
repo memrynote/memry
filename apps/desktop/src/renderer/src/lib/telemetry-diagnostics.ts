@@ -1,4 +1,5 @@
 import type { TelemetryResult } from '@memry/contracts/telemetry-api'
+import { buildErrorDetail } from '@memry/contracts/telemetry-api'
 
 import { trackTelemetry } from './telemetry'
 
@@ -33,14 +34,19 @@ const toErrorCode = (error: unknown): string => {
 const resultForLevel = (level: DiagnosticLevel): TelemetryResult =>
   level === 'error' || level === 'warn' ? 'failed' : 'success'
 
-export const trackRendererError = (action: string, error: unknown): void => {
+export const trackRendererError = (
+  action: string,
+  error: unknown,
+  componentStack?: string
+): void => {
   void trackTelemetry('app_error_seen', {
     surface: 'app',
     action: toSafeToken(action, 'error'),
     objectType: 'exception',
     source: 'renderer',
     result: 'failed',
-    errorCode: toErrorCode(error)
+    errorCode: toErrorCode(error),
+    error: buildErrorDetail(error, componentStack)
   })
 }
 

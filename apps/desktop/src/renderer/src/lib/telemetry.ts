@@ -44,6 +44,7 @@ export interface TrackTelemetryOptions {
   errorCode?: string
   metrics?: TelemetryEvent['metrics']
   dimensions?: Record<string, string>
+  error?: TelemetryEvent['error']
 }
 
 const generateEventId = (): string => {
@@ -80,7 +81,8 @@ export const trackTelemetry = async (
       result: options.result,
       errorCode: options.errorCode,
       dimensions: sanitizeDimensions(options.dimensions),
-      metrics: options.metrics
+      metrics: options.metrics,
+      error: options.error
     }
 
     await track(event)

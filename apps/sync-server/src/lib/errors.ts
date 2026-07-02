@@ -118,7 +118,10 @@ const scheduleServerErrorCapture = (
       action: 'request_failed',
       statusCode: metadata.statusCode,
       errorCode: metadata.errorCode,
-      handled: metadata.handled
+      handled: metadata.handled,
+      userId: c.get('userId'),
+      deviceId: c.get('deviceId'),
+      vaultId: c.get('vaultId')
     })
   )
 }

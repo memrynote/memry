@@ -98,6 +98,14 @@ export const TelemetryMetricsSchema = z.object({
   value: z.number().finite().optional()
 })
 
+export const TelemetryErrorDetailSchema = z.object({
+  // NOTE: there is intentionally NO free-form message field. On the desktop an
+  // error message can embed a note title, filename, or content, so we only ever
+  // ship the stack frames (code locations) and the React component stack.
+  stack: z.string().max(4000).optional(),
+  componentStack: z.string().max(2000).optional()
+})
+
 export const TelemetryEventSchema = z.object({
   id: z.string().uuid(),
   name: TelemetryEventNameSchema,
@@ -109,7 +117,8 @@ export const TelemetryEventSchema = z.object({
   result: TelemetryResultSchema.optional(),
   errorCode: SafeDimensionValueSchema.optional(),
   dimensions: TelemetryDimensionsSchema.optional(),
-  metrics: TelemetryMetricsSchema.optional()
+  metrics: TelemetryMetricsSchema.optional(),
+  error: TelemetryErrorDetailSchema.optional()
 })
 
 export const TelemetryBatchSchema = z.object({
@@ -136,5 +145,66 @@ export type TelemetryAuthState = z.infer<typeof TelemetryAuthStateSchema>
 export type TelemetrySyncState = z.infer<typeof TelemetrySyncStateSchema>
 export type TelemetryPlatform = z.infer<typeof TelemetryPlatformSchema>
 export type TelemetryMetrics = z.infer<typeof TelemetryMetricsSchema>
+export type TelemetryErrorDetail = z.infer<typeof TelemetryErrorDetailSchema>
 export type TelemetryEvent = z.infer<typeof TelemetryEventSchema>
 export type TelemetryBatch = z.infer<typeof TelemetryBatchSchema>
+
+/**
+ * Scrub obvious PII from an error message or stack trace before it leaves the
+ * device / reaches PostHog. Keeps the diagnostic shape (frames, class names,
+ * project-relative paths) while removing usernames, emails, ids, and tokens.
+ * Shared by desktop renderer, desktop main, and the sync-server mirror.
+ */
+const JWT_PATTERN = /\beyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}/g
+const BEARER_PATTERN = /Bearer\s+[A-Za-z0-9._~+/-]+=*/gi
+const EMAIL_PATTERN = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g
+const UUID_PATTERN = /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi
+// /Users/<name>, /home/<name>, /root, C:\Users\<name> → ~ (drops the username, keeps the rest)
+const HOME_PATH_UNIX_PATTERN = /(?:\/Users\/|\/home\/|\/root\/)[^/\s:)'"]+/g
+const HOME_PATH_WIN_PATTERN = /[A-Za-z]:\\Users\\[^\\\s:)'"]+/gi
+
+export const redactSensitive = (input: string): string =>
+  input
+    .replace(JWT_PATTERN, '<jwt>')
+    .replace(BEARER_PATTERN, 'Bearer <token>')
+    .replace(EMAIL_PATTERN, '<email>')
+    .replace(UUID_PATTERN, '<uuid>')
+    .replace(HOME_PATH_UNIX_PATTERN, '~')
+    .replace(HOME_PATH_WIN_PATTERN, '~')
+
+const truncate = (value: string, max: number): string =>
+  value.length > max ? value.slice(0, max) : value
+
+// Keep only "    at <fn> (<file>:<line>:<col>)" frame lines. This deliberately
+// drops the leading "<ErrorName>: <message>" header (and any other prose) so a
+// free-form message — which on the desktop can embed a note title, filename, or
+// content — never rides along inside the stack. Frames are code locations only.
+const keepStackFrameLines = (stack: string): string =>
+  stack
+    .split('\n')
+    .filter((line) => /^\s*at\s/.test(line))
+    .join('\n')
+
+/**
+ * Build the redacted, length-capped error detail attached to `app_error_seen`
+ * desktop telemetry. Privacy: we NEVER send the error message (it can contain a
+ * note title/filename/content) — only the stack frames (code locations) and the
+ * React component stack, with home paths and stray identifiers scrubbed.
+ * Returns undefined when there is nothing useful to send.
+ */
+export const buildErrorDetail = (
+  error: unknown,
+  componentStack?: string
+): TelemetryErrorDetail | undefined => {
+  const detail: TelemetryErrorDetail = {}
+  const rawStack =
+    error instanceof Error && typeof error.stack === 'string' ? error.stack : undefined
+  if (rawStack) {
+    const frames = keepStackFrameLines(rawStack)
+    if (frames) detail.stack = truncate(redactSensitive(frames), 4000)
+  }
+  if (componentStack) {
+    detail.componentStack = truncate(redactSensitive(componentStack), 2000)
+  }
+  return detail.stack || detail.componentStack ? detail : undefined
+}
