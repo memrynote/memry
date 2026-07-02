@@ -6,6 +6,7 @@ import { createLogger } from './lib/logger'
 import { getMainI18n } from './lib/main-i18n'
 import { formatAppVersionForDisplay } from './lib/app-version-display'
 import { htmlToPlainText } from './lib/html-to-plain-text'
+import { writePendingInstallMarker } from './updater-install-guard'
 
 const logger = createLogger('Updater')
 
@@ -194,6 +195,10 @@ export function isQuitAndInstallRequested(): boolean {
 // (adds /S) and relaunch afterwards (adds --force-run). macOS Squirrel relaunches
 // regardless; the flags only affect the Windows NSIS installer.
 export function performQuitAndInstall(): void {
+  // Record the version handing off to Squirrel so the next launch can tell a
+  // manual relaunch of the OLD build (mid-install) apart from the new build
+  // ShipIt relaunches itself — see updater-install-guard + index.ts startup.
+  writePendingInstallMarker(getCurrentVersion())
   autoUpdater.quitAndInstall(true, true)
 }
 

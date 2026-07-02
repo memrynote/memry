@@ -73,6 +73,7 @@ import { SnapshotReasons } from '@memry/db-schema/schema/notes-cache'
 import { SettingsChannels, InboxChannels } from '@memry/contracts/ipc-channels'
 import { parseInboxOpenItemId } from './deeplink-utils'
 import { initializeUpdater, isQuitAndInstallRequested, performQuitAndInstall } from './updater'
+import { clearPendingInstallMarker, isPendingInstallInFlight } from './updater-install-guard'
 import { buildAppMenu, buildEditableTextContextMenu } from './menu'
 import { setMainI18n } from './lib/main-i18n'
 import {
@@ -501,6 +502,61 @@ function createWindow(): void {
   }
 }
 
+// How long the pre-boot "Installing update…" splash stays up before we exit.
+// Long enough to paint and be read, short enough to get out of ShipIt's way:
+// keeping the old build alive is what makes Squirrel abort (Code=-9) and retry.
+const INSTALLING_SPLASH_EXIT_MS = 2000
+
+const INSTALLING_SPLASH_HTML = `<!doctype html>
+<html><head><meta charset="utf-8"><style>
+  html,body{margin:0;height:100%}
+  body{display:flex;align-items:center;justify-content:center;background:#f6f5f0;
+    color:#191919;font:14px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    -webkit-user-select:none;user-select:none}
+  .card{text-align:center;padding:24px}
+  .spinner{width:22px;height:22px;margin:0 auto 16px;border-radius:50%;
+    border:2px solid rgba(25,25,25,.15);border-top-color:#ff671a;
+    animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .title{font-weight:600;margin-bottom:6px}
+  .sub{opacity:.55;font-size:13px}
+  @media (prefers-reduced-motion:reduce){.spinner{animation:none}}
+</style></head><body><div class="card">
+  <div class="spinner"></div>
+  <div class="title">Installing update…</div>
+  <div class="sub">Memrynote will reopen automatically.</div>
+</div></body></html>`
+
+/**
+ * Show a tiny "Installing update…" splash and exit, instead of booting normally.
+ * Used when a Squirrel/ShipIt install we started is still running and the user
+ * relaunched the old build. Booting here would re-show the update prompt AND
+ * keep the old process alive, which makes ShipIt abort and re-verify from
+ * scratch (the download → Restart loop). Exiting lets ShipIt finish and
+ * relaunch the new build itself.
+ */
+function showInstallingUpdateWindowAndExit(): void {
+  const splash = new BrowserWindow({
+    width: 380,
+    height: 180,
+    resizable: false,
+    minimizable: false,
+    maximizable: false,
+    fullscreenable: false,
+    frame: false,
+    show: false,
+    backgroundColor: '#faf9f7',
+    center: true,
+    webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false }
+  })
+  splash.once('ready-to-show', () => splash.show())
+  void splash.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(INSTALLING_SPLASH_HTML)}`)
+  // Hard exit (not app.quit): nothing is initialized, so there is no graceful
+  // shutdown to run, and app.quit() would spin up the before-quit cleanup path
+  // against an empty app. app.exit ends the process so ShipIt can proceed.
+  setTimeout(() => app.exit(0), INSTALLING_SPLASH_EXIT_MS)
+}
+
 const pendingOAuthStates = new Map<string, number>()
 
 export const registerOAuthState = (state: string): void => {
@@ -611,6 +667,21 @@ if (!headlessCliArgs && !allowMultiInstanceForDeviceTests) {
 // Some APIs can only be used after this event occurs.
 void app.whenReady().then(async () => {
   if (headlessCliArgs) return
+
+  // Auto-update guard: if a Squirrel/ShipIt install we started is still running
+  // and the user relaunched the OLD build (Dock icon vanishes during the swap),
+  // do NOT boot + re-prompt. Booting keeps the old process alive — which makes
+  // ShipIt abort with Code=-9 and re-verify from scratch — and re-shows the
+  // update prompt, i.e. the download → Restart loop. Show a brief installer
+  // splash and exit so ShipIt can finish and relaunch the new build itself.
+  if (isPendingInstallInFlight()) {
+    mainLog.info('pending update install in flight on launch; showing splash and exiting')
+    showInstallingUpdateWindowAndExit()
+    return
+  }
+  // Normal boot commits — drop any leftover pending-install marker.
+  clearPendingInstallMarker()
+
   // Load React DevTools using new session.extensions API (Electron 38+)
   // Note: Some console errors about "sandboxed_renderer.bundle.js" and "Autofill"
   // are expected and harmless - they're caused by Chrome DevTools internals

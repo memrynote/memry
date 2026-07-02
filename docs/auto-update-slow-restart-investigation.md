@@ -156,12 +156,16 @@ packaged-Electron native smoke, desktop main suite 3,291 tests green, full
 typecheck green, and a real boot + Playwright e2e spec green against the
 bundled `out/main`.
 
-Expected restart impact, using the measured verify cost model from the two
-same-day data points (≈0.64 ms/file + ≈7 s/865 MB of byte hashing):
-~3.3 s file-term + ~4.3 s byte-term ≈ **8 s per verify pass** (was 28.5 s), so
-click-Restart → new app should drop from **75.5 s to roughly 25–35 s**. Needs
-confirmation on a real signed release. Sub-15 s additionally requires the byte
-diet (lazy ML model/dylib download — path 1 below).
+**Confirmed on the signed `v2026.702.4` release** (install 2026-07-02 23:50,
+`main.log` + `ShipIt_stderr.log`): click-Restart → new process =
+**18.0 s** (was 75.5 s on `702.2`, 108.4 s on `701.5`). Phase breakdown:
+cleanup 27 ms (clean, no watchdog) · in-process unzip+verify 2.5 s · ShipIt
+pre-swap verify 5.3 s · swap 2 ms · post-swap verify 3.1 s · relaunch+boot
+~7.2 s. **Total signature-verify time collapsed 54.8 s → 8.4 s** across the
+three passes — exactly the O(file count) win the model predicted. The installed
+bundle is **5,240 files / 557 MB**, and the "app invisible" window (Dock icon
+gone → new build up) shrank from ~59 s to ~11 s. Sub-15 s further would need the
+byte diet (lazy ML model/dylib download — path 1 below).
 
 Gotchas found while shipping this (each found by BOOT-TESTING the bundle —
 `MEMRY_FORCE_VAULT_PICKER=1 npx electron .` — not by the unit suite, which
@@ -192,18 +196,23 @@ stubs all of this; always boot-test after touching bundling):
   `out/` are not real runtime requires — the former is guarded, the latter are
   string literals emitted by ajv's standalone-code generator.
 
-## Follow-ups worth doing (not yet implemented)
+## Follow-ups worth doing
 
-1. **ShipIt startup guard (kills the relaunch loop).** During the ShipIt
+1. **DONE — ShipIt startup guard (kills the relaunch loop).** During the ShipIt
    window the app vanishes from the Dock; users relaunch the OLD app manually,
    which (a) makes ShipIt abort with `SQRLInstallerErrorDomain Code=-9` and
    re-verify from scratch, and (b) shows the update prompt again → download →
-   Restart → loop. Fix: on startup, if a ShipIt install for our bundle is in
-   flight (ShipIt process alive / fresh `ShipItState.plist` under
-   `~/Library/Caches/com.memrynote.memry.ShipIt/`), show a small
-   "Installing update…" window and exit instead of booting + re-prompting;
-   ShipIt relaunches the new version itself when done. Independent of restart
-   speed; cheap; do it next.
+   Restart → loop. Implemented in `src/main/updater-install-guard.ts` +
+   `src/main/index.ts`: `performQuitAndInstall()` drops a
+   `pending-update-install.json` marker (the version handing off to Squirrel);
+   on the next launch `isPendingInstallInFlight()` fires only when the marker is
+   fresh AND the running app still reports that same version (so the newly
+   swapped-in build never trips it) AND a ShipIt process is alive AND
+   `ShipItState.plist` under `~/Library/Caches/com.memrynote.memry.ShipIt/` is
+   fresh. When it fires, the app shows a small "Installing update…" splash and
+   `app.exit(0)`s instead of booting + re-prompting, so ShipIt finishes and
+   relaunches the new build. All four gates are required to avoid stranding the
+   user on the splash after a failed/abandoned install.
 2. **Cleanup-timeout / mid-shutdown sync-runtime restart bug.** Measured on
    2026-07-02 16:35: clicking Restart during an in-flight fullSync re-pull made
    "stopping sync runtime" hang, and the sync runtime + capture server
