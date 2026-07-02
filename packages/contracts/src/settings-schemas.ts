@@ -23,7 +23,8 @@ export const GeneralSettingsSchema = z.object({
   language: LocaleSchema,
   onboardingCompleted: z.boolean(),
   createInSelectedFolder: z.boolean(),
-  clockFormat: z.enum(['12h', '24h'])
+  clockFormat: z.enum(['12h', '24h']),
+  dateFormat: z.enum(['MM/DD/YYYY', 'DD/MM/YYYY', 'YYYY-MM-DD', 'DD.MM.YYYY'])
 })
 
 export type GeneralSettings = z.infer<typeof GeneralSettingsSchema>
@@ -39,7 +40,8 @@ export const GENERAL_SETTINGS_DEFAULTS: GeneralSettings = {
   language: 'en',
   onboardingCompleted: false,
   createInSelectedFolder: true,
-  clockFormat: '12h'
+  clockFormat: '12h',
+  dateFormat: 'DD.MM.YYYY'
 }
 
 // ============================================================================

@@ -13,6 +13,8 @@
 
 import { memo, useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react'
 import { format } from 'date-fns'
+import { formatDate as applyDateFormat, type DateFormat } from '@/lib/format-date'
+import { useDateFormat } from '@/hooks/use-date-format'
 import { Check, X, ExternalLink, Folder, FileText } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import {
@@ -102,10 +104,10 @@ interface TagsCellProps {
  * Format a date for display in the table.
  * Format: dd.MM.yyyy - HH:mm:ss
  */
-function formatDate(dateStr: string): string {
+function formatDate(dateStr: string, df: DateFormat): string {
   try {
     const date = new Date(dateStr)
-    return format(date, 'dd.MM.yyyy - HH:mm:ss')
+    return `${applyDateFormat(date, df)} - ${format(date, 'HH:mm:ss')}`
   } catch {
     return String(dateStr)
   }
@@ -439,7 +441,7 @@ export const EditablePropertyCell = memo(function EditablePropertyCell({
       tabIndex={-1}
       onClick={handleStartEdit}
       onDoubleClick={stopPropagation}
-      className={cn('w-full text-left focus:outline-none cursor-text')}
+      className={cn('w-full text-start focus:outline-none cursor-text')}
     >
       <PropertyValueDisplay
         value={value}
@@ -477,7 +479,7 @@ export const TextCell = memo(function TextCell({
 })
 
 /**
- * T042: Number cell - left-aligned (consistent with other cells), formatted with tabular nums
+ * T042: Number cell - start aligned (consistent with other cells), formatted with tabular nums
  */
 export const NumberCell = memo(function NumberCell({
   value,
@@ -519,9 +521,10 @@ export const DateCell = memo(function DateCell({
   value: string
   className?: string
 }): React.JSX.Element {
+  const dateFormat = useDateFormat()
   return (
     <span className={cn('text-muted-foreground whitespace-nowrap', className)} title={value}>
-      {formatDate(value)}
+      {formatDate(value, dateFormat)}
     </span>
   )
 })
@@ -664,7 +667,7 @@ export const TitleCell = memo(function TitleCell({
         onClick?.()
       }}
       className={cn(
-        'group flex items-center gap-2 text-left text-[13px] text-foreground/90 hover:text-primary transition-colors truncate w-full',
+        'group flex items-center gap-2 text-start text-[13px] text-foreground/90 hover:text-primary transition-colors truncate w-full',
         'focus:outline-none focus:text-primary cursor-pointer',
         className
       )}
@@ -705,7 +708,7 @@ export const FolderCell = memo(function FolderCell({
         onClick?.()
       }}
       className={cn(
-        'flex items-center gap-1.5 text-left text-muted-foreground hover:text-foreground transition-colors truncate',
+        'flex items-center gap-1.5 text-start text-muted-foreground hover:text-foreground transition-colors truncate',
         'focus:outline-none focus:text-foreground',
         className
       )}
