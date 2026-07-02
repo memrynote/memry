@@ -4,6 +4,9 @@ import { ChevronLeft, ChevronRight } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { withAlpha } from '@/lib/color'
 import { useT } from '@memry/i18n/renderer'
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
+import { EVENT_TYPE_COLORS } from '@/lib/event-type-colors'
+import { type DaySummary } from '../calendar/day-summary'
 import { getISOWeekNumber } from './date-picker-calendar-utils'
 
 interface ActivityData {
@@ -17,6 +20,7 @@ interface DatePickerCalendarProps {
   weekStartsOn?: 0 | 1
   activityData?: ActivityData
   dayDots?: Record<string, string[]>
+  daySummary?: Record<string, DaySummary>
   hoveredEventColor?: string | null
   className?: string
   showWeekNumbers?: boolean
@@ -96,6 +100,60 @@ function getMonthGrid(year: number, month: number, weekStartsOn: 0 | 1 = 1): Gri
   return weeks
 }
 
+// Journal has no projection type; its dot mirrors the emerald journal-activity dot.
+const JOURNAL_DOT_COLOR = '#10B981'
+
+function DaySummaryContent({ summary }: { summary: DaySummary }): React.JSX.Element {
+  const { t } = useT('common')
+  const rows = [
+    {
+      id: 'notes',
+      color: EVENT_TYPE_COLORS.note,
+      count: summary.notes,
+      label: t('count.note', { count: summary.notes })
+    },
+    {
+      id: 'journal',
+      color: JOURNAL_DOT_COLOR,
+      count: summary.journal,
+      label: t('count.journal', { count: summary.journal })
+    },
+    {
+      id: 'tasks',
+      color: EVENT_TYPE_COLORS.task,
+      count: summary.tasks,
+      label: t('count.task', { count: summary.tasks })
+    },
+    {
+      id: 'events',
+      color: EVENT_TYPE_COLORS.event,
+      count: summary.events,
+      label: t('count.event', { count: summary.events })
+    },
+    {
+      id: 'reminders',
+      color: EVENT_TYPE_COLORS.reminder,
+      count: summary.reminders,
+      label: t('count.reminder', { count: summary.reminders })
+    }
+  ].filter((row) => row.count > 0)
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      {rows.map((row) => (
+        <div key={row.id} className="flex items-center gap-2 text-xs text-popover-foreground">
+          <span
+            className="size-1.5 shrink-0 rounded-full"
+            style={{ backgroundColor: row.color }}
+            aria-hidden="true"
+          />
+          <span>{row.label}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 const ChevronLeftIcon = (): React.JSX.Element => <ChevronLeft size={14} />
 
 const ChevronRightIcon = (): React.JSX.Element => <ChevronRight size={14} />
@@ -107,6 +165,7 @@ export function DatePickerCalendar({
   weekStartsOn = 1,
   activityData,
   dayDots,
+  daySummary,
   hoveredEventColor,
   className,
   showWeekNumbers = false,
@@ -255,8 +314,9 @@ export function DatePickerCalendar({
             const isoKey = toISO(date)
             const activity = activityData ? (activityData[isoKey] ?? 0) : 0
             const dots = dayDots?.[isoKey]
+            const summary = daySummary?.[isoKey]
 
-            return (
+            const dayButton = (
               <button
                 key={`${wi}-${di}`}
                 type="button"
@@ -304,9 +364,12 @@ export function DatePickerCalendar({
                   />
                 )}
                 <span className="relative">{date.getDate()}</span>
-                {dots && dots.length > 0 ? (
+                {(activity > 0 || (dots && dots.length > 0)) && (
                   <span className="relative inline-flex gap-[2px]" aria-hidden="true">
-                    {dots.slice(0, 3).map((dotColor, i) => (
+                    {activity > 0 && (
+                      <span className={cn('size-1 rounded-full', ACTIVITY_DOT_COLORS[activity])} />
+                    )}
+                    {dots?.slice(0, 3).map((dotColor, i) => (
                       <span
                         key={`${dotColor}-${i}`}
                         className="size-1 rounded-full"
@@ -314,15 +377,19 @@ export function DatePickerCalendar({
                       />
                     ))}
                   </span>
-                ) : (
-                  activity > 0 && (
-                    <span
-                      className={cn('relative size-1 rounded-full', ACTIVITY_DOT_COLORS[activity])}
-                      aria-hidden="true"
-                    />
-                  )
                 )}
               </button>
+            )
+
+            if (!summary) return dayButton
+
+            return (
+              <HoverCard key={`${wi}-${di}`} openDelay={200} closeDelay={0}>
+                <HoverCardTrigger asChild>{dayButton}</HoverCardTrigger>
+                <HoverCardContent side="top" align="center" className="w-auto min-w-[7.5rem] p-2">
+                  <DaySummaryContent summary={summary} />
+                </HoverCardContent>
+              </HoverCard>
             )
           })}
         </div>

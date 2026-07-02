@@ -162,14 +162,18 @@ export const VOICE_TRANSCRIPTION_SETTINGS_DEFAULTS: VoiceTranscriptionSettings =
 
 export const CalendarSettingsSchema = z.object({
   dayCellClickBehavior: z.enum(['journal', 'calendar']),
-  calendarPageClickOverride: z.enum(['inherit', 'journal', 'calendar'])
+  calendarPageClickOverride: z.enum(['inherit', 'journal', 'calendar']),
+  // When true, every regular note is shown on the calendar as an all-day chip on
+  // its creation day (read-side projection only — no date is written to the note).
+  showNotesOnCalendar: z.boolean()
 })
 
 export type CalendarSettings = z.infer<typeof CalendarSettingsSchema>
 
 export const CALENDAR_SETTINGS_DEFAULTS: CalendarSettings = {
   dayCellClickBehavior: 'journal',
-  calendarPageClickOverride: 'calendar'
+  calendarPageClickOverride: 'calendar',
+  showNotesOnCalendar: true
 }
 
 // ============================================================================

@@ -55,6 +55,7 @@ import {
 } from '../calendar/google/oauth'
 import { getCalendarRangeProjection } from '../calendar/projection'
 import { getCalendarEnabledPropertyNames } from '../calendar/calendar-property-visibility'
+import { getCalendarSettings } from './settings-handlers'
 import {
   startGoogleCalendarSyncRunner,
   stopGoogleCalendarSyncRunner,
@@ -511,7 +512,8 @@ export function registerCalendarHandlers(): void {
         requireDatabase(),
         getIndexDatabase(),
         input,
-        getCalendarEnabledPropertyNames()
+        getCalendarEnabledPropertyNames(),
+        getCalendarSettings().showNotesOnCalendar
       )
     })
   )

@@ -123,4 +123,17 @@ describe('buildDayDots', () => {
     expect(result['2026-04-20']).toEqual([color('event')])
     expect(result['2026-04-22']).toEqual([color('task')])
   })
+
+  it('shows a distinct notes dot alongside an event dot on the same day', () => {
+    // #given — a day that has both an event and a note (the user's scenario)
+    const items = [
+      item('event', '2026-04-20T10:00:00.000Z'),
+      item('note', '2026-04-20T14:00:00.000Z')
+    ]
+    // #when
+    const result = buildDayDots(items)
+    // #then — two dots: the event dot and a separately-colored note dot
+    expect(result['2026-04-20']).toEqual([color('event'), color('note')])
+    expect(color('note')).not.toBe(color('event'))
+  })
 })

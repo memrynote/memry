@@ -47,7 +47,10 @@
   },
   "count": {
     "note": "{count, plural, one {# note} other {# notes}}",
+    "journal": "{count, plural, one {# journal} other {# journals}}",
     "task": "{count, plural, one {# task} other {# tasks}}",
+    "event": "{count, plural, one {# event} other {# events}}",
+    "reminder": "{count, plural, one {# reminder} other {# reminders}}",
     "itemDelete": "{count, plural, one {Delete # item} other {Delete # items}}"
   },
   "toast": {
