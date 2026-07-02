@@ -1,7 +1,6 @@
 import { Check, Flag, Calendar, FolderOpen, Columns3, Archive, Trash2, X } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
-import { SelectionCheckbox } from './selection-checkbox'
 import { BulkActionButton } from './bulk-action-button'
 import { BulkActionDropdown, type BulkActionOption } from './bulk-action-dropdown'
 import { priorityConfig, type Priority } from '@/data/task-model'
@@ -15,12 +14,6 @@ import { useT } from '@memry/i18n/renderer'
 interface BulkActionToolbarProps {
   /** Number of selected tasks */
   selectedCount: number
-  /** Whether all visible tasks are selected */
-  allSelected: boolean
-  /** Whether some (but not all) visible tasks are selected */
-  someSelected: boolean
-  /** Toggle select all */
-  onToggleSelectAll: () => void
   /** Complete selected tasks */
   onComplete: () => void
   /** Change priority for selected tasks */
@@ -120,9 +113,6 @@ const dueDateOptions: BulkActionOption<string>[] = [
  */
 export const BulkActionToolbar = ({
   selectedCount,
-  allSelected,
-  someSelected,
-  onToggleSelectAll,
   onComplete,
   onChangePriority,
   onChangeDueDate,
@@ -157,114 +147,94 @@ export const BulkActionToolbar = ({
   return (
     <div
       className={cn(
-        'flex items-center gap-4 border-b border-primary/20 bg-primary/5 px-4 py-3',
+        'flex h-11 shrink-0 items-center gap-0.5 rounded-xl border border-border bg-popover ps-1.5 pe-2 text-xs shadow-lg',
+        'animate-in fade-in slide-in-from-bottom-2 duration-150',
         className
       )}
       role="toolbar"
       aria-label={tPhaseF('phaseF.componentsTasksBulkActionsBulkActionToolbar.bulkActions')}
     >
-      {/* Select all checkbox + count */}
-      <div className="flex items-center gap-2">
-        <SelectionCheckbox
-          checked={allSelected}
-          indeterminate={someSelected}
-          onChange={onToggleSelectAll}
-          aria-label={allSelected ? 'Deselect all' : 'Select all'}
-        />
-        <span className="font-medium text-primary">
-          {selectedCount} {tPhaseF('phaseF.componentsTasksBulkActionsBulkActionToolbar.selected')}
+      {/* Count pill */}
+      <div className="flex h-8 items-center gap-1.5 rounded-lg bg-[var(--tint)]/10 px-2.5">
+        <span className="font-bold tabular-nums text-[var(--tint)]">{selectedCount}</span>
+        <span className="font-medium text-[var(--tint)]">
+          {tPhaseF('phaseF.componentsTasksBulkActionsBulkActionToolbar.selected')}
         </span>
       </div>
 
-      {/* Divider */}
-      <div className="h-6 w-px bg-primary/20" aria-hidden="true" />
+      <div className="mx-1 h-5 w-px shrink-0 bg-border" aria-hidden="true" />
 
-      {/* Action buttons */}
-      <div className="flex items-center gap-2">
-        {/* Complete */}
-        <BulkActionButton
-          icon={<Check className="size-4" />}
-          label={tPhaseF('phaseF.componentsTasksBulkActionsBulkActionToolbar.complete')}
-          onClick={onComplete}
-        />
+      {/* Complete */}
+      <BulkActionButton
+        icon={<Check className="size-3.5 shrink-0" />}
+        label={tPhaseF('phaseF.componentsTasksBulkActionsBulkActionToolbar.complete')}
+        onClick={onComplete}
+      />
 
-        {/* Priority dropdown */}
+      {/* Priority dropdown */}
+      <BulkActionDropdown
+        icon={<Flag className="size-3.5 shrink-0" />}
+        label={tPhaseF('phaseF.componentsTasksBulkActionsBulkActionToolbar.priority')}
+        options={priorityOptions.filter((o) => !o.isSeparator || o.value !== 'none')}
+        onSelect={onChangePriority}
+        selectedCount={selectedCount}
+      />
+
+      {/* Due Date dropdown */}
+      <BulkActionDropdown
+        icon={<Calendar className="size-3.5 shrink-0" />}
+        label={tPhaseF('phaseF.componentsTasksBulkActionsBulkActionToolbar.dueDate')}
+        options={dueDateOptions}
+        onSelect={onChangeDueDate}
+        selectedCount={selectedCount}
+      />
+
+      {/* Move to project dropdown */}
+      <BulkActionDropdown
+        icon={<FolderOpen className="size-3.5 shrink-0" />}
+        label={tPhaseF('phaseF.componentsTasksBulkActionsBulkActionToolbar.moveTo')}
+        options={projectOptions}
+        onSelect={onMoveToProject}
+        selectedCount={selectedCount}
+      />
+
+      {/* Status dropdown (Kanban only) */}
+      {showStatusAction && statuses.length > 0 && onChangeStatus && (
         <BulkActionDropdown
-          icon={<Flag className="size-4" />}
-          label={tPhaseF('phaseF.componentsTasksBulkActionsBulkActionToolbar.priority')}
-          options={priorityOptions.filter((o) => !o.isSeparator || o.value !== 'none')}
-          onSelect={onChangePriority}
+          icon={<Columns3 className="size-3.5 shrink-0" />}
+          label={tPhaseF('phaseF.componentsTasksBulkActionsBulkActionToolbar.status')}
+          options={statusOptions}
+          onSelect={onChangeStatus}
           selectedCount={selectedCount}
         />
+      )}
 
-        {/* Due Date dropdown */}
-        <BulkActionDropdown
-          icon={<Calendar className="size-4" />}
-          label={tPhaseF('phaseF.componentsTasksBulkActionsBulkActionToolbar.dueDate')}
-          options={dueDateOptions}
-          onSelect={onChangeDueDate}
-          selectedCount={selectedCount}
-        />
+      <div className="mx-1 h-5 w-px shrink-0 bg-border" aria-hidden="true" />
 
-        {/* Move to project dropdown */}
-        <BulkActionDropdown
-          icon={<FolderOpen className="size-4" />}
-          label={tPhaseF('phaseF.componentsTasksBulkActionsBulkActionToolbar.moveTo')}
-          options={projectOptions}
-          onSelect={onMoveToProject}
-          selectedCount={selectedCount}
-        />
+      {/* Archive */}
+      <BulkActionButton
+        icon={<Archive className="size-3.5 shrink-0" />}
+        label={tPhaseF('phaseF.componentsTasksBulkActionsBulkActionToolbar.archive')}
+        onClick={onArchive}
+        variant="secondary"
+      />
 
-        {/* Status dropdown (Kanban only) */}
-        {showStatusAction && statuses.length > 0 && onChangeStatus && (
-          <BulkActionDropdown
-            icon={<Columns3 className="size-4" />}
-            label={tPhaseF('phaseF.componentsTasksBulkActionsBulkActionToolbar.status')}
-            options={statusOptions}
-            onSelect={onChangeStatus}
-            selectedCount={selectedCount}
-          />
-        )}
+      {/* Delete */}
+      <BulkActionButton
+        icon={<Trash2 className="size-3.5 shrink-0" />}
+        label={tPhaseF('phaseF.componentsTasksBulkActionsBulkActionToolbar.delete')}
+        onClick={onDelete}
+        variant="danger"
+      />
 
-        {/* Divider */}
-        <div className="h-6 w-px bg-primary/20" aria-hidden="true" />
-
-        {/* Archive */}
-        <BulkActionButton
-          icon={<Archive className="size-4" />}
-          label={tPhaseF('phaseF.componentsTasksBulkActionsBulkActionToolbar.archive')}
-          onClick={onArchive}
-          variant="secondary"
-        />
-
-        {/* Delete */}
-        <BulkActionButton
-          icon={<Trash2 className="size-4" />}
-          label={tPhaseF('phaseF.componentsTasksBulkActionsBulkActionToolbar.delete')}
-          onClick={onDelete}
-          variant="danger"
-        />
-      </div>
-
-      {/* Spacer */}
-      <div className="flex-1" />
-
-      {/* Cancel button */}
+      {/* Clear selection */}
       <button
         type="button"
         onClick={onCancel}
-        className={cn(
-          'flex items-center gap-1 rounded-sm px-3 py-1.5 text-sm',
-          'text-muted-foreground hover:text-foreground hover:bg-accent',
-          'transition-colors duration-150',
-          'focus-visible:outline-none'
-        )}
         aria-label={tPhaseF('phaseF.componentsTasksBulkActionsBulkActionToolbar.cancelSelection')}
+        className="flex size-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
       >
-        <X className="size-4" />
-        <span className="hidden sm:inline">
-          {tPhaseF('phaseF.componentsTasksBulkActionsBulkActionToolbar.cancel')}
-        </span>
+        <X className="size-4" strokeWidth={2} />
       </button>
     </div>
   )

@@ -218,7 +218,6 @@ describe('bulk action components', () => {
 
   it('drives toolbar actions, active project filtering, and optional status actions', () => {
     const callbacks = {
-      onToggleSelectAll: vi.fn(),
       onComplete: vi.fn(),
       onChangePriority: vi.fn(),
       onChangeDueDate: vi.fn(),
@@ -232,8 +231,6 @@ describe('bulk action components', () => {
     render(
       <BulkActionToolbar
         selectedCount={2}
-        allSelected={false}
-        someSelected
         projects={projects}
         statuses={statuses}
         showStatusAction
@@ -242,13 +239,11 @@ describe('bulk action components', () => {
     )
 
     expect(screen.getByRole('toolbar', { name: 'Bulk actions' })).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Select all' }))
     fireEvent.click(screen.getByRole('button', { name: 'Complete' }))
     fireEvent.click(screen.getByRole('button', { name: 'Archive' }))
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
     fireEvent.click(screen.getByRole('button', { name: 'Cancel selection' }))
 
-    expect(callbacks.onToggleSelectAll).toHaveBeenCalled()
     expect(callbacks.onComplete).toHaveBeenCalled()
     expect(callbacks.onArchive).toHaveBeenCalled()
     expect(callbacks.onDelete).toHaveBeenCalled()

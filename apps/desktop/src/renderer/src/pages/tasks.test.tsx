@@ -530,7 +530,6 @@ vi.mock('@/components/tasks/filters', () => ({
 
 vi.mock('@/components/tasks/bulk-actions', () => ({
   BulkActionToolbar: ({
-    onToggleSelectAll,
     onComplete,
     onChangePriority,
     onChangeDueDate,
@@ -541,7 +540,6 @@ vi.mock('@/components/tasks/bulk-actions', () => ({
     onCancel,
     statuses
   }: {
-    onToggleSelectAll: () => void
     onComplete: () => void
     onChangePriority: (priority: string) => void
     onChangeDueDate: (option: string) => void
@@ -554,9 +552,6 @@ vi.mock('@/components/tasks/bulk-actions', () => ({
   }) => (
     <div>
       <span data-testid="bulk-status-count">{statuses.length}</span>
-      <button type="button" onClick={onToggleSelectAll}>
-        Bulk toggle all
-      </button>
       <button type="button" onClick={onComplete}>
         Bulk complete
       </button>
@@ -1026,9 +1021,6 @@ describe('TasksPage', () => {
 
     fireEvent.keyDown(window, { key: 'Backspace', metaKey: true })
     await user.click(screen.getByRole('button', { name: 'Close bulk delete' }))
-
-    await user.click(screen.getByRole('button', { name: 'Bulk toggle all' }))
-    expect(mocks.toggleSelectAll).toHaveBeenCalled()
 
     await user.click(screen.getByRole('button', { name: 'Bulk priority' }))
     expect(mocks.bulkChangePriority).toHaveBeenCalledWith('urgent')

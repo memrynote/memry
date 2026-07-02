@@ -6,14 +6,16 @@ Select many tasks and act on them in one step.
 
 ## Selecting Tasks
 
-| How | Result |
-| --- | --- |
-| Click a row checkbox | Toggle that row |
-| Shift-click | Range-select from previous |
-| <kbd>⌘</kbd>-click | Toggle without affecting others |
-| Drag-select (where supported) | Lasso-select rows |
+A checkbox sits at the start of each row. It fades in when you hover the row and stays visible once a selection is active.
 
-The bulk action bar appears at the top of the view with the selection count.
+| How                           | Result                             |
+| ----------------------------- | ---------------------------------- |
+| Click the row checkbox        | Toggle that row                    |
+| Shift-click a row             | Range-select from the previous one |
+| <kbd>⌘</kbd>-click a row      | Toggle without affecting others    |
+| Drag-select (where supported) | Lasso-select rows                  |
+
+The bulk action bar appears as a floating bar at the bottom of the view with the selection count.
 
 ## Available Actions
 
