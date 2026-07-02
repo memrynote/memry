@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useMemo } from 'react'
+import { useState, useRef, useCallback, useMemo, useEffect } from 'react'
 import { useT } from '@memry/i18n/renderer'
 import { Calendar, Folder, Flag } from '@/lib/icons'
 
@@ -132,6 +132,8 @@ interface QuickAddInputProps {
   className?: string
   compact?: boolean
   projectColor?: string
+  /** Bump to focus the input (changes each time to re-fire). */
+  focusSignal?: number
 }
 
 // ============================================================================
@@ -145,7 +147,8 @@ export const QuickAddInput = ({
   placeholder = 'Add a task...    !today  !!high  #project',
   className,
   compact = false,
-  projectColor = '#6B7280'
+  projectColor = '#6B7280',
+  focusSignal
 }: QuickAddInputProps): React.JSX.Element => {
   const { t: tPhaseF } = useT('tasks')
   const { t } = useT('tasks')
@@ -161,6 +164,12 @@ export const QuickAddInput = ({
       description: t('quickAdd.focusDescription')
     }
   ])
+
+  // Focus on demand (sidebar "Tasks" click, empty-state "Add task"). The signal
+  // changes each time, so this re-fires even when the Tasks tab is already open.
+  useEffect(() => {
+    if (focusSignal) inputRef.current?.focus()
+  }, [focusSignal])
 
   // Detect triggers for autocomplete - compute during render instead of useEffect
   const { showAutocomplete, autocompleteType, autocompleteQuery } = useMemo(() => {

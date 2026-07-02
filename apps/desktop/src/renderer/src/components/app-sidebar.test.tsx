@@ -292,11 +292,14 @@ describe('AppSidebar', () => {
     expect(mocks.setSelectedFolder).toHaveBeenCalledWith('Projects')
 
     fireEvent.click(screen.getByRole('button', { name: 'Inbox' }))
-    expect(mocks.openSidebarItem).toHaveBeenCalledWith({
-      type: 'inbox',
-      title: 'Inbox',
-      path: '/inbox'
-    })
+    expect(mocks.openSidebarItem).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'inbox',
+        title: 'Inbox',
+        path: '/inbox',
+        viewState: { focusCaptureAt: expect.any(Number) }
+      })
+    )
 
     fireEvent.click(screen.getByRole('button', { name: 'new' }))
     await waitFor(() => {

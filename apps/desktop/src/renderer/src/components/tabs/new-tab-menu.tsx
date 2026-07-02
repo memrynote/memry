@@ -1,6 +1,7 @@
 import { useCallback, useState, useEffect } from 'react'
 import { Plus } from '@/lib/icons'
 import { useTabs } from '@/contexts/tabs'
+import { newItemViewState } from '@/contexts/tabs/helpers'
 import { notesService } from '@/services/notes-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
@@ -99,6 +100,7 @@ export function NewTabMenu({ groupId }: NewTabMenuProps): React.JSX.Element {
         title: 'Tasks',
         icon: 'list-todo',
         path: '/tasks',
+        viewState: newItemViewState('tasks'),
         isPinned: false,
         isModified: false,
         isPreview: false,
@@ -115,6 +117,7 @@ export function NewTabMenu({ groupId }: NewTabMenuProps): React.JSX.Element {
         title: 'Calendar',
         icon: 'calendar',
         path: '/calendar',
+        viewState: newItemViewState('calendar'),
         isPinned: false,
         isModified: false,
         isPreview: false,
@@ -131,6 +134,7 @@ export function NewTabMenu({ groupId }: NewTabMenuProps): React.JSX.Element {
         title: 'Inbox',
         icon: 'inbox',
         path: '/inbox',
+        viewState: newItemViewState('inbox'),
         isPinned: false,
         isModified: false,
         isPreview: false,

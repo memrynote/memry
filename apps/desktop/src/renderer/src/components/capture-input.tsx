@@ -65,6 +65,8 @@ interface CaptureInputProps {
   density?: DisplayDensity
   compact?: boolean
   className?: string
+  /** Bump to focus the capture field (changes each time to re-fire). */
+  focusSignal?: number
 }
 
 /**
@@ -106,7 +108,8 @@ export function CaptureInput({
   onCaptureError,
   density: _density = 'comfortable',
   compact = false,
-  className
+  className,
+  focusSignal
 }: CaptureInputProps): React.JSX.Element {
   const { t: tPhaseF } = useT('inbox')
   const [value, setValue] = useState('')
@@ -178,6 +181,12 @@ export function CaptureInput({
   }, [value])
 
   useEffect(() => clearRecorderDismissTimer, [clearRecorderDismissTimer])
+
+  // Focus on demand (e.g. clicking Inbox in the sidebar). The signal changes each
+  // time, so this re-fires even when the Inbox tab is already open.
+  useEffect(() => {
+    if (focusSignal) textareaRef.current?.focus()
+  }, [focusSignal])
 
   const handleSubmit = useCallback(
     async (force = false) => {
