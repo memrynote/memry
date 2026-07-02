@@ -68,6 +68,7 @@ Shows the installed version. If a newer version is available, a button lets you 
 
 - **Language** — UI locale dropdown
 - **Clock Format** — 12-hour or 24-hour
+- **Date Format** — how calendar dates display throughout the app (`MM/DD/YYYY`, `DD/MM/YYYY`, `YYYY-MM-DD`, or `DD.MM.YYYY`). This preference is per device and isn't synced.
 
 The desktop app loads the active language bundle at startup and fetches another locale when the
 language setting changes. English fallback messages remain available for errors before the selected
@@ -315,7 +316,7 @@ Create, rename, recolor, and reorder property options.
 
 Settings persist via Zod schemas in `packages/contracts/settings-schemas.ts`. Notable keys:
 
-- General: `theme`, `fontSize`, `fontFamily`, `accentColor`, `startOnBoot`, `language`, `clockFormat`, `createInSelectedFolder`
+- General: `theme`, `fontSize`, `fontFamily`, `accentColor`, `startOnBoot`, `language`, `clockFormat`, `dateFormat`, `createInSelectedFolder`
 - Editor: `width`, `toolbarMode`
 - Tasks: `defaultProjectId`, `defaultSortOrder`, `weekStartDay`, `staleInboxDays`
 - Calendar: `dayCellClickBehavior`, `calendarPageClickOverride`
