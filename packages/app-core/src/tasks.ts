@@ -713,9 +713,19 @@ export function createTasksService(dataDb: DataDb): TasksService {
             {
               id: createId('status'),
               projectId: id,
+              name: 'In Progress',
+              color: '#F59E0B',
+              position: 1,
+              isDefault: false,
+              isDone: false,
+              createdAt: time
+            },
+            {
+              id: createId('status'),
+              projectId: id,
               name: 'Done',
               color: '#22c55e',
-              position: 1,
+              position: 2,
               isDefault: false,
               isDone: true,
               createdAt: time

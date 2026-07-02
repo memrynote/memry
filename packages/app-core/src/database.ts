@@ -133,11 +133,21 @@ function ensureDefaultTaskProject(db: DataDb): void {
         createdAt: now
       },
       {
+        id: 'inbox-in-progress',
+        projectId: 'inbox',
+        name: 'In Progress',
+        color: '#F59E0B',
+        position: 1,
+        isDefault: false,
+        isDone: false,
+        createdAt: now
+      },
+      {
         id: 'inbox-done',
         projectId: 'inbox',
         name: 'Done',
         color: '#22c55e',
-        position: 1,
+        position: 2,
         isDefault: false,
         isDone: true,
         createdAt: now
