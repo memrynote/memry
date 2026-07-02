@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { execFileSync, spawnSync } from 'node:child_process'
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { stdin as input, stdout as output } from 'node:process'
@@ -108,6 +108,8 @@ async function runCli() {
     return
   }
 
+  writeCuratedReleaseNotes({ appVersion: preview.appVersion, markdown: humanizedMarkdown })
+
   if (!options.yes) {
     const confirmed = await confirmEdit()
     if (!confirmed) {
@@ -208,6 +210,17 @@ async function confirmEdit() {
   } finally {
     reader.close()
   }
+}
+
+function writeCuratedReleaseNotes({ appVersion, markdown }) {
+  const dir = path.resolve(process.cwd(), 'release-notes')
+  mkdirSync(dir, { recursive: true })
+  const file = path.join(dir, `${appVersion}.md`)
+  writeFileSync(file, `${markdown.trim()}\n`)
+  execFileSync('git', ['add', file], { stdio: 'inherit' })
+  console.log(
+    `Wrote curated release notes: ${path.relative(process.cwd(), file)} (staged; commit with your release)`
+  )
 }
 
 function writeTempNotes(body) {
