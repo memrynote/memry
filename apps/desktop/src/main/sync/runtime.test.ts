@@ -639,6 +639,23 @@ describe('sync runtime', () => {
     await Promise.resolve()
   })
 
+  it('does not start or re-arm the sync runtime once app shutdown has begun', async () => {
+    const runtime = await loadRuntime()
+    // Shares the module instance the freshly-loaded runtime imports (resetModules
+    // ran in beforeEach, so this is the same latch startSyncRuntime checks).
+    const { beginAppShutdown } = await import('../app-shutdown')
+    beginAppShutdown()
+
+    await expect(runtime.startSyncRuntime()).resolves.toBeNull()
+
+    // Bailed before touching the session token, database, or engine — no
+    // mid-shutdown restart.
+    expect(runtimeMocks.retrieveToken).not.toHaveBeenCalled()
+    expect(runtimeMocks.getDatabase).not.toHaveBeenCalled()
+    expect(runtimeMocks.SyncEngine.instances).toHaveLength(0)
+    expect(runtime.getSyncEngine()).toBeNull()
+  })
+
   it('cleans up partial runtime when startup fails', async () => {
     runtimeMocks.engineStartError = new Error('start failed')
     const runtime = await loadRuntime()
