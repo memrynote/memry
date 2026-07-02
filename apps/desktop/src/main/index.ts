@@ -444,12 +444,46 @@ function createWindow(): void {
   })
   mainWindow.on('closed', unsubscribeVaultStatus)
 
+  // The window is created hidden (show:false) and normally revealed on
+  // 'ready-to-show'. On Windows a GPU/renderer crash before first paint can mean
+  // that event never fires, leaving the process alive with no visible window and
+  // no taskbar entry (unlike macOS, where the Dock still surfaces the app).
+  // Guarantee visibility with a one-shot reveal guarded by a load-failure handler
+  // and a fallback timeout, so a transient hiccup can't hide the app forever.
+  let mainWindowShown = false
+  const revealMainWindow = (reason: string): void => {
+    if (mainWindowShown || mainWindow.isDestroyed()) return
+    mainWindowShown = true
+    clearTimeout(fallbackShowTimer)
+    mainWindow.show()
+    trackLaunchPhase('window_shown', Date.now() - launchStartedAt)
+    mainLog.info(`main window shown (${reason})`)
+  }
+
+  const fallbackShowTimer = setTimeout(() => {
+    mainLog.warn('ready-to-show did not fire within 10s; revealing window as fallback')
+    revealMainWindow('fallback-timeout')
+  }, 10_000)
+  mainWindow.on('closed', () => clearTimeout(fallbackShowTimer))
+
   mainWindow.on('ready-to-show', () => {
     // Zoom out once (equivalent to Cmd+-)
     // mainWindow.webContents.setZoomLevel(-0.8)
-    mainWindow.show()
     trackLaunchPhase('window_ready_to_show', Date.now() - launchStartedAt)
+    revealMainWindow('ready-to-show')
   })
+
+  mainWindow.webContents.on(
+    'did-fail-load',
+    (_event, errorCode, errorDescription, validatedURL) => {
+      // ERR_ABORTED (-3) is benign (e.g. a superseded navigation); don't reveal on it.
+      if (errorCode === -3) return
+      mainLog.error(
+        `main window failed to load (${errorCode} ${errorDescription}) ${validatedURL}; revealing anyway`
+      )
+      revealMainWindow('did-fail-load')
+    }
+  )
 
   mainWindow.webContents.on('did-finish-load', () => {
     trackLaunchPhase('window_did_finish_load', Date.now() - launchStartedAt)
@@ -655,6 +689,16 @@ if (!headlessCliArgs && !allowMultiInstanceForDeviceTests) {
     app.quit()
   } else {
     app.on('second-instance', (_event, commandLine) => {
+      // A second launch (e.g. double-clicking the shortcut while the app is
+      // already running) must surface the existing window, not silently no-op.
+      // On Windows there is no Dock/'activate' fallback, so without this a hidden
+      // or minimized instance stays invisible and the app looks like it "won't open".
+      const existing = BrowserWindow.getAllWindows().find((w) => !w.isDestroyed())
+      if (existing) {
+        if (!existing.isVisible()) existing.show()
+        if (existing.isMinimized()) existing.restore()
+        existing.focus()
+      }
       const deepLinkUrl = commandLine.find((arg) => arg.startsWith('memry://'))
       if (deepLinkUrl) {
         handleDeepLink(deepLinkUrl)
@@ -723,8 +767,10 @@ void app.whenReady().then(async () => {
     }
   }
 
-  // Set app user model id for windows
-  electronApp.setAppUserModelId('com.electron')
+  // Set app user model id for windows. Must match the electron-builder appId
+  // (config/electron-builder.yml) so the taskbar button, pinned shortcut, and
+  // notifications all attribute to the same app identity.
+  electronApp.setAppUserModelId('com.memrynote.memry')
 
   // Register memry:// deep link protocol for OAuth callbacks (T041e)
   if (process.defaultApp && process.argv.length >= 2) {

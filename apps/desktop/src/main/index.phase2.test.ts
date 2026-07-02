@@ -886,6 +886,59 @@ describe('main index phase2 exports', () => {
     expect(preventDefault).toHaveBeenCalled()
   })
 
+  it('reveals the main window via fallback timeout when ready-to-show never fires', async () => {
+    vi.useFakeTimers()
+    whenReadyMock.mockResolvedValue(undefined)
+
+    await importMainModule()
+    await flushReadyWork()
+
+    const createdWindow = browserWindows[0]
+    expect(createdWindow.show).not.toHaveBeenCalled()
+
+    vi.advanceTimersByTime(10_000)
+    expect(createdWindow.show).toHaveBeenCalledTimes(1)
+  })
+
+  it('reveals the main window on fatal load failure but ignores ERR_ABORTED', async () => {
+    whenReadyMock.mockResolvedValue(undefined)
+
+    await importMainModule()
+    await flushReadyWork()
+
+    const createdWindow = browserWindows[0]
+    const didFailLoad = createdWindow.webContents.on.mock.calls.find(
+      ([event]) => event === 'did-fail-load'
+    )?.[1] as (event: unknown, code: number, description: string, url: string) => void
+
+    didFailLoad({}, -3, 'ERR_ABORTED', 'file:///renderer/index.html')
+    expect(createdWindow.show).not.toHaveBeenCalled()
+
+    didFailLoad({}, -6, 'ERR_FILE_NOT_FOUND', 'file:///renderer/index.html')
+    expect(createdWindow.show).toHaveBeenCalledTimes(1)
+  })
+
+  it('surfaces a hidden existing window when a second instance launches', async () => {
+    whenReadyMock.mockResolvedValue(undefined)
+
+    await importMainModule()
+    await flushReadyWork()
+
+    const existing = browserWindows[0]
+    existing.isVisible.mockReturnValue(false)
+    existing.isMinimized.mockReturnValue(true)
+
+    const secondInstanceHandler = appOnMock.mock.calls.find(
+      ([event]) => event === 'second-instance'
+    )?.[1] as (event: unknown, commandLine: string[]) => void
+
+    secondInstanceHandler({}, ['--no-deep-link'])
+
+    expect(existing.show).toHaveBeenCalled()
+    expect(existing.restore).toHaveBeenCalled()
+    expect(existing.focus).toHaveBeenCalled()
+  })
+
   it('handles OAuth deep links for registered states', async () => {
     whenReadyMock.mockResolvedValue(undefined)
 
