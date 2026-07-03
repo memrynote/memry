@@ -2,6 +2,7 @@ import { useRef, type ReactNode } from 'react'
 import { motion, useInView } from 'framer-motion'
 import { Container } from '@/components/layout/Container'
 import { DownloadCTA } from '@/components/shared/DownloadCTA'
+import { SideRays } from '@/components/shared/SideRays'
 
 const BENEFITS = ['Open source', 'Own your data', 'No account required', 'End-to-end encrypted']
 
@@ -35,9 +36,28 @@ export function Hero() {
   const isInView = useInView(sectionRef, { once: true, amount: 0.2 })
 
   return (
-    <section ref={sectionRef} id="hero" className="overflow-hidden pt-28 pb-12 md:pt-36 md:pb-16">
+    <section
+      ref={sectionRef}
+      id="hero"
+      className="relative overflow-hidden pt-28 pb-12 md:pt-36 md:pb-16"
+    >
+      <div className="pointer-events-none absolute inset-0" aria-hidden>
+        <SideRays
+          speed={2.5}
+          rayColor1="#EAB308"
+          rayColor2="#96c8ff"
+          intensity={2}
+          spread={2}
+          origin="top-right"
+          tilt={0}
+          saturation={1.5}
+          blend={0.75}
+          falloff={1.6}
+          opacity={1}
+        />
+      </div>
       <Container>
-        <div className="text-center">
+        <div className="relative z-10 text-center">
           {/* Front-page headline */}
           <h1 className="mx-auto max-w-4xl font-serif text-5xl leading-[1.05] text-ink text-balance md:text-6xl">
             <RevealLine inView={isInView} delay={0.05}>

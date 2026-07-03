@@ -9,12 +9,8 @@
       ;(function () {
         try {
           var stored = localStorage.getItem('memry-landing-theme')
-          var theme =
-            stored === 'light' || stored === 'dark'
-              ? stored
-              : window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
-                ? 'dark'
-                : 'light'
+          // Default to dark; only an explicit stored choice overrides it (ignore system pref).
+          var theme = stored === 'light' || stored === 'dark' ? stored : 'dark'
           var root = document.documentElement
           if (theme === 'dark') root.classList.add('dark')
           root.dataset.theme = theme

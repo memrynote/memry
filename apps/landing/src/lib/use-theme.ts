@@ -21,7 +21,7 @@ function getSnapshot(): Theme {
 }
 
 function getServerSnapshot(): Theme {
-  return 'light'
+  return 'dark'
 }
 
 function applyTheme(theme: Theme): void {
