@@ -320,6 +320,18 @@ test('opens a standalone vault and exposes core note, journal, task, inbox, and 
     name: 'Task Project',
     description: 'Task project description'
   })
+  assert.deepEqual(
+    (await app.tasks.projects.statuses('inbox'))
+      .sort((a, b) => a.position - b.position)
+      .map((status) => status.name),
+    ['To Do', 'In Progress', 'Done']
+  )
+  assert.deepEqual(
+    (await app.tasks.projects.statuses(taskProject.id))
+      .sort((a, b) => a.position - b.position)
+      .map((status) => status.name),
+    ['To Do', 'In Progress', 'Done']
+  )
   assert.equal(
     (await app.tasks.projects.update(taskProject.id, { name: 'Task Project Updated' })).name,
     'Task Project Updated'

@@ -33,7 +33,12 @@ describe('database defaults', () => {
       .where(eq(statuses.projectId, 'inbox'))
       .all()
 
-    expect(inboxStatuses).toHaveLength(2)
+    expect(inboxStatuses).toHaveLength(3)
+
+    const orderedNames = [...inboxStatuses]
+      .sort((a, b) => a.position - b.position)
+      .map((s) => s.name)
+    expect(orderedNames).toEqual(['To Do', 'In Progress', 'Done'])
   })
 
   it('is idempotent', () => {
@@ -48,6 +53,6 @@ describe('database defaults', () => {
       .all()
 
     expect(inboxProjects).toHaveLength(1)
-    expect(inboxStatuses).toHaveLength(2)
+    expect(inboxStatuses).toHaveLength(3)
   })
 })
