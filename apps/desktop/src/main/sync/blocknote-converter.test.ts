@@ -4,7 +4,8 @@ import {
   yDocToMarkdown,
   blocksToYFragment,
   markdownToYFragment,
-  yFragmentToBlocks
+  yFragmentToBlocks,
+  repairEmptyBlockIds
 } from './blocknote-converter'
 import * as Y from 'yjs'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
@@ -328,5 +329,88 @@ describe('blocknote-converter code block language', () => {
         ]
       })
     ])
+  })
+})
+
+describe('blocknote-converter block id integrity', () => {
+  const collectContainerIds = (fragment: Y.XmlFragment): (string | null)[] => {
+    const ids: (string | null)[] = []
+    const visit = (node: Y.XmlFragment | Y.XmlElement): void => {
+      for (const child of node.toArray()) {
+        const el = child as Y.XmlElement
+        if (typeof el.nodeName !== 'string') continue
+        if (el.nodeName === 'blockContainer') ids.push(el.getAttribute('id') ?? null)
+        visit(el)
+      }
+    }
+    visit(fragment)
+    return ids
+  }
+
+  it('never writes an empty block id for multi-blank-line gaps', async () => {
+    // #given markdown whose extra blank lines mint gap paragraphs
+    const doc = new Y.Doc()
+    const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+
+    // #when
+    const ok = await markdownToYFragment('one\n\n\n\n\ntwo', fragment)
+
+    // #then every block container carries a real id (no '' or null)
+    expect(ok).toBe(true)
+    const ids = collectContainerIds(fragment)
+    expect(ids.length).toBeGreaterThan(0)
+    for (const id of ids) expect(id).toBeTruthy()
+  })
+
+  it('regenerates a falsy block id passed to blocksToYFragment', () => {
+    // #given a block handed in with an empty-string id
+    const doc = new Y.Doc()
+    const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+
+    // #when
+    const ok = blocksToYFragment(
+      [{ id: '', type: 'paragraph', props: {}, content: [], children: [] } as unknown as never],
+      fragment
+    )
+
+    // #then the persisted container id is a real value, not ''
+    expect(ok).toBe(true)
+    const ids = collectContainerIds(fragment)
+    expect(ids).toHaveLength(1)
+    expect(ids[0]).toBeTruthy()
+  })
+
+  it('repairEmptyBlockIds stamps ids on containers missing one', () => {
+    // #given a fragment holding a block container with an empty id
+    const doc = new Y.Doc()
+    const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    const container = new Y.XmlElement('blockContainer')
+    container.setAttribute('id', '')
+    container.insert(0, [new Y.XmlElement('paragraph')])
+    fragment.insert(0, [container])
+    expect(container.getAttribute('id')).toBe('')
+
+    // #when
+    const repaired = repairEmptyBlockIds(fragment)
+
+    // #then
+    expect(repaired).toBe(1)
+    expect(container.getAttribute('id')).toBeTruthy()
+  })
+
+  it('leaves already-valid block ids untouched', () => {
+    // #given a fragment whose container already has an id
+    const doc = new Y.Doc()
+    const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    const container = new Y.XmlElement('blockContainer')
+    container.setAttribute('id', 'keep-me')
+    fragment.insert(0, [container])
+
+    // #when
+    const repaired = repairEmptyBlockIds(fragment)
+
+    // #then
+    expect(repaired).toBe(0)
+    expect(container.getAttribute('id')).toBe('keep-me')
   })
 })
