@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useMemo } from 'react'
+import { isValid } from 'date-fns'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import {
@@ -262,9 +263,13 @@ function PropertyValueRenderer({
   }
 
   if (property.type === 'date') {
+    // An unparseable stored value yields an Invalid Date (still truthy); pass null
+    // so the editor and calendar never receive one and read it as empty.
+    const rawDate = property.value ? new Date(property.value as string | number | Date) : null
+    const dateValue = rawDate && isValid(rawDate) ? rawDate : null
     return (
       <DateEditor
-        value={property.value ? new Date(property.value as string | number | Date) : null}
+        value={dateValue}
         onChange={(date) => onValueChange(date?.toISOString() ?? null)}
         defaultOpen={autoOpen}
       />

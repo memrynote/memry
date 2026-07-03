@@ -11,6 +11,15 @@ describe('formatDate', () => {
     expect(formatDate(d, 'YYYY-MM-DD')).toBe('2026-07-02')
     expect(formatDate(d, 'DD.MM.YYYY')).toBe('02.07.2026')
   })
+
+  // Regression: an unparseable date property reaches the note tab as
+  // `new Date('...')` (Invalid Date). date-fns format() throws RangeError on it,
+  // which escaped into render and crashed the whole tab via the error boundary.
+  it('returns empty string instead of throwing on an invalid date', () => {
+    expect(() => formatDate(new Date('not a date'), 'DD.MM.YYYY')).not.toThrow()
+    expect(formatDate(new Date('not a date'), 'DD.MM.YYYY')).toBe('')
+    expect(formatDate(new Date(NaN))).toBe('')
+  })
 })
 
 describe('parseDateInput', () => {
