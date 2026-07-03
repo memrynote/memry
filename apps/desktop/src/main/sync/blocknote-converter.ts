@@ -8,6 +8,7 @@ import {
   createCodeBlockSpec
 } from '@blocknote/core'
 import { codeBlockOptions } from '@blocknote/code-block'
+import { randomUUID } from 'node:crypto'
 import type * as Y from 'yjs'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { parseCriticMarkup, writeCriticMarkupMarksToYDoc } from '@memry/shared'
@@ -111,15 +112,51 @@ export async function markdownToBlocks(markdown: string): Promise<Block[] | null
   }
 }
 
+// BlockNote's headless serializer regenerates a MISSING block id but writes an
+// explicit empty-string id as-is. An empty id then trips the renderer's block
+// resolver ("Block doesn't have id") and crashes the editor. Stamp a real id on
+// any block whose id is falsy before serializing.
+function ensureBlockIds(blocks: Block[]): void {
+  for (const block of blocks) {
+    if (!block.id) (block as { id: string }).id = randomUUID()
+    const children = block.children as Block[] | undefined
+    if (children?.length) ensureBlockIds(children)
+  }
+}
+
 export function blocksToYFragment(blocks: Block[], fragment: Y.XmlFragment): boolean {
   try {
     const editor = getEditor()
+    ensureBlockIds(blocks)
     editor.blocksToYXmlFragment(blocks, fragment)
     return true
   } catch (err) {
     log.error('Blocks-to-Yjs conversion failed', err)
     return false
   }
+}
+
+const BLOCK_CONTAINER_NODES = new Set(['blockContainer', 'columnList', 'column'])
+
+// Repair notes already persisted with empty-string block ids: walk the CRDT
+// fragment and stamp a fresh id on any block container missing one. Runs on
+// note open so previously-corrupted notes heal instead of showing "Editor
+// Error". Returns the number of blocks repaired.
+export function repairEmptyBlockIds(fragment: Y.XmlFragment): number {
+  let repaired = 0
+  const visit = (node: Y.XmlFragment | Y.XmlElement): void => {
+    for (const child of node.toArray()) {
+      const el = child as Y.XmlElement
+      if (typeof el.nodeName !== 'string' || typeof el.getAttribute !== 'function') continue
+      if (BLOCK_CONTAINER_NODES.has(el.nodeName) && !el.getAttribute('id')) {
+        el.setAttribute('id', randomUUID())
+        repaired++
+      }
+      visit(el)
+    }
+  }
+  visit(fragment)
+  return repaired
 }
 
 export async function markdownToYFragment(
@@ -165,7 +202,7 @@ function createEmptyParagraph(): Block {
     type: 'paragraph',
     content: [],
     children: [],
-    id: '',
+    id: randomUUID(),
     props: {}
   } as unknown as Block
 }
