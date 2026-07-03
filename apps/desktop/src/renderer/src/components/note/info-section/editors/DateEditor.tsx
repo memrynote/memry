@@ -11,6 +11,7 @@ import { useT } from '@memry/i18n/renderer'
 interface DateEditorProps {
   value: Date | null
   onChange: (value: Date | null) => void
+  onBlur?: () => void
   defaultOpen?: boolean
 }
 
@@ -18,7 +19,7 @@ interface DateEditorProps {
 // Radix owns open/close, so the picker reopens on every click. (An earlier
 // controlled-open version that unmounted on close couldn't be reopened without
 // a remount.)
-export function DateEditor({ value, onChange, defaultOpen = false }: DateEditorProps) {
+export function DateEditor({ value, onChange, onBlur, defaultOpen = false }: DateEditorProps) {
   const { t } = useT('notes')
   const dateFormat = useDateFormat()
   const { settings: taskPrefs } = useTaskPreferences()
@@ -27,13 +28,24 @@ export function DateEditor({ value, onChange, defaultOpen = false }: DateEditorP
   const [open, setOpen] = useState(defaultOpen)
   const [draft, setDraft] = useState('')
 
+  // Close the picker and notify the consumer the editor is done (mirrors the
+  // onBlur contract of the sibling text/number/url editors).
+  const close = useCallback(() => {
+    setOpen(false)
+    onBlur?.()
+  }, [onBlur])
+
   const handleOpenChange = useCallback(
     (next: boolean) => {
-      // Seed the text field with the current value each time it opens.
-      if (next) setDraft(value ? formatDate(value, dateFormat) : '')
-      setOpen(next)
+      if (next) {
+        // Seed the text field with the current value each time it opens.
+        setDraft(value ? formatDate(value, dateFormat) : '')
+        setOpen(true)
+      } else {
+        close()
+      }
     },
-    [value, dateFormat]
+    [value, dateFormat, close]
   )
 
   const parsedDraft = draft ? parseDateInput(draft, dateFormat) : null
@@ -42,15 +54,15 @@ export function DateEditor({ value, onChange, defaultOpen = false }: DateEditorP
   const commitText = useCallback(() => {
     if (!draft) {
       onChange(null)
-      setOpen(false)
+      close()
       return
     }
     if (parsedDraft) {
       onChange(parsedDraft)
-      setOpen(false)
+      close()
     }
     // invalid: keep open, red border shows
-  }, [draft, parsedDraft, onChange])
+  }, [draft, parsedDraft, onChange, close])
 
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
@@ -83,7 +95,7 @@ export function DateEditor({ value, onChange, defaultOpen = false }: DateEditorP
           onSelect={(d) => {
             if (d) {
               onChange(d)
-              setOpen(false)
+              close()
             }
           }}
           weekStartsOn={weekStartsOn}
