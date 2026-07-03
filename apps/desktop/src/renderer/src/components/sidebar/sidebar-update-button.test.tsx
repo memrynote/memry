@@ -54,6 +54,7 @@ function makeState(patch: Partial<AppUpdateState>): AppUpdateState {
     downloadProgressPercent: null,
     lastCheckedAt: null,
     error: null,
+    autoDownloadEnabled: false,
     ...patch
   }
 }

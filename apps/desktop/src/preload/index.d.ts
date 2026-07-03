@@ -1278,7 +1278,6 @@ export interface GeneralSettingsDTO {
   onboardingCompleted: boolean
   createInSelectedFolder: boolean
   clockFormat: '12h' | '24h'
-  dateFormat: 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY-MM-DD' | 'DD.MM.YYYY'
 }
 
 export interface EditorSettingsDTO {
@@ -1793,6 +1792,8 @@ interface API extends WindowAPI, GeneratedRpcApi {
     checkForUpdates: () => Promise<AppUpdateState>
     downloadUpdate: () => Promise<AppUpdateState>
     quitAndInstall: () => Promise<void>
+    skipVersion: (version: string) => Promise<AppUpdateState>
+    setAutoDownload: (enabled: boolean) => Promise<AppUpdateState>
   }
   syncCrdt: {
     openDoc: (input: { noteId: string }) => Promise<CrdtOpenDocResult>
