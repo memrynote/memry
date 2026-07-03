@@ -342,10 +342,14 @@ async function openVault(vaultPath: string): Promise<void> {
     error: null
   })
 
-  await startSyncRuntime()
-
+  // Register the agent IPC handlers before the sync runtime starts: agent chat
+  // does not depend on sync, and if startSyncRuntime throws or stalls the agent
+  // handlers would otherwise never register, leaving the pane stuck on
+  // "Loading agent chat..." with "No handler registered".
   configureLazyAgentServices(startVaultAgentServices)
   registerLazyAgentHandlers()
+
+  await startSyncRuntime()
 }
 
 /**

@@ -24,7 +24,11 @@ export function AgentPane(): React.JSX.Element {
 
   const { state } = agent
 
-  if (state.disclosureAccepted === null || state.backendStatuses === null) {
+  // Only block the pane on the disclosure state — that decides enablement vs.
+  // conversation. Backend detection (backendStatuses) populates asynchronously
+  // and the composer tolerates a null value, so it must not gate the whole pane
+  // (otherwise a slow/failed backend probe leaves it stuck on "Loading…").
+  if (state.disclosureAccepted === null) {
     return (
       <div className="flex h-full items-start p-5 text-sm text-muted-foreground">
         {t('agentChat.loading')}

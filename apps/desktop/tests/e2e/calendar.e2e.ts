@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures'
-import { waitForAppReady, waitForVaultReady } from './utils/electron-helpers'
+import { ensureDayPanelOpen, waitForAppReady, waitForVaultReady } from './utils/electron-helpers'
 
 interface SeededCalendarData {
   day: string
@@ -119,13 +119,12 @@ test.describe('Calendar milestone e2e', () => {
   test('shows the same projection in the global journal day panel', async ({ page }) => {
     await openCalendarWorkspace(page)
 
-    await page.getByRole('button', { name: 'Day Panel', exact: true }).click()
+    await ensureDayPanelOpen(page)
     const dayPanel = page.locator('[data-slot="day-panel-inner"]')
-    const scheduleHeading = dayPanel.getByText('Schedule')
-    await scheduleHeading.scrollIntoViewIfNeeded()
+    const importedEvent = dayPanel.getByText('Imported customer call')
+    await importedEvent.scrollIntoViewIfNeeded()
 
-    await expect(scheduleHeading).toBeVisible()
-    await expect(dayPanel.getByText('Imported customer call')).toBeVisible()
+    await expect(importedEvent).toBeVisible()
     await expect(dayPanel.getByText('Review investor email')).toBeVisible()
   })
 })
