@@ -57,9 +57,10 @@ function CompetitorBar({ activeIndex }: { activeIndex: number }) {
 
 export function FlowShowcase() {
   const [activeIndex, setActiveIndex] = useState(0)
-  const [started, setStarted] = useState(false)
+  const [started, setStarted] = useState(true) // autoplay muted on mount
   const [paused, setPaused] = useState(false)
   const [muted, setMuted] = useState(true)
+  const [engaged, setEngaged] = useState(false) // muted teaser overlay until first click
   const [videoDuration, setVideoDuration] = useState<number | null>(null)
   const [seekRequest, setSeekRequest] = useState<SeekRequest | null>(null)
 
@@ -89,6 +90,8 @@ export function FlowShowcase() {
 
   const handleStart = useCallback(() => {
     trackLandingEvent('landing_demo_start', demoTarget(CLIPS[activeIndex].id))
+    setEngaged(true)
+    setMuted(false)
     setStarted(true)
     setPaused(false)
     seekTo(0)
@@ -205,6 +208,7 @@ export function FlowShowcase() {
                 activeIndex={activeIndex}
                 playing={started && !paused}
                 muted={muted}
+                previewing={!engaged}
                 onToggle={handleToggle}
                 onStart={handleStart}
                 onMutedChange={setMuted}
