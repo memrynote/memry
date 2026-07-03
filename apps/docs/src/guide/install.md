@@ -1,13 +1,19 @@
 # Install memrynote
 
-memrynote is not publicly released yet. Download links and packaged installers will be added
-here once the first stable release is available.
+Download the desktop app from **[memrynote.com/download/desktop](https://memrynote.com/download/desktop)**.
+The download page detects your platform and offers installers for:
 
-## Current Status
+- **macOS** — Apple Silicon and Intel
+- **Windows**
+- **Linux** — AppImage and `.deb`
 
-The project is in active development. If you want to follow progress, watch the
-[GitHub repository](https://github.com/memrynote/memry) or join the community around the
-project before installing a public build.
+On macOS you can also install with [Homebrew](https://brew.sh):
+
+```sh
+brew install --cask memrynote/tap/memry
+```
+
+After installing, head to [First Run & Vault Setup](./first-run) to create your encrypted vault.
 
 ## Run from Source
 
