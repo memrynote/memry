@@ -162,6 +162,19 @@ export async function ensureDayPanelOpen(page: Page): Promise<void> {
 }
 
 /**
+ * Ensure the right-hand Day Panel is closed. It defaults to open (#625), which
+ * narrows the note area and collapses the review rail; surfaces that need the
+ * full note width (e.g. the CriticMarkup review rail) close it first. The toggle
+ * inside the open panel's header is also labelled "Day Panel".
+ */
+export async function ensureDayPanelClosed(page: Page): Promise<void> {
+  const inner = page.locator('[data-slot="day-panel-inner"]')
+  if (!(await inner.isVisible().catch(() => false))) return
+  await page.getByRole('button', { name: 'Day Panel', exact: true }).click()
+  await expect(inner).not.toBeVisible()
+}
+
+/**
  * Navigate to a specific page/view in the app
  */
 export async function navigateTo(

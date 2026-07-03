@@ -3,6 +3,7 @@ import type { Page } from '@playwright/test'
 import { test, expect } from './fixtures'
 import {
   createNote,
+  ensureDayPanelClosed,
   navigateTo,
   SHORTCUTS,
   waitForAppReady,
@@ -28,6 +29,9 @@ test.describe('CriticMarkup review flows', () => {
     await page.setViewportSize({ width: 1440, height: 960 })
     await waitForAppReady(page)
     await waitForVaultReady(page)
+    // The review rail needs the full note width; the day panel now defaults open
+    // (#625) and would otherwise collapse the rail into the badge flyout.
+    await ensureDayPanelClosed(page)
   })
 
   test('note comments require explicit action and support resolve/delete with hover linkage', async ({
@@ -351,16 +355,22 @@ function reviewRail(page: Page) {
 }
 
 function commentComposer(page: Page) {
-  // The draft composer opens in a floating flyout (role="dialog") positioned
-  // near the selection, not inside the rail aside — expectComposerNearSelectedTop
-  // relies on that positioning. Earlier this looked inside reviewRail() and so
-  // never matched the live composer.
-  return page.locator('.critic-review-flyout-draft .critic-comment-composer').first()
+  // The draft composer lives in the review rail when it is expanded, or in a
+  // near-selection floating flyout when the rail has responsive-collapsed
+  // (review-badge-layer.tsx). Match it in either place.
+  return page.locator('.critic-comment-composer').first()
 }
 
 async function expectComposerNearSelectedTop(page: Page, selectedTop: number): Promise<void> {
   const composer = commentComposer(page)
   await expect(composer).toBeVisible()
+
+  // Only the flyout variant is anchored near the selection; the rail-hosted
+  // composer sits in the aside, so skip the positional check there.
+  const inFlyout = await page
+    .locator('.critic-review-flyout-draft .critic-comment-composer')
+    .count()
+  if (inFlyout === 0) return
 
   await expect
     .poll(async () => {
