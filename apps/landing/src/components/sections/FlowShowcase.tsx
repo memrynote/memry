@@ -57,7 +57,7 @@ function CompetitorBar({ activeIndex }: { activeIndex: number }) {
 
 export function FlowShowcase() {
   const [activeIndex, setActiveIndex] = useState(0)
-  const [started, setStarted] = useState(false)
+  const [started, setStarted] = useState(true) // autoplay muted on mount
   const [paused, setPaused] = useState(false)
   const [muted, setMuted] = useState(true)
   const [videoDuration, setVideoDuration] = useState<number | null>(null)
