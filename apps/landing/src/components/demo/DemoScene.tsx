@@ -85,7 +85,7 @@ export function DemoScene({
         )
       })}
       {previewing && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center bg-paper/25 backdrop-blur-[7px]">
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-paper/10 backdrop-blur-[2px]">
           <button
             type="button"
             aria-label="Play demo video"
