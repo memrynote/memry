@@ -425,13 +425,13 @@ export const SettingsChannels = {
     TRIGGER_SYNC: 'settings:triggerSync',
     /** Register (or unregister) the OS-level global capture shortcut */
     REGISTER_GLOBAL_CAPTURE: 'settings:registerGlobalCapture',
-    /** Get status for the terminal `memry` command shim */
+    /** Get status for the terminal `memrynote` command shim */
     GET_TERMINAL_COMMAND_STATUS: 'settings:getTerminalCommandStatus',
-    /** Install the terminal `memry` command shim */
+    /** Install the terminal `memrynote` command shim */
     INSTALL_TERMINAL_COMMAND: 'settings:installTerminalCommand',
-    /** Uninstall the terminal `memry` command shim */
+    /** Uninstall the terminal `memrynote` command shim */
     UNINSTALL_TERMINAL_COMMAND: 'settings:uninstallTerminalCommand',
-    /** Set the default vault used by terminal `memry` commands */
+    /** Set the default vault used by terminal `memrynote` commands */
     SET_TERMINAL_COMMAND_DEFAULT_VAULT: 'settings:setTerminalCommandDefaultVault'
   },
   sync: {

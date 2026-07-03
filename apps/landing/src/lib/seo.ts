@@ -86,6 +86,12 @@ export const PAGE_META: Record<string, PageMeta> = {
       'memrynote desktop for macOS, Windows, and Linux. Plain Markdown vault, end-to-end encrypted sync, open source.',
     path: '/download/desktop'
   },
+  cli: {
+    title: 'memrynote CLI — Your vault from the terminal',
+    description:
+      'Notes, tasks, journal, calendar, and sync — scriptable from the command line. Local-first, JSON-native. Ships with memrynote for Desktop.',
+    path: '/cli'
+  },
   useCases: {
     title: 'Use Cases — memrynote',
     description:

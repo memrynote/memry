@@ -68,7 +68,7 @@ export interface TerminalCommandVault {
 export interface TerminalCommandStatus {
   supported: boolean
   installed: boolean
-  command: 'memry'
+  command: 'memrynote'
   platform: 'darwin' | 'linux' | 'win32'
   shimPath: string
   binDir: string

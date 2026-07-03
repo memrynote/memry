@@ -65,6 +65,7 @@ export function buildLlmsTxt(): string {
     page('/pricing', PAGE_META.pricing.description),
     page('/use-cases', PAGE_META.useCases.description),
     page('/download/desktop', PAGE_META.downloadDesktop.description),
+    page('/cli', PAGE_META.cli.description),
     page('/changelog', PAGE_META.changelog.description),
     page('/roadmap', PAGE_META.roadmap.description),
     '',

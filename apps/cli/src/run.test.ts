@@ -52,7 +52,7 @@ async function runCliProcess(args: string[]): Promise<{
   stdout: string
   stderr: string
 }> {
-  const child = spawn(process.execPath, [path.join(process.cwd(), 'bin/memry.mjs'), ...args], {
+  const child = spawn(process.execPath, [path.join(process.cwd(), 'bin/memrynote.mjs'), ...args], {
     stdio: ['ignore', 'pipe', 'pipe']
   })
   let stdout = ''

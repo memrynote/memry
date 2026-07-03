@@ -9,7 +9,7 @@
   },
   "types": "./src/run.ts",
   "bin": {
-    "memry": "./bin/memry.mjs"
+    "memrynote": "./bin/memrynote.mjs"
   },
   "scripts": {
     "test": "node --no-warnings --experimental-strip-types --experimental-transform-types --test src/*.test.ts",

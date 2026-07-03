@@ -15,6 +15,7 @@ import { CalendarFeaturePage } from '@/pages/Calendar'
 import { AIAgentFeaturePage } from '@/pages/AIAgent'
 import { WebClipperFeaturePage } from '@/pages/WebClipper'
 import { DownloadDesktopPage } from '@/pages/DownloadDesktop'
+import { CliPage } from '@/pages/Cli'
 import { UseCasesPage } from '@/pages/UseCases'
 import { SecurityPage } from '@/pages/Security'
 import { PricingPage } from '@/pages/Pricing'
@@ -70,6 +71,7 @@ const ROUTE_MAP: Record<string, () => ReactNode> = {
   '/features/ai-agent': () => <AIAgentFeaturePage />,
   '/features/web-clipper': () => <WebClipperFeaturePage />,
   '/download/desktop': () => <DownloadDesktopPage />,
+  '/cli': () => <CliPage />,
   '/use-cases': () => <UseCasesPage />,
   '/security': () => <SecurityPage />,
   '/compare': () => <ComparePage />,

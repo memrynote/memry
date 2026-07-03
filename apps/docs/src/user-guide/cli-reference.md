@@ -1,16 +1,16 @@
 # CLI Reference
 
-A flat reference for every `memry` command, flag, and positional argument. For a
+A flat reference for every `memrynote` command, flag, and positional argument. For a
 prose walkthrough, see [Command Line](/user-guide/cli).
 
 ## Synopsis
 
 ```bash
-memry [--vault <path>] [--json] <command> [subcommand] [args] [flags]
+memrynote [--vault <path>] [--json] <command> [subcommand] [args] [flags]
 ```
 
 The 21 top-level commands are listed in the [usage error](https://github.com/memrynote/memry/blob/main/apps/cli/src/run.ts)
-when you run `memry` with no arguments:
+when you run `memrynote` with no arguments:
 
 ```
 vault | notes | folders | properties | folder-view | tasks | projects |
@@ -27,7 +27,7 @@ bookmarks | saved-filters | calendar | sync | agent | graph | search
 
 The CLI reads the default vault from your desktop **Settings → Command Line →
 Default vault**. With multiple vaults configured, you must pick one either via
-`memry vault use <name>` or `--vault <path>` per call.
+`memrynote vault use <name>` or `--vault <path>` per call.
 
 ## Output conventions
 
@@ -44,7 +44,7 @@ destructive command requires `--yes` and exits non-zero without it.
 ## vault
 
 ```
-memry vault <list|current|use|init|status|open|config|update-config> [args]
+memrynote vault <list|current|use|init|status|open|config|update-config> [args]
 ```
 
 ### list
@@ -56,7 +56,7 @@ Lists known vaults from the desktop app's registry.
 | _none_ |      |          |             |
 
 ```bash
-memry vault list
+memrynote vault list
 ```
 
 ### current
@@ -64,7 +64,7 @@ memry vault list
 Prints the active vault (from `--vault` or the configured default).
 
 ```bash
-memry --json vault current
+memrynote --json vault current
 ```
 
 ### use
@@ -76,7 +76,7 @@ Sets the default vault for future CLI calls.
 | `<vault-name-or-path>` | A name from `vault list` or an absolute path. |
 
 ```bash
-memry vault use work
+memrynote vault use work
 ```
 
 ### init
@@ -84,7 +84,7 @@ memry vault use work
 Idempotently creates `.memry/` folder layout and the local databases if missing.
 
 ```bash
-memry vault init
+memrynote vault init
 ```
 
 ### status
@@ -92,7 +92,7 @@ memry vault init
 Returns vault metadata: path, version, sizes, last opened.
 
 ```bash
-memry vault status
+memrynote vault status
 ```
 
 ### open
@@ -104,7 +104,7 @@ Alias of `status`.
 Returns the vault's editable config.
 
 ```bash
-memry vault config
+memrynote vault config
 ```
 
 ### update-config
@@ -116,7 +116,7 @@ Merges a JSON object into the vault config.
 | `<json>`   | Partial config object. |
 
 ```bash
-memry vault update-config '{"excludePatterns":[".git","tmp"]}'
+memrynote vault update-config '{"excludePatterns":[".git","tmp"]}'
 ```
 
 ---
@@ -124,7 +124,7 @@ memry vault update-config '{"excludePatterns":[".git","tmp"]}'
 ## notes
 
 ```
-memry notes <subcommand> [args]
+memrynote notes <subcommand> [args]
 ```
 
 ### create
@@ -141,7 +141,7 @@ memry notes <subcommand> [args]
 | `--properties <json>` | JSON object | Initial frontmatter.             |
 
 ```bash
-memry notes create "Draft" --content "First line" --folder Projects --tag writing
+memrynote notes create "Draft" --content "First line" --folder Projects --tag writing
 ```
 
 ### list
@@ -152,7 +152,7 @@ memry notes create "Draft" --content "First line" --folder Projects --tag writin
 | `--limit <n>`     | number | Max rows. Default `100`. |
 
 ```bash
-memry notes list --folder Projects --limit 20
+memrynote notes list --folder Projects --limit 20
 ```
 
 ### get
@@ -162,7 +162,7 @@ memry notes list --folder Projects --limit 20
 | `<id-or-path>` | Note id (e.g. `note_abc123`) or vault path. |
 
 ```bash
-memry notes get note_abc123
+memrynote notes get note_abc123
 ```
 
 ### exists
@@ -208,7 +208,7 @@ Returns inbound and outbound links for a note.
 | `--properties <json>` | JSON object | Replace frontmatter.                      |
 
 ```bash
-memry notes update note_abc123 --append "More text" --properties '{"status":"active"}'
+memrynote notes update note_abc123 --append "More text" --properties '{"status":"active"}'
 ```
 
 ### rename
@@ -245,7 +245,7 @@ Requires `--yes`. Returns `{ success: boolean }`.
 | `<id-or-path>` | Note.       |
 
 ```bash
-memry notes delete note_abc123 --yes
+memrynote notes delete note_abc123 --yes
 ```
 
 ### attach
@@ -359,7 +359,7 @@ Requires `--yes`.
 ### list
 
 ```bash
-memry folders list
+memrynote folders list
 ```
 
 ### create
@@ -557,7 +557,7 @@ Returns `{ exists: boolean }` for a folder path.
 | `--offset <n>`            | number     | Pagination.          |
 
 ```bash
-memry tasks list --project proj_1 --due-before 2026-01-01 --sort-by due --sort-order asc
+memrynote tasks list --project proj_1 --due-before 2026-01-01 --sort-by due --sort-order asc
 ```
 
 ### get
@@ -710,7 +710,7 @@ Requires `--yes`.
 ### list
 
 ```bash
-memry projects list
+memrynote projects list
 ```
 
 ### get
@@ -1060,7 +1060,7 @@ Returns the current writing streak.
 ### list
 
 ```bash
-memry tags list
+memrynote tags list
 ```
 
 ### notes
@@ -1280,7 +1280,7 @@ Requires `--yes`.
 ### list
 
 ```bash
-memry templates list
+memrynote templates list
 ```
 
 ### get
@@ -1394,7 +1394,7 @@ Returns `{ bookmarked: boolean }`.
 | `<json-array>` | JSON array of `{ "itemType", "itemId" }`. |
 
 ```bash
-memry bookmarks bulk-create '[{"itemType":"note","itemId":"note_1"}]'
+memrynote bookmarks bulk-create '[{"itemType":"note","itemId":"note_1"}]'
 ```
 
 ### bulk-delete
@@ -1410,7 +1410,7 @@ memry bookmarks bulk-create '[{"itemType":"note","itemId":"note_1"}]'
 ### list
 
 ```bash
-memry saved-filters list
+memrynote saved-filters list
 ```
 
 ### get
@@ -1745,8 +1745,8 @@ Any other subcommand or arguments are joined with spaces and treated as a search
 query.
 
 ```bash
-memry search project plan
-memry --json search "encryption nonce"
+memrynote search project plan
+memrynote --json search "encryption nonce"
 ```
 
 ---
@@ -1763,5 +1763,5 @@ The most common error messages are:
 - `Missing <label>` — a required positional is missing.
 - `Invalid number: <value>` or `Invalid boolean: --<flag>` — a flag failed to parse.
 - `Pass --yes to delete a <thing>` — a destructive command needs the safety flag.
-- `Multiple vaults found. Choose one with memry vault use ... or run with --vault <path>.`
+- `Multiple vaults found. Choose one with memrynote vault use ... or run with --vault <path>.`
 - `No default vault configured. Open memrynote and choose Settings > Command Line > Default vault, or run with --vault <path>.`
