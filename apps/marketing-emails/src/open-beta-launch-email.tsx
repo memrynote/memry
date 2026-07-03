@@ -45,6 +45,10 @@ const footerDownloadUrl = trackedMemryUrl(
   'footer_download'
 )
 const footerHomeUrl = trackedMemryUrl('/', WAITLIST_CAMPAIGNS.openBeta, 'footer_home')
+const pricingUrl = trackedMemryUrl('/pricing', WAITLIST_CAMPAIGNS.openBeta, 'annual_discount')
+
+// Must match the Paddle discount exactly (restricted to annual Plus + Pro).
+const discountCode = 'WAITLIST20'
 
 type EmailComponent = {
   (props: OpenBetaLaunchEmailProps): ReactElement
@@ -114,6 +118,15 @@ export const OpenBetaLaunchEmail: EmailComponent = (props) => {
                 Import from Notion, Obsidian, Apple Notes, Bear, and more in a few clicks.
               </li>
             </ul>
+
+            <Text style={styles.paragraph}>
+              And a waitlist thank-you: when you&apos;re ready to sync across devices, annual{' '}
+              <Link href={pricingUrl} style={styles.inlineLink}>
+                Plus and Pro plans
+              </Link>{' '}
+              are <strong>20% off</strong> with code <span style={styles.code}>{discountCode}</span>{' '}
+              at checkout.
+            </Text>
 
             <Text style={styles.paragraphBottom}>
               It&apos;s a beta — if anything breaks or feels off, reply to this email or use the
@@ -312,6 +325,14 @@ const styles = {
     color: '#000000',
     fontWeight: 400,
     textDecoration: 'underline'
+  },
+  code: {
+    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+    fontWeight: 600,
+    padding: '1px 6px',
+    borderRadius: '4px',
+    backgroundColor: '#f4f3ef',
+    border: '1px solid #e0dfdd'
   },
   signoff: {
     margin: 0,

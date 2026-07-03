@@ -12,14 +12,14 @@ Same offer: **live now, free during open beta, no invite / no waitlist, mac · w
 
 ## Pinned / standalone
 
-> memrynote is in open beta. a local-first, end-to-end encrypted home for your notes, tasks, calendar & journal. no invite, no waitlist — free to download today for mac, windows & linux. memrynote.com
+> 7 months of building, and memrynote is in open beta. a local-first, end-to-end encrypted home for your notes, tasks, calendar & journal. no invite, no waitlist — free to download today for mac, windows & linux. memrynote.com
 
 - 🎬 short launch demo video, or clean hero screenshot
 
 ## Launch thread
 
 - **T1** · hook _(pin this)_
-  > memrynote is in open beta — download it today, free, no invite and no waitlist. a calm, private home for your notes, tasks, calendar & journal. here's what it is 🧵
+  > 7 months ago this was a folder of .md files and a stubborn opinion about who should own your notes. today memrynote is in open beta — download it, free, no invite and no waitlist. here's what it is 🧵
   - 🎬 short launch demo — or hero screenshot
 - **T2** · reply
   > one place instead of four apps: an inbox to capture, notes to think, tasks to do, journal + calendar to remember. type a date in a note and it quietly becomes a reminder on the right device.
@@ -38,4 +38,4 @@ Same offer: **live now, free during open beta, no invite / no waitlist, mac · w
 
 > the waitlist is gone. memrynote is open beta — anyone can download it today, free. local-first notes, tasks, calendar & journal, end-to-end encrypted. mac · windows · linux. memrynote.com
 
-> i've been building this for a year: a private, local-first workspace where your notes are plain .md files on your own disk. it's in open beta now, free to download. memrynote.com 🦆
+> 7 months of nights and weekends: a private, local-first workspace where your notes are plain .md files on your own disk. it's in open beta now, free to download. memrynote.com 🦆
