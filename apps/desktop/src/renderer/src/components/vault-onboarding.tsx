@@ -92,9 +92,7 @@ export function VaultOnboarding(): React.JSX.Element {
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-background text-foreground antialiased font-sans">
       <div className="drag-region flex items-center h-9 px-3.5 shrink-0 bg-surface border-b border-border">
-        <div className="no-drag flex items-center">
-          <TrafficLights compact />
-        </div>
+        <TrafficLights compact />
       </div>
 
       <div className="flex w-full grow shrink basis-0 min-h-0 bg-background">

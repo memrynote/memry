@@ -25,13 +25,17 @@ export function TrafficLights({ className, compact = false }: TrafficLightsProps
   const { t: tPhaseF } = useT('common')
   const [isHovered, setIsHovered] = React.useState(false)
 
+  // Only macOS hides its native frame (titleBarStyle: 'hidden'). On Windows/Linux the
+  // native window buttons remain, so these mac-style controls would just duplicate them.
+  if (navigator.platform.toUpperCase().indexOf('MAC') < 0) return null
+
   const buttonSize = compact ? 'size-2.5' : 'size-3.5'
   const iconSize = compact ? 'size-2.5' : 'size-3.5'
 
   return (
     <div
       className={cn(
-        'flex items-center transition-all duration-200',
+        'no-drag flex items-center transition-all duration-200',
         compact ? 'gap-1.5' : 'gap-2',
         className
       )}
