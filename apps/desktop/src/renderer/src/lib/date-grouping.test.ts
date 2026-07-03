@@ -171,7 +171,7 @@ describe('date-grouping', () => {
 
     it('shows full date for older dates', () => {
       const result = formatRelativeDate('2024-01-01T10:00:00')
-      expect(result).toBe('Jan 1, 2024')
+      expect(result).toBe('01.01.2024')
     })
 
     it('handles Date objects', () => {

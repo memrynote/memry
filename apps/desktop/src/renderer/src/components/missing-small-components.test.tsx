@@ -44,7 +44,13 @@ vi.mock('react-i18next', () => ({
     children
   }: {
     children: (t: (key: string, values?: unknown) => string) => React.ReactNode
-  }) => children((key, values) => (values ? `${key} ${JSON.stringify(values)}` : key))
+  }) => children((key, values) => (values ? `${key} ${JSON.stringify(values)}` : key)),
+  getI18n: () => ({
+    getFixedT:
+      () =>
+      (key: string, values?: unknown): string =>
+        values ? `${key} ${JSON.stringify(values)}` : key
+  })
 }))
 
 vi.mock('@/lib/logger', () => ({
@@ -338,7 +344,7 @@ describe('missing small component surfaces', () => {
     expect(screen.getByText('401')).toBeInTheDocument()
     expect(screen.getByText('12,345')).toBeInTheDocument()
     expect(screen.getByText('3 min')).toBeInTheDocument()
-    expect(screen.getByText('May 10, 2026')).toBeInTheDocument()
+    expect(screen.getByText('10.05.2026')).toBeInTheDocument()
     expect(screen.getByText('—')).toBeInTheDocument()
 
     rerender(
