@@ -1065,7 +1065,7 @@
   "commandLine": {
     "header": {
       "title": "Command Line",
-      "subtitle": "Set up the memry command for your terminal"
+      "subtitle": "Set up the memrynote command for your terminal"
     },
     "groups": {
       "terminal": "Terminal"
@@ -1074,20 +1074,20 @@
       "label": "Default vault",
       "placeholder": "Select vault",
       "none": "No vault selected",
-      "description": "Choose the vault used when you run memry without --vault.",
+      "description": "Choose the vault used when you run memrynote without --vault.",
       "descriptionSelected": "Commands use {path} when --vault is omitted."
     },
     "command": {
-      "label": "memry command",
-      "toggleLabel": "Install memry command",
+      "label": "memrynote command",
+      "toggleLabel": "Install memrynote command",
       "descriptionInstalled": "Installed at {path}",
-      "descriptionNotInstalled": "Install the memry command so you can use your vault from any terminal."
+      "descriptionNotInstalled": "Install the memrynote command so you can use your vault from any terminal."
     },
     "status": {
       "loading": "Checking command status...",
       "loadFailed": "Failed to load command status",
-      "installedToast": "memry command installed",
-      "uninstalledToast": "memry command removed",
+      "installedToast": "memrynote command installed",
+      "uninstalledToast": "memrynote command removed",
       "defaultVaultUpdatedToast": "Default CLI vault updated"
     },
     "actions": {

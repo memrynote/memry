@@ -21,7 +21,7 @@ export type TerminalCommandPlatform = 'darwin' | 'linux' | 'win32'
 export interface TerminalCommandStatus {
   supported: boolean
   installed: boolean
-  command: 'memry'
+  command: 'memrynote'
   platform: TerminalCommandPlatform
   shimPath: string
   binDir: string
@@ -40,7 +40,7 @@ export interface TerminalCommandOptions {
   preferredBinDirs?: string[]
 }
 
-const COMMAND_NAME = 'memry'
+const COMMAND_NAME = 'memrynote'
 const SHIM_MARKER = 'Memry terminal command shim'
 const SHIM_MODE = 0o755
 

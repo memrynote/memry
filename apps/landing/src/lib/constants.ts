@@ -122,9 +122,8 @@ export const DOWNLOAD_NAV_ITEMS: readonly LandingDropdownItem[] = [
   {
     label: 'memrynote CLI',
     description: 'Terminal workflows',
-    href: '#',
-    icon: Terminal,
-    disabled: true
+    href: '/cli',
+    icon: Terminal
   }
 ] as const
 

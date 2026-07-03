@@ -142,7 +142,7 @@ export function CommandLineSettings(): React.JSX.Element {
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0 flex flex-col gap-1">
               <code className="truncate rounded bg-muted px-2 py-1 text-[11px]/4 text-muted-foreground">
-                memry tasks today
+                memrynote tasks today
               </code>
               {status?.pathHint && (
                 <span className="text-[11px]/4 text-muted-foreground">{status.pathHint}</span>

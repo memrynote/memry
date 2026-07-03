@@ -15,6 +15,7 @@ import { CalendarFeaturePage } from '@/pages/Calendar'
 import { AIAgentFeaturePage } from '@/pages/AIAgent'
 import { WebClipperFeaturePage } from '@/pages/WebClipper'
 import { DownloadDesktopPage } from '@/pages/DownloadDesktop'
+import { CliPage } from '@/pages/Cli'
 import { UseCasesPage } from '@/pages/UseCases'
 import { SecurityPage } from '@/pages/Security'
 import { PricingPage } from '@/pages/Pricing'
@@ -156,6 +157,7 @@ function AppContent() {
           <Route path="/features/ai-agent" element={<AIAgentFeaturePage />} />
           <Route path="/features/web-clipper" element={<WebClipperFeaturePage />} />
           <Route path="/download/desktop" element={<DownloadDesktopPage />} />
+          <Route path="/cli" element={<CliPage />} />
           <Route path="/use-cases" element={<UseCasesPage />} />
           <Route path="/security" element={<SecurityPage />} />
           <Route path="/compare" element={<ComparePage />} />

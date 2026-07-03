@@ -43,7 +43,7 @@ A global command palette (<kbd>Cmd</kbd>+<kbd>K</kbd>) with scoped filters, tag 
 
 ## Command Line
 
-The desktop app ships a `memry` CLI that can be enabled from Settings with a selected default vault. It can initialize and open a vault, create and update notes, manage note attachments and exports, write journal entries, manage tasks/projects, capture inbox items, and search from scripts or a terminal.
+The desktop app ships a `memrynote` CLI that can be enabled from Settings with a selected default vault. It can initialize and open a vault, create and update notes, manage note attachments and exports, write journal entries, manage tasks/projects, capture inbox items, and search from scripts or a terminal.
 
 → [Command Line](/user-guide/cli)
 

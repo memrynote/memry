@@ -33,8 +33,8 @@ describe('terminal command setup', () => {
     expect(status).toMatchObject({
       installed: true,
       platform: 'darwin',
-      command: 'memry',
-      shimPath: join(binDir, 'memry'),
+      command: 'memrynote',
+      shimPath: join(binDir, 'memrynote'),
       inPath: true
     })
     expect(readFileSync(status.shimPath, 'utf8')).toContain(`exec "${executablePath}" --cli "$@"`)
@@ -63,7 +63,7 @@ describe('terminal command setup', () => {
   it('refuses to overwrite an unrelated command', async () => {
     const root = tempRoot()
     const binDir = join(root, 'bin')
-    const shimPath = join(binDir, 'memry')
+    const shimPath = join(binDir, 'memrynote')
     chmodSync(root, 0o755)
 
     await installTerminalCommand({
@@ -103,8 +103,8 @@ describe('terminal command setup', () => {
     expect(status).toMatchObject({
       installed: true,
       platform: 'win32',
-      command: 'memry',
-      shimPath: join(windowsApps, 'memry.cmd'),
+      command: 'memrynote',
+      shimPath: join(windowsApps, 'memrynote.cmd'),
       inPath: true
     })
     expect(readFileSync(status.shimPath, 'utf8')).toContain(`"${executablePath}" --cli %*`)
