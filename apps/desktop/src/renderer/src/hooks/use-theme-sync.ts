@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useTheme } from 'next-themes'
 import { useGeneralSettings } from './use-general-settings'
+import { setDateFormatPref } from '@/lib/format-date'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('ThemeSync')
@@ -51,4 +52,11 @@ export function useThemeSync(): void {
       document.documentElement.style.removeProperty('--font-sans')
     }
   }, [isLoading, settings.fontFamily])
+
+  // Keep format-date's module cache in sync so pure (non-React) date helpers
+  // format with the user's chosen format.
+  useEffect(() => {
+    if (isLoading) return
+    setDateFormatPref(settings.dateFormat)
+  }, [isLoading, settings.dateFormat])
 }

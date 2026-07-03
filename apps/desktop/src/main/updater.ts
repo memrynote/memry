@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog } from 'electron'
+import { app, BrowserWindow } from 'electron'
 import { autoUpdater, type UpdateInfo } from 'electron-updater'
 import type { AppUpdateState } from '@memry/contracts/ipc-updater'
 import { UpdaterChannels } from '@memry/contracts/ipc-updater'
@@ -6,14 +6,13 @@ import { createLogger } from './lib/logger'
 import { getMainI18n } from './lib/main-i18n'
 import { formatAppVersionForDisplay } from './lib/app-version-display'
 import { htmlToPlainText } from './lib/html-to-plain-text'
+import { getUpdaterPrefs, setAutoDownloadPref, setSkippedVersion } from './store'
 
 const logger = createLogger('Updater')
 
 let initialized = false
 let activeCheck: Promise<AppUpdateState> | null = null
 let activeDownload: Promise<AppUpdateState> | null = null
-let downloadPromptVisible = false
-let restartPromptVisible = false
 let quitAndInstallRequested = false
 
 let state: AppUpdateState = {
@@ -26,7 +25,8 @@ let state: AppUpdateState = {
   releaseNotes: null,
   downloadProgressPercent: null,
   lastCheckedAt: null,
-  error: null
+  error: null,
+  autoDownloadEnabled: false
 }
 
 export function initializeUpdater(): void {
@@ -35,8 +35,11 @@ export function initializeUpdater(): void {
   }
 
   initialized = true
-  autoUpdater.autoDownload = false
+  const prefs = getUpdaterPrefs()
+  const autoDownloadEnabled = prefs.autoDownload ?? false
+  autoUpdater.autoDownload = autoDownloadEnabled
   autoUpdater.autoInstallOnAppQuit = true
+  setState({ autoDownloadEnabled })
 
   autoUpdater.on('checking-for-update', () => {
     logger.info('checking for updates')
@@ -49,8 +52,25 @@ export function initializeUpdater(): void {
   })
 
   autoUpdater.on('update-available', (info) => {
-    logger.info('update available', { version: info.version })
     const displayVersion = formatUpdateVersion(info)
+
+    // Honor "Skip This Version": suppress the prompt for a version the user
+    // dismissed. A manual check from Settings clears the skip (see checkForUpdates).
+    if (getUpdaterPrefs().skippedVersion === displayVersion) {
+      logger.info('update available but skipped by user', { version: info.version })
+      setState({
+        status: 'up-to-date',
+        availableVersion: null,
+        releaseName: null,
+        releaseDate: null,
+        releaseNotes: null,
+        downloadProgressPercent: null,
+        error: null
+      })
+      return
+    }
+
+    logger.info('update available', { version: info.version })
     setState({
       status: 'available',
       availableVersion: displayVersion,
@@ -60,7 +80,9 @@ export function initializeUpdater(): void {
       downloadProgressPercent: null,
       error: null
     })
-    void promptToDownload(info)
+    // No native dialog here: the renderer surfaces an in-app modal from this state.
+    // When auto-download is on, electron-updater downloads automatically (autoDownload=true),
+    // so the state flows straight to 'downloading' without prompting.
   })
 
   autoUpdater.on('update-not-available', () => {
@@ -95,7 +117,8 @@ export function initializeUpdater(): void {
       downloadProgressPercent: 100,
       error: null
     })
-    void promptToRestart(info)
+    // No native dialog: the renderer surfaces the in-app "restart to install" modal
+    // from the 'downloaded' state (Restart Now / Later).
   })
 
   autoUpdater.on('error', (error) => {
@@ -117,9 +140,16 @@ export function getUpdateState(): AppUpdateState {
   return { ...state }
 }
 
-export async function checkForUpdates(): Promise<AppUpdateState> {
+export async function checkForUpdates(options?: {
+  /** Clear a previously skipped version so it can surface again (manual checks). */
+  clearSkip?: boolean
+}): Promise<AppUpdateState> {
   if (!state.updateSupported) {
     return getUpdateState()
+  }
+
+  if (options?.clearSkip) {
+    setSkippedVersion(null)
   }
 
   if (activeCheck) {
@@ -164,6 +194,42 @@ export async function downloadUpdate(): Promise<AppUpdateState> {
     })
 
   return activeDownload
+}
+
+/**
+ * Persist the current available version as skipped and clear the available state
+ * so neither the modal nor the sidebar button re-surface it. Automatic checks stay
+ * suppressed for this version; a manual "Check for updates" clears the skip.
+ */
+export function skipVersion(version: string): AppUpdateState {
+  logger.info('skipping update version', { version })
+  setSkippedVersion(version)
+  setState({
+    status: 'up-to-date',
+    availableVersion: null,
+    releaseName: null,
+    releaseDate: null,
+    releaseNotes: null,
+    downloadProgressPercent: null,
+    error: null
+  })
+  return getUpdateState()
+}
+
+/**
+ * Toggle automatic download + install. Persists the choice, applies it to the
+ * running updater, and — if enabling while an update already waits — starts the
+ * download immediately.
+ */
+export function setAutoDownloadEnabled(enabled: boolean): AppUpdateState {
+  logger.info('setting auto-download preference', { enabled })
+  setAutoDownloadPref(enabled)
+  // Applies to future checks ("in the future"): electron-updater reads autoDownload
+  // when the next update-available fires. The currently-available update is left for
+  // the user to start with the Download button.
+  autoUpdater.autoDownload = enabled
+  setState({ autoDownloadEnabled: enabled })
+  return getUpdateState()
 }
 
 export function quitAndInstall(): void {
@@ -230,69 +296,13 @@ function broadcastState(): void {
   })
 }
 
-async function promptToDownload(info: UpdateInfo): Promise<void> {
-  if (downloadPromptVisible) {
-    return
+function stripDeveloperChangelog(text: string): string {
+  const lines = text.split('\n')
+  const index = lines.findIndex((line) => line.trim().toLowerCase() === 'changelog')
+  if (index === -1) {
+    return text
   }
-
-  downloadPromptVisible = true
-  try {
-    const t = getMainI18n().getFixedT(null, 'system')
-    const detail = buildPromptDetail(info, t('dialog.update.availableDetailFallback'))
-    const result = await dialog.showMessageBox({
-      type: 'info',
-      buttons: [t('dialog.update.buttonDownload'), t('dialog.update.buttonLater')],
-      defaultId: 0,
-      cancelId: 1,
-      title: t('dialog.update.availableTitle'),
-      message: t('dialog.update.availableMessage', { version: formatUpdateVersion(info) }),
-      detail
-    })
-
-    if (result.response === 0) {
-      await downloadUpdate()
-    }
-  } finally {
-    downloadPromptVisible = false
-  }
-}
-
-async function promptToRestart(info: UpdateInfo): Promise<void> {
-  if (restartPromptVisible) {
-    return
-  }
-
-  restartPromptVisible = true
-  try {
-    const t = getMainI18n().getFixedT(null, 'system')
-    const detail = buildPromptDetail(info, t('dialog.update.readyDetailFallback'))
-    const result = await dialog.showMessageBox({
-      type: 'info',
-      buttons: [t('dialog.update.buttonRestartNow'), t('dialog.update.buttonLater')],
-      defaultId: 0,
-      cancelId: 1,
-      title: t('dialog.update.readyTitle'),
-      message: t('dialog.update.readyMessage', { version: formatUpdateVersion(info) }),
-      detail
-    })
-
-    if (result.response === 0) {
-      quitAndInstall()
-    }
-  } finally {
-    restartPromptVisible = false
-  }
-}
-
-function buildPromptDetail(info: UpdateInfo, fallback: string): string {
-  const notes = normalizeReleaseNotes(info)
-  if (!notes) {
-    return fallback
-  }
-
-  const t = getMainI18n().getFixedT(null, 'system')
-  const trimmedNotes = notes.length > 1200 ? `${notes.slice(0, 1197)}...` : notes
-  return `${fallback}\n\n${t('dialog.update.releaseNotesLabel')}\n${trimmedNotes}`
+  return lines.slice(0, index).join('\n').trimEnd()
 }
 
 function normalizeReleaseNotes(info: UpdateInfo): string | null {
@@ -303,13 +313,13 @@ function normalizeReleaseNotes(info: UpdateInfo): string | null {
   }
 
   if (typeof releaseNotes === 'string') {
-    return htmlToPlainText(releaseNotes) || null
+    return stripDeveloperChangelog(htmlToPlainText(releaseNotes)) || null
   }
 
   const combined = releaseNotes
     .map((entry) => {
       const heading = entry.version ? `${formatAppVersionForDisplay(entry.version)}\n` : ''
-      return `${heading}${htmlToPlainText(entry.note ?? '')}`.trim()
+      return `${heading}${stripDeveloperChangelog(htmlToPlainText(entry.note ?? ''))}`.trim()
     })
     .filter(Boolean)
     .join('\n\n')

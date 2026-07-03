@@ -176,7 +176,7 @@ describe('OutlineInfoPanel', () => {
     expect(screen.getByText('Intro')).toBeInTheDocument()
     expect(screen.getByText('Details')).toBeInTheDocument()
     expect(screen.getByText('outline.words {"count":401}')).toBeInTheDocument()
-    expect(screen.getByText('May 10, 2026')).toBeInTheDocument()
+    expect(screen.getByText('10.05.2026')).toBeInTheDocument()
     expect(screen.getByText('—')).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('Details'))

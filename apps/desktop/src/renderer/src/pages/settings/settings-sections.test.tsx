@@ -599,7 +599,7 @@ describe('settings section coverage', () => {
       expect(mocks.editorSettings.updateSettings).toHaveBeenCalledWith({ width: 'wide' })
     )
 
-    fireEvent.click(screen.getAllByRole('switch')[0])
+    fireEvent.click(screen.getAllByRole('switch')[1])
     await waitFor(() =>
       expect(mocks.editorSettings.updateSettings).toHaveBeenCalledWith({
         toolbarMode: 'sticky'
@@ -611,7 +611,7 @@ describe('settings section coverage', () => {
       expect(mocks.journalSettings.setDefaultTemplate).toHaveBeenCalledWith('daily')
     )
 
-    fireEvent.click(screen.getAllByRole('switch')[3])
+    fireEvent.click(screen.getAllByRole('switch')[4])
     await waitFor(() =>
       expect(mocks.journalSettings.updateSettings).toHaveBeenCalledWith({
         showAIConnections: true

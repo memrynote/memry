@@ -81,90 +81,15 @@ importers:
 
   apps/desktop:
     dependencies:
-      '@ai-sdk/anthropic':
-        specifier: ^3.0.81
-        version: 3.0.81(zod@4.3.6)
-      '@ai-sdk/openai':
-        specifier: ^3.0.68
-        version: 3.0.71(zod@4.3.6)
-      '@blocknote/code-block':
-        specifier: ^0.47.1
-        version: 0.47.1(@blocknote/core@0.47.1(@types/hast@3.0.4))
-      '@electron-toolkit/preload':
-        specifier: ^3.0.2
-        version: 3.0.2(electron@39.8.6)
-      '@electron-toolkit/utils':
-        specifier: ^4.0.0
-        version: 4.0.0(electron@39.8.6)
-      '@emoji-mart/data':
-        specifier: ^1.2.1
-        version: 1.2.1
       '@huggingface/transformers':
         specifier: ^3.8.1
         version: 3.8.1
-      '@memry/i18n':
-        specifier: workspace:*
-        version: link:../../packages/i18n
-      '@modelcontextprotocol/sdk':
-        specifier: ^1.26.0
-        version: 1.26.0(zod@4.3.6)
-      '@streamdown/cjk':
-        specifier: ^1.0.3
-        version: 1.0.3(@types/mdast@4.0.4)(micromark-util-types@2.0.2)(micromark@4.0.2)(react@19.2.4)(unified@11.0.5)
-      '@streamdown/code':
-        specifier: ^1.1.1
-        version: 1.1.1(react@19.2.4)
-      '@streamdown/math':
-        specifier: ^1.0.2
-        version: 1.0.2(react@19.2.4)
-      '@streamdown/mermaid':
-        specifier: ^1.0.2
-        version: 1.0.2(react@19.2.4)
-      '@tiptap/extension-link':
-        specifier: ^3.14.0
-        version: 3.19.0(@tiptap/core@3.19.0(@tiptap/pm@3.19.0))(@tiptap/pm@3.19.0)
-      '@tiptap/react':
-        specifier: ^3.14.0
-        version: 3.19.0(@floating-ui/dom@1.7.6)(@tiptap/core@3.19.0(@tiptap/pm@3.19.0))(@tiptap/pm@3.19.0)(@types/react-dom@19.2.3(@types/react@19.2.13))(@types/react@19.2.13)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      ai:
-        specifier: ^6.0.206
-        version: 6.0.206(zod@4.3.6)
+      '@mixmark-io/domino':
+        specifier: ^2.2.0
+        version: 2.2.0
       better-sqlite3:
         specifier: ^12.5.0
         version: 12.6.2
-      bip39:
-        specifier: ^3.1.0
-        version: 3.1.0
-      chokidar:
-        specifier: ^5.0.0
-        version: 5.0.0
-      dotenv:
-        specifier: ^17.2.3
-        version: 17.2.4
-      driver.js:
-        specifier: ^1.6.0
-        version: 1.6.0
-      drizzle-orm:
-        specifier: ^0.45.2
-        version: 0.45.2(@cloudflare/workers-types@4.20260305.1)(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.13)(better-sqlite3@12.6.2)
-      electron-log:
-        specifier: ^5.4.4
-        version: 5.4.4
-      electron-updater:
-        specifier: ^6.6.2
-        version: 6.7.3
-      emoji-mart:
-        specifier: ^5.6.0
-        version: 5.6.0
-      fuzzysort:
-        specifier: ^3.1.0
-        version: 3.1.0
-      gray-matter:
-        specifier: ^4.0.3
-        version: 4.0.3
-      jose:
-        specifier: ^6.1.3
-        version: 6.1.3
       jsdom:
         specifier: ^27.4.0
         version: 27.4.0(@noble/hashes@1.8.0)
@@ -174,94 +99,28 @@ importers:
       libsodium-wrappers-sumo:
         specifier: ^0.8.2
         version: 0.8.2
-      marked:
-        specifier: ^17.0.1
-        version: 17.0.1
-      metascraper:
-        specifier: ^5.49.15
-        version: 5.49.21(@noble/hashes@1.8.0)
-      metascraper-author:
-        specifier: ^5.49.15
-        version: 5.49.21(@noble/hashes@1.8.0)
-      metascraper-date:
-        specifier: ^5.49.15
-        version: 5.49.21(@noble/hashes@1.8.0)
-      metascraper-description:
-        specifier: ^5.49.15
-        version: 5.49.21(@noble/hashes@1.8.0)
-      metascraper-image:
-        specifier: ^5.49.15
-        version: 5.49.21(@noble/hashes@1.8.0)
-      metascraper-logo:
-        specifier: ^5.49.15
-        version: 5.49.21(@noble/hashes@1.8.0)
-      metascraper-publisher:
-        specifier: ^5.49.15
-        version: 5.49.21(@noble/hashes@1.8.0)
-      metascraper-title:
-        specifier: ^5.49.15
-        version: 5.49.21(@noble/hashes@1.8.0)
-      metascraper-url:
-        specifier: ^5.49.15
-        version: 5.49.21(@noble/hashes@1.8.0)
-      mime-types:
-        specifier: ^3.0.2
-        version: 3.0.2
-      nanoid:
-        specifier: ^5.1.6
-        version: 5.1.6
-      ollama-ai-provider-v2:
-        specifier: ^3.6.0
-        version: 3.6.0(ai@6.0.206(zod@4.3.6))(zod@4.3.6)
-      openai:
-        specifier: ^6.15.0
-        version: 6.18.0(ws@8.21.0)(zod@4.3.6)
-      pako:
-        specifier: ^2.1.0
-        version: 2.1.0
-      react:
-        specifier: ^19.2.3
-        version: 19.2.4
-      react-dom:
-        specifier: ^19.2.3
-        version: 19.2.4(react@19.2.4)
-      react-grid-layout:
-        specifier: ^2.2.3
-        version: 2.2.3(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      safe-buffer:
-        specifier: ^5.2.1
-        version: 5.2.1
       sharp:
         specifier: 0.34.5
         version: 0.34.5
-      shiki:
-        specifier: ^4.0.2
-        version: 4.0.2
       sqlite-vec:
         specifier: 0.1.7-alpha.2
         version: 0.1.7-alpha.2
-      streamdown:
-        specifier: ^2.5.0
-        version: 2.5.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      ws:
-        specifier: '>=8.21.0'
-        version: 8.21.0
       y-leveldb:
         specifier: ^0.2.0
         version: 0.2.0(abstract-level@3.1.1)(yjs@13.6.29)
-      y-protocols:
-        specifier: ^1.0.7
-        version: 1.0.7(yjs@13.6.29)
-      yauzl:
-        specifier: ^3.4.0
-        version: 3.4.0
       yjs:
         specifier: ^13.6.29
         version: 13.6.29
-      zod:
-        specifier: ^4.3.4
-        version: 4.3.6
     devDependencies:
+      '@ai-sdk/anthropic':
+        specifier: ^3.0.81
+        version: 3.0.81(zod@4.3.6)
+      '@ai-sdk/openai':
+        specifier: ^3.0.68
+        version: 3.0.71(zod@4.3.6)
+      '@blocknote/code-block':
+        specifier: ^0.47.1
+        version: 0.47.1(@blocknote/core@0.47.1(@types/hast@3.0.4))
       '@blocknote/core':
         specifier: ^0.47.1
         version: 0.47.1(@types/hast@3.0.4)
@@ -295,12 +154,21 @@ importers:
       '@electron-toolkit/eslint-config-ts':
         specifier: ^3.1.0
         version: 3.1.0(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3)
+      '@electron-toolkit/preload':
+        specifier: ^3.0.2
+        version: 3.0.2(electron@39.8.6)
       '@electron-toolkit/tsconfig':
         specifier: ^2.0.0
         version: 2.0.0(@types/node@25.2.2)
+      '@electron-toolkit/utils':
+        specifier: ^4.0.0
+        version: 4.0.0(electron@39.8.6)
       '@electron/rebuild':
         specifier: ^4.0.3
         version: 4.0.3
+      '@emoji-mart/data':
+        specifier: ^1.2.1
+        version: 1.2.1
       '@emoji-mart/react':
         specifier: ^1.1.1
         version: 1.1.1(emoji-mart@5.6.0)(react@19.2.4)
@@ -361,6 +229,9 @@ importers:
       '@memry/domain-tasks':
         specifier: workspace:*
         version: link:../../packages/domain-tasks
+      '@memry/i18n':
+        specifier: workspace:*
+        version: link:../../packages/i18n
       '@memry/importers':
         specifier: workspace:*
         version: link:../../packages/importers
@@ -379,6 +250,9 @@ importers:
       '@memry/sync-core':
         specifier: workspace:*
         version: link:../../packages/sync-core
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.26.0
+        version: 1.26.0(zod@4.3.6)
       '@playwright/test':
         specifier: ^1.57.0
         version: 1.58.2
@@ -454,6 +328,18 @@ importers:
       '@react-sigma/layout-forceatlas2':
         specifier: ^5.0.6
         version: 5.0.6(graphology-layout-forceatlas2@0.10.1(graphology-types@0.24.8))(graphology@0.26.0(graphology-types@0.24.8))(react@19.2.4)(sigma@3.0.3(graphology-types@0.24.8))
+      '@streamdown/cjk':
+        specifier: ^1.0.3
+        version: 1.0.3(@types/mdast@4.0.4)(micromark-util-types@2.0.2)(micromark@4.0.2)(react@19.2.4)(unified@11.0.5)
+      '@streamdown/code':
+        specifier: ^1.1.1
+        version: 1.1.1(react@19.2.4)
+      '@streamdown/math':
+        specifier: ^1.0.2
+        version: 1.0.2(react@19.2.4)
+      '@streamdown/mermaid':
+        specifier: ^1.0.2
+        version: 1.0.2(react@19.2.4)
       '@tailwindcss/vite':
         specifier: ^4.1.18
         version: 4.1.18(vite@7.3.5(@types/node@25.2.2)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.21.0)(yaml@2.9.0))
@@ -481,6 +367,9 @@ importers:
       '@tiptap/extension-image':
         specifier: ^3.14.0
         version: 3.19.0(@tiptap/core@3.19.0(@tiptap/pm@3.19.0))
+      '@tiptap/extension-link':
+        specifier: ^3.14.0
+        version: 3.19.0(@tiptap/core@3.19.0(@tiptap/pm@3.19.0))(@tiptap/pm@3.19.0)
       '@tiptap/extension-list':
         specifier: ^3.14.0
         version: 3.19.0(@tiptap/core@3.19.0(@tiptap/pm@3.19.0))(@tiptap/pm@3.19.0)
@@ -505,6 +394,9 @@ importers:
       '@tiptap/extension-task-list':
         specifier: ^3.14.0
         version: 3.19.0(@tiptap/extension-list@3.19.0(@tiptap/core@3.19.0(@tiptap/pm@3.19.0))(@tiptap/pm@3.19.0))
+      '@tiptap/react':
+        specifier: ^3.14.0
+        version: 3.19.0(@floating-ui/dom@1.7.6)(@tiptap/core@3.19.0(@tiptap/pm@3.19.0))(@tiptap/pm@3.19.0)(@types/react-dom@19.2.3(@types/react@19.2.13))(@types/react@19.2.13)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@tiptap/starter-kit':
         specifier: ^3.14.0
         version: 3.19.0
@@ -547,12 +439,21 @@ importers:
       '@vitest/ui':
         specifier: 4.1.8
         version: 4.1.8(vitest@4.1.8)
+      ai:
+        specifier: ^6.0.206
+        version: 6.0.206(zod@4.3.6)
       autoprefixer:
         specifier: ^10.4.23
         version: 10.4.24(postcss@8.5.15)
+      bip39:
+        specifier: ^3.1.0
+        version: 3.1.0
       cborg:
         specifier: ^4.5.8
         version: 4.5.8
+      chokidar:
+        specifier: ^5.0.0
+        version: 5.0.0
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -568,21 +469,39 @@ importers:
       date-fns:
         specifier: ^4.1.0
         version: 4.1.0
+      dotenv:
+        specifier: ^17.2.3
+        version: 17.2.4
+      driver.js:
+        specifier: ^1.6.0
+        version: 1.6.0
       drizzle-kit:
         specifier: ^0.31.10
         version: 0.31.10
+      drizzle-orm:
+        specifier: ^0.45.2
+        version: 0.45.2(@cloudflare/workers-types@4.20260305.1)(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.13)(better-sqlite3@12.6.2)
       electron:
         specifier: ^39.8.6
         version: 39.8.6
       electron-builder:
         specifier: ^26.0.12
         version: 26.7.0(electron-builder-squirrel-windows@26.7.0)
+      electron-log:
+        specifier: ^5.4.4
+        version: 5.4.4
       electron-store:
         specifier: ^11.0.2
         version: 11.0.2
+      electron-updater:
+        specifier: ^6.6.2
+        version: 6.7.3
       electron-vite:
         specifier: ^5.0.0
         version: 5.0.0(vite@7.3.5(@types/node@25.2.2)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.21.0)(yaml@2.9.0))
+      emoji-mart:
+        specifier: ^5.6.0
+        version: 5.6.0
       eslint:
         specifier: ^9.39.4
         version: 9.39.4(jiti@2.6.1)
@@ -598,6 +517,9 @@ importers:
       eslint-plugin-react-you-might-not-need-an-effect:
         specifier: ^0.8.3
         version: 0.8.5(eslint@9.39.4(jiti@2.6.1))
+      fuzzysort:
+        specifier: ^3.1.0
+        version: 3.1.0
       graphology:
         specifier: ^0.26.0
         version: 0.26.0(graphology-types@0.24.8)
@@ -607,21 +529,72 @@ importers:
       graphology-types:
         specifier: ^0.24.8
         version: 0.24.8
+      gray-matter:
+        specifier: ^4.0.3
+        version: 4.0.3
       input-otp:
         specifier: ^1.4.2
         version: 1.4.2(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      jose:
+        specifier: ^6.1.3
+        version: 6.1.3
       level:
         specifier: ^10.0.0
         version: 10.0.0
       lucide-react:
         specifier: ^0.562.0
         version: 0.562.0(react@19.2.4)
+      marked:
+        specifier: ^17.0.1
+        version: 17.0.1
+      metascraper:
+        specifier: ^5.49.15
+        version: 5.49.21(@noble/hashes@1.8.0)
+      metascraper-author:
+        specifier: ^5.49.15
+        version: 5.49.21(@noble/hashes@1.8.0)
+      metascraper-date:
+        specifier: ^5.49.15
+        version: 5.49.21(@noble/hashes@1.8.0)
+      metascraper-description:
+        specifier: ^5.49.15
+        version: 5.49.21(@noble/hashes@1.8.0)
+      metascraper-image:
+        specifier: ^5.49.15
+        version: 5.49.21(@noble/hashes@1.8.0)
+      metascraper-logo:
+        specifier: ^5.49.15
+        version: 5.49.21(@noble/hashes@1.8.0)
+      metascraper-publisher:
+        specifier: ^5.49.15
+        version: 5.49.21(@noble/hashes@1.8.0)
+      metascraper-title:
+        specifier: ^5.49.15
+        version: 5.49.21(@noble/hashes@1.8.0)
+      metascraper-url:
+        specifier: ^5.49.15
+        version: 5.49.21(@noble/hashes@1.8.0)
+      mime-types:
+        specifier: ^3.0.2
+        version: 3.0.2
       motion:
         specifier: ^12.23.26
         version: 12.34.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      nanoid:
+        specifier: ^5.1.6
+        version: 5.1.6
       next-themes:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      ollama-ai-provider-v2:
+        specifier: ^3.6.0
+        version: 3.6.0(ai@6.0.206(zod@4.3.6))(zod@4.3.6)
+      openai:
+        specifier: ^6.15.0
+        version: 6.18.0(ws@8.21.0)(zod@4.3.6)
+      pako:
+        specifier: ^2.1.0
+        version: 2.1.0
       pdfjs-dist:
         specifier: 5.4.296
         version: 5.4.296
@@ -634,12 +607,21 @@ importers:
       qrcode.react:
         specifier: ^4.2.0
         version: 4.2.0(react@19.2.4)
+      react:
+        specifier: ^19.2.3
+        version: 19.2.4
       react-complex-tree:
         specifier: ^2.6.1
         version: 2.6.1(react@19.2.4)
       react-day-picker:
         specifier: ^9.13.0
         version: 9.13.1(react@19.2.4)
+      react-dom:
+        specifier: ^19.2.3
+        version: 19.2.4(react@19.2.4)
+      react-grid-layout:
+        specifier: ^2.2.3
+        version: 2.2.3(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       react-pdf:
         specifier: ^10.3.0
         version: 10.3.0(@types/react@19.2.13)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -649,15 +631,24 @@ importers:
       react-tweet:
         specifier: ^3.3.1
         version: 3.3.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      safe-buffer:
+        specifier: ^5.2.1
+        version: 5.2.1
       shadcn:
         specifier: ^3.8.5
         version: 3.8.5(@types/node@25.2.2)(typescript@5.9.3)
+      shiki:
+        specifier: ^4.0.2
+        version: 4.0.2
       sigma:
         specifier: ^3.0.3
         version: 3.0.3(graphology-types@0.24.8)
       sonner:
         specifier: ^2.0.7
         version: 2.0.7(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      streamdown:
+        specifier: ^2.5.0
+        version: 2.5.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       tailwind-merge:
         specifier: ^3.4.0
         version: 3.4.0
@@ -679,12 +670,24 @@ importers:
       vitest:
         specifier: 4.1.8
         version: 4.1.8(@edge-runtime/vm@3.2.0)(@opentelemetry/api@1.9.1)(@types/node@25.2.2)(@vitest/coverage-v8@4.1.8)(@vitest/ui@4.1.8)(happy-dom@20.8.9)(jsdom@27.4.0(@noble/hashes@1.8.0))(msw@2.12.9(@types/node@25.2.2)(typescript@5.9.3))(vite@7.3.5(@types/node@25.2.2)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.21.0)(yaml@2.9.0))
+      ws:
+        specifier: '>=8.21.0'
+        version: 8.21.0
       y-indexeddb:
         specifier: ^9.0.12
         version: 9.0.12(yjs@13.6.29)
       y-prosemirror:
         specifier: ^1.3.7
         version: 1.3.7(prosemirror-model@1.25.4)(prosemirror-state@1.4.4)(prosemirror-view@1.41.6)(y-protocols@1.0.7(yjs@13.6.29))(yjs@13.6.29)
+      y-protocols:
+        specifier: ^1.0.7
+        version: 1.0.7(yjs@13.6.29)
+      yauzl:
+        specifier: ^3.4.0
+        version: 3.4.0
+      zod:
+        specifier: ^4.3.4
+        version: 4.3.6
 
   apps/docs:
     dependencies:
@@ -13613,7 +13616,7 @@ snapshots:
       https-proxy-agent: 7.0.6
       node-fetch: 2.6.9(encoding@0.1.13)
       nopt: 8.1.0
-      semver: 7.7.4
+      semver: 7.8.4
       tar: 7.5.16
     transitivePeerDependencies:
       - encoding
@@ -13657,8 +13660,7 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@mixmark-io/domino@2.2.0':
-    optional: true
+  '@mixmark-io/domino@2.2.0': {}
 
   '@modelcontextprotocol/sdk@1.26.0(zod@3.25.76)':
     dependencies:
@@ -19951,7 +19953,7 @@ snapshots:
       lodash.isstring: 4.0.1
       lodash.once: 4.1.1
       ms: 2.1.3
-      semver: 7.7.4
+      semver: 7.8.4
 
   jsx-ast-utils@3.3.5:
     dependencies:
@@ -21181,7 +21183,7 @@ snapshots:
 
   node-abi@3.87.0:
     dependencies:
-      semver: 7.7.4
+      semver: 7.8.4
 
   node-abi@4.26.0:
     dependencies:

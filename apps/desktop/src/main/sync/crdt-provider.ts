@@ -12,7 +12,7 @@ import { scheduleWriteback, flushPendingWritebacks, recordNetworkUpdate } from '
 import { toAbsolutePath } from '../vault/notes'
 import { safeRead } from '../vault/file-ops'
 import { parseNote } from '../vault/frontmatter'
-import { markdownToYFragment } from './blocknote-converter'
+import { markdownToYFragment, repairEmptyBlockIds } from './blocknote-converter'
 import { compactYDoc } from './crdt-compact-utils'
 import { isBinaryFileType } from '@memry/shared/file-types'
 import { CRITIC_MARKUP_MARKS_ARRAY } from '@memry/shared'
@@ -164,6 +164,16 @@ export class CrdtProvider {
         const update = Y.encodeStateAsUpdate(persisted)
         Y.applyUpdate(doc, update)
         persisted.destroy()
+        // Heal notes previously persisted with empty block ids, which crash the
+        // editor with "Block doesn't have id" on mount.
+        let repaired = 0
+        doc.transact(() => {
+          repaired = repairEmptyBlockIds(doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+        }, ORIGIN_LOCAL)
+        if (repaired > 0) {
+          log.info('Repaired empty block ids in persisted note', { noteId, count: repaired })
+          await this.persistence.storeUpdate(noteId, Y.encodeStateAsUpdate(doc))
+        }
       } else {
         log.warn('CRDT persistence returned empty doc; continuing in-memory', { noteId })
       }

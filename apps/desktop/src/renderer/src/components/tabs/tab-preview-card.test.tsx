@@ -143,7 +143,7 @@ describe('TabPreviewCard', () => {
       render(<TabPreviewCard preview={preview} />)
 
       // #then
-      expect(screen.getByText('Mar 15, 2026')).toBeInTheDocument()
+      expect(screen.getByText('15.03.2026')).toBeInTheDocument()
     })
   })
 

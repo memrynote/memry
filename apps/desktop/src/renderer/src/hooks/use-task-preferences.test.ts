@@ -5,7 +5,6 @@ import { useTaskPreferences } from './use-task-preferences'
 const DEFAULTS = {
   defaultProjectId: null,
   defaultSortOrder: 'manual' as const,
-  weekStartDay: 'monday' as const,
   staleInboxDays: 7
 }
 
@@ -118,7 +117,7 @@ describe('useTaskPreferences', () => {
 
     let success: boolean
     await act(async () => {
-      success = await result.current.updateSettings({ weekStartDay: 'sunday' })
+      success = await result.current.updateSettings({ defaultSortOrder: 'priority' })
     })
 
     expect(success!).toBe(false)
@@ -169,13 +168,12 @@ describe('useTaskPreferences', () => {
     })
 
     await act(async () => {
-      await result.current.updateSettings({ weekStartDay: 'sunday' })
+      await result.current.updateSettings({ defaultSortOrder: 'priority' })
     })
 
     expect(result.current.settings).toEqual({
       defaultProjectId: 'proj-existing',
-      defaultSortOrder: 'manual',
-      weekStartDay: 'sunday',
+      defaultSortOrder: 'priority',
       staleInboxDays: 14
     })
   })

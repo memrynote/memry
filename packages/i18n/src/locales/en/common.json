@@ -1,4 +1,17 @@
 {
+  "updatePrompt": {
+    "availableTitle": "A new version of MemryNote is available!",
+    "availableBody": "{version} is available — you have {current}. Would you like to download it now?",
+    "downloadedTitle": "Update ready to install",
+    "downloadedBody": "{version} has been downloaded. Restart MemryNote to finish installing.",
+    "releaseNotesLabel": "Release Notes",
+    "autoUpdateLabel": "Automatically download & install updates",
+    "skip": "Skip This Version",
+    "remindLater": "Remind Me Later",
+    "download": "Download",
+    "later": "Later",
+    "restartNow": "Restart Now"
+  },
   "button": {
     "save": "Save",
     "cancel": "Cancel",
@@ -47,7 +60,10 @@
   },
   "count": {
     "note": "{count, plural, one {# note} other {# notes}}",
+    "journal": "{count, plural, one {# journal} other {# journals}}",
     "task": "{count, plural, one {# task} other {# tasks}}",
+    "event": "{count, plural, one {# event} other {# events}}",
+    "reminder": "{count, plural, one {# reminder} other {# reminders}}",
     "itemDelete": "{count, plural, one {Delete # item} other {Delete # items}}"
   },
   "toast": {

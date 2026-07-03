@@ -45,6 +45,7 @@ import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { useFeatureFlags } from '@/hooks/use-feature-flags'
 import { useTabActions } from '@/contexts/tabs'
+import { newItemViewState } from '@/contexts/tabs/helpers'
 import { useSettingsModal } from '@/contexts/settings-modal-context'
 import { notesService } from '@/services/notes-service'
 import { useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
@@ -224,11 +225,20 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
       graph: 'Graph'
     }
 
+    // Land the user ready-to-act: Inbox focuses capture, Tasks opens the default
+    // project + focuses quick-add. Calendar deliberately gets NO new-event popover
+    // from the sidebar — that only fires from the New menu and the new-tab +.
+    const pageToViewState: Partial<Record<AppPage, Record<string, unknown>>> = {
+      inbox: newItemViewState('inbox'),
+      tasks: newItemViewState('tasks')
+    }
+
     // Open as tab in active pane
     const item: SidebarItem = {
       type: pageToTabType[page],
       title: pageToTitle[page],
-      path: `/${page}`
+      path: `/${page}`,
+      viewState: pageToViewState[page]
     }
     openSidebarItem(item)
   }
@@ -461,11 +471,26 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
                     onJournal: () =>
                       openSidebarItem({ type: 'journal', title: 'Journal', path: '/journal' }),
                     onCalendar: () =>
-                      openSidebarItem({ type: 'calendar', title: 'Calendar', path: '/calendar' }),
+                      openSidebarItem({
+                        type: 'calendar',
+                        title: 'Calendar',
+                        path: '/calendar',
+                        viewState: newItemViewState('calendar')
+                      }),
                     onInbox: () =>
-                      openSidebarItem({ type: 'inbox', title: 'Inbox', path: '/inbox' }),
+                      openSidebarItem({
+                        type: 'inbox',
+                        title: 'Inbox',
+                        path: '/inbox',
+                        viewState: newItemViewState('inbox')
+                      }),
                     onTasks: () =>
-                      openSidebarItem({ type: 'tasks', title: 'Tasks', path: '/tasks' })
+                      openSidebarItem({
+                        type: 'tasks',
+                        title: 'Tasks',
+                        path: '/tasks',
+                        viewState: newItemViewState('tasks')
+                      })
                   }}
                 />
               </Picker.Content>

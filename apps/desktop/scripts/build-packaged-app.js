@@ -284,7 +284,9 @@ function main() {
   )
   relativizeInternalSymlinks(path.join(stageDir, 'node_modules'))
 
-  runElectronBuilder(['--config', configPath, ...args], {
+  // The slim staged node_modules no longer contains electron, so electron-builder
+  // cannot infer the Electron version from installed modules — pass it explicitly.
+  runElectronBuilder(['--config', configPath, `-c.electronVersion=${electronVersion}`, ...args], {
     cwd: stageDir,
     env: {
       ...process.env,

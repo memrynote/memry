@@ -26,7 +26,8 @@ const updateState = {
   releaseNotes: null,
   downloadProgressPercent: null,
   lastCheckedAt: null,
-  error: null
+  error: null,
+  autoDownloadEnabled: false
 }
 
 function renderGeneral(i18n: I18nInstance) {
@@ -191,7 +192,7 @@ describe('GeneralSettings i18n', () => {
       expect(api.settings.setGeneralSettings).toHaveBeenCalledWith({ clockFormat: '24h' })
     )
 
-    await user.click(selects[2])
+    await user.click(selects[3])
     await user.click(await screen.findByText('Always visible'))
     await waitFor(() =>
       expect(api.settings.setTabSettings).toHaveBeenCalledWith({ tabCloseButton: 'always' })

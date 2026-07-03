@@ -256,6 +256,18 @@ export const TasksPage = ({
     [updateTaskViewState]
   )
 
+  // Quick-add focus: viewState.focusQuickAddAt is the single source of truth, fed to
+  // QuickAddInput.focusSignal. Both the sidebar "Tasks" click and the empty-state
+  // "Add task" button stamp a fresh timestamp, so the input refocuses each time.
+  const focusQuickAddSignal =
+    typeof taskTabViewState.focusQuickAddAt === 'number'
+      ? taskTabViewState.focusQuickAddAt
+      : undefined
+  const focusQuickAdd = useCallback(
+    () => updateTaskViewState({ focusQuickAddAt: Date.now() }),
+    [updateTaskViewState]
+  )
+
   // Saved filters
   const {
     savedFilters,
@@ -362,14 +374,11 @@ export const TasksPage = ({
     selection,
     selectedCount,
     hasSelection,
-    allSelected,
-    someSelected,
     selectedTaskIds,
     toggleTask,
     selectRange,
     selectAll,
     deselectAll,
-    toggleSelectAll,
     enterSelectionMode,
     exitSelectionMode
   } = useTaskSelection(visibleTaskIds, {
@@ -879,7 +888,7 @@ export const TasksPage = ({
     <>
       <div className={cn('h-full flex overflow-hidden', className)}>
         {/* Main Content Area */}
-        <main className="flex-1 min-w-0 flex flex-col overflow-hidden">
+        <main className="relative flex-1 min-w-0 flex flex-col overflow-hidden">
           {/* Page Header — compact single-row toolbar */}
           <PageToolbar className="px-2 py-1 min-h-[38px] border-b-0">
             <TasksTabBar
@@ -903,6 +912,7 @@ export const TasksPage = ({
               onOpenModal={handleOpenAddTaskModal}
               projects={projects}
               projectColor={quickAddProjectColor}
+              focusSignal={focusQuickAddSignal}
             />
 
             {/* Filter Button */}
@@ -1032,25 +1042,25 @@ export const TasksPage = ({
             />
           )}
 
-          {/* Bulk Action Toolbar - shown when tasks are selected */}
+          {/* Bulk Action Toolbar - floating bottom-center bar (folder-view style) */}
           {hasSelection && (
-            <BulkActionToolbar
-              selectedCount={selectedCount}
-              allSelected={allSelected}
-              someSelected={someSelected}
-              onToggleSelectAll={toggleSelectAll}
-              onComplete={(...args) => void bulkActions.bulkComplete(...args)}
-              onChangePriority={handleBulkChangePriority}
-              onChangeDueDate={handleBulkChangeDueDate}
-              onMoveToProject={handleBulkMoveToProject}
-              onChangeStatus={handleBulkChangeStatus}
-              onArchive={(...args) => void bulkActions.bulkArchive(...args)}
-              onDelete={() => setIsBulkDeleteDialogOpen(true)}
-              onCancel={deselectAll}
-              projects={projects}
-              statuses={currentProjectStatuses}
-              showStatusAction={false}
-            />
+            <div className="pointer-events-none absolute inset-x-0 bottom-6 z-20 flex justify-center px-4">
+              <BulkActionToolbar
+                className="pointer-events-auto"
+                selectedCount={selectedCount}
+                onComplete={(...args) => void bulkActions.bulkComplete(...args)}
+                onChangePriority={handleBulkChangePriority}
+                onChangeDueDate={handleBulkChangeDueDate}
+                onMoveToProject={handleBulkMoveToProject}
+                onChangeStatus={handleBulkChangeStatus}
+                onArchive={(...args) => void bulkActions.bulkArchive(...args)}
+                onDelete={() => setIsBulkDeleteDialogOpen(true)}
+                onCancel={deselectAll}
+                projects={projects}
+                statuses={currentProjectStatuses}
+                showStatusAction={false}
+              />
+            </div>
           )}
 
           {/* Content Body - Today Tab (flat listing of overdue + today tasks) */}
@@ -1065,6 +1075,7 @@ export const TasksPage = ({
                 onUpdateTask={handleUpdateTask}
                 onToggleSubtaskComplete={subtaskManagement.handleCompleteSubtask}
                 onQuickAdd={handleQuickAdd}
+                onFocusQuickAdd={focusQuickAdd}
                 onTaskClick={handleTaskClick}
                 onNoteClick={(...args) => void handleNoteClick(...args)}
                 selectedTaskId={detailTaskId}
@@ -1102,6 +1113,7 @@ export const TasksPage = ({
                   onUpdateTask={handleUpdateTask}
                   onToggleSubtaskComplete={subtaskManagement.handleCompleteSubtask}
                   onQuickAdd={handleQuickAdd}
+                  onFocusQuickAdd={focusQuickAdd}
                   onTaskClick={handleTaskClick}
                   onNoteClick={(...args) => void handleNoteClick(...args)}
                   selectedTaskId={detailTaskId}

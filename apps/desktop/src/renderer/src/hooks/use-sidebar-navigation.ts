@@ -172,6 +172,16 @@ export const useSidebarNavigation = () => {
       const existingTab = findExistingTabForItem(currentState, item)
 
       if (existingTab && !toTheSide) {
+        // Re-open singletons that carry per-view intent so the reducer merges
+        // the fresh viewState (nonce) into the existing tab and refocuses it.
+        // Passing the found groupId keeps the merge in the right split-view pane.
+        if (item.viewState) {
+          openTab(createTabFromSidebarItem(item, false), {
+            groupId: existingTab.groupId,
+            background: inBackground
+          })
+          return
+        }
         // Focus existing tab
         setActiveTab(existingTab.tab.id, existingTab.groupId)
         return

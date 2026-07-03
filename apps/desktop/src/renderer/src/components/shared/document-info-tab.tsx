@@ -8,7 +8,9 @@
 import { memo, useMemo } from 'react'
 import { cn } from '@/lib/utils'
 import { FileText, Type, Clock, Calendar, Pencil } from '@/lib/icons'
-import { format, parseISO, isValid } from 'date-fns'
+import { parseISO, isValid } from 'date-fns'
+import { formatDate as applyDateFormat, type DateFormat } from '@/lib/format-date'
+import { useDateFormat } from '@/hooks/use-date-format'
 import { useT } from '@memry/i18n/renderer'
 
 export interface DocumentStats {
@@ -37,7 +39,7 @@ function calculateReadingTime(wordCount: number): string {
 /**
  * Format a date for display
  */
-function formatDate(date: string | Date | null): string {
+function formatDate(date: string | Date | null, df: DateFormat): string {
   if (!date) return '—'
 
   try {
@@ -52,7 +54,7 @@ function formatDate(date: string | Date | null): string {
 
     if (!isValid(dateObj)) return '—'
 
-    return format(dateObj, 'MMM d, yyyy')
+    return applyDateFormat(dateObj, df)
   } catch {
     return '—'
   }
@@ -89,10 +91,17 @@ export const DocumentInfoTab = memo(function DocumentInfoTab({
   className
 }: DocumentInfoTabProps) {
   const { t: tPhaseF } = useT('notes')
+  const dateFormat = useDateFormat()
   const readingTime = useMemo(() => calculateReadingTime(stats.wordCount), [stats.wordCount])
 
-  const formattedCreatedAt = useMemo(() => formatDate(stats.createdAt), [stats.createdAt])
-  const formattedModifiedAt = useMemo(() => formatDate(stats.modifiedAt), [stats.modifiedAt])
+  const formattedCreatedAt = useMemo(
+    () => formatDate(stats.createdAt, dateFormat),
+    [stats.createdAt, dateFormat]
+  )
+  const formattedModifiedAt = useMemo(
+    () => formatDate(stats.modifiedAt, dateFormat),
+    [stats.modifiedAt, dateFormat]
+  )
 
   const iconClass = 'h-3.5 w-3.5'
 

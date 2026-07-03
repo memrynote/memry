@@ -22,13 +22,14 @@ clickable target for opening or editing events.
 
 ## What Shows Up
 
-| Source                                      | How it appears                            |
-| ------------------------------------------- | ----------------------------------------- |
-| Calendar events created in memrynote        | Inline events on the day grid             |
-| Tasks with due dates                        | Task chips on the day they're due         |
-| External calendar events (if integrated)    | Translucent events with a source badge    |
-| Journal entries                             | A small badge / dot on dates with entries |
-| Notes with a calendar-enabled date property | All-day note chips on the property's date |
+| Source                                      | How it appears                                 |
+| ------------------------------------------- | ---------------------------------------------- |
+| Calendar events created in memrynote        | Inline events on the day grid                  |
+| Tasks with due dates                        | Task chips on the day they're due              |
+| External calendar events (if integrated)    | Translucent events with a source badge         |
+| Journal entries                             | A small badge / dot on dates with entries      |
+| Notes with a calendar-enabled date property | All-day note chips on the property's date      |
+| Notes (with **Show notes on calendar** on)  | All-day chips on the day each note was created |
 
 ## Search
 
@@ -58,6 +59,16 @@ Click an event to open the popover. Edit title, time, and description in place. 
 A note that has a `date`-typed [property](/user-guide/notes/properties-tags) can appear on the calendar. Turn on **Show on calendar** from that property's row in the note, and the note shows up as an all-day chip on the property's date. Clicking the chip opens a small read-only popover showing the property and date, with an **Open note** action.
 
 The toggle is vault-wide per property name — enabling it for "Deadline" once surfaces every note's "Deadline" — and it syncs across your devices. A note with several calendar-enabled date properties shows one chip per date.
+
+## Show Notes on Calendar
+
+[Settings → Calendar](/user-guide/settings#calendar) has a **Show notes on calendar** toggle (on by default). While it's on, every note appears on the calendar as an all-day chip on the day it was created — no per-note setup. Turning it off removes them again. This is display-only: no date is written to the note.
+
+With notes on the calendar, the [Day Panel](/user-guide/day-panel) mini-calendar also shows a notes dot on days that have notes — alongside the event and journal-activity dots — and the day's list under the calendar includes those notes next to events.
+
+### Day Summary on Hover
+
+Hover a date in the Day Panel calendar to see a quick summary of that day: counts of notes, journal, tasks, events, and reminders, each with its own color. Only the kinds present on that day are listed.
 
 ## Drag to Reschedule
 

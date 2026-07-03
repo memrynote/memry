@@ -68,7 +68,7 @@ async function submitOtp(page: Page): Promise<void> {
 async function readRecoveryWords(page: Page): Promise<string[]> {
   await expect(page.getByText('Save your recovery phrase')).toBeVisible()
   const words = await page
-    .locator('[aria-label="Recovery phrase words"] [role="listitem"]')
+    .locator('[aria-label="Recovery phrase words"] li')
     .evaluateAll((items) =>
       items.map((item) => (item.getAttribute('aria-label') ?? '').replace(/^Word \d+:\s*/, ''))
     )

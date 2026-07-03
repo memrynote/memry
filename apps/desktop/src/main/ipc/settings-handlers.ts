@@ -209,6 +209,11 @@ function readGroupSettings<T extends Record<string, unknown>>(groupKey: string, 
   }
 }
 
+/** Synchronous read of calendar settings for non-IPC callers (e.g. projection). */
+export function getCalendarSettings(): CalendarSettings {
+  return readGroupSettings('calendar', CALENDAR_SETTINGS_DEFAULTS)
+}
+
 function getStartupTheme(): { theme: GeneralSettings['theme']; accentColor?: string } {
   const settings = readGroupSettings('general', GENERAL_SETTINGS_DEFAULTS)
   const result: { theme: GeneralSettings['theme']; accentColor?: string } = {

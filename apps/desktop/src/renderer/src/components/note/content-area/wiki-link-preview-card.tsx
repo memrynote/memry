@@ -2,7 +2,8 @@ import { memo } from 'react'
 import { createPortal } from 'react-dom'
 import type { WikiLinkPreview } from '@/services/notes-service'
 import { getTagColors, withAlpha } from '../tags-row/tag-colors'
-import { format } from 'date-fns'
+import { formatDate } from '@/lib/format-date'
+import { useDateFormat } from '@/hooks/use-date-format'
 import { FileText } from '@/lib/icons'
 
 interface WikiLinkPreviewCardProps {
@@ -22,6 +23,7 @@ export const WikiLinkPreviewCard = memo(function WikiLinkPreviewCard({
   onTagClick,
   onNoteClick
 }: WikiLinkPreviewCardProps) {
+  const dateFormat = useDateFormat()
   return createPortal(
     <div
       data-wiki-link-preview=""
@@ -40,7 +42,7 @@ export const WikiLinkPreviewCard = memo(function WikiLinkPreviewCard({
         <button
           type="button"
           onClick={() => onNoteClick?.(preview.title)}
-          className="flex flex-col gap-1.5 text-left cursor-pointer rounded-md -mx-1 px-1 -my-0.5 py-0.5 transition-colors duration-150 hover:bg-[var(--surface-active)]"
+          className="flex flex-col gap-1.5 text-start cursor-pointer rounded-md -mx-1 px-1 -my-0.5 py-0.5 transition-colors duration-150 hover:bg-[var(--surface-active)]"
         >
           <div className="flex items-center gap-1.5">
             {preview.emoji ? (
@@ -86,7 +88,7 @@ export const WikiLinkPreviewCard = memo(function WikiLinkPreviewCard({
         {/* Date — always bottom-right */}
         <div className="flex justify-end">
           <span className="text-[11px]/3.5" style={{ color: 'var(--text-tertiary)' }}>
-            {format(new Date(preview.createdAt), 'MMM d, yyyy')}
+            {formatDate(new Date(preview.createdAt), dateFormat)}
           </span>
         </div>
       </div>

@@ -13,18 +13,19 @@ const {
 
 const appRoot = path.resolve(__dirname, '..')
 const productName = 'Memrynote'
+// Must match package.json `dependencies` — the native/unbundleable modules
+// that ship loose next to app.asar. Everything else is bundled into out/.
 const requiredModules = [
-  '@tiptap/core',
-  '@tiptap/pm/model',
-  '@tiptap/pm/transform',
+  '@huggingface/transformers',
+  '@mixmark-io/domino',
   'better-sqlite3',
+  'jsdom',
   'keytar',
-  'orderedmap',
-  'prosemirror-model',
-  'readable-stream',
-  'safe-buffer',
-  'string_decoder/',
-  'y-leveldb'
+  'libsodium-wrappers-sumo',
+  'sharp',
+  'sqlite-vec',
+  'y-leveldb',
+  'yjs'
 ]
 const nativeArchCheckedModules = ['better-sqlite3', 'keytar']
 

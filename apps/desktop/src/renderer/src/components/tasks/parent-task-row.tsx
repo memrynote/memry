@@ -5,7 +5,7 @@ import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { cn } from '@/lib/utils'
 import { hasSubtasks, type SubtaskProgress } from '@/lib/subtask-utils'
 import { formatDateShort, formatDueDate, formatTime } from '@/lib/task-utils'
-import { SelectionCheckbox } from '@/components/tasks/bulk-actions'
+import { SelectionCheckbox } from '@/components/folder-view/selection-checkbox'
 import { ExpandChevron } from '@/components/tasks/expand-chevron'
 import { InsertionIndicator } from '@/components/tasks/drag-drop/insertion-indicator'
 import type { SectionDragState } from '@/components/tasks/drag-drop/list-section-drag-state'
@@ -133,7 +133,7 @@ export const ParentTaskRow = ({
   const handleRowClick = (e: React.MouseEvent): void => {
     if ((e.target as HTMLElement).closest('[data-expand-button]')) return
 
-    if (e.shiftKey && isSelectionMode && onShiftSelect) {
+    if (e.shiftKey && onShiftSelect) {
       e.preventDefault()
       onShiftSelect(task.id)
       return
@@ -185,7 +185,7 @@ export const ParentTaskRow = ({
   })()
 
   return (
-    <div className={cn('group relative', className)}>
+    <div className={cn('group group/row relative', className)}>
       <div
         ref={rowRef}
         style={isOverlay && overlayWidth ? { width: `${overlayWidth}px` } : undefined}
@@ -234,18 +234,18 @@ export const ParentTaskRow = ({
         {!isOverlay && insertionIndicatorPosition && (
           <InsertionIndicator
             position={insertionIndicatorPosition}
-            className="left-3 right-3"
+            className="start-3 end-3"
             dataTestId="list-drop-indicator"
           />
         )}
 
-        {isSelectionMode && onToggleSelect && (
-          <div onClick={(e) => e.stopPropagation()}>
+        {!isOverlay && onToggleSelect && (
+          <div className="flex shrink-0 items-center justify-center">
             <SelectionCheckbox
-              checked={isCheckedForSelection}
-              onChange={() => onToggleSelect(task.id)}
-              onClick={(e: React.MouseEvent) => e.stopPropagation()}
-              aria-label={`Select ${task.title}`}
+              state={isCheckedForSelection ? 'checked' : 'unchecked'}
+              onToggle={() => onToggleSelect(task.id)}
+              alwaysVisible={isSelectionMode}
+              label={`Select ${task.title}`}
             />
           </div>
         )}
@@ -343,7 +343,7 @@ export const ParentTaskRow = ({
         {dueDateDisplay && (
           <div
             className={cn(
-              'text-[11px] shrink-0 text-right leading-3.5 whitespace-nowrap',
+              'text-[11px] shrink-0 text-end leading-3.5 whitespace-nowrap',
               'colorClass' in dueDateDisplay
                 ? dueDateDisplay.colorClass
                 : isOverlay

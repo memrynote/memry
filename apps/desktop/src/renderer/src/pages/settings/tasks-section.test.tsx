@@ -61,7 +61,6 @@ const MOCK_PROJECTS: Project[] = [
 const DEFAULTS = {
   defaultProjectId: null,
   defaultSortOrder: 'manual' as const,
-  weekStartDay: 'monday' as const,
   staleInboxDays: 7
 }
 
@@ -98,7 +97,6 @@ describe('TasksSettings', () => {
     expect(screen.getByText('Tasks')).toBeInTheDocument()
     expect(screen.getByText('Default Project')).toBeInTheDocument()
     expect(screen.getByText('Default Sort Order')).toBeInTheDocument()
-    expect(screen.getByText('Week Starts On')).toBeInTheDocument()
     expect(screen.getByText('Stale Inbox Threshold')).toBeInTheDocument()
   })
 
@@ -202,23 +200,6 @@ describe('TasksSettings', () => {
     await waitFor(() => {
       expect(window.api.settings.setTaskSettings).toHaveBeenCalledWith({
         defaultSortOrder: 'dueDate'
-      })
-    })
-  })
-
-  it('updates week start day on toggle', async () => {
-    const user = userEvent.setup()
-    renderWithProviders(<TasksSettings />)
-
-    await waitFor(() => {
-      expect(screen.queryByText('Loading settings...')).not.toBeInTheDocument()
-    })
-
-    await user.click(screen.getByText('Sunday'))
-
-    await waitFor(() => {
-      expect(window.api.settings.setTaskSettings).toHaveBeenCalledWith({
-        weekStartDay: 'sunday'
       })
     })
   })

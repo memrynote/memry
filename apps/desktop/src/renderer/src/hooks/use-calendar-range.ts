@@ -33,6 +33,16 @@ export function useCalendarRange(input: GetCalendarRangeInput) {
     })
   }, [queryClient])
 
+  // Calendar settings (e.g. "show notes on calendar") change what the projection
+  // returns, so refetch the range when they change.
+  useEffect(() => {
+    return window.api.onSettingsChanged((event) => {
+      if (event.key === 'calendar') {
+        void queryClient.invalidateQueries({ queryKey: calendarRangeKeys.all() })
+      }
+    })
+  }, [queryClient])
+
   return {
     ...query,
     items: query.data?.items ?? []

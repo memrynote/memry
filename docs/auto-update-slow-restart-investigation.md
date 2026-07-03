@@ -1,13 +1,17 @@
 # Auto-update slow restart — investigation record
 
-Status: **root cause corrected (file COUNT, not ML bytes). First prune attempt
-(`extraResources` filter excluding `@tabler/icons`) BROKE macOS codesign and was
-reverted — dangling symlink, see Dead-end #5. SUPERSEDED by a cleaner fix:
-`@tabler/icons-react` turned out to have ZERO source imports (icons migrated to
-hugeicons long ago), so the dep was simply removed from `package.json` — no
-staged-tree prune needed. `lucide-react` (renderer-only, Vite-bundled) moved to
-devDependencies. Verified locally: bundle 52,744 → 35,768 files (−32%), no
-dangling symlinks, runtime-deps gate green.**
+Status: **fixed at the structural level (2026-07-02): the app no longer ships
+its full JS dependency tree loose. electron-vite now bundles every pure-JS
+dependency into `out/`, and package.json `dependencies` is slimmed to the 10
+native/unbundleable modules that must stay loose. Local `--dir` build:
+5,208 sealed files (vs 33,410 in the installed 2026.702.2, vs 52,744
+pre-icon-prune — −90% total), 526 MB on disk (vs 865 MB), zero dangling
+symlinks, runtime-deps gate + packaged Electron native smoke green, desktop
+main suite (3,291 tests) green, e2e smoke spec green against the bundled main.
+See "The shipped fix" below. Earlier milestone: the `@tabler/icons` dead-dep
+removal (52,744 → 33,410 files) was verified on the real signed 2026.702.2
+release — Restart went 108 s → 75.5 s, confirming verify time is O(file
+count). The dead-ends below remain dead — do not repeat them.**
 Last updated: 2026-07-02.
 
 Read this before touching the auto-update / packaging path again. It exists so
@@ -100,6 +104,123 @@ find a (relaunched) instance still running → `SQRLInstallerErrorDomain Code=-9
 auto-updates racing. Not hit on a single steady-state Restart, but it explains
 the pathological ">2 min" cases. Fixing this doesn't speed the happy path — only
 shrinking the file count does.
+
+---
+
+## The shipped fix (2026-07-02): dependencies-as-contract bundling
+
+The 33,410-file bundle existed because electron-vite **externalizes everything
+in package.json `dependencies` by default**, so `out/main` did runtime
+`require('drizzle-orm')`, `require('openai')`, `require('metascraper')`, … and
+the entire production dependency tree had to ship loose via `extraResources`.
+Measured on the installed 2026.702.2 bundle: 33,144 of 33,148 Resources files
+were `node_modules`, and the true natives accounted for only ~650 of them. The
+other ~32,500 files were pure JS that Squirrel sealed and verified one by one.
+(Claude/Codex/Slack-class Electron apps restart in 10–15 s because all their JS
+lives inside `app.asar` — ONE sealed file.)
+
+The fix inverts the contract instead of fighting electron-builder (dead-end #1):
+
+- **package.json `dependencies` now contains ONLY the native/unbundleable
+  modules** — `@huggingface/transformers` (pulls onnxruntime-node),
+  `@mixmark-io/domino` (turndown's DOM parser, hard `require` in main),
+  `better-sqlite3`, `jsdom`, `keytar`, `libsodium-wrappers-sumo` (UMD +
+  inlined wasm, breaks under rollup CJS interop), `sharp`, `sqlite-vec`,
+  `y-leveldb` (pulls classic-level), and `yjs` (must be a single instance —
+  external y-leveldb resolves its yjs peer from the loose tree, so the main
+  bundle must use the same copy or Y.Doc constructor checks break).
+  electron-vite externalizes exactly these, and `pnpm deploy --prod` stages
+  exactly these.
+- **Everything else moved to `devDependencies`** and is bundled into `out/` by
+  electron-vite (same treatment hugeicons/lucide-react already had). Renderer
+  deps were always Vite-bundled; moving them out of `dependencies` stops pnpm
+  deploy from shipping dead trees (shiki ×2 + 3 grammar packs ≈ 3,800 files,
+  mermaid 670, es-toolkit 2,767, …).
+- `src/main/runtime-dependencies.test.ts` asserts the exact `dependencies` set,
+  and `scripts/check-packaged-runtime-deps.js` verifies each one resolves from
+  the packaged loose tree. Adding a package to `dependencies` is now a
+  conscious act that slows every user's Restart — the test makes it visible.
+- `build-packaged-app.js` passes `-c.electronVersion=` explicitly: the slim
+  staged tree no longer contains electron, so electron-builder can't infer the
+  version from installed modules (the old fat deploy leaked electron into the
+  staged tree — that's why the `'!electron'` extraResources filter existed).
+- `ensure-native.sh` now invokes @electron/rebuild's CLI with node directly.
+  `pnpm exec`'s pre-exec deps-status check can trigger
+  `pnpm install --production`, which would prune devDependencies — and the
+  entire build toolchain now lives there.
+
+Verified locally (unsigned `--dir` build, recipe below): **5,208 sealed files**
+(−84% vs 2026.702.2, −90% vs pre-prune), 526 MB (−340 MB, from de-duplicated
+JS), 0 dangling symlinks, `check-packaged-runtime-deps.js` green including the
+packaged-Electron native smoke, desktop main suite 3,291 tests green, full
+typecheck green, and a real boot + Playwright e2e spec green against the
+bundled `out/main`.
+
+**Confirmed on the signed `v2026.702.4` release** (install 2026-07-02 23:50,
+`main.log` + `ShipIt_stderr.log`): click-Restart → new process =
+**18.0 s** (was 75.5 s on `702.2`, 108.4 s on `701.5`). Phase breakdown:
+cleanup 27 ms (clean, no watchdog) · in-process unzip+verify 2.5 s · ShipIt
+pre-swap verify 5.3 s · swap 2 ms · post-swap verify 3.1 s · relaunch+boot
+~7.2 s. **Total signature-verify time collapsed 54.8 s → 8.4 s** across the
+three passes — exactly the O(file count) win the model predicted. The installed
+bundle is **5,240 files / 557 MB**, and the "app invisible" window (Dock icon
+gone → new build up) shrank from ~59 s to ~11 s. Sub-15 s further would need the
+byte diet (lazy ML model/dylib download — path 1 below).
+
+Gotchas found while shipping this (each found by BOOT-TESTING the bundle —
+`MEMRY_FORCE_VAULT_PICKER=1 npx electron .` — not by the unit suite, which
+stubs all of this; always boot-test after touching bundling):
+
+- **CJS chunk-splitting breaks internally-circular packages.** First boot died
+  with `zod._enum is not a function`: rollup had split zod v4's internally
+  circular modules across shared chunks, and CJS chunk load order broke the
+  cycle. Fixed with `output.manualChunks` = one chunk per npm package (intra-
+  package cycles stay in one module scope; chunk count inside app.asar is free
+  for codesign). If a future boot dies with a "X is not a function / undefined"
+  inside a dep, suspect this class first.
+- `@mixmark-io/domino` is a HARD runtime require: turndown calls it whenever
+  `document` is undefined — always true in the main process. It must stay in
+  `dependencies`. (Found by scanning `out/main` for residual bare requires.)
+- `libsodium-wrappers-sumo` cannot be bundled (UMD + inlined wasm; rollup's
+  CJS interop yields `undefined.ready` at boot) — stays in `dependencies`.
+- `yjs` must stay external for instance identity: y-leveldb (external, native
+  classic-level) resolves its own yjs peer from the loose tree; a second
+  bundled copy triggers "Yjs was already imported" and breaks constructor
+  checks across the CRDT stack.
+- `re2` is required by @metascraper/helpers inside try/catch as an optional
+  speedup; the repo intentionally never builds it (`allowBuilds: re2: false`
+  in pnpm-workspace.yaml) and the shipped app never had a working re2 binary.
+  It is listed in `rollupOptions.external` WITHOUT being shipped — the require
+  throws and metascraper falls back to RegExp, exactly as before.
+- `esprima` (js-yaml) and ajv's `require("ajv/dist/runtime/…")` strings in
+  `out/` are not real runtime requires — the former is guarded, the latter are
+  string literals emitted by ajv's standalone-code generator.
+
+## Follow-ups worth doing
+
+1. **DONE — ShipIt startup guard (kills the relaunch loop).** During the ShipIt
+   window the app vanishes from the Dock; users relaunch the OLD app manually,
+   which (a) makes ShipIt abort with `SQRLInstallerErrorDomain Code=-9` and
+   re-verify from scratch, and (b) shows the update prompt again → download →
+   Restart → loop. Implemented in `src/main/updater-install-guard.ts` +
+   `src/main/index.ts`: `performQuitAndInstall()` drops a
+   `pending-update-install.json` marker (the version handing off to Squirrel);
+   on the next launch `isPendingInstallInFlight()` fires only when the marker is
+   fresh AND the running app still reports that same version (so the newly
+   swapped-in build never trips it) AND a ShipIt process is alive AND
+   `ShipItState.plist` under `~/Library/Caches/com.memrynote.memry.ShipIt/` is
+   fresh. When it fires, the app shows a small "Installing update…" splash and
+   `app.exit(0)`s instead of booting + re-prompting, so ShipIt finishes and
+   relaunches the new build. All four gates are required to avoid stranding the
+   user on the splash after a failed/abandoned install.
+2. **Cleanup-timeout / mid-shutdown sync-runtime restart bug.** Measured on
+   2026-07-02 16:35: clicking Restart during an in-flight fullSync re-pull made
+   "stopping sync runtime" hang, and the sync runtime + capture server
+   RESTARTED mid-shutdown (`main.log` 16:35:29.58 `Sync runtime started` after
+   `stopping sync runtime`), until the 5 s watchdog fired
+   `cleanup timed out; installing downloaded update anyway`. Costs a flat 5 s
+   on the restart path and is a genuine lifecycle bug; find who re-arms the
+   runtime during shutdown and gate it on the shutdown latch.
 
 ---
 

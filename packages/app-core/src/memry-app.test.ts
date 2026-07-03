@@ -320,6 +320,18 @@ test('opens a standalone vault and exposes core note, journal, task, inbox, and 
     name: 'Task Project',
     description: 'Task project description'
   })
+  assert.deepEqual(
+    (await app.tasks.projects.statuses('inbox'))
+      .sort((a, b) => a.position - b.position)
+      .map((status) => status.name),
+    ['To Do', 'In Progress', 'Done']
+  )
+  assert.deepEqual(
+    (await app.tasks.projects.statuses(taskProject.id))
+      .sort((a, b) => a.position - b.position)
+      .map((status) => status.name),
+    ['To Do', 'In Progress', 'Done']
+  )
   assert.equal(
     (await app.tasks.projects.update(taskProject.id, { name: 'Task Project Updated' })).name,
     'Task Project Updated'
@@ -651,7 +663,8 @@ test('opens a standalone vault and exposes core note, journal, task, inbox, and 
     language: 'en',
     onboardingCompleted: false,
     createInSelectedFolder: true,
-    clockFormat: '12h'
+    clockFormat: '12h',
+    dateFormat: 'DD.MM.YYYY'
   })
   assert.deepEqual(await app.settings.setGroup('general', { theme: 'dark', language: 'tr' }), {
     theme: 'dark',
@@ -662,7 +675,8 @@ test('opens a standalone vault and exposes core note, journal, task, inbox, and 
     language: 'tr',
     onboardingCompleted: false,
     createInSelectedFolder: true,
-    clockFormat: '12h'
+    clockFormat: '12h',
+    dateFormat: 'DD.MM.YYYY'
   })
   assert.equal(await app.locale.get(), 'tr')
   assert.equal((await app.locale.list()).includes('de'), true)

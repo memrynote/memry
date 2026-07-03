@@ -211,6 +211,20 @@ export const createDefaultTab = (): Tab => ({
 /**
  * Create a tab from sidebar item
  */
+/**
+ * "New/create" intent delivered as tab viewState when opening Calendar / Inbox /
+ * Tasks from a create entry point (the New menu, the new-tab +). Calendar shows
+ * its new-event popover; Inbox focuses the capture field; Tasks opens the default
+ * project's All list with the quick-add focused. A fresh timestamp re-fires the
+ * intent on every click, even when the singleton tab already exists.
+ */
+export const newItemViewState = (type: 'calendar' | 'inbox' | 'tasks'): Record<string, unknown> => {
+  const at = Date.now()
+  if (type === 'calendar') return { createEventAt: at }
+  if (type === 'inbox') return { focusCaptureAt: at }
+  return { activeInternalTab: 'all', focusQuickAddAt: at }
+}
+
 export const createTabFromSidebarItem = (
   item: SidebarItem,
   isPreview: boolean = false
@@ -222,6 +236,7 @@ export const createTabFromSidebarItem = (
     emoji: item.emoji,
     path: item.path,
     entityId: item.entityId,
+    viewState: item.viewState,
     isPinned: false,
     isModified: false,
     isPreview,

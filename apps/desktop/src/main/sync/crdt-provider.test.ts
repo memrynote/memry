@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   safeRead: vi.fn(),
   parseNote: vi.fn(),
   markdownToYFragment: vi.fn(),
+  repairEmptyBlockIds: vi.fn(() => 0),
   compactYDoc: vi.fn(),
   scheduleWriteback: vi.fn(),
   flushPendingWritebacks: vi.fn(),
@@ -76,7 +77,8 @@ vi.mock('../vault/frontmatter', () => ({
 }))
 
 vi.mock('./blocknote-converter', () => ({
-  markdownToYFragment: (...args: unknown[]) => mocks.markdownToYFragment(...args)
+  markdownToYFragment: (...args: unknown[]) => mocks.markdownToYFragment(...args),
+  repairEmptyBlockIds: (...args: unknown[]) => mocks.repairEmptyBlockIds(...args)
 }))
 
 vi.mock('./crdt-compact-utils', () => ({

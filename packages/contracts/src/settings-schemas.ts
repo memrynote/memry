@@ -23,7 +23,8 @@ export const GeneralSettingsSchema = z.object({
   language: LocaleSchema,
   onboardingCompleted: z.boolean(),
   createInSelectedFolder: z.boolean(),
-  clockFormat: z.enum(['12h', '24h'])
+  clockFormat: z.enum(['12h', '24h']),
+  dateFormat: z.enum(['MM/DD/YYYY', 'DD/MM/YYYY', 'YYYY-MM-DD', 'DD.MM.YYYY'])
 })
 
 export type GeneralSettings = z.infer<typeof GeneralSettingsSchema>
@@ -39,7 +40,8 @@ export const GENERAL_SETTINGS_DEFAULTS: GeneralSettings = {
   language: 'en',
   onboardingCompleted: false,
   createInSelectedFolder: true,
-  clockFormat: '12h'
+  clockFormat: '12h',
+  dateFormat: 'DD.MM.YYYY'
 }
 
 // ============================================================================
@@ -161,7 +163,10 @@ export const VOICE_TRANSCRIPTION_SETTINGS_DEFAULTS: VoiceTranscriptionSettings =
 export const CalendarSettingsSchema = z.object({
   dayCellClickBehavior: z.enum(['journal', 'calendar']),
   calendarPageClickOverride: z.enum(['inherit', 'journal', 'calendar']),
-  weekStartDay: z.enum(['sunday', 'monday'])
+  weekStartDay: z.enum(['sunday', 'monday']),
+  // When true, every regular note is shown on the calendar as an all-day chip on
+  // its creation day (read-side projection only — no date is written to the note).
+  showNotesOnCalendar: z.boolean()
 })
 
 export type CalendarSettings = z.infer<typeof CalendarSettingsSchema>
@@ -169,7 +174,8 @@ export type CalendarSettings = z.infer<typeof CalendarSettingsSchema>
 export const CALENDAR_SETTINGS_DEFAULTS: CalendarSettings = {
   dayCellClickBehavior: 'journal',
   calendarPageClickOverride: 'calendar',
-  weekStartDay: 'monday'
+  weekStartDay: 'monday',
+  showNotesOnCalendar: true
 }
 
 // ============================================================================

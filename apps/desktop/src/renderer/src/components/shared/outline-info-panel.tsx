@@ -1,6 +1,8 @@
 import { useState, useCallback, useRef, useEffect, useLayoutEffect, memo } from 'react'
 import { cn } from '@/lib/utils'
-import { format, parseISO, isValid } from 'date-fns'
+import { parseISO, isValid } from 'date-fns'
+import { formatDate as applyDateFormat, type DateFormat } from '@/lib/format-date'
+import { useDateFormat } from '@/hooks/use-date-format'
 import { useT } from '@memry/i18n/renderer'
 
 export interface HeadingItem {
@@ -37,12 +39,12 @@ function getLineWidth(level: number): number {
   }
 }
 
-function formatStatsDate(date: string | Date | null): string {
+function formatStatsDate(date: string | Date | null, df: DateFormat): string {
   if (!date) return '—'
   try {
     const dateObj = typeof date === 'string' ? parseISO(date) : date
     if (!isValid(dateObj)) return '—'
-    return format(dateObj, 'MMM d, yyyy')
+    return applyDateFormat(dateObj, df)
   } catch {
     return '—'
   }
@@ -66,6 +68,7 @@ export const OutlineInfoPanel = memo(function OutlineInfoPanel({
   stats
 }: OutlineInfoPanelProps) {
   const { t } = useT('notes')
+  const dateFormat = useDateFormat()
   const [isExpanded, setIsExpanded] = useState(false)
   const [isPinned, setIsPinned] = useState(false)
   const [isFadingOut, setIsFadingOut] = useState(false)
@@ -284,7 +287,7 @@ export const OutlineInfoPanel = memo(function OutlineInfoPanel({
                           {t('outline.created')}
                         </span>
                         <span className="text-[11px] text-text-tertiary leading-3.5">
-                          {formatStatsDate(stats.createdAt)}
+                          {formatStatsDate(stats.createdAt, dateFormat)}
                         </span>
                       </div>
                     )}
@@ -294,7 +297,7 @@ export const OutlineInfoPanel = memo(function OutlineInfoPanel({
                           {t('outline.modified')}
                         </span>
                         <span className="text-[11px] text-text-tertiary leading-3.5">
-                          {formatStatsDate(stats.modifiedAt)}
+                          {formatStatsDate(stats.modifiedAt, dateFormat)}
                         </span>
                       </div>
                     )}

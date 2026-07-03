@@ -64,6 +64,7 @@ import {
 } from './sync/certificate-pinning'
 import { getCrdtProvider } from './sync/crdt-provider'
 import { stopSyncRuntime } from './sync/runtime'
+import { beginAppShutdown, isAppShuttingDown } from './app-shutdown'
 import { getValidAccessToken } from './sync/token-manager'
 import { getNoteCacheById } from '@main/database/queries/notes'
 import { getIndexDatabase } from './database/client'
@@ -73,6 +74,7 @@ import { SnapshotReasons } from '@memry/db-schema/schema/notes-cache'
 import { SettingsChannels, InboxChannels } from '@memry/contracts/ipc-channels'
 import { parseInboxOpenItemId } from './deeplink-utils'
 import { initializeUpdater, isQuitAndInstallRequested, performQuitAndInstall } from './updater'
+import { clearPendingInstallMarker, isPendingInstallInFlight } from './updater-install-guard'
 import { buildAppMenu, buildEditableTextContextMenu } from './menu'
 import { setMainI18n } from './lib/main-i18n'
 import {
@@ -442,12 +444,46 @@ function createWindow(): void {
   })
   mainWindow.on('closed', unsubscribeVaultStatus)
 
+  // The window is created hidden (show:false) and normally revealed on
+  // 'ready-to-show'. On Windows a GPU/renderer crash before first paint can mean
+  // that event never fires, leaving the process alive with no visible window and
+  // no taskbar entry (unlike macOS, where the Dock still surfaces the app).
+  // Guarantee visibility with a one-shot reveal guarded by a load-failure handler
+  // and a fallback timeout, so a transient hiccup can't hide the app forever.
+  let mainWindowShown = false
+  const revealMainWindow = (reason: string): void => {
+    if (mainWindowShown || mainWindow.isDestroyed()) return
+    mainWindowShown = true
+    clearTimeout(fallbackShowTimer)
+    mainWindow.show()
+    trackLaunchPhase('window_shown', Date.now() - launchStartedAt)
+    mainLog.info(`main window shown (${reason})`)
+  }
+
+  const fallbackShowTimer = setTimeout(() => {
+    mainLog.warn('ready-to-show did not fire within 10s; revealing window as fallback')
+    revealMainWindow('fallback-timeout')
+  }, 10_000)
+  mainWindow.on('closed', () => clearTimeout(fallbackShowTimer))
+
   mainWindow.on('ready-to-show', () => {
     // Zoom out once (equivalent to Cmd+-)
     // mainWindow.webContents.setZoomLevel(-0.8)
-    mainWindow.show()
     trackLaunchPhase('window_ready_to_show', Date.now() - launchStartedAt)
+    revealMainWindow('ready-to-show')
   })
+
+  mainWindow.webContents.on(
+    'did-fail-load',
+    (_event, errorCode, errorDescription, validatedURL) => {
+      // ERR_ABORTED (-3) is benign (e.g. a superseded navigation); don't reveal on it.
+      if (errorCode === -3) return
+      mainLog.error(
+        `main window failed to load (${errorCode} ${errorDescription}) ${validatedURL}; revealing anyway`
+      )
+      revealMainWindow('did-fail-load')
+    }
+  )
 
   mainWindow.webContents.on('did-finish-load', () => {
     trackLaunchPhase('window_did_finish_load', Date.now() - launchStartedAt)
@@ -499,6 +535,61 @@ function createWindow(): void {
   } else {
     void mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
+}
+
+// How long the pre-boot "Installing update…" splash stays up before we exit.
+// Long enough to paint and be read, short enough to get out of ShipIt's way:
+// keeping the old build alive is what makes Squirrel abort (Code=-9) and retry.
+const INSTALLING_SPLASH_EXIT_MS = 2000
+
+const INSTALLING_SPLASH_HTML = `<!doctype html>
+<html><head><meta charset="utf-8"><style>
+  html,body{margin:0;height:100%}
+  body{display:flex;align-items:center;justify-content:center;background:#f6f5f0;
+    color:#191919;font:14px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    -webkit-user-select:none;user-select:none}
+  .card{text-align:center;padding:24px}
+  .spinner{width:22px;height:22px;margin:0 auto 16px;border-radius:50%;
+    border:2px solid rgba(25,25,25,.15);border-top-color:#ff671a;
+    animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .title{font-weight:600;margin-bottom:6px}
+  .sub{opacity:.55;font-size:13px}
+  @media (prefers-reduced-motion:reduce){.spinner{animation:none}}
+</style></head><body><div class="card">
+  <div class="spinner"></div>
+  <div class="title">Installing update…</div>
+  <div class="sub">Memrynote will reopen automatically.</div>
+</div></body></html>`
+
+/**
+ * Show a tiny "Installing update…" splash and exit, instead of booting normally.
+ * Used when a Squirrel/ShipIt install we started is still running and the user
+ * relaunched the old build. Booting here would re-show the update prompt AND
+ * keep the old process alive, which makes ShipIt abort and re-verify from
+ * scratch (the download → Restart loop). Exiting lets ShipIt finish and
+ * relaunch the new build itself.
+ */
+function showInstallingUpdateWindowAndExit(): void {
+  const splash = new BrowserWindow({
+    width: 380,
+    height: 180,
+    resizable: false,
+    minimizable: false,
+    maximizable: false,
+    fullscreenable: false,
+    frame: false,
+    show: false,
+    backgroundColor: '#faf9f7',
+    center: true,
+    webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false }
+  })
+  splash.once('ready-to-show', () => splash.show())
+  void splash.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(INSTALLING_SPLASH_HTML)}`)
+  // Hard exit (not app.quit): nothing is initialized, so there is no graceful
+  // shutdown to run, and app.quit() would spin up the before-quit cleanup path
+  // against an empty app. app.exit ends the process so ShipIt can proceed.
+  setTimeout(() => app.exit(0), INSTALLING_SPLASH_EXIT_MS)
 }
 
 const pendingOAuthStates = new Map<string, number>()
@@ -598,6 +689,16 @@ if (!headlessCliArgs && !allowMultiInstanceForDeviceTests) {
     app.quit()
   } else {
     app.on('second-instance', (_event, commandLine) => {
+      // A second launch (e.g. double-clicking the shortcut while the app is
+      // already running) must surface the existing window, not silently no-op.
+      // On Windows there is no Dock/'activate' fallback, so without this a hidden
+      // or minimized instance stays invisible and the app looks like it "won't open".
+      const existing = BrowserWindow.getAllWindows().find((w) => !w.isDestroyed())
+      if (existing) {
+        if (!existing.isVisible()) existing.show()
+        if (existing.isMinimized()) existing.restore()
+        existing.focus()
+      }
       const deepLinkUrl = commandLine.find((arg) => arg.startsWith('memry://'))
       if (deepLinkUrl) {
         handleDeepLink(deepLinkUrl)
@@ -611,6 +712,21 @@ if (!headlessCliArgs && !allowMultiInstanceForDeviceTests) {
 // Some APIs can only be used after this event occurs.
 void app.whenReady().then(async () => {
   if (headlessCliArgs) return
+
+  // Auto-update guard: if a Squirrel/ShipIt install we started is still running
+  // and the user relaunched the OLD build (Dock icon vanishes during the swap),
+  // do NOT boot + re-prompt. Booting keeps the old process alive — which makes
+  // ShipIt abort with Code=-9 and re-verify from scratch — and re-shows the
+  // update prompt, i.e. the download → Restart loop. Show a brief installer
+  // splash and exit so ShipIt can finish and relaunch the new build itself.
+  if (isPendingInstallInFlight()) {
+    mainLog.info('pending update install in flight on launch; showing splash and exiting')
+    showInstallingUpdateWindowAndExit()
+    return
+  }
+  // Normal boot commits — drop any leftover pending-install marker.
+  clearPendingInstallMarker()
+
   // Load React DevTools using new session.extensions API (Electron 38+)
   // Note: Some console errors about "sandboxed_renderer.bundle.js" and "Autofill"
   // are expected and harmless - they're caused by Chrome DevTools internals
@@ -651,8 +767,10 @@ void app.whenReady().then(async () => {
     }
   }
 
-  // Set app user model id for windows
-  electronApp.setAppUserModelId('com.electron')
+  // Set app user model id for windows. Must match the electron-builder appId
+  // (config/electron-builder.yml) so the taskbar button, pinned shortcut, and
+  // notifications all attribute to the same app identity.
+  electronApp.setAppUserModelId('com.memrynote.memry')
 
   // Register memry:// deep link protocol for OAuth callbacks (T041e)
   if (process.defaultApp && process.argv.length >= 2) {
@@ -984,6 +1102,13 @@ void app.whenReady().then(async () => {
   // The renderer subscribes to vault status events and updates automatically.
   void autoOpenLastVault()
     .then(async () => {
+      // autoOpenLastVault blocks on the vault's first fullSync; if the user quit
+      // during it, shutdown has already stopped these services — do not re-arm
+      // them here (that was the mid-shutdown capture-server/scheduler restart).
+      if (isAppShuttingDown()) {
+        mainLog.info('skipping post-vault-open startup: app is shutting down')
+        return
+      }
       try {
         checkDueItemsOnStartup()
         startSnoozeScheduler()
@@ -1275,6 +1400,11 @@ app.on('before-quit', (event) => {
   // out, and a closeVault() during cleanup would otherwise flip the UI to the
   // vault picker (isOpen:false) right before the app quits/installs.
   beginVaultShutdown()
+
+  // Latch app shutdown so in-flight startup work (a slow first fullSync inside
+  // autoOpenLastVault) can't re-arm the sync runtime / capture server after the
+  // cleanup below stops them. Must be set before the async cleanup chain yields.
+  beginAppShutdown()
 
   shutdownLog.info('starting graceful shutdown...')
 

@@ -10,6 +10,8 @@ import { getI18n } from 'react-i18next'
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { formatDate } from '@/lib/format-date'
+import { useDateFormat } from '@/hooks/use-date-format'
 import {
   Sheet,
   SheetContent,
@@ -131,6 +133,7 @@ function VersionHistorySession({
 }: VersionHistorySessionProps): React.ReactElement {
   const { t } = useT('notes')
   const { t: tCommon } = useT('common')
+  const dateFormat = useDateFormat()
   const [selectedVersion, setSelectedVersion] = useState<string | null>(null)
   const [previewContent, setPreviewContent] = useState<SnapshotDetail | null>(null)
   const [previewLoading, setPreviewLoading] = useState(false)
@@ -418,7 +421,7 @@ function VersionHistorySession({
                       <div>
                         <div className="font-medium text-sm">{previewContent.title}</div>
                         <div className="text-xs text-muted-foreground">
-                          {format(new Date(previewContent.createdAt), 'PPP p')}
+                          {`${formatDate(new Date(previewContent.createdAt), dateFormat)} ${format(new Date(previewContent.createdAt), 'p')}`}
                         </div>
                       </div>
                       <div className="flex items-center gap-1">

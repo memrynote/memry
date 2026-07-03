@@ -64,10 +64,18 @@ project or sending product feedback.
 
 Shows the installed version. If a newer version is available, a button lets you check, download, and install.
 
+When memrynote finds an update it opens an in-app **update prompt** showing the new version, what you have now, and the release notes. From there you can:
+
+- **Download** — fetch the update; progress shows on the sidebar update button, and once ready the prompt returns to offer **Restart Now** (or **Later**).
+- **Remind Me Later** — dismiss for now; the prompt reappears on the next launch or update check.
+- **Skip This Version** — never prompt automatically for this version again. A manual check clears the skip so the version can surface again.
+- **Automatically download & install updates** — when enabled, future updates download in the background and install on the next quit without prompting.
+
 ### Language & Region
 
 - **Language** — UI locale dropdown
 - **Clock Format** — 12-hour or 24-hour
+- **Date Format** — how calendar dates display throughout the app (`MM/DD/YYYY`, `DD/MM/YYYY`, `YYYY-MM-DD`, or `DD.MM.YYYY`). This preference is per device and isn't synced.
 
 The desktop app loads the active language bundle at startup and fetches another locale when the
 language setting changes. English fallback messages remain available for errors before the selected
@@ -173,7 +181,7 @@ Eight presets — indigo, amber, emerald, red, violet, cyan, pink, orange — pl
 
 ### Typography
 
-- **Font Size** — Small / Medium / Large
+- **Font Size** — Small / Medium / Large. Scales the whole interface, including note editor text and tags.
 - **Font Family** — System, Sans-Serif, Serif, Monospace, Gelasio, Geist, Inter
 
 ---
@@ -315,7 +323,7 @@ Create, rename, recolor, and reorder property options.
 
 Settings persist via Zod schemas in `packages/contracts/settings-schemas.ts`. Notable keys:
 
-- General: `theme`, `fontSize`, `fontFamily`, `accentColor`, `startOnBoot`, `language`, `clockFormat`, `createInSelectedFolder`
+- General: `theme`, `fontSize`, `fontFamily`, `accentColor`, `startOnBoot`, `language`, `clockFormat`, `dateFormat`, `createInSelectedFolder`
 - Editor: `width`, `toolbarMode`
 - Tasks: `defaultProjectId`, `defaultSortOrder`, `staleInboxDays`
 - Calendar: `dayCellClickBehavior`, `calendarPageClickOverride`, `weekStartDay`

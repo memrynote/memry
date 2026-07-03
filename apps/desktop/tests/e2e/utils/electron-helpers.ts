@@ -4,7 +4,7 @@
  * Provides utilities for testing Electron applications with Playwright.
  */
 
-import { ElectronApplication, Page } from '@playwright/test'
+import { ElectronApplication, expect, Page } from '@playwright/test'
 import * as path from 'path'
 
 /**
@@ -147,6 +147,31 @@ export async function waitForVaultReady(page: Page, timeout = 15000): Promise<vo
   await page.waitForTimeout(1000)
 
   await dismissFirstRunOnboarding(page)
+}
+
+/**
+ * Ensure the right-hand Day Panel is open. The panel now defaults to open
+ * (onboarding tour, #625), so blindly clicking the "Day Panel" toggle would
+ * close an already-open panel. Only toggle when it is actually closed.
+ */
+export async function ensureDayPanelOpen(page: Page): Promise<void> {
+  const inner = page.locator('[data-slot="day-panel-inner"]')
+  if (await inner.isVisible().catch(() => false)) return
+  await page.getByRole('button', { name: 'Day Panel', exact: true }).click()
+  await expect(inner).toBeVisible()
+}
+
+/**
+ * Ensure the right-hand Day Panel is closed. It defaults to open (#625), which
+ * narrows the note area and collapses the review rail; surfaces that need the
+ * full note width (e.g. the CriticMarkup review rail) close it first. The toggle
+ * inside the open panel's header is also labelled "Day Panel".
+ */
+export async function ensureDayPanelClosed(page: Page): Promise<void> {
+  const inner = page.locator('[data-slot="day-panel-inner"]')
+  if (!(await inner.isVisible().catch(() => false))) return
+  await page.getByRole('button', { name: 'Day Panel', exact: true }).click()
+  await expect(inner).not.toBeVisible()
 }
 
 /**

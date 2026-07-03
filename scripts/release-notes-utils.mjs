@@ -1,6 +1,6 @@
 export const HUMANIZED_RELEASE_MARKER = 'memry-humanized-release-notes'
 
-const requiredHumanizedSections = ['New Features', 'Bug Fixes', 'Documentation', 'Chores']
+const allowedHumanizedSections = ['New Features', 'Improvements', 'Fixes']
 
 function stripHtmlComments(text) {
   let output = ''
@@ -130,35 +130,60 @@ export function buildCompareUrl({ compareBaseUrl, finalTag, previousTag }) {
 
 export function validateHumanizedReleaseMarkdown(markdown = '') {
   const trimmed = markdown.trim()
+  const lines = trimmed.split('\n').map((line) => line.trim())
 
-  for (const section of requiredHumanizedSections) {
-    const sectionPattern = new RegExp(`^##\\s+${escapeRegExp(section)}\\s*$`, 'm')
-    if (!sectionPattern.test(trimmed)) {
-      throw new Error(`Humanized release notes must include a "${section}" section`)
+  const sections = []
+  let current = null
+  for (const line of lines) {
+    if (!line) {
+      continue
     }
+
+    const heading = /^##\s+(.+?)\s*$/.exec(line)
+    if (heading) {
+      current = { title: heading[1], bullets: [] }
+      sections.push(current)
+      continue
+    }
+
+    if (!current) {
+      throw new Error(`Humanized release notes must start with a section heading: ${line}`)
+    }
+
+    if (!line.startsWith('- ')) {
+      throw new Error(
+        `Humanized release note items must be Markdown bullets starting with "- ": ${line}`
+      )
+    }
+
+    current.bullets.push(line)
   }
 
-  if (/^##\s+Changelog\s*$/im.test(trimmed)) {
-    throw new Error('Humanized release notes must not include the Changelog section')
+  if (sections.length === 0) {
+    throw new Error('Humanized release notes must include at least one section')
   }
 
-  const contentLines = trimmed
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .filter((line) => !line.startsWith('## '))
+  for (const section of sections) {
+    if (section.title === 'Changelog') {
+      throw new Error('Humanized release notes must not include the Changelog section')
+    }
 
-  const nonBulletLines = contentLines.filter((line) => !line.startsWith('- '))
-  if (nonBulletLines.length > 0) {
-    throw new Error(
-      `Humanized release note items must be Markdown bullets starting with "- ": ${nonBulletLines[0]}`
-    )
-  }
+    if (!allowedHumanizedSections.includes(section.title)) {
+      throw new Error(`Unexpected release note section: ${section.title}`)
+    }
 
-  const bulletLines = contentLines.filter((line) => line.startsWith('- '))
-  for (const line of bulletLines) {
-    if (!/#\d+\b/.test(line)) {
-      throw new Error(`Humanized release note bullet is missing a PR number: ${line}`)
+    if (section.bullets.length === 0) {
+      throw new Error(
+        `Omit the empty "${section.title}" section instead of leaving it with no items`
+      )
+    }
+
+    for (const bullet of section.bullets) {
+      if (/#\d+\b/.test(bullet)) {
+        throw new Error(
+          `Humanized release note bullet must not include a PR or issue number: ${bullet}`
+        )
+      }
     }
   }
 
@@ -206,21 +231,27 @@ export function buildReleaseNotesPrompt({ finalTag, pullRequests }) {
   }
 
   return [
-    'You are writing Memry release notes.',
+    'You are writing Memry desktop release notes for end users.',
+    '',
+    'Audience: people using the Memry desktop app. They do not care about the',
+    'marketing website, browser extension, internal refactors, or developer tooling.',
     '',
     'Rules:',
-    '- Do not invent changes.',
-    '- Use only the provided PR titles, labels, authors, and release notes.',
+    '- Do not invent changes. Use only the provided PR titles, labels, authors, and release notes.',
+    '- Include only changes that affect the desktop app or the sync experience for end users.',
+    '- Judge relevance from each PR title scope and labels. Keep changes scoped to desktop, sync-server, or sync, plus cross-cutting user-facing features.',
+    '- Skip changes scoped to the landing site, browser extension or web clipper, brand or rename, documentation, CI, tests, chores, and schema-only or internal refactors.',
+    '- Do not include any PR numbers, issue numbers, or commit hashes.',
     '- Rewrite technical PR names into short human-friendly release-note bullets.',
     '- Keep each bullet to one sentence.',
     '- Every release-note item must be a Markdown bullet line starting with "- ".',
     '- Start every bullet with one relevant emoji, then a concise title, an em dash, and the explanation.',
-    '- Every bullet must include one or more PR numbers.',
-    '- Use exactly these sections: ## New Features, ## Bug Fixes, ## Documentation, ## Chores.',
-    '- Leave a section empty if no provided PR belongs there.',
+    '- Group items under these headings, in this order: ## New Features, ## Improvements, ## Fixes.',
+    '- Include a heading only when it has at least one item. Omit any heading that would be empty.',
+    '- If no change is user-facing, output a single "## Improvements" section with one bullet "- ✨ General improvements — performance and stability updates." and no other headings.',
     '- Do not include a Changelog section.',
     '- Return Markdown only. Do not wrap the answer in a code fence.',
-    '- Begin the response with the "## New Features" heading. Add no greeting, preamble, or closing remarks.',
+    '- Start the response with the first non-empty heading. Add no greeting, preamble, or closing remarks.',
     '',
     'Input JSON:',
     JSON.stringify(input, null, 2)
@@ -336,8 +367,4 @@ function readRequiredValue(argv, index, flag) {
     throw new Error(`${flag} requires a value`)
   }
   return value
-}
-
-function escapeRegExp(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }

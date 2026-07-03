@@ -23,7 +23,6 @@ const workspaceAliases = {
   '@memry/storage-vault': resolve(workspaceRoot, 'packages/storage-vault/src'),
   '@memry/sync-core': resolve(workspaceRoot, 'packages/sync-core/src')
 } as const
-const workspacePackages = Object.keys(workspaceAliases)
 
 function devCsp(): Plugin {
   return {
@@ -60,18 +59,12 @@ export default defineConfig({
   main: {
     plugins: [copyMigrations()],
     build: {
-      externalizeDeps: {
-        exclude: [
-          ...workspacePackages,
-          'cborg',
-          '@blocknote/server-util',
-          '@blocknote/core',
-          '@blocknote/react',
-          '@blocknote/xl-ai',
-          '@handlewithcare/prosemirror-inputrules',
-          'y-prosemirror'
-        ]
-      },
+      // Dependency contract: package.json `dependencies` = native/unbundleable
+      // modules only — electron-vite externalizes them by default and pnpm
+      // deploy ships them loose. Everything in `devDependencies` gets bundled
+      // into out/. Keep `dependencies` minimal: macOS Squirrel verifies every
+      // loose file on auto-update, so restart time is O(shipped file count).
+      // See docs/auto-update-slow-restart-investigation.md.
       rollupOptions: {
         input: {
           index: resolve(appRoot, 'src/main/index.ts'),
@@ -83,7 +76,31 @@ export default defineConfig({
             'src/main/inbox/voice-transcription-worker.ts'
           )
         },
-        external: ['better-sqlite3', 'jsdom', 'canvas']
+        // re2 is required inside a try/catch by @metascraper/helpers as an
+        // optional speedup; the repo never builds it (allowBuilds: re2: false),
+        // so keep it external WITHOUT shipping it — the require throws and
+        // metascraper falls back to RegExp, exactly as it does today.
+        // Same deal for `ws`: it optionally requires bufferutil + utf-8-validate
+        // as native accelerators; they are never installed, so keep them external
+        // and let ws fall back to its JS implementation.
+        external: ['better-sqlite3', 'jsdom', 'canvas', 're2', 'bufferutil', 'utf-8-validate'],
+        output: {
+          // Keep each bundled npm package in its own chunk. The main process is
+          // CJS output, and rollup's default chunking can split a package's
+          // internally-circular modules (zod v4, yjs, …) across shared chunks,
+          // where CJS load order breaks them (observed: zod's `_enum` undefined
+          // at boot). Package-per-chunk keeps intra-package cycles inside one
+          // module scope; chunk count inside app.asar is free for codesign.
+          manualChunks(id) {
+            const match = id.match(
+              /node_modules\/(?:\.pnpm\/[^/]+\/node_modules\/)?((?:@[^/]+\/)?[^/]+)\//
+            )
+            if (match) {
+              return `dep-${match[1].replace('/', '_')}`
+            }
+            return undefined
+          }
+        }
       }
     },
     resolve: {
@@ -100,11 +117,6 @@ export default defineConfig({
     }
   },
   preload: {
-    build: {
-      externalizeDeps: {
-        exclude: [...workspacePackages]
-      }
-    },
     resolve: {
       alias: {
         ...workspaceAliases,

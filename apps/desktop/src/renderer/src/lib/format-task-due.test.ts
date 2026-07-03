@@ -31,7 +31,7 @@ describe('formatTaskDue', () => {
   it('returns absolute date for distant future', () => {
     expect(formatTaskDue({ dueDate: '2026-06-15', dueTime: '14:00', now: NOW })).toEqual({
       relative: 'absolute',
-      label: 'Jun 15, 2026 · 2:00 PM',
+      label: '15.06.2026 · 2:00 PM',
       isOverdue: false
     })
   })

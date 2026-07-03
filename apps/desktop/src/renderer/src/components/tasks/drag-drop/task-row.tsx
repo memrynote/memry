@@ -7,7 +7,7 @@ import { PriorityBars } from '@/components/tasks/task-icons'
 import { StatusIcon } from '@/components/tasks/status-icon'
 import { InlineStatusPopover } from '@/components/tasks/inline-status-popover'
 import { InlinePriorityPopover } from '@/components/tasks/inline-priority-popover'
-import { SelectionCheckbox } from '@/components/tasks/bulk-actions'
+import { SelectionCheckbox } from '@/components/folder-view/selection-checkbox'
 import { RepeatIndicator } from '@/components/tasks/repeat-indicator'
 import { TaskLinkedNoteIndicator } from '@/components/tasks/task-linked-note-indicator'
 import { InsertionIndicator } from './insertion-indicator'
@@ -163,7 +163,7 @@ const TaskRowComponent = ({
   const { type: statusType, color: statusColor } = resolveStatus(task, project.statuses)
 
   const handleRowClick = (e: React.MouseEvent): void => {
-    if (e.shiftKey && isSelectionMode && onShiftSelect) {
+    if (e.shiftKey && onShiftSelect) {
       e.preventDefault()
       onShiftSelect(task.id)
       return
@@ -220,7 +220,7 @@ const TaskRowComponent = ({
               '[box-shadow:rgba(0,0,0,0.5)_0px_8px_24px,rgba(76,158,255,0.15)_0px_2px_8px]'
             ]
           : [
-              'group relative flex items-center py-[7px] px-3 gap-3 transition-colors',
+              'group group/row relative flex items-center py-[7px] px-3 gap-3 transition-colors',
               'rounded-md hover:bg-accent/60',
               onClick && 'focus-visible:outline-none',
               dragHandleListeners && !isDragging && 'cursor-grab',
@@ -249,18 +249,18 @@ const TaskRowComponent = ({
       {!isOverlay && insertionIndicatorPosition && (
         <InsertionIndicator
           position={insertionIndicatorPosition}
-          className="left-3 right-3"
+          className="start-3 end-3"
           dataTestId="list-drop-indicator"
         />
       )}
 
-      {isSelectionMode && showSelection && (
-        <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+      {!isOverlay && showSelection && (
+        <div className="flex shrink-0 items-center justify-center">
           <SelectionCheckbox
-            checked={isCheckedForSelection}
-            onChange={() => onToggleSelect?.(task.id)}
-            onClick={(e: React.MouseEvent) => e.stopPropagation()}
-            aria-label={`Select ${task.title}`}
+            state={isCheckedForSelection ? 'checked' : 'unchecked'}
+            onToggle={() => onToggleSelect?.(task.id)}
+            alwaysVisible={isSelectionMode}
+            label={`Select ${task.title}`}
           />
         </div>
       )}
@@ -324,7 +324,7 @@ const TaskRowComponent = ({
       {dueDateDisplay && (
         <div
           className={cn(
-            'text-[11px] shrink-0 text-right leading-3.5 whitespace-nowrap',
+            'text-[11px] shrink-0 text-end leading-3.5 whitespace-nowrap',
             'colorClass' in dueDateDisplay
               ? dueDateDisplay.colorClass
               : isOverlay

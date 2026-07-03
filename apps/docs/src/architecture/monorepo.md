@@ -45,6 +45,22 @@ reuse the shared logo and icon sources instead of keeping app-local copies.
 - **Node**: pinned via `.nvmrc` (24.x)
 - **TypeScript**: strict mode across every package
 
+## Desktop Runtime Dependencies
+
+In `apps/desktop/package.json`, `dependencies` is a packaging contract, not a
+convenience: electron-vite externalizes exactly those modules, and `pnpm deploy
+--prod` ships them loose next to `app.asar` in the packaged app. macOS Squirrel
+code-sign-verifies every loose file during auto-update, so each package in
+`dependencies` slows Restart for every user. Only native or otherwise
+unbundleable modules belong there (better-sqlite3, keytar, sharp, sqlite-vec,
+jsdom, y-leveldb, yjs, libsodium-wrappers-sumo, @huggingface/transformers,
+@mixmark-io/domino); every pure-JS dependency lives in `devDependencies` and is
+bundled into `out/` by electron-vite. The exact set is asserted by
+`apps/desktop/src/main/runtime-dependencies.test.ts` and re-verified against
+the packaged app by `apps/desktop/scripts/check-packaged-runtime-deps.js`.
+Rationale and measurements: `docs/auto-update-slow-restart-investigation.md`
+in the repo root.
+
 ## Cross-Cutting Scripts
 
 ```bash

@@ -6,11 +6,32 @@ const packageJson = JSON.parse(readFileSync(join(__dirname, '../../package.json'
   dependencies?: Record<string, string>
 }
 
-describe('runtime dependencies', () => {
-  it('keeps packaged main-process dependencies in production dependencies', () => {
-    const dependencies = packageJson.dependencies ?? {}
+// package.json `dependencies` is a contract, not a convenience: electron-vite
+// externalizes exactly these modules and pnpm deploy ships them loose next to
+// app.asar. macOS Squirrel code-sign-verifies every loose file on auto-update,
+// so each package added here slows Restart for every user. Everything bundleable
+// belongs in devDependencies (electron-vite bundles it into out/).
+// See docs/auto-update-slow-restart-investigation.md.
+const externalRuntimeDependencies = [
+  '@huggingface/transformers',
+  '@mixmark-io/domino',
+  'better-sqlite3',
+  'jsdom',
+  'keytar',
+  // UMD + inlined-wasm module; rollup's CJS interop breaks it when bundled
+  'libsodium-wrappers-sumo',
+  'sharp',
+  'sqlite-vec',
+  'y-leveldb',
+  // must be a single instance: external y-leveldb resolves its yjs peer from
+  // the loose tree, so the main bundle has to use that same copy
+  'yjs'
+]
 
-    expect(dependencies).toHaveProperty('better-sqlite3')
-    expect(dependencies).toHaveProperty('safe-buffer')
+describe('runtime dependencies', () => {
+  it('ships exactly the native/unbundleable modules as production dependencies', () => {
+    const dependencies = Object.keys(packageJson.dependencies ?? {}).sort()
+
+    expect(dependencies).toEqual(externalRuntimeDependencies)
   })
 })

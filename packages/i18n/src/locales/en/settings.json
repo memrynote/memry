@@ -106,6 +106,17 @@
       },
       "error": "Failed to update time format"
     },
+    "dateFormat": {
+      "label": "Date Format",
+      "description": "How calendar dates are displayed",
+      "options": {
+        "MM/DD/YYYY": "MM/DD/YYYY (US)",
+        "DD/MM/YYYY": "DD/MM/YYYY",
+        "YYYY-MM-DD": "YYYY-MM-DD (ISO)",
+        "DD.MM.YYYY": "DD.MM.YYYY"
+      },
+      "error": "Failed to update date format"
+    },
     "tabs": {
       "restoreSession": {
         "label": "Restore Session on Start",
@@ -375,7 +386,8 @@
     },
     "groups": {
       "weekStart": "Week",
-      "dayCellClick": "Day Cell Click"
+      "dayCellClick": "Day Cell Click",
+      "notes": "Notes"
     },
     "weekStart": {
       "label": "Week Starts On",
@@ -395,6 +407,11 @@
       "label": "Calendar page override",
       "description": "Behavior when the Calendar tab is active (defaults to Open Calendar)",
       "error": "Failed to update calendar page override"
+    },
+    "showNotesOnCalendar": {
+      "label": "Show notes on calendar",
+      "description": "Show every note on the calendar as an all-day item on the day it was created",
+      "error": "Failed to update show notes on calendar"
     },
     "options": {
       "openJournal": "Open Journal",

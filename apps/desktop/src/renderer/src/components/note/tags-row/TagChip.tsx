@@ -31,7 +31,8 @@ export function TagChip({ tag, onRemove, onClick, isSelected, isFocused, disable
   const pillClasses = cn(
     '[font-synthesis:none] relative inline-flex items-center gap-1',
     'rounded-full px-2.5 py-1',
-    'text-[12px]/4 font-medium',
+    // text-xs (0.75rem) instead of fixed 12px so chips scale with Appearance → Font Size (S/M/L)
+    'text-xs font-medium',
     'shrink-0 select-none',
     'transition-colors transition-opacity duration-150',
     isClickable ? 'cursor-pointer hover:opacity-80' : 'cursor-default',
@@ -53,7 +54,7 @@ export function TagChip({ tag, onRemove, onClick, isSelected, isFocused, disable
   const content = (
     <>
       {tag.icon && (
-        <NoteIconDisplay value={tag.icon} className="size-3.5 shrink-0 text-[14px] leading-none" />
+        <NoteIconDisplay value={tag.icon} className="size-3.5 shrink-0 text-sm leading-none" />
       )}
       <span>{tag.name}</span>
       {isSelected && <Check className="h-3 w-3" />}

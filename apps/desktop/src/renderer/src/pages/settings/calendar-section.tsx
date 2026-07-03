@@ -7,6 +7,7 @@ import {
   SelectValue
 } from '@/components/ui/select'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { Switch } from '@/components/ui/switch'
 import { useCalendarPreferences } from '@/hooks/use-calendar-preferences'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
@@ -14,7 +15,8 @@ import {
   SettingsHeader,
   SettingsGroup,
   SettingRow,
-  COMPACT_SELECT
+  COMPACT_SELECT,
+  ACCENT_SWITCH
 } from '@/components/settings/settings-primitives'
 import type { CalendarSettings } from '@memry/contracts/settings-schemas'
 
@@ -57,6 +59,14 @@ export function CalendarSettingsSection() {
       const next = value as CalendarSettings['weekStartDay']
       const success = await updateSettings({ weekStartDay: next })
       if (!success) toast.error(t('calendar.weekStart.error'))
+    },
+    [t, updateSettings]
+  )
+
+  const handleShowNotesChange = useCallback(
+    async (checked: boolean) => {
+      const success = await updateSettings({ showNotesOnCalendar: checked })
+      if (!success) toast.error(t('calendar.showNotesOnCalendar.error'))
     },
     [t, updateSettings]
   )
@@ -146,6 +156,19 @@ export function CalendarSettingsSection() {
               ))}
             </SelectContent>
           </Select>
+        </SettingRow>
+      </SettingsGroup>
+
+      <SettingsGroup label={t('calendar.groups.notes')}>
+        <SettingRow
+          label={t('calendar.showNotesOnCalendar.label')}
+          description={t('calendar.showNotesOnCalendar.description')}
+        >
+          <Switch
+            checked={settings.showNotesOnCalendar}
+            onCheckedChange={(...args) => void handleShowNotesChange(...args)}
+            className={ACCENT_SWITCH}
+          />
         </SettingRow>
       </SettingsGroup>
     </div>

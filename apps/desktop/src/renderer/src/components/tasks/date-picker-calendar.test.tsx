@@ -272,4 +272,40 @@ describe('DatePickerCalendar', () => {
       expect(screen.getByLabelText('Go to today')).toBeInTheDocument()
     })
   })
+
+  describe('day dots', () => {
+    it('renders a journal-activity dot and a notes dot together on the same day', () => {
+      render(
+        <DatePickerCalendar
+          selected={new Date(2026, 3, 15)}
+          onSelect={vi.fn()}
+          activityData={{ '2026-04-15': 2 }}
+          dayDots={{ '2026-04-15': ['#E0A458'] }}
+        />
+      )
+      const cell = screen.getByLabelText(/, April 15$/)
+      // notes dot: rendered via inline background-color
+      expect(cell.querySelector('[style*="background"]')).toBeTruthy()
+      // journal-activity dot: ACTIVITY_DOT_COLORS[2] still present alongside it
+      expect(cell.innerHTML).toContain('bg-emerald-500/70')
+    })
+  })
+
+  describe('day summary hover', () => {
+    it('keeps the day selectable when a hover summary is attached', () => {
+      const onSelect = vi.fn()
+      render(
+        <DatePickerCalendar
+          selected={new Date(2026, 3, 15)}
+          onSelect={onSelect}
+          daySummary={{
+            '2026-04-15': { notes: 3, journal: 1, tasks: 2, events: 1, reminders: 0 }
+          }}
+        />
+      )
+      // the HoverCardTrigger (asChild) must not swallow the day click
+      fireEvent.click(screen.getByLabelText(/, April 15$/))
+      expect(onSelect).toHaveBeenCalledTimes(1)
+    })
+  })
 })

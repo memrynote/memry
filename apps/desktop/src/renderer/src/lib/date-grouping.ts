@@ -7,6 +7,7 @@ import {
   format,
   formatDistanceToNow
 } from 'date-fns'
+import { formatDate } from '@/lib/format-date'
 
 export type DateGroup = 'today' | 'yesterday' | 'pastWeek' | 'past30Days' | 'older'
 
@@ -124,5 +125,5 @@ export function formatRelativeDate(date: Date | string): string {
     return format(d, 'MMM d')
   }
 
-  return format(d, 'MMM d, yyyy')
+  return formatDate(d)
 }
