@@ -174,7 +174,7 @@ Eight presets — indigo, amber, emerald, red, violet, cyan, pink, orange — pl
 
 ### Typography
 
-- **Font Size** — Small / Medium / Large
+- **Font Size** — Small / Medium / Large. Scales the whole interface, including note editor text and tags.
 - **Font Family** — System, Sans-Serif, Serif, Monospace, Gelasio, Geist, Inter
 
 ---
