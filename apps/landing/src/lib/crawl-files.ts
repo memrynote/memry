@@ -84,6 +84,7 @@ export function buildLlmsTxt(): string {
     page('/features/tasks'),
     page('/features/calendar'),
     page('/features/ai-agent'),
+    page('/features/web-clipper'),
     '',
     '## About',
     '',

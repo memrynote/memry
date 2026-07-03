@@ -13,6 +13,7 @@ import { JournalFeaturePage } from '@/pages/Journal'
 import { TasksFeaturePage } from '@/pages/Tasks'
 import { CalendarFeaturePage } from '@/pages/Calendar'
 import { AIAgentFeaturePage } from '@/pages/AIAgent'
+import { WebClipperFeaturePage } from '@/pages/WebClipper'
 import { DownloadDesktopPage } from '@/pages/DownloadDesktop'
 import { UseCasesPage } from '@/pages/UseCases'
 import { SecurityPage } from '@/pages/Security'
@@ -153,6 +154,7 @@ function AppContent() {
           <Route path="/features/tasks" element={<TasksFeaturePage />} />
           <Route path="/features/calendar" element={<CalendarFeaturePage />} />
           <Route path="/features/ai-agent" element={<AIAgentFeaturePage />} />
+          <Route path="/features/web-clipper" element={<WebClipperFeaturePage />} />
           <Route path="/download/desktop" element={<DownloadDesktopPage />} />
           <Route path="/use-cases" element={<UseCasesPage />} />
           <Route path="/security" element={<SecurityPage />} />

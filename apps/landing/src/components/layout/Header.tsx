@@ -199,9 +199,9 @@ function DropdownItem({
       <span className="min-w-0">
         <span className="flex items-center gap-2 text-base font-medium leading-tight text-ink">
           {item.label}
-          {item.disabled ? (
+          {item.badge || item.disabled ? (
             <span className="rounded-full bg-ink/5 px-1.5 py-0.5 font-mono-accent text-[8px] uppercase tracking-[0.16em] text-muted">
-              Soon
+              {item.badge ?? 'Soon'}
             </span>
           ) : null}
         </span>
@@ -308,9 +308,9 @@ function MobileDropdownSection({
                   <span className="min-w-0 flex-1">
                     <span className="flex min-w-0 items-center gap-1.5 text-sm font-medium leading-tight text-ink">
                       <span className="truncate">{item.label}</span>
-                      {item.disabled ? (
+                      {item.badge || item.disabled ? (
                         <span className="shrink-0 font-mono-accent text-[8px] uppercase tracking-[0.12em] text-muted">
-                          Soon
+                          {item.badge ?? 'Soon'}
                         </span>
                       ) : null}
                     </span>

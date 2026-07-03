@@ -39,6 +39,8 @@ type LandingDropdownItemBase = {
   description: string
   href: string
   disabled?: boolean
+  // Status pill text. Defaults to "Soon" for disabled items; set explicitly for live-but-pending items.
+  badge?: string
 }
 
 export type LandingDropdownItem =
@@ -99,10 +101,10 @@ export const FEATURE_NAV_ITEMS: readonly LandingDropdownItem[] = [
 export const DOWNLOAD_NAV_ITEMS: readonly LandingDropdownItem[] = [
   {
     label: 'Web Clipper',
-    description: 'Save pages into memrynote',
-    href: '#',
+    description: 'Clip and save any link',
+    href: '/features/web-clipper',
     icon: Globe,
-    disabled: true
+    badge: 'In review'
   },
   {
     label: 'memrynote for Mobile',

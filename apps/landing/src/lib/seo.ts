@@ -74,6 +74,12 @@ export const PAGE_META: Record<string, PageMeta> = {
       'Optional AI for your second brain. Turn it on or off anytime. Local-first, BYOK, MCP-native, approval-gated writes, and local-model support.',
     path: '/features/ai-agent'
   },
+  webClipper: {
+    title: 'Web Clipper — memrynote',
+    description:
+      'Clip and save any link into memrynote. One click sends the page, its text, and the URL to your Inbox. Browser extensions for Chrome, Firefox, and Edge — in review by Google and Firefox.',
+    path: '/features/web-clipper'
+  },
   downloadDesktop: {
     title: 'memrynote for Desktop — macOS, Windows & Linux',
     description:
