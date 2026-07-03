@@ -48,9 +48,7 @@ export function WindowControls({ className }: WindowControlsProps): React.JSX.El
 
   return (
     <div className={cn('drag-region flex items-center gap-2 shrink-0 h-9 ps-3 pe-2', className)}>
-      <div className="no-drag flex items-center">
-        <TrafficLights />
-      </div>
+      <TrafficLights />
 
       <div className="no-drag flex items-center gap-0.5 ms-1">
         <Tooltip>

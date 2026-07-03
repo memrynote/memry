@@ -79,9 +79,14 @@ beforeAll(() => {
   Element.prototype.scrollIntoView = vi.fn()
 })
 
+const setPlatform = (value: string): void => {
+  Object.defineProperty(window.navigator, 'platform', { value, configurable: true })
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
   setTabs()
+  setPlatform('MacIntel') // TrafficLights only render on macOS
   const w = window as WindowWithApi
   originalApi = w.api
   w.api = windowApiMock
@@ -106,6 +111,16 @@ describe('WindowControls', () => {
     expect(screen.getByLabelText('Close window')).toBeInTheDocument()
     expect(screen.getByLabelText('Minimize window')).toBeInTheDocument()
     expect(screen.getByLabelText('Maximize window')).toBeInTheDocument()
+  })
+
+  it('hides traffic-light buttons on non-macOS (native frame provides them)', () => {
+    setPlatform('Win32')
+    renderWithSidebar(<WindowControls />)
+    expect(screen.queryByLabelText('Close window')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Minimize window')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Maximize window')).not.toBeInTheDocument()
+    // The rest of the bar (sidebar toggle) still renders.
+    expect(screen.getByRole('button', { name: /toggle sidebar/i })).toBeInTheDocument()
   })
 
   it('renders the sidebar toggle', () => {
