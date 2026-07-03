@@ -13,7 +13,8 @@ const DEFAULT_STATE: AppUpdateState = {
   releaseNotes: null,
   downloadProgressPercent: null,
   lastCheckedAt: null,
-  error: null
+  error: null,
+  autoDownloadEnabled: false
 }
 
 interface UseAppUpdaterResult {
@@ -23,6 +24,8 @@ interface UseAppUpdaterResult {
   checkForUpdates: () => Promise<AppUpdateState>
   downloadUpdate: () => Promise<AppUpdateState>
   quitAndInstall: () => Promise<void>
+  skipVersion: (version: string) => Promise<AppUpdateState>
+  setAutoDownload: (enabled: boolean) => Promise<AppUpdateState>
 }
 
 export function useAppUpdater(): UseAppUpdaterResult {
@@ -113,12 +116,46 @@ export function useAppUpdater(): UseAppUpdaterResult {
     }
   }, [])
 
+  const skipVersion = useCallback(async (version: string): Promise<AppUpdateState> => {
+    try {
+      const nextState = await window.api.updater.skipVersion(version)
+      setState(nextState)
+      setError(null)
+      return nextState
+    } catch (err) {
+      const message = extractErrorMessage(
+        err,
+        getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToCheckForUpdates')
+      )
+      setError(message)
+      throw new Error(message)
+    }
+  }, [])
+
+  const setAutoDownload = useCallback(async (enabled: boolean): Promise<AppUpdateState> => {
+    try {
+      const nextState = await window.api.updater.setAutoDownload(enabled)
+      setState(nextState)
+      setError(null)
+      return nextState
+    } catch (err) {
+      const message = extractErrorMessage(
+        err,
+        getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToCheckForUpdates')
+      )
+      setError(message)
+      throw new Error(message)
+    }
+  }, [])
+
   return {
     state,
     isLoading,
     error,
     checkForUpdates,
     downloadUpdate,
-    quitAndInstall
+    quitAndInstall,
+    skipVersion,
+    setAutoDownload
   }
 }

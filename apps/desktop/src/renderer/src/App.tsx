@@ -54,6 +54,7 @@ import { tasksService, queueTaskReorder } from '@/services/tasks-service'
 import { notesService } from '@/services/notes-service'
 import { VaultOnboarding } from '@/components/vault-onboarding'
 import { UpdatingScreen } from '@/components/updating-screen'
+import { UpdatePromptDialog } from '@/components/updater/update-prompt-dialog'
 import { useAppUpdater } from '@/hooks/use-app-updater'
 import { useThemeSync } from '@/hooks/use-theme-sync'
 import { trackTelemetry } from '@/lib/telemetry'
@@ -557,6 +558,7 @@ function App(): React.JSX.Element {
         storageKey={THEME_STORAGE_KEY}
       >
         <VaultOnboarding />
+        <UpdatePromptDialog />
         <Toaster />
       </ThemeProvider>
     )
@@ -583,6 +585,7 @@ function App(): React.JSX.Element {
             </DroppedPriorityProvider>
           </DragProvider>
         </SidebarProvider>
+        <UpdatePromptDialog />
         <Toaster />
       </ThemeSyncManager>
     </ThemeProvider>

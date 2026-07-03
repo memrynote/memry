@@ -3,7 +3,9 @@ export const UpdaterChannels = {
     GET_STATE: 'updater:get-state',
     CHECK_FOR_UPDATES: 'updater:check-for-updates',
     DOWNLOAD_UPDATE: 'updater:download-update',
-    QUIT_AND_INSTALL: 'updater:quit-and-install'
+    QUIT_AND_INSTALL: 'updater:quit-and-install',
+    SKIP_VERSION: 'updater:skip-version',
+    SET_AUTO_DOWNLOAD: 'updater:set-auto-download'
   },
   events: {
     STATE_CHANGED: 'updater:state-changed'
@@ -32,4 +34,6 @@ export interface AppUpdateState {
   downloadProgressPercent: number | null
   lastCheckedAt: number | null
   error: string | null
+  /** Whether updates download & install automatically without prompting (persisted). */
+  autoDownloadEnabled: boolean
 }

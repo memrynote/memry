@@ -7,7 +7,11 @@ export const updaterApi = {
     invoke<AppUpdateState>(UpdaterChannels.invoke.CHECK_FOR_UPDATES),
   downloadUpdate: (): Promise<AppUpdateState> =>
     invoke<AppUpdateState>(UpdaterChannels.invoke.DOWNLOAD_UPDATE),
-  quitAndInstall: (): Promise<void> => invoke<void>(UpdaterChannels.invoke.QUIT_AND_INSTALL)
+  quitAndInstall: (): Promise<void> => invoke<void>(UpdaterChannels.invoke.QUIT_AND_INSTALL),
+  skipVersion: (version: string): Promise<AppUpdateState> =>
+    invoke<AppUpdateState>(UpdaterChannels.invoke.SKIP_VERSION, version),
+  setAutoDownload: (enabled: boolean): Promise<AppUpdateState> =>
+    invoke<AppUpdateState>(UpdaterChannels.invoke.SET_AUTO_DOWNLOAD, enabled)
 }
 
 export const updaterEvents = {

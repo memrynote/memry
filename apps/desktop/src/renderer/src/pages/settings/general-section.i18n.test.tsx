@@ -26,7 +26,8 @@ const updateState = {
   releaseNotes: null,
   downloadProgressPercent: null,
   lastCheckedAt: null,
-  error: null
+  error: null,
+  autoDownloadEnabled: false
 }
 
 function renderGeneral(i18n: I18nInstance) {

@@ -63,6 +63,17 @@ export interface AgentStoreData {
 }
 
 /**
+ * Auto-updater preferences that must survive restarts and be readable by the
+ * main process before any renderer loads (so the startup update check honors them).
+ */
+export interface UpdaterStoreData {
+  /** Display version the user chose to skip; suppresses automatic prompts for it. */
+  skippedVersion?: string
+  /** When true, updates download + install without prompting. */
+  autoDownload?: boolean
+}
+
+/**
  * Application store schema
  */
 interface StoreSchema {
@@ -78,6 +89,8 @@ interface StoreSchema {
   agent: AgentStoreData
   /** Localhost capture: origins that have completed the pairing handshake */
   captureAllowedOrigins: string[]
+  /** Auto-updater preferences */
+  updater: UpdaterStoreData
 }
 
 const CONFIG_FILE = 'memry-config.json'
@@ -88,7 +101,8 @@ const defaultData: StoreSchema = {
   vaults: [],
   sync: {},
   agent: {},
-  captureAllowedOrigins: []
+  captureAllowedOrigins: [],
+  updater: {}
 }
 
 /** In-memory cache — populated on first read, updated on every write. */
@@ -273,6 +287,27 @@ export function setDefaultVaultPath(vaultPath: string): StoredVaultInfo | null {
   store.set('vaults', updated)
 
   return updated.find((vault) => vault.path === vaultPath) ?? null
+}
+
+/**
+ * Get the persisted auto-updater preferences.
+ */
+export function getUpdaterPrefs(): UpdaterStoreData {
+  return store.get('updater')
+}
+
+/**
+ * Persist the display version the user skipped (or clear it with null).
+ */
+export function setSkippedVersion(version: string | null): void {
+  store.set('updater', { ...store.get('updater'), skippedVersion: version ?? undefined })
+}
+
+/**
+ * Persist whether updates download + install automatically.
+ */
+export function setAutoDownloadPref(enabled: boolean): void {
+  store.set('updater', { ...store.get('updater'), autoDownload: enabled })
 }
 
 /**
