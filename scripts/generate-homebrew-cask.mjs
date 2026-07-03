@@ -48,12 +48,12 @@ export function renderCask({ tag, appVersion, shaArm, shaX64 }) {
 
   depends_on macos: :monterey
 
-  app "Memry.app"
+  app "Memrynote.app"
 
   zap trash: [
-    "~/Library/Application Support/Memry",
+    "~/Library/Application Support/Memrynote",
     "~/Library/Caches/com.memrynote.memry",
-    "~/Library/Logs/Memry",
+    "~/Library/Logs/Memrynote",
     "~/Library/Preferences/com.memrynote.memry.plist",
     "~/Library/Saved Application State/com.memrynote.memry.savedState",
   ]
@@ -86,6 +86,9 @@ function selfcheck() {
   // The whole reason this exists: url must use the Memrynote- asset prefix.
   assert.match(out, /Memrynote-#\{version\.csv\.second\}-#\{arch\}\.dmg/)
   assert.ok(!/Memry-#\{version\.csv\.second\}/.test(out), 'url must not use stale Memry- prefix')
+  // app stanza must match the shipped bundle (productName=Memrynote), not the pre-rename Memry.app.
+  assert.match(out, /app "Memrynote\.app"/)
+  assert.ok(!/app "Memry\.app"/.test(out), 'app stanza must not use stale Memry.app bundle name')
   assert.match(out, /arm:\s+"a{64}"/)
   assert.match(out, /intel:\s+"b{64}"/)
   // Regex backslashes must survive templating (JS drops unknown escapes).
