@@ -4,7 +4,7 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover
 import { Input } from '@/components/ui/input'
 import { DatePickerCalendar } from '@/components/tasks/date-picker-calendar'
 import { useDateFormat } from '@/hooks/use-date-format'
-import { useTaskPreferences } from '@/hooks/use-task-preferences'
+import { useWeekStartsOn } from '@/hooks/use-calendar-preferences'
 import { formatDate, parseDateInput } from '@/lib/format-date'
 import { useT } from '@memry/i18n/renderer'
 
@@ -22,8 +22,7 @@ interface DateEditorProps {
 export function DateEditor({ value, onChange, onBlur, defaultOpen = false }: DateEditorProps) {
   const { t } = useT('notes')
   const dateFormat = useDateFormat()
-  const { settings: taskPrefs } = useTaskPreferences()
-  const weekStartsOn = taskPrefs.weekStartDay === 'sunday' ? 0 : 1
+  const weekStartsOn = useWeekStartsOn()
 
   const [open, setOpen] = useState(defaultOpen)
   const [draft, setDraft] = useState('')

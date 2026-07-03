@@ -23,6 +23,7 @@ import {
   toStartOfLocalDayIso
 } from '@/components/calendar/date-utils'
 import { useCalendarRange } from '@/hooks/use-calendar-range'
+import { useWeekStartsOn } from '@/hooks/use-calendar-preferences'
 import { useDeleteCalendarEvent } from '@/hooks/use-calendar-mutations'
 import { useUndoTracker } from '@/hooks/use-undo'
 import {
@@ -68,7 +69,8 @@ function getTodayDate(): string {
 
 function getRangeForView(
   view: CalendarWorkspaceView,
-  anchorDate: string
+  anchorDate: string,
+  weekStartsOn: 0 | 1
 ): {
   startAt: string
   endAt: string
@@ -81,7 +83,7 @@ function getRangeForView(
   }
 
   if (view === 'week') {
-    const weekStart = getStartOfWeek(anchorDate)
+    const weekStart = getStartOfWeek(anchorDate, weekStartsOn)
     return {
       startAt: toStartOfLocalDayIso(addLocalDays(weekStart, -7)),
       endAt: toStartOfLocalDayIso(addLocalDays(weekStart, 14))
@@ -89,7 +91,7 @@ function getRangeForView(
   }
 
   if (view === 'month') {
-    const gridDays = getMonthGridDays(anchorDate)
+    const gridDays = getMonthGridDays(anchorDate, weekStartsOn)
     return {
       startAt: toStartOfLocalDayIso(gridDays[0]),
       endAt: toStartOfLocalDayIso(addLocalDays(gridDays[gridDays.length - 1], 1))
@@ -179,6 +181,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     }
   }, [])
   const { anchorDate, setAnchorDate } = useCalendarView()
+  const weekStartsOn = useWeekStartsOn()
   const [todayRequestKey, setTodayRequestKey] = useState(0)
   const [showMemryItems, setShowMemryItems] = useState(true)
   const [showImportedCalendars, setShowImportedCalendars] = useState(true)
@@ -254,10 +257,10 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
 
   const rangeInput = useMemo(
     () => ({
-      ...getRangeForView(view, anchorDate),
+      ...getRangeForView(view, anchorDate, weekStartsOn),
       includeUnselectedSources: true
     }),
-    [view, anchorDate]
+    [view, anchorDate, weekStartsOn]
   )
 
   const rangeQuery = useCalendarRange(rangeInput)

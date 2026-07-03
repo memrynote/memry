@@ -18,7 +18,8 @@ import { useJournalHeatmap } from '@/hooks/use-journal'
 import { useCalendarRange } from '@/hooks/use-calendar-range'
 import {
   useCalendarPreferences,
-  resolveDayCellClickBehavior
+  resolveDayCellClickBehavior,
+  weekStartsOnFromSettings
 } from '@/hooks/use-calendar-preferences'
 import {
   addLocalDays,
@@ -295,6 +296,7 @@ function GlobalDayPanelContent({ width }: { width: number }): React.JSX.Element 
                   hoveredEventColor={hoveredEventColor}
                   className="w-full"
                   showWeekNumbers
+                  weekStartsOn={weekStartsOnFromSettings(calendarPrefs)}
                   onTodayClick={handleTodayClick}
                 />
               </div>

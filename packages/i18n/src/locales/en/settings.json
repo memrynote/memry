@@ -351,7 +351,6 @@
     },
     "groups": {
       "defaults": "Defaults",
-      "calendar": "Calendar",
       "inbox": "Inbox"
     },
     "defaultProject": {
@@ -372,15 +371,6 @@
       },
       "error": "Failed to update sort order"
     },
-    "weekStart": {
-      "label": "Week Starts On",
-      "description": "First day of the week in calendar views",
-      "options": {
-        "sunday": "Sunday",
-        "monday": "Monday"
-      },
-      "error": "Failed to update week start"
-    },
     "staleInbox": {
       "label": "Stale Inbox Threshold",
       "description": "Tasks older than this are highlighted as stale",
@@ -395,8 +385,18 @@
       "loading": "Loading settings..."
     },
     "groups": {
+      "weekStart": "Week",
       "dayCellClick": "Day Cell Click",
       "notes": "Notes"
+    },
+    "weekStart": {
+      "label": "Week Starts On",
+      "description": "First day of the week across all calendars",
+      "options": {
+        "sunday": "Sunday",
+        "monday": "Monday"
+      },
+      "error": "Failed to update week start"
     },
     "defaultBehavior": {
       "label": "Default behavior",

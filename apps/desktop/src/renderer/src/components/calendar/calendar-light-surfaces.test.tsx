@@ -62,7 +62,9 @@ vi.mock('./calendar-search', () => ({
 vi.mock('@/hooks/use-calendar-preferences', () => ({
   useCalendarPreferences: () => calendarPreferences,
   resolveDayCellClickBehavior: (settings: Record<string, unknown>, isCalendarTabActive: boolean) =>
-    settings.dayCellClickBehavior ?? (isCalendarTabActive ? 'calendar' : 'journal')
+    settings.dayCellClickBehavior ?? (isCalendarTabActive ? 'calendar' : 'journal'),
+  useWeekStartsOn: () => 1,
+  weekStartsOnFromSettings: () => 1
 }))
 
 vi.mock('@/hooks/use-journal', () => ({

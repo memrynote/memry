@@ -32,7 +32,8 @@ vi.mock('@/hooks/use-calendar-preferences', () => ({
     error: null,
     updateSettings: async () => true
   }),
-  resolveDayCellClickBehavior: () => 'journal'
+  resolveDayCellClickBehavior: () => 'journal',
+  weekStartsOnFromSettings: () => 1
 }))
 
 vi.mock('@/agent-chat/agent-pane', () => ({

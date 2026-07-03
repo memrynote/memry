@@ -74,18 +74,8 @@ vi.mock('@/components/ui/picker', () => {
 // content renders in jsdom, and stub the settings hooks it reads.
 vi.mock('@/hooks/use-date-format', () => ({ useDateFormat: () => 'DD.MM.YYYY' }))
 
-vi.mock('@/hooks/use-task-preferences', () => ({
-  useTaskPreferences: () => ({
-    settings: {
-      defaultProjectId: null,
-      defaultSortOrder: 'manual',
-      weekStartDay: 'monday',
-      staleInboxDays: 7
-    },
-    isLoading: false,
-    error: null,
-    updateSettings: () => Promise.resolve(true)
-  })
+vi.mock('@/hooks/use-calendar-preferences', () => ({
+  useWeekStartsOn: () => 1
 }))
 
 vi.mock('@/components/ui/popover', () => ({

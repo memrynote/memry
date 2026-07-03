@@ -55,10 +55,24 @@ export function localInputToIso(value: string, isAllDay: boolean): string {
   return date.toISOString()
 }
 
-export function getStartOfWeek(value: string): string {
+export function getStartOfWeek(value: string, weekStartsOn: 0 | 1 = 0): string {
   const date = parseLocalDate(value)
-  date.setDate(date.getDate() - date.getDay())
+  const diff = (date.getDay() - weekStartsOn + 7) % 7
+  date.setDate(date.getDate() - diff)
   return toLocalDateString(date)
+}
+
+// Weekday header labels rotated to the given week start. June 7 2020 is a
+// Sunday, so `7 + weekStartsOn` picks the first column's weekday.
+export function getWeekdayLabels(
+  locale: string,
+  weekStartsOn: 0 | 1,
+  weekday: 'short' | 'narrow' = 'short'
+): string[] {
+  const formatter = new Intl.DateTimeFormat(locale, { weekday })
+  return Array.from({ length: 7 }, (_, i) =>
+    formatter.format(new Date(2020, 5, 7 + weekStartsOn + i))
+  )
 }
 
 export function getWeekNumber(value: string): number {
@@ -68,12 +82,12 @@ export function getWeekNumber(value: string): number {
   return Math.ceil((daysSinceStart + startOfYear.getDay() + 1) / 7)
 }
 
-export function getMonthGridDays(anchorDate: string): string[] {
+export function getMonthGridDays(anchorDate: string, weekStartsOn: 0 | 1 = 0): string[] {
   const anchor = parseLocalDate(anchorDate)
   const year = anchor.getFullYear()
   const month = anchor.getMonth()
   const firstDay = new Date(year, month, 1)
-  const leadingDays = firstDay.getDay()
+  const leadingDays = (firstDay.getDay() - weekStartsOn + 7) % 7
   const daysInMonth = new Date(year, month + 1, 0).getDate()
   const totalCells = Math.ceil((leadingDays + daysInMonth) / 7) * 7
   return Array.from({ length: totalCells }, (_, i) => {
@@ -113,12 +127,13 @@ export function isWeekend(date: string): boolean {
   return d === 0 || d === 6
 }
 
-export function getMonthGridDaysMondayStart(anchorDate: string): string[] {
+// Fixed 42-cell (6-row) grid so year-view mini-months stay uniform.
+export function getMonthGridDaysFixed(anchorDate: string, weekStartsOn: 0 | 1 = 1): string[] {
   const anchor = parseLocalDate(anchorDate)
   const year = anchor.getFullYear()
   const month = anchor.getMonth()
   const firstDay = new Date(year, month, 1)
-  const leadingDays = (firstDay.getDay() + 6) % 7
+  const leadingDays = (firstDay.getDay() - weekStartsOn + 7) % 7
   const TOTAL_CELLS = 42
   return Array.from({ length: TOTAL_CELLS }, (_, i) => {
     const d = new Date(year, month, 1 - leadingDays + i)

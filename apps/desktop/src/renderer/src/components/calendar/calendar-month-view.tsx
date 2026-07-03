@@ -2,17 +2,20 @@ import { useMemo, useRef } from 'react'
 import { useT } from '@memry/i18n/renderer'
 import { CalendarItemChip } from './calendar-item-chip'
 import { CalendarQuickCreateDialog } from './calendar-quick-create-dialog'
-import { getMonthGridDays, isToday, isSameMonth, isWeekend, toLocalDateKey } from './date-utils'
+import {
+  getMonthGridDays,
+  getWeekdayLabels,
+  isToday,
+  isSameMonth,
+  isWeekend,
+  toLocalDateKey
+} from './date-utils'
 import { useMonthGridMarquee } from './use-month-grid-marquee'
 import { cn } from '@/lib/utils'
 import { useContainerWidth } from '@/hooks/use-container-width'
+import { useWeekStartsOn } from '@/hooks/use-calendar-preferences'
 import type { AnchorRect, CalendarEventDraft } from './types'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
-
-function getWeekdayLabels(locale: string): string[] {
-  const formatter = new Intl.DateTimeFormat(locale, { weekday: 'short' })
-  return Array.from({ length: 7 }, (_, i) => formatter.format(new Date(2020, 5, 7 + i)))
-}
 
 interface CalendarMonthViewProps {
   anchorDate: string
@@ -32,11 +35,15 @@ export function CalendarMonthView({
   onQuickSave
 }: CalendarMonthViewProps): React.JSX.Element {
   const { t, i18n } = useT('calendar')
-  const gridDays = getMonthGridDays(anchorDate)
+  const weekStartsOn = useWeekStartsOn()
+  const gridDays = getMonthGridDays(anchorDate, weekStartsOn)
   const [containerWidth, containerRef] = useContainerWidth()
   const columnWidth = containerWidth / 7
   const maxVisibleEvents = columnWidth < 80 ? 1 : columnWidth < 120 ? 2 : 3
-  const dayNames = useMemo(() => getWeekdayLabels(i18n.language), [i18n.language])
+  const dayNames = useMemo(
+    () => getWeekdayLabels(i18n.language, weekStartsOn),
+    [i18n.language, weekStartsOn]
+  )
 
   const gridRef = useRef<HTMLDivElement>(null)
   const { selection, isDragging, handlers, clearSelection } = useMonthGridMarquee({ gridRef })

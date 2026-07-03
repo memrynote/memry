@@ -74,7 +74,14 @@ describe('SyncedSettingsSchema', () => {
 
   it('accepts a tasks group with null defaultProjectId', () => {
     const result = SyncedSettingsSchema.safeParse({
-      tasks: { defaultProjectId: null, weekStartDay: 'sunday' }
+      tasks: { defaultProjectId: null }
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts a calendar group with weekStartDay', () => {
+    const result = SyncedSettingsSchema.safeParse({
+      calendar: { weekStartDay: 'sunday' }
     })
     expect(result.success).toBe(true)
   })
@@ -86,9 +93,9 @@ describe('SyncedSettingsSchema', () => {
     expect(result.success).toBe(false)
   })
 
-  it('rejects invalid tasks.weekStartDay', () => {
+  it('rejects invalid calendar.weekStartDay', () => {
     const result = SyncedSettingsSchema.safeParse({
-      tasks: { weekStartDay: 'friday' }
+      calendar: { weekStartDay: 'friday' }
     })
     expect(result.success).toBe(false)
   })
@@ -146,7 +153,8 @@ describe('SyncedSettingsSchema', () => {
     const result = SyncedSettingsSchema.safeParse({
       general: { theme: 'light', accentColor: '#123456' },
       editor: { width: 'narrow' },
-      tasks: { weekStartDay: 'monday' },
+      tasks: { defaultSortOrder: 'manual' },
+      calendar: { weekStartDay: 'monday' },
       keyboard: { overrides: {} },
       notes: { spellCheck: true },
       sync: { autoSync: true }

@@ -4,6 +4,7 @@ import { Clock, X } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { formatTime } from '@/lib/task-utils'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
+import { useWeekStartsOn } from '@/hooks/use-calendar-preferences'
 import { DatePickerCalendar } from './date-picker-calendar'
 import { useT } from '@memry/i18n/renderer'
 
@@ -53,6 +54,7 @@ export function DatePickerContent({
 }: DatePickerContentProps): React.JSX.Element {
   const { t: tPhaseF } = useT('tasks')
   const [editing, setEditing] = useState(false)
+  const weekStartsOn = useWeekStartsOn()
   const {
     settings: { clockFormat }
   } = useGeneralSettings()
@@ -142,7 +144,7 @@ export function DatePickerContent({
       <DatePickerCalendar
         selected={selected ?? undefined}
         onSelect={handleCalendarSelect}
-        weekStartsOn={1}
+        weekStartsOn={weekStartsOn}
         className="px-3"
       />
       {showTimeSection && (

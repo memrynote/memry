@@ -19,6 +19,7 @@ import {
   endOfWeek,
   endOfMonth
 } from './task-date-utils'
+import { getWeekStartsOn } from '@/lib/week-start'
 
 // ============================================================================
 // ADVANCED FILTER FUNCTIONS
@@ -82,15 +83,16 @@ export const filterByDueDateRange = (tasks: Task[], filter: DueDateFilter): Task
     }
 
     case 'this-week': {
-      const weekEnd = endOfWeek(now, 0)
+      const weekEnd = endOfWeek(now, getWeekStartsOn())
       return tasks.filter(
         (t) => t.dueDate && isWithinInterval(t.dueDate, { start: todayStart, end: weekEnd })
       )
     }
 
     case 'next-week': {
-      const nextWeekStart = startOfWeek(addWeeks(now, 1), 0)
-      const nextWeekEnd = endOfWeek(addWeeks(now, 1), 0)
+      const weekStartsOn = getWeekStartsOn()
+      const nextWeekStart = startOfWeek(addWeeks(now, 1), weekStartsOn)
+      const nextWeekEnd = endOfWeek(addWeeks(now, 1), weekStartsOn)
       return tasks.filter(
         (t) => t.dueDate && isWithinInterval(t.dueDate, { start: nextWeekStart, end: nextWeekEnd })
       )
