@@ -184,20 +184,44 @@ query strings are normalized away. Expected handled `4xx` responses (e.g. `SYNC_
 are still counted as `server_error_seen` but do not open PostHog `$exception` issues, keeping Error
 Tracking focused on real failures.
 
+## Error Logs in Grafana (Loki)
+
+Error events also become searchable **log lines** in Grafana, backed by a Loki instance running
+next to Grafana on the observability VPS. Analytics Engine stays the canonical metrics store;
+Loki adds the diagnostic detail (stacks, operational messages) that AE rows deliberately omit.
+
+- **Transport**: the sync server pushes log lines to Loki's push API at
+  `{LOKI_URL}/loki/api/v1/push`, guarded by a reverse-proxy bearer token (`LOKI_TOKEN`). Pushes
+  are fire-and-forget in `waitUntil`: a missing config (local dev) is a silent no-op, and a
+  failed push can never affect request handling. Loki's query endpoints are not exposed
+  publicly — Grafana reads Loki over the private docker network.
+- **Desktop errors**: `/telemetry/batch` events carrying an `errorCode` or `error` detail are
+  forwarded as `app="desktop"` lines containing the event name, error code, surface/action/source,
+  app version, platform, and the **redacted stack frames only** (the schema has no message field —
+  messages can embed note content; see Error Reporting above).
+- **Server errors**: `captureServerError` pushes its redacted detail (operational message, stack,
+  normalized path, error/status codes) as `app="server"` lines — level `error` for 5xx/unhandled,
+  `warn` for handled 4xx.
+- **Labels** stay low-cardinality (`app`, `env`, `level`); everything else lives inside the JSON
+  log line and is filtered in Grafana with `| json`.
+- **Retention**: 30 days, enforced by the Loki compactor.
+- **Dashboard**: `Memry — Logs` (`/d/memry-logs`) shows desktop/server error log panels and
+  error-volume timeseries, with an `env` switch for production/staging. Ad-hoc digging and live
+  tail happen in Grafana Explore against the Loki datasource.
+
 ## Server Configuration
 
-Set these sync-server variables to enable PostHog mirroring:
+Set these sync-server variables to enable Loki error-log shipping (unset in local dev, where
+shipping is a no-op):
 
 ```bash
-POSTHOG_API_KEY=phc_...
-POSTHOG_HOST=https://us.i.posthog.com
+LOKI_URL=https://grafana.memrynote.com   # wrangler var
+LOKI_TOKEN=...                           # wrangler secret (reverse-proxy bearer token)
 ```
-
-Use `https://eu.i.posthog.com` for EU Cloud projects.
 
 ## Performance
 
 `trackTelemetry` is debounced and batched. Calls during the first second of startup are deferred
 until after the vault is open so they never delay first paint. On the sync server, Analytics Engine
-writes finish before `/telemetry/batch` responds, while optional PostHog mirroring runs in
-`waitUntil` so third-party telemetry cannot block the request path.
+writes finish before `/telemetry/batch` responds, while Loki error-log pushes run in
+`waitUntil` so log shipping cannot block the request path.
