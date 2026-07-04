@@ -28,6 +28,10 @@ export function dateFnsPattern(f: DateFormat = current): string {
 }
 
 export function formatDate(date: Date, f: DateFormat = current): string {
+  // date-fns format() throws RangeError on an invalid Date. Unparseable date
+  // properties reach here as `new Date('...')` (Invalid Date), so guard instead
+  // of letting the throw escape into React render and blow up the whole tab.
+  if (!isValid(date)) return ''
   return format(date, PATTERNS[f])
 }
 

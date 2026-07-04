@@ -1,11 +1,15 @@
 {
   "app": {
-    "quit": "Kilép"
+    "quit": "Kilép",
+    "preferences": "Beállítások…"
   },
   "file": {
     "label": "Fájl",
     "newNote": "Új megjegyzés",
-    "close": "Zárja be az ablakot"
+    "close": "Zárja be az ablakot",
+    "closeTab": "Lap bezárása",
+    "exportPdf": "Exportálás PDF-be…",
+    "openQuickly": "Gyors megnyitás…"
   },
   "navigation": {
     "back": "Vissza",
@@ -18,12 +22,51 @@
     "cut": "Vágás",
     "copy": "Másolás",
     "paste": "Beillesztés",
-    "selectAll": "Összes kijelölése"
+    "selectAll": "Összes kijelölése",
+    "find": "Keresés",
+    "speech": "Beszéd"
   },
   "view": {
     "label": "Megtekintés",
     "reload": "Újratöltés",
     "toggleDevTools": "Kapcsolja be a Fejlesztői eszközöket",
-    "toggleFullscreen": "Teljes képernyő váltás"
+    "toggleFullscreen": "Teljes képernyő váltás",
+    "theme": "Téma",
+    "themeDark": "Sötét",
+    "themeLight": "Világos",
+    "themeSystem": "Rendszer",
+    "themeWhite": "Papír",
+    "toggleDayPanel": "Napi panel be/ki",
+    "toggleSidebar": "Oldalsáv be/ki"
+  },
+  "format": {
+    "body": "Törzsszöveg",
+    "bold": "Félkövér",
+    "code": "Kód",
+    "heading1": "1. címsor",
+    "heading2": "2. címsor",
+    "heading3": "3. címsor",
+    "highlight": "Kiemelés",
+    "italic": "Dőlt",
+    "label": "Formátum",
+    "strikethrough": "Áthúzott"
+  },
+  "help": {
+    "about": "A Memrynote névjegye",
+    "documentation": "Dokumentáció",
+    "label": "Súgó",
+    "shortcuts": "Billentyűparancsok"
+  },
+  "insert": {
+    "attachment": "Melléklet beszúrása…",
+    "bulletList": "Felsorolás",
+    "codeBlock": "Kódblokk",
+    "label": "Beszúrás",
+    "numberedList": "Számozott lista",
+    "table": "Táblázat",
+    "taskList": "Feladatlista"
+  },
+  "window": {
+    "label": "Ablak"
   }
 }

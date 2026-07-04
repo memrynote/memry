@@ -36,7 +36,8 @@
       "journal": "Tagebucherinnerung",
       "highlight": "Markieren Sie die Erinnerung",
       "fallback": "Mahnung fällig",
-      "default": "Erinnerung"
+      "default": "Erinnerung",
+      "task": "Aufgabenerinnerung"
     }
   },
   "error": {

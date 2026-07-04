@@ -33,7 +33,8 @@
     "repeat": "Upprepa",
     "createAnother": "Skapa en till",
     "delete": "Radera uppgift",
-    "created": "Skapad {date}"
+    "created": "Skapad {date}",
+    "reminder": "Påminnelse"
   },
   "filters": {
     "filter": "Filter",
@@ -62,7 +63,16 @@
     "noNotesAvailable": "Inga anteckningar tillgängliga",
     "noLinkedNotes": "Inga länkade anteckningar än",
     "removeLinkTo": "Ta bort länk till {title}",
-    "removeLinkFallback": "anteckning"
+    "removeLinkFallback": "anteckning",
+    "addRelatedItem": "Lägg till relaterat objekt",
+    "noMatchingRelated": "Inga matchande objekt",
+    "noRelatedAvailable": "Inga objekt tillgängliga",
+    "noRelatedItems": "Inga relaterade objekt än",
+    "related": "Relaterat",
+    "relatedItemFallback": "objekt",
+    "removeRelatedItem": "Ta bort relaterat objekt {title}",
+    "resize": "Ändra storlek på panel",
+    "searchRelated": "Sök relaterat…"
   },
   "kanban": {
     "board": "Kanban-brädet"
@@ -174,7 +184,8 @@
     "componentsTasksDatePickerContent": {
       "removeDate": "Ta bort datum",
       "clearTime": "Rensa tid",
-      "addTime": "Lägg till tid"
+      "addTime": "Lägg till tid",
+      "time": "Tid"
     },
     "componentsTasksDeleteProjectDialog": {
       "delete": "Ta bort",
@@ -612,6 +623,20 @@
       "failedToLoadTaskPreferences": "Misslyckades med att ladda uppgiftsinställningar",
       "failedToUpdateTaskPreferences": "Misslyckades med att uppdatera uppgiftsinställningar",
       "failedToLoadLinkedTasks": "Misslyckades med att ladda länkade uppgifter"
+    }
+  },
+  "reminders": {
+    "hasReminders": "Har påminnelser",
+    "setReminder": "Ange påminnelse",
+    "summary": "Påminnelse: {date}",
+    "summaryWithMore": "Påminnelse: {date} (+{count} till)",
+    "toast": {
+      "deleteFailed": "Det gick inte att radera påminnelse",
+      "deleted": "Påminnelse raderad",
+      "set": "Påminnelse inställd",
+      "setFailed": "Det gick inte att ange påminnelse",
+      "updateFailed": "Det gick inte att uppdatera påminnelse",
+      "updated": "Påminnelse uppdaterad"
     }
   }
 }

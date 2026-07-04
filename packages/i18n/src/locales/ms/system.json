@@ -36,7 +36,8 @@
       "journal": "Peringatan jurnal",
       "highlight": "Serlahkan peringatan",
       "fallback": "Peringatan perlu dibayar",
-      "default": "Peringatan"
+      "default": "Peringatan",
+      "task": "Peringatan tugasan"
     }
   },
   "error": {

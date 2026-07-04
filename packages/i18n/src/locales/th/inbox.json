@@ -26,6 +26,10 @@
     "jobs": {
       "running": "{count, plural, one {งานเบื้องหลัง # กำลังทำงาน} other {งานเบื้องหลัง # กำลังทำงาน}}",
       "failed": "{count} ล้มเหลว"
+    },
+    "density": {
+      "toComfortable": "มุมมองสบายตา",
+      "toCompact": "มุมมองกระชับ"
     }
   },
   "type": {
@@ -208,7 +212,15 @@
     "linkedNotesAria": "บันทึกลิงก์",
     "removeLinkTo": "ลบลิงก์ไปยัง {title}",
     "notePlaceholder": "เขียนบันทึกของคุณ...",
-    "textPlaceholder": "แก้ไขข้อความที่บันทึกไว้..."
+    "textPlaceholder": "แก้ไขข้อความที่บันทึกไว้...",
+    "linkANote": "เชื่อมโยงโน้ต",
+    "match": {
+      "likely": "น่าจะตรงกัน",
+      "strong": "ตรงกันมาก",
+      "weak": "ตรงกันน้อย"
+    },
+    "resize": "ปรับขนาดแผง",
+    "suggestedCount": "แนะนำ {count} รายการ"
   },
   "content": {
     "capturedAt": "จับภาพ {date}",
@@ -253,7 +265,12 @@
     "presetInOneHour": "1 ชั่วโมง",
     "presetTomorrow": "พรุ่งนี้",
     "presetNextWeek": "สัปดาห์หน้า",
-    "custom": "กำหนดเอง..."
+    "custom": "กำหนดเอง...",
+    "archive": "เก็บถาวร",
+    "panelEmpty": "ไม่มีการเตือนที่กำลังจะถึง",
+    "panelPast": "ที่ผ่านมา",
+    "panelUpcoming": "กำลังจะถึง",
+    "taskFallback": "งาน"
   },
   "insights": {
     "captureActivity": "จับกิจกรรม",
@@ -295,7 +312,9 @@
       "recordVoiceMemo2": "บันทึกข้อความเสียง",
       "alreadyCaptured": "จับภาพแล้ว: “",
       "rdquo": "rdquo;",
-      "captureAnyway": "จับภาพต่อ"
+      "captureAnyway": "จับภาพต่อ",
+      "focusShortcut": "โฟกัสช่องบันทึก",
+      "q": "Q"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "เลือกโฟลเดอร์",
@@ -416,7 +435,11 @@
       "backToPresets": "กลับไปยังค่าที่กำหนดล่วงหน้า",
       "time": "เวลา",
       "noteOptional": "บันทึก (ไม่บังคับ)",
-      "whyAreYouSettingThisReminder": "ทำไมคุณถึงตั้งการเตือนนี้?"
+      "whyAreYouSettingThisReminder": "ทำไมคุณถึงตั้งการเตือนนี้?",
+      "deleteReminder": "ลบการเตือน",
+      "editReminder": "แก้ไขการเตือน",
+      "save": "บันทึก",
+      "set": "ตั้ง"
     },
     "componentsSnoozeSnoozePicker": {
       "snooze": "เลื่อน",
@@ -461,5 +484,37 @@
     "toasts": {
       "inboxRefreshed": "กล่องขาเข้าถูกรีเฟรช"
     }
+  },
+  "convert": {
+    "addEvent": "เพิ่มกิจกรรม",
+    "addTask": "เพิ่มงาน",
+    "allDay": "ทั้งวัน",
+    "binaryOnlyNote": "ไฟล์สามารถเป็นได้แค่โน้ต",
+    "chooseType": "แปลงเป็น",
+    "create": "สร้าง",
+    "date": "วันที่",
+    "dueDate": "วันครบกำหนด",
+    "dueTime": "เวลาครบกำหนด",
+    "end": "สิ้นสุด",
+    "event": "กิจกรรม",
+    "failed": "แปลงไม่สำเร็จ: {error}",
+    "inboxProject": "กล่องขาเข้า",
+    "location": "สถานที่",
+    "note": "โน้ต",
+    "priority": "ลำดับความสำคัญ",
+    "priorityHigh": "สูง",
+    "priorityLow": "ต่ำ",
+    "priorityMedium": "ปานกลาง",
+    "priorityNone": "ไม่มี",
+    "priorityUrgent": "ด่วน",
+    "project": "โปรเจกต์",
+    "remindAt": "เตือนฉันเวลา",
+    "reminder": "การเตือน",
+    "setReminder": "ตั้งการเตือน",
+    "start": "เริ่ม",
+    "success": "แปลงเป็น {target} แล้ว",
+    "task": "งาน",
+    "time": "เวลา",
+    "title": "แปลง"
   }
 }

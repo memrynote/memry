@@ -1,11 +1,15 @@
 {
   "app": {
-    "quit": "退出"
+    "quit": "退出",
+    "preferences": "设置…"
   },
   "file": {
     "label": "文件",
     "newNote": "新笔记",
-    "close": "关闭窗口"
+    "close": "关闭窗口",
+    "closeTab": "关闭标签页",
+    "exportPdf": "导出为 PDF…",
+    "openQuickly": "快速打开…"
   },
   "navigation": {
     "back": "返回",
@@ -18,12 +22,51 @@
     "cut": "剪切",
     "copy": "复制",
     "paste": "粘贴",
-    "selectAll": "全选"
+    "selectAll": "全选",
+    "find": "查找",
+    "speech": "语音"
   },
   "view": {
     "label": "视图",
     "reload": "重新加载",
     "toggleDevTools": "切换开发者工具",
-    "toggleFullscreen": "切换全屏"
+    "toggleFullscreen": "切换全屏",
+    "theme": "主题",
+    "themeDark": "深色",
+    "themeLight": "浅色",
+    "themeSystem": "跟随系统",
+    "themeWhite": "纸张",
+    "toggleDayPanel": "切换日程面板",
+    "toggleSidebar": "切换侧边栏"
+  },
+  "format": {
+    "body": "正文",
+    "bold": "粗体",
+    "code": "代码",
+    "heading1": "标题 1",
+    "heading2": "标题 2",
+    "heading3": "标题 3",
+    "highlight": "高亮",
+    "italic": "斜体",
+    "label": "格式",
+    "strikethrough": "删除线"
+  },
+  "help": {
+    "about": "关于 Memrynote",
+    "documentation": "文档",
+    "label": "帮助",
+    "shortcuts": "键盘快捷键"
+  },
+  "insert": {
+    "attachment": "插入附件…",
+    "bulletList": "项目符号列表",
+    "codeBlock": "代码块",
+    "label": "插入",
+    "numberedList": "编号列表",
+    "table": "表格",
+    "taskList": "任务列表"
+  },
+  "window": {
+    "label": "窗口"
   }
 }

@@ -33,7 +33,8 @@
     "repeat": "Ismételje meg",
     "createAnother": "Hozzon létre egy másikat",
     "delete": "Feladat törlése",
-    "created": "Létrehozva: {date}"
+    "created": "Létrehozva: {date}",
+    "reminder": "Emlékeztető"
   },
   "filters": {
     "filter": "Szűrés",
@@ -62,7 +63,16 @@
     "noNotesAvailable": "Nincsenek jegyzetek",
     "noLinkedNotes": "Még nincsenek linkelt jegyzetek",
     "removeLinkTo": "Távolítsa el az {title} linket",
-    "removeLinkFallback": "megjegyzés"
+    "removeLinkFallback": "megjegyzés",
+    "addRelatedItem": "Kapcsolódó elem hozzáadása",
+    "noMatchingRelated": "Nincs egyező elem",
+    "noRelatedAvailable": "Nincs elérhető elem",
+    "noRelatedItems": "Még nincsenek kapcsolódó elemek",
+    "related": "Kapcsolódó",
+    "relatedItemFallback": "elem",
+    "removeRelatedItem": "Kapcsolódó elem eltávolítása: {title}",
+    "resize": "Panel átméretezése",
+    "searchRelated": "Kapcsolódó keresése…"
   },
   "kanban": {
     "board": "Kanban tábla"
@@ -174,7 +184,8 @@
     "componentsTasksDatePickerContent": {
       "removeDate": "Dátum eltávolítása",
       "clearTime": "Tiszta idő",
-      "addTime": "Add hozzá az időt"
+      "addTime": "Add hozzá az időt",
+      "time": "Idő"
     },
     "componentsTasksDeleteProjectDialog": {
       "delete": "Törlés \"",
@@ -612,6 +623,20 @@
       "failedToLoadTaskPreferences": "Nem sikerült betölteni a feladatbeállításokat",
       "failedToUpdateTaskPreferences": "Nem sikerült frissíteni a feladatbeállításokat",
       "failedToLoadLinkedTasks": "Nem sikerült betölteni a kapcsolódó feladatokat"
+    }
+  },
+  "reminders": {
+    "hasReminders": "Vannak emlékeztetők",
+    "setReminder": "Emlékeztető beállítása",
+    "summary": "Emlékeztető: {date}",
+    "summaryWithMore": "Emlékeztető: {date} (+{count} további)",
+    "toast": {
+      "deleteFailed": "Nem sikerült törölni az emlékeztetőt",
+      "deleted": "Emlékeztető törölve",
+      "set": "Emlékeztető beállítva",
+      "setFailed": "Nem sikerült beállítani az emlékeztetőt",
+      "updateFailed": "Nem sikerült frissíteni az emlékeztetőt",
+      "updated": "Emlékeztető frissítve"
     }
   }
 }

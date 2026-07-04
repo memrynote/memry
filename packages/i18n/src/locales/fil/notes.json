@@ -42,7 +42,9 @@
       "setIcon": "Itakda ang Icon",
       "removeIcon": "Alisin ang Icon",
       "deleteSelectedNotes": "Tanggalin ang {count} Notes",
-      "deleteSelectedItems": "Tanggalin ang {count} item"
+      "deleteSelectedItems": "Tanggalin ang {count} item",
+      "bookmark": "I-bookmark",
+      "removeFromBookmarks": "Alisin sa Mga Bookmark"
     },
     "deleteDialog": {
       "noteTitle": "Tanggalin ang Tala",
@@ -111,7 +113,11 @@
       "aria": "Tandaan ang mga mungkahi",
       "loading": "Nilo-load ang mga tala...",
       "empty": "Walang nakitang tala",
-      "create": "Gumawa ng bagong tala"
+      "create": "Gumawa ng bagong tala",
+      "embed": "I-embed",
+      "embedAria": "I-embed ang {title}",
+      "wikiLink": "Wiki link",
+      "wikiLinkAria": "Wiki link {title}"
     },
     "tags": {
       "aria": "I-tag ang mga mungkahi",
@@ -133,6 +139,15 @@
       "searchPlaceholder": "Maghanap",
       "noIcons": "Walang nakitang icon",
       "clearSearch": "I-clear ang paghahanap"
+    },
+    "mention": {
+      "aria": "Mga mungkahi ng petsa at tala",
+      "date": "Petsa",
+      "dateHint": "Magpatuloy sa pag-type ng petsa…",
+      "empty": "Walang nakitang tala",
+      "loading": "Nilo-load ang mga tala...",
+      "remindMe": "Paalalahanan ako",
+      "showMore": "Magpakita ng higit pa"
     }
   },
   "outline": {
@@ -174,7 +189,8 @@
     "createTag": "Lumikha ng tag: \"{tag}\"",
     "chooseColor": "Pumili ng kulay:",
     "preview": "Preview:",
-    "colorAria": "Piliin ang kulay ng {color}"
+    "colorAria": "Piliin ang kulay ng {color}",
+    "customColor": "Custom na kulay"
   },
   "properties": {
     "title": "Mga Katangian",
@@ -205,7 +221,9 @@
       "status": "Katayuan",
       "select": "Pumili",
       "multiselect": "Multiselect"
-    }
+    },
+    "showOnCalendar": "Ipakita sa kalendaryo",
+    "showingOnCalendar": "Ipinapakita sa kalendaryo"
   },
   "templateSelector": {
     "title": "Piliin ang Iyong Canvas",
@@ -295,7 +313,8 @@
   },
   "phaseF": {
     "componentsFolderViewColumnHeader": {
-      "dragToReorderColumn": "I-drag upang muling ayusin ang column"
+      "dragToReorderColumn": "I-drag upang muling ayusin ang column",
+      "editColumnName": "I-edit ang pangalan ng column"
     },
     "componentsFolderViewColumnSelector": {
       "properties": "Mga Katangian",
@@ -311,7 +330,10 @@
       "delete": "Tanggalin",
       "none": "wala",
       "edit": "I-edit",
-      "delete2": "Tanggalin"
+      "delete2": "Tanggalin",
+      "columnBorders": "Mga hangganan ng column",
+      "display": "Display",
+      "showSummaries": "Ipakita ang mga buod"
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Salain",
@@ -329,17 +351,21 @@
       "of": "ng:",
       "addCondition": "Magdagdag ng kundisyon",
       "addFilter": "Magdagdag ng filter",
-      "addGroup": "Magdagdag ng grupo"
+      "addGroup": "Magdagdag ng grupo",
+      "removeGroup": "Alisin ang grupo"
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "Built-in",
       "properties": "Mga Katangian",
       "placeholderProperty": "Ari-arian",
       "placeholderOperator": "Operator",
-      "placeholderValue": "Halaga"
+      "placeholderValue": "Halaga",
+      "removeFilter": "Alisin ang filter"
     },
     "componentsFolderViewFolderTableView": {
-      "notesTable": "Talahanayan ng mga tala"
+      "notesTable": "Talahanayan ng mga tala",
+      "selectAll": "Piliin ang lahat ng tala",
+      "selectRow": "Piliin ang tala"
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "Maghanap ng mga tala...",
@@ -371,7 +397,9 @@
     },
     "componentsFolderViewGroupedTable": {
       "groupedNotesTable": "Nakagrupong talaan ng talahanayan",
-      "more": "higit pa"
+      "more": "higit pa",
+      "selectAll": "Piliin ang lahat ng tala",
+      "selectRow": "Piliin ang tala"
     },
     "componentsFolderViewMoveToFolderDialog": {
       "searchFolders": "Maghanap ng mga folder...",
@@ -399,7 +427,8 @@
     },
     "componentsFolderViewSortableColumnHeader": {
       "dragToReorderColumn": "I-drag upang muling ayusin ang column",
-      "resizeColumn": "Baguhin ang laki ng column"
+      "resizeColumn": "Baguhin ang laki ng column",
+      "editColumnName": "I-edit ang pangalan ng column"
     },
     "componentsFolderViewViewSwitcher": {
       "default": "default",
@@ -424,7 +453,16 @@
       "deleteView": "Tanggalin ang View",
       "areYouSureYouWantToDelete": "Sigurado ka bang gusto mong tanggalin\"",
       "thisActionCannotBeUndone": "Ang pagkilos na ito ay hindi maaaring i-undo.",
-      "cancel3": "Kanselahin"
+      "cancel3": "Kanselahin",
+      "createView": "Lumikha ng view",
+      "gallery": "Gallery",
+      "layout": "Layout",
+      "list": "Listahan",
+      "name": "Pangalan",
+      "newView": "Bagong view",
+      "save": "I-save",
+      "table": "Talahanayan",
+      "viewActions": "Mga aksyon ng view"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "Nabigong i-load ang PDF: ",
@@ -607,6 +645,15 @@
       "startYourCollection": "Simulan ang Iyong Koleksyon",
       "templatesHelpYouCreateNotesWithConsistentStructure": "Tinutulungan ka ng mga template na lumikha ng mga tala na may pare-parehong istraktura.",
       "createTemplate": "Lumikha ng Template"
+    },
+    "componentsFolderViewSortSelector": {
+      "builtIn": "Built-in",
+      "clearSort": "I-clear ang pag-uuri",
+      "noSortablePropertiesFound": "Walang nakitang property na maaaring pagbukud-bukurin",
+      "properties": "Mga Property",
+      "searchProperties": "Maghanap ng property...",
+      "sort": "Ayusin",
+      "sortDirection": "Direksyon ng pag-uuri"
     }
   },
   "phaseI": {
@@ -654,5 +701,47 @@
       "cannotRemoveTagThisNoteWasDeleted": "Hindi maalis ang tag - ang talang ito ay tinanggal",
       "cannotChangeLocalOnlyThisNoteWasDeleted": "Hindi maaaring baguhin ang lokal lamang — ang talang ito ay tinanggal"
     }
+  },
+  "bulkActions": {
+    "addTag": "Magdagdag ng tag",
+    "clearAria": "I-clear ang pinili",
+    "copiedLinks": "Kinopya {count, plural, one {# link} other {# link}}",
+    "copyLinks": "Kopyahin ang mga link",
+    "delete": "Tanggalin",
+    "export": "I-export",
+    "move": "Ilipat",
+    "selected": "napili",
+    "tagNamePlaceholder": "Pangalan ng tag",
+    "toolbarAria": "Mga bulk na aksyon"
+  },
+  "comments": {
+    "attachAria": "Maglakip ng file",
+    "badgeAria": "{count, plural, one {# komento} other {# komento}}",
+    "cancel": "Kanselahin",
+    "commentPlaceholder": "Magdagdag ng komento...",
+    "createdTooltip": "Ginawa {date} nang {time}",
+    "delete": "Tanggalin ang komento",
+    "edit": "I-edit ang komento",
+    "kind": {
+      "addition": "Pagdaragdag",
+      "comment": "Komento",
+      "deletion": "Pagtanggal",
+      "substitution": "Pagpapalit"
+    },
+    "mentionAria": "Banggitin ang isang tao, pahina o petsa",
+    "railAria": "Mga Komento",
+    "replyPlaceholder": "Tumugon...",
+    "resolve": "Lutasin",
+    "sendAria": "Ipadala ang komento",
+    "toolbarComment": "Komento"
+  },
+  "dateMention": {
+    "clear": "I-clear",
+    "dateFormat": "Format ng petsa",
+    "dateInput": "Petsa",
+    "includeTime": "Isama ang oras",
+    "remind": "Ipaalala",
+    "time": "Oras",
+    "timeFormat": "Format ng oras"
   }
 }

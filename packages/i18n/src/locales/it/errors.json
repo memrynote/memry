@@ -73,6 +73,7 @@
     "settingsNotInitialized": "Sincronizzazione delle impostazioni non inizializzata",
     "securityQuarantinePermanent": "Non è stato possibile verificare un elemento sincronizzato ed è stato messo in quarantena per motivi di sicurezza.",
     "securityQuarantineRetry": "Un elemento di sincronizzazione non ha superato la verifica della firma e verrà ritentato.",
-    "certificatePinPaused": "Impossibile verificare la connessione protetta al server di sincronizzazione. La sincronizzazione è stata sospesa per la tua protezione."
+    "certificatePinPaused": "Impossibile verificare la connessione protetta al server di sincronizzazione. La sincronizzazione è stata sospesa per la tua protezione.",
+    "paymentRequired": "È necessario un piano Sync a pagamento per usare la sincronizzazione cifrata ospitata."
   }
 }

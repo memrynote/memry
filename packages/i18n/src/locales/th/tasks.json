@@ -33,7 +33,8 @@
     "repeat": "ทำซ้ำ",
     "createAnother": "สร้างอีกอัน",
     "delete": "ลบภารกิจ",
-    "created": "สร้างเมื่อ {date}"
+    "created": "สร้างเมื่อ {date}",
+    "reminder": "การเตือน"
   },
   "filters": {
     "filter": "  \nกรอง  ",
@@ -62,7 +63,16 @@
     "noNotesAvailable": "ไม่มีบันทึกใช้งานได้",
     "noLinkedNotes": "ยังไม่มีบันทึกที่เชื่อมโยง",
     "removeLinkTo": "ลบลิงก์ไปยัง {title}",
-    "removeLinkFallback": "บันทึก"
+    "removeLinkFallback": "บันทึก",
+    "addRelatedItem": "เพิ่มรายการที่เกี่ยวข้อง",
+    "noMatchingRelated": "ไม่มีรายการที่ตรงกัน",
+    "noRelatedAvailable": "ไม่มีรายการที่พร้อมใช้งาน",
+    "noRelatedItems": "ยังไม่มีรายการที่เกี่ยวข้อง",
+    "related": "ที่เกี่ยวข้อง",
+    "relatedItemFallback": "รายการ",
+    "removeRelatedItem": "นำรายการที่เกี่ยวข้อง {title} ออก",
+    "resize": "ปรับขนาดแผง",
+    "searchRelated": "ค้นหาที่เกี่ยวข้อง…"
   },
   "kanban": {
     "board": "บอร์ดคานบัน"
@@ -174,7 +184,8 @@
     "componentsTasksDatePickerContent": {
       "removeDate": "ลบวันที่",
       "clearTime": "ล้างเวลา",
-      "addTime": "เพิ่มเวลา"
+      "addTime": "เพิ่มเวลา",
+      "time": "เวลา"
     },
     "componentsTasksDeleteProjectDialog": {
       "delete": "ลบ",
@@ -612,6 +623,20 @@
       "failedToLoadTaskPreferences": "ไม่สามารถโหลดการตั้งค่าผลงานได้",
       "failedToUpdateTaskPreferences": "ไม่สามารถอัปเดตการตั้งค่าผลงานได้",
       "failedToLoadLinkedTasks": "ไม่สามารถโหลดงานที่เชื่อมโยงได้"
+    }
+  },
+  "reminders": {
+    "hasReminders": "มีการเตือน",
+    "setReminder": "ตั้งการเตือน",
+    "summary": "การเตือน: {date}",
+    "summaryWithMore": "การเตือน: {date} (+อีก {count})",
+    "toast": {
+      "deleteFailed": "ลบการเตือนไม่สำเร็จ",
+      "deleted": "ลบการเตือนแล้ว",
+      "set": "ตั้งการเตือนแล้ว",
+      "setFailed": "ตั้งการเตือนไม่สำเร็จ",
+      "updateFailed": "อัปเดตการเตือนไม่สำเร็จ",
+      "updated": "อัปเดตการเตือนแล้ว"
     }
   }
 }

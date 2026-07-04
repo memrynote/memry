@@ -73,6 +73,7 @@
     "settingsNotInitialized": "Synchronizacja ustawień nie została zainicjowana",
     "securityQuarantinePermanent": "Nie można zweryfikować elementu synchronizacji i ze względów bezpieczeństwa został on poddany kwarantannie.",
     "securityQuarantineRetry": "Weryfikacja podpisu elementu synchronizowanego nie powiodła się i zostanie ponowiona.",
-    "certificatePinPaused": "Nie można zweryfikować bezpiecznego połączenia z serwerem synchronizacji. Ze względu na Twoje bezpieczeństwo synchronizacja została wstrzymana."
+    "certificatePinPaused": "Nie można zweryfikować bezpiecznego połączenia z serwerem synchronizacji. Ze względu na Twoje bezpieczeństwo synchronizacja została wstrzymana.",
+    "paymentRequired": "Do korzystania z hostowanej szyfrowanej synchronizacji wymagany jest płatny plan Sync."
   }
 }

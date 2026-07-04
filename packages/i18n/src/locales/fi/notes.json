@@ -42,7 +42,9 @@
       "setIcon": "Aseta kuvake",
       "removeIcon": "Poista kuvake",
       "deleteSelectedNotes": "Poista {count}-muistiinpanot",
-      "deleteSelectedItems": "Poista {count} kohteet"
+      "deleteSelectedItems": "Poista {count} kohteet",
+      "bookmark": "Kirjanmerkki",
+      "removeFromBookmarks": "Poista kirjanmerkeistä"
     },
     "deleteDialog": {
       "noteTitle": "Poista huomautus",
@@ -111,7 +113,11 @@
       "aria": "Huomaa ehdotukset",
       "loading": "Ladataan muistiinpanoja...",
       "empty": "Muistiinpanoja ei löytynyt",
-      "create": "Luo uusi muistiinpano"
+      "create": "Luo uusi muistiinpano",
+      "embed": "Upota",
+      "embedAria": "Upota {title}",
+      "wikiLink": "Wiki-linkki",
+      "wikiLinkAria": "Wiki-linkki {title}"
     },
     "tags": {
       "aria": "Tunnisteehdotukset",
@@ -133,6 +139,15 @@
       "searchPlaceholder": "Etsi",
       "noIcons": "Kuvakkeita ei löytynyt",
       "clearSearch": "Tyhjennä haku"
+    },
+    "mention": {
+      "aria": "Päivämäärä- ja muistiinpanoehdotukset",
+      "date": "Päivämäärä",
+      "dateHint": "Jatka päivämäärän kirjoittamista…",
+      "empty": "Muistiinpanoja ei löytynyt",
+      "loading": "Ladataan muistiinpanoja...",
+      "remindMe": "Muistuta minua",
+      "showMore": "Näytä lisää"
     }
   },
   "outline": {
@@ -174,7 +189,8 @@
     "createTag": "Luo tunniste: \"{tag}\"",
     "chooseColor": "Valitse väri:",
     "preview": "Esikatselu:",
-    "colorAria": "Valitse {color} väri"
+    "colorAria": "Valitse {color} väri",
+    "customColor": "Mukautettu väri"
   },
   "properties": {
     "title": "Ominaisuudet",
@@ -205,7 +221,9 @@
       "status": "Tila",
       "select": "Valitse",
       "multiselect": "Monivalinta"
-    }
+    },
+    "showOnCalendar": "Näytä kalenterissa",
+    "showingOnCalendar": "Näytetään kalenterissa"
   },
   "templateSelector": {
     "title": "Valitse oma kangas",
@@ -295,7 +313,8 @@
   },
   "phaseF": {
     "componentsFolderViewColumnHeader": {
-      "dragToReorderColumn": "Järjestä sarake uudelleen vetämällä"
+      "dragToReorderColumn": "Järjestä sarake uudelleen vetämällä",
+      "editColumnName": "Muokkaa sarakkeen nimeä"
     },
     "componentsFolderViewColumnSelector": {
       "properties": "Ominaisuudet",
@@ -311,7 +330,10 @@
       "delete": "Poista",
       "none": "Ei mitään",
       "edit": "Muokkaa",
-      "delete2": "Poista"
+      "delete2": "Poista",
+      "columnBorders": "Sarakkeiden reunat",
+      "display": "Näyttö",
+      "showSummaries": "Näytä yhteenvedot"
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Suodata",
@@ -329,17 +351,21 @@
       "of": "/:",
       "addCondition": "Lisää ehto",
       "addFilter": "Lisää suodatin",
-      "addGroup": "Lisää ryhmä"
+      "addGroup": "Lisää ryhmä",
+      "removeGroup": "Poista ryhmä"
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "Sisäänrakennettu",
       "properties": "Ominaisuudet",
       "placeholderProperty": "Omaisuus",
       "placeholderOperator": "Operaattori",
-      "placeholderValue": "Arvo"
+      "placeholderValue": "Arvo",
+      "removeFilter": "Poista suodatin"
     },
     "componentsFolderViewFolderTableView": {
-      "notesTable": "Muistiinpanot taulukko"
+      "notesTable": "Muistiinpanot taulukko",
+      "selectAll": "Valitse kaikki muistiinpanot",
+      "selectRow": "Valitse muistiinpano"
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "Hae muistiinpanoja...",
@@ -371,7 +397,9 @@
     },
     "componentsFolderViewGroupedTable": {
       "groupedNotesTable": "Ryhmitetty muistiinpanotaulukko",
-      "more": "lisää"
+      "more": "lisää",
+      "selectAll": "Valitse kaikki muistiinpanot",
+      "selectRow": "Valitse muistiinpano"
     },
     "componentsFolderViewMoveToFolderDialog": {
       "searchFolders": "Hae kansioita...",
@@ -399,7 +427,8 @@
     },
     "componentsFolderViewSortableColumnHeader": {
       "dragToReorderColumn": "Järjestä sarake uudelleen vetämällä",
-      "resizeColumn": "Muuta sarakkeen kokoa"
+      "resizeColumn": "Muuta sarakkeen kokoa",
+      "editColumnName": "Muokkaa sarakkeen nimeä"
     },
     "componentsFolderViewViewSwitcher": {
       "default": "oletuksena",
@@ -424,7 +453,16 @@
       "deleteView": "Poista näkymä",
       "areYouSureYouWantToDelete": "Oletko varma, että haluat poistaa \"",
       "thisActionCannotBeUndone": "Tätä toimintoa ei voi kumota.",
-      "cancel3": "Peruuta"
+      "cancel3": "Peruuta",
+      "createView": "Luo näkymä",
+      "gallery": "Galleria",
+      "layout": "Asettelu",
+      "list": "Luettelo",
+      "name": "Nimi",
+      "newView": "Uusi näkymä",
+      "save": "Tallenna",
+      "table": "Taulukko",
+      "viewActions": "Näkymän toiminnot"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "PDF:n lataaminen epäonnistui: ",
@@ -607,6 +645,15 @@
       "startYourCollection": "Aloita kokoelmasi",
       "templatesHelpYouCreateNotesWithConsistentStructure": "Mallit auttavat luomaan muistiinpanoja, joiden rakenne on johdonmukainen.",
       "createTemplate": "Luo malli"
+    },
+    "componentsFolderViewSortSelector": {
+      "builtIn": "Sisäänrakennettu",
+      "clearSort": "Tyhjennä lajittelu",
+      "noSortablePropertiesFound": "Lajiteltavia ominaisuuksia ei löytynyt",
+      "properties": "Ominaisuudet",
+      "searchProperties": "Hae ominaisuuksia...",
+      "sort": "Lajittele",
+      "sortDirection": "Lajittelusuunta"
     }
   },
   "phaseI": {
@@ -654,5 +701,47 @@
       "cannotRemoveTagThisNoteWasDeleted": "Tunnistetta ei voi poistaa – tämä muistiinpano poistettiin",
       "cannotChangeLocalOnlyThisNoteWasDeleted": "Ei voi muuttaa vain paikallisesti - tämä muistiinpano poistettiin"
     }
+  },
+  "bulkActions": {
+    "addTag": "Lisää tunniste",
+    "clearAria": "Tyhjennä valinta",
+    "copiedLinks": "Kopioitu {count, plural, one {# linkki} other {# linkkiä}}",
+    "copyLinks": "Kopioi linkit",
+    "delete": "Poista",
+    "export": "Vie",
+    "move": "Siirrä",
+    "selected": "valittu",
+    "tagNamePlaceholder": "Tunnisteen nimi",
+    "toolbarAria": "Joukkotoiminnot"
+  },
+  "comments": {
+    "attachAria": "Liitä tiedosto",
+    "badgeAria": "{count, plural, one {# kommentti} other {# kommenttia}}",
+    "cancel": "Peruuta",
+    "commentPlaceholder": "Lisää kommentti...",
+    "createdTooltip": "Luotu {date} klo {time}",
+    "delete": "Poista kommentti",
+    "edit": "Muokkaa kommenttia",
+    "kind": {
+      "addition": "Lisäys",
+      "comment": "Kommentti",
+      "deletion": "Poisto",
+      "substitution": "Korvaus"
+    },
+    "mentionAria": "Mainitse henkilö, sivu tai päivämäärä",
+    "railAria": "Kommentit",
+    "replyPlaceholder": "Vastaa...",
+    "resolve": "Ratkaise",
+    "sendAria": "Lähetä kommentti",
+    "toolbarComment": "Kommentoi"
+  },
+  "dateMention": {
+    "clear": "Tyhjennä",
+    "dateFormat": "Päivämäärämuoto",
+    "dateInput": "Päivämäärä",
+    "includeTime": "Sisällytä aika",
+    "remind": "Muistuta",
+    "time": "Aika",
+    "timeFormat": "Aikamuoto"
   }
 }

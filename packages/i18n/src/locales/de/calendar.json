@@ -27,7 +27,9 @@
     "imported-event": "Importiertes Ereignis",
     "task": "Aufgabe",
     "reminder": "Erinnerung",
-    "snooze": "Schlummern"
+    "snooze": "Schlummern",
+    "note": "Notiz",
+    "note-date": "Datumserinnerung"
   },
   "state": {
     "loading-calendar": "Kalender wird geladen…",
@@ -151,5 +153,34 @@
       "could-not-remove-due-date": "Das Fälligkeitsdatum konnte nicht entfernt werden",
       "could-not-open-note": "Notiz konnte nicht geöffnet werden"
     }
+  },
+  "connect-prompt": {
+    "aria": "Google Calendar verbinden",
+    "body": "Verbinde dein Google-Konto, um mehr mit deinem Kalender zu machen:",
+    "bullets": {
+      "events": "Sieh deine Google-Termine neben Notizen und Aufgaben",
+      "schedule": "Plane Aufgaben und Notizen in deinem Kalender",
+      "sync": "Erstelle und bearbeite Termine, in beide Richtungen synchronisiert"
+    },
+    "continue": "Mit Google fortfahren",
+    "dismiss": "Verwerfen",
+    "error": "Google Calendar konnte nicht verbunden werden. Versuche es erneut.",
+    "pill": "Google verbinden",
+    "title": "Verbindung mit Google Calendar abschließen"
+  },
+  "notePopover": {
+    "couldNotOpen": "Notiz konnte nicht geöffnet werden",
+    "kind": "Notiz",
+    "kindDateReminder": "Datumserinnerung",
+    "open": "Notiz öffnen"
+  },
+  "search": {
+    "close": "Suche schließen",
+    "no-results": "Keine Treffer",
+    "open": "Kalender durchsuchen",
+    "placeholder": "Termine, Aufgaben, Erinnerungen suchen…"
+  },
+  "undo": {
+    "moveEvent": "Termin verschieben"
   }
 }

@@ -33,7 +33,8 @@
     "repeat": "Ripeti",
     "createAnother": "Creane un altro",
     "delete": "Elimina attività",
-    "created": "Creato {date}"
+    "created": "Creato {date}",
+    "reminder": "Promemoria"
   },
   "filters": {
     "filter": "Filtra",
@@ -62,7 +63,16 @@
     "noNotesAvailable": "Nessuna nota disponibile",
     "noLinkedNotes": "Nessuna nota collegata ancora",
     "removeLinkTo": "Rimuovere il collegamento a {title}",
-    "removeLinkFallback": "nota"
+    "removeLinkFallback": "nota",
+    "addRelatedItem": "Aggiungi elemento correlato",
+    "noMatchingRelated": "Nessun elemento corrispondente",
+    "noRelatedAvailable": "Nessun elemento disponibile",
+    "noRelatedItems": "Ancora nessun elemento correlato",
+    "related": "Correlati",
+    "relatedItemFallback": "elemento",
+    "removeRelatedItem": "Rimuovi elemento correlato {title}",
+    "resize": "Ridimensiona pannello",
+    "searchRelated": "Cerca correlati…"
   },
   "kanban": {
     "board": "Tabellone Kanban"
@@ -174,7 +184,8 @@
     "componentsTasksDatePickerContent": {
       "removeDate": "Rimuovi la data",
       "clearTime": "Tempo sereno",
-      "addTime": "Aggiungi tempo"
+      "addTime": "Aggiungi tempo",
+      "time": "Ora"
     },
     "componentsTasksDeleteProjectDialog": {
       "delete": "Elimina \"",
@@ -612,6 +623,20 @@
       "failedToLoadTaskPreferences": "Impossibile caricare le preferenze dell'attività",
       "failedToUpdateTaskPreferences": "Impossibile aggiornare le preferenze dell'attività",
       "failedToLoadLinkedTasks": "Impossibile caricare le attività collegate"
+    }
+  },
+  "reminders": {
+    "hasReminders": "Ha promemoria",
+    "setReminder": "Imposta promemoria",
+    "summary": "Promemoria: {date}",
+    "summaryWithMore": "Promemoria: {date} (+{count} altri)",
+    "toast": {
+      "deleteFailed": "Impossibile eliminare il promemoria",
+      "deleted": "Promemoria eliminato",
+      "set": "Promemoria impostato",
+      "setFailed": "Impossibile impostare il promemoria",
+      "updateFailed": "Impossibile aggiornare il promemoria",
+      "updated": "Promemoria aggiornato"
     }
   }
 }

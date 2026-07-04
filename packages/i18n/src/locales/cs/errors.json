@@ -73,6 +73,7 @@
     "settingsNotInitialized": "Synchronizace nastavení není inicializována",
     "securityQuarantinePermanent": "Položku synchronizace nebylo možné ověřit a byla kvůli bezpečnosti umístěna do karantény.",
     "securityQuarantineRetry": "U položky synchronizace se nezdařilo ověření podpisu a pokus bude zopakován.",
-    "certificatePinPaused": "Zabezpečené připojení k synchronizačnímu serveru se nepodařilo ověřit. Synchronizace byla z důvodu vaší ochrany pozastavena."
+    "certificatePinPaused": "Zabezpečené připojení k synchronizačnímu serveru se nepodařilo ověřit. Synchronizace byla z důvodu vaší ochrany pozastavena.",
+    "paymentRequired": "Pro použití hostované šifrované synchronizace je vyžadován placený plán Sync."
   }
 }

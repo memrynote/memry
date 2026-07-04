@@ -33,7 +33,8 @@
     "repeat": "Повторювати",
     "createAnother": "Створити інше",
     "delete": "Видалити завдання",
-    "created": "Створено {date}"
+    "created": "Створено {date}",
+    "reminder": "Нагадування"
   },
   "filters": {
     "filter": "Фільтр",
@@ -62,7 +63,16 @@
     "noNotesAvailable": "Немає доступних нотаток",
     "noLinkedNotes": "Пов’язаних нотаток ще немає",
     "removeLinkTo": "Видалити посилання на {title}",
-    "removeLinkFallback": "нотатка"
+    "removeLinkFallback": "нотатка",
+    "addRelatedItem": "Додати пов’язаний елемент",
+    "noMatchingRelated": "Немає відповідних елементів",
+    "noRelatedAvailable": "Немає доступних елементів",
+    "noRelatedItems": "Ще немає пов’язаних елементів",
+    "related": "Пов’язане",
+    "relatedItemFallback": "елемент",
+    "removeRelatedItem": "Прибрати пов’язаний елемент {title}",
+    "resize": "Змінити розмір панелі",
+    "searchRelated": "Пошук пов’язаного…"
   },
   "kanban": {
     "board": "Дошка Канбан"
@@ -174,7 +184,8 @@
     "componentsTasksDatePickerContent": {
       "removeDate": "Видалити дату",
       "clearTime": "Очистити час",
-      "addTime": "Додати час"
+      "addTime": "Додати час",
+      "time": "Час"
     },
     "componentsTasksDeleteProjectDialog": {
       "delete": "Видалити",
@@ -612,6 +623,20 @@
       "failedToLoadTaskPreferences": "Не вдалося завантажити налаштування завдання",
       "failedToUpdateTaskPreferences": "Не вдалося оновити налаштування завдання",
       "failedToLoadLinkedTasks": "Не вдалося завантажити пов'язані завдання"
+    }
+  },
+  "reminders": {
+    "hasReminders": "Має нагадування",
+    "setReminder": "Встановити нагадування",
+    "summary": "Нагадування: {date}",
+    "summaryWithMore": "Нагадування: {date} (+ще {count})",
+    "toast": {
+      "deleteFailed": "Не вдалося видалити нагадування",
+      "deleted": "Нагадування видалено",
+      "set": "Нагадування встановлено",
+      "setFailed": "Не вдалося встановити нагадування",
+      "updateFailed": "Не вдалося оновити нагадування",
+      "updated": "Нагадування оновлено"
     }
   }
 }

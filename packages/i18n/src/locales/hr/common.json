@@ -45,7 +45,10 @@
   "count": {
     "note": "{count, plural, one {Napomena #} other {Bilješke #}}",
     "task": "{count, plural, one {# zadatak} other {# zadaci}}",
-    "itemDelete": "{count, plural, one {Izbrišite stavku #} other {Izbrišite stavke #}}"
+    "itemDelete": "{count, plural, one {Izbrišite stavku #} other {Izbrišite stavke #}}",
+    "event": "{count, plural, one {# događaj} few {# događaja} other {# događaja}}",
+    "journal": "{count, plural, one {# dnevnik} few {# dnevnika} other {# dnevnika}}",
+    "reminder": "{count, plural, one {# podsjetnik} few {# podsjetnika} other {# podsjetnika}}"
   },
   "toast": {
     "actionFailed": "Radnja nije uspjela",
@@ -83,7 +86,23 @@
       "newNoteN": "Nova bilješka (⌘N)",
       "new": "novo",
       "syncDisabled": "Sinkronizacija onemogućena",
-      "syncDisabled2": "Sinkronizacija onemogućena"
+      "syncDisabled2": "Sinkronizacija onemogućena",
+      "feedbackButton": "Pošalji povratne informacije",
+      "feedbackDescription": "Recite nam što radi, što je pokvareno ili što biste željeli da Memry radi. Čitamo svaku poruku.",
+      "feedbackEmailHint": "Dodajte svoju e-poštu ako želite odgovor.",
+      "feedbackError": "Slanje povratnih informacija nije uspjelo. Pokušajte ponovno.",
+      "feedbackPlaceholder": "Vaše povratne informacije…",
+      "feedbackSend": "Pošalji",
+      "feedbackSending": "Slanje…",
+      "feedbackSuccess": "Hvala na povratnim informacijama!",
+      "feedbackTitle": "Pošalji povratne informacije",
+      "newItemMenu": "Stvori novo…",
+      "updateAvailable": "Ažuriraj",
+      "updateDownloading": "Preuzimanje…",
+      "updateDownloadingPercent": "Preuzimanje {percent}%",
+      "updateInstallingSubtitle": "Memrynote će se automatski ponovno pokrenuti.",
+      "updateInstallingTitle": "Instaliranje ažuriranja",
+      "updateRestart": "Ponovno pokreni"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Promjena veličine dnevne ploče",
@@ -462,7 +481,8 @@
       "day": "Dan",
       "agent": "Agent",
       "pendingApproval": "{count, plural, one {# čeka odobrenje} other {# odobrenja na čekanju}}",
-      "inProgress": "Agent okret u tijeku"
+      "inProgress": "Agent okret u tijeku",
+      "close": "Zatvori agenta"
     },
     "errors": {
       "loadConversations": "Nije moguće učitati razgovore agenta",
@@ -481,5 +501,142 @@
     "sources": {
       "used": "{count, plural, one {Korišten # izvor} few {Korištena # izvora} other {Korišteno # izvora}}"
     }
+  },
+  "home": {
+    "addWidget": "Dodaj widget",
+    "board": {
+      "defaultName": "Početna",
+      "deleteAria": "Izbriši raspored",
+      "label": "Raspored početne stranice",
+      "newAria": "Nova ploča",
+      "newName": "Nova ploča"
+    },
+    "disabled": {
+      "createNote": "Stvori bilješku",
+      "hint": "Ništa nije otvoreno. Započnite bilješku."
+    },
+    "done": "Gotovo",
+    "edit": "Uredi",
+    "empty": {
+      "body": "Widgeti spajaju vaše bilješke, zadatke i zabilješke na jednom mirnom mjestu.",
+      "cta": "Dodajte svoj prvi widget",
+      "title": "Vaša ploča je prazna"
+    },
+    "greeting": {
+      "afternoon": "Dobar dan",
+      "evening": "Dobra večer",
+      "morning": "Dobro jutro"
+    },
+    "header": {
+      "events": "{count, plural, one {# događaj} few {# događaja} other {# događaja}}",
+      "tasksDue": "{count, plural, one {# zadatak s rokom danas} few {# zadatka s rokom danas} other {# zadataka s rokom danas}}"
+    },
+    "noBookmarksYet": "Još nema zabilješki.",
+    "noEventsYet": "Nema događaja danas.",
+    "noJournalEntriesYet": "Još nema unosa u dnevnik.",
+    "noNotesYet": "Još nema bilješki.",
+    "noTasksYet": "Još nema zadataka.",
+    "widget": {
+      "bookmarks": "Zabilješke",
+      "calendar": "Kalendar",
+      "calendarToday": "Danas",
+      "configAria": "Konfiguriraj widget",
+      "configure": "Konfiguriraj",
+      "dragAria": "Povuci widget",
+      "duration": "{count} min",
+      "filter": {
+        "today": "Rok danas",
+        "tomorrow": "Sutra",
+        "week": "Ovaj tjedan"
+      },
+      "folder": "Mapa",
+      "folderEmpty": "Još nema mapa",
+      "folderNoSelection": "Nijedna mapa nije odabrana",
+      "folderPickPrompt": "Odaberi mapu",
+      "folderViewSelect": "Prikaz",
+      "folderView_gallery": "Galerija",
+      "folderView_list": "Popis",
+      "inbox": "Pristigla pošta",
+      "inboxAllTypes": "Sve vrste",
+      "inboxOlder": "{count, plural, one {# starija} few {# starije} other {# starijih}}",
+      "inboxOldest": "najstarija {count, plural, one {# dan} few {# dana} other {# dana}}",
+      "journal": "Dnevnik",
+      "journalStreak": "{count, plural, one {niz od # dana} few {niz od # dana} other {niz od # dana}}",
+      "journalToday": "Danas",
+      "journalYesterday": "Jučer",
+      "loadError": "Učitavanje nije uspjelo",
+      "menuAria": "Opcije widgeta",
+      "next": "Sljedeće: {title}",
+      "openCalendar": "Otvori kalendar",
+      "openInbox": "Otvori pristiglu poštu",
+      "recentMeta": "uređeno {time}",
+      "recentMetaWithFolder": "{folder} · uređeno {time}",
+      "recentlyEdited": "Nedavno uređeno",
+      "remove": "Ukloni",
+      "removeAria": "Ukloni widget",
+      "resize": "Veličina",
+      "resizeAria": "Promijeni veličinu na {{size}}",
+      "savedFilterDefault": "Danas",
+      "savedFilterHint": "Označite filtre zvjezdicom na stranici Zadaci da biste ih koristili ovdje",
+      "savedFilterLabel": "Spremljeni filtar",
+      "startsIn": "Počinje za {count, plural, one {# min} few {# min} other {# min}}",
+      "tasks": "Zadaci",
+      "unknown": "Nepoznati widget",
+      "untitled": "Bez naslova"
+    }
+  },
+  "media": {
+    "video": "Videozapis"
+  },
+  "onboarding": {
+    "agentChat": {
+      "body": "Prijeđite na karticu Agent da biste pitali Memrynote asistenta o svom trezoru.",
+      "title": "Razgovarajte s AI agentom"
+    },
+    "collections": {
+      "body": "Organizirajte bilješke u mape, prikvačite zabilješke i pregledavajte po oznakama — sve ovdje.",
+      "title": "Zbirke, zabilješke i oznake"
+    },
+    "dayPanel": {
+      "body": "Bočna ploča drži kalendar i pregled vašeg dana uz sve što čitate.",
+      "title": "Vaš dan, uz vaš rad"
+    },
+    "feedback": {
+      "body": "Pošaljite povratne informacije izravno timu odavde.",
+      "title": "Recite nam što mislite"
+    },
+    "nav": {
+      "body": "Pristigla pošta za snimanje, Dnevnik za dnevne bilješke, Kalendar za vašu vremensku crtu, Zadaci za obveze i Graf za pregled kako je sve povezano.",
+      "title": "Vaši radni prostori"
+    },
+    "newNote": {
+      "body": "Započnite ovdje. Sve što napišete prvo se pohranjuje lokalno.",
+      "title": "Stvorite svoju prvu bilješku"
+    },
+    "settings": {
+      "body": "Uvezite bilješke iz 12+ aplikacija — Obsidian, Notion, Apple Notes, Evernote i drugih — i podesite sve ostalo u Postavkama.",
+      "title": "Postavke i uvozi"
+    },
+    "sync": {
+      "body": "Uključite sinkronizaciju šifriranu s kraja na kraj da svaki uređaj bude usklađen.",
+      "title": "Privatna, šifrirana sinkronizacija"
+    },
+    "welcome": {
+      "body": "Vaš privatni, offline-first dom. Bilješke su šifrirane s kraja na kraj — nikad ne napuštaju vaš uređaj nešifrirane.",
+      "title": "Dobro došli u Memrynote"
+    }
+  },
+  "updatePrompt": {
+    "autoUpdateLabel": "Automatski preuzmi i instaliraj ažuriranja",
+    "availableBody": "{version} je dostupna — imate {current}. Želite li je preuzeti sada?",
+    "availableTitle": "Dostupna je nova verzija aplikacije MemryNote!",
+    "download": "Preuzmi",
+    "downloadedBody": "{version} je preuzeta. Ponovno pokrenite MemryNote za dovršetak instalacije.",
+    "downloadedTitle": "Ažuriranje je spremno za instalaciju",
+    "later": "Kasnije",
+    "releaseNotesLabel": "Bilješke o izdanju",
+    "remindLater": "Podsjeti me kasnije",
+    "restartNow": "Ponovno pokreni sada",
+    "skip": "Preskoči ovu verziju"
   }
 }

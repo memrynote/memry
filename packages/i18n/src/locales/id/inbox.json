@@ -26,6 +26,10 @@
     "jobs": {
       "running": "{count, plural, one {Pekerjaan latar belakang # berjalan} other {Pekerjaan latar belakang # berjalan}}",
       "failed": "{count} gagal"
+    },
+    "density": {
+      "toComfortable": "Tampilan nyaman",
+      "toCompact": "Tampilan ringkas"
     }
   },
   "type": {
@@ -208,7 +212,15 @@
     "linkedNotesAria": "Catatan tertaut",
     "removeLinkTo": "Hapus tautan ke {title}",
     "notePlaceholder": "Tulis catatan Anda...",
-    "textPlaceholder": "Edit teks yang Anda ambil..."
+    "textPlaceholder": "Edit teks yang Anda ambil...",
+    "linkANote": "Tautkan catatan",
+    "match": {
+      "likely": "Kemungkinan cocok",
+      "strong": "Kecocokan kuat",
+      "weak": "Kecocokan lemah"
+    },
+    "resize": "Ubah ukuran panel",
+    "suggestedCount": "{count} disarankan"
   },
   "content": {
     "capturedAt": "Menangkap {date}",
@@ -253,7 +265,12 @@
     "presetInOneHour": "1 jam",
     "presetTomorrow": "Besok",
     "presetNextWeek": "Minggu depan",
-    "custom": "Kustom..."
+    "custom": "Kustom...",
+    "archive": "Arsipkan",
+    "panelEmpty": "Tidak ada pengingat mendatang.",
+    "panelPast": "Lampau",
+    "panelUpcoming": "Mendatang",
+    "taskFallback": "Tugas"
   },
   "insights": {
     "captureActivity": "Aktivitas Tangkap",
@@ -295,7 +312,9 @@
       "recordVoiceMemo2": "Rekam memo suara",
       "alreadyCaptured": "Sudah ditangkap: “",
       "rdquo": "benar;",
-      "captureAnyway": "Tangkap Pokoknya"
+      "captureAnyway": "Tangkap Pokoknya",
+      "focusShortcut": "Fokuskan input tangkapan",
+      "q": "Q"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Pilih map",
@@ -416,7 +435,11 @@
       "backToPresets": "Kembali ke preset",
       "time": "Waktu",
       "noteOptional": "Catatan (opsional)",
-      "whyAreYouSettingThisReminder": "Mengapa Anda menyetel pengingat ini?"
+      "whyAreYouSettingThisReminder": "Mengapa Anda menyetel pengingat ini?",
+      "deleteReminder": "Hapus pengingat",
+      "editReminder": "Edit pengingat",
+      "save": "Simpan",
+      "set": "Atur"
     },
     "componentsSnoozeSnoozePicker": {
       "snooze": "Tunda",
@@ -461,5 +484,37 @@
     "toasts": {
       "inboxRefreshed": "Kotak masuk disegarkan"
     }
+  },
+  "convert": {
+    "addEvent": "Tambah acara",
+    "addTask": "Tambah tugas",
+    "allDay": "Sepanjang hari",
+    "binaryOnlyNote": "File hanya bisa menjadi catatan",
+    "chooseType": "Konversi ke",
+    "create": "Buat",
+    "date": "Tanggal",
+    "dueDate": "Tanggal jatuh tempo",
+    "dueTime": "Waktu jatuh tempo",
+    "end": "Selesai",
+    "event": "Acara",
+    "failed": "Tidak dapat mengonversi: {error}",
+    "inboxProject": "Inbox",
+    "location": "Lokasi",
+    "note": "Catatan",
+    "priority": "Prioritas",
+    "priorityHigh": "Tinggi",
+    "priorityLow": "Rendah",
+    "priorityMedium": "Sedang",
+    "priorityNone": "Tidak ada",
+    "priorityUrgent": "Mendesak",
+    "project": "Proyek",
+    "remindAt": "Ingatkan saya pada",
+    "reminder": "Pengingat",
+    "setReminder": "Atur pengingat",
+    "start": "Mulai",
+    "success": "Dikonversi ke {target}",
+    "task": "Tugas",
+    "time": "Waktu",
+    "title": "Konversi"
   }
 }

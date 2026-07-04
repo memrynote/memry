@@ -36,7 +36,8 @@
       "journal": "Dnevnik podsjetnik",
       "highlight": "Označite podsjetnik",
       "fallback": "Rok za opomenu",
-      "default": "Podsjetnik"
+      "default": "Podsjetnik",
+      "task": "Podsjetnik na zadatak"
     }
   },
   "error": {

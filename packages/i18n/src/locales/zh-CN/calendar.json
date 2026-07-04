@@ -27,7 +27,9 @@
     "imported-event": "导入事件",
     "task": "任务",
     "reminder": "提醒",
-    "snooze": "延迟"
+    "snooze": "延迟",
+    "note": "笔记",
+    "note-date": "日期提醒"
   },
   "state": {
     "loading-calendar": "正在加载日历…",
@@ -151,5 +153,34 @@
       "could-not-remove-due-date": "无法移除截止日期",
       "could-not-open-note": "无法打开笔记"
     }
+  },
+  "connect-prompt": {
+    "aria": "连接 Google Calendar",
+    "body": "连接你的 Google 账户，让日历发挥更多作用：",
+    "bullets": {
+      "events": "在笔记和任务旁查看 Google 事件",
+      "schedule": "在日历上安排任务和笔记",
+      "sync": "创建和编辑事件，双向同步"
+    },
+    "continue": "使用 Google 继续",
+    "dismiss": "忽略",
+    "error": "无法连接 Google Calendar。请重试。",
+    "pill": "连接 Google",
+    "title": "完成 Google Calendar 连接"
+  },
+  "notePopover": {
+    "couldNotOpen": "无法打开笔记",
+    "kind": "笔记",
+    "kindDateReminder": "日期提醒",
+    "open": "打开笔记"
+  },
+  "search": {
+    "close": "关闭搜索",
+    "no-results": "无匹配结果",
+    "open": "搜索日历",
+    "placeholder": "搜索事件、任务、提醒…"
+  },
+  "undo": {
+    "moveEvent": "移动事件"
   }
 }

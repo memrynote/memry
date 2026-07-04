@@ -26,6 +26,10 @@
     "jobs": {
       "running": "{count, plural, one {# bakgrundsjobb körs} other {# bakgrundsjobb körs}}",
       "failed": "{count} misslyckades"
+    },
+    "density": {
+      "toComfortable": "Bekväm vy",
+      "toCompact": "Kompakt vy"
     }
   },
   "type": {
@@ -208,7 +212,15 @@
     "linkedNotesAria": "Länkade anteckningar",
     "removeLinkTo": "Ta bort länk till {title}",
     "notePlaceholder": "Skriv din anteckning...",
-    "textPlaceholder": "Redigera din inspelade text..."
+    "textPlaceholder": "Redigera din inspelade text...",
+    "linkANote": "Länka en anteckning",
+    "match": {
+      "likely": "Trolig träff",
+      "strong": "Stark träff",
+      "weak": "Svag träff"
+    },
+    "resize": "Ändra storlek på panel",
+    "suggestedCount": "{count} föreslagna"
   },
   "content": {
     "capturedAt": "Fångad {date}",
@@ -253,7 +265,12 @@
     "presetInOneHour": "1 timme",
     "presetTomorrow": "Imorgon",
     "presetNextWeek": "Nästa vecka",
-    "custom": "Anpassad..."
+    "custom": "Anpassad...",
+    "archive": "Arkivera",
+    "panelEmpty": "Inga kommande påminnelser.",
+    "panelPast": "Tidigare",
+    "panelUpcoming": "Kommande",
+    "taskFallback": "Uppgift"
   },
   "insights": {
     "captureActivity": "Fånga aktivitet",
@@ -295,7 +312,9 @@
       "recordVoiceMemo2": "Spela in röstmemo",
       "alreadyCaptured": "Redan inspelat: “",
       "rdquo": "rdquo;",
-      "captureAnyway": "Spela in ändå"
+      "captureAnyway": "Spela in ändå",
+      "focusShortcut": "Fokusera insamlingsfält",
+      "q": "Q"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Välj mapp",
@@ -416,7 +435,11 @@
       "backToPresets": "Tillbaka till förinställningar",
       "time": "Tid",
       "noteOptional": "Anteckning (valfritt)",
-      "whyAreYouSettingThisReminder": "Varför ställer du in denna påminnelse?"
+      "whyAreYouSettingThisReminder": "Varför ställer du in denna påminnelse?",
+      "deleteReminder": "Radera påminnelse",
+      "editReminder": "Redigera påminnelse",
+      "save": "Spara",
+      "set": "Ange"
     },
     "componentsSnoozeSnoozePicker": {
       "snooze": "Snooza",
@@ -461,5 +484,37 @@
     "toasts": {
       "inboxRefreshed": "Inkorgen uppdaterad"
     }
+  },
+  "convert": {
+    "addEvent": "Lägg till händelse",
+    "addTask": "Lägg till uppgift",
+    "allDay": "Heldag",
+    "binaryOnlyNote": "Filer kan bara bli en anteckning",
+    "chooseType": "Konvertera till",
+    "create": "Skapa",
+    "date": "Datum",
+    "dueDate": "Förfallodatum",
+    "dueTime": "Förfallotid",
+    "end": "Slut",
+    "event": "Händelse",
+    "failed": "Kunde inte konvertera: {error}",
+    "inboxProject": "Inkorg",
+    "location": "Plats",
+    "note": "Anteckning",
+    "priority": "Prioritet",
+    "priorityHigh": "Hög",
+    "priorityLow": "Låg",
+    "priorityMedium": "Medel",
+    "priorityNone": "Ingen",
+    "priorityUrgent": "Brådskande",
+    "project": "Projekt",
+    "remindAt": "Påminn mig kl.",
+    "reminder": "Påminnelse",
+    "setReminder": "Ange påminnelse",
+    "start": "Start",
+    "success": "Konverterad till {target}",
+    "task": "Uppgift",
+    "time": "Tid",
+    "title": "Konvertera"
   }
 }

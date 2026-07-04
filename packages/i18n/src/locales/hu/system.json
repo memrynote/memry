@@ -36,7 +36,8 @@
       "journal": "Napló emlékeztető",
       "highlight": "Emlékeztető kiemelése",
       "fallback": "Emlékeztető esedékes",
-      "default": "Emlékeztető"
+      "default": "Emlékeztető",
+      "task": "Feladat-emlékeztető"
     }
   },
   "error": {

@@ -27,7 +27,9 @@
     "imported-event": "Importert hendelse",
     "task": "Oppgave",
     "reminder": "Påminnelse",
-    "snooze": "Slumre"
+    "snooze": "Slumre",
+    "note": "Notat",
+    "note-date": "Datopåminnelse"
   },
   "state": {
     "loading-calendar": "Laster inn kalenderen …",
@@ -151,5 +153,34 @@
       "could-not-remove-due-date": "Kunne ikke fjerne forfallsdatoen",
       "could-not-open-note": "Kunne ikke åpne notatet"
     }
+  },
+  "connect-prompt": {
+    "aria": "Koble til Google Calendar",
+    "body": "Koble til Google-kontoen din for å gjøre mer med kalenderen:",
+    "bullets": {
+      "events": "Se Google-hendelsene dine ved siden av notater og oppgaver",
+      "schedule": "Planlegg oppgaver og notater i kalenderen",
+      "sync": "Opprett og rediger hendelser, synkronisert begge veier"
+    },
+    "continue": "Fortsett med Google",
+    "dismiss": "Avvis",
+    "error": "Kunne ikke koble til Google Calendar. Prøv igjen.",
+    "pill": "Koble til Google",
+    "title": "Fullfør tilkoblingen til Google Calendar"
+  },
+  "notePopover": {
+    "couldNotOpen": "Kunne ikke åpne notat",
+    "kind": "Notat",
+    "kindDateReminder": "Datopåminnelse",
+    "open": "Åpne notat"
+  },
+  "search": {
+    "close": "Lukk søk",
+    "no-results": "Ingen treff",
+    "open": "Søk i kalender",
+    "placeholder": "Søk i hendelser, oppgaver, påminnelser…"
+  },
+  "undo": {
+    "moveEvent": "Flytt hendelse"
   }
 }

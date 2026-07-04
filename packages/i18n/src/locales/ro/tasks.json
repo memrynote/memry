@@ -33,7 +33,8 @@
     "repeat": "Repetați",
     "createAnother": "Creați altul",
     "delete": "Ștergeți sarcina",
-    "created": "S-a creat {date}"
+    "created": "S-a creat {date}",
+    "reminder": "Memento"
   },
   "filters": {
     "filter": "Filtru",
@@ -62,7 +63,16 @@
     "noNotesAvailable": "Nu există note disponibile",
     "noLinkedNotes": "Nu există încă note legate",
     "removeLinkTo": "Eliminați linkul către {title}",
-    "removeLinkFallback": "notă"
+    "removeLinkFallback": "notă",
+    "addRelatedItem": "Adaugă element asociat",
+    "noMatchingRelated": "Niciun element care se potrivește",
+    "noRelatedAvailable": "Niciun element disponibil",
+    "noRelatedItems": "Niciun element asociat încă",
+    "related": "Asociate",
+    "relatedItemFallback": "element",
+    "removeRelatedItem": "Elimină elementul asociat {title}",
+    "resize": "Redimensionează panoul",
+    "searchRelated": "Caută asociate…"
   },
   "kanban": {
     "board": "Placă Kanban"
@@ -174,7 +184,8 @@
     "componentsTasksDatePickerContent": {
       "removeDate": "Eliminați data",
       "clearTime": "Timp clar",
-      "addTime": "Adăugați timp"
+      "addTime": "Adăugați timp",
+      "time": "Ora"
     },
     "componentsTasksDeleteProjectDialog": {
       "delete": "Șterge \"",
@@ -612,6 +623,20 @@
       "failedToLoadTaskPreferences": "Nu s-au încărcat preferințele sarcinilor",
       "failedToUpdateTaskPreferences": "Nu s-au actualizat preferințele sarcinilor",
       "failedToLoadLinkedTasks": "Nu s-au încărcat sarcinile conectate"
+    }
+  },
+  "reminders": {
+    "hasReminders": "Are mementouri",
+    "setReminder": "Setează memento",
+    "summary": "Memento: {date}",
+    "summaryWithMore": "Memento: {date} (+încă {count})",
+    "toast": {
+      "deleteFailed": "Ștergerea mementoului a eșuat",
+      "deleted": "Memento șters",
+      "set": "Memento setat",
+      "setFailed": "Setarea mementoului a eșuat",
+      "updateFailed": "Actualizarea mementoului a eșuat",
+      "updated": "Memento actualizat"
     }
   }
 }

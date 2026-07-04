@@ -33,7 +33,8 @@
     "repeat": "Opakovať",
     "createAnother": "Vytvoriť ďalšiu",
     "delete": "Odstrániť úlohu",
-    "created": "Vytvorené {date}"
+    "created": "Vytvorené {date}",
+    "reminder": "Pripomienka"
   },
   "filters": {
     "filter": "Filter",
@@ -62,7 +63,16 @@
     "noNotesAvailable": "Žiadne dostupné poznámky",
     "noLinkedNotes": "Ešte žiadne prepojené poznámky",
     "removeLinkTo": "Odstrániť odkaz na {title}",
-    "removeLinkFallback": "poznámka"
+    "removeLinkFallback": "poznámka",
+    "addRelatedItem": "Pridať súvisiacu položku",
+    "noMatchingRelated": "Žiadne zodpovedajúce položky",
+    "noRelatedAvailable": "Žiadne dostupné položky",
+    "noRelatedItems": "Zatiaľ žiadne súvisiace položky",
+    "related": "Súvisiace",
+    "relatedItemFallback": "položka",
+    "removeRelatedItem": "Odstrániť súvisiacu položku {title}",
+    "resize": "Zmeniť veľkosť panela",
+    "searchRelated": "Hľadať súvisiace…"
   },
   "kanban": {
     "board": "Kanban tabuľa"
@@ -174,7 +184,8 @@
     "componentsTasksDatePickerContent": {
       "removeDate": "Odstrániť dátum",
       "clearTime": "Vymazať čas",
-      "addTime": "Pridať čas"
+      "addTime": "Pridať čas",
+      "time": "Čas"
     },
     "componentsTasksDeleteProjectDialog": {
       "delete": "Vymazať",
@@ -612,6 +623,20 @@
       "failedToLoadTaskPreferences": "Nepodarilo sa načítať nastavenia úlohy",
       "failedToUpdateTaskPreferences": "Nepodarilo sa aktualizovať nastavenia úlohy",
       "failedToLoadLinkedTasks": "Nepodarilo sa načítať prepojené úlohy"
+    }
+  },
+  "reminders": {
+    "hasReminders": "Má pripomienky",
+    "setReminder": "Nastaviť pripomienku",
+    "summary": "Pripomienka: {date}",
+    "summaryWithMore": "Pripomienka: {date} (+{count} ďalších)",
+    "toast": {
+      "deleteFailed": "Nepodarilo sa odstrániť pripomienku",
+      "deleted": "Pripomienka odstránená",
+      "set": "Pripomienka nastavená",
+      "setFailed": "Nepodarilo sa nastaviť pripomienku",
+      "updateFailed": "Nepodarilo sa aktualizovať pripomienku",
+      "updated": "Pripomienka aktualizovaná"
     }
   }
 }

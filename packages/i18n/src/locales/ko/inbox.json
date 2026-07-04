@@ -26,6 +26,10 @@
     "jobs": {
       "running": "{count, plural, one {# 백그라운드 작업 실행 중} other {# 백그라운드 작업 실행 중}}",
       "failed": "{count} 실패"
+    },
+    "density": {
+      "toComfortable": "여유 보기",
+      "toCompact": "간결 보기"
     }
   },
   "type": {
@@ -208,7 +212,15 @@
     "linkedNotesAria": "연결된 노트",
     "removeLinkTo": "{title}에 대한 링크 제거",
     "notePlaceholder": "메모를 작성하세요...",
-    "textPlaceholder": "캡처한 텍스트를 편집하세요..."
+    "textPlaceholder": "캡처한 텍스트를 편집하세요...",
+    "linkANote": "노트 연결",
+    "match": {
+      "likely": "가능성 있는 일치",
+      "strong": "강한 일치",
+      "weak": "약한 일치"
+    },
+    "resize": "패널 크기 조정",
+    "suggestedCount": "{count}개 제안됨"
   },
   "content": {
     "capturedAt": "캡처된 {date}",
@@ -253,7 +265,12 @@
     "presetInOneHour": "1시간",
     "presetTomorrow": "내일",
     "presetNextWeek": "다음 주",
-    "custom": "맞춤..."
+    "custom": "맞춤...",
+    "archive": "보관",
+    "panelEmpty": "예정된 리마인더가 없습니다.",
+    "panelPast": "지난 항목",
+    "panelUpcoming": "예정",
+    "taskFallback": "작업"
   },
   "insights": {
     "captureActivity": "활동 캡처",
@@ -295,7 +312,9 @@
       "recordVoiceMemo2": "음성 메모 녹음",
       "alreadyCaptured": "이미 캡처되었습니다: “",
       "rdquo": "rdquo;",
-      "captureAnyway": "어쨌든 캡처"
+      "captureAnyway": "어쨌든 캡처",
+      "focusShortcut": "수집 입력에 포커스",
+      "q": "Q"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "폴더 선택",
@@ -416,7 +435,11 @@
       "backToPresets": "사전 설정으로 돌아가기",
       "time": "시간",
       "noteOptional": "참고(선택사항)",
-      "whyAreYouSettingThisReminder": "이 알림을 설정하는 이유는 무엇인가요?"
+      "whyAreYouSettingThisReminder": "이 알림을 설정하는 이유는 무엇인가요?",
+      "deleteReminder": "리마인더 삭제",
+      "editReminder": "리마인더 편집",
+      "save": "저장",
+      "set": "설정"
     },
     "componentsSnoozeSnoozePicker": {
       "snooze": "스누즈",
@@ -461,5 +484,37 @@
     "toasts": {
       "inboxRefreshed": "받은 편지함을 새로 고쳤습니다."
     }
+  },
+  "convert": {
+    "addEvent": "일정 추가",
+    "addTask": "작업 추가",
+    "allDay": "종일",
+    "binaryOnlyNote": "파일은 노트로만 변환할 수 있습니다",
+    "chooseType": "변환 대상",
+    "create": "만들기",
+    "date": "날짜",
+    "dueDate": "마감일",
+    "dueTime": "마감 시간",
+    "end": "종료",
+    "event": "일정",
+    "failed": "변환할 수 없습니다: {error}",
+    "inboxProject": "받은함",
+    "location": "위치",
+    "note": "노트",
+    "priority": "우선순위",
+    "priorityHigh": "높음",
+    "priorityLow": "낮음",
+    "priorityMedium": "보통",
+    "priorityNone": "없음",
+    "priorityUrgent": "긴급",
+    "project": "프로젝트",
+    "remindAt": "알림 시각",
+    "reminder": "리마인더",
+    "setReminder": "리마인더 설정",
+    "start": "시작",
+    "success": "{target}(으)로 변환됨",
+    "task": "작업",
+    "time": "시간",
+    "title": "변환"
   }
 }

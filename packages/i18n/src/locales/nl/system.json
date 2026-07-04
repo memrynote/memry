@@ -36,7 +36,8 @@
       "journal": "Journaalherinnering",
       "highlight": "Markeer herinnering",
       "fallback": "Herinnering verschuldigd",
-      "default": "Herinnering"
+      "default": "Herinnering",
+      "task": "Taakherinnering"
     }
   },
   "error": {

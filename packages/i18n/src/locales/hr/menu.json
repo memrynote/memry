@@ -1,11 +1,15 @@
 {
   "app": {
-    "quit": "Odustati"
+    "quit": "Odustati",
+    "preferences": "Postavke…"
   },
   "file": {
     "label": "File",
     "newNote": "Nova bilješka",
-    "close": "Zatvori prozor"
+    "close": "Zatvori prozor",
+    "closeTab": "Zatvori karticu",
+    "exportPdf": "Izvezi u PDF…",
+    "openQuickly": "Brzo otvori…"
   },
   "navigation": {
     "back": "natrag",
@@ -18,12 +22,51 @@
     "cut": "rezati",
     "copy": "Kopiraj",
     "paste": "Zalijepite",
-    "selectAll": "Odaberi sve"
+    "selectAll": "Odaberi sve",
+    "find": "Pronađi",
+    "speech": "Govor"
   },
   "view": {
     "label": "pogled",
     "reload": "Ponovno učitaj",
     "toggleDevTools": "Uključi/isključi alate za razvojne programere",
-    "toggleFullscreen": "Uključi/isključi cijeli zaslon"
+    "toggleFullscreen": "Uključi/isključi cijeli zaslon",
+    "theme": "Tema",
+    "themeDark": "Tamna",
+    "themeLight": "Svijetla",
+    "themeSystem": "Sustav",
+    "themeWhite": "Papir",
+    "toggleDayPanel": "Uključi/isključi ploču dana",
+    "toggleSidebar": "Uključi/isključi bočnu traku"
+  },
+  "format": {
+    "body": "Tijelo teksta",
+    "bold": "Podebljano",
+    "code": "Kod",
+    "heading1": "Naslov 1",
+    "heading2": "Naslov 2",
+    "heading3": "Naslov 3",
+    "highlight": "Istakni",
+    "italic": "Kurziv",
+    "label": "Oblikovanje",
+    "strikethrough": "Precrtano"
+  },
+  "help": {
+    "about": "O aplikaciji Memrynote",
+    "documentation": "Dokumentacija",
+    "label": "Pomoć",
+    "shortcuts": "Tipkovnički prečaci"
+  },
+  "insert": {
+    "attachment": "Umetni privitak…",
+    "bulletList": "Popis s grafičkim oznakama",
+    "codeBlock": "Blok koda",
+    "label": "Umetni",
+    "numberedList": "Numerirani popis",
+    "table": "Tablica",
+    "taskList": "Popis zadataka"
+  },
+  "window": {
+    "label": "Prozor"
   }
 }

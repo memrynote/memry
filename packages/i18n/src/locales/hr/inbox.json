@@ -26,6 +26,10 @@
     "jobs": {
       "running": "{count, plural, one {# pozadinski posao se izvodi} other {# pozadinski poslovi se izvode}}",
       "failed": "{count} nije uspio"
+    },
+    "density": {
+      "toComfortable": "Udoban prikaz",
+      "toCompact": "Kompaktan prikaz"
     }
   },
   "type": {
@@ -208,7 +212,15 @@
     "linkedNotesAria": "Povezane bilješke",
     "removeLinkTo": "Ukloni vezu na {title}",
     "notePlaceholder": "Napišite svoju bilješku...",
-    "textPlaceholder": "Uredite svoj snimljeni tekst..."
+    "textPlaceholder": "Uredite svoj snimljeni tekst...",
+    "linkANote": "Poveži bilješku",
+    "match": {
+      "likely": "Vjerojatno podudaranje",
+      "strong": "Snažno podudaranje",
+      "weak": "Slabo podudaranje"
+    },
+    "resize": "Promijeni veličinu ploče",
+    "suggestedCount": "{count} predloženo"
   },
   "content": {
     "capturedAt": "Uhvaćen {date}",
@@ -253,7 +265,12 @@
     "presetInOneHour": "1 sat",
     "presetTomorrow": "Sutra",
     "presetNextWeek": "Sljedeći tjedan",
-    "custom": "Prilagođeno..."
+    "custom": "Prilagođeno...",
+    "archive": "Arhiviraj",
+    "panelEmpty": "Nema nadolazećih podsjetnika.",
+    "panelPast": "Prošlo",
+    "panelUpcoming": "Nadolazeće",
+    "taskFallback": "Zadatak"
   },
   "insights": {
     "captureActivity": "Snimi aktivnost",
@@ -295,7 +312,9 @@
       "recordVoiceMemo2": "Snimite glasovni zapis",
       "alreadyCaptured": "Već snimljeno: “",
       "rdquo": "rdquo;",
-      "captureAnyway": "Svejedno uhvati"
+      "captureAnyway": "Svejedno uhvati",
+      "focusShortcut": "Fokusiraj polje za snimanje",
+      "q": "Q"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Odaberite mapu",
@@ -416,7 +435,11 @@
       "backToPresets": "Povratak na unaprijed postavljene postavke",
       "time": "Vrijeme",
       "noteOptional": "Napomena (nije obavezno)",
-      "whyAreYouSettingThisReminder": "Zašto postavljate ovaj podsjetnik?"
+      "whyAreYouSettingThisReminder": "Zašto postavljate ovaj podsjetnik?",
+      "deleteReminder": "Izbriši podsjetnik",
+      "editReminder": "Uredi podsjetnik",
+      "save": "Spremi",
+      "set": "Postavi"
     },
     "componentsSnoozeSnoozePicker": {
       "snooze": "Odgoditi",
@@ -461,5 +484,37 @@
     "toasts": {
       "inboxRefreshed": "Inbox osvježen"
     }
+  },
+  "convert": {
+    "addEvent": "Dodaj događaj",
+    "addTask": "Dodaj zadatak",
+    "allDay": "Cijeli dan",
+    "binaryOnlyNote": "Datoteke mogu postati samo bilješka",
+    "chooseType": "Pretvori u",
+    "create": "Stvori",
+    "date": "Datum",
+    "dueDate": "Rok",
+    "dueTime": "Vrijeme roka",
+    "end": "Kraj",
+    "event": "Događaj",
+    "failed": "Pretvaranje nije uspjelo: {error}",
+    "inboxProject": "Pristigla pošta",
+    "location": "Lokacija",
+    "note": "Bilješka",
+    "priority": "Prioritet",
+    "priorityHigh": "Visok",
+    "priorityLow": "Nizak",
+    "priorityMedium": "Srednji",
+    "priorityNone": "Nijedan",
+    "priorityUrgent": "Hitno",
+    "project": "Projekt",
+    "remindAt": "Podsjeti me u",
+    "reminder": "Podsjetnik",
+    "setReminder": "Postavi podsjetnik",
+    "start": "Početak",
+    "success": "Pretvoreno u {target}",
+    "task": "Zadatak",
+    "time": "Vrijeme",
+    "title": "Pretvori"
   }
 }

@@ -33,7 +33,8 @@
     "repeat": "重复",
     "createAnother": "创建另一个",
     "delete": "删除任务",
-    "created": "创建于 {date}"
+    "created": "创建于 {date}",
+    "reminder": "提醒"
   },
   "filters": {
     "filter": "筛选",
@@ -62,7 +63,16 @@
     "noNotesAvailable": "没有可用笔记",
     "noLinkedNotes": "尚无关联笔记",
     "removeLinkTo": "移除与 {title} 的链接",
-    "removeLinkFallback": "笔记"
+    "removeLinkFallback": "笔记",
+    "addRelatedItem": "添加相关项目",
+    "noMatchingRelated": "没有匹配的项目",
+    "noRelatedAvailable": "没有可用的项目",
+    "noRelatedItems": "还没有相关项目",
+    "related": "相关",
+    "relatedItemFallback": "项目",
+    "removeRelatedItem": "移除相关项目 {title}",
+    "resize": "调整面板大小",
+    "searchRelated": "搜索相关…"
   },
   "kanban": {
     "board": "看板"
@@ -174,7 +184,8 @@
     "componentsTasksDatePickerContent": {
       "removeDate": "移除日期",
       "clearTime": "清除时间",
-      "addTime": "添加时间"
+      "addTime": "添加时间",
+      "time": "时间"
     },
     "componentsTasksDeleteProjectDialog": {
       "delete": "删除",
@@ -612,6 +623,20 @@
       "failedToLoadTaskPreferences": "未能加载任务偏好",
       "failedToUpdateTaskPreferences": "未能更新任务偏好",
       "failedToLoadLinkedTasks": "未能加载关联任务"
+    }
+  },
+  "reminders": {
+    "hasReminders": "有提醒",
+    "setReminder": "设置提醒",
+    "summary": "提醒：{date}",
+    "summaryWithMore": "提醒：{date}（还有 {count} 个）",
+    "toast": {
+      "deleteFailed": "删除提醒失败",
+      "deleted": "提醒已删除",
+      "set": "已设置提醒",
+      "setFailed": "设置提醒失败",
+      "updateFailed": "更新提醒失败",
+      "updated": "提醒已更新"
     }
   }
 }

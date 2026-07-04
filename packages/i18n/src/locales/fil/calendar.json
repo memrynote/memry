@@ -27,7 +27,9 @@
     "imported-event": "Na-import na kaganapan",
     "task": "Gawain",
     "reminder": "Paalala",
-    "snooze": "I-snooze"
+    "snooze": "I-snooze",
+    "note": "Tala",
+    "note-date": "Paalala sa petsa"
   },
   "state": {
     "loading-calendar": "Nilo-load ang kalendaryo…",
@@ -151,5 +153,34 @@
       "could-not-remove-due-date": "Hindi maalis ang takdang petsa",
       "could-not-open-note": "Hindi mabuksan ang tala"
     }
+  },
+  "connect-prompt": {
+    "aria": "Ikonekta ang Google Calendar",
+    "body": "Ikonekta ang iyong Google account para mas mapakinabangan ang iyong kalendaryo:",
+    "bullets": {
+      "events": "Makita ang iyong mga kaganapan sa Google katabi ng mga tala at gawain",
+      "schedule": "Mag-iskedyul ng mga gawain at tala sa iyong kalendaryo",
+      "sync": "Lumikha at mag-edit ng mga kaganapan, naka-sync sa dalawang direksyon"
+    },
+    "continue": "Magpatuloy gamit ang Google",
+    "dismiss": "I-dismiss",
+    "error": "Hindi maikonekta ang Google Calendar. Subukan muli.",
+    "pill": "Ikonekta ang Google",
+    "title": "Tapusin ang pagkonekta sa Google Calendar"
+  },
+  "notePopover": {
+    "couldNotOpen": "Hindi mabuksan ang tala",
+    "kind": "Tala",
+    "kindDateReminder": "Paalala sa petsa",
+    "open": "Buksan ang tala"
+  },
+  "search": {
+    "close": "Isara ang paghahanap",
+    "no-results": "Walang tugma",
+    "open": "Maghanap sa kalendaryo",
+    "placeholder": "Maghanap ng kaganapan, gawain, paalala…"
+  },
+  "undo": {
+    "moveEvent": "Ilipat ang kaganapan"
   }
 }

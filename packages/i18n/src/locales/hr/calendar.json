@@ -27,7 +27,9 @@
     "imported-event": "Uvezeni događaj",
     "task": "zadatak",
     "reminder": "Podsjetnik",
-    "snooze": "Odgoditi"
+    "snooze": "Odgoditi",
+    "note": "Bilješka",
+    "note-date": "Podsjetnik na datum"
   },
   "state": {
     "loading-calendar": "Učitavanje kalendara…",
@@ -151,5 +153,34 @@
       "could-not-remove-due-date": "Nije moguće ukloniti rok",
       "could-not-open-note": "Nije moguće otvoriti bilješku"
     }
+  },
+  "connect-prompt": {
+    "aria": "Poveži Google Calendar",
+    "body": "Povežite svoj Google račun da učinite više sa svojim kalendarom:",
+    "bullets": {
+      "events": "Vidite Google događaje uz bilješke i zadatke",
+      "schedule": "Rasporedite zadatke i bilješke u kalendaru",
+      "sync": "Stvarajte i uređujte događaje, sinkronizirane u oba smjera"
+    },
+    "continue": "Nastavi s Googleom",
+    "dismiss": "Odbaci",
+    "error": "Nije moguće povezati Google Calendar. Pokušajte ponovno.",
+    "pill": "Poveži Google",
+    "title": "Dovršite povezivanje s Google Calendar"
+  },
+  "notePopover": {
+    "couldNotOpen": "Nije moguće otvoriti bilješku",
+    "kind": "Bilješka",
+    "kindDateReminder": "Podsjetnik na datum",
+    "open": "Otvori bilješku"
+  },
+  "search": {
+    "close": "Zatvori pretragu",
+    "no-results": "Nema podudaranja",
+    "open": "Pretraži kalendar",
+    "placeholder": "Pretraži događaje, zadatke, podsjetnike…"
+  },
+  "undo": {
+    "moveEvent": "Premjesti događaj"
   }
 }

@@ -42,7 +42,9 @@
       "setIcon": "Simgeyi Ayarla",
       "removeIcon": "Simgeyi Kaldır",
       "deleteSelectedNotes": "Sil {count} Notlar",
-      "deleteSelectedItems": "Sil {count} öğeler"
+      "deleteSelectedItems": "Sil {count} öğeler",
+      "bookmark": "Yer imi ekle",
+      "removeFromBookmarks": "Yer imlerinden Kaldır"
     },
     "deleteDialog": {
       "noteTitle": "Notu Sil",
@@ -111,7 +113,11 @@
       "aria": "Önerileri not edin",
       "loading": "Notlar yükleniyor...",
       "empty": "Hiçbir not bulunamadı",
-      "create": "Yeni not oluştur"
+      "create": "Yeni not oluştur",
+      "embed": "Göm",
+      "embedAria": "{title} göm",
+      "wikiLink": "Wiki bağlantısı",
+      "wikiLinkAria": "{title} wiki bağlantısı"
     },
     "tags": {
       "aria": "Etiket önerileri",
@@ -133,6 +139,15 @@
       "searchPlaceholder": "Ara",
       "noIcons": "Hiçbir simge bulunamadı",
       "clearSearch": "Aramayı temizle"
+    },
+    "mention": {
+      "aria": "Tarih ve not önerileri",
+      "date": "Tarih",
+      "dateHint": "Bir tarih yazmaya devam edin…",
+      "empty": "Not bulunamadı",
+      "loading": "Notlar yükleniyor...",
+      "remindMe": "Bana hatırlat",
+      "showMore": "Daha fazla göster"
     }
   },
   "outline": {
@@ -174,7 +189,8 @@
     "createTag": "Etiket oluştur: \"{tag}\"",
     "chooseColor": "Renk seçin:",
     "preview": "Önizleme:",
-    "colorAria": "Seç {color} renk"
+    "colorAria": "Seç {color} renk",
+    "customColor": "Özel renk"
   },
   "properties": {
     "title": "Özellikler",
@@ -205,7 +221,9 @@
       "status": "Durum",
       "select": "Seç",
       "multiselect": "Çoklu seçim"
-    }
+    },
+    "showOnCalendar": "Takvimde göster",
+    "showingOnCalendar": "Takvimde gösteriliyor"
   },
   "templateSelector": {
     "title": "Kanvasınızı Seçin",
@@ -295,7 +313,8 @@
   },
   "phaseF": {
     "componentsFolderViewColumnHeader": {
-      "dragToReorderColumn": "Sütunu yeniden sıralamak için sürükleyin"
+      "dragToReorderColumn": "Sütunu yeniden sıralamak için sürükleyin",
+      "editColumnName": "Sütun adını düzenle"
     },
     "componentsFolderViewColumnSelector": {
       "properties": "Özellikler",
@@ -311,7 +330,10 @@
       "delete": "Sil",
       "none": "Yok",
       "edit": "Düzenle",
-      "delete2": "Sil"
+      "delete2": "Sil",
+      "columnBorders": "Sütun kenarlıkları",
+      "display": "Görünüm",
+      "showSummaries": "Özetleri göster"
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Filtre",
@@ -329,17 +351,21 @@
       "of": ":",
       "addCondition": "Koşul ekle",
       "addFilter": "Filtre ekle",
-      "addGroup": "Grup ekle"
+      "addGroup": "Grup ekle",
+      "removeGroup": "Grubu kaldır"
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "Yerleşik",
       "properties": "Özellikler",
       "placeholderProperty": "Özellik",
       "placeholderOperator": "Operatör",
-      "placeholderValue": "Değer"
+      "placeholderValue": "Değer",
+      "removeFilter": "Filtreyi kaldır"
     },
     "componentsFolderViewFolderTableView": {
-      "notesTable": "Not tablosu"
+      "notesTable": "Not tablosu",
+      "selectAll": "Tüm notları seç",
+      "selectRow": "Notu seç"
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "Notlarda ara...",
@@ -371,7 +397,9 @@
     },
     "componentsFolderViewGroupedTable": {
       "groupedNotesTable": "Gruplandırılmış notlar tablosu",
-      "more": "daha fazla"
+      "more": "daha fazla",
+      "selectAll": "Tüm notları seç",
+      "selectRow": "Notu seç"
     },
     "componentsFolderViewMoveToFolderDialog": {
       "searchFolders": "Klasörleri ara...",
@@ -399,7 +427,8 @@
     },
     "componentsFolderViewSortableColumnHeader": {
       "dragToReorderColumn": "Sütunu yeniden sıralamak için sürükleyin",
-      "resizeColumn": "Sütunu yeniden boyutlandır"
+      "resizeColumn": "Sütunu yeniden boyutlandır",
+      "editColumnName": "Sütun adını düzenle"
     },
     "componentsFolderViewViewSwitcher": {
       "default": "varsayılan",
@@ -424,7 +453,16 @@
       "deleteView": "Görünümü Sil",
       "areYouSureYouWantToDelete": "Silmek istediğinizden emin misiniz: \"",
       "thisActionCannotBeUndone": "Bu eylem geri alınamaz.",
-      "cancel3": "İptal"
+      "cancel3": "İptal",
+      "createView": "Görünüm oluştur",
+      "gallery": "Galeri",
+      "layout": "Düzen",
+      "list": "Liste",
+      "name": "Ad",
+      "newView": "Yeni görünüm",
+      "save": "Kaydet",
+      "table": "Tablo",
+      "viewActions": "Görünüm işlemleri"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "PDF yüklenemedi: ",
@@ -607,6 +645,15 @@
       "startYourCollection": "Koleksiyonunuzu Başlatın",
       "templatesHelpYouCreateNotesWithConsistentStructure": "Şablonlar tutarlı yapıya sahip notlar oluşturmanıza yardımcı olur.",
       "createTemplate": "Şablon Oluştur"
+    },
+    "componentsFolderViewSortSelector": {
+      "builtIn": "Yerleşik",
+      "clearSort": "Sıralamayı temizle",
+      "noSortablePropertiesFound": "Sıralanabilir özellik bulunamadı",
+      "properties": "Özellikler",
+      "searchProperties": "Özelliklerde ara...",
+      "sort": "Sırala",
+      "sortDirection": "Sıralama yönü"
     }
   },
   "phaseI": {
@@ -654,5 +701,47 @@
       "cannotRemoveTagThisNoteWasDeleted": "Etiket kaldırılamıyor: bu not silindi",
       "cannotChangeLocalOnlyThisNoteWasDeleted": "Yalnızca yerel ayarı değiştirilemiyor: bu not silindi"
     }
+  },
+  "bulkActions": {
+    "addTag": "Etiket ekle",
+    "clearAria": "Seçimi temizle",
+    "copiedLinks": "{count, plural, one {# bağlantı kopyalandı} other {# bağlantı kopyalandı}}",
+    "copyLinks": "Bağlantıları kopyala",
+    "delete": "Sil",
+    "export": "Dışa aktar",
+    "move": "Taşı",
+    "selected": "seçildi",
+    "tagNamePlaceholder": "Etiket adı",
+    "toolbarAria": "Toplu işlemler"
+  },
+  "comments": {
+    "attachAria": "Dosya ekle",
+    "badgeAria": "{count, plural, one {# yorum} other {# yorum}}",
+    "cancel": "İptal",
+    "commentPlaceholder": "Bir yorum ekle...",
+    "createdTooltip": "{date} tarihinde {time} saatinde oluşturuldu",
+    "delete": "Yorumu sil",
+    "edit": "Yorumu düzenle",
+    "kind": {
+      "addition": "Ekleme",
+      "comment": "Yorum",
+      "deletion": "Silme",
+      "substitution": "Değiştirme"
+    },
+    "mentionAria": "Bir kişiden, sayfadan veya tarihten bahset",
+    "railAria": "Yorumlar",
+    "replyPlaceholder": "Yanıtla...",
+    "resolve": "Çöz",
+    "sendAria": "Yorumu gönder",
+    "toolbarComment": "Yorum"
+  },
+  "dateMention": {
+    "clear": "Temizle",
+    "dateFormat": "Tarih biçimi",
+    "dateInput": "Tarih",
+    "includeTime": "Saati dahil et",
+    "remind": "Hatırlat",
+    "time": "Saat",
+    "timeFormat": "Saat biçimi"
   }
 }

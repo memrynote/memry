@@ -26,6 +26,10 @@
     "jobs": {
       "running": "{count, plural, one {# bakgrunnsjobb kjører} other {# bakgrunnsjobber kjører}}",
       "failed": "{count} mislyktes"
+    },
+    "density": {
+      "toComfortable": "Romslig visning",
+      "toCompact": "Kompakt visning"
     }
   },
   "type": {
@@ -208,7 +212,15 @@
     "linkedNotesAria": "Koblede notater",
     "removeLinkTo": "Fjern lenken til {title}",
     "notePlaceholder": "Skriv notatet ditt...",
-    "textPlaceholder": "Rediger teksten du har tatt..."
+    "textPlaceholder": "Rediger teksten du har tatt...",
+    "linkANote": "Koble til et notat",
+    "match": {
+      "likely": "Sannsynlig treff",
+      "strong": "Sterkt treff",
+      "weak": "Svakt treff"
+    },
+    "resize": "Endre størrelse på panel",
+    "suggestedCount": "{count} foreslått"
   },
   "content": {
     "capturedAt": "Fanget {date}",
@@ -253,7 +265,12 @@
     "presetInOneHour": "1 time",
     "presetTomorrow": "I morgen",
     "presetNextWeek": "Neste uke",
-    "custom": "Egendefinert..."
+    "custom": "Egendefinert...",
+    "archive": "Arkiver",
+    "panelEmpty": "Ingen kommende påminnelser.",
+    "panelPast": "Tidligere",
+    "panelUpcoming": "Kommende",
+    "taskFallback": "Oppgave"
   },
   "insights": {
     "captureActivity": "Ta opp aktivitet",
@@ -295,7 +312,9 @@
       "recordVoiceMemo2": "Ta opp talememo",
       "alreadyCaptured": "Allerede fanget: \"",
       "rdquo": "rdquo;",
-      "captureAnyway": "Fang uansett"
+      "captureAnyway": "Fang uansett",
+      "focusShortcut": "Fokuser fangstfelt",
+      "q": "Q"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Velg mappe",
@@ -416,7 +435,11 @@
       "backToPresets": "Tilbake til forhåndsinnstillinger",
       "time": "Tid",
       "noteOptional": "Merknad (valgfritt)",
-      "whyAreYouSettingThisReminder": "Hvorfor angir du denne påminnelsen?"
+      "whyAreYouSettingThisReminder": "Hvorfor angir du denne påminnelsen?",
+      "deleteReminder": "Slett påminnelse",
+      "editReminder": "Rediger påminnelse",
+      "save": "Lagre",
+      "set": "Angi"
     },
     "componentsSnoozeSnoozePicker": {
       "snooze": "Slumre",
@@ -461,5 +484,37 @@
     "toasts": {
       "inboxRefreshed": "Innboksen er oppdatert"
     }
+  },
+  "convert": {
+    "addEvent": "Legg til hendelse",
+    "addTask": "Legg til oppgave",
+    "allDay": "Hele dagen",
+    "binaryOnlyNote": "Filer kan bare bli et notat",
+    "chooseType": "Konverter til",
+    "create": "Opprett",
+    "date": "Dato",
+    "dueDate": "Forfallsdato",
+    "dueTime": "Forfallstid",
+    "end": "Slutt",
+    "event": "Hendelse",
+    "failed": "Kunne ikke konvertere: {error}",
+    "inboxProject": "Innboks",
+    "location": "Sted",
+    "note": "Notat",
+    "priority": "Prioritet",
+    "priorityHigh": "Høy",
+    "priorityLow": "Lav",
+    "priorityMedium": "Middels",
+    "priorityNone": "Ingen",
+    "priorityUrgent": "Haster",
+    "project": "Prosjekt",
+    "remindAt": "Minn meg kl.",
+    "reminder": "Påminnelse",
+    "setReminder": "Angi påminnelse",
+    "start": "Start",
+    "success": "Konvertert til {target}",
+    "task": "Oppgave",
+    "time": "Tid",
+    "title": "Konverter"
   }
 }

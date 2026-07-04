@@ -45,7 +45,10 @@
   "count": {
     "note": "{count, plural, one {# 筆記} other {# 筆記(複數)}}",
     "task": "{count, plural, one {# 任務} other {# 任務(複數)}}",
-    "itemDelete": "{count, plural, one {刪除 # 項目} other {刪除 # 項目(複數)}}"
+    "itemDelete": "{count, plural, one {刪除 # 項目} other {刪除 # 項目(複數)}}",
+    "event": "{count, plural, other {# 個活動}}",
+    "journal": "{count, plural, other {# 篇日誌}}",
+    "reminder": "{count, plural, other {# 個提醒}}"
   },
   "toast": {
     "actionFailed": "操作失敗",
@@ -83,7 +86,23 @@
       "newNoteN": "新筆記 (⌘N)",
       "new": "新增",
       "syncDisabled": "同步已停用",
-      "syncDisabled2": "同步已停用"
+      "syncDisabled2": "同步已停用",
+      "feedbackButton": "傳送意見回饋",
+      "feedbackDescription": "告訴我們哪些運作順利、哪些故障，或您希望 Memry 能做到什麼。我們會閱讀每一則訊息。",
+      "feedbackEmailHint": "若您希望收到回覆，請留下電子郵件。",
+      "feedbackError": "無法傳送意見回饋。請再試一次。",
+      "feedbackPlaceholder": "您的意見回饋…",
+      "feedbackSend": "傳送",
+      "feedbackSending": "傳送中…",
+      "feedbackSuccess": "感謝您的意見回饋！",
+      "feedbackTitle": "傳送意見回饋",
+      "newItemMenu": "建立新項目…",
+      "updateAvailable": "更新",
+      "updateDownloading": "下載中…",
+      "updateDownloadingPercent": "下載中 {percent}%",
+      "updateInstallingSubtitle": "Memrynote 將自動重新啟動。",
+      "updateInstallingTitle": "正在安裝更新",
+      "updateRestart": "重新啟動"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "調整每日面板大小",
@@ -462,7 +481,8 @@
       "day": "日",
       "agent": "Agent",
       "pendingApproval": "{count, plural, one {# 待批准} other {# 待批准}}",
-      "inProgress": "Agent 正在轉彎"
+      "inProgress": "Agent 正在轉彎",
+      "close": "關閉代理"
     },
     "errors": {
       "loadConversations": "無法載入代理對話",
@@ -481,5 +501,142 @@
     "sources": {
       "used": "已使用 {count} 個來源"
     }
+  },
+  "home": {
+    "addWidget": "新增小工具",
+    "board": {
+      "defaultName": "首頁",
+      "deleteAria": "刪除版面",
+      "label": "首頁版面",
+      "newAria": "新增看板",
+      "newName": "新增看板"
+    },
+    "disabled": {
+      "createNote": "建立筆記",
+      "hint": "沒有開啟的內容。開始寫一則筆記吧。"
+    },
+    "done": "完成",
+    "edit": "編輯",
+    "empty": {
+      "body": "小工具能將您的筆記、任務與書籤匯聚於一個寧靜的地方。",
+      "cta": "新增您的第一個小工具",
+      "title": "您的看板是空的"
+    },
+    "greeting": {
+      "afternoon": "午安",
+      "evening": "晚安",
+      "morning": "早安"
+    },
+    "header": {
+      "events": "{count, plural, other {# 個活動}}",
+      "tasksDue": "{count, plural, other {今天有 # 項任務到期}}"
+    },
+    "noBookmarksYet": "尚無書籤。",
+    "noEventsYet": "今天沒有活動。",
+    "noJournalEntriesYet": "尚無日誌項目。",
+    "noNotesYet": "尚無筆記。",
+    "noTasksYet": "尚無任務。",
+    "widget": {
+      "bookmarks": "書籤",
+      "calendar": "行事曆",
+      "calendarToday": "今天",
+      "configAria": "設定小工具",
+      "configure": "設定",
+      "dragAria": "拖曳小工具",
+      "duration": "{count} 分鐘",
+      "filter": {
+        "today": "今天到期",
+        "tomorrow": "明天",
+        "week": "本週"
+      },
+      "folder": "資料夾",
+      "folderEmpty": "尚無資料夾",
+      "folderNoSelection": "未選擇資料夾",
+      "folderPickPrompt": "選擇資料夾",
+      "folderViewSelect": "檢視",
+      "folderView_gallery": "圖庫",
+      "folderView_list": "清單",
+      "inbox": "收件匣",
+      "inboxAllTypes": "所有類型",
+      "inboxOlder": "{count, plural, other {# 個較舊}}",
+      "inboxOldest": "{count, plural, other {最舊 # 天}}",
+      "journal": "日誌",
+      "journalStreak": "{count, plural, other {連續 # 天}}",
+      "journalToday": "今天",
+      "journalYesterday": "昨天",
+      "loadError": "無法載入",
+      "menuAria": "小工具選項",
+      "next": "接下來：{title}",
+      "openCalendar": "開啟行事曆",
+      "openInbox": "開啟收件匣",
+      "recentMeta": "於 {time} 編輯",
+      "recentMetaWithFolder": "{folder} · 於 {time} 編輯",
+      "recentlyEdited": "最近編輯",
+      "remove": "移除",
+      "removeAria": "移除小工具",
+      "resize": "大小",
+      "resizeAria": "調整為 {{size}}",
+      "savedFilterDefault": "今天",
+      "savedFilterHint": "在任務頁面將篩選加上星號，即可在此使用",
+      "savedFilterLabel": "已儲存的篩選",
+      "startsIn": "{count, plural, other {# 分鐘後開始}}",
+      "tasks": "任務",
+      "unknown": "未知的小工具",
+      "untitled": "未命名"
+    }
+  },
+  "media": {
+    "video": "影片"
+  },
+  "onboarding": {
+    "agentChat": {
+      "body": "切換到「代理」分頁，向 Memrynote 的助理詢問您的保管庫。",
+      "title": "與 AI 代理聊天"
+    },
+    "collections": {
+      "body": "將筆記整理到資料夾、釘選書籤，並依標籤瀏覽——全都在這裡。",
+      "title": "收藏、書籤與標籤"
+    },
+    "dayPanel": {
+      "body": "側邊面板會在您閱讀任何內容時，於一旁保留行事曆與每日檢視。",
+      "title": "您的一天，就在工作旁邊"
+    },
+    "feedback": {
+      "body": "從這裡直接把意見回饋傳給團隊。",
+      "title": "告訴我們您的想法"
+    },
+    "nav": {
+      "body": "收件匣用於擷取、日誌用於每日筆記、行事曆用於時間軸、任務用於待辦事項，圖表則讓您看見一切如何連結。",
+      "title": "您的工作區"
+    },
+    "newNote": {
+      "body": "從這裡開始。您寫下的一切都會優先儲存於本機。",
+      "title": "建立您的第一則筆記"
+    },
+    "settings": {
+      "body": "從 12 款以上的應用程式匯入您的筆記——Obsidian、Notion、Apple Notes、Evernote 等等——並在設定中調整其他一切。",
+      "title": "設定與匯入"
+    },
+    "sync": {
+      "body": "開啟端對端加密同步，讓每部裝置保持一致。",
+      "title": "私密、加密的同步"
+    },
+    "welcome": {
+      "body": "您私密、離線優先的家。筆記採端對端加密——未加密時絕不離開您的裝置。",
+      "title": "歡迎使用 Memrynote"
+    }
+  },
+  "updatePrompt": {
+    "autoUpdateLabel": "自動下載並安裝更新",
+    "availableBody": "{version} 已可使用——您目前的版本為 {current}。要立即下載嗎？",
+    "availableTitle": "MemryNote 有新版本可用！",
+    "download": "下載",
+    "downloadedBody": "{version} 已下載完成。請重新啟動 MemryNote 以完成安裝。",
+    "downloadedTitle": "更新已準備好安裝",
+    "later": "稍後",
+    "releaseNotesLabel": "版本說明",
+    "remindLater": "稍後提醒我",
+    "restartNow": "立即重新啟動",
+    "skip": "略過此版本"
   }
 }

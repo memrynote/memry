@@ -26,6 +26,10 @@
     "jobs": {
       "running": "{count, plural, one {Travail en arrière-plan # en cours d'exécution} other {Travaux en arrière-plan # en cours d'exécution}}",
       "failed": "{count} a échoué"
+    },
+    "density": {
+      "toComfortable": "Vue confortable",
+      "toCompact": "Vue compacte"
     }
   },
   "type": {
@@ -208,7 +212,15 @@
     "linkedNotesAria": "Notes liées",
     "removeLinkTo": "Supprimer le lien vers {title}",
     "notePlaceholder": "Écrivez votre note...",
-    "textPlaceholder": "Modifiez votre texte capturé..."
+    "textPlaceholder": "Modifiez votre texte capturé...",
+    "linkANote": "Lier une note",
+    "match": {
+      "likely": "Correspondance probable",
+      "strong": "Correspondance forte",
+      "weak": "Correspondance faible"
+    },
+    "resize": "Redimensionner le panneau",
+    "suggestedCount": "{count} suggéré(s)"
   },
   "content": {
     "capturedAt": "{date} capturé",
@@ -253,7 +265,12 @@
     "presetInOneHour": "1 heure",
     "presetTomorrow": "Demain",
     "presetNextWeek": "La semaine prochaine",
-    "custom": "Personnalisé..."
+    "custom": "Personnalisé...",
+    "archive": "Archiver",
+    "panelEmpty": "Aucun rappel à venir.",
+    "panelPast": "Passés",
+    "panelUpcoming": "À venir",
+    "taskFallback": "Tâche"
   },
   "insights": {
     "captureActivity": "Activité de capture",
@@ -295,7 +312,9 @@
       "recordVoiceMemo2": "Enregistrer un mémo vocal",
       "alreadyCaptured": "Déjà capturé : «",
       "rdquo": "rdquo ;",
-      "captureAnyway": "Capturez quand même"
+      "captureAnyway": "Capturez quand même",
+      "focusShortcut": "Activer le champ de capture",
+      "q": "Q"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Choisir un dossier",
@@ -416,7 +435,11 @@
       "backToPresets": "Retour aux préréglages",
       "time": "Temps",
       "noteOptional": "Remarque (facultatif)",
-      "whyAreYouSettingThisReminder": "Pourquoi définissez-vous ce rappel ?"
+      "whyAreYouSettingThisReminder": "Pourquoi définissez-vous ce rappel ?",
+      "deleteReminder": "Supprimer le rappel",
+      "editReminder": "Modifier le rappel",
+      "save": "Enregistrer",
+      "set": "Définir"
     },
     "componentsSnoozeSnoozePicker": {
       "snooze": "Répéter",
@@ -461,5 +484,37 @@
     "toasts": {
       "inboxRefreshed": "Boîte de réception actualisée"
     }
+  },
+  "convert": {
+    "addEvent": "Ajouter un événement",
+    "addTask": "Ajouter une tâche",
+    "allDay": "Toute la journée",
+    "binaryOnlyNote": "Les fichiers ne peuvent devenir qu'une note",
+    "chooseType": "Convertir en",
+    "create": "Créer",
+    "date": "Date",
+    "dueDate": "Échéance",
+    "dueTime": "Heure d'échéance",
+    "end": "Fin",
+    "event": "Événement",
+    "failed": "Impossible de convertir : {error}",
+    "inboxProject": "Boîte de réception",
+    "location": "Lieu",
+    "note": "Note",
+    "priority": "Priorité",
+    "priorityHigh": "Haute",
+    "priorityLow": "Basse",
+    "priorityMedium": "Moyenne",
+    "priorityNone": "Aucune",
+    "priorityUrgent": "Urgente",
+    "project": "Projet",
+    "remindAt": "Me rappeler à",
+    "reminder": "Rappel",
+    "setReminder": "Définir un rappel",
+    "start": "Début",
+    "success": "Converti en {target}",
+    "task": "Tâche",
+    "time": "Heure",
+    "title": "Convertir"
   }
 }

@@ -1,11 +1,15 @@
 {
   "app": {
-    "quit": "종료"
+    "quit": "종료",
+    "preferences": "설정…"
   },
   "file": {
     "label": "파일",
     "newNote": "새 메모",
-    "close": "창 닫기"
+    "close": "창 닫기",
+    "closeTab": "탭 닫기",
+    "exportPdf": "PDF로 내보내기…",
+    "openQuickly": "빠른 열기…"
   },
   "navigation": {
     "back": "뒤로",
@@ -18,12 +22,51 @@
     "cut": "컷",
     "copy": "복사",
     "paste": "붙여넣기",
-    "selectAll": "모두 선택"
+    "selectAll": "모두 선택",
+    "find": "찾기",
+    "speech": "음성"
   },
   "view": {
     "label": "보기",
     "reload": "새로고침",
     "toggleDevTools": "개발자 도구 전환",
-    "toggleFullscreen": "전체 화면 전환"
+    "toggleFullscreen": "전체 화면 전환",
+    "theme": "테마",
+    "themeDark": "다크",
+    "themeLight": "라이트",
+    "themeSystem": "시스템",
+    "themeWhite": "페이퍼",
+    "toggleDayPanel": "데이 패널 전환",
+    "toggleSidebar": "사이드바 전환"
+  },
+  "format": {
+    "body": "본문",
+    "bold": "굵게",
+    "code": "코드",
+    "heading1": "제목 1",
+    "heading2": "제목 2",
+    "heading3": "제목 3",
+    "highlight": "하이라이트",
+    "italic": "기울임",
+    "label": "서식",
+    "strikethrough": "취소선"
+  },
+  "help": {
+    "about": "Memrynote 정보",
+    "documentation": "문서",
+    "label": "도움말",
+    "shortcuts": "키보드 단축키"
+  },
+  "insert": {
+    "attachment": "첨부 파일 삽입…",
+    "bulletList": "글머리 기호 목록",
+    "codeBlock": "코드 블록",
+    "label": "삽입",
+    "numberedList": "번호 매기기 목록",
+    "table": "표",
+    "taskList": "작업 목록"
+  },
+  "window": {
+    "label": "창"
   }
 }

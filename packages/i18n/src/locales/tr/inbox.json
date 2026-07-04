@@ -26,6 +26,10 @@
     "jobs": {
       "running": "{count, plural, one {# arka planda çalışan iş} other {# arka plan işi çalışıyor}}",
       "failed": "{count} başarısız oldu"
+    },
+    "density": {
+      "toComfortable": "Ferah görünüm",
+      "toCompact": "Sıkışık görünüm"
     }
   },
   "type": {
@@ -208,7 +212,15 @@
     "linkedNotesAria": "Bağlantılı notlar",
     "removeLinkTo": "Bağlantıyı kaldır {title}",
     "notePlaceholder": "Notunuzu yazın...",
-    "textPlaceholder": "Yakalanan metninizi düzenleyin..."
+    "textPlaceholder": "Yakalanan metninizi düzenleyin...",
+    "linkANote": "Bir not bağla",
+    "match": {
+      "likely": "Olası eşleşme",
+      "strong": "Güçlü eşleşme",
+      "weak": "Zayıf eşleşme"
+    },
+    "resize": "Paneli yeniden boyutlandır",
+    "suggestedCount": "{count} önerilen"
   },
   "content": {
     "capturedAt": "Yakalandı {date}",
@@ -253,7 +265,12 @@
     "presetInOneHour": "1 saat",
     "presetTomorrow": "Yarın",
     "presetNextWeek": "Gelecek hafta",
-    "custom": "Özel..."
+    "custom": "Özel...",
+    "archive": "Arşivle",
+    "panelEmpty": "Yaklaşan hatırlatıcı yok.",
+    "panelPast": "Geçmiş",
+    "panelUpcoming": "Yaklaşan",
+    "taskFallback": "Görev"
   },
   "insights": {
     "captureActivity": "Etkinliği Yakala",
@@ -295,7 +312,9 @@
       "recordVoiceMemo2": "Sesli not kaydet",
       "alreadyCaptured": "Zaten yakalandı: \"",
       "rdquo": "rdquo;",
-      "captureAnyway": "Yine de Yakala"
+      "captureAnyway": "Yine de Yakala",
+      "focusShortcut": "Yakalama girişine odaklan",
+      "q": "Q"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Klasör seç",
@@ -416,7 +435,11 @@
       "backToPresets": "Ön ayarlara geri dön",
       "time": "Zaman",
       "noteOptional": "Not (isteğe bağlı)",
-      "whyAreYouSettingThisReminder": "Bu hatırlatıcıyı neden ayarlıyorsunuz?"
+      "whyAreYouSettingThisReminder": "Bu hatırlatıcıyı neden ayarlıyorsunuz?",
+      "deleteReminder": "Hatırlatıcıyı sil",
+      "editReminder": "Hatırlatıcıyı düzenle",
+      "save": "Kaydet",
+      "set": "Ayarla"
     },
     "componentsSnoozeSnoozePicker": {
       "snooze": "Ertele",
@@ -461,5 +484,37 @@
     "toasts": {
       "inboxRefreshed": "Gelen kutusu yenilendi"
     }
+  },
+  "convert": {
+    "addEvent": "Etkinlik ekle",
+    "addTask": "Görev ekle",
+    "allDay": "Tüm gün",
+    "binaryOnlyNote": "Dosyalar yalnızca not olabilir",
+    "chooseType": "Şuna dönüştür",
+    "create": "Oluştur",
+    "date": "Tarih",
+    "dueDate": "Bitiş tarihi",
+    "dueTime": "Bitiş saati",
+    "end": "Bitiş",
+    "event": "Etkinlik",
+    "failed": "Dönüştürülemedi: {error}",
+    "inboxProject": "Gelen Kutusu",
+    "location": "Konum",
+    "note": "Not",
+    "priority": "Öncelik",
+    "priorityHigh": "Yüksek",
+    "priorityLow": "Düşük",
+    "priorityMedium": "Orta",
+    "priorityNone": "Yok",
+    "priorityUrgent": "Acil",
+    "project": "Proje",
+    "remindAt": "Şu saatte hatırlat",
+    "reminder": "Hatırlatıcı",
+    "setReminder": "Hatırlatıcı ayarla",
+    "start": "Başlangıç",
+    "success": "{target} olarak dönüştürüldü",
+    "task": "Görev",
+    "time": "Saat",
+    "title": "Dönüştür"
   }
 }

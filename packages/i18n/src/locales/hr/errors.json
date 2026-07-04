@@ -73,6 +73,7 @@
     "settingsNotInitialized": "Sinkronizacija postavki nije pokrenuta",
     "securityQuarantinePermanent": "Stavku sinkronizacije nije bilo moguće provjeriti i stavljena je u karantenu radi sigurnosti.",
     "securityQuarantineRetry": "Stavka sinkronizacije nije uspjela provjeru potpisa i pokušat će se ponovno.",
-    "certificatePinPaused": "Nije moguće provjeriti sigurnu vezu s poslužiteljem za sinkronizaciju. Sinkronizacija je pauzirana radi vaše zaštite."
+    "certificatePinPaused": "Nije moguće provjeriti sigurnu vezu s poslužiteljem za sinkronizaciju. Sinkronizacija je pauzirana radi vaše zaštite.",
+    "paymentRequired": "Za korištenje hostane šifrirane sinkronizacije potreban je plaćeni plan sinkronizacije."
   }
 }

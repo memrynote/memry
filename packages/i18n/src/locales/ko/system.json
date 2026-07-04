@@ -36,7 +36,8 @@
       "journal": "저널 알림",
       "highlight": "하이라이트 알림",
       "fallback": "알림 기한",
-      "default": "알림"
+      "default": "알림",
+      "task": "작업 리마인더"
     }
   },
   "error": {

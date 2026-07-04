@@ -42,7 +42,9 @@
       "setIcon": "Pictogram instellen",
       "removeIcon": "Pictogram verwijderen",
       "deleteSelectedNotes": "Verwijder {count}-notities",
-      "deleteSelectedItems": "Verwijder {count}-items"
+      "deleteSelectedItems": "Verwijder {count}-items",
+      "bookmark": "Bladwijzer",
+      "removeFromBookmarks": "Verwijderen uit bladwijzers"
     },
     "deleteDialog": {
       "noteTitle": "Notitie verwijderen",
@@ -111,7 +113,11 @@
       "aria": "Suggesties noteren",
       "loading": "Notities laden...",
       "empty": "Geen notities gevonden",
-      "create": "Nieuwe notitie maken"
+      "create": "Nieuwe notitie maken",
+      "embed": "Insluiten",
+      "embedAria": "{title} insluiten",
+      "wikiLink": "Wiki-link",
+      "wikiLinkAria": "Wiki-link {title}"
     },
     "tags": {
       "aria": "Tag suggesties",
@@ -133,6 +139,15 @@
       "searchPlaceholder": "Zoeken",
       "noIcons": "Geen iconen gevonden",
       "clearSearch": "Duidelijke zoekopdracht"
+    },
+    "mention": {
+      "aria": "Datum- en notitiesuggesties",
+      "date": "Datum",
+      "dateHint": "Blijf een datum typen…",
+      "empty": "Geen notities gevonden",
+      "loading": "Notities laden...",
+      "remindMe": "Herinner me",
+      "showMore": "Meer tonen"
     }
   },
   "outline": {
@@ -174,7 +189,8 @@
     "createTag": "Tag maken: \"{tag}\"",
     "chooseColor": "Kies kleur:",
     "preview": "Voorbeeld:",
-    "colorAria": "Selecteer {color}-kleur"
+    "colorAria": "Selecteer {color}-kleur",
+    "customColor": "Aangepaste kleur"
   },
   "properties": {
     "title": "Eigenschappen",
@@ -205,7 +221,9 @@
       "status": "Status",
       "select": "Selecteer",
       "multiselect": "Multiselecteren"
-    }
+    },
+    "showOnCalendar": "Tonen in agenda",
+    "showingOnCalendar": "Wordt getoond in agenda"
   },
   "templateSelector": {
     "title": "Kies uw canvas",
@@ -295,7 +313,8 @@
   },
   "phaseF": {
     "componentsFolderViewColumnHeader": {
-      "dragToReorderColumn": "Sleep om de kolom opnieuw te ordenen"
+      "dragToReorderColumn": "Sleep om de kolom opnieuw te ordenen",
+      "editColumnName": "Kolomnaam bewerken"
     },
     "componentsFolderViewColumnSelector": {
       "properties": "Eigenschappen",
@@ -311,7 +330,10 @@
       "delete": "Verwijderen",
       "none": "Geen",
       "edit": "Bewerken",
-      "delete2": "Verwijderen"
+      "delete2": "Verwijderen",
+      "columnBorders": "Kolomranden",
+      "display": "Weergave",
+      "showSummaries": "Samenvattingen tonen"
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Filteren",
@@ -329,17 +351,21 @@
       "of": "van:",
       "addCondition": "Voorwaarde toevoegen",
       "addFilter": "Filter toevoegen",
-      "addGroup": "Groep toevoegen"
+      "addGroup": "Groep toevoegen",
+      "removeGroup": "Groep verwijderen"
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "Ingebouwd",
       "properties": "Eigenschappen",
       "placeholderProperty": "Eigendom",
       "placeholderOperator": "Exploitant",
-      "placeholderValue": "Waarde"
+      "placeholderValue": "Waarde",
+      "removeFilter": "Filter verwijderen"
     },
     "componentsFolderViewFolderTableView": {
-      "notesTable": "Notitie tabel"
+      "notesTable": "Notitie tabel",
+      "selectAll": "Alle notities selecteren",
+      "selectRow": "Notitie selecteren"
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "Zoek notities...",
@@ -371,7 +397,9 @@
     },
     "componentsFolderViewGroupedTable": {
       "groupedNotesTable": "Gegroepeerde notitietabel",
-      "more": "meer"
+      "more": "meer",
+      "selectAll": "Alle notities selecteren",
+      "selectRow": "Notitie selecteren"
     },
     "componentsFolderViewMoveToFolderDialog": {
       "searchFolders": "Mappen zoeken...",
@@ -399,7 +427,8 @@
     },
     "componentsFolderViewSortableColumnHeader": {
       "dragToReorderColumn": "Sleep om de kolom opnieuw te ordenen",
-      "resizeColumn": "Formaat van kolom wijzigen"
+      "resizeColumn": "Formaat van kolom wijzigen",
+      "editColumnName": "Kolomnaam bewerken"
     },
     "componentsFolderViewViewSwitcher": {
       "default": "standaard",
@@ -424,7 +453,16 @@
       "deleteView": "Weergave verwijderen",
       "areYouSureYouWantToDelete": "Weet u zeker dat u wilt verwijderen \"",
       "thisActionCannotBeUndone": "Deze actie kan niet ongedaan worden gemaakt.",
-      "cancel3": "Annuleer"
+      "cancel3": "Annuleer",
+      "createView": "Weergave maken",
+      "gallery": "Galerij",
+      "layout": "Lay-out",
+      "list": "Lijst",
+      "name": "Naam",
+      "newView": "Nieuwe weergave",
+      "save": "Opslaan",
+      "table": "Tabel",
+      "viewActions": "Weergaveacties"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "Kan PDF niet laden: ",
@@ -607,6 +645,15 @@
       "startYourCollection": "Begin met uw verzameling",
       "templatesHelpYouCreateNotesWithConsistentStructure": "Met sjablonen kunt u notities maken met een consistente structuur.",
       "createTemplate": "Sjabloon maken"
+    },
+    "componentsFolderViewSortSelector": {
+      "builtIn": "Ingebouwd",
+      "clearSort": "Sortering wissen",
+      "noSortablePropertiesFound": "Geen sorteerbare eigenschappen gevonden",
+      "properties": "Eigenschappen",
+      "searchProperties": "Eigenschappen zoeken...",
+      "sort": "Sorteren",
+      "sortDirection": "Sorteerrichting"
     }
   },
   "phaseI": {
@@ -654,5 +701,47 @@
       "cannotRemoveTagThisNoteWasDeleted": "Kan tag niet verwijderen - deze notitie is verwijderd",
       "cannotChangeLocalOnlyThisNoteWasDeleted": "Kan alleen lokaal niet wijzigen: deze notitie is verwijderd"
     }
+  },
+  "bulkActions": {
+    "addTag": "Tag toevoegen",
+    "clearAria": "Selectie wissen",
+    "copiedLinks": "{count, plural, one {# link gekopieerd} other {# links gekopieerd}}",
+    "copyLinks": "Links kopiëren",
+    "delete": "Verwijderen",
+    "export": "Exporteren",
+    "move": "Verplaatsen",
+    "selected": "geselecteerd",
+    "tagNamePlaceholder": "Tagnaam",
+    "toolbarAria": "Bulkacties"
+  },
+  "comments": {
+    "attachAria": "Bestand bijvoegen",
+    "badgeAria": "{count, plural, one {# opmerking} other {# opmerkingen}}",
+    "cancel": "Annuleren",
+    "commentPlaceholder": "Voeg een opmerking toe...",
+    "createdTooltip": "Gemaakt op {date} om {time}",
+    "delete": "Opmerking verwijderen",
+    "edit": "Opmerking bewerken",
+    "kind": {
+      "addition": "Toevoeging",
+      "comment": "Opmerking",
+      "deletion": "Verwijdering",
+      "substitution": "Vervanging"
+    },
+    "mentionAria": "Een persoon, pagina of datum vermelden",
+    "railAria": "Opmerkingen",
+    "replyPlaceholder": "Antwoorden...",
+    "resolve": "Oplossen",
+    "sendAria": "Opmerking verzenden",
+    "toolbarComment": "Opmerking"
+  },
+  "dateMention": {
+    "clear": "Wissen",
+    "dateFormat": "Datumnotatie",
+    "dateInput": "Datum",
+    "includeTime": "Tijd opnemen",
+    "remind": "Herinneren",
+    "time": "Tijd",
+    "timeFormat": "Tijdnotatie"
   }
 }

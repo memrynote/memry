@@ -45,7 +45,10 @@
   "count": {
     "note": "{count, plural, one {הערה #} other {הערות #}}",
     "task": "{count, plural, one {משימת #} other {משימות #}}",
-    "itemDelete": "{count, plural, one {מחק פריט #} other {מחק פריטי #}}"
+    "itemDelete": "{count, plural, one {מחק פריט #} other {מחק פריטי #}}",
+    "event": "{count, plural, one {# אירוע} other {# אירועים}}",
+    "journal": "{count, plural, one {# יומן} other {# יומנים}}",
+    "reminder": "{count, plural, one {# תזכורת} other {# תזכורות}}"
   },
   "toast": {
     "actionFailed": "הפעולה נכשלה",
@@ -83,7 +86,23 @@
       "newNoteN": "הערה חדשה (⌘N)",
       "new": "חדש",
       "syncDisabled": "הסנכרון מושבת",
-      "syncDisabled2": "הסנכרון מושבת"
+      "syncDisabled2": "הסנכרון מושבת",
+      "feedbackButton": "שלח משוב",
+      "feedbackDescription": "ספר לנו מה עובד, מה שבור, או מה היית רוצה ש-Memry יעשה. אנחנו קוראים כל הודעה.",
+      "feedbackEmailHint": "הוסף את האימייל שלך אם תרצה תשובה.",
+      "feedbackError": "לא ניתן היה לשלוח משוב. נסה שוב.",
+      "feedbackPlaceholder": "המשוב שלך…",
+      "feedbackSend": "שלח",
+      "feedbackSending": "שולח…",
+      "feedbackSuccess": "תודה על המשוב!",
+      "feedbackTitle": "שלח משוב",
+      "newItemMenu": "צור חדש…",
+      "updateAvailable": "עדכון",
+      "updateDownloading": "מוריד…",
+      "updateDownloadingPercent": "מוריד {percent}%",
+      "updateInstallingSubtitle": "Memrynote יופעל מחדש אוטומטית.",
+      "updateInstallingTitle": "מתקין עדכון",
+      "updateRestart": "הפעל מחדש"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "שנה את גודל לוח יום",
@@ -462,7 +481,8 @@
       "day": "יום",
       "agent": "Agent",
       "pendingApproval": "{count, plural, one {# ממתין לאישור} other {# אישורים ממתינים}}",
-      "inProgress": "תור Agent מתבצע"
+      "inProgress": "תור Agent מתבצע",
+      "close": "סגור סוכן"
     },
     "errors": {
       "loadConversations": "לא ניתן לטעון שיחות סוכן",
@@ -481,5 +501,142 @@
     "sources": {
       "used": "{count, plural, one {נעשה שימוש במקור אחד} other {נעשה שימוש ב-# מקורות}}"
     }
+  },
+  "home": {
+    "addWidget": "הוסף יישומון",
+    "board": {
+      "defaultName": "דף הבית",
+      "deleteAria": "מחק פריסה",
+      "label": "פריסת דף הבית",
+      "newAria": "לוח חדש",
+      "newName": "לוח חדש"
+    },
+    "disabled": {
+      "createNote": "צור פתק",
+      "hint": "אין דבר פתוח. התחל פתק."
+    },
+    "done": "בוצע",
+    "edit": "ערוך",
+    "empty": {
+      "body": "יישומונים מאחדים את הפתקים, המשימות והסימניות שלך במקום רגוע אחד.",
+      "cta": "הוסף את היישומון הראשון שלך",
+      "title": "הלוח שלך ריק"
+    },
+    "greeting": {
+      "afternoon": "צהריים טובים",
+      "evening": "ערב טוב",
+      "morning": "בוקר טוב"
+    },
+    "header": {
+      "events": "{count, plural, one {# אירוע} other {# אירועים}}",
+      "tasksDue": "{count, plural, one {# משימה ליעד היום} other {# משימות ליעד היום}}"
+    },
+    "noBookmarksYet": "אין עדיין סימניות.",
+    "noEventsYet": "אין אירועים היום.",
+    "noJournalEntriesYet": "אין עדיין רשומות ביומן.",
+    "noNotesYet": "אין עדיין פתקים.",
+    "noTasksYet": "אין עדיין משימות.",
+    "widget": {
+      "bookmarks": "סימניות",
+      "calendar": "לוח שנה",
+      "calendarToday": "היום",
+      "configAria": "הגדר יישומון",
+      "configure": "הגדר",
+      "dragAria": "גרור יישומון",
+      "duration": "{count} דק'",
+      "filter": {
+        "today": "יעד היום",
+        "tomorrow": "מחר",
+        "week": "השבוע"
+      },
+      "folder": "תיקייה",
+      "folderEmpty": "אין עדיין תיקיות",
+      "folderNoSelection": "לא נבחרה תיקייה",
+      "folderPickPrompt": "בחר תיקייה",
+      "folderViewSelect": "תצוגה",
+      "folderView_gallery": "גלריה",
+      "folderView_list": "רשימה",
+      "inbox": "תיבה נכנסת",
+      "inboxAllTypes": "כל הסוגים",
+      "inboxOlder": "{count, plural, one {# ישן יותר} other {# ישנים יותר}}",
+      "inboxOldest": "הישן ביותר {count, plural, one {# יום} other {# ימים}}",
+      "journal": "יומן",
+      "journalStreak": "{count, plural, one {רצף של # יום} other {רצף של # ימים}}",
+      "journalToday": "היום",
+      "journalYesterday": "אתמול",
+      "loadError": "לא ניתן היה לטעון",
+      "menuAria": "אפשרויות יישומון",
+      "next": "הבא: {title}",
+      "openCalendar": "פתח לוח שנה",
+      "openInbox": "פתח תיבה נכנסת",
+      "recentMeta": "נערך {time}",
+      "recentMetaWithFolder": "{folder} · נערך {time}",
+      "recentlyEdited": "נערך לאחרונה",
+      "remove": "הסר",
+      "removeAria": "הסר יישומון",
+      "resize": "גודל",
+      "resizeAria": "שנה גודל ל-{{size}}",
+      "savedFilterDefault": "היום",
+      "savedFilterHint": "סמן מסננים בכוכב בדף המשימות כדי להשתמש בהם כאן",
+      "savedFilterLabel": "מסנן שמור",
+      "startsIn": "מתחיל בעוד {count, plural, one {# דק'} other {# דק'}}",
+      "tasks": "משימות",
+      "unknown": "יישומון לא ידוע",
+      "untitled": "ללא כותרת"
+    }
+  },
+  "media": {
+    "video": "וידאו"
+  },
+  "onboarding": {
+    "agentChat": {
+      "body": "עבור לכרטיסיית הסוכן כדי לשאול את העוזר של Memrynote על הכספת שלך.",
+      "title": "שוחח עם סוכן ה-AI"
+    },
+    "collections": {
+      "body": "ארגן פתקים בתיקיות, הצמד סימניות, ועיין לפי תגית — הכול כאן.",
+      "title": "אוספים, סימניות ותגיות"
+    },
+    "dayPanel": {
+      "body": "לוח הצד שומר לוח שנה ותצוגת יום לצד כל מה שאתה קורא.",
+      "title": "היום שלך, לצד העבודה שלך"
+    },
+    "feedback": {
+      "body": "שלח משוב ישירות לצוות מכאן.",
+      "title": "ספר לנו מה דעתך"
+    },
+    "nav": {
+      "body": "תיבה נכנסת ללכידה, יומן לפתקים יומיים, לוח שנה לציר הזמן שלך, משימות למטלות, וגרף כדי לראות איך הכול מתחבר.",
+      "title": "סביבות העבודה שלך"
+    },
+    "newNote": {
+      "body": "התחל כאן. כל מה שאתה כותב מאוחסן מקומית, קודם כול.",
+      "title": "צור את הפתק הראשון שלך"
+    },
+    "settings": {
+      "body": "ייבא את הפתקים שלך מ-12+ אפליקציות — Obsidian, Notion, Apple Notes, Evernote ועוד — וכוונן את כל השאר בהגדרות.",
+      "title": "הגדרות וייבוא"
+    },
+    "sync": {
+      "body": "הפעל סנכרון מוצפן מקצה לקצה כדי לשמור כל מכשיר מעודכן.",
+      "title": "סנכרון פרטי ומוצפן"
+    },
+    "welcome": {
+      "body": "הבית הפרטי שלך, שמתחיל במצב לא מקוון. פתקים מוצפנים מקצה לקצה — הם אף פעם לא עוזבים את המכשיר שלך ללא הצפנה.",
+      "title": "ברוך הבא ל-Memrynote"
+    }
+  },
+  "updatePrompt": {
+    "autoUpdateLabel": "הורד והתקן עדכונים אוטומטית",
+    "availableBody": "{version} זמינה — יש לך {current}. האם ברצונך להוריד אותה עכשיו?",
+    "availableTitle": "גרסה חדשה של MemryNote זמינה!",
+    "download": "הורד",
+    "downloadedBody": "{version} הורדה. הפעל מחדש את MemryNote כדי להשלים את ההתקנה.",
+    "downloadedTitle": "עדכון מוכן להתקנה",
+    "later": "מאוחר יותר",
+    "releaseNotesLabel": "הערות שחרור",
+    "remindLater": "הזכר לי מאוחר יותר",
+    "restartNow": "הפעל מחדש עכשיו",
+    "skip": "דלג על גרסה זו"
   }
 }

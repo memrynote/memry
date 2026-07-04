@@ -27,7 +27,9 @@
     "imported-event": "Evento importato",
     "task": "Compito",
     "reminder": "Promemoria",
-    "snooze": "Posticipa"
+    "snooze": "Posticipa",
+    "note": "Nota",
+    "note-date": "Promemoria data"
   },
   "state": {
     "loading-calendar": "Caricamento calendario...",
@@ -151,5 +153,34 @@
       "could-not-remove-due-date": "Impossibile rimuovere la data di scadenza",
       "could-not-open-note": "Impossibile aprire la nota"
     }
+  },
+  "connect-prompt": {
+    "aria": "Connetti Google Calendar",
+    "body": "Connetti il tuo account Google per fare di più con il calendario:",
+    "bullets": {
+      "events": "Vedi i tuoi eventi Google accanto a note e attività",
+      "schedule": "Pianifica attività e note nel calendario",
+      "sync": "Crea e modifica eventi, sincronizzati in entrambe le direzioni"
+    },
+    "continue": "Continua con Google",
+    "dismiss": "Ignora",
+    "error": "Impossibile connettere Google Calendar. Riprova.",
+    "pill": "Connetti Google",
+    "title": "Completa la connessione a Google Calendar"
+  },
+  "notePopover": {
+    "couldNotOpen": "Impossibile aprire la nota",
+    "kind": "Nota",
+    "kindDateReminder": "Promemoria data",
+    "open": "Apri nota"
+  },
+  "search": {
+    "close": "Chiudi ricerca",
+    "no-results": "Nessun risultato",
+    "open": "Cerca nel calendario",
+    "placeholder": "Cerca eventi, attività, promemoria…"
+  },
+  "undo": {
+    "moveEvent": "Sposta evento"
   }
 }

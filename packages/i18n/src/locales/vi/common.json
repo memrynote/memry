@@ -45,7 +45,10 @@
   "count": {
     "note": "{count, plural, one {# ghi chú} other {# ghi chú}}",
     "task": "{count, plural, one {# nhiệm vụ} other {# nhiệm vụ}}",
-    "itemDelete": "{count, plural, one {Xóa # mục} other {Xóa # mục}}"
+    "itemDelete": "{count, plural, one {Xóa # mục} other {Xóa # mục}}",
+    "event": "{count, plural, other {# sự kiện}}",
+    "journal": "{count, plural, other {# nhật ký}}",
+    "reminder": "{count, plural, other {# nhắc nhở}}"
   },
   "toast": {
     "actionFailed": "Thao tác thất bại",
@@ -83,7 +86,23 @@
       "newNoteN": "Ghi chú mới (⌘N)",
       "new": "Mới",
       "syncDisabled": "Đồng bộ bị tắt",
-      "syncDisabled2": "Đồng bộ bị tắt"
+      "syncDisabled2": "Đồng bộ bị tắt",
+      "feedbackButton": "Gửi phản hồi",
+      "feedbackDescription": "Cho chúng tôi biết điều gì đang hiệu quả, điều gì bị hỏng, hoặc điều bạn mong Memry làm được. Chúng tôi đọc mọi tin nhắn.",
+      "feedbackEmailHint": "Thêm email nếu bạn muốn được trả lời.",
+      "feedbackError": "Không gửi được phản hồi. Vui lòng thử lại.",
+      "feedbackPlaceholder": "Phản hồi của bạn…",
+      "feedbackSend": "Gửi",
+      "feedbackSending": "Đang gửi…",
+      "feedbackSuccess": "Cảm ơn phản hồi của bạn!",
+      "feedbackTitle": "Gửi phản hồi",
+      "newItemMenu": "Tạo mới…",
+      "updateAvailable": "Cập nhật",
+      "updateDownloading": "Đang tải xuống…",
+      "updateDownloadingPercent": "Đang tải xuống {percent}%",
+      "updateInstallingSubtitle": "Memrynote sẽ tự khởi động lại.",
+      "updateInstallingTitle": "Đang cài đặt bản cập nhật",
+      "updateRestart": "Khởi động lại"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Thay đổi kích thước Bảng Ngày",
@@ -462,7 +481,8 @@
       "day": "Ngày",
       "agent": "Agent",
       "pendingApproval": "{count, plural, one {# đang chờ phê duyệt} other {# đang chờ phê duyệt}}",
-      "inProgress": "Đang tiến hành lượt Agent"
+      "inProgress": "Đang tiến hành lượt Agent",
+      "close": "Đóng agent"
     },
     "errors": {
       "loadConversations": "Không thể tải cuộc trò chuyện của nhân viên",
@@ -481,5 +501,142 @@
     "sources": {
       "used": "Đã dùng {count} nguồn"
     }
+  },
+  "home": {
+    "addWidget": "Thêm tiện ích",
+    "board": {
+      "defaultName": "Trang chủ",
+      "deleteAria": "Xóa bố cục",
+      "label": "Bố cục Trang chủ",
+      "newAria": "Bảng mới",
+      "newName": "Bảng mới"
+    },
+    "disabled": {
+      "createNote": "Tạo ghi chú",
+      "hint": "Chưa có gì mở. Bắt đầu một ghi chú."
+    },
+    "done": "Xong",
+    "edit": "Chỉnh sửa",
+    "empty": {
+      "body": "Tiện ích tập hợp ghi chú, công việc và dấu trang của bạn vào một nơi yên tĩnh.",
+      "cta": "Thêm tiện ích đầu tiên",
+      "title": "Bảng của bạn đang trống"
+    },
+    "greeting": {
+      "afternoon": "Chào buổi chiều",
+      "evening": "Chào buổi tối",
+      "morning": "Chào buổi sáng"
+    },
+    "header": {
+      "events": "{count, plural, other {# sự kiện}}",
+      "tasksDue": "{count, plural, other {# công việc đến hạn hôm nay}}"
+    },
+    "noBookmarksYet": "Chưa có dấu trang nào.",
+    "noEventsYet": "Không có sự kiện nào hôm nay.",
+    "noJournalEntriesYet": "Chưa có mục nhật ký nào.",
+    "noNotesYet": "Chưa có ghi chú nào.",
+    "noTasksYet": "Chưa có công việc nào.",
+    "widget": {
+      "bookmarks": "Dấu trang",
+      "calendar": "Lịch",
+      "calendarToday": "Hôm nay",
+      "configAria": "Cấu hình tiện ích",
+      "configure": "Cấu hình",
+      "dragAria": "Kéo tiện ích",
+      "duration": "{count} phút",
+      "filter": {
+        "today": "Đến hạn hôm nay",
+        "tomorrow": "Ngày mai",
+        "week": "Tuần này"
+      },
+      "folder": "Thư mục",
+      "folderEmpty": "Chưa có thư mục nào",
+      "folderNoSelection": "Chưa chọn thư mục",
+      "folderPickPrompt": "Chọn thư mục",
+      "folderViewSelect": "Xem",
+      "folderView_gallery": "Bộ sưu tập",
+      "folderView_list": "Danh sách",
+      "inbox": "Hộp thư",
+      "inboxAllTypes": "Tất cả loại",
+      "inboxOlder": "{count, plural, other {# cũ hơn}}",
+      "inboxOldest": "cũ nhất {count, plural, other {# ngày}}",
+      "journal": "Nhật ký",
+      "journalStreak": "{count, plural, other {Chuỗi # ngày}}",
+      "journalToday": "Hôm nay",
+      "journalYesterday": "Hôm qua",
+      "loadError": "Không tải được",
+      "menuAria": "Tùy chọn tiện ích",
+      "next": "Tiếp theo: {title}",
+      "openCalendar": "Mở Lịch",
+      "openInbox": "Mở hộp thư",
+      "recentMeta": "đã sửa {time}",
+      "recentMetaWithFolder": "{folder} · đã sửa {time}",
+      "recentlyEdited": "Chỉnh sửa gần đây",
+      "remove": "Xóa",
+      "removeAria": "Xóa tiện ích",
+      "resize": "Kích thước",
+      "resizeAria": "Đổi kích thước thành {{size}}",
+      "savedFilterDefault": "Hôm nay",
+      "savedFilterHint": "Gắn sao bộ lọc trên trang Công việc để dùng ở đây",
+      "savedFilterLabel": "Bộ lọc đã lưu",
+      "startsIn": "Bắt đầu sau {count, plural, other {# phút}}",
+      "tasks": "Công việc",
+      "unknown": "Tiện ích không xác định",
+      "untitled": "Không có tiêu đề"
+    }
+  },
+  "media": {
+    "video": "Video"
+  },
+  "onboarding": {
+    "agentChat": {
+      "body": "Chuyển sang thẻ Agent để hỏi trợ lý của Memrynote về kho của bạn.",
+      "title": "Trò chuyện với trợ lý AI"
+    },
+    "collections": {
+      "body": "Sắp xếp ghi chú vào thư mục, ghim dấu trang và duyệt theo thẻ — tất cả tại đây.",
+      "title": "Bộ sưu tập, dấu trang & thẻ"
+    },
+    "dayPanel": {
+      "body": "Bảng bên giữ lịch và chế độ xem ngày của bạn ngay cạnh những gì bạn đang đọc.",
+      "title": "Ngày của bạn, ngay cạnh công việc"
+    },
+    "feedback": {
+      "body": "Gửi phản hồi trực tiếp cho nhóm từ đây.",
+      "title": "Cho chúng tôi biết ý kiến của bạn"
+    },
+    "nav": {
+      "body": "Hộp thư để ghi nhanh, Nhật ký cho ghi chú hàng ngày, Lịch cho dòng thời gian, Công việc cho việc cần làm, và Đồ thị để thấy tất cả kết nối với nhau ra sao.",
+      "title": "Không gian làm việc của bạn"
+    },
+    "newNote": {
+      "body": "Bắt đầu tại đây. Mọi thứ bạn viết được lưu cục bộ trước tiên.",
+      "title": "Tạo ghi chú đầu tiên"
+    },
+    "settings": {
+      "body": "Nhập ghi chú từ hơn 12 ứng dụng — Obsidian, Notion, Apple Notes, Evernote và nhiều hơn — và tinh chỉnh mọi thứ khác trong Cài đặt.",
+      "title": "Cài đặt & nhập dữ liệu"
+    },
+    "sync": {
+      "body": "Bật đồng bộ mã hóa đầu-cuối để giữ mọi thiết bị đồng nhất.",
+      "title": "Đồng bộ riêng tư, mã hóa"
+    },
+    "welcome": {
+      "body": "Không gian riêng tư, ưu tiên ngoại tuyến của bạn. Ghi chú được mã hóa đầu-cuối — chúng không bao giờ rời thiết bị của bạn ở dạng chưa mã hóa.",
+      "title": "Chào mừng đến với Memrynote"
+    }
+  },
+  "updatePrompt": {
+    "autoUpdateLabel": "Tự động tải xuống và cài đặt bản cập nhật",
+    "availableBody": "Đã có {version} — bạn đang dùng {current}. Bạn muốn tải xuống ngay không?",
+    "availableTitle": "Đã có phiên bản mới của MemryNote!",
+    "download": "Tải xuống",
+    "downloadedBody": "Đã tải xuống {version}. Khởi động lại MemryNote để hoàn tất cài đặt.",
+    "downloadedTitle": "Bản cập nhật sẵn sàng cài đặt",
+    "later": "Để sau",
+    "releaseNotesLabel": "Ghi chú phát hành",
+    "remindLater": "Nhắc tôi sau",
+    "restartNow": "Khởi động lại ngay",
+    "skip": "Bỏ qua phiên bản này"
   }
 }

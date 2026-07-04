@@ -26,6 +26,10 @@
     "jobs": {
       "running": "{count, plural, one {Processo in background # in esecuzione} other {Lavori in background # in esecuzione}}",
       "failed": "{count} non riuscito"
+    },
+    "density": {
+      "toComfortable": "Vista comoda",
+      "toCompact": "Vista compatta"
     }
   },
   "type": {
@@ -208,7 +212,15 @@
     "linkedNotesAria": "Note collegate",
     "removeLinkTo": "Rimuovere il collegamento a {title}",
     "notePlaceholder": "Scrivi la tua nota...",
-    "textPlaceholder": "Modifica il testo catturato..."
+    "textPlaceholder": "Modifica il testo catturato...",
+    "linkANote": "Collega una nota",
+    "match": {
+      "likely": "Corrispondenza probabile",
+      "strong": "Corrispondenza forte",
+      "weak": "Corrispondenza debole"
+    },
+    "resize": "Ridimensiona pannello",
+    "suggestedCount": "{count} suggerite"
   },
   "content": {
     "capturedAt": "{date} catturato",
@@ -253,7 +265,12 @@
     "presetInOneHour": "1 ora",
     "presetTomorrow": "Domani",
     "presetNextWeek": "La prossima settimana",
-    "custom": "Personalizzato..."
+    "custom": "Personalizzato...",
+    "archive": "Archivia",
+    "panelEmpty": "Nessun promemoria in arrivo.",
+    "panelPast": "Passati",
+    "panelUpcoming": "In arrivo",
+    "taskFallback": "Attività"
   },
   "insights": {
     "captureActivity": "Cattura attività",
@@ -295,7 +312,9 @@
       "recordVoiceMemo2": "Registra un promemoria vocale",
       "alreadyCaptured": "Già catturato: “",
       "rdquo": "rdquo;",
-      "captureAnyway": "Cattura comunque"
+      "captureAnyway": "Cattura comunque",
+      "focusShortcut": "Attiva campo di cattura",
+      "q": "Q"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Scegli la cartella",
@@ -416,7 +435,11 @@
       "backToPresets": "Torniamo alle preimpostazioni",
       "time": "Tempo",
       "noteOptional": "Nota (facoltativa)",
-      "whyAreYouSettingThisReminder": "Perché stai impostando questo promemoria?"
+      "whyAreYouSettingThisReminder": "Perché stai impostando questo promemoria?",
+      "deleteReminder": "Elimina promemoria",
+      "editReminder": "Modifica promemoria",
+      "save": "Salva",
+      "set": "Imposta"
     },
     "componentsSnoozeSnoozePicker": {
       "snooze": "Posticipa",
@@ -461,5 +484,37 @@
     "toasts": {
       "inboxRefreshed": "Posta in arrivo aggiornata"
     }
+  },
+  "convert": {
+    "addEvent": "Aggiungi evento",
+    "addTask": "Aggiungi attività",
+    "allDay": "Tutto il giorno",
+    "binaryOnlyNote": "I file possono diventare solo una nota",
+    "chooseType": "Converti in",
+    "create": "Crea",
+    "date": "Data",
+    "dueDate": "Data di scadenza",
+    "dueTime": "Ora di scadenza",
+    "end": "Fine",
+    "event": "Evento",
+    "failed": "Impossibile convertire: {error}",
+    "inboxProject": "Posta in arrivo",
+    "location": "Luogo",
+    "note": "Nota",
+    "priority": "Priorità",
+    "priorityHigh": "Alta",
+    "priorityLow": "Bassa",
+    "priorityMedium": "Media",
+    "priorityNone": "Nessuna",
+    "priorityUrgent": "Urgente",
+    "project": "Progetto",
+    "remindAt": "Ricordamelo alle",
+    "reminder": "Promemoria",
+    "setReminder": "Imposta promemoria",
+    "start": "Inizio",
+    "success": "Convertito in {target}",
+    "task": "Attività",
+    "time": "Ora",
+    "title": "Converti"
   }
 }

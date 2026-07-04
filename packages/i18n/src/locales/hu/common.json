@@ -45,7 +45,10 @@
   "count": {
     "note": "{count, plural, one {# megjegyzés} other {# jegyzetek}}",
     "task": "{count, plural, one {# feladat} other {# feladatok}}",
-    "itemDelete": "{count, plural, one {Törölje az # elemet} other {Törölje az # elemeket}}"
+    "itemDelete": "{count, plural, one {Törölje az # elemet} other {Törölje az # elemeket}}",
+    "event": "{count, plural, one {# esemény} other {# esemény}}",
+    "journal": "{count, plural, one {# napló} other {# napló}}",
+    "reminder": "{count, plural, one {# emlékeztető} other {# emlékeztető}}"
   },
   "toast": {
     "actionFailed": "A művelet nem sikerült",
@@ -83,7 +86,23 @@
       "newNoteN": "Új jegyzet (⌘N)",
       "new": "Új",
       "syncDisabled": "Szinkronizálás letiltva",
-      "syncDisabled2": "Szinkronizálás letiltva"
+      "syncDisabled2": "Szinkronizálás letiltva",
+      "feedbackButton": "Visszajelzés küldése",
+      "feedbackDescription": "Mondd el, mi működik, mi hibás, vagy mit szeretnél, hogy a Memry tudjon. Minden üzenetet elolvasunk.",
+      "feedbackEmailHint": "Add meg az e-mail-címed, ha választ szeretnél.",
+      "feedbackError": "Nem sikerült elküldeni a visszajelzést. Próbáld újra.",
+      "feedbackPlaceholder": "A visszajelzésed…",
+      "feedbackSend": "Küldés",
+      "feedbackSending": "Küldés…",
+      "feedbackSuccess": "Köszönjük a visszajelzést!",
+      "feedbackTitle": "Visszajelzés küldése",
+      "newItemMenu": "Új létrehozása…",
+      "updateAvailable": "Frissítés",
+      "updateDownloading": "Letöltés…",
+      "updateDownloadingPercent": "Letöltés {percent}%",
+      "updateInstallingSubtitle": "A memrynote automatikusan újraindul.",
+      "updateInstallingTitle": "Frissítés telepítése",
+      "updateRestart": "Újraindítás"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "A Nap panel átméretezése",
@@ -462,7 +481,8 @@
       "day": "nap",
       "agent": "Agent",
       "pendingApproval": "{count, plural, one {# jóváhagyásra vár} other {# jóváhagyás függőben}}",
-      "inProgress": "Agent fordulat folyamatban"
+      "inProgress": "Agent fordulat folyamatban",
+      "close": "Ügynök bezárása"
     },
     "errors": {
       "loadConversations": "Nem sikerült betölteni az ügynöki beszélgetéseket",
@@ -481,5 +501,142 @@
     "sources": {
       "used": "{count, plural, one {# forrás használva} other {# forrás használva}}"
     }
+  },
+  "home": {
+    "addWidget": "Widget hozzáadása",
+    "board": {
+      "defaultName": "Kezdőlap",
+      "deleteAria": "Elrendezés törlése",
+      "label": "Kezdőlap elrendezése",
+      "newAria": "Új tábla",
+      "newName": "Új tábla"
+    },
+    "disabled": {
+      "createNote": "Jegyzet létrehozása",
+      "hint": "Semmi sincs nyitva. Kezdj egy jegyzetet."
+    },
+    "done": "Kész",
+    "edit": "Szerkesztés",
+    "empty": {
+      "body": "A widgetek egy nyugodt helyre gyűjtik össze a jegyzeteidet, feladataidat és könyvjelzőidet.",
+      "cta": "Add hozzá az első widgeted",
+      "title": "A táblád üres"
+    },
+    "greeting": {
+      "afternoon": "Jó napot",
+      "evening": "Jó estét",
+      "morning": "Jó reggelt"
+    },
+    "header": {
+      "events": "{count, plural, one {# esemény} other {# esemény}}",
+      "tasksDue": "{count, plural, one {# feladat ma esedékes} other {# feladat ma esedékes}}"
+    },
+    "noBookmarksYet": "Még nincsenek könyvjelzők.",
+    "noEventsYet": "Ma nincsenek események.",
+    "noJournalEntriesYet": "Még nincsenek naplóbejegyzések.",
+    "noNotesYet": "Még nincsenek jegyzetek.",
+    "noTasksYet": "Még nincsenek feladatok.",
+    "widget": {
+      "bookmarks": "Könyvjelzők",
+      "calendar": "Naptár",
+      "calendarToday": "Ma",
+      "configAria": "Widget beállítása",
+      "configure": "Beállítás",
+      "dragAria": "Widget húzása",
+      "duration": "{count} perc",
+      "filter": {
+        "today": "Ma esedékes",
+        "tomorrow": "Holnap",
+        "week": "Ezen a héten"
+      },
+      "folder": "Mappa",
+      "folderEmpty": "Még nincsenek mappák",
+      "folderNoSelection": "Nincs kiválasztott mappa",
+      "folderPickPrompt": "Válassz mappát",
+      "folderViewSelect": "Nézet",
+      "folderView_gallery": "Galéria",
+      "folderView_list": "Lista",
+      "inbox": "Beérkezők",
+      "inboxAllTypes": "Minden típus",
+      "inboxOlder": "{count, plural, one {# régebbi} other {# régebbi}}",
+      "inboxOldest": "legrégebbi {count, plural, one {# nap} other {# nap}}",
+      "journal": "Napló",
+      "journalStreak": "{count, plural, one {#napos sorozat} other {#napos sorozat}}",
+      "journalToday": "Ma",
+      "journalYesterday": "Tegnap",
+      "loadError": "Nem sikerült betölteni",
+      "menuAria": "Widget beállításai",
+      "next": "Következő: {title}",
+      "openCalendar": "Naptár megnyitása",
+      "openInbox": "Beérkezők megnyitása",
+      "recentMeta": "szerkesztve: {time}",
+      "recentMetaWithFolder": "{folder} · szerkesztve: {time}",
+      "recentlyEdited": "Nemrég szerkesztve",
+      "remove": "Eltávolítás",
+      "removeAria": "Widget eltávolítása",
+      "resize": "Méret",
+      "resizeAria": "Átméretezés erre: {{size}}",
+      "savedFilterDefault": "Ma",
+      "savedFilterHint": "Csillagozz szűrőket a Feladatok oldalon, hogy itt használhasd őket",
+      "savedFilterLabel": "Mentett szűrő",
+      "startsIn": "Kezdés {count, plural, one {# perc múlva} other {# perc múlva}}",
+      "tasks": "Feladatok",
+      "unknown": "Ismeretlen widget",
+      "untitled": "Névtelen"
+    }
+  },
+  "media": {
+    "video": "Videó"
+  },
+  "onboarding": {
+    "agentChat": {
+      "body": "Válts az Ügynök fülre, hogy megkérdezd a Memrynote asszisztensét a széfedről.",
+      "title": "Csevegj az AI-ügynökkel"
+    },
+    "collections": {
+      "body": "Rendezd a jegyzeteket mappákba, rögzíts könyvjelzőket, és böngéssz címke szerint — mind itt.",
+      "title": "Gyűjtemények, könyvjelzők és címkék"
+    },
+    "dayPanel": {
+      "body": "Az oldalpanel egy naptárat és a napi nézetedet tartja amellett, amit épp olvasol.",
+      "title": "A napod, a munkád mellett"
+    },
+    "feedback": {
+      "body": "Küldj visszajelzést közvetlenül a csapatnak innen.",
+      "title": "Mondd el, mit gondolsz"
+    },
+    "nav": {
+      "body": "Beérkezők a rögzítéshez, Napló a napi jegyzetekhez, Naptár az idővonaladhoz, Feladatok a teendőkhöz, és Gráf, hogy lásd, hogyan kapcsolódik minden.",
+      "title": "A munkatereid"
+    },
+    "newNote": {
+      "body": "Kezdd itt. Minden, amit írsz, először helyben tárolódik.",
+      "title": "Hozd létre az első jegyzeted"
+    },
+    "settings": {
+      "body": "Importáld a jegyzeteidet 12+ alkalmazásból — Obsidian, Notion, Apple Notes, Evernote és mások — és hangolj be mindent mást a Beállításokban.",
+      "title": "Beállítások és importálás"
+    },
+    "sync": {
+      "body": "Kapcsold be a végponttól végpontig titkosított szinkronizálást, hogy minden eszközöd összhangban legyen.",
+      "title": "Privát, titkosított szinkronizálás"
+    },
+    "welcome": {
+      "body": "A privát, offline-first otthonod. A jegyzetek végponttól végpontig titkosítva vannak — soha nem hagyják el az eszközöd titkosítatlanul.",
+      "title": "Üdvözöl a Memrynote"
+    }
+  },
+  "updatePrompt": {
+    "autoUpdateLabel": "Frissítések automatikus letöltése és telepítése",
+    "availableBody": "A(z) {version} elérhető – neked a(z) {current} van. Letöltöd most?",
+    "availableTitle": "A MemryNote új verziója érhető el!",
+    "download": "Letöltés",
+    "downloadedBody": "A(z) {version} letöltődött. Indítsd újra a MemryNote-ot a telepítés befejezéséhez.",
+    "downloadedTitle": "A frissítés telepítésre kész",
+    "later": "Később",
+    "releaseNotesLabel": "Kiadási megjegyzések",
+    "remindLater": "Emlékeztess később",
+    "restartNow": "Újraindítás most",
+    "skip": "Verzió kihagyása"
   }
 }

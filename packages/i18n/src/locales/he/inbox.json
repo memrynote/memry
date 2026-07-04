@@ -26,6 +26,10 @@
     "jobs": {
       "running": "{count, plural, one {עבודת רקע # פועלת} other {פועלות עבודות רקע של #}}",
       "failed": "{count} נכשל"
+    },
+    "density": {
+      "toComfortable": "תצוגה מרווחת",
+      "toCompact": "תצוגה קומפקטית"
     }
   },
   "type": {
@@ -208,7 +212,15 @@
     "linkedNotesAria": "הערות מקושרות",
     "removeLinkTo": "הסר קישור ל-{title}",
     "notePlaceholder": "כתוב את ההערה שלך...",
-    "textPlaceholder": "ערוך את הטקסט שצולם..."
+    "textPlaceholder": "ערוך את הטקסט שצולם...",
+    "linkANote": "קשר פתק",
+    "match": {
+      "likely": "התאמה סבירה",
+      "strong": "התאמה חזקה",
+      "weak": "התאמה חלשה"
+    },
+    "resize": "שנה גודל חלונית",
+    "suggestedCount": "{count} מוצעים"
   },
   "content": {
     "capturedAt": "מצולם {date}",
@@ -253,7 +265,12 @@
     "presetInOneHour": "שעה אחת",
     "presetTomorrow": "מחר",
     "presetNextWeek": "בשבוע הבא",
-    "custom": "מותאם אישית..."
+    "custom": "מותאם אישית...",
+    "archive": "העבר לארכיון",
+    "panelEmpty": "אין תזכורות קרובות.",
+    "panelPast": "עברו",
+    "panelUpcoming": "קרובות",
+    "taskFallback": "משימה"
   },
   "insights": {
     "captureActivity": "פעילות לכידה",
@@ -295,7 +312,9 @@
       "recordVoiceMemo2": "הקלט תזכיר קולי",
       "alreadyCaptured": "כבר נלכד: \"",
       "rdquo": "rdquo;",
-      "captureAnyway": "ללכוד בכל מקרה"
+      "captureAnyway": "ללכוד בכל מקרה",
+      "focusShortcut": "מקד את קלט הלכידה",
+      "q": "Q"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "בחר תיקיה",
@@ -416,7 +435,11 @@
       "backToPresets": "חזרה להגדרות קבועות מראש",
       "time": "זמן",
       "noteOptional": "הערה (אופציונלי)",
-      "whyAreYouSettingThisReminder": "למה אתה מגדיר את התזכורת הזו?"
+      "whyAreYouSettingThisReminder": "למה אתה מגדיר את התזכורת הזו?",
+      "deleteReminder": "מחק תזכורת",
+      "editReminder": "ערוך תזכורת",
+      "save": "שמור",
+      "set": "הגדר"
     },
     "componentsSnoozeSnoozePicker": {
       "snooze": "נודניק",
@@ -461,5 +484,37 @@
     "toasts": {
       "inboxRefreshed": "דואר נכנס רענון"
     }
+  },
+  "convert": {
+    "addEvent": "הוסף אירוע",
+    "addTask": "הוסף משימה",
+    "allDay": "כל היום",
+    "binaryOnlyNote": "קבצים יכולים להפוך רק לפתק",
+    "chooseType": "המר אל",
+    "create": "צור",
+    "date": "תאריך",
+    "dueDate": "תאריך יעד",
+    "dueTime": "שעת יעד",
+    "end": "סיום",
+    "event": "אירוע",
+    "failed": "לא ניתן היה להמיר: {error}",
+    "inboxProject": "תיבה נכנסת",
+    "location": "מיקום",
+    "note": "פתק",
+    "priority": "עדיפות",
+    "priorityHigh": "גבוהה",
+    "priorityLow": "נמוכה",
+    "priorityMedium": "בינונית",
+    "priorityNone": "ללא",
+    "priorityUrgent": "דחופה",
+    "project": "פרויקט",
+    "remindAt": "הזכר לי ב",
+    "reminder": "תזכורת",
+    "setReminder": "הגדר תזכורת",
+    "start": "התחלה",
+    "success": "הומר ל-{target}",
+    "task": "משימה",
+    "time": "שעה",
+    "title": "המר"
   }
 }

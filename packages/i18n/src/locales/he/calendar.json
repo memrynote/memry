@@ -27,7 +27,9 @@
     "imported-event": "אירוע מיובא",
     "task": "משימה",
     "reminder": "תזכורת",
-    "snooze": "נודניק"
+    "snooze": "נודניק",
+    "note": "פתק",
+    "note-date": "תזכורת תאריך"
   },
   "state": {
     "loading-calendar": "טוען לוח שנה...",
@@ -151,5 +153,34 @@
       "could-not-remove-due-date": "לא ניתן היה להסיר את תאריך היעד",
       "could-not-open-note": "לא ניתן היה לפתוח את ההערה"
     }
+  },
+  "connect-prompt": {
+    "aria": "התחבר ל-Google Calendar",
+    "body": "חבר את חשבון Google שלך כדי לעשות יותר עם לוח השנה שלך:",
+    "bullets": {
+      "events": "ראה את אירועי Google שלך לצד פתקים ומשימות",
+      "schedule": "תזמן משימות ופתקים בלוח השנה שלך",
+      "sync": "צור וערוך אירועים, מסונכרנים לשני הכיוונים"
+    },
+    "continue": "המשך עם Google",
+    "dismiss": "בטל",
+    "error": "לא ניתן היה להתחבר ל-Google Calendar. נסה שוב.",
+    "pill": "התחבר ל-Google",
+    "title": "השלם את החיבור ל-Google Calendar"
+  },
+  "notePopover": {
+    "couldNotOpen": "לא ניתן היה לפתוח את הפתק",
+    "kind": "פתק",
+    "kindDateReminder": "תזכורת תאריך",
+    "open": "פתח פתק"
+  },
+  "search": {
+    "close": "סגור חיפוש",
+    "no-results": "אין התאמות",
+    "open": "חיפוש בלוח השנה",
+    "placeholder": "חפש אירועים, משימות, תזכורות…"
+  },
+  "undo": {
+    "moveEvent": "העברת אירוע"
   }
 }

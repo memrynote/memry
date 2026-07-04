@@ -73,6 +73,7 @@
     "settingsNotInitialized": "設定同步尚未初始化",
     "securityQuarantinePermanent": "無法驗證同步項目，已為安全起見將其隔離。",
     "securityQuarantineRetry": "同步項目簽名驗證失敗，將重新嘗試。",
-    "certificatePinPaused": "無法驗證與同步伺服器的安全連線。為了保護您，同步已暫停。"
+    "certificatePinPaused": "無法驗證與同步伺服器的安全連線。為了保護您，同步已暫停。",
+    "paymentRequired": "使用託管加密同步需要付費的同步方案。"
   }
 }

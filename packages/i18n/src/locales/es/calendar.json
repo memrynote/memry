@@ -27,7 +27,9 @@
     "imported-event": "Evento importado",
     "task": "Tarea",
     "reminder": "Recordatorio",
-    "snooze": "posponer"
+    "snooze": "posponer",
+    "note": "Nota",
+    "note-date": "Recordatorio de fecha"
   },
   "state": {
     "loading-calendar": "Cargando calendario…",
@@ -151,5 +153,34 @@
       "could-not-remove-due-date": "No se pudo eliminar la fecha de vencimiento",
       "could-not-open-note": "No se pudo abrir la nota"
     }
+  },
+  "connect-prompt": {
+    "aria": "Conectar Google Calendar",
+    "body": "Conecta tu cuenta de Google para hacer más con tu calendario:",
+    "bullets": {
+      "events": "Ve tus eventos de Google junto a tus notas y tareas",
+      "schedule": "Programa tareas y notas en tu calendario",
+      "sync": "Crea y edita eventos, sincronizados en ambos sentidos"
+    },
+    "continue": "Continuar con Google",
+    "dismiss": "Descartar",
+    "error": "No se pudo conectar Google Calendar. Inténtalo de nuevo.",
+    "pill": "Conectar Google",
+    "title": "Termina de conectar con Google Calendar"
+  },
+  "notePopover": {
+    "couldNotOpen": "No se pudo abrir la nota",
+    "kind": "Nota",
+    "kindDateReminder": "Recordatorio de fecha",
+    "open": "Abrir nota"
+  },
+  "search": {
+    "close": "Cerrar búsqueda",
+    "no-results": "Sin coincidencias",
+    "open": "Buscar en el calendario",
+    "placeholder": "Buscar eventos, tareas, recordatorios…"
+  },
+  "undo": {
+    "moveEvent": "Mover evento"
   }
 }

@@ -25,7 +25,10 @@
         "integrations": "การรวมระบบ",
         "vault": "คลัง",
         "tags": "แท็ก",
-        "properties": "คุณสมบัติ"
+        "properties": "คุณสมบัติ",
+        "commandLine": "บรรทัดคำสั่ง",
+        "features": "ฟีเจอร์",
+        "import": "นำเข้า"
       }
     }
   },
@@ -109,6 +112,11 @@
       "createInSelectedFolder": {
         "label": "สร้างในโฟลเดอร์ที่เลือก",
         "description": "โน้ตและโฟลเดอร์ใหม่จะถูกสร้างภายในโฟลเดอร์ที่เลือกอยู่ในปัจจุบัน เมื่อปิดไว้ รายการจะถูกสร้างที่รูทเสมอ"
+      },
+      "defaultNoteFolder": {
+        "description": "ว่าง = รากของ vault",
+        "label": "ตำแหน่งเริ่มต้นสำหรับโน้ตใหม่",
+        "placeholder": "notes"
       }
     },
     "privacy": {
@@ -116,6 +124,17 @@
         "label": "แชร์สถิติการใช้งานแบบไม่ระบุชื่อ",
         "description": "เป็นเพียงสถิติแบบไม่ระบุชื่อ — ไม่มีเนื้อหาโน้ต, คำค้นหา, เส้นทางไฟล์, อีเมล, หรือรหัสดิบใด ๆ ถูกส่ง",
         "error": "ไม่สามารถอัปเดตการตั้งค่าเทเลเมทรีได้"
+      }
+    },
+    "dateFormat": {
+      "description": "วิธีแสดงวันที่ในปฏิทิน",
+      "error": "อัปเดตรูปแบบวันที่ไม่สำเร็จ",
+      "label": "รูปแบบวันที่",
+      "options": {
+        "DD.MM.YYYY": "DD.MM.YYYY",
+        "DD/MM/YYYY": "DD/MM/YYYY",
+        "MM/DD/YYYY": "MM/DD/YYYY (US)",
+        "YYYY-MM-DD": "YYYY-MM-DD (ISO)"
       }
     }
   },
@@ -250,6 +269,9 @@
         "description": "ใส่ชื่อสำหรับสำเนาแม่แบบใหม่",
         "placeholder": "ชื่อแม่แบบ"
       }
+    },
+    "preview": {
+      "notFound": "ไม่สามารถโหลดเทมเพลตนี้ได้"
     }
   },
   "journal": {
@@ -261,7 +283,8 @@
     "groups": {
       "defaultTemplate": "แม่แบบเริ่มต้น",
       "sidebarVisibility": "การมองเห็นแถบด้านข้าง",
-      "footer": "ส่วนท้าย"
+      "footer": "ส่วนท้าย",
+      "location": "ตำแหน่งและรูปแบบ"
     },
     "template": {
       "label": "แม่แบบ",
@@ -290,7 +313,21 @@
       "label": "แสดงสถิติด้านล่าง",
       "description": "จำนวนคำ, เวลาการอ่าน, แทมป์วันที่"
     },
-    "updateError": "ไม่สามารถอัปเดตการตั้งค่าได้"
+    "updateError": "ไม่สามารถอัปเดตการตั้งค่าได้",
+    "dateFormat": {
+      "description": "รูปแบบชื่อไฟล์สำหรับโน้ตรายวัน (เช่น YYYY-MM-DD)",
+      "label": "รูปแบบวันที่",
+      "placeholder": "YYYY-MM-DD"
+    },
+    "folder": {
+      "description": "โฟลเดอร์ที่เก็บโน้ตรายวัน",
+      "label": "โฟลเดอร์บันทึกประจำวัน",
+      "placeholder": "journal"
+    },
+    "preview": {
+      "description": "เส้นทางไฟล์บันทึกประจำวันของวันนี้",
+      "label": "ตัวอย่าง"
+    }
   },
   "tasks": {
     "header": {
@@ -344,7 +381,9 @@
       "loading": "กำลังโหลดการตั้งค่า..."
     },
     "groups": {
-      "dayCellClick": "คลิกเซลล์วัน"
+      "dayCellClick": "คลิกเซลล์วัน",
+      "notes": "โน้ต",
+      "weekStart": "สัปดาห์"
     },
     "defaultBehavior": {
       "label": "พฤติกรรมเริ่มต้น",
@@ -360,6 +399,20 @@
       "openJournal": "เปิดสมุดบันทึก",
       "openCalendar": "เปิดปฏิทิน",
       "useGlobal": "ใช้การตั้งค่าทั่วไป"
+    },
+    "showNotesOnCalendar": {
+      "description": "แสดงทุกโน้ตบนปฏิทินเป็นรายการทั้งวันในวันที่สร้าง",
+      "error": "อัปเดตการแสดงโน้ตบนปฏิทินไม่สำเร็จ",
+      "label": "แสดงโน้ตบนปฏิทิน"
+    },
+    "weekStart": {
+      "description": "วันแรกของสัปดาห์ในทุกปฏิทิน",
+      "error": "อัปเดตวันเริ่มต้นสัปดาห์ไม่สำเร็จ",
+      "label": "สัปดาห์เริ่มต้นที่",
+      "options": {
+        "monday": "จันทร์",
+        "sunday": "อาทิตย์"
+      }
     }
   },
   "account": {
@@ -372,10 +425,12 @@
       "identity": "ตัวตน",
       "sync": "ซิงค์",
       "storage": "การจัดเก็บ",
-      "devices": "อุปกรณ์"
+      "devices": "อุปกรณ์",
+      "billing": "การเรียกเก็บเงิน"
     },
     "identity": {
-      "unknown": "ไม่ทราบ"
+      "unknown": "ไม่ทราบ",
+      "encrypted": "เข้ารหัสแบบครบวงจร"
     },
     "sync": {
       "lastSynced": "ซิงค์ครั้งล่าสุด {time}",
@@ -421,6 +476,53 @@
       "signedOut": "ออกจากระบบเรียบร้อยแล้ว",
       "signOutFailed": "การออกจากระบบล้มเหลว",
       "deviceLinked": "อุปกรณ์ถูกเชื่อมต่อเรียบร้อยแล้ว"
+    },
+    "billing": {
+      "actions": {
+        "manage": "จัดการการเรียกเก็บเงิน",
+        "opening": "กำลังเปิด...",
+        "refresh": "รีเฟรชสถานะ",
+        "upgrade": "อัปเกรด"
+      },
+      "activationPendingPrefix": "รอการเปิดใช้งาน Paddle อาจใช้เวลาสักครู่เพื่อยืนยันการชำระเงิน รีเฟรชสถานะหรืออีเมล",
+      "checking": "กำลังตรวจสอบสถานะการเรียกเก็บเงิน",
+      "historyDays": "{days} วัน",
+      "labels": {
+        "history": "ประวัติ",
+        "maxFile": "ไฟล์สูงสุด",
+        "storage": "พื้นที่จัดเก็บ",
+        "vaults": "Vault"
+      },
+      "planStatus": "สถานะแผน",
+      "plans": {
+        "believer": "แผน Believer",
+        "free": "แผนฟรี",
+        "plus": "แผน Plus",
+        "pro": "แผน Pro"
+      },
+      "statuses": {
+        "active": "ใช้งานอยู่",
+        "canceled": "ยกเลิกแล้ว",
+        "inactive": "ไม่ใช้งาน",
+        "past_due": "เกินกำหนดชำระ",
+        "paused": "หยุดชั่วคราว"
+      },
+      "toasts": {
+        "activationPending": "รอการเปิดใช้งาน",
+        "billingActive": "การเรียกเก็บเงินใช้งานอยู่",
+        "checkoutFailed": "ไม่สามารถเริ่มการชำระเงิน",
+        "checkoutOpened": "เปิดการชำระเงินในเบราว์เซอร์ของคุณแล้ว",
+        "loadFailed": "ไม่สามารถโหลดสถานะการเรียกเก็บเงิน",
+        "portalFailed": "ไม่สามารถเปิดพอร์ทัลการเรียกเก็บเงิน",
+        "refreshFailed": "ไม่สามารถรีเฟรชสถานะการเรียกเก็บเงิน"
+      },
+      "unlimited": "ไม่จำกัด"
+    },
+    "community": {
+      "and": "และ",
+      "feedback": "แชร์ความคิดเห็น",
+      "prompt": "รัก memrynote หรือไม่?",
+      "star": "ให้ดาวเราบน GitHub"
     }
   },
   "setup": {
@@ -437,7 +539,9 @@
       "errors": {
         "sendCode": "ส่งรหัสล้มเหลว",
         "googleStart": "เริ่มต้นการลงชื่อเข้าใช้ Google ล้มเหลว"
-      }
+      },
+      "paidPlan": "การซิงค์เป็นแผนแบบชำระเงิน",
+      "seePlans": "ดูแผน"
     },
     "email": {
       "label": "ที่อยู่อีเมล",
@@ -488,7 +592,13 @@
         "registering": "กำลังลงทะเบียนอุปกรณ์..."
       },
       "failed": "การกู้คืนล้มเหลว",
-      "confirmationFailed": "การยืนยันล้มเหลว"
+      "confirmationFailed": "การยืนยันล้มเหลว",
+      "unavailable": {
+        "description": "วลีกู้คืนของคุณจะแสดงเพียงครั้งเดียวระหว่างการตั้งค่าและไม่สามารถเรียกดูได้ภายหลัง เริ่มใหม่เพื่อสร้างวลีใหม่",
+        "loading": "กำลังโหลดวลีกู้คืนของคุณ…",
+        "startOver": "เริ่มใหม่",
+        "title": "ไม่สามารถโหลดวลีกู้คืนของคุณ"
+      }
     },
     "linking": {
       "choiceTitle": "เชื่อมต่ออุปกรณ์นี้",
@@ -513,7 +623,15 @@
       "waitingTitle": "รอการอนุมัติ",
       "waitingDescription": "เปิด memrynote บนอุปกรณ์อื่นของคุณและอนุมัติคำขอการเชื่อมโยง",
       "verificationCode": "รหัสยืนยัน",
-      "confirmCode": "ยืนยันว่านี่ตรงกับรหัสบนอุปกรณ์อื่นของคุณ"
+      "confirmCode": "ยืนยันว่านี่ตรงกับรหัสบนอุปกรณ์อื่นของคุณ",
+      "vaultPickerChooseFolder": "เลือกโฟลเดอร์",
+      "vaultPickerConfirm": "ดึงที่เลือก",
+      "vaultPickerDescription": "บัญชีนี้มีหลาย vault เลือกโฟลเดอร์และ vault ที่จะเพิ่มไปยังอุปกรณ์นี้",
+      "vaultPickerDormantHint": "เพิ่มแล้ว จะเปิดเมื่อคุณสลับไป",
+      "vaultPickerFolderLabel": "เก็บ vault ไว้ในโฟลเดอร์",
+      "vaultPickerPrimaryHint": "เปิดตอนนี้",
+      "vaultPickerTitle": "เลือกสิ่งที่จะดึง",
+      "vaultRow": "Vault — {{count}} รายการ · {{date}}"
     }
   },
   "devices": {
@@ -630,7 +748,15 @@
       "downloadedToast": "ดาวน์โหลด Whisper Small แล้ว",
       "downloadError": "ดาวน์โหลด Whisper Small ล้มเหลว",
       "keySavedToast": "รหัส OpenAI ถูกบันทึกแล้ว",
-      "keySaveError": "การบันทึกรหัส OpenAI ล้มเหลว"
+      "keySaveError": "การบันทึกรหัส OpenAI ล้มเหลว",
+      "memoNameMode": "ชื่อบันทึกเสียง",
+      "memoNameModeDescription": "วิธีตั้งชื่อบันทึกเสียงหลังการถอดเสียง",
+      "naming": {
+        "none": "ไม่ต้องเปลี่ยนชื่อ",
+        "timestamp": "การประทับเวลา",
+        "transcript": "ชื่อจากคำถอดเสียง"
+      },
+      "namingError": "อัปเดตการตั้งชื่อบันทึกเสียงไม่สำเร็จ"
     },
     "embedding": {
       "loaded": "โหลดแล้ว",
@@ -715,7 +841,12 @@
       "connectFailed": "เชื่อมต่อ Google Calendar ล้มเหลว",
       "refreshFailed": "รีเฟรช Google Calendar ล้มเหลว",
       "disconnectFailed": "ตัดการเชื่อมต่อ Google Calendar ล้มเหลว",
-      "retryFailed": "ลองซิงค์ปฏิทินใหม่ล้มเหลว"
+      "retryFailed": "ลองซิงค์ปฏิทินใหม่ล้มเหลว",
+      "pushToGoogle": {
+        "description": "ปิดเพื่อซิงค์ทางเดียว — คุณจะยังเห็นกิจกรรม Google ใน memrynote แต่กิจกรรม memrynote จะไม่ปรากฏใน Google",
+        "error": "อัปเดตทิศทางการซิงค์ไม่สำเร็จ",
+        "label": "แสดงกิจกรรม memrynote ใน Google Calendar"
+      }
     },
     "sourcePicker": {
       "empty": "ยังไม่มีปฏิทิน Google ที่นำเข้าพร้อมใช้งานบนอุปกรณ์นี้",
@@ -796,7 +927,8 @@
       "changeColor": "เปลี่ยนสี",
       "mergeInto": "รวมเป็น...",
       "merge": "รวม",
-      "delete": "ลบ"
+      "delete": "ลบ",
+      "changeIcon": "เปลี่ยนไอคอน"
     },
     "dialogs": {
       "deleteTitle": "ลบแท็ก",
@@ -814,7 +946,8 @@
       "mergeFailed": "  \nล้มเหลวในการรวมแท็ก  ",
       "merged": "  \nรวม \"{source}\" เข้ากับ \"{target}\" ({count, plural, one {# รายการ} other {# รายการ}})  ",
       "colorUpdated": "  \nอัปเดตสีสำหรับ \"{name}\" เรียบร้อยแล้ว  ",
-      "colorFailed": "  \nล้มเหลวในการอัปเดตสี  "
+      "colorFailed": "  \nล้มเหลวในการอัปเดตสี  ",
+      "iconFailed": "อัปเดตไอคอนไม่สำเร็จ"
     }
   },
   "properties": {
@@ -1144,7 +1277,10 @@
     "status": {
       "disconnected": "Disconnected",
       "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled"
+      "fullTools": "Full tools enabled",
+      "checking": "กำลังตรวจสอบ…",
+      "connected": "เชื่อมต่อแล้ว",
+      "label": "การเชื่อมต่อ"
     },
     "permissions": {
       "group": "Agent permissions",
@@ -1160,6 +1296,133 @@
         "alwaysAllow": "Always allow",
         "askBeforeChanges": "Ask before changes"
       }
+    }
+  },
+  "commandLine": {
+    "actions": {
+      "refresh": "รีเฟรช"
+    },
+    "command": {
+      "descriptionInstalled": "ติดตั้งที่ {path}",
+      "descriptionNotInstalled": "ติดตั้งคำสั่ง memrynote เพื่อให้คุณใช้ vault ของคุณจากเทอร์มินัลใดก็ได้",
+      "label": "คำสั่ง memrynote",
+      "toggleLabel": "ติดตั้งคำสั่ง memrynote"
+    },
+    "defaultVault": {
+      "description": "เลือก vault ที่ใช้เมื่อคุณเรียก memrynote โดยไม่มี --vault",
+      "descriptionSelected": "คำสั่งใช้ {path} เมื่อละ --vault",
+      "label": "Vault เริ่มต้น",
+      "none": "ไม่ได้เลือก vault",
+      "placeholder": "เลือก vault"
+    },
+    "groups": {
+      "terminal": "เทอร์มินัล"
+    },
+    "header": {
+      "subtitle": "ตั้งค่าคำสั่ง memrynote สำหรับเทอร์มินัลของคุณ",
+      "title": "บรรทัดคำสั่ง"
+    },
+    "status": {
+      "defaultVaultUpdatedToast": "อัปเดต vault เริ่มต้นของ CLI แล้ว",
+      "installedToast": "ติดตั้งคำสั่ง memrynote แล้ว",
+      "loadFailed": "โหลดสถานะคำสั่งไม่สำเร็จ",
+      "loading": "กำลังตรวจสอบสถานะคำสั่ง...",
+      "uninstalledToast": "นำคำสั่ง memrynote ออกแล้ว"
+    }
+  },
+  "features": {
+    "header": {
+      "subtitle": "เปิดหรือปิดส่วนต่างๆ ของแอป ปิด = จางในแถบด้านข้างและปิดใช้งานทุกที่",
+      "title": "ฟีเจอร์"
+    },
+    "items": {
+      "calendar": {
+        "description": "กิจกรรมและกำหนดการ",
+        "label": "ปฏิทิน"
+      },
+      "graph": {
+        "description": "การเชื่อมโยงโน้ต",
+        "label": "กราฟ"
+      },
+      "home": {
+        "description": "แดชบอร์ดหน้าเริ่มต้น",
+        "label": "หน้าแรก"
+      },
+      "inbox": {
+        "description": "บันทึกด่วนและจัดลำดับ",
+        "label": "กล่องขาเข้า"
+      },
+      "journal": {
+        "description": "โน้ตรายวัน",
+        "label": "บันทึกประจำวัน"
+      },
+      "tasks": {
+        "description": "สิ่งที่ต้องทำและวันครบกำหนด",
+        "label": "งาน"
+      }
+    }
+  },
+  "import": {
+    "action": "นำเข้า",
+    "dialog": {
+      "cancel": "ยกเลิก",
+      "choose": "เลือกไฟล์…",
+      "chooseFolder": "เลือกโฟลเดอร์ Apple Notes…",
+      "chooseHint": "เลือก {label} ของคุณ",
+      "close": "ปิด",
+      "done": "เสร็จสิ้น",
+      "error": "การนำเข้าล้มเหลว",
+      "folderHint": "คลิกด้านล่างและเลือกโฟลเดอร์ “group.com.apple.notes” เมื่อตัวเลือกเปิดขึ้น (จะเริ่มที่นั่น) วิธีนี้ช่วยให้ Memry อ่านโน้ตและไฟล์แนบของคุณ — ไม่ต้องมี Full Disk Access",
+      "progress": "{completed} จาก {total}",
+      "running": "กำลังนำเข้า…",
+      "selected": "{count, plural, other {เลือก # ไฟล์}}",
+      "start": "เริ่มนำเข้า",
+      "summary": {
+        "attachments": "{count, plural, other {คัดลอกไฟล์แนบ # รายการ}}",
+        "failed": "ล้มเหลว {count} รายการ",
+        "imported": "{count, plural, other {นำเข้า # รายการ}}",
+        "skipped": "ข้าม {count} รายการ",
+        "title": "นำเข้าเสร็จสมบูรณ์"
+      },
+      "title": "นำเข้าจาก {name}"
+    },
+    "header": {
+      "subtitle": "นำโน้ตและงานของคุณเข้ามาจากแอปอื่น",
+      "title": "นำเข้า"
+    },
+    "intro": "การนำเข้าครั้งเดียวจะสร้างโน้ตใหม่ใน vault ของคุณ ไฟล์ส่งออกต้นฉบับของคุณจะไม่ถูกแตะต้อง",
+    "preview": {
+      "confirm": "นำเข้า",
+      "warnings": "คำเตือน"
+    },
+    "select": "เลือกแอปที่จะนำเข้าจาก…",
+    "sources": {
+      "apple-journal": "นำเข้าไฟล์ส่งออก HTML ของ Apple Journal เป็นโน้ตตามวันที่",
+      "apple-notes": "นำเข้าจากฐานข้อมูล Apple Notes (NoteStore.sqlite, macOS)",
+      "bear": "นำเข้าไฟล์เก็บถาวร Bear .bear2bk (โน้ต, แท็ก, ไฟล์แนบ)",
+      "csv": "นำเข้าไฟล์ .csv — หนึ่งโน้ตต่อหนึ่งแถว คอลัมน์กลายเป็นคุณสมบัติ",
+      "evernote": "นำเข้าไฟล์ส่งออก Evernote .enex หนึ่งไฟล์หรือมากกว่า",
+      "google-keep": "นำเข้าไฟล์ส่งออก Google Takeout Keep (.json หรือ .zip)",
+      "html": "นำเข้าไฟล์ .html พร้อมรูปภาพที่เชื่อมโยงและลิงก์ข้ามหน้า",
+      "markdown": "นำเข้าไฟล์ .md หรือโฟลเดอร์ (frontmatter, แท็ก, ไฟล์แนบ)",
+      "notion": "นำเข้าไฟล์ส่งออก HTML (.zip)",
+      "onenote": "นำเข้าสมุดบันทึก OneNote (ต้องใช้บัญชี Microsoft)",
+      "raindrop": "นำเข้าไฟล์ส่งออกบุ๊กมาร์ก Raindrop.io (.csv) — บุ๊กมาร์กจะไปอยู่ในกล่องขาเข้า",
+      "roam": "นำเข้ากราฟ Roam Research (.json) พร้อมโครงร่างแบบซ้อน",
+      "ticktick": "นำเข้าข้อมูลสำรอง TickTick (.csv) เป็นโปรเจกต์ งาน และการเตือน",
+      "todoist": "นำเข้าไฟล์ส่งออกโปรเจกต์ CSV (.csv)"
+    },
+    "stats": {
+      "bookmarks": "{count, plural, other {# บุ๊กมาร์ก}}",
+      "comments": "{count, plural, other {# ความคิดเห็น}}",
+      "notes": "{count, plural, other {# โน้ต}}",
+      "projects": "{count, plural, other {# โปรเจกต์}}",
+      "reminders": "{count, plural, other {# การเตือน}}",
+      "skipped": "ข้าม {count} รายการ",
+      "subtasks": "{count, plural, other {# งานย่อย}}",
+      "tasks": "{count, plural, other {# งาน}}",
+      "withDueDate": "ระบุวันที่ {count} รายการ",
+      "withTags": "ติดแท็ก {count} รายการ"
     }
   }
 }

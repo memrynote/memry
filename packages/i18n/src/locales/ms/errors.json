@@ -73,6 +73,7 @@
     "settingsNotInitialized": "Penyegerakan tetapan tidak dimulakan",
     "securityQuarantinePermanent": "Item penyegerakan tidak dapat disahkan dan telah dikuarantin untuk keselamatan.",
     "securityQuarantineRetry": "Item penyegerakan gagal pengesahan tandatangan dan akan dicuba semula.",
-    "certificatePinPaused": "Sambungan selamat ke pelayan penyegerakan tidak dapat disahkan. Penyegerakan telah dijeda untuk perlindungan anda."
+    "certificatePinPaused": "Sambungan selamat ke pelayan penyegerakan tidak dapat disahkan. Penyegerakan telah dijeda untuk perlindungan anda.",
+    "paymentRequired": "Pelan Sync berbayar diperlukan untuk menggunakan penyegerakan disulitkan terhos."
   }
 }

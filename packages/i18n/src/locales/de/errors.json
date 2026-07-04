@@ -73,6 +73,7 @@
     "settingsNotInitialized": "Die Synchronisierung der Einstellungen wurde nicht initialisiert",
     "securityQuarantinePermanent": "Ein Synchronisierungselement konnte nicht überprüft werden und wurde aus Sicherheitsgründen unter Quarantäne gestellt.",
     "securityQuarantineRetry": "Die Signaturüberprüfung eines Synchronisierungselements ist fehlgeschlagen und wird erneut versucht.",
-    "certificatePinPaused": "Die sichere Verbindung zum Synchronisierungsserver konnte nicht überprüft werden. Die Synchronisierung wurde zu Ihrem Schutz angehalten."
+    "certificatePinPaused": "Die sichere Verbindung zum Synchronisierungsserver konnte nicht überprüft werden. Die Synchronisierung wurde zu Ihrem Schutz angehalten.",
+    "paymentRequired": "Für die gehostete verschlüsselte Synchronisierung ist ein kostenpflichtiger Sync-Tarif erforderlich."
   }
 }

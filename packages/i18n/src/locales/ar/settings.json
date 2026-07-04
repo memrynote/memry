@@ -25,7 +25,10 @@
         "integrations": "التكامل",
         "vault": "قبو",
         "tags": "العلامات",
-        "properties": "خصائص"
+        "properties": "خصائص",
+        "commandLine": "سطر الأوامر",
+        "features": "الميزات",
+        "import": "استيراد"
       }
     }
   },
@@ -109,6 +112,11 @@
       "createInSelectedFolder": {
         "label": "إنشاء في المجلد المحدد",
         "description": "يتم إنشاء ملاحظات ومجلدات جديدة داخل المجلد المحدد حاليًا. عند إيقاف التشغيل، يتم دائمًا إنشاء العناصر في الجذر."
+      },
+      "defaultNoteFolder": {
+        "description": "فارغ = جذر الخزنة",
+        "label": "الموقع الافتراضي للملاحظات الجديدة",
+        "placeholder": "notes"
       }
     },
     "privacy": {
@@ -116,6 +124,17 @@
         "label": "مشاركة مقاييس الاستخدام المجهولة",
         "description": "إنها مجرد مقاييس مجهولة - لا يتم إرسال محتوى الملاحظات أو استعلامات البحث أو مسارات الملفات أو رسائل البريد الإلكتروني أو المعرفات الأولية على الإطلاق.",
         "error": "فشل تحديث إعداد القياس عن بعد"
+      }
+    },
+    "dateFormat": {
+      "description": "كيفية عرض تواريخ التقويم",
+      "error": "فشل تحديث تنسيق التاريخ",
+      "label": "تنسيق التاريخ",
+      "options": {
+        "DD.MM.YYYY": "DD.MM.YYYY",
+        "DD/MM/YYYY": "DD/MM/YYYY",
+        "MM/DD/YYYY": "MM/DD/YYYY (الولايات المتحدة)",
+        "YYYY-MM-DD": "YYYY-MM-DD (ISO)"
       }
     }
   },
@@ -250,6 +269,9 @@
         "description": "أدخل اسمًا لنسخة القالب الجديد.",
         "placeholder": "اسم القالب"
       }
+    },
+    "preview": {
+      "notFound": "تعذّر تحميل هذا القالب."
     }
   },
   "journal": {
@@ -261,7 +283,8 @@
     "groups": {
       "defaultTemplate": "القالب الافتراضي",
       "sidebarVisibility": "رؤية الشريط الجانبي",
-      "footer": "تذييل"
+      "footer": "تذييل",
+      "location": "الموقع والتنسيق"
     },
     "template": {
       "label": "القالب",
@@ -290,7 +313,21 @@
       "label": "إظهار تذييل الإحصائيات",
       "description": "عدد الكلمات، وقت القراءة، الطوابع الزمنية"
     },
-    "updateError": "فشل تحديث الإعداد"
+    "updateError": "فشل تحديث الإعداد",
+    "dateFormat": {
+      "description": "تنسيق اسم الملف للملاحظات اليومية (مثل YYYY-MM-DD)",
+      "label": "تنسيق التاريخ",
+      "placeholder": "YYYY-MM-DD"
+    },
+    "folder": {
+      "description": "المجلد الذي تُخزَّن فيه الملاحظات اليومية",
+      "label": "مجلد اليوميات",
+      "placeholder": "journal"
+    },
+    "preview": {
+      "description": "مسار ملف يوميات اليوم",
+      "label": "معاينة"
+    }
   },
   "tasks": {
     "header": {
@@ -344,7 +381,9 @@
       "loading": "جارٍ تحميل الإعدادات..."
     },
     "groups": {
-      "dayCellClick": "انقر فوق خلية اليوم"
+      "dayCellClick": "انقر فوق خلية اليوم",
+      "notes": "الملاحظات",
+      "weekStart": "الأسبوع"
     },
     "defaultBehavior": {
       "label": "السلوك الافتراضي",
@@ -360,6 +399,20 @@
       "openJournal": "افتح المجلة",
       "openCalendar": "افتح التقويم",
       "useGlobal": "استخدم الإعداد العالمي"
+    },
+    "showNotesOnCalendar": {
+      "description": "إظهار كل ملاحظة في التقويم كعنصر طوال اليوم في يوم إنشائها",
+      "error": "فشل تحديث إظهار الملاحظات في التقويم",
+      "label": "إظهار الملاحظات في التقويم"
+    },
+    "weekStart": {
+      "description": "أول يوم في الأسبوع عبر جميع التقاويم",
+      "error": "فشل تحديث بداية الأسبوع",
+      "label": "يبدأ الأسبوع في",
+      "options": {
+        "monday": "الإثنين",
+        "sunday": "الأحد"
+      }
     }
   },
   "account": {
@@ -372,10 +425,12 @@
       "identity": "الهوية",
       "sync": "مزامنة",
       "storage": "التخزين",
-      "devices": "الأجهزة"
+      "devices": "الأجهزة",
+      "billing": "الفوترة"
     },
     "identity": {
-      "unknown": "غير معروف"
+      "unknown": "غير معروف",
+      "encrypted": "مشفّر من طرف إلى طرف"
     },
     "sync": {
       "lastSynced": "آخر مزامنة لـ {time}",
@@ -421,6 +476,53 @@
       "signedOut": "تم تسجيل الخروج بنجاح",
       "signOutFailed": "فشل تسجيل الخروج",
       "deviceLinked": "تم ربط الجهاز بنجاح"
+    },
+    "billing": {
+      "actions": {
+        "manage": "إدارة الفوترة",
+        "opening": "جارٍ الفتح...",
+        "refresh": "تحديث الحالة",
+        "upgrade": "ترقية"
+      },
+      "activationPendingPrefix": "التفعيل قيد الانتظار. قد يستغرق Paddle لحظة لتأكيد الدفع. حدّث الحالة أو راسل",
+      "checking": "جارٍ التحقق من حالة الفوترة",
+      "historyDays": "{days} يوم",
+      "labels": {
+        "history": "السجل",
+        "maxFile": "أقصى حجم للملف",
+        "storage": "التخزين",
+        "vaults": "الخزائن"
+      },
+      "planStatus": "حالة الاشتراك",
+      "plans": {
+        "believer": "اشتراك Believer",
+        "free": "الاشتراك المجاني",
+        "plus": "اشتراك Plus",
+        "pro": "اشتراك Pro"
+      },
+      "statuses": {
+        "active": "نشط",
+        "canceled": "ملغى",
+        "inactive": "غير نشط",
+        "past_due": "متأخر السداد",
+        "paused": "متوقف مؤقتًا"
+      },
+      "toasts": {
+        "activationPending": "التفعيل قيد الانتظار",
+        "billingActive": "الفوترة نشطة",
+        "checkoutFailed": "تعذّر بدء الدفع",
+        "checkoutOpened": "تم فتح الدفع في متصفحك",
+        "loadFailed": "تعذّر تحميل حالة الفوترة",
+        "portalFailed": "تعذّر فتح بوابة الفوترة",
+        "refreshFailed": "تعذّر تحديث حالة الفوترة"
+      },
+      "unlimited": "غير محدود"
+    },
+    "community": {
+      "and": "و",
+      "feedback": "شارك ملاحظاتك",
+      "prompt": "هل تحب memrynote؟",
+      "star": "امنحنا نجمة على GitHub"
     }
   },
   "setup": {
@@ -437,7 +539,9 @@
       "errors": {
         "sendCode": "فشل في إرسال الرمز",
         "googleStart": "فشل في بدء تسجيل الدخول إلى Google"
-      }
+      },
+      "paidPlan": "المزامنة اشتراك مدفوع.",
+      "seePlans": "عرض الاشتراكات"
     },
     "email": {
       "label": "عنوان البريد الإلكتروني",
@@ -488,7 +592,13 @@
         "registering": "تسجيل الجهاز..."
       },
       "failed": "فشل الاسترداد",
-      "confirmationFailed": "فشل التأكيد"
+      "confirmationFailed": "فشل التأكيد",
+      "unavailable": {
+        "description": "تُعرض عبارة الاسترداد مرة واحدة فقط أثناء الإعداد ولا يمكن استرجاعها لاحقًا. ابدأ من جديد لإنشاء عبارة جديدة.",
+        "loading": "جارٍ تحميل عبارة الاسترداد الخاصة بك…",
+        "startOver": "ابدأ من جديد",
+        "title": "تعذّر تحميل عبارة الاسترداد الخاصة بك"
+      }
     },
     "linking": {
       "choiceTitle": "ربط هذا الجهاز",
@@ -513,7 +623,15 @@
       "waitingTitle": "في انتظار الموافقة",
       "waitingDescription": "افتح memrynote على جهازك الآخر وقم بالموافقة على طلب الربط.",
       "verificationCode": "رمز التحقق",
-      "confirmCode": "تأكد من أن هذا يطابق الرمز الموجود على جهازك الآخر"
+      "confirmCode": "تأكد من أن هذا يطابق الرمز الموجود على جهازك الآخر",
+      "vaultPickerChooseFolder": "اختر مجلدًا",
+      "vaultPickerConfirm": "سحب المحدد",
+      "vaultPickerDescription": "يحتوي هذا الحساب على عدة خزائن. اختر مجلدًا والخزنة (أو الخزائن) لإضافتها إلى هذا الجهاز.",
+      "vaultPickerDormantHint": "مُضافة، وتُفتح عند التبديل إليها",
+      "vaultPickerFolderLabel": "تخزين الخزائن في مجلد",
+      "vaultPickerPrimaryHint": "تُفتح الآن",
+      "vaultPickerTitle": "اختر ما تريد سحبه",
+      "vaultRow": "خزنة — {{count}} عنصر · {{date}}"
     }
   },
   "devices": {
@@ -630,7 +748,15 @@
       "downloadedToast": "تم تنزيل Whisper Small",
       "downloadError": "فشل في تنزيل Whisper Small",
       "keySavedToast": "تم حفظ مفتاح OpenAI",
-      "keySaveError": "فشل في حفظ مفتاح OpenAI"
+      "keySaveError": "فشل في حفظ مفتاح OpenAI",
+      "memoNameMode": "أسماء المذكرات",
+      "memoNameModeDescription": "كيفية تسمية المذكرات الصوتية بعد النسخ",
+      "naming": {
+        "none": "عدم إعادة التسمية",
+        "timestamp": "الطابع الزمني",
+        "transcript": "عنوان النص المنسوخ"
+      },
+      "namingError": "فشل تحديث تسمية المذكرة الصوتية"
     },
     "embedding": {
       "loaded": "محملة",
@@ -715,7 +841,12 @@
       "connectFailed": "فشل في ربط تقويم Google",
       "refreshFailed": "فشل تحديث تقويم Google",
       "disconnectFailed": "فشل في قطع اتصال تقويم Google",
-      "retryFailed": "فشلت إعادة محاولة مزامنة التقويم"
+      "retryFailed": "فشلت إعادة محاولة مزامنة التقويم",
+      "pushToGoogle": {
+        "description": "أوقفه للمزامنة أحادية الاتجاه — ستظل ترى أحداث Google في memrynote، لكن أحداث memrynote لن تظهر في Google.",
+        "error": "فشل تحديث اتجاه المزامنة",
+        "label": "إظهار أحداث memrynote في تقويم Google"
+      }
     },
     "sourcePicker": {
       "empty": "لا تتوفر تقاويم Google المستوردة على هذا الجهاز حتى الآن.",
@@ -796,7 +927,8 @@
       "changeColor": "تغيير اللون",
       "mergeInto": "دمج في...",
       "merge": "دمج",
-      "delete": "حذف"
+      "delete": "حذف",
+      "changeIcon": "تغيير الأيقونة"
     },
     "dialogs": {
       "deleteTitle": "حذف العلامة",
@@ -814,7 +946,8 @@
       "mergeFailed": "فشل دمج العلامات",
       "merged": "تم دمج \"{source}\" في \"{target}\" ({count, plural, one {عنصر #} other {عناصر #}})",
       "colorUpdated": "تم تحديث اللون لـ \"{name}\"",
-      "colorFailed": "فشل في تحديث اللون"
+      "colorFailed": "فشل في تحديث اللون",
+      "iconFailed": "فشل تحديث الأيقونة"
     }
   },
   "properties": {
@@ -1144,7 +1277,10 @@
     "status": {
       "disconnected": "Disconnected",
       "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled"
+      "fullTools": "Full tools enabled",
+      "checking": "جارٍ التحقق…",
+      "connected": "متصل",
+      "label": "الاتصال"
     },
     "permissions": {
       "group": "Agent permissions",
@@ -1160,6 +1296,133 @@
         "alwaysAllow": "Always allow",
         "askBeforeChanges": "Ask before changes"
       }
+    }
+  },
+  "commandLine": {
+    "actions": {
+      "refresh": "تحديث"
+    },
+    "command": {
+      "descriptionInstalled": "مثبّت في {path}",
+      "descriptionNotInstalled": "ثبّت أمر memrynote لتتمكن من استخدام خزنتك من أي جهاز طرفي.",
+      "label": "أمر memrynote",
+      "toggleLabel": "تثبيت أمر memrynote"
+    },
+    "defaultVault": {
+      "description": "اختر الخزنة المستخدمة عند تشغيل memrynote بدون --vault.",
+      "descriptionSelected": "تستخدم الأوامر {path} عند حذف --vault.",
+      "label": "الخزنة الافتراضية",
+      "none": "لم يتم تحديد خزنة",
+      "placeholder": "اختر خزنة"
+    },
+    "groups": {
+      "terminal": "الجهاز الطرفي"
+    },
+    "header": {
+      "subtitle": "إعداد أمر memrynote لجهازك الطرفي",
+      "title": "سطر الأوامر"
+    },
+    "status": {
+      "defaultVaultUpdatedToast": "تم تحديث خزنة CLI الافتراضية",
+      "installedToast": "تم تثبيت أمر memrynote",
+      "loadFailed": "فشل تحميل حالة الأمر",
+      "loading": "جارٍ التحقق من حالة الأمر...",
+      "uninstalledToast": "تمت إزالة أمر memrynote"
+    }
+  },
+  "features": {
+    "header": {
+      "subtitle": "فعّل أجزاء التطبيق أو عطّلها. معطّل = باهت في الشريط الجانبي وغير مفعّل في كل مكان.",
+      "title": "الميزات"
+    },
+    "items": {
+      "calendar": {
+        "description": "الأحداث والجدول",
+        "label": "التقويم"
+      },
+      "graph": {
+        "description": "روابط الملاحظات",
+        "label": "الرسم البياني"
+      },
+      "home": {
+        "description": "لوحة البداية",
+        "label": "الرئيسية"
+      },
+      "inbox": {
+        "description": "التقاط وفرز سريع",
+        "label": "البريد الوارد"
+      },
+      "journal": {
+        "description": "ملاحظات يومية",
+        "label": "اليوميات"
+      },
+      "tasks": {
+        "description": "قوائم المهام وتواريخ الاستحقاق",
+        "label": "المهام"
+      }
+    }
+  },
+  "import": {
+    "action": "استيراد",
+    "dialog": {
+      "cancel": "إلغاء",
+      "choose": "اختر ملفًا…",
+      "chooseFolder": "اختر مجلد Apple Notes…",
+      "chooseHint": "اختر {label}",
+      "close": "إغلاق",
+      "done": "تم",
+      "error": "فشل الاستيراد",
+      "folderHint": "انقر أدناه واختر مجلد ”group.com.apple.notes“ عند فتح المُنتقي (يبدأ هناك). يتيح ذلك لـ Memry قراءة ملاحظاتك ومرفقاتك — دون الحاجة إلى صلاحية الوصول الكامل للقرص.",
+      "progress": "{completed} من {total}",
+      "running": "جارٍ الاستيراد…",
+      "selected": "{count, plural, zero {لم يتم تحديد ملفات} one {تم تحديد ملف واحد} two {تم تحديد ملفين} few {تم تحديد # ملفات} many {تم تحديد # ملفاً} other {تم تحديد # ملف}}",
+      "start": "بدء الاستيراد",
+      "summary": {
+        "attachments": "{count, plural, zero {لم يتم نسخ مرفقات} one {تم نسخ مرفق واحد} two {تم نسخ مرفقين} few {تم نسخ # مرفقات} many {تم نسخ # مرفقاً} other {تم نسخ # مرفق}}",
+        "failed": "{count} فشل",
+        "imported": "{count, plural, zero {لم يتم استيراد عناصر} one {تم استيراد عنصر واحد} two {تم استيراد عنصرين} few {تم استيراد # عناصر} many {تم استيراد # عنصراً} other {تم استيراد # عنصر}}",
+        "skipped": "{count} تم تخطيه",
+        "title": "اكتمل الاستيراد"
+      },
+      "title": "الاستيراد من {name}"
+    },
+    "header": {
+      "subtitle": "أحضر ملاحظاتك ومهامك من تطبيقات أخرى",
+      "title": "استيراد"
+    },
+    "intro": "تُنشئ عمليات الاستيراد لمرة واحدة ملاحظات جديدة في خزنتك. تبقى ملفات التصدير الأصلية دون تغيير.",
+    "preview": {
+      "confirm": "استيراد",
+      "warnings": "تحذيرات"
+    },
+    "select": "اختر تطبيقًا للاستيراد منه…",
+    "sources": {
+      "apple-journal": "استيراد تصدير Apple Journal بصيغة HTML كملاحظات مؤرّخة",
+      "apple-notes": "استيراد من قاعدة بيانات Apple Notes (NoteStore.sqlite، macOS)",
+      "bear": "استيراد أرشيف Bear بصيغة .bear2bk (الملاحظات والوسوم والمرفقات)",
+      "csv": "استيراد ملف .csv — ملاحظة واحدة لكل صف، وتصبح الأعمدة خصائص",
+      "evernote": "استيراد ملف تصدير Evernote واحد أو أكثر بصيغة .enex",
+      "google-keep": "استيراد تصدير Google Takeout Keep (.json أو .zip)",
+      "html": "استيراد ملفات .html مع الصور المرتبطة والروابط بين الصفحات",
+      "markdown": "استيراد ملفات .md أو مجلد (frontmatter والوسوم والمرفقات)",
+      "notion": "استيراد تصدير HTML (.zip)",
+      "onenote": "استيراد دفاتر OneNote (يتطلب حساب Microsoft)",
+      "raindrop": "استيراد تصدير إشارات Raindrop.io المرجعية (.csv) — تصل الإشارات المرجعية إلى البريد الوارد",
+      "roam": "استيراد رسم Roam Research (.json) بمخططات متداخلة",
+      "ticktick": "استيراد نسخة TickTick احتياطية (.csv) كمشاريع ومهام وتذكيرات",
+      "todoist": "استيراد تصدير مشروع بصيغة CSV (.csv)"
+    },
+    "stats": {
+      "bookmarks": "{count, plural, zero {لا إشارات مرجعية} one {إشارة مرجعية واحدة} two {إشارتان مرجعيتان} few {# إشارات مرجعية} many {# إشارة مرجعية} other {# إشارة مرجعية}}",
+      "comments": "{count, plural, zero {لا تعليقات} one {تعليق واحد} two {تعليقان} few {# تعليقات} many {# تعليقاً} other {# تعليق}}",
+      "notes": "{count, plural, zero {لا ملاحظات} one {ملاحظة واحدة} two {ملاحظتان} few {# ملاحظات} many {# ملاحظة} other {# ملاحظة}}",
+      "projects": "{count, plural, zero {لا مشاريع} one {مشروع واحد} two {مشروعان} few {# مشاريع} many {# مشروعاً} other {# مشروع}}",
+      "reminders": "{count, plural, zero {لا تذكيرات} one {تذكير واحد} two {تذكيران} few {# تذكيرات} many {# تذكيراً} other {# تذكير}}",
+      "skipped": "{count} تم تخطيه",
+      "subtasks": "{count, plural, zero {لا مهام فرعية} one {مهمة فرعية واحدة} two {مهمتان فرعيتان} few {# مهام فرعية} many {# مهمة فرعية} other {# مهمة فرعية}}",
+      "tasks": "{count, plural, zero {لا مهام} one {مهمة واحدة} two {مهمتان} few {# مهام} many {# مهمة} other {# مهمة}}",
+      "withDueDate": "{count} مؤرّخ",
+      "withTags": "{count} موسوم"
     }
   }
 }

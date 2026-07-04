@@ -1,11 +1,15 @@
 {
   "app": {
-    "quit": "استقال"
+    "quit": "استقال",
+    "preferences": "الإعدادات…"
   },
   "file": {
     "label": "ملف",
     "newNote": "ملاحظة جديدة",
-    "close": "إغلاق النافذة"
+    "close": "إغلاق النافذة",
+    "closeTab": "إغلاق علامة التبويب",
+    "exportPdf": "تصدير إلى PDF…",
+    "openQuickly": "فتح سريع…"
   },
   "navigation": {
     "back": "رجوع",
@@ -18,12 +22,51 @@
     "cut": "قطع",
     "copy": "نسخ",
     "paste": "لصق",
-    "selectAll": "تحديد الكل"
+    "selectAll": "تحديد الكل",
+    "find": "بحث",
+    "speech": "النطق"
   },
   "view": {
     "label": "عرض",
     "reload": "إعادة تحميل",
     "toggleDevTools": "تبديل أدوات المطور",
-    "toggleFullscreen": "تبديل الشاشة الكاملة"
+    "toggleFullscreen": "تبديل الشاشة الكاملة",
+    "theme": "السمة",
+    "themeDark": "داكن",
+    "themeLight": "فاتح",
+    "themeSystem": "النظام",
+    "themeWhite": "ورقي",
+    "toggleDayPanel": "تبديل لوحة اليوم",
+    "toggleSidebar": "تبديل الشريط الجانبي"
+  },
+  "format": {
+    "body": "النص الأساسي",
+    "bold": "غامق",
+    "code": "شفرة",
+    "heading1": "عنوان 1",
+    "heading2": "عنوان 2",
+    "heading3": "عنوان 3",
+    "highlight": "تمييز",
+    "italic": "مائل",
+    "label": "تنسيق",
+    "strikethrough": "يتوسطه خط"
+  },
+  "help": {
+    "about": "حول Memrynote",
+    "documentation": "التوثيق",
+    "label": "مساعدة",
+    "shortcuts": "اختصارات لوحة المفاتيح"
+  },
+  "insert": {
+    "attachment": "إدراج مرفق…",
+    "bulletList": "قائمة نقطية",
+    "codeBlock": "كتلة برمجية",
+    "label": "إدراج",
+    "numberedList": "قائمة مرقّمة",
+    "table": "جدول",
+    "taskList": "قائمة مهام"
+  },
+  "window": {
+    "label": "نافذة"
   }
 }

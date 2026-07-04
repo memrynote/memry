@@ -33,7 +33,8 @@
     "repeat": "Herhaal",
     "createAnother": "Maak er nog een",
     "delete": "Taak verwijderen",
-    "created": "{date} gemaakt"
+    "created": "{date} gemaakt",
+    "reminder": "Herinnering"
   },
   "filters": {
     "filter": "Filteren",
@@ -62,7 +63,16 @@
     "noNotesAvailable": "Geen notities beschikbaar",
     "noLinkedNotes": "Nog geen gekoppelde notities",
     "removeLinkTo": "Verwijder de link naar {title}",
-    "removeLinkFallback": "opmerking"
+    "removeLinkFallback": "opmerking",
+    "addRelatedItem": "Gerelateerd item toevoegen",
+    "noMatchingRelated": "Geen overeenkomende items",
+    "noRelatedAvailable": "Geen items beschikbaar",
+    "noRelatedItems": "Nog geen gerelateerde items",
+    "related": "Gerelateerd",
+    "relatedItemFallback": "item",
+    "removeRelatedItem": "Gerelateerd item {title} verwijderen",
+    "resize": "Paneel vergroten/verkleinen",
+    "searchRelated": "Gerelateerde zoeken…"
   },
   "kanban": {
     "board": "Kanban-bord"
@@ -174,7 +184,8 @@
     "componentsTasksDatePickerContent": {
       "removeDate": "Datum verwijderen",
       "clearTime": "Duidelijke tijd",
-      "addTime": "Voeg tijd toe"
+      "addTime": "Voeg tijd toe",
+      "time": "Tijd"
     },
     "componentsTasksDeleteProjectDialog": {
       "delete": "Verwijder \"",
@@ -612,6 +623,20 @@
       "failedToLoadTaskPreferences": "Kan taakvoorkeuren niet laden",
       "failedToUpdateTaskPreferences": "Kan de taakvoorkeuren niet bijwerken",
       "failedToLoadLinkedTasks": "Kan gekoppelde taken niet laden"
+    }
+  },
+  "reminders": {
+    "hasReminders": "Heeft herinneringen",
+    "setReminder": "Herinnering instellen",
+    "summary": "Herinnering: {date}",
+    "summaryWithMore": "Herinnering: {date} (+nog {count})",
+    "toast": {
+      "deleteFailed": "Kan herinnering niet verwijderen",
+      "deleted": "Herinnering verwijderd",
+      "set": "Herinnering ingesteld",
+      "setFailed": "Kan herinnering niet instellen",
+      "updateFailed": "Kan herinnering niet bijwerken",
+      "updated": "Herinnering bijgewerkt"
     }
   }
 }

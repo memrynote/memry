@@ -42,7 +42,9 @@
       "setIcon": "Symbol festlegen",
       "removeIcon": "Symbol entfernen",
       "deleteSelectedNotes": "Löschen Sie {count}-Notizen",
-      "deleteSelectedItems": "Löschen Sie {count}-Elemente"
+      "deleteSelectedItems": "Löschen Sie {count}-Elemente",
+      "bookmark": "Lesezeichen",
+      "removeFromBookmarks": "Aus Lesezeichen entfernen"
     },
     "deleteDialog": {
       "noteTitle": "Notiz löschen",
@@ -111,7 +113,11 @@
       "aria": "Hinweise beachten",
       "loading": "Notizen werden geladen...",
       "empty": "Keine Notizen gefunden",
-      "create": "Neue Notiz erstellen"
+      "create": "Neue Notiz erstellen",
+      "embed": "Einbetten",
+      "embedAria": "{title} einbetten",
+      "wikiLink": "Wiki-Link",
+      "wikiLinkAria": "Wiki-Link {title}"
     },
     "tags": {
       "aria": "Tag-Vorschläge",
@@ -133,6 +139,15 @@
       "searchPlaceholder": "Suchen",
       "noIcons": "Keine Symbole gefunden",
       "clearSearch": "Suche löschen"
+    },
+    "mention": {
+      "aria": "Datums- und Notizvorschläge",
+      "date": "Datum",
+      "dateHint": "Tippe weiter ein Datum…",
+      "empty": "Keine Notizen gefunden",
+      "loading": "Notizen werden geladen...",
+      "remindMe": "Erinnere mich",
+      "showMore": "Mehr anzeigen"
     }
   },
   "outline": {
@@ -174,7 +189,8 @@
     "createTag": "Tag erstellen: „{tag}“",
     "chooseColor": "Farbe wählen:",
     "preview": "Vorschau:",
-    "colorAria": "Wählen Sie die Farbe {color}"
+    "colorAria": "Wählen Sie die Farbe {color}",
+    "customColor": "Benutzerdefinierte Farbe"
   },
   "properties": {
     "title": "Eigenschaften",
@@ -205,7 +221,9 @@
       "status": "Status",
       "select": "Auswählen",
       "multiselect": "Mehrfachauswahl"
-    }
+    },
+    "showOnCalendar": "Im Kalender anzeigen",
+    "showingOnCalendar": "Wird im Kalender angezeigt"
   },
   "templateSelector": {
     "title": "Wählen Sie Ihre Leinwand",
@@ -295,7 +313,8 @@
   },
   "phaseF": {
     "componentsFolderViewColumnHeader": {
-      "dragToReorderColumn": "Ziehen Sie, um die Spalte neu anzuordnen"
+      "dragToReorderColumn": "Ziehen Sie, um die Spalte neu anzuordnen",
+      "editColumnName": "Spaltennamen bearbeiten"
     },
     "componentsFolderViewColumnSelector": {
       "properties": "Eigenschaften",
@@ -311,7 +330,10 @@
       "delete": "Löschen",
       "none": "Keine",
       "edit": "Bearbeiten",
-      "delete2": "Löschen"
+      "delete2": "Löschen",
+      "columnBorders": "Spaltenrahmen",
+      "display": "Anzeige",
+      "showSummaries": "Zusammenfassungen anzeigen"
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Filtern",
@@ -329,17 +351,21 @@
       "of": "von:",
       "addCondition": "Bedingung hinzufügen",
       "addFilter": "Filter hinzufügen",
-      "addGroup": "Gruppe hinzufügen"
+      "addGroup": "Gruppe hinzufügen",
+      "removeGroup": "Gruppe entfernen"
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "Eingebaut",
       "properties": "Eigenschaften",
       "placeholderProperty": "Eigentum",
       "placeholderOperator": "Betreiber",
-      "placeholderValue": "Wert"
+      "placeholderValue": "Wert",
+      "removeFilter": "Filter entfernen"
     },
     "componentsFolderViewFolderTableView": {
-      "notesTable": "Notizentabelle"
+      "notesTable": "Notizentabelle",
+      "selectAll": "Alle Notizen auswählen",
+      "selectRow": "Notiz auswählen"
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "Notizen durchsuchen...",
@@ -371,7 +397,9 @@
     },
     "componentsFolderViewGroupedTable": {
       "groupedNotesTable": "Tabelle mit gruppierten Notizen",
-      "more": "mehr"
+      "more": "mehr",
+      "selectAll": "Alle Notizen auswählen",
+      "selectRow": "Notiz auswählen"
     },
     "componentsFolderViewMoveToFolderDialog": {
       "searchFolders": "Ordner durchsuchen...",
@@ -399,7 +427,8 @@
     },
     "componentsFolderViewSortableColumnHeader": {
       "dragToReorderColumn": "Ziehen Sie, um die Spalte neu anzuordnen",
-      "resizeColumn": "Größe der Spalte ändern"
+      "resizeColumn": "Größe der Spalte ändern",
+      "editColumnName": "Spaltennamen bearbeiten"
     },
     "componentsFolderViewViewSwitcher": {
       "default": "Standard",
@@ -424,7 +453,16 @@
       "deleteView": "Ansicht löschen",
       "areYouSureYouWantToDelete": "Sind Sie sicher, dass Sie löschen möchten?",
       "thisActionCannotBeUndone": "Diese Aktion kann nicht rückgängig gemacht werden.",
-      "cancel3": "Abbrechen"
+      "cancel3": "Abbrechen",
+      "createView": "Ansicht erstellen",
+      "gallery": "Galerie",
+      "layout": "Layout",
+      "list": "Liste",
+      "name": "Name",
+      "newView": "Neue Ansicht",
+      "save": "Speichern",
+      "table": "Tabelle",
+      "viewActions": "Ansichtsaktionen"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "PDF konnte nicht geladen werden: ",
@@ -607,6 +645,15 @@
       "startYourCollection": "Starten Sie Ihre Sammlung",
       "templatesHelpYouCreateNotesWithConsistentStructure": "Mithilfe von Vorlagen können Sie Notizen mit einheitlicher Struktur erstellen.",
       "createTemplate": "Vorlage erstellen"
+    },
+    "componentsFolderViewSortSelector": {
+      "builtIn": "Integriert",
+      "clearSort": "Sortierung aufheben",
+      "noSortablePropertiesFound": "Keine sortierbaren Eigenschaften gefunden",
+      "properties": "Eigenschaften",
+      "searchProperties": "Eigenschaften suchen...",
+      "sort": "Sortieren",
+      "sortDirection": "Sortierrichtung"
     }
   },
   "phaseI": {
@@ -654,5 +701,47 @@
       "cannotRemoveTagThisNoteWasDeleted": "Tag kann nicht entfernt werden – diese Notiz wurde gelöscht",
       "cannotChangeLocalOnlyThisNoteWasDeleted": "Kann nicht nur lokal geändert werden – diese Notiz wurde gelöscht"
     }
+  },
+  "bulkActions": {
+    "addTag": "Tag hinzufügen",
+    "clearAria": "Auswahl aufheben",
+    "copiedLinks": "{count, plural, one {# Link kopiert} other {# Links kopiert}}",
+    "copyLinks": "Links kopieren",
+    "delete": "Löschen",
+    "export": "Exportieren",
+    "move": "Verschieben",
+    "selected": "ausgewählt",
+    "tagNamePlaceholder": "Tag-Name",
+    "toolbarAria": "Sammelaktionen"
+  },
+  "comments": {
+    "attachAria": "Datei anhängen",
+    "badgeAria": "{count, plural, one {# Kommentar} other {# Kommentare}}",
+    "cancel": "Abbrechen",
+    "commentPlaceholder": "Einen Kommentar hinzufügen...",
+    "createdTooltip": "Erstellt {date} um {time}",
+    "delete": "Kommentar löschen",
+    "edit": "Kommentar bearbeiten",
+    "kind": {
+      "addition": "Ergänzung",
+      "comment": "Kommentar",
+      "deletion": "Löschung",
+      "substitution": "Ersetzung"
+    },
+    "mentionAria": "Person, Seite oder Datum erwähnen",
+    "railAria": "Kommentare",
+    "replyPlaceholder": "Antworten...",
+    "resolve": "Auflösen",
+    "sendAria": "Kommentar senden",
+    "toolbarComment": "Kommentieren"
+  },
+  "dateMention": {
+    "clear": "Löschen",
+    "dateFormat": "Datumsformat",
+    "dateInput": "Datum",
+    "includeTime": "Zeit einbeziehen",
+    "remind": "Erinnern",
+    "time": "Zeit",
+    "timeFormat": "Zeitformat"
   }
 }

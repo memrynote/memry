@@ -42,7 +42,9 @@
       "setIcon": "Indstil ikon",
       "removeIcon": "Fjern ikon",
       "deleteSelectedNotes": "Slet {count}-noter",
-      "deleteSelectedItems": "Slet {count} elementer"
+      "deleteSelectedItems": "Slet {count} elementer",
+      "bookmark": "Bogmærk",
+      "removeFromBookmarks": "Fjern fra bogmærker"
     },
     "deleteDialog": {
       "noteTitle": "Slet note",
@@ -111,7 +113,11 @@
       "aria": "Bemærk forslag",
       "loading": "Indlæser noter...",
       "empty": "Ingen noter fundet",
-      "create": "Opret ny note"
+      "create": "Opret ny note",
+      "embed": "Indlejr",
+      "embedAria": "Indlejr {title}",
+      "wikiLink": "Wiki-link",
+      "wikiLinkAria": "Wiki-link {title}"
     },
     "tags": {
       "aria": "Tag forslag",
@@ -133,6 +139,15 @@
       "searchPlaceholder": "Søg",
       "noIcons": "Ingen ikoner fundet",
       "clearSearch": "Ryd søgning"
+    },
+    "mention": {
+      "aria": "Dato- og noteforslag",
+      "date": "Dato",
+      "dateHint": "Fortsæt med at skrive en dato…",
+      "empty": "Ingen noter fundet",
+      "loading": "Indlæser noter...",
+      "remindMe": "Påmind mig",
+      "showMore": "Vis mere"
     }
   },
   "outline": {
@@ -174,7 +189,8 @@
     "createTag": "Opret tag: \"{tag}\"",
     "chooseColor": "Vælg farve:",
     "preview": "Eksempel:",
-    "colorAria": "Vælg {color} farve"
+    "colorAria": "Vælg {color} farve",
+    "customColor": "Tilpasset farve"
   },
   "properties": {
     "title": "Egenskaber",
@@ -205,7 +221,9 @@
       "status": "Status",
       "select": "Vælg",
       "multiselect": "Multiselect"
-    }
+    },
+    "showOnCalendar": "Vis på kalender",
+    "showingOnCalendar": "Vises på kalender"
   },
   "templateSelector": {
     "title": "Vælg dit lærred",
@@ -295,7 +313,8 @@
   },
   "phaseF": {
     "componentsFolderViewColumnHeader": {
-      "dragToReorderColumn": "Træk for at omarrangere kolonnen"
+      "dragToReorderColumn": "Træk for at omarrangere kolonnen",
+      "editColumnName": "Redigér kolonnenavn"
     },
     "componentsFolderViewColumnSelector": {
       "properties": "Egenskaber",
@@ -311,7 +330,10 @@
       "delete": "Slet",
       "none": "Ingen",
       "edit": "Rediger",
-      "delete2": "Slet"
+      "delete2": "Slet",
+      "columnBorders": "Kolonnekanter",
+      "display": "Visning",
+      "showSummaries": "Vis opsummeringer"
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Filter",
@@ -329,17 +351,21 @@
       "of": "af:",
       "addCondition": "Tilføj betingelse",
       "addFilter": "Tilføj filter",
-      "addGroup": "Tilføj gruppe"
+      "addGroup": "Tilføj gruppe",
+      "removeGroup": "Fjern gruppe"
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "Indbygget",
       "properties": "Egenskaber",
       "placeholderProperty": "Ejendom",
       "placeholderOperator": "Operatør",
-      "placeholderValue": "Værdi"
+      "placeholderValue": "Værdi",
+      "removeFilter": "Fjern filter"
     },
     "componentsFolderViewFolderTableView": {
-      "notesTable": "Note tabel"
+      "notesTable": "Note tabel",
+      "selectAll": "Vælg alle noter",
+      "selectRow": "Vælg note"
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "Søg i noter...",
@@ -371,7 +397,9 @@
     },
     "componentsFolderViewGroupedTable": {
       "groupedNotesTable": "Grupperet notetabel",
-      "more": "mere"
+      "more": "mere",
+      "selectAll": "Vælg alle noter",
+      "selectRow": "Vælg note"
     },
     "componentsFolderViewMoveToFolderDialog": {
       "searchFolders": "Søg i mapper...",
@@ -399,7 +427,8 @@
     },
     "componentsFolderViewSortableColumnHeader": {
       "dragToReorderColumn": "Træk for at omarrangere kolonnen",
-      "resizeColumn": "Ændr størrelse på kolonne"
+      "resizeColumn": "Ændr størrelse på kolonne",
+      "editColumnName": "Redigér kolonnenavn"
     },
     "componentsFolderViewViewSwitcher": {
       "default": "standard",
@@ -424,7 +453,16 @@
       "deleteView": "Slet visning",
       "areYouSureYouWantToDelete": "Er du sikker på, at du vil slette \"",
       "thisActionCannotBeUndone": "Denne handling kan ikke fortrydes.",
-      "cancel3": "Annuller"
+      "cancel3": "Annuller",
+      "createView": "Opret visning",
+      "gallery": "Galleri",
+      "layout": "Layout",
+      "list": "Liste",
+      "name": "Navn",
+      "newView": "Ny visning",
+      "save": "Gem",
+      "table": "Tabel",
+      "viewActions": "Visningshandlinger"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "Kunne ikke indlæse PDF: ",
@@ -607,6 +645,15 @@
       "startYourCollection": "Start din samling",
       "templatesHelpYouCreateNotesWithConsistentStructure": "Skabeloner hjælper dig med at oprette noter med ensartet struktur.",
       "createTemplate": "Opret skabelon"
+    },
+    "componentsFolderViewSortSelector": {
+      "builtIn": "Indbygget",
+      "clearSort": "Ryd sortering",
+      "noSortablePropertiesFound": "Ingen sorterbare egenskaber fundet",
+      "properties": "Egenskaber",
+      "searchProperties": "Søg egenskaber...",
+      "sort": "Sortér",
+      "sortDirection": "Sorteringsretning"
     }
   },
   "phaseI": {
@@ -654,5 +701,47 @@
       "cannotRemoveTagThisNoteWasDeleted": "Kan ikke fjerne tag - denne note blev slettet",
       "cannotChangeLocalOnlyThisNoteWasDeleted": "Kan ikke ændre kun lokalt – denne note blev slettet"
     }
+  },
+  "bulkActions": {
+    "addTag": "Tilføj tag",
+    "clearAria": "Ryd valg",
+    "copiedLinks": "Kopierede {count, plural, one {# link} other {# links}}",
+    "copyLinks": "Kopiér links",
+    "delete": "Slet",
+    "export": "Eksportér",
+    "move": "Flyt",
+    "selected": "valgt",
+    "tagNamePlaceholder": "Tagnavn",
+    "toolbarAria": "Massehandlinger"
+  },
+  "comments": {
+    "attachAria": "Vedhæft fil",
+    "badgeAria": "{count, plural, one {# kommentar} other {# kommentarer}}",
+    "cancel": "Annullér",
+    "commentPlaceholder": "Tilføj en kommentar...",
+    "createdTooltip": "Oprettet {date} kl. {time}",
+    "delete": "Slet kommentar",
+    "edit": "Redigér kommentar",
+    "kind": {
+      "addition": "Tilføjelse",
+      "comment": "Kommentar",
+      "deletion": "Sletning",
+      "substitution": "Erstatning"
+    },
+    "mentionAria": "Nævn en person, side eller dato",
+    "railAria": "Kommentarer",
+    "replyPlaceholder": "Svar...",
+    "resolve": "Løs",
+    "sendAria": "Send kommentar",
+    "toolbarComment": "Kommentér"
+  },
+  "dateMention": {
+    "clear": "Ryd",
+    "dateFormat": "Datoformat",
+    "dateInput": "Dato",
+    "includeTime": "Inkludér tid",
+    "remind": "Påmind",
+    "time": "Tid",
+    "timeFormat": "Tidsformat"
   }
 }

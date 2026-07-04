@@ -25,7 +25,10 @@
         "integrations": "Integrácie",
         "vault": "Trezor",
         "tags": "Tagy",
-        "properties": "Vlastnosti"
+        "properties": "Vlastnosti",
+        "commandLine": "Príkazový riadok",
+        "features": "Funkcie",
+        "import": "Import"
       }
     }
   },
@@ -109,6 +112,11 @@
       "createInSelectedFolder": {
         "label": "Vytvoriť vo vybranej zložke",
         "description": "Nové poznámky a zložky sa vytvárajú vo vybratej zložke. Ak je vypnuté, položky sa vždy vytvárajú v koreňovom adresári."
+      },
+      "defaultNoteFolder": {
+        "description": "Prázdne = koreň trezora",
+        "label": "Predvolené umiestnenie nových poznámok",
+        "placeholder": "poznámky"
       }
     },
     "privacy": {
@@ -116,6 +124,17 @@
         "label": "Zdieľať anonymné používanie metrík",
         "description": "Sú to len anonymné metriky — obsah poznámok, vyhľadávacie dotazy, cesty k súborom, e-maily ani surové ID sa nikdy neposielajú.",
         "error": "Nepodarilo sa aktualizovať nastavenie telemetrie"
+      }
+    },
+    "dateFormat": {
+      "description": "Ako sa zobrazujú dátumy v kalendári",
+      "error": "Nepodarilo sa aktualizovať formát dátumu",
+      "label": "Formát dátumu",
+      "options": {
+        "DD.MM.YYYY": "DD.MM.YYYY",
+        "DD/MM/YYYY": "DD/MM/YYYY",
+        "MM/DD/YYYY": "MM/DD/YYYY (US)",
+        "YYYY-MM-DD": "YYYY-MM-DD (ISO)"
       }
     }
   },
@@ -250,6 +269,9 @@
         "description": "Zadajte názov pre kópiu novej šablóny.",
         "placeholder": "Názov šablóny"
       }
+    },
+    "preview": {
+      "notFound": "Túto šablónu sa nepodarilo načítať."
     }
   },
   "journal": {
@@ -261,7 +283,8 @@
     "groups": {
       "defaultTemplate": "Predvolená šablóna",
       "sidebarVisibility": "Viditeľnosť postranného panela",
-      "footer": "Päta"
+      "footer": "Päta",
+      "location": "Umiestnenie a formát"
     },
     "template": {
       "label": "Šablóna",
@@ -290,7 +313,21 @@
       "label": "Zobraziť zápatí štatistík",
       "description": "Počet slov, čas čítania, časové značky"
     },
-    "updateError": "Nepodarilo sa aktualizovať nastavenie"
+    "updateError": "Nepodarilo sa aktualizovať nastavenie",
+    "dateFormat": {
+      "description": "Formát názvu súboru pre denné poznámky (napr. YYYY-MM-DD)",
+      "label": "Formát dátumu",
+      "placeholder": "YYYY-MM-DD"
+    },
+    "folder": {
+      "description": "Priečinok, kde sa ukladajú denné poznámky",
+      "label": "Priečinok denníka",
+      "placeholder": "denník"
+    },
+    "preview": {
+      "description": "Cesta k dnešnému súboru denníka",
+      "label": "Náhľad"
+    }
   },
   "tasks": {
     "header": {
@@ -344,7 +381,9 @@
       "loading": "Načítavam nastavenia..."
     },
     "groups": {
-      "dayCellClick": "Kliknutie na deň"
+      "dayCellClick": "Kliknutie na deň",
+      "notes": "Poznámky",
+      "weekStart": "Týždeň"
     },
     "defaultBehavior": {
       "label": "Predvolené správanie",
@@ -360,6 +399,20 @@
       "openJournal": "Otvoriť denník",
       "openCalendar": "Otvoriť kalendár",
       "useGlobal": "Použiť globálne nastavenie"
+    },
+    "showNotesOnCalendar": {
+      "description": "Zobraziť každú poznámku v kalendári ako celodennú položku v deň, keď bola vytvorená",
+      "error": "Nepodarilo sa aktualizovať zobrazenie poznámok v kalendári",
+      "label": "Zobraziť poznámky v kalendári"
+    },
+    "weekStart": {
+      "description": "Prvý deň týždňa vo všetkých kalendároch",
+      "error": "Nepodarilo sa aktualizovať začiatok týždňa",
+      "label": "Týždeň začína v",
+      "options": {
+        "monday": "Pondelok",
+        "sunday": "Nedeľa"
+      }
     }
   },
   "account": {
@@ -372,10 +425,12 @@
       "identity": "Identita",
       "sync": "Synchronizácia",
       "storage": "Úložisko",
-      "devices": "Zariadenia"
+      "devices": "Zariadenia",
+      "billing": "Fakturácia"
     },
     "identity": {
-      "unknown": "Neznáme"
+      "unknown": "Neznáme",
+      "encrypted": "Šifrované end-to-end"
     },
     "sync": {
       "lastSynced": "Naposledy synchronizované {time}",
@@ -421,6 +476,53 @@
       "signedOut": "Úspešne odhlásené",
       "signOutFailed": "Nepodarilo sa odhlásiť",
       "deviceLinked": "Zariadenie bolo úspešne prepojené"
+    },
+    "billing": {
+      "actions": {
+        "manage": "Spravovať fakturáciu",
+        "opening": "Otvára sa...",
+        "refresh": "Obnoviť stav",
+        "upgrade": "Prejsť na vyšší plán"
+      },
+      "activationPendingPrefix": "Aktivácia čaká. Paddle môže chvíľu trvať, kým potvrdí platbu. Obnovte stav alebo napíšte na",
+      "checking": "Kontroluje sa stav fakturácie",
+      "historyDays": "{days} dní",
+      "labels": {
+        "history": "História",
+        "maxFile": "Max. súbor",
+        "storage": "Úložisko",
+        "vaults": "Trezory"
+      },
+      "planStatus": "Stav plánu",
+      "plans": {
+        "believer": "Plán Believer",
+        "free": "Plán Free",
+        "plus": "Plán Plus",
+        "pro": "Plán Pro"
+      },
+      "statuses": {
+        "active": "Aktívny",
+        "canceled": "Zrušený",
+        "inactive": "Neaktívny",
+        "past_due": "Po splatnosti",
+        "paused": "Pozastavený"
+      },
+      "toasts": {
+        "activationPending": "Aktivácia čaká",
+        "billingActive": "Fakturácia je aktívna",
+        "checkoutFailed": "Nepodarilo sa spustiť platbu",
+        "checkoutOpened": "Platba otvorená vo vašom prehliadači",
+        "loadFailed": "Nepodarilo sa načítať stav fakturácie",
+        "portalFailed": "Nepodarilo sa otvoriť fakturačný portál",
+        "refreshFailed": "Nepodarilo sa obnoviť stav fakturácie"
+      },
+      "unlimited": "Neobmedzené"
+    },
+    "community": {
+      "and": "a",
+      "feedback": "podeľte sa o spätnú väzbu",
+      "prompt": "Milujete memrynote?",
+      "star": "Dajte nám hviezdu na GitHube"
     }
   },
   "setup": {
@@ -437,7 +539,9 @@
       "errors": {
         "sendCode": "Nepodarilo sa odoslať kód",
         "googleStart": "Nepodarilo sa spustiť prihlásenie Google"
-      }
+      },
+      "paidPlan": "Synchronizácia je platený plán.",
+      "seePlans": "Zobraziť plány"
     },
     "email": {
       "label": "Emailová adresa",
@@ -488,7 +592,13 @@
         "registering": "Registrácia zariadenia..."
       },
       "failed": "Obnova sa nepodarila",
-      "confirmationFailed": "Nepodarilo sa potvrdenie"
+      "confirmationFailed": "Nepodarilo sa potvrdenie",
+      "unavailable": {
+        "description": "Vaša obnovovacia fráza sa zobrazuje iba raz počas nastavenia a neskôr ju nemožno získať. Začnite odznova a vygenerujte novú.",
+        "loading": "Načítava sa vaša obnovovacia fráza…",
+        "startOver": "Začať odznova",
+        "title": "Nepodarilo sa načítať vašu obnovovaciu frázu"
+      }
     },
     "linking": {
       "choiceTitle": "Prepojiť toto zariadenie",
@@ -513,7 +623,15 @@
       "waitingTitle": "Čaká sa na schválenie",
       "waitingDescription": "Otvorte memrynote na vašom inom zariadení a schváľte žiadosť o prepojenie.",
       "verificationCode": "Overovací kód",
-      "confirmCode": "Potvrďte, že sa zhoduje s kódom na vašom inom zariadení"
+      "confirmCode": "Potvrďte, že sa zhoduje s kódom na vašom inom zariadení",
+      "vaultPickerChooseFolder": "Vybrať priečinok",
+      "vaultPickerConfirm": "Stiahnuť vybrané",
+      "vaultPickerDescription": "Tento účet má viacero trezorov. Vyberte priečinok a trezor(y), ktoré chcete pridať do tohto zariadenia.",
+      "vaultPickerDormantHint": "Pridaný, otvorí sa po prepnutí naň",
+      "vaultPickerFolderLabel": "Uložiť trezory do priečinka",
+      "vaultPickerPrimaryHint": "Otvorí sa teraz",
+      "vaultPickerTitle": "Vyberte, čo stiahnuť",
+      "vaultRow": "Trezor — {{count}} položiek · {{date}}"
     }
   },
   "devices": {
@@ -630,7 +748,15 @@
       "downloadedToast": "Whisper Small stiahnuté",
       "downloadError": "Nepodarilo sa stiahnuť Whisper Small",
       "keySavedToast": "OpenAI kľúč uložený",
-      "keySaveError": "Nepodarilo sa uložiť OpenAI kľúč"
+      "keySaveError": "Nepodarilo sa uložiť OpenAI kľúč",
+      "memoNameMode": "Názvy poznámok",
+      "memoNameModeDescription": "Ako sa hlasové poznámky pomenúvajú po prepise",
+      "naming": {
+        "none": "Nepremenovať",
+        "timestamp": "Časová značka",
+        "transcript": "Názov z prepisu"
+      },
+      "namingError": "Nepodarilo sa aktualizovať pomenovanie hlasových poznámok"
     },
     "embedding": {
       "loaded": "Načítané",
@@ -715,7 +841,12 @@
       "connectFailed": "Nepodarilo sa pripojiť Google Kalendár",
       "refreshFailed": "Nepodarilo sa aktualizovať Google Kalendár",
       "disconnectFailed": "Nepodarilo sa odpojiť Google Kalendár",
-      "retryFailed": "Nepodarilo sa znova synchronizovať kalendár"
+      "retryFailed": "Nepodarilo sa znova synchronizovať kalendár",
+      "pushToGoogle": {
+        "description": "Vypnite pre jednosmernú synchronizáciu — svoje Google udalosti stále uvidíte v memrynote, ale udalosti memrynote sa nezobrazia v Google.",
+        "error": "Nepodarilo sa aktualizovať smer synchronizácie",
+        "label": "Zobraziť udalosti memrynote v Google Calendar"
+      }
     },
     "sourcePicker": {
       "empty": "Žiadne importované Google kalendáre nie sú na tomto zariadení zatiaľ k dispozícii.",
@@ -796,7 +927,8 @@
       "changeColor": "Zmeniť farbu",
       "mergeInto": "Zlúčiť do...",
       "merge": "Zlúčiť",
-      "delete": "Vymazať"
+      "delete": "Vymazať",
+      "changeIcon": "Zmeniť ikonu"
     },
     "dialogs": {
       "deleteTitle": "Odstrániť značku",
@@ -814,7 +946,8 @@
       "mergeFailed": "Nepodarilo sa zlúčiť značky",
       "merged": "Zlúčili sa „{source}“ do „{target}“ ({count, plural, one {# položka} other {# položky}})",
       "colorUpdated": "Aktualizovaná farba pre „{name}“",
-      "colorFailed": "Nepodarilo sa aktualizovať farbu"
+      "colorFailed": "Nepodarilo sa aktualizovať farbu",
+      "iconFailed": "Nepodarilo sa aktualizovať ikonu"
     }
   },
   "properties": {
@@ -1144,7 +1277,10 @@
     "status": {
       "disconnected": "Disconnected",
       "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled"
+      "fullTools": "Full tools enabled",
+      "checking": "Kontroluje sa…",
+      "connected": "Pripojené",
+      "label": "Pripojenie"
     },
     "permissions": {
       "group": "Agent permissions",
@@ -1160,6 +1296,133 @@
         "alwaysAllow": "Always allow",
         "askBeforeChanges": "Ask before changes"
       }
+    }
+  },
+  "commandLine": {
+    "actions": {
+      "refresh": "Obnoviť"
+    },
+    "command": {
+      "descriptionInstalled": "Nainštalovaný v {path}",
+      "descriptionNotInstalled": "Nainštalujte príkaz memrynote, aby ste mohli používať svoj trezor z akéhokoľvek terminálu.",
+      "label": "príkaz memrynote",
+      "toggleLabel": "Nainštalovať príkaz memrynote"
+    },
+    "defaultVault": {
+      "description": "Vyberte trezor, ktorý sa použije, keď spustíte memrynote bez --vault.",
+      "descriptionSelected": "Príkazy použijú {path}, keď je --vault vynechaný.",
+      "label": "Predvolený trezor",
+      "none": "Nevybraný žiadny trezor",
+      "placeholder": "Vyberte trezor"
+    },
+    "groups": {
+      "terminal": "Terminál"
+    },
+    "header": {
+      "subtitle": "Nastavte príkaz memrynote pre svoj terminál",
+      "title": "Príkazový riadok"
+    },
+    "status": {
+      "defaultVaultUpdatedToast": "Predvolený trezor CLI aktualizovaný",
+      "installedToast": "Príkaz memrynote nainštalovaný",
+      "loadFailed": "Nepodarilo sa načítať stav príkazu",
+      "loading": "Kontroluje sa stav príkazu...",
+      "uninstalledToast": "Príkaz memrynote odstránený"
+    }
+  },
+  "features": {
+    "header": {
+      "subtitle": "Zapnite alebo vypnite časti aplikácie. Vypnuté = zosivené v bočnom paneli a všade zakázané.",
+      "title": "Funkcie"
+    },
+    "items": {
+      "calendar": {
+        "description": "Udalosti a rozvrh",
+        "label": "Kalendár"
+      },
+      "graph": {
+        "description": "Prepojenia poznámok",
+        "label": "Graf"
+      },
+      "home": {
+        "description": "Úvodný panel",
+        "label": "Domov"
+      },
+      "inbox": {
+        "description": "Rýchle zachytávanie a triedenie",
+        "label": "Schránka"
+      },
+      "journal": {
+        "description": "Denné poznámky",
+        "label": "Denník"
+      },
+      "tasks": {
+        "description": "Úlohy a termíny",
+        "label": "Úlohy"
+      }
+    }
+  },
+  "import": {
+    "action": "Importovať",
+    "dialog": {
+      "cancel": "Zrušiť",
+      "choose": "Vybrať súbor…",
+      "chooseFolder": "Vybrať priečinok Apple Notes…",
+      "chooseHint": "Vyberte svoj {label}",
+      "close": "Zavrieť",
+      "done": "Hotovo",
+      "error": "Import zlyhal",
+      "folderHint": "Kliknite nižšie a keď sa otvorí výber, vyberte priečinok „group.com.apple.notes“ (výber tam začína). Umožní to Memry čítať vaše poznámky a prílohy — bez potreby úplného prístupu k disku.",
+      "progress": "{completed} z {total}",
+      "running": "Importuje sa…",
+      "selected": "{count, plural, one {# vybraný súbor} few {# vybrané súbory} other {# vybraných súborov}}",
+      "start": "Spustiť import",
+      "summary": {
+        "attachments": "{count, plural, one {# príloha skopírovaná} few {# prílohy skopírované} other {# príloh skopírovaných}}",
+        "failed": "{count} zlyhalo",
+        "imported": "{count, plural, one {# položka importovaná} few {# položky importované} other {# položiek importovaných}}",
+        "skipped": "{count} preskočených",
+        "title": "Import dokončený"
+      },
+      "title": "Importovať z {name}"
+    },
+    "header": {
+      "subtitle": "Preneste svoje poznámky a úlohy z iných aplikácií",
+      "title": "Import"
+    },
+    "intro": "Jednorazové importy vytvárajú nové poznámky vo vašom trezore. Vaše pôvodné exportované súbory zostanú nedotknuté.",
+    "preview": {
+      "confirm": "Importovať",
+      "warnings": "Varovania"
+    },
+    "select": "Vyberte aplikáciu, z ktorej chcete importovať…",
+    "sources": {
+      "apple-journal": "Importovať HTML export Apple Journal ako datované poznámky",
+      "apple-notes": "Importovať z databázy Apple Notes (NoteStore.sqlite, macOS)",
+      "bear": "Importovať archív Bear .bear2bk (poznámky, značky, prílohy)",
+      "csv": "Importovať súbor .csv — jedna poznámka na riadok, stĺpce sa stanú vlastnosťami",
+      "evernote": "Importovať jeden alebo viac exportných súborov Evernote .enex",
+      "google-keep": "Importovať export Google Takeout Keep (.json alebo .zip)",
+      "html": "Importovať súbory .html s prepojenými obrázkami a odkazmi medzi stránkami",
+      "markdown": "Importovať súbory .md alebo priečinok (frontmatter, značky, prílohy)",
+      "notion": "Importovať HTML export (.zip)",
+      "onenote": "Importovať poznámkové bloky OneNote (vyžaduje účet Microsoft)",
+      "raindrop": "Importovať export záložiek Raindrop.io (.csv) — záložky pristanú v schránke",
+      "roam": "Importovať graf Roam Research (.json) s vnorenými osnovami",
+      "ticktick": "Importovať zálohu TickTick (.csv) ako projekty, úlohy a pripomienky",
+      "todoist": "Importovať CSV export projektu (.csv)"
+    },
+    "stats": {
+      "bookmarks": "{count, plural, one {# záložka} few {# záložky} other {# záložiek}}",
+      "comments": "{count, plural, one {# komentár} few {# komentáre} other {# komentárov}}",
+      "notes": "{count, plural, one {# poznámka} few {# poznámky} other {# poznámok}}",
+      "projects": "{count, plural, one {# projekt} few {# projekty} other {# projektov}}",
+      "reminders": "{count, plural, one {# pripomienka} few {# pripomienky} other {# pripomienok}}",
+      "skipped": "{count} preskočených",
+      "subtasks": "{count, plural, one {# podúloha} few {# podúlohy} other {# podúloh}}",
+      "tasks": "{count, plural, one {# úloha} few {# úlohy} other {# úloh}}",
+      "withDueDate": "{count} datovaných",
+      "withTags": "{count} označených"
     }
   }
 }

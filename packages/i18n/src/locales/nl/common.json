@@ -45,7 +45,10 @@
   "count": {
     "note": "{count, plural, one {#-opmerking} other {#-opmerkingen}}",
     "task": "{count, plural, one {#-taak} other {#-taken}}",
-    "itemDelete": "{count, plural, one {#-item verwijderen} other {Verwijder #-items}}"
+    "itemDelete": "{count, plural, one {#-item verwijderen} other {Verwijder #-items}}",
+    "event": "{count, plural, one {# gebeurtenis} other {# gebeurtenissen}}",
+    "journal": "{count, plural, one {# dagboek} other {# dagboeken}}",
+    "reminder": "{count, plural, one {# herinnering} other {# herinneringen}}"
   },
   "toast": {
     "actionFailed": "Actie mislukt",
@@ -83,7 +86,23 @@
       "newNoteN": "Nieuwe notitie (⌘N)",
       "new": "Nieuw",
       "syncDisabled": "Synchronisatie uitgeschakeld",
-      "syncDisabled2": "Synchronisatie uitgeschakeld"
+      "syncDisabled2": "Synchronisatie uitgeschakeld",
+      "feedbackButton": "Feedback verzenden",
+      "feedbackDescription": "Vertel ons wat werkt, wat kapot is of wat je wenst dat Memry deed. We lezen elk bericht.",
+      "feedbackEmailHint": "Voeg je e-mailadres toe als je een antwoord wilt.",
+      "feedbackError": "Kan feedback niet verzenden. Probeer opnieuw.",
+      "feedbackPlaceholder": "Jouw feedback…",
+      "feedbackSend": "Verzenden",
+      "feedbackSending": "Verzenden…",
+      "feedbackSuccess": "Bedankt voor je feedback!",
+      "feedbackTitle": "Feedback verzenden",
+      "newItemMenu": "Nieuw maken…",
+      "updateAvailable": "Bijwerken",
+      "updateDownloading": "Downloaden…",
+      "updateDownloadingPercent": "Downloaden {percent}%",
+      "updateInstallingSubtitle": "Memrynote start automatisch opnieuw op.",
+      "updateInstallingTitle": "Update installeren",
+      "updateRestart": "Opnieuw opstarten"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Formaat van dagpaneel wijzigen",
@@ -462,7 +481,8 @@
       "day": "Dag",
       "agent": "Agent",
       "pendingApproval": "{count, plural, one {# in afwachting van goedkeuring} other {# goedkeuringen in behandeling}}",
-      "inProgress": "Agent beurt bezig"
+      "inProgress": "Agent beurt bezig",
+      "close": "Agent sluiten"
     },
     "errors": {
       "loadConversations": "Kan agentgesprekken niet laden",
@@ -481,5 +501,142 @@
     "sources": {
       "used": "{count, plural, one {# bron gebruikt} other {# bronnen gebruikt}}"
     }
+  },
+  "home": {
+    "addWidget": "Widget toevoegen",
+    "board": {
+      "defaultName": "Start",
+      "deleteAria": "Lay-out verwijderen",
+      "label": "Startlay-out",
+      "newAria": "Nieuw bord",
+      "newName": "Nieuw bord"
+    },
+    "disabled": {
+      "createNote": "Notitie maken",
+      "hint": "Niets open. Begin een notitie."
+    },
+    "done": "Klaar",
+    "edit": "Bewerken",
+    "empty": {
+      "body": "Widgets brengen je notities, taken en bladwijzers samen op één rustige plek.",
+      "cta": "Voeg je eerste widget toe",
+      "title": "Je bord is leeg"
+    },
+    "greeting": {
+      "afternoon": "Goedemiddag",
+      "evening": "Goedenavond",
+      "morning": "Goedemorgen"
+    },
+    "header": {
+      "events": "{count, plural, one {# gebeurtenis} other {# gebeurtenissen}}",
+      "tasksDue": "{count, plural, one {# taak vervalt vandaag} other {# taken vervallen vandaag}}"
+    },
+    "noBookmarksYet": "Nog geen bladwijzers.",
+    "noEventsYet": "Geen gebeurtenissen vandaag.",
+    "noJournalEntriesYet": "Nog geen dagboekvermeldingen.",
+    "noNotesYet": "Nog geen notities.",
+    "noTasksYet": "Nog geen taken.",
+    "widget": {
+      "bookmarks": "Bladwijzers",
+      "calendar": "Agenda",
+      "calendarToday": "Vandaag",
+      "configAria": "Widget configureren",
+      "configure": "Configureren",
+      "dragAria": "Widget slepen",
+      "duration": "{count} min",
+      "filter": {
+        "today": "Vervalt vandaag",
+        "tomorrow": "Morgen",
+        "week": "Deze week"
+      },
+      "folder": "Map",
+      "folderEmpty": "Nog geen mappen",
+      "folderNoSelection": "Geen map geselecteerd",
+      "folderPickPrompt": "Kies een map",
+      "folderViewSelect": "Weergave",
+      "folderView_gallery": "Galerij",
+      "folderView_list": "Lijst",
+      "inbox": "Inbox",
+      "inboxAllTypes": "Alle typen",
+      "inboxOlder": "{count, plural, one {# ouder} other {# ouder}}",
+      "inboxOldest": "oudste {count, plural, one {# dag} other {# dagen}}",
+      "journal": "Dagboek",
+      "journalStreak": "{count, plural, one {reeks van # dag} other {reeks van # dagen}}",
+      "journalToday": "Vandaag",
+      "journalYesterday": "Gisteren",
+      "loadError": "Kan niet laden",
+      "menuAria": "Widgetopties",
+      "next": "Volgende: {title}",
+      "openCalendar": "Agenda openen",
+      "openInbox": "Inbox openen",
+      "recentMeta": "bewerkt {time}",
+      "recentMetaWithFolder": "{folder} · bewerkt {time}",
+      "recentlyEdited": "Onlangs bewerkt",
+      "remove": "Verwijderen",
+      "removeAria": "Widget verwijderen",
+      "resize": "Grootte",
+      "resizeAria": "Vergroten/verkleinen naar {{size}}",
+      "savedFilterDefault": "Vandaag",
+      "savedFilterHint": "Markeer filters met een ster op de Taken-pagina om ze hier te gebruiken",
+      "savedFilterLabel": "Opgeslagen filter",
+      "startsIn": "Begint over {count, plural, one {# min} other {# min}}",
+      "tasks": "Taken",
+      "unknown": "Onbekende widget",
+      "untitled": "Naamloos"
+    }
+  },
+  "media": {
+    "video": "Video"
+  },
+  "onboarding": {
+    "agentChat": {
+      "body": "Ga naar het tabblad Agent om de assistent van Memrynote iets over je kluis te vragen.",
+      "title": "Chat met de AI-agent"
+    },
+    "collections": {
+      "body": "Organiseer notities in mappen, zet bladwijzers vast en blader op tag — allemaal hier.",
+      "title": "Verzamelingen, bladwijzers en tags"
+    },
+    "dayPanel": {
+      "body": "Het zijpaneel houdt een agenda en je dagweergave naast wat je ook leest.",
+      "title": "Je dag, naast je werk"
+    },
+    "feedback": {
+      "body": "Stuur feedback rechtstreeks naar het team vanaf hier.",
+      "title": "Vertel ons wat je denkt"
+    },
+    "nav": {
+      "body": "Inbox om vast te leggen, Dagboek voor dagelijkse notities, Agenda voor je tijdlijn, Taken voor to-do's en Graaf om te zien hoe alles samenhangt.",
+      "title": "Je werkruimtes"
+    },
+    "newNote": {
+      "body": "Begin hier. Alles wat je schrijft wordt eerst lokaal opgeslagen.",
+      "title": "Maak je eerste notitie"
+    },
+    "settings": {
+      "body": "Importeer je notities uit 12+ apps — Obsidian, Notion, Apple Notes, Evernote en meer — en stel al het andere af in Instellingen.",
+      "title": "Instellingen en imports"
+    },
+    "sync": {
+      "body": "Schakel end-to-end versleutelde synchronisatie in om elk apparaat gelijk te houden.",
+      "title": "Privé, versleutelde synchronisatie"
+    },
+    "welcome": {
+      "body": "Je privé, offline-first thuis. Notities zijn end-to-end versleuteld — ze verlaten je apparaat nooit onversleuteld.",
+      "title": "Welkom bij Memrynote"
+    }
+  },
+  "updatePrompt": {
+    "autoUpdateLabel": "Updates automatisch downloaden en installeren",
+    "availableBody": "{version} is beschikbaar — je hebt {current}. Wil je deze nu downloaden?",
+    "availableTitle": "Er is een nieuwe versie van MemryNote beschikbaar!",
+    "download": "Downloaden",
+    "downloadedBody": "{version} is gedownload. Start MemryNote opnieuw op om de installatie te voltooien.",
+    "downloadedTitle": "Update klaar om te installeren",
+    "later": "Later",
+    "releaseNotesLabel": "Releaseopmerkingen",
+    "remindLater": "Later herinneren",
+    "restartNow": "Nu opnieuw opstarten",
+    "skip": "Deze versie overslaan"
   }
 }

@@ -33,7 +33,8 @@
     "repeat": "Ponovi",
     "createAnother": "Stvorite drugu",
     "delete": "Izbriši zadatak",
-    "created": "Kreiran {date}"
+    "created": "Kreiran {date}",
+    "reminder": "Podsjetnik"
   },
   "filters": {
     "filter": "Filter",
@@ -62,7 +63,16 @@
     "noNotesAvailable": "Nema dostupnih bilješki",
     "noLinkedNotes": "Još nema povezanih bilješki",
     "removeLinkTo": "Ukloni vezu na {title}",
-    "removeLinkFallback": "bilješka"
+    "removeLinkFallback": "bilješka",
+    "addRelatedItem": "Dodaj povezanu stavku",
+    "noMatchingRelated": "Nema podudarnih stavki",
+    "noRelatedAvailable": "Nema dostupnih stavki",
+    "noRelatedItems": "Još nema povezanih stavki",
+    "related": "Povezano",
+    "relatedItemFallback": "stavka",
+    "removeRelatedItem": "Ukloni povezanu stavku {title}",
+    "resize": "Promijeni veličinu ploče",
+    "searchRelated": "Pretraži povezano…"
   },
   "kanban": {
     "board": "Kanban ploča"
@@ -174,7 +184,8 @@
     "componentsTasksDatePickerContent": {
       "removeDate": "Ukloni datum",
       "clearTime": "Čisto vrijeme",
-      "addTime": "Dodajte vrijeme"
+      "addTime": "Dodajte vrijeme",
+      "time": "Vrijeme"
     },
     "componentsTasksDeleteProjectDialog": {
       "delete": "Izbriši \"",
@@ -612,6 +623,20 @@
       "failedToLoadTaskPreferences": "Neuspješno učitavanje postavki zadatka",
       "failedToUpdateTaskPreferences": "Ažuriranje postavki zadatka nije uspjelo",
       "failedToLoadLinkedTasks": "Učitavanje povezanih zadataka nije uspjelo"
+    }
+  },
+  "reminders": {
+    "hasReminders": "Ima podsjetnike",
+    "setReminder": "Postavi podsjetnik",
+    "summary": "Podsjetnik: {date}",
+    "summaryWithMore": "Podsjetnik: {date} (+još {count})",
+    "toast": {
+      "deleteFailed": "Neuspješno brisanje podsjetnika",
+      "deleted": "Podsjetnik izbrisan",
+      "set": "Podsjetnik postavljen",
+      "setFailed": "Neuspješno postavljanje podsjetnika",
+      "updateFailed": "Neuspješno ažuriranje podsjetnika",
+      "updated": "Podsjetnik ažuriran"
     }
   }
 }

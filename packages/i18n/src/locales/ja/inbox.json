@@ -26,6 +26,10 @@
     "jobs": {
       "running": "{count, plural, one {# バックグラウンド ジョブの実行中} other {# バックグラウンド ジョブの実行中}}",
       "failed": "{count} が失敗しました"
+    },
+    "density": {
+      "toComfortable": "広めの表示",
+      "toCompact": "コンパクトな表示"
     }
   },
   "type": {
@@ -208,7 +212,15 @@
     "linkedNotesAria": "リンクされたメモ",
     "removeLinkTo": "{title} へのリンクを削除",
     "notePlaceholder": "メモを書いてください...",
-    "textPlaceholder": "キャプチャしたテキストを編集..."
+    "textPlaceholder": "キャプチャしたテキストを編集...",
+    "linkANote": "ノートをリンク",
+    "match": {
+      "likely": "一致の可能性あり",
+      "strong": "高い一致",
+      "weak": "弱い一致"
+    },
+    "resize": "パネルのサイズを変更",
+    "suggestedCount": "{count} 件のおすすめ"
   },
   "content": {
     "capturedAt": "キャプチャされた {date}",
@@ -253,7 +265,12 @@
     "presetInOneHour": "1時間",
     "presetTomorrow": "明日",
     "presetNextWeek": "来週",
-    "custom": "カスタム..."
+    "custom": "カスタム...",
+    "archive": "アーカイブ",
+    "panelEmpty": "今後のリマインダーはありません。",
+    "panelPast": "過去",
+    "panelUpcoming": "今後の予定",
+    "taskFallback": "タスク"
   },
   "insights": {
     "captureActivity": "キャプチャアクティビティ",
@@ -295,7 +312,9 @@
       "recordVoiceMemo2": "ボイスメモを録音する",
       "alreadyCaptured": "すでに捕らえられています：「",
       "rdquo": "rdquo;",
-      "captureAnyway": "とにかくキャプチャする"
+      "captureAnyway": "とにかくキャプチャする",
+      "focusShortcut": "キャプチャ入力にフォーカス",
+      "q": "Q"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "フォルダーを選択してください",
@@ -416,7 +435,11 @@
       "backToPresets": "プリセットに戻る",
       "time": "時間",
       "noteOptional": "注記 (オプション)",
-      "whyAreYouSettingThisReminder": "なぜこのリマインダーを設定しているのですか?"
+      "whyAreYouSettingThisReminder": "なぜこのリマインダーを設定しているのですか?",
+      "deleteReminder": "リマインダーを削除",
+      "editReminder": "リマインダーを編集",
+      "save": "保存",
+      "set": "設定"
     },
     "componentsSnoozeSnoozePicker": {
       "snooze": "スヌーズ",
@@ -461,5 +484,37 @@
     "toasts": {
       "inboxRefreshed": "受信トレイが更新されました"
     }
+  },
+  "convert": {
+    "addEvent": "予定を追加",
+    "addTask": "タスクを追加",
+    "allDay": "終日",
+    "binaryOnlyNote": "ファイルはノートにのみ変換できます",
+    "chooseType": "変換先",
+    "create": "作成",
+    "date": "日付",
+    "dueDate": "期日",
+    "dueTime": "期限時刻",
+    "end": "終了",
+    "event": "予定",
+    "failed": "変換できませんでした: {error}",
+    "inboxProject": "受信箱",
+    "location": "場所",
+    "note": "ノート",
+    "priority": "優先度",
+    "priorityHigh": "高",
+    "priorityLow": "低",
+    "priorityMedium": "中",
+    "priorityNone": "なし",
+    "priorityUrgent": "緊急",
+    "project": "プロジェクト",
+    "remindAt": "通知する時刻",
+    "reminder": "リマインダー",
+    "setReminder": "リマインダーを設定",
+    "start": "開始",
+    "success": "{target} に変換しました",
+    "task": "タスク",
+    "time": "時刻",
+    "title": "変換"
   }
 }

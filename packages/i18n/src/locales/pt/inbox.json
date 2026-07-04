@@ -26,6 +26,10 @@
     "jobs": {
       "running": "{count, plural, one {Trabalho em segundo plano # em execução} other {Trabalhos em segundo plano # em execução}}",
       "failed": "{count} falhou"
+    },
+    "density": {
+      "toComfortable": "Vista confortável",
+      "toCompact": "Vista compacta"
     }
   },
   "type": {
@@ -208,7 +212,15 @@
     "linkedNotesAria": "Notas vinculadas",
     "removeLinkTo": "Remover link para {title}",
     "notePlaceholder": "Escreva sua nota...",
-    "textPlaceholder": "Edite seu texto capturado..."
+    "textPlaceholder": "Edite seu texto capturado...",
+    "linkANote": "Associar uma nota",
+    "match": {
+      "likely": "Correspondência provável",
+      "strong": "Correspondência forte",
+      "weak": "Correspondência fraca"
+    },
+    "resize": "Redimensionar painel",
+    "suggestedCount": "{count} sugeridos"
   },
   "content": {
     "capturedAt": "{date} capturado",
@@ -253,7 +265,12 @@
     "presetInOneHour": "1 hora",
     "presetTomorrow": "Amanhã",
     "presetNextWeek": "Semana que vem",
-    "custom": "Personalizado..."
+    "custom": "Personalizado...",
+    "archive": "Arquivar",
+    "panelEmpty": "Sem lembretes futuros.",
+    "panelPast": "Passados",
+    "panelUpcoming": "Próximos",
+    "taskFallback": "Tarefa"
   },
   "insights": {
     "captureActivity": "Atividade de captura",
@@ -295,7 +312,9 @@
       "recordVoiceMemo2": "Gravar memorando de voz",
       "alreadyCaptured": "Já capturado: “",
       "rdquo": "rdquo;",
-      "captureAnyway": "Capturar de qualquer maneira"
+      "captureAnyway": "Capturar de qualquer maneira",
+      "focusShortcut": "Focar campo de captura",
+      "q": "Q"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Escolha a pasta",
@@ -416,7 +435,11 @@
       "backToPresets": "Voltar às predefinições",
       "time": "Hora",
       "noteOptional": "Nota (opcional)",
-      "whyAreYouSettingThisReminder": "Por que você está definindo este lembrete?"
+      "whyAreYouSettingThisReminder": "Por que você está definindo este lembrete?",
+      "deleteReminder": "Eliminar lembrete",
+      "editReminder": "Editar lembrete",
+      "save": "Guardar",
+      "set": "Definir"
     },
     "componentsSnoozeSnoozePicker": {
       "snooze": "Adiar",
@@ -461,5 +484,37 @@
     "toasts": {
       "inboxRefreshed": "Caixa de entrada atualizada"
     }
+  },
+  "convert": {
+    "addEvent": "Adicionar evento",
+    "addTask": "Adicionar tarefa",
+    "allDay": "Todo o dia",
+    "binaryOnlyNote": "Os ficheiros só podem tornar-se numa nota",
+    "chooseType": "Converter para",
+    "create": "Criar",
+    "date": "Data",
+    "dueDate": "Data de vencimento",
+    "dueTime": "Hora de vencimento",
+    "end": "Fim",
+    "event": "Evento",
+    "failed": "Não foi possível converter: {error}",
+    "inboxProject": "Caixa de entrada",
+    "location": "Localização",
+    "note": "Nota",
+    "priority": "Prioridade",
+    "priorityHigh": "Alta",
+    "priorityLow": "Baixa",
+    "priorityMedium": "Média",
+    "priorityNone": "Nenhuma",
+    "priorityUrgent": "Urgente",
+    "project": "Projeto",
+    "remindAt": "Lembrar-me às",
+    "reminder": "Lembrete",
+    "setReminder": "Definir lembrete",
+    "start": "Início",
+    "success": "Convertido em {target}",
+    "task": "Tarefa",
+    "time": "Hora",
+    "title": "Converter"
   }
 }

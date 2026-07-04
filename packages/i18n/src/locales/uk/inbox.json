@@ -26,6 +26,10 @@
     "jobs": {
       "running": "{count, plural, one {Фонове завдання # запущено} other {Фонові завдання # запущено}}",
       "failed": "{count} не вдалося"
+    },
+    "density": {
+      "toComfortable": "Комфортний вигляд",
+      "toCompact": "Компактний вигляд"
     }
   },
   "type": {
@@ -208,7 +212,15 @@
     "linkedNotesAria": "Пов'язані нотатки",
     "removeLinkTo": "Видалити посилання на {title}",
     "notePlaceholder": "Напишіть свою нотатку...",
-    "textPlaceholder": "Редагувати захоплений текст..."
+    "textPlaceholder": "Редагувати захоплений текст...",
+    "linkANote": "Пов’язати нотатку",
+    "match": {
+      "likely": "Імовірний збіг",
+      "strong": "Сильний збіг",
+      "weak": "Слабкий збіг"
+    },
+    "resize": "Змінити розмір панелі",
+    "suggestedCount": "{count} запропоновано"
   },
   "content": {
     "capturedAt": "Захоплено {date}",
@@ -253,7 +265,12 @@
     "presetInOneHour": "1 година",
     "presetTomorrow": "Завтра",
     "presetNextWeek": "Наступного тижня",
-    "custom": "Власний..."
+    "custom": "Власний...",
+    "archive": "Архівувати",
+    "panelEmpty": "Немає майбутніх нагадувань.",
+    "panelPast": "Минулі",
+    "panelUpcoming": "Майбутні",
+    "taskFallback": "Завдання"
   },
   "insights": {
     "captureActivity": "Фіксувати активність",
@@ -295,7 +312,9 @@
       "recordVoiceMemo2": "Записати голосову замітку",
       "alreadyCaptured": "Вже захоплено: “",
       "rdquo": "rdquo;",
-      "captureAnyway": "Захопити все одно"
+      "captureAnyway": "Захопити все одно",
+      "focusShortcut": "Фокус на полі захоплення",
+      "q": "Q"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Вибрати папку",
@@ -416,7 +435,11 @@
       "backToPresets": "Назад до налаштувань за замовчуванням",
       "time": "Час",
       "noteOptional": "Примітка (необов'язково)",
-      "whyAreYouSettingThisReminder": "Чому ви встановлюєте це нагадування?"
+      "whyAreYouSettingThisReminder": "Чому ви встановлюєте це нагадування?",
+      "deleteReminder": "Видалити нагадування",
+      "editReminder": "Редагувати нагадування",
+      "save": "Зберегти",
+      "set": "Встановити"
     },
     "componentsSnoozeSnoozePicker": {
       "snooze": "Відкласти",
@@ -461,5 +484,37 @@
     "toasts": {
       "inboxRefreshed": "Вхідні оновлено"
     }
+  },
+  "convert": {
+    "addEvent": "Додати подію",
+    "addTask": "Додати завдання",
+    "allDay": "Весь день",
+    "binaryOnlyNote": "Файли можуть стати лише нотаткою",
+    "chooseType": "Перетворити на",
+    "create": "Створити",
+    "date": "Дата",
+    "dueDate": "Термін виконання",
+    "dueTime": "Час виконання",
+    "end": "Кінець",
+    "event": "Подія",
+    "failed": "Не вдалося перетворити: {error}",
+    "inboxProject": "Вхідні",
+    "location": "Місце",
+    "note": "Нотатка",
+    "priority": "Пріоритет",
+    "priorityHigh": "Високий",
+    "priorityLow": "Низький",
+    "priorityMedium": "Середній",
+    "priorityNone": "Немає",
+    "priorityUrgent": "Терміновий",
+    "project": "Проєкт",
+    "remindAt": "Нагадати о",
+    "reminder": "Нагадування",
+    "setReminder": "Встановити нагадування",
+    "start": "Початок",
+    "success": "Перетворено на {target}",
+    "task": "Завдання",
+    "time": "Час",
+    "title": "Перетворити"
   }
 }

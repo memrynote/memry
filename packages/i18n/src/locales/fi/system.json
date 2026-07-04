@@ -36,7 +36,8 @@
       "journal": "Päiväkirjan muistutus",
       "highlight": "Korosta muistutus",
       "fallback": "Muistutus erääntyy",
-      "default": "Muistutus"
+      "default": "Muistutus",
+      "task": "Tehtävämuistutus"
     }
   },
   "error": {

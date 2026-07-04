@@ -33,7 +33,8 @@
     "repeat": "Ulangi",
     "createAnother": "Buat yang lain",
     "delete": "Hapus tugas",
-    "created": "Membuat {date}"
+    "created": "Membuat {date}",
+    "reminder": "Pengingat"
   },
   "filters": {
     "filter": "Menyaring",
@@ -62,7 +63,16 @@
     "noNotesAvailable": "Tidak ada catatan tersedia",
     "noLinkedNotes": "Belum ada catatan tertaut",
     "removeLinkTo": "Hapus tautan ke {title}",
-    "removeLinkFallback": "catatan"
+    "removeLinkFallback": "catatan",
+    "addRelatedItem": "Tambah item terkait",
+    "noMatchingRelated": "Tidak ada item cocok",
+    "noRelatedAvailable": "Tidak ada item tersedia",
+    "noRelatedItems": "Belum ada item terkait",
+    "related": "Terkait",
+    "relatedItemFallback": "item",
+    "removeRelatedItem": "Hapus item terkait {title}",
+    "resize": "Ubah ukuran panel",
+    "searchRelated": "Cari terkait…"
   },
   "kanban": {
     "board": "Papan Kanban"
@@ -174,7 +184,8 @@
     "componentsTasksDatePickerContent": {
       "removeDate": "Hapus tanggal",
       "clearTime": "Waktu yang jelas",
-      "addTime": "Tambahkan waktu"
+      "addTime": "Tambahkan waktu",
+      "time": "Waktu"
     },
     "componentsTasksDeleteProjectDialog": {
       "delete": "Hapus \"",
@@ -612,6 +623,20 @@
       "failedToLoadTaskPreferences": "Gagal memuat preferensi tugas",
       "failedToUpdateTaskPreferences": "Gagal memperbarui preferensi tugas",
       "failedToLoadLinkedTasks": "Gagal memuat tugas tertaut"
+    }
+  },
+  "reminders": {
+    "hasReminders": "Memiliki pengingat",
+    "setReminder": "Atur pengingat",
+    "summary": "Pengingat: {date}",
+    "summaryWithMore": "Pengingat: {date} (+{count} lainnya)",
+    "toast": {
+      "deleteFailed": "Gagal menghapus pengingat",
+      "deleted": "Pengingat dihapus",
+      "set": "Pengingat diatur",
+      "setFailed": "Gagal mengatur pengingat",
+      "updateFailed": "Gagal memperbarui pengingat",
+      "updated": "Pengingat diperbarui"
     }
   }
 }

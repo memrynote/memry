@@ -27,7 +27,9 @@
     "imported-event": "Importovaná udalosť",
     "task": "Úloha",
     "reminder": "Pripomienka",
-    "snooze": "Odložiť"
+    "snooze": "Odložiť",
+    "note": "Poznámka",
+    "note-date": "Pripomienka dátumu"
   },
   "state": {
     "loading-calendar": "Načítava sa kalendár…",
@@ -151,5 +153,34 @@
       "could-not-remove-due-date": "Nepodarilo sa odstrániť termín",
       "could-not-open-note": "Nepodarilo sa otvoriť poznámku"
     }
+  },
+  "connect-prompt": {
+    "aria": "Pripojiť Google Calendar",
+    "body": "Pripojte svoj Google účet a získajte viac z kalendára:",
+    "bullets": {
+      "events": "Zobrazte svoje Google udalosti popri poznámkach a úlohách",
+      "schedule": "Plánujte úlohy a poznámky vo svojom kalendári",
+      "sync": "Vytvárajte a upravujte udalosti so synchronizáciou oboma smermi"
+    },
+    "continue": "Pokračovať cez Google",
+    "dismiss": "Zavrieť",
+    "error": "Google Calendar sa nepodarilo pripojiť. Skúste znova.",
+    "pill": "Pripojiť Google",
+    "title": "Dokončite pripojenie ku Google Calendar"
+  },
+  "notePopover": {
+    "couldNotOpen": "Poznámku sa nepodarilo otvoriť",
+    "kind": "Poznámka",
+    "kindDateReminder": "Pripomienka dátumu",
+    "open": "Otvoriť poznámku"
+  },
+  "search": {
+    "close": "Zavrieť hľadanie",
+    "no-results": "Žiadne zhody",
+    "open": "Hľadať v kalendári",
+    "placeholder": "Hľadať udalosti, úlohy, pripomienky…"
+  },
+  "undo": {
+    "moveEvent": "Presunúť udalosť"
   }
 }

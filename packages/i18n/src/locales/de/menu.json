@@ -1,11 +1,15 @@
 {
   "app": {
-    "quit": "Hör auf"
+    "quit": "Hör auf",
+    "preferences": "Einstellungen…"
   },
   "file": {
     "label": "Datei",
     "newNote": "Neue Notiz",
-    "close": "Fenster schließen"
+    "close": "Fenster schließen",
+    "closeTab": "Tab schließen",
+    "exportPdf": "Als PDF exportieren…",
+    "openQuickly": "Schnell öffnen…"
   },
   "navigation": {
     "back": "Zurück",
@@ -18,12 +22,51 @@
     "cut": "Schneiden",
     "copy": "Kopieren",
     "paste": "Einfügen",
-    "selectAll": "Alles auswählen"
+    "selectAll": "Alles auswählen",
+    "find": "Suchen",
+    "speech": "Sprache"
   },
   "view": {
     "label": "Ansicht",
     "reload": "Neu laden",
     "toggleDevTools": "Entwicklertools umschalten",
-    "toggleFullscreen": "Vollbild umschalten"
+    "toggleFullscreen": "Vollbild umschalten",
+    "theme": "Design",
+    "themeDark": "Dunkel",
+    "themeLight": "Hell",
+    "themeSystem": "System",
+    "themeWhite": "Papier",
+    "toggleDayPanel": "Tagespanel umschalten",
+    "toggleSidebar": "Seitenleiste umschalten"
+  },
+  "format": {
+    "body": "Fließtext",
+    "bold": "Fett",
+    "code": "Code",
+    "heading1": "Überschrift 1",
+    "heading2": "Überschrift 2",
+    "heading3": "Überschrift 3",
+    "highlight": "Hervorheben",
+    "italic": "Kursiv",
+    "label": "Format",
+    "strikethrough": "Durchgestrichen"
+  },
+  "help": {
+    "about": "Über Memrynote",
+    "documentation": "Dokumentation",
+    "label": "Hilfe",
+    "shortcuts": "Tastenkürzel"
+  },
+  "insert": {
+    "attachment": "Anhang einfügen…",
+    "bulletList": "Aufzählungsliste",
+    "codeBlock": "Codeblock",
+    "label": "Einfügen",
+    "numberedList": "Nummerierte Liste",
+    "table": "Tabelle",
+    "taskList": "Aufgabenliste"
+  },
+  "window": {
+    "label": "Fenster"
   }
 }

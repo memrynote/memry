@@ -25,7 +25,10 @@
         "integrations": "Integrationen",
         "vault": "Tresor",
         "tags": "Schlagworte",
-        "properties": "Eigenschaften"
+        "properties": "Eigenschaften",
+        "commandLine": "Befehlszeile",
+        "features": "Funktionen",
+        "import": "Import"
       }
     }
   },
@@ -109,6 +112,11 @@
       "createInSelectedFolder": {
         "label": "Im ausgewählten Ordner erstellen",
         "description": "Neue Notizen und Ordner werden im aktuell ausgewählten Ordner erstellt. Wenn diese Option deaktiviert ist, werden Elemente immer im Stammverzeichnis erstellt."
+      },
+      "defaultNoteFolder": {
+        "description": "Leer = Vault-Stammverzeichnis",
+        "label": "Standardspeicherort für neue Notizen",
+        "placeholder": "notes"
       }
     },
     "privacy": {
@@ -116,6 +124,17 @@
         "label": "Teilen Sie anonyme Nutzungsmetriken",
         "description": "Es handelt sich lediglich um anonyme Messwerte – es werden niemals Notizinhalte, Suchanfragen, Dateipfade, E-Mails oder Roh-IDs gesendet.",
         "error": "Die Telemetrieeinstellung konnte nicht aktualisiert werden"
+      }
+    },
+    "dateFormat": {
+      "description": "Wie Kalenderdaten angezeigt werden",
+      "error": "Datumsformat konnte nicht aktualisiert werden",
+      "label": "Datumsformat",
+      "options": {
+        "DD.MM.YYYY": "DD.MM.YYYY",
+        "DD/MM/YYYY": "DD/MM/YYYY",
+        "MM/DD/YYYY": "MM/DD/YYYY (US)",
+        "YYYY-MM-DD": "YYYY-MM-DD (ISO)"
       }
     }
   },
@@ -250,6 +269,9 @@
         "description": "Geben Sie einen Namen für die neue Vorlagenkopie ein.",
         "placeholder": "Vorlagenname"
       }
+    },
+    "preview": {
+      "notFound": "Diese Vorlage konnte nicht geladen werden."
     }
   },
   "journal": {
@@ -261,7 +283,8 @@
     "groups": {
       "defaultTemplate": "Standardvorlage",
       "sidebarVisibility": "Sichtbarkeit der Seitenleiste",
-      "footer": "Fußzeile"
+      "footer": "Fußzeile",
+      "location": "Speicherort & Format"
     },
     "template": {
       "label": "Vorlage",
@@ -290,7 +313,21 @@
       "label": "Statistik-Fußzeile anzeigen",
       "description": "Wortzahl, Lesezeit, Zeitstempel"
     },
-    "updateError": "Die Einstellung konnte nicht aktualisiert werden"
+    "updateError": "Die Einstellung konnte nicht aktualisiert werden",
+    "dateFormat": {
+      "description": "Dateinamenformat für tägliche Notizen (z. B. YYYY-MM-DD)",
+      "label": "Datumsformat",
+      "placeholder": "YYYY-MM-DD"
+    },
+    "folder": {
+      "description": "Ordner, in dem tägliche Notizen gespeichert werden",
+      "label": "Journal-Ordner",
+      "placeholder": "journal"
+    },
+    "preview": {
+      "description": "Pfad der heutigen Journaldatei",
+      "label": "Vorschau"
+    }
   },
   "tasks": {
     "header": {
@@ -344,7 +381,9 @@
       "loading": "Einstellungen werden geladen..."
     },
     "groups": {
-      "dayCellClick": "Klicken Sie auf die Zelle „Tag“."
+      "dayCellClick": "Klicken Sie auf die Zelle „Tag“.",
+      "notes": "Notizen",
+      "weekStart": "Woche"
     },
     "defaultBehavior": {
       "label": "Standardverhalten",
@@ -360,6 +399,20 @@
       "openJournal": "Öffnen Sie das Tagebuch",
       "openCalendar": "Kalender öffnen",
       "useGlobal": "Globale Einstellung verwenden"
+    },
+    "showNotesOnCalendar": {
+      "description": "Jede Notiz im Kalender als ganztägiges Element an dem Tag anzeigen, an dem sie erstellt wurde",
+      "error": "Notizen im Kalender anzeigen konnte nicht aktualisiert werden",
+      "label": "Notizen im Kalender anzeigen"
+    },
+    "weekStart": {
+      "description": "Erster Wochentag über alle Kalender hinweg",
+      "error": "Wochenbeginn konnte nicht aktualisiert werden",
+      "label": "Woche beginnt am",
+      "options": {
+        "monday": "Montag",
+        "sunday": "Sonntag"
+      }
     }
   },
   "account": {
@@ -372,10 +425,12 @@
       "identity": "Identität",
       "sync": "Synchronisieren",
       "storage": "Lagerung",
-      "devices": "Geräte"
+      "devices": "Geräte",
+      "billing": "Abrechnung"
     },
     "identity": {
-      "unknown": "Unbekannt"
+      "unknown": "Unbekannt",
+      "encrypted": "Ende-zu-Ende-verschlüsselt"
     },
     "sync": {
       "lastSynced": "Zuletzt synchronisiert {time}",
@@ -421,6 +476,53 @@
       "signedOut": "Erfolgreich abgemeldet",
       "signOutFailed": "Abmelden fehlgeschlagen",
       "deviceLinked": "Gerät erfolgreich verknüpft"
+    },
+    "billing": {
+      "actions": {
+        "manage": "Abrechnung verwalten",
+        "opening": "Wird geöffnet...",
+        "refresh": "Status aktualisieren",
+        "upgrade": "Upgraden"
+      },
+      "activationPendingPrefix": "Aktivierung ausstehend. Paddle kann einen Moment brauchen, um den Checkout zu bestätigen. Aktualisiere den Status oder schreibe eine E-Mail an",
+      "checking": "Abrechnungsstatus wird geprüft",
+      "historyDays": "{days} Tage",
+      "labels": {
+        "history": "Verlauf",
+        "maxFile": "Max. Datei",
+        "storage": "Speicher",
+        "vaults": "Vaults"
+      },
+      "planStatus": "Tarifstatus",
+      "plans": {
+        "believer": "Believer-Tarif",
+        "free": "Kostenloser Tarif",
+        "plus": "Plus-Tarif",
+        "pro": "Pro-Tarif"
+      },
+      "statuses": {
+        "active": "Aktiv",
+        "canceled": "Gekündigt",
+        "inactive": "Inaktiv",
+        "past_due": "Überfällig",
+        "paused": "Pausiert"
+      },
+      "toasts": {
+        "activationPending": "Aktivierung ausstehend",
+        "billingActive": "Abrechnung ist aktiv",
+        "checkoutFailed": "Checkout konnte nicht gestartet werden",
+        "checkoutOpened": "Checkout im Browser geöffnet",
+        "loadFailed": "Abrechnungsstatus konnte nicht geladen werden",
+        "portalFailed": "Abrechnungsportal konnte nicht geöffnet werden",
+        "refreshFailed": "Abrechnungsstatus konnte nicht aktualisiert werden"
+      },
+      "unlimited": "Unbegrenzt"
+    },
+    "community": {
+      "and": "und",
+      "feedback": "Feedback teilen",
+      "prompt": "Liebst du memrynote?",
+      "star": "Gib uns einen Stern auf GitHub"
     }
   },
   "setup": {
@@ -437,7 +539,9 @@
       "errors": {
         "sendCode": "Code konnte nicht gesendet werden",
         "googleStart": "Die Google-Anmeldung konnte nicht gestartet werden"
-      }
+      },
+      "paidPlan": "Synchronisierung ist ein kostenpflichtiger Tarif.",
+      "seePlans": "Tarife ansehen"
     },
     "email": {
       "label": "E-Mail-Adresse",
@@ -488,7 +592,13 @@
         "registering": "Gerät wird registriert..."
       },
       "failed": "Die Wiederherstellung ist fehlgeschlagen",
-      "confirmationFailed": "Die Bestätigung ist fehlgeschlagen"
+      "confirmationFailed": "Die Bestätigung ist fehlgeschlagen",
+      "unavailable": {
+        "description": "Deine Wiederherstellungsphrase wird nur einmal während der Einrichtung angezeigt und kann später nicht abgerufen werden. Beginne von vorne, um eine neue zu generieren.",
+        "loading": "Deine Wiederherstellungsphrase wird geladen…",
+        "startOver": "Von vorne beginnen",
+        "title": "Deine Wiederherstellungsphrase konnte nicht geladen werden"
+      }
     },
     "linking": {
       "choiceTitle": "Verknüpfen Sie dieses Gerät",
@@ -513,7 +623,15 @@
       "waitingTitle": "Warten auf Genehmigung",
       "waitingDescription": "Öffnen Sie memrynote auf Ihrem anderen Gerät und genehmigen Sie die Verknüpfungsanfrage.",
       "verificationCode": "Bestätigungscode",
-      "confirmCode": "Bestätigen Sie, dass dieser mit dem Code auf Ihrem anderen Gerät übereinstimmt"
+      "confirmCode": "Bestätigen Sie, dass dieser mit dem Code auf Ihrem anderen Gerät übereinstimmt",
+      "vaultPickerChooseFolder": "Ordner wählen",
+      "vaultPickerConfirm": "Ausgewählte abrufen",
+      "vaultPickerDescription": "Dieses Konto hat mehrere Vaults. Wähle einen Ordner und den/die Vault(s), die zu diesem Gerät hinzugefügt werden sollen.",
+      "vaultPickerDormantHint": "Hinzugefügt, öffnet sich, wenn du dazu wechselst",
+      "vaultPickerFolderLabel": "Vaults in Ordner speichern",
+      "vaultPickerPrimaryHint": "Öffnet sich jetzt",
+      "vaultPickerTitle": "Wähle, was abgerufen werden soll",
+      "vaultRow": "Vault — {{count}} Elemente · {{date}}"
     }
   },
   "devices": {
@@ -630,7 +748,15 @@
       "downloadedToast": "Whisper Small heruntergeladen",
       "downloadError": "Whisper Small konnte nicht heruntergeladen werden",
       "keySavedToast": "OpenAI-Schlüssel gespeichert",
-      "keySaveError": "Der OpenAI-Schlüssel konnte nicht gespeichert werden"
+      "keySaveError": "Der OpenAI-Schlüssel konnte nicht gespeichert werden",
+      "memoNameMode": "Notiznamen",
+      "memoNameModeDescription": "Wie Sprachnotizen nach der Transkription benannt werden",
+      "naming": {
+        "none": "Nicht umbenennen",
+        "timestamp": "Zeitstempel",
+        "transcript": "Transkripttitel"
+      },
+      "namingError": "Benennung von Sprachnotizen konnte nicht aktualisiert werden"
     },
     "embedding": {
       "loaded": "Geladen",
@@ -715,7 +841,12 @@
       "connectFailed": "Verbindung mit Google Kalender fehlgeschlagen",
       "refreshFailed": "Google Kalender konnte nicht aktualisiert werden",
       "disconnectFailed": "Google Kalender konnte nicht getrennt werden",
-      "retryFailed": "Die Kalendersynchronisierung konnte nicht wiederholt werden"
+      "retryFailed": "Die Kalendersynchronisierung konnte nicht wiederholt werden",
+      "pushToGoogle": {
+        "description": "Deaktivieren für Ein-Wege-Synchronisierung — du siehst weiterhin deine Google-Termine in memrynote, aber memrynote-Termine erscheinen nicht in Google.",
+        "error": "Synchronisierungsrichtung konnte nicht aktualisiert werden",
+        "label": "memrynote-Termine in Google Calendar anzeigen"
+      }
     },
     "sourcePicker": {
       "empty": "Auf diesem Gerät sind noch keine importierten Google-Kalender verfügbar.",
@@ -796,7 +927,8 @@
       "changeColor": "Farbe ändern",
       "mergeInto": "Verschmelzen mit...",
       "merge": "Zusammenführen",
-      "delete": "Löschen"
+      "delete": "Löschen",
+      "changeIcon": "Symbol ändern"
     },
     "dialogs": {
       "deleteTitle": "Tag löschen",
@@ -814,7 +946,8 @@
       "mergeFailed": "Tags konnten nicht zusammengeführt werden",
       "merged": "„{source}“ mit „{target}“ ({count, plural, one {#-Element} other {#-Elemente}}) zusammengeführt",
       "colorUpdated": "Aktualisierte Farbe für „{name}“",
-      "colorFailed": "Die Farbe konnte nicht aktualisiert werden"
+      "colorFailed": "Die Farbe konnte nicht aktualisiert werden",
+      "iconFailed": "Symbol konnte nicht aktualisiert werden"
     }
   },
   "properties": {
@@ -1144,7 +1277,10 @@
     "status": {
       "disconnected": "Disconnected",
       "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled"
+      "fullTools": "Full tools enabled",
+      "checking": "Wird geprüft…",
+      "connected": "Verbunden",
+      "label": "Verbindung"
     },
     "permissions": {
       "group": "Agent permissions",
@@ -1160,6 +1296,133 @@
         "alwaysAllow": "Always allow",
         "askBeforeChanges": "Ask before changes"
       }
+    }
+  },
+  "commandLine": {
+    "actions": {
+      "refresh": "Aktualisieren"
+    },
+    "command": {
+      "descriptionInstalled": "Installiert unter {path}",
+      "descriptionNotInstalled": "Installiere den memrynote-Befehl, damit du deinen Vault aus jedem Terminal nutzen kannst.",
+      "label": "memrynote-Befehl",
+      "toggleLabel": "memrynote-Befehl installieren"
+    },
+    "defaultVault": {
+      "description": "Wähle den Vault, der verwendet wird, wenn du memrynote ohne --vault ausführst.",
+      "descriptionSelected": "Befehle verwenden {path}, wenn --vault weggelassen wird.",
+      "label": "Standard-Vault",
+      "none": "Kein Vault ausgewählt",
+      "placeholder": "Vault auswählen"
+    },
+    "groups": {
+      "terminal": "Terminal"
+    },
+    "header": {
+      "subtitle": "Richte den memrynote-Befehl für dein Terminal ein",
+      "title": "Befehlszeile"
+    },
+    "status": {
+      "defaultVaultUpdatedToast": "Standard-CLI-Vault aktualisiert",
+      "installedToast": "memrynote-Befehl installiert",
+      "loadFailed": "Befehlsstatus konnte nicht geladen werden",
+      "loading": "Befehlsstatus wird geprüft...",
+      "uninstalledToast": "memrynote-Befehl entfernt"
+    }
+  },
+  "features": {
+    "header": {
+      "subtitle": "Aktiviere oder deaktiviere Teile der App. Aus = in der Seitenleiste ausgegraut und überall deaktiviert.",
+      "title": "Funktionen"
+    },
+    "items": {
+      "calendar": {
+        "description": "Termine und Zeitplan",
+        "label": "Kalender"
+      },
+      "graph": {
+        "description": "Notizverbindungen",
+        "label": "Graph"
+      },
+      "home": {
+        "description": "Landing-Dashboard",
+        "label": "Start"
+      },
+      "inbox": {
+        "description": "Schnelles Erfassen und Sortieren",
+        "label": "Inbox"
+      },
+      "journal": {
+        "description": "Tägliche Notizen",
+        "label": "Journal"
+      },
+      "tasks": {
+        "description": "To-dos und Fälligkeitsdaten",
+        "label": "Aufgaben"
+      }
+    }
+  },
+  "import": {
+    "action": "Importieren",
+    "dialog": {
+      "cancel": "Abbrechen",
+      "choose": "Datei wählen…",
+      "chooseFolder": "Apple-Notes-Ordner auswählen…",
+      "chooseHint": "Wähle deine {label}",
+      "close": "Schließen",
+      "done": "Fertig",
+      "error": "Import fehlgeschlagen",
+      "folderHint": "Klicke unten und wähle den Ordner „group.com.apple.notes“, wenn der Auswahldialog öffnet (er startet dort). So kann Memry deine Notizen und Anhänge lesen — kein vollständiger Festplattenzugriff nötig.",
+      "progress": "{completed} von {total}",
+      "running": "Wird importiert…",
+      "selected": "{count, plural, one {# Datei ausgewählt} other {# Dateien ausgewählt}}",
+      "start": "Import starten",
+      "summary": {
+        "attachments": "{count, plural, one {# Anhang kopiert} other {# Anhänge kopiert}}",
+        "failed": "{count} fehlgeschlagen",
+        "imported": "{count, plural, one {# Element importiert} other {# Elemente importiert}}",
+        "skipped": "{count} übersprungen",
+        "title": "Import abgeschlossen"
+      },
+      "title": "Aus {name} importieren"
+    },
+    "header": {
+      "subtitle": "Bring deine Notizen und Aufgaben aus anderen Apps herein",
+      "title": "Import"
+    },
+    "intro": "Einmalige Importe erstellen neue Notizen in deinem Vault. Deine ursprünglichen Exportdateien bleiben unberührt.",
+    "preview": {
+      "confirm": "Importieren",
+      "warnings": "Warnungen"
+    },
+    "select": "Wähle eine App zum Importieren aus…",
+    "sources": {
+      "apple-journal": "Einen Apple-Journal-HTML-Export als datierte Notizen importieren",
+      "apple-notes": "Aus der Apple-Notes-Datenbank importieren (NoteStore.sqlite, macOS)",
+      "bear": "Ein Bear-.bear2bk-Archiv importieren (Notizen, Tags, Anhänge)",
+      "csv": "Eine .csv-Datei importieren — eine Notiz pro Zeile, Spalten werden zu Eigenschaften",
+      "evernote": "Eine oder mehrere Evernote-.enex-Exportdateien importieren",
+      "google-keep": "Einen Google-Takeout-Keep-Export importieren (.json oder .zip)",
+      "html": ".html-Dateien mit verknüpften Bildern und seitenübergreifenden Links importieren",
+      "markdown": ".md-Dateien oder einen Ordner importieren (Frontmatter, Tags, Anhänge)",
+      "notion": "Einen HTML-Export importieren (.zip)",
+      "onenote": "OneNote-Notizbücher importieren (erfordert ein Microsoft-Konto)",
+      "raindrop": "Einen Raindrop.io-Lesezeichen-Export (.csv) importieren — Lesezeichen landen in der Inbox",
+      "roam": "Einen Roam-Research-Graphen (.json) mit verschachtelten Gliederungen importieren",
+      "ticktick": "Ein TickTick-Backup (.csv) als Projekte, Aufgaben und Erinnerungen importieren",
+      "todoist": "Einen Projekt-CSV-Export importieren (.csv)"
+    },
+    "stats": {
+      "bookmarks": "{count, plural, one {# Lesezeichen} other {# Lesezeichen}}",
+      "comments": "{count, plural, one {# Kommentar} other {# Kommentare}}",
+      "notes": "{count, plural, one {# Notiz} other {# Notizen}}",
+      "projects": "{count, plural, one {# Projekt} other {# Projekte}}",
+      "reminders": "{count, plural, one {# Erinnerung} other {# Erinnerungen}}",
+      "skipped": "{count} übersprungen",
+      "subtasks": "{count, plural, one {# Teilaufgabe} other {# Teilaufgaben}}",
+      "tasks": "{count, plural, one {# Aufgabe} other {# Aufgaben}}",
+      "withDueDate": "{count} datiert",
+      "withTags": "{count} getaggt"
     }
   }
 }

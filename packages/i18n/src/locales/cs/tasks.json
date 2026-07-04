@@ -33,7 +33,8 @@
     "repeat": "Opakujte",
     "createAnother": "Vytvořte další",
     "delete": "Smazat úkol",
-    "created": "Vytvořeno {date}"
+    "created": "Vytvořeno {date}",
+    "reminder": "Připomenutí"
   },
   "filters": {
     "filter": "Filtr",
@@ -62,7 +63,16 @@
     "noNotesAvailable": "Nejsou k dispozici žádné poznámky",
     "noLinkedNotes": "Zatím žádné propojené poznámky",
     "removeLinkTo": "Odebrat odkaz na {title}",
-    "removeLinkFallback": "poznámka"
+    "removeLinkFallback": "poznámka",
+    "addRelatedItem": "Přidat související položku",
+    "noMatchingRelated": "Žádné odpovídající položky",
+    "noRelatedAvailable": "Žádné dostupné položky",
+    "noRelatedItems": "Zatím žádné související položky",
+    "related": "Související",
+    "relatedItemFallback": "položka",
+    "removeRelatedItem": "Odebrat související položku {title}",
+    "resize": "Změnit velikost panelu",
+    "searchRelated": "Hledat související…"
   },
   "kanban": {
     "board": "Kanban deska"
@@ -174,7 +184,8 @@
     "componentsTasksDatePickerContent": {
       "removeDate": "Odebrat datum",
       "clearTime": "Jasný čas",
-      "addTime": "Přidejte čas"
+      "addTime": "Přidejte čas",
+      "time": "Čas"
     },
     "componentsTasksDeleteProjectDialog": {
       "delete": "Smazat\"",
@@ -612,6 +623,20 @@
       "failedToLoadTaskPreferences": "Předvolby úlohy se nepodařilo načíst",
       "failedToUpdateTaskPreferences": "Aktualizace předvoleb úkolu se nezdařila",
       "failedToLoadLinkedTasks": "Propojené úkoly se nepodařilo načíst"
+    }
+  },
+  "reminders": {
+    "hasReminders": "Má připomenutí",
+    "setReminder": "Nastavit připomenutí",
+    "summary": "Připomenutí: {date}",
+    "summaryWithMore": "Připomenutí: {date} (+{count} více)",
+    "toast": {
+      "deleteFailed": "Připomenutí se nepodařilo smazat",
+      "deleted": "Připomenutí smazáno",
+      "set": "Připomenutí nastaveno",
+      "setFailed": "Připomenutí se nepodařilo nastavit",
+      "updateFailed": "Připomenutí se nepodařilo aktualizovat",
+      "updated": "Připomenutí aktualizováno"
     }
   }
 }

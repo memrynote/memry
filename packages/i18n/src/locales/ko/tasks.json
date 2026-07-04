@@ -33,7 +33,8 @@
     "repeat": "반복",
     "createAnother": "다른 만들기",
     "delete": "할 일 삭제",
-    "created": "{date}를 생성했습니다."
+    "created": "{date}를 생성했습니다.",
+    "reminder": "리마인더"
   },
   "filters": {
     "filter": "필터",
@@ -62,7 +63,16 @@
     "noNotesAvailable": "사용 가능한 메모가 없습니다.",
     "noLinkedNotes": "아직 연결된 메모가 없습니다.",
     "removeLinkTo": "{title}에 대한 링크 제거",
-    "removeLinkFallback": "참고"
+    "removeLinkFallback": "참고",
+    "addRelatedItem": "관련 항목 추가",
+    "noMatchingRelated": "일치하는 항목 없음",
+    "noRelatedAvailable": "사용 가능한 항목 없음",
+    "noRelatedItems": "아직 관련 항목이 없습니다",
+    "related": "관련 항목",
+    "relatedItemFallback": "항목",
+    "removeRelatedItem": "관련 항목 {title} 제거",
+    "resize": "패널 크기 조정",
+    "searchRelated": "관련 항목 검색…"
   },
   "kanban": {
     "board": "칸반보드"
@@ -174,7 +184,8 @@
     "componentsTasksDatePickerContent": {
       "removeDate": "날짜 삭제",
       "clearTime": "클리어 시간",
-      "addTime": "시간 추가"
+      "addTime": "시간 추가",
+      "time": "시간"
     },
     "componentsTasksDeleteProjectDialog": {
       "delete": "삭제 \"",
@@ -612,6 +623,20 @@
       "failedToLoadTaskPreferences": "작업 기본 설정을 로드하지 못했습니다.",
       "failedToUpdateTaskPreferences": "작업 기본 설정을 업데이트하지 못했습니다.",
       "failedToLoadLinkedTasks": "연결된 작업을 로드하지 못했습니다."
+    }
+  },
+  "reminders": {
+    "hasReminders": "리마인더 있음",
+    "setReminder": "리마인더 설정",
+    "summary": "리마인더: {date}",
+    "summaryWithMore": "리마인더: {date} (외 {count}개)",
+    "toast": {
+      "deleteFailed": "리마인더를 삭제하지 못했습니다",
+      "deleted": "리마인더가 삭제됨",
+      "set": "리마인더 설정됨",
+      "setFailed": "리마인더를 설정하지 못했습니다",
+      "updateFailed": "리마인더를 업데이트하지 못했습니다",
+      "updated": "리마인더가 업데이트됨"
     }
   }
 }

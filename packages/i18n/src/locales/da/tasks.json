@@ -33,7 +33,8 @@
     "repeat": "Gentag",
     "createAnother": "Opret en anden",
     "delete": "Slet opgave",
-    "created": "Oprettet {date}"
+    "created": "Oprettet {date}",
+    "reminder": "Påmindelse"
   },
   "filters": {
     "filter": "Filter",
@@ -62,7 +63,16 @@
     "noNotesAvailable": "Ingen tilgængelige noter",
     "noLinkedNotes": "Ingen tilknyttede noter endnu",
     "removeLinkTo": "Fjern link til {title}",
-    "removeLinkFallback": "bemærk"
+    "removeLinkFallback": "bemærk",
+    "addRelatedItem": "Tilføj relateret element",
+    "noMatchingRelated": "Ingen matchende elementer",
+    "noRelatedAvailable": "Ingen elementer tilgængelige",
+    "noRelatedItems": "Ingen relaterede elementer endnu",
+    "related": "Relateret",
+    "relatedItemFallback": "element",
+    "removeRelatedItem": "Fjern relateret element {title}",
+    "resize": "Tilpas panel",
+    "searchRelated": "Søg relateret…"
   },
   "kanban": {
     "board": "Kanban bord"
@@ -174,7 +184,8 @@
     "componentsTasksDatePickerContent": {
       "removeDate": "Fjern dato",
       "clearTime": "Klar tid",
-      "addTime": "Tilføj tid"
+      "addTime": "Tilføj tid",
+      "time": "Tid"
     },
     "componentsTasksDeleteProjectDialog": {
       "delete": "Slet\"",
@@ -612,6 +623,20 @@
       "failedToLoadTaskPreferences": "Kunne ikke indlæse opgavepræferencer",
       "failedToUpdateTaskPreferences": "Kunne ikke opdatere opgavepræferencer",
       "failedToLoadLinkedTasks": "Kunne ikke indlæse linkede opgaver"
+    }
+  },
+  "reminders": {
+    "hasReminders": "Har påmindelser",
+    "setReminder": "Indstil påmindelse",
+    "summary": "Påmindelse: {date}",
+    "summaryWithMore": "Påmindelse: {date} (+{count} mere)",
+    "toast": {
+      "deleteFailed": "Kunne ikke slette påmindelse",
+      "deleted": "Påmindelse slettet",
+      "set": "Påmindelse indstillet",
+      "setFailed": "Kunne ikke indstille påmindelse",
+      "updateFailed": "Kunne ikke opdatere påmindelse",
+      "updated": "Påmindelse opdateret"
     }
   }
 }

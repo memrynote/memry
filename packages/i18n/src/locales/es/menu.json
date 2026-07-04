@@ -1,11 +1,15 @@
 {
   "app": {
-    "quit": "dejar de fumar"
+    "quit": "dejar de fumar",
+    "preferences": "Ajustes…"
   },
   "file": {
     "label": "Archivo",
     "newNote": "Nueva nota",
-    "close": "Cerrar ventana"
+    "close": "Cerrar ventana",
+    "closeTab": "Cerrar pestaña",
+    "exportPdf": "Exportar a PDF…",
+    "openQuickly": "Abrir rápidamente…"
   },
   "navigation": {
     "back": "Atrás",
@@ -18,12 +22,51 @@
     "cut": "cortar",
     "copy": "Copiar",
     "paste": "Pegar",
-    "selectAll": "Seleccionar todo"
+    "selectAll": "Seleccionar todo",
+    "find": "Buscar",
+    "speech": "Voz"
   },
   "view": {
     "label": "Ver",
     "reload": "recargar",
     "toggleDevTools": "Alternar herramientas de desarrollador",
-    "toggleFullscreen": "Alternar pantalla completa"
+    "toggleFullscreen": "Alternar pantalla completa",
+    "theme": "Tema",
+    "themeDark": "Oscuro",
+    "themeLight": "Claro",
+    "themeSystem": "Sistema",
+    "themeWhite": "Papel",
+    "toggleDayPanel": "Alternar panel del día",
+    "toggleSidebar": "Alternar barra lateral"
+  },
+  "format": {
+    "body": "Cuerpo",
+    "bold": "Negrita",
+    "code": "Código",
+    "heading1": "Encabezado 1",
+    "heading2": "Encabezado 2",
+    "heading3": "Encabezado 3",
+    "highlight": "Resaltado",
+    "italic": "Cursiva",
+    "label": "Formato",
+    "strikethrough": "Tachado"
+  },
+  "help": {
+    "about": "Acerca de Memrynote",
+    "documentation": "Documentación",
+    "label": "Ayuda",
+    "shortcuts": "Atajos de teclado"
+  },
+  "insert": {
+    "attachment": "Insertar archivo adjunto…",
+    "bulletList": "Lista con viñetas",
+    "codeBlock": "Bloque de código",
+    "label": "Insertar",
+    "numberedList": "Lista numerada",
+    "table": "Tabla",
+    "taskList": "Lista de tareas"
+  },
+  "window": {
+    "label": "Ventana"
   }
 }

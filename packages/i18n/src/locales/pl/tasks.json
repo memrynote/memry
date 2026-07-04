@@ -33,7 +33,8 @@
     "repeat": "Powtórz",
     "createAnother": "Utwórz kolejny",
     "delete": "Usuń zadanie",
-    "created": "Utworzono {date}"
+    "created": "Utworzono {date}",
+    "reminder": "Przypomnienie"
   },
   "filters": {
     "filter": "Filtruj",
@@ -62,7 +63,16 @@
     "noNotesAvailable": "Brak dostępnych notatek",
     "noLinkedNotes": "Nie ma jeszcze powiązanych notatek",
     "removeLinkTo": "Usuń link do {title}",
-    "removeLinkFallback": "uwaga"
+    "removeLinkFallback": "uwaga",
+    "addRelatedItem": "Dodaj powiązany element",
+    "noMatchingRelated": "Brak pasujących elementów",
+    "noRelatedAvailable": "Brak dostępnych elementów",
+    "noRelatedItems": "Brak powiązanych elementów",
+    "related": "Powiązane",
+    "relatedItemFallback": "element",
+    "removeRelatedItem": "Usuń powiązany element {title}",
+    "resize": "Zmień rozmiar panelu",
+    "searchRelated": "Szukaj powiązanych…"
   },
   "kanban": {
     "board": "Tablica Kanbana"
@@ -174,7 +184,8 @@
     "componentsTasksDatePickerContent": {
       "removeDate": "Usuń datę",
       "clearTime": "Wyczyść czas",
-      "addTime": "Dodaj czas"
+      "addTime": "Dodaj czas",
+      "time": "Godzina"
     },
     "componentsTasksDeleteProjectDialog": {
       "delete": "Usuń \"",
@@ -612,6 +623,20 @@
       "failedToLoadTaskPreferences": "Nie udało się załadować preferencji zadania",
       "failedToUpdateTaskPreferences": "Nie udało się zaktualizować preferencji zadania",
       "failedToLoadLinkedTasks": "Nie udało się załadować połączonych zadań"
+    }
+  },
+  "reminders": {
+    "hasReminders": "Ma przypomnienia",
+    "setReminder": "Ustaw przypomnienie",
+    "summary": "Przypomnienie: {date}",
+    "summaryWithMore": "Przypomnienie: {date} (+{count} więcej)",
+    "toast": {
+      "deleteFailed": "Nie udało się usunąć przypomnienia",
+      "deleted": "Przypomnienie usunięte",
+      "set": "Przypomnienie ustawione",
+      "setFailed": "Nie udało się ustawić przypomnienia",
+      "updateFailed": "Nie udało się zaktualizować przypomnienia",
+      "updated": "Przypomnienie zaktualizowane"
     }
   }
 }

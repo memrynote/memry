@@ -25,7 +25,10 @@
         "integrations": "整合",
         "vault": "保險庫",
         "tags": "標籤",
-        "properties": "屬性"
+        "properties": "屬性",
+        "commandLine": "命令列",
+        "features": "功能",
+        "import": "匯入"
       }
     }
   },
@@ -109,6 +112,11 @@
       "createInSelectedFolder": {
         "label": "在選定的資料夾中建立",
         "description": "新筆記和資料夾會在當前選定的資料夾內建立。關閉此選項時，項目總是在根目錄建立。"
+      },
+      "defaultNoteFolder": {
+        "description": "空白＝保管庫根目錄",
+        "label": "新筆記的預設位置",
+        "placeholder": "notes"
       }
     },
     "privacy": {
@@ -116,6 +124,17 @@
         "label": "分享匿名使用指標",
         "description": "這僅是匿名指標——永遠不會發送筆記內容、搜索查詢、檔案路徑、電子郵件或原始 ID。",
         "error": "更新遙測設定失敗"
+      }
+    },
+    "dateFormat": {
+      "description": "行事曆日期的顯示方式",
+      "error": "更新日期格式失敗",
+      "label": "日期格式",
+      "options": {
+        "DD.MM.YYYY": "DD.MM.YYYY",
+        "DD/MM/YYYY": "DD/MM/YYYY",
+        "MM/DD/YYYY": "MM/DD/YYYY（US）",
+        "YYYY-MM-DD": "YYYY-MM-DD（ISO）"
       }
     }
   },
@@ -250,6 +269,9 @@
         "description": "輸入新範本的名稱。",
         "placeholder": "模板名稱"
       }
+    },
+    "preview": {
+      "notFound": "無法載入此範本。"
     }
   },
   "journal": {
@@ -261,7 +283,8 @@
     "groups": {
       "defaultTemplate": "預設範本",
       "sidebarVisibility": "側邊欄可見性",
-      "footer": "頁腳"
+      "footer": "頁腳",
+      "location": "位置與格式"
     },
     "template": {
       "label": "範本",
@@ -290,7 +313,21 @@
       "label": "顯示統計頁尾",
       "description": "字數、閱讀時間、時間戳記"
     },
-    "updateError": "更新設定失敗"
+    "updateError": "更新設定失敗",
+    "dateFormat": {
+      "description": "每日筆記的檔名格式（例如 YYYY-MM-DD）",
+      "label": "日期格式",
+      "placeholder": "YYYY-MM-DD"
+    },
+    "folder": {
+      "description": "儲存每日筆記的資料夾",
+      "label": "日誌資料夾",
+      "placeholder": "journal"
+    },
+    "preview": {
+      "description": "今天的日誌檔案路徑",
+      "label": "預覽"
+    }
   },
   "tasks": {
     "header": {
@@ -344,7 +381,9 @@
       "loading": "載入設定..."
     },
     "groups": {
-      "dayCellClick": "日格點擊"
+      "dayCellClick": "日格點擊",
+      "notes": "筆記",
+      "weekStart": "週"
     },
     "defaultBehavior": {
       "label": "預設行為",
@@ -360,6 +399,20 @@
       "openJournal": "打開日誌",
       "openCalendar": "打開行事曆",
       "useGlobal": "使用全域設定"
+    },
+    "showNotesOnCalendar": {
+      "description": "在行事曆上，將每則筆記以全天項目顯示於其建立當天",
+      "error": "更新「在行事曆上顯示筆記」失敗",
+      "label": "在行事曆上顯示筆記"
+    },
+    "weekStart": {
+      "description": "所有行事曆的每週第一天",
+      "error": "更新每週開始日失敗",
+      "label": "每週開始於",
+      "options": {
+        "monday": "星期一",
+        "sunday": "星期日"
+      }
     }
   },
   "account": {
@@ -372,10 +425,12 @@
       "identity": "身份認證",
       "sync": "同步",
       "storage": "儲存",
-      "devices": "裝置"
+      "devices": "裝置",
+      "billing": "帳單"
     },
     "identity": {
-      "unknown": "未知"
+      "unknown": "未知",
+      "encrypted": "端對端加密"
     },
     "sync": {
       "lastSynced": "最後同步 {time}",
@@ -421,6 +476,53 @@
       "signedOut": "登出成功",
       "signOutFailed": "登出失敗",
       "deviceLinked": "裝置已成功連結"
+    },
+    "billing": {
+      "actions": {
+        "manage": "管理帳單",
+        "opening": "開啟中…",
+        "refresh": "重新整理狀態",
+        "upgrade": "升級"
+      },
+      "activationPendingPrefix": "啟用待處理中。Paddle 可能需要一點時間確認結帳。請重新整理狀態，或寄電子郵件至",
+      "checking": "正在檢查帳單狀態",
+      "historyDays": "{days} 天",
+      "labels": {
+        "history": "紀錄",
+        "maxFile": "檔案上限",
+        "storage": "儲存空間",
+        "vaults": "保管庫"
+      },
+      "planStatus": "方案狀態",
+      "plans": {
+        "believer": "Believer 方案",
+        "free": "免費方案",
+        "plus": "Plus 方案",
+        "pro": "Pro 方案"
+      },
+      "statuses": {
+        "active": "啟用中",
+        "canceled": "已取消",
+        "inactive": "未啟用",
+        "past_due": "逾期",
+        "paused": "已暫停"
+      },
+      "toasts": {
+        "activationPending": "啟用待處理中",
+        "billingActive": "帳單已啟用",
+        "checkoutFailed": "無法開始結帳",
+        "checkoutOpened": "已在您的瀏覽器中開啟結帳",
+        "loadFailed": "無法載入帳單狀態",
+        "portalFailed": "無法開啟帳單入口",
+        "refreshFailed": "無法重新整理帳單狀態"
+      },
+      "unlimited": "無限制"
+    },
+    "community": {
+      "and": "與",
+      "feedback": "分享意見回饋",
+      "prompt": "喜歡 memrynote 嗎？",
+      "star": "在 GitHub 上給我們星星"
     }
   },
   "setup": {
@@ -437,7 +539,9 @@
       "errors": {
         "sendCode": "發送代碼失敗",
         "googleStart": "啟動 Google 登入失敗"
-      }
+      },
+      "paidPlan": "同步為付費方案。",
+      "seePlans": "檢視方案"
     },
     "email": {
       "label": "電子郵件地址",
@@ -488,7 +592,13 @@
         "registering": "正在註冊設備..."
       },
       "failed": "恢復失敗",
-      "confirmationFailed": "確認失敗"
+      "confirmationFailed": "確認失敗",
+      "unavailable": {
+        "description": "您的復原片語僅在設定期間顯示一次，之後無法取回。請重新開始以產生新的片語。",
+        "loading": "正在載入您的復原片語…",
+        "startOver": "重新開始",
+        "title": "無法載入您的復原片語"
+      }
     },
     "linking": {
       "choiceTitle": "連接此設備",
@@ -513,7 +623,15 @@
       "waitingTitle": "等待批准",
       "waitingDescription": "在您的其他裝置打開 memrynote 並批准連結請求。",
       "verificationCode": "驗證碼",
-      "confirmCode": "確認此與您其他裝置上的代碼相符"
+      "confirmCode": "確認此與您其他裝置上的代碼相符",
+      "vaultPickerChooseFolder": "選擇資料夾",
+      "vaultPickerConfirm": "拉取所選項目",
+      "vaultPickerDescription": "此帳戶有多個保管庫。選擇一個資料夾以及要新增到此裝置的保管庫。",
+      "vaultPickerDormantHint": "已新增，切換至它時開啟",
+      "vaultPickerFolderLabel": "將保管庫儲存於資料夾",
+      "vaultPickerPrimaryHint": "立即開啟",
+      "vaultPickerTitle": "選擇要拉取的內容",
+      "vaultRow": "保管庫 — {{count}} 個項目 · {{date}}"
     }
   },
   "devices": {
@@ -630,7 +748,15 @@
       "downloadedToast": "Whisper Small 已下載",
       "downloadError": "下載 Whisper Small 失敗",
       "keySavedToast": "OpenAI 金鑰已儲存",
-      "keySaveError": "儲存 OpenAI 金鑰失敗"
+      "keySaveError": "儲存 OpenAI 金鑰失敗",
+      "memoNameMode": "備忘錄名稱",
+      "memoNameModeDescription": "轉錄後語音備忘錄的命名方式",
+      "naming": {
+        "none": "不重新命名",
+        "timestamp": "時間戳記",
+        "transcript": "轉錄標題"
+      },
+      "namingError": "更新語音備忘錄命名失敗"
     },
     "embedding": {
       "loaded": "已載入",
@@ -715,7 +841,12 @@
       "connectFailed": "連線 Google 行事曆失敗",
       "refreshFailed": "刷新 Google 行事曆失敗",
       "disconnectFailed": "斷開 Google 行事曆失敗",
-      "retryFailed": "重試行事曆同步失敗"
+      "retryFailed": "重試行事曆同步失敗",
+      "pushToGoogle": {
+        "description": "關閉以進行單向同步——您仍會在 memrynote 中看到您的 Google 活動，但 memrynote 活動不會出現在 Google 中。",
+        "error": "更新同步方向失敗",
+        "label": "在 Google Calendar 中顯示 memrynote 活動"
+      }
     },
     "sourcePicker": {
       "empty": "此裝置尚無匯入的 Google 行事曆可用。",
@@ -796,7 +927,8 @@
       "changeColor": "更改顏色",
       "mergeInto": "合併到...",
       "merge": "合併",
-      "delete": "刪除"
+      "delete": "刪除",
+      "changeIcon": "變更圖示"
     },
     "dialogs": {
       "deleteTitle": "刪除標籤",
@@ -814,7 +946,8 @@
       "mergeFailed": "未能合併標籤",
       "merged": "將「{source}」合併為「{target}」（{count, plural, one {# 項目} other {# 項目(複數)}}）",
       "colorUpdated": "「{name}」的更新顏色",
-      "colorFailed": "顏色更新失敗"
+      "colorFailed": "顏色更新失敗",
+      "iconFailed": "更新圖示失敗"
     }
   },
   "properties": {
@@ -1144,7 +1277,10 @@
     "status": {
       "disconnected": "Disconnected",
       "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled"
+      "fullTools": "Full tools enabled",
+      "checking": "檢查中…",
+      "connected": "已連線",
+      "label": "連線"
     },
     "permissions": {
       "group": "Agent permissions",
@@ -1160,6 +1296,133 @@
         "alwaysAllow": "Always allow",
         "askBeforeChanges": "Ask before changes"
       }
+    }
+  },
+  "commandLine": {
+    "actions": {
+      "refresh": "重新整理"
+    },
+    "command": {
+      "descriptionInstalled": "已安裝於 {path}",
+      "descriptionNotInstalled": "安裝 memrynote 指令，即可從任何終端機使用您的保管庫。",
+      "label": "memrynote 指令",
+      "toggleLabel": "安裝 memrynote 指令"
+    },
+    "defaultVault": {
+      "description": "選擇當您執行 memrynote 而未加上 --vault 時所使用的保管庫。",
+      "descriptionSelected": "省略 --vault 時，指令會使用 {path}。",
+      "label": "預設保管庫",
+      "none": "未選擇保管庫",
+      "placeholder": "選擇保管庫"
+    },
+    "groups": {
+      "terminal": "終端機"
+    },
+    "header": {
+      "subtitle": "為您的終端機設定 memrynote 指令",
+      "title": "命令列"
+    },
+    "status": {
+      "defaultVaultUpdatedToast": "預設 CLI 保管庫已更新",
+      "installedToast": "memrynote 指令已安裝",
+      "loadFailed": "載入指令狀態失敗",
+      "loading": "檢查指令狀態中…",
+      "uninstalledToast": "memrynote 指令已移除"
+    }
+  },
+  "features": {
+    "header": {
+      "subtitle": "開啟或關閉應用程式的各個部分。關閉＝在側邊欄中變暗，並在各處停用。",
+      "title": "功能"
+    },
+    "items": {
+      "calendar": {
+        "description": "活動與行程",
+        "label": "行事曆"
+      },
+      "graph": {
+        "description": "筆記連結",
+        "label": "圖表"
+      },
+      "home": {
+        "description": "起始儀表板",
+        "label": "首頁"
+      },
+      "inbox": {
+        "description": "快速擷取與分類",
+        "label": "收件匣"
+      },
+      "journal": {
+        "description": "每日筆記",
+        "label": "日誌"
+      },
+      "tasks": {
+        "description": "待辦事項與到期日",
+        "label": "任務"
+      }
+    }
+  },
+  "import": {
+    "action": "匯入",
+    "dialog": {
+      "cancel": "取消",
+      "choose": "選擇檔案…",
+      "chooseFolder": "選擇 Apple Notes 資料夾…",
+      "chooseHint": "選擇您的 {label}",
+      "close": "關閉",
+      "done": "完成",
+      "error": "匯入失敗",
+      "folderHint": "點擊下方，並在選擇器開啟時選取「group.com.apple.notes」資料夾（它會從那裡開始）。這讓 Memry 可以讀取您的筆記與附件——不需要完整磁碟存取權。",
+      "progress": "{completed}／{total}",
+      "running": "匯入中…",
+      "selected": "{count, plural, other {已選取 # 個檔案}}",
+      "start": "開始匯入",
+      "summary": {
+        "attachments": "{count, plural, other {已複製 # 個附件}}",
+        "failed": "{count} 個失敗",
+        "imported": "{count, plural, other {已匯入 # 個項目}}",
+        "skipped": "{count} 個已略過",
+        "title": "匯入完成"
+      },
+      "title": "從 {name} 匯入"
+    },
+    "header": {
+      "subtitle": "從其他應用程式匯入您的筆記與任務",
+      "title": "匯入"
+    },
+    "intro": "一次性匯入會在您的保管庫中建立新筆記。您原始的匯出檔案不會被更動。",
+    "preview": {
+      "confirm": "匯入",
+      "warnings": "警告"
+    },
+    "select": "選擇要從中匯入的應用程式…",
+    "sources": {
+      "apple-journal": "將 Apple Journal HTML 匯出檔匯入為帶日期的筆記",
+      "apple-notes": "從 Apple Notes 資料庫匯入（NoteStore.sqlite，macOS）",
+      "bear": "匯入 Bear .bear2bk 封存檔（筆記、標籤、附件）",
+      "csv": "匯入 .csv 檔案——每列一則筆記，欄位成為屬性",
+      "evernote": "匯入一個或多個 Evernote .enex 匯出檔",
+      "google-keep": "匯入 Google Takeout Keep 匯出檔（.json 或 .zip）",
+      "html": "匯入 .html 檔案，含連結圖片與跨頁連結",
+      "markdown": "匯入 .md 檔案或資料夾（frontmatter、標籤、附件）",
+      "notion": "匯入 HTML 匯出檔（.zip）",
+      "onenote": "匯入 OneNote 筆記本（需要 Microsoft 帳戶）",
+      "raindrop": "匯入 Raindrop.io 書籤匯出檔（.csv）——書籤會進入收件匣",
+      "roam": "匯入 Roam Research 圖譜（.json），含巢狀大綱",
+      "ticktick": "將 TickTick 備份（.csv）匯入為專案、任務與提醒",
+      "todoist": "匯入專案 CSV 匯出檔（.csv）"
+    },
+    "stats": {
+      "bookmarks": "{count, plural, other {# 個書籤}}",
+      "comments": "{count, plural, other {# 則註解}}",
+      "notes": "{count, plural, other {# 則筆記}}",
+      "projects": "{count, plural, other {# 個專案}}",
+      "reminders": "{count, plural, other {# 個提醒}}",
+      "skipped": "{count} 個已略過",
+      "subtasks": "{count, plural, other {# 項子任務}}",
+      "tasks": "{count, plural, other {# 項任務}}",
+      "withDueDate": "{count} 個已設日期",
+      "withTags": "{count} 個已加標籤"
     }
   }
 }

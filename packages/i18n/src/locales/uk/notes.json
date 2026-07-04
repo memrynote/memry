@@ -42,7 +42,9 @@
       "setIcon": "Встановити значок",
       "removeIcon": "Видалити іконку",
       "deleteSelectedNotes": "Видалити нотатки {count}",
-      "deleteSelectedItems": "Видалити {count} елементи"
+      "deleteSelectedItems": "Видалити {count} елементи",
+      "bookmark": "Закладка",
+      "removeFromBookmarks": "Прибрати із закладок"
     },
     "deleteDialog": {
       "noteTitle": "Видалити нотатку",
@@ -111,7 +113,11 @@
       "aria": "Пропозиції щодо нотаток",
       "loading": "Завантаження нотаток...",
       "empty": "Нотатки не знайдено",
-      "create": "Створити нову нотатку"
+      "create": "Створити нову нотатку",
+      "embed": "Вбудувати",
+      "embedAria": "Вбудувати {title}",
+      "wikiLink": "Вікі-посилання",
+      "wikiLinkAria": "Вікі-посилання {title}"
     },
     "tags": {
       "aria": "Пропозиції тегів",
@@ -133,6 +139,15 @@
       "searchPlaceholder": "Пошук",
       "noIcons": "Іконки не знайдено",
       "clearSearch": "Очистити пошук"
+    },
+    "mention": {
+      "aria": "Пропозиції дат і нотаток",
+      "date": "Дата",
+      "dateHint": "Продовжуйте вводити дату…",
+      "empty": "Нотаток не знайдено",
+      "loading": "Завантаження нотаток...",
+      "remindMe": "Нагадати мені",
+      "showMore": "Показати більше"
     }
   },
   "outline": {
@@ -174,7 +189,8 @@
     "createTag": "Створити тег: \"{tag}\"",
     "chooseColor": "Виберіть колір:",
     "preview": "Попередній перегляд:",
-    "colorAria": "Виберіть колір {color}"
+    "colorAria": "Виберіть колір {color}",
+    "customColor": "Власний колір"
   },
   "properties": {
     "title": "Властивості",
@@ -205,7 +221,9 @@
       "status": "Статус",
       "select": "Вибрати",
       "multiselect": "Мультивибір"
-    }
+    },
+    "showOnCalendar": "Показувати в календарі",
+    "showingOnCalendar": "Показується в календарі"
   },
   "templateSelector": {
     "title": "Виберіть вашу канву",
@@ -295,7 +313,8 @@
   },
   "phaseF": {
     "componentsFolderViewColumnHeader": {
-      "dragToReorderColumn": "Перетягніть, щоб змінити порядок стовпців"
+      "dragToReorderColumn": "Перетягніть, щоб змінити порядок стовпців",
+      "editColumnName": "Редагувати назву стовпця"
     },
     "componentsFolderViewColumnSelector": {
       "properties": "Властивості",
@@ -311,7 +330,10 @@
       "delete": "Видалити",
       "none": "Немає",
       "edit": "Редагувати",
-      "delete2": "Видалити"
+      "delete2": "Видалити",
+      "columnBorders": "Межі стовпців",
+      "display": "Відображення",
+      "showSummaries": "Показувати підсумки"
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Фільтр",
@@ -329,17 +351,21 @@
       "of": "з:",
       "addCondition": "Додай умову",
       "addFilter": "Додати фільтр",
-      "addGroup": "Додати групу"
+      "addGroup": "Додати групу",
+      "removeGroup": "Прибрати групу"
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "Вбудовані",
       "properties": "Властивості",
       "placeholderProperty": "Власність",
       "placeholderOperator": "Оператор",
-      "placeholderValue": "Вартість"
+      "placeholderValue": "Вартість",
+      "removeFilter": "Прибрати фільтр"
     },
     "componentsFolderViewFolderTableView": {
-      "notesTable": "Таблиця нотаток"
+      "notesTable": "Таблиця нотаток",
+      "selectAll": "Вибрати всі нотатки",
+      "selectRow": "Вибрати нотатку"
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "Пошукові нотатки...",
@@ -371,7 +397,9 @@
     },
     "componentsFolderViewGroupedTable": {
       "groupedNotesTable": "Таблиця нотаток за групами",
-      "more": "більше"
+      "more": "більше",
+      "selectAll": "Вибрати всі нотатки",
+      "selectRow": "Вибрати нотатку"
     },
     "componentsFolderViewMoveToFolderDialog": {
       "searchFolders": "Пошук папок...",
@@ -399,7 +427,8 @@
     },
     "componentsFolderViewSortableColumnHeader": {
       "dragToReorderColumn": "Перетягніть, щоб змінити порядок стовпців",
-      "resizeColumn": "Змінити розмір стовпця"
+      "resizeColumn": "Змінити розмір стовпця",
+      "editColumnName": "Редагувати назву стовпця"
     },
     "componentsFolderViewViewSwitcher": {
       "default": "за замовчуванням",
@@ -424,7 +453,16 @@
       "deleteView": "Видалити перегляд",
       "areYouSureYouWantToDelete": "Ви впевнені, що хочете видалити",
       "thisActionCannotBeUndone": "Цю дію неможливо скасувати.",
-      "cancel3": "Скасувати"
+      "cancel3": "Скасувати",
+      "createView": "Створити вигляд",
+      "gallery": "Галерея",
+      "layout": "Розкладка",
+      "list": "Список",
+      "name": "Назва",
+      "newView": "Новий вигляд",
+      "save": "Зберегти",
+      "table": "Таблиця",
+      "viewActions": "Дії вигляду"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "Не вдалося завантажити PDF:",
@@ -607,6 +645,15 @@
       "startYourCollection": "Розпочати вашу колекцію",
       "templatesHelpYouCreateNotesWithConsistentStructure": "Шаблони допомагають створювати нотатки з послідовною структурою.",
       "createTemplate": "Створити шаблон"
+    },
+    "componentsFolderViewSortSelector": {
+      "builtIn": "Вбудований",
+      "clearSort": "Очистити сортування",
+      "noSortablePropertiesFound": "Не знайдено властивостей для сортування",
+      "properties": "Властивості",
+      "searchProperties": "Пошук властивостей...",
+      "sort": "Сортувати",
+      "sortDirection": "Напрямок сортування"
     }
   },
   "phaseI": {
@@ -654,5 +701,47 @@
       "cannotRemoveTagThisNoteWasDeleted": "Не вдалося видалити тег - ця замітка була видалена",
       "cannotChangeLocalOnlyThisNoteWasDeleted": "Не можна змінити лише локальні дані — ця замітка була видалена"
     }
+  },
+  "bulkActions": {
+    "addTag": "Додати тег",
+    "clearAria": "Очистити виділення",
+    "copiedLinks": "Скопійовано {count, plural, one {# посилання} few {# посилання} many {# посилань} other {# посилання}}",
+    "copyLinks": "Копіювати посилання",
+    "delete": "Видалити",
+    "export": "Експортувати",
+    "move": "Перемістити",
+    "selected": "вибрано",
+    "tagNamePlaceholder": "Назва тегу",
+    "toolbarAria": "Масові дії"
+  },
+  "comments": {
+    "attachAria": "Прикріпити файл",
+    "badgeAria": "{count, plural, one {# коментар} few {# коментарі} many {# коментарів} other {# коментаря}}",
+    "cancel": "Скасувати",
+    "commentPlaceholder": "Додати коментар...",
+    "createdTooltip": "Створено {date} о {time}",
+    "delete": "Видалити коментар",
+    "edit": "Редагувати коментар",
+    "kind": {
+      "addition": "Доповнення",
+      "comment": "Коментар",
+      "deletion": "Видалення",
+      "substitution": "Заміна"
+    },
+    "mentionAria": "Згадати особу, сторінку або дату",
+    "railAria": "Коментарі",
+    "replyPlaceholder": "Відповісти...",
+    "resolve": "Вирішити",
+    "sendAria": "Надіслати коментар",
+    "toolbarComment": "Коментар"
+  },
+  "dateMention": {
+    "clear": "Очистити",
+    "dateFormat": "Формат дати",
+    "dateInput": "Дата",
+    "includeTime": "Включити час",
+    "remind": "Нагадати",
+    "time": "Час",
+    "timeFormat": "Формат часу"
   }
 }

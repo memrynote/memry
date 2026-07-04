@@ -1,11 +1,15 @@
 {
   "app": {
-    "quit": "Avslutt"
+    "quit": "Avslutt",
+    "preferences": "Innstillinger…"
   },
   "file": {
     "label": "Fil",
     "newNote": "Ny merknad",
-    "close": "Lukk vinduet"
+    "close": "Lukk vinduet",
+    "closeTab": "Lukk fane",
+    "exportPdf": "Eksporter til PDF…",
+    "openQuickly": "Åpne raskt…"
   },
   "navigation": {
     "back": "Tilbake",
@@ -18,12 +22,51 @@
     "cut": "Kutt",
     "copy": "Kopier",
     "paste": "Lim inn",
-    "selectAll": "Velg alle"
+    "selectAll": "Velg alle",
+    "find": "Finn",
+    "speech": "Tale"
   },
   "view": {
     "label": "Visning",
     "reload": "Last inn på nytt",
     "toggleDevTools": "Slå av/på utviklerverktøy",
-    "toggleFullscreen": "Slå på fullskjerm"
+    "toggleFullscreen": "Slå på fullskjerm",
+    "theme": "Tema",
+    "themeDark": "Mørkt",
+    "themeLight": "Lyst",
+    "themeSystem": "System",
+    "themeWhite": "Papir",
+    "toggleDayPanel": "Veksle dagpanel",
+    "toggleSidebar": "Veksle sidefelt"
+  },
+  "format": {
+    "body": "Brødtekst",
+    "bold": "Fet",
+    "code": "Kode",
+    "heading1": "Overskrift 1",
+    "heading2": "Overskrift 2",
+    "heading3": "Overskrift 3",
+    "highlight": "Uthev",
+    "italic": "Kursiv",
+    "label": "Format",
+    "strikethrough": "Gjennomstreking"
+  },
+  "help": {
+    "about": "Om Memrynote",
+    "documentation": "Dokumentasjon",
+    "label": "Hjelp",
+    "shortcuts": "Hurtigtaster"
+  },
+  "insert": {
+    "attachment": "Sett inn vedlegg…",
+    "bulletList": "Punktliste",
+    "codeBlock": "Kodeblokk",
+    "label": "Sett inn",
+    "numberedList": "Nummerert liste",
+    "table": "Tabell",
+    "taskList": "Oppgaveliste"
+  },
+  "window": {
+    "label": "Vindu"
   }
 }

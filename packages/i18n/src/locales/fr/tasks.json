@@ -33,7 +33,8 @@
     "repeat": "Répéter",
     "createAnother": "Créer un autre",
     "delete": "Supprimer la tâche",
-    "created": "Créé {date}"
+    "created": "Créé {date}",
+    "reminder": "Rappel"
   },
   "filters": {
     "filter": "Filtrer",
@@ -62,7 +63,16 @@
     "noNotesAvailable": "Aucune note disponible",
     "noLinkedNotes": "Aucune note liée pour l'instant",
     "removeLinkTo": "Supprimer le lien vers {title}",
-    "removeLinkFallback": "remarque"
+    "removeLinkFallback": "remarque",
+    "addRelatedItem": "Ajouter un élément lié",
+    "noMatchingRelated": "Aucun élément correspondant",
+    "noRelatedAvailable": "Aucun élément disponible",
+    "noRelatedItems": "Aucun élément lié pour l'instant",
+    "related": "Éléments liés",
+    "relatedItemFallback": "élément",
+    "removeRelatedItem": "Supprimer l'élément lié {title}",
+    "resize": "Redimensionner le panneau",
+    "searchRelated": "Rechercher des éléments liés…"
   },
   "kanban": {
     "board": "Tableau Kanban"
@@ -174,7 +184,8 @@
     "componentsTasksDatePickerContent": {
       "removeDate": "Supprimer la date",
       "clearTime": "Effacer l'heure",
-      "addTime": "Ajouter du temps"
+      "addTime": "Ajouter du temps",
+      "time": "Heure"
     },
     "componentsTasksDeleteProjectDialog": {
       "delete": "Supprimer \"",
@@ -612,6 +623,20 @@
       "failedToLoadTaskPreferences": "Échec du chargement des préférences de tâche",
       "failedToUpdateTaskPreferences": "Échec de la mise à jour des préférences de tâche",
       "failedToLoadLinkedTasks": "Échec du chargement des tâches liées"
+    }
+  },
+  "reminders": {
+    "hasReminders": "Comporte des rappels",
+    "setReminder": "Définir un rappel",
+    "summary": "Rappel : {date}",
+    "summaryWithMore": "Rappel : {date} (+{count} de plus)",
+    "toast": {
+      "deleteFailed": "Échec de la suppression du rappel",
+      "deleted": "Rappel supprimé",
+      "set": "Rappel défini",
+      "setFailed": "Échec de la définition du rappel",
+      "updateFailed": "Échec de la mise à jour du rappel",
+      "updated": "Rappel mis à jour"
     }
   }
 }

@@ -25,7 +25,10 @@
         "integrations": "Integrasi",
         "vault": "Gudang",
         "tags": "Tag",
-        "properties": "Properti"
+        "properties": "Properti",
+        "commandLine": "Baris Perintah",
+        "features": "Fitur",
+        "import": "Impor"
       }
     }
   },
@@ -109,6 +112,11 @@
       "createInSelectedFolder": {
         "label": "Buat di Folder yang Dipilih",
         "description": "Catatan dan folder baru dibuat di dalam folder yang dipilih saat ini. Jika tidak aktif, item selalu dibuat di root."
+      },
+      "defaultNoteFolder": {
+        "description": "Kosong = root vault",
+        "label": "Lokasi Default untuk Catatan Baru",
+        "placeholder": "notes"
       }
     },
     "privacy": {
@@ -116,6 +124,17 @@
         "label": "Bagikan Metrik Penggunaan Anonim",
         "description": "Ini hanya metrik langsung — tidak ada konten catatan, permintaan pencarian, jalur file, email, atau ID mentah yang pernah dikirim.",
         "error": "Gagal memperbarui setelan telemetri"
+      }
+    },
+    "dateFormat": {
+      "description": "Cara tanggal kalender ditampilkan",
+      "error": "Gagal memperbarui format tanggal",
+      "label": "Format Tanggal",
+      "options": {
+        "DD.MM.YYYY": "DD.MM.YYYY",
+        "DD/MM/YYYY": "DD/MM/YYYY",
+        "MM/DD/YYYY": "MM/DD/YYYY (US)",
+        "YYYY-MM-DD": "YYYY-MM-DD (ISO)"
       }
     }
   },
@@ -250,6 +269,9 @@
         "description": "Masukkan nama untuk salinan templat baru.",
         "placeholder": "Nama templat"
       }
+    },
+    "preview": {
+      "notFound": "Tidak dapat memuat templat ini."
     }
   },
   "journal": {
@@ -261,7 +283,8 @@
     "groups": {
       "defaultTemplate": "Templat Bawaan",
       "sidebarVisibility": "Visibilitas Bilah Sisi",
-      "footer": "catatan kaki"
+      "footer": "catatan kaki",
+      "location": "Lokasi & Format"
     },
     "template": {
       "label": "Templat",
@@ -290,7 +313,21 @@
       "label": "Tampilkan Statistik Footer",
       "description": "Jumlah kata, waktu membaca, cap waktu"
     },
-    "updateError": "Gagal memperbarui setelan"
+    "updateError": "Gagal memperbarui setelan",
+    "dateFormat": {
+      "description": "Format nama file untuk catatan harian (mis. YYYY-MM-DD)",
+      "label": "Format Tanggal",
+      "placeholder": "YYYY-MM-DD"
+    },
+    "folder": {
+      "description": "Folder tempat catatan harian disimpan",
+      "label": "Folder Jurnal",
+      "placeholder": "journal"
+    },
+    "preview": {
+      "description": "Path file jurnal hari ini",
+      "label": "Pratinjau"
+    }
   },
   "tasks": {
     "header": {
@@ -344,7 +381,9 @@
       "loading": "Memuat setelan..."
     },
     "groups": {
-      "dayCellClick": "Klik Sel Hari"
+      "dayCellClick": "Klik Sel Hari",
+      "notes": "Catatan",
+      "weekStart": "Minggu"
     },
     "defaultBehavior": {
       "label": "Perilaku bawaan",
@@ -360,6 +399,20 @@
       "openJournal": "Buka Jurnal",
       "openCalendar": "Buka Kalender",
       "useGlobal": "Gunakan pengaturan global"
+    },
+    "showNotesOnCalendar": {
+      "description": "Tampilkan setiap catatan di kalender sebagai item sepanjang hari pada hari catatan itu dibuat",
+      "error": "Gagal memperbarui tampilkan catatan di kalender",
+      "label": "Tampilkan catatan di kalender"
+    },
+    "weekStart": {
+      "description": "Hari pertama dalam seminggu di semua kalender",
+      "error": "Gagal memperbarui awal minggu",
+      "label": "Minggu Dimulai Pada",
+      "options": {
+        "monday": "Senin",
+        "sunday": "Minggu"
+      }
     }
   },
   "account": {
@@ -372,10 +425,12 @@
       "identity": "Identitas",
       "sync": "Sinkronisasi",
       "storage": "Penyimpanan",
-      "devices": "Perangkat"
+      "devices": "Perangkat",
+      "billing": "Penagihan"
     },
     "identity": {
-      "unknown": "Tidak diketahui"
+      "unknown": "Tidak diketahui",
+      "encrypted": "Terenkripsi ujung ke ujung"
     },
     "sync": {
       "lastSynced": "{time} yang terakhir disinkronkan",
@@ -421,6 +476,53 @@
       "signedOut": "Berhasil keluar",
       "signOutFailed": "Gagal keluar",
       "deviceLinked": "Perangkat berhasil ditautkan"
+    },
+    "billing": {
+      "actions": {
+        "manage": "Kelola penagihan",
+        "opening": "Membuka...",
+        "refresh": "Segarkan status",
+        "upgrade": "Tingkatkan"
+      },
+      "activationPendingPrefix": "Aktivasi tertunda. Paddle bisa perlu waktu sebentar untuk mengonfirmasi checkout. Segarkan status atau email",
+      "checking": "Memeriksa status penagihan",
+      "historyDays": "{days} hari",
+      "labels": {
+        "history": "Riwayat",
+        "maxFile": "File maks",
+        "storage": "Penyimpanan",
+        "vaults": "Vault"
+      },
+      "planStatus": "Status paket",
+      "plans": {
+        "believer": "Paket Believer",
+        "free": "Paket Gratis",
+        "plus": "Paket Plus",
+        "pro": "Paket Pro"
+      },
+      "statuses": {
+        "active": "Aktif",
+        "canceled": "Dibatalkan",
+        "inactive": "Tidak aktif",
+        "past_due": "Terlambat",
+        "paused": "Dijeda"
+      },
+      "toasts": {
+        "activationPending": "Aktivasi tertunda",
+        "billingActive": "Penagihan aktif",
+        "checkoutFailed": "Tidak dapat memulai checkout",
+        "checkoutOpened": "Checkout dibuka di browser Anda",
+        "loadFailed": "Tidak dapat memuat status penagihan",
+        "portalFailed": "Tidak dapat membuka portal penagihan",
+        "refreshFailed": "Tidak dapat menyegarkan status penagihan"
+      },
+      "unlimited": "Tak terbatas"
+    },
+    "community": {
+      "and": "dan",
+      "feedback": "bagikan masukan",
+      "prompt": "Suka memrynote?",
+      "star": "Beri bintang di GitHub"
     }
   },
   "setup": {
@@ -437,7 +539,9 @@
       "errors": {
         "sendCode": "Gagal mengirim kode",
         "googleStart": "Gagal memulai proses masuk dengan Google"
-      }
+      },
+      "paidPlan": "Sinkronisasi adalah paket berbayar.",
+      "seePlans": "Lihat paket"
     },
     "email": {
       "label": "Alamat email",
@@ -488,7 +592,13 @@
         "registering": "Mendaftarkan perangkat..."
       },
       "failed": "Pemulihan gagal",
-      "confirmationFailed": "Konfirmasi gagal"
+      "confirmationFailed": "Konfirmasi gagal",
+      "unavailable": {
+        "description": "Frasa pemulihan Anda hanya ditampilkan sekali selama pengaturan dan tidak dapat diambil kembali nanti. Mulai dari awal untuk membuat yang baru.",
+        "loading": "Memuat frasa pemulihan Anda…",
+        "startOver": "Mulai dari awal",
+        "title": "Tidak dapat memuat frasa pemulihan Anda"
+      }
     },
     "linking": {
       "choiceTitle": "Tautkan perangkat ini",
@@ -513,7 +623,15 @@
       "waitingTitle": "Menunggu persetujuan",
       "waitingDescription": "Buka memrynote di perangkat Anda yang lain dan setujui permintaan penautan.",
       "verificationCode": "Kode verifikasi",
-      "confirmCode": "Konfirmasikan ini cocok dengan kode di perangkat Anda yang lain"
+      "confirmCode": "Konfirmasikan ini cocok dengan kode di perangkat Anda yang lain",
+      "vaultPickerChooseFolder": "Pilih folder",
+      "vaultPickerConfirm": "Tarik yang dipilih",
+      "vaultPickerDescription": "Akun ini memiliki beberapa vault. Pilih folder dan vault yang akan ditambahkan ke perangkat ini.",
+      "vaultPickerDormantHint": "Ditambahkan, terbuka saat Anda beralih ke sana",
+      "vaultPickerFolderLabel": "Simpan vault di folder",
+      "vaultPickerPrimaryHint": "Buka sekarang",
+      "vaultPickerTitle": "Pilih apa yang akan ditarik",
+      "vaultRow": "Vault — {{count}} item · {{date}}"
     }
   },
   "devices": {
@@ -630,7 +748,15 @@
       "downloadedToast": "Whisper Kecil diunduh",
       "downloadError": "Gagal mengunduh Whisper Small",
       "keySavedToast": "Kunci OpenAI disimpan",
-      "keySaveError": "Gagal menyimpan kunci OpenAI"
+      "keySaveError": "Gagal menyimpan kunci OpenAI",
+      "memoNameMode": "Nama memo",
+      "memoNameModeDescription": "Cara memo suara dinamai setelah transkripsi",
+      "naming": {
+        "none": "Jangan ganti nama",
+        "timestamp": "Stempel waktu",
+        "transcript": "Judul transkrip"
+      },
+      "namingError": "Gagal memperbarui penamaan memo suara"
     },
     "embedding": {
       "loaded": "Dimuat",
@@ -715,7 +841,12 @@
       "connectFailed": "Gagal menghubungkan Google Kalender",
       "refreshFailed": "Gagal menyegarkan Google Kalender",
       "disconnectFailed": "Gagal memutuskan sambungan Google Kalender",
-      "retryFailed": "Gagal mencoba lagi sinkronisasi kalender"
+      "retryFailed": "Gagal mencoba lagi sinkronisasi kalender",
+      "pushToGoogle": {
+        "description": "Nonaktifkan untuk sinkronisasi satu arah — Anda tetap melihat acara Google Anda di memrynote, tetapi acara memrynote tidak akan muncul di Google.",
+        "error": "Gagal memperbarui arah sinkronisasi",
+        "label": "Tampilkan acara memrynote di Google Calendar"
+      }
     },
     "sourcePicker": {
       "empty": "Belum ada kalender Google yang diimpor yang tersedia di perangkat ini.",
@@ -796,7 +927,8 @@
       "changeColor": "Ubah warna",
       "mergeInto": "Gabungkan menjadi...",
       "merge": "Gabungkan",
-      "delete": "Hapus"
+      "delete": "Hapus",
+      "changeIcon": "Ubah ikon"
     },
     "dialogs": {
       "deleteTitle": "Hapus tanda",
@@ -814,7 +946,8 @@
       "mergeFailed": "Gagal menggabungkan tag",
       "merged": "Menggabungkan \"{source}\" menjadi \"{target}\" ({count, plural, one {Barang #} other {Barang #}})",
       "colorUpdated": "Warna yang diperbarui untuk \"{name}\"",
-      "colorFailed": "Gagal memperbarui warna"
+      "colorFailed": "Gagal memperbarui warna",
+      "iconFailed": "Gagal memperbarui ikon"
     }
   },
   "properties": {
@@ -1144,7 +1277,10 @@
     "status": {
       "disconnected": "Disconnected",
       "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled"
+      "fullTools": "Full tools enabled",
+      "checking": "Memeriksa…",
+      "connected": "Terhubung",
+      "label": "Koneksi"
     },
     "permissions": {
       "group": "Agent permissions",
@@ -1160,6 +1296,133 @@
         "alwaysAllow": "Always allow",
         "askBeforeChanges": "Ask before changes"
       }
+    }
+  },
+  "commandLine": {
+    "actions": {
+      "refresh": "Segarkan"
+    },
+    "command": {
+      "descriptionInstalled": "Terpasang di {path}",
+      "descriptionNotInstalled": "Pasang perintah memrynote agar Anda dapat menggunakan vault dari terminal mana pun.",
+      "label": "perintah memrynote",
+      "toggleLabel": "Pasang perintah memrynote"
+    },
+    "defaultVault": {
+      "description": "Pilih vault yang digunakan saat Anda menjalankan memrynote tanpa --vault.",
+      "descriptionSelected": "Perintah menggunakan {path} saat --vault dihilangkan.",
+      "label": "Vault default",
+      "none": "Tidak ada vault dipilih",
+      "placeholder": "Pilih vault"
+    },
+    "groups": {
+      "terminal": "Terminal"
+    },
+    "header": {
+      "subtitle": "Atur perintah memrynote untuk terminal Anda",
+      "title": "Baris Perintah"
+    },
+    "status": {
+      "defaultVaultUpdatedToast": "Vault CLI default diperbarui",
+      "installedToast": "Perintah memrynote terpasang",
+      "loadFailed": "Gagal memuat status perintah",
+      "loading": "Memeriksa status perintah...",
+      "uninstalledToast": "Perintah memrynote dihapus"
+    }
+  },
+  "features": {
+    "header": {
+      "subtitle": "Aktifkan atau nonaktifkan bagian aplikasi. Nonaktif = diredupkan di bilah samping dan dinonaktifkan di mana pun.",
+      "title": "Fitur"
+    },
+    "items": {
+      "calendar": {
+        "description": "Acara dan jadwal",
+        "label": "Kalender"
+      },
+      "graph": {
+        "description": "Koneksi catatan",
+        "label": "Grafik"
+      },
+      "home": {
+        "description": "Dasbor pendaratan",
+        "label": "Beranda"
+      },
+      "inbox": {
+        "description": "Tangkap cepat dan triase",
+        "label": "Inbox"
+      },
+      "journal": {
+        "description": "Catatan harian",
+        "label": "Jurnal"
+      },
+      "tasks": {
+        "description": "Daftar tugas dan tanggal jatuh tempo",
+        "label": "Tugas"
+      }
+    }
+  },
+  "import": {
+    "action": "Impor",
+    "dialog": {
+      "cancel": "Batal",
+      "choose": "Pilih file…",
+      "chooseFolder": "Pilih folder Apple Notes…",
+      "chooseHint": "Pilih {label} Anda",
+      "close": "Tutup",
+      "done": "Selesai",
+      "error": "Impor gagal",
+      "folderHint": "Klik di bawah dan pilih folder “group.com.apple.notes” saat pemilih terbuka (dimulai di sana). Ini memungkinkan Memry membaca catatan dan lampiran Anda — tanpa perlu Full Disk Access.",
+      "progress": "{completed} dari {total}",
+      "running": "Mengimpor…",
+      "selected": "{count, plural, one {# file dipilih} other {# file dipilih}}",
+      "start": "Mulai impor",
+      "summary": {
+        "attachments": "{count, plural, one {# lampiran disalin} other {# lampiran disalin}}",
+        "failed": "{count} gagal",
+        "imported": "{count, plural, one {# item diimpor} other {# item diimpor}}",
+        "skipped": "{count} dilewati",
+        "title": "Impor selesai"
+      },
+      "title": "Impor dari {name}"
+    },
+    "header": {
+      "subtitle": "Bawa catatan dan tugas Anda dari aplikasi lain",
+      "title": "Impor"
+    },
+    "intro": "Impor sekali membuat catatan baru di vault Anda. File ekspor asli Anda tidak diubah.",
+    "preview": {
+      "confirm": "Impor",
+      "warnings": "Peringatan"
+    },
+    "select": "Pilih aplikasi untuk mengimpor…",
+    "sources": {
+      "apple-journal": "Impor ekspor HTML Apple Journal sebagai catatan bertanggal",
+      "apple-notes": "Impor dari basis data Apple Notes (NoteStore.sqlite, macOS)",
+      "bear": "Impor arsip Bear .bear2bk (catatan, tag, lampiran)",
+      "csv": "Impor file .csv — satu catatan per baris, kolom menjadi properti",
+      "evernote": "Impor satu atau lebih file ekspor Evernote .enex",
+      "google-keep": "Impor ekspor Google Takeout Keep (.json atau .zip)",
+      "html": "Impor file .html dengan gambar tertaut dan tautan antar-halaman",
+      "markdown": "Impor file .md atau folder (frontmatter, tag, lampiran)",
+      "notion": "Impor ekspor HTML (.zip)",
+      "onenote": "Impor buku catatan OneNote (memerlukan akun Microsoft)",
+      "raindrop": "Impor ekspor bookmark Raindrop.io (.csv) — bookmark masuk ke inbox",
+      "roam": "Impor grafik Roam Research (.json) dengan kerangka bersarang",
+      "ticktick": "Impor cadangan TickTick (.csv) sebagai proyek, tugas, dan pengingat",
+      "todoist": "Impor ekspor CSV proyek (.csv)"
+    },
+    "stats": {
+      "bookmarks": "{count, plural, one {# bookmark} other {# bookmark}}",
+      "comments": "{count, plural, one {# komentar} other {# komentar}}",
+      "notes": "{count, plural, one {# catatan} other {# catatan}}",
+      "projects": "{count, plural, one {# proyek} other {# proyek}}",
+      "reminders": "{count, plural, one {# pengingat} other {# pengingat}}",
+      "skipped": "{count} dilewati",
+      "subtasks": "{count, plural, one {# sub-tugas} other {# sub-tugas}}",
+      "tasks": "{count, plural, one {# tugas} other {# tugas}}",
+      "withDueDate": "{count} bertanggal",
+      "withTags": "{count} bertag"
     }
   }
 }

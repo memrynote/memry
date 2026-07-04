@@ -25,7 +25,10 @@
         "integrations": "統合",
         "vault": "保管庫",
         "tags": "タグ",
-        "properties": "プロパティ"
+        "properties": "プロパティ",
+        "commandLine": "コマンドライン",
+        "features": "機能",
+        "import": "インポート"
       }
     }
   },
@@ -109,6 +112,11 @@
       "createInSelectedFolder": {
         "label": "選択したフォルダーに作成",
         "description": "現在選択されているフォルダー内に新しいメモとフォルダーが作成されます。オフの場合、項目は常にルートに作成されます。"
+      },
+      "defaultNoteFolder": {
+        "description": "空 = ボールトのルート",
+        "label": "新しいノートのデフォルトの場所",
+        "placeholder": "notes"
       }
     },
     "privacy": {
@@ -116,6 +124,17 @@
         "label": "匿名使用状況メトリクスを共有する",
         "description": "これは単なるメトリクスであり、メモの内容、検索クエリ、ファイル パス、電子メール、または生の ID は送信されません。",
         "error": "テレメトリ設定の更新に失敗しました"
+      }
+    },
+    "dateFormat": {
+      "description": "カレンダーの日付の表示方法",
+      "error": "日付の形式の更新に失敗しました",
+      "label": "日付の形式",
+      "options": {
+        "DD.MM.YYYY": "DD.MM.YYYY",
+        "DD/MM/YYYY": "DD/MM/YYYY",
+        "MM/DD/YYYY": "MM/DD/YYYY（US）",
+        "YYYY-MM-DD": "YYYY-MM-DD（ISO）"
       }
     }
   },
@@ -250,6 +269,9 @@
         "description": "新しいテンプレートのコピーの名前を入力します。",
         "placeholder": "テンプレート名"
       }
+    },
+    "preview": {
+      "notFound": "このテンプレートを読み込めませんでした。"
     }
   },
   "journal": {
@@ -261,7 +283,8 @@
     "groups": {
       "defaultTemplate": "デフォルトのテンプレート",
       "sidebarVisibility": "サイドバーの可視性",
-      "footer": "フッター"
+      "footer": "フッター",
+      "location": "場所と形式"
     },
     "template": {
       "label": "テンプレート",
@@ -290,7 +313,21 @@
       "label": "統計フッターを表示",
       "description": "単語数、読了時間、タイムスタンプ"
     },
-    "updateError": "設定の更新に失敗しました"
+    "updateError": "設定の更新に失敗しました",
+    "dateFormat": {
+      "description": "日々のメモのファイル名の形式（例: YYYY-MM-DD）",
+      "label": "日付の形式",
+      "placeholder": "YYYY-MM-DD"
+    },
+    "folder": {
+      "description": "日々のメモが保存されるフォルダ",
+      "label": "ジャーナルフォルダ",
+      "placeholder": "journal"
+    },
+    "preview": {
+      "description": "今日のジャーナルファイルのパス",
+      "label": "プレビュー"
+    }
   },
   "tasks": {
     "header": {
@@ -344,7 +381,9 @@
       "loading": "設定を読み込んでいます..."
     },
     "groups": {
-      "dayCellClick": "日のセルのクリック"
+      "dayCellClick": "日のセルのクリック",
+      "notes": "ノート",
+      "weekStart": "週"
     },
     "defaultBehavior": {
       "label": "デフォルトの動作",
@@ -360,6 +399,20 @@
       "openJournal": "オープンジャーナル",
       "openCalendar": "カレンダーを開く",
       "useGlobal": "グローバル設定を使用する"
+    },
+    "showNotesOnCalendar": {
+      "description": "すべてのノートを、作成された日に終日の項目としてカレンダーに表示します",
+      "error": "カレンダーへのノート表示の更新に失敗しました",
+      "label": "カレンダーにノートを表示"
+    },
+    "weekStart": {
+      "description": "すべてのカレンダーでの週の最初の曜日",
+      "error": "週の始まりの更新に失敗しました",
+      "label": "週の始まり",
+      "options": {
+        "monday": "月曜日",
+        "sunday": "日曜日"
+      }
     }
   },
   "account": {
@@ -372,10 +425,12 @@
       "identity": "アイデンティティ",
       "sync": "同期",
       "storage": "ストレージ",
-      "devices": "デバイス"
+      "devices": "デバイス",
+      "billing": "請求"
     },
     "identity": {
-      "unknown": "不明"
+      "unknown": "不明",
+      "encrypted": "エンドツーエンド暗号化"
     },
     "sync": {
       "lastSynced": "最後に同期された {time}",
@@ -421,6 +476,53 @@
       "signedOut": "正常にサインアウトしました",
       "signOutFailed": "サインアウトに失敗しました",
       "deviceLinked": "デバイスが正常にリンクされました"
+    },
+    "billing": {
+      "actions": {
+        "manage": "請求を管理",
+        "opening": "開いています...",
+        "refresh": "状態を更新",
+        "upgrade": "アップグレード"
+      },
+      "activationPendingPrefix": "有効化を待機中です。Paddle の決済確認には少し時間がかかることがあります。状態を更新するか、メールしてください:",
+      "checking": "請求状態を確認中",
+      "historyDays": "{days} 日",
+      "labels": {
+        "history": "履歴",
+        "maxFile": "最大ファイル",
+        "storage": "ストレージ",
+        "vaults": "ボールト"
+      },
+      "planStatus": "プランの状態",
+      "plans": {
+        "believer": "Believer プラン",
+        "free": "Free プラン",
+        "plus": "Plus プラン",
+        "pro": "Pro プラン"
+      },
+      "statuses": {
+        "active": "有効",
+        "canceled": "キャンセル済み",
+        "inactive": "無効",
+        "past_due": "支払い期限超過",
+        "paused": "一時停止中"
+      },
+      "toasts": {
+        "activationPending": "有効化を待機中",
+        "billingActive": "請求は有効です",
+        "checkoutFailed": "チェックアウトを開始できませんでした",
+        "checkoutOpened": "チェックアウトをブラウザで開きました",
+        "loadFailed": "請求状態を読み込めませんでした",
+        "portalFailed": "請求ポータルを開けませんでした",
+        "refreshFailed": "請求状態を更新できませんでした"
+      },
+      "unlimited": "無制限"
+    },
+    "community": {
+      "and": "そして",
+      "feedback": "フィードバックを共有",
+      "prompt": "memrynote が気に入りましたか？",
+      "star": "GitHub でスターを付ける"
     }
   },
   "setup": {
@@ -437,7 +539,9 @@
       "errors": {
         "sendCode": "コードの送信に失敗しました",
         "googleStart": "Google サインインの開始に失敗しました"
-      }
+      },
+      "paidPlan": "同期は有料プランです。",
+      "seePlans": "プランを見る"
     },
     "email": {
       "label": "メールアドレス",
@@ -488,7 +592,13 @@
         "registering": "デバイスを登録中..."
       },
       "failed": "回復に失敗しました",
-      "confirmationFailed": "確認に失敗しました"
+      "confirmationFailed": "確認に失敗しました",
+      "unavailable": {
+        "description": "リカバリーフレーズは設定時に一度だけ表示され、後で取得することはできません。最初からやり直して新しいものを生成してください。",
+        "loading": "リカバリーフレーズを読み込み中…",
+        "startOver": "最初からやり直す",
+        "title": "リカバリーフレーズを読み込めませんでした"
+      }
     },
     "linking": {
       "choiceTitle": "このデバイスをリンクする",
@@ -513,7 +623,15 @@
       "waitingTitle": "承認待ち",
       "waitingDescription": "他のデバイスで memrynote を開き、リンク要求を承認します。",
       "verificationCode": "認証コード",
-      "confirmCode": "これが他のデバイスのコードと一致することを確認します"
+      "confirmCode": "これが他のデバイスのコードと一致することを確認します",
+      "vaultPickerChooseFolder": "フォルダを選択",
+      "vaultPickerConfirm": "選択した項目を取得",
+      "vaultPickerDescription": "このアカウントには複数のボールトがあります。フォルダと、このデバイスに追加するボールトを選択してください。",
+      "vaultPickerDormantHint": "追加され、切り替えたときに開きます",
+      "vaultPickerFolderLabel": "ボールトを保存するフォルダ",
+      "vaultPickerPrimaryHint": "今すぐ開く",
+      "vaultPickerTitle": "取得する内容を選択",
+      "vaultRow": "ボールト — {{count}} 件の項目 · {{date}}"
     }
   },
   "devices": {
@@ -630,7 +748,15 @@
       "downloadedToast": "ウィスパースモールをダウンロードしました",
       "downloadError": "ウィスパー小のダウンロードに失敗しました",
       "keySavedToast": "OpenAI キーが保存されました",
-      "keySaveError": "OpenAI キーの保存に失敗しました"
+      "keySaveError": "OpenAI キーの保存に失敗しました",
+      "memoNameMode": "メモ名",
+      "memoNameModeDescription": "文字起こし後の音声メモの命名方法",
+      "naming": {
+        "none": "名前を変更しない",
+        "timestamp": "タイムスタンプ",
+        "transcript": "文字起こしのタイトル"
+      },
+      "namingError": "音声メモの命名の更新に失敗しました"
     },
     "embedding": {
       "loaded": "ロード済み",
@@ -715,7 +841,12 @@
       "connectFailed": "Googleカレンダーに接続できませんでした",
       "refreshFailed": "Google カレンダーを更新できませんでした",
       "disconnectFailed": "Google カレンダーの接続を解除できませんでした",
-      "retryFailed": "カレンダー同期の再試行に失敗しました"
+      "retryFailed": "カレンダー同期の再試行に失敗しました",
+      "pushToGoogle": {
+        "description": "一方向同期にするにはオフにします — memrynote では引き続き Google の予定を表示しますが、memrynote の予定は Google に表示されません。",
+        "error": "同期方向の更新に失敗しました",
+        "label": "memrynote の予定を Google カレンダーに表示"
+      }
     },
     "sourcePicker": {
       "empty": "このデバイスでは、インポートされた Google カレンダーをまだ使用できません。",
@@ -796,7 +927,8 @@
       "changeColor": "色を変更する",
       "mergeInto": "マージ...",
       "merge": "マージ",
-      "delete": "削除"
+      "delete": "削除",
+      "changeIcon": "アイコンを変更"
     },
     "dialogs": {
       "deleteTitle": "タグの削除",
@@ -814,7 +946,8 @@
       "mergeFailed": "タグの結合に失敗しました",
       "merged": "「{source}」を「{target}」（{count, plural, one {# アイテム} other {# アイテム}}）に統合",
       "colorUpdated": "「{name}」のカラーを更新しました。",
-      "colorFailed": "色の更新に失敗しました"
+      "colorFailed": "色の更新に失敗しました",
+      "iconFailed": "アイコンの更新に失敗しました"
     }
   },
   "properties": {
@@ -1144,7 +1277,10 @@
     "status": {
       "disconnected": "Disconnected",
       "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled"
+      "fullTools": "Full tools enabled",
+      "checking": "確認中…",
+      "connected": "接続済み",
+      "label": "接続"
     },
     "permissions": {
       "group": "Agent permissions",
@@ -1160,6 +1296,133 @@
         "alwaysAllow": "Always allow",
         "askBeforeChanges": "Ask before changes"
       }
+    }
+  },
+  "commandLine": {
+    "actions": {
+      "refresh": "更新"
+    },
+    "command": {
+      "descriptionInstalled": "{path} にインストール済み",
+      "descriptionNotInstalled": "memrynote コマンドをインストールすると、任意のターミナルからボールトを使用できます。",
+      "label": "memrynote コマンド",
+      "toggleLabel": "memrynote コマンドをインストール"
+    },
+    "defaultVault": {
+      "description": "--vault を指定せずに memrynote を実行したときに使用するボールトを選択します。",
+      "descriptionSelected": "--vault を省略すると、コマンドは {path} を使用します。",
+      "label": "デフォルトのボールト",
+      "none": "ボールトが選択されていません",
+      "placeholder": "ボールトを選択"
+    },
+    "groups": {
+      "terminal": "ターミナル"
+    },
+    "header": {
+      "subtitle": "ターミナル用の memrynote コマンドを設定します",
+      "title": "コマンドライン"
+    },
+    "status": {
+      "defaultVaultUpdatedToast": "デフォルトの CLI ボールトを更新しました",
+      "installedToast": "memrynote コマンドをインストールしました",
+      "loadFailed": "コマンドの状態の読み込みに失敗しました",
+      "loading": "コマンドの状態を確認中...",
+      "uninstalledToast": "memrynote コマンドを削除しました"
+    }
+  },
+  "features": {
+    "header": {
+      "subtitle": "アプリの各部分をオン/オフします。オフにするとサイドバーで淡色表示になり、どこでも無効になります。",
+      "title": "機能"
+    },
+    "items": {
+      "calendar": {
+        "description": "予定とスケジュール",
+        "label": "カレンダー"
+      },
+      "graph": {
+        "description": "ノートのつながり",
+        "label": "グラフ"
+      },
+      "home": {
+        "description": "ランディングダッシュボード",
+        "label": "ホーム"
+      },
+      "inbox": {
+        "description": "クイックキャプチャと整理",
+        "label": "受信箱"
+      },
+      "journal": {
+        "description": "日々のメモ",
+        "label": "ジャーナル"
+      },
+      "tasks": {
+        "description": "やることと期日",
+        "label": "タスク"
+      }
+    }
+  },
+  "import": {
+    "action": "インポート",
+    "dialog": {
+      "cancel": "キャンセル",
+      "choose": "ファイルを選択…",
+      "chooseFolder": "Apple Notes のフォルダを選択…",
+      "chooseHint": "{label} を選択してください",
+      "close": "閉じる",
+      "done": "完了",
+      "error": "インポートに失敗しました",
+      "folderHint": "下をクリックし、ピッカーが開いたら「group.com.apple.notes」フォルダを選択してください（最初からそこが開きます）。これで Memry がノートと添付ファイルを読み取れます — フルディスクアクセスは不要です。",
+      "progress": "{total} 件中 {completed} 件",
+      "running": "インポート中…",
+      "selected": "{count, plural, other {#件のファイルを選択}}",
+      "start": "インポートを開始",
+      "summary": {
+        "attachments": "{count, plural, other {#件の添付ファイルをコピー}}",
+        "failed": "{count} 件失敗",
+        "imported": "{count, plural, other {#件の項目をインポート}}",
+        "skipped": "{count} 件スキップ",
+        "title": "インポート完了"
+      },
+      "title": "{name} からインポート"
+    },
+    "header": {
+      "subtitle": "他のアプリからノートやタスクを取り込みます",
+      "title": "インポート"
+    },
+    "intro": "一度きりのインポートで、ボールトに新しいノートが作成されます。元のエクスポートファイルはそのまま残ります。",
+    "preview": {
+      "confirm": "インポート",
+      "warnings": "警告"
+    },
+    "select": "インポート元のアプリを選択…",
+    "sources": {
+      "apple-journal": "Apple Journal の HTML エクスポートを日付付きノートとしてインポート",
+      "apple-notes": "Apple Notes のデータベース（NoteStore.sqlite、macOS）からインポート",
+      "bear": "Bear の .bear2bk アーカイブ（ノート、タグ、添付ファイル）をインポート",
+      "csv": ".csv ファイルをインポート — 1 行 1 ノート、列はプロパティになります",
+      "evernote": "1 つ以上の Evernote .enex エクスポートファイルをインポート",
+      "google-keep": "Google Takeout の Keep エクスポート（.json または .zip）をインポート",
+      "html": "リンクされた画像やページ間リンクを含む .html ファイルをインポート",
+      "markdown": ".md ファイルまたはフォルダをインポート（フロントマター、タグ、添付ファイル）",
+      "notion": "HTML エクスポート（.zip）をインポート",
+      "onenote": "OneNote のノートブックをインポート（Microsoft アカウントが必要）",
+      "raindrop": "Raindrop.io のブックマークエクスポート（.csv）をインポート — ブックマークは受信箱に入ります",
+      "roam": "ネストされたアウトラインを含む Roam Research グラフ（.json）をインポート",
+      "ticktick": "TickTick のバックアップ（.csv）をプロジェクト、タスク、リマインダーとしてインポート",
+      "todoist": "プロジェクトの CSV エクスポート（.csv）をインポート"
+    },
+    "stats": {
+      "bookmarks": "{count, plural, other {#件のブックマーク}}",
+      "comments": "{count, plural, other {#件のコメント}}",
+      "notes": "{count, plural, other {#件のノート}}",
+      "projects": "{count, plural, other {#件のプロジェクト}}",
+      "reminders": "{count, plural, other {#件のリマインダー}}",
+      "skipped": "{count} 件スキップ",
+      "subtasks": "{count, plural, other {#件のサブタスク}}",
+      "tasks": "{count, plural, other {#件のタスク}}",
+      "withDueDate": "{count} 件日付付き",
+      "withTags": "{count} 件タグ付き"
     }
   }
 }

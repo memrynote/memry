@@ -25,7 +25,10 @@
         "integrations": "集成",
         "vault": "保险库",
         "tags": "标签",
-        "properties": "属性"
+        "properties": "属性",
+        "commandLine": "命令行",
+        "features": "功能",
+        "import": "导入"
       }
     }
   },
@@ -109,6 +112,11 @@
       "createInSelectedFolder": {
         "label": "在选定文件夹中创建",
         "description": "新笔记和文件夹将在当前选定的文件夹内创建。关闭时，项目总是在根目录创建。"
+      },
+      "defaultNoteFolder": {
+        "description": "留空 = 保险库根目录",
+        "label": "新笔记的默认位置",
+        "placeholder": "notes"
       }
     },
     "privacy": {
@@ -116,6 +124,17 @@
         "label": "共享匿名使用数据",
         "description": "仅共享匿名数据——不会发送笔记内容、搜索查询、文件路径、电子邮件或原始ID。",
         "error": "更新遥测设置失败"
+      }
+    },
+    "dateFormat": {
+      "description": "日历日期的显示方式",
+      "error": "更新日期格式失败",
+      "label": "日期格式",
+      "options": {
+        "DD.MM.YYYY": "DD.MM.YYYY",
+        "DD/MM/YYYY": "DD/MM/YYYY",
+        "MM/DD/YYYY": "MM/DD/YYYY (美国)",
+        "YYYY-MM-DD": "YYYY-MM-DD (ISO)"
       }
     }
   },
@@ -250,6 +269,9 @@
         "description": "输入新模板副本的名称。",
         "placeholder": "模板名称"
       }
+    },
+    "preview": {
+      "notFound": "无法加载此模板。"
     }
   },
   "journal": {
@@ -261,7 +283,8 @@
     "groups": {
       "defaultTemplate": "默认模板",
       "sidebarVisibility": "侧边栏可见性",
-      "footer": "页脚"
+      "footer": "页脚",
+      "location": "位置和格式"
     },
     "template": {
       "label": "模板",
@@ -290,7 +313,21 @@
       "label": "显示统计页脚",
       "description": "字数、阅读时间、时间戳"
     },
-    "updateError": "更新设置失败"
+    "updateError": "更新设置失败",
+    "dateFormat": {
+      "description": "每日笔记的文件名格式（例如 YYYY-MM-DD）",
+      "label": "日期格式",
+      "placeholder": "YYYY-MM-DD"
+    },
+    "folder": {
+      "description": "存储每日笔记的文件夹",
+      "label": "日志文件夹",
+      "placeholder": "journal"
+    },
+    "preview": {
+      "description": "今天的日志文件路径",
+      "label": "预览"
+    }
   },
   "tasks": {
     "header": {
@@ -344,7 +381,9 @@
       "loading": "正在加载设置..."
     },
     "groups": {
-      "dayCellClick": "日期单元点击"
+      "dayCellClick": "日期单元点击",
+      "notes": "笔记",
+      "weekStart": "周"
     },
     "defaultBehavior": {
       "label": "默认行为",
@@ -360,6 +399,20 @@
       "openJournal": "打开日志",
       "openCalendar": "打开日历",
       "useGlobal": "使用全局设置"
+    },
+    "showNotesOnCalendar": {
+      "description": "在日历上将每篇笔记显示为其创建当天的全天项目",
+      "error": "更新在日历上显示笔记失败",
+      "label": "在日历上显示笔记"
+    },
+    "weekStart": {
+      "description": "所有日历中一周的第一天",
+      "error": "更新每周开始日失败",
+      "label": "每周开始于",
+      "options": {
+        "monday": "周一",
+        "sunday": "周日"
+      }
     }
   },
   "account": {
@@ -372,10 +425,12 @@
       "identity": "身份",
       "sync": "同步",
       "storage": "存储",
-      "devices": "设备"
+      "devices": "设备",
+      "billing": "账单"
     },
     "identity": {
-      "unknown": "未知"
+      "unknown": "未知",
+      "encrypted": "端到端加密"
     },
     "sync": {
       "lastSynced": "最后同步 {time}",
@@ -421,6 +476,53 @@
       "signedOut": "退出成功",
       "signOutFailed": "退出失败",
       "deviceLinked": "设备已成功关联"
+    },
+    "billing": {
+      "actions": {
+        "manage": "管理账单",
+        "opening": "打开中...",
+        "refresh": "刷新状态",
+        "upgrade": "升级"
+      },
+      "activationPendingPrefix": "激活待处理。Paddle 确认结账可能需要一点时间。请刷新状态或发送邮件至",
+      "checking": "正在检查账单状态",
+      "historyDays": "{days} 天",
+      "labels": {
+        "history": "历史",
+        "maxFile": "最大文件",
+        "storage": "存储",
+        "vaults": "保险库"
+      },
+      "planStatus": "套餐状态",
+      "plans": {
+        "believer": "Believer 套餐",
+        "free": "免费套餐",
+        "plus": "Plus 套餐",
+        "pro": "Pro 套餐"
+      },
+      "statuses": {
+        "active": "已激活",
+        "canceled": "已取消",
+        "inactive": "未激活",
+        "past_due": "已逾期",
+        "paused": "已暂停"
+      },
+      "toasts": {
+        "activationPending": "激活待处理",
+        "billingActive": "账单已激活",
+        "checkoutFailed": "无法开始结账",
+        "checkoutOpened": "结账已在浏览器中打开",
+        "loadFailed": "无法加载账单状态",
+        "portalFailed": "无法打开账单门户",
+        "refreshFailed": "无法刷新账单状态"
+      },
+      "unlimited": "无限制"
+    },
+    "community": {
+      "and": "以及",
+      "feedback": "分享反馈",
+      "prompt": "喜欢 memrynote？",
+      "star": "在 GitHub 上给我们加星"
     }
   },
   "setup": {
@@ -437,7 +539,9 @@
       "errors": {
         "sendCode": "发送验证码失败",
         "googleStart": "启动 Google 登录失败"
-      }
+      },
+      "paidPlan": "同步是付费套餐。",
+      "seePlans": "查看套餐"
     },
     "email": {
       "label": "电子邮件地址",
@@ -488,7 +592,13 @@
         "registering": "正在注册设备..."
       },
       "failed": "恢复失败",
-      "confirmationFailed": "确认失败"
+      "confirmationFailed": "确认失败",
+      "unavailable": {
+        "description": "你的恢复短语仅在设置时显示一次，之后无法找回。重新开始以生成新的恢复短语。",
+        "loading": "正在加载你的恢复短语…",
+        "startOver": "重新开始",
+        "title": "无法加载你的恢复短语"
+      }
     },
     "linking": {
       "choiceTitle": "关联此设备",
@@ -513,7 +623,15 @@
       "waitingTitle": "等待批准",
       "waitingDescription": "在您的其他设备上打开memrynote并批准关联请求。",
       "verificationCode": "验证码",
-      "confirmCode": "确认此码与您其他设备上的代码匹配"
+      "confirmCode": "确认此码与您其他设备上的代码匹配",
+      "vaultPickerChooseFolder": "选择文件夹",
+      "vaultPickerConfirm": "拉取所选",
+      "vaultPickerDescription": "此账户有多个保险库。选择一个文件夹以及要添加到此设备的保险库。",
+      "vaultPickerDormantHint": "已添加，切换到它时打开",
+      "vaultPickerFolderLabel": "将保险库存储在文件夹",
+      "vaultPickerPrimaryHint": "立即打开",
+      "vaultPickerTitle": "选择要拉取的内容",
+      "vaultRow": "保险库 — {{count}} 项 · {{date}}"
     }
   },
   "devices": {
@@ -630,7 +748,15 @@
       "downloadedToast": "Whisper Small 已下载",
       "downloadError": "下载 Whisper Small 失败",
       "keySavedToast": "OpenAI 密钥已保存",
-      "keySaveError": "保存 OpenAI 密钥失败"
+      "keySaveError": "保存 OpenAI 密钥失败",
+      "memoNameMode": "备忘命名",
+      "memoNameModeDescription": "转录后语音备忘的命名方式",
+      "naming": {
+        "none": "不重命名",
+        "timestamp": "时间戳",
+        "transcript": "转录标题"
+      },
+      "namingError": "更新语音备忘命名失败"
     },
     "embedding": {
       "loaded": "已加载",
@@ -715,7 +841,12 @@
       "connectFailed": "连接 Google 日历失败",
       "refreshFailed": "刷新 Google 日历失败",
       "disconnectFailed": "断开 Google 日历失败",
-      "retryFailed": "重试日历同步失败"
+      "retryFailed": "重试日历同步失败",
+      "pushToGoogle": {
+        "description": "关闭以进行单向同步——你仍会在 memrynote 中看到你的 Google 事件，但 memrynote 事件不会出现在 Google 中。",
+        "error": "更新同步方向失败",
+        "label": "在 Google Calendar 中显示 memrynote 事件"
+      }
     },
     "sourcePicker": {
       "empty": "此设备上还没有可用的已导入 Google 日历。",
@@ -796,7 +927,8 @@
       "changeColor": "更改颜色",
       "mergeInto": "合并到...",
       "merge": "合并",
-      "delete": "删除"
+      "delete": "删除",
+      "changeIcon": "更改图标"
     },
     "dialogs": {
       "deleteTitle": "删除标签",
@@ -814,7 +946,8 @@
       "mergeFailed": "合并标签失败",
       "merged": "已将 \"{source}\" 合并到 \"{target}\"（{count, plural, one {# 项} other {# 项目}}）",
       "colorUpdated": "已更新 \"{name}\" 的颜色",
-      "colorFailed": "更新颜色失败"
+      "colorFailed": "更新颜色失败",
+      "iconFailed": "更新图标失败"
     }
   },
   "properties": {
@@ -1144,7 +1277,10 @@
     "status": {
       "disconnected": "Disconnected",
       "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled"
+      "fullTools": "Full tools enabled",
+      "checking": "检查中…",
+      "connected": "已连接",
+      "label": "连接"
     },
     "permissions": {
       "group": "Agent permissions",
@@ -1160,6 +1296,133 @@
         "alwaysAllow": "Always allow",
         "askBeforeChanges": "Ask before changes"
       }
+    }
+  },
+  "commandLine": {
+    "actions": {
+      "refresh": "刷新"
+    },
+    "command": {
+      "descriptionInstalled": "已安装于 {path}",
+      "descriptionNotInstalled": "安装 memrynote 命令，即可从任意终端使用你的保险库。",
+      "label": "memrynote 命令",
+      "toggleLabel": "安装 memrynote 命令"
+    },
+    "defaultVault": {
+      "description": "选择运行 memrynote 而未使用 --vault 时所用的保险库。",
+      "descriptionSelected": "省略 --vault 时命令使用 {path}。",
+      "label": "默认保险库",
+      "none": "未选择保险库",
+      "placeholder": "选择保险库"
+    },
+    "groups": {
+      "terminal": "终端"
+    },
+    "header": {
+      "subtitle": "为你的终端设置 memrynote 命令",
+      "title": "命令行"
+    },
+    "status": {
+      "defaultVaultUpdatedToast": "默认 CLI 保险库已更新",
+      "installedToast": "memrynote 命令已安装",
+      "loadFailed": "加载命令状态失败",
+      "loading": "正在检查命令状态...",
+      "uninstalledToast": "memrynote 命令已移除"
+    }
+  },
+  "features": {
+    "header": {
+      "subtitle": "开启或关闭应用的各个部分。关闭 = 在侧边栏中变灰，并在各处禁用。",
+      "title": "功能"
+    },
+    "items": {
+      "calendar": {
+        "description": "事件和日程",
+        "label": "日历"
+      },
+      "graph": {
+        "description": "笔记连接",
+        "label": "图谱"
+      },
+      "home": {
+        "description": "登陆仪表盘",
+        "label": "首页"
+      },
+      "inbox": {
+        "description": "快速捕获和分类",
+        "label": "收件箱"
+      },
+      "journal": {
+        "description": "每日笔记",
+        "label": "日志"
+      },
+      "tasks": {
+        "description": "待办事项和截止日期",
+        "label": "任务"
+      }
+    }
+  },
+  "import": {
+    "action": "导入",
+    "dialog": {
+      "cancel": "取消",
+      "choose": "选择文件…",
+      "chooseFolder": "选择 Apple Notes 文件夹…",
+      "chooseHint": "选择你的 {label}",
+      "close": "关闭",
+      "done": "完成",
+      "error": "导入失败",
+      "folderHint": "点击下方，并在选择器打开时选择 “group.com.apple.notes” 文件夹（它默认从那里开始）。这让 Memry 能够读取你的笔记和附件——无需完全磁盘访问权限。",
+      "progress": "{completed} / {total}",
+      "running": "导入中…",
+      "selected": "{count, plural, other {已选择 # 个文件}}",
+      "start": "开始导入",
+      "summary": {
+        "attachments": "{count, plural, other {已复制 # 个附件}}",
+        "failed": "{count} 个失败",
+        "imported": "{count, plural, other {已导入 # 个项目}}",
+        "skipped": "{count} 个已跳过",
+        "title": "导入完成"
+      },
+      "title": "从 {name} 导入"
+    },
+    "header": {
+      "subtitle": "从其他应用导入你的笔记和任务",
+      "title": "导入"
+    },
+    "intro": "一次性导入会在你的保险库中创建新笔记。你的原始导出文件不会被改动。",
+    "preview": {
+      "confirm": "导入",
+      "warnings": "警告"
+    },
+    "select": "选择要从中导入的应用…",
+    "sources": {
+      "apple-journal": "将 Apple Journal HTML 导出导入为带日期的笔记",
+      "apple-notes": "从 Apple Notes 数据库导入（NoteStore.sqlite，macOS）",
+      "bear": "导入 Bear .bear2bk 归档（笔记、标签、附件）",
+      "csv": "导入 .csv 文件——每行一篇笔记，各列成为属性",
+      "evernote": "导入一个或多个 Evernote .enex 导出文件",
+      "google-keep": "导入 Google Takeout Keep 导出文件（.json 或 .zip）",
+      "html": "导入 .html 文件，含关联图片和跨页面链接",
+      "markdown": "导入 .md 文件或文件夹（frontmatter、标签、附件）",
+      "notion": "导入 HTML 导出文件（.zip）",
+      "onenote": "导入 OneNote 笔记本（需要 Microsoft 账户）",
+      "raindrop": "导入 Raindrop.io 书签导出文件（.csv）——书签进入收件箱",
+      "roam": "导入 Roam Research 图谱（.json），含嵌套大纲",
+      "ticktick": "将 TickTick 备份（.csv）导入为项目、任务和提醒",
+      "todoist": "导入项目 CSV 导出文件（.csv）"
+    },
+    "stats": {
+      "bookmarks": "{count, plural, other {# 个书签}}",
+      "comments": "{count, plural, other {# 条评论}}",
+      "notes": "{count, plural, other {# 篇笔记}}",
+      "projects": "{count, plural, other {# 个项目}}",
+      "reminders": "{count, plural, other {# 个提醒}}",
+      "skipped": "{count} 个已跳过",
+      "subtasks": "{count, plural, other {# 个子任务}}",
+      "tasks": "{count, plural, other {# 个任务}}",
+      "withDueDate": "{count} 个带日期",
+      "withTags": "{count} 个带标签"
     }
   }
 }

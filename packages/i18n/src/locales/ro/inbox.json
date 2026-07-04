@@ -26,6 +26,10 @@
     "jobs": {
       "running": "{count, plural, one {Lucrarea de fundal # rulează} other {# se execută lucrări de fundal}}",
       "failed": "{count} a eșuat"
+    },
+    "density": {
+      "toComfortable": "Vizualizare confortabilă",
+      "toCompact": "Vizualizare compactă"
     }
   },
   "type": {
@@ -208,7 +212,15 @@
     "linkedNotesAria": "Note legate",
     "removeLinkTo": "Eliminați linkul către {title}",
     "notePlaceholder": "Scrie-ți nota...",
-    "textPlaceholder": "Editați textul capturat..."
+    "textPlaceholder": "Editați textul capturat...",
+    "linkANote": "Asociază o notiță",
+    "match": {
+      "likely": "Potrivire probabilă",
+      "strong": "Potrivire puternică",
+      "weak": "Potrivire slabă"
+    },
+    "resize": "Redimensionează panoul",
+    "suggestedCount": "{count} sugerate"
   },
   "content": {
     "capturedAt": "{date} capturat",
@@ -253,7 +265,12 @@
     "presetInOneHour": "1 oră",
     "presetTomorrow": "Mâine",
     "presetNextWeek": "Săptămâna viitoare",
-    "custom": "Personalizat..."
+    "custom": "Personalizat...",
+    "archive": "Arhivează",
+    "panelEmpty": "Niciun memento în curând.",
+    "panelPast": "Trecute",
+    "panelUpcoming": "În curând",
+    "taskFallback": "Sarcină"
   },
   "insights": {
     "captureActivity": "Captură activitate",
@@ -295,7 +312,9 @@
       "recordVoiceMemo2": "Înregistrați notă vocală",
       "alreadyCaptured": "Deja capturat: „",
       "rdquo": "rdquo;",
-      "captureAnyway": "Captură oricum"
+      "captureAnyway": "Captură oricum",
+      "focusShortcut": "Focalizează câmpul de captură",
+      "q": "Q"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Alegeți folderul",
@@ -416,7 +435,11 @@
       "backToPresets": "Înapoi la presetări",
       "time": "timpul",
       "noteOptional": "Notă (opțional)",
-      "whyAreYouSettingThisReminder": "De ce setați acest memento?"
+      "whyAreYouSettingThisReminder": "De ce setați acest memento?",
+      "deleteReminder": "Șterge mementoul",
+      "editReminder": "Editează mementoul",
+      "save": "Salvează",
+      "set": "Setează"
     },
     "componentsSnoozeSnoozePicker": {
       "snooze": "Amână",
@@ -461,5 +484,37 @@
     "toasts": {
       "inboxRefreshed": "Inbox a fost reîmprospătat"
     }
+  },
+  "convert": {
+    "addEvent": "Adaugă eveniment",
+    "addTask": "Adaugă sarcină",
+    "allDay": "Toată ziua",
+    "binaryOnlyNote": "Fișierele pot deveni doar o notiță",
+    "chooseType": "Convertește în",
+    "create": "Creează",
+    "date": "Data",
+    "dueDate": "Data scadentă",
+    "dueTime": "Ora scadentă",
+    "end": "Sfârșit",
+    "event": "Eveniment",
+    "failed": "Nu s-a putut converti: {error}",
+    "inboxProject": "Inbox",
+    "location": "Locație",
+    "note": "Notiță",
+    "priority": "Prioritate",
+    "priorityHigh": "Ridicată",
+    "priorityLow": "Scăzută",
+    "priorityMedium": "Medie",
+    "priorityNone": "Niciuna",
+    "priorityUrgent": "Urgentă",
+    "project": "Proiect",
+    "remindAt": "Amintește-mi la",
+    "reminder": "Memento",
+    "setReminder": "Setează memento",
+    "start": "Început",
+    "success": "Convertit în {target}",
+    "task": "Sarcină",
+    "time": "Ora",
+    "title": "Convertește"
   }
 }

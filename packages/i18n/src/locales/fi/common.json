@@ -45,7 +45,10 @@
   "count": {
     "note": "{count, plural, one {# huomautus} other {# toteaa}}",
     "task": "{count, plural, one {# tehtävä} other {# tehtäviä}}",
-    "itemDelete": "{count, plural, one {Poista # kohde} other {Poista # kohteet}}"
+    "itemDelete": "{count, plural, one {Poista # kohde} other {Poista # kohteet}}",
+    "event": "{count, plural, one {# tapahtuma} other {# tapahtumaa}}",
+    "journal": "{count, plural, one {# päiväkirja} other {# päiväkirjaa}}",
+    "reminder": "{count, plural, one {# muistutus} other {# muistutusta}}"
   },
   "toast": {
     "actionFailed": "Toiminto epäonnistui",
@@ -83,7 +86,23 @@
       "newNoteN": "Uusi muistiinpano (⌘N)",
       "new": "Uusi",
       "syncDisabled": "Synkronointi pois käytöstä",
-      "syncDisabled2": "Synkronointi pois käytöstä"
+      "syncDisabled2": "Synkronointi pois käytöstä",
+      "feedbackButton": "Lähetä palautetta",
+      "feedbackDescription": "Kerro meille, mikä toimii, mikä on rikki tai mitä toivoisit Memryn tekevän. Luemme jokaisen viestin.",
+      "feedbackEmailHint": "Lisää sähköpostisi, jos haluat vastauksen.",
+      "feedbackError": "Palautteen lähetys epäonnistui. Yritä uudelleen.",
+      "feedbackPlaceholder": "Palautteesi…",
+      "feedbackSend": "Lähetä",
+      "feedbackSending": "Lähetetään…",
+      "feedbackSuccess": "Kiitos palautteesta!",
+      "feedbackTitle": "Lähetä palautetta",
+      "newItemMenu": "Luo uusi…",
+      "updateAvailable": "Päivitä",
+      "updateDownloading": "Ladataan…",
+      "updateDownloadingPercent": "Ladataan {percent} %",
+      "updateInstallingSubtitle": "Memrynote käynnistyy uudelleen automaattisesti.",
+      "updateInstallingTitle": "Asennetaan päivitystä",
+      "updateRestart": "Käynnistä uudelleen"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Muuta päiväpaneelin kokoa",
@@ -462,7 +481,8 @@
       "day": "Päivä",
       "agent": "Agent",
       "pendingApproval": "{count, plural, one {# odottaa hyväksyntää} other {# odottavaa hyväksyntää}}",
-      "inProgress": "Agent käännös käynnissä"
+      "inProgress": "Agent käännös käynnissä",
+      "close": "Sulje agentti"
     },
     "errors": {
       "loadConversations": "Edustajakeskusteluja ei voitu ladata",
@@ -481,5 +501,142 @@
     "sources": {
       "used": "{count, plural, one {Käytetty # lähde} other {Käytetty # lähdettä}}"
     }
+  },
+  "home": {
+    "addWidget": "Lisää widget",
+    "board": {
+      "defaultName": "Aloitus",
+      "deleteAria": "Poista asettelu",
+      "label": "Aloitusnäkymän asettelu",
+      "newAria": "Uusi taulu",
+      "newName": "Uusi taulu"
+    },
+    "disabled": {
+      "createNote": "Luo muistiinpano",
+      "hint": "Mitään ei ole avoinna. Aloita muistiinpano."
+    },
+    "done": "Valmis",
+    "edit": "Muokkaa",
+    "empty": {
+      "body": "Widgetit tuovat muistiinpanosi, tehtäväsi ja kirjanmerkkisi yhteen rauhalliseen paikkaan.",
+      "cta": "Lisää ensimmäinen widgetisi",
+      "title": "Taulusi on tyhjä"
+    },
+    "greeting": {
+      "afternoon": "Hyvää iltapäivää",
+      "evening": "Hyvää iltaa",
+      "morning": "Hyvää huomenta"
+    },
+    "header": {
+      "events": "{count, plural, one {# tapahtuma} other {# tapahtumaa}}",
+      "tasksDue": "{count, plural, one {# tehtävä erääntyy tänään} other {# tehtävää erääntyy tänään}}"
+    },
+    "noBookmarksYet": "Ei vielä kirjanmerkkejä.",
+    "noEventsYet": "Ei tapahtumia tänään.",
+    "noJournalEntriesYet": "Ei vielä päiväkirjamerkintöjä.",
+    "noNotesYet": "Ei vielä muistiinpanoja.",
+    "noTasksYet": "Ei vielä tehtäviä.",
+    "widget": {
+      "bookmarks": "Kirjanmerkit",
+      "calendar": "Kalenteri",
+      "calendarToday": "Tänään",
+      "configAria": "Määritä widget",
+      "configure": "Määritä",
+      "dragAria": "Vedä widgetiä",
+      "duration": "{count} min",
+      "filter": {
+        "today": "Erääntyy tänään",
+        "tomorrow": "Huomenna",
+        "week": "Tällä viikolla"
+      },
+      "folder": "Kansio",
+      "folderEmpty": "Ei vielä kansioita",
+      "folderNoSelection": "Ei valittua kansiota",
+      "folderPickPrompt": "Valitse kansio",
+      "folderViewSelect": "Näkymä",
+      "folderView_gallery": "Galleria",
+      "folderView_list": "Luettelo",
+      "inbox": "Saapuneet",
+      "inboxAllTypes": "Kaikki tyypit",
+      "inboxOlder": "{count, plural, one {# vanhempi} other {# vanhempaa}}",
+      "inboxOldest": "vanhin {count, plural, one {# päivä} other {# päivää}}",
+      "journal": "Päiväkirja",
+      "journalStreak": "{count, plural, one {#-päivän putki} other {#-päivän putki}}",
+      "journalToday": "Tänään",
+      "journalYesterday": "Eilen",
+      "loadError": "Lataus epäonnistui",
+      "menuAria": "Widgetin asetukset",
+      "next": "Seuraava: {title}",
+      "openCalendar": "Avaa kalenteri",
+      "openInbox": "Avaa saapuneet",
+      "recentMeta": "muokattu {time}",
+      "recentMetaWithFolder": "{folder} · muokattu {time}",
+      "recentlyEdited": "Viimeksi muokattu",
+      "remove": "Poista",
+      "removeAria": "Poista widget",
+      "resize": "Koko",
+      "resizeAria": "Muuta kooksi {{size}}",
+      "savedFilterDefault": "Tänään",
+      "savedFilterHint": "Merkitse suodattimia tähdellä Tehtävät-sivulla käyttääksesi niitä täällä",
+      "savedFilterLabel": "Tallennettu suodatin",
+      "startsIn": "Alkaa {count, plural, one {# min kuluttua} other {# min kuluttua}}",
+      "tasks": "Tehtävät",
+      "unknown": "Tuntematon widget",
+      "untitled": "Nimetön"
+    }
+  },
+  "media": {
+    "video": "Video"
+  },
+  "onboarding": {
+    "agentChat": {
+      "body": "Vaihda Agentti-välilehdelle kysyäksesi Memrynoten avustajalta holvistasi.",
+      "title": "Keskustele AI-agentin kanssa"
+    },
+    "collections": {
+      "body": "Järjestä muistiinpanot kansioihin, kiinnitä kirjanmerkkejä ja selaa tunnisteittain — kaikki täällä.",
+      "title": "Kokoelmat, kirjanmerkit ja tunnisteet"
+    },
+    "dayPanel": {
+      "body": "Sivupaneeli pitää kalenterin ja päivänäkymäsi sen vieressä, mitä ikinä luetkin.",
+      "title": "Päiväsi työsi rinnalla"
+    },
+    "feedback": {
+      "body": "Lähetä palautetta suoraan tiimille täältä.",
+      "title": "Kerro mielipiteesi"
+    },
+    "nav": {
+      "body": "Saapuneet tallentamiseen, Päiväkirja päivittäisiin muistiinpanoihin, Kalenteri aikajanaasi varten, Tehtävät tehtävälistoihin ja Graafi näyttämään, miten kaikki yhdistyy.",
+      "title": "Työtilasi"
+    },
+    "newNote": {
+      "body": "Aloita tästä. Kaikki kirjoittamasi tallennetaan ensin paikallisesti.",
+      "title": "Luo ensimmäinen muistiinpanosi"
+    },
+    "settings": {
+      "body": "Tuo muistiinpanosi yli 12 sovelluksesta — Obsidian, Notion, Apple Notes, Evernote ja lisää — ja säädä kaikkea muuta Asetuksissa.",
+      "title": "Asetukset ja tuonnit"
+    },
+    "sync": {
+      "body": "Ota käyttöön päästä päähän salattu synkronointi pitääksesi jokaisen laitteen ajan tasalla.",
+      "title": "Yksityinen, salattu synkronointi"
+    },
+    "welcome": {
+      "body": "Yksityinen, ensisijaisesti offline-tilassa toimiva kotisi. Muistiinpanot ovat päästä päähän salattuja — ne eivät koskaan poistu laitteeltasi salaamattomina.",
+      "title": "Tervetuloa Memrynoteen"
+    }
+  },
+  "updatePrompt": {
+    "autoUpdateLabel": "Lataa ja asenna päivitykset automaattisesti",
+    "availableBody": "{version} on saatavilla — sinulla on {current}. Haluatko ladata sen nyt?",
+    "availableTitle": "MemryNotesta on saatavilla uusi versio!",
+    "download": "Lataa",
+    "downloadedBody": "{version} on ladattu. Käynnistä MemryNote uudelleen viimeistelläksesi asennuksen.",
+    "downloadedTitle": "Päivitys valmis asennettavaksi",
+    "later": "Myöhemmin",
+    "releaseNotesLabel": "Julkaisutiedot",
+    "remindLater": "Muistuta myöhemmin",
+    "restartNow": "Käynnistä uudelleen nyt",
+    "skip": "Ohita tämä versio"
   }
 }

@@ -45,7 +45,10 @@
   "count": {
     "note": "{count, plural, one {Примечание #} other {Примечания к #}}",
     "task": "{count, plural, one {Задача #} other {Задачи #}}",
-    "itemDelete": "{count, plural, one {Удалить элемент #} other {Удалить элементы #}}"
+    "itemDelete": "{count, plural, one {Удалить элемент #} other {Удалить элементы #}}",
+    "event": "{count, plural, one {# событие} few {# события} many {# событий} other {# события}}",
+    "journal": "{count, plural, one {# журнал} few {# журнала} many {# журналов} other {# журнала}}",
+    "reminder": "{count, plural, one {# напоминание} few {# напоминания} many {# напоминаний} other {# напоминания}}"
   },
   "toast": {
     "actionFailed": "Действие не выполнено",
@@ -83,7 +86,23 @@
       "newNoteN": "Новая заметка (⌘N)",
       "new": "Новый",
       "syncDisabled": "Синхронизация отключена",
-      "syncDisabled2": "Синхронизация отключена"
+      "syncDisabled2": "Синхронизация отключена",
+      "feedbackButton": "Отправить отзыв",
+      "feedbackDescription": "Расскажите, что работает, что сломано или что вы хотите, чтобы Memry умел. Мы читаем каждое сообщение.",
+      "feedbackEmailHint": "Укажите email, если хотите получить ответ.",
+      "feedbackError": "Не удалось отправить отзыв. Попробуйте снова.",
+      "feedbackPlaceholder": "Ваш отзыв…",
+      "feedbackSend": "Отправить",
+      "feedbackSending": "Отправка…",
+      "feedbackSuccess": "Спасибо за отзыв!",
+      "feedbackTitle": "Отправить отзыв",
+      "newItemMenu": "Создать…",
+      "updateAvailable": "Обновить",
+      "updateDownloading": "Загрузка…",
+      "updateDownloadingPercent": "Загрузка {percent}%",
+      "updateInstallingSubtitle": "Memrynote перезапустится автоматически.",
+      "updateInstallingTitle": "Установка обновления",
+      "updateRestart": "Перезапустить"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Изменение размера панели «День»",
@@ -462,7 +481,8 @@
       "day": "День",
       "agent": "Agent",
       "pendingApproval": "{count, plural, one {# ожидает одобрения} other {# ожидающих одобрения}}",
-      "inProgress": "Agent идет ход"
+      "inProgress": "Agent идет ход",
+      "close": "Закрыть агента"
     },
     "errors": {
       "loadConversations": "Не удалось загрузить разговоры с агентом.",
@@ -481,5 +501,142 @@
     "sources": {
       "used": "{count, plural, one {Использован # источник} few {Использовано # источника} many {Использовано # источников} other {Использовано # источника}}"
     }
+  },
+  "home": {
+    "addWidget": "Добавить виджет",
+    "board": {
+      "defaultName": "Главная",
+      "deleteAria": "Удалить раскладку",
+      "label": "Раскладка главной",
+      "newAria": "Новая доска",
+      "newName": "Новая доска"
+    },
+    "disabled": {
+      "createNote": "Создать заметку",
+      "hint": "Ничего не открыто. Начните заметку."
+    },
+    "done": "Готово",
+    "edit": "Изменить",
+    "empty": {
+      "body": "Виджеты собирают ваши заметки, задачи и закладки в одном спокойном месте.",
+      "cta": "Добавьте свой первый виджет",
+      "title": "Ваша доска пуста"
+    },
+    "greeting": {
+      "afternoon": "Добрый день",
+      "evening": "Добрый вечер",
+      "morning": "Доброе утро"
+    },
+    "header": {
+      "events": "{count, plural, one {# событие} few {# события} many {# событий} other {# события}}",
+      "tasksDue": "{count, plural, one {# задача на сегодня} few {# задачи на сегодня} many {# задач на сегодня} other {# задачи на сегодня}}"
+    },
+    "noBookmarksYet": "Закладок пока нет.",
+    "noEventsYet": "Сегодня нет событий.",
+    "noJournalEntriesYet": "Записей в журнале пока нет.",
+    "noNotesYet": "Заметок пока нет.",
+    "noTasksYet": "Задач пока нет.",
+    "widget": {
+      "bookmarks": "Закладки",
+      "calendar": "Календарь",
+      "calendarToday": "Сегодня",
+      "configAria": "Настроить виджет",
+      "configure": "Настроить",
+      "dragAria": "Перетащить виджет",
+      "duration": "{count} мин",
+      "filter": {
+        "today": "Срок сегодня",
+        "tomorrow": "Завтра",
+        "week": "На этой неделе"
+      },
+      "folder": "Папка",
+      "folderEmpty": "Папок пока нет",
+      "folderNoSelection": "Папка не выбрана",
+      "folderPickPrompt": "Выберите папку",
+      "folderViewSelect": "Вид",
+      "folderView_gallery": "Галерея",
+      "folderView_list": "Список",
+      "inbox": "Входящие",
+      "inboxAllTypes": "Все типы",
+      "inboxOlder": "{count, plural, one {# старее} few {# старее} many {# старее} other {# старее}}",
+      "inboxOldest": "старейшему {count, plural, one {# день} few {# дня} many {# дней} other {# дня}}",
+      "journal": "Журнал",
+      "journalStreak": "{count, plural, one {серия из # дня} few {серия из # дней} many {серия из # дней} other {серия из # дня}}",
+      "journalToday": "Сегодня",
+      "journalYesterday": "Вчера",
+      "loadError": "Не удалось загрузить",
+      "menuAria": "Параметры виджета",
+      "next": "Далее: {title}",
+      "openCalendar": "Открыть календарь",
+      "openInbox": "Открыть входящие",
+      "recentMeta": "изменено {time}",
+      "recentMetaWithFolder": "{folder} · изменено {time}",
+      "recentlyEdited": "Недавно изменённые",
+      "remove": "Убрать",
+      "removeAria": "Убрать виджет",
+      "resize": "Размер",
+      "resizeAria": "Изменить размер до {{size}}",
+      "savedFilterDefault": "Сегодня",
+      "savedFilterHint": "Отметьте фильтры звёздочкой на странице «Задачи», чтобы использовать их здесь",
+      "savedFilterLabel": "Сохранённый фильтр",
+      "startsIn": "Начнётся через {count, plural, one {# мин} few {# мин} many {# мин} other {# мин}}",
+      "tasks": "Задачи",
+      "unknown": "Неизвестный виджет",
+      "untitled": "Без названия"
+    }
+  },
+  "media": {
+    "video": "Видео"
+  },
+  "onboarding": {
+    "agentChat": {
+      "body": "Переключитесь на вкладку «Агент», чтобы спросить помощника Memrynote о вашем хранилище.",
+      "title": "Общайтесь с ИИ-агентом"
+    },
+    "collections": {
+      "body": "Организуйте заметки по папкам, закрепляйте закладки и просматривайте по тегам — всё здесь.",
+      "title": "Коллекции, закладки и теги"
+    },
+    "dayPanel": {
+      "body": "Боковая панель держит календарь и обзор дня рядом с тем, что вы читаете.",
+      "title": "Ваш день рядом с работой"
+    },
+    "feedback": {
+      "body": "Отправляйте отзыв прямо команде отсюда.",
+      "title": "Расскажите, что думаете"
+    },
+    "nav": {
+      "body": "Входящие для захвата, Журнал для ежедневных заметок, Календарь для вашей ленты времени, Задачи для дел и Граф, чтобы видеть, как всё связано.",
+      "title": "Ваши рабочие пространства"
+    },
+    "newNote": {
+      "body": "Начните отсюда. Всё, что вы пишете, сначала сохраняется локально.",
+      "title": "Создайте свою первую заметку"
+    },
+    "settings": {
+      "body": "Импортируйте заметки из 12+ приложений — Obsidian, Notion, Apple Notes, Evernote и других — и настройте всё остальное в разделе «Настройки».",
+      "title": "Настройки и импорт"
+    },
+    "sync": {
+      "body": "Включите синхронизацию со сквозным шифрованием, чтобы держать все устройства в согласии.",
+      "title": "Приватная зашифрованная синхронизация"
+    },
+    "welcome": {
+      "body": "Ваш приватный дом с приоритетом офлайна. Заметки зашифрованы сквозным шифрованием — они никогда не покидают устройство в незашифрованном виде.",
+      "title": "Добро пожаловать в Memrynote"
+    }
+  },
+  "updatePrompt": {
+    "autoUpdateLabel": "Автоматически скачивать и устанавливать обновления",
+    "availableBody": "Доступна версия {version} — у вас {current}. Хотите скачать её сейчас?",
+    "availableTitle": "Доступна новая версия MemryNote!",
+    "download": "Скачать",
+    "downloadedBody": "Версия {version} загружена. Перезапустите MemryNote, чтобы завершить установку.",
+    "downloadedTitle": "Обновление готово к установке",
+    "later": "Позже",
+    "releaseNotesLabel": "Заметки о выпуске",
+    "remindLater": "Напомнить позже",
+    "restartNow": "Перезапустить сейчас",
+    "skip": "Пропустить эту версию"
   }
 }

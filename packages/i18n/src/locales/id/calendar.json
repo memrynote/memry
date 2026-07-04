@@ -27,7 +27,9 @@
     "imported-event": "Acara yang diimpor",
     "task": "Tugas",
     "reminder": "Pengingat",
-    "snooze": "Tunda"
+    "snooze": "Tunda",
+    "note": "Catatan",
+    "note-date": "Pengingat tanggal"
   },
   "state": {
     "loading-calendar": "Memuat kalender…",
@@ -151,5 +153,34 @@
       "could-not-remove-due-date": "Tidak dapat menghapus tanggal jatuh tempo",
       "could-not-open-note": "Tidak dapat membuka catatan"
     }
+  },
+  "connect-prompt": {
+    "aria": "Hubungkan Google Calendar",
+    "body": "Hubungkan akun Google Anda untuk melakukan lebih banyak dengan kalender Anda:",
+    "bullets": {
+      "events": "Lihat acara Google Anda di samping catatan dan tugas",
+      "schedule": "Jadwalkan tugas dan catatan di kalender Anda",
+      "sync": "Buat dan edit acara, tersinkron dua arah"
+    },
+    "continue": "Lanjutkan dengan Google",
+    "dismiss": "Tutup",
+    "error": "Tidak dapat menghubungkan Google Calendar. Coba lagi.",
+    "pill": "Hubungkan Google",
+    "title": "Selesaikan koneksi ke Google Calendar"
+  },
+  "notePopover": {
+    "couldNotOpen": "Tidak dapat membuka catatan",
+    "kind": "Catatan",
+    "kindDateReminder": "Pengingat tanggal",
+    "open": "Buka catatan"
+  },
+  "search": {
+    "close": "Tutup pencarian",
+    "no-results": "Tidak ada yang cocok",
+    "open": "Cari kalender",
+    "placeholder": "Cari acara, tugas, pengingat…"
+  },
+  "undo": {
+    "moveEvent": "Pindahkan acara"
   }
 }

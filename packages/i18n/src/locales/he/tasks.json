@@ -33,7 +33,8 @@
     "repeat": "חזור",
     "createAnother": "צור אחר",
     "delete": "מחק משימה",
-    "created": "יצר את {date}"
+    "created": "יצר את {date}",
+    "reminder": "תזכורת"
   },
   "filters": {
     "filter": "מסנן",
@@ -62,7 +63,16 @@
     "noNotesAvailable": "אין הערות זמינות",
     "noLinkedNotes": "עדיין אין הערות מקושרות",
     "removeLinkTo": "הסר קישור ל-{title}",
-    "removeLinkFallback": "הערה"
+    "removeLinkFallback": "הערה",
+    "addRelatedItem": "הוסף פריט קשור",
+    "noMatchingRelated": "אין פריטים תואמים",
+    "noRelatedAvailable": "אין פריטים זמינים",
+    "noRelatedItems": "אין עדיין פריטים קשורים",
+    "related": "קשור",
+    "relatedItemFallback": "פריט",
+    "removeRelatedItem": "הסר פריט קשור {title}",
+    "resize": "שנה גודל חלונית",
+    "searchRelated": "חפש קשורים…"
   },
   "kanban": {
     "board": "לוח Kanban"
@@ -174,7 +184,8 @@
     "componentsTasksDatePickerContent": {
       "removeDate": "הסר תאריך",
       "clearTime": "זמן ברור",
-      "addTime": "הוסף זמן"
+      "addTime": "הוסף זמן",
+      "time": "שעה"
     },
     "componentsTasksDeleteProjectDialog": {
       "delete": "מחק\"",
@@ -612,6 +623,20 @@
       "failedToLoadTaskPreferences": "טעינת העדפות המשימה נכשלה",
       "failedToUpdateTaskPreferences": "עדכון העדפות המשימה נכשל",
       "failedToLoadLinkedTasks": "טעינת המשימות המקושרות נכשלה"
+    }
+  },
+  "reminders": {
+    "hasReminders": "יש תזכורות",
+    "setReminder": "הגדר תזכורת",
+    "summary": "תזכורת: {date}",
+    "summaryWithMore": "תזכורת: {date} (+{count} נוספות)",
+    "toast": {
+      "deleteFailed": "מחיקת התזכורת נכשלה",
+      "deleted": "התזכורת נמחקה",
+      "set": "התזכורת הוגדרה",
+      "setFailed": "הגדרת התזכורת נכשלה",
+      "updateFailed": "עדכון התזכורת נכשל",
+      "updated": "התזכורת עודכנה"
     }
   }
 }

@@ -73,6 +73,7 @@
     "settingsNotInitialized": "Synchronisatie van instellingen is niet geïnitialiseerd",
     "securityQuarantinePermanent": "Een synchronisatie-item kan niet worden geverifieerd en is om veiligheidsredenen in quarantaine geplaatst.",
     "securityQuarantineRetry": "Een synchronisatie-item heeft de handtekeningverificatie niet doorstaan en zal opnieuw worden geprobeerd.",
-    "certificatePinPaused": "De beveiligde verbinding met de synchronisatieserver kon niet worden geverifieerd. Voor uw veiligheid is de synchronisatie onderbroken."
+    "certificatePinPaused": "De beveiligde verbinding met de synchronisatieserver kon niet worden geverifieerd. Voor uw veiligheid is de synchronisatie onderbroken.",
+    "paymentRequired": "Een betaald Sync-abonnement is vereist om gehoste versleutelde synchronisatie te gebruiken."
   }
 }

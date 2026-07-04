@@ -25,7 +25,10 @@
         "integrations": "Mga pagsasama",
         "vault": "Vault",
         "tags": "Mga tag",
-        "properties": "Mga Katangian"
+        "properties": "Mga Katangian",
+        "commandLine": "Command Line",
+        "features": "Mga Feature",
+        "import": "Pag-import"
       }
     }
   },
@@ -109,6 +112,11 @@
       "createInSelectedFolder": {
         "label": "Lumikha sa Napiling Folder",
         "description": "Ang mga bagong tala at folder ay nilikha sa loob ng kasalukuyang napiling folder. Kapag naka-off, ang mga item ay palaging ginagawa sa root."
+      },
+      "defaultNoteFolder": {
+        "description": "Walang laman = ugat ng vault",
+        "label": "Default na Lokasyon para sa Mga Bagong Tala",
+        "placeholder": "notes"
       }
     },
     "privacy": {
@@ -116,6 +124,17 @@
         "label": "Ibahagi ang Anonymous na Sukatan sa Paggamit",
         "description": "Anon metrics lang ito — walang ipinapadalang nilalaman ng tala, mga query sa paghahanap, path ng file, email, o raw ID.",
         "error": "Nabigong i-update ang setting ng telemetry"
+      }
+    },
+    "dateFormat": {
+      "description": "Kung paano ipinapakita ang mga petsa sa kalendaryo",
+      "error": "Nabigong i-update ang format ng petsa",
+      "label": "Format ng Petsa",
+      "options": {
+        "DD.MM.YYYY": "DD.MM.YYYY",
+        "DD/MM/YYYY": "DD/MM/YYYY",
+        "MM/DD/YYYY": "MM/DD/YYYY (US)",
+        "YYYY-MM-DD": "YYYY-MM-DD (ISO)"
       }
     }
   },
@@ -250,6 +269,9 @@
         "description": "Maglagay ng pangalan para sa bagong kopya ng template.",
         "placeholder": "Pangalan ng template"
       }
+    },
+    "preview": {
+      "notFound": "Hindi ma-load ang template na ito."
     }
   },
   "journal": {
@@ -261,7 +283,8 @@
     "groups": {
       "defaultTemplate": "Default na Template",
       "sidebarVisibility": "Sidebar Visibility",
-      "footer": "Footer"
+      "footer": "Footer",
+      "location": "Lokasyon at Format"
     },
     "template": {
       "label": "Template",
@@ -290,7 +313,21 @@
       "label": "Ipakita ang Stats Footer",
       "description": "Bilang ng salita, oras ng pagbabasa, mga timestamp"
     },
-    "updateError": "Nabigong i-update ang setting"
+    "updateError": "Nabigong i-update ang setting",
+    "dateFormat": {
+      "description": "Format ng filename para sa mga pang-araw-araw na tala (hal. YYYY-MM-DD)",
+      "label": "Format ng Petsa",
+      "placeholder": "YYYY-MM-DD"
+    },
+    "folder": {
+      "description": "Folder kung saan iniimbak ang mga pang-araw-araw na tala",
+      "label": "Folder ng Journal",
+      "placeholder": "journal"
+    },
+    "preview": {
+      "description": "Path ng file ng journal ngayong araw",
+      "label": "Preview"
+    }
   },
   "tasks": {
     "header": {
@@ -344,7 +381,9 @@
       "loading": "Nilo-load ang mga setting..."
     },
     "groups": {
-      "dayCellClick": "Pang-araw na Cell Click"
+      "dayCellClick": "Pang-araw na Cell Click",
+      "notes": "Mga Tala",
+      "weekStart": "Linggo"
     },
     "defaultBehavior": {
       "label": "Default na pag-uugali",
@@ -360,6 +399,20 @@
       "openJournal": "Buksan ang Journal",
       "openCalendar": "Buksan ang Kalendaryo",
       "useGlobal": "Gumamit ng pandaigdigang setting"
+    },
+    "showNotesOnCalendar": {
+      "description": "Ipakita ang bawat tala sa kalendaryo bilang buong-araw na item sa araw na ito ginawa",
+      "error": "Nabigong i-update ang pagpapakita ng mga tala sa kalendaryo",
+      "label": "Ipakita ang mga tala sa kalendaryo"
+    },
+    "weekStart": {
+      "description": "Unang araw ng linggo sa lahat ng kalendaryo",
+      "error": "Nabigong i-update ang simula ng linggo",
+      "label": "Nagsisimula ang Linggo Sa",
+      "options": {
+        "monday": "Lunes",
+        "sunday": "Linggo"
+      }
     }
   },
   "account": {
@@ -372,10 +425,12 @@
       "identity": "Pagkakakilanlan",
       "sync": "I-sync",
       "storage": "Imbakan",
-      "devices": "Mga device"
+      "devices": "Mga device",
+      "billing": "Pagsingil"
     },
     "identity": {
-      "unknown": "Hindi alam"
+      "unknown": "Hindi alam",
+      "encrypted": "End-to-end na naka-encrypt"
     },
     "sync": {
       "lastSynced": "Huling na-sync ang {time}",
@@ -421,6 +476,53 @@
       "signedOut": "Matagumpay na naka-sign out",
       "signOutFailed": "Nabigong mag-sign out",
       "deviceLinked": "Matagumpay na na-link ang device"
+    },
+    "billing": {
+      "actions": {
+        "manage": "Pamahalaan ang pagsingil",
+        "opening": "Binubuksan...",
+        "refresh": "I-refresh ang status",
+        "upgrade": "Mag-upgrade"
+      },
+      "activationPendingPrefix": "Nakabinbin ang pag-activate. Maaaring magtagal ang Paddle bago kumpirmahin ang checkout. I-refresh ang status o mag-email sa",
+      "checking": "Sinusuri ang status ng pagsingil",
+      "historyDays": "{days} na araw",
+      "labels": {
+        "history": "Kasaysayan",
+        "maxFile": "Max na file",
+        "storage": "Storage",
+        "vaults": "Mga Vault"
+      },
+      "planStatus": "Status ng plano",
+      "plans": {
+        "believer": "Believer plan",
+        "free": "Libreng plano",
+        "plus": "Plus plan",
+        "pro": "Pro plan"
+      },
+      "statuses": {
+        "active": "Aktibo",
+        "canceled": "Nakansela",
+        "inactive": "Hindi aktibo",
+        "past_due": "Lampas na sa bayad",
+        "paused": "Naka-pause"
+      },
+      "toasts": {
+        "activationPending": "Nakabinbin ang pag-activate",
+        "billingActive": "Aktibo ang pagsingil",
+        "checkoutFailed": "Hindi masimulan ang checkout",
+        "checkoutOpened": "Binuksan ang checkout sa iyong browser",
+        "loadFailed": "Hindi ma-load ang status ng pagsingil",
+        "portalFailed": "Hindi mabuksan ang portal ng pagsingil",
+        "refreshFailed": "Hindi ma-refresh ang status ng pagsingil"
+      },
+      "unlimited": "Walang limitasyon"
+    },
+    "community": {
+      "and": "at",
+      "feedback": "magbahagi ng feedback",
+      "prompt": "Mahilig sa memrynote?",
+      "star": "I-star kami sa GitHub"
     }
   },
   "setup": {
@@ -437,7 +539,9 @@
       "errors": {
         "sendCode": "Nabigong magpadala ng code",
         "googleStart": "Nabigong simulan ang pag-sign in sa Google"
-      }
+      },
+      "paidPlan": "Ang Sync ay bayad na plano.",
+      "seePlans": "Tingnan ang mga plano"
     },
     "email": {
       "label": "Email address",
@@ -488,7 +592,13 @@
         "registering": "Nirerehistro ang device..."
       },
       "failed": "Nabigo ang pagbawi",
-      "confirmationFailed": "Nabigo ang pagkumpirma"
+      "confirmationFailed": "Nabigo ang pagkumpirma",
+      "unavailable": {
+        "description": "Ang iyong recovery phrase ay ipinapakita lamang nang isang beses sa panahon ng setup at hindi na makukuha muli. Magsimula ulit para makabuo ng bago.",
+        "loading": "Nilo-load ang iyong recovery phrase…",
+        "startOver": "Magsimula ulit",
+        "title": "Hindi ma-load ang iyong recovery phrase"
+      }
     },
     "linking": {
       "choiceTitle": "I-link ang device na ito",
@@ -513,7 +623,15 @@
       "waitingTitle": "Naghihintay ng pag-apruba",
       "waitingDescription": "Buksan ang memrynote sa iyong iba pang device at aprubahan ang kahilingan sa pag-link.",
       "verificationCode": "Verification code",
-      "confirmCode": "Kumpirmahin na tumutugma ito sa code sa iyong iba pang device"
+      "confirmCode": "Kumpirmahin na tumutugma ito sa code sa iyong iba pang device",
+      "vaultPickerChooseFolder": "Pumili ng folder",
+      "vaultPickerConfirm": "Kunin ang napili",
+      "vaultPickerDescription": "May maraming vault ang account na ito. Pumili ng folder at ang vault(s) na idadagdag sa device na ito.",
+      "vaultPickerDormantHint": "Naidagdag, bubukas kapag lumipat ka rito",
+      "vaultPickerFolderLabel": "Iimbak ang mga vault sa folder",
+      "vaultPickerPrimaryHint": "Bubukas ngayon",
+      "vaultPickerTitle": "Piliin ang kukunin",
+      "vaultRow": "Vault — {{count}} item · {{date}}"
     }
   },
   "devices": {
@@ -630,7 +748,15 @@
       "downloadedToast": "Na-download ang Whisper Small",
       "downloadError": "Nabigong i-download ang Whisper Small",
       "keySavedToast": "Na-save ang OpenAI key",
-      "keySaveError": "Nabigong i-save ang OpenAI key"
+      "keySaveError": "Nabigong i-save ang OpenAI key",
+      "memoNameMode": "Mga pangalan ng memo",
+      "memoNameModeDescription": "Kung paano pinapangalanan ang mga voice memo pagkatapos ng transkripsyon",
+      "naming": {
+        "none": "Huwag palitan ang pangalan",
+        "timestamp": "Timestamp",
+        "transcript": "Pamagat ng transkripsyon"
+      },
+      "namingError": "Nabigong i-update ang pagpapangalan ng voice memo"
     },
     "embedding": {
       "loaded": "Na-load",
@@ -715,7 +841,12 @@
       "connectFailed": "Nabigong ikonekta ang Google Calendar",
       "refreshFailed": "Nabigong i-refresh ang Google Calendar",
       "disconnectFailed": "Nabigong idiskonekta ang Google Calendar",
-      "retryFailed": "Nabigong subukang muli ang pag-sync ng kalendaryo"
+      "retryFailed": "Nabigong subukang muli ang pag-sync ng kalendaryo",
+      "pushToGoogle": {
+        "description": "I-off para sa one-way na sync — makikita mo pa rin ang iyong mga kaganapan sa Google sa memrynote, ngunit hindi lalabas sa Google ang mga kaganapan ng memrynote.",
+        "error": "Nabigong i-update ang direksyon ng sync",
+        "label": "Ipakita ang mga kaganapan ng memrynote sa Google Calendar"
+      }
     },
     "sourcePicker": {
       "empty": "Wala pang na-import na mga kalendaryo ng Google sa device na ito.",
@@ -796,7 +927,8 @@
       "changeColor": "Baguhin ang kulay",
       "mergeInto": "Pagsamahin sa...",
       "merge": "Pagsamahin",
-      "delete": "Tanggalin"
+      "delete": "Tanggalin",
+      "changeIcon": "Palitan ang icon"
     },
     "dialogs": {
       "deleteTitle": "Tanggalin ang tag",
@@ -814,7 +946,8 @@
       "mergeFailed": "Nabigong pagsamahin ang mga tag",
       "merged": "Pinagsama ang \"{source}\" sa \"{target}\" ({count, plural, one {# item} other {# item}})",
       "colorUpdated": "Na-update na kulay para sa \"{name}\"",
-      "colorFailed": "Nabigong i-update ang kulay"
+      "colorFailed": "Nabigong i-update ang kulay",
+      "iconFailed": "Nabigong i-update ang icon"
     }
   },
   "properties": {
@@ -1144,7 +1277,10 @@
     "status": {
       "disconnected": "Disconnected",
       "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled"
+      "fullTools": "Full tools enabled",
+      "checking": "Sinusuri…",
+      "connected": "Nakakonekta",
+      "label": "Koneksyon"
     },
     "permissions": {
       "group": "Agent permissions",
@@ -1160,6 +1296,133 @@
         "alwaysAllow": "Always allow",
         "askBeforeChanges": "Ask before changes"
       }
+    }
+  },
+  "commandLine": {
+    "actions": {
+      "refresh": "I-refresh"
+    },
+    "command": {
+      "descriptionInstalled": "Naka-install sa {path}",
+      "descriptionNotInstalled": "I-install ang memrynote command para magamit mo ang iyong vault mula sa anumang terminal.",
+      "label": "memrynote command",
+      "toggleLabel": "I-install ang memrynote command"
+    },
+    "defaultVault": {
+      "description": "Piliin ang vault na gagamitin kapag pinatakbo mo ang memrynote nang walang --vault.",
+      "descriptionSelected": "Gumagamit ang mga command ng {path} kapag inalis ang --vault.",
+      "label": "Default na vault",
+      "none": "Walang napiling vault",
+      "placeholder": "Pumili ng vault"
+    },
+    "groups": {
+      "terminal": "Terminal"
+    },
+    "header": {
+      "subtitle": "I-set up ang memrynote command para sa iyong terminal",
+      "title": "Command Line"
+    },
+    "status": {
+      "defaultVaultUpdatedToast": "Na-update ang default na CLI vault",
+      "installedToast": "Na-install ang memrynote command",
+      "loadFailed": "Nabigong i-load ang status ng command",
+      "loading": "Sinusuri ang status ng command...",
+      "uninstalledToast": "Inalis ang memrynote command"
+    }
+  },
+  "features": {
+    "header": {
+      "subtitle": "I-on o i-off ang mga bahagi ng app. Off = naka-ghost sa sidebar at naka-disable sa lahat ng lugar.",
+      "title": "Mga Feature"
+    },
+    "items": {
+      "calendar": {
+        "description": "Mga kaganapan at iskedyul",
+        "label": "Kalendaryo"
+      },
+      "graph": {
+        "description": "Mga koneksyon ng tala",
+        "label": "Graph"
+      },
+      "home": {
+        "description": "Panimulang dashboard",
+        "label": "Home"
+      },
+      "inbox": {
+        "description": "Mabilis na pagkuha at pag-triage",
+        "label": "Inbox"
+      },
+      "journal": {
+        "description": "Pang-araw-araw na tala",
+        "label": "Journal"
+      },
+      "tasks": {
+        "description": "Mga to-do at takdang petsa",
+        "label": "Mga Gawain"
+      }
+    }
+  },
+  "import": {
+    "action": "Mag-import",
+    "dialog": {
+      "cancel": "Kanselahin",
+      "choose": "Pumili ng file…",
+      "chooseFolder": "Pumili ng folder ng Apple Notes…",
+      "chooseHint": "Piliin ang iyong {label}",
+      "close": "Isara",
+      "done": "Tapos na",
+      "error": "Nabigo ang pag-import",
+      "folderHint": "I-click sa ibaba at piliin ang folder na “group.com.apple.notes” kapag bumukas ang picker (doon ito nagsisimula). Nagbibigay-daan ito sa Memry na basahin ang iyong mga tala at attachment — hindi kailangan ng Full Disk Access.",
+      "progress": "{completed} sa {total}",
+      "running": "Nag-iimport…",
+      "selected": "{count, plural, one {# file ang napili} other {# file ang napili}}",
+      "start": "Simulan ang pag-import",
+      "summary": {
+        "attachments": "{count, plural, one {# attachment ang nakopya} other {# attachment ang nakopya}}",
+        "failed": "{count} nabigo",
+        "imported": "{count, plural, one {# item ang na-import} other {# item ang na-import}}",
+        "skipped": "{count} nilaktawan",
+        "title": "Kumpleto na ang pag-import"
+      },
+      "title": "Mag-import mula sa {name}"
+    },
+    "header": {
+      "subtitle": "Ilipat ang iyong mga tala at gawain mula sa ibang app",
+      "title": "Pag-import"
+    },
+    "intro": "Ang isang beses na pag-import ay gumagawa ng mga bagong tala sa iyong vault. Hindi ginagalaw ang iyong orihinal na mga export file.",
+    "preview": {
+      "confirm": "Mag-import",
+      "warnings": "Mga Babala"
+    },
+    "select": "Pumili ng app na iimportan…",
+    "sources": {
+      "apple-journal": "Mag-import ng Apple Journal HTML export bilang mga naka-petsang tala",
+      "apple-notes": "Mag-import mula sa database ng Apple Notes (NoteStore.sqlite, macOS)",
+      "bear": "Mag-import ng Bear .bear2bk archive (mga tala, tag, attachment)",
+      "csv": "Mag-import ng .csv file — isang tala bawat row, ang mga column ay nagiging property",
+      "evernote": "Mag-import ng isa o higit pang Evernote .enex export file",
+      "google-keep": "Mag-import ng Google Takeout Keep export (.json o .zip)",
+      "html": "Mag-import ng mga .html file na may naka-link na larawan at cross-page na link",
+      "markdown": "Mag-import ng mga .md file o folder (frontmatter, tag, attachment)",
+      "notion": "Mag-import ng HTML export (.zip)",
+      "onenote": "Mag-import ng mga OneNote notebook (kailangan ng Microsoft account)",
+      "raindrop": "Mag-import ng Raindrop.io bookmark export (.csv) — mapupunta ang mga bookmark sa inbox",
+      "roam": "Mag-import ng Roam Research graph (.json) na may nested na outline",
+      "ticktick": "Mag-import ng TickTick backup (.csv) bilang mga proyekto, gawain at paalala",
+      "todoist": "Mag-import ng project CSV export (.csv)"
+    },
+    "stats": {
+      "bookmarks": "{count, plural, one {# bookmark} other {# bookmark}}",
+      "comments": "{count, plural, one {# komento} other {# komento}}",
+      "notes": "{count, plural, one {# tala} other {# tala}}",
+      "projects": "{count, plural, one {# proyekto} other {# proyekto}}",
+      "reminders": "{count, plural, one {# paalala} other {# paalala}}",
+      "skipped": "{count} nilaktawan",
+      "subtasks": "{count, plural, one {# sub-task} other {# sub-task}}",
+      "tasks": "{count, plural, one {# gawain} other {# gawain}}",
+      "withDueDate": "{count} may petsa",
+      "withTags": "{count} na-tag"
     }
   }
 }

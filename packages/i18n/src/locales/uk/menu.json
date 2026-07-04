@@ -1,11 +1,15 @@
 {
   "app": {
-    "quit": "Вийти"
+    "quit": "Вийти",
+    "preferences": "Налаштування…"
   },
   "file": {
     "label": "Файл",
     "newNote": "Нова нотатка",
-    "close": "Закрити вікно"
+    "close": "Закрити вікно",
+    "closeTab": "Закрити вкладку",
+    "exportPdf": "Експортувати в PDF…",
+    "openQuickly": "Швидко відкрити…"
   },
   "navigation": {
     "back": "Назад",
@@ -18,12 +22,51 @@
     "cut": "Вирізати",
     "copy": "Копіювати",
     "paste": "Вставити",
-    "selectAll": "Вибрати все"
+    "selectAll": "Вибрати все",
+    "find": "Знайти",
+    "speech": "Мовлення"
   },
   "view": {
     "label": "Перегляд",
     "reload": "Перезавантажити",
     "toggleDevTools": "Перемкнути інструменти розробника",
-    "toggleFullscreen": "Перемкнути повноекранний режим"
+    "toggleFullscreen": "Перемкнути повноекранний режим",
+    "theme": "Тема",
+    "themeDark": "Темна",
+    "themeLight": "Світла",
+    "themeSystem": "Системна",
+    "themeWhite": "Паперова",
+    "toggleDayPanel": "Перемкнути панель дня",
+    "toggleSidebar": "Перемкнути бічну панель"
+  },
+  "format": {
+    "body": "Основний текст",
+    "bold": "Жирний",
+    "code": "Код",
+    "heading1": "Заголовок 1",
+    "heading2": "Заголовок 2",
+    "heading3": "Заголовок 3",
+    "highlight": "Виділення",
+    "italic": "Курсив",
+    "label": "Формат",
+    "strikethrough": "Закреслений"
+  },
+  "help": {
+    "about": "Про Memrynote",
+    "documentation": "Документація",
+    "label": "Довідка",
+    "shortcuts": "Комбінації клавіш"
+  },
+  "insert": {
+    "attachment": "Вставити вкладення…",
+    "bulletList": "Маркований список",
+    "codeBlock": "Блок коду",
+    "label": "Вставити",
+    "numberedList": "Нумерований список",
+    "table": "Таблиця",
+    "taskList": "Список завдань"
+  },
+  "window": {
+    "label": "Вікно"
   }
 }

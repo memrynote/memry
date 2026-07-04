@@ -1,11 +1,15 @@
 {
   "app": {
-    "quit": "Stoppen"
+    "quit": "Stoppen",
+    "preferences": "Instellingen…"
   },
   "file": {
     "label": "Bestand",
     "newNote": "Nieuwe notitie",
-    "close": "Sluit venster"
+    "close": "Sluit venster",
+    "closeTab": "Tabblad sluiten",
+    "exportPdf": "Exporteren naar PDF…",
+    "openQuickly": "Snel openen…"
   },
   "navigation": {
     "back": "Terug",
@@ -18,12 +22,51 @@
     "cut": "Knippen",
     "copy": "Kopieer",
     "paste": "Plakken",
-    "selectAll": "Alles selecteren"
+    "selectAll": "Alles selecteren",
+    "find": "Zoeken",
+    "speech": "Spraak"
   },
   "view": {
     "label": "Bekijk",
     "reload": "Herladen",
     "toggleDevTools": "Schakel ontwikkelaarstools in",
-    "toggleFullscreen": "Schakel Volledig scherm in"
+    "toggleFullscreen": "Schakel Volledig scherm in",
+    "theme": "Thema",
+    "themeDark": "Donker",
+    "themeLight": "Licht",
+    "themeSystem": "Systeem",
+    "themeWhite": "Papier",
+    "toggleDayPanel": "Dagpaneel in-/uitschakelen",
+    "toggleSidebar": "Zijbalk in-/uitschakelen"
+  },
+  "format": {
+    "body": "Hoofdtekst",
+    "bold": "Vet",
+    "code": "Code",
+    "heading1": "Kop 1",
+    "heading2": "Kop 2",
+    "heading3": "Kop 3",
+    "highlight": "Markeren",
+    "italic": "Cursief",
+    "label": "Opmaak",
+    "strikethrough": "Doorhalen"
+  },
+  "help": {
+    "about": "Over Memrynote",
+    "documentation": "Documentatie",
+    "label": "Help",
+    "shortcuts": "Sneltoetsen"
+  },
+  "insert": {
+    "attachment": "Bijlage invoegen…",
+    "bulletList": "Opsommingslijst",
+    "codeBlock": "Codeblok",
+    "label": "Invoegen",
+    "numberedList": "Genummerde lijst",
+    "table": "Tabel",
+    "taskList": "Takenlijst"
+  },
+  "window": {
+    "label": "Venster"
   }
 }

@@ -36,7 +36,8 @@
       "journal": "Promemoria del diario",
       "highlight": "Evidenzia promemoria",
       "fallback": "Promemoria dovuto",
-      "default": "Promemoria"
+      "default": "Promemoria",
+      "task": "Promemoria attività"
     }
   },
   "error": {

@@ -33,7 +33,8 @@
     "repeat": "repetir",
     "createAnother": "crear otro",
     "delete": "Eliminar tarea",
-    "created": "Creado {date}"
+    "created": "Creado {date}",
+    "reminder": "Recordatorio"
   },
   "filters": {
     "filter": "Filtrar",
@@ -62,7 +63,16 @@
     "noNotesAvailable": "No hay notas disponibles",
     "noLinkedNotes": "Aún no hay notas vinculadas",
     "removeLinkTo": "Eliminar enlace a {title}",
-    "removeLinkFallback": "nota"
+    "removeLinkFallback": "nota",
+    "addRelatedItem": "Añadir elemento relacionado",
+    "noMatchingRelated": "No hay elementos coincidentes",
+    "noRelatedAvailable": "No hay elementos disponibles",
+    "noRelatedItems": "Aún no hay elementos relacionados",
+    "related": "Relacionados",
+    "relatedItemFallback": "elemento",
+    "removeRelatedItem": "Quitar el elemento relacionado {title}",
+    "resize": "Redimensionar panel",
+    "searchRelated": "Buscar relacionados…"
   },
   "kanban": {
     "board": "tablero kanban"
@@ -174,7 +184,8 @@
     "componentsTasksDatePickerContent": {
       "removeDate": "Eliminar fecha",
       "clearTime": "tiempo claro",
-      "addTime": "Agregar tiempo"
+      "addTime": "Agregar tiempo",
+      "time": "Hora"
     },
     "componentsTasksDeleteProjectDialog": {
       "delete": "Eliminar \"",
@@ -612,6 +623,20 @@
       "failedToLoadTaskPreferences": "No se pudieron cargar las preferencias de la tarea",
       "failedToUpdateTaskPreferences": "No se pudieron actualizar las preferencias de la tarea",
       "failedToLoadLinkedTasks": "No se pudieron cargar las tareas vinculadas"
+    }
+  },
+  "reminders": {
+    "hasReminders": "Tiene recordatorios",
+    "setReminder": "Establecer recordatorio",
+    "summary": "Recordatorio: {date}",
+    "summaryWithMore": "Recordatorio: {date} (+{count} más)",
+    "toast": {
+      "deleteFailed": "No se pudo eliminar el recordatorio",
+      "deleted": "Recordatorio eliminado",
+      "set": "Recordatorio establecido",
+      "setFailed": "No se pudo establecer el recordatorio",
+      "updateFailed": "No se pudo actualizar el recordatorio",
+      "updated": "Recordatorio actualizado"
     }
   }
 }

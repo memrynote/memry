@@ -27,7 +27,9 @@
     "imported-event": "Importerad händelse",
     "task": "Uppgift",
     "reminder": "Påminnelse",
-    "snooze": "Snooza"
+    "snooze": "Snooza",
+    "note": "Anteckning",
+    "note-date": "Datumpåminnelse"
   },
   "state": {
     "loading-calendar": "Laddar kalender…",
@@ -151,5 +153,34 @@
       "could-not-remove-due-date": "Kunde inte ta bort förfallodatum",
       "could-not-open-note": "Kunde inte öppna anteckning"
     }
+  },
+  "connect-prompt": {
+    "aria": "Anslut Google Calendar",
+    "body": "Anslut ditt Google-konto för att göra mer med din kalender:",
+    "bullets": {
+      "events": "Se dina Google-händelser bredvid anteckningar och uppgifter",
+      "schedule": "Schemalägg uppgifter och anteckningar i din kalender",
+      "sync": "Skapa och redigera händelser, synkroniserade åt båda håll"
+    },
+    "continue": "Fortsätt med Google",
+    "dismiss": "Avfärda",
+    "error": "Det gick inte att ansluta Google Calendar. Försök igen.",
+    "pill": "Anslut Google",
+    "title": "Slutför anslutningen till Google Calendar"
+  },
+  "notePopover": {
+    "couldNotOpen": "Det gick inte att öppna anteckningen",
+    "kind": "Anteckning",
+    "kindDateReminder": "Datumpåminnelse",
+    "open": "Öppna anteckning"
+  },
+  "search": {
+    "close": "Stäng sökning",
+    "no-results": "Inga träffar",
+    "open": "Sök i kalender",
+    "placeholder": "Sök händelser, uppgifter, påminnelser…"
+  },
+  "undo": {
+    "moveEvent": "Flytta händelse"
   }
 }

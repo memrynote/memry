@@ -45,7 +45,10 @@
   "count": {
     "note": "{count, plural, one {Nota #} other {Notas #}}",
     "task": "{count, plural, one {Tarefa #} other {Tarefas #}}",
-    "itemDelete": "{count, plural, one {Excluir item #} other {Excluir itens #}}"
+    "itemDelete": "{count, plural, one {Excluir item #} other {Excluir itens #}}",
+    "event": "{count, plural, one {# evento} other {# eventos}}",
+    "journal": "{count, plural, one {# diário} other {# diários}}",
+    "reminder": "{count, plural, one {# lembrete} other {# lembretes}}"
   },
   "toast": {
     "actionFailed": "Falha na ação",
@@ -83,7 +86,23 @@
       "newNoteN": "Nova nota (⌘N)",
       "new": "Novo",
       "syncDisabled": "Sincronização desativada",
-      "syncDisabled2": "Sincronização desativada"
+      "syncDisabled2": "Sincronização desativada",
+      "feedbackButton": "Enviar comentários",
+      "feedbackDescription": "Diga-nos o que está a funcionar, o que está avariado ou o que gostaria que o Memry fizesse. Lemos todas as mensagens.",
+      "feedbackEmailHint": "Adicione o seu email se quiser uma resposta.",
+      "feedbackError": "Não foi possível enviar os comentários. Tente novamente.",
+      "feedbackPlaceholder": "Os seus comentários…",
+      "feedbackSend": "Enviar",
+      "feedbackSending": "A enviar…",
+      "feedbackSuccess": "Obrigado pelos comentários!",
+      "feedbackTitle": "Enviar comentários",
+      "newItemMenu": "Criar novo…",
+      "updateAvailable": "Atualizar",
+      "updateDownloading": "A transferir…",
+      "updateDownloadingPercent": "A transferir {percent}%",
+      "updateInstallingSubtitle": "O Memrynote irá reiniciar automaticamente.",
+      "updateInstallingTitle": "A instalar atualização",
+      "updateRestart": "Reiniciar"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Redimensionar painel do dia",
@@ -462,7 +481,8 @@
       "day": "Dia",
       "agent": "Agent",
       "pendingApproval": "{count, plural, one {# aprovação pendente} other {# aprovações pendentes}}",
-      "inProgress": "Turno Agent em andamento"
+      "inProgress": "Turno Agent em andamento",
+      "close": "Fechar agente"
     },
     "errors": {
       "loadConversations": "Não foi possível carregar as conversas do agente",
@@ -481,5 +501,142 @@
     "sources": {
       "used": "{count, plural, one {# fonte usada} other {# fontes usadas}}"
     }
+  },
+  "home": {
+    "addWidget": "Adicionar widget",
+    "board": {
+      "defaultName": "Início",
+      "deleteAria": "Eliminar esquema",
+      "label": "Esquema da página inicial",
+      "newAria": "Novo quadro",
+      "newName": "Novo quadro"
+    },
+    "disabled": {
+      "createNote": "Criar nota",
+      "hint": "Nada aberto. Comece uma nota."
+    },
+    "done": "Concluído",
+    "edit": "Editar",
+    "empty": {
+      "body": "Os widgets reúnem as suas notas, tarefas e marcadores num só lugar tranquilo.",
+      "cta": "Adicione o seu primeiro widget",
+      "title": "O seu quadro está vazio"
+    },
+    "greeting": {
+      "afternoon": "Boa tarde",
+      "evening": "Boa noite",
+      "morning": "Bom dia"
+    },
+    "header": {
+      "events": "{count, plural, one {# evento} other {# eventos}}",
+      "tasksDue": "{count, plural, one {# tarefa vence hoje} other {# tarefas vencem hoje}}"
+    },
+    "noBookmarksYet": "Ainda não há marcadores.",
+    "noEventsYet": "Sem eventos hoje.",
+    "noJournalEntriesYet": "Ainda não há entradas de diário.",
+    "noNotesYet": "Ainda não há notas.",
+    "noTasksYet": "Ainda não há tarefas.",
+    "widget": {
+      "bookmarks": "Marcadores",
+      "calendar": "Calendário",
+      "calendarToday": "Hoje",
+      "configAria": "Configurar widget",
+      "configure": "Configurar",
+      "dragAria": "Arrastar widget",
+      "duration": "{count} min",
+      "filter": {
+        "today": "Vence hoje",
+        "tomorrow": "Amanhã",
+        "week": "Esta semana"
+      },
+      "folder": "Pasta",
+      "folderEmpty": "Ainda não há pastas",
+      "folderNoSelection": "Nenhuma pasta selecionada",
+      "folderPickPrompt": "Escolha uma pasta",
+      "folderViewSelect": "Vista",
+      "folderView_gallery": "Galeria",
+      "folderView_list": "Lista",
+      "inbox": "Caixa de entrada",
+      "inboxAllTypes": "Todos os tipos",
+      "inboxOlder": "{count, plural, one {# mais antigo} other {# mais antigos}}",
+      "inboxOldest": "mais antigo há {count, plural, one {# dia} other {# dias}}",
+      "journal": "Diário",
+      "journalStreak": "{count, plural, one {sequência de # dia} other {sequência de # dias}}",
+      "journalToday": "Hoje",
+      "journalYesterday": "Ontem",
+      "loadError": "Não foi possível carregar",
+      "menuAria": "Opções do widget",
+      "next": "A seguir: {title}",
+      "openCalendar": "Abrir calendário",
+      "openInbox": "Abrir caixa de entrada",
+      "recentMeta": "editado {time}",
+      "recentMetaWithFolder": "{folder} · editado {time}",
+      "recentlyEdited": "Editado recentemente",
+      "remove": "Remover",
+      "removeAria": "Remover widget",
+      "resize": "Tamanho",
+      "resizeAria": "Redimensionar para {{size}}",
+      "savedFilterDefault": "Hoje",
+      "savedFilterHint": "Marque filtros com estrela na página Tarefas para os usar aqui",
+      "savedFilterLabel": "Filtro guardado",
+      "startsIn": "Começa em {count, plural, one {# min} other {# min}}",
+      "tasks": "Tarefas",
+      "unknown": "Widget desconhecido",
+      "untitled": "Sem título"
+    }
+  },
+  "media": {
+    "video": "Vídeo"
+  },
+  "onboarding": {
+    "agentChat": {
+      "body": "Mude para o separador Agente para perguntar ao assistente do Memrynote sobre o seu cofre.",
+      "title": "Converse com o agente de IA"
+    },
+    "collections": {
+      "body": "Organize notas em pastas, fixe marcadores e navegue por etiqueta — tudo aqui.",
+      "title": "Coleções, marcadores e etiquetas"
+    },
+    "dayPanel": {
+      "body": "O painel lateral mantém um calendário e a vista do seu dia junto ao que estiver a ler.",
+      "title": "O seu dia, ao lado do seu trabalho"
+    },
+    "feedback": {
+      "body": "Envie comentários diretamente à equipa a partir daqui.",
+      "title": "Diga-nos o que acha"
+    },
+    "nav": {
+      "body": "Caixa de entrada para capturar, Diário para notas diárias, Calendário para a sua linha temporal, Tarefas para afazeres e Grafo para ver como tudo se liga.",
+      "title": "Os seus espaços de trabalho"
+    },
+    "newNote": {
+      "body": "Comece aqui. Tudo o que escreve é guardado localmente, primeiro.",
+      "title": "Crie a sua primeira nota"
+    },
+    "settings": {
+      "body": "Importe as suas notas de mais de 12 aplicações — Obsidian, Notion, Apple Notes, Evernote e mais — e ajuste tudo o resto nas Definições.",
+      "title": "Definições e importações"
+    },
+    "sync": {
+      "body": "Ative a sincronização encriptada de ponta a ponta para manter todos os dispositivos em sintonia.",
+      "title": "Sincronização privada e encriptada"
+    },
+    "welcome": {
+      "body": "O seu espaço privado, offline em primeiro lugar. As notas são encriptadas de ponta a ponta — nunca saem do seu dispositivo sem encriptação.",
+      "title": "Bem-vindo ao Memrynote"
+    }
+  },
+  "updatePrompt": {
+    "autoUpdateLabel": "Transferir e instalar atualizações automaticamente",
+    "availableBody": "{version} está disponível — tem a {current}. Deseja transferi-la agora?",
+    "availableTitle": "Está disponível uma nova versão do MemryNote!",
+    "download": "Transferir",
+    "downloadedBody": "{version} foi transferida. Reinicie o MemryNote para concluir a instalação.",
+    "downloadedTitle": "Atualização pronta a instalar",
+    "later": "Mais tarde",
+    "releaseNotesLabel": "Notas de lançamento",
+    "remindLater": "Lembrar-me mais tarde",
+    "restartNow": "Reiniciar agora",
+    "skip": "Ignorar esta versão"
   }
 }

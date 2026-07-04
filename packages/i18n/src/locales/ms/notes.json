@@ -42,7 +42,9 @@
       "setIcon": "Set Ikon",
       "removeIcon": "Alih keluar Ikon",
       "deleteSelectedNotes": "Padamkan Nota {count}",
-      "deleteSelectedItems": "Padamkan item {count}"
+      "deleteSelectedItems": "Padamkan item {count}",
+      "bookmark": "Penanda buku",
+      "removeFromBookmarks": "Alih Keluar dari Penanda Buku"
     },
     "deleteDialog": {
       "noteTitle": "Padam Nota",
@@ -111,7 +113,11 @@
       "aria": "Nota cadangan",
       "loading": "Memuatkan nota...",
       "empty": "Tiada nota ditemui",
-      "create": "Buat nota baharu"
+      "create": "Buat nota baharu",
+      "embed": "Benam",
+      "embedAria": "Benam {title}",
+      "wikiLink": "Pautan wiki",
+      "wikiLinkAria": "Pautan wiki {title}"
     },
     "tags": {
       "aria": "Tag cadangan",
@@ -133,6 +139,15 @@
       "searchPlaceholder": "Cari",
       "noIcons": "Tiada ikon ditemui",
       "clearSearch": "Kosongkan carian"
+    },
+    "mention": {
+      "aria": "Cadangan tarikh dan nota",
+      "date": "Tarikh",
+      "dateHint": "Terus taip tarikh…",
+      "empty": "Tiada nota ditemui",
+      "loading": "Memuatkan nota...",
+      "remindMe": "Ingatkan saya",
+      "showMore": "Tunjuk lagi"
     }
   },
   "outline": {
@@ -174,7 +189,8 @@
     "createTag": "Cipta teg: \"{tag}\"",
     "chooseColor": "Pilih warna:",
     "preview": "Pratonton:",
-    "colorAria": "Pilih warna {color}"
+    "colorAria": "Pilih warna {color}",
+    "customColor": "Warna tersuai"
   },
   "properties": {
     "title": "Hartanah",
@@ -205,7 +221,9 @@
       "status": "Status",
       "select": "Pilih",
       "multiselect": "Berbilang pilih"
-    }
+    },
+    "showOnCalendar": "Tunjukkan pada kalendar",
+    "showingOnCalendar": "Menunjukkan pada kalendar"
   },
   "templateSelector": {
     "title": "Pilih Kanvas Anda",
@@ -295,7 +313,8 @@
   },
   "phaseF": {
     "componentsFolderViewColumnHeader": {
-      "dragToReorderColumn": "Seret untuk menyusun semula lajur"
+      "dragToReorderColumn": "Seret untuk menyusun semula lajur",
+      "editColumnName": "Edit nama lajur"
     },
     "componentsFolderViewColumnSelector": {
       "properties": "Hartanah",
@@ -311,7 +330,10 @@
       "delete": "Padam",
       "none": "tiada",
       "edit": "Sunting",
-      "delete2": "Padam"
+      "delete2": "Padam",
+      "columnBorders": "Sempadan lajur",
+      "display": "Paparan",
+      "showSummaries": "Tunjukkan ringkasan"
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Penapis",
@@ -329,17 +351,21 @@
       "of": "daripada:",
       "addCondition": "Tambah syarat",
       "addFilter": "Tambah penapis",
-      "addGroup": "Tambah kumpulan"
+      "addGroup": "Tambah kumpulan",
+      "removeGroup": "Alih keluar kumpulan"
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "terbina dalam",
       "properties": "Hartanah",
       "placeholderProperty": "Harta benda",
       "placeholderOperator": "Operator",
-      "placeholderValue": "Nilai"
+      "placeholderValue": "Nilai",
+      "removeFilter": "Alih keluar penapis"
     },
     "componentsFolderViewFolderTableView": {
-      "notesTable": "Jadual nota"
+      "notesTable": "Jadual nota",
+      "selectAll": "Pilih semua nota",
+      "selectRow": "Pilih nota"
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "Cari nota...",
@@ -371,7 +397,9 @@
     },
     "componentsFolderViewGroupedTable": {
       "groupedNotesTable": "Jadual nota berkumpulan",
-      "more": "lebih"
+      "more": "lebih",
+      "selectAll": "Pilih semua nota",
+      "selectRow": "Pilih nota"
     },
     "componentsFolderViewMoveToFolderDialog": {
       "searchFolders": "Cari folder...",
@@ -399,7 +427,8 @@
     },
     "componentsFolderViewSortableColumnHeader": {
       "dragToReorderColumn": "Seret untuk menyusun semula lajur",
-      "resizeColumn": "Ubah saiz lajur"
+      "resizeColumn": "Ubah saiz lajur",
+      "editColumnName": "Edit nama lajur"
     },
     "componentsFolderViewViewSwitcher": {
       "default": "lalai",
@@ -424,7 +453,16 @@
       "deleteView": "Padamkan Paparan",
       "areYouSureYouWantToDelete": "Adakah anda pasti mahu memadamkan \"",
       "thisActionCannotBeUndone": "Tindakan ini tidak boleh dibuat asal.",
-      "cancel3": "Batal"
+      "cancel3": "Batal",
+      "createView": "Cipta paparan",
+      "gallery": "Galeri",
+      "layout": "Susun atur",
+      "list": "Senarai",
+      "name": "Nama",
+      "newView": "Paparan baharu",
+      "save": "Simpan",
+      "table": "Jadual",
+      "viewActions": "Tindakan paparan"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "Gagal memuatkan PDF: ",
@@ -607,6 +645,15 @@
       "startYourCollection": "Mulakan Koleksi Anda",
       "templatesHelpYouCreateNotesWithConsistentStructure": "Templat membantu anda membuat nota dengan struktur yang konsisten.",
       "createTemplate": "Cipta Templat"
+    },
+    "componentsFolderViewSortSelector": {
+      "builtIn": "Terbina dalam",
+      "clearSort": "Kosongkan susunan",
+      "noSortablePropertiesFound": "Tiada sifat boleh disusun ditemui",
+      "properties": "Sifat",
+      "searchProperties": "Cari sifat...",
+      "sort": "Susun",
+      "sortDirection": "Arah susunan"
     }
   },
   "phaseI": {
@@ -654,5 +701,47 @@
       "cannotRemoveTagThisNoteWasDeleted": "Tidak boleh mengalih keluar teg - nota ini telah dipadamkan",
       "cannotChangeLocalOnlyThisNoteWasDeleted": "Tidak boleh menukar setempat sahaja — nota ini telah dipadamkan"
     }
+  },
+  "bulkActions": {
+    "addTag": "Tambah tag",
+    "clearAria": "Kosongkan pilihan",
+    "copiedLinks": "Disalin {count, plural, other {# pautan}}",
+    "copyLinks": "Salin pautan",
+    "delete": "Padam",
+    "export": "Eksport",
+    "move": "Alih",
+    "selected": "dipilih",
+    "tagNamePlaceholder": "Nama tag",
+    "toolbarAria": "Tindakan pukal"
+  },
+  "comments": {
+    "attachAria": "Lampirkan fail",
+    "badgeAria": "{count, plural, other {# komen}}",
+    "cancel": "Batal",
+    "commentPlaceholder": "Tambah komen...",
+    "createdTooltip": "Dicipta {date} pada {time}",
+    "delete": "Padam komen",
+    "edit": "Edit komen",
+    "kind": {
+      "addition": "Penambahan",
+      "comment": "Komen",
+      "deletion": "Pemadaman",
+      "substitution": "Penggantian"
+    },
+    "mentionAria": "Sebut orang, halaman atau tarikh",
+    "railAria": "Komen",
+    "replyPlaceholder": "Balas...",
+    "resolve": "Selesaikan",
+    "sendAria": "Hantar komen",
+    "toolbarComment": "Komen"
+  },
+  "dateMention": {
+    "clear": "Kosongkan",
+    "dateFormat": "Format tarikh",
+    "dateInput": "Tarikh",
+    "includeTime": "Sertakan masa",
+    "remind": "Ingatkan",
+    "time": "Masa",
+    "timeFormat": "Format masa"
   }
 }

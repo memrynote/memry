@@ -36,7 +36,8 @@
       "journal": "Pripomienka v denníku",
       "highlight": "Pripomienka zvýraznenia",
       "fallback": "Pripomienka splatná",
-      "default": "Pripomienka"
+      "default": "Pripomienka",
+      "task": "Pripomienka úlohy"
     }
   },
   "error": {

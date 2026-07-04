@@ -42,7 +42,9 @@
       "setIcon": "  \nตั้งค่าไอคอน  ",
       "removeIcon": "เอาไอคอนออก",
       "deleteSelectedNotes": "ลบ {count} บันทึก",
-      "deleteSelectedItems": "ลบ {count} รายการ"
+      "deleteSelectedItems": "ลบ {count} รายการ",
+      "bookmark": "บุ๊กมาร์ก",
+      "removeFromBookmarks": "นำออกจากบุ๊กมาร์ก"
     },
     "deleteDialog": {
       "noteTitle": "ลบบันทึก",
@@ -111,7 +113,11 @@
       "aria": "คำแนะนำบันทึก",
       "loading": "กำลังโหลดบันทึก...",
       "empty": "ไม่พบบันทึก",
-      "create": "สร้างบันทึกใหม่"
+      "create": "สร้างบันทึกใหม่",
+      "embed": "ฝัง",
+      "embedAria": "ฝัง {title}",
+      "wikiLink": "ลิงก์วิกิ",
+      "wikiLinkAria": "ลิงก์วิกิ {title}"
     },
     "tags": {
       "aria": "คำแนะนำแท็ก",
@@ -133,6 +139,15 @@
       "searchPlaceholder": "ค้นหา",
       "noIcons": "ไม่พบไอคอน",
       "clearSearch": "ล้างการค้นหา"
+    },
+    "mention": {
+      "aria": "คำแนะนำวันที่และโน้ต",
+      "date": "วันที่",
+      "dateHint": "พิมพ์วันที่ต่อไป…",
+      "empty": "ไม่พบโน้ต",
+      "loading": "กำลังโหลดโน้ต...",
+      "remindMe": "เตือนฉัน",
+      "showMore": "แสดงเพิ่มเติม"
     }
   },
   "outline": {
@@ -174,7 +189,8 @@
     "createTag": "สร้างแท็ก: \"{tag}\"",
     "chooseColor": "เลือกสี:",
     "preview": "ตัวอย่าง:",
-    "colorAria": "เลือกสี {color}"
+    "colorAria": "เลือกสี {color}",
+    "customColor": "สีกำหนดเอง"
   },
   "properties": {
     "title": "คุณสมบัติ",
@@ -205,7 +221,9 @@
       "status": "สถานะ",
       "select": "เลือก",
       "multiselect": "หลายตัวเลือก"
-    }
+    },
+    "showOnCalendar": "แสดงบนปฏิทิน",
+    "showingOnCalendar": "กำลังแสดงบนปฏิทิน"
   },
   "templateSelector": {
     "title": "เลือกผืนผ้าใบของคุณ",
@@ -295,7 +313,8 @@
   },
   "phaseF": {
     "componentsFolderViewColumnHeader": {
-      "dragToReorderColumn": "ลากเพื่อจัดลำดับคอลัมน์"
+      "dragToReorderColumn": "ลากเพื่อจัดลำดับคอลัมน์",
+      "editColumnName": "แก้ไขชื่อคอลัมน์"
     },
     "componentsFolderViewColumnSelector": {
       "properties": "คุณสมบัติ",
@@ -311,7 +330,10 @@
       "delete": "ลบ",
       "none": "ไม่มี",
       "edit": "แก้ไข",
-      "delete2": "ลบ"
+      "delete2": "ลบ",
+      "columnBorders": "เส้นขอบคอลัมน์",
+      "display": "การแสดงผล",
+      "showSummaries": "แสดงสรุป"
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "  \nกรอง  ",
@@ -329,17 +351,21 @@
       "of": "ของ:",
       "addCondition": "เพิ่มเงื่อนไข",
       "addFilter": "เพิ่มตัวกรอง",
-      "addGroup": "เพิ่มกลุ่ม"
+      "addGroup": "เพิ่มกลุ่ม",
+      "removeGroup": "นำกลุ่มออก"
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "ในตัว",
       "properties": "คุณสมบัติ",
       "placeholderProperty": "สมบัติ",
       "placeholderOperator": "ตัวดำเนินการ",
-      "placeholderValue": "ค่า"
+      "placeholderValue": "ค่า",
+      "removeFilter": "นำตัวกรองออก"
     },
     "componentsFolderViewFolderTableView": {
-      "notesTable": "ตารางบันทึก"
+      "notesTable": "ตารางบันทึก",
+      "selectAll": "เลือกโน้ตทั้งหมด",
+      "selectRow": "เลือกโน้ต"
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "ค้นหาบันทึก...",
@@ -371,7 +397,9 @@
     },
     "componentsFolderViewGroupedTable": {
       "groupedNotesTable": "ตารางบันทึกที่จัดกลุ่ม",
-      "more": "เพิ่มเติม"
+      "more": "เพิ่มเติม",
+      "selectAll": "เลือกโน้ตทั้งหมด",
+      "selectRow": "เลือกโน้ต"
     },
     "componentsFolderViewMoveToFolderDialog": {
       "searchFolders": "ค้นหาโฟลเดอร์...",
@@ -399,7 +427,8 @@
     },
     "componentsFolderViewSortableColumnHeader": {
       "dragToReorderColumn": "ลากเพื่อจัดลำดับคอลัมน์",
-      "resizeColumn": "ปรับขนาดคอลัมน์"
+      "resizeColumn": "ปรับขนาดคอลัมน์",
+      "editColumnName": "แก้ไขชื่อคอลัมน์"
     },
     "componentsFolderViewViewSwitcher": {
       "default": "ค่าเริ่มต้น",
@@ -424,7 +453,16 @@
       "deleteView": "ลบมุมมอง",
       "areYouSureYouWantToDelete": "คุณแน่ใจหรือว่าต้องการลบ",
       "thisActionCannotBeUndone": "การกระทำนี้ไม่สามารถยกเลิกได้",
-      "cancel3": "ยกเลิก"
+      "cancel3": "ยกเลิก",
+      "createView": "สร้างมุมมอง",
+      "gallery": "แกลเลอรี",
+      "layout": "เลย์เอาต์",
+      "list": "รายการ",
+      "name": "ชื่อ",
+      "newView": "มุมมองใหม่",
+      "save": "บันทึก",
+      "table": "ตาราง",
+      "viewActions": "การดำเนินการมุมมอง"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "ไม่สามารถโหลด PDF ได้: ",
@@ -607,6 +645,15 @@
       "startYourCollection": "เริ่มคอลเลกชันของคุณ",
       "templatesHelpYouCreateNotesWithConsistentStructure": "เทมเพลตช่วยให้คุณสร้างบันทึกด้วยโครงสร้างที่สอดคล้องกัน",
       "createTemplate": "สร้างเทมเพลต"
+    },
+    "componentsFolderViewSortSelector": {
+      "builtIn": "ในตัว",
+      "clearSort": "ล้างการเรียง",
+      "noSortablePropertiesFound": "ไม่พบคุณสมบัติที่เรียงได้",
+      "properties": "คุณสมบัติ",
+      "searchProperties": "ค้นหาคุณสมบัติ...",
+      "sort": "เรียง",
+      "sortDirection": "ทิศทางการเรียง"
     }
   },
   "phaseI": {
@@ -654,5 +701,47 @@
       "cannotRemoveTagThisNoteWasDeleted": "ไม่สามารถลบแท็กได้ - โน้ตนี้ถูกลบแล้ว",
       "cannotChangeLocalOnlyThisNoteWasDeleted": "ไม่สามารถเปลี่ยนสถานะเฉพาะภายในเครื่องได้ — โน้ตนี้ถูกลบแล้ว"
     }
+  },
+  "bulkActions": {
+    "addTag": "เพิ่มแท็ก",
+    "clearAria": "ล้างการเลือก",
+    "copiedLinks": "คัดลอก {count, plural, other {# ลิงก์}} แล้ว",
+    "copyLinks": "คัดลอกลิงก์",
+    "delete": "ลบ",
+    "export": "ส่งออก",
+    "move": "ย้าย",
+    "selected": "เลือกแล้ว",
+    "tagNamePlaceholder": "ชื่อแท็ก",
+    "toolbarAria": "การดำเนินการแบบกลุ่ม"
+  },
+  "comments": {
+    "attachAria": "แนบไฟล์",
+    "badgeAria": "{count, plural, other {# ความคิดเห็น}}",
+    "cancel": "ยกเลิก",
+    "commentPlaceholder": "เพิ่มความคิดเห็น...",
+    "createdTooltip": "สร้างเมื่อ {date} เวลา {time}",
+    "delete": "ลบความคิดเห็น",
+    "edit": "แก้ไขความคิดเห็น",
+    "kind": {
+      "addition": "การเพิ่ม",
+      "comment": "ความคิดเห็น",
+      "deletion": "การลบ",
+      "substitution": "การแทนที่"
+    },
+    "mentionAria": "กล่าวถึงบุคคล หน้า หรือวันที่",
+    "railAria": "ความคิดเห็น",
+    "replyPlaceholder": "ตอบกลับ...",
+    "resolve": "แก้ไขแล้ว",
+    "sendAria": "ส่งความคิดเห็น",
+    "toolbarComment": "ความคิดเห็น"
+  },
+  "dateMention": {
+    "clear": "ล้าง",
+    "dateFormat": "รูปแบบวันที่",
+    "dateInput": "วันที่",
+    "includeTime": "รวมเวลา",
+    "remind": "เตือน",
+    "time": "เวลา",
+    "timeFormat": "รูปแบบเวลา"
   }
 }

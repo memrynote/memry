@@ -33,7 +33,8 @@
     "repeat": "ulang",
     "createAnother": "Buat yang lain",
     "delete": "Padam tugasan",
-    "created": "Mencipta {date}"
+    "created": "Mencipta {date}",
+    "reminder": "Peringatan"
   },
   "filters": {
     "filter": "Penapis",
@@ -62,7 +63,16 @@
     "noNotesAvailable": "Tiada nota tersedia",
     "noLinkedNotes": "Tiada nota terpaut lagi",
     "removeLinkTo": "Alih keluar pautan ke {title}",
-    "removeLinkFallback": "nota"
+    "removeLinkFallback": "nota",
+    "addRelatedItem": "Tambah item berkaitan",
+    "noMatchingRelated": "Tiada item sepadan",
+    "noRelatedAvailable": "Tiada item tersedia",
+    "noRelatedItems": "Belum ada item berkaitan",
+    "related": "Berkaitan",
+    "relatedItemFallback": "item",
+    "removeRelatedItem": "Alih keluar item berkaitan {title}",
+    "resize": "Ubah saiz panel",
+    "searchRelated": "Cari berkaitan…"
   },
   "kanban": {
     "board": "papan Kanban"
@@ -174,7 +184,8 @@
     "componentsTasksDatePickerContent": {
       "removeDate": "Alih keluar tarikh",
       "clearTime": "Masa yang cerah",
-      "addTime": "Tambah masa"
+      "addTime": "Tambah masa",
+      "time": "Masa"
     },
     "componentsTasksDeleteProjectDialog": {
       "delete": "Padam\"",
@@ -612,6 +623,20 @@
       "failedToLoadTaskPreferences": "Gagal memuatkan pilihan tugasan",
       "failedToUpdateTaskPreferences": "Gagal mengemas kini pilihan tugas",
       "failedToLoadLinkedTasks": "Gagal memuatkan tugasan terpaut"
+    }
+  },
+  "reminders": {
+    "hasReminders": "Ada peringatan",
+    "setReminder": "Tetapkan peringatan",
+    "summary": "Peringatan: {date}",
+    "summaryWithMore": "Peringatan: {date} (+{count} lagi)",
+    "toast": {
+      "deleteFailed": "Gagal memadam peringatan",
+      "deleted": "Peringatan dipadam",
+      "set": "Peringatan ditetapkan",
+      "setFailed": "Gagal menetapkan peringatan",
+      "updateFailed": "Gagal mengemas kini peringatan",
+      "updated": "Peringatan dikemas kini"
     }
   }
 }

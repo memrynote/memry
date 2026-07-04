@@ -1,11 +1,15 @@
 {
   "app": {
-    "quit": "Renunță"
+    "quit": "Renunță",
+    "preferences": "Setări…"
   },
   "file": {
     "label": "Fișier",
     "newNote": "Notă nouă",
-    "close": "Închide fereastra"
+    "close": "Închide fereastra",
+    "closeTab": "Închide fila",
+    "exportPdf": "Exportă în PDF…",
+    "openQuickly": "Deschide rapid…"
   },
   "navigation": {
     "back": "Înapoi",
@@ -18,12 +22,51 @@
     "cut": "Tăiați",
     "copy": "Copiere",
     "paste": "Lipiți",
-    "selectAll": "Selectează tot"
+    "selectAll": "Selectează tot",
+    "find": "Găsește",
+    "speech": "Vorbire"
   },
   "view": {
     "label": "Vedeți",
     "reload": "Reîncărcați",
     "toggleDevTools": "Comutați Instrumentele pentru dezvoltatori",
-    "toggleFullscreen": "Comutați Ecranul complet"
+    "toggleFullscreen": "Comutați Ecranul complet",
+    "theme": "Temă",
+    "themeDark": "Întunecată",
+    "themeLight": "Luminoasă",
+    "themeSystem": "Sistem",
+    "themeWhite": "Hârtie",
+    "toggleDayPanel": "Comută Panoul zilei",
+    "toggleSidebar": "Comută bara laterală"
+  },
+  "format": {
+    "body": "Corp de text",
+    "bold": "Aldin",
+    "code": "Cod",
+    "heading1": "Titlu 1",
+    "heading2": "Titlu 2",
+    "heading3": "Titlu 3",
+    "highlight": "Evidențiere",
+    "italic": "Cursiv",
+    "label": "Format",
+    "strikethrough": "Tăiat"
+  },
+  "help": {
+    "about": "Despre Memrynote",
+    "documentation": "Documentație",
+    "label": "Ajutor",
+    "shortcuts": "Scurtături de tastatură"
+  },
+  "insert": {
+    "attachment": "Inserează atașament…",
+    "bulletList": "Listă cu marcatori",
+    "codeBlock": "Bloc de cod",
+    "label": "Inserare",
+    "numberedList": "Listă numerotată",
+    "table": "Tabel",
+    "taskList": "Listă de sarcini"
+  },
+  "window": {
+    "label": "Fereastră"
   }
 }

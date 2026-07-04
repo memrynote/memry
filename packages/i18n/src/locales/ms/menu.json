@@ -1,11 +1,15 @@
 {
   "app": {
-    "quit": "Berhenti"
+    "quit": "Berhenti",
+    "preferences": "Tetapan…"
   },
   "file": {
     "label": "Fail",
     "newNote": "Nota Baharu",
-    "close": "Tutup Tetingkap"
+    "close": "Tutup Tetingkap",
+    "closeTab": "Tutup Tab",
+    "exportPdf": "Eksport ke PDF…",
+    "openQuickly": "Buka Pantas…"
   },
   "navigation": {
     "back": "belakang",
@@ -18,12 +22,51 @@
     "cut": "potong",
     "copy": "salin",
     "paste": "Tampal",
-    "selectAll": "Pilih semua"
+    "selectAll": "Pilih semua",
+    "find": "Cari",
+    "speech": "Pertuturan"
   },
   "view": {
     "label": "Lihat",
     "reload": "Muat semula",
     "toggleDevTools": "Togol Alat Pembangun",
-    "toggleFullscreen": "Togol Skrin Penuh"
+    "toggleFullscreen": "Togol Skrin Penuh",
+    "theme": "Tema",
+    "themeDark": "Gelap",
+    "themeLight": "Cerah",
+    "themeSystem": "Sistem",
+    "themeWhite": "Kertas",
+    "toggleDayPanel": "Togol Panel Hari",
+    "toggleSidebar": "Togol Bar Sisi"
+  },
+  "format": {
+    "body": "Badan",
+    "bold": "Tebal",
+    "code": "Kod",
+    "heading1": "Tajuk 1",
+    "heading2": "Tajuk 2",
+    "heading3": "Tajuk 3",
+    "highlight": "Sorot",
+    "italic": "Condong",
+    "label": "Format",
+    "strikethrough": "Coret"
+  },
+  "help": {
+    "about": "Perihal Memrynote",
+    "documentation": "Dokumentasi",
+    "label": "Bantuan",
+    "shortcuts": "Pintasan Papan Kekunci"
+  },
+  "insert": {
+    "attachment": "Sisip Lampiran…",
+    "bulletList": "Senarai Berbulet",
+    "codeBlock": "Blok Kod",
+    "label": "Sisip",
+    "numberedList": "Senarai Bernombor",
+    "table": "Jadual",
+    "taskList": "Senarai Tugasan"
+  },
+  "window": {
+    "label": "Tetingkap"
   }
 }

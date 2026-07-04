@@ -25,7 +25,10 @@
         "integrations": "Інтеграції",
         "vault": "Сховище",
         "tags": "Теги",
-        "properties": "Властивості"
+        "properties": "Властивості",
+        "commandLine": "Командний рядок",
+        "features": "Функції",
+        "import": "Імпорт"
       }
     }
   },
@@ -109,6 +112,11 @@
       "createInSelectedFolder": {
         "label": "Створювати у вибраній папці",
         "description": "Нові нотатки та папки створюються всередині поточно вибраної папки. Якщо вимкнено, елементи завжди створюються в корені."
+      },
+      "defaultNoteFolder": {
+        "description": "Порожньо = корінь сховища",
+        "label": "Розташування за замовчуванням для нових нотаток",
+        "placeholder": "notes"
       }
     },
     "privacy": {
@@ -116,6 +124,17 @@
         "label": "Ділитися анонімними метриками використання",
         "description": "Це лише анонімні метрики — вміст нотаток, пошукові запити, шляхи файлів, електронні адреси або сирі ідентифікатори ніколи не відправляються.",
         "error": "Не вдалося оновити налаштування телеметрії"
+      }
+    },
+    "dateFormat": {
+      "description": "Як відображаються дати календаря",
+      "error": "Не вдалося оновити формат дати",
+      "label": "Формат дати",
+      "options": {
+        "DD.MM.YYYY": "DD.MM.YYYY",
+        "DD/MM/YYYY": "DD/MM/YYYY",
+        "MM/DD/YYYY": "MM/DD/YYYY (США)",
+        "YYYY-MM-DD": "YYYY-MM-DD (ISO)"
       }
     }
   },
@@ -250,6 +269,9 @@
         "description": "Введіть ім’я для нової копії шаблону.",
         "placeholder": "Назва шаблону"
       }
+    },
+    "preview": {
+      "notFound": "Не вдалося завантажити цей шаблон."
     }
   },
   "journal": {
@@ -261,7 +283,8 @@
     "groups": {
       "defaultTemplate": "Шаблон за замовчуванням",
       "sidebarVisibility": "Видимість бічної панелі",
-      "footer": "Нижній колонтитул"
+      "footer": "Нижній колонтитул",
+      "location": "Розташування та формат"
     },
     "template": {
       "label": "Шаблон",
@@ -290,7 +313,21 @@
       "label": "Показати нижній колонтитул статистики",
       "description": "Кількість слів, час читання, часові мітки"
     },
-    "updateError": "Не вдалося оновити налаштування"
+    "updateError": "Не вдалося оновити налаштування",
+    "dateFormat": {
+      "description": "Формат назви файлу для щоденних нотаток (напр. YYYY-MM-DD)",
+      "label": "Формат дати",
+      "placeholder": "YYYY-MM-DD"
+    },
+    "folder": {
+      "description": "Папка, де зберігаються щоденні нотатки",
+      "label": "Папка журналу",
+      "placeholder": "journal"
+    },
+    "preview": {
+      "description": "Шлях сьогоднішнього файлу журналу",
+      "label": "Перегляд"
+    }
   },
   "tasks": {
     "header": {
@@ -344,7 +381,9 @@
       "loading": "Завантаження налаштувань..."
     },
     "groups": {
-      "dayCellClick": "Клік по клітинці дня"
+      "dayCellClick": "Клік по клітинці дня",
+      "notes": "Нотатки",
+      "weekStart": "Тиждень"
     },
     "defaultBehavior": {
       "label": "За замовчуванням",
@@ -360,6 +399,20 @@
       "openJournal": "Відкрити журнал",
       "openCalendar": "Відкрити календар",
       "useGlobal": "Використовувати глобальні налаштування"
+    },
+    "showNotesOnCalendar": {
+      "description": "Показувати кожну нотатку в календарі як подію на весь день у день її створення",
+      "error": "Не вдалося оновити показ нотаток у календарі",
+      "label": "Показувати нотатки в календарі"
+    },
+    "weekStart": {
+      "description": "Перший день тижня в усіх календарях",
+      "error": "Не вдалося оновити початок тижня",
+      "label": "Тиждень починається з",
+      "options": {
+        "monday": "Понеділок",
+        "sunday": "Неділя"
+      }
     }
   },
   "account": {
@@ -372,10 +425,12 @@
       "identity": "Ідентичність",
       "sync": "Синхронізація",
       "storage": "Сховище",
-      "devices": "Пристрої"
+      "devices": "Пристрої",
+      "billing": "Оплата"
     },
     "identity": {
-      "unknown": "Невідомо"
+      "unknown": "Невідомо",
+      "encrypted": "Наскрізно зашифровано"
     },
     "sync": {
       "lastSynced": "Остання синхронізація {time}",
@@ -421,6 +476,53 @@
       "signedOut": "Вийшли успішно",
       "signOutFailed": "Не вдалося вийти",
       "deviceLinked": "Пристрій успішно підключено"
+    },
+    "billing": {
+      "actions": {
+        "manage": "Керувати оплатою",
+        "opening": "Відкриття...",
+        "refresh": "Оновити стан",
+        "upgrade": "Оновити"
+      },
+      "activationPendingPrefix": "Активація в очікуванні. Paddle може знадобитися час, щоб підтвердити оплату. Оновіть стан або напишіть на",
+      "checking": "Перевірка стану оплати",
+      "historyDays": "{days} днів",
+      "labels": {
+        "history": "Історія",
+        "maxFile": "Макс. файл",
+        "storage": "Сховище",
+        "vaults": "Сховища"
+      },
+      "planStatus": "Стан плану",
+      "plans": {
+        "believer": "План Believer",
+        "free": "Безкоштовний план",
+        "plus": "План Plus",
+        "pro": "План Pro"
+      },
+      "statuses": {
+        "active": "Активний",
+        "canceled": "Скасовано",
+        "inactive": "Неактивний",
+        "past_due": "Прострочено",
+        "paused": "Призупинено"
+      },
+      "toasts": {
+        "activationPending": "Активація в очікуванні",
+        "billingActive": "Оплата активна",
+        "checkoutFailed": "Не вдалося почати оплату",
+        "checkoutOpened": "Оплату відкрито у вашому браузері",
+        "loadFailed": "Не вдалося завантажити стан оплати",
+        "portalFailed": "Не вдалося відкрити портал оплати",
+        "refreshFailed": "Не вдалося оновити стан оплати"
+      },
+      "unlimited": "Необмежено"
+    },
+    "community": {
+      "and": "та",
+      "feedback": "поділіться відгуком",
+      "prompt": "Любите memrynote?",
+      "star": "Поставте зірку на GitHub"
     }
   },
   "setup": {
@@ -437,7 +539,9 @@
       "errors": {
         "sendCode": "Не вдалося надіслати код",
         "googleStart": "Не вдалося розпочати вхід через Google"
-      }
+      },
+      "paidPlan": "Синхронізація — платний план.",
+      "seePlans": "Переглянути плани"
     },
     "email": {
       "label": "Адреса електронної пошти",
@@ -488,7 +592,13 @@
         "registering": "Реєстрація пристрою..."
       },
       "failed": "Відновлення не вдалося",
-      "confirmationFailed": "Підтвердження не вдалося"
+      "confirmationFailed": "Підтвердження не вдалося",
+      "unavailable": {
+        "description": "Ваша фраза відновлення показується лише один раз під час налаштування, і її не можна отримати пізніше. Почніть заново, щоб згенерувати нову.",
+        "loading": "Завантаження вашої фрази відновлення…",
+        "startOver": "Почати заново",
+        "title": "Не вдалося завантажити вашу фразу відновлення"
+      }
     },
     "linking": {
       "choiceTitle": "Прив'язати цей пристрій",
@@ -513,7 +623,15 @@
       "waitingTitle": "Очікування підтвердження",
       "waitingDescription": "Відкрийте memrynote на вашому іншому пристрої та підтвердіть запит на зв'язування.",
       "verificationCode": "Код підтвердження",
-      "confirmCode": "Підтвердіть, що це збігається з кодом на вашому іншому пристрої"
+      "confirmCode": "Підтвердіть, що це збігається з кодом на вашому іншому пристрої",
+      "vaultPickerChooseFolder": "Виберіть папку",
+      "vaultPickerConfirm": "Завантажити вибране",
+      "vaultPickerDescription": "Цей обліковий запис має кілька сховищ. Виберіть папку та сховища для додавання на цей пристрій.",
+      "vaultPickerDormantHint": "Додано, відкриється, коли ви на нього перемкнетеся",
+      "vaultPickerFolderLabel": "Зберігати сховища в папці",
+      "vaultPickerPrimaryHint": "Відкривається зараз",
+      "vaultPickerTitle": "Виберіть, що завантажити",
+      "vaultRow": "Сховище — {{count}} елементів · {{date}}"
     }
   },
   "devices": {
@@ -630,7 +748,15 @@
       "downloadedToast": "Whisper Small завантажено",
       "downloadError": "Не вдалося завантажити Whisper Small",
       "keySavedToast": "Ключ OpenAI збережено",
-      "keySaveError": "Не вдалося зберегти ключ OpenAI"
+      "keySaveError": "Не вдалося зберегти ключ OpenAI",
+      "memoNameMode": "Назви нотаток",
+      "memoNameModeDescription": "Як голосові нотатки називаються після транскрибування",
+      "naming": {
+        "none": "Не перейменовувати",
+        "timestamp": "Позначка часу",
+        "transcript": "Назва з транскрипту"
+      },
+      "namingError": "Не вдалося оновити називання голосових нотаток"
     },
     "embedding": {
       "loaded": "Завантажено",
@@ -715,7 +841,12 @@
       "connectFailed": "Не вдалося підключити Google Calendar",
       "refreshFailed": "Не вдалося оновити Google Календар",
       "disconnectFailed": "Не вдалося відключити Google Календар",
-      "retryFailed": "Не вдалося повторити синхронізацію календаря"
+      "retryFailed": "Не вдалося повторити синхронізацію календаря",
+      "pushToGoogle": {
+        "description": "Вимкніть для односторонньої синхронізації — ви все ще бачитимете події Google у memrynote, але події memrynote не з’являтимуться в Google.",
+        "error": "Не вдалося оновити напрямок синхронізації",
+        "label": "Показувати події memrynote в Google Calendar"
+      }
     },
     "sourcePicker": {
       "empty": "На цьому пристрої поки що немає імпортованих календарів Google.",
@@ -796,7 +927,8 @@
       "changeColor": "Змінити колір",
       "mergeInto": "Об’єднати в...",
       "merge": "Об’єднати",
-      "delete": "Видалити"
+      "delete": "Видалити",
+      "changeIcon": "Змінити значок"
     },
     "dialogs": {
       "deleteTitle": "Видалити тег",
@@ -814,7 +946,8 @@
       "mergeFailed": "Не вдалося об'єднати теги",
       "merged": "Об'єднано \"{source}\" з \"{target}\" ({count, plural, one {# елемент} other {# елементи}})",
       "colorUpdated": "Оновлено колір для \"{name}\"",
-      "colorFailed": "Не вдалося оновити колір"
+      "colorFailed": "Не вдалося оновити колір",
+      "iconFailed": "Не вдалося оновити значок"
     }
   },
   "properties": {
@@ -1144,7 +1277,10 @@
     "status": {
       "disconnected": "Disconnected",
       "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled"
+      "fullTools": "Full tools enabled",
+      "checking": "Перевірка…",
+      "connected": "Підключено",
+      "label": "З’єднання"
     },
     "permissions": {
       "group": "Agent permissions",
@@ -1160,6 +1296,133 @@
         "alwaysAllow": "Always allow",
         "askBeforeChanges": "Ask before changes"
       }
+    }
+  },
+  "commandLine": {
+    "actions": {
+      "refresh": "Оновити"
+    },
+    "command": {
+      "descriptionInstalled": "Встановлено в {path}",
+      "descriptionNotInstalled": "Встановіть команду memrynote, щоб використовувати своє сховище з будь-якого термінала.",
+      "label": "Команда memrynote",
+      "toggleLabel": "Встановити команду memrynote"
+    },
+    "defaultVault": {
+      "description": "Виберіть сховище, що використовується, коли ви запускаєте memrynote без --vault.",
+      "descriptionSelected": "Команди використовують {path}, коли --vault пропущено.",
+      "label": "Сховище за замовчуванням",
+      "none": "Сховище не вибрано",
+      "placeholder": "Виберіть сховище"
+    },
+    "groups": {
+      "terminal": "Термінал"
+    },
+    "header": {
+      "subtitle": "Налаштуйте команду memrynote для вашого термінала",
+      "title": "Командний рядок"
+    },
+    "status": {
+      "defaultVaultUpdatedToast": "Сховище CLI за замовчуванням оновлено",
+      "installedToast": "Команду memrynote встановлено",
+      "loadFailed": "Не вдалося завантажити стан команди",
+      "loading": "Перевірка стану команди...",
+      "uninstalledToast": "Команду memrynote прибрано"
+    }
+  },
+  "features": {
+    "header": {
+      "subtitle": "Вмикайте або вимикайте частини застосунку. Вимкнено = приглушено на бічній панелі та вимкнено всюди.",
+      "title": "Функції"
+    },
+    "items": {
+      "calendar": {
+        "description": "Події та розклад",
+        "label": "Календар"
+      },
+      "graph": {
+        "description": "Зв’язки нотаток",
+        "label": "Граф"
+      },
+      "home": {
+        "description": "Панель приземлення",
+        "label": "Головна"
+      },
+      "inbox": {
+        "description": "Швидке захоплення та сортування",
+        "label": "Вхідні"
+      },
+      "journal": {
+        "description": "Щоденні нотатки",
+        "label": "Журнал"
+      },
+      "tasks": {
+        "description": "Справи та терміни",
+        "label": "Завдання"
+      }
+    }
+  },
+  "import": {
+    "action": "Імпортувати",
+    "dialog": {
+      "cancel": "Скасувати",
+      "choose": "Вибрати файл…",
+      "chooseFolder": "Виберіть папку Apple Notes…",
+      "chooseHint": "Виберіть свій {label}",
+      "close": "Закрити",
+      "done": "Готово",
+      "error": "Імпорт не вдався",
+      "folderHint": "Натисніть нижче та виберіть папку «group.com.apple.notes», коли відкриється вибір (вона починається там). Це дозволить Memry читати ваші нотатки та вкладення — повний доступ до диска не потрібен.",
+      "progress": "{completed} з {total}",
+      "running": "Імпортування…",
+      "selected": "{count, plural, one {# файл вибрано} few {# файли вибрано} many {# файлів вибрано} other {# файлу вибрано}}",
+      "start": "Почати імпорт",
+      "summary": {
+        "attachments": "{count, plural, one {# вкладення скопійовано} few {# вкладення скопійовано} many {# вкладень скопійовано} other {# вкладення скопійовано}}",
+        "failed": "{count} не вдалося",
+        "imported": "{count, plural, one {# елемент імпортовано} few {# елементи імпортовано} many {# елементів імпортовано} other {# елемента імпортовано}}",
+        "skipped": "{count} пропущено",
+        "title": "Імпорт завершено"
+      },
+      "title": "Імпорт з {name}"
+    },
+    "header": {
+      "subtitle": "Перенесіть свої нотатки та завдання з інших застосунків",
+      "title": "Імпорт"
+    },
+    "intro": "Одноразові імпорти створюють нові нотатки у вашому сховищі. Ваші оригінальні файли експорту залишаються незмінними.",
+    "preview": {
+      "confirm": "Імпортувати",
+      "warnings": "Попередження"
+    },
+    "select": "Виберіть застосунок для імпорту…",
+    "sources": {
+      "apple-journal": "Імпортувати HTML-експорт Apple Journal як датовані нотатки",
+      "apple-notes": "Імпортувати з бази даних Apple Notes (NoteStore.sqlite, macOS)",
+      "bear": "Імпортувати архів Bear .bear2bk (нотатки, теги, вкладення)",
+      "csv": "Імпортувати файл .csv — одна нотатка на рядок, стовпці стають властивостями",
+      "evernote": "Імпортувати один або кілька файлів експорту Evernote .enex",
+      "google-keep": "Імпортувати експорт Google Takeout Keep (.json або .zip)",
+      "html": "Імпортувати файли .html із пов’язаними зображеннями та посиланнями між сторінками",
+      "markdown": "Імпортувати файли .md або папку (frontmatter, теги, вкладення)",
+      "notion": "Імпортувати HTML-експорт (.zip)",
+      "onenote": "Імпортувати блокноти OneNote (потрібен обліковий запис Microsoft)",
+      "raindrop": "Імпортувати експорт закладок Raindrop.io (.csv) — закладки потрапляють у вхідні",
+      "roam": "Імпортувати граф Roam Research (.json) з вкладеними структурами",
+      "ticktick": "Імпортувати резервну копію TickTick (.csv) як проєкти, завдання та нагадування",
+      "todoist": "Імпортувати CSV-експорт проєкту (.csv)"
+    },
+    "stats": {
+      "bookmarks": "{count, plural, one {# закладка} few {# закладки} many {# закладок} other {# закладки}}",
+      "comments": "{count, plural, one {# коментар} few {# коментарі} many {# коментарів} other {# коментаря}}",
+      "notes": "{count, plural, one {# нотатка} few {# нотатки} many {# нотаток} other {# нотатки}}",
+      "projects": "{count, plural, one {# проєкт} few {# проєкти} many {# проєктів} other {# проєкту}}",
+      "reminders": "{count, plural, one {# нагадування} few {# нагадування} many {# нагадувань} other {# нагадування}}",
+      "skipped": "{count} пропущено",
+      "subtasks": "{count, plural, one {# підзавдання} few {# підзавдання} many {# підзавдань} other {# підзавдання}}",
+      "tasks": "{count, plural, one {# завдання} few {# завдання} many {# завдань} other {# завдання}}",
+      "withDueDate": "{count} з датою",
+      "withTags": "{count} з тегами"
     }
   }
 }

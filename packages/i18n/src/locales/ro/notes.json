@@ -42,7 +42,9 @@
       "setIcon": "Set icon",
       "removeIcon": "Eliminați pictograma",
       "deleteSelectedNotes": "Ștergeți notele {count}",
-      "deleteSelectedItems": "Ștergeți elementele {count}"
+      "deleteSelectedItems": "Ștergeți elementele {count}",
+      "bookmark": "Marchează",
+      "removeFromBookmarks": "Elimină din marcaje"
     },
     "deleteDialog": {
       "noteTitle": "Ștergeți nota",
@@ -111,7 +113,11 @@
       "aria": "Notă sugestii",
       "loading": "Se încarcă notele...",
       "empty": "Nu s-au găsit note",
-      "create": "Creați o notă nouă"
+      "create": "Creați o notă nouă",
+      "embed": "Încorporează",
+      "embedAria": "Încorporează {title}",
+      "wikiLink": "Link wiki",
+      "wikiLinkAria": "Link wiki {title}"
     },
     "tags": {
       "aria": "Sugestii de etichete",
@@ -133,6 +139,15 @@
       "searchPlaceholder": "Caută",
       "noIcons": "Nu s-au găsit pictograme",
       "clearSearch": "Ștergeți căutarea"
+    },
+    "mention": {
+      "aria": "Sugestii de date și notițe",
+      "date": "Data",
+      "dateHint": "Continuă să scrii o dată…",
+      "empty": "Nicio notiță găsită",
+      "loading": "Se încarcă notițele...",
+      "remindMe": "Amintește-mi",
+      "showMore": "Arată mai multe"
     }
   },
   "outline": {
@@ -174,7 +189,8 @@
     "createTag": "Creați etichetă: „{tag}”",
     "chooseColor": "Alege culoarea:",
     "preview": "Previzualizare:",
-    "colorAria": "Selectați culoarea {color}"
+    "colorAria": "Selectați culoarea {color}",
+    "customColor": "Culoare personalizată"
   },
   "properties": {
     "title": "Proprietăți",
@@ -205,7 +221,9 @@
       "status": "Stare",
       "select": "Selectați",
       "multiselect": "Multiselect"
-    }
+    },
+    "showOnCalendar": "Arată în calendar",
+    "showingOnCalendar": "Se afișează în calendar"
   },
   "templateSelector": {
     "title": "Alegeți-vă pânza",
@@ -295,7 +313,8 @@
   },
   "phaseF": {
     "componentsFolderViewColumnHeader": {
-      "dragToReorderColumn": "Trageți pentru a reordona coloana"
+      "dragToReorderColumn": "Trageți pentru a reordona coloana",
+      "editColumnName": "Editează numele coloanei"
     },
     "componentsFolderViewColumnSelector": {
       "properties": "Proprietăți",
@@ -311,7 +330,10 @@
       "delete": "Ștergeți",
       "none": "Niciuna",
       "edit": "Editați",
-      "delete2": "Ștergeți"
+      "delete2": "Ștergeți",
+      "columnBorders": "Margini de coloană",
+      "display": "Afișare",
+      "showSummaries": "Arată rezumatele"
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Filtru",
@@ -329,17 +351,21 @@
       "of": "din:",
       "addCondition": "Adăugați o condiție",
       "addFilter": "Adăugați filtru",
-      "addGroup": "Adăugați grup"
+      "addGroup": "Adăugați grup",
+      "removeGroup": "Elimină grupul"
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "Încorporat",
       "properties": "Proprietăți",
       "placeholderProperty": "Proprietate",
       "placeholderOperator": "Operator",
-      "placeholderValue": "Valoare"
+      "placeholderValue": "Valoare",
+      "removeFilter": "Elimină filtrul"
     },
     "componentsFolderViewFolderTableView": {
-      "notesTable": "Tabel de note"
+      "notesTable": "Tabel de note",
+      "selectAll": "Selectează toate notițele",
+      "selectRow": "Selectează notița"
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "Căutați note...",
@@ -371,7 +397,9 @@
     },
     "componentsFolderViewGroupedTable": {
       "groupedNotesTable": "Tabel de note grupate",
-      "more": "mai mult"
+      "more": "mai mult",
+      "selectAll": "Selectează toate notițele",
+      "selectRow": "Selectează notița"
     },
     "componentsFolderViewMoveToFolderDialog": {
       "searchFolders": "Căutați dosare...",
@@ -399,7 +427,8 @@
     },
     "componentsFolderViewSortableColumnHeader": {
       "dragToReorderColumn": "Trageți pentru a reordona coloana",
-      "resizeColumn": "Redimensionați coloana"
+      "resizeColumn": "Redimensionați coloana",
+      "editColumnName": "Editează numele coloanei"
     },
     "componentsFolderViewViewSwitcher": {
       "default": "implicit",
@@ -424,7 +453,16 @@
       "deleteView": "Șterge vizualizarea",
       "areYouSureYouWantToDelete": "Sigur vrei să ștergi\"",
       "thisActionCannotBeUndone": "Această acțiune nu poate fi anulată.",
-      "cancel3": "Anulează"
+      "cancel3": "Anulează",
+      "createView": "Creează vizualizare",
+      "gallery": "Galerie",
+      "layout": "Aspect",
+      "list": "Listă",
+      "name": "Nume",
+      "newView": "Vizualizare nouă",
+      "save": "Salvează",
+      "table": "Tabel",
+      "viewActions": "Acțiuni de vizualizare"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "Nu s-a încărcat PDF-ul: ",
@@ -607,6 +645,15 @@
       "startYourCollection": "Începeți-vă colecția",
       "templatesHelpYouCreateNotesWithConsistentStructure": "Șabloanele vă ajută să creați note cu o structură consistentă.",
       "createTemplate": "Creați șablon"
+    },
+    "componentsFolderViewSortSelector": {
+      "builtIn": "Încorporat",
+      "clearSort": "Șterge sortarea",
+      "noSortablePropertiesFound": "Nicio proprietate sortabilă găsită",
+      "properties": "Proprietăți",
+      "searchProperties": "Caută proprietăți...",
+      "sort": "Sortează",
+      "sortDirection": "Direcția de sortare"
     }
   },
   "phaseI": {
@@ -654,5 +701,47 @@
       "cannotRemoveTagThisNoteWasDeleted": "Nu se poate elimina eticheta - această notă a fost ștearsă",
       "cannotChangeLocalOnlyThisNoteWasDeleted": "Nu se poate modifica doar local — această notă a fost ștearsă"
     }
+  },
+  "bulkActions": {
+    "addTag": "Adaugă etichetă",
+    "clearAria": "Șterge selecția",
+    "copiedLinks": "{count, plural, one {# link copiat} few {# linkuri copiate} other {# de linkuri copiate}}",
+    "copyLinks": "Copiază linkurile",
+    "delete": "Șterge",
+    "export": "Exportă",
+    "move": "Mută",
+    "selected": "selectate",
+    "tagNamePlaceholder": "Numele etichetei",
+    "toolbarAria": "Acțiuni în bloc"
+  },
+  "comments": {
+    "attachAria": "Atașează fișier",
+    "badgeAria": "{count, plural, one {# comentariu} few {# comentarii} other {# de comentarii}}",
+    "cancel": "Anulează",
+    "commentPlaceholder": "Adaugă un comentariu...",
+    "createdTooltip": "Creat {date} la {time}",
+    "delete": "Șterge comentariul",
+    "edit": "Editează comentariul",
+    "kind": {
+      "addition": "Adăugare",
+      "comment": "Comentariu",
+      "deletion": "Ștergere",
+      "substitution": "Înlocuire"
+    },
+    "mentionAria": "Menționează o persoană, pagină sau dată",
+    "railAria": "Comentarii",
+    "replyPlaceholder": "Răspunde...",
+    "resolve": "Rezolvă",
+    "sendAria": "Trimite comentariul",
+    "toolbarComment": "Comentează"
+  },
+  "dateMention": {
+    "clear": "Șterge",
+    "dateFormat": "Format dată",
+    "dateInput": "Data",
+    "includeTime": "Include ora",
+    "remind": "Amintește",
+    "time": "Ora",
+    "timeFormat": "Format oră"
   }
 }

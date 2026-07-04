@@ -73,6 +73,7 @@
     "settingsNotInitialized": "A beállítások szinkronizálása nincs inicializálva",
     "securityQuarantinePermanent": "Egy szinkronizálási elemet nem sikerült ellenőrizni, ezért biztonsági okokból karanténba helyeztük.",
     "securityQuarantineRetry": "Egy szinkronizálási elem aláírásának ellenőrzése sikertelen volt, ezért újra megpróbáljuk.",
-    "certificatePinPaused": "Nem sikerült ellenőrizni a biztonságos kapcsolatot a szinkronizáló szerverrel. A szinkronizálást az Ön védelme érdekében szüneteltették."
+    "certificatePinPaused": "Nem sikerült ellenőrizni a biztonságos kapcsolatot a szinkronizáló szerverrel. A szinkronizálást az Ön védelme érdekében szüneteltették.",
+    "paymentRequired": "A hosztolt titkosított szinkronizáláshoz fizetős Szinkron csomag szükséges."
   }
 }

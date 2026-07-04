@@ -73,6 +73,7 @@
     "settingsNotInitialized": "Synkronisering af indstillinger ikke initialiseret",
     "securityQuarantinePermanent": "Et synkroniseringselement kunne ikke bekræftes og er blevet sat i karantæne af sikkerhedsmæssige årsager.",
     "securityQuarantineRetry": "Et synkroniseringselement mislykkedes signaturbekræftelsen og vil blive forsøgt igen.",
-    "certificatePinPaused": "Sikker forbindelse til synkroniseringsserver kunne ikke bekræftes. Synkronisering er blevet sat på pause for din beskyttelse."
+    "certificatePinPaused": "Sikker forbindelse til synkroniseringsserver kunne ikke bekræftes. Synkronisering er blevet sat på pause for din beskyttelse.",
+    "paymentRequired": "Et betalt Sync-abonnement kræves for at bruge hostet krypteret synkronisering."
   }
 }

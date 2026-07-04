@@ -45,7 +45,10 @@
   "count": {
     "note": "{count, plural, one {# โน้ต} other {# โน้ต}}",
     "task": "{count, plural, one {# งาน} other {# งาน}}",
-    "itemDelete": "{count, plural, one {ลบ # รายการ} other {ลบ # รายการ}}"
+    "itemDelete": "{count, plural, one {ลบ # รายการ} other {ลบ # รายการ}}",
+    "event": "{count, plural, other {# กิจกรรม}}",
+    "journal": "{count, plural, other {# บันทึกประจำวัน}}",
+    "reminder": "{count, plural, other {# การเตือน}}"
   },
   "toast": {
     "actionFailed": "การทำงานล้มเหลว",
@@ -83,7 +86,23 @@
       "newNoteN": "บันทึกใหม่ (⌘N)",
       "new": "ใหม่",
       "syncDisabled": "ปิดการซิงค์",
-      "syncDisabled2": "ปิดการซิงค์"
+      "syncDisabled2": "ปิดการซิงค์",
+      "feedbackButton": "ส่งความคิดเห็น",
+      "feedbackDescription": "บอกเราว่าอะไรใช้ได้ดี อะไรเสีย หรือคุณอยากให้ Memry ทำอะไร เราอ่านทุกข้อความ",
+      "feedbackEmailHint": "เพิ่มอีเมลของคุณหากต้องการให้เราตอบกลับ",
+      "feedbackError": "ส่งความคิดเห็นไม่สำเร็จ โปรดลองอีกครั้ง",
+      "feedbackPlaceholder": "ความคิดเห็นของคุณ…",
+      "feedbackSend": "ส่ง",
+      "feedbackSending": "กำลังส่ง…",
+      "feedbackSuccess": "ขอบคุณสำหรับความคิดเห็น!",
+      "feedbackTitle": "ส่งความคิดเห็น",
+      "newItemMenu": "สร้างใหม่…",
+      "updateAvailable": "อัปเดต",
+      "updateDownloading": "กำลังดาวน์โหลด…",
+      "updateDownloadingPercent": "กำลังดาวน์โหลด {percent}%",
+      "updateInstallingSubtitle": "Memrynote จะรีสตาร์ทโดยอัตโนมัติ",
+      "updateInstallingTitle": "กำลังติดตั้งอัปเดต",
+      "updateRestart": "รีสตาร์ท"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "ปรับขนาดแผงวัน",
@@ -462,7 +481,8 @@
       "day": "วัน",
       "agent": "Agent",
       "pendingApproval": "{count, plural, one {# อยู่ระหว่างการอนุมัติ} other {# รอการอนุมัติ}}",
-      "inProgress": "Agent กำลังดำเนินการเทิร์น"
+      "inProgress": "Agent กำลังดำเนินการเทิร์น",
+      "close": "ปิดเอเจนต์"
     },
     "errors": {
       "loadConversations": "ไม่สามารถโหลดการสนทนาของตัวแทนได้",
@@ -481,5 +501,142 @@
     "sources": {
       "used": "ใช้แหล่งที่มา {count} รายการ"
     }
+  },
+  "home": {
+    "addWidget": "เพิ่มวิดเจ็ต",
+    "board": {
+      "defaultName": "หน้าแรก",
+      "deleteAria": "ลบเลย์เอาต์",
+      "label": "เลย์เอาต์หน้าแรก",
+      "newAria": "บอร์ดใหม่",
+      "newName": "บอร์ดใหม่"
+    },
+    "disabled": {
+      "createNote": "สร้างโน้ต",
+      "hint": "ไม่มีอะไรเปิดอยู่ เริ่มเขียนโน้ต"
+    },
+    "done": "เสร็จสิ้น",
+    "edit": "แก้ไข",
+    "empty": {
+      "body": "วิดเจ็ตรวมโน้ต งาน และบุ๊กมาร์กของคุณไว้ในที่เดียวอย่างสงบ",
+      "cta": "เพิ่มวิดเจ็ตแรกของคุณ",
+      "title": "บอร์ดของคุณว่างเปล่า"
+    },
+    "greeting": {
+      "afternoon": "สวัสดีตอนบ่าย",
+      "evening": "สวัสดีตอนเย็น",
+      "morning": "อรุณสวัสดิ์"
+    },
+    "header": {
+      "events": "{count, plural, other {# กิจกรรม}}",
+      "tasksDue": "{count, plural, other {# งานครบกำหนดวันนี้}}"
+    },
+    "noBookmarksYet": "ยังไม่มีบุ๊กมาร์ก",
+    "noEventsYet": "ไม่มีกิจกรรมวันนี้",
+    "noJournalEntriesYet": "ยังไม่มีรายการบันทึกประจำวัน",
+    "noNotesYet": "ยังไม่มีโน้ต",
+    "noTasksYet": "ยังไม่มีงาน",
+    "widget": {
+      "bookmarks": "บุ๊กมาร์ก",
+      "calendar": "ปฏิทิน",
+      "calendarToday": "วันนี้",
+      "configAria": "ตั้งค่าวิดเจ็ต",
+      "configure": "ตั้งค่า",
+      "dragAria": "ลากวิดเจ็ต",
+      "duration": "{count} นาที",
+      "filter": {
+        "today": "ครบกำหนดวันนี้",
+        "tomorrow": "พรุ่งนี้",
+        "week": "สัปดาห์นี้"
+      },
+      "folder": "โฟลเดอร์",
+      "folderEmpty": "ยังไม่มีโฟลเดอร์",
+      "folderNoSelection": "ยังไม่ได้เลือกโฟลเดอร์",
+      "folderPickPrompt": "เลือกโฟลเดอร์",
+      "folderViewSelect": "มุมมอง",
+      "folderView_gallery": "แกลเลอรี",
+      "folderView_list": "รายการ",
+      "inbox": "กล่องขาเข้า",
+      "inboxAllTypes": "ทุกประเภท",
+      "inboxOlder": "{count, plural, other {เก่ากว่า #}}",
+      "inboxOldest": "เก่าสุด {count, plural, other {# วัน}}",
+      "journal": "บันทึกประจำวัน",
+      "journalStreak": "{count, plural, other {ต่อเนื่อง # วัน}}",
+      "journalToday": "วันนี้",
+      "journalYesterday": "เมื่อวาน",
+      "loadError": "โหลดไม่สำเร็จ",
+      "menuAria": "ตัวเลือกวิดเจ็ต",
+      "next": "ถัดไป: {title}",
+      "openCalendar": "เปิดปฏิทิน",
+      "openInbox": "เปิดกล่องขาเข้า",
+      "recentMeta": "แก้ไขเมื่อ {time}",
+      "recentMetaWithFolder": "{folder} · แก้ไขเมื่อ {time}",
+      "recentlyEdited": "แก้ไขล่าสุด",
+      "remove": "นำออก",
+      "removeAria": "นำวิดเจ็ตออก",
+      "resize": "ขนาด",
+      "resizeAria": "ปรับขนาดเป็น {{size}}",
+      "savedFilterDefault": "วันนี้",
+      "savedFilterHint": "ติดดาวตัวกรองในหน้างานเพื่อใช้ที่นี่",
+      "savedFilterLabel": "ตัวกรองที่บันทึกไว้",
+      "startsIn": "เริ่มในอีก {count, plural, other {# นาที}}",
+      "tasks": "งาน",
+      "unknown": "วิดเจ็ตที่ไม่รู้จัก",
+      "untitled": "ไม่มีชื่อ"
+    }
+  },
+  "media": {
+    "video": "วิดีโอ"
+  },
+  "onboarding": {
+    "agentChat": {
+      "body": "สลับไปที่แท็บเอเจนต์เพื่อถามผู้ช่วยของ Memrynote เกี่ยวกับ vault ของคุณ",
+      "title": "สนทนากับเอเจนต์ AI"
+    },
+    "collections": {
+      "body": "จัดระเบียบโน้ตเป็นโฟลเดอร์ ปักหมุดบุ๊กมาร์ก และเรียกดูตามแท็ก — ทั้งหมดที่นี่",
+      "title": "คอลเลกชัน บุ๊กมาร์ก และแท็ก"
+    },
+    "dayPanel": {
+      "body": "แผงด้านข้างเก็บปฏิทินและมุมมองวันของคุณไว้ข้างสิ่งที่คุณกำลังอ่าน",
+      "title": "วันของคุณ ข้างงานของคุณ"
+    },
+    "feedback": {
+      "body": "ส่งความคิดเห็นตรงถึงทีมได้จากที่นี่",
+      "title": "บอกเราว่าคุณคิดอย่างไร"
+    },
+    "nav": {
+      "body": "กล่องขาเข้าเพื่อบันทึก บันทึกประจำวันสำหรับโน้ตรายวัน ปฏิทินสำหรับไทม์ไลน์ งานสำหรับสิ่งที่ต้องทำ และกราฟเพื่อดูว่าทุกอย่างเชื่อมโยงกันอย่างไร",
+      "title": "พื้นที่ทำงานของคุณ"
+    },
+    "newNote": {
+      "body": "เริ่มที่นี่ ทุกสิ่งที่คุณเขียนถูกจัดเก็บในเครื่องก่อน",
+      "title": "สร้างโน้ตแรกของคุณ"
+    },
+    "settings": {
+      "body": "นำเข้าโน้ตของคุณจากแอปกว่า 12 ตัว — Obsidian, Notion, Apple Notes, Evernote และอื่นๆ — และปรับแต่งทุกอย่างในการตั้งค่า",
+      "title": "การตั้งค่าและการนำเข้า"
+    },
+    "sync": {
+      "body": "เปิดการซิงค์แบบเข้ารหัสครบวงจรเพื่อให้ทุกอุปกรณ์เป็นปัจจุบัน",
+      "title": "การซิงค์ที่เป็นส่วนตัวและเข้ารหัส"
+    },
+    "welcome": {
+      "body": "บ้านส่วนตัวแบบออฟไลน์ก่อนของคุณ โน้ตถูกเข้ารหัสแบบครบวงจร — จะไม่ออกจากอุปกรณ์ของคุณโดยไม่เข้ารหัส",
+      "title": "ยินดีต้อนรับสู่ Memrynote"
+    }
+  },
+  "updatePrompt": {
+    "autoUpdateLabel": "ดาวน์โหลดและติดตั้งอัปเดตอัตโนมัติ",
+    "availableBody": "{version} พร้อมใช้งาน — คุณกำลังใช้ {current} ต้องการดาวน์โหลดตอนนี้หรือไม่?",
+    "availableTitle": "MemryNote เวอร์ชันใหม่พร้อมใช้งานแล้ว!",
+    "download": "ดาวน์โหลด",
+    "downloadedBody": "ดาวน์โหลด {version} เรียบร้อยแล้ว รีสตาร์ท MemryNote เพื่อติดตั้งให้เสร็จสิ้น",
+    "downloadedTitle": "อัปเดตพร้อมติดตั้งแล้ว",
+    "later": "ภายหลัง",
+    "releaseNotesLabel": "บันทึกการอัปเดต",
+    "remindLater": "เตือนฉันภายหลัง",
+    "restartNow": "รีสตาร์ทตอนนี้",
+    "skip": "ข้ามเวอร์ชันนี้"
   }
 }

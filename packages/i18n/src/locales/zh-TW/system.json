@@ -36,7 +36,8 @@
       "journal": "日誌提醒",
       "highlight": "重點提醒",
       "fallback": "提醒到期",
-      "default": "提醒"
+      "default": "提醒",
+      "task": "任務提醒"
     }
   },
   "error": {

@@ -42,7 +42,9 @@
       "setIcon": "Σετ εικονίδιο",
       "removeIcon": "Κατάργηση εικονιδίου",
       "deleteSelectedNotes": "Διαγραφή σημειώσεων {count}",
-      "deleteSelectedItems": "Διαγραφή στοιχείων {count}"
+      "deleteSelectedItems": "Διαγραφή στοιχείων {count}",
+      "bookmark": "Σελιδοδείκτης",
+      "removeFromBookmarks": "Αφαίρεση από σελιδοδείκτες"
     },
     "deleteDialog": {
       "noteTitle": "Διαγραφή Σημείωσης",
@@ -111,7 +113,11 @@
       "aria": "Σημειώστε τις προτάσεις",
       "loading": "Φόρτωση σημειώσεων...",
       "empty": "Δεν βρέθηκαν σημειώσεις",
-      "create": "Δημιουργία νέας σημείωσης"
+      "create": "Δημιουργία νέας σημείωσης",
+      "embed": "Ενσωμάτωση",
+      "embedAria": "Ενσωμάτωση {title}",
+      "wikiLink": "Σύνδεσμος wiki",
+      "wikiLinkAria": "Σύνδεσμος wiki {title}"
     },
     "tags": {
       "aria": "Προτάσεις ετικέτας",
@@ -133,6 +139,15 @@
       "searchPlaceholder": "Αναζήτηση",
       "noIcons": "Δεν βρέθηκαν εικονίδια",
       "clearSearch": "Εκκαθάριση αναζήτησης"
+    },
+    "mention": {
+      "aria": "Προτάσεις ημερομηνίας και σημειώσεων",
+      "date": "Ημερομηνία",
+      "dateHint": "Συνεχίστε να πληκτρολογείτε μια ημερομηνία…",
+      "empty": "Δεν βρέθηκαν σημειώσεις",
+      "loading": "Φόρτωση σημειώσεων...",
+      "remindMe": "Υπενθύμιση",
+      "showMore": "Εμφάνιση περισσότερων"
     }
   },
   "outline": {
@@ -174,7 +189,8 @@
     "createTag": "Δημιουργία ετικέτας: \"{tag}\"",
     "chooseColor": "Επιλέξτε χρώμα:",
     "preview": "Προεπισκόπηση:",
-    "colorAria": "Επιλέξτε χρώμα {color}"
+    "colorAria": "Επιλέξτε χρώμα {color}",
+    "customColor": "Προσαρμοσμένο χρώμα"
   },
   "properties": {
     "title": "Ιδιότητες",
@@ -205,7 +221,9 @@
       "status": "Κατάσταση",
       "select": "Επιλέξτε",
       "multiselect": "Πολλαπλή επιλογή"
-    }
+    },
+    "showOnCalendar": "Εμφάνιση στο ημερολόγιο",
+    "showingOnCalendar": "Εμφανίζεται στο ημερολόγιο"
   },
   "templateSelector": {
     "title": "Επιλέξτε τον καμβά σας",
@@ -295,7 +313,8 @@
   },
   "phaseF": {
     "componentsFolderViewColumnHeader": {
-      "dragToReorderColumn": "Σύρετε για αναδιάταξη στήλης"
+      "dragToReorderColumn": "Σύρετε για αναδιάταξη στήλης",
+      "editColumnName": "Επεξεργασία ονόματος στήλης"
     },
     "componentsFolderViewColumnSelector": {
       "properties": "Ιδιότητες",
@@ -311,7 +330,10 @@
       "delete": "Διαγραφή",
       "none": "Κανένα",
       "edit": "Επεξεργασία",
-      "delete2": "Διαγραφή"
+      "delete2": "Διαγραφή",
+      "columnBorders": "Περιγράμματα στηλών",
+      "display": "Εμφάνιση",
+      "showSummaries": "Εμφάνιση συνόψεων"
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Φίλτρο",
@@ -329,17 +351,21 @@
       "of": "από:",
       "addCondition": "Προσθήκη συνθήκης",
       "addFilter": "Προσθήκη φίλτρου",
-      "addGroup": "Προσθήκη ομάδας"
+      "addGroup": "Προσθήκη ομάδας",
+      "removeGroup": "Αφαίρεση ομάδας"
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "Ενσωματωμένο",
       "properties": "Ιδιότητες",
       "placeholderProperty": "ιδιοκτησία",
       "placeholderOperator": "Χειριστής",
-      "placeholderValue": "Αξία"
+      "placeholderValue": "Αξία",
+      "removeFilter": "Αφαίρεση φίλτρου"
     },
     "componentsFolderViewFolderTableView": {
-      "notesTable": "Πίνακας σημειώσεων"
+      "notesTable": "Πίνακας σημειώσεων",
+      "selectAll": "Επιλογή όλων των σημειώσεων",
+      "selectRow": "Επιλογή σημείωσης"
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "Αναζήτηση σημειώσεων...",
@@ -371,7 +397,9 @@
     },
     "componentsFolderViewGroupedTable": {
       "groupedNotesTable": "Πίνακας ομαδοποιημένων σημειώσεων",
-      "more": "περισσότερα"
+      "more": "περισσότερα",
+      "selectAll": "Επιλογή όλων των σημειώσεων",
+      "selectRow": "Επιλογή σημείωσης"
     },
     "componentsFolderViewMoveToFolderDialog": {
       "searchFolders": "Αναζήτηση φακέλων...",
@@ -399,7 +427,8 @@
     },
     "componentsFolderViewSortableColumnHeader": {
       "dragToReorderColumn": "Σύρετε για αναδιάταξη στήλης",
-      "resizeColumn": "Αλλαγή μεγέθους στήλης"
+      "resizeColumn": "Αλλαγή μεγέθους στήλης",
+      "editColumnName": "Επεξεργασία ονόματος στήλης"
     },
     "componentsFolderViewViewSwitcher": {
       "default": "προεπιλογή",
@@ -424,7 +453,16 @@
       "deleteView": "Διαγραφή προβολής",
       "areYouSureYouWantToDelete": "Είστε βέβαιοι ότι θέλετε να διαγράψετε \"",
       "thisActionCannotBeUndone": "Αυτή η ενέργεια δεν μπορεί να αναιρεθεί.",
-      "cancel3": "Ακύρωση"
+      "cancel3": "Ακύρωση",
+      "createView": "Δημιουργία προβολής",
+      "gallery": "Γκαλερί",
+      "layout": "Διάταξη",
+      "list": "Λίστα",
+      "name": "Όνομα",
+      "newView": "Νέα προβολή",
+      "save": "Αποθήκευση",
+      "table": "Πίνακας",
+      "viewActions": "Ενέργειες προβολής"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "Αποτυχία φόρτωσης PDF: ",
@@ -607,6 +645,15 @@
       "startYourCollection": "Ξεκινήστε τη συλλογή σας",
       "templatesHelpYouCreateNotesWithConsistentStructure": "Τα πρότυπα σάς βοηθούν να δημιουργείτε σημειώσεις με συνεπή δομή.",
       "createTemplate": "Δημιουργία προτύπου"
+    },
+    "componentsFolderViewSortSelector": {
+      "builtIn": "Ενσωματωμένα",
+      "clearSort": "Εκκαθάριση ταξινόμησης",
+      "noSortablePropertiesFound": "Δεν βρέθηκαν ταξινομήσιμες ιδιότητες",
+      "properties": "Ιδιότητες",
+      "searchProperties": "Αναζήτηση ιδιοτήτων...",
+      "sort": "Ταξινόμηση",
+      "sortDirection": "Κατεύθυνση ταξινόμησης"
     }
   },
   "phaseI": {
@@ -654,5 +701,47 @@
       "cannotRemoveTagThisNoteWasDeleted": "Δεν είναι δυνατή η κατάργηση της ετικέτας - αυτή η σημείωση διαγράφηκε",
       "cannotChangeLocalOnlyThisNoteWasDeleted": "Δεν είναι δυνατή η αλλαγή μόνο τοπικά — αυτή η σημείωση διαγράφηκε"
     }
+  },
+  "bulkActions": {
+    "addTag": "Προσθήκη ετικέτας",
+    "clearAria": "Εκκαθάριση επιλογής",
+    "copiedLinks": "Αντιγράφηκαν {count, plural, one {# σύνδεσμος} other {# σύνδεσμοι}}",
+    "copyLinks": "Αντιγραφή συνδέσμων",
+    "delete": "Διαγραφή",
+    "export": "Εξαγωγή",
+    "move": "Μετακίνηση",
+    "selected": "επιλεγμένα",
+    "tagNamePlaceholder": "Όνομα ετικέτας",
+    "toolbarAria": "Μαζικές ενέργειες"
+  },
+  "comments": {
+    "attachAria": "Επισύναψη αρχείου",
+    "badgeAria": "{count, plural, one {# σχόλιο} other {# σχόλια}}",
+    "cancel": "Ακύρωση",
+    "commentPlaceholder": "Προσθήκη σχολίου...",
+    "createdTooltip": "Δημιουργήθηκε {date} στις {time}",
+    "delete": "Διαγραφή σχολίου",
+    "edit": "Επεξεργασία σχολίου",
+    "kind": {
+      "addition": "Προσθήκη",
+      "comment": "Σχόλιο",
+      "deletion": "Διαγραφή",
+      "substitution": "Αντικατάσταση"
+    },
+    "mentionAria": "Αναφορά ατόμου, σελίδας ή ημερομηνίας",
+    "railAria": "Σχόλια",
+    "replyPlaceholder": "Απάντηση...",
+    "resolve": "Επίλυση",
+    "sendAria": "Αποστολή σχολίου",
+    "toolbarComment": "Σχόλιο"
+  },
+  "dateMention": {
+    "clear": "Εκκαθάριση",
+    "dateFormat": "Μορφή ημερομηνίας",
+    "dateInput": "Ημερομηνία",
+    "includeTime": "Συμπερίληψη ώρας",
+    "remind": "Υπενθύμιση",
+    "time": "Ώρα",
+    "timeFormat": "Μορφή ώρας"
   }
 }

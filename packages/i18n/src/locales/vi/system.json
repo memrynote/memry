@@ -36,7 +36,8 @@
       "journal": "Nhắc nhở nhật ký",
       "highlight": "Nhắc nhở nổi bật",
       "fallback": "Đến hạn nhắc nhở",
-      "default": "Nhắc nhở"
+      "default": "Nhắc nhở",
+      "task": "Nhắc công việc"
     }
   },
   "error": {

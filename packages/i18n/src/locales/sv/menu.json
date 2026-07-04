@@ -1,11 +1,15 @@
 {
   "app": {
-    "quit": "Avsluta"
+    "quit": "Avsluta",
+    "preferences": "Inställningar…"
   },
   "file": {
     "label": "Fil",
     "newNote": "Ny anteckning",
-    "close": "Stäng fönster"
+    "close": "Stäng fönster",
+    "closeTab": "Stäng flik",
+    "exportPdf": "Exportera till PDF…",
+    "openQuickly": "Öppna snabbt…"
   },
   "navigation": {
     "back": "Tillbaka",
@@ -18,12 +22,51 @@
     "cut": "Klipp ut",
     "copy": "Kopiera",
     "paste": "Klistra in",
-    "selectAll": "Markera alla"
+    "selectAll": "Markera alla",
+    "find": "Sök",
+    "speech": "Tal"
   },
   "view": {
     "label": "Visa",
     "reload": "Ladda om",
     "toggleDevTools": "Växla utvecklarverktyg",
-    "toggleFullscreen": "Växla fullskärm"
+    "toggleFullscreen": "Växla fullskärm",
+    "theme": "Tema",
+    "themeDark": "Mörkt",
+    "themeLight": "Ljust",
+    "themeSystem": "System",
+    "themeWhite": "Papper",
+    "toggleDayPanel": "Växla dagpanel",
+    "toggleSidebar": "Växla sidofält"
+  },
+  "format": {
+    "body": "Brödtext",
+    "bold": "Fet",
+    "code": "Kod",
+    "heading1": "Rubrik 1",
+    "heading2": "Rubrik 2",
+    "heading3": "Rubrik 3",
+    "highlight": "Markering",
+    "italic": "Kursiv",
+    "label": "Format",
+    "strikethrough": "Genomstruken"
+  },
+  "help": {
+    "about": "Om Memrynote",
+    "documentation": "Dokumentation",
+    "label": "Hjälp",
+    "shortcuts": "Kortkommandon"
+  },
+  "insert": {
+    "attachment": "Infoga bilaga…",
+    "bulletList": "Punktlista",
+    "codeBlock": "Kodblock",
+    "label": "Infoga",
+    "numberedList": "Numrerad lista",
+    "table": "Tabell",
+    "taskList": "Uppgiftslista"
+  },
+  "window": {
+    "label": "Fönster"
   }
 }

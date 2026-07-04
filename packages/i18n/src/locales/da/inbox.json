@@ -26,6 +26,10 @@
     "jobs": {
       "running": "{count, plural, one {# baggrundsjob kører} other {# baggrundsjob kører}}",
       "failed": "{count} mislykkedes"
+    },
+    "density": {
+      "toComfortable": "Komfortabel visning",
+      "toCompact": "Kompakt visning"
     }
   },
   "type": {
@@ -208,7 +212,15 @@
     "linkedNotesAria": "Sammenkædede noter",
     "removeLinkTo": "Fjern link til {title}",
     "notePlaceholder": "Skriv din note...",
-    "textPlaceholder": "Rediger din optagne tekst..."
+    "textPlaceholder": "Rediger din optagne tekst...",
+    "linkANote": "Kæd en note",
+    "match": {
+      "likely": "Sandsynligt match",
+      "strong": "Stærkt match",
+      "weak": "Svagt match"
+    },
+    "resize": "Tilpas panel",
+    "suggestedCount": "{count} foreslået"
   },
   "content": {
     "capturedAt": "Optaget {date}",
@@ -253,7 +265,12 @@
     "presetInOneHour": "1 time",
     "presetTomorrow": "I morgen",
     "presetNextWeek": "Næste uge",
-    "custom": "Brugerdefineret..."
+    "custom": "Brugerdefineret...",
+    "archive": "Arkivér",
+    "panelEmpty": "Ingen kommende påmindelser.",
+    "panelPast": "Tidligere",
+    "panelUpcoming": "Kommende",
+    "taskFallback": "Opgave"
   },
   "insights": {
     "captureActivity": "Optag aktivitet",
@@ -295,7 +312,9 @@
       "recordVoiceMemo2": "Optag stemmememo",
       "alreadyCaptured": "Allerede fanget: \"",
       "rdquo": "rdquo;",
-      "captureAnyway": "Fang alligevel"
+      "captureAnyway": "Fang alligevel",
+      "focusShortcut": "Fokusér optagelsesfelt",
+      "q": "Q"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Vælg mappe",
@@ -416,7 +435,11 @@
       "backToPresets": "Tilbage til forudindstillinger",
       "time": "Tid",
       "noteOptional": "Bemærk (valgfrit)",
-      "whyAreYouSettingThisReminder": "Hvorfor indstiller du denne påmindelse?"
+      "whyAreYouSettingThisReminder": "Hvorfor indstiller du denne påmindelse?",
+      "deleteReminder": "Slet påmindelse",
+      "editReminder": "Redigér påmindelse",
+      "save": "Gem",
+      "set": "Angiv"
     },
     "componentsSnoozeSnoozePicker": {
       "snooze": "Snooze",
@@ -461,5 +484,37 @@
     "toasts": {
       "inboxRefreshed": "Indbakke opdateret"
     }
+  },
+  "convert": {
+    "addEvent": "Tilføj begivenhed",
+    "addTask": "Tilføj opgave",
+    "allDay": "Hele dagen",
+    "binaryOnlyNote": "Filer kan kun blive til en note",
+    "chooseType": "Konvertér til",
+    "create": "Opret",
+    "date": "Dato",
+    "dueDate": "Forfaldsdato",
+    "dueTime": "Forfaldstid",
+    "end": "Slut",
+    "event": "Begivenhed",
+    "failed": "Kunne ikke konvertere: {error}",
+    "inboxProject": "Indbakke",
+    "location": "Sted",
+    "note": "Note",
+    "priority": "Prioritet",
+    "priorityHigh": "Høj",
+    "priorityLow": "Lav",
+    "priorityMedium": "Middel",
+    "priorityNone": "Ingen",
+    "priorityUrgent": "Haster",
+    "project": "Projekt",
+    "remindAt": "Påmind mig kl.",
+    "reminder": "Påmindelse",
+    "setReminder": "Angiv påmindelse",
+    "start": "Start",
+    "success": "Konverteret til {target}",
+    "task": "Opgave",
+    "time": "Tid",
+    "title": "Konvertér"
   }
 }

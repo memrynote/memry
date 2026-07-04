@@ -1,11 +1,15 @@
 {
   "app": {
-    "quit": "עזוב"
+    "quit": "עזוב",
+    "preferences": "הגדרות…"
   },
   "file": {
     "label": "קובץ",
     "newNote": "הערה חדשה",
-    "close": "סגור חלון"
+    "close": "סגור חלון",
+    "closeTab": "סגור כרטיסייה",
+    "exportPdf": "ייצא ל-PDF…",
+    "openQuickly": "פתח במהירות…"
   },
   "navigation": {
     "back": "חזרה",
@@ -18,12 +22,51 @@
     "cut": "גזור",
     "copy": "העתק",
     "paste": "הדבק",
-    "selectAll": "בחר הכל"
+    "selectAll": "בחר הכל",
+    "find": "מצא",
+    "speech": "דיבור"
   },
   "view": {
     "label": "הצג",
     "reload": "טען מחדש",
     "toggleDevTools": "החלף את כלי המפתחים",
-    "toggleFullscreen": "החלף מסך מלא"
+    "toggleFullscreen": "החלף מסך מלא",
+    "theme": "ערכת נושא",
+    "themeDark": "כהה",
+    "themeLight": "בהיר",
+    "themeSystem": "מערכת",
+    "themeWhite": "נייר",
+    "toggleDayPanel": "החלף לוח יום",
+    "toggleSidebar": "החלף סרגל צד"
+  },
+  "format": {
+    "body": "גוף",
+    "bold": "מודגש",
+    "code": "קוד",
+    "heading1": "כותרת 1",
+    "heading2": "כותרת 2",
+    "heading3": "כותרת 3",
+    "highlight": "הדגשה",
+    "italic": "נטוי",
+    "label": "עיצוב",
+    "strikethrough": "קו חוצה"
+  },
+  "help": {
+    "about": "אודות Memrynote",
+    "documentation": "תיעוד",
+    "label": "עזרה",
+    "shortcuts": "קיצורי מקלדת"
+  },
+  "insert": {
+    "attachment": "הוסף קובץ מצורף…",
+    "bulletList": "רשימת תבליטים",
+    "codeBlock": "בלוק קוד",
+    "label": "הוספה",
+    "numberedList": "רשימה ממוספרת",
+    "table": "טבלה",
+    "taskList": "רשימת משימות"
+  },
+  "window": {
+    "label": "חלון"
   }
 }
