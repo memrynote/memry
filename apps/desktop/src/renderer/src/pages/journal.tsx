@@ -390,8 +390,13 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     for (const t of allAvailableTags) {
       map.set(t.tag.toLowerCase(), t.color)
     }
+    // Just-created tags aren't in allAvailableTags until reindex+refetch;
+    // without this the editor pill falls back to the hashed default color
+    for (const [key, color] of pendingTagColors) {
+      if (!map.has(key)) map.set(key, color)
+    }
     return map
-  }, [allAvailableTags])
+  }, [allAvailableTags, pendingTagColors])
 
   const tagIconMap = useMemo(() => {
     const map = new Map<string, string>()

@@ -14,9 +14,11 @@ import { COLOR_NAMES, getTagColors } from '@/components/note/tags-row/tag-colors
 import { useT } from '@memry/i18n/renderer'
 
 function getColorForTag(tagName: string): string {
+  // Case-insensitive: #Work and #work fall back to the same color
+  const name = tagName.toLowerCase()
   let hash = 0
-  for (let i = 0; i < tagName.length; i++) {
-    hash = tagName.charCodeAt(i) + ((hash << 5) - hash)
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash)
   }
   return COLOR_NAMES[Math.abs(hash) % COLOR_NAMES.length]
 }
@@ -369,14 +371,13 @@ export const TagAutocomplete = ({
 
   const renderCreateFooter = (): React.JSX.Element | null => {
     if (!trimmedInput || exactMatchExists) return null
-    const normalized = trimmedInput.toLowerCase()
-    const colors = getTagColors(getColorForTag(normalized))
+    const colors = getTagColors(getColorForTag(trimmedInput))
     const idx = flatItems.length - 1
 
     return (
       <button
         type="button"
-        onClick={() => addTag(normalized)}
+        onClick={() => addTag(trimmedInput)}
         onMouseEnter={() => setRequestedHighlightedIndex(idx)}
         className={cn(
           'flex items-center w-full py-2 px-3 gap-1.5 border-t border-border/40 text-start transition-colors',
@@ -391,7 +392,7 @@ export const TagAutocomplete = ({
           className="inline-flex items-center rounded-md py-px px-1.5 text-[11px] leading-3.5"
           style={{ backgroundColor: `${colors.text}15`, color: colors.text }}
         >
-          {normalized}
+          {trimmedInput}
         </span>
       </button>
     )

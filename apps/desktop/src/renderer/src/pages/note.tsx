@@ -451,6 +451,11 @@ export function NotePage({ noteId }: NotePageProps) {
     for (const key of pendingTagColorsRef.current.keys()) {
       if (map.has(key)) pendingTagColorsRef.current.delete(key)
     }
+    // Just-created tags aren't in allAvailableTags until reindex+refetch;
+    // without this the editor pill falls back to the hashed default color
+    for (const [key, color] of pendingTagColorsRef.current) {
+      if (!map.has(key)) map.set(key, color)
+    }
     return map
   }, [allAvailableTags])
 

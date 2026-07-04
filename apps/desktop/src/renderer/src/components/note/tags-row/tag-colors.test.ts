@@ -12,6 +12,11 @@ describe('defaultTagColorName', () => {
     expect(defaultTagColorName('research')).toBe(defaultTagColorName('research'))
   })
 
+  it('is case-insensitive — case variants of one tag share a color', () => {
+    expect(defaultTagColorName('Test')).toBe(defaultTagColorName('test'))
+    expect(defaultTagColorName('TEST')).toBe(defaultTagColorName('test'))
+  })
+
   it('always returns a real palette color name', () => {
     for (const name of ['research', 'tech/typescript', 'a', '', 'travel/japan']) {
       expect(COLOR_NAMES).toContain(defaultTagColorName(name))

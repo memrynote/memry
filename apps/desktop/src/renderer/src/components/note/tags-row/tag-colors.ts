@@ -42,10 +42,13 @@ export const COLOR_ROWS = [
 // Deterministic palette color from a tag name: same tag → same color,
 // everywhere, with no stored color needed. Used as the default when a tag has
 // no explicit user-picked color (the alternative was a flat grey).
+// Hashes the lowercased name — tag identity is case-insensitive, so #Work and
+// #work must fall back to the same color.
 export function defaultTagColorName(tagName: string): string {
+  const name = tagName.toLowerCase()
   let hash = 0
-  for (let i = 0; i < tagName.length; i++) {
-    hash = (hash * 31 + tagName.charCodeAt(i)) | 0
+  for (let i = 0; i < name.length; i++) {
+    hash = (hash * 31 + name.charCodeAt(i)) | 0
   }
   return COLOR_NAMES[Math.abs(hash) % COLOR_NAMES.length]
 }
