@@ -144,6 +144,23 @@ a later retry.
 one emission per document per 5-minute window (in-memory, resets on restart). This prevents
 high-frequency editor flushes from inflating event counts.
 
+## Landing Site Telemetry
+
+The marketing site (`apps/landing`) sends anonymous web events to the rate-limited, unauthenticated
+`POST /telemetry/web` endpoint, which writes them to a dedicated Analytics Engine dataset
+(`memry_landing_telemetry_{env}`, binding `LANDING_TELEMETRY`).
+
+- **Client**: `trackLandingEvent` / `trackLandingPageView` in `apps/landing/src/lib/analytics.ts`
+  post via `navigator.sendBeacon` (falling back to `fetch` with `keepalive`), fire-and-forget, and
+  swallow all errors. A random UUID visitor id persists in `localStorage`.
+- **Payload** (`LandingTelemetryBatchSchema` in `packages/contracts/telemetry-api`): fixed
+  slug-like event names, path-only pages, slug targets, and bounded UTM params. The schema rejects
+  anything shaped like an email, URL, filesystem path, or raw identifier; query strings and hashes
+  are stripped client-side and again server-side.
+- **Datapoint layout**: `blob1`=name, `blob2`=page, `blob3`=target, `blob4`–`blob8`=utm_source /
+  medium / campaign / content / term, `double1`=1 (count), `index1`=HMAC of the visitor id
+  (`TELEMETRY_HMAC_KEY`) so distinct-visitor queries never see a raw id.
+
 ## Error Reporting
 
 Desktop error reporting follows the same product telemetry setting. Each captured error ships
