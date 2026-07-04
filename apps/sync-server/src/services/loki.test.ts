@@ -1,0 +1,109 @@
+import { afterEach, describe, expect, it, vi } from 'vitest'
+
+import type { TelemetryBatch, TelemetryEvent } from '@memry/contracts/telemetry-api'
+
+import { desktopErrorEntry, pushLokiEntries } from './loki'
+
+const env = {
+  LOKI_URL: 'https://grafana.example.com',
+  LOKI_TOKEN: 'tok',
+  ENVIRONMENT: 'test'
+}
+
+const entry = {
+  level: 'error' as const,
+  app: 'server' as const,
+  line: { error_code: 'BOOM', message: 'it broke' }
+}
+
+const batch: TelemetryBatch = {
+  schemaVersion: 1,
+  installId: '11111111-1111-4111-8111-111111111111',
+  sessionId: '22222222-2222-4222-8222-222222222222',
+  appVersion: '1.2.3',
+  buildChannel: 'stable',
+  platform: 'darwin',
+  arch: 'arm64',
+  locale: 'en-US',
+  timezoneOffsetMinutes: 180,
+  authState: 'signed_in',
+  syncState: 'enabled',
+  events: []
+}
+
+const event: TelemetryEvent = {
+  id: '33333333-3333-4333-8333-333333333333',
+  name: 'app_error_seen',
+  occurredAt: '2026-07-04T00:00:00.000Z',
+  surface: 'app',
+  action: 'render',
+  errorCode: 'RangeError',
+  source: 'renderer',
+  error: { stack: 'at doThing (app://bundle.js:1:2)', componentStack: 'at NoteEditor' }
+}
+
+describe('pushLokiEntries', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('no-ops when LOKI_URL or LOKI_TOKEN is unset', async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    await pushLokiEntries({ ENVIRONMENT: 'test' }, [entry])
+    await pushLokiEntries({ ...env, LOKI_TOKEN: undefined }, [entry])
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('no-ops on empty entries', async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    await pushLokiEntries(env, [])
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('POSTs streams with app/env/level labels and JSON line', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }))
+    vi.stubGlobal('fetch', fetchMock)
+    await pushLokiEntries(env, [entry])
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(url).toBe('https://grafana.example.com/loki/api/v1/push')
+    expect(init.headers.authorization).toBe('Bearer tok')
+    const body = JSON.parse(init.body)
+    expect(body.streams).toHaveLength(1)
+    expect(body.streams[0].stream).toEqual({ app: 'server', env: 'test', level: 'error' })
+    const [ts, line] = body.streams[0].values[0]
+    expect(ts).toMatch(/^\d+$/)
+    expect(JSON.parse(line)).toEqual({ error_code: 'BOOM', message: 'it broke' })
+  })
+
+  it('never throws on fetch rejection or non-2xx', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')))
+    await expect(pushLokiEntries(env, [entry])).resolves.toBeUndefined()
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('nope', { status: 500 })))
+    await expect(pushLokiEntries(env, [entry])).resolves.toBeUndefined()
+  })
+})
+
+describe('desktopErrorEntry', () => {
+  it('maps batch + event to a desktop error line with stack, never a message', () => {
+    const result = desktopErrorEntry(batch, event, 'hash123')
+    expect(result.level).toBe('error')
+    expect(result.app).toBe('desktop')
+    expect(result.line).toEqual({
+      name: 'app_error_seen',
+      error_code: 'RangeError',
+      surface: 'app',
+      action: 'render',
+      source: 'renderer',
+      app_version: '1.2.3',
+      build_channel: 'stable',
+      platform: 'darwin',
+      stack: 'at doThing (app://bundle.js:1:2)',
+      component_stack: 'at NoteEditor',
+      install_hash: 'hash123'
+    })
+    expect(Object.keys(result.line)).not.toContain('message')
+  })
+})
