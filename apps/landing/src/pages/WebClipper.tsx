@@ -67,15 +67,20 @@ function ReviewPill({ size = 'sm' }: { size?: 'sm' | 'md' }) {
       }
     >
       <span className="h-1.5 w-1.5 rounded-full bg-amber-500 motion-safe:animate-pulse" />
-      In review by Google &amp; Firefox
+      Live on Firefox · Chrome in review
     </span>
   )
 }
 
 // Official browser logos live in public/browsers/*.svg.
-const BROWSERS: { logo: string; name: string; store: string }[] = [
+const BROWSERS: { logo: string; name: string; store: string; url?: string }[] = [
   { logo: '/browsers/chrome.svg', name: 'Chrome', store: 'Chrome Web Store' },
-  { logo: '/browsers/firefox.svg', name: 'Firefox', store: 'Firefox Add-ons' },
+  {
+    logo: '/browsers/firefox.svg',
+    name: 'Firefox',
+    store: 'Firefox Add-ons',
+    url: 'https://addons.mozilla.org/en-US/firefox/addon/memrynote-web-clipper/'
+  },
   { logo: '/browsers/edge.svg', name: 'Edge', store: 'Edge Add-ons' }
 ]
 
@@ -88,20 +93,45 @@ function BrowserCards() {
       viewport={{ once: true, margin: '-60px' }}
       className="mx-auto mt-12 grid max-w-3xl gap-4 sm:grid-cols-3"
     >
-      {BROWSERS.map((b) => (
-        <motion.article
-          key={b.name}
-          variants={fadeUpVariant}
-          className="flex flex-col items-center rounded-2xl border border-border/60 bg-card p-6 text-center shadow-card"
-        >
-          <img src={b.logo} alt={`${b.name} logo`} width={40} height={40} className="h-10 w-10" />
-          <h3 className="mt-4 font-serif text-xl text-ink">{b.name}</h3>
+      {BROWSERS.map((b) => {
+        const status = b.url ? (
+          <span className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-medium text-terracotta">
+            <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2} />
+            Get the add-on · {b.store}
+          </span>
+        ) : (
           <p className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-medium text-muted">
             <CheckCircle2 className="h-3.5 w-3.5 text-amber-600" strokeWidth={2} />
             In review · {b.store}
           </p>
-        </motion.article>
-      ))}
+        )
+        const cardClass =
+          'flex flex-col items-center rounded-2xl border border-border/60 bg-card p-6 text-center shadow-card' +
+          (b.url ? ' transition-colors hover:border-terracotta/50' : '')
+        const inner = (
+          <>
+            <img src={b.logo} alt={`${b.name} logo`} width={40} height={40} className="h-10 w-10" />
+            <h3 className="mt-4 font-serif text-xl text-ink">{b.name}</h3>
+            {status}
+          </>
+        )
+        return b.url ? (
+          <motion.a
+            key={b.name}
+            href={b.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            variants={fadeUpVariant}
+            className={cardClass}
+          >
+            {inner}
+          </motion.a>
+        ) : (
+          <motion.article key={b.name} variants={fadeUpVariant} className={cardClass}>
+            {inner}
+          </motion.article>
+        )
+      })}
     </motion.div>
   )
 }
@@ -153,7 +183,7 @@ function ClipperHero() {
           </div>
 
           <p className="mt-12 font-mono-accent text-[11px] uppercase tracking-[0.28em] text-muted">
-            Built and working · waiting on the stores
+            Live on Firefox · Chrome &amp; Edge on the way
           </p>
         </motion.div>
 
@@ -255,8 +285,8 @@ function FinalCta() {
             Clip the web the day it ships.
           </h2>
           <p className="mt-5 text-lg leading-relaxed text-muted">
-            The clipper pairs with the desktop app. Set up your vault today and the browser
-            extension slots right in as soon as Google and Firefox finish their review.
+            The clipper pairs with the desktop app. Set up your vault today, grab the Firefox add-on
+            now, and Chrome slots in as soon as Google finishes its review.
           </p>
           <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Button size="lg" className="rounded-full px-7" asChild>
