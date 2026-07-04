@@ -1,3 +1,5 @@
+import { SYNC_SERVER_URL } from './account/config'
+
 export type LandingEventName =
   | 'landing_scroll_25'
   | 'landing_scroll_50'
@@ -97,19 +99,53 @@ export function createLandingPageViewData(pathname: string, search = ''): Landin
   }
 }
 
-// Analytics sink removed with PostHog. The tracking API is kept as no-ops so
-// call sites stay intact; wire these to a self-hosted endpoint if landing
-// traffic is needed again.
-export function trackLandingPageView(pathname: string, search = ''): void {
-  void pathname
-  void search
+// Anonymous, fire-and-forget events → sync-server /telemetry/web → Cloudflare
+// Analytics Engine. Privacy: fixed event names, path-only pages, slug targets,
+// UTM params — no PII, no free-form strings. Errors are always swallowed so
+// analytics can never break the page.
+const TELEMETRY_ENDPOINT = `${SYNC_SERVER_URL}/telemetry/web`
+const VISITOR_ID_STORAGE_KEY = 'memry_landing_visitor_id'
+const UUID_VALUE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+let inMemoryVisitorId: string | undefined
+
+function getVisitorId(): string {
+  try {
+    const existing = window.localStorage.getItem(VISITOR_ID_STORAGE_KEY)
+    if (existing && UUID_VALUE.test(existing)) return existing
+    const created = crypto.randomUUID()
+    window.localStorage.setItem(VISITOR_ID_STORAGE_KEY, created)
+    return created
+  } catch {
+    // localStorage unavailable (private mode, blocked cookies) — session-scoped id
+    inMemoryVisitorId ??= crypto.randomUUID()
+    return inMemoryVisitorId
+  }
 }
 
-export async function getLandingAnalyticsHeaders(): Promise<Record<string, string>> {
-  return {}
+function sendLandingEvent(event: { name: string } & Partial<LandingEventData>): void {
+  if (typeof window === 'undefined') return
+  try {
+    const payload = JSON.stringify({ visitorId: getVisitorId(), events: [event] })
+    // A plain-string beacon posts as text/plain (no CORS preflight); the server
+    // parses the body as JSON regardless of content type.
+    if (navigator.sendBeacon?.(TELEMETRY_ENDPOINT, payload)) return
+    void fetch(TELEMETRY_ENDPOINT, { method: 'POST', keepalive: true, body: payload }).catch(
+      () => {}
+    )
+  } catch {
+    // never let analytics throw into the page
+  }
+}
+
+export function trackLandingPageView(pathname: string, search = ''): void {
+  sendLandingEvent({ name: 'landing_page_view', ...createLandingPageViewData(pathname, search) })
 }
 
 export function trackLandingEvent(name: LandingEventName, target: string): void {
-  void name
-  void target
+  if (typeof window === 'undefined') return
+  sendLandingEvent({
+    name,
+    ...createLandingEventData(target, window.location.pathname, window.location.search)
+  })
 }

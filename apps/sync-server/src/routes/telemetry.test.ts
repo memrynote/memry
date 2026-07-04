@@ -47,12 +47,14 @@ function createDataset() {
 
 function createEnv(overrides?: Record<string, unknown>) {
   const { dataset, writeDataPoint } = createDataset()
+  const landing = createDataset()
   const env = {
     DB: {} as D1Database,
     STORAGE: {} as R2Bucket,
     USER_SYNC_STATE: {} as DurableObjectNamespace,
     LINKING_SESSION: {} as DurableObjectNamespace,
     PRODUCT_TELEMETRY: dataset,
+    LANDING_TELEMETRY: landing.dataset,
     TELEMETRY_HMAC_KEY: 'test-hmac-key',
     ENVIRONMENT: 'development',
     ALLOWED_ORIGIN: 'https://app.memry.test',
@@ -64,7 +66,7 @@ function createEnv(overrides?: Record<string, unknown>) {
     WEBHOOK_HMAC_KEY: '',
     ...overrides
   }
-  return { env, writeDataPoint }
+  return { env, writeDataPoint, writeLandingDataPoint: landing.writeDataPoint }
 }
 
 describe('POST /telemetry/batch', () => {
@@ -178,11 +180,137 @@ describe('POST /telemetry/batch', () => {
   })
 })
 
+describe('POST /telemetry/web', () => {
+  const VALID_VISITOR_ID = '550e8400-e29b-41d4-a716-446655440003'
+
+  const sampleWebEvent = {
+    name: 'landing_pricing_cta_click',
+    page: '/pricing',
+    target: 'pricing:plus',
+    utm_source: 'waitlist',
+    utm_medium: 'email'
+  }
+
+  const sampleWebBatch = {
+    visitorId: VALID_VISITOR_ID,
+    events: [sampleWebEvent]
+  }
+
+  function postWeb(env: Record<string, unknown>, body: unknown) {
+    const request = new Request('http://localhost/telemetry/web', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: typeof body === 'string' ? body : JSON.stringify(body)
+    })
+    return app.request(request, {}, env)
+  }
+
+  it('accepts a valid batch and writes one landing datapoint per event', async () => {
+    // #given a valid landing batch with two events
+    const { env, writeDataPoint, writeLandingDataPoint } = createEnv()
+
+    // #when posting through the app without authentication
+    const response = await postWeb(env, {
+      ...sampleWebBatch,
+      events: [sampleWebEvent, { name: 'landing_page_view', page: '/' }]
+    })
+
+    // #then it 202s and writes to LANDING_TELEMETRY only
+    expect(response.status).toBe(202)
+    const body = (await response.json()) as { accepted: number }
+    expect(body.accepted).toBe(2)
+    expect(writeLandingDataPoint).toHaveBeenCalledTimes(2)
+    expect(writeDataPoint).not.toHaveBeenCalled()
+  })
+
+  it('writes the documented blob layout and a hashed visitor index', async () => {
+    // #given a valid batch with every UTM field set
+    const { env, writeLandingDataPoint } = createEnv()
+
+    // #when posting
+    const response = await postWeb(env, {
+      ...sampleWebBatch,
+      events: [{ ...sampleWebEvent, utm_campaign: 'launch', utm_content: 'cta', utm_term: 'notes' }]
+    })
+
+    // #then blob1..blob8 follow the layout and index1 never holds the raw id
+    expect(response.status).toBe(202)
+    const point = writeLandingDataPoint.mock.calls[0][0] as {
+      blobs: string[]
+      doubles: number[]
+      indexes: string[]
+    }
+    expect(point.blobs).toEqual([
+      'landing_pricing_cta_click',
+      '/pricing',
+      'pricing:plus',
+      'waitlist',
+      'email',
+      'launch',
+      'cta',
+      'notes'
+    ])
+    expect(point.doubles).toEqual([1])
+    expect(point.indexes).toHaveLength(1)
+    expect(point.indexes[0]).toMatch(/^[0-9a-f]{64}$/)
+    expect(point.indexes[0]).not.toContain(VALID_VISITOR_ID)
+  })
+
+  it('returns 400 for invalid payloads', async () => {
+    // #given a batch missing its events
+    const { env, writeLandingDataPoint } = createEnv()
+
+    // #when posting
+    const response = await postWeb(env, { visitorId: 'not-a-uuid' })
+
+    // #then validation fails with 400 and nothing is written
+    expect(response.status).toBe(400)
+    expect(writeLandingDataPoint).not.toHaveBeenCalled()
+  })
+
+  it('rejects values that look like emails, URLs, or raw identifiers', async () => {
+    // #given events whose values trip the privacy guards
+    const { env, writeLandingDataPoint } = createEnv()
+    const badEvents = [
+      { name: 'landing_nav_click', page: '/pricing', target: 'user@example.com' },
+      { name: 'landing_nav_click', page: '/pricing', utm_source: 'https://evil.example' },
+      { name: 'landing_nav_click', page: `/note/${VALID_VISITOR_ID}` }
+    ]
+
+    // #when posting each
+    for (const event of badEvents) {
+      const response = await postWeb(env, { ...sampleWebBatch, events: [event] })
+
+      // #then the schema rejects it with 400
+      expect(response.status).toBe(400)
+    }
+    expect(writeLandingDataPoint).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 for malformed JSON bodies', async () => {
+    // #given an invalid JSON body
+    const { env } = createEnv()
+
+    // #when posting
+    const response = await postWeb(env, 'not-json')
+
+    // #then the route returns 400
+    expect(response.status).toBe(400)
+  })
+})
+
 describe('telemetry route + rate limiter', () => {
   it('uses createRateLimiter with the telemetry key prefix', async () => {
     const { createRateLimiter } = await import('../middleware/rate-limit')
     expect(createRateLimiter).toHaveBeenCalledWith(
       expect.objectContaining({ keyPrefix: 'telemetry' })
+    )
+  })
+
+  it('uses createRateLimiter with the telemetry-web key prefix', async () => {
+    const { createRateLimiter } = await import('../middleware/rate-limit')
+    expect(createRateLimiter).toHaveBeenCalledWith(
+      expect.objectContaining({ keyPrefix: 'telemetry-web' })
     )
   })
 })

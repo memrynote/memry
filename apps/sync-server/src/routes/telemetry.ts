@@ -1,11 +1,11 @@
 import { Hono } from 'hono'
 
-import { TelemetryBatchSchema } from '@memry/contracts/telemetry-api'
+import { LandingTelemetryBatchSchema, TelemetryBatchSchema } from '@memry/contracts/telemetry-api'
 
 import { AppError, ErrorCodes } from '../lib/errors'
 import { createLogger } from '../lib/logger'
 import { createRateLimiter } from '../middleware/rate-limit'
-import { writeTelemetryBatch } from '../services/telemetry'
+import { writeLandingTelemetryBatch, writeTelemetryBatch } from '../services/telemetry'
 import type { AppContext } from '../types'
 
 const logger = createLogger('Telemetry')
@@ -33,5 +33,29 @@ telemetry.post('/batch', async (c) => {
   }
 
   const result = await writeTelemetryBatch(c.env, parsed.data)
+  return c.json(result, 202)
+})
+
+telemetry.use(
+  '/web',
+  createRateLimiter({ maxRequests: 60, windowSeconds: 60, keyPrefix: 'telemetry-web' })
+)
+
+// Anonymous landing-site events (apps/landing) → LANDING_TELEMETRY. No auth,
+// same privacy posture as /batch: the schema rejects anything shaped like an
+// email, URL, path, or raw identifier.
+telemetry.post('/web', async (c) => {
+  const body = await c.req.json().catch(() => null)
+  const parsed = LandingTelemetryBatchSchema.safeParse(body)
+  if (!parsed.success) {
+    logger.warn('Invalid landing telemetry payload', {
+      issues: parsed.error.issues
+        .slice(0, 10)
+        .map((issue) => `${issue.path.join('.') || '(root)'}:${issue.code}`)
+    })
+    throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid landing telemetry payload', 400)
+  }
+
+  const result = await writeLandingTelemetryBatch(c.env, parsed.data)
   return c.json(result, 202)
 })

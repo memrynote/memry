@@ -137,6 +137,39 @@ export const TelemetryBatchSchema = z.object({
   events: z.array(TelemetryEventSchema).min(1).max(100)
 })
 
+// --- Landing web telemetry ---------------------------------------------------
+// Anonymous events from the marketing site (apps/landing). Privacy mirror of the
+// desktop schema above: slug-like event names/targets, path-only pages, bounded
+// UTM values — no emails, URLs, raw identifiers, or free-form strings.
+const LANDING_EVENT_NAME = /^[a-z0-9_]{1,64}$/
+const LANDING_PAGE_PATH = /^\/[a-zA-Z0-9\-._~/]{0,199}$/
+const LANDING_TARGET = /^[a-zA-Z0-9:._-]{1,120}$/
+const LANDING_UTM_VALUE = /^(?!.*@)(?!.*:\/\/)(?!.*[/\\]).{1,120}$/
+
+const withoutRawIdentifiers = <T extends z.ZodString>(schema: T) =>
+  schema.refine((value) => !UUID_SHAPED_VALUE.test(value), {
+    message: 'Landing telemetry values must not contain raw identifiers'
+  })
+
+export const LandingTelemetryEventSchema = z.object({
+  name: z.string().regex(LANDING_EVENT_NAME),
+  page: withoutRawIdentifiers(z.string().regex(LANDING_PAGE_PATH)),
+  target: withoutRawIdentifiers(z.string().regex(LANDING_TARGET)).optional(),
+  utm_source: withoutRawIdentifiers(z.string().regex(LANDING_UTM_VALUE)).optional(),
+  utm_medium: withoutRawIdentifiers(z.string().regex(LANDING_UTM_VALUE)).optional(),
+  utm_campaign: withoutRawIdentifiers(z.string().regex(LANDING_UTM_VALUE)).optional(),
+  utm_content: withoutRawIdentifiers(z.string().regex(LANDING_UTM_VALUE)).optional(),
+  utm_term: withoutRawIdentifiers(z.string().regex(LANDING_UTM_VALUE)).optional()
+})
+
+export const LandingTelemetryBatchSchema = z.object({
+  visitorId: z.string().uuid(),
+  events: z.array(LandingTelemetryEventSchema).min(1).max(20)
+})
+
+export type LandingTelemetryEvent = z.infer<typeof LandingTelemetryEventSchema>
+export type LandingTelemetryBatch = z.infer<typeof LandingTelemetryBatchSchema>
+
 export type TelemetryEventName = z.infer<typeof TelemetryEventNameSchema>
 export type TelemetrySurface = z.infer<typeof TelemetrySurfaceSchema>
 export type TelemetryResult = z.infer<typeof TelemetryResultSchema>

@@ -4,6 +4,7 @@ export type Bindings = {
   USER_SYNC_STATE: DurableObjectNamespace
   LINKING_SESSION: DurableObjectNamespace
   PRODUCT_TELEMETRY: AnalyticsEngineDataset
+  LANDING_TELEMETRY: AnalyticsEngineDataset
   ENVIRONMENT: string
   LOCAL_ADMIN_SYNC_EMAILS?: string
   ALLOWED_ORIGIN?: string

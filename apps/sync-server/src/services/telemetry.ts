@@ -1,4 +1,9 @@
-import type { TelemetryBatch, TelemetryEvent } from '@memry/contracts/telemetry-api'
+import type {
+  LandingTelemetryBatch,
+  LandingTelemetryEvent,
+  TelemetryBatch,
+  TelemetryEvent
+} from '@memry/contracts/telemetry-api'
 
 import { AppError, ErrorCodes } from '../lib/errors'
 import type { Bindings } from '../types'
@@ -142,6 +147,55 @@ export const writeTelemetryBatch = async (
   for (const event of batch.events) {
     const point = toDataPoint(batch, event, hashes)
     env.PRODUCT_TELEMETRY.writeDataPoint({
+      blobs: point.blobs,
+      doubles: point.doubles,
+      indexes: point.indexes
+    })
+  }
+
+  return { accepted: batch.events.length }
+}
+
+// --- Landing web telemetry → LANDING_TELEMETRY dataset ---------------------
+// AE datapoint layout (one point per event):
+//   blob1=name, blob2=page, blob3=target, blob4=utm_source, blob5=utm_medium,
+//   blob6=utm_campaign, blob7=utm_content, blob8=utm_term
+//   double1=1 (event count — query with sum(_sample_interval))
+//   index1=HMAC(visitorId) so distinct-visitor counts work without a raw id.
+const stripQueryAndHash = (value: string): string => value.split(/[?#]/)[0] ?? ''
+
+export const toLandingDataPoint = (
+  event: LandingTelemetryEvent,
+  visitorHash: string
+): TelemetryDataPoint => ({
+  blobs: [
+    event.name,
+    stripQueryAndHash(event.page),
+    stripQueryAndHash(event.target ?? ''),
+    event.utm_source ?? '',
+    event.utm_medium ?? '',
+    event.utm_campaign ?? '',
+    event.utm_content ?? '',
+    event.utm_term ?? ''
+  ],
+  doubles: [1],
+  indexes: [visitorHash]
+})
+
+export interface LandingTelemetryEnv {
+  LANDING_TELEMETRY: Bindings['LANDING_TELEMETRY']
+  TELEMETRY_HMAC_KEY: Bindings['TELEMETRY_HMAC_KEY']
+}
+
+export const writeLandingTelemetryBatch = async (
+  env: LandingTelemetryEnv,
+  batch: LandingTelemetryBatch
+): Promise<{ accepted: number }> => {
+  const visitorHash = await hashTelemetryId(env.TELEMETRY_HMAC_KEY, batch.visitorId)
+
+  for (const event of batch.events) {
+    const point = toLandingDataPoint(event, visitorHash)
+    env.LANDING_TELEMETRY.writeDataPoint({
       blobs: point.blobs,
       doubles: point.doubles,
       indexes: point.indexes
