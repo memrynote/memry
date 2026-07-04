@@ -28,7 +28,6 @@ import {
 } from 'lucide-react'
 
 export const GITHUB_URL = 'https://github.com/memrynote/memry'
-export const GITHUB_STARS = 21
 export const REDDIT_URL = 'https://www.reddit.com/r/MemryNote/'
 const DOCS_URL = 'https://docs.memrynote.com'
 export const TWITTER_DEV_URL = 'https://x.com/h4yfans'

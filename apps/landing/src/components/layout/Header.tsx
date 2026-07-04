@@ -10,7 +10,6 @@ import {
   DIRECT_NAV_LINKS,
   DOWNLOAD_NAV_ITEMS,
   FEATURE_NAV_ITEMS,
-  GITHUB_STARS,
   GITHUB_URL,
   type LandingDropdownItem
 } from '@/lib/constants'
@@ -81,8 +80,8 @@ function GitHubStarWidget({
   onClick?: () => void
   className?: string
 }) {
-  const [stars, setStars] = useState(GITHUB_STARS)
-  const formattedStars = formatStarCount(stars)
+  const [stars, setStars] = useState<number | null>(null)
+  const formattedStars = stars === null ? null : formatStarCount(stars)
 
   useEffect(() => {
     let active = true
@@ -129,7 +128,7 @@ function GitHubStarWidget({
         trackLandingEvent('landing_external_click', 'external:github')
         onClick?.()
       }}
-      aria-label={`${formattedStars} GitHub stars`}
+      aria-label={formattedStars ? `${formattedStars} GitHub stars` : 'GitHub stars'}
     >
       <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" aria-hidden>
         <path
@@ -142,9 +141,11 @@ function GitHubStarWidget({
       {iconOnly ? null : (
         <>
           <span>Star</span>
-          <strong className="border-s border-border/80 ps-2 font-mono-accent text-[13px] font-semibold">
-            {formattedStars}
-          </strong>
+          {formattedStars ? (
+            <strong className="border-s border-border/80 ps-2 font-mono-accent text-[13px] font-semibold">
+              {formattedStars}
+            </strong>
+          ) : null}
         </>
       )}
     </a>
