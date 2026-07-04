@@ -2,7 +2,7 @@ import type { ContentfulStatusCode } from 'hono/utils/http-status'
 import type { Context } from 'hono'
 
 import { createLogger } from './logger'
-import { captureServerError } from '../services/posthog'
+import { captureServerError } from '../services/analytics'
 import type { AppContext } from '../types'
 
 const logger = createLogger('ErrorHandler')
@@ -99,7 +99,7 @@ const scheduleServerErrorCapture = (
     handled: boolean
   }
 ): void => {
-  if (!c.env?.POSTHOG_API_KEY || !c.env.POSTHOG_HOST || !c.req) return
+  if (!c.req) return
 
   let executionCtx: { waitUntil?: (promise: Promise<unknown>) => void } | undefined
   try {

@@ -57,12 +57,9 @@ describe('sync-server error utilities', () => {
     expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('"code":"UNHANDLED_ERROR"'))
   })
 
-  it('schedules sanitized PostHog capture for unexpected request errors', async () => {
-    const fetchMock = vi.fn(async (_input: string | URL | Request, _init?: RequestInit) => {
-      return new Response(JSON.stringify({ status: 1 }), { status: 200 })
-    })
-    vi.stubGlobal('fetch', fetchMock)
+  it('schedules a sanitized Analytics Engine datapoint for unexpected request errors', async () => {
     const scheduled: Promise<unknown>[] = []
+    const writeDataPoint = vi.fn()
     const json = vi.fn(
       (payload: unknown, init: number) => new Response(JSON.stringify(payload), { status: init })
     )
@@ -70,8 +67,8 @@ describe('sync-server error utilities', () => {
       json,
       get: () => undefined,
       env: {
-        POSTHOG_API_KEY: 'phc_test_project',
-        POSTHOG_HOST: 'https://us.i.posthog.com',
+        PRODUCT_TELEMETRY: { writeDataPoint } as unknown as AnalyticsEngineDataset,
+        TELEMETRY_HMAC_KEY: 'test-hmac-key',
         ENVIRONMENT: 'development'
       },
       req: {
@@ -89,25 +86,24 @@ describe('sync-server error utilities', () => {
     await scheduled[0]
 
     expect(response.status).toBe(500)
-    const batchCall = fetchMock.mock.calls.find(([input]) => String(input).includes('/batch/'))
-    expect(batchCall).toBeDefined()
-    const init = batchCall?.[1]
-    expect(init?.body).toBeDefined()
-    const body = JSON.parse(init?.body as string) as {
-      batch: Array<{ event: string; properties: Record<string, unknown> }>
+    expect(writeDataPoint).toHaveBeenCalledTimes(1)
+    const point = writeDataPoint.mock.calls[0][0] as {
+      blobs: string[]
+      doubles: number[]
+      indexes: string[]
     }
-    expect(body.batch[0].event).toBe('server_error_seen')
-    expect(body.batch[0].properties).toMatchObject({
-      method: 'POST',
-      path: '/sync/records/push/:value',
-      error_code: 'UNHANDLED_ERROR',
-      status_code: 500,
-      handled: 0,
-      error_message: 'record decode failed'
-    })
-    const payloadText = JSON.stringify(body)
-    // Path identifiers stay scrubbed; the server's own (redacted) message is surfaced.
+    expect(point.blobs[0]).toBe('server_error_seen') // event name
+    expect(point.blobs[4]).toBe('server') // platform
+    expect(point.blobs[11]).toBe('request_failed') // action
+    expect(point.blobs[13]).toBe('ErrorHandler') // source
+    expect(point.blobs[15]).toBe('UNHANDLED_ERROR') // error_code
+    expect(point.blobs[16]).toBe('path') // dimension key
+    expect(point.blobs[17]).toBe('/sync/records/push/:value') // dimension value (scrubbed)
+    expect(point.doubles[6]).toBe(1) // error_count
+    expect(point.doubles[12]).toBe(500) // status_code
+    // The redacted error message + raw path identifiers never reach Analytics Engine.
+    const payloadText = JSON.stringify(point)
     expect(payloadText).not.toContain('550e8400-e29b-41d4-a716-446655440000')
-    expect(payloadText).toContain('record decode failed')
+    expect(payloadText).not.toContain('record decode failed')
   })
 })

@@ -30,7 +30,7 @@ import {
   logRecordQueryBatch,
   logSyncValidationFailure
 } from '../services/sync-telemetry'
-import { captureBusinessEvent, safeWaitUntil, waitUntilWithPostHog } from '../services/posthog'
+import { captureBusinessEvent, safeWaitUntil, waitUntilCaptured } from '../services/analytics'
 import { updateDevice } from '../services/device'
 import { getStorageBreakdown } from '../services/storage'
 import {
@@ -341,7 +341,7 @@ const handleRecordPush = async (c: Context<AppContext>): Promise<Response> => {
     })
     const doId = c.env.USER_SYNC_STATE.idFromName(userId)
     const stub = c.env.USER_SYNC_STATE.get(doId)
-    waitUntilWithPostHog(
+    waitUntilCaptured(
       c,
       stub.fetch(
         new Request(new URL('/broadcast', c.req.url), {
@@ -516,7 +516,7 @@ const handleCrdtUpdatePush = async (c: Context<AppContext>): Promise<Response> =
 
   const doId = c.env.USER_SYNC_STATE.idFromName(userId)
   const stub = c.env.USER_SYNC_STATE.get(doId)
-  waitUntilWithPostHog(
+  waitUntilCaptured(
     c,
     stub.fetch(
       new Request(new URL('/broadcast', c.req.url), {

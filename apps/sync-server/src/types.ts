@@ -26,8 +26,6 @@ export type Bindings = {
   PADDLE_API_KEY?: string
   PADDLE_ENVIRONMENT?: string
   TELEMETRY_HMAC_KEY: string
-  POSTHOG_API_KEY?: string
-  POSTHOG_HOST?: string
   fetch?: typeof fetch
 }
 

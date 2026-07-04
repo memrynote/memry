@@ -112,16 +112,8 @@ export function PrivacyPage() {
 
         <h2>5. What the website collects</h2>
         <p>
-          memrynote.com uses minimal, privacy-respecting analytics and masked session replay to
-          understand how people find the site, which pages are useful, and where signup or checkout
-          flows break. We do not use third-party advertising trackers and do not sell visitor data.
-        </p>
-        <p>
-          Website replays are limited to the public marketing, onboarding, pricing, and checkout
-          surfaces. They mask all form inputs and on-page text, block elements marked as private,
-          and strip network request bodies, response bodies, headers, query strings, and hashes
-          before capture. They do not record note content, vault content, file paths, emails, or
-          desktop app activity.
+          memrynote.com does not run third-party advertising trackers, session replay, or cross-site
+          analytics, and does not sell visitor data.
         </p>
         <p>
           If you contact us or sign up for an account, we store the email address you submit so we
@@ -167,8 +159,9 @@ export function PrivacyPage() {
         </p>
         <ul>
           <li>
-            <strong>Cloudflare</strong> — hosts the Sync API, stores encrypted blobs in R2, and runs
-            the marketing website&apos;s edge.
+            <strong>Cloudflare</strong> — hosts the Sync API, stores encrypted blobs in R2, runs the
+            marketing website&apos;s edge, and receives anonymous desktop product usage metrics (if
+            you leave usage metrics on).
           </li>
           <li>
             <strong>Paddle</strong> — merchant of record for payments. Receives billing details
@@ -177,10 +170,6 @@ export function PrivacyPage() {
           <li>
             <strong>Resend or a similar transactional email provider</strong> — delivers sign-up,
             billing, and security emails.
-          </li>
-          <li>
-            <strong>PostHog</strong> — collects privacy-masked website analytics, session replay,
-            and campaign events.
           </li>
         </ul>
         <p>

@@ -1,5 +1,4 @@
 import { Environment, Paddle } from '@paddle/paddle-node-sdk'
-import { PostHog } from 'posthog-node'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
 import {
@@ -29,29 +28,6 @@ function getRequestBody(req: VercelRequest): unknown {
     return JSON.parse(req.body)
   } catch {
     return null
-  }
-}
-
-function getPostHogClient(): PostHog | null {
-  const key = process.env.POSTHOG_API_KEY
-  const host = process.env.POSTHOG_HOST
-  if (!key || !host) return null
-  return new PostHog(key, { host })
-}
-
-async function captureCheckoutInitiated(transactionId: string, plan: string, cadence: string) {
-  const posthog = getPostHogClient()
-  if (!posthog) return
-
-  try {
-    posthog.capture({
-      distinctId: transactionId,
-      event: 'checkout_initiated',
-      properties: { plan, cadence, transactionId }
-    })
-    await posthog.shutdown()
-  } catch {
-    console.error('[paddle-checkout] PostHog capture failed')
   }
 }
 
@@ -89,8 +65,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       customData: checkoutConfig.customData,
       checkout: checkoutUrl ? { url: checkoutUrl } : undefined
     })
-
-    await captureCheckoutInitiated(transaction.id, intent.plan, intent.cadence)
 
     return res.status(200).json({
       environment: paddleEnvironment,

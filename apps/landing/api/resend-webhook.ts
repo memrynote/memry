@@ -1,15 +1,7 @@
-import { PostHog } from 'posthog-node'
 import { Resend } from 'resend'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
-import { toMarketingEmailEvent, type ResendWebhookPayload } from './resend-webhook-support.js'
-
-function getPostHogClient(): PostHog | null {
-  const key = process.env.POSTHOG_API_KEY
-  const host = process.env.POSTHOG_HOST
-  if (!key || !host) return null
-  return new PostHog(key, { host })
-}
+import type { ResendWebhookPayload } from './resend-webhook-support.js'
 
 function getHeaderValue(req: VercelRequest, name: string): string | undefined {
   const value = req.headers[name.toLowerCase()]
@@ -55,36 +47,18 @@ async function verifyResendWebhook(req: VercelRequest): Promise<ResendWebhookPay
   return verifiedPayload as unknown as ResendWebhookPayload
 }
 
-function parseEventTimestamp(value: string | undefined): Date | undefined {
-  if (!value) return undefined
-  const timestamp = new Date(value)
-  return Number.isNaN(timestamp.valueOf()) ? undefined : timestamp
-}
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
-  let payload: ResendWebhookPayload
   try {
-    payload = await verifyResendWebhook(req)
+    await verifyResendWebhook(req)
   } catch {
     return res.status(400).json({ error: 'Invalid webhook' })
   }
 
-  const event = toMarketingEmailEvent(payload)
-  const posthog = getPostHogClient()
-
-  if (event && posthog) {
-    posthog.capture({
-      distinctId: event.distinctId,
-      event: event.event,
-      properties: event.properties,
-      timestamp: parseEventTimestamp(event.timestamp)
-    })
-    await posthog.shutdown()
-  }
-
+  // Analytics sink removed with PostHog. The webhook is still verified and
+  // acknowledged so Resend does not retry; wire a new sink here if needed.
   return res.status(200).json({ received: true })
 }

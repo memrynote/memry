@@ -8,8 +8,8 @@ import {
   captureBusinessEvent,
   captureServerLog,
   safeWaitUntil,
-  waitUntilWithPostHog
-} from '../services/posthog'
+  waitUntilCaptured
+} from '../services/analytics'
 import type { AppContext } from '../types'
 
 const log = createLogger('Webhooks')
@@ -25,7 +25,6 @@ const captureWebhookLog = (
     statusCode: number
   }
 ): void => {
-  if (!c.env.POSTHOG_API_KEY || !c.env.POSTHOG_HOST) return
   try {
     c.executionCtx.waitUntil(
       captureServerLog(c.env, {
@@ -75,7 +74,7 @@ webhooks.post('/paddle', async (c) => {
 
   const result = await applyPaddleWebhook(c.env.DB, payload as never)
 
-  if (result.processed && result.userId && c.env.POSTHOG_API_KEY && c.env.POSTHOG_HOST) {
+  if (result.processed && result.userId) {
     const paddlePayload = payload as {
       event_type?: string
       eventType?: string
@@ -164,7 +163,7 @@ webhooks.post('/google-calendar', async (c) => {
 
   const doId = c.env.USER_SYNC_STATE.idFromName(channel.user_id)
   const stub = c.env.USER_SYNC_STATE.get(doId)
-  waitUntilWithPostHog(
+  waitUntilCaptured(
     c,
     stub.fetch(
       new Request(new URL('/broadcast', c.req.url), {

@@ -11,7 +11,7 @@ import {
   transitionToApproved,
   transitionToCompleted
 } from '../services/linking'
-import { waitUntilWithPostHog } from '../services/posthog'
+import { waitUntilCaptured } from '../services/analytics'
 import type { AppContext } from '../types'
 
 // Key linking buckets by the request's sessionId so concurrent devices and
@@ -146,7 +146,7 @@ linking.post('/scan', linkingRateLimit, async (c) => {
 
   const syncDoId = c.env.USER_SYNC_STATE.idFromName(userId)
   const syncStub = c.env.USER_SYNC_STATE.get(syncDoId)
-  waitUntilWithPostHog(
+  waitUntilCaptured(
     c,
     syncStub.fetch(
       new Request(new URL('/notify-linking', c.req.url), {
@@ -253,7 +253,7 @@ linking.post('/approve', authMiddleware, linkingRateLimit, async (c) => {
   if (session) {
     const syncDoId = c.env.USER_SYNC_STATE.idFromName(userId)
     const syncStub = c.env.USER_SYNC_STATE.get(syncDoId)
-    waitUntilWithPostHog(
+    waitUntilCaptured(
       c,
       syncStub.fetch(
         new Request(new URL('/notify-linking', c.req.url), {

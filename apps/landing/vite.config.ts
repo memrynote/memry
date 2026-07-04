@@ -92,7 +92,6 @@ export default defineConfig(({ mode }) => {
             motion: ['framer-motion', 'lenis'],
             paddle: ['@paddle/paddle-js'],
             crypto: ['libsodium-wrappers-sumo'],
-            analytics: ['posthog-js'],
             icons: ['lucide-react', '@hugeicons/react', '@hugeicons/core-free-icons']
           }
         }

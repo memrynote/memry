@@ -5,7 +5,6 @@ compatibility_date = "2025-01-01"
 [vars]
 ENVIRONMENT = "development"
 MIN_APP_VERSION = "0.1.0"
-POSTHOG_HOST = "https://us.i.posthog.com"
 PADDLE_ENVIRONMENT = "sandbox"
 
 [[d1_databases]]
@@ -49,7 +48,6 @@ ENVIRONMENT = "staging"
 ALLOWED_ORIGIN = "https://staging.memrynote.com"
 WEB_OAUTH_REDIRECT_URI = "https://staging.memrynote.com/auth/oauth/callback"
 MIN_APP_VERSION = "0.1.0"
-POSTHOG_HOST = "https://us.i.posthog.com"
 PADDLE_ENVIRONMENT = "sandbox"
 
 [[env.staging.routes]]
@@ -82,7 +80,6 @@ ENVIRONMENT = "production"
 ALLOWED_ORIGIN = "https://memrynote.com"
 WEB_OAUTH_REDIRECT_URI = "https://memrynote.com/auth/oauth/callback"
 MIN_APP_VERSION = "0.1.0"
-POSTHOG_HOST = "https://us.i.posthog.com"
 PADDLE_ENVIRONMENT = "production"
 
 [[env.production.routes]]

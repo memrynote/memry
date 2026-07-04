@@ -17,7 +17,6 @@ Built with React 19, TypeScript, Tailwind CSS 4, and Framer Motion. Deployed on 
 | UI        | Radix UI primitives            |
 | API       | Vercel Serverless Functions    |
 | Email     | Resend                         |
-| Analytics | PostHog                        |
 | Fonts     | Satoshi, Inter, JetBrains Mono |
 
 ## Getting Started
@@ -35,17 +34,8 @@ Fill in your environment variables:
 | `RESEND_SEGMENT_ID`     | Yes      | Segment ID for the `memrywaitlsit` waitlist segment |
 | `RESEND_WEBHOOK_SECRET` | Yes      | Signing secret for Resend event webhook delivery    |
 
-PostHog analytics is optional in local development. Production should set the public project key
-and host so landing pageviews, explicit CTA/demo/waitlist events, UTM attribution, Resend webhook
-events, and privacy-masked session replays are captured. Replay masks all inputs and text, blocks
-private selectors, and strips network bodies/headers before capture.
-
-| Variable            | Required | Description                                         |
-| ------------------- | -------- | --------------------------------------------------- |
-| `VITE_POSTHOG_KEY`  | No       | Public PostHog project key; blank disables tracking |
-| `VITE_POSTHOG_HOST` | No       | PostHog ingestion host; blank disables tracking     |
-| `POSTHOG_API_KEY`   | No       | Server-side project key for API route events        |
-| `POSTHOG_HOST`      | No       | Server-side ingestion host                          |
+The landing site ships no third-party analytics or session replay. Anonymous desktop product usage
+metrics are collected separately by the desktop app and stored in Cloudflare Analytics Engine.
 
 Paddle checkout uses a serverless function so the Paddle API key stays server-side. Checkout
 requests must include an account-bound checkout token minted by the sync server so Paddle webhook
@@ -116,7 +106,7 @@ set the Vercel project Root Directory to `apps/landing` so Vercel reads this pac
 `package.json`, `vite.config.ts`, `api/`, and `vercel.json`.
 
 - `api/waitlist.ts` runs as a serverless function
-- `api/resend-webhook.ts` receives Resend delivery/open/click/unsubscribe events for PostHog
+- `api/resend-webhook.ts` verifies and acknowledges Resend delivery/open/click/unsubscribe events
 - SPA is served as static output from `vite build`
 - Domain redirects configured in `vercel.json` (www + .ai variants → memrynote.com)
 

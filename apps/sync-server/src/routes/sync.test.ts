@@ -55,7 +55,9 @@ vi.mock('../services/sync', () => ({
 }))
 
 vi.mock('../services/entitlements', () => ({
-  getSyncEntitlement: vi.fn().mockResolvedValue({ plan: 'pro', status: 'active', expires_at: null }),
+  getSyncEntitlement: vi
+    .fn()
+    .mockResolvedValue({ plan: 'pro', status: 'active', expires_at: null }),
   isPaidSyncEntitlementActive: vi.fn().mockReturnValue(true),
   ensureSyncVaultAllowed: vi.fn().mockResolvedValue(undefined)
 }))
@@ -826,10 +828,6 @@ describe('sync routes', () => {
     })
 
     it('captures background broadcast failures without failing the push response', async () => {
-      const fetchMock = vi.fn(async (_input: string | URL | Request, _init?: RequestInit) => {
-        return new Response(JSON.stringify({ status: 1 }), { status: 200 })
-      })
-      vi.stubGlobal('fetch', fetchMock)
       mockDoStub.fetch.mockRejectedValueOnce(new Error(`broadcast failed ${VALID_UUID}`))
       const scheduled: Promise<unknown>[] = []
       const localExecutionCtx = {
@@ -839,10 +837,11 @@ describe('sync routes', () => {
         passThroughOnException: vi.fn(),
         props: {}
       }
+      const writeDataPoint = vi.fn()
       const localEnv = {
         ...env,
-        POSTHOG_API_KEY: 'phc_test_project',
-        POSTHOG_HOST: 'https://us.i.posthog.com'
+        PRODUCT_TELEMETRY: { writeDataPoint } as unknown as AnalyticsEngineDataset,
+        TELEMETRY_HMAC_KEY: 'test-hmac-key'
       }
 
       const res = await app.request(
@@ -854,21 +853,15 @@ describe('sync routes', () => {
       await scheduled[0]
 
       expect(res.status).toBe(200)
-      const batchCall = fetchMock.mock.calls.find(([input]) => String(input).includes('/batch/'))
-      expect(batchCall).toBeDefined()
-      const init = batchCall?.[1]
-      expect(init?.body).toBeDefined()
-      const body = JSON.parse(init?.body as string) as {
-        batch: Array<{ event: string; properties: Record<string, unknown> }>
-      }
-      expect(body.batch[0].event).toBe('server_error_seen')
-      expect(body.batch[0].properties).toMatchObject({
-        source: 'UserSyncState',
-        action: 'record_push_broadcast_failed',
-        path: '/sync/push',
-        error_code: 'WAIT_UNTIL_REJECTED'
-      })
-      expect(JSON.stringify(body)).not.toContain(VALID_UUID)
+      expect(writeDataPoint).toHaveBeenCalledTimes(1)
+      const point = writeDataPoint.mock.calls[0][0] as { blobs: string[] }
+      expect(point.blobs[0]).toBe('server_error_seen') // event name
+      expect(point.blobs[11]).toBe('record_push_broadcast_failed') // action
+      expect(point.blobs[13]).toBe('UserSyncState') // source
+      expect(point.blobs[15]).toBe('WAIT_UNTIL_REJECTED') // error_code
+      expect(point.blobs[16]).toBe('path') // dimension key
+      expect(point.blobs[17]).toBe('/sync/push') // dimension value
+      expect(JSON.stringify(point)).not.toContain(VALID_UUID)
     })
   })
 

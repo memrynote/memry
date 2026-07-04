@@ -56,7 +56,7 @@ import {
   ensureLocalAdminPaidSyncAccess,
   ensureLocalAdminPaidSyncAccessForUser
 } from '../services/entitlements'
-import { captureBusinessEvent, safeWaitUntil } from '../services/posthog'
+import { captureBusinessEvent, safeWaitUntil } from '../services/analytics'
 import { deleteUserData } from '../services/account-deletion'
 import type { AppContext, Bindings } from '../types'
 
