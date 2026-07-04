@@ -64,20 +64,20 @@ describe('useAllTags', () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
     expect(result.current.tags).toEqual([
-      { name: 'work', count: 7, color: '#111111', source: 'both' },
+      { name: 'Work', count: 7, color: '#111111', source: 'both' },
       { name: 'inbox', count: 6, source: 'inbox' },
       { name: 'work/dev', count: 5, source: 'inbox' },
       { name: 'work/design', count: 2, color: '#222222', source: 'notes' },
       { name: 'personal', count: 1, color: '#333333', source: 'notes' }
     ])
     expect(result.current.searchTags('work').map((tag) => tag.name)).toEqual([
-      'work',
+      'Work',
       'work/dev',
       'work/design'
     ])
-    expect(result.current.getPopularTags(2).map((tag) => tag.name)).toEqual(['work', 'inbox'])
+    expect(result.current.getPopularTags(2).map((tag) => tag.name)).toEqual(['Work', 'inbox'])
     expect(result.current.getRecentTags(3).map((tag) => tag.name)).toEqual([
-      'work',
+      'Work',
       'inbox',
       'work/dev'
     ])

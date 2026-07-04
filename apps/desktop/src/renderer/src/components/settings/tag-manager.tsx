@@ -57,7 +57,7 @@ export function TagManager() {
   const editInputRef = useRef<HTMLInputElement>(null)
 
   const filteredTags = search.trim()
-    ? tags.filter((t) => t.name.includes(search.toLowerCase().trim()))
+    ? tags.filter((t) => t.name.toLowerCase().includes(search.toLowerCase().trim()))
     : tags
 
   const handleStartRename = useCallback((tagName: string) => {
@@ -67,7 +67,7 @@ export function TagManager() {
 
   const handleConfirmRename = useCallback(async () => {
     if (!editingTag || !editValue.trim()) return
-    const newName = editValue.trim().toLowerCase()
+    const newName = editValue.trim()
     if (newName === editingTag) {
       setEditingTag(null)
       return

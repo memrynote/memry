@@ -123,7 +123,7 @@ export function createInboxBatchHandlers(deps: InboxBatchHandlerDeps): InboxBatc
         }
 
         for (const tag of tags) {
-          const normalizedTag = tag.trim().toLowerCase()
+          const normalizedTag = tag.trim()
           if (!normalizedTag) continue
 
           const existing = db

@@ -584,11 +584,19 @@ export function setTaskTags(db: DataDb, taskId: string, tags: string[]): void {
   // Delete existing tags
   db.delete(taskTags).where(eq(taskTags.taskId, taskId)).run()
 
-  // Insert new tags
-  if (tags.length > 0) {
-    const tagRecords: NewTaskTag[] = tags.map((tag) => ({
+  // Insert new tags — case preserved, deduped case-insensitively
+  // (tag column is COLLATE NOCASE, case variants would violate the PK)
+  const byKey = new Map<string, string>()
+  for (const raw of tags) {
+    const tag = raw.trim()
+    if (!tag) continue
+    const key = tag.toLowerCase()
+    if (!byKey.has(key)) byKey.set(key, tag)
+  }
+  if (byKey.size > 0) {
+    const tagRecords: NewTaskTag[] = [...byKey.values()].map((tag) => ({
       taskId,
-      tag: tag.toLowerCase().trim()
+      tag
     }))
     db.insert(taskTags).values(tagRecords).run()
   }

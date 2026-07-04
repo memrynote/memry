@@ -14,9 +14,11 @@ import { COLOR_NAMES, getTagColors } from '@/components/note/tags-row/tag-colors
 import { useT } from '@memry/i18n/renderer'
 
 function getColorForTag(tagName: string): string {
+  // Case-insensitive: #Work and #work fall back to the same color
+  const name = tagName.toLowerCase()
   let hash = 0
-  for (let i = 0; i < tagName.length; i++) {
-    hash = tagName.charCodeAt(i) + ((hash << 5) - hash)
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash)
   }
   return COLOR_NAMES[Math.abs(hash) % COLOR_NAMES.length]
 }
@@ -91,7 +93,10 @@ export const TagAutocomplete = ({
 
   // Saved color + icon per tag name, so suggestions and selected pills reflect
   // the user's chosen color/icon rather than a hashed default.
-  const metaByName = useMemo(() => new Map(tagDefs.map((d) => [d.name, d])), [tagDefs])
+  const metaByName = useMemo(
+    () => new Map(tagDefs.map((d) => [d.name.toLowerCase(), d])),
+    [tagDefs]
+  )
 
   const trimmedInput = inputValue.trim()
 
@@ -104,33 +109,38 @@ export const TagAutocomplete = ({
     }
   }, [trimmedInput])
 
+  const hasTagCi = useCallback(
+    (name: string) => tags.some((t) => t.toLowerCase() === name.toLowerCase()),
+    [tags]
+  )
+
   const availableAiTags = useMemo(
-    () => aiSuggestedTags.filter((t) => !tags.includes(t)),
-    [aiSuggestedTags, tags]
+    () => aiSuggestedTags.filter((t) => !hasTagCi(t)),
+    [aiSuggestedTags, hasTagCi]
   )
 
   const matchingTags = useMemo(() => {
     if (!trimmedInput) return []
     if (hierarchyContext) {
       return getChildTags(hierarchyContext.prefix, hierarchyContext.leafQuery || undefined).filter(
-        (t) => !tags.includes(t.name)
+        (t) => !hasTagCi(t.name)
       )
     }
-    return searchTags(trimmedInput).filter((t) => !tags.includes(t.name))
-  }, [trimmedInput, hierarchyContext, searchTags, getChildTags, tags])
+    return searchTags(trimmedInput).filter((t) => !hasTagCi(t.name))
+  }, [trimmedInput, hierarchyContext, searchTags, getChildTags, hasTagCi])
 
   const popularTags = useMemo(
-    () => getPopularTags(maxSuggestions).filter((t) => !tags.includes(t.name)),
-    [getPopularTags, maxSuggestions, tags]
+    () => getPopularTags(maxSuggestions).filter((t) => !hasTagCi(t.name)),
+    [getPopularTags, maxSuggestions, hasTagCi]
   )
 
   const exactMatchExists = useMemo(
     () =>
       trimmedInput
-        ? tags.includes(trimmedInput.toLowerCase()) ||
+        ? hasTagCi(trimmedInput) ||
           matchingTags.some((t) => t.name.toLowerCase() === trimmedInput.toLowerCase())
         : true,
-    [trimmedInput, tags, matchingTags]
+    [trimmedInput, hasTagCi, matchingTags]
   )
 
   // Build flat list for keyboard navigation
@@ -156,7 +166,7 @@ export const TagAutocomplete = ({
     }
 
     if (trimmedInput && !exactMatchExists) {
-      items.push({ type: 'create', value: trimmedInput.toLowerCase() })
+      items.push({ type: 'create', value: trimmedInput })
     }
 
     return items
@@ -187,9 +197,9 @@ export const TagAutocomplete = ({
 
   const addTag = useCallback(
     (tag: string): void => {
-      const normalized = tag.trim().toLowerCase()
-      if (normalized && !tags.includes(normalized)) {
-        onTagsChange([...tags, normalized])
+      const trimmed = tag.trim()
+      if (trimmed && !tags.some((t) => t.toLowerCase() === trimmed.toLowerCase())) {
+        onTagsChange([...tags, trimmed])
       }
       setInputValue('')
       setRequestedHighlightedIndex(0)
@@ -331,7 +341,7 @@ export const TagAutocomplete = ({
         {itemsToShow.map((tag, i) => {
           const idx = aiCount + i
           const colors = getTagColors(tag.color ?? '', tag.name)
-          const icon = metaByName.get(tag.name)?.icon
+          const icon = metaByName.get(tag.name.toLowerCase())?.icon
           return (
             <button
               key={tag.name}
@@ -361,14 +371,13 @@ export const TagAutocomplete = ({
 
   const renderCreateFooter = (): React.JSX.Element | null => {
     if (!trimmedInput || exactMatchExists) return null
-    const normalized = trimmedInput.toLowerCase()
-    const colors = getTagColors(getColorForTag(normalized))
+    const colors = getTagColors(getColorForTag(trimmedInput))
     const idx = flatItems.length - 1
 
     return (
       <button
         type="button"
-        onClick={() => addTag(normalized)}
+        onClick={() => addTag(trimmedInput)}
         onMouseEnter={() => setRequestedHighlightedIndex(idx)}
         className={cn(
           'flex items-center w-full py-2 px-3 gap-1.5 border-t border-border/40 text-start transition-colors',
@@ -383,7 +392,7 @@ export const TagAutocomplete = ({
           className="inline-flex items-center rounded-md py-px px-1.5 text-[11px] leading-3.5"
           style={{ backgroundColor: `${colors.text}15`, color: colors.text }}
         >
-          {normalized}
+          {trimmedInput}
         </span>
       </button>
     )
@@ -410,7 +419,7 @@ export const TagAutocomplete = ({
           aria-label={tPhaseF('phaseF.componentsFilingTagAutocomplete.selectedTags')}
         >
           {tags.map((tag) => {
-            const def = metaByName.get(tag)
+            const def = metaByName.get(tag.toLowerCase())
             return <TagPill key={tag} tag={tag} color={def?.color} icon={def?.icon} />
           })}
           <input

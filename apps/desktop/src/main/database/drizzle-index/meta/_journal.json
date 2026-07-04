@@ -134,6 +134,13 @@
       "when": 1771961898409,
       "tag": "0018_secret_jackal",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1783206460942,
+      "tag": "0019_bitter_zarda",
+      "breakpoints": true
     }
   ]
 }

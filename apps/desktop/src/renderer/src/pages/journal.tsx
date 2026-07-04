@@ -384,18 +384,24 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   // Tags & Properties
   const [pendingTagColors, setPendingTagColors] = useState(() => new Map<string, string>())
 
+  // Maps keyed by lowercase: tag identity is case-insensitive, display keeps user casing
   const tagColorMap = useMemo(() => {
     const map = new Map<string, string>()
     for (const t of allAvailableTags) {
-      map.set(t.tag, t.color)
+      map.set(t.tag.toLowerCase(), t.color)
+    }
+    // Just-created tags aren't in allAvailableTags until reindex+refetch;
+    // without this the editor pill falls back to the hashed default color
+    for (const [key, color] of pendingTagColors) {
+      if (!map.has(key)) map.set(key, color)
     }
     return map
-  }, [allAvailableTags])
+  }, [allAvailableTags, pendingTagColors])
 
   const tagIconMap = useMemo(() => {
     const map = new Map<string, string>()
     for (const t of allAvailableTags) {
-      if (t.icon) map.set(t.tag, t.icon)
+      if (t.icon) map.set(t.tag.toLowerCase(), t.icon)
     }
     return map
   }, [allAvailableTags])
@@ -404,8 +410,9 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     return (entry?.tags || []).map((tagName) => ({
       id: tagName,
       name: tagName,
-      color: tagColorMap.get(tagName) ?? pendingTagColors.get(tagName.toLowerCase()) ?? '',
-      icon: tagIconMap.get(tagName) ?? null
+      color:
+        tagColorMap.get(tagName.toLowerCase()) ?? pendingTagColors.get(tagName.toLowerCase()) ?? '',
+      icon: tagIconMap.get(tagName.toLowerCase()) ?? null
     }))
   }, [entry?.tags, tagColorMap, tagIconMap, pendingTagColors])
 

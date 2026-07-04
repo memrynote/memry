@@ -442,13 +442,19 @@ export function NotePage({ noteId }: NotePageProps) {
 
   const pendingTagColorsRef = useRef(new Map<string, string>())
 
+  // Maps keyed by lowercase: tag identity is case-insensitive, display keeps user casing
   const tagColorMap = useMemo(() => {
     const map = new Map<string, string>()
     for (const t of allAvailableTags) {
-      map.set(t.tag, t.color)
+      map.set(t.tag.toLowerCase(), t.color)
     }
     for (const key of pendingTagColorsRef.current.keys()) {
       if (map.has(key)) pendingTagColorsRef.current.delete(key)
+    }
+    // Just-created tags aren't in allAvailableTags until reindex+refetch;
+    // without this the editor pill falls back to the hashed default color
+    for (const [key, color] of pendingTagColorsRef.current) {
+      if (!map.has(key)) map.set(key, color)
     }
     return map
   }, [allAvailableTags])
@@ -456,7 +462,7 @@ export function NotePage({ noteId }: NotePageProps) {
   const tagIconMap = useMemo(() => {
     const map = new Map<string, string>()
     for (const t of allAvailableTags) {
-      if (t.icon) map.set(t.tag, t.icon)
+      if (t.icon) map.set(t.tag.toLowerCase(), t.icon)
     }
     return map
   }, [allAvailableTags])
@@ -465,8 +471,11 @@ export function NotePage({ noteId }: NotePageProps) {
     return (note?.tags || []).map((tagName) => ({
       id: tagName,
       name: tagName,
-      color: tagColorMap.get(tagName) ?? pendingTagColorsRef.current.get(tagName) ?? '',
-      icon: tagIconMap.get(tagName) ?? null
+      color:
+        tagColorMap.get(tagName.toLowerCase()) ??
+        pendingTagColorsRef.current.get(tagName.toLowerCase()) ??
+        '',
+      icon: tagIconMap.get(tagName.toLowerCase()) ?? null
     }))
   }, [note?.tags, tagColorMap, tagIconMap])
 

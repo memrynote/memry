@@ -114,7 +114,7 @@ describe('extractNoteMetadata', () => {
       expect(extractNoteMetadata(input).tags).toEqual(['real'])
     })
 
-    it('normalizes all tags to lowercase', () => {
+    it('preserves tag case from both sources', () => {
       const input = buildInput({
         frontmatter: {
           id: 'abc123def456',
@@ -125,7 +125,7 @@ describe('extractNoteMetadata', () => {
         parsedContent: 'Also #URGENT'
       })
 
-      expect(extractNoteMetadata(input).tags).toEqual(['work', 'urgent'])
+      expect(extractNoteMetadata(input).tags).toEqual(['Work', 'URGENT'])
     })
 
     it('deduplicates case-insensitive matches across sources', () => {
@@ -139,7 +139,8 @@ describe('extractNoteMetadata', () => {
         parsedContent: 'Using #react in this note'
       })
 
-      expect(extractNoteMetadata(input).tags).toEqual(['react'])
+      // Frontmatter spelling wins over inline
+      expect(extractNoteMetadata(input).tags).toEqual(['React'])
     })
   })
 })

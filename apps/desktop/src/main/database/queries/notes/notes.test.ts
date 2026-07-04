@@ -138,18 +138,32 @@ describe('notes cache queries', () => {
     expect(countNotes(db, 'projects')).toBe(2)
   })
 
-  it('manages note tags and tag listings', () => {
+  it('manages note tags and tag listings, preserving case', () => {
     createNote('note-11')
     setNoteTags(db, 'note-11', ['Work', 'Personal'])
 
-    expect(getNoteTags(db, 'note-11').sort()).toEqual(['personal', 'work'])
+    expect(getNoteTags(db, 'note-11').sort()).toEqual(['Personal', 'Work'])
     const tags = getAllTags(db)
     expect(tags).toEqual(
       expect.arrayContaining([
-        { tag: 'work', count: 1 },
-        { tag: 'personal', count: 1 }
+        { tag: 'Work', count: 1 },
+        { tag: 'Personal', count: 1 }
       ])
     )
+  })
+
+  it('treats tag identity case-insensitively', () => {
+    createNote('note-11a')
+    createNote('note-11b')
+    // Case variants on one note collapse to the first spelling
+    setNoteTags(db, 'note-11a', ['Work', 'work'])
+    expect(getNoteTags(db, 'note-11a')).toEqual(['Work'])
+
+    // Lookups match regardless of case, counts merge across notes
+    setNoteTags(db, 'note-11b', ['WORK'])
+    expect(findNotesByTag(db, 'work').length).toBe(2)
+    const tags = getAllTags(db)
+    expect(tags).toEqual(expect.arrayContaining([expect.objectContaining({ count: 2 })]))
   })
 
   it('finds notes by tags with pinned metadata', () => {

@@ -297,7 +297,7 @@ describe('tags-handlers', () => {
     expect(renameResult).toEqual({ success: true, affectedNotes: 1 })
     expect(fileMocks.toAbsolutePath).toHaveBeenCalledWith('notes/a.md')
     expect(fileMocks.readFile).toHaveBeenCalledWith('/vault/notes/a.md', 'utf-8')
-    expect(fileMocks.serializeNote).toHaveBeenCalledWith({ tags: ['new', 'keep'] }, 'Body')
+    expect(fileMocks.serializeNote).toHaveBeenCalledWith({ tags: ['New', 'keep'] }, 'Body')
     expect(fileMocks.atomicWrite).toHaveBeenCalledWith('/vault/notes/a.md', 'serialized note')
     expect(fileMocks.syncTaggedNote).toHaveBeenCalledWith('note-1')
     expect(fileMocks.syncTagDefinitionRename).toHaveBeenCalledWith(' old ', ' New ', {

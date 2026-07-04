@@ -229,19 +229,25 @@ export function extractWikiLinks(content: string): string[] {
 }
 
 /**
- * Extract all tags from frontmatter, normalizing to lowercase.
+ * Extract all tags from frontmatter, preserving the case the user typed.
+ * Deduplicates case-insensitively (first occurrence wins).
  *
  * @param frontmatter - Parsed frontmatter
- * @returns Array of normalized tag strings
+ * @returns Array of trimmed tag strings
  */
 export function extractTags(frontmatter: NoteFrontmatter): string[] {
   if (!frontmatter.tags || !Array.isArray(frontmatter.tags)) {
     return []
   }
 
-  return frontmatter.tags
-    .map((tag) => String(tag).toLowerCase().trim())
-    .filter((tag) => tag.length > 0)
+  const byKey = new Map<string, string>()
+  for (const raw of frontmatter.tags) {
+    const tag = String(raw).trim()
+    if (!tag) continue
+    const key = tag.toLowerCase()
+    if (!byKey.has(key)) byKey.set(key, tag)
+  }
+  return [...byKey.values()]
 }
 
 /**
@@ -252,23 +258,24 @@ export function extractTags(frontmatter: NoteFrontmatter): string[] {
  * Mirrors the editor's HASH_TAG_PATTERN from hash-tag.tsx.
  *
  * @param content - Markdown body (post-frontmatter)
- * @returns Deduplicated, lowercase tag names
+ * @returns Deduplicated tag names (case preserved, case-insensitive dedupe)
  */
 export function extractInlineTagsFromMarkdown(content: string): string[] {
   const withoutCode = content.replace(/```[\s\S]*?```/g, '')
   const withoutInlineCode = withoutCode.replace(/`[^`]+`/g, '')
 
-  const tags = new Set<string>()
+  const byKey = new Map<string, string>()
   const pattern = /#([a-zA-Z][a-zA-Z0-9_-]*(?:\/[a-zA-Z0-9][a-zA-Z0-9_-]*)*)/g
   let match: RegExpExecArray | null
 
   while ((match = pattern.exec(withoutInlineCode)) !== null) {
     const precedingChar = match.index > 0 ? withoutInlineCode[match.index - 1] : ''
     if (precedingChar && !/\s/.test(precedingChar)) continue
-    tags.add(match[1].toLowerCase())
+    const key = match[1].toLowerCase()
+    if (!byKey.has(key)) byKey.set(key, match[1])
   }
 
-  return Array.from(tags)
+  return Array.from(byKey.values())
 }
 
 /**

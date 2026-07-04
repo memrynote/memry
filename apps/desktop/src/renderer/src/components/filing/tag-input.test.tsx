@@ -20,7 +20,7 @@ describe('TagInput', () => {
 
     const input = screen.getByLabelText('phaseF.componentsFilingTagInput.addTags2')
     fireEvent.change(input, { target: { value: 'Idea,' } })
-    expect(onTagsChange).toHaveBeenCalledWith(['work', 'idea'])
+    expect(onTagsChange).toHaveBeenCalledWith(['work', 'Idea'])
 
     onTagsChange.mockClear()
     fireEvent.change(input, { target: { value: 'work,' } })

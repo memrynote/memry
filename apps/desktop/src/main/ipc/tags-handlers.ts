@@ -266,11 +266,11 @@ export function registerTagsHandlers(): void {
         syncTagDefinitionRename(input.oldName, input.newName, oldTagSnapshot)
 
         const normalizedOld = input.oldName.toLowerCase().trim()
-        const normalizedNew = input.newName.toLowerCase().trim()
+        const trimmedNew = input.newName.trim()
         await Promise.all(
           noteIds.map((noteId) =>
             updateNoteFrontmatterTag(indexDb, noteId, (tags) =>
-              tags.map((t) => (t.toLowerCase() === normalizedOld ? normalizedNew : t))
+              tags.map((t) => (t.toLowerCase() === normalizedOld ? trimmedNew : t))
             ).catch((err) => log.warn('Failed to update frontmatter for note', { noteId, err }))
           )
         )
@@ -413,14 +413,15 @@ export function registerTagsHandlers(): void {
         const dataDb = requireDatabase()
 
         const normalizedSource = input.source.toLowerCase().trim()
-        const normalizedTarget = input.target.toLowerCase().trim()
+        const trimmedTarget = input.target.trim()
+        const normalizedTarget = trimmedTarget.toLowerCase()
 
         if (normalizedSource === normalizedTarget) {
           return { success: false, error: 'Source and target tags are the same' }
         }
 
-        const noteResult = mergeTagInNotes(indexDb, normalizedSource, normalizedTarget)
-        const taskResult = mergeTagInTasks(dataDb, normalizedSource, normalizedTarget)
+        const noteResult = mergeTagInNotes(indexDb, input.source, input.target)
+        const taskResult = mergeTagInTasks(dataDb, input.source, input.target)
 
         const sourceSnapshot = dataDb
           .select()
@@ -438,7 +439,7 @@ export function registerTagsHandlers(): void {
             updateNoteFrontmatterTag(indexDb, noteId, (tags) => {
               const withoutSource = tags.filter((t) => t.toLowerCase() !== normalizedSource)
               const hasTarget = withoutSource.some((t) => t.toLowerCase() === normalizedTarget)
-              return hasTarget ? withoutSource : [...withoutSource, normalizedTarget]
+              return hasTarget ? withoutSource : [...withoutSource, trimmedTarget]
             }).catch((err) =>
               log.warn('Failed to update frontmatter for note during merge', { noteId, err })
             )

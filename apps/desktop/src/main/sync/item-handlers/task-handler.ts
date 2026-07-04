@@ -35,9 +35,17 @@ function queryNoteIds(db: DrizzleDb, taskId: string): string[] {
 
 function writeTags(db: DrizzleDb, taskId: string, tagList: string[]): void {
   db.delete(taskTags).where(eq(taskTags.taskId, taskId)).run()
-  if (tagList.length > 0) {
+  // Case preserved; dedupe case-insensitively (NOCASE PK on (taskId, tag))
+  const byKey = new Map<string, string>()
+  for (const raw of tagList) {
+    const tag = raw.trim()
+    if (!tag) continue
+    const key = tag.toLowerCase()
+    if (!byKey.has(key)) byKey.set(key, tag)
+  }
+  if (byKey.size > 0) {
     db.insert(taskTags)
-      .values(tagList.map((tag) => ({ taskId, tag: tag.toLowerCase().trim() })))
+      .values([...byKey.values()].map((tag) => ({ taskId, tag })))
       .run()
   }
 }

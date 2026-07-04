@@ -162,7 +162,7 @@ function splitTextWithHashTags(
 
     const color = tagColorMap.get(normalizedTag) || ''
     const icon = tagIconMap?.get(normalizedTag) || ''
-    segments.push(createHashTagInlineContent(normalizedTag, color, icon))
+    segments.push(createHashTagInlineContent(tagName, color, icon))
 
     didChange = true
     lastIndex = match.index + full.length
@@ -305,8 +305,14 @@ export function normalizeHashTags(
 // =============================================================================
 
 export function extractInlineTags(blocks: Block[]): string[] {
-  const tags = new Set<string>()
+  // Case preserved; deduplicated case-insensitively (first occurrence wins)
+  const tagsByKey = new Map<string, string>()
   const tagPattern = new RegExp(HASH_TAG_PATTERN)
+
+  function addTag(tag: string): void {
+    const key = tag.toLowerCase()
+    if (!tagsByKey.has(key)) tagsByKey.set(key, tag)
+  }
 
   function extractFromText(text: string): void {
     tagPattern.lastIndex = 0
@@ -314,7 +320,7 @@ export function extractInlineTags(blocks: Block[]): string[] {
     while ((match = tagPattern.exec(text)) !== null) {
       const precedingChar = match.index > 0 ? text[match.index - 1] : ''
       if (precedingChar && !/\s/.test(precedingChar)) continue
-      tags.add(match[1].toLowerCase())
+      addTag(match[1])
     }
   }
 
@@ -324,7 +330,7 @@ export function extractInlineTags(blocks: Block[]): string[] {
     if (Array.isArray(block.content)) {
       for (const item of block.content as any[]) {
         if (item?.type === 'hashTag' && item.props?.tag) {
-          tags.add((item.props.tag as string).toLowerCase())
+          addTag(item.props.tag as string)
         } else if (item?.type === 'text' && item.text) {
           extractFromText(item.text as string)
         } else if (typeof item === 'string') {
@@ -342,5 +348,5 @@ export function extractInlineTags(blocks: Block[]): string[] {
   for (const block of blocks) {
     walkBlock(block)
   }
-  return Array.from(tags)
+  return Array.from(tagsByKey.values())
 }

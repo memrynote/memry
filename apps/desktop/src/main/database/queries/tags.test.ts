@@ -386,9 +386,9 @@ describe('mergeTagInNotes', () => {
     // #when: call with mixed-case args
     const result = mergeTagInNotes(indexDb, 'Work', 'Personal')
 
-    // #then: "work" row is renamed to "personal"
+    // #then: "work" row is renamed to "Personal" (target case preserved)
     expect(result.affected).toBe(1)
-    expect(readNoteTags(indexDb, 'n1')).toEqual(['personal'])
+    expect(readNoteTags(indexDb, 'n1')).toEqual(['Personal'])
   })
 
   it('returns correct noteIds for all affected rows', () => {
@@ -507,7 +507,7 @@ describe('mergeTagInTasks', () => {
 
     // #then
     expect(result.affected).toBe(1)
-    expect(readTaskTags(dataDb, 't1')).toEqual(['review'])
+    expect(readTaskTags(dataDb, 't1')).toEqual(['Review'])
   })
 
   it('returns correct taskIds for all affected rows', () => {

@@ -81,7 +81,7 @@ export interface NoteSyncInput {
 export interface NoteMetadata {
   /** Note ID */
   id: string
-  /** Extracted tags (normalized to lowercase) */
+  /** Extracted tags (case preserved, deduplicated case-insensitively) */
   tags: string[]
   /** Custom properties from frontmatter */
   properties: Record<string, unknown>
@@ -137,7 +137,13 @@ export function extractNoteMetadata(input: NoteSyncInput): NoteMetadata {
 
   const frontmatterTags = extractTags(frontmatter)
   const inlineTags = extractInlineTagsFromMarkdown(parsedContent)
-  const tags = [...new Set([...frontmatterTags, ...inlineTags])]
+  // Case-insensitive merge; frontmatter spelling wins over inline
+  const tagsByKey = new Map<string, string>()
+  for (const tag of [...frontmatterTags, ...inlineTags]) {
+    const key = tag.toLowerCase()
+    if (!tagsByKey.has(key)) tagsByKey.set(key, tag)
+  }
+  const tags = [...tagsByKey.values()]
 
   const properties = extractProperties(frontmatter)
   const wikiLinks = extractWikiLinks(parsedContent)
