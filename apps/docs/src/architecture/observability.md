@@ -91,18 +91,23 @@ The `void` makes the call non-blocking and unfailable from the UI's point of vie
 | Auth            | `signin_started`, `signin_succeeded`                                                  |
 | Diagnostics     | `app_log_recorded`, `app_error_seen`, `app_launch_phase_completed`                    |
 
-## PostHog Export
+## Analytics Engine Export
 
-The sync server always writes accepted desktop telemetry batches to Cloudflare Analytics Engine.
-When `POSTHOG_API_KEY` and `POSTHOG_HOST` are configured on the sync server, the same
-content-free events are mirrored to PostHog's batch endpoint.
+Cloudflare Analytics Engine is the sole telemetry store. The sync server writes each accepted
+desktop event as one datapoint into the `memry_product_telemetry_{env}` dataset (binding
+`PRODUCT_TELEMETRY`) using a fixed 20-blob / 13-double layout. Server-side business and error
+events write to the same dataset with the same layout, tagged `platform` = `surface` = `server`,
+so a single Grafana query reads every event.
 
-PostHog mirroring does not use raw install IDs or session IDs. Desktop telemetry uses a
-server-HMAC install hash as the PostHog distinct ID so active-install, funnel, and retention
-insights work without exposing local identifiers. Session IDs and session hashes stay out of
-PostHog.
+No raw identifiers are stored: the install ID is HMAC-hashed server-side (`TELEMETRY_HMAC_KEY`)
+and used as the datapoint index, so active-install and retention queries work without exposing
+local identifiers; session IDs are likewise hashed. Telemetry batches are anonymous — no account
+identity is attached.
 
-Additional PostHog events:
+Dashboards live in self-hosted Grafana (`/d/memry-product-telemetry`), which queries the
+Analytics Engine SQL API through the Infinity datasource.
+
+Additional events in the same pipeline:
 
 | Event                        | Source                                    |
 | ---------------------------- | ----------------------------------------- |
@@ -111,20 +116,6 @@ Additional PostHog events:
 | `app_error_seen`             | Renderer, React boundary, and main errors |
 | `server_error_seen`          | Sync-server request/background failures   |
 | `server_log_recorded`        | Structured sync-server diagnostic logs    |
-
-### Account-Linked Identity
-
-When a user is signed in, the desktop telemetry flush includes a verified bearer token. The
-sync server verifies the token's signature, extracts the account ID, and passes it to PostHog
-as the `distinct_id` for the batch. An `$identify` merge event is also sent to link the
-anonymous install-hash identity to the account ID so funnels and retention insights stay
-coherent across sign-in.
-
-- **Signed-out / anonymous**: uses the server-HMAC install hash as before.
-- **Signed-in**: uses the verified account ID. Token signatures are checked but revocation is
-  not (the token is accepted as long as the signature is valid and it is not expired).
-- **Auth never blocks telemetry**: a missing or invalid bearer falls back to anonymous. Batches
-  are never rejected for auth reasons.
 
 ### Batch Validation & Retry
 
@@ -176,13 +167,14 @@ app source/bundle locations (not user files); any home-directory prefix (`/Users
 from anything that ships.
 
 Sync-server error reporting is server-side. Because the sync server is end-to-end-blind (it only
-ever holds ciphertext), its own error strings are operational and are sent in full — redacted for
-stray identifiers — along with stack frames parsed from the real stack; this is what makes sync
-failures debuggable. Server errors are attributed to the signed-in `userId` (plus device and vault
-ids when present) so a failure can be traced to the account that hit it. Dynamic path segments and
-query strings are normalized away. Expected handled `4xx` responses (e.g. `SYNC_PAYMENT_REQUIRED`)
-are still counted as `server_error_seen` but do not open PostHog `$exception` issues, keeping Error
-Tracking focused on real failures.
+ever holds ciphertext), its own error strings are operational: the redacted message and stack ship
+to Cloudflare Workers logs and Loki (never to Analytics Engine, which only gets the coded
+`server_error_seen` datapoint); this is what makes sync failures debuggable. Server errors are
+attributed to the signed-in `userId` (HMAC-hashed in Analytics Engine, plus device and vault ids
+in the log detail) so a failure can be traced to the account that hit it. Dynamic path segments
+and query strings are normalized away. Expected handled `4xx` responses (e.g.
+`SYNC_PAYMENT_REQUIRED`) are still counted as `server_error_seen` but are logged at `warn` rather
+than `error` level, keeping the error dashboards focused on real failures.
 
 ## Error Logs in Grafana (Loki)
 
