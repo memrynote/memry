@@ -36,7 +36,8 @@
       "journal": "Przypomnienie dziennika",
       "highlight": "Zaznacz przypomnienie",
       "fallback": "Termin przypomnienia",
-      "default": "Przypomnienie"
+      "default": "Przypomnienie",
+      "task": "Przypomnienie o zadaniu"
     }
   },
   "error": {

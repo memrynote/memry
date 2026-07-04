@@ -26,6 +26,10 @@
     "jobs": {
       "running": "{count, plural, one {Trabajo en segundo plano # ejecutándose} other {Trabajos en segundo plano # ejecutándose}}",
       "failed": "{count} falló"
+    },
+    "density": {
+      "toComfortable": "Vista cómoda",
+      "toCompact": "Vista compacta"
     }
   },
   "type": {
@@ -208,7 +212,15 @@
     "linkedNotesAria": "Notas vinculadas",
     "removeLinkTo": "Eliminar enlace a {title}",
     "notePlaceholder": "Escribe tu nota...",
-    "textPlaceholder": "Edita tu texto capturado..."
+    "textPlaceholder": "Edita tu texto capturado...",
+    "linkANote": "Vincular una nota",
+    "match": {
+      "likely": "Coincidencia probable",
+      "strong": "Coincidencia fuerte",
+      "weak": "Coincidencia débil"
+    },
+    "resize": "Redimensionar panel",
+    "suggestedCount": "{count} sugeridas"
   },
   "content": {
     "capturedAt": "{date} capturado",
@@ -253,7 +265,12 @@
     "presetInOneHour": "1 hora",
     "presetTomorrow": "mañana",
     "presetNextWeek": "La próxima semana",
-    "custom": "Personalizado..."
+    "custom": "Personalizado...",
+    "archive": "Archivar",
+    "panelEmpty": "No hay recordatorios próximos.",
+    "panelPast": "Pasados",
+    "panelUpcoming": "Próximos",
+    "taskFallback": "Tarea"
   },
   "insights": {
     "captureActivity": "Capturar actividad",
@@ -295,7 +312,9 @@
       "recordVoiceMemo2": "Grabar nota de voz",
       "alreadyCaptured": "Ya capturado: “",
       "rdquo": "rdquo;",
-      "captureAnyway": "Capturar de todos modos"
+      "captureAnyway": "Capturar de todos modos",
+      "focusShortcut": "Enfocar el campo de captura",
+      "q": "Q"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Elige carpeta",
@@ -416,7 +435,11 @@
       "backToPresets": "Volver a ajustes preestablecidos",
       "time": "tiempo",
       "noteOptional": "Nota (opcional)",
-      "whyAreYouSettingThisReminder": "¿Por qué estás configurando este recordatorio?"
+      "whyAreYouSettingThisReminder": "¿Por qué estás configurando este recordatorio?",
+      "deleteReminder": "Eliminar recordatorio",
+      "editReminder": "Editar recordatorio",
+      "save": "Guardar",
+      "set": "Establecer"
     },
     "componentsSnoozeSnoozePicker": {
       "snooze": "posponer",
@@ -461,5 +484,37 @@
     "toasts": {
       "inboxRefreshed": "Bandeja de entrada actualizada"
     }
+  },
+  "convert": {
+    "addEvent": "Añadir evento",
+    "addTask": "Añadir tarea",
+    "allDay": "Todo el día",
+    "binaryOnlyNote": "Los archivos solo pueden convertirse en una nota",
+    "chooseType": "Convertir en",
+    "create": "Crear",
+    "date": "Fecha",
+    "dueDate": "Fecha de vencimiento",
+    "dueTime": "Hora de vencimiento",
+    "end": "Fin",
+    "event": "Evento",
+    "failed": "No se pudo convertir: {error}",
+    "inboxProject": "Bandeja",
+    "location": "Ubicación",
+    "note": "Nota",
+    "priority": "Prioridad",
+    "priorityHigh": "Alta",
+    "priorityLow": "Baja",
+    "priorityMedium": "Media",
+    "priorityNone": "Ninguna",
+    "priorityUrgent": "Urgente",
+    "project": "Proyecto",
+    "remindAt": "Recordarme a las",
+    "reminder": "Recordatorio",
+    "setReminder": "Establecer recordatorio",
+    "start": "Inicio",
+    "success": "Convertido en {target}",
+    "task": "Tarea",
+    "time": "Hora",
+    "title": "Convertir"
   }
 }

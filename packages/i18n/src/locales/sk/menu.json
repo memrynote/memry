@@ -1,11 +1,15 @@
 {
   "app": {
-    "quit": "Ukončiť"
+    "quit": "Ukončiť",
+    "preferences": "Nastavenia…"
   },
   "file": {
     "label": "Súbor",
     "newNote": "Nová poznámka",
-    "close": "Zatvoriť okno"
+    "close": "Zatvoriť okno",
+    "closeTab": "Zavrieť kartu",
+    "exportPdf": "Exportovať do PDF…",
+    "openQuickly": "Otvoriť rýchlo…"
   },
   "navigation": {
     "back": "Späť",
@@ -18,12 +22,51 @@
     "cut": "Vystrihnúť",
     "copy": "Rozumiem",
     "paste": "Pasta",
-    "selectAll": "Vybrať všetko"
+    "selectAll": "Vybrať všetko",
+    "find": "Hľadať",
+    "speech": "Reč"
   },
   "view": {
     "label": "Zobraziť",
     "reload": "Obnoviť",
     "toggleDevTools": "Prepínať nástroje vývojára",
-    "toggleFullscreen": "Prepínať režim celej obrazovky"
+    "toggleFullscreen": "Prepínať režim celej obrazovky",
+    "theme": "Motív",
+    "themeDark": "Tmavý",
+    "themeLight": "Svetlý",
+    "themeSystem": "Systémový",
+    "themeWhite": "Papier",
+    "toggleDayPanel": "Prepnúť panel dňa",
+    "toggleSidebar": "Prepnúť bočný panel"
+  },
+  "format": {
+    "body": "Text",
+    "bold": "Tučné",
+    "code": "Kód",
+    "heading1": "Nadpis 1",
+    "heading2": "Nadpis 2",
+    "heading3": "Nadpis 3",
+    "highlight": "Zvýraznenie",
+    "italic": "Kurzíva",
+    "label": "Formát",
+    "strikethrough": "Prečiarknuté"
+  },
+  "help": {
+    "about": "O aplikácii Memrynote",
+    "documentation": "Dokumentácia",
+    "label": "Pomocník",
+    "shortcuts": "Klávesové skratky"
+  },
+  "insert": {
+    "attachment": "Vložiť prílohu…",
+    "bulletList": "Odrážkový zoznam",
+    "codeBlock": "Blok kódu",
+    "label": "Vložiť",
+    "numberedList": "Číslovaný zoznam",
+    "table": "Tabuľka",
+    "taskList": "Zoznam úloh"
+  },
+  "window": {
+    "label": "Okno"
   }
 }

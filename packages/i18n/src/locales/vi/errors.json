@@ -73,6 +73,7 @@
     "settingsNotInitialized": "Đồng bộ cài đặt chưa được khởi tạo",
     "securityQuarantinePermanent": "Một mục đồng bộ không thể được xác minh và đã bị cách ly vì lý do bảo mật.",
     "securityQuarantineRetry": "Một mục đồng bộ không vượt qua kiểm tra chữ ký và sẽ được thử lại.",
-    "certificatePinPaused": "Kết nối bảo mật với máy chủ đồng bộ không thể xác minh. Việc đồng bộ đã tạm dừng để bảo vệ bạn."
+    "certificatePinPaused": "Kết nối bảo mật với máy chủ đồng bộ không thể xác minh. Việc đồng bộ đã tạm dừng để bảo vệ bạn.",
+    "paymentRequired": "Cần gói Đồng bộ trả phí để dùng đồng bộ mã hóa được lưu trữ."
   }
 }

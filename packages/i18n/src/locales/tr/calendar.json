@@ -27,7 +27,9 @@
     "imported-event": "İçe aktarılan etkinlik",
     "task": "Görev",
     "reminder": "Hatırlatma",
-    "snooze": "Ertele"
+    "snooze": "Ertele",
+    "note": "Not",
+    "note-date": "Tarih hatırlatıcısı"
   },
   "state": {
     "loading-calendar": "Takvim yükleniyor…",
@@ -151,5 +153,34 @@
       "could-not-remove-due-date": "Son teslim tarihi kaldırılamadı",
       "could-not-open-note": "Not açılamadı"
     }
+  },
+  "connect-prompt": {
+    "aria": "Google Calendar'a bağlan",
+    "body": "Takviminizle daha fazlasını yapmak için Google hesabınızı bağlayın:",
+    "bullets": {
+      "events": "Google etkinliklerinizi notlar ve görevlerin yanında görün",
+      "schedule": "Görevleri ve notları takviminizde planlayın",
+      "sync": "İki yönlü eşitlenen etkinlikler oluşturun ve düzenleyin"
+    },
+    "continue": "Google ile devam et",
+    "dismiss": "Kapat",
+    "error": "Google Calendar'a bağlanılamadı. Tekrar deneyin.",
+    "pill": "Google'a bağlan",
+    "title": "Google Calendar bağlantısını tamamlayın"
+  },
+  "notePopover": {
+    "couldNotOpen": "Not açılamadı",
+    "kind": "Not",
+    "kindDateReminder": "Tarih hatırlatıcısı",
+    "open": "Notu aç"
+  },
+  "search": {
+    "close": "Aramayı kapat",
+    "no-results": "Eşleşme yok",
+    "open": "Takvimde ara",
+    "placeholder": "Etkinlik, görev, hatırlatıcı ara…"
+  },
+  "undo": {
+    "moveEvent": "Etkinliği taşı"
   }
 }

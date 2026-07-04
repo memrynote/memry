@@ -33,7 +33,8 @@
     "repeat": "Toista",
     "createAnother": "Luo toinen",
     "delete": "Poista tehtävä",
-    "created": "Luotu {date}"
+    "created": "Luotu {date}",
+    "reminder": "Muistutus"
   },
   "filters": {
     "filter": "Suodata",
@@ -62,7 +63,16 @@
     "noNotesAvailable": "Ei muistiinpanoja saatavilla",
     "noLinkedNotes": "Ei vielä linkitettyjä muistiinpanoja",
     "removeLinkTo": "Poista linkki {title}",
-    "removeLinkFallback": "huomautus"
+    "removeLinkFallback": "huomautus",
+    "addRelatedItem": "Lisää liittyvä kohde",
+    "noMatchingRelated": "Ei vastaavia kohteita",
+    "noRelatedAvailable": "Ei kohteita saatavilla",
+    "noRelatedItems": "Ei vielä liittyviä kohteita",
+    "related": "Aiheeseen liittyvät",
+    "relatedItemFallback": "kohde",
+    "removeRelatedItem": "Poista liittyvä kohde {title}",
+    "resize": "Muuta paneelin kokoa",
+    "searchRelated": "Hae liittyviä…"
   },
   "kanban": {
     "board": "Kanban-levy"
@@ -174,7 +184,8 @@
     "componentsTasksDatePickerContent": {
       "removeDate": "Poista päivämäärä",
       "clearTime": "Selkeä aika",
-      "addTime": "Lisää aikaa"
+      "addTime": "Lisää aikaa",
+      "time": "Aika"
     },
     "componentsTasksDeleteProjectDialog": {
       "delete": "Poista\"",
@@ -612,6 +623,20 @@
       "failedToLoadTaskPreferences": "Tehtäväasetusten lataaminen epäonnistui",
       "failedToUpdateTaskPreferences": "Tehtäväasetusten päivittäminen epäonnistui",
       "failedToLoadLinkedTasks": "Linkitettyjen tehtävien lataaminen epäonnistui"
+    }
+  },
+  "reminders": {
+    "hasReminders": "Sisältää muistutuksia",
+    "setReminder": "Aseta muistutus",
+    "summary": "Muistutus: {date}",
+    "summaryWithMore": "Muistutus: {date} (+{count} lisää)",
+    "toast": {
+      "deleteFailed": "Muistutuksen poisto epäonnistui",
+      "deleted": "Muistutus poistettu",
+      "set": "Muistutus asetettu",
+      "setFailed": "Muistutuksen asetus epäonnistui",
+      "updateFailed": "Muistutuksen päivitys epäonnistui",
+      "updated": "Muistutus päivitetty"
     }
   }
 }

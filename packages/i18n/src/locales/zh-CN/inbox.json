@@ -26,6 +26,10 @@
     "jobs": {
       "running": "{count, plural, one {# 后台任务正在运行} other {# 后台任务正在运行}}",
       "failed": "{count} 失败"
+    },
+    "density": {
+      "toComfortable": "宽松视图",
+      "toCompact": "紧凑视图"
     }
   },
   "type": {
@@ -208,7 +212,15 @@
     "linkedNotesAria": "已链接的笔记",
     "removeLinkTo": "移除与 {title} 的链接",
     "notePlaceholder": "写下你的笔记...",
-    "textPlaceholder": "编辑你捕获的文本..."
+    "textPlaceholder": "编辑你捕获的文本...",
+    "linkANote": "关联一篇笔记",
+    "match": {
+      "likely": "可能匹配",
+      "strong": "高度匹配",
+      "weak": "弱匹配"
+    },
+    "resize": "调整面板大小",
+    "suggestedCount": "{count} 个建议"
   },
   "content": {
     "capturedAt": "已捕获 {date}",
@@ -253,7 +265,12 @@
     "presetInOneHour": "1 小时",
     "presetTomorrow": "明天",
     "presetNextWeek": "下周",
-    "custom": "自定义..."
+    "custom": "自定义...",
+    "archive": "归档",
+    "panelEmpty": "没有即将到来的提醒。",
+    "panelPast": "已过去",
+    "panelUpcoming": "即将到来",
+    "taskFallback": "任务"
   },
   "insights": {
     "captureActivity": "捕获活动",
@@ -295,7 +312,9 @@
       "recordVoiceMemo2": "录制语音备忘",
       "alreadyCaptured": "已捕获：“",
       "rdquo": "rdquo;",
-      "captureAnyway": "仍要捕获"
+      "captureAnyway": "仍要捕获",
+      "focusShortcut": "聚焦捕获输入框",
+      "q": "Q"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "选择文件夹",
@@ -416,7 +435,11 @@
       "backToPresets": "返回预设",
       "time": "时间",
       "noteOptional": "备注（可选）",
-      "whyAreYouSettingThisReminder": "你为什么要设置这个提醒？"
+      "whyAreYouSettingThisReminder": "你为什么要设置这个提醒？",
+      "deleteReminder": "删除提醒",
+      "editReminder": "编辑提醒",
+      "save": "保存",
+      "set": "设置"
     },
     "componentsSnoozeSnoozePicker": {
       "snooze": "延迟",
@@ -461,5 +484,37 @@
     "toasts": {
       "inboxRefreshed": "收件箱已刷新"
     }
+  },
+  "convert": {
+    "addEvent": "添加事件",
+    "addTask": "添加任务",
+    "allDay": "全天",
+    "binaryOnlyNote": "文件只能转换为笔记",
+    "chooseType": "转换为",
+    "create": "创建",
+    "date": "日期",
+    "dueDate": "截止日期",
+    "dueTime": "截止时间",
+    "end": "结束",
+    "event": "事件",
+    "failed": "无法转换：{error}",
+    "inboxProject": "收件箱",
+    "location": "地点",
+    "note": "笔记",
+    "priority": "优先级",
+    "priorityHigh": "高",
+    "priorityLow": "低",
+    "priorityMedium": "中",
+    "priorityNone": "无",
+    "priorityUrgent": "紧急",
+    "project": "项目",
+    "remindAt": "提醒时间",
+    "reminder": "提醒",
+    "setReminder": "设置提醒",
+    "start": "开始",
+    "success": "已转换为 {target}",
+    "task": "任务",
+    "time": "时间",
+    "title": "转换"
   }
 }

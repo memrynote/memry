@@ -1,11 +1,15 @@
 {
   "app": {
-    "quit": "Lopeta"
+    "quit": "Lopeta",
+    "preferences": "Asetukset…"
   },
   "file": {
     "label": "Tiedosto",
     "newNote": "Uusi huomautus",
-    "close": "Sulje ikkuna"
+    "close": "Sulje ikkuna",
+    "closeTab": "Sulje välilehti",
+    "exportPdf": "Vie PDF:ksi…",
+    "openQuickly": "Avaa nopeasti…"
   },
   "navigation": {
     "back": "Takaisin",
@@ -18,12 +22,51 @@
     "cut": "Leikkaa",
     "copy": "Kopioi",
     "paste": "Liitä",
-    "selectAll": "Valitse kaikki"
+    "selectAll": "Valitse kaikki",
+    "find": "Etsi",
+    "speech": "Puhe"
   },
   "view": {
     "label": "Näytä",
     "reload": "Lataa uudelleen",
     "toggleDevTools": "Vaihda Kehittäjätyökalut",
-    "toggleFullscreen": "Koko näyttö päälle/pois"
+    "toggleFullscreen": "Koko näyttö päälle/pois",
+    "theme": "Teema",
+    "themeDark": "Tumma",
+    "themeLight": "Vaalea",
+    "themeSystem": "Järjestelmä",
+    "themeWhite": "Paperi",
+    "toggleDayPanel": "Näytä/piilota päiväpaneeli",
+    "toggleSidebar": "Näytä/piilota sivupalkki"
+  },
+  "format": {
+    "body": "Leipäteksti",
+    "bold": "Lihavointi",
+    "code": "Koodi",
+    "heading1": "Otsikko 1",
+    "heading2": "Otsikko 2",
+    "heading3": "Otsikko 3",
+    "highlight": "Korostus",
+    "italic": "Kursivointi",
+    "label": "Muotoile",
+    "strikethrough": "Yliviivaus"
+  },
+  "help": {
+    "about": "Tietoja Memrynotesta",
+    "documentation": "Dokumentaatio",
+    "label": "Ohje",
+    "shortcuts": "Pikanäppäimet"
+  },
+  "insert": {
+    "attachment": "Lisää liite…",
+    "bulletList": "Luettelomerkkilista",
+    "codeBlock": "Koodilohko",
+    "label": "Lisää",
+    "numberedList": "Numeroitu lista",
+    "table": "Taulukko",
+    "taskList": "Tehtävälista"
+  },
+  "window": {
+    "label": "Ikkuna"
   }
 }

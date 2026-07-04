@@ -27,7 +27,9 @@
     "imported-event": "Sự kiện đã nhập",
     "task": "Công việc",
     "reminder": "Nhắc nhở",
-    "snooze": "Hoãn"
+    "snooze": "Hoãn",
+    "note": "Ghi chú",
+    "note-date": "Nhắc theo ngày"
   },
   "state": {
     "loading-calendar": "Đang tải lịch…",
@@ -151,5 +153,34 @@
       "could-not-remove-due-date": " Không thể xóa hạn chót ",
       "could-not-open-note": " Không thể mở ghi chú "
     }
+  },
+  "connect-prompt": {
+    "aria": "Kết nối Google Calendar",
+    "body": "Kết nối tài khoản Google để làm được nhiều hơn với lịch của bạn:",
+    "bullets": {
+      "events": "Xem sự kiện Google bên cạnh ghi chú và công việc",
+      "schedule": "Lên lịch công việc và ghi chú trên lịch của bạn",
+      "sync": "Tạo và sửa sự kiện, đồng bộ hai chiều"
+    },
+    "continue": "Tiếp tục với Google",
+    "dismiss": "Bỏ qua",
+    "error": "Không thể kết nối Google Calendar. Thử lại.",
+    "pill": "Kết nối Google",
+    "title": "Hoàn tất kết nối với Google Calendar"
+  },
+  "notePopover": {
+    "couldNotOpen": "Không thể mở ghi chú",
+    "kind": "Ghi chú",
+    "kindDateReminder": "Nhắc theo ngày",
+    "open": "Mở ghi chú"
+  },
+  "search": {
+    "close": "Đóng tìm kiếm",
+    "no-results": "Không có kết quả",
+    "open": "Tìm trong lịch",
+    "placeholder": "Tìm sự kiện, công việc, nhắc nhở…"
+  },
+  "undo": {
+    "moveEvent": "Di chuyển sự kiện"
   }
 }

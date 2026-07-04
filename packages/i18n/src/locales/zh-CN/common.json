@@ -45,7 +45,10 @@
   "count": {
     "note": "{count, plural, one {# 笔记} other {# 笔记集合}}",
     "task": "{count, plural, one {# 任务} other {# 任务集合}}",
-    "itemDelete": "{count, plural, one {删除 # 项} other {删除 # 项目}}"
+    "itemDelete": "{count, plural, one {删除 # 项} other {删除 # 项目}}",
+    "event": "{count, plural, other {# 个事件}}",
+    "journal": "{count, plural, other {# 篇日志}}",
+    "reminder": "{count, plural, other {# 个提醒}}"
   },
   "toast": {
     "actionFailed": "操作失败",
@@ -83,7 +86,23 @@
       "newNoteN": "新建笔记 (⌘N)",
       "new": "新建",
       "syncDisabled": "同步已禁用",
-      "syncDisabled2": "同步已禁用"
+      "syncDisabled2": "同步已禁用",
+      "feedbackButton": "发送反馈",
+      "feedbackDescription": "告诉我们哪些运行良好、哪些出了问题，或你希望 Memry 实现什么。我们会阅读每一条消息。",
+      "feedbackEmailHint": "如果希望得到回复，请留下你的邮箱。",
+      "feedbackError": "无法发送反馈。请重试。",
+      "feedbackPlaceholder": "你的反馈…",
+      "feedbackSend": "发送",
+      "feedbackSending": "发送中…",
+      "feedbackSuccess": "感谢你的反馈！",
+      "feedbackTitle": "发送反馈",
+      "newItemMenu": "新建…",
+      "updateAvailable": "更新",
+      "updateDownloading": "下载中…",
+      "updateDownloadingPercent": "下载中 {percent}%",
+      "updateInstallingSubtitle": "Memrynote 将自动重启。",
+      "updateInstallingTitle": "正在安装更新",
+      "updateRestart": "重启"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "调整日面板大小",
@@ -462,7 +481,8 @@
       "day": "日",
       "agent": "Agent",
       "pendingApproval": "{count, plural, one {# 待批准} other {# 待批准}}",
-      "inProgress": "Agent 正在转弯"
+      "inProgress": "Agent 正在转弯",
+      "close": "关闭智能助手"
     },
     "errors": {
       "loadConversations": "无法加载代理对话",
@@ -481,5 +501,142 @@
     "sources": {
       "used": "使用了 {count} 个来源"
     }
+  },
+  "home": {
+    "addWidget": "添加小组件",
+    "board": {
+      "defaultName": "首页",
+      "deleteAria": "删除布局",
+      "label": "首页布局",
+      "newAria": "新建看板",
+      "newName": "新建看板"
+    },
+    "disabled": {
+      "createNote": "创建笔记",
+      "hint": "没有打开的内容。开始一篇笔记吧。"
+    },
+    "done": "完成",
+    "edit": "编辑",
+    "empty": {
+      "body": "小组件将你的笔记、任务和书签汇聚到一个宁静的地方。",
+      "cta": "添加你的第一个小组件",
+      "title": "你的看板是空的"
+    },
+    "greeting": {
+      "afternoon": "下午好",
+      "evening": "晚上好",
+      "morning": "早上好"
+    },
+    "header": {
+      "events": "{count, plural, other {# 个事件}}",
+      "tasksDue": "{count, plural, other {今天有 # 个任务到期}}"
+    },
+    "noBookmarksYet": "还没有书签。",
+    "noEventsYet": "今天没有事件。",
+    "noJournalEntriesYet": "还没有日志条目。",
+    "noNotesYet": "还没有笔记。",
+    "noTasksYet": "还没有任务。",
+    "widget": {
+      "bookmarks": "书签",
+      "calendar": "日历",
+      "calendarToday": "今天",
+      "configAria": "配置小组件",
+      "configure": "配置",
+      "dragAria": "拖动小组件",
+      "duration": "{count} 分钟",
+      "filter": {
+        "today": "今天到期",
+        "tomorrow": "明天",
+        "week": "本周"
+      },
+      "folder": "文件夹",
+      "folderEmpty": "还没有文件夹",
+      "folderNoSelection": "未选择文件夹",
+      "folderPickPrompt": "选择一个文件夹",
+      "folderViewSelect": "视图",
+      "folderView_gallery": "画廊",
+      "folderView_list": "列表",
+      "inbox": "收件箱",
+      "inboxAllTypes": "所有类型",
+      "inboxOlder": "{count, plural, other {# 项较早}}",
+      "inboxOldest": "{count, plural, other {最早 # 天}}",
+      "journal": "日志",
+      "journalStreak": "{count, plural, other {连续 # 天}}",
+      "journalToday": "今天",
+      "journalYesterday": "昨天",
+      "loadError": "无法加载",
+      "menuAria": "小组件选项",
+      "next": "下一个：{title}",
+      "openCalendar": "打开日历",
+      "openInbox": "打开收件箱",
+      "recentMeta": "{time} 编辑",
+      "recentMetaWithFolder": "{folder} · {time} 编辑",
+      "recentlyEdited": "最近编辑",
+      "remove": "移除",
+      "removeAria": "移除小组件",
+      "resize": "大小",
+      "resizeAria": "调整为 {{size}}",
+      "savedFilterDefault": "今天",
+      "savedFilterHint": "在任务页面为筛选器加星标即可在此使用",
+      "savedFilterLabel": "已保存的筛选器",
+      "startsIn": "{count, plural, other {# 分钟后开始}}",
+      "tasks": "任务",
+      "unknown": "未知小组件",
+      "untitled": "无标题"
+    }
+  },
+  "media": {
+    "video": "视频"
+  },
+  "onboarding": {
+    "agentChat": {
+      "body": "切换到智能助手标签页，向 Memrynote 助手询问你的保险库内容。",
+      "title": "与 AI 智能助手聊天"
+    },
+    "collections": {
+      "body": "将笔记整理到文件夹中，固定书签，并按标签浏览——全部在这里。",
+      "title": "收藏集、书签和标签"
+    },
+    "dayPanel": {
+      "body": "侧边面板将日历和日程视图放在你正在阅读的内容旁边。",
+      "title": "你的一天，与工作并列"
+    },
+    "feedback": {
+      "body": "从这里直接向团队发送反馈。",
+      "title": "告诉我们你的想法"
+    },
+    "nav": {
+      "body": "收件箱用于捕获，日志用于每日笔记，日历用于你的时间线，任务用于待办事项，图谱用于查看它们如何相互关联。",
+      "title": "你的工作区"
+    },
+    "newNote": {
+      "body": "从这里开始。你写的一切都会首先存储在本地。",
+      "title": "创建你的第一篇笔记"
+    },
+    "settings": {
+      "body": "从 12 个以上的应用导入你的笔记——Obsidian、Notion、Apple Notes、Evernote 等等——并在设置中调整其他一切。",
+      "title": "设置和导入"
+    },
+    "sync": {
+      "body": "开启端到端加密同步，让每台设备保持一致。",
+      "title": "私密、加密的同步"
+    },
+    "welcome": {
+      "body": "你私密的、离线优先的家园。笔记采用端到端加密——它们绝不会以未加密形式离开你的设备。",
+      "title": "欢迎使用 Memrynote"
+    }
+  },
+  "updatePrompt": {
+    "autoUpdateLabel": "自动下载并安装更新",
+    "availableBody": "{version} 现已可用——你当前使用的是 {current}。是否立即下载？",
+    "availableTitle": "MemryNote 有新版本可用！",
+    "download": "下载",
+    "downloadedBody": "{version} 已下载完成。重启 MemryNote 以完成安装。",
+    "downloadedTitle": "更新已准备好安装",
+    "later": "稍后",
+    "releaseNotesLabel": "更新说明",
+    "remindLater": "稍后提醒我",
+    "restartNow": "立即重启",
+    "skip": "跳过此版本"
   }
 }

@@ -73,6 +73,7 @@
     "settingsNotInitialized": "Hindi nasimulan ang pag-sync ng mga setting",
     "securityQuarantinePermanent": "Hindi ma-verify ang isang item sa pag-sync at na-quarantine para sa seguridad.",
     "securityQuarantineRetry": "Nabigo ang isang item sa pag-sync sa pag-verify ng lagda at susubukang muli.",
-    "certificatePinPaused": "Hindi ma-verify ang secure na koneksyon sa sync server. Na-pause ang pag-sync para sa iyong proteksyon."
+    "certificatePinPaused": "Hindi ma-verify ang secure na koneksyon sa sync server. Na-pause ang pag-sync para sa iyong proteksyon.",
+    "paymentRequired": "Kailangan ng bayad na Sync plan para gamitin ang naka-host na naka-encrypt na sync."
   }
 }

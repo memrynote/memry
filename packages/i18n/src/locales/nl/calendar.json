@@ -27,7 +27,9 @@
     "imported-event": "Geïmporteerd evenement",
     "task": "Taak",
     "reminder": "Herinnering",
-    "snooze": "Snoozen"
+    "snooze": "Snoozen",
+    "note": "Notitie",
+    "note-date": "Datumherinnering"
   },
   "state": {
     "loading-calendar": "Kalender laden…",
@@ -151,5 +153,34 @@
       "could-not-remove-due-date": "Kan de vervaldatum niet verwijderen",
       "could-not-open-note": "Kan notitie niet openen"
     }
+  },
+  "connect-prompt": {
+    "aria": "Google Calendar verbinden",
+    "body": "Verbind je Google-account om meer met je agenda te doen:",
+    "bullets": {
+      "events": "Bekijk je Google-gebeurtenissen naast notities en taken",
+      "schedule": "Plan taken en notities in je agenda",
+      "sync": "Maak en bewerk gebeurtenissen, in beide richtingen gesynchroniseerd"
+    },
+    "continue": "Doorgaan met Google",
+    "dismiss": "Sluiten",
+    "error": "Kan Google Calendar niet verbinden. Probeer opnieuw.",
+    "pill": "Google verbinden",
+    "title": "Verbinding met Google Calendar voltooien"
+  },
+  "notePopover": {
+    "couldNotOpen": "Kan notitie niet openen",
+    "kind": "Notitie",
+    "kindDateReminder": "Datumherinnering",
+    "open": "Notitie openen"
+  },
+  "search": {
+    "close": "Zoeken sluiten",
+    "no-results": "Geen resultaten",
+    "open": "Agenda doorzoeken",
+    "placeholder": "Gebeurtenissen, taken, herinneringen zoeken…"
+  },
+  "undo": {
+    "moveEvent": "Gebeurtenis verplaatsen"
   }
 }

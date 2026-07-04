@@ -36,7 +36,8 @@
       "journal": "Připomenutí deníku",
       "highlight": "Zvýraznit připomenutí",
       "fallback": "Připomenutí je splatné",
-      "default": "Připomenutí"
+      "default": "Připomenutí",
+      "task": "Připomenutí úkolu"
     }
   },
   "error": {

@@ -25,7 +25,10 @@
         "integrations": "Integraciones",
         "vault": "Bóveda",
         "tags": "Etiquetas",
-        "properties": "Propiedades"
+        "properties": "Propiedades",
+        "commandLine": "Línea de comandos",
+        "features": "Funciones",
+        "import": "Importar"
       }
     }
   },
@@ -109,6 +112,11 @@
       "createInSelectedFolder": {
         "label": "Crear en la carpeta seleccionada",
         "description": "Se crean nuevas notas y carpetas dentro de la carpeta seleccionada actualmente. Cuando está desactivado, los elementos siempre se crean en la raíz."
+      },
+      "defaultNoteFolder": {
+        "description": "Vacío = raíz de la bóveda",
+        "label": "Ubicación predeterminada de las notas nuevas",
+        "placeholder": "notas"
       }
     },
     "privacy": {
@@ -116,6 +124,17 @@
         "label": "Compartir métricas de uso anónimo",
         "description": "Son solo métricas anónimas: nunca se envía contenido de notas, consultas de búsqueda, rutas de archivos, correos electrónicos o identificaciones sin procesar.",
         "error": "No se pudo actualizar la configuración de telemetría"
+      }
+    },
+    "dateFormat": {
+      "description": "Cómo se muestran las fechas del calendario",
+      "error": "No se pudo actualizar el formato de fecha",
+      "label": "Formato de fecha",
+      "options": {
+        "DD.MM.YYYY": "DD.MM.YYYY",
+        "DD/MM/YYYY": "DD/MM/YYYY",
+        "MM/DD/YYYY": "MM/DD/YYYY (EE. UU.)",
+        "YYYY-MM-DD": "YYYY-MM-DD (ISO)"
       }
     }
   },
@@ -250,6 +269,9 @@
         "description": "Ingrese un nombre para la nueva copia de la plantilla.",
         "placeholder": "Nombre de la plantilla"
       }
+    },
+    "preview": {
+      "notFound": "No se pudo cargar esta plantilla."
     }
   },
   "journal": {
@@ -261,7 +283,8 @@
     "groups": {
       "defaultTemplate": "Plantilla predeterminada",
       "sidebarVisibility": "Visibilidad de la barra lateral",
-      "footer": "Pie de página"
+      "footer": "Pie de página",
+      "location": "Ubicación y formato"
     },
     "template": {
       "label": "Plantilla",
@@ -290,7 +313,21 @@
       "label": "Mostrar pie de página de estadísticas",
       "description": "Recuento de palabras, tiempo de lectura, marcas de tiempo."
     },
-    "updateError": "No se pudo actualizar la configuración"
+    "updateError": "No se pudo actualizar la configuración",
+    "dateFormat": {
+      "description": "Formato del nombre de archivo de las notas diarias (p. ej. YYYY-MM-DD)",
+      "label": "Formato de fecha",
+      "placeholder": "YYYY-MM-DD"
+    },
+    "folder": {
+      "description": "Carpeta donde se guardan las notas diarias",
+      "label": "Carpeta del diario",
+      "placeholder": "diario"
+    },
+    "preview": {
+      "description": "Ruta del archivo del diario de hoy",
+      "label": "Vista previa"
+    }
   },
   "tasks": {
     "header": {
@@ -344,7 +381,9 @@
       "loading": "Cargando configuración..."
     },
     "groups": {
-      "dayCellClick": "Clic en la celda del día"
+      "dayCellClick": "Clic en la celda del día",
+      "notes": "Notas",
+      "weekStart": "Semana"
     },
     "defaultBehavior": {
       "label": "Comportamiento predeterminado",
@@ -360,6 +399,20 @@
       "openJournal": "Diario abierto",
       "openCalendar": "Calendario abierto",
       "useGlobal": "Usar configuración global"
+    },
+    "showNotesOnCalendar": {
+      "description": "Mostrar cada nota en el calendario como un elemento de todo el día en el día en que se creó",
+      "error": "No se pudo actualizar la opción de mostrar notas en el calendario",
+      "label": "Mostrar notas en el calendario"
+    },
+    "weekStart": {
+      "description": "Primer día de la semana en todos los calendarios",
+      "error": "No se pudo actualizar el inicio de la semana",
+      "label": "La semana empieza en",
+      "options": {
+        "monday": "Lunes",
+        "sunday": "Domingo"
+      }
     }
   },
   "account": {
@@ -372,10 +425,12 @@
       "identity": "Identidad",
       "sync": "Sincronizar",
       "storage": "Almacenamiento",
-      "devices": "Dispositivos"
+      "devices": "Dispositivos",
+      "billing": "Facturación"
     },
     "identity": {
-      "unknown": "Desconocido"
+      "unknown": "Desconocido",
+      "encrypted": "Cifrado de extremo a extremo"
     },
     "sync": {
       "lastSynced": "Última sincronización {time}",
@@ -421,6 +476,53 @@
       "signedOut": "Cerró sesión correctamente",
       "signOutFailed": "No se pudo cerrar sesión",
       "deviceLinked": "Dispositivo vinculado correctamente"
+    },
+    "billing": {
+      "actions": {
+        "manage": "Gestionar facturación",
+        "opening": "Abriendo...",
+        "refresh": "Actualizar estado",
+        "upgrade": "Mejorar"
+      },
+      "activationPendingPrefix": "Activación pendiente. Paddle puede tardar un momento en confirmar el pago. Actualiza el estado o escribe a",
+      "checking": "Comprobando el estado de facturación",
+      "historyDays": "{days} días",
+      "labels": {
+        "history": "Historial",
+        "maxFile": "Archivo máximo",
+        "storage": "Almacenamiento",
+        "vaults": "Bóvedas"
+      },
+      "planStatus": "Estado del plan",
+      "plans": {
+        "believer": "Plan Believer",
+        "free": "Plan Gratis",
+        "plus": "Plan Plus",
+        "pro": "Plan Pro"
+      },
+      "statuses": {
+        "active": "Activo",
+        "canceled": "Cancelado",
+        "inactive": "Inactivo",
+        "past_due": "Vencido",
+        "paused": "Pausado"
+      },
+      "toasts": {
+        "activationPending": "Activación pendiente",
+        "billingActive": "La facturación está activa",
+        "checkoutFailed": "No se pudo iniciar el pago",
+        "checkoutOpened": "Pago abierto en tu navegador",
+        "loadFailed": "No se pudo cargar el estado de facturación",
+        "portalFailed": "No se pudo abrir el portal de facturación",
+        "refreshFailed": "No se pudo actualizar el estado de facturación"
+      },
+      "unlimited": "Ilimitado"
+    },
+    "community": {
+      "and": "y",
+      "feedback": "comparte tu opinión",
+      "prompt": "¿Te encanta memrynote?",
+      "star": "Danos una estrella en GitHub"
     }
   },
   "setup": {
@@ -437,7 +539,9 @@
       "errors": {
         "sendCode": "No se pudo enviar el código",
         "googleStart": "No se pudo iniciar el inicio de sesión de Google"
-      }
+      },
+      "paidPlan": "La sincronización es un plan de pago.",
+      "seePlans": "Ver planes"
     },
     "email": {
       "label": "Dirección de correo electrónico",
@@ -488,7 +592,13 @@
         "registering": "Registrando dispositivo..."
       },
       "failed": "La recuperación falló",
-      "confirmationFailed": "Error de confirmación"
+      "confirmationFailed": "Error de confirmación",
+      "unavailable": {
+        "description": "Tu frase de recuperación se muestra solo una vez durante la configuración y no se puede recuperar después. Empieza de nuevo para generar una nueva.",
+        "loading": "Cargando tu frase de recuperación…",
+        "startOver": "Empezar de nuevo",
+        "title": "No se pudo cargar tu frase de recuperación"
+      }
     },
     "linking": {
       "choiceTitle": "Vincular este dispositivo",
@@ -513,7 +623,15 @@
       "waitingTitle": "Esperando aprobación",
       "waitingDescription": "Abra memrynote en su otro dispositivo y apruebe la solicitud de vinculación.",
       "verificationCode": "Código de verificación",
-      "confirmCode": "Confirma que esto coincide con el código de tu otro dispositivo"
+      "confirmCode": "Confirma que esto coincide con el código de tu otro dispositivo",
+      "vaultPickerChooseFolder": "Elegir carpeta",
+      "vaultPickerConfirm": "Descargar seleccionadas",
+      "vaultPickerDescription": "Esta cuenta tiene varias bóvedas. Elige una carpeta y las bóvedas que quieres añadir a este dispositivo.",
+      "vaultPickerDormantHint": "Añadida, se abre cuando cambies a ella",
+      "vaultPickerFolderLabel": "Guardar las bóvedas en la carpeta",
+      "vaultPickerPrimaryHint": "Se abre ahora",
+      "vaultPickerTitle": "Elige qué descargar",
+      "vaultRow": "Bóveda — {{count}} elementos · {{date}}"
     }
   },
   "devices": {
@@ -630,7 +748,15 @@
       "downloadedToast": "Whisper Small descargado",
       "downloadError": "No se pudo descargar Whisper Small",
       "keySavedToast": "Clave OpenAI guardada",
-      "keySaveError": "No se pudo guardar la clave OpenAI"
+      "keySaveError": "No se pudo guardar la clave OpenAI",
+      "memoNameMode": "Nombres de las notas",
+      "memoNameModeDescription": "Cómo se nombran las notas de voz tras la transcripción",
+      "naming": {
+        "none": "No renombrar",
+        "timestamp": "Marca de tiempo",
+        "transcript": "Título de la transcripción"
+      },
+      "namingError": "No se pudo actualizar el nombrado de las notas de voz"
     },
     "embedding": {
       "loaded": "cargado",
@@ -715,7 +841,12 @@
       "connectFailed": "No se pudo conectar Google Calendar",
       "refreshFailed": "No se pudo actualizar Google Calendar",
       "disconnectFailed": "No se pudo desconectar Google Calendar",
-      "retryFailed": "No se pudo volver a intentar sincronizar el calendario"
+      "retryFailed": "No se pudo volver a intentar sincronizar el calendario",
+      "pushToGoogle": {
+        "description": "Desactívalo para una sincronización unidireccional: seguirás viendo tus eventos de Google en memrynote, pero los eventos de memrynote no aparecerán en Google.",
+        "error": "No se pudo actualizar la dirección de la sincronización",
+        "label": "Mostrar los eventos de memrynote en Google Calendar"
+      }
     },
     "sourcePicker": {
       "empty": "Aún no hay calendarios de Google importados disponibles en este dispositivo.",
@@ -796,7 +927,8 @@
       "changeColor": "cambiar color",
       "mergeInto": "Fusionarse en...",
       "merge": "fusionar",
-      "delete": "Eliminar"
+      "delete": "Eliminar",
+      "changeIcon": "Cambiar icono"
     },
     "dialogs": {
       "deleteTitle": "Eliminar etiqueta",
@@ -814,7 +946,8 @@
       "mergeFailed": "No se pudieron fusionar etiquetas",
       "merged": "Se fusionó \"{source}\" en \"{target}\" ({count, plural, one {# artículo} other {Artículos #}})",
       "colorUpdated": "Color actualizado para \"{name}\"",
-      "colorFailed": "No se pudo actualizar el color"
+      "colorFailed": "No se pudo actualizar el color",
+      "iconFailed": "No se pudo actualizar el icono"
     }
   },
   "properties": {
@@ -1144,7 +1277,10 @@
     "status": {
       "disconnected": "Disconnected",
       "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled"
+      "fullTools": "Full tools enabled",
+      "checking": "Comprobando…",
+      "connected": "Conectado",
+      "label": "Conexión"
     },
     "permissions": {
       "group": "Agent permissions",
@@ -1160,6 +1296,133 @@
         "alwaysAllow": "Always allow",
         "askBeforeChanges": "Ask before changes"
       }
+    }
+  },
+  "commandLine": {
+    "actions": {
+      "refresh": "Actualizar"
+    },
+    "command": {
+      "descriptionInstalled": "Instalado en {path}",
+      "descriptionNotInstalled": "Instala el comando memrynote para poder usar tu bóveda desde cualquier terminal.",
+      "label": "Comando memrynote",
+      "toggleLabel": "Instalar el comando memrynote"
+    },
+    "defaultVault": {
+      "description": "Elige la bóveda que se usa cuando ejecutas memrynote sin --vault.",
+      "descriptionSelected": "Los comandos usan {path} cuando se omite --vault.",
+      "label": "Bóveda predeterminada",
+      "none": "No hay ninguna bóveda seleccionada",
+      "placeholder": "Selecciona una bóveda"
+    },
+    "groups": {
+      "terminal": "Terminal"
+    },
+    "header": {
+      "subtitle": "Configura el comando memrynote para tu terminal",
+      "title": "Línea de comandos"
+    },
+    "status": {
+      "defaultVaultUpdatedToast": "Bóveda predeterminada de la CLI actualizada",
+      "installedToast": "Comando memrynote instalado",
+      "loadFailed": "No se pudo cargar el estado del comando",
+      "loading": "Comprobando el estado del comando...",
+      "uninstalledToast": "Comando memrynote eliminado"
+    }
+  },
+  "features": {
+    "header": {
+      "subtitle": "Activa o desactiva partes de la aplicación. Desactivado = atenuado en la barra lateral y deshabilitado en todas partes.",
+      "title": "Funciones"
+    },
+    "items": {
+      "calendar": {
+        "description": "Eventos y agenda",
+        "label": "Calendario"
+      },
+      "graph": {
+        "description": "Conexiones entre notas",
+        "label": "Grafo"
+      },
+      "home": {
+        "description": "Panel principal",
+        "label": "Inicio"
+      },
+      "inbox": {
+        "description": "Captura rápida y triaje",
+        "label": "Bandeja"
+      },
+      "journal": {
+        "description": "Notas diarias",
+        "label": "Diario"
+      },
+      "tasks": {
+        "description": "Pendientes y fechas de vencimiento",
+        "label": "Tareas"
+      }
+    }
+  },
+  "import": {
+    "action": "Importar",
+    "dialog": {
+      "cancel": "Cancelar",
+      "choose": "Elegir archivo…",
+      "chooseFolder": "Selecciona la carpeta de Apple Notes…",
+      "chooseHint": "Selecciona tu {label}",
+      "close": "Cerrar",
+      "done": "Hecho",
+      "error": "La importación falló",
+      "folderHint": "Haz clic abajo y selecciona la carpeta “group.com.apple.notes” cuando se abra el selector (empieza ahí). Esto permite a Memry leer tus notas y adjuntos, sin necesidad de acceso a todo el disco.",
+      "progress": "{completed} de {total}",
+      "running": "Importando…",
+      "selected": "{count, plural, one {# archivo seleccionado} other {# archivos seleccionados}}",
+      "start": "Iniciar importación",
+      "summary": {
+        "attachments": "{count, plural, one {# adjunto copiado} other {# adjuntos copiados}}",
+        "failed": "{count} con errores",
+        "imported": "{count, plural, one {# elemento importado} other {# elementos importados}}",
+        "skipped": "{count} omitidos",
+        "title": "Importación completada"
+      },
+      "title": "Importar desde {name}"
+    },
+    "header": {
+      "subtitle": "Trae tus notas y tareas desde otras aplicaciones",
+      "title": "Importar"
+    },
+    "intro": "Las importaciones puntuales crean notas nuevas en tu bóveda. Tus archivos de exportación originales quedan intactos.",
+    "preview": {
+      "confirm": "Importar",
+      "warnings": "Advertencias"
+    },
+    "select": "Selecciona una aplicación desde la que importar…",
+    "sources": {
+      "apple-journal": "Importa una exportación HTML de Apple Journal como notas con fecha",
+      "apple-notes": "Importa desde la base de datos de Apple Notes (NoteStore.sqlite, macOS)",
+      "bear": "Importa un archivo .bear2bk de Bear (notas, etiquetas, adjuntos)",
+      "csv": "Importa un archivo .csv: una nota por fila, las columnas se convierten en propiedades",
+      "evernote": "Importa uno o más archivos de exportación .enex de Evernote",
+      "google-keep": "Importa una exportación de Google Takeout de Keep (.json o .zip)",
+      "html": "Importa archivos .html con imágenes enlazadas y enlaces entre páginas",
+      "markdown": "Importa archivos .md o una carpeta (frontmatter, etiquetas, adjuntos)",
+      "notion": "Importa una exportación HTML (.zip)",
+      "onenote": "Importa cuadernos de OneNote (requiere una cuenta de Microsoft)",
+      "raindrop": "Importa una exportación de marcadores de Raindrop.io (.csv): los marcadores van a la bandeja",
+      "roam": "Importa un grafo de Roam Research (.json) con esquemas anidados",
+      "ticktick": "Importa una copia de seguridad de TickTick (.csv) como proyectos, tareas y recordatorios",
+      "todoist": "Importa una exportación CSV de un proyecto (.csv)"
+    },
+    "stats": {
+      "bookmarks": "{count, plural, one {# marcador} other {# marcadores}}",
+      "comments": "{count, plural, one {# comentario} other {# comentarios}}",
+      "notes": "{count, plural, one {# nota} other {# notas}}",
+      "projects": "{count, plural, one {# proyecto} other {# proyectos}}",
+      "reminders": "{count, plural, one {# recordatorio} other {# recordatorios}}",
+      "skipped": "{count} omitidos",
+      "subtasks": "{count, plural, one {# subtarea} other {# subtareas}}",
+      "tasks": "{count, plural, one {# tarea} other {# tareas}}",
+      "withDueDate": "{count} con fecha",
+      "withTags": "{count} etiquetados"
     }
   }
 }

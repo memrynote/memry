@@ -45,7 +45,10 @@
   "count": {
     "note": "{count, plural, one {Nota #} other {Nota #}}",
     "task": "{count, plural, one {Tugasan #} other {# tugasan}}",
-    "itemDelete": "{count, plural, one {Padamkan item #} other {Padamkan item #}}"
+    "itemDelete": "{count, plural, one {Padamkan item #} other {Padamkan item #}}",
+    "event": "{count, plural, other {# acara}}",
+    "journal": "{count, plural, other {# jurnal}}",
+    "reminder": "{count, plural, other {# peringatan}}"
   },
   "toast": {
     "actionFailed": "Tindakan gagal",
@@ -83,7 +86,23 @@
       "newNoteN": "Nota baharu (⌘N)",
       "new": "baru",
       "syncDisabled": "Penyegerakan dilumpuhkan",
-      "syncDisabled2": "Penyegerakan dilumpuhkan"
+      "syncDisabled2": "Penyegerakan dilumpuhkan",
+      "feedbackButton": "Hantar maklum balas",
+      "feedbackDescription": "Beritahu kami apa yang berfungsi, apa yang rosak, atau apa yang anda harap Memry lakukan. Kami membaca setiap mesej.",
+      "feedbackEmailHint": "Tambah e-mel anda jika anda mahu balasan.",
+      "feedbackError": "Tidak dapat menghantar maklum balas. Sila cuba lagi.",
+      "feedbackPlaceholder": "Maklum balas anda…",
+      "feedbackSend": "Hantar",
+      "feedbackSending": "Menghantar…",
+      "feedbackSuccess": "Terima kasih atas maklum balas!",
+      "feedbackTitle": "Hantar maklum balas",
+      "newItemMenu": "Cipta baharu…",
+      "updateAvailable": "Kemas kini",
+      "updateDownloading": "Memuat turun…",
+      "updateDownloadingPercent": "Memuat turun {percent}%",
+      "updateInstallingSubtitle": "Memrynote akan mula semula secara automatik.",
+      "updateInstallingTitle": "Memasang kemas kini",
+      "updateRestart": "Mula semula"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Saiz semula Panel Hari",
@@ -462,7 +481,8 @@
       "day": "Hari",
       "agent": "Agent",
       "pendingApproval": "{count, plural, one {# menunggu kelulusan} other {# kelulusan belum selesai}}",
-      "inProgress": "Agent giliran sedang berjalan"
+      "inProgress": "Agent giliran sedang berjalan",
+      "close": "Tutup ejen"
     },
     "errors": {
       "loadConversations": "Tidak dapat memuatkan perbualan ejen",
@@ -481,5 +501,142 @@
     "sources": {
       "used": "{count, plural, one {Menggunakan # sumber} other {Menggunakan # sumber}}"
     }
+  },
+  "home": {
+    "addWidget": "Tambah widget",
+    "board": {
+      "defaultName": "Laman Utama",
+      "deleteAria": "Padam susun atur",
+      "label": "Susun atur laman utama",
+      "newAria": "Papan baharu",
+      "newName": "Papan baharu"
+    },
+    "disabled": {
+      "createNote": "Cipta nota",
+      "hint": "Tiada apa terbuka. Mulakan nota."
+    },
+    "done": "Selesai",
+    "edit": "Edit",
+    "empty": {
+      "body": "Widget menyatukan nota, tugasan dan penanda buku anda di satu tempat yang tenang.",
+      "cta": "Tambah widget pertama anda",
+      "title": "Papan anda kosong"
+    },
+    "greeting": {
+      "afternoon": "Selamat tengah hari",
+      "evening": "Selamat petang",
+      "morning": "Selamat pagi"
+    },
+    "header": {
+      "events": "{count, plural, other {# acara}}",
+      "tasksDue": "{count, plural, other {# tugasan perlu hari ini}}"
+    },
+    "noBookmarksYet": "Belum ada penanda buku.",
+    "noEventsYet": "Tiada acara hari ini.",
+    "noJournalEntriesYet": "Belum ada catatan jurnal.",
+    "noNotesYet": "Belum ada nota.",
+    "noTasksYet": "Belum ada tugasan.",
+    "widget": {
+      "bookmarks": "Penanda buku",
+      "calendar": "Kalendar",
+      "calendarToday": "Hari ini",
+      "configAria": "Konfigur widget",
+      "configure": "Konfigur",
+      "dragAria": "Seret widget",
+      "duration": "{count} min",
+      "filter": {
+        "today": "Perlu Hari Ini",
+        "tomorrow": "Esok",
+        "week": "Minggu Ini"
+      },
+      "folder": "Folder",
+      "folderEmpty": "Belum ada folder",
+      "folderNoSelection": "Tiada folder dipilih",
+      "folderPickPrompt": "Pilih folder",
+      "folderViewSelect": "Lihat",
+      "folderView_gallery": "Galeri",
+      "folderView_list": "Senarai",
+      "inbox": "Peti Masuk",
+      "inboxAllTypes": "Semua jenis",
+      "inboxOlder": "{count, plural, other {# lebih lama}}",
+      "inboxOldest": "paling lama {count, plural, other {# hari}}",
+      "journal": "Jurnal",
+      "journalStreak": "{count, plural, other {rentetan #-hari}}",
+      "journalToday": "Hari ini",
+      "journalYesterday": "Semalam",
+      "loadError": "Tidak dapat memuatkan",
+      "menuAria": "Pilihan widget",
+      "next": "Seterusnya: {title}",
+      "openCalendar": "Buka Kalendar",
+      "openInbox": "Buka peti masuk",
+      "recentMeta": "disunting {time}",
+      "recentMetaWithFolder": "{folder} · disunting {time}",
+      "recentlyEdited": "Baru disunting",
+      "remove": "Alih keluar",
+      "removeAria": "Alih keluar widget",
+      "resize": "Saiz",
+      "resizeAria": "Ubah saiz kepada {{size}}",
+      "savedFilterDefault": "Hari ini",
+      "savedFilterHint": "Bintangkan penapis di halaman Tugasan untuk menggunakannya di sini",
+      "savedFilterLabel": "Penapis disimpan",
+      "startsIn": "Bermula dalam {count, plural, other {# min}}",
+      "tasks": "Tugasan",
+      "unknown": "Widget tidak diketahui",
+      "untitled": "Tanpa tajuk"
+    }
+  },
+  "media": {
+    "video": "Video"
+  },
+  "onboarding": {
+    "agentChat": {
+      "body": "Tukar ke tab Ejen untuk bertanya kepada pembantu Memrynote tentang bilik kebal anda.",
+      "title": "Bersembang dengan ejen AI"
+    },
+    "collections": {
+      "body": "Susun nota ke dalam folder, sematkan penanda buku dan semak imbas mengikut tag — semuanya di sini.",
+      "title": "Koleksi, penanda buku & tag"
+    },
+    "dayPanel": {
+      "body": "Panel sisi mengekalkan kalendar dan paparan hari anda di sebelah apa sahaja yang anda baca.",
+      "title": "Hari anda, di sisi kerja anda"
+    },
+    "feedback": {
+      "body": "Hantar maklum balas terus ke pasukan dari sini.",
+      "title": "Beritahu kami pendapat anda"
+    },
+    "nav": {
+      "body": "Peti Masuk untuk menangkap, Jurnal untuk nota harian, Kalendar untuk garis masa anda, Tugasan untuk senarai tugas, dan Graf untuk melihat bagaimana semuanya berhubung.",
+      "title": "Ruang kerja anda"
+    },
+    "newNote": {
+      "body": "Mula di sini. Semua yang anda tulis disimpan secara tempatan, dahulu.",
+      "title": "Cipta nota pertama anda"
+    },
+    "settings": {
+      "body": "Import nota anda dari 12+ apl — Obsidian, Notion, Apple Notes, Evernote dan banyak lagi — dan laraskan semua yang lain dalam Tetapan.",
+      "title": "Tetapan & import"
+    },
+    "sync": {
+      "body": "Hidupkan penyegerakan disulitkan hujung ke hujung untuk memastikan setiap peranti selaras.",
+      "title": "Penyegerakan peribadi, disulitkan"
+    },
+    "welcome": {
+      "body": "Rumah peribadi anda yang mengutamakan luar talian. Nota disulitkan hujung ke hujung — ia tidak pernah meninggalkan peranti anda tanpa disulitkan.",
+      "title": "Selamat datang ke Memrynote"
+    }
+  },
+  "updatePrompt": {
+    "autoUpdateLabel": "Muat turun & pasang kemas kini secara automatik",
+    "availableBody": "{version} telah tersedia — anda ada {current}. Adakah anda mahu memuat turunnya sekarang?",
+    "availableTitle": "Versi baharu MemryNote telah tersedia!",
+    "download": "Muat turun",
+    "downloadedBody": "{version} telah dimuat turun. Mula semula MemryNote untuk menyelesaikan pemasangan.",
+    "downloadedTitle": "Kemas kini sedia untuk dipasang",
+    "later": "Nanti",
+    "releaseNotesLabel": "Nota Keluaran",
+    "remindLater": "Ingatkan Saya Nanti",
+    "restartNow": "Mula Semula Sekarang",
+    "skip": "Langkau Versi Ini"
   }
 }

@@ -42,7 +42,9 @@
       "setIcon": "Установить значок",
       "removeIcon": "Удалить значок",
       "deleteSelectedNotes": "Удалить заметки {count}",
-      "deleteSelectedItems": "Удалить элементы {count}"
+      "deleteSelectedItems": "Удалить элементы {count}",
+      "bookmark": "Закладка",
+      "removeFromBookmarks": "Убрать из закладок"
     },
     "deleteDialog": {
       "noteTitle": "Удалить заметку",
@@ -111,7 +113,11 @@
       "aria": "Обратите внимание на предложения",
       "loading": "Загрузка заметок...",
       "empty": "Заметки не найдены",
-      "create": "Создать новую заметку"
+      "create": "Создать новую заметку",
+      "embed": "Встроить",
+      "embedAria": "Встроить {title}",
+      "wikiLink": "Вики-ссылка",
+      "wikiLinkAria": "Вики-ссылка {title}"
     },
     "tags": {
       "aria": "Предложения по тегам",
@@ -133,6 +139,15 @@
       "searchPlaceholder": "Поиск",
       "noIcons": "Значки не найдены",
       "clearSearch": "Очистить поиск"
+    },
+    "mention": {
+      "aria": "Подсказки дат и заметок",
+      "date": "Дата",
+      "dateHint": "Продолжайте вводить дату…",
+      "empty": "Заметки не найдены",
+      "loading": "Загрузка заметок...",
+      "remindMe": "Напомнить мне",
+      "showMore": "Показать больше"
     }
   },
   "outline": {
@@ -174,7 +189,8 @@
     "createTag": "Создать тег: \"{tag}\"",
     "chooseColor": "Выберите цвет:",
     "preview": "Предварительный просмотр:",
-    "colorAria": "Выберите цвет {color}"
+    "colorAria": "Выберите цвет {color}",
+    "customColor": "Свой цвет"
   },
   "properties": {
     "title": "Свойства",
@@ -205,7 +221,9 @@
       "status": "Статус",
       "select": "Выбрать",
       "multiselect": "Мультивыбор"
-    }
+    },
+    "showOnCalendar": "Показывать в календаре",
+    "showingOnCalendar": "Показывается в календаре"
   },
   "templateSelector": {
     "title": "Выберите свой холст",
@@ -295,7 +313,8 @@
   },
   "phaseF": {
     "componentsFolderViewColumnHeader": {
-      "dragToReorderColumn": "Перетащите, чтобы изменить порядок столбцов"
+      "dragToReorderColumn": "Перетащите, чтобы изменить порядок столбцов",
+      "editColumnName": "Изменить имя столбца"
     },
     "componentsFolderViewColumnSelector": {
       "properties": "Свойства",
@@ -311,7 +330,10 @@
       "delete": "Удалить",
       "none": "Нет",
       "edit": "Редактировать",
-      "delete2": "Удалить"
+      "delete2": "Удалить",
+      "columnBorders": "Границы столбцов",
+      "display": "Отображение",
+      "showSummaries": "Показывать сводки"
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Фильтр",
@@ -329,17 +351,21 @@
       "of": "из:",
       "addCondition": "Добавить условие",
       "addFilter": "Добавить фильтр",
-      "addGroup": "Добавить группу"
+      "addGroup": "Добавить группу",
+      "removeGroup": "Убрать группу"
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "Встроенный",
       "properties": "Свойства",
       "placeholderProperty": "Недвижимость",
       "placeholderOperator": "Оператор",
-      "placeholderValue": "Значение"
+      "placeholderValue": "Значение",
+      "removeFilter": "Убрать фильтр"
     },
     "componentsFolderViewFolderTableView": {
-      "notesTable": "Таблица примечаний"
+      "notesTable": "Таблица примечаний",
+      "selectAll": "Выбрать все заметки",
+      "selectRow": "Выбрать заметку"
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "Поиск заметок...",
@@ -371,7 +397,9 @@
     },
     "componentsFolderViewGroupedTable": {
       "groupedNotesTable": "Таблица сгруппированных заметок",
-      "more": "больше"
+      "more": "больше",
+      "selectAll": "Выбрать все заметки",
+      "selectRow": "Выбрать заметку"
     },
     "componentsFolderViewMoveToFolderDialog": {
       "searchFolders": "Поиск папок...",
@@ -399,7 +427,8 @@
     },
     "componentsFolderViewSortableColumnHeader": {
       "dragToReorderColumn": "Перетащите, чтобы изменить порядок столбцов",
-      "resizeColumn": "Изменить размер столбца"
+      "resizeColumn": "Изменить размер столбца",
+      "editColumnName": "Изменить имя столбца"
     },
     "componentsFolderViewViewSwitcher": {
       "default": "по умолчанию",
@@ -424,7 +453,16 @@
       "deleteView": "Удалить представление",
       "areYouSureYouWantToDelete": "Вы уверены, что хотите удалить \"",
       "thisActionCannotBeUndone": "Это действие невозможно отменить.",
-      "cancel3": "Отмена"
+      "cancel3": "Отмена",
+      "createView": "Создать вид",
+      "gallery": "Галерея",
+      "layout": "Раскладка",
+      "list": "Список",
+      "name": "Имя",
+      "newView": "Новый вид",
+      "save": "Сохранить",
+      "table": "Таблица",
+      "viewActions": "Действия вида"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "Не удалось загрузить PDF: ",
@@ -607,6 +645,15 @@
       "startYourCollection": "Начни свою коллекцию",
       "templatesHelpYouCreateNotesWithConsistentStructure": "Шаблоны помогают создавать заметки с единообразной структурой.",
       "createTemplate": "Создать шаблон"
+    },
+    "componentsFolderViewSortSelector": {
+      "builtIn": "Встроенное",
+      "clearSort": "Очистить сортировку",
+      "noSortablePropertiesFound": "Не найдено свойств для сортировки",
+      "properties": "Свойства",
+      "searchProperties": "Поиск свойств...",
+      "sort": "Сортировка",
+      "sortDirection": "Направление сортировки"
     }
   },
   "phaseI": {
@@ -654,5 +701,47 @@
       "cannotRemoveTagThisNoteWasDeleted": "Невозможно удалить тег — эта заметка была удалена.",
       "cannotChangeLocalOnlyThisNoteWasDeleted": "Невозможно изменить только локально — это примечание было удалено."
     }
+  },
+  "bulkActions": {
+    "addTag": "Добавить тег",
+    "clearAria": "Снять выделение",
+    "copiedLinks": "Скопировано {count, plural, one {# ссылка} few {# ссылки} many {# ссылок} other {# ссылки}}",
+    "copyLinks": "Копировать ссылки",
+    "delete": "Удалить",
+    "export": "Экспорт",
+    "move": "Переместить",
+    "selected": "выбрано",
+    "tagNamePlaceholder": "Имя тега",
+    "toolbarAria": "Массовые действия"
+  },
+  "comments": {
+    "attachAria": "Прикрепить файл",
+    "badgeAria": "{count, plural, one {# комментарий} few {# комментария} many {# комментариев} other {# комментария}}",
+    "cancel": "Отмена",
+    "commentPlaceholder": "Добавить комментарий...",
+    "createdTooltip": "Создано {date} в {time}",
+    "delete": "Удалить комментарий",
+    "edit": "Изменить комментарий",
+    "kind": {
+      "addition": "Добавление",
+      "comment": "Комментарий",
+      "deletion": "Удаление",
+      "substitution": "Замена"
+    },
+    "mentionAria": "Упомянуть человека, страницу или дату",
+    "railAria": "Комментарии",
+    "replyPlaceholder": "Ответить...",
+    "resolve": "Разрешить",
+    "sendAria": "Отправить комментарий",
+    "toolbarComment": "Комментарий"
+  },
+  "dateMention": {
+    "clear": "Очистить",
+    "dateFormat": "Формат даты",
+    "dateInput": "Дата",
+    "includeTime": "Включить время",
+    "remind": "Напомнить",
+    "time": "Время",
+    "timeFormat": "Формат времени"
   }
 }

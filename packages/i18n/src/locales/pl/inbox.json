@@ -26,6 +26,10 @@
     "jobs": {
       "running": "{count, plural, one {Uruchomione zadanie w tle #} other {Uruchomione zadania w tle #}}",
       "failed": "Błąd {count}"
+    },
+    "density": {
+      "toComfortable": "Widok wygodny",
+      "toCompact": "Widok kompaktowy"
     }
   },
   "type": {
@@ -208,7 +212,15 @@
     "linkedNotesAria": "Powiązane notatki",
     "removeLinkTo": "Usuń link do {title}",
     "notePlaceholder": "Napisz notatkę...",
-    "textPlaceholder": "Edytuj przechwycony tekst..."
+    "textPlaceholder": "Edytuj przechwycony tekst...",
+    "linkANote": "Połącz notatkę",
+    "match": {
+      "likely": "Prawdopodobne dopasowanie",
+      "strong": "Silne dopasowanie",
+      "weak": "Słabe dopasowanie"
+    },
+    "resize": "Zmień rozmiar panelu",
+    "suggestedCount": "{count} sugerowanych"
   },
   "content": {
     "capturedAt": "Przechwycono {date}",
@@ -253,7 +265,12 @@
     "presetInOneHour": "1 godzina",
     "presetTomorrow": "Jutro",
     "presetNextWeek": "Następny tydzień",
-    "custom": "Niestandardowe..."
+    "custom": "Niestandardowe...",
+    "archive": "Archiwizuj",
+    "panelEmpty": "Brak nadchodzących przypomnień.",
+    "panelPast": "Minione",
+    "panelUpcoming": "Nadchodzące",
+    "taskFallback": "Zadanie"
   },
   "insights": {
     "captureActivity": "Przechwytuj aktywność",
@@ -295,7 +312,9 @@
       "recordVoiceMemo2": "Nagraj notatkę głosową",
       "alreadyCaptured": "Już schwytane: „",
       "rdquo": "nieważne;",
-      "captureAnyway": "Przechwytuj mimo to"
+      "captureAnyway": "Przechwytuj mimo to",
+      "focusShortcut": "Ustaw fokus na polu zapisu",
+      "q": "Q"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Wybierz folder",
@@ -416,7 +435,11 @@
       "backToPresets": "Powrót do ustawień wstępnych",
       "time": "Czas",
       "noteOptional": "Uwaga (opcjonalnie)",
-      "whyAreYouSettingThisReminder": "Dlaczego ustawiasz to przypomnienie?"
+      "whyAreYouSettingThisReminder": "Dlaczego ustawiasz to przypomnienie?",
+      "deleteReminder": "Usuń przypomnienie",
+      "editReminder": "Edytuj przypomnienie",
+      "save": "Zapisz",
+      "set": "Ustaw"
     },
     "componentsSnoozeSnoozePicker": {
       "snooze": "Odłóż",
@@ -461,5 +484,37 @@
     "toasts": {
       "inboxRefreshed": "Skrzynka odbiorcza odświeżona"
     }
+  },
+  "convert": {
+    "addEvent": "Dodaj wydarzenie",
+    "addTask": "Dodaj zadanie",
+    "allDay": "Cały dzień",
+    "binaryOnlyNote": "Pliki mogą stać się tylko notatką",
+    "chooseType": "Konwertuj na",
+    "create": "Utwórz",
+    "date": "Data",
+    "dueDate": "Termin",
+    "dueTime": "Godzina terminu",
+    "end": "Koniec",
+    "event": "Wydarzenie",
+    "failed": "Nie udało się skonwertować: {error}",
+    "inboxProject": "Skrzynka",
+    "location": "Lokalizacja",
+    "note": "Notatka",
+    "priority": "Priorytet",
+    "priorityHigh": "Wysoki",
+    "priorityLow": "Niski",
+    "priorityMedium": "Średni",
+    "priorityNone": "Brak",
+    "priorityUrgent": "Pilny",
+    "project": "Projekt",
+    "remindAt": "Przypomnij o",
+    "reminder": "Przypomnienie",
+    "setReminder": "Ustaw przypomnienie",
+    "start": "Początek",
+    "success": "Skonwertowano na {target}",
+    "task": "Zadanie",
+    "time": "Godzina",
+    "title": "Konwertuj"
   }
 }

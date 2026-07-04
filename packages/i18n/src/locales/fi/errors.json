@@ -73,6 +73,7 @@
     "settingsNotInitialized": "Asetusten synkronointia ei ole alustettu",
     "securityQuarantinePermanent": "Synkronointikohdetta ei voitu vahvistaa, ja se on asetettu karanteeniin turvallisuussyistä.",
     "securityQuarantineRetry": "Synkronointikohteen allekirjoituksen vahvistus epäonnistui, ja sitä yritetään uudelleen.",
-    "certificatePinPaused": "Suojattua yhteyttä synkronointipalvelimeen ei voitu vahvistaa. Synkronointi on keskeytetty turvallisuutesi vuoksi."
+    "certificatePinPaused": "Suojattua yhteyttä synkronointipalvelimeen ei voitu vahvistaa. Synkronointi on keskeytetty turvallisuutesi vuoksi.",
+    "paymentRequired": "Maksullinen Sync-tilaus vaaditaan isännöidyn salatun synkronoinnin käyttöön."
   }
 }

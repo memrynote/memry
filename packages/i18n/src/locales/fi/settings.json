@@ -25,7 +25,10 @@
         "integrations": "Integraatiot",
         "vault": "Holvi",
         "tags": "Tunnisteet",
-        "properties": "Ominaisuudet"
+        "properties": "Ominaisuudet",
+        "commandLine": "Komentorivi",
+        "features": "Ominaisuudet",
+        "import": "Tuo"
       }
     }
   },
@@ -109,6 +112,11 @@
       "createInSelectedFolder": {
         "label": "Luo valitussa kansiossa",
         "description": "Uudet muistiinpanot ja kansiot luodaan valitun kansion sisään. Kun se ei ole käytössä, kohteet luodaan aina juurissa."
+      },
+      "defaultNoteFolder": {
+        "description": "Tyhjä = holvin juuri",
+        "label": "Uusien muistiinpanojen oletussijainti",
+        "placeholder": "muistiinpanot"
       }
     },
     "privacy": {
@@ -116,6 +124,17 @@
         "label": "Jaa nimettömät käyttötiedot",
         "description": "Se on vain anon-mittareita – muistiinpanojen sisältöä, hakukyselyitä, tiedostopolkuja, sähköposteja tai raakatunnuksia ei lähetetä.",
         "error": "Telemetria-asetuksen päivittäminen epäonnistui"
+      }
+    },
+    "dateFormat": {
+      "description": "Miten kalenterin päivämäärät näytetään",
+      "error": "Päivämäärämuodon päivitys epäonnistui",
+      "label": "Päivämäärämuoto",
+      "options": {
+        "DD.MM.YYYY": "DD.MM.YYYY",
+        "DD/MM/YYYY": "DD/MM/YYYY",
+        "MM/DD/YYYY": "MM/DD/YYYY (US)",
+        "YYYY-MM-DD": "YYYY-MM-DD (ISO)"
       }
     }
   },
@@ -250,6 +269,9 @@
         "description": "Anna uudelle mallikopiolle nimi.",
         "placeholder": "Mallin nimi"
       }
+    },
+    "preview": {
+      "notFound": "Tämän mallin lataus epäonnistui."
     }
   },
   "journal": {
@@ -261,7 +283,8 @@
     "groups": {
       "defaultTemplate": "Oletusmalli",
       "sidebarVisibility": "Sivupalkin näkyvyys",
-      "footer": "Alatunniste"
+      "footer": "Alatunniste",
+      "location": "Sijainti ja muoto"
     },
     "template": {
       "label": "Malli",
@@ -290,7 +313,21 @@
       "label": "Näytä tilastojen alatunniste",
       "description": "Sanamäärä, lukuaika, aikaleimat"
     },
-    "updateError": "Asetuksen päivittäminen epäonnistui"
+    "updateError": "Asetuksen päivittäminen epäonnistui",
+    "dateFormat": {
+      "description": "Päivittäisten muistiinpanojen tiedostonimen muoto (esim. YYYY-MM-DD)",
+      "label": "Päivämäärämuoto",
+      "placeholder": "YYYY-MM-DD"
+    },
+    "folder": {
+      "description": "Kansio, johon päivittäiset muistiinpanot tallennetaan",
+      "label": "Päiväkirjakansio",
+      "placeholder": "päiväkirja"
+    },
+    "preview": {
+      "description": "Tämän päivän päiväkirjatiedoston polku",
+      "label": "Esikatselu"
+    }
   },
   "tasks": {
     "header": {
@@ -344,7 +381,9 @@
       "loading": "Ladataan asetuksia..."
     },
     "groups": {
-      "dayCellClick": "Päivän solun napsautus"
+      "dayCellClick": "Päivän solun napsautus",
+      "notes": "Muistiinpanot",
+      "weekStart": "Viikko"
     },
     "defaultBehavior": {
       "label": "Oletuskäyttäytyminen",
@@ -360,6 +399,20 @@
       "openJournal": "Avaa päiväkirja",
       "openCalendar": "Avaa Kalenteri",
       "useGlobal": "Käytä globaalia asetusta"
+    },
+    "showNotesOnCalendar": {
+      "description": "Näytä jokainen muistiinpano kalenterissa koko päivän kohteena sen luontipäivänä",
+      "error": "Muistiinpanojen kalenterissa näyttämisen päivitys epäonnistui",
+      "label": "Näytä muistiinpanot kalenterissa"
+    },
+    "weekStart": {
+      "description": "Viikon ensimmäinen päivä kaikissa kalentereissa",
+      "error": "Viikon aloituksen päivitys epäonnistui",
+      "label": "Viikko alkaa",
+      "options": {
+        "monday": "Maanantai",
+        "sunday": "Sunnuntai"
+      }
     }
   },
   "account": {
@@ -372,10 +425,12 @@
       "identity": "Identiteetti",
       "sync": "Synkronoi",
       "storage": "Varastointi",
-      "devices": "Laitteet"
+      "devices": "Laitteet",
+      "billing": "Laskutus"
     },
     "identity": {
-      "unknown": "Tuntematon"
+      "unknown": "Tuntematon",
+      "encrypted": "Päästä päähän salattu"
     },
     "sync": {
       "lastSynced": "Viimeksi synkronoitu {time}",
@@ -421,6 +476,53 @@
       "signedOut": "Uloskirjautuminen onnistui",
       "signOutFailed": "Uloskirjautuminen epäonnistui",
       "deviceLinked": "Laitteen linkitys onnistui"
+    },
+    "billing": {
+      "actions": {
+        "manage": "Hallitse laskutusta",
+        "opening": "Avataan...",
+        "refresh": "Päivitä tila",
+        "upgrade": "Päivitä"
+      },
+      "activationPendingPrefix": "Aktivointi odottaa. Paddlen vahvistus voi kestää hetken. Päivitä tila tai lähetä sähköpostia",
+      "checking": "Tarkistetaan laskutuksen tilaa",
+      "historyDays": "{days} päivää",
+      "labels": {
+        "history": "Historia",
+        "maxFile": "Suurin tiedosto",
+        "storage": "Tallennustila",
+        "vaults": "Holvit"
+      },
+      "planStatus": "Tilauksen tila",
+      "plans": {
+        "believer": "Believer-tilaus",
+        "free": "Ilmainen tilaus",
+        "plus": "Plus-tilaus",
+        "pro": "Pro-tilaus"
+      },
+      "statuses": {
+        "active": "Aktiivinen",
+        "canceled": "Peruutettu",
+        "inactive": "Ei aktiivinen",
+        "past_due": "Erääntynyt",
+        "paused": "Keskeytetty"
+      },
+      "toasts": {
+        "activationPending": "Aktivointi odottaa",
+        "billingActive": "Laskutus on aktiivinen",
+        "checkoutFailed": "Kassalle siirtyminen epäonnistui",
+        "checkoutOpened": "Kassa avattu selaimeesi",
+        "loadFailed": "Laskutuksen tilan lataus epäonnistui",
+        "portalFailed": "Laskutusportaalin avaus epäonnistui",
+        "refreshFailed": "Laskutuksen tilan päivitys epäonnistui"
+      },
+      "unlimited": "Rajaton"
+    },
+    "community": {
+      "and": "ja",
+      "feedback": "jaa palautetta",
+      "prompt": "Rakastatko memrynotea?",
+      "star": "Anna tähti GitHubissa"
     }
   },
   "setup": {
@@ -437,7 +539,9 @@
       "errors": {
         "sendCode": "Koodin lähettäminen epäonnistui",
         "googleStart": "Google-sisäänkirjautumisen käynnistäminen epäonnistui"
-      }
+      },
+      "paidPlan": "Synkronointi on maksullinen tilaus.",
+      "seePlans": "Katso tilaukset"
     },
     "email": {
       "label": "Sähköpostiosoite",
@@ -488,7 +592,13 @@
         "registering": "Rekisteröidään laitetta..."
       },
       "failed": "Palautus epäonnistui",
-      "confirmationFailed": "Vahvistus epäonnistui"
+      "confirmationFailed": "Vahvistus epäonnistui",
+      "unavailable": {
+        "description": "Palautuslauseesi näytetään vain kerran määrityksen aikana, eikä sitä voi hakea myöhemmin. Aloita alusta luodaksesi uuden.",
+        "loading": "Ladataan palautuslausettasi…",
+        "startOver": "Aloita alusta",
+        "title": "Palautuslauseesi lataus epäonnistui"
+      }
     },
     "linking": {
       "choiceTitle": "Linkitä tämä laite",
@@ -513,7 +623,15 @@
       "waitingTitle": "Odotetaan hyväksyntää",
       "waitingDescription": "Avaa memrynote toisella laitteellasi ja hyväksy linkityspyyntö.",
       "verificationCode": "Vahvistuskoodi",
-      "confirmCode": "Varmista, että tämä vastaa toisen laitteesi koodia"
+      "confirmCode": "Varmista, että tämä vastaa toisen laitteesi koodia",
+      "vaultPickerChooseFolder": "Valitse kansio",
+      "vaultPickerConfirm": "Vastaanota valitut",
+      "vaultPickerDescription": "Tällä tilillä on useita holveja. Valitse kansio ja tälle laitteelle lisättävät holvit.",
+      "vaultPickerDormantHint": "Lisätty, avautuu kun vaihdat siihen",
+      "vaultPickerFolderLabel": "Tallenna holvit kansioon",
+      "vaultPickerPrimaryHint": "Avautuu nyt",
+      "vaultPickerTitle": "Valitse, mitä vastaanottaa",
+      "vaultRow": "Holvi — {{count}} kohdetta · {{date}}"
     }
   },
   "devices": {
@@ -630,7 +748,15 @@
       "downloadedToast": "Whisper Small ladattu",
       "downloadError": "Whisper Smallin lataaminen epäonnistui",
       "keySavedToast": "OpenAI-avain tallennettu",
-      "keySaveError": "OpenAI-avaimen tallennus epäonnistui"
+      "keySaveError": "OpenAI-avaimen tallennus epäonnistui",
+      "memoNameMode": "Muistioiden nimet",
+      "memoNameModeDescription": "Miten äänimuistiot nimetään litteroinnin jälkeen",
+      "naming": {
+        "none": "Älä nimeä uudelleen",
+        "timestamp": "Aikaleima",
+        "transcript": "Litteroinnin otsikko"
+      },
+      "namingError": "Äänimuistion nimeämisen päivitys epäonnistui"
     },
     "embedding": {
       "loaded": "Ladattu",
@@ -715,7 +841,12 @@
       "connectFailed": "Google-kalenterin yhdistäminen epäonnistui",
       "refreshFailed": "Google-kalenterin päivittäminen epäonnistui",
       "disconnectFailed": "Google-kalenterin yhteyden katkaiseminen epäonnistui",
-      "retryFailed": "Kalenterin synkronointia ei voitu yrittää uudelleen"
+      "retryFailed": "Kalenterin synkronointia ei voitu yrittää uudelleen",
+      "pushToGoogle": {
+        "description": "Poista käytöstä yksisuuntaista synkronointia varten — näet edelleen Google-tapahtumasi memrynotessa, mutta memrynote-tapahtumat eivät näy Googlessa.",
+        "error": "Synkronointisuunnan päivitys epäonnistui",
+        "label": "Näytä memrynote-tapahtumat Google Calendarissa"
+      }
     },
     "sourcePicker": {
       "empty": "Tuotuja Google-kalentereita ei ole vielä saatavilla tällä laitteella.",
@@ -796,7 +927,8 @@
       "changeColor": "Vaihda väriä",
       "mergeInto": "Yhdistä...",
       "merge": "Yhdistä",
-      "delete": "Poista"
+      "delete": "Poista",
+      "changeIcon": "Vaihda kuvaketta"
     },
     "dialogs": {
       "deleteTitle": "Poista tunniste",
@@ -814,7 +946,8 @@
       "mergeFailed": "Tunnisteiden yhdistäminen epäonnistui",
       "merged": "Yhdistetty \"{source}\" muotoon \"{target}\" ({count, plural, one {# tuote} other {# tuotteet}})",
       "colorUpdated": "Päivitetty väri \"{name}\"",
-      "colorFailed": "Värin päivittäminen epäonnistui"
+      "colorFailed": "Värin päivittäminen epäonnistui",
+      "iconFailed": "Kuvakkeen päivitys epäonnistui"
     }
   },
   "properties": {
@@ -1144,7 +1277,10 @@
     "status": {
       "disconnected": "Disconnected",
       "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled"
+      "fullTools": "Full tools enabled",
+      "checking": "Tarkistetaan…",
+      "connected": "Yhdistetty",
+      "label": "Yhteys"
     },
     "permissions": {
       "group": "Agent permissions",
@@ -1160,6 +1296,133 @@
         "alwaysAllow": "Always allow",
         "askBeforeChanges": "Ask before changes"
       }
+    }
+  },
+  "commandLine": {
+    "actions": {
+      "refresh": "Päivitä"
+    },
+    "command": {
+      "descriptionInstalled": "Asennettu sijaintiin {path}",
+      "descriptionNotInstalled": "Asenna memrynote-komento, jotta voit käyttää holviasi mistä tahansa päätteestä.",
+      "label": "memrynote-komento",
+      "toggleLabel": "Asenna memrynote-komento"
+    },
+    "defaultVault": {
+      "description": "Valitse holvi, jota käytetään, kun suoritat memrynoten ilman --vault-valitsinta.",
+      "descriptionSelected": "Komennot käyttävät polkua {path}, kun --vault jätetään pois.",
+      "label": "Oletusholvi",
+      "none": "Ei valittua holvia",
+      "placeholder": "Valitse holvi"
+    },
+    "groups": {
+      "terminal": "Pääte"
+    },
+    "header": {
+      "subtitle": "Määritä memrynote-komento päätteeseesi",
+      "title": "Komentorivi"
+    },
+    "status": {
+      "defaultVaultUpdatedToast": "Oletusarvoinen CLI-holvi päivitetty",
+      "installedToast": "memrynote-komento asennettu",
+      "loadFailed": "Komennon tilan lataus epäonnistui",
+      "loading": "Tarkistetaan komennon tilaa...",
+      "uninstalledToast": "memrynote-komento poistettu"
+    }
+  },
+  "features": {
+    "header": {
+      "subtitle": "Ota sovelluksen osia käyttöön tai pois. Pois = himmennetty sivupalkissa ja poistettu käytöstä kaikkialla.",
+      "title": "Ominaisuudet"
+    },
+    "items": {
+      "calendar": {
+        "description": "Tapahtumat ja aikataulu",
+        "label": "Kalenteri"
+      },
+      "graph": {
+        "description": "Muistiinpanojen yhteydet",
+        "label": "Graafi"
+      },
+      "home": {
+        "description": "Aloitusnäkymän kojelauta",
+        "label": "Aloitus"
+      },
+      "inbox": {
+        "description": "Pikatallennus ja lajittelu",
+        "label": "Saapuneet"
+      },
+      "journal": {
+        "description": "Päivittäiset muistiinpanot",
+        "label": "Päiväkirja"
+      },
+      "tasks": {
+        "description": "Tehtävät ja eräpäivät",
+        "label": "Tehtävät"
+      }
+    }
+  },
+  "import": {
+    "action": "Tuo",
+    "dialog": {
+      "cancel": "Peruuta",
+      "choose": "Valitse tiedosto…",
+      "chooseFolder": "Valitse Apple Notes -kansio…",
+      "chooseHint": "Valitse {label}",
+      "close": "Sulje",
+      "done": "Valmis",
+      "error": "Tuonti epäonnistui",
+      "folderHint": "Napsauta alla ja valitse “group.com.apple.notes” -kansio, kun valitsin avautuu (se alkaa sieltä). Tämä sallii Memryn lukea muistiinpanosi ja liitteesi — täyttä levykäyttöoikeutta ei tarvita.",
+      "progress": "{completed}/{total}",
+      "running": "Tuodaan…",
+      "selected": "{count, plural, one {# tiedosto valittu} other {# tiedostoa valittu}}",
+      "start": "Aloita tuonti",
+      "summary": {
+        "attachments": "{count, plural, one {# liite kopioitu} other {# liitettä kopioitu}}",
+        "failed": "{count} epäonnistui",
+        "imported": "{count, plural, one {# kohde tuotu} other {# kohdetta tuotu}}",
+        "skipped": "{count} ohitettu",
+        "title": "Tuonti valmis"
+      },
+      "title": "Tuo lähteestä {name}"
+    },
+    "header": {
+      "subtitle": "Tuo muistiinpanosi ja tehtäväsi muista sovelluksista",
+      "title": "Tuo"
+    },
+    "intro": "Kertaluonteiset tuonnit luovat uusia muistiinpanoja holviisi. Alkuperäisiä vientitiedostojasi ei muuteta.",
+    "preview": {
+      "confirm": "Tuo",
+      "warnings": "Varoitukset"
+    },
+    "select": "Valitse sovellus, josta tuodaan…",
+    "sources": {
+      "apple-journal": "Tuo Apple Journal -HTML-vienti päivätyinä muistiinpanoina",
+      "apple-notes": "Tuo Apple Notes -tietokannasta (NoteStore.sqlite, macOS)",
+      "bear": "Tuo Bearin .bear2bk-arkisto (muistiinpanot, tunnisteet, liitteet)",
+      "csv": "Tuo .csv-tiedosto — yksi muistiinpano riviä kohti, sarakkeista tulee ominaisuuksia",
+      "evernote": "Tuo yksi tai useampi Evernoten .enex-vientitiedosto",
+      "google-keep": "Tuo Google Takeout Keep -vienti (.json tai .zip)",
+      "html": "Tuo .html-tiedostoja linkitettyjen kuvien ja sivujen välisten linkkien kanssa",
+      "markdown": "Tuo .md-tiedostoja tai kansio (frontmatter, tunnisteet, liitteet)",
+      "notion": "Tuo HTML-vienti (.zip)",
+      "onenote": "Tuo OneNote-muistikirjoja (vaatii Microsoft-tilin)",
+      "raindrop": "Tuo Raindrop.io-kirjanmerkkivienti (.csv) — kirjanmerkit päätyvät saapuneisiin",
+      "roam": "Tuo Roam Research -graafi (.json) sisäkkäisten jäsennysten kanssa",
+      "ticktick": "Tuo TickTick-varmuuskopio (.csv) projekteina, tehtävinä ja muistutuksina",
+      "todoist": "Tuo projektin CSV-vienti (.csv)"
+    },
+    "stats": {
+      "bookmarks": "{count, plural, one {# kirjanmerkki} other {# kirjanmerkkiä}}",
+      "comments": "{count, plural, one {# kommentti} other {# kommenttia}}",
+      "notes": "{count, plural, one {# muistiinpano} other {# muistiinpanoa}}",
+      "projects": "{count, plural, one {# projekti} other {# projektia}}",
+      "reminders": "{count, plural, one {# muistutus} other {# muistutusta}}",
+      "skipped": "{count} ohitettu",
+      "subtasks": "{count, plural, one {# alitehtävä} other {# alitehtävää}}",
+      "tasks": "{count, plural, one {# tehtävä} other {# tehtävää}}",
+      "withDueDate": "{count} päivätty",
+      "withTags": "{count} merkitty"
     }
   }
 }

@@ -26,6 +26,10 @@
     "jobs": {
       "running": "{count, plural, one {Bežný úlohu na pozadí #} other {Bežné úlohy na pozadí #}}",
       "failed": "{count} zlyhal"
+    },
+    "density": {
+      "toComfortable": "Pohodlné zobrazenie",
+      "toCompact": "Kompaktné zobrazenie"
     }
   },
   "type": {
@@ -208,7 +212,15 @@
     "linkedNotesAria": "Prepojené poznámky",
     "removeLinkTo": "Odstrániť odkaz na {title}",
     "notePlaceholder": "Napísať svoju poznámku...",
-    "textPlaceholder": "Upraviť zachytený text..."
+    "textPlaceholder": "Upraviť zachytený text...",
+    "linkANote": "Prepojiť poznámku",
+    "match": {
+      "likely": "Pravdepodobná zhoda",
+      "strong": "Silná zhoda",
+      "weak": "Slabá zhoda"
+    },
+    "resize": "Zmeniť veľkosť panela",
+    "suggestedCount": "{count} navrhovaných"
   },
   "content": {
     "capturedAt": "Zachytené {date}",
@@ -253,7 +265,12 @@
     "presetInOneHour": "1 hodina",
     "presetTomorrow": "Zajtra",
     "presetNextWeek": "Budúci týždeň",
-    "custom": "Vlastné..."
+    "custom": "Vlastné...",
+    "archive": "Archivovať",
+    "panelEmpty": "Žiadne nadchádzajúce pripomienky.",
+    "panelPast": "Minulé",
+    "panelUpcoming": "Nadchádzajúce",
+    "taskFallback": "Úloha"
   },
   "insights": {
     "captureActivity": "Zaznamenať aktivitu",
@@ -295,7 +312,9 @@
       "recordVoiceMemo2": "Nahrávať hlasovú poznámku",
       "alreadyCaptured": "Už zachytené: “",
       "rdquo": "rdquo;",
-      "captureAnyway": "Zachytiť aj tak"
+      "captureAnyway": "Zachytiť aj tak",
+      "focusShortcut": "Zamerať pole zachytávania",
+      "q": "Q"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Vybrať priečinok",
@@ -416,7 +435,11 @@
       "backToPresets": "Späť k prednastaveniam",
       "time": "Čas",
       "noteOptional": "Poznámka (voliteľné)",
-      "whyAreYouSettingThisReminder": "Prečo nastavuješ túto pripomienku?"
+      "whyAreYouSettingThisReminder": "Prečo nastavuješ túto pripomienku?",
+      "deleteReminder": "Odstrániť pripomienku",
+      "editReminder": "Upraviť pripomienku",
+      "save": "Uložiť",
+      "set": "Nastaviť"
     },
     "componentsSnoozeSnoozePicker": {
       "snooze": "Odložiť",
@@ -461,5 +484,37 @@
     "toasts": {
       "inboxRefreshed": "Doručená pošta obnovená"
     }
+  },
+  "convert": {
+    "addEvent": "Pridať udalosť",
+    "addTask": "Pridať úlohu",
+    "allDay": "Celý deň",
+    "binaryOnlyNote": "Zo súborov sa môže stať iba poznámka",
+    "chooseType": "Konvertovať na",
+    "create": "Vytvoriť",
+    "date": "Dátum",
+    "dueDate": "Termín",
+    "dueTime": "Čas termínu",
+    "end": "Koniec",
+    "event": "Udalosť",
+    "failed": "Nepodarilo sa konvertovať: {error}",
+    "inboxProject": "Schránka",
+    "location": "Miesto",
+    "note": "Poznámka",
+    "priority": "Priorita",
+    "priorityHigh": "Vysoká",
+    "priorityLow": "Nízka",
+    "priorityMedium": "Stredná",
+    "priorityNone": "Žiadna",
+    "priorityUrgent": "Naliehavá",
+    "project": "Projekt",
+    "remindAt": "Pripomenúť o",
+    "reminder": "Pripomienka",
+    "setReminder": "Nastaviť pripomienku",
+    "start": "Začiatok",
+    "success": "Konvertované na {target}",
+    "task": "Úloha",
+    "time": "Čas",
+    "title": "Konvertovať"
   }
 }

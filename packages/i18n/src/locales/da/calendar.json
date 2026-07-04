@@ -27,7 +27,9 @@
     "imported-event": "Importeret begivenhed",
     "task": "Opgave",
     "reminder": "Påmindelse",
-    "snooze": "Snooze"
+    "snooze": "Snooze",
+    "note": "Note",
+    "note-date": "Datopåmindelse"
   },
   "state": {
     "loading-calendar": "Indlæser kalender...",
@@ -151,5 +153,34 @@
       "could-not-remove-due-date": "Forfaldsdatoen kunne ikke fjernes",
       "could-not-open-note": "Noten kunne ikke åbnes"
     }
+  },
+  "connect-prompt": {
+    "aria": "Forbind Google Calendar",
+    "body": "Forbind din Google-konto for at gøre mere med din kalender:",
+    "bullets": {
+      "events": "Se dine Google-begivenheder ved siden af noter og opgaver",
+      "schedule": "Planlæg opgaver og noter i din kalender",
+      "sync": "Opret og redigér begivenheder, synkroniseret begge veje"
+    },
+    "continue": "Fortsæt med Google",
+    "dismiss": "Afvis",
+    "error": "Kunne ikke forbinde Google Calendar. Prøv igen.",
+    "pill": "Forbind Google",
+    "title": "Færdiggør forbindelsen til Google Calendar"
+  },
+  "notePopover": {
+    "couldNotOpen": "Kunne ikke åbne note",
+    "kind": "Note",
+    "kindDateReminder": "Datopåmindelse",
+    "open": "Åbn note"
+  },
+  "search": {
+    "close": "Luk søgning",
+    "no-results": "Ingen match",
+    "open": "Søg i kalender",
+    "placeholder": "Søg i begivenheder, opgaver, påmindelser…"
+  },
+  "undo": {
+    "moveEvent": "Flyt begivenhed"
   }
 }

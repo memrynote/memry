@@ -1,11 +1,15 @@
 {
   "app": {
-    "quit": "やめる"
+    "quit": "やめる",
+    "preferences": "設定…"
   },
   "file": {
     "label": "ファイル",
     "newNote": "新しいメモ",
-    "close": "ウィンドウを閉じる"
+    "close": "ウィンドウを閉じる",
+    "closeTab": "タブを閉じる",
+    "exportPdf": "PDF にエクスポート…",
+    "openQuickly": "クイックオープン…"
   },
   "navigation": {
     "back": "戻る",
@@ -18,12 +22,51 @@
     "cut": "カット",
     "copy": "コピー",
     "paste": "ペースト",
-    "selectAll": "すべて選択"
+    "selectAll": "すべて選択",
+    "find": "検索",
+    "speech": "読み上げ"
   },
   "view": {
     "label": "見る",
     "reload": "リロード",
     "toggleDevTools": "開発者ツールの切り替え",
-    "toggleFullscreen": "全画面表示の切り替え"
+    "toggleFullscreen": "全画面表示の切り替え",
+    "theme": "テーマ",
+    "themeDark": "ダーク",
+    "themeLight": "ライト",
+    "themeSystem": "システム",
+    "themeWhite": "ペーパー",
+    "toggleDayPanel": "デイパネルを切り替え",
+    "toggleSidebar": "サイドバーを切り替え"
+  },
+  "format": {
+    "body": "本文",
+    "bold": "太字",
+    "code": "コード",
+    "heading1": "見出し 1",
+    "heading2": "見出し 2",
+    "heading3": "見出し 3",
+    "highlight": "ハイライト",
+    "italic": "斜体",
+    "label": "書式",
+    "strikethrough": "取り消し線"
+  },
+  "help": {
+    "about": "Memrynote について",
+    "documentation": "ドキュメント",
+    "label": "ヘルプ",
+    "shortcuts": "キーボードショートカット"
+  },
+  "insert": {
+    "attachment": "添付ファイルを挿入…",
+    "bulletList": "箇条書きリスト",
+    "codeBlock": "コードブロック",
+    "label": "挿入",
+    "numberedList": "番号付きリスト",
+    "table": "テーブル",
+    "taskList": "タスクリスト"
+  },
+  "window": {
+    "label": "ウィンドウ"
   }
 }

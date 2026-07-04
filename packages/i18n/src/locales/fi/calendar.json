@@ -27,7 +27,9 @@
     "imported-event": "Tuotu tapahtuma",
     "task": "Tehtävä",
     "reminder": "Muistutus",
-    "snooze": "Torkku"
+    "snooze": "Torkku",
+    "note": "Muistiinpano",
+    "note-date": "Päivämäärämuistutus"
   },
   "state": {
     "loading-calendar": "Ladataan kalenteria…",
@@ -151,5 +153,34 @@
       "could-not-remove-due-date": "Eräpäivää ei voitu poistaa",
       "could-not-open-note": "Muistiinpanoa ei voitu avata"
     }
+  },
+  "connect-prompt": {
+    "aria": "Yhdistä Google Calendar",
+    "body": "Yhdistä Google-tilisi tehdäksesi enemmän kalenterillasi:",
+    "bullets": {
+      "events": "Näe Google-tapahtumasi muistiinpanojen ja tehtävien rinnalla",
+      "schedule": "Aikatauluta tehtäviä ja muistiinpanoja kalenteriisi",
+      "sync": "Luo ja muokkaa tapahtumia, synkronoituna molempiin suuntiin"
+    },
+    "continue": "Jatka Googlella",
+    "dismiss": "Hylkää",
+    "error": "Google Calendarin yhdistäminen epäonnistui. Yritä uudelleen.",
+    "pill": "Yhdistä Google",
+    "title": "Viimeistele yhteys Google Calendariin"
+  },
+  "notePopover": {
+    "couldNotOpen": "Muistiinpanon avaus epäonnistui",
+    "kind": "Muistiinpano",
+    "kindDateReminder": "Päivämäärämuistutus",
+    "open": "Avaa muistiinpano"
+  },
+  "search": {
+    "close": "Sulje haku",
+    "no-results": "Ei osumia",
+    "open": "Hae kalenterista",
+    "placeholder": "Hae tapahtumia, tehtäviä, muistutuksia…"
+  },
+  "undo": {
+    "moveEvent": "Siirrä tapahtuma"
   }
 }

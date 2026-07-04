@@ -26,6 +26,10 @@
     "jobs": {
       "running": "{count, plural, one {# taustatyö käynnissä} other {# taustatyöt käynnissä}}",
       "failed": "{count} epäonnistui"
+    },
+    "density": {
+      "toComfortable": "Väljä näkymä",
+      "toCompact": "Tiivis näkymä"
     }
   },
   "type": {
@@ -208,7 +212,15 @@
     "linkedNotesAria": "Linkitetyt muistiinpanot",
     "removeLinkTo": "Poista linkki {title}",
     "notePlaceholder": "Kirjoita muistiinpanosi...",
-    "textPlaceholder": "Muokkaa kaapattua tekstiä..."
+    "textPlaceholder": "Muokkaa kaapattua tekstiä...",
+    "linkANote": "Linkitä muistiinpano",
+    "match": {
+      "likely": "Todennäköinen osuma",
+      "strong": "Vahva osuma",
+      "weak": "Heikko osuma"
+    },
+    "resize": "Muuta paneelin kokoa",
+    "suggestedCount": "{count} ehdotettu"
   },
   "content": {
     "capturedAt": "Kuvattu {date}",
@@ -253,7 +265,12 @@
     "presetInOneHour": "1 tunti",
     "presetTomorrow": "Huomenna",
     "presetNextWeek": "Ensi viikolla",
-    "custom": "Mukautettu..."
+    "custom": "Mukautettu...",
+    "archive": "Arkistoi",
+    "panelEmpty": "Ei tulevia muistutuksia.",
+    "panelPast": "Menneet",
+    "panelUpcoming": "Tulossa",
+    "taskFallback": "Tehtävä"
   },
   "insights": {
     "captureActivity": "Capture Activity",
@@ -295,7 +312,9 @@
       "recordVoiceMemo2": "Nauhoita äänimuistio",
       "alreadyCaptured": "Jo otettu: \"",
       "rdquo": "rdquo;",
-      "captureAnyway": "Kaappaa joka tapauksessa"
+      "captureAnyway": "Kaappaa joka tapauksessa",
+      "focusShortcut": "Kohdista tallennussyöttöön",
+      "q": "Q"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Valitse kansio",
@@ -416,7 +435,11 @@
       "backToPresets": "Takaisin esiasetuksiin",
       "time": "Aika",
       "noteOptional": "Huomautus (valinnainen)",
-      "whyAreYouSettingThisReminder": "Miksi asetat tämän muistutuksen?"
+      "whyAreYouSettingThisReminder": "Miksi asetat tämän muistutuksen?",
+      "deleteReminder": "Poista muistutus",
+      "editReminder": "Muokkaa muistutusta",
+      "save": "Tallenna",
+      "set": "Aseta"
     },
     "componentsSnoozeSnoozePicker": {
       "snooze": "Torkku",
@@ -461,5 +484,37 @@
     "toasts": {
       "inboxRefreshed": "Postilaatikko päivitetty"
     }
+  },
+  "convert": {
+    "addEvent": "Lisää tapahtuma",
+    "addTask": "Lisää tehtävä",
+    "allDay": "Koko päivä",
+    "binaryOnlyNote": "Tiedostoista voi tulla vain muistiinpano",
+    "chooseType": "Muunna muotoon",
+    "create": "Luo",
+    "date": "Päivämäärä",
+    "dueDate": "Eräpäivä",
+    "dueTime": "Eräaika",
+    "end": "Päättyy",
+    "event": "Tapahtuma",
+    "failed": "Muunnos epäonnistui: {error}",
+    "inboxProject": "Saapuneet",
+    "location": "Sijainti",
+    "note": "Muistiinpano",
+    "priority": "Prioriteetti",
+    "priorityHigh": "Korkea",
+    "priorityLow": "Matala",
+    "priorityMedium": "Keskitaso",
+    "priorityNone": "Ei mitään",
+    "priorityUrgent": "Kiireellinen",
+    "project": "Projekti",
+    "remindAt": "Muistuta klo",
+    "reminder": "Muistutus",
+    "setReminder": "Aseta muistutus",
+    "start": "Alkaa",
+    "success": "Muunnettu muotoon {target}",
+    "task": "Tehtävä",
+    "time": "Aika",
+    "title": "Muunna"
   }
 }

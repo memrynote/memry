@@ -1,11 +1,15 @@
 {
   "app": {
-    "quit": "Выйти"
+    "quit": "Выйти",
+    "preferences": "Настройки…"
   },
   "file": {
     "label": "Файл",
     "newNote": "Новая заметка",
-    "close": "Закрыть окно"
+    "close": "Закрыть окно",
+    "closeTab": "Закрыть вкладку",
+    "exportPdf": "Экспорт в PDF…",
+    "openQuickly": "Быстрое открытие…"
   },
   "navigation": {
     "back": "Назад",
@@ -18,12 +22,51 @@
     "cut": "Вырезать",
     "copy": "Копировать",
     "paste": "Вставить",
-    "selectAll": "Выбрать всё"
+    "selectAll": "Выбрать всё",
+    "find": "Найти",
+    "speech": "Речь"
   },
   "view": {
     "label": "Посмотреть",
     "reload": "Перезагрузить",
     "toggleDevTools": "Переключить инструменты разработчика",
-    "toggleFullscreen": "Переключить полноэкранный режим"
+    "toggleFullscreen": "Переключить полноэкранный режим",
+    "theme": "Тема",
+    "themeDark": "Тёмная",
+    "themeLight": "Светлая",
+    "themeSystem": "Системная",
+    "themeWhite": "Бумага",
+    "toggleDayPanel": "Переключить панель дня",
+    "toggleSidebar": "Переключить боковую панель"
+  },
+  "format": {
+    "body": "Основной текст",
+    "bold": "Полужирный",
+    "code": "Код",
+    "heading1": "Заголовок 1",
+    "heading2": "Заголовок 2",
+    "heading3": "Заголовок 3",
+    "highlight": "Выделение",
+    "italic": "Курсив",
+    "label": "Формат",
+    "strikethrough": "Зачёркнутый"
+  },
+  "help": {
+    "about": "О Memrynote",
+    "documentation": "Документация",
+    "label": "Справка",
+    "shortcuts": "Горячие клавиши"
+  },
+  "insert": {
+    "attachment": "Вставить вложение…",
+    "bulletList": "Маркированный список",
+    "codeBlock": "Блок кода",
+    "label": "Вставка",
+    "numberedList": "Нумерованный список",
+    "table": "Таблица",
+    "taskList": "Список задач"
+  },
+  "window": {
+    "label": "Окно"
   }
 }

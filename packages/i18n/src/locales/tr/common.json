@@ -45,7 +45,10 @@
   "count": {
     "note": "{count, plural, one {# not} other {# not}}",
     "task": "{count, plural, one {# görev} other {# görev}}",
-    "itemDelete": "{count, plural, one {# öğeyi sil} other {# öğeyi sil}}"
+    "itemDelete": "{count, plural, one {# öğeyi sil} other {# öğeyi sil}}",
+    "event": "{count, plural, one {# etkinlik} other {# etkinlik}}",
+    "journal": "{count, plural, one {# günlük} other {# günlük}}",
+    "reminder": "{count, plural, one {# hatırlatıcı} other {# hatırlatıcı}}"
   },
   "toast": {
     "actionFailed": "İşlem başarısız oldu",
@@ -83,7 +86,23 @@
       "newNoteN": "Yeni not (⌘N)",
       "new": "Yeni",
       "syncDisabled": "Senkronizasyon devre dışı",
-      "syncDisabled2": "Senkronizasyon devre dışı"
+      "syncDisabled2": "Senkronizasyon devre dışı",
+      "feedbackButton": "Geri bildirim gönder",
+      "feedbackDescription": "Neyin işe yaradığını, neyin bozuk olduğunu ya da Memry'de ne olmasını istediğinizi bize anlatın. Her mesajı okuyoruz.",
+      "feedbackEmailHint": "Yanıt istiyorsanız e-postanızı ekleyin.",
+      "feedbackError": "Geri bildirim gönderilemedi. Lütfen tekrar deneyin.",
+      "feedbackPlaceholder": "Geri bildiriminiz…",
+      "feedbackSend": "Gönder",
+      "feedbackSending": "Gönderiliyor…",
+      "feedbackSuccess": "Geri bildiriminiz için teşekkürler!",
+      "feedbackTitle": "Geri bildirim gönder",
+      "newItemMenu": "Yeni oluştur…",
+      "updateAvailable": "Güncelle",
+      "updateDownloading": "İndiriliyor…",
+      "updateDownloadingPercent": "İndiriliyor %{percent}",
+      "updateInstallingSubtitle": "Memrynote otomatik olarak yeniden başlayacak.",
+      "updateInstallingTitle": "Güncelleme kuruluyor",
+      "updateRestart": "Yeniden başlat"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Gün Panelini Yeniden Boyutlandır",
@@ -462,7 +481,8 @@
       "day": "Gün",
       "agent": "Agent",
       "pendingApproval": "{count, plural, one {# onay bekleniyor} other {# bekleyen onaylar}}",
-      "inProgress": "Agent dönüşü devam ediyor"
+      "inProgress": "Agent dönüşü devam ediyor",
+      "close": "Ajanı kapat"
     },
     "errors": {
       "loadConversations": "Agent konuşmaları yüklenemedi",
@@ -481,5 +501,142 @@
     "sources": {
       "used": "{count, plural, one {# kaynak kullanıldı} other {# kaynak kullanıldı}}"
     }
+  },
+  "home": {
+    "addWidget": "Widget ekle",
+    "board": {
+      "defaultName": "Ana Sayfa",
+      "deleteAria": "Düzeni sil",
+      "label": "Ana sayfa düzeni",
+      "newAria": "Yeni pano",
+      "newName": "Yeni pano"
+    },
+    "disabled": {
+      "createNote": "Not oluştur",
+      "hint": "Açık bir şey yok. Bir nota başlayın."
+    },
+    "done": "Tamam",
+    "edit": "Düzenle",
+    "empty": {
+      "body": "Widget'lar notlarınızı, görevlerinizi ve yer imlerinizi tek bir sakin yerde bir araya getirir.",
+      "cta": "İlk widget'ınızı ekleyin",
+      "title": "Panonuz boş"
+    },
+    "greeting": {
+      "afternoon": "İyi günler",
+      "evening": "İyi akşamlar",
+      "morning": "Günaydın"
+    },
+    "header": {
+      "events": "{count, plural, one {# etkinlik} other {# etkinlik}}",
+      "tasksDue": "{count, plural, one {bugün # görev var} other {bugün # görev var}}"
+    },
+    "noBookmarksYet": "Henüz yer imi yok.",
+    "noEventsYet": "Bugün etkinlik yok.",
+    "noJournalEntriesYet": "Henüz günlük girdisi yok.",
+    "noNotesYet": "Henüz not yok.",
+    "noTasksYet": "Henüz görev yok.",
+    "widget": {
+      "bookmarks": "Yer imleri",
+      "calendar": "Takvim",
+      "calendarToday": "Bugün",
+      "configAria": "Widget'ı yapılandır",
+      "configure": "Yapılandır",
+      "dragAria": "Widget'ı sürükle",
+      "duration": "{count} dk",
+      "filter": {
+        "today": "Bugün Bitecek",
+        "tomorrow": "Yarın",
+        "week": "Bu Hafta"
+      },
+      "folder": "Klasör",
+      "folderEmpty": "Henüz klasör yok",
+      "folderNoSelection": "Klasör seçilmedi",
+      "folderPickPrompt": "Bir klasör seçin",
+      "folderViewSelect": "Görünüm",
+      "folderView_gallery": "Galeri",
+      "folderView_list": "Liste",
+      "inbox": "Gelen Kutusu",
+      "inboxAllTypes": "Tüm türler",
+      "inboxOlder": "{count, plural, one {# daha eski} other {# daha eski}}",
+      "inboxOldest": "en eski {count, plural, one {# gün} other {# gün}}",
+      "journal": "Günlük",
+      "journalStreak": "{count, plural, one {# günlük seri} other {# günlük seri}}",
+      "journalToday": "Bugün",
+      "journalYesterday": "Dün",
+      "loadError": "Yüklenemedi",
+      "menuAria": "Widget seçenekleri",
+      "next": "Sıradaki: {title}",
+      "openCalendar": "Takvimi Aç",
+      "openInbox": "Gelen kutusunu aç",
+      "recentMeta": "{time} düzenlendi",
+      "recentMetaWithFolder": "{folder} · {time} düzenlendi",
+      "recentlyEdited": "Son düzenlenen",
+      "remove": "Kaldır",
+      "removeAria": "Widget'ı kaldır",
+      "resize": "Boyut",
+      "resizeAria": "{{size}} boyutuna getir",
+      "savedFilterDefault": "Bugün",
+      "savedFilterHint": "Burada kullanmak için Görevler sayfasındaki filtreleri yıldızlayın",
+      "savedFilterLabel": "Kayıtlı filtre",
+      "startsIn": "{count, plural, one {# dk} other {# dk}} içinde başlıyor",
+      "tasks": "Görevler",
+      "unknown": "Bilinmeyen widget",
+      "untitled": "Başlıksız"
+    }
+  },
+  "media": {
+    "video": "Video"
+  },
+  "onboarding": {
+    "agentChat": {
+      "body": "Memrynote asistanına kasanız hakkında soru sormak için Ajan sekmesine geçin.",
+      "title": "Yapay zeka ajanıyla sohbet edin"
+    },
+    "collections": {
+      "body": "Notları klasörlerde düzenleyin, yer imlerini sabitleyin ve etikete göre göz atın — hepsi burada.",
+      "title": "Koleksiyonlar, yer imleri ve etiketler"
+    },
+    "dayPanel": {
+      "body": "Yan panel, okuduğunuz şeyin yanında bir takvim ve gün görünümü tutar.",
+      "title": "Gününüz, çalışmanızın yanında"
+    },
+    "feedback": {
+      "body": "Geri bildiriminizi buradan doğrudan ekibe gönderin.",
+      "title": "Ne düşündüğünüzü söyleyin"
+    },
+    "nav": {
+      "body": "Yakalamak için Gelen Kutusu, günlük notlar için Günlük, zaman çizelgeniz için Takvim, yapılacaklar için Görevler ve her şeyin nasıl bağlandığını görmek için Grafik.",
+      "title": "Çalışma alanlarınız"
+    },
+    "newNote": {
+      "body": "Buradan başlayın. Yazdığınız her şey önce yerel olarak depolanır.",
+      "title": "İlk notunuzu oluşturun"
+    },
+    "settings": {
+      "body": "Notlarınızı 12'den fazla uygulamadan — Obsidian, Notion, Apple Notes, Evernote ve daha fazlası — içe aktarın ve diğer her şeyi Ayarlar'da ayarlayın.",
+      "title": "Ayarlar ve içe aktarmalar"
+    },
+    "sync": {
+      "body": "Her cihazı senkron tutmak için uçtan uca şifreli eşitlemeyi açın.",
+      "title": "Özel, şifreli eşitleme"
+    },
+    "welcome": {
+      "body": "Özel, çevrimdışı öncelikli eviniz. Notlar uçtan uca şifrelidir — cihazınızdan şifrelenmemiş olarak asla ayrılmaz.",
+      "title": "Memrynote'a hoş geldiniz"
+    }
+  },
+  "updatePrompt": {
+    "autoUpdateLabel": "Güncellemeleri otomatik indir ve kur",
+    "availableBody": "{version} yayınlandı — sizde {current} var. Şimdi indirmek ister misiniz?",
+    "availableTitle": "MemryNote'un yeni bir sürümü var!",
+    "download": "İndir",
+    "downloadedBody": "{version} indirildi. Kurulumu tamamlamak için MemryNote'u yeniden başlatın.",
+    "downloadedTitle": "Güncelleme kuruluma hazır",
+    "later": "Sonra",
+    "releaseNotesLabel": "Sürüm Notları",
+    "remindLater": "Sonra Hatırlat",
+    "restartNow": "Şimdi Yeniden Başlat",
+    "skip": "Bu Sürümü Atla"
   }
 }

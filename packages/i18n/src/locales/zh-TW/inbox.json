@@ -26,6 +26,10 @@
     "jobs": {
       "running": "{count, plural, one {# 背景工作正在運行} other {# 背景工作正在運行}}",
       "failed": "{count} 失敗"
+    },
+    "density": {
+      "toComfortable": "寬鬆檢視",
+      "toCompact": "精簡檢視"
     }
   },
   "type": {
@@ -208,7 +212,15 @@
     "linkedNotesAria": "已連結的筆記",
     "removeLinkTo": "移除與 {title} 的連結",
     "notePlaceholder": "撰寫您的筆記...",
-    "textPlaceholder": "編輯您捕捉的文字..."
+    "textPlaceholder": "編輯您捕捉的文字...",
+    "linkANote": "連結一則筆記",
+    "match": {
+      "likely": "可能符合",
+      "strong": "高度符合",
+      "weak": "低度符合"
+    },
+    "resize": "調整面板大小",
+    "suggestedCount": "{count} 個建議"
   },
   "content": {
     "capturedAt": "已捕捉 {date}",
@@ -253,7 +265,12 @@
     "presetInOneHour": "1小時",
     "presetTomorrow": "明天",
     "presetNextWeek": "下週",
-    "custom": "自訂......"
+    "custom": "自訂......",
+    "archive": "封存",
+    "panelEmpty": "沒有即將到來的提醒。",
+    "panelPast": "過去",
+    "panelUpcoming": "即將到來",
+    "taskFallback": "任務"
   },
   "insights": {
     "captureActivity": "捕獲活動",
@@ -295,7 +312,9 @@
       "recordVoiceMemo2": "錄音備忘錄",
       "alreadyCaptured": "已捕捉：「",
       "rdquo": "rdquo;",
-      "captureAnyway": "仍要捕捉"
+      "captureAnyway": "仍要捕捉",
+      "focusShortcut": "聚焦擷取輸入欄",
+      "q": "Q"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "選擇資料夾",
@@ -416,7 +435,11 @@
       "backToPresets": "返回預設",
       "time": "時間",
       "noteOptional": "備註（可選）",
-      "whyAreYouSettingThisReminder": "你為什麼設定這個提醒？"
+      "whyAreYouSettingThisReminder": "你為什麼設定這個提醒？",
+      "deleteReminder": "刪除提醒",
+      "editReminder": "編輯提醒",
+      "save": "儲存",
+      "set": "設定"
     },
     "componentsSnoozeSnoozePicker": {
       "snooze": "延遲處理",
@@ -461,5 +484,37 @@
     "toasts": {
       "inboxRefreshed": "收件箱已刷新"
     }
+  },
+  "convert": {
+    "addEvent": "新增活動",
+    "addTask": "新增任務",
+    "allDay": "全天",
+    "binaryOnlyNote": "檔案只能轉換為筆記",
+    "chooseType": "轉換為",
+    "create": "建立",
+    "date": "日期",
+    "dueDate": "到期日",
+    "dueTime": "到期時間",
+    "end": "結束",
+    "event": "活動",
+    "failed": "無法轉換：{error}",
+    "inboxProject": "收件匣",
+    "location": "地點",
+    "note": "筆記",
+    "priority": "優先順序",
+    "priorityHigh": "高",
+    "priorityLow": "低",
+    "priorityMedium": "中",
+    "priorityNone": "無",
+    "priorityUrgent": "緊急",
+    "project": "專案",
+    "remindAt": "提醒我於",
+    "reminder": "提醒",
+    "setReminder": "設定提醒",
+    "start": "開始",
+    "success": "已轉換為 {target}",
+    "task": "任務",
+    "time": "時間",
+    "title": "轉換"
   }
 }

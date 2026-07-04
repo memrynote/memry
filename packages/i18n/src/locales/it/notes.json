@@ -42,7 +42,9 @@
       "setIcon": "Imposta icona",
       "removeIcon": "Rimuovi icona",
       "deleteSelectedNotes": "Elimina le note {count}",
-      "deleteSelectedItems": "Elimina elementi {count}"
+      "deleteSelectedItems": "Elimina elementi {count}",
+      "bookmark": "Segnalibro",
+      "removeFromBookmarks": "Rimuovi dai segnalibri"
     },
     "deleteDialog": {
       "noteTitle": "Elimina nota",
@@ -111,7 +113,11 @@
       "aria": "Nota suggerimenti",
       "loading": "Caricamento note...",
       "empty": "Nessuna nota trovata",
-      "create": "Crea nuova nota"
+      "create": "Crea nuova nota",
+      "embed": "Incorpora",
+      "embedAria": "Incorpora {title}",
+      "wikiLink": "Collegamento wiki",
+      "wikiLinkAria": "Collegamento wiki {title}"
     },
     "tags": {
       "aria": "Suggerimenti per i tag",
@@ -133,6 +139,15 @@
       "searchPlaceholder": "Cerca",
       "noIcons": "Nessuna icona trovata",
       "clearSearch": "Cancella ricerca"
+    },
+    "mention": {
+      "aria": "Suggerimenti date e note",
+      "date": "Data",
+      "dateHint": "Continua a digitare una data…",
+      "empty": "Nessuna nota trovata",
+      "loading": "Caricamento note...",
+      "remindMe": "Ricordamelo",
+      "showMore": "Mostra altro"
     }
   },
   "outline": {
@@ -174,7 +189,8 @@
     "createTag": "Crea tag: \"{tag}\"",
     "chooseColor": "Scegli il colore:",
     "preview": "Anteprima:",
-    "colorAria": "Seleziona il colore {color}"
+    "colorAria": "Seleziona il colore {color}",
+    "customColor": "Colore personalizzato"
   },
   "properties": {
     "title": "Proprietà",
@@ -205,7 +221,9 @@
       "status": "Stato",
       "select": "Seleziona",
       "multiselect": "Selezione multipla"
-    }
+    },
+    "showOnCalendar": "Mostra sul calendario",
+    "showingOnCalendar": "Visibile sul calendario"
   },
   "templateSelector": {
     "title": "Scegli la tua tela",
@@ -295,7 +313,8 @@
   },
   "phaseF": {
     "componentsFolderViewColumnHeader": {
-      "dragToReorderColumn": "Trascina per riordinare la colonna"
+      "dragToReorderColumn": "Trascina per riordinare la colonna",
+      "editColumnName": "Modifica nome colonna"
     },
     "componentsFolderViewColumnSelector": {
       "properties": "Proprietà",
@@ -311,7 +330,10 @@
       "delete": "Elimina",
       "none": "Nessuno",
       "edit": "Modifica",
-      "delete2": "Elimina"
+      "delete2": "Elimina",
+      "columnBorders": "Bordi colonna",
+      "display": "Visualizzazione",
+      "showSummaries": "Mostra riepiloghi"
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Filtra",
@@ -329,17 +351,21 @@
       "of": "di:",
       "addCondition": "Aggiungi condizione",
       "addFilter": "Aggiungi filtro",
-      "addGroup": "Aggiungi gruppo"
+      "addGroup": "Aggiungi gruppo",
+      "removeGroup": "Rimuovi gruppo"
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "Integrato",
       "properties": "Proprietà",
       "placeholderProperty": "Proprietà",
       "placeholderOperator": "Operatore",
-      "placeholderValue": "Valore"
+      "placeholderValue": "Valore",
+      "removeFilter": "Rimuovi filtro"
     },
     "componentsFolderViewFolderTableView": {
-      "notesTable": "Tabella delle note"
+      "notesTable": "Tabella delle note",
+      "selectAll": "Seleziona tutte le note",
+      "selectRow": "Seleziona nota"
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "Cerca note...",
@@ -371,7 +397,9 @@
     },
     "componentsFolderViewGroupedTable": {
       "groupedNotesTable": "Tabella delle note raggruppate",
-      "more": "di più"
+      "more": "di più",
+      "selectAll": "Seleziona tutte le note",
+      "selectRow": "Seleziona nota"
     },
     "componentsFolderViewMoveToFolderDialog": {
       "searchFolders": "Cerca cartelle...",
@@ -399,7 +427,8 @@
     },
     "componentsFolderViewSortableColumnHeader": {
       "dragToReorderColumn": "Trascina per riordinare la colonna",
-      "resizeColumn": "Ridimensiona colonna"
+      "resizeColumn": "Ridimensiona colonna",
+      "editColumnName": "Modifica nome colonna"
     },
     "componentsFolderViewViewSwitcher": {
       "default": "predefinito",
@@ -424,7 +453,16 @@
       "deleteView": "Elimina vista",
       "areYouSureYouWantToDelete": "Sei sicuro di voler eliminare \"",
       "thisActionCannotBeUndone": "Questa azione non può essere annullata.",
-      "cancel3": "Annulla"
+      "cancel3": "Annulla",
+      "createView": "Crea vista",
+      "gallery": "Galleria",
+      "layout": "Layout",
+      "list": "Elenco",
+      "name": "Nome",
+      "newView": "Nuova vista",
+      "save": "Salva",
+      "table": "Tabella",
+      "viewActions": "Azioni vista"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "Impossibile caricare il PDF: ",
@@ -607,6 +645,15 @@
       "startYourCollection": "Inizia la tua collezione",
       "templatesHelpYouCreateNotesWithConsistentStructure": "I modelli ti aiutano a creare note con una struttura coerente.",
       "createTemplate": "Crea modello"
+    },
+    "componentsFolderViewSortSelector": {
+      "builtIn": "Integrato",
+      "clearSort": "Cancella ordinamento",
+      "noSortablePropertiesFound": "Nessuna proprietà ordinabile trovata",
+      "properties": "Proprietà",
+      "searchProperties": "Cerca proprietà...",
+      "sort": "Ordina",
+      "sortDirection": "Direzione ordinamento"
     }
   },
   "phaseI": {
@@ -654,5 +701,47 @@
       "cannotRemoveTagThisNoteWasDeleted": "Impossibile rimuovere il tag: questa nota è stata eliminata",
       "cannotChangeLocalOnlyThisNoteWasDeleted": "Impossibile modificare solo in locale: questa nota è stata eliminata"
     }
+  },
+  "bulkActions": {
+    "addTag": "Aggiungi tag",
+    "clearAria": "Cancella selezione",
+    "copiedLinks": "Copiati {count, plural, one {# collegamento} other {# collegamenti}}",
+    "copyLinks": "Copia collegamenti",
+    "delete": "Elimina",
+    "export": "Esporta",
+    "move": "Sposta",
+    "selected": "selezionate",
+    "tagNamePlaceholder": "Nome tag",
+    "toolbarAria": "Azioni in blocco"
+  },
+  "comments": {
+    "attachAria": "Allega file",
+    "badgeAria": "{count, plural, one {# commento} other {# commenti}}",
+    "cancel": "Annulla",
+    "commentPlaceholder": "Aggiungi un commento...",
+    "createdTooltip": "Creato il {date} alle {time}",
+    "delete": "Elimina commento",
+    "edit": "Modifica commento",
+    "kind": {
+      "addition": "Aggiunta",
+      "comment": "Commento",
+      "deletion": "Eliminazione",
+      "substitution": "Sostituzione"
+    },
+    "mentionAria": "Menziona una persona, pagina o data",
+    "railAria": "Commenti",
+    "replyPlaceholder": "Rispondi...",
+    "resolve": "Risolvi",
+    "sendAria": "Invia commento",
+    "toolbarComment": "Commenta"
+  },
+  "dateMention": {
+    "clear": "Cancella",
+    "dateFormat": "Formato data",
+    "dateInput": "Data",
+    "includeTime": "Includi l'ora",
+    "remind": "Ricorda",
+    "time": "Ora",
+    "timeFormat": "Formato ora"
   }
 }

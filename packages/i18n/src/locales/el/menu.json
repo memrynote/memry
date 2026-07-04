@@ -1,11 +1,15 @@
 {
   "app": {
-    "quit": "Κλείσε"
+    "quit": "Κλείσε",
+    "preferences": "Ρυθμίσεις…"
   },
   "file": {
     "label": "Αρχείο",
     "newNote": "Νέα Σημείωση",
-    "close": "Κλείσιμο παραθύρου"
+    "close": "Κλείσιμο παραθύρου",
+    "closeTab": "Κλείσιμο καρτέλας",
+    "exportPdf": "Εξαγωγή σε PDF…",
+    "openQuickly": "Γρήγορο άνοιγμα…"
   },
   "navigation": {
     "back": "Πίσω",
@@ -18,12 +22,51 @@
     "cut": "Κόψτε",
     "copy": "Αντιγραφή",
     "paste": "Επικόλληση",
-    "selectAll": "Επιλογή όλων"
+    "selectAll": "Επιλογή όλων",
+    "find": "Εύρεση",
+    "speech": "Ομιλία"
   },
   "view": {
     "label": "Προβολή",
     "reload": "Επαναφόρτωση",
     "toggleDevTools": "Εναλλαγή Εργαλείων προγραμματιστή",
-    "toggleFullscreen": "Εναλλαγή πλήρους οθόνης"
+    "toggleFullscreen": "Εναλλαγή πλήρους οθόνης",
+    "theme": "Θέμα",
+    "themeDark": "Σκοτεινό",
+    "themeLight": "Φωτεινό",
+    "themeSystem": "Σύστημα",
+    "themeWhite": "Χαρτί",
+    "toggleDayPanel": "Εναλλαγή πάνελ ημέρας",
+    "toggleSidebar": "Εναλλαγή πλαϊνής μπάρας"
+  },
+  "format": {
+    "body": "Σώμα κειμένου",
+    "bold": "Έντονα",
+    "code": "Κώδικας",
+    "heading1": "Επικεφαλίδα 1",
+    "heading2": "Επικεφαλίδα 2",
+    "heading3": "Επικεφαλίδα 3",
+    "highlight": "Επισήμανση",
+    "italic": "Πλάγια",
+    "label": "Μορφή",
+    "strikethrough": "Διαγράμμιση"
+  },
+  "help": {
+    "about": "Σχετικά με το Memrynote",
+    "documentation": "Τεκμηρίωση",
+    "label": "Βοήθεια",
+    "shortcuts": "Συντομεύσεις πληκτρολογίου"
+  },
+  "insert": {
+    "attachment": "Εισαγωγή συνημμένου…",
+    "bulletList": "Λίστα με κουκκίδες",
+    "codeBlock": "Μπλοκ κώδικα",
+    "label": "Εισαγωγή",
+    "numberedList": "Αριθμημένη λίστα",
+    "table": "Πίνακας",
+    "taskList": "Λίστα εργασιών"
+  },
+  "window": {
+    "label": "Παράθυρο"
   }
 }

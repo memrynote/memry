@@ -36,7 +36,8 @@
       "journal": "Dagbokspåminnelse",
       "highlight": "Markering påminnelse",
       "fallback": "Påminnelse förfaller",
-      "default": "Påminnelse"
+      "default": "Påminnelse",
+      "task": "Uppgiftspåminnelse"
     }
   },
   "error": {

@@ -36,7 +36,8 @@
       "journal": "Recordatorio de diario",
       "highlight": "Recordatorio destacado",
       "fallback": "Recordatorio pendiente",
-      "default": "Recordatorio"
+      "default": "Recordatorio",
+      "task": "Recordatorio de tarea"
     }
   },
   "error": {

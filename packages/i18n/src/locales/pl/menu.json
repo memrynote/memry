@@ -1,11 +1,15 @@
 {
   "app": {
-    "quit": "Przestań"
+    "quit": "Przestań",
+    "preferences": "Ustawienia…"
   },
   "file": {
     "label": "Plik",
     "newNote": "Nowa notatka",
-    "close": "Zamknij okno"
+    "close": "Zamknij okno",
+    "closeTab": "Zamknij kartę",
+    "exportPdf": "Eksportuj do PDF…",
+    "openQuickly": "Otwórz szybko…"
   },
   "navigation": {
     "back": "Powrót",
@@ -18,12 +22,51 @@
     "cut": "Cięcie",
     "copy": "Kopiuj",
     "paste": "Wklej",
-    "selectAll": "Zaznacz wszystko"
+    "selectAll": "Zaznacz wszystko",
+    "find": "Znajdź",
+    "speech": "Mowa"
   },
   "view": {
     "label": "Zobacz",
     "reload": "Załaduj ponownie",
     "toggleDevTools": "Przełącz Narzędzia programistyczne",
-    "toggleFullscreen": "Przełącz pełny ekran"
+    "toggleFullscreen": "Przełącz pełny ekran",
+    "theme": "Motyw",
+    "themeDark": "Ciemny",
+    "themeLight": "Jasny",
+    "themeSystem": "Systemowy",
+    "themeWhite": "Papier",
+    "toggleDayPanel": "Przełącz Panel dnia",
+    "toggleSidebar": "Przełącz pasek boczny"
+  },
+  "format": {
+    "body": "Tekst podstawowy",
+    "bold": "Pogrubienie",
+    "code": "Kod",
+    "heading1": "Nagłówek 1",
+    "heading2": "Nagłówek 2",
+    "heading3": "Nagłówek 3",
+    "highlight": "Wyróżnienie",
+    "italic": "Kursywa",
+    "label": "Format",
+    "strikethrough": "Przekreślenie"
+  },
+  "help": {
+    "about": "O Memrynote",
+    "documentation": "Dokumentacja",
+    "label": "Pomoc",
+    "shortcuts": "Skróty klawiszowe"
+  },
+  "insert": {
+    "attachment": "Wstaw załącznik…",
+    "bulletList": "Lista wypunktowana",
+    "codeBlock": "Blok kodu",
+    "label": "Wstaw",
+    "numberedList": "Lista numerowana",
+    "table": "Tabela",
+    "taskList": "Lista zadań"
+  },
+  "window": {
+    "label": "Okno"
   }
 }

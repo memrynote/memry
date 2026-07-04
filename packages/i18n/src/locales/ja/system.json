@@ -36,7 +36,8 @@
       "journal": "日記リマインダー",
       "highlight": "ハイライトリマインダー",
       "fallback": "リマインダーの期限",
-      "default": "リマインダー"
+      "default": "リマインダー",
+      "task": "タスクのリマインダー"
     }
   },
   "error": {

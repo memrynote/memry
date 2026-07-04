@@ -45,7 +45,10 @@
   "count": {
     "note": "{count, plural, one {Notă #} other {Note #}}",
     "task": "{count, plural, one {Sarcina #} other {Sarcini #}}",
-    "itemDelete": "{count, plural, one {Ștergeți elementul #} other {Ștergeți elementele #}}"
+    "itemDelete": "{count, plural, one {Ștergeți elementul #} other {Ștergeți elementele #}}",
+    "event": "{count, plural, one {# eveniment} few {# evenimente} other {# de evenimente}}",
+    "journal": "{count, plural, one {# jurnal} few {# jurnale} other {# de jurnale}}",
+    "reminder": "{count, plural, one {# memento} few {# mementouri} other {# de mementouri}}"
   },
   "toast": {
     "actionFailed": "Acțiunea eșuată",
@@ -83,7 +86,23 @@
       "newNoteN": "Notă nouă (⌘N)",
       "new": "Nou",
       "syncDisabled": "Sincronizarea este dezactivată",
-      "syncDisabled2": "Sincronizarea este dezactivată"
+      "syncDisabled2": "Sincronizarea este dezactivată",
+      "feedbackButton": "Trimite feedback",
+      "feedbackDescription": "Spune-ne ce funcționează, ce e defect sau ce ți-ai dori să facă Memry. Citim fiecare mesaj.",
+      "feedbackEmailHint": "Adaugă-ți emailul dacă vrei un răspuns.",
+      "feedbackError": "Nu s-a putut trimite feedbackul. Încearcă din nou.",
+      "feedbackPlaceholder": "Feedbackul tău…",
+      "feedbackSend": "Trimite",
+      "feedbackSending": "Se trimite…",
+      "feedbackSuccess": "Mulțumim pentru feedback!",
+      "feedbackTitle": "Trimite feedback",
+      "newItemMenu": "Creează nou…",
+      "updateAvailable": "Actualizare",
+      "updateDownloading": "Se descarcă…",
+      "updateDownloadingPercent": "Se descarcă {percent}%",
+      "updateInstallingSubtitle": "Memrynote va reporni automat.",
+      "updateInstallingTitle": "Se instalează actualizarea",
+      "updateRestart": "Repornește"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Redimensionați panoul de zi",
@@ -462,7 +481,8 @@
       "day": "Ziua",
       "agent": "Agent",
       "pendingApproval": "{count, plural, one {# în așteptarea aprobării} other {# aprobări în așteptare}}",
-      "inProgress": "Agent turnare în curs"
+      "inProgress": "Agent turnare în curs",
+      "close": "Închide agentul"
     },
     "errors": {
       "loadConversations": "Nu s-au putut încărca conversațiile cu agentul",
@@ -481,5 +501,142 @@
     "sources": {
       "used": "{count, plural, one {# sursă folosită} few {# surse folosite} other {# de surse folosite}}"
     }
+  },
+  "home": {
+    "addWidget": "Adaugă widget",
+    "board": {
+      "defaultName": "Acasă",
+      "deleteAria": "Șterge aranjamentul",
+      "label": "Aranjament pagină principală",
+      "newAria": "Panou nou",
+      "newName": "Panou nou"
+    },
+    "disabled": {
+      "createNote": "Creează notiță",
+      "hint": "Nimic deschis. Începe o notiță."
+    },
+    "done": "Gata",
+    "edit": "Editează",
+    "empty": {
+      "body": "Widgeturile îți aduc notițele, sarcinile și marcajele într-un singur loc liniștit.",
+      "cta": "Adaugă primul tău widget",
+      "title": "Panoul tău este gol"
+    },
+    "greeting": {
+      "afternoon": "Bună ziua",
+      "evening": "Bună seara",
+      "morning": "Bună dimineața"
+    },
+    "header": {
+      "events": "{count, plural, one {# eveniment} few {# evenimente} other {# de evenimente}}",
+      "tasksDue": "{count, plural, one {# sarcină scadentă astăzi} few {# sarcini scadente astăzi} other {# de sarcini scadente astăzi}}"
+    },
+    "noBookmarksYet": "Niciun marcaj încă.",
+    "noEventsYet": "Niciun eveniment astăzi.",
+    "noJournalEntriesYet": "Nicio intrare de jurnal încă.",
+    "noNotesYet": "Nicio notiță încă.",
+    "noTasksYet": "Nicio sarcină încă.",
+    "widget": {
+      "bookmarks": "Marcaje",
+      "calendar": "Calendar",
+      "calendarToday": "Astăzi",
+      "configAria": "Configurează widgetul",
+      "configure": "Configurează",
+      "dragAria": "Trage widgetul",
+      "duration": "{count} min",
+      "filter": {
+        "today": "Scadente astăzi",
+        "tomorrow": "Mâine",
+        "week": "Săptămâna aceasta"
+      },
+      "folder": "Dosar",
+      "folderEmpty": "Niciun dosar încă",
+      "folderNoSelection": "Niciun dosar selectat",
+      "folderPickPrompt": "Alege un dosar",
+      "folderViewSelect": "Vizualizare",
+      "folderView_gallery": "Galerie",
+      "folderView_list": "Listă",
+      "inbox": "Inbox",
+      "inboxAllTypes": "Toate tipurile",
+      "inboxOlder": "{count, plural, one {# mai vechi} few {# mai vechi} other {# mai vechi}}",
+      "inboxOldest": "cel mai vechi acum {count, plural, one {# zi} few {# zile} other {# de zile}}",
+      "journal": "Jurnal",
+      "journalStreak": "{count, plural, one {serie de # zi} few {serie de # zile} other {serie de # de zile}}",
+      "journalToday": "Astăzi",
+      "journalYesterday": "Ieri",
+      "loadError": "Nu s-a putut încărca",
+      "menuAria": "Opțiuni widget",
+      "next": "Următor: {title}",
+      "openCalendar": "Deschide Calendarul",
+      "openInbox": "Deschide inbox",
+      "recentMeta": "editat {time}",
+      "recentMetaWithFolder": "{folder} · editat {time}",
+      "recentlyEdited": "Editate recent",
+      "remove": "Elimină",
+      "removeAria": "Elimină widgetul",
+      "resize": "Dimensiune",
+      "resizeAria": "Redimensionează la {{size}}",
+      "savedFilterDefault": "Astăzi",
+      "savedFilterHint": "Marchează filtrele cu stea pe pagina Sarcini pentru a le folosi aici",
+      "savedFilterLabel": "Filtru salvat",
+      "startsIn": "Începe în {count, plural, one {# min} few {# min} other {# min}}",
+      "tasks": "Sarcini",
+      "unknown": "Widget necunoscut",
+      "untitled": "Fără titlu"
+    }
+  },
+  "media": {
+    "video": "Video"
+  },
+  "onboarding": {
+    "agentChat": {
+      "body": "Comută la fila Agent pentru a întreba asistentul Memrynote despre seiful tău.",
+      "title": "Discută cu agentul AI"
+    },
+    "collections": {
+      "body": "Organizează notițele în dosare, fixează marcaje și răsfoiește după etichetă — totul aici.",
+      "title": "Colecții, marcaje și etichete"
+    },
+    "dayPanel": {
+      "body": "Panoul lateral păstrează un calendar și vizualizarea zilei tale lângă orice citești.",
+      "title": "Ziua ta, lângă munca ta"
+    },
+    "feedback": {
+      "body": "Trimite feedback direct echipei de aici.",
+      "title": "Spune-ne ce crezi"
+    },
+    "nav": {
+      "body": "Inbox pentru captură, Jurnal pentru notițe zilnice, Calendar pentru cronologia ta, Sarcini pentru lucruri de făcut și Graf pentru a vedea cum se leagă totul.",
+      "title": "Spațiile tale de lucru"
+    },
+    "newNote": {
+      "body": "Începe aici. Tot ce scrii este stocat mai întâi local.",
+      "title": "Creează prima ta notiță"
+    },
+    "settings": {
+      "body": "Importă-ți notițele din peste 12 aplicații — Obsidian, Notion, Apple Notes, Evernote și altele — și reglează tot restul în Setări.",
+      "title": "Setări și importuri"
+    },
+    "sync": {
+      "body": "Activează sincronizarea criptată integral pentru a păstra fiecare dispozitiv la zi.",
+      "title": "Sincronizare privată, criptată"
+    },
+    "welcome": {
+      "body": "Casa ta privată, offline-first. Notițele sunt criptate integral — nu îți părăsesc niciodată dispozitivul necriptate.",
+      "title": "Bine ai venit la Memrynote"
+    }
+  },
+  "updatePrompt": {
+    "autoUpdateLabel": "Descarcă și instalează automat actualizările",
+    "availableBody": "{version} este disponibilă — ai {current}. Vrei să o descarci acum?",
+    "availableTitle": "O nouă versiune de MemryNote este disponibilă!",
+    "download": "Descarcă",
+    "downloadedBody": "{version} a fost descărcată. Repornește MemryNote pentru a finaliza instalarea.",
+    "downloadedTitle": "Actualizare pregătită pentru instalare",
+    "later": "Mai târziu",
+    "releaseNotesLabel": "Note de lansare",
+    "remindLater": "Amintește-mi mai târziu",
+    "restartNow": "Repornește acum",
+    "skip": "Omite această versiune"
   }
 }

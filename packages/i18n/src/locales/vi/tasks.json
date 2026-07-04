@@ -33,7 +33,8 @@
     "repeat": "Lặp lại",
     "createAnother": "Tạo thêm",
     "delete": "Xóa công việc",
-    "created": "Được tạo {date}"
+    "created": "Được tạo {date}",
+    "reminder": "Nhắc nhở"
   },
   "filters": {
     "filter": "  \nBộ lọc  ",
@@ -62,7 +63,16 @@
     "noNotesAvailable": "Không có ghi chú nào",
     "noLinkedNotes": "Chưa có ghi chú liên kết",
     "removeLinkTo": "Xóa liên kết đến {title}",
-    "removeLinkFallback": "ghi chú"
+    "removeLinkFallback": "ghi chú",
+    "addRelatedItem": "Thêm mục liên quan",
+    "noMatchingRelated": "Không có mục phù hợp",
+    "noRelatedAvailable": "Không có mục nào",
+    "noRelatedItems": "Chưa có mục liên quan nào",
+    "related": "Liên quan",
+    "relatedItemFallback": "mục",
+    "removeRelatedItem": "Xóa mục liên quan {title}",
+    "resize": "Đổi kích thước bảng",
+    "searchRelated": "Tìm mục liên quan…"
   },
   "kanban": {
     "board": "Bảng Kanban"
@@ -174,7 +184,8 @@
     "componentsTasksDatePickerContent": {
       "removeDate": "Xóa ngày",
       "clearTime": "Xóa giờ",
-      "addTime": "Thêm giờ"
+      "addTime": "Thêm giờ",
+      "time": "Giờ"
     },
     "componentsTasksDeleteProjectDialog": {
       "delete": "Xóa",
@@ -612,6 +623,20 @@
       "failedToLoadTaskPreferences": "Tải sở thích công việc thất bại",
       "failedToUpdateTaskPreferences": "Cập nhật sở thích công việc thất bại",
       "failedToLoadLinkedTasks": "Tải các công việc liên kết thất bại"
+    }
+  },
+  "reminders": {
+    "hasReminders": "Có nhắc nhở",
+    "setReminder": "Đặt nhắc nhở",
+    "summary": "Nhắc nhở: {date}",
+    "summaryWithMore": "Nhắc nhở: {date} (+{count} nữa)",
+    "toast": {
+      "deleteFailed": "Không xóa được nhắc nhở",
+      "deleted": "Đã xóa nhắc nhở",
+      "set": "Đã đặt nhắc nhở",
+      "setFailed": "Không đặt được nhắc nhở",
+      "updateFailed": "Không cập nhật được nhắc nhở",
+      "updated": "Đã cập nhật nhắc nhở"
     }
   }
 }

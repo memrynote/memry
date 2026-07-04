@@ -25,7 +25,10 @@
         "integrations": "Интеграции",
         "vault": "Хранилище",
         "tags": "Теги",
-        "properties": "Свойства"
+        "properties": "Свойства",
+        "commandLine": "Командная строка",
+        "features": "Функции",
+        "import": "Импорт"
       }
     }
   },
@@ -109,6 +112,11 @@
       "createInSelectedFolder": {
         "label": "Создать в выбранной папке",
         "description": "Новые заметки и папки создаются внутри текущей выбранной папки. Если выключено, элементы всегда создаются в корне."
+      },
+      "defaultNoteFolder": {
+        "description": "Пусто = корень хранилища",
+        "label": "Расположение по умолчанию для новых заметок",
+        "placeholder": "notes"
       }
     },
     "privacy": {
@@ -116,6 +124,17 @@
         "label": "Поделитесь анонимными показателями использования",
         "description": "Это всего лишь анонимные метрики — содержимое заметок, поисковые запросы, пути к файлам, электронные письма или необработанные идентификаторы никогда не отправляются.",
         "error": "Не удалось обновить настройки телеметрии."
+      }
+    },
+    "dateFormat": {
+      "description": "Как отображаются даты календаря",
+      "error": "Не удалось обновить формат даты",
+      "label": "Формат даты",
+      "options": {
+        "DD.MM.YYYY": "DD.MM.YYYY",
+        "DD/MM/YYYY": "DD/MM/YYYY",
+        "MM/DD/YYYY": "MM/DD/YYYY (США)",
+        "YYYY-MM-DD": "YYYY-MM-DD (ISO)"
       }
     }
   },
@@ -250,6 +269,9 @@
         "description": "Введите имя новой копии шаблона.",
         "placeholder": "Имя шаблона"
       }
+    },
+    "preview": {
+      "notFound": "Не удалось загрузить этот шаблон."
     }
   },
   "journal": {
@@ -261,7 +283,8 @@
     "groups": {
       "defaultTemplate": "Шаблон по умолчанию",
       "sidebarVisibility": "Видимость боковой панели",
-      "footer": "Нижний колонтитул"
+      "footer": "Нижний колонтитул",
+      "location": "Расположение и формат"
     },
     "template": {
       "label": "Шаблон",
@@ -290,7 +313,21 @@
       "label": "Показать нижний колонтитул статистики",
       "description": "Количество слов, время чтения, временные метки"
     },
-    "updateError": "Не удалось обновить настройку."
+    "updateError": "Не удалось обновить настройку.",
+    "dateFormat": {
+      "description": "Формат имени файла для ежедневных заметок (напр. YYYY-MM-DD)",
+      "label": "Формат даты",
+      "placeholder": "YYYY-MM-DD"
+    },
+    "folder": {
+      "description": "Папка, где хранятся ежедневные заметки",
+      "label": "Папка журнала",
+      "placeholder": "journal"
+    },
+    "preview": {
+      "description": "Путь к сегодняшнему файлу журнала",
+      "label": "Предпросмотр"
+    }
   },
   "tasks": {
     "header": {
@@ -344,7 +381,9 @@
       "loading": "Загрузка настроек..."
     },
     "groups": {
-      "dayCellClick": "Дневной сотовый щелчок"
+      "dayCellClick": "Дневной сотовый щелчок",
+      "notes": "Заметки",
+      "weekStart": "Неделя"
     },
     "defaultBehavior": {
       "label": "Поведение по умолчанию",
@@ -360,6 +399,20 @@
       "openJournal": "Открытый журнал",
       "openCalendar": "Открыть календарь",
       "useGlobal": "Использовать глобальные настройки"
+    },
+    "showNotesOnCalendar": {
+      "description": "Показывать каждую заметку в календаре как элемент на весь день в день её создания",
+      "error": "Не удалось обновить показ заметок в календаре",
+      "label": "Показывать заметки в календаре"
+    },
+    "weekStart": {
+      "description": "Первый день недели во всех календарях",
+      "error": "Не удалось обновить начало недели",
+      "label": "Неделя начинается с",
+      "options": {
+        "monday": "Понедельник",
+        "sunday": "Воскресенье"
+      }
     }
   },
   "account": {
@@ -372,10 +425,12 @@
       "identity": "идентичность",
       "sync": "Синхронизировать",
       "storage": "Хранение",
-      "devices": "Устройства"
+      "devices": "Устройства",
+      "billing": "Оплата"
     },
     "identity": {
-      "unknown": "Неизвестно"
+      "unknown": "Неизвестно",
+      "encrypted": "Сквозное шифрование"
     },
     "sync": {
       "lastSynced": "Последняя синхронизация {time}",
@@ -421,6 +476,53 @@
       "signedOut": "Выход выполнен успешно",
       "signOutFailed": "Не удалось выйти",
       "deviceLinked": "Устройство успешно подключено"
+    },
+    "billing": {
+      "actions": {
+        "manage": "Управление оплатой",
+        "opening": "Открытие...",
+        "refresh": "Обновить статус",
+        "upgrade": "Улучшить"
+      },
+      "activationPendingPrefix": "Активация ожидается. Paddle может некоторое время подтверждать оплату. Обновите статус или напишите на",
+      "checking": "Проверка статуса оплаты",
+      "historyDays": "{days} дней",
+      "labels": {
+        "history": "История",
+        "maxFile": "Макс. файл",
+        "storage": "Хранилище",
+        "vaults": "Хранилища"
+      },
+      "planStatus": "Статус плана",
+      "plans": {
+        "believer": "План Believer",
+        "free": "Бесплатный план",
+        "plus": "План Plus",
+        "pro": "План Pro"
+      },
+      "statuses": {
+        "active": "Активен",
+        "canceled": "Отменён",
+        "inactive": "Неактивен",
+        "past_due": "Просрочен",
+        "paused": "Приостановлен"
+      },
+      "toasts": {
+        "activationPending": "Активация ожидается",
+        "billingActive": "Оплата активна",
+        "checkoutFailed": "Не удалось начать оформление",
+        "checkoutOpened": "Оформление открыто в браузере",
+        "loadFailed": "Не удалось загрузить статус оплаты",
+        "portalFailed": "Не удалось открыть портал оплаты",
+        "refreshFailed": "Не удалось обновить статус оплаты"
+      },
+      "unlimited": "Без ограничений"
+    },
+    "community": {
+      "and": "и",
+      "feedback": "поделитесь отзывом",
+      "prompt": "Любите memrynote?",
+      "star": "Поставьте нам звезду на GitHub"
     }
   },
   "setup": {
@@ -437,7 +539,9 @@
       "errors": {
         "sendCode": "Не удалось отправить код",
         "googleStart": "Не удалось начать вход в Google."
-      }
+      },
+      "paidPlan": "Синхронизация — платный план.",
+      "seePlans": "Посмотреть планы"
     },
     "email": {
       "label": "Адрес электронной почты",
@@ -488,7 +592,13 @@
         "registering": "Регистрация устройства..."
       },
       "failed": "Восстановление не удалось",
-      "confirmationFailed": "Подтверждение не удалось"
+      "confirmationFailed": "Подтверждение не удалось",
+      "unavailable": {
+        "description": "Фраза восстановления показывается только один раз при настройке, и её нельзя получить позже. Начните заново, чтобы сгенерировать новую.",
+        "loading": "Загрузка фразы восстановления…",
+        "startOver": "Начать заново",
+        "title": "Не удалось загрузить фразу восстановления"
+      }
     },
     "linking": {
       "choiceTitle": "Связать это устройство",
@@ -513,7 +623,15 @@
       "waitingTitle": "Ожидание одобрения",
       "waitingDescription": "Откройте memrynote на другом устройстве и подтвердите запрос на привязку.",
       "verificationCode": "Код подтверждения",
-      "confirmCode": "Убедитесь, что он соответствует коду на другом вашем устройстве."
+      "confirmCode": "Убедитесь, что он соответствует коду на другом вашем устройстве.",
+      "vaultPickerChooseFolder": "Выбрать папку",
+      "vaultPickerConfirm": "Загрузить выбранное",
+      "vaultPickerDescription": "В этом аккаунте несколько хранилищ. Выберите папку и хранилище(а) для добавления на это устройство.",
+      "vaultPickerDormantHint": "Добавлено, откроется при переключении на него",
+      "vaultPickerFolderLabel": "Хранить хранилища в папке",
+      "vaultPickerPrimaryHint": "Открывается сейчас",
+      "vaultPickerTitle": "Выберите, что загрузить",
+      "vaultRow": "Хранилище — {{count}} элементов · {{date}}"
     }
   },
   "devices": {
@@ -630,7 +748,15 @@
       "downloadedToast": "Whisper Small загружено",
       "downloadError": "Не удалось загрузить Whisper Small.",
       "keySavedToast": "Ключ OpenAI сохранен.",
-      "keySaveError": "Не удалось сохранить ключ OpenAI."
+      "keySaveError": "Не удалось сохранить ключ OpenAI.",
+      "memoNameMode": "Имена заметок",
+      "memoNameModeDescription": "Как называются голосовые заметки после расшифровки",
+      "naming": {
+        "none": "Не переименовывать",
+        "timestamp": "Отметка времени",
+        "transcript": "Заголовок из расшифровки"
+      },
+      "namingError": "Не удалось обновить именование голосовых заметок"
     },
     "embedding": {
       "loaded": "Загружено",
@@ -715,7 +841,12 @@
       "connectFailed": "Не удалось подключить Календарь Google.",
       "refreshFailed": "Не удалось обновить Календарь Google.",
       "disconnectFailed": "Не удалось отключить Календарь Google.",
-      "retryFailed": "Не удалось повторить синхронизацию календаря."
+      "retryFailed": "Не удалось повторить синхронизацию календаря.",
+      "pushToGoogle": {
+        "description": "Отключите для односторонней синхронизации — вы по-прежнему будете видеть события Google в memrynote, но события memrynote не появятся в Google.",
+        "error": "Не удалось обновить направление синхронизации",
+        "label": "Показывать события memrynote в Google Calendar"
+      }
     },
     "sourcePicker": {
       "empty": "На этом устройстве пока нет импортированных календарей Google.",
@@ -796,7 +927,8 @@
       "changeColor": "Изменить цвет",
       "mergeInto": "Слиться в...",
       "merge": "Объединить",
-      "delete": "Удалить"
+      "delete": "Удалить",
+      "changeIcon": "Изменить значок"
     },
     "dialogs": {
       "deleteTitle": "Удалить тег",
@@ -814,7 +946,8 @@
       "mergeFailed": "Не удалось объединить теги.",
       "merged": "«{source}» объединен с «{target}» ({count, plural, one {# элемент} other {# элементов}}).",
       "colorUpdated": "Обновлен цвет для «{name}».",
-      "colorFailed": "Не удалось обновить цвет"
+      "colorFailed": "Не удалось обновить цвет",
+      "iconFailed": "Не удалось обновить значок"
     }
   },
   "properties": {
@@ -1144,7 +1277,10 @@
     "status": {
       "disconnected": "Disconnected",
       "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled"
+      "fullTools": "Full tools enabled",
+      "checking": "Проверка…",
+      "connected": "Подключено",
+      "label": "Соединение"
     },
     "permissions": {
       "group": "Agent permissions",
@@ -1160,6 +1296,133 @@
         "alwaysAllow": "Always allow",
         "askBeforeChanges": "Ask before changes"
       }
+    }
+  },
+  "commandLine": {
+    "actions": {
+      "refresh": "Обновить"
+    },
+    "command": {
+      "descriptionInstalled": "Установлено в {path}",
+      "descriptionNotInstalled": "Установите команду memrynote, чтобы использовать своё хранилище из любого терминала.",
+      "label": "Команда memrynote",
+      "toggleLabel": "Установить команду memrynote"
+    },
+    "defaultVault": {
+      "description": "Выберите хранилище, используемое при запуске memrynote без --vault.",
+      "descriptionSelected": "Команды используют {path}, когда --vault не указан.",
+      "label": "Хранилище по умолчанию",
+      "none": "Хранилище не выбрано",
+      "placeholder": "Выберите хранилище"
+    },
+    "groups": {
+      "terminal": "Терминал"
+    },
+    "header": {
+      "subtitle": "Настройте команду memrynote для вашего терминала",
+      "title": "Командная строка"
+    },
+    "status": {
+      "defaultVaultUpdatedToast": "Хранилище CLI по умолчанию обновлено",
+      "installedToast": "Команда memrynote установлена",
+      "loadFailed": "Не удалось загрузить статус команды",
+      "loading": "Проверка статуса команды...",
+      "uninstalledToast": "Команда memrynote удалена"
+    }
+  },
+  "features": {
+    "header": {
+      "subtitle": "Включайте или отключайте части приложения. Выкл = приглушено в боковой панели и отключено везде.",
+      "title": "Функции"
+    },
+    "items": {
+      "calendar": {
+        "description": "События и расписание",
+        "label": "Календарь"
+      },
+      "graph": {
+        "description": "Связи заметок",
+        "label": "Граф"
+      },
+      "home": {
+        "description": "Стартовая панель",
+        "label": "Главная"
+      },
+      "inbox": {
+        "description": "Быстрый захват и разбор",
+        "label": "Входящие"
+      },
+      "journal": {
+        "description": "Ежедневные заметки",
+        "label": "Журнал"
+      },
+      "tasks": {
+        "description": "Дела и сроки",
+        "label": "Задачи"
+      }
+    }
+  },
+  "import": {
+    "action": "Импорт",
+    "dialog": {
+      "cancel": "Отмена",
+      "choose": "Выбрать файл…",
+      "chooseFolder": "Выбрать папку Apple Notes…",
+      "chooseHint": "Выберите ваш {label}",
+      "close": "Закрыть",
+      "done": "Готово",
+      "error": "Импорт не удался",
+      "folderHint": "Нажмите ниже и выберите папку «group.com.apple.notes», когда откроется выбор (он начинается там). Это позволит Memry читать ваши заметки и вложения — полный доступ к диску не нужен.",
+      "progress": "{completed} из {total}",
+      "running": "Импорт…",
+      "selected": "{count, plural, one {выбран # файл} few {выбрано # файла} many {выбрано # файлов} other {выбрано # файла}}",
+      "start": "Начать импорт",
+      "summary": {
+        "attachments": "{count, plural, one {# вложение скопировано} few {# вложения скопировано} many {# вложений скопировано} other {# вложения скопировано}}",
+        "failed": "{count} с ошибкой",
+        "imported": "{count, plural, one {# элемент импортирован} few {# элемента импортировано} many {# элементов импортировано} other {# элемента импортировано}}",
+        "skipped": "{count} пропущено",
+        "title": "Импорт завершён"
+      },
+      "title": "Импорт из {name}"
+    },
+    "header": {
+      "subtitle": "Перенесите заметки и задачи из других приложений",
+      "title": "Импорт"
+    },
+    "intro": "Одноразовый импорт создаёт новые заметки в вашем хранилище. Исходные файлы экспорта остаются нетронутыми.",
+    "preview": {
+      "confirm": "Импорт",
+      "warnings": "Предупреждения"
+    },
+    "select": "Выберите приложение для импорта…",
+    "sources": {
+      "apple-journal": "Импорт HTML-экспорта Apple Journal как датированных заметок",
+      "apple-notes": "Импорт из базы данных Apple Notes (NoteStore.sqlite, macOS)",
+      "bear": "Импорт архива Bear .bear2bk (заметки, теги, вложения)",
+      "csv": "Импорт файла .csv — одна заметка на строку, столбцы становятся свойствами",
+      "evernote": "Импорт одного или нескольких файлов экспорта Evernote .enex",
+      "google-keep": "Импорт экспорта Google Takeout Keep (.json или .zip)",
+      "html": "Импорт файлов .html со связанными изображениями и перекрёстными ссылками",
+      "markdown": "Импорт файлов .md или папки (frontmatter, теги, вложения)",
+      "notion": "Импорт HTML-экспорта (.zip)",
+      "onenote": "Импорт блокнотов OneNote (требуется аккаунт Microsoft)",
+      "raindrop": "Импорт экспорта закладок Raindrop.io (.csv) — закладки попадают во входящие",
+      "roam": "Импорт графа Roam Research (.json) с вложенными списками",
+      "ticktick": "Импорт резервной копии TickTick (.csv) как проектов, задач и напоминаний",
+      "todoist": "Импорт CSV-экспорта проекта (.csv)"
+    },
+    "stats": {
+      "bookmarks": "{count, plural, one {# закладка} few {# закладки} many {# закладок} other {# закладки}}",
+      "comments": "{count, plural, one {# комментарий} few {# комментария} many {# комментариев} other {# комментария}}",
+      "notes": "{count, plural, one {# заметка} few {# заметки} many {# заметок} other {# заметки}}",
+      "projects": "{count, plural, one {# проект} few {# проекта} many {# проектов} other {# проекта}}",
+      "reminders": "{count, plural, one {# напоминание} few {# напоминания} many {# напоминаний} other {# напоминания}}",
+      "skipped": "{count} пропущено",
+      "subtasks": "{count, plural, one {# подзадача} few {# подзадачи} many {# подзадач} other {# подзадачи}}",
+      "tasks": "{count, plural, one {# задача} few {# задачи} many {# задач} other {# задачи}}",
+      "withDueDate": "{count} с датой",
+      "withTags": "{count} с тегами"
     }
   }
 }

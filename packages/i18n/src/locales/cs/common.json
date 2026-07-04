@@ -45,7 +45,10 @@
   "count": {
     "note": "{count, plural, one {# pozn} other {Poznámky #}}",
     "task": "{count, plural, one {Úkol #} other {Úkoly #}}",
-    "itemDelete": "{count, plural, one {Smazat položku #} other {Smazat položky #}}"
+    "itemDelete": "{count, plural, one {Smazat položku #} other {Smazat položky #}}",
+    "event": "{count, plural, one {# událost} few {# události} other {# událostí}}",
+    "journal": "{count, plural, one {# deník} few {# deníky} other {# deníků}}",
+    "reminder": "{count, plural, one {# připomenutí} few {# připomenutí} other {# připomenutí}}"
   },
   "toast": {
     "actionFailed": "Akce se nezdařila",
@@ -83,7 +86,23 @@
       "newNoteN": "Nová poznámka (⌘N)",
       "new": "Nové",
       "syncDisabled": "Synchronizace zakázána",
-      "syncDisabled2": "Synchronizace zakázána"
+      "syncDisabled2": "Synchronizace zakázána",
+      "feedbackButton": "Odeslat zpětnou vazbu",
+      "feedbackDescription": "Řekněte nám, co funguje, co je rozbité nebo co byste chtěli, aby Memry uměl. Čteme každou zprávu.",
+      "feedbackEmailHint": "Přidejte svůj e-mail, pokud chcete odpověď.",
+      "feedbackError": "Zpětnou vazbu se nepodařilo odeslat. Zkuste to prosím znovu.",
+      "feedbackPlaceholder": "Vaše zpětná vazba…",
+      "feedbackSend": "Odeslat",
+      "feedbackSending": "Odesílání…",
+      "feedbackSuccess": "Děkujeme za zpětnou vazbu!",
+      "feedbackTitle": "Odeslat zpětnou vazbu",
+      "newItemMenu": "Vytvořit nový…",
+      "updateAvailable": "Aktualizovat",
+      "updateDownloading": "Stahování…",
+      "updateDownloadingPercent": "Stahování {percent}%",
+      "updateInstallingSubtitle": "Memrynote se automaticky restartuje.",
+      "updateInstallingTitle": "Instalace aktualizace",
+      "updateRestart": "Restartovat"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Změna velikosti denního panelu",
@@ -462,7 +481,8 @@
       "day": "Den",
       "agent": "Agent",
       "pendingApproval": "{count, plural, one {# čeká na schválení} other {# čekající na schválení}}",
-      "inProgress": "Probíhá kolo Agent"
+      "inProgress": "Probíhá kolo Agent",
+      "close": "Zavřít agenta"
     },
     "errors": {
       "loadConversations": "Nelze načíst konverzace agenta",
@@ -481,5 +501,142 @@
     "sources": {
       "used": "{count, plural, one {Použit # zdroj} few {Použity # zdroje} other {Použito # zdrojů}}"
     }
+  },
+  "home": {
+    "addWidget": "Přidat widget",
+    "board": {
+      "defaultName": "Domů",
+      "deleteAria": "Smazat rozvržení",
+      "label": "Rozvržení domovské stránky",
+      "newAria": "Nová nástěnka",
+      "newName": "Nová nástěnka"
+    },
+    "disabled": {
+      "createNote": "Vytvořit poznámku",
+      "hint": "Nic není otevřené. Začněte poznámku."
+    },
+    "done": "Hotovo",
+    "edit": "Upravit",
+    "empty": {
+      "body": "Widgety spojují vaše poznámky, úkoly a záložky na jednom klidném místě.",
+      "cta": "Přidejte svůj první widget",
+      "title": "Vaše nástěnka je prázdná"
+    },
+    "greeting": {
+      "afternoon": "Dobré odpoledne",
+      "evening": "Dobrý večer",
+      "morning": "Dobré ráno"
+    },
+    "header": {
+      "events": "{count, plural, one {# událost} few {# události} other {# událostí}}",
+      "tasksDue": "{count, plural, one {# úkol s termínem dnes} few {# úkoly s termínem dnes} other {# úkolů s termínem dnes}}"
+    },
+    "noBookmarksYet": "Zatím žádné záložky.",
+    "noEventsYet": "Dnes žádné události.",
+    "noJournalEntriesYet": "Zatím žádné záznamy v deníku.",
+    "noNotesYet": "Zatím žádné poznámky.",
+    "noTasksYet": "Zatím žádné úkoly.",
+    "widget": {
+      "bookmarks": "Záložky",
+      "calendar": "Kalendář",
+      "calendarToday": "Dnes",
+      "configAria": "Konfigurovat widget",
+      "configure": "Konfigurovat",
+      "dragAria": "Přetáhnout widget",
+      "duration": "{count} min",
+      "filter": {
+        "today": "Termín dnes",
+        "tomorrow": "Zítra",
+        "week": "Tento týden"
+      },
+      "folder": "Složka",
+      "folderEmpty": "Zatím žádné složky",
+      "folderNoSelection": "Není vybrána žádná složka",
+      "folderPickPrompt": "Vyberte složku",
+      "folderViewSelect": "Zobrazení",
+      "folderView_gallery": "Galerie",
+      "folderView_list": "Seznam",
+      "inbox": "Doručená pošta",
+      "inboxAllTypes": "Všechny typy",
+      "inboxOlder": "{count, plural, one {# starší} few {# starší} other {# starších}}",
+      "inboxOldest": "nejstarší {count, plural, one {# den} few {# dny} other {# dní}}",
+      "journal": "Deník",
+      "journalStreak": "{count, plural, one {#denní série} few {#denní série} other {#denní série}}",
+      "journalToday": "Dnes",
+      "journalYesterday": "Včera",
+      "loadError": "Nepodařilo se načíst",
+      "menuAria": "Možnosti widgetu",
+      "next": "Další: {title}",
+      "openCalendar": "Otevřít kalendář",
+      "openInbox": "Otevřít doručenou poštu",
+      "recentMeta": "upraveno {time}",
+      "recentMetaWithFolder": "{folder} · upraveno {time}",
+      "recentlyEdited": "Nedávno upravené",
+      "remove": "Odebrat",
+      "removeAria": "Odebrat widget",
+      "resize": "Velikost",
+      "resizeAria": "Změnit velikost na {{size}}",
+      "savedFilterDefault": "Dnes",
+      "savedFilterHint": "Označte filtry hvězdičkou na stránce Úkoly, abyste je zde mohli použít",
+      "savedFilterLabel": "Uložený filtr",
+      "startsIn": "Začíná za {count, plural, one {# min} few {# min} other {# min}}",
+      "tasks": "Úkoly",
+      "unknown": "Neznámý widget",
+      "untitled": "Bez názvu"
+    }
+  },
+  "media": {
+    "video": "Video"
+  },
+  "onboarding": {
+    "agentChat": {
+      "body": "Přepněte na kartu Agent a zeptejte se asistenta Memrynote na svůj trezor.",
+      "title": "Chatujte s AI agentem"
+    },
+    "collections": {
+      "body": "Uspořádejte poznámky do složek, připněte záložky a procházejte podle značek — vše zde.",
+      "title": "Kolekce, záložky a značky"
+    },
+    "dayPanel": {
+      "body": "Postranní panel drží kalendář a přehled dne vedle toho, co právě čtete.",
+      "title": "Váš den vedle vaší práce"
+    },
+    "feedback": {
+      "body": "Odešlete zpětnou vazbu přímo týmu odsud.",
+      "title": "Řekněte nám svůj názor"
+    },
+    "nav": {
+      "body": "Doručená pošta pro zachycení, Deník pro denní poznámky, Kalendář pro časovou osu, Úkoly pro seznam úkolů a Graf, abyste viděli, jak vše souvisí.",
+      "title": "Vaše pracovní prostory"
+    },
+    "newNote": {
+      "body": "Začněte zde. Vše, co napíšete, se nejprve ukládá lokálně.",
+      "title": "Vytvořte svou první poznámku"
+    },
+    "settings": {
+      "body": "Importujte poznámky z více než 12 aplikací — Obsidian, Notion, Apple Notes, Evernote a dalších — a vše ostatní vylaďte v Nastavení.",
+      "title": "Nastavení a importy"
+    },
+    "sync": {
+      "body": "Zapněte koncově šifrovanou synchronizaci, aby byla všechna zařízení sladěná.",
+      "title": "Soukromá šifrovaná synchronizace"
+    },
+    "welcome": {
+      "body": "Váš soukromý domov fungující offline. Poznámky jsou koncově šifrované — vaše zařízení nikdy neopustí nešifrované.",
+      "title": "Vítejte v Memrynote"
+    }
+  },
+  "updatePrompt": {
+    "autoUpdateLabel": "Automaticky stahovat a instalovat aktualizace",
+    "availableBody": "{version} je dostupná — máte {current}. Chcete ji nyní stáhnout?",
+    "availableTitle": "Je dostupná nová verze MemryNote!",
+    "download": "Stáhnout",
+    "downloadedBody": "{version} byla stažena. Restartujte MemryNote pro dokončení instalace.",
+    "downloadedTitle": "Aktualizace připravena k instalaci",
+    "later": "Později",
+    "releaseNotesLabel": "Poznámky k vydání",
+    "remindLater": "Připomenout později",
+    "restartNow": "Restartovat nyní",
+    "skip": "Přeskočit tuto verzi"
   }
 }

@@ -27,7 +27,9 @@
     "imported-event": "กิจกรรมที่นำเข้า",
     "task": "งาน",
     "reminder": "การเตือน",
-    "snooze": "เลื่อน"
+    "snooze": "เลื่อน",
+    "note": "โน้ต",
+    "note-date": "การเตือนตามวันที่"
   },
   "state": {
     "loading-calendar": "กำลังโหลดปฏิทิน…",
@@ -151,5 +153,34 @@
       "could-not-remove-due-date": "ไม่สามารถลบวันครบกำหนดได้",
       "could-not-open-note": "ไม่สามารถเปิดบันทึกได้"
     }
+  },
+  "connect-prompt": {
+    "aria": "เชื่อมต่อ Google Calendar",
+    "body": "เชื่อมต่อบัญชี Google ของคุณเพื่อทำสิ่งต่างๆ กับปฏิทินได้มากขึ้น:",
+    "bullets": {
+      "events": "ดูกิจกรรม Google ควบคู่กับโน้ตและงาน",
+      "schedule": "จัดกำหนดการงานและโน้ตในปฏิทินของคุณ",
+      "sync": "สร้างและแก้ไขกิจกรรม ซิงค์ทั้งสองทาง"
+    },
+    "continue": "ดำเนินการต่อด้วย Google",
+    "dismiss": "ปิด",
+    "error": "ไม่สามารถเชื่อมต่อ Google Calendar ได้ ลองอีกครั้ง",
+    "pill": "เชื่อมต่อ Google",
+    "title": "เชื่อมต่อกับ Google Calendar ให้เสร็จสิ้น"
+  },
+  "notePopover": {
+    "couldNotOpen": "ไม่สามารถเปิดโน้ตได้",
+    "kind": "โน้ต",
+    "kindDateReminder": "การเตือนตามวันที่",
+    "open": "เปิดโน้ต"
+  },
+  "search": {
+    "close": "ปิดการค้นหา",
+    "no-results": "ไม่พบรายการที่ตรงกัน",
+    "open": "ค้นหาปฏิทิน",
+    "placeholder": "ค้นหากิจกรรม งาน การเตือน…"
+  },
+  "undo": {
+    "moveEvent": "ย้ายกิจกรรม"
   }
 }

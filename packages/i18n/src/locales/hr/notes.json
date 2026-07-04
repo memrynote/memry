@@ -42,7 +42,9 @@
       "setIcon": "Postavi ikonu",
       "removeIcon": "Ukloni ikonu",
       "deleteSelectedNotes": "Izbrišite bilješke {count}",
-      "deleteSelectedItems": "Izbrišite stavke {count}"
+      "deleteSelectedItems": "Izbrišite stavke {count}",
+      "bookmark": "Zabilježi",
+      "removeFromBookmarks": "Ukloni iz zabilješki"
     },
     "deleteDialog": {
       "noteTitle": "Izbriši bilješku",
@@ -111,7 +113,11 @@
       "aria": "Zabilježite prijedloge",
       "loading": "Učitavanje bilješki...",
       "empty": "Nisu pronađene bilješke",
-      "create": "Stvori novu bilješku"
+      "create": "Stvori novu bilješku",
+      "embed": "Ugradi",
+      "embedAria": "Ugradi {title}",
+      "wikiLink": "Wiki poveznica",
+      "wikiLinkAria": "Wiki poveznica {title}"
     },
     "tags": {
       "aria": "Prijedlozi oznaka",
@@ -133,6 +139,15 @@
       "searchPlaceholder": "Traži",
       "noIcons": "Nisu pronađene ikone",
       "clearSearch": "Očisti pretragu"
+    },
+    "mention": {
+      "aria": "Prijedlozi datuma i bilješki",
+      "date": "Datum",
+      "dateHint": "Nastavite tipkati datum…",
+      "empty": "Nema pronađenih bilješki",
+      "loading": "Učitavanje bilješki...",
+      "remindMe": "Podsjeti me",
+      "showMore": "Prikaži više"
     }
   },
   "outline": {
@@ -174,7 +189,8 @@
     "createTag": "Izradi oznaku: \"{tag}\"",
     "chooseColor": "Odaberite boju:",
     "preview": "Pregled:",
-    "colorAria": "Odaberite {color} boju"
+    "colorAria": "Odaberite {color} boju",
+    "customColor": "Prilagođena boja"
   },
   "properties": {
     "title": "Svojstva",
@@ -205,7 +221,9 @@
       "status": "Status",
       "select": "Odaberite",
       "multiselect": "Višestruki odabir"
-    }
+    },
+    "showOnCalendar": "Prikaži u kalendaru",
+    "showingOnCalendar": "Prikazuje se u kalendaru"
   },
   "templateSelector": {
     "title": "Odaberite svoje platno",
@@ -295,7 +313,8 @@
   },
   "phaseF": {
     "componentsFolderViewColumnHeader": {
-      "dragToReorderColumn": "Povucite za promjenu redoslijeda stupca"
+      "dragToReorderColumn": "Povucite za promjenu redoslijeda stupca",
+      "editColumnName": "Uredi naziv stupca"
     },
     "componentsFolderViewColumnSelector": {
       "properties": "Svojstva",
@@ -311,7 +330,10 @@
       "delete": "Izbriši",
       "none": "Nijedan",
       "edit": "Uredi",
-      "delete2": "Izbriši"
+      "delete2": "Izbriši",
+      "columnBorders": "Rubovi stupaca",
+      "display": "Prikaz",
+      "showSummaries": "Prikaži sažetke"
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Filter",
@@ -329,17 +351,21 @@
       "of": "od:",
       "addCondition": "Dodaj uvjet",
       "addFilter": "Dodajte filter",
-      "addGroup": "Dodaj grupu"
+      "addGroup": "Dodaj grupu",
+      "removeGroup": "Ukloni grupu"
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "Ugrađeni",
       "properties": "Svojstva",
       "placeholderProperty": "Vlasništvo",
       "placeholderOperator": "Operater",
-      "placeholderValue": "Vrijednost"
+      "placeholderValue": "Vrijednost",
+      "removeFilter": "Ukloni filtar"
     },
     "componentsFolderViewFolderTableView": {
-      "notesTable": "Tablica s bilješkama"
+      "notesTable": "Tablica s bilješkama",
+      "selectAll": "Odaberi sve bilješke",
+      "selectRow": "Odaberi bilješku"
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "Pretraži bilješke...",
@@ -371,7 +397,9 @@
     },
     "componentsFolderViewGroupedTable": {
       "groupedNotesTable": "Tablica grupiranih bilješki",
-      "more": "više"
+      "more": "više",
+      "selectAll": "Odaberi sve bilješke",
+      "selectRow": "Odaberi bilješku"
     },
     "componentsFolderViewMoveToFolderDialog": {
       "searchFolders": "Traži mape...",
@@ -399,7 +427,8 @@
     },
     "componentsFolderViewSortableColumnHeader": {
       "dragToReorderColumn": "Povucite za promjenu redoslijeda stupca",
-      "resizeColumn": "Promjena veličine stupca"
+      "resizeColumn": "Promjena veličine stupca",
+      "editColumnName": "Uredi naziv stupca"
     },
     "componentsFolderViewViewSwitcher": {
       "default": "zadana vrijednost",
@@ -424,7 +453,16 @@
       "deleteView": "Izbriši pogled",
       "areYouSureYouWantToDelete": "Jeste li sigurni da želite izbrisati \"",
       "thisActionCannotBeUndone": "Ova se radnja ne može poništiti.",
-      "cancel3": "Odustani"
+      "cancel3": "Odustani",
+      "createView": "Stvori prikaz",
+      "gallery": "Galerija",
+      "layout": "Raspored",
+      "list": "Popis",
+      "name": "Naziv",
+      "newView": "Novi prikaz",
+      "save": "Spremi",
+      "table": "Tablica",
+      "viewActions": "Radnje prikaza"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "Nije uspjelo učitavanje PDF-a: ",
@@ -607,6 +645,15 @@
       "startYourCollection": "Započnite svoju kolekciju",
       "templatesHelpYouCreateNotesWithConsistentStructure": "Predlošci vam pomažu stvoriti bilješke s dosljednom strukturom.",
       "createTemplate": "Stvori predložak"
+    },
+    "componentsFolderViewSortSelector": {
+      "builtIn": "Ugrađeno",
+      "clearSort": "Očisti sortiranje",
+      "noSortablePropertiesFound": "Nema svojstava za sortiranje",
+      "properties": "Svojstva",
+      "searchProperties": "Pretraži svojstva...",
+      "sort": "Sortiraj",
+      "sortDirection": "Smjer sortiranja"
     }
   },
   "phaseI": {
@@ -654,5 +701,47 @@
       "cannotRemoveTagThisNoteWasDeleted": "Nije moguće ukloniti oznaku - ova bilješka je izbrisana",
       "cannotChangeLocalOnlyThisNoteWasDeleted": "Nije moguće promijeniti samo lokalno — ova bilješka je izbrisana"
     }
+  },
+  "bulkActions": {
+    "addTag": "Dodaj oznaku",
+    "clearAria": "Očisti odabir",
+    "copiedLinks": "Kopirano {count, plural, one {# poveznica} few {# poveznice} other {# poveznica}}",
+    "copyLinks": "Kopiraj poveznice",
+    "delete": "Izbriši",
+    "export": "Izvezi",
+    "move": "Premjesti",
+    "selected": "odabrano",
+    "tagNamePlaceholder": "Naziv oznake",
+    "toolbarAria": "Skupne radnje"
+  },
+  "comments": {
+    "attachAria": "Priloži datoteku",
+    "badgeAria": "{count, plural, one {# komentar} few {# komentara} other {# komentara}}",
+    "cancel": "Odustani",
+    "commentPlaceholder": "Dodaj komentar...",
+    "createdTooltip": "Stvoreno {date} u {time}",
+    "delete": "Izbriši komentar",
+    "edit": "Uredi komentar",
+    "kind": {
+      "addition": "Dodatak",
+      "comment": "Komentar",
+      "deletion": "Brisanje",
+      "substitution": "Zamjena"
+    },
+    "mentionAria": "Spomeni osobu, stranicu ili datum",
+    "railAria": "Komentari",
+    "replyPlaceholder": "Odgovori...",
+    "resolve": "Razriješi",
+    "sendAria": "Pošalji komentar",
+    "toolbarComment": "Komentar"
+  },
+  "dateMention": {
+    "clear": "Očisti",
+    "dateFormat": "Format datuma",
+    "dateInput": "Datum",
+    "includeTime": "Uključi vrijeme",
+    "remind": "Podsjeti",
+    "time": "Vrijeme",
+    "timeFormat": "Format vremena"
   }
 }

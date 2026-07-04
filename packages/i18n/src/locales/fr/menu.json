@@ -1,11 +1,15 @@
 {
   "app": {
-    "quit": "Quitter"
+    "quit": "Quitter",
+    "preferences": "Paramètres…"
   },
   "file": {
     "label": "Fichier",
     "newNote": "Nouvelle remarque",
-    "close": "Fermer la fenêtre"
+    "close": "Fermer la fenêtre",
+    "closeTab": "Fermer l'onglet",
+    "exportPdf": "Exporter en PDF…",
+    "openQuickly": "Ouvrir rapidement…"
   },
   "navigation": {
     "back": "Retour",
@@ -18,12 +22,51 @@
     "cut": "Couper",
     "copy": "Copier",
     "paste": "Coller",
-    "selectAll": "Tout sélectionner"
+    "selectAll": "Tout sélectionner",
+    "find": "Rechercher",
+    "speech": "Parole"
   },
   "view": {
     "label": "Voir",
     "reload": "Recharger",
     "toggleDevTools": "Toggle Outils de développement",
-    "toggleFullscreen": "Basculer en plein écran"
+    "toggleFullscreen": "Basculer en plein écran",
+    "theme": "Thème",
+    "themeDark": "Sombre",
+    "themeLight": "Clair",
+    "themeSystem": "Système",
+    "themeWhite": "Papier",
+    "toggleDayPanel": "Basculer le panneau du jour",
+    "toggleSidebar": "Basculer la barre latérale"
+  },
+  "format": {
+    "body": "Corps",
+    "bold": "Gras",
+    "code": "Code",
+    "heading1": "Titre 1",
+    "heading2": "Titre 2",
+    "heading3": "Titre 3",
+    "highlight": "Surligner",
+    "italic": "Italique",
+    "label": "Format",
+    "strikethrough": "Barré"
+  },
+  "help": {
+    "about": "À propos de Memrynote",
+    "documentation": "Documentation",
+    "label": "Aide",
+    "shortcuts": "Raccourcis clavier"
+  },
+  "insert": {
+    "attachment": "Insérer une pièce jointe…",
+    "bulletList": "Liste à puces",
+    "codeBlock": "Bloc de code",
+    "label": "Insérer",
+    "numberedList": "Liste numérotée",
+    "table": "Tableau",
+    "taskList": "Liste de tâches"
+  },
+  "window": {
+    "label": "Fenêtre"
   }
 }

@@ -45,7 +45,10 @@
   "count": {
     "note": "{count, plural, one {# 노트} other {# 노트}}",
     "task": "{count, plural, one {# 작업} other {# 작업}}",
-    "itemDelete": "{count, plural, one {# 항목 삭제} other {# 항목 삭제}}"
+    "itemDelete": "{count, plural, one {# 항목 삭제} other {# 항목 삭제}}",
+    "event": "{count, plural, other {일정 #개}}",
+    "journal": "{count, plural, other {저널 #개}}",
+    "reminder": "{count, plural, other {리마인더 #개}}"
   },
   "toast": {
     "actionFailed": "작업 실패",
@@ -83,7 +86,23 @@
       "newNoteN": "새 메모(⌘N)",
       "new": "새로운",
       "syncDisabled": "동기화가 비활성화되었습니다.",
-      "syncDisabled2": "동기화가 비활성화되었습니다."
+      "syncDisabled2": "동기화가 비활성화되었습니다.",
+      "feedbackButton": "피드백 보내기",
+      "feedbackDescription": "무엇이 잘 되는지, 무엇이 문제인지, Memry에 무엇을 바라는지 알려주세요. 모든 메시지를 읽습니다.",
+      "feedbackEmailHint": "답장을 원하시면 이메일을 추가하세요.",
+      "feedbackError": "피드백을 보내지 못했습니다. 다시 시도하세요.",
+      "feedbackPlaceholder": "피드백…",
+      "feedbackSend": "보내기",
+      "feedbackSending": "보내는 중…",
+      "feedbackSuccess": "피드백 감사합니다!",
+      "feedbackTitle": "피드백 보내기",
+      "newItemMenu": "새로 만들기…",
+      "updateAvailable": "업데이트",
+      "updateDownloading": "다운로드 중…",
+      "updateDownloadingPercent": "{percent}% 다운로드 중",
+      "updateInstallingSubtitle": "Memrynote가 자동으로 다시 시작됩니다.",
+      "updateInstallingTitle": "업데이트 설치 중",
+      "updateRestart": "다시 시작"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "일 패널 크기 조정",
@@ -462,7 +481,8 @@
       "day": "일",
       "agent": "Agent",
       "pendingApproval": "{count, plural, one {# 승인 대기 중} other {# 승인 보류 중}}",
-      "inProgress": "Agent 회전 진행 중"
+      "inProgress": "Agent 회전 진행 중",
+      "close": "에이전트 닫기"
     },
     "errors": {
       "loadConversations": "상담원 대화를 로드할 수 없습니다.",
@@ -481,5 +501,142 @@
     "sources": {
       "used": "소스 {count}개 사용"
     }
+  },
+  "home": {
+    "addWidget": "위젯 추가",
+    "board": {
+      "defaultName": "홈",
+      "deleteAria": "레이아웃 삭제",
+      "label": "홈 레이아웃",
+      "newAria": "새 보드",
+      "newName": "새 보드"
+    },
+    "disabled": {
+      "createNote": "노트 만들기",
+      "hint": "열린 항목이 없습니다. 노트를 시작하세요."
+    },
+    "done": "완료",
+    "edit": "편집",
+    "empty": {
+      "body": "위젯은 노트, 작업, 북마크를 한곳에 차분하게 모아줍니다.",
+      "cta": "첫 위젯 추가하기",
+      "title": "보드가 비어 있습니다"
+    },
+    "greeting": {
+      "afternoon": "좋은 오후입니다",
+      "evening": "좋은 저녁입니다",
+      "morning": "좋은 아침입니다"
+    },
+    "header": {
+      "events": "{count, plural, other {일정 #개}}",
+      "tasksDue": "{count, plural, other {오늘 마감 작업 #개}}"
+    },
+    "noBookmarksYet": "아직 북마크가 없습니다.",
+    "noEventsYet": "오늘 일정이 없습니다.",
+    "noJournalEntriesYet": "아직 저널 항목이 없습니다.",
+    "noNotesYet": "아직 노트가 없습니다.",
+    "noTasksYet": "아직 작업이 없습니다.",
+    "widget": {
+      "bookmarks": "북마크",
+      "calendar": "캘린더",
+      "calendarToday": "오늘",
+      "configAria": "위젯 구성",
+      "configure": "구성",
+      "dragAria": "위젯 드래그",
+      "duration": "{count}분",
+      "filter": {
+        "today": "오늘 마감",
+        "tomorrow": "내일",
+        "week": "이번 주"
+      },
+      "folder": "폴더",
+      "folderEmpty": "아직 폴더가 없습니다",
+      "folderNoSelection": "선택된 폴더 없음",
+      "folderPickPrompt": "폴더 선택",
+      "folderViewSelect": "보기",
+      "folderView_gallery": "갤러리",
+      "folderView_list": "목록",
+      "inbox": "받은함",
+      "inboxAllTypes": "모든 유형",
+      "inboxOlder": "{count, plural, other {#개 더 이전}}",
+      "inboxOldest": "가장 오래된 {count, plural, other {#일}}",
+      "journal": "저널",
+      "journalStreak": "{count, plural, other {#일 연속}}",
+      "journalToday": "오늘",
+      "journalYesterday": "어제",
+      "loadError": "불러올 수 없습니다",
+      "menuAria": "위젯 옵션",
+      "next": "다음: {title}",
+      "openCalendar": "캘린더 열기",
+      "openInbox": "받은함 열기",
+      "recentMeta": "{time} 편집됨",
+      "recentMetaWithFolder": "{folder} · {time} 편집됨",
+      "recentlyEdited": "최근 편집됨",
+      "remove": "제거",
+      "removeAria": "위젯 제거",
+      "resize": "크기",
+      "resizeAria": "{{size}}(으)로 크기 조정",
+      "savedFilterDefault": "오늘",
+      "savedFilterHint": "작업 페이지에서 필터에 별표를 표시하면 여기에서 사용할 수 있습니다",
+      "savedFilterLabel": "저장된 필터",
+      "startsIn": "{count, plural, other {#분}} 후 시작",
+      "tasks": "작업",
+      "unknown": "알 수 없는 위젯",
+      "untitled": "제목 없음"
+    }
+  },
+  "media": {
+    "video": "동영상"
+  },
+  "onboarding": {
+    "agentChat": {
+      "body": "에이전트 탭으로 전환해 Memrynote 어시스턴트에게 볼트에 대해 물어보세요.",
+      "title": "AI 에이전트와 대화하기"
+    },
+    "collections": {
+      "body": "노트를 폴더로 정리하고, 북마크를 고정하고, 태그로 탐색하세요 — 모두 여기에서.",
+      "title": "컬렉션, 북마크 및 태그"
+    },
+    "dayPanel": {
+      "body": "사이드 패널은 읽고 있는 내용 옆에 캘린더와 하루 보기를 유지합니다.",
+      "title": "작업 옆에 함께하는 하루"
+    },
+    "feedback": {
+      "body": "여기에서 팀에 바로 피드백을 보내세요.",
+      "title": "의견을 들려주세요"
+    },
+    "nav": {
+      "body": "수집을 위한 받은함, 매일 노트를 위한 저널, 타임라인을 위한 캘린더, 할 일을 위한 작업, 그리고 모든 연결을 보여주는 그래프입니다.",
+      "title": "작업 공간"
+    },
+    "newNote": {
+      "body": "여기서 시작하세요. 작성한 모든 것이 먼저 로컬에 저장됩니다.",
+      "title": "첫 노트 만들기"
+    },
+    "settings": {
+      "body": "Obsidian, Notion, Apple Notes, Evernote 등 12개 이상의 앱에서 노트를 가져오고, 나머지는 모두 설정에서 조정하세요.",
+      "title": "설정 및 가져오기"
+    },
+    "sync": {
+      "body": "종단 간 암호화 동기화를 켜서 모든 기기를 맞춰 두세요.",
+      "title": "비공개, 암호화 동기화"
+    },
+    "welcome": {
+      "body": "당신만의 비공개, 오프라인 우선 홈입니다. 노트는 종단 간 암호화되어 암호화되지 않은 채로 기기를 떠나지 않습니다.",
+      "title": "Memrynote에 오신 것을 환영합니다"
+    }
+  },
+  "updatePrompt": {
+    "autoUpdateLabel": "업데이트 자동 다운로드 및 설치",
+    "availableBody": "{version} 버전을 사용할 수 있습니다 — 현재 {current} 버전입니다. 지금 다운로드하시겠어요?",
+    "availableTitle": "MemryNote 새 버전이 있습니다!",
+    "download": "다운로드",
+    "downloadedBody": "{version} 버전이 다운로드되었습니다. MemryNote를 다시 시작하면 설치가 완료됩니다.",
+    "downloadedTitle": "설치 준비된 업데이트",
+    "later": "나중에",
+    "releaseNotesLabel": "릴리스 노트",
+    "remindLater": "나중에 다시 알림",
+    "restartNow": "지금 다시 시작",
+    "skip": "이 버전 건너뛰기"
   }
 }

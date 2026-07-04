@@ -26,6 +26,10 @@
     "jobs": {
       "running": "{count, plural, one {# выполняется фоновое задание} other {# выполняются фоновые задания}}",
       "failed": "{count} не удалось"
+    },
+    "density": {
+      "toComfortable": "Свободный вид",
+      "toCompact": "Компактный вид"
     }
   },
   "type": {
@@ -208,7 +212,15 @@
     "linkedNotesAria": "Связанные заметки",
     "removeLinkTo": "Удалить ссылку на {title}",
     "notePlaceholder": "Напишите свою заметку...",
-    "textPlaceholder": "Отредактируйте захваченный текст..."
+    "textPlaceholder": "Отредактируйте захваченный текст...",
+    "linkANote": "Связать заметку",
+    "match": {
+      "likely": "Вероятное совпадение",
+      "strong": "Точное совпадение",
+      "weak": "Слабое совпадение"
+    },
+    "resize": "Изменить размер панели",
+    "suggestedCount": "{count} рекомендуемых"
   },
   "content": {
     "capturedAt": "Захвачен {date}",
@@ -253,7 +265,12 @@
     "presetInOneHour": "1 час",
     "presetTomorrow": "Завтра",
     "presetNextWeek": "На следующей неделе",
-    "custom": "Пользовательский..."
+    "custom": "Пользовательский...",
+    "archive": "Архивировать",
+    "panelEmpty": "Нет предстоящих напоминаний.",
+    "panelPast": "Прошедшие",
+    "panelUpcoming": "Предстоящие",
+    "taskFallback": "Задача"
   },
   "insights": {
     "captureActivity": "Захват активности",
@@ -295,7 +312,9 @@
       "recordVoiceMemo2": "Запись голосовой заметки",
       "alreadyCaptured": "Уже схвачено: «",
       "rdquo": "рдкво;",
-      "captureAnyway": "Все равно захватить"
+      "captureAnyway": "Все равно захватить",
+      "focusShortcut": "Фокус на поле захвата",
+      "q": "Q"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Выбрать папку",
@@ -416,7 +435,11 @@
       "backToPresets": "Вернуться к пресетам",
       "time": "Время",
       "noteOptional": "Примечание (необязательно)",
-      "whyAreYouSettingThisReminder": "Почему вы устанавливаете это напоминание?"
+      "whyAreYouSettingThisReminder": "Почему вы устанавливаете это напоминание?",
+      "deleteReminder": "Удалить напоминание",
+      "editReminder": "Изменить напоминание",
+      "save": "Сохранить",
+      "set": "Задать"
     },
     "componentsSnoozeSnoozePicker": {
       "snooze": "Отложить",
@@ -461,5 +484,37 @@
     "toasts": {
       "inboxRefreshed": "Входящие обновлены"
     }
+  },
+  "convert": {
+    "addEvent": "Добавить событие",
+    "addTask": "Добавить задачу",
+    "allDay": "Весь день",
+    "binaryOnlyNote": "Файлы можно преобразовать только в заметку",
+    "chooseType": "Преобразовать в",
+    "create": "Создать",
+    "date": "Дата",
+    "dueDate": "Срок",
+    "dueTime": "Время срока",
+    "end": "Конец",
+    "event": "Событие",
+    "failed": "Не удалось преобразовать: {error}",
+    "inboxProject": "Входящие",
+    "location": "Место",
+    "note": "Заметка",
+    "priority": "Приоритет",
+    "priorityHigh": "Высокий",
+    "priorityLow": "Низкий",
+    "priorityMedium": "Средний",
+    "priorityNone": "Нет",
+    "priorityUrgent": "Срочный",
+    "project": "Проект",
+    "remindAt": "Напомнить в",
+    "reminder": "Напоминание",
+    "setReminder": "Задать напоминание",
+    "start": "Начало",
+    "success": "Преобразовано в {target}",
+    "task": "Задача",
+    "time": "Время",
+    "title": "Преобразовать"
   }
 }

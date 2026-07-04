@@ -26,6 +26,10 @@
     "jobs": {
       "running": "{count, plural, one {#-achtergrondtaak actief} other {#-achtergrondtaken worden uitgevoerd}}",
       "failed": "{count} is mislukt"
+    },
+    "density": {
+      "toComfortable": "Comfortabele weergave",
+      "toCompact": "Compacte weergave"
     }
   },
   "type": {
@@ -208,7 +212,15 @@
     "linkedNotesAria": "Gekoppelde notities",
     "removeLinkTo": "Verwijder de link naar {title}",
     "notePlaceholder": "Schrijf uw notitie...",
-    "textPlaceholder": "Bewerk uw vastgelegde tekst..."
+    "textPlaceholder": "Bewerk uw vastgelegde tekst...",
+    "linkANote": "Een notitie koppelen",
+    "match": {
+      "likely": "Waarschijnlijke overeenkomst",
+      "strong": "Sterke overeenkomst",
+      "weak": "Zwakke overeenkomst"
+    },
+    "resize": "Paneel vergroten/verkleinen",
+    "suggestedCount": "{count} voorgesteld"
   },
   "content": {
     "capturedAt": "{date} vastgelegd",
@@ -253,7 +265,12 @@
     "presetInOneHour": "1 uur",
     "presetTomorrow": "Morgen",
     "presetNextWeek": "Volgende week",
-    "custom": "Aangepast..."
+    "custom": "Aangepast...",
+    "archive": "Archiveren",
+    "panelEmpty": "Geen komende herinneringen.",
+    "panelPast": "Verleden",
+    "panelUpcoming": "Binnenkort",
+    "taskFallback": "Taak"
   },
   "insights": {
     "captureActivity": "Activiteit vastleggen",
@@ -295,7 +312,9 @@
       "recordVoiceMemo2": "Spraakmemo opnemen",
       "alreadyCaptured": "Al vastgelegd: “",
       "rdquo": "rdquo;",
-      "captureAnyway": "Hoe dan ook vastleggen"
+      "captureAnyway": "Hoe dan ook vastleggen",
+      "focusShortcut": "Vastlegveld focussen",
+      "q": "Q"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Kies map",
@@ -416,7 +435,11 @@
       "backToPresets": "Terug naar voorinstellingen",
       "time": "Tijd",
       "noteOptional": "Opmerking (optioneel)",
-      "whyAreYouSettingThisReminder": "Waarom stel je deze herinnering in?"
+      "whyAreYouSettingThisReminder": "Waarom stel je deze herinnering in?",
+      "deleteReminder": "Herinnering verwijderen",
+      "editReminder": "Herinnering bewerken",
+      "save": "Opslaan",
+      "set": "Instellen"
     },
     "componentsSnoozeSnoozePicker": {
       "snooze": "Snoozen",
@@ -461,5 +484,37 @@
     "toasts": {
       "inboxRefreshed": "Postvak IN vernieuwd"
     }
+  },
+  "convert": {
+    "addEvent": "Gebeurtenis toevoegen",
+    "addTask": "Taak toevoegen",
+    "allDay": "Hele dag",
+    "binaryOnlyNote": "Bestanden kunnen alleen een notitie worden",
+    "chooseType": "Converteren naar",
+    "create": "Maken",
+    "date": "Datum",
+    "dueDate": "Vervaldatum",
+    "dueTime": "Vervaltijd",
+    "end": "Einde",
+    "event": "Gebeurtenis",
+    "failed": "Kan niet converteren: {error}",
+    "inboxProject": "Inbox",
+    "location": "Locatie",
+    "note": "Notitie",
+    "priority": "Prioriteit",
+    "priorityHigh": "Hoog",
+    "priorityLow": "Laag",
+    "priorityMedium": "Gemiddeld",
+    "priorityNone": "Geen",
+    "priorityUrgent": "Urgent",
+    "project": "Project",
+    "remindAt": "Herinner me om",
+    "reminder": "Herinnering",
+    "setReminder": "Herinnering instellen",
+    "start": "Start",
+    "success": "Geconverteerd naar {target}",
+    "task": "Taak",
+    "time": "Tijd",
+    "title": "Converteren"
   }
 }

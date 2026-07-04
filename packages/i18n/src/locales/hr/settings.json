@@ -25,7 +25,10 @@
         "integrations": "Integracije",
         "vault": "Trezor",
         "tags": "oznake",
-        "properties": "Svojstva"
+        "properties": "Svojstva",
+        "commandLine": "Naredbeni redak",
+        "features": "Značajke",
+        "import": "Uvoz"
       }
     }
   },
@@ -109,6 +112,11 @@
       "createInSelectedFolder": {
         "label": "Stvori u odabranoj mapi",
         "description": "Nove bilješke i mape stvaraju se unutar trenutno odabrane mape. Kada je isključeno, stavke se uvijek stvaraju u korijenu."
+      },
+      "defaultNoteFolder": {
+        "description": "Prazno = korijen trezora",
+        "label": "Zadana lokacija za nove bilješke",
+        "placeholder": "notes"
       }
     },
     "privacy": {
@@ -116,6 +124,17 @@
         "label": "Dijelite anonimne metrike korištenja",
         "description": "To su samo anonimne metrike — nikad se ne šalju sadržaj bilješke, upiti za pretraživanje, putanje datoteka, e-poruke ili neobrađeni ID-ovi.",
         "error": "Ažuriranje postavke telemetrije nije uspjelo"
+      }
+    },
+    "dateFormat": {
+      "description": "Kako se prikazuju datumi u kalendaru",
+      "error": "Neuspješno ažuriranje formata datuma",
+      "label": "Format datuma",
+      "options": {
+        "DD.MM.YYYY": "DD.MM.YYYY",
+        "DD/MM/YYYY": "DD/MM/YYYY",
+        "MM/DD/YYYY": "MM/DD/YYYY (US)",
+        "YYYY-MM-DD": "YYYY-MM-DD (ISO)"
       }
     }
   },
@@ -250,6 +269,9 @@
         "description": "Unesite naziv za novu kopiju predloška.",
         "placeholder": "Naziv predloška"
       }
+    },
+    "preview": {
+      "notFound": "Nije moguće učitati ovaj predložak."
     }
   },
   "journal": {
@@ -261,7 +283,8 @@
     "groups": {
       "defaultTemplate": "Zadani predložak",
       "sidebarVisibility": "Vidljivost bočne trake",
-      "footer": "Podnožje"
+      "footer": "Podnožje",
+      "location": "Lokacija i format"
     },
     "template": {
       "label": "Predložak",
@@ -290,7 +313,21 @@
       "label": "Prikaži podnožje statistike",
       "description": "Broj riječi, vrijeme čitanja, vremenske oznake"
     },
-    "updateError": "Ažuriranje postavke nije uspjelo"
+    "updateError": "Ažuriranje postavke nije uspjelo",
+    "dateFormat": {
+      "description": "Format naziva datoteke za dnevne bilješke (npr. YYYY-MM-DD)",
+      "label": "Format datuma",
+      "placeholder": "YYYY-MM-DD"
+    },
+    "folder": {
+      "description": "Mapa u koju se spremaju dnevne bilješke",
+      "label": "Mapa dnevnika",
+      "placeholder": "journal"
+    },
+    "preview": {
+      "description": "Putanja datoteke današnjeg dnevnika",
+      "label": "Pretpregled"
+    }
   },
   "tasks": {
     "header": {
@@ -344,7 +381,9 @@
       "loading": "Učitavanje postavki..."
     },
     "groups": {
-      "dayCellClick": "Dnevna stanica Kliknite"
+      "dayCellClick": "Dnevna stanica Kliknite",
+      "notes": "Bilješke",
+      "weekStart": "Tjedan"
     },
     "defaultBehavior": {
       "label": "Zadano ponašanje",
@@ -360,6 +399,20 @@
       "openJournal": "Otvori Dnevnik",
       "openCalendar": "Otvorite kalendar",
       "useGlobal": "Koristite globalnu postavku"
+    },
+    "showNotesOnCalendar": {
+      "description": "Prikaži svaku bilješku u kalendaru kao cjelodnevnu stavku na dan kad je stvorena",
+      "error": "Neuspješno ažuriranje prikaza bilješki u kalendaru",
+      "label": "Prikaži bilješke u kalendaru"
+    },
+    "weekStart": {
+      "description": "Prvi dan tjedna u svim kalendarima",
+      "error": "Neuspješno ažuriranje početka tjedna",
+      "label": "Tjedan počinje",
+      "options": {
+        "monday": "Ponedjeljak",
+        "sunday": "Nedjelja"
+      }
     }
   },
   "account": {
@@ -372,10 +425,12 @@
       "identity": "Identitet",
       "sync": "Sinkronizacija",
       "storage": "Skladištenje",
-      "devices": "Uređaji"
+      "devices": "Uređaji",
+      "billing": "Naplata"
     },
     "identity": {
-      "unknown": "Nepoznato"
+      "unknown": "Nepoznato",
+      "encrypted": "Šifrirano s kraja na kraj"
     },
     "sync": {
       "lastSynced": "Zadnja sinkronizacija {time}",
@@ -421,6 +476,53 @@
       "signedOut": "Uspješno odjavljen",
       "signOutFailed": "Odjava nije uspjela",
       "deviceLinked": "Uređaj je uspješno povezan"
+    },
+    "billing": {
+      "actions": {
+        "manage": "Upravljaj naplatom",
+        "opening": "Otvaranje...",
+        "refresh": "Osvježi status",
+        "upgrade": "Nadogradi"
+      },
+      "activationPendingPrefix": "Aktivacija na čekanju. Paddleu može trebati trenutak da potvrdi kupnju. Osvježite status ili pošaljite e-poštu",
+      "checking": "Provjera statusa naplate",
+      "historyDays": "{days} dana",
+      "labels": {
+        "history": "Povijest",
+        "maxFile": "Maks. datoteka",
+        "storage": "Pohrana",
+        "vaults": "Trezori"
+      },
+      "planStatus": "Status plana",
+      "plans": {
+        "believer": "Believer plan",
+        "free": "Besplatni plan",
+        "plus": "Plus plan",
+        "pro": "Pro plan"
+      },
+      "statuses": {
+        "active": "Aktivno",
+        "canceled": "Otkazano",
+        "inactive": "Neaktivno",
+        "past_due": "Dospjelo",
+        "paused": "Pauzirano"
+      },
+      "toasts": {
+        "activationPending": "Aktivacija na čekanju",
+        "billingActive": "Naplata je aktivna",
+        "checkoutFailed": "Nije moguće započeti kupnju",
+        "checkoutOpened": "Kupnja otvorena u vašem pregledniku",
+        "loadFailed": "Nije moguće učitati status naplate",
+        "portalFailed": "Nije moguće otvoriti portal za naplatu",
+        "refreshFailed": "Nije moguće osvježiti status naplate"
+      },
+      "unlimited": "Neograničeno"
+    },
+    "community": {
+      "and": "i",
+      "feedback": "podijelite povratne informacije",
+      "prompt": "Volite memrynote?",
+      "star": "Dodijelite nam zvjezdicu na GitHubu"
     }
   },
   "setup": {
@@ -437,7 +539,9 @@
       "errors": {
         "sendCode": "Slanje koda nije uspjelo",
         "googleStart": "Neuspješno pokretanje Google prijave"
-      }
+      },
+      "paidPlan": "Sinkronizacija je plaćeni plan.",
+      "seePlans": "Pogledaj planove"
     },
     "email": {
       "label": "Adresa e-pošte",
@@ -488,7 +592,13 @@
         "registering": "Registriranje uređaja..."
       },
       "failed": "Oporavak nije uspio",
-      "confirmationFailed": "Potvrda nije uspjela"
+      "confirmationFailed": "Potvrda nije uspjela",
+      "unavailable": {
+        "description": "Vaša fraza za oporavak prikazuje se samo jednom tijekom postavljanja i ne može se dohvatiti kasnije. Počnite ispočetka za generiranje nove.",
+        "loading": "Učitavanje vaše fraze za oporavak…",
+        "startOver": "Počni ispočetka",
+        "title": "Nije moguće učitati vašu frazu za oporavak"
+      }
     },
     "linking": {
       "choiceTitle": "Povežite ovaj uređaj",
@@ -513,7 +623,15 @@
       "waitingTitle": "Čeka se odobrenje",
       "waitingDescription": "Otvorite memrynote na svom drugom uređaju i odobrite zahtjev za povezivanje.",
       "verificationCode": "Kontrolni kod",
-      "confirmCode": "Provjerite odgovara li kod na vašem drugom uređaju"
+      "confirmCode": "Provjerite odgovara li kod na vašem drugom uređaju",
+      "vaultPickerChooseFolder": "Odaberi mapu",
+      "vaultPickerConfirm": "Preuzmi odabrano",
+      "vaultPickerDescription": "Ovaj račun ima više trezora. Odaberite mapu i trezor(e) za dodavanje na ovaj uređaj.",
+      "vaultPickerDormantHint": "Dodano, otvara se kad prijeđete na njega",
+      "vaultPickerFolderLabel": "Pohrani trezore u mapu",
+      "vaultPickerPrimaryHint": "Otvara se sada",
+      "vaultPickerTitle": "Odaberite što preuzeti",
+      "vaultRow": "Trezor — {{count}} stavki · {{date}}"
     }
   },
   "devices": {
@@ -630,7 +748,15 @@
       "downloadedToast": "Whisper Small preuzet",
       "downloadError": "Nije uspjelo preuzimanje Whisper Small",
       "keySavedToast": "OpenAI ključ spremljen",
-      "keySaveError": "Spremanje OpenAI ključa nije uspjelo"
+      "keySaveError": "Spremanje OpenAI ključa nije uspjelo",
+      "memoNameMode": "Nazivi bilješki",
+      "memoNameModeDescription": "Kako se glasovne bilješke imenuju nakon transkripcije",
+      "naming": {
+        "none": "Ne preimenuj",
+        "timestamp": "Vremenska oznaka",
+        "transcript": "Naslov transkripta"
+      },
+      "namingError": "Neuspješno ažuriranje imenovanja glasovnih bilješki"
     },
     "embedding": {
       "loaded": "Učitano",
@@ -715,7 +841,12 @@
       "connectFailed": "Povezivanje Google kalendara nije uspjelo",
       "refreshFailed": "Osvježavanje Google kalendara nije uspjelo",
       "disconnectFailed": "Odspajanje Google kalendara nije uspjelo",
-      "retryFailed": "Ponovni pokušaj sinkronizacije kalendara nije uspio"
+      "retryFailed": "Ponovni pokušaj sinkronizacije kalendara nije uspio",
+      "pushToGoogle": {
+        "description": "Isključite za jednosmjernu sinkronizaciju — i dalje ćete vidjeti Google događaje u memrynote, ali memrynote događaji neće se pojaviti u Googleu.",
+        "error": "Neuspješno ažuriranje smjera sinkronizacije",
+        "label": "Prikaži memrynote događaje u Google Calendar"
+      }
     },
     "sourcePicker": {
       "empty": "Na ovom uređaju još nisu dostupni uvezeni Google kalendari.",
@@ -796,7 +927,8 @@
       "changeColor": "Promjena boje",
       "mergeInto": "Spoji se u...",
       "merge": "Spojiti",
-      "delete": "Izbriši"
+      "delete": "Izbriši",
+      "changeIcon": "Promijeni ikonu"
     },
     "dialogs": {
       "deleteTitle": "Izbriši oznaku",
@@ -814,7 +946,8 @@
       "mergeFailed": "Spajanje oznaka nije uspjelo",
       "merged": "Spojeno \"{source}\" u \"{target}\" ({count, plural, one {# stavka} other {# stavke}})",
       "colorUpdated": "Ažurirana boja za \"{name}\"",
-      "colorFailed": "Ažuriranje boje nije uspjelo"
+      "colorFailed": "Ažuriranje boje nije uspjelo",
+      "iconFailed": "Neuspješno ažuriranje ikone"
     }
   },
   "properties": {
@@ -1144,7 +1277,10 @@
     "status": {
       "disconnected": "Disconnected",
       "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled"
+      "fullTools": "Full tools enabled",
+      "checking": "Provjera…",
+      "connected": "Povezano",
+      "label": "Veza"
     },
     "permissions": {
       "group": "Agent permissions",
@@ -1160,6 +1296,133 @@
         "alwaysAllow": "Always allow",
         "askBeforeChanges": "Ask before changes"
       }
+    }
+  },
+  "commandLine": {
+    "actions": {
+      "refresh": "Osvježi"
+    },
+    "command": {
+      "descriptionInstalled": "Instalirano na {path}",
+      "descriptionNotInstalled": "Instalirajte memrynote naredbu da biste mogli koristiti svoj trezor iz bilo kojeg terminala.",
+      "label": "memrynote naredba",
+      "toggleLabel": "Instaliraj memrynote naredbu"
+    },
+    "defaultVault": {
+      "description": "Odaberite trezor koji se koristi kad pokrenete memrynote bez --vault.",
+      "descriptionSelected": "Naredbe koriste {path} kad se --vault izostavi.",
+      "label": "Zadani trezor",
+      "none": "Nijedan trezor nije odabran",
+      "placeholder": "Odaberi trezor"
+    },
+    "groups": {
+      "terminal": "Terminal"
+    },
+    "header": {
+      "subtitle": "Postavite memrynote naredbu za svoj terminal",
+      "title": "Naredbeni redak"
+    },
+    "status": {
+      "defaultVaultUpdatedToast": "Zadani CLI trezor ažuriran",
+      "installedToast": "memrynote naredba instalirana",
+      "loadFailed": "Neuspješno učitavanje statusa naredbe",
+      "loading": "Provjera statusa naredbe...",
+      "uninstalledToast": "memrynote naredba uklonjena"
+    }
+  },
+  "features": {
+    "header": {
+      "subtitle": "Uključite ili isključite dijelove aplikacije. Isključeno = zasjenjeno u bočnoj traci i onemogućeno svugdje.",
+      "title": "Značajke"
+    },
+    "items": {
+      "calendar": {
+        "description": "Događaji i raspored",
+        "label": "Kalendar"
+      },
+      "graph": {
+        "description": "Veze između bilješki",
+        "label": "Graf"
+      },
+      "home": {
+        "description": "Početna nadzorna ploča",
+        "label": "Početna"
+      },
+      "inbox": {
+        "description": "Brzo snimanje i razvrstavanje",
+        "label": "Pristigla pošta"
+      },
+      "journal": {
+        "description": "Dnevne bilješke",
+        "label": "Dnevnik"
+      },
+      "tasks": {
+        "description": "Obveze i rokovi",
+        "label": "Zadaci"
+      }
+    }
+  },
+  "import": {
+    "action": "Uvezi",
+    "dialog": {
+      "cancel": "Odustani",
+      "choose": "Odaberi datoteku…",
+      "chooseFolder": "Odaberi Apple Notes mapu…",
+      "chooseHint": "Odaberite svoj {label}",
+      "close": "Zatvori",
+      "done": "Gotovo",
+      "error": "Uvoz nije uspio",
+      "folderHint": "Kliknite ispod i odaberite mapu „group.com.apple.notes” kad se otvori birač (ondje počinje). To omogućuje Memryju čitanje vaših bilješki i privitaka — bez potrebe za punim pristupom disku.",
+      "progress": "{completed} od {total}",
+      "running": "Uvoz…",
+      "selected": "{count, plural, one {# datoteka odabrana} few {# datoteke odabrane} other {# datoteka odabrano}}",
+      "start": "Započni uvoz",
+      "summary": {
+        "attachments": "{count, plural, one {# privitak kopiran} few {# privitka kopirana} other {# privitaka kopirano}}",
+        "failed": "{count} neuspješno",
+        "imported": "{count, plural, one {# stavka uvezena} few {# stavke uvezene} other {# stavki uvezeno}}",
+        "skipped": "{count} preskočeno",
+        "title": "Uvoz dovršen"
+      },
+      "title": "Uvezi iz {name}"
+    },
+    "header": {
+      "subtitle": "Uvezite bilješke i zadatke iz drugih aplikacija",
+      "title": "Uvoz"
+    },
+    "intro": "Jednokratni uvozi stvaraju nove bilješke u vašem trezoru. Vaše izvorne izvezene datoteke ostaju netaknute.",
+    "preview": {
+      "confirm": "Uvezi",
+      "warnings": "Upozorenja"
+    },
+    "select": "Odaberite aplikaciju iz koje uvozite…",
+    "sources": {
+      "apple-journal": "Uvezite Apple Journal HTML izvoz kao datirane bilješke",
+      "apple-notes": "Uvezite iz baze podataka Apple Notes (NoteStore.sqlite, macOS)",
+      "bear": "Uvezite Bear .bear2bk arhivu (bilješke, oznake, privici)",
+      "csv": "Uvezite .csv datoteku — jedna bilješka po retku, stupci postaju svojstva",
+      "evernote": "Uvezite jednu ili više Evernote .enex izvoznih datoteka",
+      "google-keep": "Uvezite Google Takeout Keep izvoz (.json ili .zip)",
+      "html": "Uvezite .html datoteke s povezanim slikama i poveznicama između stranica",
+      "markdown": "Uvezite .md datoteke ili mapu (frontmatter, oznake, privici)",
+      "notion": "Uvezite HTML izvoz (.zip)",
+      "onenote": "Uvezite OneNote bilježnice (potreban Microsoft račun)",
+      "raindrop": "Uvezite Raindrop.io izvoz zabilješki (.csv) — zabilješke dolaze u pristiglu poštu",
+      "roam": "Uvezite Roam Research graf (.json) s ugniježđenim strukturama",
+      "ticktick": "Uvezite TickTick sigurnosnu kopiju (.csv) kao projekte, zadatke i podsjetnike",
+      "todoist": "Uvezite CSV izvoz projekta (.csv)"
+    },
+    "stats": {
+      "bookmarks": "{count, plural, one {# zabilješka} few {# zabilješke} other {# zabilješki}}",
+      "comments": "{count, plural, one {# komentar} few {# komentara} other {# komentara}}",
+      "notes": "{count, plural, one {# bilješka} few {# bilješke} other {# bilješki}}",
+      "projects": "{count, plural, one {# projekt} few {# projekta} other {# projekata}}",
+      "reminders": "{count, plural, one {# podsjetnik} few {# podsjetnika} other {# podsjetnika}}",
+      "skipped": "{count} preskočeno",
+      "subtasks": "{count, plural, one {# podzadatak} few {# podzadatka} other {# podzadataka}}",
+      "tasks": "{count, plural, one {# zadatak} few {# zadatka} other {# zadataka}}",
+      "withDueDate": "{count} datirano",
+      "withTags": "{count} označeno"
     }
   }
 }

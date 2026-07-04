@@ -45,7 +45,10 @@
   "count": {
     "note": "{count, plural, one {Nota #} other {Notas de #}}",
     "task": "{count, plural, one {Tarea #} other {Tareas de #}}",
-    "itemDelete": "{count, plural, one {Eliminar elemento #} other {Eliminar elementos #}}"
+    "itemDelete": "{count, plural, one {Eliminar elemento #} other {Eliminar elementos #}}",
+    "event": "{count, plural, one {# evento} other {# eventos}}",
+    "journal": "{count, plural, one {# diario} other {# diarios}}",
+    "reminder": "{count, plural, one {# recordatorio} other {# recordatorios}}"
   },
   "toast": {
     "actionFailed": "La acción falló",
@@ -83,7 +86,23 @@
       "newNoteN": "Nueva nota (⌘N)",
       "new": "Nuevo",
       "syncDisabled": "Sincronización deshabilitada",
-      "syncDisabled2": "Sincronización deshabilitada"
+      "syncDisabled2": "Sincronización deshabilitada",
+      "feedbackButton": "Enviar comentarios",
+      "feedbackDescription": "Cuéntanos qué funciona, qué está roto o qué te gustaría que Memry hiciera. Leemos cada mensaje.",
+      "feedbackEmailHint": "Añade tu correo si quieres una respuesta.",
+      "feedbackError": "No se pudieron enviar los comentarios. Inténtalo de nuevo.",
+      "feedbackPlaceholder": "Tus comentarios…",
+      "feedbackSend": "Enviar",
+      "feedbackSending": "Enviando…",
+      "feedbackSuccess": "¡Gracias por tus comentarios!",
+      "feedbackTitle": "Enviar comentarios",
+      "newItemMenu": "Crear nuevo…",
+      "updateAvailable": "Actualizar",
+      "updateDownloading": "Descargando…",
+      "updateDownloadingPercent": "Descargando {percent}%",
+      "updateInstallingSubtitle": "Memrynote se reiniciará automáticamente.",
+      "updateInstallingTitle": "Instalando la actualización",
+      "updateRestart": "Reiniciar"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Cambiar tamaño del panel del día",
@@ -462,7 +481,8 @@
       "day": "Día",
       "agent": "Agent",
       "pendingApproval": "{count, plural, one {# pendiente de aprobación} other {# aprobaciones pendientes}}",
-      "inProgress": "Agent turno en progreso"
+      "inProgress": "Agent turno en progreso",
+      "close": "Cerrar el agente"
     },
     "errors": {
       "loadConversations": "No se pudieron cargar las conversaciones de los agentes",
@@ -481,5 +501,142 @@
     "sources": {
       "used": "{count, plural, one {# fuente usada} other {# fuentes usadas}}"
     }
+  },
+  "home": {
+    "addWidget": "Añadir widget",
+    "board": {
+      "defaultName": "Inicio",
+      "deleteAria": "Eliminar diseño",
+      "label": "Diseño de inicio",
+      "newAria": "Nuevo tablero",
+      "newName": "Nuevo tablero"
+    },
+    "disabled": {
+      "createNote": "Crear nota",
+      "hint": "No hay nada abierto. Empieza una nota."
+    },
+    "done": "Hecho",
+    "edit": "Editar",
+    "empty": {
+      "body": "Los widgets reúnen tus notas, tareas y marcadores en un solo lugar tranquilo.",
+      "cta": "Añade tu primer widget",
+      "title": "Tu tablero está vacío"
+    },
+    "greeting": {
+      "afternoon": "Buenas tardes",
+      "evening": "Buenas noches",
+      "morning": "Buenos días"
+    },
+    "header": {
+      "events": "{count, plural, one {# evento} other {# eventos}}",
+      "tasksDue": "{count, plural, one {# tarea vence hoy} other {# tareas vencen hoy}}"
+    },
+    "noBookmarksYet": "Aún no hay marcadores.",
+    "noEventsYet": "No hay eventos hoy.",
+    "noJournalEntriesYet": "Aún no hay entradas de diario.",
+    "noNotesYet": "Aún no hay notas.",
+    "noTasksYet": "Aún no hay tareas.",
+    "widget": {
+      "bookmarks": "Marcadores",
+      "calendar": "Calendario",
+      "calendarToday": "Hoy",
+      "configAria": "Configurar widget",
+      "configure": "Configurar",
+      "dragAria": "Arrastrar widget",
+      "duration": "{count} min",
+      "filter": {
+        "today": "Vence hoy",
+        "tomorrow": "Mañana",
+        "week": "Esta semana"
+      },
+      "folder": "Carpeta",
+      "folderEmpty": "Aún no hay carpetas",
+      "folderNoSelection": "No hay ninguna carpeta seleccionada",
+      "folderPickPrompt": "Elige una carpeta",
+      "folderViewSelect": "Vista",
+      "folderView_gallery": "Galería",
+      "folderView_list": "Lista",
+      "inbox": "Bandeja",
+      "inboxAllTypes": "Todos los tipos",
+      "inboxOlder": "{count, plural, one {# más antiguo} other {# más antiguos}}",
+      "inboxOldest": "el más antiguo {count, plural, one {# día} other {# días}}",
+      "journal": "Diario",
+      "journalStreak": "{count, plural, one {racha de # día} other {racha de # días}}",
+      "journalToday": "Hoy",
+      "journalYesterday": "Ayer",
+      "loadError": "No se pudo cargar",
+      "menuAria": "Opciones del widget",
+      "next": "Siguiente: {title}",
+      "openCalendar": "Abrir calendario",
+      "openInbox": "Abrir la bandeja",
+      "recentMeta": "editado {time}",
+      "recentMetaWithFolder": "{folder} · editado {time}",
+      "recentlyEdited": "Editado recientemente",
+      "remove": "Quitar",
+      "removeAria": "Quitar widget",
+      "resize": "Tamaño",
+      "resizeAria": "Redimensionar a {{size}}",
+      "savedFilterDefault": "Hoy",
+      "savedFilterHint": "Marca filtros con estrella en la página de Tareas para usarlos aquí",
+      "savedFilterLabel": "Filtro guardado",
+      "startsIn": "Empieza en {count, plural, one {# min} other {# min}}",
+      "tasks": "Tareas",
+      "unknown": "Widget desconocido",
+      "untitled": "Sin título"
+    }
+  },
+  "media": {
+    "video": "Vídeo"
+  },
+  "onboarding": {
+    "agentChat": {
+      "body": "Cambia a la pestaña Agente para preguntar sobre tu bóveda al asistente de Memrynote.",
+      "title": "Chatea con el agente de IA"
+    },
+    "collections": {
+      "body": "Organiza las notas en carpetas, fija marcadores y explora por etiqueta, todo aquí.",
+      "title": "Colecciones, marcadores y etiquetas"
+    },
+    "dayPanel": {
+      "body": "El panel lateral mantiene un calendario y tu vista del día junto a lo que estés leyendo.",
+      "title": "Tu día, junto a tu trabajo"
+    },
+    "feedback": {
+      "body": "Envía comentarios directamente al equipo desde aquí.",
+      "title": "Cuéntanos qué opinas"
+    },
+    "nav": {
+      "body": "Bandeja para capturar, Diario para las notas diarias, Calendario para tu cronología, Tareas para los pendientes y Grafo para ver cómo se conecta todo.",
+      "title": "Tus espacios de trabajo"
+    },
+    "newNote": {
+      "body": "Empieza aquí. Todo lo que escribes se guarda primero de forma local.",
+      "title": "Crea tu primera nota"
+    },
+    "settings": {
+      "body": "Importa tus notas desde más de 12 aplicaciones — Obsidian, Notion, Apple Notes, Evernote y más — y ajusta todo lo demás en Ajustes.",
+      "title": "Ajustes e importaciones"
+    },
+    "sync": {
+      "body": "Activa la sincronización cifrada de extremo a extremo para mantener todos los dispositivos al día.",
+      "title": "Sincronización privada y cifrada"
+    },
+    "welcome": {
+      "body": "Tu hogar privado y con prioridad sin conexión. Las notas están cifradas de extremo a extremo: nunca salen de tu dispositivo sin cifrar.",
+      "title": "Te damos la bienvenida a Memrynote"
+    }
+  },
+  "updatePrompt": {
+    "autoUpdateLabel": "Descargar e instalar actualizaciones automáticamente",
+    "availableBody": "{version} está disponible — tienes {current}. ¿Quieres descargarla ahora?",
+    "availableTitle": "¡Hay una nueva versión de MemryNote disponible!",
+    "download": "Descargar",
+    "downloadedBody": "{version} se ha descargado. Reinicia MemryNote para terminar la instalación.",
+    "downloadedTitle": "Actualización lista para instalar",
+    "later": "Más tarde",
+    "releaseNotesLabel": "Notas de la versión",
+    "remindLater": "Recordármelo más tarde",
+    "restartNow": "Reiniciar ahora",
+    "skip": "Omitir esta versión"
   }
 }

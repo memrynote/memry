@@ -27,7 +27,9 @@
     "imported-event": "Zaimportowane wydarzenie",
     "task": "Zadanie",
     "reminder": "Przypomnienie",
-    "snooze": "Odłóż"
+    "snooze": "Odłóż",
+    "note": "Notatka",
+    "note-date": "Przypomnienie o dacie"
   },
   "state": {
     "loading-calendar": "Ładowanie kalendarza…",
@@ -151,5 +153,34 @@
       "could-not-remove-due-date": "Nie można usunąć terminu",
       "could-not-open-note": "Nie można otworzyć notatki"
     }
+  },
+  "connect-prompt": {
+    "aria": "Połącz Google Calendar",
+    "body": "Połącz konto Google, aby robić więcej z kalendarzem:",
+    "bullets": {
+      "events": "Zobacz wydarzenia Google obok notatek i zadań",
+      "schedule": "Planuj zadania i notatki w kalendarzu",
+      "sync": "Twórz i edytuj wydarzenia, synchronizowane w obie strony"
+    },
+    "continue": "Kontynuuj z Google",
+    "dismiss": "Odrzuć",
+    "error": "Nie udało się połączyć z Google Calendar. Spróbuj ponownie.",
+    "pill": "Połącz Google",
+    "title": "Dokończ łączenie z Google Calendar"
+  },
+  "notePopover": {
+    "couldNotOpen": "Nie udało się otworzyć notatki",
+    "kind": "Notatka",
+    "kindDateReminder": "Przypomnienie o dacie",
+    "open": "Otwórz notatkę"
+  },
+  "search": {
+    "close": "Zamknij wyszukiwanie",
+    "no-results": "Brak dopasowań",
+    "open": "Szukaj w kalendarzu",
+    "placeholder": "Szukaj wydarzeń, zadań, przypomnień…"
+  },
+  "undo": {
+    "moveEvent": "Przenieś wydarzenie"
   }
 }

@@ -26,6 +26,10 @@
     "jobs": {
       "running": "{count, plural, one {# háttérfeladat fut} other {# háttérfeladatok futnak}}",
       "failed": "{count} nem sikerült"
+    },
+    "density": {
+      "toComfortable": "Kényelmes nézet",
+      "toCompact": "Kompakt nézet"
     }
   },
   "type": {
@@ -208,7 +212,15 @@
     "linkedNotesAria": "Kapcsolt jegyzetek",
     "removeLinkTo": "Távolítsa el az {title} linket",
     "notePlaceholder": "Írd meg a jegyzetedet...",
-    "textPlaceholder": "Szerkessze a rögzített szöveget..."
+    "textPlaceholder": "Szerkessze a rögzített szöveget...",
+    "linkANote": "Jegyzet összekapcsolása",
+    "match": {
+      "likely": "Valószínű egyezés",
+      "strong": "Erős egyezés",
+      "weak": "Gyenge egyezés"
+    },
+    "resize": "Panel átméretezése",
+    "suggestedCount": "{count} javasolt"
   },
   "content": {
     "capturedAt": "Rögzített {date}",
@@ -253,7 +265,12 @@
     "presetInOneHour": "1 óra",
     "presetTomorrow": "Holnap",
     "presetNextWeek": "Jövő héten",
-    "custom": "Egyedi..."
+    "custom": "Egyedi...",
+    "archive": "Archiválás",
+    "panelEmpty": "Nincsenek közelgő emlékeztetők.",
+    "panelPast": "Korábbi",
+    "panelUpcoming": "Közelgő",
+    "taskFallback": "Feladat"
   },
   "insights": {
     "captureActivity": "Rögzítési tevékenység",
@@ -295,7 +312,9 @@
       "recordVoiceMemo2": "Hangjegyzet rögzítése",
       "alreadyCaptured": "Már elfogták: \"",
       "rdquo": "rdquo;",
-      "captureAnyway": "Mindenképpen rögzítse"
+      "captureAnyway": "Mindenképpen rögzítse",
+      "focusShortcut": "Rögzítési mező fókuszálása",
+      "q": "Q"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Válasszon mappát",
@@ -416,7 +435,11 @@
       "backToPresets": "Vissza az előre beállított értékekhez",
       "time": "Idő",
       "noteOptional": "Megjegyzés (nem kötelező)",
-      "whyAreYouSettingThisReminder": "Miért állítja be ezt az emlékeztetőt?"
+      "whyAreYouSettingThisReminder": "Miért állítja be ezt az emlékeztetőt?",
+      "deleteReminder": "Emlékeztető törlése",
+      "editReminder": "Emlékeztető szerkesztése",
+      "save": "Mentés",
+      "set": "Beállítás"
     },
     "componentsSnoozeSnoozePicker": {
       "snooze": "Szundi",
@@ -461,5 +484,37 @@
     "toasts": {
       "inboxRefreshed": "Beérkező levelek frissítve"
     }
+  },
+  "convert": {
+    "addEvent": "Esemény hozzáadása",
+    "addTask": "Feladat hozzáadása",
+    "allDay": "Egész nap",
+    "binaryOnlyNote": "A fájlokból csak jegyzet lehet",
+    "chooseType": "Átalakítás erre",
+    "create": "Létrehozás",
+    "date": "Dátum",
+    "dueDate": "Határidő",
+    "dueTime": "Határidő időpontja",
+    "end": "Befejezés",
+    "event": "Esemény",
+    "failed": "Nem sikerült átalakítani: {error}",
+    "inboxProject": "Beérkezők",
+    "location": "Helyszín",
+    "note": "Jegyzet",
+    "priority": "Prioritás",
+    "priorityHigh": "Magas",
+    "priorityLow": "Alacsony",
+    "priorityMedium": "Közepes",
+    "priorityNone": "Nincs",
+    "priorityUrgent": "Sürgős",
+    "project": "Projekt",
+    "remindAt": "Emlékeztess ekkor",
+    "reminder": "Emlékeztető",
+    "setReminder": "Emlékeztető beállítása",
+    "start": "Kezdés",
+    "success": "Átalakítva erre: {target}",
+    "task": "Feladat",
+    "time": "Idő",
+    "title": "Átalakítás"
   }
 }

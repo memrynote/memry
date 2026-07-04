@@ -73,6 +73,7 @@
     "settingsNotInitialized": "Inställningssynkronisering är inte initierad",
     "securityQuarantinePermanent": "Ett synkroniseringsobjekt kunde inte verifieras och har satts i karantän av säkerhetsskäl.",
     "securityQuarantineRetry": "Ett synkroniseringsobjekt misslyckades med signaturverifiering och kommer att försöka igen.",
-    "certificatePinPaused": "Säker anslutning till synkroniseringsserver kunde inte verifieras. Synkronisering har pausats för din säkerhet."
+    "certificatePinPaused": "Säker anslutning till synkroniseringsserver kunde inte verifieras. Synkronisering har pausats för din säkerhet.",
+    "paymentRequired": "En betald synkplan krävs för att använda värdbaserad krypterad synk."
   }
 }

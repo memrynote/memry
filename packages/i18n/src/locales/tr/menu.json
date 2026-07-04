@@ -1,11 +1,15 @@
 {
   "app": {
-    "quit": "Çık"
+    "quit": "Çık",
+    "preferences": "Ayarlar…"
   },
   "file": {
     "label": "Dosya",
     "newNote": "Yeni Not",
-    "close": "Pencereyi Kapat"
+    "close": "Pencereyi Kapat",
+    "closeTab": "Sekmeyi Kapat",
+    "exportPdf": "PDF'e Aktar…",
+    "openQuickly": "Hızlı Aç…"
   },
   "navigation": {
     "back": "Geri",
@@ -18,12 +22,51 @@
     "cut": "Kes",
     "copy": "Kopyala",
     "paste": "Yapıştır",
-    "selectAll": "Tümünü seç"
+    "selectAll": "Tümünü seç",
+    "find": "Bul",
+    "speech": "Konuşma"
   },
   "view": {
     "label": "Görünüm",
     "reload": "Yeniden yükle",
     "toggleDevTools": "Geliştirici Araçlarını Aç/Kapat",
-    "toggleFullscreen": "Tam Ekrana Geçiş Yap"
+    "toggleFullscreen": "Tam Ekrana Geçiş Yap",
+    "theme": "Tema",
+    "themeDark": "Koyu",
+    "themeLight": "Açık",
+    "themeSystem": "Sistem",
+    "themeWhite": "Kağıt",
+    "toggleDayPanel": "Gün Panelini Aç/Kapat",
+    "toggleSidebar": "Kenar Çubuğunu Aç/Kapat"
+  },
+  "format": {
+    "body": "Gövde",
+    "bold": "Kalın",
+    "code": "Kod",
+    "heading1": "Başlık 1",
+    "heading2": "Başlık 2",
+    "heading3": "Başlık 3",
+    "highlight": "Vurgu",
+    "italic": "İtalik",
+    "label": "Biçim",
+    "strikethrough": "Üstü Çizili"
+  },
+  "help": {
+    "about": "Memrynote Hakkında",
+    "documentation": "Belgeler",
+    "label": "Yardım",
+    "shortcuts": "Klavye Kısayolları"
+  },
+  "insert": {
+    "attachment": "Ek Ekle…",
+    "bulletList": "Madde İşaretli Liste",
+    "codeBlock": "Kod Bloğu",
+    "label": "Ekle",
+    "numberedList": "Numaralı Liste",
+    "table": "Tablo",
+    "taskList": "Görev Listesi"
+  },
+  "window": {
+    "label": "Pencere"
   }
 }

@@ -33,7 +33,8 @@
     "repeat": "Повторить",
     "createAnother": "Создать еще один",
     "delete": "Удалить задачу",
-    "created": "Создано {date}"
+    "created": "Создано {date}",
+    "reminder": "Напоминание"
   },
   "filters": {
     "filter": "Фильтр",
@@ -62,7 +63,16 @@
     "noNotesAvailable": "Нет доступных заметок",
     "noLinkedNotes": "Связанных заметок пока нет",
     "removeLinkTo": "Удалить ссылку на {title}",
-    "removeLinkFallback": "Примечание"
+    "removeLinkFallback": "Примечание",
+    "addRelatedItem": "Добавить связанный элемент",
+    "noMatchingRelated": "Нет подходящих элементов",
+    "noRelatedAvailable": "Нет доступных элементов",
+    "noRelatedItems": "Связанных элементов пока нет",
+    "related": "Связанное",
+    "relatedItemFallback": "элемент",
+    "removeRelatedItem": "Убрать связанный элемент {title}",
+    "resize": "Изменить размер панели",
+    "searchRelated": "Поиск связанного…"
   },
   "kanban": {
     "board": "Канбан-доска"
@@ -174,7 +184,8 @@
     "componentsTasksDatePickerContent": {
       "removeDate": "Удалить дату",
       "clearTime": "Очистить время",
-      "addTime": "Добавить время"
+      "addTime": "Добавить время",
+      "time": "Время"
     },
     "componentsTasksDeleteProjectDialog": {
       "delete": "Удалить \"",
@@ -612,6 +623,20 @@
       "failedToLoadTaskPreferences": "Не удалось загрузить настройки задачи.",
       "failedToUpdateTaskPreferences": "Не удалось обновить настройки задачи.",
       "failedToLoadLinkedTasks": "Не удалось загрузить связанные задачи."
+    }
+  },
+  "reminders": {
+    "hasReminders": "Есть напоминания",
+    "setReminder": "Задать напоминание",
+    "summary": "Напоминание: {date}",
+    "summaryWithMore": "Напоминание: {date} (+ещё {count})",
+    "toast": {
+      "deleteFailed": "Не удалось удалить напоминание",
+      "deleted": "Напоминание удалено",
+      "set": "Напоминание задано",
+      "setFailed": "Не удалось задать напоминание",
+      "updateFailed": "Не удалось обновить напоминание",
+      "updated": "Напоминание обновлено"
     }
   }
 }

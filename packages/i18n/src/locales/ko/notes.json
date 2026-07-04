@@ -42,7 +42,9 @@
       "setIcon": "아이콘 설정",
       "removeIcon": "아이콘 제거",
       "deleteSelectedNotes": "{count} 삭제 노트",
-      "deleteSelectedItems": "{count} 항목 삭제"
+      "deleteSelectedItems": "{count} 항목 삭제",
+      "bookmark": "북마크",
+      "removeFromBookmarks": "북마크에서 제거"
     },
     "deleteDialog": {
       "noteTitle": "메모 삭제",
@@ -111,7 +113,11 @@
       "aria": "메모 제안",
       "loading": "메모 로드 중...",
       "empty": "메모를 찾을 수 없습니다.",
-      "create": "새 메모 만들기"
+      "create": "새 메모 만들기",
+      "embed": "임베드",
+      "embedAria": "{title} 임베드",
+      "wikiLink": "위키 링크",
+      "wikiLinkAria": "위키 링크 {title}"
     },
     "tags": {
       "aria": "태그 제안",
@@ -133,6 +139,15 @@
       "searchPlaceholder": "검색",
       "noIcons": "아이콘을 찾을 수 없습니다",
       "clearSearch": "검색 지우기"
+    },
+    "mention": {
+      "aria": "날짜 및 노트 제안",
+      "date": "날짜",
+      "dateHint": "날짜를 계속 입력하세요…",
+      "empty": "노트를 찾을 수 없습니다",
+      "loading": "노트 불러오는 중...",
+      "remindMe": "나에게 알림",
+      "showMore": "더 보기"
     }
   },
   "outline": {
@@ -174,7 +189,8 @@
     "createTag": "태그 생성: \"{tag}\"",
     "chooseColor": "색상 선택:",
     "preview": "미리보기:",
-    "colorAria": "{color} 색상을 선택하세요"
+    "colorAria": "{color} 색상을 선택하세요",
+    "customColor": "사용자 지정 색상"
   },
   "properties": {
     "title": "속성",
@@ -205,7 +221,9 @@
       "status": "상태",
       "select": "선택",
       "multiselect": "다중 선택"
-    }
+    },
+    "showOnCalendar": "캘린더에 표시",
+    "showingOnCalendar": "캘린더에 표시 중"
   },
   "templateSelector": {
     "title": "캔버스를 선택하세요",
@@ -295,7 +313,8 @@
   },
   "phaseF": {
     "componentsFolderViewColumnHeader": {
-      "dragToReorderColumn": "열을 재정렬하려면 드래그하세요."
+      "dragToReorderColumn": "열을 재정렬하려면 드래그하세요.",
+      "editColumnName": "열 이름 편집"
     },
     "componentsFolderViewColumnSelector": {
       "properties": "속성",
@@ -311,7 +330,10 @@
       "delete": "삭제",
       "none": "없음",
       "edit": "편집",
-      "delete2": "삭제"
+      "delete2": "삭제",
+      "columnBorders": "열 테두리",
+      "display": "표시",
+      "showSummaries": "요약 표시"
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "필터",
@@ -329,17 +351,21 @@
       "of": ":",
       "addCondition": "조건 추가",
       "addFilter": "필터 추가",
-      "addGroup": "그룹 추가"
+      "addGroup": "그룹 추가",
+      "removeGroup": "그룹 제거"
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "내장",
       "properties": "속성",
       "placeholderProperty": "재산",
       "placeholderOperator": "운영자",
-      "placeholderValue": "가치"
+      "placeholderValue": "가치",
+      "removeFilter": "필터 제거"
     },
     "componentsFolderViewFolderTableView": {
-      "notesTable": "메모 테이블"
+      "notesTable": "메모 테이블",
+      "selectAll": "모든 노트 선택",
+      "selectRow": "노트 선택"
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "메모 검색...",
@@ -371,7 +397,9 @@
     },
     "componentsFolderViewGroupedTable": {
       "groupedNotesTable": "그룹화된 노트 테이블",
-      "more": "더"
+      "more": "더",
+      "selectAll": "모든 노트 선택",
+      "selectRow": "노트 선택"
     },
     "componentsFolderViewMoveToFolderDialog": {
       "searchFolders": "폴더 검색...",
@@ -399,7 +427,8 @@
     },
     "componentsFolderViewSortableColumnHeader": {
       "dragToReorderColumn": "열을 재정렬하려면 드래그하세요.",
-      "resizeColumn": "열 크기 조정"
+      "resizeColumn": "열 크기 조정",
+      "editColumnName": "열 이름 편집"
     },
     "componentsFolderViewViewSwitcher": {
       "default": "기본값",
@@ -424,7 +453,16 @@
       "deleteView": "보기 삭제",
       "areYouSureYouWantToDelete": "정말 삭제하시겠습니까?",
       "thisActionCannotBeUndone": "이 작업은 취소할 수 없습니다.",
-      "cancel3": "취소"
+      "cancel3": "취소",
+      "createView": "보기 만들기",
+      "gallery": "갤러리",
+      "layout": "레이아웃",
+      "list": "목록",
+      "name": "이름",
+      "newView": "새 보기",
+      "save": "저장",
+      "table": "표",
+      "viewActions": "보기 작업"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "PDF를 로드하지 못했습니다: ",
@@ -607,6 +645,15 @@
       "startYourCollection": "컬렉션 시작",
       "templatesHelpYouCreateNotesWithConsistentStructure": "템플릿을 사용하면 일관된 구조의 메모를 만들 수 있습니다.",
       "createTemplate": "템플릿 생성"
+    },
+    "componentsFolderViewSortSelector": {
+      "builtIn": "기본 제공",
+      "clearSort": "정렬 지우기",
+      "noSortablePropertiesFound": "정렬 가능한 속성을 찾을 수 없습니다",
+      "properties": "속성",
+      "searchProperties": "속성 검색...",
+      "sort": "정렬",
+      "sortDirection": "정렬 방향"
     }
   },
   "phaseI": {
@@ -654,5 +701,47 @@
       "cannotRemoveTagThisNoteWasDeleted": "태그를 제거할 수 없습니다. 이 메모는 삭제되었습니다.",
       "cannotChangeLocalOnlyThisNoteWasDeleted": "로컬 전용으로 변경할 수 없습니다. 이 메모는 삭제되었습니다."
     }
+  },
+  "bulkActions": {
+    "addTag": "태그 추가",
+    "clearAria": "선택 해제",
+    "copiedLinks": "{count, plural, other {링크 #개}} 복사됨",
+    "copyLinks": "링크 복사",
+    "delete": "삭제",
+    "export": "내보내기",
+    "move": "이동",
+    "selected": "선택됨",
+    "tagNamePlaceholder": "태그 이름",
+    "toolbarAria": "일괄 작업"
+  },
+  "comments": {
+    "attachAria": "파일 첨부",
+    "badgeAria": "{count, plural, other {댓글 #개}}",
+    "cancel": "취소",
+    "commentPlaceholder": "댓글 추가...",
+    "createdTooltip": "{date} {time}에 생성됨",
+    "delete": "댓글 삭제",
+    "edit": "댓글 편집",
+    "kind": {
+      "addition": "추가",
+      "comment": "댓글",
+      "deletion": "삭제",
+      "substitution": "대체"
+    },
+    "mentionAria": "사람, 페이지 또는 날짜 멘션",
+    "railAria": "댓글",
+    "replyPlaceholder": "답글...",
+    "resolve": "해결",
+    "sendAria": "댓글 보내기",
+    "toolbarComment": "댓글"
+  },
+  "dateMention": {
+    "clear": "지우기",
+    "dateFormat": "날짜 형식",
+    "dateInput": "날짜",
+    "includeTime": "시간 포함",
+    "remind": "알림",
+    "time": "시간",
+    "timeFormat": "시간 형식"
   }
 }

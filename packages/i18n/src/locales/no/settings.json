@@ -25,7 +25,10 @@
         "integrations": "Integrasjoner",
         "vault": "Hvelv",
         "tags": "Tagger",
-        "properties": "Egenskaper"
+        "properties": "Egenskaper",
+        "commandLine": "Kommandolinje",
+        "features": "Funksjoner",
+        "import": "Import"
       }
     }
   },
@@ -109,6 +112,11 @@
       "createInSelectedFolder": {
         "label": "Opprett i valgt mappe",
         "description": "Nye notater og mapper opprettes i den valgte mappen. Når den er av, opprettes alltid elementer ved roten."
+      },
+      "defaultNoteFolder": {
+        "description": "Tom = hvelvroten",
+        "label": "Standardplassering for nye notater",
+        "placeholder": "notater"
       }
     },
     "privacy": {
@@ -116,6 +124,17 @@
         "label": "Del anonyme bruksberegninger",
         "description": "Det er bare anon-beregninger – ingen notatinnhold, søk, filbaner, e-poster eller rå-ID-er blir noen gang sendt.",
         "error": "Kunne ikke oppdatere telemetriinnstillingen"
+      }
+    },
+    "dateFormat": {
+      "description": "Hvordan kalenderdatoer vises",
+      "error": "Kunne ikke oppdatere datoformat",
+      "label": "Datoformat",
+      "options": {
+        "DD.MM.YYYY": "DD.MM.YYYY",
+        "DD/MM/YYYY": "DD/MM/YYYY",
+        "MM/DD/YYYY": "MM/DD/YYYY (US)",
+        "YYYY-MM-DD": "YYYY-MM-DD (ISO)"
       }
     }
   },
@@ -250,6 +269,9 @@
         "description": "Skriv inn et navn for den nye malen.",
         "placeholder": "Malnavn"
       }
+    },
+    "preview": {
+      "notFound": "Kunne ikke laste denne malen."
     }
   },
   "journal": {
@@ -261,7 +283,8 @@
     "groups": {
       "defaultTemplate": "Standard mal",
       "sidebarVisibility": "Sidefelts synlighet",
-      "footer": "Bunntekst"
+      "footer": "Bunntekst",
+      "location": "Plassering og format"
     },
     "template": {
       "label": "Mal",
@@ -290,7 +313,21 @@
       "label": "Vis bunntekst for statistikk",
       "description": "Ordtelling, lesetid, tidsstempler"
     },
-    "updateError": "Kunne ikke oppdatere innstillingen"
+    "updateError": "Kunne ikke oppdatere innstillingen",
+    "dateFormat": {
+      "description": "Filnavnformat for daglige notater (f.eks. YYYY-MM-DD)",
+      "label": "Datoformat",
+      "placeholder": "YYYY-MM-DD"
+    },
+    "folder": {
+      "description": "Mappe der daglige notater lagres",
+      "label": "Journalmappe",
+      "placeholder": "journal"
+    },
+    "preview": {
+      "description": "Filbane for dagens journal",
+      "label": "Forhåndsvisning"
+    }
   },
   "tasks": {
     "header": {
@@ -344,7 +381,9 @@
       "loading": "Laster inn innstillinger ..."
     },
     "groups": {
-      "dayCellClick": "Dagcelleklikk"
+      "dayCellClick": "Dagcelleklikk",
+      "notes": "Notater",
+      "weekStart": "Uke"
     },
     "defaultBehavior": {
       "label": "Standard oppførsel",
@@ -360,6 +399,20 @@
       "openJournal": "Åpne Journal",
       "openCalendar": "Åpne Kalender",
       "useGlobal": "Bruk globale innstillinger"
+    },
+    "showNotesOnCalendar": {
+      "description": "Vis hvert notat i kalenderen som et heldagselement på dagen det ble opprettet",
+      "error": "Kunne ikke oppdatere vis notater i kalender",
+      "label": "Vis notater i kalender"
+    },
+    "weekStart": {
+      "description": "Første ukedag på tvers av alle kalendere",
+      "error": "Kunne ikke oppdatere ukestart",
+      "label": "Uken starter på",
+      "options": {
+        "monday": "Mandag",
+        "sunday": "Søndag"
+      }
     }
   },
   "account": {
@@ -372,10 +425,12 @@
       "identity": "Identitet",
       "sync": "Synkroniser",
       "storage": "Oppbevaring",
-      "devices": "Enheter"
+      "devices": "Enheter",
+      "billing": "Fakturering"
     },
     "identity": {
-      "unknown": "Ukjent"
+      "unknown": "Ukjent",
+      "encrypted": "Ende-til-ende-kryptert"
     },
     "sync": {
       "lastSynced": "Sist synkroniserte {time}",
@@ -421,6 +476,53 @@
       "signedOut": "Logget av",
       "signOutFailed": "Kunne ikke logge av",
       "deviceLinked": "Enheten er tilkoblet"
+    },
+    "billing": {
+      "actions": {
+        "manage": "Administrer fakturering",
+        "opening": "Åpner...",
+        "refresh": "Oppdater status",
+        "upgrade": "Oppgrader"
+      },
+      "activationPendingPrefix": "Aktivering venter. Paddle kan bruke et øyeblikk på å bekrefte betalingen. Oppdater status eller send e-post til",
+      "checking": "Sjekker faktureringsstatus",
+      "historyDays": "{days} dager",
+      "labels": {
+        "history": "Historikk",
+        "maxFile": "Maks fil",
+        "storage": "Lagring",
+        "vaults": "Hvelv"
+      },
+      "planStatus": "Abonnementsstatus",
+      "plans": {
+        "believer": "Believer-abonnement",
+        "free": "Gratisabonnement",
+        "plus": "Plus-abonnement",
+        "pro": "Pro-abonnement"
+      },
+      "statuses": {
+        "active": "Aktiv",
+        "canceled": "Kansellert",
+        "inactive": "Inaktiv",
+        "past_due": "Forfalt",
+        "paused": "Satt på pause"
+      },
+      "toasts": {
+        "activationPending": "Aktivering venter",
+        "billingActive": "Fakturering er aktiv",
+        "checkoutFailed": "Kunne ikke starte betaling",
+        "checkoutOpened": "Betaling åpnet i nettleseren din",
+        "loadFailed": "Kunne ikke laste faktureringsstatus",
+        "portalFailed": "Kunne ikke åpne faktureringsportal",
+        "refreshFailed": "Kunne ikke oppdatere faktureringsstatus"
+      },
+      "unlimited": "Ubegrenset"
+    },
+    "community": {
+      "and": "og",
+      "feedback": "del tilbakemelding",
+      "prompt": "Elsker du memrynote?",
+      "star": "Gi oss en stjerne på GitHub"
     }
   },
   "setup": {
@@ -437,7 +539,9 @@
       "errors": {
         "sendCode": "Kunne ikke sende koden",
         "googleStart": "Kunne ikke starte Google-pålogging"
-      }
+      },
+      "paidPlan": "Synkronisering er et betalt abonnement.",
+      "seePlans": "Se abonnementer"
     },
     "email": {
       "label": "E-postadresse",
@@ -488,7 +592,13 @@
         "registering": "Registrerer enhet..."
       },
       "failed": "Gjenoppretting mislyktes",
-      "confirmationFailed": "Bekreftelsen mislyktes"
+      "confirmationFailed": "Bekreftelsen mislyktes",
+      "unavailable": {
+        "description": "Gjenopprettingsfrasen din vises bare én gang under oppsettet og kan ikke hentes senere. Start på nytt for å generere en ny.",
+        "loading": "Laster gjenopprettingsfrasen din…",
+        "startOver": "Start på nytt",
+        "title": "Kunne ikke laste gjenopprettingsfrasen din"
+      }
     },
     "linking": {
       "choiceTitle": "Koble til denne enheten",
@@ -513,7 +623,15 @@
       "waitingTitle": "Venter på godkjenning",
       "waitingDescription": "Åpne memrynote på den andre enheten din og godkjenn koblingsforespørselen.",
       "verificationCode": "Bekreftelseskode",
-      "confirmCode": "Bekreft at dette samsvarer med koden på den andre enheten"
+      "confirmCode": "Bekreft at dette samsvarer med koden på den andre enheten",
+      "vaultPickerChooseFolder": "Velg mappe",
+      "vaultPickerConfirm": "Hent valgte",
+      "vaultPickerDescription": "Denne kontoen har flere hvelv. Velg en mappe og hvelvet/hvelvene som skal legges til på denne enheten.",
+      "vaultPickerDormantHint": "Lagt til, åpnes når du bytter til det",
+      "vaultPickerFolderLabel": "Lagre hvelv i mappe",
+      "vaultPickerPrimaryHint": "Åpnes nå",
+      "vaultPickerTitle": "Velg hva du vil hente",
+      "vaultRow": "Hvelv — {{count}} elementer · {{date}}"
     }
   },
   "devices": {
@@ -630,7 +748,15 @@
       "downloadedToast": "Whisper Small lastet ned",
       "downloadError": "Kunne ikke laste ned Whisper Small",
       "keySavedToast": "OpenAI-nøkkelen er lagret",
-      "keySaveError": "Kunne ikke lagre OpenAI-nøkkelen"
+      "keySaveError": "Kunne ikke lagre OpenAI-nøkkelen",
+      "memoNameMode": "Notatnavn",
+      "memoNameModeDescription": "Hvordan talenotater navngis etter transkripsjon",
+      "naming": {
+        "none": "Ikke gi nytt navn",
+        "timestamp": "Tidsstempel",
+        "transcript": "Transkripsjonstittel"
+      },
+      "namingError": "Kunne ikke oppdatere navngivning av talenotat"
     },
     "embedding": {
       "loaded": "Lastet",
@@ -715,7 +841,12 @@
       "connectFailed": "Kunne ikke koble til Google Kalender",
       "refreshFailed": "Kunne ikke oppdatere Google Kalender",
       "disconnectFailed": "Kunne ikke koble fra Google Kalender",
-      "retryFailed": "Kunne ikke prøve kalendersynkronisering på nytt"
+      "retryFailed": "Kunne ikke prøve kalendersynkronisering på nytt",
+      "pushToGoogle": {
+        "description": "Slå av for enveis synkronisering — du ser fortsatt Google-hendelsene dine i memrynote, men memrynote-hendelser vises ikke i Google.",
+        "error": "Kunne ikke oppdatere synkroniseringsretning",
+        "label": "Vis memrynote-hendelser i Google Calendar"
+      }
     },
     "sourcePicker": {
       "empty": "Ingen importerte Google-kalendere er tilgjengelige på denne enheten ennå.",
@@ -796,7 +927,8 @@
       "changeColor": "Bytt farge",
       "mergeInto": "Slå sammen til...",
       "merge": "Slå sammen",
-      "delete": "Slett"
+      "delete": "Slett",
+      "changeIcon": "Endre ikon"
     },
     "dialogs": {
       "deleteTitle": "Slett tag",
@@ -814,7 +946,8 @@
       "mergeFailed": "Kunne ikke slå sammen tagger",
       "merged": "Slåtte sammen \"{source}\" til \"{target}\" ({count, plural, one {# vare} other {# varer}})",
       "colorUpdated": "Oppdatert farge for \"{name}\"",
-      "colorFailed": "Kunne ikke oppdatere fargen"
+      "colorFailed": "Kunne ikke oppdatere fargen",
+      "iconFailed": "Kunne ikke oppdatere ikon"
     }
   },
   "properties": {
@@ -1144,7 +1277,10 @@
     "status": {
       "disconnected": "Disconnected",
       "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled"
+      "fullTools": "Full tools enabled",
+      "checking": "Sjekker…",
+      "connected": "Tilkoblet",
+      "label": "Tilkobling"
     },
     "permissions": {
       "group": "Agent permissions",
@@ -1160,6 +1296,133 @@
         "alwaysAllow": "Always allow",
         "askBeforeChanges": "Ask before changes"
       }
+    }
+  },
+  "commandLine": {
+    "actions": {
+      "refresh": "Oppdater"
+    },
+    "command": {
+      "descriptionInstalled": "Installert på {path}",
+      "descriptionNotInstalled": "Installer memrynote-kommandoen slik at du kan bruke hvelvet ditt fra hvilken som helst terminal.",
+      "label": "memrynote-kommando",
+      "toggleLabel": "Installer memrynote-kommando"
+    },
+    "defaultVault": {
+      "description": "Velg hvelvet som brukes når du kjører memrynote uten --vault.",
+      "descriptionSelected": "Kommandoer bruker {path} når --vault utelates.",
+      "label": "Standardhvelv",
+      "none": "Ingen hvelv valgt",
+      "placeholder": "Velg hvelv"
+    },
+    "groups": {
+      "terminal": "Terminal"
+    },
+    "header": {
+      "subtitle": "Sett opp memrynote-kommandoen for terminalen din",
+      "title": "Kommandolinje"
+    },
+    "status": {
+      "defaultVaultUpdatedToast": "Standard CLI-hvelv oppdatert",
+      "installedToast": "memrynote-kommando installert",
+      "loadFailed": "Kunne ikke laste kommandostatus",
+      "loading": "Sjekker kommandostatus...",
+      "uninstalledToast": "memrynote-kommando fjernet"
+    }
+  },
+  "features": {
+    "header": {
+      "subtitle": "Slå deler av appen på eller av. Av = nedtonet i sidefeltet og deaktivert overalt.",
+      "title": "Funksjoner"
+    },
+    "items": {
+      "calendar": {
+        "description": "Hendelser og timeplan",
+        "label": "Kalender"
+      },
+      "graph": {
+        "description": "Notatkoblinger",
+        "label": "Graf"
+      },
+      "home": {
+        "description": "Landingsoversikt",
+        "label": "Hjem"
+      },
+      "inbox": {
+        "description": "Rask fangst og triage",
+        "label": "Innboks"
+      },
+      "journal": {
+        "description": "Daglige notater",
+        "label": "Journal"
+      },
+      "tasks": {
+        "description": "Gjøremål og forfallsdatoer",
+        "label": "Oppgaver"
+      }
+    }
+  },
+  "import": {
+    "action": "Importer",
+    "dialog": {
+      "cancel": "Avbryt",
+      "choose": "Velg fil…",
+      "chooseFolder": "Velg Apple Notes-mappe…",
+      "chooseHint": "Velg {label}",
+      "close": "Lukk",
+      "done": "Ferdig",
+      "error": "Import mislyktes",
+      "folderHint": "Klikk nedenfor og velg mappen «group.com.apple.notes» når velgeren åpnes (den starter der). Dette lar Memry lese notatene og vedleggene dine — ingen full disktilgang nødvendig.",
+      "progress": "{completed} av {total}",
+      "running": "Importerer…",
+      "selected": "{count, plural, one {# fil valgt} other {# filer valgt}}",
+      "start": "Start import",
+      "summary": {
+        "attachments": "{count, plural, one {# vedlegg kopiert} other {# vedlegg kopiert}}",
+        "failed": "{count} mislyktes",
+        "imported": "{count, plural, one {# element importert} other {# elementer importert}}",
+        "skipped": "{count} hoppet over",
+        "title": "Import fullført"
+      },
+      "title": "Importer fra {name}"
+    },
+    "header": {
+      "subtitle": "Hent inn notatene og oppgavene dine fra andre apper",
+      "title": "Import"
+    },
+    "intro": "Engangsimporter oppretter nye notater i hvelvet ditt. De originale eksportfilene dine forblir uendret.",
+    "preview": {
+      "confirm": "Importer",
+      "warnings": "Advarsler"
+    },
+    "select": "Velg en app å importere fra…",
+    "sources": {
+      "apple-journal": "Importer en Apple Journal HTML-eksport som daterte notater",
+      "apple-notes": "Importer fra Apple Notes-databasen (NoteStore.sqlite, macOS)",
+      "bear": "Importer et Bear .bear2bk-arkiv (notater, etiketter, vedlegg)",
+      "csv": "Importer en .csv-fil — ett notat per rad, kolonner blir egenskaper",
+      "evernote": "Importer en eller flere Evernote .enex-eksportfiler",
+      "google-keep": "Importer en Google Takeout Keep-eksport (.json eller .zip)",
+      "html": "Importer .html-filer med koblede bilder og lenker på tvers av sider",
+      "markdown": "Importer .md-filer eller en mappe (frontmatter, etiketter, vedlegg)",
+      "notion": "Importer en HTML-eksport (.zip)",
+      "onenote": "Importer OneNote-notatbøker (krever en Microsoft-konto)",
+      "raindrop": "Importer en Raindrop.io-bokmerkeeksport (.csv) — bokmerker havner i innboksen",
+      "roam": "Importer en Roam Research-graf (.json) med nestede disposisjoner",
+      "ticktick": "Importer en TickTick-sikkerhetskopi (.csv) som prosjekter, oppgaver og påminnelser",
+      "todoist": "Importer en prosjekt-CSV-eksport (.csv)"
+    },
+    "stats": {
+      "bookmarks": "{count, plural, one {# bokmerke} other {# bokmerker}}",
+      "comments": "{count, plural, one {# kommentar} other {# kommentarer}}",
+      "notes": "{count, plural, one {# notat} other {# notater}}",
+      "projects": "{count, plural, one {# prosjekt} other {# prosjekter}}",
+      "reminders": "{count, plural, one {# påminnelse} other {# påminnelser}}",
+      "skipped": "{count} hoppet over",
+      "subtasks": "{count, plural, one {# deloppgave} other {# deloppgaver}}",
+      "tasks": "{count, plural, one {# oppgave} other {# oppgaver}}",
+      "withDueDate": "{count} datert",
+      "withTags": "{count} med etikett"
     }
   }
 }

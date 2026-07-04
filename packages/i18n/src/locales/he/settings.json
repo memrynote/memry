@@ -25,7 +25,10 @@
         "integrations": "אינטגרציות",
         "vault": "כספת",
         "tags": "תגים",
-        "properties": "נכסים"
+        "properties": "נכסים",
+        "commandLine": "שורת פקודה",
+        "features": "תכונות",
+        "import": "ייבוא"
       }
     }
   },
@@ -109,6 +112,11 @@
       "createInSelectedFolder": {
         "label": "צור בתיקייה שנבחרה",
         "description": "הערות ותיקיות חדשות נוצרות בתוך התיקיה שנבחרה כעת. כאשר כבוי, פריטים נוצרים תמיד בשורש."
+      },
+      "defaultNoteFolder": {
+        "description": "ריק = שורש הכספת",
+        "label": "מיקום ברירת מחדל לפתקים חדשים",
+        "placeholder": "notes"
       }
     },
     "privacy": {
@@ -116,6 +124,17 @@
         "label": "שתף מדדי שימוש אנונימיים",
         "description": "זה רק מדדים אנוניים - אף פעם לא נשלחים תוכן הערות, שאילתות חיפוש, נתיבי קבצים, מיילים או מזהים גולמיים.",
         "error": "עדכון הגדרת הטלמטריה נכשל"
+      }
+    },
+    "dateFormat": {
+      "description": "כיצד מוצגים תאריכי לוח השנה",
+      "error": "עדכון פורמט התאריך נכשל",
+      "label": "פורמט תאריך",
+      "options": {
+        "DD.MM.YYYY": "DD.MM.YYYY",
+        "DD/MM/YYYY": "DD/MM/YYYY",
+        "MM/DD/YYYY": "MM/DD/YYYY (US)",
+        "YYYY-MM-DD": "YYYY-MM-DD (ISO)"
       }
     }
   },
@@ -250,6 +269,9 @@
         "description": "הזן שם עבור עותק התבנית החדש.",
         "placeholder": "שם התבנית"
       }
+    },
+    "preview": {
+      "notFound": "לא ניתן היה לטעון תבנית זו."
     }
   },
   "journal": {
@@ -261,7 +283,8 @@
     "groups": {
       "defaultTemplate": "תבנית ברירת מחדל",
       "sidebarVisibility": "נראות של סרגל צד",
-      "footer": "כותרת תחתונה"
+      "footer": "כותרת תחתונה",
+      "location": "מיקום ופורמט"
     },
     "template": {
       "label": "תבנית",
@@ -290,7 +313,21 @@
       "label": "הצג כותרת תחתונה של סטטיסטיקות",
       "description": "ספירת מילים, זמן קריאה, חותמות זמן"
     },
-    "updateError": "עדכון ההגדרה נכשל"
+    "updateError": "עדכון ההגדרה נכשל",
+    "dateFormat": {
+      "description": "פורמט שם הקובץ לפתקים יומיים (למשל YYYY-MM-DD)",
+      "label": "פורמט תאריך",
+      "placeholder": "YYYY-MM-DD"
+    },
+    "folder": {
+      "description": "התיקייה שבה נשמרים הפתקים היומיים",
+      "label": "תיקיית יומן",
+      "placeholder": "journal"
+    },
+    "preview": {
+      "description": "נתיב קובץ היומן של היום",
+      "label": "תצוגה מקדימה"
+    }
   },
   "tasks": {
     "header": {
@@ -344,7 +381,9 @@
       "loading": "טוען הגדרות..."
     },
     "groups": {
-      "dayCellClick": "קליק על תא יום"
+      "dayCellClick": "קליק על תא יום",
+      "notes": "פתקים",
+      "weekStart": "שבוע"
     },
     "defaultBehavior": {
       "label": "התנהגות ברירת מחדל",
@@ -360,6 +399,20 @@
       "openJournal": "פתח יומן",
       "openCalendar": "פתח את לוח השנה",
       "useGlobal": "השתמש בהגדרה גלובלית"
+    },
+    "showNotesOnCalendar": {
+      "description": "הצג כל פתק בלוח השנה כפריט של כל היום ביום שבו נוצר",
+      "error": "עדכון הצגת הפתקים בלוח השנה נכשל",
+      "label": "הצג פתקים בלוח השנה"
+    },
+    "weekStart": {
+      "description": "היום הראשון של השבוע בכל לוחות השנה",
+      "error": "עדכון תחילת השבוע נכשל",
+      "label": "השבוע מתחיל ביום",
+      "options": {
+        "monday": "שני",
+        "sunday": "ראשון"
+      }
     }
   },
   "account": {
@@ -372,10 +425,12 @@
       "identity": "זהות",
       "sync": "סנכרון",
       "storage": "אחסון",
-      "devices": "מכשירים"
+      "devices": "מכשירים",
+      "billing": "חיוב"
     },
     "identity": {
-      "unknown": "לא ידוע"
+      "unknown": "לא ידוע",
+      "encrypted": "מוצפן מקצה לקצה"
     },
     "sync": {
       "lastSynced": "סנכרון אחרון {time}",
@@ -421,6 +476,53 @@
       "signedOut": "יצא בהצלחה",
       "signOutFailed": "היציאה נכשלה",
       "deviceLinked": "המכשיר קושר בהצלחה"
+    },
+    "billing": {
+      "actions": {
+        "manage": "נהל חיוב",
+        "opening": "פותח...",
+        "refresh": "רענן מצב",
+        "upgrade": "שדרג"
+      },
+      "activationPendingPrefix": "ההפעלה ממתינה. ל-Paddle עשוי לקחת רגע לאשר את התשלום. רענן את המצב או שלח אימייל אל",
+      "checking": "בודק מצב חיוב",
+      "historyDays": "{days} ימים",
+      "labels": {
+        "history": "היסטוריה",
+        "maxFile": "קובץ מרבי",
+        "storage": "אחסון",
+        "vaults": "כספות"
+      },
+      "planStatus": "מצב התוכנית",
+      "plans": {
+        "believer": "תוכנית Believer",
+        "free": "תוכנית חינם",
+        "plus": "תוכנית Plus",
+        "pro": "תוכנית Pro"
+      },
+      "statuses": {
+        "active": "פעיל",
+        "canceled": "בוטל",
+        "inactive": "לא פעיל",
+        "past_due": "בפיגור",
+        "paused": "מושהה"
+      },
+      "toasts": {
+        "activationPending": "ההפעלה ממתינה",
+        "billingActive": "החיוב פעיל",
+        "checkoutFailed": "לא ניתן היה להתחיל את התשלום",
+        "checkoutOpened": "התשלום נפתח בדפדפן שלך",
+        "loadFailed": "לא ניתן היה לטעון את מצב החיוב",
+        "portalFailed": "לא ניתן היה לפתוח את פורטל החיוב",
+        "refreshFailed": "לא ניתן היה לרענן את מצב החיוב"
+      },
+      "unlimited": "ללא הגבלה"
+    },
+    "community": {
+      "and": "וגם",
+      "feedback": "שתף משוב",
+      "prompt": "אוהב את memrynote?",
+      "star": "תן לנו כוכב ב-GitHub"
     }
   },
   "setup": {
@@ -437,7 +539,9 @@
       "errors": {
         "sendCode": "שליחת הקוד נכשלה",
         "googleStart": "הפעלת הכניסה של Google נכשלה"
-      }
+      },
+      "paidPlan": "סנכרון הוא תוכנית בתשלום.",
+      "seePlans": "ראה תוכניות"
     },
     "email": {
       "label": "כתובת אימייל",
@@ -488,7 +592,13 @@
         "registering": "רושם מכשיר..."
       },
       "failed": "השחזור נכשל",
-      "confirmationFailed": "האישור נכשל"
+      "confirmationFailed": "האישור נכשל",
+      "unavailable": {
+        "description": "ביטוי השחזור שלך מוצג רק פעם אחת בעת ההגדרה ולא ניתן לאחזר אותו מאוחר יותר. התחל מחדש כדי ליצור חדש.",
+        "loading": "טוען את ביטוי השחזור שלך…",
+        "startOver": "התחל מחדש",
+        "title": "לא ניתן היה לטעון את ביטוי השחזור שלך"
+      }
     },
     "linking": {
       "choiceTitle": "קשר את המכשיר הזה",
@@ -513,7 +623,15 @@
       "waitingTitle": "מחכה לאישור",
       "waitingDescription": "פתח את memrynote במכשיר השני שלך ואשר את בקשת הקישור.",
       "verificationCode": "קוד אימות",
-      "confirmCode": "אשר שזה תואם לקוד במכשיר השני שלך"
+      "confirmCode": "אשר שזה תואם לקוד במכשיר השני שלך",
+      "vaultPickerChooseFolder": "בחר תיקייה",
+      "vaultPickerConfirm": "משוך את הנבחרים",
+      "vaultPickerDescription": "לחשבון זה יש כספות מרובות. בחר תיקייה ואת הכספת/ות להוספה למכשיר זה.",
+      "vaultPickerDormantHint": "נוסף, נפתח כשתעבור אליו",
+      "vaultPickerFolderLabel": "אחסן כספות בתיקייה",
+      "vaultPickerPrimaryHint": "נפתח עכשיו",
+      "vaultPickerTitle": "בחר מה למשוך",
+      "vaultRow": "כספת — {{count}} פריטים · {{date}}"
     }
   },
   "devices": {
@@ -630,7 +748,15 @@
       "downloadedToast": "Whisper Small הורד",
       "downloadError": "הורדת Whisper Small נכשלה",
       "keySavedToast": "מפתח OpenAI נשמר",
-      "keySaveError": "שמירת מפתח OpenAI נכשלה"
+      "keySaveError": "שמירת מפתח OpenAI נכשלה",
+      "memoNameMode": "שמות תזכירים",
+      "memoNameModeDescription": "כיצד תזכירים קוליים מקבלים שם לאחר תמלול",
+      "naming": {
+        "none": "אל תשנה שם",
+        "timestamp": "חותמת זמן",
+        "transcript": "כותרת תמלול"
+      },
+      "namingError": "עדכון מתן שמות לתזכירים קוליים נכשל"
     },
     "embedding": {
       "loaded": "טעון",
@@ -715,7 +841,12 @@
       "connectFailed": "חיבור יומן Google נכשל",
       "refreshFailed": "רענון יומן Google נכשל",
       "disconnectFailed": "ניתוק יומן Google נכשל",
-      "retryFailed": "נכשל הניסיון לסנכרן לוח שנה"
+      "retryFailed": "נכשל הניסיון לסנכרן לוח שנה",
+      "pushToGoogle": {
+        "description": "כבה לסנכרון חד-כיווני — עדיין תראה את אירועי Google שלך ב-memrynote, אך אירועי memrynote לא יופיעו ב-Google.",
+        "error": "עדכון כיוון הסנכרון נכשל",
+        "label": "הצג אירועי memrynote ב-Google Calendar"
+      }
     },
     "sourcePicker": {
       "empty": "אין עדיין יומנים מיובאים של Google זמינים במכשיר זה.",
@@ -796,7 +927,8 @@
       "changeColor": "שנה צבע",
       "mergeInto": "התמזג לתוך...",
       "merge": "מיזוג",
-      "delete": "מחק"
+      "delete": "מחק",
+      "changeIcon": "שנה סמל"
     },
     "dialogs": {
       "deleteTitle": "מחק תג",
@@ -814,7 +946,8 @@
       "mergeFailed": "מיזוג התגים נכשל",
       "merged": "מיזוג את \"{source}\" לתוך \"{target}\" ({count, plural, one {פריט #} other {פריטי #}})",
       "colorUpdated": "צבע מעודכן עבור \"{name}\"",
-      "colorFailed": "עדכון הצבע נכשל"
+      "colorFailed": "עדכון הצבע נכשל",
+      "iconFailed": "עדכון הסמל נכשל"
     }
   },
   "properties": {
@@ -1144,7 +1277,10 @@
     "status": {
       "disconnected": "Disconnected",
       "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled"
+      "fullTools": "Full tools enabled",
+      "checking": "בודק…",
+      "connected": "מחובר",
+      "label": "חיבור"
     },
     "permissions": {
       "group": "Agent permissions",
@@ -1160,6 +1296,133 @@
         "alwaysAllow": "Always allow",
         "askBeforeChanges": "Ask before changes"
       }
+    }
+  },
+  "commandLine": {
+    "actions": {
+      "refresh": "רענן"
+    },
+    "command": {
+      "descriptionInstalled": "מותקן ב-{path}",
+      "descriptionNotInstalled": "התקן את פקודת memrynote כדי שתוכל להשתמש בכספת שלך מכל טרמינל.",
+      "label": "פקודת memrynote",
+      "toggleLabel": "התקן את פקודת memrynote"
+    },
+    "defaultVault": {
+      "description": "בחר את הכספת שתשמש כשתריץ את memrynote ללא ‎--vault.",
+      "descriptionSelected": "פקודות משתמשות ב-{path} כאשר ‎--vault מושמט.",
+      "label": "כספת ברירת מחדל",
+      "none": "לא נבחרה כספת",
+      "placeholder": "בחר כספת"
+    },
+    "groups": {
+      "terminal": "טרמינל"
+    },
+    "header": {
+      "subtitle": "הגדר את פקודת memrynote עבור הטרמינל שלך",
+      "title": "שורת פקודה"
+    },
+    "status": {
+      "defaultVaultUpdatedToast": "כספת ברירת המחדל של ה-CLI עודכנה",
+      "installedToast": "פקודת memrynote הותקנה",
+      "loadFailed": "טעינת מצב הפקודה נכשלה",
+      "loading": "בודק מצב פקודה...",
+      "uninstalledToast": "פקודת memrynote הוסרה"
+    }
+  },
+  "features": {
+    "header": {
+      "subtitle": "הפעל או כבה חלקים באפליקציה. כבוי = מעומעם בסרגל הצד ומושבת בכל מקום.",
+      "title": "תכונות"
+    },
+    "items": {
+      "calendar": {
+        "description": "אירועים ולוח זמנים",
+        "label": "לוח שנה"
+      },
+      "graph": {
+        "description": "קשרים בין פתקים",
+        "label": "גרף"
+      },
+      "home": {
+        "description": "לוח מחוונים ראשי",
+        "label": "דף הבית"
+      },
+      "inbox": {
+        "description": "לכידה מהירה ומיון",
+        "label": "תיבה נכנסת"
+      },
+      "journal": {
+        "description": "פתקים יומיים",
+        "label": "יומן"
+      },
+      "tasks": {
+        "description": "מטלות ותאריכי יעד",
+        "label": "משימות"
+      }
+    }
+  },
+  "import": {
+    "action": "ייבא",
+    "dialog": {
+      "cancel": "ביטול",
+      "choose": "בחר קובץ…",
+      "chooseFolder": "בחר תיקיית Apple Notes…",
+      "chooseHint": "בחר את {label}",
+      "close": "סגור",
+      "done": "בוצע",
+      "error": "הייבוא נכשל",
+      "folderHint": "לחץ למטה ובחר את התיקייה “group.com.apple.notes” כשהבורר נפתח (הוא מתחיל שם). זה מאפשר ל-Memry לקרוא את הפתקים והקבצים המצורפים שלך — ללא צורך בגישה מלאה לדיסק.",
+      "progress": "{completed} מתוך {total}",
+      "running": "מייבא…",
+      "selected": "{count, plural, one {# קובץ נבחר} other {# קבצים נבחרו}}",
+      "start": "התחל ייבוא",
+      "summary": {
+        "attachments": "{count, plural, one {# קובץ מצורף הועתק} other {# קבצים מצורפים הועתקו}}",
+        "failed": "{count} נכשלו",
+        "imported": "{count, plural, one {# פריט יובא} other {# פריטים יובאו}}",
+        "skipped": "{count} דולגו",
+        "title": "הייבוא הושלם"
+      },
+      "title": "ייבא מ-{name}"
+    },
+    "header": {
+      "subtitle": "הבא את הפתקים והמשימות שלך מאפליקציות אחרות",
+      "title": "ייבוא"
+    },
+    "intro": "ייבוא חד-פעמי יוצר פתקים חדשים בכספת שלך. קובצי הייצוא המקוריים שלך נשארים ללא שינוי.",
+    "preview": {
+      "confirm": "ייבא",
+      "warnings": "אזהרות"
+    },
+    "select": "בחר אפליקציה לייבא ממנה…",
+    "sources": {
+      "apple-journal": "ייבא ייצוא HTML של Apple Journal כפתקים מתוארכים",
+      "apple-notes": "ייבא ממסד הנתונים של Apple Notes (NoteStore.sqlite, macOS)",
+      "bear": "ייבא ארכיון Bear ‎.bear2bk (פתקים, תגיות, קבצים מצורפים)",
+      "csv": "ייבא קובץ .csv — פתק אחד לכל שורה, עמודות הופכות למאפיינים",
+      "evernote": "ייבא קובץ ייצוא Evernote אחד או יותר מסוג .enex",
+      "google-keep": "ייבא ייצוא Google Takeout Keep (.json או .zip)",
+      "html": "ייבא קובצי .html עם תמונות מקושרות וקישורים בין דפים",
+      "markdown": "ייבא קובצי .md או תיקייה (frontmatter, תגיות, קבצים מצורפים)",
+      "notion": "ייבא ייצוא HTML (.zip)",
+      "onenote": "ייבא מחברות OneNote (דורש חשבון Microsoft)",
+      "raindrop": "ייבא ייצוא סימניות של Raindrop.io (.csv) — הסימניות מגיעות לתיבה הנכנסת",
+      "roam": "ייבא גרף Roam Research (.json) עם מתארים מקוננים",
+      "ticktick": "ייבא גיבוי TickTick (.csv) כפרויקטים, משימות ותזכורות",
+      "todoist": "ייבא ייצוא CSV של פרויקט (.csv)"
+    },
+    "stats": {
+      "bookmarks": "{count, plural, one {# סימנייה} other {# סימניות}}",
+      "comments": "{count, plural, one {# תגובה} other {# תגובות}}",
+      "notes": "{count, plural, one {# פתק} other {# פתקים}}",
+      "projects": "{count, plural, one {# פרויקט} other {# פרויקטים}}",
+      "reminders": "{count, plural, one {# תזכורת} other {# תזכורות}}",
+      "skipped": "{count} דולגו",
+      "subtasks": "{count, plural, one {# תת-משימה} other {# תת-משימות}}",
+      "tasks": "{count, plural, one {# משימה} other {# משימות}}",
+      "withDueDate": "{count} מתוארכים",
+      "withTags": "{count} מתויגים"
     }
   }
 }

@@ -1,11 +1,15 @@
 {
   "app": {
-    "quit": "Sair"
+    "quit": "Sair",
+    "preferences": "Definições…"
   },
   "file": {
     "label": "Arquivo",
     "newNote": "Nova nota",
-    "close": "Fechar janela"
+    "close": "Fechar janela",
+    "closeTab": "Fechar separador",
+    "exportPdf": "Exportar para PDF…",
+    "openQuickly": "Abrir rapidamente…"
   },
   "navigation": {
     "back": "Voltar",
@@ -18,12 +22,51 @@
     "cut": "Cortar",
     "copy": "Copiar",
     "paste": "Colar",
-    "selectAll": "Selecionar tudo"
+    "selectAll": "Selecionar tudo",
+    "find": "Localizar",
+    "speech": "Voz"
   },
   "view": {
     "label": "Ver",
     "reload": "Recarregar",
     "toggleDevTools": "Alternar ferramentas de desenvolvedor",
-    "toggleFullscreen": "Alternar tela inteira"
+    "toggleFullscreen": "Alternar tela inteira",
+    "theme": "Tema",
+    "themeDark": "Escuro",
+    "themeLight": "Claro",
+    "themeSystem": "Sistema",
+    "themeWhite": "Papel",
+    "toggleDayPanel": "Alternar painel do dia",
+    "toggleSidebar": "Alternar barra lateral"
+  },
+  "format": {
+    "body": "Corpo",
+    "bold": "Negrito",
+    "code": "Código",
+    "heading1": "Título 1",
+    "heading2": "Título 2",
+    "heading3": "Título 3",
+    "highlight": "Destaque",
+    "italic": "Itálico",
+    "label": "Formatar",
+    "strikethrough": "Rasurado"
+  },
+  "help": {
+    "about": "Acerca do Memrynote",
+    "documentation": "Documentação",
+    "label": "Ajuda",
+    "shortcuts": "Atalhos de teclado"
+  },
+  "insert": {
+    "attachment": "Inserir anexo…",
+    "bulletList": "Lista com marcadores",
+    "codeBlock": "Bloco de código",
+    "label": "Inserir",
+    "numberedList": "Lista numerada",
+    "table": "Tabela",
+    "taskList": "Lista de tarefas"
+  },
+  "window": {
+    "label": "Janela"
   }
 }

@@ -26,6 +26,10 @@
     "jobs": {
       "running": "{count, plural, one {# kerja latar belakang berjalan} other {# kerja latar belakang berjalan}}",
       "failed": "{count} gagal"
+    },
+    "density": {
+      "toComfortable": "Paparan selesa",
+      "toCompact": "Paparan padat"
     }
   },
   "type": {
@@ -208,7 +212,15 @@
     "linkedNotesAria": "Nota terpaut",
     "removeLinkTo": "Alih keluar pautan ke {title}",
     "notePlaceholder": "Tulis nota anda...",
-    "textPlaceholder": "Edit teks tangkapan anda..."
+    "textPlaceholder": "Edit teks tangkapan anda...",
+    "linkANote": "Paut satu nota",
+    "match": {
+      "likely": "Padanan mungkin",
+      "strong": "Padanan kuat",
+      "weak": "Padanan lemah"
+    },
+    "resize": "Ubah saiz panel",
+    "suggestedCount": "{count} dicadangkan"
   },
   "content": {
     "capturedAt": "Ditangkap {date}",
@@ -253,7 +265,12 @@
     "presetInOneHour": "1 jam",
     "presetTomorrow": "Esok",
     "presetNextWeek": "Minggu depan",
-    "custom": "tersuai..."
+    "custom": "tersuai...",
+    "archive": "Arkib",
+    "panelEmpty": "Tiada peringatan akan datang.",
+    "panelPast": "Lepas",
+    "panelUpcoming": "Akan datang",
+    "taskFallback": "Tugasan"
   },
   "insights": {
     "captureActivity": "Aktiviti Tangkap",
@@ -295,7 +312,9 @@
       "recordVoiceMemo2": "Rakam memo suara",
       "alreadyCaptured": "Sudah ditangkap: “",
       "rdquo": "rdquo;",
-      "captureAnyway": "Tangkap Bagaimanapun"
+      "captureAnyway": "Tangkap Bagaimanapun",
+      "focusShortcut": "Fokus input tangkapan",
+      "q": "Q"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Pilih folder",
@@ -416,7 +435,11 @@
       "backToPresets": "Kembali ke pratetap",
       "time": "Masa",
       "noteOptional": "Nota (pilihan)",
-      "whyAreYouSettingThisReminder": "Mengapa anda menetapkan peringatan ini?"
+      "whyAreYouSettingThisReminder": "Mengapa anda menetapkan peringatan ini?",
+      "deleteReminder": "Padam peringatan",
+      "editReminder": "Edit peringatan",
+      "save": "Simpan",
+      "set": "Tetapkan"
     },
     "componentsSnoozeSnoozePicker": {
       "snooze": "Tunda",
@@ -461,5 +484,37 @@
     "toasts": {
       "inboxRefreshed": "Peti masuk dimuat semula"
     }
+  },
+  "convert": {
+    "addEvent": "Tambah acara",
+    "addTask": "Tambah tugasan",
+    "allDay": "Sepanjang hari",
+    "binaryOnlyNote": "Fail hanya boleh menjadi nota",
+    "chooseType": "Tukar kepada",
+    "create": "Cipta",
+    "date": "Tarikh",
+    "dueDate": "Tarikh akhir",
+    "dueTime": "Masa akhir",
+    "end": "Tamat",
+    "event": "Acara",
+    "failed": "Tidak dapat menukar: {error}",
+    "inboxProject": "Peti Masuk",
+    "location": "Lokasi",
+    "note": "Nota",
+    "priority": "Keutamaan",
+    "priorityHigh": "Tinggi",
+    "priorityLow": "Rendah",
+    "priorityMedium": "Sederhana",
+    "priorityNone": "Tiada",
+    "priorityUrgent": "Segera",
+    "project": "Projek",
+    "remindAt": "Ingatkan saya pada",
+    "reminder": "Peringatan",
+    "setReminder": "Tetapkan peringatan",
+    "start": "Mula",
+    "success": "Ditukar kepada {target}",
+    "task": "Tugasan",
+    "time": "Masa",
+    "title": "Tukar"
   }
 }

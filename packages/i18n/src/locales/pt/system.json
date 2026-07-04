@@ -36,7 +36,8 @@
       "journal": "Lembrete de diário",
       "highlight": "Lembrete de destaque",
       "fallback": "Lembrete devido",
-      "default": "Lembrete"
+      "default": "Lembrete",
+      "task": "Lembrete de tarefa"
     }
   },
   "error": {

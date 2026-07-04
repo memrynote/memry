@@ -26,6 +26,10 @@
     "jobs": {
       "running": "{count, plural, one {Εκτελείται η εργασία παρασκηνίου #} other {Εκτελούνται εργασίες παρασκηνίου #}}",
       "failed": "Το {count} απέτυχε"
+    },
+    "density": {
+      "toComfortable": "Άνετη προβολή",
+      "toCompact": "Συμπαγής προβολή"
     }
   },
   "type": {
@@ -208,7 +212,15 @@
     "linkedNotesAria": "Συνδεδεμένες σημειώσεις",
     "removeLinkTo": "Κατάργηση συνδέσμου στο {title}",
     "notePlaceholder": "Γράψε το σημείωμά σου...",
-    "textPlaceholder": "Επεξεργαστείτε το κείμενο που καταγράψατε..."
+    "textPlaceholder": "Επεξεργαστείτε το κείμενο που καταγράψατε...",
+    "linkANote": "Σύνδεση σημείωσης",
+    "match": {
+      "likely": "Πιθανή αντιστοιχία",
+      "strong": "Ισχυρή αντιστοιχία",
+      "weak": "Ασθενής αντιστοιχία"
+    },
+    "resize": "Αλλαγή μεγέθους πάνελ",
+    "suggestedCount": "{count} προτεινόμενα"
   },
   "content": {
     "capturedAt": "Καταγράφηκε το {date}",
@@ -253,7 +265,12 @@
     "presetInOneHour": "1 ώρα",
     "presetTomorrow": "Αύριο",
     "presetNextWeek": "Την επόμενη εβδομάδα",
-    "custom": "Προσαρμοσμένο..."
+    "custom": "Προσαρμοσμένο...",
+    "archive": "Αρχειοθέτηση",
+    "panelEmpty": "Δεν υπάρχουν επερχόμενες υπενθυμίσεις.",
+    "panelPast": "Παρελθόντα",
+    "panelUpcoming": "Επερχόμενα",
+    "taskFallback": "Εργασία"
   },
   "insights": {
     "captureActivity": "Λήψη δραστηριότητας",
@@ -295,7 +312,9 @@
       "recordVoiceMemo2": "Ηχογράφηση φωνητικής σημείωσης",
       "alreadyCaptured": "Έχει ήδη καταγραφεί: \"",
       "rdquo": "rdquo;",
-      "captureAnyway": "Λήψη Τέλος πάντων"
+      "captureAnyway": "Λήψη Τέλος πάντων",
+      "focusShortcut": "Εστίαση στο πεδίο καταγραφής",
+      "q": "Q"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Επιλέξτε φάκελο",
@@ -416,7 +435,11 @@
       "backToPresets": "Επιστροφή στις προεπιλογές",
       "time": "Χρόνος",
       "noteOptional": "Σημείωση (προαιρετικό)",
-      "whyAreYouSettingThisReminder": "Γιατί ορίζετε αυτήν την υπενθύμιση;"
+      "whyAreYouSettingThisReminder": "Γιατί ορίζετε αυτήν την υπενθύμιση;",
+      "deleteReminder": "Διαγραφή υπενθύμισης",
+      "editReminder": "Επεξεργασία υπενθύμισης",
+      "save": "Αποθήκευση",
+      "set": "Ορισμός"
     },
     "componentsSnoozeSnoozePicker": {
       "snooze": "Αναβολή",
@@ -461,5 +484,37 @@
     "toasts": {
       "inboxRefreshed": "Τα Εισερχόμενα ανανεώθηκαν"
     }
+  },
+  "convert": {
+    "addEvent": "Προσθήκη εκδήλωσης",
+    "addTask": "Προσθήκη εργασίας",
+    "allDay": "Ολοήμερο",
+    "binaryOnlyNote": "Τα αρχεία μπορούν να γίνουν μόνο σημείωση",
+    "chooseType": "Μετατροπή σε",
+    "create": "Δημιουργία",
+    "date": "Ημερομηνία",
+    "dueDate": "Ημερομηνία λήξης",
+    "dueTime": "Ώρα λήξης",
+    "end": "Λήξη",
+    "event": "Εκδήλωση",
+    "failed": "Αδυναμία μετατροπής: {error}",
+    "inboxProject": "Εισερχόμενα",
+    "location": "Τοποθεσία",
+    "note": "Σημείωση",
+    "priority": "Προτεραιότητα",
+    "priorityHigh": "Υψηλή",
+    "priorityLow": "Χαμηλή",
+    "priorityMedium": "Μεσαία",
+    "priorityNone": "Καμία",
+    "priorityUrgent": "Επείγουσα",
+    "project": "Έργο",
+    "remindAt": "Υπενθύμιση στις",
+    "reminder": "Υπενθύμιση",
+    "setReminder": "Ορισμός υπενθύμισης",
+    "start": "Έναρξη",
+    "success": "Μετατράπηκε σε {target}",
+    "task": "Εργασία",
+    "time": "Ώρα",
+    "title": "Μετατροπή"
   }
 }

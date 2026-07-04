@@ -42,7 +42,9 @@
       "setIcon": "Đặt biểu tượng",
       "removeIcon": "Xóa Biểu tượng",
       "deleteSelectedNotes": "Xóa {count} Ghi chú",
-      "deleteSelectedItems": "Xóa {count} mục"
+      "deleteSelectedItems": "Xóa {count} mục",
+      "bookmark": "Dấu trang",
+      "removeFromBookmarks": "Xóa khỏi dấu trang"
     },
     "deleteDialog": {
       "noteTitle": "Xóa Ghi chú",
@@ -111,7 +113,11 @@
       "aria": "Gợi ý ghi chú",
       "loading": "Đang tải ghi chú...",
       "empty": "Không tìm thấy ghi chú nào",
-      "create": "Tạo ghi chú mới"
+      "create": "Tạo ghi chú mới",
+      "embed": "Nhúng",
+      "embedAria": "Nhúng {title}",
+      "wikiLink": "Liên kết wiki",
+      "wikiLinkAria": "Liên kết wiki {title}"
     },
     "tags": {
       "aria": "Gợi ý thẻ",
@@ -133,6 +139,15 @@
       "searchPlaceholder": "Tìm kiếm",
       "noIcons": "Không tìm thấy biểu tượng",
       "clearSearch": "Xóa tìm kiếm"
+    },
+    "mention": {
+      "aria": "Gợi ý ngày và ghi chú",
+      "date": "Ngày",
+      "dateHint": "Tiếp tục gõ một ngày…",
+      "empty": "Không tìm thấy ghi chú",
+      "loading": "Đang tải ghi chú...",
+      "remindMe": "Nhắc tôi",
+      "showMore": "Xem thêm"
     }
   },
   "outline": {
@@ -174,7 +189,8 @@
     "createTag": "Tạo thẻ: \"{tag}\"",
     "chooseColor": "Chọn màu:",
     "preview": "Xem trước:",
-    "colorAria": "Chọn màu {color}"
+    "colorAria": "Chọn màu {color}",
+    "customColor": "Màu tùy chỉnh"
   },
   "properties": {
     "title": "Thuộc tính",
@@ -205,7 +221,9 @@
       "status": "Trạng thái",
       "select": "Chọn",
       "multiselect": "Chọn nhiều"
-    }
+    },
+    "showOnCalendar": "Hiện trên lịch",
+    "showingOnCalendar": "Đang hiện trên lịch"
   },
   "templateSelector": {
     "title": "Chọn Bảng vẽ của bạn",
@@ -295,7 +313,8 @@
   },
   "phaseF": {
     "componentsFolderViewColumnHeader": {
-      "dragToReorderColumn": "Kéo để sắp xếp lại cột"
+      "dragToReorderColumn": "Kéo để sắp xếp lại cột",
+      "editColumnName": "Sửa tên cột"
     },
     "componentsFolderViewColumnSelector": {
       "properties": "Thuộc tính",
@@ -311,7 +330,10 @@
       "delete": "Xóa",
       "none": "Không có",
       "edit": "Chỉnh sửa",
-      "delete2": "Xóa"
+      "delete2": "Xóa",
+      "columnBorders": "Viền cột",
+      "display": "Hiển thị",
+      "showSummaries": "Hiện tóm tắt"
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "  \nBộ lọc  ",
@@ -329,17 +351,21 @@
       "of": "của:",
       "addCondition": "Thêm điều kiện",
       "addFilter": "Thêm bộ lọc",
-      "addGroup": "Thêm nhóm"
+      "addGroup": "Thêm nhóm",
+      "removeGroup": "Xóa nhóm"
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "Có sẵn",
       "properties": "Thuộc tính",
       "placeholderProperty": "Thuộc tính",
       "placeholderOperator": "Toán tử",
-      "placeholderValue": "Giá trị"
+      "placeholderValue": "Giá trị",
+      "removeFilter": "Xóa bộ lọc"
     },
     "componentsFolderViewFolderTableView": {
-      "notesTable": "Bảng ghi chú"
+      "notesTable": "Bảng ghi chú",
+      "selectAll": "Chọn tất cả ghi chú",
+      "selectRow": "Chọn ghi chú"
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "Tìm kiếm ghi chú...",
@@ -371,7 +397,9 @@
     },
     "componentsFolderViewGroupedTable": {
       "groupedNotesTable": "Bảng ghi chú theo nhóm",
-      "more": "thêm"
+      "more": "thêm",
+      "selectAll": "Chọn tất cả ghi chú",
+      "selectRow": "Chọn ghi chú"
     },
     "componentsFolderViewMoveToFolderDialog": {
       "searchFolders": "Tìm kiếm thư mục...",
@@ -399,7 +427,8 @@
     },
     "componentsFolderViewSortableColumnHeader": {
       "dragToReorderColumn": "Kéo để sắp xếp lại cột",
-      "resizeColumn": "Thay đổi kích thước cột"
+      "resizeColumn": "Thay đổi kích thước cột",
+      "editColumnName": "Sửa tên cột"
     },
     "componentsFolderViewViewSwitcher": {
       "default": "mặc định",
@@ -424,7 +453,16 @@
       "deleteView": "Xóa chế độ xem",
       "areYouSureYouWantToDelete": "Bạn có chắc muốn xóa không?  ",
       "thisActionCannotBeUndone": "  \nHành động này không thể hoàn tác.  ",
-      "cancel3": "Hủy"
+      "cancel3": "Hủy",
+      "createView": "Tạo chế độ xem",
+      "gallery": "Bộ sưu tập",
+      "layout": "Bố cục",
+      "list": "Danh sách",
+      "name": "Tên",
+      "newView": "Chế độ xem mới",
+      "save": "Lưu",
+      "table": "Bảng",
+      "viewActions": "Thao tác chế độ xem"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "  \nTải PDF thất bại:  ",
@@ -607,6 +645,15 @@
       "startYourCollection": "Bắt đầu Bộ Sưu Tập Của Bạn",
       "templatesHelpYouCreateNotesWithConsistentStructure": "Các mẫu giúp bạn tạo ghi chú với cấu trúc nhất quán.",
       "createTemplate": "Tạo Mẫu"
+    },
+    "componentsFolderViewSortSelector": {
+      "builtIn": "Tích hợp",
+      "clearSort": "Xóa sắp xếp",
+      "noSortablePropertiesFound": "Không tìm thấy thuộc tính có thể sắp xếp",
+      "properties": "Thuộc tính",
+      "searchProperties": "Tìm thuộc tính...",
+      "sort": "Sắp xếp",
+      "sortDirection": "Hướng sắp xếp"
     }
   },
   "phaseI": {
@@ -654,5 +701,47 @@
       "cannotRemoveTagThisNoteWasDeleted": "Không thể xóa thẻ - ghi chú này đã bị xóa",
       "cannotChangeLocalOnlyThisNoteWasDeleted": "Không thể thay đổi chỉ cục bộ — ghi chú này đã bị xóa"
     }
+  },
+  "bulkActions": {
+    "addTag": "Thêm thẻ",
+    "clearAria": "Xóa lựa chọn",
+    "copiedLinks": "Đã sao chép {count, plural, other {# liên kết}}",
+    "copyLinks": "Sao chép liên kết",
+    "delete": "Xóa",
+    "export": "Xuất",
+    "move": "Di chuyển",
+    "selected": "đã chọn",
+    "tagNamePlaceholder": "Tên thẻ",
+    "toolbarAria": "Thao tác hàng loạt"
+  },
+  "comments": {
+    "attachAria": "Đính kèm tệp",
+    "badgeAria": "{count, plural, other {# bình luận}}",
+    "cancel": "Hủy",
+    "commentPlaceholder": "Thêm bình luận...",
+    "createdTooltip": "Đã tạo {date} lúc {time}",
+    "delete": "Xóa bình luận",
+    "edit": "Sửa bình luận",
+    "kind": {
+      "addition": "Bổ sung",
+      "comment": "Bình luận",
+      "deletion": "Xóa bỏ",
+      "substitution": "Thay thế"
+    },
+    "mentionAria": "Nhắc đến một người, trang hoặc ngày",
+    "railAria": "Bình luận",
+    "replyPlaceholder": "Trả lời...",
+    "resolve": "Giải quyết",
+    "sendAria": "Gửi bình luận",
+    "toolbarComment": "Bình luận"
+  },
+  "dateMention": {
+    "clear": "Xóa",
+    "dateFormat": "Định dạng ngày",
+    "dateInput": "Ngày",
+    "includeTime": "Bao gồm giờ",
+    "remind": "Nhắc",
+    "time": "Giờ",
+    "timeFormat": "Định dạng giờ"
   }
 }

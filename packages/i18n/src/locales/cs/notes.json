@@ -42,7 +42,9 @@
       "setIcon": "Nastavit ikonu",
       "removeIcon": "Odebrat ikonu",
       "deleteSelectedNotes": "Smazat poznámky {count}",
-      "deleteSelectedItems": "Smazat položky {count}"
+      "deleteSelectedItems": "Smazat položky {count}",
+      "bookmark": "Přidat do záložek",
+      "removeFromBookmarks": "Odebrat ze záložek"
     },
     "deleteDialog": {
       "noteTitle": "Smazat poznámku",
@@ -111,7 +113,11 @@
       "aria": "Návrhy poznámek",
       "loading": "Načítání poznámek...",
       "empty": "Nebyly nalezeny žádné poznámky",
-      "create": "Vytvořit novou poznámku"
+      "create": "Vytvořit novou poznámku",
+      "embed": "Vložit",
+      "embedAria": "Vložit {title}",
+      "wikiLink": "Wiki odkaz",
+      "wikiLinkAria": "Wiki odkaz {title}"
     },
     "tags": {
       "aria": "Návrhy značek",
@@ -133,6 +139,15 @@
       "searchPlaceholder": "Hledat",
       "noIcons": "Nebyly nalezeny žádné ikony",
       "clearSearch": "Vymazat vyhledávání"
+    },
+    "mention": {
+      "aria": "Návrhy dat a poznámek",
+      "date": "Datum",
+      "dateHint": "Pokračujte v psaní data…",
+      "empty": "Nebyly nalezeny žádné poznámky",
+      "loading": "Načítání poznámek...",
+      "remindMe": "Připomenout mi",
+      "showMore": "Zobrazit více"
     }
   },
   "outline": {
@@ -174,7 +189,8 @@
     "createTag": "Vytvořit značku: \"{tag}\"",
     "chooseColor": "Vyberte barvu:",
     "preview": "Náhled:",
-    "colorAria": "Vyberte barvu {color}"
+    "colorAria": "Vyberte barvu {color}",
+    "customColor": "Vlastní barva"
   },
   "properties": {
     "title": "Vlastnosti",
@@ -205,7 +221,9 @@
       "status": "Stav",
       "select": "Vyberte",
       "multiselect": "Vícenásobný výběr"
-    }
+    },
+    "showOnCalendar": "Zobrazit v kalendáři",
+    "showingOnCalendar": "Zobrazuje se v kalendáři"
   },
   "templateSelector": {
     "title": "Vyberte si své plátno",
@@ -295,7 +313,8 @@
   },
   "phaseF": {
     "componentsFolderViewColumnHeader": {
-      "dragToReorderColumn": "Přetažením změníte pořadí sloupce"
+      "dragToReorderColumn": "Přetažením změníte pořadí sloupce",
+      "editColumnName": "Upravit název sloupce"
     },
     "componentsFolderViewColumnSelector": {
       "properties": "Vlastnosti",
@@ -311,7 +330,10 @@
       "delete": "Smazat",
       "none": "žádný",
       "edit": "Upravit",
-      "delete2": "Smazat"
+      "delete2": "Smazat",
+      "columnBorders": "Ohraničení sloupců",
+      "display": "Zobrazení",
+      "showSummaries": "Zobrazit souhrny"
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Filtr",
@@ -329,17 +351,21 @@
       "of": "z:",
       "addCondition": "Přidat podmínku",
       "addFilter": "Přidat filtr",
-      "addGroup": "Přidat skupinu"
+      "addGroup": "Přidat skupinu",
+      "removeGroup": "Odebrat skupinu"
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "Vestavěný",
       "properties": "Vlastnosti",
       "placeholderProperty": "Majetek",
       "placeholderOperator": "Operátor",
-      "placeholderValue": "Hodnota"
+      "placeholderValue": "Hodnota",
+      "removeFilter": "Odebrat filtr"
     },
     "componentsFolderViewFolderTableView": {
-      "notesTable": "Tabulka poznámek"
+      "notesTable": "Tabulka poznámek",
+      "selectAll": "Vybrat všechny poznámky",
+      "selectRow": "Vybrat poznámku"
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "Hledat poznámky...",
@@ -371,7 +397,9 @@
     },
     "componentsFolderViewGroupedTable": {
       "groupedNotesTable": "Tabulka seskupených poznámek",
-      "more": "více"
+      "more": "více",
+      "selectAll": "Vybrat všechny poznámky",
+      "selectRow": "Vybrat poznámku"
     },
     "componentsFolderViewMoveToFolderDialog": {
       "searchFolders": "Prohledat složky...",
@@ -399,7 +427,8 @@
     },
     "componentsFolderViewSortableColumnHeader": {
       "dragToReorderColumn": "Přetažením změníte pořadí sloupce",
-      "resizeColumn": "Změnit velikost sloupce"
+      "resizeColumn": "Změnit velikost sloupce",
+      "editColumnName": "Upravit název sloupce"
     },
     "componentsFolderViewViewSwitcher": {
       "default": "výchozí",
@@ -424,7 +453,16 @@
       "deleteView": "Smazat pohled",
       "areYouSureYouWantToDelete": "Opravdu chcete smazat \"",
       "thisActionCannotBeUndone": "Tuto akci nelze vrátit zpět.",
-      "cancel3": "Zrušit"
+      "cancel3": "Zrušit",
+      "createView": "Vytvořit zobrazení",
+      "gallery": "Galerie",
+      "layout": "Rozvržení",
+      "list": "Seznam",
+      "name": "Název",
+      "newView": "Nové zobrazení",
+      "save": "Uložit",
+      "table": "Tabulka",
+      "viewActions": "Akce zobrazení"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "Nepodařilo se načíst PDF: ",
@@ -607,6 +645,15 @@
       "startYourCollection": "Začněte svou sbírku",
       "templatesHelpYouCreateNotesWithConsistentStructure": "Šablony vám pomohou vytvořit poznámky s konzistentní strukturou.",
       "createTemplate": "Vytvořit šablonu"
+    },
+    "componentsFolderViewSortSelector": {
+      "builtIn": "Vestavěné",
+      "clearSort": "Zrušit řazení",
+      "noSortablePropertiesFound": "Nebyly nalezeny žádné vlastnosti k řazení",
+      "properties": "Vlastnosti",
+      "searchProperties": "Hledat vlastnosti...",
+      "sort": "Řadit",
+      "sortDirection": "Směr řazení"
     }
   },
   "phaseI": {
@@ -654,5 +701,47 @@
       "cannotRemoveTagThisNoteWasDeleted": "Štítek nelze odstranit – tato poznámka byla smazána",
       "cannotChangeLocalOnlyThisNoteWasDeleted": "Nelze změnit pouze místní — tato poznámka byla smazána"
     }
+  },
+  "bulkActions": {
+    "addTag": "Přidat značku",
+    "clearAria": "Zrušit výběr",
+    "copiedLinks": "Zkopírováno {count, plural, one {# odkaz} few {# odkazy} other {# odkazů}}",
+    "copyLinks": "Kopírovat odkazy",
+    "delete": "Smazat",
+    "export": "Exportovat",
+    "move": "Přesunout",
+    "selected": "vybráno",
+    "tagNamePlaceholder": "Název značky",
+    "toolbarAria": "Hromadné akce"
+  },
+  "comments": {
+    "attachAria": "Připojit soubor",
+    "badgeAria": "{count, plural, one {# komentář} few {# komentáře} other {# komentářů}}",
+    "cancel": "Zrušit",
+    "commentPlaceholder": "Přidat komentář...",
+    "createdTooltip": "Vytvořeno {date} v {time}",
+    "delete": "Smazat komentář",
+    "edit": "Upravit komentář",
+    "kind": {
+      "addition": "Přidání",
+      "comment": "Komentář",
+      "deletion": "Smazání",
+      "substitution": "Nahrazení"
+    },
+    "mentionAria": "Zmínit osobu, stránku nebo datum",
+    "railAria": "Komentáře",
+    "replyPlaceholder": "Odpovědět...",
+    "resolve": "Vyřešit",
+    "sendAria": "Odeslat komentář",
+    "toolbarComment": "Komentář"
+  },
+  "dateMention": {
+    "clear": "Vymazat",
+    "dateFormat": "Formát data",
+    "dateInput": "Datum",
+    "includeTime": "Zahrnout čas",
+    "remind": "Připomenout",
+    "time": "Čas",
+    "timeFormat": "Formát času"
   }
 }

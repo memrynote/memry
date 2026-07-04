@@ -45,7 +45,10 @@
   "count": {
     "note": "{count, plural, one {# tala} other {# na tala}}",
     "task": "{count, plural, one {# gawain} other {# na mga gawain}}",
-    "itemDelete": "{count, plural, one {Tanggalin ang # item} other {Tanggalin ang # item}}"
+    "itemDelete": "{count, plural, one {Tanggalin ang # item} other {Tanggalin ang # item}}",
+    "event": "{count, plural, one {# kaganapan} other {# kaganapan}}",
+    "journal": "{count, plural, one {# journal} other {# journal}}",
+    "reminder": "{count, plural, one {# paalala} other {# paalala}}"
   },
   "toast": {
     "actionFailed": "Nabigo ang pagkilos",
@@ -83,7 +86,23 @@
       "newNoteN": "Bagong tala (⌘N)",
       "new": "Bago",
       "syncDisabled": "Hindi pinagana ang pag-sync",
-      "syncDisabled2": "Hindi pinagana ang pag-sync"
+      "syncDisabled2": "Hindi pinagana ang pag-sync",
+      "feedbackButton": "Magpadala ng feedback",
+      "feedbackDescription": "Sabihin sa amin kung ano ang gumagana, ano ang sira, o ano ang gusto mong gawin ng Memry. Binabasa namin ang bawat mensahe.",
+      "feedbackEmailHint": "Idagdag ang iyong email kung gusto mo ng sagot.",
+      "feedbackError": "Hindi naipadala ang feedback. Pakisubukan muli.",
+      "feedbackPlaceholder": "Ang iyong feedback…",
+      "feedbackSend": "Ipadala",
+      "feedbackSending": "Ipinapadala…",
+      "feedbackSuccess": "Salamat sa feedback!",
+      "feedbackTitle": "Magpadala ng feedback",
+      "newItemMenu": "Lumikha ng bago…",
+      "updateAvailable": "I-update",
+      "updateDownloading": "Dina-download…",
+      "updateDownloadingPercent": "Dina-download {percent}%",
+      "updateInstallingSubtitle": "Awtomatikong magre-restart ang Memrynote.",
+      "updateInstallingTitle": "Ini-install ang update",
+      "updateRestart": "I-restart"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Baguhin ang laki ng Day Panel",
@@ -462,7 +481,8 @@
       "day": "Araw",
       "agent": "Agent",
       "pendingApproval": "{count, plural, one {# nakabinbing pag-apruba} other {# nakabinbing pag-apruba}}",
-      "inProgress": "Agent turn sa progreso"
+      "inProgress": "Agent turn sa progreso",
+      "close": "Isara ang agent"
     },
     "errors": {
       "loadConversations": "Hindi ma-load ang mga pag-uusap ng ahente",
@@ -481,5 +501,142 @@
     "sources": {
       "used": "{count, plural, one {Gumamit ng # source} other {Gumamit ng # sources}}"
     }
+  },
+  "home": {
+    "addWidget": "Magdagdag ng widget",
+    "board": {
+      "defaultName": "Home",
+      "deleteAria": "Tanggalin ang layout",
+      "label": "Layout ng Home",
+      "newAria": "Bagong board",
+      "newName": "Bagong board"
+    },
+    "disabled": {
+      "createNote": "Lumikha ng tala",
+      "hint": "Walang bukas. Magsimula ng tala."
+    },
+    "done": "Tapos na",
+    "edit": "I-edit",
+    "empty": {
+      "body": "Pinagsasama ng mga widget ang iyong mga tala, gawain, at bookmark sa isang panatag na lugar.",
+      "cta": "Idagdag ang iyong unang widget",
+      "title": "Walang laman ang iyong board"
+    },
+    "greeting": {
+      "afternoon": "Magandang hapon",
+      "evening": "Magandang gabi",
+      "morning": "Magandang umaga"
+    },
+    "header": {
+      "events": "{count, plural, one {# kaganapan} other {# kaganapan}}",
+      "tasksDue": "{count, plural, one {# gawaing takda ngayon} other {# gawaing takda ngayon}}"
+    },
+    "noBookmarksYet": "Wala pang bookmark.",
+    "noEventsYet": "Walang kaganapan ngayon.",
+    "noJournalEntriesYet": "Wala pang journal entry.",
+    "noNotesYet": "Wala pang tala.",
+    "noTasksYet": "Wala pang gawain.",
+    "widget": {
+      "bookmarks": "Mga Bookmark",
+      "calendar": "Kalendaryo",
+      "calendarToday": "Ngayon",
+      "configAria": "I-configure ang widget",
+      "configure": "I-configure",
+      "dragAria": "I-drag ang widget",
+      "duration": "{count} min",
+      "filter": {
+        "today": "Takda Ngayon",
+        "tomorrow": "Bukas",
+        "week": "Ngayong Linggo"
+      },
+      "folder": "Folder",
+      "folderEmpty": "Wala pang folder",
+      "folderNoSelection": "Walang napiling folder",
+      "folderPickPrompt": "Pumili ng folder",
+      "folderViewSelect": "View",
+      "folderView_gallery": "Gallery",
+      "folderView_list": "Listahan",
+      "inbox": "Inbox",
+      "inboxAllTypes": "Lahat ng uri",
+      "inboxOlder": "{count, plural, one {# mas luma} other {# mas luma}}",
+      "inboxOldest": "pinakaluma {count, plural, one {# araw} other {# araw}}",
+      "journal": "Journal",
+      "journalStreak": "{count, plural, one {#-araw na streak} other {#-araw na streak}}",
+      "journalToday": "Ngayon",
+      "journalYesterday": "Kahapon",
+      "loadError": "Hindi ma-load",
+      "menuAria": "Mga opsyon ng widget",
+      "next": "Susunod: {title}",
+      "openCalendar": "Buksan ang Kalendaryo",
+      "openInbox": "Buksan ang inbox",
+      "recentMeta": "na-edit {time}",
+      "recentMetaWithFolder": "{folder} · na-edit {time}",
+      "recentlyEdited": "Kamakailang na-edit",
+      "remove": "Alisin",
+      "removeAria": "Alisin ang widget",
+      "resize": "Laki",
+      "resizeAria": "I-resize sa {{size}}",
+      "savedFilterDefault": "Ngayon",
+      "savedFilterHint": "I-star ang mga filter sa pahina ng Mga Gawain para magamit dito",
+      "savedFilterLabel": "Naka-save na filter",
+      "startsIn": "Magsisimula sa {count, plural, one {# min} other {# min}}",
+      "tasks": "Mga Gawain",
+      "unknown": "Hindi kilalang widget",
+      "untitled": "Walang pamagat"
+    }
+  },
+  "media": {
+    "video": "Video"
+  },
+  "onboarding": {
+    "agentChat": {
+      "body": "Lumipat sa Agent tab para magtanong sa assistant ng Memrynote tungkol sa iyong vault.",
+      "title": "Makipag-chat sa AI agent"
+    },
+    "collections": {
+      "body": "Ayusin ang mga tala sa mga folder, i-pin ang mga bookmark, at mag-browse ayon sa tag — lahat dito.",
+      "title": "Mga koleksyon, bookmark at tag"
+    },
+    "dayPanel": {
+      "body": "Pinapanatili ng side panel ang kalendaryo at ang iyong day view katabi ng kahit anong binabasa mo.",
+      "title": "Ang iyong araw, katabi ng iyong trabaho"
+    },
+    "feedback": {
+      "body": "Magpadala ng feedback diretso sa team mula dito.",
+      "title": "Sabihin sa amin ang iyong palagay"
+    },
+    "nav": {
+      "body": "Inbox para makakuha, Journal para sa pang-araw-araw na tala, Kalendaryo para sa iyong timeline, Tasks para sa mga to-do, at Graph para makita kung paano nag-uugnay ang lahat.",
+      "title": "Ang iyong mga workspace"
+    },
+    "newNote": {
+      "body": "Magsimula dito. Ang lahat ng isinusulat mo ay iniimbak muna nang lokal.",
+      "title": "Lumikha ng iyong unang tala"
+    },
+    "settings": {
+      "body": "I-import ang iyong mga tala mula sa 12+ na app — Obsidian, Notion, Apple Notes, Evernote at iba pa — at i-tune ang lahat ng iba pa sa Mga Setting.",
+      "title": "Mga setting at pag-import"
+    },
+    "sync": {
+      "body": "I-on ang end-to-end na naka-encrypt na sync para manatiling magkatugma ang bawat device.",
+      "title": "Pribado, naka-encrypt na sync"
+    },
+    "welcome": {
+      "body": "Ang iyong pribado, offline-first na tahanan. Ang mga tala ay end-to-end na naka-encrypt — hindi kailanman aalis sa iyong device nang hindi naka-encrypt.",
+      "title": "Maligayang pagdating sa Memrynote"
+    }
+  },
+  "updatePrompt": {
+    "autoUpdateLabel": "Awtomatikong i-download at i-install ang mga update",
+    "availableBody": "Available na ang {version} — mayroon kang {current}. Gusto mo bang i-download ito ngayon?",
+    "availableTitle": "May bagong bersyon ng MemryNote na available!",
+    "download": "I-download",
+    "downloadedBody": "Na-download na ang {version}. I-restart ang MemryNote para tapusin ang pag-install.",
+    "downloadedTitle": "Handa nang i-install ang update",
+    "later": "Mamaya",
+    "releaseNotesLabel": "Release Notes",
+    "remindLater": "Paalalahanan Mo Ako Mamaya",
+    "restartNow": "I-restart Ngayon",
+    "skip": "Laktawan ang Bersyong Ito"
   }
 }

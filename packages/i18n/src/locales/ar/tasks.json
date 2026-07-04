@@ -33,7 +33,8 @@
     "repeat": "كرر",
     "createAnother": "إنشاء آخر",
     "delete": "حذف المهمة",
-    "created": "تم إنشاء {date}"
+    "created": "تم إنشاء {date}",
+    "reminder": "تذكير"
   },
   "filters": {
     "filter": "تصفية",
@@ -62,7 +63,16 @@
     "noNotesAvailable": "لا توجد ملاحظات متاحة",
     "noLinkedNotes": "لا توجد ملاحظات مرتبطة حتى الآن",
     "removeLinkTo": "قم بإزالة الرابط إلى {title}",
-    "removeLinkFallback": "ملاحظة"
+    "removeLinkFallback": "ملاحظة",
+    "addRelatedItem": "إضافة عنصر ذي صلة",
+    "noMatchingRelated": "لا توجد عناصر مطابقة",
+    "noRelatedAvailable": "لا توجد عناصر متاحة",
+    "noRelatedItems": "لا توجد عناصر ذات صلة بعد",
+    "related": "ذات صلة",
+    "relatedItemFallback": "عنصر",
+    "removeRelatedItem": "إزالة العنصر ذي الصلة {title}",
+    "resize": "تغيير حجم اللوحة",
+    "searchRelated": "البحث عن ذات الصلة…"
   },
   "kanban": {
     "board": "لوحة كانبان"
@@ -174,7 +184,8 @@
     "componentsTasksDatePickerContent": {
       "removeDate": "إزالة التاريخ",
       "clearTime": "وقت واضح",
-      "addTime": "أضف الوقت"
+      "addTime": "أضف الوقت",
+      "time": "الوقت"
     },
     "componentsTasksDeleteProjectDialog": {
       "delete": "حذف \"",
@@ -612,6 +623,20 @@
       "failedToLoadTaskPreferences": "فشل تحميل تفضيلات المهمة",
       "failedToUpdateTaskPreferences": "فشل في تحديث تفضيلات المهمة",
       "failedToLoadLinkedTasks": "فشل تحميل المهام المرتبطة"
+    }
+  },
+  "reminders": {
+    "hasReminders": "يحتوي على تذكيرات",
+    "setReminder": "تعيين تذكير",
+    "summary": "تذكير: {date}",
+    "summaryWithMore": "تذكير: {date} (+{count} أخرى)",
+    "toast": {
+      "deleteFailed": "فشل حذف التذكير",
+      "deleted": "تم حذف التذكير",
+      "set": "تم تعيين التذكير",
+      "setFailed": "فشل تعيين التذكير",
+      "updateFailed": "فشل تحديث التذكير",
+      "updated": "تم تحديث التذكير"
     }
   }
 }

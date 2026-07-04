@@ -1,11 +1,15 @@
 {
   "app": {
-    "quit": "Afslut"
+    "quit": "Afslut",
+    "preferences": "Indstillinger…"
   },
   "file": {
     "label": "Fil",
     "newNote": "Ny note",
-    "close": "Luk vinduet"
+    "close": "Luk vinduet",
+    "closeTab": "Luk faneblad",
+    "exportPdf": "Eksportér til PDF…",
+    "openQuickly": "Åbn hurtigt…"
   },
   "navigation": {
     "back": "Tilbage",
@@ -18,12 +22,51 @@
     "cut": "Klip",
     "copy": "Kopiér",
     "paste": "Indsæt",
-    "selectAll": "Vælg alle"
+    "selectAll": "Vælg alle",
+    "find": "Find",
+    "speech": "Tale"
   },
   "view": {
     "label": "Visning",
     "reload": "Genindlæs",
     "toggleDevTools": "Skift udviklerværktøjer",
-    "toggleFullscreen": "Skift fuld skærm"
+    "toggleFullscreen": "Skift fuld skærm",
+    "theme": "Tema",
+    "themeDark": "Mørkt",
+    "themeLight": "Lyst",
+    "themeSystem": "System",
+    "themeWhite": "Papir",
+    "toggleDayPanel": "Skift dagpanel",
+    "toggleSidebar": "Skift sidebjælke"
+  },
+  "format": {
+    "body": "Brødtekst",
+    "bold": "Fed",
+    "code": "Kode",
+    "heading1": "Overskrift 1",
+    "heading2": "Overskrift 2",
+    "heading3": "Overskrift 3",
+    "highlight": "Fremhæv",
+    "italic": "Kursiv",
+    "label": "Formatér",
+    "strikethrough": "Gennemstregning"
+  },
+  "help": {
+    "about": "Om Memrynote",
+    "documentation": "Dokumentation",
+    "label": "Hjælp",
+    "shortcuts": "Tastaturgenveje"
+  },
+  "insert": {
+    "attachment": "Indsæt vedhæftning…",
+    "bulletList": "Punktliste",
+    "codeBlock": "Kodeblok",
+    "label": "Indsæt",
+    "numberedList": "Nummereret liste",
+    "table": "Tabel",
+    "taskList": "Opgaveliste"
+  },
+  "window": {
+    "label": "Vindue"
   }
 }

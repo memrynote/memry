@@ -26,6 +26,10 @@
     "jobs": {
       "running": "{count, plural, one {Công việc nền # đang chạy} other {Các công việc nền # đang chạy}}",
       "failed": "{count} thất bại"
+    },
+    "density": {
+      "toComfortable": "Chế độ xem thoáng",
+      "toCompact": "Chế độ xem gọn"
     }
   },
   "type": {
@@ -208,7 +212,15 @@
     "linkedNotesAria": "Ghi chú đã liên kết",
     "removeLinkTo": "Xóa liên kết đến {title}",
     "notePlaceholder": "Viết ghi chú của bạn...",
-    "textPlaceholder": "Chỉnh sửa văn bản đã ghi..."
+    "textPlaceholder": "Chỉnh sửa văn bản đã ghi...",
+    "linkANote": "Liên kết một ghi chú",
+    "match": {
+      "likely": "Có thể khớp",
+      "strong": "Khớp mạnh",
+      "weak": "Khớp yếu"
+    },
+    "resize": "Đổi kích thước bảng",
+    "suggestedCount": "{count} gợi ý"
   },
   "content": {
     "capturedAt": "Đã chụp {date}",
@@ -253,7 +265,12 @@
     "presetInOneHour": "1 giờ",
     "presetTomorrow": "Ngày mai",
     "presetNextWeek": "Tuần tới",
-    "custom": "Tùy chỉnh..."
+    "custom": "Tùy chỉnh...",
+    "archive": "Lưu trữ",
+    "panelEmpty": "Không có nhắc nhở sắp tới.",
+    "panelPast": "Đã qua",
+    "panelUpcoming": "Sắp tới",
+    "taskFallback": "Công việc"
   },
   "insights": {
     "captureActivity": "Hoạt động đã ghi lại",
@@ -295,7 +312,9 @@
       "recordVoiceMemo2": "Ghi nhớ giọng nói",
       "alreadyCaptured": "Đã ghi lại: “",
       "rdquo": "rdquo;",
-      "captureAnyway": "Ghi lại dù sao"
+      "captureAnyway": "Ghi lại dù sao",
+      "focusShortcut": "Đưa con trỏ vào ô ghi nhanh",
+      "q": "Q"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Chọn thư mục",
@@ -416,7 +435,11 @@
       "backToPresets": "Quay lại cài đặt sẵn",
       "time": "Thời gian",
       "noteOptional": "Ghi chú (tùy chọn)",
-      "whyAreYouSettingThisReminder": "Tại sao bạn lại đặt lời nhắc này?"
+      "whyAreYouSettingThisReminder": "Tại sao bạn lại đặt lời nhắc này?",
+      "deleteReminder": "Xóa nhắc nhở",
+      "editReminder": "Sửa nhắc nhở",
+      "save": "Lưu",
+      "set": "Đặt"
     },
     "componentsSnoozeSnoozePicker": {
       "snooze": "Hoãn",
@@ -461,5 +484,37 @@
     "toasts": {
       "inboxRefreshed": "Hộp thư đến đã được làm mới"
     }
+  },
+  "convert": {
+    "addEvent": "Thêm sự kiện",
+    "addTask": "Thêm công việc",
+    "allDay": "Cả ngày",
+    "binaryOnlyNote": "Tệp chỉ có thể chuyển thành ghi chú",
+    "chooseType": "Chuyển thành",
+    "create": "Tạo",
+    "date": "Ngày",
+    "dueDate": "Hạn chót",
+    "dueTime": "Giờ hạn chót",
+    "end": "Kết thúc",
+    "event": "Sự kiện",
+    "failed": "Không thể chuyển đổi: {error}",
+    "inboxProject": "Hộp thư",
+    "location": "Địa điểm",
+    "note": "Ghi chú",
+    "priority": "Ưu tiên",
+    "priorityHigh": "Cao",
+    "priorityLow": "Thấp",
+    "priorityMedium": "Trung bình",
+    "priorityNone": "Không",
+    "priorityUrgent": "Khẩn cấp",
+    "project": "Dự án",
+    "remindAt": "Nhắc tôi lúc",
+    "reminder": "Nhắc nhở",
+    "setReminder": "Đặt nhắc nhở",
+    "start": "Bắt đầu",
+    "success": "Đã chuyển thành {target}",
+    "task": "Công việc",
+    "time": "Giờ",
+    "title": "Chuyển đổi"
   }
 }

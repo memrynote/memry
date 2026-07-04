@@ -25,7 +25,10 @@
         "integrations": "Entegrasyonlar",
         "vault": "Kasa",
         "tags": "Etiketler",
-        "properties": "Özellikler"
+        "properties": "Özellikler",
+        "commandLine": "Komut Satırı",
+        "features": "Özellikler",
+        "import": "İçe Aktar"
       }
     }
   },
@@ -109,6 +112,11 @@
       "createInSelectedFolder": {
         "label": "Seçilen Klasörde Oluştur",
         "description": "Seçili olan klasörün içinde yeni notlar ve klasörler oluşturulur. Kapalıyken öğeler her zaman kökte oluşturulur."
+      },
+      "defaultNoteFolder": {
+        "description": "Boş = kasa kökü",
+        "label": "Yeni Notlar için Varsayılan Konum",
+        "placeholder": "notlar"
       }
     },
     "privacy": {
@@ -116,6 +124,17 @@
         "label": "Anonim Kullanım Metriklerini Paylaş",
         "description": "Sadece anonim metrikler — hiçbir not içeriği, arama sorgusu, dosya yolu, e-posta veya ham kimlik gönderilmez.",
         "error": "Telemetri ayarı güncellenemedi"
+      }
+    },
+    "dateFormat": {
+      "description": "Takvim tarihlerinin nasıl gösterileceği",
+      "error": "Tarih biçimi güncellenemedi",
+      "label": "Tarih Biçimi",
+      "options": {
+        "DD.MM.YYYY": "DD.MM.YYYY",
+        "DD/MM/YYYY": "DD/MM/YYYY",
+        "MM/DD/YYYY": "MM/DD/YYYY (ABD)",
+        "YYYY-MM-DD": "YYYY-MM-DD (ISO)"
       }
     }
   },
@@ -250,6 +269,9 @@
         "description": "Enter yeni şablon kopyası için bir ad.",
         "placeholder": "Şablon adı"
       }
+    },
+    "preview": {
+      "notFound": "Bu şablon yüklenemedi."
     }
   },
   "journal": {
@@ -261,7 +283,8 @@
     "groups": {
       "defaultTemplate": "Varsayılan Şablon",
       "sidebarVisibility": "Kenar Çubuğu Görünürlüğü",
-      "footer": "Altbilgi"
+      "footer": "Altbilgi",
+      "location": "Konum ve Biçim"
     },
     "template": {
       "label": "Şablon",
@@ -290,7 +313,21 @@
       "label": "İstatistik Alt Bilgisini Göster",
       "description": "Kelime sayısı, okuma süresi, zaman damgaları"
     },
-    "updateError": "Ayar güncellenemedi"
+    "updateError": "Ayar güncellenemedi",
+    "dateFormat": {
+      "description": "Günlük notlar için dosya adı biçimi (örn. YYYY-MM-DD)",
+      "label": "Tarih Biçimi",
+      "placeholder": "YYYY-MM-DD"
+    },
+    "folder": {
+      "description": "Günlük notların depolandığı klasör",
+      "label": "Günlük Klasörü",
+      "placeholder": "günlük"
+    },
+    "preview": {
+      "description": "Bugünün günlük dosya yolu",
+      "label": "Önizleme"
+    }
   },
   "tasks": {
     "header": {
@@ -344,7 +381,9 @@
       "loading": "Ayarlar yükleniyor..."
     },
     "groups": {
-      "dayCellClick": "Gün Hücresi Tıklaması"
+      "dayCellClick": "Gün Hücresi Tıklaması",
+      "notes": "Notlar",
+      "weekStart": "Hafta"
     },
     "defaultBehavior": {
       "label": "Varsayılan davranış",
@@ -360,6 +399,20 @@
       "openJournal": "Dergiyi Aç",
       "openCalendar": "Takvimi Aç",
       "useGlobal": "Genel ayarı kullan"
+    },
+    "showNotesOnCalendar": {
+      "description": "Her notu, oluşturulduğu gün takvimde tüm gün süren bir öğe olarak göster",
+      "error": "Notları takvimde gösterme güncellenemedi",
+      "label": "Notları takvimde göster"
+    },
+    "weekStart": {
+      "description": "Tüm takvimlerde haftanın ilk günü",
+      "error": "Haftanın başlangıcı güncellenemedi",
+      "label": "Haftanın Başlangıcı",
+      "options": {
+        "monday": "Pazartesi",
+        "sunday": "Pazar"
+      }
     }
   },
   "account": {
@@ -372,10 +425,12 @@
       "identity": "Kimlik",
       "sync": "Senkronizasyon",
       "storage": "Depolama",
-      "devices": "Cihazlar"
+      "devices": "Cihazlar",
+      "billing": "Faturalandırma"
     },
     "identity": {
-      "unknown": "Bilinmiyor"
+      "unknown": "Bilinmiyor",
+      "encrypted": "Uçtan uca şifreli"
     },
     "sync": {
       "lastSynced": "Son senkronize edildi {time}",
@@ -421,6 +476,53 @@
       "signedOut": "Oturum başarıyla kapatıldı",
       "signOutFailed": "Oturum kapatılamadı",
       "deviceLinked": "Cihaz başarıyla bağlandı"
+    },
+    "billing": {
+      "actions": {
+        "manage": "Faturalandırmayı yönet",
+        "opening": "Açılıyor...",
+        "refresh": "Durumu yenile",
+        "upgrade": "Yükselt"
+      },
+      "activationPendingPrefix": "Etkinleştirme bekleniyor. Paddle'ın ödemeyi onaylaması biraz zaman alabilir. Durumu yenileyin veya e-posta gönderin",
+      "checking": "Faturalandırma durumu kontrol ediliyor",
+      "historyDays": "{days} gün",
+      "labels": {
+        "history": "Geçmiş",
+        "maxFile": "Maks. dosya",
+        "storage": "Depolama",
+        "vaults": "Kasalar"
+      },
+      "planStatus": "Plan durumu",
+      "plans": {
+        "believer": "Believer plan",
+        "free": "Ücretsiz plan",
+        "plus": "Plus plan",
+        "pro": "Pro plan"
+      },
+      "statuses": {
+        "active": "Etkin",
+        "canceled": "İptal edildi",
+        "inactive": "Etkin değil",
+        "past_due": "Vadesi geçmiş",
+        "paused": "Duraklatıldı"
+      },
+      "toasts": {
+        "activationPending": "Etkinleştirme bekleniyor",
+        "billingActive": "Faturalandırma etkin",
+        "checkoutFailed": "Ödeme başlatılamadı",
+        "checkoutOpened": "Ödeme tarayıcınızda açıldı",
+        "loadFailed": "Faturalandırma durumu yüklenemedi",
+        "portalFailed": "Faturalandırma portalı açılamadı",
+        "refreshFailed": "Faturalandırma durumu yenilenemedi"
+      },
+      "unlimited": "Sınırsız"
+    },
+    "community": {
+      "and": "ve",
+      "feedback": "geri bildirim paylaşın",
+      "prompt": "memrynote'u sevdiniz mi?",
+      "star": "GitHub'da bize yıldız verin"
     }
   },
   "setup": {
@@ -437,7 +539,9 @@
       "errors": {
         "sendCode": "Kod gönderilemedi",
         "googleStart": "Google ile oturum açma işlemi başlatılamadı"
-      }
+      },
+      "paidPlan": "Eşitleme ücretli bir plandır.",
+      "seePlans": "Planları gör"
     },
     "email": {
       "label": "E-posta adresi",
@@ -488,7 +592,13 @@
         "registering": "Cihaz kaydediliyor..."
       },
       "failed": "Kurtarma başarısız oldu",
-      "confirmationFailed": "Onay başarısız oldu"
+      "confirmationFailed": "Onay başarısız oldu",
+      "unavailable": {
+        "description": "Kurtarma ifadeniz yalnızca kurulum sırasında bir kez gösterilir ve daha sonra alınamaz. Yenisini oluşturmak için baştan başlayın.",
+        "loading": "Kurtarma ifadeniz yükleniyor…",
+        "startOver": "Baştan başla",
+        "title": "Kurtarma ifadeniz yüklenemedi"
+      }
     },
     "linking": {
       "choiceTitle": "Bu cihazı bağla",
@@ -513,7 +623,15 @@
       "waitingTitle": "Onay bekleniyor",
       "waitingDescription": "Diğer cihazınızda memrynote'i açın ve bağlantı isteğini onaylayın.",
       "verificationCode": "Doğrulama kodu",
-      "confirmCode": "Bunun diğer cihazınızdaki kodla eşleştiğini doğrulayın"
+      "confirmCode": "Bunun diğer cihazınızdaki kodla eşleştiğini doğrulayın",
+      "vaultPickerChooseFolder": "Klasör seç",
+      "vaultPickerConfirm": "Seçilenleri çek",
+      "vaultPickerDescription": "Bu hesapta birden çok kasa var. Bu cihaza eklenecek bir klasör ve kasa(lar) seçin.",
+      "vaultPickerDormantHint": "Eklendi, ona geçtiğinizde açılır",
+      "vaultPickerFolderLabel": "Kasaları şu klasörde sakla",
+      "vaultPickerPrimaryHint": "Şimdi açılır",
+      "vaultPickerTitle": "Neyi çekeceğinizi seçin",
+      "vaultRow": "Kasa — {{count}} öğe · {{date}}"
     }
   },
   "devices": {
@@ -630,7 +748,15 @@
       "downloadedToast": "Whisper Small indirildi",
       "downloadError": "Whisper Small indirilemedi",
       "keySavedToast": "OpenAI anahtarı kaydedildi",
-      "keySaveError": "OpenAI anahtarı kaydedilemedi"
+      "keySaveError": "OpenAI anahtarı kaydedilemedi",
+      "memoNameMode": "Not adları",
+      "memoNameModeDescription": "Ses notlarının yazıya dökme sonrası nasıl adlandırılacağı",
+      "naming": {
+        "none": "Yeniden adlandırma",
+        "timestamp": "Zaman damgası",
+        "transcript": "Metin başlığı"
+      },
+      "namingError": "Ses notu adlandırması güncellenemedi"
     },
     "embedding": {
       "loaded": "Yüklendi",
@@ -715,7 +841,12 @@
       "connectFailed": "Google Calendar'e bağlanılamadı",
       "refreshFailed": "Google Calendar yenilenemedi",
       "disconnectFailed": "Google Calendar'in bağlantısı kesilemedi",
-      "retryFailed": "Takvim senkronizasyonu yeniden denenemedi"
+      "retryFailed": "Takvim senkronizasyonu yeniden denenemedi",
+      "pushToGoogle": {
+        "description": "Tek yönlü eşitleme için kapatın — Google etkinliklerinizi yine memrynote'ta görürsünüz, ancak memrynote etkinlikleri Google'da görünmez.",
+        "error": "Eşitleme yönü güncellenemedi",
+        "label": "memrynote etkinliklerini Google Calendar'da göster"
+      }
     },
     "sourcePicker": {
       "empty": "Bu cihazda henüz içe aktarılan Google takvimi yok.",
@@ -796,7 +927,8 @@
       "changeColor": "Rengi değiştir",
       "mergeInto": "Birleştir...",
       "merge": "Birleştir",
-      "delete": "Sil"
+      "delete": "Sil",
+      "changeIcon": "Simgeyi değiştir"
     },
     "dialogs": {
       "deleteTitle": "Etiketi sil",
@@ -814,7 +946,8 @@
       "mergeFailed": "Etiketler birleştirilemedi",
       "merged": "\"{source}\" etiketi \"{target}\" etiketiyle birleştirildi ({count, plural, one {# öğe} other {# öğe}})",
       "colorUpdated": "\"{name}\" için renk güncellendi",
-      "colorFailed": "Renk güncellenemedi"
+      "colorFailed": "Renk güncellenemedi",
+      "iconFailed": "Simge güncellenemedi"
     }
   },
   "properties": {
@@ -1144,7 +1277,10 @@
     "status": {
       "disconnected": "Disconnected",
       "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled"
+      "fullTools": "Full tools enabled",
+      "checking": "Kontrol ediliyor…",
+      "connected": "Bağlandı",
+      "label": "Bağlantı"
     },
     "permissions": {
       "group": "Agent permissions",
@@ -1160,6 +1296,133 @@
         "alwaysAllow": "Always allow",
         "askBeforeChanges": "Ask before changes"
       }
+    }
+  },
+  "commandLine": {
+    "actions": {
+      "refresh": "Yenile"
+    },
+    "command": {
+      "descriptionInstalled": "{path} konumuna kuruldu",
+      "descriptionNotInstalled": "Kasanızı herhangi bir terminalden kullanabilmek için memrynote komutunu kurun.",
+      "label": "memrynote komutu",
+      "toggleLabel": "memrynote komutunu kur"
+    },
+    "defaultVault": {
+      "description": "memrynote'u --vault olmadan çalıştırdığınızda kullanılan kasayı seçin.",
+      "descriptionSelected": "--vault atlandığında komutlar {path} kullanır.",
+      "label": "Varsayılan kasa",
+      "none": "Kasa seçilmedi",
+      "placeholder": "Kasa seç"
+    },
+    "groups": {
+      "terminal": "Terminal"
+    },
+    "header": {
+      "subtitle": "Terminaliniz için memrynote komutunu ayarlayın",
+      "title": "Komut Satırı"
+    },
+    "status": {
+      "defaultVaultUpdatedToast": "Varsayılan CLI kasası güncellendi",
+      "installedToast": "memrynote komutu kuruldu",
+      "loadFailed": "Komut durumu yüklenemedi",
+      "loading": "Komut durumu kontrol ediliyor...",
+      "uninstalledToast": "memrynote komutu kaldırıldı"
+    }
+  },
+  "features": {
+    "header": {
+      "subtitle": "Uygulamanın bölümlerini açın veya kapatın. Kapalı = kenar çubuğunda soluk görünür ve her yerde devre dışı.",
+      "title": "Özellikler"
+    },
+    "items": {
+      "calendar": {
+        "description": "Etkinlikler ve program",
+        "label": "Takvim"
+      },
+      "graph": {
+        "description": "Not bağlantıları",
+        "label": "Grafik"
+      },
+      "home": {
+        "description": "Açılış panosu",
+        "label": "Ana Sayfa"
+      },
+      "inbox": {
+        "description": "Hızlı yakalama ve ayıklama",
+        "label": "Gelen Kutusu"
+      },
+      "journal": {
+        "description": "Günlük notlar",
+        "label": "Günlük"
+      },
+      "tasks": {
+        "description": "Yapılacaklar ve bitiş tarihleri",
+        "label": "Görevler"
+      }
+    }
+  },
+  "import": {
+    "action": "İçe Aktar",
+    "dialog": {
+      "cancel": "İptal",
+      "choose": "Dosya seç…",
+      "chooseFolder": "Apple Notes klasörünü seç…",
+      "chooseHint": "{label} seçin",
+      "close": "Kapat",
+      "done": "Tamam",
+      "error": "İçe aktarma başarısız oldu",
+      "folderHint": "Aşağıya tıklayın ve seçici açıldığında “group.com.apple.notes” klasörünü seçin (orada başlar). Bu, Memry'nin notlarınızı ve eklerinizi okumasını sağlar — Tam Disk Erişimi gerekmez.",
+      "progress": "{total} içinden {completed}",
+      "running": "İçe aktarılıyor…",
+      "selected": "{count, plural, one {# dosya seçildi} other {# dosya seçildi}}",
+      "start": "İçe aktarmayı başlat",
+      "summary": {
+        "attachments": "{count, plural, one {# ek kopyalandı} other {# ek kopyalandı}}",
+        "failed": "{count} başarısız",
+        "imported": "{count, plural, one {# öğe içe aktarıldı} other {# öğe içe aktarıldı}}",
+        "skipped": "{count} atlandı",
+        "title": "İçe aktarma tamamlandı"
+      },
+      "title": "{name} kaynağından içe aktar"
+    },
+    "header": {
+      "subtitle": "Notlarınızı ve görevlerinizi diğer uygulamalardan getirin",
+      "title": "İçe Aktar"
+    },
+    "intro": "Tek seferlik içe aktarmalar kasanızda yeni notlar oluşturur. Orijinal dışa aktarma dosyalarınız değiştirilmez.",
+    "preview": {
+      "confirm": "İçe Aktar",
+      "warnings": "Uyarılar"
+    },
+    "select": "İçe aktarılacak bir uygulama seçin…",
+    "sources": {
+      "apple-journal": "Bir Apple Journal HTML dışa aktarımını tarihli notlar olarak içe aktarın",
+      "apple-notes": "Apple Notes veritabanından içe aktarın (NoteStore.sqlite, macOS)",
+      "bear": "Bir Bear .bear2bk arşivini (notlar, etiketler, ekler) içe aktarın",
+      "csv": "Bir .csv dosyasını içe aktarın — satır başına bir not, sütunlar özellik olur",
+      "evernote": "Bir veya daha fazla Evernote .enex dışa aktarma dosyasını içe aktarın",
+      "google-keep": "Bir Google Takeout Keep dışa aktarımını (.json veya .zip) içe aktarın",
+      "html": "Bağlantılı görüntüler ve sayfalar arası bağlantılarla .html dosyalarını içe aktarın",
+      "markdown": ".md dosyalarını veya bir klasörü içe aktarın (frontmatter, etiketler, ekler)",
+      "notion": "Bir HTML dışa aktarımını (.zip) içe aktarın",
+      "onenote": "OneNote defterlerini içe aktarın (bir Microsoft hesabı gerektirir)",
+      "raindrop": "Bir Raindrop.io yer imi dışa aktarımını (.csv) içe aktarın — yer imleri gelen kutusuna düşer",
+      "roam": "İç içe anahatlar içeren bir Roam Research grafiğini (.json) içe aktarın",
+      "ticktick": "Bir TickTick yedeğini (.csv) proje, görev ve hatırlatıcı olarak içe aktarın",
+      "todoist": "Bir proje CSV dışa aktarımını (.csv) içe aktarın"
+    },
+    "stats": {
+      "bookmarks": "{count, plural, one {# yer imi} other {# yer imi}}",
+      "comments": "{count, plural, one {# yorum} other {# yorum}}",
+      "notes": "{count, plural, one {# not} other {# not}}",
+      "projects": "{count, plural, one {# proje} other {# proje}}",
+      "reminders": "{count, plural, one {# hatırlatıcı} other {# hatırlatıcı}}",
+      "skipped": "{count} atlandı",
+      "subtasks": "{count, plural, one {# alt görev} other {# alt görev}}",
+      "tasks": "{count, plural, one {# görev} other {# görev}}",
+      "withDueDate": "{count} tarihli",
+      "withTags": "{count} etiketli"
     }
   }
 }

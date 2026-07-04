@@ -42,7 +42,9 @@
       "setIcon": "Állítsa be az ikont",
       "removeIcon": "Ikon eltávolítása",
       "deleteSelectedNotes": "Törölje az {count} megjegyzéseket",
-      "deleteSelectedItems": "Törölje az {count} elemeket"
+      "deleteSelectedItems": "Törölje az {count} elemeket",
+      "bookmark": "Könyvjelző",
+      "removeFromBookmarks": "Eltávolítás a könyvjelzők közül"
     },
     "deleteDialog": {
       "noteTitle": "Jegyzet törlése",
@@ -111,7 +113,11 @@
       "aria": "Jegyezze fel a javaslatokat",
       "loading": "Jegyzetek betöltése...",
       "empty": "Nem található jegyzet",
-      "create": "Új jegyzet létrehozása"
+      "create": "Új jegyzet létrehozása",
+      "embed": "Beágyazás",
+      "embedAria": "{title} beágyazása",
+      "wikiLink": "Wiki-hivatkozás",
+      "wikiLinkAria": "{title} wiki-hivatkozás"
     },
     "tags": {
       "aria": "Címkejavaslatok",
@@ -133,6 +139,15 @@
       "searchPlaceholder": "Keresés",
       "noIcons": "Nem található ikon",
       "clearSearch": "Keresés törlése"
+    },
+    "mention": {
+      "aria": "Dátum- és jegyzetjavaslatok",
+      "date": "Dátum",
+      "dateHint": "Írj tovább egy dátumot…",
+      "empty": "Nem található jegyzet",
+      "loading": "Jegyzetek betöltése...",
+      "remindMe": "Emlékeztess",
+      "showMore": "Több megjelenítése"
     }
   },
   "outline": {
@@ -174,7 +189,8 @@
     "createTag": "Címke létrehozása: \"{tag}\"",
     "chooseColor": "Válassz színt:",
     "preview": "Előnézet:",
-    "colorAria": "Válassza ki az {color} színt"
+    "colorAria": "Válassza ki az {color} színt",
+    "customColor": "Egyéni szín"
   },
   "properties": {
     "title": "Tulajdonságok",
@@ -205,7 +221,9 @@
       "status": "Állapot",
       "select": "Válassza ki",
       "multiselect": "Többszörös kijelölés"
-    }
+    },
+    "showOnCalendar": "Megjelenítés a naptárban",
+    "showingOnCalendar": "Megjelenik a naptárban"
   },
   "templateSelector": {
     "title": "Válassza ki a vásznat",
@@ -295,7 +313,8 @@
   },
   "phaseF": {
     "componentsFolderViewColumnHeader": {
-      "dragToReorderColumn": "Húzza az oszlop átrendezéséhez"
+      "dragToReorderColumn": "Húzza az oszlop átrendezéséhez",
+      "editColumnName": "Oszlopnév szerkesztése"
     },
     "componentsFolderViewColumnSelector": {
       "properties": "Tulajdonságok",
@@ -311,7 +330,10 @@
       "delete": "Törölje",
       "none": "Egyik sem",
       "edit": "Szerkesztés",
-      "delete2": "Törölje"
+      "delete2": "Törölje",
+      "columnBorders": "Oszlopszegélyek",
+      "display": "Megjelenítés",
+      "showSummaries": "Összegzések megjelenítése"
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Szűrés",
@@ -329,17 +351,21 @@
       "of": "/:",
       "addCondition": "Feltétel hozzáadása",
       "addFilter": "Szűrő hozzáadása",
-      "addGroup": "Csoport hozzáadása lehetőségre"
+      "addGroup": "Csoport hozzáadása lehetőségre",
+      "removeGroup": "Csoport eltávolítása"
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "Beépített",
       "properties": "Tulajdonságok",
       "placeholderProperty": "Tulajdon",
       "placeholderOperator": "Üzemeltető",
-      "placeholderValue": "Érték"
+      "placeholderValue": "Érték",
+      "removeFilter": "Szűrő eltávolítása"
     },
     "componentsFolderViewFolderTableView": {
-      "notesTable": "Jegyzettáblázat"
+      "notesTable": "Jegyzettáblázat",
+      "selectAll": "Összes jegyzet kijelölése",
+      "selectRow": "Jegyzet kijelölése"
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "Jegyzetek keresése...",
@@ -371,7 +397,9 @@
     },
     "componentsFolderViewGroupedTable": {
       "groupedNotesTable": "Csoportos jegyzettáblázat",
-      "more": "több"
+      "more": "több",
+      "selectAll": "Összes jegyzet kijelölése",
+      "selectRow": "Jegyzet kijelölése"
     },
     "componentsFolderViewMoveToFolderDialog": {
       "searchFolders": "Mappák keresése...",
@@ -399,7 +427,8 @@
     },
     "componentsFolderViewSortableColumnHeader": {
       "dragToReorderColumn": "Húzza az oszlop átrendezéséhez",
-      "resizeColumn": "Oszlop átméretezése"
+      "resizeColumn": "Oszlop átméretezése",
+      "editColumnName": "Oszlopnév szerkesztése"
     },
     "componentsFolderViewViewSwitcher": {
       "default": "alapértelmezett",
@@ -424,7 +453,16 @@
       "deleteView": "Nézet törlése",
       "areYouSureYouWantToDelete": "Biztosan törölni szeretnéd",
       "thisActionCannotBeUndone": "Ez a művelet nem vonható vissza.",
-      "cancel3": "Mégsem"
+      "cancel3": "Mégsem",
+      "createView": "Nézet létrehozása",
+      "gallery": "Galéria",
+      "layout": "Elrendezés",
+      "list": "Lista",
+      "name": "Név",
+      "newView": "Új nézet",
+      "save": "Mentés",
+      "table": "Táblázat",
+      "viewActions": "Nézetműveletek"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "Nem sikerült betölteni a PDF-et: ",
@@ -607,6 +645,15 @@
       "startYourCollection": "Indítsa el a gyűjteményt",
       "templatesHelpYouCreateNotesWithConsistentStructure": "A sablonok segítségével egységes szerkezetű jegyzeteket hozhat létre.",
       "createTemplate": "Sablon létrehozása"
+    },
+    "componentsFolderViewSortSelector": {
+      "builtIn": "Beépített",
+      "clearSort": "Rendezés törlése",
+      "noSortablePropertiesFound": "Nem található rendezhető tulajdonság",
+      "properties": "Tulajdonságok",
+      "searchProperties": "Tulajdonságok keresése...",
+      "sort": "Rendezés",
+      "sortDirection": "Rendezési irány"
     }
   },
   "phaseI": {
@@ -654,5 +701,47 @@
       "cannotRemoveTagThisNoteWasDeleted": "A címke nem távolítható el – ez a jegyzet törölve lett",
       "cannotChangeLocalOnlyThisNoteWasDeleted": "Nem módosítható csak helyileg – ez a megjegyzés törölve lett"
     }
+  },
+  "bulkActions": {
+    "addTag": "Címke hozzáadása",
+    "clearAria": "Kijelölés törlése",
+    "copiedLinks": "{count, plural, one {# hivatkozás másolva} other {# hivatkozás másolva}}",
+    "copyLinks": "Hivatkozások másolása",
+    "delete": "Törlés",
+    "export": "Exportálás",
+    "move": "Áthelyezés",
+    "selected": "kiválasztva",
+    "tagNamePlaceholder": "Címke neve",
+    "toolbarAria": "Tömeges műveletek"
+  },
+  "comments": {
+    "attachAria": "Fájl csatolása",
+    "badgeAria": "{count, plural, one {# megjegyzés} other {# megjegyzés}}",
+    "cancel": "Mégse",
+    "commentPlaceholder": "Megjegyzés hozzáadása...",
+    "createdTooltip": "Létrehozva: {date} {time}",
+    "delete": "Megjegyzés törlése",
+    "edit": "Megjegyzés szerkesztése",
+    "kind": {
+      "addition": "Hozzáadás",
+      "comment": "Megjegyzés",
+      "deletion": "Törlés",
+      "substitution": "Csere"
+    },
+    "mentionAria": "Személy, oldal vagy dátum említése",
+    "railAria": "Megjegyzések",
+    "replyPlaceholder": "Válasz...",
+    "resolve": "Megoldás",
+    "sendAria": "Megjegyzés küldése",
+    "toolbarComment": "Megjegyzés"
+  },
+  "dateMention": {
+    "clear": "Törlés",
+    "dateFormat": "Dátumformátum",
+    "dateInput": "Dátum",
+    "includeTime": "Idő megadása",
+    "remind": "Emlékeztetés",
+    "time": "Idő",
+    "timeFormat": "Időformátum"
   }
 }

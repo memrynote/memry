@@ -27,7 +27,9 @@
     "imported-event": "حدث مستورد",
     "task": "المهمة",
     "reminder": "تذكير",
-    "snooze": "غفوة"
+    "snooze": "غفوة",
+    "note": "ملاحظة",
+    "note-date": "تذكير بتاريخ"
   },
   "state": {
     "loading-calendar": "جارٍ تحميل التقويم…",
@@ -151,5 +153,34 @@
       "could-not-remove-due-date": "لا يمكن إزالة تاريخ الاستحقاق",
       "could-not-open-note": "لا يمكن فتح الملاحظة"
     }
+  },
+  "connect-prompt": {
+    "aria": "ربط تقويم Google",
+    "body": "اربط حساب Google الخاص بك للقيام بالمزيد مع تقويمك:",
+    "bullets": {
+      "events": "شاهد أحداث Google بجانب الملاحظات والمهام",
+      "schedule": "جدوِل المهام والملاحظات على تقويمك",
+      "sync": "أنشئ الأحداث وحرّرها، مع المزامنة في الاتجاهين"
+    },
+    "continue": "المتابعة باستخدام Google",
+    "dismiss": "تجاهل",
+    "error": "تعذّر ربط تقويم Google. حاول مرة أخرى.",
+    "pill": "ربط Google",
+    "title": "أكمل الربط بتقويم Google"
+  },
+  "notePopover": {
+    "couldNotOpen": "تعذّر فتح الملاحظة",
+    "kind": "ملاحظة",
+    "kindDateReminder": "تذكير بتاريخ",
+    "open": "فتح الملاحظة"
+  },
+  "search": {
+    "close": "إغلاق البحث",
+    "no-results": "لا توجد نتائج",
+    "open": "البحث في التقويم",
+    "placeholder": "ابحث في الأحداث والمهام والتذكيرات…"
+  },
+  "undo": {
+    "moveEvent": "نقل الحدث"
   }
 }

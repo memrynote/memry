@@ -45,7 +45,10 @@
   "count": {
     "note": "{count, plural, one {# anteckning} other {# anteckningar}}",
     "task": "{count, plural, one {# uppgift} other {# uppgifter}}",
-    "itemDelete": "{count, plural, one {Ta bort # objekt} other {Ta bort # objekt}}"
+    "itemDelete": "{count, plural, one {Ta bort # objekt} other {Ta bort # objekt}}",
+    "event": "{count, plural, one {# händelse} other {# händelser}}",
+    "journal": "{count, plural, one {# dagbok} other {# dagböcker}}",
+    "reminder": "{count, plural, one {# påminnelse} other {# påminnelser}}"
   },
   "toast": {
     "actionFailed": "Åtgärden misslyckades",
@@ -83,7 +86,23 @@
       "newNoteN": "Ny anteckning (⌘N)",
       "new": "Ny",
       "syncDisabled": "Synkronisering avstängd",
-      "syncDisabled2": "Synkronisering avstängd"
+      "syncDisabled2": "Synkronisering avstängd",
+      "feedbackButton": "Skicka feedback",
+      "feedbackDescription": "Berätta vad som fungerar, vad som är trasigt eller vad du önskar att Memry gjorde. Vi läser varje meddelande.",
+      "feedbackEmailHint": "Lägg till din e-post om du vill ha svar.",
+      "feedbackError": "Det gick inte att skicka feedback. Försök igen.",
+      "feedbackPlaceholder": "Din feedback…",
+      "feedbackSend": "Skicka",
+      "feedbackSending": "Skickar…",
+      "feedbackSuccess": "Tack för din feedback!",
+      "feedbackTitle": "Skicka feedback",
+      "newItemMenu": "Skapa ny…",
+      "updateAvailable": "Uppdatera",
+      "updateDownloading": "Hämtar…",
+      "updateDownloadingPercent": "Hämtar {percent}%",
+      "updateInstallingSubtitle": "Memrynote startar om automatiskt.",
+      "updateInstallingTitle": "Installerar uppdatering",
+      "updateRestart": "Starta om"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Ändra storlek på dagspanel",
@@ -462,7 +481,8 @@
       "day": "Dag",
       "agent": "Agent",
       "pendingApproval": "{count, plural, one {# väntar på godkännande} other {# väntande godkännanden}}",
-      "inProgress": "Agent tur pågår"
+      "inProgress": "Agent tur pågår",
+      "close": "Stäng agent"
     },
     "errors": {
       "loadConversations": "Det gick inte att läsa in agentkonversationer",
@@ -481,5 +501,142 @@
     "sources": {
       "used": "{count, plural, one {Använde # källa} other {Använde # källor}}"
     }
+  },
+  "home": {
+    "addWidget": "Lägg till widget",
+    "board": {
+      "defaultName": "Start",
+      "deleteAria": "Radera layout",
+      "label": "Startlayout",
+      "newAria": "Ny tavla",
+      "newName": "Ny tavla"
+    },
+    "disabled": {
+      "createNote": "Skapa anteckning",
+      "hint": "Inget öppet. Börja en anteckning."
+    },
+    "done": "Klar",
+    "edit": "Redigera",
+    "empty": {
+      "body": "Widgetar samlar dina anteckningar, uppgifter och bokmärken på en lugn plats.",
+      "cta": "Lägg till din första widget",
+      "title": "Din tavla är tom"
+    },
+    "greeting": {
+      "afternoon": "God eftermiddag",
+      "evening": "God kväll",
+      "morning": "God morgon"
+    },
+    "header": {
+      "events": "{count, plural, one {# händelse} other {# händelser}}",
+      "tasksDue": "{count, plural, one {# uppgift förfaller idag} other {# uppgifter förfaller idag}}"
+    },
+    "noBookmarksYet": "Inga bokmärken än.",
+    "noEventsYet": "Inga händelser idag.",
+    "noJournalEntriesYet": "Inga dagboksanteckningar än.",
+    "noNotesYet": "Inga anteckningar än.",
+    "noTasksYet": "Inga uppgifter än.",
+    "widget": {
+      "bookmarks": "Bokmärken",
+      "calendar": "Kalender",
+      "calendarToday": "Idag",
+      "configAria": "Konfigurera widget",
+      "configure": "Konfigurera",
+      "dragAria": "Dra widget",
+      "duration": "{count} min",
+      "filter": {
+        "today": "Förfaller idag",
+        "tomorrow": "Imorgon",
+        "week": "Denna vecka"
+      },
+      "folder": "Mapp",
+      "folderEmpty": "Inga mappar än",
+      "folderNoSelection": "Ingen mapp vald",
+      "folderPickPrompt": "Välj en mapp",
+      "folderViewSelect": "Vy",
+      "folderView_gallery": "Galleri",
+      "folderView_list": "Lista",
+      "inbox": "Inkorg",
+      "inboxAllTypes": "Alla typer",
+      "inboxOlder": "{count, plural, one {# äldre} other {# äldre}}",
+      "inboxOldest": "äldst {count, plural, one {# dag} other {# dagar}}",
+      "journal": "Dagbok",
+      "journalStreak": "{count, plural, one {#-dagars svit} other {#-dagars svit}}",
+      "journalToday": "Idag",
+      "journalYesterday": "Igår",
+      "loadError": "Kunde inte läsa in",
+      "menuAria": "Widgetalternativ",
+      "next": "Nästa: {title}",
+      "openCalendar": "Öppna kalender",
+      "openInbox": "Öppna inkorg",
+      "recentMeta": "redigerad {time}",
+      "recentMetaWithFolder": "{folder} · redigerad {time}",
+      "recentlyEdited": "Nyligen redigerade",
+      "remove": "Ta bort",
+      "removeAria": "Ta bort widget",
+      "resize": "Storlek",
+      "resizeAria": "Ändra storlek till {{size}}",
+      "savedFilterDefault": "Idag",
+      "savedFilterHint": "Stjärnmärk filter på Uppgifter-sidan för att använda dem här",
+      "savedFilterLabel": "Sparat filter",
+      "startsIn": "Börjar om {count, plural, one {# min} other {# min}}",
+      "tasks": "Uppgifter",
+      "unknown": "Okänd widget",
+      "untitled": "Namnlös"
+    }
+  },
+  "media": {
+    "video": "Video"
+  },
+  "onboarding": {
+    "agentChat": {
+      "body": "Byt till fliken Agent för att fråga Memrynotes assistent om ditt valv.",
+      "title": "Chatta med AI-agenten"
+    },
+    "collections": {
+      "body": "Organisera anteckningar i mappar, fäst bokmärken och bläddra efter tagg — allt här.",
+      "title": "Samlingar, bokmärken och taggar"
+    },
+    "dayPanel": {
+      "body": "Sidopanelen håller en kalender och din dagvy bredvid det du läser.",
+      "title": "Din dag, bredvid ditt arbete"
+    },
+    "feedback": {
+      "body": "Skicka feedback direkt till teamet härifrån.",
+      "title": "Berätta vad du tycker"
+    },
+    "nav": {
+      "body": "Inkorg för att fånga, Dagbok för dagliga anteckningar, Kalender för din tidslinje, Uppgifter för att-göra och Graf för att se hur allt hänger ihop.",
+      "title": "Dina arbetsytor"
+    },
+    "newNote": {
+      "body": "Börja här. Allt du skriver lagras lokalt först.",
+      "title": "Skapa din första anteckning"
+    },
+    "settings": {
+      "body": "Importera dina anteckningar från 12+ appar — Obsidian, Notion, Apple Notes, Evernote med flera — och justera allt annat i Inställningar.",
+      "title": "Inställningar och importer"
+    },
+    "sync": {
+      "body": "Aktivera totalsträckskrypterad synk för att hålla varje enhet i takt.",
+      "title": "Privat, krypterad synk"
+    },
+    "welcome": {
+      "body": "Ditt privata, offline-först-hem. Anteckningar är totalsträckskrypterade — de lämnar aldrig din enhet okrypterade.",
+      "title": "Välkommen till Memrynote"
+    }
+  },
+  "updatePrompt": {
+    "autoUpdateLabel": "Hämta och installera uppdateringar automatiskt",
+    "availableBody": "{version} är tillgänglig — du har {current}. Vill du hämta den nu?",
+    "availableTitle": "En ny version av MemryNote är tillgänglig!",
+    "download": "Hämta",
+    "downloadedBody": "{version} har hämtats. Starta om MemryNote för att slutföra installationen.",
+    "downloadedTitle": "Uppdatering redo att installeras",
+    "later": "Senare",
+    "releaseNotesLabel": "Versionsinformation",
+    "remindLater": "Påminn mig senare",
+    "restartNow": "Starta om nu",
+    "skip": "Hoppa över denna version"
   }
 }

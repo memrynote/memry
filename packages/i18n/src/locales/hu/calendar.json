@@ -27,7 +27,9 @@
     "imported-event": "Importált esemény",
     "task": "Feladat",
     "reminder": "Emlékeztető",
-    "snooze": "Szundi"
+    "snooze": "Szundi",
+    "note": "Jegyzet",
+    "note-date": "Dátum-emlékeztető"
   },
   "state": {
     "loading-calendar": "Naptár betöltése…",
@@ -151,5 +153,34 @@
       "could-not-remove-due-date": "Nem sikerült eltávolítani a határidőt",
       "could-not-open-note": "Nem sikerült megnyitni a jegyzetet"
     }
+  },
+  "connect-prompt": {
+    "aria": "Google Naptár csatlakoztatása",
+    "body": "Csatlakoztasd a Google-fiókod, hogy többet hozz ki a naptáradból:",
+    "bullets": {
+      "events": "Lásd a Google-eseményeidet a jegyzetek és feladatok mellett",
+      "schedule": "Ütemezz feladatokat és jegyzeteket a naptáradban",
+      "sync": "Hozz létre és szerkessz eseményeket, mindkét irányban szinkronizálva"
+    },
+    "continue": "Folytatás a Google-lal",
+    "dismiss": "Elvetés",
+    "error": "Nem sikerült csatlakozni a Google Naptárhoz. Próbáld újra.",
+    "pill": "Google csatlakoztatása",
+    "title": "Fejezd be a Google Naptárhoz való csatlakozást"
+  },
+  "notePopover": {
+    "couldNotOpen": "Nem sikerült megnyitni a jegyzetet",
+    "kind": "Jegyzet",
+    "kindDateReminder": "Dátum-emlékeztető",
+    "open": "Jegyzet megnyitása"
+  },
+  "search": {
+    "close": "Keresés bezárása",
+    "no-results": "Nincs találat",
+    "open": "Naptár keresése",
+    "placeholder": "Események, feladatok, emlékeztetők keresése…"
+  },
+  "undo": {
+    "moveEvent": "Esemény áthelyezése"
   }
 }

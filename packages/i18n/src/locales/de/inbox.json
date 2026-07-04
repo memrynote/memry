@@ -26,6 +26,10 @@
     "jobs": {
       "running": "{count, plural, one {#-Hintergrundjob wird ausgeführt} other {#-Hintergrundjobs werden ausgeführt}}",
       "failed": "{count} ist fehlgeschlagen"
+    },
+    "density": {
+      "toComfortable": "Komfortable Ansicht",
+      "toCompact": "Kompakte Ansicht"
     }
   },
   "type": {
@@ -208,7 +212,15 @@
     "linkedNotesAria": "Verlinkte Notizen",
     "removeLinkTo": "Link zu {title} entfernen",
     "notePlaceholder": "Schreiben Sie Ihre Notiz...",
-    "textPlaceholder": "Bearbeiten Sie Ihren erfassten Text ..."
+    "textPlaceholder": "Bearbeiten Sie Ihren erfassten Text ...",
+    "linkANote": "Eine Notiz verknüpfen",
+    "match": {
+      "likely": "Wahrscheinliche Übereinstimmung",
+      "strong": "Starke Übereinstimmung",
+      "weak": "Schwache Übereinstimmung"
+    },
+    "resize": "Panel-Größe ändern",
+    "suggestedCount": "{count} vorgeschlagen"
   },
   "content": {
     "capturedAt": "{date} erfasst",
@@ -253,7 +265,12 @@
     "presetInOneHour": "1 Stunde",
     "presetTomorrow": "Morgen",
     "presetNextWeek": "Nächste Woche",
-    "custom": "Benutzerdefinierte..."
+    "custom": "Benutzerdefinierte...",
+    "archive": "Archivieren",
+    "panelEmpty": "Keine anstehenden Erinnerungen.",
+    "panelPast": "Vergangen",
+    "panelUpcoming": "Anstehend",
+    "taskFallback": "Aufgabe"
   },
   "insights": {
     "captureActivity": "Aktivität erfassen",
@@ -295,7 +312,9 @@
       "recordVoiceMemo2": "Nehmen Sie eine Sprachnotiz auf",
       "alreadyCaptured": "Bereits erfasst: „",
       "rdquo": "rdquo;",
-      "captureAnyway": "Trotzdem erfassen"
+      "captureAnyway": "Trotzdem erfassen",
+      "focusShortcut": "Erfassungseingabe fokussieren",
+      "q": "Q"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Ordner auswählen",
@@ -416,7 +435,11 @@
       "backToPresets": "Zurück zu den Voreinstellungen",
       "time": "Zeit",
       "noteOptional": "Hinweis (optional)",
-      "whyAreYouSettingThisReminder": "Warum richten Sie diese Erinnerung ein?"
+      "whyAreYouSettingThisReminder": "Warum richten Sie diese Erinnerung ein?",
+      "deleteReminder": "Erinnerung löschen",
+      "editReminder": "Erinnerung bearbeiten",
+      "save": "Speichern",
+      "set": "Festlegen"
     },
     "componentsSnoozeSnoozePicker": {
       "snooze": "Schlummern",
@@ -461,5 +484,37 @@
     "toasts": {
       "inboxRefreshed": "Posteingang aktualisiert"
     }
+  },
+  "convert": {
+    "addEvent": "Termin hinzufügen",
+    "addTask": "Aufgabe hinzufügen",
+    "allDay": "Ganztägig",
+    "binaryOnlyNote": "Dateien können nur zu einer Notiz werden",
+    "chooseType": "Umwandeln in",
+    "create": "Erstellen",
+    "date": "Datum",
+    "dueDate": "Fälligkeitsdatum",
+    "dueTime": "Fälligkeitszeit",
+    "end": "Ende",
+    "event": "Termin",
+    "failed": "Umwandlung fehlgeschlagen: {error}",
+    "inboxProject": "Inbox",
+    "location": "Ort",
+    "note": "Notiz",
+    "priority": "Priorität",
+    "priorityHigh": "Hoch",
+    "priorityLow": "Niedrig",
+    "priorityMedium": "Mittel",
+    "priorityNone": "Keine",
+    "priorityUrgent": "Dringend",
+    "project": "Projekt",
+    "remindAt": "Erinnere mich um",
+    "reminder": "Erinnerung",
+    "setReminder": "Erinnerung festlegen",
+    "start": "Beginn",
+    "success": "In {target} umgewandelt",
+    "task": "Aufgabe",
+    "time": "Zeit",
+    "title": "Umwandeln"
   }
 }

@@ -26,6 +26,10 @@
     "jobs": {
       "running": "{count, plural, one {تشغيل وظيفة # في الخلفية} other {تشغيل وظائف الخلفية #}}",
       "failed": "فشل {count}"
+    },
+    "density": {
+      "toComfortable": "عرض مريح",
+      "toCompact": "عرض مضغوط"
     }
   },
   "type": {
@@ -208,7 +212,15 @@
     "linkedNotesAria": "الملاحظات المرتبطة",
     "removeLinkTo": "قم بإزالة الرابط إلى {title}",
     "notePlaceholder": "أكتب مذكرتك...",
-    "textPlaceholder": "تحرير النص الذي تم التقاطه..."
+    "textPlaceholder": "تحرير النص الذي تم التقاطه...",
+    "linkANote": "ربط ملاحظة",
+    "match": {
+      "likely": "تطابق محتمل",
+      "strong": "تطابق قوي",
+      "weak": "تطابق ضعيف"
+    },
+    "resize": "تغيير حجم اللوحة",
+    "suggestedCount": "{count} مقترح"
   },
   "content": {
     "capturedAt": "تم التقاط {date}",
@@ -253,7 +265,12 @@
     "presetInOneHour": "1 ساعة",
     "presetTomorrow": "غدا",
     "presetNextWeek": "الاسبوع القادم",
-    "custom": "مخصص..."
+    "custom": "مخصص...",
+    "archive": "أرشفة",
+    "panelEmpty": "لا توجد تذكيرات قادمة.",
+    "panelPast": "السابقة",
+    "panelUpcoming": "القادمة",
+    "taskFallback": "مهمة"
   },
   "insights": {
     "captureActivity": "التقاط النشاط",
@@ -295,7 +312,9 @@
       "recordVoiceMemo2": "سجل مذكرة صوتية",
       "alreadyCaptured": "تم التقاطها بالفعل: \"",
       "rdquo": "ردقوو]؛",
-      "captureAnyway": "التقط على أي حال"
+      "captureAnyway": "التقط على أي حال",
+      "focusShortcut": "التركيز على حقل الالتقاط",
+      "q": "Q"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "اختر المجلد",
@@ -416,7 +435,11 @@
       "backToPresets": "العودة إلى الإعدادات المسبقة",
       "time": "الوقت",
       "noteOptional": "ملاحظة (اختياري)",
-      "whyAreYouSettingThisReminder": "لماذا تقوم بتعيين هذا التذكير؟"
+      "whyAreYouSettingThisReminder": "لماذا تقوم بتعيين هذا التذكير؟",
+      "deleteReminder": "حذف التذكير",
+      "editReminder": "تحرير التذكير",
+      "save": "حفظ",
+      "set": "تعيين"
     },
     "componentsSnoozeSnoozePicker": {
       "snooze": "غفوة",
@@ -461,5 +484,37 @@
     "toasts": {
       "inboxRefreshed": "تم تحديث البريد الوارد"
     }
+  },
+  "convert": {
+    "addEvent": "إضافة حدث",
+    "addTask": "إضافة مهمة",
+    "allDay": "طوال اليوم",
+    "binaryOnlyNote": "يمكن تحويل الملفات إلى ملاحظة فقط",
+    "chooseType": "تحويل إلى",
+    "create": "إنشاء",
+    "date": "التاريخ",
+    "dueDate": "تاريخ الاستحقاق",
+    "dueTime": "وقت الاستحقاق",
+    "end": "النهاية",
+    "event": "حدث",
+    "failed": "تعذّر التحويل: {error}",
+    "inboxProject": "البريد الوارد",
+    "location": "الموقع",
+    "note": "ملاحظة",
+    "priority": "الأولوية",
+    "priorityHigh": "عالية",
+    "priorityLow": "منخفضة",
+    "priorityMedium": "متوسطة",
+    "priorityNone": "بلا",
+    "priorityUrgent": "عاجلة",
+    "project": "مشروع",
+    "remindAt": "ذكّرني في",
+    "reminder": "تذكير",
+    "setReminder": "تعيين تذكير",
+    "start": "البداية",
+    "success": "تم التحويل إلى {target}",
+    "task": "مهمة",
+    "time": "الوقت",
+    "title": "تحويل"
   }
 }

@@ -45,7 +45,10 @@
   "count": {
     "note": "{count, plural, one {# нотатка} other {# нотатки}}",
     "task": "{count, plural, one {# завдання} other {# завдання}}",
-    "itemDelete": "{count, plural, one {Видалити # елемент} other {Видалити # елементи}}"
+    "itemDelete": "{count, plural, one {Видалити # елемент} other {Видалити # елементи}}",
+    "event": "{count, plural, one {# подія} few {# події} many {# подій} other {# події}}",
+    "journal": "{count, plural, one {# журнал} few {# журнали} many {# журналів} other {# журналу}}",
+    "reminder": "{count, plural, one {# нагадування} few {# нагадування} many {# нагадувань} other {# нагадування}}"
   },
   "toast": {
     "actionFailed": "Дія не вдалася",
@@ -83,7 +86,23 @@
       "newNoteN": "Нова замітка (⌘N)",
       "new": "Новий",
       "syncDisabled": "Синхронізація вимкнена",
-      "syncDisabled2": "Синхронізація вимкнена"
+      "syncDisabled2": "Синхронізація вимкнена",
+      "feedbackButton": "Надіслати відгук",
+      "feedbackDescription": "Розкажіть, що працює, що зламано або що ви хотіли б бачити в Memry. Ми читаємо кожне повідомлення.",
+      "feedbackEmailHint": "Додайте свій email, якщо хочете отримати відповідь.",
+      "feedbackError": "Не вдалося надіслати відгук. Спробуйте ще раз.",
+      "feedbackPlaceholder": "Ваш відгук…",
+      "feedbackSend": "Надіслати",
+      "feedbackSending": "Надсилання…",
+      "feedbackSuccess": "Дякуємо за відгук!",
+      "feedbackTitle": "Надіслати відгук",
+      "newItemMenu": "Створити нове…",
+      "updateAvailable": "Оновити",
+      "updateDownloading": "Завантаження…",
+      "updateDownloadingPercent": "Завантаження {percent}%",
+      "updateInstallingSubtitle": "Memrynote перезапуститься автоматично.",
+      "updateInstallingTitle": "Встановлення оновлення",
+      "updateRestart": "Перезапустити"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Змінити розмір панелі дня",
@@ -462,7 +481,8 @@
       "day": "День",
       "agent": "Agent",
       "pendingApproval": "{count, plural, one {# очікує на затвердження} other {# очікують схвалення}}",
-      "inProgress": "Триває поворот Agent"
+      "inProgress": "Триває поворот Agent",
+      "close": "Закрити агента"
     },
     "errors": {
       "loadConversations": "Не вдалося завантажити розмови агента",
@@ -481,5 +501,142 @@
     "sources": {
       "used": "{count, plural, one {Використано # джерело} few {Використано # джерела} many {Використано # джерел} other {Використано # джерела}}"
     }
+  },
+  "home": {
+    "addWidget": "Додати віджет",
+    "board": {
+      "defaultName": "Головна",
+      "deleteAria": "Видалити розкладку",
+      "label": "Розкладка головної",
+      "newAria": "Нова дошка",
+      "newName": "Нова дошка"
+    },
+    "disabled": {
+      "createNote": "Створити нотатку",
+      "hint": "Нічого не відкрито. Почніть нотатку."
+    },
+    "done": "Готово",
+    "edit": "Редагувати",
+    "empty": {
+      "body": "Віджети збирають ваші нотатки, завдання й закладки в одному спокійному місці.",
+      "cta": "Додайте свій перший віджет",
+      "title": "Ваша дошка порожня"
+    },
+    "greeting": {
+      "afternoon": "Доброго дня",
+      "evening": "Доброго вечора",
+      "morning": "Доброго ранку"
+    },
+    "header": {
+      "events": "{count, plural, one {# подія} few {# події} many {# подій} other {# події}}",
+      "tasksDue": "{count, plural, one {# завдання на сьогодні} few {# завдання на сьогодні} many {# завдань на сьогодні} other {# завдання на сьогодні}}"
+    },
+    "noBookmarksYet": "Ще немає закладок.",
+    "noEventsYet": "Сьогодні немає подій.",
+    "noJournalEntriesYet": "Ще немає записів журналу.",
+    "noNotesYet": "Ще немає нотаток.",
+    "noTasksYet": "Ще немає завдань.",
+    "widget": {
+      "bookmarks": "Закладки",
+      "calendar": "Календар",
+      "calendarToday": "Сьогодні",
+      "configAria": "Налаштувати віджет",
+      "configure": "Налаштувати",
+      "dragAria": "Перетягнути віджет",
+      "duration": "{count} хв",
+      "filter": {
+        "today": "Термін сьогодні",
+        "tomorrow": "Завтра",
+        "week": "Цього тижня"
+      },
+      "folder": "Папка",
+      "folderEmpty": "Ще немає папок",
+      "folderNoSelection": "Папку не вибрано",
+      "folderPickPrompt": "Виберіть папку",
+      "folderViewSelect": "Вигляд",
+      "folderView_gallery": "Галерея",
+      "folderView_list": "Список",
+      "inbox": "Вхідні",
+      "inboxAllTypes": "Усі типи",
+      "inboxOlder": "{count, plural, one {# старіший} few {# старіші} many {# старіших} other {# старіших}}",
+      "inboxOldest": "найстаріший {count, plural, one {# день} few {# дні} many {# днів} other {# дня}}",
+      "journal": "Журнал",
+      "journalStreak": "{count, plural, one {серія # день} few {серія # дні} many {серія # днів} other {серія # дня}}",
+      "journalToday": "Сьогодні",
+      "journalYesterday": "Учора",
+      "loadError": "Не вдалося завантажити",
+      "menuAria": "Параметри віджета",
+      "next": "Далі: {title}",
+      "openCalendar": "Відкрити календар",
+      "openInbox": "Відкрити вхідні",
+      "recentMeta": "відредаговано {time}",
+      "recentMetaWithFolder": "{folder} · відредаговано {time}",
+      "recentlyEdited": "Нещодавно відредаговані",
+      "remove": "Прибрати",
+      "removeAria": "Прибрати віджет",
+      "resize": "Розмір",
+      "resizeAria": "Змінити розмір до {{size}}",
+      "savedFilterDefault": "Сьогодні",
+      "savedFilterHint": "Додайте фільтри в зірочки на сторінці Завдання, щоб використовувати їх тут",
+      "savedFilterLabel": "Збережений фільтр",
+      "startsIn": "Починається за {count, plural, one {# хв} few {# хв} many {# хв} other {# хв}}",
+      "tasks": "Завдання",
+      "unknown": "Невідомий віджет",
+      "untitled": "Без назви"
+    }
+  },
+  "media": {
+    "video": "Відео"
+  },
+  "onboarding": {
+    "agentChat": {
+      "body": "Перейдіть на вкладку «Агент», щоб запитати помічника Memrynote про ваше сховище.",
+      "title": "Спілкуйтеся з AI-агентом"
+    },
+    "collections": {
+      "body": "Упорядковуйте нотатки в папки, закріплюйте закладки та переглядайте за тегами — усе тут.",
+      "title": "Колекції, закладки й теги"
+    },
+    "dayPanel": {
+      "body": "Бічна панель тримає календар і вигляд дня поруч із тим, що ви читаєте.",
+      "title": "Ваш день поряд із роботою"
+    },
+    "feedback": {
+      "body": "Надсилайте відгук просто команді звідси.",
+      "title": "Розкажіть нам свою думку"
+    },
+    "nav": {
+      "body": "Вхідні для захоплення, Журнал для щоденних нотаток, Календар для вашої стрічки часу, Завдання для справ і Граф, щоб побачити, як усе пов’язано.",
+      "title": "Ваші робочі простори"
+    },
+    "newNote": {
+      "body": "Почніть тут. Усе, що ви пишете, спершу зберігається локально.",
+      "title": "Створіть свою першу нотатку"
+    },
+    "settings": {
+      "body": "Імпортуйте нотатки з 12+ застосунків — Obsidian, Notion, Apple Notes, Evernote та інших — і налаштуйте все інше в Налаштуваннях.",
+      "title": "Налаштування та імпорт"
+    },
+    "sync": {
+      "body": "Увімкніть наскрізно зашифровану синхронізацію, щоб усі пристрої були узгоджені.",
+      "title": "Приватна зашифрована синхронізація"
+    },
+    "welcome": {
+      "body": "Ваш приватний офлайн-дім. Нотатки зашифровано наскрізно — вони ніколи не залишають ваш пристрій незашифрованими.",
+      "title": "Ласкаво просимо до Memrynote"
+    }
+  },
+  "updatePrompt": {
+    "autoUpdateLabel": "Автоматично завантажувати та встановлювати оновлення",
+    "availableBody": "{version} доступна — у вас {current}. Бажаєте завантажити її зараз?",
+    "availableTitle": "Доступна нова версія MemryNote!",
+    "download": "Завантажити",
+    "downloadedBody": "{version} завантажено. Перезапустіть MemryNote, щоб завершити встановлення.",
+    "downloadedTitle": "Оновлення готове до встановлення",
+    "later": "Пізніше",
+    "releaseNotesLabel": "Примітки до випуску",
+    "remindLater": "Нагадати пізніше",
+    "restartNow": "Перезапустити зараз",
+    "skip": "Пропустити цю версію"
   }
 }

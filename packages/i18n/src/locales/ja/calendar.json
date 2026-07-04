@@ -27,7 +27,9 @@
     "imported-event": "インポートされたイベント",
     "task": "タスク",
     "reminder": "リマインダー",
-    "snooze": "スヌーズ"
+    "snooze": "スヌーズ",
+    "note": "ノート",
+    "note-date": "日付リマインダー"
   },
   "state": {
     "loading-calendar": "カレンダーを読み込み中…",
@@ -151,5 +153,34 @@
       "could-not-remove-due-date": "期日を削除できませんでした",
       "could-not-open-note": "メモを開けませんでした"
     }
+  },
+  "connect-prompt": {
+    "aria": "Google カレンダーに接続",
+    "body": "Google アカウントを接続して、カレンダーをもっと活用しましょう:",
+    "bullets": {
+      "events": "Google の予定をノートやタスクの隣に表示",
+      "schedule": "タスクやノートをカレンダーに予定として配置",
+      "sync": "予定を作成・編集し、双方向に同期"
+    },
+    "continue": "Google で続行",
+    "dismiss": "閉じる",
+    "error": "Google カレンダーに接続できませんでした。もう一度お試しください。",
+    "pill": "Google に接続",
+    "title": "Google カレンダーへの接続を完了"
+  },
+  "notePopover": {
+    "couldNotOpen": "ノートを開けませんでした",
+    "kind": "ノート",
+    "kindDateReminder": "日付リマインダー",
+    "open": "ノートを開く"
+  },
+  "search": {
+    "close": "検索を閉じる",
+    "no-results": "一致する項目なし",
+    "open": "カレンダーを検索",
+    "placeholder": "予定・タスク・リマインダーを検索…"
+  },
+  "undo": {
+    "moveEvent": "予定を移動"
   }
 }

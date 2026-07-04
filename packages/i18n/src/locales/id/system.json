@@ -36,7 +36,8 @@
       "journal": "Pengingat jurnal",
       "highlight": "Sorot pengingat",
       "fallback": "Pengingat jatuh tempo",
-      "default": "Pengingat"
+      "default": "Pengingat",
+      "task": "Pengingat tugas"
     }
   },
   "error": {

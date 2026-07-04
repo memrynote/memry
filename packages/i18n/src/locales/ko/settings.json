@@ -25,7 +25,10 @@
         "integrations": "통합",
         "vault": "금고",
         "tags": "태그",
-        "properties": "속성"
+        "properties": "속성",
+        "commandLine": "명령줄",
+        "features": "기능",
+        "import": "가져오기"
       }
     }
   },
@@ -109,6 +112,11 @@
       "createInSelectedFolder": {
         "label": "선택한 폴더에 생성",
         "description": "현재 선택한 폴더 내에 새 메모와 폴더가 생성됩니다. 끄면 항목이 항상 루트에 생성됩니다."
+      },
+      "defaultNoteFolder": {
+        "description": "비어 있음 = 볼트 루트",
+        "label": "새 노트의 기본 위치",
+        "placeholder": "notes"
       }
     },
     "privacy": {
@@ -116,6 +124,17 @@
         "label": "익명 사용 측정항목 공유",
         "description": "이는 익명 측정항목일 뿐입니다. 노트 내용, 검색어, 파일 경로, 이메일 또는 원시 ID가 전송되지 않습니다.",
         "error": "원격 분석 설정을 업데이트하지 못했습니다."
+      }
+    },
+    "dateFormat": {
+      "description": "캘린더 날짜가 표시되는 방식",
+      "error": "날짜 형식을 업데이트하지 못했습니다",
+      "label": "날짜 형식",
+      "options": {
+        "DD.MM.YYYY": "DD.MM.YYYY",
+        "DD/MM/YYYY": "DD/MM/YYYY",
+        "MM/DD/YYYY": "MM/DD/YYYY (US)",
+        "YYYY-MM-DD": "YYYY-MM-DD (ISO)"
       }
     }
   },
@@ -250,6 +269,9 @@
         "description": "새 템플릿 복사본의 이름을 입력합니다.",
         "placeholder": "템플릿 이름"
       }
+    },
+    "preview": {
+      "notFound": "이 템플릿을 불러올 수 없습니다."
     }
   },
   "journal": {
@@ -261,7 +283,8 @@
     "groups": {
       "defaultTemplate": "기본 템플릿",
       "sidebarVisibility": "사이드바 가시성",
-      "footer": "바닥글"
+      "footer": "바닥글",
+      "location": "위치 및 형식"
     },
     "template": {
       "label": "템플릿",
@@ -290,7 +313,21 @@
       "label": "통계 바닥글 표시",
       "description": "단어 수, 읽기 시간, 타임스탬프"
     },
-    "updateError": "설정을 업데이트하지 못했습니다."
+    "updateError": "설정을 업데이트하지 못했습니다.",
+    "dateFormat": {
+      "description": "매일 노트의 파일 이름 형식 (예: YYYY-MM-DD)",
+      "label": "날짜 형식",
+      "placeholder": "YYYY-MM-DD"
+    },
+    "folder": {
+      "description": "매일 노트가 저장되는 폴더",
+      "label": "저널 폴더",
+      "placeholder": "journal"
+    },
+    "preview": {
+      "description": "오늘의 저널 파일 경로",
+      "label": "미리보기"
+    }
   },
   "tasks": {
     "header": {
@@ -344,7 +381,9 @@
       "loading": "설정 로드 중..."
     },
     "groups": {
-      "dayCellClick": "데이 셀 클릭"
+      "dayCellClick": "데이 셀 클릭",
+      "notes": "노트",
+      "weekStart": "주"
     },
     "defaultBehavior": {
       "label": "기본 동작",
@@ -360,6 +399,20 @@
       "openJournal": "오픈 저널",
       "openCalendar": "캘린더 열기",
       "useGlobal": "전역 설정 사용"
+    },
+    "showNotesOnCalendar": {
+      "description": "모든 노트를 생성된 날짜에 종일 항목으로 캘린더에 표시",
+      "error": "캘린더에 노트 표시를 업데이트하지 못했습니다",
+      "label": "캘린더에 노트 표시"
+    },
+    "weekStart": {
+      "description": "모든 캘린더에서 주의 첫 번째 요일",
+      "error": "주 시작 요일을 업데이트하지 못했습니다",
+      "label": "주 시작 요일",
+      "options": {
+        "monday": "월요일",
+        "sunday": "일요일"
+      }
     }
   },
   "account": {
@@ -372,10 +425,12 @@
       "identity": "아이덴티티",
       "sync": "동기화",
       "storage": "저장",
-      "devices": "장치"
+      "devices": "장치",
+      "billing": "결제"
     },
     "identity": {
-      "unknown": "알 수 없음"
+      "unknown": "알 수 없음",
+      "encrypted": "종단 간 암호화됨"
     },
     "sync": {
       "lastSynced": "마지막으로 동기화된 {time}",
@@ -421,6 +476,53 @@
       "signedOut": "성공적으로 로그아웃되었습니다",
       "signOutFailed": "로그아웃하지 못했습니다.",
       "deviceLinked": "기기가 연결되었습니다."
+    },
+    "billing": {
+      "actions": {
+        "manage": "결제 관리",
+        "opening": "여는 중...",
+        "refresh": "상태 새로 고침",
+        "upgrade": "업그레이드"
+      },
+      "activationPendingPrefix": "활성화 대기 중. Paddle이 결제를 확인하는 데 잠시 걸릴 수 있습니다. 상태를 새로 고치거나 이메일을 보내세요",
+      "checking": "결제 상태 확인 중",
+      "historyDays": "{days}일",
+      "labels": {
+        "history": "기록",
+        "maxFile": "최대 파일",
+        "storage": "저장 공간",
+        "vaults": "볼트"
+      },
+      "planStatus": "요금제 상태",
+      "plans": {
+        "believer": "Believer 요금제",
+        "free": "무료 요금제",
+        "plus": "Plus 요금제",
+        "pro": "Pro 요금제"
+      },
+      "statuses": {
+        "active": "활성",
+        "canceled": "취소됨",
+        "inactive": "비활성",
+        "past_due": "연체",
+        "paused": "일시 중지됨"
+      },
+      "toasts": {
+        "activationPending": "활성화 대기 중",
+        "billingActive": "결제가 활성 상태입니다",
+        "checkoutFailed": "결제를 시작할 수 없습니다",
+        "checkoutOpened": "브라우저에서 결제가 열렸습니다",
+        "loadFailed": "결제 상태를 불러올 수 없습니다",
+        "portalFailed": "결제 포털을 열 수 없습니다",
+        "refreshFailed": "결제 상태를 새로 고칠 수 없습니다"
+      },
+      "unlimited": "무제한"
+    },
+    "community": {
+      "and": "및",
+      "feedback": "피드백 공유",
+      "prompt": "memrynote가 마음에 드시나요?",
+      "star": "GitHub에서 별표 주기"
     }
   },
   "setup": {
@@ -437,7 +539,9 @@
       "errors": {
         "sendCode": "코드를 보내지 못했습니다.",
         "googleStart": "Google 로그인을 시작하지 못했습니다."
-      }
+      },
+      "paidPlan": "동기화는 유료 요금제입니다.",
+      "seePlans": "요금제 보기"
     },
     "email": {
       "label": "이메일 주소",
@@ -488,7 +592,13 @@
         "registering": "장치 등록 중..."
       },
       "failed": "복구 실패",
-      "confirmationFailed": "확인 실패"
+      "confirmationFailed": "확인 실패",
+      "unavailable": {
+        "description": "복구 문구는 설정 중 한 번만 표시되며 나중에 다시 볼 수 없습니다. 새로 생성하려면 다시 시작하세요.",
+        "loading": "복구 문구 불러오는 중…",
+        "startOver": "다시 시작",
+        "title": "복구 문구를 불러올 수 없습니다"
+      }
     },
     "linking": {
       "choiceTitle": "이 기기를 연결하세요",
@@ -513,7 +623,15 @@
       "waitingTitle": "승인을 기다리는 중",
       "waitingDescription": "다른 장치에서 memrynote를 열고 연결 요청을 승인하세요.",
       "verificationCode": "인증코드",
-      "confirmCode": "다른 기기의 코드와 일치하는지 확인하세요."
+      "confirmCode": "다른 기기의 코드와 일치하는지 확인하세요.",
+      "vaultPickerChooseFolder": "폴더 선택",
+      "vaultPickerConfirm": "선택 항목 가져오기",
+      "vaultPickerDescription": "이 계정에는 여러 볼트가 있습니다. 폴더와 이 기기에 추가할 볼트를 선택하세요.",
+      "vaultPickerDormantHint": "추가됨, 전환하면 열림",
+      "vaultPickerFolderLabel": "볼트를 저장할 폴더",
+      "vaultPickerPrimaryHint": "지금 열림",
+      "vaultPickerTitle": "가져올 항목 선택",
+      "vaultRow": "볼트 — {{count}}개 항목 · {{date}}"
     }
   },
   "devices": {
@@ -630,7 +748,15 @@
       "downloadedToast": "속삭임 작은 다운로드",
       "downloadError": "위스퍼 스몰을 다운로드하지 못했습니다.",
       "keySavedToast": "OpenAI 키가 저장되었습니다.",
-      "keySaveError": "OpenAI 키를 저장하지 못했습니다."
+      "keySaveError": "OpenAI 키를 저장하지 못했습니다.",
+      "memoNameMode": "메모 이름",
+      "memoNameModeDescription": "변환 후 음성 메모의 이름을 지정하는 방식",
+      "naming": {
+        "none": "이름 바꾸지 않음",
+        "timestamp": "타임스탬프",
+        "transcript": "변환 텍스트 제목"
+      },
+      "namingError": "음성 메모 이름 지정을 업데이트하지 못했습니다"
     },
     "embedding": {
       "loaded": "로드됨",
@@ -715,7 +841,12 @@
       "connectFailed": "Google 캘린더를 연결하지 못했습니다.",
       "refreshFailed": "Google 캘린더를 새로고침하지 못했습니다.",
       "disconnectFailed": "Google 캘린더 연결을 해제하지 못했습니다.",
-      "retryFailed": "캘린더 동기화를 다시 시도하지 못했습니다."
+      "retryFailed": "캘린더 동기화를 다시 시도하지 못했습니다.",
+      "pushToGoogle": {
+        "description": "단방향 동기화를 원하면 끄세요 — memrynote에서 Google 일정은 계속 보이지만 memrynote 일정은 Google에 표시되지 않습니다.",
+        "error": "동기화 방향을 업데이트하지 못했습니다",
+        "label": "Google Calendar에 memrynote 일정 표시"
+      }
     },
     "sourcePicker": {
       "empty": "아직 이 기기에서는 가져온 Google 캘린더를 사용할 수 없습니다.",
@@ -796,7 +927,8 @@
       "changeColor": "색상 변경",
       "mergeInto": "병합...",
       "merge": "병합",
-      "delete": "삭제"
+      "delete": "삭제",
+      "changeIcon": "아이콘 변경"
     },
     "dialogs": {
       "deleteTitle": "태그 삭제",
@@ -814,7 +946,8 @@
       "mergeFailed": "태그를 병합하지 못했습니다.",
       "merged": "\"{source}\"를 \"{target}\"({count, plural, one {# 항목} other {# 항목}})로 병합했습니다.",
       "colorUpdated": "\"{name}\"의 색상이 업데이트되었습니다.",
-      "colorFailed": "색상을 업데이트하지 못했습니다."
+      "colorFailed": "색상을 업데이트하지 못했습니다.",
+      "iconFailed": "아이콘을 업데이트하지 못했습니다"
     }
   },
   "properties": {
@@ -1144,7 +1277,10 @@
     "status": {
       "disconnected": "Disconnected",
       "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled"
+      "fullTools": "Full tools enabled",
+      "checking": "확인 중…",
+      "connected": "연결됨",
+      "label": "연결"
     },
     "permissions": {
       "group": "Agent permissions",
@@ -1160,6 +1296,133 @@
         "alwaysAllow": "Always allow",
         "askBeforeChanges": "Ask before changes"
       }
+    }
+  },
+  "commandLine": {
+    "actions": {
+      "refresh": "새로 고침"
+    },
+    "command": {
+      "descriptionInstalled": "{path}에 설치됨",
+      "descriptionNotInstalled": "memrynote 명령을 설치하면 어느 터미널에서든 볼트를 사용할 수 있습니다.",
+      "label": "memrynote 명령",
+      "toggleLabel": "memrynote 명령 설치"
+    },
+    "defaultVault": {
+      "description": "--vault 없이 memrynote를 실행할 때 사용할 볼트를 선택하세요.",
+      "descriptionSelected": "--vault를 생략하면 명령이 {path}을(를) 사용합니다.",
+      "label": "기본 볼트",
+      "none": "선택된 볼트 없음",
+      "placeholder": "볼트 선택"
+    },
+    "groups": {
+      "terminal": "터미널"
+    },
+    "header": {
+      "subtitle": "터미널용 memrynote 명령을 설정하세요",
+      "title": "명령줄"
+    },
+    "status": {
+      "defaultVaultUpdatedToast": "기본 CLI 볼트가 업데이트됨",
+      "installedToast": "memrynote 명령이 설치됨",
+      "loadFailed": "명령 상태를 불러오지 못했습니다",
+      "loading": "명령 상태 확인 중...",
+      "uninstalledToast": "memrynote 명령이 제거됨"
+    }
+  },
+  "features": {
+    "header": {
+      "subtitle": "앱의 일부를 켜거나 끕니다. 끄면 사이드바에서 흐리게 표시되고 모든 곳에서 비활성화됩니다.",
+      "title": "기능"
+    },
+    "items": {
+      "calendar": {
+        "description": "일정 및 스케줄",
+        "label": "캘린더"
+      },
+      "graph": {
+        "description": "노트 연결",
+        "label": "그래프"
+      },
+      "home": {
+        "description": "시작 대시보드",
+        "label": "홈"
+      },
+      "inbox": {
+        "description": "빠른 수집 및 분류",
+        "label": "받은함"
+      },
+      "journal": {
+        "description": "매일 노트",
+        "label": "저널"
+      },
+      "tasks": {
+        "description": "할 일 및 마감일",
+        "label": "작업"
+      }
+    }
+  },
+  "import": {
+    "action": "가져오기",
+    "dialog": {
+      "cancel": "취소",
+      "choose": "파일 선택…",
+      "chooseFolder": "Apple Notes 폴더 선택…",
+      "chooseHint": "{label}을(를) 선택하세요",
+      "close": "닫기",
+      "done": "완료",
+      "error": "가져오기 실패",
+      "folderHint": "아래를 클릭하고 선택기가 열리면 “group.com.apple.notes” 폴더를 선택하세요(거기서 시작됩니다). 이렇게 하면 Memry가 노트와 첨부 파일을 읽을 수 있습니다 — 전체 디스크 접근 권한이 필요 없습니다.",
+      "progress": "{total}개 중 {completed}개",
+      "running": "가져오는 중…",
+      "selected": "{count, plural, other {파일 #개 선택됨}}",
+      "start": "가져오기 시작",
+      "summary": {
+        "attachments": "{count, plural, other {첨부 파일 #개 복사됨}}",
+        "failed": "{count}개 실패",
+        "imported": "{count, plural, other {항목 #개 가져옴}}",
+        "skipped": "{count}개 건너뜀",
+        "title": "가져오기 완료"
+      },
+      "title": "{name}에서 가져오기"
+    },
+    "header": {
+      "subtitle": "다른 앱에서 노트와 작업을 가져오세요",
+      "title": "가져오기"
+    },
+    "intro": "일회성 가져오기는 볼트에 새 노트를 생성합니다. 원본 내보내기 파일은 그대로 유지됩니다.",
+    "preview": {
+      "confirm": "가져오기",
+      "warnings": "경고"
+    },
+    "select": "가져올 앱을 선택하세요…",
+    "sources": {
+      "apple-journal": "Apple Journal HTML 내보내기를 날짜별 노트로 가져오기",
+      "apple-notes": "Apple Notes 데이터베이스(NoteStore.sqlite, macOS)에서 가져오기",
+      "bear": "Bear .bear2bk 아카이브 가져오기 (노트, 태그, 첨부 파일)",
+      "csv": ".csv 파일 가져오기 — 행당 노트 1개, 열이 속성이 됩니다",
+      "evernote": "하나 이상의 Evernote .enex 내보내기 파일 가져오기",
+      "google-keep": "Google Takeout Keep 내보내기(.json 또는 .zip) 가져오기",
+      "html": "연결된 이미지 및 페이지 간 링크가 있는 .html 파일 가져오기",
+      "markdown": ".md 파일 또는 폴더 가져오기 (frontmatter, 태그, 첨부 파일)",
+      "notion": "HTML 내보내기(.zip) 가져오기",
+      "onenote": "OneNote 노트북 가져오기 (Microsoft 계정 필요)",
+      "raindrop": "Raindrop.io 북마크 내보내기(.csv) 가져오기 — 북마크가 받은함에 들어갑니다",
+      "roam": "중첩 아웃라인이 있는 Roam Research 그래프(.json) 가져오기",
+      "ticktick": "TickTick 백업(.csv)을 프로젝트, 작업, 리마인더로 가져오기",
+      "todoist": "프로젝트 CSV 내보내기(.csv) 가져오기"
+    },
+    "stats": {
+      "bookmarks": "{count, plural, other {북마크 #개}}",
+      "comments": "{count, plural, other {댓글 #개}}",
+      "notes": "{count, plural, other {노트 #개}}",
+      "projects": "{count, plural, other {프로젝트 #개}}",
+      "reminders": "{count, plural, other {리마인더 #개}}",
+      "skipped": "{count}개 건너뜀",
+      "subtasks": "{count, plural, other {하위 작업 #개}}",
+      "tasks": "{count, plural, other {작업 #개}}",
+      "withDueDate": "{count}개 날짜 지정됨",
+      "withTags": "{count}개 태그됨"
     }
   }
 }

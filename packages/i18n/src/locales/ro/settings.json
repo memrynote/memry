@@ -25,7 +25,10 @@
         "integrations": "Integrari",
         "vault": "Seif",
         "tags": "Etichete",
-        "properties": "Proprietăți"
+        "properties": "Proprietăți",
+        "commandLine": "Linie de comandă",
+        "features": "Funcții",
+        "import": "Import"
       }
     }
   },
@@ -109,6 +112,11 @@
       "createInSelectedFolder": {
         "label": "Creați în dosarul selectat",
         "description": "Sunt create note și foldere noi în dosarul selectat curent. Când este dezactivat, elementele sunt întotdeauna create la rădăcină."
+      },
+      "defaultNoteFolder": {
+        "description": "Gol = rădăcina seifului",
+        "label": "Locația implicită pentru notițe noi",
+        "placeholder": "notițe"
       }
     },
     "privacy": {
@@ -116,6 +124,17 @@
         "label": "Partajați valori anonime de utilizare",
         "description": "Sunt doar valori anone – nu sunt trimise niciodată conținut de note, interogări de căutare, căi de fișiere, e-mailuri sau ID-uri brute.",
         "error": "Nu s-a putut actualiza setarea de telemetrie"
+      }
+    },
+    "dateFormat": {
+      "description": "Cum sunt afișate datele din calendar",
+      "error": "Actualizarea formatului datei a eșuat",
+      "label": "Format dată",
+      "options": {
+        "DD.MM.YYYY": "DD.MM.YYYY",
+        "DD/MM/YYYY": "DD/MM/YYYY",
+        "MM/DD/YYYY": "MM/DD/YYYY (US)",
+        "YYYY-MM-DD": "YYYY-MM-DD (ISO)"
       }
     }
   },
@@ -250,6 +269,9 @@
         "description": "Introduceți un nume pentru noua copie a șablonului.",
         "placeholder": "Numele șablonului"
       }
+    },
+    "preview": {
+      "notFound": "Nu s-a putut încărca acest șablon."
     }
   },
   "journal": {
@@ -261,7 +283,8 @@
     "groups": {
       "defaultTemplate": "Șablon implicit",
       "sidebarVisibility": "Vizibilitatea barei laterale",
-      "footer": "Subsol"
+      "footer": "Subsol",
+      "location": "Locație și format"
     },
     "template": {
       "label": "Șablon",
@@ -290,7 +313,21 @@
       "label": "Afișați subsolul statisticilor",
       "description": "Numărul de cuvinte, timpul de citire, marcajele de timp"
     },
-    "updateError": "Setarea nu a fost actualizată"
+    "updateError": "Setarea nu a fost actualizată",
+    "dateFormat": {
+      "description": "Formatul numelui de fișier pentru notițele zilnice (de ex. YYYY-MM-DD)",
+      "label": "Format dată",
+      "placeholder": "YYYY-MM-DD"
+    },
+    "folder": {
+      "description": "Dosarul în care sunt stocate notițele zilnice",
+      "label": "Dosar de jurnal",
+      "placeholder": "jurnal"
+    },
+    "preview": {
+      "description": "Calea fișierului de jurnal de astăzi",
+      "label": "Previzualizare"
+    }
   },
   "tasks": {
     "header": {
@@ -344,7 +381,9 @@
       "loading": "Se încarcă setările..."
     },
     "groups": {
-      "dayCellClick": "Faceți clic pe celulă de zi"
+      "dayCellClick": "Faceți clic pe celulă de zi",
+      "notes": "Notițe",
+      "weekStart": "Săptămână"
     },
     "defaultBehavior": {
       "label": "Comportament implicit",
@@ -360,6 +399,20 @@
       "openJournal": "Deschide Jurnalul",
       "openCalendar": "Deschide Calendar",
       "useGlobal": "Utilizați setarea globală"
+    },
+    "showNotesOnCalendar": {
+      "description": "Arată fiecare notiță în calendar ca element de toată ziua, în ziua în care a fost creată",
+      "error": "Actualizarea afișării notițelor în calendar a eșuat",
+      "label": "Arată notițele în calendar"
+    },
+    "weekStart": {
+      "description": "Prima zi a săptămânii în toate calendarele",
+      "error": "Actualizarea începutului săptămânii a eșuat",
+      "label": "Săptămâna începe cu",
+      "options": {
+        "monday": "Luni",
+        "sunday": "Duminică"
+      }
     }
   },
   "account": {
@@ -372,10 +425,12 @@
       "identity": "Identitatea",
       "sync": "Sincronizare",
       "storage": "Depozitare",
-      "devices": "Dispozitive"
+      "devices": "Dispozitive",
+      "billing": "Facturare"
     },
     "identity": {
-      "unknown": "Necunoscut"
+      "unknown": "Necunoscut",
+      "encrypted": "Criptat integral"
     },
     "sync": {
       "lastSynced": "Ultima sincronizare {time}",
@@ -421,6 +476,53 @@
       "signedOut": "S-a deconectat cu succes",
       "signOutFailed": "Nu s-a putut deconecta",
       "deviceLinked": "Dispozitivul a fost conectat cu succes"
+    },
+    "billing": {
+      "actions": {
+        "manage": "Gestionează facturarea",
+        "opening": "Se deschide...",
+        "refresh": "Reîmprospătează starea",
+        "upgrade": "Treci la un plan superior"
+      },
+      "activationPendingPrefix": "Activare în așteptare. Paddle poate dura un moment pentru a confirma achiziția. Reîmprospătează starea sau trimite email la",
+      "checking": "Se verifică starea facturării",
+      "historyDays": "{days} zile",
+      "labels": {
+        "history": "Istoric",
+        "maxFile": "Fișier maxim",
+        "storage": "Stocare",
+        "vaults": "Seifuri"
+      },
+      "planStatus": "Starea planului",
+      "plans": {
+        "believer": "Plan Believer",
+        "free": "Plan gratuit",
+        "plus": "Plan Plus",
+        "pro": "Plan Pro"
+      },
+      "statuses": {
+        "active": "Activ",
+        "canceled": "Anulat",
+        "inactive": "Inactiv",
+        "past_due": "Restant",
+        "paused": "În pauză"
+      },
+      "toasts": {
+        "activationPending": "Activare în așteptare",
+        "billingActive": "Facturarea este activă",
+        "checkoutFailed": "Nu s-a putut porni achiziția",
+        "checkoutOpened": "Achiziția a fost deschisă în browser",
+        "loadFailed": "Nu s-a putut încărca starea facturării",
+        "portalFailed": "Nu s-a putut deschide portalul de facturare",
+        "refreshFailed": "Nu s-a putut reîmprospăta starea facturării"
+      },
+      "unlimited": "Nelimitat"
+    },
+    "community": {
+      "and": "și",
+      "feedback": "trimite feedback",
+      "prompt": "Îți place memrynote?",
+      "star": "Oferă-ne o stea pe GitHub"
     }
   },
   "setup": {
@@ -437,7 +539,9 @@
       "errors": {
         "sendCode": "Nu s-a putut trimite codul",
         "googleStart": "Nu s-a pornit conectarea la Google"
-      }
+      },
+      "paidPlan": "Sincronizarea este un plan plătit.",
+      "seePlans": "Vezi planurile"
     },
     "email": {
       "label": "Adresă de e-mail",
@@ -488,7 +592,13 @@
         "registering": "Se înregistrează dispozitivul..."
       },
       "failed": "Recuperarea a eșuat",
-      "confirmationFailed": "Confirmarea nu a reușit"
+      "confirmationFailed": "Confirmarea nu a reușit",
+      "unavailable": {
+        "description": "Fraza ta de recuperare este afișată o singură dată în timpul configurării și nu poate fi recuperată ulterior. Ia-o de la capăt pentru a genera una nouă.",
+        "loading": "Se încarcă fraza ta de recuperare…",
+        "startOver": "Ia-o de la capăt",
+        "title": "Nu s-a putut încărca fraza ta de recuperare"
+      }
     },
     "linking": {
       "choiceTitle": "Conectați acest dispozitiv",
@@ -513,7 +623,15 @@
       "waitingTitle": "În așteptarea aprobării",
       "waitingDescription": "Deschideți memrynote pe celălalt dispozitiv și aprobați solicitarea de conectare.",
       "verificationCode": "Cod de verificare",
-      "confirmCode": "Confirmați că acesta se potrivește cu codul de pe celălalt dispozitiv"
+      "confirmCode": "Confirmați că acesta se potrivește cu codul de pe celălalt dispozitiv",
+      "vaultPickerChooseFolder": "Alege dosarul",
+      "vaultPickerConfirm": "Preia selecția",
+      "vaultPickerDescription": "Acest cont are mai multe seifuri. Alege un dosar și seiful (seifurile) de adăugat pe acest dispozitiv.",
+      "vaultPickerDormantHint": "Adăugat, se deschide când comuți la el",
+      "vaultPickerFolderLabel": "Stochează seifurile în dosarul",
+      "vaultPickerPrimaryHint": "Se deschide acum",
+      "vaultPickerTitle": "Alege ce să preiei",
+      "vaultRow": "Seif — {{count}} elemente · {{date}}"
     }
   },
   "devices": {
@@ -630,7 +748,15 @@
       "downloadedToast": "Whisper Small a fost descărcat",
       "downloadError": "Nu s-a putut descărca Whisper Small",
       "keySavedToast": "Cheia OpenAI salvată",
-      "keySaveError": "Nu s-a salvat cheia OpenAI"
+      "keySaveError": "Nu s-a salvat cheia OpenAI",
+      "memoNameMode": "Numele memourilor",
+      "memoNameModeDescription": "Cum sunt denumite memourile vocale după transcriere",
+      "naming": {
+        "none": "Nu redenumi",
+        "timestamp": "Marcaj temporal",
+        "transcript": "Titlu din transcriere"
+      },
+      "namingError": "Actualizarea denumirii memoului vocal a eșuat"
     },
     "embedding": {
       "loaded": "Încărcat",
@@ -715,7 +841,12 @@
       "connectFailed": "Nu s-a putut conecta Google Calendar",
       "refreshFailed": "Nu s-a reîmprospătat Google Calendar",
       "disconnectFailed": "Nu s-a putut deconecta Google Calendar",
-      "retryFailed": "Nu s-a reîncercat sincronizarea calendarului"
+      "retryFailed": "Nu s-a reîncercat sincronizarea calendarului",
+      "pushToGoogle": {
+        "description": "Dezactivează pentru sincronizare într-un singur sens — vei vedea în continuare evenimentele Google în memrynote, dar evenimentele memrynote nu vor apărea în Google.",
+        "error": "Actualizarea direcției de sincronizare a eșuat",
+        "label": "Arată evenimentele memrynote în Google Calendar"
+      }
     },
     "sourcePicker": {
       "empty": "Încă nu sunt disponibile calendare Google importate pe acest dispozitiv.",
@@ -796,7 +927,8 @@
       "changeColor": "Schimbați culoarea",
       "mergeInto": "Fuzionați în...",
       "merge": "Merge",
-      "delete": "Ștergeți"
+      "delete": "Ștergeți",
+      "changeIcon": "Schimbă pictograma"
     },
     "dialogs": {
       "deleteTitle": "Ștergeți eticheta",
@@ -814,7 +946,8 @@
       "mergeFailed": "Nu s-au putut îmbina etichetele",
       "merged": "Îmbinat „{source}” în „{target}” ({count, plural, one {articol #} other {articole #}})",
       "colorUpdated": "Culoarea actualizată pentru „{name}”",
-      "colorFailed": "Nu s-a putut actualiza culoarea"
+      "colorFailed": "Nu s-a putut actualiza culoarea",
+      "iconFailed": "Actualizarea pictogramei a eșuat"
     }
   },
   "properties": {
@@ -1144,7 +1277,10 @@
     "status": {
       "disconnected": "Disconnected",
       "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled"
+      "fullTools": "Full tools enabled",
+      "checking": "Se verifică…",
+      "connected": "Conectat",
+      "label": "Conexiune"
     },
     "permissions": {
       "group": "Agent permissions",
@@ -1160,6 +1296,133 @@
         "alwaysAllow": "Always allow",
         "askBeforeChanges": "Ask before changes"
       }
+    }
+  },
+  "commandLine": {
+    "actions": {
+      "refresh": "Reîmprospătează"
+    },
+    "command": {
+      "descriptionInstalled": "Instalată în {path}",
+      "descriptionNotInstalled": "Instalează comanda memrynote pentru a-ți putea folosi seiful din orice terminal.",
+      "label": "Comanda memrynote",
+      "toggleLabel": "Instalează comanda memrynote"
+    },
+    "defaultVault": {
+      "description": "Alege seiful folosit când rulezi memrynote fără --vault.",
+      "descriptionSelected": "Comenzile folosesc {path} când --vault este omis.",
+      "label": "Seif implicit",
+      "none": "Niciun seif selectat",
+      "placeholder": "Selectează seiful"
+    },
+    "groups": {
+      "terminal": "Terminal"
+    },
+    "header": {
+      "subtitle": "Configurează comanda memrynote pentru terminalul tău",
+      "title": "Linie de comandă"
+    },
+    "status": {
+      "defaultVaultUpdatedToast": "Seiful CLI implicit a fost actualizat",
+      "installedToast": "Comanda memrynote a fost instalată",
+      "loadFailed": "Încărcarea stării comenzii a eșuat",
+      "loading": "Se verifică starea comenzii...",
+      "uninstalledToast": "Comanda memrynote a fost eliminată"
+    }
+  },
+  "features": {
+    "header": {
+      "subtitle": "Activează sau dezactivează părți ale aplicației. Dezactivat = estompat în bara laterală și dezactivat peste tot.",
+      "title": "Funcții"
+    },
+    "items": {
+      "calendar": {
+        "description": "Evenimente și program",
+        "label": "Calendar"
+      },
+      "graph": {
+        "description": "Conexiuni între notițe",
+        "label": "Graf"
+      },
+      "home": {
+        "description": "Tablou de bord principal",
+        "label": "Acasă"
+      },
+      "inbox": {
+        "description": "Captură rapidă și triere",
+        "label": "Inbox"
+      },
+      "journal": {
+        "description": "Notițe zilnice",
+        "label": "Jurnal"
+      },
+      "tasks": {
+        "description": "Lucruri de făcut și date scadente",
+        "label": "Sarcini"
+      }
+    }
+  },
+  "import": {
+    "action": "Importă",
+    "dialog": {
+      "cancel": "Anulează",
+      "choose": "Alege fișierul…",
+      "chooseFolder": "Selectează dosarul Apple Notes…",
+      "chooseHint": "Selectează {label}",
+      "close": "Închide",
+      "done": "Gata",
+      "error": "Importul a eșuat",
+      "folderHint": "Dă clic mai jos și selectează dosarul „group.com.apple.notes” când se deschide selectorul (pornește acolo). Asta permite Memry să îți citească notițele și atașamentele — fără acces complet la disc.",
+      "progress": "{completed} din {total}",
+      "running": "Se importă…",
+      "selected": "{count, plural, one {# fișier selectat} few {# fișiere selectate} other {# de fișiere selectate}}",
+      "start": "Începe importul",
+      "summary": {
+        "attachments": "{count, plural, one {# atașament copiat} few {# atașamente copiate} other {# de atașamente copiate}}",
+        "failed": "{count} eșuate",
+        "imported": "{count, plural, one {# element importat} few {# elemente importate} other {# de elemente importate}}",
+        "skipped": "{count} omise",
+        "title": "Import finalizat"
+      },
+      "title": "Importă din {name}"
+    },
+    "header": {
+      "subtitle": "Adu-ți notițele și sarcinile din alte aplicații",
+      "title": "Import"
+    },
+    "intro": "Importurile unice creează notițe noi în seiful tău. Fișierele tale originale de export rămân neatinse.",
+    "preview": {
+      "confirm": "Importă",
+      "warnings": "Avertismente"
+    },
+    "select": "Selectează o aplicație din care să imporți…",
+    "sources": {
+      "apple-journal": "Importă un export HTML Apple Journal ca notițe cu dată",
+      "apple-notes": "Importă din baza de date Apple Notes (NoteStore.sqlite, macOS)",
+      "bear": "Importă o arhivă Bear .bear2bk (notițe, etichete, atașamente)",
+      "csv": "Importă un fișier .csv — o notiță per rând, coloanele devin proprietăți",
+      "evernote": "Importă unul sau mai multe fișiere de export Evernote .enex",
+      "google-keep": "Importă un export Google Takeout Keep (.json sau .zip)",
+      "html": "Importă fișiere .html cu imagini asociate și linkuri între pagini",
+      "markdown": "Importă fișiere .md sau un dosar (frontmatter, etichete, atașamente)",
+      "notion": "Importă un export HTML (.zip)",
+      "onenote": "Importă caiete OneNote (necesită un cont Microsoft)",
+      "raindrop": "Importă un export de marcaje Raindrop.io (.csv) — marcajele ajung în inbox",
+      "roam": "Importă un graf Roam Research (.json) cu schițe imbricate",
+      "ticktick": "Importă o copie de rezervă TickTick (.csv) ca proiecte, sarcini și mementouri",
+      "todoist": "Importă un export CSV de proiect (.csv)"
+    },
+    "stats": {
+      "bookmarks": "{count, plural, one {# marcaj} few {# marcaje} other {# de marcaje}}",
+      "comments": "{count, plural, one {# comentariu} few {# comentarii} other {# de comentarii}}",
+      "notes": "{count, plural, one {# notiță} few {# notițe} other {# de notițe}}",
+      "projects": "{count, plural, one {# proiect} few {# proiecte} other {# de proiecte}}",
+      "reminders": "{count, plural, one {# memento} few {# mementouri} other {# de mementouri}}",
+      "skipped": "{count} omise",
+      "subtasks": "{count, plural, one {# subsarcină} few {# subsarcini} other {# de subsarcini}}",
+      "tasks": "{count, plural, one {# sarcină} few {# sarcini} other {# de sarcini}}",
+      "withDueDate": "{count} cu dată",
+      "withTags": "{count} etichetate"
     }
   }
 }

@@ -73,6 +73,7 @@
     "settingsNotInitialized": "Sincronização de configurações não inicializada",
     "securityQuarantinePermanent": "Não foi possível verificar um item de sincronização e ele foi colocado em quarentena por segurança.",
     "securityQuarantineRetry": "Um item de sincronização falhou na verificação de assinatura e será tentado novamente.",
-    "certificatePinPaused": "Não foi possível verificar a conexão segura com o servidor de sincronização. A sincronização foi pausada para sua proteção."
+    "certificatePinPaused": "Não foi possível verificar a conexão segura com o servidor de sincronização. A sincronização foi pausada para sua proteção.",
+    "paymentRequired": "É necessário um plano de Sincronização pago para usar a sincronização encriptada alojada."
   }
 }

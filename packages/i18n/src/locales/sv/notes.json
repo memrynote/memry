@@ -42,7 +42,9 @@
       "setIcon": "Ställ in ikon",
       "removeIcon": "Ta bort ikon",
       "deleteSelectedNotes": "Radera {count} Anteckningar",
-      "deleteSelectedItems": "Ta bort {count} objekt"
+      "deleteSelectedItems": "Ta bort {count} objekt",
+      "bookmark": "Bokmärk",
+      "removeFromBookmarks": "Ta bort från bokmärken"
     },
     "deleteDialog": {
       "noteTitle": "Radera anteckning",
@@ -111,7 +113,11 @@
       "aria": "Notförslag",
       "loading": "Laddar anteckningar...",
       "empty": "Inga anteckningar hittades",
-      "create": "Skapa ny anteckning"
+      "create": "Skapa ny anteckning",
+      "embed": "Bädda in",
+      "embedAria": "Bädda in {title}",
+      "wikiLink": "Wiki-länk",
+      "wikiLinkAria": "Wiki-länk {title}"
     },
     "tags": {
       "aria": "Etikettförslag",
@@ -133,6 +139,15 @@
       "searchPlaceholder": "Sök",
       "noIcons": "Inga ikoner hittades",
       "clearSearch": "Rensa sökning"
+    },
+    "mention": {
+      "aria": "Datum- och anteckningsförslag",
+      "date": "Datum",
+      "dateHint": "Fortsätt skriva ett datum…",
+      "empty": "Inga anteckningar hittades",
+      "loading": "Laddar anteckningar...",
+      "remindMe": "Påminn mig",
+      "showMore": "Visa mer"
     }
   },
   "outline": {
@@ -174,7 +189,8 @@
     "createTag": "Skapa tagg: \"{tag}\"",
     "chooseColor": "Välj färg:",
     "preview": "Förhandsgranskning:",
-    "colorAria": "Välj {color}-färg"
+    "colorAria": "Välj {color}-färg",
+    "customColor": "Anpassad färg"
   },
   "properties": {
     "title": "Egenskaper",
@@ -205,7 +221,9 @@
       "status": "Status",
       "select": "Välj",
       "multiselect": "Flerval"
-    }
+    },
+    "showOnCalendar": "Visa i kalender",
+    "showingOnCalendar": "Visas i kalender"
   },
   "templateSelector": {
     "title": "Välj din duk",
@@ -295,7 +313,8 @@
   },
   "phaseF": {
     "componentsFolderViewColumnHeader": {
-      "dragToReorderColumn": "Dra för att ändra kolumnordning"
+      "dragToReorderColumn": "Dra för att ändra kolumnordning",
+      "editColumnName": "Redigera kolumnnamn"
     },
     "componentsFolderViewColumnSelector": {
       "properties": "Egenskaper",
@@ -311,7 +330,10 @@
       "delete": "Ta bort",
       "none": "Inga",
       "edit": "Redigera",
-      "delete2": "Ta bort"
+      "delete2": "Ta bort",
+      "columnBorders": "Kolumnkanter",
+      "display": "Visning",
+      "showSummaries": "Visa sammanfattningar"
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Filter",
@@ -329,17 +351,21 @@
       "of": "av:",
       "addCondition": "Lägg till villkor",
       "addFilter": "Lägg till filter",
-      "addGroup": "Lägg till grupp"
+      "addGroup": "Lägg till grupp",
+      "removeGroup": "Ta bort grupp"
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "Inbyggd",
       "properties": "Egenskaper",
       "placeholderProperty": "Egendom",
       "placeholderOperator": "Operatör",
-      "placeholderValue": "Värde"
+      "placeholderValue": "Värde",
+      "removeFilter": "Ta bort filter"
     },
     "componentsFolderViewFolderTableView": {
-      "notesTable": "Nottabell"
+      "notesTable": "Nottabell",
+      "selectAll": "Markera alla anteckningar",
+      "selectRow": "Markera anteckning"
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "Sökanteckningar...",
@@ -371,7 +397,9 @@
     },
     "componentsFolderViewGroupedTable": {
       "groupedNotesTable": "Grupperad anteckningstabell",
-      "more": "mer"
+      "more": "mer",
+      "selectAll": "Markera alla anteckningar",
+      "selectRow": "Markera anteckning"
     },
     "componentsFolderViewMoveToFolderDialog": {
       "searchFolders": "Sök mappar...",
@@ -399,7 +427,8 @@
     },
     "componentsFolderViewSortableColumnHeader": {
       "dragToReorderColumn": "Dra för att ändra kolumnordning",
-      "resizeColumn": "Ändra kolumnstorlek"
+      "resizeColumn": "Ändra kolumnstorlek",
+      "editColumnName": "Redigera kolumnnamn"
     },
     "componentsFolderViewViewSwitcher": {
       "default": "standard",
@@ -424,7 +453,16 @@
       "deleteView": "Radera vy",
       "areYouSureYouWantToDelete": "Är du säker på att du vill radera ",
       "thisActionCannotBeUndone": "Den här åtgärden kan inte ångras.",
-      "cancel3": "Avbryt"
+      "cancel3": "Avbryt",
+      "createView": "Skapa vy",
+      "gallery": "Galleri",
+      "layout": "Layout",
+      "list": "Lista",
+      "name": "Namn",
+      "newView": "Ny vy",
+      "save": "Spara",
+      "table": "Tabell",
+      "viewActions": "Vyåtgärder"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "Misslyckades med att ladda PDF: ",
@@ -607,6 +645,15 @@
       "startYourCollection": "Starta din samling",
       "templatesHelpYouCreateNotesWithConsistentStructure": "Mallar hjälper dig att skapa anteckningar med konsekvent struktur.",
       "createTemplate": "Skapa mall"
+    },
+    "componentsFolderViewSortSelector": {
+      "builtIn": "Inbyggd",
+      "clearSort": "Rensa sortering",
+      "noSortablePropertiesFound": "Inga sorterbara egenskaper hittades",
+      "properties": "Egenskaper",
+      "searchProperties": "Sök egenskaper...",
+      "sort": "Sortera",
+      "sortDirection": "Sorteringsriktning"
     }
   },
   "phaseI": {
@@ -654,5 +701,47 @@
       "cannotRemoveTagThisNoteWasDeleted": "Kan inte ta bort tagg - denna anteckning raderades",
       "cannotChangeLocalOnlyThisNoteWasDeleted": "Kan inte ändra lokal endast — denna anteckning raderades"
     }
+  },
+  "bulkActions": {
+    "addTag": "Lägg till tagg",
+    "clearAria": "Rensa urval",
+    "copiedLinks": "Kopierade {count, plural, one {# länk} other {# länkar}}",
+    "copyLinks": "Kopiera länkar",
+    "delete": "Radera",
+    "export": "Exportera",
+    "move": "Flytta",
+    "selected": "valda",
+    "tagNamePlaceholder": "Taggnamn",
+    "toolbarAria": "Massåtgärder"
+  },
+  "comments": {
+    "attachAria": "Bifoga fil",
+    "badgeAria": "{count, plural, one {# kommentar} other {# kommentarer}}",
+    "cancel": "Avbryt",
+    "commentPlaceholder": "Lägg till en kommentar...",
+    "createdTooltip": "Skapad {date} kl. {time}",
+    "delete": "Radera kommentar",
+    "edit": "Redigera kommentar",
+    "kind": {
+      "addition": "Tillägg",
+      "comment": "Kommentar",
+      "deletion": "Borttagning",
+      "substitution": "Ersättning"
+    },
+    "mentionAria": "Nämn en person, sida eller datum",
+    "railAria": "Kommentarer",
+    "replyPlaceholder": "Svara...",
+    "resolve": "Lös",
+    "sendAria": "Skicka kommentar",
+    "toolbarComment": "Kommentera"
+  },
+  "dateMention": {
+    "clear": "Rensa",
+    "dateFormat": "Datumformat",
+    "dateInput": "Datum",
+    "includeTime": "Inkludera tid",
+    "remind": "Påminn",
+    "time": "Tid",
+    "timeFormat": "Tidsformat"
   }
 }

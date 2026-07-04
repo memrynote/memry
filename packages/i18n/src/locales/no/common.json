@@ -45,7 +45,10 @@
   "count": {
     "note": "{count, plural, one {# merknad} other {# notater}}",
     "task": "{count, plural, one {#-oppgave} other {# oppgaver}}",
-    "itemDelete": "{count, plural, one {Slett #-element} other {Slett #-elementer}}"
+    "itemDelete": "{count, plural, one {Slett #-element} other {Slett #-elementer}}",
+    "event": "{count, plural, one {# hendelse} other {# hendelser}}",
+    "journal": "{count, plural, one {# journal} other {# journaler}}",
+    "reminder": "{count, plural, one {# påminnelse} other {# påminnelser}}"
   },
   "toast": {
     "actionFailed": "Handlingen mislyktes",
@@ -83,7 +86,23 @@
       "newNoteN": "Nytt notat (⌘N)",
       "new": "Nytt",
       "syncDisabled": "Synkronisering er deaktivert",
-      "syncDisabled2": "Synkronisering er deaktivert"
+      "syncDisabled2": "Synkronisering er deaktivert",
+      "feedbackButton": "Send tilbakemelding",
+      "feedbackDescription": "Fortell oss hva som funker, hva som er ødelagt, eller hva du skulle ønske Memry gjorde. Vi leser hver melding.",
+      "feedbackEmailHint": "Legg til e-posten din hvis du vil ha svar.",
+      "feedbackError": "Kunne ikke sende tilbakemelding. Prøv igjen.",
+      "feedbackPlaceholder": "Din tilbakemelding…",
+      "feedbackSend": "Send",
+      "feedbackSending": "Sender…",
+      "feedbackSuccess": "Takk for tilbakemeldingen!",
+      "feedbackTitle": "Send tilbakemelding",
+      "newItemMenu": "Opprett ny…",
+      "updateAvailable": "Oppdater",
+      "updateDownloading": "Laster ned…",
+      "updateDownloadingPercent": "Laster ned {percent}%",
+      "updateInstallingSubtitle": "Memrynote starter på nytt automatisk.",
+      "updateInstallingTitle": "Installerer oppdatering",
+      "updateRestart": "Start på nytt"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Endre størrelse på dagpanel",
@@ -462,7 +481,8 @@
       "day": "dag",
       "agent": "Agent",
       "pendingApproval": "{count, plural, one {# venter på godkjenning} other {# venter på godkjenninger}}",
-      "inProgress": "Agent-tur pågår"
+      "inProgress": "Agent-tur pågår",
+      "close": "Lukk agent"
     },
     "errors": {
       "loadConversations": "Kunne ikke laste agentsamtaler",
@@ -481,5 +501,142 @@
     "sources": {
       "used": "{count, plural, one {Brukte # kilde} other {Brukte # kilder}}"
     }
+  },
+  "home": {
+    "addWidget": "Legg til widget",
+    "board": {
+      "defaultName": "Hjem",
+      "deleteAria": "Slett layout",
+      "label": "Hjem-layout",
+      "newAria": "Nytt oppsett",
+      "newName": "Nytt oppsett"
+    },
+    "disabled": {
+      "createNote": "Opprett notat",
+      "hint": "Ingenting åpent. Start et notat."
+    },
+    "done": "Ferdig",
+    "edit": "Rediger",
+    "empty": {
+      "body": "Widgeter samler notater, oppgaver og bokmerker på ett rolig sted.",
+      "cta": "Legg til din første widget",
+      "title": "Tavlen din er tom"
+    },
+    "greeting": {
+      "afternoon": "God ettermiddag",
+      "evening": "God kveld",
+      "morning": "God morgen"
+    },
+    "header": {
+      "events": "{count, plural, one {# hendelse} other {# hendelser}}",
+      "tasksDue": "{count, plural, one {# oppgave forfaller i dag} other {# oppgaver forfaller i dag}}"
+    },
+    "noBookmarksYet": "Ingen bokmerker ennå.",
+    "noEventsYet": "Ingen hendelser i dag.",
+    "noJournalEntriesYet": "Ingen journaloppføringer ennå.",
+    "noNotesYet": "Ingen notater ennå.",
+    "noTasksYet": "Ingen oppgaver ennå.",
+    "widget": {
+      "bookmarks": "Bokmerker",
+      "calendar": "Kalender",
+      "calendarToday": "I dag",
+      "configAria": "Konfigurer widget",
+      "configure": "Konfigurer",
+      "dragAria": "Dra widget",
+      "duration": "{count} min",
+      "filter": {
+        "today": "Forfaller i dag",
+        "tomorrow": "I morgen",
+        "week": "Denne uken"
+      },
+      "folder": "Mappe",
+      "folderEmpty": "Ingen mapper ennå",
+      "folderNoSelection": "Ingen mappe valgt",
+      "folderPickPrompt": "Velg en mappe",
+      "folderViewSelect": "Visning",
+      "folderView_gallery": "Galleri",
+      "folderView_list": "Liste",
+      "inbox": "Innboks",
+      "inboxAllTypes": "Alle typer",
+      "inboxOlder": "{count, plural, one {# eldre} other {# eldre}}",
+      "inboxOldest": "eldste {count, plural, one {# dag} other {# dager}}",
+      "journal": "Journal",
+      "journalStreak": "{count, plural, one {#-dagers rekke} other {#-dagers rekke}}",
+      "journalToday": "I dag",
+      "journalYesterday": "I går",
+      "loadError": "Kunne ikke laste",
+      "menuAria": "Widget-alternativer",
+      "next": "Neste: {title}",
+      "openCalendar": "Åpne kalender",
+      "openInbox": "Åpne innboks",
+      "recentMeta": "redigert {time}",
+      "recentMetaWithFolder": "{folder} · redigert {time}",
+      "recentlyEdited": "Nylig redigert",
+      "remove": "Fjern",
+      "removeAria": "Fjern widget",
+      "resize": "Størrelse",
+      "resizeAria": "Endre størrelse til {{size}}",
+      "savedFilterDefault": "I dag",
+      "savedFilterHint": "Merk filtre med stjerne på Oppgaver-siden for å bruke dem her",
+      "savedFilterLabel": "Lagret filter",
+      "startsIn": "Starter om {count, plural, one {# min} other {# min}}",
+      "tasks": "Oppgaver",
+      "unknown": "Ukjent widget",
+      "untitled": "Uten tittel"
+    }
+  },
+  "media": {
+    "video": "Video"
+  },
+  "onboarding": {
+    "agentChat": {
+      "body": "Bytt til Agent-fanen for å spørre Memrynotes assistent om hvelvet ditt.",
+      "title": "Chat med AI-agenten"
+    },
+    "collections": {
+      "body": "Organiser notater i mapper, fest bokmerker og bla gjennom etter etikett — alt her.",
+      "title": "Samlinger, bokmerker og etiketter"
+    },
+    "dayPanel": {
+      "body": "Sidepanelet holder en kalender og dagsvisningen din ved siden av det du leser.",
+      "title": "Dagen din, ved siden av arbeidet ditt"
+    },
+    "feedback": {
+      "body": "Send tilbakemelding rett til teamet herfra.",
+      "title": "Fortell oss hva du synes"
+    },
+    "nav": {
+      "body": "Innboks for å fange opp, Journal for daglige notater, Kalender for tidslinjen din, Oppgaver for gjøremål, og Graf for å se hvordan alt henger sammen.",
+      "title": "Arbeidsområdene dine"
+    },
+    "newNote": {
+      "body": "Start her. Alt du skriver lagres lokalt, først.",
+      "title": "Opprett ditt første notat"
+    },
+    "settings": {
+      "body": "Importer notatene dine fra 12+ apper — Obsidian, Notion, Apple Notes, Evernote og mer — og juster alt annet i Innstillinger.",
+      "title": "Innstillinger og import"
+    },
+    "sync": {
+      "body": "Slå på ende-til-ende-kryptert synkronisering for å holde alle enheter i takt.",
+      "title": "Privat, kryptert synkronisering"
+    },
+    "welcome": {
+      "body": "Ditt private, offline-først hjem. Notater er ende-til-ende-kryptert — de forlater aldri enheten din ukryptert.",
+      "title": "Velkommen til Memrynote"
+    }
+  },
+  "updatePrompt": {
+    "autoUpdateLabel": "Last ned og installer oppdateringer automatisk",
+    "availableBody": "{version} er tilgjengelig — du har {current}. Vil du laste den ned nå?",
+    "availableTitle": "En ny versjon av MemryNote er tilgjengelig!",
+    "download": "Last ned",
+    "downloadedBody": "{version} er lastet ned. Start MemryNote på nytt for å fullføre installasjonen.",
+    "downloadedTitle": "Oppdatering klar til installasjon",
+    "later": "Senere",
+    "releaseNotesLabel": "Versjonsmerknader",
+    "remindLater": "Minn meg på det senere",
+    "restartNow": "Start på nytt nå",
+    "skip": "Hopp over denne versjonen"
   }
 }

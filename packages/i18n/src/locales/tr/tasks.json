@@ -33,7 +33,8 @@
     "repeat": "Tekrarla",
     "createAnother": "Başka bir tane oluştur",
     "delete": "Görevi sil",
-    "created": "Oluşturuldu {date}"
+    "created": "Oluşturuldu {date}",
+    "reminder": "Hatırlatıcı"
   },
   "filters": {
     "filter": "Filtre",
@@ -62,7 +63,16 @@
     "noNotesAvailable": "Not mevcut değil",
     "noLinkedNotes": "Henüz bağlantılı not yok",
     "removeLinkTo": "Bağlantıyı kaldır {title}",
-    "removeLinkFallback": "not"
+    "removeLinkFallback": "not",
+    "addRelatedItem": "İlgili öğe ekle",
+    "noMatchingRelated": "Eşleşen öğe yok",
+    "noRelatedAvailable": "Kullanılabilir öğe yok",
+    "noRelatedItems": "Henüz ilgili öğe yok",
+    "related": "İlgili",
+    "relatedItemFallback": "öğe",
+    "removeRelatedItem": "{title} ilgili öğesini kaldır",
+    "resize": "Paneli yeniden boyutlandır",
+    "searchRelated": "İlgili ara…"
   },
   "kanban": {
     "board": "Kanban panosu"
@@ -174,7 +184,8 @@
     "componentsTasksDatePickerContent": {
       "removeDate": "Tarihi kaldır",
       "clearTime": "Zamanı temizle",
-      "addTime": "Zaman ekle"
+      "addTime": "Zaman ekle",
+      "time": "Saat"
     },
     "componentsTasksDeleteProjectDialog": {
       "delete": "Sil \"",
@@ -612,6 +623,20 @@
       "failedToLoadTaskPreferences": "Görev tercihleri yüklenemedi",
       "failedToUpdateTaskPreferences": "Görev tercihleri güncellenemedi",
       "failedToLoadLinkedTasks": "Bağlı görevler yüklenemedi"
+    }
+  },
+  "reminders": {
+    "hasReminders": "Hatırlatıcıları var",
+    "setReminder": "Hatırlatıcı ayarla",
+    "summary": "Hatırlatıcı: {date}",
+    "summaryWithMore": "Hatırlatıcı: {date} (+{count} daha)",
+    "toast": {
+      "deleteFailed": "Hatırlatıcı silinemedi",
+      "deleted": "Hatırlatıcı silindi",
+      "set": "Hatırlatıcı ayarlandı",
+      "setFailed": "Hatırlatıcı ayarlanamadı",
+      "updateFailed": "Hatırlatıcı güncellenemedi",
+      "updated": "Hatırlatıcı güncellendi"
     }
   }
 }

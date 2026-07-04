@@ -36,7 +36,8 @@
       "journal": "Memento de jurnal",
       "highlight": "Evidențiați memento",
       "fallback": "Memento scadent",
-      "default": "Memento"
+      "default": "Memento",
+      "task": "Memento sarcină"
     }
   },
   "error": {

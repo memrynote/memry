@@ -36,7 +36,8 @@
       "journal": "Paalala sa journal",
       "highlight": "I-highlight ang paalala",
       "fallback": "Nakatakdang paalala",
-      "default": "Paalala"
+      "default": "Paalala",
+      "task": "Paalala sa gawain"
     }
   },
   "error": {

@@ -33,7 +33,8 @@
     "repeat": "Wiederholen",
     "createAnother": "Erstellen Sie ein anderes",
     "delete": "Aufgabe löschen",
-    "created": "{date} erstellt"
+    "created": "{date} erstellt",
+    "reminder": "Erinnerung"
   },
   "filters": {
     "filter": "Filtern",
@@ -62,7 +63,16 @@
     "noNotesAvailable": "Keine Notizen verfügbar",
     "noLinkedNotes": "Noch keine verknüpften Notizen",
     "removeLinkTo": "Link zu {title} entfernen",
-    "removeLinkFallback": "Hinweis"
+    "removeLinkFallback": "Hinweis",
+    "addRelatedItem": "Verwandtes Element hinzufügen",
+    "noMatchingRelated": "Keine passenden Elemente",
+    "noRelatedAvailable": "Keine Elemente verfügbar",
+    "noRelatedItems": "Noch keine verwandten Elemente",
+    "related": "Verwandt",
+    "relatedItemFallback": "Element",
+    "removeRelatedItem": "Verwandtes Element {title} entfernen",
+    "resize": "Panel-Größe ändern",
+    "searchRelated": "Verwandtes suchen…"
   },
   "kanban": {
     "board": "Kanban-Board"
@@ -174,7 +184,8 @@
     "componentsTasksDatePickerContent": {
       "removeDate": "Datum entfernen",
       "clearTime": "Klare Zeit",
-      "addTime": "Fügen Sie Zeit hinzu"
+      "addTime": "Fügen Sie Zeit hinzu",
+      "time": "Zeit"
     },
     "componentsTasksDeleteProjectDialog": {
       "delete": "Löschen „",
@@ -612,6 +623,20 @@
       "failedToLoadTaskPreferences": "Die Aufgabeneinstellungen konnten nicht geladen werden",
       "failedToUpdateTaskPreferences": "Die Aufgabeneinstellungen konnten nicht aktualisiert werden",
       "failedToLoadLinkedTasks": "Verknüpfte Aufgaben konnten nicht geladen werden"
+    }
+  },
+  "reminders": {
+    "hasReminders": "Hat Erinnerungen",
+    "setReminder": "Erinnerung festlegen",
+    "summary": "Erinnerung: {date}",
+    "summaryWithMore": "Erinnerung: {date} (+{count} weitere)",
+    "toast": {
+      "deleteFailed": "Erinnerung konnte nicht gelöscht werden",
+      "deleted": "Erinnerung gelöscht",
+      "set": "Erinnerung festgelegt",
+      "setFailed": "Erinnerung konnte nicht festgelegt werden",
+      "updateFailed": "Erinnerung konnte nicht aktualisiert werden",
+      "updated": "Erinnerung aktualisiert"
     }
   }
 }

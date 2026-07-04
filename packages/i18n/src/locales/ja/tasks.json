@@ -33,7 +33,8 @@
     "repeat": "リピート",
     "createAnother": "別のを作成する",
     "delete": "タスクの削除",
-    "created": "{date}を作成しました"
+    "created": "{date}を作成しました",
+    "reminder": "リマインダー"
   },
   "filters": {
     "filter": "フィルター",
@@ -62,7 +63,16 @@
     "noNotesAvailable": "利用可能なメモはありません",
     "noLinkedNotes": "リンクされたノートはまだありません",
     "removeLinkTo": "{title} へのリンクを削除",
-    "removeLinkFallback": "メモ"
+    "removeLinkFallback": "メモ",
+    "addRelatedItem": "関連項目を追加",
+    "noMatchingRelated": "一致する項目がありません",
+    "noRelatedAvailable": "利用可能な項目がありません",
+    "noRelatedItems": "関連項目はまだありません",
+    "related": "関連",
+    "relatedItemFallback": "項目",
+    "removeRelatedItem": "関連項目 {title} を削除",
+    "resize": "パネルのサイズを変更",
+    "searchRelated": "関連を検索…"
   },
   "kanban": {
     "board": "カンバンボード"
@@ -174,7 +184,8 @@
     "componentsTasksDatePickerContent": {
       "removeDate": "日付を削除",
       "clearTime": "クリアタイム",
-      "addTime": "時間を追加する"
+      "addTime": "時間を追加する",
+      "time": "時刻"
     },
     "componentsTasksDeleteProjectDialog": {
       "delete": "「を削除」",
@@ -612,6 +623,20 @@
       "failedToLoadTaskPreferences": "タスク設定のロードに失敗しました",
       "failedToUpdateTaskPreferences": "タスク設定の更新に失敗しました",
       "failedToLoadLinkedTasks": "リンクされたタスクのロードに失敗しました"
+    }
+  },
+  "reminders": {
+    "hasReminders": "リマインダーあり",
+    "setReminder": "リマインダーを設定",
+    "summary": "リマインダー: {date}",
+    "summaryWithMore": "リマインダー: {date}（他 +{count} 件）",
+    "toast": {
+      "deleteFailed": "リマインダーの削除に失敗しました",
+      "deleted": "リマインダーを削除しました",
+      "set": "リマインダーを設定しました",
+      "setFailed": "リマインダーの設定に失敗しました",
+      "updateFailed": "リマインダーの更新に失敗しました",
+      "updated": "リマインダーを更新しました"
     }
   }
 }

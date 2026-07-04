@@ -42,7 +42,9 @@
       "setIcon": "アイコンを設定",
       "removeIcon": "アイコンを削除",
       "deleteSelectedNotes": "{count}メモの削除",
-      "deleteSelectedItems": "{count} アイテムを削除する"
+      "deleteSelectedItems": "{count} アイテムを削除する",
+      "bookmark": "ブックマーク",
+      "removeFromBookmarks": "ブックマークから削除"
     },
     "deleteDialog": {
       "noteTitle": "メモの削除",
@@ -111,7 +113,11 @@
       "aria": "メモの提案",
       "loading": "メモを読み込んでいます...",
       "empty": "メモが見つかりませんでした",
-      "create": "新しいメモを作成する"
+      "create": "新しいメモを作成する",
+      "embed": "埋め込み",
+      "embedAria": "{title} を埋め込み",
+      "wikiLink": "Wiki リンク",
+      "wikiLinkAria": "Wiki リンク {title}"
     },
     "tags": {
       "aria": "タグの提案",
@@ -133,6 +139,15 @@
       "searchPlaceholder": "検索",
       "noIcons": "アイコンが見つかりません",
       "clearSearch": "検索をクリア"
+    },
+    "mention": {
+      "aria": "日付とノートの候補",
+      "date": "日付",
+      "dateHint": "日付を入力し続けてください…",
+      "empty": "ノートが見つかりません",
+      "loading": "ノートを読み込み中...",
+      "remindMe": "通知する",
+      "showMore": "もっと見る"
     }
   },
   "outline": {
@@ -174,7 +189,8 @@
     "createTag": "タグを作成:「{tag}」",
     "chooseColor": "色を選択してください:",
     "preview": "プレビュー:",
-    "colorAria": "{color} カラーを選択してください"
+    "colorAria": "{color} カラーを選択してください",
+    "customColor": "カスタムカラー"
   },
   "properties": {
     "title": "プロパティ",
@@ -205,7 +221,9 @@
       "status": "ステータス",
       "select": "選択",
       "multiselect": "複数選択"
-    }
+    },
+    "showOnCalendar": "カレンダーに表示",
+    "showingOnCalendar": "カレンダーに表示中"
   },
   "templateSelector": {
     "title": "キャンバスを選択してください",
@@ -295,7 +313,8 @@
   },
   "phaseF": {
     "componentsFolderViewColumnHeader": {
-      "dragToReorderColumn": "ドラッグして列を並べ替えます"
+      "dragToReorderColumn": "ドラッグして列を並べ替えます",
+      "editColumnName": "列名を編集"
     },
     "componentsFolderViewColumnSelector": {
       "properties": "プロパティ",
@@ -311,7 +330,10 @@
       "delete": "削除",
       "none": "なし",
       "edit": "編集",
-      "delete2": "削除"
+      "delete2": "削除",
+      "columnBorders": "列の境界線",
+      "display": "表示",
+      "showSummaries": "サマリーを表示"
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "フィルター",
@@ -329,17 +351,21 @@
       "of": "の:",
       "addCondition": "条件の追加",
       "addFilter": "フィルターを追加",
-      "addGroup": "グループを追加"
+      "addGroup": "グループを追加",
+      "removeGroup": "グループを削除"
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "内蔵",
       "properties": "プロパティ",
       "placeholderProperty": "プロパティ",
       "placeholderOperator": "オペレーター",
-      "placeholderValue": "値"
+      "placeholderValue": "値",
+      "removeFilter": "フィルターを削除"
     },
     "componentsFolderViewFolderTableView": {
-      "notesTable": "注記テーブル"
+      "notesTable": "注記テーブル",
+      "selectAll": "すべてのノートを選択",
+      "selectRow": "ノートを選択"
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "メモを検索...",
@@ -371,7 +397,9 @@
     },
     "componentsFolderViewGroupedTable": {
       "groupedNotesTable": "グループ化されたメモテーブル",
-      "more": "もっと見る"
+      "more": "もっと見る",
+      "selectAll": "すべてのノートを選択",
+      "selectRow": "ノートを選択"
     },
     "componentsFolderViewMoveToFolderDialog": {
       "searchFolders": "フォルダーを検索...",
@@ -399,7 +427,8 @@
     },
     "componentsFolderViewSortableColumnHeader": {
       "dragToReorderColumn": "ドラッグして列を並べ替えます",
-      "resizeColumn": "列のサイズを変更する"
+      "resizeColumn": "列のサイズを変更する",
+      "editColumnName": "列名を編集"
     },
     "componentsFolderViewViewSwitcher": {
       "default": "デフォルト",
@@ -424,7 +453,16 @@
       "deleteView": "ビューの削除",
       "areYouSureYouWantToDelete": "削除してもよろしいですか?",
       "thisActionCannotBeUndone": "この操作は元に戻すことができません。",
-      "cancel3": "キャンセル"
+      "cancel3": "キャンセル",
+      "createView": "ビューを作成",
+      "gallery": "ギャラリー",
+      "layout": "レイアウト",
+      "list": "リスト",
+      "name": "名前",
+      "newView": "新しいビュー",
+      "save": "保存",
+      "table": "テーブル",
+      "viewActions": "ビューの操作"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "PDF のロードに失敗しました: ",
@@ -607,6 +645,15 @@
       "startYourCollection": "コレクションを始めましょう",
       "templatesHelpYouCreateNotesWithConsistentStructure": "テンプレートを使用すると、一貫した構造のメモを作成できます。",
       "createTemplate": "テンプレートの作成"
+    },
+    "componentsFolderViewSortSelector": {
+      "builtIn": "組み込み",
+      "clearSort": "並べ替えをクリア",
+      "noSortablePropertiesFound": "並べ替え可能なプロパティが見つかりません",
+      "properties": "プロパティ",
+      "searchProperties": "プロパティを検索...",
+      "sort": "並べ替え",
+      "sortDirection": "並べ替えの方向"
     }
   },
   "phaseI": {
@@ -654,5 +701,47 @@
       "cannotRemoveTagThisNoteWasDeleted": "タグを削除できません - このメモは削除されました",
       "cannotChangeLocalOnlyThisNoteWasDeleted": "ローカルのみを変更できません - このメモは削除されました"
     }
+  },
+  "bulkActions": {
+    "addTag": "タグを追加",
+    "clearAria": "選択をクリア",
+    "copiedLinks": "{count, plural, other {#件のリンクをコピーしました}}",
+    "copyLinks": "リンクをコピー",
+    "delete": "削除",
+    "export": "エクスポート",
+    "move": "移動",
+    "selected": "選択中",
+    "tagNamePlaceholder": "タグ名",
+    "toolbarAria": "一括操作"
+  },
+  "comments": {
+    "attachAria": "ファイルを添付",
+    "badgeAria": "{count, plural, other {#件のコメント}}",
+    "cancel": "キャンセル",
+    "commentPlaceholder": "コメントを追加...",
+    "createdTooltip": "{date} {time} に作成",
+    "delete": "コメントを削除",
+    "edit": "コメントを編集",
+    "kind": {
+      "addition": "追加",
+      "comment": "コメント",
+      "deletion": "削除",
+      "substitution": "置き換え"
+    },
+    "mentionAria": "人物、ページ、日付をメンション",
+    "railAria": "コメント",
+    "replyPlaceholder": "返信...",
+    "resolve": "解決",
+    "sendAria": "コメントを送信",
+    "toolbarComment": "コメント"
+  },
+  "dateMention": {
+    "clear": "クリア",
+    "dateFormat": "日付の形式",
+    "dateInput": "日付",
+    "includeTime": "時刻を含める",
+    "remind": "通知",
+    "time": "時刻",
+    "timeFormat": "時刻の形式"
   }
 }

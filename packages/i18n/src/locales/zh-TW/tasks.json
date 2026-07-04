@@ -33,7 +33,8 @@
     "repeat": "重複",
     "createAnother": "創建另一個",
     "delete": "刪除任務",
-    "created": "已創建 {date}"
+    "created": "已創建 {date}",
+    "reminder": "提醒"
   },
   "filters": {
     "filter": "篩選",
@@ -62,7 +63,16 @@
     "noNotesAvailable": "沒有可用的筆記",
     "noLinkedNotes": "尚無已連結的筆記",
     "removeLinkTo": "移除與 {title} 的連結",
-    "removeLinkFallback": "筆記"
+    "removeLinkFallback": "筆記",
+    "addRelatedItem": "新增相關項目",
+    "noMatchingRelated": "沒有符合的項目",
+    "noRelatedAvailable": "沒有可用的項目",
+    "noRelatedItems": "尚無相關項目",
+    "related": "相關",
+    "relatedItemFallback": "項目",
+    "removeRelatedItem": "移除相關項目 {title}",
+    "resize": "調整面板大小",
+    "searchRelated": "搜尋相關…"
   },
   "kanban": {
     "board": "看板"
@@ -174,7 +184,8 @@
     "componentsTasksDatePickerContent": {
       "removeDate": "移除日期",
       "clearTime": "清除時間",
-      "addTime": "新增時間"
+      "addTime": "新增時間",
+      "time": "時間"
     },
     "componentsTasksDeleteProjectDialog": {
       "delete": "刪除",
@@ -612,6 +623,20 @@
       "failedToLoadTaskPreferences": "載入任務偏好設定失敗",
       "failedToUpdateTaskPreferences": "更新任務偏好設定失敗",
       "failedToLoadLinkedTasks": "載入關聯任務失敗"
+    }
+  },
+  "reminders": {
+    "hasReminders": "有提醒",
+    "setReminder": "設定提醒",
+    "summary": "提醒：{date}",
+    "summaryWithMore": "提醒：{date}（另有 {count} 個）",
+    "toast": {
+      "deleteFailed": "刪除提醒失敗",
+      "deleted": "提醒已刪除",
+      "set": "已設定提醒",
+      "setFailed": "設定提醒失敗",
+      "updateFailed": "更新提醒失敗",
+      "updated": "提醒已更新"
     }
   }
 }

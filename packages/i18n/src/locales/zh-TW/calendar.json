@@ -27,7 +27,9 @@
     "imported-event": "匯入的事件",
     "task": "任務",
     "reminder": "提醒",
-    "snooze": "延遲處理"
+    "snooze": "延遲處理",
+    "note": "筆記",
+    "note-date": "日期提醒"
   },
   "state": {
     "loading-calendar": "正在載入行事曆…",
@@ -151,5 +153,34 @@
       "could-not-remove-due-date": "無法移除截止日期",
       "could-not-open-note": "無法打開筆記"
     }
+  },
+  "connect-prompt": {
+    "aria": "連接 Google Calendar",
+    "body": "連接您的 Google 帳戶，讓行事曆發揮更多功能：",
+    "bullets": {
+      "events": "在筆記與任務旁檢視您的 Google 活動",
+      "schedule": "在行事曆上安排任務與筆記",
+      "sync": "建立與編輯活動，雙向同步"
+    },
+    "continue": "使用 Google 繼續",
+    "dismiss": "關閉",
+    "error": "無法連接 Google Calendar。請再試一次。",
+    "pill": "連接 Google",
+    "title": "完成連接 Google Calendar"
+  },
+  "notePopover": {
+    "couldNotOpen": "無法開啟筆記",
+    "kind": "筆記",
+    "kindDateReminder": "日期提醒",
+    "open": "開啟筆記"
+  },
+  "search": {
+    "close": "關閉搜尋",
+    "no-results": "沒有符合的結果",
+    "open": "搜尋行事曆",
+    "placeholder": "搜尋活動、任務、提醒…"
+  },
+  "undo": {
+    "moveEvent": "移動活動"
   }
 }

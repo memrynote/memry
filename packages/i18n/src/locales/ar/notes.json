@@ -42,7 +42,9 @@
       "setIcon": "تعيين أيقونة",
       "removeIcon": "إزالة الرمز",
       "deleteSelectedNotes": "حذف ملاحظات {count}",
-      "deleteSelectedItems": "حذف عناصر {count}"
+      "deleteSelectedItems": "حذف عناصر {count}",
+      "bookmark": "إشارة مرجعية",
+      "removeFromBookmarks": "إزالة من الإشارات المرجعية"
     },
     "deleteDialog": {
       "noteTitle": "حذف الملاحظة",
@@ -111,7 +113,11 @@
       "aria": "ملاحظة الاقتراحات",
       "loading": "جارٍ تحميل الملاحظات...",
       "empty": "لم يتم العثور على أي ملاحظات",
-      "create": "إنشاء ملاحظة جديدة"
+      "create": "إنشاء ملاحظة جديدة",
+      "embed": "تضمين",
+      "embedAria": "تضمين {title}",
+      "wikiLink": "رابط ويكي",
+      "wikiLinkAria": "رابط ويكي {title}"
     },
     "tags": {
       "aria": "اقتراحات العلامات",
@@ -133,6 +139,15 @@
       "searchPlaceholder": "بحث",
       "noIcons": "لم يتم العثور على أي أيقونات",
       "clearSearch": "مسح البحث"
+    },
+    "mention": {
+      "aria": "اقتراحات التاريخ والملاحظات",
+      "date": "التاريخ",
+      "dateHint": "استمر في كتابة تاريخ…",
+      "empty": "لم يتم العثور على ملاحظات",
+      "loading": "جارٍ تحميل الملاحظات...",
+      "remindMe": "ذكّرني",
+      "showMore": "عرض المزيد"
     }
   },
   "outline": {
@@ -174,7 +189,8 @@
     "createTag": "إنشاء علامة: \"{tag}\"",
     "chooseColor": "اختر اللون:",
     "preview": "معاينة:",
-    "colorAria": "حدد لون {color}"
+    "colorAria": "حدد لون {color}",
+    "customColor": "لون مخصّص"
   },
   "properties": {
     "title": "خصائص",
@@ -205,7 +221,9 @@
       "status": "الحالة",
       "select": "اختر",
       "multiselect": "تحديد متعدد"
-    }
+    },
+    "showOnCalendar": "إظهار في التقويم",
+    "showingOnCalendar": "يظهر في التقويم"
   },
   "templateSelector": {
     "title": "اختر قماشك",
@@ -295,7 +313,8 @@
   },
   "phaseF": {
     "componentsFolderViewColumnHeader": {
-      "dragToReorderColumn": "اسحب لإعادة ترتيب العمود"
+      "dragToReorderColumn": "اسحب لإعادة ترتيب العمود",
+      "editColumnName": "تحرير اسم العمود"
     },
     "componentsFolderViewColumnSelector": {
       "properties": "خصائص",
@@ -311,7 +330,10 @@
       "delete": "حذف",
       "none": "لا شيء",
       "edit": "تحرير",
-      "delete2": "حذف"
+      "delete2": "حذف",
+      "columnBorders": "حدود الأعمدة",
+      "display": "العرض",
+      "showSummaries": "إظهار الملخصات"
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "تصفية",
@@ -329,17 +351,21 @@
       "of": "من:",
       "addCondition": "إضافة شرط",
       "addFilter": "إضافة مرشح",
-      "addGroup": "أضف مجموعة"
+      "addGroup": "أضف مجموعة",
+      "removeGroup": "إزالة المجموعة"
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "مدمج",
       "properties": "خصائص",
       "placeholderProperty": "الملكية",
       "placeholderOperator": "المشغل",
-      "placeholderValue": "القيمة"
+      "placeholderValue": "القيمة",
+      "removeFilter": "إزالة عامل التصفية"
     },
     "componentsFolderViewFolderTableView": {
-      "notesTable": "جدول الملاحظات"
+      "notesTable": "جدول الملاحظات",
+      "selectAll": "تحديد كل الملاحظات",
+      "selectRow": "تحديد الملاحظة"
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "ملاحظات البحث...",
@@ -371,7 +397,9 @@
     },
     "componentsFolderViewGroupedTable": {
       "groupedNotesTable": "جدول الملاحظات المجمعة",
-      "more": "المزيد"
+      "more": "المزيد",
+      "selectAll": "تحديد كل الملاحظات",
+      "selectRow": "تحديد الملاحظة"
     },
     "componentsFolderViewMoveToFolderDialog": {
       "searchFolders": "بحث في المجلدات...",
@@ -399,7 +427,8 @@
     },
     "componentsFolderViewSortableColumnHeader": {
       "dragToReorderColumn": "اسحب لإعادة ترتيب العمود",
-      "resizeColumn": "تغيير حجم العمود"
+      "resizeColumn": "تغيير حجم العمود",
+      "editColumnName": "تحرير اسم العمود"
     },
     "componentsFolderViewViewSwitcher": {
       "default": "default",
@@ -424,7 +453,16 @@
       "deleteView": "حذف العرض",
       "areYouSureYouWantToDelete": "هل أنت متأكد أنك تريد حذف \"",
       "thisActionCannotBeUndone": "لا يمكن التراجع عن هذا الإجراء.",
-      "cancel3": "إلغاء"
+      "cancel3": "إلغاء",
+      "createView": "إنشاء عرض",
+      "gallery": "معرض",
+      "layout": "التخطيط",
+      "list": "قائمة",
+      "name": "الاسم",
+      "newView": "عرض جديد",
+      "save": "حفظ",
+      "table": "جدول",
+      "viewActions": "إجراءات العرض"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "فشل تحميل ملف PDF: ",
@@ -607,6 +645,15 @@
       "startYourCollection": "ابدأ مجموعتك",
       "templatesHelpYouCreateNotesWithConsistentStructure": "تساعدك القوالب على إنشاء ملاحظات ذات بنية متسقة.",
       "createTemplate": "إنشاء قالب"
+    },
+    "componentsFolderViewSortSelector": {
+      "builtIn": "مدمج",
+      "clearSort": "مسح الترتيب",
+      "noSortablePropertiesFound": "لم يتم العثور على خصائص قابلة للترتيب",
+      "properties": "الخصائص",
+      "searchProperties": "البحث في الخصائص...",
+      "sort": "ترتيب",
+      "sortDirection": "اتجاه الترتيب"
     }
   },
   "phaseI": {
@@ -654,5 +701,47 @@
       "cannotRemoveTagThisNoteWasDeleted": "لا يمكن إزالة العلامة - تم حذف هذه الملاحظة",
       "cannotChangeLocalOnlyThisNoteWasDeleted": "لا يمكن التغيير محليًا فقط — تم حذف هذه الملاحظة"
     }
+  },
+  "bulkActions": {
+    "addTag": "إضافة وسم",
+    "clearAria": "مسح التحديد",
+    "copiedLinks": "تم نسخ {count, plural, zero {# رابط} one {رابط واحد} two {رابطين} few {# روابط} many {# رابطاً} other {# رابط}}",
+    "copyLinks": "نسخ الروابط",
+    "delete": "حذف",
+    "export": "تصدير",
+    "move": "نقل",
+    "selected": "محدد",
+    "tagNamePlaceholder": "اسم الوسم",
+    "toolbarAria": "إجراءات مجمّعة"
+  },
+  "comments": {
+    "attachAria": "إرفاق ملف",
+    "badgeAria": "{count, plural, zero {لا توجد تعليقات} one {تعليق واحد} two {تعليقان} few {# تعليقات} many {# تعليقاً} other {# تعليق}}",
+    "cancel": "إلغاء",
+    "commentPlaceholder": "أضف تعليقًا...",
+    "createdTooltip": "أُنشئ في {date} الساعة {time}",
+    "delete": "حذف التعليق",
+    "edit": "تحرير التعليق",
+    "kind": {
+      "addition": "إضافة",
+      "comment": "تعليق",
+      "deletion": "حذف",
+      "substitution": "استبدال"
+    },
+    "mentionAria": "أشر إلى شخص أو صفحة أو تاريخ",
+    "railAria": "التعليقات",
+    "replyPlaceholder": "رد...",
+    "resolve": "حل",
+    "sendAria": "إرسال التعليق",
+    "toolbarComment": "تعليق"
+  },
+  "dateMention": {
+    "clear": "مسح",
+    "dateFormat": "تنسيق التاريخ",
+    "dateInput": "التاريخ",
+    "includeTime": "تضمين الوقت",
+    "remind": "تذكير",
+    "time": "الوقت",
+    "timeFormat": "تنسيق الوقت"
   }
 }

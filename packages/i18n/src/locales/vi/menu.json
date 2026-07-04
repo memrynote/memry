@@ -1,11 +1,15 @@
 {
   "app": {
-    "quit": "Thoát"
+    "quit": "Thoát",
+    "preferences": "Cài đặt…"
   },
   "file": {
     "label": "Tập tin",
     "newNote": "Ghi chú Mới",
-    "close": "Đóng cửa sổ"
+    "close": "Đóng cửa sổ",
+    "closeTab": "Đóng thẻ",
+    "exportPdf": "Xuất ra PDF…",
+    "openQuickly": "Mở nhanh…"
   },
   "navigation": {
     "back": "Quay lại",
@@ -18,12 +22,51 @@
     "cut": "Cắt",
     "copy": "Sao chép",
     "paste": "Dán",
-    "selectAll": "Chọn tất cả"
+    "selectAll": "Chọn tất cả",
+    "find": "Tìm",
+    "speech": "Giọng nói"
   },
   "view": {
     "label": "Xem",
     "reload": "Tải lại",
     "toggleDevTools": "Chuyển đổi Công cụ Phát triển",
-    "toggleFullscreen": "Chuyển đổi Toàn màn hình"
+    "toggleFullscreen": "Chuyển đổi Toàn màn hình",
+    "theme": "Giao diện",
+    "themeDark": "Tối",
+    "themeLight": "Sáng",
+    "themeSystem": "Hệ thống",
+    "themeWhite": "Giấy",
+    "toggleDayPanel": "Bật/tắt Bảng Ngày",
+    "toggleSidebar": "Bật/tắt Thanh bên"
+  },
+  "format": {
+    "body": "Nội dung",
+    "bold": "Đậm",
+    "code": "Mã",
+    "heading1": "Tiêu đề 1",
+    "heading2": "Tiêu đề 2",
+    "heading3": "Tiêu đề 3",
+    "highlight": "Tô sáng",
+    "italic": "Nghiêng",
+    "label": "Định dạng",
+    "strikethrough": "Gạch ngang"
+  },
+  "help": {
+    "about": "Giới thiệu Memrynote",
+    "documentation": "Tài liệu",
+    "label": "Trợ giúp",
+    "shortcuts": "Phím tắt"
+  },
+  "insert": {
+    "attachment": "Chèn tệp đính kèm…",
+    "bulletList": "Danh sách dấu đầu dòng",
+    "codeBlock": "Khối mã",
+    "label": "Chèn",
+    "numberedList": "Danh sách đánh số",
+    "table": "Bảng",
+    "taskList": "Danh sách công việc"
+  },
+  "window": {
+    "label": "Cửa sổ"
   }
 }

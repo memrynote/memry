@@ -33,7 +33,8 @@
     "repeat": "Ulitin",
     "createAnother": "Lumikha ng isa pa",
     "delete": "Tanggalin ang gawain",
-    "created": "Nilikha ang {date}"
+    "created": "Nilikha ang {date}",
+    "reminder": "Paalala"
   },
   "filters": {
     "filter": "Salain",
@@ -62,7 +63,16 @@
     "noNotesAvailable": "Walang available na tala",
     "noLinkedNotes": "Wala pang naka-link na tala",
     "removeLinkTo": "Alisin ang link sa {title}",
-    "removeLinkFallback": "tala"
+    "removeLinkFallback": "tala",
+    "addRelatedItem": "Magdagdag ng kaugnay na item",
+    "noMatchingRelated": "Walang tumutugmang item",
+    "noRelatedAvailable": "Walang available na item",
+    "noRelatedItems": "Wala pang kaugnay na item",
+    "related": "Kaugnay",
+    "relatedItemFallback": "item",
+    "removeRelatedItem": "Alisin ang kaugnay na item na {title}",
+    "resize": "I-resize ang panel",
+    "searchRelated": "Maghanap ng kaugnay…"
   },
   "kanban": {
     "board": "Kanban board"
@@ -174,7 +184,8 @@
     "componentsTasksDatePickerContent": {
       "removeDate": "Tanggalin ang petsa",
       "clearTime": "Malinaw na oras",
-      "addTime": "Magdagdag ng oras"
+      "addTime": "Magdagdag ng oras",
+      "time": "Oras"
     },
     "componentsTasksDeleteProjectDialog": {
       "delete": "Tanggalin\"",
@@ -612,6 +623,20 @@
       "failedToLoadTaskPreferences": "Nabigong i-load ang mga kagustuhan sa gawain",
       "failedToUpdateTaskPreferences": "Nabigong i-update ang mga kagustuhan sa gawain",
       "failedToLoadLinkedTasks": "Nabigong i-load ang mga naka-link na gawain"
+    }
+  },
+  "reminders": {
+    "hasReminders": "May mga paalala",
+    "setReminder": "Magtakda ng paalala",
+    "summary": "Paalala: {date}",
+    "summaryWithMore": "Paalala: {date} (+{count} pa)",
+    "toast": {
+      "deleteFailed": "Nabigong tanggalin ang paalala",
+      "deleted": "Natanggal ang paalala",
+      "set": "Naitakda ang paalala",
+      "setFailed": "Nabigong magtakda ng paalala",
+      "updateFailed": "Nabigong i-update ang paalala",
+      "updated": "Na-update ang paalala"
     }
   }
 }

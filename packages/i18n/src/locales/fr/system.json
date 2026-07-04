@@ -36,7 +36,8 @@
       "journal": "Rappel du journal",
       "highlight": "Rappel des surbrillance",
       "fallback": "Rappel dû",
-      "default": "Rappel"
+      "default": "Rappel",
+      "task": "Rappel de tâche"
     }
   },
   "error": {

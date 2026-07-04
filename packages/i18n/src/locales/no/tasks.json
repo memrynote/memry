@@ -33,7 +33,8 @@
     "repeat": "Gjenta",
     "createAnother": "Lag en annen",
     "delete": "Slett oppgave",
-    "created": "Opprettet {date}"
+    "created": "Opprettet {date}",
+    "reminder": "Påminnelse"
   },
   "filters": {
     "filter": "Filter",
@@ -62,7 +63,16 @@
     "noNotesAvailable": "Ingen notater tilgjengelig",
     "noLinkedNotes": "Ingen tilknyttede notater ennå",
     "removeLinkTo": "Fjern lenken til {title}",
-    "removeLinkFallback": "merk"
+    "removeLinkFallback": "merk",
+    "addRelatedItem": "Legg til relatert element",
+    "noMatchingRelated": "Ingen matchende elementer",
+    "noRelatedAvailable": "Ingen elementer tilgjengelig",
+    "noRelatedItems": "Ingen relaterte elementer ennå",
+    "related": "Relatert",
+    "relatedItemFallback": "element",
+    "removeRelatedItem": "Fjern relatert element {title}",
+    "resize": "Endre størrelse på panel",
+    "searchRelated": "Søk i relaterte…"
   },
   "kanban": {
     "board": "Kanban-tavle"
@@ -174,7 +184,8 @@
     "componentsTasksDatePickerContent": {
       "removeDate": "Fjern dato",
       "clearTime": "Klar tid",
-      "addTime": "Legg til tid"
+      "addTime": "Legg til tid",
+      "time": "Tid"
     },
     "componentsTasksDeleteProjectDialog": {
       "delete": "Slett \"",
@@ -612,6 +623,20 @@
       "failedToLoadTaskPreferences": "Kunne ikke laste inn oppgaveinnstillingene",
       "failedToUpdateTaskPreferences": "Kunne ikke oppdatere oppgaveinnstillingene",
       "failedToLoadLinkedTasks": "Kunne ikke laste inn koblede oppgaver"
+    }
+  },
+  "reminders": {
+    "hasReminders": "Har påminnelser",
+    "setReminder": "Angi påminnelse",
+    "summary": "Påminnelse: {date}",
+    "summaryWithMore": "Påminnelse: {date} (+{count} til)",
+    "toast": {
+      "deleteFailed": "Kunne ikke slette påminnelse",
+      "deleted": "Påminnelse slettet",
+      "set": "Påminnelse angitt",
+      "setFailed": "Kunne ikke angi påminnelse",
+      "updateFailed": "Kunne ikke oppdatere påminnelse",
+      "updated": "Påminnelse oppdatert"
     }
   }
 }

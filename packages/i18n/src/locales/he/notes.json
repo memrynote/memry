@@ -42,7 +42,9 @@
       "setIcon": "הגדר אייקון",
       "removeIcon": "הסר סמל",
       "deleteSelectedNotes": "מחק הערות {count}",
-      "deleteSelectedItems": "מחק פריטי {count}"
+      "deleteSelectedItems": "מחק פריטי {count}",
+      "bookmark": "סימנייה",
+      "removeFromBookmarks": "הסר מהסימניות"
     },
     "deleteDialog": {
       "noteTitle": "מחק הערה",
@@ -111,7 +113,11 @@
       "aria": "שימו לב להצעות",
       "loading": "טוען הערות...",
       "empty": "לא נמצאו הערות",
-      "create": "צור הערה חדשה"
+      "create": "צור הערה חדשה",
+      "embed": "הטמע",
+      "embedAria": "הטמע את {title}",
+      "wikiLink": "קישור ויקי",
+      "wikiLinkAria": "קישור ויקי אל {title}"
     },
     "tags": {
       "aria": "הצעות לתייג",
@@ -133,6 +139,15 @@
       "searchPlaceholder": "חפש",
       "noIcons": "לא נמצאו אייקונים",
       "clearSearch": "נקה חיפוש"
+    },
+    "mention": {
+      "aria": "הצעות תאריך ופתק",
+      "date": "תאריך",
+      "dateHint": "המשך להקליד תאריך…",
+      "empty": "לא נמצאו פתקים",
+      "loading": "טוען פתקים...",
+      "remindMe": "הזכר לי",
+      "showMore": "הצג עוד"
     }
   },
   "outline": {
@@ -174,7 +189,8 @@
     "createTag": "צור תג: \"{tag}\"",
     "chooseColor": "בחר צבע:",
     "preview": "תצוגה מקדימה:",
-    "colorAria": "בחר צבע {color}"
+    "colorAria": "בחר צבע {color}",
+    "customColor": "צבע מותאם אישית"
   },
   "properties": {
     "title": "נכסים",
@@ -205,7 +221,9 @@
       "status": "סטטוס",
       "select": "בחר",
       "multiselect": "בחירה מרובה"
-    }
+    },
+    "showOnCalendar": "הצג בלוח השנה",
+    "showingOnCalendar": "מוצג בלוח השנה"
   },
   "templateSelector": {
     "title": "בחר את הקנבס שלך",
@@ -295,7 +313,8 @@
   },
   "phaseF": {
     "componentsFolderViewColumnHeader": {
-      "dragToReorderColumn": "גרור כדי לסדר מחדש את העמודה"
+      "dragToReorderColumn": "גרור כדי לסדר מחדש את העמודה",
+      "editColumnName": "ערוך שם עמודה"
     },
     "componentsFolderViewColumnSelector": {
       "properties": "נכסים",
@@ -311,7 +330,10 @@
       "delete": "מחק",
       "none": "אין",
       "edit": "ערוך",
-      "delete2": "מחק"
+      "delete2": "מחק",
+      "columnBorders": "גבולות עמודות",
+      "display": "תצוגה",
+      "showSummaries": "הצג סיכומים"
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "מסנן",
@@ -329,17 +351,21 @@
       "of": "של:",
       "addCondition": "הוסף תנאי",
       "addFilter": "הוסף מסנן",
-      "addGroup": "הוסף קבוצה"
+      "addGroup": "הוסף קבוצה",
+      "removeGroup": "הסר קבוצה"
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "מובנה",
       "properties": "נכסים",
       "placeholderProperty": "רכוש",
       "placeholderOperator": "מפעיל",
-      "placeholderValue": "ערך"
+      "placeholderValue": "ערך",
+      "removeFilter": "הסר מסנן"
     },
     "componentsFolderViewFolderTableView": {
-      "notesTable": "טבלת הערות"
+      "notesTable": "טבלת הערות",
+      "selectAll": "בחר את כל הפתקים",
+      "selectRow": "בחר פתק"
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "חפש הערות...",
@@ -371,7 +397,9 @@
     },
     "componentsFolderViewGroupedTable": {
       "groupedNotesTable": "טבלת הערות מקובצות",
-      "more": "יותר"
+      "more": "יותר",
+      "selectAll": "בחר את כל הפתקים",
+      "selectRow": "בחר פתק"
     },
     "componentsFolderViewMoveToFolderDialog": {
       "searchFolders": "חפש תיקיות...",
@@ -399,7 +427,8 @@
     },
     "componentsFolderViewSortableColumnHeader": {
       "dragToReorderColumn": "גרור כדי לסדר מחדש את העמודה",
-      "resizeColumn": "שנה את גודל העמודה"
+      "resizeColumn": "שנה את גודל העמודה",
+      "editColumnName": "ערוך שם עמודה"
     },
     "componentsFolderViewViewSwitcher": {
       "default": "ברירת מחדל",
@@ -424,7 +453,16 @@
       "deleteView": "מחק תצוגה",
       "areYouSureYouWantToDelete": "האם אתה בטוח שאתה רוצה למחוק \"",
       "thisActionCannotBeUndone": "לא ניתן לבטל פעולה זו.",
-      "cancel3": "בטל"
+      "cancel3": "בטל",
+      "createView": "צור תצוגה",
+      "gallery": "גלריה",
+      "layout": "פריסה",
+      "list": "רשימה",
+      "name": "שם",
+      "newView": "תצוגה חדשה",
+      "save": "שמור",
+      "table": "טבלה",
+      "viewActions": "פעולות תצוגה"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "טעינת PDF נכשלה: ",
@@ -607,6 +645,15 @@
       "startYourCollection": "התחל את האוסף שלך",
       "templatesHelpYouCreateNotesWithConsistentStructure": "תבניות עוזרות לך ליצור הערות עם מבנה עקבי.",
       "createTemplate": "צור תבנית"
+    },
+    "componentsFolderViewSortSelector": {
+      "builtIn": "מובנה",
+      "clearSort": "נקה מיון",
+      "noSortablePropertiesFound": "לא נמצאו מאפיינים ניתנים למיון",
+      "properties": "מאפיינים",
+      "searchProperties": "חפש מאפיינים...",
+      "sort": "מיין",
+      "sortDirection": "כיוון מיון"
     }
   },
   "phaseI": {
@@ -654,5 +701,47 @@
       "cannotRemoveTagThisNoteWasDeleted": "לא ניתן להסיר תג - הערה זו נמחקה",
       "cannotChangeLocalOnlyThisNoteWasDeleted": "לא ניתן לשנות רק מקומי - הערה זו נמחקה"
     }
+  },
+  "bulkActions": {
+    "addTag": "הוסף תגית",
+    "clearAria": "נקה בחירה",
+    "copiedLinks": "הועתקו {count, plural, one {# קישור} other {# קישורים}}",
+    "copyLinks": "העתק קישורים",
+    "delete": "מחק",
+    "export": "ייצא",
+    "move": "העבר",
+    "selected": "נבחרו",
+    "tagNamePlaceholder": "שם תגית",
+    "toolbarAria": "פעולות קבוצתיות"
+  },
+  "comments": {
+    "attachAria": "צרף קובץ",
+    "badgeAria": "{count, plural, one {# תגובה} other {# תגובות}}",
+    "cancel": "ביטול",
+    "commentPlaceholder": "הוסף תגובה...",
+    "createdTooltip": "נוצר {date} ב-{time}",
+    "delete": "מחק תגובה",
+    "edit": "ערוך תגובה",
+    "kind": {
+      "addition": "הוספה",
+      "comment": "הערה",
+      "deletion": "מחיקה",
+      "substitution": "החלפה"
+    },
+    "mentionAria": "אזכר אדם, דף או תאריך",
+    "railAria": "תגובות",
+    "replyPlaceholder": "השב...",
+    "resolve": "פתור",
+    "sendAria": "שלח תגובה",
+    "toolbarComment": "הערה"
+  },
+  "dateMention": {
+    "clear": "נקה",
+    "dateFormat": "פורמט תאריך",
+    "dateInput": "תאריך",
+    "includeTime": "כלול שעה",
+    "remind": "הזכר",
+    "time": "שעה",
+    "timeFormat": "פורמט שעה"
   }
 }

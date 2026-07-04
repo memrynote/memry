@@ -26,6 +26,10 @@
     "jobs": {
       "running": "{count, plural, one {Úloha # běží na pozadí} other {Úlohy # běží na pozadí}}",
       "failed": "{count} se nezdařilo"
+    },
+    "density": {
+      "toComfortable": "Pohodlné zobrazení",
+      "toCompact": "Kompaktní zobrazení"
     }
   },
   "type": {
@@ -208,7 +212,15 @@
     "linkedNotesAria": "Propojené poznámky",
     "removeLinkTo": "Odebrat odkaz na {title}",
     "notePlaceholder": "Napište poznámku...",
-    "textPlaceholder": "Upravit zachycený text..."
+    "textPlaceholder": "Upravit zachycený text...",
+    "linkANote": "Propojit poznámku",
+    "match": {
+      "likely": "Pravděpodobná shoda",
+      "strong": "Silná shoda",
+      "weak": "Slabá shoda"
+    },
+    "resize": "Změnit velikost panelu",
+    "suggestedCount": "{count} navrženo"
   },
   "content": {
     "capturedAt": "Zachyceno {date}",
@@ -253,7 +265,12 @@
     "presetInOneHour": "1 hodina",
     "presetTomorrow": "zítra",
     "presetNextWeek": "Příští týden",
-    "custom": "Vlastní..."
+    "custom": "Vlastní...",
+    "archive": "Archivovat",
+    "panelEmpty": "Žádná nadcházející připomenutí.",
+    "panelPast": "Minulé",
+    "panelUpcoming": "Nadcházející",
+    "taskFallback": "Úkol"
   },
   "insights": {
     "captureActivity": "Aktivita zachycení",
@@ -295,7 +312,9 @@
       "recordVoiceMemo2": "Nahrajte hlasovou poznámku",
       "alreadyCaptured": "Již zachyceno: “",
       "rdquo": "rdquo;",
-      "captureAnyway": "Každopádně zachytit"
+      "captureAnyway": "Každopádně zachytit",
+      "focusShortcut": "Zaměřit pole pro zachycení",
+      "q": "Q"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Vyberte složku",
@@ -416,7 +435,11 @@
       "backToPresets": "Zpět k předvolbám",
       "time": "Čas",
       "noteOptional": "Poznámka (volitelné)",
-      "whyAreYouSettingThisReminder": "Proč nastavujete toto připomenutí?"
+      "whyAreYouSettingThisReminder": "Proč nastavujete toto připomenutí?",
+      "deleteReminder": "Smazat připomenutí",
+      "editReminder": "Upravit připomenutí",
+      "save": "Uložit",
+      "set": "Nastavit"
     },
     "componentsSnoozeSnoozePicker": {
       "snooze": "Odložit",
@@ -461,5 +484,37 @@
     "toasts": {
       "inboxRefreshed": "Doručená pošta byla obnovena"
     }
+  },
+  "convert": {
+    "addEvent": "Přidat událost",
+    "addTask": "Přidat úkol",
+    "allDay": "Celý den",
+    "binaryOnlyNote": "Soubory se mohou stát pouze poznámkou",
+    "chooseType": "Převést na",
+    "create": "Vytvořit",
+    "date": "Datum",
+    "dueDate": "Datum splatnosti",
+    "dueTime": "Čas splatnosti",
+    "end": "Konec",
+    "event": "Událost",
+    "failed": "Nepodařilo se převést: {error}",
+    "inboxProject": "Doručená pošta",
+    "location": "Místo",
+    "note": "Poznámka",
+    "priority": "Priorita",
+    "priorityHigh": "Vysoká",
+    "priorityLow": "Nízká",
+    "priorityMedium": "Střední",
+    "priorityNone": "Žádná",
+    "priorityUrgent": "Naléhavá",
+    "project": "Projekt",
+    "remindAt": "Připomenout v",
+    "reminder": "Připomenutí",
+    "setReminder": "Nastavit připomenutí",
+    "start": "Začátek",
+    "success": "Převedeno na {target}",
+    "task": "Úkol",
+    "time": "Čas",
+    "title": "Převést"
   }
 }

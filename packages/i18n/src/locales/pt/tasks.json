@@ -33,7 +33,8 @@
     "repeat": "Repetir",
     "createAnother": "Crie outro",
     "delete": "Excluir tarefa",
-    "created": "Criado {date}"
+    "created": "Criado {date}",
+    "reminder": "Lembrete"
   },
   "filters": {
     "filter": "Filtro",
@@ -62,7 +63,16 @@
     "noNotesAvailable": "Nenhuma nota disponível",
     "noLinkedNotes": "Ainda não há notas vinculadas",
     "removeLinkTo": "Remover link para {title}",
-    "removeLinkFallback": "nota"
+    "removeLinkFallback": "nota",
+    "addRelatedItem": "Adicionar item relacionado",
+    "noMatchingRelated": "Nenhum item correspondente",
+    "noRelatedAvailable": "Nenhum item disponível",
+    "noRelatedItems": "Ainda não há itens relacionados",
+    "related": "Relacionado",
+    "relatedItemFallback": "item",
+    "removeRelatedItem": "Remover item relacionado {title}",
+    "resize": "Redimensionar painel",
+    "searchRelated": "Pesquisar relacionado…"
   },
   "kanban": {
     "board": "Quadro Kanban"
@@ -174,7 +184,8 @@
     "componentsTasksDatePickerContent": {
       "removeDate": "Remover data",
       "clearTime": "Limpar tempo",
-      "addTime": "Adicionar tempo"
+      "addTime": "Adicionar tempo",
+      "time": "Hora"
     },
     "componentsTasksDeleteProjectDialog": {
       "delete": "Excluir \"",
@@ -612,6 +623,20 @@
       "failedToLoadTaskPreferences": "Falha ao carregar preferências de tarefa",
       "failedToUpdateTaskPreferences": "Falha ao atualizar as preferências de tarefa",
       "failedToLoadLinkedTasks": "Falha ao carregar tarefas vinculadas"
+    }
+  },
+  "reminders": {
+    "hasReminders": "Tem lembretes",
+    "setReminder": "Definir lembrete",
+    "summary": "Lembrete: {date}",
+    "summaryWithMore": "Lembrete: {date} (+{count} mais)",
+    "toast": {
+      "deleteFailed": "Falha ao eliminar lembrete",
+      "deleted": "Lembrete eliminado",
+      "set": "Lembrete definido",
+      "setFailed": "Falha ao definir lembrete",
+      "updateFailed": "Falha ao atualizar lembrete",
+      "updated": "Lembrete atualizado"
     }
   }
 }

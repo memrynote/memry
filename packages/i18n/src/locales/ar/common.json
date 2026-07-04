@@ -45,7 +45,10 @@
   "count": {
     "note": "{count, plural, zero {لا توجد ملاحظات} one {ملاحظة واحدة} two {ملاحظتان} few {# ملاحظات} many {# ملاحظة} other {# ملاحظة}}",
     "task": "{count, plural, zero {لا توجد مهام} one {مهمة واحدة} two {مهمتان} few {# مهام} many {# مهمة} other {# مهمة}}",
-    "itemDelete": "{count, plural, zero {حذف العناصر} one {حذف عنصر واحد} two {حذف عنصرين} few {حذف # عناصر} many {حذف # عنصراً} other {حذف # عنصر}}"
+    "itemDelete": "{count, plural, zero {حذف العناصر} one {حذف عنصر واحد} two {حذف عنصرين} few {حذف # عناصر} many {حذف # عنصراً} other {حذف # عنصر}}",
+    "event": "{count, plural, zero {لا توجد أحداث} one {حدث واحد} two {حدثان} few {# أحداث} many {# حدثاً} other {# حدث}}",
+    "journal": "{count, plural, zero {لا توجد يوميات} one {يومية واحدة} two {يوميتان} few {# يوميات} many {# يومية} other {# يومية}}",
+    "reminder": "{count, plural, zero {لا توجد تذكيرات} one {تذكير واحد} two {تذكيران} few {# تذكيرات} many {# تذكيراً} other {# تذكير}}"
   },
   "toast": {
     "actionFailed": "فشل الإجراء",
@@ -83,7 +86,23 @@
       "newNoteN": "ملاحظة جديدة (⌘N)",
       "new": "جديد",
       "syncDisabled": "تم تعطيل المزامنة",
-      "syncDisabled2": "تم تعطيل المزامنة"
+      "syncDisabled2": "تم تعطيل المزامنة",
+      "feedbackButton": "إرسال ملاحظات",
+      "feedbackDescription": "أخبرنا بما يعمل، وما لا يعمل، أو بما تتمنى أن يفعله Memry. نقرأ كل رسالة.",
+      "feedbackEmailHint": "أضف بريدك الإلكتروني إذا كنت ترغب في الحصول على رد.",
+      "feedbackError": "تعذّر إرسال الملاحظات. يرجى المحاولة مرة أخرى.",
+      "feedbackPlaceholder": "ملاحظاتك…",
+      "feedbackSend": "إرسال",
+      "feedbackSending": "جارٍ الإرسال…",
+      "feedbackSuccess": "شكرًا على ملاحظاتك!",
+      "feedbackTitle": "إرسال ملاحظات",
+      "newItemMenu": "إنشاء جديد…",
+      "updateAvailable": "تحديث",
+      "updateDownloading": "جارٍ التنزيل…",
+      "updateDownloadingPercent": "جارٍ التنزيل {percent}%",
+      "updateInstallingSubtitle": "ستتم إعادة تشغيل Memrynote تلقائيًا.",
+      "updateInstallingTitle": "جارٍ تثبيت التحديث",
+      "updateRestart": "إعادة التشغيل"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "تغيير حجم لوحة اليوم",
@@ -462,7 +481,8 @@
       "day": "اليوم",
       "agent": "Agent",
       "pendingApproval": "{count, plural, one {# في انتظار الموافقة} other {# الموافقات المعلقة}}",
-      "inProgress": "جارٍ تشغيل Agent"
+      "inProgress": "جارٍ تشغيل Agent",
+      "close": "إغلاق الوكيل"
     },
     "errors": {
       "loadConversations": "تعذر تحميل محادثات الوكيل",
@@ -481,5 +501,142 @@
     "sources": {
       "used": "{count, plural, one {تم استخدام مصدر واحد} other {تم استخدام # مصادر}}"
     }
+  },
+  "home": {
+    "addWidget": "إضافة أداة",
+    "board": {
+      "defaultName": "الرئيسية",
+      "deleteAria": "حذف التخطيط",
+      "label": "تخطيط الصفحة الرئيسية",
+      "newAria": "لوحة جديدة",
+      "newName": "لوحة جديدة"
+    },
+    "disabled": {
+      "createNote": "إنشاء ملاحظة",
+      "hint": "لا شيء مفتوح. ابدأ ملاحظة."
+    },
+    "done": "تم",
+    "edit": "تحرير",
+    "empty": {
+      "body": "تجمع الأدوات ملاحظاتك ومهامك وإشاراتك المرجعية في مكان هادئ واحد.",
+      "cta": "أضف أداتك الأولى",
+      "title": "لوحتك فارغة"
+    },
+    "greeting": {
+      "afternoon": "نهارك سعيد",
+      "evening": "مساء الخير",
+      "morning": "صباح الخير"
+    },
+    "header": {
+      "events": "{count, plural, zero {لا توجد أحداث} one {حدث واحد} two {حدثان} few {# أحداث} many {# حدثاً} other {# حدث}}",
+      "tasksDue": "{count, plural, zero {لا توجد مهام مستحقة اليوم} one {مهمة واحدة مستحقة اليوم} two {مهمتان مستحقتان اليوم} few {# مهام مستحقة اليوم} many {# مهمة مستحقة اليوم} other {# مهمة مستحقة اليوم}}"
+    },
+    "noBookmarksYet": "لا توجد إشارات مرجعية بعد.",
+    "noEventsYet": "لا توجد أحداث اليوم.",
+    "noJournalEntriesYet": "لا توجد مدخلات يوميات بعد.",
+    "noNotesYet": "لا توجد ملاحظات بعد.",
+    "noTasksYet": "لا توجد مهام بعد.",
+    "widget": {
+      "bookmarks": "الإشارات المرجعية",
+      "calendar": "التقويم",
+      "calendarToday": "اليوم",
+      "configAria": "تكوين الأداة",
+      "configure": "تكوين",
+      "dragAria": "سحب الأداة",
+      "duration": "{count} دقيقة",
+      "filter": {
+        "today": "مستحقة اليوم",
+        "tomorrow": "غدًا",
+        "week": "هذا الأسبوع"
+      },
+      "folder": "مجلد",
+      "folderEmpty": "لا توجد مجلدات بعد",
+      "folderNoSelection": "لم يتم تحديد مجلد",
+      "folderPickPrompt": "اختر مجلدًا",
+      "folderViewSelect": "عرض",
+      "folderView_gallery": "معرض",
+      "folderView_list": "قائمة",
+      "inbox": "البريد الوارد",
+      "inboxAllTypes": "جميع الأنواع",
+      "inboxOlder": "{count, plural, other {# أقدم}}",
+      "inboxOldest": "الأقدم {count, plural, zero {# يوم} one {يوم واحد} two {يومان} few {# أيام} many {# يوماً} other {# يوم}}",
+      "journal": "اليوميات",
+      "journalStreak": "{count, plural, zero {سلسلة # يوم} one {سلسلة يوم واحد} two {سلسلة يومين} few {سلسلة # أيام} many {سلسلة # يوماً} other {سلسلة # يوم}}",
+      "journalToday": "اليوم",
+      "journalYesterday": "أمس",
+      "loadError": "تعذّر التحميل",
+      "menuAria": "خيارات الأداة",
+      "next": "التالي: {title}",
+      "openCalendar": "فتح التقويم",
+      "openInbox": "فتح البريد الوارد",
+      "recentMeta": "حُرِّرت {time}",
+      "recentMetaWithFolder": "{folder} · حُرِّرت {time}",
+      "recentlyEdited": "المحرَّرة مؤخرًا",
+      "remove": "إزالة",
+      "removeAria": "إزالة الأداة",
+      "resize": "الحجم",
+      "resizeAria": "تغيير الحجم إلى {{size}}",
+      "savedFilterDefault": "اليوم",
+      "savedFilterHint": "ضع نجمة على عوامل التصفية في صفحة المهام لاستخدامها هنا",
+      "savedFilterLabel": "عامل تصفية محفوظ",
+      "startsIn": "يبدأ خلال {count, plural, zero {# دقيقة} one {دقيقة واحدة} two {دقيقتين} few {# دقائق} many {# دقيقة} other {# دقيقة}}",
+      "tasks": "المهام",
+      "unknown": "أداة غير معروفة",
+      "untitled": "بدون عنوان"
+    }
+  },
+  "media": {
+    "video": "فيديو"
+  },
+  "onboarding": {
+    "agentChat": {
+      "body": "انتقل إلى علامة تبويب الوكيل لتسأل مساعد Memrynote عن خزنتك.",
+      "title": "تحدّث مع وكيل الذكاء الاصطناعي"
+    },
+    "collections": {
+      "body": "نظّم الملاحظات في مجلدات، وثبّت الإشارات المرجعية، وتصفّح حسب الوسم — كل ذلك هنا.",
+      "title": "المجموعات والإشارات المرجعية والوسوم"
+    },
+    "dayPanel": {
+      "body": "تُبقي اللوحة الجانبية التقويم وعرض يومك بجوار كل ما تقرؤه.",
+      "title": "يومك، بجانب عملك"
+    },
+    "feedback": {
+      "body": "أرسل ملاحظاتك مباشرة إلى الفريق من هنا.",
+      "title": "أخبرنا برأيك"
+    },
+    "nav": {
+      "body": "البريد الوارد للالتقاط، واليوميات للملاحظات اليومية، والتقويم لجدولك الزمني، والمهام لقوائم المهام، والرسم البياني لترى كيف يترابط كل شيء.",
+      "title": "مساحات عملك"
+    },
+    "newNote": {
+      "body": "ابدأ من هنا. كل ما تكتبه يُخزَّن محليًا أولًا.",
+      "title": "أنشئ ملاحظتك الأولى"
+    },
+    "settings": {
+      "body": "استورد ملاحظاتك من أكثر من 12 تطبيقًا — Obsidian وNotion وApple Notes وEvernote والمزيد — واضبط كل شيء آخر في الإعدادات.",
+      "title": "الإعدادات والاستيراد"
+    },
+    "sync": {
+      "body": "فعّل المزامنة المشفّرة من طرف إلى طرف لإبقاء كل جهاز متزامنًا.",
+      "title": "مزامنة خاصة ومشفّرة"
+    },
+    "welcome": {
+      "body": "مساحتك الخاصة التي تعمل دون اتصال أولاً. الملاحظات مشفّرة تمامًا من طرف إلى طرف — ولا تغادر جهازك أبدًا بدون تشفير.",
+      "title": "مرحبًا بك في Memrynote"
+    }
+  },
+  "updatePrompt": {
+    "autoUpdateLabel": "تنزيل التحديثات وتثبيتها تلقائيًا",
+    "availableBody": "يتوفر {version} — لديك {current}. هل تريد تنزيله الآن؟",
+    "availableTitle": "يتوفر إصدار جديد من MemryNote!",
+    "download": "تنزيل",
+    "downloadedBody": "تم تنزيل {version}. أعد تشغيل MemryNote لإكمال التثبيت.",
+    "downloadedTitle": "التحديث جاهز للتثبيت",
+    "later": "لاحقًا",
+    "releaseNotesLabel": "ملاحظات الإصدار",
+    "remindLater": "ذكّرني لاحقًا",
+    "restartNow": "أعد التشغيل الآن",
+    "skip": "تخطي هذا الإصدار"
   }
 }

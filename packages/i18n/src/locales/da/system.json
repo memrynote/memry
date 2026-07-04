@@ -36,7 +36,8 @@
       "journal": "Journal påmindelse",
       "highlight": "Fremhæv påmindelse",
       "fallback": "Påmindelse forfalder",
-      "default": "Påmindelse"
+      "default": "Påmindelse",
+      "task": "Opgavepåmindelse"
     }
   },
   "error": {

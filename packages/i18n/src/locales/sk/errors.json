@@ -73,6 +73,7 @@
     "settingsNotInitialized": "Synchronizácia nastavení nebola inicializovaná",
     "securityQuarantinePermanent": "Synchronizačná položka nemohla byť overená a bola umiestnená do karantény z bezpečnostných dôvodov.",
     "securityQuarantineRetry": "Overenie podpisu synchronizačnej položky zlyhalo a bude sa skúšať znova.",
-    "certificatePinPaused": "Bezpečné pripojenie k synchronizačnému serveru nemohlo byť overené. Synchronizácia bola zastavená na vašu ochranu."
+    "certificatePinPaused": "Bezpečné pripojenie k synchronizačnému serveru nemohlo byť overené. Synchronizácia bola zastavená na vašu ochranu.",
+    "paymentRequired": "Na používanie hostovanej šifrovanej synchronizácie sa vyžaduje platený plán Sync."
   }
 }

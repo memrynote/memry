@@ -42,7 +42,9 @@
       "setIcon": "設置圖示",
       "removeIcon": "移除圖標",
       "deleteSelectedNotes": "刪除 {count} 筆記",
-      "deleteSelectedItems": "刪除 {count} 項目(複數)"
+      "deleteSelectedItems": "刪除 {count} 項目(複數)",
+      "bookmark": "加入書籤",
+      "removeFromBookmarks": "從書籤移除"
     },
     "deleteDialog": {
       "noteTitle": "刪除筆記",
@@ -111,7 +113,11 @@
       "aria": "筆記建議",
       "loading": "正在載入筆記...",
       "empty": "未找到筆記",
-      "create": "建立新筆記"
+      "create": "建立新筆記",
+      "embed": "嵌入",
+      "embedAria": "嵌入 {title}",
+      "wikiLink": "Wiki 連結",
+      "wikiLinkAria": "Wiki 連結 {title}"
     },
     "tags": {
       "aria": "標籤建議",
@@ -133,6 +139,15 @@
       "searchPlaceholder": "搜尋",
       "noIcons": "未找到圖示",
       "clearSearch": "清除搜尋"
+    },
+    "mention": {
+      "aria": "日期與筆記建議",
+      "date": "日期",
+      "dateHint": "繼續輸入日期…",
+      "empty": "找不到筆記",
+      "loading": "載入筆記中…",
+      "remindMe": "提醒我",
+      "showMore": "顯示更多"
     }
   },
   "outline": {
@@ -174,7 +189,8 @@
     "createTag": "建立標籤：\"{tag}\"",
     "chooseColor": "選擇顏色：",
     "preview": "預覽：",
-    "colorAria": "選擇 {color} 顏色"
+    "colorAria": "選擇 {color} 顏色",
+    "customColor": "自訂顏色"
   },
   "properties": {
     "title": "屬性",
@@ -205,7 +221,9 @@
       "status": "狀態",
       "select": "選擇",
       "multiselect": "多選"
-    }
+    },
+    "showOnCalendar": "顯示於行事曆",
+    "showingOnCalendar": "顯示於行事曆中"
   },
   "templateSelector": {
     "title": "選擇你的畫布",
@@ -295,7 +313,8 @@
   },
   "phaseF": {
     "componentsFolderViewColumnHeader": {
-      "dragToReorderColumn": "拖曳以重新排列欄位"
+      "dragToReorderColumn": "拖曳以重新排列欄位",
+      "editColumnName": "編輯欄名稱"
     },
     "componentsFolderViewColumnSelector": {
       "properties": "屬性",
@@ -311,7 +330,10 @@
       "delete": "刪除",
       "none": "無",
       "edit": "編輯",
-      "delete2": "刪除"
+      "delete2": "刪除",
+      "columnBorders": "欄邊框",
+      "display": "顯示",
+      "showSummaries": "顯示摘要"
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "篩選",
@@ -329,17 +351,21 @@
       "of": "的：",
       "addCondition": "新增條件",
       "addFilter": "新增篩選器",
-      "addGroup": "新增群組"
+      "addGroup": "新增群組",
+      "removeGroup": "移除群組"
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "內建",
       "properties": "屬性",
       "placeholderProperty": "屬性",
       "placeholderOperator": "運算子",
-      "placeholderValue": "數值"
+      "placeholderValue": "數值",
+      "removeFilter": "移除篩選"
     },
     "componentsFolderViewFolderTableView": {
-      "notesTable": "筆記表格"
+      "notesTable": "筆記表格",
+      "selectAll": "選取所有筆記",
+      "selectRow": "選取筆記"
     },
     "componentsFolderViewFolderViewToolbar": {
       "searchNotes": "搜尋筆記...",
@@ -371,7 +397,9 @@
     },
     "componentsFolderViewGroupedTable": {
       "groupedNotesTable": "分組筆記表",
-      "more": "更多"
+      "more": "更多",
+      "selectAll": "選取所有筆記",
+      "selectRow": "選取筆記"
     },
     "componentsFolderViewMoveToFolderDialog": {
       "searchFolders": "搜尋資料夾...",
@@ -399,7 +427,8 @@
     },
     "componentsFolderViewSortableColumnHeader": {
       "dragToReorderColumn": "拖曳以重新排列欄位",
-      "resizeColumn": "調整欄位大小"
+      "resizeColumn": "調整欄位大小",
+      "editColumnName": "編輯欄名稱"
     },
     "componentsFolderViewViewSwitcher": {
       "default": "預設",
@@ -424,7 +453,16 @@
       "deleteView": "刪除檢視",
       "areYouSureYouWantToDelete": "你確定要刪除嗎",
       "thisActionCannotBeUndone": "此操作無法還原。",
-      "cancel3": "取消"
+      "cancel3": "取消",
+      "createView": "建立檢視",
+      "gallery": "圖庫",
+      "layout": "版面",
+      "list": "清單",
+      "name": "名稱",
+      "newView": "新檢視",
+      "save": "儲存",
+      "table": "表格",
+      "viewActions": "檢視操作"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "無法載入 PDF：",
@@ -607,6 +645,15 @@
       "startYourCollection": "開始你的收藏",
       "templatesHelpYouCreateNotesWithConsistentStructure": "範本可以幫助你建立具有一致結構的筆記。",
       "createTemplate": "創建範本"
+    },
+    "componentsFolderViewSortSelector": {
+      "builtIn": "內建",
+      "clearSort": "清除排序",
+      "noSortablePropertiesFound": "找不到可排序的屬性",
+      "properties": "屬性",
+      "searchProperties": "搜尋屬性…",
+      "sort": "排序",
+      "sortDirection": "排序方向"
     }
   },
   "phaseI": {
@@ -654,5 +701,47 @@
       "cannotRemoveTagThisNoteWasDeleted": "無法移除標籤 - 此筆筆記已被刪除",
       "cannotChangeLocalOnlyThisNoteWasDeleted": "無法更改僅限本地設定 — 此筆筆記已被刪除"
     }
+  },
+  "bulkActions": {
+    "addTag": "新增標籤",
+    "clearAria": "清除選取",
+    "copiedLinks": "{count, plural, other {已複製 # 個連結}}",
+    "copyLinks": "複製連結",
+    "delete": "刪除",
+    "export": "匯出",
+    "move": "移動",
+    "selected": "已選取",
+    "tagNamePlaceholder": "標籤名稱",
+    "toolbarAria": "批次操作"
+  },
+  "comments": {
+    "attachAria": "附加檔案",
+    "badgeAria": "{count, plural, other {# 則註解}}",
+    "cancel": "取消",
+    "commentPlaceholder": "新增註解…",
+    "createdTooltip": "建立於 {date} {time}",
+    "delete": "刪除註解",
+    "edit": "編輯註解",
+    "kind": {
+      "addition": "新增",
+      "comment": "註解",
+      "deletion": "刪除",
+      "substitution": "取代"
+    },
+    "mentionAria": "提及人員、頁面或日期",
+    "railAria": "註解",
+    "replyPlaceholder": "回覆…",
+    "resolve": "解決",
+    "sendAria": "傳送註解",
+    "toolbarComment": "註解"
+  },
+  "dateMention": {
+    "clear": "清除",
+    "dateFormat": "日期格式",
+    "dateInput": "日期",
+    "includeTime": "包含時間",
+    "remind": "提醒",
+    "time": "時間",
+    "timeFormat": "時間格式"
   }
 }

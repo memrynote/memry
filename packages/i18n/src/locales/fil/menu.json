@@ -1,11 +1,15 @@
 {
   "app": {
-    "quit": "quit"
+    "quit": "quit",
+    "preferences": "Mga Setting…"
   },
   "file": {
     "label": "file",
     "newNote": "Bagong Tala",
-    "close": "Isara ang Window"
+    "close": "Isara ang Window",
+    "closeTab": "Isara ang Tab",
+    "exportPdf": "I-export sa PDF…",
+    "openQuickly": "Mabilis na Buksan…"
   },
   "navigation": {
     "back": "Bumalik",
@@ -18,12 +22,51 @@
     "cut": "Putulin",
     "copy": "Kopyahin",
     "paste": "Idikit",
-    "selectAll": "Piliin lahat"
+    "selectAll": "Piliin lahat",
+    "find": "Hanapin",
+    "speech": "Pagsasalita"
   },
   "view": {
     "label": "Tingnan",
     "reload": "I-reload",
     "toggleDevTools": "I-toggle ang Mga Tool ng Developer",
-    "toggleFullscreen": "I-toggle ang Buong Screen"
+    "toggleFullscreen": "I-toggle ang Buong Screen",
+    "theme": "Tema",
+    "themeDark": "Madilim",
+    "themeLight": "Maliwanag",
+    "themeSystem": "System",
+    "themeWhite": "Papel",
+    "toggleDayPanel": "I-toggle ang Day Panel",
+    "toggleSidebar": "I-toggle ang Sidebar"
+  },
+  "format": {
+    "body": "Teksto",
+    "bold": "Makapal",
+    "code": "Code",
+    "heading1": "Heading 1",
+    "heading2": "Heading 2",
+    "heading3": "Heading 3",
+    "highlight": "I-highlight",
+    "italic": "Italiko",
+    "label": "Format",
+    "strikethrough": "Guhit-pantawid"
+  },
+  "help": {
+    "about": "Tungkol sa Memrynote",
+    "documentation": "Dokumentasyon",
+    "label": "Tulong",
+    "shortcuts": "Mga Keyboard Shortcut"
+  },
+  "insert": {
+    "attachment": "Magpasok ng Attachment…",
+    "bulletList": "Listahan ng Bullet",
+    "codeBlock": "Code Block",
+    "label": "Ipasok",
+    "numberedList": "May-numerong Listahan",
+    "table": "Talahanayan",
+    "taskList": "Listahan ng Gawain"
+  },
+  "window": {
+    "label": "Window"
   }
 }

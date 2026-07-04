@@ -27,7 +27,9 @@
     "imported-event": "Eveniment importat",
     "task": "Sarcină",
     "reminder": "Memento",
-    "snooze": "Amână"
+    "snooze": "Amână",
+    "note": "Notiță",
+    "note-date": "Memento de dată"
   },
   "state": {
     "loading-calendar": "Se încarcă calendarul...",
@@ -151,5 +153,34 @@
       "could-not-remove-due-date": "Nu s-a putut elimina data scadentă",
       "could-not-open-note": "Nota nu a putut fi deschisă"
     }
+  },
+  "connect-prompt": {
+    "aria": "Conectează Google Calendar",
+    "body": "Conectează-ți contul Google pentru a face mai multe cu calendarul tău:",
+    "bullets": {
+      "events": "Vezi evenimentele Google alături de notițe și sarcini",
+      "schedule": "Programează sarcini și notițe în calendarul tău",
+      "sync": "Creează și editează evenimente, sincronizate în ambele sensuri"
+    },
+    "continue": "Continuă cu Google",
+    "dismiss": "Închide",
+    "error": "Nu s-a putut conecta Google Calendar. Încearcă din nou.",
+    "pill": "Conectează Google",
+    "title": "Finalizează conectarea la Google Calendar"
+  },
+  "notePopover": {
+    "couldNotOpen": "Nu s-a putut deschide notița",
+    "kind": "Notiță",
+    "kindDateReminder": "Memento de dată",
+    "open": "Deschide notița"
+  },
+  "search": {
+    "close": "Închide căutarea",
+    "no-results": "Nicio potrivire",
+    "open": "Caută în calendar",
+    "placeholder": "Caută evenimente, sarcini, mementouri…"
+  },
+  "undo": {
+    "moveEvent": "Mută eveniment"
   }
 }

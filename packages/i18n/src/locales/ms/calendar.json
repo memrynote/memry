@@ -27,7 +27,9 @@
     "imported-event": "Acara yang diimport",
     "task": "Tugasan",
     "reminder": "Peringatan",
-    "snooze": "Tunda"
+    "snooze": "Tunda",
+    "note": "Nota",
+    "note-date": "Peringatan tarikh"
   },
   "state": {
     "loading-calendar": "Memuatkan kalendar…",
@@ -151,5 +153,34 @@
       "could-not-remove-due-date": "Tidak dapat mengalih keluar tarikh tamat tempoh",
       "could-not-open-note": "Tidak dapat membuka nota"
     }
+  },
+  "connect-prompt": {
+    "aria": "Sambung Google Calendar",
+    "body": "Sambungkan akaun Google anda untuk buat lebih banyak dengan kalendar anda:",
+    "bullets": {
+      "events": "Lihat acara Google anda di sisi nota dan tugasan",
+      "schedule": "Jadualkan tugasan dan nota pada kalendar anda",
+      "sync": "Cipta dan edit acara, disegerakkan dua hala"
+    },
+    "continue": "Teruskan dengan Google",
+    "dismiss": "Ketepikan",
+    "error": "Tidak dapat menyambung Google Calendar. Cuba lagi.",
+    "pill": "Sambung Google",
+    "title": "Selesaikan penyambungan ke Google Calendar"
+  },
+  "notePopover": {
+    "couldNotOpen": "Tidak dapat membuka nota",
+    "kind": "Nota",
+    "kindDateReminder": "Peringatan tarikh",
+    "open": "Buka nota"
+  },
+  "search": {
+    "close": "Tutup carian",
+    "no-results": "Tiada padanan",
+    "open": "Cari kalendar",
+    "placeholder": "Cari acara, tugasan, peringatan…"
+  },
+  "undo": {
+    "moveEvent": "Alih acara"
   }
 }

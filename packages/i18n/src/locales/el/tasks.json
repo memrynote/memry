@@ -33,7 +33,8 @@
     "repeat": "Επαναλάβετε",
     "createAnother": "Δημιουργήστε ένα άλλο",
     "delete": "Διαγραφή εργασίας",
-    "created": "Δημιουργήθηκε το {date}"
+    "created": "Δημιουργήθηκε το {date}",
+    "reminder": "Υπενθύμιση"
   },
   "filters": {
     "filter": "Φίλτρο",
@@ -62,7 +63,16 @@
     "noNotesAvailable": "Δεν υπάρχουν διαθέσιμες σημειώσεις",
     "noLinkedNotes": "Δεν υπάρχουν ακόμη συνδεδεμένες σημειώσεις",
     "removeLinkTo": "Κατάργηση συνδέσμου στο {title}",
-    "removeLinkFallback": "σημείωση"
+    "removeLinkFallback": "σημείωση",
+    "addRelatedItem": "Προσθήκη σχετικού στοιχείου",
+    "noMatchingRelated": "Δεν υπάρχουν αντίστοιχα στοιχεία",
+    "noRelatedAvailable": "Δεν υπάρχουν διαθέσιμα στοιχεία",
+    "noRelatedItems": "Δεν υπάρχουν ακόμη σχετικά στοιχεία",
+    "related": "Σχετικά",
+    "relatedItemFallback": "στοιχείο",
+    "removeRelatedItem": "Αφαίρεση σχετικού στοιχείου {title}",
+    "resize": "Αλλαγή μεγέθους πάνελ",
+    "searchRelated": "Αναζήτηση σχετικών…"
   },
   "kanban": {
     "board": "Πίνακας Kanban"
@@ -174,7 +184,8 @@
     "componentsTasksDatePickerContent": {
       "removeDate": "Αφαίρεση ημερομηνίας",
       "clearTime": "Καθαρός χρόνος",
-      "addTime": "Προσθέστε χρόνο"
+      "addTime": "Προσθέστε χρόνο",
+      "time": "Ώρα"
     },
     "componentsTasksDeleteProjectDialog": {
       "delete": "Διαγραφή\"",
@@ -612,6 +623,20 @@
       "failedToLoadTaskPreferences": "Η φόρτωση των προτιμήσεων εργασιών απέτυχε",
       "failedToUpdateTaskPreferences": "Η ενημέρωση των προτιμήσεων εργασιών απέτυχε",
       "failedToLoadLinkedTasks": "Αποτυχία φόρτωσης συνδεδεμένων εργασιών"
+    }
+  },
+  "reminders": {
+    "hasReminders": "Έχει υπενθυμίσεις",
+    "setReminder": "Ορισμός υπενθύμισης",
+    "summary": "Υπενθύμιση: {date}",
+    "summaryWithMore": "Υπενθύμιση: {date} (+{count} ακόμη)",
+    "toast": {
+      "deleteFailed": "Αποτυχία διαγραφής υπενθύμισης",
+      "deleted": "Η υπενθύμιση διαγράφηκε",
+      "set": "Η υπενθύμιση ορίστηκε",
+      "setFailed": "Αποτυχία ορισμού υπενθύμισης",
+      "updateFailed": "Αποτυχία ενημέρωσης υπενθύμισης",
+      "updated": "Η υπενθύμιση ενημερώθηκε"
     }
   }
 }

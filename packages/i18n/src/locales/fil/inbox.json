@@ -26,6 +26,10 @@
     "jobs": {
       "running": "{count, plural, one {# background job na tumatakbo} other {# mga trabaho sa background na tumatakbo}}",
       "failed": "Nabigo ang {count}"
+    },
+    "density": {
+      "toComfortable": "Komportableng view",
+      "toCompact": "Compact na view"
     }
   },
   "type": {
@@ -208,7 +212,15 @@
     "linkedNotesAria": "Mga naka-link na tala",
     "removeLinkTo": "Alisin ang link sa {title}",
     "notePlaceholder": "Isulat ang iyong tala...",
-    "textPlaceholder": "I-edit ang iyong nakunan na text..."
+    "textPlaceholder": "I-edit ang iyong nakunan na text...",
+    "linkANote": "Mag-link ng tala",
+    "match": {
+      "likely": "Malamang na tugma",
+      "strong": "Malakas na tugma",
+      "weak": "Mahinang tugma"
+    },
+    "resize": "I-resize ang panel",
+    "suggestedCount": "{count} iminungkahi"
   },
   "content": {
     "capturedAt": "Nakuha ang {date}",
@@ -253,7 +265,12 @@
     "presetInOneHour": "1 oras",
     "presetTomorrow": "Bukas",
     "presetNextWeek": "Sa susunod na linggo",
-    "custom": "Custom..."
+    "custom": "Custom...",
+    "archive": "I-archive",
+    "panelEmpty": "Walang paparating na paalala.",
+    "panelPast": "Nakaraan",
+    "panelUpcoming": "Paparating",
+    "taskFallback": "Gawain"
   },
   "insights": {
     "captureActivity": "Aktibidad sa Pagkuha",
@@ -295,7 +312,9 @@
       "recordVoiceMemo2": "Mag-record ng voice memo",
       "alreadyCaptured": "Nahuli na: “",
       "rdquo": "rdquo;",
-      "captureAnyway": "Kunin Anyway"
+      "captureAnyway": "Kunin Anyway",
+      "focusShortcut": "I-focus ang capture input",
+      "q": "Q"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Pumili ng folder",
@@ -416,7 +435,11 @@
       "backToPresets": "Bumalik sa mga preset",
       "time": "Oras",
       "noteOptional": "Tandaan (opsyonal)",
-      "whyAreYouSettingThisReminder": "Bakit mo itinatakda ang paalala na ito?"
+      "whyAreYouSettingThisReminder": "Bakit mo itinatakda ang paalala na ito?",
+      "deleteReminder": "Tanggalin ang paalala",
+      "editReminder": "I-edit ang paalala",
+      "save": "I-save",
+      "set": "Itakda"
     },
     "componentsSnoozeSnoozePicker": {
       "snooze": "I-snooze",
@@ -461,5 +484,37 @@
     "toasts": {
       "inboxRefreshed": "Na-refresh ang inbox"
     }
+  },
+  "convert": {
+    "addEvent": "Magdagdag ng kaganapan",
+    "addTask": "Magdagdag ng gawain",
+    "allDay": "Buong araw",
+    "binaryOnlyNote": "Ang mga file ay maaari lamang maging tala",
+    "chooseType": "I-convert sa",
+    "create": "Lumikha",
+    "date": "Petsa",
+    "dueDate": "Takdang petsa",
+    "dueTime": "Takdang oras",
+    "end": "Wakas",
+    "event": "Kaganapan",
+    "failed": "Hindi ma-convert: {error}",
+    "inboxProject": "Inbox",
+    "location": "Lokasyon",
+    "note": "Tala",
+    "priority": "Priyoridad",
+    "priorityHigh": "Mataas",
+    "priorityLow": "Mababa",
+    "priorityMedium": "Katamtaman",
+    "priorityNone": "Wala",
+    "priorityUrgent": "Kagyat",
+    "project": "Proyekto",
+    "remindAt": "Paalalahanan ako sa",
+    "reminder": "Paalala",
+    "setReminder": "Magtakda ng paalala",
+    "start": "Simula",
+    "success": "Na-convert sa {target}",
+    "task": "Gawain",
+    "time": "Oras",
+    "title": "I-convert"
   }
 }
