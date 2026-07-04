@@ -382,13 +382,13 @@ describe('tasks queries', () => {
     const task = createTask('task-46')
     setTaskTags(db, task.id, ['Alpha', 'Beta'])
 
-    expect(getTaskTags(db, task.id).sort()).toEqual(['alpha', 'beta'])
+    expect(getTaskTags(db, task.id).sort()).toEqual(['Alpha', 'Beta'])
 
     const counts = getAllTaskTags(db)
     expect(counts).toEqual(
       expect.arrayContaining([
-        { tag: 'alpha', count: 1 },
-        { tag: 'beta', count: 1 }
+        { tag: 'Alpha', count: 1 },
+        { tag: 'Beta', count: 1 }
       ])
     )
   })

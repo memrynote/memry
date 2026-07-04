@@ -187,8 +187,8 @@ describe('inbox batch handlers', () => {
       handlers.handleBulkTag({ itemIds: ['item-1'], tags: [' Work ', '', 'Ideas'] })
     ).resolves.toEqual({ success: true, processedCount: 1, errors: [] })
     expect(db.inserts).toEqual([
-      { id: 'generated-id', itemId: 'item-1', tag: 'work' },
-      { id: 'generated-id', itemId: 'item-1', tag: 'ideas' }
+      { id: 'generated-id', itemId: 'item-1', tag: 'Work' },
+      { id: 'generated-id', itemId: 'item-1', tag: 'Ideas' }
     ])
     expect(emitInboxEvent).toHaveBeenCalledWith(expect.any(String), {
       id: 'item-1',

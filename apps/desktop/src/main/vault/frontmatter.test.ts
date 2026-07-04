@@ -137,14 +137,24 @@ describe('frontmatter utilities', () => {
     expect(links).toEqual(['Same Note', 'Other'])
   })
 
-  it('extractTags normalizes frontmatter tags', () => {
+  it('extractTags trims and preserves case', () => {
     const frontmatter: NoteFrontmatter = {
       id: 'abc123def456',
       created: FIXED_ISO,
       modified: FIXED_ISO,
       tags: [' Work ', 'PERSONAL', '']
     }
-    expect(extractTags(frontmatter)).toEqual(['work', 'personal'])
+    expect(extractTags(frontmatter)).toEqual(['Work', 'PERSONAL'])
+  })
+
+  it('extractTags deduplicates case-insensitively, first occurrence wins', () => {
+    const frontmatter: NoteFrontmatter = {
+      id: 'abc123def456',
+      created: FIXED_ISO,
+      modified: FIXED_ISO,
+      tags: ['Work', 'work', 'WORK', 'other']
+    }
+    expect(extractTags(frontmatter)).toEqual(['Work', 'other'])
   })
 
   it('calculateWordCount ignores code blocks and inline code', () => {
@@ -255,8 +265,12 @@ describe('extractInlineTagsFromMarkdown', () => {
     expect(extractInlineTagsFromMarkdown('#foo then #foo again')).toEqual(['foo'])
   })
 
-  it('normalizes to lowercase', () => {
-    expect(extractInlineTagsFromMarkdown('#Work #URGENT')).toEqual(['work', 'urgent'])
+  it('preserves case as typed', () => {
+    expect(extractInlineTagsFromMarkdown('#Work #URGENT')).toEqual(['Work', 'URGENT'])
+  })
+
+  it('deduplicates case variants, first occurrence wins', () => {
+    expect(extractInlineTagsFromMarkdown('#Work then #work again')).toEqual(['Work'])
   })
 
   it('skips tags inside fenced code blocks', () => {

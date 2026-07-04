@@ -238,7 +238,15 @@ function titleFromUrl(url: string): string {
 }
 
 function uniqueTags(tags: string[]): string[] {
-  return [...new Set(tags.map((tag) => tag.trim()).filter(Boolean))]
+  // Case-insensitive dedupe, first spelling wins
+  const byKey = new Map<string, string>()
+  for (const raw of tags) {
+    const tag = raw.trim()
+    if (!tag) continue
+    const key = tag.toLowerCase()
+    if (!byKey.has(key)) byKey.set(key, tag)
+  }
+  return [...byKey.values()]
 }
 
 function generateInboxNoteContent(item: InboxRecord): string {
@@ -742,7 +750,7 @@ export function createInboxService({
     },
 
     async bulkTag(ids, tags) {
-      const normalizedTags = uniqueTags(tags).map((tag) => tag.toLowerCase())
+      const normalizedTags = uniqueTags(tags)
       const errors: InboxBulkResponse['errors'] = []
       let processedCount = 0
       for (const id of ids) {

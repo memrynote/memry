@@ -13,22 +13,29 @@ export function getAllTagsWithCounts(indexDb: IndexDb, dataDb: DataDb): TagWithC
   const taskCounts = getAllTaskTags(dataDb)
   const definitions = getAllTagDefinitions(dataDb)
 
-  const colorMap = new Map(definitions.map((d) => [d.name, d.color]))
-  const iconMap = new Map(definitions.map((d) => [d.name, d.icon]))
+  // Identity is case-insensitive (lowercase key); display name keeps the
+  // first-seen casing from actual usage
+  const colorMap = new Map(definitions.map((d) => [d.name.toLowerCase(), d.color]))
+  const iconMap = new Map(definitions.map((d) => [d.name.toLowerCase(), d.icon]))
   const merged = new Map<string, TagWithCount>()
 
   for (const { tag, count } of noteCounts) {
-    const name = tag.toLowerCase().trim()
-    merged.set(name, { name, count, color: colorMap.get(name), icon: iconMap.get(name) })
-  }
-
-  for (const { tag, count } of taskCounts) {
-    const name = tag.toLowerCase().trim()
-    const existing = merged.get(name)
+    const key = tag.toLowerCase().trim()
+    const existing = merged.get(key)
     if (existing) {
       existing.count += count
     } else {
-      merged.set(name, { name, count, color: colorMap.get(name), icon: iconMap.get(name) })
+      merged.set(key, { name: tag.trim(), count, color: colorMap.get(key), icon: iconMap.get(key) })
+    }
+  }
+
+  for (const { tag, count } of taskCounts) {
+    const key = tag.toLowerCase().trim()
+    const existing = merged.get(key)
+    if (existing) {
+      existing.count += count
+    } else {
+      merged.set(key, { name: tag.trim(), count, color: colorMap.get(key), icon: iconMap.get(key) })
     }
   }
 
@@ -40,7 +47,7 @@ export function getAllTagsWithCounts(indexDb: IndexDb, dataDb: DataDb): TagWithC
   }
 
   for (const def of definitions) {
-    if (!merged.has(def.name)) {
+    if (!merged.has(def.name.toLowerCase())) {
       deleteTagDefinition(dataDb, def.name)
     }
   }
@@ -54,7 +61,8 @@ export function mergeTagInNotes(
   target: string
 ): { affected: number; noteIds: string[] } {
   const normalizedSource = source.toLowerCase().trim()
-  const normalizedTarget = target.toLowerCase().trim()
+  const trimmedTarget = target.trim()
+  const normalizedTarget = trimmedTarget.toLowerCase()
 
   if (normalizedSource === normalizedTarget) {
     return { affected: 0, noteIds: [] }
@@ -93,7 +101,7 @@ export function mergeTagInNotes(
   if (remainingNoteIds.length > 0) {
     indexDb
       .update(noteTags)
-      .set({ tag: normalizedTarget })
+      .set({ tag: trimmedTarget })
       .where(and(eq(noteTags.tag, normalizedSource), inArray(noteTags.noteId, remainingNoteIds)))
       .run()
   }
@@ -107,7 +115,8 @@ export function mergeTagInTasks(
   target: string
 ): { affected: number; taskIds: string[] } {
   const normalizedSource = source.toLowerCase().trim()
-  const normalizedTarget = target.toLowerCase().trim()
+  const trimmedTarget = target.trim()
+  const normalizedTarget = trimmedTarget.toLowerCase()
 
   if (normalizedSource === normalizedTarget) {
     return { affected: 0, taskIds: [] }
@@ -146,7 +155,7 @@ export function mergeTagInTasks(
   if (remainingTaskIds.length > 0) {
     dataDb
       .update(taskTags)
-      .set({ tag: normalizedTarget })
+      .set({ tag: trimmedTarget })
       .where(and(eq(taskTags.tag, normalizedSource), inArray(taskTags.taskId, remainingTaskIds)))
       .run()
   }

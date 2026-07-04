@@ -199,7 +199,7 @@ describe('vault watcher', () => {
       .all()
       .map((tag) => tag.tag)
       .sort()
-    expect(tags).toEqual(['alpha', 'beta'])
+    expect(tags).toEqual(['Alpha', 'Beta'])
 
     const links = indexDb.db
       .select()

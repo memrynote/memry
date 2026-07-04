@@ -1,4 +1,4 @@
-import { eq, and, or, inArray, like, count, desc, sql } from 'drizzle-orm'
+import { eq, and, or, inArray, like, count, desc } from 'drizzle-orm'
 import {
   noteCache,
   noteTags,
@@ -14,10 +14,20 @@ import type { IndexDb } from '../../types'
 export function setNoteTags(db: IndexDb, noteId: string, tags: string[]): void {
   db.delete(noteTags).where(eq(noteTags.noteId, noteId)).run()
 
-  if (tags.length > 0) {
-    const tagRecords: NewNoteTag[] = tags.map((tag, index) => ({
+  // Case-preserving, case-insensitive dedupe (tag column is COLLATE NOCASE,
+  // so case variants would violate the (noteId, tag) primary key)
+  const byKey = new Map<string, string>()
+  for (const raw of tags) {
+    const tag = raw.trim()
+    if (!tag) continue
+    const key = tag.toLowerCase()
+    if (!byKey.has(key)) byKey.set(key, tag)
+  }
+
+  if (byKey.size > 0) {
+    const tagRecords: NewNoteTag[] = [...byKey.values()].map((tag, index) => ({
       noteId,
-      tag: tag.toLowerCase().trim(),
+      tag,
       position: index
     }))
     db.insert(noteTags).values(tagRecords).run()
@@ -219,25 +229,33 @@ export function unpinNoteFromTag(db: IndexDb, noteId: string, tag: string): void
 
 export function renameTag(db: IndexDb, oldName: string, newName: string): number {
   const normalizedOld = oldName.toLowerCase().trim()
-  const normalizedNew = newName.toLowerCase().trim()
+  const trimmedNew = newName.trim()
 
-  if (normalizedOld === normalizedNew) return 0
+  // Case-only renames are valid: they update the stored display case
+  if (oldName.trim() === trimmedNew) return 0
 
   const exactResult = db
     .update(noteTags)
-    .set({ tag: normalizedNew })
+    .set({ tag: trimmedNew })
     .where(eq(noteTags.tag, normalizedOld))
     .run()
 
-  const childResult = db
-    .update(noteTags)
-    .set({
-      tag: sql`replace(${noteTags.tag}, ${normalizedOld + '/'}, ${normalizedNew + '/'})`
-    })
+  // Rewrite children row-by-row: SQL replace() is case-sensitive, but stored
+  // prefixes may differ in case from the requested name
+  const childRows = db
+    .select({ noteId: noteTags.noteId, tag: noteTags.tag })
+    .from(noteTags)
     .where(like(noteTags.tag, `${normalizedOld}/%`))
-    .run()
+    .all()
 
-  return exactResult.changes + childResult.changes
+  for (const row of childRows) {
+    db.update(noteTags)
+      .set({ tag: trimmedNew + row.tag.slice(normalizedOld.length) })
+      .where(and(eq(noteTags.noteId, row.noteId), eq(noteTags.tag, row.tag)))
+      .run()
+  }
+
+  return exactResult.changes + childRows.length
 }
 
 export function deleteTag(db: IndexDb, tag: string, options: { cascade?: boolean } = {}): number {

@@ -3,12 +3,18 @@ import type { InboxItemPlan, RaindropImportPlan, RaindropRow, ImportWarning } fr
 const UNSORTED = 'unsorted'
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}T/
 
-/** Row tags + collection-as-tag; drops "Unsorted", lowercases, trims, dedupes. */
+/** Row tags + collection-as-tag; drops "Unsorted", trims, dedupes case-insensitively. */
 function resolveTags(row: RaindropRow): string[] {
-  const folder = row.folder.trim().toLowerCase()
-  const fromFolder = folder && folder !== UNSORTED ? [folder] : []
-  const all = [...row.tags, ...fromFolder].map((t) => t.trim().toLowerCase()).filter(Boolean)
-  return [...new Set(all)]
+  const folder = row.folder.trim()
+  const fromFolder = folder && folder.toLowerCase() !== UNSORTED ? [folder] : []
+  const byKey = new Map<string, string>()
+  for (const raw of [...row.tags, ...fromFolder]) {
+    const tag = raw.trim()
+    if (!tag) continue
+    const key = tag.toLowerCase()
+    if (!byKey.has(key)) byKey.set(key, tag)
+  }
+  return [...byKey.values()]
 }
 
 /** note + excerpt joined; null when both are empty. */
