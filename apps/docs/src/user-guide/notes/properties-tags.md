@@ -13,6 +13,7 @@ A row under the title shows the note's free-form labels.
 - Click the tag area to add a tag
 - Comma or space confirms
 - Tags are global — the same tag on two notes is the same tag
+- Tags keep the capitalization you type (`#Work` stays `#Work`), but identity is case-insensitive: `#Work` and `#work` are the same tag with one color and one combined count. This also applies to imported notes — an Obsidian vault's tag casing survives the import.
 
 Tags appear in the sidebar **Tags** section. Click any tag to drill into a list of notes that share it.
 
