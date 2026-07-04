@@ -46,7 +46,10 @@ const syncBoundaryExemptIpcFiles = new Set([
   // Thin IPC wrapper that registers crdt:* handlers at app bootstrap. Handlers
   // delegate to getCrdtProvider() lazily so they survive sign-out teardown
   // (provider destroy + reset) without unregistering.
-  'apps/desktop/src/main/ipc/crdt-handlers.ts'
+  'apps/desktop/src/main/ipc/crdt-handlers.ts',
+  // Posts feedback straight to the sync server via postToServer; no sync
+  // runtime involvement beyond the shared HTTP client.
+  'apps/desktop/src/main/ipc/feedback-handlers.ts'
 ])
 const dataOnlySchemaSpecifiers = new Map([
   ['@memry/db-schema/schema/tag-definitions', 'data-db schema import'],

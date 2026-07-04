@@ -1,6 +1,6 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { app } from './index'
+import worker, { app } from './index'
 
 const ONE_MB = 1024 * 1024
 const TEN_MB = 10 * ONE_MB
@@ -188,5 +188,47 @@ describe('sync-server app entry point', () => {
         message: 'Missing or malformed Authorization header'
       }
     })
+  })
+})
+
+describe('scheduled cleanup', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('captures each failed cleanup task to Loki', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }))
+    vi.stubGlobal('fetch', fetchMock)
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+
+    const env = createEnv({
+      DB: {
+        prepare: vi.fn(() => {
+          throw new Error('D1 down')
+        }),
+        batch: vi.fn().mockRejectedValue(new Error('D1 down'))
+      },
+      PRODUCT_TELEMETRY: { writeDataPoint: vi.fn() },
+      TELEMETRY_HMAC_KEY: 'secret',
+      ENVIRONMENT: 'test',
+      LOKI_URL: 'https://grafana.example.com',
+      LOKI_TOKEN: 'tok'
+    })
+
+    await worker.scheduled(
+      {} as never,
+      env as never,
+      { waitUntil: vi.fn(), passThroughOnException: vi.fn() } as never
+    )
+
+    // all 8 cleanup tasks fail against the broken DB — each must reach Loki
+    expect(fetchMock).toHaveBeenCalledTimes(8)
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body)
+    expect(body.streams[0].stream).toEqual({ app: 'server', env: 'test', level: 'error' })
+    const line = JSON.parse(body.streams[0].values[0][1])
+    expect(line.source).toBe('cron')
+    expect(line.action).toMatch(/^cleanup_/)
+    expect(line.message).toBe('D1 down')
   })
 })

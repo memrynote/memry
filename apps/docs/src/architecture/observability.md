@@ -191,9 +191,20 @@ Loki adds the diagnostic detail (stacks, operational messages) that AE rows deli
   forwarded as `app="desktop"` lines containing the event name, error code, surface/action/source,
   app version, platform, and the **redacted stack frames only** (the schema has no message field —
   messages can embed note content; see Error Reporting above).
+- **Desktop IPC envelopes**: every `{ success: false }` error envelope produced by the IPC layer
+  (`withErrorHandler` / `withDb`) also emits an `app_error_seen` event, throttled in-memory to one
+  event per error code per minute so an error loop can't flood the telemetry queue. The expected
+  `noVaultOpen` envelope is not tracked, and the envelope's user-facing `error` string (which may
+  contain note-derived text) never leaves the process — only the error class name and redacted
+  stack frames ship.
 - **Server errors**: `captureServerError` pushes its redacted detail (operational message, stack,
   normalized path, error/status codes) as `app="server"` lines — level `error` for 5xx/unhandled,
   `warn` for handled 4xx.
+- **Beyond route handlers**: failures that never produce a failing HTTP response also reach Loki —
+  scheduled cleanup-task failures (`source="cron"`), token-revoke failures during logout, Resend
+  email send failures (`RESEND_SEND_FAILED`), and `UserSyncState` Durable Object alarm/websocket
+  handler errors (`source="user_sync_state_do"`, pushed directly via the Loki client since no
+  route error handler ever sees them).
 - **Labels** stay low-cardinality (`app`, `env`, `level`); everything else lives inside the JSON
   log line and is filtered in Grafana with `| json`.
 - **Retention**: 30 days, enforced by the Loki compactor.

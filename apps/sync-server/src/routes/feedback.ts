@@ -8,11 +8,7 @@ import { sendEmail } from '../services/email'
 import type { AppContext } from '../types'
 
 const escapeHtml = (value: string): string =>
-  value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
+  value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
 const buildFeedbackHtml = (input: {
   message: string
@@ -50,7 +46,10 @@ const buildFeedbackHtml = (input: {
 
 export const feedback = new Hono<AppContext>()
 
-feedback.use('/', createRateLimiter({ maxRequests: 20, windowSeconds: 3600, keyPrefix: 'feedback' }))
+feedback.use(
+  '/',
+  createRateLimiter({ maxRequests: 20, windowSeconds: 3600, keyPrefix: 'feedback' })
+)
 
 feedback.post('/', async (c) => {
   const body = await c.req.json().catch(() => null)
@@ -68,7 +67,7 @@ feedback.post('/', async (c) => {
   const subject = `Memry feedback from ${email ?? 'anonymous'}`
   const html = buildFeedbackHtml({ message, email, appVersion, platform })
 
-  await sendEmail(recipient, subject, html, c.env.RESEND_API_KEY, email)
+  await sendEmail(recipient, subject, html, c.env.RESEND_API_KEY, email, c.env)
 
   return c.json({ success: true }, 202)
 })

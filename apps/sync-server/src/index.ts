@@ -26,6 +26,7 @@ import {
   cleanupStaleRateLimits
 } from './services/cleanup'
 import { createLogger } from './lib/logger'
+import { captureServerError } from './services/analytics'
 import type { Bindings, AppContext } from './types'
 
 const logger = createLogger('Server')
@@ -167,20 +168,28 @@ app.route('/webhooks', webhooks)
 app.route('/calendar/channels', calendarChannels)
 
 const scheduled: ExportedHandlerScheduledHandler<Bindings> = async (_event, env, _ctx) => {
-  const results = await Promise.allSettled([
-    cleanupExpiredOtpCodes(env.DB),
-    cleanupExpiredLinkingSessions(env.DB),
-    cleanupExpiredUploadSessions(env.DB, env.STORAGE),
-    cleanupStaleRateLimits(env.DB),
-    cleanupConsumedSetupTokens(env.DB),
-    cleanupExpiredTombstones(env.DB, env.STORAGE),
-    cleanupOrphanedBlobChunks(env.DB, env.STORAGE),
-    cleanupExpiredGoogleCalendarChannels(env.DB)
-  ])
+  const tasks: Array<[string, Promise<unknown>]> = [
+    ['expired_otp_codes', cleanupExpiredOtpCodes(env.DB)],
+    ['expired_linking_sessions', cleanupExpiredLinkingSessions(env.DB)],
+    ['expired_upload_sessions', cleanupExpiredUploadSessions(env.DB, env.STORAGE)],
+    ['stale_rate_limits', cleanupStaleRateLimits(env.DB)],
+    ['consumed_setup_tokens', cleanupConsumedSetupTokens(env.DB)],
+    ['expired_tombstones', cleanupExpiredTombstones(env.DB, env.STORAGE)],
+    ['orphaned_blob_chunks', cleanupOrphanedBlobChunks(env.DB, env.STORAGE)],
+    ['expired_gcal_channels', cleanupExpiredGoogleCalendarChannels(env.DB)]
+  ]
+  const results = await Promise.allSettled(tasks.map(([, promise]) => promise))
 
   for (const [i, result] of results.entries()) {
     if (result.status === 'rejected') {
-      logger.error('Cleanup task failed', { taskIndex: i, reason: String(result.reason) })
+      // captureServerError logs + pushes to Loki + Analytics Engine
+      await captureServerError(env, {
+        error: result.reason,
+        source: 'cron',
+        action: `cleanup_${tasks[i][0]}`,
+        statusCode: 500,
+        handled: true
+      })
     }
   }
 }

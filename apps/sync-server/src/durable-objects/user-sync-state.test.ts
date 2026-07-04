@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { MockWebSocket } from '../__mocks__/cloudflare-workers'
 import { ErrorCodes } from '../lib/errors'
@@ -529,5 +529,60 @@ describe('UserSyncState', () => {
 
     // #then
     expect(res.status).toBe(404)
+  })
+
+  describe('error capture to Loki', () => {
+    afterEach(() => {
+      vi.unstubAllGlobals()
+    })
+
+    const lokiEnv = {
+      LOKI_URL: 'https://grafana.example.com',
+      LOKI_TOKEN: 'tok',
+      ENVIRONMENT: 'test'
+    }
+
+    it('pushes alarm failures to Loki', async () => {
+      // #given
+      const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }))
+      vi.stubGlobal('fetch', fetchMock)
+      const doObj = createDO(undefined, lokiEnv)
+      getCtx(doObj).getWebSockets = () => {
+        throw new Error('do exploded')
+      }
+
+      // #when
+      await doObj.alarm()
+
+      // #then
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body)
+      expect(body.streams[0].stream).toEqual({ app: 'server', env: 'test', level: 'error' })
+      const line = JSON.parse(body.streams[0].values[0][1])
+      expect(line.source).toBe('user_sync_state_do')
+      expect(line.action).toBe('alarm')
+      expect(line.message).toBe('do exploded')
+    })
+
+    it('pushes webSocketMessage failures to Loki', async () => {
+      // #given
+      const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }))
+      vi.stubGlobal('fetch', fetchMock)
+      const doObj = createDO(undefined, lokiEnv)
+      const brokenWs = {
+        deserializeAttachment: () => {
+          throw new Error('attachment corrupt')
+        }
+      }
+
+      // #when
+      doObj.webSocketMessage(brokenWs as never)
+
+      // #then
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+      const line = JSON.parse(JSON.parse(fetchMock.mock.calls[0][1].body).streams[0].values[0][1])
+      expect(line.action).toBe('ws_message')
+      expect(line.message).toBe('attachment corrupt')
+    })
   })
 })

@@ -58,6 +58,13 @@ vi.mock('../services/email', () => ({
   sendEmail: vi.fn().mockResolvedValue(undefined)
 }))
 
+vi.mock('../services/analytics', () => ({
+  captureBusinessEvent: vi.fn().mockResolvedValue(undefined),
+  captureServerError: vi.fn().mockResolvedValue(undefined),
+  safeWaitUntil: vi.fn(),
+  waitUntilCaptured: vi.fn()
+}))
+
 vi.mock('../emails/otp-template', () => ({
   buildOtpEmailHtml: vi.fn().mockReturnValue('<html>OTP</html>')
 }))
@@ -128,6 +135,7 @@ vi.mock('jose', () => ({
 }))
 
 import { auth } from './auth'
+import { captureServerError } from '../services/analytics'
 import { checkEmailRateLimit, hasPendingOtp } from '../services/otp'
 import { getUserByEmail, getUserById, updateUserEmail } from '../services/user'
 import { revokeDeviceTokens, rotateRefreshToken } from '../services/auth'
@@ -1513,6 +1521,24 @@ describe('auth routes', () => {
 
       expect(res.status).toBe(200)
       expect(await res.json()).toEqual({ success: true })
+    })
+
+    it('captures the revoke failure to server error telemetry', async () => {
+      vi.mocked(revokeDeviceTokens).mockRejectedValueOnce(new Error('db unavailable'))
+
+      const res = await app.request('/auth/logout', { method: 'POST' }, env)
+
+      expect(res.status).toBe(200)
+      expect(captureServerError).toHaveBeenCalledTimes(1)
+      expect(captureServerError).toHaveBeenCalledWith(
+        env,
+        expect.objectContaining({
+          source: 'auth',
+          action: 'logout_revoke_tokens',
+          handled: true,
+          deviceId: 'device-1'
+        })
+      )
     })
   })
 

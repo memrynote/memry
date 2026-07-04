@@ -1,7 +1,10 @@
 import { DurableObject } from 'cloudflare:workers'
 
+import { redactSensitive } from '@memry/contracts/telemetry-api'
+
 import { ErrorCodes } from '../lib/errors'
 import { verifyAccessToken } from '../lib/jwt-verify'
+import { pushLokiEntries } from '../services/loki'
 import type { Bindings } from '../types'
 
 interface WsAttachment {
@@ -230,33 +233,54 @@ export class UserSyncState extends DurableObject<Bindings> {
     return Response.json({ sent })
   }
 
+  // Errors in websocket/alarm handlers never bubble to a route (and its
+  // errorHandler → Loki path), so push them to Loki directly.
+  private captureError(action: string, error: unknown): Promise<void> {
+    return pushLokiEntries(this.env, [
+      {
+        level: 'error',
+        app: 'server',
+        line: {
+          source: 'user_sync_state_do',
+          action,
+          error_type: error instanceof Error ? error.name : 'UnknownError',
+          message: redactSensitive(error instanceof Error ? error.message : String(error))
+        }
+      }
+    ])
+  }
+
   webSocketMessage(ws: WebSocket): void {
-    const attachment = ws.deserializeAttachment() as WsAttachment | null
-    if (!attachment) {
-      ws.close(1011, 'Missing attachment')
-      return
-    }
+    try {
+      const attachment = ws.deserializeAttachment() as WsAttachment | null
+      if (!attachment) {
+        ws.close(1011, 'Missing attachment')
+        return
+      }
 
-    const now = Math.floor(Date.now() / 1000)
-    const windowStart = now - (now % RATE_LIMIT_WINDOW_SECONDS)
+      const now = Math.floor(Date.now() / 1000)
+      const windowStart = now - (now % RATE_LIMIT_WINDOW_SECONDS)
 
-    if (attachment.rateLimitWindow !== windowStart) {
-      attachment.rateLimitWindow = windowStart
-      attachment.rateLimitCount = 1
-    } else {
-      attachment.rateLimitCount++
-    }
+      if (attachment.rateLimitWindow !== windowStart) {
+        attachment.rateLimitWindow = windowStart
+        attachment.rateLimitCount = 1
+      } else {
+        attachment.rateLimitCount++
+      }
 
-    ws.serializeAttachment(attachment)
+      ws.serializeAttachment(attachment)
 
-    if (attachment.rateLimitCount > RATE_LIMIT_MAX) {
-      ws.send(
-        JSON.stringify({
-          type: 'error',
-          payload: { code: ErrorCodes.WS_RATE_LIMITED, message: 'Rate limit exceeded' }
-        })
-      )
-      ws.close(CLOSE_CODE_RATE_LIMITED, 'Rate limit exceeded')
+      if (attachment.rateLimitCount > RATE_LIMIT_MAX) {
+        ws.send(
+          JSON.stringify({
+            type: 'error',
+            payload: { code: ErrorCodes.WS_RATE_LIMITED, message: 'Rate limit exceeded' }
+          })
+        )
+        ws.close(CLOSE_CODE_RATE_LIMITED, 'Rate limit exceeded')
+      }
+    } catch (error) {
+      void this.captureError('ws_message', error)
     }
   }
 
@@ -285,6 +309,14 @@ export class UserSyncState extends DurableObject<Bindings> {
    */
 
   async alarm(): Promise<void> {
+    try {
+      await this.runAlarm()
+    } catch (error) {
+      await this.captureError('alarm', error)
+    }
+  }
+
+  private async runAlarm(): Promise<void> {
     const now = Math.floor(Date.now() / 1000)
     const allSockets = this.ctx.getWebSockets()
     const activeSockets: WebSocket[] = []

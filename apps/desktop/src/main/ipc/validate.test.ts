@@ -14,10 +14,22 @@ vi.mock('../database', () => ({
   requireDatabase: vi.fn()
 }))
 
+vi.mock('../telemetry/diagnostics', () => ({
+  trackMainError: vi.fn()
+}))
+
 import { getDatabase } from '../database'
+import { trackMainError } from '../telemetry/diagnostics'
 import { withErrorHandler, withDb } from './validate'
 
 const mockGetDatabase = vi.mocked(getDatabase)
+const mockTrackMainError = vi.mocked(trackMainError)
+
+const namedError = (name: string, message = 'boom'): Error => {
+  const error = new Error(message)
+  error.name = name
+  return error
+}
 
 describe('withErrorHandler', () => {
   beforeEach(() => {
@@ -209,5 +221,111 @@ describe('withDb', () => {
 
     // #then
     expect(result).toEqual({ success: true, hasDb: true })
+  })
+})
+
+describe('IPC error telemetry', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('withErrorHandler tracks the error and still returns the envelope', async () => {
+    // #given
+    const error = namedError('AlphaError', 'db constraint violated')
+    const handler = withErrorHandler(async () => {
+      throw error
+    }, 'Failed to create task')
+
+    // #when
+    const result = await handler()
+
+    // #then
+    expect(result).toEqual({ success: false, error: 'db constraint violated' })
+    expect(mockTrackMainError).toHaveBeenCalledTimes(1)
+    expect(mockTrackMainError).toHaveBeenCalledWith('ipc', 'Failed to create task', error)
+  })
+
+  it('withErrorHandler does not track successful results', async () => {
+    // #given
+    const handler = withErrorHandler(async () => ({ success: true as const }), 'Failed')
+
+    // #when
+    await handler()
+
+    // #then
+    expect(mockTrackMainError).not.toHaveBeenCalled()
+  })
+
+  it('withDb tracks handler errors and still returns the envelope', async () => {
+    // #given
+    mockGetDatabase.mockReturnValue({} as never)
+    const error = namedError('BetaError', 'not found')
+    const handler = withDb(async () => {
+      throw error
+    }, 'Failed to fetch')
+
+    // #when
+    const result = await handler()
+
+    // #then
+    expect(result).toEqual({ success: false, error: 'not found' })
+    expect(mockTrackMainError).toHaveBeenCalledTimes(1)
+    expect(mockTrackMainError).toHaveBeenCalledWith('ipc', 'Failed to fetch', error)
+  })
+
+  it('withDb does NOT track the benign noVaultOpen envelope', async () => {
+    // #given
+    mockGetDatabase.mockImplementation(() => {
+      throw new Error('Database not initialized')
+    })
+    const handler = withDb(async () => ({ success: true as const }), 'Failed')
+
+    // #when
+    const result = await handler()
+
+    // #then
+    expect(result).toEqual({ success: false, error: 'errors:ipc.noVaultOpen' })
+    expect(mockTrackMainError).not.toHaveBeenCalled()
+  })
+
+  it('throttles repeated errors with the same code to one event per window', async () => {
+    // #given
+    vi.useFakeTimers()
+    try {
+      const handler = withErrorHandler(async () => {
+        throw namedError('GammaError')
+      }, 'Failed')
+
+      // #when
+      await handler()
+      await handler()
+      await handler()
+
+      // #then
+      expect(mockTrackMainError).toHaveBeenCalledTimes(1)
+
+      // #when time passes beyond the throttle window
+      vi.advanceTimersByTime(61_000)
+      await handler()
+
+      // #then
+      expect(mockTrackMainError).toHaveBeenCalledTimes(2)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('does not throttle errors with different codes', async () => {
+    // #given
+    const handler = withErrorHandler(async (name: string) => {
+      throw namedError(name)
+    }, 'Failed')
+
+    // #when
+    await handler('DeltaError')
+    await handler('EpsilonError')
+
+    // #then
+    expect(mockTrackMainError).toHaveBeenCalledTimes(2)
   })
 })

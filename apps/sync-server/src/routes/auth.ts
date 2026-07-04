@@ -56,7 +56,7 @@ import {
   ensureLocalAdminPaidSyncAccess,
   ensureLocalAdminPaidSyncAccessForUser
 } from '../services/entitlements'
-import { captureBusinessEvent, safeWaitUntil } from '../services/analytics'
+import { captureBusinessEvent, captureServerError, safeWaitUntil } from '../services/analytics'
 import { deleteUserData } from '../services/account-deletion'
 import type { AppContext, Bindings } from '../types'
 
@@ -102,7 +102,14 @@ const handleOtpRequest = async (c: Parameters<typeof otpIpRateLimit>[0]): Promis
   await storeOtp(c.env.DB, email, code, c.env.OTP_HMAC_KEY)
 
   const html = buildOtpEmailHtml(code, OTP_EXPIRY_MINUTES)
-  await sendEmail(email, 'Your Memry verification code', html, c.env.RESEND_API_KEY)
+  await sendEmail(
+    email,
+    'Your Memry verification code',
+    html,
+    c.env.RESEND_API_KEY,
+    undefined,
+    c.env
+  )
 
   return c.json({ success: true, expiresIn: OTP_EXPIRY_MINUTES * 60 })
 }
@@ -237,7 +244,14 @@ auth.post('/otp/resend', otpIpRateLimit, async (c) => {
   await storeOtp(c.env.DB, email, code, c.env.OTP_HMAC_KEY)
 
   const html = buildOtpEmailHtml(code, OTP_EXPIRY_MINUTES)
-  await sendEmail(email, 'Your Memry verification code', html, c.env.RESEND_API_KEY)
+  await sendEmail(
+    email,
+    'Your Memry verification code',
+    html,
+    c.env.RESEND_API_KEY,
+    undefined,
+    c.env
+  )
 
   return c.json({ success: true, expiresIn: OTP_EXPIRY_MINUTES * 60 })
 })
@@ -746,10 +760,21 @@ auth.post('/logout', authMiddleware, async (c) => {
   try {
     await revokeDeviceTokens(c.env.DB, deviceId)
   } catch (err) {
-    logger.error('Failed to revoke tokens during logout', {
-      deviceId,
-      error: err instanceof Error ? err.message : String(err)
-    })
+    // captureServerError logs + pushes to Loki; logout still succeeds
+    safeWaitUntil(
+      c,
+      captureServerError(c.env, {
+        error: err,
+        method: c.req.method,
+        path: c.req.path,
+        source: 'auth',
+        action: 'logout_revoke_tokens',
+        statusCode: 500,
+        handled: true,
+        userId: c.get('userId'),
+        deviceId
+      })
+    )
   }
 
   return c.json({ success: true })
@@ -774,7 +799,14 @@ auth.post('/email/change', authMiddleware, async (c) => {
   const code = generateOtp()
   await storeOtp(c.env.DB, newEmail, code, c.env.OTP_HMAC_KEY)
   const html = buildOtpEmailHtml(code, OTP_EXPIRY_MINUTES)
-  await sendEmail(newEmail, 'Confirm your new Memry email', html, c.env.RESEND_API_KEY)
+  await sendEmail(
+    newEmail,
+    'Confirm your new Memry email',
+    html,
+    c.env.RESEND_API_KEY,
+    undefined,
+    c.env
+  )
   return c.json({ success: true, expiresIn: OTP_EXPIRY_MINUTES * 60 })
 })
 
