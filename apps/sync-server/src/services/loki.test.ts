@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { TelemetryBatch, TelemetryEvent } from '@memry/contracts/telemetry-api'
 
+import { captureServerError } from './analytics'
 import { desktopErrorEntry, pushLokiEntries } from './loki'
 
 const env = {
@@ -21,7 +22,7 @@ const batch: TelemetryBatch = {
   installId: '11111111-1111-4111-8111-111111111111',
   sessionId: '22222222-2222-4222-8222-222222222222',
   appVersion: '1.2.3',
-  buildChannel: 'stable',
+  buildChannel: 'production',
   platform: 'darwin',
   arch: 'arm64',
   locale: 'en-US',
@@ -86,6 +87,39 @@ describe('pushLokiEntries', () => {
   })
 })
 
+describe('captureServerError → Loki', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('pushes the redacted server detail with app=server', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const analyticsEnv = {
+      PRODUCT_TELEMETRY: { writeDataPoint: vi.fn() },
+      TELEMETRY_HMAC_KEY: 'secret',
+      ENVIRONMENT: 'test',
+      LOKI_URL: 'https://grafana.example.com',
+      LOKI_TOKEN: 'tok'
+    }
+    await captureServerError(analyticsEnv, {
+      error: new Error('record decode failed'),
+      method: 'POST',
+      path: '/sync/items/push',
+      source: 'sync',
+      action: 'push_items',
+      handled: false
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body)
+    expect(body.streams[0].stream).toEqual({ app: 'server', env: 'test', level: 'error' })
+    const line = JSON.parse(body.streams[0].values[0][1])
+    expect(line.message).toBe('record decode failed')
+    expect(line.error_code).toBe('UNHANDLED_ERROR')
+    expect(line.source).toBe('sync')
+  })
+})
+
 describe('desktopErrorEntry', () => {
   it('maps batch + event to a desktop error line with stack, never a message', () => {
     const result = desktopErrorEntry(batch, event, 'hash123')
@@ -98,7 +132,7 @@ describe('desktopErrorEntry', () => {
       action: 'render',
       source: 'renderer',
       app_version: '1.2.3',
-      build_channel: 'stable',
+      build_channel: 'production',
       platform: 'darwin',
       stack: 'at doThing (app://bundle.js:1:2)',
       component_stack: 'at NoteEditor',

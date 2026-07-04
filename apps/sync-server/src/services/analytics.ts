@@ -2,13 +2,14 @@ import { redactSensitive } from '@memry/contracts/telemetry-api'
 
 import { createLogger } from '../lib/logger'
 import type { Bindings } from '../types'
+import { pushLokiEntries } from './loki'
 import { hashTelemetryId } from './telemetry'
 
 // Server-side product/business events land in the SAME Analytics Engine dataset
 // as desktop telemetry, using the SAME blob/double layout as toDataPoint() so a
 // single Grafana query reads every event. Server rows are tagged platform =
 // surface = 'server'. Detailed error messages/stacks go to Cloudflare Workers
-// logs only (never to Analytics Engine).
+// logs and Loki (never to Analytics Engine).
 
 const logger = createLogger('Analytics')
 
@@ -72,6 +73,8 @@ export interface AnalyticsEnv {
   PRODUCT_TELEMETRY: Bindings['PRODUCT_TELEMETRY']
   TELEMETRY_HMAC_KEY: Bindings['TELEMETRY_HMAC_KEY']
   ENVIRONMENT?: Bindings['ENVIRONMENT']
+  LOKI_URL?: Bindings['LOKI_URL']
+  LOKI_TOKEN?: Bindings['LOKI_TOKEN']
 }
 
 export type AnalyticsPropertyValue = string | number | boolean | null | undefined
@@ -329,6 +332,14 @@ export const captureServerError = async (
   } else {
     logger.warn('server_error_seen', detail)
   }
+
+  await pushLokiEntries(env, [
+    {
+      level: status >= 500 || !input.handled ? 'error' : 'warn',
+      app: 'server',
+      line: detail
+    }
+  ])
 
   await writeServerPoint(env, {
     name: 'server_error_seen',

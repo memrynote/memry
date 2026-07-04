@@ -27,6 +27,8 @@ export type Bindings = {
   PADDLE_API_KEY?: string
   PADDLE_ENVIRONMENT?: string
   TELEMETRY_HMAC_KEY: string
+  LOKI_URL?: string
+  LOKI_TOKEN?: string
   fetch?: typeof fetch
 }
 

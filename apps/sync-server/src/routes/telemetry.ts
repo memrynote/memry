@@ -5,7 +5,13 @@ import { LandingTelemetryBatchSchema, TelemetryBatchSchema } from '@memry/contra
 import { AppError, ErrorCodes } from '../lib/errors'
 import { createLogger } from '../lib/logger'
 import { createRateLimiter } from '../middleware/rate-limit'
-import { writeLandingTelemetryBatch, writeTelemetryBatch } from '../services/telemetry'
+import { safeWaitUntil } from '../services/analytics'
+import { desktopErrorEntry, pushLokiEntries } from '../services/loki'
+import {
+  hashTelemetryId,
+  writeLandingTelemetryBatch,
+  writeTelemetryBatch
+} from '../services/telemetry'
 import type { AppContext } from '../types'
 
 const logger = createLogger('Telemetry')
@@ -33,6 +39,23 @@ telemetry.post('/batch', async (c) => {
   }
 
   const result = await writeTelemetryBatch(c.env, parsed.data)
+
+  // Desktop error events also become Loki log lines (redacted stack frames
+  // only — see TelemetryErrorDetailSchema) so they are searchable in Grafana.
+  const batch = parsed.data
+  const errorEvents = batch.events.filter((event) => event.errorCode || event.error)
+  if (errorEvents.length > 0) {
+    safeWaitUntil(
+      c,
+      hashTelemetryId(c.env.TELEMETRY_HMAC_KEY, batch.installId).then((installHash) =>
+        pushLokiEntries(
+          c.env,
+          errorEvents.map((event) => desktopErrorEntry(batch, event, installHash))
+        )
+      )
+    )
+  }
+
   return c.json(result, 202)
 })
 

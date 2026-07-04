@@ -53,6 +53,7 @@ ALLOWED_ORIGIN = "https://staging.memrynote.com"
 WEB_OAUTH_REDIRECT_URI = "https://staging.memrynote.com/auth/oauth/callback"
 MIN_APP_VERSION = "0.1.0"
 PADDLE_ENVIRONMENT = "sandbox"
+LOKI_URL = "https://grafana.memrynote.com"
 
 [[env.staging.routes]]
 pattern = "sync-staging.memrynote.com/*"
@@ -89,6 +90,7 @@ ALLOWED_ORIGIN = "https://memrynote.com"
 WEB_OAUTH_REDIRECT_URI = "https://memrynote.com/auth/oauth/callback"
 MIN_APP_VERSION = "0.1.0"
 PADDLE_ENVIRONMENT = "production"
+LOKI_URL = "https://grafana.memrynote.com"
 
 [[env.production.routes]]
 pattern = "sync.memrynote.com/*"
