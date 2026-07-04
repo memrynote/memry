@@ -1,8 +1,9 @@
 import { sqliteTable, text } from 'drizzle-orm/sqlite-core'
 import { sql } from 'drizzle-orm'
+import { nocaseText } from './nocase.ts'
 
 export const tagDefinitions = sqliteTable('tag_definitions', {
-  name: text('name').primaryKey(),
+  name: nocaseText('name').primaryKey(),
   color: text('color').notNull(),
   icon: text('icon'),
   clock: text('clock', { mode: 'json' }),

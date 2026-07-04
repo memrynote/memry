@@ -1,5 +1,6 @@
 import { sqliteTable, text, integer, index, primaryKey } from 'drizzle-orm/sqlite-core'
 import { sql } from 'drizzle-orm'
+import { nocaseText } from './nocase.ts'
 import type { FileType } from '@memry/shared/file-types'
 import type { VectorClock } from '@memry/contracts/sync-api'
 export { PropertyTypes, type PropertyType } from '@memry/contracts/property-types'
@@ -54,7 +55,7 @@ export const noteTags = sqliteTable(
     noteId: text('note_id')
       .notNull()
       .references(() => noteCache.id, { onDelete: 'cascade' }),
-    tag: text('tag').notNull(),
+    tag: nocaseText('tag').notNull(),
     position: integer('position').notNull().default(0),
     // When the note was pinned to this tag (null = not pinned)
     pinnedAt: text('pinned_at')

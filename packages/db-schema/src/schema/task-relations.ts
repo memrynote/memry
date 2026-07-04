@@ -1,6 +1,7 @@
 import { sqliteTable, text, primaryKey, index } from 'drizzle-orm/sqlite-core'
 import { sql } from 'drizzle-orm'
 import { tasks } from './tasks.ts'
+import { nocaseText } from './nocase.ts'
 
 export const taskNotes = sqliteTable(
   'task_notes',
@@ -22,7 +23,7 @@ export const taskTags = sqliteTable(
     taskId: text('task_id')
       .notNull()
       .references(() => tasks.id, { onDelete: 'cascade' }),
-    tag: text('tag').notNull()
+    tag: nocaseText('tag').notNull()
   },
   (table) => [
     primaryKey({ columns: [table.taskId, table.tag] }),

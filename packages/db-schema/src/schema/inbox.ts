@@ -9,6 +9,7 @@
 
 import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core'
 import { sql } from 'drizzle-orm'
+import { nocaseText } from './nocase.ts'
 import type { VectorClock } from '@memry/contracts/sync-api'
 
 // ============================================================================
@@ -251,7 +252,7 @@ export const inboxItemTags = sqliteTable(
       .references(() => inboxItems.id, { onDelete: 'cascade' }),
 
     /** Tag name */
-    tag: text('tag').notNull(),
+    tag: nocaseText('tag').notNull(),
 
     /** When the tag was added */
     createdAt: text('created_at')

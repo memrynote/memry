@@ -239,6 +239,13 @@
       "when": 1782518400000,
       "tag": "0033_tag_definition_icon",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "6",
+      "when": 1783206622572,
+      "tag": "0034_tag_nocase",
+      "breakpoints": true
     }
   ]
 }
