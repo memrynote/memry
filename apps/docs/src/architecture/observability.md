@@ -43,7 +43,7 @@ trackTelemetry('page_viewed', { surface: 'notes', action: 'viewed' })
 
 Recognized surfaces (`TelemetrySurface` in `packages/contracts/telemetry-api`):
 
-`app`, `onboarding`, `vault`, `notes`, `journal`, `tasks`, `inbox`, `calendar`, `search`,
+`app`, `home`, `onboarding`, `vault`, `notes`, `journal`, `tasks`, `inbox`, `calendar`, `search`,
 `graph`, `settings`, `sync`, `ai`, `voice`, `updater`.
 
 ### What Never Ships
@@ -76,20 +76,26 @@ The `void` makes the call non-blocking and unfailable from the UI's point of vie
 
 ## Event Categories
 
-| Category        | Events                                                                                |
-| --------------- | ------------------------------------------------------------------------------------- |
-| Surface views   | `page_viewed` — one per tab open                                                      |
-| App lifecycle   | `app_started`, `app_backgrounded`, `app_active_heartbeat`, `app_update_installed`     |
-| Onboarding      | `onboarding_started`, `onboarding_completed`                                          |
-| Notes           | `note_created`, `note_opened`, `note_updated` (throttled 1/doc/5 min), `note_deleted` |
-| Journal         | `journal_opened`, `journal_updated` (throttled 1/doc/5 min)                           |
-| Search          | `search_opened`, `search_performed`, `search_result_opened`                           |
-| Command palette | `command_palette_opened`, `search_result_opened` (palette context)                    |
-| Settings        | `setting_changed` — surface only, never the value                                     |
-| Agent chat      | `agent_chat_started`, `agent_chat_message_sent`                                       |
-| Sync health     | `sync_enabled`, `sync_run_completed`, `sync_error` (counts/status only)               |
-| Auth            | `signin_started`, `signin_succeeded`                                                  |
-| Diagnostics     | `app_log_recorded`, `app_error_seen`, `app_launch_phase_completed`                    |
+| Category        | Events                                                                                                                           |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Surface views   | `page_viewed` — one per active-tab change; carries the tab type as `objectType`                                                  |
+| App lifecycle   | `app_started`, `app_backgrounded`, `app_active_heartbeat`, `app_update_installed`                                                |
+| Onboarding      | `onboarding_started`, `onboarding_completed`                                                                                     |
+| Vault           | `vault_created`, `vault_opened`                                                                                                  |
+| Notes           | `note_created`, `note_opened`, `note_updated` (throttled 1/doc/5 min), `note_deleted`                                            |
+| Journal         | `journal_opened`, `journal_updated` (throttled 1/doc/5 min)                                                                      |
+| Tasks           | `task_created`, `task_completed`, `task_reopened`, `project_created`                                                             |
+| Inbox           | `inbox_captured`, `inbox_filed`, `inbox_archived`, `inbox_snoozed`                                                               |
+| Calendar        | `calendar_event_created`, `calendar_event_updated`, `calendar_google_connected`, `calendar_google_sync_completed`                |
+| Search          | `search_performed`, `search_result_opened` (`search_opened` is defined but unused — it would duplicate `command_palette_opened`) |
+| Command palette | `command_palette_opened`, `search_result_opened` (palette context)                                                               |
+| Graph           | `graph_opened` — on graph page mount                                                                                             |
+| Voice           | `voice_recording_completed` (duration + bytes), `transcription_completed` (success/failure + processing duration)                |
+| Settings        | `setting_changed` — surface only, never the value                                                                                |
+| Agent chat      | `agent_chat_started`, `agent_chat_message_sent`, `ai_action_completed` (turn result + duration)                                  |
+| Sync health     | `sync_enabled`, `sync_run_completed`, `sync_error` (counts/status only)                                                          |
+| Auth            | `signin_started`, `signin_succeeded`                                                                                             |
+| Diagnostics     | `app_log_recorded`, `app_error_seen`, `app_launch_phase_completed`                                                               |
 
 ## Analytics Engine Export
 

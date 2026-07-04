@@ -25,6 +25,7 @@ import {
 } from '@memry/contracts/inbox-api'
 import { storeInboxAttachment, resolveAttachmentUrl } from './attachments'
 import { publishProjectionEvent } from '../projections'
+import { trackMainEvent } from '../telemetry/track'
 import { getVoiceRecordingReadiness } from './transcription'
 import { markInboxJobFailed, queueInboxTranscriptionJob } from './jobs'
 
@@ -296,6 +297,14 @@ export async function captureVoice(input: CaptureVoiceInput): Promise<CaptureRes
     publishProjectionEvent({
       type: 'inbox.upserted',
       itemId: id
+    })
+
+    trackMainEvent('voice_recording_completed', {
+      surface: 'voice',
+      action: 'completed',
+      source: parsed.source ?? 'app',
+      result: 'success',
+      metrics: { durationMs: parsed.duration * 1000, byteCount: parsed.data.length }
     })
 
     // Persist a durable transcription job instead of relying on in-memory timers.

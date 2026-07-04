@@ -69,6 +69,16 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
     trackMainEvent('agent_chat_started', { surface: 'ai', action: 'started', source: backendLabel })
   }
   trackMainEvent('agent_chat_message_sent', { surface: 'ai', action: 'sent', source: backendLabel })
+  const turnStartedAt = Date.now()
+  const trackTurnCompleted = (result: 'success' | 'failed'): void => {
+    trackMainEvent('ai_action_completed', {
+      surface: 'ai',
+      action: 'turn_completed',
+      source: backendLabel,
+      result,
+      metrics: { durationMs: Date.now() - turnStartedAt }
+    })
+  }
 
   const titlePromise = shouldGenerateTitle
     ? maybeGenerateConversationTitle(deps, {
@@ -194,6 +204,7 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
         turnId,
         message
       })
+      trackTurnCompleted('failed')
       return { turnId }
     }
 
@@ -216,6 +227,7 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
       conversationId: input.conversationId,
       turnId
     })
+    trackTurnCompleted('success')
   } finally {
     await sub.cleanup()
     await titlePromise

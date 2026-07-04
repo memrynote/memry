@@ -409,7 +409,8 @@ describe('App', () => {
     expect(screen.getByTestId('window-controls')).toBeInTheDocument()
     expect(trackTelemetry).toHaveBeenCalledWith('page_viewed', {
       surface: 'inbox',
-      action: 'viewed'
+      action: 'viewed',
+      objectType: 'inbox'
     })
     expect(screen.queryByText('complete onboarding')).not.toBeInTheDocument()
     expect(trackTelemetry).not.toHaveBeenCalledWith('onboarding_started', expect.anything())

@@ -149,6 +149,7 @@ function readPersistedRightSidebarTab(): string | null {
 // =============================================================================
 
 const TAB_TYPE_TO_SURFACE: Partial<Record<TabType, TelemetrySurface>> = {
+  home: 'home',
   inbox: 'inbox',
   calendar: 'calendar',
   tasks: 'tasks',
@@ -157,9 +158,15 @@ const TAB_TYPE_TO_SURFACE: Partial<Record<TabType, TelemetrySurface>> = {
   completed: 'tasks',
   project: 'tasks',
   note: 'notes',
+  file: 'notes',
+  folder: 'notes',
+  collection: 'notes',
+  'template-editor': 'notes',
+  templates: 'notes',
   journal: 'journal',
   search: 'search',
-  graph: 'graph'
+  graph: 'graph',
+  'agent-chat': 'ai'
 }
 
 const AppContent = (): React.JSX.Element => {
@@ -180,7 +187,7 @@ const AppContent = (): React.JSX.Element => {
     lastTrackedTabTypeRef.current = activeTab.type
     const surface = TAB_TYPE_TO_SURFACE[activeTab.type]
     if (!surface) return
-    void trackTelemetry('page_viewed', { surface, action: 'viewed' })
+    void trackTelemetry('page_viewed', { surface, action: 'viewed', objectType: activeTab.type })
   }, [activeTab])
 
   // Handle creating a new note

@@ -49,6 +49,7 @@ export const TelemetryEventNameSchema = z.enum([
 
 export const TelemetrySurfaceSchema = z.enum([
   'app',
+  'home',
   'onboarding',
   'vault',
   'notes',

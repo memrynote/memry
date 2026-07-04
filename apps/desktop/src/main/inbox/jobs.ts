@@ -16,6 +16,7 @@ import { getItemAttachmentsDir } from './attachments'
 import { isBotPageTitle, titleFromUrl } from './metadata-utils'
 import { transcribeAudio } from './transcription'
 import { publishProjectionEvent } from '../projections'
+import { trackMainEvent } from '../telemetry/track'
 
 const log = createLogger('Inbox:Jobs')
 
@@ -355,7 +356,17 @@ async function processTranscriptionJob(db: DataDb, job: JobRow): Promise<void> {
     return
   }
 
+  const startedAt = Date.now()
   const result = await transcribeAudio(job.itemId, attachmentPath)
+  trackMainEvent('transcription_completed', {
+    surface: 'voice',
+    action: 'completed',
+    result: result.success ? 'success' : 'failed',
+    metrics: {
+      durationMs: Date.now() - startedAt,
+      byteCount: result.transcription?.length ?? 0
+    }
+  })
   if (result.success) {
     completeJob(db, job.id, {
       transcriptionLength: result.transcription?.length ?? 0
