@@ -36,7 +36,8 @@ export function useTagSuggestions({
   const getTagColor = useCallback((tag: string): string => {
     // Fall back to a deterministic palette color derived from the tag name
     // (instead of a flat grey) when the tag has no explicit color yet.
-    return tagColorMapRef.current?.get(tag) || defaultTagColorName(tag)
+    // Maps are keyed by lowercase; tag identity is case-insensitive.
+    return tagColorMapRef.current?.get(tag.toLowerCase()) || defaultTagColorName(tag)
   }, [])
 
   // Register hashTag inline plugin on editor's tiptap instance
@@ -68,9 +69,10 @@ export function useTagSuggestions({
 
     state.doc.descendants((node: any, pos: number) => {
       if (node.type.name === 'hashTag') {
+        const tagKey = (node.attrs.tag as string).toLowerCase()
         const correctColor =
-          tagColorMap.get(node.attrs.tag as string) || defaultTagColorName(node.attrs.tag as string)
-        const correctIcon = tagIconMap?.get(node.attrs.tag as string) ?? ''
+          tagColorMap.get(tagKey) || defaultTagColorName(node.attrs.tag as string)
+        const correctIcon = tagIconMap?.get(tagKey) ?? ''
         if (node.attrs.color !== correctColor || (node.attrs.icon ?? '') !== correctIcon) {
           tr = tr.setNodeMarkup(pos, undefined, {
             ...node.attrs,
@@ -116,7 +118,7 @@ export function useTagSuggestions({
       const oldNode = tiptap.state.doc.nodeAt(nodePos)
       if (!oldNode || oldNode.type.name !== 'hashTag') return
 
-      const icon = tagIconMapRef.current?.get(tag) ?? ''
+      const icon = tagIconMapRef.current?.get(tag.toLowerCase()) ?? ''
       const newNode = hashTagNodeType.create({ tag, color, icon })
       const tr = tiptap.state.tr.replaceWith(nodePos, nodePos + oldNode.nodeSize, newNode)
       tiptap.view.dispatch(tr)

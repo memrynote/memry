@@ -330,8 +330,8 @@ describe('useEditorSync', () => {
     act(() => {
       vi.advanceTimersByTime(100)
     })
-    expect(onInlineTagsChange).toHaveBeenCalledWith(['build', 'focus'])
-    expect(result.current.prevInlineTagsRef.current).toEqual(['build', 'focus'])
+    expect(onInlineTagsChange).toHaveBeenCalledWith(['Build', 'Focus'])
+    expect(result.current.prevInlineTagsRef.current).toEqual(['Build', 'Focus'])
   })
 
   it('skips markdown persistence for remote updates and Yjs-backed documents', async () => {

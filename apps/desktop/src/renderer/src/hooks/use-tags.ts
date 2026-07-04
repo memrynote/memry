@@ -71,12 +71,12 @@ export function useTags() {
 
         return tags
           .filter((t) => {
-            if (!t.name.startsWith(prefixWithSlash)) return false
+            if (!t.name.toLowerCase().startsWith(prefixWithSlash)) return false
             const segments = t.name.split('/')
             if (segments.length !== prefixDepth + 1) return false
             if (!leafQuery) return true
             const leaf = segments[segments.length - 1]
-            return leaf.includes(leafQuery)
+            return leaf.toLowerCase().includes(leafQuery)
           })
           .sort((a, b) => b.count - a.count)
       }

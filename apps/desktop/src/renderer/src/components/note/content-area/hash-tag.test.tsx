@@ -55,13 +55,13 @@ describe('hash tag inline content', () => {
     expect(result.didChange).toBe(true)
     expect((result.blocks[0] as any).content).toEqual([
       'Start ',
-      { type: 'hashTag', props: { tag: 'work', color: 'blue', icon: '' } },
+      { type: 'hashTag', props: { tag: 'Work', color: 'blue', icon: '' } },
       ' and email#a'
     ])
     expect((result.blocks[1] as any).content).toBe('#work')
     expect((result.blocks[2] as any).content).toEqual([
       { type: 'text', text: 'Nested ', styles: { bold: true } },
-      { type: 'hashTag', props: { tag: 'personal', color: 'green', icon: '' } }
+      { type: 'hashTag', props: { tag: 'Personal', color: 'green', icon: '' } }
     ])
   })
 
@@ -101,6 +101,6 @@ describe('hash tag inline content', () => {
       { id: 'code', type: 'codeBlock', content: '#ignored' }
     ] as any)
 
-    expect(tags.sort()).toEqual(['nested', 'personal', 'work'])
+    expect(tags.sort()).toEqual(['Nested', 'Personal', 'Work'])
   })
 })

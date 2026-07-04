@@ -223,7 +223,7 @@ describe('medium gap renderer surfaces', () => {
   })
 
   it('matches hash tags and completes typed tags through the plugin append transaction', () => {
-    expect(matchHashTagBeforeCursor('Ship #memrynote-Launch ')).toBe('memrynote-launch')
+    expect(matchHashTagBeforeCursor('Ship #memrynote-Launch ')).toBe('memrynote-Launch')
     expect(matchHashTagBeforeCursor('Ship #broken/ ')).toBeNull()
 
     const plugin = createHashTagSpacePlugin((tag) => `color:${tag}`)

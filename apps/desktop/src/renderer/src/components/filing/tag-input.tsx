@@ -104,9 +104,9 @@ const TagInput = ({ tags, suggestedTags, onTagsChange }: TagInputProps): React.J
   const inputRef = useRef<HTMLInputElement>(null)
 
   const addTag = (tag: string): void => {
-    const normalizedTag = tag.trim().toLowerCase()
-    if (normalizedTag && !tags.includes(normalizedTag)) {
-      onTagsChange([...tags, normalizedTag])
+    const trimmedTag = tag.trim()
+    if (trimmedTag && !tags.some((t) => t.toLowerCase() === trimmedTag.toLowerCase())) {
+      onTagsChange([...tags, trimmedTag])
     }
     setInputValue('')
   }

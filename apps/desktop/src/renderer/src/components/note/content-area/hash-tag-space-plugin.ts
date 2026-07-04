@@ -6,7 +6,7 @@ const HASH_TAG_BEFORE_CURSOR = /(^|[\s\ufffc])#([a-zA-Z0-9][a-zA-Z0-9_\-/]*[a-zA
 
 export function matchHashTagBeforeCursor(text: string): string | null {
   const match = text.match(HASH_TAG_BEFORE_CURSOR)
-  return match ? match[2].toLowerCase() : null
+  return match ? match[2] : null
 }
 
 type GetTagColor = (tag: string) => string
@@ -31,7 +31,7 @@ export function createHashTagSpacePlugin(getTagColor: GetTagColor): Plugin {
       const match = textUpToCursor.match(HASH_TAG_BEFORE_CURSOR)
       if (!match) return null
 
-      const tag = match[2].toLowerCase()
+      const tag = match[2]
       const endPos = $from.start() + parentOffset
       const hashPos = endPos - tag.length - 2
 

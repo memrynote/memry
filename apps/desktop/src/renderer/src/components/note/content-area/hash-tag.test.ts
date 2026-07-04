@@ -21,9 +21,9 @@ describe('extractInlineTags', () => {
       expect(extractInlineTags(blocks)).toEqual(['typescript'])
     })
 
-    it('normalizes hashTag props to lowercase', () => {
+    it('preserves hashTag prop case', () => {
       const blocks = [textBlock([hashTagItem('TypeScript')])]
-      expect(extractInlineTags(blocks)).toEqual(['typescript'])
+      expect(extractInlineTags(blocks)).toEqual(['TypeScript'])
     })
 
     it('deduplicates across blocks', () => {
@@ -53,9 +53,9 @@ describe('extractInlineTags', () => {
       expect(extractInlineTags(blocks)).toEqual(['first'])
     })
 
-    it('normalizes text tags to lowercase', () => {
+    it('preserves text tag case', () => {
       const blocks = [textBlock([textItem('#URGENT')])]
-      expect(extractInlineTags(blocks)).toEqual(['urgent'])
+      expect(extractInlineTags(blocks)).toEqual(['URGENT'])
     })
 
     it('deduplicates text tags with hashTag nodes', () => {

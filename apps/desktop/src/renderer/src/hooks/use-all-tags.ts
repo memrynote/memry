@@ -90,12 +90,12 @@ export function useAllTags(): UseAllTagsResult {
   const combinedTags = useMemo((): TagWithMeta[] => {
     const tagMap = new Map<string, TagWithMeta>()
 
-    // Add notes tags
+    // Keyed by lowercase (case-insensitive identity); name keeps stored casing
     if (notesQuery.data) {
       for (const tag of notesQuery.data) {
-        const normalizedName = tag.tag.toLowerCase()
-        tagMap.set(normalizedName, {
-          name: normalizedName,
+        const key = tag.tag.toLowerCase()
+        tagMap.set(key, {
+          name: tag.tag,
           count: tag.count,
           color: tag.color,
           source: 'notes'
@@ -106,18 +106,18 @@ export function useAllTags(): UseAllTagsResult {
     // Add inbox tags (merge counts if tag exists)
     if (inboxQuery.data) {
       for (const tag of inboxQuery.data) {
-        const normalizedName = tag.tag.toLowerCase()
-        const existing = tagMap.get(normalizedName)
+        const key = tag.tag.toLowerCase()
+        const existing = tagMap.get(key)
         if (existing) {
           // Tag exists in both sources
-          tagMap.set(normalizedName, {
+          tagMap.set(key, {
             ...existing,
             count: existing.count + tag.count,
             source: 'both'
           })
         } else {
-          tagMap.set(normalizedName, {
-            name: normalizedName,
+          tagMap.set(key, {
+            name: tag.tag,
             count: tag.count,
             source: 'inbox'
           })
@@ -138,15 +138,17 @@ export function useAllTags(): UseAllTagsResult {
 
       const normalizedQuery = query.toLowerCase().trim()
 
-      // Filter tags that contain the query
-      const filtered = combinedTags.filter((tag) => tag.name.includes(normalizedQuery))
+      // Filter tags that contain the query (case-insensitive)
+      const filtered = combinedTags.filter((tag) =>
+        tag.name.toLowerCase().includes(normalizedQuery)
+      )
 
       // Sort: exact match first, then starts with, then contains
       return filtered.sort((a, b) => {
-        const aExact = a.name === normalizedQuery
-        const bExact = b.name === normalizedQuery
-        const aStartsWith = a.name.startsWith(normalizedQuery)
-        const bStartsWith = b.name.startsWith(normalizedQuery)
+        const aExact = a.name.toLowerCase() === normalizedQuery
+        const bExact = b.name.toLowerCase() === normalizedQuery
+        const aStartsWith = a.name.toLowerCase().startsWith(normalizedQuery)
+        const bStartsWith = b.name.toLowerCase().startsWith(normalizedQuery)
 
         if (aExact && !bExact) return -1
         if (!aExact && bExact) return 1
@@ -197,7 +199,7 @@ export function useAllTags(): UseAllTagsResult {
       const depth = normalizedPrefix.split('/').length
 
       const children = combinedTags.filter((tag) => {
-        if (!tag.name.startsWith(prefixWithSlash)) return false
+        if (!tag.name.toLowerCase().startsWith(prefixWithSlash)) return false
         const segments = tag.name.split('/')
         return segments.length === depth + 1
       })
@@ -207,7 +209,7 @@ export function useAllTags(): UseAllTagsResult {
       const normalizedLeaf = leafQuery.toLowerCase()
       return children.filter((tag) => {
         const leaf = tag.name.split('/').pop() ?? ''
-        return leaf.includes(normalizedLeaf)
+        return leaf.toLowerCase().includes(normalizedLeaf)
       })
     },
     [combinedTags]

@@ -51,8 +51,8 @@ describe('hash-tag-inline-plugin', () => {
       expect(matchHashTagImmediate('#abc')).toBeNull()
     })
 
-    it('normalizes to lowercase', () => {
-      expect(matchHashTagImmediate('#A')).toBe('a')
+    it('preserves case', () => {
+      expect(matchHashTagImmediate('#A')).toBe('A')
     })
   })
 
@@ -97,8 +97,8 @@ describe('hash-tag-inline-plugin', () => {
       expect(extendTagName('a', 'b')).toBe('ab')
     })
 
-    it('normalizes to lowercase', () => {
-      expect(extendTagName('hello', 'W')).toBe('hellow')
+    it('preserves case', () => {
+      expect(extendTagName('hello', 'W')).toBe('helloW')
     })
 
     it('appends digits', () => {

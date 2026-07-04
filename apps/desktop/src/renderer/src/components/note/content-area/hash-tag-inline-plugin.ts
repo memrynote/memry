@@ -11,7 +11,7 @@ const TRAILING_TAG_CHARS = /\ufffc([a-zA-Z0-9_\-/]+)$/
 
 export function matchHashTagImmediate(text: string): string | null {
   const match = text.match(HASH_TAG_IMMEDIATE)
-  return match ? match[2].toLowerCase() : null
+  return match ? match[2] : null
 }
 
 export function matchTrailingTagChars(text: string): { chars: string; offset: number } | null {
@@ -25,7 +25,7 @@ export function isTagChar(char: string): boolean {
 }
 
 export function extendTagName(currentTag: string, chars: string): string {
-  return (currentTag + chars).toLowerCase()
+  return currentTag + chars
 }
 
 export function shrinkTagName(currentTag: string): string | null {

@@ -162,7 +162,7 @@ describe('zero-covered leaf surfaces', () => {
   })
 
   it('matches hash-tag space completions and builds the plugin', () => {
-    expect(matchHashTagBeforeCursor('Plan #Work-2026 ')).toBe('work-2026')
+    expect(matchHashTagBeforeCursor('Plan #Work-2026 ')).toBe('Work-2026')
     expect(matchHashTagBeforeCursor('Plan #x ')).toBeNull()
     expect(matchHashTagBeforeCursor('Plan #bad. ')).toBeNull()
 
