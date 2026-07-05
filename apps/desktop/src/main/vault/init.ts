@@ -1,10 +1,15 @@
 import fs from 'fs'
 import path from 'path'
+import { parseJournalDate, formatJournalFilename } from '@memry/storage-vault'
+import { createLogger } from '../lib/logger'
+import { readDailyNotesConfig } from './obsidian-config'
+
+const logger = createLogger('VaultInit')
 
 /**
- * Default vault folder structure
+ * Default vault folder structure (journal folder is added from config)
  */
-const VAULT_FOLDERS = ['journal', 'attachments', 'attachments/images', 'attachments/files']
+const VAULT_FOLDERS = ['attachments', 'attachments/images', 'attachments/files']
 
 /**
  * Hidden Memry folder name
@@ -83,9 +88,47 @@ export function hasWritePermission(dirPath: string): boolean {
 }
 
 /**
+ * True when an Obsidian daily-note format can serve as Memry's
+ * journalDateFormat: it must round-trip a date and stay a single filename
+ * (no '/' subfolders, which Memry's direct-child journal detection can't see).
+ */
+function isSeedableJournalFormat(format: string): boolean {
+  const stem = formatJournalFilename('2026-01-31', format)
+  return !stem.includes('/') && parseJournalDate(stem, format) === '2026-01-31'
+}
+
+/**
+ * Seed-once journal settings from `.obsidian/daily-notes.json`.
+ * Only consulted when `.memry/config.json` does not exist yet; afterwards
+ * Memry's own config is authoritative (no live re-sync by design).
+ */
+function obsidianJournalSeed(vaultPath: string): Partial<typeof DEFAULT_CONFIG> {
+  const dailyNotes = readDailyNotesConfig(vaultPath)
+  if (!dailyNotes) return {}
+
+  const seed: Partial<typeof DEFAULT_CONFIG> = {}
+  const folder = dailyNotes.folder?.replace(/\/+$/, '')
+  if (folder && !path.isAbsolute(folder) && !folder.split('/').includes('..')) {
+    seed.journalFolder = folder
+  }
+  if (dailyNotes.format) {
+    if (isSeedableJournalFormat(dailyNotes.format)) {
+      seed.journalDateFormat = dailyNotes.format
+    } else {
+      logger.warn(
+        `Ignoring Obsidian daily-note format "${dailyNotes.format}": not usable as a journal filename`
+      )
+    }
+  }
+  return seed
+}
+
+/**
  * Initialize a vault at the given path.
  * Creates .memry folder and default config if they don't exist.
- * Also creates default vault folders (notes, journal, attachments).
+ * Also creates default vault folders (journal, attachments).
+ * On first init of a vault with an .obsidian folder, journal settings are
+ * seeded from Obsidian's daily-notes config.
  */
 export function initVault(vaultPath: string): void {
   // Create .memry directory
@@ -94,8 +137,11 @@ export function initVault(vaultPath: string): void {
 
   // Create default config if it doesn't exist
   const configPath = getConfigPath(vaultPath)
+  const config = fs.existsSync(configPath)
+    ? readVaultConfig(vaultPath)
+    : { ...DEFAULT_CONFIG, ...obsidianJournalSeed(vaultPath) }
   try {
-    fs.writeFileSync(configPath, JSON.stringify(DEFAULT_CONFIG, null, 2), {
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2), {
       encoding: 'utf-8',
       mode: 0o600,
       flag: 'wx'
@@ -107,7 +153,8 @@ export function initVault(vaultPath: string): void {
   }
 
   // Create default vault folders
-  for (const folder of VAULT_FOLDERS) {
+  for (const folder of [...VAULT_FOLDERS, config.journalFolder]) {
+    if (!folder) continue
     const folderPath = path.join(vaultPath, folder)
     fs.mkdirSync(folderPath, { recursive: true })
   }

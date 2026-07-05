@@ -1,4 +1,5 @@
 import type { PropertyType } from '@memry/db-schema/schema/notes-cache'
+import { getObsidianPropertyType } from '@main/vault/obsidian-config'
 
 // ============================================================================
 // Activity Level
@@ -66,7 +67,9 @@ export function deserializeValue(value: string | null, type: PropertyType): unkn
 // Property Type Inference
 // ============================================================================
 
-export function inferPropertyType(value: unknown): PropertyType {
+export function inferPropertyType(name: string, value: unknown): PropertyType {
+  const obsidianType = getObsidianPropertyType(name)
+  if (obsidianType) return obsidianType
   if (typeof value === 'boolean') return 'checkbox'
   if (typeof value === 'number') return 'number'
   if (Array.isArray(value)) return 'text'
