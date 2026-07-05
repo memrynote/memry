@@ -27,13 +27,12 @@ import {
 // ============================================================================
 
 /**
- * Journal entry frontmatter fields.
+ * Journal entry frontmatter fields. Every key is a plain user property;
+ * Memry writes only `date` (and `tags`/`properties` on explicit edit).
+ * Legacy Memry keys (id, created, modified) are plain user properties.
  */
 export interface JournalFrontmatter {
-  id: string
-  date: string
-  created: string
-  modified: string
+  date?: string
   tags?: string[]
   [key: string]: unknown
 }
@@ -45,6 +44,11 @@ export interface ParsedJournalEntry {
   frontmatter: JournalFrontmatter
   content: string
   hadFrontmatter: boolean
+  /** In-memory defaults — never written back to the file */
+  id: string
+  date: string
+  created: string
+  modified: string
 }
 
 /**
@@ -116,24 +120,7 @@ export function parseJournalEntry(rawContent: string, date: string): ParsedJourn
   const hadFrontmatter = Object.keys(data).length > 0
   const now = new Date().toISOString()
 
-  // Ensure required fields exist
-  if (!data.id || typeof data.id !== 'string') {
-    data.id = generateJournalId(date)
-  }
-
-  if (!data.date || typeof data.date !== 'string') {
-    data.date = date
-  }
-
-  if (!data.created || typeof data.created !== 'string') {
-    data.created = now
-  }
-
-  if (!data.modified || typeof data.modified !== 'string') {
-    data.modified = now
-  }
-
-  // Normalize tags to array
+  // Normalize tags to array (read-side only, never written back)
   if (data.tags && !Array.isArray(data.tags)) {
     data.tags = [String(data.tags)]
   }
@@ -141,41 +128,42 @@ export function parseJournalEntry(rawContent: string, date: string): ParsedJourn
   return {
     frontmatter: data as JournalFrontmatter,
     content: content.trim(),
-    hadFrontmatter
+    hadFrontmatter,
+    id: generateJournalId(date),
+    date,
+    created: now,
+    modified: now
   }
 }
 
 /**
  * Serialize frontmatter and content to markdown format.
+ * Writes exactly the keys given; no keys → bare content, no YAML block.
+ *
  * @param frontmatter - Frontmatter object
  * @param content - Markdown content (without frontmatter)
- * @returns Complete markdown file content with YAML frontmatter
+ * @returns Complete markdown file content
  */
 export function serializeJournalEntry(frontmatter: JournalFrontmatter, content: string): string {
-  // Update modified timestamp
-  const updatedFrontmatter = {
-    ...frontmatter,
-    modified: new Date().toISOString()
+  const clean = Object.fromEntries(Object.entries(frontmatter).filter(([, v]) => v !== undefined))
+
+  if (Object.keys(clean).length === 0) {
+    return content.trim()
   }
 
-  return matter.stringify(content.trim(), updatedFrontmatter)
+  return matter.stringify(content.trim(), clean)
 }
 
 /**
- * Create frontmatter for a new journal entry.
+ * Create frontmatter for a new journal entry — user keys only.
  * @param date - Date in YYYY-MM-DD format
  * @param tags - Optional tags
  * @returns Fresh frontmatter object
  */
 export function createJournalFrontmatter(date: string, tags?: string[]): JournalFrontmatter {
-  const now = new Date().toISOString()
-
   return {
-    id: generateJournalId(date),
     date,
-    created: now,
-    modified: now,
-    tags: tags ?? []
+    ...(tags && tags.length > 0 ? { tags } : {})
   }
 }
 
@@ -249,14 +237,14 @@ export async function readJournalEntry(date: string): Promise<JournalEntry | nul
   const properties = extractJournalProperties(parsed.frontmatter)
 
   return {
-    id: parsed.frontmatter.id,
-    date: parsed.frontmatter.date,
+    id: parsed.id,
+    date: parsed.date,
     content: parsed.content,
     wordCount,
     characterCount,
     tags: parsed.frontmatter.tags ?? [],
-    createdAt: parsed.frontmatter.created,
-    modifiedAt: parsed.frontmatter.modified,
+    createdAt: parsed.created,
+    modifiedAt: parsed.modified,
     properties
   }
 }
@@ -291,13 +279,11 @@ export async function writeJournalEntryWithContent(
   let frontmatter: JournalFrontmatter
 
   if (existing) {
-    // Update existing entry - preserve created timestamp
-    frontmatter = {
-      id: existing.id,
-      date,
-      created: existing.createdAt,
-      modified: new Date().toISOString(),
-      tags: tags ?? existing.tags
+    // Update existing entry — user keys only
+    frontmatter = { date }
+    const mergedTags = tags ?? existing.tags
+    if (mergedTags.length > 0) {
+      frontmatter.tags = mergedTags
     }
 
     // Add properties if provided, or preserve existing properties
@@ -333,14 +319,14 @@ export async function writeJournalEntryWithContent(
   const writtenProperties = extractJournalProperties(parsed.frontmatter)
 
   const entry: JournalEntry = {
-    id: parsed.frontmatter.id,
-    date: parsed.frontmatter.date,
+    id: parsed.id,
+    date: parsed.date,
     content: parsed.content,
     wordCount,
     characterCount,
     tags: parsed.frontmatter.tags ?? [],
-    createdAt: parsed.frontmatter.created,
-    modifiedAt: parsed.frontmatter.modified,
+    createdAt: existing?.createdAt ?? parsed.created,
+    modifiedAt: parsed.modified,
     properties: writtenProperties
   }
 

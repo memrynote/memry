@@ -13,7 +13,6 @@ import { and, desc, eq } from 'drizzle-orm'
 import {
   parseNote,
   serializeNote,
-  createFrontmatter,
   extractInlineTagsFromMarkdown,
   type NoteFrontmatter
 } from './frontmatter'
@@ -33,7 +32,6 @@ import {
   getNoteTags,
   ensureTagDefinitions,
   getNotePropertiesAsRecord,
-  findDuplicateId,
   resolveNoteByTitle
 } from '@main/database/queries/notes'
 import { folderConfigs } from '@memry/db-schema/schema/folder-configs'
@@ -224,11 +222,14 @@ export async function createNote(input: NoteCreateInput): Promise<Note> {
 
   const mergedTags = [...new Set([...templateTags, ...(input.tags ?? [])])]
 
-  const frontmatter = createFrontmatter(input.title, mergedTags, {
-    created: input.created,
-    modified: input.modified
-  })
-  if (input.id) frontmatter.id = input.id
+  const noteId = input.id ?? generateNoteId()
+  const now = new Date().toISOString()
+  const created = input.created ?? now
+  const modified = input.modified ?? now
+
+  // User keys only — no Memry keys in the file; empty frontmatter → no YAML block
+  const frontmatter: NoteFrontmatter = {}
+  if (mergedTags.length > 0) frontmatter.tags = mergedTags
 
   const properties = { ...templateProperties, ...(input.properties ?? {}) }
   if (Object.keys(properties).length > 0) {
@@ -246,11 +247,14 @@ export async function createNote(input: NoteCreateInput): Promise<Note> {
   const syncResult = syncNoteToCache(
     db,
     {
-      id: frontmatter.id,
+      id: noteId,
       path: relativePath,
       fileContent,
       frontmatter,
-      parsedContent: content
+      parsedContent: content,
+      title: input.title,
+      createdAt: created,
+      modifiedAt: modified
     },
     { isNew: true }
   )
@@ -258,13 +262,13 @@ export async function createNote(input: NoteCreateInput): Promise<Note> {
   ensureTagDefinitions(dataDb, mergedTags)
 
   const note: Note = {
-    id: frontmatter.id,
+    id: noteId,
     path: relativePath,
     title: input.title,
     content,
     frontmatter,
-    created: new Date(frontmatter.created),
-    modified: new Date(frontmatter.modified),
+    created: new Date(created),
+    modified: new Date(modified),
     tags: mergedTags,
     aliases: frontmatter.aliases ?? [],
     wordCount: syncResult.wordCount,
@@ -314,51 +318,20 @@ export async function getNoteById(id: string): Promise<Note | null> {
   }
 
   const parsed = parseNote(fileContent, cached.path)
-  let responseTags = getNoteTags(db, id)
-  let responseProperties = getNotePropertiesAsRecord(db, id)
-  let responseWordCount = cached.wordCount ?? 0
-  let responseEmoji = cached.emoji ?? (parsed.frontmatter as { emoji?: string }).emoji ?? null
-
-  const duplicate = findDuplicateId(db, parsed.frontmatter.id, cached.path)
-  if (duplicate) {
-    const newId = generateNoteId()
-    parsed.frontmatter.id = newId
-    parsed.frontmatter.title = path.basename(cached.path, path.extname(cached.path))
-    const newContent = serializeNote(parsed.frontmatter, parsed.content)
-    await atomicWrite(absolutePath, newContent)
-    deleteNoteFromCache(db, id)
-    const syncResult = syncNoteToCache(
-      db,
-      {
-        id: newId,
-        path: cached.path,
-        fileContent: newContent,
-        frontmatter: parsed.frontmatter,
-        parsedContent: parsed.content
-      },
-      { isNew: true }
-    )
-
-    id = newId
-    responseTags = syncResult.tags
-    responseProperties = syncResult.properties
-    responseWordCount = syncResult.wordCount
-    responseEmoji = syncResult.emoji
-  }
 
   return {
     id,
     path: cached.path,
-    title: parsed.frontmatter.title ?? cached.title,
+    title: cached.title,
     content: parsed.content,
     frontmatter: parsed.frontmatter,
-    created: new Date(parsed.frontmatter.created),
-    modified: new Date(parsed.frontmatter.modified),
-    tags: responseTags,
+    created: new Date(cached.createdAt),
+    modified: new Date(cached.modifiedAt),
+    tags: getNoteTags(db, id),
     aliases: parsed.frontmatter.aliases ?? [],
-    wordCount: responseWordCount,
-    properties: responseProperties,
-    emoji: responseEmoji
+    wordCount: cached.wordCount ?? 0,
+    properties: getNotePropertiesAsRecord(db, id),
+    emoji: cached.emoji ?? null
   }
 }
 
@@ -427,28 +400,32 @@ export async function getNoteByPath(notePath: string): Promise<Note | null> {
     return null
   }
 
-  const parsed = parseNote(fileContent, notePath)
+  const stats = await fs.stat(absolutePath).catch(() => null)
+  const parsed = parseNote(fileContent, notePath, stats ?? undefined)
 
   const syncResult = syncNoteToCache(
     db,
     {
-      id: parsed.frontmatter.id,
+      id: parsed.id,
       path: notePath,
       fileContent,
       frontmatter: parsed.frontmatter,
-      parsedContent: parsed.content
+      parsedContent: parsed.content,
+      title: parsed.title,
+      createdAt: parsed.created,
+      modifiedAt: parsed.modified
     },
     { isNew: true }
   )
 
   return {
-    id: parsed.frontmatter.id,
+    id: parsed.id,
     path: notePath,
-    title: parsed.frontmatter.title ?? path.basename(notePath, '.md'),
+    title: parsed.title,
     content: parsed.content,
     frontmatter: parsed.frontmatter,
-    created: new Date(parsed.frontmatter.created),
-    modified: new Date(parsed.frontmatter.modified),
+    created: new Date(parsed.created),
+    modified: new Date(parsed.modified),
     tags: syncResult.tags,
     aliases: parsed.frontmatter.aliases ?? [],
     wordCount: syncResult.wordCount,
@@ -515,15 +492,16 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
     logger.info('updateNote: content unchanged, skipping snapshot', { noteId: input.id })
   }
 
-  const newFrontmatter: NoteFrontmatter & {
-    properties?: Record<string, unknown>
-    emoji?: string | null
-  } = {
+  // User keys only — Memry state (title, dates, emoji, localOnly) lives in the DBs
+  const newFrontmatter: NoteFrontmatter & { properties?: Record<string, unknown> } = {
     ...existing.frontmatter,
-    ...input.frontmatter,
-    title: newTitle,
-    tags: newTags,
-    modified: new Date().toISOString()
+    ...input.frontmatter
+  }
+
+  if (newTags.length > 0) {
+    newFrontmatter.tags = newTags
+  } else {
+    delete newFrontmatter.tags
   }
 
   if (Object.keys(newProperties).length > 0) {
@@ -532,13 +510,12 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
     delete newFrontmatter.properties
   }
 
-  if (newEmoji !== undefined) {
-    newFrontmatter.emoji = newEmoji
-  }
-
   const fileContent = serializeNote(newFrontmatter, newContent)
   const absolutePath = toAbsolutePath(existing.path)
   await atomicWrite(absolutePath, fileContent)
+
+  const cached = getNoteCacheById(db, input.id)
+  const newModified = new Date().toISOString()
 
   const syncResult = syncNoteToCache(
     db,
@@ -547,7 +524,12 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
       path: existing.path,
       fileContent,
       frontmatter: newFrontmatter,
-      parsedContent: newContent
+      parsedContent: newContent,
+      title: newTitle,
+      createdAt: cached?.createdAt ?? existing.created.toISOString(),
+      modifiedAt: newModified,
+      localOnly: cached?.localOnly ?? false,
+      emoji: newEmoji
     },
     { isNew: false, tagsOverride: newTags }
   )
@@ -566,7 +548,7 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
     content: newContent,
     frontmatter: newFrontmatter,
     created: existing.created,
-    modified: new Date(newFrontmatter.modified),
+    modified: new Date(newModified),
     tags: newTags,
     aliases: newFrontmatter.aliases ?? [],
     wordCount: syncResult.wordCount,

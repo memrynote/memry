@@ -109,7 +109,6 @@ describe('vault watcher', () => {
   // ==========================================================================
   it('updates cache and emits UPDATED when a file changes', async () => {
     const notePath = createTestNote(vault, {
-      id: 'note-change',
       title: 'change-note',
       content: 'Old content',
       tags: ['alpha']
@@ -120,7 +119,14 @@ describe('vault watcher', () => {
 
     await watcher.handleFileAdd(notePath)
 
-    const initial = indexDb.db.select().from(noteCache).where(eq(noteCache.id, 'note-change')).get()
+    // Files carry no Memry identity — the watcher assigns a fresh internal id
+    const initial = indexDb.db
+      .select()
+      .from(noteCache)
+      .where(eq(noteCache.path, 'notes/change-note.md'))
+      .get()
+    expect(initial).toBeDefined()
+    const noteId = initial!.id
     const initialHash = initial?.contentHash
     const initialWordCount = initial?.wordCount ?? 0
 
@@ -133,7 +139,7 @@ describe('vault watcher', () => {
 
     await watcher.handleFileChange(notePath)
 
-    const updated = indexDb.db.select().from(noteCache).where(eq(noteCache.id, 'note-change')).get()
+    const updated = indexDb.db.select().from(noteCache).where(eq(noteCache.id, noteId)).get()
 
     expect(updated?.contentHash).not.toBe(initialHash)
     expect(updated?.wordCount).toBeGreaterThan(initialWordCount)
@@ -144,7 +150,7 @@ describe('vault watcher', () => {
         channel === NotesChannels.events.UPDATED &&
         typeof payload === 'object' &&
         payload !== null &&
-        (payload as { id?: string }).id === 'note-change'
+        (payload as { id?: string }).id === noteId
     )
     const hasCreatedEvent = sentCalls.some(
       ([channel, payload]) =>
@@ -153,7 +159,7 @@ describe('vault watcher', () => {
         payload !== null &&
         typeof (payload as { note?: { id?: string } }).note === 'object' &&
         (payload as { note?: { id?: string } }).note !== null &&
-        (payload as { note?: { id?: string } }).note?.id === 'note-change'
+        (payload as { note?: { id?: string } }).note?.id === noteId
     )
 
     expect(hasUpdatedEvent || hasCreatedEvent).toBe(true)
@@ -168,14 +174,12 @@ describe('vault watcher', () => {
     watcher.vaultPath = vault.path
 
     const targetPath = createTestNote(vault, {
-      id: 'target-note',
       title: 'Target Note',
       content: 'Target content'
     })
     await watcher.handleFileAdd(targetPath)
 
     const notePath = createTestNote(vault, {
-      id: 'note-add',
       title: 'source-note',
       content: 'See [[Target Note]]',
       tags: ['Alpha', 'Beta']
@@ -183,29 +187,27 @@ describe('vault watcher', () => {
 
     await watcher.handleFileAdd(notePath)
 
-    const cached = indexDb.db.select().from(noteCache).where(eq(noteCache.id, 'note-add')).get()
-    expect(cached?.path).toBe('notes/source-note.md')
-    const canonical = dataDb.db
+    // Fresh internal id assigned on add — resolve it via the path
+    const cached = indexDb.db
       .select()
-      .from(noteMetadata)
-      .where(eq(noteMetadata.id, 'note-add'))
+      .from(noteCache)
+      .where(eq(noteCache.path, 'notes/source-note.md'))
       .get()
+    expect(cached).toBeDefined()
+    const noteId = cached!.id
+    const canonical = dataDb.db.select().from(noteMetadata).where(eq(noteMetadata.id, noteId)).get()
     expect(canonical?.path).toBe('notes/source-note.md')
 
     const tags = indexDb.db
       .select()
       .from(noteTags)
-      .where(eq(noteTags.noteId, 'note-add'))
+      .where(eq(noteTags.noteId, noteId))
       .all()
       .map((tag) => tag.tag)
       .sort()
     expect(tags).toEqual(['Alpha', 'Beta'])
 
-    const links = indexDb.db
-      .select()
-      .from(noteLinks)
-      .where(eq(noteLinks.sourceId, 'note-add'))
-      .all()
+    const links = indexDb.db.select().from(noteLinks).where(eq(noteLinks.sourceId, noteId)).all()
     if (links.length > 0) {
       expect(links).toEqual([expect.objectContaining({ targetTitle: 'Target Note' })])
     }
@@ -215,33 +217,33 @@ describe('vault watcher', () => {
     await watcher.handleFileDelete(notePath)
     await vi.advanceTimersByTimeAsync(500)
 
-    const deleted = indexDb.db.select().from(noteCache).where(eq(noteCache.id, 'note-add')).get()
+    const deleted = indexDb.db.select().from(noteCache).where(eq(noteCache.id, noteId)).get()
     expect(deleted).toBeUndefined()
     const deletedCanonical = dataDb.db
       .select()
       .from(noteMetadata)
-      .where(eq(noteMetadata.id, 'note-add'))
+      .where(eq(noteMetadata.id, noteId))
       .get()
     expect(deletedCanonical).toBeUndefined()
 
     const remainingTags = indexDb.db
       .select()
       .from(noteTags)
-      .where(eq(noteTags.noteId, 'note-add'))
+      .where(eq(noteTags.noteId, noteId))
       .all()
     expect(remainingTags).toEqual([])
 
     const remainingLinks = indexDb.db
       .select()
       .from(noteLinks)
-      .where(eq(noteLinks.sourceId, 'note-add'))
+      .where(eq(noteLinks.sourceId, noteId))
       .all()
     expect(remainingLinks).toEqual([])
 
     expect(window.webContents.send).toHaveBeenCalledWith(
       NotesChannels.events.DELETED,
       expect.objectContaining({
-        id: 'note-add',
+        id: noteId,
         path: 'notes/source-note.md',
         source: 'external'
       })
@@ -251,10 +253,9 @@ describe('vault watcher', () => {
   // ==========================================================================
   // T602: rename flow integration
   // ==========================================================================
-  it('processes rename flow via rename-tracker', async () => {
+  it('processes rename flow via rename-tracker (content-hash match)', async () => {
     vi.useFakeTimers()
     const oldPath = createTestNote(vault, {
-      id: 'note-rename',
       title: 'old-name',
       content: 'Old content'
     })
@@ -264,19 +265,25 @@ describe('vault watcher', () => {
 
     await watcher.handleFileAdd(oldPath)
 
+    const cachedBefore = indexDb.db
+      .select()
+      .from(noteCache)
+      .where(eq(noteCache.path, 'notes/old-name.md'))
+      .get()
+    expect(cachedBefore).toBeDefined()
+    const noteId = cachedBefore!.id
+
     window.webContents.send.mockClear()
 
-    const newPath = createTestNote(vault, {
-      id: 'note-rename',
-      title: 'new-name',
-      content: 'Old content'
-    })
+    // External rename: identical bytes at a new path — matched by content hash
+    const newPath = path.join(vault.notesDir, 'new-name.md')
+    fs.renameSync(oldPath, newPath)
 
     await watcher.handleFileDelete(oldPath)
     await watcher.handleFileAdd(newPath)
     await vi.advanceTimersByTimeAsync(500)
 
-    const updated = indexDb.db.select().from(noteCache).where(eq(noteCache.id, 'note-rename')).get()
+    const updated = indexDb.db.select().from(noteCache).where(eq(noteCache.id, noteId)).get()
 
     expect(updated?.path).toBe('notes/new-name.md')
     expect(updated?.title).toBe('new-name')
@@ -284,7 +291,7 @@ describe('vault watcher', () => {
     expect(window.webContents.send).toHaveBeenCalledWith(
       NotesChannels.events.RENAMED,
       expect.objectContaining({
-        id: 'note-rename',
+        id: noteId,
         oldPath: 'notes/old-name.md',
         newPath: 'notes/new-name.md',
         source: 'external'
@@ -332,7 +339,7 @@ describe('vault watcher', () => {
 
     expect(getWatcher().isWatching()).toBe(true)
 
-    trackPendingDelete('pending-note', 'notes/pending.md', vi.fn())
+    trackPendingDelete('pending-note', 'hash-pending', 'notes/pending.md', vi.fn())
     expect(hasPendingDeletes()).toBe(true)
 
     await stopWatcher()
@@ -513,12 +520,11 @@ describe('vault watcher', () => {
   })
 
   // ==========================================================================
-  // T604: Finder copy derives title from OS filename, not original
+  // T604: Finder copy is just a new note — fresh internal id, zero file writes
   // ==========================================================================
-  it('sets frontmatter title from OS filename when detecting a copy', async () => {
+  it('treats a copied file as a new note without writing to it', async () => {
     // #given — original note in the cache
     const originalPath = createTestNote(vault, {
-      id: 'original-id',
       title: 'my-note',
       content: 'Some content'
     })
@@ -528,7 +534,14 @@ describe('vault watcher', () => {
 
     await watcher.handleFileAdd(originalPath)
 
-    // #when — simulate Finder copy: identical frontmatter at "my-note copy.md"
+    const original = indexDb.db
+      .select()
+      .from(noteCache)
+      .where(eq(noteCache.path, 'notes/my-note.md'))
+      .get()
+    expect(original).toBeDefined()
+
+    // #when — simulate Finder copy: identical bytes at "my-note copy.md"
     const copyFilename = 'my-note copy.md'
     const copyAbsPath = path.join(vault.notesDir, copyFilename)
     const originalContent = fs.readFileSync(originalPath, 'utf8')
@@ -536,11 +549,18 @@ describe('vault watcher', () => {
 
     await watcher.handleFileAdd(copyAbsPath)
 
-    // #then — copy gets new ID AND title derived from OS filename
-    const copyContent = fs.readFileSync(copyAbsPath, 'utf8')
-    const parsed = parseNote(copyContent, `notes/${copyFilename}`)
+    // #then — the watcher never writes files: both keep their exact bytes
+    expect(fs.readFileSync(copyAbsPath, 'utf8')).toBe(originalContent)
+    expect(fs.readFileSync(originalPath, 'utf8')).toBe(originalContent)
 
-    expect(parsed.frontmatter.id).not.toBe('original-id')
-    expect(parsed.frontmatter.title).toBe('my-note copy')
+    // The copy is a new note with a fresh internal id and filename-derived title
+    const copy = indexDb.db
+      .select()
+      .from(noteCache)
+      .where(eq(noteCache.path, `notes/${copyFilename}`))
+      .get()
+    expect(copy).toBeDefined()
+    expect(copy!.id).not.toBe(original!.id)
+    expect(copy!.title).toBe('my-note copy')
   })
 })

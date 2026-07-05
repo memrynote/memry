@@ -1,20 +1,25 @@
-import { writeFileSync, mkdirSync } from 'fs'
+import { writeFileSync, mkdirSync, utimesSync } from 'fs'
 import { dirname, resolve } from 'path'
 import matter from 'gray-matter'
 
 export interface NoteFile {
   /** Relative path inside the vault (e.g. "movies/Dune.md") */
   relativePath: string
-  /** Frontmatter object — id/title/created/modified must be set by the caller. */
+  /** User frontmatter keys only — no Memry keys (id/title/created/modified). */
   frontmatter: Record<string, unknown>
   /** Markdown body without YAML frontmatter. */
   body: string
+  /** ISO mtime to stamp on the file (dates come from fs stats, not frontmatter). */
+  modified?: string
 }
 
 function serialize(frontmatter: Record<string, unknown>, body: string): string {
   const cleanFrontmatter = Object.fromEntries(
     Object.entries(frontmatter).filter(([, v]) => v !== undefined)
   )
+  if (Object.keys(cleanFrontmatter).length === 0) {
+    return body.trim() + '\n'
+  }
   return matter.stringify(body.trim(), cleanFrontmatter).replace(/(?:\r?\n)+$/g, '') + '\n'
 }
 
@@ -22,6 +27,10 @@ function writeNoteFile(vaultRoot: string, file: NoteFile): void {
   const absolute = resolve(vaultRoot, file.relativePath)
   mkdirSync(dirname(absolute), { recursive: true })
   writeFileSync(absolute, serialize(file.frontmatter, file.body), 'utf8')
+  if (file.modified) {
+    const mtime = new Date(file.modified)
+    utimesSync(absolute, mtime, mtime)
+  }
 }
 
 export function writeNoteFiles(vaultRoot: string, files: NoteFile[]): number {

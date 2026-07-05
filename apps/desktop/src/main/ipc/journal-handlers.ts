@@ -132,7 +132,10 @@ export function registerJournalHandlers(): void {
           path: journalPath,
           fileContent,
           frontmatter,
-          parsedContent: entry.content
+          parsedContent: entry.content,
+          title: entry.date,
+          createdAt: entry.createdAt,
+          modifiedAt: entry.modifiedAt
         },
         { isNew: !cached }
       )
@@ -184,7 +187,10 @@ export function registerJournalHandlers(): void {
             path: journalPath,
             fileContent,
             frontmatter,
-            parsedContent: entry.content
+            parsedContent: entry.content,
+            title: entry.date,
+            createdAt: entry.createdAt,
+            modifiedAt: entry.modifiedAt
           },
           { isNew: !cached }
         )
@@ -216,11 +222,8 @@ export function registerJournalHandlers(): void {
           // Create the current file content (before save) for snapshot
           // Include existing properties in snapshot frontmatter
           const snapshotFrontmatter: Parameters<typeof serializeJournalEntry>[0] = {
-            id: existing.id,
             date: existing.date,
-            created: existing.createdAt,
-            modified: existing.modifiedAt,
-            tags: existing.tags
+            ...(existing.tags.length > 0 ? { tags: existing.tags } : {})
           }
           if (existing.properties && Object.keys(existing.properties).length > 0) {
             snapshotFrontmatter.properties = existing.properties
@@ -255,7 +258,10 @@ export function registerJournalHandlers(): void {
           path: journalPath,
           fileContent,
           frontmatter,
-          parsedContent: entry.content
+          parsedContent: entry.content,
+          title: entry.date,
+          createdAt: entry.createdAt,
+          modifiedAt: entry.modifiedAt
         },
         { isNew: !cached }
       )

@@ -117,11 +117,18 @@ describe('evernoteImporter (integration)', () => {
 
     const evernoteDir = path.join(tempVault.notesDir, 'Evernote', 'sample')
     const noteFiles = fs.readdirSync(evernoteDir)
-    const notePath = path.join(evernoteDir, noteFiles.find((f) => f.endsWith('.md'))!)
-    const content = fs.readFileSync(notePath, 'utf8')
+    const noteFile = noteFiles.find((f) => f.endsWith('.md'))!
 
-    // Frontmatter should have created/modified dates from the enex
-    expect(content).toContain('2023-10-15')
+    // Created/modified dates from the enex now live on the note record, not in the file
+    const row = indexDb.sqlite
+      .prepare(
+        'SELECT created_at AS createdAt, modified_at AS modifiedAt FROM note_cache WHERE path = ?'
+      )
+      .get(`notes/Evernote/sample/${noteFile}`) as
+      | { createdAt: string; modifiedAt: string }
+      | undefined
+    expect(row?.createdAt).toContain('2023-10-15')
+    expect(row?.modifiedAt).toContain('2023-10-16')
   })
 
   it('stops early when cancelled before processing', async () => {

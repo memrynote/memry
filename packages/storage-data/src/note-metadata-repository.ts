@@ -57,7 +57,8 @@ export function upsertNoteMetadata(db: NoteMetadataDb, metadata: NewNoteMetadata
         propertyDefinitionNames: metadata.propertyDefinitionNames,
         clock: metadata.clock,
         syncedAt: metadata.syncedAt,
-        createdAt: metadata.createdAt,
+        // createdAt intentionally omitted: preserve the original value on
+        // conflict (matches insertNoteCache in the index DB)
         modifiedAt: metadata.modifiedAt,
         storedAt: new Date().toISOString()
       }

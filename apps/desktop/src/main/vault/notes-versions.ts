@@ -187,17 +187,11 @@ export async function restoreVersion(snapshotId: string): Promise<Note> {
 
   const absolutePath = toAbsolutePath(cached.path)
   const currentFileContent = await fs.readFile(absolutePath, 'utf-8')
-  const currentParsed = parseNote(currentFileContent)
 
-  createSnapshot(
-    cached.id,
-    currentFileContent,
-    currentParsed.frontmatter.title ?? cached.title,
-    SnapshotReasons.SIGNIFICANT,
-    true
-  )
+  createSnapshot(cached.id, currentFileContent, cached.title, SnapshotReasons.SIGNIFICANT, true)
 
   const snapshotParsed = parseNote(snapshot.fileContent)
+  const now = new Date()
 
   await atomicWrite(absolutePath, snapshot.fileContent)
 
@@ -208,7 +202,12 @@ export async function restoreVersion(snapshotId: string): Promise<Note> {
       path: cached.path,
       fileContent: snapshot.fileContent,
       frontmatter: snapshotParsed.frontmatter,
-      parsedContent: snapshotParsed.content
+      parsedContent: snapshotParsed.content,
+      title: cached.title,
+      createdAt: cached.createdAt,
+      modifiedAt: now.toISOString(),
+      localOnly: cached.localOnly ?? false,
+      emoji: cached.emoji ?? null
     },
     { isNew: false }
   )
@@ -218,11 +217,11 @@ export async function restoreVersion(snapshotId: string): Promise<Note> {
   const restoredNote: Note = {
     id: cached.id,
     path: cached.path,
-    title: snapshotParsed.frontmatter.title ?? cached.title,
+    title: cached.title,
     content: snapshotParsed.content,
     frontmatter: snapshotParsed.frontmatter,
-    created: new Date(snapshotParsed.frontmatter.created),
-    modified: new Date(),
+    created: new Date(cached.createdAt),
+    modified: now,
     tags: syncResult.tags,
     aliases: snapshotParsed.frontmatter.aliases ?? [],
     wordCount: syncResult.wordCount,

@@ -59,7 +59,7 @@ describe('rename-tracker', () => {
     vi.useFakeTimers()
     const onRealDelete = vi.fn().mockResolvedValue(undefined)
 
-    trackPendingDelete('note-1', 'notes/old.md', onRealDelete)
+    trackPendingDelete('note-1', 'hash-1', 'notes/old.md', onRealDelete)
 
     expect(hasPendingDeletes()).toBe(true)
     expect(getPendingDeleteCount()).toBe(1)
@@ -73,7 +73,7 @@ describe('rename-tracker', () => {
   // ==========================================================================
   // T597: checkForRename reports rename without mutating cache inline
   // ==========================================================================
-  it('returns the old path and leaves cache updates to the caller', async () => {
+  it('matches by content hash and leaves cache updates to the caller', async () => {
     const now = new Date().toISOString()
     indexDb.db
       .insert(noteCache)
@@ -89,17 +89,47 @@ describe('rename-tracker', () => {
       })
       .run()
 
-    trackPendingDelete('note-2', 'notes/old-name.md', vi.fn())
+    trackPendingDelete('note-2', 'hash', 'notes/old-name.md', vi.fn())
 
-    const oldPath = await checkForRename('note-2', 'notes/new-name.md')
+    const match = checkForRename('hash', 'notes/new-name.md')
 
-    expect(oldPath).toBe('notes/old-name.md')
+    expect(match).toEqual({ id: 'note-2', oldPath: 'notes/old-name.md' })
 
     const unchanged = indexDb.db.select().from(noteCache).where(eq(noteCache.id, 'note-2')).get()
 
     expect(unchanged?.path).toBe('notes/old-name.md')
     expect(unchanged?.title).toBe('old-name')
     expect(window.webContents.send).not.toHaveBeenCalled()
+  })
+
+  it('returns null when no pending delete matches the hash', () => {
+    trackPendingDelete('note-x', 'hash-x', 'notes/x.md', vi.fn())
+    expect(checkForRename('other-hash', 'notes/new.md')).toBeNull()
+    clearPendingDelete('note-x')
+  })
+
+  it('matches identical-hash collisions FIFO, oldest pending delete first', async () => {
+    vi.useFakeTimers()
+    const onRealDeleteA = vi.fn().mockResolvedValue(undefined)
+    const onRealDeleteB = vi.fn().mockResolvedValue(undefined)
+
+    trackPendingDelete('note-a', 'same-hash', 'notes/a.md', onRealDeleteA)
+    trackPendingDelete('note-b', 'same-hash', 'notes/b.md', onRealDeleteB)
+    expect(getPendingDeleteCount()).toBe(2)
+
+    expect(checkForRename('same-hash', 'notes/a-renamed.md')).toEqual({
+      id: 'note-a',
+      oldPath: 'notes/a.md'
+    })
+    expect(checkForRename('same-hash', 'notes/b-renamed.md')).toEqual({
+      id: 'note-b',
+      oldPath: 'notes/b.md'
+    })
+    expect(checkForRename('same-hash', 'notes/c.md')).toBeNull()
+
+    await vi.advanceTimersByTimeAsync(500)
+    expect(onRealDeleteA).not.toHaveBeenCalled()
+    expect(onRealDeleteB).not.toHaveBeenCalled()
   })
 
   it('emits rename event when the caller completes the rename', async () => {
@@ -125,8 +155,8 @@ describe('rename-tracker', () => {
     vi.useFakeTimers()
     const onRealDelete = vi.fn().mockResolvedValue(undefined)
 
-    trackPendingDelete('note-3', 'notes/old.md', onRealDelete)
-    trackPendingDelete('note-4', 'notes/old-2.md', onRealDelete)
+    trackPendingDelete('note-3', 'hash-3', 'notes/old.md', onRealDelete)
+    trackPendingDelete('note-4', 'hash-4', 'notes/old-2.md', onRealDelete)
 
     expect(getPendingDeleteCount()).toBe(2)
 

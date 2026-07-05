@@ -5,7 +5,8 @@ vi.mock('../vault/notes', () => ({
   updateNote: vi.fn(),
   renameNote: vi.fn(),
   moveNote: vi.fn(),
-  deleteNote: vi.fn()
+  deleteNote: vi.fn(),
+  getNoteById: vi.fn()
 }))
 
 vi.mock('./runtime-effects', () => ({
@@ -59,8 +60,8 @@ describe('notes domain adapter', () => {
       id: 'note-1',
       title: 'Test Note'
     }
-    vi.mocked(noteVault.updateNote).mockResolvedValue(
-      note as Awaited<ReturnType<typeof noteVault.updateNote>>
+    vi.mocked(noteVault.getNoteById).mockResolvedValue(
+      note as Awaited<ReturnType<typeof noteVault.getNoteById>>
     )
 
     const result = await setNoteLocalOnlyCommand({
@@ -69,11 +70,10 @@ describe('notes domain adapter', () => {
     })
 
     expect(result).toBe(note)
-    expect(noteVault.updateNote).toHaveBeenCalledWith({
-      id: 'note-1',
-      frontmatter: { localOnly: true }
-    })
+    // localOnly is sidecar-only state — never written to file frontmatter
+    expect(noteVault.updateNote).not.toHaveBeenCalled()
     expect(runtimeEffects.setNoteLocalOnlyState).toHaveBeenCalledWith('note-1', true)
+    expect(noteVault.getNoteById).toHaveBeenCalledWith('note-1')
   })
 
   it('keeps note mutation sync orchestration out of IPC handlers', async () => {

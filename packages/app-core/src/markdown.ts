@@ -14,7 +14,12 @@ export function parseMarkdownNote(raw: string): ParsedMarkdownNote {
 }
 
 export function writeMarkdownNote(frontmatter: Record<string, unknown>, content: string): string {
-  return matter.stringify(content.trim(), frontmatter).trimEnd()
+  const clean = Object.fromEntries(Object.entries(frontmatter).filter(([, v]) => v !== undefined))
+  // No keys → no YAML block at all
+  if (Object.keys(clean).length === 0) {
+    return content.trim()
+  }
+  return matter.stringify(content.trim(), clean).trimEnd()
 }
 
 export function wordCount(content: string): number {

@@ -14,29 +14,42 @@ import { generateNoteId, isValidNoteId } from '../lib/id'
 // ============================================================================
 
 /**
- * Frontmatter fields stored in note YAML header.
+ * User frontmatter keys of a note. Every key is a plain user property;
+ * Memry only interprets `tags` and `aliases` (Obsidian-defined semantics).
+ * Legacy Memry keys (id, title, created, modified, emoji, localOnly) found in
+ * files are plain user properties too — never interpreted, never rewritten.
  */
 export interface NoteFrontmatter {
-  id: string
-  title?: string
-  created: string
-  modified: string
   tags?: string[]
   aliases?: string[]
-  localOnly?: boolean
   [key: string]: unknown // Allow custom properties
+}
+
+/**
+ * Filesystem stats used to derive in-memory created/modified defaults.
+ */
+export interface ParseNoteStats {
+  birthtime?: Date
+  mtime?: Date
 }
 
 /**
  * Result of parsing a markdown file with frontmatter.
  */
 export interface ParsedNote {
+  /** Raw user frontmatter keys, verbatim (tags/aliases normalized to arrays) */
   frontmatter: NoteFrontmatter
   content: string
   /** Whether frontmatter was present in the original file */
   hadFrontmatter: boolean
-  /** Whether any required fields were missing and auto-generated */
-  wasModified: boolean
+  /**
+   * In-memory defaults — never written back to the file. Callers that know
+   * the note from the sidecar DBs should prefer the cached values.
+   */
+  id: string
+  title: string
+  created: string
+  modified: string
 }
 
 // ============================================================================
@@ -45,81 +58,54 @@ export interface ParsedNote {
 
 /**
  * Parse a markdown file content into frontmatter and body.
- * Missing required fields (id, created, modified) are auto-generated.
+ * Identity and dates are in-memory defaults only: a fresh id, title from the
+ * filename, created/modified from fs stats when provided (else now).
  *
  * @param rawContent - Raw file content including frontmatter
  * @param filePath - Optional file path for extracting title from filename
- * @returns Parsed note with frontmatter and content
+ * @param stats - Optional fs stats for created/modified defaults
+ * @returns Parsed note with user frontmatter and in-memory defaults
  */
-export function parseNote(rawContent: string, filePath?: string): ParsedNote {
+export function parseNote(
+  rawContent: string,
+  filePath?: string,
+  stats?: ParseNoteStats
+): ParsedNote {
   const { data, content } = matter(rawContent)
   const hadFrontmatter = Object.keys(data).length > 0
   const now = new Date().toISOString()
-  let wasModified = false
 
-  // Ensure required fields exist
-  if (!data.id || typeof data.id !== 'string') {
-    data.id = generateNoteId()
-    wasModified = true
-  }
-
-  if (!data.created || typeof data.created !== 'string') {
-    data.created = now
-    wasModified = true
-  }
-
-  if (!data.modified || typeof data.modified !== 'string') {
-    data.modified = now
-    wasModified = true
-  }
-
-  // Extract title from filename if not in frontmatter
-  if (!data.title && filePath) {
-    data.title = extractTitleFromPath(filePath)
-  }
-
-  // Normalize tags to array
+  // Normalize tags to array (read-side only, never written back)
   if (data.tags && !Array.isArray(data.tags)) {
     data.tags = [String(data.tags)]
-    wasModified = true
   }
 
-  // Normalize aliases to array
+  // Normalize aliases to array (read-side only, never written back)
   if (data.aliases && !Array.isArray(data.aliases)) {
     data.aliases = [String(data.aliases)]
-    wasModified = true
-  }
-
-  // Normalize localOnly to boolean (YAML may parse as string)
-  if (data.localOnly !== undefined) {
-    if (typeof data.localOnly === 'string') {
-      data.localOnly = data.localOnly === 'true'
-      wasModified = true
-    } else if (typeof data.localOnly !== 'boolean') {
-      data.localOnly = Boolean(data.localOnly)
-      wasModified = true
-    }
   }
 
   return {
     frontmatter: data as NoteFrontmatter,
     content: content.trim(),
     hadFrontmatter,
-    wasModified
+    id: generateNoteId(),
+    title: filePath ? extractTitleFromPath(filePath) : 'Untitled',
+    created: stats?.birthtime?.toISOString() ?? now,
+    modified: stats?.mtime?.toISOString() ?? now
   }
 }
 
 /**
- * Extract a display title from a file path.
- * Removes extension and converts dashes/underscores to spaces.
+ * Extract a display title from a file path: the verbatim basename without
+ * the `.md` extension. The file path is the note's identity — the title
+ * round-trips to the filename exactly.
  *
  * @param filePath - File path (can be relative or absolute)
- * @returns Human-readable title
+ * @returns Verbatim basename without extension
  */
 export function extractTitleFromPath(filePath: string): string {
-  const basename = path.basename(filePath, '.md')
-  // Convert kebab-case and snake_case to Title Case
-  return basename.replace(/[-_]/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase())
+  return path.basename(filePath, '.md')
 }
 
 // ============================================================================
@@ -132,72 +118,29 @@ function stripTrailingNewlines(value: string): string {
 
 /**
  * Serialize frontmatter and content back to markdown format.
+ * Writes exactly the keys given (minus `undefined` values); when no keys
+ * remain, returns the bare content with no YAML block at all.
  *
- * @param frontmatter - Frontmatter object
+ * @param frontmatter - User frontmatter keys
  * @param content - Markdown content (without frontmatter)
- * @returns Complete markdown file content with YAML frontmatter
+ * @returns Complete markdown file content
  */
 export function serializeNote(frontmatter: NoteFrontmatter, content: string): string {
-  const updatedFrontmatter = {
-    ...frontmatter,
-    modified: new Date().toISOString()
-  }
+  const clean = Object.fromEntries(Object.entries(frontmatter).filter(([, v]) => v !== undefined))
 
-  const clean = Object.fromEntries(
-    Object.entries(updatedFrontmatter).filter(([, v]) => v !== undefined)
-  )
+  // Explicit guard: no keys → no YAML block (don't rely on gray-matter's
+  // empty-object behavior)
+  if (Object.keys(clean).length === 0) {
+    return content.trim()
+  }
 
   const serialized = matter.stringify(content.trim(), clean)
   return stripTrailingNewlines(serialized)
 }
 
-/**
- * Create frontmatter for a new note.
- *
- * @param title - Note title
- * @param tags - Optional tags
- * @returns Fresh frontmatter object
- */
-export function createFrontmatter(
-  title: string,
-  tags?: string[],
-  options?: { created?: string; modified?: string }
-): NoteFrontmatter {
-  const now = new Date().toISOString()
-
-  return {
-    id: generateNoteId(),
-    title,
-    created: options?.created ?? now,
-    modified: options?.modified ?? now,
-    tags: tags ?? []
-  }
-}
-
 // ============================================================================
 // Validation & Utilities
 // ============================================================================
-
-/**
- * Ensure a markdown file has valid frontmatter.
- * If frontmatter is missing or incomplete, it will be added/completed.
- *
- * @param rawContent - Raw file content
- * @param filePath - File path for title extraction
- * @returns Updated file content with complete frontmatter
- */
-export function ensureFrontmatter(rawContent: string, filePath: string): string {
-  const parsed = parseNote(rawContent, filePath)
-
-  if (!parsed.hadFrontmatter || parsed.wasModified) {
-    // Re-serialize with complete frontmatter
-    const serialized = matter.stringify(parsed.content, parsed.frontmatter)
-    return stripTrailingNewlines(serialized)
-  }
-
-  // No changes needed
-  return rawContent
-}
 
 /**
  * Check if a note ID is valid and properly formatted.
@@ -321,18 +264,11 @@ export function generateContentHash(content: string): string {
 import type { PropertyType } from '@memry/contracts/property-types'
 
 /**
- * Reserved frontmatter keys that are NOT properties.
+ * Reserved frontmatter keys that are NOT properties — only the two keys with
+ * Obsidian-defined semantics that Memry reads. Legacy Memry keys (id, title,
+ * created, modified, emoji, localOnly) are plain user properties.
  */
-const RESERVED_FRONTMATTER_KEYS = new Set([
-  'id',
-  'title',
-  'created',
-  'modified',
-  'tags',
-  'aliases',
-  'emoji',
-  'localOnly'
-])
+const RESERVED_FRONTMATTER_KEYS = new Set(['tags', 'aliases'])
 
 /**
  * Extract custom properties from frontmatter.

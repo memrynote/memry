@@ -167,7 +167,7 @@ async function readNote(vaultPath: string, row: NoteMetadataRow): Promise<NoteRe
   return {
     id: row.id,
     path: row.path,
-    title: String(parsed.frontmatter.title ?? row.title),
+    title: row.title,
     content,
     tags: tagsFromFrontmatter(parsed.frontmatter),
     properties: propertiesFromFrontmatter(parsed.frontmatter),
@@ -251,12 +251,9 @@ export function createNotesService({
         notePath(config, input.title, input.folder)
       )
       const id = createId('note')
+      // User keys only — Memry identity/dates live in the metadata DB
       const frontmatter = {
-        id,
-        title: input.title,
-        created: now,
-        modified: now,
-        tags: input.tags ?? [],
+        ...(input.tags && input.tags.length > 0 ? { tags: input.tags } : {}),
         ...(input.properties && Object.keys(input.properties).length > 0
           ? { properties: input.properties }
           : {})
@@ -315,7 +312,7 @@ export function createNotesService({
       const raw = await fs.readFile(path.join(vaultPath, row.path), 'utf-8')
       const parsed = parseMarkdownNote(raw)
       const now = new Date().toISOString()
-      const nextTitle = input.title ?? String(parsed.frontmatter.title ?? row.title)
+      const nextTitle = input.title ?? row.title
       const nextProperties =
         input.properties !== undefined
           ? input.properties
@@ -323,13 +320,16 @@ export function createNotesService({
       const nextContent =
         input.content ??
         (input.append ? `${parsed.content}\n${input.append}`.trim() : parsed.content)
-      const nextFrontmatter = {
+      // User keys only — Memry identity/title/dates live in the metadata DB
+      const nextTags = input.tags ?? tagsFromFrontmatter(parsed.frontmatter)
+      const nextFrontmatter: Record<string, unknown> = {
         ...parsed.frontmatter,
-        id: row.id,
-        title: nextTitle,
-        modified: now,
-        tags: input.tags ?? tagsFromFrontmatter(parsed.frontmatter),
         ...(Object.keys(nextProperties).length > 0 ? { properties: nextProperties } : {})
+      }
+      if (nextTags.length > 0) {
+        nextFrontmatter.tags = nextTags
+      } else {
+        delete nextFrontmatter.tags
       }
       if (Object.keys(nextProperties).length === 0) delete nextFrontmatter.properties
       let nextPath = row.path
@@ -496,7 +496,7 @@ export function createNotesService({
       await fs.mkdir(path.dirname(path.join(vaultPath, relativePath)), { recursive: true })
       await fs.writeFile(
         path.join(vaultPath, relativePath),
-        writeMarkdownNote({ id, title: date, created: now, modified: now, tags: [] }, content),
+        writeMarkdownNote({}, content),
         'utf-8'
       )
       saveMetadata(dataDb, {

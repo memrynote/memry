@@ -77,7 +77,10 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
               path: getJournalRelativePath(entry.date),
               fileContent,
               frontmatter,
-              parsedContent: entry.content
+              parsedContent: entry.content,
+              title: entry.date,
+              createdAt: entry.createdAt,
+              modifiedAt: data.modifiedAt ?? entry.modifiedAt
             },
             { isNew: false }
           )
@@ -118,7 +121,10 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
             path: getJournalRelativePath(entry.date),
             fileContent,
             frontmatter,
-            parsedContent: entry.content
+            parsedContent: entry.content,
+            title: entry.date,
+            createdAt: entry.createdAt,
+            modifiedAt: entry.modifiedAt
           },
           { isNew: true }
         )

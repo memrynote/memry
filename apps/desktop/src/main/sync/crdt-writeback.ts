@@ -22,7 +22,7 @@ import { getJournalPath } from '../vault/journal'
 import { syncNoteToCache, deleteNoteFromCache } from '../vault/note-sync'
 import { flushProjectionEvents } from '../projections'
 import { getIndexDatabase, getDatabase } from '../database/client'
-import { getNoteCacheById } from '@main/database/queries/notes'
+import { getNoteCacheById, getNoteCacheByPath } from '@main/database/queries/notes'
 import { createRemindersService } from '@memry/app-core/reminders'
 import { syncNoteDateReminders, clearNoteDateReminders } from '../notes/note-date-reminders'
 import { deleteFile } from '../vault/file-ops'
@@ -185,7 +185,7 @@ async function performWriteback(noteId: string, doc: Y.Doc): Promise<void> {
     await writebackJournal(noteId, doc, markdown, cached, indexDb)
   } else {
     if (cached) {
-      await writebackExisting(noteId, cached.path, doc, markdown, indexDb)
+      await writebackExisting(noteId, cached, doc, markdown, indexDb)
     } else {
       await writebackNewNote(noteId, doc, markdown, indexDb)
     }
@@ -199,11 +199,12 @@ async function performWriteback(noteId: string, doc: Y.Doc): Promise<void> {
 
 async function writebackExisting(
   noteId: string,
-  relativePath: string,
+  cached: NonNullable<ReturnType<typeof getNoteCacheById>>,
   doc: Y.Doc,
   markdown: string,
   indexDb: ReturnType<typeof getIndexDatabase>
 ): Promise<void> {
+  const relativePath = cached.path
   const absolutePath = toAbsolutePath(relativePath)
 
   const existingRaw = await safeRead(absolutePath)
@@ -212,14 +213,13 @@ async function writebackExisting(
   if (existingRaw) {
     const parsed = parseNote(existingRaw, absolutePath)
     existingFrontmatter = parsed.frontmatter
-    const title = existingFrontmatter?.title || 'Untitled'
     try {
       const snap = maybeCreateSignificantSnapshot(
         noteId,
         existingRaw,
         parsed.content,
         markdown,
-        title
+        cached.title
       )
       if (snap) log.info('Snapshot created during writeback', { noteId, snapshotId: snap.id })
     } catch (err) {
@@ -227,7 +227,7 @@ async function writebackExisting(
     }
   }
 
-  const mergedFrontmatter = mergeFrontmatter(noteId, existingFrontmatter, doc)
+  const mergedFrontmatter = mergeFrontmatter(existingFrontmatter, doc)
   const fileContent = serializeNote(mergedFrontmatter, markdown)
 
   ignoredWrites.set(absolutePath, Date.now())
@@ -240,7 +240,12 @@ async function writebackExisting(
       path: relativePath,
       fileContent,
       frontmatter: mergedFrontmatter,
-      parsedContent: markdown
+      parsedContent: markdown,
+      title: cached.title,
+      createdAt: cached.createdAt,
+      modifiedAt: utcNow(),
+      localOnly: cached.localOnly ?? false,
+      emoji: cached.emoji ?? null
     },
     { isNew: false }
   )
@@ -263,7 +268,7 @@ async function writebackNewNote(
   const absolutePath = generateNotePath(notesDir, title)
   const relativePath = toRelativePath(absolutePath)
 
-  const frontmatter = mergeFrontmatter(noteId, null, doc)
+  const frontmatter = mergeFrontmatter(null, doc)
   const fileContent = serializeNote(frontmatter, markdown)
 
   ignoredWrites.set(absolutePath, Date.now())
@@ -271,7 +276,16 @@ async function writebackNewNote(
 
   syncNoteToCache(
     indexDb,
-    { id: noteId, path: relativePath, fileContent, frontmatter, parsedContent: markdown },
+    {
+      id: noteId,
+      path: relativePath,
+      fileContent,
+      frontmatter,
+      parsedContent: markdown,
+      title,
+      createdAt: (meta.get('date') as string) || utcNow(),
+      modifiedAt: utcNow()
+    },
     { isNew: true }
   )
   void flushProjectionEvents()
@@ -301,21 +315,15 @@ async function writebackJournal(
     const existingRaw = await safeRead(absolutePath)
     const existing = existingRaw ? parseNote(existingRaw, absolutePath).frontmatter : null
 
-    if (existing && existing.id !== noteId) {
-      await handleJournalCollision(noteId, date, existing.id, doc, markdown, indexDb)
-      return
-    }
-
     if (existingRaw) {
       const parsed = parseNote(existingRaw, absolutePath)
-      const title = existing?.title || `Journal ${date}`
       try {
         const snap = maybeCreateSignificantSnapshot(
           noteId,
           existingRaw,
           parsed.content,
           markdown,
-          title
+          cached.title
         )
         if (snap)
           log.info('Journal snapshot created during writeback', { noteId, snapshotId: snap.id })
@@ -324,7 +332,7 @@ async function writebackJournal(
       }
     }
 
-    const mergedFrontmatter = mergeJournalFrontmatter(noteId, date, existing, doc)
+    const mergedFrontmatter = mergeJournalFrontmatter(date, existing, doc)
     const fileContent = serializeNote(mergedFrontmatter, markdown)
 
     ignoredWrites.set(absolutePath, Date.now())
@@ -337,7 +345,12 @@ async function writebackJournal(
         path: cached.path,
         fileContent,
         frontmatter: mergedFrontmatter,
-        parsedContent: markdown
+        parsedContent: markdown,
+        title: cached.title,
+        createdAt: cached.createdAt,
+        modifiedAt: utcNow(),
+        localOnly: cached.localOnly ?? false,
+        emoji: cached.emoji ?? null
       },
       { isNew: false }
     )
@@ -348,18 +361,17 @@ async function writebackJournal(
   }
 
   if (await fileExists(journalPath)) {
-    const raw = await safeRead(journalPath)
-    if (raw) {
-      const parsed = parseNote(raw, journalPath)
-      if (parsed.frontmatter.id !== noteId) {
-        await handleJournalCollision(noteId, date, parsed.frontmatter.id, doc, markdown, indexDb)
-        return
-      }
+    // File identity lives in the sidecar: a cache row at this path owned by a
+    // different (or unknown) note means the date file is already claimed
+    const rowAtPath = getNoteCacheByPath(indexDb, toRelativePath(journalPath))
+    if (rowAtPath?.id !== noteId) {
+      await handleJournalCollision(noteId, date, rowAtPath?.id ?? 'unknown', doc, markdown, indexDb)
+      return
     }
   }
 
   const relativePath = toRelativePath(journalPath)
-  const frontmatter = mergeJournalFrontmatter(noteId, date, null, doc)
+  const frontmatter = mergeJournalFrontmatter(date, null, doc)
   const fileContent = serializeNote(frontmatter, markdown)
 
   ignoredWrites.set(journalPath, Date.now())
@@ -367,7 +379,16 @@ async function writebackJournal(
 
   syncNoteToCache(
     indexDb,
-    { id: noteId, path: relativePath, fileContent, frontmatter, parsedContent: markdown },
+    {
+      id: noteId,
+      path: relativePath,
+      fileContent,
+      frontmatter,
+      parsedContent: markdown,
+      title: path.basename(journalPath, '.md'),
+      createdAt: utcNow(),
+      modifiedAt: utcNow()
+    },
     { isNew: true }
   )
   void flushProjectionEvents()
@@ -394,7 +415,7 @@ async function handleJournalCollision(
   const collisionPath = path.join(journalDir, collisionFilename)
   const relativePath = toRelativePath(collisionPath)
 
-  const frontmatter = mergeJournalFrontmatter(incomingId, date, null, doc)
+  const frontmatter = mergeJournalFrontmatter(date, null, doc)
   const fileContent = serializeNote(frontmatter, markdown)
 
   await ensureDirectory(journalDir)
@@ -403,7 +424,16 @@ async function handleJournalCollision(
 
   syncNoteToCache(
     indexDb,
-    { id: incomingId, path: relativePath, fileContent, frontmatter, parsedContent: markdown },
+    {
+      id: incomingId,
+      path: relativePath,
+      fileContent,
+      frontmatter,
+      parsedContent: markdown,
+      title: path.basename(collisionPath, '.md'),
+      createdAt: utcNow(),
+      modifiedAt: utcNow()
+    },
     { isNew: true }
   )
   void flushProjectionEvents()
@@ -456,61 +486,26 @@ export async function handleSyncDeletion(noteId: string): Promise<void> {
   log.info('Deleted from sync', { noteId })
 }
 
-function mergeFrontmatter(
-  noteId: string,
-  existing: NoteFrontmatter | null,
-  doc: Y.Doc
-): NoteFrontmatter {
-  const meta = doc.getMap('meta')
-  const yjsTitle = meta.get('title') as string | undefined
+/**
+ * Merge write-back frontmatter: user keys pass through verbatim, CRDT tags
+ * win when present. No Memry keys are ever injected.
+ */
+function mergeFrontmatter(existing: NoteFrontmatter | null, doc: Y.Doc): NoteFrontmatter {
   const yjsTags = getYjsTags(doc)
-
-  const indexDb = getIndexDatabase()
-  const cached = getNoteCacheById(indexDb, noteId)
-  const authorityTitle = cached?.title
-
-  if (!existing) {
-    return {
-      id: noteId,
-      title: authorityTitle || yjsTitle,
-      created: (meta.get('date') as string) || utcNow(),
-      modified: utcNow(),
-      tags: yjsTags.length > 0 ? yjsTags : undefined
-    }
-  }
-
-  return {
-    ...existing,
-    title: authorityTitle || existing.title || yjsTitle,
-    modified: utcNow(),
-    tags: yjsTags.length > 0 ? yjsTags : existing.tags
-  }
+  const merged: NoteFrontmatter = { ...(existing ?? {}) }
+  if (yjsTags.length > 0) merged.tags = yjsTags
+  return merged
 }
 
 function mergeJournalFrontmatter(
-  noteId: string,
   date: string,
   existing: NoteFrontmatter | null,
   doc: Y.Doc
 ): NoteFrontmatter {
   const yjsTags = getYjsTags(doc)
-
-  if (!existing) {
-    return {
-      id: noteId,
-      date,
-      created: utcNow(),
-      modified: utcNow(),
-      tags: yjsTags.length > 0 ? yjsTags : undefined
-    }
-  }
-
-  return {
-    ...existing,
-    date,
-    modified: utcNow(),
-    tags: yjsTags.length > 0 ? yjsTags : existing.tags
-  }
+  const merged: NoteFrontmatter = { ...(existing ?? {}), date }
+  if (yjsTags.length > 0) merged.tags = yjsTags
+  return merged
 }
 
 function getYjsTags(doc: Y.Doc): string[] {

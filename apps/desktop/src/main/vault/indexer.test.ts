@@ -18,6 +18,7 @@ import {
 import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import type { VaultConfig } from '@memry/contracts/vault-api'
 import { noteMetadata } from '@memry/db-schema/data-schema'
+import { noteCache, noteTags, noteLinks } from '@memry/db-schema/schema/notes-cache'
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
 import { startProjectionRuntime, stopProjectionRuntime } from '../projections'
 
@@ -255,40 +256,44 @@ describe('indexer', () => {
       // The indexer should detect this as a journal entry based on path
     })
 
-    it('T374: handles duplicate IDs (regenerates new ID)', async () => {
-      // Create first note with specific ID
-      createTestNote(tempVault, {
+    it('T374: indexes files with duplicate legacy ids as separate notes, never writing files', async () => {
+      // Legacy `id:` keys in files are plain user properties — internal ids
+      // live only in the sidecar DBs, so duplicate file ids cannot collide.
+      const note1Path = createTestNote(tempVault, {
         id: 'duplicate123',
         title: 'First Note',
         content: 'Original'
       })
+      const note1Content = fs.readFileSync(note1Path, 'utf-8')
 
       // Index first note
       await indexer.indexVault(tempVault.path)
 
-      // Create second note with same ID (simulating a copy)
+      // Create second note with the same legacy id (simulating a copy)
       const note2Dir = path.join(tempVault.notesDir, 'subfolder')
       fs.mkdirSync(note2Dir, { recursive: true })
       const note2Path = path.join(note2Dir, 'Second Note.md')
-      fs.writeFileSync(
-        note2Path,
-        `---
+      const note2Content = `---
 id: "duplicate123"
 title: "Second Note"
 ---
 
 Copied note`
-      )
+      fs.writeFileSync(note2Path, note2Content)
 
-      // Index again - should regenerate ID for the second note
       const result = await indexer.indexVault(tempVault.path)
 
-      expect(result.indexed).toBe(1) // Second note indexed with new ID
+      expect(result.indexed).toBe(1) // Second note indexed
       expect(result.skipped).toBe(1) // First note skipped
 
-      // Verify the second note's file was updated with new ID
-      const updatedContent = fs.readFileSync(note2Path, 'utf-8')
-      expect(updatedContent).not.toContain('id: "duplicate123"')
+      // The indexer never writes files — both keep their exact bytes
+      expect(fs.readFileSync(note1Path, 'utf-8')).toBe(note1Content)
+      expect(fs.readFileSync(note2Path, 'utf-8')).toBe(note2Content)
+
+      // Both files exist as distinct notes with their own internal ids
+      const rows = testDb.db.select().from(noteCache).all()
+      expect(rows).toHaveLength(2)
+      expect(rows[0].id).not.toBe(rows[1].id)
     })
   })
 
@@ -413,9 +418,8 @@ Copied note`
       expect(result.duration).toBeGreaterThanOrEqual(0)
     })
 
-    it('T376: preserves canonical note metadata across index rebuilds', async () => {
+    it('T376: preserves canonical note ids across index rebuilds via note_metadata byPath', async () => {
       const notePath = createTestNote(tempVault, {
-        id: 'persistent-note',
         title: 'Persistent Note',
         content: 'Canonical metadata should survive rebuilds'
       })
@@ -423,21 +427,38 @@ Copied note`
 
       await indexer.indexVault(tempVault.path)
 
+      // The internal id was generated at index time and recorded in note_metadata
       const before = dataDb.db
         .select()
         .from(noteMetadata)
-        .where(eq(noteMetadata.id, 'persistent-note'))
+        .where(eq(noteMetadata.path, relativePath))
         .get()
-      expect(before?.path).toBe(relativePath)
+      expect(before).toBeDefined()
 
-      await indexer.rebuildIndex(tempVault.path)
+      // Simulate the rebuild deleting index.db: wipe the index cache tables
+      vi.spyOn(database, 'runIndexMigrations').mockImplementation(() => {
+        testDb.db.delete(noteTags).run()
+        testDb.db.delete(noteLinks).run()
+        testDb.db.delete(noteCache).run()
+      })
+
+      const rebuild = await indexer.rebuildIndex(tempVault.path)
+      expect(rebuild.filesIndexed).toBe(1)
+
+      // The re-indexed file adopts its canonical id from note_metadata byPath
+      const cacheRow = testDb.db
+        .select()
+        .from(noteCache)
+        .where(eq(noteCache.path, relativePath))
+        .get()
+      expect(cacheRow?.id).toBe(before?.id)
 
       const after = dataDb.db
         .select()
         .from(noteMetadata)
-        .where(eq(noteMetadata.id, 'persistent-note'))
+        .where(eq(noteMetadata.path, relativePath))
         .get()
-      expect(after).toEqual(expect.objectContaining({ id: 'persistent-note', path: before?.path }))
+      expect(after).toEqual(expect.objectContaining({ id: before?.id, path: relativePath }))
     })
   })
 })

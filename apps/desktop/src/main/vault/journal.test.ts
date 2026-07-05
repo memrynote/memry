@@ -13,6 +13,7 @@ import {
   createJournalFrontmatter,
   readJournalEntry,
   writeJournalEntry,
+  writeJournalEntryWithContent,
   deleteJournalEntryFile,
   journalEntryExists,
   getJournalPath,
@@ -106,8 +107,9 @@ Today was a good day.`
     const parsed = parseJournalEntry(raw, '2026-01-15')
 
     expect(parsed.hadFrontmatter).toBe(true)
+    // Legacy Memry keys in the file are plain user properties, surfaced verbatim
     expect(parsed.frontmatter.id).toBe('j2026-01-15')
-    expect(parsed.frontmatter.date).toBe('2026-01-15')
+    expect(parsed.date).toBe('2026-01-15')
     expect(parsed.frontmatter.tags).toEqual(['reflection'])
     expect(parsed.content).toBe('Today was a good day.')
   })
@@ -118,10 +120,12 @@ Today was a good day.`
     const parsed = parseJournalEntry(raw, '2026-01-15')
 
     expect(parsed.hadFrontmatter).toBe(false)
-    expect(parsed.frontmatter.id).toBe('j2026-01-15')
-    expect(parsed.frontmatter.date).toBe('2026-01-15')
-    expect(parsed.frontmatter.created).toBe(FIXED_ISO)
-    expect(parsed.frontmatter.modified).toBe(FIXED_ISO)
+    // Generated fields are in-memory defaults, never injected into frontmatter
+    expect(parsed.frontmatter).toEqual({})
+    expect(parsed.id).toBe('j2026-01-15')
+    expect(parsed.date).toBe('2026-01-15')
+    expect(parsed.created).toBe(FIXED_ISO)
+    expect(parsed.modified).toBe(FIXED_ISO)
     expect(parsed.content).toBe('Just some content')
   })
 
@@ -146,7 +150,9 @@ Content`
 
     const parsed = parseJournalEntry(raw, '2026-01-15')
 
-    expect(parsed.frontmatter.id).toBe('j2026-01-15')
+    expect(parsed.id).toBe('j2026-01-15')
+    // ID is an in-memory default — never injected into frontmatter
+    expect(parsed.frontmatter.id).toBeUndefined()
   })
 })
 
@@ -164,22 +170,26 @@ describe('serializeJournalEntry', () => {
     vi.useRealTimers()
   })
 
-  it('T379: serializes frontmatter and content', () => {
+  it('T379: serializes only the given user keys and never bumps modified', () => {
     const frontmatter = {
-      id: 'j2026-01-15',
       date: '2026-01-15',
-      created: '2026-01-15T08:00:00.000Z',
-      modified: '2026-01-15T08:00:00.000Z',
       tags: ['daily']
     }
 
     const result = serializeJournalEntry(frontmatter, 'Journal content')
 
-    expect(result).toContain('j2026-01-15')
     expect(result).toContain('2026-01-15')
+    expect(result).toContain('daily')
     expect(result).toContain('Journal content')
-    // Modified should be updated to current time
-    expect(result).toContain(FIXED_ISO)
+    // No Memry-managed keys are injected and modified is never bumped
+    expect(result).not.toContain('id:')
+    expect(result).not.toContain('created:')
+    expect(result).not.toContain('modified:')
+    expect(result).not.toContain(FIXED_ISO)
+  })
+
+  it('T379: returns bare content when frontmatter has no keys', () => {
+    expect(serializeJournalEntry({}, 'Bare content')).toBe('Bare content')
   })
 
   it('T379: trims content', () => {
@@ -334,14 +344,11 @@ describe('createJournalFrontmatter', () => {
     vi.useRealTimers()
   })
 
-  it('T380: creates frontmatter with j-prefixed ID', () => {
+  it('T380: creates date-only frontmatter with no Memry-managed keys', () => {
     const frontmatter = createJournalFrontmatter('2026-01-15')
 
-    expect(frontmatter.id).toBe('j2026-01-15')
-    expect(frontmatter.date).toBe('2026-01-15')
-    expect(frontmatter.created).toBe(FIXED_ISO)
-    expect(frontmatter.modified).toBe(FIXED_ISO)
-    expect(frontmatter.tags).toEqual([])
+    // User keys only: no id/created/modified, no empty tags array
+    expect(frontmatter).toEqual({ date: '2026-01-15' })
   })
 
   it('T380: includes tags when provided', () => {
@@ -444,7 +451,7 @@ Today I worked on tests.`
       expect(entry.tags).toEqual(['updated'])
     })
 
-    it('T381: preserves created timestamp on update', async () => {
+    it('T381: preserves created timestamp from the provided existing entry', async () => {
       // Create initial entry
       const initial = await writeJournalEntry('2026-01-15', 'Initial')
       const createdAt = initial.createdAt
@@ -452,11 +459,13 @@ Today I worked on tests.`
       // Advance time
       vi.setSystemTime(new Date('2026-01-16T12:00:00.000Z'))
 
-      // Update
-      const updated = await writeJournalEntry('2026-01-15', 'Updated')
+      // Update — createdAt lives in the sidecar DBs, so callers pass the
+      // existing entry; the file itself carries no created/modified keys
+      const result = await writeJournalEntryWithContent('2026-01-15', 'Updated', undefined, initial)
 
-      expect(updated.createdAt).toBe(createdAt)
-      expect(updated.modifiedAt).not.toBe(createdAt)
+      expect(result.entry.createdAt).toBe(createdAt)
+      expect(result.entry.modifiedAt).not.toBe(createdAt)
+      expect(result.fileContent).not.toContain('created')
     })
   })
 
