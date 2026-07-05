@@ -56,6 +56,10 @@ The title is editable inline at the top of the editor. Renames are live — the 
 
 If you leave the title empty, memrynote generates a fallback ("Untitled" or the first heading).
 
+Titles become filenames in your vault, so characters that are invalid in filenames or break
+Obsidian wiki links (`< > : " / \ | ? * [ ] # ^`) are stripped on save — a note titled
+`Draft [v2] #1` is saved as `Draft v2 1.md`. Existing files are never renamed retroactively.
+
 ## Drag-and-Drop Blocks
 
 Hover the gutter on the left to reveal the block handle. Drag a block to:
