@@ -9,6 +9,7 @@
 - [Streamlined onboarding without AI noise](#streamlined-onboarding-without-ai-noise)
 - [Scheduled review and priority buckets](#scheduled-review-and-priority-buckets)
 - [Bulk URL import via CSV](#bulk-url-import-via-csv)
+- [Second-device setup should adopt the existing vault](#second-device-setup-should-adopt-the-existing-vault)
 
 ## Reduce filing with AI-assisted capture
 
@@ -332,3 +333,36 @@ land in the inbox, instead of adding links one at a time.
 
 Bulk import must not hammer the network or duplicate items. Dedupe against existing
 inbox items, throttle extraction, and keep the user able to cancel a large run.
+
+## Second-device setup should adopt the existing vault
+
+Source: customer email (2026-07-05) — installed MemryNote on a Fedora laptop, set up
+sync, and expected the notes from their MacBook to appear. The app showed the correct
+plan and "synced", but nothing pulled down.
+
+### User signal
+
+Users think of sync as per-account: sign in on a new device, notes appear. Sync is
+actually per-vault, so setup on the new device mints a fresh empty vault and truthfully
+reports "synced" — which reads as data loss to the user. The vault directory
+("In your account" in the vault switcher) already solves this, but users don't know to
+look for it. This exact confusion has now happened twice (once internally on
+2026-06-08, now a real customer).
+
+### Product direction
+
+- During setup / first sign-in, check the account vault directory. If the account has
+  existing remote vaults, offer to download one instead of silently creating a new
+  empty vault.
+- Single-vault accounts (the overwhelmingly common case) should auto-adopt or get a
+  one-click "Pull down your existing vault" default; multi-vault accounts get a picker.
+- If the user does want a fresh vault, that stays available — but as an explicit
+  choice, not the silent default.
+- Reuses the shipped vault-directory plumbing (`GET /sync/vaults`,
+  `downloadRemoteVault`); the work is onboarding flow, not sync protocol.
+
+### Important boundary
+
+Never merge into or overwrite an existing vault automatically — adoption means
+downloading into a clean local copy the user confirmed. And don't block setup on the
+directory call: offline or empty-account users must still get a vault instantly.

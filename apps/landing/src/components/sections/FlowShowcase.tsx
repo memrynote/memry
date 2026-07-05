@@ -2,57 +2,15 @@ import { useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Container } from '@/components/layout/Container'
 import { MockupFrame } from '@/components/shared/MockupFrame'
-import { DemoTabs } from '@/components/demo/DemoTabs'
+import { ChapterRail, CHAPTERS } from '@/components/demo/ChapterRail'
 import { DemoScene } from '@/components/demo/DemoScene'
 import { useShowcaseTimer } from '@/components/demo/hooks/useShowcaseTimer'
 import { CLIPS, type SeekRequest, type TabId } from '@/components/demo/types'
-import { FLOW_STEPS } from '@/lib/constants'
 import { BLUR_REVEAL_ANIMATE, BLUR_REVEAL_INITIAL, BLUR_REVEAL_TRANSITION } from '@/lib/motion'
 import { trackLandingEvent, type LandingEventName } from '@/lib/analytics'
 
-const INTERACTIVE_STEPS = FLOW_STEPS.filter((s) => CLIPS.some((c) => c.id === s.id))
-
 function demoTarget(clipId: TabId) {
   return `demo:${clipId}`
-}
-
-function CompetitorBar({ activeIndex }: { activeIndex: number }) {
-  const step = INTERACTIVE_STEPS[activeIndex]
-  const label = 'competitorLabel' in step ? (step.competitorLabel as string) : 'Replaces'
-
-  return (
-    <div className="h-8 flex items-center justify-center">
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={step.id}
-          className="flex items-center gap-3"
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -6 }}
-          transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-        >
-          <span className="text-[11px] font-mono-accent uppercase tracking-wider text-muted/40">
-            {label}
-          </span>
-          <div className="flex items-center gap-2">
-            {step.competitors.map((c) => (
-              <img
-                key={c.name}
-                src={c.logo}
-                alt={c.name}
-                title={c.name}
-                width={18}
-                height={18}
-                loading="lazy"
-                decoding="async"
-                className="w-[18px] h-[18px] rounded-sm opacity-60 hover:opacity-100 transition-opacity"
-              />
-            ))}
-          </div>
-        </motion.div>
-      </AnimatePresence>
-    </div>
-  )
 }
 
 export function FlowShowcase() {
@@ -104,6 +62,7 @@ export function FlowShowcase() {
       if (!started) {
         trackLandingEvent('landing_demo_start', demoTarget(CLIPS[index].id))
       }
+      setEngaged(true)
       setVideoDuration(null)
       goTo(index)
       restartActiveVideo()
@@ -178,11 +137,13 @@ export function FlowShowcase() {
     [activeIndex, progress, seekTo, started]
   )
 
+  const activeChapter = CHAPTERS[activeIndex]
+
   return (
     <section className="pt-8 pb-4 md:pt-12">
       <Container>
         <motion.div
-          className="max-w-4xl mx-auto"
+          className="mx-auto max-w-6xl"
           initial={BLUR_REVEAL_INITIAL}
           animate={BLUR_REVEAL_ANIMATE}
           transition={BLUR_REVEAL_TRANSITION}
@@ -191,16 +152,23 @@ export function FlowShowcase() {
             The app, unedited — no mockups
           </p>
 
-          <MockupFrame caption="Full app walkthrough — click the bar to jump">
-            <div className="flex flex-col">
-              <div className="px-3 py-2 border-b border-border/30">
-                <DemoTabs
-                  activeIndex={activeIndex}
-                  progress={progress}
-                  onTabClick={handleStepClick}
-                  onActiveTabSeek={handleActiveTabSeek}
-                />
-              </div>
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+            <MockupFrame
+              caption={
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.span
+                    key={activeChapter.id}
+                    className="block"
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
+                    transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                  >
+                    {activeChapter.title} — {activeChapter.tagline}
+                  </motion.span>
+                </AnimatePresence>
+              }
+            >
               <DemoScene
                 activeIndex={activeIndex}
                 playing={started && !paused}
@@ -214,11 +182,16 @@ export function FlowShowcase() {
                 onProgressChange={handleVideoProgressChange}
                 seekRequest={seekRequest}
               />
-            </div>
-          </MockupFrame>
+            </MockupFrame>
 
-          <div className="mt-3">
-            <CompetitorBar activeIndex={activeIndex} />
+            <ChapterRail
+              activeIndex={activeIndex}
+              playing={started && !paused}
+              progress={progress}
+              onChapterClick={handleStepClick}
+              onActiveToggle={handleToggle}
+              onActiveSeek={handleActiveTabSeek}
+            />
           </div>
         </motion.div>
       </Container>
