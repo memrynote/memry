@@ -476,6 +476,55 @@ describe('notes operations', () => {
       expect(updated.properties).toEqual({ status: 'published', priority: 5 })
     })
 
+    it('writes properties as top-level frontmatter keys, never nested', async () => {
+      const created = await notes.createNote({
+        title: 'Top Level Props',
+        content: 'Content.',
+        properties: { status: 'draft', due: '2026-07-05' }
+      })
+
+      expect(created.path).toBe('notes/Top Level Props.md')
+      const raw = fs.readFileSync(path.join(tempVault.notesDir, 'Top Level Props.md'), 'utf-8')
+      expect(raw).toContain('status: draft')
+      expect(raw).toContain('due: 2026-07-05')
+      expect(raw).not.toContain('properties:')
+    })
+
+    it('flattens a legacy nested properties block on the next property edit', async () => {
+      const externalPath = path.join(tempVault.notesDir, 'Legacy Nested.md')
+      fs.writeFileSync(
+        externalPath,
+        [
+          '---',
+          'status: active',
+          'properties:',
+          '  status: stale-nested',
+          '  rating: 5',
+          '---',
+          '',
+          'Legacy content.'
+        ].join('\n')
+      )
+
+      const retrieved = await notes.getNoteByPath('notes/Legacy Nested.md')
+      expect(retrieved).not.toBeNull()
+      // top-level wins the collision; nested-only keys merge in
+      expect(retrieved!.properties).toEqual({ status: 'active', rating: 5 })
+
+      const updated = await notes.updateNote({
+        id: retrieved!.id,
+        properties: { ...retrieved!.properties, owner: 'kaan' }
+      })
+      expect(updated.properties).toEqual({ status: 'active', rating: 5, owner: 'kaan' })
+
+      const raw = fs.readFileSync(externalPath, 'utf-8')
+      expect(raw).toContain('status: active')
+      expect(raw).toContain('rating: 5')
+      expect(raw).toContain('owner: kaan')
+      expect(raw).not.toContain('properties:')
+      expect(raw).not.toContain('stale-nested')
+    })
+
     it('T363: updates wordCount and modifiedAt', async () => {
       const created = await notes.createNote({
         title: 'Word Count Test',

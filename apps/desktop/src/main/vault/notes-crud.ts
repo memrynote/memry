@@ -14,6 +14,7 @@ import {
   parseNote,
   serializeNote,
   extractInlineTagsFromMarkdown,
+  applyPropertiesToFrontmatter,
   type NoteFrontmatter
 } from './frontmatter'
 import { syncNoteToCache, deleteNoteFromCache } from './note-sync'
@@ -228,14 +229,11 @@ export async function createNote(input: NoteCreateInput): Promise<Note> {
   const modified = input.modified ?? now
 
   // User keys only — no Memry keys in the file; empty frontmatter → no YAML block
-  const frontmatter: NoteFrontmatter = {}
-  if (mergedTags.length > 0) frontmatter.tags = mergedTags
+  const base: NoteFrontmatter = {}
+  if (mergedTags.length > 0) base.tags = mergedTags
 
   const properties = { ...templateProperties, ...(input.properties ?? {}) }
-  if (Object.keys(properties).length > 0) {
-    ;(frontmatter as NoteFrontmatter & { properties: Record<string, unknown> }).properties =
-      properties
-  }
+  const frontmatter = applyPropertiesToFrontmatter(base, properties) as NoteFrontmatter
 
   const content = input.content && input.content.trim() ? input.content : templateContent
   const fileContent = serializeNote(frontmatter, content)
@@ -493,22 +491,19 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
   }
 
   // User keys only — Memry state (title, dates, emoji, localOnly) lives in the DBs
-  const newFrontmatter: NoteFrontmatter & { properties?: Record<string, unknown> } = {
+  const merged: NoteFrontmatter = {
     ...existing.frontmatter,
     ...input.frontmatter
   }
 
   if (newTags.length > 0) {
-    newFrontmatter.tags = newTags
+    merged.tags = newTags
   } else {
-    delete newFrontmatter.tags
+    delete merged.tags
   }
 
-  if (Object.keys(newProperties).length > 0) {
-    newFrontmatter.properties = newProperties
-  } else {
-    delete newFrontmatter.properties
-  }
+  // Properties as top-level keys; legacy nested `properties:` blocks flatten here
+  const newFrontmatter = applyPropertiesToFrontmatter(merged, newProperties) as NoteFrontmatter
 
   const fileContent = serializeNote(newFrontmatter, newContent)
   const absolutePath = toAbsolutePath(existing.path)

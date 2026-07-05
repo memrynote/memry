@@ -27,6 +27,7 @@ import {
   parseNote,
   serializeNote,
   inferPropertyType,
+  applyPropertiesToFrontmatter,
   type NoteFrontmatter
 } from '../../vault/frontmatter'
 import { syncNoteToCache, syncFileToCache, deleteNoteFromCache } from '../../vault/note-sync'
@@ -247,11 +248,10 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
               }
             }
             if (propertiesPresent) {
-              if (Object.keys(remoteProperties).length > 0) {
-                parsed.frontmatter.properties = remoteProperties
-              } else {
-                delete parsed.frontmatter.properties
-              }
+              parsed.frontmatter = applyPropertiesToFrontmatter(
+                parsed.frontmatter,
+                remoteProperties
+              ) as NoteFrontmatter
             }
             const updatedContent = serializeNote(parsed.frontmatter, parsed.content)
             const tmpPath = newAbsPath + '.tmp'
@@ -299,11 +299,10 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
             }
           }
           if (propertiesPresent) {
-            if (Object.keys(remoteProperties).length > 0) {
-              parsed.frontmatter.properties = remoteProperties
-            } else {
-              delete parsed.frontmatter.properties
-            }
+            parsed.frontmatter = applyPropertiesToFrontmatter(
+              parsed.frontmatter,
+              remoteProperties
+            ) as NoteFrontmatter
           }
           const updatedContent = serializeNote(parsed.frontmatter, parsed.content)
           markWritebackIgnored(absPath)
@@ -420,13 +419,13 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
     const content = data.content ?? ''
 
     // User keys only — Memry state (id, title, dates, emoji) stays in the DBs
-    const frontmatter: NoteFrontmatter = {
-      ...(data.tags?.length ? { tags: data.tags } : {}),
-      ...(data.aliases?.length ? { aliases: data.aliases } : {}),
-      ...(data.properties && Object.keys(data.properties).length > 0
-        ? { properties: data.properties }
-        : {})
-    }
+    const frontmatter = applyPropertiesToFrontmatter(
+      {
+        ...(data.tags?.length ? { tags: data.tags } : {}),
+        ...(data.aliases?.length ? { aliases: data.aliases } : {})
+      },
+      data.properties ?? {}
+    ) as NoteFrontmatter
 
     const fileContent = serializeNote(frontmatter, content)
     const basePath = generateNotePath(notesDir, title, data.folderPath ?? undefined)

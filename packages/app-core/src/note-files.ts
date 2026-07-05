@@ -6,7 +6,7 @@ import { getNoteMetadataByPath } from '@memry/storage-data'
 import type { FileType } from '@memry/shared/file-types'
 import { createId } from './ids.ts'
 import type { DataDb } from './database.ts'
-import { parseMarkdownNote } from './markdown.ts'
+import { parseMarkdownNote, extractNoteProperties } from './markdown.ts'
 import { normalizePath, safeFilename, type VaultConfig } from './paths.ts'
 import type { NotesService } from './notes.ts'
 
@@ -343,9 +343,8 @@ function renderNoteHtml(
 function propertiesFromFrontmatter(
   frontmatter: Record<string, unknown>
 ): Record<string, unknown> | null {
-  const properties = frontmatter.properties
-  if (!properties || typeof properties !== 'object' || Array.isArray(properties)) return null
-  return properties as Record<string, unknown>
+  const properties = extractNoteProperties(frontmatter)
+  return Object.keys(properties).length > 0 ? properties : null
 }
 
 function indexImportedMarkdown(

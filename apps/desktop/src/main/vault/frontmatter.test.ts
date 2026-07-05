@@ -11,6 +11,7 @@ import {
   calculateWordCount,
   generateContentHash,
   extractProperties,
+  applyPropertiesToFrontmatter,
   inferPropertyType,
   serializePropertyValue,
   deserializePropertyValue,
@@ -158,7 +159,7 @@ Another line with words.
 })
 
 describe('properties helpers', () => {
-  it('extractProperties prefers explicit properties object', () => {
+  it('extractProperties merges legacy nested block after top-level keys', () => {
     const frontmatter: NoteFrontmatter = {
       id: 'abc123def456',
       created: FIXED_ISO,
@@ -166,7 +167,65 @@ describe('properties helpers', () => {
       properties: { rating: 5, owner: 'alex' }
     }
 
-    expect(extractProperties(frontmatter)).toEqual({ rating: 5, owner: 'alex' })
+    expect(extractProperties(frontmatter)).toEqual({
+      id: 'abc123def456',
+      created: FIXED_ISO,
+      modified: FIXED_ISO,
+      rating: 5,
+      owner: 'alex'
+    })
+  })
+
+  it('extractProperties collision: top-level wins over legacy nested', () => {
+    const frontmatter: NoteFrontmatter = {
+      status: 'active',
+      properties: { status: 'stale-nested', extra: 'kept' }
+    }
+
+    expect(extractProperties(frontmatter)).toEqual({ status: 'active', extra: 'kept' })
+  })
+
+  it('extractProperties treats a non-mapping properties value as a normal property', () => {
+    const frontmatter: NoteFrontmatter = { properties: 'just a string' }
+
+    expect(extractProperties(frontmatter)).toEqual({ properties: 'just a string' })
+  })
+
+  it('applyPropertiesToFrontmatter flattens legacy nested blocks in order', () => {
+    const frontmatter: NoteFrontmatter = {
+      status: 'active',
+      tags: ['kept'],
+      properties: { rating: 5, owner: 'alex' }
+    }
+
+    const result = applyPropertiesToFrontmatter(frontmatter, {
+      owner: 'alex',
+      rating: 4,
+      status: 'done',
+      brand: 'new'
+    })
+
+    // original top-level order, then legacy nested order, then new keys
+    expect(Object.keys(result)).toEqual(['status', 'tags', 'rating', 'owner', 'brand'])
+    expect(result).toEqual({
+      status: 'done',
+      tags: ['kept'],
+      rating: 4,
+      owner: 'alex',
+      brand: 'new'
+    })
+  })
+
+  it('applyPropertiesToFrontmatter drops removed properties and protects reserved keys', () => {
+    const frontmatter: NoteFrontmatter = {
+      tags: ['keep-me'],
+      gone: 'x',
+      stays: 1
+    }
+
+    const result = applyPropertiesToFrontmatter(frontmatter, { stays: 1, tags: ['evil'] })
+
+    expect(result).toEqual({ tags: ['keep-me'], stays: 1 })
   })
 
   it('extractProperties falls back to non-reserved keys', () => {
@@ -205,8 +264,8 @@ describe('properties helpers', () => {
     expect(inferPropertyType('done', true)).toBe('checkbox')
     expect(inferPropertyType('score', 4)).toBe('number')
     expect(inferPropertyType('count', 10)).toBe('number')
-    // Arrays are no longer supported, fallback to text
-    expect(inferPropertyType('labels', ['a', 'b'])).toBe('text')
+    // Arrays are Obsidian list properties — round-trip as YAML block lists
+    expect(inferPropertyType('labels', ['a', 'b'])).toBe('multiselect')
     expect(inferPropertyType('published', '2026-01-15')).toBe('date')
     expect(inferPropertyType('site', 'https://example.com')).toBe('url')
     expect(inferPropertyType('title', 'Hello')).toBe('text')

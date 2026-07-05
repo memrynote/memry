@@ -51,6 +51,9 @@ vi.mock('@memry/domain-notes', () => ({
 
 vi.mock('../../vault/journal', () => ({
   deleteJournalEntryFile: (...args: unknown[]) => mockDeleteJournalEntryFile(...args),
+  extractJournalProperties: vi.fn(
+    (frontmatter: { properties?: Record<string, unknown> }) => frontmatter.properties
+  ),
   getJournalPath: vi.fn(() => journalFilePath),
   getJournalRelativePath: vi.fn((date: string) => `journals/${date}.md`),
   parseJournalEntry: vi.fn((_raw: string, date: string) => ({

@@ -4,7 +4,7 @@ import type { JournalSyncPayload } from '@memry/contracts/sync-payloads'
 import type { NoteMetadata } from '@memry/db-schema/data-schema'
 import { ContentSyncService, type ContentSyncDeps } from './content-sync-base'
 import { createLogger } from '../lib/logger'
-import { getJournalPath, parseJournalEntry } from '../vault/journal'
+import { getJournalPath, parseJournalEntry, extractJournalProperties } from '../vault/journal'
 
 const log = createLogger('JournalSync')
 
@@ -55,9 +55,7 @@ export class JournalSyncService extends ContentSyncService<JournalSyncPayload, [
       const parsed = parseJournalEntry(raw, date)
       content = operation === 'create' ? parsed.content : null
       tags = parsed.frontmatter.tags ?? []
-      if (parsed.frontmatter.properties) {
-        properties = parsed.frontmatter.properties as Record<string, unknown>
-      }
+      properties = extractJournalProperties(parsed.frontmatter) ?? null
     } catch {
       log.warn('Could not read journal file for sync snapshot', { noteId: cached.id, date })
     }
