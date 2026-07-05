@@ -123,7 +123,7 @@ Prettier: single quotes, no semicolons, 100 char width, no trailing commas.
 
 ## Architecture
 
-- **Pre-production**: No backward-compat constraints. DB schema and code can be reset anytime.
+- **PRODUCTION — backward compatibility is MANDATORY**: Real users run this app on real data. Every change MUST work for existing installs. No DB resets. DB schema changes go through additive, hand-written migrations that preserve existing rows (data DB migrations are hand-written; Drizzle snapshots broken past 0021). Sync protocol, IPC contracts, vault file formats, and settings shapes must tolerate data written by older app versions. Before any schema/contract/format change, state the migration + compat plan.
 - **E2E encrypted**: XChaCha20-Poly1305 + Ed25519 + Argon2id via libsodium. Server never sees plaintext.
 - **Offline-first**: SQLite local storage, CRDT sync (Yjs) for notes/journals, field-level vector clocks for tasks/projects.
 - **Sync items**: Metadata in D1, encrypted payloads in R2 (avoids D1 1MB row limit).
