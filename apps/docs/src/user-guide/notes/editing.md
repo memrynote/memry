@@ -50,6 +50,17 @@ Common markdown shortcuts work inline:
 | `` `code` `` | `code`        |
 | ` ``` `      | Code block    |
 
+## Link Cards & YouTube Embeds
+
+Paste a URL and pick from the paste menu: keep it as a plain link, turn it into a **bookmark card** (title, description, preview image), or — for YouTube URLs — an **embedded player**.
+
+In the vault's `.md` file both stay ordinary markdown, so notes opened in other editors (e.g. Obsidian) show a normal link instead of app-specific syntax:
+
+- A bookmark card is saved as `[Title](https://example.com/article)` on its own line.
+- A YouTube embed is saved as the bare video URL on its own line.
+
+The upgrade also works in reverse when a note is opened: a titled link standing alone on its own line renders as a bookmark card, and a standalone YouTube URL (bare, `<autolink>`, or titled) renders as an embedded player. Links inside sentences, list items, headings, or quotes are never converted, and a standalone bare non-YouTube URL stays a plain link. Lines written outside memrynote are re-emitted byte-for-byte on save.
+
 ## Title
 
 The title is editable inline at the top of the editor. Renames are live — the title updates in tabs, the sidebar, search, and any inbound wiki links.
