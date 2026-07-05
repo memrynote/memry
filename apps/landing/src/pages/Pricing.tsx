@@ -1,6 +1,6 @@
 import { Fragment, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import { Check, ArrowRight, ShieldCheck, ExternalLink } from 'lucide-react'
 import { Container } from '@/components/layout/Container'
 import { PageHead } from '@/components/shared/PageHead'
@@ -19,6 +19,7 @@ import {
   CHECKOUT_RELEASE_TIMING,
   type PlanComparisonValue,
   type SyncPlanTier,
+  type SyncPlanId,
   type LifecycleTone
 } from '@/lib/constants'
 import { buildMemryBillingCompleteUrl, type PaddleCheckoutCadence } from '@/lib/paddle-checkout'
@@ -38,6 +39,8 @@ type CheckoutNotice =
   | { type: 'canceled' }
 
 const PURCHASES_ENABLED = true
+
+const TIER_EASE = [0.16, 1, 0.3, 1] as const
 
 const fadeUp = {
   initial: { opacity: 0, y: 20 },
@@ -171,7 +174,7 @@ function CheckoutNoticeBanner({ notice }: { notice: CheckoutNotice | null }) {
 
 function Hero() {
   return (
-    <section className="overflow-hidden pt-28 pb-10 md:pt-36 md:pb-14">
+    <section className="overflow-hidden pt-24 pb-8 md:pt-32 md:pb-10">
       <Container size="md">
         <motion.div
           initial={BLUR_REVEAL_INITIAL}
@@ -179,14 +182,12 @@ function Hero() {
           transition={BLUR_REVEAL_TRANSITION}
         >
           <div className="text-center">
-            <h1 className="mx-auto max-w-3xl font-serif text-5xl leading-[1.05] text-ink text-balance md:text-6xl">
-              Sync that respects
-              <br />
-              your <span className="italic text-terracotta">wallet.</span>
+            <h1 className="mx-auto max-w-3xl font-serif text-4xl leading-[1.05] text-ink text-balance md:text-5xl">
+              Sync that respects your <span className="italic text-terracotta">wallet.</span>
             </h1>
-            <p className="mx-auto mt-7 max-w-lg text-base leading-relaxed text-muted md:text-lg">
-              Your private productivity OS stays free on your device. Paid sync keeps it safely
-              available everywhere — end-to-end encrypted before a single byte leaves.
+            <p className="mx-auto mt-5 max-w-lg text-base leading-relaxed text-muted">
+              The app is free on your device. Paid sync keeps your vault everywhere — end-to-end
+              encrypted before a single byte leaves.
             </p>
           </div>
         </motion.div>
@@ -248,57 +249,66 @@ function TierGrid({
   checkout: CheckoutState
   onCheckout: (tier: SyncPlanTier) => void
 }) {
+  const reduceMotion = useReducedMotion()
+
   return (
     <section className="pb-24">
       <Container>
         <motion.div
-          initial={BLUR_REVEAL_INITIAL}
-          whileInView={BLUR_REVEAL_ANIMATE}
-          viewport={{ once: true, margin: '-80px' }}
-          transition={BLUR_REVEAL_TRANSITION}
-          className="mb-12 flex flex-col gap-8 md:flex-row md:items-end md:justify-between"
+          initial={reduceMotion ? false : { opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.15, ease: TIER_EASE }}
+          className="mb-8 flex flex-wrap items-end justify-between gap-x-8 gap-y-5"
         >
-          <div className="max-w-xl">
+          <div>
             <p className="font-mono-accent text-xs uppercase tracking-[0.22em] text-terracotta">
               § 01 — The tariff
             </p>
-            <h2 className="display-section mt-4 text-ink">
+            <h2 className="mt-3 font-serif text-3xl text-ink md:text-4xl">
               Choose your <span className="italic text-terracotta">edition.</span>
             </h2>
-            <p className="mt-4 text-lg leading-relaxed text-muted">
-              Four plans, printed plainly. Start free — upgrade the day you want your vault on a
-              second device.
-            </p>
           </div>
-          <div className="shrink-0">
-            <CadenceToggle cadence={cadence} setCadence={setCadence} />
-          </div>
+          <CadenceToggle cadence={cadence} setCadence={setCadence} />
         </motion.div>
 
         <motion.div
-          initial={BLUR_REVEAL_INITIAL}
-          whileInView={BLUR_REVEAL_ANIMATE}
-          viewport={{ once: true, margin: '-80px' }}
-          transition={BLUR_REVEAL_TRANSITION}
-        >
-          <div className="rule-double text-ink/30" aria-hidden />
-          <div className="grid md:grid-cols-2 xl:grid-cols-4">
-            {SYNC_PLAN_TIERS.map((tier) => (
-              <div
-                key={tier.id}
-                className={cn(
-                  'border-ink/10 border-t first:border-t-0',
-                  'md:[&:nth-child(2)]:border-t-0 md:odd:border-e',
-                  'xl:border-t-0 xl:border-s xl:first:border-s-0 xl:odd:border-e-0',
-                  tier.emphasis === 'founding' && 'xl:border-s-0'
-                )}
-              >
-                <TierCard tier={tier} cadence={cadence} onCheckout={() => onCheckout(tier)} />
-              </div>
-            ))}
-          </div>
-          <div className="rule-double text-ink/30" aria-hidden />
-        </motion.div>
+          className="rule-double origin-left text-ink/30"
+          aria-hidden
+          initial={reduceMotion ? false : { scaleX: 0 }}
+          animate={{ scaleX: 1 }}
+          transition={{ duration: 0.8, delay: 0.25, ease: TIER_EASE }}
+        />
+        <div className="grid md:grid-cols-2 lg:grid-cols-4">
+          {SYNC_PLAN_TIERS.map((tier, i) => (
+            <motion.div
+              key={tier.id}
+              initial={reduceMotion ? false : { opacity: 0, y: 18, filter: 'blur(8px)' }}
+              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+              transition={{ duration: 0.7, delay: 0.35 + i * 0.08, ease: TIER_EASE }}
+              className={cn(
+                'border-ink/10',
+                'max-md:[&:not(:first-child)]:border-t',
+                'md:max-lg:[&:nth-child(n+3)]:border-t md:max-lg:[&:nth-child(even)]:border-s',
+                'lg:[&:not(:first-child)]:border-s'
+              )}
+            >
+              <TierCard
+                tier={tier}
+                index={i}
+                cadence={cadence}
+                reduceMotion={reduceMotion ?? false}
+                onCheckout={() => onCheckout(tier)}
+              />
+            </motion.div>
+          ))}
+        </div>
+        <motion.div
+          className="rule-double origin-left text-ink/30"
+          aria-hidden
+          initial={reduceMotion ? false : { scaleX: 0 }}
+          animate={{ scaleX: 1 }}
+          transition={{ duration: 0.8, delay: 0.35, ease: TIER_EASE }}
+        />
 
         {checkout.error && (
           <p
@@ -326,45 +336,124 @@ function TierGrid({
   )
 }
 
+/* ponytail: gauge widths are sqrt-ish visual scale, not linear GB — linear would make 1 GB invisible */
+const STORAGE_GAUGE: Record<SyncPlanId, { fill: number; label: string }> = {
+  free: { fill: 0, label: 'No cloud — 100% local' },
+  plus: { fill: 0.37, label: '1 GB encrypted cloud' },
+  pro: { fill: 0.74, label: '10 GB encrypted cloud' },
+  believer: { fill: 1, label: '50 GB encrypted cloud' }
+}
+
+function StorageGauge({
+  tier,
+  index,
+  isFounding,
+  reduceMotion
+}: {
+  tier: SyncPlanTier
+  index: number
+  isFounding: boolean
+  reduceMotion: boolean
+}) {
+  const gauge = STORAGE_GAUGE[tier.id]
+
+  return (
+    <div className="mt-5">
+      <div
+        className={cn(
+          'h-1 overflow-hidden rounded-full',
+          gauge.fill === 0
+            ? 'border border-dashed border-ink/20 bg-transparent'
+            : isFounding
+              ? 'bg-ink-inverted/15'
+              : 'bg-ink/10'
+        )}
+        aria-hidden
+      >
+        {gauge.fill > 0 && (
+          <motion.div
+            className="h-full origin-left rounded-full bg-terracotta"
+            style={{ width: `${gauge.fill * 100}%` }}
+            initial={reduceMotion ? false : { scaleX: 0 }}
+            animate={{ scaleX: 1 }}
+            transition={{ duration: 0.7, delay: 0.9 + index * 0.06, ease: TIER_EASE }}
+          />
+        )}
+      </div>
+      <p
+        className={cn(
+          'mt-2 font-mono-accent text-[10px] uppercase tracking-[0.14em]',
+          isFounding ? 'text-dark-muted' : 'text-muted'
+        )}
+      >
+        {gauge.label}
+      </p>
+    </div>
+  )
+}
+
 function TierCard({
   tier,
+  index,
   cadence,
+  reduceMotion,
   onCheckout
 }: {
   tier: SyncPlanTier
+  index: number
   cadence: Cadence
+  reduceMotion: boolean
   onCheckout: () => void
 }) {
   const isFounding = tier.emphasis === 'founding'
   const isRecommended = tier.emphasis === 'recommended'
+  const isStandard = !isFounding && !isRecommended
   const isCheckoutEnabled = PURCHASES_ENABLED && !!tier.checkoutPlanId
   const isCheckoutUnavailable = !PURCHASES_ENABLED && !!tier.checkoutPlanId
+
+  const baseline = tier.features[0]?.startsWith('Everything in') ? tier.features[0] : null
+  const features = baseline ? tier.features.slice(1) : tier.features
 
   const ctaClass = isRecommended
     ? 'w-full rounded-sm bg-terracotta text-white hover:bg-terracotta-dark'
     : isFounding
-      ? 'w-full rounded-sm border-ink-inverted/30 bg-transparent text-ink-inverted hover:bg-ink-inverted/10'
+      ? 'w-full rounded-sm border-ink-inverted/40 bg-transparent text-ink-inverted hover:bg-ink-inverted/10'
       : 'w-full rounded-sm border-ink/20 bg-transparent text-ink hover:bg-paper-alt'
 
   return (
     <article
       className={cn(
-        'relative flex h-full flex-col p-7 sm:p-8',
+        'relative flex h-full flex-col p-6 transition-colors duration-300 lg:p-7',
         isFounding && 'zone-dark',
-        isRecommended && 'bg-terracotta/[0.04]'
+        isRecommended && 'bg-terracotta/[0.04]',
+        isStandard && 'hover:bg-paper-alt/60'
       )}
     >
       {isRecommended && (
-        <div className="absolute inset-x-0 top-0 h-[3px] bg-terracotta" aria-hidden />
+        <>
+          <div className="absolute inset-x-0 top-0 h-[3px] bg-terracotta" aria-hidden />
+          {tier.ribbon && (
+            <motion.span
+              className="absolute -top-3 inset-x-0 mx-auto w-fit rounded-sm bg-terracotta px-2.5 py-1 font-mono-accent text-[10px] uppercase tracking-[0.16em] text-white"
+              initial={reduceMotion ? false : { opacity: 0, y: 6, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.5, delay: 0.8, ease: TIER_EASE }}
+            >
+              {tier.ribbon}
+            </motion.span>
+          )}
+        </>
       )}
       {isFounding && tier.ribbon && (
-        <span className="ink-stamp absolute end-5 top-5 -rotate-3 text-[10px]">{tier.ribbon}</span>
+        <span className="ink-stamp absolute -top-3 end-4 -rotate-3 bg-dark text-[10px]">
+          {tier.ribbon}
+        </span>
       )}
 
       <header>
         <h3
           className={cn(
-            'font-serif text-3xl font-normal',
+            'font-serif text-2xl font-normal lg:text-[1.75rem]',
             isFounding ? 'text-ink-inverted' : 'text-ink'
           )}
         >
@@ -372,7 +461,7 @@ function TierCard({
         </h3>
         <p
           className={cn(
-            'mt-2 max-w-[28ch] font-serif text-base italic leading-relaxed',
+            'mt-1.5 min-h-[2.6em] max-w-[28ch] font-serif text-sm italic leading-snug',
             isFounding ? 'text-dark-muted' : 'text-muted'
           )}
         >
@@ -380,36 +469,18 @@ function TierCard({
         </p>
       </header>
 
-      <div className="mt-7">
-        <PriceBlock tier={tier} cadence={cadence} isFounding={isFounding} />
+      <div className="mt-5">
+        <PriceBlock
+          tier={tier}
+          cadence={cadence}
+          isFounding={isFounding}
+          reduceMotion={reduceMotion}
+        />
       </div>
 
-      <div
-        className={cn('mt-7 h-px', isFounding ? 'bg-ink-inverted/15' : 'bg-ink/10')}
-        aria-hidden
-      />
+      <StorageGauge tier={tier} index={index} isFounding={isFounding} reduceMotion={reduceMotion} />
 
-      <ul className="mt-6 space-y-2.5">
-        {tier.features.map((feature) => (
-          <li key={feature} className="flex items-start gap-2.5 text-sm">
-            <Check
-              className={cn(
-                'mt-1 h-3.5 w-3.5 shrink-0',
-                isFounding ? 'text-terracotta' : 'text-sage'
-              )}
-              strokeWidth={2.5}
-              aria-hidden
-            />
-            <span
-              className={cn('leading-relaxed', isFounding ? 'text-ink-inverted/85' : 'text-ink/80')}
-            >
-              {feature}
-            </span>
-          </li>
-        ))}
-      </ul>
-
-      <div className="mt-auto pt-8">
+      <div className="mt-6">
         {isCheckoutUnavailable ? (
           <Button
             variant={isRecommended ? 'default' : 'outline'}
@@ -443,6 +514,41 @@ function TierCard({
           </Button>
         )}
       </div>
+
+      <div
+        className={cn('mt-6 h-px', isFounding ? 'bg-ink-inverted/15' : 'bg-ink/10')}
+        aria-hidden
+      />
+
+      <ul className="mt-5 space-y-2.5">
+        {baseline && (
+          <li
+            className={cn(
+              'font-mono-accent text-[10px] uppercase tracking-[0.14em]',
+              isFounding ? 'text-dark-muted' : 'text-muted'
+            )}
+          >
+            {baseline}, plus —
+          </li>
+        )}
+        {features.map((feature) => (
+          <li key={feature} className="flex items-start gap-2.5 text-[13px]">
+            <Check
+              className={cn(
+                'mt-0.5 h-3.5 w-3.5 shrink-0',
+                isFounding ? 'text-terracotta' : 'text-sage'
+              )}
+              strokeWidth={2.5}
+              aria-hidden
+            />
+            <span
+              className={cn('leading-relaxed', isFounding ? 'text-ink-inverted/85' : 'text-ink/80')}
+            >
+              {feature}
+            </span>
+          </li>
+        ))}
+      </ul>
     </article>
   )
 }
@@ -450,22 +556,26 @@ function TierCard({
 function PriceBlock({
   tier,
   cadence,
-  isFounding
+  isFounding,
+  reduceMotion
 }: {
   tier: SyncPlanTier
   cadence: Cadence
   isFounding: boolean
+  reduceMotion: boolean
 }) {
   if (tier.id === 'free') {
     return (
       <div>
         <div className="flex items-baseline gap-2.5">
-          <span className="font-serif text-5xl font-normal leading-none text-ink">$0</span>
+          <span className="font-serif text-4xl font-normal leading-none text-ink lg:text-5xl">
+            $0
+          </span>
           <span className="font-mono-accent text-[11px] uppercase tracking-[0.18em] text-muted">
             forever
           </span>
         </div>
-        <p className="mt-3 font-mono-accent text-[11px] uppercase tracking-[0.18em] text-muted/80">
+        <p className="mt-3 min-h-8 font-mono-accent text-[11px] uppercase tracking-[0.18em] text-muted/80">
           No account required
         </p>
       </div>
@@ -476,15 +586,15 @@ function PriceBlock({
     return (
       <div>
         <div className="flex items-baseline gap-2.5">
-          <span className="font-serif text-5xl font-normal leading-none text-ink-inverted">
+          <span className="font-serif text-4xl font-normal leading-none text-ink-inverted lg:text-5xl">
             ${tier.lifetimePrice}
           </span>
           <span className="font-mono-accent text-[11px] uppercase tracking-[0.18em] text-dark-muted">
             paid once
           </span>
         </div>
-        <p className="mt-3 font-mono-accent text-[11px] uppercase tracking-[0.18em] text-terracotta">
-          Lifetime · no expiry · future features included
+        <p className="mt-3 min-h-8 font-mono-accent text-[11px] uppercase tracking-[0.18em] text-terracotta">
+          Lifetime · all future features
         </p>
       </div>
     )
@@ -496,27 +606,31 @@ function PriceBlock({
   return (
     <div>
       <div className="flex items-baseline gap-2.5">
-        <span
+        <motion.span
+          key={displayPrice}
+          initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: TIER_EASE }}
           className={cn(
-            'font-serif text-5xl font-normal leading-none',
+            'font-serif text-4xl font-normal leading-none lg:text-5xl',
             isFounding ? 'text-ink-inverted' : 'text-ink'
           )}
         >
           ${displayPrice}
-        </span>
+        </motion.span>
         <span className="font-mono-accent text-[11px] uppercase tracking-[0.18em] text-muted">
           / month
         </span>
       </div>
       <p
         className={cn(
-          'mt-3 font-mono-accent text-[11px] uppercase tracking-[0.18em]',
+          'mt-3 min-h-8 font-mono-accent text-[11px] uppercase tracking-[0.18em]',
           showAnnual ? 'text-terracotta' : 'text-muted/80'
         )}
       >
         {showAnnual
           ? `Billed $${tier.annualPrice} yearly · save 20%`
-          : `or $${tier.annualPrice} / yr ($${tier.annualMonthlyEquivalent}/mo billed yearly)`}
+          : `or $${tier.annualPrice} / yr ($${tier.annualMonthlyEquivalent}/mo yearly)`}
       </p>
     </div>
   )

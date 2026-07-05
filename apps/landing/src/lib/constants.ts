@@ -527,8 +527,8 @@ export const SYNC_PLAN_TIERS: readonly SyncPlanTier[] = [
     ],
     cta: 'Get Pro',
     emphasis: 'recommended',
-    checkoutPlanId: 'pro'
-    // ribbon: 'Most popular'
+    checkoutPlanId: 'pro',
+    ribbon: 'Most popular'
   },
   {
     id: 'believer',
