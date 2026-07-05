@@ -6,7 +6,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./reminders": "./src/reminders.ts"
+    "./reminders": "./src/reminders.ts",
+    "./markdown": "./src/markdown.ts"
   },
   "types": "./src/index.ts",
   "scripts": {

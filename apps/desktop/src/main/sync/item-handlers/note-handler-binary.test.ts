@@ -15,7 +15,9 @@ vi.mock('../../vault/notes', () => ({
 }))
 
 vi.mock('../../vault/frontmatter', () => ({
-  parseNote: vi.fn(() => ({ content: 'markdown content', frontmatter: { tags: ['tag1'] } }))
+  parseNote: vi.fn(() => ({ content: 'markdown content', frontmatter: { tags: ['tag1'] } })),
+  serializeNote: vi.fn(),
+  serializeParsedNote: vi.fn()
 }))
 
 vi.mock('../../vault/note-sync', () => ({

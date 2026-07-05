@@ -11,7 +11,12 @@ import {
   generateNotePath,
   ensureDirectory
 } from '../vault/file-ops'
-import { parseNote, serializeNote, type NoteFrontmatter } from '../vault/frontmatter'
+import {
+  parseNote,
+  serializeNote,
+  serializeParsedNote,
+  type NoteFrontmatter
+} from '../vault/frontmatter'
 import {
   getNotesDir,
   toRelativePath,
@@ -208,11 +213,25 @@ async function writebackExisting(
   const absolutePath = toAbsolutePath(relativePath)
 
   const existingRaw = await safeRead(absolutePath)
-  let existingFrontmatter: NoteFrontmatter | null = null
+  const parsed = existingRaw !== null ? parseNote(existingRaw, absolutePath) : null
 
-  if (existingRaw) {
-    const parsed = parseNote(existingRaw, absolutePath)
-    existingFrontmatter = parsed.frontmatter
+  const { frontmatter: mergedFrontmatter, changed: frontmatterEdited } = mergeFrontmatter(
+    parsed?.frontmatter ?? null,
+    doc
+  )
+  const fileContent = parsed
+    ? serializeParsedNote({ ...parsed, frontmatter: mergedFrontmatter }, markdown, {
+        frontmatterEdited
+      })
+    : serializeNote(mergedFrontmatter, markdown)
+
+  // No byte change → no write, no mtime churn, no snapshot, no downstream signal
+  if (existingRaw !== null && fileContent === existingRaw) {
+    log.debug('Write-back is a no-op, skipping', { noteId })
+    return
+  }
+
+  if (existingRaw !== null && parsed) {
     try {
       const snap = maybeCreateSignificantSnapshot(
         noteId,
@@ -226,9 +245,6 @@ async function writebackExisting(
       log.error('Snapshot creation failed during writeback', { noteId, error: err })
     }
   }
-
-  const mergedFrontmatter = mergeFrontmatter(existingFrontmatter, doc)
-  const fileContent = serializeNote(mergedFrontmatter, markdown)
 
   ignoredWrites.set(absolutePath, Date.now())
   await atomicWrite(absolutePath, fileContent)
@@ -268,7 +284,7 @@ async function writebackNewNote(
   const absolutePath = generateNotePath(notesDir, title)
   const relativePath = toRelativePath(absolutePath)
 
-  const frontmatter = mergeFrontmatter(null, doc)
+  const { frontmatter } = mergeFrontmatter(null, doc)
   const fileContent = serializeNote(frontmatter, markdown)
 
   ignoredWrites.set(absolutePath, Date.now())
@@ -313,10 +329,26 @@ async function writebackJournal(
   if (cached) {
     const absolutePath = toAbsolutePath(cached.path)
     const existingRaw = await safeRead(absolutePath)
-    const existing = existingRaw ? parseNote(existingRaw, absolutePath).frontmatter : null
+    const parsed = existingRaw !== null ? parseNote(existingRaw, absolutePath) : null
 
-    if (existingRaw) {
-      const parsed = parseNote(existingRaw, absolutePath)
+    const { frontmatter: mergedFrontmatter, changed: frontmatterEdited } = mergeJournalFrontmatter(
+      date,
+      parsed?.frontmatter ?? null,
+      doc
+    )
+    const fileContent = parsed
+      ? serializeParsedNote({ ...parsed, frontmatter: mergedFrontmatter }, markdown, {
+          frontmatterEdited
+        })
+      : serializeNote(mergedFrontmatter, markdown)
+
+    // No byte change → no write, no mtime churn, no snapshot, no downstream signal
+    if (existingRaw !== null && fileContent === existingRaw) {
+      log.debug('Journal write-back is a no-op, skipping', { noteId, date })
+      return
+    }
+
+    if (existingRaw !== null && parsed) {
       try {
         const snap = maybeCreateSignificantSnapshot(
           noteId,
@@ -331,9 +363,6 @@ async function writebackJournal(
         log.error('Journal snapshot creation failed during writeback', { noteId, error: err })
       }
     }
-
-    const mergedFrontmatter = mergeJournalFrontmatter(date, existing, doc)
-    const fileContent = serializeNote(mergedFrontmatter, markdown)
 
     ignoredWrites.set(absolutePath, Date.now())
     await atomicWrite(absolutePath, fileContent)
@@ -371,7 +400,7 @@ async function writebackJournal(
   }
 
   const relativePath = toRelativePath(journalPath)
-  const frontmatter = mergeJournalFrontmatter(date, null, doc)
+  const { frontmatter } = mergeJournalFrontmatter(date, null, doc)
   const fileContent = serializeNote(frontmatter, markdown)
 
   ignoredWrites.set(journalPath, Date.now())
@@ -415,7 +444,7 @@ async function handleJournalCollision(
   const collisionPath = path.join(journalDir, collisionFilename)
   const relativePath = toRelativePath(collisionPath)
 
-  const frontmatter = mergeJournalFrontmatter(date, null, doc)
+  const { frontmatter } = mergeJournalFrontmatter(date, null, doc)
   const fileContent = serializeNote(frontmatter, markdown)
 
   await ensureDirectory(journalDir)
@@ -486,26 +515,56 @@ export async function handleSyncDeletion(noteId: string): Promise<void> {
   log.info('Deleted from sync', { noteId })
 }
 
+interface MergedFrontmatter {
+  frontmatter: NoteFrontmatter
+  /** True only when the merge actually altered a frontmatter value */
+  changed: boolean
+}
+
 /**
  * Merge write-back frontmatter: user keys pass through verbatim, CRDT tags
- * win when present. No Memry keys are ever injected.
+ * win when present. No Memry keys are ever injected. `changed` stays false
+ * when the CRDT state matches the file, so the raw block survives verbatim.
  */
-function mergeFrontmatter(existing: NoteFrontmatter | null, doc: Y.Doc): NoteFrontmatter {
+function mergeFrontmatter(existing: NoteFrontmatter | null, doc: Y.Doc): MergedFrontmatter {
   const yjsTags = getYjsTags(doc)
   const merged: NoteFrontmatter = { ...(existing ?? {}) }
-  if (yjsTags.length > 0) merged.tags = yjsTags
-  return merged
+  let changed = false
+  if (yjsTags.length > 0 && !sameTags(existing?.tags, yjsTags)) {
+    merged.tags = yjsTags
+    changed = true
+  }
+  return { frontmatter: merged, changed }
 }
 
 function mergeJournalFrontmatter(
   date: string,
   existing: NoteFrontmatter | null,
   doc: Y.Doc
-): NoteFrontmatter {
+): MergedFrontmatter {
   const yjsTags = getYjsTags(doc)
   const merged: NoteFrontmatter = { ...(existing ?? {}), date }
-  if (yjsTags.length > 0) merged.tags = yjsTags
-  return merged
+  let changed = normalizeDateValue(existing?.date) !== date
+  if (yjsTags.length > 0 && !sameTags(existing?.tags, yjsTags)) {
+    merged.tags = yjsTags
+    changed = true
+  }
+  return { frontmatter: merged, changed }
+}
+
+function sameTags(existing: unknown, next: string[]): boolean {
+  return (
+    Array.isArray(existing) &&
+    existing.length === next.length &&
+    existing.every((v, i) => String(v) === next[i])
+  )
+}
+
+/** YAML gives `date: 2026-07-05` back as a Date object — compare by day. */
+function normalizeDateValue(value: unknown): string | null {
+  if (value instanceof Date) return value.toISOString().slice(0, 10)
+  if (typeof value === 'string') return value
+  return value == null ? null : String(value)
 }
 
 function getYjsTags(doc: Y.Doc): string[] {

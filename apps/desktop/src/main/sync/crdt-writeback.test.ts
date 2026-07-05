@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   deleteFile: vi.fn(),
   parseNote: vi.fn(),
   serializeNote: vi.fn(),
+  serializeParsedNote: vi.fn(),
   getNotesDir: vi.fn(),
   toRelativePath: vi.fn(),
   toAbsolutePath: vi.fn(),
@@ -74,7 +75,8 @@ vi.mock('../vault/file-ops', () => ({
 
 vi.mock('../vault/frontmatter', () => ({
   parseNote: (...args: unknown[]) => mocks.parseNote(...args),
-  serializeNote: (...args: unknown[]) => mocks.serializeNote(...args)
+  serializeNote: (...args: unknown[]) => mocks.serializeNote(...args),
+  serializeParsedNote: (...args: unknown[]) => mocks.serializeParsedNote(...args)
 }))
 
 vi.mock('../vault/notes', () => ({
@@ -158,6 +160,13 @@ describe('crdt writeback', () => {
     })
     mocks.serializeNote.mockImplementation((frontmatter, markdown) =>
       JSON.stringify({ frontmatter, markdown })
+    )
+    mocks.serializeParsedNote.mockImplementation((parsed, markdown, options) =>
+      JSON.stringify({
+        frontmatter: (parsed as { frontmatter: unknown }).frontmatter,
+        markdown,
+        options
+      })
     )
     mocks.toAbsolutePath.mockImplementation((relative: string) => `/vault/${relative}`)
     mocks.toRelativePath.mockImplementation((absolute: string) => absolute.replace('/vault/', ''))

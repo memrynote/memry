@@ -29,7 +29,11 @@ vi.mock('../database/client', () => ({
 
 vi.mock('../vault/notes', () => ({ toAbsolutePath: vi.fn() }))
 vi.mock('../vault/file-ops', () => ({ safeRead: vi.fn() }))
-vi.mock('../vault/frontmatter', () => ({ parseNote: vi.fn() }))
+vi.mock('../vault/frontmatter', () => ({
+  parseNote: vi.fn(),
+  serializeNote: vi.fn(),
+  serializeParsedNote: vi.fn()
+}))
 vi.mock('./blocknote-converter', () => ({ markdownToYFragment: vi.fn() }))
 vi.mock('./crdt-compact-utils', () => ({ compactYDoc: vi.fn() }))
 vi.mock('./crdt-writeback', () => ({

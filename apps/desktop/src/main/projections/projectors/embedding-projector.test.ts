@@ -27,7 +27,9 @@ vi.mock('@main/database/queries/settings', () => ({
 }))
 
 vi.mock('../../vault/frontmatter', () => ({
-  parseNote
+  parseNote,
+  serializeNote: vi.fn(),
+  serializeParsedNote: vi.fn()
 }))
 
 vi.mock('../../lib/logger', () => ({

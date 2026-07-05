@@ -24,6 +24,7 @@ vi.mock('../../vault/frontmatter', () => ({
     content: 'old content'
   })),
   serializeNote: vi.fn(() => '---\n---\ncontent'),
+  serializeParsedNote: vi.fn(() => '---\n---\ncontent'),
   inferPropertyType: vi.fn(() => 'number')
 }))
 
@@ -104,7 +105,7 @@ vi.mock('../../vault/file-ops', async () => {
 
 import { noteHandler } from './note-handler'
 import { deleteFile } from '../../vault/file-ops'
-import { parseNote, serializeNote } from '../../vault/frontmatter'
+import { parseNote, serializeParsedNote } from '../../vault/frontmatter'
 import { deleteNoteFromCache, syncFileToCache, syncNoteToCache } from '../../vault/note-sync'
 import {
   getNoteCacheByPath,
@@ -303,7 +304,7 @@ describe('noteHandler.applyUpsert — path collision', () => {
     )
 
     expect(result).toBe('applied')
-    expect(serializeNote).toHaveBeenCalled()
+    expect(serializeParsedNote).toHaveBeenCalled()
     expect(updateNoteCache).toHaveBeenCalledWith(
       {},
       'note-1',

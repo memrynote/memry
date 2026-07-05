@@ -468,7 +468,7 @@ describe('vault watcher', () => {
         date: '2026-05-10',
         source: 'external',
         entry: expect.objectContaining({
-          content: 'First entry',
+          content: '\nFirst entry',
           tags: ['daily']
         })
       })
@@ -500,7 +500,7 @@ describe('vault watcher', () => {
         date: '2026-05-10',
         source: 'external',
         entry: expect.objectContaining({
-          content: 'Updated entry',
+          content: '\nUpdated entry',
           tags: ['daily']
         })
       })

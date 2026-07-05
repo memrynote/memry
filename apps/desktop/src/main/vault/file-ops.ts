@@ -53,6 +53,20 @@ export async function atomicWrite(filePath: string, content: string): Promise<vo
   }
 }
 
+/**
+ * Write only when the content differs from what is on disk. Skipping the
+ * write entirely means no mtime churn, no watcher echo and no sync item for
+ * no-op saves.
+ *
+ * @returns true when a write happened, false when the file already matched
+ */
+export async function writeIfChanged(filePath: string, content: string): Promise<boolean> {
+  const existing = await safeRead(filePath)
+  if (existing === content) return false
+  await atomicWrite(filePath, content)
+  return true
+}
+
 // ============================================================================
 // Safe Read
 // ============================================================================
