@@ -450,14 +450,16 @@ export function Header() {
   }
 
   return (
-    <header
-      className={cn(
-        'fixed inset-x-0 top-0 z-50 px-3 pt-4 transition-all duration-300 before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:z-0 before:h-24 before:bg-gradient-to-b before:from-paper/92 before:via-paper/62 before:to-paper/0 before:transition-opacity before:duration-300 dark:before:from-paper/92 dark:before:via-paper/62 dark:before:to-paper/0 sm:px-6',
-        showHeaderSurface ? 'before:opacity-100' : 'before:opacity-0'
-      )}
-    >
+    <header className="fixed inset-x-0 top-0 z-50 px-3 pt-3 sm:px-6">
       <Container size="full" className="relative z-10">
-        <nav className="mx-auto flex max-w-6xl items-center justify-between px-1 py-2 sm:px-0">
+        <nav
+          className={cn(
+            'mx-auto flex max-w-6xl items-center justify-between rounded-full border px-3 py-2 transition-all duration-300 sm:px-4',
+            showHeaderSurface
+              ? 'border-border/60 bg-paper/85 shadow-sm backdrop-blur-xl'
+              : 'border-transparent bg-transparent'
+          )}
+        >
           <Link to="/" className="flex items-center gap-1.5 group" onClick={handleLogoClick}>
             <span className="flex h-7 w-7 items-center justify-center">
               <img src="/favicon.svg" alt="" className="w-5 h-5" />

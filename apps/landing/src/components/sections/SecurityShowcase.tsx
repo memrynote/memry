@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, useInView } from 'framer-motion'
-import { Shield, FolderOpen, Eye } from 'lucide-react'
-import { Container } from '@/components/layout/Container'
 import { Link } from 'react-router-dom'
+import { Container } from '@/components/layout/Container'
+
+const EASE = [0.16, 1, 0.3, 1] as const
 
 const CLEAR_TEXT_LINES = [
   'Dear diary,',
@@ -47,19 +48,16 @@ function useScramble(trigger: boolean, lineCount: number, charsPerLine: number) 
 
 const PILLARS = [
   {
-    icon: Shield,
-    title: 'Zero-knowledge',
-    desc: 'We never see your decryption keys. Not even if we wanted to.'
+    title: 'Zero-knowledge sync',
+    desc: 'Notes are encrypted on your machine before upload. We never hold your keys.'
   },
   {
-    icon: FolderOpen,
-    title: 'Local-first',
-    desc: 'Plain .md files on your device. No vendor lock-in, ever.'
+    title: 'Plain files, yours',
+    desc: 'Markdown on your own disk. Open your vault in any editor, leave any time.'
   },
   {
-    icon: Eye,
     title: 'Open source',
-    desc: 'AGPL-3.0 licensed. Read every line. Audit it yourself.'
+    desc: 'AGPL-3.0 licensed. Every line of the app is public — audit it yourself.'
   }
 ]
 
@@ -70,42 +68,42 @@ export function SecurityShowcase() {
 
   return (
     <section ref={ref} className="zone-dark py-24 md:py-32">
-      <Container>
+      <Container size="md">
         <motion.div
-          className="text-center mb-16"
-          initial={{ opacity: 0, y: 24 }}
+          className="mb-14 max-w-2xl"
+          initial={{ opacity: 0, y: 20 }}
           animate={isInView ? { opacity: 1, y: 0 } : undefined}
-          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 0.8, ease: EASE }}
         >
-          <p className="mb-4 font-mono-accent text-xs uppercase tracking-[0.22em] text-terracotta">
-            § 04 — Sealed
+          <p className="font-mono-accent text-[11px] uppercase tracking-[0.2em] text-terracotta">
+            Privacy
           </p>
-          <h2 className="display-section text-ink-inverted mb-4">
-            We can't read your notes. <span className="text-terracotta italic">By design.</span>
+          <h2 className="display-section mt-4 text-ink-inverted">
+            Sealed before it <em className="text-terracotta">leaves your device.</em>
           </h2>
-          <p className="text-lg text-dark-muted font-sans max-w-xl mx-auto">
-            End-to-end encrypted with XChaCha20-Poly1305. Your words are sealed before they ever
-            leave your device.
+          <p className="mt-4 text-lg leading-relaxed text-dark-muted">
+            Sync ships only ciphertext — XChaCha20-Poly1305, keys derived on your machine. What you
+            write stays between you and your devices.
           </p>
         </motion.div>
 
         <motion.div
-          className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto mb-20"
-          initial={{ opacity: 0, y: 32 }}
+          className="mb-16 grid gap-5 md:grid-cols-2"
+          initial={{ opacity: 0, y: 28 }}
           animate={isInView ? { opacity: 1, y: 0 } : undefined}
-          transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 0.8, delay: 0.15, ease: EASE }}
         >
           <div className="rounded-lg border border-dark-border bg-dark-surface p-6">
-            <span className="inline-block text-xs font-mono-accent uppercase tracking-widest text-sage mb-4">
-              Plate I — What you see
+            <span className="mb-4 inline-block font-mono-accent text-[11px] uppercase tracking-[0.18em] text-sage">
+              What you write
             </span>
-            <div className="font-serif text-lg text-ink-inverted leading-relaxed space-y-1">
+            <div className="space-y-1 font-serif text-lg leading-relaxed text-ink-inverted">
               {CLEAR_TEXT_LINES.map((line, i) => (
                 <motion.p
                   key={line}
                   initial={{ opacity: 0 }}
                   animate={isInView ? { opacity: 1 } : undefined}
-                  transition={{ delay: 0.5 + i * 0.12, duration: 0.5 }}
+                  transition={{ delay: 0.45 + i * 0.12, duration: 0.5 }}
                 >
                   {line}
                 </motion.p>
@@ -114,14 +112,14 @@ export function SecurityShowcase() {
           </div>
 
           <div
-            className="rounded-lg border border-dark-border bg-dark-surface p-6 overflow-hidden cursor-crosshair transition-border-color duration-300 hover:border-terracotta/40"
+            className="cursor-crosshair overflow-hidden rounded-lg border border-dark-border bg-dark-surface p-6 transition-colors duration-300 hover:border-terracotta/40"
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
           >
-            <span className="inline-block text-xs font-mono-accent uppercase tracking-widest text-terracotta mb-4">
-              Plate II — What we see
+            <span className="mb-4 inline-block font-mono-accent text-[11px] uppercase tracking-[0.18em] text-terracotta">
+              What our server stores
             </span>
-            <div className="font-mono text-lg text-terracotta/60 leading-relaxed space-y-1 select-none">
+            <div className="select-none space-y-1 font-mono text-lg leading-relaxed text-terracotta/60">
               {scrambled.map((line, i) => (
                 <p key={i} aria-hidden="true">
                   {line}
@@ -132,44 +130,40 @@ export function SecurityShowcase() {
         </motion.div>
 
         <motion.div
-          className="grid sm:grid-cols-3 gap-8 max-w-3xl mx-auto mb-12"
+          className="grid gap-10 border-t border-dark-border pt-12 sm:grid-cols-3"
           initial="hidden"
           animate={isInView ? 'show' : 'hidden'}
           variants={{
             hidden: {},
-            show: { transition: { staggerChildren: 0.12, delayChildren: 0.5 } }
+            show: { transition: { staggerChildren: 0.12, delayChildren: 0.4 } }
           }}
         >
-          {PILLARS.map(({ icon: Icon, title, desc }) => (
+          {PILLARS.map(({ title, desc }) => (
             <motion.div
               key={title}
-              className="text-center"
               variants={{
-                hidden: { opacity: 0, y: 20 },
-                show: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] } }
+                hidden: { opacity: 0, y: 16 },
+                show: { opacity: 1, y: 0, transition: { duration: 0.6, ease: EASE } }
               }}
             >
-              <div className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-sage/30 mb-3">
-                <Icon className="w-5 h-5 text-sage" />
-              </div>
-              <h3 className="font-serif text-xl text-ink-inverted mb-2">{title}</h3>
-              <p className="text-sm text-dark-muted leading-relaxed">{desc}</p>
+              <h3 className="font-serif text-xl text-ink-inverted">{title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-dark-muted">{desc}</p>
             </motion.div>
           ))}
         </motion.div>
 
         <motion.div
-          className="text-center"
           initial={{ opacity: 0 }}
           animate={isInView ? { opacity: 1 } : undefined}
-          transition={{ delay: 0.9, duration: 0.6 }}
+          transition={{ delay: 0.8, duration: 0.6 }}
+          className="mt-12"
         >
           <Link
             to="/security"
-            className="inline-flex items-center gap-2 text-sm font-mono-accent uppercase tracking-widest text-terracotta hover:text-terracotta-dark transition-colors"
+            className="inline-flex items-center gap-2 text-sm font-medium text-terracotta transition-colors hover:text-terracotta-glow"
           >
-            Read our security architecture
-            <span aria-hidden="true">&rarr;</span>
+            Read the security architecture
+            <span aria-hidden>&rarr;</span>
           </Link>
         </motion.div>
       </Container>

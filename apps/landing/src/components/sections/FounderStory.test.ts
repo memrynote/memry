@@ -14,7 +14,7 @@ describe('FounderStory section', () => {
     assert.match(source, /object-cover/)
     assert.match(source, /Hi, I'm Kaan, the developer behind memrynote/)
     assert.match(source, /local-first, privacy by design/)
-    assert.match(source, /no plugin maze and no cloud lock-in/)
+    assert.match(source, /no\s+plugin maze and no\s+cloud lock-in/)
     assert.match(source, /Follow me on 𝕏/)
     assert.doesNotMatch(source, /border-dashed/)
     assert.doesNotMatch(source, />K<\/span>/)

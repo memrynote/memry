@@ -187,12 +187,9 @@ export function FlowShowcase() {
           animate={BLUR_REVEAL_ANIMATE}
           transition={BLUR_REVEAL_TRANSITION}
         >
-          <div className="mb-6 flex items-baseline justify-between gap-4">
-            <p className="font-mono-accent text-xs uppercase tracking-[0.22em] text-terracotta">
-              § 01 — Exhibit A
-            </p>
-            <p className="font-serif text-lg italic text-muted">The app, unedited.</p>
-          </div>
+          <p className="mb-5 text-center font-mono-accent text-[11px] uppercase tracking-[0.2em] text-muted/70">
+            The app, unedited — no mockups
+          </p>
 
           <MockupFrame caption="Full app walkthrough — click the bar to jump">
             <div className="flex flex-col">

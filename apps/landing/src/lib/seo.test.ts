@@ -42,7 +42,7 @@ describe('landing SEO signals', () => {
   })
 
   it('links the main sitelink candidates from visible navigation surfaces', () => {
-    assert.ok(DIRECT_NAV_LINKS.some((link) => link.href === '/changelog'))
+    assert.ok(DIRECT_NAV_LINKS.some((link) => link.href === '/roadmap'))
     assert.ok(FOOTER_LINKS.product.some((link) => link.href === '/features'))
     assert.ok(FOOTER_LINKS.product.some((link) => link.href === '/changelog'))
 

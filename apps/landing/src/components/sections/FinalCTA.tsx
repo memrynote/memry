@@ -4,15 +4,14 @@ import { DownloadCTA } from '@/components/shared/DownloadCTA'
 
 export function FinalCTA() {
   return (
-    <section className="zone-dark py-32 relative overflow-hidden">
+    <section className="zone-dark relative overflow-hidden py-28 md:py-36">
       <div
-        className="absolute inset-0 pointer-events-none"
+        className="pointer-events-none absolute inset-0"
         style={{
-          background: 'radial-gradient(circle at 50% 40%, rgb(255 103 26 / 0.08), transparent 60%)'
+          background: 'radial-gradient(circle at 50% 45%, rgb(255 103 26 / 0.07), transparent 60%)'
         }}
+        aria-hidden
       />
-
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-px bg-terracotta" />
 
       <Container size="sm">
         <motion.div
@@ -20,22 +19,21 @@ export function FinalCTA() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-50px' }}
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-          className="text-center"
+          className="relative text-center"
         >
-          <p aria-hidden className="mb-8 font-serif text-2xl tracking-[0.5em] text-terracotta">
-            ⁂
-          </p>
-          <h2 className="font-serif text-6xl md:text-7xl font-normal text-ink-inverted mb-6">
-            Get <span className="italic text-terracotta">memrynote.</span>
+          <h2 className="font-serif text-5xl text-ink-inverted md:text-6xl">
+            Ready when <em className="text-terracotta">you are.</em>
           </h2>
-          <p className="text-xl text-dark-muted font-sans mb-12 max-w-lg mx-auto leading-relaxed">
-            Free, local-first, and open source. Yours in under a minute.
+          <p className="mx-auto mt-6 max-w-md text-lg leading-relaxed text-dark-muted">
+            Free, local-first, and open source. Download it, pick a vault, and keep the thread.
           </p>
 
-          <DownloadCTA location="home-final" tone="inverted" />
+          <div className="mt-10">
+            <DownloadCTA location="home-final" tone="inverted" />
+          </div>
 
-          <p className="mt-16 font-mono-accent text-[10px] uppercase tracking-[0.3em] text-dark-muted/50">
-            memrynote · local-first · open source · <span className="italic normal-case">fin.</span>
+          <p className="mt-14 font-mono-accent text-[10px] uppercase tracking-[0.28em] text-dark-muted/60">
+            macOS · Windows · Linux
           </p>
         </motion.div>
       </Container>

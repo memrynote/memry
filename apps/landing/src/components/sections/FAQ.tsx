@@ -17,18 +17,18 @@ const REVEAL = {
 
 export function CleanNeutralFAQ() {
   return (
-    <section className="py-24 border-t border-border/40">
+    <section className="border-t border-border/40 py-24 md:py-28">
       <Container size="md">
         <div className="grid gap-12 lg:grid-cols-[minmax(220px,1fr)_2fr]">
           <motion.div {...REVEAL} className="lg:sticky lg:top-28 lg:self-start">
-            <p className="font-mono-accent text-xs uppercase tracking-[0.22em] text-terracotta">
-              § 07 — Appendix
+            <p className="font-mono-accent text-[11px] uppercase tracking-[0.2em] text-terracotta">
+              Questions
             </p>
             <h2 className="display-section mt-4 text-ink">
-              Questions & <span className="italic text-terracotta">answers.</span>
+              Before you <em className="text-terracotta">download.</em>
             </h2>
             <p className="mt-4 text-lg leading-relaxed text-muted">
-              Everything you need to know before you download.
+              The short version of everything people ask. More in the docs.
             </p>
           </motion.div>
 
@@ -38,17 +38,12 @@ export function CleanNeutralFAQ() {
                 <AccordionItem
                   key={item.question}
                   value={`faq-${i}`}
-                  className="border-b border-border/60 last:border-0 rounded-none px-0 bg-transparent data-[state=open]:bg-transparent"
+                  className="rounded-none border-b border-border/60 bg-transparent px-0 last:border-0 data-[state=open]:bg-transparent"
                 >
-                  <AccordionTrigger className="text-start text-ink text-lg hover:text-terracotta hover:no-underline py-5 font-serif">
-                    <span className="flex items-baseline gap-4">
-                      <span className="font-mono-accent text-[11px] tracking-[0.14em] text-muted/50">
-                        Q.{String(i + 1).padStart(2, '0')}
-                      </span>
-                      {item.question}
-                    </span>
+                  <AccordionTrigger className="py-5 text-start font-serif text-lg text-ink hover:text-terracotta hover:no-underline">
+                    {item.question}
                   </AccordionTrigger>
-                  <AccordionContent className="text-muted leading-relaxed pb-5 text-[17px] font-sans max-w-[90%]">
+                  <AccordionContent className="max-w-[90%] pb-5 text-base leading-relaxed text-muted">
                     {item.answer}
                   </AccordionContent>
                 </AccordionItem>

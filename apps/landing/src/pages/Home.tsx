@@ -4,7 +4,6 @@ import { FlowShowcase } from '@/components/sections/FlowShowcase'
 import { Features } from '@/components/sections/Features'
 import { SecurityShowcase } from '@/components/sections/SecurityShowcase'
 import { FounderStory } from '@/components/sections/FounderStory'
-import { Roadmap } from '@/components/sections/Roadmap'
 import { CleanNeutralFAQ } from '@/components/sections/FAQ'
 import { FinalCTA } from '@/components/sections/FinalCTA'
 
@@ -17,7 +16,6 @@ export function Home() {
       <Features />
       <SecurityShowcase />
       <FounderStory />
-      <Roadmap />
       <CleanNeutralFAQ />
       <FinalCTA />
     </>

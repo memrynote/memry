@@ -128,8 +128,7 @@ export const DOWNLOAD_NAV_ITEMS: readonly LandingDropdownItem[] = [
 
 export const DIRECT_NAV_LINKS = [
   { label: 'Pricing', href: '/pricing' },
-  { label: 'Roadmap', href: '/roadmap' },
-  { label: 'Changelog', href: '/changelog' }
+  { label: 'Roadmap', href: '/roadmap' }
 ] as const
 
 export const FOOTER_LINKS = {

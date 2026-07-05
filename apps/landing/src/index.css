@@ -192,6 +192,14 @@ h6 {
 
 /* ——— The Private Press: editorial display & print furniture ——— */
 
+.display-hero {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: clamp(2.5rem, 6vw, 4.25rem);
+  line-height: 1.06;
+  letter-spacing: -0.02em;
+}
+
 .display-section {
   font-family: var(--font-serif);
   font-optical-sizing: auto;
@@ -206,30 +214,6 @@ h6 {
   height: 5px;
   border-top: 1px solid currentColor;
   border-bottom: 1px solid currentColor;
-}
-
-/* Oversized outlined numeral for feature chapters */
-.chapter-num {
-  font-family: var(--font-serif);
-  font-optical-sizing: auto;
-  font-weight: 400;
-  font-size: clamp(4.5rem, 9vw, 7.5rem);
-  line-height: 0.78;
-  letter-spacing: -0.02em;
-  color: transparent;
-  -webkit-text-stroke: 1px color-mix(in srgb, var(--color-ink) 38%, transparent);
-}
-
-/* Letterpress drop cap for the founder letter */
-.drop-cap::first-letter {
-  float: inline-start;
-  font-family: var(--font-serif);
-  font-weight: 500;
-  font-size: 3.2em;
-  line-height: 0.82;
-  padding-inline-end: 0.12em;
-  padding-block-start: 0.06em;
-  color: var(--color-terracotta);
 }
 
 /* Rubber-stamp label, red ink */
@@ -303,16 +287,6 @@ h6 {
   pointer-events: none;
   border-left: 2px solid rgb(255 103 26 / 0.2);
   border-right: 2px solid rgb(255 103 26 / 0.08);
-}
-
-/* Ruled paper lines for founder story */
-.ruled-paper {
-  background-image: repeating-linear-gradient(
-    transparent,
-    transparent 27px,
-    rgb(255 103 26 / 0.08) 28px
-  );
-  background-position: 0 8px;
 }
 
 /* Magnetic button base */
