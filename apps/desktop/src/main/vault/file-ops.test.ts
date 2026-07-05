@@ -491,6 +491,12 @@ describe('sanitizeFilename', () => {
     expect(sanitizeFilename('My Note 2024')).toBe('My Note 2024')
     expect(sanitizeFilename('note-with_special.chars')).toBe('note-with_special.chars')
   })
+
+  it('T350: strips Obsidian-forbidden characters [ ] # ^', () => {
+    expect(sanitizeFilename('Draft [v2] #1')).toBe('Draft v2 1')
+    expect(sanitizeFilename('a^b|c')).toBe('abc')
+    expect(sanitizeFilename('[#^]')).toBe('untitled')
+  })
 })
 
 // ============================================================================

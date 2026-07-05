@@ -68,4 +68,10 @@ describe('export-utils', () => {
     expect(sanitizeFilename('  in<va>lid: file/name?.md  ')).toBe('invalid filename.md')
     expect(sanitizeFilename('a'.repeat(250))).toHaveLength(200)
   })
+
+  it('sanitizeFilename strips Obsidian-forbidden characters and falls back to untitled', () => {
+    expect(sanitizeFilename('Draft [v2] #1')).toBe('Draft v2 1')
+    expect(sanitizeFilename('a^b|c')).toBe('abc')
+    expect(sanitizeFilename('[#^]')).toBe('untitled')
+  })
 })
