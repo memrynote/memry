@@ -40,15 +40,15 @@ describe('isLikelyTask', () => {
 })
 
 describe('serializeTaskBlock', () => {
-  it('serializes unchecked task', () => {
+  it('serializes unchecked task as a plain line (id stays in props)', () => {
     expect(serializeTaskBlock({ taskId: 'abc-123', title: 'Buy groceries', checked: false })).toBe(
-      '- [ ] Buy groceries {task:abc-123}'
+      '- [ ] Buy groceries'
     )
   })
 
   it('serializes checked task', () => {
     expect(serializeTaskBlock({ taskId: 'def-456', title: 'Send email', checked: true })).toBe(
-      '- [x] Send email {task:def-456}'
+      '- [x] Send email'
     )
   })
 })
@@ -186,7 +186,7 @@ describe('serializeTaskBlock with parentTaskId', () => {
         checked: false,
         parentTaskId: 'parent-1'
       })
-    ).toBe('  - [ ] Buy milk {task:sub-1}')
+    ).toBe('  - [ ] Buy milk')
   })
 
   it('serializes checked subtask with indent', () => {
@@ -197,13 +197,13 @@ describe('serializeTaskBlock with parentTaskId', () => {
         checked: true,
         parentTaskId: 'parent-1'
       })
-    ).toBe('  - [x] Get bread {task:sub-2}')
+    ).toBe('  - [x] Get bread')
   })
 
   it('serializes top-level task without indent', () => {
     expect(
       serializeTaskBlock({ taskId: 'top-1', title: 'Groceries', checked: false, parentTaskId: '' })
-    ).toBe('- [ ] Groceries {task:top-1}')
+    ).toBe('- [ ] Groceries')
   })
 })
 
@@ -271,8 +271,8 @@ describe('subtask round-trip: serialize → parse → normalize', () => {
     const parentMd = serializeTaskBlock(parentProps)
     const subtaskMd = serializeTaskBlock(subtaskProps)
 
-    expect(parentMd).toBe('- [ ] Groceries {task:p1}')
-    expect(subtaskMd).toBe('  - [x] Buy milk {task:s1}')
+    expect(parentMd).toBe('- [ ] Groceries')
+    expect(subtaskMd).toBe('  - [x] Buy milk')
 
     // Parse suffix extracts correctly
     const parsedParent = parseTaskBlockSuffix('Groceries {task:p1}')

@@ -38,7 +38,9 @@ import { isWritebackIgnored, wasRecentNetworkUpdate } from '../sync/crdt-writeba
 import { attachmentEvents } from '../sync/attachment-events'
 import { flushProjectionEvents } from '../projections'
 import { getCrdtProvider, ORIGIN_LOCAL } from '../sync/crdt-provider'
-import { markdownToBlocks, blocksToYFragment } from '../sync/blocknote-converter'
+import { markdownToBlocks, blocksToYFragment, yFragmentToBlocks } from '../sync/blocknote-converter'
+import { applyTaskLinkEffects, loadTaskLinkCandidates } from '../sync/task-link-effects'
+import { collectTaskLinks, normalizeTaskBlocks, type TaskCandidate } from '@memry/shared/task-block'
 import {
   enqueueJournalCreate,
   enqueueJournalDelete,
@@ -147,10 +149,32 @@ async function feedExternalEditToCrdt(noteId: string, markdownContent: string): 
   if (!blocks) return
 
   const fragment = doc.getXmlFragment('prosemirror')
+
+  // Re-match plain task lines to their ids (spec 02): candidates come from the
+  // current fragment's taskBlocks (extracted before the replace), falling back
+  // to the note_task_links snapshot when the doc carries none.
+  let candidates: TaskCandidate[] = []
+  try {
+    const currentBlocks = await yFragmentToBlocks(fragment)
+    candidates = currentBlocks ? collectTaskLinks(currentBlocks) : []
+    if (candidates.length === 0) candidates = loadTaskLinkCandidates(noteId)
+  } catch (err) {
+    logger.warn('Failed to load task link candidates for external edit', { noteId, err })
+  }
+  const { blocks: normalized, bindings, orphans } = normalizeTaskBlocks(blocks, candidates)
+
   doc.transact(() => {
     fragment.delete(0, fragment.length)
-    blocksToYFragment(blocks, fragment)
+    blocksToYFragment(normalized, fragment)
   }, ORIGIN_LOCAL)
+
+  // External toggles/retitles win: apply them to the task rows through the
+  // domain so events fire and vector clocks bump.
+  try {
+    await applyTaskLinkEffects(bindings, orphans)
+  } catch (err) {
+    logger.warn('Failed to apply task link effects for external edit', { noteId, err })
+  }
 }
 
 // ============================================================================

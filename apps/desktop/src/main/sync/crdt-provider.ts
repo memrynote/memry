@@ -13,6 +13,8 @@ import { toAbsolutePath } from '../vault/notes'
 import { safeRead } from '../vault/file-ops'
 import { parseNote } from '../vault/frontmatter'
 import { markdownToYFragment, repairEmptyBlockIds } from './blocknote-converter'
+import { applyTaskLinkEffects, loadTaskLinkCandidates } from './task-link-effects'
+import type { TaskCandidate } from '@memry/shared/task-block'
 import { compactYDoc } from './crdt-compact-utils'
 import { isBinaryFileType } from '@memry/shared/file-types'
 import { CRITIC_MARKUP_MARKS_ARRAY } from '@memry/shared'
@@ -453,9 +455,23 @@ export class CrdtProvider {
     const parsed = parseNote(raw, cached.path)
     if (!parsed.content?.trim()) return
 
-    const ok = await markdownToYFragment(parsed.content, fragment)
-    if (ok && this.persistence) {
+    // Cold seed: the file has no task ids, so bind plain task lines against
+    // the note_task_links snapshot (spec 02).
+    let candidates: TaskCandidate[] = []
+    try {
+      candidates = loadTaskLinkCandidates(noteId)
+    } catch (err) {
+      log.warn('Failed to load task link candidates for seed', { noteId, err })
+    }
+
+    const result = await markdownToYFragment(parsed.content, fragment, candidates)
+    if (result.ok && this.persistence) {
       await this.persistence.storeUpdate(noteId, Y.encodeStateAsUpdate(doc))
+    }
+    try {
+      await applyTaskLinkEffects(result.bindings, result.orphans)
+    } catch (err) {
+      log.warn('Failed to apply task link effects on seed', { noteId, err })
     }
   }
 

@@ -328,8 +328,9 @@ describe('serializeBlocksPreservingBlanks', () => {
     ] as any[])
 
     expect(markdown).toContain('Intro')
-    expect(markdown).toContain('- [ ] Parent task {task:parent-1}')
-    expect(markdown).toContain('  - [x] Child task {task:child-1}')
+    expect(markdown).toContain('- [ ] Parent task')
+    expect(markdown).toContain('  - [x] Child task')
+    expect(markdown).not.toContain('{task:')
     expect(markdown).toContain('![embed](https://youtu.be/dQw4w9WgXcQ)')
     expect(markdown).toContain('![bookmark](https://example.com/article)')
     expect(markdown).toContain('> [!success]\n> Callout body')

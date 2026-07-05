@@ -15,7 +15,9 @@ import { parseCriticMarkup, writeCriticMarkupMarksToYDoc } from '@memry/shared'
 import {
   normalizeTaskBlocks,
   serializeTaskBlock,
-  type TaskBlockProps
+  type TaskBlockProps,
+  type TaskCandidate,
+  type TaskLineBinding
 } from '@memry/shared/task-block'
 import {
   type BlockColors,
@@ -53,7 +55,8 @@ const createServerTaskBlock = createBlockSpec(
       taskId: { default: '' },
       title: { default: '' },
       checked: { default: false },
-      parentTaskId: { default: '' }
+      parentTaskId: { default: '' },
+      anchor: { default: '' }
     },
     content: 'none'
   },
@@ -159,21 +162,31 @@ export function repairEmptyBlockIds(fragment: Y.XmlFragment): number {
   return repaired
 }
 
+export interface MarkdownSeedResult {
+  ok: boolean
+  /** Task lines bound to ids — callers reconcile external checked/title diffs. */
+  bindings: TaskLineBinding[]
+  /** Candidates whose line disappeared from the file (snapshot rows to drop). */
+  orphans: TaskCandidate[]
+}
+
 export async function markdownToYFragment(
   markdown: string,
-  fragment: Y.XmlFragment
-): Promise<boolean> {
+  fragment: Y.XmlFragment,
+  candidates: TaskCandidate[] = []
+): Promise<MarkdownSeedResult> {
   const parsed = parseCriticMarkup(markdown)
   const blocks = await markdownToBlocks(parsed.plainText)
-  if (!blocks) return false
-  // Upgrade `- [ ] … {task:id}` checkboxes into taskBlock nodes so the renderer
-  // binds the custom block on first paint instead of a raw checkbox.
-  const normalized = normalizeTaskBlocks(blocks).blocks
+  if (!blocks) return { ok: false, bindings: [], orphans: [] }
+  // Upgrade checkboxes into taskBlock nodes so the renderer binds the custom
+  // block on first paint instead of a raw checkbox. Plain lines bind through
+  // the candidates (spec 02); legacy `{task:id}` suffixes bind and strip.
+  const { blocks: normalized, bindings, orphans } = normalizeTaskBlocks(blocks, candidates)
   const ok = blocksToYFragment(normalized, fragment)
   if (ok && fragment.doc) {
     writeCriticMarkupMarksToYDoc(fragment.doc, parsed.marks)
   }
-  return ok
+  return { ok, bindings, orphans }
 }
 
 export async function yFragmentToBlocks(fragment: Y.XmlFragment): Promise<Block[] | null> {

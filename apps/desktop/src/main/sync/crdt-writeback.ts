@@ -1,7 +1,10 @@
 import * as Y from 'yjs'
 import { createLogger } from '../lib/logger'
 import { getCrdtProvider } from './crdt-provider'
-import { yDocToMarkdown } from './blocknote-converter'
+import { yDocToMarkdown, yFragmentToBlocks } from './blocknote-converter'
+import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
+import { collectTaskLinks } from '@memry/shared/task-block'
+import { replaceNoteTaskLinks } from '@main/database/queries/note-task-links'
 import { readCriticMarkupMarksFromYDoc, serializeCriticMarkup } from '@memry/shared'
 import { utcNow } from '@memry/shared/utc'
 import {
@@ -194,6 +197,17 @@ async function performWriteback(noteId: string, doc: Y.Doc): Promise<void> {
     } catch (err) {
       log.warn('Failed to sync note_date reminders on write-back', { noteId, err })
     }
+  }
+
+  // Snapshot the task lines just written so note_task_links always mirrors the
+  // file bytes — these rows are the re-match candidates on cold seed (spec 02).
+  try {
+    const blocks = await yFragmentToBlocks(doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+    if (blocks) {
+      replaceNoteTaskLinks(getDatabase(), noteId, collectTaskLinks(blocks))
+    }
+  } catch (err) {
+    log.warn('Failed to snapshot note task links on write-back', { noteId, err })
   }
 }
 
