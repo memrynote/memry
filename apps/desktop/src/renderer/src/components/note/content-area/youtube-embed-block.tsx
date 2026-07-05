@@ -34,7 +34,7 @@ function YouTubePlayer({ videoId, title }: { videoId: string; title?: string }) 
       />
       <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/30 transition-colors">
         <div className="flex items-center justify-center size-14 rounded-full bg-red-600 group-hover:bg-red-500 transition-colors shadow-lg">
-          <Play className="size-6 text-white ml-0.5" />
+          <Play className="size-6 text-white ms-0.5" />
         </div>
       </div>
     </button>
@@ -81,7 +81,8 @@ export const createYoutubeEmbedBlock = createReactBlockSpec(
     type: 'youtubeEmbed' as const,
     propSchema: {
       videoId: { default: '' },
-      videoUrl: { default: '' }
+      videoUrl: { default: '' },
+      sourceText: { default: '' }
     },
     content: 'none'
   },
@@ -90,8 +91,8 @@ export const createYoutubeEmbedBlock = createReactBlockSpec(
   }
 )
 
-export const EMBED_BLOCK_REGEX = /!\[embed\]\(([^)]+)\)/g
-
-export function serializeYoutubeEmbed(videoUrl: string): string {
-  return `![embed](${videoUrl})`
+// Bare URL on its own line; sourceText re-emits the originally parsed line
+// verbatim (docs/obs/03-bookmark-embed-plain-links.md).
+export function serializeYoutubeEmbed(props: { videoUrl: string; sourceText?: string }): string {
+  return props.sourceText || props.videoUrl
 }

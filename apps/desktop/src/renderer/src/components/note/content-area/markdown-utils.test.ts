@@ -81,7 +81,8 @@ describe('parseMarkdownPreservingBlanks', () => {
           type: 'youtubeEmbed',
           props: {
             videoId: 'dQw4w9WgXcQ',
-            videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
+            videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+            sourceText: ''
           }
         }),
         expect.objectContaining({
@@ -117,10 +118,167 @@ describe('parseMarkdownPreservingBlanks', () => {
       expect.arrayContaining([
         expect.objectContaining({
           type: 'bookmark',
-          props: { url: 'https://www.example.com/article', domain: 'example.com' }
+          props: {
+            url: 'https://www.example.com/article',
+            domain: 'example.com',
+            title: '',
+            sourceText: ''
+          }
         })
       ])
     )
+  })
+
+  it('upgrades standalone YouTube links (bare, autolink, titled) to embed blocks', async () => {
+    const editor = {
+      tryParseMarkdownToBlocks: vi.fn(async (markdown: string) => [
+        {
+          type: 'paragraph',
+          props: {},
+          content: [{ type: 'text', text: markdown, styles: {} }],
+          children: []
+        }
+      ])
+    }
+
+    const blocks = await parseMarkdownPreservingBlanks(
+      editor,
+      [
+        'Intro',
+        '',
+        'https://youtu.be/dQw4w9WgXcQ',
+        '',
+        '<https://www.youtube.com/watch?v=dQw4w9WgXcQ>',
+        '',
+        '[Watch this](https://youtube.com/shorts/dQw4w9WgXcQ)'
+      ].join('\n')
+    )
+
+    expect(blocks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'youtubeEmbed',
+          props: {
+            videoId: 'dQw4w9WgXcQ',
+            videoUrl: 'https://youtu.be/dQw4w9WgXcQ',
+            sourceText: 'https://youtu.be/dQw4w9WgXcQ'
+          }
+        }),
+        expect.objectContaining({
+          type: 'youtubeEmbed',
+          props: expect.objectContaining({
+            videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+            sourceText: '<https://www.youtube.com/watch?v=dQw4w9WgXcQ>'
+          })
+        }),
+        expect.objectContaining({
+          type: 'youtubeEmbed',
+          props: expect.objectContaining({
+            videoUrl: 'https://youtube.com/shorts/dQw4w9WgXcQ',
+            sourceText: '[Watch this](https://youtube.com/shorts/dQw4w9WgXcQ)'
+          })
+        })
+      ])
+    )
+  })
+
+  it('upgrades a standalone titled non-YouTube link to a bookmark card', async () => {
+    const editor = {
+      tryParseMarkdownToBlocks: vi.fn(async (markdown: string) => [
+        {
+          type: 'paragraph',
+          props: {},
+          content: [{ type: 'text', text: markdown, styles: {} }],
+          children: []
+        }
+      ])
+    }
+
+    const blocks = await parseMarkdownPreservingBlanks(
+      editor,
+      ['Intro', '', '[My Article](https://www.example.com/article)', '', 'Outro'].join('\n')
+    )
+
+    expect(blocks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'bookmark',
+          props: {
+            url: 'https://www.example.com/article',
+            domain: 'example.com',
+            title: 'My Article',
+            sourceText: '[My Article](https://www.example.com/article)'
+          }
+        })
+      ])
+    )
+  })
+
+  it('leaves non-upgrade standalone and inline links as plain text', async () => {
+    const editor = {
+      tryParseMarkdownToBlocks: vi.fn(async (markdown: string) => [
+        {
+          type: 'paragraph',
+          props: {},
+          content: [{ type: 'text', text: markdown, styles: {} }],
+          children: []
+        }
+      ])
+    }
+
+    const blocks = await parseMarkdownPreservingBlanks(
+      editor,
+      [
+        'https://example.com/bare-stays-plain',
+        '[https://example.com/a](https://example.com/a)',
+        'Check [My Article](https://example.com/a) inline',
+        'Some intro\n[My Article](https://example.com/a)',
+        '- [My Article](https://example.com/a)',
+        '![alt](https://example.com/img.png)',
+        '![[embedded-file.png]]'
+      ].join('\n\n')
+    )
+
+    const upgraded = (blocks as Array<{ type: string }>).filter(
+      (b) => b.type === 'bookmark' || b.type === 'youtubeEmbed'
+    )
+    expect(upgraded).toEqual([])
+  })
+
+  it('parses legacy markers without sourceText so the next save rewrites them', async () => {
+    const editor = {
+      tryParseMarkdownToBlocks: vi.fn(async (markdown: string) => [
+        {
+          type: 'paragraph',
+          props: {},
+          content: [{ type: 'text', text: markdown, styles: {} }],
+          children: []
+        }
+      ])
+    }
+
+    const blocks = await parseMarkdownPreservingBlanks(
+      editor,
+      [
+        '![embed](https://youtu.be/dQw4w9WgXcQ)',
+        '',
+        '![bookmark](https://www.example.com/article)'
+      ].join('\n')
+    )
+
+    const upgraded = (blocks as Array<{ type: string }>).filter(
+      (b) => b.type === 'bookmark' || b.type === 'youtubeEmbed'
+    )
+    expect(upgraded).toEqual([
+      expect.objectContaining({
+        type: 'youtubeEmbed',
+        props: expect.objectContaining({ sourceText: '' })
+      }),
+      expect.objectContaining({
+        type: 'bookmark',
+        props: expect.objectContaining({ title: '', sourceText: '' })
+      })
+    ])
   })
 
   it('applies color markers to the first block of the following chunk', async () => {
@@ -306,12 +464,17 @@ describe('serializeBlocksPreservingBlanks', () => {
       },
       {
         type: 'youtubeEmbed',
-        props: { videoUrl: 'https://youtu.be/dQw4w9WgXcQ' },
+        props: { videoUrl: 'https://youtu.be/dQw4w9WgXcQ', sourceText: '' },
         children: []
       },
       {
         type: 'bookmark',
-        props: { url: 'https://example.com/article', domain: 'example.com' },
+        props: {
+          url: 'https://example.com/article',
+          domain: 'example.com',
+          title: '',
+          sourceText: ''
+        },
         children: []
       },
       {
@@ -330,10 +493,146 @@ describe('serializeBlocksPreservingBlanks', () => {
     expect(markdown).toContain('Intro')
     expect(markdown).toContain('- [ ] Parent task {task:parent-1}')
     expect(markdown).toContain('  - [x] Child task {task:child-1}')
-    expect(markdown).toContain('![embed](https://youtu.be/dQw4w9WgXcQ)')
-    expect(markdown).toContain('![bookmark](https://example.com/article)')
+    expect(markdown).toContain('https://youtu.be/dQw4w9WgXcQ')
+    expect(markdown).toContain('[example.com](https://example.com/article)')
+    expect(markdown).not.toContain('![embed]')
+    expect(markdown).not.toContain('![bookmark]')
     expect(markdown).toContain('> [!success]\n> Callout body')
     expect(markdown).toContain('Tail')
+  })
+
+  it('serializes bookmark and embed blocks as plain links, re-emitting sourceText verbatim', async () => {
+    const editor = {
+      blocksToMarkdownLossy: vi.fn(async (blocks: any[]) =>
+        blocks.map((block) => block.content?.[0]?.text ?? '').join('\n')
+      )
+    }
+
+    const markdown = await serializeBlocksPreservingBlanks(editor, [
+      {
+        type: 'bookmark',
+        props: {
+          url: 'https://example.com/a',
+          domain: 'example.com',
+          title: 'A [B] C',
+          sourceText: ''
+        },
+        children: []
+      },
+      {
+        type: 'bookmark',
+        props: {
+          url: 'https://example.com/b',
+          domain: 'example.com',
+          title: 'Fetched Later',
+          sourceText: '[Original  Spacing](https://example.com/b)'
+        },
+        children: []
+      },
+      {
+        type: 'youtubeEmbed',
+        props: {
+          videoId: 'dQw4w9WgXcQ',
+          videoUrl: 'https://youtu.be/dQw4w9WgXcQ',
+          sourceText: '<https://youtu.be/dQw4w9WgXcQ>'
+        },
+        children: []
+      }
+    ] as any[])
+
+    expect(markdown).toContain('[A \\[B\\] C](https://example.com/a)')
+    expect(markdown).toContain('[Original  Spacing](https://example.com/b)')
+    expect(markdown).toContain('<https://youtu.be/dQw4w9WgXcQ>')
+  })
+
+  it('round-trips standalone plain links byte-identically across two save cycles', async () => {
+    const editor = {
+      tryParseMarkdownToBlocks: vi.fn(async (markdown: string) =>
+        markdown
+          .split(/\n\n+/)
+          .filter((chunk) => chunk.trim())
+          .map((chunk) => ({
+            type: 'paragraph',
+            props: {},
+            content: [{ type: 'text', text: chunk.trim(), styles: {} }],
+            children: []
+          }))
+      ),
+      blocksToMarkdownLossy: vi.fn(async (blocks: any[]) =>
+        blocks
+          .map((block) =>
+            Array.isArray(block.content)
+              ? block.content.map((content: any) => content.text ?? '').join('')
+              : ''
+          )
+          .filter(Boolean)
+          .join('\n\n')
+      )
+    }
+
+    const input = [
+      'Intro',
+      '',
+      '[My Article](https://www.example.com/article)',
+      '',
+      '<https://youtu.be/dQw4w9WgXcQ>',
+      '',
+      'https://example.com/plain-stays-plain'
+    ].join('\n')
+
+    const once = await serializeBlocksPreservingBlanks(
+      editor,
+      await parseMarkdownPreservingBlanks(editor, input)
+    )
+    expect(once).toBe(input)
+
+    const twice = await serializeBlocksPreservingBlanks(
+      editor,
+      await parseMarkdownPreservingBlanks(editor, once)
+    )
+    expect(twice).toBe(input)
+  })
+
+  it('rewrites legacy markers to canonical plain links on the next save', async () => {
+    const editor = {
+      tryParseMarkdownToBlocks: vi.fn(async (markdown: string) =>
+        markdown
+          .split(/\n\n+/)
+          .filter((chunk) => chunk.trim())
+          .map((chunk) => ({
+            type: 'paragraph',
+            props: {},
+            content: [{ type: 'text', text: chunk.trim(), styles: {} }],
+            children: []
+          }))
+      ),
+      blocksToMarkdownLossy: vi.fn(async (blocks: any[]) =>
+        blocks
+          .map((block) =>
+            Array.isArray(block.content)
+              ? block.content.map((content: any) => content.text ?? '').join('')
+              : ''
+          )
+          .filter(Boolean)
+          .join('\n\n')
+      )
+    }
+
+    const input = [
+      '![embed](https://youtu.be/dQw4w9WgXcQ)',
+      '',
+      '![bookmark](https://www.example.com/article)'
+    ].join('\n')
+
+    const once = await serializeBlocksPreservingBlanks(
+      editor,
+      await parseMarkdownPreservingBlanks(editor, input)
+    )
+    expect(once).toBe(
+      ['https://youtu.be/dQw4w9WgXcQ', '', '[example.com](https://www.example.com/article)'].join(
+        '\n'
+      )
+    )
   })
 
   it('serializes colored blocks alone with a color marker line', async () => {

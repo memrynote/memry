@@ -20,11 +20,12 @@ export function BookmarkBlockRender({
 }) {
   const { url, domain, title, description, image, favicon, siteName } = block.props
 
-  // Markdown round-trip is lossy (URL only) — hydrate display-only metadata
-  // on mount when the block has no title. Never writes back to the block.
+  // Markdown persists only the link-text title — hydrate display-only metadata
+  // on mount when the card has none. Never writes back to the block; the
+  // persisted title always wins over fetched values.
   const [fetched, setFetched] = useState<UrlPreviewData | null>(null)
   useEffect(() => {
-    if (title || !url) return
+    if (!url || description || image || favicon) return
     let cancelled = false
     fetchLinkPreview(url)
       .then((data) => {
@@ -34,7 +35,7 @@ export function BookmarkBlockRender({
     return () => {
       cancelled = true
     }
-  }, [title, url])
+  }, [url, description, image, favicon])
 
   const displayTitle = title || fetched?.title || ''
   const displayDescription = description || fetched?.description || ''

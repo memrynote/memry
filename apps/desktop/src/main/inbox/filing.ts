@@ -286,7 +286,9 @@ export function generateNoteContent(item: InboxItemRow): string {
       let content = ''
 
       if (isYouTube) {
-        content += `![embed](${url})\n\n`
+        // Bare URL on its own line — the editor upgrades it to an embed at
+        // parse time (docs/obs/03-bookmark-embed-plain-links.md).
+        content += `${url}\n\n`
       } else {
         const mentionText = title && title !== url ? `${domain} \u00B7 ${title}` : domain
         content += `[${mentionText}](${url} "mention")\n\n`

@@ -599,7 +599,7 @@ describe('Inbox Filing Operations', () => {
       )
     })
 
-    it('should embed YouTube links instead of rendering a mention link', async () => {
+    it('should file YouTube links as a bare URL line instead of a mention link', async () => {
       const url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
       const itemId = seedInboxItem(testDb.db, {
         id: 'link-youtube',
@@ -611,7 +611,8 @@ describe('Inbox Filing Operations', () => {
       await fileToFolder(itemId, 'videos')
 
       const noteContent = mockCreateNote.mock.calls[0][0].content as string
-      expect(noteContent).toContain(`![embed](${url})`)
+      expect(noteContent.startsWith(`${url}\n\n`)).toBe(true)
+      expect(noteContent).not.toContain('![embed]')
       expect(noteContent).not.toContain('"mention"')
     })
 
