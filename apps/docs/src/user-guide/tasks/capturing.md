@@ -59,6 +59,24 @@ Subtasks inherit nothing automatically — give them their own due dates and pri
 
 Selecting a checklist item in a note offers a "Convert to task" action in the inline menu. The task is created with the note as a back-reference.
 
+### How tasks look in your markdown files
+
+A task in a note is stored as a plain markdown checkbox — no ids or metadata in the file:
+
+```md
+- [ ] Buy milk
+- [x] Call dentist
+```
+
+Project, status, dates, and reminders live in memrynote's local database (and sync end-to-end encrypted), not in the file. The link between the checkbox line and the full task is kept internally and re-matched by title and position if you edit the file outside memrynote — so files stay clean and fully compatible with Obsidian or any other markdown editor.
+
+- Toggling `[x]` in an external editor completes the task in memrynote.
+- Renaming a task line externally renames the task (when it's the only changed line).
+- Deleting a task line from the file never deletes the task — it stays in the Tasks page.
+- A checkbox you add in another app stays a plain checkbox until you convert it.
+
+Notes written by older versions with a `{task:…}` suffix are cleaned up automatically the next time you edit them.
+
 ## See Also
 
 - [List vs Kanban](/user-guide/tasks/list-vs-kanban) — view options
