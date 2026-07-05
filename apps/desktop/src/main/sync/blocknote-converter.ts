@@ -35,6 +35,7 @@ import {
   restoreBlockNesting,
   splitMarkdownByBlockNestingMarkers
 } from '@memry/shared/block-nesting'
+import { splitForeignRawSegments } from '@memry/shared/foreign-syntax'
 import { createLogger } from '../lib/logger'
 
 const log = createLogger('BlockNoteConverter')
@@ -64,11 +65,30 @@ const createServerTaskBlock = createBlockSpec(
   }
 )
 
+// Headless twin of the renderer's rawMarkdown block (raw-markdown-block.tsx):
+// opaque container for foreign Obsidian syntax (docs/obs/06) whose `markdown`
+// prop re-emits verbatim. propSchema must stay identical to the renderer spec.
+const createServerRawMarkdownBlock = createBlockSpec(
+  {
+    type: 'rawMarkdown' as const,
+    propSchema: {
+      markdown: { default: '' }
+    },
+    content: 'none'
+  },
+  {
+    render: () => {
+      throw new Error('rawMarkdown server spec is serialization-only and must not be rendered')
+    }
+  }
+)
+
 const serverSchema = BlockNoteSchema.create({
   blockSpecs: {
     ...defaultBlockSpecs,
     codeBlock: createCodeBlockSpec(codeBlockOptions),
-    taskBlock: createServerTaskBlock()
+    taskBlock: createServerTaskBlock(),
+    rawMarkdown: createServerRawMarkdownBlock()
   }
 })
 
@@ -285,15 +305,29 @@ async function markdownToBlocksPreserving(
   editor: ServerBlockNoteEditor,
   markdown: string
 ): Promise<Block[]> {
-  const segments = splitMarkdownPreservingBlanks(separateBlockImages(markdown))
   const blocks: Block[] = []
 
-  for (const seg of segments) {
-    if (seg.type === 'content') {
-      blocks.push(...(await parseContentWithColorMarkers(editor, seg.text)))
-    } else {
-      for (let i = 0; i < seg.extraLines; i++) {
-        blocks.push(createEmptyParagraph())
+  for (const fseg of splitForeignRawSegments(markdown)) {
+    if (fseg.kind === 'raw') {
+      blocks.push({
+        type: 'rawMarkdown',
+        props: { markdown: fseg.text },
+        content: undefined,
+        children: [],
+        id: randomUUID()
+      } as unknown as Block)
+      continue
+    }
+
+    const segments = splitMarkdownPreservingBlanks(separateBlockImages(fseg.text))
+
+    for (const seg of segments) {
+      if (seg.type === 'content') {
+        blocks.push(...(await parseContentWithColorMarkers(editor, seg.text)))
+      } else {
+        for (let i = 0; i < seg.extraLines; i++) {
+          blocks.push(createEmptyParagraph())
+        }
       }
     }
   }
@@ -360,7 +394,15 @@ async function blocksToMarkdownPreserving(
   }
 
   for (const block of blocks) {
-    if ((block.type as string) === 'taskBlock') {
+    if ((block.type as string) === 'rawMarkdown') {
+      // Foreign Obsidian syntax (docs/obs/06) re-emits its source verbatim.
+      await flushContentGroup()
+      flushGap()
+      segments.push({
+        type: 'content',
+        text: (block.props as { markdown: string }).markdown
+      })
+    } else if ((block.type as string) === 'taskBlock') {
       // BlockNote can't serialize a taskBlock (it's content:'none'), so emit the
       // `- [ ] … {task:id}` line ourselves. Subtasks are kept on the immediately
       // following line (tight list) so a re-parse re-nests them under the parent.

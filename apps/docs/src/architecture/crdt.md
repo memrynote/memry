@@ -76,6 +76,12 @@ BlockNote uses Yjs natively. The renderer's BlockNote editor binds to the render
 Markdown cannot represent arbitrary nested BlockNote paragraphs. Note markdown export and CRDT writeback preserve those unsupported child blocks with hidden nesting markers, then restore them when a note reloads. Inbox note reload also reads BlockNote's saved `data-nesting-level` HTML metadata so captured note indentation round-trips through the editor.
 Marker parsing trims imported markdown with a linear scan so malformed or very large note bodies cannot trigger regex backtracking during reload.
 
+## Foreign Obsidian Syntax
+
+Obsidian block constructs that BlockNote cannot represent — `%%block comments%%`, `$$math$$` blocks, footnote definitions, custom checkbox states like `- [-]`, and callouts outside the four Memry types (or with titles, fold markers, nesting, or multi-paragraph bodies) — are split out before parsing and carried as opaque `rawMarkdown` blocks (`packages/shared/src/foreign-syntax.ts`). Both conversion pipelines (renderer `markdown-utils.ts` and main `blocknote-converter.ts`) re-emit the block's source verbatim on save, so an edited vault note never mangles syntax the editor doesn't understand. The block renders read-only in the editor.
+
+Inline Obsidian syntax (`%%…%%` comments, `==highlights==`, `$math$`, footnote references, `![[embeds]]`, wiki-link anchors, Dataview fields, template vars, block IDs) survives the parse→serialize round trip as plain text without special handling; the `foreign-syntax-roundtrip` test matrices in both pipelines guard this byte-for-byte.
+
 ## Files Worth Knowing
 
 ```

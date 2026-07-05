@@ -70,7 +70,10 @@ describe('parseMarkdownPreservingBlanks', () => {
         '![embed](https://www.youtube.com/watch?v=dQw4w9WgXcQ)',
         '![embed](https://example.com/not-youtube)',
         '',
-        '> [!warning] Heads up',
+        // Titleless Memry callout — the only form the app itself writes.
+        // Titled/folded/unknown callouts are raw-routed (docs/obs/06).
+        '> [!warning]',
+        '> Heads up',
         '> Body line'
       ].join('\n')
     )

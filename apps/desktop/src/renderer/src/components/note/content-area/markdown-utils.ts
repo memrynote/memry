@@ -19,6 +19,7 @@ import {
   restoreBlockNesting,
   splitMarkdownByBlockNestingMarkers
 } from '@memry/shared/block-nesting'
+import { splitForeignRawSegments } from '@memry/shared/foreign-syntax'
 import { splitMarkdownByCallouts, serializeCalloutBlock } from './callout-block'
 import { extractYouTubeVideoId } from '@/lib/youtube-utils'
 import { serializeYoutubeEmbed } from './youtube-embed-block'
@@ -138,55 +139,66 @@ export async function parseMarkdownPreservingBlanks(
   editor: any,
   markdown: string
 ): Promise<Block[]> {
-  const calloutSegments = splitMarkdownByCallouts(markdown)
   const blocks: Block[] = []
 
-  for (const cseg of calloutSegments) {
-    if (cseg.kind === 'callout') {
-      const parsed = await editor.tryParseMarkdownToBlocks(cseg.content)
-      const inlineContent = parsed[0]?.content ?? cseg.content
+  for (const fseg of splitForeignRawSegments(markdown)) {
+    if (fseg.kind === 'raw') {
       blocks.push({
-        type: 'callout' as const,
-        props: { type: cseg.type },
-        content: inlineContent
+        type: 'rawMarkdown' as const,
+        props: { markdown: fseg.text }
       } as unknown as Block)
-    } else {
-      const blankSegments = splitMarkdownPreservingBlanks(separateBlockImages(cseg.text))
-      for (const seg of blankSegments) {
-        if (seg.type === 'content') {
-          const embedParts = splitByEmbedMarkers(seg.text)
-          for (const part of embedParts) {
-            if (part.kind === 'embed') {
-              blocks.push({
-                type: 'youtubeEmbed' as const,
-                props: { videoId: part.videoId, videoUrl: part.url }
-              } as unknown as Block)
-            } else if (part.kind === 'bookmark') {
-              blocks.push({
-                type: 'bookmark' as const,
-                props: { url: part.url, domain: extractDomain(part.url) }
-              } as unknown as Block)
-            } else if (part.kind === 'file') {
-              blocks.push({
-                type: 'file' as const,
-                props: part.props
-              } as unknown as Block)
-            } else {
-              const parsed = await parseMarkdownChunkPreservingNesting(editor, part.text)
-              if (part.colors && parsed[0]) {
-                parsed[0].props = { ...parsed[0].props, ...part.colors }
+      continue
+    }
+
+    const calloutSegments = splitMarkdownByCallouts(fseg.text)
+
+    for (const cseg of calloutSegments) {
+      if (cseg.kind === 'callout') {
+        const parsed = await editor.tryParseMarkdownToBlocks(cseg.content)
+        const inlineContent = parsed[0]?.content ?? cseg.content
+        blocks.push({
+          type: 'callout' as const,
+          props: { type: cseg.type },
+          content: inlineContent
+        } as unknown as Block)
+      } else {
+        const blankSegments = splitMarkdownPreservingBlanks(separateBlockImages(cseg.text))
+        for (const seg of blankSegments) {
+          if (seg.type === 'content') {
+            const embedParts = splitByEmbedMarkers(seg.text)
+            for (const part of embedParts) {
+              if (part.kind === 'embed') {
+                blocks.push({
+                  type: 'youtubeEmbed' as const,
+                  props: { videoId: part.videoId, videoUrl: part.url }
+                } as unknown as Block)
+              } else if (part.kind === 'bookmark') {
+                blocks.push({
+                  type: 'bookmark' as const,
+                  props: { url: part.url, domain: extractDomain(part.url) }
+                } as unknown as Block)
+              } else if (part.kind === 'file') {
+                blocks.push({
+                  type: 'file' as const,
+                  props: part.props
+                } as unknown as Block)
+              } else {
+                const parsed = await parseMarkdownChunkPreservingNesting(editor, part.text)
+                if (part.colors && parsed[0]) {
+                  parsed[0].props = { ...parsed[0].props, ...part.colors }
+                }
+                blocks.push(...parsed)
               }
-              blocks.push(...parsed)
             }
-          }
-        } else {
-          for (let i = 0; i < seg.extraLines; i++) {
-            blocks.push({
-              type: 'paragraph',
-              content: [],
-              children: [],
-              props: {}
-            } as unknown as Block)
+          } else {
+            for (let i = 0; i < seg.extraLines; i++) {
+              blocks.push({
+                type: 'paragraph',
+                content: [],
+                children: [],
+                props: {}
+              } as unknown as Block)
+            }
           }
         }
       }
@@ -221,7 +233,12 @@ export async function serializeBlocksPreservingBlanks(
   }
 
   for (const block of blocks) {
-    if ((block.type as string) === 'taskBlock') {
+    if ((block.type as string) === 'rawMarkdown') {
+      // Foreign Obsidian syntax (docs/obs/06) re-emits its source verbatim.
+      await flushContent()
+      flushGap()
+      segments.push({ type: 'content', text: (block.props as { markdown: string }).markdown })
+    } else if ((block.type as string) === 'taskBlock') {
       await flushContent()
       flushGap()
       const props = block.props as {

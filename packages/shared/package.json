@@ -13,7 +13,9 @@
     "./date-mention": "./src/date-mention.ts",
     "./block-nesting": "./src/block-nesting.ts",
     "./youtube": "./src/youtube.ts",
-    "./task-block": "./src/task-block.ts"
+    "./task-block": "./src/task-block.ts",
+    "./foreign-syntax": "./src/foreign-syntax.ts",
+    "./foreign-syntax-fixtures": "./src/foreign-syntax-fixtures.ts"
   },
   "types": "./src/index.ts",
   "scripts": {

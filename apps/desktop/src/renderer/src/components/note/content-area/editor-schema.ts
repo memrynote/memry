@@ -10,6 +10,7 @@ import { createCalloutBlock } from './callout-block'
 import { createYoutubeEmbedBlock } from './youtube-embed-block'
 import { createBookmarkBlock } from './bookmark-block'
 import { createTaskBlock } from './task-block'
+import { createRawMarkdownBlock } from './raw-markdown-block'
 import { WikiLink } from './wiki-link'
 import { HashTag } from './hash-tag'
 import { LinkMention } from './link-mention'
@@ -23,7 +24,8 @@ export const editorSchema = BlockNoteSchema.create({
     callout: createCalloutBlock(),
     youtubeEmbed: createYoutubeEmbedBlock(),
     bookmark: createBookmarkBlock(),
-    taskBlock: createTaskBlock()
+    taskBlock: createTaskBlock(),
+    rawMarkdown: createRawMarkdownBlock()
   },
   inlineContentSpecs: {
     ...defaultInlineContentSpecs,

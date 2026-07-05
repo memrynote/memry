@@ -2,7 +2,8 @@
 
 **Date:** 2026-07-05
 **Branch:** `obs-syntax-preservation`
-**Status:** Approved, pending implementation
+**Status:** Implemented (raw-segment passthrough only — the matrix proved the
+inline mask/restore layer unnecessary; see "Matrix results")
 
 ## Goal
 
@@ -117,6 +118,28 @@ inline mask/restore (Design §b); **raw** = raw-segment passthrough (Design §c)
 Related but out of this spec's per-syntax table: BlockNote's canonical style
 rewrites `-` bullets to `*` and tight lists to loose on the first save
 (**verified** via integration-test fixtures). See Open questions.
+
+## Matrix results (measured 2026-07-05)
+
+`foreign-syntax-roundtrip` fixtures through both real pipelines resolved every
+"unknown" above:
+
+- **Already verbatim (no fix needed; fixtures kept as regression guards):**
+  every inline row — `%%…%%` comments (even containing `[[links]]`),
+  `==highlight==`, `$math$`, `^[inline footnote]`, `[^1]` refs (when no
+  definition is present), all `![[…]]` embeds, wiki links with `#`/`#^`
+  anchors, `[note](My%20Note.md)`, all three Dataview forms, `{{templates}}`,
+  block IDs (eol and own-line), mermaid fences including the language.
+  remark escapes **nothing** here, so **design (b) mask/restore was dropped**
+  per the do-nothing-when-green rule.
+- **Broken at block level (fixed by (c) raw-segment passthrough):** `%%` block
+  comments, `$$` math blocks (backslash loss), footnote definitions (GFM
+  footnote nodes rewrite refs to `[1](#user-content-fn-1)`), custom checkbox
+  states, and all five callout shapes (remark also emits `\`-hard-breaks
+  inside blockquotes).
+- **Still failing, deferred (marked `it.fails`):** `-`→`*` + tight→loose list
+  normalization (`block-id-on-bullet`, `tasks-emoji-plain-checkbox`, and
+  renderer-side `tasks-emoji-linked-task`) — open question 1 / spec 02.
 
 ## Design
 
