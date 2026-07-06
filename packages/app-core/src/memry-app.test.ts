@@ -140,7 +140,11 @@ test('opens a standalone vault and exposes core note, journal, task, inbox, and 
   assert.equal(snapshot?.noteId, note.id)
   await app.notes.update({ id: note.id, content: 'Changed content' })
   assert.equal((await app.versions.history(note.id))[0]?.id, snapshot?.id)
-  assert.match((await app.versions.get(snapshot?.id ?? ''))?.fileContent ?? '', /CLI Note/)
+  // Snapshot captured the pre-update file; files carry no title frontmatter
+  assert.match(
+    (await app.versions.get(snapshot?.id ?? ''))?.fileContent ?? '',
+    /Body from the command line/
+  )
   assert.equal(
     (await app.versions.restore(snapshot?.id ?? '')).content,
     'Body from the command line'
