@@ -217,7 +217,7 @@ test('runs core commands against a vault and prints JSON output', async () => {
     properties?: Record<string, unknown>
   }
   assert.equal(note.title, 'CLI Note')
-  assert.equal(note.content, 'Created from CLI')
+  assert.equal(note.content, 'Created from CLI\n')
   assert.deepEqual(note.properties, { source: 'cli' })
 
   const linkedNoteCode = await runCli(
@@ -442,9 +442,10 @@ test('runs core commands against a vault and prints JSON output', async () => {
     }
   )
   assert.equal(versionCode, 0)
+  // Vault files carry no Memry title key; the snapshot stores the file verbatim
   assert.match(
     (JSON.parse(stdout.at(-1) ?? '{}') as { fileContent?: string }).fileContent ?? '',
-    /CLI Note/
+    /Created from CLI/
   )
 
   const attachmentSource = path.join(vaultPath, 'sample.txt')
@@ -1352,7 +1353,7 @@ test('runs core commands against a vault and prints JSON output', async () => {
     content?: string
   }
   assert.equal(journal.journalDate, '2026-05-13')
-  assert.equal(journal.content, 'CLI journal')
+  assert.equal(journal.content, 'CLI journal\n')
 
   const journalTagCode = await runCli(
     ['--vault', vaultPath, '--json', 'notes', 'update', journal.id ?? '', '--tag', 'daily'],
