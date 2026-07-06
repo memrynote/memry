@@ -291,7 +291,8 @@ export async function getFileStats(filePath: string): Promise<{
 
 /**
  * Sanitize a filename to be safe for the file system.
- * Removes or replaces invalid characters.
+ * Strips platform-invalid characters plus `[ ] # ^`, which Obsidian ≥1.8
+ * forbids in filenames (they break wikilink syntax).
  *
  * @param filename - Raw filename
  * @returns Sanitized filename
@@ -299,7 +300,7 @@ export async function getFileStats(filePath: string): Promise<{
 export function sanitizeFilename(filename: string): string {
   // Remove or replace invalid characters
   let sanitized = filename
-    .replace(/[<>:"/\\|?*]/g, '') // Remove invalid chars
+    .replace(/[<>:"/\\|?*[\]#^]/g, '') // Remove platform + Obsidian-forbidden chars
     .replace(/\s+/g, ' ') // Collapse whitespace
     .trim()
 

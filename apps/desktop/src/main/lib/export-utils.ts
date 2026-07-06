@@ -408,9 +408,10 @@ export function renderNoteAsHtml(note: NoteExportData, options: RenderOptions = 
  */
 export function sanitizeFilename(filename: string): string {
   // Remove or replace characters that are invalid in filenames
-  return filename
-    .replace(/[<>:"/\\|?*]/g, '') // Remove invalid chars
+  const sanitized = filename
+    .replace(/[<>:"/\\|?*[\]#^]/g, '') // Remove platform + Obsidian-forbidden chars
     .replace(/\s+/g, ' ') // Normalize whitespace
     .trim()
     .slice(0, 200) // Limit length
+  return sanitized.length > 0 ? sanitized : 'untitled'
 }
