@@ -90,9 +90,19 @@ export function serializeParsedMarkdownNote(
     return block + content
   }
 
-  let body = content.replace(/\r?\n/g, parsed.eol).replace(/(?:\r?\n)+$/, '')
+  let body = stripTrailingNewlines(content.replace(/\r?\n/g, parsed.eol))
   if (parsed.hadTrailingNewline) body += parsed.eol
   return block + body
+}
+
+/** Linear-time trailing-newline strip (no backtracking-prone regex). */
+function stripTrailingNewlines(value: string): string {
+  let end = value.length
+  while (end > 0 && value[end - 1] === '\n') {
+    end -= 1
+    if (end > 0 && value[end - 1] === '\r') end -= 1
+  }
+  return value.slice(0, end)
 }
 
 /**
@@ -110,7 +120,7 @@ export function stringifyFrontmatterBlock(
   // must end exactly at the closing delimiter line or every edited-frontmatter
   // save would accrete a blank line.
   const converted = eol === '\n' ? block : block.replace(/\n/g, '\r\n')
-  return converted.replace(/(?:\r?\n)+$/, eol)
+  return stripTrailingNewlines(converted) + eol
 }
 
 /**
@@ -118,12 +128,14 @@ export function stringifyFrontmatterBlock(
  * newline; existing files go through serializeParsedMarkdownNote instead.
  */
 export function writeMarkdownNote(frontmatter: Record<string, unknown>, content: string): string {
-  const clean = Object.fromEntries(Object.entries(frontmatter).filter(([, v]) => v !== undefined))
-  const body = content.replace(/(?:\r?\n)+$/, '')
-  if (Object.keys(clean).length === 0) {
+  // User content never flows into matter.stringify — the block is built from
+  // the frontmatter object alone and the body is concatenated as plain text.
+  const body = stripTrailingNewlines(content)
+  const block = stringifyFrontmatterBlock(frontmatter)
+  if (block === '') {
     return body === '' ? '' : body + '\n'
   }
-  return matter.stringify(body, clean)
+  return body === '' ? block : block + body + '\n'
 }
 
 export function wordCount(content: string): number {
