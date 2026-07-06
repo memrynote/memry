@@ -40,8 +40,15 @@ export async function applyTaskLinkEffects(
       if (binding.rule === 'fuzzy' && task.title !== binding.title) {
         await domain.updateTask({ id: binding.taskId, title: binding.title })
       }
+      // Only a genuine external toggle (file differs from the last-serialized
+      // snapshot/doc state) may override the task row. A file that merely
+      // disagrees with the DB is stale — write-backs run only while the note's
+      // doc is open — and must never revert an in-app complete/uncomplete
+      // (e.g. from the inline task block or the Tasks page).
       const isDone = Boolean(task.completedAt)
-      if (binding.checked !== isDone) {
+      const externallyToggled =
+        binding.candidateChecked !== undefined && binding.checked !== binding.candidateChecked
+      if (externallyToggled && binding.checked !== isDone) {
         if (binding.checked) {
           await domain.completeTask({ id: binding.taskId })
         } else {

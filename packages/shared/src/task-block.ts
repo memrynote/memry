@@ -58,6 +58,13 @@ export interface TaskLineBinding {
   title: string
   /** Checked state from the file — the file wins on external toggles. */
   checked: boolean
+  /**
+   * Checked state the matched candidate was last serialized with. A toggle is
+   * external only when `checked` differs from this snapshot; undefined when no
+   * candidate matched (legacy suffix line with no snapshot row), in which case
+   * the file must never override the task row — it may simply be stale.
+   */
+  candidateChecked?: boolean
   anchor?: string
   rule: 'anchor' | 'legacy' | 'title' | 'fuzzy'
 }
@@ -191,6 +198,7 @@ export function matchTaskCandidates(
       taskId: candidates[j].taskId,
       title: p.anchored.title,
       checked: p.checked,
+      candidateChecked: candidates[j].checked,
       anchor,
       rule: 'anchor'
     }
@@ -200,8 +208,14 @@ export function matchTaskCandidates(
   parsed.forEach((p, i) => {
     if (bindings[i] || !p.legacy) return
     const taskId = p.legacy.taskId
-    takeCandidate((c) => c.taskId === taskId)
-    bindings[i] = { taskId, title: p.legacy.title, checked: p.checked, rule: 'legacy' }
+    const j = takeCandidate((c) => c.taskId === taskId)
+    bindings[i] = {
+      taskId,
+      title: p.legacy.title,
+      checked: p.checked,
+      ...(j !== -1 ? { candidateChecked: candidates[j].checked } : {}),
+      rule: 'legacy'
+    }
   })
 
   // Rule 3: exact title. Greedy first-unused over doc-ordered candidates gives
@@ -211,7 +225,13 @@ export function matchTaskCandidates(
     const title = p.title
     const j = takeCandidate((c) => c.title === title)
     if (j === -1) return
-    bindings[i] = { taskId: candidates[j].taskId, title, checked: p.checked, rule: 'title' }
+    bindings[i] = {
+      taskId: candidates[j].taskId,
+      title,
+      checked: p.checked,
+      candidateChecked: candidates[j].checked,
+      rule: 'title'
+    }
   })
 
   // Rule 4: single-leftover fuzzy — an external title edit
@@ -227,6 +247,7 @@ export function matchTaskCandidates(
       taskId: candidates[j].taskId,
       title: p.title,
       checked: p.checked,
+      candidateChecked: candidates[j].checked,
       rule: 'fuzzy'
     }
   }

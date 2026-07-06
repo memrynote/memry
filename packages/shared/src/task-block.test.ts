@@ -119,6 +119,33 @@ describe('matchTaskCandidates', () => {
     expect(result.bindings[1]).toMatchObject({ taskId: 'a', rule: 'title', checked: true })
   })
 
+  it('carries the matched candidate checked state so callers can detect external toggles', () => {
+    const result = matchTaskCandidates(
+      [
+        { title: 'Anchored ^k1', checked: true },
+        { title: 'Exact', checked: false },
+        { title: 'Legacy {task:t3}', checked: true },
+        { title: 'Edited elsewhere', checked: true }
+      ],
+      [
+        candidate({ taskId: 't1', title: 'Anchored', anchor: 'k1', checked: false }),
+        candidate({ taskId: 't2', title: 'Exact', checked: false }),
+        candidate({ taskId: 't3', title: 'Legacy', checked: true }),
+        candidate({ taskId: 't4', title: 'Old fuzzy title', checked: false })
+      ]
+    )
+    expect(result.bindings[0]).toMatchObject({ rule: 'anchor', candidateChecked: false })
+    expect(result.bindings[1]).toMatchObject({ rule: 'title', candidateChecked: false })
+    expect(result.bindings[2]).toMatchObject({ rule: 'legacy', candidateChecked: true })
+    expect(result.bindings[3]).toMatchObject({ rule: 'fuzzy', candidateChecked: false })
+  })
+
+  it('leaves candidateChecked undefined for legacy lines with no snapshot row', () => {
+    const result = matchTaskCandidates([{ title: 'Buy milk {task:t9}', checked: false }], [])
+    expect(result.bindings[0]).toMatchObject({ taskId: 't9', rule: 'legacy' })
+    expect(result.bindings[0]?.candidateChecked).toBeUndefined()
+  })
+
   it('rule 3: pairs duplicate titles by occurrence index', () => {
     const result = matchTaskCandidates(
       [

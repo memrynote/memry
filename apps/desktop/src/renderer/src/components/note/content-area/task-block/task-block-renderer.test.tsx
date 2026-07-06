@@ -14,7 +14,8 @@ const mocks = vi.hoisted(() => ({
   update: vi.fn(),
   complete: vi.fn(),
   uncomplete: vi.fn(),
-  deleteTask: vi.fn()
+  deleteTask: vi.fn(),
+  logError: vi.fn()
 }))
 
 vi.mock('@memry/i18n/renderer', () => ({
@@ -35,6 +36,9 @@ vi.mock('@/services/tasks-service', () => ({
     complete: mocks.complete,
     uncomplete: mocks.uncomplete,
     delete: mocks.deleteTask
+  },
+  tasksServiceLogger: {
+    error: mocks.logError
   }
 }))
 
@@ -413,6 +417,22 @@ describe('TaskBlockRenderer', () => {
     expect(editor.removeBlocks).toHaveBeenCalledWith([block])
     expect(editor.setTextCursorPosition).toHaveBeenCalledWith('paragraph-1', 'end')
     expect(editor.focus).toHaveBeenCalled()
+  })
+
+  it('surfaces failed service envelopes instead of swallowing them', async () => {
+    const editor = makeEditor()
+    const block = makeBlock()
+    mocks.complete.mockResolvedValue({ success: false, task: null, error: 'boom' })
+    mocks.update.mockResolvedValue({ success: false, task: null, error: 'nope' })
+
+    render(<TaskBlockRenderer block={block} editor={editor} contentRef={vi.fn()} />)
+
+    fireEvent.click(screen.getByText('toggle'))
+    fireEvent.click(screen.getByText('project'))
+    await act(async () => Promise.resolve())
+
+    expect(mocks.logError).toHaveBeenCalledWith('Inline task toggle failed:', 'boom')
+    expect(mocks.logError).toHaveBeenCalledWith('Inline task project change failed:', 'nope')
   })
 
   it('guards task row actions when no task id exists', async () => {

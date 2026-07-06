@@ -5,7 +5,7 @@ import { useTaskBlockData } from './use-task-block-data'
 import { serviceTaskToDisplayTask, PRIORITY_REVERSE } from './task-block-utils'
 import { useTasksOptional } from '@/contexts/tasks'
 import { useTabActions } from '@/contexts/tabs'
-import { tasksService } from '@/services/tasks-service'
+import { tasksService, tasksServiceLogger } from '@/services/tasks-service'
 import type { Task as DisplayTask } from '@/data/task-model'
 import { defaultStatuses, type Project, type Status } from '@/data/tasks-data'
 import { TaskRow } from '@/components/tasks/task-row'
@@ -436,10 +436,13 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({
       if (!taskIdArg) return
       const newChecked = !isCompleted
       editor.updateBlock(block, { props: { ...block.props, checked: newChecked } })
-      if (newChecked) {
-        await tasksService.complete({ id: taskIdArg })
-      } else {
-        await tasksService.uncomplete(taskIdArg)
+      // Main-process handlers resolve { success: false, error } instead of
+      // rejecting — surface failures so they are not silently swallowed.
+      const result = newChecked
+        ? await tasksService.complete({ id: taskIdArg })
+        : await tasksService.uncomplete(taskIdArg)
+      if (!result.success) {
+        tasksServiceLogger.error('Inline task toggle failed:', result.error)
       }
     },
     [isCompleted, block, editor]
@@ -448,13 +451,16 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({
   const handleUpdateTask = useCallback(
     async (_taskId: string, updates: Partial<DisplayTask>) => {
       if (!taskId) return
-      await tasksService.update({
+      const result = await tasksService.update({
         id: taskId,
         ...(updates.statusId !== undefined && { statusId: updates.statusId }),
         ...(updates.priority !== undefined && {
           priority: PRIORITY_REVERSE[updates.priority] ?? 0
         })
       })
+      if (!result.success) {
+        tasksServiceLogger.error('Inline task update failed:', result.error)
+      }
     },
     [taskId]
   )
@@ -462,7 +468,10 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({
   const handleProjectChange = useCallback(
     async (projectId: string) => {
       if (!taskId) return
-      await tasksService.update({ id: taskId, projectId })
+      const result = await tasksService.update({ id: taskId, projectId })
+      if (!result.success) {
+        tasksServiceLogger.error('Inline task project change failed:', result.error)
+      }
     },
     [taskId]
   )
