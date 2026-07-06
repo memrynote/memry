@@ -122,6 +122,60 @@ export function separateBlockImages(markdown: string): string {
   return out
 }
 
+const LIST_ITEM_LINE = /^[ \t]*(?:[-*+]|\d+[.)])\s/
+
+/**
+ * Normalize BlockNote's markdown serializer output to the CommonMark/Obsidian
+ * style vault files actually use. BlockNote serializes via remark-stringify,
+ * whose defaults diverge from a hand-authored vault file:
+ *
+ * - `*` bullets            → `-`
+ * - blank line per item    → tight list (dropped only between two list items)
+ * - `\` hard line breaks   → plain `\n` soft breaks
+ *
+ * Without this, editing one line of a note rewrites every unrelated list line
+ * and sprays blank lines / backslashes through the file. Code fences are left
+ * byte-for-byte untouched (a `* ` or trailing `\` inside code is real content).
+ */
+export function normalizeSerializedMarkdown(markdown: string): string {
+  if (!markdown) return markdown
+
+  const regions = splitByCodeFences(markdown)
+  let out = ''
+  for (const region of regions) {
+    out += region.isCode ? region.text : normalizeProseMarkdown(region.text)
+  }
+  return out
+}
+
+function normalizeProseMarkdown(text: string): string {
+  // Backslash hard break (remark's default) → soft newline, so typed/imported
+  // single-newline lines round-trip clean instead of gaining `\`.
+  const lines = text.replace(/\\\n/g, '\n').split('\n')
+  const out: string[] = []
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+    if (line.trim() === '') {
+      const prev = out[out.length - 1]
+      const next = lines[i + 1]
+      // Drop a blank line only between two list items (loose→tight), never a
+      // real paragraph gap.
+      if (
+        prev !== undefined &&
+        next !== undefined &&
+        LIST_ITEM_LINE.test(prev) &&
+        LIST_ITEM_LINE.test(next)
+      ) {
+        continue
+      }
+    }
+    // `*`/`+` bullet marker → `-` (needs the trailing space, so `*emphasis*` and
+    // `***` thematic breaks are untouched).
+    out.push(line.replace(/^([ \t]*)[*+](\s)/, '$1-$2'))
+  }
+  return out.join('\n')
+}
+
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------

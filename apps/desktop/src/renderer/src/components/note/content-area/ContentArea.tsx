@@ -84,6 +84,7 @@ import { useFiredDatePillAnchors, useTriggeredDatePills } from './use-triggered-
 import { useDateMentionPrefs } from '@/hooks/use-date-mention-prefs'
 import { DateMentionPopover, type DateMentionValue } from './date-mention-popover'
 import { MentionMenu, type MentionSuggestionItem } from './mention-menu'
+import { insertParagraphLineBreak } from './paragraph-enter'
 import { useMentionSuggestions } from './hooks/use-mention-suggestions'
 import type { PasteLinkOption } from './hooks/use-paste-link-menu'
 import { useT } from '@memry/i18n/renderer'
@@ -1020,6 +1021,32 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     }
 
     const handleKeyDown = (e: KeyboardEvent): void => {
+      // Obsidian-style Enter: a plain Enter inside a paragraph inserts a line
+      // break instead of splitting into a new block, so typed lines stay one
+      // paragraph (`a\nb`, not `a\n\nb`). Shift+Enter and all other blocks keep
+      // BlockNote's native Enter. See paragraph-enter.ts.
+      if (
+        e.key === 'Enter' &&
+        !e.shiftKey &&
+        !e.metaKey &&
+        !e.ctrlKey &&
+        !e.altKey &&
+        !e.isComposing
+      ) {
+        const t = e.target as HTMLElement | null
+        if (t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement) return
+        const tiptap = (editor as any)._tiptapEditor
+        const view = tiptap?.view ?? tiptap?.editorView
+        if (!view) return
+        // Returns true only when it inserted a break; a double-Enter still
+        // trims the dangling break but returns false so BlockNote splits.
+        if (insertParagraphLineBreak(view.state, view.dispatch)) {
+          e.preventDefault()
+          e.stopPropagation()
+        }
+        return
+      }
+
       if (e.key !== 'Backspace') return
       if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return
 

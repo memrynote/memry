@@ -3,6 +3,7 @@ import {
   splitMarkdownPreservingBlanks,
   assembleMarkdownWithBlanks,
   separateBlockImages,
+  normalizeSerializedMarkdown,
   type MarkdownSegment
 } from './empty-lines'
 
@@ -363,5 +364,30 @@ describe('separateBlockImages', () => {
   it('is a no-op when there are no images', () => {
     const md = 'just\ntext\nlines'
     expect(separateBlockImages(md)).toBe(md)
+  })
+})
+
+describe('normalizeSerializedMarkdown', () => {
+  it('rewrites `*` bullets to `-`', () => {
+    expect(normalizeSerializedMarkdown('* a\n* b')).toBe('- a\n- b')
+  })
+
+  it('tightens a loose list but keeps a real paragraph gap', () => {
+    expect(normalizeSerializedMarkdown('* a\n\n* b')).toBe('- a\n- b')
+    expect(normalizeSerializedMarkdown('- a\n- b\n\nAfter.')).toBe('- a\n- b\n\nAfter.')
+  })
+
+  it('softens backslash hard breaks to plain newlines', () => {
+    expect(normalizeSerializedMarkdown('kaan\\\nuraz\\\nsevde')).toBe('kaan\nuraz\nsevde')
+  })
+
+  it('leaves code fences byte-identical (no bullet/backslash rewrite inside)', () => {
+    const md = 'text\n\n```sh\n* not a bullet\nline\\\nkeep\n```\n\n- real'
+    expect(normalizeSerializedMarkdown(md)).toBe(md)
+  })
+
+  it('does not touch emphasis or thematic breaks', () => {
+    expect(normalizeSerializedMarkdown('*emphasis*')).toBe('*emphasis*')
+    expect(normalizeSerializedMarkdown('***')).toBe('***')
   })
 })

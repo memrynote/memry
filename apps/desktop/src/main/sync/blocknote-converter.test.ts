@@ -450,3 +450,19 @@ describe('blocknote-converter list fidelity', () => {
     expect(out).toBe('1. first\n2. second')
   })
 })
+
+describe('blocknote-converter soft-break fidelity', () => {
+  it('round-trips single-newline lines without adding blank lines or backslashes', async () => {
+    // #given an Obsidian-style paragraph of soft-broken lines (single \n)
+    const md = 'kaan\nuraz\nsevde'
+
+    // #when it round-trips markdown → Yjs → markdown
+    const doc = new Y.Doc()
+    const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    await markdownToYFragment(md, fragment)
+    const out = await yDocToMarkdown(doc)
+
+    // #then it stays a single soft-broken paragraph (no `\n\n`, no `\`)
+    expect(out).toBe('kaan\nuraz\nsevde')
+  })
+})

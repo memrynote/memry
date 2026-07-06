@@ -28,6 +28,7 @@ import {
   splitMarkdownPreservingBlanks,
   assembleMarkdownWithBlanks,
   separateBlockImages,
+  normalizeSerializedMarkdown,
   type MarkdownSegment
 } from '@memry/shared/empty-lines'
 import {
@@ -209,47 +210,14 @@ function createEmptyParagraph(): Block {
 
 const MARKDOWN_LIST_BLOCK_TYPES = new Set(['bulletListItem', 'numberedListItem', 'checkListItem'])
 
-const LIST_ITEM_LINE = /^\s*(?:[-*+]|\d+[.)])\s/
-
-// BlockNote serializes lists via remark-stringify, whose defaults diverge from
-// the CommonMark/Obsidian style vault files actually use: it emits `*` bullets
-// and a blank line between every item (a "loose" list). Left alone, editing one
-// line of a note rewrites every unrelated list line (`-` → `*`) and injects
-// blank lines. Normalize back to `-` bullets and a tight list.
-// ponytail: default to `-`; per-vault marker detection later if a vault uses `*`.
-function normalizeListMarkdown(md: string): string {
-  const lines = md.split('\n')
-  const out: string[] = []
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]
-    if (line.trim() === '') {
-      const prev = out[out.length - 1]
-      const next = lines[i + 1]
-      // Drop a blank line only when it sits between two list items (loose→tight),
-      // never a real paragraph gap.
-      if (
-        prev !== undefined &&
-        next !== undefined &&
-        LIST_ITEM_LINE.test(prev) &&
-        LIST_ITEM_LINE.test(next)
-      ) {
-        continue
-      }
-    }
-    // `*`/`+` bullet marker → `-` (requires the trailing space, so `*emphasis*`
-    // and `***` rules are untouched).
-    out.push(line.replace(/^(\s*)[*+](\s)/, '$1-$2'))
-  }
-  return out.join('\n')
-}
-
-// Every blocks→markdown serialization funnels through here so list output stays
-// byte-friendly against vault files. See normalizeListMarkdown.
+// Every blocks→markdown serialization funnels through here so list markers,
+// list tightness, and soft breaks stay byte-friendly against vault files.
+// See normalizeSerializedMarkdown.
 async function serializeBlocks(
   editor: ServerBlockNoteEditor,
   blocks: PartialBlock[]
 ): Promise<string> {
-  return normalizeListMarkdown(await editor.blocksToMarkdownLossy(blocks))
+  return normalizeSerializedMarkdown(await editor.blocksToMarkdownLossy(blocks))
 }
 
 function canSerializeChildNatively(parent: Block, child: Block): boolean {
