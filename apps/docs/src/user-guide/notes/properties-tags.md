@@ -86,3 +86,5 @@ Tags are zero-cost and discoverable. Properties are structured and great for fil
 ## Storage
 
 Tags and property values live in the data DB. Tag indexes and link graphs are mirrored into the index DB for fast lookups.
+
+Frontmatter in your `.md` files is treated as yours: memrynote re-emits the original block byte-for-byte (comments, key order, and quoting included) unless you actually edit a property, tag, or alias in the app. Saving a note without changing anything writes nothing to disk at all.
