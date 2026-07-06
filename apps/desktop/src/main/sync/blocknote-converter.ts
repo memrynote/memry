@@ -209,6 +209,49 @@ function createEmptyParagraph(): Block {
 
 const MARKDOWN_LIST_BLOCK_TYPES = new Set(['bulletListItem', 'numberedListItem', 'checkListItem'])
 
+const LIST_ITEM_LINE = /^\s*(?:[-*+]|\d+[.)])\s/
+
+// BlockNote serializes lists via remark-stringify, whose defaults diverge from
+// the CommonMark/Obsidian style vault files actually use: it emits `*` bullets
+// and a blank line between every item (a "loose" list). Left alone, editing one
+// line of a note rewrites every unrelated list line (`-` → `*`) and injects
+// blank lines. Normalize back to `-` bullets and a tight list.
+// ponytail: default to `-`; per-vault marker detection later if a vault uses `*`.
+function normalizeListMarkdown(md: string): string {
+  const lines = md.split('\n')
+  const out: string[] = []
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+    if (line.trim() === '') {
+      const prev = out[out.length - 1]
+      const next = lines[i + 1]
+      // Drop a blank line only when it sits between two list items (loose→tight),
+      // never a real paragraph gap.
+      if (
+        prev !== undefined &&
+        next !== undefined &&
+        LIST_ITEM_LINE.test(prev) &&
+        LIST_ITEM_LINE.test(next)
+      ) {
+        continue
+      }
+    }
+    // `*`/`+` bullet marker → `-` (requires the trailing space, so `*emphasis*`
+    // and `***` rules are untouched).
+    out.push(line.replace(/^(\s*)[*+](\s)/, '$1-$2'))
+  }
+  return out.join('\n')
+}
+
+// Every blocks→markdown serialization funnels through here so list output stays
+// byte-friendly against vault files. See normalizeListMarkdown.
+async function serializeBlocks(
+  editor: ServerBlockNoteEditor,
+  blocks: PartialBlock[]
+): Promise<string> {
+  return normalizeListMarkdown(await editor.blocksToMarkdownLossy(blocks))
+}
+
 function canSerializeChildNatively(parent: Block, child: Block): boolean {
   return (
     MARKDOWN_LIST_BLOCK_TYPES.has(parent.type as string) &&
@@ -262,7 +305,7 @@ async function serializeBlocksWithNestingMarkers(
     }
 
     const shallowBlock = { ...block, children: [] } as Block
-    const markdown = (await editor.blocksToMarkdownLossy([shallowBlock] as PartialBlock[])).trim()
+    const markdown = (await serializeBlocks(editor, [shallowBlock] as PartialBlock[])).trim()
     if (markdown) parts.push(markdown)
 
     for (const child of (block.children ?? []) as Block[]) {
@@ -346,7 +389,7 @@ async function blocksToMarkdownPreserving(
 
   const flushContentGroup = async (): Promise<void> => {
     if (contentGroup.length === 0) return
-    const md = await editor.blocksToMarkdownLossy(contentGroup as PartialBlock[])
+    const md = await serializeBlocks(editor, contentGroup as PartialBlock[])
     // Trim BlockNote's trailing newline (see #524) so content flushed before a
     // taskBlock can't re-parse as a growing blank-line gap on every writeback.
     segments.push({ type: 'content', text: md.trim() })
@@ -375,14 +418,14 @@ async function blocksToMarkdownPreserving(
       segments.push({ type: 'content', text: lines.join('\n') })
     } else if (isEmptyParagraph(block)) {
       if (contentGroup.length > 0) {
-        const md = await editor.blocksToMarkdownLossy(contentGroup as PartialBlock[])
+        const md = await serializeBlocks(editor, contentGroup as PartialBlock[])
         segments.push({ type: 'content', text: md.trim() })
         contentGroup = []
       }
       emptyCount++
     } else if (hasNonDefaultColors(block.props as BlockColors)) {
       if (contentGroup.length > 0) {
-        const md = await editor.blocksToMarkdownLossy(contentGroup as PartialBlock[])
+        const md = await serializeBlocks(editor, contentGroup as PartialBlock[])
         segments.push({ type: 'content', text: md.trim() })
         contentGroup = []
       }
@@ -390,14 +433,14 @@ async function blocksToMarkdownPreserving(
         segments.push({ type: 'gap', extraLines: emptyCount })
         emptyCount = 0
       }
-      const blockMd = await editor.blocksToMarkdownLossy([block] as PartialBlock[])
+      const blockMd = await serializeBlocks(editor, [block] as PartialBlock[])
       segments.push({
         type: 'content',
         text: `${serializeBlockColorsMarker(block.props as BlockColors)}\n${blockMd.trim()}`
       })
     } else if (hasMarkerSerializedChildren(block)) {
       if (contentGroup.length > 0) {
-        const md = await editor.blocksToMarkdownLossy(contentGroup as PartialBlock[])
+        const md = await serializeBlocks(editor, contentGroup as PartialBlock[])
         segments.push({ type: 'content', text: md.trim() })
         contentGroup = []
       }
@@ -419,7 +462,7 @@ async function blocksToMarkdownPreserving(
   }
 
   if (contentGroup.length > 0) {
-    const md = await editor.blocksToMarkdownLossy(contentGroup as PartialBlock[])
+    const md = await serializeBlocks(editor, contentGroup as PartialBlock[])
     // Trim the trailing newline BlockNote appends to list/heading groups; left
     // untrimmed it re-parses as a growing blank-line gap on every writeback.
     segments.push({ type: 'content', text: md.trim() })

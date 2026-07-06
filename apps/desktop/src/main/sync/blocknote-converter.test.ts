@@ -414,3 +414,39 @@ describe('blocknote-converter block id integrity', () => {
     expect(container.getAttribute('id')).toBe('keep-me')
   })
 })
+
+describe('blocknote-converter list fidelity', () => {
+  const roundTrip = async (md: string): Promise<string | null> => {
+    const doc = new Y.Doc()
+    const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    await markdownToYFragment(md, fragment)
+    return yDocToMarkdown(doc)
+  }
+
+  it('keeps `-` bullets and a tight list on round-trip (no `*`, no blank lines)', async () => {
+    // #given a plain Obsidian-style bullet list
+    const md = '- kaan\n- sevde\n- karaca\n'
+
+    // #when it round-trips through the editor serializer
+    const out = await roundTrip(md)
+
+    // #then markers stay `-` and items stay adjacent
+    expect(out).toBe('- kaan\n- sevde\n- karaca')
+  })
+
+  it('keeps a real paragraph gap between a list and following text', async () => {
+    // #given a list, a blank line, then a paragraph
+    const md = '- one\n- two\n\nAfter.'
+
+    // #when
+    const out = await roundTrip(md)
+
+    // #then the intentional gap survives; only intra-list looseness is tightened
+    expect(out).toBe('- one\n- two\n\nAfter.')
+  })
+
+  it('preserves numbered lists', async () => {
+    const out = await roundTrip('1. first\n2. second\n')
+    expect(out).toBe('1. first\n2. second')
+  })
+})
