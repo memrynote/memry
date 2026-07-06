@@ -13,10 +13,6 @@ import {
 } from './schema.ts'
 
 interface NoteFrontmatter {
-  id: string
-  title?: string
-  created: string
-  modified: string
   tags?: string[]
   aliases?: string[]
   [key: string]: unknown

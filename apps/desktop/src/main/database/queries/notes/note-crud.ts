@@ -78,18 +78,6 @@ export function getLocalOnlyCount(db: IndexDb): number {
   return result?.count ?? 0
 }
 
-export function findDuplicateId(
-  db: IndexDb,
-  id: string,
-  excludePath: string
-): NoteCache | undefined {
-  return db
-    .select()
-    .from(noteCache)
-    .where(and(eq(noteCache.id, id), sql`${noteCache.path} != ${excludePath}`))
-    .get()
-}
-
 // ============================================================================
 // Note Listing
 // ============================================================================

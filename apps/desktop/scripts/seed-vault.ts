@@ -20,6 +20,7 @@ import {
   insertFolderConfigs,
   insertInboxItems,
   insertProjects,
+  insertNoteMetadata,
   insertPropertyDefinitions,
   insertStatuses,
   insertTagDefinitions,
@@ -29,8 +30,8 @@ import {
   openDataDb
 } from './seed-vault/db-writer'
 
-import { FOLDER_CONFIGS, NOTES } from './seed-data/notes'
-import { JOURNAL_NOTES } from './seed-data/journal'
+import { FOLDER_CONFIGS, NOTES, NOTE_METADATA } from './seed-data/notes'
+import { JOURNAL_NOTES, JOURNAL_METADATA } from './seed-data/journal'
 import { PROJECTS, STATUSES, TASKS, TASK_NOTES, TASK_TAGS } from './seed-data/tasks'
 import { CALENDAR_EVENTS, CALENDAR_SOURCES } from './seed-data/calendar'
 import { FILING_HISTORY_ROWS, INBOX_ITEMS } from './seed-data/inbox'
@@ -149,6 +150,11 @@ function main(): void {
 
     const propCount = insertPropertyDefinitions(db, PROPERTY_DEFS)
     console.log(`  → property_definitions: ${propCount}`)
+
+    // Files carry no Memry ids — canonical rows keep seeded ids stable
+    // (task links reference NOTE_IDS) when the indexer adopts them by path
+    const noteMetaCount = insertNoteMetadata(db, [...NOTE_METADATA, ...JOURNAL_METADATA])
+    console.log(`  → note_metadata: ${noteMetaCount}`)
 
     const projectCount = insertProjects(db, PROJECTS)
     console.log(`  → projects: ${projectCount}`)

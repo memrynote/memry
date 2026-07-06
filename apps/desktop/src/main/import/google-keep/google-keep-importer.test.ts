@@ -144,11 +144,12 @@ describe('googleKeepImporter (integration)', () => {
     const ctx = importContext.createImportContext('it5', new AbortController().signal)
     await importer.googleKeepImporter.run({ sourcePaths: [FIXTURE] }, ctx)
 
-    const keepDir = path.join(tempVault.notesDir, 'Google Keep')
-    const textFile = path.join(keepDir, 'My Text Note.md')
-    const content = fs.readFileSync(textFile, 'utf8')
+    // Timestamps now live on the note record, not in the file.
+    const row = indexDb.sqlite
+      .prepare('SELECT created_at AS createdAt FROM note_cache WHERE path = ?')
+      .get('notes/Google Keep/My Text Note.md') as { createdAt: string } | undefined
     // createdTimestampUsec: 1_609_459_200_000_000 → 2021-01-01
-    expect(content).toContain('2021-01-01')
+    expect(row?.createdAt).toContain('2021-01-01')
   })
 
   it('skips .html files — only 3 notes, not 4', async () => {

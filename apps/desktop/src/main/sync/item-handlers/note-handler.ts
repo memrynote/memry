@@ -209,7 +209,6 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
       })
 
       const resolvedEmoji = data.emoji ?? existing.emoji
-      const emojiChanged = data.emoji !== undefined && data.emoji !== existing.emoji
 
       const updateFields: Parameters<typeof updateNoteCache>[2] = {
         title: newTitle,
@@ -232,31 +231,37 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
         updateFields.path = newRelPath
 
         try {
-          const raw = fs.readFileSync(oldAbsPath, 'utf-8')
-          const parsed = parseNote(raw)
-          parsed.frontmatter.title = newTitle
-          if (tagsChanged && remoteTags) {
-            parsed.frontmatter.tags = remoteTags
-          }
-          if (propertiesPresent) {
-            if (Object.keys(remoteProperties).length > 0) {
-              parsed.frontmatter.properties = remoteProperties
-            } else {
-              delete parsed.frontmatter.properties
-            }
-          }
-          if (emojiChanged) {
-            parsed.frontmatter.emoji = resolvedEmoji
-          }
-          const updatedContent = serializeNote(parsed.frontmatter, parsed.content)
-
           markWritebackIgnored(newAbsPath)
           const dir = path.dirname(newAbsPath)
           fs.mkdirSync(dir, { recursive: true })
-          const tmpPath = newAbsPath + '.tmp'
-          fs.writeFileSync(tmpPath, updatedContent, 'utf-8')
-          fs.renameSync(tmpPath, newAbsPath)
-          fs.unlinkSync(oldAbsPath)
+
+          if ((tagsChanged && remoteTags) || propertiesPresent) {
+            // Content actually changed — rewrite user keys only
+            const raw = fs.readFileSync(oldAbsPath, 'utf-8')
+            const parsed = parseNote(raw)
+            if (tagsChanged && remoteTags) {
+              if (remoteTags.length > 0) {
+                parsed.frontmatter.tags = remoteTags
+              } else {
+                delete parsed.frontmatter.tags
+              }
+            }
+            if (propertiesPresent) {
+              if (Object.keys(remoteProperties).length > 0) {
+                parsed.frontmatter.properties = remoteProperties
+              } else {
+                delete parsed.frontmatter.properties
+              }
+            }
+            const updatedContent = serializeNote(parsed.frontmatter, parsed.content)
+            const tmpPath = newAbsPath + '.tmp'
+            fs.writeFileSync(tmpPath, updatedContent, 'utf-8')
+            fs.renameSync(tmpPath, newAbsPath)
+            fs.unlinkSync(oldAbsPath)
+          } else {
+            // Pure rename/move — file bytes untouched
+            fs.renameSync(oldAbsPath, newAbsPath)
+          }
           removeEmptyParents(path.dirname(oldAbsPath), notesDir).catch(() => {})
         } catch {
           log.warn('Could not read old note for rename/move', { itemId })
@@ -280,13 +285,18 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
             source: 'sync'
           })
         }
-      } else if ((tagsChanged && remoteTags) || propertiesPresent || emojiChanged) {
+      } else if ((tagsChanged && remoteTags) || propertiesPresent) {
+        // emoji is sidecar-only state — never a reason to rewrite the file
         const absPath = toAbsolutePath(existing.path)
         try {
           const raw = fs.readFileSync(absPath, 'utf-8')
           const parsed = parseNote(raw)
           if (tagsChanged && remoteTags) {
-            parsed.frontmatter.tags = remoteTags
+            if (remoteTags.length > 0) {
+              parsed.frontmatter.tags = remoteTags
+            } else {
+              delete parsed.frontmatter.tags
+            }
           }
           if (propertiesPresent) {
             if (Object.keys(remoteProperties).length > 0) {
@@ -294,9 +304,6 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
             } else {
               delete parsed.frontmatter.properties
             }
-          }
-          if (emojiChanged) {
-            parsed.frontmatter.emoji = resolvedEmoji
           }
           const updatedContent = serializeNote(parsed.frontmatter, parsed.content)
           markWritebackIgnored(absPath)
@@ -412,17 +419,13 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
 
     const content = data.content ?? ''
 
+    // User keys only — Memry state (id, title, dates, emoji) stays in the DBs
     const frontmatter: NoteFrontmatter = {
-      id: itemId,
-      title,
-      created: data.createdAt ?? now,
-      modified: data.modifiedAt ?? now,
-      tags: data.tags ?? [],
+      ...(data.tags?.length ? { tags: data.tags } : {}),
       ...(data.aliases?.length ? { aliases: data.aliases } : {}),
       ...(data.properties && Object.keys(data.properties).length > 0
         ? { properties: data.properties }
-        : {}),
-      ...(data.emoji ? { emoji: data.emoji } : {})
+        : {})
     }
 
     const fileContent = serializeNote(frontmatter, content)
@@ -435,7 +438,17 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
 
     syncNoteToCache(
       indexDb,
-      { id: itemId, path: relPath, fileContent, frontmatter, parsedContent: content },
+      {
+        id: itemId,
+        path: relPath,
+        fileContent,
+        frontmatter,
+        parsedContent: content,
+        title,
+        createdAt: data.createdAt ?? now,
+        modifiedAt: data.modifiedAt ?? now,
+        emoji: data.emoji ?? null
+      },
       { isNew: true }
     )
     void flushProjectionEvents()

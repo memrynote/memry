@@ -2169,21 +2169,27 @@ Pair with [[Kitchen Confidential]] for the *travel-as-eating* mindset.
   }
 ]
 
+/** Canonical note_metadata rows so note ids stay stable across indexing. */
+export const NOTE_METADATA = SPECS.map((spec) => ({
+  id: spec.id,
+  path: spec.relativePath,
+  title: spec.title,
+  emoji: spec.emoji ?? null,
+  createdAt: dayOffset(spec.daysAgoCreated),
+  modifiedAt: dayOffset(spec.daysAgoModified)
+}))
+
 export const NOTES: NoteFile[] = SPECS.map((spec) => {
-  const created = dayOffset(spec.daysAgoCreated)
   const modified = dayOffset(spec.daysAgoModified)
   return {
     relativePath: spec.relativePath,
+    // User keys only — no Memry keys in files; dates land on the file via mtime
     frontmatter: {
-      id: spec.id,
-      title: spec.title,
-      created,
-      modified,
-      tags: spec.tags,
+      ...(spec.tags.length > 0 ? { tags: spec.tags } : {}),
       ...(spec.aliases ? { aliases: spec.aliases } : {}),
-      ...(spec.emoji ? { emoji: spec.emoji } : {}),
       ...(spec.customProps ?? {})
     },
-    body: spec.body
+    body: spec.body,
+    modified
   }
 })

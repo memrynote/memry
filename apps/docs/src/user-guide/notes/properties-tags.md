@@ -86,3 +86,5 @@ Tags are zero-cost and discoverable. Properties are structured and great for fil
 ## Storage
 
 Tags and property values live in the data DB. Tag indexes and link graphs are mirrored into the index DB for fast lookups.
+
+In the vault's markdown files, a note's frontmatter contains only your own properties (plus `tags` and `aliases`). MemryNote keeps its internal bookkeeping — the note id and created/modified dates — in the local database and never writes its own keys into your files; a note with no properties has no frontmatter block at all.

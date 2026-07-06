@@ -1,22 +1,16 @@
 /**
- * Note rename and move operations — filesystem rename, frontmatter rewrite for
- * markdown, and cache resync. Pulled from notes.ts during the Phase 3.1 split
- * (.claude/plans/tech-debt-remediation.md).
+ * Note rename and move operations — pure filesystem rename plus cache resync;
+ * file bytes are never touched. Pulled from notes.ts during the Phase 3.1
+ * split (.claude/plans/tech-debt-remediation.md).
  *
  * @module vault/notes-rename
  */
 
 import path from 'path'
 import fs from 'fs/promises'
-import { serializeNote, type NoteFrontmatter } from './frontmatter'
+import { parseNote } from './frontmatter'
 import { syncNoteToCache, syncFileToCache } from './note-sync'
-import {
-  atomicWrite,
-  deleteFile,
-  ensureDirectory,
-  sanitizeFilename,
-  generateUniquePath
-} from './file-ops'
+import { ensureDirectory, sanitizeFilename, generateUniquePath, safeRead } from './file-ops'
 import { getNoteCacheById } from '@main/database/queries/notes'
 import { getDatabase, getIndexDatabase } from '../database'
 import { NoteError, NoteErrorCode } from '../lib/errors'
@@ -50,14 +44,11 @@ export async function renameNote(id: string, newTitle: string): Promise<Note> {
   const newRelativePath = toRelativePath(newPath)
 
   const now = new Date().toISOString()
-  const newFrontmatter: NoteFrontmatter = {
-    ...existing.frontmatter,
-    title: newTitle,
-    modified: now
-  }
+
+  // Pure filesystem rename — file bytes untouched; title/dates live in the DBs
+  await fs.rename(oldPath, newPath)
 
   if (isBinary) {
-    await fs.rename(oldPath, newPath)
     syncFileToCache(db, {
       id,
       path: newRelativePath,
@@ -74,17 +65,21 @@ export async function renameNote(id: string, newTitle: string): Promise<Note> {
       modifiedAt: now
     })
   } else {
-    const fileContent = serializeNote(newFrontmatter, existing.content)
-    await atomicWrite(newPath, fileContent)
-    await deleteFile(oldPath)
+    const fileContent = (await safeRead(newPath)) ?? ''
+    const parsed = parseNote(fileContent, newRelativePath)
     syncNoteToCache(
       db,
       {
         id,
         path: newRelativePath,
         fileContent,
-        frontmatter: newFrontmatter,
-        parsedContent: existing.content
+        frontmatter: parsed.frontmatter,
+        parsedContent: parsed.content,
+        title: newTitle,
+        createdAt: cached?.createdAt ?? existing.created.toISOString(),
+        modifiedAt: now,
+        localOnly: cached?.localOnly ?? false,
+        emoji: cached?.emoji ?? null
       },
       { isNew: false }
     )
@@ -94,7 +89,6 @@ export async function renameNote(id: string, newTitle: string): Promise<Note> {
     ...existing,
     path: newRelativePath,
     title: newTitle,
-    frontmatter: newFrontmatter,
     modified: new Date(now)
   }
 
@@ -134,13 +128,11 @@ export async function moveNote(id: string, newFolder: string): Promise<Note> {
   const newRelativePath = toRelativePath(newPath)
 
   const now = new Date().toISOString()
-  const newFrontmatter: NoteFrontmatter = {
-    ...existing.frontmatter,
-    modified: now
-  }
+
+  // Pure filesystem rename — file bytes untouched; dates live in the DBs
+  await fs.rename(oldPath, newPath)
 
   if (isBinary) {
-    await fs.rename(oldPath, newPath)
     syncFileToCache(db, {
       id,
       path: newRelativePath,
@@ -156,17 +148,21 @@ export async function moveNote(id: string, newFolder: string): Promise<Note> {
       modifiedAt: now
     })
   } else {
-    const fileContent = serializeNote(newFrontmatter, existing.content)
-    await atomicWrite(newPath, fileContent)
-    await deleteFile(oldPath)
+    const fileContent = (await safeRead(newPath)) ?? ''
+    const parsed = parseNote(fileContent, newRelativePath)
     syncNoteToCache(
       db,
       {
         id,
         path: newRelativePath,
         fileContent,
-        frontmatter: newFrontmatter,
-        parsedContent: existing.content
+        frontmatter: parsed.frontmatter,
+        parsedContent: parsed.content,
+        title: existing.title,
+        createdAt: cached?.createdAt ?? existing.created.toISOString(),
+        modifiedAt: now,
+        localOnly: cached?.localOnly ?? false,
+        emoji: cached?.emoji ?? null
       },
       { isNew: false }
     )
@@ -175,7 +171,6 @@ export async function moveNote(id: string, newFolder: string): Promise<Note> {
   const note: Note = {
     ...existing,
     path: newRelativePath,
-    frontmatter: newFrontmatter,
     modified: new Date(now)
   }
 

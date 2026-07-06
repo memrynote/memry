@@ -193,7 +193,10 @@ async function updateJournalProperties(
       path: journalPath,
       fileContent,
       frontmatter,
-      parsedContent: entry.content
+      parsedContent: entry.content,
+      title: entry.date,
+      createdAt: entry.createdAt,
+      modifiedAt: entry.modifiedAt
     },
     { isNew: false }
   )

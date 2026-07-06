@@ -15,11 +15,12 @@ export { NotesChannels }
 // Types
 // ============================================================================
 
+/**
+ * Raw user frontmatter keys of a note. Every key is a plain user property;
+ * only `tags`/`aliases` carry Memry-read semantics. Identity, title, and
+ * dates are top-level `Note` fields sourced from the sidecar DBs.
+ */
 export interface NoteFrontmatter {
-  id: string
-  title?: string
-  created: string
-  modified: string
   tags?: string[]
   aliases?: string[]
   [key: string]: unknown

@@ -5,6 +5,7 @@ import { JournalChannels, NotesChannels } from '@memry/contracts/ipc-channels'
 const mocks = vi.hoisted(() => ({
   yDocToMarkdown: vi.fn(),
   getNoteCacheById: vi.fn(),
+  getNoteCacheByPath: vi.fn(),
   atomicWrite: vi.fn(),
   safeRead: vi.fn(),
   fileExists: vi.fn(),
@@ -103,7 +104,8 @@ vi.mock('../database/client', () => ({
 }))
 
 vi.mock('@main/database/queries/notes', () => ({
-  getNoteCacheById: (...args: unknown[]) => mocks.getNoteCacheById(...args)
+  getNoteCacheById: (...args: unknown[]) => mocks.getNoteCacheById(...args),
+  getNoteCacheByPath: (...args: unknown[]) => mocks.getNoteCacheByPath(...args)
 }))
 
 vi.mock('@memry/app-core/reminders', () => ({
@@ -148,6 +150,7 @@ describe('crdt writeback', () => {
       path: 'notes/Existing.md',
       title: 'Existing'
     })
+    mocks.getNoteCacheByPath.mockReturnValue(undefined)
     mocks.safeRead.mockResolvedValue('---\ntitle: Existing\n---\nold markdown')
     mocks.parseNote.mockReturnValue({
       frontmatter: { id: 'note-1', title: 'Existing', tags: ['old'] },
@@ -308,15 +311,21 @@ describe('crdt writeback', () => {
   it('writes a collision file when a synced journal date already belongs to another id', async () => {
     mocks.getNoteCacheById.mockReturnValue(undefined)
     mocks.fileExists.mockResolvedValue(true)
-    mocks.safeRead.mockResolvedValue('---\nid: local-journal\n---\nlocal')
-    mocks.parseNote.mockReturnValue({
-      frontmatter: { id: 'local-journal' },
-      content: 'local'
+    // Collision detection keys on the note_cache row at the journal path,
+    // not on a frontmatter id (files no longer carry one)
+    mocks.getNoteCacheByPath.mockReturnValue({
+      id: 'local-journal',
+      path: 'journal/2026-01-03.md',
+      title: '2026-01-03'
     })
 
     scheduleWriteback('j2026-01-03', makeDoc('Collision'))
     await vi.advanceTimersByTimeAsync(500)
 
+    expect(mocks.getNoteCacheByPath).toHaveBeenCalledWith(
+      { kind: 'index-db' },
+      'journal/2026-01-03.md'
+    )
     expect(mocks.atomicWrite).toHaveBeenCalledWith(
       '/vault/journal/2026-01-03-j2026-01.md',
       expect.stringContaining('updated markdown')

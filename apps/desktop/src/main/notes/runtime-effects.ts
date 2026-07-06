@@ -1,5 +1,6 @@
 import { updateNoteMetadata } from '@memry/storage-data'
-import { getDatabase } from '../database'
+import { updateNoteCache } from '@main/database/queries/notes'
+import { getDatabase, getIndexDatabase } from '../database'
 import { attachmentEvents } from '../sync/attachment-events'
 import { getCrdtProvider } from '../sync/crdt-provider'
 import {
@@ -36,6 +37,8 @@ export function setNoteLocalOnlyState(noteId: string, localOnly: boolean): void 
     localOnly,
     syncPolicy: localOnly ? 'local-only' : 'sync'
   })
+  // localOnly is sidecar-only state — keep the index cache in step too
+  updateNoteCache(getIndexDatabase(), noteId, { localOnly })
 
   if (localOnly) {
     removePendingNoteSyncItems(noteId)

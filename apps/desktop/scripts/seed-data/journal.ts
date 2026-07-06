@@ -273,15 +273,22 @@ const dateToModifiedISO = (date: string): string => {
 
 export const JOURNAL_NOTES: NoteFile[] = ENTRIES.map((entry) => ({
   relativePath: `journal/${entry.date}.md`,
+  // User keys only — no Memry keys; dates land on the file via mtime
   frontmatter: {
-    id: generateJournalId(entry.date),
-    title: entry.date,
-    created: dateToCreatedISO(entry.date),
-    modified: dateToModifiedISO(entry.date),
     date: entry.date,
-    journalDate: entry.date,
     mood: entry.mood,
-    tags: entry.tags
+    ...(entry.tags.length > 0 ? { tags: entry.tags } : {})
   },
-  body: entry.body
+  body: entry.body,
+  modified: dateToModifiedISO(entry.date)
+}))
+
+/** Canonical note_metadata rows so journal ids stay stable across indexing. */
+export const JOURNAL_METADATA = ENTRIES.map((entry) => ({
+  id: generateJournalId(entry.date),
+  path: `journal/${entry.date}.md`,
+  title: entry.date,
+  journalDate: entry.date,
+  createdAt: dateToCreatedISO(entry.date),
+  modifiedAt: dateToModifiedISO(entry.date)
 }))

@@ -92,11 +92,14 @@ describe('csvImporter (integration)', () => {
     const files = fs.readdirSync(csvDir)
     expect(files).toHaveLength(4)
 
-    // Check a note that has a comma in a quoted field
+    // Check a note that has a comma in a quoted field — the title now lives
+    // on the note record, not in the file's frontmatter
     const buyFile = files.find((f) => f.includes('Buy milk'))
     expect(buyFile).toBeTruthy()
-    const content = fs.readFileSync(path.join(csvDir, buyFile!), 'utf8')
-    expect(content).toContain('Buy milk, eggs')
+    const buyRow = indexDb.sqlite
+      .prepare('SELECT title FROM note_cache WHERE path = ?')
+      .get(`notes/CSV/${buyFile}`) as { title: string } | undefined
+    expect(buyRow?.title).toBe('Buy milk, eggs')
 
     // Check properties are saved (Tags column should appear as frontmatter property)
     const kickoffFile = files.find((f) => f.includes('Project kickoff'))

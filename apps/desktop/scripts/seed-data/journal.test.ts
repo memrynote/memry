@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { seedDateOnly } from './date'
-import { JOURNAL_NOTES } from './journal'
+import { JOURNAL_METADATA, JOURNAL_NOTES } from './journal'
 
 describe('journal seed data', () => {
   it('has a generic journal entry for the day the seed command runs', () => {
@@ -12,8 +12,16 @@ describe('journal seed data', () => {
 
     const [entry] = todayEntries
     expect(entry.relativePath).toBe(`journal/${today}.md`)
-    expect(entry.frontmatter.title).toBe(today)
+    // User keys only — no Memry keys; title comes from the filename via metadata
+    expect(entry.frontmatter.id).toBeUndefined()
+    expect(entry.frontmatter.title).toBeUndefined()
+    expect(entry.frontmatter.mood).toBe(4)
     expect(entry.frontmatter.tags).toEqual(['daily', 'reflection'])
+    expect(entry.modified).toBeDefined()
+
+    const metadata = JOURNAL_METADATA.find((meta) => meta.journalDate === today)
+    expect(metadata?.title).toBe(today)
+    expect(metadata?.path).toBe(`journal/${today}.md`)
     expect(entry.body).toContain('A quiet day')
     expect(entry.body).toContain('## Schedule')
     expect(entry.body).toContain('## Tasks')

@@ -165,7 +165,7 @@ export function createVersionsService({
 
       return notes.update({
         id: snapshot.noteId,
-        title: String(parsed.frontmatter.title ?? snapshot.title),
+        title: snapshot.title,
         content: parsed.content,
         tags,
         properties

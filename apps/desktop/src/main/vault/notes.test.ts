@@ -123,7 +123,7 @@ describe('notes operations', () => {
       expect(flushProjectionEventsSpy).not.toHaveBeenCalled()
     })
 
-    it('T361: creates file in correct location with frontmatter', async () => {
+    it('T361: creates file in correct location without Memry frontmatter keys', async () => {
       const result = await notes.createNote({
         title: 'My Test Note',
         content: 'This is test content.'
@@ -138,11 +138,14 @@ describe('notes operations', () => {
       const filePath = path.join(tempVault.notesDir, 'My Test Note.md')
       expect(fs.existsSync(filePath)).toBe(true)
 
-      // Verify frontmatter was written correctly
-      const { frontmatter, content } = readTestNote(filePath)
-      expect(frontmatter.id).toBe(result.id)
-      expect(frontmatter.title).toBe('My Test Note')
-      expect(content.trim()).toBe('This is test content.')
+      // No Memry keys in the file — empty frontmatter means no YAML block at all
+      const raw = fs.readFileSync(filePath, 'utf-8')
+      expect(raw).not.toContain('---')
+      expect(raw).not.toMatch(/^id:/m)
+      expect(raw).not.toMatch(/^title:/m)
+      expect(raw).not.toMatch(/^created:/m)
+      expect(raw).not.toMatch(/^modified:/m)
+      expect(raw.trim()).toBe('This is test content.')
     })
 
     it('T361: inserts note into cache', async () => {
@@ -316,26 +319,35 @@ describe('notes operations', () => {
       expect(secondGet).toBeNull()
     })
 
-    it('repairs duplicate frontmatter IDs found on disk', async () => {
-      const first = await notes.createNote({
+    it('writes no Memry keys to disk; rename leaves file bytes identical', async () => {
+      // Duplicate file ids can no longer exist — files carry no Memry identity.
+      const created = await notes.createNote({
         title: 'Duplicate A',
-        content: 'Original note.'
-      })
-      const second = await notes.createNote({
-        title: 'Duplicate B',
-        content: 'Copied note.'
+        content: 'Original note.',
+        tags: ['dup']
       })
 
-      const secondPath = path.join(tempVault.path, second.path)
-      const raw = fs.readFileSync(secondPath, 'utf-8')
-      fs.writeFileSync(secondPath, raw.replace(`id: ${second.id}`, `id: ${first.id}`))
+      const createdAbs = path.join(tempVault.path, created.path)
+      const rawBefore = fs.readFileSync(createdAbs, 'utf-8')
 
-      const repaired = await notes.getNoteById(second.id)
+      // User keys only (tags) — no id/title/created/modified lines
+      expect(rawBefore).toMatch(/^tags:/m)
+      expect(rawBefore).not.toMatch(/^id:/m)
+      expect(rawBefore).not.toMatch(/^title:/m)
+      expect(rawBefore).not.toMatch(/^created:/m)
+      expect(rawBefore).not.toMatch(/^modified:/m)
 
-      expect(repaired).not.toBeNull()
-      expect(repaired!.id).not.toBe(first.id)
-      expect(repaired!.id).not.toBe(second.id)
-      expect(repaired!.title).toBe('Duplicate B')
+      // Rename is a pure fs.rename — bytes identical apart from the path
+      const renamed = await notes.renameNote(created.id, 'Duplicate B')
+      expect(fs.existsSync(createdAbs)).toBe(false)
+      const rawAfter = fs.readFileSync(path.join(tempVault.path, renamed.path), 'utf-8')
+      expect(rawAfter).toBe(rawBefore)
+
+      // getNoteById returns identity/metadata from the cache row, not the file
+      const retrieved = await notes.getNoteById(created.id)
+      expect(retrieved).not.toBeNull()
+      expect(retrieved!.id).toBe(created.id)
+      expect(retrieved!.title).toBe('Duplicate B')
     })
   })
 
@@ -380,7 +392,12 @@ describe('notes operations', () => {
       const retrieved = await notes.getNoteByPath('notes/External.md')
 
       expect(retrieved).not.toBeNull()
-      expect(retrieved!.id).toBe('external-note-1')
+      // Legacy Memry keys in the file are plain user properties — the note
+      // gets a fresh internal id and its title from the filename
+      expect(retrieved!.id).not.toBe('external-note-1')
+      expect(retrieved!.id).toMatch(/^[a-z0-9]{12}$/)
+      expect(retrieved!.frontmatter.id).toBe('external-note-1')
+      expect(retrieved!.title).toBe('External')
       expect(retrieved!.tags).toContain('external')
     })
   })

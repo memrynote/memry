@@ -63,16 +63,26 @@ function removeCanonicalMetadata(noteId: string): void {
  * Input for syncing a note to the cache.
  */
 export interface NoteSyncInput {
-  /** Unique note ID from frontmatter */
+  /** Internal note ID (sidecar-owned, never read from file frontmatter) */
   id: string
   /** Relative path from vault root */
   path: string
   /** Full file content including frontmatter */
   fileContent: string
-  /** Parsed frontmatter object */
+  /** Raw user frontmatter keys (used for tags/aliases/properties extraction) */
   frontmatter: NoteFrontmatter
   /** Markdown body content (without frontmatter) */
   parsedContent: string
+  /** Display title (verbatim basename) */
+  title: string
+  /** ISO created timestamp (sidecar/fs-sourced, never from frontmatter) */
+  createdAt: string
+  /** ISO modified timestamp (sidecar/fs-sourced, never from frontmatter) */
+  modifiedAt: string
+  /** Local-only privacy flag (sidecar-only state) */
+  localOnly?: boolean
+  /** Emoji icon (sidecar-only state) */
+  emoji?: string | null
 }
 
 /**
@@ -152,7 +162,7 @@ export function extractNoteMetadata(input: NoteSyncInput): NoteMetadata {
   const snippet = createSnippet(parsedContent)
   const contentHash = generateContentHash(fileContent)
   const date = extractDateFromPath(path)
-  const emoji = (frontmatter as { emoji?: string }).emoji ?? null
+  const emoji = input.emoji ?? null
 
   return {
     id,
@@ -181,13 +191,11 @@ export function syncNoteToCache(
   options: NoteSyncOptions
 ): NoteSyncResult {
   const { tagsOverride } = options
-  const { id, path, frontmatter, parsedContent } = input
+  const { id, path, parsedContent, title, createdAt, modifiedAt, localOnly } = input
   const metadata = extractNoteMetadata(input)
   const { properties, wikiLinks, wordCount, characterCount, snippet, contentHash, date, emoji } =
     metadata
   const tags = tagsOverride ?? metadata.tags
-
-  const title = frontmatter.title ?? path.split('/').pop()?.replace('.md', '') ?? 'Untitled'
 
   syncCanonicalMetadata(
     {
@@ -195,11 +203,11 @@ export function syncNoteToCache(
       path,
       title,
       emoji,
-      localOnly: frontmatter.localOnly ?? false,
+      localOnly: localOnly ?? false,
       journalDate: date,
       properties,
-      createdAt: frontmatter.created,
-      modifiedAt: frontmatter.modified
+      createdAt,
+      modifiedAt
     },
     properties
   )
@@ -210,15 +218,15 @@ export function syncNoteToCache(
     path,
     title,
     fileType: 'markdown',
-    localOnly: frontmatter.localOnly ?? false,
+    localOnly: localOnly ?? false,
     contentHash,
     wordCount,
     characterCount,
     snippet,
     date,
     emoji,
-    createdAt: frontmatter.created,
-    modifiedAt: frontmatter.modified,
+    createdAt,
+    modifiedAt,
     parsedContent,
     tags,
     properties,

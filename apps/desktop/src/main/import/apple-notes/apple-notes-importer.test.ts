@@ -360,12 +360,12 @@ describe('appleNotesImporter (integration, synthetic NoteStore.sqlite)', () => {
     const ctx = importContext.createImportContext('an2', new AbortController().signal)
     await importer.appleNotesImporter.run({ sourcePaths: [dbPath] }, ctx)
 
-    const md = fs.readFileSync(
-      path.join(tempVault.notesDir, 'Apple Notes', 'Work', 'My Note.md'),
-      'utf8'
-    )
+    // Timestamps now live on the note record, not in the file.
+    const row = indexDb.sqlite
+      .prepare('SELECT created_at AS createdAt FROM note_cache WHERE path = ?')
+      .get('notes/Apple Notes/Work/My Note.md') as { createdAt: string } | undefined
     // created = 700000000 CoreTime → 2023 (see coreTimeToIso).
-    expect(md).toContain('2023-03-08')
+    expect(row?.createdAt).toContain('2023-03-08')
   })
 
   it('stops early when cancelled', async () => {

@@ -131,9 +131,15 @@ describe('markdownImporter (integration)', () => {
     const ctx = importContext.createImportContext('it4', new AbortController().signal)
     await importer.markdownImporter.run({ sourcePaths: [FIXTURE_DIR] }, ctx)
 
-    // root-note.md has title: "Root Note" in frontmatter
+    // root-note.md has title: "Root Note" in frontmatter — the title now lives
+    // in the filename and the note cache, never in the file's frontmatter.
     const rootNote = path.join(tempVault.notesDir, 'Markdown', 'Root Note.md')
-    const content = fs.readFileSync(rootNote, 'utf8')
-    expect(content).toContain('Root Note')
+    expect(fs.existsSync(rootNote)).toBe(true)
+    expect(fs.readFileSync(rootNote, 'utf8')).not.toContain('title:')
+
+    const row = indexDb.sqlite
+      .prepare('SELECT title FROM note_cache WHERE path = ?')
+      .get('notes/Markdown/Root Note.md') as { title: string } | undefined
+    expect(row?.title).toBe('Root Note')
   })
 })

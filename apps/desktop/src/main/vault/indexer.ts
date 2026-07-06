@@ -21,19 +21,19 @@ import {
   getIndexDatabase,
   closeIndexDatabase
 } from '../database'
-import { parseNote, serializeNote } from './frontmatter'
-import { safeRead, atomicWrite } from './file-ops'
+import { parseNote } from './frontmatter'
+import { safeRead } from './file-ops'
 import { generateNoteId } from '../lib/id'
 import { normalizeRelativePath } from '../lib/paths'
 import { syncNoteToCache, syncFileToCache } from './note-sync'
 import { flushProjectionEvents } from '../projections'
 import {
   getNoteCacheByPath,
-  getNoteCacheById,
   countNotes,
   countJournalEntries,
   ensureTagDefinitions
 } from '@main/database/queries/notes'
+import { getNoteMetadataByPath } from '@memry/storage-data'
 import { isSupportedPath, getFileType, getMimeType, getExtension } from '@memry/shared/file-types'
 import { createLogger } from '../lib/logger'
 
@@ -158,38 +158,33 @@ async function indexMarkdownFile(
     return 'error'
   }
 
-  const parsed = parseNote(content, relativePath)
+  // Path unknown to the index cache (indexFile skips known paths). Prefer the
+  // canonical id from note_metadata (survives index rebuilds), else a fresh
+  // one. Dates from fs stats. The indexer never writes files.
+  const stats = await stat(absolutePath).catch(() => null)
+  const parsed = parseNote(content, relativePath, stats ?? undefined)
 
-  // Check if already in cache by ID (possible duplicate/copied file)
-  const existingById = getNoteCacheById(db, parsed.frontmatter.id)
-  if (existingById) {
-    // This is a copy of an existing note - regenerate ID
-    logger.debug(`Duplicate ID detected, regenerating for: ${relativePath}`)
-    const newId = generateNoteId()
-    parsed.frontmatter.id = newId
-    parsed.frontmatter.title = path.basename(relativePath, path.extname(relativePath))
-
-    // Write back to file with new ID
-    try {
-      const newContent = serializeNote(parsed.frontmatter, parsed.content)
-      await atomicWrite(absolutePath, newContent)
-      logger.debug(`Regenerated ID for ${relativePath}: ${existingById.id} → ${newId}`)
-    } catch (writeError) {
-      logger.error(`Failed to write new ID for ${relativePath}:`, writeError)
-      return 'error'
-    }
+  let canonicalId: string | undefined
+  try {
+    canonicalId = getNoteMetadataByPath(getDatabase(), relativePath)?.id
+  } catch {
+    // data DB not ready — fall back to a fresh id
   }
+  const noteId = canonicalId ?? parsed.id
 
   // Use syncNoteToCache for unified cache operations
   try {
     const result = syncNoteToCache(
       db,
       {
-        id: parsed.frontmatter.id,
+        id: noteId,
         path: relativePath,
         fileContent: content,
         frontmatter: parsed.frontmatter,
-        parsedContent: parsed.content
+        parsedContent: parsed.content,
+        title: parsed.title,
+        createdAt: parsed.created,
+        modifiedAt: parsed.modified
       },
       { isNew: true }
     )

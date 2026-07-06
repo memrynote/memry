@@ -1,9 +1,11 @@
 /**
- * Rename Tracker for UUID-based File Rename Detection
+ * Rename Tracker for content-hash-based File Rename Detection
  *
- * Detects file renames by matching UUIDs within a 500ms window.
- * chokidar emits 'unlink' then 'add' for renames - this module
- * tracks pending deletes and matches them with new files by UUID.
+ * Detects file renames by matching content hashes within a 500ms window.
+ * chokidar emits 'unlink' then 'add' for renames - this module tracks
+ * pending deletes (keyed by the cached content hash) and matches them with
+ * new files by hash. Files carry no Memry identity; the internal id lives
+ * in the sidecar DBs and is returned from the match.
  *
  * @module vault/rename-tracker
  */
@@ -31,8 +33,10 @@ const RENAME_WINDOW_MS = 500
 // ============================================================================
 
 interface PendingDelete {
-  /** Note UUID from frontmatter */
+  /** Internal note id (from the sidecar cache row) */
   id: string
+  /** Content hash of the deleted file (from the cache row) */
+  contentHash: string
   /** Old file path (relative to vault) */
   path: string
   /** Timestamp when delete was detected */
@@ -48,11 +52,12 @@ interface PendingDelete {
 // ============================================================================
 
 /**
- * Map of pending deletes keyed by UUID.
- * When a file is deleted, we store its UUID here and wait to see
- * if a new file with the same UUID appears (indicating a rename).
+ * Pending deletes keyed by content hash. When a file is deleted, we store
+ * its cached hash here and wait to see if a new file with the same content
+ * appears (indicating a rename). Identical-content collisions queue FIFO —
+ * the oldest pending delete matches first.
  */
-const pendingDeletes = new Map<string, PendingDelete>()
+const pendingDeletes = new Map<string, PendingDelete[]>()
 
 let onRenameSyncCallback: ((id: string) => void) | null = null
 
@@ -84,81 +89,101 @@ function emitNoteRenamed(event: NoteRenamedEvent): void {
 // Public API
 // ============================================================================
 
+function removePending(entry: PendingDelete): void {
+  const bucket = pendingDeletes.get(entry.contentHash)
+  if (!bucket) return
+  const index = bucket.indexOf(entry)
+  if (index !== -1) bucket.splice(index, 1)
+  if (bucket.length === 0) pendingDeletes.delete(entry.contentHash)
+}
+
 /**
  * Track a pending delete. Called when a file is deleted externally.
  * Waits for RENAME_WINDOW_MS to see if a matching 'add' event arrives.
  *
- * @param id - Note UUID from cache (before file was deleted)
+ * @param id - Internal note id from the cache row (before file was deleted)
+ * @param contentHash - Content hash from the cache row
  * @param relativePath - Relative path of the deleted file
  * @param onRealDelete - Callback to execute if this is a real delete
  */
 export function trackPendingDelete(
   id: string,
+  contentHash: string,
   relativePath: string,
   onRealDelete: () => Promise<void>
 ): void {
-  // Clear any existing pending for this ID (shouldn't happen, but be safe)
+  // Clear any existing pending for this id (shouldn't happen, but be safe)
   clearPendingDelete(id)
 
   logger.debug(`Tracking pending delete: ${id} at ${relativePath}`)
 
-  const timeout = setTimeout(() => {
-    // No matching 'add' event arrived - this is a real delete
-    const pending = pendingDeletes.get(id)
-    if (pending) {
-      logger.debug(`No rename detected for ${id}, processing as delete`)
-      pendingDeletes.delete(id)
-      void pending.onRealDelete()
-    }
-  }, RENAME_WINDOW_MS)
-
-  pendingDeletes.set(id, {
+  const entry: PendingDelete = {
     id,
+    contentHash,
     path: relativePath,
     timestamp: Date.now(),
-    timeout,
+    timeout: setTimeout(() => {
+      // No matching 'add' event arrived - this is a real delete
+      logger.debug(`No rename detected for ${id}, processing as delete`)
+      removePending(entry)
+      void entry.onRealDelete()
+    }, RENAME_WINDOW_MS),
     onRealDelete
-  })
+  }
+
+  const bucket = pendingDeletes.get(contentHash)
+  if (bucket) {
+    bucket.push(entry)
+  } else {
+    pendingDeletes.set(contentHash, [entry])
+  }
 }
 
 /**
  * Check if a newly added file matches a pending delete (indicating a rename).
- * If a match is found, the pending delete is cleared and the caller is
- * responsible for replaying the rename through projection-safe write paths.
+ * Identical-hash collisions match FIFO (oldest pending delete first). If a
+ * match is found, the pending delete is cleared and the caller is responsible
+ * for replaying the rename through projection-safe write paths.
  *
- * @param id - Note UUID from the newly added file's frontmatter
+ * @param contentHash - Content hash of the newly added file
  * @param newPath - Relative path of the new file
- * @returns The old path if this was a rename, null if it's a new file
+ * @returns The matched note id and old path if this was a rename, null if new
  */
-export function checkForRename(id: string, newPath: string): string | null {
-  const pending = pendingDeletes.get(id)
+export function checkForRename(
+  contentHash: string,
+  newPath: string
+): { id: string; oldPath: string } | null {
+  const bucket = pendingDeletes.get(contentHash)
 
-  if (!pending) {
-    // No pending delete with this UUID - it's a new file
+  if (!bucket || bucket.length === 0) {
+    // No pending delete with this content - it's a new file
     return null
   }
 
-  // Found a match! This is a rename.
+  // Found a match! This is a rename. FIFO: oldest pending delete wins.
+  const pending = bucket.shift() as PendingDelete
+  if (bucket.length === 0) pendingDeletes.delete(contentHash)
+
   logger.info(`Rename detected: ${pending.path} -> ${newPath}`)
-
-  // Clear the timeout and pending entry
   clearTimeout(pending.timeout)
-  pendingDeletes.delete(id)
 
-  return pending.path
+  return { id: pending.id, oldPath: pending.path }
 }
 
 /**
  * Clear a pending delete (e.g., when matched as a rename or on shutdown).
  *
- * @param id - Note UUID to clear
+ * @param id - Internal note id to clear
  */
 export function clearPendingDelete(id: string): void {
-  const pending = pendingDeletes.get(id)
-  if (pending) {
-    clearTimeout(pending.timeout)
-    pendingDeletes.delete(id)
-    logger.debug(`Cleared pending delete for ${id}`)
+  for (const bucket of pendingDeletes.values()) {
+    const entry = bucket.find((p) => p.id === id)
+    if (entry) {
+      clearTimeout(entry.timeout)
+      removePending(entry)
+      logger.debug(`Cleared pending delete for ${id}`)
+      return
+    }
   }
 }
 
@@ -166,9 +191,11 @@ export function clearPendingDelete(id: string): void {
  * Clear all pending deletes (e.g., on watcher shutdown).
  */
 export function clearAllPendingDeletes(): void {
-  for (const [id, pending] of pendingDeletes) {
-    clearTimeout(pending.timeout)
-    logger.debug(`Cleared pending delete for ${id} (shutdown)`)
+  for (const bucket of pendingDeletes.values()) {
+    for (const pending of bucket) {
+      clearTimeout(pending.timeout)
+      logger.debug(`Cleared pending delete for ${pending.id} (shutdown)`)
+    }
   }
   pendingDeletes.clear()
 }
@@ -184,7 +211,9 @@ export function hasPendingDeletes(): boolean {
  * Get the count of pending deletes.
  */
 export function getPendingDeleteCount(): number {
-  return pendingDeletes.size
+  let total = 0
+  for (const bucket of pendingDeletes.values()) total += bucket.length
+  return total
 }
 
 // ============================================================================
@@ -221,8 +250,12 @@ export function processRename(id: string, oldPath: string, newPath: string): voi
 }
 
 /**
- * Get a pending delete by ID (for testing/debugging).
+ * Get a pending delete by note id (for testing/debugging).
  */
 export function getPendingDelete(id: string): PendingDelete | undefined {
-  return pendingDeletes.get(id)
+  for (const bucket of pendingDeletes.values()) {
+    const entry = bucket.find((p) => p.id === id)
+    if (entry) return entry
+  }
+  return undefined
 }

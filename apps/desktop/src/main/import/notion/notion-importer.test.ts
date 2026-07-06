@@ -105,11 +105,12 @@ describe('notionImporter (integration)', () => {
     const ctx = importContext.createImportContext('it2', new AbortController().signal)
     await importer.notionImporter.run({ sourcePaths: [FIXTURE] }, ctx)
 
-    const child = fs.readFileSync(
-      path.join(tempVault.notesDir, 'Notion', 'Parent Page', 'Child Page.md'),
-      'utf8'
-    )
-    expect(child).toContain('2024-03-05')
+    // Timestamps now live on the note record, not in the file.
+    const row = indexDb.sqlite
+      .prepare('SELECT created_at AS createdAt FROM note_cache WHERE path = ?')
+      .get('notes/Notion/Parent Page/Child Page.md') as { createdAt: string } | undefined
+    // Child Page was created March 5, 2024 in the export.
+    expect(row?.createdAt).toContain('2024-03-05')
   })
 
   it('stops early when cancelled', async () => {

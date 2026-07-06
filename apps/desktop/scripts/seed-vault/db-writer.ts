@@ -52,6 +52,34 @@ export function insertTagDefinitions(db: DataDb, tags: SeedTagDefinition[]): num
   return tags.length
 }
 
+export interface SeedNoteMetadata {
+  id: string
+  path: string
+  title: string
+  emoji?: string | null
+  journalDate?: string | null
+  createdAt: string
+  modifiedAt: string
+}
+
+export function insertNoteMetadata(db: DataDb, notes: SeedNoteMetadata[]): number {
+  if (notes.length === 0) return 0
+  db.insert(schema.noteMetadata)
+    .values(
+      notes.map((n) => ({
+        id: n.id,
+        path: n.path,
+        title: n.title,
+        emoji: n.emoji ?? null,
+        journalDate: n.journalDate ?? null,
+        createdAt: n.createdAt,
+        modifiedAt: n.modifiedAt
+      }))
+    )
+    .run()
+  return notes.length
+}
+
 export interface SeedFolderConfig {
   path: string
   icon: string | null

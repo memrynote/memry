@@ -28,20 +28,21 @@ import type { NoteFrontmatter } from './frontmatter'
 const FIXED_ISO = '2026-01-15T12:00:00.000Z'
 
 function buildInput(overrides: Partial<NoteSyncInput> = {}): NoteSyncInput {
+  // Memry-written files carry user keys only — no id/created/modified
   const frontmatter: NoteFrontmatter = {
-    id: 'abc123def456',
-    created: FIXED_ISO,
-    modified: FIXED_ISO,
     tags: [],
     ...(overrides.frontmatter ?? {})
   }
 
   return {
-    id: frontmatter.id,
+    id: overrides.id ?? 'abc123def456',
     path: overrides.path ?? 'notes/test.md',
     fileContent: overrides.fileContent ?? '---\n---\n' + (overrides.parsedContent ?? ''),
     parsedContent: overrides.parsedContent ?? '',
-    frontmatter
+    frontmatter,
+    title: overrides.title ?? 'test',
+    createdAt: overrides.createdAt ?? FIXED_ISO,
+    modifiedAt: overrides.modifiedAt ?? FIXED_ISO
   }
 }
 
@@ -197,6 +198,7 @@ describe('syncNoteToCache — tagsOverride', () => {
 
     const input = buildInput({
       path: 'journal/2026-01-15.md',
+      title: '2026-01-15',
       parsedContent: 'Daily note'
     })
 

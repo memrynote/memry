@@ -3,8 +3,6 @@ import matter from 'gray-matter'
 import {
   parseNote,
   serializeNote,
-  createFrontmatter,
-  ensureFrontmatter,
   validateNoteId,
   extractTitleFromPath,
   extractWikiLinks,
@@ -32,12 +30,10 @@ afterEach(() => {
 })
 
 describe('frontmatter parsing', () => {
-  it('parseNote extracts YAML frontmatter and normalizes fields', () => {
+  it('parseNote keeps user keys verbatim and normalizes tags/aliases', () => {
     const raw = `---
 id: abc123def456
 title: Sample Note
-created: 2026-01-01T00:00:00.000Z
-modified: 2026-01-02T00:00:00.000Z
 tags:
   - Work
   - Personal
@@ -49,82 +45,68 @@ Hello world
 
     const parsed = parseNote(raw)
     expect(parsed.hadFrontmatter).toBe(true)
-    expect(parsed.wasModified).toBe(true)
     expect(parsed.content).toBe('Hello world')
+    // Legacy Memry keys are plain user properties, never interpreted
     expect(parsed.frontmatter.id).toBe('abc123def456')
+    expect(parsed.frontmatter.title).toBe('Sample Note')
     expect(parsed.frontmatter.tags).toEqual(['Work', 'Personal'])
     expect(parsed.frontmatter.aliases).toEqual(['alias-one'])
+    // In-memory identity is fresh, not read from the file
+    expect(parsed.id).not.toBe('abc123def456')
+    expect(parsed.id).toMatch(/^[0-9a-z]{12}$/)
   })
 
-  it('parseNote handles content without frontmatter', () => {
+  it('parseNote generates in-memory defaults without touching frontmatter', () => {
     const raw = 'Just content'
     const parsed = parseNote(raw, 'notes/my-sample.md')
     expect(parsed.hadFrontmatter).toBe(false)
-    expect(parsed.wasModified).toBe(true)
-    expect(parsed.frontmatter.created).toBe(FIXED_ISO)
-    expect(parsed.frontmatter.modified).toBe(FIXED_ISO)
-    expect(parsed.frontmatter.title).toBe('My Sample')
-    expect(parsed.frontmatter.id).toMatch(/^[0-9a-z]{12}$/)
+    expect(parsed.frontmatter).toEqual({})
+    expect(parsed.id).toMatch(/^[0-9a-z]{12}$/)
+    expect(parsed.title).toBe('my-sample')
+    expect(parsed.created).toBe(FIXED_ISO)
+    expect(parsed.modified).toBe(FIXED_ISO)
     expect(parsed.content).toBe('Just content')
+  })
+
+  it('parseNote derives created/modified from fs stats when provided', () => {
+    const birthtime = new Date('2025-06-01T08:00:00.000Z')
+    const mtime = new Date('2025-06-02T09:30:00.000Z')
+    const parsed = parseNote('Body', 'notes/dated.md', { birthtime, mtime })
+    expect(parsed.created).toBe('2025-06-01T08:00:00.000Z')
+    expect(parsed.modified).toBe('2025-06-02T09:30:00.000Z')
   })
 })
 
 describe('frontmatter serialization', () => {
-  it('serializeNote updates modified and preserves trimmed content', () => {
+  it('serializeNote writes only the given keys and never bumps modified', () => {
     const frontmatter: NoteFrontmatter = {
-      id: 'abc123def456',
-      title: 'Serialized Note',
-      created: '2026-01-01T00:00:00.000Z',
-      modified: '2026-01-02T00:00:00.000Z'
+      tags: ['tag-one'],
+      rating: 5
     }
 
     const output = serializeNote(frontmatter, 'Body text\n')
     const parsed = matter(output)
 
-    expect(parsed.data.modified).toBe(FIXED_ISO)
-    expect(parsed.content).toBe('Body text')
+    expect(parsed.data).toEqual({ tags: ['tag-one'], rating: 5 })
+    expect(parsed.data.modified).toBeUndefined()
+    expect(parsed.content.trim()).toBe('Body text')
   })
 
-  it('createFrontmatter generates defaults for new notes', () => {
-    const frontmatter = createFrontmatter('New Note', ['tag-one'])
-    expect(frontmatter.title).toBe('New Note')
-    expect(frontmatter.tags).toEqual(['tag-one'])
-    expect(frontmatter.created).toBe(FIXED_ISO)
-    expect(frontmatter.modified).toBe(FIXED_ISO)
-    expect(validateNoteId(frontmatter.id)).toBe(true)
+  it('serializeNote returns bare content when no keys remain', () => {
+    expect(serializeNote({}, 'Body text\n')).toBe('Body text')
+    expect(serializeNote({ skipped: undefined }, 'Body text')).toBe('Body text')
   })
 })
 
 describe('frontmatter utilities', () => {
-  it('ensureFrontmatter adds missing frontmatter', () => {
-    const raw = 'Plain content'
-    const updated = ensureFrontmatter(raw, '/notes/new-note.md')
-    const parsed = matter(updated)
-
-    expect(parsed.content).toBe('Plain content')
-    expect(parsed.data.title).toBe('New Note')
-    expect(parsed.data.created).toBe(FIXED_ISO)
-    expect(parsed.data.modified).toBe(FIXED_ISO)
-    expect(parsed.data.id).toMatch(/^[0-9a-z]{12}$/)
-  })
-
-  it('ensureFrontmatter returns untouched content when complete', () => {
-    const raw = matter.stringify('Body', {
-      id: 'abc123def456',
-      title: 'Existing',
-      created: FIXED_ISO,
-      modified: FIXED_ISO
-    })
-    expect(ensureFrontmatter(raw, '/notes/existing.md')).toBe(raw)
-  })
-
   it('validateNoteId proxies the note id validator', () => {
     expect(validateNoteId('abc123def456')).toBe(true)
     expect(validateNoteId('invalid-id')).toBe(false)
   })
 
-  it('extractTitleFromPath converts filenames to titles', () => {
-    expect(extractTitleFromPath('/notes/my-note_file.md')).toBe('My Note File')
+  it('extractTitleFromPath returns the verbatim basename', () => {
+    expect(extractTitleFromPath('/notes/my-note_file.md')).toBe('my-note_file')
+    expect(extractTitleFromPath('notes/Meeting Notes.md')).toBe('Meeting Notes')
   })
 
   it('extractWikiLinks pulls link targets from content', () => {
@@ -189,10 +171,8 @@ describe('properties helpers', () => {
 
   it('extractProperties falls back to non-reserved keys', () => {
     const frontmatter: NoteFrontmatter = {
-      id: 'abc123def456',
-      created: FIXED_ISO,
-      modified: FIXED_ISO,
       tags: ['tag-one'],
+      aliases: ['other-name'],
       project: 'alpha',
       priority: 2
     }
@@ -200,29 +180,25 @@ describe('properties helpers', () => {
     expect(extractProperties(frontmatter)).toEqual({ project: 'alpha', priority: 2 })
   })
 
-  it('excludes emoji from extracted properties (regression: emoji leak on sync)', () => {
+  it('surfaces legacy Memry keys as plain user properties', () => {
+    // Only tags/aliases are reserved — id/title/created/modified/emoji/localOnly
+    // found in files are user properties, never interpreted
     const frontmatter: NoteFrontmatter = {
       id: 'abc123def456',
+      title: 'Old Memry Note',
       created: FIXED_ISO,
-      modified: FIXED_ISO,
-      emoji: '🎉'
+      emoji: '🎉',
+      localOnly: true,
+      tags: ['kept-out']
     }
 
-    expect(extractProperties(frontmatter)).toEqual({})
-  })
-
-  it('excludes emoji but keeps custom keys in fallback extraction', () => {
-    const frontmatter: NoteFrontmatter = {
+    expect(extractProperties(frontmatter)).toEqual({
       id: 'abc123def456',
+      title: 'Old Memry Note',
       created: FIXED_ISO,
-      modified: FIXED_ISO,
-      emoji: '📝',
-      customField: 'val'
-    }
-
-    const result = extractProperties(frontmatter)
-    expect(result).toEqual({ customField: 'val' })
-    expect(result).not.toHaveProperty('emoji')
+      emoji: '🎉',
+      localOnly: true
+    })
   })
 
   it('inferPropertyType detects common property types', () => {

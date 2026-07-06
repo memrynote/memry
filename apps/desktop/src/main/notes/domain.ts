@@ -4,10 +4,12 @@ import {
   renameNote,
   moveNote,
   deleteNote,
+  getNoteById,
   type Note,
   type NoteCreateInput,
   type NoteUpdateInput
 } from '../vault/notes'
+import { NoteError, NoteErrorCode } from '../lib/errors'
 import {
   syncNoteCreate,
   syncNoteUpdate,
@@ -58,10 +60,11 @@ export async function setNoteLocalOnlyCommand(input: {
   id: string
   localOnly: boolean
 }): Promise<Note> {
-  const note = await updateNote({
-    id: input.id,
-    frontmatter: { localOnly: input.localOnly }
-  })
+  // localOnly is sidecar-only state — never written to the file
   setNoteLocalOnlyState(input.id, input.localOnly)
+  const note = await getNoteById(input.id)
+  if (!note) {
+    throw new NoteError(`Note not found: ${input.id}`, NoteErrorCode.NOT_FOUND, input.id)
+  }
   return note
 }

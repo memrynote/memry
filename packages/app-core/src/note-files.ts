@@ -2,7 +2,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { marked } from 'marked'
 import { saveCanonicalNote } from '@memry/domain-notes'
-import { getNoteMetadataById, getNoteMetadataByPath } from '@memry/storage-data'
+import { getNoteMetadataByPath } from '@memry/storage-data'
 import type { FileType } from '@memry/shared/file-types'
 import { createId } from './ids.ts'
 import type { DataDb } from './database.ts'
@@ -355,12 +355,10 @@ function indexImportedMarkdown(
   stats: { mtime: Date }
 ): void {
   const parsed = parseMarkdownNote(raw)
-  const id =
-    typeof parsed.frontmatter.id === 'string' && !getNoteMetadataById(dataDb, parsed.frontmatter.id)
-      ? parsed.frontmatter.id
-      : createId('note')
-  const title = String(parsed.frontmatter.title ?? path.basename(relativePath, '.md'))
-  const now = new Date().toISOString()
+  // Frontmatter keys are plain user properties — identity comes from the
+  // metadata DB, never from the file
+  const id = createId('note')
+  const title = path.basename(relativePath, '.md')
 
   saveCanonicalNote(dataDb, {
     id,
@@ -369,7 +367,7 @@ function indexImportedMarkdown(
     fileType: 'markdown',
     mimeType: 'text/markdown',
     properties: propertiesFromFrontmatter(parsed.frontmatter),
-    createdAt: typeof parsed.frontmatter.created === 'string' ? parsed.frontmatter.created : now,
+    createdAt: stats.mtime.toISOString(),
     modifiedAt: stats.mtime.toISOString()
   })
 }

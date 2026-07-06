@@ -6,7 +6,6 @@ export {
   getNoteCacheByPath,
   noteCacheExists,
   getLocalOnlyCount,
-  findDuplicateId,
   listNotesFromCache,
   countNotes,
   bulkInsertNotes,

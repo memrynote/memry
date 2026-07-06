@@ -13,8 +13,8 @@ import chokidar from 'chokidar'
 import type { FSWatcher } from 'chokidar'
 import { BrowserWindow } from 'electron'
 import { getConfig } from './index'
-import { parseNote, serializeNote, generateContentHash, extractProperties } from './frontmatter'
-import { safeRead, atomicWrite } from './file-ops'
+import { parseNote, generateContentHash, extractProperties } from './frontmatter'
+import { safeRead } from './file-ops'
 import { generateNoteId } from '../lib/id'
 import { syncNoteToCache, syncFileToCache, deleteNoteFromCache } from './note-sync'
 import {
@@ -343,53 +343,33 @@ export class VaultWatcher {
       return
     }
 
-    const parsed = parseNote(content, relativePath)
+    const stats = await fs.stat(absolutePath).catch(() => null)
+    const parsed = parseNote(content, relativePath, stats ?? undefined)
 
-    // Check if this is a rename (UUID matches a pending delete)
-    const oldPath = checkForRename(parsed.frontmatter.id, relativePath)
-    if (oldPath !== null) {
-      await this.applyMarkdownRename(db, content, parsed, relativePath, oldPath)
+    // Check if this is a rename (content hash matches a pending delete);
+    // the internal id comes from the matched sidecar entry
+    const renameMatch = checkForRename(generateContentHash(content), relativePath)
+    if (renameMatch !== null) {
+      await this.applyMarkdownRename(db, content, parsed, relativePath, renameMatch)
       return
     }
 
-    // Check if a note with this ID exists at a different path
-    const existingById = getNoteCacheById(db, parsed.frontmatter.id)
-    if (existingById && existingById.path !== relativePath) {
-      const oldAbsPath = path.join(this.vaultPath!, existingById.path)
-      let oldFileExists = false
-      try {
-        await fs.access(oldAbsPath)
-        oldFileExists = true
-      } catch {
-        // old file gone
-      }
-
-      if (!oldFileExists) {
-        await this.applyMarkdownRename(db, content, parsed, relativePath, existingById.path)
-        return
-      }
-
-      // Old file still exists — genuine copy, regenerate ID + derive title from OS filename
-      const newId = generateNoteId()
-      parsed.frontmatter.id = newId
-      parsed.frontmatter.title = path.basename(relativePath, path.extname(relativePath))
-      try {
-        const newContent = serializeNote(parsed.frontmatter, parsed.content)
-        await atomicWrite(absolutePath, newContent)
-      } catch {
-        return
-      }
-    }
+    // Genuinely new external file: fresh internal id, fs-stat dates.
+    // No watcher path writes files.
+    const noteId = parsed.id
 
     // Sync to cache using NoteSyncService (handles tags, properties, FTS, links)
     const syncResult = syncNoteToCache(
       db,
       {
-        id: parsed.frontmatter.id,
+        id: noteId,
         path: relativePath,
         fileContent: content,
         frontmatter: parsed.frontmatter,
-        parsedContent: parsed.content
+        parsedContent: parsed.content,
+        title: parsed.title,
+        createdAt: parsed.created,
+        modifiedAt: parsed.modified
       },
       { isNew: true }
     )
@@ -403,28 +383,24 @@ export class VaultWatcher {
     }
 
     const noteListItem: NoteListItem = {
-      id: parsed.frontmatter.id,
+      id: noteId,
       path: relativePath,
-      title: parsed.frontmatter.title ?? path.basename(relativePath, '.md'),
-      created: new Date(parsed.frontmatter.created),
-      modified: new Date(parsed.frontmatter.modified),
+      title: parsed.title,
+      created: new Date(parsed.created),
+      modified: new Date(parsed.modified),
       tags,
       wordCount: syncResult.wordCount,
       snippet: syncResult.snippet,
-      localOnly: parsed.frontmatter.localOnly ?? false
+      localOnly: false
     }
 
     // Enqueue sync push so other devices learn about the new file
     if (isJournalPath(relativePath)) {
       const journalDate = extractJournalDate(relativePath)
-      enqueueJournalCreate(parsed.frontmatter.id, journalDate)
-      void initializeJournalCrdt(parsed.frontmatter.id, journalDate, tags)
+      enqueueJournalCreate(noteId, journalDate)
+      void initializeJournalCrdt(noteId, journalDate, tags)
     } else {
-      syncNoteCreate(
-        parsed.frontmatter.id,
-        parsed.frontmatter.title ?? path.basename(relativePath, '.md'),
-        tags
-      )
+      syncNoteCreate(noteId, parsed.title, tags)
     }
 
     // Emit event to renderer
@@ -445,8 +421,8 @@ export class VaultWatcher {
           tags,
           wordCount: syncResult.wordCount,
           characterCount: syncResult.characterCount,
-          modified: new Date(parsed.frontmatter.modified),
-          created: new Date(parsed.frontmatter.created)
+          modified: new Date(parsed.modified),
+          created: new Date(parsed.created)
         },
         source: 'external'
       })
@@ -458,16 +434,24 @@ export class VaultWatcher {
     fileContent: string,
     parsed: ReturnType<typeof parseNote>,
     relativePath: string,
-    oldPath: string
+    renameMatch: { id: string; oldPath: string }
   ): Promise<void> {
+    const { id, oldPath } = renameMatch
+    const cached = getNoteCacheById(db, id)
+
     const syncResult = syncNoteToCache(
       db,
       {
-        id: parsed.frontmatter.id,
+        id,
         path: relativePath,
         fileContent,
         frontmatter: parsed.frontmatter,
-        parsedContent: parsed.content
+        parsedContent: parsed.content,
+        title: parsed.title,
+        createdAt: cached?.createdAt ?? parsed.created,
+        modifiedAt: parsed.modified,
+        localOnly: cached?.localOnly ?? false,
+        emoji: cached?.emoji ?? null
       },
       { isNew: false }
     )
@@ -476,7 +460,7 @@ export class VaultWatcher {
       ensureTagDefinitions(getDatabase(), syncResult.tags)
     }
 
-    processRename(parsed.frontmatter.id, oldPath, relativePath)
+    processRename(id, oldPath, relativePath)
   }
 
   /**
@@ -590,7 +574,8 @@ export class VaultWatcher {
       return
     }
 
-    const parsed = parseNote(content, relativePath)
+    const stats = await fs.stat(absolutePath).catch(() => null)
+    const parsed = parseNote(content, relativePath, stats ?? undefined)
 
     const contentHash = generateContentHash(content)
 
@@ -605,7 +590,12 @@ export class VaultWatcher {
         path: relativePath,
         fileContent: content,
         frontmatter: parsed.frontmatter,
-        parsedContent: parsed.content
+        parsedContent: parsed.content,
+        title: cached.title,
+        createdAt: cached.createdAt,
+        modifiedAt: parsed.modified,
+        localOnly: cached.localOnly ?? false,
+        emoji: cached.emoji ?? null
       },
       { isNew: false }
     )
@@ -613,7 +603,7 @@ export class VaultWatcher {
 
     const tags = syncResult.tags
     const properties = extractProperties(parsed.frontmatter)
-    const title = parsed.frontmatter.title ?? path.basename(relativePath, '.md')
+    const title = cached.title
 
     if (tags.length > 0) {
       ensureTagDefinitions(getDatabase(), tags)
@@ -626,7 +616,7 @@ export class VaultWatcher {
         content: parsed.content,
         tags,
         properties,
-        modified: new Date(parsed.frontmatter.modified),
+        modified: new Date(parsed.modified),
         wordCount: syncResult.wordCount,
         snippet: syncResult.snippet
       },
@@ -646,8 +636,8 @@ export class VaultWatcher {
           tags,
           wordCount: syncResult.wordCount,
           characterCount: syncResult.characterCount,
-          modified: new Date(parsed.frontmatter.modified),
-          created: new Date(parsed.frontmatter.created)
+          modified: new Date(parsed.modified),
+          created: new Date(cached.createdAt)
         },
         source: 'external'
       })
@@ -719,8 +709,10 @@ export class VaultWatcher {
       const isJournal = isJournalPath(relativePath)
       const journalDate = isJournal ? extractJournalDate(relativePath) : null
 
-      // Track as pending delete - wait for potential rename (matching 'add' event)
-      trackPendingDelete(cached.id, relativePath, async () => {
+      // Track as pending delete - wait for potential rename (matching 'add'
+      // event with the same content hash). A missing hash never matches, so
+      // it degrades to a real delete after the window.
+      trackPendingDelete(cached.id, cached.contentHash ?? '', relativePath, async () => {
         // Enqueue sync delete BEFORE cache removal (enqueue reads cache for vector clock)
         if (isJournal && journalDate) {
           enqueueJournalDelete(cached.id, journalDate)
