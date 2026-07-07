@@ -41,14 +41,13 @@ test.describe('Notes Management', () => {
     test('T533: should create a new note via keyboard shortcut', async ({ page }) => {
       // Press Cmd+N (or Ctrl+N) to create new note
       await page.keyboard.press(SHORTCUTS.newNote)
-      await page.waitForTimeout(500)
 
-      // Look for note creation UI elements
-      const noteTitle = page.locator(SELECTORS.noteTitle)
-      const isVisible = await noteTitle.isVisible().catch(() => false)
-
-      // Either the title input is visible, or we navigated to new note page
-      expect(isVisible || (await page.url().includes('note'))).toBeTruthy()
+      // The shortcut opens a new-note tab with the title input. Wait for that
+      // signal explicitly instead of a fixed 500ms + best-effort isVisible/url
+      // check, which raced on slower runners (Windows CI) and reported false
+      // even though the note tab had opened.
+      const noteTitle = page.locator(SELECTORS.noteTitle).first()
+      await expect(noteTitle).toBeVisible({ timeout: 10000 })
     })
 
     test('T533: should create a note with title and content', async ({ page, testVaultPath }) => {

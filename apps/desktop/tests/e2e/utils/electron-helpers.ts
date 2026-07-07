@@ -284,6 +284,35 @@ export async function createNote(page: Page, title: string, content?: string): P
 
   // Wait for auto-save
   await page.waitForTimeout(titleTyped ? 1000 : 500)
+
+  // The title saves on blur, and the blur → file write → index update chain lags
+  // on slower runners (Windows CI), where a fixed timeout above is not enough.
+  // Callers look the note up by its exact title/path, so wait until the indexed
+  // title actually matches — re-applying it once if the first blur was dropped —
+  // rather than trusting the timeout and racing a half-created "Untitled" note.
+  if (titleTyped) {
+    const titleIndexed = async (): Promise<boolean> =>
+      page.evaluate(async (t) => {
+        const list = await window.api.notes.list({})
+        return list.notes.some((n: { title: string }) => n.title === t)
+      }, title)
+    const deadline = Date.now() + 10000
+    let reapplied = false
+    while (Date.now() < deadline) {
+      if (await titleIndexed()) break
+      if (!reapplied) {
+        try {
+          await titleInput.click()
+          await titleInput.fill(title)
+          await page.keyboard.press('Tab')
+        } catch {
+          // Title input no longer available (tab closed) — nothing more to do.
+        }
+        reapplied = true
+      }
+      await page.waitForTimeout(500)
+    }
+  }
 }
 
 /**
