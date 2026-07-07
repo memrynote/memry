@@ -55,6 +55,7 @@ import { SyncSection } from '@/pages/account/SyncSection'
 import { scrollToLandingTarget } from '@/lib/smooth-scroll'
 import { trackLandingEvent, trackLandingPageView, type LandingEventName } from '@/lib/analytics'
 import { AuthProvider } from '@/contexts/auth-context'
+import { Analytics } from '@vercel/analytics/react'
 
 const SCROLL_DEPTH_EVENTS: readonly { depth: number; event: LandingEventName }[] = [
   { depth: 25, event: 'landing_scroll_25' },
@@ -214,6 +215,7 @@ export default function App() {
       <BrowserRouter>
         <AuthProvider>
           <AppContent />
+          <Analytics />
         </AuthProvider>
       </BrowserRouter>
     </HelmetProvider>
