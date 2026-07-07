@@ -51,8 +51,23 @@ export const OBSIDIAN_MATTER_OPTIONS = {
  */
 function normalizeValue(value: unknown): unknown {
   if (value instanceof Date) {
-    const iso = value.toISOString()
-    return iso.endsWith('T00:00:00.000Z') ? iso.slice(0, 10) : iso.slice(0, 19)
+    // Use LOCAL components: a Date at local midnight in a non-UTC zone has a
+    // non-zero UTC time, so an ISO-string check would misclassify it as a
+    // datetime (and shift the day). Local components match Obsidian's display.
+    const pad = (n: number): string => String(n).padStart(2, '0')
+    const year = value.getFullYear()
+    const month = pad(value.getMonth() + 1)
+    const day = pad(value.getDate())
+    const dateOnly =
+      value.getHours() === 0 &&
+      value.getMinutes() === 0 &&
+      value.getSeconds() === 0 &&
+      value.getMilliseconds() === 0
+    if (dateOnly) return `${year}-${month}-${day}`
+    const hours = pad(value.getHours())
+    const minutes = pad(value.getMinutes())
+    const seconds = pad(value.getSeconds())
+    return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`
   }
   if (Array.isArray(value)) return value.map(normalizeValue)
   if (value && typeof value === 'object') {
@@ -72,12 +87,15 @@ function normalizeValue(value: unknown): unknown {
  */
 export function emitFrontmatterBlock(entries: Array<[string, unknown]>): string {
   const body = entries
-    .map(([key, value]) =>
-      // js-yaml emits `key: ` (trailing space) for the empty-null style;
-      // strings with trailing whitespace always get quoted, so this strip
-      // only ever touches that case
-      dump({ [key]: normalizeValue(value) }, DUMP_OPTIONS).replace(/[ \t]+$/gm, '')
-    )
+    .map(([key, value]) => {
+      const normalized = normalizeValue(value)
+      const dumped = dump({ [key]: normalized }, DUMP_OPTIONS)
+      // js-yaml emits `key: ` (trailing space) for the empty-null style; only
+      // strip in that case. The `m` flag would otherwise eat significant
+      // trailing spaces on interior lines of a `|-` block scalar. Non-null
+      // scalars with trailing whitespace are always quoted, so never need it.
+      return normalized === null ? dumped.replace(/[ \t]+$/gm, '') : dumped
+    })
     .join('')
   return `---\n${body}---\n`
 }

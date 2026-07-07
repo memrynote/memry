@@ -360,17 +360,52 @@ async function writebackJournal(
     return
   }
 
+  const relativePath = toRelativePath(journalPath)
+
   if (await fileExists(journalPath)) {
     // File identity lives in the sidecar: a cache row at this path owned by a
-    // different (or unknown) note means the date file is already claimed
-    const rowAtPath = getNoteCacheByPath(indexDb, toRelativePath(journalPath))
-    if (rowAtPath?.id !== noteId) {
-      await handleJournalCollision(noteId, date, rowAtPath?.id ?? 'unknown', doc, markdown, indexDb)
+    // DIFFERENT note means the date file is genuinely claimed by someone else.
+    const rowAtPath = getNoteCacheByPath(indexDb, relativePath)
+    if (rowAtPath && rowAtPath.id !== noteId) {
+      await handleJournalCollision(noteId, date, rowAtPath.id, doc, markdown, indexDb)
       return
     }
+
+    // File exists but there is NO cache row (index rebuild in progress, cache
+    // transiently empty) or the row is already ours. Do NOT spawn a shortid
+    // duplicate — adopt/merge into the existing date file under this noteId,
+    // mirroring the existing-cache-row branch above so on-disk content survives.
+    const existingRaw = await safeRead(journalPath)
+    const existing = existingRaw ? parseNote(existingRaw, journalPath).frontmatter : null
+
+    const mergedFrontmatter = mergeJournalFrontmatter(date, existing, doc)
+    const fileContent = serializeNote(mergedFrontmatter, markdown)
+
+    ignoredWrites.set(journalPath, Date.now())
+    await atomicWrite(journalPath, fileContent)
+
+    syncNoteToCache(
+      indexDb,
+      {
+        id: noteId,
+        path: relativePath,
+        fileContent,
+        frontmatter: mergedFrontmatter,
+        parsedContent: markdown,
+        title: rowAtPath?.title ?? path.basename(journalPath, '.md'),
+        createdAt: rowAtPath?.createdAt ?? utcNow(),
+        modifiedAt: utcNow(),
+        localOnly: rowAtPath?.localOnly ?? false,
+        emoji: rowAtPath?.emoji ?? null
+      },
+      { isNew: !rowAtPath }
+    )
+    void flushProjectionEvents()
+
+    log.info('Adopted existing journal file during rebuild', { noteId, date })
+    return
   }
 
-  const relativePath = toRelativePath(journalPath)
   const frontmatter = mergeJournalFrontmatter(date, null, doc)
   const fileContent = serializeNote(frontmatter, markdown)
 

@@ -21,7 +21,7 @@ import {
   getIndexDatabase,
   closeIndexDatabase
 } from '../database'
-import { parseNote } from './frontmatter'
+import { parseNote, type NoteFrontmatter } from './frontmatter'
 import { safeRead } from './file-ops'
 import { generateNoteId } from '../lib/id'
 import { normalizeRelativePath } from '../lib/paths'
@@ -143,6 +143,21 @@ async function indexFile(
 }
 
 /**
+ * Best-effort authored created date from a pre-diet file's frontmatter.
+ * Legacy vaults kept `created`/`date` as YAML keys (now plain user properties).
+ * Accept only a string that parses to a valid Date; return null otherwise.
+ */
+function authoredCreatedDate(frontmatter: NoteFrontmatter): string | null {
+  for (const key of ['created', 'date'] as const) {
+    const value = frontmatter[key]
+    if (typeof value === 'string' && !isNaN(new Date(value).getTime())) {
+      return value
+    }
+  }
+  return null
+}
+
+/**
  * Index a markdown file with full frontmatter support.
  */
 async function indexMarkdownFile(
@@ -158,19 +173,28 @@ async function indexMarkdownFile(
     return 'error'
   }
 
-  // Path unknown to the index cache (indexFile skips known paths). Prefer the
-  // canonical id from note_metadata (survives index rebuilds), else a fresh
-  // one. Dates from fs stats. The indexer never writes files.
+  // Path unknown to the index cache (indexFile skips known paths). note_metadata
+  // (data DB) is the source of truth for identity/emoji/localOnly/dates and
+  // survives index rebuilds — prefer its full row. Fall back to in-memory
+  // defaults only for a fresh data DB or first import of a pre-diet vault.
+  // The indexer never writes files.
   const stats = await stat(absolutePath).catch(() => null)
   const parsed = parseNote(content, relativePath, stats ?? undefined)
 
-  let canonicalId: string | undefined
+  let row: ReturnType<typeof getNoteMetadataByPath>
   try {
-    canonicalId = getNoteMetadataByPath(getDatabase(), relativePath)?.id
+    row = getNoteMetadataByPath(getDatabase(), relativePath)
   } catch {
-    // data DB not ready — fall back to a fresh id
+    // data DB not ready — fall back to parsed defaults
+    row = undefined
   }
-  const noteId = canonicalId ?? parsed.id
+
+  const noteId = row?.id ?? parsed.id
+  const emoji = row ? (row.emoji ?? null) : null
+  const localOnly = row ? (row.localOnly ?? false) : false
+  // Preserve the authored created date across rebuilds. Without a row, prefer a
+  // valid authored date from pre-diet frontmatter, else fs birthtime.
+  const createdAt = row?.createdAt ?? authoredCreatedDate(parsed.frontmatter) ?? parsed.created
 
   // Use syncNoteToCache for unified cache operations
   try {
@@ -183,7 +207,9 @@ async function indexMarkdownFile(
         frontmatter: parsed.frontmatter,
         parsedContent: parsed.content,
         title: parsed.title,
-        createdAt: parsed.created,
+        emoji,
+        localOnly,
+        createdAt,
         modifiedAt: parsed.modified
       },
       { isNew: true }

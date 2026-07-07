@@ -341,6 +341,41 @@ describe('crdt writeback', () => {
     })
   })
 
+  it('adopts an existing journal date file when the cache is empty during a rebuild', async () => {
+    mocks.getNoteCacheById.mockReturnValue(undefined)
+    mocks.fileExists.mockResolvedValue(true)
+    // Cache transiently empty during rebuild: no row at path, file still on disk
+    mocks.getNoteCacheByPath.mockReturnValue(undefined)
+    mocks.safeRead.mockResolvedValue('---\ndate: 2026-01-05\n---\nexisting journal body')
+    mocks.parseNote.mockReturnValue({
+      frontmatter: { date: '2026-01-05', tags: ['kept'] },
+      content: 'existing journal body'
+    })
+
+    scheduleWriteback('j2026-01-05', makeDoc('Rebuild'))
+    await vi.advanceTimersByTimeAsync(500)
+
+    // No shortid duplicate written
+    expect(mocks.atomicWrite).not.toHaveBeenCalledWith(
+      expect.stringContaining('2026-01-05-j2026-01'),
+      expect.anything()
+    )
+    // Merges into the canonical date file under the incoming note id
+    expect(mocks.atomicWrite).toHaveBeenCalledWith(
+      '/vault/journal/2026-01-05.md',
+      expect.stringContaining('updated markdown')
+    )
+    expect(mocks.syncNoteToCache).toHaveBeenCalledWith(
+      { kind: 'index-db' },
+      expect.objectContaining({ id: 'j2026-01-05', path: 'journal/2026-01-05.md' }),
+      { isNew: true }
+    )
+    // Not treated as a conflict
+    expect(mocks.sent).not.toContainEqual(
+      expect.objectContaining({ channel: 'sync:journal-conflict' })
+    )
+  })
+
   it('deletes synced note files, closes CRDT docs, and emits note or journal deletion events', async () => {
     await handleSyncDeletion('note-1')
 

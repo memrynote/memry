@@ -460,5 +460,80 @@ Copied note`
         .get()
       expect(after).toEqual(expect.objectContaining({ id: before?.id, path: relativePath }))
     })
+
+    it('preserves emoji, localOnly, and authored createdAt from note_metadata across rebuilds', async () => {
+      const notePath = createTestNote(tempVault, {
+        title: 'Sidecar Note',
+        content: 'Sidecar-owned state should survive rebuilds'
+      })
+      const relativePath = path.relative(tempVault.path, notePath).replace(/\\/g, '/')
+
+      await indexer.indexVault(tempVault.path)
+
+      // Simulate sidecar-owned state on the surviving data DB row
+      const authoredCreated = '2020-01-02T03:04:05.000Z'
+      dataDb.db
+        .update(noteMetadata)
+        .set({ emoji: '🌱', localOnly: true, createdAt: authoredCreated })
+        .where(eq(noteMetadata.path, relativePath))
+        .run()
+
+      // Simulate the rebuild deleting index.db: wipe the index cache tables
+      vi.spyOn(database, 'runIndexMigrations').mockImplementation(() => {
+        testDb.db.delete(noteTags).run()
+        testDb.db.delete(noteLinks).run()
+        testDb.db.delete(noteCache).run()
+      })
+
+      await indexer.rebuildIndex(tempVault.path)
+
+      const cacheRow = testDb.db
+        .select()
+        .from(noteCache)
+        .where(eq(noteCache.path, relativePath))
+        .get()
+      expect(cacheRow?.emoji).toBe('🌱')
+      expect(cacheRow?.localOnly).toBe(true)
+      expect(cacheRow?.createdAt).toBe(authoredCreated)
+    })
+  })
+
+  // ==========================================================================
+  // Fix #5: authored created date fallback for pre-diet files (no metadata row)
+  // ==========================================================================
+
+  describe('authored created date fallback', () => {
+    it('adopts a valid authored created date from frontmatter when no metadata row exists', async () => {
+      const notePath = path.join(tempVault.notesDir, 'Legacy.md')
+      fs.writeFileSync(notePath, '---\ncreated: 2019-05-06T07:08:09.000Z\n---\n\nLegacy body')
+      const relativePath = path.relative(tempVault.path, notePath).replace(/\\/g, '/')
+
+      await indexer.indexVault(tempVault.path)
+
+      const cacheRow = testDb.db
+        .select()
+        .from(noteCache)
+        .where(eq(noteCache.path, relativePath))
+        .get()
+      expect(cacheRow?.createdAt).toBe('2019-05-06T07:08:09.000Z')
+    })
+
+    it('falls back to fs birthtime when no authored date is present or valid', async () => {
+      const notePath = path.join(tempVault.notesDir, 'Invalid.md')
+      fs.writeFileSync(notePath, '---\ncreated: not-a-date\n---\n\nBody')
+      const relativePath = path.relative(tempVault.path, notePath).replace(/\\/g, '/')
+
+      await indexer.indexVault(tempVault.path)
+
+      const cacheRow = testDb.db
+        .select()
+        .from(noteCache)
+        .where(eq(noteCache.path, relativePath))
+        .get()
+      // Invalid frontmatter value is rejected; falls back to a valid fs/now date
+      expect(cacheRow?.createdAt).not.toBe('not-a-date')
+      expect(cacheRow?.createdAt).toBeDefined()
+      expect(isNaN(new Date(cacheRow?.createdAt as string).getTime())).toBe(false)
+    })
   })
 })

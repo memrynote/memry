@@ -41,15 +41,62 @@ const DUMP_OPTIONS: DumpOptions = {
   styles: { '!!null': 'empty' } // empty property => `key:` like Obsidian
 }
 
+/**
+ * Normalize values for emit — mirrors the desktop emitter
+ * (apps/desktop/src/main/vault/frontmatter-emit.ts). Date instances become
+ * Obsidian's date formats: YYYY-MM-DD, or YYYY-MM-DDTHH:MM:SS (no millis, no Z)
+ * when there is a time component. Uses LOCAL components so a Date at local
+ * midnight in a non-UTC zone is not misclassified as a datetime (and shifted a
+ * day). Recurses arrays/objects.
+ */
+function normalizeValue(value: unknown): unknown {
+  if (value instanceof Date) {
+    const pad = (n: number): string => String(n).padStart(2, '0')
+    const year = value.getFullYear()
+    const month = pad(value.getMonth() + 1)
+    const day = pad(value.getDate())
+    const dateOnly =
+      value.getHours() === 0 &&
+      value.getMinutes() === 0 &&
+      value.getSeconds() === 0 &&
+      value.getMilliseconds() === 0
+    if (dateOnly) return `${year}-${month}-${day}`
+    const hours = pad(value.getHours())
+    const minutes = pad(value.getMinutes())
+    const seconds = pad(value.getSeconds())
+    return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`
+  }
+  if (Array.isArray(value)) return value.map(normalizeValue)
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([k, v]) => [k, normalizeValue(v)])
+    )
+  }
+  return value
+}
+
 export function writeMarkdownNote(frontmatter: Record<string, unknown>, content: string): string {
   // One key per dump call: keeps entry order (no JS integer-key hoisting)
+  // LIMITATION (#8): Object.entries still hoists integer-like keys (e.g. a
+  // property named `2024`) to the front — shared with the desktop emitter.
   const entries = Object.entries(frontmatter).filter(([, v]) => v !== undefined)
   // No keys → no YAML block at all
   if (entries.length === 0) {
     return content.trim()
   }
-  const body = entries.map(([key, value]) => dump({ [key]: value }, DUMP_OPTIONS)).join('')
-  return `---\n${body}---\n${content.trim()}`.trimEnd()
+  const body = entries
+    .map(([key, value]) => {
+      const normalized = normalizeValue(value)
+      const dumped = dump({ [key]: normalized }, DUMP_OPTIONS)
+      // js-yaml emits `key: ` (trailing space) for the empty-null style; only
+      // strip in that case. The `m` flag would otherwise eat significant
+      // trailing spaces on interior lines of a `|-` block scalar.
+      return normalized === null ? dumped.replace(/[ \t]+$/gm, '') : dumped
+    })
+    .join('')
+  // Strip only trailing newlines (not all whitespace) to match desktop's
+  // serializeNote byte-for-byte.
+  return `---\n${body}---\n${content.trim()}`.replace(/(?:\r?\n)+$/g, '')
 }
 
 const RESERVED_FRONTMATTER_KEYS = new Set(['tags', 'aliases'])
@@ -59,7 +106,8 @@ const RESERVED_FRONTMATTER_KEYS = new Set(['tags', 'aliases'])
  * legacy nested `properties:` mapping merges in after them (top-level wins).
  */
 export function extractNoteProperties(
-  frontmatter: Record<string, unknown>
+  frontmatter: Record<string, unknown>,
+  reserved: ReadonlySet<string> = RESERVED_FRONTMATTER_KEYS
 ): Record<string, unknown> {
   const nested =
     frontmatter.properties &&
@@ -71,14 +119,14 @@ export function extractNoteProperties(
   const properties: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(frontmatter)) {
     if (key === 'properties' && nested) continue
-    if (!RESERVED_FRONTMATTER_KEYS.has(key) && value !== undefined) {
+    if (!reserved.has(key) && value !== undefined) {
       properties[key] = value
     }
   }
 
   if (nested) {
     for (const [key, value] of Object.entries(nested)) {
-      if (!(key in properties) && !RESERVED_FRONTMATTER_KEYS.has(key) && value !== undefined) {
+      if (!(key in properties) && !reserved.has(key) && value !== undefined) {
         properties[key] = value
       }
     }
@@ -95,7 +143,8 @@ export function extractNoteProperties(
  */
 export function applyPropertiesToFrontmatter(
   frontmatter: Record<string, unknown>,
-  properties: Record<string, unknown>
+  properties: Record<string, unknown>,
+  reserved: ReadonlySet<string> = RESERVED_FRONTMATTER_KEYS
 ): Record<string, unknown> {
   const nested =
     frontmatter.properties &&
@@ -103,13 +152,11 @@ export function applyPropertiesToFrontmatter(
     !Array.isArray(frontmatter.properties)
       ? (frontmatter.properties as Record<string, unknown>)
       : undefined
-  const remaining = new Set(
-    Object.keys(properties).filter((key) => !RESERVED_FRONTMATTER_KEYS.has(key))
-  )
+  const remaining = new Set(Object.keys(properties).filter((key) => !reserved.has(key)))
   const result: Record<string, unknown> = {}
 
   for (const [key, value] of Object.entries(frontmatter)) {
-    if (RESERVED_FRONTMATTER_KEYS.has(key)) {
+    if (reserved.has(key)) {
       result[key] = value
       continue
     }

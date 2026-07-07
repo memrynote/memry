@@ -127,6 +127,10 @@ function stripTrailingNewlines(value: string): string {
  * @returns Complete markdown file content
  */
 export function serializeNote(frontmatter: NoteFrontmatter, content: string): string {
+  // LIMITATION (#8): Object.entries hoists integer-like keys (e.g. a property
+  // named `2024`) to the front in ascending order, so those keys ghost-reorder
+  // on every edit. A full fix needs an ordered frontmatter representation
+  // (array/Map) carried from parse through emit — out of scope here.
   const entries = Object.entries(frontmatter).filter(([, v]) => v !== undefined)
 
   // Explicit guard: no keys → no YAML block
@@ -333,6 +337,10 @@ export function applyPropertiesToFrontmatter(
 ): Record<string, unknown> {
   const nested = legacyNestedProperties(frontmatter)
   const remaining = new Set(Object.keys(properties).filter((key) => !reserved.has(key)))
+  // LIMITATION (#8): the `result` object cannot preserve integer-like key
+  // position — Object.entries enumerates keys like `2024` first, ascending,
+  // so they ghost-reorder to the top on emit. A full fix needs an ordered
+  // frontmatter representation (array/Map) end to end — out of scope here.
   const result: Record<string, unknown> = {}
 
   for (const [key, value] of Object.entries(frontmatter)) {

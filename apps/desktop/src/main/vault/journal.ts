@@ -8,6 +8,7 @@
  * @module vault/journal
  */
 
+import fs from 'fs/promises'
 import path from 'path'
 import matter from 'gray-matter'
 import { createNoteContentStore } from '@memry/storage-vault'
@@ -115,9 +116,14 @@ export function getJournalPath(date: string): string {
  * Parse a journal markdown file into frontmatter and content.
  * @param rawContent - Raw file content including frontmatter
  * @param date - Date in YYYY-MM-DD format (for generating missing fields)
+ * @param stats - Optional filesystem stats; sources created/modified timestamps
  * @returns Parsed journal entry
  */
-export function parseJournalEntry(rawContent: string, date: string): ParsedJournalEntry {
+export function parseJournalEntry(
+  rawContent: string,
+  date: string,
+  stats?: { birthtime?: Date; mtime?: Date }
+): ParsedJournalEntry {
   const { data, content } = matter(rawContent, OBSIDIAN_MATTER_OPTIONS)
   const hadFrontmatter = Object.keys(data).length > 0
   const now = new Date().toISOString()
@@ -133,8 +139,8 @@ export function parseJournalEntry(rawContent: string, date: string): ParsedJourn
     hadFrontmatter,
     id: generateJournalId(date),
     date,
-    created: now,
-    modified: now
+    created: stats?.birthtime?.toISOString() ?? now,
+    modified: stats?.mtime?.toISOString() ?? now
   }
 }
 
@@ -229,13 +235,16 @@ export function extractJournalProperties(
  */
 export async function readJournalEntry(date: string): Promise<JournalEntry | null> {
   const store = getContentStore()
-  const rawContent = await store.read(store.getJournalRelativePath(date))
+  const relativePath = store.getJournalRelativePath(date)
+  const rawContent = await store.read(relativePath)
 
   if (!rawContent) {
     return null
   }
 
-  const parsed = parseJournalEntry(rawContent, date)
+  const absPath = store.resolve(relativePath)
+  const stats = await fs.stat(absPath).catch(() => null)
+  const parsed = parseJournalEntry(rawContent, date, stats ?? undefined)
   const wordCount = countWords(parsed.content)
   const characterCount = parsed.content.length
 

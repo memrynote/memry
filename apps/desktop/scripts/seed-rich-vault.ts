@@ -4,11 +4,14 @@
  * tasks, projects, inbox items, home widgets (one of every kind) — with icons
  * on tags, folders and notes.
  *
- * Strategy: notes/journals are markdown files (the app's indexer builds the
- * search/index.db on first open and pulls `emoji`/tags/properties straight from
- * frontmatter, so we never touch index.db). Everything that isn't derivable
- * from a file — folder icons, tag colors/icons, the property schema, tasks,
- * projects, calendar, inbox, the home board, bookmarks — goes into data.db.
+ * Strategy: notes/journals are markdown files carrying USER keys only (tags +
+ * properties; journals keep `date`) — no Memry keys (id/title/emoji/created/
+ * modified). Those live in the `note_metadata` sidecar (data.db); the indexer
+ * adopts them by path on first open and builds search/index.db (we never touch
+ * index.db). Files are serialized with the shared Obsidian-style emitter so
+ * they are byte-identical to app output (no first-save reflow). Everything
+ * else — folder icons, tag colors/icons, the property schema, tasks, projects,
+ * calendar, inbox, the home board, bookmarks — goes into data.db.
  *
  * Usage:
  *   pnpm --filter @memry/desktop seed:rich            # ~/MemryRichVault
@@ -28,7 +31,7 @@ import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
 import { customAlphabet } from 'nanoid'
-import matter from 'gray-matter'
+import { writeMarkdownNote } from '../../../packages/app-core/src/markdown.ts'
 import * as schema from '@memry/db-schema/data-schema'
 import { folderConfigs } from '@memry/db-schema/schema/folder-configs'
 
@@ -52,7 +55,7 @@ const dataDbPath = path.join(memryDir, 'data.db')
 // ---------------------------------------------------------------------------
 
 const id12 = customAlphabet('0123456789abcdefghijklmnopqrstuvwxyz', 12)
-const noteId = () => id12() // valid 12-char note id (kept in frontmatter)
+const noteId = () => id12() // valid 12-char note id (stored in note_metadata, adopted by path)
 const id = (prefix: string) => `${prefix}_${id12()}`
 
 const now = new Date()
@@ -111,7 +114,7 @@ fs.writeFileSync(
 )
 
 // ---------------------------------------------------------------------------
-// notes (markdown files w/ frontmatter: emoji icon + tags + properties)
+// notes (markdown files w/ user frontmatter: tags + properties; emoji in sidecar)
 // ---------------------------------------------------------------------------
 
 interface NoteSeed {
@@ -124,21 +127,42 @@ interface NoteSeed {
   body: string
 }
 
+// note_metadata (sidecar) rows accumulated while writing files; id/emoji/dates
+// live here, not in the markdown, and the indexer adopts them by path on open.
+interface NoteMetaRow {
+  id: string
+  path: string
+  title: string
+  emoji: string | null
+  journalDate: string | null
+  createdAt: string
+  modifiedAt: string
+}
+const noteMeta: NoteMetaRow[] = []
+
 function writeNote(n: NoteSeed): void {
   const created = ts(addDays(-Math.floor(Math.random() * 30) - 1))
+  const relativePath = `${n.folder}/${n.title}.md`
+  // User keys only — no Memry keys in files (frontmatter diet)
   const front: Record<string, unknown> = {
-    id: n.nid,
-    title: n.title,
-    emoji: n.emoji,
-    created,
-    modified: nowIso,
-    tags: n.tags,
+    ...(n.tags.length > 0 ? { tags: n.tags } : {}),
     ...n.props // top-level non-reserved keys = properties
   }
   const dir = path.join(vaultPath, n.folder)
   fs.mkdirSync(dir, { recursive: true })
   const file = path.join(dir, `${n.title}.md`)
-  fs.writeFileSync(file, matter.stringify(`\n${n.body}\n`, front))
+  fs.writeFileSync(file, writeMarkdownNote(front, n.body) + '\n')
+  const mtime = new Date(nowIso)
+  fs.utimesSync(file, mtime, mtime)
+  noteMeta.push({
+    id: n.nid,
+    path: relativePath,
+    title: n.title,
+    emoji: n.emoji,
+    journalDate: null,
+    createdAt: created,
+    modifiedAt: nowIso
+  })
 }
 
 // stable ids so tasks/bookmarks can reference notes
@@ -322,17 +346,21 @@ const journals: Array<{ offset: number; body: string; emoji: string }> = [
 for (const j of journals) {
   const d = addDays(j.offset)
   const date = isoDate(d)
-  fs.writeFileSync(
-    path.join(vaultPath, 'journal', `${date}.md`),
-    matter.stringify(`\n${j.body}\n`, {
-      id: noteId(),
-      title: date,
-      emoji: j.emoji,
-      created: ts(d),
-      modified: ts(d),
-      tags: []
-    })
-  )
+  const created = ts(d)
+  const file = path.join(vaultPath, 'journal', `${date}.md`)
+  // User keys only — journals keep `date`; id/emoji live in note_metadata
+  fs.writeFileSync(file, writeMarkdownNote({ date }, j.body) + '\n')
+  const mtime = new Date(created)
+  fs.utimesSync(file, mtime, mtime)
+  noteMeta.push({
+    id: noteId(),
+    path: `journal/${date}.md`,
+    title: date,
+    emoji: j.emoji,
+    journalDate: date,
+    createdAt: created,
+    modifiedAt: created
+  })
 }
 
 // ---------------------------------------------------------------------------
@@ -345,6 +373,23 @@ raw.pragma('foreign_keys = ON')
 raw.pragma('busy_timeout = 5000')
 const db = drizzle(raw, { schema })
 migrate(db, { migrationsFolder: dataMigrations })
+
+// --- note_metadata (sidecar: canonical id/emoji/dates for every file) ---
+if (noteMeta.length > 0) {
+  db.insert(schema.noteMetadata)
+    .values(
+      noteMeta.map((m) => ({
+        id: m.id,
+        path: m.path,
+        title: m.title,
+        emoji: m.emoji,
+        journalDate: m.journalDate,
+        createdAt: m.createdAt,
+        modifiedAt: m.modifiedAt
+      }))
+    )
+    .run()
+}
 
 // --- folders (icons) ---
 const folders: Array<[string, string]> = [
@@ -415,7 +460,7 @@ for (const p of propertyDefs) {
 }
 fs.writeFileSync(
   path.join(memryDir, 'properties.md'),
-  matter.stringify('', { properties: selectLike })
+  writeMarkdownNote({ properties: selectLike }, '') + '\n'
 )
 
 // --- projects + statuses ---
@@ -851,6 +896,7 @@ raw.close()
 const counts = {
   notes: notes.length,
   journals: journals.length,
+  noteMetadata: noteMeta.length,
   folders: folders.length,
   tags: tags.length,
   properties: propertyDefs.length,

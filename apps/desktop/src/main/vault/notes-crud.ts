@@ -37,6 +37,7 @@ import {
 } from '@main/database/queries/notes'
 import { folderConfigs } from '@memry/db-schema/schema/folder-configs'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
+import { getNoteMetadataByPath } from '@memry/storage-data'
 import { getDatabase, getIndexDatabase } from '../database'
 import { NoteError, NoteErrorCode } from '../lib/errors'
 import { generateNoteId } from '../lib/id'
@@ -401,34 +402,52 @@ export async function getNoteByPath(notePath: string): Promise<Note | null> {
   const stats = await fs.stat(absolutePath).catch(() => null)
   const parsed = parseNote(fileContent, notePath, stats ?? undefined)
 
+  // note_metadata survives index rebuilds and owns identity/emoji/localOnly/
+  // dates. path is NOT NULL UNIQUE, so minting a fresh id here would collide
+  // with the existing row after a rebuild — adopt the row when present.
+  let row: ReturnType<typeof getNoteMetadataByPath>
+  try {
+    row = getNoteMetadataByPath(getDatabase(), notePath)
+  } catch {
+    // data DB not ready — fall back to parsed defaults
+    row = undefined
+  }
+
+  const noteId = row?.id ?? parsed.id
+  const emoji = row ? (row.emoji ?? null) : null
+  const localOnly = row ? (row.localOnly ?? false) : false
+  const createdAt = row?.createdAt ?? parsed.created
+
   const syncResult = syncNoteToCache(
     db,
     {
-      id: parsed.id,
+      id: noteId,
       path: notePath,
       fileContent,
       frontmatter: parsed.frontmatter,
       parsedContent: parsed.content,
       title: parsed.title,
-      createdAt: parsed.created,
+      emoji,
+      localOnly,
+      createdAt,
       modifiedAt: parsed.modified
     },
     { isNew: true }
   )
 
   return {
-    id: parsed.id,
+    id: noteId,
     path: notePath,
     title: parsed.title,
     content: parsed.content,
     frontmatter: parsed.frontmatter,
-    created: new Date(parsed.created),
+    created: new Date(createdAt),
     modified: new Date(parsed.modified),
     tags: syncResult.tags,
     aliases: parsed.frontmatter.aliases ?? [],
     wordCount: syncResult.wordCount,
     properties: syncResult.properties,
-    emoji: syncResult.emoji
+    emoji
   }
 }
 
@@ -502,8 +521,14 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
     delete merged.tags
   }
 
-  // Properties as top-level keys; legacy nested `properties:` blocks flatten here
-  const newFrontmatter = applyPropertiesToFrontmatter(merged, newProperties) as NoteFrontmatter
+  // Properties as top-level keys; legacy nested `properties:` blocks flatten here.
+  // When the caller isn't editing properties (content-only or tags-only save),
+  // keep `merged` verbatim so custom/unknown top-level keys survive — only
+  // reconstruct via applyPropertiesToFrontmatter for explicit property edits.
+  const newFrontmatter =
+    input.properties === undefined
+      ? merged
+      : (applyPropertiesToFrontmatter(merged, input.properties) as NoteFrontmatter)
 
   const fileContent = serializeNote(newFrontmatter, newContent)
   const absolutePath = toAbsolutePath(existing.path)

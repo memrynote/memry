@@ -57,13 +57,35 @@ describe('emitFrontmatterBlock', () => {
     expect(lines[3]).toContain('beta')
   })
 
-  it('normalizes Date values to Obsidian date strings', () => {
-    expect(emitFrontmatterBlock([['due', new Date('2026-07-05T00:00:00.000Z')]])).toBe(
+  it('normalizes Date values to Obsidian date strings (local components)', () => {
+    // Local-constructed dates are TZ-independent: local midnight => date-only,
+    // otherwise a local datetime with no millis and no Z.
+    expect(emitFrontmatterBlock([['due', new Date(2026, 6, 5)]])).toBe(
       '---\ndue: 2026-07-05\n---\n'
     )
-    expect(emitFrontmatterBlock([['at', new Date('2026-07-05T09:30:00.000Z')]])).toBe(
+    expect(emitFrontmatterBlock([['at', new Date(2026, 6, 5, 9, 30, 0)]])).toBe(
       '---\nat: 2026-07-05T09:30:00\n---\n'
     )
+  })
+
+  it('emits YYYY-MM-DD for a Date at local midnight (no day shift)', () => {
+    // new Date(y, m, d) is local midnight; in a non-UTC zone its UTC time is
+    // non-zero, but local components keep it date-only on the correct day.
+    expect(emitFrontmatterBlock([['due', new Date(2026, 6, 5)]])).toBe(
+      '---\ndue: 2026-07-05\n---\n'
+    )
+  })
+
+  it('preserves significant trailing spaces on interior lines of a |- block scalar', () => {
+    const value = 'alpha   \nbeta'
+    const out = emitFrontmatterBlock([['body', value]])
+    expect(out).toBe('---\nbody: |-\n  alpha   \n  beta\n---\n')
+    const { data } = matter(out + 'x\n', OBSIDIAN_MATTER_OPTIONS)
+    expect(data.body).toBe(value)
+  })
+
+  it('emits an empty/null property as `key:` with no trailing space', () => {
+    expect(emitFrontmatterBlock([['notes', null]])).toBe('---\nnotes:\n---\n')
   })
 
   it('round-trips through gray-matter parse + extractProperties', () => {

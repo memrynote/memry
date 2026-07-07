@@ -1,6 +1,6 @@
 import { writeFileSync, mkdirSync, utimesSync } from 'fs'
 import { dirname, resolve } from 'path'
-import matter from 'gray-matter'
+import { writeMarkdownNote } from '../../../../packages/app-core/src/markdown.ts'
 
 export interface NoteFile {
   /** Relative path inside the vault (e.g. "movies/Dune.md") */
@@ -14,13 +14,11 @@ export interface NoteFile {
 }
 
 function serialize(frontmatter: Record<string, unknown>, body: string): string {
-  const cleanFrontmatter = Object.fromEntries(
-    Object.entries(frontmatter).filter(([, v]) => v !== undefined)
-  )
-  if (Object.keys(cleanFrontmatter).length === 0) {
-    return body.trim() + '\n'
-  }
-  return matter.stringify(body.trim(), cleanFrontmatter).replace(/(?:\r?\n)+$/g, '') + '\n'
+  // Use the runtime Obsidian-style emitter so seeded files are byte-identical
+  // to what the app writes (no quoted YAML 1.1 dates -> no spurious watcher
+  // diff on first save). writeMarkdownNote filters undefined keys and emits a
+  // bare body when none remain; keep the seed's trailing-newline convention.
+  return writeMarkdownNote(frontmatter, body) + '\n'
 }
 
 function writeNoteFile(vaultRoot: string, file: NoteFile): void {
