@@ -461,4 +461,57 @@ Copied note`
       expect(after).toEqual(expect.objectContaining({ id: before?.id, path: relativePath }))
     })
   })
+
+  // ==========================================================================
+  // Spec 08: .obsidian / .canvas / .base / binary read-only safety
+  // ==========================================================================
+
+  describe('obsidian read-only safety', () => {
+    it('indexing and a note edit never rewrite .obsidian, .canvas, .base or binaries', async () => {
+      const obsidianDir = path.join(tempVault.path, '.obsidian')
+      fs.mkdirSync(obsidianDir, { recursive: true })
+
+      const protectedFiles: Record<string, string> = {
+        [path.join(obsidianDir, 'app.json')]: '{ "useMarkdownLinks": true }',
+        [path.join(obsidianDir, 'workspace.json')]: '{ "main": { "churn": 1 } }',
+        [path.join(tempVault.path, 'board.canvas')]: '{"nodes":[],"edges":[]}',
+        [path.join(tempVault.path, 'db.base')]: 'filters: {}'
+      }
+      for (const [filePath, content] of Object.entries(protectedFiles)) {
+        fs.writeFileSync(filePath, content)
+      }
+      const pngPath = path.join(tempVault.path, 'img.png')
+      const pngBytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3])
+      fs.writeFileSync(pngPath, pngBytes)
+
+      const allProtected = [...Object.keys(protectedFiles), pngPath]
+      const mtimesBefore = allProtected.map((p) => fs.statSync(p).mtimeMs)
+
+      const notePath = path.join(tempVault.notesDir, 'note.md')
+      fs.writeFileSync(notePath, '# Hello\n')
+
+      await indexer.indexVault(tempVault.path)
+
+      // Simulate a user note edit followed by reindex (update path)
+      fs.writeFileSync(notePath, '# Hello edited\n')
+      await indexer.indexVault(tempVault.path)
+
+      // Byte-identical, mtimes untouched
+      for (const [filePath, content] of Object.entries(protectedFiles)) {
+        expect(fs.readFileSync(filePath, 'utf-8')).toBe(content)
+      }
+      expect(fs.readFileSync(pngPath)).toEqual(pngBytes)
+      expect(allProtected.map((p) => fs.statSync(p).mtimeMs)).toEqual(mtimesBefore)
+
+      // Cache: no .obsidian paths, .canvas/.base never indexed, png metadata-only
+      const paths = testDb.db
+        .select()
+        .from(noteCache)
+        .all()
+        .map((row) => row.path)
+      expect(paths.some((p) => p.includes('.obsidian'))).toBe(false)
+      expect(paths.some((p) => p.endsWith('.canvas') || p.endsWith('.base'))).toBe(false)
+      expect(paths).toContain('img.png')
+    })
+  })
 })

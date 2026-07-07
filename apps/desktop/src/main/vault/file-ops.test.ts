@@ -8,6 +8,7 @@ import * as fs from 'fs'
 import * as path from 'path'
 import * as os from 'os'
 import {
+  assertVaultWritePath,
   atomicWrite,
   safeRead,
   readRequired,
@@ -628,5 +629,51 @@ describe('generateUniquePathSync', () => {
 
     // #then
     expect(result).toBe(path.join(tempDir.path, 'note 3.md'))
+  })
+})
+
+// ============================================================================
+// Protected Path Guard (spec 08)
+// ============================================================================
+
+describe('assertVaultWritePath', () => {
+  let tempDir: TestDir
+
+  beforeEach(() => {
+    tempDir = createTempDir()
+  })
+
+  afterEach(() => {
+    tempDir.cleanup()
+  })
+
+  it('allows normal vault paths', () => {
+    expect(() => assertVaultWritePath(path.join(tempDir.path, 'notes', 'a.md'))).not.toThrow()
+  })
+
+  it('atomicWrite refuses paths inside .obsidian', async () => {
+    const target = path.join(tempDir.path, '.obsidian', 'app.json')
+
+    await expect(atomicWrite(target, '{}')).rejects.toMatchObject({
+      code: 'NOTE_INVALID_PATH'
+    })
+    expect(fs.existsSync(target)).toBe(false)
+  })
+
+  it('deleteFile refuses paths inside .trash', async () => {
+    const trashDir = path.join(tempDir.path, '.trash')
+    fs.mkdirSync(trashDir, { recursive: true })
+    const target = path.join(trashDir, 'note.md')
+    fs.writeFileSync(target, 'content')
+
+    await expect(deleteFile(target)).rejects.toMatchObject({
+      code: 'NOTE_INVALID_PATH'
+    })
+    expect(fs.readFileSync(target, 'utf-8')).toBe('content')
+  })
+
+  it('catches traversal into protected folders', () => {
+    const sneaky = path.join(tempDir.path, 'notes', '..', '.obsidian', 'app.json')
+    expect(() => assertVaultWritePath(sneaky)).toThrow(NoteError)
   })
 })

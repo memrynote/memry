@@ -262,6 +262,7 @@ export function generateContentHash(content: string): string {
 // ============================================================================
 
 import type { PropertyType } from '@memry/contracts/property-types'
+import { getObsidianPropertyType } from './obsidian-config'
 
 /**
  * Reserved frontmatter keys that are NOT properties — only the two keys with
@@ -325,11 +326,19 @@ function isURL(value: string): boolean {
  * T008: Used when syncing externally-edited properties that don't have
  * a pre-existing type definition.
  *
- * @param _name - Property name (unused, kept for API compatibility)
+ * Inference order: `.obsidian/types.json` by property name (loaded on vault
+ * open via the obsidian-config holder) → value-based inference.
+ *
+ * @param name - Property name, matched against Obsidian's types.json
  * @param value - Property value to infer type from
  * @returns Inferred property type
  */
-export function inferPropertyType(_name: string, value: unknown): PropertyType {
+export function inferPropertyType(name: string, value: unknown): PropertyType {
+  const obsidianType = getObsidianPropertyType(name)
+  if (obsidianType) {
+    return obsidianType
+  }
+
   // Boolean -> checkbox
   if (typeof value === 'boolean') {
     return 'checkbox'

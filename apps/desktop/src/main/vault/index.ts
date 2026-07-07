@@ -29,6 +29,7 @@ import {
   getIndexDbPath
 } from './init'
 import { setJournalConfig } from './journal-config'
+import { loadObsidianPropertyTypes } from './obsidian-config'
 import {
   initDatabase,
   initIndexDatabase,
@@ -281,6 +282,10 @@ async function openVault(vaultPath: string): Promise<void> {
   // holder) resolve the real config.json instead of the closed-vault fallback —
   // otherwise the initial index uses default journal config + empty excludes.
   updateStatus({ isIndexing: true, indexProgress: 0, path: vaultPath })
+
+  // Load Obsidian property types (.obsidian/types.json) before indexing so
+  // property type inference sees them during the initial index.
+  loadObsidianPropertyTypes(vaultPath)
 
   try {
     if (indexHealth !== 'healthy') {
@@ -601,6 +606,7 @@ export async function reindex(): Promise<void> {
   updateStatus({ isIndexing: true, indexProgress: 0 })
 
   try {
+    loadObsidianPropertyTypes(currentStatus.path)
     await indexVault(currentStatus.path)
     updateStatus({ isIndexing: false, indexProgress: 100 })
   } catch (error) {

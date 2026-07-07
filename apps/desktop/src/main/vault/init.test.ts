@@ -394,3 +394,83 @@ describe('countMarkdownFiles', () => {
     expect(() => countMarkdownFiles(tempDir.path)).not.toThrow()
   })
 })
+
+// ============================================================================
+// Obsidian Seeding (spec 08)
+// ============================================================================
+
+describe('initVault Obsidian seeding', () => {
+  let tempDir: TestDir
+
+  beforeEach(() => {
+    tempDir = createTempDir('init-obsidian-')
+  })
+
+  afterEach(() => {
+    tempDir.cleanup()
+  })
+
+  function writeDailyNotes(config: Record<string, unknown>): void {
+    const obsidianDir = path.join(tempDir.path, '.obsidian')
+    fs.mkdirSync(obsidianDir, { recursive: true })
+    fs.writeFileSync(path.join(obsidianDir, 'daily-notes.json'), JSON.stringify(config))
+  }
+
+  it('seeds journal folder and format from daily-notes.json on first init', () => {
+    writeDailyNotes({ folder: 'Daily Notes', format: 'DD-MM-YYYY' })
+
+    initVault(tempDir.path)
+
+    const config = readVaultConfig(tempDir.path)
+    expect(config.journalFolder).toBe('Daily Notes')
+    expect(config.journalDateFormat).toBe('DD-MM-YYYY')
+    // Seeded folder is created instead of the default one
+    expect(fs.existsSync(path.join(tempDir.path, 'Daily Notes'))).toBe(true)
+    expect(fs.existsSync(path.join(tempDir.path, 'journal'))).toBe(false)
+  })
+
+  it('keeps defaults when there is no .obsidian folder', () => {
+    initVault(tempDir.path)
+
+    const config = readVaultConfig(tempDir.path)
+    expect(config.journalFolder).toBe('journal')
+    expect(config.journalDateFormat).toBe('YYYY-MM-DD')
+    expect(fs.existsSync(path.join(tempDir.path, 'journal'))).toBe(true)
+  })
+
+  it('rejects a format that creates subfolders, keeps the seeded folder', () => {
+    writeDailyNotes({ folder: 'daily', format: 'YYYY/MM/DD' })
+
+    initVault(tempDir.path)
+
+    const config = readVaultConfig(tempDir.path)
+    expect(config.journalFolder).toBe('daily')
+    expect(config.journalDateFormat).toBe('YYYY-MM-DD')
+  })
+
+  it('rejects a format that does not round-trip', () => {
+    writeDailyNotes({ format: 'dddd, MMMM Do' })
+
+    initVault(tempDir.path)
+
+    expect(readVaultConfig(tempDir.path).journalDateFormat).toBe('YYYY-MM-DD')
+  })
+
+  it('rejects unsafe folders (absolute or parent-escaping)', () => {
+    writeDailyNotes({ folder: '../outside' })
+    initVault(tempDir.path)
+    expect(readVaultConfig(tempDir.path).journalFolder).toBe('journal')
+  })
+
+  it('never overwrites an existing config on a second init', () => {
+    initVault(tempDir.path)
+    writeVaultConfig(tempDir.path, { journalFolder: 'my-journal' })
+    writeDailyNotes({ folder: 'Daily Notes', format: 'DD-MM-YYYY' })
+
+    initVault(tempDir.path)
+
+    const config = readVaultConfig(tempDir.path)
+    expect(config.journalFolder).toBe('my-journal')
+    expect(config.journalDateFormat).toBe('YYYY-MM-DD')
+  })
+})
