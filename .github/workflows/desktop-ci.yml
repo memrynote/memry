@@ -207,6 +207,80 @@ jobs:
           path: apps/desktop/test-results/
           if-no-files-found: ignore
 
+  e2e-smoke-windows:
+    name: Electron E2E smoke (Windows)
+    # Diagnostic job: intentionally ungated so it runs on the PR (the ubuntu
+    # e2e-smoke only runs on push to main). Goal is to see which E2E specs
+    # pass/fail on Windows before deciding on a permanent Windows matrix.
+    # windows-2022 is pinned — windows-latest ships VS 2026, which node-gyp
+    # cannot detect, breaking the native electron-rebuild (same reason the
+    # release build-windows job pins it).
+    runs-on: windows-2022
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        shell: bash
+        env:
+          SKIP_ELECTRON_REBUILD: 1
+        # Retry to survive transient registry/CDN flakes on a cold pnpm store.
+        run: |
+          attempts=3
+          for attempt in $(seq 1 "$attempts"); do
+            echo "::group::pnpm install (attempt $attempt/$attempts)"
+            if pnpm install --frozen-lockfile; then
+              echo "::endgroup::"
+              exit 0
+            fi
+            echo "::endgroup::"
+            if [ "$attempt" -lt "$attempts" ]; then
+              echo "::warning::pnpm install failed (attempt $attempt/$attempts); retrying in 20s"
+              sleep 20
+            fi
+          done
+          echo "::error::pnpm install failed after $attempts attempts"
+          exit 1
+
+      - name: Build desktop app
+        shell: bash
+        run: |
+          bash apps/desktop/scripts/ensure-native.sh electron
+          pnpm --filter @memry/desktop exec electron-vite build
+
+      - name: Run Electron smoke tests
+        # No xvfb/dbus/gnome-keyring: Windows runners have an interactive desktop
+        # session, and keytar uses the Windows Credential Manager directly.
+        shell: bash
+        run: |
+          bash apps/desktop/scripts/ensure-native.sh electron
+          pnpm --filter @memry/desktop exec playwright test \
+            --config config/playwright.config.ts \
+            tests/e2e/vault.e2e.ts \
+            tests/e2e/notes.e2e.ts \
+            tests/e2e/tasks.e2e.ts
+
+      - name: Upload E2E artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-smoke-windows-results
+          path: apps/desktop/test-results/
+          if-no-files-found: ignore
+
   e2e-full:
     name: Electron E2E full (${{ matrix.shard }})
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
