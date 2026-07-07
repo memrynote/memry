@@ -89,6 +89,14 @@ pnpm db:push            # apply migrations
 pnpm db:studio          # Drizzle Studio GUI
 ```
 
+The `db:*` commands above manage the desktop's local Drizzle databases. The
+`apps/sync-server` Cloudflare D1 database is separate: its schema lives in
+`apps/sync-server/migrations/` as wrangler D1 migrations. The staging and
+production deploy workflows run `wrangler d1 migrations apply` **before**
+`wrangler deploy`, so schema changes ship with the code that depends on them.
+Add a new `NNNN_*.sql` migration for any schema change and never edit an applied
+one; `pnpm --filter @memry/sync-server run sync:init-db` applies them locally.
+
 ## Runtime Environments
 
 Desktop runtime config is selected with `MEMRY_ENV`:

@@ -11,6 +11,7 @@ PADDLE_ENVIRONMENT = "sandbox"
 binding = "DB"
 database_name = "memry-sync"
 database_id = "TODO-create-d1-database"
+migrations_dir = "migrations"
 
 [[r2_buckets]]
 binding = "STORAGE"
@@ -63,6 +64,7 @@ zone_name = "memrynote.com"
 binding = "DB"
 database_name = "memry-sync-staging"
 database_id = "f854636b-118f-492c-9b67-f5fb97b52647"
+migrations_dir = "migrations"
 
 [[env.staging.r2_buckets]]
 binding = "STORAGE"
@@ -100,6 +102,7 @@ zone_name = "memrynote.com"
 binding = "DB"
 database_name = "memry-sync-production"
 database_id = "9025e9bc-5058-4b61-9e0d-bd2f22616dc1"
+migrations_dir = "migrations"
 
 [[env.production.r2_buckets]]
 binding = "STORAGE"

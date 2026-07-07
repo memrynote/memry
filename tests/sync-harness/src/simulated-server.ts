@@ -7,7 +7,8 @@ import { buildWorker } from '../scripts/build-worker.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.resolve(__dirname, '../../..')
-const SCHEMA_PATH = path.resolve(__dirname, '../../../apps/sync-server/schema/d1.sql')
+// Canonical schema = the ordered D1 migrations wrangler applies on deploy.
+const MIGRATIONS_DIR = path.resolve(__dirname, '../../../apps/sync-server/migrations')
 
 export interface ServerKeys {
   publicKeyPem: string
@@ -145,7 +146,12 @@ export class SimulatedServer {
 
   private async runD1Migrations(): Promise<void> {
     const db = await this.getD1()
-    const rawSchema = fs.readFileSync(SCHEMA_PATH, 'utf-8')
+    const rawSchema = fs
+      .readdirSync(MIGRATIONS_DIR)
+      .filter((file) => file.endsWith('.sql'))
+      .sort()
+      .map((file) => fs.readFileSync(path.join(MIGRATIONS_DIR, file), 'utf-8'))
+      .join('\n')
 
     const cleaned = rawSchema
       .split('\n')

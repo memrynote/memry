@@ -134,6 +134,7 @@ function isPlaceholderValue(value) {
     normalized.startsWith('replace-me') ||
     normalized.startsWith('local-') ||
     normalized.startsWith('dev-') ||
+    normalized.startsWith('test-') ||
     (normalized.startsWith('<') && normalized.endsWith('>')) ||
     (normalized.startsWith('${') && normalized.endsWith('}'))
   )
