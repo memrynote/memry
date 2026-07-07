@@ -25,6 +25,7 @@ import { RoadmapPage } from '@/pages/Roadmap'
 import { TermsPage } from '@/pages/Terms'
 import { PrivacyPage } from '@/pages/Privacy'
 import { RefundPage } from '@/pages/Refund'
+import { CodeSigningPolicyPage } from '@/pages/CodeSigningPolicy'
 import { NotFound } from '@/pages/NotFound'
 import { AuthPage } from '@/pages/Auth'
 import { AuthCallbackPage } from '@/pages/AuthCallback'
@@ -187,6 +188,7 @@ function AppContent() {
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/refund" element={<RefundPage />} />
+          <Route path="/code-signing-policy" element={<CodeSigningPolicyPage />} />
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/auth/oauth/callback" element={<AuthCallbackPage />} />
           <Route
