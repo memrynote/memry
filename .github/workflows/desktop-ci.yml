@@ -235,11 +235,10 @@ jobs:
 
       - name: Install dependencies
         shell: bash
-        # No SKIP_ELECTRON_REBUILD here: on Windows the package postinstall
-        # (electron-rebuild) is what produces the Electron-ABI native modules the
-        # E2E run needs. ensure-native.sh can't do it on Windows — it passes MSYS
-        # git-bash paths (/d/a/...) to node.exe, which mangles them (\d\a\...) and
-        # fails to resolve @electron/rebuild. Retry survives cold-store CDN flakes.
+        env:
+          # Skip the postinstall electron-rebuild; it does not reliably produce the
+          # Electron-ABI binary on Windows. We run an explicit force rebuild below.
+          SKIP_ELECTRON_REBUILD: 1
         run: |
           attempts=3
           for attempt in $(seq 1 "$attempts"); do
@@ -256,6 +255,15 @@ jobs:
           done
           echo "::error::pnpm install failed after $attempts attempts"
           exit 1
+
+      - name: Rebuild native modules for Electron
+        # Run @electron/rebuild's CLI directly via node with a RELATIVE path: it
+        # works under git-bash on Windows (an absolute MSYS path gets mangled when
+        # handed to node.exe) and avoids `pnpm exec`, whose pre-exec check can prune
+        # devDependencies. Mirrors what ensure-native.sh does on Linux.
+        shell: bash
+        working-directory: apps/desktop
+        run: node node_modules/@electron/rebuild/lib/cli.js -f -o better-sqlite3,classic-level,keytar
 
       - name: Build desktop app
         shell: bash
