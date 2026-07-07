@@ -305,7 +305,8 @@ export async function getFileStats(filePath: string): Promise<{
 
 /**
  * Sanitize a filename to be safe for the file system.
- * Removes or replaces invalid characters.
+ * Strips platform-invalid characters plus `[ ] # ^`, which Obsidian ≥1.8
+ * forbids in filenames (they break wikilink syntax).
  *
  * @param filename - Raw filename
  * @returns Sanitized filename
@@ -313,16 +314,18 @@ export async function getFileStats(filePath: string): Promise<{
 export function sanitizeFilename(filename: string): string {
   // Remove or replace invalid characters
   let sanitized = filename
-    .replace(/[<>:"/\\|?*]/g, '') // Remove invalid chars
+    .replace(/[<>:"/\\|?*[\]#^]/g, '') // Remove platform + Obsidian-forbidden chars
     .replace(/\s+/g, ' ') // Collapse whitespace
     .trim()
 
-  // Ensure it doesn't start with a dot (hidden file)
-  if (sanitized.startsWith('.')) {
-    sanitized = sanitized.slice(1)
+  // Strip every leading dot (hidden files) and re-trim any whitespace it
+  // exposes. Loop because stripping the widened char set can leave `..` or
+  // `. Report`; a single slice would keep a `..` traversal or a leading space.
+  while (sanitized.startsWith('.')) {
+    sanitized = sanitized.slice(1).trim()
   }
 
-  // Ensure it's not empty
+  // Ensure it's not empty (also catches bare `.` / `..`, which reduce to '')
   if (sanitized.length === 0) {
     sanitized = 'untitled'
   }

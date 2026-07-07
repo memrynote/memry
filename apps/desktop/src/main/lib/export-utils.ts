@@ -407,7 +407,11 @@ export function renderNoteAsHtml(note: NoteExportData, options: RenderOptions = 
  * Sanitize a filename for safe filesystem usage.
  */
 export function sanitizeFilename(filename: string): string {
-  // Remove or replace characters that are invalid in filenames
+  // Remove or replace characters that are invalid in filenames.
+  // Only the platform-forbidden set: these outputs (PDF/HTML export defaults,
+  // Evernote import folder names) are never Obsidian wikilink targets, so the
+  // `[ ] # ^` widening does not belong here (it caused `..` traversal, notebook
+  // collapse, and hidden-dotfile export names).
   return filename
     .replace(/[<>:"/\\|?*]/g, '') // Remove invalid chars
     .replace(/\s+/g, ' ') // Normalize whitespace

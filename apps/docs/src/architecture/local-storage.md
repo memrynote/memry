@@ -13,6 +13,25 @@ Splitting them buys three properties:
 2. **Cheap reset.** The index can be dropped and rebuilt without re-uploading anything to sync.
 3. **Performance.** Heavy read indexes and FTS triggers don't compete with the write path on the data DB.
 
+## Vault Markdown Files
+
+Vault `.md` files carry no MemryNote-managed frontmatter. The app reads only `tags` and
+`aliases` from a note's frontmatter; every other key is a plain user property. A note with
+no user keys has no YAML block at all.
+
+- **The file path is the note's identity.** The internal note id and created/modified dates
+  are stored in canonical `note_metadata` in the data DB, keyed by vault-relative path — never
+  written into the files. Legacy keys older versions wrote (`id`, `title`, `created`, `modified`)
+  are treated as plain user properties: never interpreted, never rewritten.
+- **The filename is the title.** The verbatim basename (without `.md`) round-trips to the note
+  title exactly.
+- **Rebuilds don't re-identify notes.** Indexing an unknown path adopts the canonical id from
+  `note_metadata` by path before minting a fresh one, so dropping and rebuilding the index DB
+  preserves note identity.
+- **External renames match by content hash.** The file watcher pairs a delete with a following add
+  inside a short window using the cached content hash (identical-content collisions match FIFO),
+  since files carry no embedded id to match on.
+
 ## Where the Files Live
 
 Inside the vault directory (chosen during [first run](/guide/first-run)):

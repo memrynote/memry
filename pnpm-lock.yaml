@@ -693,7 +693,7 @@ importers:
     dependencies:
       '@vercel/analytics':
         specifier: ^2.0.1
-        version: 2.0.1(vue@3.5.34(typescript@5.9.3))
+        version: 2.0.1(react@19.2.4)(vue@3.5.34(typescript@5.9.3))
     devDependencies:
       vitepress:
         specifier: ^1.6.4
@@ -768,6 +768,12 @@ importers:
       '@radix-ui/react-slot':
         specifier: ^1.2.4
         version: 1.2.4(@types/react@19.2.13)(react@19.2.4)
+      '@vercel/analytics':
+        specifier: ^2.0.1
+        version: 2.0.1(react@19.2.4)(vue@3.5.34(typescript@5.9.3))
+      '@vercel/speed-insights':
+        specifier: ^2.0.0
+        version: 2.0.0(react@19.2.4)(vue@3.5.34(typescript@5.9.3))
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -4854,6 +4860,32 @@ packages:
 
   '@vercel/sandbox@1.9.0':
     resolution: {integrity: sha512-zgr1ad0tkT1xZn/8Vxo60wOUOLqMAVGo4WqJQ8/UDcUtWynNJsBjI2tiMdWZrAo9EKH1MIqEzJNkcclF0UT1EQ==}
+
+  '@vercel/speed-insights@2.0.0':
+    resolution: {integrity: sha512-jwkNcrTeafWxjmWq4AHBaptSqZiJkYU5adLC9QBSqeim0GcqDMgN5Ievh8OG1rJ6W3A4l1oiP7qr9CWxGuzu3w==}
+    peerDependencies:
+      '@sveltejs/kit': ^1 || ^2
+      next: '>= 13'
+      nuxt: '>= 3'
+      react: ^18 || ^19 || ^19.0.0-rc
+      svelte: '>= 4'
+      vue: ^3
+      vue-router: ^4
+    peerDependenciesMeta:
+      '@sveltejs/kit':
+        optional: true
+      next:
+        optional: true
+      nuxt:
+        optional: true
+      react:
+        optional: true
+      svelte:
+        optional: true
+      vue:
+        optional: true
+      vue-router:
+        optional: true
 
   '@vercel/static-build@2.9.21':
     resolution: {integrity: sha512-LnaroK/z97iAwg0vNHECQHAm2oaFLSWiKqCZIETnv5RpIqDXgj/URBD8v+DNNSXWGXsYOk7ezLRuQnlpq3Jx5w==}
@@ -15695,8 +15727,9 @@ snapshots:
       d3-selection: 3.0.0
       d3-transition: 3.0.1(d3-selection@3.0.0)
 
-  '@vercel/analytics@2.0.1(vue@3.5.34(typescript@5.9.3))':
+  '@vercel/analytics@2.0.1(react@19.2.4)(vue@3.5.34(typescript@5.9.3))':
     optionalDependencies:
+      react: 19.2.4
       vue: 3.5.34(typescript@5.9.3)
 
   '@vercel/backends@0.2.0(@emnapi/core@1.10.0)(@emnapi/runtime@1.8.1)(encoding@0.1.13)(rollup@4.62.0)(typescript@5.9.3)':
@@ -16039,6 +16072,11 @@ snapshots:
     transitivePeerDependencies:
       - bare-abort-controller
       - react-native-b4a
+
+  '@vercel/speed-insights@2.0.0(react@19.2.4)(vue@3.5.34(typescript@5.9.3))':
+    optionalDependencies:
+      react: 19.2.4
+      vue: 3.5.34(typescript@5.9.3)
 
   '@vercel/static-build@2.9.21':
     dependencies:

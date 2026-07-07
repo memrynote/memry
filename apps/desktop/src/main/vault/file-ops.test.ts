@@ -476,9 +476,10 @@ describe('sanitizeFilename', () => {
     expect(sanitizeFilename('???')).toBe('untitled')
   })
 
-  it('T350: strips only one leading dot', () => {
-    // Function removes one leading dot, leaving '..' which is not empty
-    expect(sanitizeFilename('...')).toBe('..')
+  it('T350: strips all leading dots and rejects bare dot names', () => {
+    // Loops the dot-strip so nothing collapses to a `.`/`..` fs reference.
+    expect(sanitizeFilename('...')).toBe('untitled')
+    expect(sanitizeFilename('..')).toBe('untitled')
     expect(sanitizeFilename('.hidden')).toBe('hidden')
   })
 
@@ -490,6 +491,19 @@ describe('sanitizeFilename', () => {
   it('preserves valid characters', () => {
     expect(sanitizeFilename('My Note 2024')).toBe('My Note 2024')
     expect(sanitizeFilename('note-with_special.chars')).toBe('note-with_special.chars')
+  })
+
+  it('T350: strips Obsidian-forbidden characters [ ] # ^', () => {
+    expect(sanitizeFilename('Draft [v2] #1')).toBe('Draft v2 1')
+    expect(sanitizeFilename('a^b|c')).toBe('abc')
+    expect(sanitizeFilename('[#^]')).toBe('untitled')
+  })
+
+  it('T350: bracket-stripping never yields a dot-traversal or leading-space name', () => {
+    // Widened set can leave dots/spaces once brackets go; guard must clean up.
+    expect(sanitizeFilename('[...]')).toBe('untitled')
+    expect(sanitizeFilename('[..]')).toBe('untitled')
+    expect(sanitizeFilename('#. Report')).toBe('Report')
   })
 })
 

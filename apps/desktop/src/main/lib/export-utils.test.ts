@@ -68,4 +68,11 @@ describe('export-utils', () => {
     expect(sanitizeFilename('  in<va>lid: file/name?.md  ')).toBe('invalid filename.md')
     expect(sanitizeFilename('a'.repeat(250))).toHaveLength(200)
   })
+
+  it('sanitizeFilename does not strip Obsidian-only chars (export names are not wikilink targets)', () => {
+    // Brackets/hash/caret are legal in export defaults and Evernote folder names.
+    // Stripping them here caused `[..]` -> `..` traversal and notebook collapse.
+    expect(sanitizeFilename('Draft [v2] #1')).toBe('Draft [v2] #1')
+    expect(sanitizeFilename('[..]')).toBe('[..]')
+  })
 })

@@ -78,8 +78,16 @@ Ship a workflow you love? Tell us. Something broken? Tell us louder.
 
 <div align="center">
 
-[![Star History Chart](https://api.star-history.com/image?repos=memrynote/memry&type=date&legend=top-left)](https://www.star-history.com/?repos=memrynote%2Fmemry&type=date&legend=top-left)
+## Star History
 
-<sub>GPL-3.0 © MemryNote contributors — private by design, open at heart.</sub>
+<a href="https://www.star-history.com/?repos=memrynote%2Fmemry&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=memrynote/memry&type=date&legend=top-left&sealed_token=RfnW2HzoduF_QqJlXo5Aep12pgXEoYiDWc2DnlQEvG7qwKXw2WG8YIVrEDs9BP7Oii0_rc7baIChuEb6_O6nkS2eyzxCm_JcvyQ-aZgxkZkcEhCzDGG64KSAcEw9AR8B8BrgOhS9LEtLPa2Lcgnz62EvG6Sw4hwrv8zaQDW8OhZ-Si5a1-K_u4YCYWxM" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=memrynote/memry&type=date&legend=top-left&sealed_token=RfnW2HzoduF_QqJlXo5Aep12pgXEoYiDWc2DnlQEvG7qwKXw2WG8YIVrEDs9BP7Oii0_rc7baIChuEb6_O6nkS2eyzxCm_JcvyQ-aZgxkZkcEhCzDGG64KSAcEw9AR8B8BrgOhS9LEtLPa2Lcgnz62EvG6Sw4hwrv8zaQDW8OhZ-Si5a1-K_u4YCYWxM" />
+ </picture>
+</a>
+<sub>
+  
+  GPL-3.0 © MemryNote contributors — private by design, open at heart.</sub>
 
 </div>
