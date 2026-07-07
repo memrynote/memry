@@ -280,6 +280,7 @@ jobs:
         run: |
           pnpm --filter @memry/desktop exec playwright test \
             --config config/playwright.config.ts \
+            tests/e2e/startup-recovery.e2e.ts \
             tests/e2e/vault.e2e.ts \
             tests/e2e/notes.e2e.ts \
             tests/e2e/tasks.e2e.ts
