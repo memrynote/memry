@@ -28,6 +28,7 @@ import {
   splitMarkdownPreservingBlanks,
   assembleMarkdownWithBlanks,
   separateBlockImages,
+  normalizeSerializedMarkdown,
   type MarkdownSegment
 } from '@memry/shared/empty-lines'
 import {
@@ -209,6 +210,16 @@ function createEmptyParagraph(): Block {
 
 const MARKDOWN_LIST_BLOCK_TYPES = new Set(['bulletListItem', 'numberedListItem', 'checkListItem'])
 
+// Every blocks→markdown serialization funnels through here so list markers,
+// list tightness, and soft breaks stay byte-friendly against vault files.
+// See normalizeSerializedMarkdown.
+async function serializeBlocks(
+  editor: ServerBlockNoteEditor,
+  blocks: PartialBlock[]
+): Promise<string> {
+  return normalizeSerializedMarkdown(await editor.blocksToMarkdownLossy(blocks))
+}
+
 function canSerializeChildNatively(parent: Block, child: Block): boolean {
   return (
     MARKDOWN_LIST_BLOCK_TYPES.has(parent.type as string) &&
@@ -262,7 +273,7 @@ async function serializeBlocksWithNestingMarkers(
     }
 
     const shallowBlock = { ...block, children: [] } as Block
-    const markdown = (await editor.blocksToMarkdownLossy([shallowBlock] as PartialBlock[])).trim()
+    const markdown = (await serializeBlocks(editor, [shallowBlock] as PartialBlock[])).trim()
     if (markdown) parts.push(markdown)
 
     for (const child of (block.children ?? []) as Block[]) {
@@ -346,7 +357,7 @@ async function blocksToMarkdownPreserving(
 
   const flushContentGroup = async (): Promise<void> => {
     if (contentGroup.length === 0) return
-    const md = await editor.blocksToMarkdownLossy(contentGroup as PartialBlock[])
+    const md = await serializeBlocks(editor, contentGroup as PartialBlock[])
     // Trim BlockNote's trailing newline (see #524) so content flushed before a
     // taskBlock can't re-parse as a growing blank-line gap on every writeback.
     segments.push({ type: 'content', text: md.trim() })
@@ -375,14 +386,14 @@ async function blocksToMarkdownPreserving(
       segments.push({ type: 'content', text: lines.join('\n') })
     } else if (isEmptyParagraph(block)) {
       if (contentGroup.length > 0) {
-        const md = await editor.blocksToMarkdownLossy(contentGroup as PartialBlock[])
+        const md = await serializeBlocks(editor, contentGroup as PartialBlock[])
         segments.push({ type: 'content', text: md.trim() })
         contentGroup = []
       }
       emptyCount++
     } else if (hasNonDefaultColors(block.props as BlockColors)) {
       if (contentGroup.length > 0) {
-        const md = await editor.blocksToMarkdownLossy(contentGroup as PartialBlock[])
+        const md = await serializeBlocks(editor, contentGroup as PartialBlock[])
         segments.push({ type: 'content', text: md.trim() })
         contentGroup = []
       }
@@ -390,14 +401,14 @@ async function blocksToMarkdownPreserving(
         segments.push({ type: 'gap', extraLines: emptyCount })
         emptyCount = 0
       }
-      const blockMd = await editor.blocksToMarkdownLossy([block] as PartialBlock[])
+      const blockMd = await serializeBlocks(editor, [block] as PartialBlock[])
       segments.push({
         type: 'content',
         text: `${serializeBlockColorsMarker(block.props as BlockColors)}\n${blockMd.trim()}`
       })
     } else if (hasMarkerSerializedChildren(block)) {
       if (contentGroup.length > 0) {
-        const md = await editor.blocksToMarkdownLossy(contentGroup as PartialBlock[])
+        const md = await serializeBlocks(editor, contentGroup as PartialBlock[])
         segments.push({ type: 'content', text: md.trim() })
         contentGroup = []
       }
@@ -419,7 +430,7 @@ async function blocksToMarkdownPreserving(
   }
 
   if (contentGroup.length > 0) {
-    const md = await editor.blocksToMarkdownLossy(contentGroup as PartialBlock[])
+    const md = await serializeBlocks(editor, contentGroup as PartialBlock[])
     // Trim the trailing newline BlockNote appends to list/heading groups; left
     // untrimmed it re-parses as a growing blank-line gap on every writeback.
     segments.push({ type: 'content', text: md.trim() })

@@ -5,6 +5,7 @@ import {
   splitMarkdownPreservingBlanks,
   assembleMarkdownWithBlanks,
   separateBlockImages,
+  normalizeSerializedMarkdown,
   type MarkdownSegment
 } from '@memry/shared/empty-lines'
 import {
@@ -75,6 +76,15 @@ async function parseMarkdownChunkPreservingNesting(
   return restoreBlockNesting(blocks, levels)
 }
 
+// Funnel every BlockNote serialization through the shared normalizer so the
+// renderer save path matches the main/CRDT path (blocknote-converter.ts): `-`
+// bullets, tight lists, and single-newline paragraphs instead of remark's raw
+// `*` / loose / `\`-hard-break defaults. Without this the two serializers drift
+// and typed notes get rewritten to the loose remark style on disk.
+async function serializeBlocks(editor: any, blocks: Block[]): Promise<string> {
+  return normalizeSerializedMarkdown(await editor.blocksToMarkdownLossy(blocks))
+}
+
 async function serializeBlocksWithNestingMarkers(editor: any, blocks: Block[]): Promise<string> {
   const parts: string[] = []
   let currentLevel = 0
@@ -86,7 +96,7 @@ async function serializeBlocksWithNestingMarkers(editor: any, blocks: Block[]): 
     }
 
     const shallowBlock = { ...block, children: [] } as Block
-    const markdown = (await editor.blocksToMarkdownLossy([shallowBlock])).trim()
+    const markdown = (await serializeBlocks(editor, [shallowBlock])).trim()
     if (markdown) parts.push(markdown)
 
     for (const child of (block.children ?? []) as Block[]) {
@@ -206,7 +216,7 @@ export async function serializeBlocksPreservingBlanks(
 
   const flushContent = async (): Promise<void> => {
     if (contentGroup.length === 0) return
-    const md = await editor.blocksToMarkdownLossy(contentGroup)
+    const md = await serializeBlocks(editor, contentGroup)
     // Trim the trailing newline BlockNote appends to list/heading groups; left
     // untrimmed it merges with the segment join into a 3+ newline run that
     // re-parses as a growing blank-line gap on every save (see round-trip tests).
@@ -261,7 +271,7 @@ export async function serializeBlocksPreservingBlanks(
       await flushContent()
       flushGap()
       const calloutType = (block.props as any).type as string
-      const contentMd = await editor.blocksToMarkdownLossy([block])
+      const contentMd = await serializeBlocks(editor, [block])
       segments.push({
         type: 'content',
         text: serializeCalloutBlock(calloutType, contentMd.trim())
@@ -272,7 +282,7 @@ export async function serializeBlocksPreservingBlanks(
     } else if (hasNonDefaultColors(block.props as BlockColors)) {
       await flushContent()
       flushGap()
-      const blockMd = await editor.blocksToMarkdownLossy([block])
+      const blockMd = await serializeBlocks(editor, [block])
       segments.push({
         type: 'content',
         text: `${serializeBlockColorsMarker(block.props as BlockColors)}\n${blockMd.trim()}`
@@ -291,7 +301,7 @@ export async function serializeBlocksPreservingBlanks(
   }
 
   if (contentGroup.length > 0) {
-    const md = await editor.blocksToMarkdownLossy(contentGroup)
+    const md = await serializeBlocks(editor, contentGroup)
     segments.push({ type: 'content', text: md.trim() })
   }
   if (emptyCount > 0) {

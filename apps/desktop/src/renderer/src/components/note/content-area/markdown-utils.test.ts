@@ -503,6 +503,30 @@ describe('serializeBlocksPreservingBlanks', () => {
       })
     ])
   })
+
+  it('normalizes remark output to `-` bullets, tight lists, and single-newline paragraphs', async () => {
+    // BlockNote's raw serializer emits `*` bullets, a blank line per list item,
+    // and `\` hard breaks. The renderer save path must run the same normalizer as
+    // the main/CRDT path so typed notes are not rewritten to that loose style on
+    // disk. The mock reproduces remark's raw shape; the assertion is on the
+    // normalized result.
+    const editor = {
+      blocksToMarkdownLossy: vi.fn(async (blocks: any[]) => {
+        if (blocks[0]?.type === 'bulletListItem') return '* kaan\n\n* sevde\n\n* karaca'
+        return 'line1\\\nline2\\\nline3'
+      })
+    }
+
+    const list = await serializeBlocksPreservingBlanks(editor, [
+      { type: 'bulletListItem', props: {}, content: [{ type: 'text', text: 'kaan' }], children: [] }
+    ] as any[])
+    expect(list).toBe('- kaan\n- sevde\n- karaca')
+
+    const paragraph = await serializeBlocksPreservingBlanks(editor, [
+      { type: 'paragraph', props: {}, content: [{ type: 'text', text: 'line1' }], children: [] }
+    ] as any[])
+    expect(paragraph).toBe('line1\nline2\nline3')
+  })
 })
 
 describe('isEmptyParagraph', () => {
