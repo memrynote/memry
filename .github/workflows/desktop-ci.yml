@@ -260,10 +260,14 @@ jobs:
         # Run @electron/rebuild's CLI directly via node with a RELATIVE path: it
         # works under git-bash on Windows (an absolute MSYS path gets mangled when
         # handed to node.exe) and avoids `pnpm exec`, whose pre-exec check can prune
-        # devDependencies. Mirrors what ensure-native.sh does on Linux.
+        # devDependencies. Then write the stamp file that ensure-native.sh normally
+        # writes — the E2E globalSetup precondition reads it to confirm the Electron
+        # ABI (node_modules/.native-build-target must say "electron").
         shell: bash
         working-directory: apps/desktop
-        run: node node_modules/@electron/rebuild/lib/cli.js -f -o better-sqlite3,classic-level,keytar
+        run: |
+          node node_modules/@electron/rebuild/lib/cli.js -f -o better-sqlite3,classic-level,keytar
+          echo electron > node_modules/.native-build-target
 
       - name: Build desktop app
         shell: bash
