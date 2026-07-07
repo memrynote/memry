@@ -6,7 +6,7 @@ import { getNoteMetadataByPath } from '@memry/storage-data'
 import type { FileType } from '@memry/shared/file-types'
 import { createId } from './ids.ts'
 import type { DataDb } from './database.ts'
-import { parseMarkdownNote } from './markdown.ts'
+import { parseMarkdownNote, extractNoteProperties } from './markdown.ts'
 import { normalizePath, safeFilename, type VaultConfig } from './paths.ts'
 import type { NotesService } from './notes.ts'
 
@@ -343,9 +343,8 @@ function renderNoteHtml(
 function propertiesFromFrontmatter(
   frontmatter: Record<string, unknown>
 ): Record<string, unknown> | null {
-  const properties = frontmatter.properties
-  if (!properties || typeof properties !== 'object' || Array.isArray(properties)) return null
-  return properties as Record<string, unknown>
+  const properties = extractNoteProperties(frontmatter)
+  return Object.keys(properties).length > 0 ? properties : null
 }
 
 function indexImportedMarkdown(
@@ -356,8 +355,12 @@ function indexImportedMarkdown(
 ): void {
   const parsed = parseMarkdownNote(raw)
   // Frontmatter keys are plain user properties — identity comes from the
-  // metadata DB, never from the file
-  const id = createId('note')
+  // metadata DB, never from the file. Reuse an existing row for this path so a
+  // re-import updates in place (no duplicate identity) and preserves the
+  // original created time; only mint a fresh id + use mtime for a new path.
+  const existing = getNoteMetadataByPath(dataDb, relativePath)
+  const id = existing?.id ?? createId('note')
+  const createdAt = existing?.createdAt ?? stats.mtime.toISOString()
   const title = path.basename(relativePath, '.md')
 
   saveCanonicalNote(dataDb, {
@@ -367,7 +370,7 @@ function indexImportedMarkdown(
     fileType: 'markdown',
     mimeType: 'text/markdown',
     properties: propertiesFromFrontmatter(parsed.frontmatter),
-    createdAt: stats.mtime.toISOString(),
+    createdAt,
     modifiedAt: stats.mtime.toISOString()
   })
 }

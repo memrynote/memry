@@ -8,6 +8,7 @@
 import matter from 'gray-matter'
 import path from 'path'
 import { generateNoteId, isValidNoteId } from '../lib/id'
+import { emitFrontmatterBlock, OBSIDIAN_MATTER_OPTIONS } from './frontmatter-emit'
 
 // ============================================================================
 // Types
@@ -71,7 +72,7 @@ export function parseNote(
   filePath?: string,
   stats?: ParseNoteStats
 ): ParsedNote {
-  const { data, content } = matter(rawContent)
+  const { data, content } = matter(rawContent, OBSIDIAN_MATTER_OPTIONS)
   const hadFrontmatter = Object.keys(data).length > 0
   const now = new Date().toISOString()
 
@@ -126,16 +127,18 @@ function stripTrailingNewlines(value: string): string {
  * @returns Complete markdown file content
  */
 export function serializeNote(frontmatter: NoteFrontmatter, content: string): string {
-  const clean = Object.fromEntries(Object.entries(frontmatter).filter(([, v]) => v !== undefined))
+  // LIMITATION (#8): Object.entries hoists integer-like keys (e.g. a property
+  // named `2024`) to the front in ascending order, so those keys ghost-reorder
+  // on every edit. A full fix needs an ordered frontmatter representation
+  // (array/Map) carried from parse through emit — out of scope here.
+  const entries = Object.entries(frontmatter).filter(([, v]) => v !== undefined)
 
-  // Explicit guard: no keys → no YAML block (don't rely on gray-matter's
-  // empty-object behavior)
-  if (Object.keys(clean).length === 0) {
+  // Explicit guard: no keys → no YAML block
+  if (entries.length === 0) {
     return content.trim()
   }
 
-  const serialized = matter.stringify(content.trim(), clean)
-  return stripTrailingNewlines(serialized)
+  return stripTrailingNewlines(`${emitFrontmatterBlock(entries)}${content.trim()}`)
 }
 
 // ============================================================================
@@ -272,28 +275,101 @@ import { getObsidianPropertyType } from './obsidian-config'
 const RESERVED_FRONTMATTER_KEYS = new Set(['tags', 'aliases'])
 
 /**
+ * The legacy nested `properties:` mapping, if present. A non-mapping
+ * `properties` value is just a normal property.
+ */
+function legacyNestedProperties(
+  frontmatter: Record<string, unknown>
+): Record<string, unknown> | undefined {
+  const nested = frontmatter.properties
+  return nested && typeof nested === 'object' && !Array.isArray(nested)
+    ? (nested as Record<string, unknown>)
+    : undefined
+}
+
+/**
  * Extract custom properties from frontmatter.
- * T007: Properties are stored under the `properties` key or as top-level keys
- * (excluding reserved keys like id, title, created, modified, tags, aliases).
+ * Top-level non-reserved keys are primary; a legacy nested `properties:`
+ * mapping is merged in after them. On collision top-level wins — it is the
+ * value Obsidian users see and edit.
  *
  * @param frontmatter - Parsed frontmatter object
  * @returns Record of property names to values
  */
 export function extractProperties(frontmatter: NoteFrontmatter): Record<string, unknown> {
-  // Check for explicit `properties` object first
-  if (frontmatter.properties && typeof frontmatter.properties === 'object') {
-    return frontmatter.properties as Record<string, unknown>
-  }
-
-  // Fall back to extracting non-reserved top-level keys
+  const nested = legacyNestedProperties(frontmatter)
   const properties: Record<string, unknown> = {}
+
   for (const [key, value] of Object.entries(frontmatter)) {
+    if (key === 'properties' && nested) continue
     if (!RESERVED_FRONTMATTER_KEYS.has(key) && value !== undefined) {
       properties[key] = value
     }
   }
 
+  if (nested) {
+    for (const [key, value] of Object.entries(nested)) {
+      if (!(key in properties) && !RESERVED_FRONTMATTER_KEYS.has(key) && value !== undefined) {
+        properties[key] = value
+      }
+    }
+  }
+
   return properties
+}
+
+/**
+ * Rebuild frontmatter with the given property record as top-level keys.
+ * Reserved keys keep their original values and positions. Property key
+ * order: original top-level order first, then legacy nested keys in their
+ * original order, then newly added keys. The legacy nested `properties:`
+ * mapping is dropped; top-level keys absent from the record are removed
+ * (the property was deleted).
+ *
+ * @param frontmatter - Current frontmatter (on-disk key order)
+ * @param properties - Full property record to write
+ * @param reserved - Keys that are not properties (default: note set)
+ * @returns New frontmatter object ready for serialization
+ */
+export function applyPropertiesToFrontmatter(
+  frontmatter: Record<string, unknown>,
+  properties: Record<string, unknown>,
+  reserved: ReadonlySet<string> = RESERVED_FRONTMATTER_KEYS
+): Record<string, unknown> {
+  const nested = legacyNestedProperties(frontmatter)
+  const remaining = new Set(Object.keys(properties).filter((key) => !reserved.has(key)))
+  // LIMITATION (#8): the `result` object cannot preserve integer-like key
+  // position — Object.entries enumerates keys like `2024` first, ascending,
+  // so they ghost-reorder to the top on emit. A full fix needs an ordered
+  // frontmatter representation (array/Map) end to end — out of scope here.
+  const result: Record<string, unknown> = {}
+
+  for (const [key, value] of Object.entries(frontmatter)) {
+    if (reserved.has(key)) {
+      result[key] = value
+      continue
+    }
+    if (key === 'properties' && nested) continue
+    if (remaining.has(key)) {
+      result[key] = properties[key]
+      remaining.delete(key)
+    }
+  }
+
+  if (nested) {
+    for (const key of Object.keys(nested)) {
+      if (remaining.has(key)) {
+        result[key] = properties[key]
+        remaining.delete(key)
+      }
+    }
+  }
+
+  for (const key of remaining) {
+    result[key] = properties[key]
+  }
+
+  return result
 }
 
 /**
@@ -349,9 +425,9 @@ export function inferPropertyType(name: string, value: unknown): PropertyType {
     return 'number'
   }
 
-  // Array -> text (arrays no longer supported, convert to JSON string)
+  // Array -> multiselect (Obsidian list property, round-trips as YAML block list)
   if (Array.isArray(value)) {
-    return 'text'
+    return 'multiselect'
   }
 
   // String with format detection

@@ -212,12 +212,9 @@ describe('serializeJournalEntry', () => {
 // ============================================================================
 
 describe('extractJournalProperties', () => {
-  it('extracts properties from explicit properties object', () => {
+  it('merges legacy nested properties block after top-level keys', () => {
     const frontmatter = {
-      id: 'j2026-01-15',
       date: '2026-01-15',
-      created: FIXED_ISO,
-      modified: FIXED_ISO,
       tags: ['daily'],
       properties: {
         mood: 'happy',
@@ -235,12 +232,19 @@ describe('extractJournalProperties', () => {
     })
   })
 
+  it('collision: top-level wins over legacy nested', () => {
+    const frontmatter = {
+      date: '2026-01-15',
+      mood: 'calm',
+      properties: { mood: 'stale-nested', extra: 'kept' }
+    }
+
+    expect(extractJournalProperties(frontmatter)).toEqual({ mood: 'calm', extra: 'kept' })
+  })
+
   it('extracts top-level properties when no explicit properties object', () => {
     const frontmatter = {
-      id: 'j2026-01-15',
       date: '2026-01-15',
-      created: FIXED_ISO,
-      modified: FIXED_ISO,
       tags: ['daily'],
       mood: 'happy',
       energy: 5
@@ -254,12 +258,9 @@ describe('extractJournalProperties', () => {
     })
   })
 
-  it('ignores reserved frontmatter keys', () => {
+  it('ignores reserved frontmatter keys (date, tags)', () => {
     const frontmatter = {
-      id: 'j2026-01-15',
       date: '2026-01-15',
-      created: FIXED_ISO,
-      modified: FIXED_ISO,
       tags: ['daily'],
       customProp: 'value'
     }
@@ -267,14 +268,12 @@ describe('extractJournalProperties', () => {
     const result = extractJournalProperties(frontmatter)
 
     expect(result).toEqual({ customProp: 'value' })
-    expect(result).not.toHaveProperty('id')
     expect(result).not.toHaveProperty('date')
-    expect(result).not.toHaveProperty('created')
-    expect(result).not.toHaveProperty('modified')
     expect(result).not.toHaveProperty('tags')
   })
 
-  it('excludes emoji from extracted properties (regression: emoji leak on sync)', () => {
+  it('surfaces legacy Memry keys (id, created, modified, emoji) as plain user properties', () => {
+    // Aligned with notes: only Obsidian-shared semantics are reserved
     const frontmatter = {
       id: 'j2026-01-15',
       date: '2026-01-15',
@@ -283,30 +282,17 @@ describe('extractJournalProperties', () => {
       emoji: '🎉'
     }
 
-    expect(extractJournalProperties(frontmatter)).toBeUndefined()
-  })
-
-  it('excludes emoji but keeps custom keys in fallback extraction', () => {
-    const frontmatter = {
+    expect(extractJournalProperties(frontmatter)).toEqual({
       id: 'j2026-01-15',
-      date: '2026-01-15',
       created: FIXED_ISO,
       modified: FIXED_ISO,
-      emoji: '📝',
-      mood: 'happy'
-    }
-
-    const result = extractJournalProperties(frontmatter)
-    expect(result).toEqual({ mood: 'happy' })
-    expect(result).not.toHaveProperty('emoji')
+      emoji: '🎉'
+    })
   })
 
   it('returns undefined for frontmatter with no custom properties', () => {
     const frontmatter = {
-      id: 'j2026-01-15',
       date: '2026-01-15',
-      created: FIXED_ISO,
-      modified: FIXED_ISO,
       tags: ['daily']
     }
 
@@ -317,10 +303,7 @@ describe('extractJournalProperties', () => {
 
   it('returns undefined for empty properties object', () => {
     const frontmatter = {
-      id: 'j2026-01-15',
       date: '2026-01-15',
-      created: FIXED_ISO,
-      modified: FIXED_ISO,
       properties: {}
     }
 

@@ -5,7 +5,7 @@ import { desc, eq } from 'drizzle-orm'
 import { noteCache, noteSnapshots, type SnapshotReason } from '@memry/db-schema/index-schema'
 import type { IndexDb } from './database.ts'
 import { createId } from './ids.ts'
-import { parseMarkdownNote } from './markdown.ts'
+import { parseMarkdownNote, extractNoteProperties } from './markdown.ts'
 import type { NotesService } from './notes.ts'
 
 export interface SnapshotListItem {
@@ -156,12 +156,7 @@ export function createVersionsService({
       const tags = Array.isArray(parsed.frontmatter.tags)
         ? parsed.frontmatter.tags.map((tag) => String(tag))
         : []
-      const properties =
-        parsed.frontmatter.properties &&
-        typeof parsed.frontmatter.properties === 'object' &&
-        !Array.isArray(parsed.frontmatter.properties)
-          ? (parsed.frontmatter.properties as Record<string, unknown>)
-          : {}
+      const properties = extractNoteProperties(parsed.frontmatter)
 
       return notes.update({
         id: snapshot.noteId,

@@ -24,7 +24,13 @@ vi.mock('../../vault/frontmatter', () => ({
     content: 'old content'
   })),
   serializeNote: vi.fn(() => '---\n---\ncontent'),
-  inferPropertyType: vi.fn(() => 'number')
+  inferPropertyType: vi.fn(() => 'number'),
+  applyPropertiesToFrontmatter: vi.fn(
+    (frontmatter: Record<string, unknown>, properties: Record<string, unknown>) => ({
+      ...frontmatter,
+      ...properties
+    })
+  )
 }))
 
 vi.mock('../../vault/note-sync', () => ({

@@ -8,9 +8,12 @@
  * @module vault/journal
  */
 
+import fs from 'fs/promises'
 import path from 'path'
 import matter from 'gray-matter'
 import { createNoteContentStore } from '@memry/storage-vault'
+import { applyPropertiesToFrontmatter } from './frontmatter'
+import { emitFrontmatterBlock, OBSIDIAN_MATTER_OPTIONS } from './frontmatter-emit'
 import { getStatus, getConfig } from './index'
 import { ensureDirectory } from './file-ops'
 import { VaultError, VaultErrorCode } from '../lib/errors'
@@ -113,10 +116,15 @@ export function getJournalPath(date: string): string {
  * Parse a journal markdown file into frontmatter and content.
  * @param rawContent - Raw file content including frontmatter
  * @param date - Date in YYYY-MM-DD format (for generating missing fields)
+ * @param stats - Optional filesystem stats; sources created/modified timestamps
  * @returns Parsed journal entry
  */
-export function parseJournalEntry(rawContent: string, date: string): ParsedJournalEntry {
-  const { data, content } = matter(rawContent)
+export function parseJournalEntry(
+  rawContent: string,
+  date: string,
+  stats?: { birthtime?: Date; mtime?: Date }
+): ParsedJournalEntry {
+  const { data, content } = matter(rawContent, OBSIDIAN_MATTER_OPTIONS)
   const hadFrontmatter = Object.keys(data).length > 0
   const now = new Date().toISOString()
 
@@ -131,8 +139,8 @@ export function parseJournalEntry(rawContent: string, date: string): ParsedJourn
     hadFrontmatter,
     id: generateJournalId(date),
     date,
-    created: now,
-    modified: now
+    created: stats?.birthtime?.toISOString() ?? now,
+    modified: stats?.mtime?.toISOString() ?? now
   }
 }
 
@@ -145,13 +153,14 @@ export function parseJournalEntry(rawContent: string, date: string): ParsedJourn
  * @returns Complete markdown file content
  */
 export function serializeJournalEntry(frontmatter: JournalFrontmatter, content: string): string {
-  const clean = Object.fromEntries(Object.entries(frontmatter).filter(([, v]) => v !== undefined))
+  const entries = Object.entries(frontmatter).filter(([, v]) => v !== undefined)
 
-  if (Object.keys(clean).length === 0) {
+  if (entries.length === 0) {
     return content.trim()
   }
 
-  return matter.stringify(content.trim(), clean)
+  const body = content.trim()
+  return body ? `${emitFrontmatterBlock(entries)}${body}\n` : emitFrontmatterBlock(entries)
 }
 
 /**
@@ -172,22 +181,16 @@ export function createJournalFrontmatter(date: string, tags?: string[]): Journal
 // ============================================================================
 
 /**
- * Reserved frontmatter keys that are NOT custom properties.
+ * Reserved frontmatter keys that are NOT custom properties. `date` stays
+ * reserved: Memry writes it itself on every journal save. Legacy Memry keys
+ * (id, created, modified, emoji) found in files are plain user properties.
  */
-const RESERVED_JOURNAL_KEYS = new Set([
-  'id',
-  'date',
-  'created',
-  'modified',
-  'tags',
-  'properties',
-  'emoji'
-])
+const RESERVED_JOURNAL_KEYS = new Set(['date', 'tags'])
 
 /**
  * Extract custom properties from journal frontmatter.
- * Properties can be stored under the `properties` key or as top-level keys
- * (excluding reserved keys like id, date, created, modified, tags).
+ * Top-level non-reserved keys are primary; a legacy nested `properties:`
+ * mapping is merged in after them (top-level wins on collision).
  *
  * @param frontmatter - Parsed frontmatter object
  * @returns Record of property names to values, or undefined if no properties
@@ -195,17 +198,26 @@ const RESERVED_JOURNAL_KEYS = new Set([
 export function extractJournalProperties(
   frontmatter: JournalFrontmatter
 ): Record<string, unknown> | undefined {
-  // Check for explicit `properties` object first
-  if (frontmatter.properties && typeof frontmatter.properties === 'object') {
-    const props = frontmatter.properties as Record<string, unknown>
-    return Object.keys(props).length > 0 ? props : undefined
-  }
+  const nested =
+    frontmatter.properties &&
+    typeof frontmatter.properties === 'object' &&
+    !Array.isArray(frontmatter.properties)
+      ? (frontmatter.properties as Record<string, unknown>)
+      : undefined
 
-  // Fall back to extracting non-reserved top-level keys
   const properties: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(frontmatter)) {
+    if (key === 'properties' && nested) continue
     if (!RESERVED_JOURNAL_KEYS.has(key) && value !== undefined) {
       properties[key] = value
+    }
+  }
+
+  if (nested) {
+    for (const [key, value] of Object.entries(nested)) {
+      if (!(key in properties) && !RESERVED_JOURNAL_KEYS.has(key) && value !== undefined) {
+        properties[key] = value
+      }
     }
   }
 
@@ -223,13 +235,16 @@ export function extractJournalProperties(
  */
 export async function readJournalEntry(date: string): Promise<JournalEntry | null> {
   const store = getContentStore()
-  const rawContent = await store.read(store.getJournalRelativePath(date))
+  const relativePath = store.getJournalRelativePath(date)
+  const rawContent = await store.read(relativePath)
 
   if (!rawContent) {
     return null
   }
 
-  const parsed = parseJournalEntry(rawContent, date)
+  const absPath = store.resolve(relativePath)
+  const stats = await fs.stat(absPath).catch(() => null)
+  const parsed = parseJournalEntry(rawContent, date, stats ?? undefined)
   const wordCount = countWords(parsed.content)
   const characterCount = parsed.content.length
 
@@ -279,31 +294,30 @@ export async function writeJournalEntryWithContent(
   let frontmatter: JournalFrontmatter
 
   if (existing) {
-    // Update existing entry — user keys only
+    // Update existing entry — user keys only, properties as top-level keys
     frontmatter = { date }
     const mergedTags = tags ?? existing.tags
     if (mergedTags.length > 0) {
       frontmatter.tags = mergedTags
     }
 
-    // Add properties if provided, or preserve existing properties
-    if (properties !== undefined) {
-      // Explicitly provided properties (can be empty object to clear)
-      if (Object.keys(properties).length > 0) {
-        frontmatter.properties = properties
-      }
-      // If properties is empty object, don't add to frontmatter (effectively clearing)
-    } else if (existing.properties && Object.keys(existing.properties).length > 0) {
-      // Preserve existing properties if not updating
-      frontmatter.properties = existing.properties
-    }
+    // Explicitly provided properties win (empty object clears); else preserve
+    const nextProperties = properties !== undefined ? properties : (existing.properties ?? {})
+    frontmatter = applyPropertiesToFrontmatter(
+      frontmatter,
+      nextProperties,
+      RESERVED_JOURNAL_KEYS
+    ) as JournalFrontmatter
   } else {
     // Create new entry
     frontmatter = createJournalFrontmatter(date, tags)
 
-    // Add properties for new entry if provided
     if (properties && Object.keys(properties).length > 0) {
-      frontmatter.properties = properties
+      frontmatter = applyPropertiesToFrontmatter(
+        frontmatter,
+        properties,
+        RESERVED_JOURNAL_KEYS
+      ) as JournalFrontmatter
     }
   }
 

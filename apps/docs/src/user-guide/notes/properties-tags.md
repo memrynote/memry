@@ -85,6 +85,8 @@ Tags are zero-cost and discoverable. Properties are structured and great for fil
 
 ## Storage
 
-Tags and property values live in the data DB. Tag indexes and link graphs are mirrored into the index DB for fast lookups.
+Properties are written into the note file itself as top-level YAML frontmatter keys, formatted exactly the way Obsidian writes properties — you can open the vault in Obsidian, edit a property there, and the file round-trips without formatting churn. Only `tags` and `aliases` have special meaning; every other frontmatter key is a property. Notes written by older Memry versions that nested properties under a `properties:` block are still read; the block migrates to top-level keys the next time the note's properties are saved.
 
-In the vault's markdown files, a note's frontmatter contains only your own properties (plus `tags` and `aliases`). MemryNote keeps its internal bookkeeping — the note id and created/modified dates — in the local database and never writes its own keys into your files; a note with no properties has no frontmatter block at all.
+MemryNote keeps its internal bookkeeping — the note id and created/modified dates — in the local database and never writes its own keys into your files; a note with no properties has no frontmatter block at all.
+
+Tags and property values are also indexed in the data DB. Tag indexes and link graphs are mirrored into the index DB for fast lookups.

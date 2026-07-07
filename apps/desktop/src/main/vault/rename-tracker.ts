@@ -54,8 +54,9 @@ interface PendingDelete {
 /**
  * Pending deletes keyed by content hash. When a file is deleted, we store
  * its cached hash here and wait to see if a new file with the same content
- * appears (indicating a rename). Identical-content collisions queue FIFO —
- * the oldest pending delete matches first.
+ * appears (indicating a rename). Identical-content collisions queue FIFO;
+ * a bucket with more than one entry is ambiguous and checkForRename refuses
+ * to guess a match for it (see checkForRename).
  */
 const pendingDeletes = new Map<string, PendingDelete[]>()
 
@@ -141,9 +142,24 @@ export function trackPendingDelete(
 
 /**
  * Check if a newly added file matches a pending delete (indicating a rename).
- * Identical-hash collisions match FIFO (oldest pending delete first). If a
- * match is found, the pending delete is cleared and the caller is responsible
- * for replaying the rename through projection-safe write paths.
+ *
+ * Because vault files carry no Memry identity, a rename can only be inferred
+ * by content hash. When exactly one pending delete shares the added file's
+ * hash, that match is unambiguous and we adopt its id.
+ *
+ * Ambiguity tradeoff: if MORE THAN ONE pending delete shares the hash
+ * (identical-content notes deleted/renamed within the same window), we cannot
+ * tell which deleted note the added file corresponds to. FIFO guessing risks
+ * an identity SWAP — attaching a genuinely-deleted note's id/history to a
+ * surviving file while the actually-renamed note times out as a real delete
+ * and its live row is destroyed. To prevent that irreversible harm we refuse
+ * to guess: return null so the added file is treated as a brand-new note and
+ * leave the pending deletes to resolve as real deletes via their timeouts.
+ *
+ * Residual limitation: a genuine rename among identical-content files loses
+ * its identity association (new id, no version history/task/reminder links
+ * carried over), but it will NEVER mis-attach a deleted note's identity to a
+ * surviving file. Losing an association is recoverable; a silent swap is not.
  *
  * @param contentHash - Content hash of the newly added file
  * @param newPath - Relative path of the new file
@@ -160,9 +176,22 @@ export function checkForRename(
     return null
   }
 
-  // Found a match! This is a rename. FIFO: oldest pending delete wins.
+  if (bucket.length > 1) {
+    // Ambiguous identical-content collision: multiple pending deletes share
+    // this hash. Guessing via FIFO could swap a deleted note's identity onto
+    // this surviving file, so skip adoption and treat it as a new note. The
+    // pending deletes stay queued and resolve as real deletes via timeout.
+    logger.warn(
+      `Ambiguous rename: ${bucket.length} pending deletes share the content ` +
+        `hash of ${newPath}; skipping identity adoption to avoid an identity ` +
+        `swap. Treating as a new note; pending deletes will resolve as real deletes.`
+    )
+    return null
+  }
+
+  // Exactly one pending delete with this hash - unambiguous rename match.
   const pending = bucket.shift() as PendingDelete
-  if (bucket.length === 0) pendingDeletes.delete(contentHash)
+  pendingDeletes.delete(contentHash)
 
   logger.info(`Rename detected: ${pending.path} -> ${newPath}`)
   clearTimeout(pending.timeout)

@@ -12,7 +12,14 @@ import {
 import { formatJournalFilename } from '@memry/storage-vault'
 import type { DataDb } from './database.ts'
 import { createId } from './ids.ts'
-import { parseMarkdownNote, snippet, wordCount, writeMarkdownNote } from './markdown.ts'
+import {
+  applyPropertiesToFrontmatter,
+  extractNoteProperties,
+  parseMarkdownNote,
+  snippet,
+  wordCount,
+  writeMarkdownNote
+} from './markdown.ts'
 import { normalizePath, safeFilename, type VaultConfig } from './paths.ts'
 
 export interface NoteRecord {
@@ -111,10 +118,18 @@ function tagsFromFrontmatter(frontmatter: Record<string, unknown>): string[] {
   return tags.map((tag) => String(tag).trim()).filter(Boolean)
 }
 
-function propertiesFromFrontmatter(frontmatter: Record<string, unknown>): Record<string, unknown> {
-  const properties = frontmatter.properties
-  if (!properties || typeof properties !== 'object' || Array.isArray(properties)) return {}
-  return { ...(properties as Record<string, unknown>) }
+// Journal entries reserve `date` (Memry writes it like desktop) in addition to
+// the default reserved keys, so it never surfaces as a user-editable property.
+const JOURNAL_RESERVED_FRONTMATTER_KEYS = new Set(['date', 'tags', 'aliases'])
+
+function propertiesFromFrontmatter(
+  frontmatter: Record<string, unknown>,
+  isJournal = false
+): Record<string, unknown> {
+  return extractNoteProperties(
+    frontmatter,
+    isJournal ? JOURNAL_RESERVED_FRONTMATTER_KEYS : undefined
+  )
 }
 
 function wikilinks(content: string): string[] {
@@ -170,7 +185,7 @@ async function readNote(vaultPath: string, row: NoteMetadataRow): Promise<NoteRe
     title: row.title,
     content,
     tags: tagsFromFrontmatter(parsed.frontmatter),
-    properties: propertiesFromFrontmatter(parsed.frontmatter),
+    properties: propertiesFromFrontmatter(parsed.frontmatter, row.journalDate != null),
     emoji: row.emoji ?? null,
     localOnly: row.localOnly ?? false,
     createdAt: row.createdAt,
@@ -251,13 +266,12 @@ export function createNotesService({
         notePath(config, input.title, input.folder)
       )
       const id = createId('note')
-      // User keys only — Memry identity/dates live in the metadata DB
-      const frontmatter = {
-        ...(input.tags && input.tags.length > 0 ? { tags: input.tags } : {}),
-        ...(input.properties && Object.keys(input.properties).length > 0
-          ? { properties: input.properties }
-          : {})
-      }
+      // User keys only — Memry identity/dates live in the metadata DB;
+      // properties are top-level frontmatter keys
+      const frontmatter = applyPropertiesToFrontmatter(
+        input.tags && input.tags.length > 0 ? { tags: input.tags } : {},
+        input.properties ?? {}
+      )
       const content = input.content ?? ''
       await fs.mkdir(path.dirname(path.join(vaultPath, relativePath)), { recursive: true })
       await fs.writeFile(
@@ -312,26 +326,30 @@ export function createNotesService({
       const raw = await fs.readFile(path.join(vaultPath, row.path), 'utf-8')
       const parsed = parseMarkdownNote(raw)
       const now = new Date().toISOString()
+      const isJournal = row.journalDate != null
       const nextTitle = input.title ?? row.title
       const nextProperties =
         input.properties !== undefined
           ? input.properties
-          : propertiesFromFrontmatter(parsed.frontmatter)
+          : propertiesFromFrontmatter(parsed.frontmatter, isJournal)
       const nextContent =
         input.content ??
         (input.append ? `${parsed.content}\n${input.append}`.trim() : parsed.content)
       // User keys only — Memry identity/title/dates live in the metadata DB
       const nextTags = input.tags ?? tagsFromFrontmatter(parsed.frontmatter)
-      const nextFrontmatter: Record<string, unknown> = {
-        ...parsed.frontmatter,
-        ...(Object.keys(nextProperties).length > 0 ? { properties: nextProperties } : {})
-      }
+      const merged: Record<string, unknown> = { ...parsed.frontmatter }
       if (nextTags.length > 0) {
-        nextFrontmatter.tags = nextTags
+        merged.tags = nextTags
       } else {
-        delete nextFrontmatter.tags
+        delete merged.tags
       }
-      if (Object.keys(nextProperties).length === 0) delete nextFrontmatter.properties
+      // Properties as top-level keys; legacy nested blocks flatten here. For
+      // journals `date` is reserved so it stays in the file (like desktop).
+      const nextFrontmatter = applyPropertiesToFrontmatter(
+        merged,
+        nextProperties,
+        isJournal ? JOURNAL_RESERVED_FRONTMATTER_KEYS : undefined
+      )
       let nextPath = row.path
 
       if (input.title && input.title !== row.title && !row.journalDate) {
@@ -494,9 +512,11 @@ export function createNotesService({
       const id = createId('journal')
       const relativePath = journalPath(config, date)
       await fs.mkdir(path.dirname(path.join(vaultPath, relativePath)), { recursive: true })
+      // Desktop always writes `date:` for journals; match it so the file
+      // round-trips byte-identically and does not churn on next sync.
       await fs.writeFile(
         path.join(vaultPath, relativePath),
-        writeMarkdownNote({}, content),
+        writeMarkdownNote({ date }, content),
         'utf-8'
       )
       saveMetadata(dataDb, {

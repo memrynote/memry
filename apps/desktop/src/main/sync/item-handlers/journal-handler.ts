@@ -12,6 +12,7 @@ import { getNoteMetadataById, updateNoteMetadata } from '@memry/storage-data'
 import { saveCanonicalNote } from '@memry/domain-notes'
 import {
   deleteJournalEntryFile,
+  extractJournalProperties,
   getJournalPath,
   getJournalRelativePath,
   parseJournalEntry,
@@ -195,9 +196,7 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
       const parsed = parseJournalEntry(raw, cached.journalDate)
       content = operation === 'create' ? parsed.content : null
       tags = parsed.frontmatter.tags ?? []
-      if (parsed.frontmatter.properties) {
-        properties = parsed.frontmatter.properties as Record<string, unknown>
-      }
+      properties = extractJournalProperties(parsed.frontmatter) ?? null
     } catch {
       log.warn('Could not read journal file for push payload', {
         noteId: cached.id,

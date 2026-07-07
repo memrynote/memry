@@ -49,6 +49,7 @@ import { VaultChannels } from '@memry/contracts/ipc-channels'
 import { VaultError, VaultErrorCode } from '../lib/errors'
 import { startWatcher, stopWatcher } from './watcher'
 import { indexVault, rebuildIndex } from './indexer'
+import { migrateFrontmatterDietIfNeeded } from './migrations/frontmatter-diet'
 import { createLogger } from '../lib/logger'
 import { getMainI18n } from '../lib/main-i18n'
 import { startSyncRuntime, stopSyncRuntime } from '../sync/runtime'
@@ -282,6 +283,13 @@ async function openVault(vaultPath: string): Promise<void> {
   // holder) resolve the real config.json instead of the closed-vault fallback —
   // otherwise the initial index uses default journal config + empty excludes.
   updateStatus({ isIndexing: true, indexProgress: 0, path: vaultPath })
+
+  // One-time: fold legacy Memry frontmatter keys (id/title/created/modified/
+  // emoji/localOnly) from pre-diet vault files into the sidecar note_metadata,
+  // then strip them from the markdown. Runs before indexing (so the cache
+  // records post-migration content hashes) and before the watcher/sync start
+  // (so it produces no churn). Never throws.
+  await migrateFrontmatterDietIfNeeded(vaultPath)
 
   // Load Obsidian property types (.obsidian/types.json) before indexing so
   // property type inference sees them during the initial index.

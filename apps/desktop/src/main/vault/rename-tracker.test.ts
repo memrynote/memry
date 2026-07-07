@@ -108,7 +108,7 @@ describe('rename-tracker', () => {
     clearPendingDelete('note-x')
   })
 
-  it('matches identical-hash collisions FIFO, oldest pending delete first', async () => {
+  it('refuses to disambiguate identical-hash collisions (no identity swap)', async () => {
     vi.useFakeTimers()
     const onRealDeleteA = vi.fn().mockResolvedValue(undefined)
     const onRealDeleteB = vi.fn().mockResolvedValue(undefined)
@@ -117,19 +117,26 @@ describe('rename-tracker', () => {
     trackPendingDelete('note-b', 'same-hash', 'notes/b.md', onRealDeleteB)
     expect(getPendingDeleteCount()).toBe(2)
 
-    expect(checkForRename('same-hash', 'notes/a-renamed.md')).toEqual({
-      id: 'note-a',
-      oldPath: 'notes/a.md'
-    })
-    expect(checkForRename('same-hash', 'notes/b-renamed.md')).toEqual({
-      id: 'note-b',
-      oldPath: 'notes/b.md'
-    })
-    expect(checkForRename('same-hash', 'notes/c.md')).toBeNull()
+    // Ambiguous identical-content collision: never adopt an identity — a FIFO
+    // guess could attach a deleted note's history to the wrong surviving file.
+    expect(checkForRename('same-hash', 'notes/a-renamed.md')).toBeNull()
+    expect(getPendingDeleteCount()).toBe(2)
 
+    // Both pending deletes fall through and resolve as genuine deletes.
     await vi.advanceTimersByTimeAsync(500)
-    expect(onRealDeleteA).not.toHaveBeenCalled()
-    expect(onRealDeleteB).not.toHaveBeenCalled()
+    expect(onRealDeleteA).toHaveBeenCalledTimes(1)
+    expect(onRealDeleteB).toHaveBeenCalledTimes(1)
+  })
+
+  it('matches a single pending delete of a given hash as a rename', () => {
+    const onRealDelete = vi.fn().mockResolvedValue(undefined)
+    trackPendingDelete('note-solo', 'solo-hash', 'notes/solo.md', onRealDelete)
+
+    expect(checkForRename('solo-hash', 'notes/solo-renamed.md')).toEqual({
+      id: 'note-solo',
+      oldPath: 'notes/solo.md'
+    })
+    expect(getPendingDeleteCount()).toBe(0)
   })
 
   it('emits rename event when the caller completes the rename', async () => {
