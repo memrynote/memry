@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   safeRead: vi.fn(),
   fileExists: vi.fn(),
   generateNotePath: vi.fn(),
+  generateUniquePath: vi.fn(),
   ensureDirectory: vi.fn(),
   deleteFile: vi.fn(),
   parseNote: vi.fn(),
@@ -68,6 +69,7 @@ vi.mock('../vault/file-ops', () => ({
   safeRead: (...args: unknown[]) => mocks.safeRead(...args),
   fileExists: (...args: unknown[]) => mocks.fileExists(...args),
   generateNotePath: (...args: unknown[]) => mocks.generateNotePath(...args),
+  generateUniquePath: (...args: unknown[]) => mocks.generateUniquePath(...args),
   ensureDirectory: (...args: unknown[]) => mocks.ensureDirectory(...args),
   deleteFile: (...args: unknown[]) => mocks.deleteFile(...args)
 }))
@@ -163,6 +165,7 @@ describe('crdt writeback', () => {
     mocks.toRelativePath.mockImplementation((absolute: string) => absolute.replace('/vault/', ''))
     mocks.getNotesDir.mockReturnValue('/vault/notes')
     mocks.generateNotePath.mockReturnValue('/vault/notes/New.md')
+    mocks.generateUniquePath.mockImplementation((p: string) => Promise.resolve(p))
     mocks.getJournalPath.mockImplementation((date: string) => `/vault/journal/${date}.md`)
     mocks.fileExists.mockResolvedValue(false)
     mocks.atomicWrite.mockResolvedValue(undefined)

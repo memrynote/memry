@@ -304,12 +304,14 @@ export function sanitizeFilename(filename: string): string {
     .replace(/\s+/g, ' ') // Collapse whitespace
     .trim()
 
-  // Ensure it doesn't start with a dot (hidden file)
-  if (sanitized.startsWith('.')) {
-    sanitized = sanitized.slice(1)
+  // Strip every leading dot (hidden files) and re-trim any whitespace it
+  // exposes. Loop because stripping the widened char set can leave `..` or
+  // `. Report`; a single slice would keep a `..` traversal or a leading space.
+  while (sanitized.startsWith('.')) {
+    sanitized = sanitized.slice(1).trim()
   }
 
-  // Ensure it's not empty
+  // Ensure it's not empty (also catches bare `.` / `..`, which reduce to '')
   if (sanitized.length === 0) {
     sanitized = 'untitled'
   }
