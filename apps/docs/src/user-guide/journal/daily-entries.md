@@ -62,6 +62,14 @@ You can wiki-link to other journal entries: `[[2026-05-07]]` resolves to that da
 
 Nothing. memrynote doesn't pad missing days with empty entries. Calendar heatmaps show genuine activity, not noise.
 
+## Obsidian Vaults
+
+If the folder you open is an Obsidian vault (it contains `.obsidian/`), memrynote reads the vault's Daily Notes settings on first open: the configured daily-note folder and date format become memrynote's journal folder and filename format, so both apps write the same daily files. This is a one-time seed — afterwards memrynote's own settings are authoritative, and reconfiguring one app never silently reconfigures the other. Date formats that place daily notes in subfolders (like `YYYY/MM/DD`) can't be adopted and fall back to `YYYY-MM-DD`.
+
+Property types defined in Obsidian (`.obsidian/types.json`) are respected too: a property marked there as a number, date, or checkbox keeps that type in memrynote even when a value alone is ambiguous.
+
+The `.obsidian/` and `.trash/` folders are strictly read-only — memrynote never writes, moves, or deletes anything inside them.
+
 ## Sync
 
 Journal entries sync as Yjs CRDTs (same as notes). Two devices writing on the same date during a flight merge cleanly when they reconnect.

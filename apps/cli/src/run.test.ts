@@ -442,9 +442,10 @@ test('runs core commands against a vault and prints JSON output', async () => {
     }
   )
   assert.equal(versionCode, 0)
+  // Snapshot captured the pre-update file; files carry no title frontmatter
   assert.match(
     (JSON.parse(stdout.at(-1) ?? '{}') as { fileContent?: string }).fileContent ?? '',
-    /CLI Note/
+    /Created from CLI/
   )
 
   const attachmentSource = path.join(vaultPath, 'sample.txt')

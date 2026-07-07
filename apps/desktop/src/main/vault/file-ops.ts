@@ -13,6 +13,34 @@ import { NoteError, NoteErrorCode } from '../lib/errors'
 import { normalizeRelativePath } from '../lib/paths'
 
 // ============================================================================
+// Protected Paths
+// ============================================================================
+
+/**
+ * Folders Memry must never write into or delete from. `.obsidian/` is
+ * Obsidian-owned configuration and `.trash/` is Obsidian's trash — both are
+ * strictly read-only for Memry. No production path hits this today; it is
+ * pure regression insurance.
+ */
+const PROTECTED_VAULT_DIRS = new Set(['.obsidian', '.trash'])
+
+/**
+ * Throw if the resolved path is inside a protected vault folder.
+ *
+ * @param filePath - Absolute path about to be written or deleted
+ * @throws NoteError with INVALID_PATH if the path is protected
+ */
+export function assertVaultWritePath(filePath: string): void {
+  const segments = path.resolve(filePath).split(path.sep)
+  if (segments.some((segment) => PROTECTED_VAULT_DIRS.has(segment))) {
+    throw new NoteError(
+      `Refusing to write inside protected folder: ${filePath}`,
+      NoteErrorCode.INVALID_PATH
+    )
+  }
+}
+
+// ============================================================================
 // Atomic Write
 // ============================================================================
 
@@ -25,6 +53,8 @@ import { normalizeRelativePath } from '../lib/paths'
  * @throws NoteError if write fails
  */
 export async function atomicWrite(filePath: string, content: string): Promise<void> {
+  assertVaultWritePath(filePath)
+
   const dir = path.dirname(filePath)
   const tempPath = path.join(dir, `.${randomBytes(6).toString('hex')}.tmp`)
 
@@ -217,6 +247,8 @@ export async function listDirectories(dirPath: string, relativeTo?: string): Pro
  * @throws NoteError if delete fails
  */
 export async function deleteFile(filePath: string): Promise<void> {
+  assertVaultWritePath(filePath)
+
   try {
     await unlink(filePath)
   } catch (error) {
