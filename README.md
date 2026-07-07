@@ -13,7 +13,7 @@ All on your disk. End-to-end encrypted. Every feature a toggle.
 
 [![Release](https://img.shields.io/github/v/release/memrynote/memry)](https://github.com/memrynote/memry/releases)
 [![codecov](https://codecov.io/gh/memrynote/memry/branch/main/graph/badge.svg)](https://codecov.io/gh/memrynote/memry)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
 
 </div>
 
@@ -88,6 +88,6 @@ Ship a workflow you love? Tell us. Something broken? Tell us louder.
 </a>
 <sub>
   
-  GPL-3.0 © MemryNote contributors — private by design, open at heart.</sub>
+  AGPL-3.0 © MemryNote contributors — private by design, open at heart.</sub>
 
 </div>
