@@ -73,7 +73,9 @@ vi.mock('../vault/file-ops', () => ({
 }))
 
 vi.mock('../vault/frontmatter', () => ({
-  parseNote: (...args: unknown[]) => mocks.parseNote(...args)
+  parseNote: (...args: unknown[]) => mocks.parseNote(...args),
+  serializeNote: vi.fn(),
+  serializeParsedNote: vi.fn()
 }))
 
 vi.mock('./blocknote-converter', () => ({

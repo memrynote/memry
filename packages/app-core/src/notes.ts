@@ -12,7 +12,14 @@ import {
 import { formatJournalFilename } from '@memry/storage-vault'
 import type { DataDb } from './database.ts'
 import { createId } from './ids.ts'
-import { parseMarkdownNote, snippet, wordCount, writeMarkdownNote } from './markdown.ts'
+import { isDeepStrictEqual } from 'node:util'
+import {
+  parseMarkdownNote,
+  serializeParsedMarkdownNote,
+  snippet,
+  wordCount,
+  writeMarkdownNote
+} from './markdown.ts'
 import { normalizePath, safeFilename, type VaultConfig } from './paths.ts'
 
 export interface NoteRecord {
@@ -341,11 +348,16 @@ export function createNotesService({
         await fs.rename(path.join(vaultPath, row.path), path.join(vaultPath, nextPath))
       }
 
-      await fs.writeFile(
-        path.join(vaultPath, nextPath),
-        writeMarkdownNote(nextFrontmatter, nextContent),
-        'utf-8'
+      const frontmatterEdited = !isDeepStrictEqual(nextFrontmatter, parsed.frontmatter)
+      const nextRaw = serializeParsedMarkdownNote(
+        { ...parsed, frontmatter: nextFrontmatter },
+        nextContent,
+        { frontmatterEdited }
       )
+      // Skip identical bytes: no mtime churn for no-op updates
+      if (nextPath !== row.path || nextRaw !== raw) {
+        await fs.writeFile(path.join(vaultPath, nextPath), nextRaw, 'utf-8')
+      }
       saveMetadata(dataDb, {
         id: row.id,
         path: nextPath,

@@ -53,7 +53,7 @@ import {
 import { getAllTagsWithCounts, mergeTagInNotes, mergeTagInTasks } from '../tags/store'
 import { createLogger } from '../lib/logger'
 import { toAbsolutePath } from '../vault/notes'
-import { parseNote, serializeNote } from '../vault/frontmatter'
+import { parseNote, serializeParsedNote } from '../vault/frontmatter'
 import { atomicWrite } from '../vault/file-ops'
 import {
   syncMergedTagDefinitions,
@@ -150,8 +150,10 @@ async function updateNoteFrontmatterTag(
     parsed.frontmatter.tags = updatedTags
   }
 
-  const serialized = serializeNote(parsed.frontmatter, parsed.content)
-  await atomicWrite(absolutePath, serialized)
+  const serialized = serializeParsedNote(parsed, parsed.content, { frontmatterEdited: true })
+  if (serialized !== raw) {
+    await atomicWrite(absolutePath, serialized)
+  }
   syncTaggedNote(noteId)
 }
 

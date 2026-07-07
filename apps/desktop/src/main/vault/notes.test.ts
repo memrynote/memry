@@ -290,7 +290,7 @@ describe('notes operations', () => {
       expect(retrieved).not.toBeNull()
       expect(retrieved!.id).toBe(created.id)
       expect(retrieved!.title).toBe('Get By ID Test')
-      expect(retrieved!.content).toBe('Content to retrieve.')
+      expect(retrieved!.content).toBe('Content to retrieve.\n')
       expect(retrieved!.tags).toContain('test')
     })
 
@@ -1462,7 +1462,7 @@ describe('notes operations', () => {
         // Restore to original
         const restored = await notes.restoreVersion(snapshot!.id)
 
-        expect(restored.content).toBe('Original content.')
+        expect(restored.content).toBe('Original content.\n')
 
         // Should have created backup snapshot before restore
         const history = notes.getVersionHistory(created.id)

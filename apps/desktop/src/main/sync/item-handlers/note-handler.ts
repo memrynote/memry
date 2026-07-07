@@ -26,6 +26,7 @@ import { toAbsolutePath, toRelativePath, getNotesDir } from '../../vault/notes'
 import {
   parseNote,
   serializeNote,
+  serializeParsedNote,
   inferPropertyType,
   type NoteFrontmatter
 } from '../../vault/frontmatter'
@@ -263,7 +264,9 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
                 delete parsed.frontmatter.properties
               }
             }
-            const updatedContent = serializeNote(parsed.frontmatter, parsed.content)
+            const updatedContent = serializeParsedNote(parsed, parsed.content, {
+              frontmatterEdited: true
+            })
             const tmpPath = newAbsPath + '.tmp'
             fs.writeFileSync(tmpPath, updatedContent, 'utf-8')
             fs.renameSync(tmpPath, newAbsPath)
@@ -315,11 +318,15 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
               delete parsed.frontmatter.properties
             }
           }
-          const updatedContent = serializeNote(parsed.frontmatter, parsed.content)
-          markWritebackIgnored(absPath)
-          const tmpPath = absPath + '.tmp'
-          fs.writeFileSync(tmpPath, updatedContent, 'utf-8')
-          fs.renameSync(tmpPath, absPath)
+          const updatedContent = serializeParsedNote(parsed, parsed.content, {
+            frontmatterEdited: true
+          })
+          if (updatedContent !== raw) {
+            markWritebackIgnored(absPath)
+            const tmpPath = absPath + '.tmp'
+            fs.writeFileSync(tmpPath, updatedContent, 'utf-8')
+            fs.renameSync(tmpPath, absPath)
+          }
         } catch {
           log.warn('Could not read note for frontmatter update', { itemId })
         }

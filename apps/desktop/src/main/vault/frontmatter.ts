@@ -7,6 +7,12 @@
 
 import matter from 'gray-matter'
 import path from 'path'
+import {
+  splitFrontmatterBlock,
+  serializeParsedMarkdownNote,
+  writeMarkdownNote,
+  type Eol
+} from '@memry/app-core/markdown'
 import { generateNoteId, isValidNoteId } from '../lib/id'
 
 // ============================================================================
@@ -39,9 +45,17 @@ export interface ParseNoteStats {
 export interface ParsedNote {
   /** Raw user frontmatter keys, verbatim (tags/aliases normalized to arrays) */
   frontmatter: NoteFrontmatter
+  /** Raw body substring — never trimmed; `rawFrontmatterBlock + content` is the file. */
   content: string
   /** Whether frontmatter was present in the original file */
   hadFrontmatter: boolean
+  /**
+   * Exact original substring from byte 0 (BOM included) through the closing
+   * `---` line and its EOL, or null when the file had no frontmatter.
+   */
+  rawFrontmatterBlock: string | null
+  eol: Eol
+  hadTrailingNewline: boolean
   /**
    * In-memory defaults — never written back to the file. Callers that know
    * the note from the sidecar DBs should prefer the cached values.
@@ -71,7 +85,10 @@ export function parseNote(
   filePath?: string,
   stats?: ParseNoteStats
 ): ParsedNote {
-  const { data, content } = matter(rawContent)
+  const { block, body } = splitFrontmatterBlock(rawContent)
+  // The `{}` options bypass gray-matter's content-keyed cache, which would
+  // otherwise leak `data` mutations into later parses of identical content.
+  const data = block ? (matter(block, {}).data as Record<string, unknown>) : {}
   const hadFrontmatter = Object.keys(data).length > 0
   const now = new Date().toISOString()
 
@@ -87,8 +104,11 @@ export function parseNote(
 
   return {
     frontmatter: data as NoteFrontmatter,
-    content: content.trim(),
+    content: body,
     hadFrontmatter,
+    rawFrontmatterBlock: block,
+    eol: rawContent.includes('\r\n') ? '\r\n' : '\n',
+    hadTrailingNewline: /\r?\n$/.test(rawContent),
     id: generateNoteId(),
     title: filePath ? extractTitleFromPath(filePath) : 'Untitled',
     created: stats?.birthtime?.toISOString() ?? now,
@@ -112,30 +132,38 @@ export function extractTitleFromPath(filePath: string): string {
 // Serialization
 // ============================================================================
 
-function stripTrailingNewlines(value: string): string {
-  return value.replace(/(?:\r?\n)+$/g, '')
-}
-
 /**
- * Serialize frontmatter and content back to markdown format.
- * Writes exactly the keys given (minus `undefined` values); when no keys
- * remain, returns the bare content with no YAML block at all.
+ * Serialize a NEW note file. Writes exactly the keys given (minus `undefined`
+ * values); when no keys remain, returns the bare content with no YAML block.
+ * New files get LF endings and a single trailing newline. Existing files must
+ * go through serializeParsedNote instead so unedited bytes survive.
  *
  * @param frontmatter - User frontmatter keys
  * @param content - Markdown content (without frontmatter)
  * @returns Complete markdown file content
  */
 export function serializeNote(frontmatter: NoteFrontmatter, content: string): string {
-  const clean = Object.fromEntries(Object.entries(frontmatter).filter(([, v]) => v !== undefined))
+  return writeMarkdownNote(frontmatter, content)
+}
 
-  // Explicit guard: no keys → no YAML block (don't rely on gray-matter's
-  // empty-object behavior)
-  if (Object.keys(clean).length === 0) {
-    return content.trim()
-  }
+export interface SerializeParsedNoteOptions {
+  /** Only when true is the frontmatter block re-stringified; otherwise the raw block is emitted verbatim. */
+  frontmatterEdited: boolean
+}
 
-  const serialized = matter.stringify(content.trim(), clean)
-  return stripTrailingNewlines(serialized)
+/**
+ * Serialize an EXISTING note back to file content. Anything the user didn't
+ * change stays byte-identical: an unedited body (`content === parsed.content`)
+ * and an unedited frontmatter block are emitted verbatim. An edited body gets
+ * its EOLs converted to the file's dominant EOL and the file's final-newline
+ * presence re-applied.
+ */
+export function serializeParsedNote(
+  parsed: ParsedNote,
+  content: string,
+  options: SerializeParsedNoteOptions
+): string {
+  return serializeParsedMarkdownNote(parsed, content, options)
 }
 
 // ============================================================================

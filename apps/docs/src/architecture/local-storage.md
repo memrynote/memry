@@ -68,6 +68,16 @@ pnpm db:studio      # open GUI
 
 > Migrations are hand-written from `0020` onward — see [Common Gotchas](/contribute/gotchas).
 
+## Vault Markdown Files
+
+Notes are plain `.md` files in the vault, and the write path is built around byte preservation: no write happens without a semantic change.
+
+- Every save site compares against the on-disk bytes first; identical content skips the write entirely — no mtime churn, no watcher echo, no sync item, no snapshot.
+- The raw frontmatter block is captured at parse time and re-emitted verbatim unless a property/tag edit actually happened; only then is the block re-stringified.
+- CRLF vs LF and the presence of a final newline are detected per file and preserved. New files get LF with a single trailing newline.
+
+A golden round-trip test suite (`apps/desktop/src/main/vault/byte-preservation.golden.test.ts`) holds this contract against adversarial files (YAML comments/anchors, CRLF, BOM, missing final newline, Obsidian syntax).
+
 ## Concurrency
 
 better-sqlite3 is synchronous and single-process. The main process is the only writer. The renderer never touches SQLite directly — all reads and writes go through IPC.

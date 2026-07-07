@@ -101,7 +101,7 @@ test('opens a standalone vault and exposes core note, journal, task, inbox, and 
   assert.deepEqual(note.properties, { status: 'draft' })
 
   const fetchedNote = await app.notes.get(note.id)
-  assert.equal(fetchedNote?.content, 'Body from the command line')
+  assert.equal(fetchedNote?.content, 'Body from the command line\n')
   await app.properties.set(note.id, { status: 'active', priority: 3 })
   assert.deepEqual(await app.properties.get(note.id), {
     status: 'active',
@@ -140,14 +140,14 @@ test('opens a standalone vault and exposes core note, journal, task, inbox, and 
   assert.equal(snapshot?.noteId, note.id)
   await app.notes.update({ id: note.id, content: 'Changed content' })
   assert.equal((await app.versions.history(note.id))[0]?.id, snapshot?.id)
-  // Snapshot captured the pre-update file; files carry no title frontmatter
+  // Vault files carry no Memry title key; the snapshot stores the file verbatim
   assert.match(
     (await app.versions.get(snapshot?.id ?? ''))?.fileContent ?? '',
     /Body from the command line/
   )
   assert.equal(
     (await app.versions.restore(snapshot?.id ?? '')).content,
-    'Body from the command line'
+    'Body from the command line\n'
   )
   assert.equal(await app.versions.delete(snapshot?.id ?? ''), true)
 
@@ -743,7 +743,7 @@ test('opens a standalone vault and exposes core note, journal, task, inbox, and 
     content: 'Template body',
     tags: ['templates']
   })
-  assert.equal((await app.templates.get(template.id))?.content, 'Template body')
+  assert.equal((await app.templates.get(template.id))?.content, 'Template body\n')
   assert.equal((await app.templates.list()).length, 1)
 
   const bookmark = await app.bookmarks.add({ itemType: 'note', itemId: note.id })

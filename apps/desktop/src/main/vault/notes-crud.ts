@@ -8,11 +8,13 @@
 
 import path from 'path'
 import fs from 'fs/promises'
+import { isDeepStrictEqual } from 'util'
 import { shell } from 'electron'
 import { and, desc, eq } from 'drizzle-orm'
 import {
   parseNote,
   serializeNote,
+  serializeParsedNote,
   extractInlineTagsFromMarkdown,
   type NoteFrontmatter
 } from './frontmatter'
@@ -510,32 +512,64 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
     delete newFrontmatter.properties
   }
 
-  const fileContent = serializeNote(newFrontmatter, newContent)
-  const absolutePath = toAbsolutePath(existing.path)
-  await atomicWrite(absolutePath, fileContent)
-
-  const cached = getNoteCacheById(db, input.id)
-  const newModified = new Date().toISOString()
-
-  const syncResult = syncNoteToCache(
-    db,
-    {
-      id: input.id,
-      path: existing.path,
-      fileContent,
-      frontmatter: newFrontmatter,
-      parsedContent: newContent,
-      title: newTitle,
-      createdAt: cached?.createdAt ?? existing.created.toISOString(),
-      modifiedAt: newModified,
-      localOnly: cached?.localOnly ?? false,
-      emoji: newEmoji
-    },
-    { isNew: false, tagsOverride: newTags }
-  )
-
   const tagsChanged =
     newTags.length !== existing.tags.length || newTags.some((t) => !existing.tags.includes(t))
+
+  // Honest edit flag: the frontmatter block is re-stringified only when the
+  // caller actually changed something that lives in it; otherwise the raw
+  // block is re-emitted verbatim (byte preservation).
+  const frontmatterEdited =
+    tagsChanged ||
+    (input.properties !== undefined && !isDeepStrictEqual(input.properties, existing.properties)) ||
+    (input.frontmatter !== undefined &&
+      !isDeepStrictEqual({ ...existing.frontmatter, ...input.frontmatter }, existing.frontmatter))
+
+  const absolutePath = toAbsolutePath(existing.path)
+  const currentRaw = await safeRead(absolutePath)
+  let fileContent: string
+  if (currentRaw !== null) {
+    const parsedCurrent = parseNote(currentRaw, existing.path)
+    const nextBody = input.content !== undefined ? newContent : parsedCurrent.content
+    fileContent = serializeParsedNote({ ...parsedCurrent, frontmatter: newFrontmatter }, nextBody, {
+      frontmatterEdited
+    })
+  } else {
+    fileContent = serializeNote(newFrontmatter, newContent)
+  }
+
+  const wrote = currentRaw === null || fileContent !== currentRaw
+  if (wrote) {
+    await atomicWrite(absolutePath, fileContent)
+  }
+
+  // Identical bytes = no watcher echo, no sync item, no mtime bump. Sidecar
+  // state (title/emoji) still updates the DBs without touching the file.
+  const sidecarChanged = newTitle !== existing.title || newEmoji !== existing.emoji
+  const changed = wrote || sidecarChanged
+
+  const cached = getNoteCacheById(db, input.id)
+  const newModified = changed
+    ? new Date().toISOString()
+    : (cached?.modifiedAt ?? existing.modified.toISOString())
+
+  const syncResult = changed
+    ? syncNoteToCache(
+        db,
+        {
+          id: input.id,
+          path: existing.path,
+          fileContent,
+          frontmatter: newFrontmatter,
+          parsedContent: newContent,
+          title: newTitle,
+          createdAt: cached?.createdAt ?? existing.created.toISOString(),
+          modifiedAt: newModified,
+          localOnly: cached?.localOnly ?? false,
+          emoji: newEmoji
+        },
+        { isNew: false, tagsOverride: newTags }
+      )
+    : null
 
   if (tagsChanged) {
     ensureTagDefinitions(dataDb, newTags)
@@ -551,27 +585,31 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
     modified: new Date(newModified),
     tags: newTags,
     aliases: newFrontmatter.aliases ?? [],
-    wordCount: syncResult.wordCount,
+    wordCount: syncResult?.wordCount ?? cached?.wordCount ?? existing.wordCount,
     properties: newProperties,
     emoji: newEmoji
   }
 
-  emitNoteEvent(NotesChannels.events.UPDATED, {
-    id: input.id,
-    changes: {
-      title: newTitle,
-      content: newContent,
-      tags: newTags,
-      properties: newProperties,
-      emoji: newEmoji
-    },
-    source: 'internal'
-  })
+  if (changed) {
+    emitNoteEvent(NotesChannels.events.UPDATED, {
+      id: input.id,
+      changes: {
+        title: newTitle,
+        content: newContent,
+        tags: newTags,
+        properties: newProperties,
+        emoji: newEmoji
+      },
+      source: 'internal'
+    })
+  }
 
-  try {
-    await syncNoteDateReminders(input.id, newContent, createRemindersService(dataDb))
-  } catch (err) {
-    logger.warn('Failed to sync note_date reminders on update', { noteId: input.id, err })
+  if (wrote) {
+    try {
+      await syncNoteDateReminders(input.id, newContent, createRemindersService(dataDb))
+    } catch (err) {
+      logger.warn('Failed to sync note_date reminders on update', { noteId: input.id, err })
+    }
   }
 
   if (tagsChanged) {

@@ -45,7 +45,11 @@ Hello world
 
     const parsed = parseNote(raw)
     expect(parsed.hadFrontmatter).toBe(true)
-    expect(parsed.content).toBe('Hello world')
+    // Body is the raw substring after the frontmatter block — never trimmed
+    expect(parsed.content).toBe('\nHello world\n')
+    expect(parsed.rawFrontmatterBlock).toBe(raw.slice(0, raw.length - parsed.content.length))
+    expect(parsed.eol).toBe('\n')
+    expect(parsed.hadTrailingNewline).toBe(true)
     // Legacy Memry keys are plain user properties, never interpreted
     expect(parsed.frontmatter.id).toBe('abc123def456')
     expect(parsed.frontmatter.title).toBe('Sample Note')
@@ -93,8 +97,9 @@ describe('frontmatter serialization', () => {
   })
 
   it('serializeNote returns bare content when no keys remain', () => {
-    expect(serializeNote({}, 'Body text\n')).toBe('Body text')
-    expect(serializeNote({ skipped: undefined }, 'Body text')).toBe('Body text')
+    // New files end with a single trailing newline
+    expect(serializeNote({}, 'Body text\n')).toBe('Body text\n')
+    expect(serializeNote({ skipped: undefined }, 'Body text')).toBe('Body text\n')
   })
 })
 

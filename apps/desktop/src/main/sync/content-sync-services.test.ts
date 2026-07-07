@@ -151,7 +151,9 @@ vi.mock('./item-handlers/note-pin-helpers', () => ({
 }))
 
 vi.mock('../vault/frontmatter', () => ({
-  parseNote: (...args: unknown[]) => mocks.parseNote(...args)
+  parseNote: (...args: unknown[]) => mocks.parseNote(...args),
+  serializeNote: vi.fn(),
+  serializeParsedNote: vi.fn()
 }))
 
 vi.mock('../vault/journal', () => ({

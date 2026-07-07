@@ -16,6 +16,7 @@ const fileMocks = vi.hoisted(() => ({
   toAbsolutePath: vi.fn(),
   parseNote: vi.fn(),
   serializeNote: vi.fn(),
+  serializeParsedNote: vi.fn(),
   atomicWrite: vi.fn(),
   syncMergedTagDefinitions: vi.fn(),
   syncTaggedNote: vi.fn(),
@@ -79,7 +80,8 @@ vi.mock('../vault/notes', () => ({
 
 vi.mock('../vault/frontmatter', () => ({
   parseNote: fileMocks.parseNote,
-  serializeNote: fileMocks.serializeNote
+  serializeNote: fileMocks.serializeNote,
+  serializeParsedNote: fileMocks.serializeParsedNote
 }))
 
 vi.mock('../vault/file-ops', () => ({
@@ -130,6 +132,7 @@ describe('tags-handlers', () => {
       content: 'Body'
     })
     fileMocks.serializeNote.mockReturnValue('serialized note')
+    fileMocks.serializeParsedNote.mockReturnValue('serialized note')
     fileMocks.atomicWrite.mockResolvedValue(undefined)
     ;(notesQueries.getNoteCacheById as Mock).mockReturnValue(undefined)
   })
@@ -297,7 +300,11 @@ describe('tags-handlers', () => {
     expect(renameResult).toEqual({ success: true, affectedNotes: 1 })
     expect(fileMocks.toAbsolutePath).toHaveBeenCalledWith('notes/a.md')
     expect(fileMocks.readFile).toHaveBeenCalledWith('/vault/notes/a.md', 'utf-8')
-    expect(fileMocks.serializeNote).toHaveBeenCalledWith({ tags: ['New', 'keep'] }, 'Body')
+    expect(fileMocks.serializeParsedNote).toHaveBeenCalledWith(
+      expect.objectContaining({ frontmatter: { tags: ['New', 'keep'] } }),
+      'Body',
+      { frontmatterEdited: true }
+    )
     expect(fileMocks.atomicWrite).toHaveBeenCalledWith('/vault/notes/a.md', 'serialized note')
     expect(fileMocks.syncTaggedNote).toHaveBeenCalledWith('note-1')
     expect(fileMocks.syncTagDefinitionRename).toHaveBeenCalledWith(' old ', ' New ', {
@@ -314,7 +321,11 @@ describe('tags-handlers', () => {
     const deleteResult = await invokeHandler(TagsChannels.invoke.DELETE_TAG, ' old ')
 
     expect(deleteResult).toEqual({ success: true, affectedNotes: 1 })
-    expect(fileMocks.serializeNote).toHaveBeenLastCalledWith({}, 'Body')
+    expect(fileMocks.serializeParsedNote).toHaveBeenLastCalledWith(
+      expect.objectContaining({ frontmatter: {} }),
+      'Body',
+      { frontmatterEdited: true }
+    )
     expect(fileMocks.syncTagDefinitionDelete).toHaveBeenCalledWith('old', {
       name: 'old',
       color: 'red'
@@ -359,7 +370,11 @@ describe('tags-handlers', () => {
     })
 
     expect(mergeResult).toEqual({ success: true, affectedItems: 3 })
-    expect(fileMocks.serializeNote).toHaveBeenCalledWith({ tags: ['target'] }, 'Body')
+    expect(fileMocks.serializeParsedNote).toHaveBeenCalledWith(
+      expect.objectContaining({ frontmatter: { tags: ['target'] } }),
+      'Body',
+      { frontmatterEdited: true }
+    )
     expect(fileMocks.syncMergedTagDefinitions).toHaveBeenCalledWith('source', 'target', {
       name: 'source',
       color: 'blue'
