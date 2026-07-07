@@ -235,9 +235,11 @@ jobs:
 
       - name: Install dependencies
         shell: bash
-        env:
-          SKIP_ELECTRON_REBUILD: 1
-        # Retry to survive transient registry/CDN flakes on a cold pnpm store.
+        # No SKIP_ELECTRON_REBUILD here: on Windows the package postinstall
+        # (electron-rebuild) is what produces the Electron-ABI native modules the
+        # E2E run needs. ensure-native.sh can't do it on Windows — it passes MSYS
+        # git-bash paths (/d/a/...) to node.exe, which mangles them (\d\a\...) and
+        # fails to resolve @electron/rebuild. Retry survives cold-store CDN flakes.
         run: |
           attempts=3
           for attempt in $(seq 1 "$attempts"); do
@@ -257,16 +259,13 @@ jobs:
 
       - name: Build desktop app
         shell: bash
-        run: |
-          bash apps/desktop/scripts/ensure-native.sh electron
-          pnpm --filter @memry/desktop exec electron-vite build
+        run: pnpm --filter @memry/desktop exec electron-vite build
 
       - name: Run Electron smoke tests
         # No xvfb/dbus/gnome-keyring: Windows runners have an interactive desktop
         # session, and keytar uses the Windows Credential Manager directly.
         shell: bash
         run: |
-          bash apps/desktop/scripts/ensure-native.sh electron
           pnpm --filter @memry/desktop exec playwright test \
             --config config/playwright.config.ts \
             tests/e2e/vault.e2e.ts \
