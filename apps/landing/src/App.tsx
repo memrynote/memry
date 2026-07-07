@@ -56,6 +56,7 @@ import { scrollToLandingTarget } from '@/lib/smooth-scroll'
 import { trackLandingEvent, trackLandingPageView, type LandingEventName } from '@/lib/analytics'
 import { AuthProvider } from '@/contexts/auth-context'
 import { Analytics } from '@vercel/analytics/react'
+import { SpeedInsights } from '@vercel/speed-insights/react'
 
 const SCROLL_DEPTH_EVENTS: readonly { depth: number; event: LandingEventName }[] = [
   { depth: 25, event: 'landing_scroll_25' },
@@ -216,6 +217,7 @@ export default function App() {
         <AuthProvider>
           <AppContent />
           <Analytics />
+          <SpeedInsights />
         </AuthProvider>
       </BrowserRouter>
     </HelmetProvider>
