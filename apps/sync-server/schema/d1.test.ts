@@ -1,10 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import Database from 'better-sqlite3'
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { readdirSync, readFileSync } from 'node:fs'
+import { join, resolve } from 'node:path'
 
+// Canonical schema = the ordered D1 migrations wrangler applies on deploy.
 function loadSchemaSql(): string {
-  return readFileSync(resolve(__dirname, 'd1.sql'), 'utf8')
+  const dir = resolve(__dirname, '../migrations')
+  return readdirSync(dir)
+    .filter((file) => file.endsWith('.sql'))
+    .sort()
+    .map((file) => readFileSync(join(dir, file), 'utf8'))
+    .join('\n')
 }
 
 describe('D1 schema', () => {
