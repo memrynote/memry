@@ -49,7 +49,7 @@ const fadeUp = {
   transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] }
 }
 
-const ASSURANCES = ['Cancel anytime', 'VAT handled by Paddle', 'Prices in USD']
+const ASSURANCES = ['Cancel anytime', 'Tax by location', 'Prices in USD']
 
 export function PricingPage() {
   const navigate = useNavigate()

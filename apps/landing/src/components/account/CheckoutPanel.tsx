@@ -186,7 +186,7 @@ export function CheckoutPanel({
 
       <p className="mt-4 flex items-center justify-center gap-1.5 text-xs text-muted">
         <Lock className="h-3 w-3" strokeWidth={2} />
-        Secured by Paddle · VAT included · 7-day refund
+        Secured by Paddle · Tax by location · 7-day refund
       </p>
 
       <p className="mt-2 text-center text-xs text-muted">
