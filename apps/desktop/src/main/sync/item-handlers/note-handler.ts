@@ -125,7 +125,12 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
             ? (getExtensionFromMimeType(existing.mimeType) ??
               getDefaultExtension(existing.fileType))
             : getDefaultExtension(existing.fileType)
-          const baseAbsPath = generateFilePath(notesDir, newTitle, ext, remoteFolder ?? undefined)
+          // Folder-only move (title unchanged): preserve the existing on-disk
+          // basename byte-for-byte instead of re-deriving it through the
+          // sanitizer, which would retroactively rename legacy files.
+          const baseAbsPath = titleChanged
+            ? generateFilePath(notesDir, newTitle, ext, remoteFolder ?? undefined)
+            : path.join(notesDir, remoteFolder ?? '', path.basename(existing.path))
           const newAbsPath = generateUniquePathSync(
             baseAbsPath,
             (p) => !!getNoteCacheByPath(indexDb, toRelativePath(p))
@@ -220,7 +225,12 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
 
       if (needsPathUpdate) {
         const notesDir = getNotesDir()
-        const baseAbsPath = generateNotePath(notesDir, newTitle, remoteFolder ?? undefined)
+        // Folder-only move (title unchanged): preserve the existing on-disk
+        // basename byte-for-byte instead of re-deriving it through the
+        // sanitizer, which would retroactively rename legacy files.
+        const baseAbsPath = titleChanged
+          ? generateNotePath(notesDir, newTitle, remoteFolder ?? undefined)
+          : path.join(notesDir, remoteFolder ?? '', path.basename(existing.path))
         const newAbsPath = generateUniquePathSync(
           baseAbsPath,
           (p) => !!getNoteCacheByPath(indexDb, toRelativePath(p))

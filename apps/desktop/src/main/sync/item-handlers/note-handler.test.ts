@@ -325,6 +325,49 @@ describe('noteHandler.applyUpsert — path collision', () => {
     })
   })
 
+  it('preserves a legacy bracketed basename on a folder-only move (no retroactive rename)', () => {
+    // #given — a legacy on-disk file whose basename predates the sanitizer widening
+    mockGetNoteMetadataById.mockReturnValue({
+      id: 'note-1',
+      title: 'Team [q3]',
+      path: path.join('notes', 'Old', 'Team [q3].md'),
+      emoji: null,
+      fileType: 'markdown',
+      mimeType: null,
+      fileSize: null,
+      attachmentId: null,
+      clock: { dev1: 1 },
+      createdAt: '2024-01-01T00:00:00.000Z',
+      modifiedAt: '2024-01-01T00:00:00.000Z'
+    })
+    vi.mocked(extractFolderFromPath).mockReturnValueOnce('Old')
+    fs.mkdirSync(path.join(NOTES_DIR, 'Old'), { recursive: true })
+    fs.writeFileSync(path.join(NOTES_DIR, 'Old', 'Team [q3].md'), '---\n---\nold content')
+
+    // #when — only the folder changes; the title is unchanged
+    const result = noteHandler.applyUpsert(
+      ctx,
+      'note-1',
+      makeNotePayload({ title: 'Team [q3]', folderPath: 'New', properties: {} }),
+      { dev1: 2 }
+    )
+
+    // #then — basename is preserved byte-for-byte, only the folder moves
+    expect(result).toBe('applied')
+    expect(updateNoteCache).toHaveBeenCalledWith(
+      {},
+      'note-1',
+      expect.objectContaining({ path: path.join('notes', 'New', 'Team [q3].md') })
+    )
+    expect(ctx.emit).toHaveBeenCalledWith(NotesChannels.events.MOVED, {
+      id: 'note-1',
+      oldPath: path.join('notes', 'Old', 'Team [q3].md'),
+      newPath: path.join('notes', 'New', 'Team [q3].md'),
+      source: 'sync'
+    })
+    expect(ctx.emit).not.toHaveBeenCalledWith(NotesChannels.events.RENAMED, expect.any(Object))
+  })
+
   it('returns conflict for concurrent markdown updates and tolerates frontmatter write failures', () => {
     mockGetNoteMetadataById.mockReturnValue({
       id: 'note-1',
