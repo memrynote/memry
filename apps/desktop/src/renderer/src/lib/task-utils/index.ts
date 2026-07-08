@@ -19,7 +19,8 @@ export {
   isSameMonth,
   endOfDay,
   formatDateKey,
-  parseDateKey
+  parseDateKey,
+  parseDueDate
 } from './task-date-utils'
 
 export {

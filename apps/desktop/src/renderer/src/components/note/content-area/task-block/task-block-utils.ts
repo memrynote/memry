@@ -4,6 +4,7 @@ import type {
   RepeatConfig as DisplayRepeatConfig
 } from '@/data/task-model'
 import type { Task as ServiceTask } from '@/services/tasks-service'
+import { parseDueDate } from '@/lib/task-utils'
 
 // Pure task-block markdown helpers live in @memry/shared so the main-process
 // CRDT seed/writeback can reuse the exact same logic. Re-exported here so the
@@ -50,7 +51,7 @@ export function serviceTaskToDisplayTask(task: ServiceTask, fallbackStatusId: st
     projectId: task.projectId,
     statusId: task.statusId ?? fallbackStatusId,
     priority: DB_PRIORITY_MAP[task.priority] ?? 'none',
-    dueDate: task.dueDate ? new Date(task.dueDate) : null,
+    dueDate: task.dueDate ? parseDueDate(task.dueDate) : null,
     dueTime: task.dueTime ?? null,
     isRepeating: task.repeatConfig !== null,
     repeatConfig,
