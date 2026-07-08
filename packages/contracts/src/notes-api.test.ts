@@ -10,7 +10,8 @@ import {
   NoteUpdateSchema,
   NoteRenameSchema,
   NoteMoveSchema,
-  NoteListSchema
+  NoteListSchema,
+  ApplyTemplateSchema
 } from './notes-api'
 
 // ============================================================================
@@ -538,5 +539,26 @@ describe('NoteListSchema', () => {
       })
       expect(result.success).toBe(false)
     })
+  })
+})
+
+// ============================================================================
+// ApplyTemplateSchema Tests
+// ============================================================================
+
+describe('ApplyTemplateSchema', () => {
+  it('accepts a full-mode apply', () => {
+    const r = ApplyTemplateSchema.safeParse({ noteId: 'n1', templateId: 't1', mode: 'full' })
+    expect(r.success).toBe(true)
+  })
+
+  it('accepts a body-mode apply', () => {
+    const r = ApplyTemplateSchema.safeParse({ noteId: 'n1', templateId: 't1', mode: 'body' })
+    expect(r.success).toBe(true)
+  })
+
+  it('rejects an unknown mode', () => {
+    const r = ApplyTemplateSchema.safeParse({ noteId: 'n1', templateId: 't1', mode: 'merge' })
+    expect(r.success).toBe(false)
   })
 })

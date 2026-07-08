@@ -126,6 +126,12 @@ export const SetLocalOnlySchema = z.object({
   localOnly: z.boolean()
 })
 
+export const ApplyTemplateSchema = z.object({
+  noteId: z.string(),
+  templateId: z.string(),
+  mode: z.enum(['full', 'body'])
+})
+
 // ============================================================================
 // Response Types
 // ============================================================================
@@ -200,6 +206,10 @@ export interface NotesHandlers {
   [NotesChannels.invoke.OPEN_EXTERNAL]: (id: string) => Promise<void>
 
   [NotesChannels.invoke.REVEAL_IN_FINDER]: (id: string) => Promise<void>
+
+  [NotesChannels.invoke.APPLY_TEMPLATE]: (
+    input: z.infer<typeof ApplyTemplateSchema>
+  ) => Promise<NoteUpdateResponse>
 }
 
 // ============================================================================
@@ -285,4 +295,5 @@ export interface NotesClientAPI {
   exists(titleOrPath: string): Promise<boolean>
   openExternal(id: string): Promise<void>
   revealInFinder(id: string): Promise<void>
+  applyTemplate(input: z.infer<typeof ApplyTemplateSchema>): Promise<NoteUpdateResponse>
 }
