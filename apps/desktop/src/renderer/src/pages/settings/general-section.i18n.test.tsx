@@ -27,7 +27,8 @@ const updateState = {
   downloadProgressPercent: null,
   lastCheckedAt: null,
   error: null,
-  autoDownloadEnabled: false
+  autoDownloadEnabled: false,
+  autoCheckEnabled: true
 }
 
 function renderGeneral(i18n: I18nInstance) {
@@ -86,7 +87,9 @@ describe('GeneralSettings i18n', () => {
       getState: vi.fn().mockResolvedValue(updateState),
       checkForUpdates: vi.fn().mockResolvedValue(updateState),
       downloadUpdate: vi.fn().mockResolvedValue(updateState),
-      quitAndInstall: vi.fn().mockResolvedValue(undefined)
+      quitAndInstall: vi.fn().mockResolvedValue(undefined),
+      setAutoDownload: vi.fn().mockResolvedValue(updateState),
+      setAutoCheck: vi.fn().mockResolvedValue(updateState)
     }
     api.onUpdaterStateChanged = vi.fn().mockReturnValue(() => {})
     api.locale = {
@@ -152,13 +155,20 @@ describe('GeneralSettings i18n', () => {
 
   it('updates startup, tabs, file creation, telemetry, clock, and downloaded updater actions', async () => {
     const user = userEvent.setup()
-    api.updater.getState = vi.fn().mockResolvedValue({
+    const supported = {
       ...updateState,
       currentVersion: 'v2026-05-06',
-      status: 'downloaded',
+      status: 'downloaded' as const,
       updateSupported: true,
       availableVersion: 'v2026-05-06.2'
-    })
+    }
+    api.updater.getState = vi.fn().mockResolvedValue(supported)
+    // The toggles stay enabled only while updateSupported holds, so the setter
+    // mocks must echo a supported state back into the hook after each click.
+    api.updater.setAutoCheck = vi.fn().mockResolvedValue({ ...supported, autoCheckEnabled: false })
+    api.updater.setAutoDownload = vi
+      .fn()
+      .mockResolvedValue({ ...supported, autoDownloadEnabled: true })
 
     renderGeneral(i18n)
 
@@ -170,19 +180,26 @@ describe('GeneralSettings i18n', () => {
       expect(api.settings.setGeneralSettings).toHaveBeenCalledWith({ startOnBoot: true })
     )
 
+    // Updates group: auto-check (on by default) and auto-download (off by default).
     await user.click(switches[1])
+    await waitFor(() => expect(api.updater.setAutoCheck).toHaveBeenCalledWith(false))
+
+    await user.click(switches[2])
+    await waitFor(() => expect(api.updater.setAutoDownload).toHaveBeenCalledWith(true))
+
+    await user.click(switches[3])
     await waitFor(() =>
       expect(api.settings.setTabSettings).toHaveBeenCalledWith({ restoreSessionOnStart: false })
     )
 
-    await user.click(switches[2])
+    await user.click(switches[4])
     await waitFor(() =>
       expect(api.settings.setGeneralSettings).toHaveBeenCalledWith({
         createInSelectedFolder: false
       })
     )
 
-    await user.click(switches[3])
+    await user.click(switches[5])
     await waitFor(() => expect(api.telemetry.setEnabled).toHaveBeenCalledWith(false))
 
     const selects = screen.getAllByRole('combobox')

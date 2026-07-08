@@ -5,7 +5,8 @@ export const UpdaterChannels = {
     DOWNLOAD_UPDATE: 'updater:download-update',
     QUIT_AND_INSTALL: 'updater:quit-and-install',
     SKIP_VERSION: 'updater:skip-version',
-    SET_AUTO_DOWNLOAD: 'updater:set-auto-download'
+    SET_AUTO_DOWNLOAD: 'updater:set-auto-download',
+    SET_AUTO_CHECK: 'updater:set-auto-check'
   },
   events: {
     STATE_CHANGED: 'updater:state-changed'
@@ -36,4 +37,6 @@ export interface AppUpdateState {
   error: string | null
   /** Whether updates download & install automatically without prompting (persisted). */
   autoDownloadEnabled: boolean
+  /** Whether the app checks for updates automatically at launch and on an interval (persisted). */
+  autoCheckEnabled: boolean
 }

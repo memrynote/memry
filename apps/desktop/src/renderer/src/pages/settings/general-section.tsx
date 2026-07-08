@@ -55,7 +55,9 @@ export function GeneralSettings() {
     error: updaterError,
     checkForUpdates,
     downloadUpdate,
-    quitAndInstall
+    quitAndInstall,
+    setAutoCheck,
+    setAutoDownload
   } = useAppUpdater()
   const { updateSettings: updateContextSettings } = useTabs()
   const { config, updateConfig } = useVault()
@@ -191,6 +193,28 @@ export function GeneralSettings() {
     updateState.updateSupported
   ])
 
+  const handleAutoCheckChange = useCallback(
+    async (enabled: boolean) => {
+      try {
+        await setAutoCheck(enabled)
+      } catch {
+        toast.error(t('general.updates.autoCheck.error'))
+      }
+    },
+    [setAutoCheck, t]
+  )
+
+  const handleAutoDownloadChange = useCallback(
+    async (enabled: boolean) => {
+      try {
+        await setAutoDownload(enabled)
+      } catch {
+        toast.error(t('general.updates.autoDownload.error'))
+      }
+    },
+    [setAutoDownload, t]
+  )
+
   const updateDescription = getUpdateDescription(updateState, updaterError, t)
   const updateActionLabel = getUpdateActionLabel(updateState, t)
   const isUpdateActionDisabled =
@@ -222,6 +246,28 @@ export function GeneralSettings() {
       </SettingsGroup>
 
       <SettingsGroup label={t('general.groups.updates')}>
+        <SettingRow
+          label={t('general.updates.autoCheck.label')}
+          description={t('general.updates.autoCheck.description')}
+        >
+          <Switch
+            checked={updateState.autoCheckEnabled}
+            disabled={!updateState.updateSupported}
+            onCheckedChange={(...args) => void handleAutoCheckChange(...args)}
+            className={ACCENT_SWITCH}
+          />
+        </SettingRow>
+        <SettingRow
+          label={t('general.updates.autoDownload.label')}
+          description={t('general.updates.autoDownload.description')}
+        >
+          <Switch
+            checked={updateState.autoDownloadEnabled}
+            disabled={!updateState.updateSupported}
+            onCheckedChange={(...args) => void handleAutoDownloadChange(...args)}
+            className={ACCENT_SWITCH}
+          />
+        </SettingRow>
         <SettingRowTall label={t('general.updates.appUpdates')} description={updateDescription}>
           <div className="flex items-center justify-between gap-3">
             <div className="flex flex-col gap-1 text-xs/4 text-muted-foreground">
