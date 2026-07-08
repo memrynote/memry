@@ -16,6 +16,18 @@ renderer  ──Yjs IPC provider──▶  main (Y.Doc)  ──y-leveldb──�
                                        └──network sync──▶  /sync/crdt/updates
 ```
 
+## Persistence Resilience
+
+The y-leveldb store is probed at startup (a write/read/clear round-trip with a
+timeout) before it is trusted. A broken `classic-level` native binding doesn't
+fail cleanly — it throws outside the promise chain or hangs its callbacks — so
+the probe captures both. If the probe fails, the provider degrades to
+**in-memory mode**: notes still load from vault markdown and write back to
+disk, and the editor keeps working; only CRDT history persistence across
+restarts is lost for that session. A mid-session load failure for a single doc
+falls back to seeding from the vault file instead of blocking the note from
+opening.
+
 ## Why the Main Process Owns Y.Docs
 
 - Single writer per document avoids merge complexity across renderer windows.
