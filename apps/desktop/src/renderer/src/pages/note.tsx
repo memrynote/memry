@@ -42,10 +42,12 @@ import {
   Download,
   AlarmClock,
   Monitor,
+  Maximize,
   ChartRelationship
 } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { Picker } from '@/components/ui/picker'
+import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
 import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import { useIsBookmarked } from '@/hooks/use-bookmarks'
@@ -223,8 +225,11 @@ export function NotePage({ noteId }: NotePageProps) {
   // Editor settings (toolbar mode, width)
   const { settings: editorSettings } = useEditorSettings()
 
-  // Width is a single global setting (Normal / Full) — applies to every note.
-  const isFullWidth = editorSettings.width === 'full'
+  // Width follows the global setting (Normal / Full) unless this note has an
+  // explicit per-note override in frontmatter (`fullWidth`), which wins.
+  const widthOverride = note?.frontmatter.fullWidth
+  const isFullWidth =
+    typeof widthOverride === 'boolean' ? widthOverride : editorSettings.width === 'full'
   const noteContentWidth = isFullWidth ? undefined : EDITOR_NORMAL_CONTENT_WIDTH
 
   // Focus editor at end when clicking empty space
@@ -751,6 +756,19 @@ export function NotePage({ noteId }: NotePageProps) {
     [noteId, isDeleted, refetchNote, queryClient, t]
   )
 
+  const handleToggleFullWidth = useCallback(
+    async (value: boolean) => {
+      if (!noteId || isDeleted) return
+      try {
+        await notesService.update({ id: noteId, frontmatter: { fullWidth: value } })
+        refetchNote()
+      } catch (err) {
+        toast.error(extractErrorMessage(err, t('page.toast.toggleFullWidthFailed')))
+      }
+    },
+    [noteId, isDeleted, refetchNote, t]
+  )
+
   // Link handlers
   const handleLinkClick = useCallback((href: string) => {
     window.open(href, '_blank', 'noopener,noreferrer')
@@ -946,6 +964,10 @@ export function NotePage({ noteId }: NotePageProps) {
         value={null}
         closeOnSelect={false}
         onValueChange={(action) => {
+          if (action === 'full-width') {
+            void handleToggleFullWidth(!isFullWidth)
+            return
+          }
           setMoreMenuOpen(false)
           if (action === 'local-graph') setIsLocalGraphOpen((prev) => !prev)
           if (action === 'version-history') setIsVersionHistoryOpen(true)
@@ -986,6 +1008,18 @@ export function NotePage({ noteId }: NotePageProps) {
               value="export"
               label={t('editor.toolbar.export')}
               icon={<Download className="size-4" />}
+            />
+            <Picker.Item
+              value="full-width"
+              label={t('editor.toolbar.fullWidth')}
+              icon={<Maximize className="size-4" />}
+              trailing={
+                <Switch
+                  checked={isFullWidth}
+                  className="pointer-events-none h-4 w-7"
+                  tabIndex={-1}
+                />
+              }
             />
             <Picker.Separator />
             <Picker.Item

@@ -203,6 +203,7 @@ vi.mock('@/components/journal', () => ({
   JournalHeaderActions: ({
     onPrevious,
     onNext,
+    onToggleFullWidth,
     onBookmarkToggle,
     onVersionHistory,
     onExport,
@@ -211,6 +212,7 @@ vi.mock('@/components/journal', () => ({
     <div data-testid="header-actions">
       <button onClick={onPrevious}>header prev</button>
       <button onClick={onNext}>header next</button>
+      <button onClick={onToggleFullWidth}>width</button>
       <button onClick={onBookmarkToggle}>bookmark</button>
       <button onClick={onVersionHistory}>history</button>
       <button onClick={onExport}>export</button>
@@ -447,8 +449,10 @@ describe('JournalPage', () => {
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(screen.getByTestId('year-view')).toHaveTextContent('2026')
 
+    fireEvent.click(screen.getByText('width'))
     fireEvent.click(screen.getByText('bookmark'))
     fireEvent.click(screen.getByText('settings'))
+    expect(localStorage.setItem).toHaveBeenCalledWith('memry_journal_full_width', 'true')
     expect(mocks.toggleBookmark).toHaveBeenCalled()
     expect(mocks.openSettingsModal).toHaveBeenCalledWith('journal')
   })
