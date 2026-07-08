@@ -357,7 +357,12 @@ export function useTaskWorkspaceMutations() {
               projectId: otherUpdates.projectId,
               statusId: otherUpdates.statusId ?? undefined,
               parentId: otherUpdates.parentId ?? undefined,
-              dueDate: otherUpdates.dueDate ? formatDateKey(otherUpdates.dueDate) : null,
+              dueDate:
+                'dueDate' in otherUpdates
+                  ? otherUpdates.dueDate
+                    ? formatDateKey(otherUpdates.dueDate)
+                    : null
+                  : undefined,
               dueTime: otherUpdates.dueTime ?? undefined,
               isRepeating: otherUpdates.isRepeating,
               repeatConfig: toServiceRepeatConfig(otherUpdates.repeatConfig),
@@ -391,7 +396,12 @@ export function useTaskWorkspaceMutations() {
               projectId: otherUpdates.projectId,
               statusId: otherUpdates.statusId ?? undefined,
               parentId: otherUpdates.parentId ?? undefined,
-              dueDate: otherUpdates.dueDate ? formatDateKey(otherUpdates.dueDate) : null,
+              dueDate:
+                'dueDate' in otherUpdates
+                  ? otherUpdates.dueDate
+                    ? formatDateKey(otherUpdates.dueDate)
+                    : null
+                  : undefined,
               dueTime: otherUpdates.dueTime ?? undefined,
               isRepeating: otherUpdates.isRepeating,
               repeatConfig: toServiceRepeatConfig(otherUpdates.repeatConfig),
@@ -412,7 +422,12 @@ export function useTaskWorkspaceMutations() {
           projectId: updates.projectId,
           statusId: updates.statusId ?? undefined,
           parentId: updates.parentId ?? undefined,
-          dueDate: updates.dueDate ? formatDateKey(updates.dueDate) : null,
+          dueDate:
+            'dueDate' in updates
+              ? updates.dueDate
+                ? formatDateKey(updates.dueDate)
+                : null
+              : undefined,
           dueTime: updates.dueTime ?? undefined,
           isRepeating: updates.isRepeating,
           repeatConfig: toServiceRepeatConfig(updates.repeatConfig),

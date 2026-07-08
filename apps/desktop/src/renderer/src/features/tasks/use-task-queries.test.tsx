@@ -415,4 +415,84 @@ describe('useTaskWorkspaceMutations', () => {
     expect(mocks.log.error).toHaveBeenCalledWith('Failed to create task:', expect.any(Error))
     expect(mocks.log.error).toHaveBeenCalledWith('Failed to create project:', expect.any(Error))
   })
+
+  // Regression: editing a task's description (or any field that does not carry a
+  // dueDate) must NOT clear the due date. The renderer payload builder used to
+  // emit `dueDate: null` whenever the update lacked a dueDate, silently wiping it.
+  describe('updateTask preserves dueDate on partial updates', () => {
+    function lastUpdatePayload() {
+      const calls = vi.mocked(tasksService.update).mock.calls
+      return calls[calls.length - 1][0] as Record<string, unknown>
+    }
+
+    function renderMutations() {
+      const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      queryClient.setQueryData(taskKeys.tasks(), [])
+      return renderHook(() => useTaskWorkspaceMutations(), {
+        wrapper: createWrapper(queryClient)
+      })
+    }
+
+    it('omits dueDate (does not null it) when updating only the description', async () => {
+      const { result } = renderMutations()
+
+      await act(async () => {
+        await result.current.updateTask('task-1', { description: 'a new description' })
+      })
+
+      const payload = lastUpdatePayload()
+      expect(payload).toMatchObject({ id: 'task-1', description: 'a new description' })
+      // undefined = Drizzle skips the column = existing due date preserved.
+      expect(payload.dueDate).toBeUndefined()
+    })
+
+    it('still clears dueDate when the update explicitly sets it to null', async () => {
+      const { result } = renderMutations()
+
+      await act(async () => {
+        await result.current.updateTask('task-1', { dueDate: null })
+      })
+
+      expect(lastUpdatePayload().dueDate).toBeNull()
+    })
+
+    it('formats and sends dueDate when the update provides a date', async () => {
+      const { result } = renderMutations()
+
+      await act(async () => {
+        await result.current.updateTask('task-1', {
+          dueDate: new Date('2026-05-10T12:00:00.000Z')
+        })
+      })
+
+      expect(lastUpdatePayload().dueDate).toBe('2026-05-10')
+    })
+
+    it('preserves dueDate when completing a task with other field edits', async () => {
+      const { result } = renderMutations()
+
+      await act(async () => {
+        await result.current.updateTask('task-1', {
+          completedAt: new Date('2026-05-11T00:00:00.000Z'),
+          description: 'done note'
+        })
+      })
+
+      // The "other updates" branch must also omit dueDate.
+      expect(lastUpdatePayload().dueDate).toBeUndefined()
+    })
+
+    it('preserves dueDate when archiving a task with other field edits', async () => {
+      const { result } = renderMutations()
+
+      await act(async () => {
+        await result.current.updateTask('task-1', {
+          archivedAt: new Date('2026-05-12T00:00:00.000Z'),
+          description: 'archive note'
+        })
+      })
+
+      expect(lastUpdatePayload().dueDate).toBeUndefined()
+    })
+  })
 })
