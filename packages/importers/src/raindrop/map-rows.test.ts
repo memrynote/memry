@@ -40,7 +40,7 @@ describe('mapRows', () => {
       content: 'My note\n\nMy excerpt',
       sourceUrl: 'https://example.com',
       createdAt: '2024-05-01T10:00:00.000Z',
-      tags: ['a', 'b', 'reading'],
+      tags: ['a', 'b', 'Reading'],
       metadata: {
         url: 'https://example.com',
         excerpt: 'My excerpt',

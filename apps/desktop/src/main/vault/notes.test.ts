@@ -300,6 +300,22 @@ describe('notes operations', () => {
       expect(result).toBeNull()
     })
 
+    it('returns an empty note (0-byte file) instead of treating it as missing', async () => {
+      // A new note with no content, tags, or properties writes a 0-byte file
+      // (frontmatter diet, #697). getNoteById must treat empty content as a
+      // valid note — a falsy `!fileContent` check wrongly reported it missing
+      // and blanked the editor.
+      const created = await notes.createNote({ title: 'Empty Note', content: '' })
+
+      const filePath = path.join(tempVault.path, created.path)
+      expect(fs.readFileSync(filePath, 'utf-8')).toBe('')
+
+      const retrieved = await notes.getNoteById(created.id)
+      expect(retrieved).not.toBeNull()
+      expect(retrieved!.id).toBe(created.id)
+      expect(retrieved!.content).toBe('')
+    })
+
     it('T362: handles external deletion (removes from cache)', async () => {
       const created = await notes.createNote({
         title: 'To Be Deleted',

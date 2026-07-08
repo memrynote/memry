@@ -45,15 +45,19 @@ function writeNoteFile(
   fs.mkdirSync(notesDir, { recursive: true })
 
   const now = new Date().toISOString()
-  const normalizedName = fileName.endsWith('.md') ? fileName : `${fileName}.md`
+  // Post frontmatter-diet (#697) a note's title is its filename basename, not an
+  // in-file `title:` key. Name the file after the requested title so lookups by
+  // title (noteIdByTitle) resolve it.
+  const base = String(frontmatter.title ?? fileName).replace(/\.md$/, '')
+  const normalizedName = `${base}.md`
 
   const data = {
-    title: frontmatter.title ?? normalizedName.replace(/\.md$/, ''),
     created: frontmatter.created ?? now,
     modified: frontmatter.modified ?? now,
     tags: frontmatter.tags ?? [],
     ...frontmatter
   }
+  delete (data as Record<string, unknown>).title
 
   fs.writeFileSync(path.join(notesDir, normalizedName), matter.stringify(body, data))
 }

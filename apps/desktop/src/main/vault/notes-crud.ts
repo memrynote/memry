@@ -311,7 +311,11 @@ export async function getNoteById(id: string): Promise<Note | null> {
   const absolutePath = toAbsolutePath(cached.path)
   const fileContent = await safeRead(absolutePath)
 
-  if (!fileContent) {
+  // `null` = file truly missing (ENOENT). An empty string is a VALID empty
+  // note — since the frontmatter diet (#697) a note with no tags/properties and
+  // no body serializes to a 0-byte file, so `!fileContent` would wrongly treat
+  // every empty note as missing and blank the editor.
+  if (fileContent === null) {
     logger.warn('getNoteById: file missing on disk, returning null (watcher handles cleanup)', {
       id,
       path: cached.path
@@ -398,7 +402,8 @@ export async function getNoteByPath(notePath: string): Promise<Note | null> {
   const absolutePath = toAbsolutePath(notePath)
   const fileContent = await safeRead(absolutePath)
 
-  if (!fileContent) {
+  // `null` = truly missing (ENOENT); an empty string is a valid empty note.
+  if (fileContent === null) {
     return null
   }
 

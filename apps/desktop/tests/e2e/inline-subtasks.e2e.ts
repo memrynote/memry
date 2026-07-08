@@ -485,7 +485,9 @@ test.describe('Inline Subtasks', () => {
     expect(editorText).toContain('Outro after tasks.')
 
     await createNote(page, `Switch Away ${Date.now()}`)
-    await page.getByRole('tab', { name: new RegExp(title) }).click()
+    // Post frontmatter-diet (#697) the note title comes from the filename, not the
+    // in-file `title:` key, so the tab is labelled with the note id, not `title`.
+    await page.getByRole('tab', { name: new RegExp(noteId) }).click()
 
     await waitForTaskBlockCount(page, 3, 12000)
     editorText = await page.locator('[aria-label="Rich text editor"]').first().textContent()
