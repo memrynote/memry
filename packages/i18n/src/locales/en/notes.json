@@ -746,5 +746,12 @@
     "delete": "Delete",
     "clearAria": "Clear selection",
     "copiedLinks": "Copied {count, plural, one {# link} other {# links}}"
+  },
+  "applyTemplateConfirm": {
+    "title": "Replace note content?",
+    "description": "Applying \"{name}\" will replace this note's current content. This can't be undone.",
+    "full": "Replace content & add template details",
+    "body": "Replace content only",
+    "cancel": "Cancel"
   }
 }
