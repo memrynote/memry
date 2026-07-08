@@ -280,6 +280,11 @@ function showDesktopNotification(reminder: ReminderWithTarget): void {
       }
     })
 
+    // Electron 42+ uses UNNotification on macOS: unsigned builds emit 'failed' instead of showing
+    notification.on('failed', (_event, error) => {
+      logger.error(`Desktop notification failed for reminder ${reminder.id}:`, error)
+    })
+
     notification.show()
     logger.debug(`Showed desktop notification for reminder ${reminder.id}`)
   } catch (error) {
