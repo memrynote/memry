@@ -81,6 +81,7 @@
       "showLocalGraph": "Show local graph",
       "versionHistory": "Version history",
       "export": "Export",
+      "applyTemplate": "Apply Template",
       "fullWidth": "Full width",
       "disableLocalOnly": "Disable local only",
       "setLocalOnly": "Set local only"
