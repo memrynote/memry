@@ -1,9 +1,10 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { GpuGuardMarker } from './gpu-crash-guard'
 
 const mocks = vi.hoisted(() => ({
   app: {
     isPackaged: true,
+    disableHardwareAcceleration: vi.fn(),
     getVersion: vi.fn(() => '2026.702.2'),
     getPath: vi.fn((name: string) => `/userdata/${name}`)
   }
@@ -15,11 +16,17 @@ vi.mock('./lib/logger', () => ({
   createLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() })
 }))
 
-import { shouldDisableHwAccel } from './gpu-crash-guard'
+import { readFileSync, writeFileSync, rmSync } from 'node:fs'
+import { applyGpuCrashGuard, recordGpuCrash, shouldDisableHwAccel } from './gpu-crash-guard'
 
 function marker(overrides: Partial<GpuGuardMarker> = {}): GpuGuardMarker {
   return { disabledForGpu: true, version: '2026.702.2', ...overrides }
 }
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  mocks.app.isPackaged = true
+})
 
 describe('shouldDisableHwAccel', () => {
   it('disables when a crash was recorded for the current version', () => {
@@ -36,5 +43,52 @@ describe('shouldDisableHwAccel', () => {
 
   it('does not disable when the marker is not a disable directive', () => {
     expect(shouldDisableHwAccel(marker({ disabledForGpu: false }), '2026.702.2')).toBe(false)
+  })
+})
+
+describe('applyGpuCrashGuard', () => {
+  it('is a no-op in development (unpackaged) and never reads a marker', () => {
+    mocks.app.isPackaged = false
+    applyGpuCrashGuard()
+    expect(readFileSync).not.toHaveBeenCalled()
+    expect(mocks.app.disableHardwareAcceleration).not.toHaveBeenCalled()
+  })
+
+  it('does nothing when there is no marker file', () => {
+    vi.mocked(readFileSync).mockImplementation(() => {
+      throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' })
+    })
+    applyGpuCrashGuard()
+    expect(mocks.app.disableHardwareAcceleration).not.toHaveBeenCalled()
+    expect(rmSync).not.toHaveBeenCalled()
+  })
+
+  it('disables hardware acceleration when a crash was recorded for this version', () => {
+    vi.mocked(readFileSync).mockReturnValue(JSON.stringify(marker()))
+    applyGpuCrashGuard()
+    expect(mocks.app.disableHardwareAcceleration).toHaveBeenCalledTimes(1)
+    expect(rmSync).not.toHaveBeenCalled()
+  })
+
+  it('clears a stale marker from an older version and retries hardware acceleration', () => {
+    vi.mocked(readFileSync).mockReturnValue(JSON.stringify(marker({ version: '2026.701.9' })))
+    applyGpuCrashGuard()
+    expect(mocks.app.disableHardwareAcceleration).not.toHaveBeenCalled()
+    expect(rmSync).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('recordGpuCrash', () => {
+  it('is a no-op in development (unpackaged)', () => {
+    mocks.app.isPackaged = false
+    recordGpuCrash()
+    expect(writeFileSync).not.toHaveBeenCalled()
+  })
+
+  it('writes a version-scoped disable marker', () => {
+    recordGpuCrash()
+    expect(writeFileSync).toHaveBeenCalledTimes(1)
+    const [, payload] = vi.mocked(writeFileSync).mock.calls[0]
+    expect(JSON.parse(payload as string)).toEqual({ disabledForGpu: true, version: '2026.702.2' })
   })
 })
