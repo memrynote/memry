@@ -367,6 +367,15 @@
       },
       "error": "No se pudo actualizar el inicio de la semana"
     },
+    "defaultView": {
+      "label": "Vista predeterminada",
+      "description": "La pestaña en la que se abre la página de tareas",
+      "options": {
+        "all": "Todos",
+        "today": "Hoy"
+      },
+      "error": "No se pudo actualizar la vista predeterminada"
+    },
     "staleInbox": {
       "label": "Umbral de bandeja de entrada obsoleta",
       "description": "Las tareas anteriores a esta se resaltan como obsoletas",

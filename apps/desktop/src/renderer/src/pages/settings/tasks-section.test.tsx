@@ -61,6 +61,7 @@ const MOCK_PROJECTS: Project[] = [
 const DEFAULTS = {
   defaultProjectId: null,
   defaultSortOrder: 'manual' as const,
+  defaultView: 'all' as const,
   staleInboxDays: 7
 }
 
@@ -200,6 +201,29 @@ describe('TasksSettings', () => {
     await waitFor(() => {
       expect(window.api.settings.setTaskSettings).toHaveBeenCalledWith({
         defaultSortOrder: 'dueDate'
+      })
+    })
+  })
+
+  it('calls updateSettings when default view changes', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<TasksSettings />)
+
+    await waitFor(() => {
+      expect(screen.queryByText('Loading settings...')).not.toBeInTheDocument()
+    })
+
+    const viewTrigger = screen.getAllByRole('combobox')[2]
+    await user.click(viewTrigger)
+
+    await waitFor(() => {
+      expect(screen.getByText('Today')).toBeInTheDocument()
+    })
+    await user.click(screen.getByText('Today'))
+
+    await waitFor(() => {
+      expect(window.api.settings.setTaskSettings).toHaveBeenCalledWith({
+        defaultView: 'today'
       })
     })
   })

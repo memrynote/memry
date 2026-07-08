@@ -144,7 +144,7 @@ vi.mock('@/services/tasks-service', () => ({
 }))
 
 vi.mock('@/hooks/use-task-preferences', () => ({
-  useTaskPreferences: () => ({ settings: { defaultProjectId: null } })
+  useTaskPreferences: () => ({ settings: { defaultProjectId: null, defaultView: 'all' } })
 }))
 
 vi.mock('@/hooks/use-save-filter-shortcut', () => ({
@@ -906,6 +906,19 @@ describe('TasksPage', () => {
         completedAt: expect.any(Date)
       })
     )
+  })
+
+  it('falls back to the default view when tab state has no saved tab', () => {
+    mocks.activeTabViewState = {
+      activeView: 'list',
+      selectedProjectId: null,
+      openTaskId: null
+    }
+
+    renderPage()
+
+    // With no saved tab, activeInternalTab resolves from taskPrefs.defaultView ('all').
+    expect(screen.getByRole('button', { name: 'Today tab' })).toBeInTheDocument()
   })
 
   it('uses today defaults for quick add', async () => {

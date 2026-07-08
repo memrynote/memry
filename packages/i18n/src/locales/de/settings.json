@@ -367,6 +367,15 @@
       },
       "error": "Der Wochenanfang konnte nicht aktualisiert werden"
     },
+    "defaultView": {
+      "label": "Standardansicht",
+      "description": "Registerkarte, mit der die Aufgabenseite geöffnet wird",
+      "options": {
+        "all": "Alle",
+        "today": "Heute"
+      },
+      "error": "Standardansicht konnte nicht aktualisiert werden"
+    },
     "staleInbox": {
       "label": "Schwellenwert für veralteten Posteingang",
       "description": "Ältere Aufgaben werden als veraltet hervorgehoben",

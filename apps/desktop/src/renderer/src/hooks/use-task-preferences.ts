@@ -6,6 +6,7 @@ import { getI18n } from 'react-i18next'
 const DEFAULTS: TaskSettingsDTO = {
   defaultProjectId: null,
   defaultSortOrder: 'manual',
+  defaultView: 'all',
   staleInboxDays: 7
 }
 

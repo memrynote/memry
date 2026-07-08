@@ -149,6 +149,7 @@ Show or hide journal sidebar panes:
 
 - **Default Project** — which project new tasks are assigned to
 - **Default Sort Order** — manual, due date, priority, or created date
+- **Default View** — which tab the Tasks page opens on (All or Today). Defaults to All.
 
 ### Inbox
 

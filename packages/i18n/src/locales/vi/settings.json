@@ -367,6 +367,15 @@
       },
       "error": "Không thể cập nhật ngày bắt đầu tuần"
     },
+    "defaultView": {
+      "label": "Chế độ xem mặc định",
+      "description": "Tab mà trang Công việc mở ra",
+      "options": {
+        "all": "Tất cả",
+        "today": "Hôm nay"
+      },
+      "error": "Không thể cập nhật chế độ xem mặc định"
+    },
     "staleInbox": {
       "label": "Ngưỡng hộp thư cũ",
       "description": "Các tác vụ cũ hơn mức này sẽ được đánh dấu là cũ",

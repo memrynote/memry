@@ -367,6 +367,15 @@
       },
       "error": "Gagal memperbarui awal minggu"
     },
+    "defaultView": {
+      "label": "Tampilan Default",
+      "description": "Tab tempat halaman Tugas terbuka",
+      "options": {
+        "all": "Semua",
+        "today": "Hari ini"
+      },
+      "error": "Gagal memperbarui tampilan default"
+    },
     "staleInbox": {
       "label": "Ambang Batas Kotak Masuk yang Kedaluwarsa",
       "description": "Tugas yang lebih lama dari ini akan disorot sebagai tugas yang sudah basi",

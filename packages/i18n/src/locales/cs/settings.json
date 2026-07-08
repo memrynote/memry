@@ -367,6 +367,15 @@
       },
       "error": "Aktualizace začátku týdne se nezdařila"
     },
+    "defaultView": {
+      "label": "Výchozí zobrazení",
+      "description": "Karta, na které se stránka úkolů otevře",
+      "options": {
+        "all": "Všechny",
+        "today": "Dnes"
+      },
+      "error": "Nepodařilo se aktualizovat výchozí zobrazení"
+    },
     "staleInbox": {
       "label": "Prahová hodnota zastaralé doručené pošty",
       "description": "Úkoly starší než toto jsou zvýrazněny jako zastaralé",

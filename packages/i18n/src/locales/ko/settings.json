@@ -367,6 +367,15 @@
       },
       "error": "한 주 시작을 업데이트하지 못했습니다."
     },
+    "defaultView": {
+      "label": "기본 보기",
+      "description": "작업 페이지가 열리는 탭",
+      "options": {
+        "all": "모두",
+        "today": "오늘"
+      },
+      "error": "기본 보기를 업데이트하지 못했습니다"
+    },
     "staleInbox": {
       "label": "오래된 받은 편지함 임계값",
       "description": "이보다 오래된 작업은 오래된 작업으로 강조표시됩니다.",
