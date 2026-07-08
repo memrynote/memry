@@ -265,7 +265,10 @@
     "essentials": "Essentials",
     "setFolderDefault": "Set as folder default",
     "useTemplate": "Use Template",
-    "createNote": "Create Note"
+    "createNote": "Create Note",
+    "applyToNote": "Apply Template",
+    "applyTitle": "Apply a Template",
+    "applyDescription": "Replace this note's content with a template"
   },
   "exportDialog": {
     "title": "Export Note",
