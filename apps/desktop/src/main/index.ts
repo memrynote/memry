@@ -75,6 +75,7 @@ import { SettingsChannels, InboxChannels } from '@memry/contracts/ipc-channels'
 import { parseInboxOpenItemId } from './deeplink-utils'
 import { initializeUpdater, isQuitAndInstallRequested, performQuitAndInstall } from './updater'
 import { clearPendingInstallMarker, isPendingInstallInFlight } from './updater-install-guard'
+import { applyGpuCrashGuard, recordGpuCrash } from './gpu-crash-guard'
 import { buildAppMenu, buildEditableTextContextMenu } from './menu'
 import { setMainI18n } from './lib/main-i18n'
 import {
@@ -137,6 +138,12 @@ function registerMainDiagnostics(): void {
       action: 'child_process_gone',
       errorCode: details.type
     })
+    // A dead GPU process means this launch may already be painting nothing.
+    // Record it so the next launch disables hardware acceleration (see
+    // gpu-crash-guard). 'crashed'/'abnormal-exit' only — a clean exit is not a fault.
+    if (details.type === 'GPU' && details.reason !== 'clean-exit') {
+      recordGpuCrash()
+    }
   })
 }
 if (deviceId) {
@@ -145,6 +152,11 @@ if (deviceId) {
   const deviceUserData = `${app.getPath('userData')}-${deviceId}`
   app.setPath('userData', deviceUserData)
 }
+
+// Must run before app 'ready': if a prior launch's GPU process crashed (old/
+// blacklisted Windows GPUs paint nothing, leaving an invisible window), fall
+// back to software rendering this launch instead of stranding the user.
+applyGpuCrashGuard()
 
 const mainLog = createLogger('Main')
 const configLog = createLogger('Config')
@@ -592,6 +604,62 @@ function showInstallingUpdateWindowAndExit(): void {
   setTimeout(() => app.exit(0), INSTALLING_SPLASH_EXIT_MS)
 }
 
+function startupErrorHtml(message: string): string {
+  const escaped = message.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  return `<!doctype html>
+<html><head><meta charset="utf-8"><style>
+  html,body{margin:0;height:100%}
+  body{display:flex;align-items:center;justify-content:center;background:#f6f5f0;
+    color:#191919;font:14px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    -webkit-user-select:none;user-select:none;padding:28px;box-sizing:border-box}
+  .card{max-width:420px}
+  .title{font-weight:600;font-size:16px;margin-bottom:10px}
+  .body{opacity:.75;line-height:1.5;margin-bottom:14px}
+  .details{font:12px ui-monospace,SFMono-Regular,Menlo,monospace;opacity:.6;
+    background:rgba(25,25,25,.05);border-radius:6px;padding:10px;white-space:pre-wrap;
+    word-break:break-word;max-height:110px;overflow:auto;user-select:text}
+</style></head><body><div class="card">
+  <div class="title">Memrynote couldn't finish starting</div>
+  <div class="body">This can happen when the disk is very low on free space, or with
+    older graphics drivers. Try freeing up some disk space, then reopen Memrynote.
+    If it keeps happening, reinstalling usually clears it.</div>
+  <div class="details">${escaped}</div>
+</div></body></html>`
+}
+
+/**
+ * Last-resort guarantee that startup never leaves an invisible, process-alive
+ * "zombie": if the whenReady chain throws before a window is created, surface a
+ * small framed window explaining what happened instead of stranding the user
+ * with a running process, no window, and the single-instance lock held. If a
+ * real window already exists the failure came later — leave it untouched.
+ */
+function ensureStartupWindow(error: unknown): void {
+  const message = error instanceof Error ? error.message : String(error)
+  mainLog.error('startup failed before a window was shown:', error)
+  trackMainError('main_process', 'startup_failed_no_window', error)
+
+  if (BrowserWindow.getAllWindows().some((w) => !w.isDestroyed())) return
+
+  const errorWindow = new BrowserWindow({
+    width: 460,
+    height: 300,
+    resizable: false,
+    autoHideMenuBar: true,
+    show: false,
+    backgroundColor: '#f6f5f0',
+    webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false }
+  })
+  errorWindow.once('ready-to-show', () => errorWindow.show())
+  // Same failure class can stop 'ready-to-show' firing; reveal anyway after a beat.
+  setTimeout(() => {
+    if (!errorWindow.isDestroyed()) errorWindow.show()
+  }, 3000)
+  void errorWindow.loadURL(
+    `data:text/html;charset=utf-8,${encodeURIComponent(startupErrorHtml(message))}`
+  )
+}
+
 const pendingOAuthStates = new Map<string, number>()
 
 export const registerOAuthState = (state: string): void => {
@@ -710,8 +778,16 @@ if (!headlessCliArgs && !allowMultiInstanceForDeviceTests) {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-void app.whenReady().then(async () => {
+const appReady = app.whenReady().then(async () => {
   if (headlessCliArgs) return
+
+  // Test-only reproduction of the customer's "app won't open" case: a startup that
+  // fails BEFORE the main window is created (ENOSPC on a full disk / GPU crash),
+  // leaving a process alive with no window. Inert outside the E2E harness (which
+  // sets NODE_ENV=test); never active in a shipped build.
+  if (process.env.NODE_ENV === 'test' && process.env.MEMRY_TEST_FORCE_STARTUP_THROW === '1') {
+    throw new Error('E2E: forced startup failure before window creation')
+  }
 
   // Auto-update guard: if a Squirrel/ShipIt install we started is still running
   // and the user relaunched the OLD build (Dock icon vanishes during the swap),
@@ -1152,6 +1228,14 @@ void app.whenReady().then(async () => {
     // dock icon is clicked and there are no other windows open.
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
+})
+
+// A throw anywhere in the async startup above (e.g. ENOSPC on a full disk opening
+// SQLite/logs) would otherwise reject unhandled, leaving createWindow() unreached:
+// process alive, no window, no taskbar entry, single-instance lock held. Guarantee
+// a visible window instead.
+void appReady.catch((error) => {
+  ensureStartupWindow(error)
 })
 
 // ============================================================================
