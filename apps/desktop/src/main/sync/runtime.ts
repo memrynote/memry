@@ -458,7 +458,14 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       }
 
       const workerBridge = new SyncWorkerBridge()
-      await workerBridge.start()
+      try {
+        await workerBridge.start()
+      } catch (err) {
+        // Worker init failure must not take down sync: sync-crypto-batch
+        // checks workerBridge.isRunning per batch and falls back to
+        // main-thread crypto when the worker is unavailable.
+        log.error('Sync worker failed to start — continuing with main-thread crypto', err)
+      }
 
       const network = new NetworkMonitor()
       network.start()
