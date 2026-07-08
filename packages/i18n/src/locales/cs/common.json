@@ -100,7 +100,7 @@
       "updateAvailable": "Aktualizovat",
       "updateDownloading": "Stahování…",
       "updateDownloadingPercent": "Stahování {percent}%",
-      "updateInstallingSubtitle": "Memrynote se automaticky restartuje.",
+      "updateInstallingSubtitle": "MemryNote se automaticky restartuje.",
       "updateInstallingTitle": "Instalace aktualizace",
       "updateRestart": "Restartovat"
     },
@@ -590,7 +590,7 @@
   },
   "onboarding": {
     "agentChat": {
-      "body": "Přepněte na kartu Agent a zeptejte se asistenta Memrynote na svůj trezor.",
+      "body": "Přepněte na kartu Agent a zeptejte se asistenta MemryNote na svůj trezor.",
       "title": "Chatujte s AI agentem"
     },
     "collections": {
@@ -623,7 +623,7 @@
     },
     "welcome": {
       "body": "Váš soukromý domov fungující offline. Poznámky jsou koncově šifrované — vaše zařízení nikdy neopustí nešifrované.",
-      "title": "Vítejte v Memrynote"
+      "title": "Vítejte v MemryNote"
     }
   },
   "updatePrompt": {

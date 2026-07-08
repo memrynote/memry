@@ -100,7 +100,7 @@
       "updateAvailable": "I-update",
       "updateDownloading": "Dina-download…",
       "updateDownloadingPercent": "Dina-download {percent}%",
-      "updateInstallingSubtitle": "Awtomatikong magre-restart ang Memrynote.",
+      "updateInstallingSubtitle": "Awtomatikong magre-restart ang MemryNote.",
       "updateInstallingTitle": "Ini-install ang update",
       "updateRestart": "I-restart"
     },
@@ -590,7 +590,7 @@
   },
   "onboarding": {
     "agentChat": {
-      "body": "Lumipat sa Agent tab para magtanong sa assistant ng Memrynote tungkol sa iyong vault.",
+      "body": "Lumipat sa Agent tab para magtanong sa assistant ng MemryNote tungkol sa iyong vault.",
       "title": "Makipag-chat sa AI agent"
     },
     "collections": {
@@ -623,7 +623,7 @@
     },
     "welcome": {
       "body": "Ang iyong pribado, offline-first na tahanan. Ang mga tala ay end-to-end na naka-encrypt — hindi kailanman aalis sa iyong device nang hindi naka-encrypt.",
-      "title": "Maligayang pagdating sa Memrynote"
+      "title": "Maligayang pagdating sa MemryNote"
     }
   },
   "updatePrompt": {

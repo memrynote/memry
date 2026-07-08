@@ -590,7 +590,7 @@
   },
   "onboarding": {
     "agentChat": {
-      "body": "Válts az Ügynök fülre, hogy megkérdezd a Memrynote asszisztensét a széfedről.",
+      "body": "Válts az Ügynök fülre, hogy megkérdezd a MemryNote asszisztensét a széfedről.",
       "title": "Csevegj az AI-ügynökkel"
     },
     "collections": {
@@ -623,7 +623,7 @@
     },
     "welcome": {
       "body": "A privát, offline-first otthonod. A jegyzetek végponttól végpontig titkosítva vannak — soha nem hagyják el az eszközöd titkosítatlanul.",
-      "title": "Üdvözöl a Memrynote"
+      "title": "Üdvözöl a MemryNote"
     }
   },
   "updatePrompt": {

@@ -147,7 +147,7 @@ Using the Node fix for Electron (or vice versa) leaves the app silently broken â
 
 ## Packaged Runtime Smoke
 
-The packaged smoke check builds the app into `apps/desktop/dist/mac-arm64/Memrynote.app` from an
+The packaged smoke check builds the app into `apps/desktop/dist/mac-arm64/MemryNote.app` from an
 isolated dependency tree, then verifies runtime dependencies resolve from the packaged Resources
 directory. It also checks native `.node` binaries for the expected macOS architecture so an arm64
 release cannot ship with x64 `better-sqlite3` or `keytar` binaries:
@@ -158,7 +158,7 @@ node apps/desktop/scripts/check-packaged-runtime-deps.js
 ```
 
 The packaged runtime check runs its native-module probe through the built
-`Memrynote.app/Contents/MacOS/Memrynote` executable, so it verifies the same Electron runtime that
+`MemryNote.app/Contents/MacOS/MemryNote` executable, so it verifies the same Electron runtime that
 will ship instead of depending on the workspace `electron` package binary.
 The desktop unit coverage job sets `ELECTRON_OVERRIDE_DIST_PATH=/usr/bin` before Vitest so
 main-process tests can import `electron` for IPC and `BrowserWindow` mocks even when the workspace

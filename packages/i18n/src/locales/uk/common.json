@@ -100,7 +100,7 @@
       "updateAvailable": "Оновити",
       "updateDownloading": "Завантаження…",
       "updateDownloadingPercent": "Завантаження {percent}%",
-      "updateInstallingSubtitle": "Memrynote перезапуститься автоматично.",
+      "updateInstallingSubtitle": "MemryNote перезапуститься автоматично.",
       "updateInstallingTitle": "Встановлення оновлення",
       "updateRestart": "Перезапустити"
     },
@@ -590,7 +590,7 @@
   },
   "onboarding": {
     "agentChat": {
-      "body": "Перейдіть на вкладку «Агент», щоб запитати помічника Memrynote про ваше сховище.",
+      "body": "Перейдіть на вкладку «Агент», щоб запитати помічника MemryNote про ваше сховище.",
       "title": "Спілкуйтеся з AI-агентом"
     },
     "collections": {
@@ -623,7 +623,7 @@
     },
     "welcome": {
       "body": "Ваш приватний офлайн-дім. Нотатки зашифровано наскрізно — вони ніколи не залишають ваш пристрій незашифрованими.",
-      "title": "Ласкаво просимо до Memrynote"
+      "title": "Ласкаво просимо до MemryNote"
     }
   },
   "updatePrompt": {

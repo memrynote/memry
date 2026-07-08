@@ -100,7 +100,7 @@
       "updateAvailable": "Perbarui",
       "updateDownloading": "Mengunduh…",
       "updateDownloadingPercent": "Mengunduh {percent}%",
-      "updateInstallingSubtitle": "Memrynote akan mulai ulang otomatis.",
+      "updateInstallingSubtitle": "MemryNote akan mulai ulang otomatis.",
       "updateInstallingTitle": "Memasang pembaruan",
       "updateRestart": "Mulai ulang"
     },
@@ -590,7 +590,7 @@
   },
   "onboarding": {
     "agentChat": {
-      "body": "Beralih ke tab Agen untuk bertanya pada asisten Memrynote tentang vault Anda.",
+      "body": "Beralih ke tab Agen untuk bertanya pada asisten MemryNote tentang vault Anda.",
       "title": "Mengobrol dengan agen AI"
     },
     "collections": {
@@ -623,7 +623,7 @@
     },
     "welcome": {
       "body": "Rumah privat dan offline-first Anda. Catatan terenkripsi ujung ke ujung — tidak pernah meninggalkan perangkat Anda tanpa terenkripsi.",
-      "title": "Selamat datang di Memrynote"
+      "title": "Selamat datang di MemryNote"
     }
   },
   "updatePrompt": {

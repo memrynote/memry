@@ -100,7 +100,7 @@
       "updateAvailable": "עדכון",
       "updateDownloading": "מוריד…",
       "updateDownloadingPercent": "מוריד {percent}%",
-      "updateInstallingSubtitle": "Memrynote יופעל מחדש אוטומטית.",
+      "updateInstallingSubtitle": "MemryNote יופעל מחדש אוטומטית.",
       "updateInstallingTitle": "מתקין עדכון",
       "updateRestart": "הפעל מחדש"
     },
@@ -590,7 +590,7 @@
   },
   "onboarding": {
     "agentChat": {
-      "body": "עבור לכרטיסיית הסוכן כדי לשאול את העוזר של Memrynote על הכספת שלך.",
+      "body": "עבור לכרטיסיית הסוכן כדי לשאול את העוזר של MemryNote על הכספת שלך.",
       "title": "שוחח עם סוכן ה-AI"
     },
     "collections": {
@@ -623,7 +623,7 @@
     },
     "welcome": {
       "body": "הבית הפרטי שלך, שמתחיל במצב לא מקוון. פתקים מוצפנים מקצה לקצה — הם אף פעם לא עוזבים את המכשיר שלך ללא הצפנה.",
-      "title": "ברוך הבא ל-Memrynote"
+      "title": "ברוך הבא ל-MemryNote"
     }
   },
   "updatePrompt": {

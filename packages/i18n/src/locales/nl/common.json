@@ -100,7 +100,7 @@
       "updateAvailable": "Bijwerken",
       "updateDownloading": "Downloaden…",
       "updateDownloadingPercent": "Downloaden {percent}%",
-      "updateInstallingSubtitle": "Memrynote start automatisch opnieuw op.",
+      "updateInstallingSubtitle": "MemryNote start automatisch opnieuw op.",
       "updateInstallingTitle": "Update installeren",
       "updateRestart": "Opnieuw opstarten"
     },
@@ -590,7 +590,7 @@
   },
   "onboarding": {
     "agentChat": {
-      "body": "Ga naar het tabblad Agent om de assistent van Memrynote iets over je kluis te vragen.",
+      "body": "Ga naar het tabblad Agent om de assistent van MemryNote iets over je kluis te vragen.",
       "title": "Chat met de AI-agent"
     },
     "collections": {
@@ -623,7 +623,7 @@
     },
     "welcome": {
       "body": "Je privé, offline-first thuis. Notities zijn end-to-end versleuteld — ze verlaten je apparaat nooit onversleuteld.",
-      "title": "Welkom bij Memrynote"
+      "title": "Welkom bij MemryNote"
     }
   },
   "updatePrompt": {

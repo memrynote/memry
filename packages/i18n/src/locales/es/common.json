@@ -100,7 +100,7 @@
       "updateAvailable": "Actualizar",
       "updateDownloading": "Descargando…",
       "updateDownloadingPercent": "Descargando {percent}%",
-      "updateInstallingSubtitle": "Memrynote se reiniciará automáticamente.",
+      "updateInstallingSubtitle": "MemryNote se reiniciará automáticamente.",
       "updateInstallingTitle": "Instalando la actualización",
       "updateRestart": "Reiniciar"
     },
@@ -590,7 +590,7 @@
   },
   "onboarding": {
     "agentChat": {
-      "body": "Cambia a la pestaña Agente para preguntar sobre tu bóveda al asistente de Memrynote.",
+      "body": "Cambia a la pestaña Agente para preguntar sobre tu bóveda al asistente de MemryNote.",
       "title": "Chatea con el agente de IA"
     },
     "collections": {
@@ -623,7 +623,7 @@
     },
     "welcome": {
       "body": "Tu hogar privado y con prioridad sin conexión. Las notas están cifradas de extremo a extremo: nunca salen de tu dispositivo sin cifrar.",
-      "title": "Te damos la bienvenida a Memrynote"
+      "title": "Te damos la bienvenida a MemryNote"
     }
   },
   "updatePrompt": {

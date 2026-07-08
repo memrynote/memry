@@ -100,7 +100,7 @@
       "updateAvailable": "업데이트",
       "updateDownloading": "다운로드 중…",
       "updateDownloadingPercent": "{percent}% 다운로드 중",
-      "updateInstallingSubtitle": "Memrynote가 자동으로 다시 시작됩니다.",
+      "updateInstallingSubtitle": "MemryNote가 자동으로 다시 시작됩니다.",
       "updateInstallingTitle": "업데이트 설치 중",
       "updateRestart": "다시 시작"
     },
@@ -590,7 +590,7 @@
   },
   "onboarding": {
     "agentChat": {
-      "body": "에이전트 탭으로 전환해 Memrynote 어시스턴트에게 볼트에 대해 물어보세요.",
+      "body": "에이전트 탭으로 전환해 MemryNote 어시스턴트에게 볼트에 대해 물어보세요.",
       "title": "AI 에이전트와 대화하기"
     },
     "collections": {
@@ -623,7 +623,7 @@
     },
     "welcome": {
       "body": "당신만의 비공개, 오프라인 우선 홈입니다. 노트는 종단 간 암호화되어 암호화되지 않은 채로 기기를 떠나지 않습니다.",
-      "title": "Memrynote에 오신 것을 환영합니다"
+      "title": "MemryNote에 오신 것을 환영합니다"
     }
   },
   "updatePrompt": {

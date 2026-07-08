@@ -44,6 +44,9 @@ export function buildAppMenu(i18n: I18nInstance): Menu {
     click: () => sendMenuCommand(command)
   })
 
+  // Never derive user-facing names from app.name: it resolves to the package
+  // name (@memry/desktop) in production and must stay that way — the default
+  // userData path is derived from it, so renaming it would strand user data.
   const aboutItem: MenuItemConstructorOptions =
     process.platform === 'win32'
       ? {
@@ -52,19 +55,19 @@ export function buildAppMenu(i18n: I18nInstance): Menu {
             void dialog.showMessageBox({
               type: 'info',
               title: t('help.about'),
-              message: app.name,
+              message: 'MemryNote',
               detail: `Version ${app.getVersion()}`
             })
         }
-      : { role: 'about' }
+      : { role: 'about', label: t('help.about') }
 
   const template: MenuItemConstructorOptions[] = [
     ...(isMac
       ? [
           {
-            label: app.name,
+            label: 'MemryNote',
             submenu: [
-              { role: 'about' as const },
+              { role: 'about' as const, label: t('help.about') },
               { type: 'separator' as const },
               cmd('app.preferences', t('app.preferences')),
               { type: 'separator' as const },

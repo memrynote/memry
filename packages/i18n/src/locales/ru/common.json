@@ -100,7 +100,7 @@
       "updateAvailable": "Обновить",
       "updateDownloading": "Загрузка…",
       "updateDownloadingPercent": "Загрузка {percent}%",
-      "updateInstallingSubtitle": "Memrynote перезапустится автоматически.",
+      "updateInstallingSubtitle": "MemryNote перезапустится автоматически.",
       "updateInstallingTitle": "Установка обновления",
       "updateRestart": "Перезапустить"
     },
@@ -590,7 +590,7 @@
   },
   "onboarding": {
     "agentChat": {
-      "body": "Переключитесь на вкладку «Агент», чтобы спросить помощника Memrynote о вашем хранилище.",
+      "body": "Переключитесь на вкладку «Агент», чтобы спросить помощника MemryNote о вашем хранилище.",
       "title": "Общайтесь с ИИ-агентом"
     },
     "collections": {
@@ -623,7 +623,7 @@
     },
     "welcome": {
       "body": "Ваш приватный дом с приоритетом офлайна. Заметки зашифрованы сквозным шифрованием — они никогда не покидают устройство в незашифрованном виде.",
-      "title": "Добро пожаловать в Memrynote"
+      "title": "Добро пожаловать в MemryNote"
     }
   },
   "updatePrompt": {

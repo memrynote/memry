@@ -100,7 +100,7 @@
       "updateAvailable": "Aktualizacja",
       "updateDownloading": "Pobieranie…",
       "updateDownloadingPercent": "Pobieranie {percent}%",
-      "updateInstallingSubtitle": "Memrynote uruchomi się ponownie automatycznie.",
+      "updateInstallingSubtitle": "MemryNote uruchomi się ponownie automatycznie.",
       "updateInstallingTitle": "Instalowanie aktualizacji",
       "updateRestart": "Uruchom ponownie"
     },
@@ -590,7 +590,7 @@
   },
   "onboarding": {
     "agentChat": {
-      "body": "Przejdź do karty Agent, aby zapytać asystenta Memrynote o swój sejf.",
+      "body": "Przejdź do karty Agent, aby zapytać asystenta MemryNote o swój sejf.",
       "title": "Rozmawiaj z agentem AI"
     },
     "collections": {
@@ -623,7 +623,7 @@
     },
     "welcome": {
       "body": "Twój prywatny, działający offline dom. Notatki są szyfrowane end-to-end — nigdy nie opuszczają Twojego urządzenia niezaszyfrowane.",
-      "title": "Witaj w Memrynote"
+      "title": "Witaj w MemryNote"
     }
   },
   "updatePrompt": {

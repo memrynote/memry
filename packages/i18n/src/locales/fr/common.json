@@ -100,7 +100,7 @@
       "updateAvailable": "Mettre à jour",
       "updateDownloading": "Téléchargement…",
       "updateDownloadingPercent": "Téléchargement {percent}%",
-      "updateInstallingSubtitle": "Memrynote redémarrera automatiquement.",
+      "updateInstallingSubtitle": "MemryNote redémarrera automatiquement.",
       "updateInstallingTitle": "Installation de la mise à jour",
       "updateRestart": "Redémarrer"
     },
@@ -590,7 +590,7 @@
   },
   "onboarding": {
     "agentChat": {
-      "body": "Passez à l'onglet Agent pour interroger l'assistant de Memrynote sur votre coffre.",
+      "body": "Passez à l'onglet Agent pour interroger l'assistant de MemryNote sur votre coffre.",
       "title": "Discutez avec l'agent IA"
     },
     "collections": {
@@ -623,7 +623,7 @@
     },
     "welcome": {
       "body": "Votre espace privé, hors ligne d'abord. Les notes sont chiffrées de bout en bout — elles ne quittent jamais votre appareil en clair.",
-      "title": "Bienvenue dans Memrynote"
+      "title": "Bienvenue dans MemryNote"
     }
   },
   "updatePrompt": {

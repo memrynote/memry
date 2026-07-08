@@ -100,7 +100,7 @@
       "updateAvailable": "Güncelle",
       "updateDownloading": "İndiriliyor…",
       "updateDownloadingPercent": "İndiriliyor %{percent}",
-      "updateInstallingSubtitle": "Memrynote otomatik olarak yeniden başlayacak.",
+      "updateInstallingSubtitle": "MemryNote otomatik olarak yeniden başlayacak.",
       "updateInstallingTitle": "Güncelleme kuruluyor",
       "updateRestart": "Yeniden başlat"
     },
@@ -590,7 +590,7 @@
   },
   "onboarding": {
     "agentChat": {
-      "body": "Memrynote asistanına kasanız hakkında soru sormak için Ajan sekmesine geçin.",
+      "body": "MemryNote asistanına kasanız hakkında soru sormak için Ajan sekmesine geçin.",
       "title": "Yapay zeka ajanıyla sohbet edin"
     },
     "collections": {
@@ -623,7 +623,7 @@
     },
     "welcome": {
       "body": "Özel, çevrimdışı öncelikli eviniz. Notlar uçtan uca şifrelidir — cihazınızdan şifrelenmemiş olarak asla ayrılmaz.",
-      "title": "Memrynote'a hoş geldiniz"
+      "title": "MemryNote'a hoş geldiniz"
     }
   },
   "updatePrompt": {

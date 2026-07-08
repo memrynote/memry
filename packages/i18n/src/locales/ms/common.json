@@ -100,7 +100,7 @@
       "updateAvailable": "Kemas kini",
       "updateDownloading": "Memuat turun…",
       "updateDownloadingPercent": "Memuat turun {percent}%",
-      "updateInstallingSubtitle": "Memrynote akan mula semula secara automatik.",
+      "updateInstallingSubtitle": "MemryNote akan mula semula secara automatik.",
       "updateInstallingTitle": "Memasang kemas kini",
       "updateRestart": "Mula semula"
     },
@@ -590,7 +590,7 @@
   },
   "onboarding": {
     "agentChat": {
-      "body": "Tukar ke tab Ejen untuk bertanya kepada pembantu Memrynote tentang bilik kebal anda.",
+      "body": "Tukar ke tab Ejen untuk bertanya kepada pembantu MemryNote tentang bilik kebal anda.",
       "title": "Bersembang dengan ejen AI"
     },
     "collections": {
@@ -623,7 +623,7 @@
     },
     "welcome": {
       "body": "Rumah peribadi anda yang mengutamakan luar talian. Nota disulitkan hujung ke hujung — ia tidak pernah meninggalkan peranti anda tanpa disulitkan.",
-      "title": "Selamat datang ke Memrynote"
+      "title": "Selamat datang ke MemryNote"
     }
   },
   "updatePrompt": {

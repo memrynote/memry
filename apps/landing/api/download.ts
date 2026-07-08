@@ -3,7 +3,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 const LATEST_RELEASE_API_URL = 'https://api.github.com/repos/memrynote/memry/releases/latest'
 const RELEASES_PAGE_URL = 'https://github.com/memrynote/memry/releases/latest'
 
-// ponytail: release asset filenames embed the version (Memrynote-<ver>-arm64.dmg, ...),
+// ponytail: release asset filenames embed the version (MemryNote-<ver>-arm64.dmg, ...),
 // so a static latest/download/<file> link is impossible and CSP blocks a browser-side
 // GitHub API fetch — this endpoint resolves the versioned asset server-side and 302s to it.
 const ASSET_MATCHERS: Record<string, (name: string) => boolean> = {
