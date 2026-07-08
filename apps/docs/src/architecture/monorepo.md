@@ -4,12 +4,12 @@ memrynote is a pnpm + Turborepo monorepo. Apps live under `apps/`, reusable doma
 
 ## Apps
 
-| Path               | Purpose                                                       | Stack                                       |
-| ------------------ | ------------------------------------------------------------- | ------------------------------------------- |
+| Path               | Purpose                                                           | Stack                                       |
+| ------------------ | ----------------------------------------------------------------- | ------------------------------------------- |
 | `apps/cli`         | `memrynote` CLI used by desktop headless mode and standalone runs | Node 24, TypeScript                         |
-| `apps/desktop`     | Electron desktop app                                          | Electron 39, React 19, Vite, BlockNote, Yjs |
-| `apps/sync-server` | Cloudflare Workers sync API                                   | Workers + Hono, D1, R2                      |
-| `apps/docs`        | This documentation site                                       | VitePress 1.6                               |
+| `apps/desktop`     | Electron desktop app                                              | Electron 39, React 19, Vite, BlockNote, Yjs |
+| `apps/sync-server` | Cloudflare Workers sync API                                       | Workers + Hono, D1, R2                      |
+| `apps/docs`        | This documentation site                                           | VitePress 1.6                               |
 
 ## Packages
 
@@ -54,10 +54,17 @@ code-sign-verifies every loose file during auto-update, so each package in
 `dependencies` slows Restart for every user. Only native or otherwise
 unbundleable modules belong there (better-sqlite3, keytar, sharp, sqlite-vec,
 jsdom, y-leveldb, yjs, libsodium-wrappers-sumo, @huggingface/transformers,
-@mixmark-io/domino); every pure-JS dependency lives in `devDependencies` and is
-bundled into `out/` by electron-vite. The exact set is asserted by
+@mixmark-io/domino, electron-log); every pure-JS dependency lives in
+`devDependencies` and is bundled into `out/` by electron-vite. electron-log is
+pure JS but unbundleable: its entry selects the main/renderer/node
+implementation through runtime `require()` branches, and bundling hoists all
+three — including an unconditional `require('electron')` that crashes
+worker_threads (the sync, image-processing, and voice-transcription workers)
+in packaged builds. The exact set is asserted by
 `apps/desktop/src/main/runtime-dependencies.test.ts` and re-verified against
-the packaged app by `apps/desktop/scripts/check-packaged-runtime-deps.js`.
+the packaged app by `apps/desktop/scripts/check-packaged-runtime-deps.js`;
+`apps/desktop/scripts/check-worker-bundles.mjs` additionally fails the build
+if any worker entry's chunk graph reaches a literal `require("electron")`.
 Rationale and measurements: `docs/auto-update-slow-restart-investigation.md`
 in the repo root.
 

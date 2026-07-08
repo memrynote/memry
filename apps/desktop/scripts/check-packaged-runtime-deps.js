@@ -19,6 +19,11 @@ const requiredModules = [
   '@huggingface/transformers',
   '@mixmark-io/domino',
   'better-sqlite3',
+  // electron-log is pure JS but unbundleable: its entry picks the
+  // main/renderer/node implementation via runtime `require()` branches, and
+  // bundling hoists all three — including main's `require('electron')`, which
+  // crashes worker_threads (sync/image/voice workers). Ship it loose.
+  'electron-log',
   'jsdom',
   'keytar',
   'libsodium-wrappers-sumo',
