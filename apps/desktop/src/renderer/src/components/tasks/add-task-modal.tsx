@@ -11,6 +11,7 @@ import { DueDatePicker } from './due-date-picker'
 import { PrioritySelect } from './priority-select'
 import { RepeatPicker } from './repeat-picker'
 import { CustomRepeatDialog } from './custom-repeat-dialog'
+import { TaskDescriptionEditor } from './task-description-editor'
 import { cn } from '@/lib/utils'
 import { getDefaultTodoStatus } from '@/lib/task-utils'
 import { createDefaultTask, type Task, type Priority, type RepeatConfig } from '@/data/task-model'
@@ -104,8 +105,8 @@ function AddTaskModalSession({
     }
   }
 
-  const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>): void => {
-    setFormData((prev) => ({ ...prev, description: e.target.value }))
+  const handleDescriptionChange = (markdown: string): void => {
+    setFormData((prev) => ({ ...prev, description: markdown }))
   }
 
   const handleProjectChange = (projectId: string): void => {
@@ -235,22 +236,16 @@ function AddTaskModalSession({
           </div>
 
           <div className="flex flex-col gap-2">
-            <label
-              htmlFor="task-description"
-              className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
-            >
+            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               {t('task.description')}
-            </label>
-            <textarea
-              id="task-description"
-              value={formData.description}
-              onChange={handleDescriptionChange}
+            </span>
+            <TaskDescriptionEditor
+              initialContent={formData.description}
+              onContentChange={handleDescriptionChange}
               placeholder={t('task.descriptionPlaceholder')}
-              rows={3}
+              ariaLabel={t('task.description')}
               className={cn(
-                'flex min-h-[80px] w-full rounded-sm border border-input bg-transparent px-3 py-2 text-sm shadow-sm',
-                'placeholder:text-muted-foreground focus-visible:outline-none',
-                'disabled:cursor-not-allowed disabled:opacity-50 resize-none'
+                'min-h-[80px] w-full rounded-sm border border-input bg-transparent px-3 py-2 text-sm shadow-sm'
               )}
             />
           </div>
