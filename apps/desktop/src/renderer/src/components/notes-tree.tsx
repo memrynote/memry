@@ -285,6 +285,10 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
                     <Pencil className="me-2 h-4 w-4" />
                     {t('tree.actions.rename')}
                   </ContextMenuItem>
+                  <ContextMenuItem onClick={() => setApplyTemplateNote(note)}>
+                    <LayoutTemplate className="me-2 h-4 w-4" />
+                    {t('tree.actions.applyTemplate')}
+                  </ContextMenuItem>
                   <ContextMenuSeparator />
                   <ContextMenuItem onClick={() => actions.setIconPickerNoteId(note.id)}>
                     <Smile className="me-2 h-4 w-4" />
