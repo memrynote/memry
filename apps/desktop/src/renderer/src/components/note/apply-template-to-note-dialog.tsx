@@ -12,7 +12,12 @@ interface ApplyTemplateToNoteDialogProps {
   onClose: () => void
 }
 
-export function ApplyTemplateToNoteDialog({
+export function ApplyTemplateToNoteDialog(props: ApplyTemplateToNoteDialogProps) {
+  if (!props.isOpen) return null
+  return <ApplyTemplateToNoteDialogActive {...props} />
+}
+
+function ApplyTemplateToNoteDialogActive({
   noteId,
   isOpen,
   onClose
