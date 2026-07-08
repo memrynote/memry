@@ -87,9 +87,12 @@
   caret-color: #f0efed;
 }
 
-/* Inbox detail drawer: editor inherits drawer surface bg, not page bg */
+/* Inbox detail + task description drawers: editor inherits the drawer surface
+   bg (var(--surface)), not the page bg — stays theme-correct in white/warm/dark. */
 .inbox-content-editor .bn-editor,
-.inbox-content-editor .bn-container {
+.inbox-content-editor .bn-container,
+.task-description-editor .bn-editor,
+.task-description-editor .bn-container {
   background-color: transparent !important;
 }
 
