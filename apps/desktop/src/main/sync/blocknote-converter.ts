@@ -25,6 +25,12 @@ import {
   serializeBlockColorsMarker
 } from '@memry/shared/block-colors'
 import {
+  applyInlineColorTokens,
+  extractInlineColorRuns,
+  maskInlineColorSpans,
+  restoreInlineColorTokens
+} from '@memry/shared/inline-colors'
+import {
   splitMarkdownPreservingBlanks,
   assembleMarkdownWithBlanks,
   separateBlockImages,
@@ -212,12 +218,18 @@ const MARKDOWN_LIST_BLOCK_TYPES = new Set(['bulletListItem', 'numberedListItem',
 
 // Every blocks→markdown serialization funnels through here so list markers,
 // list tightness, and soft breaks stay byte-friendly against vault files.
-// See normalizeSerializedMarkdown.
+// See normalizeSerializedMarkdown. Inline text/background colors would be
+// dropped by blocksToMarkdownLossy, so colored runs are wrapped in tokens
+// first and re-emitted as `<span style="…">` after serialization.
 async function serializeBlocks(
   editor: ServerBlockNoteEditor,
   blocks: PartialBlock[]
 ): Promise<string> {
-  return normalizeSerializedMarkdown(await editor.blocksToMarkdownLossy(blocks))
+  const { blocks: wrapped, replacements } = extractInlineColorRuns(blocks as never[])
+  const md = normalizeSerializedMarkdown(
+    await editor.blocksToMarkdownLossy(wrapped as PartialBlock[])
+  )
+  return restoreInlineColorTokens(md, replacements)
 }
 
 function canSerializeChildNatively(parent: Block, child: Block): boolean {
@@ -296,7 +308,10 @@ async function markdownToBlocksPreserving(
   editor: ServerBlockNoteEditor,
   markdown: string
 ): Promise<Block[]> {
-  const segments = splitMarkdownPreservingBlanks(separateBlockImages(markdown))
+  // Inline color spans are masked into markdown-inert tokens before parsing
+  // (BlockNote strips raw spans), then re-applied as styles on the parsed runs.
+  const { text, spans } = maskInlineColorSpans(separateBlockImages(markdown))
+  const segments = splitMarkdownPreservingBlanks(text)
   const blocks: Block[] = []
 
   for (const seg of segments) {
@@ -309,7 +324,7 @@ async function markdownToBlocksPreserving(
     }
   }
 
-  return blocks
+  return applyInlineColorTokens(blocks as never[], spans) as Block[]
 }
 
 async function parseContentWithColorMarkers(
