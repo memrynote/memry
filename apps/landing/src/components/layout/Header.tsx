@@ -469,6 +469,9 @@ export function Header() {
                 <span className="block font-geist text-2xl font-medium tracking-tight text-ink transition-colors group-hover:text-terracotta">
                   memrynote
                 </span>
+                <span className="rounded-full bg-terracotta/10 px-1.5 py-0.5 font-mono-accent text-[8px] uppercase tracking-[0.16em] text-terracotta">
+                  Beta
+                </span>
               </span>
             </div>
           </Link>

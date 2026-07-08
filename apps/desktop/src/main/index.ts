@@ -969,7 +969,7 @@ const appReady = app.whenReady().then(async () => {
   // setAboutPanelOptions is macOS/Linux only (undefined on Windows).
   if (typeof app.setAboutPanelOptions === 'function') {
     app.setAboutPanelOptions({
-      applicationName: 'Memrynote',
+      applicationName: 'Memrynote (Beta)',
       applicationVersion: app.getVersion(),
       copyright: `© ${new Date().getFullYear()} Memrynote`
     })
