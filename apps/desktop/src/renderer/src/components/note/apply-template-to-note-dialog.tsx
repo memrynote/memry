@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { toast } from 'sonner'
 import { TemplateSelector } from './template-selector'
 import { ApplyTemplateConfirmDialog } from './apply-template-confirm-dialog'
@@ -25,10 +25,13 @@ function ApplyTemplateToNoteDialogActive({
   const { t } = useT('notes')
   const { templates } = useTemplates()
   const [pendingTemplateId, setPendingTemplateId] = useState<string | null>(null)
+  const submittingRef = useRef(false)
 
   const apply = useCallback(
     async (templateId: string, mode: 'full' | 'body') => {
       if (!noteId) return
+      if (submittingRef.current) return
+      submittingRef.current = true
       try {
         const res = await window.api.notes.applyTemplate({ noteId, templateId, mode })
         if (!res.success) throw new Error(res.error ?? 'apply failed')
@@ -36,6 +39,7 @@ function ApplyTemplateToNoteDialogActive({
       } catch (err) {
         toast.error(extractErrorMessage(err, t('applyTemplateConfirm.failed')))
       } finally {
+        submittingRef.current = false
         setPendingTemplateId(null)
         onClose()
       }

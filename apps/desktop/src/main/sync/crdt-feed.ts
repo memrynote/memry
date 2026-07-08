@@ -29,3 +29,23 @@ export async function replaceNoteBodyInCrdt(noteId: string, markdown: string): P
 
   return true
 }
+
+/**
+ * Replace a note's Y.Doc tag array to match a given tag list.
+ * No-op (returns false) when the doc is not open.
+ * Used after a FULL-mode template apply so the CRDT writeback (which treats
+ * the Y.Doc tag array as authoritative) doesn't revert file tags.
+ */
+export function replaceNoteTagsInCrdt(noteId: string, tags: string[]): boolean {
+  const provider = getCrdtProvider()
+  const doc = provider.getDoc(noteId)
+  if (!doc) return false
+
+  const tagArray = doc.getArray('tags')
+  doc.transact(() => {
+    tagArray.delete(0, tagArray.length)
+    if (tags.length > 0) tagArray.push(tags)
+  }, ORIGIN_LOCAL)
+
+  return true
+}

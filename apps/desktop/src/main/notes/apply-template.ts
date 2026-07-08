@@ -8,7 +8,7 @@
 import { applyTemplate, getTemplate } from '../vault/templates'
 import { getNoteById, type Note, type NoteUpdateInput } from '../vault/notes'
 import { updateNoteCommand } from './domain'
-import { replaceNoteBodyInCrdt } from '../sync/crdt-feed'
+import { replaceNoteBodyInCrdt, replaceNoteTagsInCrdt } from '../sync/crdt-feed'
 import { NoteError, NoteErrorCode, VaultError, VaultErrorCode } from '../lib/errors'
 import type { Template } from '@memry/contracts/templates-api'
 
@@ -53,6 +53,10 @@ export async function applyTemplateToNote(input: {
 
   // Update any open editor's Y.Doc so the replacement shows live.
   await replaceNoteBodyInCrdt(input.noteId, update.content ?? '')
+
+  if (input.mode === 'full' && update.tags) {
+    replaceNoteTagsInCrdt(input.noteId, update.tags)
+  }
 
   return updated
 }
