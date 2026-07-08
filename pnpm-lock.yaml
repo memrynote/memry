@@ -90,6 +90,9 @@ importers:
       better-sqlite3:
         specifier: ^12.5.0
         version: 12.6.2
+      electron-log:
+        specifier: ^5.4.4
+        version: 5.4.4
       jsdom:
         specifier: ^27.4.0
         version: 27.4.0(@noble/hashes@1.8.0)
@@ -487,9 +490,6 @@ importers:
       electron-builder:
         specifier: ^26.0.12
         version: 26.7.0(electron-builder-squirrel-windows@26.7.0)
-      electron-log:
-        specifier: ^5.4.4
-        version: 5.4.4
       electron-store:
         specifier: ^11.0.2
         version: 11.0.2

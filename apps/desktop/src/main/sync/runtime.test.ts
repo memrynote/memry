@@ -71,7 +71,9 @@ const runtimeMocks = vi.hoisted(() => {
 
   class SyncWorkerBridge {
     static instances: SyncWorkerBridge[] = []
-    start = vi.fn(async () => undefined)
+    start = vi.fn(async () => {
+      if (runtimeMocks.workerStartError) throw runtimeMocks.workerStartError
+    })
     stop = vi.fn(async () => undefined)
     constructor() {
       SyncWorkerBridge.instances.push(this)
@@ -106,6 +108,7 @@ const runtimeMocks = vi.hoisted(() => {
     calendarExternalEventSync: service('calendar_external_event'),
     networkOnline: true,
     engineStartError: null as Error | null,
+    workerStartError: null as Error | null,
     db: null as any,
     indexRows: [] as Array<{ id: string; title: string; date: string | null }>,
     currentDevice: { id: 'device-1', signingPublicKey: null as string | null },
@@ -367,6 +370,7 @@ describe('sync runtime', () => {
     runtimeMocks.SyncWorkerBridge.instances = []
     runtimeMocks.networkOnline = true
     runtimeMocks.engineStartError = null
+    runtimeMocks.workerStartError = null
     runtimeMocks.indexRows = [{ id: 'note-1', title: 'Note 1', date: null }]
     runtimeMocks.currentDevice = { id: 'device-1', signingPublicKey: null }
     runtimeMocks.db = createDb()
@@ -427,6 +431,26 @@ describe('sync runtime', () => {
       verificationError
     )
     expect(runtime.getSyncEngine()).toBeNull()
+  })
+
+  it('continues startup with main-thread crypto when the sync worker fails to init', async () => {
+    const workerError = new Error("Cannot find module 'electron'")
+    runtimeMocks.workerStartError = workerError
+    const runtime = await loadRuntime()
+
+    try {
+      await runtime.startSyncRuntime()
+    } finally {
+      runtimeMocks.workerStartError = null
+    }
+
+    expect(runtime.getSyncEngine()).not.toBeNull()
+    expect(runtimeMocks.SyncEngine.instances).toHaveLength(1)
+    expect(runtimeMocks.SyncEngine.instances[0].start).toHaveBeenCalled()
+    expect(runtimeMocks.logError).toHaveBeenCalledWith(
+      'Sync worker failed to start — continuing with main-thread crypto',
+      workerError
+    )
   })
 
   it('skips startup when recovery phrase confirmation is still pending', async () => {

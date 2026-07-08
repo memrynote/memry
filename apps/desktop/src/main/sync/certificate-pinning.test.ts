@@ -7,13 +7,15 @@ vi.mock('electron', () => ({
   app: mockApp
 }))
 
+const mockLog = vi.hoisted(() => ({
+  debug: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn()
+}))
+
 vi.mock('../lib/logger', () => ({
-  createLogger: () => ({
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn()
-  })
+  createLogger: () => mockLog
 }))
 
 import {
@@ -282,6 +284,26 @@ describe('certificate-pinning', () => {
 
       // #then
       expect(hashes).toHaveLength(0)
+    })
+  })
+
+  describe('placeholder pins fallback logging', () => {
+    it('#given packaged mode with placeholders #then warns once and never logs an error', async () => {
+      // #given — fresh module so the once-guard starts clean
+      vi.resetModules()
+      mockApp.isPackaged = true
+      mockLog.warn.mockClear()
+      mockLog.error.mockClear()
+      const fresh = await import('./certificate-pinning')
+
+      // #when — every placeholder-detecting path fires
+      fresh.getPinnedCertificateHashes()
+      fresh.createPinnedAgent()
+      fresh.warnPinningUnconfiguredOnce()
+
+      // #then — TLS-only fallback is deliberate: one warn, no CRITICAL noise
+      expect(mockLog.warn).toHaveBeenCalledTimes(1)
+      expect(mockLog.error).not.toHaveBeenCalled()
     })
   })
 })

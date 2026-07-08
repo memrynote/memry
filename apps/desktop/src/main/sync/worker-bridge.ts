@@ -35,12 +35,14 @@ export class SyncWorkerBridge {
 
     this.readyPromise = new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(() => {
+        this.disposeFailedWorker()
         reject(new Error('Worker failed to start within timeout'))
       }, 10_000)
 
       const initErrorHandler = (err: Error): void => {
         clearTimeout(timeout)
         log.error('Sync worker init error', err)
+        this.disposeFailedWorker()
         reject(err)
       }
 
@@ -60,6 +62,19 @@ export class SyncWorkerBridge {
     })
 
     await this.readyPromise
+  }
+
+  // A worker that never reached ready must not stay attached: isRunning would
+  // report true and route crypto batches to a dead thread. Detach so callers
+  // fall back to main-thread crypto.
+  private disposeFailedWorker(): void {
+    const worker = this.worker
+    this.worker = null
+    this.readyPromise = null
+    if (worker) {
+      worker.removeAllListeners()
+      void worker.terminate()
+    }
   }
 
   private setupMessageHandler(): void {

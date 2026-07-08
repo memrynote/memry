@@ -84,6 +84,29 @@ describe('SyncWorkerBridge', () => {
       await expect(startPromise).rejects.toThrow('Worker failed to start within timeout')
     })
 
+    it('#then cleans up the worker after an init error so isRunning is false', async () => {
+      // #given
+      const startPromise = bridge.start()
+      // #when
+      mockWorkerInstance.simulateError(new Error('init boom'))
+      // #then — a worker that never came up must not report as running,
+      // otherwise sync-crypto-batch routes requests to a dead worker
+      await expect(startPromise).rejects.toThrow('init boom')
+      expect(bridge.isRunning).toBe(false)
+      expect(mockWorkerInstance.terminate).toHaveBeenCalled()
+    })
+
+    it('#then cleans up the worker after an init timeout so isRunning is false', async () => {
+      // #given
+      const startPromise = bridge.start()
+      // #when
+      vi.advanceTimersByTime(10_001)
+      // #then
+      await expect(startPromise).rejects.toThrow('Worker failed to start within timeout')
+      expect(bridge.isRunning).toBe(false)
+      expect(mockWorkerInstance.terminate).toHaveBeenCalled()
+    })
+
     it('#then removes init error listener after ready', async () => {
       // #given
       const startPromise = bridge.start()

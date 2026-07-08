@@ -20,3 +20,15 @@ describe('check-staged-secrets JSX handling', () => {
     assert.deepEqual(rules('  token={"supersecretvalue123"}'), ['high-risk-secret-assignment'])
   })
 })
+
+describe('check-staged-secrets constructor values', () => {
+  it('ignores a secret-named key assigned a constructor call over a code reference', () => {
+    assert.deepEqual(rules('  signingSecretKey: new Uint8Array(signingSecretKey),'), [])
+  })
+
+  it('still flags a constructor call containing a string literal', () => {
+    assert.deepEqual(rules("  signingSecretKey: new Buffer('hunter2secretvalue')"), [
+      'high-risk-secret-assignment'
+    ])
+  })
+})

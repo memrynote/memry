@@ -101,7 +101,10 @@ function isSourceCodeReferenceValue(filePath, value) {
     /^[A-Za-z_$][\w$]*(?:\??\.[A-Za-z_$][\w$]*)+$/.test(normalized) ||
     isChainedCodeCallValue(normalized) ||
     /^[A-Za-z_$][\w$]*(?:\[[^\]]+\])+$/.test(normalized) ||
-    /^[A-Za-z_$][\w$]*\([^;]*\)$/.test(normalized)
+    /^[A-Za-z_$][\w$]*\([^;]*\)$/.test(normalized) ||
+    // constructor call wrapping a code reference (`new Uint8Array(key)`);
+    // quote characters in the args keep string literals flagged
+    /^new\s+[A-Za-z_$][\w$]*\([^;"'`]*\)$/.test(normalized)
   )
 }
 

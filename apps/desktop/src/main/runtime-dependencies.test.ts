@@ -16,6 +16,9 @@ const externalRuntimeDependencies = [
   '@huggingface/transformers',
   '@mixmark-io/domino',
   'better-sqlite3',
+  // picks main/renderer/node impl via runtime require() branches; bundling
+  // hoists all three, and main's require('electron') crashes worker_threads
+  'electron-log',
   'jsdom',
   'keytar',
   // UMD + inlined-wasm module; rollup's CJS interop breaks it when bundled
