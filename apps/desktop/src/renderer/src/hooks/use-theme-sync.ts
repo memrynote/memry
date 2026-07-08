@@ -9,7 +9,7 @@ const log = createLogger('ThemeSync')
 const FONT_SIZE_MAP = {
   small: '14px',
   medium: '16px',
-  large: '18px'
+  large: '20px'
 } as const
 
 const FONT_FAMILY_MAP: Record<string, string> = {

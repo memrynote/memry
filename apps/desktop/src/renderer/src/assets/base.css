@@ -117,7 +117,7 @@
 
 /* ===== EDITOR FONT SIZE (Appearance → Font Size: S/M/L) ===== */
 /* BlockNote pins `.bn-default-styles` to a fixed 16px, so the app's font-size
-   setting — applied by useThemeSync as the root <html> font-size (14/16/18px) —
+   setting — applied by useThemeSync as the root <html> font-size (14/16/20px) —
    never reached editor body text. `1rem` re-ties the editor to that root value,
    so S/M/L now scales note body text (and inline #tags, sized at 0.9em) too.
    At Medium (16px) this is identical to the previous fixed 16px. */
