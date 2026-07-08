@@ -205,6 +205,29 @@ describe('TasksSettings', () => {
     })
   })
 
+  it('calls updateSettings when default view changes', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<TasksSettings />)
+
+    await waitFor(() => {
+      expect(screen.queryByText('Loading settings...')).not.toBeInTheDocument()
+    })
+
+    const viewTrigger = screen.getAllByRole('combobox')[2]
+    await user.click(viewTrigger)
+
+    await waitFor(() => {
+      expect(screen.getByText('Today')).toBeInTheDocument()
+    })
+    await user.click(screen.getByText('Today'))
+
+    await waitFor(() => {
+      expect(window.api.settings.setTaskSettings).toHaveBeenCalledWith({
+        defaultView: 'today'
+      })
+    })
+  })
+
   it('updates stale inbox threshold on input change', async () => {
     renderWithProviders(<TasksSettings />)
 
