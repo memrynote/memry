@@ -87,10 +87,21 @@
   caret-color: #f0efed;
 }
 
-/* Inbox detail drawer: editor inherits drawer surface bg, not page bg */
+/* Inbox detail + task description drawers: editor inherits the drawer surface
+   bg (var(--surface)), not the page bg — stays theme-correct in white/warm/dark. */
 .inbox-content-editor .bn-editor,
-.inbox-content-editor .bn-container {
+.inbox-content-editor .bn-container,
+.task-description-editor .bn-editor,
+.task-description-editor .bn-container {
   background-color: transparent !important;
+}
+
+/* Task description editor: the app zeroes .bn-editor padding-inline globally, but
+   BlockNote renders its drag/plus side menu in a left gutter. Reserve that gutter
+   so the handles (and their menus) are not clipped by the drawer's overflow. */
+.task-description-editor .bn-editor {
+  padding-inline-start: 28px !important;
+  padding-inline-end: 4px !important;
 }
 
 /* Code block: always dark background regardless of theme (matches github-dark Shiki theme) */

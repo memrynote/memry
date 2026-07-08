@@ -9,6 +9,25 @@ import { AddTaskModal } from './add-task-modal'
 import type { Project, Status } from '@/data/tasks-data'
 import type { Task } from '@/data/task-model'
 
+// BlockNote can't mount in jsdom; stub the description editor with a textarea.
+vi.mock('./task-description-editor', () => ({
+  TaskDescriptionEditor: ({
+    initialContent,
+    onContentChange,
+    placeholder
+  }: {
+    initialContent: string | null
+    onContentChange?: (markdown: string) => void
+    placeholder?: string
+  }) => (
+    <textarea
+      placeholder={placeholder}
+      defaultValue={initialContent ?? ''}
+      onChange={(event) => onContentChange?.(event.target.value)}
+    />
+  )
+}))
+
 let i18nEn: I18nInstance
 let i18nTr: I18nInstance
 

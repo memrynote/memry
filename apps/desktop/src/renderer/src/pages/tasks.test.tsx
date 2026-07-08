@@ -111,6 +111,25 @@ vi.mock('sonner', () => ({
   }
 }))
 
+// BlockNote can't mount in jsdom; stub the task description editor.
+vi.mock('@/components/tasks/task-description-editor', () => ({
+  TaskDescriptionEditor: ({
+    initialContent,
+    onContentChange,
+    placeholder
+  }: {
+    initialContent: string | null
+    onContentChange?: (markdown: string) => void
+    placeholder?: string
+  }) => (
+    <textarea
+      placeholder={placeholder}
+      defaultValue={initialContent ?? ''}
+      onChange={(event) => onContentChange?.(event.target.value)}
+    />
+  )
+}))
+
 vi.mock('@/lib/logger', () => ({
   createLogger: () => ({ error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() })
 }))

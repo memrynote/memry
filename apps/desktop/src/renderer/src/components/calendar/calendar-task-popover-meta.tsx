@@ -3,6 +3,7 @@ import { formatTaskDue } from '@/lib/format-task-due'
 import { TagChip, type Tag } from '@/components/note/tags-row'
 import { PriorityIcon } from '@/components/tasks/task-icons'
 import { priorityConfig, type Priority } from '@/data/task-model'
+import { TaskDescriptionPreview } from '@/components/tasks/task-description-preview'
 import { cn } from '@/lib/utils'
 
 export interface CalendarTaskPopoverMetaTask {
@@ -127,9 +128,11 @@ export function CalendarTaskPopoverMeta({
       )}
 
       {description && (
-        <p data-testid="description" className="text-muted-foreground line-clamp-3">
-          {description}
-        </p>
+        <TaskDescriptionPreview
+          data-testid="description"
+          markdown={description}
+          className="line-clamp-3"
+        />
       )}
     </div>
   )

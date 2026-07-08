@@ -42,6 +42,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        # Full history so React Doctor can resolve the merge base and report
+        # only the issues a PR introduces, not every pre-existing finding.
+        with:
+          fetch-depth: 0
 
       - uses: millionco/react-doctor@v2
         with:
