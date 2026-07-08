@@ -42,6 +42,11 @@ nsis:
   shortcutName: ${productName}
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
+  # Assisted installer: users with a full C: drive need to pick another
+  # install location. Auto-updates still install silently (/S), and existing
+  # one-click installs keep their current location on update.
+  oneClick: false
+  allowToChangeInstallationDirectory: true
 mac:
   artifactName: ${productName}-${version}-${arch}.${ext}
   entitlementsInherit: config/entitlements.mac.plist

@@ -1,29 +1,45 @@
 import * as Y from 'yjs'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const mocks = vi.hoisted(() => ({
-  sent: [] as Array<{ windowId: number; channel: string; payload: unknown }>,
-  windows: new Map<
-    number,
-    { isDestroyed: ReturnType<typeof vi.fn>; webContents: { send: ReturnType<typeof vi.fn> } }
-  >(),
-  getNoteCacheById: vi.fn(),
-  safeRead: vi.fn(),
-  parseNote: vi.fn(),
-  markdownToYFragment: vi.fn(),
-  repairEmptyBlockIds: vi.fn(() => 0),
-  compactYDoc: vi.fn(),
-  scheduleWriteback: vi.fn(),
-  flushPendingWritebacks: vi.fn(),
-  recordNetworkUpdate: vi.fn(),
-  persistenceInstances: [] as Array<{
-    getYDoc: ReturnType<typeof vi.fn>
-    clearDocument: ReturnType<typeof vi.fn>
-    destroy: ReturnType<typeof vi.fn>
-    storeUpdate: ReturnType<typeof vi.fn>
-    flushDocument: ReturnType<typeof vi.fn>
-  }>
-}))
+const mocks = vi.hoisted(() => {
+  // Simulates a broken classic-level native binding (napi_create_reference
+  // failures on ABI mismatch). 'reject' fails ops; 'hang' never settles.
+  const persistenceBehavior = { mode: 'ok' as 'ok' | 'reject' | 'hang' }
+  const persistenceOpFactory = async <T>(value: () => T): Promise<T> => {
+    if (persistenceBehavior.mode === 'reject') {
+      throw new Error('napi_create_reference(env, callback, 1, &callbackRef_) failed!')
+    }
+    if (persistenceBehavior.mode === 'hang') {
+      return new Promise<T>(() => {})
+    }
+    return value()
+  }
+  return {
+    persistenceBehavior,
+    persistenceOpFactory,
+    sent: [] as Array<{ windowId: number; channel: string; payload: unknown }>,
+    windows: new Map<
+      number,
+      { isDestroyed: ReturnType<typeof vi.fn>; webContents: { send: ReturnType<typeof vi.fn> } }
+    >(),
+    getNoteCacheById: vi.fn(),
+    safeRead: vi.fn(),
+    parseNote: vi.fn(),
+    markdownToYFragment: vi.fn(),
+    repairEmptyBlockIds: vi.fn(() => 0),
+    compactYDoc: vi.fn(),
+    scheduleWriteback: vi.fn(),
+    flushPendingWritebacks: vi.fn(),
+    recordNetworkUpdate: vi.fn(),
+    persistenceInstances: [] as Array<{
+      getYDoc: ReturnType<typeof vi.fn>
+      clearDocument: ReturnType<typeof vi.fn>
+      destroy: ReturnType<typeof vi.fn>
+      storeUpdate: ReturnType<typeof vi.fn>
+      flushDocument: ReturnType<typeof vi.fn>
+    }>
+  }
+})
 
 vi.mock('electron', () => ({
   app: { getPath: () => '/tmp/memry-crdt-test' },
@@ -44,11 +60,13 @@ vi.mock('../lib/logger', () => ({
 
 vi.mock('y-leveldb', () => ({
   LeveldbPersistence: class {
-    getYDoc = vi.fn(async (noteId: string) => new Y.Doc({ guid: `${noteId}:persisted` }))
-    clearDocument = vi.fn(async () => {})
+    getYDoc = vi.fn((noteId: string) =>
+      mocks.persistenceOpFactory(() => new Y.Doc({ guid: `${noteId}:persisted` }))
+    )
+    clearDocument = vi.fn(() => mocks.persistenceOpFactory(() => undefined))
     destroy = vi.fn(async () => {})
-    storeUpdate = vi.fn(async () => {})
-    flushDocument = vi.fn(async () => {})
+    storeUpdate = vi.fn(() => mocks.persistenceOpFactory(() => undefined))
+    flushDocument = vi.fn(() => mocks.persistenceOpFactory(() => undefined))
 
     constructor() {
       mocks.persistenceInstances.push(this)
@@ -150,6 +168,7 @@ describe('CrdtProvider', () => {
     mocks.sent = []
     mocks.windows.clear()
     mocks.persistenceInstances.length = 0
+    mocks.persistenceBehavior.mode = 'ok'
     mocks.getNoteCacheById.mockReturnValue({
       id: 'note-1',
       path: 'notes/Note.md',
@@ -674,5 +693,97 @@ describe('CrdtProvider', () => {
     ;(provider as any).docs.get('closing-note').closing = false
     provider.applyIpcUpdate('closing-note', makeRemoteUpdate('local'), 99)
     expect(mocks.sent).toEqual([])
+  })
+})
+
+// Regression suite for the broken classic-level native binding shipped in
+// 2026.705.1 on Windows: napi_create_reference failures made every CRDT
+// persistence op throw or hang, crashing the editor on first keystroke and
+// making note content unloadable. The provider must survive a dead store.
+describe('CrdtProvider persistence resilience', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.sent = []
+    mocks.windows.clear()
+    mocks.persistenceInstances.length = 0
+    mocks.persistenceBehavior.mode = 'ok'
+    mocks.getNoteCacheById.mockReturnValue({
+      id: 'note-1',
+      path: 'notes/Note.md',
+      title: 'Note',
+      fileType: 'markdown'
+    })
+    mocks.safeRead.mockResolvedValue('# Note\n\nBody')
+    mocks.parseNote.mockReturnValue({ content: 'Body' })
+    mocks.markdownToYFragment.mockImplementation(
+      async (_content: string, fragment: Y.XmlFragment) => {
+        fragment.insert(0, [new Y.XmlText('Body')])
+        return true
+      }
+    )
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    resetCrdtProvider()
+  })
+
+  it('falls back to in-memory mode when the persistence probe rejects', async () => {
+    mocks.persistenceBehavior.mode = 'reject'
+    const provider = new CrdtProvider()
+
+    await expect(provider.init()).resolves.toBeUndefined()
+    expect(provider.isInitialized()).toBe(true)
+
+    // Docs still open and seed from the vault markdown file.
+    const doc = await provider.open('note-1')
+    expect(doc.getXmlFragment(CRDT_FRAGMENT_NAME).length).toBeGreaterThan(0)
+
+    // Typing must not throw even though the store is dead.
+    expect(() => provider.applyIpcUpdate('note-1', makeRemoteUpdate('typed'), 7)).not.toThrow()
+    await provider.close('note-1')
+  })
+
+  it('falls back to in-memory mode when the persistence probe hangs', async () => {
+    vi.useFakeTimers()
+    mocks.persistenceBehavior.mode = 'hang'
+    const provider = new CrdtProvider()
+
+    const init = provider.init()
+    await vi.advanceTimersByTimeAsync(20_000)
+    await expect(init).resolves.toBeUndefined()
+
+    expect(provider.isInitialized()).toBe(true)
+  })
+
+  it('does not retry a failed probe on subsequent init calls', async () => {
+    mocks.persistenceBehavior.mode = 'reject'
+    const provider = new CrdtProvider()
+
+    await provider.initPersistence()
+    await provider.initPersistence()
+    await provider.init()
+
+    expect(mocks.persistenceInstances).toHaveLength(1)
+  })
+
+  it('opens a doc from markdown when loading the persisted doc fails mid-session', async () => {
+    const provider = new CrdtProvider()
+    await provider.init()
+    expect(provider.isInitialized()).toBe(true)
+
+    mocks.persistenceBehavior.mode = 'reject'
+    const doc = await provider.open('note-1')
+    expect(doc.getXmlFragment(CRDT_FRAGMENT_NAME).length).toBeGreaterThan(0)
+    await provider.close('note-1')
+  })
+
+  it('reports uninitialized again after destroy', async () => {
+    const provider = new CrdtProvider()
+    await provider.init()
+    expect(provider.isInitialized()).toBe(true)
+
+    await provider.destroy()
+    expect(provider.isInitialized()).toBe(false)
   })
 })

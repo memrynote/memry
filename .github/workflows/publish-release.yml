@@ -399,6 +399,14 @@ jobs:
           node apps/desktop/scripts/build-packaged-app.js --win --x64 --publish never
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      # 2026.705.1 shipped a classic-level binary whose napi calls failed at
+      # runtime — every CRDT persistence op crashed or hung, and nothing in the
+      # pipeline load-tested the Windows package. Verify native modules load
+      # and actually work under the packaged executable before staging assets.
+      - name: Check packaged runtime dependencies
+        shell: bash
+        run: node apps/desktop/scripts/check-packaged-runtime-deps.js apps/desktop/dist/win-unpacked
+
       - name: Stage Windows assets
         id: assets
         shell: pwsh
