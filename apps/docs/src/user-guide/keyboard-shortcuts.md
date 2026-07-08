@@ -6,30 +6,31 @@ Default shortcuts. Every entry in the Navigation, Tabs, Editor, and View categor
 
 ## Navigation
 
-| Action        | Shortcut                               |
-| ------------- | -------------------------------------- |
-| New note      | <kbd>⌘</kbd>+<kbd>N</kbd>              |
-| New task      | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>T</kbd> |
-| Go to Inbox   | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>I</kbd> |
-| Go to Notes   | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>E</kbd> |
-| Go to Tasks   | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>K</kbd> |
-| Open search   | <kbd>⌘</kbd>+<kbd>F</kbd>              |
-| Open settings | <kbd>⌘</kbd>+<kbd>,</kbd>              |
+| Action                | Shortcut                                              |
+| --------------------- | ----------------------------------------------------- |
+| New note              | <kbd>⌘</kbd>+<kbd>N</kbd>                             |
+| New task              | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>T</kbd>                |
+| Go to Inbox           | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>I</kbd>                |
+| Go to Notes           | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>E</kbd>                |
+| Go to Tasks           | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>K</kbd>                |
+| Go to sidebar section | <kbd>⌘</kbd>+<kbd>1</kbd> … <kbd>⌘</kbd>+<kbd>6</kbd> |
+| Open search           | <kbd>⌘</kbd>+<kbd>F</kbd>                             |
+| Open settings         | <kbd>⌘</kbd>+<kbd>,</kbd>                             |
+
+> Hold <kbd>⌘</kbd> (<kbd>Ctrl</kbd> on Windows / Linux) to reveal the section numbers on the sidebar icons, then press the number to jump — <kbd>⌘</kbd>+<kbd>1</kbd> opens Home, <kbd>⌘</kbd>+<kbd>2</kbd> Inbox, and so on. Numbers follow the sidebar's visible top-to-bottom order (Home is always 1), so they shift if you hide a section. This shortcut works everywhere, including inside the editor, and is fixed rather than rebindable.
 
 ## Tabs
 
-| Action            | Shortcut                                              |
-| ----------------- | ----------------------------------------------------- |
-| New tab           | <kbd>⌘</kbd>+<kbd>T</kbd>                             |
-| Close tab         | <kbd>⌘</kbd>+<kbd>W</kbd>                             |
-| Close all tabs    | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>W</kbd>                |
-| Reopen closed tab | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>T</kbd>                |
-| Next tab          | <kbd>Ctrl</kbd>+<kbd>Tab</kbd>                        |
-| Previous tab      | <kbd>Ctrl</kbd>+<kbd>⇧</kbd>+<kbd>Tab</kbd>           |
-| Go to tab 1–8     | <kbd>⌘</kbd>+<kbd>1</kbd> … <kbd>⌘</kbd>+<kbd>8</kbd> |
-| Go to last tab    | <kbd>⌘</kbd>+<kbd>9</kbd>                             |
-| Pin / unpin tab   | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>P</kbd>                |
-| Duplicate tab     | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>D</kbd>                |
+| Action            | Shortcut                                    |
+| ----------------- | ------------------------------------------- |
+| New tab           | <kbd>⌘</kbd>+<kbd>T</kbd>                   |
+| Close tab         | <kbd>⌘</kbd>+<kbd>W</kbd>                   |
+| Close all tabs    | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>W</kbd>      |
+| Reopen closed tab | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>T</kbd>      |
+| Next tab          | <kbd>Ctrl</kbd>+<kbd>Tab</kbd>              |
+| Previous tab      | <kbd>Ctrl</kbd>+<kbd>⇧</kbd>+<kbd>Tab</kbd> |
+| Pin / unpin tab   | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>P</kbd>      |
+| Duplicate tab     | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>D</kbd>      |
 
 > **Reopen closed tab** brings back the most recently closed tab at its original position and focus. Press it repeatedly to walk back through closed tabs, most recent first — it also recovers tabs closed in bulk by **Close all tabs**. The history is kept for the current session only.
 
