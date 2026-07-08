@@ -1289,6 +1289,7 @@ export interface EditorSettingsDTO {
 export interface TaskSettingsDTO {
   defaultProjectId: string | null
   defaultSortOrder: 'manual' | 'dueDate' | 'priority' | 'createdAt'
+  defaultView: 'today' | 'all'
   staleInboxDays: number
 }
 

@@ -367,6 +367,15 @@
       },
       "error": "Kunne ikke opdatere ugestart"
     },
+    "defaultView": {
+      "label": "Standardvisning",
+      "description": "Fanen som opgavesiden åbner på",
+      "options": {
+        "all": "Alle",
+        "today": "I dag"
+      },
+      "error": "Kunne ikke opdatere standardvisning"
+    },
     "staleInbox": {
       "label": "Forældet indbakketærskel",
       "description": "Opgaver, der er ældre end dette, fremhæves som forældede",

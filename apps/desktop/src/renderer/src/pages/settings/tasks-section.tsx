@@ -50,6 +50,15 @@ export function TasksSettings() {
     [t, updateSettings]
   )
 
+  const handleDefaultViewChange = useCallback(
+    async (value: string) => {
+      const defaultView = value as 'today' | 'all'
+      const success = await updateSettings({ defaultView })
+      if (!success) toast.error(t('tasks.defaultView.error'))
+    },
+    [t, updateSettings]
+  )
+
   const handleStaleInboxChange = useCallback(
     async (value: string) => {
       const days = parseInt(value, 10)
@@ -118,6 +127,24 @@ export function TasksSettings() {
                   {t(opt.labelKey)}
                 </SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+        </SettingRow>
+
+        <SettingRow
+          label={t('tasks.defaultView.label')}
+          description={t('tasks.defaultView.description')}
+        >
+          <Select
+            value={settings.defaultView}
+            onValueChange={(...args) => void handleDefaultViewChange(...args)}
+          >
+            <SelectTrigger className={COMPACT_SELECT}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t('tasks.defaultView.options.all')}</SelectItem>
+              <SelectItem value="today">{t('tasks.defaultView.options.today')}</SelectItem>
             </SelectContent>
           </Select>
         </SettingRow>

@@ -367,6 +367,15 @@
       },
       "error": "Ažuriranje početka tjedna nije uspjelo"
     },
+    "defaultView": {
+      "label": "Zadani prikaz",
+      "description": "Kartica na kojoj se otvara stranica zadataka",
+      "options": {
+        "all": "Sve",
+        "today": "Danas"
+      },
+      "error": "Ažuriranje zadanog prikaza nije uspjelo"
+    },
     "staleInbox": {
       "label": "Prag stare ulazne pošte",
       "description": "Zadaci stariji od ovoga označeni su kao zastarjeli",

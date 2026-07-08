@@ -367,6 +367,15 @@
       },
       "error": "Kan het begin van de week niet updaten"
     },
+    "defaultView": {
+      "label": "Standaardweergave",
+      "description": "Het tabblad waarop de Taken-pagina wordt geopend",
+      "options": {
+        "all": "Allemaal",
+        "today": "Vandaag"
+      },
+      "error": "Kan standaardweergave niet bijwerken"
+    },
     "staleInbox": {
       "label": "Verouderde inboxdrempel",
       "description": "Taken die ouder zijn, worden als verouderd gemarkeerd",

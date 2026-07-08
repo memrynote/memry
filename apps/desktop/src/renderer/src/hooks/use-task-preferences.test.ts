@@ -5,6 +5,7 @@ import { useTaskPreferences } from './use-task-preferences'
 const DEFAULTS = {
   defaultProjectId: null,
   defaultSortOrder: 'manual' as const,
+  defaultView: 'all' as const,
   staleInboxDays: 7
 }
 
@@ -174,6 +175,7 @@ describe('useTaskPreferences', () => {
     expect(result.current.settings).toEqual({
       defaultProjectId: 'proj-existing',
       defaultSortOrder: 'priority',
+      defaultView: 'all',
       staleInboxDays: 14
     })
   })

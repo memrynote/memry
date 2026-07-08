@@ -367,6 +367,15 @@
       },
       "error": "Nem sikerült frissíteni a hét elejét"
     },
+    "defaultView": {
+      "label": "Alapértelmezett nézet",
+      "description": "A lap, amelyen a Feladatok oldal megnyílik",
+      "options": {
+        "all": "Mind",
+        "today": "Ma"
+      },
+      "error": "Az alapértelmezett nézet frissítése sikertelen"
+    },
     "staleInbox": {
       "label": "Elavult beérkező levelek küszöbértéke",
       "description": "Az ennél régebbi feladatok elavultként vannak kiemelve",

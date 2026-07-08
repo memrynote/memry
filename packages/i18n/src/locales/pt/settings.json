@@ -367,6 +367,15 @@
       },
       "error": "Falha ao atualizar o início da semana"
     },
+    "defaultView": {
+      "label": "Visualização padrão",
+      "description": "A aba em que a página de Tarefas abre",
+      "options": {
+        "all": "Todos",
+        "today": "Hoje"
+      },
+      "error": "Falha ao atualizar a visualização padrão"
+    },
     "staleInbox": {
       "label": "Limite de caixa de entrada desatualizado",
       "description": "Tarefas mais antigas que isso são destacadas como obsoletas",

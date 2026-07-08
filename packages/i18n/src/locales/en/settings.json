@@ -371,6 +371,15 @@
       },
       "error": "Failed to update sort order"
     },
+    "defaultView": {
+      "label": "Default View",
+      "description": "Which tab the Tasks page opens on",
+      "options": {
+        "all": "All",
+        "today": "Today"
+      },
+      "error": "Failed to update default view"
+    },
     "staleInbox": {
       "label": "Stale Inbox Threshold",
       "description": "Tasks older than this are highlighted as stale",

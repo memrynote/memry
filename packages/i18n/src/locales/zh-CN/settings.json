@@ -367,6 +367,15 @@
       },
       "error": "更新周开始失败"
     },
+    "defaultView": {
+      "label": "默认视图",
+      "description": "任务页面打开时显示的标签页",
+      "options": {
+        "all": "全部",
+        "today": "今天"
+      },
+      "error": "更新默认视图失败"
+    },
     "staleInbox": {
       "label": "陈旧收件箱阈值",
       "description": "比此更早的任务将被标记为陈旧",

@@ -367,6 +367,15 @@
       },
       "error": "Nie udało się zaktualizować początku tygodnia"
     },
+    "defaultView": {
+      "label": "Widok domyślny",
+      "description": "Karta, na której otwiera się strona Zadania",
+      "options": {
+        "all": "Wszystko",
+        "today": "Dzisiaj"
+      },
+      "error": "Nie udało się zaktualizować widoku domyślnego"
+    },
     "staleInbox": {
       "label": "Nieaktualny próg skrzynki odbiorczej",
       "description": "Zadania starsze niż to są podświetlane jako nieaktualne",

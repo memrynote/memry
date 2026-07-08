@@ -367,6 +367,15 @@
       },
       "error": "Nabigong i-update ang simula ng linggo"
     },
+    "defaultView": {
+      "label": "Default na View",
+      "description": "Ang tab kung saan magbubukas ang pahina ng Mga Gawain",
+      "options": {
+        "all": "Lahat",
+        "today": "Ngayong araw"
+      },
+      "error": "Nabigong i-update ang default na view"
+    },
     "staleInbox": {
       "label": "Stale Inbox Threshold",
       "description": "Ang mga gawaing mas matanda pa rito ay naka-highlight bilang lipas",

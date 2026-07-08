@@ -61,6 +61,7 @@ const MOCK_PROJECTS: Project[] = [
 const DEFAULTS = {
   defaultProjectId: null,
   defaultSortOrder: 'manual' as const,
+  defaultView: 'all' as const,
   staleInboxDays: 7
 }
 

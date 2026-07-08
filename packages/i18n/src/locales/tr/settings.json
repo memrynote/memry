@@ -367,6 +367,15 @@
       },
       "error": "Hafta başlangıcı güncellenemedi"
     },
+    "defaultView": {
+      "label": "Varsayılan Görünüm",
+      "description": "Görevler sayfasının açıldığı sekme",
+      "options": {
+        "all": "Tümü",
+        "today": "Bugün"
+      },
+      "error": "Varsayılan görünüm güncellenemedi"
+    },
     "staleInbox": {
       "label": "Eski Gelen Kutusu Eşiği",
       "description": "Bundan daha eski görevler eski olarak vurgulanır",

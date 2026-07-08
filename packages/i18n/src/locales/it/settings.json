@@ -367,6 +367,15 @@
       },
       "error": "Impossibile aggiornare l'inizio della settimana"
     },
+    "defaultView": {
+      "label": "Vista predefinita",
+      "description": "La scheda su cui si apre la pagina Attività",
+      "options": {
+        "all": "Tutto",
+        "today": "Oggi"
+      },
+      "error": "Impossibile aggiornare la vista predefinita"
+    },
     "staleInbox": {
       "label": "Soglia posta in arrivo obsoleta",
       "description": "Le attività più vecchie di questa vengono evidenziate come obsolete",
