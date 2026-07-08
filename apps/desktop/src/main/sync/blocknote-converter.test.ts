@@ -451,6 +451,124 @@ describe('blocknote-converter list fidelity', () => {
   })
 })
 
+describe('blocknote-converter color fidelity', () => {
+  const roundTrip = async (md: string): Promise<string | null> => {
+    const doc = new Y.Doc()
+    const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    await markdownToYFragment(md, fragment)
+    return yDocToMarkdown(doc)
+  }
+
+  const blocksToMd = async (blocks: NonNullable<Awaited<ReturnType<typeof markdownToBlocks>>>) => {
+    const doc = new Y.Doc()
+    const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    blocksToYFragment(blocks, fragment)
+    return yDocToMarkdown(doc)
+  }
+
+  it('round-trips a heading with a block-level color marker', async () => {
+    // #given the drag-handle side-menu color path (block props)
+    const md = '<!-- colors:{"textColor":"red"} -->\n### Hello'
+
+    // #when
+    const blocks = await markdownToBlocks(md)
+    expect(blocks![0]).toMatchObject({
+      type: 'heading',
+      props: { level: 3, textColor: 'red' }
+    })
+    const out = await blocksToMd(blocks!)
+
+    // #then
+    expect(out).toBe(md)
+  })
+
+  it('serializes inline textColor styles on a heading as a span', async () => {
+    // #given the formatting-toolbar color path (inline styles)
+    const blocks = [
+      {
+        type: 'heading',
+        props: { level: 3 },
+        content: [
+          { type: 'text', text: 'He', styles: {} },
+          { type: 'text', text: 'llo', styles: { textColor: 'red' } },
+          { type: 'text', text: ' world', styles: {} }
+        ],
+        children: []
+      }
+    ] as unknown as NonNullable<Awaited<ReturnType<typeof markdownToBlocks>>>
+
+    // #when
+    const out = await blocksToMd(blocks)
+
+    // #then
+    expect(out).toBe('### He<span style="color:red">llo</span> world')
+  })
+
+  it('parses inline color spans back into styles', async () => {
+    // #given
+    const md = '### He<span style="color:red">llo</span> world'
+
+    // #when
+    const blocks = await markdownToBlocks(md)
+
+    // #then
+    expect(blocks![0].type).toBe('heading')
+    expect(blocks![0].content).toEqual([
+      expect.objectContaining({ text: 'He', styles: {} }),
+      expect.objectContaining({ text: 'llo', styles: { textColor: 'red' } }),
+      expect.objectContaining({ text: ' world', styles: {} })
+    ])
+  })
+
+  it('round-trips inline colors combined with bold and background color', async () => {
+    // #given
+    const md = 'a <span style="color:blue;background-color:yellow">**bold** plain</span> tail'
+
+    // #when
+    const out = await roundTrip(md)
+
+    // #then
+    expect(out).toBe(md)
+  })
+
+  it('round-trips inline color combined with italic despite intraword flanking', async () => {
+    // #given an italic run wrapped in a color span (token punctuation must keep
+    // the `*` delimiters left/right-flanking)
+    const md = 'a <span style="color:red">*em*</span> tail'
+
+    // #when
+    const out = await roundTrip(md)
+
+    // #then
+    expect(out).toBe(md)
+  })
+
+  it('leaves literal span text inside code fences untouched', async () => {
+    // #given
+    const md = '```html\n<span style="color:red">code</span>\n```'
+
+    // #when
+    const out = await roundTrip(md)
+
+    // #then
+    expect(out).toContain('<span style="color:red">code</span>')
+    expect(out).toContain('```html')
+  })
+
+  it('round-trips inline color on repeated saves without growing markup', async () => {
+    // #given
+    const md = 'He<span style="color:red">llo</span> world'
+
+    // #when — two consecutive round-trips (open, save, reopen, save)
+    const once = await roundTrip(md)
+    const twice = await roundTrip(once!)
+
+    // #then
+    expect(once).toBe(md)
+    expect(twice).toBe(md)
+  })
+})
+
 describe('blocknote-converter soft-break fidelity', () => {
   it('round-trips single-newline lines without adding blank lines or backslashes', async () => {
     // #given an Obsidian-style paragraph of soft-broken lines (single \n)
