@@ -96,6 +96,14 @@
   background-color: transparent !important;
 }
 
+/* Task description editor: the app zeroes .bn-editor padding-inline globally, but
+   BlockNote renders its drag/plus side menu in a left gutter. Reserve that gutter
+   so the handles (and their menus) are not clipped by the drawer's overflow. */
+.task-description-editor .bn-editor {
+  padding-inline-start: 28px !important;
+  padding-inline-end: 4px !important;
+}
+
 /* Code block: always dark background regardless of theme (matches github-dark Shiki theme) */
 .bn-block-content[data-content-type='codeBlock'] {
   background-color: #24292e !important;

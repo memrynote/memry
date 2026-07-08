@@ -107,12 +107,7 @@ export const TaskDescriptionEditor = memo(function TaskDescriptionEditor({
 
   return (
     <section
-      className={cn(
-        'task-description-editor prose prose-sm dark:prose-invert max-w-none',
-        '[&_.bn-editor]:px-0 [&_.bn-editor]:py-0',
-        editable && 'cursor-text',
-        className
-      )}
+      className={cn('task-description-editor relative', editable && 'cursor-text', className)}
       aria-label={ariaLabel}
       onClick={handleContainerClick}
     >
