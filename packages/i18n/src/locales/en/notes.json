@@ -35,6 +35,7 @@
       "newNote": "New Note",
       "newFolder": "New Folder",
       "rename": "Rename",
+      "applyTemplate": "Apply Template",
       "openExternal": "Open in External Editor",
       "revealInFinder": "Reveal in Finder",
       "setDefaultTemplate": "Set Default Template",

@@ -22,6 +22,7 @@ import {
 import { useNoteTreeData } from '@/hooks/use-note-tree-data'
 import { useNoteTreeActions } from '@/hooks/use-note-tree-actions'
 import { NoteTreeDeleteDialog, NoteTreeTemplateSelector } from '@/components/note-tree-dialogs'
+import { ApplyTemplateToNoteDialog } from '@/components/note/apply-template-to-note-dialog'
 import { NotesTreeSkeleton, NotesTreeEmpty, NotesTreeError } from '@/components/note-tree-states'
 import {
   TreeFolderIcon,
@@ -197,6 +198,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
   }, [selectedIds, actions.renamingNoteId, actions.handleBulkDelete, actions])
 
   const [pendingRevealNoteId, setPendingRevealNoteId] = useState<string | null>(null)
+  const [applyTemplateNote, setApplyTemplateNote] = useState<NoteListItem | null>(null)
 
   useEffect(() => {
     const handleRevealInSidebar = (event: CustomEvent<{ path: string; entityId?: string }>) => {
@@ -537,6 +539,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
           onMove={(...args) => void actions.handleMove(...args)}
           onBulkDelete={actions.handleBulkDelete}
           onRenameNote={actions.handleRenameClick}
+          onApplyTemplateToNote={setApplyTemplateNote}
           onDeleteNote={actions.handleDeleteClick}
           onOpenExternal={(...args) => void actions.handleOpenExternal(...args)}
           onRevealInFinder={(...args) => void actions.handleRevealInFinder(...args)}
@@ -604,6 +607,12 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
         isOpen={actions.folderToConfigureTemplate !== null}
         onClose={() => void actions.handleFolderTemplateSelect(null)}
         onSelect={(...args) => void actions.handleFolderTemplateSelect(...args)}
+      />
+
+      <ApplyTemplateToNoteDialog
+        noteId={applyTemplateNote?.id ?? null}
+        isOpen={applyTemplateNote !== null}
+        onClose={() => setApplyTemplateNote(null)}
       />
     </div>
   )
