@@ -181,14 +181,27 @@ describe('EditorSettingsSchema', () => {
     expect(result.success).toBe(true)
   })
 
-  it('rejects width outside enum', () => {
+  it('accepts full width', () => {
     const result = EditorSettingsSchema.safeParse({
       ...EDITOR_SETTINGS_DEFAULTS,
       width: 'full'
     })
-    expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('width')
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.width).toBe('full')
+    }
+  })
+
+  it('coerces legacy widths to normal', () => {
+    for (const legacy of ['narrow', 'medium', 'wide']) {
+      const result = EditorSettingsSchema.safeParse({
+        ...EDITOR_SETTINGS_DEFAULTS,
+        width: legacy
+      })
+      expect(result.success).toBe(true)
+      if (result.success) {
+        expect(result.data.width).toBe('normal')
+      }
     }
   })
 
