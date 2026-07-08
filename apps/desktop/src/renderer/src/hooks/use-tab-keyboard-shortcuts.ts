@@ -132,34 +132,9 @@ export const useTabKeyboardShortcuts = (): void => {
         description: 'Navigate forward'
       },
 
-      // Go to tab 1-8 (⌘1-8)
-      ...Array.from({ length: 8 }, (_, i) => ({
-        key: String(i + 1),
-        modifiers: { meta: true } as const,
-        action: () => {
-          dispatch({
-            type: 'GO_TO_TAB_INDEX',
-            payload: { index: i, groupId: state.activeGroupId }
-          })
-        },
-        description: `Go to tab ${i + 1}`
-      })),
-
-      // Go to last tab (⌘9)
-      {
-        key: '9',
-        modifiers: { meta: true },
-        action: () => {
-          if (activeGroup) {
-            const lastIndex = activeGroup.tabs.length - 1
-            dispatch({
-              type: 'GO_TO_TAB_INDEX',
-              payload: { index: lastIndex, groupId: state.activeGroupId }
-            })
-          }
-        },
-        description: 'Go to last tab'
-      },
+      // NOTE: ⌘1-9 are intentionally NOT bound here. They now open the Nth
+      // sidebar section (see app-sidebar.tsx / useModifierHeld). Ctrl+Tab and
+      // Ctrl+Shift+Tab remain the way to cycle open tabs.
 
       // =====================================================================
       // TAB MODIFICATION

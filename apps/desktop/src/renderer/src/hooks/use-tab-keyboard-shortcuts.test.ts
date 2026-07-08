@@ -45,12 +45,6 @@ function shortcut(description: string) {
   return found
 }
 
-function numberShortcut(index: number) {
-  const found = mocks.shortcuts.find((item) => item.description === `Go to tab ${index}`)
-  if (!found) throw new Error(`Missing number shortcut: ${index}`)
-  return found
-}
-
 describe('useTabKeyboardShortcuts', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -75,7 +69,7 @@ describe('useTabKeyboardShortcuts', () => {
     window.addEventListener('memry:new-tab-menu', newTabMenu)
 
     renderHook(() => useTabKeyboardShortcuts())
-    expect(mocks.shortcuts).toHaveLength(22)
+    expect(mocks.shortcuts).toHaveLength(13)
 
     shortcut('New tab').action()
     expect(newTabMenu).toHaveBeenCalled()
@@ -108,13 +102,6 @@ describe('useTabKeyboardShortcuts', () => {
     shortcut('Navigate forward').action()
     expect(mocks.navBack).toHaveBeenCalledWith('main')
     expect(mocks.navForward).toHaveBeenCalledWith('main')
-
-    numberShortcut(1).action()
-    shortcut('Go to last tab').action()
-    expect(mocks.dispatch).toHaveBeenCalledWith({
-      type: 'GO_TO_TAB_INDEX',
-      payload: { index: 0, groupId: 'main' }
-    })
 
     expect(shortcut('Close split pane').when()).toBe(false)
     window.removeEventListener('memry:new-tab-menu', newTabMenu)
@@ -210,7 +197,6 @@ describe('useTabKeyboardShortcuts', () => {
     shortcut('Close tab').action()
     shortcut('Pin/Unpin tab').action()
     shortcut('Duplicate tab').action()
-    shortcut('Go to last tab').action()
 
     expect(mocks.closeTab).not.toHaveBeenCalled()
     expect(mocks.pinTab).not.toHaveBeenCalled()

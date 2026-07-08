@@ -60,7 +60,8 @@ const getShortcutGroups = (): ShortcutGroup[] => {
         { combos: [[mod, ',']], description: 'Open settings' },
         { combos: [['?'], [mod, '/']], description: 'Open keyboard shortcuts' },
         { combos: [[mod, 'Z']], description: 'Undo last task action' },
-        { combos: [[mod, 'B']], description: 'Toggle the sidebar' }
+        { combos: [[mod, 'B']], description: 'Toggle the sidebar' },
+        { combos: [[mod, '1-6']], description: 'Go to sidebar section' }
       ]
     },
     {
@@ -73,13 +74,6 @@ const getShortcutGroups = (): ShortcutGroup[] => {
         { combos: [[mod, shift, 'T']], description: 'Reopen closed tab' },
         { combos: [['Ctrl', 'Tab']], description: 'Next tab' },
         { combos: [['Ctrl', shift, 'Tab']], description: 'Previous tab' },
-        {
-          combos: [
-            [mod, '1-8'],
-            [mod, '9']
-          ],
-          description: 'Jump to tab'
-        },
         { combos: [[mod, shift, 'P']], description: 'Pin or unpin tab' },
         { combos: [[mod, shift, 'D']], description: 'Duplicate tab' },
         { combos: [[mod, '\\']], description: 'Split right' },
