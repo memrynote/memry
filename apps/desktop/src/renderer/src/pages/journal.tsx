@@ -184,12 +184,25 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   // Journal settings
   const { settings: journalSettings, isLoading: isJournalSettingsLoading } = useJournalSettings()
 
-  // Editor settings — width is a single global setting (Normal / Full) applied
-  // to every journal page, matching notes.
+  // Editor settings — width follows the global setting (Normal / Full) unless
+  // the user overrides it for Journal, which applies to every journal page.
   const { settings: editorSettings } = useEditorSettings()
 
-  const isFullWidth = editorSettings.width === 'full'
+  const [journalWidthOverride, setJournalWidthOverride] = useState<boolean | null>(() => {
+    const saved = localStorage.getItem('memry_journal_full_width')
+    return saved === null ? null : saved === 'true'
+  })
+  const isFullWidth = journalWidthOverride ?? editorSettings.width === 'full'
   const journalContentWidth = isFullWidth ? undefined : EDITOR_NORMAL_CONTENT_WIDTH
+
+  const toggleJournalWidth = useCallback(() => {
+    setJournalWidthOverride((prev) => {
+      const current = prev ?? editorSettings.width === 'full'
+      const next = !current
+      localStorage.setItem('memry_journal_full_width', String(next))
+      return next
+    })
+  }, [editorSettings.width])
 
   // Settings modal
   const { open: openSettingsModal } = useSettingsModal()
@@ -798,10 +811,12 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
             <JournalHeaderActions
               viewState={currentViewState}
               isBookmarked={isBookmarked}
+              isFullWidth={isFullWidth}
               hasEntry={!!entry}
               journalDate={entry?.date ?? null}
               onPrevious={handleNavigationPrevious}
               onNext={handleNavigationNext}
+              onToggleFullWidth={toggleJournalWidth}
               onBookmarkToggle={(...args) => void toggleBookmark(...args)}
               onVersionHistory={() => setIsVersionHistoryOpen(true)}
               onExport={() => setIsExportDialogOpen(true)}
