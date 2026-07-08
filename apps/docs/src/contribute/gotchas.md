@@ -160,6 +160,14 @@ GitHub code scanning and the local staged-secret hook are intentionally conserva
 - For generated TypeScript, prefer data tables plus runtime assembly over interpolating dynamic keys into code snippets.
 - In fixtures, avoid object fields named `token`, `secret`, or `apiKey` when the value is runtime data. Use a neutral field name and keep the real header name only at the request boundary.
 
+## macOS Notifications Require a Signed Build
+
+Since Electron 42, macOS notifications use the `UNUserNotificationCenter` API, which requires a signed app bundle. In unsigned builds the notification is not shown; Electron emits a `failed` event on the `Notification` instead. The reminder service listens for that event and logs the error, so check the main-process log when reminder notifications appear to do nothing on macOS.
+
+## Electron V8 Is Newer Than Node V8
+
+Renderer and main run on Electron's bundled Chromium V8, which is ahead of the Node that vitest uses. An API removed from Chromium's V8 can still exist in Node, so unit tests stay green while every window is blank at runtime. This happened with `Intl.Locale#textInfo` (removed in V8 15 / Electron 43 in favor of `getTextInfo()`): vitest passed, the renderer crashed during boot. Feature-detect non-baseline web-platform APIs, and treat the E2E suite as the only proof that renderer boot works on the bundled Electron.
+
 ## Pre-Production Database
 
 memrynote is pre-production and the DB schema is **resettable**. There are no backward-compat constraints on schema changes within the desktop app. If a migration is messy, deleting the local vault is a valid recovery.
