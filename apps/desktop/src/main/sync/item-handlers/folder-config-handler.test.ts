@@ -49,6 +49,7 @@ describe('folderConfigHandler', () => {
     testDb = createTestDataDb()
     ctx = makeCtx(testDb)
     vi.clearAllMocks()
+    mockReadFolderConfig.mockResolvedValue(null)
   })
 
   afterEach(() => {
@@ -56,7 +57,7 @@ describe('folderConfigHandler', () => {
   })
 
   describe('applyUpsert', () => {
-    it('#given no existing row #when remote upsert arrives #then inserts DB row and writes .folder.md', () => {
+    it('#given no existing row #when remote upsert arrives #then inserts DB row and writes .folder.md', async () => {
       const data: FolderConfigSyncPayload = {
         icon: '🎉',
         createdAt: '2026-04-11T00:00:00.000Z',
@@ -77,11 +78,49 @@ describe('folderConfigHandler', () => {
       expect(row!.icon).toBe('🎉')
       expect(row!.clock).toEqual({ 'device-B': 1 })
 
-      expect(mockWriteFolderConfig).toHaveBeenCalledWith('projects/active', { icon: '🎉' })
+      await vi.waitFor(() => {
+        expect(mockWriteFolderConfig).toHaveBeenCalledWith('projects/active', { icon: '🎉' })
+      })
       expect(ctx.emit as ReturnType<typeof vi.fn>).toHaveBeenCalledWith(
         'notes:folder-config-updated',
         { path: 'projects/active' }
       )
+    })
+
+    it('#given .folder.md has views #when remote upsert arrives #then preserves views and updates icon only', async () => {
+      testDb.db
+        .insert(folderConfigs)
+        .values({
+          path: 'docs',
+          icon: '📄',
+          clock: { 'device-A': 1 },
+          createdAt: '2026-04-10T00:00:00.000Z',
+          modifiedAt: '2026-04-10T00:00:00.000Z'
+        })
+        .run()
+
+      const views = [{ name: 'All', type: 'table' as const, default: true }]
+      mockReadFolderConfig.mockResolvedValue({
+        icon: '📄',
+        template: 'tpl-1',
+        views,
+        formulas: { total: 'wordCount * 2' }
+      })
+
+      const data: FolderConfigSyncPayload = { icon: '📚' }
+      const clock: VectorClock = { 'device-A': 1, 'device-B': 2 }
+
+      const result = folderConfigHandler.applyUpsert(ctx, 'docs', data, clock)
+
+      expect(result).toBe('applied')
+      await vi.waitFor(() => {
+        expect(mockWriteFolderConfig).toHaveBeenCalledWith('docs', {
+          icon: '📚',
+          template: 'tpl-1',
+          views,
+          formulas: { total: 'wordCount * 2' }
+        })
+      })
     })
 
     it('#given existing row #when remote clock is newer #then updates DB row', () => {
@@ -161,7 +200,7 @@ describe('folderConfigHandler', () => {
   })
 
   describe('applyDelete', () => {
-    it('#given existing row #when delete arrives #then removes DB row and writes empty config', () => {
+    it('#given existing row #when delete arrives #then removes DB row and writes empty config', async () => {
       testDb.db
         .insert(folderConfigs)
         .values({
@@ -187,11 +226,39 @@ describe('folderConfigHandler', () => {
         .get()
       expect(row).toBeUndefined()
 
-      expect(mockWriteFolderConfig).toHaveBeenCalledWith('old-folder', { icon: null })
+      await vi.waitFor(() => {
+        expect(mockWriteFolderConfig).toHaveBeenCalledWith('old-folder', { icon: null })
+      })
       expect(ctx.emit as ReturnType<typeof vi.fn>).toHaveBeenCalledWith(
         'notes:folder-config-updated',
         { path: 'old-folder' }
       )
+    })
+
+    it('#given .folder.md has views #when delete arrives #then clears icon but preserves views', async () => {
+      testDb.db
+        .insert(folderConfigs)
+        .values({
+          path: 'old-folder',
+          icon: '📁',
+          clock: { 'device-A': 1 },
+          createdAt: '2026-04-10T00:00:00.000Z',
+          modifiedAt: '2026-04-10T00:00:00.000Z'
+        })
+        .run()
+
+      const views = [{ name: 'By status', type: 'table' as const }]
+      mockReadFolderConfig.mockResolvedValue({ icon: '📁', views })
+
+      const result = folderConfigHandler.applyDelete(ctx, 'old-folder', {
+        'device-A': 1,
+        'device-B': 2
+      })
+
+      expect(result).toBe('applied')
+      await vi.waitFor(() => {
+        expect(mockWriteFolderConfig).toHaveBeenCalledWith('old-folder', { icon: null, views })
+      })
     })
 
     it('#given no existing row #when delete arrives #then skips', () => {

@@ -730,8 +730,21 @@ export function registerNotesHandlers(): void {
     NotesChannels.invoke.SET_FOLDER_CONFIG,
     SetFolderConfigSchema,
     async (input) => {
-      await writeFolderConfig(input.folderPath, input.config)
-      syncFolderConfigSet(input.folderPath, input.config.icon)
+      // FolderConfigSchema only carries icon/template/inherit, but .folder.md
+      // also stores view configuration (views/formulas/properties/summaries).
+      // Merge those back from disk so a template/icon write never wipes them.
+      // Icon is preserved when the key is absent; explicit null clears it.
+      const current = (await readFolderConfig(input.folderPath)) ?? {}
+      const icon = 'icon' in input.config ? (input.config.icon ?? null) : (current.icon ?? null)
+      await writeFolderConfig(input.folderPath, {
+        ...input.config,
+        icon,
+        views: current.views,
+        formulas: current.formulas,
+        properties: current.properties,
+        summaries: current.summaries
+      })
+      syncFolderConfigSet(input.folderPath, icon)
       return { success: true as const }
     },
     'Failed to set folder config'

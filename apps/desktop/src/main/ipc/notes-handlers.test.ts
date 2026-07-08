@@ -127,6 +127,7 @@ import * as notesVault from '../vault/notes'
 import * as notesDomain from '../notes/domain'
 import * as attachmentsVault from '../vault/attachments'
 import * as foldersVault from '../vault/folders'
+import * as folderConfigEffects from '../notes/folder-config-effects'
 import * as noteQueries from '@main/database/queries/notes'
 import * as positionQueries from '@main/database/queries/note-positions'
 import * as storageData from '@memry/storage-data'
@@ -749,6 +750,55 @@ describe('notes-handlers', () => {
       })
 
       expect(result).toEqual({ success: true })
+    })
+
+    it('SET_FOLDER_CONFIG should preserve on-disk view config and absent icon', async () => {
+      const views = [{ name: 'All', type: 'table' }]
+      ;(foldersVault.readFolderConfig as Mock).mockResolvedValue({
+        icon: '📁',
+        views,
+        formulas: { total: 'wordCount * 2' },
+        properties: { status: { displayName: 'Status' } },
+        summaries: { wordCount: { type: 'sum' } }
+      })
+      ;(foldersVault.writeFolderConfig as Mock).mockResolvedValue(undefined)
+
+      const result = await invokeHandler(NotesChannels.invoke.SET_FOLDER_CONFIG, {
+        folderPath: 'projects',
+        config: { template: 'template2', inherit: true }
+      })
+
+      expect(result).toEqual({ success: true })
+      expect(foldersVault.writeFolderConfig).toHaveBeenCalledWith(
+        'projects',
+        expect.objectContaining({
+          template: 'template2',
+          icon: '📁',
+          views,
+          formulas: { total: 'wordCount * 2' },
+          properties: { status: { displayName: 'Status' } },
+          summaries: { wordCount: { type: 'sum' } }
+        })
+      )
+      expect(folderConfigEffects.syncFolderConfigSet).toHaveBeenCalledWith('projects', '📁')
+    })
+
+    it('SET_FOLDER_CONFIG should honor explicit icon null while preserving views', async () => {
+      const views = [{ name: 'All', type: 'table' }]
+      ;(foldersVault.readFolderConfig as Mock).mockResolvedValue({ icon: '📁', views })
+      ;(foldersVault.writeFolderConfig as Mock).mockResolvedValue(undefined)
+
+      const result = await invokeHandler(NotesChannels.invoke.SET_FOLDER_CONFIG, {
+        folderPath: 'projects',
+        config: { icon: null }
+      })
+
+      expect(result).toEqual({ success: true })
+      expect(foldersVault.writeFolderConfig).toHaveBeenCalledWith(
+        'projects',
+        expect.objectContaining({ icon: null, views })
+      )
+      expect(folderConfigEffects.syncFolderConfigSet).toHaveBeenCalledWith('projects', null)
     })
 
     it('GET_FOLDER_TEMPLATE should get resolved template', async () => {
