@@ -60,7 +60,8 @@ import {
   computeSpkiHashFromPem,
   isPinningDisabled,
   getPinnedCertificateHashes,
-  getPinnedCertificateHashesForHostname
+  getPinnedCertificateHashesForHostname,
+  warnPinningUnconfiguredOnce
 } from './sync/certificate-pinning'
 import { getCrdtProvider } from './sync/crdt-provider'
 import { stopSyncRuntime } from './sync/runtime'
@@ -353,7 +354,7 @@ function configureCertificatePinning(): void {
   const pins = getPinnedCertificateHashes()
 
   if (pins.length === 0) {
-    certPinLog.error('No valid certificate pins available — session pinning disabled (TLS-only)')
+    warnPinningUnconfiguredOnce()
     return
   }
 

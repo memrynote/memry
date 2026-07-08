@@ -24,6 +24,19 @@ export class CertificatePinningError extends Error {
   }
 }
 
+// Placeholder pins mean pinning was never activated for this host; TLS-only
+// is the deliberate fallback, not a runtime failure. Warn once per process
+// instead of logging CRITICAL errors on every boot.
+let warnedPinningUnconfigured = false
+
+export function warnPinningUnconfiguredOnce(): void {
+  if (warnedPinningUnconfigured) return
+  warnedPinningUnconfigured = true
+  log.warn(
+    'Certificate pinning not configured — using standard TLS. Run `pnpm cert:extract -- <hostname>` and update certificate-pins.ts to enable pinning.'
+  )
+}
+
 export function isPinningDisabled(): boolean {
   try {
     if (app.isPackaged) return false
@@ -69,9 +82,7 @@ export function createPinnedAgent(pins?: string[]): https.Agent {
   const configuredPins = pins ? [...pins] : [...getConfiguredPinnedCertificateHashes()]
 
   if (hasPlaceholderHashes(configuredPins)) {
-    log.error(
-      'CRITICAL: Certificate pinning active but hashes are placeholders — using TLS-only agent'
-    )
+    warnPinningUnconfiguredOnce()
     return new https.Agent({ rejectUnauthorized: true })
   }
 
@@ -106,9 +117,7 @@ export function createPinnedAgent(pins?: string[]): https.Agent {
 export function getPinnedCertificateHashes(): readonly string[] {
   const pins = [...getConfiguredPinnedCertificateHashes()]
   if (!isPinningDisabled() && hasPlaceholderHashes(pins)) {
-    log.error(
-      'CRITICAL: Certificate pinning active but hashes are placeholders — falling back to TLS-only'
-    )
+    warnPinningUnconfiguredOnce()
     return []
   }
   return pins
