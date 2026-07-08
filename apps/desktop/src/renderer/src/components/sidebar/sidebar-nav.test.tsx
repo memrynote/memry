@@ -32,31 +32,14 @@ const items = [
 
 const noop = () => () => {}
 
-describe('SidebarNav feature filtering', () => {
-  it('removes disabled feature items and keeps enabled ones', () => {
+describe('SidebarNav', () => {
+  it('renders exactly the items it is given (caller pre-filters visibility)', () => {
     render(
       <SidebarNav
         items={items}
         isActive={() => false}
         onNavClick={noop}
-        isDisabled={(page) => page === 'inbox'}
-        inboxCount={0}
-        todayTasksCount={0}
-      />
-    )
-
-    expect(screen.queryByText('Inbox')).toBeNull()
-    expect(screen.getByText('Journal')).toBeTruthy()
-    expect(screen.getByText('Home')).toBeTruthy()
-  })
-
-  it('renders all items when none are disabled', () => {
-    render(
-      <SidebarNav
-        items={items}
-        isActive={() => false}
-        onNavClick={noop}
-        isDisabled={() => false}
+        isModifierHeld={false}
         inboxCount={0}
         todayTasksCount={0}
       />
@@ -65,5 +48,24 @@ describe('SidebarNav feature filtering', () => {
     expect(screen.getByText('Inbox')).toBeTruthy()
     expect(screen.getByText('Journal')).toBeTruthy()
     expect(screen.getByText('Home')).toBeTruthy()
+  })
+
+  it('swaps icons for 1-based shortcut numbers while the modifier is held', () => {
+    render(
+      <SidebarNav
+        items={items}
+        isActive={() => false}
+        onNavClick={noop}
+        isModifierHeld
+        inboxCount={0}
+        todayTasksCount={0}
+      />
+    )
+
+    // Numbers follow the given order; labels stay.
+    expect(screen.getByText('1')).toBeTruthy()
+    expect(screen.getByText('2')).toBeTruthy()
+    expect(screen.getByText('3')).toBeTruthy()
+    expect(screen.getByText('Inbox')).toBeTruthy()
   })
 })

@@ -65,7 +65,7 @@ describe('useKeyboardShortcuts', () => {
 
       renderHook(() => useKeyboardShortcuts([{ key: 'a', action, description: 'Test' }]))
 
-      expect(addEventListenerSpy).toHaveBeenCalledWith('keydown', expect.any(Function))
+      expect(addEventListenerSpy).toHaveBeenCalledWith('keydown', expect.any(Function), false)
     })
 
     it('should remove keydown event listener on unmount', () => {
@@ -78,7 +78,7 @@ describe('useKeyboardShortcuts', () => {
 
       unmount()
 
-      expect(removeEventListenerSpy).toHaveBeenCalledWith('keydown', expect.any(Function))
+      expect(removeEventListenerSpy).toHaveBeenCalledWith('keydown', expect.any(Function), false)
     })
   })
 

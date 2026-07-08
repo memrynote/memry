@@ -63,10 +63,24 @@ export const getModifierSymbol = (modifier: 'meta' | 'ctrl' | 'shift' | 'alt'): 
 // HOOK
 // =============================================================================
 
+export interface UseKeyboardShortcutsOptions {
+  /**
+   * Listen in the capture phase so matched shortcuts fire before input/editor
+   * keydown handlers that may call stopPropagation (e.g. the tasks quick-add
+   * input, inbox composer, or the note editor). Only matched shortcuts are
+   * intercepted; all other keystrokes pass through untouched.
+   */
+  capture?: boolean
+}
+
 /**
  * Hook to handle keyboard shortcuts
  */
-export const useKeyboardShortcuts = (shortcuts: KeyboardShortcut[]): void => {
+export const useKeyboardShortcuts = (
+  shortcuts: KeyboardShortcut[],
+  options: UseKeyboardShortcutsOptions = {}
+): void => {
+  const { capture = false } = options
   // Memoize shortcuts to prevent unnecessary re-renders
   const memoizedShortcuts = useMemo(() => shortcuts, [shortcuts])
 
@@ -132,9 +146,9 @@ export const useKeyboardShortcuts = (shortcuts: KeyboardShortcut[]): void => {
   )
 
   useEffect(() => {
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [handleKeyDown])
+    window.addEventListener('keydown', handleKeyDown, capture)
+    return () => window.removeEventListener('keydown', handleKeyDown, capture)
+  }, [handleKeyDown, capture])
 }
 
 export default useKeyboardShortcuts

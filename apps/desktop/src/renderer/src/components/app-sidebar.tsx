@@ -44,6 +44,8 @@ import { useSelectedFolder } from '@/contexts/selected-folder-context'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { useFeatureFlags } from '@/hooks/use-feature-flags'
+import { useKeyboardShortcuts, type KeyboardShortcut } from '@/hooks/use-keyboard-shortcuts-base'
+import { useModifierHeld } from '@/hooks/use-modifier-held'
 import { useTabActions } from '@/contexts/tabs'
 import { newItemViewState } from '@/contexts/tabs/helpers'
 import { useSettingsModal } from '@/contexts/settings-modal-context'
@@ -204,44 +206,80 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
     }
   }, [openTab, generalSettings.createInSelectedFolder])
 
+  // Open a top-level section as a tab. Shared by sidebar clicks and the
+  // ⌘/Ctrl+number shortcuts so both land the user in exactly the same state.
+  const navigateToPage = useCallback(
+    (page: AppPage) => {
+      // Map page to tab type and title
+      const pageToTabType: Record<AppPage, TabType> = {
+        home: 'home',
+        inbox: 'inbox',
+        calendar: 'calendar',
+        journal: 'journal',
+        tasks: 'tasks',
+        graph: 'graph'
+      }
+      const pageToTitle: Record<AppPage, string> = {
+        home: 'Home',
+        inbox: 'Inbox',
+        calendar: 'Calendar',
+        journal: 'Journal',
+        tasks: 'Tasks',
+        graph: 'Graph'
+      }
+
+      // Land the user ready-to-act: Inbox focuses capture, Tasks opens the default
+      // project + focuses quick-add. Calendar deliberately gets NO new-event popover
+      // from the sidebar — that only fires from the New menu and the new-tab +.
+      const pageToViewState: Partial<Record<AppPage, Record<string, unknown>>> = {
+        inbox: newItemViewState('inbox'),
+        tasks: newItemViewState('tasks')
+      }
+
+      // Open as tab in active pane
+      const item: SidebarItem = {
+        type: pageToTabType[page],
+        title: pageToTitle[page],
+        path: `/${page}`,
+        viewState: pageToViewState[page]
+      }
+      openSidebarItem(item)
+    },
+    [openSidebarItem]
+  )
+
   const handleNavClick = (page: AppPage) => (e: React.MouseEvent) => {
     e.preventDefault()
-
-    // Map page to tab type and title
-    const pageToTabType: Record<AppPage, TabType> = {
-      home: 'home',
-      inbox: 'inbox',
-      calendar: 'calendar',
-      journal: 'journal',
-      tasks: 'tasks',
-      graph: 'graph'
-    }
-    const pageToTitle: Record<AppPage, string> = {
-      home: 'Home',
-      inbox: 'Inbox',
-      calendar: 'Calendar',
-      journal: 'Journal',
-      tasks: 'Tasks',
-      graph: 'Graph'
-    }
-
-    // Land the user ready-to-act: Inbox focuses capture, Tasks opens the default
-    // project + focuses quick-add. Calendar deliberately gets NO new-event popover
-    // from the sidebar — that only fires from the New menu and the new-tab +.
-    const pageToViewState: Partial<Record<AppPage, Record<string, unknown>>> = {
-      inbox: newItemViewState('inbox'),
-      tasks: newItemViewState('tasks')
-    }
-
-    // Open as tab in active pane
-    const item: SidebarItem = {
-      type: pageToTabType[page],
-      title: pageToTitle[page],
-      path: `/${page}`,
-      viewState: pageToViewState[page]
-    }
-    openSidebarItem(item)
+    navigateToPage(page)
   }
+
+  // Sections visible in the sidebar (Home always; others gated by feature flags).
+  // Drives both the rendered numbers and the ⌘/Ctrl+number shortcut mapping so
+  // they never drift.
+  const visibleNav = useMemo(
+    () => mainNav.filter((item) => item.page === 'home' || isEnabled(item.page)),
+    [isEnabled]
+  )
+
+  // ⌘/Ctrl + 1..9 → open the Nth visible section (matches the on-icon numbers).
+  // allowInInput + capture so it also fires while the note editor, inbox
+  // composer, or tasks quick-add input is focused (those pages auto-focus an
+  // input on open and some stop keydown propagation).
+  const sectionShortcuts = useMemo<KeyboardShortcut[]>(
+    () =>
+      visibleNav.slice(0, 9).map((item, i) => ({
+        key: String(i + 1),
+        modifiers: { meta: true },
+        action: () => navigateToPage(item.page),
+        description: `Go to ${item.title}`,
+        allowInInput: true
+      })),
+    [visibleNav, navigateToPage]
+  )
+  useKeyboardShortcuts(sectionShortcuts, { capture: true })
+
+  // While the modifier is held, section icons swap to their shortcut number.
+  const isModifierHeld = useModifierHeld()
 
   // Handle tag click - open tag drill-down view
   const handleTagClick = useCallback(
@@ -498,10 +536,10 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
           </div>
         </div>
         <SidebarNav
-          items={mainNav}
+          items={visibleNav}
           isActive={isActiveItem}
           onNavClick={handleNavClick}
-          isDisabled={(page) => page !== 'home' && !isEnabled(page)}
+          isModifierHeld={isModifierHeld}
           inboxCount={inboxCount}
           todayTasksCount={todayTasksCount}
         />
