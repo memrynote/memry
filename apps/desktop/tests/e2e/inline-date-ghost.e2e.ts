@@ -225,8 +225,12 @@ test.describe('Inline @-date ghost autocomplete', () => {
 
     // Simulate the overlay marking this pill fired, then assert the CSS contract:
     // --date-mention-color resolves to #e56458 = rgb(229, 100, 88).
-    await pill.evaluate((el) => el.setAttribute('data-fired', 'true'))
-    const color = await pill.evaluate((el) => getComputedStyle(el).color)
+    // Set + read in ONE evaluate: useTriggeredDatePills strips data-fired from
+    // un-fired pills on any DOM mutation, so a separate round-trip can race it.
+    const color = await pill.evaluate((el) => {
+      el.setAttribute('data-fired', 'true')
+      return getComputedStyle(el).color
+    })
     expect(color).toBe('rgb(229, 100, 88)')
   })
 

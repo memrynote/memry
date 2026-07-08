@@ -18,7 +18,7 @@ test.describe('Settings persistence E2E', () => {
           clockFormat: '24h'
         }),
         api.settings.setEditorSettings({
-          width: 'wide',
+          width: 'full',
           toolbarMode: 'sticky'
         }),
         api.settings.setTaskSettings({
@@ -79,7 +79,7 @@ test.describe('Settings persistence E2E', () => {
       clockFormat: '24h'
     })
     expect(settings.editor).toMatchObject({
-      width: 'wide',
+      width: 'full',
       toolbarMode: 'sticky'
     })
     expect(settings.tasks).toMatchObject({

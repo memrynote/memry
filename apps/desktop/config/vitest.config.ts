@@ -110,14 +110,14 @@ export default defineConfig({
         '../../packages/storage-vault/src/**/*.ts',
         '../../packages/sync-core/src/**/*.ts'
       ],
-      // Coverage ratchet baseline (2026-06-01, Linux CI, Vitest 4.1/V8 coverage engine):
-      //   statements 84.81  branches 72.45  functions 85.76  lines 86.66
+      // Coverage ratchet baseline (2026-07-08, Linux CI, Vitest 4.1/V8 coverage engine):
+      //   statements 85.93  branches 73.79  functions 85.69  lines 87.99
       // Thresholds stay close to the measured CI baseline so regressions still trip the ratchet.
       thresholds: {
-        statements: 84.8,
-        branches: 72.4,
-        functions: 85.7,
-        lines: 86.6
+        statements: 85.9,
+        branches: 73.7,
+        functions: 85.6,
+        lines: 87.9
       }
     },
     reporters: ['verbose'],
