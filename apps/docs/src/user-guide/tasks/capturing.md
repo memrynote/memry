@@ -59,6 +59,10 @@ Subtasks inherit nothing automatically — give them their own due dates and pri
 
 Selecting a checklist item in a note offers a "Convert to task" action in the inline menu. The task is created with the note as a back-reference.
 
+## Rich Descriptions
+
+A task's description is a rich text editor, the same style as notes. In the task detail drawer (and the add-task dialog) you can use headings, lists, checkboxes, and inline formatting, and paste links that stay clickable. Type `/` for the block menu. Descriptions are stored as Markdown, so plain-text descriptions from earlier versions keep working unchanged.
+
 ## See Also
 
 - [List vs Kanban](/user-guide/tasks/list-vs-kanban) — view options
