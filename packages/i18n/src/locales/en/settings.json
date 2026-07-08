@@ -68,6 +68,16 @@
       }
     },
     "updates": {
+      "autoCheck": {
+        "label": "Automatically check for updates",
+        "description": "Check for new releases at launch and periodically while the app is open.",
+        "error": "Failed to update the auto-check setting"
+      },
+      "autoDownload": {
+        "label": "Automatically download updates",
+        "description": "Download and install new releases in the background without prompting.",
+        "error": "Failed to update the auto-download setting"
+      },
       "appUpdates": "App Updates",
       "installedVersion": "Installed version {version}",
       "availableVersion": "Available version {version}",
@@ -231,11 +241,10 @@
     },
     "width": {
       "label": "Editor Width",
-      "description": "Maximum width of the writing area",
+      "description": "Applies to every note and journal page",
       "options": {
-        "narrow": "Narrow",
-        "medium": "Medium",
-        "wide": "Wide"
+        "normal": "Normal",
+        "full": "Full width"
       },
       "error": "Failed to update editor width"
     },

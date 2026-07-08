@@ -39,7 +39,7 @@ import { useNoteTagsQuery, useNoteLinksQuery } from '@/hooks/use-notes-query'
 import { usePropertiesCollapsed } from '@/hooks/use-properties-collapsed'
 import { usePropertySection } from '@/hooks/use-property-section'
 import { useJournalSettings } from '@/hooks/use-journal-settings'
-import { useEditorSettings } from '@/hooks/use-editor-settings'
+import { useEditorSettings, EDITOR_NORMAL_CONTENT_WIDTH } from '@/hooks/use-editor-settings'
 import { ExportDialog } from '@/components/note/export-dialog'
 import { VersionHistory } from '@/components/note/version-history'
 import { toast } from 'sonner'
@@ -109,8 +109,6 @@ interface JournalPageProps {
   className?: string
 }
 
-const JOURNAL_CONTENT_WIDTH = { narrow: '640px', medium: '640px', wide: '864px' } as const
-
 export function JournalPage({ className }: JournalPageProps): React.JSX.Element {
   const { t, i18n: _i18n } = useT('journal')
   const { t: commonT } = useT('common')
@@ -132,11 +130,6 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
 
     return viewState
   }, [tabDate, viewState])
-
-  const [isFullWidth, setIsFullWidth] = useState(() => {
-    const saved = localStorage.getItem('memry_journal_full_width')
-    return saved === 'true'
-  })
 
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false)
@@ -191,12 +184,12 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   // Journal settings
   const { settings: journalSettings, isLoading: isJournalSettingsLoading } = useJournalSettings()
 
-  // Editor settings
+  // Editor settings — width is a single global setting (Normal / Full) applied
+  // to every journal page, matching notes.
   const { settings: editorSettings } = useEditorSettings()
 
-  const journalContentWidth = isFullWidth
-    ? undefined
-    : (JOURNAL_CONTENT_WIDTH[editorSettings.width] ?? '640px')
+  const isFullWidth = editorSettings.width === 'full'
+  const journalContentWidth = isFullWidth ? undefined : EDITOR_NORMAL_CONTENT_WIDTH
 
   // Settings modal
   const { open: openSettingsModal } = useSettingsModal()
@@ -760,19 +753,10 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
         }
         return
       }
-
-      if ((e.metaKey || e.ctrlKey) && e.key === '\\') {
-        e.preventDefault()
-        setIsFullWidth((prev) => !prev)
-      }
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [currentViewState, handleNextDay, handlePreviousDay, navigateBack])
-
-  useEffect(() => {
-    localStorage.setItem('memry_journal_full_width', isFullWidth.toString())
-  }, [isFullWidth])
 
   const handleErrorRecover = useCallback(() => {
     setEditorRevision((count) => count + 1)
@@ -814,12 +798,10 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
             <JournalHeaderActions
               viewState={currentViewState}
               isBookmarked={isBookmarked}
-              isFullWidth={isFullWidth}
               hasEntry={!!entry}
               journalDate={entry?.date ?? null}
               onPrevious={handleNavigationPrevious}
               onNext={handleNavigationNext}
-              onToggleFullWidth={() => setIsFullWidth(!isFullWidth)}
               onBookmarkToggle={(...args) => void toggleBookmark(...args)}
               onVersionHistory={() => setIsVersionHistoryOpen(true)}
               onExport={() => setIsExportDialogOpen(true)}

@@ -8,7 +8,8 @@ import {
 } from '@memry/contracts/settings-schemas'
 
 const EditorPreferencesSchema = z.object({
-  width: z.enum(['narrow', 'medium', 'wide']),
+  // Legacy widths (narrow/medium/wide) from older config.json coerce to 'normal'.
+  width: z.preprocess((v) => (v === 'full' ? 'full' : 'normal'), z.enum(['normal', 'full'])),
   toolbarMode: z.enum(['floating', 'sticky'])
 })
 

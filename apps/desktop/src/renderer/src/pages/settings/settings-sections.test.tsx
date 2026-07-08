@@ -47,7 +47,7 @@ const mocks = vi.hoisted(() => ({
   },
   editorSettings: {
     settings: {
-      width: 'medium',
+      width: 'normal',
       toolbarMode: 'floating'
     },
     isLoading: false,
@@ -594,9 +594,9 @@ describe('settings section coverage', () => {
       })
     )
 
-    fireEvent.click(screen.getByText('editor.width.options.wide'))
+    fireEvent.click(screen.getByText('editor.width.options.full'))
     await waitFor(() =>
-      expect(mocks.editorSettings.updateSettings).toHaveBeenCalledWith({ width: 'wide' })
+      expect(mocks.editorSettings.updateSettings).toHaveBeenCalledWith({ width: 'full' })
     )
 
     fireEvent.click(screen.getAllByRole('switch')[1])

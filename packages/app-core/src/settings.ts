@@ -71,7 +71,7 @@ const settingsGroupDefaults: Record<SettingsGroupName, Record<string, unknown>> 
     dateFormat: 'DD.MM.YYYY'
   },
   editor: {
-    width: 'medium',
+    width: 'normal',
     toolbarMode: 'floating'
   },
   tasks: {

@@ -52,7 +52,7 @@ describe('populateSettingsCacheFromConfig', () => {
         language: 'tr',
         createInSelectedFolder: false,
         editor: {
-          width: 'wide',
+          width: 'full',
           toolbarMode: 'sticky'
         }
       }
@@ -75,7 +75,7 @@ describe('populateSettingsCacheFromConfig', () => {
     const editorRaw = getSetting(testDb.db as any, 'editor')
     expect(editorRaw).toBeTruthy()
     const editor = JSON.parse(editorRaw!)
-    expect(editor.width).toBe('wide')
+    expect(editor.width).toBe('full')
     expect(editor.toolbarMode).toBe('sticky')
   })
 
@@ -96,7 +96,7 @@ describe('populateSettingsCacheFromConfig', () => {
     vaultPath = createTempVault({
       preferences: {
         theme: 'dark',
-        editor: { width: 'wide' }
+        editor: { width: 'full' }
       }
     })
 
@@ -157,7 +157,7 @@ describe('migrateSettingsToConfig', () => {
       'editor',
       JSON.stringify({
         ...EDITOR_SETTINGS_DEFAULTS,
-        width: 'wide'
+        width: 'full'
       })
     )
 
@@ -167,7 +167,7 @@ describe('migrateSettingsToConfig', () => {
     const prefs = readPreferences(vaultPath)
     expect(prefs.theme).toBe('dark')
     expect(prefs.accentColor).toBe('#ef4444')
-    expect(prefs.editor.width).toBe('wide')
+    expect(prefs.editor.width).toBe('full')
   })
 
   it('#given config.json already has preferences #then uses config as source', () => {
@@ -178,7 +178,7 @@ describe('migrateSettingsToConfig', () => {
         fontFamily: 'geist',
         accentColor: '#10b981',
         language: 'de',
-        editor: { width: 'narrow' }
+        editor: { width: 'normal' }
       }
     })
 
@@ -223,7 +223,7 @@ describe('writeCacheFromPreferences', () => {
       theme: 'dark' as const,
       editor: {
         ...VAULT_PREFERENCES_DEFAULTS.editor,
-        width: 'wide' as const
+        width: 'full' as const
       }
     }
 
@@ -236,6 +236,6 @@ describe('writeCacheFromPreferences', () => {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const editor = JSON.parse(getSetting(testDb.db as any, 'editor')!)
-    expect(editor.width).toBe('wide')
+    expect(editor.width).toBe('full')
   })
 })
