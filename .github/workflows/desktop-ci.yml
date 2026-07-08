@@ -207,6 +207,94 @@ jobs:
           path: apps/desktop/test-results/
           if-no-files-found: ignore
 
+  e2e-smoke-windows:
+    name: Electron E2E smoke (Windows)
+    # Push-to-main only, matching the ubuntu e2e-smoke/e2e-full jobs: Windows
+    # Electron E2E is ~15-25 min, too slow to run on every PR, and PRs already
+    # run lint + typecheck + unit + ubuntu coverage. (Ran ungated while the
+    # initial Windows-only failures were diagnosed and fixed; now stable.)
+    # windows-2022 is pinned — windows-latest ships VS 2026, which node-gyp
+    # cannot detect, breaking the native electron-rebuild (same reason the
+    # release build-windows job pins it).
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: windows-2022
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        shell: bash
+        env:
+          # Skip the postinstall electron-rebuild; it does not reliably produce the
+          # Electron-ABI binary on Windows. We run an explicit force rebuild below.
+          SKIP_ELECTRON_REBUILD: 1
+        run: |
+          attempts=3
+          for attempt in $(seq 1 "$attempts"); do
+            echo "::group::pnpm install (attempt $attempt/$attempts)"
+            if pnpm install --frozen-lockfile; then
+              echo "::endgroup::"
+              exit 0
+            fi
+            echo "::endgroup::"
+            if [ "$attempt" -lt "$attempts" ]; then
+              echo "::warning::pnpm install failed (attempt $attempt/$attempts); retrying in 20s"
+              sleep 20
+            fi
+          done
+          echo "::error::pnpm install failed after $attempts attempts"
+          exit 1
+
+      - name: Rebuild native modules for Electron
+        # Run @electron/rebuild's CLI directly via node with a RELATIVE path: it
+        # works under git-bash on Windows (an absolute MSYS path gets mangled when
+        # handed to node.exe) and avoids `pnpm exec`, whose pre-exec check can prune
+        # devDependencies. Then write the stamp file that ensure-native.sh normally
+        # writes — the E2E globalSetup precondition reads it to confirm the Electron
+        # ABI (node_modules/.native-build-target must say "electron").
+        shell: bash
+        working-directory: apps/desktop
+        run: |
+          node node_modules/@electron/rebuild/lib/cli.js -f -o better-sqlite3,classic-level,keytar
+          echo electron > node_modules/.native-build-target
+
+      - name: Build desktop app
+        shell: bash
+        run: pnpm --filter @memry/desktop exec electron-vite build
+
+      - name: Run Electron smoke tests
+        # No xvfb/dbus/gnome-keyring: Windows runners have an interactive desktop
+        # session, and keytar uses the Windows Credential Manager directly.
+        shell: bash
+        run: |
+          pnpm --filter @memry/desktop exec playwright test \
+            --config config/playwright.config.ts \
+            tests/e2e/startup-recovery.e2e.ts \
+            tests/e2e/vault.e2e.ts \
+            tests/e2e/notes.e2e.ts \
+            tests/e2e/tasks.e2e.ts
+
+      - name: Upload E2E artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-smoke-windows-results
+          path: apps/desktop/test-results/
+          if-no-files-found: ignore
+
   e2e-full:
     name: Electron E2E full (${{ matrix.shard }})
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'

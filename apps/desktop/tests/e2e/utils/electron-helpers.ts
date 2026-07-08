@@ -287,6 +287,26 @@ export async function createNote(page: Page, title: string, content?: string): P
 }
 
 /**
+ * Seed a note deterministically via the notes API, bypassing the Cmd/Ctrl+N UI.
+ *
+ * The keyboard-driven `createNote` opens the note tab but does not reliably focus
+ * the title textarea on the slower Windows runner, so the note stays "Untitled"
+ * and callers that look it up by exact title/path can't find it. Tests whose
+ * subject is NOT note creation itself should seed through this instead. Returns
+ * the created note id.
+ */
+export async function seedNote(page: Page, title: string, content = 'Body'): Promise<string> {
+  const result = await page.evaluate(
+    async ({ t, c }) => window.api.notes.create({ title: t, content: c }),
+    { t: title, c: content }
+  )
+  if (!result?.note?.id) {
+    throw new Error(`seedNote: notes.create did not return an id for "${title}"`)
+  }
+  return result.note.id
+}
+
+/**
  * Create a new task via UI
  * Tries multiple strategies:
  * 1. Quick Add input (fastest - type and press Enter)

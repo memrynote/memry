@@ -19,6 +19,7 @@ import {
   waitForAppReady,
   waitForVaultReady,
   createNote,
+  seedNote,
   SELECTORS,
   SHORTCUTS,
   takeScreenshot as _takeScreenshot,
@@ -28,6 +29,7 @@ import {
   waitForToast as _waitForToast,
   getToastMessage
 } from './utils/electron-helpers'
+import { openNoteByHandle } from './utils/note-sync-helpers'
 import * as path from 'path'
 import * as fs from 'fs'
 
@@ -39,16 +41,23 @@ test.describe('Notes Management', () => {
 
   test.describe('Note Creation', () => {
     test('T533: should create a new note via keyboard shortcut', async ({ page }) => {
-      // Press Cmd+N (or Ctrl+N) to create new note
+      const countBefore = await page.evaluate(
+        async () => (await window.api.notes.list({})).notes.length
+      )
+
+      // Press Cmd+N (or Ctrl+N) to create a new note
       await page.keyboard.press(SHORTCUTS.newNote)
-      await page.waitForTimeout(500)
 
-      // Look for note creation UI elements
-      const noteTitle = page.locator(SELECTORS.noteTitle)
-      const isVisible = await noteTitle.isVisible().catch(() => false)
-
-      // Either the title input is visible, or we navigated to new note page
-      expect(isVisible || (await page.url().includes('note'))).toBeTruthy()
+      // Verify the shortcut actually created a note via the notes list. The title
+      // textarea does not reliably open/focus on the slower Windows runner, so the
+      // previous UI-visibility/url check raced and reported false even though the
+      // note was created; asserting on the list is the robust, behavior-level check.
+      await expect
+        .poll(
+          async () => page.evaluate(async () => (await window.api.notes.list({})).notes.length),
+          { timeout: 10000 }
+        )
+        .toBeGreaterThan(countBefore)
     })
 
     test('T533: should create a note with title and content', async ({ page, testVaultPath }) => {
@@ -415,27 +424,18 @@ test.describe('Notes Management', () => {
     }
 
     async function createNoteWithSeededProperty(page: Page, title: string): Promise<void> {
-      await createNote(page, title, 'Body')
+      // Seed + open via the API/test-open event, not the Cmd/Ctrl+N UI: the title
+      // textarea does not reliably focus on the Windows runner, leaving the note
+      // "Untitled" and unopened. The subject here is the Properties section, not
+      // note creation, so a deterministic seed + open is the right tool.
+      const id = await seedNote(page, title)
+      await openNoteByHandle(page, { id, title })
 
-      await expect
-        .poll(
-          async () =>
-            page.evaluate(async (noteTitle) => {
-              const list = await window.api.notes.list({})
-              return list.notes.some((n: { title: string }) => n.title === noteTitle)
-            }, title),
-          { timeout: 10000 }
-        )
-        .toBe(true)
-
-      const setResult = await page.evaluate(async (noteTitle) => {
-        const list = await window.api.notes.list({})
-        const note = list.notes.find((n: { title: string }) => n.title === noteTitle)
-        if (!note) return { ok: false, reason: 'note-not-found' as const }
-        const result = await window.api.properties.set(note.id, { Status: 'Draft' })
-        return { ok: result.success, result }
-      }, title)
-      expect(setResult.ok).toBe(true)
+      const setResult = await page.evaluate(
+        async (noteId) => window.api.properties.set(noteId, { Status: 'Draft' }),
+        id
+      )
+      expect(setResult.success).toBe(true)
 
       await page.reload()
       await waitForAppReady(page)
@@ -571,7 +571,9 @@ test.describe('Notes Management', () => {
     })
 
     test('should move note to different folder', async ({ page }) => {
-      await createNote(page, 'Move Test Note', 'Note to be moved')
+      // Seed via the API so the note is findable by path below — the Ctrl+N UI
+      // leaves it "Untitled" on the Windows runner (see seedNote).
+      await seedNote(page, 'Move Test Note', 'Note to be moved')
       await page.waitForTimeout(1000)
 
       const folderResult = await page.evaluate(async () => {
