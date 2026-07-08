@@ -24,7 +24,7 @@ export function EditorSettings() {
 
   const handleWidthChange = useCallback(
     async (value: string) => {
-      const success = await updateSettings({ width: value as 'narrow' | 'medium' | 'wide' })
+      const success = await updateSettings({ width: value as 'normal' | 'full' })
       if (!success) toast.error(t('editor.width.error'))
     },
     [t, updateSettings]
@@ -60,9 +60,8 @@ export function EditorSettings() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="narrow">{t('editor.width.options.narrow')}</SelectItem>
-              <SelectItem value="medium">{t('editor.width.options.medium')}</SelectItem>
-              <SelectItem value="wide">{t('editor.width.options.wide')}</SelectItem>
+              <SelectItem value="normal">{t('editor.width.options.normal')}</SelectItem>
+              <SelectItem value="full">{t('editor.width.options.full')}</SelectItem>
             </SelectContent>
           </Select>
         </SettingRow>

@@ -49,14 +49,16 @@ export const GENERAL_SETTINGS_DEFAULTS: GeneralSettings = {
 // ============================================================================
 
 export const EditorSettingsSchema = z.object({
-  width: z.enum(['narrow', 'medium', 'wide']),
+  // Legacy widths (narrow/medium/wide) coerce to 'normal' so installs written
+  // by older app versions keep working; only 'full' is treated as full width.
+  width: z.preprocess((v) => (v === 'full' ? 'full' : 'normal'), z.enum(['normal', 'full'])),
   toolbarMode: z.enum(['floating', 'sticky'])
 })
 
 export type EditorSettings = z.infer<typeof EditorSettingsSchema>
 
 export const EDITOR_SETTINGS_DEFAULTS: EditorSettings = {
-  width: 'medium',
+  width: 'normal',
   toolbarMode: 'floating'
 }
 

@@ -755,9 +755,11 @@ export function registerSettingsHandlers(): void {
     }
   )
 
-  ipcMain.handle(SettingsChannels.invoke.GET_EDITOR_SETTINGS, () =>
-    readGroupSettings('editor', EDITOR_SETTINGS_DEFAULTS)
-  )
+  ipcMain.handle(SettingsChannels.invoke.GET_EDITOR_SETTINGS, () => {
+    const settings = readGroupSettings('editor', EDITOR_SETTINGS_DEFAULTS)
+    // Coerce legacy widths (narrow/medium/wide) written by older versions to 'normal'.
+    return { ...settings, width: settings.width === 'full' ? 'full' : 'normal' }
+  })
   ipcMain.handle(
     SettingsChannels.invoke.SET_EDITOR_SETTINGS,
     (_event, updates: Partial<EditorSettings>) => {

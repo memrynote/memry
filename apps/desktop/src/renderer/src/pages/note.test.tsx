@@ -210,8 +210,9 @@ vi.mock('@/hooks/use-bookmarks', () => ({
 }))
 
 vi.mock('@/hooks/use-editor-settings', () => ({
+  EDITOR_NORMAL_CONTENT_WIDTH: '640px',
   useEditorSettings: () => ({
-    settings: { toolbarMode: 'floating', width: 'medium' }
+    settings: { toolbarMode: 'floating', width: 'normal' }
   })
 }))
 
@@ -744,14 +745,6 @@ describe('NotePage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'editor.toolbar.export' }))
     expect(screen.getByText('Export Test Note')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'editor.toolbar.fullWidth' }))
-    await waitFor(() =>
-      expect(mocks.notesUpdate).toHaveBeenCalledWith({
-        id: 'note-1',
-        frontmatter: { fullWidth: true }
-      })
-    )
-
     fireEvent.click(screen.getByRole('button', { name: 'editor.toolbar.setLocalOnly' }))
     await waitFor(() => expect(mocks.setLocalOnly).toHaveBeenCalledWith('note-1', true))
     expect(mocks.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['notes', 'localOnlyCount'] })
@@ -867,9 +860,6 @@ describe('NotePage', () => {
     expect(toast.error).toHaveBeenCalledWith(
       'phaseI.toasts.cannotChangeLocalOnlyThisNoteWasDeleted'
     )
-
-    fireEvent.click(screen.getByRole('button', { name: 'editor.toolbar.fullWidth' }))
-    expect(mocks.notesUpdate).not.toHaveBeenCalled()
 
     act(() => {
       mocks.propertyOnBlocked?.('remove')

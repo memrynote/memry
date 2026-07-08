@@ -115,7 +115,7 @@ A **Create Template** button opens the [template editor](/user-guide/templates).
 
 ### Layout
 
-**Width** sets the writing column — narrow, medium, or wide.
+**Width** sets the writing column for every note and journal page — **Normal** (a comfortable reading column) or **Full width** (edge to edge). It's a single global setting; there's no per-note override.
 
 ### Toolbar
 

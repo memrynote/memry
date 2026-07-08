@@ -1282,7 +1282,7 @@ export interface GeneralSettingsDTO {
 }
 
 export interface EditorSettingsDTO {
-  width: 'narrow' | 'medium' | 'wide'
+  width: 'normal' | 'full'
   toolbarMode: 'floating' | 'sticky'
 }
 
@@ -1794,6 +1794,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
     quitAndInstall: () => Promise<void>
     skipVersion: (version: string) => Promise<AppUpdateState>
     setAutoDownload: (enabled: boolean) => Promise<AppUpdateState>
+    setAutoCheck: (enabled: boolean) => Promise<AppUpdateState>
   }
   syncCrdt: {
     openDoc: (input: { noteId: string }) => Promise<CrdtOpenDocResult>

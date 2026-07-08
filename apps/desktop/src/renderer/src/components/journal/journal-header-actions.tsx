@@ -4,14 +4,12 @@ import { Button } from '@/components/ui/button'
 import {
   Bookmark,
   MoreVertical,
-  Maximize,
   History,
   Settings,
   ChevronLeft,
   ChevronRight,
   Download
 } from '@/lib/icons'
-import { Switch } from '@/components/ui/switch'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,13 +24,11 @@ import { useT } from '@memry/i18n/renderer'
 interface JournalHeaderActionsProps {
   viewState: JournalViewState
   isBookmarked: boolean
-  isFullWidth: boolean
   hasEntry: boolean
   journalDate: string | null
   reviewPill?: ReactNode
   onPrevious: () => void
   onNext: () => void
-  onToggleFullWidth: () => void
   onBookmarkToggle: () => void
   onVersionHistory: () => void
   onExport: () => void
@@ -44,13 +40,11 @@ const ACTION_BTN = 'size-7 hover:bg-surface-active'
 export function JournalHeaderActions({
   viewState,
   isBookmarked,
-  isFullWidth,
   hasEntry,
   journalDate,
   reviewPill,
   onPrevious,
   onNext,
-  onToggleFullWidth,
   onBookmarkToggle,
   onVersionHistory,
   onExport,
@@ -128,14 +122,9 @@ export function JournalHeaderActions({
                 <Download className="me-2 size-4" />
                 {t('action.export')}
               </DropdownMenuItem>
+              <DropdownMenuSeparator />
             </>
           )}
-          <DropdownMenuItem onClick={onToggleFullWidth}>
-            <Maximize className="me-2 size-4" />
-            <span className="flex-1">{t('action.fullWidth')}</span>
-            <Switch checked={isFullWidth} className="pointer-events-none h-4 w-7" tabIndex={-1} />
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
           <DropdownMenuItem onClick={onOpenSettings}>
             <Settings className="me-2 size-4" />
             {t('action.journalSettings')}
