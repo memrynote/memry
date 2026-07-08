@@ -19,7 +19,9 @@ import {
   getDefaultVaultPath,
   setDefaultVaultPath,
   getStoredLocale,
-  setStoredLocale
+  setStoredLocale,
+  getWindowBounds,
+  setWindowBounds
 } from './store'
 
 describe('store', () => {
@@ -41,6 +43,21 @@ describe('store', () => {
     expect(getCurrentVaultPath()).toBeNull()
     expect(getVaults()).toEqual([])
     expect(getStoredLocale()).toBeNull()
+    expect(getWindowBounds()).toBeNull()
+  })
+
+  it('persists window bounds across reads', () => {
+    const bounds = { width: 1400, height: 920, x: 40, y: 30, isMaximized: false }
+    setWindowBounds(bounds)
+
+    expect(getWindowBounds()).toEqual(bounds)
+
+    const configPath = path.join(tempDir, 'memry-config.json')
+    const stored = JSON.parse(fs.readFileSync(configPath, 'utf-8')) as {
+      windowBounds: typeof bounds
+      currentVault: string | null
+    }
+    expect(stored.windowBounds).toEqual(bounds)
   })
 
   it('persists current vault path', () => {
