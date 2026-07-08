@@ -100,7 +100,7 @@
       "updateAvailable": "Update",
       "updateDownloading": "Wird heruntergeladen…",
       "updateDownloadingPercent": "Wird heruntergeladen {percent}%",
-      "updateInstallingSubtitle": "Memrynote startet automatisch neu.",
+      "updateInstallingSubtitle": "MemryNote startet automatisch neu.",
       "updateInstallingTitle": "Update wird installiert",
       "updateRestart": "Neu starten"
     },
@@ -590,7 +590,7 @@
   },
   "onboarding": {
     "agentChat": {
-      "body": "Wechsle zum Agent-Tab, um Memrynotes Assistenten über deinen Vault zu befragen.",
+      "body": "Wechsle zum Agent-Tab, um MemryNotes Assistenten über deinen Vault zu befragen.",
       "title": "Chatte mit dem KI-Agenten"
     },
     "collections": {
@@ -623,7 +623,7 @@
     },
     "welcome": {
       "body": "Dein privates, offline-first Zuhause. Notizen sind Ende-zu-Ende-verschlüsselt — sie verlassen dein Gerät nie unverschlüsselt.",
-      "title": "Willkommen bei Memrynote"
+      "title": "Willkommen bei MemryNote"
     }
   },
   "updatePrompt": {

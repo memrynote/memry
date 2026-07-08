@@ -100,7 +100,7 @@
       "updateAvailable": "Actualizare",
       "updateDownloading": "Se descarcă…",
       "updateDownloadingPercent": "Se descarcă {percent}%",
-      "updateInstallingSubtitle": "Memrynote va reporni automat.",
+      "updateInstallingSubtitle": "MemryNote va reporni automat.",
       "updateInstallingTitle": "Se instalează actualizarea",
       "updateRestart": "Repornește"
     },
@@ -590,7 +590,7 @@
   },
   "onboarding": {
     "agentChat": {
-      "body": "Comută la fila Agent pentru a întreba asistentul Memrynote despre seiful tău.",
+      "body": "Comută la fila Agent pentru a întreba asistentul MemryNote despre seiful tău.",
       "title": "Discută cu agentul AI"
     },
     "collections": {
@@ -623,7 +623,7 @@
     },
     "welcome": {
       "body": "Casa ta privată, offline-first. Notițele sunt criptate integral — nu îți părăsesc niciodată dispozitivul necriptate.",
-      "title": "Bine ai venit la Memrynote"
+      "title": "Bine ai venit la MemryNote"
     }
   },
   "updatePrompt": {

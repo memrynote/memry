@@ -100,7 +100,7 @@
       "updateAvailable": "Ažuriraj",
       "updateDownloading": "Preuzimanje…",
       "updateDownloadingPercent": "Preuzimanje {percent}%",
-      "updateInstallingSubtitle": "Memrynote će se automatski ponovno pokrenuti.",
+      "updateInstallingSubtitle": "MemryNote će se automatski ponovno pokrenuti.",
       "updateInstallingTitle": "Instaliranje ažuriranja",
       "updateRestart": "Ponovno pokreni"
     },
@@ -590,7 +590,7 @@
   },
   "onboarding": {
     "agentChat": {
-      "body": "Prijeđite na karticu Agent da biste pitali Memrynote asistenta o svom trezoru.",
+      "body": "Prijeđite na karticu Agent da biste pitali MemryNote asistenta o svom trezoru.",
       "title": "Razgovarajte s AI agentom"
     },
     "collections": {
@@ -623,7 +623,7 @@
     },
     "welcome": {
       "body": "Vaš privatni, offline-first dom. Bilješke su šifrirane s kraja na kraj — nikad ne napuštaju vaš uređaj nešifrirane.",
-      "title": "Dobro došli u Memrynote"
+      "title": "Dobro došli u MemryNote"
     }
   },
   "updatePrompt": {

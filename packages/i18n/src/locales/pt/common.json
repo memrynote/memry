@@ -100,7 +100,7 @@
       "updateAvailable": "Atualizar",
       "updateDownloading": "A transferir…",
       "updateDownloadingPercent": "A transferir {percent}%",
-      "updateInstallingSubtitle": "O Memrynote irá reiniciar automaticamente.",
+      "updateInstallingSubtitle": "O MemryNote irá reiniciar automaticamente.",
       "updateInstallingTitle": "A instalar atualização",
       "updateRestart": "Reiniciar"
     },
@@ -590,7 +590,7 @@
   },
   "onboarding": {
     "agentChat": {
-      "body": "Mude para o separador Agente para perguntar ao assistente do Memrynote sobre o seu cofre.",
+      "body": "Mude para o separador Agente para perguntar ao assistente do MemryNote sobre o seu cofre.",
       "title": "Converse com o agente de IA"
     },
     "collections": {
@@ -623,7 +623,7 @@
     },
     "welcome": {
       "body": "O seu espaço privado, offline em primeiro lugar. As notas são encriptadas de ponta a ponta — nunca saem do seu dispositivo sem encriptação.",
-      "title": "Bem-vindo ao Memrynote"
+      "title": "Bem-vindo ao MemryNote"
     }
   },
   "updatePrompt": {

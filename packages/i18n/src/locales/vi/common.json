@@ -100,7 +100,7 @@
       "updateAvailable": "Cập nhật",
       "updateDownloading": "Đang tải xuống…",
       "updateDownloadingPercent": "Đang tải xuống {percent}%",
-      "updateInstallingSubtitle": "Memrynote sẽ tự khởi động lại.",
+      "updateInstallingSubtitle": "MemryNote sẽ tự khởi động lại.",
       "updateInstallingTitle": "Đang cài đặt bản cập nhật",
       "updateRestart": "Khởi động lại"
     },
@@ -590,7 +590,7 @@
   },
   "onboarding": {
     "agentChat": {
-      "body": "Chuyển sang thẻ Agent để hỏi trợ lý của Memrynote về kho của bạn.",
+      "body": "Chuyển sang thẻ Agent để hỏi trợ lý của MemryNote về kho của bạn.",
       "title": "Trò chuyện với trợ lý AI"
     },
     "collections": {
@@ -623,7 +623,7 @@
     },
     "welcome": {
       "body": "Không gian riêng tư, ưu tiên ngoại tuyến của bạn. Ghi chú được mã hóa đầu-cuối — chúng không bao giờ rời thiết bị của bạn ở dạng chưa mã hóa.",
-      "title": "Chào mừng đến với Memrynote"
+      "title": "Chào mừng đến với MemryNote"
     }
   },
   "updatePrompt": {

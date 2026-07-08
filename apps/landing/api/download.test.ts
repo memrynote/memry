@@ -4,14 +4,14 @@ import { describe, it } from 'node:test'
 import handler, { resolveAssetUrl } from './download.ts'
 
 const ASSETS = [
-  { name: 'Memrynote-1.2.3-arm64.dmg', browser_download_url: 'https://example.com/arm64.dmg' },
-  { name: 'Memrynote-1.2.3-x64.dmg', browser_download_url: 'https://example.com/x64.dmg' },
-  { name: 'Memrynote-1.2.3-setup.exe', browser_download_url: 'https://example.com/setup.exe' },
+  { name: 'MemryNote-1.2.3-arm64.dmg', browser_download_url: 'https://example.com/arm64.dmg' },
+  { name: 'MemryNote-1.2.3-x64.dmg', browser_download_url: 'https://example.com/x64.dmg' },
+  { name: 'MemryNote-1.2.3-setup.exe', browser_download_url: 'https://example.com/setup.exe' },
   {
-    name: 'Memrynote-1.2.3-x64.AppImage',
+    name: 'MemryNote-1.2.3-x64.AppImage',
     browser_download_url: 'https://example.com/app.AppImage'
   },
-  { name: 'Memrynote-1.2.3-amd64.deb', browser_download_url: 'https://example.com/app.deb' }
+  { name: 'MemryNote-1.2.3-amd64.deb', browser_download_url: 'https://example.com/app.deb' }
 ]
 
 const RELEASES_PAGE_URL = 'https://github.com/memrynote/memry/releases/latest'

@@ -100,7 +100,7 @@
       "updateAvailable": "更新",
       "updateDownloading": "下载中…",
       "updateDownloadingPercent": "下载中 {percent}%",
-      "updateInstallingSubtitle": "Memrynote 将自动重启。",
+      "updateInstallingSubtitle": "MemryNote 将自动重启。",
       "updateInstallingTitle": "正在安装更新",
       "updateRestart": "重启"
     },
@@ -590,7 +590,7 @@
   },
   "onboarding": {
     "agentChat": {
-      "body": "切换到智能助手标签页，向 Memrynote 助手询问你的保险库内容。",
+      "body": "切换到智能助手标签页，向 MemryNote 助手询问你的保险库内容。",
       "title": "与 AI 智能助手聊天"
     },
     "collections": {
@@ -623,7 +623,7 @@
     },
     "welcome": {
       "body": "你私密的、离线优先的家园。笔记采用端到端加密——它们绝不会以未加密形式离开你的设备。",
-      "title": "欢迎使用 Memrynote"
+      "title": "欢迎使用 MemryNote"
     }
   },
   "updatePrompt": {

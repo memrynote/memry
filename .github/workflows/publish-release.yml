@@ -830,8 +830,8 @@ jobs:
           # Names the cask url will resolve to; if electron-builder ever renames
           # the DMG, gh release download fails loudly here instead of shipping a
           # 404 cask.
-          arm_dmg="Memrynote-${APP_VERSION}-arm64.dmg"
-          x64_dmg="Memrynote-${APP_VERSION}-x64.dmg"
+          arm_dmg="MemryNote-${APP_VERSION}-arm64.dmg"
+          x64_dmg="MemryNote-${APP_VERSION}-x64.dmg"
 
           gh release download "$TAG" --repo "$GITHUB_REPOSITORY" \
             --pattern "$arm_dmg" --pattern "$x64_dmg" --dir "$work" --clobber

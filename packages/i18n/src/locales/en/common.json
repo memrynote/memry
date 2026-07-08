@@ -248,7 +248,7 @@
       "updateDownloadingPercent": "Downloading {percent}%",
       "updateRestart": "Restart",
       "updateInstallingTitle": "Installing update",
-      "updateInstallingSubtitle": "Memrynote will restart automatically."
+      "updateInstallingSubtitle": "MemryNote will restart automatically."
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Resize Day Panel",
@@ -603,7 +603,7 @@
   },
   "onboarding": {
     "welcome": {
-      "title": "Welcome to Memrynote",
+      "title": "Welcome to MemryNote",
       "body": "Your private, offline-first home. Notes are end-to-end encrypted — they never leave your device unencrypted."
     },
     "newNote": {
@@ -624,7 +624,7 @@
     },
     "agentChat": {
       "title": "Chat with the AI agent",
-      "body": "Switch to the Agent tab to ask Memrynote's assistant about your vault."
+      "body": "Switch to the Agent tab to ask MemryNote's assistant about your vault."
     },
     "sync": {
       "title": "Private, encrypted sync",

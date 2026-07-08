@@ -100,7 +100,7 @@
       "updateAvailable": "อัปเดต",
       "updateDownloading": "กำลังดาวน์โหลด…",
       "updateDownloadingPercent": "กำลังดาวน์โหลด {percent}%",
-      "updateInstallingSubtitle": "Memrynote จะรีสตาร์ทโดยอัตโนมัติ",
+      "updateInstallingSubtitle": "MemryNote จะรีสตาร์ทโดยอัตโนมัติ",
       "updateInstallingTitle": "กำลังติดตั้งอัปเดต",
       "updateRestart": "รีสตาร์ท"
     },
@@ -590,7 +590,7 @@
   },
   "onboarding": {
     "agentChat": {
-      "body": "สลับไปที่แท็บเอเจนต์เพื่อถามผู้ช่วยของ Memrynote เกี่ยวกับ vault ของคุณ",
+      "body": "สลับไปที่แท็บเอเจนต์เพื่อถามผู้ช่วยของ MemryNote เกี่ยวกับ vault ของคุณ",
       "title": "สนทนากับเอเจนต์ AI"
     },
     "collections": {
@@ -623,7 +623,7 @@
     },
     "welcome": {
       "body": "บ้านส่วนตัวแบบออฟไลน์ก่อนของคุณ โน้ตถูกเข้ารหัสแบบครบวงจร — จะไม่ออกจากอุปกรณ์ของคุณโดยไม่เข้ารหัส",
-      "title": "ยินดีต้อนรับสู่ Memrynote"
+      "title": "ยินดีต้อนรับสู่ MemryNote"
     }
   },
   "updatePrompt": {

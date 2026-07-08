@@ -22,9 +22,9 @@ You're asked where to put the vault. Defaults:
 
 | Platform | Default path                                     |
 | -------- | ------------------------------------------------ |
-| macOS    | `~/Library/Application Support/Memrynote/Vault/` |
-| Windows  | `%APPDATA%/Memrynote/Vault/`                     |
-| Linux    | `~/.config/Memrynote/vault/`                     |
+| macOS    | `~/Library/Application Support/MemryNote/Vault/` |
+| Windows  | `%APPDATA%/MemryNote/Vault/`                     |
+| Linux    | `~/.config/MemryNote/vault/`                     |
 
 Pick a different path if you want to:
 

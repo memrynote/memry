@@ -571,7 +571,7 @@ const INSTALLING_SPLASH_HTML = `<!doctype html>
 </style></head><body><div class="card">
   <div class="spinner"></div>
   <div class="title">Installing update…</div>
-  <div class="sub">Memrynote will reopen automatically.</div>
+  <div class="sub">MemryNote will reopen automatically.</div>
 </div></body></html>`
 
 /**
@@ -619,9 +619,9 @@ function startupErrorHtml(message: string): string {
     background:rgba(25,25,25,.05);border-radius:6px;padding:10px;white-space:pre-wrap;
     word-break:break-word;max-height:110px;overflow:auto;user-select:text}
 </style></head><body><div class="card">
-  <div class="title">Memrynote couldn't finish starting</div>
+  <div class="title">MemryNote couldn't finish starting</div>
   <div class="body">This can happen when the disk is very low on free space, or with
-    older graphics drivers. Try freeing up some disk space, then reopen Memrynote.
+    older graphics drivers. Try freeing up some disk space, then reopen MemryNote.
     If it keeps happening, reinstalling usually clears it.</div>
   <div class="details">${escaped}</div>
 </div></body></html>`
@@ -969,9 +969,9 @@ const appReady = app.whenReady().then(async () => {
   // setAboutPanelOptions is macOS/Linux only (undefined on Windows).
   if (typeof app.setAboutPanelOptions === 'function') {
     app.setAboutPanelOptions({
-      applicationName: 'Memrynote',
+      applicationName: 'MemryNote (Beta)',
       applicationVersion: app.getVersion(),
-      copyright: `© ${new Date().getFullYear()} Memrynote`
+      copyright: `© ${new Date().getFullYear()} MemryNote`
     })
   }
   Menu.setApplicationMenu(buildAppMenu(mainI18n))

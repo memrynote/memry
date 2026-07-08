@@ -100,7 +100,7 @@
       "updateAvailable": "Uppdatera",
       "updateDownloading": "Hämtar…",
       "updateDownloadingPercent": "Hämtar {percent}%",
-      "updateInstallingSubtitle": "Memrynote startar om automatiskt.",
+      "updateInstallingSubtitle": "MemryNote startar om automatiskt.",
       "updateInstallingTitle": "Installerar uppdatering",
       "updateRestart": "Starta om"
     },
@@ -590,7 +590,7 @@
   },
   "onboarding": {
     "agentChat": {
-      "body": "Byt till fliken Agent för att fråga Memrynotes assistent om ditt valv.",
+      "body": "Byt till fliken Agent för att fråga MemryNotes assistent om ditt valv.",
       "title": "Chatta med AI-agenten"
     },
     "collections": {
@@ -623,7 +623,7 @@
     },
     "welcome": {
       "body": "Ditt privata, offline-först-hem. Anteckningar är totalsträckskrypterade — de lämnar aldrig din enhet okrypterade.",
-      "title": "Välkommen till Memrynote"
+      "title": "Välkommen till MemryNote"
     }
   },
   "updatePrompt": {

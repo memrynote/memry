@@ -185,7 +185,7 @@ describe('updater', () => {
     updater.initializeUpdater()
     mocks.autoUpdater.emit('update-available', {
       version: '1.2.4',
-      releaseName: 'Memrynote 1.2.4',
+      releaseName: 'MemryNote 1.2.4',
       releaseDate: '2026-05-10',
       releaseNotes: [{ version: '1.2.4', note: 'Desktop sync fixes' }, { note: 'Calendar fixes' }]
     })
@@ -198,7 +198,7 @@ describe('updater', () => {
     expect(updater.getUpdateState()).toMatchObject({
       status: 'available',
       availableVersion: 'v1.2.4',
-      releaseName: 'Memrynote 1.2.4',
+      releaseName: 'MemryNote 1.2.4',
       releaseDate: '2026-05-10',
       autoDownloadEnabled: false,
       error: null

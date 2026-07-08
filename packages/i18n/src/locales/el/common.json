@@ -100,7 +100,7 @@
       "updateAvailable": "Ενημέρωση",
       "updateDownloading": "Λήψη…",
       "updateDownloadingPercent": "Λήψη {percent}%",
-      "updateInstallingSubtitle": "Το Memrynote θα επανεκκινήσει αυτόματα.",
+      "updateInstallingSubtitle": "Το MemryNote θα επανεκκινήσει αυτόματα.",
       "updateInstallingTitle": "Εγκατάσταση ενημέρωσης",
       "updateRestart": "Επανεκκίνηση"
     },
@@ -590,7 +590,7 @@
   },
   "onboarding": {
     "agentChat": {
-      "body": "Μεταβείτε στην καρτέλα Πράκτορας για να ρωτήσετε τον βοηθό του Memrynote για το θησαυροφυλάκιό σας.",
+      "body": "Μεταβείτε στην καρτέλα Πράκτορας για να ρωτήσετε τον βοηθό του MemryNote για το θησαυροφυλάκιό σας.",
       "title": "Συνομιλήστε με τον πράκτορα AI"
     },
     "collections": {
@@ -623,7 +623,7 @@
     },
     "welcome": {
       "body": "Το ιδιωτικό, offline-first σπίτι σας. Οι σημειώσεις είναι κρυπτογραφημένες από άκρο σε άκρο — δεν φεύγουν ποτέ από τη συσκευή σας χωρίς κρυπτογράφηση.",
-      "title": "Καλώς ήρθατε στο Memrynote"
+      "title": "Καλώς ήρθατε στο MemryNote"
     }
   },
   "updatePrompt": {

@@ -1,5 +1,5 @@
 appId: com.memrynote.memry
-productName: Memrynote
+productName: MemryNote
 protocols:
   - name: Memry
     schemes:

@@ -100,7 +100,7 @@
       "updateAvailable": "更新",
       "updateDownloading": "下載中…",
       "updateDownloadingPercent": "下載中 {percent}%",
-      "updateInstallingSubtitle": "Memrynote 將自動重新啟動。",
+      "updateInstallingSubtitle": "MemryNote 將自動重新啟動。",
       "updateInstallingTitle": "正在安裝更新",
       "updateRestart": "重新啟動"
     },
@@ -590,7 +590,7 @@
   },
   "onboarding": {
     "agentChat": {
-      "body": "切換到「代理」分頁，向 Memrynote 的助理詢問您的保管庫。",
+      "body": "切換到「代理」分頁，向 MemryNote 的助理詢問您的保管庫。",
       "title": "與 AI 代理聊天"
     },
     "collections": {
@@ -623,7 +623,7 @@
     },
     "welcome": {
       "body": "您私密、離線優先的家。筆記採端對端加密——未加密時絕不離開您的裝置。",
-      "title": "歡迎使用 Memrynote"
+      "title": "歡迎使用 MemryNote"
     }
   },
   "updatePrompt": {

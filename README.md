@@ -11,6 +11,7 @@ All on your disk. End-to-end encrypted. Every feature a toggle.
 
 [Download](https://github.com/memrynote/memry/releases/latest) · [Website](https://memrynote.com) · [Docs](https://docs.memrynote.com)
 
+[![Status: Beta](https://img.shields.io/badge/status-beta-ff671a)](https://github.com/memrynote/memry/releases)
 [![Release](https://img.shields.io/github/v/release/memrynote/memry)](https://github.com/memrynote/memry/releases)
 [![codecov](https://codecov.io/gh/memrynote/memry/branch/main/graph/badge.svg)](https://codecov.io/gh/memrynote/memry)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)

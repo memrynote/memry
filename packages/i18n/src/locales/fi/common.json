@@ -100,7 +100,7 @@
       "updateAvailable": "Päivitä",
       "updateDownloading": "Ladataan…",
       "updateDownloadingPercent": "Ladataan {percent} %",
-      "updateInstallingSubtitle": "Memrynote käynnistyy uudelleen automaattisesti.",
+      "updateInstallingSubtitle": "MemryNote käynnistyy uudelleen automaattisesti.",
       "updateInstallingTitle": "Asennetaan päivitystä",
       "updateRestart": "Käynnistä uudelleen"
     },
@@ -590,7 +590,7 @@
   },
   "onboarding": {
     "agentChat": {
-      "body": "Vaihda Agentti-välilehdelle kysyäksesi Memrynoten avustajalta holvistasi.",
+      "body": "Vaihda Agentti-välilehdelle kysyäksesi MemryNoten avustajalta holvistasi.",
       "title": "Keskustele AI-agentin kanssa"
     },
     "collections": {
@@ -623,7 +623,7 @@
     },
     "welcome": {
       "body": "Yksityinen, ensisijaisesti offline-tilassa toimiva kotisi. Muistiinpanot ovat päästä päähän salattuja — ne eivät koskaan poistu laitteeltasi salaamattomina.",
-      "title": "Tervetuloa Memrynoteen"
+      "title": "Tervetuloa MemryNoteen"
     }
   },
   "updatePrompt": {

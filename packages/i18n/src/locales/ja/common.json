@@ -100,7 +100,7 @@
       "updateAvailable": "更新",
       "updateDownloading": "ダウンロード中…",
       "updateDownloadingPercent": "ダウンロード中 {percent}%",
-      "updateInstallingSubtitle": "Memrynote は自動的に再起動します。",
+      "updateInstallingSubtitle": "MemryNote は自動的に再起動します。",
       "updateInstallingTitle": "更新をインストール中",
       "updateRestart": "再起動"
     },
@@ -590,7 +590,7 @@
   },
   "onboarding": {
     "agentChat": {
-      "body": "エージェントタブに切り替えて、Memrynote のアシスタントにボールトについて質問しましょう。",
+      "body": "エージェントタブに切り替えて、MemryNote のアシスタントにボールトについて質問しましょう。",
       "title": "AI エージェントとチャット"
     },
     "collections": {
@@ -623,7 +623,7 @@
     },
     "welcome": {
       "body": "あなた専用の、オフラインファーストなホーム。ノートはエンドツーエンドで暗号化され、暗号化されないままデバイスの外に出ることはありません。",
-      "title": "Memrynote へようこそ"
+      "title": "MemryNote へようこそ"
     }
   },
   "updatePrompt": {

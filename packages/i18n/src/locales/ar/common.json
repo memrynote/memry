@@ -100,7 +100,7 @@
       "updateAvailable": "تحديث",
       "updateDownloading": "جارٍ التنزيل…",
       "updateDownloadingPercent": "جارٍ التنزيل {percent}%",
-      "updateInstallingSubtitle": "ستتم إعادة تشغيل Memrynote تلقائيًا.",
+      "updateInstallingSubtitle": "ستتم إعادة تشغيل MemryNote تلقائيًا.",
       "updateInstallingTitle": "جارٍ تثبيت التحديث",
       "updateRestart": "إعادة التشغيل"
     },
@@ -590,7 +590,7 @@
   },
   "onboarding": {
     "agentChat": {
-      "body": "انتقل إلى علامة تبويب الوكيل لتسأل مساعد Memrynote عن خزنتك.",
+      "body": "انتقل إلى علامة تبويب الوكيل لتسأل مساعد MemryNote عن خزنتك.",
       "title": "تحدّث مع وكيل الذكاء الاصطناعي"
     },
     "collections": {
@@ -623,7 +623,7 @@
     },
     "welcome": {
       "body": "مساحتك الخاصة التي تعمل دون اتصال أولاً. الملاحظات مشفّرة تمامًا من طرف إلى طرف — ولا تغادر جهازك أبدًا بدون تشفير.",
-      "title": "مرحبًا بك في Memrynote"
+      "title": "مرحبًا بك في MemryNote"
     }
   },
   "updatePrompt": {

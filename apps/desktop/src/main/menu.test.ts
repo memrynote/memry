@@ -6,7 +6,7 @@ const { buildFromTemplate } = vi.hoisted(() => ({
 }))
 
 vi.mock('electron', () => ({
-  app: { name: 'Memrynote' },
+  app: { name: 'MemryNote' },
   BrowserWindow: { getFocusedWindow: vi.fn() },
   Menu: { buildFromTemplate }
 }))
@@ -31,6 +31,11 @@ describe('buildAppMenu', () => {
     expect(template.map((item) => item.label)).toContain('File')
     expect(template.map((item) => item.label)).toContain('Edit')
     expect(template.map((item) => item.label)).toContain('View')
+    // Regression: the About item must carry an explicit label — the role
+    // default would render "About @memry/desktop" from app.name.
+    expect(template.flatMap((item) => item.submenu ?? []).map((item) => item.label)).toContain(
+      'About MemryNote'
+    )
     expect(template.flatMap((item) => item.submenu ?? []).map((item) => item.label)).toEqual(
       expect.arrayContaining([
         'New Note',

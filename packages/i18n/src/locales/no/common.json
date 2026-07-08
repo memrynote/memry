@@ -100,7 +100,7 @@
       "updateAvailable": "Oppdater",
       "updateDownloading": "Laster ned…",
       "updateDownloadingPercent": "Laster ned {percent}%",
-      "updateInstallingSubtitle": "Memrynote starter på nytt automatisk.",
+      "updateInstallingSubtitle": "MemryNote starter på nytt automatisk.",
       "updateInstallingTitle": "Installerer oppdatering",
       "updateRestart": "Start på nytt"
     },
@@ -590,7 +590,7 @@
   },
   "onboarding": {
     "agentChat": {
-      "body": "Bytt til Agent-fanen for å spørre Memrynotes assistent om hvelvet ditt.",
+      "body": "Bytt til Agent-fanen for å spørre MemryNotes assistent om hvelvet ditt.",
       "title": "Chat med AI-agenten"
     },
     "collections": {
@@ -623,7 +623,7 @@
     },
     "welcome": {
       "body": "Ditt private, offline-først hjem. Notater er ende-til-ende-kryptert — de forlater aldri enheten din ukryptert.",
-      "title": "Velkommen til Memrynote"
+      "title": "Velkommen til MemryNote"
     }
   },
   "updatePrompt": {
