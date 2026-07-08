@@ -19,6 +19,11 @@ test.describe('Sidebar & WindowControls', () => {
     electronApp,
     page
   }) => {
+    // The custom traffic-light controls only render on macOS (titleBarStyle:
+    // 'hidden'); Windows/Linux keep the native frame, so `TrafficLights` returns
+    // null and there is no "Close window" button to anchor. See traffic-lights.tsx.
+    test.skip(process.platform !== 'darwin', 'traffic lights are macOS-only')
+
     await waitForAppReady(page)
     await waitForVaultReady(page)
 
