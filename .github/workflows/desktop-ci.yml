@@ -209,12 +209,14 @@ jobs:
 
   e2e-smoke-windows:
     name: Electron E2E smoke (Windows)
-    # Diagnostic job: intentionally ungated so it runs on the PR (the ubuntu
-    # e2e-smoke only runs on push to main). Goal is to see which E2E specs
-    # pass/fail on Windows before deciding on a permanent Windows matrix.
+    # Push-to-main only, matching the ubuntu e2e-smoke/e2e-full jobs: Windows
+    # Electron E2E is ~15-25 min, too slow to run on every PR, and PRs already
+    # run lint + typecheck + unit + ubuntu coverage. (Ran ungated while the
+    # initial Windows-only failures were diagnosed and fixed; now stable.)
     # windows-2022 is pinned — windows-latest ships VS 2026, which node-gyp
     # cannot detect, breaking the native electron-rebuild (same reason the
     # release build-windows job pins it).
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: windows-2022
     timeout-minutes: 45
 
