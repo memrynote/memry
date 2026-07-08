@@ -6,14 +6,18 @@ import { createLogger } from './lib/logger'
 import { getMainI18n } from './lib/main-i18n'
 import { formatAppVersionForDisplay } from './lib/app-version-display'
 import { htmlToPlainText } from './lib/html-to-plain-text'
-import { getUpdaterPrefs, setAutoDownloadPref, setSkippedVersion } from './store'
+import { getUpdaterPrefs, setAutoCheckPref, setAutoDownloadPref, setSkippedVersion } from './store'
 
 const logger = createLogger('Updater')
+
+/** How often to re-check for updates while the app is running when auto-check is on. */
+const AUTO_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000
 
 let initialized = false
 let activeCheck: Promise<AppUpdateState> | null = null
 let activeDownload: Promise<AppUpdateState> | null = null
 let quitAndInstallRequested = false
+let autoCheckTimer: ReturnType<typeof setInterval> | null = null
 
 let state: AppUpdateState = {
   currentVersion: getCurrentDisplayVersion(),
@@ -26,7 +30,8 @@ let state: AppUpdateState = {
   downloadProgressPercent: null,
   lastCheckedAt: null,
   error: null,
-  autoDownloadEnabled: false
+  autoDownloadEnabled: false,
+  autoCheckEnabled: true
 }
 
 export function initializeUpdater(): void {
@@ -37,9 +42,10 @@ export function initializeUpdater(): void {
   initialized = true
   const prefs = getUpdaterPrefs()
   const autoDownloadEnabled = prefs.autoDownload ?? false
+  const autoCheckEnabled = prefs.autoCheck ?? true
   autoUpdater.autoDownload = autoDownloadEnabled
   autoUpdater.autoInstallOnAppQuit = true
-  setState({ autoDownloadEnabled })
+  setState({ autoDownloadEnabled, autoCheckEnabled })
 
   autoUpdater.on('checking-for-update', () => {
     logger.info('checking for updates')
@@ -131,9 +137,36 @@ export function initializeUpdater(): void {
     })
   })
 
-  void checkForUpdates().catch((error) => {
-    logger.warn('startup update check failed', error)
-  })
+  if (autoCheckEnabled) {
+    startAutoCheckTimer()
+    void checkForUpdates().catch((error) => {
+      logger.warn('startup update check failed', error)
+    })
+  }
+}
+
+/**
+ * Schedule the recurring background check. No-op if already running so toggling or
+ * re-init never stacks intervals. The timer is unref'd so a pending tick never blocks
+ * app quit.
+ */
+function startAutoCheckTimer(): void {
+  if (autoCheckTimer) {
+    return
+  }
+  autoCheckTimer = setInterval(() => {
+    void checkForUpdates().catch((error) => {
+      logger.warn('scheduled update check failed', error)
+    })
+  }, AUTO_CHECK_INTERVAL_MS)
+  autoCheckTimer.unref?.()
+}
+
+function stopAutoCheckTimer(): void {
+  if (autoCheckTimer) {
+    clearInterval(autoCheckTimer)
+    autoCheckTimer = null
+  }
 }
 
 export function getUpdateState(): AppUpdateState {
@@ -229,6 +262,26 @@ export function setAutoDownloadEnabled(enabled: boolean): AppUpdateState {
   // the user to start with the Download button.
   autoUpdater.autoDownload = enabled
   setState({ autoDownloadEnabled: enabled })
+  return getUpdateState()
+}
+
+/**
+ * Toggle automatic update checks. Persists the choice, then starts/stops the
+ * recurring background check. Enabling also fires an immediate check so the user
+ * gets instant feedback instead of waiting for the next interval.
+ */
+export function setAutoCheckEnabled(enabled: boolean): AppUpdateState {
+  logger.info('setting auto-check preference', { enabled })
+  setAutoCheckPref(enabled)
+  if (enabled) {
+    startAutoCheckTimer()
+    void checkForUpdates().catch((error) => {
+      logger.warn('auto-check enable update check failed', error)
+    })
+  } else {
+    stopAutoCheckTimer()
+  }
+  setState({ autoCheckEnabled: enabled })
   return getUpdateState()
 }
 

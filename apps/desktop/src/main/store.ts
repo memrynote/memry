@@ -71,6 +71,8 @@ export interface UpdaterStoreData {
   skippedVersion?: string
   /** When true, updates download + install without prompting. */
   autoDownload?: boolean
+  /** When true (default), the app checks for updates at launch and on an interval. */
+  autoCheck?: boolean
 }
 
 /**
@@ -308,6 +310,13 @@ export function setSkippedVersion(version: string | null): void {
  */
 export function setAutoDownloadPref(enabled: boolean): void {
   store.set('updater', { ...store.get('updater'), autoDownload: enabled })
+}
+
+/**
+ * Persist whether the app checks for updates automatically (launch + interval).
+ */
+export function setAutoCheckPref(enabled: boolean): void {
+  store.set('updater', { ...store.get('updater'), autoCheck: enabled })
 }
 
 /**

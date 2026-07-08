@@ -11,7 +11,9 @@ export const updaterApi = {
   skipVersion: (version: string): Promise<AppUpdateState> =>
     invoke<AppUpdateState>(UpdaterChannels.invoke.SKIP_VERSION, version),
   setAutoDownload: (enabled: boolean): Promise<AppUpdateState> =>
-    invoke<AppUpdateState>(UpdaterChannels.invoke.SET_AUTO_DOWNLOAD, enabled)
+    invoke<AppUpdateState>(UpdaterChannels.invoke.SET_AUTO_DOWNLOAD, enabled),
+  setAutoCheck: (enabled: boolean): Promise<AppUpdateState> =>
+    invoke<AppUpdateState>(UpdaterChannels.invoke.SET_AUTO_CHECK, enabled)
 }
 
 export const updaterEvents = {

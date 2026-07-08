@@ -25,7 +25,9 @@ const mocks = vi.hoisted(() => {
   }
 
   const emitter = new MockEmitter()
-  const storeState: { prefs: { skippedVersion?: string; autoDownload?: boolean } } = { prefs: {} }
+  const storeState: {
+    prefs: { skippedVersion?: string; autoDownload?: boolean; autoCheck?: boolean }
+  } = { prefs: {} }
   return {
     storeState,
     store: {
@@ -35,6 +37,9 @@ const mocks = vi.hoisted(() => {
       }),
       setAutoDownloadPref: vi.fn((enabled: boolean) => {
         storeState.prefs = { ...storeState.prefs, autoDownload: enabled }
+      }),
+      setAutoCheckPref: vi.fn((enabled: boolean) => {
+        storeState.prefs = { ...storeState.prefs, autoCheck: enabled }
       })
     },
     app: {
@@ -77,7 +82,8 @@ vi.mock('electron-updater', () => ({
 vi.mock('./store', () => ({
   getUpdaterPrefs: mocks.store.getUpdaterPrefs,
   setSkippedVersion: mocks.store.setSkippedVersion,
-  setAutoDownloadPref: mocks.store.setAutoDownloadPref
+  setAutoDownloadPref: mocks.store.setAutoDownloadPref,
+  setAutoCheckPref: mocks.store.setAutoCheckPref
 }))
 
 vi.mock('./lib/logger', () => ({
@@ -306,6 +312,49 @@ describe('updater', () => {
 
     expect(mocks.autoUpdater.autoDownload).toBe(true)
     expect(updater.getUpdateState().autoDownloadEnabled).toBe(true)
+  })
+
+  it('auto-checks at startup and re-checks on the interval by default', async () => {
+    vi.useFakeTimers()
+    try {
+      const updater = await loadUpdater()
+      updater.initializeUpdater()
+
+      expect(updater.getUpdateState().autoCheckEnabled).toBe(true)
+      expect(mocks.autoUpdater.checkForUpdates).toHaveBeenCalledTimes(1)
+
+      // Six hours later the background timer fires a fresh check.
+      await vi.advanceTimersByTimeAsync(6 * 60 * 60 * 1000)
+      expect(mocks.autoUpdater.checkForUpdates).toHaveBeenCalledTimes(2)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('skips the startup auto-check when the preference is disabled', async () => {
+    mocks.storeState.prefs = { autoCheck: false }
+    const updater = await loadUpdater()
+    updater.initializeUpdater()
+
+    expect(mocks.autoUpdater.checkForUpdates).not.toHaveBeenCalled()
+    expect(updater.getUpdateState().autoCheckEnabled).toBe(false)
+  })
+
+  it('persists the auto-check preference and fires an immediate check when enabled', async () => {
+    mocks.storeState.prefs = { autoCheck: false }
+    const updater = await loadUpdater()
+    updater.initializeUpdater()
+    expect(mocks.autoUpdater.checkForUpdates).not.toHaveBeenCalled()
+
+    const next = updater.setAutoCheckEnabled(true)
+    expect(mocks.store.setAutoCheckPref).toHaveBeenCalledWith(true)
+    expect(next.autoCheckEnabled).toBe(true)
+    // Enabling triggers a check right away so the user gets instant feedback.
+    expect(mocks.autoUpdater.checkForUpdates).toHaveBeenCalledTimes(1)
+
+    updater.setAutoCheckEnabled(false)
+    expect(mocks.store.setAutoCheckPref).toHaveBeenCalledWith(false)
+    expect(updater.getUpdateState().autoCheckEnabled).toBe(false)
   })
 
   it('coalesces manual checks and downloads, then installs downloaded updates', async () => {

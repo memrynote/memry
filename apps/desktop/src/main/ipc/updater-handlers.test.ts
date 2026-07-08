@@ -13,7 +13,8 @@ const mocks = vi.hoisted(() => ({
   getUpdateState: vi.fn(),
   quitAndInstall: vi.fn(),
   skipVersion: vi.fn(),
-  setAutoDownloadEnabled: vi.fn()
+  setAutoDownloadEnabled: vi.fn(),
+  setAutoCheckEnabled: vi.fn()
 }))
 
 vi.mock('electron', () => ({
@@ -29,7 +30,8 @@ vi.mock('../updater', () => ({
   getUpdateState: mocks.getUpdateState,
   quitAndInstall: mocks.quitAndInstall,
   skipVersion: mocks.skipVersion,
-  setAutoDownloadEnabled: mocks.setAutoDownloadEnabled
+  setAutoDownloadEnabled: mocks.setAutoDownloadEnabled,
+  setAutoCheckEnabled: mocks.setAutoCheckEnabled
 }))
 
 import { UpdaterChannels } from '@memry/contracts/ipc-updater'
@@ -44,12 +46,13 @@ describe('updater ipc handlers', () => {
     mocks.downloadUpdate.mockResolvedValue({ status: 'downloading' })
     mocks.skipVersion.mockReturnValue({ status: 'up-to-date' })
     mocks.setAutoDownloadEnabled.mockReturnValue({ status: 'idle', autoDownloadEnabled: true })
+    mocks.setAutoCheckEnabled.mockReturnValue({ status: 'idle', autoCheckEnabled: false })
   })
 
   it('registers every updater invoke channel and forwards calls to updater services', async () => {
     registerUpdaterHandlers()
 
-    expect(mocks.handle).toHaveBeenCalledTimes(6)
+    expect(mocks.handle).toHaveBeenCalledTimes(7)
     expect(mocks.handlers.get(UpdaterChannels.invoke.GET_STATE)?.()).toEqual({ status: 'idle' })
     await expect(mocks.handlers.get(UpdaterChannels.invoke.CHECK_FOR_UPDATES)?.()).resolves.toEqual(
       { status: 'checking' }
@@ -73,6 +76,12 @@ describe('updater ipc handlers', () => {
       autoDownloadEnabled: true
     })
     expect(mocks.setAutoDownloadEnabled).toHaveBeenCalledWith(true)
+
+    expect(mocks.handlers.get(UpdaterChannels.invoke.SET_AUTO_CHECK)?.({}, false)).toEqual({
+      status: 'idle',
+      autoCheckEnabled: false
+    })
+    expect(mocks.setAutoCheckEnabled).toHaveBeenCalledWith(false)
   })
 
   it('unregisters every updater invoke channel', () => {
@@ -85,6 +94,7 @@ describe('updater ipc handlers', () => {
     expect(mocks.removeHandler).toHaveBeenCalledWith(UpdaterChannels.invoke.QUIT_AND_INSTALL)
     expect(mocks.removeHandler).toHaveBeenCalledWith(UpdaterChannels.invoke.SKIP_VERSION)
     expect(mocks.removeHandler).toHaveBeenCalledWith(UpdaterChannels.invoke.SET_AUTO_DOWNLOAD)
+    expect(mocks.removeHandler).toHaveBeenCalledWith(UpdaterChannels.invoke.SET_AUTO_CHECK)
     expect(mocks.handlers.size).toBe(0)
   })
 })

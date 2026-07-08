@@ -376,6 +376,7 @@ export interface MainIpcInvokeHandlers {
   "updater:download-update": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/ipc-updater").AppUpdateState>>
   "updater:get-state": (...args: []) => Awaited<import("../../../../../packages/contracts/src/ipc-updater").AppUpdateState>
   "updater:quit-and-install": (...args: []) => Awaited<void>
+  "updater:set-auto-check": (...args: [boolean]) => Awaited<import("../../../../../packages/contracts/src/ipc-updater").AppUpdateState>
   "updater:set-auto-download": (...args: [boolean]) => Awaited<import("../../../../../packages/contracts/src/ipc-updater").AppUpdateState>
   "updater:skip-version": (...args: [string]) => Awaited<import("../../../../../packages/contracts/src/ipc-updater").AppUpdateState>
   "vault:close": (...args: []) => Awaited<Promise<void>>
