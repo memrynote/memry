@@ -752,6 +752,8 @@
     "description": "Applying \"{name}\" will replace this note's current content. This can't be undone.",
     "full": "Replace content & add template details",
     "body": "Replace content only",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "success": "Template applied",
+    "failed": "Failed to apply template"
   }
 }
