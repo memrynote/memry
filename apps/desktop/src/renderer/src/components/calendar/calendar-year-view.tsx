@@ -127,15 +127,17 @@ export function CalendarYearView({
         if (!open) setPopoverDay(null)
       }}
     >
+      {/* pt clears the floating chrome so months scroll beneath its material */}
       <section
-        className="h-full overflow-y-auto px-3 py-3 @lg:px-6 @lg:py-4 @3xl:px-8 @3xl:py-6"
+        data-calendar-scroll
+        className="h-full overflow-y-auto px-3 pb-3 pt-14 @lg:px-6 @lg:pb-4 @3xl:px-8 @3xl:pb-6"
         data-testid="calendar-view"
         data-view="year"
       >
         <div className="grid grid-cols-2 gap-4 @lg:grid-cols-3 @lg:gap-x-6 @lg:gap-y-6 @3xl:grid-cols-4 @3xl:gap-x-10 @3xl:gap-y-8">
           {months.map((month) => (
             <div key={month.monthAnchor}>
-              <h3 className="mb-2 text-sm font-semibold text-red-400">{month.label}</h3>
+              <h3 className="mb-2 text-sm font-semibold tracking-tight text-tint">{month.label}</h3>
 
               <div className="mb-1 grid grid-cols-7">
                 {dayHeaders.map((header, i) => (
@@ -168,7 +170,7 @@ export function CalendarYearView({
                       <span
                         className={cn(
                           'flex size-5 items-center justify-center rounded-full text-[10px] @lg:size-7 @lg:text-xs',
-                          today && 'bg-red-500/90 font-semibold text-white',
+                          today && 'bg-tint font-semibold text-tint-foreground',
                           !today && inMonth && 'text-foreground hover:bg-surface-active',
                           !today && !inMonth && 'text-muted-foreground'
                         )}
@@ -176,7 +178,7 @@ export function CalendarYearView({
                         {dayNum}
                       </span>
                       {hasEvents && !today && (
-                        <span className="absolute bottom-0 size-1 rounded-full bg-red-400" />
+                        <span className="absolute bottom-0 size-1 rounded-full bg-tint" />
                       )}
                     </button>
                   )

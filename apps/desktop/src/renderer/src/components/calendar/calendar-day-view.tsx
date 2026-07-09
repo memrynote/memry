@@ -109,7 +109,7 @@ export function CalendarDayView({
           </div>
         </div>
       )}
-      <div ref={scrollRef} className="min-h-0 min-w-0 flex-1 overflow-y-auto">
+      <div ref={scrollRef} data-calendar-scroll className="min-h-0 min-w-0 flex-1 overflow-y-auto">
         <div
           className="relative flex [--grid-line-color:var(--border)]"
           style={{ height: HOUR_HEIGHT * 24 }}
@@ -201,7 +201,7 @@ export function CalendarDayView({
                 className="pointer-events-none absolute start-0 end-0 z-20 flex items-center"
                 style={{ top: currentTimeOffset }}
               >
-                <div className="size-2 rounded-full bg-tint" />
+                <div className="size-2 rounded-full bg-tint shadow-[0_0_6px] shadow-tint/60" />
                 <div className="h-0.5 flex-1 bg-tint" />
               </div>
             )}
