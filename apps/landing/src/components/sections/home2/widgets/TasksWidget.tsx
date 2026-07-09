@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Calendar, ChevronDown, Repeat } from 'lucide-react'
+import { Calendar, ChevronDown, Plus, Repeat } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 /**
@@ -20,6 +20,7 @@ interface Task {
   due: { label: string; tone: DueTone }
   project?: { name: string; swatch: string }
   repeats?: boolean
+  group: 'today' | 'upcoming'
 }
 
 const TASKS: Task[] = [
@@ -28,38 +29,63 @@ const TASKS: Task[] = [
     title: 'Send the venue deposit',
     priority: 'high',
     due: { label: '3d late', tone: 'overdue' },
-    project: { name: 'Wedding', swatch: 'bg-terracotta' }
+    project: { name: 'Wedding', swatch: 'bg-terracotta' },
+    group: 'today'
   },
   {
     id: 'q3-doc',
     title: 'Review the Q3 planning doc',
     priority: 'medium',
     due: { label: 'Today', tone: 'today' },
-    project: { name: 'Work', swatch: 'bg-sage' }
+    project: { name: 'Work', swatch: 'bg-sage' },
+    group: 'today'
   },
   {
     id: 'plants',
     title: 'Water the plants',
     priority: 'none',
     due: { label: 'Tomorrow', tone: 'neutral' },
-    repeats: true
+    repeats: true,
+    group: 'today'
   },
   {
     id: 'itinerary',
     title: 'Draft the Lisbon itinerary',
     priority: 'low',
     due: { label: 'Sat', tone: 'neutral' },
-    project: { name: 'Travel', swatch: 'bg-brand-300' }
+    project: { name: 'Travel', swatch: 'bg-brand-300' },
+    group: 'today'
   },
   {
     id: 'pages',
     title: 'Morning pages',
     priority: 'none',
-    due: { label: 'Today', tone: 'today' }
+    due: { label: 'Today', tone: 'today' },
+    group: 'today'
+  },
+  {
+    id: 'call-mia',
+    title: 'Call Mia',
+    priority: 'none',
+    due: { label: 'Sat', tone: 'neutral' },
+    group: 'upcoming'
+  },
+  {
+    id: 'train-tickets',
+    title: 'Book the train tickets',
+    priority: 'low',
+    due: { label: 'Next week', tone: 'neutral' },
+    project: { name: 'Travel', swatch: 'bg-brand-300' },
+    group: 'upcoming'
+  },
+  {
+    id: 'passport',
+    title: 'Renew passport',
+    priority: 'medium',
+    due: { label: 'Jul 17', tone: 'neutral' },
+    group: 'upcoming'
   }
 ]
-
-const TASK_BY_ID = new Map(TASKS.map((task) => [task.id, task]))
 
 const ROW_SPRING = { type: 'spring', bounce: 0, duration: 0.3 } as const
 
@@ -213,19 +239,42 @@ function TaskRow({ task, done, onToggle }: { task: Task; done: boolean; onToggle
 /**
  * Compact interactive Today list. Checking a task pops the sage check in,
  * strikes the title, and moves the row into the collapsed "Done" group below;
- * checking again un-dones it. Local state only — no network, no storage.
+ * checking again un-dones it. The quick-add row appends real rows to Today.
+ * Local state only — no network, no storage.
  */
 export function TasksWidget({ className }: { className?: string }) {
+  const [tasks, setTasks] = useState<Task[]>(TASKS)
   const [doneIds, setDoneIds] = useState<string[]>(['pages'])
   const [doneOpen, setDoneOpen] = useState(false)
+  const [draft, setDraft] = useState('')
 
   const toggle = (id: string) => {
     setDoneIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
   }
 
-  const openTasks = TASKS.filter((task) => !doneIds.includes(task.id))
+  const addTask = () => {
+    const title = draft.trim()
+    if (!title) return
+    setTasks((prev) => [
+      ...prev,
+      {
+        id: `added-${prev.length}`,
+        title,
+        priority: 'none',
+        due: { label: 'Today', tone: 'today' },
+        group: 'today'
+      }
+    ])
+    setDraft('')
+  }
+
+  const taskById = new Map(tasks.map((task) => [task.id, task]))
+  const todayTasks = tasks.filter((task) => task.group === 'today' && !doneIds.includes(task.id))
+  const upcomingTasks = tasks.filter(
+    (task) => task.group === 'upcoming' && !doneIds.includes(task.id)
+  )
   const doneTasks = doneIds
-    .map((id) => TASK_BY_ID.get(id))
+    .map((id) => taskById.get(id))
     .filter((task): task is Task => task !== undefined)
 
   return (
@@ -240,23 +289,65 @@ export function TasksWidget({ className }: { className?: string }) {
         <span className="inline-flex items-center gap-1.5 rounded-[5px] bg-ink px-2 py-0.5 text-[11px] font-medium text-paper">
           Today
           <span className="font-mono-accent min-w-[2ch] text-[9px] tabular-nums opacity-60">
-            {openTasks.length}
+            {todayTasks.length}
           </span>
         </span>
         <span className="font-mono-accent text-[9px] tabular-nums text-muted" aria-live="polite">
-          {doneTasks.length} of {TASKS.length} done
+          {doneTasks.length} of {tasks.length} done
         </span>
       </div>
+
+      {/* Quick add — borderless inline input, Enter commits (like the app's add-task row) */}
+      <form
+        className="flex items-center gap-3 border-b border-border/40 px-3 py-[7px]"
+        onSubmit={(event) => {
+          event.preventDefault()
+          addTask()
+        }}
+      >
+        <Plus className="size-4 shrink-0 text-muted/60" aria-hidden />
+        <input
+          type="text"
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          aria-label="Add a task"
+          placeholder="Add a task…"
+          className={cn(
+            'min-w-0 flex-1 bg-transparent text-[13px] font-medium text-ink/90',
+            'placeholder:text-muted/60 focus-visible:outline-none'
+          )}
+        />
+      </form>
 
       {/* Open tasks */}
       <ul className="py-1">
         <AnimatePresence initial={false} mode="popLayout">
-          {openTasks.map((task) => (
+          {todayTasks.map((task) => (
             <TaskRow key={task.id} task={task} done={false} onToggle={() => toggle(task.id)} />
           ))}
         </AnimatePresence>
-        {openTasks.length === 0 && (
+        {todayTasks.length === 0 && (
           <li className="px-3 py-3 text-center text-[12px] text-muted">All done for today</li>
+        )}
+      </ul>
+
+      {/* Upcoming group — muted header, same interactive rows */}
+      <div className="flex items-center gap-2 bg-ink/[0.02] px-3 py-2">
+        <span className="text-[12px] font-semibold leading-4 tracking-[0.02em] text-muted">
+          Upcoming
+        </span>
+        <span className="text-[12px] font-medium tabular-nums text-muted/70">
+          {upcomingTasks.length}
+        </span>
+      </div>
+      <ul className="py-1">
+        <AnimatePresence initial={false} mode="popLayout">
+          {upcomingTasks.map((task) => (
+            <TaskRow key={task.id} task={task} done={false} onToggle={() => toggle(task.id)} />
+          ))}
+        </AnimatePresence>
+        {upcomingTasks.length === 0 && (
+          <li className="px-3 py-2 text-center text-[11px] text-muted/70">Nothing coming up</li>
         )}
       </ul>
 
