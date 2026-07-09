@@ -5,7 +5,7 @@ import { captureServerError, type AnalyticsEnv } from './analytics'
 const logger = createLogger('Email')
 
 const RESEND_API_URL = 'https://api.resend.com/emails'
-const FROM_ADDRESS = 'Memry <noreply@memrynote.com>'
+const FROM_ADDRESS = 'MemryNote <noreply@memrynote.com>'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 

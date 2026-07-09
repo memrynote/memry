@@ -104,7 +104,7 @@ const handleOtpRequest = async (c: Parameters<typeof otpIpRateLimit>[0]): Promis
   const html = buildOtpEmailHtml(code, OTP_EXPIRY_MINUTES)
   await sendEmail(
     email,
-    'Your Memry verification code',
+    'Your MemryNote verification code',
     html,
     c.env.RESEND_API_KEY,
     undefined,
@@ -246,7 +246,7 @@ auth.post('/otp/resend', otpIpRateLimit, async (c) => {
   const html = buildOtpEmailHtml(code, OTP_EXPIRY_MINUTES)
   await sendEmail(
     email,
-    'Your Memry verification code',
+    'Your MemryNote verification code',
     html,
     c.env.RESEND_API_KEY,
     undefined,
@@ -793,7 +793,7 @@ auth.post('/email/change', authMiddleware, async (c) => {
     throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Email already in use', 409)
   }
   // Rate-limit per target address so this endpoint can't be used to bomb an
-  // arbitrary inbox with "Confirm your new Memry email" messages (mirrors
+  // arbitrary inbox with "Confirm your new MemryNote email" messages (mirrors
   // /otp/request).
   await checkEmailRateLimit(c.env.DB, newEmail)
   const code = generateOtp()
@@ -801,7 +801,7 @@ auth.post('/email/change', authMiddleware, async (c) => {
   const html = buildOtpEmailHtml(code, OTP_EXPIRY_MINUTES)
   await sendEmail(
     newEmail,
-    'Confirm your new Memry email',
+    'Confirm your new MemryNote email',
     html,
     c.env.RESEND_API_KEY,
     undefined,
