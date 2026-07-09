@@ -246,6 +246,13 @@
       "when": 1783206622572,
       "tag": "0034_tag_nocase",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "6",
+      "when": 1783634400000,
+      "tag": "0035_custom_themes",
+      "breakpoints": true
     }
   ]
 }

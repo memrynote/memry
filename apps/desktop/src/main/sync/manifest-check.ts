@@ -7,6 +7,7 @@ import { projects } from '@memry/db-schema/schema/projects'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
 import { savedFilters, settings } from '@memry/db-schema/schema/settings'
 import { tagDefinitions } from '@memry/db-schema/schema/tag-definitions'
+import { customThemes } from '@memry/db-schema/schema/custom-themes'
 import { noteCache } from '@memry/db-schema/schema/notes-cache'
 import type { RecordSyncItemType, RecordSyncManifest } from '@memry/contracts/sync-api'
 import { withRetry } from './retry'
@@ -149,6 +150,11 @@ function getLocalSyncableItems(db: DrizzleDb): LocalSyncableItem[] {
     .all()
   for (const td of syncedTagDefs) {
     addLocalItem({ id: td.name, type: 'tag_definition', payload: JSON.stringify(td) })
+  }
+
+  const syncedThemes = db.select().from(customThemes).where(isNotNull(customThemes.clock)).all()
+  for (const t of syncedThemes) {
+    addLocalItem({ id: t.id, type: 'theme', payload: JSON.stringify(t) })
   }
 
   const syncedSettings = db.select().from(settings).where(eq(settings.key, 'synced_settings')).get()

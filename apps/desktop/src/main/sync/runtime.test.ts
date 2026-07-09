@@ -102,6 +102,7 @@ const runtimeMocks = vi.hoisted(() => {
     journalSync: service('journal'),
     tagDefinitionSync: service('tag_definition'),
     folderConfigSync: service('folder_config'),
+    themeSync: service('theme'),
     calendarEventSync: service('calendar_event'),
     calendarSourceSync: service('calendar_source'),
     calendarBindingSync: service('calendar_binding'),
@@ -257,6 +258,10 @@ vi.mock('./tag-definition-sync', () => ({
 vi.mock('./folder-config-sync', () => ({
   initFolderConfigSyncService: runtimeMocks.folderConfigSync.init,
   resetFolderConfigSyncService: runtimeMocks.folderConfigSync.reset
+}))
+vi.mock('./theme-sync', () => ({
+  initThemeSyncService: runtimeMocks.themeSync.init,
+  resetThemeSyncService: runtimeMocks.themeSync.reset
 }))
 vi.mock('./calendar-event-sync', () => ({
   initCalendarEventSyncService: runtimeMocks.calendarEventSync.init,

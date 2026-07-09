@@ -29,6 +29,7 @@ import { initNoteSyncService, resetNoteSyncService } from './note-sync'
 import { initJournalSyncService, resetJournalSyncService } from './journal-sync'
 import { initTagDefinitionSyncService, resetTagDefinitionSyncService } from './tag-definition-sync'
 import { initFolderConfigSyncService, resetFolderConfigSyncService } from './folder-config-sync'
+import { initThemeSyncService, resetThemeSyncService } from './theme-sync'
 import { initCalendarEventSyncService, resetCalendarEventSyncService } from './calendar-event-sync'
 import {
   initCalendarSourceSyncService,
@@ -114,6 +115,7 @@ function resetSyncServiceSingletons(): void {
   resetJournalSyncService()
   resetTagDefinitionSyncService()
   resetFolderConfigSyncService()
+  resetThemeSyncService()
   resetCalendarEventSyncService()
   resetCalendarSourceSyncService()
   resetCalendarBindingSyncService()
@@ -259,6 +261,11 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         db: runtimeSyncDb,
         getDeviceId
       })
+      const themeSync = initThemeSyncService({
+        queue,
+        db: runtimeSyncDb,
+        getDeviceId
+      })
       const calendarEventSync = initCalendarEventSyncService({
         queue,
         db: runtimeSyncDb,
@@ -325,6 +332,12 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
           kind: 'record',
           local: folderConfigSync,
           remote: getRemoteSyncAdapter('folder_config')
+        },
+        {
+          type: 'theme',
+          kind: 'record',
+          local: themeSync,
+          remote: getRemoteSyncAdapter('theme')
         },
         {
           type: 'calendar_event',

@@ -11,6 +11,7 @@ import { noteHandler } from './note-handler'
 import { journalHandler } from './journal-handler'
 import { tagDefinitionHandler } from './tag-definition-handler'
 import { folderConfigHandler } from './folder-config-handler'
+import { themeHandler } from './theme-handler'
 import { calendarEventHandler } from './calendar-event-handler'
 import { calendarSourceHandler } from './calendar-source-handler'
 import { calendarBindingHandler } from './calendar-binding-handler'
@@ -31,6 +32,7 @@ const handlers = new Map<SyncItemType, SyncItemHandler>([
   ['journal', journalHandler],
   ['tag_definition', tagDefinitionHandler],
   ['folder_config', folderConfigHandler],
+  ['theme', themeHandler],
   ['calendar_event', calendarEventHandler],
   ['calendar_source', calendarSourceHandler],
   ['calendar_binding', calendarBindingHandler],

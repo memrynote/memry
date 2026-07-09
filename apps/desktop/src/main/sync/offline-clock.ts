@@ -3,6 +3,7 @@ import { tasks } from '@memry/db-schema/schema/tasks'
 import { projects } from '@memry/db-schema/schema/projects'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
 import { savedFilters } from '@memry/db-schema/schema/settings'
+import { customThemes } from '@memry/db-schema/schema/custom-themes'
 import {
   OFFLINE_CLOCK_DEVICE_ID,
   type VectorClock,
@@ -161,6 +162,22 @@ export function incrementInboxClockOffline(db: DataDb, itemId: string): void {
     log.debug('Incremented offline inbox clock', { itemId })
   } catch (err) {
     log.warn('Failed to increment offline inbox clock', { itemId, error: err })
+  }
+}
+
+export function incrementThemeClockOffline(db: DataDb, themeId: string): void {
+  try {
+    const theme = db.select().from(customThemes).where(eq(customThemes.id, themeId)).get()
+    if (!theme) return
+
+    const existingClock = (theme.clock as VectorClock) ?? {}
+    const newClock = increment(existingClock, OFFLINE_DEVICE_KEY)
+
+    db.update(customThemes).set({ clock: newClock }).where(eq(customThemes.id, themeId)).run()
+
+    log.debug('Incremented offline theme clock', { themeId })
+  } catch (err) {
+    log.warn('Failed to increment offline theme clock', { themeId, error: err })
   }
 }
 
