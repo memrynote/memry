@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { motion, useInView } from 'framer-motion'
+import { motion, useInView, useReducedMotion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { Container } from '@/components/layout/Container'
 
@@ -21,6 +21,7 @@ function useScramble(trigger: boolean, lineCount: number, charsPerLine: number) 
   const [lines, setLines] = useState<string[]>(() => Array.from({ length: lineCount }, () => ''))
   const [hovered, setHovered] = useState(false)
   const intervalRef = useRef<ReturnType<typeof setInterval>>(null)
+  const reduceMotion = useReducedMotion()
 
   useEffect(() => {
     if (!trigger) return
@@ -37,11 +38,13 @@ function useScramble(trigger: boolean, lineCount: number, charsPerLine: number) 
     }
 
     scramble()
+    // Reduced motion: one static cipher fill, no flicker loop.
+    if (reduceMotion) return
     intervalRef.current = setInterval(scramble, hovered ? FAST_INTERVAL : SLOW_INTERVAL)
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current)
     }
-  }, [trigger, lineCount, charsPerLine, hovered])
+  }, [trigger, lineCount, charsPerLine, hovered, reduceMotion])
 
   return { lines, setHovered }
 }
@@ -64,7 +67,9 @@ const PILLARS = [
 export function SecurityShowcase() {
   const ref = useRef<HTMLElement>(null)
   const isInView = useInView(ref, { once: true, amount: 0.3 })
-  const { lines: scrambled, setHovered } = useScramble(isInView, 4, 28)
+  // Live (not once): the cipher ticker pauses when the section scrolls away.
+  const scrambleActive = useInView(ref, { amount: 0.2 })
+  const { lines: scrambled, setHovered } = useScramble(scrambleActive, 4, 28)
 
   return (
     <section ref={ref} className="zone-dark py-24 md:py-32">

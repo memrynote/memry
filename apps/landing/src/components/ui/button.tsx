@@ -4,12 +4,13 @@ import { forwardRef, type ButtonHTMLAttributes } from 'react'
 import { cn } from '@/lib/utils'
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
+  // Press feedback fires on :active (pointer-down) and lands fast — release eases back at 200ms.
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 active:scale-[0.97] active:duration-75 motion-reduce:active:scale-100',
   {
     variants: {
       variant: {
         default:
-          'bg-[var(--color-terracotta)] text-white shadow-sm hover:bg-[var(--color-terracotta-dark)] active:scale-[0.98]',
+          'bg-[var(--color-terracotta)] text-white shadow-sm hover:bg-[var(--color-terracotta-dark)]',
         secondary:
           'bg-[var(--color-paper-alt)] text-[var(--color-ink)] border border-[var(--color-border)] shadow-sm hover:bg-[var(--color-border)]',
         ghost: 'text-[var(--color-ink)] hover:bg-[var(--color-paper-alt)]',
