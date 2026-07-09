@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test'
 import { test, expect } from './fixtures'
 import { waitForAppReady, waitForVaultReady } from './utils/electron-helpers'
+import { getVisibleDayStart, waitForStable } from './utils/wait-helpers'
 
 interface OverlapSeedInput {
   day: string
@@ -109,6 +110,13 @@ test.describe('Calendar — overlapping events layout', () => {
     // #given — same seed, week view
     await openCalendar(page)
     await switchView(page, 'Week')
+
+    // The week grid is a horizontal virtualizer whose initial scroll re-centers
+    // on today and recycles day columns. Wait for that scroll to settle before
+    // locating chips, otherwise a chip can pass toBeVisible() and then detach
+    // mid-measure ("Element is not attached to the DOM"). Mirrors the settle in
+    // calendar-week-scroll.e2e.ts.
+    await waitForStable(() => getVisibleDayStart(page), { stableFor: 500, timeout: 15_000 })
 
     const weekGrid = page.getByTestId('calendar-week-scroll')
     const memryChip = weekGrid
