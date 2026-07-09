@@ -1,5 +1,26 @@
-import { describe, it, expect } from 'vitest'
-import { buildTemplateApplyUpdate } from './apply-template'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+
+vi.mock('../vault/notes', () => ({
+  getNoteById: vi.fn()
+}))
+vi.mock('../vault/templates', async (importActual) => {
+  const actual = await importActual<typeof import('../vault/templates')>()
+  return { ...actual, getTemplate: vi.fn() }
+})
+vi.mock('./domain', () => ({
+  updateNoteCommand: vi.fn()
+}))
+vi.mock('../sync/crdt-feed', () => ({
+  replaceNoteBodyInCrdt: vi.fn(),
+  replaceNoteTagsInCrdt: vi.fn()
+}))
+
+import { buildTemplateApplyUpdate, applyTemplateToNote } from './apply-template'
+import { getNoteById } from '../vault/notes'
+import { getTemplate } from '../vault/templates'
+import { updateNoteCommand } from './domain'
+import { replaceNoteBodyInCrdt, replaceNoteTagsInCrdt } from '../sync/crdt-feed'
+import { NoteError, VaultError } from '../lib/errors'
 import type { Template } from '@memry/contracts/templates-api'
 
 const template: Template = {
@@ -49,5 +70,55 @@ describe('buildTemplateApplyUpdate', () => {
 
   it('always targets the note id', () => {
     expect(buildTemplateApplyUpdate(note, template, 'full').id).toBe('n1')
+  })
+})
+
+describe('applyTemplateToNote', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('throws NoteError when the note does not exist', async () => {
+    vi.mocked(getNoteById).mockResolvedValue(null)
+    await expect(
+      applyTemplateToNote({ noteId: 'missing', templateId: 't1', mode: 'full' })
+    ).rejects.toBeInstanceOf(NoteError)
+    expect(getTemplate).not.toHaveBeenCalled()
+    expect(updateNoteCommand).not.toHaveBeenCalled()
+  })
+
+  it('throws VaultError when the template does not exist', async () => {
+    vi.mocked(getNoteById).mockResolvedValue(note)
+    vi.mocked(getTemplate).mockResolvedValue(null)
+    await expect(
+      applyTemplateToNote({ noteId: 'n1', templateId: 'gone', mode: 'full' })
+    ).rejects.toBeInstanceOf(VaultError)
+    expect(updateNoteCommand).not.toHaveBeenCalled()
+  })
+
+  it('full mode: persists the merged update and feeds both body and tags to the open editor', async () => {
+    vi.mocked(getNoteById).mockResolvedValue(note)
+    vi.mocked(getTemplate).mockResolvedValue(template)
+    vi.mocked(updateNoteCommand).mockResolvedValue(note)
+
+    const result = await applyTemplateToNote({ noteId: 'n1', templateId: 't1', mode: 'full' })
+
+    expect(result).toBe(note)
+    const update = vi.mocked(updateNoteCommand).mock.calls[0][0]
+    expect(update.id).toBe('n1')
+    expect(new Set(update.tags)).toEqual(new Set(['work', 'daily', 'meeting']))
+    expect(replaceNoteBodyInCrdt).toHaveBeenCalledWith('n1', update.content)
+    expect(replaceNoteTagsInCrdt).toHaveBeenCalledWith('n1', update.tags)
+  })
+
+  it('body mode: replaces the body but does not touch the open editor tags', async () => {
+    vi.mocked(getNoteById).mockResolvedValue(note)
+    vi.mocked(getTemplate).mockResolvedValue(template)
+    vi.mocked(updateNoteCommand).mockResolvedValue(note)
+
+    await applyTemplateToNote({ noteId: 'n1', templateId: 't1', mode: 'body' })
+
+    expect(replaceNoteBodyInCrdt).toHaveBeenCalledTimes(1)
+    expect(replaceNoteTagsInCrdt).not.toHaveBeenCalled()
   })
 })
