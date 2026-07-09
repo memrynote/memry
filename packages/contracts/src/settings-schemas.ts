@@ -180,7 +180,9 @@ export const CALENDAR_SETTINGS_DEFAULTS: CalendarSettings = {
   dayCellClickBehavior: 'journal',
   calendarPageClickOverride: 'calendar',
   weekStartDay: 'monday',
-  showNotesOnCalendar: true
+  // Off by default: notes stay off the calendar until the user opts in (this
+  // global toggle, or a per-date-property calendar toggle on the note).
+  showNotesOnCalendar: false
 }
 
 // ============================================================================

@@ -602,6 +602,59 @@ describe('getCalendarRangeProjection', () => {
     expect(items.some((i) => i.projectionId === 'note-created:j1')).toBe(false)
   })
 
+  it('keeps only the property chip when a calendar-enabled date property lands on the creation day', () => {
+    indexDbResult.db.run(sql`
+      INSERT INTO note_cache (id, path, title, file_type, created_at, modified_at)
+      VALUES (${'n-both'}, ${'notes/plan.md'}, ${'Plan'}, ${'markdown'}, ${'2026-06-15T09:00:00.000Z'}, ${'2026-06-15T09:00:00.000Z'})
+    `)
+    indexDbResult.db.run(sql`
+      INSERT INTO note_properties (note_id, name, type, value)
+      VALUES (${'n-both'}, ${'Deadline'}, ${'date'}, ${'2026-06-15T09:00:00.000Z'})
+    `)
+
+    const { items } = getCalendarRangeProjection(
+      db as unknown as DataDb,
+      indexDb,
+      {
+        startAt: '2026-06-01T00:00:00.000Z',
+        endAt: '2026-07-01T00:00:00.000Z',
+        includeUnselectedSources: false
+      },
+      ['Deadline'],
+      true
+    )
+
+    const noteItems = items.filter((i) => i.sourceType === 'note')
+    expect(noteItems.map((i) => i.projectionId)).toEqual(['note:n-both:Deadline'])
+  })
+
+  it('keeps both chips when the date property falls on a different day than creation', () => {
+    indexDbResult.db.run(sql`
+      INSERT INTO note_cache (id, path, title, file_type, created_at, modified_at)
+      VALUES (${'n-later'}, ${'notes/launch.md'}, ${'Launch'}, ${'markdown'}, ${'2026-06-15T09:00:00.000Z'}, ${'2026-06-15T09:00:00.000Z'})
+    `)
+    indexDbResult.db.run(sql`
+      INSERT INTO note_properties (note_id, name, type, value)
+      VALUES (${'n-later'}, ${'Deadline'}, ${'date'}, ${'2026-06-20T09:00:00.000Z'})
+    `)
+
+    const { items } = getCalendarRangeProjection(
+      db as unknown as DataDb,
+      indexDb,
+      {
+        startAt: '2026-06-01T00:00:00.000Z',
+        endAt: '2026-07-01T00:00:00.000Z',
+        includeUnselectedSources: false
+      },
+      ['Deadline'],
+      true
+    )
+
+    const ids = items.filter((i) => i.sourceType === 'note').map((i) => i.projectionId)
+    expect(ids).toContain('note:n-later:Deadline')
+    expect(ids).toContain('note-created:n-later')
+  })
+
   it('omits created-date notes when showNotesByCreated is off', () => {
     indexDbResult.db.run(sql`
       INSERT INTO note_cache (id, path, title, file_type, created_at, modified_at)

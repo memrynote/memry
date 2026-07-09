@@ -62,7 +62,7 @@ The toggle is vault-wide per property name — enabling it for "Deadline" once s
 
 ## Show Notes on Calendar
 
-[Settings → Calendar](/user-guide/settings#calendar) has a **Show notes on calendar** toggle (on by default). While it's on, every note appears on the calendar as an all-day chip on the day it was created — no per-note setup. Turning it off removes them again. This is display-only: no date is written to the note.
+[Settings → Calendar](/user-guide/settings#calendar) has a **Show notes on calendar** toggle (off by default — new notes stay off the calendar until you opt in). While it's on, every note appears on the calendar as an all-day chip on the day it was created — no per-note setup. Turning it off removes them again. This is display-only: no date is written to the note. A note whose calendar-enabled date property falls on its creation day shows a single chip, not two.
 
 With notes on the calendar, the [Day Panel](/user-guide/day-panel) mini-calendar also shows a notes dot on days that have notes — alongside the event and journal-activity dots — and the day's list under the calendar includes those notes next to events.
 
