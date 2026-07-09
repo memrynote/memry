@@ -4,7 +4,8 @@ Download the desktop app from **[memrynote.com/download/desktop](https://memryno
 The download page detects your platform and offers installers for:
 
 - **macOS** — Apple Silicon and Intel
-- **Windows**
+- **Windows** — the installer lets you choose the install location, so you can
+  install to a drive other than `C:`
 - **Linux** — AppImage and `.deb`
 
 On macOS you can also install with [Homebrew](https://brew.sh):

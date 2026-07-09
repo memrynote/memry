@@ -12,9 +12,20 @@ import { increment } from '../vector-clock'
 import { createLogger } from '../../lib/logger'
 import { BaseItemHandler } from './base-handler'
 import type { ApplyContext, ApplyResult, DrizzleDb } from './types'
-import { writeFolderConfig } from '../../vault/folders'
+import { readFolderConfig, writeFolderConfig } from '../../vault/folders'
 
 const log = createLogger('FolderConfigHandler')
+
+/**
+ * The sync payload only carries the icon, but .folder.md also stores local-only
+ * view configuration (views/formulas/properties/summaries) and template settings.
+ * Merge the icon into the existing on-disk config so applying a remote folder
+ * config never wipes them.
+ */
+async function writeMergedFolderConfig(folderPath: string, icon: string | null): Promise<void> {
+  const current = (await readFolderConfig(folderPath)) ?? {}
+  await writeFolderConfig(folderPath, { ...current, icon })
+}
 
 class FolderConfigHandler extends BaseItemHandler<FolderConfigSyncPayload> {
   readonly type = 'folder_config' as const
@@ -50,7 +61,7 @@ class FolderConfigHandler extends BaseItemHandler<FolderConfigSyncPayload> {
           .where(eq(folderConfigs.path, itemId))
           .run()
 
-        void writeFolderConfig(itemId, { icon: data.icon ?? existing.icon })
+        void writeMergedFolderConfig(itemId, data.icon ?? existing.icon)
         ctx.emit(NotesChannels.events.FOLDER_CONFIG_UPDATED, { path: itemId })
         return resolution.action === 'merge' ? 'conflict' : 'applied'
       }
@@ -65,7 +76,7 @@ class FolderConfigHandler extends BaseItemHandler<FolderConfigSyncPayload> {
         })
         .run()
 
-      void writeFolderConfig(itemId, { icon: data.icon ?? null })
+      void writeMergedFolderConfig(itemId, data.icon ?? null)
       ctx.emit(NotesChannels.events.FOLDER_CONFIG_UPDATED, { path: itemId })
       return 'applied'
     })
@@ -84,7 +95,7 @@ class FolderConfigHandler extends BaseItemHandler<FolderConfigSyncPayload> {
     }
 
     ctx.db.delete(folderConfigs).where(eq(folderConfigs.path, itemId)).run()
-    void writeFolderConfig(itemId, { icon: null })
+    void writeMergedFolderConfig(itemId, null)
     ctx.emit(NotesChannels.events.FOLDER_CONFIG_UPDATED, { path: itemId })
     return 'applied'
   }

@@ -63,6 +63,18 @@ export interface AgentStoreData {
 }
 
 /**
+ * Last known main-window geometry, restored on the next launch / dock reopen so
+ * the window comes back at the size and position the user left it.
+ */
+export interface StoredWindowBounds {
+  width: number
+  height: number
+  x?: number
+  y?: number
+  isMaximized?: boolean
+}
+
+/**
  * Auto-updater preferences that must survive restarts and be readable by the
  * main process before any renderer loads (so the startup update check honors them).
  */
@@ -71,6 +83,8 @@ export interface UpdaterStoreData {
   skippedVersion?: string
   /** When true, updates download + install without prompting. */
   autoDownload?: boolean
+  /** When true (default), the app checks for updates at launch and on an interval. */
+  autoCheck?: boolean
 }
 
 /**
@@ -91,6 +105,8 @@ interface StoreSchema {
   captureAllowedOrigins: string[]
   /** Auto-updater preferences */
   updater: UpdaterStoreData
+  /** Last known main-window geometry (null until the window is first sized) */
+  windowBounds: StoredWindowBounds | null
 }
 
 const CONFIG_FILE = 'memry-config.json'
@@ -102,7 +118,8 @@ const defaultData: StoreSchema = {
   sync: {},
   agent: {},
   captureAllowedOrigins: [],
-  updater: {}
+  updater: {},
+  windowBounds: null
 }
 
 /** In-memory cache — populated on first read, updated on every write. */
@@ -165,6 +182,20 @@ export const store = {
     const data = { ...getCache(), [key]: value }
     writeConfig(data)
   }
+}
+
+/**
+ * Get the last persisted main-window geometry, or null if none saved yet.
+ */
+export function getWindowBounds(): StoredWindowBounds | null {
+  return store.get('windowBounds')
+}
+
+/**
+ * Persist the main-window geometry for restore on the next launch / dock reopen.
+ */
+export function setWindowBounds(bounds: StoredWindowBounds): void {
+  store.set('windowBounds', bounds)
 }
 
 /**
@@ -308,6 +339,13 @@ export function setSkippedVersion(version: string | null): void {
  */
 export function setAutoDownloadPref(enabled: boolean): void {
   store.set('updater', { ...store.get('updater'), autoDownload: enabled })
+}
+
+/**
+ * Persist whether the app checks for updates automatically (launch + interval).
+ */
+export function setAutoCheckPref(enabled: boolean): void {
+  store.set('updater', { ...store.get('updater'), autoCheck: enabled })
 }
 
 /**

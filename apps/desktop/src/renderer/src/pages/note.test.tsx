@@ -210,8 +210,9 @@ vi.mock('@/hooks/use-bookmarks', () => ({
 }))
 
 vi.mock('@/hooks/use-editor-settings', () => ({
+  EDITOR_NORMAL_CONTENT_WIDTH: '640px',
   useEditorSettings: () => ({
-    settings: { toolbarMode: 'floating', width: 'medium' }
+    settings: { toolbarMode: 'floating', width: 'normal' }
   })
 }))
 

@@ -131,3 +131,11 @@ export const parseDateKey = (key: string): Date => {
   const [year, month, day] = key.split('-').map(Number)
   return new Date(year, month - 1, day)
 }
+
+// Parse a stored task dueDate value into a local Date.
+// Date-only keys (yyyy-MM-dd) are parsed as local midnight; `new Date('yyyy-MM-dd')`
+// would parse them as UTC midnight and roll back a day in negative-offset zones.
+// Values that carry a time component fall back to native parsing.
+export const parseDueDate = (value: string): Date => {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? parseDateKey(value) : new Date(value)
+}

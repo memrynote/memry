@@ -367,6 +367,15 @@
       },
       "error": "更新週開始失敗"
     },
+    "defaultView": {
+      "label": "預設檢視",
+      "description": "工作頁面開啟時顯示的分頁",
+      "options": {
+        "all": "全部",
+        "today": "今天"
+      },
+      "error": "更新預設檢視失敗"
+    },
     "staleInbox": {
       "label": "陳舊收件箱閾值",
       "description": "比這個時間還早的任務將被標示為陳舊",

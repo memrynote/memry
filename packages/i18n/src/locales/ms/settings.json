@@ -367,6 +367,15 @@
       },
       "error": "Gagal mengemas kini permulaan minggu"
     },
+    "defaultView": {
+      "label": "Paparan Lalai",
+      "description": "Tab tempat halaman Tugasan dibuka",
+      "options": {
+        "all": "Semua",
+        "today": "Hari ini"
+      },
+      "error": "Gagal mengemas kini paparan lalai"
+    },
     "staleInbox": {
       "label": "Ambang Peti Masuk Lapuk",
       "description": "Tugasan yang lebih lama daripada ini diserlahkan sebagai lapuk",

@@ -27,6 +27,15 @@ const editableContextMenuPopupMock = vi.fn()
 const buildEditableTextContextMenuMock = vi.fn(() => ({ popup: editableContextMenuPopupMock }))
 const getCurrentVaultPathMock = vi.fn(() => null as string | null)
 const getStoredLocaleMock = vi.fn(() => null as string | null)
+type StoredWindowBoundsShape = {
+  width: number
+  height: number
+  x?: number
+  y?: number
+  isMaximized?: boolean
+}
+const getWindowBoundsMock = vi.fn((): StoredWindowBoundsShape | null => null)
+const setWindowBoundsMock = vi.fn()
 const getVaultStatusMock = vi.fn(() => ({ path: null as string | null }))
 const readPreferencesMock = vi.fn(() => ({ language: 'en' }))
 const initializeTelemetryRuntimeMock = vi.fn()
@@ -112,6 +121,8 @@ function createBrowserWindowMock() {
     isMaximized: vi.fn(() => false),
     getSize: vi.fn(() => [480, 82] as [number, number]),
     setSize: vi.fn(),
+    getBounds: vi.fn(() => ({ x: 0, y: 0, width: 480, height: 82 })),
+    getNormalBounds: vi.fn(() => ({ x: 0, y: 0, width: 480, height: 82 })),
     emitTestEvent: (event: string, ...args: unknown[]) => eventHandlers.get(event)?.(...args)
   }
   browserWindows.push(window)
@@ -150,7 +161,9 @@ vi.mock('./vault', () => ({
 
 vi.mock('./store', () => ({
   getCurrentVaultPath: getCurrentVaultPathMock,
-  getStoredLocale: getStoredLocaleMock
+  getStoredLocale: getStoredLocaleMock,
+  getWindowBounds: getWindowBoundsMock,
+  setWindowBounds: setWindowBoundsMock
 }))
 
 vi.mock('./vault/vault-preferences', () => ({
@@ -330,7 +343,8 @@ vi.mock('electron', () => ({
     readText: vi.fn(() => '')
   },
   screen: {
-    getPrimaryDisplay: vi.fn(() => ({ workAreaSize: { width: 1440, height: 900 } }))
+    getPrimaryDisplay: vi.fn(() => ({ workAreaSize: { width: 1440, height: 900 } })),
+    getAllDisplays: vi.fn(() => [{ workArea: { x: 0, y: 0, width: 1440, height: 900 } }])
   },
   session: {
     defaultSession: {
@@ -386,6 +400,7 @@ describe('main index phase2 exports', () => {
     applyGlobalCaptureShortcutMock.mockReturnValue({ registered: true })
     getCurrentVaultPathMock.mockReturnValue(null)
     getStoredLocaleMock.mockReturnValue(null)
+    getWindowBoundsMock.mockReturnValue(null)
     getVaultStatusMock.mockReturnValue({ path: null })
     readPreferencesMock.mockReturnValue({ language: 'en' })
     isPinningDisabledMock.mockReturnValue(true)
@@ -585,6 +600,66 @@ describe('main index phase2 exports', () => {
         height: 900,
         show: false
       })
+    )
+  })
+
+  it('restores the saved window size and position when a vault is open', async () => {
+    whenReadyMock.mockResolvedValue(undefined)
+    getCurrentVaultPathMock.mockReturnValue('/vault')
+    getWindowBoundsMock.mockReturnValue({
+      width: 1280,
+      height: 820,
+      x: 120,
+      y: 90,
+      isMaximized: false
+    })
+
+    await importMainModule()
+    await flushReadyWork()
+
+    expect(BrowserWindowMock).toHaveBeenCalledWith(
+      expect.objectContaining({ width: 1280, height: 820, x: 120, y: 90, show: false })
+    )
+    expect(browserWindows[0].maximize).not.toHaveBeenCalled()
+  })
+
+  it('re-maximizes on launch when the window was left maximized', async () => {
+    whenReadyMock.mockResolvedValue(undefined)
+    getCurrentVaultPathMock.mockReturnValue('/vault')
+    getWindowBoundsMock.mockReturnValue({
+      width: 1280,
+      height: 820,
+      x: 120,
+      y: 90,
+      isMaximized: true
+    })
+
+    await importMainModule()
+    await flushReadyWork()
+
+    expect(browserWindows[0].maximize).toHaveBeenCalledTimes(1)
+  })
+
+  it('restores saved bounds on dock reopen even when dev forces the vault picker', async () => {
+    whenReadyMock.mockResolvedValue(undefined)
+    // MEMRY_FORCE_VAULT_PICKER shrinks the *initial* size in dev, but on a dock
+    // reopen the vault is genuinely open — the saved geometry must still win.
+    process.env.MEMRY_FORCE_VAULT_PICKER = '1'
+    getCurrentVaultPathMock.mockReturnValue('/vault')
+    getVaultStatusMock.mockReturnValue({ isOpen: true, path: '/vault' } as never)
+    getWindowBoundsMock.mockReturnValue({
+      width: 1327,
+      height: 750,
+      x: 120,
+      y: 90,
+      isMaximized: false
+    })
+
+    await importMainModule()
+    await flushReadyWork()
+
+    expect(BrowserWindowMock).toHaveBeenCalledWith(
+      expect.objectContaining({ width: 1327, height: 750, x: 120, y: 90, show: false })
     )
   })
 

@@ -36,7 +36,10 @@ const nativeArchCheckedModules = ['better-sqlite3', 'keytar']
 
 function getPackagedElectronExecutable(resourcesPath) {
   const contentsPath = path.dirname(resourcesPath)
-  const executable = path.join(contentsPath, 'MacOS', productName)
+  const executable =
+    process.platform === 'win32'
+      ? path.join(contentsPath, `${productName}.exe`)
+      : path.join(contentsPath, 'MacOS', productName)
   if (!fs.existsSync(executable)) {
     throw new Error(`Missing packaged Electron executable: ${executable}`)
   }
@@ -76,6 +79,17 @@ function resolveResourcesCheck(inputPath) {
     return [
       {
         resourcesPath: absolutePath,
+        expectedArch: process.arch
+      }
+    ]
+  }
+
+  // Windows/Linux unpacked layout (e.g. dist/win-unpacked): resources/ sits
+  // next to the executable instead of inside a mac bundle.
+  if (fs.existsSync(path.join(absolutePath, 'resources'))) {
+    return [
+      {
+        resourcesPath: path.join(absolutePath, 'resources'),
         expectedArch: process.arch
       }
     ]
@@ -126,14 +140,46 @@ function runElectronNativeSmoke(resourcesPath) {
   fs.writeFileSync(
     smokeScriptPath,
     `
+const fs = require('node:fs')
 const { createRequire } = require('node:module')
+const os = require('node:os')
+const path = require('node:path')
 
 const packagedRequire = createRequire(process.env.MEMRY_PACKAGED_MAIN)
 const Database = require(packagedRequire.resolve('better-sqlite3'))
 const database = new Database(':memory:')
 database.close()
 require(packagedRequire.resolve('keytar'))
-console.log(\`Electron native runtime ABI \${process.versions.modules}\`)
+
+// classic-level backs the CRDT store (y-leveldb). A binary built for the
+// wrong ABI does not fail at require() — it fails at open() with
+// napi_create_reference errors thrown out-of-band, or hangs its callbacks
+// (shipped broken in 2026.705.1: first keystroke crashed the editor). Probe a
+// real open/put/get/close so a bad binary fails the build, not the user.
+const { ClassicLevel } = require(packagedRequire.resolve('classic-level'))
+const levelDbPath = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-classic-level-smoke-'))
+
+const timer = setTimeout(() => {
+  console.error('classic-level smoke timed out — native binding hangs under packaged Electron')
+  process.exit(1)
+}, 30000)
+
+;(async () => {
+  const db = new ClassicLevel(levelDbPath)
+  await db.open()
+  await db.put('probe', 'ok')
+  const value = await db.get('probe')
+  if (value !== 'ok') {
+    throw new Error(\`classic-level probe read mismatch: \${value}\`)
+  }
+  await db.close()
+  clearTimeout(timer)
+  fs.rmSync(levelDbPath, { force: true, recursive: true })
+  console.log(\`Electron native runtime ABI \${process.versions.modules}\`)
+})().catch((error) => {
+  console.error(error)
+  process.exit(1)
+})
 `.trimStart()
   )
 

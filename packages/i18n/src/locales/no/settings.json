@@ -367,6 +367,15 @@
       },
       "error": "Kunne ikke oppdatere ukestart"
     },
+    "defaultView": {
+      "label": "Standardvisning",
+      "description": "Fanen oppgavesiden åpnes på",
+      "options": {
+        "all": "Alle",
+        "today": "I dag"
+      },
+      "error": "Kunne ikke oppdatere standardvisning"
+    },
     "staleInbox": {
       "label": "Foreldet innboksterskel",
       "description": "Oppgaver som er eldre enn dette, fremheves som foreldede",

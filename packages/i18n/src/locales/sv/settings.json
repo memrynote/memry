@@ -367,6 +367,15 @@
       },
       "error": "Misslyckades med att uppdatera veckostart"
     },
+    "defaultView": {
+      "label": "Standardvy",
+      "description": "Fliken som uppgiftssidan öppnas på",
+      "options": {
+        "all": "Alla",
+        "today": "Idag"
+      },
+      "error": "Det gick inte att uppdatera standardvyn"
+    },
     "staleInbox": {
       "label": "Tröskel för inaktiva inkorgar",
       "description": "Uppgifter äldre än detta markeras som inaktuella",

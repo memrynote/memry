@@ -169,7 +169,7 @@ export const TasksPage = ({
   const activeInternalTab =
     (taskTabViewState.activeInternalTab as TasksInternalTab | undefined) ??
     (taskTabViewState.activeTab as TasksInternalTab | undefined) ??
-    'today'
+    taskPrefs.defaultView
   const defaultProjectId = useMemo(
     () => resolveInitialViewProject(selectedType, taskPrefs.defaultProjectId, projects),
     [selectedType, taskPrefs.defaultProjectId, projects]

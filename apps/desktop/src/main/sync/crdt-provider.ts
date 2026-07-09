@@ -30,6 +30,8 @@ const SIZE_CHECK_INTERVAL_MS = 60_000
 const ENCODED_SIZE_COMPACTION_THRESHOLD = 1024 * 1024
 const ACCUMULATED_BYTES_RECHECK_THRESHOLD = 512 * 1024
 const DEFAULT_INACTIVE_DOC_LIMIT = 32
+const PERSISTENCE_PROBE_KEY = '__memry_crdt_probe__'
+const PERSISTENCE_PROBE_TIMEOUT_MS = 15_000
 
 export type SnapshotPushFn = (noteId: string, state: Uint8Array) => Promise<void>
 
@@ -77,6 +79,8 @@ export class CrdtProvider {
   private docs = new Map<string, ActiveDoc>()
   private openLocks = new Map<string, Promise<Y.Doc>>()
   private persistence: CrdtPersistence | null = null
+  private persistenceReady = false
+  private persistenceInitPromise: Promise<void> | null = null
   private updateQueue: CrdtUpdateQueue | null = null
   private snapshotPushFn: SnapshotPushFn | null = null
   private readonly inactiveDocLimit: number
@@ -101,17 +105,44 @@ export class CrdtProvider {
   }
 
   async initPersistence(): Promise<void> {
-    if (this.persistence) {
+    // Never retry a settled init: a failed probe means the native binding is
+    // broken for this process — re-probing would just re-pay the timeout.
+    if (this.persistenceReady) {
       return
     }
 
+    if (!this.persistenceInitPromise) {
+      this.persistenceInitPromise = this.doInitPersistence().finally(() => {
+        this.persistenceInitPromise = null
+      })
+    }
+    return this.persistenceInitPromise
+  }
+
+  private async doInitPersistence(): Promise<void> {
     const storagePath = path.join(app.getPath('userData'), 'crdt-store')
-    this.persistence = new LeveldbPersistence(storagePath) as CrdtPersistence
-    log.debug('CrdtProvider persistence initialized', { storagePath })
+    try {
+      const persistence = new LeveldbPersistence(storagePath) as CrdtPersistence
+      await probePersistence(persistence)
+      this.persistence = persistence
+      log.debug('CrdtProvider persistence initialized', { storagePath })
+    } catch (err) {
+      // A broken classic-level native binding (e.g. napi_create_reference
+      // failures on ABI mismatch, as shipped in 2026.705.1 on Windows) throws
+      // out-of-band or hangs instead of rejecting. Degrade to in-memory:
+      // notes still load from vault markdown and write back to disk; only
+      // CRDT history persistence is lost.
+      log.error(
+        'CRDT persistence unavailable — continuing in-memory (notes still load from vault files)',
+        { storagePath, error: err }
+      )
+      this.persistence = null
+    }
+    this.persistenceReady = true
   }
 
   isInitialized(): boolean {
-    return this.persistence !== null
+    return this.persistenceReady
   }
 
   async open(noteId: string, windowId?: number, options?: { skipSeed?: boolean }): Promise<Y.Doc> {
@@ -159,23 +190,32 @@ export class CrdtProvider {
     this.initDocStructure(doc)
 
     if (this.persistence) {
-      const persisted = await this.persistence.getYDoc(noteId)
-      if (persisted) {
-        const update = Y.encodeStateAsUpdate(persisted)
-        Y.applyUpdate(doc, update)
-        persisted.destroy()
-        // Heal notes previously persisted with empty block ids, which crash the
-        // editor with "Block doesn't have id" on mount.
-        let repaired = 0
-        doc.transact(() => {
-          repaired = repairEmptyBlockIds(doc.getXmlFragment(CRDT_FRAGMENT_NAME))
-        }, ORIGIN_LOCAL)
-        if (repaired > 0) {
-          log.info('Repaired empty block ids in persisted note', { noteId, count: repaired })
-          await this.persistence.storeUpdate(noteId, Y.encodeStateAsUpdate(doc))
+      try {
+        const persisted = await this.persistence.getYDoc(noteId)
+        if (persisted) {
+          const update = Y.encodeStateAsUpdate(persisted)
+          Y.applyUpdate(doc, update)
+          persisted.destroy()
+          // Heal notes previously persisted with empty block ids, which crash the
+          // editor with "Block doesn't have id" on mount.
+          let repaired = 0
+          doc.transact(() => {
+            repaired = repairEmptyBlockIds(doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+          }, ORIGIN_LOCAL)
+          if (repaired > 0) {
+            log.info('Repaired empty block ids in persisted note', { noteId, count: repaired })
+            await this.persistence.storeUpdate(noteId, Y.encodeStateAsUpdate(doc))
+          }
+        } else {
+          log.warn('CRDT persistence returned empty doc; continuing in-memory', { noteId })
         }
-      } else {
-        log.warn('CRDT persistence returned empty doc; continuing in-memory', { noteId })
+      } catch (err) {
+        // A failing store must not block the note from opening — fall through
+        // to the markdown seed below so content stays visible.
+        log.error('Failed to load persisted CRDT doc; seeding from vault file', {
+          noteId,
+          error: err
+        })
       }
     }
 
@@ -248,7 +288,9 @@ export class CrdtProvider {
 
   async purge(noteId: string): Promise<void> {
     await this.close(noteId)
-    await this.persistence?.clearDocument(noteId)
+    await this.persistence?.clearDocument(noteId).catch((err) => {
+      log.warn('Failed to clear persisted CRDT doc during purge', { noteId, error: err })
+    })
   }
 
   getDoc(noteId: string): Y.Doc | undefined {
@@ -328,6 +370,7 @@ export class CrdtProvider {
       }
       this.persistence = null
     }
+    this.persistenceReady = false
 
     this.openLocks.clear()
     this.updateQueue = null
@@ -455,7 +498,9 @@ export class CrdtProvider {
 
     const ok = await markdownToYFragment(parsed.content, fragment)
     if (ok && this.persistence) {
-      await this.persistence.storeUpdate(noteId, Y.encodeStateAsUpdate(doc))
+      await this.persistence.storeUpdate(noteId, Y.encodeStateAsUpdate(doc)).catch((err) => {
+        log.error('Failed to persist markdown-seeded CRDT doc', { noteId, error: err })
+      })
     }
   }
 
@@ -519,10 +564,18 @@ export class CrdtProvider {
       for (const entry of batch) {
         if (this.docs.has(entry.id)) continue
         if (this.persistence) {
-          const existing = await this.persistence.getYDoc(entry.id)
-          const hasContent = Y.encodeStateAsUpdate(existing).length > 4
-          existing.destroy()
-          if (hasContent) continue
+          try {
+            const existing = await this.persistence.getYDoc(entry.id)
+            const hasContent = Y.encodeStateAsUpdate(existing).length > 4
+            existing.destroy()
+            if (hasContent) continue
+          } catch (err) {
+            log.warn('Failed to read persisted doc during seeding; skipping', {
+              noteId: entry.id,
+              error: err
+            })
+            continue
+          }
         }
 
         await this.initForNote(entry.id, { title: entry.title, date: entry.date }, entry.tags)
@@ -789,6 +842,54 @@ export class CrdtProvider {
     const diff = new Uint8Array(diffArr)
     Y.applyUpdate(entry.doc, diff, { source: 'ipc', windowId: -1 } satisfies IpcOrigin)
   }
+}
+
+/**
+ * Verify the CRDT store's native binding actually works before trusting it.
+ * A broken classic-level binding (ABI mismatch) doesn't reject cleanly — it
+ * throws out-of-band from an fs callback (surfacing as uncaughtException) or
+ * never invokes its callback at all (hanging the promise). Capture both so a
+ * bad binary degrades to in-memory mode instead of crashing note editing.
+ */
+async function probePersistence(persistence: CrdtPersistence): Promise<void> {
+  const probeDoc = new Y.Doc()
+  probeDoc.getMap('probe').set('ok', true)
+  const update = Y.encodeStateAsUpdate(probeDoc)
+  probeDoc.destroy()
+
+  await new Promise<void>((resolve, reject) => {
+    let settled = false
+    const settle = (fn: () => void): void => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      process.removeListener('uncaughtException', onUncaught)
+      fn()
+    }
+    const onUncaught = (err: Error): void => settle(() => reject(err))
+    const timer = setTimeout(
+      () =>
+        settle(() =>
+          reject(
+            new Error(`CRDT persistence probe timed out after ${PERSISTENCE_PROBE_TIMEOUT_MS}ms`)
+          )
+        ),
+      PERSISTENCE_PROBE_TIMEOUT_MS
+    )
+    process.prependListener('uncaughtException', onUncaught)
+
+    Promise.resolve()
+      .then(async () => {
+        await persistence.storeUpdate(PERSISTENCE_PROBE_KEY, update)
+        const loaded = await persistence.getYDoc(PERSISTENCE_PROBE_KEY)
+        loaded.destroy()
+        await persistence.clearDocument(PERSISTENCE_PROBE_KEY)
+      })
+      .then(
+        () => settle(resolve),
+        (err) => settle(() => reject(err instanceof Error ? err : new Error(String(err))))
+      )
+  })
 }
 
 function isIpcOrigin(origin: unknown): origin is IpcOrigin {

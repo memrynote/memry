@@ -1,7 +1,7 @@
 import { useCallback, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Project, ProjectWithStats, Status, Task } from '@memry/rpc/tasks'
-import { formatDateKey } from '@/lib/task-utils'
+import { formatDateKey, parseDueDate } from '@/lib/task-utils'
 import type { Task as UiTask, RepeatConfig as UiRepeatConfig } from '@/data/task-model'
 import type { Project as UiProject, Status as UiStatus, StatusType } from '@/data/tasks-data'
 import {
@@ -92,7 +92,7 @@ function dbTaskToUiTask(dbTask: Task): UiTask {
     projectId: dbTask.projectId,
     statusId: dbTask.statusId ?? '',
     priority: priorityMap[dbTask.priority as number] ?? 'none',
-    dueDate: dbTask.dueDate ? new Date(dbTask.dueDate) : null,
+    dueDate: dbTask.dueDate ? parseDueDate(dbTask.dueDate) : null,
     dueTime: dbTask.dueTime,
     isRepeating: !!dbTask.repeatConfig,
     repeatConfig: dbRepeatConfigToUiRepeatConfig(dbTask.repeatConfig),
@@ -357,7 +357,12 @@ export function useTaskWorkspaceMutations() {
               projectId: otherUpdates.projectId,
               statusId: otherUpdates.statusId ?? undefined,
               parentId: otherUpdates.parentId ?? undefined,
-              dueDate: otherUpdates.dueDate ? formatDateKey(otherUpdates.dueDate) : null,
+              dueDate:
+                'dueDate' in otherUpdates
+                  ? otherUpdates.dueDate
+                    ? formatDateKey(otherUpdates.dueDate)
+                    : null
+                  : undefined,
               dueTime: otherUpdates.dueTime ?? undefined,
               isRepeating: otherUpdates.isRepeating,
               repeatConfig: toServiceRepeatConfig(otherUpdates.repeatConfig),
@@ -391,7 +396,12 @@ export function useTaskWorkspaceMutations() {
               projectId: otherUpdates.projectId,
               statusId: otherUpdates.statusId ?? undefined,
               parentId: otherUpdates.parentId ?? undefined,
-              dueDate: otherUpdates.dueDate ? formatDateKey(otherUpdates.dueDate) : null,
+              dueDate:
+                'dueDate' in otherUpdates
+                  ? otherUpdates.dueDate
+                    ? formatDateKey(otherUpdates.dueDate)
+                    : null
+                  : undefined,
               dueTime: otherUpdates.dueTime ?? undefined,
               isRepeating: otherUpdates.isRepeating,
               repeatConfig: toServiceRepeatConfig(otherUpdates.repeatConfig),
@@ -412,7 +422,12 @@ export function useTaskWorkspaceMutations() {
           projectId: updates.projectId,
           statusId: updates.statusId ?? undefined,
           parentId: updates.parentId ?? undefined,
-          dueDate: updates.dueDate ? formatDateKey(updates.dueDate) : null,
+          dueDate:
+            'dueDate' in updates
+              ? updates.dueDate
+                ? formatDateKey(updates.dueDate)
+                : null
+              : undefined,
           dueTime: updates.dueTime ?? undefined,
           isRepeating: updates.isRepeating,
           repeatConfig: toServiceRepeatConfig(updates.repeatConfig),

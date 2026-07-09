@@ -78,6 +78,15 @@ Notes are plain `.md` files in the vault, and the write path is built around byt
 
 A golden round-trip test suite (`apps/desktop/src/main/vault/byte-preservation.golden.test.ts`) holds this contract against adversarial files (YAML comments/anchors, CRLF, BOM, missing final newline, Obsidian syntax).
 
+### Text colors in markdown
+
+Editor colors persist in two Obsidian-compatible forms:
+
+- **Block-level colors** (drag-handle menu) serialize as an HTML comment marker line before the block: `<!-- colors:{"textColor":"red"} -->` (`packages/shared/src/block-colors.ts`).
+- **Inline colors** (formatting toolbar on selected text) serialize as raw HTML spans — `<span style="color:red">…</span>` / `background-color` — which Obsidian renders natively (`packages/shared/src/inline-colors.ts`). Because BlockNote's markdown pipeline drops both literal spans and inline color styles, both serializers route colored runs through markdown-inert tokens: wrapped before `blocksToMarkdownLossy` and swapped for span HTML after; masked before `tryParseMarkdownToBlocks` and re-applied as styles after. Spans inside fenced or inline code are left untouched. Files without markers or spans parse unchanged, and older app versions reading span-bearing files keep the text and lose only the color.
+
+The pipeline is wired into both duplicated serializers: the renderer save path (`markdown-utils.ts`) and the main/CRDT path (`blocknote-converter.ts`).
+
 ## Concurrency
 
 better-sqlite3 is synchronous and single-process. The main process is the only writer. The renderer never touches SQLite directly — all reads and writes go through IPC.

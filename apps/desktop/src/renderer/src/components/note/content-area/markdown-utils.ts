@@ -16,6 +16,12 @@ import {
   serializeBlockColorsMarker
 } from '@memry/shared/block-colors'
 import {
+  applyInlineColorTokens,
+  extractInlineColorRuns,
+  maskInlineColorSpans,
+  restoreInlineColorTokens
+} from '@memry/shared/inline-colors'
+import {
   createBlockNestingMarker,
   restoreBlockNesting,
   splitMarkdownByBlockNestingMarkers
@@ -80,9 +86,13 @@ async function parseMarkdownChunkPreservingNesting(
 // renderer save path matches the main/CRDT path (blocknote-converter.ts): `-`
 // bullets, tight lists, and single-newline paragraphs instead of remark's raw
 // `*` / loose / `\`-hard-break defaults. Without this the two serializers drift
-// and typed notes get rewritten to the loose remark style on disk.
+// and typed notes get rewritten to the loose remark style on disk. Inline
+// text/background colors would be dropped by blocksToMarkdownLossy, so colored
+// runs are wrapped in tokens first and re-emitted as `<span style="…">` after.
 async function serializeBlocks(editor: any, blocks: Block[]): Promise<string> {
-  return normalizeSerializedMarkdown(await editor.blocksToMarkdownLossy(blocks))
+  const { blocks: wrapped, replacements } = extractInlineColorRuns(blocks as never[])
+  const md = normalizeSerializedMarkdown(await editor.blocksToMarkdownLossy(wrapped))
+  return restoreInlineColorTokens(md, replacements)
 }
 
 async function serializeBlocksWithNestingMarkers(editor: any, blocks: Block[]): Promise<string> {
@@ -148,7 +158,10 @@ export async function parseMarkdownPreservingBlanks(
   editor: any,
   markdown: string
 ): Promise<Block[]> {
-  const calloutSegments = splitMarkdownByCallouts(markdown)
+  // Inline color spans are masked into markdown-inert tokens before parsing
+  // (BlockNote strips raw spans), then re-applied as styles on the parsed runs.
+  const { text: maskedMarkdown, spans } = maskInlineColorSpans(markdown)
+  const calloutSegments = splitMarkdownByCallouts(maskedMarkdown)
   const blocks: Block[] = []
 
   for (const cseg of calloutSegments) {
@@ -203,7 +216,7 @@ export async function parseMarkdownPreservingBlanks(
     }
   }
 
-  return blocks
+  return applyInlineColorTokens(blocks as never[], spans) as Block[]
 }
 
 export async function serializeBlocksPreservingBlanks(

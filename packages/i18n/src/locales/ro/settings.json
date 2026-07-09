@@ -367,6 +367,15 @@
       },
       "error": "Nu s-a putut actualiza începutul săptămânii"
     },
+    "defaultView": {
+      "label": "Vizualizare implicită",
+      "description": "Fila pe care se deschide pagina Sarcini",
+      "options": {
+        "all": "Toate",
+        "today": "Astăzi"
+      },
+      "error": "Actualizarea vizualizării implicite a eșuat"
+    },
     "staleInbox": {
       "label": "Prag veche al căsuței primite",
       "description": "Sarcinile mai vechi decât aceasta sunt evidențiate ca învechite",

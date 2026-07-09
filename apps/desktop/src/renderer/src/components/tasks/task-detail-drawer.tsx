@@ -12,6 +12,7 @@ import { InteractiveStatusBadge } from '@/components/tasks/interactive-status-ba
 import { InteractivePriorityBadge } from '@/components/tasks/interactive-priority-badge'
 import { InteractiveDueDateBadge } from '@/components/tasks/interactive-due-date-badge'
 import { InteractiveProjectBadge } from '@/components/tasks/interactive-project-badge'
+import { TaskDescriptionEditor } from '@/components/tasks/task-description-editor'
 import { TaskReminderButton } from '@/components/tasks/task-reminder-button'
 import { StatusIcon } from '@/components/tasks/status-icon'
 import { FileAudio, FileImage, FilePdf, FileVideo, X, Plus, Trash } from '@/lib/icons'
@@ -269,6 +270,34 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
     [task, onUpdateTask]
   )
 
+  // Description is a BlockNote markdown editor; debounce persistence so we don't
+  // write to the DB (and bump the sync field clock) on every keystroke.
+  const pendingDescriptionRef = useRef<string | null>(null)
+  const descriptionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const flushDescription = useCallback(() => {
+    if (descriptionTimerRef.current) {
+      clearTimeout(descriptionTimerRef.current)
+      descriptionTimerRef.current = null
+    }
+    if (pendingDescriptionRef.current !== null && task) {
+      onUpdateTask?.(task.id, { description: pendingDescriptionRef.current })
+      pendingDescriptionRef.current = null
+    }
+  }, [task, onUpdateTask])
+
+  const handleDescriptionChange = useCallback(
+    (markdown: string) => {
+      pendingDescriptionRef.current = markdown
+      if (descriptionTimerRef.current) clearTimeout(descriptionTimerRef.current)
+      descriptionTimerRef.current = setTimeout(flushDescription, 500)
+    },
+    [flushDescription]
+  )
+
+  // Flush any pending description edit when the task changes or the drawer unmounts.
+  useEffect(() => flushDescription, [flushDescription])
+
   const handleRepeatChange = useCallback(
     (repeatConfig: RepeatConfig | null) => {
       if (!task) return
@@ -381,13 +410,13 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
             {/* ── Description ── */}
             <div className="flex flex-col py-4 px-5 gap-2 border-b border-border">
               <SectionLabel>{t('task.description')}</SectionLabel>
-              <textarea
-                value={task.description ?? ''}
-                onChange={(e) => onUpdateTask?.(task.id, { description: e.target.value })}
+              <TaskDescriptionEditor
+                key={task.id}
+                initialContent={task.description ?? ''}
+                onContentChange={handleDescriptionChange}
                 placeholder={t('task.descriptionPlaceholder')}
-                rows={3}
-                className="text-[13px] leading-5 text-text-secondary bg-transparent outline-none resize-none placeholder:text-text-tertiary"
-                aria-label={t('task.description')}
+                ariaLabel={t('task.description')}
+                className="text-[13px] leading-5 text-text-secondary"
               />
             </div>
 

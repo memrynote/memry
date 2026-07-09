@@ -60,6 +60,7 @@ vi.mock('@/services/notes-service', () => ({
     getFolderTemplate: vi.fn(),
     renameFolder: vi.fn(),
     deleteFolder: vi.fn(),
+    getFolderConfig: vi.fn(),
     setFolderConfig: vi.fn(),
     reorder: vi.fn(),
     getAllPositions: vi.fn(),
@@ -301,10 +302,11 @@ describe('useNoteTreeActions', () => {
     expect(notesService.revealInFinder).toHaveBeenCalledWith('work-a')
   })
 
-  it('sets and clears folder templates with local display-name updates', async () => {
+  it('sets and clears folder templates preserving the existing folder config', async () => {
     const setFolderTemplateNames = vi.fn(
       (updater: (prev: Map<string, string>) => Map<string, string>) => updater(new Map())
     )
+    vi.mocked(notesService.getFolderConfig).mockResolvedValue({ icon: '📁', template: 'old-tpl' })
     const { result } = renderActions({ setFolderTemplateNames })
 
     act(() => result.current.handleSetFolderTemplate('Work'))
@@ -314,6 +316,7 @@ describe('useNoteTreeActions', () => {
       await result.current.handleFolderTemplateSelect('tpl-1')
     })
     expect(notesService.setFolderConfig).toHaveBeenCalledWith('Work', {
+      icon: '📁',
       template: 'tpl-1',
       inherit: true
     })
@@ -324,10 +327,9 @@ describe('useNoteTreeActions', () => {
     await act(async () => {
       await result.current.handleClearFolderTemplate('Work')
     })
-    expect(notesService.setFolderConfig).toHaveBeenCalledWith('Work', {
-      template: undefined,
-      inherit: true
-    })
+    const clearArg = vi.mocked(notesService.setFolderConfig).mock.lastCall?.[1]
+    expect(clearArg).toEqual({ icon: '📁', inherit: true })
+    expect(clearArg && 'template' in clearArg).toBe(false)
     expect(toast.success).toHaveBeenCalledWith('phaseI.toasts.defaultTemplateCleared')
   })
 

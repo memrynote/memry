@@ -155,7 +155,8 @@ vi.mock('@/hooks/use-journal-settings', () => ({
 }))
 
 vi.mock('@/hooks/use-editor-settings', () => ({
-  useEditorSettings: () => ({ settings: { toolbarMode: 'sticky', width: 'medium' } })
+  EDITOR_NORMAL_CONTENT_WIDTH: '640px',
+  useEditorSettings: () => ({ settings: { toolbarMode: 'sticky', width: 'normal' } })
 }))
 
 vi.mock('@/hooks/use-bookmarks', () => ({

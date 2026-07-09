@@ -28,13 +28,24 @@ describe('VaultPreferencesSchema', () => {
       language: 'tr',
       createInSelectedFolder: false,
       editor: {
-        width: 'wide' as const,
+        width: 'full' as const,
         toolbarMode: 'sticky' as const
       }
     }
 
     const result = VaultPreferencesSchema.parse(input)
     expect(result).toEqual(input)
+  })
+
+  it('#given legacy editor width from an older version #then coerces to normal', () => {
+    for (const legacy of ['narrow', 'medium', 'wide']) {
+      const input = {
+        ...VAULT_PREFERENCES_DEFAULTS,
+        editor: { width: legacy, toolbarMode: 'floating' as const }
+      }
+      const result = VaultPreferencesSchema.parse(input)
+      expect(result.editor.width).toBe('normal')
+    }
   })
 
   it('#given invalid theme #then throws', () => {
@@ -78,7 +89,7 @@ describe('readPreferences', () => {
         language: 'en',
         createInSelectedFolder: true,
         editor: {
-          width: 'wide',
+          width: 'full',
           toolbarMode: 'floating'
         }
       }
@@ -91,7 +102,7 @@ describe('readPreferences', () => {
     const prefs = readPreferences(vaultPath)
     expect(prefs.theme).toBe('dark')
     expect(prefs.fontSize).toBe('large')
-    expect(prefs.editor.width).toBe('wide')
+    expect(prefs.editor.width).toBe('full')
   })
 
   it('#given config.json without preferences key #then returns defaults', () => {
@@ -144,7 +155,7 @@ describe('readPreferences', () => {
     const config = {
       preferences: {
         theme: 'system',
-        editor: { width: 'narrow' }
+        editor: { width: 'normal' }
       }
     }
     fs.writeFileSync(
@@ -153,7 +164,7 @@ describe('readPreferences', () => {
     )
 
     const prefs = readPreferences(vaultPath)
-    expect(prefs.editor.width).toBe('narrow')
+    expect(prefs.editor.width).toBe('normal')
     expect(prefs.editor.toolbarMode).toBe(VAULT_PREFERENCES_DEFAULTS.editor.toolbarMode)
   })
 })
@@ -190,10 +201,10 @@ describe('writePreferences', () => {
   })
 
   it('#given editor update #then merges editor fields only', () => {
-    writePreferences(vaultPath, { editor: { width: 'wide' } })
+    writePreferences(vaultPath, { editor: { width: 'full' } })
 
     const raw = JSON.parse(fs.readFileSync(path.join(vaultPath, MEMRY_DIR, 'config.json'), 'utf-8'))
-    expect(raw.preferences.editor.width).toBe('wide')
+    expect(raw.preferences.editor.width).toBe('full')
     expect(raw.preferences.editor.toolbarMode).toBe(VAULT_PREFERENCES_DEFAULTS.editor.toolbarMode)
   })
 
@@ -218,12 +229,12 @@ describe('writePreferences', () => {
   it('#given multiple sequential writes #then accumulates changes', () => {
     writePreferences(vaultPath, { theme: 'dark' })
     writePreferences(vaultPath, { language: 'tr' })
-    writePreferences(vaultPath, { editor: { width: 'narrow' } })
+    writePreferences(vaultPath, { editor: { width: 'normal' } })
 
     const prefs = readPreferences(vaultPath)
     expect(prefs.theme).toBe('dark')
     expect(prefs.language).toBe('tr')
-    expect(prefs.editor.width).toBe('narrow')
+    expect(prefs.editor.width).toBe('normal')
     expect(prefs.editor.toolbarMode).toBe('floating')
   })
 })

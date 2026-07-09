@@ -76,10 +76,12 @@ Resume sync to push and pull queued changes. Outgoing changes queue locally unti
 | Bookmarks and reminders                                        | ✓     |
 | Attachments (encrypted blobs)                                  | ✓     |
 | Agent chat conversations and terminal messages (paid accounts) | ✓     |
+| Folder icons                                                   | ✓     |
 
 ## What Does **Not** Get Synced
 
 - Open tabs, sidebar collapse, panel widths (UI state)
+- Folder view configuration (named views, columns, formulas, summaries) — per device; applying a synced folder icon or changing a folder template preserves it
 - Cached AI models and embedding vectors
 - Voice transcription model files
 - AI provider API keys

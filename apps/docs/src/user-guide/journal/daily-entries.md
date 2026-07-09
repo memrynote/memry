@@ -18,9 +18,9 @@ Journal entries also share note review tools: selection comments and the aligned
 
 Use **Add property** or **Add tag** above the date heading to organize a daily entry before writing.
 
-## Full-Width Mode
+## Width
 
-A toggle in the journal header widens the writing column. Useful on big monitors when the default narrow column feels cramped.
+Journal pages follow the global **Width** setting in [Settings → Editor](/user-guide/settings#editor). To override it just for the Journal, use the **Full width** toggle in the journal ⋮ menu — it widens the writing column edge to edge and applies to every journal page until you turn it off.
 
 ## Sidebar Toggles
 

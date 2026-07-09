@@ -115,7 +115,7 @@ A **Create Template** button opens the [template editor](/user-guide/templates).
 
 ### Layout
 
-**Width** sets the writing column — narrow, medium, or wide.
+**Width** sets the default writing column for every note and journal page — **Normal** (a comfortable reading column) or **Full width** (edge to edge). Individual notes can override this from the note's ⋮ menu (**Full width**), and the Journal has its own **Full width** toggle in its ⋮ menu — both override the global default.
 
 ### Toolbar
 
@@ -149,6 +149,7 @@ Show or hide journal sidebar panes:
 
 - **Default Project** — which project new tasks are assigned to
 - **Default Sort Order** — manual, due date, priority, or created date
+- **Default View** — which tab the Tasks page opens on (All or Today). Defaults to All.
 
 ### Inbox
 
@@ -181,7 +182,7 @@ Eight presets — indigo, amber, emerald, red, violet, cyan, pink, orange — pl
 
 ### Typography
 
-- **Font Size** — Small / Medium / Large. Scales the whole interface, including note editor text and tags.
+- **Font Size** — Small (14px) / Medium (16px) / Large (20px). Sets the base interface size; the whole app and note editor text scale with it.
 - **Font Family** — System, Sans-Serif, Serif, Monospace, Gelasio, Geist, Inter
 
 ---

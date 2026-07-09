@@ -170,6 +170,37 @@ describe('parseMarkdownPreservingBlanks', () => {
     ])
   })
 
+  it('applies inline color spans to parsed runs', async () => {
+    const editor = {
+      tryParseMarkdownToBlocks: vi.fn(async (markdown: string) =>
+        markdown
+          .split('\n')
+          .filter((line) => line.trim())
+          .map((line) => ({
+            type: 'paragraph',
+            props: {},
+            content: [{ type: 'text', text: line.trim(), styles: {} }],
+            children: []
+          }))
+      )
+    }
+
+    const blocks = await parseMarkdownPreservingBlanks(
+      editor,
+      'He<span style="color:red">llo</span> world'
+    )
+
+    expect(blocks).toEqual([
+      expect.objectContaining({
+        content: [
+          { type: 'text', text: 'He', styles: {} },
+          { type: 'text', text: 'llo', styles: { textColor: 'red' } },
+          { type: 'text', text: ' world', styles: {} }
+        ]
+      })
+    ])
+  })
+
   it('parses file block markers in place', async () => {
     const editor = {
       tryParseMarkdownToBlocks: vi.fn(async (markdown: string) => [
@@ -384,6 +415,36 @@ describe('serializeBlocksPreservingBlanks', () => {
     expect(markdown.lastIndexOf('<!-- colors:', tailIndex)).toBeLessThan(
       markdown.indexOf('Second colored')
     )
+  })
+
+  it('serializes inline textColor styles as span html', async () => {
+    const editor = {
+      blocksToMarkdownLossy: vi.fn(async (blocks: any[]) =>
+        blocks
+          .map((block) =>
+            Array.isArray(block.content)
+              ? block.content.map((content: any) => content.text ?? '').join('')
+              : ''
+          )
+          .filter(Boolean)
+          .join('\n')
+      )
+    }
+
+    const markdown = await serializeBlocksPreservingBlanks(editor, [
+      {
+        type: 'heading',
+        props: { level: 3 },
+        content: [
+          { type: 'text', text: 'He', styles: {} },
+          { type: 'text', text: 'llo', styles: { textColor: 'red' } },
+          { type: 'text', text: ' world', styles: {} }
+        ],
+        children: []
+      }
+    ] as any[])
+
+    expect(markdown).toBe('He<span style="color:red">llo</span> world')
   })
 
   it('serializes file blocks as markers without leaking rendered UI text', async () => {

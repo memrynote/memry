@@ -4,9 +4,12 @@ import type { EditorSettingsDTO } from '../../../preload/index.d'
 import { getI18n } from 'react-i18next'
 
 const DEFAULTS: EditorSettingsDTO = {
-  width: 'medium',
+  width: 'normal',
   toolbarMode: 'floating'
 }
+
+/** Reading-column width applied when editor width is 'normal' (notes + journal). */
+export const EDITOR_NORMAL_CONTENT_WIDTH = '640px'
 
 interface UseEditorSettingsReturn {
   settings: EditorSettingsDTO

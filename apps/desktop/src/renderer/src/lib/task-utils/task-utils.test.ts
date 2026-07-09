@@ -61,6 +61,7 @@ import {
   // Calendar Helpers (T081)
   formatDateKey,
   parseDateKey,
+  parseDueDate,
   // Task Filtering - Basic (T082)
   filterBySearch,
   filterByProjects,
@@ -2203,6 +2204,29 @@ describe('Task Utils', () => {
         const date = parseDateKey('2028-02-29')
         expect(date.getMonth()).toBe(1)
         expect(date.getDate()).toBe(29)
+      })
+    })
+
+    describe('parseDueDate', () => {
+      it('should parse a date-only key to the same local calendar day (no UTC roll-back)', () => {
+        // Regression: `new Date('2026-07-10')` parses as UTC midnight and shows
+        // July 9 in negative-offset zones. parseDueDate must keep the same day.
+        const date = parseDueDate('2026-07-10')
+        expect(date.getFullYear()).toBe(2026)
+        expect(date.getMonth()).toBe(6)
+        expect(date.getDate()).toBe(10)
+      })
+
+      it('should roundtrip with formatDateKey on the same local day', () => {
+        const key = formatDateKey(new Date(2026, 6, 10))
+        const parsed = parseDueDate(key)
+        expect(formatDateKey(parsed)).toBe(key)
+        expect(parsed.getDate()).toBe(10)
+      })
+
+      it('should fall back to native parsing for values with a time component', () => {
+        const date = parseDueDate('2026-07-10T15:30:00.000Z')
+        expect(date.getTime()).toBe(new Date('2026-07-10T15:30:00.000Z').getTime())
       })
     })
   })

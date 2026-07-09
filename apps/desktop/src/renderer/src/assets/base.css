@@ -87,10 +87,21 @@
   caret-color: #f0efed;
 }
 
-/* Inbox detail drawer: editor inherits drawer surface bg, not page bg */
+/* Inbox detail + task description drawers: editor inherits the drawer surface
+   bg (var(--surface)), not the page bg — stays theme-correct in white/warm/dark. */
 .inbox-content-editor .bn-editor,
-.inbox-content-editor .bn-container {
+.inbox-content-editor .bn-container,
+.task-description-editor .bn-editor,
+.task-description-editor .bn-container {
   background-color: transparent !important;
+}
+
+/* Task description editor: the app zeroes .bn-editor padding-inline globally, but
+   BlockNote renders its drag/plus side menu in a left gutter. Reserve that gutter
+   so the handles (and their menus) are not clipped by the drawer's overflow. */
+.task-description-editor .bn-editor {
+  padding-inline-start: 28px !important;
+  padding-inline-end: 4px !important;
 }
 
 /* Code block: always dark background regardless of theme (matches github-dark Shiki theme) */
@@ -117,7 +128,7 @@
 
 /* ===== EDITOR FONT SIZE (Appearance → Font Size: S/M/L) ===== */
 /* BlockNote pins `.bn-default-styles` to a fixed 16px, so the app's font-size
-   setting — applied by useThemeSync as the root <html> font-size (14/16/18px) —
+   setting — applied by useThemeSync as the root <html> font-size (14/16/20px) —
    never reached editor body text. `1rem` re-ties the editor to that root value,
    so S/M/L now scales note body text (and inline #tags, sized at 0.9em) too.
    At Medium (16px) this is identical to the previous fixed 16px. */
@@ -283,6 +294,31 @@
   height: 16px !important;
 }
 
+/* Floating note chrome — translucent material over scrolling content.
+   Blur + tint are always on (invisible while nothing is beneath the bar);
+   the scroll edge (softened hairline + falloff) materializes via
+   [data-scrolled] only once content actually passes under it. */
+.note-chrome {
+  background: color-mix(in srgb, var(--background) 65%, transparent);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  backdrop-filter: blur(16px) saturate(180%);
+  transition: box-shadow 200ms var(--ease-out);
+}
+
+.note-chrome[data-scrolled] {
+  box-shadow:
+    0 1px 0 0 color-mix(in srgb, var(--border) 55%, transparent),
+    0 4px 16px -8px rgb(0 0 0 / 0.1);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .note-chrome {
+    background: var(--background);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
 /* Sticky toolbar mode - toolbar fixed at top of editor */
 .sticky-toolbar-enabled .bn-container {
   display: flex;
@@ -292,19 +328,32 @@
 .sticky-toolbar-enabled .bn-formatting-toolbar {
   order: -1;
   position: sticky !important;
-  top: 0 !important;
+  /* Stick below the floating note chrome (var set by NoteLayout, 0 elsewhere) */
+  top: var(--note-chrome-height, 0px) !important;
   z-index: 20;
   width: 100%;
   margin: 0 0 8px 0 !important;
   padding: 4px 0 8px 0 !important;
-  background: var(--background) !important;
+  background: color-mix(in srgb, var(--background) 72%, transparent) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  backdrop-filter: blur(16px) saturate(180%);
   border: none !important;
-  border-bottom: 1px solid var(--border) !important;
   border-radius: 0 !important;
-  box-shadow: none !important;
+  /* Soft scroll-edge instead of a hard divider: softened hairline + short falloff */
+  box-shadow:
+    0 1px 0 0 color-mix(in srgb, var(--border) 60%, transparent),
+    0 1px 10px -4px rgb(0 0 0 / 0.08) !important;
   transform: none !important;
   opacity: 1 !important;
   pointer-events: auto !important;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .sticky-toolbar-enabled .bn-formatting-toolbar {
+    background: var(--background) !important;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
 }
 
 .sticky-toolbar-enabled .bn-formatting-toolbar > div {

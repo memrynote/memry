@@ -1,4 +1,11 @@
-import { useCallback, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import {
+  useCallback,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+  type UIEvent
+} from 'react'
 import { cn } from '@/lib/utils'
 import { useActiveHeading } from '@/hooks/use-active-heading'
 import { useReviewRailShift } from '@/hooks/use-review-rail-shift'
@@ -65,6 +72,13 @@ export function NoteLayout({
   )
 
   const hasSideRail = sideRail !== undefined && sideRail !== null
+  const hasChrome = Boolean(breadcrumb || actions)
+  // Scroll-edge effect: the chrome's hairline/shadow materializes only once
+  // content is actually beneath it (state only flips at the 0 boundary).
+  const [isScrolled, setIsScrolled] = useState(false)
+  const handleScroll = useCallback((e: UIEvent<HTMLDivElement>) => {
+    setIsScrolled(e.currentTarget.scrollTop > 0)
+  }, [])
   const resolvedContentWidth = contentWidth ?? '64rem'
   const { shiftStyle, railHidden, setContentEl } = useReviewRailShift(scrollEl, {
     railEnabled: hasSideRail,
@@ -89,19 +103,30 @@ export function NoteLayout({
       }
 
   return (
-    <div className={cn('h-full w-full overflow-hidden flex flex-col relative', className)}>
-      {(breadcrumb || actions) && (
-        <div className="flex items-center justify-between h-9 py-2 px-6 shrink-0 text-xs/4 [font-synthesis:none]">
+    <div
+      className={cn('h-full w-full overflow-hidden flex flex-col relative', className)}
+      style={{ '--note-chrome-height': hasChrome ? '2.25rem' : '0px' } as CSSProperties}
+    >
+      {hasChrome && (
+        <div
+          data-scrolled={isScrolled || undefined}
+          className="note-chrome absolute top-0 inset-x-0 z-30 flex items-center justify-between h-9 py-2 px-6 text-xs/4 [font-synthesis:none]"
+        >
           <div className="flex items-center">{breadcrumb}</div>
           <div className="flex items-center">{actions}</div>
         </div>
       )}
-      <div ref={setScrollRef} className="flex-1 overflow-y-auto overflow-x-visible">
+      <div
+        ref={setScrollRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto overflow-x-visible"
+      >
         <div ref={marqueeZoneRef} className="marquee-zone relative min-h-full w-full flex flex-col">
           <div
             data-note-layout-canvas
             className={cn(
-              'mx-auto w-full pt-6 pb-10 min-h-full transition-[max-width] duration-300 ease-in-out',
+              'mx-auto w-full pb-10 min-h-full transition-[max-width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]',
+              hasChrome ? 'pt-15' : 'pt-6',
               showGridRail
                 ? 'grid items-start gap-x-12 px-24 [grid-template-columns:minmax(0,var(--note-layout-content-track))_20rem] max-[920px]:max-w-[var(--note-layout-content-max)] max-[920px]:grid-cols-1 max-[920px]:px-8'
                 : 'px-24 flex flex-col'

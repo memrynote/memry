@@ -525,7 +525,9 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
     async (templateId: string | null) => {
       if (folderToConfigureTemplate && templateId) {
         try {
+          const existing = (await notesService.getFolderConfig(folderToConfigureTemplate)) ?? {}
           await notesService.setFolderConfig(folderToConfigureTemplate, {
+            ...existing,
             template: templateId,
             inherit: true
           })
@@ -554,10 +556,10 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
   const handleClearFolderTemplate = useCallback(
     async (folderPath: string) => {
       try {
-        await notesService.setFolderConfig(folderPath, {
-          template: undefined,
-          inherit: true
-        })
+        const existing = (await notesService.getFolderConfig(folderPath)) ?? {}
+        const next = { ...existing, inherit: true }
+        delete next.template
+        await notesService.setFolderConfig(folderPath, next)
         deps.setFolderTemplateNames((prev) => {
           const next = new Map(prev)
           next.delete(folderPath)

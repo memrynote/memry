@@ -33,7 +33,8 @@ import {
   onVaultStatusChanged
 } from './vault'
 import { readPreferences } from './vault/vault-preferences'
-import { getCurrentVaultPath, getStoredLocale } from './store'
+import { getCurrentVaultPath, getStoredLocale, getWindowBounds, setWindowBounds } from './store'
+import { resolveStartupBounds } from './window-bounds'
 import { startSnoozeScheduler, stopSnoozeScheduler, checkDueItemsOnStartup } from './inbox/snooze'
 import { stopVoiceModel } from './inbox/voice-model'
 import { stopImageProcessing } from './image-processing/bridge'
@@ -409,7 +410,7 @@ function getInitialMainWindowSize():
 
 function resizeWindowIfNeeded(
   window: BrowserWindow,
-  size: typeof DEFAULT_MAIN_WINDOW_SIZE | typeof VAULT_PICKER_WINDOW_SIZE
+  size: { width: number; height: number }
 ): void {
   if (window.isDestroyed()) return
 
@@ -422,13 +423,56 @@ function resizeWindowIfNeeded(
   window.setSize(size.width, size.height)
 }
 
+let persistWindowBoundsTimer: ReturnType<typeof setTimeout> | null = null
+
+/**
+ * Save the main window's geometry so the next launch / dock reopen restores it.
+ * Guarded to the real app window — the compact vault picker is never remembered.
+ * When maximized we store the *normal* (un-maximized) bounds plus the flag, so a
+ * later restore can place the window correctly and then re-maximize.
+ */
+function persistWindowBounds(window: BrowserWindow): void {
+  if (window.isDestroyed() || !getCurrentVaultPath()) return
+  const isMaximized = window.isMaximized()
+  const { width, height, x, y } = isMaximized ? window.getNormalBounds() : window.getBounds()
+  setWindowBounds({ width, height, x, y, isMaximized })
+}
+
+/** Debounced persist for the noisy resize/move event streams. */
+function scheduleWindowBoundsPersist(window: BrowserWindow): void {
+  if (persistWindowBoundsTimer) clearTimeout(persistWindowBoundsTimer)
+  persistWindowBoundsTimer = setTimeout(() => {
+    persistWindowBoundsTimer = null
+    persistWindowBounds(window)
+  }, 400)
+}
+
 function createWindow(): void {
   const initialSize = getInitialMainWindowSize()
 
+  // Restore the user's last size/position only for the real app window (the vault
+  // picker keeps its fixed compact size). "Real app window" means a vault is
+  // already open — e.g. a macOS dock reopen — or one is about to auto-open at
+  // startup (initialSize === DEFAULT). We check the live vault status too because
+  // the dev-only MEMRY_FORCE_VAULT_PICKER flag shrinks initialSize to the picker,
+  // which would otherwise skip restore for the whole dev workflow.
+  const willShowVault = getVaultStatus().isOpen || initialSize === DEFAULT_MAIN_WINDOW_SIZE
+
+  const startupBounds = willShowVault
+    ? resolveStartupBounds(
+        getWindowBounds(),
+        screen.getAllDisplays().map((display) => ({ workArea: display.workArea })),
+        DEFAULT_MAIN_WINDOW_SIZE
+      )
+    : { width: initialSize.width, height: initialSize.height, maximize: false }
+
   // Create the browser window.
   const mainWindow = new BrowserWindow({
-    width: initialSize.width,
-    height: initialSize.height,
+    width: startupBounds.width,
+    height: startupBounds.height,
+    ...(startupBounds.x !== undefined && startupBounds.y !== undefined
+      ? { x: startupBounds.x, y: startupBounds.y }
+      : {}),
     show: false,
     autoHideMenuBar: true,
     icon: join(__dirname, '../../build/icon.png'),
@@ -447,13 +491,41 @@ function createWindow(): void {
       webSecurity: true
     }
   })
+  if (startupBounds.maximize) mainWindow.maximize()
   trackLaunchPhase('window_created', Date.now() - launchStartedAt)
 
+  // Remember geometry as the user resizes/moves/maximizes it, and on close.
+  mainWindow.on('resize', () => scheduleWindowBoundsPersist(mainWindow))
+  mainWindow.on('move', () => scheduleWindowBoundsPersist(mainWindow))
+  mainWindow.on('maximize', () => persistWindowBounds(mainWindow))
+  mainWindow.on('unmaximize', () => persistWindowBounds(mainWindow))
+  mainWindow.on('close', () => {
+    if (persistWindowBoundsTimer) {
+      clearTimeout(persistWindowBoundsTimer)
+      persistWindowBoundsTimer = null
+    }
+    persistWindowBounds(mainWindow)
+  })
+
   const unsubscribeVaultStatus = onVaultStatusChanged((status) => {
-    resizeWindowIfNeeded(
-      mainWindow,
-      status.isOpen ? DEFAULT_MAIN_WINDOW_SIZE : VAULT_PICKER_WINDOW_SIZE
-    )
+    if (mainWindow.isDestroyed()) return
+    if (status.isOpen) {
+      // Grow from the compact picker to the app window, but never fight a window
+      // the user has already sized/moved/maximized (or that we just restored):
+      // only act on the genuine picker → main transition.
+      if (mainWindow.isMaximized()) return
+      const [width, height] = mainWindow.getSize()
+      const atPickerSize =
+        width === VAULT_PICKER_WINDOW_SIZE.width && height === VAULT_PICKER_WINDOW_SIZE.height
+      if (!atPickerSize) return
+      const saved = getWindowBounds()
+      resizeWindowIfNeeded(mainWindow, {
+        width: saved?.width ?? DEFAULT_MAIN_WINDOW_SIZE.width,
+        height: saved?.height ?? DEFAULT_MAIN_WINDOW_SIZE.height
+      })
+    } else {
+      resizeWindowIfNeeded(mainWindow, VAULT_PICKER_WINDOW_SIZE)
+    }
   })
   mainWindow.on('closed', unsubscribeVaultStatus)
 

@@ -49,14 +49,16 @@ export const GENERAL_SETTINGS_DEFAULTS: GeneralSettings = {
 // ============================================================================
 
 export const EditorSettingsSchema = z.object({
-  width: z.enum(['narrow', 'medium', 'wide']),
+  // Legacy widths (narrow/medium/wide) coerce to 'normal' so installs written
+  // by older app versions keep working; only 'full' is treated as full width.
+  width: z.preprocess((v) => (v === 'full' ? 'full' : 'normal'), z.enum(['normal', 'full'])),
   toolbarMode: z.enum(['floating', 'sticky'])
 })
 
 export type EditorSettings = z.infer<typeof EditorSettingsSchema>
 
 export const EDITOR_SETTINGS_DEFAULTS: EditorSettings = {
-  width: 'medium',
+  width: 'normal',
   toolbarMode: 'floating'
 }
 
@@ -67,6 +69,8 @@ export const EDITOR_SETTINGS_DEFAULTS: EditorSettings = {
 export const TaskSettingsSchema = z.object({
   defaultProjectId: z.string().nullable(),
   defaultSortOrder: z.enum(['manual', 'dueDate', 'priority', 'createdAt']),
+  // Which tab the Tasks page opens on when a tab has no saved view state.
+  defaultView: z.enum(['today', 'all']),
   staleInboxDays: z.number().int().min(1).max(90)
 })
 
@@ -75,6 +79,7 @@ export type TaskSettings = z.infer<typeof TaskSettingsSchema>
 export const TASK_SETTINGS_DEFAULTS: TaskSettings = {
   defaultProjectId: null,
   defaultSortOrder: 'manual',
+  defaultView: 'all',
   staleInboxDays: 7
 }
 

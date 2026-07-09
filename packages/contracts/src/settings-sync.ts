@@ -17,7 +17,8 @@ export const SyncedSettingsSchema = z.object({
     .optional(),
   editor: z
     .object({
-      width: z.enum(['narrow', 'medium', 'wide']).optional(),
+      // Accept legacy widths from older devices; new devices only emit normal/full.
+      width: z.enum(['normal', 'full', 'narrow', 'medium', 'wide']).optional(),
       toolbarMode: z.enum(['floating', 'sticky']).optional()
     })
     .optional(),

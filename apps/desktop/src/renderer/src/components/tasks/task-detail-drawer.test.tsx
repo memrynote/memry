@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { I18nextProvider } from 'react-i18next'
 import type { i18n as I18nInstance } from 'i18next'
@@ -25,6 +25,25 @@ vi.mock('@/contexts/day-panel-context', () => ({
 
 vi.mock('@/components/tasks/task-reminder-button', () => ({
   TaskReminderButton: () => null
+}))
+
+// BlockNote can't mount in jsdom; stub the description editor with a textarea.
+vi.mock('@/components/tasks/task-description-editor', () => ({
+  TaskDescriptionEditor: ({
+    initialContent,
+    onContentChange,
+    placeholder
+  }: {
+    initialContent: string | null
+    onContentChange?: (markdown: string) => void
+    placeholder?: string
+  }) => (
+    <textarea
+      placeholder={placeholder}
+      defaultValue={initialContent ?? ''}
+      onChange={(event) => onContentChange?.(event.target.value)}
+    />
+  )
 }))
 
 let i18nEn: I18nInstance
@@ -233,9 +252,12 @@ describe('TaskDetailDrawer — editable properties', () => {
       const textarea = screen.getByPlaceholderText('Add a description…')
       await user.type(textarea, 'H')
 
-      expect(onUpdateTask).toHaveBeenCalledWith(
-        'task-1',
-        expect.objectContaining({ description: expect.any(String) })
+      // Persistence is debounced, so wait for the update to flush.
+      await waitFor(() =>
+        expect(onUpdateTask).toHaveBeenCalledWith(
+          'task-1',
+          expect.objectContaining({ description: expect.any(String) })
+        )
       )
     })
   })

@@ -8,6 +8,7 @@ import { getI18n } from 'react-i18next'
 
 import { useState, useCallback, useEffect, useRef, useMemo, type RefObject } from 'react'
 import { cn } from '@/lib/utils'
+import { motion, useReducedMotion } from 'motion/react'
 import { useQueryClient } from '@tanstack/react-query'
 import { ExportDialog } from '@/components/note/export-dialog'
 import { VersionHistory } from '@/components/note/version-history'
@@ -53,7 +54,7 @@ import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
 import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import { useIsBookmarked } from '@/hooks/use-bookmarks'
-import { useEditorSettings } from '@/hooks/use-editor-settings'
+import { useEditorSettings, EDITOR_NORMAL_CONTENT_WIDTH } from '@/hooks/use-editor-settings'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
 import { LocalGraphPanel } from '@/components/graph/local-graph-panel'
@@ -119,8 +120,6 @@ function NoteEmptyState() {
 // Main Component
 // ============================================================================
 
-const NOTE_CONTENT_WIDTH = { narrow: '640px', medium: '640px', wide: '864px' } as const
-
 export function NotePage({ noteId }: NotePageProps) {
   const { t } = useT('notes')
   // TanStack Query hooks for data fetching with caching
@@ -133,6 +132,7 @@ export function NotePage({ noteId }: NotePageProps) {
   const activeTab = useActiveTab()
   const { openTag } = useSidebarDrillDown()
   const queryClient = useQueryClient()
+  const prefersReducedMotion = useReducedMotion()
 
   // Extract highlight info from tab viewState (from reminder navigation)
   const initialHighlight = useMemo(() => {
@@ -230,10 +230,12 @@ export function NotePage({ noteId }: NotePageProps) {
   // Editor settings (toolbar mode, width)
   const { settings: editorSettings } = useEditorSettings()
 
-  const isFullWidth = note?.frontmatter.fullWidth === true
-  const noteContentWidth = isFullWidth
-    ? undefined
-    : (NOTE_CONTENT_WIDTH[editorSettings.width] ?? '640px')
+  // Width follows the global setting (Normal / Full) unless this note has an
+  // explicit per-note override in frontmatter (`fullWidth`), which wins.
+  const widthOverride = note?.frontmatter.fullWidth
+  const isFullWidth =
+    typeof widthOverride === 'boolean' ? widthOverride : editorSettings.width === 'full'
+  const noteContentWidth = isFullWidth ? undefined : EDITOR_NORMAL_CONTENT_WIDTH
 
   // Focus editor at end when clicking empty space
   const focusAtEndRef = useRef<(() => void) | null>(null)
@@ -931,7 +933,7 @@ export function NotePage({ noteId }: NotePageProps) {
           <Button
             variant="ghost"
             size="icon"
-            className="size-7 hover:bg-surface-active"
+            className="size-7 hover:bg-surface-active transition-all duration-150 ease-out active:scale-95 active:bg-surface-active/70 disabled:active:scale-100"
             disabled={isDeleted}
             title={
               hasActiveReminder ? t('editor.toolbar.reminderSet') : t('editor.toolbar.setReminder')
@@ -950,7 +952,7 @@ export function NotePage({ noteId }: NotePageProps) {
       <Button
         variant="ghost"
         size="icon"
-        className="size-7 hover:bg-surface-active"
+        className="size-7 hover:bg-surface-active transition-all duration-150 ease-out active:scale-95 active:bg-surface-active/70 disabled:active:scale-100"
         onClick={() => void toggleBookmark()}
         disabled={isDeleted}
         title={isBookmarked ? t('editor.toolbar.removeBookmark') : t('editor.toolbar.addBookmark')}
@@ -986,7 +988,7 @@ export function NotePage({ noteId }: NotePageProps) {
           <Button
             variant="ghost"
             size="icon"
-            className="size-7 hover:bg-surface-active"
+            className="size-7 hover:bg-surface-active transition-all duration-150 ease-out active:scale-95 active:bg-surface-active/70 disabled:active:scale-100"
             disabled={isDeleted}
           >
             <MoreVertical className="h-3.5 w-3.5 text-muted-foreground" />
@@ -1072,9 +1074,14 @@ export function NotePage({ noteId }: NotePageProps) {
       breadcrumb={<NoteBreadcrumb notePath={note.path} noteTitle={note.title} />}
       stats={documentStats}
     >
-      {/* Note content */}
-      <div
-        className="flex flex-col flex-1 mx-auto w-full transition-[max-width] duration-300 ease-in-out"
+      {/* Note content — materializes on note switch (crossfade only under
+          reduced motion); critically damped spring, no overshoot */}
+      <motion.div
+        key={noteId}
+        initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ type: 'spring', bounce: 0, duration: 0.35 }}
+        className="flex flex-col flex-1 mx-auto w-full transition-[max-width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
         style={{ maxWidth: noteContentWidth ?? '100%' }}
       >
         {/* Title + Metadata zone — ghost affordance appears on hover */}
@@ -1225,7 +1232,7 @@ export function NotePage({ noteId }: NotePageProps) {
             onTaskClick={handleLinkedTaskClick}
           />
         </div>
-      </div>
+      </motion.div>
 
       {/* Export Dialog */}
       <ExportDialog

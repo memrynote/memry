@@ -5,6 +5,7 @@ import {
   downloadUpdate,
   getUpdateState,
   quitAndInstall,
+  setAutoCheckEnabled,
   setAutoDownloadEnabled,
   skipVersion
 } from '../updater'
@@ -25,6 +26,9 @@ export function registerUpdaterHandlers(): void {
   ipcMain.handle(UpdaterChannels.invoke.SET_AUTO_DOWNLOAD, (_event, enabled: boolean) =>
     setAutoDownloadEnabled(enabled)
   )
+  ipcMain.handle(UpdaterChannels.invoke.SET_AUTO_CHECK, (_event, enabled: boolean) =>
+    setAutoCheckEnabled(enabled)
+  )
 }
 
 export function unregisterUpdaterHandlers(): void {
@@ -34,4 +38,5 @@ export function unregisterUpdaterHandlers(): void {
   ipcMain.removeHandler(UpdaterChannels.invoke.QUIT_AND_INSTALL)
   ipcMain.removeHandler(UpdaterChannels.invoke.SKIP_VERSION)
   ipcMain.removeHandler(UpdaterChannels.invoke.SET_AUTO_DOWNLOAD)
+  ipcMain.removeHandler(UpdaterChannels.invoke.SET_AUTO_CHECK)
 }

@@ -367,6 +367,15 @@
       },
       "error": "Alkuviikon päivitys epäonnistui"
     },
+    "defaultView": {
+      "label": "Oletusnäkymä",
+      "description": "Välilehti, jolla Tehtävät-sivu avautuu",
+      "options": {
+        "all": "Kaikki",
+        "today": "Tänään"
+      },
+      "error": "Oletusnäkymän päivitys epäonnistui"
+    },
     "staleInbox": {
       "label": "Vanhentunut postilaatikon kynnys",
       "description": "Tätä vanhemmat tehtävät korostetaan vanhentuneiksi",

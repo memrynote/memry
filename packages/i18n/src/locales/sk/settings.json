@@ -367,6 +367,15 @@
       },
       "error": "Nepodarilo sa aktualizovať začiatok týždňa"
     },
+    "defaultView": {
+      "label": "Predvolené zobrazenie",
+      "description": "Karta, na ktorej sa otvorí stránka úloh",
+      "options": {
+        "all": "Všetko",
+        "today": "Dnes"
+      },
+      "error": "Nepodarilo sa aktualizovať predvolené zobrazenie"
+    },
     "staleInbox": {
       "label": "Práh neaktuálnych správ",
       "description": "Úlohy staršie ako tento dátum sú zvýraznené ako neaktuálne",
