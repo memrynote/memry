@@ -360,6 +360,7 @@ export function CalendarWeekView({
 
         <div
           ref={scrollContainerRef}
+          data-calendar-scroll
           className="scrollbar-none relative min-w-0 flex-1 overflow-auto"
           data-testid="calendar-week-scroll"
         >
@@ -444,7 +445,7 @@ export function CalendarWeekView({
                       className="pointer-events-none absolute start-0 end-0 z-20 flex items-center"
                       style={{ top: currentTimeOffset }}
                     >
-                      <div className="size-2 rounded-full bg-tint" />
+                      <div className="size-2 rounded-full bg-tint shadow-[0_0_6px] shadow-tint/60" />
                       <div className="h-0.5 flex-1 bg-tint" />
                     </div>
                   )}
