@@ -22,7 +22,8 @@ import {
   ProjectSyncPayloadSchema,
   StatusSyncSchema,
   TagDefinitionSyncPayloadSchema,
-  TaskSyncPayloadSchema
+  TaskSyncPayloadSchema,
+  ThemeSyncPayloadSchema
 } from './sync-payloads'
 
 describe('AgentMessageSyncPayloadSchema', () => {
@@ -297,9 +298,9 @@ describe('JournalSyncPayloadSchema', () => {
 
 describe('TagDefinitionSyncPayloadSchema', () => {
   it('accepts minimal required fields', () => {
-    expect(
-      TagDefinitionSyncPayloadSchema.safeParse({ name: 'work', color: '#abc' }).success
-    ).toBe(true)
+    expect(TagDefinitionSyncPayloadSchema.safeParse({ name: 'work', color: '#abc' }).success).toBe(
+      true
+    )
   })
 
   it('rejects missing color', () => {
@@ -353,12 +354,8 @@ describe('CalendarEventSyncPayloadSchema', () => {
 
 describe('CalendarSourceSyncPayloadSchema', () => {
   it('accepts all kind enum values', () => {
-    expect(
-      CalendarSourceSyncPayloadSchema.safeParse({ kind: 'account' }).success
-    ).toBe(true)
-    expect(
-      CalendarSourceSyncPayloadSchema.safeParse({ kind: 'calendar' }).success
-    ).toBe(true)
+    expect(CalendarSourceSyncPayloadSchema.safeParse({ kind: 'account' }).success).toBe(true)
+    expect(CalendarSourceSyncPayloadSchema.safeParse({ kind: 'calendar' }).success).toBe(true)
   })
 
   it('accepts all syncStatus enum values', () => {
@@ -413,9 +410,9 @@ describe('CalendarBindingSyncPayloadSchema', () => {
     expect(
       CalendarBindingSyncPayloadSchema.safeParse({ lastLocalSnapshot: { a: 1 } }).success
     ).toBe(true)
-    expect(
-      CalendarBindingSyncPayloadSchema.safeParse({ lastLocalSnapshot: null }).success
-    ).toBe(true)
+    expect(CalendarBindingSyncPayloadSchema.safeParse({ lastLocalSnapshot: null }).success).toBe(
+      true
+    )
   })
 })
 
@@ -441,5 +438,40 @@ describe('CalendarExternalEventSyncPayloadSchema', () => {
       rawPayload: { vendor: 'google', data: { id: 'x' } }
     })
     expect(result.success).toBe(true)
+  })
+})
+
+describe('ThemeSyncPayloadSchema', () => {
+  it('accepts a full theme payload', () => {
+    const result = ThemeSyncPayloadSchema.safeParse({
+      name: 'Tema 1',
+      slug: 'tema-1',
+      base: 'dark',
+      variables: { '--background': '#101010' },
+      clock: { 'device-a': 1 },
+      createdAt: '2026-07-09T10:00:00.000Z',
+      modifiedAt: '2026-07-09T10:00:00.000Z'
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('tolerates missing optional clock and timestamps', () => {
+    const result = ThemeSyncPayloadSchema.safeParse({
+      name: 'Tema 1',
+      slug: 'tema-1',
+      base: 'light',
+      variables: {}
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('rejects an unknown base', () => {
+    const result = ThemeSyncPayloadSchema.safeParse({
+      name: 'Tema 1',
+      slug: 'tema-1',
+      base: 'system',
+      variables: {}
+    })
+    expect(result.success).toBe(false)
   })
 })

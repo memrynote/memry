@@ -46,6 +46,7 @@
     "./sync-api": "./src/sync-api.ts",
     "./sync-payloads": "./src/sync-payloads.ts",
     "./tags-api": "./src/tags-api.ts",
+    "./themes-api": "./src/themes-api.ts",
     "./tasks-api": "./src/tasks-api.ts",
     "./telemetry-api": "./src/telemetry-api.ts",
     "./templates-api": "./src/templates-api.ts",

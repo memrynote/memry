@@ -16,6 +16,9 @@ import { LocaleSchema } from './locale-api'
 
 export const GeneralSettingsSchema = z.object({
   theme: z.enum(['light', 'dark', 'white', 'system']),
+  // Active custom theme id; null = built-in theme. Kept separate from `theme`
+  // so older app versions (unaware of custom themes) still render the base.
+  customThemeId: z.string().nullable(),
   fontSize: z.enum(['small', 'medium', 'large']),
   fontFamily: z.enum(['system', 'serif', 'sans-serif', 'monospace', 'gelasio', 'geist', 'inter']),
   accentColor: z.string().regex(/^#[0-9a-fA-F]{6}$/),
@@ -33,6 +36,7 @@ export const DEFAULT_ACCENT_COLOR = '#f97316'
 
 export const GENERAL_SETTINGS_DEFAULTS: GeneralSettings = {
   theme: 'white',
+  customThemeId: null,
   fontSize: 'medium',
   fontFamily: 'system',
   accentColor: DEFAULT_ACCENT_COLOR,
