@@ -11,6 +11,7 @@
  */
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { motion, useReducedMotion } from 'motion/react'
 import { Archive, Check, Loader2, GripHorizontal, RotateCcw, Trash2 } from '@/lib/icons'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useT } from '@memry/i18n/renderer'
@@ -75,12 +76,12 @@ export const InboxDetailPanel = ({
   onRestore,
   onDelete
 }: InboxDetailPanelProps): React.JSX.Element => {
-  const { t } = useT('inbox')
+  const { t, i18n } = useT('inbox')
   const { enabled: aiEnabled } = useAISettingsContext()
+  const prefersReducedMotion = useReducedMotion()
   const {
     width,
     setWidth,
-    isResizing: isPanelResizing,
     setIsResizing: setIsPanelResizing
   } = useResizablePanel({
     storageKey: INBOX_DETAIL_WIDTH_KEY,
@@ -363,22 +364,38 @@ export const InboxDetailPanel = ({
   const modifierKeyDisplay = isMac ? '⌘' : 'Ctrl+'
   const keyboardHint = t('detail.keyboardHint', { modifier: modifierKeyDisplay })
 
+  // Enter and exit along the same path: slide from the end edge (RTL-aware).
+  // 112% clears the pane edge including the start border.
+  const closedX = i18n.dir() === 'rtl' ? '-112%' : '112%'
+
   return (
-    <aside
+    <motion.aside
       aria-label={t('detail.ariaLabel')}
       aria-hidden={!isOpen}
+      inert={!isOpen || undefined}
       data-testid="inbox-detail-panel"
       data-state={isOpen ? 'open' : 'closed'}
+      initial={false}
+      animate={
+        prefersReducedMotion
+          ? { x: 0, opacity: isOpen ? 1 : 0 }
+          : { x: isOpen ? 0 : closedX, opacity: 1 }
+      }
+      transition={
+        prefersReducedMotion
+          ? { duration: 0.2 }
+          : isOpen
+            ? { type: 'spring', bounce: 0.2, duration: 0.35 }
+            : { type: 'spring', bounce: 0, duration: 0.3 }
+      }
       className={cn(
         // ponytail: absolute (not fixed) so the drawer stays inside its own pane in split view
         // top-[38px] clears the floating page chrome so the panel header stays visible
         'absolute top-[38px] bottom-0 end-0 z-10 border-s bg-surface overflow-hidden',
-        'transition-[opacity] duration-200 ease-out',
-        !isPanelResizing && 'transition-[width,opacity] duration-200 ease-out',
-        isOpen ? 'opacity-100 border-border' : 'opacity-0 border-transparent'
+        isOpen ? 'border-border' : 'border-transparent pointer-events-none'
       )}
       style={{
-        width: isOpen ? `${width}px` : 0
+        width: `${width}px`
       }}
     >
       <div
@@ -407,52 +424,61 @@ export const InboxDetailPanel = ({
                       : { maxHeight: '60%' }
                 }
               >
-                {item.type === 'note' ? (
-                  <NoteDetail
-                    item={item}
-                    onContentChange={readOnly ? undefined : handleContentChange}
-                    onTitleChange={readOnly ? undefined : handleTitleChange}
-                  />
-                ) : (
-                  <div
-                    className={
-                      item.type === 'reminder' || item.type === 'social' ? '' : 'px-5 py-4'
-                    }
-                  >
-                    {item.type === 'voice' ? (
-                      <input
-                        type="text"
-                        defaultValue={item.title}
-                        key={item.id + item.title}
-                        onBlur={(e) => handleVoiceTitleSave(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.currentTarget.blur()
-                          }
-                        }}
-                        className="text-[15px] leading-5 font-medium text-foreground mb-3.5 w-full bg-transparent focus:outline-none border-b border-transparent focus:border-muted-foreground/20 transition-colors"
-                        placeholder={t('detail.voiceTitlePlaceholder')}
-                        aria-label={t('detail.voiceTitlePlaceholder')}
-                      />
-                    ) : (
-                      item.type !== 'link' &&
-                      item.type !== 'image' &&
-                      item.type !== 'pdf' &&
-                      item.type !== 'reminder' &&
-                      item.type !== 'social' && (
-                        <h3 className="text-[15px] leading-5 font-medium text-foreground mb-3.5">
-                          {item.title}
-                        </h3>
-                      )
-                    )}
-                    <ContentSection
+                {/* Type-specific preview materializes on item switch (crossfade
+                    only under reduced motion); the filing chrome below stays put */}
+                <motion.div
+                  key={item.id}
+                  initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ type: 'spring', bounce: 0, duration: 0.3 }}
+                >
+                  {item.type === 'note' ? (
+                    <NoteDetail
                       item={item}
-                      onRetryTranscription={handleRetryTranscription}
-                      isRetrying={retryTranscriptionMutation.isPending}
                       onContentChange={readOnly ? undefined : handleContentChange}
+                      onTitleChange={readOnly ? undefined : handleTitleChange}
                     />
-                  </div>
-                )}
+                  ) : (
+                    <div
+                      className={
+                        item.type === 'reminder' || item.type === 'social' ? '' : 'px-5 py-4'
+                      }
+                    >
+                      {item.type === 'voice' ? (
+                        <input
+                          type="text"
+                          defaultValue={item.title}
+                          key={item.id + item.title}
+                          onBlur={(e) => handleVoiceTitleSave(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.currentTarget.blur()
+                            }
+                          }}
+                          className="text-[15px] leading-5 font-medium text-foreground mb-3.5 w-full bg-transparent focus:outline-none border-b border-transparent focus:border-muted-foreground/20 transition-colors"
+                          placeholder={t('detail.voiceTitlePlaceholder')}
+                          aria-label={t('detail.voiceTitlePlaceholder')}
+                        />
+                      ) : (
+                        item.type !== 'link' &&
+                        item.type !== 'image' &&
+                        item.type !== 'pdf' &&
+                        item.type !== 'reminder' &&
+                        item.type !== 'social' && (
+                          <h3 className="text-[15px] leading-5 font-medium text-foreground mb-3.5">
+                            {item.title}
+                          </h3>
+                        )
+                      )}
+                      <ContentSection
+                        item={item}
+                        onRetryTranscription={handleRetryTranscription}
+                        isRetrying={retryTranscriptionMutation.isPending}
+                        onContentChange={readOnly ? undefined : handleContentChange}
+                      />
+                    </div>
+                  )}
+                </motion.div>
               </div>
 
               {!readOnly && item.type !== 'reminder' && (
@@ -516,7 +542,7 @@ export const InboxDetailPanel = ({
                   <Button
                     variant="outline"
                     onClick={() => item && onRestore?.(item.id)}
-                    className="flex-1 text-muted-foreground border-border"
+                    className="flex-1 text-muted-foreground border-border transition-all duration-150 ease-out active:scale-[0.98]"
                   >
                     <RotateCcw className="size-4 me-1.5" aria-hidden="true" />
                     {t('detail.restore')}
@@ -524,7 +550,7 @@ export const InboxDetailPanel = ({
                   <Button
                     variant="outline"
                     onClick={() => item && onDelete?.(item.id)}
-                    className="flex-1 text-destructive border-destructive/30 hover:bg-destructive/10"
+                    className="flex-1 text-destructive border-destructive/30 hover:bg-destructive/10 transition-all duration-150 ease-out active:scale-[0.98]"
                   >
                     <Trash2 className="size-4 me-1.5" aria-hidden="true" />
                     {t('detail.delete')}
@@ -534,7 +560,7 @@ export const InboxDetailPanel = ({
                 <Button
                   variant="outline"
                   onClick={handleArchive}
-                  className="w-full text-muted-foreground border-border"
+                  className="w-full text-muted-foreground border-border transition-all duration-150 ease-out active:scale-[0.98]"
                 >
                   <Archive className="size-4 me-1.5" aria-hidden="true" />
                   {t('detail.archive')}
@@ -545,7 +571,7 @@ export const InboxDetailPanel = ({
                     <Button
                       variant="outline"
                       onClick={handleArchive}
-                      className="flex-1 text-muted-foreground border-border"
+                      className="flex-1 text-muted-foreground border-border transition-all duration-150 ease-out active:scale-[0.98]"
                     >
                       <Archive className="size-4 me-1.5" aria-hidden="true" />
                       {t('detail.archive')}
@@ -554,7 +580,7 @@ export const InboxDetailPanel = ({
                       <Button
                         onClick={() => void handleFileItem()}
                         disabled={!canFile || isFilingLoading}
-                        className="flex-1 bg-tint hover:bg-tint-hover text-tint-foreground border-0"
+                        className="flex-1 bg-tint hover:bg-tint-hover text-tint-foreground border-0 transition-all duration-150 ease-out active:scale-[0.98] disabled:active:scale-100"
                       >
                         {isFilingLoading ? (
                           <Loader2 className="size-4 animate-spin me-1.5" aria-hidden="true" />
@@ -588,6 +614,6 @@ export const InboxDetailPanel = ({
           ariaLabel={t('detail.resize')}
         />
       )}
-    </aside>
+    </motion.aside>
   )
 }

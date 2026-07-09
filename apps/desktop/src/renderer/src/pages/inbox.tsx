@@ -199,7 +199,11 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
 
   return (
     <>
-      <div className="relative flex h-full flex-col" onScrollCapture={handleScrollCapture}>
+      {/* overflow-x-clip keeps the off-screen detail drawer inside this pane */}
+      <div
+        className="relative flex h-full flex-col overflow-x-clip"
+        onScrollCapture={handleScrollCapture}
+      >
         <PageToolbar
           data-scrolled={isScrolled || undefined}
           className="page-chrome absolute top-0 inset-x-0 z-30 px-2 py-1 min-h-[38px] border-b-0"

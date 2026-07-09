@@ -8,6 +8,8 @@
  * options are disabled with a tooltip.
  */
 
+import { useId } from 'react'
+import { LayoutGroup, motion, useReducedMotion } from 'motion/react'
 import { FileText, ListTodo, CalendarClock, Bell } from '@/lib/icons'
 import { useT } from '@memry/i18n/renderer'
 
@@ -34,54 +36,73 @@ export const TypeSelector = ({
   noteOnly
 }: TypeSelectorProps): React.JSX.Element => {
   const { t } = useT('inbox')
+  const prefersReducedMotion = useReducedMotion()
+  const layoutGroupId = useId()
 
   return (
     <TooltipProvider>
-      <div
-        role="radiogroup"
-        aria-label={t('convert.chooseType')}
-        className="grid grid-cols-4 gap-1 p-1 rounded-md bg-foreground/[0.03] border border-border"
-      >
-        {OPTIONS.map((opt) => {
-          const disabled = noteOnly && opt.type !== 'note'
-          const selected = value === opt.type
-          const button = (
-            <button
-              type="button"
-              role="radio"
-              aria-checked={selected}
-              disabled={disabled}
-              onClick={() => onChange(opt.type)}
-              className={cn(
-                'flex w-full items-center justify-center gap-1.5 rounded-sm py-1.5 text-[12px] transition-colors',
-                selected
-                  ? 'bg-[var(--tint)]/10 text-[var(--tint)] font-medium'
-                  : 'text-muted-foreground hover:text-foreground',
-                disabled && 'opacity-40 cursor-not-allowed hover:text-muted-foreground'
-              )}
-            >
-              {opt.icon}
-              {t(`convert.${opt.type}`)}
-            </button>
-          )
-
-          if (disabled) {
-            return (
-              <Tooltip key={opt.type}>
-                <TooltipTrigger asChild>
-                  <span className="flex">{button}</span>
-                </TooltipTrigger>
-                <TooltipContent>{t('convert.binaryOnlyNote')}</TooltipContent>
-              </Tooltip>
+      <LayoutGroup id={layoutGroupId}>
+        <div
+          role="radiogroup"
+          aria-label={t('convert.chooseType')}
+          className="grid grid-cols-4 gap-1 p-1 rounded-md bg-foreground/[0.03] border border-border"
+        >
+          {OPTIONS.map((opt) => {
+            const disabled = noteOnly && opt.type !== 'note'
+            const selected = value === opt.type
+            const button = (
+              <button
+                type="button"
+                role="radio"
+                aria-checked={selected}
+                disabled={disabled}
+                onClick={() => onChange(opt.type)}
+                className={cn(
+                  'relative flex w-full items-center justify-center gap-1.5 rounded-sm py-1.5 text-[12px]',
+                  'transition-colors duration-150 active:scale-[0.97]',
+                  selected
+                    ? 'text-[var(--tint)] font-medium'
+                    : 'text-muted-foreground hover:text-foreground',
+                  disabled && 'opacity-40 cursor-not-allowed hover:text-muted-foreground'
+                )}
+              >
+                {selected && (
+                  <motion.span
+                    layoutId="type-selector-pill"
+                    aria-hidden="true"
+                    transition={
+                      prefersReducedMotion
+                        ? { duration: 0 }
+                        : { type: 'spring', bounce: 0, duration: 0.3 }
+                    }
+                    className="absolute inset-0 rounded-sm bg-[var(--tint)]/10"
+                  />
+                )}
+                <span className="relative z-10 flex items-center gap-1.5">
+                  {opt.icon}
+                  {t(`convert.${opt.type}`)}
+                </span>
+              </button>
             )
-          }
-          return (
-            <span key={opt.type} className="flex">
-              {button}
-            </span>
-          )
-        })}
-      </div>
+
+            if (disabled) {
+              return (
+                <Tooltip key={opt.type}>
+                  <TooltipTrigger asChild>
+                    <span className="flex">{button}</span>
+                  </TooltipTrigger>
+                  <TooltipContent>{t('convert.binaryOnlyNote')}</TooltipContent>
+                </Tooltip>
+              )
+            }
+            return (
+              <span key={opt.type} className="flex">
+                {button}
+              </span>
+            )
+          })}
+        </div>
+      </LayoutGroup>
     </TooltipProvider>
   )
 }

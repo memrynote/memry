@@ -501,7 +501,7 @@ const VoicePreview = ({
           <button
             type="button"
             onClick={() => void handlePlayPause()}
-            className="flex items-center justify-center rounded-full bg-muted-foreground shrink-0 size-8 hover:opacity-90 transition-opacity"
+            className="flex items-center justify-center rounded-full bg-muted-foreground shrink-0 size-8 hover:opacity-90 transition-[opacity,transform] duration-150 ease-out active:scale-90"
             aria-label={isPlaying ? t('content.pause') : t('content.play')}
           >
             {isPlaying ? (
@@ -585,7 +585,7 @@ const VoicePreview = ({
             <button
               type="button"
               onClick={() => void handleCopyTranscription()}
-              className="ms-auto text-muted-foreground hover:text-foreground transition-colors"
+              className="ms-auto text-muted-foreground hover:text-foreground transition-all duration-150 ease-out active:scale-90"
               aria-label={t('content.copyTranscription')}
             >
               {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
@@ -609,7 +609,7 @@ const VoicePreview = ({
                 type="button"
                 onClick={onRetryTranscription}
                 disabled={isRetrying}
-                className="text-muted-foreground hover:text-foreground text-xs flex items-center gap-1 transition-colors disabled:opacity-50"
+                className="text-muted-foreground hover:text-foreground text-xs flex items-center gap-1 transition-all duration-150 ease-out active:scale-95 disabled:opacity-50 disabled:active:scale-100"
               >
                 {isRetrying ? (
                   <Loader2 className="size-3 animate-spin" />
