@@ -1,4 +1,5 @@
-import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useState, useMemo, useCallback, useEffect, useId } from 'react'
+import { LayoutGroup, motion, useReducedMotion } from 'motion/react'
 
 import { useT } from '@memry/i18n/renderer'
 import { toast } from 'sonner'
@@ -196,6 +197,16 @@ export const TasksPage = ({
   const [addTaskPrefillProjectId, setAddTaskPrefillProjectId] = useState<string | null>(null)
 
   const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false)
+  // Scroll-edge state for the toolbar chrome: hairline materializes only once
+  // content inside <main> has actually scrolled
+  const [isScrolled, setIsScrolled] = useState(false)
+  const prefersReducedMotion = useReducedMotion()
+  const viewModeGroupId = useId()
+  const handleScrollCapture = useCallback((e: React.UIEvent<HTMLElement>) => {
+    const target = e.target
+    if (!(target instanceof HTMLElement)) return
+    setIsScrolled(target.scrollTop > 0)
+  }, [])
 
   // Filter state with persistence
   const {
@@ -886,11 +897,17 @@ export const TasksPage = ({
 
   return (
     <>
-      <div className={cn('h-full flex overflow-hidden', className)}>
+      <div className={cn('relative h-full flex overflow-hidden', className)}>
         {/* Main Content Area */}
-        <main className="relative flex-1 min-w-0 flex flex-col overflow-hidden">
+        <main
+          className="relative flex-1 min-w-0 flex flex-col overflow-hidden"
+          onScrollCapture={handleScrollCapture}
+        >
           {/* Page Header — compact single-row toolbar */}
-          <PageToolbar className="px-2 py-1 min-h-[38px] border-b-0">
+          <PageToolbar
+            data-scrolled={isScrolled || undefined}
+            className="page-chrome z-30 px-2 py-1 min-h-[38px] border-b-0"
+          >
             <TasksTabBar
               activeTab={activeInternalTab}
               onTabChange={handleTabChange}
@@ -940,7 +957,8 @@ export const TasksPage = ({
                       type="button"
                       aria-label={t('filters.filter')}
                       className={cn(
-                        'flex items-center justify-center shrink-0 rounded-[5px] p-1.5 gap-1 transition-colors',
+                        'flex items-center justify-center shrink-0 rounded-[5px] p-1.5 gap-1',
+                        'transition-all duration-150 ease-out active:scale-95',
                         isFilterDropdownOpen || filtersActive
                           ? 'bg-foreground/5 text-foreground/90'
                           : 'text-muted-foreground hover:bg-surface-active/50'
@@ -971,62 +989,116 @@ export const TasksPage = ({
 
             {/* View Mode Switcher */}
             {availableViews.length > 1 && (
-              <div
-                className="flex items-center shrink-0 rounded-[5px] overflow-clip border border-border"
-                role="radiogroup"
-                aria-label={t('page.viewMode.label')}
-              >
-                <button
-                  type="button"
-                  role="radio"
-                  aria-checked={activeView === 'list'}
-                  aria-label={t('page.viewMode.list')}
-                  onClick={() => setActiveView('list')}
-                  className={cn(
-                    'flex items-center justify-center w-[26px] h-6 shrink-0 transition-colors',
-                    activeView === 'list'
-                      ? 'bg-foreground/10 text-foreground'
-                      : 'text-text-tertiary hover:text-text-secondary'
-                  )}
+              <LayoutGroup id={viewModeGroupId}>
+                <div
+                  className="flex items-center shrink-0 rounded-[5px] overflow-clip border border-border"
+                  role="radiogroup"
+                  aria-label={t('page.viewMode.label')}
                 >
-                  <svg width="14" height="14" viewBox="0 0 13 13" fill="none">
-                    <path
-                      d="M2 3.5h9M2 6.5h9M2 9.5h9"
-                      stroke="currentColor"
-                      strokeWidth="1.1"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                </button>
-                {availableViews.includes('kanban') && (
                   <button
                     type="button"
                     role="radio"
-                    aria-checked={activeView === 'kanban'}
-                    aria-label={t('page.viewMode.kanban')}
-                    onClick={() => setActiveView('kanban')}
+                    aria-checked={activeView === 'list'}
+                    aria-label={t('page.viewMode.list')}
+                    onClick={() => setActiveView('list')}
                     className={cn(
-                      'flex items-center justify-center w-[26px] h-6 shrink-0 transition-colors',
-                      activeView === 'kanban'
-                        ? 'bg-foreground/10 text-foreground'
+                      'relative flex items-center justify-center w-[26px] h-6 shrink-0',
+                      'transition-colors duration-150 active:scale-[0.97]',
+                      activeView === 'list'
+                        ? 'text-foreground'
                         : 'text-text-tertiary hover:text-text-secondary'
                     )}
                   >
-                    <svg width="14" height="14" viewBox="0 0 13 13" fill="none">
-                      <rect x="1.5" y="2" width="2.5" height="9" rx="0.75" stroke="currentColor" />
-                      <rect
-                        x="5.25"
-                        y="2"
-                        width="2.5"
-                        height="6.5"
-                        rx="0.75"
-                        stroke="currentColor"
+                    {activeView === 'list' && (
+                      <motion.span
+                        layoutId="tasks-view-mode-pill"
+                        aria-hidden="true"
+                        transition={
+                          prefersReducedMotion
+                            ? { duration: 0 }
+                            : { type: 'spring', bounce: 0, duration: 0.3 }
+                        }
+                        className="absolute inset-0 bg-foreground/10"
                       />
-                      <rect x="9" y="2" width="2.5" height="4.5" rx="0.75" stroke="currentColor" />
+                    )}
+                    <svg
+                      className="relative z-10"
+                      width="14"
+                      height="14"
+                      viewBox="0 0 13 13"
+                      fill="none"
+                    >
+                      <path
+                        d="M2 3.5h9M2 6.5h9M2 9.5h9"
+                        stroke="currentColor"
+                        strokeWidth="1.1"
+                        strokeLinecap="round"
+                      />
                     </svg>
                   </button>
-                )}
-              </div>
+                  {availableViews.includes('kanban') && (
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={activeView === 'kanban'}
+                      aria-label={t('page.viewMode.kanban')}
+                      onClick={() => setActiveView('kanban')}
+                      className={cn(
+                        'relative flex items-center justify-center w-[26px] h-6 shrink-0',
+                        'transition-colors duration-150 active:scale-[0.97]',
+                        activeView === 'kanban'
+                          ? 'text-foreground'
+                          : 'text-text-tertiary hover:text-text-secondary'
+                      )}
+                    >
+                      {activeView === 'kanban' && (
+                        <motion.span
+                          layoutId="tasks-view-mode-pill"
+                          aria-hidden="true"
+                          transition={
+                            prefersReducedMotion
+                              ? { duration: 0 }
+                              : { type: 'spring', bounce: 0, duration: 0.3 }
+                          }
+                          className="absolute inset-0 bg-foreground/10"
+                        />
+                      )}
+                      <svg
+                        className="relative z-10"
+                        width="14"
+                        height="14"
+                        viewBox="0 0 13 13"
+                        fill="none"
+                      >
+                        <rect
+                          x="1.5"
+                          y="2"
+                          width="2.5"
+                          height="9"
+                          rx="0.75"
+                          stroke="currentColor"
+                        />
+                        <rect
+                          x="5.25"
+                          y="2"
+                          width="2.5"
+                          height="6.5"
+                          rx="0.75"
+                          stroke="currentColor"
+                        />
+                        <rect
+                          x="9"
+                          y="2"
+                          width="2.5"
+                          height="4.5"
+                          rx="0.75"
+                          stroke="currentColor"
+                        />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+              </LayoutGroup>
             )}
           </PageToolbar>
 
@@ -1063,51 +1135,22 @@ export const TasksPage = ({
             </div>
           )}
 
-          {/* Content Body - Today Tab (flat listing of overdue + today tasks) */}
-          {activeInternalTab === 'today' && (
-            <div className="flex flex-1 flex-col overflow-hidden">
-              <TaskList
-                tasks={todayFilteredTasks}
-                projects={projects}
-                selectedId="today"
-                selectedType="view"
-                onToggleComplete={handleToggleComplete}
-                onUpdateTask={handleUpdateTask}
-                onToggleSubtaskComplete={subtaskManagement.handleCompleteSubtask}
-                onQuickAdd={handleQuickAdd}
-                onFocusQuickAdd={focusQuickAdd}
-                onTaskClick={handleTaskClick}
-                onNoteClick={(...args) => void handleNoteClick(...args)}
-                selectedTaskId={detailTaskId}
-                isSelectionMode={selection.isSelectionMode}
-                selectedIds={selection.selectedIds}
-                onToggleSelect={toggleTask}
-                onShiftSelect={selectRange}
-                onReorderSubtasks={subtaskManagement.handleReorderSubtasks}
-                onAddSubtask={subtaskManagement.handleAddSubtask}
-                sortField={sort.field}
-                sortDirection={sort.direction}
-                showProjectBadge={!selectedProjectId}
-                doneTasks={todayTabDoneTasks}
-                getOrderedTasks={getOrderedTasks}
-              />
-            </div>
-          )}
-
-          {/* Content Body - All Tab (List View) */}
-          {activeInternalTab === 'all' && activeView === 'list' && (
-            <div className="flex flex-1 flex-col overflow-hidden">
-              {showFilterEmptyState ? (
-                <FilterEmptyState
-                  filters={filters}
-                  projects={projects}
-                  onClearFilters={clearFiltersAndClearSaved}
-                />
-              ) : (
+          {/* Content materializes on tab/view switch (crossfade only under
+              reduced motion); critically damped spring, no overshoot */}
+          <motion.div
+            key={`${activeInternalTab}:${activeView}`}
+            initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: 'spring', bounce: 0, duration: 0.35 }}
+            className="flex flex-1 min-h-0 flex-col overflow-hidden"
+          >
+            {/* Content Body - Today Tab (flat listing of overdue + today tasks) */}
+            {activeInternalTab === 'today' && (
+              <div className="flex flex-1 flex-col overflow-hidden">
                 <TaskList
-                  tasks={filteredTasks}
+                  tasks={todayFilteredTasks}
                   projects={projects}
-                  selectedId="all"
+                  selectedId="today"
                   selectedType="view"
                   onToggleComplete={handleToggleComplete}
                   onUpdateTask={handleUpdateTask}
@@ -1126,34 +1169,73 @@ export const TasksPage = ({
                   sortField={sort.field}
                   sortDirection={sort.direction}
                   showProjectBadge={!selectedProjectId}
-                  doneTasks={allTabDoneTasks}
+                  doneTasks={todayTabDoneTasks}
                   getOrderedTasks={getOrderedTasks}
                 />
-              )}
-            </div>
-          )}
+              </div>
+            )}
 
-          {/* Kanban View - All Tab */}
-          {activeInternalTab === 'all' && activeView === 'kanban' && (
-            <div className="flex flex-1 flex-col overflow-hidden">
-              <KanbanBoard
-                tasks={kanbanTasks}
-                projects={projects}
-                selectedId="all"
-                selectedType="view"
-                selectedProjectId={selectedProjectId}
-                sortField={sort.field}
-                getOrderedTasks={getOrderedTasks}
-                onUpdateTask={handleUpdateTask}
-                onToggleComplete={handleToggleComplete}
-                onTaskClick={handleTaskClick}
-                onQuickAdd={handleKanbanQuickAdd}
-                isSelectionMode={selection.isSelectionMode}
-                selectedIds={selection.selectedIds}
-                onToggleSelect={toggleTask}
-              />
-            </div>
-          )}
+            {/* Content Body - All Tab (List View) */}
+            {activeInternalTab === 'all' && activeView === 'list' && (
+              <div className="flex flex-1 flex-col overflow-hidden">
+                {showFilterEmptyState ? (
+                  <FilterEmptyState
+                    filters={filters}
+                    projects={projects}
+                    onClearFilters={clearFiltersAndClearSaved}
+                  />
+                ) : (
+                  <TaskList
+                    tasks={filteredTasks}
+                    projects={projects}
+                    selectedId="all"
+                    selectedType="view"
+                    onToggleComplete={handleToggleComplete}
+                    onUpdateTask={handleUpdateTask}
+                    onToggleSubtaskComplete={subtaskManagement.handleCompleteSubtask}
+                    onQuickAdd={handleQuickAdd}
+                    onFocusQuickAdd={focusQuickAdd}
+                    onTaskClick={handleTaskClick}
+                    onNoteClick={(...args) => void handleNoteClick(...args)}
+                    selectedTaskId={detailTaskId}
+                    isSelectionMode={selection.isSelectionMode}
+                    selectedIds={selection.selectedIds}
+                    onToggleSelect={toggleTask}
+                    onShiftSelect={selectRange}
+                    onReorderSubtasks={subtaskManagement.handleReorderSubtasks}
+                    onAddSubtask={subtaskManagement.handleAddSubtask}
+                    sortField={sort.field}
+                    sortDirection={sort.direction}
+                    showProjectBadge={!selectedProjectId}
+                    doneTasks={allTabDoneTasks}
+                    getOrderedTasks={getOrderedTasks}
+                  />
+                )}
+              </div>
+            )}
+
+            {/* Kanban View - All Tab */}
+            {activeInternalTab === 'all' && activeView === 'kanban' && (
+              <div className="flex flex-1 flex-col overflow-hidden">
+                <KanbanBoard
+                  tasks={kanbanTasks}
+                  projects={projects}
+                  selectedId="all"
+                  selectedType="view"
+                  selectedProjectId={selectedProjectId}
+                  sortField={sort.field}
+                  getOrderedTasks={getOrderedTasks}
+                  onUpdateTask={handleUpdateTask}
+                  onToggleComplete={handleToggleComplete}
+                  onTaskClick={handleTaskClick}
+                  onQuickAdd={handleKanbanQuickAdd}
+                  isSelectionMode={selection.isSelectionMode}
+                  selectedIds={selection.selectedIds}
+                  onToggleSelect={toggleTask}
+                />
+              </div>
+            )}
+          </motion.div>
         </main>
 
         {/* Task Detail Drawer */}
