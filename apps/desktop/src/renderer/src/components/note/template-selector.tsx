@@ -41,6 +41,8 @@ interface TemplateSelectorProps {
   journalDefaultTemplateId?: string | null
   /** Callback when "Set as journal default" is selected */
   onSetJournalDefault?: (templateId: string) => void
+  /** Apply-to-existing-note mode: hides default checkboxes, relabels primary button */
+  applyMode?: boolean
 }
 
 export function TemplateSelector({
@@ -51,7 +53,8 @@ export function TemplateSelector({
   onSetFolderDefault,
   isJournalContext = false,
   journalDefaultTemplateId,
-  onSetJournalDefault
+  onSetJournalDefault,
+  applyMode = false
 }: TemplateSelectorProps) {
   const { t } = useT('notes')
   const { t: tCommon } = useT('common')
@@ -128,7 +131,7 @@ export function TemplateSelector({
         )}
       >
         {/* Decorative header accent */}
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-600/80 via-orange-500/60 to-amber-600/80" />
+        <div className="absolute top-0 start-0 end-0 h-1 bg-gradient-to-r from-amber-600/80 via-orange-500/60 to-amber-600/80" />
 
         {/* Header with editorial styling */}
         <DialogHeader className="px-6 pt-7 pb-4 relative">
@@ -138,16 +141,18 @@ export function TemplateSelector({
             </div>
             <div>
               <DialogTitle className="text-xl font-semibold tracking-tight text-foreground">
-                {t('templateSelector.title')}
+                {applyMode ? t('templateSelector.applyTitle') : t('templateSelector.title')}
               </DialogTitle>
               <DialogDescription className="text-muted-foreground text-sm mt-0.5">
-                {t('templateSelector.description')}
+                {applyMode
+                  ? t('templateSelector.applyDescription')
+                  : t('templateSelector.description')}
               </DialogDescription>
             </div>
           </div>
 
           {/* Decorative flourish */}
-          <div className="absolute right-6 top-6 opacity-[0.04] dark:opacity-[0.03]">
+          <div className="absolute end-6 top-6 opacity-[0.04] dark:opacity-[0.03]">
             <svg width="80" height="80" viewBox="0 0 80 80" fill="currentColor">
               <path d="M40 0C40 22.0914 22.0914 40 0 40C22.0914 40 40 57.9086 40 80C40 57.9086 57.9086 40 80 40C57.9086 40 40 22.0914 40 0Z" />
             </svg>
@@ -157,13 +162,13 @@ export function TemplateSelector({
         {/* Search input with refined styling */}
         <div className="px-6 pb-4">
           <div className="relative group">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50 transition-colors group-focus-within:text-amber-600 dark:group-focus-within:text-amber-500" />
+            <Search className="absolute start-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50 transition-colors group-focus-within:text-amber-600 dark:group-focus-within:text-amber-500" />
             <Input
               placeholder={t('templateSelector.searchPlaceholder')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className={cn(
-                'pl-10 h-11',
+                'ps-10 h-11',
                 'bg-card/50',
                 'border-border',
                 'focus:border-amber-400 dark:focus:border-amber-600',
@@ -241,31 +246,38 @@ export function TemplateSelector({
           <div className="flex items-center justify-between">
             {/* Set as default checkboxes */}
             <div className="flex flex-col gap-1.5">
-              {/* Folder default checkbox - for notes */}
-              {folderPath && onSetFolderDefault && (
-                <LabeledCheckbox
-                  checked={setAsFolderDefault}
-                  onCheckedChange={setSetAsFolderDefault}
-                  label={t('templateSelector.setFolderDefault')}
-                />
+              {!applyMode && (
+                <>
+                  {/* Folder default checkbox - for notes */}
+                  {folderPath && onSetFolderDefault && (
+                    <LabeledCheckbox
+                      checked={setAsFolderDefault}
+                      onCheckedChange={setSetAsFolderDefault}
+                      label={t('templateSelector.setFolderDefault')}
+                    />
+                  )}
+                  {/* Journal default checkbox - for journal context */}
+                  {isJournalContext &&
+                    onSetJournalDefault &&
+                    selectedId &&
+                    selectedId !== 'blank' && (
+                      <LabeledCheckbox
+                        checked={setAsJournalDefault}
+                        onCheckedChange={setSetAsJournalDefault}
+                        label={
+                          journalDefaultTemplateId === selectedId
+                            ? 'Current journal default'
+                            : 'Set as journal default'
+                        }
+                        disabled={journalDefaultTemplateId === selectedId}
+                      />
+                    )}
+                  {/* Empty div for spacing when no checkbox is shown */}
+                  {!folderPath &&
+                    !onSetFolderDefault &&
+                    (!isJournalContext || !onSetJournalDefault) && <div />}
+                </>
               )}
-              {/* Journal default checkbox - for journal context */}
-              {isJournalContext && onSetJournalDefault && selectedId && selectedId !== 'blank' && (
-                <LabeledCheckbox
-                  checked={setAsJournalDefault}
-                  onCheckedChange={setSetAsJournalDefault}
-                  label={
-                    journalDefaultTemplateId === selectedId
-                      ? 'Current journal default'
-                      : 'Set as journal default'
-                  }
-                  disabled={journalDefaultTemplateId === selectedId}
-                />
-              )}
-              {/* Empty div for spacing when no checkbox is shown */}
-              {!folderPath &&
-                !onSetFolderDefault &&
-                (!isJournalContext || !onSetJournalDefault) && <div />}
             </div>
 
             <div className="flex gap-2.5">
@@ -274,9 +286,11 @@ export function TemplateSelector({
               </Button>
               <PrimaryActionButton onClick={handleSelect}>
                 <PenLine className="w-4 h-4" />
-                {isJournalContext
-                  ? t('templateSelector.useTemplate')
-                  : t('templateSelector.createNote')}
+                {applyMode
+                  ? t('templateSelector.applyToNote')
+                  : isJournalContext
+                    ? t('templateSelector.useTemplate')
+                    : t('templateSelector.createNote')}
               </PrimaryActionButton>
             </div>
           </div>

@@ -132,8 +132,10 @@ export function Features() {
           </div>
 
           <div className="overflow-hidden rounded-lg border border-border/70 bg-card shadow-card lg:sticky lg:top-28">
-            <div className="aspect-[1232/870]">
-              <AnimatePresence mode="wait">
+            {/* Materialize, don't just fade: incoming screenshot resolves from blur+scale
+                over the outgoing one — no mode="wait" blank frame between panels. */}
+            <div className="relative aspect-[1232/870]">
+              <AnimatePresence initial={false}>
                 <motion.img
                   key={`${activeFeature.id}-${theme}`}
                   src={screenshotSrc}
@@ -141,11 +143,11 @@ export function Features() {
                   width={1232}
                   height={870}
                   decoding="async"
-                  className="h-full w-full object-cover"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.25, ease: 'easeOut' }}
+                  className="absolute inset-0 h-full w-full object-cover"
+                  initial={{ opacity: 0, scale: 1.02, filter: 'blur(8px)' }}
+                  animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+                  exit={{ opacity: 0, transition: { duration: 0.3, ease: 'easeOut' } }}
+                  transition={{ duration: 0.5, ease: EASE }}
                 />
               </AnimatePresence>
             </div>

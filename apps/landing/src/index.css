@@ -240,6 +240,30 @@ h6 {
   letter-spacing: -0.02em;
 }
 
+/* Translucent chrome — floating layers (nav pill, dropdowns, mobile menu).
+   Content scrolls under; degrades to solid paper for reduced-transparency/contrast. */
+.material-chrome {
+  background: color-mix(in srgb, var(--color-paper) 85%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  backdrop-filter: blur(20px) saturate(140%);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .material-chrome {
+    background: var(--color-paper);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .material-chrome {
+    background: var(--color-paper);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
 ::selection {
   background-color: var(--color-terracotta);
   color: #fff;

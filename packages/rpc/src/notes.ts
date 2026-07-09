@@ -216,6 +216,12 @@ export interface NoteUpdateInput {
   emoji?: string | null
 }
 
+export interface ApplyTemplateInput {
+  noteId: string
+  templateId: string
+  mode: 'full' | 'body'
+}
+
 export interface NoteListOptions {
   folder?: string
   tags?: string[]
@@ -369,6 +375,10 @@ export const notesRpc = defineDomain({
     delete: defineMethod<(id: string) => SuccessResponse>({
       channel: NotesChannels.invoke.DELETE,
       params: ['id']
+    }),
+    applyTemplate: defineMethod<(input: ApplyTemplateInput) => Promise<NoteUpdateResponse>>({
+      channel: NotesChannels.invoke.APPLY_TEMPLATE,
+      params: ['input']
     }),
     list: defineMethod<(options?: NoteListOptions) => Promise<NoteListResponse>>({
       channel: NotesChannels.invoke.LIST,

@@ -8,9 +8,11 @@ import { getI18n } from 'react-i18next'
 
 import { useState, useCallback, useEffect, useRef, useMemo, type RefObject } from 'react'
 import { cn } from '@/lib/utils'
+import { motion, useReducedMotion } from 'motion/react'
 import { useQueryClient } from '@tanstack/react-query'
 import { ExportDialog } from '@/components/note/export-dialog'
 import { VersionHistory } from '@/components/note/version-history'
+import { ApplyTemplateToNoteDialog } from '@/components/note/apply-template-to-note-dialog'
 import { EditorErrorBoundary } from '@/components/note/editor-error-boundary'
 import { NoteLayout, HeadingItem, ContentArea, HeadingInfo, Block } from '@/components/note'
 import { NoteTitle } from '@/components/note/note-title'
@@ -43,7 +45,8 @@ import {
   AlarmClock,
   Monitor,
   Maximize,
-  ChartRelationship
+  ChartRelationship,
+  PenLine
 } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { Picker } from '@/components/ui/picker'
@@ -129,6 +132,7 @@ export function NotePage({ noteId }: NotePageProps) {
   const activeTab = useActiveTab()
   const { openTag } = useSidebarDrillDown()
   const queryClient = useQueryClient()
+  const prefersReducedMotion = useReducedMotion()
 
   // Extract highlight info from tab viewState (from reminder navigation)
   const initialHighlight = useMemo(() => {
@@ -163,6 +167,7 @@ export function NotePage({ noteId }: NotePageProps) {
   const [headings, setHeadings] = useState<HeadingItem[]>([])
   const [isDeleted, setIsDeleted] = useState(false)
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
+  const [isApplyTemplateOpen, setIsApplyTemplateOpen] = useState(false)
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false)
   const [isLocalGraphOpen, setIsLocalGraphOpen] = useState(false)
   const [moreMenuOpen, setMoreMenuOpen] = useState(false)
@@ -928,7 +933,7 @@ export function NotePage({ noteId }: NotePageProps) {
           <Button
             variant="ghost"
             size="icon"
-            className="size-7 hover:bg-surface-active"
+            className="size-7 hover:bg-surface-active transition-all duration-150 ease-out active:scale-95 active:bg-surface-active/70 disabled:active:scale-100"
             disabled={isDeleted}
             title={
               hasActiveReminder ? t('editor.toolbar.reminderSet') : t('editor.toolbar.setReminder')
@@ -947,7 +952,7 @@ export function NotePage({ noteId }: NotePageProps) {
       <Button
         variant="ghost"
         size="icon"
-        className="size-7 hover:bg-surface-active"
+        className="size-7 hover:bg-surface-active transition-all duration-150 ease-out active:scale-95 active:bg-surface-active/70 disabled:active:scale-100"
         onClick={() => void toggleBookmark()}
         disabled={isDeleted}
         title={isBookmarked ? t('editor.toolbar.removeBookmark') : t('editor.toolbar.addBookmark')}
@@ -972,6 +977,7 @@ export function NotePage({ noteId }: NotePageProps) {
           if (action === 'local-graph') setIsLocalGraphOpen((prev) => !prev)
           if (action === 'version-history') setIsVersionHistoryOpen(true)
           if (action === 'export') setIsExportDialogOpen(true)
+          if (action === 'apply-template') setIsApplyTemplateOpen(true)
           if (action === 'local-only')
             void handleToggleLocalOnly(!(note.frontmatter.localOnly ?? false))
         }}
@@ -982,7 +988,7 @@ export function NotePage({ noteId }: NotePageProps) {
           <Button
             variant="ghost"
             size="icon"
-            className="size-7 hover:bg-surface-active"
+            className="size-7 hover:bg-surface-active transition-all duration-150 ease-out active:scale-95 active:bg-surface-active/70 disabled:active:scale-100"
             disabled={isDeleted}
           >
             <MoreVertical className="h-3.5 w-3.5 text-muted-foreground" />
@@ -1008,6 +1014,11 @@ export function NotePage({ noteId }: NotePageProps) {
               value="export"
               label={t('editor.toolbar.export')}
               icon={<Download className="size-4" />}
+            />
+            <Picker.Item
+              value="apply-template"
+              label={t('editor.toolbar.applyTemplate')}
+              icon={<PenLine className="size-4" />}
             />
             <Picker.Item
               value="full-width"
@@ -1063,9 +1074,14 @@ export function NotePage({ noteId }: NotePageProps) {
       breadcrumb={<NoteBreadcrumb notePath={note.path} noteTitle={note.title} />}
       stats={documentStats}
     >
-      {/* Note content */}
-      <div
-        className="flex flex-col flex-1 mx-auto w-full transition-[max-width] duration-300 ease-in-out"
+      {/* Note content — materializes on note switch (crossfade only under
+          reduced motion); critically damped spring, no overshoot */}
+      <motion.div
+        key={noteId}
+        initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ type: 'spring', bounce: 0, duration: 0.35 }}
+        className="flex flex-col flex-1 mx-auto w-full transition-[max-width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
         style={{ maxWidth: noteContentWidth ?? '100%' }}
       >
         {/* Title + Metadata zone — ghost affordance appears on hover */}
@@ -1216,7 +1232,7 @@ export function NotePage({ noteId }: NotePageProps) {
             onTaskClick={handleLinkedTaskClick}
           />
         </div>
-      </div>
+      </motion.div>
 
       {/* Export Dialog */}
       <ExportDialog
@@ -1224,6 +1240,13 @@ export function NotePage({ noteId }: NotePageProps) {
         onOpenChange={setIsExportDialogOpen}
         noteId={noteId}
         noteTitle={note.title}
+      />
+
+      {/* Apply Template Dialog */}
+      <ApplyTemplateToNoteDialog
+        noteId={noteId}
+        isOpen={isApplyTemplateOpen}
+        onClose={() => setIsApplyTemplateOpen(false)}
       />
 
       {/* Version History Panel */}

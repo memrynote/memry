@@ -199,13 +199,15 @@ export const OutlineInfoPanel = memo(function OutlineInfoPanel({
             'bg-background border border-border/10',
             'shadow-lg rounded-[10px]',
             'min-w-[240px] max-w-[300px]',
+            // Anchor the zoom to where the collapsed rail lives (top inline-end)
+            'origin-top-right rtl:origin-top-left',
             !isFadingOut && 'animate-in fade-in-0 zoom-in-95 duration-150'
           )}
           style={
             isFadingOut
               ? {
                   opacity: 0,
-                  transform: 'scale(0.98)',
+                  transform: 'scale(0.95)',
                   transition: `opacity ${FADE_DURATION}ms ease, transform ${FADE_DURATION}ms ease`
                 }
               : undefined

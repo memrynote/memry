@@ -4,6 +4,15 @@ import { Container } from './Container'
 import { FOOTER_LINKS, TWITTER_DEV_URL } from '@/lib/constants'
 import { trackLandingEvent } from '@/lib/analytics'
 
+const FOOTER_COLUMNS = [
+  { title: 'Product', links: FOOTER_LINKS.product },
+  { title: 'Compare', links: FOOTER_LINKS.compare },
+  { title: 'Resources', links: FOOTER_LINKS.resources },
+  { title: 'Connect', links: FOOTER_LINKS.social }
+] as const
+
+const TRUST_LINE = ['End-to-end encrypted', 'Open source', 'Local-first'] as const
+
 function footerHref(href: string, pathname: string): string {
   if (href.startsWith('#') && pathname !== '/') return '/' + href
   return href
@@ -16,7 +25,7 @@ function footerTarget(label: ReactNode) {
 }
 
 function FooterLink({ href, children }: { href: string; children: ReactNode }) {
-  const className = 'text-sm text-muted hover:text-terracotta transition-colors font-medium'
+  const className = 'text-sm font-medium text-muted transition-colors hover:text-terracotta'
 
   if (href.startsWith('http')) {
     return (
@@ -48,97 +57,58 @@ export function Footer() {
   const { pathname } = useLocation()
 
   return (
-    <footer className="border-t border-border bg-paper py-20">
+    <footer className="border-t border-border/60 py-20 md:py-24">
       <Container>
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-10 mb-16">
-          <div className="col-span-2 md:col-span-2 pe-8">
+        <div className="mb-16 grid grid-cols-2 gap-x-8 gap-y-12 md:grid-cols-6 md:gap-10">
+          <div className="col-span-2 pe-8">
             <Link
               to="/"
-              className="inline-flex items-center gap-2 mb-6 group"
+              className="group inline-flex items-center gap-2"
               onClick={() => trackLandingEvent('landing_nav_click', 'footer:logo')}
             >
-              <img src="/favicon.svg" alt="" className="h-7 w-7" />
-              <span className="font-serif text-3xl font-medium text-ink group-hover:text-terracotta transition-colors">
+              <img src="/favicon.svg" alt="" className="h-6 w-6" />
+              <span className="font-geist text-2xl font-medium tracking-tight text-ink transition-colors group-hover:text-terracotta">
                 memrynote
               </span>
             </Link>
-            <p className="text-lg text-muted font-sans leading-relaxed max-w-sm">
+            <p className="mt-5 max-w-sm text-base leading-relaxed text-muted">
               Notes, tasks, and journal — finally in one place. Private, fast, and yours forever.
+            </p>
+            <p className="mt-6 font-mono-accent text-[10px] uppercase tracking-[0.18em] text-muted/60">
+              {TRUST_LINE.map((fact, i) => (
+                <span key={fact} className="inline-block">
+                  {fact}
+                  {i < TRUST_LINE.length - 1 && (
+                    <span aria-hidden className="mx-2.5 text-terracotta/60">
+                      ·
+                    </span>
+                  )}
+                </span>
+              ))}
             </p>
           </div>
 
-          <div>
-            <h4 className="font-serif text-lg text-ink mb-6">Product</h4>
-            <ul className="space-y-4">
-              {FOOTER_LINKS.product.map((link) => (
-                <li key={link.label}>
-                  <Link
-                    to={footerHref(link.href, pathname)}
-                    className="text-sm text-muted hover:text-terracotta transition-colors font-medium"
-                    onClick={() => trackLandingEvent('landing_nav_click', footerTarget(link.label))}
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="font-serif text-lg text-ink mb-6">Compare</h4>
-            <ul className="space-y-4">
-              {FOOTER_LINKS.compare.map((link) => (
-                <li key={link.label}>
-                  <Link
-                    to={footerHref(link.href, pathname)}
-                    className="text-sm text-muted hover:text-terracotta transition-colors font-medium"
-                    onClick={() => trackLandingEvent('landing_nav_click', footerTarget(link.label))}
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="font-serif text-lg text-ink mb-6">Resources</h4>
-            <ul className="space-y-4">
-              {FOOTER_LINKS.resources.map((link) => (
-                <li key={link.label}>
-                  <FooterLink href={link.href}>{link.label}</FooterLink>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="font-serif text-lg text-ink mb-6">Connect</h4>
-            <ul className="space-y-4">
-              {FOOTER_LINKS.social.map((link) => (
-                <li key={link.label}>
-                  <a
-                    href={link.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-muted hover:text-terracotta transition-colors font-medium"
-                    onClick={() =>
-                      trackLandingEvent('landing_external_click', footerTarget(link.label))
-                    }
-                  >
-                    {link.label}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
+          {FOOTER_COLUMNS.map((column) => (
+            <div key={column.title}>
+              <h4 className="mb-5 font-mono-accent text-[11px] uppercase tracking-[0.18em] text-muted/70">
+                {column.title}
+              </h4>
+              <ul className="space-y-3.5">
+                {column.links.map((link) => (
+                  <li key={link.label}>
+                    <FooterLink href={footerHref(link.href, pathname)}>{link.label}</FooterLink>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
 
-        <div className="pt-8 border-t border-border flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-sm text-muted/60 font-mono-accent">
+        <div className="flex flex-col items-center justify-between gap-4 border-t border-border/60 pt-8 md:flex-row">
+          <p className="font-mono-accent text-xs text-muted/60">
             © {currentYear} memrynote. All rights reserved.
           </p>
-          <p className="text-sm text-muted/60 font-mono-accent">
+          <p className="font-mono-accent text-xs text-muted/60">
             An indie project by{' '}
             <a
               href={TWITTER_DEV_URL}

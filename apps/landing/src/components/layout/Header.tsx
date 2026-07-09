@@ -113,7 +113,7 @@ function GitHubStarWidget({
   return (
     <a
       className={cn(
-        'github-star-widget inline-flex items-center rounded-lg border border-border/70 bg-card/65 font-semibold text-ink shadow-[0_1px_0_rgba(255,255,255,0.7)] transition-colors hover:border-ink/15 hover:bg-card dark:border-white/10 dark:shadow-none',
+        'github-star-widget inline-flex items-center rounded-lg border border-border/70 bg-card/65 font-semibold text-ink shadow-[0_1px_0_rgba(255,255,255,0.7)] transition-[color,background-color,border-color,transform] duration-200 hover:border-ink/15 hover:bg-card active:scale-[0.97] active:duration-75 motion-reduce:active:scale-100 dark:border-white/10 dark:shadow-none',
         iconOnly
           ? 'h-10 w-10 justify-center rounded-full p-0'
           : compact
@@ -162,7 +162,7 @@ function DropdownTrigger({ label, icon: Icon }: { label: string; icon?: LucideIc
       {Icon ? <Icon className="h-3.5 w-3.5" aria-hidden /> : null}
       {label}
       <ChevronDown
-        className="h-3.5 w-3.5 transition-transform group-hover:rotate-180"
+        className="h-3.5 w-3.5 transition-transform group-hover:rotate-180 group-focus-within:rotate-180"
         aria-hidden
       />
     </button>
@@ -243,10 +243,12 @@ function DesktopDropdown({
   return (
     <div className="group relative">
       <DropdownTrigger label={label} icon={icon} />
-      <div className="invisible absolute left-1/2 top-full z-50 mt-3 -translate-x-1/2 opacity-0 transition-all duration-150 group-hover:visible group-hover:opacity-100">
+      {/* Materialize from the trigger: blur+scale+lift resolve together, anchored top.
+          focus-within keeps the menu reachable by keyboard, not just hover. */}
+      <div className="invisible absolute left-1/2 top-full z-50 mt-3 origin-top -translate-x-1/2 translate-y-1 scale-[0.97] opacity-0 blur-[6px] transition-all duration-200 [transition-timing-function:var(--ease-out-expo)] group-hover:visible group-hover:translate-y-0 group-hover:scale-100 group-hover:opacity-100 group-hover:blur-none group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:scale-100 group-focus-within:opacity-100 group-focus-within:blur-none motion-reduce:translate-y-0 motion-reduce:scale-100 motion-reduce:blur-none motion-reduce:transition-[opacity,visibility]">
         <div
           className={cn(
-            'rounded-[22px] border border-white/70 bg-paper/95 p-3 shadow-[0_26px_80px_-28px_rgba(31,41,55,0.28),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-xl dark:border-white/10 dark:bg-paper/90 dark:shadow-[0_26px_80px_-28px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.04)]',
+            'material-chrome rounded-[22px] border border-white/70 p-3 shadow-[0_26px_80px_-28px_rgba(31,41,55,0.28),inset_0_1px_0_rgba(255,255,255,0.7)] dark:border-white/10 dark:shadow-[0_26px_80px_-28px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.04)]',
             columns === 2 ? 'w-[574px]' : 'w-[320px]'
           )}
         >
@@ -456,7 +458,7 @@ export function Header() {
           className={cn(
             'mx-auto flex max-w-6xl items-center justify-between rounded-full border px-3 py-2 transition-all duration-300 sm:px-4',
             showHeaderSurface
-              ? 'border-border/60 bg-paper/85 shadow-sm backdrop-blur-xl'
+              ? 'material-chrome border-border/60 shadow-sm'
               : 'border-transparent bg-transparent'
           )}
         >
@@ -502,7 +504,7 @@ export function Header() {
             <GitHubStarWidget iconOnly className="h-9 w-9" />
             <button
               type="button"
-              className="rounded-full border border-border/70 bg-card/60 p-3 text-ink transition-colors hover:text-terracotta"
+              className="rounded-full border border-border/70 bg-card/60 p-3 text-ink transition-[color,transform] duration-200 hover:text-terracotta active:scale-95 active:duration-75 motion-reduce:active:scale-100"
               onClick={toggleMobileMenu}
               aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
             >
@@ -515,13 +517,14 @@ export function Header() {
       <AnimatePresence>
         {mobileMenuOpen && (
           <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            className="relative z-10 px-3 pt-3 md:hidden sm:px-6"
+            initial={{ opacity: 0, y: -8, scale: 0.98, filter: 'blur(8px)' }}
+            animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
+            exit={{ opacity: 0, y: -8, scale: 0.98, filter: 'blur(8px)' }}
+            transition={{ type: 'spring', duration: 0.35, bounce: 0 }}
+            className="relative z-10 origin-top px-3 pt-3 md:hidden sm:px-6"
           >
             <Container size="full">
-              <div className="mx-auto flex max-h-[calc(100dvh-88px)] max-w-6xl flex-col gap-1.5 overflow-y-auto rounded-[20px] border border-white/70 bg-paper/92 p-2.5 shadow-[var(--shadow-float)] backdrop-blur-xl dark:border-white/10">
+              <div className="material-chrome mx-auto flex max-h-[calc(100dvh-88px)] max-w-6xl flex-col gap-1.5 overflow-y-auto rounded-[20px] border border-white/70 p-2.5 shadow-[var(--shadow-float)] dark:border-white/10">
                 {MOBILE_DROPDOWN_SECTIONS.map((section) => (
                   <MobileDropdownSection
                     key={section.key}

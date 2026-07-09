@@ -297,22 +297,26 @@
 /* Floating page chrome — translucent material over scrolling content.
    Blur + tint are always on (invisible while nothing is beneath the bar);
    the scroll edge (softened hairline + falloff) materializes via
-   [data-scrolled] only once content actually passes under it. */
-.page-chrome {
+   [data-scrolled] only once content actually passes under it.
+   .note-chrome is the note/journal instance of the same material. */
+.page-chrome,
+.note-chrome {
   background: color-mix(in srgb, var(--background) 65%, transparent);
   -webkit-backdrop-filter: blur(16px) saturate(180%);
   backdrop-filter: blur(16px) saturate(180%);
   transition: box-shadow 200ms var(--ease-out);
 }
 
-.page-chrome[data-scrolled] {
+.page-chrome[data-scrolled],
+.note-chrome[data-scrolled] {
   box-shadow:
     0 1px 0 0 color-mix(in srgb, var(--border) 55%, transparent),
     0 4px 16px -8px rgb(0 0 0 / 0.1);
 }
 
 @media (prefers-reduced-transparency: reduce) {
-  .page-chrome {
+  .page-chrome,
+  .note-chrome {
     background: var(--background);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
@@ -348,19 +352,32 @@
 .sticky-toolbar-enabled .bn-formatting-toolbar {
   order: -1;
   position: sticky !important;
-  top: 0 !important;
+  /* Stick below the floating note chrome (var set by NoteLayout, 0 elsewhere) */
+  top: var(--note-chrome-height, 0px) !important;
   z-index: 20;
   width: 100%;
   margin: 0 0 8px 0 !important;
   padding: 4px 0 8px 0 !important;
-  background: var(--background) !important;
+  background: color-mix(in srgb, var(--background) 72%, transparent) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  backdrop-filter: blur(16px) saturate(180%);
   border: none !important;
-  border-bottom: 1px solid var(--border) !important;
   border-radius: 0 !important;
-  box-shadow: none !important;
+  /* Soft scroll-edge instead of a hard divider: softened hairline + short falloff */
+  box-shadow:
+    0 1px 0 0 color-mix(in srgb, var(--border) 60%, transparent),
+    0 1px 10px -4px rgb(0 0 0 / 0.08) !important;
   transform: none !important;
   opacity: 1 !important;
   pointer-events: auto !important;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .sticky-toolbar-enabled .bn-formatting-toolbar {
+    background: var(--background) !important;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
 }
 
 .sticky-toolbar-enabled .bn-formatting-toolbar > div {

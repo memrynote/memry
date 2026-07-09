@@ -39,7 +39,8 @@ interface JournalHeaderActionsProps {
   onOpenSettings: () => void
 }
 
-const ACTION_BTN = 'size-7 hover:bg-surface-active'
+const ACTION_BTN =
+  'size-7 hover:bg-surface-active transition-all duration-150 ease-out active:scale-95 active:bg-surface-active/70 disabled:active:scale-100'
 
 export function JournalHeaderActions({
   viewState,

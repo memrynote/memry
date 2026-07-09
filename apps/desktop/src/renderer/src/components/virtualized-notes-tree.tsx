@@ -95,6 +95,8 @@ interface VirtualizedNotesTreeProps {
   onBulkDelete?: () => void
   /** Callback when a note should be renamed */
   onRenameNote?: (note: NoteListItem) => void
+  /** Callback when a template should be applied to a note */
+  onApplyTemplateToNote?: (note: NoteListItem) => void
   /** Callback when a note should be deleted */
   onDeleteNote?: (note: NoteListItem) => void
   /** Callback when opening a note externally */
@@ -453,6 +455,7 @@ interface NoteRowProps {
   onSelect: (noteId: string, event: React.MouseEvent) => void
   onDoubleClick?: (note: NoteListItem) => void
   onRenameNote?: (note: NoteListItem) => void
+  onApplyTemplateToNote?: (note: NoteListItem) => void
   onDeleteNote?: (note: NoteListItem) => void
   onOpenExternal?: (note: NoteListItem) => void
   onRevealInFinder?: (note: NoteListItem) => void
@@ -481,6 +484,7 @@ function NoteRow({
   onSelect,
   onDoubleClick,
   onRenameNote,
+  onApplyTemplateToNote,
   onDeleteNote,
   onOpenExternal,
   onRevealInFinder,
@@ -622,6 +626,10 @@ function NoteRow({
               <Pencil className="me-2 h-4 w-4" />
               {t('tree.actions.rename')}
             </ContextMenuItem>
+            <ContextMenuItem onClick={() => onApplyTemplateToNote?.(item.note)}>
+              <LayoutTemplate className="me-2 h-4 w-4" />
+              {t('tree.actions.applyTemplate')}
+            </ContextMenuItem>
             <ContextMenuSeparator />
             <ContextMenuItem onClick={() => onIconPickerOpenChange?.(item.note.id)}>
               <Smile className="me-2 h-4 w-4" />
@@ -671,6 +679,7 @@ export function VirtualizedNotesTree({
   onMove,
   onBulkDelete,
   onRenameNote,
+  onApplyTemplateToNote,
   onDeleteNote,
   onOpenExternal,
   onRevealInFinder,
@@ -1081,6 +1090,7 @@ export function VirtualizedNotesTree({
                   onSelect={handleSelect}
                   onDoubleClick={handleNoteDoubleClick}
                   onRenameNote={onRenameNote}
+                  onApplyTemplateToNote={onApplyTemplateToNote}
                   onDeleteNote={onDeleteNote}
                   onOpenExternal={onOpenExternal}
                   onRevealInFinder={onRevealInFinder}

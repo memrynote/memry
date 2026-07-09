@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useEffect } from 'react'
+import { MotionConfig } from 'framer-motion'
 import { HelmetProvider } from 'react-helmet-async'
 import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
@@ -217,7 +218,11 @@ export default function App() {
     <HelmetProvider>
       <BrowserRouter>
         <AuthProvider>
-          <AppContent />
+          {/* reducedMotion="user": transform/layout animations degrade to crossfades
+              for prefers-reduced-motion users, across every motion.* on the site. */}
+          <MotionConfig reducedMotion="user">
+            <AppContent />
+          </MotionConfig>
           <Analytics />
           <SpeedInsights />
         </AuthProvider>
