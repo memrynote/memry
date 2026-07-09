@@ -102,7 +102,9 @@ synced across devices via a new `theme` sync item type.
 - `general.customThemeId` added to `GENERAL_SYNCABLE_FIELDS` and
   `SyncedSettingsSchema.general` as optional. Older clients strip unknown fields in
   Zod (non-strict) — no breakage.
-- No DB schema change: themes are vault files + sync items. No migration needed.
+- DB: additive `custom_themes` table (hand-written migration `0035_custom_themes.sql`) —
+  the folder_config precedent showed file-backed sync types still need a DB row as the
+  clock/sync source of truth. Additive CREATE TABLE only; fully backward compatible.
 - **Pre-implementation verification points:**
   1. Older desktop clients must gracefully skip unknown item types on pull — verify
      the handler-registry (`getHandler(type)`) miss path.
