@@ -15,7 +15,8 @@ const EditorPreferencesSchema = z.object({
 
 export const VaultPreferencesSchema = z.object({
   theme: z.enum(['light', 'dark', 'white', 'system']),
-  customThemeId: z.string().nullable(),
+  // Default null so config.json files written by older app versions parse.
+  customThemeId: z.string().nullable().default(null),
   fontSize: z.enum(['small', 'medium', 'large']),
   fontFamily: z.enum(['system', 'serif', 'sans-serif', 'monospace', 'gelasio', 'geist', 'inter']),
   accentColor: z.string().regex(/^#[0-9a-fA-F]{6}$/),

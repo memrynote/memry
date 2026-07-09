@@ -10,7 +10,8 @@ import {
   rpcDomains,
   settingsRpc,
   tasksRpc,
-  telemetryRpc
+  telemetryRpc,
+  themesRpc
 } from './index.ts'
 
 const DOMAINS_WITHOUT_EVENTS = new Set(['telemetry', 'feedback'])
@@ -30,12 +31,13 @@ describe('@memry/rpc public surface', () => {
     expect(calendarRpc.name).toBe('calendar')
     expect(telemetryRpc.name).toBe('telemetry')
     expect(feedbackRpc.name).toBe('feedback')
+    expect(themesRpc.name).toBe('themes')
   })
 })
 
 describe('rpcDomains aggregate', () => {
-  it('contains exactly the seven known domains in declaration order', () => {
-    expect(rpcDomains).toHaveLength(7)
+  it('contains exactly the eight known domains in declaration order', () => {
+    expect(rpcDomains).toHaveLength(8)
     expect(rpcDomains.map((d) => d.name)).toEqual([
       'notes',
       'tasks',
@@ -43,7 +45,8 @@ describe('rpcDomains aggregate', () => {
       'settings',
       'calendar',
       'telemetry',
-      'feedback'
+      'feedback',
+      'themes'
     ])
   })
 

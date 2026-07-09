@@ -28,7 +28,7 @@ import {
   enqueueLocalSyncDelete,
   enqueueLocalSyncUpdate
 } from '../sync/local-mutations'
-import type { DrizzleDb } from '../sync/item-handlers/types'
+import type { DataDb } from '../database'
 import { createLogger } from '../lib/logger'
 
 const log = createLogger('ThemeStore')
@@ -50,7 +50,7 @@ function vaultPathOrNull(): string | null {
   return getStatus().path ?? null
 }
 
-function takenSlugs(db: DrizzleDb, excludeId?: string): Set<string> {
+function takenSlugs(db: DataDb, excludeId?: string): Set<string> {
   const rows = db.select({ id: customThemes.id, slug: customThemes.slug }).from(customThemes).all()
   return new Set(rows.filter((row) => row.id !== excludeId).map((row) => row.slug))
 }
@@ -68,16 +68,16 @@ function writeFileSafe(slug: string, theme: CustomTheme, previousSlug?: string):
   }
 }
 
-export function listThemes(db: DrizzleDb): CustomTheme[] {
+export function listThemes(db: DataDb): CustomTheme[] {
   return db.select().from(customThemes).all().map(rowToTheme)
 }
 
-export function getTheme(db: DrizzleDb, id: string): CustomTheme | null {
+export function getTheme(db: DataDb, id: string): CustomTheme | null {
   const row = db.select().from(customThemes).where(eq(customThemes.id, id)).get()
   return row ? rowToTheme(row) : null
 }
 
-export function createTheme(db: DrizzleDb, input: CreateThemeInput): CustomTheme {
+export function createTheme(db: DataDb, input: CreateThemeInput): CustomTheme {
   const id = randomUUID()
   const slug = uniqueThemeSlug(input.name, takenSlugs(db))
   const now = utcNow()
@@ -107,11 +107,7 @@ export function createTheme(db: DrizzleDb, input: CreateThemeInput): CustomTheme
   return theme
 }
 
-export function updateTheme(
-  db: DrizzleDb,
-  id: string,
-  input: UpdateThemeInput
-): CustomTheme | null {
+export function updateTheme(db: DataDb, id: string, input: UpdateThemeInput): CustomTheme | null {
   const existing = db.select().from(customThemes).where(eq(customThemes.id, id)).get()
   if (!existing) return null
 
@@ -140,7 +136,7 @@ export function updateTheme(
   return theme
 }
 
-export function deleteTheme(db: DrizzleDb, id: string): boolean {
+export function deleteTheme(db: DataDb, id: string): boolean {
   const existing = db.select().from(customThemes).where(eq(customThemes.id, id)).get()
   if (!existing) return false
 
@@ -174,7 +170,7 @@ export function deleteTheme(db: DrizzleDb, id: string): boolean {
  * existing vault, or hand-created files). Inserted unclocked so the next
  * seedUnclocked pass pushes them to other devices.
  */
-export function adoptThemeFiles(db: DrizzleDb): number {
+export function adoptThemeFiles(db: DataDb): number {
   const vaultPath = vaultPathOrNull()
   if (!vaultPath) return 0
 

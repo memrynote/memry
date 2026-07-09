@@ -9,6 +9,8 @@ const hoisted = vi.hoisted(() => ({
   unregisterTasksHandlers: vi.fn(),
   registerSavedFiltersHandlers: vi.fn(),
   unregisterSavedFiltersHandlers: vi.fn(),
+  registerThemesHandlers: vi.fn(),
+  unregisterThemesHandlers: vi.fn(),
   registerTemplatesHandlers: vi.fn(),
   unregisterTemplatesHandlers: vi.fn(),
   registerJournalHandlers: vi.fn(),
@@ -72,6 +74,10 @@ vi.mock('./tasks-handlers', () => ({
 vi.mock('./saved-filters-handlers', () => ({
   registerSavedFiltersHandlers: hoisted.registerSavedFiltersHandlers,
   unregisterSavedFiltersHandlers: hoisted.unregisterSavedFiltersHandlers
+}))
+vi.mock('./themes-handlers', () => ({
+  registerThemesHandlers: hoisted.registerThemesHandlers,
+  unregisterThemesHandlers: hoisted.unregisterThemesHandlers
 }))
 vi.mock('./templates-handlers', () => ({
   registerTemplatesHandlers: hoisted.registerTemplatesHandlers,
@@ -188,6 +194,7 @@ describe('ipc index registration lifecycle', () => {
     expect(hoisted.registerFeedbackHandlers).toHaveBeenCalledTimes(1)
     expect(hoisted.registerAgentMcpHandlers).toHaveBeenCalledTimes(1)
     expect(hoisted.registerImportHandlers).toHaveBeenCalledTimes(1)
+    expect(hoisted.registerThemesHandlers).toHaveBeenCalledTimes(1)
   })
 
   it('prevents duplicate registration', () => {
@@ -213,6 +220,7 @@ describe('ipc index registration lifecycle', () => {
     expect(hoisted.unregisterUpdaterHandlers).toHaveBeenCalledTimes(1)
     expect(hoisted.unregisterAgentMcpHandlers).toHaveBeenCalledTimes(1)
     expect(hoisted.unregisterImportHandlers).toHaveBeenCalledTimes(1)
+    expect(hoisted.unregisterThemesHandlers).toHaveBeenCalledTimes(1)
   })
 
   it('is a no-op to unregister when handlers are not registered', () => {

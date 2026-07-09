@@ -60,7 +60,6 @@ import {
   type TerminalCommandStatus as BaseTerminalCommandStatus
 } from '../cli/terminal-command'
 import { getTheme } from '../themes/theme-store'
-import type { DrizzleDb as ThemeStoreDb } from '../sync/item-handlers/types'
 
 // ============================================================================
 // Settings Keys
@@ -233,7 +232,7 @@ function getStartupTheme(): StartupTheme {
   }
   if (settings.customThemeId) {
     const db = getDbOrNull()
-    const customTheme = db ? getTheme(db as unknown as ThemeStoreDb, settings.customThemeId) : null
+    const customTheme = db ? getTheme(db, settings.customThemeId) : null
     if (customTheme) {
       result.customTheme = {
         id: customTheme.id,

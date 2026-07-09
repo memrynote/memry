@@ -37,7 +37,7 @@ vi.mock('../lib/logger', () => ({
 }))
 
 import { makeThemesHandlers, registerThemesHandlers } from './themes-handlers'
-import type { DrizzleDb } from '../sync/item-handlers/types'
+import type { DataDb } from '../database'
 
 describe('registerThemesHandlers — lazy DB resolution', () => {
   it('does not throw at registration and registers all 4 channels', async () => {
@@ -57,7 +57,7 @@ describe('themes handlers', () => {
   beforeEach(() => {
     vaultPath = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-themes-ipc-'))
     dbResult = createTestDataDb()
-    h = makeThemesHandlers(dbResult.db as unknown as DrizzleDb)
+    h = makeThemesHandlers(dbResult.db as unknown as DataDb)
   })
 
   afterEach(() => {

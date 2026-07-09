@@ -26,7 +26,7 @@ import {
   listThemes,
   updateTheme
 } from '../themes/theme-store'
-import type { DrizzleDb } from '../sync/item-handlers/types'
+import type { DataDb } from '../database'
 
 function emitThemeEvent(channel: string, data: unknown): void {
   BrowserWindow.getAllWindows().forEach((win) => {
@@ -34,7 +34,7 @@ function emitThemeEvent(channel: string, data: unknown): void {
   })
 }
 
-export function makeThemesHandlers(db: DrizzleDb): {
+export function makeThemesHandlers(db: DataDb): {
   list: () => CustomTheme[]
   create: (input: CreateThemeInput) => ThemeMutationResult
   update: (input: UpdateThemePayload) => ThemeMutationResult
@@ -71,27 +71,27 @@ export function makeThemesHandlers(db: DrizzleDb): {
 export function registerThemesHandlers(): void {
   ipcMain.handle(
     ThemesChannels.invoke.LIST,
-    createHandler(() => makeThemesHandlers(requireDatabase() as unknown as DrizzleDb).list())
+    createHandler(() => makeThemesHandlers(requireDatabase()).list())
   )
 
   ipcMain.handle(
     ThemesChannels.invoke.CREATE,
     createValidatedHandler(CreateThemeInputSchema, (input) =>
-      makeThemesHandlers(requireDatabase() as unknown as DrizzleDb).create(input)
+      makeThemesHandlers(requireDatabase()).create(input)
     )
   )
 
   ipcMain.handle(
     ThemesChannels.invoke.UPDATE,
     createValidatedHandler(UpdateThemePayloadSchema, (input) =>
-      makeThemesHandlers(requireDatabase() as unknown as DrizzleDb).update(input)
+      makeThemesHandlers(requireDatabase()).update(input)
     )
   )
 
   ipcMain.handle(
     ThemesChannels.invoke.DELETE,
     createValidatedHandler(DeleteThemePayloadSchema, (input) =>
-      makeThemesHandlers(requireDatabase() as unknown as DrizzleDb).delete(input)
+      makeThemesHandlers(requireDatabase()).delete(input)
     )
   )
 }

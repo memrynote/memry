@@ -29,16 +29,16 @@ import {
   enqueueLocalSyncUpdate
 } from '../sync/local-mutations'
 import { createTheme, updateTheme, deleteTheme, listThemes, adoptThemeFiles } from './theme-store'
-import type { DrizzleDb } from '../sync/item-handlers/types'
+import type { DataDb } from '../database'
 
 describe('theme-store', () => {
   let testDb: TestDatabaseResult
-  let db: DrizzleDb
+  let db: DataDb
 
   beforeEach(() => {
     vaultPath = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-theme-store-'))
     testDb = createTestDataDb()
-    db = testDb.db as unknown as DrizzleDb
+    db = testDb.db as unknown as DataDb
     vi.clearAllMocks()
   })
 
