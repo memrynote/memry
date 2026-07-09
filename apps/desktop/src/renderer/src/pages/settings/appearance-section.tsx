@@ -18,6 +18,7 @@ import {
   SettingRow,
   COMPACT_SELECT
 } from '@/components/settings/settings-primitives'
+import { CustomThemesSection } from '@/components/settings/custom-themes-section'
 
 const ACCENT_PRESETS = [
   { value: '#6366f1', labelKey: 'appearance.accent.presets.indigo' },
@@ -112,7 +113,8 @@ export function AppearanceSettings() {
     async (value: string) => {
       if (!value) return
       const theme = value as 'light' | 'dark' | 'white' | 'system'
-      const success = await updateSettings({ theme })
+      // Picking a built-in theme deactivates any custom theme.
+      const success = await updateSettings({ theme, customThemeId: null })
       if (!success) toast.error(t('appearance.theme.error'))
     },
     [t, updateSettings]
@@ -190,6 +192,8 @@ export function AppearanceSettings() {
           />
         </SettingRow>
       </SettingsGroup>
+
+      <CustomThemesSection />
 
       <SettingsGroup label={t('appearance.groups.accentColor')}>
         <div className="flex items-center justify-between py-3.5 px-4">
