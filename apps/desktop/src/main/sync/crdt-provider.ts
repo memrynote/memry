@@ -1,6 +1,7 @@
 import * as Y from 'yjs'
 import { LeveldbPersistence } from 'y-leveldb'
 import path from 'path'
+import { existsSync, renameSync } from 'fs'
 import { app, BrowserWindow } from 'electron'
 import { CRDT_EVENTS, CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { createLogger } from '../lib/logger'
@@ -126,9 +127,40 @@ export class CrdtProvider {
       // A binding that hard-aborts (unsupported CPU instructions, AV kills)
       // takes the whole process down with no catchable error — observed on
       // 2026.709.x: main died silently before the window painted. Exercise
-      // the binding in a disposable child first; only load it here if the
+      // the binding in a disposable child first — against the real store, so
+      // corrupt on-disk state aborts the child too. Only load it here if the
       // child survives.
-      const preflight = await runCrdtPreflight()
+      let preflight = await runCrdtPreflight(storagePath)
+      if (!preflight.ok && existsSync(storagePath)) {
+        // The abort may be the store's data (torn LDB/MANIFEST from a past
+        // crash or full disk), not the binding. Quarantine the store and give
+        // the binding one clean shot at a fresh directory: pass → the data was
+        // the problem, keep the quarantine and start fresh (vault markdown is
+        // the source of truth; only CRDT history moves aside). Fail → the
+        // binding is the problem, so restore the store for a future launch
+        // with a working binding and fall through to in-memory mode.
+        const quarantinePath = `${storagePath}.broken-${Date.now()}`
+        renameSync(storagePath, quarantinePath)
+        preflight = await runCrdtPreflight(storagePath)
+        if (preflight.ok) {
+          log.warn(
+            'CRDT store quarantined after failed preflight — continuing with a fresh store',
+            {
+              storagePath,
+              quarantinePath
+            }
+          )
+        } else {
+          try {
+            renameSync(quarantinePath, storagePath)
+          } catch (restoreErr) {
+            log.warn('Failed to restore quarantined CRDT store', {
+              quarantinePath,
+              error: restoreErr
+            })
+          }
+        }
+      }
       if (!preflight.ok) {
         throw new Error(`CRDT store preflight failed: ${preflight.reason ?? 'unknown'}`)
       }

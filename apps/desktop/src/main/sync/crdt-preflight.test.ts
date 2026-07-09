@@ -26,14 +26,15 @@ vi.mock('../lib/logger', () => ({
   })
 }))
 
-import { runCrdtPreflight, resetCrdtPreflightForTests } from './crdt-preflight'
+import { runCrdtPreflight } from './crdt-preflight'
+
+const STORE_DIR = '/tmp/memry-preflight-test/crdt-store'
 
 describe('runCrdtPreflight', () => {
   let child: MockChild
 
   beforeEach(() => {
     vi.clearAllMocks()
-    resetCrdtPreflightForTests()
     child = new MockChild()
     mockFork.mockReturnValue(child)
   })
@@ -42,19 +43,19 @@ describe('runCrdtPreflight', () => {
     vi.useRealTimers()
   })
 
-  it('passes when the child exits cleanly', async () => {
-    const pending = runCrdtPreflight()
+  it('passes when the child exits cleanly and probes the requested store dir', async () => {
+    const pending = runCrdtPreflight(STORE_DIR)
     child.emit('exit', 0)
 
     await expect(pending).resolves.toEqual({ ok: true })
     expect(mockFork).toHaveBeenCalledTimes(1)
     const [childPath, args] = mockFork.mock.calls[0] as [string, string[]]
     expect(childPath).toContain('crdt-preflight-child.js')
-    expect(args[0]).toContain('crdt-store-preflight')
+    expect(args[0]).toBe(STORE_DIR)
   })
 
   it('fails when the child dies with a non-zero code (native abort)', async () => {
-    const pending = runCrdtPreflight()
+    const pending = runCrdtPreflight(STORE_DIR)
     child.emit('exit', 134)
 
     const result = await pending
@@ -64,7 +65,7 @@ describe('runCrdtPreflight', () => {
 
   it('kills the child and fails when it hangs past the timeout', async () => {
     vi.useFakeTimers()
-    const pending = runCrdtPreflight()
+    const pending = runCrdtPreflight(STORE_DIR)
 
     await vi.advanceTimersByTimeAsync(11_000)
 
@@ -79,18 +80,20 @@ describe('runCrdtPreflight', () => {
       throw new Error('spawn failed')
     })
 
-    const result = await runCrdtPreflight()
+    const result = await runCrdtPreflight(STORE_DIR)
     expect(result.ok).toBe(false)
     expect(result.reason).toContain('spawn failed')
   })
 
-  it('runs the child once per process and caches the verdict', async () => {
-    const first = runCrdtPreflight()
-    child.emit('exit', 0)
+  it('forks a fresh child on every call so a quarantine retry re-probes', async () => {
+    const first = runCrdtPreflight(STORE_DIR)
+    child.emit('exit', 134)
     await first
 
-    const second = await runCrdtPreflight()
-    expect(second).toEqual({ ok: true })
-    expect(mockFork).toHaveBeenCalledTimes(1)
+    const second = runCrdtPreflight(STORE_DIR)
+    child.emit('exit', 0)
+
+    await expect(second).resolves.toEqual({ ok: true })
+    expect(mockFork).toHaveBeenCalledTimes(2)
   })
 })
