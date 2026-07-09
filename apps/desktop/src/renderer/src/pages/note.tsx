@@ -8,6 +8,7 @@ import { getI18n } from 'react-i18next'
 
 import { useState, useCallback, useEffect, useRef, useMemo, type RefObject } from 'react'
 import { cn } from '@/lib/utils'
+import { motion, useReducedMotion } from 'motion/react'
 import { useQueryClient } from '@tanstack/react-query'
 import { ExportDialog } from '@/components/note/export-dialog'
 import { VersionHistory } from '@/components/note/version-history'
@@ -129,6 +130,7 @@ export function NotePage({ noteId }: NotePageProps) {
   const activeTab = useActiveTab()
   const { openTag } = useSidebarDrillDown()
   const queryClient = useQueryClient()
+  const prefersReducedMotion = useReducedMotion()
 
   // Extract highlight info from tab viewState (from reminder navigation)
   const initialHighlight = useMemo(() => {
@@ -1063,8 +1065,13 @@ export function NotePage({ noteId }: NotePageProps) {
       breadcrumb={<NoteBreadcrumb notePath={note.path} noteTitle={note.title} />}
       stats={documentStats}
     >
-      {/* Note content */}
-      <div
+      {/* Note content — materializes on note switch (crossfade only under
+          reduced motion); critically damped spring, no overshoot */}
+      <motion.div
+        key={noteId}
+        initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ type: 'spring', bounce: 0, duration: 0.35 }}
         className="flex flex-col flex-1 mx-auto w-full transition-[max-width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
         style={{ maxWidth: noteContentWidth ?? '100%' }}
       >
@@ -1216,7 +1223,7 @@ export function NotePage({ noteId }: NotePageProps) {
             onTaskClick={handleLinkedTaskClick}
           />
         </div>
-      </div>
+      </motion.div>
 
       {/* Export Dialog */}
       <ExportDialog
