@@ -5,6 +5,7 @@ export const SyncedSettingsSchema = z.object({
   general: z
     .object({
       theme: z.enum(['light', 'dark', 'white', 'system']).optional(),
+      customThemeId: z.string().nullable().optional(),
       fontSize: z.enum(['small', 'medium', 'large']).optional(),
       fontFamily: z
         .enum(['system', 'serif', 'sans-serif', 'monospace', 'gelasio', 'geist', 'inter'])

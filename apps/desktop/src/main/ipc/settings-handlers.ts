@@ -59,6 +59,7 @@ import {
   type TerminalCommandOptions,
   type TerminalCommandStatus as BaseTerminalCommandStatus
 } from '../cli/terminal-command'
+import { getTheme } from '../themes/theme-store'
 
 // ============================================================================
 // Settings Keys
@@ -68,6 +69,7 @@ const logger = createLogger('IPC:Settings')
 
 const GENERAL_SYNCABLE_FIELDS: (keyof GeneralSettings)[] = [
   'theme',
+  'customThemeId',
   'fontSize',
   'fontFamily',
   'accentColor',
@@ -214,13 +216,30 @@ export function getCalendarSettings(): CalendarSettings {
   return readGroupSettings('calendar', CALENDAR_SETTINGS_DEFAULTS)
 }
 
-function getStartupTheme(): { theme: GeneralSettings['theme']; accentColor?: string } {
+interface StartupTheme {
+  theme: GeneralSettings['theme']
+  accentColor?: string
+  customTheme?: { id: string; base: string; variables: Record<string, string> }
+}
+
+function getStartupTheme(): StartupTheme {
   const settings = readGroupSettings('general', GENERAL_SETTINGS_DEFAULTS)
-  const result: { theme: GeneralSettings['theme']; accentColor?: string } = {
+  const result: StartupTheme = {
     theme: settings.theme
   }
   if (settings.accentColor) {
     result.accentColor = settings.accentColor
+  }
+  if (settings.customThemeId) {
+    const db = getDbOrNull()
+    const customTheme = db ? getTheme(db, settings.customThemeId) : null
+    if (customTheme) {
+      result.customTheme = {
+        id: customTheme.id,
+        base: customTheme.base,
+        variables: customTheme.variables
+      }
+    }
   }
   return result
 }

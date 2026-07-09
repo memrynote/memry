@@ -34,7 +34,8 @@ describe('VaultPreferencesSchema', () => {
     }
 
     const result = VaultPreferencesSchema.parse(input)
-    expect(result).toEqual(input)
+    // customThemeId defaults to null for configs written by older versions
+    expect(result).toEqual({ ...input, customThemeId: null })
   })
 
   it('#given legacy editor width from an older version #then coerces to normal', () => {

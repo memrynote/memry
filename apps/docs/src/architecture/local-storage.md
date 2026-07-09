@@ -53,6 +53,7 @@ Drizzle schemas live in `packages/db-schema`. Tables of note:
 - `notes`, `journals`, `tasks`, `projects`, `inbox_items`, `templates`
 - `vault_metadata` (stable vault UUID singleton)
 - `agent_conversations`, `agent_messages` (encrypted agent chat history)
+- `custom_themes` (custom UI themes; carries a sync vector clock and mirrors to `.memry/themes/<slug>.json` in the vault)
 - `tags`, `tag_links`, `note_links` (graph)
 - `properties`, `property_values`
 - `sync_items`, `sync_pull_cursor`, `sync_outbox` (sync state)

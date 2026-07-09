@@ -149,6 +149,17 @@ describe('SyncedSettingsSchema', () => {
     }
   })
 
+  it('accepts general.customThemeId as string or null', () => {
+    expect(SyncedSettingsSchema.safeParse({ general: { customThemeId: 'theme-1' } }).success).toBe(
+      true
+    )
+    expect(SyncedSettingsSchema.safeParse({ general: { customThemeId: null } }).success).toBe(true)
+  })
+
+  it('rejects non-string general.customThemeId', () => {
+    expect(SyncedSettingsSchema.safeParse({ general: { customThemeId: 42 } }).success).toBe(false)
+  })
+
   it('accepts all groups populated together', () => {
     const result = SyncedSettingsSchema.safeParse({
       general: { theme: 'light', accentColor: '#123456' },

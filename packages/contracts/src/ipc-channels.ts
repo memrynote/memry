@@ -203,6 +203,24 @@ export const SavedFiltersChannels = {
 } as const
 
 // ============================================================================
+// Custom Themes Channels
+// ============================================================================
+
+export const ThemesChannels = {
+  invoke: {
+    LIST: 'themes:list',
+    CREATE: 'themes:create',
+    UPDATE: 'themes:update',
+    DELETE: 'themes:delete'
+  },
+  events: {
+    CREATED: 'themes:created',
+    UPDATED: 'themes:updated',
+    DELETED: 'themes:deleted'
+  }
+} as const
+
+// ============================================================================
 // Templates Channels
 // ============================================================================
 
@@ -265,6 +283,9 @@ export type SavedFiltersInvokeChannel =
   (typeof SavedFiltersChannels.invoke)[keyof typeof SavedFiltersChannels.invoke]
 export type SavedFiltersEventChannel =
   (typeof SavedFiltersChannels.events)[keyof typeof SavedFiltersChannels.events]
+
+export type ThemesInvokeChannel = (typeof ThemesChannels.invoke)[keyof typeof ThemesChannels.invoke]
+export type ThemesEventChannel = (typeof ThemesChannels.events)[keyof typeof ThemesChannels.events]
 
 export type TemplatesInvokeChannel =
   (typeof TemplatesChannels.invoke)[keyof typeof TemplatesChannels.invoke]

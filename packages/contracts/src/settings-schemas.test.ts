@@ -60,6 +60,15 @@ describe('GeneralSettingsSchema', () => {
     expect(result.success).toBe(true)
   })
 
+  it('defaults customThemeId to null and accepts a string id', () => {
+    expect(GENERAL_SETTINGS_DEFAULTS.customThemeId).toBeNull()
+    const result = GeneralSettingsSchema.safeParse({
+      ...GENERAL_SETTINGS_DEFAULTS,
+      customThemeId: 'theme-1'
+    })
+    expect(result.success).toBe(true)
+  })
+
   it('rejects invalid theme enum', () => {
     const result = GeneralSettingsSchema.safeParse({
       ...GENERAL_SETTINGS_DEFAULTS,

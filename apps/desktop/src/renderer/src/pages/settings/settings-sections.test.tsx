@@ -204,6 +204,18 @@ vi.mock('@/hooks/use-general-settings', () => ({
   useGeneralSettings: () => mocks.generalSettings
 }))
 
+vi.mock('@/services/themes-service', () => ({
+  themesService: {
+    list: vi.fn().mockResolvedValue([]),
+    create: vi.fn().mockResolvedValue({ success: true }),
+    update: vi.fn().mockResolvedValue({ success: true }),
+    delete: vi.fn().mockResolvedValue({ success: true })
+  },
+  onThemeCreated: vi.fn(() => () => {}),
+  onThemeUpdated: vi.fn(() => () => {}),
+  onThemeDeleted: vi.fn(() => () => {})
+}))
+
 vi.mock('@/hooks/use-calendar-preferences', () => ({
   useCalendarPreferences: () => mocks.calendarPreferences
 }))

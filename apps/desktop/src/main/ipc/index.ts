@@ -5,6 +5,7 @@ import {
   registerSavedFiltersHandlers,
   unregisterSavedFiltersHandlers
 } from './saved-filters-handlers'
+import { registerThemesHandlers, unregisterThemesHandlers } from './themes-handlers'
 import { registerTemplatesHandlers, unregisterTemplatesHandlers } from './templates-handlers'
 import { registerJournalHandlers, unregisterJournalHandlers } from './journal-handlers'
 import { registerSettingsHandlers, unregisterSettingsHandlers } from './settings-handlers'
@@ -77,6 +78,7 @@ export function registerAllHandlers(deps?: IpcDeps): void {
 
   // Register saved filters handlers
   registerSavedFiltersHandlers()
+  registerThemesHandlers()
 
   // Register templates handlers
   registerTemplatesHandlers()
@@ -169,6 +171,7 @@ export function unregisterAllHandlers(): void {
   unregisterNotesHandlers()
   unregisterTasksHandlers()
   unregisterSavedFiltersHandlers()
+  unregisterThemesHandlers()
   unregisterTemplatesHandlers()
   unregisterJournalHandlers()
   unregisterSettingsHandlers()

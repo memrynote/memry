@@ -77,6 +77,7 @@ Resume sync to push and pull queued changes. Outgoing changes queue locally unti
 | Attachments (encrypted blobs)                                  | ✓     |
 | Agent chat conversations and terminal messages (paid accounts) | ✓     |
 | Folder icons                                                   | ✓     |
+| Custom themes                                                  | ✓     |
 
 ## What Does **Not** Get Synced
 

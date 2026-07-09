@@ -89,6 +89,7 @@ export function writeCacheFromPreferences(db: DataDb, prefs: VaultPreferences): 
   const language = LocaleSchema.safeParse(prefs.language)
   const portableFields: Partial<GeneralSettings> = {
     theme: prefs.theme,
+    customThemeId: prefs.customThemeId,
     fontSize: prefs.fontSize,
     fontFamily: prefs.fontFamily,
     accentColor: prefs.accentColor,

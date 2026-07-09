@@ -174,7 +174,18 @@ Show or hide journal sidebar panes:
 
 ### Theme
 
-Light, White, Dark, or System (follow OS).
+Light, White, Dark, or System (follow OS). Picking a built-in theme here deactivates any active custom theme.
+
+### Custom Themes
+
+Create named themes that recolor the whole app. Each custom theme forks one built-in base theme (Light, White, or Dark) and stores only the colors you change; everything else inherits from the base.
+
+- **New theme** creates a theme. The list shows every custom theme with an **Active** badge on the current one, plus **Apply**, **Edit**, **Duplicate**, and **Delete** actions.
+- The editor has a name field, a base theme picker, and grouped color rows — Surfaces, Text, Sidebar, and Accent — with a collapsible **Advanced** section for the rest (category dots, cards, states, sidebar details, graph, tasks, queue). Each row takes a 6-digit `#RRGGBB` hex value or a color picker.
+- Edits apply live — the app is the preview. A per-row **Reset** clears one color; **Reset all colors** returns the theme to its base.
+- Deleting the active theme reverts the app to that theme's base.
+
+Custom themes sync across devices, and each theme is also written to `.memry/themes/<slug>.json` inside the vault. While a custom theme is active the base theme is saved alongside it, so older app versions that don't know about custom themes render the base.
 
 ### Accent Color
 
@@ -324,7 +335,7 @@ Create, rename, recolor, and reorder property options.
 
 Settings persist via Zod schemas in `packages/contracts/settings-schemas.ts`. Notable keys:
 
-- General: `theme`, `fontSize`, `fontFamily`, `accentColor`, `startOnBoot`, `language`, `clockFormat`, `dateFormat`, `createInSelectedFolder`
+- General: `theme`, `customThemeId`, `fontSize`, `fontFamily`, `accentColor`, `startOnBoot`, `language`, `clockFormat`, `dateFormat`, `createInSelectedFolder`
 - Editor: `width`, `toolbarMode`
 - Tasks: `defaultProjectId`, `defaultSortOrder`, `staleInboxDays`
 - Calendar: `dayCellClickBehavior`, `calendarPageClickOverride`, `weekStartDay`

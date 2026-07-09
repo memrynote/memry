@@ -119,6 +119,16 @@ export const FolderConfigSyncPayloadSchema = z.object({
   modifiedAt: z.string().optional()
 })
 
+export const ThemeSyncPayloadSchema = z.object({
+  name: z.string(),
+  slug: z.string(),
+  base: z.enum(['light', 'white', 'dark']),
+  variables: z.record(z.string(), z.string()),
+  clock: VectorClockSchema.optional(),
+  createdAt: z.string().optional(),
+  modifiedAt: z.string().optional()
+})
+
 export const CalendarEventSyncPayloadSchema = z.object({
   title: z.string().optional(),
   description: z.string().nullable().optional(),
@@ -327,6 +337,7 @@ export const AgentMessageSyncPayloadSchema = z.object({
 })
 
 export type FolderConfigSyncPayload = z.infer<typeof FolderConfigSyncPayloadSchema>
+export type ThemeSyncPayload = z.infer<typeof ThemeSyncPayloadSchema>
 export type CalendarEventSyncPayload = z.infer<typeof CalendarEventSyncPayloadSchema>
 export type CalendarSourceSyncPayload = z.infer<typeof CalendarSourceSyncPayloadSchema>
 export type CalendarBindingSyncPayload = z.infer<typeof CalendarBindingSyncPayloadSchema>

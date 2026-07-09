@@ -17,6 +17,7 @@ import { getSettingsSyncManager } from './settings-sync'
 import { getTagDefinitionSyncService } from './tag-definition-sync'
 import { getTaskSyncService } from './task-sync'
 import { getFolderConfigSyncService } from './folder-config-sync'
+import { getThemeSyncService } from './theme-sync'
 import { getCalendarEventSyncService } from './calendar-event-sync'
 import { getCalendarSourceSyncService } from './calendar-source-sync'
 import { getCalendarBindingSyncService } from './calendar-binding-sync'
@@ -214,6 +215,21 @@ const localSyncRegistry = createSyncAdapterRegistry([
       },
       enqueueDelete(itemId: string, snapshotPayload?: string): void {
         getFolderConfigSyncService()?.enqueueDelete(itemId, snapshotPayload)
+      }
+    }
+  },
+  {
+    type: 'theme',
+    kind: 'record',
+    local: {
+      enqueueCreate(itemId: string): void {
+        getThemeSyncService()?.enqueueCreate(itemId)
+      },
+      enqueueUpdate(itemId: string): void {
+        getThemeSyncService()?.enqueueUpdate(itemId)
+      },
+      enqueueDelete(itemId: string, snapshotPayload?: string): void {
+        getThemeSyncService()?.enqueueDelete(itemId, snapshotPayload)
       }
     }
   },

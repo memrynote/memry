@@ -206,6 +206,46 @@
       },
       "error": "Failed to update accent color"
     },
+    "customThemes": {
+      "group": "Custom Themes",
+      "empty": "Create a theme to customize every color in the app",
+      "new": "New theme",
+      "newNamePrefix": "Theme",
+      "active": "Active",
+      "apply": "Apply",
+      "edit": "Edit",
+      "duplicate": "Duplicate",
+      "delete": "Delete",
+      "copySuffix": "copy",
+      "editor": {
+        "name": "Name",
+        "base": "Base theme",
+        "advanced": "Advanced",
+        "reset": "Reset",
+        "resetAll": "Reset all colors",
+        "close": "Close editor",
+        "pickColor": "Pick color",
+        "sections": {
+          "surfaces": "Surfaces",
+          "text": "Text",
+          "sidebar": "Sidebar",
+          "accent": "Accent",
+          "dots": "Category dots",
+          "cards": "Cards",
+          "states": "States",
+          "sidebarDetails": "Sidebar details",
+          "graph": "Graph",
+          "tasks": "Tasks",
+          "queue": "Queue"
+        }
+      },
+      "errors": {
+        "create": "Failed to create theme",
+        "update": "Failed to update theme",
+        "delete": "Failed to delete theme",
+        "apply": "Failed to apply theme"
+      }
+    },
     "typography": {
       "fontSize": {
         "label": "Font Size",

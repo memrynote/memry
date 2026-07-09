@@ -30,6 +30,7 @@ apps/desktop/src/main/sync/item-handlers/
 ├─ template-handler.ts
 ├─ agent-conversation-handler.ts
 ├─ agent-message-handler.ts
+├─ theme-handler.ts
 └─ index.ts              # registry: getHandler(type), getAllHandlers()
 ```
 
@@ -47,6 +48,10 @@ For tasks, projects, and agent conversations, handlers additionally invoke `merg
 
 Agent message sync is append-only. If a message id already exists locally, the handler treats the
 remote item as idempotent instead of overwriting a terminal message.
+
+Custom themes merge whole-item last-write-wins: each theme is its own sync item, so edits to two
+different themes never conflict. Applying a remote theme also writes the theme's JSON file under
+`.memry/themes/` in the vault.
 
 ## Atomicity
 

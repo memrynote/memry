@@ -12,8 +12,16 @@ import type { TasksClientAPI, TasksSubscriptions } from './tasks.ts'
 import { tasksRpc } from './tasks.ts'
 import type { TelemetryClientAPI } from './telemetry.ts'
 import { telemetryRpc } from './telemetry.ts'
+import type { ThemesClientAPI, ThemesSubscriptions } from './themes.ts'
+import { themesRpc } from './themes.ts'
 
-export type { RpcDomainSpec, RpcMethodSpec, RpcEventSpec, RpcClient, RpcSubscriptions } from './schema.ts'
+export type {
+  RpcDomainSpec,
+  RpcMethodSpec,
+  RpcEventSpec,
+  RpcClient,
+  RpcSubscriptions
+} from './schema.ts'
 export { defineDomain, defineEvent, defineMethod } from './schema.ts'
 
 export { notesRpc } from './notes.ts'
@@ -23,6 +31,7 @@ export { settingsRpc } from './settings.ts'
 export { calendarRpc } from './calendar.ts'
 export { telemetryRpc } from './telemetry.ts'
 export { feedbackRpc } from './feedback.ts'
+export { themesRpc } from './themes.ts'
 
 export type { NotesClientAPI, NotesSubscriptions } from './notes.ts'
 export type { TasksClientAPI, TasksSubscriptions } from './tasks.ts'
@@ -31,15 +40,27 @@ export type { SettingsClientAPI, SettingsSubscriptions } from './settings.ts'
 export type { CalendarClientAPI, CalendarSubscriptions } from './calendar.ts'
 export type { TelemetryClientAPI, TelemetrySettings } from './telemetry.ts'
 export type { FeedbackClientAPI } from './feedback.ts'
+export type { ThemesClientAPI, ThemesSubscriptions } from './themes.ts'
 
-export const rpcDomains = [notesRpc, tasksRpc, inboxRpc, settingsRpc, calendarRpc, telemetryRpc, feedbackRpc] as const
+export const rpcDomains = [
+  notesRpc,
+  tasksRpc,
+  inboxRpc,
+  settingsRpc,
+  calendarRpc,
+  telemetryRpc,
+  feedbackRpc,
+  themesRpc
+] as const
 
 export interface GeneratedRpcApi
-  extends NotesSubscriptions,
+  extends
+    NotesSubscriptions,
     TasksSubscriptions,
     InboxSubscriptions,
     SettingsSubscriptions,
-    CalendarSubscriptions {
+    CalendarSubscriptions,
+    ThemesSubscriptions {
   notes: NotesClientAPI
   tasks: TasksClientAPI
   inbox: InboxClientAPI
@@ -47,4 +68,5 @@ export interface GeneratedRpcApi
   calendar: CalendarClientAPI
   telemetry: TelemetryClientAPI
   feedback: FeedbackClientAPI
+  themes: ThemesClientAPI
 }
