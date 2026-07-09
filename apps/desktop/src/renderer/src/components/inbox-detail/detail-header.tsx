@@ -41,7 +41,7 @@ export const DetailHeader = ({
       <button
         type="button"
         onClick={onClose}
-        className="p-1 rounded-md text-muted-foreground/50 hover:text-foreground transition-colors"
+        className="p-1 rounded-md text-muted-foreground/50 hover:text-foreground hover:bg-surface-active/60 transition-all duration-150 ease-out active:scale-90"
         aria-label={t('detail.closePanel')}
       >
         <X className="size-3.5" />

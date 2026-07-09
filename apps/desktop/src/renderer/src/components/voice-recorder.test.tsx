@@ -150,7 +150,7 @@ describe('VoiceRecorder', () => {
     await userEvent.click(screen.getByRole('button', { name: /settings/i }))
 
     expect(
-      screen.getByText('Please enable microphone access in your system settings, then try again.')
+      screen.getByText('Enable microphone access in your system settings, then try again.')
     ).toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('button', { name: '' }))

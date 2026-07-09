@@ -7,6 +7,7 @@
  */
 
 import { useState, useMemo, createContext, useContext } from 'react'
+import { motion, useReducedMotion } from 'motion/react'
 import { useT } from '@memry/i18n/renderer'
 import {
   ChevronRight,
@@ -289,6 +290,7 @@ export function InboxListSection({
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed)
   const isInBulkMode = selectedIds.size > 0
   const densityConfig = DENSITY_CONFIG[density]
+  const prefersReducedMotion = useReducedMotion()
 
   const formattedTitle = title
 
@@ -299,7 +301,11 @@ export function InboxListSection({
 
   return (
     <InboxListContext.Provider value={contextValue}>
-      <section
+      <motion.section
+        layout="position"
+        transition={
+          prefersReducedMotion ? { duration: 0 } : { type: 'spring', bounce: 0, duration: 0.35 }
+        }
         className={className}
         aria-labelledby={`section-${title.toLowerCase().replace(/\s/g, '-')}`}
       >
@@ -338,7 +344,7 @@ export function InboxListSection({
         </button>
 
         {!isCollapsed && <div className="space-y-px">{children}</div>}
-      </section>
+      </motion.section>
     </InboxListContext.Provider>
   )
 }
@@ -400,8 +406,15 @@ export function InboxListItem({
   const { t } = useT('inbox')
   const { selectedIds, focusedId, isInBulkMode, density, densityConfig, onSelect, onFocus } =
     useInboxList()
+  const prefersReducedMotion = useReducedMotion()
   const isSelected = selectedIds.has(item.id)
   const isFocused = focusedId === item.id
+  // Decided once on mount: a row whose capture is moments old arrives from the
+  // capture bar's direction with a brief wash, instead of just appearing.
+  const [isFreshCapture] = useState(() => {
+    const createdAt = item.createdAt instanceof Date ? item.createdAt : new Date(item.createdAt)
+    return Date.now() - createdAt.getTime() < 3000
+  })
 
   const filteredFolders = getFilteredFolders(folders, quickFileQuery, 5)
 
@@ -441,17 +454,26 @@ export function InboxListItem({
   }
 
   return (
-    <div
+    <motion.div
+      layout="position"
+      initial={
+        isFreshCapture ? (prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -8 }) : false
+      }
+      animate={{ opacity: 1, y: 0 }}
+      transition={
+        prefersReducedMotion ? { duration: 0 } : { type: 'spring', bounce: 0, duration: 0.35 }
+      }
       className={cn(
         'group relative w-full',
+        isFreshCapture && 'fresh-capture-wash',
         'flex items-center',
         'gap-2.5',
         densityConfig.itemPadding,
         densityConfig.itemRadius,
-        'transition-all duration-150 ease-out',
+        'transition-[background-color,opacity] duration-150 ease-out',
         'cursor-pointer',
         isExiting && 'item-removing',
-        'hover:bg-muted/50',
+        'hover:bg-muted/50 active:bg-muted/70',
         isSelected && [
           'bg-[var(--user-accent-color)]/[0.04]',
           'hover:bg-[var(--user-accent-color)]/[0.06]',
@@ -627,7 +649,7 @@ export function InboxListItem({
           )}
         </div>
       )}
-    </div>
+    </motion.div>
   )
 }
 

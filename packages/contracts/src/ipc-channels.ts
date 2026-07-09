@@ -352,6 +352,8 @@ export const SettingsChannels = {
     DOWNLOAD_VOICE_MODEL: 'settings:downloadVoiceModel',
     /** Check whether the selected voice provider is ready */
     GET_VOICE_RECORDING_READINESS: 'settings:getVoiceRecordingReadiness',
+    /** Open the OS microphone privacy settings pane */
+    OPEN_OS_MICROPHONE_SETTINGS: 'settings:openOsMicrophoneSettings',
     /** Check whether an OpenAI BYOK secret exists for voice transcription */
     GET_VOICE_TRANSCRIPTION_OPENAI_KEY_STATUS: 'settings:getVoiceTranscriptionOpenAIKeyStatus',
     /** Store or clear the OpenAI BYOK secret for voice transcription */

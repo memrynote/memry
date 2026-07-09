@@ -55,9 +55,18 @@ Multiple files dropped at once create one inbox item per file.
 The inbox header and inline capture input include a voice recorder. Click to start recording, click
 again to stop. The recording becomes an inbox item under the **voice** content type.
 
+While recording, a red dot marks the live microphone and the timer turns amber during the last 30
+seconds before the 5-minute limit. Keyboard shortcuts work too: **Esc** cancels the recording,
+**Enter** or **Space** stops and saves it.
+
+The recording's waveform is captured alongside the audio, so the detail panel shows the real
+waveform instantly when you open a voice item.
+
 If voice transcription is enabled, memrynote transcribes the audio in the background — see [Voice Transcription](/user-guide/ai/voice-transcription).
 
-If voice transcription setup is incomplete, memrynote takes you to AI settings before recording.
+If voice transcription setup is incomplete, memrynote takes you to AI settings before recording. If
+the operating system has denied microphone access, the recorder's **Settings** button opens the OS
+microphone privacy pane directly (macOS and Windows).
 
 ## Web Clips and Browser Extension
 

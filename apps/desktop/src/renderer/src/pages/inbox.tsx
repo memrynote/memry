@@ -14,6 +14,7 @@ import {
   X
 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import { motion, useReducedMotion } from 'motion/react'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
 import { SRAnnouncer } from '@/components/sr-announcer'
@@ -70,6 +71,9 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   const [isArchivedSearchOpen, setIsArchivedSearchOpen] = useState(false)
   const [archivedSearchQuery, setArchivedSearchQuery] = useState('')
   const archivedSearchRef = useRef<HTMLInputElement>(null)
+  // Scroll-edge state for the floating chrome: true once content is beneath it
+  const [isScrolled, setIsScrolled] = useState(false)
+  const prefersReducedMotion = useReducedMotion()
   useInboxNotifications()
   const { items } = useInboxList()
   const { upcomingCount } = useInboxRemindersPanel()
@@ -168,12 +172,21 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   const handleViewChange = useCallback(
     (nextView: InboxView) => {
       setCurrentView(nextView)
+      setIsScrolled(false)
       if (nextView !== 'archived') {
         closeArchivedSearch()
       }
     },
     [closeArchivedSearch]
   )
+
+  // The sub-views own their scroll containers (marked data-inbox-scroll);
+  // capture-phase listening reaches them all without prop drilling.
+  const handleScrollCapture = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.target
+    if (!(target instanceof HTMLElement) || !target.hasAttribute('data-inbox-scroll')) return
+    setIsScrolled(target.scrollTop > 0)
+  }, [])
 
   // Sidebar "Inbox" click asks to capture: surface the capture bar (CaptureInput
   // then focuses itself via focusSignal). Re-fires on every click via the nonce.
@@ -186,8 +199,15 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
 
   return (
     <>
-      <div className="flex h-full flex-col">
-        <PageToolbar className="px-2 py-1 min-h-[38px] border-b-0">
+      {/* overflow-x-clip keeps the off-screen detail drawer inside this pane */}
+      <div
+        className="relative flex h-full flex-col overflow-x-clip"
+        onScrollCapture={handleScrollCapture}
+      >
+        <PageToolbar
+          data-scrolled={isScrolled || undefined}
+          className="page-chrome absolute top-0 inset-x-0 z-30 px-2 py-1 min-h-[38px] border-b-0"
+        >
           <InboxSegmentControl value={currentView} onChange={handleViewChange} />
 
           {currentView === 'inbox' && (
@@ -257,6 +277,22 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
 
           {currentView === 'inbox' && (
             <>
+              {activeJobCount > 0 && (
+                <span
+                  role="status"
+                  title={t('view.jobs.running', { count: activeJobCount })}
+                  className="flex items-center gap-1.5 shrink-0 px-1.5 text-[11px] tabular-nums text-text-secondary"
+                >
+                  <span
+                    className="size-1.5 rounded-full bg-amber-500 animate-pulse motion-reduce:animate-none"
+                    aria-hidden="true"
+                  />
+                  {activeJobCount}
+                  <span className="sr-only">
+                    {t('view.jobs.running', { count: activeJobCount })}
+                  </span>
+                </span>
+              )}
               <button
                 type="button"
                 onClick={() => setShowSnoozedItems(!showSnoozedItems)}
@@ -268,7 +304,8 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                       : t('view.snoozed.show')
                 }
                 className={cn(
-                  'flex items-center justify-center shrink-0 rounded-[5px] py-1 px-2 gap-1 transition-colors',
+                  'flex items-center justify-center shrink-0 rounded-[5px] py-1 px-2 gap-1',
+                  'transition-all duration-150 ease-out active:scale-95',
                   showSnoozedItems
                     ? 'bg-foreground/5 text-foreground/90'
                     : 'text-muted-foreground hover:bg-surface-active/50'
@@ -305,7 +342,8 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                         : t('view.filter.byType')
                     }
                     className={cn(
-                      'flex items-center justify-center shrink-0 rounded-[5px] py-1 px-2 gap-1 transition-colors',
+                      'flex items-center justify-center shrink-0 rounded-[5px] py-1 px-2 gap-1',
+                      'transition-all duration-150 ease-out active:scale-95',
                       isFilterOpen || hasActiveFilters
                         ? 'bg-foreground/5 text-foreground/90'
                         : 'text-muted-foreground hover:bg-surface-active/50'
@@ -366,30 +404,31 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
           )}
         </PageToolbar>
 
-        {currentView === 'inbox' && activeJobCount > 0 && (
-          <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border/60 bg-surface/60 text-[12px] leading-4">
-            <span className="flex items-center gap-1.5 text-text-secondary">
-              <span className="size-1.5 rounded-full bg-amber-500 animate-pulse" />
-              {t('view.jobs.running', { count: activeJobCount })}
-            </span>
-          </div>
-        )}
-
         <div className="min-h-0 flex-1">
-          {currentView === 'inbox' && (
-            <InboxListView
-              className={className}
-              selectedTypes={selectedTypes}
-              showSnoozedItems={showSnoozedItems}
-              density="compact"
-              focusItemId={focusInboxItemId}
-              {...{ focusToken }}
-            />
-          )}
-          {currentView === 'archived' && (
-            <InboxArchivedView className={className} searchQuery={archivedSearchQuery} />
-          )}
-          {currentView === 'insights' && <InboxHealthView className={className} />}
+          {/* Sub-view content materializes on view switch (crossfade only under
+              reduced motion); critically damped spring, no overshoot */}
+          <motion.div
+            key={currentView}
+            initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: 'spring', bounce: 0, duration: 0.35 }}
+            className="h-full"
+          >
+            {currentView === 'inbox' && (
+              <InboxListView
+                className={className}
+                selectedTypes={selectedTypes}
+                showSnoozedItems={showSnoozedItems}
+                density="compact"
+                focusItemId={focusInboxItemId}
+                {...{ focusToken }}
+              />
+            )}
+            {currentView === 'archived' && (
+              <InboxArchivedView className={className} searchQuery={archivedSearchQuery} />
+            )}
+            {currentView === 'insights' && <InboxHealthView className={className} />}
+          </motion.div>
         </div>
       </div>
 

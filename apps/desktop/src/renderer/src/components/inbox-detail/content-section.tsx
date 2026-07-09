@@ -347,11 +347,20 @@ const VoicePreview = ({
   const [duration, setDuration] = useState(0)
   const [copied, setCopied] = useState(false)
   const [audioError, setAudioError] = useState<string | null>(null)
-  const [waveformBars, setWaveformBars] = useState<number[]>(() =>
-    Array.from({ length: PLAYBACK_BAR_COUNT }, () => PLAYBACK_MIN_HEIGHT)
-  )
-
   const metadata = 'metadata' in item ? (item.metadata as VoiceMetadata | null) : null
+
+  // Stored recording envelope renders instantly (no flat-bar flash); items
+  // captured before waveform persistence fall back to decoding the file.
+  const storedWaveform = metadata?.waveform
+  const [waveformBars, setWaveformBars] = useState<number[]>(() => {
+    if (storedWaveform && storedWaveform.length > 0) {
+      const maxRms = Math.max(...storedWaveform, 0.001)
+      return storedWaveform.map(
+        (b) => PLAYBACK_MIN_HEIGHT + (b / maxRms) * (PLAYBACK_MAX_HEIGHT - PLAYBACK_MIN_HEIGHT)
+      )
+    }
+    return Array.from({ length: PLAYBACK_BAR_COUNT }, () => PLAYBACK_MIN_HEIGHT)
+  })
   const audioUrl = 'attachmentUrl' in item ? item.attachmentUrl : null
   const transcription = 'transcription' in item ? item.transcription : null
   const transcriptionStatus = 'transcriptionStatus' in item ? item.transcriptionStatus : null
@@ -361,6 +370,8 @@ const VoicePreview = ({
 
   useEffect(() => {
     if (!audioUrl) return
+    // Envelope already persisted at capture time — skip the fetch + decode.
+    if (storedWaveform && storedWaveform.length > 0) return
 
     let cancelled = false
     const decodeWaveform = async (): Promise<void> => {
@@ -408,7 +419,7 @@ const VoicePreview = ({
     return () => {
       cancelled = true
     }
-  }, [audioUrl])
+  }, [audioUrl, storedWaveform])
 
   const handlePlayPause = async (): Promise<void> => {
     if (!audioRef.current) return
@@ -501,7 +512,7 @@ const VoicePreview = ({
           <button
             type="button"
             onClick={() => void handlePlayPause()}
-            className="flex items-center justify-center rounded-full bg-muted-foreground shrink-0 size-8 hover:opacity-90 transition-opacity"
+            className="flex items-center justify-center rounded-full bg-muted-foreground shrink-0 size-8 hover:opacity-90 transition-[opacity,transform] duration-150 ease-out active:scale-90"
             aria-label={isPlaying ? t('content.pause') : t('content.play')}
           >
             {isPlaying ? (
@@ -585,7 +596,7 @@ const VoicePreview = ({
             <button
               type="button"
               onClick={() => void handleCopyTranscription()}
-              className="ms-auto text-muted-foreground hover:text-foreground transition-colors"
+              className="ms-auto text-muted-foreground hover:text-foreground transition-all duration-150 ease-out active:scale-90"
               aria-label={t('content.copyTranscription')}
             >
               {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
@@ -609,7 +620,7 @@ const VoicePreview = ({
                 type="button"
                 onClick={onRetryTranscription}
                 disabled={isRetrying}
-                className="text-muted-foreground hover:text-foreground text-xs flex items-center gap-1 transition-colors disabled:opacity-50"
+                className="text-muted-foreground hover:text-foreground text-xs flex items-center gap-1 transition-all duration-150 ease-out active:scale-95 disabled:opacity-50 disabled:active:scale-100"
               >
                 {isRetrying ? (
                   <Loader2 className="size-3 animate-spin" />

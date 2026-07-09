@@ -294,10 +294,12 @@
   height: 16px !important;
 }
 
-/* Floating note chrome — translucent material over scrolling content.
+/* Floating page chrome — translucent material over scrolling content.
    Blur + tint are always on (invisible while nothing is beneath the bar);
    the scroll edge (softened hairline + falloff) materializes via
-   [data-scrolled] only once content actually passes under it. */
+   [data-scrolled] only once content actually passes under it.
+   .note-chrome is the note/journal instance of the same material. */
+.page-chrome,
 .note-chrome {
   background: color-mix(in srgb, var(--background) 65%, transparent);
   -webkit-backdrop-filter: blur(16px) saturate(180%);
@@ -305,6 +307,7 @@
   transition: box-shadow 200ms var(--ease-out);
 }
 
+.page-chrome[data-scrolled],
 .note-chrome[data-scrolled] {
   box-shadow:
     0 1px 0 0 color-mix(in srgb, var(--border) 55%, transparent),
@@ -312,6 +315,7 @@
 }
 
 @media (prefers-reduced-transparency: reduce) {
+  .page-chrome,
   .note-chrome {
     background: var(--background);
     -webkit-backdrop-filter: none;
@@ -319,28 +323,23 @@
   }
 }
 
-/* Floating page chrome — translucent material over scrolling content.
-   Blur + tint are always on (invisible while nothing is beneath the bar);
-   the scroll edge (softened hairline + falloff) materializes via
-   [data-scrolled] only once content actually passes under it. */
-.page-chrome {
-  background: color-mix(in srgb, var(--background) 65%, transparent);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  backdrop-filter: blur(16px) saturate(180%);
-  transition: box-shadow 200ms var(--ease-out);
+/* Freshly captured inbox row: brief amber wash that reads as "just landed" */
+.fresh-capture-wash {
+  animation: fresh-capture-wash 1.4s var(--ease-out);
 }
 
-.page-chrome[data-scrolled] {
-  box-shadow:
-    0 1px 0 0 color-mix(in srgb, var(--border) 55%, transparent),
-    0 4px 16px -8px rgb(0 0 0 / 0.1);
+@keyframes fresh-capture-wash {
+  from {
+    background-color: rgb(245 158 11 / 0.1);
+  }
+  to {
+    background-color: transparent;
+  }
 }
 
-@media (prefers-reduced-transparency: reduce) {
-  .page-chrome {
-    background: var(--background);
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
+@media (prefers-reduced-motion: reduce) {
+  .fresh-capture-wash {
+    animation: none;
   }
 }
 

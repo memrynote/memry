@@ -1,9 +1,32 @@
 const TARGET_SAMPLE_RATE = 16_000
+// Matches the detail player's PLAYBACK_BAR_COUNT so playback can render the
+// stored envelope directly instead of re-decoding the whole file.
+const WAVEFORM_BUCKETS = 60
 
 interface PreparedVoiceMemo {
   data: ArrayBuffer
   duration: number
   format: 'wav'
+  waveform: number[]
+}
+
+/** Raw RMS per bucket (0..1); consumers normalize for display. */
+function computeWaveform(audioBuffer: AudioBuffer, buckets: number): number[] {
+  const samples = audioBuffer.getChannelData(0)
+  if (samples.length === 0) return []
+  const bucketSize = Math.max(1, Math.floor(samples.length / buckets))
+  const waveform: number[] = []
+  for (let i = 0; i < buckets; i += 1) {
+    const start = i * bucketSize
+    if (start >= samples.length) break
+    const end = Math.min(start + bucketSize, samples.length)
+    let sum = 0
+    for (let j = start; j < end; j += 1) {
+      sum += samples[j] * samples[j]
+    }
+    waveform.push(Math.round(Math.sqrt(sum / (end - start)) * 10000) / 10000)
+  }
+  return waveform
 }
 
 async function decodeAudioBlob(blob: Blob): Promise<AudioBuffer> {
@@ -75,6 +98,7 @@ export async function prepareVoiceMemoAudio(blob: Blob): Promise<PreparedVoiceMe
   return {
     data: encodePcm16Wav(rendered),
     duration: rendered.duration,
-    format: 'wav'
+    format: 'wav',
+    waveform: computeWaveform(rendered, WAVEFORM_BUCKETS)
   }
 }

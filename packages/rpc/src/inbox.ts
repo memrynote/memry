@@ -260,6 +260,8 @@ export interface CaptureVoiceInput {
   transcribe?: boolean
   tags?: string[]
   source?: CaptureSource
+  /** Recording envelope: raw RMS per bucket (0..1) */
+  waveform?: number[]
 }
 
 export interface CaptureClipInput {

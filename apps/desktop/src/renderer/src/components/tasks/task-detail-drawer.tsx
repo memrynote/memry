@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useMemo, memo, useCallback } from 'react'
+import { motion, useReducedMotion } from 'motion/react'
 import { useT } from '@memry/i18n/renderer'
 import { cn } from '@/lib/utils'
 import { useResizablePanel } from '@/hooks/use-resizable-panel'
@@ -120,7 +121,8 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
   onDeleteTask
 }: TaskDetailDrawerProps): React.JSX.Element {
   const { t, i18n } = useT('tasks')
-  const { width, setWidth, isResizing, setIsResizing } = useResizablePanel({
+  const prefersReducedMotion = useReducedMotion()
+  const { width, setWidth, setIsResizing } = useResizablePanel({
     storageKey: TASK_DETAIL_WIDTH_KEY,
     defaultPx: TASK_DETAIL_WIDTH_DEFAULT_PX,
     minPx: TASK_DETAIL_WIDTH_MIN_PX,
@@ -309,16 +311,27 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
     [task, onUpdateTask]
   )
 
+  // The drawer remounts per task (keyed in tasks.tsx), so entrance runs on
+  // every open and task switch: a subtle materialize from the end edge.
+  const entranceX = i18n.dir() === 'rtl' ? -16 : 16
+
   return (
-    <aside
+    <motion.aside
       aria-label={t('task.details')}
       aria-hidden={!isOpen}
+      inert={!isOpen || undefined}
+      initial={
+        isOpen ? (prefersReducedMotion ? { opacity: 0 } : { opacity: 0, x: entranceX }) : false
+      }
+      animate={{ opacity: isOpen ? 1 : 0, x: 0 }}
+      transition={
+        prefersReducedMotion ? { duration: 0.2 } : { type: 'spring', bounce: 0, duration: 0.3 }
+      }
       className={cn(
         // ponytail: absolute (not fixed) so the drawer stays inside its own pane in split view
-        'absolute inset-y-0 end-0 z-10 border-s bg-surface overflow-hidden',
-        'transition-[opacity] duration-200 ease-out',
-        !isResizing && 'transition-[width,opacity] duration-200 ease-out',
-        isOpen ? 'opacity-100 border-border' : 'opacity-0 border-transparent'
+        // top-[38px] clears the toolbar chrome so the drawer header stays visible
+        'absolute top-[38px] bottom-0 end-0 z-10 border-s bg-surface overflow-hidden',
+        isOpen ? 'border-border' : 'border-transparent pointer-events-none'
       )}
       style={{
         width: isOpen ? `${width}px` : 0
@@ -343,7 +356,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
               <button
                 type="button"
                 onClick={onClose}
-                className="shrink-0 rounded-sm p-0.5 text-text-tertiary hover:text-text-secondary transition-colors focus-visible:outline-none"
+                className="shrink-0 rounded-sm p-0.5 text-text-tertiary hover:text-text-secondary hover:bg-surface-active/60 transition-all duration-150 ease-out active:scale-90 focus-visible:outline-none"
                 aria-label={t('drawer.close')}
               >
                 <X size={16} />
@@ -694,6 +707,6 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
           ariaLabel={t('drawer.resize')}
         />
       )}
-    </aside>
+    </motion.aside>
   )
 })

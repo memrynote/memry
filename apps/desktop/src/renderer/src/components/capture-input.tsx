@@ -278,7 +278,8 @@ export function CaptureInput({
           duration: duration || preparedAudio.duration,
           format: preparedAudio.format,
           transcribe: true,
-          source: 'inline'
+          source: 'inline',
+          waveform: preparedAudio.waveform
         })
 
         if (result.success) {
@@ -474,9 +475,9 @@ export function CaptureInput({
                 disabled={isCapturing}
                 className={cn(
                   'flex items-center justify-center rounded-md',
-                  'text-muted-foreground/50 transition-colors duration-200',
-                  'hover:text-muted-foreground',
-                  'disabled:opacity-30 disabled:cursor-not-allowed',
+                  'text-muted-foreground/50 transition-all duration-150 ease-out',
+                  'hover:text-muted-foreground active:scale-90',
+                  'disabled:opacity-30 disabled:cursor-not-allowed disabled:active:scale-100',
                   compact ? 'size-5' : 'size-7'
                 )}
                 aria-label={tPhaseF('phaseF.componentsCaptureInput.recordVoiceMemo')}
@@ -531,6 +532,7 @@ export function CaptureInput({
             className={cn(
               'flex min-w-0 shrink-0 items-center overflow-hidden',
               'transition-[width,opacity,transform,padding] duration-300 ease-out',
+              'motion-reduce:transition-none',
               isRecording
                 ? cn('w-[40%] translate-x-0 opacity-100', compact ? 'ps-1.5' : 'ps-2')
                 : 'w-0 translate-x-2 ps-0 opacity-0 pointer-events-none'

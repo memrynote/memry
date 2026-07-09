@@ -72,6 +72,8 @@ export interface VoiceMetadata {
   format: string
   fileSize: number
   sampleRate?: number
+  /** Recording envelope: raw RMS per bucket (0..1). Absent on older items. */
+  waveform?: number[]
 }
 
 export interface ClipMetadata {
@@ -390,7 +392,10 @@ export const CaptureVoiceSchema = z.object({
   format: z.enum(['webm', 'mp3', 'wav']),
   transcribe: z.boolean().default(true),
   tags: z.array(z.string().max(50)).max(20).optional(),
-  source: z.enum(['quick-capture', 'inline', 'browser-extension', 'api', 'reminder']).optional()
+  source: z.enum(['quick-capture', 'inline', 'browser-extension', 'api', 'reminder']).optional(),
+  // Recording envelope (raw RMS per bucket, 0..1) captured at record time so
+  // playback can render the waveform without re-decoding the audio file
+  waveform: z.array(z.number().min(0).max(1)).max(120).optional()
 })
 
 export const CaptureClipSchema = z.object({

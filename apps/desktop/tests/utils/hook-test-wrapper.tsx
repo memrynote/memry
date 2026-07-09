@@ -299,6 +299,7 @@ export function createMockAPI(config?: MockAPIConfig): Record<string, unknown> {
         showStatsFooter: false
       }),
       setJournalSettings: vi.fn().mockResolvedValue({ success: true }),
+      openOsMicrophoneSettings: vi.fn().mockResolvedValue({ success: true }),
       ...config?.settings
     },
 

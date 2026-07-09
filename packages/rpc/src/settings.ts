@@ -172,6 +172,9 @@ export const settingsRpc = defineDomain({
     getVoiceRecordingReadiness: defineMethod<() => Promise<VoiceRecordingReadiness>>({
       channel: SettingsChannels.invoke.GET_VOICE_RECORDING_READINESS
     }),
+    openOsMicrophoneSettings: defineMethod<() => Promise<{ success: boolean }>>({
+      channel: SettingsChannels.invoke.OPEN_OS_MICROPHONE_SETTINGS
+    }),
     getVoiceTranscriptionOpenAIKeyStatus: defineMethod<
       () => Promise<VoiceTranscriptionOpenAIKeyStatus>
     >({

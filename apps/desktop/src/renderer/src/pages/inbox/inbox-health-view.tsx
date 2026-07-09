@@ -322,7 +322,7 @@ function TypeDistribution({
                   style={{ width: `${Math.max(pct, 4)}%` }}
                 />
               </div>
-              <div className="w-5 shrink-0 text-right text-text-tertiary font-sans text-[11px]/3.5 tabular-nums">
+              <div className="w-5 shrink-0 text-end text-text-tertiary font-sans text-[11px]/3.5 tabular-nums">
                 {count}
               </div>
             </div>
@@ -398,7 +398,10 @@ export function InboxHealthView({ className }: InboxHealthViewProps): React.JSX.
       : 0
 
   return (
-    <div className={cn('flex flex-col grow overflow-y-auto', className)}>
+    <div
+      data-inbox-scroll
+      className={cn('flex flex-col grow overflow-y-auto pt-[38px]', className)}
+    >
       <div className="fade-in-up stagger-1 flex shrink-0 pt-6 gap-3 px-6">
         <StatCard
           label={t('insights.captured')}

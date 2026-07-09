@@ -266,7 +266,10 @@ export function InboxArchivedView({
 
   return (
     <div className={cn('flex h-full overflow-hidden', className)}>
-      <div className="flex flex-col flex-1 min-w-0 h-full px-4 lg:px-6 pt-3 pb-4 lg:pb-6 overflow-y-auto">
+      <div
+        data-inbox-scroll
+        className="flex flex-col flex-1 min-w-0 h-full px-4 lg:px-6 pt-[46px] pb-4 lg:pb-6 overflow-y-auto"
+      >
         {sortedItems.length === 0 && !isLoading ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <Archive className="size-6 text-muted-foreground/30 mb-3" strokeWidth={1.5} />

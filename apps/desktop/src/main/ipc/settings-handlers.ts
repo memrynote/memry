@@ -7,7 +7,7 @@
  * @module main/ipc/settings-handlers
  */
 
-import { ipcMain, BrowserWindow, app, globalShortcut, systemPreferences } from 'electron'
+import { ipcMain, BrowserWindow, app, globalShortcut, systemPreferences, shell } from 'electron'
 import { SettingsChannels } from '@memry/contracts/ipc-channels'
 import {
   GENERAL_SETTINGS_DEFAULTS,
@@ -556,6 +556,20 @@ export function registerSettingsHandlers(): void {
     return getVoiceRecordingReadiness()
   })
 
+  ipcMain.handle(SettingsChannels.invoke.OPEN_OS_MICROPHONE_SETTINGS, async () => {
+    // Fixed deep links (never user input), so this deliberately bypasses the
+    // https/http openExternal allowlist in lib/external-url.ts.
+    const target =
+      process.platform === 'darwin'
+        ? 'x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone'
+        : process.platform === 'win32'
+          ? 'ms-settings:privacy-microphone'
+          : null
+    if (!target) return { success: false }
+    await shell.openExternal(target)
+    return { success: true }
+  })
+
   ipcMain.handle(
     SettingsChannels.invoke.GET_VOICE_TRANSCRIPTION_OPENAI_KEY_STATUS,
     async (): Promise<VoiceTranscriptionOpenAIKeyStatus> => {
@@ -977,6 +991,7 @@ export function unregisterSettingsHandlers(): void {
   ipcMain.removeHandler(SettingsChannels.invoke.GET_VOICE_MODEL_STATUS)
   ipcMain.removeHandler(SettingsChannels.invoke.DOWNLOAD_VOICE_MODEL)
   ipcMain.removeHandler(SettingsChannels.invoke.GET_VOICE_RECORDING_READINESS)
+  ipcMain.removeHandler(SettingsChannels.invoke.OPEN_OS_MICROPHONE_SETTINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.GET_VOICE_TRANSCRIPTION_OPENAI_KEY_STATUS)
   ipcMain.removeHandler(SettingsChannels.invoke.SET_VOICE_TRANSCRIPTION_OPENAI_KEY)
   ipcMain.removeHandler(SettingsChannels.invoke.GET_AI_MODEL_STATUS)

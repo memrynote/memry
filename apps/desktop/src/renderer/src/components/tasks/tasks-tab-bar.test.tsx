@@ -232,7 +232,9 @@ describe('TasksTabBar', () => {
       })
 
       const todayTab = screen.getByRole('tab', { name: /today/i })
-      expect(todayTab.className).toMatch(/bg-foreground/)
+      // Active tab styling: inverted text on the sliding pill background
+      expect(todayTab.className).toMatch(/text-background/)
+      expect(todayTab).toHaveAttribute('aria-selected', 'true')
     })
 
     it('renders a delete button on each saved filter pill', () => {

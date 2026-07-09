@@ -262,6 +262,7 @@ export interface MainIpcInvokeHandlers {
   "settings:getVoiceTranscriptionSettings": (...args: []) => Awaited<{ provider: "local" | "openai"; memoNameMode: "timestamp" | "none" | "transcript"; }>
   "settings:installTerminalCommand": (...args: []) => Awaited<Promise<import("./settings-handlers").TerminalCommandMutationResult>>
   "settings:loadAIModel": (...args: []) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; message: string; error?: undefined; } | { success: boolean; error: string; message?: undefined; } | { success: boolean; message?: undefined; error?: undefined; }>>
+  "settings:openOsMicrophoneSettings": (...args: []) => Awaited<Promise<{ success: boolean; }>>
   "settings:registerGlobalCapture": (...args: []) => Awaited<Promise<import("./settings-handlers").GlobalCaptureResult>>
   "settings:reindexEmbeddings": (...args: []) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; computed: number; skipped: number; error?: string | undefined; }>>
   "settings:resetKeyboardSettings": (...args: []) => Awaited<{ success: boolean; error: string; } | { success: boolean; error?: undefined; }>
