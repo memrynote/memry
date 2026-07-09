@@ -787,7 +787,7 @@ export function InboxListView({
       <div
         className={cn(
           'flex flex-col flex-1 min-w-0 h-full relative',
-          'px-4 lg:px-6 pt-3 pb-4 lg:pb-6',
+          'px-4 lg:px-6 pb-4 lg:pb-6',
           isDraggingOver && 'ring-2 ring-primary/50 ring-inset bg-primary/5'
         )}
         onDragOver={handleDragOver}
@@ -829,7 +829,7 @@ export function InboxListView({
 
         {/* Bulk selection header */}
         {isInBulkMode && (
-          <header className={cn('relative', densityConfig.headerMargin)}>
+          <header className={cn('relative pt-[46px]', densityConfig.headerMargin)}>
             <div className="flex items-center justify-between gap-6">
               <div className="flex items-center gap-3">
                 <Check className="size-4 text-amber-600 dark:text-amber-400" aria-hidden="true" />
@@ -850,7 +850,14 @@ export function InboxListView({
         )}
 
         {/* Content */}
-        <div className={cn('flex-1 overflow-y-auto', isInBulkMode && 'pb-32')}>
+        <div
+          data-inbox-scroll
+          className={cn(
+            'flex-1 overflow-y-auto',
+            !isInBulkMode && 'pt-[46px]',
+            isInBulkMode && 'pb-32'
+          )}
+        >
           {isLoading ? (
             <div className="flex flex-col items-center justify-center h-64 gap-4">
               <Loader2 className="size-8 text-muted-foreground/50 animate-spin" />

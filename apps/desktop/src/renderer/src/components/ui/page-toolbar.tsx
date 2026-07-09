@@ -3,9 +3,11 @@ import { cn } from '@/lib/utils'
 interface PageToolbarProps {
   children: React.ReactNode
   className?: string
+  /** Scroll-edge state for floating page chrome (rendered as a data attribute) */
+  'data-scrolled'?: true
 }
 
-export function PageToolbar({ children, className }: PageToolbarProps): React.JSX.Element {
+export function PageToolbar({ children, className, ...rest }: PageToolbarProps): React.JSX.Element {
   return (
     <div
       className={cn(
@@ -13,6 +15,7 @@ export function PageToolbar({ children, className }: PageToolbarProps): React.JS
         '[font-synthesis:none] text-[12px] leading-4',
         className
       )}
+      {...rest}
     >
       {children}
     </div>
@@ -72,7 +75,7 @@ export function ToolbarSegmentTab({
       className={cn(
         'flex items-center py-1 px-2.5 gap-1 transition-colors',
         'focus-visible:outline-none',
-        showBorder && 'border-l border-border',
+        showBorder && 'border-s border-border',
         isActive
           ? 'bg-foreground text-background font-medium'
           : 'text-text-secondary hover:text-text-primary hover:bg-surface-active/50',
