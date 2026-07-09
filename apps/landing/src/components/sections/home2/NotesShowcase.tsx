@@ -6,9 +6,7 @@ import {
   MegaCard,
   SectionTitle
 } from '@/components/sections/home2/primitives'
-import { MockupFrame } from '@/components/shared/MockupFrame'
-import { getFeatureScreenshotSrc } from '@/lib/feature-screenshots'
-import { useTheme } from '@/lib/use-theme'
+import { NoteEditorWidget } from '@/components/sections/home2/widgets/NoteEditorWidget'
 
 const CHIP_ICON_CLASS = 'h-4 w-4 text-terracotta'
 
@@ -24,12 +22,10 @@ const NOTE_CHIPS = [
 ] as const
 
 /**
- * "WRITE" mega-card — soft sky tint, theme-aware notes screenshot on the start
+ * "WRITE" mega-card — soft sky tint, live note-editor widget on the start
  * side, a quiet rail of feature chips on the end side.
  */
 export function NotesShowcase() {
-  const { theme } = useTheme()
-
   return (
     <HomeSection id="write">
       <MegaCard tint="sky" eyebrow="WRITE">
@@ -48,17 +44,15 @@ export function NotesShowcase() {
         />
 
         <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_280px] lg:gap-12">
-          <div className="relative">
-            <div
-              aria-hidden
-              className="absolute inset-0 -rotate-2 translate-y-3 rounded-2xl border border-ink/5 bg-card/60"
-            />
-            <MockupFrame
-              imageSrc={getFeatureScreenshotSrc('notes', theme)}
-              imageAlt="MemryNote notes view — Markdown editor with backlinks"
-              caption="notes · markdown vault"
-              className="relative"
-            />
+          <div>
+            <div className="relative">
+              <div
+                aria-hidden
+                className="absolute inset-0 -rotate-2 translate-y-3 rounded-2xl border border-ink/5 bg-card/60"
+              />
+              <NoteEditorWidget className="relative" />
+            </div>
+            <p className="mt-6 text-xs text-muted">Live demo — try it</p>
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1">

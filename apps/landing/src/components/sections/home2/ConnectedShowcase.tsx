@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight, ArrowUpRight, Bot, Globe, Terminal, type LucideIcon } from 'lucide-react'
 import { HomeSection, MegaCard, SectionTitle } from '@/components/sections/home2/primitives'
+import { AgentChatWidget } from '@/components/sections/home2/widgets/AgentChatWidget'
 
 // Apps people arrive from — every logo is a real file in public/compare-logos.
 const IMPORT_LOGOS: { logo: string; name: string }[] = [
@@ -29,25 +30,6 @@ function BlockTitle({ icon: Icon, children }: { icon: LucideIcon; children: Reac
         <Icon className="h-[18px] w-[18px]" strokeWidth={1.8} />
       </span>
       <h3 className="font-serif text-xl text-ink">{children}</h3>
-    </div>
-  )
-}
-
-/** Tiny hand-built chat vignette — illustrative UI, not a screenshot. */
-function AgentChatVignette() {
-  return (
-    <div aria-hidden className="mt-6 space-y-2.5">
-      <div className="ms-auto w-fit max-w-[85%] rounded-2xl rounded-ee-md bg-tint-sage px-3.5 py-2 text-[13px] leading-relaxed text-ink">
-        What did I decide about the retreat budget?
-      </div>
-      <div className="w-fit max-w-[85%] rounded-2xl rounded-es-md border border-border/60 bg-paper px-3.5 py-2 text-[13px] leading-relaxed text-ink/80">
-        Found 3 notes — the decision is in{' '}
-        <span className="font-medium text-ink">[[Retreat planning]]</span>.
-      </div>
-      <p className="flex items-center gap-1.5 pt-1 font-mono-accent text-[10px] uppercase tracking-[0.18em] text-muted">
-        <span className="h-1.5 w-1.5 rounded-full bg-sage" />
-        Vault MCP · localhost
-      </p>
     </div>
   )
 }
@@ -93,7 +75,8 @@ export function ConnectedShowcase() {
               CLI, Codex CLI, or your own tools can plug in — reads are open, writes wait for your
               approval.
             </p>
-            <AgentChatVignette />
+            <AgentChatWidget className="mt-6" />
+            <p className="mt-2 text-xs text-muted">Live demo — try it</p>
           </article>
 
           <div className="grid gap-4 lg:col-span-2">
