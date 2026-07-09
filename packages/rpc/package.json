@@ -10,7 +10,8 @@
     "./tasks": "./src/tasks.ts",
     "./notes": "./src/notes.ts",
     "./inbox": "./src/inbox.ts",
-    "./settings": "./src/settings.ts"
+    "./settings": "./src/settings.ts",
+    "./themes": "./src/themes.ts"
   },
   "types": "./src/index.ts",
   "scripts": {

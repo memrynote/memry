@@ -52,6 +52,18 @@ export const UpdateThemeInputSchema = z.object({
 
 export type UpdateThemeInput = z.infer<typeof UpdateThemeInputSchema>
 
+export const UpdateThemePayloadSchema = UpdateThemeInputSchema.extend({
+  id: z.string().min(1)
+})
+
+export type UpdateThemePayload = z.infer<typeof UpdateThemePayloadSchema>
+
+export const DeleteThemePayloadSchema = z.object({
+  id: z.string().min(1)
+})
+
+export type DeleteThemePayload = z.infer<typeof DeleteThemePayloadSchema>
+
 /**
  * Read-side tolerance: keep only `--var: #rrggbb` entries, drop everything
  * else (unknown shapes, future value syntaxes, non-custom-property keys).

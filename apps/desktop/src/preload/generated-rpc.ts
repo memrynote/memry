@@ -35,7 +35,10 @@ const eventChannels = {
   "onEmbeddingProgress": "settings:embeddingProgress",
   "onVoiceModelProgress": "settings:voiceModelProgress",
   "onSettingsOpenRequested": "settings:openSection",
-  "onCalendarChanged": "calendar:changed"
+  "onCalendarChanged": "calendar:changed",
+  "onThemeCreated": "themes:created",
+  "onThemeUpdated": "themes:updated",
+  "onThemeDeleted": "themes:deleted"
 } as const
 
 export interface GeneratedRpcDeps {
@@ -294,6 +297,12 @@ export function createGeneratedRpcApi({
     },
     "feedback": {
       "submit": ((input) => invoke("feedback:submit", input)) as GeneratedRpcApi["feedback"]["submit"],
+    },
+    "themes": {
+      "list": (() => invoke("themes:list")) as GeneratedRpcApi["themes"]["list"],
+      "create": ((input) => invoke("themes:create", input)) as GeneratedRpcApi["themes"]["create"],
+      "update": ((input) => invoke("themes:update", input)) as GeneratedRpcApi["themes"]["update"],
+      "delete": ((input) => invoke("themes:delete", input)) as GeneratedRpcApi["themes"]["delete"],
     },
   }
 

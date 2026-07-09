@@ -15,6 +15,7 @@ const EditorPreferencesSchema = z.object({
 
 export const VaultPreferencesSchema = z.object({
   theme: z.enum(['light', 'dark', 'white', 'system']),
+  customThemeId: z.string().nullable(),
   fontSize: z.enum(['small', 'medium', 'large']),
   fontFamily: z.enum(['system', 'serif', 'sans-serif', 'monospace', 'gelasio', 'geist', 'inter']),
   accentColor: z.string().regex(/^#[0-9a-fA-F]{6}$/),
@@ -33,6 +34,7 @@ export const EDITOR_PREFERENCES_DEFAULTS: EditorPreferences = {
 
 export const VAULT_PREFERENCES_DEFAULTS: VaultPreferences = {
   theme: GENERAL_SETTINGS_DEFAULTS.theme,
+  customThemeId: GENERAL_SETTINGS_DEFAULTS.customThemeId,
   fontSize: GENERAL_SETTINGS_DEFAULTS.fontSize,
   fontFamily: GENERAL_SETTINGS_DEFAULTS.fontFamily,
   accentColor: GENERAL_SETTINGS_DEFAULTS.accentColor,
@@ -43,6 +45,7 @@ export const VAULT_PREFERENCES_DEFAULTS: VaultPreferences = {
 
 export const PORTABLE_GENERAL_FIELDS = [
   'theme',
+  'customThemeId',
   'fontSize',
   'fontFamily',
   'accentColor',
@@ -66,6 +69,7 @@ export function readPreferences(vaultPath: string): VaultPreferences {
     const prefs = raw.preferences
     return {
       theme: prefs.theme ?? VAULT_PREFERENCES_DEFAULTS.theme,
+      customThemeId: prefs.customThemeId ?? VAULT_PREFERENCES_DEFAULTS.customThemeId,
       fontSize: prefs.fontSize ?? VAULT_PREFERENCES_DEFAULTS.fontSize,
       fontFamily: prefs.fontFamily ?? VAULT_PREFERENCES_DEFAULTS.fontFamily,
       accentColor: prefs.accentColor ?? VAULT_PREFERENCES_DEFAULTS.accentColor,
