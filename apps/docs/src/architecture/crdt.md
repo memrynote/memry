@@ -18,8 +18,12 @@ renderer  ──Yjs IPC provider──▶  main (Y.Doc)  ──y-leveldb──�
 
 ## Persistence Resilience
 
-The y-leveldb store is probed at startup (a write/read/clear round-trip with a
-timeout) before it is trusted. A broken `classic-level` native binding doesn't
+The classic-level native binding is first exercised in a **disposable
+utilityProcess** (`crdt-preflight-child.ts`): a binding that hard-aborts
+(unsupported CPU instructions, AV interference) kills that child, not the app,
+and the main process then never loads the binding at all. Only after the child
+survives is the y-leveldb store probed in-process (a write/read/clear
+round-trip with a timeout) before it is trusted. A broken `classic-level` native binding doesn't
 fail cleanly — it throws outside the promise chain or hangs its callbacks — so
 the probe captures both. If the probe fails, the provider degrades to
 **in-memory mode**: notes still load from vault markdown and write back to

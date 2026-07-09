@@ -17,6 +17,8 @@ const mocks = vi.hoisted(() => {
   return {
     persistenceBehavior,
     persistenceOpFactory,
+    // Verdict of the disposable utilityProcess preflight (see crdt-preflight.ts)
+    preflightResult: { ok: true } as { ok: boolean; reason?: string },
     sent: [] as Array<{ windowId: number; channel: string; payload: unknown }>,
     windows: new Map<
       number,
@@ -56,6 +58,10 @@ vi.mock('../lib/logger', () => ({
     warn: vi.fn(),
     error: vi.fn()
   })
+}))
+
+vi.mock('./crdt-preflight', () => ({
+  runCrdtPreflight: vi.fn(async () => ({ ...mocks.preflightResult }))
 }))
 
 vi.mock('y-leveldb', () => ({
@@ -169,6 +175,7 @@ describe('CrdtProvider', () => {
     mocks.windows.clear()
     mocks.persistenceInstances.length = 0
     mocks.persistenceBehavior.mode = 'ok'
+    mocks.preflightResult = { ok: true }
     mocks.getNoteCacheById.mockReturnValue({
       id: 'note-1',
       path: 'notes/Note.md',
@@ -707,6 +714,7 @@ describe('CrdtProvider persistence resilience', () => {
     mocks.windows.clear()
     mocks.persistenceInstances.length = 0
     mocks.persistenceBehavior.mode = 'ok'
+    mocks.preflightResult = { ok: true }
     mocks.getNoteCacheById.mockReturnValue({
       id: 'note-1',
       path: 'notes/Note.md',
@@ -741,6 +749,21 @@ describe('CrdtProvider persistence resilience', () => {
 
     // Typing must not throw even though the store is dead.
     expect(() => provider.applyIpcUpdate('note-1', makeRemoteUpdate('typed'), 7)).not.toThrow()
+    await provider.close('note-1')
+  })
+
+  it('never loads the store binding when the preflight child dies', async () => {
+    mocks.preflightResult = { ok: false, reason: 'child exited with code 134' }
+    const provider = new CrdtProvider()
+
+    await expect(provider.init()).resolves.toBeUndefined()
+    expect(provider.isInitialized()).toBe(true)
+    // The whole point: LeveldbPersistence must never be constructed in main
+    // when the disposable child crashed exercising the native binding.
+    expect(mocks.persistenceInstances).toHaveLength(0)
+
+    const doc = await provider.open('note-1')
+    expect(doc.getXmlFragment(CRDT_FRAGMENT_NAME).length).toBeGreaterThan(0)
     await provider.close('note-1')
   })
 

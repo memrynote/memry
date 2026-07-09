@@ -9,6 +9,7 @@ import { getNoteCacheById } from '@main/database/queries/notes'
 import type { CrdtUpdateQueue } from './crdt-queue'
 import { MicrotaskBatchBroadcaster } from './microtask-batch-broadcaster'
 import { scheduleWriteback, flushPendingWritebacks, recordNetworkUpdate } from './crdt-writeback'
+import { runCrdtPreflight } from './crdt-preflight'
 import { toAbsolutePath } from '../vault/notes'
 import { safeRead } from '../vault/file-ops'
 import { parseNote } from '../vault/frontmatter'
@@ -122,6 +123,15 @@ export class CrdtProvider {
   private async doInitPersistence(): Promise<void> {
     const storagePath = path.join(app.getPath('userData'), 'crdt-store')
     try {
+      // A binding that hard-aborts (unsupported CPU instructions, AV kills)
+      // takes the whole process down with no catchable error — observed on
+      // 2026.709.x: main died silently before the window painted. Exercise
+      // the binding in a disposable child first; only load it here if the
+      // child survives.
+      const preflight = await runCrdtPreflight()
+      if (!preflight.ok) {
+        throw new Error(`CRDT store preflight failed: ${preflight.reason ?? 'unknown'}`)
+      }
       const persistence = new LeveldbPersistence(storagePath) as CrdtPersistence
       await probePersistence(persistence)
       this.persistence = persistence
