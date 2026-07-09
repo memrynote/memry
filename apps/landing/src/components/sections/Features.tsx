@@ -144,7 +144,7 @@ export function Features() {
                   height={870}
                   decoding="async"
                   className="absolute inset-0 h-full w-full object-cover"
-                  initial={{ opacity: 0, scale: 1.02, filter: 'blur(12px)' }}
+                  initial={{ opacity: 0, scale: 1.02, filter: 'blur(8px)' }}
                   animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
                   exit={{ opacity: 0, transition: { duration: 0.3, ease: 'easeOut' } }}
                   transition={{ duration: 0.5, ease: EASE }}
