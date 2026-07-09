@@ -12,9 +12,11 @@ import {
   useRef,
   useState,
   type CSSProperties,
-  type RefObject
+  type RefObject,
+  type UIEvent
 } from 'react'
 import { cn } from '@/lib/utils'
+import { motion, useReducedMotion } from 'motion/react'
 import { Loader2 } from '@/lib/icons'
 import {
   JournalMonthView,
@@ -334,6 +336,12 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   const setJournalScrollRef = useCallback((el: HTMLDivElement | null) => {
     journalScrollRef.current = el
     setJournalScrollEl(el)
+  }, [])
+  const prefersReducedMotion = useReducedMotion()
+  // Scroll-edge effect for the floating chrome (state only flips at the 0 boundary)
+  const [isChromeScrolled, setIsChromeScrolled] = useState(false)
+  const handleChromeScroll = useCallback((e: UIEvent<HTMLDivElement>) => {
+    setIsChromeScrolled(e.currentTarget.scrollTop > 0)
   }, [])
   const [marqueeZoneEl, setMarqueeZoneEl] = useState<HTMLDivElement | null>(null)
 
@@ -785,7 +793,10 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     >
       <div className={cn('flex h-full w-full overflow-hidden bg-background', className)}>
         {/* Main Content Area */}
-        <main className={cn('flex-1 min-w-0 h-full relative flex flex-col')}>
+        <main
+          className={cn('flex-1 min-w-0 h-full relative flex flex-col')}
+          style={{ '--note-chrome-height': '2.25rem' } as CSSProperties}
+        >
           <FindBar
             isOpen={findInPage.isOpen}
             query={findInPage.query}
@@ -798,7 +809,10 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
             onClose={findInPage.close}
           />
 
-          <div className="flex items-center justify-between h-9 py-2 ps-6 pe-3 shrink-0 text-xs/4 [font-synthesis:none]">
+          <div
+            data-scrolled={isChromeScrolled || undefined}
+            className="note-chrome absolute top-0 inset-x-0 z-30 flex items-center justify-between h-9 py-2 ps-6 pe-3 text-xs/4 [font-synthesis:none]"
+          >
             <JournalBreadcrumb
               viewState={currentViewState}
               isToday={isToday}
@@ -824,19 +838,31 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
             />
           </div>
 
-          <div ref={setJournalScrollRef} className="flex-1 overflow-y-auto overflow-x-visible">
+          <div
+            ref={setJournalScrollRef}
+            onScroll={handleChromeScroll}
+            className="flex-1 overflow-y-auto overflow-x-visible"
+          >
             <div
               ref={setMarqueeZoneEl}
               className="marquee-zone relative min-h-full w-full flex flex-col"
             >
               <div
                 className={cn(
-                  'mx-auto w-full min-h-full flex flex-col pt-6 pb-10 lg:pb-16 transition-[max-width] duration-300 ease-in-out',
+                  'mx-auto w-full min-h-full flex flex-col pt-15 pb-10 lg:pb-16 transition-[max-width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]',
                   isFullWidth ? 'px-24 max-[920px]:px-8' : 'px-8 lg:px-12'
                 )}
                 style={{ maxWidth: isFullWidth ? '100%' : '64rem' }}
               >
-                <div className="flex flex-col flex-1 mx-auto w-full transition-[max-width] duration-300 ease-in-out">
+                {/* Content — materializes on day/view switch (crossfade only
+                    under reduced motion); critically damped spring, no overshoot */}
+                <motion.div
+                  key={`${currentViewState.type}-${selectedDate}`}
+                  initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ type: 'spring', bounce: 0, duration: 0.35 }}
+                  className="flex flex-col flex-1 mx-auto w-full transition-[max-width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
+                >
                   {entryError && (
                     <div className="mb-4 px-4 py-3 rounded-md bg-destructive/10 border border-destructive/20 text-destructive text-sm">
                       <span className="font-medium">{t('toast.errorPrefix')}</span> {entryError}
@@ -1024,7 +1050,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                       />
                     </div>
                   )}
-                </div>
+                </motion.div>
               </div>
             </div>
 
