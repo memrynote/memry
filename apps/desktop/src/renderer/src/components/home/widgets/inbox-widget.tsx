@@ -3,13 +3,14 @@ import type { InboxListInput } from '@memry/rpc/inbox'
 import { useInboxList } from '@/hooks/use-inbox-queries'
 import { useArchiveInboxItem } from '@/hooks/use-inbox-mutations'
 import { useTabActions } from '@/contexts/tabs/context'
-import { Archive } from '@/lib/icons/icon-map'
+import { Archive, Inbox } from '@/lib/icons/icon-map'
 import { Skeleton } from '@/components/ui/skeleton'
 import { InboxTypeIcon } from '@/components/inbox/inbox-type-icon'
 import { formatTimeAgo } from '@/services/inbox-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import type { WidgetComponentProps } from '@/lib/home/widget-registry'
 import { inboxWidgetLimit } from '@/lib/home/inbox-widget-filter'
+import { WidgetRow, WidgetEmptyState } from './widget-list'
 import type { InboxItemType } from '@/types'
 import { useT } from '@memry/i18n/renderer'
 
@@ -58,18 +59,18 @@ export function InboxWidget({ config, size }: WidgetComponentProps): React.JSX.E
     )
 
   if (items.length === 0)
-    return <div className="text-xs text-muted-foreground">{tInbox('empty.noItemsYet')}</div>
+    return <WidgetEmptyState icon={Inbox} label={tInbox('empty.noItemsYet')} />
 
   return (
     <ul className="flex flex-col gap-0.5">
-      {items.slice(0, limit).map((item) => (
-        <li key={item.id} className="flex items-center gap-1">
+      {items.slice(0, limit).map((item, index) => (
+        <WidgetRow key={item.id} index={index} className="group/row flex items-center gap-1">
           <button
             type="button"
             data-testid="inbox-item"
             data-inbox-id={item.id}
             data-inbox-type={item.type}
-            className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1 text-start hover:bg-muted/60"
+            className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1 text-start hover:bg-muted/60 active:bg-muted focus-visible:ring-1 focus-visible:ring-[var(--tint-ring)]"
             onClick={() =>
               openTab({
                 type: 'inbox',
@@ -102,16 +103,17 @@ export function InboxWidget({ config, size }: WidgetComponentProps): React.JSX.E
               {formatTimeAgo(item.createdAt)}
             </span>
           </button>
+          {/* Quick action reveals on row hover/focus — keeps rows calm at rest, still keyboard-reachable. */}
           <button
             type="button"
             data-testid="inbox-archive"
             aria-label={tInbox('quickActions.archiveItem')}
-            className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+            className="shrink-0 rounded-md p-1 text-muted-foreground opacity-0 transition-opacity duration-150 group-hover/row:opacity-100 group-focus-within/row:opacity-100 hover:bg-muted/60 hover:text-foreground focus-visible:ring-1 focus-visible:ring-[var(--tint-ring)] motion-safe:active:scale-90"
             onClick={() => archive.mutate(item.id)}
           >
             <Archive className="size-3.5" />
           </button>
-        </li>
+        </WidgetRow>
       ))}
     </ul>
   )
