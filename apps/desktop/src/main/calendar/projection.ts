@@ -606,6 +606,19 @@ export function getCalendarRangeProjection(
   enabledNames: string[],
   showNotesByCreated = false
 ): CalendarRangeResponse {
+  const notePropertyItems = loadNoteDatePropertyItems(indexDb, enabledNames, input)
+
+  // A note whose calendar-enabled date property lands on its creation day would
+  // otherwise chip twice (once per source); keep only the property chip that day.
+  const notePropertyDays = new Set(
+    notePropertyItems.map((item) => `${item.sourceId}:${item.startAt}`)
+  )
+  const noteCreatedItems = showNotesByCreated
+    ? loadNotesByCreatedDate(indexDb, input).filter(
+        (item) => !notePropertyDays.has(`${item.sourceId}:${item.startAt}`)
+      )
+    : []
+
   const items = sortProjectionItems([
     ...loadMemryEvents(db, input),
     ...loadTaskItems(db, input),
@@ -613,8 +626,8 @@ export function getCalendarRangeProjection(
     ...loadNoteDateReminderItems(db, indexDb, input),
     ...loadInboxSnoozeItems(db, input),
     ...loadExternalEvents(db, input),
-    ...loadNoteDatePropertyItems(indexDb, enabledNames, input),
-    ...(showNotesByCreated ? loadNotesByCreatedDate(indexDb, input) : [])
+    ...notePropertyItems,
+    ...noteCreatedItems
   ])
 
   return { items }
