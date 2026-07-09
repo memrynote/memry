@@ -17,10 +17,10 @@ interface JournalBreadcrumbProps {
 }
 
 const CRUMB_CLASS =
-  'text-xs text-muted-foreground hover:bg-muted rounded-sm px-1 py-0.5 transition-colors cursor-pointer bg-transparent border-none'
+  'text-xs text-muted-foreground hover:bg-muted active:bg-muted/70 active:text-foreground rounded-sm px-1 py-0.5 transition-colors duration-150 cursor-pointer bg-transparent border-none'
 
 const BACK_BTN_CLASS =
-  'flex items-center justify-center shrink-0 text-muted-foreground hover:text-foreground transition-colors bg-transparent border-none cursor-pointer p-0'
+  'flex items-center justify-center shrink-0 text-muted-foreground hover:text-foreground transition-all duration-150 ease-out active:scale-90 bg-transparent border-none cursor-pointer p-0'
 
 export function JournalBreadcrumb({
   viewState,
@@ -76,7 +76,7 @@ export function JournalBreadcrumb({
         <span className="text-xs text-text-secondary px-0.5">/</span>
         <span className="text-xs text-foreground font-medium">{dateParts.day}</span>
         {isToday && (
-          <span className="ml-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-amber-700 dark:text-amber-400 bg-amber-500/10 rounded-full px-2 py-0.5 border border-amber-500/20">
+          <span className="ms-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-amber-700 dark:text-amber-400 bg-amber-500/10 rounded-full px-2 py-0.5 border border-amber-500/20">
             {t('date.relative.today')}
           </span>
         )}
