@@ -1,3 +1,4 @@
+import { motion, useReducedMotion } from 'motion/react'
 import { Button } from '@/components/ui/button'
 import { Plus } from '@/lib/icons/icon-map'
 import { useT } from '@memry/i18n/renderer'
@@ -13,14 +14,18 @@ interface BoardEmptyStateProps {
  */
 export function BoardEmptyState({ onAddFirstWidget }: BoardEmptyStateProps): React.JSX.Element {
   const { t } = useT('common')
+  const reduceMotion = useReducedMotion()
   return (
-    <div
+    <motion.div
       data-testid="board-empty-state"
-      className="mx-auto flex max-w-sm flex-col items-center gap-3 px-6 py-16 text-center motion-safe:animate-in motion-safe:fade-in motion-safe:duration-200"
+      className="mx-auto flex max-w-sm flex-col items-center gap-3 px-6 py-20 text-center"
+      initial={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.97, filter: 'blur(6px)' }}
+      animate={reduceMotion ? { opacity: 1 } : { opacity: 1, scale: 1, filter: 'blur(0px)' }}
+      transition={{ type: 'spring', bounce: 0, duration: 0.5 }}
     >
       <div
         aria-hidden="true"
-        className="flex size-11 items-center justify-center rounded-full bg-muted text-muted-foreground"
+        className="flex size-12 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--tint)_12%,transparent)] text-[var(--tint)]"
       >
         <Plus className="size-5" />
       </div>
@@ -33,11 +38,11 @@ export function BoardEmptyState({ onAddFirstWidget }: BoardEmptyStateProps): Rea
         size="sm"
         data-testid="board-empty-cta"
         onClick={onAddFirstWidget}
-        className="mt-1"
+        className="mt-1 motion-safe:active:scale-[0.97]"
       >
         <Plus className="size-4" aria-hidden="true" />
         {t('home.empty.cta')}
       </Button>
-    </div>
+    </motion.div>
   )
 }

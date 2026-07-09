@@ -31,7 +31,8 @@ interface WidgetFrameProps {
 // Rendered INSIDE the plain wrapper div that react-grid-layout clones (see board-grid). The card
 // fills that wrapper; the drag handle is the header, and RGL's resize handle is a sibling appended
 // to the wrapper (styled in home-grid.css). Keeping this a normal component — not RGL's cloned
-// child — is what keeps drag/resize reliably wired.
+// child — is what keeps drag/resize reliably wired. Pickup elevation (drag/resize lift) is driven
+// from home-grid.css off RGL's state classes on the wrapper.
 export function WidgetFrame({
   widget,
   size,
@@ -55,7 +56,8 @@ export function WidgetFrame({
       data-widget-size={size}
       data-widget-id={widget.id}
       className={cn(
-        'group/widget relative flex h-full w-full flex-col overflow-hidden rounded-xl border bg-card'
+        'group/widget relative flex h-full w-full flex-col overflow-hidden rounded-2xl border bg-card',
+        'shadow-[0_1px_2px_rgba(0,0,0,0.03),0_12px_32px_-24px_rgba(0,0,0,0.16)]'
       )}
     >
       {/* Header is the drag handle (react-grid-layout draggableHandle=".widget-drag-handle").
@@ -85,7 +87,7 @@ export function WidgetFrame({
               type="button"
               data-testid="widget-menu"
               aria-label={t('home.widget.menuAria')}
-              className="widget-no-drag inline-flex size-7 shrink-0 items-center justify-center rounded text-[var(--text-tertiary)] transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--tint-ring)]"
+              className="widget-no-drag inline-flex size-7 shrink-0 items-center justify-center rounded text-[var(--text-tertiary)] transition-[background-color,transform] duration-100 hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--tint-ring)] motion-safe:active:scale-90"
             >
               <MoreVertical className="size-4" aria-hidden="true" />
             </button>

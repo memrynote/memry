@@ -58,6 +58,9 @@ export default function HomePage(): React.JSX.Element {
   }, [openTab])
 
   const [galleryOpen, setGalleryOpen] = useState(false)
+  // The header floats over the board (.home-chrome, sticky); its material (blur + translucent
+  // background) only appears once content actually scrolls underneath it.
+  const [scrolled, setScrolled] = useState(false)
   const {
     boards,
     activeBoard,
@@ -106,39 +109,45 @@ export default function HomePage(): React.JSX.Element {
     setGalleryOpen(false)
   }
 
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    setScrolled(e.currentTarget.scrollTop > 4)
+  }
+
   return (
-    <div data-testid="home-page" className="flex h-full flex-col">
-      <HomeHeader
-        boards={localBoards}
-        activeBoardId={activeBoardId}
-        onSelectBoard={setActiveBoardId}
-        onCreateBoard={() => void createBoard(t('home.board.newName'))}
-        onDeleteBoard={(id) => void deleteBoard(id)}
-        showAddWidget={!isLoading && !!localActive}
-        galleryOpen={galleryOpen}
-        onGalleryOpenChange={setGalleryOpen}
-        onAddWidget={handleAddWidget}
-      />
+    <div data-testid="home-page" className="h-full overflow-auto" onScroll={handleScroll}>
+      <div className="home-chrome" data-scrolled={scrolled ? 'true' : 'false'}>
+        <HomeHeader
+          boards={localBoards}
+          activeBoardId={activeBoardId}
+          onSelectBoard={setActiveBoardId}
+          onCreateBoard={() => void createBoard(t('home.board.newName'))}
+          onDeleteBoard={(id) => void deleteBoard(id)}
+          showAddWidget={!isLoading && !!localActive}
+          galleryOpen={galleryOpen}
+          onGalleryOpenChange={setGalleryOpen}
+          onAddWidget={handleAddWidget}
+        />
+      </div>
       {isLoading && (
         <output
           data-testid="home-board-loading"
           aria-busy="true"
           aria-label={t('state.loading')}
-          className="min-h-0 flex-1 overflow-auto px-6 py-6"
+          className="block px-6 pt-6 pb-8"
         >
           <div
             className="grid auto-rows-[7rem] gap-3"
             style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}
           >
-            <Skeleton className="col-span-2 row-span-2 h-full" />
-            <Skeleton className="col-span-2 row-span-2 h-full" />
-            <Skeleton className="col-span-1 h-full" />
-            <Skeleton className="col-span-1 h-full" />
+            <Skeleton className="col-span-2 row-span-2 h-full rounded-2xl" />
+            <Skeleton className="col-span-2 row-span-2 h-full rounded-2xl" />
+            <Skeleton className="col-span-1 h-full rounded-2xl" />
+            <Skeleton className="col-span-1 h-full rounded-2xl" />
           </div>
         </output>
       )}
       {!isLoading && localActive && (
-        <div className="min-h-0 flex-1 overflow-auto px-6 py-6">
+        <div className="px-6 pt-6 pb-8">
           <BoardGrid board={localActive} onChange={handleChange} />
           {localActive.widgets.length === 0 && (
             <BoardEmptyState onAddFirstWidget={handleAddFirstWidget} />
