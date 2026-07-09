@@ -1270,6 +1270,7 @@ export interface NoteEditorSettings {
 // New settings group types (from @memry/contracts/settings-schemas)
 export interface GeneralSettingsDTO {
   theme: 'light' | 'dark' | 'white' | 'system'
+  customThemeId: string | null
   fontSize: 'small' | 'medium' | 'large'
   fontFamily: 'system' | 'serif' | 'sans-serif' | 'monospace' | 'gelasio' | 'geist' | 'inter'
   accentColor: string

@@ -4,6 +4,32 @@ import { SettingsChannels } from '@memry/contracts/ipc-channels'
 export type StartupTheme = 'light' | 'dark' | 'white' | 'system'
 
 export const THEME_STORAGE_KEY = 'memry-theme'
+export const CUSTOM_THEME_OVERRIDES_STORAGE_KEY = 'memry-custom-theme-overrides'
+
+const HEX_VALUE_REGEX = /^#[0-9a-fA-F]{6}$/
+
+/**
+ * Custom-theme variable overrides cached by the renderer (use-theme-sync).
+ * Read here so the first paint already has the user's colors — same FOUC
+ * strategy as the cached theme class below.
+ */
+function getCachedThemeOverrides(): Record<string, string> | null {
+  try {
+    const raw = window.localStorage.getItem(CUSTOM_THEME_OVERRIDES_STORAGE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return null
+    const overrides: Record<string, string> = {}
+    for (const [key, value] of Object.entries(parsed)) {
+      if (key.startsWith('--') && typeof value === 'string' && HEX_VALUE_REGEX.test(value)) {
+        overrides[key] = value
+      }
+    }
+    return Object.keys(overrides).length > 0 ? overrides : null
+  } catch {
+    return null
+  }
+}
 
 function isStartupTheme(value: unknown): value is StartupTheme {
   return value === 'light' || value === 'dark' || value === 'white' || value === 'system'
@@ -49,6 +75,7 @@ function resolveStartupTheme(theme: StartupTheme): 'light' | 'dark' | 'white' {
 
 export function applyStartupTheme(savedTheme: StartupTheme): void {
   const resolvedTheme = resolveStartupTheme(savedTheme)
+  const overrides = getCachedThemeOverrides()
 
   const applyToRoot = (): boolean => {
     const root = document.documentElement
@@ -58,6 +85,11 @@ export function applyStartupTheme(savedTheme: StartupTheme): void {
     if (resolvedTheme === 'dark') root.classList.add('dark')
     if (resolvedTheme === 'white') root.classList.add('white')
     root.style.colorScheme = resolvedTheme === 'dark' ? 'dark' : 'light'
+    if (overrides) {
+      for (const [key, value] of Object.entries(overrides)) {
+        root.style.setProperty(key, value)
+      }
+    }
     return true
   }
 

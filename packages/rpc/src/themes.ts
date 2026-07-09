@@ -2,6 +2,8 @@ import type {
   CreateThemeInput,
   CustomTheme,
   DeleteThemePayload,
+  ThemeDeleteResult,
+  ThemeMutationResult,
   UpdateThemePayload
 } from '../../contracts/src/themes-api.ts'
 import { ThemesChannels } from '../../contracts/src/ipc-channels.ts'
@@ -13,16 +15,7 @@ import {
   type RpcSubscriptions
 } from './schema.ts'
 
-export interface ThemeMutationResult {
-  success: boolean
-  theme?: CustomTheme
-  error?: string
-}
-
-export interface ThemeDeleteResult {
-  success: boolean
-  error?: string
-}
+export type { ThemeDeleteResult, ThemeMutationResult }
 
 export interface ThemeChangedEvent {
   id: string

@@ -64,6 +64,17 @@ export const DeleteThemePayloadSchema = z.object({
 
 export type DeleteThemePayload = z.infer<typeof DeleteThemePayloadSchema>
 
+export interface ThemeMutationResult {
+  success: boolean
+  theme?: CustomTheme
+  error?: string
+}
+
+export interface ThemeDeleteResult {
+  success: boolean
+  error?: string
+}
+
 /**
  * Read-side tolerance: keep only `--var: #rrggbb` entries, drop everything
  * else (unknown shapes, future value syntaxes, non-custom-property keys).

@@ -374,10 +374,10 @@ export interface MainIpcInvokeHandlers {
   "templates:get": (...args: [string]) => Awaited<Promise<import("../../../../../packages/contracts/src/templates-api").Template | null>>
   "templates:list": (...args: []) => Awaited<Promise<{ templates: import("../../../../../packages/contracts/src/templates-api").TemplateListItem[]; }>>
   "templates:update": (...args: [{ id: string; name?: string | undefined; description?: string | undefined; icon?: string | null | undefined; tags?: string[] | undefined; properties?: { name: string; type: "number" | "date" | "url" | "text" | "select" | "checkbox" | "multiselect" | "rating"; value: unknown; options?: string[] | undefined; }[] | undefined; content?: string | undefined; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; template: import("../../../../../packages/contracts/src/templates-api").Template; }>>
-  "themes:create": (...args: [{ name: string; base: "light" | "white" | "dark"; variables?: Record<string, string> | undefined; }]) => Awaited<Promise<ThemeMutationResult>>
-  "themes:delete": (...args: [{ id: string; }]) => Awaited<Promise<{ success: boolean; error?: string | undefined; }>>
+  "themes:create": (...args: [{ name: string; base: "light" | "white" | "dark"; variables?: Record<string, string> | undefined; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/themes-api").ThemeMutationResult>>
+  "themes:delete": (...args: [{ id: string; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/themes-api").ThemeDeleteResult>>
   "themes:list": (...args: []) => Awaited<Promise<{ id: string; name: string; base: "light" | "white" | "dark"; variables: Record<string, string>; createdAt: string; modifiedAt: string; }[]>>
-  "themes:update": (...args: [{ id: string; name?: string | undefined; base?: "light" | "white" | "dark" | undefined; variables?: Record<string, string> | undefined; }]) => Awaited<Promise<ThemeMutationResult>>
+  "themes:update": (...args: [{ id: string; name?: string | undefined; base?: "light" | "white" | "dark" | undefined; variables?: Record<string, string> | undefined; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/themes-api").ThemeMutationResult>>
   "updater:check-for-updates": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/ipc-updater").AppUpdateState>>
   "updater:download-update": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/ipc-updater").AppUpdateState>>
   "updater:get-state": (...args: []) => Awaited<import("../../../../../packages/contracts/src/ipc-updater").AppUpdateState>

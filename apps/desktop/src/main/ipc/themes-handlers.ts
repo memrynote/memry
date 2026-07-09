@@ -13,6 +13,8 @@ import {
   type CreateThemeInput,
   type CustomTheme,
   type DeleteThemePayload,
+  type ThemeDeleteResult,
+  type ThemeMutationResult,
   type UpdateThemePayload
 } from '@memry/contracts/themes-api'
 import { createHandler, createValidatedHandler } from './validate'
@@ -26,12 +28,6 @@ import {
 } from '../themes/theme-store'
 import type { DrizzleDb } from '../sync/item-handlers/types'
 
-interface ThemeMutationResult {
-  success: boolean
-  theme?: CustomTheme
-  error?: string
-}
-
 function emitThemeEvent(channel: string, data: unknown): void {
   BrowserWindow.getAllWindows().forEach((win) => {
     win.webContents.send(channel, data)
@@ -42,7 +38,7 @@ export function makeThemesHandlers(db: DrizzleDb): {
   list: () => CustomTheme[]
   create: (input: CreateThemeInput) => ThemeMutationResult
   update: (input: UpdateThemePayload) => ThemeMutationResult
-  delete: (input: DeleteThemePayload) => { success: boolean; error?: string }
+  delete: (input: DeleteThemePayload) => ThemeDeleteResult
 } {
   return {
     list: () => {
