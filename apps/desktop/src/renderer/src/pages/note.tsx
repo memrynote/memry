@@ -928,7 +928,7 @@ export function NotePage({ noteId }: NotePageProps) {
           <Button
             variant="ghost"
             size="icon"
-            className="size-7 hover:bg-surface-active"
+            className="size-7 hover:bg-surface-active transition-all duration-150 ease-out active:scale-95 active:bg-surface-active/70 disabled:active:scale-100"
             disabled={isDeleted}
             title={
               hasActiveReminder ? t('editor.toolbar.reminderSet') : t('editor.toolbar.setReminder')
@@ -947,7 +947,7 @@ export function NotePage({ noteId }: NotePageProps) {
       <Button
         variant="ghost"
         size="icon"
-        className="size-7 hover:bg-surface-active"
+        className="size-7 hover:bg-surface-active transition-all duration-150 ease-out active:scale-95 active:bg-surface-active/70 disabled:active:scale-100"
         onClick={() => void toggleBookmark()}
         disabled={isDeleted}
         title={isBookmarked ? t('editor.toolbar.removeBookmark') : t('editor.toolbar.addBookmark')}
@@ -982,7 +982,7 @@ export function NotePage({ noteId }: NotePageProps) {
           <Button
             variant="ghost"
             size="icon"
-            className="size-7 hover:bg-surface-active"
+            className="size-7 hover:bg-surface-active transition-all duration-150 ease-out active:scale-95 active:bg-surface-active/70 disabled:active:scale-100"
             disabled={isDeleted}
           >
             <MoreVertical className="h-3.5 w-3.5 text-muted-foreground" />
@@ -1065,7 +1065,7 @@ export function NotePage({ noteId }: NotePageProps) {
     >
       {/* Note content */}
       <div
-        className="flex flex-col flex-1 mx-auto w-full transition-[max-width] duration-300 ease-in-out"
+        className="flex flex-col flex-1 mx-auto w-full transition-[max-width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
         style={{ maxWidth: noteContentWidth ?? '100%' }}
       >
         {/* Title + Metadata zone — ghost affordance appears on hover */}

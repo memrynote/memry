@@ -308,14 +308,26 @@
   width: 100%;
   margin: 0 0 8px 0 !important;
   padding: 4px 0 8px 0 !important;
-  background: var(--background) !important;
+  background: color-mix(in srgb, var(--background) 72%, transparent) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  backdrop-filter: blur(16px) saturate(180%);
   border: none !important;
-  border-bottom: 1px solid var(--border) !important;
   border-radius: 0 !important;
-  box-shadow: none !important;
+  /* Soft scroll-edge instead of a hard divider: softened hairline + short falloff */
+  box-shadow:
+    0 1px 0 0 color-mix(in srgb, var(--border) 60%, transparent),
+    0 1px 10px -4px rgb(0 0 0 / 0.08) !important;
   transform: none !important;
   opacity: 1 !important;
   pointer-events: auto !important;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .sticky-toolbar-enabled .bn-formatting-toolbar {
+    background: var(--background) !important;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
 }
 
 .sticky-toolbar-enabled .bn-formatting-toolbar > div {

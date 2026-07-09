@@ -30,7 +30,7 @@ function parseBreadcrumbSegments(notePath: string): BreadcrumbSegment[] {
 export const SIDEBAR_REVEAL_FOLDER_EVENT = 'sidebar:reveal-folder'
 
 const CRUMB_CLASS =
-  'text-xs text-muted-foreground hover:bg-muted rounded-sm px-1 py-0.5 transition-colors cursor-pointer bg-transparent border-none'
+  'text-xs text-muted-foreground hover:bg-muted active:bg-muted/70 active:text-foreground rounded-sm px-1 py-0.5 transition-colors duration-150 cursor-pointer bg-transparent border-none'
 
 export function NoteBreadcrumb({ notePath, noteTitle }: NoteBreadcrumbProps) {
   const { t } = useT('notes')
@@ -73,7 +73,7 @@ export function NoteBreadcrumb({ notePath, noteTitle }: NoteBreadcrumbProps) {
       <button
         type="button"
         onClick={handleBackClick}
-        className="flex items-center justify-center shrink-0 text-muted-foreground hover:text-foreground transition-colors bg-transparent border-none cursor-pointer p-0"
+        className="flex items-center justify-center shrink-0 text-muted-foreground hover:text-foreground transition-all duration-150 ease-out active:scale-90 bg-transparent border-none cursor-pointer p-0"
         aria-label={t('editor.breadcrumb.parentFolderAria')}
       >
         <ChevronLeft className="h-3.5 w-3.5" />

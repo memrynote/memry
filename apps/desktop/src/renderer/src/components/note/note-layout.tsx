@@ -101,7 +101,7 @@ export function NoteLayout({
           <div
             data-note-layout-canvas
             className={cn(
-              'mx-auto w-full pt-6 pb-10 min-h-full transition-[max-width] duration-300 ease-in-out',
+              'mx-auto w-full pt-6 pb-10 min-h-full transition-[max-width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]',
               showGridRail
                 ? 'grid items-start gap-x-12 px-24 [grid-template-columns:minmax(0,var(--note-layout-content-track))_20rem] max-[920px]:max-w-[var(--note-layout-content-max)] max-[920px]:grid-cols-1 max-[920px]:px-8'
                 : 'px-24 flex flex-col'
