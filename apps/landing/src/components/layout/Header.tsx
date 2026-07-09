@@ -408,8 +408,8 @@ export function Header() {
   const navigate = useNavigate()
   const { isSignedIn } = useAuth()
   const showHeaderSurface = headerScrolled || mobileMenuOpen
-  // ponytail: signed out → /auth (sign-in/up); signed in → billing. Label stays "Account" either way.
-  const accountHref = isSignedIn ? '/account/billing' : '/auth'
+  // ponytail: signed out → /login (sign-in/up); signed in → billing. Label stays "Account" either way.
+  const accountHref = isSignedIn ? '/account/billing' : '/login'
   const accountLabel = 'Account'
   const accountTarget = isSignedIn ? 'nav:account' : 'nav:sign-in'
 

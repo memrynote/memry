@@ -113,7 +113,7 @@ function CheckoutContent({
 
   if (!isSignedIn) {
     const next = search ? `/checkout?${search}` : '/checkout'
-    return <Navigate to={`/auth?next=${encodeURIComponent(next)}`} replace />
+    return <Navigate to={`/login?next=${encodeURIComponent(next)}`} replace />
   }
 
   if (mintError) {
