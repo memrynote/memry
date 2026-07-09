@@ -1,5 +1,7 @@
-import { useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
+import { motion, useReducedMotion } from 'motion/react'
 import { useT } from '@memry/i18n/renderer'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -133,6 +135,59 @@ export function CalendarShell({
   const [isRefreshing, setIsRefreshing] = useState(false)
   const { t } = useT('calendar')
   const hasGoogleCalendars = importedSources.length > 0
+  const prefersReducedMotion = useReducedMotion()
+
+  // Scroll-edge state for the floating chrome: true once content is beneath it.
+  // Views own their scroll containers (marked data-calendar-scroll); capture-phase
+  // listening reaches them all without prop drilling.
+  const [isScrolled, setIsScrolled] = useState(false)
+  const handleScrollCapture = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.target
+    if (!(target instanceof HTMLElement) || !target.hasAttribute('data-calendar-scroll')) return
+    setIsScrolled(target.scrollTop > 0)
+  }, [])
+
+  // One key per rendered period: prev/next remounts the grid so it can slide in
+  // the direction of travel; a view switch materializes in place instead. Week is
+  // keyed on view only — its infinite scroller animates anchor changes itself.
+  const motionKey =
+    view === 'week'
+      ? 'week'
+      : view === 'day'
+        ? `day:${anchorDate}`
+        : view === 'month'
+          ? `month:${anchorDate.slice(0, 7)}`
+          : `year:${anchorDate.slice(0, 4)}`
+  const transitionRef = useRef<{
+    key: string
+    view: CalendarWorkspaceView
+    anchorDate: string
+    initial: { opacity: number; x?: number; y?: number } | null
+  }>({ key: motionKey, view, anchorDate, initial: null })
+  if (transitionRef.current.key !== motionKey) {
+    const sameView = transitionRef.current.view === view
+    const forward = anchorDate >= transitionRef.current.anchorDate
+    // New period/view mounts unscrolled — drop the chrome edge with it
+    setIsScrolled(false)
+    transitionRef.current = {
+      key: motionKey,
+      view,
+      anchorDate,
+      initial: prefersReducedMotion
+        ? { opacity: 0 }
+        : sameView
+          ? { opacity: 0, x: forward ? 20 : -20 }
+          : { opacity: 0, y: 8 }
+    }
+  } else if (
+    transitionRef.current.view !== view ||
+    transitionRef.current.anchorDate !== anchorDate
+  ) {
+    // Same key (week anchor changes): keep the baseline current without animating
+    transitionRef.current = { ...transitionRef.current, view, anchorDate }
+  }
+  const viewInitial =
+    transitionRef.current.initial ?? (prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 8 })
 
   const handleRefreshGoogle = async (): Promise<void> => {
     if (isRefreshing) return
@@ -258,50 +313,72 @@ export function CalendarShell({
 
   return (
     <div
-      className="@container flex h-full min-h-0 flex-col bg-background"
+      className="@container relative flex h-full min-h-0 flex-col bg-background"
       data-testid="calendar-page"
+      onScrollCapture={handleScrollCapture}
     >
-      <CalendarToolbar
-        view={view}
-        anchorDate={anchorDate}
-        onViewChange={onViewChange}
-        onPrevious={onPrevious}
-        onNext={onNext}
-        onToday={onToday}
-        onCreateEvent={onCreateEvent}
-        onSearchJump={onSearchJump}
-        extraActions={
-          <>
-            {googleConnectAction}
-            {refreshButton}
-            {filterPopover}
-          </>
-        }
-      />
+      {/* Floating chrome — translucent material; the year grid scrolls beneath it */}
+      <div
+        data-scrolled={isScrolled || undefined}
+        className="page-chrome absolute inset-x-0 top-0 z-30"
+      >
+        <CalendarToolbar
+          view={view}
+          anchorDate={anchorDate}
+          onViewChange={onViewChange}
+          onPrevious={onPrevious}
+          onNext={onNext}
+          onToday={onToday}
+          onCreateEvent={onCreateEvent}
+          onSearchJump={onSearchJump}
+          extraActions={
+            <>
+              {googleConnectAction}
+              {refreshButton}
+              {filterPopover}
+            </>
+          }
+        />
+      </div>
 
-      <div className="min-h-0 flex-1">
+      {/* Year owns its offset inside the scroller so months pass under the chrome */}
+      <div className={cn('min-h-0 flex-1 overflow-x-clip', view !== 'year' && 'pt-12')}>
         {isLoading ? (
           <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
             {t('state.loading-calendar')}
           </div>
-        ) : view === 'day' ? (
-          <CalendarDayView {...chipViewProps} onMoveEvent={onMoveEvent} onQuickSave={onQuickSave} />
-        ) : view === 'week' ? (
-          <CalendarWeekView
-            {...chipViewProps}
-            onMoveEvent={onMoveEvent}
-            todayRequestKey={todayRequestKey}
-            onQuickSave={onQuickSave}
-            onVisibleDayStartChange={(_, startDate) => onWeekVisibleRangeChange?.(startDate)}
-          />
-        ) : view === 'month' ? (
-          <CalendarMonthView {...chipViewProps} onQuickSave={onQuickSave} />
         ) : (
-          <CalendarYearView
-            {...viewProps}
-            onViewChange={onViewChange}
-            onAnchorChange={onAnchorChange}
-          />
+          <motion.div
+            key={motionKey}
+            initial={viewInitial}
+            animate={{ opacity: 1, x: 0, y: 0 }}
+            transition={{ type: 'spring', bounce: 0, duration: 0.35 }}
+            className="h-full"
+          >
+            {view === 'day' ? (
+              <CalendarDayView
+                {...chipViewProps}
+                onMoveEvent={onMoveEvent}
+                onQuickSave={onQuickSave}
+              />
+            ) : view === 'week' ? (
+              <CalendarWeekView
+                {...chipViewProps}
+                onMoveEvent={onMoveEvent}
+                todayRequestKey={todayRequestKey}
+                onQuickSave={onQuickSave}
+                onVisibleDayStartChange={(_, startDate) => onWeekVisibleRangeChange?.(startDate)}
+              />
+            ) : view === 'month' ? (
+              <CalendarMonthView {...chipViewProps} onQuickSave={onQuickSave} />
+            ) : (
+              <CalendarYearView
+                {...viewProps}
+                onViewChange={onViewChange}
+                onAnchorChange={onAnchorChange}
+              />
+            )}
+          </motion.div>
         )}
       </div>
 

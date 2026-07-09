@@ -13,6 +13,8 @@ import {
 import type { WidgetComponentProps } from '@/lib/home/widget-registry'
 import { Skeleton } from '@/components/ui/skeleton'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { Calendar } from '@/lib/icons/icon-map'
+import { WidgetRow, WidgetEmptyState } from './widget-list'
 import { useT } from '@memry/i18n/renderer'
 
 export function CalendarWidget({ size }: WidgetComponentProps): React.JSX.Element {
@@ -47,8 +49,7 @@ export function CalendarWidget({ size }: WidgetComponentProps): React.JSX.Elemen
       </div>
     )
 
-  if (events.length === 0)
-    return <div className="text-xs text-muted-foreground">{t('home.noEventsYet')}</div>
+  if (events.length === 0) return <WidgetEmptyState icon={Calendar} label={t('home.noEventsYet')} />
 
   const limit = size === 'L' ? 12 : 6
   const visible = events.slice(0, limit)
@@ -79,8 +80,9 @@ export function CalendarWidget({ size }: WidgetComponentProps): React.JSX.Elemen
     const isNext = i === nextIndex
     const sub = subtitle(ev)
     rows.push(
-      <li
+      <WidgetRow
         key={ev.id}
+        index={i}
         data-testid="calendar-event"
         className={
           isNext
@@ -122,7 +124,7 @@ export function CalendarWidget({ size }: WidgetComponentProps): React.JSX.Elemen
             sub && <span className="truncate text-[11px] text-text-tertiary">{sub}</span>
           )}
         </span>
-      </li>
+      </WidgetRow>
     )
   })
   if (nowPos >= visible.length) rows.push(nowLine)

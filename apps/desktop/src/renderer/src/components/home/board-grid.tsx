@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { motion, useReducedMotion } from 'motion/react'
 import {
   Responsive,
   WidthProvider,
@@ -47,6 +48,7 @@ function unchanged(board: HomePage, next: Layout): boolean {
 
 export function BoardGrid({ board, onChange }: BoardGridProps): React.JSX.Element {
   const { t } = useT('common')
+  const reduceMotion = useReducedMotion()
 
   const layout: Layout = useMemo(
     () =>
@@ -90,41 +92,59 @@ export function BoardGrid({ board, onChange }: BoardGridProps): React.JSX.Elemen
       isBounded
       onLayoutChange={handleLayoutChange}
     >
-      {board.widgets.map((w) => {
+      {board.widgets.map((w, index) => {
         const def = WIDGET_REGISTRY[w.type]
         const size = sizeTier(w.w, w.h)
         // react-grid-layout clones this plain wrapper div (injecting position styles, drag handlers,
         // and appending the resize handle). Keeping it a vanilla element — rather than letting RGL
-        // clone WidgetFrame directly — is what makes drag/resize wiring reliable.
+        // clone WidgetFrame directly — is what makes drag/resize wiring reliable. The materialize
+        // animation therefore lives on an inner motion.div: RGL owns the wrapper's transform for
+        // positioning, so the two never fight over the same element.
         return (
           <div key={w.id} className="overflow-visible">
-            {def ? (
-              <WidgetFrame
-                widget={w}
-                size={size}
-                title={t(def.titleKey)}
-                icon={def.icon}
-                onRemove={() => onChange(removeWidget(board, w.id))}
-                ConfigEditor={def.ConfigEditor}
-                HeaderFilter={def.HeaderFilter}
-                HeaderCount={def.HeaderCount}
-                Footer={def.Footer}
-                onConfigChange={(cfg) => onChange(updateWidgetConfig(board, w.id, cfg))}
-                content={<def.Component config={w.config} size={size} />}
-              />
-            ) : (
-              <WidgetFrame
-                widget={w}
-                size={size}
-                title={t('home.widget.unknown')}
-                onRemove={() => onChange(removeWidget(board, w.id))}
-                content={
-                  <p data-testid="widget-unknown" className="text-sm text-muted-foreground">
-                    {t('home.widget.unknown')}
-                  </p>
-                }
-              />
-            )}
+            <motion.div
+              className="h-full w-full"
+              initial={
+                reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.96, filter: 'blur(6px)' }
+              }
+              animate={
+                reduceMotion ? { opacity: 1 } : { opacity: 1, scale: 1, filter: 'blur(0px)' }
+              }
+              transition={{
+                type: 'spring',
+                bounce: 0,
+                duration: 0.45,
+                delay: Math.min(index * 0.04, 0.32)
+              }}
+            >
+              {def ? (
+                <WidgetFrame
+                  widget={w}
+                  size={size}
+                  title={t(def.titleKey)}
+                  icon={def.icon}
+                  onRemove={() => onChange(removeWidget(board, w.id))}
+                  ConfigEditor={def.ConfigEditor}
+                  HeaderFilter={def.HeaderFilter}
+                  HeaderCount={def.HeaderCount}
+                  Footer={def.Footer}
+                  onConfigChange={(cfg) => onChange(updateWidgetConfig(board, w.id, cfg))}
+                  content={<def.Component config={w.config} size={size} />}
+                />
+              ) : (
+                <WidgetFrame
+                  widget={w}
+                  size={size}
+                  title={t('home.widget.unknown')}
+                  onRemove={() => onChange(removeWidget(board, w.id))}
+                  content={
+                    <p data-testid="widget-unknown" className="text-sm text-muted-foreground">
+                      {t('home.widget.unknown')}
+                    </p>
+                  }
+                />
+              )}
+            </motion.div>
           </div>
         )
       })}
