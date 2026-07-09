@@ -75,6 +75,8 @@ If you close Settings during this confirmation step, signup stays incomplete. Re
 
 If you want sync, memrynote asks for an email and verifies it with a six-digit one-time code.
 
+The code arrives from **MemryNote** (`noreply@memrynote.com`) with the subject "Your MemryNote verification code". If it doesn't show up within a minute or two, check your spam folder.
+
 You can skip sync entirely — choose **Continue without sync** to stay fully local. You can enable sync later from [Settings → Account](/user-guide/settings#account).
 
 ## What Gets Created
