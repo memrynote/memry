@@ -1237,7 +1237,7 @@ export function NotePage({ noteId }: NotePageProps) {
 
       {/* Apply Template Dialog */}
       <ApplyTemplateToNoteDialog
-        noteId={noteId ?? null}
+        noteId={noteId}
         isOpen={isApplyTemplateOpen}
         onClose={() => setIsApplyTemplateOpen(false)}
       />
