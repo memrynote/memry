@@ -371,7 +371,8 @@ export const InboxDetailPanel = ({
       data-state={isOpen ? 'open' : 'closed'}
       className={cn(
         // ponytail: absolute (not fixed) so the drawer stays inside its own pane in split view
-        'absolute inset-y-0 end-0 z-10 border-s bg-surface overflow-hidden',
+        // top-[38px] clears the floating page chrome so the panel header stays visible
+        'absolute top-[38px] bottom-0 end-0 z-10 border-s bg-surface overflow-hidden',
         'transition-[opacity] duration-200 ease-out',
         !isPanelResizing && 'transition-[width,opacity] duration-200 ease-out',
         isOpen ? 'opacity-100 border-border' : 'opacity-0 border-transparent'
