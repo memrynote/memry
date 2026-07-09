@@ -1,4 +1,5 @@
 import { Fragment } from 'react'
+import { motion, useReducedMotion } from 'motion/react'
 import { useT } from '@memry/i18n/renderer'
 import { useTaskWorkspaceData } from '@/features/tasks/use-task-queries'
 import { getTaskCounts } from '@/lib/task-utils/task-view-helpers'
@@ -53,6 +54,7 @@ export function HomeHeader({
   onAddWidget
 }: HomeHeaderProps): React.JSX.Element {
   const { t, i18n } = useT('common')
+  const reduceMotion = useReducedMotion()
 
   const { tasks, projects } = useTaskWorkspaceData({ enabled: true })
   const tasksDue = getTaskCounts(tasks, 'today', 'view', projects).dueToday
@@ -73,8 +75,13 @@ export function HomeHeader({
 
   return (
     <div className="flex items-end justify-between px-6 pt-7 pb-5.5 [font-synthesis:none] antialiased">
-      <div className="flex flex-col gap-2">
-        <h1 className="font-serif font-semibold tracking-[-0.01em] text-foreground text-[30px]/8">
+      <motion.div
+        className="flex flex-col gap-2"
+        initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 10, filter: 'blur(6px)' }}
+        animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, filter: 'blur(0px)' }}
+        transition={{ type: 'spring', bounce: 0, duration: 0.55 }}
+      >
+        <h1 className="font-serif font-semibold tracking-[-0.022em] text-foreground text-[34px]/10">
           {greeting}
         </h1>
         <div className="flex items-center gap-2.5">
@@ -91,13 +98,13 @@ export function HomeHeader({
             </Fragment>
           ))}
         </div>
-      </div>
+      </motion.div>
       <div className="flex items-center gap-2">
         <DropdownMenu>
           <DropdownMenuTrigger
             data-testid="home-layout-switcher"
             aria-label={t('home.board.label')}
-            className="flex h-7.5 items-center gap-1.5 rounded-full border border-border bg-card px-2.75 text-text-secondary text-[12px]/4 transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--tint-ring)]"
+            className="flex h-7.5 items-center gap-1.5 rounded-full border border-border bg-card px-2.75 text-text-secondary text-[12px]/4 transition-[background-color,transform] duration-100 hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--tint-ring)] motion-safe:active:scale-[0.96]"
           >
             <span className="max-w-40 truncate font-medium">{activeName}</span>
             <ChevronDown className="size-3.5 shrink-0 opacity-70" aria-hidden="true" />
@@ -143,7 +150,7 @@ export function HomeHeader({
               data-testid="add-widget-trigger"
               aria-label={t('home.addWidget')}
               title={t('home.addWidget')}
-              className="flex size-7.5 items-center justify-center rounded-full border border-border bg-card text-text-secondary transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--tint-ring)]"
+              className="flex size-7.5 items-center justify-center rounded-full border border-border bg-card text-text-secondary transition-[background-color,transform] duration-100 hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--tint-ring)] motion-safe:active:scale-[0.96]"
             >
               <Plus className="size-4" aria-hidden="true" />
             </DropdownMenuTrigger>

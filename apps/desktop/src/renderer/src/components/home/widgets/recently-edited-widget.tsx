@@ -7,6 +7,7 @@ import { extractErrorMessage } from '@/lib/ipc-error'
 import { FileImage, FileText } from '@/lib/icons'
 import { formatRelative } from '@/components/folder-view/note-card-pieces'
 import { extractFolderFromPath } from '@/components/notes-tree-utils'
+import { WidgetRow, WidgetEmptyState } from './widget-list'
 import { useT } from '@memry/i18n/renderer'
 
 export function RecentlyEditedWidget({ size }: WidgetComponentProps): React.JSX.Element {
@@ -31,24 +32,23 @@ export function RecentlyEditedWidget({ size }: WidgetComponentProps): React.JSX.
       </div>
     )
 
-  if (notes.length === 0)
-    return <div className="text-xs text-muted-foreground">{t('home.noNotesYet')}</div>
+  if (notes.length === 0) return <WidgetEmptyState icon={FileText} label={t('home.noNotesYet')} />
 
   return (
     <ul className="flex flex-col gap-0.5">
-      {notes.slice(0, limit).map((n) => {
+      {notes.slice(0, limit).map((n, index) => {
         const folder = extractFolderFromPath(n.path)
         const time = n.modified ? formatRelative(n.modified.toISOString()) : ''
         const meta = folder
           ? t('home.widget.recentMetaWithFolder', { folder, time })
           : t('home.widget.recentMeta', { time })
         return (
-          <li key={n.id}>
+          <WidgetRow key={n.id} index={index}>
             <button
               type="button"
               data-testid="recent-note"
               data-note-id={n.id}
-              className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-start hover:bg-muted/60"
+              className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-start hover:bg-muted/60 active:bg-muted focus-visible:ring-1 focus-visible:ring-[var(--tint-ring)]"
               onClick={() =>
                 openTab({
                   type: 'note',
@@ -79,7 +79,7 @@ export function RecentlyEditedWidget({ size }: WidgetComponentProps): React.JSX.
                 </span>
               </span>
             </button>
-          </li>
+          </WidgetRow>
         )
       })}
     </ul>

@@ -106,17 +106,18 @@ export function JournalWidget({ size }: WidgetComponentProps): React.JSX.Element
             type="button"
             onClick={() => openJournal(day.iso)}
             aria-label={day.iso}
-            className="flex flex-1 flex-col items-center gap-1.5 rounded focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--tint-ring)]"
+            className="group/day flex flex-1 flex-col items-center gap-1.5 rounded focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--tint-ring)]"
           >
             <span className="text-[10px] text-[var(--text-tertiary)]">{day.weekdayNarrow}</span>
+            {/* Press feedback on pointer-down (apple-design §1): the day circle dips, instantly. */}
             <span
-              className={
+              className={`transition-transform duration-100 motion-safe:group-active/day:scale-90 ${
                 day.isToday
                   ? 'flex size-8 items-center justify-center rounded-full bg-[var(--tint)] text-[12px] font-bold text-white'
                   : day.hasEntry
-                    ? 'flex size-8 items-center justify-center rounded-full bg-[var(--tint-light)] text-[12px] font-semibold text-[var(--tint)]'
-                    : 'flex size-8 items-center justify-center rounded-full border border-dashed text-[12px] text-[var(--text-tertiary)]'
-              }
+                    ? 'flex size-8 items-center justify-center rounded-full bg-[var(--tint-light)] text-[12px] font-semibold text-[var(--tint)] group-hover/day:bg-[var(--tint)]/20'
+                    : 'flex size-8 items-center justify-center rounded-full border border-dashed text-[12px] text-[var(--text-tertiary)] group-hover/day:border-solid group-hover/day:text-foreground/70'
+              }`}
             >
               {day.dayNum}
             </span>
@@ -141,7 +142,7 @@ export function JournalWidget({ size }: WidgetComponentProps): React.JSX.Element
               key={date}
               type="button"
               onClick={() => openJournal(date)}
-              className="flex flex-col gap-1 border-t py-2.5 text-start focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--tint-ring)]"
+              className="-mx-2 flex flex-col gap-1 border-t px-2 py-2.5 text-start hover:bg-muted/40 active:bg-muted/70 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--tint-ring)]"
             >
               <span className="flex items-center gap-1.5">
                 <span

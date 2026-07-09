@@ -3,7 +3,8 @@ import { useBookmarks } from '@/hooks/use-bookmarks'
 import { useTabActions } from '@/contexts/tabs/context'
 import type { WidgetComponentProps } from '@/lib/home/widget-registry'
 import { Skeleton } from '@/components/ui/skeleton'
-import { CheckSquare, FileText, BookOpen } from '@/lib/icons/icon-map'
+import { CheckSquare, FileText, BookOpen, Bookmark } from '@/lib/icons/icon-map'
+import { WidgetRow, WidgetEmptyState } from './widget-list'
 import { useT } from '@memry/i18n/renderer'
 
 const ICON_BY_TYPE: Record<string, typeof FileText> = {
@@ -36,21 +37,21 @@ export function BookmarksWidget({ config, size }: WidgetComponentProps): React.J
     )
 
   if (bookmarks.length === 0)
-    return <div className="text-xs text-muted-foreground">{t('home.noBookmarksYet')}</div>
+    return <WidgetEmptyState icon={Bookmark} label={t('home.noBookmarksYet')} />
 
   return (
     <ul className="flex flex-col gap-0.5">
-      {bookmarks.slice(0, limit).map((b) => {
+      {bookmarks.slice(0, limit).map((b, index) => {
         const Icon = ICON_BY_TYPE[b.itemType] ?? FileText
         const typeLabel = b.itemType.charAt(0).toUpperCase() + b.itemType.slice(1)
         return (
-          <li key={b.id}>
+          <WidgetRow key={b.id} index={index}>
             <button
               type="button"
               data-testid="bookmark-item"
               data-item-id={b.itemId}
               data-item-type={b.itemType}
-              className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-start text-[13px] hover:bg-muted/60"
+              className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-start text-[13px] hover:bg-muted/60 active:bg-muted focus-visible:ring-1 focus-visible:ring-[var(--tint-ring)]"
               onClick={() =>
                 openTab(
                   b.itemType === 'task'
@@ -85,7 +86,7 @@ export function BookmarksWidget({ config, size }: WidgetComponentProps): React.J
                 {b.itemTitle ?? t('home.widget.untitled')}
               </span>
             </button>
-          </li>
+          </WidgetRow>
         )
       })}
     </ul>

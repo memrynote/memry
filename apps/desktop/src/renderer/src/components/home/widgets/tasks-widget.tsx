@@ -9,6 +9,8 @@ import { type Project } from '@/data/tasks-data'
 import type { WidgetComponentProps } from '@/lib/home/widget-registry'
 import { Skeleton } from '@/components/ui/skeleton'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { CheckSquare } from '@/lib/icons/icon-map'
+import { WidgetRow, WidgetEmptyState } from './widget-list'
 import { useT } from '@memry/i18n/renderer'
 
 export function TasksWidget({ config, size }: WidgetComponentProps): React.JSX.Element {
@@ -41,11 +43,11 @@ export function TasksWidget({ config, size }: WidgetComponentProps): React.JSX.E
     )
 
   if (filtered.length === 0)
-    return <div className="text-xs text-muted-foreground">{t('home.noTasksYet')}</div>
+    return <WidgetEmptyState icon={CheckSquare} label={t('home.noTasksYet')} />
 
   return (
     <ul className="flex flex-col gap-0.5">
-      {filtered.map((task) => {
+      {filtered.map((task, index) => {
         const project =
           projects.find((p) => p.id === task.projectId) ??
           ({
@@ -56,7 +58,7 @@ export function TasksWidget({ config, size }: WidgetComponentProps): React.JSX.E
           } as unknown as Project)
 
         return (
-          <li key={task.id} data-testid="task-item" data-task-id={task.id}>
+          <WidgetRow key={task.id} index={index} data-testid="task-item" data-task-id={task.id}>
             <TaskRow
               task={task}
               project={project}
@@ -83,7 +85,7 @@ export function TasksWidget({ config, size }: WidgetComponentProps): React.JSX.E
                 })
               }}
             />
-          </li>
+          </WidgetRow>
         )
       })}
     </ul>
