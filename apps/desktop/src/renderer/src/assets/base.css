@@ -319,6 +319,26 @@
   }
 }
 
+/* Freshly captured inbox row: brief amber wash that reads as "just landed" */
+.fresh-capture-wash {
+  animation: fresh-capture-wash 1.4s var(--ease-out);
+}
+
+@keyframes fresh-capture-wash {
+  from {
+    background-color: rgb(245 158 11 / 0.1);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fresh-capture-wash {
+    animation: none;
+  }
+}
+
 /* Sticky toolbar mode - toolbar fixed at top of editor */
 .sticky-toolbar-enabled .bn-container {
   display: flex;

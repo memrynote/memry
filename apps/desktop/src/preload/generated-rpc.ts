@@ -219,6 +219,7 @@ export function createGeneratedRpcApi({
       "getVoiceModelStatus": (() => invoke("settings:getVoiceModelStatus")) as GeneratedRpcApi["settings"]["getVoiceModelStatus"],
       "downloadVoiceModel": (() => invoke("settings:downloadVoiceModel")) as GeneratedRpcApi["settings"]["downloadVoiceModel"],
       "getVoiceRecordingReadiness": (() => invoke("settings:getVoiceRecordingReadiness")) as GeneratedRpcApi["settings"]["getVoiceRecordingReadiness"],
+      "openOsMicrophoneSettings": (() => invoke("settings:openOsMicrophoneSettings")) as GeneratedRpcApi["settings"]["openOsMicrophoneSettings"],
       "getVoiceTranscriptionOpenAIKeyStatus": (() => invoke("settings:getVoiceTranscriptionOpenAIKeyStatus")) as GeneratedRpcApi["settings"]["getVoiceTranscriptionOpenAIKeyStatus"],
       "setVoiceTranscriptionOpenAIKey": ((apiKey) => invoke("settings:setVoiceTranscriptionOpenAIKey", { apiKey })) as GeneratedRpcApi["settings"]["setVoiceTranscriptionOpenAIKey"],
       "getAIModelStatus": (() => invoke("settings:getAIModelStatus")) as GeneratedRpcApi["settings"]["getAIModelStatus"],

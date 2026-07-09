@@ -1,5 +1,7 @@
 import { forwardRef, useState, useRef, useCallback, useEffect, useImperativeHandle } from 'react'
+import { motion, useReducedMotion } from 'motion/react'
 import { Mic, Square, X, Loader2, Settings, AlertCircle } from '@/lib/icons'
+import { isInputFocused } from '@/hooks/use-keyboard-shortcuts'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { extractErrorMessage } from '@/lib/ipc-error'
@@ -45,6 +47,8 @@ function createWaveformBars(): number[] {
   return Array.from({ length: WAVEFORM_BAR_COUNT }, () => MIN_BAR_HEIGHT)
 }
 
+const TIME_WARNING_SECONDS = 30
+
 export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>(
   function VoiceRecorder(
     {
@@ -56,6 +60,7 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
     ref
   ): React.JSX.Element {
     const { t: tPhaseF } = useT('inbox')
+    const prefersReducedMotion = useReducedMotion()
     const [state, setState] = useState<RecordingState>('idle')
     const [duration, setDuration] = useState(0)
     const [error, setError] = useState<string | null>(null)
@@ -216,7 +221,7 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
 
         mediaRecorder.onerror = (event) => {
           log.error('MediaRecorder error', event)
-          setError('Recording error occurred')
+          setError(tPhaseF('phaseF.componentsVoiceRecorder.recordingError'))
           stopRecording(true)
         }
 
@@ -241,9 +246,9 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
         if (err instanceof DOMException) {
           if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
             setPermissionDenied(true)
-            setError('Microphone access denied')
+            setError(tPhaseF('phaseF.componentsVoiceRecorder.microphoneAccessDenied'))
           } else if (err.name === 'NotFoundError') {
-            setError('No microphone found')
+            setError(tPhaseF('phaseF.componentsVoiceRecorder.noMicrophoneFound'))
           } else {
             setError(
               extractErrorMessage(
@@ -253,12 +258,12 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
             )
           }
         } else {
-          setError('Failed to start recording')
+          setError(tPhaseF('phaseF.componentsVoiceRecorder.failedToStart'))
         }
 
         setState('idle')
       }
-    }, [maxDuration, onRecordingComplete, startWaveformAnalysis, stopRecording])
+    }, [maxDuration, onRecordingComplete, startWaveformAnalysis, stopRecording, tPhaseF])
 
     useImperativeHandle(
       ref,
@@ -283,9 +288,32 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
       onCancel()
     }, [stopRecording, onCancel])
 
+    // Keyboard parity while the mic is hot: Esc cancels anywhere; Enter/Space
+    // stop unless the user is typing in an input. Capture phase so list-level
+    // shortcuts (quick-file Escape etc.) don't race the recorder.
+    useEffect(() => {
+      if (state !== 'recording') return
+      const onKeyDown = (e: KeyboardEvent): void => {
+        if (e.key === 'Escape') {
+          e.preventDefault()
+          e.stopPropagation()
+          handleCancel()
+        } else if ((e.key === 'Enter' || e.key === ' ') && !isInputFocused()) {
+          e.preventDefault()
+          e.stopPropagation()
+          handleStop()
+        }
+      }
+      window.addEventListener('keydown', onKeyDown, true)
+      return () => window.removeEventListener('keydown', onKeyDown, true)
+    }, [state, handleCancel, handleStop])
+
     const openSettings = useCallback(() => {
-      setError('Please enable microphone access in your system settings, then try again.')
-    }, [])
+      // Hint first, then deep-link to the OS privacy pane where available
+      // (macOS/Windows); the hint is the fallback for platforms without one.
+      setError(tPhaseF('phaseF.componentsVoiceRecorder.enableMicInSettings'))
+      void window.api.settings.openOsMicrophoneSettings?.()?.catch(() => {})
+    }, [tPhaseF])
 
     const handleStartClick = useCallback(() => {
       void startRecording()
@@ -297,7 +325,11 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
           variant="ghost"
           size="icon"
           onClick={handleStartClick}
-          className={cn('h-8 w-8 text-muted-foreground hover:text-foreground', className)}
+          className={cn(
+            'h-8 w-8 text-muted-foreground hover:text-foreground',
+            'transition-all duration-150 ease-out active:scale-90',
+            className
+          )}
           aria-label={tPhaseF('phaseF.componentsVoiceRecorder.startVoiceRecording')}
         >
           <Mic className="size-4" />
@@ -365,8 +397,14 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
       )
     }
 
+    const remaining = maxDuration - duration
+
     return (
-      <div
+      <motion.div
+        initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.96 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ type: 'spring', bounce: 0, duration: 0.3 }}
+        style={{ transformOrigin: getI18n().dir() === 'rtl' ? '0% 50%' : '100% 50%' }}
         className={cn(
           'flex max-h-10 min-w-0 items-center gap-2 overflow-hidden rounded-[10px] px-2.5 py-1.5',
           'bg-muted-foreground/[0.04] border border-muted-foreground/15',
@@ -374,10 +412,18 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
         )}
       >
         <div className="flex items-center justify-center shrink-0 size-2.5">
-          <div className="rounded-sm bg-muted-foreground shrink-0 size-2 animate-pulse" />
+          {/* Recording is unmistakably live: red, universally */}
+          <div className="rounded-sm bg-red-500 shrink-0 size-2 animate-pulse motion-reduce:animate-none" />
         </div>
 
-        <div className="w-10 shrink-0 font-mono text-xs/[16px] font-medium text-foreground tabular-nums">
+        <div
+          className={cn(
+            'w-10 shrink-0 font-mono text-xs/[16px] font-medium tabular-nums transition-colors',
+            remaining <= TIME_WARNING_SECONDS
+              ? 'text-amber-600 dark:text-amber-500'
+              : 'text-foreground'
+          )}
+        >
           {formatTime(duration)}
         </div>
 
@@ -400,7 +446,7 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
           className={cn(
             'flex size-7 shrink-0 items-center justify-center rounded-md',
             'border border-border/50 text-muted-foreground',
-            'hover:bg-muted/50 transition-colors'
+            'hover:bg-muted/50 transition-all duration-150 ease-out active:scale-90'
           )}
           aria-label={tPhaseF('phaseF.componentsVoiceRecorder.cancelRecording')}
         >
@@ -413,13 +459,13 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
           className={cn(
             'flex size-7 shrink-0 items-center justify-center rounded-md',
             'bg-foreground text-background',
-            'hover:bg-foreground/90 transition-colors'
+            'hover:bg-foreground/90 transition-all duration-150 ease-out active:scale-90'
           )}
           aria-label={tPhaseF('phaseF.componentsVoiceRecorder.stopRecording')}
         >
           <Square className="size-2.5 fill-current" />
         </button>
-      </div>
+      </motion.div>
     )
   }
 )

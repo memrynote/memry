@@ -409,6 +409,12 @@ export function InboxListItem({
   const prefersReducedMotion = useReducedMotion()
   const isSelected = selectedIds.has(item.id)
   const isFocused = focusedId === item.id
+  // Decided once on mount: a row whose capture is moments old arrives from the
+  // capture bar's direction with a brief wash, instead of just appearing.
+  const [isFreshCapture] = useState(() => {
+    const createdAt = item.createdAt instanceof Date ? item.createdAt : new Date(item.createdAt)
+    return Date.now() - createdAt.getTime() < 3000
+  })
 
   const filteredFolders = getFilteredFolders(folders, quickFileQuery, 5)
 
@@ -450,11 +456,16 @@ export function InboxListItem({
   return (
     <motion.div
       layout="position"
+      initial={
+        isFreshCapture ? (prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -8 }) : false
+      }
+      animate={{ opacity: 1, y: 0 }}
       transition={
         prefersReducedMotion ? { duration: 0 } : { type: 'spring', bounce: 0, duration: 0.35 }
       }
       className={cn(
         'group relative w-full',
+        isFreshCapture && 'fresh-capture-wash',
         'flex items-center',
         'gap-2.5',
         densityConfig.itemPadding,

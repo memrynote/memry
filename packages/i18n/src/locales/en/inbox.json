@@ -459,7 +459,12 @@
       "cancelRecording": "Cancel recording",
       "cancel": "Cancel",
       "stopRecording": "Stop recording",
-      "stop": "Stop"
+      "stop": "Stop",
+      "recordingError": "Recording error occurred",
+      "microphoneAccessDenied": "Microphone access denied",
+      "noMicrophoneFound": "No microphone found",
+      "failedToStart": "Failed to start recording",
+      "enableMicInSettings": "Enable microphone access in your system settings, then try again."
     }
   },
   "phaseI": {

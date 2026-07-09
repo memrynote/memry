@@ -42,6 +42,7 @@ export interface CaptureVoiceInput {
   transcribe?: boolean
   tags?: string[]
   source?: 'quick-capture' | 'inline' | 'browser-extension' | 'api' | 'reminder'
+  waveform?: number[]
 }
 
 const CaptureVoiceStorageSchema = z.object({
@@ -50,7 +51,8 @@ const CaptureVoiceStorageSchema = z.object({
   format: z.enum(['webm', 'mp3', 'wav']),
   transcribe: z.boolean().default(true),
   tags: z.array(z.string().max(50)).max(20).optional(),
-  source: z.enum(['quick-capture', 'inline', 'browser-extension', 'api', 'reminder']).optional()
+  source: z.enum(['quick-capture', 'inline', 'browser-extension', 'api', 'reminder']).optional(),
+  waveform: z.array(z.number().min(0).max(1)).max(120).optional()
 })
 
 // ============================================================================
@@ -227,7 +229,8 @@ export async function captureVoice(input: CaptureVoiceInput): Promise<CaptureRes
     const metadata: VoiceMetadata = {
       duration: parsed.duration,
       format: parsed.format,
-      fileSize: parsed.data.length
+      fileSize: parsed.data.length,
+      waveform: parsed.waveform
     }
 
     // Format title with duration

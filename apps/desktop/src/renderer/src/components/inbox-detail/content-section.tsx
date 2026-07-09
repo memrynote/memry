@@ -347,11 +347,20 @@ const VoicePreview = ({
   const [duration, setDuration] = useState(0)
   const [copied, setCopied] = useState(false)
   const [audioError, setAudioError] = useState<string | null>(null)
-  const [waveformBars, setWaveformBars] = useState<number[]>(() =>
-    Array.from({ length: PLAYBACK_BAR_COUNT }, () => PLAYBACK_MIN_HEIGHT)
-  )
-
   const metadata = 'metadata' in item ? (item.metadata as VoiceMetadata | null) : null
+
+  // Stored recording envelope renders instantly (no flat-bar flash); items
+  // captured before waveform persistence fall back to decoding the file.
+  const storedWaveform = metadata?.waveform
+  const [waveformBars, setWaveformBars] = useState<number[]>(() => {
+    if (storedWaveform && storedWaveform.length > 0) {
+      const maxRms = Math.max(...storedWaveform, 0.001)
+      return storedWaveform.map(
+        (b) => PLAYBACK_MIN_HEIGHT + (b / maxRms) * (PLAYBACK_MAX_HEIGHT - PLAYBACK_MIN_HEIGHT)
+      )
+    }
+    return Array.from({ length: PLAYBACK_BAR_COUNT }, () => PLAYBACK_MIN_HEIGHT)
+  })
   const audioUrl = 'attachmentUrl' in item ? item.attachmentUrl : null
   const transcription = 'transcription' in item ? item.transcription : null
   const transcriptionStatus = 'transcriptionStatus' in item ? item.transcriptionStatus : null
@@ -361,6 +370,8 @@ const VoicePreview = ({
 
   useEffect(() => {
     if (!audioUrl) return
+    // Envelope already persisted at capture time — skip the fetch + decode.
+    if (storedWaveform && storedWaveform.length > 0) return
 
     let cancelled = false
     const decodeWaveform = async (): Promise<void> => {
@@ -408,7 +419,7 @@ const VoicePreview = ({
     return () => {
       cancelled = true
     }
-  }, [audioUrl])
+  }, [audioUrl, storedWaveform])
 
   const handlePlayPause = async (): Promise<void> => {
     if (!audioRef.current) return

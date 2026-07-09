@@ -55,6 +55,8 @@ export interface VoiceMetadata {
   format: string
   fileSize: number
   sampleRate?: number
+  /** Recording envelope: raw RMS per bucket (0..1). Absent on older items. */
+  waveform?: number[]
 }
 
 export interface ClipMetadata {
