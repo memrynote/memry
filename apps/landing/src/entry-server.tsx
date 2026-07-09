@@ -26,7 +26,7 @@ import { PrivacyPage } from '@/pages/Privacy'
 import { RefundPage } from '@/pages/Refund'
 import { CodeSigningPolicyPage } from '@/pages/CodeSigningPolicy'
 import { CheckoutPage } from '@/pages/Checkout'
-import { AuthPage } from '@/pages/Auth'
+import { LoginPage } from '@/pages/Login'
 import { AuthCallbackPage } from '@/pages/AuthCallback'
 import { RequireAuth } from '@/components/account/RequireAuth'
 import { AccountLayout } from '@/components/account/AccountLayout'
@@ -103,7 +103,9 @@ const ROUTE_MAP: Record<string, () => ReactNode> = {
   // shells so direct loads (e.g. the desktop "Upgrade" deep link to /checkout#token,
   // the Google OAuth redirect to /auth/oauth/callback) resolve instead of 404ing.
   '/checkout': () => <CheckoutPage />,
-  '/auth': () => <AuthPage />,
+  '/login': () => <LoginPage />,
+  // Legacy /auth links redirect to /login on the client; shell keeps direct loads from 404ing.
+  '/auth': () => <LoginPage />,
   '/auth/oauth/callback': () => <AuthCallbackPage />,
   '/account': accountShell,
   '/account/profile': accountShell,
@@ -113,18 +115,22 @@ const ROUTE_MAP: Record<string, () => ReactNode> = {
   '/404': () => <NotFound />
 }
 
+// Standalone surfaces render without site chrome — mirrors AppContent's escape in App.tsx.
+const STANDALONE_ROUTES = new Set(['/login', '/auth'])
+
 export function render(url: string): { html: string; helmet: HelmetServerState | null } {
   const helmetData = new HelmetData({})
   const Page = ROUTE_MAP[url]
+  const standalone = STANDALONE_ROUTES.has(url)
 
   const html = renderToString(
     <HelmetProvider context={helmetData.context}>
       <StaticRouter location={url}>
         <AuthProvider>
           <div className="min-h-screen flex flex-col">
-            <Header />
+            {!standalone && <Header />}
             <main className="flex-1">{Page ? <Page /> : null}</main>
-            <Footer />
+            {!standalone && <Footer />}
           </div>
         </AuthProvider>
       </StaticRouter>

@@ -28,7 +28,7 @@ import { PrivacyPage } from '@/pages/Privacy'
 import { RefundPage } from '@/pages/Refund'
 import { CodeSigningPolicyPage } from '@/pages/CodeSigningPolicy'
 import { NotFound } from '@/pages/NotFound'
-import { AuthPage } from '@/pages/Auth'
+import { LoginPage } from '@/pages/Login'
 import { AuthCallbackPage } from '@/pages/AuthCallback'
 import {
   ObsidianAlternativePage,
@@ -140,16 +140,24 @@ function PageViewAnalytics() {
   return null
 }
 
+// /login redirects legacy /auth links, preserving ?next= etc.
+function LegacyAuthRedirect() {
+  const { search } = useLocation()
+  return <Navigate to={`/login${search}`} replace />
+}
+
 function AppContent() {
+  // /login is a standalone surface: full-screen card, no site chrome.
+  const standalone = useLocation().pathname === '/login'
   return (
     <div className="min-h-screen flex flex-col">
       <SmoothScroll />
       <ScrollToHash />
       <PageViewAnalytics />
       <ScrollDepthAnalytics />
-      <Header />
+      {!standalone && <Header />}
       <main className="relative isolate flex-1">
-        <PageGlow />
+        {!standalone && <PageGlow />}
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/features" element={<FeaturesPage />} />
@@ -190,7 +198,8 @@ function AppContent() {
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/refund" element={<RefundPage />} />
           <Route path="/code-signing-policy" element={<CodeSigningPolicyPage />} />
-          <Route path="/auth" element={<AuthPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/auth" element={<LegacyAuthRedirect />} />
           <Route path="/auth/oauth/callback" element={<AuthCallbackPage />} />
           <Route
             path="/account"
@@ -208,7 +217,7 @@ function AppContent() {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
-      <Footer />
+      {!standalone && <Footer />}
     </div>
   )
 }
