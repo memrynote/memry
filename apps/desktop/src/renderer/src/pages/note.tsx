@@ -12,6 +12,7 @@ import { motion, useReducedMotion } from 'motion/react'
 import { useQueryClient } from '@tanstack/react-query'
 import { ExportDialog } from '@/components/note/export-dialog'
 import { VersionHistory } from '@/components/note/version-history'
+import { ApplyTemplateToNoteDialog } from '@/components/note/apply-template-to-note-dialog'
 import { EditorErrorBoundary } from '@/components/note/editor-error-boundary'
 import { NoteLayout, HeadingItem, ContentArea, HeadingInfo, Block } from '@/components/note'
 import { NoteTitle } from '@/components/note/note-title'
@@ -44,7 +45,8 @@ import {
   AlarmClock,
   Monitor,
   Maximize,
-  ChartRelationship
+  ChartRelationship,
+  PenLine
 } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { Picker } from '@/components/ui/picker'
@@ -165,6 +167,7 @@ export function NotePage({ noteId }: NotePageProps) {
   const [headings, setHeadings] = useState<HeadingItem[]>([])
   const [isDeleted, setIsDeleted] = useState(false)
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
+  const [isApplyTemplateOpen, setIsApplyTemplateOpen] = useState(false)
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false)
   const [isLocalGraphOpen, setIsLocalGraphOpen] = useState(false)
   const [moreMenuOpen, setMoreMenuOpen] = useState(false)
@@ -974,6 +977,7 @@ export function NotePage({ noteId }: NotePageProps) {
           if (action === 'local-graph') setIsLocalGraphOpen((prev) => !prev)
           if (action === 'version-history') setIsVersionHistoryOpen(true)
           if (action === 'export') setIsExportDialogOpen(true)
+          if (action === 'apply-template') setIsApplyTemplateOpen(true)
           if (action === 'local-only')
             void handleToggleLocalOnly(!(note.frontmatter.localOnly ?? false))
         }}
@@ -1010,6 +1014,11 @@ export function NotePage({ noteId }: NotePageProps) {
               value="export"
               label={t('editor.toolbar.export')}
               icon={<Download className="size-4" />}
+            />
+            <Picker.Item
+              value="apply-template"
+              label={t('editor.toolbar.applyTemplate')}
+              icon={<PenLine className="size-4" />}
             />
             <Picker.Item
               value="full-width"
@@ -1231,6 +1240,13 @@ export function NotePage({ noteId }: NotePageProps) {
         onOpenChange={setIsExportDialogOpen}
         noteId={noteId}
         noteTitle={note.title}
+      />
+
+      {/* Apply Template Dialog */}
+      <ApplyTemplateToNoteDialog
+        noteId={noteId}
+        isOpen={isApplyTemplateOpen}
+        onClose={() => setIsApplyTemplateOpen(false)}
       />
 
       {/* Version History Panel */}

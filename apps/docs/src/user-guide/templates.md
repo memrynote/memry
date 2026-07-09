@@ -77,6 +77,24 @@ If you change the default mid-month, existing entries don't change — only new 
 
 When creating a note, the create dialog has a template picker. Choose a template; the note is seeded with its content. Variables resolve at that moment.
 
+## Applying a Template to an Existing Note
+
+Templates aren't just for new notes — you can apply one to a note you already have.
+
+Open the picker from either:
+
+- The sidebar tree — right-click a note → **Apply Template**
+- The note page's <kbd>⋯</kbd> menu → **Apply Template**
+
+Pick a template and confirm with **Apply Template**.
+
+- If the note is **empty**, the template's content is applied right away.
+- If the note **already has content**, you're warned that applying will replace it, with two choices:
+  - **Replace content & add template details** — replaces the body and merges in the template's tags and properties. Your existing tags and properties are kept; the template's are added on top. If a property key exists on both, the note's current value wins.
+  - **Replace content only** — replaces the body and leaves your existing tags and properties untouched.
+
+`{{title}}` resolves to the note's current title. If the note is open in the editor, the update shows up live.
+
 ## Deleting a Template
 
 Custom templates have a delete action in the gallery. The confirmation dialog warns if any default settings (e.g. Journal default) reference it; you can pick a replacement before confirming.

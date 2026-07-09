@@ -37,8 +37,8 @@ import { createLogger } from '../lib/logger'
 import { isWritebackIgnored, wasRecentNetworkUpdate } from '../sync/crdt-writeback'
 import { attachmentEvents } from '../sync/attachment-events'
 import { flushProjectionEvents } from '../projections'
-import { getCrdtProvider, ORIGIN_LOCAL } from '../sync/crdt-provider'
-import { markdownToBlocks, blocksToYFragment } from '../sync/blocknote-converter'
+import { getCrdtProvider } from '../sync/crdt-provider'
+import { replaceNoteBodyInCrdt } from '../sync/crdt-feed'
 import {
   enqueueJournalCreate,
   enqueueJournalDelete,
@@ -136,21 +136,13 @@ function extractJournalDate(relativePath: string): string {
 // out-of-app edits are infrequent and round-trip through MD destroys Yjs history anyway
 async function feedExternalEditToCrdt(noteId: string, markdownContent: string): Promise<void> {
   const provider = getCrdtProvider()
-  const doc = provider.getDoc(noteId)
-  if (!doc) return
+  if (!provider.getDoc(noteId)) return
 
   if (wasRecentNetworkUpdate(noteId)) {
     emitEvent('sync:concurrent-edit', { noteId })
   }
 
-  const blocks = await markdownToBlocks(markdownContent)
-  if (!blocks) return
-
-  const fragment = doc.getXmlFragment('prosemirror')
-  doc.transact(() => {
-    fragment.delete(0, fragment.length)
-    blocksToYFragment(blocks, fragment)
-  }, ORIGIN_LOCAL)
+  await replaceNoteBodyInCrdt(noteId, markdownContent)
 }
 
 // ============================================================================

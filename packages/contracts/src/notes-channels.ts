@@ -114,7 +114,9 @@ export const NotesChannels = {
     /** Toggle local-only flag (excludes note from sync) */
     SET_LOCAL_ONLY: 'notes:set-local-only',
     /** Get count of local-only notes */
-    GET_LOCAL_ONLY_COUNT: 'notes:get-local-only-count'
+    GET_LOCAL_ONLY_COUNT: 'notes:get-local-only-count',
+    /** Apply a template to an existing note (replaces body; optionally merges metadata) */
+    APPLY_TEMPLATE: 'notes:apply-template'
   },
   events: {
     /** Note was created (externally or internally) */

@@ -17,7 +17,8 @@ import {
   NoteListSchema,
   NoteReorderSchema,
   NoteGetPositionsSchema,
-  SetLocalOnlySchema
+  SetLocalOnlySchema,
+  ApplyTemplateSchema
 } from '@memry/contracts/notes-api'
 import { PropertyTypes } from '@memry/contracts/property-types'
 import { RenameFolderSchema } from '@memry/contracts/tasks-api'
@@ -57,6 +58,7 @@ import {
   deleteNoteCommand,
   setNoteLocalOnlyCommand
 } from '../notes/domain'
+import { applyTemplateToNote } from '../notes/apply-template'
 import { getAllSupportedExtensions } from '@memry/shared/file-types'
 import { saveAttachment, deleteAttachment, listNoteAttachments } from '../vault/attachments'
 import { fromMemryFileUrl } from '../lib/paths'
@@ -285,6 +287,17 @@ export function registerNotesHandlers(): void {
       return { success: true as const, note }
     },
     'Failed to update note'
+  )
+
+  // notes:apply-template - Apply a template to an existing note
+  registerCommand(
+    NotesChannels.invoke.APPLY_TEMPLATE,
+    ApplyTemplateSchema,
+    async (input) => {
+      const note = await applyTemplateToNote(input)
+      return { success: true as const, note }
+    },
+    'Failed to apply template'
   )
 
   // notes:rename - Rename a note
