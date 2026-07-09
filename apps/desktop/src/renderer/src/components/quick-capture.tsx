@@ -262,7 +262,8 @@ export function QuickCapture(): React.JSX.Element {
                 duration: preparedAudio.duration,
                 format: preparedAudio.format,
                 transcribe: true,
-                source: 'quick-capture'
+                source: 'quick-capture',
+                waveform: preparedAudio.waveform
               })
               if (result.success) {
                 setCaptureState('success')
@@ -457,7 +458,8 @@ export function QuickCapture(): React.JSX.Element {
             duration: duration || preparedAudio.duration,
             format: preparedAudio.format,
             transcribe: true,
-            source: 'quick-capture'
+            source: 'quick-capture',
+            waveform: preparedAudio.waveform
           })
           if (result.success) {
             setCaptureState('success')
