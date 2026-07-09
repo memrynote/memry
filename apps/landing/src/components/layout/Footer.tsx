@@ -25,7 +25,7 @@ function footerTarget(label: ReactNode) {
 }
 
 function FooterLink({ href, children }: { href: string; children: ReactNode }) {
-  const className = 'text-sm font-medium text-muted transition-colors hover:text-terracotta'
+  const className = 'text-sm font-medium text-dark-muted transition-colors hover:text-terracotta'
 
   if (href.startsWith('http')) {
     return (
@@ -57,7 +57,7 @@ export function Footer() {
   const { pathname } = useLocation()
 
   return (
-    <footer className="border-t border-border/60 py-20 md:py-24">
+    <footer className="zone-dark border-t border-white/10 py-20 md:py-24">
       <Container>
         <div className="mb-16 grid grid-cols-2 gap-x-8 gap-y-12 md:grid-cols-6 md:gap-10">
           <div className="col-span-2 pe-8">
@@ -67,14 +67,14 @@ export function Footer() {
               onClick={() => trackLandingEvent('landing_nav_click', 'footer:logo')}
             >
               <img src="/favicon.svg" alt="" className="h-6 w-6" />
-              <span className="font-geist text-2xl font-medium tracking-tight text-ink transition-colors group-hover:text-terracotta">
+              <span className="font-geist text-2xl font-medium tracking-tight text-ink-inverted transition-colors group-hover:text-terracotta">
                 memrynote
               </span>
             </Link>
-            <p className="mt-5 max-w-sm text-base leading-relaxed text-muted">
+            <p className="mt-5 max-w-sm text-base leading-relaxed text-dark-muted">
               Notes, tasks, and journal — finally in one place. Private, fast, and yours forever.
             </p>
-            <p className="mt-6 font-mono-accent text-[10px] uppercase tracking-[0.18em] text-muted/60">
+            <p className="mt-6 font-mono-accent text-[10px] uppercase tracking-[0.18em] text-dark-muted/70">
               {TRUST_LINE.map((fact, i) => (
                 <span key={fact} className="inline-block">
                   {fact}
@@ -90,7 +90,7 @@ export function Footer() {
 
           {FOOTER_COLUMNS.map((column) => (
             <div key={column.title}>
-              <h4 className="mb-5 font-mono-accent text-[11px] uppercase tracking-[0.18em] text-muted/70">
+              <h4 className="mb-5 font-mono-accent text-[11px] uppercase tracking-[0.18em] text-ink-inverted/60">
                 {column.title}
               </h4>
               <ul className="space-y-3.5">
@@ -104,11 +104,11 @@ export function Footer() {
           ))}
         </div>
 
-        <div className="flex flex-col items-center justify-between gap-4 border-t border-border/60 pt-8 md:flex-row">
-          <p className="font-mono-accent text-xs text-muted/60">
+        <div className="flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-8 md:flex-row">
+          <p className="font-mono-accent text-xs text-dark-muted/80">
             © {currentYear} memrynote. All rights reserved.
           </p>
-          <p className="font-mono-accent text-xs text-muted/60">
+          <p className="font-mono-accent text-xs text-dark-muted/80">
             An indie project by{' '}
             <a
               href={TWITTER_DEV_URL}

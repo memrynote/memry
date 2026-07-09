@@ -401,13 +401,9 @@ function MobileNavLink({
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [mobileExpandedSection, setMobileExpandedSection] = useState<MobileDropdownKey | null>(null)
-  const [headerScrolled, setHeaderScrolled] = useState(
-    () => typeof window !== 'undefined' && window.scrollY > 12
-  )
   const location = useLocation()
   const navigate = useNavigate()
   const { isSignedIn } = useAuth()
-  const showHeaderSurface = headerScrolled || mobileMenuOpen
   // ponytail: signed out → /login (sign-in/up); signed in → billing. Label stays "Account" either way.
   const accountHref = isSignedIn ? '/account/billing' : '/login'
   const accountLabel = 'Account'
@@ -424,16 +420,6 @@ export function Header() {
     }
     setMobileMenuOpen(!mobileMenuOpen)
   }
-
-  useEffect(() => {
-    const updateHeaderSurface = () => {
-      setHeaderScrolled(window.scrollY > 12)
-    }
-
-    window.addEventListener('scroll', updateHeaderSurface, { passive: true })
-
-    return () => window.removeEventListener('scroll', updateHeaderSurface)
-  }, [])
 
   const handleLogoClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     trackLandingEvent('landing_nav_click', 'nav:logo')
@@ -454,14 +440,7 @@ export function Header() {
   return (
     <header className="fixed inset-x-0 top-0 z-50 px-3 pt-3 sm:px-6">
       <Container size="full" className="relative z-10">
-        <nav
-          className={cn(
-            'mx-auto flex max-w-6xl items-center justify-between rounded-full border px-3 py-2 transition-all duration-300 sm:px-4',
-            showHeaderSurface
-              ? 'material-chrome border-border/60 shadow-sm'
-              : 'border-transparent bg-transparent'
-          )}
-        >
+        <nav className="mx-auto flex max-w-6xl items-center justify-between rounded-full border border-border/60 bg-card/80 px-3 py-2 shadow-card backdrop-blur-xl sm:px-4">
           <Link to="/" className="flex items-center gap-1.5 group" onClick={handleLogoClick}>
             <span className="flex h-7 w-7 items-center justify-center">
               <img src="/favicon.svg" alt="" className="w-5 h-5" />
@@ -495,6 +474,14 @@ export function Header() {
                 onClick={() => trackLandingEvent('landing_nav_click', accountTarget)}
               >
                 {accountLabel}
+              </Link>
+            </Button>
+            <Button size="sm" className="rounded-full px-4" asChild>
+              <Link
+                to="/download/desktop"
+                onClick={() => trackLandingEvent('landing_download_click', 'nav:download-free')}
+              >
+                Download free
               </Link>
             </Button>
           </div>
@@ -557,6 +544,17 @@ export function Header() {
                   label={accountLabel}
                   onNavigate={closeMobileMenu}
                 />
+                <Button size="sm" className="mt-1 rounded-full" asChild>
+                  <Link
+                    to="/download/desktop"
+                    onClick={() => {
+                      trackLandingEvent('landing_download_click', 'mobile-nav:download-free')
+                      closeMobileMenu()
+                    }}
+                  >
+                    Download free
+                  </Link>
+                </Button>
               </div>
             </Container>
           </motion.div>

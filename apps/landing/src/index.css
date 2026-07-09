@@ -35,6 +35,12 @@
   --color-border: #e8e4dd;
   --color-card: #ffffff;
 
+  /* Pastel section tints — muted, paper-compatible mega-card backgrounds */
+  --color-tint-sky: #dfeaf2;
+  --color-tint-sage: #e2ebe0;
+  --color-tint-sand: #f3ead6;
+  --color-tint-peach: #fce4d6;
+
   --color-background: var(--color-paper);
   --color-foreground: var(--color-ink);
 
@@ -60,6 +66,12 @@
   --color-muted: #ada9a3;
   --color-border: #2e2e2e;
   --color-card: #222222;
+
+  /* Pastel section tints — deep desaturated equivalents for charcoal paper */
+  --color-tint-sky: #1c2229;
+  --color-tint-sage: #1c231e;
+  --color-tint-sand: #262119;
+  --color-tint-peach: #29201b;
 
   --color-background: var(--color-paper);
   --color-foreground: var(--color-ink);
