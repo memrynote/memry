@@ -37,6 +37,10 @@ extraResources:
     to: app-config
 win:
   executableName: Memrynote
+  artifactName: ${productName}-${version}-win.${ext}
+  target:
+    - nsis
+    - zip
 nsis:
   artifactName: ${productName}-${version}-setup.${ext}
   shortcutName: ${productName}
