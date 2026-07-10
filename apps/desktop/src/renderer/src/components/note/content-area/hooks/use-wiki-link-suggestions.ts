@@ -2,6 +2,7 @@
 
 import { useCallback, useRef } from 'react'
 import { fuzzySearch } from '@/lib/fuzzy-search'
+import { toMemryFileUrl } from '@/lib/memry-file-url'
 import { notesService } from '@/services/notes-service'
 import { createWikiLinkInlineContent } from '../wiki-link'
 import { splitWikiLinkQuery } from '../wiki-link-utils'
@@ -17,13 +18,6 @@ type NoteSuggestion = {
   fileType?: 'markdown' | 'pdf' | 'image' | 'audio' | 'video'
   mimeType?: string | null
   fileSize?: number | null
-}
-
-function toMemryFileUrl(absolutePath: string): string {
-  const normalized = absolutePath.replace(/\\/g, '/')
-  return normalized.startsWith('/')
-    ? `memry-file://local${normalized}`
-    : `memry-file://local/${normalized}`
 }
 
 function blockHasContent(block: any): boolean {

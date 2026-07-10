@@ -286,7 +286,7 @@ vi.mock('./lib/logger', () => {
     error: vi.fn()
   }
   return {
-    log: { initialize: vi.fn() },
+    log: { initialize: vi.fn(), warn: vi.fn() },
     createLogger: vi.fn(() => scopedLogger),
     disableConsoleTransport: disableConsoleTransportMock,
     applyPackagedLogLevels: applyPackagedLogLevelsMock
@@ -323,7 +323,7 @@ vi.mock('electron', () => ({
     exit: vi.fn(),
     dock: { setIcon: vi.fn() }
   },
-  shell: { openExternal: vi.fn() },
+  shell: { openExternal: vi.fn(), openPath: vi.fn() },
   BrowserWindow: BrowserWindowMock,
   ipcMain: {
     on: ipcMainOnMock,
@@ -982,6 +982,50 @@ describe('main index phase2 exports', () => {
     const preventDefault = vi.fn()
     beforeInput({ preventDefault }, { key: 'BrowserBack' })
     expect(preventDefault).toHaveBeenCalled()
+  })
+
+  it('routes memry-file window opens to shell.openPath instead of openExternal', async () => {
+    whenReadyMock.mockResolvedValue(undefined)
+
+    await importMainModule()
+    await flushReadyWork()
+
+    const { shell } = await import('electron')
+    const createdWindow = browserWindows[0]
+    const openHandler = createdWindow.webContents.setWindowOpenHandler.mock
+      .calls[0][0] as (details: { url: string }) => { action: string }
+
+    getCurrentVaultPathMock.mockReturnValue('/mock/vault')
+
+    expect(openHandler({ url: 'memry-file://local/mock/vault/files/photo%201.png' })).toEqual({
+      action: 'deny'
+    })
+    expect(shell.openPath).toHaveBeenCalledWith('/mock/vault/files/photo 1.png')
+    expect(shell.openExternal).not.toHaveBeenCalled()
+
+    vi.mocked(shell.openPath).mockClear()
+    expect(openHandler({ url: 'memry-file://local/mock/elsewhere/secret.txt' })).toEqual({
+      action: 'deny'
+    })
+    expect(shell.openPath).not.toHaveBeenCalled()
+
+    expect(openHandler({ url: 'smb://host/share' })).toEqual({ action: 'deny' })
+    expect(shell.openPath).not.toHaveBeenCalled()
+    expect(shell.openExternal).not.toHaveBeenCalled()
+
+    expect(openHandler({ url: 'https://memrynote.com' })).toEqual({ action: 'deny' })
+    expect(shell.openExternal).toHaveBeenCalledWith('https://memrynote.com')
+    expect(shell.openPath).not.toHaveBeenCalled()
+  })
+
+  it('logs the app version and channel at startup', async () => {
+    await importMainModule()
+
+    const { createLogger } = await import('./lib/logger')
+    const scoped = vi.mocked(createLogger).mock.results[0]?.value as {
+      info: ReturnType<typeof vi.fn>
+    }
+    expect(scoped.info).toHaveBeenCalledWith('MemryNote 1.0.0 starting (dev)')
   })
 
   it('reveals the main window via fallback timeout when ready-to-show never fires', async () => {
