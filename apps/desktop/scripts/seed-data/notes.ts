@@ -86,7 +86,8 @@ export const NOTE_IDS = {
   travelMexicoCityArt: generateNoteId(),
   travelOsakaRamen: generateNoteId(),
   travelTokyoCafes: generateNoteId(),
-  travelAirportLounges: generateNoteId()
+  travelAirportLounges: generateNoteId(),
+  travelRomeWeekend: generateNoteId()
 } as const
 
 export const FOLDER_CONFIGS: Array<{ path: string; icon: string }> = [
@@ -2165,6 +2166,58 @@ Pair with [[Kitchen Confidential]] for the *travel-as-eating* mindset.
 - Most "premier" Priority Pass options. Fine, not great.
 
 #travel #logistics
+`
+  },
+  {
+    id: NOTE_IDS.travelRomeWeekend,
+    relativePath: 'travel/Weekend in Rome.md',
+    title: 'Weekend in Rome',
+    emoji: '🏛️',
+    tags: ['travel/europe', 'food', 'city-break', 'favorites'],
+    aliases: ['Rome trip', 'Rome city break'],
+    customProps: {
+      location: 'Rome, Italy',
+      startDate: '2026-09-18',
+      endDate: '2026-09-20',
+      status: 'planning'
+    },
+    daysAgoCreated: -2,
+    daysAgoModified: 0,
+    body: `Three slow days — old streets in the morning, long lunches, golden-hour walks. The trip where we finally don't over-plan.
+
+> [!tip] One neighborhood a day
+> Pick an anchor sight, then wander the rest on foot. Rome is best with frequent coffee stops.
+
+## Trip snapshot
+
+| Day | Morning | Afternoon | Evening |
+|----------|---------|-----------|---------|
+| Friday | Land, drop bags in Trastevere | Wander the lanes + first gelato | Dinner on a piazza |
+| Saturday | Colosseum & Forum (go early) | Pantheon → Trevi Fountain | Sunset from Gianicolo hill |
+| Sunday | Vatican Museums (book ahead) | Long lunch, slow espresso | Fly home |
+
+## Must-eat
+
+- **Cacio e pepe** — the whole reason we're here
+- Supplì from a street counter
+- A maritozzo for breakfast
+- Gelato, twice a day (rules don't apply on holiday)
+
+## Before we go
+
+- [x] Book Vatican tickets — skip-the-line
+- [x] Download an offline map of the center
+- [ ] Break in the comfortable shoes — see [[Packing List]]
+- [ ] Learn five words of Italian
+- [ ] Save the hotel address for offline
+
+## Links
+
+- Journal: [[2026-07-10]]
+- Packing: [[Packing List]]
+- Food notes: [[Food Diary]]
+
+#travel/europe #food #city-break
 `
   }
 ]

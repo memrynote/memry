@@ -456,3 +456,73 @@ export function insertFilingHistory(db: DataDb, history: SeedFilingHistory[]): n
   }
   return history.length
 }
+
+export interface SeedHomeWidget {
+  id: string
+  type: string
+  // react-grid-layout coords on the 8-column Home grid.
+  x: number
+  y: number
+  w: number
+  h: number
+  config?: Record<string, unknown>
+}
+
+export interface SeedHomePage {
+  id: string
+  name: string
+  icon?: string | null
+  position: number
+  widgets: SeedHomeWidget[]
+}
+
+export function insertHomePages(db: DataDb, pages: SeedHomePage[]): number {
+  if (pages.length === 0) return 0
+  db.insert(schema.homePages)
+    .values(
+      pages.map((p) => ({
+        id: p.id,
+        name: p.name,
+        icon: p.icon ?? null,
+        position: p.position,
+        // widgets column is JSON-encoded WidgetInstance[]; parsed by the IPC layer.
+        widgets: JSON.stringify(
+          p.widgets.map((w) => ({
+            id: w.id,
+            type: w.type,
+            x: w.x,
+            y: w.y,
+            w: w.w,
+            h: w.h,
+            config: w.config ?? {}
+          }))
+        )
+      }))
+    )
+    .run()
+  return pages.length
+}
+
+export interface SeedBookmark {
+  id: string
+  itemType: string
+  itemId: string
+  position: number
+  createdAt?: string
+}
+
+export function insertBookmarks(db: DataDb, rows: SeedBookmark[]): number {
+  if (rows.length === 0) return 0
+  db.insert(schema.bookmarks)
+    .values(
+      rows.map((b) => ({
+        id: b.id,
+        itemType: b.itemType,
+        itemId: b.itemId,
+        position: b.position,
+        ...(b.createdAt ? { createdAt: b.createdAt } : {})
+      }))
+    )
+    .run()
+  return rows.length
+}
