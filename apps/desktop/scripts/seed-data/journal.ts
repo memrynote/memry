@@ -1,6 +1,6 @@
 import { generateJournalId } from '../../src/main/lib/id'
 import type { NoteFile } from '../seed-vault/file-writer'
-import { seedDateOnly } from './date'
+import { seedJournalDate } from './date'
 
 interface JournalSpec {
   date: string
@@ -9,8 +9,8 @@ interface JournalSpec {
   body: string
 }
 
-const TODAY_DATE = seedDateOnly(0)
-
+// Narrative dates below run on a fixed timeline; seedJournalDate shifts them so the
+// story lands around the run day. The final entry (JOURNAL_ANCHOR) maps to today.
 const ENTRIES: JournalSpec[] = [
   {
     date: '2026-04-09',
@@ -238,7 +238,7 @@ More [[Sapiens]]. Chapter on agriculture. The wheat take feels stretched but in 
 Best day this week. The morning routine — see [[Morning Routine]] — is *paying for itself.* Two months in.`
   },
   {
-    date: TODAY_DATE,
+    date: '2026-05-08',
     mood: 4,
     tags: ['daily', 'reflection'],
     body: `A quiet day with enough space to notice what helped.
@@ -271,7 +271,13 @@ const dateToModifiedISO = (date: string): string => {
   return d.toISOString()
 }
 
-export const JOURNAL_NOTES: NoteFile[] = ENTRIES.map((entry) => ({
+// Resolve narrative dates to real dates around the run day before building files.
+const RESOLVED_ENTRIES = ENTRIES.map((entry) => ({
+  ...entry,
+  date: seedJournalDate(entry.date)
+}))
+
+export const JOURNAL_NOTES: NoteFile[] = RESOLVED_ENTRIES.map((entry) => ({
   relativePath: `journal/${entry.date}.md`,
   // User keys only — no Memry keys; dates land on the file via mtime
   frontmatter: {
@@ -284,7 +290,7 @@ export const JOURNAL_NOTES: NoteFile[] = ENTRIES.map((entry) => ({
 }))
 
 /** Canonical note_metadata rows so journal ids stay stable across indexing. */
-export const JOURNAL_METADATA = ENTRIES.map((entry) => ({
+export const JOURNAL_METADATA = RESOLVED_ENTRIES.map((entry) => ({
   id: generateJournalId(entry.date),
   path: `journal/${entry.date}.md`,
   title: entry.date,
