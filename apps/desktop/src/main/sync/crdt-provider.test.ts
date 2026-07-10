@@ -297,6 +297,19 @@ describe('CrdtProvider', () => {
     expect(await provider.pushSnapshotForNote('empty-note')).toBe(false)
   })
 
+  it('keeps the pending snapshot for retry when the snapshot push fails', async () => {
+    await provider.initForNote('note-1', { title: 'Snapshot' }, [])
+    provider.updateMeta('note-1', { title: 'Edited before push' })
+
+    pushSnapshot.mockRejectedValueOnce(new Error('401 exp claim'))
+    expect(await provider.pushSnapshotForNote('note-1')).toBe(false)
+
+    pushSnapshot.mockClear()
+    pushSnapshot.mockResolvedValue(undefined)
+    await expect(provider.pushAllSnapshots()).resolves.toBe(1)
+    expect(pushSnapshot).toHaveBeenCalledWith('note-1', expect.any(Uint8Array))
+  })
+
   it('seeds existing docs in batches, validates CRDT eligibility, purges, and destroys storage', async () => {
     const progress = vi.fn()
     const seeded = await provider.seedExistingDocs(

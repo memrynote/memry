@@ -116,6 +116,10 @@ export default defineConfig({
       // 2026-07-09: statements re-measured at 85.89 after #727; floor lowered 85.9 -> 85.8.
       // 2026-07-10: re-measured after #732 (85.86 / 73.69 / 85.59 / 87.93); branches
       //   73.7 -> 73.6, functions 85.6 -> 85.5.
+      // 2026-07-10: #734 sync 401 refresh-retry adds thin coordinator glue (per-request
+      //   auth wrappers) exercised only on the 401 path; measured functions 85.58, branches
+      //   73.68 — already within the floors above (new logic is unit-tested in
+      //   auth-retry/runtime/crdt-queue; only the coordinator glue is uncovered).
       thresholds: {
         statements: 85.8,
         branches: 73.6,
