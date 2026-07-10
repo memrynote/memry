@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { SyncServerError } from './http-client'
-import { withAuthRetry } from './auth-retry'
+import { engineAuthRetryDeps, withAuthRetry } from './auth-retry'
 
 const unauthorized = (): SyncServerError => new SyncServerError('Token expired: "exp" claim', 401)
 
@@ -74,6 +74,17 @@ describe('withAuthRetry', () => {
     expect(d.refreshAccessToken).not.toHaveBeenCalled()
   })
 
+  it('rethrows a non-SyncServerError without refreshing', async () => {
+    const d = deps()
+    const networkError = new Error('socket hang up')
+    const fn = vi.fn<(token: string) => Promise<string>>().mockRejectedValue(networkError)
+
+    await expect(withAuthRetry(fn, 'stale-token', d)).rejects.toBe(networkError)
+
+    expect(fn).toHaveBeenCalledTimes(1)
+    expect(d.refreshAccessToken).not.toHaveBeenCalled()
+  })
+
   it('gives up after a single retry when the fresh token is also rejected', async () => {
     const d = deps()
     const second = unauthorized()
@@ -86,5 +97,26 @@ describe('withAuthRetry', () => {
 
     expect(fn).toHaveBeenCalledTimes(2)
     expect(d.refreshAccessToken).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('engineAuthRetryDeps', () => {
+  it('delegates to the provided refreshAccessToken and passes getAccessToken through', async () => {
+    const refreshAccessToken = vi.fn(async () => true)
+    const getAccessToken = vi.fn(async () => 'tok')
+
+    const adapted = engineAuthRetryDeps({ refreshAccessToken, getAccessToken })
+
+    await expect(adapted.refreshAccessToken()).resolves.toBe(true)
+    expect(refreshAccessToken).toHaveBeenCalledTimes(1)
+    expect(adapted.getAccessToken).toBe(getAccessToken)
+  })
+
+  it('resolves false when no refreshAccessToken is wired', async () => {
+    const getAccessToken = vi.fn(async () => 'tok')
+
+    const adapted = engineAuthRetryDeps({ getAccessToken })
+
+    await expect(adapted.refreshAccessToken()).resolves.toBe(false)
   })
 })
