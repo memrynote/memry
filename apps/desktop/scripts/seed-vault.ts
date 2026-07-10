@@ -14,10 +14,12 @@ import { homedir } from 'os'
 import { wipeVault } from './seed-vault/wipe'
 import { writeNoteFiles } from './seed-vault/file-writer'
 import {
+  insertBookmarks,
   insertCalendarEvents,
   insertCalendarSources,
   insertFilingHistory,
   insertFolderConfigs,
+  insertHomePages,
   insertInboxItems,
   insertProjects,
   insertNoteMetadata,
@@ -35,6 +37,7 @@ import { JOURNAL_NOTES, JOURNAL_METADATA } from './seed-data/journal'
 import { PROJECTS, STATUSES, TASKS, TASK_NOTES, TASK_TAGS } from './seed-data/tasks'
 import { CALENDAR_EVENTS, CALENDAR_SOURCES } from './seed-data/calendar'
 import { FILING_HISTORY_ROWS, INBOX_ITEMS } from './seed-data/inbox'
+import { HOME_BOOKMARKS, HOME_PAGES } from './seed-data/home'
 
 interface CliArgs {
   vaultPath: string
@@ -75,6 +78,9 @@ const TAG_PALETTE = [
   { name: 'travel/asia', color: '#f97316' },
   { name: 'travel/europe', color: '#0ea5e9' },
   { name: 'travel/japan', color: '#ef4444' },
+  { name: 'food', color: '#e11d48' },
+  { name: 'city-break', color: '#22c55e' },
+  { name: 'favorites', color: '#f59e0b' },
   { name: 'fitness', color: '#84cc16' },
   { name: 'reading', color: '#f59e0b' },
   { name: 'daily', color: '#6366f1' },
@@ -182,6 +188,12 @@ function main(): void {
 
     const filingCount = insertFilingHistory(db, FILING_HISTORY_ROWS)
     console.log(`  → filing_history: ${filingCount}`)
+
+    const bookmarkCount = insertBookmarks(db, HOME_BOOKMARKS)
+    console.log(`  → bookmarks: ${bookmarkCount}`)
+
+    const homePageCount = insertHomePages(db, HOME_PAGES)
+    console.log(`  → home_pages: ${homePageCount}`)
   } finally {
     close()
   }
@@ -195,7 +207,7 @@ function main(): void {
   console.log('')
   console.log('Done.')
   console.log(
-    `Seeded ${notesWritten} notes, ${journalsWritten} journal entries, ${TASKS.length} tasks, ${CALENDAR_EVENTS.length} events, ${INBOX_ITEMS.length} inbox items.`
+    `Seeded ${notesWritten} notes, ${journalsWritten} journal entries, ${TASKS.length} tasks, ${CALENDAR_EVENTS.length} events, ${INBOX_ITEMS.length} inbox items, ${HOME_PAGES.length} home board with ${HOME_PAGES[0].widgets.length} widgets.`
   )
   console.log(`Vault path: ${vaultPath}`)
   console.log('')

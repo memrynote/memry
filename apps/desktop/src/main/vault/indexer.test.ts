@@ -460,5 +460,52 @@ Copied note`
         .get()
       expect(after).toEqual(expect.objectContaining({ id: before?.id, path: relativePath }))
     })
+
+    it('T376: preserves note emoji across index rebuilds via note_metadata byPath', async () => {
+      // Emoji is DB-only sidecar state — never written to the vault file — so a
+      // cache rebuilt purely from files would lose the icon unless the indexer
+      // adopts emoji from note_metadata byPath (as it does for the canonical id).
+      const notePath = createTestNote(tempVault, {
+        title: 'Iconic Note',
+        content: 'Emoji lives in the sidecar DB, not the file'
+      })
+      const relativePath = path.relative(tempVault.path, notePath).replace(/\\/g, '/')
+
+      // First index records the canonical note_metadata row (emoji null — the
+      // file carries none). A seed / user-set icon then writes emoji DB-side.
+      await indexer.indexVault(tempVault.path)
+      dataDb.db
+        .update(noteMetadata)
+        .set({ emoji: '🪐' })
+        .where(eq(noteMetadata.path, relativePath))
+        .run()
+
+      // Simulate the rebuild deleting index.db: wipe the index cache tables
+      vi.spyOn(database, 'runIndexMigrations').mockImplementation(() => {
+        testDb.db.delete(noteTags).run()
+        testDb.db.delete(noteLinks).run()
+        testDb.db.delete(noteCache).run()
+      })
+
+      const rebuild = await indexer.rebuildIndex(tempVault.path)
+      expect(rebuild.filesIndexed).toBe(1)
+
+      // The re-indexed cache row adopts the emoji from note_metadata byPath, so
+      // the note keeps its icon instead of falling back to the default glyph.
+      const cacheRow = testDb.db
+        .select()
+        .from(noteCache)
+        .where(eq(noteCache.path, relativePath))
+        .get()
+      expect(cacheRow?.emoji).toBe('🪐')
+
+      // ...and the same pass must not clobber the emoji back to null data-side.
+      const after = dataDb.db
+        .select()
+        .from(noteMetadata)
+        .where(eq(noteMetadata.path, relativePath))
+        .get()
+      expect(after?.emoji).toBe('🪐')
+    })
   })
 })
