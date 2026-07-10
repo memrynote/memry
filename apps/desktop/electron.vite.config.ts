@@ -70,6 +70,9 @@ export default defineConfig({
           index: resolve(appRoot, 'src/main/index.ts'),
           'embedding-worker': resolve(appRoot, 'src/main/lib/embedding-worker.ts'),
           'sync-worker': resolve(appRoot, 'src/main/sync/worker.ts'),
+          // utilityProcess child that exercises the classic-level native
+          // binding before main loads it (see crdt-preflight.ts)
+          'crdt-preflight-child': resolve(appRoot, 'src/main/sync/crdt-preflight-child.ts'),
           'image-processing-worker': resolve(appRoot, 'src/main/image-processing/worker.ts'),
           'voice-transcription-worker': resolve(
             appRoot,
