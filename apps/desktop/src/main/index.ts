@@ -54,7 +54,7 @@ import {
   stopGoogleCalendarSyncRunner,
   triggerGoogleCalendarSyncNow
 } from './calendar/google/sync-service'
-import { log, createLogger, disableConsoleTransport } from './lib/logger'
+import { log, createLogger, disableConsoleTransport, applyPackagedLogLevels } from './lib/logger'
 import { isAllowedExternalUrl } from './lib/external-url'
 import { registerTestHooks } from './test-hooks'
 import {
@@ -230,6 +230,12 @@ const envResult = config({ path: envPath, quiet: true })
 if (envResult.error) {
   // Try loading from current working directory as fallback
   config({ quiet: true })
+}
+
+// logger.ts defaults to verbose dev levels because NODE_ENV is undefined at
+// runtime in packaged builds; correct it here where app.isPackaged is known.
+if (app.isPackaged) {
+  applyPackagedLogLevels()
 }
 
 // Register custom protocol as privileged before app is ready
@@ -1054,6 +1060,7 @@ const appReady = app.whenReady().then(async () => {
   initializeTelemetryRuntime({
     appVersion: app.getVersion(),
     locale: app.getLocale(),
+    buildChannel: resolveMemryEnvironment(),
     authStateProvider: getTelemetryAuthState,
     syncStateProvider: getTelemetrySyncState,
     accessTokenProvider: () => getValidAccessToken()

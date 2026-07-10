@@ -80,6 +80,7 @@ const toAbsolutePathMock = vi.fn((path: string) => path)
 const createSnapshotMock = vi.fn(() => null as unknown)
 const safeReadMock = vi.fn(async () => null as string | null)
 const disableConsoleTransportMock = vi.fn()
+const applyPackagedLogLevelsMock = vi.fn()
 const getHeadlessCliArgsMock = vi.fn((argv: string[]) => {
   const cliIndex = argv.indexOf('--cli')
   return cliIndex === -1 ? null : argv.slice(cliIndex + 1)
@@ -287,7 +288,8 @@ vi.mock('./lib/logger', () => {
   return {
     log: { initialize: vi.fn() },
     createLogger: vi.fn(() => scopedLogger),
-    disableConsoleTransport: disableConsoleTransportMock
+    disableConsoleTransport: disableConsoleTransportMock,
+    applyPackagedLogLevels: applyPackagedLogLevelsMock
   }
 })
 
@@ -541,6 +543,25 @@ describe('main index phase2 exports', () => {
     expect(createMainI18nMock).toHaveBeenCalledWith({ locale: 'tr' })
   })
 
+  it('applies packaged log levels when running packaged', async () => {
+    const electron = await import('electron')
+    const app = electron.app as unknown as { isPackaged: boolean }
+    app.isPackaged = true
+    // Packaged env loading resolves Resources/app-config from resourcesPath.
+    Object.defineProperty(process, 'resourcesPath', {
+      value: '/mock/resources',
+      configurable: true
+    })
+
+    try {
+      await importMainModule()
+      expect(applyPackagedLogLevelsMock).toHaveBeenCalled()
+    } finally {
+      app.isPackaged = false
+      delete (process as unknown as { resourcesPath?: string }).resourcesPath
+    }
+  })
+
   it('registerOAuthState schedules expiry cleanup at 10 minutes', async () => {
     vi.useFakeTimers()
 
@@ -565,9 +586,11 @@ describe('main index phase2 exports', () => {
     expect(initializeTelemetryRuntimeMock).toHaveBeenCalledWith(
       expect.objectContaining({
         appVersion: '1.0.0',
-        locale: 'en-US'
+        locale: 'en-US',
+        buildChannel: 'development'
       })
     )
+    expect(applyPackagedLogLevelsMock).not.toHaveBeenCalled()
     expect(protocolHandleMock).toHaveBeenCalledWith('memry-file', expect.any(Function))
     expect(webRequestOnHeadersReceivedMock).toHaveBeenCalledWith(expect.any(Function))
     expect(initPersistenceMock).toHaveBeenCalled()

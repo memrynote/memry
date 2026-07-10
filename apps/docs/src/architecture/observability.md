@@ -17,6 +17,8 @@ log.error('pull failed', err)
 - **Never** use `console.*`. A pre-commit hook flags it.
 - Logs land in the OS-standard log directory and rotate automatically.
 - Renderer and main process logs are separate files.
+- Dev runs log at `debug`; packaged installs are lowered to `info` (file) / `warn` (console) at
+  startup based on `app.isPackaged`, since `NODE_ENV` is undefined at runtime in packaged builds.
 - Important launch, renderer, and main-process errors are mirrored as telemetry events when
   product telemetry is enabled.
 
@@ -32,6 +34,10 @@ log.error('pull failed', err)
 
 Telemetry is enabled by default in production builds and off by default in development builds.
 Users can turn it off via [Settings → General → Privacy](/user-guide/settings#general).
+
+The build channel comes from `MEMRY_ENV` when set (dev/staging profiles) and otherwise from
+`app.isPackaged`, so packaged installs report `production`. A telemetry choice the user has
+already saved always wins over the channel default.
 
 ### What Ships
 
