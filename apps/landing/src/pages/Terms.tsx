@@ -133,7 +133,7 @@ export function TermsPage() {
 
         <h2>8. Refunds</h2>
         <p>
-          We offer a 7-day money-back guarantee on every plan, including Believer. See the{' '}
+          We offer a 14-day money-back guarantee on every plan, including Believer. See the{' '}
           <a href="/refund">refund policy</a> for the full details on how to request one.
         </p>
 

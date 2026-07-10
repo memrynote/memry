@@ -8,14 +8,14 @@ export function RefundPage() {
       <LegalLayout
         eyebrow="Legal · Refunds"
         title="Refund Policy"
-        intro="Seven days to change your mind on any paid plan, including Believer. No questions asked."
-        lastUpdated="May 9, 2026"
+        intro="Fourteen days to change your mind on any paid plan, including Believer. No questions asked, no exceptions."
+        lastUpdated="July 10, 2026"
       >
         <h2>The short version</h2>
         <ul>
           <li>
-            <strong>7-day money-back guarantee</strong> on every paid Sync plan — Plus, Pro, and
-            Believer.
+            <strong>14-day money-back guarantee</strong> on every paid Sync plan — Plus, Pro, and
+            Believer — with no exceptions.
           </li>
           <li>
             Request a refund inside the app or email{' '}
@@ -26,32 +26,32 @@ export function RefundPage() {
             Paddle, our merchant of record, returns the money to your original payment method.
           </li>
           <li>
-            After day 7 we honour refunds case-by-case for genuine billing problems and duplicate
+            After day 14 we honour refunds case-by-case for genuine billing problems and duplicate
             charges.
           </li>
         </ul>
 
-        <h2>1. The 7-day guarantee</h2>
+        <h2>1. The 14-day guarantee</h2>
         <p>
-          Every paid plan comes with a 7-day money-back guarantee, counted from the moment you first
-          complete a paid checkout. If memrynote isn&apos;t for you in that window, ask for a refund
-          and we will issue it without questions.
+          Every paid plan comes with a 14-day money-back guarantee, counted from the date of the
+          charge. If memrynote isn&apos;t for you in that window, ask for a refund and we will issue
+          it without questions and without exceptions.
         </p>
         <p>
-          The guarantee covers your first paid period only. Renewals (the second month, the second
-          year, and so on) are not eligible — see the section on renewals below.
+          The guarantee applies to every charge — your first checkout and each renewal alike. Ask
+          within 14 days of any charge and you get that charge back in full.
         </p>
 
         <h2>2. Believer (lifetime) refunds</h2>
         <p>
-          The Believer tier — a one-time supporter package — is also covered by the 7-day guarantee.
-          If you change your mind in the first week, ask for a refund and we will process it the
-          same way as any other plan.
+          The Believer tier — a one-time supporter package — is covered by the same 14-day guarantee
+          as every other plan. If you change your mind in the first two weeks, ask for a refund and
+          we will process it the same way as any other plan.
         </p>
         <p>
-          After day 7, Believer is non-refundable. The whole point of the tier is a long-term bet in
-          both directions: you commit to us, we commit to you, and the price funds the next chapter
-          of the product.
+          After day 14, Believer is non-refundable except where the law where you live says
+          otherwise. The whole point of the tier is a long-term bet in both directions: you commit
+          to us, we commit to you, and the price funds the next chapter of the product.
         </p>
 
         <h2>3. How to request a refund</h2>
@@ -90,14 +90,13 @@ export function RefundPage() {
 
         <h2>5. Renewals</h2>
         <p>
-          We do not refund renewal charges by default — you have unlimited time to cancel before the
-          next renewal hits. We send a reminder email seven days before each annual renewal so there
-          are no surprise charges.
+          Renewal charges carry the same 14-day guarantee: if a renewal slipped through, ask within
+          14 days of the charge and we will refund it in full, no questions asked. You can also
+          cancel at any time before the next renewal so it never happens in the first place.
         </p>
         <p>
-          If a renewal slipped through and you genuinely had not used Sync during the new period,
-          email us within 14 days of the charge and we will issue a one-time goodwill refund. We
-          look at usage rather than the calendar — the goal is to be fair.
+          We send a reminder email seven days before each annual renewal so there are no surprise
+          charges.
         </p>
 
         <h2>6. Plan changes</h2>
@@ -117,7 +116,7 @@ export function RefundPage() {
         <p>We will decline a refund if:</p>
         <ul>
           <li>
-            The 7-day window has closed and the charge in question is not a duplicate, fraudulent,
+            The 14-day window has closed and the charge in question is not a duplicate, fraudulent,
             or otherwise erroneous transaction.
           </li>
           <li>

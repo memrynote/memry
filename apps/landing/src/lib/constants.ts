@@ -504,7 +504,7 @@ export const SYNC_PLAN_TIERS: readonly SyncPlanTier[] = [
       '5 MB per file',
       '30 days of version history',
       'Server never sees plaintext',
-      '7-day money-back guarantee'
+      '14-day money-back guarantee'
     ],
     cta: 'Get Plus',
     emphasis: 'standard',
@@ -810,7 +810,7 @@ export const PRICING_FAQ_ITEMS = [
   {
     question: 'How does the refund policy work?',
     answer:
-      '7-day money-back guarantee on every plan, including Believer. Request it inside the app — Paddle processes the refund back to your original payment method, no questions asked.'
+      '14-day money-back guarantee on every plan, including Believer. Request it inside the app — Paddle processes the refund back to your original payment method, no questions asked.'
   },
   {
     question: 'What is the Believer tier really?',
