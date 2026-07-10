@@ -1,13 +1,4 @@
 import {
-  AiBrain03Icon,
-  Book02Icon,
-  Calendar01Icon,
-  CheckmarkCircle04Icon,
-  InboxIcon,
-  NoteIcon
-} from '@hugeicons/core-free-icons'
-import type { IconSvgElement } from '@hugeicons/react'
-import {
   Inbox,
   BookOpen,
   FileText,
@@ -20,10 +11,6 @@ import {
   Brain,
   PenLine,
   Rocket,
-  Globe,
-  Monitor,
-  Smartphone,
-  Terminal,
   type LucideIcon
 } from 'lucide-react'
 
@@ -48,8 +35,9 @@ export type LandingDropdownItem =
       iconType?: undefined
     })
   | (LandingDropdownItemBase & {
-      icon: IconSvgElement
-      iconType: 'hugeicon'
+      // Path to a hand-drawn mascot PNG under public/mascots
+      icon: string
+      iconType: 'image'
     })
 
 export const FEATURE_NAV_ITEMS: readonly LandingDropdownItem[] = [
@@ -57,43 +45,43 @@ export const FEATURE_NAV_ITEMS: readonly LandingDropdownItem[] = [
     label: 'Inbox',
     description: 'Capture links, files, voice',
     href: '/features/inbox',
-    icon: InboxIcon,
-    iconType: 'hugeicon'
+    icon: '/mascots/inbox.png',
+    iconType: 'image'
   },
   {
     label: 'Journal',
     description: 'Daily writing with context',
     href: '/features/journal',
-    icon: Book02Icon,
-    iconType: 'hugeicon'
+    icon: '/mascots/journal.png',
+    iconType: 'image'
   },
   {
     label: 'Notes',
     description: 'Markdown, backlinks, properties',
     href: '/features/notes',
-    icon: NoteIcon,
-    iconType: 'hugeicon'
+    icon: '/mascots/notes.png',
+    iconType: 'image'
   },
   {
     label: 'Tasks',
     description: 'Projects, kanban, recurring work',
     href: '/features/tasks',
-    icon: CheckmarkCircle04Icon,
-    iconType: 'hugeicon'
+    icon: '/mascots/tasks.png',
+    iconType: 'image'
   },
   {
     label: 'Calendar',
     description: 'Schedule, deadlines, day view',
     href: '/features/calendar',
-    icon: Calendar01Icon,
-    iconType: 'hugeicon'
+    icon: '/mascots/calendar.png',
+    iconType: 'image'
   },
   {
     label: 'AI Agent',
     description: 'Optional. Turn AI on or off anytime.',
     href: '/features/ai-agent',
-    icon: AiBrain03Icon,
-    iconType: 'hugeicon'
+    icon: '/mascots/ai-agent.png',
+    iconType: 'image'
   }
 ] as const
 
@@ -102,27 +90,31 @@ export const DOWNLOAD_NAV_ITEMS: readonly LandingDropdownItem[] = [
     label: 'Web Clipper',
     description: 'Clip and save any link',
     href: '/features/web-clipper',
-    icon: Globe,
+    icon: '/mascots/web-clipper.png',
+    iconType: 'image',
     badge: 'In review'
   },
   {
     label: 'memrynote for Mobile',
     description: 'iOS and Android apps',
     href: '#',
-    icon: Smartphone,
+    icon: '/mascots/mobile.png',
+    iconType: 'image',
     disabled: true
   },
   {
     label: 'memrynote for Desktop',
     description: 'macOS · Windows · Linux',
     href: '/download/desktop',
-    icon: Monitor
+    icon: '/mascots/desktop.png',
+    iconType: 'image'
   },
   {
     label: 'memrynote CLI',
     description: 'Terminal workflows',
     href: '/cli',
-    icon: Terminal
+    icon: '/mascots/cli.png',
+    iconType: 'image'
   }
 ] as const
 

@@ -1,19 +1,20 @@
 import { motion } from 'framer-motion'
-import { Inbox } from 'lucide-react'
+import { Mascot } from '@/components/ui/mascot'
 import { FeatureChip, HomeSection, SectionTitle } from '@/components/sections/home2/primitives'
 
 const EASE = [0.16, 1, 0.3, 1] as const
 
 const THINGS = [
-  { label: 'Notes', href: '/features/notes', iconSrc: '/icons/icon-notes.png' },
-  { label: 'Tasks', href: '/features/tasks', iconSrc: '/icons/icon-tasks.png' },
-  { label: 'Journal', href: '/features/journal', iconSrc: '/icons/icon-jots.png' },
-  { label: 'Calendar', href: '/features/calendar', iconSrc: '/icons/icon-calendar.png' },
-  { label: 'Inbox', href: '/features/inbox', iconSrc: null }
+  { label: 'Notes', href: '/features/notes', iconSrc: '/mascots/notes.png' },
+  { label: 'Tasks', href: '/features/tasks', iconSrc: '/mascots/tasks.png' },
+  { label: 'Journal', href: '/features/journal', iconSrc: '/mascots/journal.png' },
+  { label: 'Calendar', href: '/features/calendar', iconSrc: '/mascots/calendar.png' },
+  { label: 'Inbox', href: '/features/inbox', iconSrc: '/mascots/inbox.png' },
+  { label: 'AI Agent', href: '/features/ai-agent', iconSrc: '/mascots/ai-agent.png' }
 ] as const
 
 /**
- * "Not one thing" row — centered two-line statement followed by five small
+ * "One calm place" row — centered one-line statement followed by five small
  * feature chips linking to the feature pages.
  */
 export function EverythingRow() {
@@ -21,17 +22,15 @@ export function EverythingRow() {
     <HomeSection id="everything">
       <SectionTitle
         className="mb-8 md:mb-10"
+        titleClassName="max-w-5xl"
         title={
           <>
-            <span className="block">MemryNote isn't just for one thing —</span>
-            <span className="block">
-              it's for <em className="italic text-terracotta">your</em> things.
-            </span>
+            One calm place for all <em className="italic text-terracotta">your</em> things.
           </>
         }
       />
 
-      <ul className="mx-auto flex max-w-3xl flex-wrap items-center justify-center gap-3 px-2 sm:gap-4">
+      <ul className="mx-auto flex max-w-4xl flex-wrap items-center justify-center gap-3 px-2 sm:gap-4">
         {THINGS.map((thing, i) => (
           <motion.li
             key={thing.label}
@@ -43,18 +42,7 @@ export function EverythingRow() {
             <FeatureChip
               label={thing.label}
               href={thing.href}
-              icon={
-                thing.iconSrc ? (
-                  <img
-                    src={thing.iconSrc}
-                    alt=""
-                    className="h-6 w-6 object-contain"
-                    loading="lazy"
-                  />
-                ) : (
-                  <Inbox className="h-5 w-5 text-terracotta" strokeWidth={1.8} />
-                )
-              }
+              icon={<Mascot src={thing.iconSrc} className="h-8 w-8" />}
             />
           </motion.li>
         ))}

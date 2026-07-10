@@ -3,9 +3,12 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --font-sans: 'Satoshi', system-ui, sans-serif;
-  --font-geist: 'Geist', system-ui, sans-serif;
-  --font-serif: 'Inter', 'Inter Placeholder', sans-serif;
+  /* Single-font site: text tokens all resolve to Manrope (token names kept so no
+     component churn). --font-mono stays a REAL monospace — reserved for terminal
+     and code surfaces (CLI page/snippet, code chips, ink stamps), not labels. */
+  --font-sans: 'Manrope', system-ui, sans-serif;
+  --font-geist: 'Manrope', system-ui, sans-serif;
+  --font-serif: 'Manrope', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 
   --color-primary: #ff671a;
@@ -247,8 +250,11 @@ h6 {
   text-orientation: mixed;
 }
 
+/* Label accent (kickers, footers, counters). Historically JetBrains Mono — now the
+   single-font pass keeps labels in Manrope; real mono is only for terminal/code
+   surfaces via `font-mono`. Class name kept: ~30 call sites. */
 .font-mono-accent {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   letter-spacing: -0.02em;
 }
 

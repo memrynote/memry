@@ -35,10 +35,8 @@ export function NotesShowcase() {
             <>
               Markdown notes, backlinks, an editor that stays out of the way — and every note is a
               plain{' '}
-              <code className="rounded bg-ink/5 px-1 py-0.5 font-mono-accent text-[0.85em]">
-                .md
-              </code>{' '}
-              file in an Obsidian-compatible vault.
+              <code className="rounded bg-ink/5 px-1 py-0.5 font-mono text-[0.85em]">.md</code> file
+              in an Obsidian-compatible vault.
             </>
           }
         />

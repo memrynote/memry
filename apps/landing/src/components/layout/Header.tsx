@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { Menu, X, ChevronDown, type LucideIcon } from 'lucide-react'
-import { HugeiconsIcon } from '@hugeicons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
+import { Mascot } from '@/components/ui/mascot'
 import { Container } from './Container'
 import { ThemeToggle } from './ThemeToggle'
 import {
@@ -170,8 +170,8 @@ function DropdownTrigger({ label, icon: Icon }: { label: string; icon?: LucideIc
 }
 
 function DropdownIcon({ item, className }: { item: LandingDropdownItem; className: string }) {
-  if (item.iconType === 'hugeicon') {
-    return <HugeiconsIcon icon={item.icon} className={className} strokeWidth={2.4} aria-hidden />
+  if (item.iconType === 'image') {
+    return <Mascot src={item.icon} className={className} />
   }
 
   const Icon = item.icon as LucideIcon
@@ -194,8 +194,13 @@ function DropdownItem({
 
   const content = (
     <>
-      <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-terracotta/10 text-terracotta">
-        <DropdownIcon item={item} className="h-5 w-5" />
+      <span
+        className={cn(
+          'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl',
+          item.iconType !== 'image' && 'bg-terracotta/10 text-terracotta'
+        )}
+      >
+        <DropdownIcon item={item} className={item.iconType === 'image' ? 'h-8 w-8' : 'h-5 w-5'} />
       </span>
       <span className="min-w-0">
         <span className="flex items-center gap-2 text-base font-medium leading-tight text-ink">
@@ -243,12 +248,15 @@ function DesktopDropdown({
   return (
     <div className="group relative">
       <DropdownTrigger label={label} icon={icon} />
-      {/* Materialize from the trigger: blur+scale+lift resolve together, anchored top.
+      {/* Materialize from the trigger: scale+lift on this wrapper, opacity on the panel.
+          The wrapper must never carry filter or opacity while animating — either would
+          make it a backdrop root and suppress the panel's backdrop blur until the
+          transition ends (glass "popping in" late). Transform is safe.
           focus-within keeps the menu reachable by keyboard, not just hover. */}
-      <div className="invisible absolute left-1/2 top-full z-50 mt-3 origin-top -translate-x-1/2 translate-y-1 scale-[0.97] opacity-0 blur-[6px] transition-all duration-200 [transition-timing-function:var(--ease-out-expo)] group-hover:visible group-hover:translate-y-0 group-hover:scale-100 group-hover:opacity-100 group-hover:blur-none group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:scale-100 group-focus-within:opacity-100 group-focus-within:blur-none motion-reduce:translate-y-0 motion-reduce:scale-100 motion-reduce:blur-none motion-reduce:transition-[opacity,visibility]">
+      <div className="invisible absolute start-0 top-full z-50 mt-3 origin-top translate-y-1 scale-[0.97] transition-all duration-200 [transition-timing-function:var(--ease-out-expo)] group-hover:visible group-hover:translate-y-0 group-hover:scale-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:scale-100 motion-reduce:translate-y-0 motion-reduce:scale-100 motion-reduce:transition-[visibility]">
         <div
           className={cn(
-            'material-chrome rounded-[22px] border border-white/70 p-3 shadow-[0_26px_80px_-28px_rgba(31,41,55,0.28),inset_0_1px_0_rgba(255,255,255,0.7)] dark:border-white/10 dark:shadow-[0_26px_80px_-28px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.04)]',
+            'rounded-[22px] border border-white/60 bg-card/55 backdrop-blur-2xl backdrop-saturate-150 p-3 opacity-0 transition-opacity duration-200 [transition-timing-function:var(--ease-out-expo)] group-hover:opacity-100 group-focus-within:opacity-100 shadow-[0_26px_80px_-28px_rgba(31,41,55,0.28),inset_0_1px_0_rgba(255,255,255,0.7)] dark:border-white/10 dark:shadow-[0_26px_80px_-28px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.04)]',
             columns === 2 ? 'w-[574px]' : 'w-[320px]'
           )}
         >
@@ -440,48 +448,50 @@ export function Header() {
   return (
     <header className="fixed inset-x-0 top-0 z-50 px-3 pt-3 sm:px-6">
       <Container size="full" className="relative z-10">
-        <nav className="mx-auto flex max-w-6xl items-center justify-between rounded-full border border-border/60 bg-card/80 px-3 py-2 shadow-card backdrop-blur-xl sm:px-4">
-          <Link to="/" className="flex items-center gap-1.5 group" onClick={handleLogoClick}>
-            <span className="flex h-7 w-7 items-center justify-center">
-              <img src="/favicon.svg" alt="" className="w-5 h-5" />
-            </span>
-            <div className="leading-none">
-              <span className="flex items-center gap-2">
-                <span className="block font-geist text-2xl font-medium tracking-tight text-ink transition-colors group-hover:text-terracotta">
-                  memrynote
-                </span>
-                <span className="rounded-full bg-terracotta/10 px-1.5 py-0.5 font-mono-accent text-[8px] uppercase tracking-[0.16em] text-terracotta">
-                  Beta
-                </span>
+        <nav className="relative mx-auto flex max-w-6xl items-center justify-between rounded-full border border-white/60 px-3 py-2 shadow-card sm:px-4 dark:border-white/10">
+          {/* Glass lives on a decor layer, not on <nav>: an element with backdrop-filter
+              becomes the backdrop root for its subtree, which would stop the dropdown
+              panels below from blurring the page behind them. */}
+          <div
+            aria-hidden
+            className="absolute inset-0 -z-10 rounded-full bg-card/55 backdrop-blur-2xl backdrop-saturate-150"
+          />
+          <div className="flex items-center gap-2 lg:gap-5">
+            <Link to="/" className="flex items-center gap-1.5 group" onClick={handleLogoClick}>
+              <span className="flex h-7 w-7 items-center justify-center">
+                <img src="/favicon.svg" alt="" className="w-5 h-5" />
               </span>
-            </div>
-          </Link>
+              <div className="leading-none">
+                <span className="flex items-center gap-2">
+                  <span className="block font-geist text-2xl font-medium tracking-tight text-ink transition-colors group-hover:text-terracotta">
+                    memrynote
+                  </span>
+                  <span className="rounded-full bg-terracotta/10 px-1.5 py-0.5 font-mono-accent text-[8px] uppercase tracking-[0.16em] text-terracotta">
+                    Beta
+                  </span>
+                </span>
+              </div>
+            </Link>
 
-          <div className="hidden items-center gap-1.5 lg:flex">
-            <DesktopDropdown label="Features" items={FEATURE_NAV_ITEMS} />
-            <DesktopDropdown label="Download" items={DOWNLOAD_NAV_ITEMS} columns={1} />
-            {DIRECT_NAV_LINKS.map((link) => (
-              <NavLink key={link.label} href={link.href} label={link.label} />
-            ))}
+            <div className="hidden items-center gap-1.5 lg:flex">
+              <DesktopDropdown label="Features" items={FEATURE_NAV_ITEMS} />
+              <DesktopDropdown label="Download" items={DOWNLOAD_NAV_ITEMS} columns={1} />
+              {DIRECT_NAV_LINKS.map((link) => (
+                <NavLink key={link.label} href={link.href} label={link.label} />
+              ))}
+            </div>
           </div>
 
           <div className="hidden md:flex items-center gap-3">
             <ThemeToggle />
             <GitHubStarWidget />
+            <span aria-hidden className="h-5 w-px bg-border/80 dark:bg-white/10" />
             <Button variant="ghost" size="sm" className="rounded-full px-4" asChild>
               <Link
                 to={accountHref}
                 onClick={() => trackLandingEvent('landing_nav_click', accountTarget)}
               >
                 {accountLabel}
-              </Link>
-            </Button>
-            <Button size="sm" className="rounded-full px-4" asChild>
-              <Link
-                to="/download/desktop"
-                onClick={() => trackLandingEvent('landing_download_click', 'nav:download-free')}
-              >
-                Download free
               </Link>
             </Button>
           </div>
@@ -544,17 +554,6 @@ export function Header() {
                   label={accountLabel}
                   onNavigate={closeMobileMenu}
                 />
-                <Button size="sm" className="mt-1 rounded-full" asChild>
-                  <Link
-                    to="/download/desktop"
-                    onClick={() => {
-                      trackLandingEvent('landing_download_click', 'mobile-nav:download-free')
-                      closeMobileMenu()
-                    }}
-                  >
-                    Download free
-                  </Link>
-                </Button>
               </div>
             </Container>
           </motion.div>

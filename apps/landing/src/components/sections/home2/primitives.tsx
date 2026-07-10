@@ -61,6 +61,7 @@ export interface SectionTitleProps {
   sub?: ReactNode
   align?: 'center' | 'start'
   className?: string
+  titleClassName?: string
 }
 
 /** Consistent big warm section heading, optionally with eyebrow label and sub line. */
@@ -69,7 +70,8 @@ export function SectionTitle({
   title,
   sub,
   align = 'center',
-  className
+  className,
+  titleClassName
 }: SectionTitleProps) {
   const centered = align === 'center'
 
@@ -86,7 +88,13 @@ export function SectionTitle({
           {eyebrow}
         </p>
       )}
-      <h2 className={cn('display-section max-w-3xl text-ink text-balance', centered && 'mx-auto')}>
+      <h2
+        className={cn(
+          'display-section max-w-3xl text-ink text-balance',
+          centered && 'mx-auto',
+          titleClassName
+        )}
+      >
         {title}
       </h2>
       {sub && (
@@ -126,7 +134,7 @@ export function FeatureChip({ icon, label, href, className }: FeatureChipProps) 
   const content = (
     <>
       {icon && (
-        <span aria-hidden className="flex h-6 w-6 shrink-0 items-center justify-center">
+        <span aria-hidden className="flex shrink-0 items-center justify-center">
           {icon}
         </span>
       )}

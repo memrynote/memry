@@ -39,7 +39,7 @@ function CliVignette() {
   return (
     <div
       aria-hidden
-      className="mt-5 rounded-xl bg-ink/5 px-3.5 py-3 font-mono-accent text-[12px] leading-relaxed"
+      className="mt-5 rounded-xl bg-ink/5 px-3.5 py-3 font-mono text-[12px] leading-relaxed"
     >
       <p className="text-ink/80">
         <span className="text-terracotta">$</span> memrynote tasks list --status todo
