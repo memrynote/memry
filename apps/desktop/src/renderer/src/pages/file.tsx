@@ -9,6 +9,7 @@ import { getI18n } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { Loader2, FileWarning, Download, ExternalLink } from '@/lib/icons'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { toMemryFileUrl } from '@/lib/memry-file-url'
 import { notesService } from '@/services/notes-service'
 import { PdfViewer, ImageViewer, AudioPlayer, VideoPlayer } from '@/components/viewers'
 import { Button } from '@/components/ui/button'
@@ -142,7 +143,7 @@ function FileInfoBar({ file }: { file: FileMetadata }) {
 function FileViewer({ file }: { file: FileMetadata }) {
   const { t: tPhaseF } = useT('notes')
   // Convert absolute path to memry-file:// protocol URL for secure local file access
-  const fileUrl = `memry-file://local${file.absolutePath}`
+  const fileUrl = toMemryFileUrl(file.absolutePath)
 
   switch (file.fileType) {
     case 'pdf':

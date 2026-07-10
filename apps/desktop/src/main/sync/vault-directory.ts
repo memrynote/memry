@@ -15,7 +15,7 @@ import {
   setAccountVaultsCache
 } from '../store'
 import { getFromServer, postToServer } from './http-client'
-import { retrieveToken } from './token-manager'
+import { getValidAccessToken } from './token-manager'
 import { decryptVaultName, encryptVaultName } from './vault-name-crypto'
 
 const log = createLogger('VaultDirectory')
@@ -55,7 +55,7 @@ async function getNameKey(): Promise<Uint8Array | null> {
 export async function refreshVaultDirectory(opts?: { force?: boolean }): Promise<void> {
   if (!opts?.force && Date.now() - lastRefreshAt < REFRESH_THROTTLE_MS) return
 
-  const token = await retrieveToken(KEYCHAIN_ENTRIES.ACCESS_TOKEN)
+  const token = await getValidAccessToken()
   if (!token) return
   const nameKey = await getNameKey()
   if (!nameKey) return

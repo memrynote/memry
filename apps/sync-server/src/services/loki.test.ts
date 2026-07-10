@@ -136,8 +136,23 @@ describe('desktopErrorEntry', () => {
       platform: 'darwin',
       stack: 'at doThing (app://bundle.js:1:2)',
       component_stack: 'at NoteEditor',
-      install_hash: 'hash123'
+      install_hash: 'hash123',
+      log_action: ''
     })
     expect(Object.keys(result.line)).not.toContain('message')
+  })
+
+  it('carries log_action so log-type error events are identifiable in Grafana', () => {
+    const logEvent: TelemetryEvent = {
+      ...event,
+      name: 'app_log_recorded',
+      action: 'error',
+      errorCode: 'Utility:crashed:Embeddings',
+      dimensions: { log_action: 'child_process_gone' },
+      error: undefined
+    }
+    const result = desktopErrorEntry(batch, logEvent, 'hash123')
+    expect(result.line.log_action).toBe('child_process_gone')
+    expect(result.line.error_code).toBe('Utility:crashed:Embeddings')
   })
 })

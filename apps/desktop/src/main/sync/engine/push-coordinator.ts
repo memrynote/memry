@@ -6,6 +6,7 @@ import { secureCleanup } from '../../crypto/index'
 import { encryptPushBatch } from '../sync-crypto-batch'
 import { getHandler, getRemoteSyncAdapter } from '../item-handlers'
 import { withRetry } from '../retry'
+import { engineAuthRetryDeps, withAuthRetry } from '../auth-retry'
 import { postToServer, RateLimitError } from '../http-client'
 import { classifyError } from '../sync-errors'
 import { isBinaryFileType } from '@memry/shared/file-types'
@@ -77,7 +78,7 @@ export class PushCoordinator {
       this.ctx.abortController = new AbortController()
       const abortSignal = this.ctx.abortController.signal
 
-      const token = await this.ctx.deps.getAccessToken()
+      let token = await this.ctx.deps.getAccessToken()
       if (!token) {
         log.debug('Push aborted: no access token')
         return
@@ -162,10 +163,18 @@ export class PushCoordinator {
           timer.startPhase('network')
           const response = await withRetry(
             () =>
-              postToServer<PushResponse>(
-                '/sync/push',
-                { items: pushItems.map((p) => p.pushItem) },
-                token
+              withAuthRetry(
+                (authToken) =>
+                  postToServer<PushResponse>(
+                    '/sync/push',
+                    { items: pushItems.map((p) => p.pushItem) },
+                    authToken
+                  ),
+                token!,
+                engineAuthRetryDeps(this.ctx.deps),
+                (fresh) => {
+                  token = fresh
+                }
               ),
             {
               signal: abortSignal,

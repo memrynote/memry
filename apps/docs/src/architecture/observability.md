@@ -17,6 +17,8 @@ log.error('pull failed', err)
 - **Never** use `console.*`. A pre-commit hook flags it.
 - Logs land in the OS-standard log directory and rotate automatically.
 - Renderer and main process logs are separate files.
+- Dev runs log at `debug`; packaged installs are lowered to `info` (file) / `warn` (console) at
+  startup based on `app.isPackaged`, since `NODE_ENV` is undefined at runtime in packaged builds.
 - Important launch, renderer, and main-process errors are mirrored as telemetry events when
   product telemetry is enabled.
 
@@ -32,6 +34,10 @@ log.error('pull failed', err)
 
 Telemetry is enabled by default in production builds and off by default in development builds.
 Users can turn it off via [Settings → General → Privacy](/user-guide/settings#general).
+
+The build channel comes from `MEMRY_ENV` when set (dev/staging profiles) and otherwise from
+`app.isPackaged`, so packaged installs report `production`. A telemetry choice the user has
+already saved always wins over the channel default.
 
 ### What Ships
 
@@ -195,8 +201,15 @@ Loki adds the diagnostic detail (stacks, operational messages) that AE rows deli
   publicly — Grafana reads Loki over the private docker network.
 - **Desktop errors**: `/telemetry/batch` events carrying an `errorCode` or `error` detail are
   forwarded as `app="desktop"` lines containing the event name, error code, surface/action/source,
-  app version, platform, and the **redacted stack frames only** (the schema has no message field —
-  messages can embed note content; see Error Reporting above).
+  app version, platform, the **redacted stack frames only** (the schema has no message field —
+  messages can embed note content; see Error Reporting above), and `log_action` — the operational
+  breadcrumb that keeps log-type error events (which carry no stack of their own) identifiable in
+  Grafana.
+- **Process lifecycle**: the main process reports a `child-process-gone` fault with a composite
+  `type:reason:serviceName` error code (e.g. `Utility:crashed:Embeddings`). A utility worker's
+  clean idle-shutdown (embeddings, image-processing, voice-model each exit after ~30s idle) is a
+  lifecycle event, not a fault, so a `clean-exit` reason is skipped entirely — only a real fault
+  produces an error event, mirroring the GPU crash guard.
 - **Desktop IPC envelopes**: every `{ success: false }` error envelope produced by the IPC layer
   (`withErrorHandler` / `withDb`) also emits an `app_error_seen` event, throttled in-memory to one
   event per error code per minute so an error loop can't flood the telemetry queue. The expected

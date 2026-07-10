@@ -16,6 +16,30 @@ import { normalizeRelativePath } from '../lib/paths'
 // Atomic Write
 // ============================================================================
 
+const TRANSIENT_FS_ERROR_CODES = new Set(['EBUSY', 'EPERM', 'EACCES'])
+const TRANSIENT_FS_RETRY_DELAYS_MS = [50, 150, 450]
+
+/**
+ * Retry an fs operation that fails with a transient sharing violation
+ * (EBUSY/EPERM/EACCES) — on Windows, cloud-sync clients and antivirus
+ * scanners briefly lock vault files. Non-retryable errors propagate
+ * immediately; retryable ones are retried with backoff before the final
+ * attempt's error propagates.
+ */
+export async function withTransientFsRetry<T>(operation: () => Promise<T>): Promise<T> {
+  for (const delayMs of TRANSIENT_FS_RETRY_DELAYS_MS) {
+    try {
+      return await operation()
+    } catch (error) {
+      if (!isNodeError(error) || !TRANSIENT_FS_ERROR_CODES.has(error.code ?? '')) {
+        throw error
+      }
+      await new Promise((resolve) => setTimeout(resolve, delayMs))
+    }
+  }
+  return operation()
+}
+
 /**
  * Write content to a file atomically using temp-file-then-rename pattern.
  * Ensures file integrity even if the app crashes during write.
@@ -26,29 +50,38 @@ import { normalizeRelativePath } from '../lib/paths'
  */
 export async function atomicWrite(filePath: string, content: string): Promise<void> {
   const dir = path.dirname(filePath)
-  const tempPath = path.join(dir, `.${randomBytes(6).toString('hex')}.tmp`)
 
   try {
     // Ensure directory exists
     await ensureDirectory(dir)
 
-    // Write to the uniquely-named temp file exclusively (wx) with owner-only
-    // permissions, so a pre-existing symlink in a shared directory can't be
-    // followed and the temp contents can't be read by other users.
-    await writeFile(tempPath, content, { encoding: 'utf-8', mode: 0o600, flag: 'wx' })
+    // Each attempt uses a fresh temp file so a failed attempt can't collide
+    // with its own leftovers on retry.
+    await withTransientFsRetry(async () => {
+      const tempPath = path.join(dir, `.${randomBytes(6).toString('hex')}.tmp`)
 
-    // Atomic rename (overwrites existing file)
-    await rename(tempPath, filePath)
-  } catch {
-    // Clean up temp file on error
-    try {
-      if (existsSync(tempPath)) {
-        await unlink(tempPath)
+      try {
+        // Write to the uniquely-named temp file exclusively (wx) with owner-only
+        // permissions, so a pre-existing symlink in a shared directory can't be
+        // followed and the temp contents can't be read by other users.
+        await writeFile(tempPath, content, { encoding: 'utf-8', mode: 0o600, flag: 'wx' })
+
+        // Atomic rename (overwrites existing file)
+        await rename(tempPath, filePath)
+      } catch (error) {
+        // Clean up temp file on error
+        try {
+          if (existsSync(tempPath)) {
+            await unlink(tempPath)
+          }
+        } catch {
+          // Ignore cleanup errors
+        }
+
+        throw error
       }
-    } catch {
-      // Ignore cleanup errors
-    }
-
+    })
+  } catch {
     throw new NoteError(`Failed to write file: ${filePath}`, NoteErrorCode.WRITE_FAILED)
   }
 }

@@ -230,7 +230,7 @@
     "drizzle-kit": "^0.31.10",
     "drizzle-orm": "^0.45.2",
     "electron": "^39.8.6",
-    "electron-builder": "^26.0.12",
+    "electron-builder": "^26.15.6",
     "electron-store": "^11.0.2",
     "electron-updater": "^6.6.2",
     "electron-vite": "^5.0.0",

@@ -31,11 +31,14 @@ describe('initializeTelemetryRuntime', () => {
     mockApp.getPath.mockImplementation((name: string) =>
       name === 'userData' ? tempDir : `/mock/${name}`
     )
+    mockApp.isPackaged = false
   })
 
   afterEach(async () => {
     await disposeTelemetryRuntime()
     fs.rmSync(tempDir, { recursive: true, force: true })
+    mockApp.isPackaged = false
+    vi.unstubAllEnvs()
   })
 
   it('exposes a stable installId and a fresh session id per launch', async () => {
@@ -179,6 +182,68 @@ describe('initializeTelemetryRuntime', () => {
 
     expect(runtime.getSettings().enabled).toBe(false)
     expect(runtime.client.getQueueDepth()).toBe(0)
+  })
+
+  describe('build channel detection (no explicit buildChannel)', () => {
+    it('detects production channel in packaged installs and enables telemetry by default', () => {
+      mockApp.isPackaged = true
+      const { fetchMock } = createFetch()
+
+      const runtime = initializeTelemetryRuntime({
+        fetch: fetchMock,
+        endpoint: 'https://example.test/telemetry/batch'
+      })
+
+      expect(runtime.context.buildChannel).toBe('production')
+      expect(runtime.getSettings().enabled).toBe(true)
+    })
+
+    it('detects development channel in unpackaged runs and disables telemetry by default', () => {
+      mockApp.isPackaged = false
+      const { fetchMock } = createFetch()
+
+      const runtime = initializeTelemetryRuntime({
+        fetch: fetchMock,
+        endpoint: 'https://example.test/telemetry/batch'
+      })
+
+      expect(runtime.context.buildChannel).toBe('development')
+      expect(runtime.getSettings().enabled).toBe(false)
+    })
+
+    it('keeps the stored disabled choice in packaged installs', () => {
+      mockApp.isPackaged = true
+      fs.writeFileSync(
+        path.join(tempDir, TELEMETRY_CONFIG_FILENAME),
+        JSON.stringify({
+          installId: '11111111-1111-1111-1111-111111111111',
+          enabled: false
+        })
+      )
+      const { fetchMock } = createFetch()
+
+      const runtime = initializeTelemetryRuntime({
+        fetch: fetchMock,
+        endpoint: 'https://example.test/telemetry/batch'
+      })
+
+      expect(runtime.getSettings().enabled).toBe(false)
+      expect(runtime.client.getQueueDepth()).toBe(0)
+    })
+
+    it('lets MEMRY_BUILD_CHANNEL override packaged detection', () => {
+      mockApp.isPackaged = true
+      vi.stubEnv('MEMRY_BUILD_CHANNEL', 'staging')
+      const { fetchMock } = createFetch()
+
+      const runtime = initializeTelemetryRuntime({
+        fetch: fetchMock,
+        endpoint: 'https://example.test/telemetry/batch'
+      })
+
+      expect(runtime.context.buildChannel).toBe('staging')
+      expect(runtime.getSettings().enabled).toBe(false)
+    })
   })
 
   it('passes accessTokenProvider through to the client flush', async () => {

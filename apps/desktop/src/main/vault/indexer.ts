@@ -164,13 +164,13 @@ async function indexMarkdownFile(
   const stats = await stat(absolutePath).catch(() => null)
   const parsed = parseNote(content, relativePath, stats ?? undefined)
 
-  let canonicalId: string | undefined
+  let canonical: ReturnType<typeof getNoteMetadataByPath>
   try {
-    canonicalId = getNoteMetadataByPath(getDatabase(), relativePath)?.id
+    canonical = getNoteMetadataByPath(getDatabase(), relativePath)
   } catch {
     // data DB not ready — fall back to a fresh id
   }
-  const noteId = canonicalId ?? parsed.id
+  const noteId = canonical?.id ?? parsed.id
 
   // Use syncNoteToCache for unified cache operations
   try {
@@ -183,6 +183,11 @@ async function indexMarkdownFile(
         frontmatter: parsed.frontmatter,
         parsedContent: parsed.content,
         title: parsed.title,
+        // Emoji is DB-only sidecar state (never written to the file); adopt it
+        // from note_metadata by path so index rebuilds preserve the note icon,
+        // mirroring the canonical-id adoption above. Without this the cache row
+        // is written with emoji=null and the note falls back to the default icon.
+        emoji: canonical?.emoji,
         createdAt: parsed.created,
         modifiedAt: parsed.modified
       },

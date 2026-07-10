@@ -53,8 +53,8 @@ import { encryptCrdtUpdate } from './crdt-encrypt'
 import { postToServer, pushCrdtSnapshot, SyncServerError } from './http-client'
 import { EVENT_CHANNELS, type SyncStatusChangedEvent } from '@memry/contracts/ipc-events'
 import { withRetry } from './retry'
+import { withAuthRetry, type AuthRetryDeps } from './auth-retry'
 import {
-  emitSessionExpired,
   getValidAccessToken,
   refreshAccessToken,
   retrieveToken,
@@ -65,6 +65,11 @@ import { getOrCreateVaultUuid } from '../agent/storage/vault-id'
 import { store } from '../store'
 
 const log = createLogger('SyncRuntime')
+
+const crdtAuthRetryDeps: AuthRetryDeps = {
+  refreshAccessToken: () => refreshAccessToken(),
+  getAccessToken: () => getValidAccessToken()
+}
 
 interface SyncRuntimeState {
   queue: SyncQueueManager
@@ -354,7 +359,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
 
       const crdtQueue = new CrdtUpdateQueue()
       crdtQueue.start(async (noteId, updates) => {
-        const token = await getValidAccessToken()
+        let token = await getValidAccessToken()
         const vaultKey = await getOptionalRuntimeVaultKey(db, 'crdt update batch')
         const signingSecretKey = await retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY)
         if (!token || !vaultKey || !signingSecretKey) {
@@ -381,7 +386,16 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
           }
 
           await withRetry(
-            () => postToServer('/sync/crdt/updates', { noteId, updates: b64Updates }, token),
+            () =>
+              withAuthRetry(
+                (authToken) =>
+                  postToServer('/sync/crdt/updates', { noteId, updates: b64Updates }, authToken),
+                token!,
+                crdtAuthRetryDeps,
+                (fresh) => {
+                  token = fresh
+                }
+              ),
             { maxRetries: 3, baseDelayMs: 2000 }
           )
 
@@ -395,8 +409,11 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
           }
         } catch (err) {
           if (err instanceof SyncServerError && err.statusCode === 401) {
+            // withAuthRetry already attempted a refresh. Pause so the
+            // re-buffered batch waits for the next successful refresh
+            // (setOnTokenRefreshed resumes the queue); token-manager owns the
+            // session-expired toast for terminal refresh failures.
             crdtQueue.pause()
-            emitSessionExpired()
           }
           if (err instanceof SyncServerError && err.statusCode === 413) {
             crdtQueue.pause()
@@ -410,7 +427,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       })
 
       const snapshotPushFn = async (noteId: string, state: Uint8Array): Promise<void> => {
-        const token = await getValidAccessToken()
+        let token = await getValidAccessToken()
         const vaultKey = await getOptionalRuntimeVaultKey(db, 'crdt snapshot push')
         const signingSecretKey = await retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY)
         if (!token || !vaultKey || !signingSecretKey) {
@@ -427,15 +444,28 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
 
         try {
           const encrypted = encryptCrdtUpdate(state, vaultKey, noteId, signingSecretKey)
-          await withRetry(() => pushCrdtSnapshot(noteId, encrypted, token), {
-            maxRetries: 3,
-            baseDelayMs: 2000
-          })
+          await withRetry(
+            () =>
+              withAuthRetry(
+                (authToken) => pushCrdtSnapshot(noteId, encrypted, authToken),
+                token!,
+                crdtAuthRetryDeps,
+                (fresh) => {
+                  token = fresh
+                }
+              ),
+            {
+              maxRetries: 3,
+              baseDelayMs: 2000
+            }
+          )
           log.debug('Pushed CRDT snapshot', { noteId, size: state.byteLength })
         } catch (err) {
           if (err instanceof SyncServerError && err.statusCode === 401) {
+            // withAuthRetry already attempted a refresh — see the update-batch
+            // handler above. The caller keeps pendingSnapshotBytes, so the
+            // snapshot re-pushes after the queue resumes.
             crdtQueue.pause()
-            emitSessionExpired()
           }
           if (err instanceof SyncServerError && err.statusCode === 413) {
             crdtQueue.pause()

@@ -15,7 +15,7 @@ import {
   dialog
 } from 'electron'
 import { createHash } from 'node:crypto'
-import { join, resolve, normalize } from 'path'
+import { join, resolve, normalize, sep } from 'path'
 import { homedir } from 'node:os'
 import { existsSync, readdirSync, statSync, createReadStream } from 'node:fs'
 import { lookup as mimeLookup } from 'mime-types'
@@ -42,6 +42,7 @@ import { startReminderScheduler, stopReminderScheduler } from './lib/reminders'
 import { disposeTelemetryRuntime, initializeTelemetryRuntime } from './telemetry/runtime'
 import { getTelemetryAuthState, getTelemetrySyncState } from './telemetry/state'
 import {
+  trackChildProcessGone,
   trackLaunchPhase,
   trackMainError,
   trackMainLog,
@@ -54,8 +55,8 @@ import {
   stopGoogleCalendarSyncRunner,
   triggerGoogleCalendarSyncNow
 } from './calendar/google/sync-service'
-import { log, createLogger, disableConsoleTransport } from './lib/logger'
-import { isAllowedExternalUrl } from './lib/external-url'
+import { log, createLogger, disableConsoleTransport, applyPackagedLogLevels } from './lib/logger'
+import { isAllowedExternalUrl, isPathInsideDirs, resolveMemryFilePath } from './lib/external-url'
 import { registerTestHooks } from './test-hooks'
 import {
   computeSpkiHashFromPem,
@@ -135,11 +136,10 @@ function registerMainDiagnostics(): void {
   })
 
   app.on('child-process-gone', (_event, details) => {
-    trackMainLog('error', {
-      scope: 'Electron',
-      action: 'child_process_gone',
-      errorCode: details.type
-    })
+    // Idle utility workers (embeddings, image-processing, voice-model) exit
+    // cleanly every ~30s — lifecycle, not a fault. trackChildProcessGone skips
+    // clean exits and codes real faults as type:reason:serviceName.
+    trackChildProcessGone(details)
     // A dead GPU process means this launch may already be painting nothing.
     // Record it so the next launch disables hardware acceleration (see
     // gpu-crash-guard). 'crashed'/'abnormal-exit' only — a clean exit is not a fault.
@@ -231,6 +231,14 @@ if (envResult.error) {
   // Try loading from current working directory as fallback
   config({ quiet: true })
 }
+
+// logger.ts defaults to verbose dev levels because NODE_ENV is undefined at
+// runtime in packaged builds; correct it here where app.isPackaged is known.
+if (app.isPackaged) {
+  applyPackagedLogLevels()
+}
+
+mainLog.info(`MemryNote ${app.getVersion()} starting (${app.isPackaged ? 'packaged' : 'dev'})`)
 
 // Register custom protocol as privileged before app is ready
 // This enables streaming support for audio/video elements
@@ -579,6 +587,18 @@ function createWindow(): void {
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
+    const memryFilePath = resolveMemryFilePath(details.url)
+    if (memryFilePath) {
+      const allowedDirs = [app.getPath('userData'), getCurrentVaultPath(), getVaultStatus().path]
+        .filter((dir): dir is string => Boolean(dir))
+        .map((dir) => resolve(dir))
+      if (allowedDirs.some((dir) => memryFilePath.startsWith(dir + sep))) {
+        void shell.openPath(memryFilePath)
+      } else {
+        log.warn('Blocked memry-file open outside allowed directories', { path: memryFilePath })
+      }
+      return { action: 'deny' }
+    }
     if (isAllowedExternalUrl(details.url)) {
       void shell.openExternal(details.url)
     } else {
@@ -961,7 +981,7 @@ const appReady = app.whenReady().then(async () => {
       if (!allowedDirs.includes(resolvedVaultPath)) allowedDirs.push(resolvedVaultPath)
     }
 
-    const isAllowed = allowedDirs.some((dir) => filePath.startsWith(dir + '/') || filePath === dir)
+    const isAllowed = isPathInsideDirs(filePath, allowedDirs)
     if (!isAllowed) {
       mainLog.warn('memry-file: blocked path outside allowed directories', { filePath })
       return new Response(null, { status: 403, statusText: 'Forbidden' })
@@ -1054,6 +1074,7 @@ const appReady = app.whenReady().then(async () => {
   initializeTelemetryRuntime({
     appVersion: app.getVersion(),
     locale: app.getLocale(),
+    buildChannel: resolveMemryEnvironment(),
     authStateProvider: getTelemetryAuthState,
     syncStateProvider: getTelemetrySyncState,
     accessTokenProvider: () => getValidAccessToken()

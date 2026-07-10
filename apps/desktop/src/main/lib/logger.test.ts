@@ -76,6 +76,15 @@ describe('logger', () => {
     expect(log.transports.console.level).toBe(false)
   })
 
+  it('applyPackagedLogLevels drops verbosity to info file / warn console', async () => {
+    const { log, applyPackagedLogLevels } = await import('./logger')
+
+    applyPackagedLogLevels()
+
+    expect(log.transports.file.level).toBe('info')
+    expect(log.transports.console.level).toBe('warn')
+  })
+
   it('createLogger returns scoped logger with expected methods', async () => {
     const { createLogger } = await import('./logger')
     const scoped = createLogger('test-scope')

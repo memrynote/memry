@@ -1,4 +1,5 @@
 import * as Y from 'yjs'
+import * as fs from 'fs'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => {
@@ -17,6 +18,12 @@ const mocks = vi.hoisted(() => {
   return {
     persistenceBehavior,
     persistenceOpFactory,
+    // Verdict of the disposable utilityProcess preflight (see crdt-preflight.ts).
+    // preflightQueue serves per-call verdicts (quarantine retry = second call);
+    // when empty, preflightResult is the standing answer.
+    preflightResult: { ok: true } as { ok: boolean; reason?: string },
+    preflightQueue: [] as Array<{ ok: boolean; reason?: string }>,
+    preflightCalls: [] as string[],
     sent: [] as Array<{ windowId: number; channel: string; payload: unknown }>,
     windows: new Map<
       number,
@@ -55,6 +62,14 @@ vi.mock('../lib/logger', () => ({
     info: vi.fn(),
     warn: vi.fn(),
     error: vi.fn()
+  })
+}))
+
+vi.mock('./crdt-preflight', () => ({
+  runCrdtPreflight: vi.fn(async (storeDir: string) => {
+    mocks.preflightCalls.push(storeDir)
+    const queued = mocks.preflightQueue.shift()
+    return queued ? { ...queued } : { ...mocks.preflightResult }
   })
 }))
 
@@ -169,6 +184,9 @@ describe('CrdtProvider', () => {
     mocks.windows.clear()
     mocks.persistenceInstances.length = 0
     mocks.persistenceBehavior.mode = 'ok'
+    mocks.preflightResult = { ok: true }
+    mocks.preflightQueue.length = 0
+    mocks.preflightCalls.length = 0
     mocks.getNoteCacheById.mockReturnValue({
       id: 'note-1',
       path: 'notes/Note.md',
@@ -277,6 +295,19 @@ describe('CrdtProvider', () => {
     })
     mocks.safeRead.mockResolvedValueOnce('')
     expect(await provider.pushSnapshotForNote('empty-note')).toBe(false)
+  })
+
+  it('keeps the pending snapshot for retry when the snapshot push fails', async () => {
+    await provider.initForNote('note-1', { title: 'Snapshot' }, [])
+    provider.updateMeta('note-1', { title: 'Edited before push' })
+
+    pushSnapshot.mockRejectedValueOnce(new Error('401 exp claim'))
+    expect(await provider.pushSnapshotForNote('note-1')).toBe(false)
+
+    pushSnapshot.mockClear()
+    pushSnapshot.mockResolvedValue(undefined)
+    await expect(provider.pushAllSnapshots()).resolves.toBe(1)
+    expect(pushSnapshot).toHaveBeenCalledWith('note-1', expect.any(Uint8Array))
   })
 
   it('seeds existing docs in batches, validates CRDT eligibility, purges, and destroys storage', async () => {
@@ -707,6 +738,9 @@ describe('CrdtProvider persistence resilience', () => {
     mocks.windows.clear()
     mocks.persistenceInstances.length = 0
     mocks.persistenceBehavior.mode = 'ok'
+    mocks.preflightResult = { ok: true }
+    mocks.preflightQueue.length = 0
+    mocks.preflightCalls.length = 0
     mocks.getNoteCacheById.mockReturnValue({
       id: 'note-1',
       path: 'notes/Note.md',
@@ -742,6 +776,90 @@ describe('CrdtProvider persistence resilience', () => {
     // Typing must not throw even though the store is dead.
     expect(() => provider.applyIpcUpdate('note-1', makeRemoteUpdate('typed'), 7)).not.toThrow()
     await provider.close('note-1')
+  })
+
+  it('never loads the store binding when the preflight child dies', async () => {
+    mocks.preflightResult = { ok: false, reason: 'child exited with code 134' }
+    const provider = new CrdtProvider()
+
+    await expect(provider.init()).resolves.toBeUndefined()
+    expect(provider.isInitialized()).toBe(true)
+    // The whole point: LeveldbPersistence must never be constructed in main
+    // when the disposable child crashed exercising the native binding.
+    expect(mocks.persistenceInstances).toHaveLength(0)
+
+    const doc = await provider.open('note-1')
+    expect(doc.getXmlFragment(CRDT_FRAGMENT_NAME).length).toBeGreaterThan(0)
+    await provider.close('note-1')
+  })
+
+  // The preflight child probes the REAL crdt-store dir, so it also dies on a
+  // store whose on-disk state (torn LDB/MANIFEST from a past crash or full
+  // disk) aborts the binding — not just on a binding that is broken outright.
+  // The two are told apart empirically: quarantine the store, re-probe fresh.
+  describe('store quarantine', () => {
+    const userDataDir = '/tmp/memry-crdt-test'
+    const storeDir = `${userDataDir}/crdt-store`
+
+    beforeEach(() => {
+      fs.rmSync(userDataDir, { recursive: true, force: true })
+    })
+
+    afterEach(() => {
+      fs.rmSync(userDataDir, { recursive: true, force: true })
+    })
+
+    it('quarantines a corrupt store and continues on a fresh one when the re-probe passes', async () => {
+      fs.mkdirSync(storeDir, { recursive: true })
+      fs.writeFileSync(`${storeDir}/MANIFEST-000001`, 'torn')
+      mocks.preflightQueue.push({ ok: false, reason: 'child exited with code 134' }, { ok: true })
+
+      const provider = new CrdtProvider()
+      await expect(provider.init()).resolves.toBeUndefined()
+
+      // Corrupt store moved aside (preserved, not deleted), fresh store adopted.
+      expect(mocks.preflightCalls).toEqual([storeDir, storeDir])
+      expect(fs.existsSync(storeDir)).toBe(false)
+      const quarantined = fs
+        .readdirSync(userDataDir)
+        .filter((f) => f.startsWith('crdt-store.broken-'))
+      expect(quarantined).toHaveLength(1)
+      expect(fs.existsSync(`${userDataDir}/${quarantined[0]}/MANIFEST-000001`)).toBe(true)
+      expect(mocks.persistenceInstances).toHaveLength(1)
+    })
+
+    it('restores the quarantined store when the re-probe also fails (broken binding)', async () => {
+      fs.mkdirSync(storeDir, { recursive: true })
+      fs.writeFileSync(`${storeDir}/MANIFEST-000001`, 'healthy-but-binding-broken')
+      mocks.preflightQueue.push(
+        { ok: false, reason: 'child exited with code 134' },
+        { ok: false, reason: 'child exited with code 134' }
+      )
+
+      const provider = new CrdtProvider()
+      await expect(provider.init()).resolves.toBeUndefined()
+
+      // Binding is the problem, not the data: put the store back so a future
+      // launch with a working binding finds the user's CRDT history intact.
+      expect(mocks.preflightCalls).toEqual([storeDir, storeDir])
+      expect(fs.existsSync(`${storeDir}/MANIFEST-000001`)).toBe(true)
+      expect(
+        fs.readdirSync(userDataDir).filter((f) => f.startsWith('crdt-store.broken-'))
+      ).toHaveLength(0)
+      expect(mocks.persistenceInstances).toHaveLength(0)
+      expect(provider.isInitialized()).toBe(true)
+    })
+
+    it('does not re-probe when no store exists to quarantine', async () => {
+      mocks.preflightQueue.push({ ok: false, reason: 'child exited with code 134' })
+
+      const provider = new CrdtProvider()
+      await expect(provider.init()).resolves.toBeUndefined()
+
+      expect(mocks.preflightCalls).toEqual([storeDir])
+      expect(mocks.persistenceInstances).toHaveLength(0)
+      expect(provider.isInitialized()).toBe(true)
+    })
   })
 
   it('falls back to in-memory mode when the persistence probe hangs', async () => {
