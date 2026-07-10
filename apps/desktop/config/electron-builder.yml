@@ -61,6 +61,10 @@ mac:
     - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
   notarize: true
 linux:
+  # electron-builder >=26.13 rejects executable names with unsafe path chars;
+  # without an override Linux falls back to package.json name (@memry/desktop).
+  # userData is unaffected (derives from app.name, not the binary name).
+  executableName: memrynote
   target:
     - AppImage
     - deb
