@@ -87,7 +87,7 @@ jobs:
         run: node apps/desktop/scripts/i18n/check.mjs --max-todo 0
 
   unit:
-    name: Unit, integration, and coverage
+    name: Unit & integration tests
     runs-on: ubuntu-latest
     timeout-minutes: 35
 
@@ -129,9 +129,20 @@ jobs:
         run: pnpm test:cli
 
       - name: Run desktop tests with coverage
+        # Threshold enforcement is deferred to the separate "Coverage thresholds"
+        # job so a red badge here always means a real test failure, never a
+        # coverage regression. Coverage is still collected and reported.
         env:
           ELECTRON_OVERRIDE_DIST_PATH: /usr/bin
+          MEMRY_SKIP_COVERAGE_THRESHOLDS: '1'
         run: pnpm --filter @memry/desktop exec vitest run --coverage --config config/vitest.config.ts
+
+      - name: Upload coverage summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-coverage-summary
+          path: apps/desktop/coverage/coverage-summary.json
+          if-no-files-found: error
 
       - name: Upload desktop coverage to Codecov
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
@@ -142,6 +153,33 @@ jobs:
           flags: desktop
           name: desktop
           fail_ci_if_error: true
+
+  coverage:
+    name: Coverage thresholds
+    # Gates the coverage ratchet floors (apps/desktop/config/coverage-thresholds.json)
+    # against the summary produced by the unit job — a distinct check so coverage
+    # regressions never read as failing tests. Just reads JSON, so no install.
+    needs: unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Download coverage summary
+        uses: actions/download-artifact@v4
+        with:
+          name: desktop-coverage-summary
+          path: apps/desktop/coverage
+
+      - name: Check coverage thresholds
+        run: node apps/desktop/scripts/check-coverage-thresholds.mjs
 
   e2e-smoke:
     name: Electron E2E smoke
