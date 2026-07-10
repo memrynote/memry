@@ -543,6 +543,25 @@ describe('main index phase2 exports', () => {
     expect(createMainI18nMock).toHaveBeenCalledWith({ locale: 'tr' })
   })
 
+  it('applies packaged log levels when running packaged', async () => {
+    const electron = await import('electron')
+    const app = electron.app as unknown as { isPackaged: boolean }
+    app.isPackaged = true
+    // Packaged env loading resolves Resources/app-config from resourcesPath.
+    Object.defineProperty(process, 'resourcesPath', {
+      value: '/mock/resources',
+      configurable: true
+    })
+
+    try {
+      await importMainModule()
+      expect(applyPackagedLogLevelsMock).toHaveBeenCalled()
+    } finally {
+      app.isPackaged = false
+      delete (process as unknown as { resourcesPath?: string }).resourcesPath
+    }
+  })
+
   it('registerOAuthState schedules expiry cleanup at 10 minutes', async () => {
     vi.useFakeTimers()
 
