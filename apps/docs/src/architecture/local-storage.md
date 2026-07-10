@@ -78,6 +78,16 @@ Notes are plain `.md` files in the vault, and the write path is built around byt
 
 A golden round-trip test suite (`apps/desktop/src/main/vault/byte-preservation.golden.test.ts`) holds this contract against adversarial files (YAML comments/anchors, CRLF, BOM, missing final newline, Obsidian syntax).
 
+Atomic writes retry transient `EBUSY`/`EPERM`/`EACCES` failures with bounded backoff before surfacing an error — cloud-sync clients (Koofr, OneDrive, Dropbox) and antivirus scanners hold short-lived locks on vault files, especially on Windows.
+
+## Serving Vault Files to the Renderer (memry-file)
+
+Attachments and vault media reach the renderer through the custom `memry-file://local/<absolute path>` protocol, never `file://`.
+
+- URLs are built in the renderer by `toMemryFileUrl` (`src/renderer/src/lib/memry-file-url.ts`): backslashes normalized to slashes, a guaranteed leading slash before Windows drive letters (`memry-file://local/C:/...`), and per-segment percent-encoding so spaces and non-ASCII filenames round-trip. Building URLs by string concatenation is a Windows-fatal bug — the drive letter gets parsed as the URL host and the handler receives a relative path.
+- The main-process handler decodes the path and serves it only if it resolves inside an allowlist (the open vault and `userData`). Containment is checked with the platform separator (`isPathInsideDirs` in `src/main/lib/external-url.ts`); a plain `startsWith(dir + '/')` never matches Windows backslash paths.
+- `window.open` on a memry-file URL never opens a window or reaches `shell.openExternal`: the main process resolves the path with the same rules and, if it passes the directory check, opens the file in the OS default app via `shell.openPath`.
+
 ### Text colors in markdown
 
 Editor colors persist in two Obsidian-compatible forms:

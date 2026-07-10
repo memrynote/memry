@@ -5,7 +5,10 @@ The download page detects your platform and offers installers for:
 
 - **macOS** — Apple Silicon and Intel
 - **Windows** — the installer lets you choose the install location, so you can
-  install to a drive other than `C:`
+  install to a drive other than `C:`. Each release also ships a
+  `MemryNote-<version>-win.zip` on the
+  [GitHub releases page](https://github.com/memrynote/memry/releases) — unzip and
+  run `Memrynote.exe` directly if the installer fails on your machine
 - **Linux** — AppImage and `.deb`
 
 On macOS you can also install with [Homebrew](https://brew.sh):
