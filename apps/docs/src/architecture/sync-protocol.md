@@ -161,14 +161,14 @@ list.
 
 ## Error Modes
 
-| Failure            | Behavior                                                   |
-| ------------------ | ---------------------------------------------------------- |
-| Offline            | Outbox queues; retry with backoff                          |
-| Auth expired       | Refresh token; if rotation failed, prompt sign-in          |
-| Payment required   | Sync stays local-only until a paid plan is active          |
-| Quota exceeded     | Surfaces in [Settings → Vault](/user-guide/settings#vault) |
-| Server unavailable | Exponential backoff; status indicator turns yellow         |
-| Blob hash mismatch | Reject the item; log; alert health view                    |
+| Failure            | Behavior                                                                                   |
+| ------------------ | ------------------------------------------------------------------------------------------ |
+| Offline            | Outbox queues; retry with backoff                                                          |
+| Auth expired (401) | Refresh the access token and retry the request once; only a failed refresh prompts sign-in |
+| Payment required   | Sync stays local-only until a paid plan is active                                          |
+| Quota exceeded     | Surfaces in [Settings → Vault](/user-guide/settings#vault)                                 |
+| Server unavailable | Exponential backoff; status indicator turns yellow                                         |
+| Blob hash mismatch | Reject the item; log; alert health view                                                    |
 
 ## Encryption Stays End-to-End
 
