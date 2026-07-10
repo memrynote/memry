@@ -104,11 +104,14 @@ export class CrdtUpdateQueue {
         if (!this.paused) {
           log.error('Failed to push CRDT updates', { noteId, error: err })
         }
+        // 401 stays buffered: the push fn pauses the queue and a successful
+        // token refresh resumes it, so the batch retries instead of dropping.
         const nonRetryable =
           err instanceof SyncServerError &&
           err.statusCode >= 400 &&
           err.statusCode < 500 &&
-          err.statusCode !== 429
+          err.statusCode !== 429 &&
+          err.statusCode !== 401
         if (nonRetryable) return
 
         let existing = this.buffers.get(noteId)

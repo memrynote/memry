@@ -490,9 +490,12 @@ export class CrdtProvider {
     }
 
     const wasOpen = this.docs.has(noteId)
+    let entry: ActiveDoc | undefined
+    let clearedAccumulated = 0
+    let clearedPending = 0
     try {
       const doc = await this.open(noteId)
-      const entry = this.docs.get(noteId)
+      entry = this.docs.get(noteId)
       const state = Y.encodeStateAsUpdate(doc)
       if (state.length <= 4) {
         if (!wasOpen) await this.close(noteId)
@@ -501,6 +504,8 @@ export class CrdtProvider {
 
       // Reset accumulatedBytes BEFORE push so close() won't fire a duplicate push
       if (entry) {
+        clearedAccumulated = entry.accumulatedBytes
+        clearedPending = entry.pendingSnapshotBytes
         entry.accumulatedBytes = 0
         entry.pendingSnapshotBytes = 0
       }
@@ -511,6 +516,12 @@ export class CrdtProvider {
       return true
     } catch (err) {
       log.warn('pushSnapshotForNote failed', { noteId, error: err })
+      // Restore the pre-push counters (additive: updates may have landed
+      // mid-push) so pushAllSnapshots and close() still retry this note.
+      if (entry) {
+        entry.accumulatedBytes += clearedAccumulated
+        entry.pendingSnapshotBytes += clearedPending
+      }
       if (!wasOpen) await this.close(noteId)
       return false
     }
