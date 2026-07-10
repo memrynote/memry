@@ -9,6 +9,8 @@ vi.mock('./track', () => ({
 }))
 
 import {
+  childProcessGoneErrorCode,
+  trackChildProcessGone,
   trackLaunchPhase,
   trackMainError,
   trackMainLog,
@@ -97,6 +99,66 @@ describe('telemetry diagnostics', () => {
       expect(trackMainEventMock).toHaveBeenCalledTimes(1)
       stopActiveHeartbeat()
       vi.useRealTimers()
+    })
+  })
+
+  describe('childProcessGoneErrorCode', () => {
+    it('returns null for clean exits so idle worker shutdowns emit no error event', () => {
+      // #given a utility worker (embeddings/image/voice) idle-shutting-down after 30s
+      const code = childProcessGoneErrorCode({
+        type: 'Utility',
+        reason: 'clean-exit',
+        serviceName: 'Embeddings'
+      })
+
+      // #then no error code — the caller skips telemetry entirely
+      expect(code).toBeNull()
+    })
+
+    it('builds a composite type:reason:serviceName code for real faults', () => {
+      // #given a utility worker that actually crashed
+      const code = childProcessGoneErrorCode({
+        type: 'Utility',
+        reason: 'crashed',
+        serviceName: 'Embeddings'
+      })
+
+      // #then the code is diagnosable and passes the safe-token rules
+      expect(code).toBe('Utility:crashed:Embeddings')
+    })
+
+    it('handles processes without a serviceName', () => {
+      const code = childProcessGoneErrorCode({ type: 'GPU', reason: 'abnormal-exit' })
+      expect(code).toBe('GPU:abnormal-exit:')
+    })
+
+    it('sanitizes unsafe serviceName characters', () => {
+      const code = childProcessGoneErrorCode({
+        type: 'Utility',
+        reason: 'crashed',
+        serviceName: 'node service (v2)'
+      })
+      expect(code).toBe('Utility:crashed:node_service__v2_')
+    })
+  })
+
+  describe('trackChildProcessGone', () => {
+    it('emits no telemetry for a clean idle-worker exit', () => {
+      trackChildProcessGone({ type: 'Utility', reason: 'clean-exit', serviceName: 'Embeddings' })
+      expect(trackMainEventMock).not.toHaveBeenCalled()
+    })
+
+    it('emits an error log event with a composite code for a real fault', () => {
+      trackChildProcessGone({ type: 'Utility', reason: 'crashed', serviceName: 'Embeddings' })
+      expect(trackMainEventMock).toHaveBeenCalledWith('app_log_recorded', {
+        surface: 'app',
+        action: 'error',
+        objectType: 'log',
+        source: 'Electron',
+        result: 'failed',
+        errorCode: 'Utility:crashed:Embeddings',
+        dimensions: { log_action: 'child_process_gone' }
+      })
     })
   })
 

@@ -42,6 +42,7 @@ import { startReminderScheduler, stopReminderScheduler } from './lib/reminders'
 import { disposeTelemetryRuntime, initializeTelemetryRuntime } from './telemetry/runtime'
 import { getTelemetryAuthState, getTelemetrySyncState } from './telemetry/state'
 import {
+  trackChildProcessGone,
   trackLaunchPhase,
   trackMainError,
   trackMainLog,
@@ -135,11 +136,10 @@ function registerMainDiagnostics(): void {
   })
 
   app.on('child-process-gone', (_event, details) => {
-    trackMainLog('error', {
-      scope: 'Electron',
-      action: 'child_process_gone',
-      errorCode: details.type
-    })
+    // Idle utility workers (embeddings, image-processing, voice-model) exit
+    // cleanly every ~30s — lifecycle, not a fault. trackChildProcessGone skips
+    // clean exits and codes real faults as type:reason:serviceName.
+    trackChildProcessGone(details)
     // A dead GPU process means this launch may already be painting nothing.
     // Record it so the next launch disables hardware acceleration (see
     // gpu-crash-guard). 'crashed'/'abnormal-exit' only — a clean exit is not a fault.
