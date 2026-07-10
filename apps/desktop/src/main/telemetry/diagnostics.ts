@@ -50,6 +50,19 @@ export const childProcessGoneErrorCode = (details: {
   )
 }
 
+// Reports a `child-process-gone` fault as an error log event, or nothing at all
+// for a clean idle-worker exit. Kept here (not inline in index.ts) so the
+// skip decision is unit-tested rather than living in the untested bootstrap.
+export const trackChildProcessGone = (details: {
+  type: string
+  reason: string
+  serviceName?: string
+}): void => {
+  const errorCode = childProcessGoneErrorCode(details)
+  if (!errorCode) return
+  trackMainLog('error', { scope: 'Electron', action: 'child_process_gone', errorCode })
+}
+
 export const trackMainError = (source: string, action: string, error: unknown): void => {
   trackMainEvent('app_error_seen', {
     surface: 'app',

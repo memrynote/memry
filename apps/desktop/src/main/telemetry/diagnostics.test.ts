@@ -10,6 +10,7 @@ vi.mock('./track', () => ({
 
 import {
   childProcessGoneErrorCode,
+  trackChildProcessGone,
   trackLaunchPhase,
   trackMainError,
   trackMainLog,
@@ -138,6 +139,26 @@ describe('telemetry diagnostics', () => {
         serviceName: 'node service (v2)'
       })
       expect(code).toBe('Utility:crashed:node_service__v2_')
+    })
+  })
+
+  describe('trackChildProcessGone', () => {
+    it('emits no telemetry for a clean idle-worker exit', () => {
+      trackChildProcessGone({ type: 'Utility', reason: 'clean-exit', serviceName: 'Embeddings' })
+      expect(trackMainEventMock).not.toHaveBeenCalled()
+    })
+
+    it('emits an error log event with a composite code for a real fault', () => {
+      trackChildProcessGone({ type: 'Utility', reason: 'crashed', serviceName: 'Embeddings' })
+      expect(trackMainEventMock).toHaveBeenCalledWith('app_log_recorded', {
+        surface: 'app',
+        action: 'error',
+        objectType: 'log',
+        source: 'Electron',
+        result: 'failed',
+        errorCode: 'Utility:crashed:Embeddings',
+        dimensions: { log_action: 'child_process_gone' }
+      })
     })
   })
 
