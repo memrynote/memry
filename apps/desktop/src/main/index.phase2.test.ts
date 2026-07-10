@@ -80,6 +80,7 @@ const toAbsolutePathMock = vi.fn((path: string) => path)
 const createSnapshotMock = vi.fn(() => null as unknown)
 const safeReadMock = vi.fn(async () => null as string | null)
 const disableConsoleTransportMock = vi.fn()
+const applyPackagedLogLevelsMock = vi.fn()
 const getHeadlessCliArgsMock = vi.fn((argv: string[]) => {
   const cliIndex = argv.indexOf('--cli')
   return cliIndex === -1 ? null : argv.slice(cliIndex + 1)
@@ -287,7 +288,8 @@ vi.mock('./lib/logger', () => {
   return {
     log: { initialize: vi.fn() },
     createLogger: vi.fn(() => scopedLogger),
-    disableConsoleTransport: disableConsoleTransportMock
+    disableConsoleTransport: disableConsoleTransportMock,
+    applyPackagedLogLevels: applyPackagedLogLevelsMock
   }
 })
 
@@ -565,9 +567,11 @@ describe('main index phase2 exports', () => {
     expect(initializeTelemetryRuntimeMock).toHaveBeenCalledWith(
       expect.objectContaining({
         appVersion: '1.0.0',
-        locale: 'en-US'
+        locale: 'en-US',
+        buildChannel: 'development'
       })
     )
+    expect(applyPackagedLogLevelsMock).not.toHaveBeenCalled()
     expect(protocolHandleMock).toHaveBeenCalledWith('memry-file', expect.any(Function))
     expect(webRequestOnHeadersReceivedMock).toHaveBeenCalledWith(expect.any(Function))
     expect(initPersistenceMock).toHaveBeenCalled()
