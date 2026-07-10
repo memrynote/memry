@@ -65,6 +65,9 @@ export const desktopErrorEntry = (
     platform: batch.platform,
     stack: event.error?.stack ?? '',
     component_stack: event.error?.componentStack ?? '',
-    install_hash: installHash
+    install_hash: installHash,
+    // Log-type error events (app_log_recorded) have no stack; log_action is
+    // what makes them identifiable in Grafana (e.g. child_process_gone).
+    log_action: event.dimensions?.log_action ?? ''
   }
 })

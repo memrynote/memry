@@ -34,6 +34,22 @@ const toErrorCode = (error: unknown): string => {
 const resultForLevel = (level: DiagnosticLevel): TelemetryResult =>
   level === 'error' || level === 'warn' ? 'failed' : 'success'
 
+// Utility workers (embeddings, image-processing, voice-model) idle-shutdown
+// cleanly after ~30s; a clean exit is lifecycle, not a fault, so it must not
+// become an error event. Real faults get a composite code that stays inside
+// the safe-token rules (no '@', '://', '/', '\', ≤64 chars).
+export const childProcessGoneErrorCode = (details: {
+  type: string
+  reason: string
+  serviceName?: string
+}): string | null => {
+  if (details.reason === 'clean-exit') return null
+  return toSafeToken(
+    `${details.type}:${details.reason}:${details.serviceName ?? ''}`,
+    'ChildProcessGone'
+  )
+}
+
 export const trackMainError = (source: string, action: string, error: unknown): void => {
   trackMainEvent('app_error_seen', {
     surface: 'app',

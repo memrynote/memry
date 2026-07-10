@@ -9,6 +9,7 @@ vi.mock('./track', () => ({
 }))
 
 import {
+  childProcessGoneErrorCode,
   trackLaunchPhase,
   trackMainError,
   trackMainLog,
@@ -97,6 +98,46 @@ describe('telemetry diagnostics', () => {
       expect(trackMainEventMock).toHaveBeenCalledTimes(1)
       stopActiveHeartbeat()
       vi.useRealTimers()
+    })
+  })
+
+  describe('childProcessGoneErrorCode', () => {
+    it('returns null for clean exits so idle worker shutdowns emit no error event', () => {
+      // #given a utility worker (embeddings/image/voice) idle-shutting-down after 30s
+      const code = childProcessGoneErrorCode({
+        type: 'Utility',
+        reason: 'clean-exit',
+        serviceName: 'Embeddings'
+      })
+
+      // #then no error code — the caller skips telemetry entirely
+      expect(code).toBeNull()
+    })
+
+    it('builds a composite type:reason:serviceName code for real faults', () => {
+      // #given a utility worker that actually crashed
+      const code = childProcessGoneErrorCode({
+        type: 'Utility',
+        reason: 'crashed',
+        serviceName: 'Embeddings'
+      })
+
+      // #then the code is diagnosable and passes the safe-token rules
+      expect(code).toBe('Utility:crashed:Embeddings')
+    })
+
+    it('handles processes without a serviceName', () => {
+      const code = childProcessGoneErrorCode({ type: 'GPU', reason: 'abnormal-exit' })
+      expect(code).toBe('GPU:abnormal-exit:')
+    })
+
+    it('sanitizes unsafe serviceName characters', () => {
+      const code = childProcessGoneErrorCode({
+        type: 'Utility',
+        reason: 'crashed',
+        serviceName: 'node service (v2)'
+      })
+      expect(code).toBe('Utility:crashed:node_service__v2_')
     })
   })
 
