@@ -92,7 +92,7 @@ export function CheckoutPanel({
         Choose your plan
       </h1>
       <p className="mt-2 text-sm text-muted">
-        End-to-end encrypted. Cancel anytime, refund within 7 days.
+        End-to-end encrypted. Cancel anytime, refund within 14 days.
       </p>
 
       <div className="mt-7 overflow-hidden rounded-2xl border border-border bg-card shadow-card">
@@ -186,7 +186,7 @@ export function CheckoutPanel({
 
       <p className="mt-4 flex items-center justify-center gap-1.5 text-xs text-muted">
         <Lock className="h-3 w-3" strokeWidth={2} />
-        Secured by Paddle · Tax by location · 7-day refund
+        Secured by Paddle · Tax by location · 14-day refund
       </p>
 
       <p className="mt-2 text-center text-xs text-muted">

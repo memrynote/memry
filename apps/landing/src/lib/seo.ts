@@ -137,7 +137,7 @@ export const PAGE_META: Record<string, PageMeta> = {
   refund: {
     title: 'Refund Policy — memrynote',
     description:
-      'Seven-day money-back guarantee on every paid Sync plan, including Believer. Requests processed through Paddle, refunded to your original payment method.',
+      'Fourteen-day money-back guarantee on every paid Sync plan, including Believer. Requests processed through Paddle, refunded to your original payment method.',
     path: '/refund'
   },
   codeSigning: {
