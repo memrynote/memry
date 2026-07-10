@@ -417,7 +417,7 @@ jobs:
           New-Item -ItemType Directory -Path $assetDir | Out-Null
 
           Get-ChildItem apps/desktop/dist -File |
-            Where-Object { $_.Name -like '*.exe' -or $_.Name -like '*.blockmap' -or $_.Name -eq 'latest.yml' } |
+            Where-Object { $_.Name -like '*.exe' -or $_.Name -like '*-win.zip' -or $_.Name -like '*.blockmap' -or $_.Name -eq 'latest.yml' } |
             Copy-Item -Destination $assetDir
 
           Get-ChildItem $assetDir | Format-Table Name, Length
@@ -682,6 +682,7 @@ jobs:
           require_glob '*.zip' 'Missing macOS ZIP.'
           require_file 'latest-mac.yml' 'Missing latest-mac.yml.'
           require_glob '*.exe' 'Missing Windows installer.'
+          require_glob '*-win.zip' 'Missing Windows ZIP.'
           require_file 'latest.yml' 'Missing Windows latest.yml.'
           require_glob '*.AppImage' 'Missing Linux AppImage.'
           require_glob '*.deb' 'Missing Linux deb.'

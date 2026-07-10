@@ -3,10 +3,11 @@
  * Tests atomic file operations for safe reading and writing.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import * as fs from 'fs'
 import * as path from 'path'
 import * as os from 'os'
+import { rename } from 'fs/promises'
 import {
   atomicWrite,
   safeRead,
@@ -24,6 +25,14 @@ import {
   generateUniquePathSync
 } from './file-ops'
 import { NoteError } from '../lib/errors'
+
+vi.mock('fs/promises', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('fs/promises')>()
+  return {
+    ...actual,
+    rename: vi.fn(actual.rename)
+  }
+})
 
 // ============================================================================
 // Test Helpers
@@ -111,6 +120,66 @@ describe('atomicWrite', () => {
     const files = fs.readdirSync(tempDir.path)
     const tempFiles = files.filter((f) => f.startsWith('.') && f.endsWith('.tmp'))
     expect(tempFiles).toHaveLength(0)
+  })
+})
+
+// ============================================================================
+// atomicWrite Transient Lock Retry Tests
+// ============================================================================
+
+describe('atomicWrite transient lock retry', () => {
+  let tempDir: TestDir
+  const renameMock = vi.mocked(rename)
+
+  function errnoError(code: string): NodeJS.ErrnoException {
+    const error = new Error(`${code}: resource busy`) as NodeJS.ErrnoException
+    error.code = code
+    return error
+  }
+
+  beforeEach(() => {
+    tempDir = createTempDir()
+    renameMock.mockClear()
+  })
+
+  afterEach(() => {
+    tempDir.cleanup()
+  })
+
+  it('retries rename on transient EBUSY and completes the write', async () => {
+    const filePath = path.join(tempDir.path, 'locked.txt')
+    renameMock.mockRejectedValueOnce(errnoError('EBUSY')).mockRejectedValueOnce(errnoError('EBUSY'))
+
+    await atomicWrite(filePath, 'content after retry')
+
+    expect(renameMock).toHaveBeenCalledTimes(3)
+    expect(fs.readFileSync(filePath, 'utf-8')).toBe('content after retry')
+  })
+
+  it('propagates the error after exhausting retries on persistent EBUSY', async () => {
+    const filePath = path.join(tempDir.path, 'always-locked.txt')
+    renameMock
+      .mockRejectedValueOnce(errnoError('EBUSY'))
+      .mockRejectedValueOnce(errnoError('EBUSY'))
+      .mockRejectedValueOnce(errnoError('EBUSY'))
+      .mockRejectedValueOnce(errnoError('EBUSY'))
+
+    await expect(atomicWrite(filePath, 'never lands')).rejects.toThrow(NoteError)
+
+    expect(renameMock).toHaveBeenCalledTimes(4)
+    expect(fs.existsSync(filePath)).toBe(false)
+
+    const tempFiles = fs.readdirSync(tempDir.path).filter((f) => f.endsWith('.tmp'))
+    expect(tempFiles).toHaveLength(0)
+  })
+
+  it('does not retry non-retryable errors like ENOENT', async () => {
+    const filePath = path.join(tempDir.path, 'missing-dir.txt')
+    renameMock.mockRejectedValueOnce(errnoError('ENOENT'))
+
+    await expect(atomicWrite(filePath, 'content')).rejects.toThrow(NoteError)
+
+    expect(renameMock).toHaveBeenCalledTimes(1)
   })
 })
 

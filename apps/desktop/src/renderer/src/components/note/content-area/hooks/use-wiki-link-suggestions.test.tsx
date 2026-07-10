@@ -138,7 +138,7 @@ describe('useWikiLinkSuggestions', () => {
     expect(editor.updateBlock).toHaveBeenCalledWith(currentBlock, {
       type: 'file',
       props: {
-        url: 'memry-file://local/Users/kaan/vault/notes/Voice memo.wav',
+        url: 'memry-file://local/Users/kaan/vault/notes/Voice%20memo.wav',
         name: 'Voice memo',
         size: 4096,
         mimeType: 'audio/wav'

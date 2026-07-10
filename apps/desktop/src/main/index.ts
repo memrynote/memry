@@ -15,7 +15,7 @@ import {
   dialog
 } from 'electron'
 import { createHash } from 'node:crypto'
-import { join, resolve, normalize } from 'path'
+import { join, resolve, normalize, sep } from 'path'
 import { homedir } from 'node:os'
 import { existsSync, readdirSync, statSync, createReadStream } from 'node:fs'
 import { lookup as mimeLookup } from 'mime-types'
@@ -56,7 +56,7 @@ import {
   triggerGoogleCalendarSyncNow
 } from './calendar/google/sync-service'
 import { log, createLogger, disableConsoleTransport, applyPackagedLogLevels } from './lib/logger'
-import { isAllowedExternalUrl } from './lib/external-url'
+import { isAllowedExternalUrl, isPathInsideDirs, resolveMemryFilePath } from './lib/external-url'
 import { registerTestHooks } from './test-hooks'
 import {
   computeSpkiHashFromPem,
@@ -237,6 +237,8 @@ if (envResult.error) {
 if (app.isPackaged) {
   applyPackagedLogLevels()
 }
+
+mainLog.info(`MemryNote ${app.getVersion()} starting (${app.isPackaged ? 'packaged' : 'dev'})`)
 
 // Register custom protocol as privileged before app is ready
 // This enables streaming support for audio/video elements
@@ -585,6 +587,18 @@ function createWindow(): void {
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
+    const memryFilePath = resolveMemryFilePath(details.url)
+    if (memryFilePath) {
+      const allowedDirs = [app.getPath('userData'), getCurrentVaultPath(), getVaultStatus().path]
+        .filter((dir): dir is string => Boolean(dir))
+        .map((dir) => resolve(dir))
+      if (allowedDirs.some((dir) => memryFilePath.startsWith(dir + sep))) {
+        void shell.openPath(memryFilePath)
+      } else {
+        log.warn('Blocked memry-file open outside allowed directories', { path: memryFilePath })
+      }
+      return { action: 'deny' }
+    }
     if (isAllowedExternalUrl(details.url)) {
       void shell.openExternal(details.url)
     } else {
@@ -967,7 +981,7 @@ const appReady = app.whenReady().then(async () => {
       if (!allowedDirs.includes(resolvedVaultPath)) allowedDirs.push(resolvedVaultPath)
     }
 
-    const isAllowed = allowedDirs.some((dir) => filePath.startsWith(dir + '/') || filePath === dir)
+    const isAllowed = isPathInsideDirs(filePath, allowedDirs)
     if (!isAllowed) {
       mainLog.warn('memry-file: blocked path outside allowed directories', { filePath })
       return new Response(null, { status: 403, statusText: 'Forbidden' })

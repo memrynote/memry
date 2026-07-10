@@ -7,7 +7,7 @@ import { net } from 'electron'
 
 import { createLogger } from '../lib/logger'
 import { secureDeleteFile } from '../lib/secure-fs'
-import { ensureDirectory } from '../vault/file-ops'
+import { ensureDirectory, withTransientFsRetry } from '../vault/file-ops'
 import { encrypt, decrypt, wrapFileKey, unwrapFileKey } from '../crypto/encryption'
 import { generateFileKey } from '../crypto/keys'
 import { secureCleanup } from '../crypto/index'
@@ -793,26 +793,33 @@ export class AttachmentSyncService {
 
   private async atomicWriteBinary(filePath: string, data: Buffer): Promise<void> {
     const dir = path.dirname(filePath)
-    const tempPath = path.join(dir, `.${randomBytes(6).toString('hex')}.tmp`)
 
     await ensureDirectory(dir)
 
-    let handle: Awaited<ReturnType<typeof open>> | null = null
     try {
-      handle = await open(tempPath, 'wx', 0o600)
-      await handle.writeFile(data)
-      await handle.close()
-      handle = null
-      await rename(tempPath, filePath)
+      await withTransientFsRetry(async () => {
+        const tempPath = path.join(dir, `.${randomBytes(6).toString('hex')}.tmp`)
+
+        let handle: Awaited<ReturnType<typeof open>> | null = null
+        try {
+          handle = await open(tempPath, 'wx', 0o600)
+          await handle.writeFile(data)
+          await handle.close()
+          handle = null
+          await rename(tempPath, filePath)
+        } catch (error) {
+          if (handle) {
+            await handle.close().catch(() => {})
+          }
+          try {
+            await secureDeleteFile(tempPath)
+          } catch {
+            // ignore cleanup errors
+          }
+          throw error
+        }
+      })
     } catch {
-      if (handle) {
-        await handle.close().catch(() => {})
-      }
-      try {
-        await secureDeleteFile(tempPath)
-      } catch {
-        // ignore cleanup errors
-      }
       throw new Error(`Failed to write attachment: ${filePath}`)
     }
   }
