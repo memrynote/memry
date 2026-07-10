@@ -547,12 +547,30 @@ describe('sync runtime', () => {
     await runtime.startSyncRuntime()
     const queue = runtimeMocks.CrdtUpdateQueue.instances[0]
 
+    // Recoverable 401: refresh succeeds and the batch retries with the fresh token
     runtimeMocks.postToServer.mockRejectedValueOnce(new runtimeMocks.SyncServerError(401))
+    runtimeMocks.refreshAccessToken.mockResolvedValueOnce(true)
+    runtimeMocks.getValidAccessToken
+      .mockResolvedValueOnce('access-token')
+      .mockResolvedValueOnce('fresh-token')
+    await expect(queue.onBatch?.('note-1', [new Uint8Array([1])])).resolves.toBeUndefined()
+    expect(runtimeMocks.postToServer).toHaveBeenLastCalledWith(
+      '/sync/crdt/updates',
+      expect.objectContaining({ noteId: 'note-1' }),
+      'fresh-token'
+    )
+    expect(queue.pause).not.toHaveBeenCalled()
+    expect(runtimeMocks.emitSessionExpired).not.toHaveBeenCalled()
+
+    // Terminal 401: refresh fails — pause without a false session-expired toast
+    // (token-manager owns that emission on terminal refresh failure)
+    runtimeMocks.postToServer.mockRejectedValueOnce(new runtimeMocks.SyncServerError(401))
+    runtimeMocks.refreshAccessToken.mockResolvedValueOnce(false)
     await expect(queue.onBatch?.('note-1', [new Uint8Array([1])])).rejects.toThrow(
       'sync server error'
     )
     expect(queue.pause).toHaveBeenCalled()
-    expect(runtimeMocks.emitSessionExpired).toHaveBeenCalledTimes(1)
+    expect(runtimeMocks.emitSessionExpired).not.toHaveBeenCalled()
 
     runtimeMocks.postToServer.mockRejectedValueOnce(new runtimeMocks.SyncServerError(413))
     await expect(queue.onBatch?.('note-1', [new Uint8Array([1])])).rejects.toThrow(
@@ -606,7 +624,8 @@ describe('sync runtime', () => {
       'sync server error'
     )
     expect(queue.pause).toHaveBeenCalled()
-    expect(runtimeMocks.emitSessionExpired).toHaveBeenCalled()
+    expect(runtimeMocks.refreshAccessToken).toHaveBeenCalled()
+    expect(runtimeMocks.emitSessionExpired).not.toHaveBeenCalled()
 
     runtimeMocks.pushCrdtSnapshot.mockRejectedValueOnce(new runtimeMocks.SyncServerError(413))
     await expect(snapshotPush('note-quota', new Uint8Array([1]))).rejects.toThrow(

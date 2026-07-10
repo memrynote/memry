@@ -9,7 +9,7 @@ vi.mock('./http-client', () => ({
 }))
 
 vi.mock('./token-manager', () => ({
-  retrieveToken: vi.fn(async () => 'access-token')
+  getValidAccessToken: vi.fn(async () => 'access-token')
 }))
 
 vi.mock('../crypto', async (importOriginal) => ({
@@ -46,7 +46,7 @@ vi.mock('./vault-provisioning', () => ({
 }))
 
 import { getFromServer, postToServer } from './http-client'
-import { retrieveToken } from './token-manager'
+import { getValidAccessToken } from './token-manager'
 import {
   getAccountVaultsCache,
   getCurrentVaultPath,
@@ -136,7 +136,14 @@ describe('vault-directory', () => {
           vaultUuid: 'uuid-a'
         },
         // no uuid yet — must be skipped
-        { path: '/v/beta', name: 'Beta', noteCount: 0, taskCount: 0, lastOpened: '', isDefault: false }
+        {
+          path: '/v/beta',
+          name: 'Beta',
+          noteCount: 0,
+          taskCount: 0,
+          lastOpened: '',
+          isDefault: false
+        }
       ])
 
       await refreshVaultDirectory({ force: true })
@@ -205,7 +212,7 @@ describe('vault-directory', () => {
     })
 
     it('is a silent no-op without an access token', async () => {
-      vi.mocked(retrieveToken).mockResolvedValueOnce(null)
+      vi.mocked(getValidAccessToken).mockResolvedValueOnce(null)
 
       await refreshVaultDirectory({ force: true })
 
@@ -255,9 +262,9 @@ describe('vault-directory', () => {
 
   describe('suggestVaultFolder', () => {
     it('slugifies the name under the parent dir', () => {
-      expect(suggestVaultFolder({ vaultUuid: 'uuid-1234567890', name: 'My Vault!' }, '/parent')).toBe(
-        '/parent/my-vault'
-      )
+      expect(
+        suggestVaultFolder({ vaultUuid: 'uuid-1234567890', name: 'My Vault!' }, '/parent')
+      ).toBe('/parent/my-vault')
     })
 
     it('falls back to a uuid-based folder name without a name', () => {

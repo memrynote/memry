@@ -125,12 +125,15 @@ export default defineConfig({
         '../../packages/sync-core/src/**/*.ts'
       ],
       // Coverage ratchet floors live in coverage-thresholds.json (single source of
-      // truth). Baseline history (Linux CI, Vitest 4.1/V8):
+      // truth, also read by scripts/check-coverage-thresholds.mjs so the CI "Coverage
+      // thresholds" job enforces the same numbers). Baseline history (Linux CI,
+      // Vitest 4.1/V8):
       //   2026-07-08: statements 85.93  branches 73.79  functions 85.69  lines 87.99
       //   2026-07-09: statements re-measured 85.89 after #727; floor 85.9 -> 85.8.
-      //   2026-07-10: branches/functions jittered at the edge across identical-code runs
-      //     (main measured 73.69, CI 73.68/85.59); floors branches 73.7 -> 73.6,
-      //     functions 85.6 -> 85.5 to absorb it.
+      //   2026-07-10: re-measured after #732 (85.86 / 73.69 / 85.59 / 87.93); branches
+      //     73.7 -> 73.6, functions 85.6 -> 85.5 to absorb edge jitter.
+      //   2026-07-10: #734 sync 401 refresh-retry measured functions 85.58, branches
+      //     73.68 — within the floors (new logic unit-tested; only coordinator glue uncovered).
       thresholds: skipCoverageThresholds ? undefined : coverageThresholds
     },
     reporters: ['verbose'],

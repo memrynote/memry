@@ -78,6 +78,25 @@ describe('CrdtUpdateQueue', () => {
     queue.stop()
   })
 
+  it('re-buffers the flushed batch when the push fails with a 401', async () => {
+    const queue = new CrdtUpdateQueue()
+    const push = vi.fn(async () => {
+      throw new SyncServerError('Token expired: "exp" claim', 401)
+    })
+
+    queue.start(push)
+    queue.enqueue('note-a', new Uint8Array([1]))
+    queue.enqueue('note-a', new Uint8Array([2]))
+    vi.advanceTimersByTime(1000)
+
+    expect(push).toHaveBeenCalledTimes(1)
+    await flushPromises()
+    expect(queue.getPendingCount()).toBe(2)
+
+    queue.pause()
+    queue.stop()
+  })
+
   it('drops non-retryable client failures and flushes immediately at the max batch size', async () => {
     const queue = new CrdtUpdateQueue()
     const push = vi.fn(async () => {

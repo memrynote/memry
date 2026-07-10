@@ -16,6 +16,7 @@ import { secureCleanup } from '../../crypto/index'
 import { decryptPullBatch } from '../sync-crypto-batch'
 import { getRemoteSyncAdapter } from '../item-handlers'
 import { withRetry } from '../retry'
+import { engineAuthRetryDeps, withAuthRetry } from '../auth-retry'
 import { postToServer, getFromServer, RateLimitError } from '../http-client'
 import { classifyError } from '../sync-errors'
 import { isBinaryFileType } from '@memry/shared/file-types'
@@ -213,7 +214,7 @@ export class PullCoordinator {
         changesResult = await prefetchedNext
         prefetchedNext = null
       } else {
-        changesResult = await this.fetchChangesPage(runState.accessJwt, cursor)
+        changesResult = await this.fetchChangesPage(runState, cursor)
       }
 
       const changes = changesResult.value
@@ -227,22 +228,30 @@ export class PullCoordinator {
       if (shouldStop) break
 
       if (hasMore && !this.ctx.abortController?.signal.aborted) {
-        prefetchedNext = this.fetchChangesPage(runState.accessJwt, cursor)
+        prefetchedNext = this.fetchChangesPage(runState, cursor)
         prefetchedNext.catch(() => {})
       }
     }
   }
 
   private async fetchChangesPage(
-    accessJwt: string,
+    runState: PullRunState,
     pageCursor: string | null | undefined
   ): ReturnType<typeof withRetry<RecordChangesResponse>> {
     return withRetry(
       () => {
         const cp = pageCursor ? `&cursor=${pageCursor}` : ''
-        return getFromServer<RecordChangesResponse>(
-          `/sync/changes?limit=${this.ctx.options.pullPageLimit}${cp}`,
-          accessJwt
+        return withAuthRetry(
+          (authToken) =>
+            getFromServer<RecordChangesResponse>(
+              `/sync/changes?limit=${this.ctx.options.pullPageLimit}${cp}`,
+              authToken
+            ),
+          runState.accessJwt,
+          engineAuthRetryDeps(this.ctx.deps),
+          (fresh) => {
+            runState.accessJwt = fresh
+          }
         )
       },
       {
@@ -261,14 +270,7 @@ export class PullCoordinator {
     )
     if (itemIds.length === 0) return false
 
-    const pageResult = await this.processPage(
-      itemIds,
-      runState.accessJwt,
-      runState.vaultKey,
-      runState.timer,
-      runState.processedIds,
-      runState.crdtNoteIds
-    )
+    const pageResult = await this.processPage(itemIds, runState)
     runState.pulledCount += pageResult.applied
     runState.totalConflictsResolved += pageResult.conflicts
     await this.applyCrdtBatch(runState)
@@ -430,14 +432,20 @@ export class PullCoordinator {
 
   private async processPage(
     itemIds: string[],
-    accessJwt: string,
-    vaultKey: Uint8Array,
-    timer: SyncTimer,
-    processedIds: Set<string>,
-    crdtNoteIds: string[]
+    runState: PullRunState
   ): Promise<{ applied: number; conflicts: number; allCryptoFailed: boolean }> {
+    const { vaultKey, timer, processedIds, crdtNoteIds } = runState
     const pullResult = await withRetry(
-      () => postToServer<{ items: RecordPullItemResponse[] }>('/sync/pull', { itemIds }, accessJwt),
+      () =>
+        withAuthRetry(
+          (authToken) =>
+            postToServer<{ items: RecordPullItemResponse[] }>('/sync/pull', { itemIds }, authToken),
+          runState.accessJwt,
+          engineAuthRetryDeps(this.ctx.deps),
+          (fresh) => {
+            runState.accessJwt = fresh
+          }
+        ),
       { signal: this.ctx.abortController!.signal, isOnline: () => this.ctx.deps.network.online }
     )
 
@@ -578,7 +586,7 @@ export class PullCoordinator {
       this.corruptTracker.clearExpired()
       const { recovered, permanentFailures } = await this.corruptTracker.refetch(
         allRefetchIds,
-        accessJwt,
+        runState.accessJwt,
         vaultKey
       )
 

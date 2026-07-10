@@ -31,8 +31,17 @@ function disableConsoleTransport(): void {
   log.transports.console.level = false
 }
 
+// NODE_ENV is undefined at runtime in packaged Electron, so the isDev default
+// above wrongly stays verbose there. This module cannot import electron itself
+// (it is bundled into worker_threads entries — see scripts/check-worker-bundles.mjs),
+// so the main process calls this once at startup when app.isPackaged.
+function applyPackagedLogLevels(): void {
+  log.transports.file.level = 'info'
+  log.transports.console.level = 'warn'
+}
+
 function createLogger(scope: string) {
   return log.scope(scope)
 }
 
-export { log, createLogger, disableConsoleTransport }
+export { log, createLogger, disableConsoleTransport, applyPackagedLogLevels }

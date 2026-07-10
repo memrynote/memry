@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 
-import { net } from 'electron'
+import { app, net } from 'electron'
 
 import type {
   TelemetryAuthState,
@@ -65,7 +65,9 @@ const detectBuildChannel = (override?: TelemetryBuildChannel): TelemetryBuildCha
   if (fromEnv === 'staging' || fromEnv === 'production' || fromEnv === 'development') {
     return fromEnv
   }
-  return process.env.NODE_ENV === 'production' ? 'production' : 'development'
+  // NODE_ENV is undefined at runtime in packaged Electron (the vite define is
+  // renderer-only), so isPackaged is the only reliable production signal here.
+  return app.isPackaged ? 'production' : 'development'
 }
 
 const detectPlatform = (override?: TelemetryPlatform): TelemetryPlatform => {
