@@ -11,7 +11,8 @@ const HERO_IN = { duration: 0.7, delay: 0.1, ease: EASE }
 
 export interface PageHeroProps {
   tint: HeroTint
-  eyebrow?: string
+  /** ReactNode, not string: Download's kicker carries an icon. */
+  eyebrow?: ReactNode
   title: ReactNode
   sub?: ReactNode
   /** CTA / pill-link slot, laid out as a centered wrapping row. */
@@ -54,7 +55,7 @@ export function PageHero({ tint, eyebrow, title, sub, actions, visual, className
               animate={{ opacity: 1, y: 0 }}
               transition={HERO_IN}
               className={cn(
-                'mb-4 font-mono-accent text-[11px] uppercase tracking-[0.2em]',
+                'mb-4 inline-flex items-center justify-center gap-2 font-mono-accent text-[11px] uppercase tracking-[0.2em]',
                 isInk ? 'text-terracotta-glow' : 'text-terracotta'
               )}
             >
