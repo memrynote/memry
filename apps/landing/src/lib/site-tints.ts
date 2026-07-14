@@ -1,0 +1,65 @@
+/**
+ * The site's hero colour system, in one place.
+ *
+ * Rule (see docs/superpowers/specs/2026-07-14-landing-site-design-consistency-design.md):
+ * feature pages get unique tints — inside a feature, colour answers "which feature".
+ * Other families deliberately reuse — in marketing, colour answers "which category".
+ * Seven tints across eighteen pages makes collisions arithmetic; the rule is what makes
+ * them meaningful. Colliding pairs never share a context.
+ *
+ * Keys are PAGE_META page keys (see lib/seo.ts), not routes — the same key you pass to
+ * <PageHead page="..." />. site-tints.test.ts binds the two maps together.
+ *
+ * `home` is deliberately absent: it carries the painted landscape wallpaper instead, and
+ * that stays exclusive to the homepage.
+ */
+export type MegaCardTint = 'sky' | 'sage' | 'sand' | 'peach' | 'rose' | 'lilac' | 'mint'
+
+/** `ink` is the CLI page's terminal hero — a dark surface, not a pastel tint. */
+export type HeroTint = MegaCardTint | 'ink'
+
+/** Every *Alternative page resolves here: neutral beside competitor logos. */
+const COMPARISON_TINT = 'lilac' satisfies HeroTint
+
+export const SITE_TINTS = {
+  // Feature pages — unique tints, because here colour is wayfinding
+  notes: 'sky', // writing surface; shares home's tint on purpose — Notes is the heart
+  tasks: 'sage', // green = done/action, matching --color-sage
+  journal: 'sand', // paper warmth, daily ritual
+  calendar: 'mint', // adjacent to sage but distinct — kin to Tasks, not the same
+  inbox: 'lilac', // capture/triage — where unsorted things live
+  aiAgent: 'peach', // terracotta family = the brand's "smart" accent
+  webClipper: 'rose', // the only surface pointing outward
+  cli: 'ink', // the terminal page's hero is a terminal
+
+  // Conversion — terracotta CTAs are strongest on peach
+  pricing: 'peach',
+  downloadDesktop: 'peach',
+
+  // Discovery
+  features: 'sand',
+  useCases: 'sand',
+
+  // Timeline
+  roadmap: 'sky',
+  changelog: 'sky',
+
+  // Trust — carries the homepage PrivacyShowcase link visually
+  privacy: 'mint',
+  security: 'mint',
+
+  // Comparison
+  compare: COMPARISON_TINT
+} as const satisfies Record<string, HeroTint>
+
+/**
+ * Resolve a page key to its hero tint, or undefined if the page has no tinted hero.
+ *
+ * The 16 *Alternative pages are generated from one template, so they resolve by rule
+ * rather than by sixteen identical entries.
+ */
+export function getPageTint(page: string): HeroTint | undefined {
+  if (page.endsWith('Alternative')) return COMPARISON_TINT
+
+  return (SITE_TINTS as Record<string, HeroTint>)[page]
+}
