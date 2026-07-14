@@ -57,7 +57,7 @@ export function Footer() {
   const { pathname } = useLocation()
 
   return (
-    <footer className="zone-dark border-t border-white/10 py-20 md:py-24">
+    <footer className="zone-dark overflow-hidden border-t border-white/10 py-20 md:py-24">
       <Container>
         <div className="mb-16 grid grid-cols-2 gap-x-8 gap-y-12 md:grid-cols-6 md:gap-10">
           <div className="col-span-2 pe-8">
@@ -122,6 +122,16 @@ export function Footer() {
           </p>
         </div>
       </Container>
+
+      {/* Full-bleed wordmark, flush to the footer's bottom edge; the negative
+          margin cancels the footer's own bottom padding. */}
+      <p
+        aria-hidden
+        className="pointer-events-none -mb-20 mt-12 select-none text-center font-geist font-medium leading-[0.9] tracking-[-0.02em] text-ink-inverted/[0.07] [mask-image:linear-gradient(to_bottom,black_18%,transparent_86%)] [-webkit-mask-image:linear-gradient(to_bottom,black_18%,transparent_86%)] md:-mb-24"
+        style={{ fontSize: 'clamp(52px, 16vw, 260px)' }}
+      >
+        memrynote
+      </p>
     </footer>
   )
 }

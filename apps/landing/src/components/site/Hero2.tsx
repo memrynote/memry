@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { motion } from 'framer-motion'
+import { useRef, useState } from 'react'
+import { motion, useReducedMotion, useScroll, useTransform } from 'framer-motion'
 import { ArrowRight, Play } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import heroBg from '@/assets/hero-bg.png'
@@ -18,6 +18,13 @@ const EASE = [0.16, 1, 0.3, 1] as const
 const HERO_IN = { duration: 0.7, delay: 0.1, ease: EASE }
 
 const HERO_SHOT = { src: '/screenshots/hero_white.png', width: 1445, height: 952 } as const
+
+// Scroll-linked screenshot growth. The window lands slightly set back (0.94) and comes
+// forward to its true size as you scroll the hero away — reversible, because it's mapped
+// off scroll position, not a one-shot animation. Ends at 0.45 of the hero's scroll range
+// so it's fully at 1 while still on screen, not after it has left.
+const SHOT_SCALE_FROM = 0.94
+const SHOT_SCALE_RANGE = [0, 0.45]
 
 /**
  * Sticker chip inside the hero headline — hand-drawn mascot + italic word on a
@@ -48,6 +55,17 @@ function HeadlineChip({
 export function Hero2() {
   const shot = HERO_SHOT
   const [demoOpen, setDemoOpen] = useState(false)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const reduceMotion = useReducedMotion()
+
+  // 0 at rest, 1 once the hero panel has scrolled past the top of the viewport.
+  const { scrollYProgress } = useScroll({
+    target: panelRef,
+    offset: ['start start', 'end start']
+  })
+  const shotScale = useTransform(scrollYProgress, SHOT_SCALE_RANGE, [SHOT_SCALE_FROM, 1], {
+    clamp: true
+  })
 
   return (
     <section id="hero" className="px-3 pb-4 pt-3 sm:px-6 md:pb-6">
@@ -56,7 +74,10 @@ export function Hero2() {
           No height cap: the panel takes its natural content height, so on laptop screens
           it fills the viewport (full-screen hero) with the screenshot bleeding off the
           bottom, clipped by overflow-hidden. */}
-      <div className="relative mx-auto w-full overflow-hidden rounded-3xl border border-ink/5 bg-tint-sky pb-8 md:pb-14">
+      <div
+        ref={panelRef}
+        className="relative mx-auto w-full overflow-hidden rounded-3xl border border-ink/5 bg-tint-sky pb-8 md:pb-14"
+      >
         {/* Painted landscape backdrop — a whisper of blur pushes it back so the copy + app
             window read as the foreground; scale-105 hides the soft edges the blur would
             otherwise fade at the panel border. */}
@@ -157,33 +178,44 @@ export function Hero2() {
             No translate/overflow bleed either, so the full window is shown, nothing trimmed
             off the bottom — it sits warm in the sky with the papers peeking behind its base. */}
         <motion.div
-          className="relative z-10 mx-auto mt-12 w-4/5 max-w-[57.6rem] md:mt-16"
-          initial={{ opacity: 0, y: 72 }}
-          animate={{ opacity: 1, y: 0 }}
+          className="relative z-10 mx-auto mt-12 w-[88%] max-w-[63.36rem] md:mt-16"
+          initial={{ y: 72 }}
+          animate={{ y: 0 }}
           transition={HERO_IN}
+          style={{ scale: reduceMotion ? 1 : shotScale }}
         >
           {/* The whole window is the demo trigger — click opens the video lightbox.
-              Hover lift (subtle scale + rise) rides the group here; plain 2D transform on
-              the img stays crisp (no 3D raster softening) and motion-safe gates it off under
-              reduced-motion. */}
-          <button
+              It's also the glass mat: the padding band IS the effect — sky (and the paper
+              collage behind its base) shows through it, frosted, so the shot sits in the
+              panel instead of on it. The inner white line is an inset box-shadow rather
+              than `ring-inset`, which leaves `ring-*` free for the focus ring.
+              Opacity animates HERE, not on the wrapper: an ancestor at opacity < 1 becomes
+              a backdrop root, which would leave the glass flat for the whole entrance and
+              snap it in at the end. An element's own opacity doesn't suppress its own
+              backdrop-filter. Hover lift stays transform-only — crisp, and safe for glass. */}
+          <motion.button
             type="button"
             aria-label="Watch the MemryNote demo"
             onClick={() => {
               trackLandingEvent('landing_hero_demo_open', 'hero')
               setDemoOpen(true)
             }}
-            className="group relative block w-full rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/70"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={HERO_IN}
+            className="group relative block w-full rounded-2xl border border-white/50 bg-white/20 p-[clamp(10px,1.4vw,22px)] shadow-[0_24px_60px_rgba(31,41,55,0.30),inset_0_0_0_1px_rgba(255,255,255,0.35)] backdrop-blur-md transition-transform duration-300 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/70 motion-safe:group-hover:-translate-y-2 motion-safe:group-hover:scale-[1.02]"
           >
-            <img
-              src={shot.src}
-              alt="The MemryNote app showing a note with tags, a table, and tasks"
-              width={shot.width}
-              height={shot.height}
-              loading="eager"
-              decoding="async"
-              className="block h-auto w-full drop-shadow-[0_24px_60px_rgba(31,41,55,0.30)] transition-transform duration-300 ease-out motion-safe:group-hover:-translate-y-2 motion-safe:group-hover:scale-[1.02]"
-            />
+            <div className="relative overflow-hidden rounded-xl bg-white">
+              <img
+                src={shot.src}
+                alt="The MemryNote app showing a note with tags, a table, and tasks"
+                width={shot.width}
+                height={shot.height}
+                loading="eager"
+                decoding="async"
+                className="block h-auto w-full"
+              />
+            </div>
             {/* Watch cue — hidden until hover/keyboard focus; always shown on touch (no hover). */}
             <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
               <span className="flex translate-y-1 scale-95 items-center gap-2 rounded-full bg-ink/75 px-5 py-2.5 text-sm font-medium text-white opacity-0 shadow-[0_16px_50px_rgba(31,41,55,0.45)] backdrop-blur-md transition-all duration-200 ease-out group-hover:translate-y-0 group-hover:scale-100 group-hover:opacity-100 group-focus-visible:translate-y-0 group-focus-visible:scale-100 group-focus-visible:opacity-100 motion-reduce:transition-none [@media(hover:none)]:translate-y-0 [@media(hover:none)]:scale-100 [@media(hover:none)]:opacity-100">
@@ -191,7 +223,7 @@ export function Hero2() {
                 Watch demo
               </span>
             </span>
-          </button>
+          </motion.button>
         </motion.div>
       </div>
 
