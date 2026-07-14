@@ -117,7 +117,18 @@ function isExternalHref(href: string) {
   return /^(https?:|mailto:)/.test(href)
 }
 
-/** Small rounded chip card with hover lift. Renders a Link for internal hrefs, <a> for external. */
+/**
+ * Same-page anchors (`#pillar-notes`) must stay plain <a>: routing them through
+ * react-router's Link resolves them against the current route and breaks the scroll.
+ */
+function isAnchorHref(href: string) {
+  return href.startsWith('#')
+}
+
+/**
+ * Small rounded chip card with hover lift. Picks its element from the href: plain <a> for
+ * same-page anchors, new-tab <a> for external links, Link for internal routes.
+ */
 export function FeatureChip({ icon, label, href, trailingIcon, className }: FeatureChipProps) {
   const chipClass = cn(
     'group inline-flex items-center gap-2.5 rounded-2xl border border-border/70 bg-card',
@@ -141,6 +152,14 @@ export function FeatureChip({ icon, label, href, trailingIcon, className }: Feat
       )}
     </>
   )
+
+  if (href && isAnchorHref(href)) {
+    return (
+      <a href={href} className={chipClass}>
+        {content}
+      </a>
+    )
+  }
 
   if (href && isExternalHref(href)) {
     return (
