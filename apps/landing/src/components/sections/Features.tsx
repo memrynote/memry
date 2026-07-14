@@ -4,7 +4,6 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Container } from '@/components/layout/Container'
 import { FEATURES } from '@/lib/constants'
 import { getFeatureScreenshotSrc } from '@/lib/feature-screenshots'
-import { useTheme } from '@/lib/use-theme'
 import { cn } from '@/lib/utils'
 import { Mascot } from '@/components/ui/mascot'
 
@@ -25,8 +24,7 @@ const MODULE_ICONS: Record<Feature['id'], { src: string; tile: string }> = {
   calendar: { src: '/mascots/calendar.png', tile: 'bg-tint-sky' }
 }
 
-// Each module's screenshot is matted on a fixed canvas in its own tint (light + dark pairs
-// resolve from the same CSS var, so the mat recolors with the theme).
+// Each module's screenshot is matted on a fixed canvas in its own tint.
 const MODULE_TINT: Record<Feature['id'], string> = {
   inbox: '--color-tint-sky',
   journal: '--color-tint-sand',
@@ -115,10 +113,9 @@ function ModuleRow({
 
 export function Features() {
   const [activeId, setActiveId] = useState<Feature['id']>(FEATURES[0].id)
-  const { theme } = useTheme()
   const activeFeature = FEATURES.find((f) => f.id === activeId) ?? FEATURES[0]
   const activeIndex = FEATURES.findIndex((f) => f.id === activeId)
-  const screenshotSrc = getFeatureScreenshotSrc(activeFeature.screenshot, theme)
+  const screenshotSrc = getFeatureScreenshotSrc(activeFeature.screenshot)
 
   // The five captures aren't a uniform size (and get re-exported over time), so measure
   // them all and build one fixed canvas = the largest width × largest height. Each shot
@@ -135,7 +132,7 @@ export function Features() {
             const img = new Image()
             img.onload = () => resolve([f.id, { w: img.naturalWidth, h: img.naturalHeight }])
             img.onerror = () => resolve([f.id, null])
-            img.src = getFeatureScreenshotSrc(f.screenshot, theme)
+            img.src = getFeatureScreenshotSrc(f.screenshot)
           })
       )
     ).then((entries) => {
@@ -147,7 +144,7 @@ export function Features() {
     return () => {
       cancelled = true
     }
-  }, [theme])
+  }, [])
 
   const measured = Object.values(dims) as { w: number; h: number }[]
   const canvasW = measured.length ? Math.max(...measured.map((d) => d.w)) : 4
@@ -214,7 +211,7 @@ export function Features() {
                 over the outgoing one — no mode="wait" blank frame between panels. */}
             <AnimatePresence initial={false}>
               <motion.img
-                key={`${activeFeature.id}-${theme}`}
+                key={activeFeature.id}
                 src={screenshotSrc}
                 alt={`${activeFeature.title} in MemryNote`}
                 decoding="async"

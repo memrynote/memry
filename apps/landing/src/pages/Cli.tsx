@@ -23,14 +23,12 @@ type TermLine = { prompt: string } | { out: string }
 
 function Term({ title, lines }: { title?: string; lines: TermLine[] }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-border bg-ink shadow-card dark:bg-black/50">
+    <div className="overflow-hidden rounded-2xl border border-border bg-ink shadow-card">
       <div className="flex items-center gap-1.5 border-b border-white/10 px-4 py-3">
         <span className="h-3 w-3 rounded-full bg-[#ff5f57]" />
         <span className="h-3 w-3 rounded-full bg-[#febc2e]" />
         <span className="h-3 w-3 rounded-full bg-[#28c840]" />
-        {title ? (
-          <span className="ms-3 font-mono text-xs text-white/40">{title}</span>
-        ) : null}
+        {title ? <span className="ms-3 font-mono text-xs text-white/40">{title}</span> : null}
       </div>
       <div className="overflow-x-auto p-4">
         <pre className="font-mono text-[13px] leading-relaxed">
@@ -253,7 +251,9 @@ export function CliPage() {
             transition={{ duration: 0.7, ease: EASE_OUT_EXPO }}
             className="mb-14"
           >
-            <h2 className="mb-4 font-serif text-3xl text-ink md:text-4xl">Up and running in a minute</h2>
+            <h2 className="mb-4 font-serif text-3xl text-ink md:text-4xl">
+              Up and running in a minute
+            </h2>
             <p className="max-w-2xl text-lg leading-relaxed text-muted">
               No brew, no npm. The CLI is bundled with the desktop app.
             </p>
@@ -319,7 +319,9 @@ export function CliPage() {
             transition={{ duration: 0.7, ease: EASE_OUT_EXPO }}
             className="mb-10"
           >
-            <h2 className="mb-4 font-serif text-3xl text-ink md:text-4xl">21 commands, one vault</h2>
+            <h2 className="mb-4 font-serif text-3xl text-ink md:text-4xl">
+              21 commands, one vault
+            </h2>
             <p className="max-w-2xl text-lg leading-relaxed text-muted">
               The whole app, addressable from the shell.
             </p>

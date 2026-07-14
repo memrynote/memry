@@ -188,4 +188,4 @@ Strategic design brief lives in `PRODUCT.md` (root). Read it before UI work.
 - **Principles:** privacy is the product · one calm place · graceful by toggle · crafted not corporate · earn trust through restraint.
 - **A11y:** WCAG AA + reduced-motion + RTL (logical Tailwind props).
 - **Visual system:** `docs/DESIGN_TOKENS.md`, `apps/landing/src/index.css` (terracotta `#ff671a` / paper / ink). Run
-- **Mascot icons:** hand-drawn set in `apps/landing/public/mascots` (+ `dark/` variants). To create a new one in-style, follow `apps/landing/scripts/mascots/README.md`.
+- **Mascot icons:** hand-drawn set in `apps/landing/public/mascots`. To create a new one in-style, follow `apps/landing/scripts/mascots/README.md`.

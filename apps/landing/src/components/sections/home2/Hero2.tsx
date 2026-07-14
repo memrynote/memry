@@ -10,7 +10,6 @@ import { Mascot } from '@/components/ui/mascot'
 import { DownloadButton } from '@/components/shared/DownloadCTA'
 import { HeroDemoDialog } from '@/components/sections/home2/HeroDemoDialog'
 import { trackLandingEvent } from '@/lib/analytics'
-import { useTheme } from '@/lib/use-theme'
 
 const EASE = [0.16, 1, 0.3, 1] as const
 
@@ -18,14 +17,7 @@ const EASE = [0.16, 1, 0.3, 1] as const
 // shares this transition so the whole hero materializes at once, not in a stagger.
 const HERO_IN = { duration: 0.7, delay: 0.1, ease: EASE }
 
-/**
- * The hero screenshot only exists as a light capture, so dark mode swaps to the
- * dark notes screenshot — same theme-swap pattern as FeatureHeroScreenshot.
- */
-const HERO_SCREENSHOTS = {
-  light: { src: '/screenshots/hero_white.png', width: 1445, height: 952 },
-  dark: { src: '/screenshots/note_black.png', width: 1232, height: 870 }
-} as const
+const HERO_SHOT = { src: '/screenshots/hero_white.png', width: 1445, height: 952 } as const
 
 /**
  * Sticker chip inside the hero headline — hand-drawn mascot + italic word on a
@@ -54,8 +46,7 @@ function HeadlineChip({
 }
 
 export function Hero2() {
-  const { theme } = useTheme()
-  const shot = HERO_SCREENSHOTS[theme]
+  const shot = HERO_SHOT
   const [demoOpen, setDemoOpen] = useState(false)
 
   return (
@@ -66,14 +57,14 @@ export function Hero2() {
           it fills the viewport (full-screen hero) with the screenshot bleeding off the
           bottom, clipped by overflow-hidden. */}
       <div className="relative mx-auto w-full overflow-hidden rounded-3xl border border-ink/5 bg-tint-sky pb-8 md:pb-14">
-        {/* Painted landscape backdrop — dimmed in dark mode so the light ink copy stays readable.
-            A whisper of blur pushes it back so the copy + app window read as the foreground;
-            scale-105 hides the soft edges the blur would otherwise fade at the panel border. */}
+        {/* Painted landscape backdrop — a whisper of blur pushes it back so the copy + app
+            window read as the foreground; scale-105 hides the soft edges the blur would
+            otherwise fade at the panel border. */}
         <img
           src={heroBg}
           alt=""
           aria-hidden
-          className="absolute inset-0 h-full w-full scale-105 object-cover blur-[3px] dark:brightness-[0.55] dark:saturate-75"
+          className="absolute inset-0 h-full w-full scale-105 object-cover blur-[3px]"
         />
 
         {/* Copy + CTAs */}
@@ -89,7 +80,7 @@ export function Hero2() {
             <span className="whitespace-nowrap">
               <HeadlineChip
                 mascotSrc="/mascots/thoughts.png"
-                pillClassName="-rotate-2 bg-tint-sky text-[#2e5a78] dark:text-[#a9c9df]"
+                pillClassName="-rotate-2 bg-tint-sky text-[#2e5a78]"
               >
                 thoughts
               </HeadlineChip>
@@ -98,7 +89,7 @@ export function Hero2() {
             <br className="hidden sm:block" /> beautifully{' '}
             <HeadlineChip
               mascotSrc="/mascots/organized.png"
-              pillClassName="rotate-2 bg-tint-peach text-terracotta-dark dark:text-brand-300"
+              pillClassName="rotate-2 bg-tint-peach text-terracotta-dark"
             >
               organized
             </HeadlineChip>
@@ -146,7 +137,7 @@ export function Hero2() {
           src={paperLeft}
           alt=""
           aria-hidden
-          className="pointer-events-none absolute -bottom-8 start-0 z-[5] h-[170px] w-auto select-none sm:-bottom-10 sm:h-[235px] md:-bottom-14 md:h-[300px] dark:brightness-90"
+          className="pointer-events-none absolute -bottom-8 start-0 z-[5] h-[170px] w-auto select-none sm:-bottom-10 sm:h-[235px] md:-bottom-14 md:h-[300px]"
           initial={{ opacity: 0, y: 44 }}
           animate={{ opacity: 1, y: 0 }}
           transition={HERO_IN}
@@ -155,7 +146,7 @@ export function Hero2() {
           src={paperRight}
           alt=""
           aria-hidden
-          className="pointer-events-none absolute -bottom-8 end-0 z-[5] h-[170px] w-auto select-none sm:-bottom-10 sm:h-[235px] md:-bottom-14 md:h-[300px] dark:brightness-90"
+          className="pointer-events-none absolute -bottom-8 end-0 z-[5] h-[170px] w-auto select-none sm:-bottom-10 sm:h-[235px] md:-bottom-14 md:h-[300px]"
           initial={{ opacity: 0, y: 44 }}
           animate={{ opacity: 1, y: 0 }}
           transition={HERO_IN}

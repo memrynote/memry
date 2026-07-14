@@ -16,7 +16,6 @@ function readRule(selector) {
 describe('landing page background CSS', () => {
   it('does not depend on blend-mode support for the page grain', () => {
     assert.doesNotMatch(readRule('body'), /background-blend-mode/)
-    assert.doesNotMatch(readRule('.dark body'), /background-blend-mode/)
   })
 
   it('keeps the page grain self-contained at low opacity', () => {

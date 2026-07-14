@@ -270,7 +270,7 @@ export function NoteEditorWidget({ className }: NoteEditorWidgetProps) {
                 onKeyDown={(event) => {
                   if (event.key === 'Escape') closePreview()
                 }}
-                className="cursor-pointer px-0.5 font-medium text-brand-600 transition-colors duration-200 hover:underline focus-visible:underline focus-visible:outline-none dark:text-terracotta"
+                className="cursor-pointer px-0.5 font-medium text-brand-600 transition-colors duration-200 hover:underline focus-visible:underline focus-visible:outline-none"
               >
                 Kaş travel notes
               </span>{' '}

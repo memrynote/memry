@@ -234,7 +234,7 @@ export function AgentChatWidget({ className }: AgentChatWidgetProps) {
   return (
     <div
       className={cn(
-        'flex w-full flex-col overflow-hidden rounded-xl border border-border/70 bg-paper-alt dark:bg-paper',
+        'flex w-full flex-col overflow-hidden rounded-xl border border-border/70 bg-paper-alt',
         className
       )}
     >
@@ -258,7 +258,7 @@ export function AgentChatWidget({ className }: AgentChatWidgetProps) {
               initial={message.appended && !prefersReducedMotion ? { opacity: 0, y: 6 } : false}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.2, ease: 'easeOut' }}
-              className="ms-auto max-w-[85%] whitespace-pre-wrap rounded-lg bg-paper-deep px-3 py-2 text-sm text-ink dark:bg-paper-alt"
+              className="ms-auto max-w-[85%] whitespace-pre-wrap rounded-lg bg-paper-deep px-3 py-2 text-sm text-ink"
             >
               {message.text}
             </motion.div>

@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Mascot } from '@/components/ui/mascot'
 import { Container } from './Container'
-import { ThemeToggle } from './ThemeToggle'
 import {
   DIRECT_NAV_LINKS,
   DOWNLOAD_NAV_ITEMS,
@@ -113,7 +112,7 @@ function GitHubStarWidget({
   return (
     <a
       className={cn(
-        'github-star-widget inline-flex items-center rounded-lg border border-border/70 bg-card/65 font-semibold text-ink shadow-[0_1px_0_rgba(255,255,255,0.7)] transition-[color,background-color,border-color,transform] duration-200 hover:border-ink/15 hover:bg-card active:scale-[0.97] active:duration-75 motion-reduce:active:scale-100 dark:border-white/10 dark:shadow-none',
+        'github-star-widget inline-flex items-center rounded-lg border border-border/70 bg-card/65 font-semibold text-ink shadow-[0_1px_0_rgba(255,255,255,0.7)] transition-[color,background-color,border-color,transform] duration-200 hover:border-ink/15 hover:bg-card active:scale-[0.97] active:duration-75 motion-reduce:active:scale-100',
         iconOnly
           ? 'h-10 w-10 justify-center rounded-full p-0'
           : compact
@@ -189,7 +188,7 @@ function DropdownItem({
     'flex min-h-[68px] items-start gap-4 rounded-2xl px-4 py-3 text-start transition-colors',
     item.disabled
       ? 'cursor-not-allowed opacity-50'
-      : 'hover:bg-paper-alt focus-visible:bg-paper-alt focus-visible:outline-none dark:hover:bg-paper-deep dark:focus-visible:bg-paper-deep'
+      : 'hover:bg-paper-alt focus-visible:bg-paper-alt focus-visible:outline-none'
   )
 
   const content = (
@@ -256,7 +255,7 @@ function DesktopDropdown({
       <div className="invisible absolute start-0 top-full z-50 mt-3 origin-top translate-y-1 scale-[0.97] transition-all duration-200 [transition-timing-function:var(--ease-out-expo)] group-hover:visible group-hover:translate-y-0 group-hover:scale-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:scale-100 motion-reduce:translate-y-0 motion-reduce:scale-100 motion-reduce:transition-[visibility]">
         <div
           className={cn(
-            'rounded-[22px] border border-white/60 bg-card/55 backdrop-blur-2xl backdrop-saturate-150 p-3 opacity-0 transition-opacity duration-200 [transition-timing-function:var(--ease-out-expo)] group-hover:opacity-100 group-focus-within:opacity-100 shadow-[0_26px_80px_-28px_rgba(31,41,55,0.28),inset_0_1px_0_rgba(255,255,255,0.7)] dark:border-white/10 dark:shadow-[0_26px_80px_-28px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.04)]',
+            'rounded-[22px] border border-white/60 bg-card/55 backdrop-blur-2xl backdrop-saturate-150 p-3 opacity-0 transition-opacity duration-200 [transition-timing-function:var(--ease-out-expo)] group-hover:opacity-100 group-focus-within:opacity-100 shadow-[0_26px_80px_-28px_rgba(31,41,55,0.28),inset_0_1px_0_rgba(255,255,255,0.7)]',
             columns === 2 ? 'w-[574px]' : 'w-[320px]'
           )}
         >
@@ -448,7 +447,7 @@ export function Header() {
   return (
     <header className="fixed inset-x-0 top-0 z-50 px-3 pt-3 sm:px-6">
       <Container size="full" className="relative z-10">
-        <nav className="relative mx-auto flex max-w-6xl items-center justify-between rounded-full border border-white/60 px-3 py-2 shadow-card sm:px-4 dark:border-white/10">
+        <nav className="relative mx-auto flex max-w-6xl items-center justify-between rounded-full border border-white/60 px-3 py-2 shadow-card sm:px-4">
           {/* Glass lives on a decor layer, not on <nav>: an element with backdrop-filter
               becomes the backdrop root for its subtree, which would stop the dropdown
               panels below from blurring the page behind them. */}
@@ -483,9 +482,8 @@ export function Header() {
           </div>
 
           <div className="hidden md:flex items-center gap-3">
-            <ThemeToggle />
             <GitHubStarWidget />
-            <span aria-hidden className="h-5 w-px bg-border/80 dark:bg-white/10" />
+            <span aria-hidden className="h-5 w-px bg-border/80" />
             <Button variant="ghost" size="sm" className="rounded-full px-4" asChild>
               <Link
                 to={accountHref}
@@ -497,7 +495,6 @@ export function Header() {
           </div>
 
           <div className="md:hidden flex items-center gap-2">
-            <ThemeToggle />
             <GitHubStarWidget iconOnly className="h-9 w-9" />
             <button
               type="button"
@@ -521,7 +518,7 @@ export function Header() {
             className="relative z-10 origin-top px-3 pt-3 md:hidden sm:px-6"
           >
             <Container size="full">
-              <div className="material-chrome mx-auto flex max-h-[calc(100dvh-88px)] max-w-6xl flex-col gap-1.5 overflow-y-auto rounded-[20px] border border-white/70 p-2.5 shadow-[var(--shadow-float)] dark:border-white/10">
+              <div className="material-chrome mx-auto flex max-h-[calc(100dvh-88px)] max-w-6xl flex-col gap-1.5 overflow-y-auto rounded-[20px] border border-white/70 p-2.5 shadow-[var(--shadow-float)]">
                 {MOBILE_DROPDOWN_SECTIONS.map((section) => (
                   <MobileDropdownSection
                     key={section.key}

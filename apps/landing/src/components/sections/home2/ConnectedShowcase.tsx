@@ -5,7 +5,6 @@ import { HomeSection, SectionTitle } from '@/components/sections/home2/primitive
 import { AgentChatWidget } from '@/components/sections/home2/widgets/AgentChatWidget'
 import { CliWidget } from '@/components/sections/home2/widgets/CliWidget'
 import { Mascot } from '@/components/ui/mascot'
-import { useTheme } from '@/lib/use-theme'
 import { cn } from '@/lib/utils'
 
 const EASE = [0.16, 1, 0.3, 1] as const
@@ -137,10 +136,9 @@ const TILES: FeatureTile[] = [
   }
 ]
 
-/** Theme-aware framed screenshot — /screenshots/<base>_{white,black}.png. */
+/** Framed screenshot — /screenshots/<base>_white.png. */
 function ScreenshotFrame({ base, alt, scale }: { base: string; alt: string; scale?: number }) {
-  const { theme } = useTheme()
-  const src = `/screenshots/${base}_${theme === 'dark' ? 'black' : 'white'}.png`
+  const src = `/screenshots/${base}_white.png`
   return (
     <div className="overflow-hidden rounded-2xl border border-ink/10 shadow-card">
       <img
@@ -191,8 +189,7 @@ function FolderShot() {
  * clipper popup floats in front on the trailing corner — the source that made it.
  */
 function ClipperStack() {
-  const { theme } = useTheme()
-  const noteSrc = `/screenshots/webclipper-front_${theme === 'dark' ? 'black' : 'white'}.png`
+  const noteSrc = '/screenshots/webclipper-front_white.png'
   return (
     <div className="relative aspect-[4/3] w-full">
       {/* The captured note — behind, framed, nudged just off-true */}

@@ -1,6 +1,5 @@
 import { cn } from '@/lib/utils'
 import { getFeatureScreenshotSrc, type FeatureScreenshotId } from '@/lib/feature-screenshots'
-import { useTheme } from '@/lib/use-theme'
 
 type FeatureHeroScreenshotProps = {
   alt: string
@@ -17,8 +16,7 @@ export function FeatureHeroScreenshot({
   height,
   className
 }: FeatureHeroScreenshotProps) {
-  const { theme } = useTheme()
-  const imageSrc = screenshot ? getFeatureScreenshotSrc(screenshot, theme) : src
+  const imageSrc = screenshot ? getFeatureScreenshotSrc(screenshot) : src
 
   return (
     <div className={cn('relative mx-auto max-w-5xl', className)}>
