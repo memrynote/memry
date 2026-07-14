@@ -27,7 +27,8 @@ export interface FaqProps {
   eyebrow?: string
   title: ReactNode
   sub?: ReactNode
-  items: FaqItem[]
+  /** readonly so `as const` fixtures in lib/constants pass straight through. */
+  items: readonly FaqItem[]
   className?: string
 }
 

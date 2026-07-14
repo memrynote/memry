@@ -1,16 +1,13 @@
 import { Fragment, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion, useReducedMotion } from 'framer-motion'
-import { Check, ArrowRight, ShieldCheck, ExternalLink } from 'lucide-react'
+import { Check, ShieldCheck, ExternalLink } from 'lucide-react'
 import { Container } from '@/components/layout/Container'
 import { PageHead } from '@/components/shared/PageHead'
+import { Faq } from '@/components/site/Faq'
+import { FinalCta } from '@/components/site/FinalCta'
+import { PageHero } from '@/components/site/PageHero'
 import { Button } from '@/components/ui/button'
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger
-} from '@/components/ui/accordion'
 import {
   SYNC_PLAN_TIERS,
   PLAN_COMPARISON_MATRIX,
@@ -24,7 +21,7 @@ import {
 } from '@/lib/constants'
 import { buildMemryBillingCompleteUrl, type PaddleCheckoutCadence } from '@/lib/paddle-checkout'
 import { cn } from '@/lib/utils'
-import { BLUR_REVEAL_ANIMATE, BLUR_REVEAL_INITIAL, BLUR_REVEAL_TRANSITION } from '@/lib/motion'
+import { SITE_TINTS } from '@/lib/site-tints'
 import { trackLandingEvent } from '@/lib/analytics'
 
 type Cadence = 'monthly' | 'annual'
@@ -92,8 +89,37 @@ export function PricingPage() {
         <LimitMatrix cadence={cadence} onCheckout={handleCheckout} />
         <BelieverNarrative />
         <LifecycleTimeline />
-        <PricingFaq />
-        <FinalCta />
+        <Faq
+          eyebrow="§ 05 — Appendix"
+          title={
+            <>
+              The honest <span className="italic text-terracotta">billing answers.</span>
+            </>
+          }
+          sub="Everything you need to know before checkout opens."
+          items={PRICING_FAQ_ITEMS}
+        />
+        <FinalCta
+          title={
+            <>
+              Local-first is free.{' '}
+              <span className="italic text-terracotta">Sync when you need it.</span>
+            </>
+          }
+          sub="Start in the free local app. Upgrade the day you want your notes on a second device — not a moment sooner."
+          location="pricing-final"
+          secondary={{
+            label: 'Read the security architecture',
+            to: '/security',
+            event: 'security:pricing-final'
+          }}
+          footnote={
+            <>
+              All prices USD · Paddle is the merchant of record ·{' '}
+              <span className="italic normal-case">fin.</span>
+            </>
+          }
+        />
       </main>
     </>
   )
@@ -174,25 +200,16 @@ function CheckoutNoticeBanner({ notice }: { notice: CheckoutNotice | null }) {
 
 function Hero() {
   return (
-    <section className="overflow-hidden pt-24 pb-8 md:pt-32 md:pb-10">
-      <Container size="md">
-        <motion.div
-          initial={BLUR_REVEAL_INITIAL}
-          animate={BLUR_REVEAL_ANIMATE}
-          transition={BLUR_REVEAL_TRANSITION}
-        >
-          <div className="text-center">
-            <h1 className="mx-auto max-w-3xl font-serif text-4xl leading-[1.05] text-ink text-balance md:text-5xl">
-              Sync that respects your <span className="italic text-terracotta">wallet.</span>
-            </h1>
-            <p className="mx-auto mt-5 max-w-lg text-base leading-relaxed text-muted">
-              The app is free on your device. Paid sync keeps your vault everywhere — end-to-end
-              encrypted before a single byte leaves.
-            </p>
-          </div>
-        </motion.div>
-      </Container>
-    </section>
+    <PageHero
+      tint={SITE_TINTS.pricing}
+      eyebrow="Pricing"
+      title={
+        <>
+          Sync that respects your <span className="italic text-terracotta">wallet.</span>
+        </>
+      }
+      sub="The app is free on your device. Paid sync keeps your vault everywhere — end-to-end encrypted before a single byte leaves."
+    />
   )
 }
 
@@ -638,8 +655,10 @@ function PriceBlock({
 
 function BelieverNarrative() {
   return (
+    // Dark on purpose, matching the homepage PrivacyShowcase: the site's warm pages take
+    // one quiet break for gravitas. The bespoke from-paper-to-dark ramp is gone — nothing
+    // else on the site fades into a zone, they cut.
     <section className="relative">
-      <div className="h-[80px] bg-gradient-to-b from-paper to-dark" aria-hidden />
       <div className="zone-dark py-24 md:py-28">
         <Container size="md">
           <div className="grid gap-12 md:grid-cols-[1fr_1.4fr] md:items-center">
@@ -938,101 +957,4 @@ function ComparisonValue({ value }: { value: PlanComparisonValue }) {
   }
 
   return <span>{value}</span>
-}
-
-function PricingFaq() {
-  return (
-    <section className="border-t border-border/40 py-24">
-      <Container size="md">
-        <div className="grid gap-12 lg:grid-cols-[minmax(220px,1fr)_2fr]">
-          <motion.div {...fadeUp} className="lg:sticky lg:top-28 lg:self-start">
-            <p className="font-mono-accent text-xs uppercase tracking-[0.22em] text-terracotta">
-              § 05 — Appendix
-            </p>
-            <h2 className="display-section mt-4 text-ink">
-              The honest <span className="italic text-terracotta">billing answers.</span>
-            </h2>
-            <p className="mt-4 text-lg leading-relaxed text-muted">
-              Everything you need to know before checkout opens.
-            </p>
-          </motion.div>
-
-          <motion.div {...fadeUp}>
-            <Accordion type="single" collapsible className="w-full">
-              {PRICING_FAQ_ITEMS.map((item, i) => (
-                <AccordionItem
-                  key={item.question}
-                  value={`pricing-faq-${i}`}
-                  className="rounded-none border-b border-border/60 bg-transparent px-0 last:border-0 data-[state=open]:bg-transparent"
-                >
-                  <AccordionTrigger className="py-5 text-start font-serif text-lg text-ink hover:text-terracotta hover:no-underline">
-                    <span className="flex items-baseline gap-4">
-                      <span className="font-mono-accent text-[11px] tracking-[0.14em] text-muted/50">
-                        Q.{String(i + 1).padStart(2, '0')}
-                      </span>
-                      {item.question}
-                    </span>
-                  </AccordionTrigger>
-                  <AccordionContent className="max-w-[90%] pb-5 font-sans text-[17px] leading-relaxed text-muted">
-                    {item.answer}
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
-          </motion.div>
-        </div>
-      </Container>
-    </section>
-  )
-}
-
-function FinalCta() {
-  return (
-    <section className="relative overflow-hidden py-28">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_center,rgba(255,103,26,0.10),transparent_55%)]"
-      />
-      <Container size="md">
-        <motion.div {...fadeUp} className="text-center">
-          <p aria-hidden className="mb-8 font-serif text-2xl tracking-[0.5em] text-terracotta">
-            ⁂
-          </p>
-          <h2 className="display-section mx-auto max-w-2xl text-ink text-balance">
-            Local-first is free.{' '}
-            <span className="italic text-terracotta">Sync when you need it.</span>
-          </h2>
-          <p className="mx-auto mt-5 max-w-xl text-lg text-muted leading-relaxed">
-            Start in the free local app. Upgrade the day you want your notes on a second device —
-            not a moment sooner.
-          </p>
-
-          <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Button size="lg" className="rounded-sm px-8" asChild>
-              <Link to="/download/desktop">
-                Download
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-            <Button
-              size="lg"
-              variant="ghost"
-              className="rounded-sm px-8 text-ink hover:bg-paper-alt"
-              asChild
-            >
-              <Link to="/security">
-                Read the security architecture
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
-
-          <p className="mt-16 font-mono-accent text-[10px] uppercase tracking-[0.3em] text-muted/50">
-            All prices USD · Paddle is the merchant of record ·{' '}
-            <span className="italic normal-case">fin.</span>
-          </p>
-        </motion.div>
-      </Container>
-    </section>
-  )
 }

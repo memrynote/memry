@@ -43,6 +43,8 @@ export interface FinalCtaProps {
   location: string
   /** Optional ghost link beside the download button. */
   secondary?: FinalCtaSecondary
+  /** Small print under the buttons — Pricing carries its merchant-of-record line here. */
+  footnote?: ReactNode
   className?: string
 }
 
@@ -54,7 +56,7 @@ export interface FinalCtaProps {
  * drift this layer exists to end. The dark surface is deliberate: it is the one moment
  * the light site goes quiet before the ask.
  */
-export function FinalCta({ title, sub, location, secondary, className }: FinalCtaProps) {
+export function FinalCta({ title, sub, location, secondary, footnote, className }: FinalCtaProps) {
   return (
     <HomeSection>
       <motion.div
@@ -105,6 +107,12 @@ export function FinalCta({ title, sub, location, secondary, className }: FinalCt
               </Button>
             )}
           </div>
+
+          {footnote && (
+            <p className="mt-12 font-mono-accent text-[10px] uppercase tracking-[0.3em] text-dark-muted/70">
+              {footnote}
+            </p>
+          )}
         </div>
       </motion.div>
     </HomeSection>
