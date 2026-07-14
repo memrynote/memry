@@ -43,6 +43,9 @@
   --color-tint-sage: #e2ebe0;
   --color-tint-sand: #f3ead6;
   --color-tint-peach: #fce4d6;
+  --color-tint-rose: #f7dfe1;
+  --color-tint-lilac: #e7e1f2;
+  --color-tint-mint: #d9ede4;
 
   --color-background: var(--color-paper);
   --color-foreground: var(--color-ink);
@@ -75,6 +78,9 @@
   --color-tint-sage: #1c231e;
   --color-tint-sand: #262119;
   --color-tint-peach: #29201b;
+  --color-tint-rose: #291b1e;
+  --color-tint-lilac: #211d29;
+  --color-tint-mint: #172420;
 
   --color-background: var(--color-paper);
   --color-foreground: var(--color-ink);
@@ -314,6 +320,22 @@ h6 {
 
 .animate-marquee {
   animation: marquee 60s linear infinite;
+}
+
+/* Terminal cursor blink (CliWidget) */
+@keyframes blink {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  50.01%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.animate-blink {
+  animation: blink 1.1s steps(1) infinite;
 }
 
 /* Column glow for comparison */

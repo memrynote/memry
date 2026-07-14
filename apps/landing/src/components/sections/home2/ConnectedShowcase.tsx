@@ -1,159 +1,351 @@
-import type { ReactNode } from 'react'
+import { motion, useReducedMotion } from 'framer-motion'
 import { Link } from 'react-router-dom'
-import { ArrowRight, ArrowUpRight, Bot, Globe, Terminal, type LucideIcon } from 'lucide-react'
-import { HomeSection, MegaCard, SectionTitle } from '@/components/sections/home2/primitives'
+import { ArrowUpRight } from 'lucide-react'
+import { HomeSection, SectionTitle } from '@/components/sections/home2/primitives'
 import { AgentChatWidget } from '@/components/sections/home2/widgets/AgentChatWidget'
+import { CliWidget } from '@/components/sections/home2/widgets/CliWidget'
+import { Mascot } from '@/components/ui/mascot'
+import { useTheme } from '@/lib/use-theme'
+import { cn } from '@/lib/utils'
 
-// Apps people arrive from — every logo is a real file in public/compare-logos.
-const IMPORT_LOGOS: { logo: string; name: string }[] = [
-  { logo: 'obsidian.svg', name: 'Obsidian' },
-  { logo: 'notion.png', name: 'Notion' },
-  { logo: 'evernote.svg', name: 'Evernote' },
-  { logo: 'bear.png', name: 'Bear' },
-  { logo: 'apple-notes.png', name: 'Apple Notes' },
-  { logo: 'onenote.png', name: 'OneNote' },
-  { logo: 'roam-research.png', name: 'Roam Research' },
-  { logo: 'logseq.png', name: 'Logseq' },
-  { logo: 'joplin.svg', name: 'Joplin' },
-  { logo: 'google-keep.svg', name: 'Google Keep' },
-  { logo: 'upnote.png', name: 'UpNote' },
-  { logo: 'tana.png', name: 'Tana' }
+const EASE = [0.16, 1, 0.3, 1] as const
+
+const DOCS_IMPORT_URL = 'https://docs.memrynote.com/user-guide/import'
+
+/*
+ * Apps people arrive from — every logo is a real file in public/compare-logos.
+ * `docs` deep-links the import guide. Obsidian has no anchor because it isn't an import
+ * (the vault opens directly); Logseq, Joplin, UpNote and Tana have no importer of their
+ * own — they export Markdown, so they point at the Markdown importer.
+ */
+const IMPORT_LOGOS: { logo: string; name: string; docs: string }[] = [
+  { logo: 'obsidian.svg', name: 'Obsidian', docs: DOCS_IMPORT_URL },
+  { logo: 'notion.png', name: 'Notion', docs: `${DOCS_IMPORT_URL}#importing-from-notion` },
+  { logo: 'evernote.svg', name: 'Evernote', docs: `${DOCS_IMPORT_URL}#importing-from-evernote` },
+  { logo: 'bear.png', name: 'Bear', docs: `${DOCS_IMPORT_URL}#importing-from-bear` },
+  {
+    logo: 'apple-notes.png',
+    name: 'Apple Notes',
+    docs: `${DOCS_IMPORT_URL}#importing-from-apple-notes`
+  },
+  { logo: 'onenote.png', name: 'OneNote', docs: `${DOCS_IMPORT_URL}#importing-from-onenote` },
+  {
+    logo: 'roam-research.png',
+    name: 'Roam Research',
+    docs: `${DOCS_IMPORT_URL}#importing-from-roam-research`
+  },
+  { logo: 'logseq.png', name: 'Logseq', docs: `${DOCS_IMPORT_URL}#importing-from-markdown` },
+  { logo: 'joplin.svg', name: 'Joplin', docs: `${DOCS_IMPORT_URL}#importing-from-markdown` },
+  {
+    logo: 'google-keep.svg',
+    name: 'Google Keep',
+    docs: `${DOCS_IMPORT_URL}#importing-from-google-keep`
+  },
+  { logo: 'upnote.png', name: 'UpNote', docs: `${DOCS_IMPORT_URL}#importing-from-markdown` },
+  { logo: 'tana.png', name: 'Tana', docs: `${DOCS_IMPORT_URL}#importing-from-markdown` }
 ]
 
-function BlockTitle({ icon: Icon, children }: { icon: LucideIcon; children: ReactNode }) {
+/*
+ * Every surface reading the same local vault — a bento of feature tiles. Each tile is
+ * a title + a visual (the image carries the meaning; no prose). Every tile owns a soft
+ * pastel so the eye rests on one feature at a time. Two tiles are real, interactive UI
+ * (the MCP agent + the CLI); the rest are theme-aware app screenshots.
+ *
+ * Visual kinds:
+ *   'agent'      — live AgentChatWidget replica          (bottom row, beside the CLI)
+ *   'cli'        — live, auto-playing CliWidget           (bottom row, beside the agent)
+ *   'screenshot' — framed theme-pair /screenshots/<id>_{white,black}.png
+ *   'folder'     — the folder table view, a single framed screenshot (light only)
+ *   'clipper'    — the web clipper popup stacked over the note it captured
+ */
+type FeatureVisualKind = 'agent' | 'cli' | 'screenshot' | 'folder' | 'clipper'
+
+// Keys map to --color-tint-* tokens in index.css (light + dark pairs).
+type FeatureTint = 'peach' | 'sky' | 'sage' | 'rose' | 'lilac' | 'sand' | 'mint'
+
+const TINT_CLASS: Record<FeatureTint, string> = {
+  peach: 'bg-tint-peach',
+  sky: 'bg-tint-sky',
+  sage: 'bg-tint-sage',
+  rose: 'bg-tint-rose',
+  lilac: 'bg-tint-lilac',
+  sand: 'bg-tint-sand',
+  mint: 'bg-tint-mint'
+}
+
+interface FeatureTile {
+  id: string
+  /** Hand-drawn mascot under /mascots; the dark twin is derived by <Mascot>. */
+  mascot: string
+  title: string
+  tint: FeatureTint
+  visual: FeatureVisualKind
+  alt?: string // richer alt text for screenshot visuals; falls back to the title
+  scale?: number // zoom factor for screenshot visuals when the source is dense (e.g. 1.3)
+  href?: string
+  wide?: boolean // spans both columns
+}
+
+const TILES: FeatureTile[] = [
+  {
+    id: 'folder-view',
+    mascot: '/mascots/folder-tags.png',
+    title: 'Folder views',
+    tint: 'peach',
+    visual: 'folder'
+  },
+  {
+    id: 'graph',
+    mascot: '/mascots/links-graph.png',
+    title: 'Graph view',
+    tint: 'sky',
+    visual: 'screenshot',
+    alt: 'The knowledge graph — every note a node, links drawn between them'
+  },
+  {
+    id: 'home',
+    mascot: '/mascots/home.png',
+    title: 'Home dashboard',
+    tint: 'rose',
+    visual: 'screenshot',
+    alt: 'The home dashboard — tasks, calendar, inbox and journal in one view',
+    scale: 1.3 // the dashboard is dense; zoom in ~30% so the widgets read
+  },
+  {
+    id: 'web-clipper',
+    mascot: '/mascots/web-clipper.png',
+    title: 'Web clipper',
+    tint: 'lilac',
+    visual: 'clipper',
+    href: '/features/web-clipper'
+  },
+  {
+    id: 'cli',
+    mascot: '/mascots/cli.png',
+    title: 'The MemryNote CLI',
+    tint: 'sand',
+    visual: 'cli',
+    href: '/cli'
+  },
+  {
+    id: 'mcp',
+    mascot: '/mascots/ai-agent.png',
+    title: 'MCP, both ways',
+    tint: 'mint',
+    visual: 'agent',
+    href: '/features/ai-agent'
+  }
+]
+
+/** Theme-aware framed screenshot — /screenshots/<base>_{white,black}.png. */
+function ScreenshotFrame({ base, alt, scale }: { base: string; alt: string; scale?: number }) {
+  const { theme } = useTheme()
+  const src = `/screenshots/${base}_${theme === 'dark' ? 'black' : 'white'}.png`
   return (
-    <div className="flex items-center gap-3">
-      <span
-        aria-hidden
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-sage/10 text-sage"
-      >
-        <Icon className="h-[18px] w-[18px]" strokeWidth={1.8} />
-      </span>
-      <h3 className="font-serif text-xl text-ink">{children}</h3>
+    <div className="overflow-hidden rounded-2xl border border-ink/10 shadow-card">
+      <img
+        src={src}
+        alt={alt}
+        width={1600}
+        height={1200}
+        loading="lazy"
+        decoding="async"
+        className="block aspect-[4/3] w-full object-cover object-top"
+        style={
+          scale
+            ? {
+                transform: `scale(${scale})`,
+                transformOrigin: 'top left',
+                objectPosition: 'left top'
+              }
+            : undefined
+        }
+      />
     </div>
   )
 }
 
-/** Tiny terminal vignette — real commands from the CLI page. */
-function CliVignette() {
+/**
+ * A folder as a table view — a single framed screenshot (light only, no theme pair).
+ * Shown at its native ratio (full width, auto height) so the wide table never gets
+ * side-cropped.
+ */
+function FolderShot() {
   return (
-    <div
-      aria-hidden
-      className="mt-5 rounded-xl bg-ink/5 px-3.5 py-3 font-mono text-[12px] leading-relaxed"
+    <div className="overflow-hidden rounded-2xl border border-ink/10 shadow-card">
+      <img
+        src="/screenshots/folder-view-white.png"
+        alt="A folder as a table — title, tags, director, year and genre columns, rows selected"
+        width={876}
+        height={612}
+        loading="lazy"
+        decoding="async"
+        className="block h-auto w-full"
+      />
+    </div>
+  )
+}
+
+/**
+ * The web clipper story in one frame: the captured note sits framed behind, and the
+ * clipper popup floats in front on the trailing corner — the source that made it.
+ */
+function ClipperStack() {
+  const { theme } = useTheme()
+  const noteSrc = `/screenshots/webclipper-front_${theme === 'dark' ? 'black' : 'white'}.png`
+  return (
+    <div className="relative aspect-[4/3] w-full">
+      {/* The captured note — behind, framed, nudged just off-true */}
+      <div className="absolute bottom-0 start-0 w-[80%] -rotate-1 overflow-hidden rounded-xl border border-ink/10 shadow-card">
+        <img
+          src={noteSrc}
+          alt="The clipped article, open as a note in MemryNote"
+          width={812}
+          height={764}
+          loading="lazy"
+          decoding="async"
+          className="block aspect-[812/764] w-full object-cover object-top"
+        />
+      </div>
+      {/* The clipper popup — floating in front, casting over the note */}
+      <div className="absolute end-0 top-0 w-[44%] rotate-2 overflow-hidden rounded-xl shadow-elevated ring-1 ring-ink/10">
+        <img
+          src="/screenshots/web-clipper.png"
+          alt="The MemryNote web clipper capturing the article"
+          width={400}
+          height={602}
+          loading="lazy"
+          decoding="async"
+          className="block w-full object-contain"
+        />
+      </div>
+    </div>
+  )
+}
+
+function FeatureVisual({ tile }: { tile: FeatureTile }) {
+  switch (tile.visual) {
+    case 'cli':
+      return <CliWidget />
+    case 'agent':
+      return <AgentChatWidget />
+    case 'screenshot':
+      return <ScreenshotFrame base={tile.id} alt={tile.alt ?? tile.title} scale={tile.scale} />
+    case 'folder':
+      return <FolderShot />
+    case 'clipper':
+      return <ClipperStack />
+  }
+}
+
+function FeatureTileCard({ tile, index }: { tile: FeatureTile; index: number }) {
+  const prefersReducedMotion = useReducedMotion()
+
+  const heading = <h3 className="font-serif text-lg text-ink md:text-xl">{tile.title}</h3>
+
+  return (
+    <motion.div
+      initial={prefersReducedMotion ? false : { opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-60px' }}
+      transition={{ duration: 0.6, ease: EASE, delay: (index % 2) * 0.06 }}
+      className={cn(
+        'flex flex-col rounded-3xl border border-ink/5 p-6 md:p-7',
+        TINT_CLASS[tile.tint],
+        tile.wide && 'sm:col-span-2'
+      )}
     >
-      <p className="text-ink/80">
-        <span className="text-terracotta">$</span> memrynote tasks list --status todo
-      </p>
-      <p className="text-muted">3 tasks · Review PR · Ship docs</p>
-    </div>
+      <div className="flex items-center gap-2.5">
+        <Mascot src={tile.mascot} className="h-8 w-8 shrink-0" />
+        {tile.href ? (
+          <Link
+            to={tile.href}
+            className="group inline-flex items-center gap-1.5 transition-colors hover:text-terracotta"
+          >
+            {heading}
+            <ArrowUpRight
+              aria-hidden
+              className="h-4 w-4 text-terracotta transition-transform duration-300 group-hover:-translate-y-0.5"
+            />
+          </Link>
+        ) : (
+          heading
+        )}
+      </div>
+      <div className="mt-5 flex-1">
+        <FeatureVisual tile={tile} />
+      </div>
+    </motion.div>
   )
 }
-
-const LINK_CARD_CLASS =
-  'group flex flex-col rounded-2xl border border-ink/5 bg-card p-6 shadow-sm ' +
-  'transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-card'
 
 export function ConnectedShowcase() {
   return (
     <HomeSection id="connected">
-      <MegaCard tint="sage" eyebrow="Connected">
+      <div className="mx-auto w-full max-w-6xl">
         <SectionTitle
+          eyebrow="Connected"
           title={
             <>
               Everything&rsquo;s connected — on <em>your</em> terms
             </>
           }
-          sub="An agent in your notes, a CLI in your terminal, a clipper in your browser — all reading the same local vault, all opt-in."
-          className="mb-10 md:mb-12"
+          sub="One local vault, many front doors — an MCP agent, folder views, a graph view, your home dashboard, a web clipper and a terminal CLI, all reading and writing the same Markdown you own."
         />
 
-        <div className="grid gap-4 lg:grid-cols-5">
-          <article className="rounded-2xl border border-ink/5 bg-card p-6 shadow-sm md:p-8 lg:col-span-3">
-            <BlockTitle icon={Bot}>Agent chat with real context</BlockTitle>
-            <p className="mt-3 max-w-lg text-sm leading-relaxed text-muted">
-              Chat with an AI agent that reads your vault through a localhost MCP server. Claude
-              CLI, Codex CLI, or your own tools can plug in — reads are open, writes wait for your
-              approval.
-            </p>
-            <AgentChatWidget className="mt-6" />
-            <p className="mt-2 text-xs text-muted">Live demo — try it</p>
-          </article>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-5">
+          {TILES.map((tile, i) => (
+            <FeatureTileCard key={tile.id} tile={tile} index={i} />
+          ))}
 
-          <div className="grid gap-4 lg:col-span-2">
-            <Link to="/cli" className={LINK_CARD_CLASS}>
-              <div className="flex items-start justify-between gap-3">
-                <BlockTitle icon={Terminal}>The MemryNote CLI</BlockTitle>
-                <ArrowUpRight
-                  aria-hidden
-                  className="h-4 w-4 shrink-0 text-muted transition-colors group-hover:text-terracotta"
-                />
-              </div>
-              <p className="mt-3 text-sm leading-relaxed text-muted">
-                Notes, tasks, journal, sync — everything is scriptable from the command line.
-                Local-first, JSON-native.
-              </p>
-              <CliVignette />
-            </Link>
-
-            <Link to="/features/web-clipper" className={LINK_CARD_CLASS}>
-              <div className="flex items-start justify-between gap-3">
-                <BlockTitle icon={Globe}>Web clipper</BlockTitle>
-                <ArrowUpRight
-                  aria-hidden
-                  className="h-4 w-4 shrink-0 text-muted transition-colors group-hover:text-terracotta"
-                />
-              </div>
-              <p className="mt-3 text-sm leading-relaxed text-muted">
-                Clip any link from your browser straight into MemryNote — capture now, sort later.
-              </p>
-            </Link>
-          </div>
-
-          <article className="rounded-2xl border border-ink/5 bg-card p-6 shadow-sm md:p-8 lg:col-span-5">
-            <h3 className="font-serif text-xl text-ink">Bring your notes with you</h3>
-            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted">
-              Obsidian vaults open directly — same files, same [[wiki-links]]. Built-in importers
-              handle Apple Notes, Bear, Evernote, and Notion, and everything lands as plain Markdown
-              you own.
+          {/* Bring your notes with you — neutral closing tile */}
+          <article className="rounded-3xl border border-ink/5 bg-card p-6 shadow-sm sm:col-span-2 md:p-8">
+            <a
+              href={DOCS_IMPORT_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group inline-flex items-center gap-1.5 transition-colors hover:text-terracotta"
+            >
+              <h3 className="font-serif text-lg text-ink md:text-xl">Bring your notes with you</h3>
+              <ArrowUpRight
+                aria-hidden
+                className="h-4 w-4 text-terracotta transition-transform duration-300 group-hover:-translate-y-0.5"
+              />
+            </a>
+            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
+              Obsidian vaults open directly — same files, same [[wiki-links]]. Importers handle
+              Apple Notes, Bear, Evernote, and Notion; everything lands as Markdown you own.
             </p>
             <ul className="mt-6 grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
               {IMPORT_LOGOS.map((app) => (
-                <li
-                  key={app.logo}
-                  className="flex flex-col items-center gap-2 rounded-xl border border-border/60 bg-paper px-2 py-3 text-center"
-                >
-                  <span className="flex h-10 w-10 items-center justify-center rounded-lg border border-ink/10 bg-white shadow-sm">
-                    <img
-                      src={`/compare-logos/${app.logo}`}
-                      alt=""
-                      width={24}
-                      height={24}
-                      loading="lazy"
-                      className="h-6 w-6 object-contain"
-                    />
-                  </span>
-                  <span className="text-[11px] font-medium leading-tight text-muted">
-                    {app.name}
-                  </span>
+                <li key={app.logo}>
+                  <a
+                    href={app.docs}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`${app.name} — read the import guide`}
+                    className="group flex h-full flex-col items-center gap-2 rounded-xl border border-border/60 bg-paper px-2 py-3 text-center transition duration-200 hover:-translate-y-0.5 hover:border-terracotta/40 hover:shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/50"
+                  >
+                    <span className="flex h-10 w-10 items-center justify-center rounded-lg border border-ink/10 bg-white shadow-sm transition-shadow duration-200 group-hover:shadow-card">
+                      <img
+                        src={`/compare-logos/${app.logo}`}
+                        alt=""
+                        width={24}
+                        height={24}
+                        loading="lazy"
+                        className="h-6 w-6 object-contain"
+                      />
+                    </span>
+                    <span className="text-[11px] font-medium leading-tight text-muted transition-colors duration-200 group-hover:text-terracotta">
+                      {app.name}
+                    </span>
+                  </a>
                 </li>
               ))}
             </ul>
-            <p className="mt-4 text-center text-xs text-muted">
-              …and anywhere else that exports Markdown.
-            </p>
           </article>
         </div>
-
-        <div className="mt-10 text-center">
-          <Link
-            to="/features/ai-agent"
-            className="inline-flex items-center gap-1.5 rounded-full border border-ink/10 bg-card px-5 py-2.5 text-sm font-medium text-ink shadow-sm transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-card"
-          >
-            Learn more about the AI agent
-            <ArrowRight aria-hidden className="h-4 w-4 text-terracotta" />
-          </Link>
-        </div>
-      </MegaCard>
+      </div>
     </HomeSection>
   )
 }

@@ -2,7 +2,6 @@ import type { ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { cn } from '@/lib/utils'
-import kaanPhoto from '../../../assets/kaan-founder.webp'
 
 const EASE = [0.16, 1, 0.3, 1] as const
 
@@ -179,12 +178,6 @@ export function FounderNote({ children, className }: FounderNoteProps) {
         className
       )}
     >
-      <img
-        src={kaanPhoto}
-        alt="Kaan, founder of MemryNote"
-        className="h-11 w-11 rounded-full border border-border object-cover"
-        loading="lazy"
-      />
       <blockquote className="font-serif text-xl italic leading-relaxed text-ink md:text-2xl">
         {children}
       </blockquote>

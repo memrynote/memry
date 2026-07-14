@@ -1,11 +1,14 @@
+import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { ArrowRight, NotebookPen, Sparkles, type LucideIcon } from 'lucide-react'
+import { ArrowRight, Play } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import heroBg from '@/assets/hero-bg.png'
 import paperLeft from '@/assets/paper-left.png'
 import paperRight from '@/assets/paper-right.png'
 import { Button } from '@/components/ui/button'
+import { Mascot } from '@/components/ui/mascot'
 import { DownloadButton } from '@/components/shared/DownloadCTA'
+import { HeroDemoDialog } from '@/components/sections/home2/HeroDemoDialog'
 import { trackLandingEvent } from '@/lib/analytics'
 import { useTheme } from '@/lib/use-theme'
 
@@ -25,31 +28,26 @@ const HERO_SCREENSHOTS = {
 } as const
 
 /**
- * Sticker chip inside the hero headline — icon tile + italic word on a pastel pill.
- * Everything is em-sized so the chip scales with display-hero's clamp()ed font size.
- * Decorative only: the icon is aria-hidden, so screen readers hear the plain sentence.
+ * Sticker chip inside the hero headline — hand-drawn mascot + italic word on a
+ * pastel pill. Everything is em-sized so the chip scales with display-hero's
+ * clamp()ed font size. The mascot is ink-on-transparent (paper shows through),
+ * so it sits straight on the pill — no color tile. Its empty alt keeps it
+ * decorative, so screen readers hear the plain sentence.
  */
 function HeadlineChip({
-  icon: Icon,
+  mascotSrc,
   pillClassName,
-  tileClassName,
   children
 }: {
-  icon: LucideIcon
+  mascotSrc: string
   pillClassName: string
-  tileClassName: string
   children: React.ReactNode
 }) {
   return (
     <span
-      className={`inline-flex items-center gap-[0.22em] whitespace-nowrap rounded-[0.32em] border border-ink/5 px-[0.26em] py-[0.08em] align-middle shadow-card ${pillClassName}`}
+      className={`inline-flex items-center gap-[0.12em] whitespace-nowrap rounded-[0.32em] border border-ink/5 ps-[0.16em] pe-[0.26em] py-[0.08em] align-middle shadow-card ${pillClassName}`}
     >
-      <span
-        aria-hidden
-        className={`flex size-[0.72em] shrink-0 items-center justify-center rounded-[0.2em] ${tileClassName}`}
-      >
-        <Icon className="size-[0.46em] text-white" strokeWidth={2.4} />
-      </span>
+      <Mascot src={mascotSrc} className="size-[0.95em] shrink-0" />
       <span className="italic">{children}</span>
     </span>
   )
@@ -58,6 +56,7 @@ function HeadlineChip({
 export function Hero2() {
   const { theme } = useTheme()
   const shot = HERO_SCREENSHOTS[theme]
+  const [demoOpen, setDemoOpen] = useState(false)
 
   return (
     <section id="hero" className="px-3 pb-4 pt-3 sm:px-6 md:pb-6">
@@ -66,7 +65,7 @@ export function Hero2() {
           No height cap: the panel takes its natural content height, so on laptop screens
           it fills the viewport (full-screen hero) with the screenshot bleeding off the
           bottom, clipped by overflow-hidden. */}
-      <div className="relative mx-auto w-full overflow-hidden rounded-3xl border border-ink/5 bg-tint-sky pb-8 md:pb-14">
+      <div className="relative mx-auto w-full overflow-hidden rounded-3xl border border-ink/5 bg-[#3F84FF] pb-8 md:pb-14">
         {/* Painted landscape backdrop — dimmed in dark mode so the light ink copy stays readable.
             A whisper of blur pushes it back so the copy + app window read as the foreground;
             scale-105 hides the soft edges the blur would otherwise fade at the panel border. */}
@@ -89,9 +88,8 @@ export function Hero2() {
             {/* nowrap keeps the comma glued to the pill — atomic inlines invite a wrap right after */}
             <span className="whitespace-nowrap">
               <HeadlineChip
-                icon={NotebookPen}
+                mascotSrc="/mascots/thoughts.png"
                 pillClassName="-rotate-2 bg-tint-sky text-[#2e5a78] dark:text-[#a9c9df]"
-                tileClassName="bg-[#4a86ae]"
               >
                 thoughts
               </HeadlineChip>
@@ -99,9 +97,8 @@ export function Hero2() {
             </span>
             <br className="hidden sm:block" /> beautifully{' '}
             <HeadlineChip
-              icon={Sparkles}
+              mascotSrc="/mascots/organized.png"
               pillClassName="rotate-2 bg-tint-peach text-terracotta-dark dark:text-brand-300"
-              tileClassName="bg-terracotta"
             >
               organized
             </HeadlineChip>
@@ -169,26 +166,45 @@ export function Hero2() {
             No translate/overflow bleed either, so the full window is shown, nothing trimmed
             off the bottom — it sits warm in the sky with the papers peeking behind its base. */}
         <motion.div
-          className="relative z-10 mx-auto mt-12 w-full max-w-6xl md:mt-16"
+          className="relative z-10 mx-auto mt-12 w-4/5 max-w-[57.6rem] md:mt-16"
           initial={{ opacity: 0, y: 72 }}
           animate={{ opacity: 1, y: 0 }}
           transition={HERO_IN}
         >
-          {/* Hover lift — the window eases forward (subtle scale + rise) on hover and
-              settles back on leave. Plain 2D transform on the img itself: decoupled from
-              the framer entry on the parent, stays crisp (no 3D raster softening), and
-              motion-safe gates it off under reduced-motion. */}
-          <img
-            src={shot.src}
-            alt="The MemryNote app showing a note with tags, a table, and tasks"
-            width={shot.width}
-            height={shot.height}
-            loading="eager"
-            decoding="async"
-            className="block h-auto w-full drop-shadow-[0_24px_60px_rgba(31,41,55,0.30)] transition-transform duration-300 ease-out motion-safe:hover:-translate-y-2 motion-safe:hover:scale-[1.02]"
-          />
+          {/* The whole window is the demo trigger — click opens the video lightbox.
+              Hover lift (subtle scale + rise) rides the group here; plain 2D transform on
+              the img stays crisp (no 3D raster softening) and motion-safe gates it off under
+              reduced-motion. */}
+          <button
+            type="button"
+            aria-label="Watch the MemryNote demo"
+            onClick={() => {
+              trackLandingEvent('landing_hero_demo_open', 'hero')
+              setDemoOpen(true)
+            }}
+            className="group relative block w-full rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/70"
+          >
+            <img
+              src={shot.src}
+              alt="The MemryNote app showing a note with tags, a table, and tasks"
+              width={shot.width}
+              height={shot.height}
+              loading="eager"
+              decoding="async"
+              className="block h-auto w-full drop-shadow-[0_24px_60px_rgba(31,41,55,0.30)] transition-transform duration-300 ease-out motion-safe:group-hover:-translate-y-2 motion-safe:group-hover:scale-[1.02]"
+            />
+            {/* Watch cue — hidden until hover/keyboard focus; always shown on touch (no hover). */}
+            <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
+              <span className="flex translate-y-1 scale-95 items-center gap-2 rounded-full bg-ink/75 px-5 py-2.5 text-sm font-medium text-white opacity-0 shadow-[0_16px_50px_rgba(31,41,55,0.45)] backdrop-blur-md transition-all duration-200 ease-out group-hover:translate-y-0 group-hover:scale-100 group-hover:opacity-100 group-focus-visible:translate-y-0 group-focus-visible:scale-100 group-focus-visible:opacity-100 motion-reduce:transition-none [@media(hover:none)]:translate-y-0 [@media(hover:none)]:scale-100 [@media(hover:none)]:opacity-100">
+                <Play className="h-4 w-4 fill-current" strokeWidth={1.6} />
+                Watch demo
+              </span>
+            </span>
+          </button>
         </motion.div>
       </div>
+
+      <HeroDemoDialog open={demoOpen} onClose={() => setDemoOpen(false)} />
     </section>
   )
 }

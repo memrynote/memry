@@ -1,7 +1,6 @@
 import { motion } from 'framer-motion'
-import { FolderTree, Layers, Waypoints } from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
 import { HomeSection, SectionTitle } from '@/components/sections/home2/primitives'
+import { Mascot } from '@/components/ui/mascot'
 import { cn } from '@/lib/utils'
 
 const EASE = [0.16, 1, 0.3, 1] as const
@@ -9,8 +8,7 @@ const EASE = [0.16, 1, 0.3, 1] as const
 const RISE_VIEWPORT = { once: true, margin: '-80px' } as const
 
 interface StructureCard {
-  icon: LucideIcon
-  iconTint: string
+  iconSrc: string
   title: string
   description: string
   float: string
@@ -18,22 +16,19 @@ interface StructureCard {
 
 const STRUCTURE_CARDS: StructureCard[] = [
   {
-    icon: FolderTree,
-    iconTint: 'bg-tint-sky',
+    iconSrc: '/mascots/folder-tags.png',
     title: 'Folders & tags',
     description: 'Organize how you already think.',
     float: 'md:translate-y-5 md:-rotate-1'
   },
   {
-    icon: Layers,
-    iconTint: 'bg-tint-sage',
+    iconSrc: '/mascots/projects.png',
     title: 'Projects',
     description: 'Notes, tasks and deadlines in one place.',
     float: 'md:-translate-y-3'
   },
   {
-    icon: Waypoints,
-    iconTint: 'bg-tint-peach',
+    iconSrc: '/mascots/links-graph.png',
     title: 'Links & graph',
     description: 'Backlinks connect ideas for you.',
     float: 'md:translate-y-7 md:rotate-1'
@@ -85,39 +80,28 @@ export function StructureShowcase() {
         />
 
         <div className="relative grid gap-5 sm:grid-cols-3 md:gap-7 md:pb-10">
-          {STRUCTURE_CARDS.map((card, i) => {
-            const Icon = card.icon
-            return (
-              <motion.div
-                key={card.title}
-                initial={{ opacity: 0, y: 28 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={RISE_VIEWPORT}
-                transition={{ duration: 0.8, delay: 0.1 + i * 0.12, ease: EASE }}
+          {STRUCTURE_CARDS.map((card, i) => (
+            <motion.div
+              key={card.title}
+              initial={{ opacity: 0, y: 28 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={RISE_VIEWPORT}
+              transition={{ duration: 0.8, delay: 0.1 + i * 0.12, ease: EASE }}
+            >
+              <div
+                className={cn(
+                  'flex h-full flex-col gap-4 rounded-2xl border border-border/70 bg-card p-6 shadow-card',
+                  card.float
+                )}
               >
-                <div
-                  className={cn(
-                    'flex h-full flex-col gap-4 rounded-2xl border border-border/70 bg-card p-6 shadow-card',
-                    card.float
-                  )}
-                >
-                  <span
-                    aria-hidden
-                    className={cn(
-                      'flex h-10 w-10 items-center justify-center rounded-xl text-ink/70',
-                      card.iconTint
-                    )}
-                  >
-                    <Icon className="h-5 w-5" />
-                  </span>
-                  <div>
-                    <h3 className="font-serif text-xl text-ink">{card.title}</h3>
-                    <p className="mt-1.5 text-sm leading-relaxed text-muted">{card.description}</p>
-                  </div>
+                <Mascot src={card.iconSrc} className="h-14 w-14" />
+                <div>
+                  <h3 className="font-serif text-xl text-ink">{card.title}</h3>
+                  <p className="mt-1.5 text-sm leading-relaxed text-muted">{card.description}</p>
                 </div>
-              </motion.div>
-            )
-          })}
+              </div>
+            </motion.div>
+          ))}
         </div>
       </div>
     </HomeSection>
