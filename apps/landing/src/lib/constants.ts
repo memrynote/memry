@@ -208,8 +208,8 @@ export const FEATURES = [
     title: 'Calendar',
     tagline: 'Your time, all in one place.',
     description:
-      'The calendar that knows about your tasks, deadlines, and journal entries. Drag to reschedule, plot anything by date, and see your week in one glance.',
-    highlights: ['Week view', 'Day overview', 'Drag to reschedule', 'Start + due dates'],
+      'The calendar that knows about your tasks, deadlines, and journal entries. Two-way Google Calendar sync brings your meetings into the same view. Drag to reschedule, plot anything by date, and see your week in one glance.',
+    highlights: ['Google Calendar sync', 'Week view', 'Drag to reschedule', 'Start + due dates'],
     screenshot: 'calendar'
   }
 ] as const
