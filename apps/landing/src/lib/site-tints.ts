@@ -21,6 +21,31 @@ export type HeroTint = MegaCardTint | 'ink'
 /** Every *Alternative page resolves here: neutral beside competitor logos. */
 const COMPARISON_TINT = 'lilac' satisfies HeroTint
 
+/**
+ * Tint → Tailwind background class. Lives here rather than in primitives.tsx because it
+ * is pure data: a component file that also exports constants breaks fast refresh.
+ * `Record<MegaCardTint, string>` makes TypeScript enforce completeness; site-tints.test.ts
+ * catches the mismatch TypeScript cannot see (e.g. `sky: 'bg-tint-sage'`).
+ */
+export const TINT_CLASSES: Record<MegaCardTint, string> = {
+  sky: 'bg-tint-sky',
+  sage: 'bg-tint-sage',
+  sand: 'bg-tint-sand',
+  peach: 'bg-tint-peach',
+  rose: 'bg-tint-rose',
+  lilac: 'bg-tint-lilac',
+  mint: 'bg-tint-mint'
+}
+
+/**
+ * The hero surface map: the seven pastels plus `ink`. Spread from TINT_CLASSES rather
+ * than restated — duplicating it is the exact habit this layer exists to end.
+ */
+export const HERO_TINT_CLASSES: Record<HeroTint, string> = {
+  ...TINT_CLASSES,
+  ink: 'bg-dark'
+}
+
 export const SITE_TINTS = {
   // Feature pages — unique tints, because here colour is wayfinding
   notes: 'sky', // writing surface; shares home's tint on purpose — Notes is the heart

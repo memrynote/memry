@@ -3,7 +3,13 @@ import { readFileSync } from 'node:fs'
 import { describe, it } from 'node:test'
 
 import { PAGE_META } from './seo.ts'
-import { getPageTint, SITE_TINTS, type HeroTint } from './site-tints.ts'
+import {
+  getPageTint,
+  HERO_TINT_CLASSES,
+  SITE_TINTS,
+  TINT_CLASSES,
+  type HeroTint
+} from './site-tints.ts'
 
 const css = readFileSync(new URL('../index.css', import.meta.url), 'utf8')
 
@@ -85,6 +91,19 @@ describe('site hero tints', () => {
     for (const page of UNTINTED_PAGES) {
       assert.equal(getPageTint(page), undefined, `${page} must not have a hero tint`)
     }
+  })
+
+  // TypeScript enforces that the map is complete, but not that it is correct: it is
+  // perfectly happy with `sky: 'bg-tint-sage'`. That mis-paint would be invisible in
+  // review and obvious only on the page.
+  it('maps every tint to its own background class', () => {
+    for (const [tint, className] of Object.entries(TINT_CLASSES)) {
+      assert.equal(className, `bg-tint-${tint}`, `${tint} is painted with ${className}`)
+    }
+  })
+
+  it('gives the hero map the same pastels plus the ink surface', () => {
+    assert.deepEqual(HERO_TINT_CLASSES, { ...TINT_CLASSES, ink: 'bg-dark' })
   })
 
   it('gives each feature page its own tint', () => {

@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { cn } from '@/lib/utils'
+import { TINT_CLASSES, type MegaCardTint } from '@/lib/site-tints'
 
 const EASE = [0.16, 1, 0.3, 1] as const
 
@@ -10,14 +11,7 @@ const RISE_ANIMATE = { opacity: 1, y: 0 }
 const RISE_VIEWPORT = { once: true, margin: '-80px' } as const
 const RISE_TRANSITION = { duration: 0.8, ease: EASE }
 
-export type MegaCardTint = 'sky' | 'sage' | 'sand' | 'peach'
-
-const TINT_CLASSES: Record<MegaCardTint, string> = {
-  sky: 'bg-tint-sky',
-  sage: 'bg-tint-sage',
-  sand: 'bg-tint-sand',
-  peach: 'bg-tint-peach'
-}
+export type { MegaCardTint }
 
 export interface MegaCardProps {
   tint: MegaCardTint
@@ -114,6 +108,8 @@ export interface FeatureChipProps {
   icon?: ReactNode
   label: string
   href?: string
+  /** Trailing affordance — hero pill links use an arrow here. */
+  trailingIcon?: ReactNode
   className?: string
 }
 
@@ -122,7 +118,7 @@ function isExternalHref(href: string) {
 }
 
 /** Small rounded chip card with hover lift. Renders a Link for internal hrefs, <a> for external. */
-export function FeatureChip({ icon, label, href, className }: FeatureChipProps) {
+export function FeatureChip({ icon, label, href, trailingIcon, className }: FeatureChipProps) {
   const chipClass = cn(
     'group inline-flex items-center gap-2.5 rounded-2xl border border-border/70 bg-card',
     'px-4 py-3 text-sm font-medium text-ink shadow-sm',
@@ -138,6 +134,11 @@ export function FeatureChip({ icon, label, href, className }: FeatureChipProps) 
         </span>
       )}
       <span className="whitespace-nowrap">{label}</span>
+      {trailingIcon && (
+        <span aria-hidden className="flex shrink-0 items-center justify-center">
+          {trailingIcon}
+        </span>
+      )}
     </>
   )
 

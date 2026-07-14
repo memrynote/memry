@@ -2,16 +2,10 @@ import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { Mascot } from '@/components/ui/mascot'
 import { cn } from '@/lib/utils'
-import { HomeSection, SectionTitle, type MegaCardTint } from '@/components/site/primitives'
+import { TINT_CLASSES, type MegaCardTint } from '@/lib/site-tints'
+import { HomeSection, SectionTitle } from '@/components/site/primitives'
 
 const EASE = [0.16, 1, 0.3, 1] as const
-
-const TINT_CLASSES: Record<MegaCardTint, string> = {
-  sky: 'bg-tint-sky',
-  sage: 'bg-tint-sage',
-  sand: 'bg-tint-sand',
-  peach: 'bg-tint-peach'
-}
 
 interface Persona {
   name: string
