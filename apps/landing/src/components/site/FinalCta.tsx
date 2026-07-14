@@ -1,9 +1,11 @@
+import type { ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { DownloadButton } from '@/components/shared/DownloadCTA'
 import { trackLandingEvent } from '@/lib/analytics'
+import { cn } from '@/lib/utils'
 import { HomeSection } from '@/components/site/primitives'
 
 const EASE = [0.16, 1, 0.3, 1] as const
@@ -27,7 +29,32 @@ function SunArc() {
   )
 }
 
-export function FinalCTA2() {
+export interface FinalCtaSecondary {
+  label: string
+  to: string
+  /** trackLandingEvent detail, e.g. `pricing:home-final`. */
+  event: string
+}
+
+export interface FinalCtaProps {
+  title: ReactNode
+  sub?: ReactNode
+  /** Analytics location passed to DownloadButton, e.g. `home-final`. */
+  location: string
+  /** Optional ghost link beside the download button. */
+  secondary?: FinalCtaSecondary
+  className?: string
+}
+
+/**
+ * The site's closing banner: a dark sunrise card that ends every page the same way.
+ *
+ * This is the homepage's closer generalized — every other page hand-rolled a plainer
+ * version of it (`py-24 bg-paper-alt` + an h2 + DownloadCTA), which is precisely the
+ * drift this layer exists to end. The dark surface is deliberate: it is the one moment
+ * the light site goes quiet before the ask.
+ */
+export function FinalCta({ title, sub, location, secondary, className }: FinalCtaProps) {
   return (
     <HomeSection>
       <motion.div
@@ -35,7 +62,11 @@ export function FinalCTA2() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: '-80px' }}
         transition={{ duration: 0.8, ease: EASE }}
-        className="zone-dark relative mx-auto w-full max-w-6xl overflow-hidden rounded-3xl border border-white/10 px-6 pt-16 pb-40 text-center sm:px-10 md:pt-24 md:pb-52"
+        className={cn(
+          'zone-dark relative mx-auto w-full max-w-6xl overflow-hidden rounded-3xl border border-white/10',
+          'px-6 pt-16 pb-40 text-center sm:px-10 md:pt-24 md:pb-52',
+          className
+        )}
       >
         <div
           className="pointer-events-none absolute inset-0"
@@ -49,28 +80,30 @@ export function FinalCTA2() {
 
         <div className="relative">
           <h2 className="font-serif text-5xl text-ink-inverted text-balance md:text-6xl">
-            Let&rsquo;s get <em className="text-terracotta">started</em>
+            {title}
           </h2>
-          <p className="mx-auto mt-6 max-w-md text-lg leading-relaxed text-dark-muted">
-            Free to start. Private by default. Yours forever.
-          </p>
+          {sub && (
+            <p className="mx-auto mt-6 max-w-md text-lg leading-relaxed text-dark-muted">{sub}</p>
+          )}
 
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <DownloadButton location="home-final" />
-            <Button
-              size="lg"
-              variant="ghost"
-              className="rounded-full px-6 text-ink-inverted hover:bg-white/10"
-              asChild
-            >
-              <Link
-                to="/pricing"
-                onClick={() => trackLandingEvent('landing_nav_click', 'pricing:home-final')}
+            <DownloadButton location={location} />
+            {secondary && (
+              <Button
+                size="lg"
+                variant="ghost"
+                className="rounded-full px-6 text-ink-inverted hover:bg-white/10"
+                asChild
               >
-                See pricing
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
+                <Link
+                  to={secondary.to}
+                  onClick={() => trackLandingEvent('landing_nav_click', secondary.event)}
+                >
+                  {secondary.label}
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            )}
           </div>
         </div>
       </motion.div>

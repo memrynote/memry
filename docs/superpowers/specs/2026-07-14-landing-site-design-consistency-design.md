@@ -259,8 +259,10 @@ deleting hand-rolled mock JSX.
   toggle and no `dark:` utility left in `src/`. Do not add `dark:` variants, do not add a
   second definition of any tint, and do not reintroduce theme-swapped tokens.
   `lib/site-tints.test.ts` guards this: each tint must be defined exactly once.
-- **`ink` is now the site's only dark surface.** That makes the CLI hero more distinctive,
-  not less — it is the single place the palette goes dark, by design.
+- **`ink` is the only dark _hero_, not the only dark surface.** The site keeps two other
+  `zone-dark` moments by design: the homepage `PrivacyShowcase`, and the `FinalCta`
+  banner that now closes every page. Removing the dark _theme_ did not remove dark
+  _zones_ — `zone-dark` is a deliberate surface, not a theme artifact.
 - **No new routes.** Route set is unchanged, so the `ROUTE_MAP` / `entry-server` SSG
   gotcha is not in play — but `build` prerenders all ~33 routes, which catches it anyway.
 - **Copy is preserved.** This is a re-skin: headline and body copy carry over unless a

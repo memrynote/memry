@@ -7,7 +7,7 @@ import { ConnectedShowcase } from '@/components/site/ConnectedShowcase'
 import { StructureShowcase } from '@/components/site/StructureShowcase'
 import { PrivacyShowcase } from '@/components/site/PrivacyShowcase'
 import { CommunityLoop } from '@/components/site/CommunityLoop'
-import { FinalCTA2 } from '@/components/site/FinalCTA2'
+import { FinalCta } from '@/components/site/FinalCta'
 import { FounderNote } from '@/components/site/primitives'
 
 export function Home() {
@@ -32,7 +32,16 @@ export function Home() {
       </FounderNote>
       <PrivacyShowcase />
       <CommunityLoop />
-      <FinalCTA2 />
+      <FinalCta
+        title={
+          <>
+            Let&rsquo;s get <em className="text-terracotta">started</em>
+          </>
+        }
+        sub="Free to start. Private by default. Yours forever."
+        location="home-final"
+        secondary={{ label: 'See pricing', to: '/pricing', event: 'pricing:home-final' }}
+      />
     </>
   )
 }
