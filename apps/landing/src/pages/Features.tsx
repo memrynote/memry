@@ -48,8 +48,8 @@ import {
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { Container } from '@/components/layout/Container'
-import { DownloadCTA } from '@/components/shared/DownloadCTA'
 import { PageHead } from '@/components/shared/PageHead'
+import { FinalCta } from '@/components/site/FinalCta'
 import { PageHero } from '@/components/site/PageHero'
 import { FeatureChip, SectionTitle } from '@/components/site/primitives'
 import { SITE_TINTS } from '@/lib/site-tints'
@@ -617,22 +617,11 @@ export function FeaturesPage() {
         </Container>
       </section>
 
-      <section className="py-24 bg-paper-alt">
-        <Container size="sm">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center"
-          >
-            <h2 className="font-serif text-3xl text-ink mb-4">Ready to get started?</h2>
-            <p className="text-lg text-muted font-serif mb-8">
-              Free, local-first, and open source.
-            </p>
-            <DownloadCTA location="features-final" />
-          </motion.div>
-        </Container>
-      </section>
+      <FinalCta
+        title="Ready to get started?"
+        sub="Free, local-first, and open source."
+        location="features-final"
+      />
     </>
   )
 }

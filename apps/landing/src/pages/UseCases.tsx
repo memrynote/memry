@@ -1,8 +1,8 @@
 import { motion } from 'framer-motion'
 import { ArrowRight } from 'lucide-react'
 import { Container } from '@/components/layout/Container'
-import { DownloadCTA } from '@/components/shared/DownloadCTA'
 import { PageHead } from '@/components/shared/PageHead'
+import { FinalCta } from '@/components/site/FinalCta'
 import { PageHero } from '@/components/site/PageHero'
 import { FeatureChip } from '@/components/site/primitives'
 import { USE_CASES } from '@/lib/constants'
@@ -188,26 +188,11 @@ export function UseCasesPage() {
         </Container>
       </section>
 
-      <section className="pb-24 md:pb-32">
-        <Container>
-          <div className="w-full h-px bg-gradient-to-r from-transparent via-terracotta/20 to-transparent mb-24" />
-        </Container>
-        <Container size="sm">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-            className="text-center"
-          >
-            <h2 className="font-serif text-4xl md:text-5xl text-ink mb-6">Ready to simplify?</h2>
-            <p className="text-xl text-muted font-sans mb-12 max-w-lg mx-auto leading-relaxed">
-              Download memrynote and experience a calmer way to work.
-            </p>
-            <DownloadCTA location="usecases-final" />
-          </motion.div>
-        </Container>
-      </section>
+      <FinalCta
+        title="Ready to simplify?"
+        sub="Download memrynote and experience a calmer way to work."
+        location="usecases-final"
+      />
     </>
   )
 }
