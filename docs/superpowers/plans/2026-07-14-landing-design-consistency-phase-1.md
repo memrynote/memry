@@ -20,7 +20,8 @@
 - **WCAG AA** on every tint. `text-ink` on the seven light tints; `text-ink-inverted` on `ink`.
 - **Reduced motion:** `MotionConfig reducedMotion` is already applied site-wide in `App.tsx`. Gate hover transforms behind `motion-safe:`.
 - **Test glob is `src/**/\*.test.ts`** — a test file must end in `.test.ts` to run. Imports use explicit extensions (`from './seo.ts'`).
-- **There is no component/render test harness** (no jsdom, no testing-library). Do not add one. JSX is verified by `build` (which prerenders every route) plus a manual light/dark pass.
+- **There is no component/render test harness** (no jsdom, no testing-library). Do not add one. JSX is verified by `build` (which prerenders every route) plus a manual visual pass.
+- **The site is light-only.** Commit `2724277f0` removed the dark theme: no `.dark` block, no `@custom-variant dark`, no `dark:` utility anywhere in `src/`. Do not add `dark:` variants and do not give any tint a second definition — `site-tints.test.ts` fails if you do.
 
 ## Deviation from the spec
 
@@ -189,17 +190,16 @@ describe('site hero tints', () => {
     }
   })
 
-  it('defines every pastel tint in both light and dark', () => {
+  // The landing site is light-only as of 2724277f0 ("feat(landing): remove the dark
+  // theme"). There is no .dark block and no @custom-variant dark, so a tint is defined
+  // exactly once. This guards the removal: a second definition means a dark block crept
+  // back in without the design being reconsidered.
+  it('defines every tint exactly once, because the site is light-only', () => {
     for (const tint of new Set(Object.values(SITE_TINTS))) {
-      if (tint === 'ink') continue // fixed surface, identical in both themes
-
       const token = tintToken(tint)
       const occurrences = css.split(`${token}:`).length - 1
 
-      assert.ok(
-        occurrences >= 2,
-        `${token} must be defined in light and dark (found ${occurrences})`
-      )
+      assert.equal(occurrences, 1, `${token} must be defined exactly once (found ${occurrences})`)
     }
   })
 
@@ -739,8 +739,7 @@ Open `/roadmap`. Check, in this order:
 
 1. The sky panel is inset from the viewport edges with rounded corners, and the nav pill floats over it without colliding with the eyebrow.
 2. Both pill links render with a trailing arrow and hover-lift.
-3. Toggle dark mode — the panel takes the deep desaturated sky, and `text-ink` stays readable.
-4. Narrow to ~375px — the panel keeps its inset, the headline does not overflow, the pills wrap.
+3. Narrow to ~375px — the panel keeps its inset, the headline does not overflow, the pills wrap.
 
 - [ ] **Step 6: Commit**
 
@@ -873,7 +872,7 @@ pnpm dev:landing
 
 Open `/changelog`, then `/roadmap`, then back. The two heroes must read as the same component with different words — same panel inset, same corner radius, same type scale, same sky tint. That resemblance is the whole point of the phase; if they differ, `PageHero` is leaking page-specific styling and needs fixing before Phase 2.
 
-Check dark mode and ~375px as in Task 4.
+Check ~375px as in Task 4.
 
 - [ ] **Step 5: Commit**
 
@@ -895,7 +894,7 @@ Before Phase 2 is planned, all of these must hold:
 - [ ] `pnpm --filter @memry/landing typecheck` passes
 - [ ] `pnpm --filter @memry/landing test` passes (57 tests)
 - [ ] `pnpm --filter @memry/landing build` passes, prerendering all routes
-- [ ] `/roadmap` and `/changelog` read as the same component, in light and dark, at 375px and desktop
+- [ ] `/roadmap` and `/changelog` read as the same component, at 375px and desktop
 - [ ] `grep -rn "sections/home2" apps/landing/src` returns nothing
 - [ ] Task 5 required **no new `PageHero` props**
 

@@ -105,8 +105,8 @@ of the `terracotta | sage | amber` tone map.
 ### `MegaCardTint` extension
 
 `MegaCardTint` currently covers `sky | sage | sand | peach`. It extends to include
-`rose | lilac | mint` — all three tokens already exist in `index.css` with light and dark
-values, so this is a type-and-map change only. `TINT_CLASSES` gains the three entries.
+`rose | lilac | mint` — all three tokens already exist in `index.css`, so this is a
+type-and-map change only. `TINT_CLASSES` gains the three entries.
 
 A separate `HeroTint = MegaCardTint | 'ink'` covers the CLI hero. `ink` maps to the
 existing `--color-dark` surface and forces `text-ink-inverted` for its subtree.
@@ -254,7 +254,13 @@ deleting hand-rolled mock JSX.
   carried forward, not widened.
 - **Reduced motion.** `MotionConfig reducedMotion` is already site-wide; new motion rides
   it and gates hover transforms behind `motion-safe:`.
-- **Dark mode.** Every tint already has a deep desaturated dark equivalent. No new tokens.
+- **The site is light-only.** Commit `2724277f0` ("feat(landing): remove the dark theme")
+  deleted the `.dark` block and the `@custom-variant dark` declaration. There is no theme
+  toggle and no `dark:` utility left in `src/`. Do not add `dark:` variants, do not add a
+  second definition of any tint, and do not reintroduce theme-swapped tokens.
+  `lib/site-tints.test.ts` guards this: each tint must be defined exactly once.
+- **`ink` is now the site's only dark surface.** That makes the CLI hero more distinctive,
+  not less — it is the single place the palette goes dark, by design.
 - **No new routes.** Route set is unchanged, so the `ROUTE_MAP` / `entry-server` SSG
   gotcha is not in play — but `build` prerenders all ~33 routes, which catches it anyway.
 - **Copy is preserved.** This is a re-skin: headline and body copy carry over unless a
@@ -274,8 +280,8 @@ pnpm --filter @memry/landing build   # typecheck + vite build + prerender all ~3
 The prerender step is the real gate — it renders every route for real, so a broken page
 fails the build rather than shipping.
 
-Manual pass per phase: each touched route in light **and** dark, at mobile and desktop
-widths. `pnpm dev:landing`.
+Manual pass per phase: each touched route at mobile and desktop widths. `pnpm dev:landing`.
+There is no dark mode to check — see the light-only constraint above.
 
 Docs gate does not apply — `scripts/docs-impact.mjs` routes on desktop/sync-server changes;
 this is landing-only.
