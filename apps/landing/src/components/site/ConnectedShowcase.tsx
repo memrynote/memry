@@ -1,6 +1,7 @@
 import { motion, useReducedMotion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { ArrowUpRight } from 'lucide-react'
+import { ClipperStack } from '@/components/site/ClipperStack'
 import { HomeSection, SectionTitle } from '@/components/site/primitives'
 import { AgentChatWidget } from '@/components/site/widgets/AgentChatWidget'
 import { CliWidget } from '@/components/site/widgets/CliWidget'
@@ -180,42 +181,6 @@ function FolderShot() {
         decoding="async"
         className="block h-auto w-full"
       />
-    </div>
-  )
-}
-
-/**
- * The web clipper story in one frame: the captured note sits framed behind, and the
- * clipper popup floats in front on the trailing corner — the source that made it.
- */
-function ClipperStack() {
-  const noteSrc = '/screenshots/webclipper-front_white.png'
-  return (
-    <div className="relative aspect-[4/3] w-full">
-      {/* The captured note — behind, framed, nudged just off-true */}
-      <div className="absolute bottom-0 start-0 w-[80%] -rotate-1 overflow-hidden rounded-xl border border-ink/10 shadow-card">
-        <img
-          src={noteSrc}
-          alt="The clipped article, open as a note in MemryNote"
-          width={812}
-          height={764}
-          loading="lazy"
-          decoding="async"
-          className="block aspect-[812/764] w-full object-cover object-top"
-        />
-      </div>
-      {/* The clipper popup — floating in front, casting over the note */}
-      <div className="absolute end-0 top-0 w-[44%] rotate-2 overflow-hidden rounded-xl shadow-elevated ring-1 ring-ink/10">
-        <img
-          src="/screenshots/web-clipper.png"
-          alt="The MemryNote web clipper capturing the article"
-          width={400}
-          height={602}
-          loading="lazy"
-          decoding="async"
-          className="block w-full object-contain"
-        />
-      </div>
     </div>
   )
 }
