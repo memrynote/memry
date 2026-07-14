@@ -3,24 +3,11 @@ import { ArrowRight } from 'lucide-react'
 import { Container } from '@/components/layout/Container'
 import { DownloadCTA } from '@/components/shared/DownloadCTA'
 import { PageHead } from '@/components/shared/PageHead'
+import { PageHero } from '@/components/site/PageHero'
+import { FeatureChip } from '@/components/site/primitives'
 import { USE_CASES } from '@/lib/constants'
-import { BLUR_REVEAL_ANIMATE, BLUR_REVEAL_INITIAL, BLUR_REVEAL_TRANSITION } from '@/lib/motion'
+import { SITE_TINTS } from '@/lib/site-tints'
 import { cn } from '@/lib/utils'
-
-const TICKER_LABELS = [
-  'Developer',
-  'Student',
-  'Freelancer',
-  'Creator',
-  'Researcher',
-  'Designer',
-  'Founder',
-  'Writer',
-  'ADHD',
-  'Journalist'
-]
-
-const tickerText = TICKER_LABELS.map((l) => `${l}  ·  `).join('')
 
 const sectionVariants = {
   hidden: { opacity: 0, y: 40 },
@@ -75,7 +62,8 @@ function UseCaseSection({
   const Icon = useCase.icon
 
   return (
-    <div>
+    // The id gives the hero chips somewhere to land — scroll-mt clears the fixed nav pill.
+    <div id={useCase.id} className="scroll-mt-28">
       {index > 0 && (
         <div className="w-full h-px bg-gradient-to-r from-transparent via-border to-transparent mb-20 md:mb-28" />
       )}
@@ -154,40 +142,41 @@ function UseCaseSection({
   )
 }
 
+/** The personas as hero chips — each one an in-page anchor down to its section. */
+function PersonaChips() {
+  return (
+    <>
+      {USE_CASES.map((useCase) => {
+        const Icon = useCase.icon
+
+        return (
+          <FeatureChip
+            key={useCase.id}
+            href={`#${useCase.id}`}
+            label={useCase.title}
+            icon={<Icon className="h-4 w-4" strokeWidth={1.5} />}
+          />
+        )
+      })}
+    </>
+  )
+}
+
 export function UseCasesPage() {
   return (
-    <main>
+    <>
       <PageHead page="useCases" />
-
-      <section className="zone-dark relative overflow-hidden pt-32 pb-24 md:pt-40 md:pb-32">
-        <div className="absolute inset-0 flex items-center overflow-hidden pointer-events-none select-none">
-          <div className="animate-marquee whitespace-nowrap font-mono text-[clamp(4rem,10vw,8rem)] font-bold tracking-tight text-white/[0.04] leading-none">
-            <span>{tickerText}</span>
-            <span>{tickerText}</span>
-          </div>
-        </div>
-
-        <Container className="relative z-10">
-          <motion.div
-            initial={BLUR_REVEAL_INITIAL}
-            animate={BLUR_REVEAL_ANIMATE}
-            transition={BLUR_REVEAL_TRANSITION}
-            className="max-w-3xl"
-          >
-            <p className="font-mono text-sm tracking-widest uppercase text-terracotta mb-6">
-              Use Cases
-            </p>
-            <h1 className="font-serif text-5xl md:text-7xl lg:text-8xl text-ink-inverted leading-[0.95] mb-8">
-              Who are
-              <br />
-              <span className="text-terracotta">you?</span>
-            </h1>
-            <p className="text-lg md:text-xl text-dark-muted max-w-md leading-relaxed">
-              Seven workflows. One calm workspace.
-            </p>
-          </motion.div>
-        </Container>
-      </section>
+      <PageHero
+        tint={SITE_TINTS.useCases}
+        eyebrow="Use cases"
+        title={
+          <>
+            Who are <span className="text-terracotta">you?</span>
+          </>
+        }
+        sub="Seven workflows. One calm workspace."
+        actions={<PersonaChips />}
+      />
 
       <section className="py-20 md:py-32">
         <Container>
@@ -219,6 +208,6 @@ export function UseCasesPage() {
           </motion.div>
         </Container>
       </section>
-    </main>
+    </>
   )
 }
