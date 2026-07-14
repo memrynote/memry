@@ -65,7 +65,7 @@ export function Hero2() {
           No height cap: the panel takes its natural content height, so on laptop screens
           it fills the viewport (full-screen hero) with the screenshot bleeding off the
           bottom, clipped by overflow-hidden. */}
-      <div className="relative mx-auto w-full overflow-hidden rounded-3xl border border-ink/5 bg-[#3F84FF] pb-8 md:pb-14">
+      <div className="relative mx-auto w-full overflow-hidden rounded-3xl border border-ink/5 bg-tint-sky pb-8 md:pb-14">
         {/* Painted landscape backdrop — dimmed in dark mode so the light ink copy stays readable.
             A whisper of blur pushes it back so the copy + app window read as the foreground;
             scale-105 hides the soft edges the blur would otherwise fade at the panel border. */}

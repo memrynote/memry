@@ -88,20 +88,6 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
   )
 }
 
-function RoadmapPill({ size = 'sm' }: { size?: 'sm' | 'md' }) {
-  return (
-    <span
-      className={cn(
-        'inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 font-mono-accent uppercase tracking-[0.22em] text-amber-700',
-        size === 'sm' ? 'px-2.5 py-1 text-[10px]' : 'px-3 py-1.5 text-[11px]'
-      )}
-    >
-      <span className="h-1.5 w-1.5 rounded-full bg-amber-500 motion-safe:animate-pulse" />
-      Coming soon · Early access
-    </span>
-  )
-}
-
 function AIAgentHero() {
   return (
     <section className="relative overflow-hidden pt-32 pb-20 md:pt-40 md:pb-24">
@@ -121,7 +107,6 @@ function AIAgentHero() {
               <Sparkles className="h-3 w-3" strokeWidth={2} />
               AI Agent
             </span>
-            <RoadmapPill size="md" />
           </div>
           <h1 className="mt-5 font-serif text-4xl font-normal leading-[1.05] text-ink text-balance md:text-6xl">
             Chat with your second brain.
@@ -179,24 +164,21 @@ function HeroChatMock() {
   )
 }
 
-const ANCHOR_CARDS: { icon: LucideIcon; title: string; body: string; comingSoon?: boolean }[] = [
+const ANCHOR_CARDS: { icon: LucideIcon; title: string; body: string }[] = [
   {
     icon: MessageSquare,
     title: 'Chat with citations',
-    body: 'Every answer points back to the source notes. Click a citation, jump straight to the line.',
-    comingSoon: true
+    body: 'Every answer points back to the source notes. Click a citation, jump straight to the line.'
   },
   {
     icon: ShieldCheck,
     title: 'Approval-gated writes',
-    body: 'The agent proposes the edit. You approve, decline, or always-allow for the conversation.',
-    comingSoon: true
+    body: 'The agent proposes the edit. You approve, decline, or always-allow for the conversation.'
   },
   {
     icon: KeyRound,
     title: 'BYOK providers',
-    body: 'Bring your own Claude, Codex, Ollama, or OpenAI-compatible backend only if you want AI on. Keys stay in the OS keychain.',
-    comingSoon: true
+    body: 'Bring your own Claude, Codex, Ollama, or OpenAI-compatible backend only if you want AI on. Keys stay in the OS keychain.'
   },
   {
     icon: Server,
@@ -217,8 +199,8 @@ function EverythingInOnePlace() {
             Not for autoplay.
           </h2>
           <p className="mt-5 text-lg leading-relaxed text-muted">
-            We are designing the agent the way we would want one. AI stays optional, open backends
-            and local options are first-class, and there is a stop button before any write.
+            We built the agent the way we would want one. AI stays optional, open backends and local
+            options are first-class, and there is a stop button before any write.
           </p>
         </motion.div>
 
@@ -240,11 +222,6 @@ function EverythingInOnePlace() {
               </span>
               <h3 className="mt-5 font-serif text-xl text-ink">{card.title}</h3>
               <p className="mt-2 flex-1 text-sm leading-relaxed text-muted">{card.body}</p>
-              {card.comingSoon ? (
-                <span className="mt-4 inline-flex w-fit items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 font-mono-accent text-[10px] uppercase tracking-[0.2em] text-amber-700">
-                  Coming soon
-                </span>
-              ) : null}
             </motion.article>
           ))}
         </motion.div>
@@ -739,12 +716,11 @@ function LocalOnlyMode() {
   )
 }
 
-const STRUCTURE_CARDS: { icon: LucideIcon; title: string; body: string; comingSoon?: boolean }[] = [
+const STRUCTURE_CARDS: { icon: LucideIcon; title: string; body: string }[] = [
   {
     icon: History,
     title: 'Settings persistence',
-    body: 'Provider, model, reasoning level, and temperature stay on the conversation. Pick up where you left off.',
-    comingSoon: true
+    body: 'Provider, model, reasoning level, and temperature stay on the conversation. Pick up where you left off.'
   },
   {
     icon: Server,
@@ -759,20 +735,17 @@ const STRUCTURE_CARDS: { icon: LucideIcon; title: string; body: string; comingSo
   {
     icon: ScrollText,
     title: 'Approval audit log',
-    body: 'Every read, write, and decline lands in a persistent log. Revoke a client in one tap.',
-    comingSoon: true
+    body: 'Every read, write, and decline lands in a persistent log. Revoke a client in one tap.'
   },
   {
     icon: Quote,
     title: 'Cite-with-context',
-    body: 'Answers ship with [[wiki-link]] citations and the surrounding line. No hallucinated sources.',
-    comingSoon: true
+    body: 'Answers ship with [[wiki-link]] citations and the surrounding line. No hallucinated sources.'
   },
   {
     icon: ShieldCheck,
     title: 'Per-vault permissions',
-    body: 'Different vaults can grant different scopes. Work vault stays sealed off from your personal one.',
-    comingSoon: true
+    body: 'Different vaults can grant different scopes. Work vault stays sealed off from your personal one.'
   }
 ]
 
@@ -808,11 +781,6 @@ function StructureSection() {
               </span>
               <h3 className="mt-4 font-serif text-xl text-ink">{card.title}</h3>
               <p className="mt-2 text-sm leading-relaxed text-muted">{card.body}</p>
-              {card.comingSoon ? (
-                <span className="mt-4 inline-flex w-fit items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 font-mono-accent text-[10px] uppercase tracking-[0.2em] text-amber-700">
-                  Coming soon
-                </span>
-              ) : null}
             </motion.article>
           ))}
         </motion.div>
@@ -1014,11 +982,6 @@ function MoreFeatures() {
 
 const AGENT_FAQ = [
   {
-    question: 'When does AI Agent ship?',
-    answer:
-      'Late 2026. AI Agent is in the Polish & AI phase of the roadmap. Believer-tier supporters get early access while it is being built — everyone else lands when it is ready.'
-  },
-  {
     question: 'Do I need an API key?',
     answer:
       'Only if you want to use a hosted provider like Claude or Codex. Bring your own key and memrynote stores it in your OS keychain. Or skip the keys entirely and run a local model with Ollama, llama.cpp, MLX, or vLLM.'
@@ -1088,15 +1051,12 @@ function FinalCta() {
       />
       <Container size="md">
         <motion.div {...fadeUp} className="text-center">
-          <div className="flex justify-center">
-            <RoadmapPill />
-          </div>
-          <h2 className="mx-auto mt-5 max-w-2xl font-serif text-4xl font-normal leading-tight text-ink text-balance md:text-5xl">
+          <h2 className="mx-auto max-w-2xl font-serif text-4xl font-normal leading-tight text-ink text-balance md:text-5xl">
             Your second brain.{' '}
             <span className="italic text-terracotta">Your model. Your approval.</span>
           </h2>
           <p className="mx-auto mt-5 max-w-xl text-lg text-muted leading-relaxed">
-            Local-first. BYOK. MCP-native. The agent ships when the architecture is right.
+            Local-first. BYOK. MCP-native. Optional, and off until you turn it on.
           </p>
 
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -1118,9 +1078,6 @@ function FinalCta() {
               </Link>
             </Button>
           </div>
-          <p className="mt-6 font-mono-accent text-[11px] uppercase tracking-[0.22em] text-muted">
-            Believers get early access · Late 2026
-          </p>
         </motion.div>
       </Container>
     </section>
