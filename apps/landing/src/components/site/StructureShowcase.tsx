@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { HomeSection, SectionTitle } from '@/components/sections/home2/primitives'
+import { HomeSection, SectionTitle } from '@/components/site/primitives'
 import { Mascot } from '@/components/ui/mascot'
 import { cn } from '@/lib/utils'
 

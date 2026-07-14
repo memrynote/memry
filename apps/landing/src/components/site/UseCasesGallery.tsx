@@ -2,11 +2,7 @@ import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { Mascot } from '@/components/ui/mascot'
 import { cn } from '@/lib/utils'
-import {
-  HomeSection,
-  SectionTitle,
-  type MegaCardTint
-} from '@/components/sections/home2/primitives'
+import { HomeSection, SectionTitle, type MegaCardTint } from '@/components/site/primitives'
 
 const EASE = [0.16, 1, 0.3, 1] as const
 

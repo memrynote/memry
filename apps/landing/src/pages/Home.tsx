@@ -1,14 +1,14 @@
 import { PageHead } from '@/components/shared/PageHead'
-import { Hero2 } from '@/components/sections/home2/Hero2'
-import { EverythingRow } from '@/components/sections/home2/EverythingRow'
-import { UseCasesGallery } from '@/components/sections/home2/UseCasesGallery'
+import { Hero2 } from '@/components/site/Hero2'
+import { EverythingRow } from '@/components/site/EverythingRow'
+import { UseCasesGallery } from '@/components/site/UseCasesGallery'
 import { Features } from '@/components/sections/Features'
-import { ConnectedShowcase } from '@/components/sections/home2/ConnectedShowcase'
-import { StructureShowcase } from '@/components/sections/home2/StructureShowcase'
-import { PrivacyShowcase } from '@/components/sections/home2/PrivacyShowcase'
-import { CommunityLoop } from '@/components/sections/home2/CommunityLoop'
-import { FinalCTA2 } from '@/components/sections/home2/FinalCTA2'
-import { FounderNote } from '@/components/sections/home2/primitives'
+import { ConnectedShowcase } from '@/components/site/ConnectedShowcase'
+import { StructureShowcase } from '@/components/site/StructureShowcase'
+import { PrivacyShowcase } from '@/components/site/PrivacyShowcase'
+import { CommunityLoop } from '@/components/site/CommunityLoop'
+import { FinalCTA2 } from '@/components/site/FinalCTA2'
+import { FounderNote } from '@/components/site/primitives'
 
 export function Home() {
   return (

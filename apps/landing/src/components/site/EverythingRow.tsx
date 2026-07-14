@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
 import { Mascot } from '@/components/ui/mascot'
-import { FeatureChip, HomeSection, SectionTitle } from '@/components/sections/home2/primitives'
+import { FeatureChip, HomeSection, SectionTitle } from '@/components/site/primitives'
 
 const EASE = [0.16, 1, 0.3, 1] as const
 

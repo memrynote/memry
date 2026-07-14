@@ -8,7 +8,7 @@ import paperRight from '@/assets/paper-right.png'
 import { Button } from '@/components/ui/button'
 import { Mascot } from '@/components/ui/mascot'
 import { DownloadButton } from '@/components/shared/DownloadCTA'
-import { HeroDemoDialog } from '@/components/sections/home2/HeroDemoDialog'
+import { HeroDemoDialog } from '@/components/site/HeroDemoDialog'
 import { trackLandingEvent } from '@/lib/analytics'
 
 const EASE = [0.16, 1, 0.3, 1] as const

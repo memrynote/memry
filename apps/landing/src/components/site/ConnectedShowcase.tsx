@@ -1,9 +1,9 @@
 import { motion, useReducedMotion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { ArrowUpRight } from 'lucide-react'
-import { HomeSection, SectionTitle } from '@/components/sections/home2/primitives'
-import { AgentChatWidget } from '@/components/sections/home2/widgets/AgentChatWidget'
-import { CliWidget } from '@/components/sections/home2/widgets/CliWidget'
+import { HomeSection, SectionTitle } from '@/components/site/primitives'
+import { AgentChatWidget } from '@/components/site/widgets/AgentChatWidget'
+import { CliWidget } from '@/components/site/widgets/CliWidget'
 import { Mascot } from '@/components/ui/mascot'
 import { cn } from '@/lib/utils'
 

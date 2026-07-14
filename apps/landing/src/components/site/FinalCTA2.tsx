@@ -4,7 +4,7 @@ import { ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { DownloadButton } from '@/components/shared/DownloadCTA'
 import { trackLandingEvent } from '@/lib/analytics'
-import { HomeSection } from '@/components/sections/home2/primitives'
+import { HomeSection } from '@/components/site/primitives'
 
 const EASE = [0.16, 1, 0.3, 1] as const
 

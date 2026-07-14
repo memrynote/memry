@@ -1,12 +1,7 @@
 import { Link } from 'react-router-dom'
 import { ArrowRight, FolderOpen, Link2, Mic, Scissors } from 'lucide-react'
-import {
-  FeatureChip,
-  HomeSection,
-  MegaCard,
-  SectionTitle
-} from '@/components/sections/home2/primitives'
-import { NoteEditorWidget } from '@/components/sections/home2/widgets/NoteEditorWidget'
+import { FeatureChip, HomeSection, MegaCard, SectionTitle } from '@/components/site/primitives'
+import { NoteEditorWidget } from '@/components/site/widgets/NoteEditorWidget'
 
 const CHIP_ICON_CLASS = 'h-4 w-4 text-terracotta'
 
