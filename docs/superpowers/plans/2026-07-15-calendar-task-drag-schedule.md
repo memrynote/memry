@@ -165,6 +165,8 @@ git commit -m "feat(tasks): add unscheduled filter to task list query"
 
 Today `handleDateDrop` sets `dueDate` and preserves whatever `dueTime` the task had. Drops onto the all-day strip must _clear_ `dueTime`; drops onto a timed slot must _set_ it. Undo must restore the previous time, or dragging an all-day task to a timed slot and undoing would restore the date but leave the time set.
 
+This task handles `preserve` (omit the key) and `clear` (`dueTime: null`), both of which the droppable can state statically. Timed slots need the pointer position and are wired in Task 6, once `timeFromOffset` exists.
+
 **Files:**
 
 - Modify: `apps/desktop/src/renderer/src/hooks/use-drag-handlers.ts:18-39` (`UndoAction`), `:223-229` (undo case), `:425-464` (`handleDateDrop`), `:967-973` (`case 'date'`)
@@ -173,7 +175,7 @@ Today `handleDateDrop` sets `dueDate` and preserves whatever `dueTime` the task 
 **Interfaces:**
 
 - Consumes: nothing from Task 1.
-- Produces: `handleDateDrop(taskIds: string[], targetDate: Date, options?: DateDropOptions)` where `interface DateDropOptions { dueTime?: string | null }`. Omitting `dueTime` preserves the task's existing time (today's behavior, unchanged). `dueTime: null` clears it. `dueTime: '14:30'` sets it. The `case 'date'` branch forwards `overData.dueTime` when the droppable supplies it.
+- Produces: `handleDateDrop(taskIds: string[], targetDate: Date, options?: DateDropOptions)` where `interface DateDropOptions { dueTime?: string | null }`. Omitting `dueTime` preserves the task's existing time (today's behavior, unchanged). `dueTime: null` clears it. `dueTime: '14:30'` sets it. The `case 'date'` branch forwards `overData.dueTime` when the droppable supplies the key. Export `DateDropOptions` — Task 6 imports it.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -408,7 +410,7 @@ git commit -m "feat(tasks): let date drops set or clear dueTime, with undo"
 - Consumes: nothing.
 - Produces:
   - `timeFromOffset(offsetY: number, hourHeight: number): string` — returns `'HH:MM'`, snapped to 15 minutes, clamped to `00:00`–`23:45`.
-  - `useCalendarDateDroppable(args: { date: string; timed: boolean; hourHeight?: number }): { setNodeRef: (el: HTMLElement | null) => void; isOver: boolean }` — registers a `type: 'date'` droppable. For `timed: false` the droppable data omits `dueTime` entirely (month cell → preserve time) or sets it to `null` (all-day cell → clear time), per the `allDay` flag.
+  - `useCalendarDateDroppable(args: { date: string; timeBehavior: 'preserve' | 'clear' | 'slot' }): { setNodeRef: (el: HTMLElement | null) => void; isOver: boolean }` — registers a `type: 'date'` droppable. `'preserve'` (month cell) omits `dueTime` from the data entirely; `'clear'` (all-day cell) sets it to `null`. `'slot'` is declared by the timed column in Task 6, which resolves the time at drop.
 
 Reuses `SNAP_MINUTES = 15` semantics from `use-event-drag.ts`. Do not import the private constant; `drop-time.ts` declares its own snap.
 
@@ -949,15 +951,15 @@ git commit -m "feat(calendar): make month cells droppable and task chips draggab
 - Create: `apps/desktop/src/renderer/src/components/calendar/calendar-allday-cell.tsx`
 - Create: `apps/desktop/src/renderer/src/components/calendar/calendar-timed-column-droppable.tsx`
 - Test: `apps/desktop/src/renderer/src/components/calendar/calendar-timed-column-droppable.test.tsx`
+- Modify: `apps/desktop/src/renderer/src/hooks/use-drag-handlers.ts` (`case 'date'` + a `resolveDropOptions` helper)
+- Test: `apps/desktop/src/renderer/src/hooks/use-drag-handlers.test.tsx`
 
 **Interfaces:**
 
-- Consumes: `useCalendarDateDroppable`, `timeFromOffset` (Task 3), `DraggableTaskChip` (Task 4).
-- Produces: all-day cells are `type: 'date'` droppables with `dueTime: null`; timed day columns are `type: 'date'` droppables that compute `dueTime` from the pointer at drag time.
+- Consumes: `useCalendarDateDroppable`, `timeFromOffset` (Task 3), `DateDropOptions` + `handleDateDrop` (Task 2), `DraggableTaskChip` (Task 4).
+- Produces: all-day cells are `type: 'date'` droppables carrying `dueTime: null`; timed day columns are `type: 'date'` droppables carrying `timeBehavior: 'slot'` + `hourHeight`, which `handleDragEnd` turns into a concrete `dueTime` at drop.
 
 Read `calendar-week-view.tsx` and `calendar-day-view.tsx` in full before editing — the week grid is virtualized (TanStack Virtual) and columns are addressed by `data-day-index`, so column identity is index-based, not DOM-order-based.
-
-The timed column droppable needs a live `dueTime` in its data as the pointer moves. Register the droppable with a ref-backed data object so dnd-kit reads the current value at drop:
 
 - [ ] **Step 1: Write the failing test**
 
@@ -995,10 +997,11 @@ Expected: FAIL — "Failed to resolve import './calendar-timed-column-droppable'
 
 Create `apps/desktop/src/renderer/src/components/calendar/calendar-timed-column-droppable.tsx`:
 
+The column declares only _that_ it is a timed slot and how tall an hour is. It does **not** compute the time: the drop time depends on pointer position, which is only known at drop, and `handleDragEnd` already receives both rects. A droppable that tried to compute its own time would have to read the live pointer during render.
+
 ```tsx
 import { useDroppable } from '@dnd-kit/core'
-import { useCallback, useRef, type ReactNode } from 'react'
-import { timeFromOffset } from './drop-time'
+import { type ReactNode } from 'react'
 import { parseDateKey } from '@/lib/task-utils'
 import { cn } from '@/lib/utils'
 
@@ -1010,52 +1013,28 @@ interface CalendarTimedColumnDroppableProps {
 
 /**
  * One droppable per day column rather than per 15-minute slot (96 slots/day
- * would mean 672 droppables in a week). The drop time is derived from where the
- * dragged chip sits relative to the column, then snapped.
+ * would mean 672 droppables in a week). `timeBehavior: 'slot'` tells
+ * handleDragEnd to derive the time from where the chip landed.
  */
 export function CalendarTimedColumnDroppable({
   date,
   hourHeight,
   children
 }: CalendarTimedColumnDroppableProps): React.JSX.Element {
-  const elementRef = useRef<HTMLDivElement | null>(null)
-
-  // dnd-kit reads `data.current` at drop time, so a getter keeps the time live
-  // without re-registering the droppable on every pointer move.
-  const dataRef = useRef({
-    type: 'date' as const,
-    date: parseDateKey(date),
-    dateKey: date,
-    get dueTime(): string {
-      const element = elementRef.current
-      const active = activeRectRef.current
-      if (!element || active === null) return '00:00'
-      const columnTop = element.getBoundingClientRect().top
-      return timeFromOffset(active - columnTop, hourHeight)
+  const { setNodeRef, isOver } = useDroppable({
+    id: `calendar-timed-column:${date}`,
+    data: {
+      type: 'date',
+      date: parseDateKey(date),
+      dateKey: date,
+      timeBehavior: 'slot',
+      hourHeight
     }
   })
 
-  const activeRectRef = useRef<number | null>(null)
-
-  const { setNodeRef, isOver, active } = useDroppable({
-    id: `calendar-timed-column:${date}`,
-    data: dataRef.current
-  })
-
-  // Track the dragged chip's top edge; the getter above converts it to a time.
-  activeRectRef.current = active?.rect.current.translated?.top ?? null
-
-  const setRefs = useCallback(
-    (element: HTMLDivElement | null) => {
-      elementRef.current = element
-      setNodeRef(element)
-    },
-    [setNodeRef]
-  )
-
   return (
     <div
-      ref={setRefs}
+      ref={setNodeRef}
       data-drop-date={date}
       className={cn('relative h-full', isOver && 'bg-tint/10')}
     >
@@ -1065,14 +1044,55 @@ export function CalendarTimedColumnDroppable({
 }
 ```
 
-`parseDateKey(date)` must be re-evaluated if `date` changes; because `dataRef` is initialized once, add this guard immediately after the `dataRef` declaration:
+- [ ] **Step 3b: Resolve the slot time in `handleDragEnd`**
 
-```tsx
-if (dataRef.current.dateKey !== date) {
-  dataRef.current.date = parseDateKey(date)
-  dataRef.current.dateKey = date
+`timeFromOffset` exists from Task 3, and Task 2 left `case 'date'` forwarding `overData.dueTime` only when the key is present. Extend that branch in `apps/desktop/src/renderer/src/hooks/use-drag-handlers.ts` so `timeBehavior: 'slot'` resolves a time from the drop position:
+
+```ts
+        case 'date': {
+          const targetDate = overData?.date as Date
+          if (targetDate) {
+            handleDateDrop(taskIds, targetDate, resolveDropOptions(overData, event))
+          }
+          break
+        }
+```
+
+Add this module-level helper to the same file, above the hook:
+
+```ts
+/**
+ * Month cells preserve the task's time (no key), all-day cells clear it
+ * (dueTime: null), timed columns derive it from where the chip landed.
+ */
+function resolveDropOptions(
+  overData: Record<string, unknown> | undefined,
+  event: DragEndEvent
+): DateDropOptions | undefined {
+  if (overData?.timeBehavior === 'slot') {
+    const overTop = event.over?.rect.top
+    const activeTop = event.active.rect.current.translated?.top
+    const hourHeight = overData.hourHeight as number | undefined
+    if (overTop === undefined || activeTop === undefined || !hourHeight) return undefined
+    return { dueTime: timeFromOffset(activeTop - overTop, hourHeight) }
+  }
+  if (overData && 'dueTime' in overData) {
+    return { dueTime: overData.dueTime as string | null }
+  }
+  return undefined
 }
 ```
+
+Import `timeFromOffset` from `@/components/calendar/drop-time` and `DragEndEvent` from `@dnd-kit/core` (the file already imports dnd-kit types — match its existing import style).
+
+Returning `undefined` when the rects are unavailable is deliberate: preserving the task's existing time is the safe fallback, versus silently scheduling it at midnight.
+
+- [ ] **Step 3c: Test the slot resolution**
+
+Add to `apps/desktop/src/renderer/src/hooks/use-drag-handlers.test.tsx`, exercising `handleDragEnd` with a `timeBehavior: 'slot'` droppable. Build the event so the chip's top sits 9 hours down a column whose top is at 0, with `hourHeight: 48`, and assert `onUpdateTask` received `dueTime: '09:00'`. Match the file's existing helpers for constructing `DragEndEvent` fixtures; if none exist, construct the minimal object the handler reads: `{ over: { id, data: { current: overData }, rect }, active: { id, rect: { current: { translated } } } }`.
+
+Run: `pnpm --filter @memry/desktop test:renderer -- use-drag-handlers.test.tsx`
+Expected: PASS.
 
 - [ ] **Step 4: Run test to verify it passes**
 
