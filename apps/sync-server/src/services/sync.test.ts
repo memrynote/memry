@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 import type { PushItemInput, VectorClock } from '@memry/contracts/sync-api'
+import { LEGACY_RECORD_SYNC_ITEM_TYPES } from '@memry/contracts/sync-api'
 import { AppError, ErrorCodes } from '../lib/errors'
 
 vi.mock('./blob', () => ({
@@ -1916,5 +1917,79 @@ describe('processPushItem', () => {
       createValidPushItem()
     )
     expect(unknownResult).toEqual({ accepted: false, reason: 'INTERNAL_ERROR' })
+  })
+})
+
+// ============================================================================
+// Tests: sync-type negotiation
+// ============================================================================
+
+describe('sync-type negotiation', () => {
+  it('getChanges binds only the negotiated types', async () => {
+    // #given
+    const db = createMockDb()
+    const stmt = createMockStatement()
+    db.prepare.mockReturnValue(stmt)
+
+    // #when
+    await getChanges(db as unknown as D1Database, 'user-1', 0, 10, 'vault-1', ['note', 'task'])
+
+    // #then
+    expect(db.prepare.mock.calls[0][0]).toContain('item_type IN (?, ?)')
+    expect(stmt.bind).toHaveBeenCalledWith('user-1', 'vault-1', 0, 'note', 'task', 11)
+  })
+
+  it('getChanges defaults to the frozen legacy list when types are omitted', async () => {
+    // #given
+    const db = createMockDb()
+    const stmt = createMockStatement()
+    db.prepare.mockReturnValue(stmt)
+
+    // #when
+    await getChanges(db as unknown as D1Database, 'user-1', 0, 10, 'vault-1')
+
+    // #then
+    expect(stmt.bind).toHaveBeenCalledWith(
+      'user-1',
+      'vault-1',
+      0,
+      ...LEGACY_RECORD_SYNC_ITEM_TYPES,
+      11
+    )
+  })
+
+  it('getManifest binds only the negotiated types', async () => {
+    // #given
+    const db = createMockDb()
+    const stmt = createMockStatement()
+    db.prepare.mockReturnValue(stmt)
+
+    // #when
+    await getManifest(db as unknown as D1Database, 'user-1', 'vault-1', ['note'])
+
+    // #then
+    expect(db.prepare.mock.calls[0][0]).toContain('item_type IN (?)')
+    expect(stmt.bind).toHaveBeenCalledWith('user-1', 'vault-1', 'note')
+  })
+
+  it('pullItems binds only the negotiated types', async () => {
+    // #given
+    const db = createMockDb()
+    const stmt = createMockStatement()
+    db.prepare.mockReturnValue(stmt)
+
+    // #when
+    await pullItems(
+      db as unknown as D1Database,
+      {} as unknown as R2Bucket,
+      'user-1',
+      ['item-1'],
+      'vault-1',
+      ['note', 'task']
+    )
+
+    // #then
+    expect(db.prepare.mock.calls[0][0]).toContain('item_type IN (?, ?)')
+    expect(stmt.bind).toHaveBeenCalledWith('user-1', 'vault-1', 'note', 'task', 'item-1')
   })
 })
