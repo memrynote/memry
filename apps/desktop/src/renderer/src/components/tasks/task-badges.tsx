@@ -17,7 +17,7 @@ import type { Project } from '@/data/tasks-data'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useT } from '@memry/i18n/renderer'
 import { TagChip, type Tag } from '@/components/note/tags-row'
-import { useTags } from '@/hooks/use-tags'
+import { useNoteTagsQuery } from '@/hooks/use-notes-query'
 
 export type PriorityBadgeVariant = 'dot' | 'label' | 'full'
 
@@ -370,12 +370,9 @@ export const TaskTagsBadge = ({
   maxVisible = DEFAULT_MAX_VISIBLE_TAGS,
   className
 }: TaskTagsBadgeProps): React.JSX.Element | null => {
-  const { tags: tagDefs } = useTags()
+  const { tags: tagDefs } = useNoteTagsQuery({ enabled: tags.length > 0 })
 
-  const metaByName = useMemo(
-    () => new Map(tagDefs.map((d) => [d.name.toLowerCase(), d])),
-    [tagDefs]
-  )
+  const metaByName = useMemo(() => new Map(tagDefs.map((d) => [d.tag.toLowerCase(), d])), [tagDefs])
 
   const chips: Tag[] = useMemo(
     () =>

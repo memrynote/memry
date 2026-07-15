@@ -4,9 +4,9 @@ import { TaskTagsBadge } from './task-badges'
 
 // The definition is stored lowercase ('mit') while the task carries 'MIT' —
 // this asymmetry is what the case-insensitive lookup test below exercises.
-vi.mock('@/hooks/use-tags', () => ({
-  useTags: () => ({
-    tags: [{ name: 'mit', count: 3, color: 'red', icon: '📚' }]
+vi.mock('@/hooks/use-notes-query', () => ({
+  useNoteTagsQuery: () => ({
+    tags: [{ tag: 'mit', count: 3, color: 'red', icon: '📚' }]
   })
 }))
 
