@@ -125,6 +125,7 @@ import {
   setVaultName
 } from '../services/sync'
 import { ensureSyncVaultAllowed, isPaidSyncEntitlementActive } from '../services/entitlements'
+import { paidSyncMiddleware } from '../middleware/paid-sync'
 import { deleteVaultData, vaultExistsForUser } from '../services/vault-deletion'
 import {
   storeUpdates,
@@ -458,7 +459,15 @@ describe('sync routes', () => {
     // paidSyncMiddleware runs ensureSyncVaultAllowed, which UPSERTS. If this route
     // ever registers below that middleware, the vault is re-created mid-request
     // and delete silently becomes a no-op that still returns 200.
-    // Same probe as the existing assertion at line 391.
+    //
+    // Assert on `paidSyncMiddleware` itself, not on `ensureSyncVaultAllowed`.
+    // `../middleware/paid-sync` is module-mocked as a bare passthrough (see the
+    // vi.mock above) that never calls the real ensureSyncVaultAllowed, so
+    // `expect(ensureSyncVaultAllowed).not.toHaveBeenCalled()` would be true
+    // unconditionally — it can't detect the route moving below the middleware.
+    // `paidSyncMiddleware` is the thing Hono actually invokes based on
+    // registration order, so only an assertion on that mock can fail when the
+    // route regresses. Do not "simplify" this back to ensureSyncVaultAllowed.
     it('does not run ensureSyncVaultAllowed (would resurrect the vault)', async () => {
       await app.request(
         '/sync/vaults/vault-a',
@@ -467,6 +476,10 @@ describe('sync routes', () => {
         executionCtx
       )
 
+      expect(
+        paidSyncMiddleware,
+        'DELETE must register above paidSyncMiddleware'
+      ).not.toHaveBeenCalled()
       expect(
         ensureSyncVaultAllowed,
         'DELETE must register above paidSyncMiddleware'
