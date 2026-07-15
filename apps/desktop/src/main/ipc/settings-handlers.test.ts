@@ -541,6 +541,17 @@ describe('settings-handlers', () => {
     expect(failedResult).toEqual({ success: false, error: 'init failed' })
   })
 
+  it('#given editor settings stored by an older version #then spellCheck reads as off', async () => {
+    registerSettingsHandlers()
+    ;(settingsQueries.getSetting as Mock).mockReturnValueOnce(
+      JSON.stringify({ width: 'full', toolbarMode: 'sticky' })
+    )
+
+    const settings = await invokeHandler(SettingsChannels.invoke.GET_EDITOR_SETTINGS)
+
+    expect(settings).toEqual(expect.objectContaining({ width: 'full', spellCheck: false }))
+  })
+
   it('recovers corrupted group settings and covers group setters', async () => {
     registerSettingsHandlers()
     ;(settingsQueries.getSetting as Mock).mockReturnValueOnce('{bad json')

@@ -237,7 +237,8 @@
     },
     "groups": {
       "layout": "Layout",
-      "toolbar": "Toolbar"
+      "toolbar": "Toolbar",
+      "spelling": "Spelling"
     },
     "width": {
       "label": "Editor Width",
@@ -252,6 +253,11 @@
       "label": "Sticky Formatting Toolbar",
       "description": "Always show toolbar above the editor",
       "error": "Failed to update toolbar mode"
+    },
+    "spellCheck": {
+      "label": "Check Spelling",
+      "description": "Underline misspelled words in notes and journals",
+      "error": "Failed to update spell check"
     }
   },
   "templates": {
