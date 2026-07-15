@@ -11,6 +11,9 @@ import { randomBytes } from 'crypto'
 import path from 'path'
 import { NoteError, NoteErrorCode } from '../lib/errors'
 import { normalizeRelativePath } from '../lib/paths'
+import { createLogger } from '../lib/logger'
+
+const logger = createLogger('FileOps')
 
 // ============================================================================
 // Atomic Write
@@ -26,14 +29,24 @@ const TRANSIENT_FS_RETRY_DELAYS_MS = [50, 150, 450]
  * immediately; retryable ones are retried with backoff before the final
  * attempt's error propagates.
  */
-export async function withTransientFsRetry<T>(operation: () => Promise<T>): Promise<T> {
-  for (const delayMs of TRANSIENT_FS_RETRY_DELAYS_MS) {
+export async function withTransientFsRetry<T>(
+  operation: () => Promise<T>,
+  operationName = 'fs'
+): Promise<T> {
+  for (const [index, delayMs] of TRANSIENT_FS_RETRY_DELAYS_MS.entries()) {
     try {
       return await operation()
     } catch (error) {
       if (!isNodeError(error) || !TRANSIENT_FS_ERROR_CODES.has(error.code ?? '')) {
         throw error
       }
+      // Only the errno and attempt number — never the path, which is note-derived.
+      // This is the local-log counterpart to NoteError.telemetryCode: it explains
+      // a slow or failed save even when telemetry is off.
+      logger.warn(
+        `${operationName}: transient ${error.code} on attempt ${index + 1} of ` +
+          `${TRANSIENT_FS_RETRY_DELAYS_MS.length + 1}, retrying in ${delayMs}ms`
+      )
       await new Promise((resolve) => setTimeout(resolve, delayMs))
     }
   }
@@ -80,9 +93,19 @@ export async function atomicWrite(filePath: string, content: string): Promise<vo
 
         throw error
       }
-    })
-  } catch {
-    throw new NoteError(`Failed to write file: ${filePath}`, NoteErrorCode.WRITE_FAILED)
+    }, 'atomicWrite')
+  } catch (error) {
+    // Preserve the originating error: its errno is the only thing that tells a
+    // cloud-sync/antivirus lock (EBUSY) apart from a full disk (ENOSPC) or a
+    // read-only vault (EROFS) once the report reaches us.
+    throw new NoteError(
+      `Failed to write file: ${filePath}`,
+      NoteErrorCode.WRITE_FAILED,
+      undefined,
+      {
+        cause: error
+      }
+    )
   }
 }
 
@@ -120,7 +143,9 @@ export async function safeRead(filePath: string): Promise<string | null> {
       return null
     }
 
-    throw new NoteError(`Failed to read file: ${filePath}`, NoteErrorCode.READ_FAILED)
+    throw new NoteError(`Failed to read file: ${filePath}`, NoteErrorCode.READ_FAILED, undefined, {
+      cause: error
+    })
   }
 }
 
@@ -271,7 +296,12 @@ export async function deleteFile(filePath: string): Promise<void> {
       return // File already doesn't exist
     }
 
-    throw new NoteError(`Failed to delete file: ${filePath}`, NoteErrorCode.DELETE_FAILED)
+    throw new NoteError(
+      `Failed to delete file: ${filePath}`,
+      NoteErrorCode.DELETE_FAILED,
+      undefined,
+      { cause: error }
+    )
   }
 }
 

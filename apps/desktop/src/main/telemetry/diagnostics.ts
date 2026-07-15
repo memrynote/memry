@@ -2,6 +2,7 @@ import type { TelemetryResult } from '@memry/contracts/telemetry-api'
 import { buildErrorDetail } from '@memry/contracts/telemetry-api'
 
 import { trackMainEvent, type TrackMainEventOptions } from './track'
+import { NoteError } from '../lib/errors'
 
 type DiagnosticLevel = 'debug' | 'info' | 'warn' | 'error'
 
@@ -21,6 +22,13 @@ const toSafeToken = (value: unknown, fallback: string): string => {
 }
 
 const toErrorCode = (error: unknown): string => {
+  // A NoteError's class name alone ("NoteError") cannot say why a save failed.
+  // Its telemetryCode adds the note error code and the originating errno
+  // (NOTE_WRITE_FAILED:EBUSY) and is built to be path-free by construction;
+  // toSafeToken still vets it before it leaves the process.
+  if (error instanceof NoteError) {
+    return toSafeToken(error.telemetryCode, 'NoteError')
+  }
   if (error instanceof Error && error.name) {
     return toSafeToken(error.name, 'Error')
   }
