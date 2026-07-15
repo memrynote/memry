@@ -58,6 +58,23 @@ const applyRank = (type: string): number => PULL_APPLY_ORDER[type] ?? 1
 export const sortByApplyOrder = <T extends { type: string }>(items: T[]): T[] =>
   [...items].sort((a, b) => applyRank(a.type) - applyRank(b.type))
 
+export type PageOutcome = {
+  applied: number
+  conflicts: number
+  allCryptoFailed: boolean
+  /** True only when the page could not be processed at all (e.g. unparseable
+   *  response). Distinct from "applied nothing": a failed page must never be
+   *  passed over, or its items are lost behind the cursor forever. */
+  pageFailed: boolean
+}
+
+export type PageDecision = { advanceCursor: boolean; stop: boolean }
+
+export function decidePageAdvance(outcome: PageOutcome): PageDecision {
+  if (outcome.pageFailed) return { advanceCursor: false, stop: true }
+  return { advanceCursor: true, stop: outcome.allCryptoFailed }
+}
+
 interface PullRunState {
   timer: SyncTimer
   startTime: number
@@ -218,14 +235,19 @@ export class PullCoordinator {
       }
 
       const changes = changesResult.value
-      const shouldStop = await this.pullChangesPage(changes, runState)
+      const decision = await this.pullChangesPage(changes, runState)
       this.emitInitialSyncProgress(changes, runState.pulledCount)
+
+      if (!decision.advanceCursor) {
+        log.error('Pull: page failed; leaving cursor in place for retry on next sync', { cursor })
+        break
+      }
 
       this.stateManager.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, String(changes.nextCursor))
       cursor = String(changes.nextCursor)
       hasMore = changes.hasMore
 
-      if (shouldStop) break
+      if (decision.stop) break
 
       if (hasMore && !this.ctx.abortController?.signal.aborted) {
         prefetchedNext = this.fetchChangesPage(runState, cursor)
@@ -264,18 +286,21 @@ export class PullCoordinator {
   private async pullChangesPage(
     changes: RecordChangesResponse,
     runState: PullRunState
-  ): Promise<boolean> {
+  ): Promise<PageDecision> {
     const itemIds = Array.from(
       new Set([...changes.items.map((item) => item.id), ...changes.deleted])
     )
-    if (itemIds.length === 0) return false
+    // An empty page is not a failure: advance past it.
+    if (itemIds.length === 0) return { advanceCursor: true, stop: false }
 
     const pageResult = await this.processPage(itemIds, runState)
+    if (pageResult.pageFailed) return decidePageAdvance(pageResult)
+
     runState.pulledCount += pageResult.applied
     runState.totalConflictsResolved += pageResult.conflicts
     await this.applyCrdtBatch(runState)
 
-    return pageResult.allCryptoFailed
+    return decidePageAdvance(pageResult)
   }
 
   private async applyCrdtBatch(runState: PullRunState): Promise<void> {
@@ -430,10 +455,7 @@ export class PullCoordinator {
     log.info('Pull: deferred apply retries processed', { retried: retries.length, applied, failed })
   }
 
-  private async processPage(
-    itemIds: string[],
-    runState: PullRunState
-  ): Promise<{ applied: number; conflicts: number; allCryptoFailed: boolean }> {
+  private async processPage(itemIds: string[], runState: PullRunState): Promise<PageOutcome> {
     const { vaultKey, timer, processedIds, crdtNoteIds } = runState
     const pullResult = await withRetry(
       () =>
@@ -451,8 +473,10 @@ export class PullCoordinator {
 
     const parsed = RecordPullResponseSchema.safeParse(pullResult.value)
     if (!parsed.success) {
-      log.error('Invalid pull response from server', { error: parsed.error.message })
-      return { applied: 0, conflicts: 0, allCryptoFailed: false }
+      log.error('Invalid pull response from server; halting page without advancing cursor', {
+        error: parsed.error.message
+      })
+      return { applied: 0, conflicts: 0, allCryptoFailed: false, pageFailed: true }
     }
 
     log.debug('Pull: response parsed', {
@@ -667,7 +691,7 @@ export class PullCoordinator {
       allCryptoFailed = true
     }
 
-    return { applied: pageApplied, conflicts: pageConflicts, allCryptoFailed }
+    return { applied: pageApplied, conflicts: pageConflicts, allCryptoFailed, pageFailed: false }
   }
 
   private handleConflict(dec: {
