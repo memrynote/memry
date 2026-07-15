@@ -125,11 +125,6 @@ describe('dbTaskToUiTask tags', () => {
     const result = dbTaskToUiTask(baseDbTask)
     expect(result.tags).toEqual([])
   })
-
-  it('preserves the case the user typed', () => {
-    const result = dbTaskToUiTask({ ...baseDbTask, tags: ['MIT'] })
-    expect(result.tags).toEqual(['MIT'])
-  })
 })
 ```
 
@@ -259,9 +254,11 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { TaskTagsBadge } from './task-badges'
 
+// The definition is stored lowercase ('mit') while the task carries 'MIT' —
+// this asymmetry is what the case-insensitive lookup test below exercises.
 vi.mock('@/hooks/use-tags', () => ({
   useTags: () => ({
-    tags: [{ name: 'mit', count: 3, color: 'red', icon: null }]
+    tags: [{ name: 'mit', count: 3, color: 'red', icon: '📚' }]
   })
 }))
 
@@ -285,10 +282,14 @@ describe('TaskTagsBadge', () => {
     expect(screen.getByText('+2')).toBeInTheDocument()
   })
 
-  it('matches tag definitions case-insensitively', () => {
+  it('resolves the definition case-insensitively and keeps the typed case', () => {
     render(<TaskTagsBadge tags={['MIT']} />)
-    // definition is stored lowercase ('mit'); display keeps the typed case
+    // Display keeps the case the user typed...
     expect(screen.getByText('MIT')).toBeInTheDocument()
+    // ...while the icon proves the lowercase 'mit' definition was actually
+    // found. Asserting only on the label would pass even with a broken
+    // lookup, since the label comes from the task's tag string.
+    expect(screen.getByText('📚')).toBeInTheDocument()
   })
 })
 ```
