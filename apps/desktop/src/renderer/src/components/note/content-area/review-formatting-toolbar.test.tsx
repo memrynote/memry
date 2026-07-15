@@ -33,6 +33,7 @@ vi.mock('@blocknote/react', () => ({
   }: {
     formattingToolbar: (props: Record<string, unknown>) => React.ReactNode
   }) => <>{formattingToolbar({})}</>,
+  BlockTypeSelect: () => <button type="button">block type</button>,
   BasicTextStyleButton: ({ basicTextStyle }: { basicTextStyle: string }) => (
     <button type="button">{basicTextStyle}</button>
   ),
@@ -88,6 +89,17 @@ describe('ReviewFormattingToolbar', () => {
 
     expect(screen.getByText('bold')).toBeInTheDocument()
     expect(screen.getByText('Comment')).toBeInTheDocument()
+  })
+
+  // The floating toolbar is what every note gets by default (note.tsx always
+  // passes `review`, so BlockNote's stock toolbar never renders). Block type
+  // controls used to appear only in the sticky variant, which meant turning
+  // "Sticky Formatting Toolbar" off silently removed the only way to switch a
+  // block to a heading/list from the selection popup.
+  it('offers block type controls in the floating toolbar', () => {
+    render(<ReviewFormattingToolbar onAddComment={vi.fn()} />)
+
+    expect(screen.getByText('block type')).toBeInTheDocument()
   })
 
   it('captures selected text before clicking Comment collapses selection', () => {
