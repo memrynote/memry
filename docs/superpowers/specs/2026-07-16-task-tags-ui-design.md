@@ -211,9 +211,20 @@ path — but it is not read-path protection, and a test asserting `TaskFiltersSc
 defaults `tags` cannot fail when this bug is present.
 
 **The general rule this exposes:** any field added to a persisted shape needs a fallback at
-every read site that does not parse. Two such sites exist here — localStorage
-(`readPersistedFilterState` merges over `defaultFilters`) and saved filters
-(`dbToFrontendFilter`'s `?? []`). They are the same bug class; fix both or neither.
+every read site that does not parse. **Three** such sites exist here — and the third was
+found only on a second review pass, after the first two were fixed and the spec confidently
+claimed there were two:
+
+1. localStorage per-view state — `readPersistedFilterState` spreads persisted over `defaultFilters`
+2. saved filters from SQLite — `dbToFrontendFilter`'s `tags: config.filters.tags ?? []`
+3. the legacy `savedTaskFilters` localStorage key — `loadSavedFilters` merges
+   `{ ...defaultFilters, ...f.filters }`. This key is read-only in current code (its write
+   was removed in `5e862af07`), which is exactly what makes it an old-shape store on real
+   users' disks, reachable via the `catch` fallback when the DB read rejects.
+
+They are one bug class. Enumerate the read sites before assuming you have them all: `.default()`
+on a Zod schema protects only paths that actually parse, and in this codebase the read paths
+mostly do not.
 
 Four sites must move in lockstep:
 
