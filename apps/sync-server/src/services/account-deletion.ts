@@ -1,3 +1,5 @@
+import { deleteByPrefix } from './blob'
+
 /**
  * Irreversibly delete all data for a user across R2 (encrypted payloads) and
  * D1 (sync + auth rows). Child rows are deleted before the parent `users` row
@@ -9,15 +11,7 @@ export async function deleteUserData(
   userId: string,
   email: string
 ): Promise<void> {
-  let cursor: string | undefined
-  do {
-    const listing = await bucket.list({ prefix: `${userId}/`, cursor })
-    const keys = listing.objects.map((o) => o.key)
-    if (keys.length > 0) {
-      await bucket.delete(keys)
-    }
-    cursor = listing.truncated ? listing.cursor : undefined
-  } while (cursor)
+  await deleteByPrefix(bucket, `${userId}/`, userId)
 
   await db.batch([
     // deepest children first (tables that reference devices or sync_items)

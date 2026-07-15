@@ -121,3 +121,29 @@ export const deleteBlob = async (storage: R2Bucket, key: string, userId: string)
   assertKeyBelongsToUser(key, userId)
   await storage.delete(key)
 }
+
+/**
+ * Delete every object under a prefix, honoring R2 list pagination.
+ * The prefix must be inside the caller's own namespace.
+ */
+export const deleteByPrefix = async (
+  storage: R2Bucket,
+  prefix: string,
+  userId: string
+): Promise<number> => {
+  assertKeyBelongsToUser(prefix, userId)
+
+  let cursor: string | undefined
+  let deleted = 0
+  do {
+    const listing = await storage.list({ prefix, cursor })
+    const keys = listing.objects.map((o) => o.key)
+    if (keys.length > 0) {
+      await storage.delete(keys)
+      deleted += keys.length
+    }
+    cursor = listing.truncated ? listing.cursor : undefined
+  } while (cursor)
+
+  return deleted
+}
