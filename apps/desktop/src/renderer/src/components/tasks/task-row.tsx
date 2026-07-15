@@ -4,6 +4,7 @@ import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { InlineStatusPopover } from '@/components/tasks/inline-status-popover'
 import { InlinePriorityPopover } from '@/components/tasks/inline-priority-popover'
 import { InteractiveProjectBadge } from '@/components/tasks/interactive-project-badge'
+import { TaskTagsBadge } from '@/components/tasks/task-badges'
 import { SelectionCheckbox } from '@/components/tasks/bulk-actions'
 import { RepeatIndicator } from '@/components/tasks/repeat-indicator'
 import type { Task } from '@/data/task-model'
@@ -177,6 +178,8 @@ export const TaskRow = ({
         <RepeatIndicator config={task.repeatConfig} size="sm" />
       )}
 
+      {task.tags.length > 0 && <TaskTagsBadge tags={task.tags} className="shrink-0" />}
+
       {showProjectBadge && onProjectChange ? (
         <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
           <InteractiveProjectBadge
@@ -197,7 +200,7 @@ export const TaskRow = ({
       {dueDateDisplay && (
         <div
           className={cn(
-            'text-[11px] shrink-0 text-right leading-3.5 whitespace-nowrap',
+            'text-[11px] shrink-0 text-end leading-3.5 whitespace-nowrap',
             'colorClass' in dueDateDisplay && dueDateDisplay.colorClass
           )}
           style={'colorStyle' in dueDateDisplay ? { color: dueDateDisplay.colorStyle } : undefined}

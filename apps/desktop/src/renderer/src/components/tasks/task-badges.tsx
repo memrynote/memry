@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { useMemo } from 'react'
 import { Repeat } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
@@ -15,6 +16,8 @@ import { priorityConfig, type Priority } from '@/data/task-model'
 import type { Project } from '@/data/tasks-data'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useT } from '@memry/i18n/renderer'
+import { TagChip, type Tag } from '@/components/note/tags-row'
+import { useTags } from '@/hooks/use-tags'
 
 export type PriorityBadgeVariant = 'dot' | 'label' | 'full'
 
@@ -179,7 +182,7 @@ export const DueDateBadge = ({
       <span
         className={cn(
           'text-xs text-muted-foreground',
-          fixedWidth && 'w-[110px] text-right',
+          fixedWidth && 'w-[110px] text-end',
           className
         )}
       >
@@ -347,6 +350,61 @@ export const StatusBadge = ({
       <StatusIcon type={type ?? 'todo'} color={color} size="sm" />
       <span>{label}</span>
     </span>
+  )
+}
+
+// ============================================================================
+// TASK TAGS BADGE
+// ============================================================================
+
+const DEFAULT_MAX_VISIBLE_TAGS = 3
+
+interface TaskTagsBadgeProps {
+  tags: string[]
+  maxVisible?: number
+  className?: string
+}
+
+export const TaskTagsBadge = ({
+  tags,
+  maxVisible = DEFAULT_MAX_VISIBLE_TAGS,
+  className
+}: TaskTagsBadgeProps): React.JSX.Element | null => {
+  const { tags: tagDefs } = useTags()
+
+  const metaByName = useMemo(
+    () => new Map(tagDefs.map((d) => [d.name.toLowerCase(), d])),
+    [tagDefs]
+  )
+
+  const chips: Tag[] = useMemo(
+    () =>
+      tags.map((name) => {
+        const meta = metaByName.get(name.toLowerCase())
+        return {
+          id: name,
+          name,
+          color: meta?.color ?? '',
+          icon: meta?.icon ?? null
+        }
+      }),
+    [tags, metaByName]
+  )
+
+  if (chips.length === 0) return null
+
+  const visible = chips.slice(0, maxVisible)
+  const overflowCount = chips.length - visible.length
+
+  return (
+    <ul className={cn('flex items-center gap-1.5 flex-wrap list-none p-0 m-0', className)}>
+      {visible.map((tag) => (
+        <TagChip key={tag.id} tag={tag} />
+      ))}
+      {overflowCount > 0 && (
+        <li className="text-xs text-text-tertiary tabular-nums">+{overflowCount}</li>
+      )}
+    </ul>
   )
 }
 
