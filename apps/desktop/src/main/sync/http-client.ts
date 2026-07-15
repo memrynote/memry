@@ -1,5 +1,11 @@
 import { net } from 'electron'
+import { RECORD_SYNC_ITEM_TYPES } from '@memry/contracts/sync-api'
 import { withRetry } from './retry'
+
+// Declared to the server so it never sends this build an item type our
+// RecordPullResponseSchema would reject — one unknown type fails the whole-page
+// safeParse and silently drops the page.
+const SYNC_TYPES_HEADER_VALUE = RECORD_SYNC_ITEM_TYPES.join(',')
 
 function getSyncServerUrl(): string {
   const url = process.env.SYNC_SERVER_URL
@@ -87,6 +93,7 @@ export const syncFetch = async <T>(
 
   if (token) {
     headers['Authorization'] = `Bearer ${token}`
+    headers['X-Memry-Sync-Types'] = SYNC_TYPES_HEADER_VALUE
     Object.assign(headers, await getSyncVaultHeaders())
   }
 
