@@ -1,10 +1,43 @@
 import { describe, it, expect } from 'vitest'
 import { classifyError } from './sync-errors'
-import { SyncServerError, NetworkError, RateLimitError } from './http-client'
+import {
+  SyncServerError,
+  NetworkError,
+  RateLimitError,
+  AttachmentTooLargeError
+} from './http-client'
 import { DeadLetterError } from './retry'
 import { CryptoError } from '../crypto/crypto-errors'
 
 describe('classifyError', () => {
+  it('#given SyncServerError 413 STORAGE_FILE_TOO_LARGE #then file_too_large, not retryable', () => {
+    // Both causes of a 413 used to map to storage_quota_exceeded, which told the
+    // user to free up space — never a fix for one oversized file.
+    const body =
+      '{"error":{"code":"STORAGE_FILE_TOO_LARGE","message":"File exceeds the plus plan file size limit"}}'
+    const err = new SyncServerError(`Failed to initiate upload: ${body}`, 413, body)
+    const result = classifyError(err)
+
+    expect(result.category).toBe('file_too_large')
+    expect(result.retryable).toBe(false)
+  })
+
+  it('#given SyncServerError 413 without a file-too-large code #then storage_quota_exceeded', () => {
+    const err = new SyncServerError('Storage quota exceeded', 413)
+    const result = classifyError(err)
+
+    expect(result.category).toBe('storage_quota_exceeded')
+    expect(result.retryable).toBe(false)
+  })
+
+  it('#given AttachmentTooLargeError #then file_too_large, not retryable', () => {
+    const err = new AttachmentTooLargeError('File is larger than your plan allows', 2048, 1024)
+    const result = classifyError(err)
+
+    expect(result.category).toBe('file_too_large')
+    expect(result.retryable).toBe(false)
+  })
+
   it('#given SyncServerError 401 #then auth_expired, not retryable', () => {
     const err = new SyncServerError('Unauthorized', 401)
     const result = classifyError(err)

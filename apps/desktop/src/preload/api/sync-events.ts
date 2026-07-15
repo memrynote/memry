@@ -7,6 +7,7 @@ import type {
   LinkingApprovedEvent,
   LinkingFinalizedEvent,
   UploadProgressEvent,
+  AttachmentUploadFailedEvent,
   DownloadProgressEvent,
   InitialSyncProgressEvent,
   QueueClearedEvent,
@@ -47,6 +48,11 @@ export const syncEvents = {
 
   onDownloadProgress: (callback: (event: DownloadProgressEvent) => void): (() => void) =>
     subscribe<DownloadProgressEvent>(SYNC_EVENTS.DOWNLOAD_PROGRESS, callback),
+
+  onAttachmentUploadFailed: (
+    callback: (event: AttachmentUploadFailedEvent) => void
+  ): (() => void) =>
+    subscribe<AttachmentUploadFailedEvent>(SYNC_EVENTS.ATTACHMENT_UPLOAD_FAILED, callback),
 
   onInitialSyncProgress: (callback: (event: InitialSyncProgressEvent) => void): (() => void) =>
     subscribe<InitialSyncProgressEvent>(SYNC_EVENTS.INITIAL_SYNC_PROGRESS, callback),

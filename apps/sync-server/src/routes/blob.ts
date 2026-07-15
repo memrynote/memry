@@ -304,12 +304,24 @@ blob.put('/attachments/upload/:session_id/chunk/:chunk_index', chunkUploadLimit,
       .run()
   }
 
-  uploadedChunks.push({ i: chunkIndex, h: chunkHash, b: chunkData.byteLength })
+  // Append atomically in one statement. Clients upload up to MAX_CONCURRENT_CHUNKS
+  // chunks in parallel, so a read-modify-write of the whole array here loses
+  // entries: each request writes back the snapshot it read, and the last writer
+  // wins. The dropped index then fails `complete` with 400 "Missing chunks".
+  // `json_insert(x, '$[#]', ...)` appends without re-sending the array we read.
   await c.env.DB.prepare(
-    'UPDATE upload_sessions SET uploaded_chunks = ? WHERE id = ? AND user_id = ? AND vault_id = ?'
+    `UPDATE upload_sessions
+       SET uploaded_chunks = json_insert(uploaded_chunks, '$[#]', json(?))
+     WHERE id = ? AND user_id = ? AND vault_id = ?`
   )
-    .bind(JSON.stringify(uploadedChunks), sessionId, userId, vaultId)
+    .bind(
+      JSON.stringify({ i: chunkIndex, h: chunkHash, b: chunkData.byteLength }),
+      sessionId,
+      userId,
+      vaultId
+    )
     .run()
+  uploadedChunks.push({ i: chunkIndex, h: chunkHash, b: chunkData.byteLength })
 
   return c.json({
     success: true,

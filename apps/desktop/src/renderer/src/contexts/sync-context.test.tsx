@@ -13,6 +13,7 @@ let pausedListeners: EventCallback[] = []
 let resumedListeners: EventCallback[] = []
 let uploadProgressListeners: EventCallback[] = []
 let downloadProgressListeners: EventCallback[] = []
+let attachmentUploadFailedListeners: EventCallback[] = []
 let linkingRequestListeners: EventCallback[] = []
 let linkingApprovedListeners: EventCallback[] = []
 let conflictDetectedListeners: EventCallback[] = []
@@ -100,6 +101,7 @@ beforeEach(async () => {
   resumedListeners = []
   uploadProgressListeners = []
   downloadProgressListeners = []
+  attachmentUploadFailedListeners = []
   linkingRequestListeners = []
   linkingApprovedListeners = []
   conflictDetectedListeners = []
@@ -147,6 +149,12 @@ beforeEach(async () => {
     downloadProgressListeners.push(cb)
     return () => {
       downloadProgressListeners = downloadProgressListeners.filter((l) => l !== cb)
+    }
+  })
+  api.onAttachmentUploadFailed = vi.fn((cb: EventCallback) => {
+    attachmentUploadFailedListeners.push(cb)
+    return () => {
+      attachmentUploadFailedListeners = attachmentUploadFailedListeners.filter((l) => l !== cb)
     }
   })
   api.onLinkingRequest = vi.fn((cb: EventCallback) => {
@@ -285,6 +293,30 @@ describe('SyncProvider', () => {
       expect(result.current.state.uploadProgress).toEqual({
         'att-1': { progress: 50, status: 'uploading' }
       })
+    })
+  })
+
+  describe('#given attachment upload failed event #when listening', () => {
+    it('#then shows a toast naming the file', async () => {
+      // Nothing listened to this channel for 58 days, so a total attachment
+      // upload outage was silent. Pin that it surfaces.
+      const { result } = renderHook(() => useSync(), { wrapper })
+      await vi.waitFor(() => expect(result.current.state.status).toBe('idle'))
+
+      act(() => {
+        for (const cb of attachmentUploadFailedListeners) {
+          cb({
+            noteId: 'note-1',
+            diskPath: '/vault/attachments/report.pdf',
+            error: 'File exceeds the plus plan file size limit'
+          })
+        }
+      })
+
+      expect(toastMock.error).toHaveBeenCalledWith(
+        expect.stringContaining('report.pdf'),
+        expect.objectContaining({ duration: 10000 })
+      )
     })
   })
 

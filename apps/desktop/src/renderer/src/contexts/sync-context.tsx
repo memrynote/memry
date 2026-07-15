@@ -261,6 +261,19 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
         if (event.errorCategory === 'storage_quota_exceeded') {
           toast.error(t('sync.storageQuotaExceeded'), { duration: 10000 })
         }
+        if (event.errorCategory === 'file_too_large') {
+          toast.error(t('sync.fileTooLarge'), { duration: 10000 })
+        }
+      })
+    )
+
+    // Attachment upload failures were emitted to this channel with no listener,
+    // so a 58-day outage was completely silent to the user. Surface it.
+    cleanups.push(
+      window.api.onAttachmentUploadFailed((event) => {
+        if (cancelled) return
+        const filename = event.diskPath.split(/[\\/]/).pop() ?? event.diskPath
+        toast.error(t('sync.attachmentUploadFailed', { filename }), { duration: 10000 })
       })
     )
 
