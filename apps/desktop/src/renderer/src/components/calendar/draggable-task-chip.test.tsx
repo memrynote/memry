@@ -1,8 +1,38 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { DndContext } from '@dnd-kit/core'
 import { DraggableTaskChip } from './draggable-task-chip'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
+
+// `data-task-id` and the `useDraggable({ id })` call are two separate references to
+// item.sourceId in the source — asserting only the DOM attribute can't catch a
+// regression where the dnd-kit id drifts to item.projectionId while the attribute
+// stays put. Mock useDraggable to capture exactly what it was registered with, so
+// tests can assert the real invariant: the dnd-kit id and drag payload dnd-kit
+// actually sees (contexts/drag-context.tsx matches active.id against the task list).
+const dndMocks = vi.hoisted(() => ({
+  useDraggable: vi.fn((_config: unknown) => ({
+    attributes: {},
+    listeners: {},
+    setNodeRef: vi.fn(),
+    isDragging: false
+  }))
+}))
+
+vi.mock('@dnd-kit/core', () => ({
+  DndContext: ({ children }: { children: React.ReactNode }) => children,
+  useDraggable: dndMocks.useDraggable
+}))
+
+interface DraggableConfig {
+  id: string
+  data: { type: string; sourceType: string; taskId: string }
+}
+
+function lastDraggableConfig(): DraggableConfig {
+  const call = dndMocks.useDraggable.mock.calls.at(-1)
+  if (!call) throw new Error('useDraggable was not called')
+  return call[0] as DraggableConfig
+}
 
 const makeItem = (overrides: Partial<CalendarProjectionItem> = {}): CalendarProjectionItem =>
   ({
@@ -19,17 +49,36 @@ const makeItem = (overrides: Partial<CalendarProjectionItem> = {}): CalendarProj
   }) as CalendarProjectionItem
 
 const renderChip = (item: CalendarProjectionItem) =>
-  render(
-    <DndContext>
-      <DraggableTaskChip item={item} isSelected={false} />
-    </DndContext>
-  )
+  render(<DraggableTaskChip item={item} isSelected={false} />)
 
 describe('DraggableTaskChip', () => {
+  beforeEach(() => {
+    dndMocks.useDraggable.mockClear()
+  })
+
   it('marks a movable task chip as draggable', () => {
     renderChip(makeItem())
 
     expect(screen.getByTestId('draggable-task-chip')).toHaveAttribute('data-task-id', 'task-1')
+  })
+
+  it('registers useDraggable with the source id, not the projection id', () => {
+    renderChip(makeItem())
+
+    const config = lastDraggableConfig()
+    expect(config.id).toBe('task-1')
+    expect(config.id).not.toBe('task:task-1')
+  })
+
+  it('registers the exact drag payload drag-context relies on', () => {
+    renderChip(makeItem())
+
+    const config = lastDraggableConfig()
+    expect(config.data).toEqual({
+      type: 'calendar-task',
+      sourceType: 'calendar',
+      taskId: 'task-1'
+    })
   })
 
   it('does not wrap an event chip', () => {
