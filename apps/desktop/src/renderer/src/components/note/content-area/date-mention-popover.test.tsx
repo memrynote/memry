@@ -162,6 +162,27 @@ describe('DateMentionPopover', () => {
     expect(d.getMinutes()).toBe(30)
   })
 
+  it('ignores a cleared time input instead of crashing the handler', () => {
+    // Chromium's <input type="time"> reports value '' once a segment is cleared.
+    // ''.split(':').map(Number) is [0], so minutes arrive as undefined and
+    // new Date(y, mo, d, 0, undefined) is Invalid -> toISOString() throws.
+    // React rethrows out of the event handler rather than through fireEvent, so
+    // assert on the window 'error' event -- the same signal the renderer's
+    // telemetry listener reports in production.
+    const onWindowError = vi.fn()
+    window.addEventListener('error', onWindowError)
+    const { onChange } = renderPopover()
+
+    try {
+      fireEvent.change(screen.getByLabelText('Time'), { target: { value: '' } })
+    } finally {
+      window.removeEventListener('error', onWindowError)
+    }
+
+    expect(onWindowError).not.toHaveBeenCalled()
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
   it('selecting a calendar date preserves the existing time-of-day', () => {
     const { onChange } = renderPopover()
     fireEvent.click(screen.getByTestId('calendar'))

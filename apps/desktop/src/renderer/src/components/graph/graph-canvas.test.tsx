@@ -6,7 +6,11 @@ import type { GraphFilterState } from '@/hooks/use-graph-filters'
 const graphCanvasMocks = vi.hoisted(() => ({
   sigma: {
     setSetting: vi.fn(),
-    refresh: vi.fn()
+    refresh: vi.fn(),
+    // Sigma retains its graph reference even after kill(). The live instance is
+    // the one holding the graph the container was rendered with; a stale
+    // instance returns something else. Overridden per-test to model the race.
+    getGraph: (): unknown => graphCanvasMocks.sigmaContainerProps?.graph
   },
   sigmaContainerProps: null as null | Record<string, any>,
   layoutStart: vi.fn(),
@@ -203,6 +207,7 @@ describe('GraphCanvas', () => {
     vi.useFakeTimers()
     vi.clearAllMocks()
     graphCanvasMocks.sigmaContainerProps = null
+    graphCanvasMocks.sigma.getGraph = () => graphCanvasMocks.sigmaContainerProps?.graph
     graphCanvasMocks.createNote.mockResolvedValue({
       success: true,
       note: { id: 'created-note', title: 'Created from graph' }
@@ -295,6 +300,27 @@ describe('GraphCanvas', () => {
         isPreview: false
       })
     )
+  })
+
+  it('does not push settings into a sigma instance that does not own our graph', () => {
+    // SigmaContainer kills and recreates Sigma whenever the `graph` prop changes.
+    // React runs child effects before the container's create effect, so useSigma()
+    // can still hand SigmaSettingsSync the OLD, killed instance. kill() empties
+    // nodePrograms but keeps the graph, so pushing settings there schedules a
+    // render that throws on the next frame. Model that by having the instance
+    // report a graph that is not the one we rendered with.
+    graphCanvasMocks.sigma.getGraph = () => ({ stale: true })
+
+    render(
+      <GraphCanvas
+        data={data}
+        filterState={filters}
+        graphSettings={settings}
+        onFocusNode={vi.fn()}
+      />
+    )
+
+    expect(graphCanvasMocks.sigma.setSetting).not.toHaveBeenCalled()
   })
 
   it('syncs sigma settings and starts/stops forceatlas layout', () => {
