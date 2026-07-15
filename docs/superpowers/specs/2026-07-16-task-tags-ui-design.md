@@ -187,10 +187,33 @@ older builds will lack `tags`, so reads must merge over `defaultFilters` or
 `filters.tags.length` throws on `undefined`.
 
 **Saved filters → SQLite** is hand-mapped field-by-field in both directions. No schema
-migration and no version bump are needed: config is stored as an opaque JSON column and
-`TaskFiltersSchema` (`packages/contracts/src/saved-filters-api.ts:94`) uses `.default()` on
-every field, so adding `tags: z.array(z.string()).default([])` makes pre-existing rows
-parse cleanly to `tags: []`.
+migration and no version bump are needed — config is stored as an opaque JSON column.
+
+⚠️ **An earlier draft of this spec claimed `TaskFiltersSchema`'s `.default([])` makes
+pre-existing rows "parse cleanly to `tags: []`". That is FALSE for reads, and believing it
+ships a crash.** `TaskFiltersSchema` is reached only via `SavedFilterCreateSchema` /
+`SavedFilterUpdateSchema` — _request_ schemas on the **write** path. The **read** path
+(`main/ipc/saved-filters-handlers.ts:46`) is a bare type assertion, not a parse:
+
+```ts
+config: dbFilter.config as SavedFilter['config'] // cast — no defaults applied
+```
+
+So a row written by an older build keeps `tags === undefined` all the way into the
+renderer: cast → `dbToFrontendFilter` → `tasks.tsx:877` `updateFilters(savedFilter.filters)`
+spreads `tags: undefined` over the default `[]` → `applyFiltersAndSort` /
+`countActiveFilters` evaluate `filters.tags.length` → `TypeError`, and the Tasks page dies
+for every existing user who clicks a saved filter created before this build.
+
+**Reads must defend themselves.** `dbToFrontendFilter` uses `tags: config.filters.tags ?? []`.
+The `.default([])` on the schema is still correct and worth having — it protects the write
+path — but it is not read-path protection, and a test asserting `TaskFiltersSchema.parse(...)`
+defaults `tags` cannot fail when this bug is present.
+
+**The general rule this exposes:** any field added to a persisted shape needs a fallback at
+every read site that does not parse. Two such sites exist here — localStorage
+(`readPersistedFilterState` merges over `defaultFilters`) and saved filters
+(`dbToFrontendFilter`'s `?? []`). They are the same bug class; fix both or neither.
 
 Four sites must move in lockstep:
 
