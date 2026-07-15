@@ -93,14 +93,17 @@ The formatting toolbar can be sticky at the top or float above selections — ch
 
 Bold, italic and strikethrough are written to the vault as plain Markdown (`**bold**`, `*italic*`, `~~strike~~`).
 
-Markdown has no syntax for underline or text color, so those are written as inline HTML instead — Obsidian renders both:
+Markdown has no syntax for underline, text color or highlight, so those are written as inline HTML, which Obsidian renders:
 
 ```md
 <span style="text-decoration:underline">underlined</span>
 <span style="color:red">red</span>
+<span style="background-color:yellow">highlighted</span>
 ```
 
-A run that is both underlined and colored shares a single span rather than nesting two.
+Color and underline are kept on separate nested spans, so an older version of MemryNote opening the same vault still reads the color.
+
+Formatting applied in MemryNote round-trips. Underline written any other way — Obsidian's `<u>` tags, for example — is not read back, and is dropped the next time MemryNote saves the note.
 
 ## Comments
 
