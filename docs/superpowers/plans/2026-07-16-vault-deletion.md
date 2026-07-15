@@ -310,9 +310,7 @@ describe('vaultExistsForUser', () => {
   it('scopes the lookup by user and vault', async () => {
     const db = makeDb({ exists: true })
 
-    await expect(
-      vaultExistsForUser(db as unknown as D1Database, 'u1', 'v1')
-    ).resolves.toBe(true)
+    await expect(vaultExistsForUser(db as unknown as D1Database, 'u1', 'v1')).resolves.toBe(true)
 
     expect(db.statements[0]._sql).toContain('WHERE user_id = ? AND vault_id = ?')
     expect(db.statements[0]._args).toEqual(['u1', 'v1'])
@@ -320,9 +318,7 @@ describe('vaultExistsForUser', () => {
 
   it('returns false for a vault the user does not own', async () => {
     const db = makeDb({ exists: false })
-    await expect(
-      vaultExistsForUser(db as unknown as D1Database, 'u1', 'v1')
-    ).resolves.toBe(false)
+    await expect(vaultExistsForUser(db as unknown as D1Database, 'u1', 'v1')).resolves.toBe(false)
   })
 })
 
@@ -334,18 +330,11 @@ describe('deleteVaultData', () => {
     vi.clearAllMocks()
     db = makeDb({ sums: { sync_items: 100, crdt_snapshots: 20, crdt_updates: 5, blob_chunks: 75 } })
     bucket = makeBucket()
-    await deleteVaultData(
-      db as unknown as D1Database,
-      bucket as unknown as R2Bucket,
-      'u1',
-      'v1'
-    )
+    await deleteVaultData(db as unknown as D1Database, bucket as unknown as R2Bucket, 'u1', 'v1')
   })
 
   it('purges R2 under the vault prefix', () => {
-    expect(bucket.list).toHaveBeenCalledWith(
-      expect.objectContaining({ prefix: 'u1/vaults/v1/' })
-    )
+    expect(bucket.list).toHaveBeenCalledWith(expect.objectContaining({ prefix: 'u1/vaults/v1/' }))
   })
 
   it('deletes every vault-scoped table, each scoped to user + vault', () => {
@@ -403,12 +392,7 @@ describe('deleteVaultData ordering', () => {
       delete: vi.fn().mockResolvedValue(undefined)
     }
 
-    await deleteVaultData(
-      db as unknown as D1Database,
-      bucket as unknown as R2Bucket,
-      'u1',
-      'v1'
-    )
+    await deleteVaultData(db as unknown as D1Database, bucket as unknown as R2Bucket, 'u1', 'v1')
 
     expect(order).toEqual(['r2', 'd1'])
   })
@@ -499,7 +483,9 @@ export async function deleteVaultData(
     // Inlined rather than calling adjustStorageUsed(): that helper runs its own
     // statement, which would land outside this batch's atomicity.
     db
-      .prepare('UPDATE users SET storage_used = MAX(0, storage_used + ?), updated_at = ? WHERE id = ?')
+      .prepare(
+        'UPDATE users SET storage_used = MAX(0, storage_used + ?), updated_at = ? WHERE id = ?'
+      )
       .bind(-bytes, now, userId)
   ])
 }
@@ -726,6 +712,7 @@ git commit -m "feat(sync-server): add DELETE /sync/vaults/:vaultId"
 **Why there is no "delete frees a slot" integration test:** this package has no real database — `sync.test.ts:157` is `DB: {} as D1Database` and every service test hand-rolls `vi` doubles. A "Pro at 10 → delete → 11th succeeds" test would have to mock the `COUNT(*)` response, which makes it assert that a mock returns a smaller number. That is tautological and worse than no test.
 
 The property is genuinely covered by composition instead:
+
 - Task 2 proves `deleteVaultData` emits `DELETE FROM sync_vaults WHERE user_id = ? AND vault_id = ?`.
 - `entitlements.ts:205` counts exactly those rows.
 - Task 8's E2E exercises the real path against the real D1-backed `TestSyncServer`.
@@ -925,15 +912,15 @@ export async function deleteAccountVault(vaultUuid: string): Promise<void> {
 In `apps/desktop/src/main/ipc/vault-handlers.ts`, after line 107 (`vault:remove`):
 
 ```ts
-  // vault:delete-from-account - Purge vault from sync account (never deletes files)
-  ipcMain.handle(
-    VaultChannels.invoke.DELETE_FROM_ACCOUNT,
-    createStringHandler(async (vaultUuid) => {
-      const { deleteAccountVault, refreshVaultDirectory } = await import('../sync/vault-directory')
-      await deleteAccountVault(vaultUuid)
-      await refreshVaultDirectory({ force: true })
-    })
-  )
+// vault:delete-from-account - Purge vault from sync account (never deletes files)
+ipcMain.handle(
+  VaultChannels.invoke.DELETE_FROM_ACCOUNT,
+  createStringHandler(async (vaultUuid) => {
+    const { deleteAccountVault, refreshVaultDirectory } = await import('../sync/vault-directory')
+    await deleteAccountVault(vaultUuid)
+    await refreshVaultDirectory({ force: true })
+  })
+)
 ```
 
 The forced refresh repopulates the account cache so the switcher's "In your account" list drops the row immediately (`listAccountVaults` reads that cache).
@@ -1055,7 +1042,9 @@ vi.mock('@/components/ui/picker', async () => {
 })
 
 vi.mock('@memry/i18n/renderer', () => ({
-  useT: () => ({ t: (key: string, vars?: Record<string, unknown>) => (vars?.name ? `${key}:${vars.name}` : key) })
+  useT: () => ({
+    t: (key: string, vars?: Record<string, unknown>) => (vars?.name ? `${key}:${vars.name}` : key)
+  })
 }))
 vi.mock('@/hooks/use-vault', () => ({
   useVault: () => ({
@@ -1078,7 +1067,9 @@ vi.mock('@/contexts/auth-context', () => ({
 vi.mock('@/components/ui/sidebar', () => ({
   SidebarMenu: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   SidebarMenuItem: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  SidebarMenuButton: ({ children }: { children: ReactNode }) => <button type="button">{children}</button>,
+  SidebarMenuButton: ({ children }: { children: ReactNode }) => (
+    <button type="button">{children}</button>
+  ),
   useSidebar: () => ({ isMobile: false })
 }))
 vi.mock('@/components/download-vault-dialog', () => ({
@@ -1094,9 +1085,7 @@ describe('VaultSwitcher delete from account', () => {
     render(<VaultSwitcher />)
     fireEvent.click(screen.getByLabelText('Delete Old from account'))
     fireEvent.click(screen.getByText('phaseF.componentsVaultSwitcher.deleteVaultConfirm'))
-    await waitFor(() =>
-      expect(window.api.vault.deleteFromAccount).toHaveBeenCalledWith('uuid-old')
-    )
+    await waitFor(() => expect(window.api.vault.deleteFromAccount).toHaveBeenCalledWith('uuid-old'))
   })
 
   it('offers delete on a cloud-only vault', async () => {
@@ -1146,143 +1135,140 @@ Add `Trash2` to the icon import (line 4) and `extractErrorMessage` from `@/lib/i
 Add state and handlers alongside the existing ones (after line 40):
 
 ```tsx
-  const [vaultToDelete, setVaultToDelete] = useState<{ uuid: string; name: string } | null>(null)
-  const [deleting, setDeleting] = useState(false)
-  const [deleteError, setDeleteError] = useState<string | null>(null)
+const [vaultToDelete, setVaultToDelete] = useState<{ uuid: string; name: string } | null>(null)
+const [deleting, setDeleting] = useState(false)
+const [deleteError, setDeleteError] = useState<string | null>(null)
 
-  const handleDeleteClick = (e: React.MouseEvent, uuid: string, name: string): void => {
-    e.stopPropagation()
-    setDeleteError(null)
-    setVaultToDelete({ uuid, name })
+const handleDeleteClick = (e: React.MouseEvent, uuid: string, name: string): void => {
+  e.stopPropagation()
+  setDeleteError(null)
+  setVaultToDelete({ uuid, name })
+}
+
+const handleConfirmDelete = useCallback(async () => {
+  if (!vaultToDelete) return
+  setDeleting(true)
+  try {
+    await window.api.vault.deleteFromAccount(vaultToDelete.uuid)
+    setVaultToDelete(null)
+    await refreshAccountVaults()
+  } catch (err) {
+    setDeleteError(
+      extractErrorMessage(err, tPhaseF('phaseF.componentsVaultSwitcher.deleteVaultFailed'))
+    )
+  } finally {
+    setDeleting(false)
   }
-
-  const handleConfirmDelete = useCallback(async () => {
-    if (!vaultToDelete) return
-    setDeleting(true)
-    try {
-      await window.api.vault.deleteFromAccount(vaultToDelete.uuid)
-      setVaultToDelete(null)
-      await refreshAccountVaults()
-    } catch (err) {
-      setDeleteError(
-        extractErrorMessage(err, tPhaseF('phaseF.componentsVaultSwitcher.deleteVaultFailed'))
-      )
-    } finally {
-      setDeleting(false)
-    }
-  }, [vaultToDelete, refreshAccountVaults, tPhaseF])
+}, [vaultToDelete, refreshAccountVaults, tPhaseF])
 ```
 
 In the local-vault row, extend the existing `{!isActive && (...)}` block (lines 149-163) to render the trash icon after the X. Both live in one wrapper so they share the hover reveal:
 
 ```tsx
-                      {!isActive && (
-                        <span className="flex items-center gap-0.5 opacity-0 group-hover/vault:opacity-100 transition-all">
-                          <span
-                            role="button"
-                            tabIndex={0}
-                            onClick={(e) => handleRemoveClick(e, vault)}
-                            onKeyDown={(e) =>
-                              e.key === 'Enter' &&
-                              handleRemoveClick(e as unknown as React.MouseEvent, vault)
-                            }
-                            className="size-5 flex items-center justify-center rounded hover:bg-accent"
-                            aria-label={`Remove ${vault.name} from list`}
-                          >
-                            <X className="size-3 text-muted-foreground" />
-                          </span>
-                          {vault.vaultUuid && isAuthenticated && (
-                            <span
-                              role="button"
-                              tabIndex={0}
-                              onClick={(e) => handleDeleteClick(e, vault.vaultUuid!, vault.name)}
-                              onKeyDown={(e) =>
-                                e.key === 'Enter' &&
-                                handleDeleteClick(
-                                  e as unknown as React.MouseEvent,
-                                  vault.vaultUuid!,
-                                  vault.name
-                                )
-                              }
-                              className="size-5 flex items-center justify-center rounded hover:bg-destructive/10"
-                              aria-label={`Delete ${vault.name} from account`}
-                            >
-                              <Trash2 className="size-3 text-muted-foreground" />
-                            </span>
-                          )}
-                        </span>
-                      )}
+{
+  !isActive && (
+    <span className="flex items-center gap-0.5 opacity-0 group-hover/vault:opacity-100 transition-all">
+      <span
+        role="button"
+        tabIndex={0}
+        onClick={(e) => handleRemoveClick(e, vault)}
+        onKeyDown={(e) =>
+          e.key === 'Enter' && handleRemoveClick(e as unknown as React.MouseEvent, vault)
+        }
+        className="size-5 flex items-center justify-center rounded hover:bg-accent"
+        aria-label={`Remove ${vault.name} from list`}
+      >
+        <X className="size-3 text-muted-foreground" />
+      </span>
+      {vault.vaultUuid && isAuthenticated && (
+        <span
+          role="button"
+          tabIndex={0}
+          onClick={(e) => handleDeleteClick(e, vault.vaultUuid!, vault.name)}
+          onKeyDown={(e) =>
+            e.key === 'Enter' &&
+            handleDeleteClick(e as unknown as React.MouseEvent, vault.vaultUuid!, vault.name)
+          }
+          className="size-5 flex items-center justify-center rounded hover:bg-destructive/10"
+          aria-label={`Delete ${vault.name} from account`}
+        >
+          <Trash2 className="size-3 text-muted-foreground" />
+        </span>
+      )}
+    </span>
+  )
+}
 ```
 
 In the remote row (lines 177-197), the outer element is a `<button>`, so the delete control cannot be a nested `<button>`. Keep the `role="button"` `<span>` idiom and `stopPropagation` so it does not trigger download:
 
 ```tsx
-                      <span
-                        role="button"
-                        tabIndex={0}
-                        onClick={(e) =>
-                          handleDeleteClick(
-                            e,
-                            vault.vaultUuid,
-                            vault.name ?? tPhaseF('phaseF.componentsVaultSwitcher.untitledVault')
-                          )
-                        }
-                        onKeyDown={(e) =>
-                          e.key === 'Enter' &&
-                          handleDeleteClick(
-                            e as unknown as React.MouseEvent,
-                            vault.vaultUuid,
-                            vault.name ?? tPhaseF('phaseF.componentsVaultSwitcher.untitledVault')
-                          )
-                        }
-                        className="size-5 flex items-center justify-center rounded hover:bg-destructive/10"
-                        aria-label={`Delete ${vault.name ?? 'vault'} from account`}
-                      >
-                        <Trash2 className="size-3 text-muted-foreground" />
-                      </span>
+<span
+  role="button"
+  tabIndex={0}
+  onClick={(e) =>
+    handleDeleteClick(
+      e,
+      vault.vaultUuid,
+      vault.name ?? tPhaseF('phaseF.componentsVaultSwitcher.untitledVault')
+    )
+  }
+  onKeyDown={(e) =>
+    e.key === 'Enter' &&
+    handleDeleteClick(
+      e as unknown as React.MouseEvent,
+      vault.vaultUuid,
+      vault.name ?? tPhaseF('phaseF.componentsVaultSwitcher.untitledVault')
+    )
+  }
+  className="size-5 flex items-center justify-center rounded hover:bg-destructive/10"
+  aria-label={`Delete ${vault.name ?? 'vault'} from account`}
+>
+  <Trash2 className="size-3 text-muted-foreground" />
+</span>
 ```
 
 Add the delete confirm dialog next to the existing one (after line 253):
 
 ```tsx
-      <AlertDialog
-        open={!!vaultToDelete}
-        onOpenChange={(o) => {
-          if (!o) {
-            setVaultToDelete(null)
-            setDeleteError(null)
-          }
+<AlertDialog
+  open={!!vaultToDelete}
+  onOpenChange={(o) => {
+    if (!o) {
+      setVaultToDelete(null)
+      setDeleteError(null)
+    }
+  }}
+>
+  <AlertDialogContent>
+    <AlertDialogHeader>
+      <AlertDialogTitle>
+        {tPhaseF('phaseF.componentsVaultSwitcher.deleteVaultTitle', {
+          name: vaultToDelete?.name ?? ''
+        })}
+      </AlertDialogTitle>
+      <AlertDialogDescription>
+        {tPhaseF('phaseF.componentsVaultSwitcher.deleteVaultBody')}
+      </AlertDialogDescription>
+    </AlertDialogHeader>
+    {deleteError && <p className="text-xs/4 text-destructive px-1">{deleteError}</p>}
+    <AlertDialogFooter>
+      <AlertDialogCancel disabled={deleting}>
+        {tPhaseF('phaseF.componentsVaultSwitcher.cancel')}
+      </AlertDialogCancel>
+      <AlertDialogAction
+        onClick={(e) => {
+          e.preventDefault()
+          void handleConfirmDelete()
         }}
+        disabled={deleting}
+        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
       >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {tPhaseF('phaseF.componentsVaultSwitcher.deleteVaultTitle', {
-                name: vaultToDelete?.name ?? ''
-              })}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {tPhaseF('phaseF.componentsVaultSwitcher.deleteVaultBody')}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          {deleteError && <p className="text-xs/4 text-destructive px-1">{deleteError}</p>}
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>
-              {tPhaseF('phaseF.componentsVaultSwitcher.cancel')}
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => {
-                e.preventDefault()
-                void handleConfirmDelete()
-              }}
-              disabled={deleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {tPhaseF('phaseF.componentsVaultSwitcher.deleteVaultConfirm')}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        {tPhaseF('phaseF.componentsVaultSwitcher.deleteVaultConfirm')}
+      </AlertDialogAction>
+    </AlertDialogFooter>
+  </AlertDialogContent>
+</AlertDialog>
 ```
 
 Import `AlertDialogCancel` and `AlertDialogAction` from `@/components/ui/alert-dialog` (extend the import at lines 13-20).
@@ -1299,9 +1285,11 @@ Line 236 currently emits a literal `&`:
 Replace those two lines with a single interpolated key:
 
 ```tsx
-              {tPhaseF('phaseF.componentsVaultSwitcher.removeVaultTitle', {
-                name: vaultToRemove?.name ?? ''
-              })}
+{
+  tPhaseF('phaseF.componentsVaultSwitcher.removeVaultTitle', {
+    name: vaultToRemove?.name ?? ''
+  })
+}
 ```
 
 Add to `common.json` under the same object, and leave the old `remove` / `rdquoFromList` keys in place (other locales still reference them; removing them is out of scope):
@@ -1386,7 +1374,13 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 
 const mocks = vi.hoisted(() => ({
   accountVaults: [
-    { vaultUuid: 'uuid-active', name: 'Active', itemCount: 3, localPath: '/vaults/Active', createdAt: null },
+    {
+      vaultUuid: 'uuid-active',
+      name: 'Active',
+      itemCount: 3,
+      localPath: '/vaults/Active',
+      createdAt: null
+    },
     { vaultUuid: 'uuid-old', name: 'Old', itemCount: 9, localPath: null, createdAt: null }
   ],
   refresh: vi.fn()
@@ -1394,8 +1388,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({
-    t: (key: string, vars?: Record<string, unknown>) =>
-      vars?.name ? `${key}:${vars.name}` : key
+    t: (key: string, vars?: Record<string, unknown>) => (vars?.name ? `${key}:${vars.name}` : key)
   })
 }))
 vi.mock('@/hooks/use-storage-usage', () => ({
@@ -1423,9 +1416,7 @@ describe('VaultSettings account vaults', () => {
     render(<VaultSettings />)
     fireEvent.click(await screen.findByLabelText('Delete Old from account'))
     fireEvent.click(screen.getByText('vault.accountVaults.deleteConfirm'))
-    await waitFor(() =>
-      expect(window.api.vault.deleteFromAccount).toHaveBeenCalledWith('uuid-old')
-    )
+    await waitFor(() => expect(window.api.vault.deleteFromAccount).toHaveBeenCalledWith('uuid-old'))
   })
 
   it('disables delete for the active vault', async () => {
@@ -1472,67 +1463,67 @@ import {
 Add state inside `VaultSettings` after line 24:
 
 ```tsx
-  const { accountVaults, refresh: refreshAccountVaults } = useAccountVaults()
-  const [vaultToDelete, setVaultToDelete] = useState<{ uuid: string; name: string } | null>(null)
-  const [deleting, setDeleting] = useState(false)
-  const [deleteError, setDeleteError] = useState<string | null>(null)
+const { accountVaults, refresh: refreshAccountVaults } = useAccountVaults()
+const [vaultToDelete, setVaultToDelete] = useState<{ uuid: string; name: string } | null>(null)
+const [deleting, setDeleting] = useState(false)
+const [deleteError, setDeleteError] = useState<string | null>(null)
 
-  const handleConfirmDelete = useCallback(async () => {
-    if (!vaultToDelete) return
-    setDeleting(true)
-    try {
-      await window.api.vault.deleteFromAccount(vaultToDelete.uuid)
-      setVaultToDelete(null)
-      await refreshAccountVaults()
-    } catch (err) {
-      setDeleteError(extractErrorMessage(err, t('vault.accountVaults.deleteFailed')))
-    } finally {
-      setDeleting(false)
-    }
-  }, [vaultToDelete, refreshAccountVaults, t])
+const handleConfirmDelete = useCallback(async () => {
+  if (!vaultToDelete) return
+  setDeleting(true)
+  try {
+    await window.api.vault.deleteFromAccount(vaultToDelete.uuid)
+    setVaultToDelete(null)
+    await refreshAccountVaults()
+  } catch (err) {
+    setDeleteError(extractErrorMessage(err, t('vault.accountVaults.deleteFailed')))
+  } finally {
+    setDeleting(false)
+  }
+}, [vaultToDelete, refreshAccountVaults, t])
 ```
 
 Add the group between the Storage Usage group (ends line 114) and the Location group (line 116):
 
 ```tsx
-      <SettingsGroup label={t('vault.groups.accountVaults')}>
-        {accountVaults.length === 0 ? (
-          <div className="py-3 px-4">
-            <p className="text-xs/4 text-muted-foreground">{t('vault.accountVaults.empty')}</p>
-          </div>
-        ) : (
-          accountVaults.map((vault) => {
-            const isActive = !!vault.localPath && vault.localPath === vaultPath
-            const name = vault.name ?? vault.vaultUuid
-            return (
-              <SettingRow
-                key={vault.vaultUuid}
-                label={name}
-                description={
-                  isActive
-                    ? t('vault.accountVaults.activeHint')
-                    : vault.localPath ??
-                      `${t('vault.accountVaults.cloudOnly')} · ${t('vault.accountVaults.itemsCount', { count: vault.itemCount })}`
-                }
-              >
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={isActive}
-                  onClick={() => {
-                    setDeleteError(null)
-                    setVaultToDelete({ uuid: vault.vaultUuid, name })
-                  }}
-                  aria-label={`Delete ${name} from account`}
-                  className="h-7 px-3 text-xs/4 text-destructive border-destructive/30 hover:bg-destructive/10"
-                >
-                  {t('vault.accountVaults.delete')}
-                </Button>
-              </SettingRow>
-            )
-          })
-        )}
-      </SettingsGroup>
+<SettingsGroup label={t('vault.groups.accountVaults')}>
+  {accountVaults.length === 0 ? (
+    <div className="py-3 px-4">
+      <p className="text-xs/4 text-muted-foreground">{t('vault.accountVaults.empty')}</p>
+    </div>
+  ) : (
+    accountVaults.map((vault) => {
+      const isActive = !!vault.localPath && vault.localPath === vaultPath
+      const name = vault.name ?? vault.vaultUuid
+      return (
+        <SettingRow
+          key={vault.vaultUuid}
+          label={name}
+          description={
+            isActive
+              ? t('vault.accountVaults.activeHint')
+              : (vault.localPath ??
+                `${t('vault.accountVaults.cloudOnly')} · ${t('vault.accountVaults.itemsCount', { count: vault.itemCount })}`)
+          }
+        >
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={isActive}
+            onClick={() => {
+              setDeleteError(null)
+              setVaultToDelete({ uuid: vault.vaultUuid, name })
+            }}
+            aria-label={`Delete ${name} from account`}
+            className="h-7 px-3 text-xs/4 text-destructive border-destructive/30 hover:bg-destructive/10"
+          >
+            {t('vault.accountVaults.delete')}
+          </Button>
+        </SettingRow>
+      )
+    })
+  )}
+</SettingsGroup>
 ```
 
 The button styling copies the sign-out pattern at `account-section.tsx:499-513` — outline with destructive tint, not solid.
@@ -1540,40 +1531,38 @@ The button styling copies the sign-out pattern at `account-section.tsx:499-513` 
 Add the dialog before the closing `</div>` (line 129):
 
 ```tsx
-      <AlertDialog
-        open={!!vaultToDelete}
-        onOpenChange={(o) => {
-          if (!o) {
-            setVaultToDelete(null)
-            setDeleteError(null)
-          }
+<AlertDialog
+  open={!!vaultToDelete}
+  onOpenChange={(o) => {
+    if (!o) {
+      setVaultToDelete(null)
+      setDeleteError(null)
+    }
+  }}
+>
+  <AlertDialogContent>
+    <AlertDialogHeader>
+      <AlertDialogTitle>
+        {t('vault.accountVaults.deleteTitle', { name: vaultToDelete?.name ?? '' })}
+      </AlertDialogTitle>
+      <AlertDialogDescription>{t('vault.accountVaults.deleteBody')}</AlertDialogDescription>
+    </AlertDialogHeader>
+    {deleteError && <p className="text-xs/4 text-destructive px-1">{deleteError}</p>}
+    <AlertDialogFooter>
+      <AlertDialogCancel disabled={deleting}>{t('vault.accountVaults.cancel')}</AlertDialogCancel>
+      <AlertDialogAction
+        onClick={(e) => {
+          e.preventDefault()
+          void handleConfirmDelete()
         }}
+        disabled={deleting}
+        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
       >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {t('vault.accountVaults.deleteTitle', { name: vaultToDelete?.name ?? '' })}
-            </AlertDialogTitle>
-            <AlertDialogDescription>{t('vault.accountVaults.deleteBody')}</AlertDialogDescription>
-          </AlertDialogHeader>
-          {deleteError && <p className="text-xs/4 text-destructive px-1">{deleteError}</p>}
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>
-              {t('vault.accountVaults.cancel')}
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => {
-                e.preventDefault()
-                void handleConfirmDelete()
-              }}
-              disabled={deleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {t('vault.accountVaults.deleteConfirm')}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        {t('vault.accountVaults.deleteConfirm')}
+      </AlertDialogAction>
+    </AlertDialogFooter>
+  </AlertDialogContent>
+</AlertDialog>
 ```
 
 - [ ] **Step 5: Run test to verify it passes**
@@ -1685,7 +1674,11 @@ test.describe('vault deletion', () => {
     test.skip(!activeUuid, 'no local vault registered in this run')
 
     const err = await page.evaluate(
-      (id) => window.api.vault.deleteFromAccount(id).then(() => null, (e) => String(e)),
+      (id) =>
+        window.api.vault.deleteFromAccount(id).then(
+          () => null,
+          (e) => String(e)
+        ),
       activeUuid
     )
     expect(err).toMatch(/active vault/i)

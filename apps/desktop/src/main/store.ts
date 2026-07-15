@@ -290,10 +290,6 @@ export function removeVault(vaultPath: string): void {
   )
 }
 
-// Alias for the sync layer, which imports this by a name that reads clearly
-// alongside deleteAccountVault's server call (see vault-directory.ts).
-export { removeVault as removeVaultFromStore }
-
 /**
  * Find a vault by path
  */

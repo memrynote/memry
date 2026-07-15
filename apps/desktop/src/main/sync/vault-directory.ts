@@ -12,7 +12,7 @@ import {
   getAccountVaultsCache,
   getCurrentVaultPath,
   getVaults,
-  removeVaultFromStore,
+  removeVault as removeVaultFromStore,
   setAccountVaultsCache,
   upsertVault
 } from '../store'

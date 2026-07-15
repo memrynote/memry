@@ -28,7 +28,7 @@ vi.mock('../store', () => ({
   getCurrentVaultPath: vi.fn(() => null),
   getAccountVaultsCache: vi.fn(() => undefined),
   setAccountVaultsCache: vi.fn(),
-  removeVaultFromStore: vi.fn(),
+  removeVault: vi.fn(),
   upsertVault: vi.fn()
 }))
 
@@ -54,7 +54,7 @@ import {
   getAccountVaultsCache,
   getCurrentVaultPath,
   getVaults,
-  removeVaultFromStore,
+  removeVault as removeVaultFromStore,
   setAccountVaultsCache,
   upsertVault
 } from '../store'
