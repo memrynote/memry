@@ -1,4 +1,5 @@
 import { adjustStorageUsed } from './quota'
+import { expectedEncryptedTotal } from './upload-size'
 
 export const cleanupExpiredOtpCodes = async (db: D1Database): Promise<number> => {
   const now = Math.floor(Date.now() / 1000)
@@ -23,7 +24,7 @@ export const cleanupExpiredUploadSessions = async (
 
   const stale = await db
     .prepare(
-      `SELECT id, user_id, vault_id, total_size, uploaded_chunks, r2_upload_id, r2_key
+      `SELECT id, user_id, vault_id, total_size, chunk_count, encrypted_size, uploaded_chunks, r2_upload_id, r2_key
        FROM upload_sessions
        WHERE expires_at < ?`
     )
@@ -33,6 +34,8 @@ export const cleanupExpiredUploadSessions = async (
       user_id: string
       vault_id: string
       total_size: number
+      chunk_count: number
+      encrypted_size: number | null
       uploaded_chunks: string
       r2_upload_id: string | null
       r2_key: string | null
@@ -80,7 +83,12 @@ export const cleanupExpiredUploadSessions = async (
       .run()
 
     if ((result.meta.changes ?? 0) > 0) {
-      await adjustStorageUsed(db, session.user_id, -session.total_size)
+      // Refund what initiate reserved: the encrypted total, not the plaintext.
+      await adjustStorageUsed(
+        db,
+        session.user_id,
+        -expectedEncryptedTotal(session.total_size, session.chunk_count, session.encrypted_size)
+      )
       cleaned += result.meta.changes ?? 0
     }
   }
