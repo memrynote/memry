@@ -1145,6 +1145,25 @@ describe('pullItems', () => {
     expect(result.map((item) => item.id)).toEqual(['item-10', 'item-90'])
   })
 
+  it('should size batches off the negotiated types.length, not RECORD_SYNC_ITEM_TYPES.length', async () => {
+    // #given — negotiate down to a single type so BATCH_SIZE = 95 - 2 - 1 = 92.
+    // 160 itemIds is chosen so the two possible implementations diverge: the
+    // correct code batches ceil(160 / 92) = 2 times (92 + 68). If BATCH_SIZE
+    // regressed to use RECORD_SYNC_ITEM_TYPES.length (15) instead of
+    // types.length, it would compute 95 - 2 - 15 = 78 and batch
+    // ceil(160 / 78) = 3 times (78 + 78 + 4) instead. 2 vs 3 prepare calls
+    // makes the regression observable.
+    const itemIds = Array.from({ length: 160 }, (_, index) => `item-${index}`)
+
+    // #when
+    await pullItems(db as unknown as D1Database, {} as R2Bucket, 'user-1', itemIds, 'default', [
+      'note'
+    ])
+
+    // #then
+    expect(db.prepare).toHaveBeenCalledTimes(2)
+  })
+
   it('should reject stored rows missing signer metadata', async () => {
     // #given
     const stmt = createMockStatement()
