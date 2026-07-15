@@ -9,11 +9,16 @@ import {
   useFilterState,
   useFilteredAndSortedTasks,
   useSavedFilters,
-  useDebouncedValue
+  useDebouncedValue,
+  dbToFrontendFilter,
+  frontendToDbConfig,
+  readPersistedFilterState,
+  FILTERS_STORAGE_KEY
 } from './use-task-filters'
 import { defaultFilters, defaultSort } from '@/data/tasks-data'
 import type { Task, Priority } from '@/data/task-model'
 import type { Project, TaskFilters, TaskSort } from '@/data/tasks-data'
+import { TaskFiltersSchema } from '@memry/contracts/saved-filters-api'
 
 // ============================================================================
 // Mocks
@@ -1078,5 +1083,36 @@ describe('useSavedFilters', () => {
     await waitFor(() => {
       expect(result.current.savedFilters[0].starred).toBe(false)
     })
+  })
+})
+
+// ============================================================================
+// Saved-filter mapper round-trip + backward compatibility (tags)
+// ============================================================================
+
+describe('saved-filter tags round-trip', () => {
+  it('round-trips tags through the saved-filter mappers', () => {
+    const filters = { ...defaultFilters, tags: ['MIT'] }
+    const config = frontendToDbConfig(filters)
+    expect(dbToFrontendFilter({ id: 'f1', name: 'n', config }).filters.tags).toEqual(['MIT'])
+  })
+
+  it('parses a saved filter written without tags', () => {
+    const parsed = TaskFiltersSchema.parse({ search: '', projectIds: [], priorities: [] })
+    expect(parsed.tags).toEqual([])
+  })
+})
+
+describe('readPersistedFilterState', () => {
+  beforeEach(() => {
+    localStorageMock.clear()
+  })
+
+  it('backfills tags when reading a persisted filter written without them', () => {
+    localStorage.setItem(
+      FILTERS_STORAGE_KEY,
+      JSON.stringify({ all: { filters: { search: '', projectIds: [], priorities: [] } } })
+    )
+    expect(readPersistedFilterState('all').tags).toEqual([])
   })
 })

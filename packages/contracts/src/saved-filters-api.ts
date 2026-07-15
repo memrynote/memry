@@ -36,6 +36,7 @@ export interface TaskFilters {
   search: string
   projectIds: string[]
   priorities: Array<'urgent' | 'high' | 'medium' | 'low' | 'none'>
+  tags: string[]
   dueDate: DueDateFilter
   statusIds: string[]
   completion: 'active' | 'completed' | 'all'
@@ -91,10 +92,11 @@ const DueDateFilterSchema = z.object({
   customEnd: z.string().nullable().optional()
 })
 
-const TaskFiltersSchema = z.object({
+export const TaskFiltersSchema = z.object({
   search: z.string().default(''),
   projectIds: z.array(z.string()).default([]),
   priorities: z.array(z.enum(['urgent', 'high', 'medium', 'low', 'none'])).default([]),
+  tags: z.array(z.string()).default([]),
   dueDate: DueDateFilterSchema.default({ type: 'any', customStart: null, customEnd: null }),
   statusIds: z.array(z.string()).default([]),
   completion: z.enum(['active', 'completed', 'all']).default('active'),

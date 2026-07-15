@@ -67,6 +67,7 @@ import {
   filterByProjects,
   scopeTasksByProject,
   filterByPriorities,
+  filterByTags,
   filterByStatuses,
   // Task Filtering - Date & Completion (T083)
   filterByDueDateRange,
@@ -167,6 +168,7 @@ const createDefaultFilters = (): TaskFilters => ({
   search: '',
   projectIds: [],
   priorities: [],
+  tags: [],
   dueDate: { type: 'any', customStart: null, customEnd: null },
   statusIds: [],
   completion: 'active',
@@ -2502,6 +2504,29 @@ describe('Task Utils', () => {
 
       it('should handle empty tasks array', () => {
         expect(filterByPriorities([], ['high'])).toHaveLength(0)
+      })
+    })
+
+    describe('filterByTags', () => {
+      const taskA = createMockTask({ id: 'a', tags: ['MIT'] })
+      const taskB = createMockTask({ id: 'b', tags: ['work', 'urgent'] })
+      const taskC = createMockTask({ id: 'c', tags: [] })
+
+      it('returns all tasks when no tags are selected', () => {
+        expect(filterByTags([taskA, taskB, taskC], [])).toHaveLength(3)
+      })
+
+      it('matches any selected tag (OR, not AND)', () => {
+        const result = filterByTags([taskA, taskB, taskC], ['MIT', 'work'])
+        expect(result.map((t) => t.id)).toEqual(['a', 'b'])
+      })
+
+      it('matches case-insensitively', () => {
+        expect(filterByTags([taskA], ['mit']).map((t) => t.id)).toEqual(['a'])
+      })
+
+      it('excludes untagged tasks when a tag is selected', () => {
+        expect(filterByTags([taskA, taskC], ['MIT']).map((t) => t.id)).toEqual(['a'])
       })
     })
 
@@ -5164,6 +5189,7 @@ describe('Task Utils', () => {
           search: 'test',
           projectIds: ['p1'],
           priorities: ['high'],
+          tags: [],
           dueDate: { type: 'today', customStart: null, customEnd: null },
           statusIds: ['s1'],
           completion: 'completed',
@@ -5180,6 +5206,16 @@ describe('Task Utils', () => {
           priorities: []
         }
         expect(countActiveFilters(filters)).toBe(0)
+      })
+    })
+
+    describe('active filter counters include tags', () => {
+      it('hasActiveFilters is true when tags are set', () => {
+        expect(hasActiveFilters({ ...createDefaultFilters(), tags: ['MIT'] })).toBe(true)
+      })
+
+      it('countActiveFilters counts tags', () => {
+        expect(countActiveFilters({ ...createDefaultFilters(), tags: ['MIT'] })).toBe(1)
       })
     })
 
