@@ -51,6 +51,7 @@ import {
   resetGoogleCalendarOAuthState,
   resolveDefaultGoogleAccountId
 } from './oauth'
+import { isExpectedConditionError } from '../../telemetry/expected-conditions'
 import {
   LEGACY_DEFAULT_ACCOUNT_ID,
   clearGoogleCalendarTokens,
@@ -769,5 +770,42 @@ describe('google calendar oauth', () => {
     resetGoogleCalendarOAuthState()
 
     expect(loggerMock.debug).toHaveBeenCalledWith('Reset Google Calendar OAuth state')
+  })
+})
+
+describe('abandoned OAuth flow', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    process.env.GOOGLE_CALENDAR_CLIENT_ID = 'google-client-id-123'
+    resetGoogleCalendarOAuthState()
+  })
+
+  afterEach(() => {
+    delete process.env.GOOGLE_CALENDAR_CLIENT_ID
+    vi.useRealTimers()
+  })
+
+  it('marks the OAuth timeout as an expected condition so it is not error telemetry', async () => {
+    // #given the user opens the consent screen and simply walks away —
+    // production logged 5x "Failed_to_connect_calendar_provider" for this
+    let opened = false
+    mockOpenExternal.mockImplementation(async () => {
+      opened = true
+    })
+
+    vi.useFakeTimers()
+    const promise = connectGoogleCalendar()
+    const rejection = promise.catch((error: unknown) => error)
+
+    // #when the 10-minute OAuth window elapses with no callback
+    await vi.waitUntil(() => opened, { timeout: 5000, interval: 10 })
+    await vi.advanceTimersByTimeAsync(10 * 60 * 1000 + 1)
+    const error = await rejection
+
+    // #then the user still sees the failure
+    expect(error).toBeInstanceOf(Error)
+    expect((error as Error).message).toBe('Google Calendar OAuth timed out')
+    // #and telemetry skips it: an abandoned flow is a normal state, not a fault
+    expect(isExpectedConditionError(error)).toBe(true)
   })
 })

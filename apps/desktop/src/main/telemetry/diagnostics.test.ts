@@ -14,9 +14,11 @@ import {
   trackLaunchPhase,
   trackMainError,
   trackMainLog,
+  trackMainUnhandledRejection,
   startActiveHeartbeat,
   stopActiveHeartbeat
 } from './diagnostics'
+import { markExpectedCondition } from './expected-conditions'
 
 describe('telemetry diagnostics', () => {
   beforeEach(() => {
@@ -47,6 +49,136 @@ describe('telemetry diagnostics', () => {
     // message header is stripped; home paths in stack frames are scrubbed
     expect(serialized).not.toContain('private-note')
     expect(serialized).not.toContain('/Users/')
+  })
+
+  describe('typed error codes', () => {
+    it('reports the NoteError code, not the class name', () => {
+      // #given a note write failure — production collapsed all 7 NoteErrorCode
+      // values to "NoteError", making every note failure un-triageable
+      const error = Object.assign(new Error('failed to write /Users/kaan/note.md'), {
+        name: 'NoteError',
+        code: 'NOTE_WRITE_FAILED',
+        noteId: 'note-123'
+      })
+
+      // #when tracking it
+      trackMainError('ipc', 'Failed to update note', error)
+
+      // #then the typed code reaches telemetry, and the message still does not
+      expect(trackMainEventMock).toHaveBeenCalledWith(
+        'app_error_seen',
+        expect.objectContaining({ errorCode: 'NOTE_WRITE_FAILED' })
+      )
+      expect(JSON.stringify(trackMainEventMock.mock.calls[0])).not.toContain('note.md')
+    })
+
+    it('reports the better-sqlite3 SQLITE_* code, not "SqliteError"', () => {
+      // #given a locked DB file — indistinguishable from disk-full in production
+      const error = Object.assign(new Error('database is locked'), {
+        name: 'SqliteError',
+        code: 'SQLITE_BUSY'
+      })
+
+      // #when tracking it
+      trackMainError('ipc', 'Failed to update task', error)
+
+      // #then SQLITE_BUSY is now distinguishable from any other SqliteError
+      expect(trackMainEventMock).toHaveBeenCalledWith(
+        'app_error_seen',
+        expect.objectContaining({ errorCode: 'SQLITE_BUSY' })
+      )
+    })
+
+    it('falls back to the class name when a code would leak a path', () => {
+      // #given an error whose "code" is really a path
+      const error = Object.assign(new Error('boom'), {
+        name: 'VaultError',
+        code: '/Users/kaan/vault/secret.md'
+      })
+
+      // #when tracking it
+      trackMainError('ipc', 'Failed to open vault', error)
+
+      // #then the safe class name is used and no path fragment ships
+      expect(trackMainEventMock).toHaveBeenCalledWith(
+        'app_error_seen',
+        expect.objectContaining({ errorCode: 'VaultError' })
+      )
+      expect(JSON.stringify(trackMainEventMock.mock.calls[0])).not.toContain('secret')
+    })
+  })
+
+  describe('expected conditions', () => {
+    it('emits nothing for an error marked as an expected condition', () => {
+      // #given Ollama not running / an abandoned OAuth flow — normal states
+      const error = markExpectedCondition(new Error('Google Calendar OAuth timed out'))
+
+      // #when the IPC envelope reports it
+      trackMainError('ipc', 'Failed to connect calendar provider', error)
+
+      // #then it never becomes an error event
+      expect(trackMainEventMock).not.toHaveBeenCalled()
+    })
+
+    it('still emits for an unmarked error from the same handler', () => {
+      // #given a real fault from the same code path
+      trackMainError('ipc', 'Failed to connect calendar provider', new Error('token exchange 500'))
+
+      // #then it is reported — the suppression is not blanket
+      expect(trackMainEventMock).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe('trackMainUnhandledRejection', () => {
+    it('captures an actionable code and a stack for a non-Error reason', () => {
+      // #given a rejection whose reason is not an Error: production saw 4x
+      // `Error` / unhandled_rejection with a COMPLETELY EMPTY stack
+      trackMainUnhandledRejection('vault sync for kaan@memrynote.com blew up')
+
+      // #then the reason's type is recorded and a stack is synthesized
+      expect(trackMainEventMock).toHaveBeenCalledWith(
+        'app_error_seen',
+        expect.objectContaining({
+          action: 'unhandled_rejection',
+          source: 'main_process',
+          errorCode: 'Rejection_string',
+          error: expect.objectContaining({ stack: expect.stringContaining('at ') })
+        })
+      )
+      // #and the reason's value never ships
+      const serialized = JSON.stringify(trackMainEventMock.mock.calls[0])
+      expect(serialized).not.toContain('blew up')
+      expect(serialized).not.toContain('@memrynote.com')
+    })
+
+    it('adopts the frames of a cross-realm error that fails instanceof Error', () => {
+      // #given an error-shaped reason from another realm (worker/preload):
+      // instanceof fails, so buildErrorDetail used to drop its stack entirely
+      trackMainUnhandledRejection({
+        name: 'Error',
+        message: 'opening /Users/kaan/private.md failed',
+        stack:
+          'Error: opening /Users/kaan/private.md failed\n    at loadVault (/app/out/main.js:9:1)'
+      })
+
+      // #then the real frames survive, without the message header
+      expect(trackMainEventMock).toHaveBeenCalledWith(
+        'app_error_seen',
+        expect.objectContaining({
+          errorCode: 'Error',
+          error: expect.objectContaining({ stack: expect.stringContaining('at loadVault') })
+        })
+      )
+      expect(JSON.stringify(trackMainEventMock.mock.calls[0])).not.toContain('private.md')
+    })
+
+    it('passes a real Error through unchanged', () => {
+      trackMainUnhandledRejection(new TypeError('boom'))
+      expect(trackMainEventMock).toHaveBeenCalledWith(
+        'app_error_seen',
+        expect.objectContaining({ errorCode: 'TypeError' })
+      )
+    })
   })
 
   it('emits structured remote log breadcrumbs', () => {

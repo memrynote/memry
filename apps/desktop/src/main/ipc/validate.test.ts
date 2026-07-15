@@ -328,4 +328,62 @@ describe('IPC error telemetry', () => {
     // #then
     expect(mockTrackMainError).toHaveBeenCalledTimes(2)
   })
+
+  it('does NOT let one handler mask a different handler throwing the same error name', async () => {
+    // #given two unrelated handlers that both throw a bare `Error` — the
+    // throttle was keyed only by error.name and shared across ALL handlers, so
+    // a benign recurring "Error" hid a genuine one for 60s
+    vi.useFakeTimers()
+    try {
+      const benign = withErrorHandler(async () => {
+        throw namedError('Error')
+      }, 'Failed to list Ollama models')
+      const genuine = withErrorHandler(async () => {
+        throw namedError('Error')
+      }, 'Failed to save note')
+
+      // #when the benign one fires first, inside the same throttle window
+      await benign()
+      await genuine()
+
+      // #then both are reported
+      expect(mockTrackMainError).toHaveBeenCalledTimes(2)
+      expect(mockTrackMainError).toHaveBeenCalledWith(
+        'ipc',
+        'Failed to list Ollama models',
+        expect.anything()
+      )
+      expect(mockTrackMainError).toHaveBeenCalledWith(
+        'ipc',
+        'Failed to save note',
+        expect.anything()
+      )
+
+      // #and each handler is still throttled on its own key
+      await benign()
+      await genuine()
+      expect(mockTrackMainError).toHaveBeenCalledTimes(2)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('separates typed codes from the same handler within one window', async () => {
+    // #given one handler hitting two different SQLITE_* conditions
+    vi.useFakeTimers()
+    try {
+      const handler = withErrorHandler(async (code: string) => {
+        throw Object.assign(new Error('db'), { name: 'SqliteError', code })
+      }, 'Failed to update task')
+
+      // #when
+      await handler('SQLITE_BUSY')
+      await handler('SQLITE_FULL')
+
+      // #then a locked file does not mask a disk-full
+      expect(mockTrackMainError).toHaveBeenCalledTimes(2)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })

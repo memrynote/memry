@@ -4,7 +4,10 @@ import {
   LandingTelemetryBatchSchema,
   TelemetryBatchSchema,
   TelemetryEventNameSchema,
-  TelemetryEventSchema
+  TelemetryEventSchema,
+  buildErrorDetail,
+  normalizeRejectionReason,
+  toErrorCode
 } from './telemetry-api'
 
 const VALID_INSTALL_ID = '550e8400-e29b-41d4-a716-446655440000'
@@ -541,5 +544,148 @@ describe('LandingTelemetryBatchSchema', () => {
       events: Array.from({ length: 21 }, () => baseLandingBatch.events[0])
     })
     expect(oversize.success).toBe(false)
+  })
+})
+
+describe('toErrorCode', () => {
+  it('prefers a typed code over the class name for NoteError-shaped errors', () => {
+    // #given a NoteError carrying one of the 7 typed NoteErrorCode values
+    const error = Object.assign(new Error('could not write /Users/kaan/note.md'), {
+      name: 'NoteError',
+      code: 'NOTE_WRITE_FAILED'
+    })
+
+    // #then the typed code survives instead of collapsing to "NoteError"
+    expect(toErrorCode(error)).toBe('NOTE_WRITE_FAILED')
+  })
+
+  it('prefers better-sqlite3 SQLITE_* codes over the SqliteError class name', () => {
+    // #given a better-sqlite3-shaped error (code lives on error.code)
+    const error = Object.assign(new Error('database is locked'), {
+      name: 'SqliteError',
+      code: 'SQLITE_BUSY'
+    })
+
+    // #then we can tell a locked file from a disk-full
+    expect(toErrorCode(error)).toBe('SQLITE_BUSY')
+  })
+
+  it('falls back to the class name when there is no typed code', () => {
+    expect(toErrorCode(new TypeError('boom'))).toBe('TypeError')
+  })
+
+  it('falls back to the class name when the code is not a usable string', () => {
+    // #given errors whose code is absent, empty, or a non-string
+    const numeric = Object.assign(new Error('boom'), { name: 'SystemError', code: -4058 })
+    const empty = Object.assign(new Error('boom'), { name: 'SystemError', code: '' })
+
+    // #then the class name is used rather than a meaningless token
+    expect(toErrorCode(numeric)).toBe('SystemError')
+    expect(toErrorCode(empty)).toBe('SystemError')
+  })
+
+  it('never leaks a path/email/url through a code (safe-token invariants hold)', () => {
+    // #given hostile "codes" that would leak private data if trusted verbatim
+    const cases: Array<[unknown, string]> = [
+      [
+        Object.assign(new Error('x'), { name: 'NoteError', code: '/Users/kaan/secret.md' }),
+        'NoteError'
+      ],
+      [
+        Object.assign(new Error('x'), { name: 'NoteError', code: 'C:\\Users\\kaan\\a.md' }),
+        'NoteError'
+      ],
+      [
+        Object.assign(new Error('x'), { name: 'AuthError', code: 'kaan@memrynote.com' }),
+        'AuthError'
+      ],
+      [
+        Object.assign(new Error('x'), { name: 'HttpError', code: 'https://api.memrynote.com/x' }),
+        'HttpError'
+      ],
+      // a 200-char "code" is prose, not a code: reject it rather than truncate
+      [Object.assign(new Error('x'), { name: 'LongError', code: 'A'.repeat(200) }), 'LongError']
+    ]
+
+    // #then every code path stays inside the safe-token rules
+    for (const [error, expected] of cases) {
+      const code = toErrorCode(error)
+      expect(code).toBe(expected)
+      expect(code).not.toContain('@')
+      expect(code).not.toContain('://')
+      expect(code).not.toContain('/')
+      expect(code).not.toContain('\\')
+      expect(code.length).toBeLessThanOrEqual(64)
+    }
+  })
+
+  it('keeps the existing non-Error behaviour', () => {
+    expect(toErrorCode('boom')).toBe('StringError')
+    expect(toErrorCode(undefined)).toBe('UnknownError')
+    expect(toErrorCode({ constructor: { name: 'PlainThing' } })).toBe('PlainThing')
+  })
+})
+
+describe('normalizeRejectionReason', () => {
+  it('passes through a real Error that already has stack frames', () => {
+    // #given a normal rejection
+    const error = new Error('boom')
+
+    // #then it is used as-is (its own stack is the actionable one)
+    expect(normalizeRejectionReason(error)).toBe(error)
+  })
+
+  it('adopts the stack of a cross-realm error that fails instanceof Error', () => {
+    // #given an error from another realm: constructor says Error, instanceof fails
+    const crossRealm = {
+      name: 'Error',
+      message: 'private note /Users/kaan/secret.md failed',
+      stack:
+        'Error: private note /Users/kaan/secret.md failed\n    at doThing (/app/out/main.js:1:1)'
+    }
+
+    // #when normalizing the reason
+    const normalized = normalizeRejectionReason(crossRealm)
+
+    // #then a real Error carrying the original frames comes back
+    expect(normalized).toBeInstanceOf(Error)
+    expect(buildErrorDetail(normalized)?.stack).toContain('at doThing')
+    // #and the message never rides along
+    expect(JSON.stringify(buildErrorDetail(normalized))).not.toContain('secret.md')
+  })
+
+  it('synthesizes a stack and names the reason type for a non-Error reason', () => {
+    // #given a rejection whose reason is a bare string (no stack at all)
+    const normalized = normalizeRejectionReason('everything is on fire')
+
+    // #then something actionable is captured: a real stack + the reason's type
+    expect(normalized).toBeInstanceOf(Error)
+    expect(normalized.name).toBe('Rejection_string')
+    expect(buildErrorDetail(normalized)?.stack).toContain('at ')
+    // #and the reason's value is never shipped
+    expect(normalized.message).toBe('')
+    expect(JSON.stringify(buildErrorDetail(normalized))).not.toContain('on fire')
+  })
+
+  it('names the constructor for a plain-object reason', () => {
+    class Boom {}
+    expect(normalizeRejectionReason(new Boom()).name).toBe('Rejection_Boom')
+    expect(normalizeRejectionReason({ a: 1 }).name).toBe('Rejection_Object')
+  })
+
+  it('names null/undefined reasons instead of dropping them', () => {
+    expect(normalizeRejectionReason(null).name).toBe('Rejection_null')
+    expect(normalizeRejectionReason(undefined).name).toBe('Rejection_undefined')
+  })
+
+  it('produces codes that satisfy the safe-token invariants', () => {
+    for (const reason of ['x', 42, null, undefined, { a: 1 }, Symbol('s')]) {
+      const code = toErrorCode(normalizeRejectionReason(reason))
+      expect(code).not.toContain('@')
+      expect(code).not.toContain('://')
+      expect(code).not.toContain('/')
+      expect(code).not.toContain('\\')
+      expect(code.length).toBeLessThanOrEqual(64)
+    }
   })
 })

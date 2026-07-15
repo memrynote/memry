@@ -1,35 +1,15 @@
 import type { TelemetryResult } from '@memry/contracts/telemetry-api'
-import { buildErrorDetail } from '@memry/contracts/telemetry-api'
+import {
+  buildErrorDetail,
+  normalizeRejectionReason,
+  toErrorCode,
+  toSafeToken
+} from '@memry/contracts/telemetry-api'
 
+import { isExpectedConditionError } from './expected-conditions'
 import { trackMainEvent, type TrackMainEventOptions } from './track'
 
 type DiagnosticLevel = 'debug' | 'info' | 'warn' | 'error'
-
-const SAFE_TOKEN = /^(?!.*@)(?!.*:\/\/)(?!.*[/\\]).{1,64}$/
-
-const toSafeToken = (value: unknown, fallback: string): string => {
-  const raw =
-    value instanceof Error
-      ? value.name
-      : typeof value === 'string'
-        ? value
-        : typeof value === 'number' || typeof value === 'boolean'
-          ? String(value)
-          : ''
-  const token = raw.replace(/[^A-Za-z0-9_.:-]/g, '_').slice(0, 64)
-  return SAFE_TOKEN.test(token) ? token : fallback
-}
-
-const toErrorCode = (error: unknown): string => {
-  if (error instanceof Error && error.name) {
-    return toSafeToken(error.name, 'Error')
-  }
-  if (error && typeof error === 'object' && error.constructor?.name) {
-    return toSafeToken(error.constructor.name, 'UnknownError')
-  }
-  if (typeof error === 'string') return 'StringError'
-  return 'UnknownError'
-}
 
 const resultForLevel = (level: DiagnosticLevel): TelemetryResult =>
   level === 'error' || level === 'warn' ? 'failed' : 'success'
@@ -64,6 +44,11 @@ export const trackChildProcessGone = (details: {
 }
 
 export const trackMainError = (source: string, action: string, error: unknown): void => {
+  // Expected conditions (Ollama not running, an abandoned OAuth flow) still
+  // reach the UI as an error envelope, but they are normal states — reporting
+  // them here drowns the real signal.
+  if (isExpectedConditionError(error)) return
+
   trackMainEvent('app_error_seen', {
     surface: 'app',
     action: toSafeToken(action, 'error'),
@@ -73,6 +58,16 @@ export const trackMainError = (source: string, action: string, error: unknown): 
     errorCode: toErrorCode(error),
     error: buildErrorDetail(error)
   })
+}
+
+// A rejection reason can be any value — a string, a plain object, or a
+// cross-realm Error that fails `instanceof Error` — and those carry no stack,
+// landing in telemetry as an unactionable bare `Error` with an empty stack.
+// Normalizing first guarantees a stack and a code naming the reason's type.
+// Kept here (not inline in index.ts) so it is unit-tested rather than living in
+// the untested bootstrap.
+export const trackMainUnhandledRejection = (reason: unknown): void => {
+  trackMainError('main_process', 'unhandled_rejection', normalizeRejectionReason(reason))
 }
 
 export const trackMainLog = (

@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AIInlineChannels, AI_INLINE_SETTINGS_DEFAULTS } from '@memry/contracts/ai-inline-channels'
 
+import { isExpectedConditionError } from '../telemetry/expected-conditions'
+
 const mocks = vi.hoisted(() => {
   const handlers = new Map<string, (event: unknown, input?: unknown) => unknown>()
   return {
@@ -176,6 +178,53 @@ describe('AI inline IPC handlers', () => {
       success: false,
       error: 'Ollama responded 500'
     })
+    fetchSpy.mockRestore()
+  })
+})
+
+describe('Ollama listing is an expected condition when Ollama is not running', () => {
+  it('marks a connection-refused failure so it never becomes error telemetry', async () => {
+    // #given Ollama is simply not running — production logged 8x
+    // "Failed_to_list_Ollama_models" for what is a normal state
+    registerAIInlineHandlers()
+    const refused = Object.assign(new TypeError('fetch failed'), {
+      cause: Object.assign(new Error('connect ECONNREFUSED 127.0.0.1:11434'), {
+        code: 'ECONNREFUSED'
+      })
+    })
+    const fetchSpy = vi.spyOn(global, 'fetch').mockRejectedValue(refused)
+
+    // #when the renderer asks for the model list
+    const result = await invoke(AIInlineChannels.invoke.LIST_OLLAMA_MODELS)
+
+    // #then the UI still learns it failed
+    expect(result).toEqual({ success: false, error: 'fetch failed' })
+    // #and telemetry skips it
+    expect(isExpectedConditionError(refused)).toBe(true)
+    fetchSpy.mockRestore()
+  })
+
+  it('still reports a real Ollama misconfiguration', async () => {
+    // #given failures that are genuine faults, not "not running"
+    registerAIInlineHandlers()
+    const dnsFailure = Object.assign(new TypeError('fetch failed'), {
+      cause: Object.assign(new Error('getaddrinfo ENOTFOUND ollama.local'), {
+        code: 'ENOTFOUND'
+      })
+    })
+    const fetchSpy = vi.spyOn(global, 'fetch').mockRejectedValue(dnsFailure)
+
+    // #when the fetch fails for a reason other than connection-refused
+    await invoke(AIInlineChannels.invoke.LIST_OLLAMA_MODELS)
+
+    // #then it is NOT suppressed — the suppression is not blanket
+    expect(isExpectedConditionError(dnsFailure)).toBe(false)
+
+    // #and neither is a bad HTTP status
+    const httpFailure = new Error('Ollama responded 500')
+    fetchSpy.mockRejectedValue(httpFailure)
+    await invoke(AIInlineChannels.invoke.LIST_OLLAMA_MODELS)
+    expect(isExpectedConditionError(httpFailure)).toBe(false)
     fetchSpy.mockRestore()
   })
 })
