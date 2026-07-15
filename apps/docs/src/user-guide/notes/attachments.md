@@ -61,6 +61,12 @@ Storage usage is visible in [Settings → Vault](/user-guide/settings#vault) wit
 - CRDT data
 - Other (indexes, leveldb, caches)
 
+### File Size Limits vs. Counted Storage
+
+Your plan's per-file size limit applies to the **original file size**. Encryption overhead never counts against it, so a file that is exactly at your plan's limit still uploads.
+
+Synced storage usage counts the **encrypted** size, which is a few bytes larger per chunk than the original (each chunk carries a nonce and an authentication tag). For a typical file this is a difference of tens of bytes.
+
 ## Garbage Collection
 
 Files that are no longer referenced by any note are pruned during periodic vacuum. You don't need to clean them up manually.
