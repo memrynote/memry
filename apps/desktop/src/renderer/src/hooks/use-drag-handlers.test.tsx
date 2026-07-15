@@ -1888,4 +1888,104 @@ describe('useDragHandlers', () => {
       })
     })
   })
+
+  describe('timed column slot drops', () => {
+    it('resolves dueTime from where the chip landed in a timeBehavior: "slot" column', () => {
+      const tasks = [
+        createTask({ id: 'task-1', dueDate: new Date('2026-07-10T00:00:00'), dueTime: '15:30' })
+      ]
+      const onUpdateTask = vi.fn()
+
+      const { result } = renderHook(() =>
+        useDragHandlers({
+          tasks,
+          projects: [createProject()],
+          onUpdateTask,
+          onDeleteTask: vi.fn(),
+          onReorder: vi.fn()
+        })
+      )
+
+      // Column top is at 0; the chip's translated top sits 9 hours down at
+      // hourHeight: 48 (9 * 48 = 432px) — should resolve to 09:00.
+      const event = {
+        over: {
+          id: 'calendar-timed-column:2026-07-15',
+          data: {
+            current: {
+              type: 'date',
+              date: new Date('2026-07-15T00:00:00'),
+              dateKey: '2026-07-15',
+              timeBehavior: 'slot',
+              hourHeight: 48
+            }
+          },
+          rect: { top: 0 }
+        },
+        active: {
+          id: 'task-1',
+          data: { current: {} },
+          rect: { current: { translated: { top: 432 } } }
+        }
+      } as unknown as DragEndEvent
+
+      act(() => {
+        result.current.handleDragEnd(event, createDragState({ overType: 'date' }))
+      })
+
+      expect(onUpdateTask).toHaveBeenCalledWith('task-1', {
+        dueDate: new Date('2026-07-15T09:00:00'),
+        dueTime: '09:00'
+      })
+    })
+
+    it('preserves the existing dueTime when the slot column rects are unavailable', () => {
+      const tasks = [
+        createTask({ id: 'task-1', dueDate: new Date('2026-07-10T00:00:00'), dueTime: '09:00' })
+      ]
+      const onUpdateTask = vi.fn()
+
+      const { result } = renderHook(() =>
+        useDragHandlers({
+          tasks,
+          projects: [createProject()],
+          onUpdateTask,
+          onDeleteTask: vi.fn(),
+          onReorder: vi.fn()
+        })
+      )
+
+      // active.rect.current.translated is null, as dnd-kit reports before the
+      // dragged node has been measured — the deliberate "keep current time"
+      // fallback, versus silently scheduling at midnight.
+      const event = {
+        over: {
+          id: 'calendar-timed-column:2026-07-20',
+          data: {
+            current: {
+              type: 'date',
+              date: new Date('2026-07-20T00:00:00'),
+              dateKey: '2026-07-20',
+              timeBehavior: 'slot',
+              hourHeight: 48
+            }
+          },
+          rect: { top: 0 }
+        },
+        active: {
+          id: 'task-1',
+          data: { current: {} },
+          rect: { current: { translated: null } }
+        }
+      } as unknown as DragEndEvent
+
+      act(() => {
+        result.current.handleDragEnd(event, createDragState({ overType: 'date' }))
+      })
+
+      expect(onUpdateTask).toHaveBeenCalledWith('task-1', {
+        dueDate: new Date('2026-07-20T09:00:00')
+      })
+    })
+  })
 })

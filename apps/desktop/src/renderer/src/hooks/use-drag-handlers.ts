@@ -7,6 +7,7 @@ import { useT } from '@memry/i18n/renderer'
 import { resolveTaskEdgeFromDndEvent, type DragState } from '@/contexts/drag-context'
 import { formatDateShort, startOfDay, getDefaultTodoStatus } from '@/lib/task-utils'
 import { resolveColumnDrop } from '@/lib/kanban-drop-resolver'
+import { timeFromOffset } from '@/components/calendar/drop-time'
 import type { Task, Priority } from '@/data/task-model'
 import type { Project } from '@/data/tasks-data'
 import { getI18n } from 'react-i18next'
@@ -145,6 +146,27 @@ const buildCrossSectionOrderUpdates = ({
     [sourceSectionId]: sourceOrder,
     [targetSectionId]: nextTargetOrder
   }
+}
+
+/**
+ * Month cells preserve the task's time (no key), all-day cells clear it
+ * (dueTime: null), timed columns derive it from where the chip landed.
+ */
+function resolveDropOptions(
+  overData: Record<string, unknown> | undefined,
+  event: DragEndEvent
+): DateDropOptions | undefined {
+  if (overData?.timeBehavior === 'slot') {
+    const overTop = event.over?.rect.top
+    const activeTop = event.active.rect.current.translated?.top
+    const hourHeight = overData.hourHeight as number | undefined
+    if (overTop === undefined || activeTop === undefined || !hourHeight) return undefined
+    return { dueTime: timeFromOffset(activeTop - overTop, hourHeight) }
+  }
+  if (overData && 'dueTime' in overData) {
+    return { dueTime: overData.dueTime as string | null }
+  }
+  return undefined
 }
 
 // ============================================================================
@@ -992,15 +1014,7 @@ export const useDragHandlers = ({
         case 'date': {
           const targetDate = overData?.date as Date
           if (targetDate) {
-            // Droppables that represent a specific slot supply dueTime; month
-            // cells omit the key entirely so the task keeps its current time.
-            handleDateDrop(
-              taskIds,
-              targetDate,
-              'dueTime' in (overData ?? {})
-                ? { dueTime: overData?.dueTime as string | null }
-                : undefined
-            )
+            handleDateDrop(taskIds, targetDate, resolveDropOptions(overData, event))
           }
           break
         }
