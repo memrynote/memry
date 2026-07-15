@@ -1,9 +1,13 @@
 /**
- * Inline text color persistence.
+ * Inline style persistence for styles markdown cannot express.
  *
  * BlockNote's markdown pipeline drops inline `styles.textColor` /
- * `styles.backgroundColor` in both directions, so colored selections are
- * persisted as Obsidian-compatible raw HTML: `<span style="color:red">…</span>`.
+ * `styles.backgroundColor` / `styles.underline` in both directions (markdown
+ * has no underline syntax at all), so those selections are persisted as
+ * Obsidian-compatible raw HTML: `<span style="color:red">…</span>`,
+ * `<span style="text-decoration:underline">…</span>`. Underline rides the same
+ * span as the colors so a run that is both keeps one wrapper. Bold/italic/strike
+ * are left alone — markdown carries those natively.
  *
  * Markdown serializers escape literal `<span>` text inside runs, so both
  * directions go through markdown-inert alphanumeric tokens instead:
@@ -21,6 +25,7 @@
 export interface InlineColorStyles {
   textColor?: string
   backgroundColor?: string
+  underline?: boolean
 }
 
 interface StyledText {
@@ -59,7 +64,10 @@ function pickColorStyles(styles: Record<string, unknown>): InlineColorStyles | n
   if (typeof styles.backgroundColor === 'string' && styles.backgroundColor !== 'default') {
     colors.backgroundColor = styles.backgroundColor
   }
-  return colors.textColor || colors.backgroundColor ? colors : null
+  if (styles.underline === true) {
+    colors.underline = true
+  }
+  return colors.textColor || colors.backgroundColor || colors.underline ? colors : null
 }
 
 // Palette values are plain names; reject anything that could break out of the
@@ -72,6 +80,7 @@ function buildSpanOpen(colors: InlineColorStyles): string {
   const decls: string[] = []
   if (colors.textColor) decls.push(`color:${colors.textColor}`)
   if (colors.backgroundColor) decls.push(`background-color:${colors.backgroundColor}`)
+  if (colors.underline) decls.push('text-decoration:underline')
   return `<span style="${decls.join(';')}">`
 }
 
@@ -128,7 +137,8 @@ export function extractInlineColorRuns(blocks: BlockNode[]): {
       if (
         !openColors ||
         openColors.textColor !== colors.textColor ||
-        openColors.backgroundColor !== colors.backgroundColor
+        openColors.backgroundColor !== colors.backgroundColor ||
+        openColors.underline !== colors.underline
       ) {
         closeGroup()
         const open = openToken(index++)
@@ -140,6 +150,7 @@ export function extractInlineColorRuns(blocks: BlockNode[]): {
       const {
         textColor: _t,
         backgroundColor: _b,
+        underline: _u,
         ...rest
       } = styles as InlineColorStyles & Record<string, unknown>
       out.push({ ...item, styles: rest })
@@ -224,9 +235,11 @@ function parseColorDecls(style: string): InlineColorStyles | null {
     if (!isSafeColorValue(value)) return null
     if (prop === 'color') colors.textColor = value
     else if (prop === 'background-color') colors.backgroundColor = value
+    // Only the decoration we emit round-trips; anything else stays raw html.
+    else if (prop === 'text-decoration' && value === 'underline') colors.underline = true
     else return null
   }
-  return colors.textColor || colors.backgroundColor ? colors : null
+  return colors.textColor || colors.backgroundColor || colors.underline ? colors : null
 }
 
 export function maskInlineColorSpans(markdown: string): {

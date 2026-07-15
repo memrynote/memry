@@ -57,6 +57,63 @@ describe('extractInlineColorRuns / restoreInlineColorTokens (serialize side)', (
     expect(restored).toBe('<span style="color:blue;background-color:yellow">x</span>')
   })
 
+  it('wraps underlined runs and emits a text-decoration decl', () => {
+    const blocks = [
+      {
+        type: 'paragraph',
+        props: {},
+        content: [
+          { type: 'text', text: 'keep ', styles: {} },
+          { type: 'text', text: 'under', styles: { underline: true } }
+        ],
+        children: []
+      }
+    ]
+
+    const { blocks: wrapped, replacements } = extractInlineColorRuns(blocks)
+    const content = (wrapped[0] as { content: Array<{ text: string; styles: object }> }).content
+    expect(content[2]).toEqual({ type: 'text', text: 'under', styles: {} })
+
+    const restored = restoreInlineColorTokens(content.map((c) => c.text).join(''), replacements)
+    expect(restored).toBe('keep <span style="text-decoration:underline">under</span>')
+  })
+
+  it('emits color and underline decls together for one run', () => {
+    const blocks = [
+      {
+        type: 'paragraph',
+        props: {},
+        content: [
+          { type: 'text', text: 'x', styles: { bold: true, textColor: 'red', underline: true } }
+        ],
+        children: []
+      }
+    ]
+
+    const { blocks: wrapped, replacements } = extractInlineColorRuns(blocks)
+    const content = (wrapped[0] as { content: Array<{ text: string; styles: object }> }).content
+    // bold stays on the run (markdown carries it); underline moves into the span
+    expect(content[1].styles).toEqual({ bold: true })
+
+    const restored = restoreInlineColorTokens(content.map((c) => c.text).join(''), replacements)
+    expect(restored).toBe('<span style="color:red;text-decoration:underline">x</span>')
+  })
+
+  it('ignores underline:false and leaves untouched blocks referentially intact', () => {
+    const blocks = [
+      {
+        type: 'paragraph',
+        props: {},
+        content: [{ type: 'text', text: 'plain', styles: { underline: false } }],
+        children: []
+      }
+    ]
+
+    const { blocks: wrapped, replacements } = extractInlineColorRuns(blocks)
+    expect(replacements.size).toBe(0)
+    expect(wrapped[0]).toBe(blocks[0])
+  })
+
   it('ignores default colors and leaves untouched blocks referentially intact', () => {
     const blocks = [
       {
@@ -158,6 +215,44 @@ describe('maskInlineColorSpans / applyInlineColorTokens (parse side)', () => {
       { type: 'text', text: 'bold', styles: { bold: true, textColor: 'red' } },
       { type: 'text', text: ' plain', styles: { textColor: 'red' } }
     ])
+  })
+
+  it('masks an underline span and applies underline to parsed runs', () => {
+    const { text, spans } = maskInlineColorSpans(
+      'keep <span style="text-decoration:underline">under</span> tail'
+    )
+    expect(text).not.toContain('<span')
+    expect(spans).toHaveLength(1)
+    expect(spans[0].styles).toEqual({ underline: true })
+
+    const parsed = [
+      {
+        type: 'paragraph',
+        props: {},
+        content: [{ type: 'text', text, styles: {} }],
+        children: []
+      }
+    ]
+    const applied = applyInlineColorTokens(parsed, spans)
+    expect((applied[0] as { content: unknown[] }).content).toEqual([
+      { type: 'text', text: 'keep ', styles: {} },
+      { type: 'text', text: 'under', styles: { underline: true } },
+      { type: 'text', text: ' tail', styles: {} }
+    ])
+  })
+
+  it('parses combined color and underline decls in any order', () => {
+    const { spans } = maskInlineColorSpans(
+      '<span style="text-decoration: underline; color: blue">x</span>'
+    )
+    expect(spans[0].styles).toEqual({ textColor: 'blue', underline: true })
+  })
+
+  it('does not mask text-decoration values other than underline', () => {
+    const md = '<span style="text-decoration:line-through">a</span>'
+    const { text, spans } = maskInlineColorSpans(md)
+    expect(text).toBe(md)
+    expect(spans).toHaveLength(0)
   })
 
   it('leaves spans inside fenced code blocks and inline code untouched', () => {
