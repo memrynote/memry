@@ -1284,6 +1284,7 @@ export interface GeneralSettingsDTO {
 export interface EditorSettingsDTO {
   width: 'normal' | 'full'
   toolbarMode: 'floating' | 'sticky'
+  spellCheck: boolean
 }
 
 export interface TaskSettingsDTO {

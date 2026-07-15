@@ -83,7 +83,7 @@ If enabled in [Settings → Editor](/user-guide/settings#editor), word count app
 
 ## Spell Check
 
-Toggle browser spellcheck in [Settings → Editor](/user-guide/settings#editor).
+Off by default. Turn on **Check Spelling** in [Settings → Editor](/user-guide/settings#editor) to underline misspelled words as you write.
 
 ## Toolbar
 

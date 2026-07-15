@@ -48,7 +48,8 @@ const mocks = vi.hoisted(() => ({
   editorSettings: {
     settings: {
       width: 'normal',
-      toolbarMode: 'floating'
+      toolbarMode: 'floating',
+      spellCheck: false
     },
     isLoading: false,
     updateSettings: vi.fn()
@@ -135,16 +136,19 @@ vi.mock('@/components/ui/switch', () => ({
   Switch: ({
     checked,
     disabled,
-    onCheckedChange
+    onCheckedChange,
+    'aria-label': ariaLabel
   }: {
     checked?: boolean
     disabled?: boolean
     onCheckedChange?: (checked: boolean) => void
+    'aria-label'?: string
   }) => (
     <button
       type="button"
       role="switch"
       aria-checked={checked}
+      aria-label={ariaLabel}
       disabled={disabled}
       onClick={() => onCheckedChange?.(!checked)}
     >
@@ -606,12 +610,17 @@ describe('settings section coverage', () => {
       })
     )
 
+    fireEvent.click(screen.getByLabelText('editor.spellCheck.label'))
+    await waitFor(() =>
+      expect(mocks.editorSettings.updateSettings).toHaveBeenCalledWith({ spellCheck: true })
+    )
+
     fireEvent.click(screen.getByText('Daily template'))
     await waitFor(() =>
       expect(mocks.journalSettings.setDefaultTemplate).toHaveBeenCalledWith('daily')
     )
 
-    fireEvent.click(screen.getAllByRole('switch')[4])
+    fireEvent.click(screen.getAllByRole('switch')[5])
     await waitFor(() =>
       expect(mocks.journalSettings.updateSettings).toHaveBeenCalledWith({
         showAIConnections: true
