@@ -14,6 +14,15 @@ vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({ t: (key: string) => key })
 }))
 
+vi.mock('@/hooks/use-notes-query', () => ({
+  useNoteTagsQuery: () => ({
+    tags: [
+      { tag: 'MIT', color: 'rose', count: 0, icon: null },
+      { tag: 'work', color: '', count: 0, icon: null }
+    ]
+  })
+}))
+
 const statuses: Status[] = [
   { id: 'todo', name: 'Todo', color: '#6b7280', type: 'todo', order: 0 },
   { id: 'done', name: 'Done', color: '#10b981', type: 'done', order: 1 }
@@ -241,6 +250,44 @@ describe('task filter surfaces', () => {
     expect(onUpdateFilters).toHaveBeenLastCalledWith({ priorities: [] })
     fireEvent.click(screen.getByText('Apply'))
     expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
+
+  it('navigates to the Tags panel and toggles a tag filter', () => {
+    const onOpenChange = vi.fn()
+    const onUpdateFilters = vi.fn()
+    const tasksWithTags = [
+      { id: 'task-1', title: 'Ship coverage', priority: 'urgent', statusId: 'todo', tags: ['mit'] }
+    ] as never
+
+    render(
+      <FilterDropdown
+        open
+        onOpenChange={onOpenChange}
+        filters={defaultFilters}
+        onUpdateFilters={onUpdateFilters}
+        onClearFilters={vi.fn()}
+        tasks={tasksWithTags}
+        projects={projects}
+        savedFilters={[]}
+        activeSavedFilterId={null}
+        hasActiveFilters={false}
+        onDeleteSavedFilter={vi.fn()}
+        onApplySavedFilter={vi.fn()}
+        onSaveFilter={vi.fn()}
+        onToggleStarFilter={vi.fn()}
+        statuses={statuses}
+      >
+        <button type="button">Filters</button>
+      </FilterDropdown>
+    )
+
+    fireEvent.click(screen.getByText('Tags'))
+    // Definition is 'MIT' (uppercase) while the task carries 'mit' — proves
+    // the category is reachable and the panel renders real tag data, not a
+    // crash or an empty list from a `def.name` vs `def.tag` field mismatch.
+    expect(screen.getByText('MIT')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('MIT'))
+    expect(onUpdateFilters).toHaveBeenCalledWith({ tags: ['MIT'] })
   })
 
   it('uses project status fallback, due-date, project, and saved-filter actions in filter dropdown', () => {
