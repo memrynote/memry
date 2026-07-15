@@ -6,10 +6,22 @@ interface FakeStmt {
   _args: unknown[]
   bind: (...args: unknown[]) => FakeStmt
   first: () => Promise<unknown>
+  all: () => Promise<{ results: unknown[] }>
   run: () => Promise<{ meta: { changes: number } }>
 }
 
-const makeDb = (opts: { exists?: boolean; sums?: Record<string, number> } = {}) => {
+interface OpenSessionRow {
+  total_size: number
+  uploaded_chunks: string
+}
+
+const makeDb = (
+  opts: {
+    exists?: boolean
+    sums?: Record<string, number>
+    sessions?: OpenSessionRow[]
+  } = {}
+) => {
   const statements: FakeStmt[] = []
   return {
     statements,
@@ -27,6 +39,12 @@ const makeDb = (opts: { exists?: boolean; sums?: Record<string, number> } = {}) 
           }
           const table = Object.keys(opts.sums ?? {}).find((t) => sql.includes(t))
           return { total: table ? opts.sums![table] : 0 }
+        },
+        async all() {
+          if (sql.includes('FROM upload_sessions')) {
+            return { results: opts.sessions ?? [] }
+          }
+          return { results: [] }
         },
         async run() {
           return { meta: { changes: 1 } }
@@ -111,6 +129,47 @@ describe('deleteVaultData', () => {
     expect(stmt).toBeDefined()
     expect(stmt!._sql).toContain('MAX(0, storage_used + ?)')
     expect(stmt!._args[0]).toBe(-200) // 100 + 20 + 5 + 75
+  })
+})
+
+describe('deleteVaultData with open upload sessions', () => {
+  // Base sum from sync_items + crdt_snapshots + crdt_updates + blob_chunks,
+  // matching the existing 'decrements storage_used' test above.
+  const BASE = 100 + 20 + 5 + 75
+
+  const decrementFor = async (sessions: OpenSessionRow[]): Promise<number> => {
+    const db = makeDb({
+      sums: { sync_items: 100, crdt_snapshots: 20, crdt_updates: 5, blob_chunks: 75 },
+      sessions
+    })
+    const bucket = makeBucket()
+    await deleteVaultData(db as unknown as D1Database, bucket as unknown as R2Bucket, 'u1', 'v1')
+    const stmt = batchOf(db).find((s) => s._sql.includes('UPDATE users'))
+    return stmt!._args[0] as number
+  }
+
+  it('releases total_size minus landed bytes for a partially-uploaded session', async () => {
+    // Landed chunk (b: 400) is already counted in the blob_chunks sum above,
+    // so only the unlanded remainder (1000 - 400 = 600) should be released.
+    const decrement = await decrementFor([
+      { total_size: 1000, uploaded_chunks: JSON.stringify([{ i: 0, h: 'a', b: 400 }]) }
+    ])
+    expect(decrement).toBe(-(BASE + 600))
+  })
+
+  it('releases the full total_size when no chunks have landed', async () => {
+    const decrement = await decrementFor([{ total_size: 500, uploaded_chunks: '[]' }])
+    expect(decrement).toBe(-(BASE + 500))
+  })
+
+  it('releases the full total_size when uploaded_chunks is malformed', async () => {
+    // A negative byte count makes getUploadedByteTotal return null. The
+    // reservation is real regardless of whether we can parse the chunk
+    // list, so this must fall back to the full total_size, not zero.
+    const decrement = await decrementFor([
+      { total_size: 300, uploaded_chunks: JSON.stringify([{ i: 0, h: 'a', b: -1 }]) }
+    ])
+    expect(decrement).toBe(-(BASE + 300))
   })
 })
 

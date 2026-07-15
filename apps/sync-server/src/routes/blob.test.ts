@@ -12,7 +12,20 @@ vi.mock('../services/blob', () => ({
     `${userId}/vaults/${vaultId}/items/${itemId}`,
   putBlob: vi.fn().mockResolvedValue({ etag: 'etag-1' }),
   getBlob: vi.fn(),
-  deleteBlob: vi.fn().mockResolvedValue(undefined)
+  deleteBlob: vi.fn().mockResolvedValue(undefined),
+  parseUploadedChunks: (value: string) => {
+    const parsed = JSON.parse(value)
+    return Array.isArray(parsed) ? parsed : []
+  },
+  getUploadedByteTotal: (entries: Array<{ b?: number }>) => {
+    let total = 0
+    for (const entry of entries) {
+      const bytes = entry.b
+      if (typeof bytes !== 'number' || !Number.isInteger(bytes) || bytes < 0) return null
+      total += bytes
+    }
+    return total
+  }
 }))
 
 vi.mock('../services/quota', () => ({

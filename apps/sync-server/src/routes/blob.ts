@@ -11,6 +11,8 @@ import {
   generateAttachmentManifestKey,
   generateBlobKey,
   getBlob,
+  getUploadedByteTotal,
+  parseUploadedChunks,
   putBlob
 } from '../services/blob'
 import { assertFileSizeAllowed } from '../services/entitlements'
@@ -633,27 +635,6 @@ interface UploadSessionRow {
   uploaded_chunks: string
   expires_at: number
   created_at: number
-}
-
-interface UploadedChunkEntry {
-  i: number
-  h: string
-  b?: number
-}
-
-function parseUploadedChunks(value: string): UploadedChunkEntry[] {
-  const parsed = JSON.parse(value) as UploadedChunkEntry[]
-  return Array.isArray(parsed) ? parsed : []
-}
-
-function getUploadedByteTotal(entries: UploadedChunkEntry[]): number | null {
-  let total = 0
-  for (const entry of entries) {
-    const bytes = entry.b
-    if (typeof bytes !== 'number' || !Number.isInteger(bytes) || bytes < 0) return null
-    total += bytes
-  }
-  return total
 }
 
 async function getUploadSession(

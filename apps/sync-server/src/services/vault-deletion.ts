@@ -1,4 +1,4 @@
-import { deleteByPrefix } from './blob'
+import { deleteByPrefix, getUploadedByteTotal, parseUploadedChunks } from './blob'
 
 /**
  * True if this user owns this vault. Callers 404 on false — a cross-user
@@ -17,20 +17,59 @@ export async function vaultExistsForUser(
   return row !== null
 }
 
+interface OpenUploadSessionRow {
+  total_size: number
+  uploaded_chunks: string
+}
+
+/**
+ * Open upload sessions reserved their full `total_size` upfront at initiate
+ * (blob.ts), before any chunk landed. Landed chunks are already persisted as
+ * `blob_chunks` rows and thus already counted by the blob_chunks sum above,
+ * so only the *unlanded* remainder of an open session is still an
+ * outstanding charge: `total_size - landed`.
+ *
+ * If `uploaded_chunks` won't parse, the reservation is still real regardless
+ * of whether we can read the chunk list — fall back to releasing the full
+ * `total_size` (matching abort/expiry-sweep behavior in blob.ts /
+ * cleanup.ts), not zero, so we never under-release.
+ */
+async function sumOpenUploadSessionBytes(
+  db: D1Database,
+  userId: string,
+  vaultId: string
+): Promise<number> {
+  const result = await db
+    .prepare(
+      'SELECT total_size, uploaded_chunks FROM upload_sessions WHERE user_id = ? AND vault_id = ?'
+    )
+    .bind(userId, vaultId)
+    .all<OpenUploadSessionRow>()
+
+  let total = 0
+  for (const session of result.results ?? []) {
+    const landed = getUploadedByteTotal(parseUploadedChunks(session.uploaded_chunks))
+    total += landed === null ? session.total_size : session.total_size - landed
+  }
+  return total
+}
+
 async function sumVaultBytes(db: D1Database, userId: string, vaultId: string): Promise<number> {
-  const queries = [
+  const sumQueries = [
     'SELECT COALESCE(SUM(size_bytes), 0) as total FROM sync_items WHERE user_id = ? AND vault_id = ?',
     'SELECT COALESCE(SUM(size_bytes), 0) as total FROM crdt_snapshots WHERE user_id = ? AND vault_id = ?',
     'SELECT COALESCE(SUM(LENGTH(update_data)), 0) as total FROM crdt_updates WHERE user_id = ? AND vault_id = ?',
     'SELECT COALESCE(SUM(size_bytes), 0) as total FROM blob_chunks WHERE user_id = ? AND vault_id = ?'
   ]
 
-  let total = 0
-  for (const sql of queries) {
-    const row = await db.prepare(sql).bind(userId, vaultId).first<{ total: number }>()
-    total += row?.total ?? 0
-  }
-  return total
+  const [sums, sessionBytes] = await Promise.all([
+    Promise.all(
+      sumQueries.map((sql) => db.prepare(sql).bind(userId, vaultId).first<{ total: number }>())
+    ),
+    sumOpenUploadSessionBytes(db, userId, vaultId)
+  ])
+
+  return sums.reduce((total, row) => total + (row?.total ?? 0), 0) + sessionBytes
 }
 
 /**
@@ -46,6 +85,11 @@ async function sumVaultBytes(db: D1Database, userId: string, vaultId: string): P
  *
  * R2 is purged before the D1 batch so a mid-flight failure leaves retryable
  * rows pointing at missing blobs rather than orphaned, unreachable objects.
+ *
+ * Known residue: attachment manifests are charged via `reserveStorage` at
+ * upload-complete (blob.ts) but live only in R2 as opaque JSON — there is no
+ * D1 size column for them, so no SQL sum here can see their bytes. They are
+ * NOT reclaimed on vault delete. Accepted limitation; manifests are KB-scale.
  */
 export async function deleteVaultData(
   db: D1Database,
