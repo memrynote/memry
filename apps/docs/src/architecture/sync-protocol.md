@@ -108,6 +108,24 @@ terminal status.
 
 `server_cursor_sequence` tracks per-device pull progress. Pull is incremental: fetch everything strictly after the cursor, advance, repeat.
 
+**Invariant: the cursor never advances past a page that failed to process.** A page whose
+response fails schema validation cannot be applied, so advancing past it would leave its
+items behind the cursor where they are never re-requested — silent, permanent loss on that
+device. The manifest-integrity re-pull does not rescue this: resetting the cursor re-fetches
+the same page, fails identically, and skips the same items again.
+
+Instead the pull halts with the cursor unmoved and retries the same page on the next run.
+The trade is deliberate: an unparseable item stalls that device's pull rather than silently
+dropping data. A stall is recoverable by shipping a client fix; dropped items are not.
+
+Because a stalled pull is indistinguishable from a healthy one from the outside, the halt
+sets sync state to `error` (the same signal the all-items-failed-to-decrypt circuit breaker
+uses). Known gap: the halted path still updates `lastSyncAt` and still reports a successful
+sync run to telemetry — the in-app state is correct, the Grafana signal is not.
+
+Failures of a *batch* are never attributed to individual *items*. A re-fetch whose whole
+response is unparseable leaves its items retryable rather than marking each one failed.
+
 ## Manifest Integrity
 
 Desktop periodically compares `/sync/manifest` with local syncable records. Notes and journals are
