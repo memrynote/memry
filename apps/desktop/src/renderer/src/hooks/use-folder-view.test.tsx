@@ -3,6 +3,7 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type React from 'react'
 import { toast } from 'sonner'
+import { flushAllPendingSaves } from '@/lib/save-registry'
 import { useFolderView } from './use-folder-view'
 
 const mocks = vi.hoisted(() => ({
@@ -152,13 +153,8 @@ describe('useFolderView', () => {
     mocks.evaluateFilter.mockImplementation((note: { id: string }) => note.id === 'n1')
     mocks.propertiesSet.mockResolvedValue({ success: true })
     mocks.notesUpdate.mockResolvedValue({ success: true })
-    // Spreading `window` drops prototype methods, so bind the real jsdom event
-    // target back on: the hook registers a beforeunload listener to flush writes.
     vi.stubGlobal('window', {
       ...window,
-      addEventListener: window.addEventListener.bind(window),
-      removeEventListener: window.removeEventListener.bind(window),
-      dispatchEvent: window.dispatchEvent.bind(window),
       api: {
         ...(window as any).api,
         folderView: folderApi()
@@ -481,7 +477,7 @@ describe('useFolderView', () => {
     )
   })
 
-  it('flushes a pending column write when the app quits (beforeunload)', async () => {
+  it('flushes a pending column write through the save registry on app quit', async () => {
     const { result } = renderHook(() => useFolderView({ folderPath: 'Work' }), {
       wrapper: makeWrapper()
     })
@@ -494,9 +490,36 @@ describe('useFolderView', () => {
 
     expect(window.api.folderView.setView).not.toHaveBeenCalled()
 
-    // Electron tears the renderer down on quit; the timer never fires.
+    // Main drains the registry and awaits it BEFORE closeVault(); a beforeunload
+    // listener would instead run after the vault is closed and the write would fail.
     await act(async () => {
-      window.dispatchEvent(new Event('beforeunload'))
+      await flushAllPendingSaves()
+    })
+
+    expect(window.api.folderView.setView).toHaveBeenCalledWith(
+      'Work',
+      expect.objectContaining({ columns: [{ id: 'status' }, { id: 'title' }] })
+    )
+  })
+
+  it('flushes a pending column write when the user switches folders', async () => {
+    const { result, rerender } = renderHook(
+      ({ folderPath }: { folderPath: string }) => useFolderView({ folderPath }),
+      { wrapper: makeWrapper(), initialProps: { folderPath: 'Work' } }
+    )
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    await act(async () => {
+      await result.current.updateColumns([{ id: 'status' }, { id: 'title' }])
+    })
+
+    expect(window.api.folderView.setView).not.toHaveBeenCalled()
+
+    // The page swaps folderPath without remounting, so the switch must still
+    // land Work's pending edit before Personal takes over the write slot.
+    rerender({ folderPath: 'Personal' })
+    await act(async () => {
       await Promise.resolve()
     })
 
@@ -504,5 +527,90 @@ describe('useFolderView', () => {
       'Work',
       expect.objectContaining({ columns: [{ id: 'status' }, { id: 'title' }] })
     )
+  })
+
+  it('serializes the view and rename writes so neither clobbers the other', async () => {
+    let releaseSetView: (() => void) | undefined
+    const setViewGate = new Promise<void>((resolve) => {
+      releaseSetView = resolve
+    })
+    ;(window.api.folderView.setView as any).mockImplementationOnce(async () => {
+      await setViewGate
+      return { success: true }
+    })
+
+    const { result, unmount } = renderHook(() => useFolderView({ folderPath: 'Work' }), {
+      wrapper: makeWrapper()
+    })
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    await act(async () => {
+      await result.current.updateColumns([{ id: 'status' }, { id: 'title' }])
+      await result.current.renameView(0, 'Renamed')
+    })
+
+    unmount()
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    // Both handlers read-modify-write the same .folder.md. The rename must not
+    // start until the view write has finished, or one silently erases the other.
+    expect(window.api.folderView.setConfig).not.toHaveBeenCalled()
+
+    await act(async () => {
+      releaseSetView?.()
+      await Promise.resolve()
+    })
+
+    await waitFor(() => expect(window.api.folderView.setConfig).toHaveBeenCalled())
+  })
+
+  it('keeps column edits and display-name edits in separate write slots', async () => {
+    const { result, unmount } = renderHook(() => useFolderView({ folderPath: 'Work' }), {
+      wrapper: makeWrapper()
+    })
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    await act(async () => {
+      await result.current.updateColumns([{ id: 'status' }, { id: 'title' }])
+      await result.current.updateDisplayName('status', 'State')
+    })
+
+    unmount()
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    // A display-name edit must not evict the pending column edit.
+    expect(window.api.folderView.setView).toHaveBeenCalledWith(
+      'Work',
+      expect.objectContaining({ columns: [{ id: 'status' }, { id: 'title' }] })
+    )
+  })
+
+  it('reverts a display-name edit when the write fails', async () => {
+    // withErrorHandler RESOLVES {success:false} on throw; it does not reject.
+    ;(window.api.folderView.setView as any).mockResolvedValueOnce({
+      success: false,
+      error: 'No vault is currently open'
+    })
+
+    const { result } = renderHook(() => useFolderView({ folderPath: 'Work' }), {
+      wrapper: makeWrapper()
+    })
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    await act(async () => {
+      await result.current.updateDisplayName('status', 'State')
+      vi.advanceTimersByTime(300)
+      await Promise.resolve()
+    })
+
+    // The failed setView must stop the sequence, not fall through to setConfig.
+    await waitFor(() => expect(window.api.folderView.setConfig).not.toHaveBeenCalled())
   })
 })

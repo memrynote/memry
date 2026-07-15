@@ -317,34 +317,42 @@ test.describe('Folder View', () => {
       return columns.map((col) => col.id)
     }
 
+    // openColumnSelector resolves true as soon as the Properties *button* is
+    // visible — it swallows the click and the panel wait — so prove the panel
+    // is actually open before touching it.
+    const openColumnPanel = async (): Promise<void> => {
+      await openColumnSelector(page)
+      await expect(page.getByPlaceholder('Search columns...')).toBeVisible()
+    }
+
     await openFolderView(page, PROJECT_FOLDER, PROJECT_FOLDER)
 
-    expect(await openColumnSelector(page), 'column selector should open').toBe(true)
+    await openColumnPanel()
     await toggleColumn(page, 'status')
     await page.keyboard.press('Escape').catch(() => {})
     await page.waitForTimeout(600)
 
     expect(readPersistedColumnIds('after add')).toContain('status')
 
-    // Reorder via drag handle, then assert disk order matches on-screen order.
+    // Reorder via drag handle. Unconditional: the Status column was just added,
+    // so its header and handle must exist — skipping here on a missing locator
+    // is how a broken reorder would slip through unnoticed.
     const statusHandle = page
       .locator('th:has-text("Status") [title="Drag to reorder column"]')
       .first()
     const titleHeader = page.locator('th:has-text("Title")').first()
-    if (
-      (await statusHandle.isVisible().catch(() => false)) &&
-      (await titleHeader.isVisible().catch(() => false))
-    ) {
-      await statusHandle.dragTo(titleHeader)
-      await page.waitForTimeout(600)
+    await expect(statusHandle).toBeVisible()
+    await expect(titleHeader).toBeVisible()
 
-      const persisted = readPersistedColumnIds('after reorder')
-      expect(persisted).toContain('status')
-      expect(persisted.indexOf('status')).toBeLessThan(persisted.indexOf('title'))
-    }
+    await statusHandle.dragTo(titleHeader)
+    await page.waitForTimeout(600)
+
+    const persisted = readPersistedColumnIds('after reorder')
+    expect(persisted).toContain('status')
+    expect(persisted.indexOf('status')).toBeLessThan(persisted.indexOf('title'))
 
     // Toggle column off to verify remove
-    expect(await openColumnSelector(page), 'column selector should reopen').toBe(true)
+    await openColumnPanel()
     await toggleColumn(page, 'status')
     await page.keyboard.press('Escape').catch(() => {})
     await page.waitForTimeout(600)

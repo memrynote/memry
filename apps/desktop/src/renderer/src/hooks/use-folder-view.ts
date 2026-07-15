@@ -34,15 +34,19 @@ interface PendingWrite {
   run: (() => Promise<void>) | null
 }
 
-/** Run a pending write now, if one is waiting. */
-function flushWrite(ref: { current: PendingWrite }): void {
+/**
+ * Run a pending write now, if one is waiting. Returns the write's promise so
+ * callers can await it: the main-process handlers read-modify-write the same
+ * .folder.md with no lock, so concurrent flushes would clobber each other.
+ */
+function flushWrite(ref: { current: PendingWrite }): Promise<void> {
   if (ref.current.timer) {
     clearTimeout(ref.current.timer)
     ref.current.timer = null
   }
   const run = ref.current.run
   ref.current.run = null
-  void run?.()
+  return run ? run() : Promise.resolve()
 }
 
 /** Schedule a debounced write, replacing any write still pending on this slot. */
@@ -51,7 +55,7 @@ function scheduleWrite(ref: { current: PendingWrite }, run: () => Promise<void>)
     clearTimeout(ref.current.timer)
   }
   ref.current.run = run
-  ref.current.timer = setTimeout(() => flushWrite(ref), WRITE_DEBOUNCE_MS)
+  ref.current.timer = setTimeout(() => void flushWrite(ref), WRITE_DEBOUNCE_MS)
 }
 
 import { DEFAULT_COLUMNS, BUILT_IN_COLUMNS } from '@memry/contracts/folder-view-api'
@@ -61,6 +65,7 @@ import type {
   GroupByConfig
 } from '@memry/contracts/folder-view-api'
 import { evaluateFilter } from '@/lib/filter-evaluator'
+import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import { propertiesService } from '@/services/properties-service'
 import { notesService } from '@/services/notes-service'
 
@@ -270,7 +275,10 @@ export function useFolderView({
 
   // Debounced write for column/sort/filter updates
   const updateWriteRef = useRef<PendingWrite>({ timer: null, run: null })
-  // Debounced write for in-place renames (live, per-keystroke)
+  // Debounced write for column display-name edits. Kept separate from the update
+  // slot so a rename of a column header cannot evict a pending column edit.
+  const displayNameWriteRef = useRef<PendingWrite>({ timer: null, run: null })
+  // Debounced write for in-place view renames (live, per-keystroke)
   const renameWriteRef = useRef<PendingWrite>({ timer: null, run: null })
 
   // ============================================================================
@@ -736,12 +744,18 @@ export function useFolderView({
       })
 
       // Debounce the save
-      scheduleWrite(updateWriteRef, async () => {
+      scheduleWrite(displayNameWriteRef, async () => {
         try {
-          await window.api.folderView.setView(
+          // withErrorHandler resolves {success:false} on failure rather than
+          // rejecting, so an unchecked result would silently swallow the error.
+          const viewResult = await window.api.folderView.setView(
             folderPath,
             updatedView as unknown as Record<string, unknown>
           )
+
+          if (!viewResult.success) {
+            throw new Error(viewResult.error || 'Failed to save display name')
+          }
 
           const configResult = await window.api.folderView.getConfig(folderPath)
           const existingConfig = configResult.config
@@ -757,7 +771,11 @@ export function useFolderView({
             }
           }
 
-          await window.api.folderView.setConfig(folderPath, updatedConfig)
+          const saveResult = await window.api.folderView.setConfig(folderPath, updatedConfig)
+
+          if (!saveResult.success) {
+            throw new Error(saveResult.error || 'Failed to save display name')
+          }
         } catch (err) {
           log.error('Failed to save display name:', err)
           void queryClient.invalidateQueries({ queryKey: folderViewKeys.views(folderPath) })
@@ -1006,21 +1024,33 @@ export function useFolderView({
   // Effects
   // ============================================================================
 
-  // Flush pending writes on unmount (tab close, folder switch) and on app quit.
-  // Both tear the hook down before the debounce fires, so a scheduled-only write
-  // would never reach .folder.md and the view would revert on the next launch.
+  // Land pending writes before the hook stops owning this folder.
+  //
+  // Writes are sequential, not concurrent: each main handler read-modify-writes
+  // the same .folder.md without a lock, so firing them together loses one.
+  //
+  // Quit goes through the save registry, which main drains and awaits while the
+  // vault is still open. A beforeunload listener cannot work here: before-quit
+  // preventDefaults, so the window only closes after closeVault(), and the write
+  // would fail with "No vault is currently open".
+  //
+  // Keying on folderPath covers the folder switch too — the page swaps folderPath
+  // without remounting, so a mount-only effect would never flush the old folder.
   useEffect(() => {
-    const flushAll = (): void => {
-      flushWrite(updateWriteRef)
-      flushWrite(renameWriteRef)
+    const flushAll = async (): Promise<void> => {
+      await flushWrite(updateWriteRef)
+      await flushWrite(displayNameWriteRef)
+      await flushWrite(renameWriteRef)
     }
 
-    window.addEventListener('beforeunload', flushAll)
+    const registryKey = `folder-view:${folderPath}`
+    registerPendingSave(registryKey, flushAll)
+
     return () => {
-      window.removeEventListener('beforeunload', flushAll)
-      flushAll()
+      unregisterPendingSave(registryKey)
+      void flushAll()
     }
-  }, [])
+  }, [folderPath])
 
   // Note: Event listeners for cache sync are handled globally in useFolderViewEvents()
   // This ensures all folder-view tabs stay in sync even when unmounted
