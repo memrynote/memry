@@ -116,6 +116,26 @@ vi.mock('./calendar-quick-create-dialog', () => ({
   )
 }))
 
+// `timeBehavior`, `hourHeight`, and `dueTime` never reach the DOM — only the wrapper
+// div and its children do. A copy-paste bug that forwards the wrong `date` or
+// hardcodes `hourHeight` would render identically. Mock useDroppable one level down
+// (real CalendarTimedColumnDroppable / CalendarAllDayCell / use-calendar-date-droppable
+// still run) so we can assert the real config each column registers.
+const droppableMocks = vi.hoisted(() => ({
+  useDroppable: vi.fn((_config: unknown) => ({ setNodeRef: vi.fn(), isOver: false })),
+  useDraggable: vi.fn(() => ({
+    attributes: {},
+    listeners: {},
+    setNodeRef: vi.fn(),
+    isDragging: false
+  }))
+}))
+
+vi.mock('@dnd-kit/core', () => ({
+  useDroppable: droppableMocks.useDroppable,
+  useDraggable: droppableMocks.useDraggable
+}))
+
 const timedItem = {
   projectionId: 'event:event-1',
   sourceType: 'event',
@@ -234,5 +254,71 @@ describe('CalendarWeekView extra coverage', () => {
       startAt: '2026-05-10T01:00:00.000Z',
       endAt: '2026-05-10T03:00:00.000Z'
     })
+  })
+})
+
+describe('CalendarWeekView drop target wiring', () => {
+  beforeEach(() => {
+    droppableMocks.useDroppable.mockClear()
+    droppableMocks.useDraggable.mockClear()
+  })
+
+  const expectedDates = [
+    '2026-05-10',
+    '2026-05-11',
+    '2026-05-12',
+    '2026-05-13',
+    '2026-05-14',
+    '2026-05-15',
+    '2026-05-16'
+  ]
+
+  function droppableCalls(): Array<{ id: string; data: Record<string, unknown> }> {
+    return droppableMocks.useDroppable.mock.calls.map(
+      ([config]) => config as { id: string; data: Record<string, unknown> }
+    )
+  }
+
+  it('registers each visible day column as a timed slot droppable with its own date and the view HOUR_HEIGHT', () => {
+    render(
+      <CalendarWeekView
+        anchorDate="2026-05-10"
+        items={[timedItem, allDayItem]}
+        selectedItemId={null}
+      />
+    )
+
+    const timedCalls = droppableCalls().filter(
+      (call) => call.data.type === 'date' && call.data.timeBehavior === 'slot'
+    )
+
+    expect(timedCalls.map((call) => call.data.dateKey).sort()).toEqual([...expectedDates].sort())
+    for (const call of timedCalls) {
+      expect(call.data.hourHeight).toBe(48)
+    }
+
+    const may10 = timedCalls.find((call) => call.data.dateKey === '2026-05-10')
+    expect(may10).toBeDefined()
+    expect(may10?.id).toBe('calendar-timed-column:2026-05-10')
+  })
+
+  it('registers each all-day cell with timeBehavior "clear" so a dropped task loses its time', () => {
+    render(
+      <CalendarWeekView
+        anchorDate="2026-05-10"
+        items={[timedItem, allDayItem]}
+        selectedItemId={null}
+      />
+    )
+
+    const allDayCalls = droppableCalls().filter(
+      (call) => call.data.type === 'date' && 'dueTime' in call.data
+    )
+
+    expect(allDayCalls.map((call) => call.data.dateKey).sort()).toEqual([...expectedDates].sort())
+    const may10 = allDayCalls.find((call) => call.data.dateKey === '2026-05-10')
+    expect(may10).toBeDefined()
+    expect(may10?.data.dueTime).toBeNull()
+    expect(may10?.id).toBe('calendar-date:2026-05-10:clear')
   })
 })
