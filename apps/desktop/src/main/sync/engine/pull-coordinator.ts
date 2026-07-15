@@ -239,6 +239,14 @@ export class PullCoordinator {
       this.emitInitialSyncProgress(changes, runState.pulledCount)
 
       if (!decision.advanceCursor) {
+        this.ctx.lastError =
+          'Pull page failed to parse — cursor held in place; will retry on next sync.'
+        this.ctx.lastErrorInfo = {
+          category: 'server_error',
+          message: this.ctx.lastError,
+          retryable: true
+        }
+        this.stateManager.setState('error')
         log.error('Pull: page failed; leaving cursor in place for retry on next sync', { cursor })
         break
       }
