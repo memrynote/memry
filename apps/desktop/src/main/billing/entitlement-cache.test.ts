@@ -17,7 +17,9 @@ import {
   isPaidBillingStatus,
   getCachedMaxFileSize,
   getCachedEntitlement,
-  setCachedEntitlementFromStatus
+  setCachedEntitlementFromStatus,
+  invalidateCachedEntitlementLimits,
+  ENTITLEMENT_LIMITS_TTL_MS
 } from './entitlement-cache'
 import type { BillingStatus } from './paddle-billing'
 
@@ -65,6 +67,88 @@ describe('entitlement-cache', () => {
     expect(getCachedMaxFileSize()).toBe(5 * 1024 * 1024)
   })
 
+  it('getCachedMaxFileSize fails open once the cached limit is older than the TTL', () => {
+    // The cache is only ever written by a user-triggered billing fetch — there is
+    // no periodic refresh. A user who upgrades on the web, on another device, or
+    // via a server-side grant keeps the old, smaller limit here forever. Past the
+    // TTL the preflight must stop having an opinion and let the server decide,
+    // otherwise we hard-block an upload the server would accept.
+    storeData.sync = {
+      entitlement: {
+        isPaid: true,
+        plan: 'plus',
+        status: 'active',
+        limits: { maxFileSize: 5 * 1024 * 1024 },
+        cachedAt: Date.now() - ENTITLEMENT_LIMITS_TTL_MS - 1
+      }
+    }
+    expect(getCachedMaxFileSize()).toBeNull()
+  })
+
+  it('getCachedMaxFileSize honours a cached limit that is still inside the TTL', () => {
+    storeData.sync = {
+      entitlement: {
+        isPaid: true,
+        plan: 'plus',
+        status: 'active',
+        limits: { maxFileSize: 5 * 1024 * 1024 },
+        cachedAt: Date.now() - 1000
+      }
+    }
+    expect(getCachedMaxFileSize()).toBe(5 * 1024 * 1024)
+  })
+
+  it('getCachedMaxFileSize treats a store with no cachedAt as stale and fails open', () => {
+    // Real users' electron-store files predate `cachedAt`. An entry with limits
+    // but no timestamp is of unknown age, so it must be treated as stale — never
+    // as fresh, which would resurrect the false-block for exactly the installs we
+    // cannot re-date.
+    storeData.sync = {
+      entitlement: {
+        isPaid: true,
+        plan: 'plus',
+        status: 'active',
+        limits: { maxFileSize: 5 * 1024 * 1024 }
+      }
+    }
+    expect(getCachedMaxFileSize()).toBeNull()
+  })
+
+  it('getCachedMaxFileSize fails open for a cachedAt in the future (clock moved)', () => {
+    storeData.sync = {
+      entitlement: {
+        isPaid: true,
+        plan: 'plus',
+        status: 'active',
+        limits: { maxFileSize: 5 * 1024 * 1024 },
+        cachedAt: Date.now() + 60 * 60 * 1000
+      }
+    }
+    expect(getCachedMaxFileSize()).toBeNull()
+  })
+
+  it('invalidateCachedEntitlementLimits drops the limit so the next preflight fails open', () => {
+    const s = status('plus', 'active')
+    s.limits.maxFileSize = 5 * 1024 * 1024
+    setCachedEntitlementFromStatus(s)
+    expect(getCachedMaxFileSize()).toBe(5 * 1024 * 1024)
+
+    invalidateCachedEntitlementLimits()
+
+    expect(getCachedMaxFileSize()).toBeNull()
+    // Only the limits are dropped — the paid/plan facts stay, because
+    // sync-core-handlers reads them to decide whether to start the runtime.
+    const cached = getCachedEntitlement()
+    expect(cached?.isPaid).toBe(true)
+    expect(cached?.plan).toBe('plus')
+    expect(cached?.limits).toBeUndefined()
+  })
+
+  it('invalidateCachedEntitlementLimits is a no-op on a cold cache', () => {
+    expect(() => invalidateCachedEntitlementLimits()).not.toThrow()
+    expect(getCachedEntitlement()).toBeNull()
+  })
+
   it('getCachedMaxFileSize returns null on a cold cache', () => {
     expect(getCachedMaxFileSize()).toBeNull()
   })
@@ -84,24 +168,28 @@ describe('entitlement-cache', () => {
   })
 
   it('setCachedEntitlementFromStatus writes a cache and getCachedEntitlement reads it', () => {
+    const before = Date.now()
     const written = setCachedEntitlementFromStatus(status('plus', 'active'))
-    expect(written).toEqual({
+    expect(written).toMatchObject({
       isPaid: true,
       plan: 'plus',
       status: 'active',
       limits: { maxFileSize: 0 }
     })
-    expect(getCachedEntitlement()).toEqual({
+    expect(getCachedEntitlement()).toMatchObject({
       isPaid: true,
       plan: 'plus',
       status: 'active',
       limits: { maxFileSize: 0 }
     })
+    // Stamped so the reader can tell a fresh limit from an indefinitely-stale one.
+    expect(written.cachedAt).toBeGreaterThanOrEqual(before)
+    expect(getCachedEntitlement()?.cachedAt).toBe(written.cachedAt)
   })
 
   it('caches an unpaid status as isPaid=false', () => {
     setCachedEntitlementFromStatus(status('free', 'inactive'))
-    expect(getCachedEntitlement()).toEqual({
+    expect(getCachedEntitlement()).toMatchObject({
       isPaid: false,
       plan: 'free',
       status: 'inactive',

@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitest/config'
+import { defineConfig, configDefaults } from 'vitest/config'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
 import react from '@vitejs/plugin-react'
@@ -57,11 +57,34 @@ export default defineConfig({
             'src/main/**/*.{test,spec}.{ts,tsx}',
             'scripts/seed-data/**/*.{test,spec}.{ts,tsx}'
           ],
+          // `*.integration.test.ts` boots a real Worker (miniflare + esbuild) and
+          // belongs to the `main-integration` project below. Keeping it out of the
+          // unit glob is what lets `pnpm test:main` run standalone, with none of
+          // the sync-harness machinery installed or built.
+          exclude: [...configDefaults.exclude, 'src/main/**/*.integration.test.{ts,tsx}'],
           setupFiles: ['tests/setup.ts'],
           testTimeout: 30000,
           hookTimeout: 30000,
           pool: 'forks',
           isolate: true
+        }
+      },
+      {
+        // Real client against a real Worker. Separate project because it costs an
+        // esbuild bundle + a miniflare boot, and depends on @memry/sync-harness —
+        // none of which the unit projects should have to pay for or install.
+        extends: true,
+        test: {
+          name: 'main-integration',
+          root: appRoot,
+          environment: 'node',
+          include: ['src/main/**/*.integration.test.{ts,tsx}'],
+          setupFiles: ['tests/setup.ts'],
+          testTimeout: 180000,
+          hookTimeout: 180000,
+          pool: 'forks',
+          isolate: true,
+          fileParallelism: false
         }
       },
       {

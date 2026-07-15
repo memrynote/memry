@@ -135,6 +135,12 @@ export interface AttachmentUploadFailedEvent {
   noteId: string
   diskPath: string
   error: string
+  /**
+   * Why the upload failed, so the renderer can say something actionable instead
+   * of the generic "it stays on this device". Optional: an older main process
+   * sends this event without it, and the renderer must still handle that.
+   */
+  errorCategory?: SyncErrorCategory
 }
 
 export interface DeviceRevokedEvent {

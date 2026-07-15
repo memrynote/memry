@@ -318,6 +318,58 @@ describe('SyncProvider', () => {
         expect.objectContaining({ duration: 10000 })
       )
     })
+
+    it('#then shows the plan-limit toast when the failure is file_too_large', async () => {
+      // The whole point of the `file_too_large` category is that the user learns
+      // the file is over their plan limit. The generic "it stays on this device"
+      // toast tells them nothing actionable, so this must not be what they see.
+      const { result } = renderHook(() => useSync(), { wrapper })
+      await vi.waitFor(() => expect(result.current.state.status).toBe('idle'))
+
+      act(() => {
+        for (const cb of attachmentUploadFailedListeners) {
+          cb({
+            noteId: 'note-1',
+            diskPath: '/vault/attachments/report.pdf',
+            error: 'File is larger than your plan allows: 50 MB exceeds 5 MB',
+            errorCategory: 'file_too_large'
+          })
+        }
+      })
+
+      expect(toastMock.error).toHaveBeenCalledWith(
+        i18n.t('errors:sync.fileTooLarge'),
+        expect.objectContaining({ duration: 10000 })
+      )
+      // ...and not the generic one, which would bury the actual cause.
+      expect(toastMock.error).not.toHaveBeenCalledWith(
+        expect.stringContaining('stays on this device'),
+        expect.anything()
+      )
+    })
+
+    it('#then falls back to the generic toast when no category is sent', async () => {
+      // Backward compatibility: an older main process sends the event with no
+      // errorCategory. That must still produce the generic toast, not a crash
+      // and not a silently-dropped failure.
+      const { result } = renderHook(() => useSync(), { wrapper })
+      await vi.waitFor(() => expect(result.current.state.status).toBe('idle'))
+
+      act(() => {
+        for (const cb of attachmentUploadFailedListeners) {
+          cb({
+            noteId: 'note-1',
+            diskPath: '/vault/attachments/report.pdf',
+            error: 'Network unreachable'
+          })
+        }
+      })
+
+      expect(toastMock.error).toHaveBeenCalledWith(
+        expect.stringContaining('report.pdf'),
+        expect.objectContaining({ duration: 10000 })
+      )
+    })
   })
 
   describe('#given download progress event #when listening', () => {

@@ -256,6 +256,9 @@ importers:
       '@memry/sync-core':
         specifier: workspace:*
         version: link:../../packages/sync-core
+      '@memry/sync-harness':
+        specifier: workspace:*
+        version: link:../../tests/sync-harness
       '@modelcontextprotocol/sdk':
         specifier: ^1.26.0
         version: 1.26.0(zod@4.3.6)

@@ -14,8 +14,16 @@ import {
   GetDownloadProgressSchema
 } from '@memry/contracts/ipc-attachments'
 
-import { AttachmentSyncService, type TransferProgress } from '../sync/attachments'
-import { getCachedMaxFileSize } from '../billing/entitlement-cache'
+import {
+  AttachmentSyncService,
+  AttachmentTooLargeError,
+  type TransferProgress
+} from '../sync/attachments'
+import { classifyError } from '../sync/sync-errors'
+import {
+  getCachedMaxFileSize,
+  invalidateCachedEntitlementLimits
+} from '../billing/entitlement-cache'
 import { trackMainError } from '../telemetry/diagnostics'
 import { UploadQueue } from '../sync/upload-queue'
 import { attachmentEvents } from '../sync/attachment-events'
@@ -265,16 +273,35 @@ export function registerAttachmentHandlers(): void {
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Unknown error'
-        logger.error('Attachment upload failed', { noteId, diskPath, error: message })
+        // Classify here: this is the only path that raises the plan preflight's
+        // AttachmentTooLargeError, and nothing else on it ever calls
+        // classifyError — so without this the `file_too_large` category never
+        // reaches a user and they just get the generic "stays on this device".
+        const { category } = classifyError(err)
+        logger.error('Attachment upload failed', { noteId, diskPath, error: message, category })
         // electron-log alone kept this outage invisible for 58 days — the only
         // reason it surfaced was a server-side 413. Route it to telemetry too so
         // an attachment outage is visible from the client side.
         trackMainError('sync_attachments', 'attachment_upload_failed', err)
+
+        // The SERVER rejected on its own file-size limit, which means our cached
+        // limit disagrees with the authority. Drop it so the next preflight has
+        // no opinion and defers to the server instead of repeating a wrong call.
+        // A local preflight rejection proves nothing about the server, so it must
+        // not invalidate anything.
+        if (category === 'file_too_large' && !(err instanceof AttachmentTooLargeError)) {
+          logger.warn('Server rejected on plan file size — invalidating cached plan limits', {
+            noteId
+          })
+          invalidateCachedEntitlementLimits()
+        }
+
         for (const win of BrowserWindow.getAllWindows()) {
           win.webContents.send(SYNC_EVENTS.ATTACHMENT_UPLOAD_FAILED, {
             noteId,
             diskPath,
-            error: message
+            error: message,
+            errorCategory: category
           })
         }
       }
