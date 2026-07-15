@@ -2011,4 +2011,54 @@ describe('sync-type negotiation', () => {
     expect(db.prepare.mock.calls[0][0]).toContain('item_type IN (?, ?)')
     expect(stmt.bind).toHaveBeenCalledWith('user-1', 'vault-1', 'note', 'task', 'item-1')
   })
+
+  // Finding 1 makes an empty negotiated list a valid, reachable state (a
+  // header present but fully unrecognized). placeholdersFor([]) would emit
+  // `item_type IN ()`, a SQL syntax error — these three functions must
+  // short-circuit before ever touching the database.
+  describe('empty negotiated types short-circuit', () => {
+    it('getChanges returns an empty result without querying D1 and does not advance the cursor', async () => {
+      // #given
+      const db = createMockDb()
+
+      // #when
+      const result = await getChanges(db as unknown as D1Database, 'user-1', 42, 10, 'vault-1', [])
+
+      // #then
+      expect(result).toEqual({ items: [], deleted: [], hasMore: false, nextCursor: 42 })
+      expect(db.prepare).not.toHaveBeenCalled()
+    })
+
+    it('getManifest returns an empty result without querying D1', async () => {
+      // #given
+      const db = createMockDb()
+
+      // #when
+      const result = await getManifest(db as unknown as D1Database, 'user-1', 'vault-1', [])
+
+      // #then
+      expect(result.items).toEqual([])
+      expect(result.serverTime).toBeGreaterThan(0)
+      expect(db.prepare).not.toHaveBeenCalled()
+    })
+
+    it('pullItems returns an empty array without querying D1', async () => {
+      // #given
+      const db = createMockDb()
+
+      // #when
+      const result = await pullItems(
+        db as unknown as D1Database,
+        {} as R2Bucket,
+        'user-1',
+        ['item-1'],
+        'vault-1',
+        []
+      )
+
+      // #then
+      expect(result).toEqual([])
+      expect(db.prepare).not.toHaveBeenCalled()
+    })
+  })
 })

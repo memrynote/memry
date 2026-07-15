@@ -58,6 +58,8 @@ Fifteen, not sixteen: these are the _record_ sync endpoints, and `RECORD_SYNC_IT
 
 This constant is frozen forever. It is never edited when a new type is added; that is the whole point.
 
+**Review correction (overrides this spec's original text):** the initial draft of this spec described an entirely-unrecognized header as being treated as no header at all — i.e. falling back to the same frozen legacy list. A code review caught that this is wrong and it was inverted before ship. **No header** and **a header present but fully unrecognized** are different client situations and must resolve differently: no header means the client never negotiated, so it gets the legacy list; a header present but unparseable means the client DID negotiate and we simply couldn't read what it declared, so it must resolve to an **empty** list (serve nothing) rather than being handed 15 types it never asked for. See the JSDoc on `resolveSyncTypes` in `apps/sync-server/src/lib/sync-types.ts` for the authoritative statement of this distinction.
+
 **Cursor correctness — resolved, no change needed.** An earlier draft of this spec claimed `nextCursor` had to be derived from the maximum _scanned_ `serverCursor` or old clients would stall on all-filtered pages. **That was wrong.** `getChanges` (`apps/sync-server/src/services/sync.ts:553-610`) already applies `item_type IN (...)` in SQL, **before** `LIMIT`:
 
 ```sql
@@ -119,7 +121,7 @@ Backward compatibility is mandatory — this is a live beta with real users on m
 
 **Migration tests:** imports custom templates from legacy files; idempotent across repeated runs; id preserved from frontmatter; built-ins skipped; missing `.memry/templates/` is a no-op.
 
-**Server tests:** `getChanges`/`getManifest`/`pullItems` bind only the negotiated types; a header-less request is served the frozen legacy list (the regression that protects shipped binaries); an unknown type in the header is dropped rather than bound; `pullItems`' `BATCH_SIZE` stays correct as the negotiated list length varies.
+**Server tests:** `getChanges`/`getManifest`/`pullItems` bind only the negotiated types; a header-less request is served the frozen legacy list (the regression that protects shipped binaries); a header present but fully unrecognized resolves to an empty list, not the legacy list; a header is deduped so repeated types cannot inflate `types.length`; the three service functions short-circuit before any SQL when the negotiated list is empty (`item_type IN ()` is a syntax error, not "matches nothing"), and `getChanges` must not advance the cursor when it does; `pullItems`' `BATCH_SIZE` stays correct as the negotiated list length varies.
 
 **E2E** (`templates-sync.e2e.ts`) on the existing dual-device harness — `fixtures/sync-auth-fixtures` (`electronAppA/B`, `pageA/pageB`, `bootstrappedSyncPair`) with `utils/network-control` (`goOffline`/`goOnline`/`syncBothAndWait`), modelled on `body-crdt-create-propagation.e2e.ts`:
 

@@ -28,7 +28,20 @@ describe('resolveSyncTypes', () => {
     expect(resolveSyncTypes('note,bogus,task')).toEqual(['note', 'task'])
   })
 
-  it('falls back to legacy when nothing in the header is recognized', () => {
-    expect(resolveSyncTypes('bogus,nonsense')).toEqual(legacy)
+  // A header IS present here — the client declared types, we just couldn't
+  // parse any of them. That must resolve to empty (serve nothing), never to
+  // the legacy list: falling back to legacy would hand a declaring client 15
+  // types it never asked for, which is the exact bug negotiation prevents.
+  it('resolves to empty when the header is present but nothing in it is recognized', () => {
+    expect(resolveSyncTypes('bogus,nonsense')).toEqual([])
+  })
+
+  it('dedupes repeated types while preserving first-seen order', () => {
+    expect(resolveSyncTypes('note,note,task')).toEqual(['note', 'task'])
+  })
+
+  it('bounds the resolved list length even under a long duplicate header', () => {
+    const result = resolveSyncTypes('note,'.repeat(100))
+    expect(result.length).toBeLessThanOrEqual(15)
   })
 })

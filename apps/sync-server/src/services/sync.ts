@@ -527,6 +527,10 @@ export const getManifest = async (
   vaultId = 'default',
   types: readonly RecordSyncItemType[] = LEGACY_RECORD_SYNC_ITEM_TYPES
 ): Promise<RecordSyncManifest> => {
+  if (types.length === 0) {
+    return { items: [], serverTime: Math.floor(Date.now() / 1000) }
+  }
+
   const rows = await db
     .prepare(
       `SELECT item_id, item_type, version, updated_at, size_bytes, state_vector
@@ -565,6 +569,10 @@ export const getChanges = async (
   vaultId = 'default',
   types: readonly RecordSyncItemType[] = LEGACY_RECORD_SYNC_ITEM_TYPES
 ): Promise<RecordChangesResponse> => {
+  if (types.length === 0) {
+    return { items: [], deleted: [], hasMore: false, nextCursor: cursor }
+  }
+
   const effectiveLimit = Math.min(limit ?? DEFAULT_CHANGES_LIMIT, MAX_CHANGES_LIMIT)
 
   const rows = await db
@@ -687,7 +695,7 @@ export const pullItems = async (
   vaultId = 'default',
   types: readonly RecordSyncItemType[] = LEGACY_RECORD_SYNC_ITEM_TYPES
 ): Promise<RecordPullItemResponse[]> => {
-  if (itemIds.length === 0) {
+  if (itemIds.length === 0 || types.length === 0) {
     return []
   }
 

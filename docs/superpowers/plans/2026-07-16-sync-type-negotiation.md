@@ -207,8 +207,22 @@ describe('resolveSyncTypes', () => {
     expect(resolveSyncTypes('note,bogus,task')).toEqual(['note', 'task'])
   })
 
-  it('falls back to legacy when nothing in the header is recognized', () => {
-    expect(resolveSyncTypes('bogus,nonsense')).toEqual(legacy)
+  // CORRECTED post-review (see 2026-07-15-template-sync-design.md): the original
+  // draft of this test expected a fully-unrecognized header to fall back to
+  // legacy. That was wrong and was inverted before ship — a header IS present
+  // here, so the client DID negotiate; we just couldn't parse any of it.
+  // Falling back to legacy would hand it 15 types it never declared, which is
+  // the exact bug negotiation exists to prevent. It must resolve to empty.
+  it('resolves to empty when the header is present but nothing in it is recognized', () => {
+    expect(resolveSyncTypes('bogus,nonsense')).toEqual([])
+  })
+
+  it('dedupes repeated types while preserving first-seen order', () => {
+    expect(resolveSyncTypes('note,note,task')).toEqual(['note', 'task'])
+  })
+
+  it('bounds the resolved list length even under a long duplicate header', () => {
+    expect(resolveSyncTypes('note,'.repeat(100)).length).toBeLessThanOrEqual(15)
   })
 })
 ```
@@ -236,31 +250,44 @@ const SUPPORTED = new Set<string>(RECORD_SYNC_ITEM_TYPES)
 /**
  * Resolve the item types a client is willing to receive.
  *
- * No header means the client predates negotiation, so it gets exactly the
- * frozen legacy list — never the server's current type list, which may contain
- * types that binary would choke on.
+ * No header vs. an unrecognized header are different situations and must
+ * resolve differently:
  *
- * Unrecognized entries are dropped rather than trusted; an entirely
- * unrecognized header is treated as no header at all.
+ * - **No header at all** means the client predates negotiation entirely — it
+ *   never declared anything, so it gets exactly the frozen legacy list. This
+ *   is the property that protects binaries already in users' hands; never
+ *   change it.
+ * - **Header present but nothing in it recognized** means the client DID
+ *   negotiate — we just failed to parse any of what it declared. Falling back
+ *   to legacy here would hand that client 15 types it never asked for, which
+ *   is the exact convergence-loss bug this feature exists to prevent. It must
+ *   resolve to an empty list instead, serving zero rows rather than guessing.
+ *
+ * Recognized entries are deduped (first-seen order preserved) because the
+ * header is unbounded client input: `note,note,note,...` must not multiply
+ * `types.length` past what the server actually supports. Since every
+ * surviving entry is already a member of `RECORD_SYNC_ITEM_TYPES`, deduping
+ * structurally bounds the result to that set's size — no separate cap needed.
  */
 export function resolveSyncTypes(header: string | undefined | null): RecordSyncItemType[] {
   if (!header) return [...LEGACY_RECORD_SYNC_ITEM_TYPES]
 
-  const negotiated = header
-    .split(',')
-    .map((entry) => entry.trim())
-    .filter((entry): entry is RecordSyncItemType => entry.length > 0 && SUPPORTED.has(entry))
+  const seen = new Set<RecordSyncItemType>()
+  for (const raw of header.split(',')) {
+    const entry = raw.trim()
+    if (entry.length > 0 && SUPPORTED.has(entry)) {
+      seen.add(entry as RecordSyncItemType)
+    }
+  }
 
-  if (negotiated.length === 0) return [...LEGACY_RECORD_SYNC_ITEM_TYPES]
-
-  return negotiated
+  return [...seen]
 }
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `pnpm --filter @memry/sync-server test -- sync-types`
-Expected: PASS (6 tests).
+Expected: PASS (9 tests).
 
 - [ ] **Step 5: Commit**
 
@@ -268,7 +295,10 @@ Expected: PASS (6 tests).
 git add apps/sync-server/src/lib/sync-types.ts apps/sync-server/src/lib/sync-types.test.ts
 git commit -m "feat(sync-server): resolve client sync types from request header
 
-Absent or fully-unrecognized header resolves to the frozen legacy list."
+No header falls back to the frozen legacy list (pre-negotiation client). A
+header present but fully unrecognized resolves to empty, not legacy — the
+client did negotiate, we just couldn't parse it, so serve nothing rather than
+hand it 15 undeclared types. Recognized entries are deduped."
 ```
 
 ---
@@ -289,6 +319,12 @@ Absent or fully-unrecognized header resolves to the frozen legacy list."
   - `pullItems(db: D1Database, storage: R2Bucket, userId: string, itemIds: string[], vaultId?: string, types?: readonly RecordSyncItemType[]): Promise<RecordPullItemResponse[]>`
 
 Each `types` parameter defaults to `LEGACY_RECORD_SYNC_ITEM_TYPES` — **not** `RECORD_SYNC_ITEM_TYPES`. A forgotten call site must fail closed (serving too little) rather than open (breaking old clients).
+
+**Empty `types` is now a valid, reachable state** (Task 2's `resolveSyncTypes` can return `[]` for a header present but fully unrecognized), and `placeholdersFor([])` would emit `item_type IN ()` — a SQL **syntax error**, not "matches nothing". All three functions must therefore short-circuit before touching the database when `types.length === 0`:
+
+- `getChanges` → `{ items: [], deleted: [], hasMore: false, nextCursor: cursor }` — return the **incoming** cursor unchanged, so the cursor never advances on an unparseable-header request.
+- `getManifest` → `{ items: [], serverTime: Math.floor(Date.now() / 1000) }`.
+- `pullItems` → `[]`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -365,13 +401,52 @@ describe('sync-type negotiation', () => {
     expect(db.prepare.mock.calls[0][0]).toContain('item_type IN (?, ?)')
     expect(stmt.bind).toHaveBeenCalledWith('user-1', 'vault-1', 'note', 'task', 'item-1')
   })
+
+  // Empty types is reachable (Task 2: a header present but fully
+  // unrecognized). item_type IN () is a SQL syntax error, so these three
+  // functions must short-circuit before ever calling db.prepare.
+  describe('empty negotiated types short-circuit', () => {
+    it('getChanges returns an empty result without querying D1 and does not advance the cursor', async () => {
+      const db = createMockDb()
+
+      const result = await getChanges(db as unknown as D1Database, 'user-1', 42, 10, 'vault-1', [])
+
+      expect(result).toEqual({ items: [], deleted: [], hasMore: false, nextCursor: 42 })
+      expect(db.prepare).not.toHaveBeenCalled()
+    })
+
+    it('getManifest returns an empty result without querying D1', async () => {
+      const db = createMockDb()
+
+      const result = await getManifest(db as unknown as D1Database, 'user-1', 'vault-1', [])
+
+      expect(result.items).toEqual([])
+      expect(db.prepare).not.toHaveBeenCalled()
+    })
+
+    it('pullItems returns an empty array without querying D1', async () => {
+      const db = createMockDb()
+
+      const result = await pullItems(
+        db as unknown as D1Database,
+        {} as R2Bucket,
+        'user-1',
+        ['item-1'],
+        'vault-1',
+        []
+      )
+
+      expect(result).toEqual([])
+      expect(db.prepare).not.toHaveBeenCalled()
+    })
+  })
 })
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter @memry/sync-server test -- services/sync`
-Expected: FAIL — the extra argument is ignored, so `bind` still receives all 15 `RECORD_SYNC_ITEM_TYPES`.
+Expected: FAIL — the extra argument is ignored, so `bind` still receives all 15 `RECORD_SYNC_ITEM_TYPES`; the empty-types tests fail because `item_type IN ()` is sent to `db.prepare` instead of short-circuiting.
 
 - [ ] **Step 3: Write minimal implementation**
 
@@ -393,6 +468,10 @@ export const getManifest = async (
   vaultId = 'default',
   types: readonly RecordSyncItemType[] = LEGACY_RECORD_SYNC_ITEM_TYPES
 ): Promise<RecordSyncManifest> => {
+  if (types.length === 0) {
+    return { items: [], serverTime: Math.floor(Date.now() / 1000) }
+  }
+
   const rows = await db
     .prepare(
       `SELECT item_id, item_type, version, updated_at, size_bytes, state_vector
@@ -423,6 +502,10 @@ export const getChanges = async (
   vaultId = 'default',
   types: readonly RecordSyncItemType[] = LEGACY_RECORD_SYNC_ITEM_TYPES
 ): Promise<RecordChangesResponse> => {
+  if (types.length === 0) {
+    return { items: [], deleted: [], hasMore: false, nextCursor: cursor }
+  }
+
   const effectiveLimit = Math.min(limit ?? DEFAULT_CHANGES_LIMIT, MAX_CHANGES_LIMIT)
 
   const rows = await db
@@ -458,7 +541,7 @@ export const pullItems = async (
   vaultId = 'default',
   types: readonly RecordSyncItemType[] = LEGACY_RECORD_SYNC_ITEM_TYPES
 ): Promise<RecordPullItemResponse[]> => {
-  if (itemIds.length === 0) {
+  if (itemIds.length === 0 || types.length === 0) {
     return []
   }
 
@@ -500,7 +583,10 @@ git add apps/sync-server/src/services/sync.ts apps/sync-server/src/services/sync
 git commit -m "feat(sync-server): bind negotiated item types in changes/manifest/pull
 
 Types default to the frozen legacy list so a missed call site fails closed.
-pullItems BATCH_SIZE now derives from the negotiated list length."
+pullItems BATCH_SIZE now derives from the negotiated list length. All three
+functions short-circuit before SQL when types is empty (item_type IN () is a
+syntax error); getChanges returns the incoming cursor unchanged so the
+cursor never advances on that path."
 ```
 
 ---
