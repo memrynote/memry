@@ -82,7 +82,7 @@ describe('cleanup services', () => {
           vault_id: 'vault-2',
           total_size: 20,
           chunk_count: 2,
-          encrypted_size: null,
+          encrypted_size: 100,
           uploaded_chunks: '[]',
           r2_upload_id: '',
           r2_key: ''
@@ -134,9 +134,12 @@ describe('cleanup services', () => {
     expect(db.prepare).toHaveBeenCalledWith(
       'DELETE FROM upload_sessions WHERE id = ? AND user_id = ? AND vault_id = ?'
     )
-    // refunds the encrypted total that initiate reserved: plaintext + 40 per chunk
-    expect(releaseBind).toHaveBeenCalledWith(-(10 + 40 * 1), expect.any(Number), 'user-1')
-    expect(releaseBind).toHaveBeenCalledWith(-(20 + 40 * 2), expect.any(Number), 'user-2')
+    // s1 is a legacy row (encrypted_size IS NULL): the OLD server reserved the
+    // plaintext total_size, so refunding a derived ciphertext total would hand
+    // back bytes that were never reserved.
+    expect(releaseBind).toHaveBeenCalledWith(-10, expect.any(Number), 'user-1')
+    // s2 was written by the new server: refund exactly what it reserved.
+    expect(releaseBind).toHaveBeenCalledWith(-100, expect.any(Number), 'user-2')
     expect(storage.resumeMultipartUpload).toHaveBeenCalledWith('k1', 'up1')
     expect(abortFn).toHaveBeenCalledOnce()
   })
@@ -149,13 +152,17 @@ describe('cleanup services', () => {
       resumeMultipartUpload: vi.fn().mockReturnValue({ abort: abortFn })
     } as unknown as R2Bucket
 
+    // A legacy session: written by the old server, which reserved the PLAINTEXT
+    // total_size, so encrypted_size is NULL and must not be re-derived on refund.
     const selectAll = vi.fn().mockResolvedValue({
       results: [
         {
           id: 's1',
           user_id: 'user-1',
           vault_id: 'vault-1',
-          total_size: 10,
+          total_size: 5_000,
+          chunk_count: 3,
+          encrypted_size: null,
           uploaded_chunks: '[]',
           r2_upload_id: 'up1',
           r2_key: 'k1'
@@ -164,23 +171,28 @@ describe('cleanup services', () => {
     })
     const selectBind = vi.fn().mockReturnValue({ all: selectAll })
 
-    const deleteRun = vi.fn().mockResolvedValue({ meta: {} })
+    const deleteRun = vi.fn().mockResolvedValue({ meta: { changes: 1 } })
     const deleteBind = vi.fn().mockReturnValue({ run: deleteRun })
+    const releaseRun = vi.fn().mockResolvedValue({ meta: { changes: 1 } })
+    const releaseBind = vi.fn().mockReturnValue({ run: releaseRun })
 
     const db = {
       prepare: vi
         .fn()
         .mockReturnValueOnce({ bind: selectBind })
         .mockReturnValueOnce({ bind: deleteBind })
+        .mockReturnValueOnce({ bind: releaseBind })
     } as unknown as D1Database
 
     // #when
     const result = await cleanupExpiredUploadSessions(db, storage)
 
     // #then
-    expect(result).toBe(0)
+    expect(result).toBe(1)
     expect(abortFn).toHaveBeenCalledOnce()
     expect(deleteRun).toHaveBeenCalledOnce()
+    // refunds what was reserved (plaintext), not total_size + 40 * chunk_count
+    expect(releaseBind).toHaveBeenCalledWith(-5_000, expect.any(Number), 'user-1')
   })
 
   it('cleans up expired Google Calendar push channels', async () => {

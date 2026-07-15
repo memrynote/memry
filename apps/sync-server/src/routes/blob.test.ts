@@ -1,8 +1,6 @@
-import { Hono } from 'hono'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-import { ErrorCodes, errorHandler } from '../lib/errors'
-import type { AppContext } from '../types'
+import { ErrorCodes } from '../lib/errors'
 
 vi.mock('../services/blob', () => ({
   generateAttachmentChunkKey: (userId: string, vaultId: string, chunkHash: string) =>
@@ -49,110 +47,36 @@ vi.mock('../middleware/rate-limit', () => ({
   )
 }))
 
-import { blob } from './blob'
+import {
+  createApp,
+  createEnv,
+  createR2Object,
+  createSession as baseSession,
+  type MockDbState
+} from '../__mocks__/blob-route-harness'
 import { putBlob, getBlob, deleteBlob } from '../services/blob'
 import { assertFileSizeAllowed } from '../services/entitlements'
 import { adjustStorageUsed, reserveStorage } from '../services/quota'
-
-interface MockDbState {
-  session?: Record<string, unknown> | null
-  chunk?: Record<string, unknown> | null
-  existingChunk?: Record<string, unknown> | null
-  statements: Array<{ sql: string; bindings: unknown[] }>
-}
-
-const createStatement = (sql: string, state: MockDbState) => {
-  const stmt = {
-    bindings: [] as unknown[],
-    bind: vi.fn((...args: unknown[]) => {
-      stmt.bindings = args
-      state.statements.push({ sql, bindings: args })
-      return stmt
-    }),
-    first: vi.fn(async () => {
-      if (sql.includes('FROM upload_sessions')) return state.session ?? null
-      if (sql.includes('FROM blob_chunks') && sql.includes('hash = ?')) {
-        if (sql.includes('SELECT id, r2_key')) return state.existingChunk ?? null
-        if (sql.includes('r2_key') || sql.includes('size_bytes') || sql.includes('ref_count')) {
-          return state.chunk ?? null
-        }
-      }
-      return null
-    }),
-    run: vi.fn().mockResolvedValue({ success: true, meta: { changes: 1 } })
-  }
-  return stmt
-}
-
-const createDb = (state: MockDbState) =>
-  ({
-    prepare: vi.fn((sql: string) => createStatement(sql, state))
-  }) as unknown as D1Database
-
-const createR2Object = (overrides: Record<string, unknown> = {}) => ({
-  size: 5,
-  body: new ReadableStream(),
-  range: { offset: 1, length: 3 },
-  writeHttpMetadata: vi.fn(),
-  text: vi.fn().mockResolvedValue(JSON.stringify({ chunks: ['a'] })),
-  ...overrides
-})
-
-const storageObject = createR2Object()
-
-const createStorage = () =>
-  ({
-    get: vi.fn().mockResolvedValue(storageObject),
-    head: vi.fn().mockResolvedValue({ size: 5 }),
-    put: vi.fn(),
-    delete: vi.fn()
-  }) as unknown as R2Bucket
-
-const createApp = () => {
-  const app = new Hono<AppContext>()
-  app.onError(errorHandler)
-  app.route('', blob)
-  return app
-}
-
-// Chunks go on the wire encrypted: nonce(24) + ciphertext(plaintext + 16-byte tag).
-// Fixtures must honour that — a 5-byte plaintext chunk uploads as 45 bytes.
-const CHUNK_CRYPTO_OVERHEAD = 40
-
-const createSession = (overrides: Record<string, unknown> = {}) => ({
-  id: 'session-1',
-  user_id: 'user-1',
-  attachment_id: 'att-1',
-  filename: 'file.bin',
-  total_size: 10,
-  chunk_count: 2,
-  encrypted_size: null,
-  uploaded_chunks: JSON.stringify([
-    { i: 0, h: 'hash-0', b: 5 + CHUNK_CRYPTO_OVERHEAD },
-    { i: 1, h: 'hash-1', b: 5 + CHUNK_CRYPTO_OVERHEAD }
-  ]),
-  expires_at: Math.floor(Date.now() / 1000) + 100,
-  created_at: 1,
-  ...overrides
-})
+import { CHUNK_CRYPTO_OVERHEAD } from '../services/upload-size'
 
 // 10 plaintext bytes across 2 chunks => 10 + 40*2 bytes stored.
 const UPLOAD_INIT_ENCRYPTED_SIZE = 10 + CHUNK_CRYPTO_OVERHEAD * 2
 
-const createEnv = (state: MockDbState) => ({
-  DB: createDb(state),
-  STORAGE: createStorage(),
-  USER_SYNC_STATE: {} as DurableObjectNamespace,
-  LINKING_SESSION: {} as DurableObjectNamespace,
-  ENVIRONMENT: 'development',
-  JWT_PUBLIC_KEY: 'pk',
-  JWT_PRIVATE_KEY: 'sk',
-  RESEND_API_KEY: 'resend',
-  GOOGLE_CLIENT_ID: 'google-client',
-  GOOGLE_CLIENT_SECRET: 'google-secret',
-  GOOGLE_REDIRECT_URI: 'http://localhost/callback',
-  RECOVERY_DUMMY_SECRET: 'dummy'
-})
+// A fully-uploaded 2-chunk session as the current server writes it. Chunks go on
+// the wire encrypted: nonce(24) + ciphertext(plaintext + 16-byte tag) — fixtures
+// must honour that, so a 5-byte plaintext chunk uploads as 45 bytes, and
+// encrypted_size records what initiate reserved.
+const createSession = (overrides: Record<string, unknown> = {}) =>
+  baseSession({
+    total_size: 10,
+    chunk_count: 2,
+    encrypted_size: UPLOAD_INIT_ENCRYPTED_SIZE,
+    uploaded_chunks: JSON.stringify([
+      { i: 0, h: 'hash-0', b: 5 + CHUNK_CRYPTO_OVERHEAD },
+      { i: 1, h: 'hash-1', b: 5 + CHUNK_CRYPTO_OVERHEAD }
+    ]),
+    ...overrides
+  })
 
 const uploadInitBody = {
   attachmentId: 'att-1',
@@ -474,12 +398,19 @@ describe('blob routes', () => {
     expect(await res.json()).toEqual({ error: 'Missing chunks', missing_chunks: [1] })
   })
 
-  it('rejects completion when uploaded chunk bytes do not match the declared total size', async () => {
+  it('rejects completion when uploaded chunk bytes are only the plaintext total', async () => {
+    // 200 plaintext bytes over 2 chunks must arrive as 200 + 40*2 = 280 bytes.
+    // These two 100-byte chunks are individually plausible on the wire (a chunk
+    // cannot be under 40 bytes) and sum to exactly the plaintext total — the
+    // shape a client produces when it is NOT counting encryption overhead. It
+    // must be rejected, which is only true if `complete` compares against the
+    // encrypted total rather than session.total_size.
     state.session = createSession({
-      total_size: 10,
+      total_size: 200,
+      encrypted_size: 200 + CHUNK_CRYPTO_OVERHEAD * 2,
       uploaded_chunks: JSON.stringify([
-        { i: 0, h: 'hash-0', b: 4 },
-        { i: 1, h: 'hash-1', b: 4 }
+        { i: 0, h: 'hash-0', b: 100 },
+        { i: 1, h: 'hash-1', b: 100 }
       ])
     })
 

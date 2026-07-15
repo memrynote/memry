@@ -1,10 +1,7 @@
-import { Hono } from 'hono'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-import { ErrorCodes, errorHandler } from '../lib/errors'
+import { ErrorCodes } from '../lib/errors'
 import { SYNC_PLAN_LIMITS, type SyncPlan } from '../services/entitlements'
-import { XCHACHA20_PARAMS } from '@memry/contracts/crypto'
-import type { AppContext } from '../types'
 
 vi.mock('../services/blob', () => ({
   generateAttachmentChunkKey: (userId: string, vaultId: string, chunkHash: string) =>
@@ -50,19 +47,26 @@ vi.mock('../middleware/rate-limit', () => ({
   )
 }))
 
-import { blob } from './blob'
+import {
+  createApp,
+  createEnv,
+  createSession,
+  findBinding,
+  type MockDbState
+} from '../__mocks__/blob-route-harness'
 import { adjustStorageUsed, reserveStorage } from '../services/quota'
+import { CHUNK_CRYPTO_OVERHEAD, MAX_CHUNK_CRYPTO_OVERHEAD } from '../services/upload-size'
 
-// The client encrypts every chunk as nonce(24) || XChaCha20-Poly1305 ciphertext
-// (plaintext + 16-byte tag). See apps/desktop/src/main/sync/attachments.ts.
-const CHUNK_CRYPTO_OVERHEAD = XCHACHA20_PARAMS.NONCE_LENGTH + XCHACHA20_PARAMS.TAG_LENGTH
 const MIB = 1024 * 1024
 
-interface MockDbState {
+// A client-declared encrypted size that is plausible (inside the accepted band
+// [totalSize, totalSize + MAX_CHUNK_CRYPTO_OVERHEAD * chunkCount]) but is NOT the
+// value the server would derive. Tests using the derived overhead cannot tell the
+// explicit branch from the derive path, because both produce the same number.
+const DECLARED_OVERHEAD = 56
+
+interface AccountingState extends MockDbState {
   plan: SyncPlan
-  session?: Record<string, unknown> | null
-  existingChunk?: Record<string, unknown> | null
-  statements: Array<{ sql: string; bindings: unknown[] }>
 }
 
 const entitlementRow = (plan: SyncPlan) => {
@@ -84,58 +88,6 @@ const entitlementRow = (plan: SyncPlan) => {
   }
 }
 
-const createStatement = (sql: string, state: MockDbState) => {
-  const stmt = {
-    bind: vi.fn((...args: unknown[]) => {
-      state.statements.push({ sql, bindings: args })
-      return stmt
-    }),
-    first: vi.fn(async () => {
-      if (sql.includes('FROM users u')) return entitlementRow(state.plan)
-      if (sql.includes('FROM upload_sessions')) return state.session ?? null
-      if (sql.includes('FROM blob_chunks')) return state.existingChunk ?? null
-      return null
-    }),
-    run: vi.fn().mockResolvedValue({ success: true, meta: { changes: 1 } })
-  }
-  return stmt
-}
-
-const createEnv = (state: MockDbState) =>
-  ({
-    DB: { prepare: vi.fn((sql: string) => createStatement(sql, state)) } as unknown as D1Database,
-    STORAGE: {
-      get: vi.fn().mockResolvedValue(null),
-      head: vi.fn().mockResolvedValue(null),
-      put: vi.fn(),
-      delete: vi.fn()
-    } as unknown as R2Bucket,
-    ENVIRONMENT: 'development'
-  }) as any
-
-const createApp = () => {
-  const app = new Hono<AppContext>()
-  app.onError(errorHandler)
-  app.route('', blob)
-  return app
-}
-
-/** A session row as the server would have written it, with encrypted_size support. */
-const createSession = (overrides: Record<string, unknown> = {}) => ({
-  id: 'session-1',
-  user_id: 'user-1',
-  vault_id: 'vault-1',
-  attachment_id: 'att-1',
-  filename: 'file.bin',
-  total_size: 1024,
-  chunk_count: 1,
-  encrypted_size: null,
-  uploaded_chunks: '[]',
-  expires_at: Math.floor(Date.now() / 1000) + 100,
-  created_at: 1,
-  ...overrides
-})
-
 const initiate = (app: ReturnType<typeof createApp>, env: any, body: Record<string, unknown>) =>
   app.request(
     '/attachments/upload/initiate',
@@ -150,12 +102,9 @@ const putChunk = (app: ReturnType<typeof createApp>, env: any, index: number, by
     env
   )
 
-const findBinding = (state: MockDbState, sqlFragment: string) =>
-  state.statements.find((s) => s.sql.includes(sqlFragment))
-
 describe('attachment upload size accounting (plaintext limit, encrypted storage)', () => {
   let app: ReturnType<typeof createApp>
-  let state: MockDbState
+  let state: AccountingState
   let env: any
 
   beforeEach(() => {
@@ -164,12 +113,15 @@ describe('attachment upload size accounting (plaintext limit, encrypted storage)
     vi.mocked(adjustStorageUsed).mockResolvedValue(undefined)
     app = createApp()
     state = { plan: 'pro', session: createSession(), existingChunk: null, statements: [] }
+    state.entitlementRow = () => entitlementRow(state.plan)
     env = createEnv(state)
   })
 
+  // The one place that holds the literal: a crypto-param change must land here.
   it('derives 40 bytes of per-chunk overhead from the crypto contract', () => {
-    expect(XCHACHA20_PARAMS.NONCE_LENGTH + XCHACHA20_PARAMS.TAG_LENGTH).toBe(40)
     expect(CHUNK_CRYPTO_OVERHEAD).toBe(40)
+    expect(DECLARED_OVERHEAD).toBeGreaterThan(CHUNK_CRYPTO_OVERHEAD)
+    expect(DECLARED_OVERHEAD).toBeLessThanOrEqual(MAX_CHUNK_CRYPTO_OVERHEAD)
   })
 
   // ==========================================================================
@@ -210,11 +162,24 @@ describe('attachment upload size accounting (plaintext limit, encrypted storage)
   })
 
   it('honours an explicit encrypted_size on the session over the derived value', async () => {
-    state.session = createSession({ total_size: 1024, chunk_count: 1, encrypted_size: 1064 })
+    // 1024 + 56 = 1080, where the server would derive 1024 + 40 = 1064. A chunk of
+    // 1080 bytes only fits if the session's own encrypted_size wins.
+    const declared = 1024 + DECLARED_OVERHEAD
+    state.session = createSession({ total_size: 1024, chunk_count: 1, encrypted_size: declared })
 
-    const res = await putChunk(app, env, 0, 1064)
+    const res = await putChunk(app, env, 0, declared)
 
     expect(res.status).toBe(200)
+  })
+
+  it('rejects a chunk over an explicit encrypted_size that is below the derived value', async () => {
+    // The explicit branch must also be able to make the budget SMALLER than the
+    // derived one, not just larger.
+    state.session = createSession({ total_size: 1024, chunk_count: 1, encrypted_size: 1024 })
+
+    const res = await putChunk(app, env, 0, 1024 + CHUNK_CRYPTO_OVERHEAD)
+
+    expect(res.status).toBe(413)
   })
 
   // ==========================================================================
@@ -232,22 +197,43 @@ describe('attachment upload size accounting (plaintext limit, encrypted storage)
     expect(res.status).toBe(201)
     expect(reserveStorage).toHaveBeenCalledWith(env.DB, 'user-1', 1024 + CHUNK_CRYPTO_OVERHEAD)
 
+    // Asserted by position, not by membership: total_size and encrypted_size are
+    // both numbers in the same bind list, so `toContain` cannot tell them apart —
+    // swapping them would store ciphertext as plaintext and still pass.
     const insert = findBinding(state, 'INSERT INTO upload_sessions')
-    expect(insert?.bindings).toContain(1024) // total_size stays plaintext
-    expect(insert?.bindings).toContain(1024 + CHUNK_CRYPTO_OVERHEAD) // encrypted_size persisted
+    expect(insert?.bindings).toEqual([
+      expect.any(String), // id
+      'user-1', // user_id
+      'vault-1', // vault_id
+      'att-1', // attachment_id
+      'f.bin', // filename
+      1024, // total_size stays plaintext
+      1, // chunk_count
+      1024 + CHUNK_CRYPTO_OVERHEAD, // encrypted_size persisted
+      expect.any(Number), // expires_at
+      expect.any(Number) // created_at
+    ])
   })
 
   it('accepts an explicit encryptedSize from a new client', async () => {
+    // Distinct from the derived 1024 + 40, so the assertion below can only hold if
+    // the client's number is the one that reaches quota and storage.
+    const declared = 1024 + DECLARED_OVERHEAD
+
     const res = await initiate(app, env, {
       attachmentId: 'att-1',
       filename: 'f.bin',
       totalSize: 1024,
       chunkCount: 1,
-      encryptedSize: 1024 + CHUNK_CRYPTO_OVERHEAD
+      encryptedSize: declared
     })
 
     expect(res.status).toBe(201)
-    expect(reserveStorage).toHaveBeenCalledWith(env.DB, 'user-1', 1024 + CHUNK_CRYPTO_OVERHEAD)
+    expect(reserveStorage).toHaveBeenCalledWith(env.DB, 'user-1', declared)
+
+    const insert = findBinding(state, 'INSERT INTO upload_sessions')
+    expect(insert?.bindings[5]).toBe(1024) // total_size stays plaintext
+    expect(insert?.bindings[7]).toBe(declared) // encrypted_size is the client's value
   })
 
   it('reserves plaintext+80 for a 2-chunk upload', async () => {
@@ -387,8 +373,12 @@ describe('attachment upload size accounting (plaintext limit, encrypted storage)
   // refunds
   // ==========================================================================
 
-  it('refunds the encrypted total when a session is cancelled', async () => {
-    state.session = createSession({ total_size: 1024, chunk_count: 1, encrypted_size: null })
+  it('refunds the reserved encrypted_size when a session is cancelled', async () => {
+    state.session = createSession({
+      total_size: 1024,
+      chunk_count: 1,
+      encrypted_size: 1024 + CHUNK_CRYPTO_OVERHEAD
+    })
 
     const res = await app.request('/attachments/upload/session-1', { method: 'DELETE' }, env)
 
@@ -398,5 +388,27 @@ describe('attachment upload size accounting (plaintext limit, encrypted storage)
       'user-1',
       -(1024 + CHUNK_CRYPTO_OVERHEAD)
     )
+  })
+
+  // A session written by the OLD server reserved the PLAINTEXT total_size and left
+  // encrypted_size NULL. Deriving the ciphertext total here refunds bytes that were
+  // never reserved, permanently drifting users.storage_used down (adjustStorageUsed
+  // clamps at 0, so the drift has no reconciliation path).
+  it('refunds only the plaintext for a legacy session with no encrypted_size', async () => {
+    state.session = createSession({ total_size: 1024, chunk_count: 1, encrypted_size: null })
+
+    const res = await app.request('/attachments/upload/session-1', { method: 'DELETE' }, env)
+
+    expect(res.status).toBe(204)
+    expect(adjustStorageUsed).toHaveBeenCalledWith(env.DB, 'user-1', -1024)
+  })
+
+  it('refunds only the plaintext for a legacy multi-chunk session', async () => {
+    state.session = createSession({ total_size: 500_000, chunk_count: 63, encrypted_size: null })
+
+    const res = await app.request('/attachments/upload/session-1', { method: 'DELETE' }, env)
+
+    expect(res.status).toBe(204)
+    expect(adjustStorageUsed).toHaveBeenCalledWith(env.DB, 'user-1', -500_000)
   })
 })

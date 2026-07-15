@@ -1,5 +1,4 @@
 import { adjustStorageUsed } from './quota'
-import { expectedEncryptedTotal } from './upload-size'
 
 export const cleanupExpiredOtpCodes = async (db: D1Database): Promise<number> => {
   const now = Math.floor(Date.now() / 1000)
@@ -83,12 +82,12 @@ export const cleanupExpiredUploadSessions = async (
       .run()
 
     if ((result.meta.changes ?? 0) > 0) {
-      // Refund what initiate reserved: the encrypted total, not the plaintext.
-      await adjustStorageUsed(
-        db,
-        session.user_id,
-        -expectedEncryptedTotal(session.total_size, session.chunk_count, session.encrypted_size)
-      )
+      // Refund exactly what initiate reserved — never re-derive it. `encrypted_size`
+      // records the reservation; a NULL means the row was written by the old server,
+      // which reserved the plaintext total_size. Migration 0002 backfills the rows that
+      // existed when it ran, but migrations apply before the Worker deploys, so the old
+      // code can still open NULL rows during the rollout window. Keep the fallback.
+      await adjustStorageUsed(db, session.user_id, -(session.encrypted_size ?? session.total_size))
       cleaned += result.meta.changes ?? 0
     }
   }

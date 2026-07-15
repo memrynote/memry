@@ -3,14 +3,21 @@ import Database from 'better-sqlite3'
 import { readdirSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 
-// Canonical schema = the ordered D1 migrations wrangler applies on deploy.
-function loadSchemaSql(): string {
-  const dir = resolve(__dirname, '../migrations')
-  return readdirSync(dir)
+const migrationsDir = resolve(__dirname, '../migrations')
+
+function migrationFiles(): string[] {
+  return readdirSync(migrationsDir)
     .filter((file) => file.endsWith('.sql'))
     .sort()
-    .map((file) => readFileSync(join(dir, file), 'utf8'))
-    .join('\n')
+}
+
+function loadMigrationSql(file: string): string {
+  return readFileSync(join(migrationsDir, file), 'utf8')
+}
+
+// Canonical schema = the ordered D1 migrations wrangler applies on deploy.
+function loadSchemaSql(): string {
+  return migrationFiles().map(loadMigrationSql).join('\n')
 }
 
 describe('D1 schema', () => {
@@ -192,5 +199,67 @@ describe('D1 schema', () => {
     expect(crdtSnapshotColumns.map((column) => column.name)).toContain('vault_id')
     expect(uploadSessionColumns.map((column) => column.name)).toContain('vault_id')
     expect(blobChunkColumns.map((column) => column.name)).toContain('vault_id')
+  })
+
+  // Migrations are applied BEFORE the Worker deploys, so 0002 lands on rows the old
+  // server wrote. Those rows reserved the PLAINTEXT total_size; leaving encrypted_size
+  // NULL invites the refund paths to re-derive a larger ciphertext total and hand back
+  // bytes that were never reserved.
+  describe('0002_upload_sessions_encrypted_size', () => {
+    // A database at 0001 (pre-encrypted_size) with a user to own the sessions.
+    const dbAtBaseline = () => {
+      const db = new Database(':memory:')
+      db.exec(loadMigrationSql('0001_baseline.sql'))
+      db.prepare(
+        `INSERT INTO users (id, email, auth_method, created_at, updated_at)
+         VALUES ('user-1', 'a@b.com', 'otp', 1, 1)`
+      ).run()
+      return db
+    }
+
+    const insertLegacySession = (db: Database.Database, id: string, totalSize: number) =>
+      db
+        .prepare(
+          `INSERT INTO upload_sessions
+             (id, user_id, vault_id, attachment_id, filename, total_size, chunk_count, expires_at, created_at)
+           VALUES (?, 'user-1', 'vault-1', ?, 'f.bin', ?, 3, 1, 1)`
+        )
+        .run(id, `att-${id}`, totalSize)
+
+    it('backfills encrypted_size to total_size for rows written before the column existed', () => {
+      // #given a database at 0001 with in-flight sessions the old server reserved plaintext for
+      const db = dbAtBaseline()
+      insertLegacySession(db, 's1', 5_000)
+      insertLegacySession(db, 's2', 500_000)
+
+      // #when 0002 is applied
+      db.exec(loadMigrationSql('0002_upload_sessions_encrypted_size.sql'))
+
+      // #then every legacy row carries the plaintext size it actually reserved
+      const rows = db
+        .prepare('SELECT id, total_size, encrypted_size FROM upload_sessions ORDER BY id')
+        .all() as Array<{ id: string; total_size: number; encrypted_size: number | null }>
+
+      expect(rows).toEqual([
+        { id: 's1', total_size: 5_000, encrypted_size: 5_000 },
+        { id: 's2', total_size: 500_000, encrypted_size: 500_000 }
+      ])
+    })
+
+    it('leaves no NULL encrypted_size rows behind', () => {
+      // #given
+      const db = dbAtBaseline()
+      insertLegacySession(db, 's1', 5_000)
+
+      // #when
+      db.exec(loadMigrationSql('0002_upload_sessions_encrypted_size.sql'))
+
+      // #then
+      const { nulls } = db
+        .prepare('SELECT COUNT(*) AS nulls FROM upload_sessions WHERE encrypted_size IS NULL')
+        .get() as { nulls: number }
+
+      expect(nulls).toBe(0)
+    })
   })
 })

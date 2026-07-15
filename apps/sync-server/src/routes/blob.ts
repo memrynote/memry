@@ -464,12 +464,12 @@ blob.delete('/attachments/upload/:session_id', uploadSessionLimit, async (c) => 
     .bind(sessionId, userId, vaultId)
     .run()
   if ((deleteResult.meta.changes ?? 0) > 0) {
-    // Refund what was reserved at initiate: the encrypted total, not the plaintext.
-    await adjustStorageUsed(
-      c.env.DB,
-      userId,
-      -expectedEncryptedTotal(session.total_size, session.chunk_count, session.encrypted_size)
-    )
+    // Refund exactly what initiate reserved — never re-derive it. `encrypted_size`
+    // records the reservation; a NULL means the row was written by the old server,
+    // which reserved the plaintext total_size. Migration 0002 backfills the rows that
+    // existed when it ran, but migrations apply before the Worker deploys, so the old
+    // code can still open NULL rows during the rollout window. Keep the fallback.
+    await adjustStorageUsed(c.env.DB, userId, -(session.encrypted_size ?? session.total_size))
   }
 
   return new Response(null, { status: 204 })
