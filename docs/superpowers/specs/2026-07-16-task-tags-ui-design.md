@@ -7,8 +7,8 @@
 ## Summary
 
 Expose task tagging in the tasks UI. Tags on tasks are already fully implemented in the
-database, domain commands, sync, and IPC contracts — the renderer simply discards them.
-This work closes that gap and adds one missing piece of main-process hydration.
+database, domain commands, sync, and IPC contracts, and they already cross the IPC boundary
+on every read — the renderer simply discards them. This work is **renderer-only**.
 
 "MIT" (Most Important Task) is the motivating use case, but it is **just a tag**. No
 MIT-specific feature, flag, or per-day selection is built here. See
