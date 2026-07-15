@@ -23,6 +23,7 @@ export type LandingEventName =
   | 'landing_demo_mute'
   | 'landing_demo_unmute'
   | 'landing_demo_expand'
+  | 'landing_hero_demo_open'
   | 'landing_calculator_bundle_select'
   | 'landing_account_open'
   | 'landing_account_signin'

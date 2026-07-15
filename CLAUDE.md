@@ -100,21 +100,7 @@ pnpm --filter @memry/desktop db:studio:index
 
 Dual-database pattern: data DB (notes, tasks, projects) + index DB (search, graph). Both use better-sqlite3 via Drizzle ORM.
 
-## Monorepo Structure
-
-- `apps/desktop` — Electron 39 + React 19 + Vite (main/renderer/preload).
-- `apps/sync-server` — Cloudflare Workers + Hono (D1 + R2)
-- `apps/landing` — landing site
-- `apps/docs` — VitePress docs
-- `packages/contracts` — IPC and API type definitions (Zod validation)
-- `packages/rpc` — RPC contract helpers
-- `packages/db-schema` — Drizzle ORM schemas (data + index)
-- `packages/shared` — Minimal shared utilities
-- `packages/app-core` — App/domain orchestration shared with CLI
-
 ## Code Style
-
-Prettier: single quotes, no semicolons, 100 char width, no trailing commas.
 
 - **Logging**: Always `createLogger('Scope')` from `electron-log`, never raw `console.*`
 - **User-facing errors**: Always `extractErrorMessage(err, fallback)` from `@/lib/ipc-error`
@@ -202,3 +188,4 @@ Strategic design brief lives in `PRODUCT.md` (root). Read it before UI work.
 - **Principles:** privacy is the product · one calm place · graceful by toggle · crafted not corporate · earn trust through restraint.
 - **A11y:** WCAG AA + reduced-motion + RTL (logical Tailwind props).
 - **Visual system:** `docs/DESIGN_TOKENS.md`, `apps/landing/src/index.css` (terracotta `#ff671a` / paper / ink). Run
+- **Mascot icons:** hand-drawn set in `apps/landing/public/mascots`. To create a new one in-style, follow `apps/landing/scripts/mascots/README.md`.

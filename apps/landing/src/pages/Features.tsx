@@ -48,10 +48,11 @@ import {
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { Container } from '@/components/layout/Container'
-import { SectionHeading } from '@/components/shared/SectionHeading'
-import { DownloadCTA } from '@/components/shared/DownloadCTA'
 import { PageHead } from '@/components/shared/PageHead'
-import { BLUR_REVEAL_ANIMATE, BLUR_REVEAL_INITIAL, BLUR_REVEAL_TRANSITION } from '@/lib/motion'
+import { FinalCta } from '@/components/site/FinalCta'
+import { PageHero } from '@/components/site/PageHero'
+import { FeatureChip, SectionTitle } from '@/components/site/primitives'
+import { SITE_TINTS } from '@/lib/site-tints'
 
 interface FeatureItem {
   icon: LucideIcon
@@ -560,44 +561,37 @@ function SupportingBlock({ category }: { category: SupportCategory }) {
   )
 }
 
-function PillarNav() {
+/** The four pillars as hero chips — each one an in-page anchor down to its block. */
+function PillarChips() {
   return (
-    <motion.nav
-      initial={BLUR_REVEAL_INITIAL}
-      animate={BLUR_REVEAL_ANIMATE}
-      transition={BLUR_REVEAL_TRANSITION}
-      className="flex flex-wrap justify-center gap-3"
-    >
+    <>
       {PILLARS.map((p) => {
         const Icon = p.icon
+
         return (
-          <a
+          <FeatureChip
             key={p.id}
             href={`#${p.id}`}
-            className="flex items-center gap-2 px-4 py-2 rounded-full border border-border bg-card text-sm text-ink hover:border-terracotta/40 hover:text-terracotta transition-colors"
-          >
-            <Icon className="w-4 h-4" strokeWidth={1.5} />
-            {p.title}
-          </a>
+            label={p.title}
+            icon={<Icon className="h-4 w-4" strokeWidth={1.5} />}
+          />
         )
       })}
-    </motion.nav>
+    </>
   )
 }
 
 export function FeaturesPage() {
   return (
-    <main className="pt-24">
+    <>
       <PageHead page="features" />
-      <section className="py-16">
-        <Container>
-          <SectionHeading
-            title="All your features"
-            subtitle="One app. Every tool you need. 115+ features across four integrated pillars — no plugins required."
-          />
-          <PillarNav />
-        </Container>
-      </section>
+      <PageHero
+        tint={SITE_TINTS.features}
+        eyebrow="Everything, in one window"
+        title="All your features"
+        sub="One app. Every tool you need. 115+ features across four integrated pillars — no plugins required."
+        actions={<PillarChips />}
+      />
 
       {PILLARS.map((pillar, i) => (
         <PillarBlock key={pillar.id} pillar={pillar} index={i} />
@@ -605,9 +599,9 @@ export function FeaturesPage() {
 
       <section className="py-20">
         <Container>
-          <SectionHeading
+          <SectionTitle
             title="Supporting features"
-            subtitle="Search, sync, workspace, and optional AI — the infrastructure that ties everything together."
+            sub="Search, sync, workspace, and optional AI — the infrastructure that ties everything together."
           />
           <motion.div
             className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5"
@@ -623,22 +617,11 @@ export function FeaturesPage() {
         </Container>
       </section>
 
-      <section className="py-24 bg-paper-alt">
-        <Container size="sm">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center"
-          >
-            <h2 className="font-serif text-3xl text-ink mb-4">Ready to get started?</h2>
-            <p className="text-lg text-muted font-serif mb-8">
-              Free, local-first, and open source.
-            </p>
-            <DownloadCTA location="features-final" />
-          </motion.div>
-        </Container>
-      </section>
-    </main>
+      <FinalCta
+        title="Ready to get started?"
+        sub="Free, local-first, and open source."
+        location="features-final"
+      />
+    </>
   )
 }

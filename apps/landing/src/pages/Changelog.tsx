@@ -10,12 +10,12 @@ import {
   Search,
   type LucideIcon
 } from 'lucide-react'
-import { Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
 import { Container } from '@/components/layout/Container'
 import { PageHead } from '@/components/shared/PageHead'
+import { PageHero } from '@/components/site/PageHero'
+import { FeatureChip } from '@/components/site/primitives'
 import { GITHUB_URL } from '@/lib/constants'
-import { BLUR_REVEAL_ANIMATE, BLUR_REVEAL_INITIAL, BLUR_REVEAL_TRANSITION } from '@/lib/motion'
+import { SITE_TINTS } from '@/lib/site-tints'
 
 interface ChangelogEntry {
   period: string
@@ -190,43 +190,28 @@ export function ChangelogPage() {
   return (
     <>
       <PageHead page="changelog" />
-      <main className="pt-32 pb-24 md:pt-40">
+      <PageHero
+        tint={SITE_TINTS.changelog}
+        eyebrow="Release notes"
+        title="Changelog"
+        sub="Major memrynote milestones from the first desktop scaffold on December 1, 2025 to the current launch push. Small fixes, copy changes, and operational release notes stay in GitHub."
+        actions={
+          <>
+            <FeatureChip
+              label="GitHub releases"
+              href={`${GITHUB_URL}/releases`}
+              trailingIcon={<ArrowRight className="h-4 w-4" />}
+            />
+            <FeatureChip
+              label="Roadmap"
+              href="/roadmap"
+              trailingIcon={<ArrowRight className="h-4 w-4" />}
+            />
+          </>
+        }
+      />
+      <main className="pb-24 pt-4">
         <Container size="md">
-          <motion.section
-            initial={BLUR_REVEAL_INITIAL}
-            animate={BLUR_REVEAL_ANIMATE}
-            transition={BLUR_REVEAL_TRANSITION}
-            className="border-b border-border pb-12 text-center"
-          >
-            <p className="font-mono-accent text-xs uppercase tracking-[0.18em] text-terracotta">
-              Release notes
-            </p>
-            <h1 className="mt-4 font-serif text-5xl leading-[1.05] text-ink md:text-6xl">
-              Changelog
-            </h1>
-            <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-muted">
-              Major memrynote milestones from the first desktop scaffold on December 1, 2025 to the
-              current launch push. Small fixes, copy changes, and operational release notes stay in
-              GitHub.
-            </p>
-            <div className="mt-8 flex flex-wrap justify-center gap-3 text-sm">
-              <a
-                href={`${GITHUB_URL}/releases`}
-                className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 font-medium text-ink transition-colors hover:border-terracotta/30 hover:text-terracotta"
-              >
-                GitHub releases
-                <ArrowRight className="h-4 w-4" aria-hidden />
-              </a>
-              <Link
-                to="/roadmap"
-                className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 font-medium text-ink transition-colors hover:border-terracotta/30 hover:text-terracotta"
-              >
-                Roadmap
-                <ArrowRight className="h-4 w-4" aria-hidden />
-              </Link>
-            </div>
-          </motion.section>
-
           <section className="divide-y divide-border">
             {CHANGELOG_ENTRIES.map((entry) => {
               const Icon = entry.icon

@@ -24,7 +24,6 @@ import { RoadmapPage } from '@/pages/Roadmap'
 import { TermsPage } from '@/pages/Terms'
 import { PrivacyPage } from '@/pages/Privacy'
 import { RefundPage } from '@/pages/Refund'
-import { CodeSigningPolicyPage } from '@/pages/CodeSigningPolicy'
 import { CheckoutPage } from '@/pages/Checkout'
 import { LoginPage } from '@/pages/Login'
 import { AuthCallbackPage } from '@/pages/AuthCallback'
@@ -98,7 +97,6 @@ const ROUTE_MAP: Record<string, () => ReactNode> = {
   '/terms': () => <TermsPage />,
   '/privacy': () => <PrivacyPage />,
   '/refund': () => <RefundPage />,
-  '/code-signing-policy': () => <CodeSigningPolicyPage />,
   // Client-only app routes: no SEO value, but they must be prerendered as static
   // shells so direct loads (e.g. the desktop "Upgrade" deep link to /checkout#token,
   // the Google OAuth redirect to /auth/oauth/callback) resolve instead of 404ing.

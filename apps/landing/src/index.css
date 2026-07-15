@@ -1,11 +1,12 @@
 @import 'tailwindcss';
 
-@custom-variant dark (&:where(.dark, .dark *));
-
 @theme {
-  --font-sans: 'Satoshi', system-ui, sans-serif;
-  --font-geist: 'Geist', system-ui, sans-serif;
-  --font-serif: 'Inter', 'Inter Placeholder', sans-serif;
+  /* Single-font site: text tokens all resolve to Manrope (token names kept so no
+     component churn). --font-mono stays a REAL monospace — reserved for terminal
+     and code surfaces (CLI page/snippet, code chips, ink stamps), not labels. */
+  --font-sans: 'Manrope', system-ui, sans-serif;
+  --font-geist: 'Manrope', system-ui, sans-serif;
+  --font-serif: 'Manrope', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 
   --color-primary: #ff671a;
@@ -35,6 +36,15 @@
   --color-border: #e8e4dd;
   --color-card: #ffffff;
 
+  /* Pastel section tints — muted, paper-compatible mega-card backgrounds */
+  --color-tint-sky: #dfeaf2;
+  --color-tint-sage: #e2ebe0;
+  --color-tint-sand: #f3ead6;
+  --color-tint-peach: #fce4d6;
+  --color-tint-rose: #f7dfe1;
+  --color-tint-lilac: #e7e1f2;
+  --color-tint-mint: #d9ede4;
+
   --color-background: var(--color-paper);
   --color-foreground: var(--color-ink);
 
@@ -50,32 +60,9 @@
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Dark theme — matches memrynote desktop app charcoal palette. Brand terracotta is preserved. */
-.dark {
-  --color-ink: #bcbab6;
-  --color-ink-inverted: #1f2937;
-  --color-paper: #181919;
-  --color-paper-alt: #222222;
-  --color-paper-deep: #2a2a2a;
-  --color-muted: #ada9a3;
-  --color-border: #2e2e2e;
-  --color-card: #222222;
-
-  --color-background: var(--color-paper);
-  --color-foreground: var(--color-ink);
-
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4);
-  --shadow-card: 0 4px 12px -2px rgb(0 0 0 / 0.4);
-  --shadow-elevated: 0 12px 24px -4px rgb(0 0 0 / 0.55);
-}
-
 html {
   background-color: var(--color-paper);
   color-scheme: light;
-}
-
-html.dark {
-  color-scheme: dark;
 }
 
 body {
@@ -89,10 +76,6 @@ body {
   transition:
     background-color 0.25s var(--ease-out-expo),
     color 0.25s var(--ease-out-expo);
-}
-
-.dark body {
-  background-color: var(--color-paper);
 }
 
 h1,
@@ -235,8 +218,11 @@ h6 {
   text-orientation: mixed;
 }
 
+/* Label accent (kickers, footers, counters). Historically JetBrains Mono — now the
+   single-font pass keeps labels in Manrope; real mono is only for terminal/code
+   surfaces via `font-mono`. Class name kept: ~30 call sites. */
 .font-mono-accent {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   letter-spacing: -0.02em;
 }
 
@@ -284,18 +270,20 @@ h6 {
   color: var(--color-dark);
 }
 
-/* Marquee ticker */
-@keyframes marquee {
-  0% {
-    transform: translateX(0);
+/* Terminal cursor blink (CliWidget) */
+@keyframes blink {
+  0%,
+  50% {
+    opacity: 1;
   }
+  50.01%,
   100% {
-    transform: translateX(-50%);
+    opacity: 0;
   }
 }
 
-.animate-marquee {
-  animation: marquee 60s linear infinite;
+.animate-blink {
+  animation: blink 1.1s steps(1) infinite;
 }
 
 /* Column glow for comparison */

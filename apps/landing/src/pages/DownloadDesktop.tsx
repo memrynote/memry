@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   ArrowRight,
@@ -17,15 +16,12 @@ import {
 import { Container } from '@/components/layout/Container'
 import { FeatureHeroScreenshot } from '@/components/shared/FeatureHeroScreenshot'
 import { PageHead } from '@/components/shared/PageHead'
+import { Faq } from '@/components/site/Faq'
+import { FinalCta } from '@/components/site/FinalCta'
+import { PageHero } from '@/components/site/PageHero'
 import { Button } from '@/components/ui/button'
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger
-} from '@/components/ui/accordion'
 import { GITHUB_URL } from '@/lib/constants'
-import { BLUR_REVEAL_ANIMATE, BLUR_REVEAL_INITIAL, BLUR_REVEAL_TRANSITION } from '@/lib/motion'
+import { SITE_TINTS } from '@/lib/site-tints'
 import { cn } from '@/lib/utils'
 import { trackLandingEvent } from '@/lib/analytics'
 import { DownloadButton } from '@/components/shared/DownloadCTA'
@@ -63,8 +59,21 @@ export function DownloadDesktopPage() {
         <WorksWithEverything />
         <InstallSteps />
         <ReleaseChannel />
-        <DownloadFaq />
-        <DownloadFinalCta />
+        <Faq eyebrow="FAQ" title="Before you download." items={DOWNLOAD_FAQ} />
+        <FinalCta
+          title={
+            <>
+              Your second brain, <span className="italic text-terracotta">on your machine.</span>
+            </>
+          }
+          sub="Free, local, open source. Download memrynote and pick a vault in under a minute."
+          location="download-final"
+          secondary={{
+            label: 'Security architecture',
+            to: '/security',
+            event: 'download:security'
+          }}
+        />
       </main>
     </>
   )
@@ -78,78 +87,70 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
   )
 }
 
+/** Open source · encrypted · free — the three claims that ride under the hero CTAs. */
+function TrustDots() {
+  return (
+    <div className="mb-10 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 font-mono-accent text-[11px] uppercase tracking-[0.18em] text-muted/80">
+      <span className="inline-flex items-center gap-1.5">
+        <span className="h-1.5 w-1.5 rounded-full bg-sage" />
+        Open source
+      </span>
+      <span className="inline-flex items-center gap-1.5">
+        <span className="h-1.5 w-1.5 rounded-full bg-terracotta" />
+        End-to-end encrypted sync
+      </span>
+      <span className="inline-flex items-center gap-1.5">
+        <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+        Free forever
+      </span>
+    </div>
+  )
+}
+
 function DesktopHero() {
   return (
-    <section className="relative overflow-hidden pt-32 pb-16 md:pt-40 md:pb-20">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[420px] bg-[radial-gradient(ellipse_at_top,rgba(255,103,26,0.10),transparent_60%)]"
-      />
-      <Container size="md">
-        <motion.div
-          initial={BLUR_REVEAL_INITIAL}
-          animate={BLUR_REVEAL_ANIMATE}
-          transition={BLUR_REVEAL_TRANSITION}
-          className="text-center"
-        >
-          <span className="inline-flex items-center gap-2 font-mono-accent text-[11px] uppercase tracking-[0.28em] text-muted">
-            <Download className="h-3 w-3" strokeWidth={2} />
-            Desktop app · Available now
-          </span>
-          <h1 className="mt-4 font-serif text-4xl font-normal leading-[1.05] text-ink text-balance md:text-6xl">
-            memrynote for <span className="italic text-terracotta">Desktop.</span>
-          </h1>
-          <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-muted md:text-lg">
-            A local-first PKM that lives on your machine. Free, open source, and available for
-            macOS, Windows, and Linux.
-          </p>
-
-          <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <DownloadButton location="download-hero" className="px-7" />
-            <Button
-              size="lg"
-              variant="ghost"
-              className="rounded-full px-6 text-ink hover:bg-paper-alt"
-              asChild
+    <PageHero
+      tint={SITE_TINTS.downloadDesktop}
+      eyebrow={
+        <>
+          <Download className="h-3 w-3" strokeWidth={2} />
+          Desktop app · Available now
+        </>
+      }
+      title={
+        <>
+          memrynote for <span className="italic text-terracotta">Desktop.</span>
+        </>
+      }
+      sub="A local-first PKM that lives on your machine. Free, open source, and available for macOS, Windows, and Linux."
+      actions={
+        <>
+          <DownloadButton location="download-hero" className="px-7" />
+          <Button
+            size="lg"
+            variant="ghost"
+            className="rounded-full px-6 text-ink hover:bg-ink/5"
+            asChild
+          >
+            <a
+              href={GITHUB_URL}
+              target="_blank"
+              rel="noreferrer"
+              onClick={() => trackLandingEvent('landing_external_click', 'download:github')}
             >
-              <a
-                href={GITHUB_URL}
-                target="_blank"
-                rel="noreferrer"
-                onClick={() => trackLandingEvent('landing_external_click', 'download:github')}
-              >
-                <Github className="h-4 w-4" />
-                View on GitHub
-              </a>
-            </Button>
-          </div>
-
-          <div className="mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 font-mono-accent text-[11px] uppercase tracking-[0.18em] text-muted/80">
-            <span className="inline-flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-sage" />
-              Open source
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-terracotta" />
-              End-to-end encrypted sync
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-              Free forever
-            </span>
-          </div>
-        </motion.div>
-
-        <motion.div
-          initial={BLUR_REVEAL_INITIAL}
-          animate={BLUR_REVEAL_ANIMATE}
-          transition={BLUR_REVEAL_TRANSITION}
-          className="mt-14"
-        >
+              <Github className="h-4 w-4" />
+              View on GitHub
+            </a>
+          </Button>
+        </>
+      }
+      visual={
+        <>
+          <TrustDots />
           <DesktopNoteScreenshot />
-        </motion.div>
-      </Container>
-    </section>
+        </>
+      }
+    />
   )
 }
 
@@ -245,11 +246,7 @@ function PlatformGrid({ detected }: { detected: DetectedOS }) {
         </motion.div>
 
         <p className="mt-12 text-center font-mono-accent text-[11px] uppercase tracking-[0.18em] text-muted/70">
-          Automatic updates keep you current. Source stays open on GitHub.{' '}
-          <a href="/code-signing-policy" className="text-terracotta hover:underline">
-            Code signing policy
-          </a>
-          .
+          Automatic updates keep you current. Source stays open on GitHub.
         </p>
       </Container>
     </section>
@@ -626,76 +623,3 @@ const DOWNLOAD_FAQ = [
       'In the vault folder you choose, on your device. Read the full security architecture for the cryptographic details.'
   }
 ]
-
-function DownloadFaq() {
-  return (
-    <section className="border-t border-border/40 bg-paper-alt/35 py-24">
-      <Container size="sm">
-        <motion.div {...fadeUp} className="mb-12 text-center">
-          <Eyebrow>FAQ</Eyebrow>
-          <h2 className="mt-3 font-serif text-3xl font-normal leading-tight text-ink md:text-4xl">
-            Before you download.
-          </h2>
-        </motion.div>
-
-        <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.1 }}>
-          <Accordion type="single" collapsible className="w-full">
-            {DOWNLOAD_FAQ.map((item, i) => (
-              <AccordionItem
-                key={item.question}
-                value={`download-faq-${i}`}
-                className="rounded-none border-b border-border/55 bg-transparent px-0 last:border-0 data-[state=open]:bg-transparent"
-              >
-                <AccordionTrigger className="py-5 text-left font-serif text-lg text-ink hover:text-terracotta hover:no-underline">
-                  {item.question}
-                </AccordionTrigger>
-                <AccordionContent className="pb-5 text-[17px] font-sans leading-relaxed text-muted max-w-[92%]">
-                  {item.answer}
-                </AccordionContent>
-              </AccordionItem>
-            ))}
-          </Accordion>
-        </motion.div>
-      </Container>
-    </section>
-  )
-}
-
-function DownloadFinalCta() {
-  return (
-    <section className="relative overflow-hidden py-28">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_center,rgba(255,103,26,0.10),transparent_55%)]"
-      />
-      <Container size="md">
-        <motion.div {...fadeUp} className="text-center">
-          <h2 className="mx-auto max-w-2xl font-serif text-4xl font-normal leading-tight text-ink text-balance md:text-5xl">
-            Your second brain, <span className="italic text-terracotta">on your machine.</span>
-          </h2>
-          <p className="mx-auto mt-5 max-w-xl text-lg text-muted leading-relaxed">
-            Free, local, open source. Download memrynote and pick a vault in under a minute.
-          </p>
-
-          <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <DownloadButton location="download-final" />
-            <Button
-              size="lg"
-              variant="ghost"
-              className="rounded-full px-8 text-ink hover:bg-paper-alt"
-              asChild
-            >
-              <Link
-                to="/security"
-                onClick={() => trackLandingEvent('landing_nav_click', 'download:security')}
-              >
-                Security architecture
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
-        </motion.div>
-      </Container>
-    </section>
-  )
-}

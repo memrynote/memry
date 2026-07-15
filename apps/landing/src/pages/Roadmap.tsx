@@ -2,8 +2,10 @@ import { motion } from 'framer-motion'
 import { ArrowRight } from 'lucide-react'
 import { Container } from '@/components/layout/Container'
 import { PageHead } from '@/components/shared/PageHead'
+import { PageHero } from '@/components/site/PageHero'
+import { FeatureChip } from '@/components/site/primitives'
 import { GITHUB_URL } from '@/lib/constants'
-import { BLUR_REVEAL_ANIMATE, BLUR_REVEAL_INITIAL, BLUR_REVEAL_TRANSITION } from '@/lib/motion'
+import { SITE_TINTS } from '@/lib/site-tints'
 
 const EASE_OUT_EXPO = [0.16, 1, 0.3, 1] as const
 
@@ -275,89 +277,82 @@ const TOTAL_LAUNCHED = LAUNCHED_GROUPS.reduce((sum, group) => sum + group.items.
 
 export function RoadmapPage() {
   return (
-    <main className="pt-32 pb-24 md:pt-40">
+    <>
       <PageHead page="roadmap" />
-      <Container size="md">
-        <motion.section
-          initial={BLUR_REVEAL_INITIAL}
-          animate={BLUR_REVEAL_ANIMATE}
-          transition={BLUR_REVEAL_TRANSITION}
-          className="border-b border-border pb-12 text-center"
-        >
-          <p className="font-mono-accent text-xs uppercase tracking-[0.18em] text-terracotta">
-            Building in public
-          </p>
-          <h1 className="mt-4 font-serif text-5xl leading-[1.05] text-ink md:text-6xl">Roadmap</h1>
-          <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-muted">
-            What is available, what is active, and what is planned next. This is direction, not a
-            release promise.
-          </p>
-          <div className="mt-8 flex flex-wrap justify-center gap-3 text-sm">
-            <a
+      <PageHero
+        tint={SITE_TINTS.roadmap}
+        eyebrow="Building in public"
+        title="Roadmap"
+        sub="What is available, what is active, and what is planned next. This is direction, not a release promise."
+        actions={
+          <>
+            {/* Labelled "Changelog" but pointing at GitHub releases, not /changelog. That
+                looks wrong, but it is pre-existing behaviour and this is a re-skin —
+                changing where a link goes belongs in its own commit. */}
+            <FeatureChip
+              label="Changelog"
               href={`${GITHUB_URL}/releases`}
-              className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 font-medium text-ink transition-colors hover:border-terracotta/30 hover:text-terracotta"
-            >
-              Changelog
-              <ArrowRight className="h-4 w-4" aria-hidden />
-            </a>
-            <a
+              trailingIcon={<ArrowRight className="h-4 w-4" />}
+            />
+            <FeatureChip
+              label="Request a feature"
               href={`${GITHUB_URL}/issues`}
-              className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 font-medium text-ink transition-colors hover:border-terracotta/30 hover:text-terracotta"
-            >
-              Request a feature
-              <ArrowRight className="h-4 w-4" aria-hidden />
-            </a>
-          </div>
-        </motion.section>
-
-        <section className="border-b border-border py-12">
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-[140px_1fr] md:gap-10">
-            <div className="md:pt-5">
-              <StatusPill label="Active" tone="sage" count={ACTIVE_ITEMS.length} />
-            </div>
-            <RoadmapList items={ACTIVE_ITEMS} />
-          </div>
-        </section>
-
-        <section className="border-b border-border py-12">
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-[140px_1fr] md:gap-10">
-            <div className="md:pt-5">
-              <StatusPill label="Planned" tone="terracotta" count={PLANNED_ITEMS.length} />
-            </div>
-            <RoadmapList items={PLANNED_ITEMS} />
-          </div>
-        </section>
-
-        <section className="pt-12">
-          <div className="mb-6">
-            <StatusPill label="Launched" tone="muted" count={TOTAL_LAUNCHED} />
-          </div>
-
-          <motion.div
-            variants={stagger}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: '-60px' }}
-            className="space-y-10"
-          >
-            {LAUNCHED_GROUPS.map((group) => (
-              <div
-                key={group.period}
-                className="grid grid-cols-1 gap-3 md:grid-cols-[140px_1fr] md:gap-10"
-              >
-                <h3 className="font-mono-accent text-xs uppercase tracking-[0.18em] text-muted md:pt-5">
-                  {group.period}
-                </h3>
-                <ul className="border-t border-border/60">
-                  {group.items.map((item) => (
-                    <RoadmapRow key={item.title} item={item} />
-                  ))}
-                </ul>
+              trailingIcon={<ArrowRight className="h-4 w-4" />}
+            />
+          </>
+        }
+      />
+      <main className="pb-24 pt-4">
+        <Container size="md">
+          <section className="border-b border-border py-12">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-[140px_1fr] md:gap-10">
+              <div className="md:pt-5">
+                <StatusPill label="Active" tone="sage" count={ACTIVE_ITEMS.length} />
               </div>
-            ))}
-          </motion.div>
-        </section>
-      </Container>
-    </main>
+              <RoadmapList items={ACTIVE_ITEMS} />
+            </div>
+          </section>
+
+          <section className="border-b border-border py-12">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-[140px_1fr] md:gap-10">
+              <div className="md:pt-5">
+                <StatusPill label="Planned" tone="terracotta" count={PLANNED_ITEMS.length} />
+              </div>
+              <RoadmapList items={PLANNED_ITEMS} />
+            </div>
+          </section>
+
+          <section className="pt-12">
+            <div className="mb-6">
+              <StatusPill label="Launched" tone="muted" count={TOTAL_LAUNCHED} />
+            </div>
+
+            <motion.div
+              variants={stagger}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: '-60px' }}
+              className="space-y-10"
+            >
+              {LAUNCHED_GROUPS.map((group) => (
+                <div
+                  key={group.period}
+                  className="grid grid-cols-1 gap-3 md:grid-cols-[140px_1fr] md:gap-10"
+                >
+                  <h3 className="font-mono-accent text-xs uppercase tracking-[0.18em] text-muted md:pt-5">
+                    {group.period}
+                  </h3>
+                  <ul className="border-t border-border/60">
+                    {group.items.map((item) => (
+                      <RoadmapRow key={item.title} item={item} />
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </motion.div>
+          </section>
+        </Container>
+      </main>
+    </>
   )
 }

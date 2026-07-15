@@ -1,14 +1,37 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Container } from '@/components/layout/Container'
 import { FEATURES } from '@/lib/constants'
 import { getFeatureScreenshotSrc } from '@/lib/feature-screenshots'
-import { useTheme } from '@/lib/use-theme'
 import { cn } from '@/lib/utils'
+import { Mascot } from '@/components/ui/mascot'
 
 const EASE = [0.16, 1, 0.3, 1] as const
 
 type Feature = (typeof FEATURES)[number]
+
+/**
+ * Each module wears its hand-drawn mascot on a soft tint tile drawn from the
+ * home2 palette, so the row reads as the same crafted family as the rest of the
+ * page — ink-on-paper in light, the recolored variant in dark.
+ */
+const MODULE_ICONS: Record<Feature['id'], { src: string; tile: string }> = {
+  inbox: { src: '/mascots/inbox.png', tile: 'bg-tint-sky' },
+  journal: { src: '/mascots/journal.png', tile: 'bg-tint-sand' },
+  notes: { src: '/mascots/notes.png', tile: 'bg-tint-sage' },
+  tasks: { src: '/mascots/tasks.png', tile: 'bg-tint-peach' },
+  calendar: { src: '/mascots/calendar.png', tile: 'bg-tint-sky' }
+}
+
+// Each module's screenshot is matted on a fixed canvas in its own tint.
+const MODULE_TINT: Record<Feature['id'], string> = {
+  inbox: '--color-tint-sky',
+  journal: '--color-tint-sand',
+  notes: '--color-tint-sage',
+  tasks: '--color-tint-peach',
+  calendar: '--color-tint-lilac'
+}
 
 function ModuleRow({
   feature,
@@ -19,7 +42,7 @@ function ModuleRow({
   active: boolean
   onSelect: () => void
 }) {
-  const Icon = feature.icon
+  const iconCfg = MODULE_ICONS[feature.id]
   const panelId = `module-panel-${feature.id}`
 
   return (
@@ -43,13 +66,16 @@ function ModuleRow({
             active ? 'bg-terracotta' : 'bg-transparent group-hover:bg-border'
           )}
         />
-        <Icon
-          className={cn(
-            'h-[18px] w-[18px] shrink-0 transition-colors',
-            active ? 'text-terracotta' : 'text-muted/60'
-          )}
+        <span
           aria-hidden
-        />
+          className={cn(
+            'flex size-10 shrink-0 items-center justify-center rounded-xl shadow-card transition-all duration-300',
+            iconCfg.tile,
+            active ? 'opacity-100' : 'opacity-60 group-hover:opacity-85'
+          )}
+        >
+          <Mascot src={iconCfg.src} className="size-8" />
+        </span>
         <span className="font-serif text-xl">{feature.title}</span>
         <span className="ms-auto hidden font-serif text-sm italic text-muted/70 sm:block">
           {feature.tagline}
@@ -87,9 +113,50 @@ function ModuleRow({
 
 export function Features() {
   const [activeId, setActiveId] = useState<Feature['id']>(FEATURES[0].id)
-  const { theme } = useTheme()
   const activeFeature = FEATURES.find((f) => f.id === activeId) ?? FEATURES[0]
-  const screenshotSrc = getFeatureScreenshotSrc(activeFeature.screenshot, theme)
+  const activeIndex = FEATURES.findIndex((f) => f.id === activeId)
+  const screenshotSrc = getFeatureScreenshotSrc(activeFeature.screenshot)
+
+  // The five captures aren't a uniform size (and get re-exported over time), so measure
+  // them all and build one fixed canvas = the largest width × largest height. Each shot
+  // then renders at its true relative size, centered, with the leftover space matted in
+  // the module's tint — so the frame never resizes between modules and nothing is cropped.
+  const [dims, setDims] = useState<Partial<Record<Feature['id'], { w: number; h: number }>>>({})
+
+  useEffect(() => {
+    let cancelled = false
+    Promise.all(
+      FEATURES.map(
+        (f) =>
+          new Promise<[Feature['id'], { w: number; h: number } | null]>((resolve) => {
+            const img = new Image()
+            img.onload = () => resolve([f.id, { w: img.naturalWidth, h: img.naturalHeight }])
+            img.onerror = () => resolve([f.id, null])
+            img.src = getFeatureScreenshotSrc(f.screenshot)
+          })
+      )
+    ).then((entries) => {
+      if (cancelled) return
+      const next: Partial<Record<Feature['id'], { w: number; h: number }>> = {}
+      for (const [id, d] of entries) if (d) next[id] = d
+      setDims(next)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const measured = Object.values(dims) as { w: number; h: number }[]
+  const canvasW = measured.length ? Math.max(...measured.map((d) => d.w)) : 4
+  const canvasH = measured.length ? Math.max(...measured.map((d) => d.h)) : 3
+  const activeDims = dims[activeFeature.id]
+  const tintVar = MODULE_TINT[activeFeature.id]
+
+  // Cycle through modules with the arrows over the screenshot (wraps around).
+  const goToOffset = (offset: -1 | 1) => {
+    const next = (activeIndex + offset + FEATURES.length) % FEATURES.length
+    setActiveId(FEATURES[next].id)
+  }
 
   return (
     <section id="features" className="py-24 md:py-32">
@@ -131,26 +198,52 @@ export function Features() {
             ))}
           </div>
 
-          <div className="overflow-hidden rounded-lg border border-border/70 bg-card shadow-card lg:sticky lg:top-28">
-            {/* Materialize, don't just fade: incoming screenshot resolves from blur+scale
+          <div
+            className="relative overflow-hidden rounded-xl shadow-card transition-colors duration-500 lg:sticky lg:top-28"
+            style={{
+              aspectRatio: `${canvasW} / ${canvasH}`,
+              backgroundColor: `var(${tintVar})`
+            }}
+          >
+            {/* Fixed canvas = the largest capture in each axis. Every shot keeps its real
+                proportions and is matted with the module's tint, so the frame never resizes
+                between modules and nothing is cropped. Incoming shot resolves from blur+scale
                 over the outgoing one — no mode="wait" blank frame between panels. */}
-            <div className="relative aspect-[1232/870]">
-              <AnimatePresence initial={false}>
-                <motion.img
-                  key={`${activeFeature.id}-${theme}`}
-                  src={screenshotSrc}
-                  alt={`${activeFeature.title} in MemryNote`}
-                  width={1232}
-                  height={870}
-                  decoding="async"
-                  className="absolute inset-0 h-full w-full object-cover"
-                  initial={{ opacity: 0, scale: 1.02, filter: 'blur(8px)' }}
-                  animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
-                  exit={{ opacity: 0, transition: { duration: 0.3, ease: 'easeOut' } }}
-                  transition={{ duration: 0.5, ease: EASE }}
-                />
-              </AnimatePresence>
-            </div>
+            <AnimatePresence initial={false}>
+              <motion.img
+                key={activeFeature.id}
+                src={screenshotSrc}
+                alt={`${activeFeature.title} in MemryNote`}
+                decoding="async"
+                className="absolute inset-0 m-auto object-contain"
+                style={{
+                  width: activeDims ? `${(activeDims.w / canvasW) * 100}%` : '100%',
+                  height: activeDims ? `${(activeDims.h / canvasH) * 100}%` : '100%'
+                }}
+                initial={{ opacity: 0, scale: 1.02, filter: 'blur(8px)' }}
+                animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+                exit={{ opacity: 0, transition: { duration: 0.3, ease: 'easeOut' } }}
+                transition={{ duration: 0.5, ease: EASE }}
+              />
+            </AnimatePresence>
+
+            {/* Prev / next arrows — a second way to move between modules, over the shot */}
+            <button
+              type="button"
+              onClick={() => goToOffset(-1)}
+              aria-label={`Previous module (${FEATURES[(activeIndex - 1 + FEATURES.length) % FEATURES.length].title})`}
+              className="absolute start-3 top-1/2 z-10 flex size-9 -translate-y-1/2 items-center justify-center rounded-full border border-border/60 bg-card/85 text-ink/70 shadow-card backdrop-blur-sm transition-colors hover:bg-card hover:text-terracotta focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/40"
+            >
+              <ChevronLeft className="size-5" aria-hidden />
+            </button>
+            <button
+              type="button"
+              onClick={() => goToOffset(1)}
+              aria-label={`Next module (${FEATURES[(activeIndex + 1) % FEATURES.length].title})`}
+              className="absolute end-3 top-1/2 z-10 flex size-9 -translate-y-1/2 items-center justify-center rounded-full border border-border/60 bg-card/85 text-ink/70 shadow-card backdrop-blur-sm transition-colors hover:bg-card hover:text-terracotta focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/40"
+            >
+              <ChevronRight className="size-5" aria-hidden />
+            </button>
           </div>
         </motion.div>
       </Container>

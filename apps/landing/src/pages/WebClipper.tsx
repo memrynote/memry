@@ -13,8 +13,8 @@ import {
   type LucideIcon
 } from 'lucide-react'
 import { Container } from '@/components/layout/Container'
-import { FeatureHeroScreenshot } from '@/components/shared/FeatureHeroScreenshot'
 import { PageHead } from '@/components/shared/PageHead'
+import { ClipperStack } from '@/components/site/ClipperStack'
 import { Button } from '@/components/ui/button'
 import { BLUR_REVEAL_ANIMATE, BLUR_REVEAL_INITIAL, BLUR_REVEAL_TRANSITION } from '@/lib/motion'
 
@@ -189,18 +189,16 @@ function ClipperHero() {
 
         <BrowserCards />
 
+        {/* The clipper's own story, not a stand-in Inbox capture: the clipped article
+            behind, the popup that made it in front. Flat — the page is about reading the
+            capture, not styling it. */}
         <motion.div
           initial={BLUR_REVEAL_INITIAL}
           animate={BLUR_REVEAL_ANIMATE}
           transition={BLUR_REVEAL_TRANSITION}
-          className="mt-14"
+          className="mx-auto mt-14 max-w-3xl"
         >
-          <FeatureHeroScreenshot
-            screenshot="inbox"
-            alt="memrynote Inbox showing clipped web pages and links captured from the browser"
-            width={1232}
-            height={870}
-          />
+          <ClipperStack flat />
         </motion.div>
       </Container>
     </section>
