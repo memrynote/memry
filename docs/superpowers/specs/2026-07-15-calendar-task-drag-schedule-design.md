@@ -96,10 +96,20 @@ model for "due on a day" vs "scheduled at a time".
 
 ### Shared commit seam
 
-3. **`commitTaskSchedule(taskIds, { dueDate, dueTime })`** (new) — the single point both
-   drag systems converge on. Calls `tasksService.update` per id, registers one undo entry
-   for the whole drop, invalidates `['calendar','range']` plus task queries. Contains no
-   DOM logic, so it is unit-testable in isolation.
+3. **`handleDateDrop(taskIds, targetDate, options?)`** — the single point both drag
+   systems converge on. **It already exists** (`use-drag-handlers.ts:425-464`) and already
+   calls `onUpdateTask` per id, records one undo entry for the whole drop, preserves
+   `dueTime`, and toasts single vs. multi. `handleDragEnd` already routes `case 'date':`
+   to it (`:967-973`).
+
+   Rather than add a parallel `commitTaskSchedule`, extend it with an optional
+   `{ dueTime?: string | null }` — omitted preserves the current time (today's behavior,
+   unchanged), `null` clears it, `'HH:MM'` sets it.
+
+   One gap this opens: the undo action records only `previousDates`, so a drop that
+   changes the time would undo the date but leave the time wrong. The `reschedule` undo
+   action therefore also gains `previousTimes`, recorded only for time-changing drops so
+   existing section drops keep their exact current behavior.
 
    Routing through `tasksService.update` is load-bearing for sync correctness. The domain
    path computes `changedFields` via `computeChangedFields`
@@ -119,8 +129,18 @@ model for "due on a day" vs "scheduled at a time".
    `over.rect.top` and snapped through a pure `timeFromOffset(offsetY, pxPerHour)` helper
    (15-min increments, matching `useEventDrag`'s existing snap).
 
-   Droppable data shape: `{ type: 'date', date: 'YYYY-MM-DD', timed: boolean }`.
+   Droppable data shape: `{ type: 'date', date: Date, dateKey: 'YYYY-MM-DD', dueTime?: string | null }`.
    `type: 'date'` is what `drag-context.tsx:200-208` already prioritizes.
+
+   **`date` must be a `Date` object, not a string.** The established contract already
+   depends on it: `drag-context.tsx:577` announces `overData?.date?.toDateString()` and
+   `use-drag-handlers.ts:968` reads `overData?.date as Date`. Passing a string would
+   silently degrade the screen-reader announcement to "Unknown". `dateKey` rides along
+   as the exact local key for the write.
+
+   Omitting `dueTime` from the data means "preserve the task's existing time" (month
+   cells); `dueTime: null` clears it (all-day cells); timed columns resolve it from the
+   pointer at drop time.
 
 ### Sources
 
@@ -134,13 +154,16 @@ model for "due on a day" vs "scheduled at a time".
    Rows are dnd-kit draggables tagged `data: { type: 'calendar-task', taskId }` — the
    type `drag-context.tsx:386,407` already recognizes. Excludes completed and archived.
 
-6. **`hooks/use-drag-handlers.ts`** — `handleDragEnd` routes `over.data.type === 'date'`
-   to `commitTaskSchedule`. This same route makes cross-pane work for free: task rows are
-   already draggable and a single `DndContext` spans both split panes.
+6. **`hooks/use-drag-handlers.ts`** — `handleDragEnd` already routes
+   `over.data.type === 'date'` to `handleDateDrop`; it only needs to forward the
+   droppable's `dueTime` when present. This existing route makes cross-pane work for
+   free: task rows are already draggable and a single `DndContext` spans both split panes.
 
 7. **`components/calendar/use-event-drag.ts`** — `isEventMovable` admits
-   `sourceType === 'task'` alongside `'event'`; `onCommit` branches to
-   `commitTaskSchedule` for tasks vs `calendarService.updateEvent` for events.
+   `sourceType === 'task'` alongside `'event'` (keeping `!item.isAllDay`, since all-day
+   task chips belong to dnd-kit); the calendar page's move commit branches to
+   `tasksService.update({ id, dueDate, dueTime })` for tasks vs `calendarService.updateEvent`
+   for events.
 
 ## Drop semantics
 
@@ -162,10 +185,10 @@ rolls back a day in negative-offset zones (`task-date-utils.ts:139`, regression-
 ```
 drag start (rail row | tasks-pane row | month chip | all-day chip)
   → DndContext
-  → over = date droppable { date, timed }
-  → handleDragEnd
+  → over = date droppable { date, dateKey, dueTime? }
+  → handleDragEnd  (case 'date')
   → resolve taskIds (multi-select aware)
-  → commitTaskSchedule
+  → handleDateDrop → onUpdateTask x N
   → tasksService.update x N  (IPC 'tasks:update')
   → domain updateTask → publisher.taskUpdated({ changedFields })
   → sync (dueDate/dueTime clocks only) + 'calendar:changed'
@@ -176,8 +199,8 @@ drag start (rail row | tasks-pane row | month chip | all-day chip)
 Time grid (separate path, same destination):
 
 ```
-mousedown on task chip → useEventDrag → 15-min snap → onCommit
-  → branch on sourceType → commitTaskSchedule (task) | calendarService.updateEvent (event)
+mousedown on timed task chip → useEventDrag → 15-min snap → onCommit
+  → branch on sourceType → tasksService.update (task) | calendarService.updateEvent (event)
 ```
 
 ## Multi-drag
@@ -199,11 +222,14 @@ a single undo step.
 
 **Unit**
 
-- `commitTaskSchedule` with mocked `tasksService`: date/time mapping per target type,
-  multi-task, undo registration, partial failure.
+- `handleDateDrop`: `dueTime` preserved when unspecified, cleared on `null`, set on
+  `'HH:MM'`; undo restores both date and time for time-changing drops.
 - `timeFromOffset`: 15-min snapping, column bounds, top/bottom clamping.
 - `unscheduled: true` → `isNull(tasks.dueDate)`, composed with completed/archived filters.
-- `use-event-drag.test.ts` extended for `sourceType: 'task'` (move + commit branch).
+- `use-event-drag.test.ts` extended for `sourceType: 'task'`: timed task movable, all-day
+  task not movable (dnd-kit owns it), tasks never resizable, notes still read-only.
+- `DraggableTaskChip`: wraps task chips, leaves event chips untouched.
+- `UnscheduledTasksTab`: queries with `unscheduled: true`, renders draggable rows.
 
 **E2E** — one happy path (drag rail task → week grid slot → chip appears), keyed off the
 existing `data-date` attributes.
