@@ -152,8 +152,13 @@ describe('useFolderView', () => {
     mocks.evaluateFilter.mockImplementation((note: { id: string }) => note.id === 'n1')
     mocks.propertiesSet.mockResolvedValue({ success: true })
     mocks.notesUpdate.mockResolvedValue({ success: true })
+    // Spreading `window` drops prototype methods, so bind the real jsdom event
+    // target back on: the hook registers a beforeunload listener to flush writes.
     vi.stubGlobal('window', {
       ...window,
+      addEventListener: window.addEventListener.bind(window),
+      removeEventListener: window.removeEventListener.bind(window),
+      dispatchEvent: window.dispatchEvent.bind(window),
       api: {
         ...(window as any).api,
         folderView: folderApi()
@@ -448,5 +453,56 @@ describe('useFolderView', () => {
 
     expect(toast.error).toHaveBeenCalledWith('phaseI.toasts.failedToUpdateProperty')
     expect(toast.error).toHaveBeenCalledWith('phaseI.toasts.failedToUpdateTags')
+  })
+
+  it('flushes a pending column write when the hook unmounts before the debounce fires', async () => {
+    const { result, unmount } = renderHook(() => useFolderView({ folderPath: 'Work' }), {
+      wrapper: makeWrapper()
+    })
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    await act(async () => {
+      await result.current.updateColumns([{ id: 'status' }, { id: 'title' }])
+    })
+
+    // Still inside the debounce window: nothing written yet.
+    expect(window.api.folderView.setView).not.toHaveBeenCalled()
+
+    // User closes the tab / switches folder before the 300ms elapses.
+    unmount()
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    expect(window.api.folderView.setView).toHaveBeenCalledWith(
+      'Work',
+      expect.objectContaining({ columns: [{ id: 'status' }, { id: 'title' }] })
+    )
+  })
+
+  it('flushes a pending column write when the app quits (beforeunload)', async () => {
+    const { result } = renderHook(() => useFolderView({ folderPath: 'Work' }), {
+      wrapper: makeWrapper()
+    })
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    await act(async () => {
+      await result.current.updateColumns([{ id: 'status' }, { id: 'title' }])
+    })
+
+    expect(window.api.folderView.setView).not.toHaveBeenCalled()
+
+    // Electron tears the renderer down on quit; the timer never fires.
+    await act(async () => {
+      window.dispatchEvent(new Event('beforeunload'))
+      await Promise.resolve()
+    })
+
+    expect(window.api.folderView.setView).toHaveBeenCalledWith(
+      'Work',
+      expect.objectContaining({ columns: [{ id: 'status' }, { id: 'title' }] })
+    )
   })
 })

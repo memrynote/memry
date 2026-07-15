@@ -305,25 +305,28 @@ test.describe('Folder View', () => {
     page,
     testVaultPath
   }) => {
+    // Reads the persisted column ids, asserting the view actually reached disk.
+    // Returning [] on a missing config would let every assertion below pass
+    // vacuously — which is exactly how a dropped write went unnoticed.
+    const readPersistedColumnIds = (label: string): string[] => {
+      const config = readFolderConfig(testVaultPath, PROJECT_FOLDER)
+      const views = (config?.views as Array<Record<string, unknown>>) ?? []
+      expect(views.length, `${label}: .folder.md should hold at least one view`).toBeGreaterThan(0)
+      const columns = (views[0]?.columns as Array<{ id: string }>) ?? []
+      expect(columns.length, `${label}: view should persist its columns`).toBeGreaterThan(0)
+      return columns.map((col) => col.id)
+    }
+
     await openFolderView(page, PROJECT_FOLDER, PROJECT_FOLDER)
 
-    if (await openColumnSelector(page)) {
-      await toggleColumn(page, 'status')
-      await page.keyboard.press('Escape').catch(() => {})
-    }
-
+    expect(await openColumnSelector(page), 'column selector should open').toBe(true)
+    await toggleColumn(page, 'status')
+    await page.keyboard.press('Escape').catch(() => {})
     await page.waitForTimeout(600)
 
-    const configAfterAdd = readFolderConfig(testVaultPath, PROJECT_FOLDER)
-    const viewsAfterAdd = (configAfterAdd?.views as Array<Record<string, unknown>>) ?? []
-    const columnsAfterAdd = (viewsAfterAdd[0]?.columns as Array<{ id: string }>) ?? []
+    expect(readPersistedColumnIds('after add')).toContain('status')
 
-    if (columnsAfterAdd.length > 0) {
-      const hasStatus = columnsAfterAdd.some((col) => col.id === 'status')
-      expect(hasStatus).toBe(true)
-    }
-
-    // Try a reorder via drag handle
+    // Reorder via drag handle, then assert disk order matches on-screen order.
     const statusHandle = page
       .locator('th:has-text("Status") [title="Drag to reorder column"]')
       .first()
@@ -332,27 +335,21 @@ test.describe('Folder View', () => {
       (await statusHandle.isVisible().catch(() => false)) &&
       (await titleHeader.isVisible().catch(() => false))
     ) {
-      await statusHandle.dragTo(titleHeader).catch(() => {})
+      await statusHandle.dragTo(titleHeader)
       await page.waitForTimeout(600)
+
+      const persisted = readPersistedColumnIds('after reorder')
+      expect(persisted).toContain('status')
+      expect(persisted.indexOf('status')).toBeLessThan(persisted.indexOf('title'))
     }
 
     // Toggle column off to verify remove
-    if (await openColumnSelector(page)) {
-      await toggleColumn(page, 'status')
-      await page.keyboard.press('Escape').catch(() => {})
-    }
-
+    expect(await openColumnSelector(page), 'column selector should reopen').toBe(true)
+    await toggleColumn(page, 'status')
+    await page.keyboard.press('Escape').catch(() => {})
     await page.waitForTimeout(600)
-    const configAfterRemove = readFolderConfig(testVaultPath, PROJECT_FOLDER)
-    const viewsAfterRemove = (configAfterRemove?.views as Array<Record<string, unknown>>) ?? []
-    const columnsAfterRemove = (viewsAfterRemove[0]?.columns as Array<{ id: string }>) ?? []
 
-    if (columnsAfterRemove.length > 0) {
-      const hasStatus = columnsAfterRemove.some((col) => col.id === 'status')
-      expect(hasStatus).toBe(false)
-    }
-
-    expect(true).toBe(true)
+    expect(readPersistedColumnIds('after remove')).not.toContain('status')
   })
 
   test('T127: should persist sorting configuration', async ({ page, testVaultPath }) => {

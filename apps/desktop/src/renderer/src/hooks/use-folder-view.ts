@@ -19,6 +19,41 @@ import { createLogger } from '@/lib/logger'
 import { toast } from 'sonner'
 
 const log = createLogger('Hook:FolderView')
+
+/** Delay before a view edit is written to .folder.md. */
+const WRITE_DEBOUNCE_MS = 300
+
+/**
+ * A disk write waiting out its debounce window. The write itself is held next
+ * to its timer so it can be flushed rather than dropped: clearing the timer
+ * alone discards the write while the optimistic cache still shows it as saved,
+ * which loses the edit on the next launch.
+ */
+interface PendingWrite {
+  timer: ReturnType<typeof setTimeout> | null
+  run: (() => Promise<void>) | null
+}
+
+/** Run a pending write now, if one is waiting. */
+function flushWrite(ref: { current: PendingWrite }): void {
+  if (ref.current.timer) {
+    clearTimeout(ref.current.timer)
+    ref.current.timer = null
+  }
+  const run = ref.current.run
+  ref.current.run = null
+  void run?.()
+}
+
+/** Schedule a debounced write, replacing any write still pending on this slot. */
+function scheduleWrite(ref: { current: PendingWrite }, run: () => Promise<void>): void {
+  if (ref.current.timer) {
+    clearTimeout(ref.current.timer)
+  }
+  ref.current.run = run
+  ref.current.timer = setTimeout(() => flushWrite(ref), WRITE_DEBOUNCE_MS)
+}
+
 import { DEFAULT_COLUMNS, BUILT_IN_COLUMNS } from '@memry/contracts/folder-view-api'
 import type {
   FilterExpression,
@@ -233,10 +268,10 @@ export function useFolderView({
   // Local state for user's current view selection
   const [activeViewIndex, setActiveViewIndex] = useState(0)
 
-  // Debounce timer for column updates
-  const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  // Debounce timer for in-place renames (live, per-keystroke)
-  const renameTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  // Debounced write for column/sort/filter updates
+  const updateWriteRef = useRef<PendingWrite>({ timer: null, run: null })
+  // Debounced write for in-place renames (live, per-keystroke)
+  const renameWriteRef = useRef<PendingWrite>({ timer: null, run: null })
 
   // ============================================================================
   // Queries
@@ -427,28 +462,22 @@ export function useFolderView({
       })
 
       // Debounce the save to avoid too many writes
-      if (updateTimeoutRef.current) {
-        clearTimeout(updateTimeoutRef.current)
-      }
+      scheduleWrite(updateWriteRef, async () => {
+        try {
+          const result = await window.api.folderView.setView(
+            folderPath,
+            updatedView as unknown as Record<string, unknown>
+          )
 
-      updateTimeoutRef.current = setTimeout(() => {
-        void (async () => {
-          try {
-            const result = await window.api.folderView.setView(
-              folderPath,
-              updatedView as unknown as Record<string, unknown>
-            )
-
-            if (!result.success) {
-              throw new Error(result.error || 'Failed to save view')
-            }
-          } catch (err) {
-            log.error('updateView failed:', err)
-            // Revert on error
-            void queryClient.invalidateQueries({ queryKey: folderViewKeys.views(folderPath) })
+          if (!result.success) {
+            throw new Error(result.error || 'Failed to save view')
           }
-        })()
-      }, 300)
+        } catch (err) {
+          log.error('updateView failed:', err)
+          // Revert on error
+          void queryClient.invalidateQueries({ queryKey: folderViewKeys.views(folderPath) })
+        }
+      })
     },
     [activeView, activeViewIndex, folderPath, queryClient]
   )
@@ -542,26 +571,21 @@ export function useFolderView({
       )
 
       // Debounce the disk write to avoid thrashing on every keystroke
-      if (renameTimeoutRef.current) {
-        clearTimeout(renameTimeoutRef.current)
-      }
-      renameTimeoutRef.current = setTimeout(() => {
-        void (async () => {
-          try {
-            const result = await window.api.folderView.setConfig(folderPath, {
-              views: newViews
-            } as unknown as Record<string, unknown>)
+      scheduleWrite(renameWriteRef, async () => {
+        try {
+          const result = await window.api.folderView.setConfig(folderPath, {
+            views: newViews
+          } as unknown as Record<string, unknown>)
 
-            if (!result.success) {
-              throw new Error(result.error || 'Failed to rename view')
-            }
-          } catch (err) {
-            log.error('renameView failed:', err)
-            // Revert on error
-            void queryClient.invalidateQueries({ queryKey: folderViewKeys.views(folderPath) })
+          if (!result.success) {
+            throw new Error(result.error || 'Failed to rename view')
           }
-        })()
-      }, 300)
+        } catch (err) {
+          log.error('renameView failed:', err)
+          // Revert on error
+          void queryClient.invalidateQueries({ queryKey: folderViewKeys.views(folderPath) })
+        }
+      })
     },
     [views, folderPath, queryClient]
   )
@@ -712,39 +736,33 @@ export function useFolderView({
       })
 
       // Debounce the save
-      if (updateTimeoutRef.current) {
-        clearTimeout(updateTimeoutRef.current)
-      }
+      scheduleWrite(updateWriteRef, async () => {
+        try {
+          await window.api.folderView.setView(
+            folderPath,
+            updatedView as unknown as Record<string, unknown>
+          )
 
-      updateTimeoutRef.current = setTimeout(() => {
-        void (async () => {
-          try {
-            await window.api.folderView.setView(
-              folderPath,
-              updatedView as unknown as Record<string, unknown>
-            )
+          const configResult = await window.api.folderView.getConfig(folderPath)
+          const existingConfig = configResult.config
 
-            const configResult = await window.api.folderView.getConfig(folderPath)
-            const existingConfig = configResult.config
-
-            const updatedConfig = {
-              ...existingConfig,
-              properties: {
-                ...existingConfig.properties,
-                [columnId]: {
-                  ...(existingConfig.properties?.[columnId] || {}),
-                  displayName
-                }
+          const updatedConfig = {
+            ...existingConfig,
+            properties: {
+              ...existingConfig.properties,
+              [columnId]: {
+                ...(existingConfig.properties?.[columnId] || {}),
+                displayName
               }
             }
-
-            await window.api.folderView.setConfig(folderPath, updatedConfig)
-          } catch (err) {
-            log.error('Failed to save display name:', err)
-            void queryClient.invalidateQueries({ queryKey: folderViewKeys.views(folderPath) })
           }
-        })()
-      }, 300)
+
+          await window.api.folderView.setConfig(folderPath, updatedConfig)
+        } catch (err) {
+          log.error('Failed to save display name:', err)
+          void queryClient.invalidateQueries({ queryKey: folderViewKeys.views(folderPath) })
+        }
+      })
     },
     [activeView, activeViewIndex, folderPath, queryClient]
   )
@@ -988,12 +1006,19 @@ export function useFolderView({
   // Effects
   // ============================================================================
 
-  // Cleanup debounce timer
+  // Flush pending writes on unmount (tab close, folder switch) and on app quit.
+  // Both tear the hook down before the debounce fires, so a scheduled-only write
+  // would never reach .folder.md and the view would revert on the next launch.
   useEffect(() => {
+    const flushAll = (): void => {
+      flushWrite(updateWriteRef)
+      flushWrite(renameWriteRef)
+    }
+
+    window.addEventListener('beforeunload', flushAll)
     return () => {
-      if (updateTimeoutRef.current) {
-        clearTimeout(updateTimeoutRef.current)
-      }
+      window.removeEventListener('beforeunload', flushAll)
+      flushAll()
     }
   }, [])
 
