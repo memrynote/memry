@@ -56,7 +56,17 @@ calendar_binding, calendar_external_event, agent_conversation, agent_message
 
 This constant is frozen forever. It is never edited when a new type is added; that is the whole point.
 
-**Cursor correctness (the sharp edge):** `nextCursor` must be derived from the maximum **scanned** `serverCursor`, not the maximum **returned** one. If a page consists entirely of filtered-out types, the old client receives an empty `items` array; `pullChangesPage` returns `false` and pull stops. If the cursor did not advance across the filtered rows, that client stalls permanently. Test this first.
+**Cursor correctness — resolved, no change needed.** An earlier draft of this spec claimed `nextCursor` had to be derived from the maximum _scanned_ `serverCursor` or old clients would stall on all-filtered pages. **That was wrong.** `getChanges` (`apps/sync-server/src/services/sync.ts:553-610`) already applies `item_type IN (...)` in SQL, **before** `LIMIT`:
+
+```sql
+WHERE user_id = ? AND vault_id = ? AND server_cursor > ? AND item_type IN (${placeholders})
+ORDER BY server_cursor ASC
+LIMIT ?
+```
+
+Filtered-out rows therefore never enter the result set, and a page is always full of allowed rows up to the limit. `nextCursor = pageRows[pageRows.length - 1]?.server_cursor ?? cursor` steps over excluded rows for free and never rewinds. If every remaining row is a template, the page is simply empty, `hasMore` is false, and the client correctly stops — there is nothing to stall on. The existing cursor design is correct as-is.
+
+What this changes: the type-filtering machinery (`RECORD_SYNC_ITEM_TYPE_PLACEHOLDERS` + the `item_type IN (...)` bind) **already exists**. The server filters against its own compile-time `RECORD_SYNC_ITEM_TYPES` — which is exactly the bug, since deploying a server whose contracts include `template` makes it serve template refs to every client. Plan A is therefore a narrow change: make that list per-request instead of compile-time constant.
 
 **Client-side hardening (defence in depth):** new clients also filter unknown types out of `changes.items` before building `itemIds`. This does not help already-shipped binaries — only D1 does — but it stops a future type from breaking this generation of clients if the header path ever regresses.
 
@@ -107,7 +117,7 @@ Backward compatibility is mandatory — this is a live beta with real users on m
 
 **Migration tests:** imports custom templates from legacy files; idempotent across repeated runs; id preserved from frontmatter; built-ins skipped; missing `.memry/templates/` is a no-op.
 
-**Server tests:** filters by header; missing header → legacy list; **cursor advances past filtered-out rows** (the stall regression).
+**Server tests:** `getChanges`/`getManifest`/`pullItems` bind only the negotiated types; a header-less request is served the frozen legacy list (the regression that protects shipped binaries); an unknown type in the header is dropped rather than bound; `pullItems`' `BATCH_SIZE` stays correct as the negotiated list length varies.
 
 **E2E** (`templates-sync.e2e.ts`) on the existing dual-device harness — `fixtures/sync-auth-fixtures` (`electronAppA/B`, `pageA/pageB`, `bootstrappedSyncPair`) with `utils/network-control` (`goOffline`/`goOnline`/`syncBothAndWait`), modelled on `body-crdt-create-propagation.e2e.ts`:
 
@@ -120,13 +130,13 @@ Backward compatibility is mandatory — this is a live beta with real users on m
 
 ## Risks
 
-| Risk                                       | Mitigation                                                                    |
-| ------------------------------------------ | ----------------------------------------------------------------------------- |
-| Cursor stalls on all-filtered pages        | Derive `nextCursor` from max scanned cursor; dedicated server test.           |
-| `ENCRYPTABLE_ITEM_TYPES` omitted           | Sync silently drops the type — explicit checklist item + handler test.        |
-| Mutations bypass `local-mutations` enqueue | Templates seed once then never sync — asserted in tests.                      |
-| Desktop ships before server                | Old clients break. Deploy order is a hard rule in both plans.                 |
-| Drizzle migration assumed automatic        | False. Hand-written SQL under `apps/desktop/src/main/database/drizzle-data/`. |
+| Risk                                       | Mitigation                                                                                                    |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| Header-less request served new types       | The one regression that matters: absent header MUST resolve to the frozen legacy list. Dedicated server test. |
+| `ENCRYPTABLE_ITEM_TYPES` omitted           | Sync silently drops the type — explicit checklist item + handler test.                                        |
+| Mutations bypass `local-mutations` enqueue | Templates seed once then never sync — asserted in tests.                                                      |
+| Desktop ships before server                | Old clients break. Deploy order is a hard rule in both plans.                                                 |
+| Drizzle migration assumed automatic        | False. Hand-written SQL under `apps/desktop/src/main/database/drizzle-data/`.                                 |
 
 ## Plan split
 
