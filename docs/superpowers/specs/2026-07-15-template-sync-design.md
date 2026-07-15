@@ -70,7 +70,7 @@ Filtered-out rows therefore never enter the result set, and a page is always ful
 
 What this changes: the type-filtering machinery (`RECORD_SYNC_ITEM_TYPE_PLACEHOLDERS` + the `item_type IN (...)` bind) **already exists**. The server filters against its own compile-time `RECORD_SYNC_ITEM_TYPES` — which is exactly the bug, since deploying a server whose contracts include `template` makes it serve template refs to every client. Plan A is therefore a narrow change: make that list per-request instead of compile-time constant.
 
-**Client-side hardening (defence in depth):** new clients also filter unknown types out of `changes.items` before building `itemIds`. This does not help already-shipped binaries — only D1 does — but it stops a future type from breaking this generation of clients if the header path ever regresses.
+**Client-side hardening — cut as YAGNI.** An earlier draft proposed that new clients also filter unknown types out of `changes.items` before building `itemIds`. Dropped: once the server serves only negotiated types, this protects nothing D1 does not already protect, and it cannot help already-shipped binaries either way. Not implemented in Plan A.
 
 **Deploy order (hard rule):** sync-server to production **before** any desktop build carrying the `template` type reaches users.
 
