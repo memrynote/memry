@@ -24,7 +24,7 @@ import {
   generateUniquePath,
   generateUniquePathSync
 } from './file-ops'
-import { NoteError } from '../lib/errors'
+import { NoteError, NoteErrorCode } from '../lib/errors'
 
 vi.mock('fs/promises', async (importOriginal) => {
   const actual = await importOriginal<typeof import('fs/promises')>()
@@ -33,6 +33,14 @@ vi.mock('fs/promises', async (importOriginal) => {
     rename: vi.fn(actual.rename)
   }
 })
+
+const { loggerMock } = vi.hoisted(() => ({
+  loggerMock: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
+}))
+
+vi.mock('../lib/logger', () => ({
+  createLogger: () => loggerMock
+}))
 
 // ============================================================================
 // Test Helpers
@@ -137,9 +145,21 @@ describe('atomicWrite transient lock retry', () => {
     return error
   }
 
+  // Returns the NoteError atomicWrite rejected with, so tests can inspect the
+  // cause/telemetry code rather than only asserting that it threw.
+  async function atomicWriteError(filePath: string, content: string): Promise<NoteError> {
+    try {
+      await atomicWrite(filePath, content)
+    } catch (error) {
+      return error as NoteError
+    }
+    throw new Error('expected atomicWrite to reject')
+  }
+
   beforeEach(() => {
     tempDir = createTempDir()
     renameMock.mockClear()
+    loggerMock.warn.mockClear()
   })
 
   afterEach(() => {
@@ -156,6 +176,23 @@ describe('atomicWrite transient lock retry', () => {
     expect(fs.readFileSync(filePath, 'utf-8')).toBe('content after retry')
   })
 
+  it('logs each transient retry attempt with its errno, never the file path', async () => {
+    // #given a vault file that is briefly locked (OneDrive/antivirus on Windows)
+    const filePath = path.join(tempDir.path, 'logged.txt')
+    renameMock.mockRejectedValueOnce(errnoError('EBUSY'))
+
+    // #when the write succeeds on the retry
+    await atomicWrite(filePath, 'content')
+
+    // #then the local log explains the slow save: which errno, which attempt
+    expect(loggerMock.warn).toHaveBeenCalledTimes(1)
+    const logged = loggerMock.warn.mock.calls[0].join(' ')
+    expect(logged).toContain('EBUSY')
+    expect(logged).toContain('1')
+    // #and the log line is about the operation, not the private path
+    expect(logged).not.toContain(filePath)
+  })
+
   it('propagates the error after exhausting retries on persistent EBUSY', async () => {
     const filePath = path.join(tempDir.path, 'always-locked.txt')
     renameMock
@@ -164,13 +201,19 @@ describe('atomicWrite transient lock retry', () => {
       .mockRejectedValueOnce(errnoError('EBUSY'))
       .mockRejectedValueOnce(errnoError('EBUSY'))
 
-    await expect(atomicWrite(filePath, 'never lands')).rejects.toThrow(NoteError)
+    const error = await atomicWriteError(filePath, 'never lands')
 
+    expect(error).toBeInstanceOf(NoteError)
     expect(renameMock).toHaveBeenCalledTimes(4)
     expect(fs.existsSync(filePath)).toBe(false)
 
     const tempFiles = fs.readdirSync(tempDir.path).filter((f) => f.endsWith('.tmp'))
     expect(tempFiles).toHaveLength(0)
+
+    // #then the errno survives all four attempts — otherwise a lock is
+    // indistinguishable from a full disk in telemetry
+    expect((error.cause as NodeJS.ErrnoException).code).toBe('EBUSY')
+    expect(error.telemetryCode).toBe('NOTE_WRITE_FAILED:EBUSY')
   })
 
   it('does not retry non-retryable errors like ENOENT', async () => {
@@ -180,6 +223,40 @@ describe('atomicWrite transient lock retry', () => {
     await expect(atomicWrite(filePath, 'content')).rejects.toThrow(NoteError)
 
     expect(renameMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('preserves a non-transient ENOSPC cause instead of swallowing it', async () => {
+    // #given a write that fails because the disk is full (not a lock)
+    const filePath = path.join(tempDir.path, 'full-disk.txt')
+    renameMock.mockRejectedValueOnce(errnoError('ENOSPC'))
+
+    // #when the note save fails
+    const error = await atomicWriteError(filePath, 'content')
+
+    // #then the errno reaches the caller, so "disk full" is distinguishable
+    // from "antivirus locked the file"
+    expect(error).toBeInstanceOf(NoteError)
+    expect(error.code).toBe(NoteErrorCode.WRITE_FAILED)
+    expect((error.cause as NodeJS.ErrnoException).code).toBe('ENOSPC')
+    // #and it fails fast rather than retrying an unrecoverable condition
+    expect(renameMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('exposes a telemetry code with the errno and never the file path', async () => {
+    // #given a write failure on a path that is private user data
+    const filePath = path.join(tempDir.path, 'private-note.txt')
+    renameMock.mockRejectedValueOnce(errnoError('ENOSPC'))
+
+    // #when the resulting error is prepared for telemetry
+    const error = await atomicWriteError(filePath, 'content')
+
+    // #then the code identifies the failure precisely
+    expect(error.telemetryCode).toBe('NOTE_WRITE_FAILED:ENOSPC')
+    // #and carries nothing path-derived (privacy: paths must never be sent)
+    expect(error.telemetryCode).not.toContain(filePath)
+    expect(error.telemetryCode).not.toContain('private-note')
+    expect(error.telemetryCode).not.toContain(path.sep)
+    expect(error.telemetryCode).not.toContain(tempDir.path)
   })
 })
 
@@ -196,6 +273,24 @@ describe('safeRead', () => {
 
   afterEach(() => {
     tempDir.cleanup()
+  })
+
+  it('preserves the originating errno as cause when read fails', async () => {
+    // #given a path that exists but is not a readable file
+    let error: NoteError | undefined
+
+    // #when the read fails for a reason other than "missing"
+    try {
+      await safeRead(tempDir.path)
+    } catch (err) {
+      error = err as NoteError
+    }
+
+    // #then the errno survives for diagnosis, and the code names it
+    expect(error).toBeInstanceOf(NoteError)
+    expect(error?.code).toBe(NoteErrorCode.READ_FAILED)
+    expect((error?.cause as NodeJS.ErrnoException).code).toBeTruthy()
+    expect(error?.telemetryCode).toMatch(/^NOTE_READ_FAILED:[A-Z0-9]+$/)
   })
 
   it('T345: returns content for existing file', async () => {
@@ -412,6 +507,26 @@ describe('deleteFile', () => {
     await deleteFile(filePath)
 
     expect(fs.existsSync(filePath)).toBe(false)
+  })
+
+  it('preserves the originating errno as cause when delete fails', async () => {
+    // #given a path that exists but cannot be unlinked (it is a directory)
+    const dirPath = path.join(tempDir.path, 'a-directory')
+    fs.mkdirSync(dirPath)
+
+    // #when the delete fails
+    let error: NoteError | undefined
+    try {
+      await deleteFile(dirPath)
+    } catch (err) {
+      error = err as NoteError
+    }
+
+    // #then the errno survives for diagnosis, and the code names it
+    expect(error).toBeInstanceOf(NoteError)
+    expect(error?.code).toBe(NoteErrorCode.DELETE_FAILED)
+    expect((error?.cause as NodeJS.ErrnoException).code).toBeTruthy()
+    expect(error?.telemetryCode).toMatch(/^NOTE_DELETE_FAILED:[A-Z0-9]+$/)
   })
 
   it('T349: does not throw for non-existent file', async () => {
