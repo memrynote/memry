@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { Plus, Check, Loader2, X, Cloud } from '@/lib/icons'
+import { Plus, Check, Loader2, X, Cloud, Trash2 } from '@/lib/icons'
 
 import { Picker } from '@/components/ui/picker'
 import {
@@ -12,6 +12,8 @@ import {
 } from '@/components/ui/sidebar'
 import {
   AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -25,6 +27,7 @@ import { useAccountVaults } from '@/hooks/use-account-vaults'
 import { useSettingsModal } from '@/contexts/settings-modal-context'
 import { useAuth } from '@/contexts/auth-context'
 import { DownloadVaultDialog } from '@/components/download-vault-dialog'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import type { AccountVaultInfo, VaultInfo } from '../../../preload/index.d'
 import { useT } from '@memry/i18n/renderer'
 
@@ -39,6 +42,9 @@ export function VaultSwitcher() {
   const [vaultToRemove, setVaultToRemove] = useState<VaultInfo | null>(null)
   const [vaultToDownload, setVaultToDownload] = useState<AccountVaultInfo | null>(null)
   const [open, setOpen] = useState(false)
+  const [vaultToDelete, setVaultToDelete] = useState<{ uuid: string; name: string } | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   const isAuthenticated = authState.status === 'authenticated'
   const remoteOnlyVaults = accountVaults.filter((vault) => !vault.localPath)
@@ -76,6 +82,28 @@ export function VaultSwitcher() {
       })
     }
   }
+
+  const handleDeleteClick = (e: React.MouseEvent, uuid: string, name: string): void => {
+    e.stopPropagation()
+    setDeleteError(null)
+    setVaultToDelete({ uuid, name })
+  }
+
+  const handleConfirmDelete = useCallback(async () => {
+    if (!vaultToDelete) return
+    setDeleting(true)
+    try {
+      await window.api.vault.deleteFromAccount(vaultToDelete.uuid)
+      setVaultToDelete(null)
+      await refreshAccountVaults()
+    } catch (err) {
+      setDeleteError(
+        extractErrorMessage(err, tPhaseF('phaseF.componentsVaultSwitcher.deleteVaultFailed'))
+      )
+    } finally {
+      setDeleting(false)
+    }
+  }, [vaultToDelete, refreshAccountVaults, tPhaseF])
 
   return (
     <SidebarMenu>
@@ -147,18 +175,39 @@ export function VaultSwitcher() {
                         {vault.name}
                       </span>
                       {!isActive && (
-                        <span
-                          role="button"
-                          tabIndex={0}
-                          onClick={(e) => handleRemoveClick(e, vault)}
-                          onKeyDown={(e) =>
-                            e.key === 'Enter' &&
-                            handleRemoveClick(e as unknown as React.MouseEvent, vault)
-                          }
-                          className="size-5 flex items-center justify-center rounded opacity-0 group-hover/vault:opacity-100 hover:bg-accent transition-all"
-                          aria-label={`Remove ${vault.name} from list`}
-                        >
-                          <X className="size-3 text-muted-foreground" />
+                        <span className="flex items-center gap-0.5 opacity-0 group-hover/vault:opacity-100 transition-all">
+                          <span
+                            role="button"
+                            tabIndex={0}
+                            onClick={(e) => handleRemoveClick(e, vault)}
+                            onKeyDown={(e) =>
+                              e.key === 'Enter' &&
+                              handleRemoveClick(e as unknown as React.MouseEvent, vault)
+                            }
+                            className="size-5 flex items-center justify-center rounded hover:bg-accent"
+                            aria-label={`Remove ${vault.name} from list`}
+                          >
+                            <X className="size-3 text-muted-foreground" />
+                          </span>
+                          {vault.vaultUuid && isAuthenticated && (
+                            <span
+                              role="button"
+                              tabIndex={0}
+                              onClick={(e) => handleDeleteClick(e, vault.vaultUuid!, vault.name)}
+                              onKeyDown={(e) =>
+                                e.key === 'Enter' &&
+                                handleDeleteClick(
+                                  e as unknown as React.MouseEvent,
+                                  vault.vaultUuid!,
+                                  vault.name
+                                )
+                              }
+                              className="size-5 flex items-center justify-center rounded hover:bg-destructive/10"
+                              aria-label={`Delete ${vault.name} from account`}
+                            >
+                              <Trash2 className="size-3 text-muted-foreground" />
+                            </span>
+                          )}
                         </span>
                       )}
                     </button>
@@ -192,6 +241,29 @@ export function VaultSwitcher() {
                         {tPhaseF('phaseF.componentsVaultSwitcher.itemsCount', {
                           count: vault.itemCount
                         })}
+                      </span>
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        onClick={(e) =>
+                          handleDeleteClick(
+                            e,
+                            vault.vaultUuid,
+                            vault.name ?? tPhaseF('phaseF.componentsVaultSwitcher.untitledVault')
+                          )
+                        }
+                        onKeyDown={(e) =>
+                          e.key === 'Enter' &&
+                          handleDeleteClick(
+                            e as unknown as React.MouseEvent,
+                            vault.vaultUuid,
+                            vault.name ?? tPhaseF('phaseF.componentsVaultSwitcher.untitledVault')
+                          )
+                        }
+                        className="size-5 flex items-center justify-center rounded hover:bg-destructive/10"
+                        aria-label={`Delete ${vault.name ?? 'vault'} from account`}
+                      >
+                        <Trash2 className="size-3 text-muted-foreground" />
                       </span>
                     </button>
                   ))}
@@ -232,8 +304,9 @@ export function VaultSwitcher() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {tPhaseF('phaseF.componentsVaultSwitcher.remove')}
-              {vaultToRemove?.name}&{tPhaseF('phaseF.componentsVaultSwitcher.rdquoFromList')}
+              {tPhaseF('phaseF.componentsVaultSwitcher.removeVaultTitle', {
+                name: vaultToRemove?.name ?? ''
+              })}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {tPhaseF(
@@ -248,6 +321,45 @@ export function VaultSwitcher() {
             <Button variant="destructive" onClick={handleConfirmRemove}>
               {tPhaseF('phaseF.componentsVaultSwitcher.remove2')}
             </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={!!vaultToDelete}
+        onOpenChange={(o) => {
+          if (!o) {
+            setVaultToDelete(null)
+            setDeleteError(null)
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {tPhaseF('phaseF.componentsVaultSwitcher.deleteVaultTitle', {
+                name: vaultToDelete?.name ?? ''
+              })}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {tPhaseF('phaseF.componentsVaultSwitcher.deleteVaultBody')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {deleteError && <p className="text-xs/4 text-destructive px-1">{deleteError}</p>}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>
+              {tPhaseF('phaseF.componentsVaultSwitcher.cancel')}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault()
+                void handleConfirmDelete()
+              }}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {tPhaseF('phaseF.componentsVaultSwitcher.deleteVaultConfirm')}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

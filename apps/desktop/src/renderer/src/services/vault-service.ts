@@ -100,6 +100,13 @@ export const vaultService: VaultClientAPI = {
    */
   downloadRemote: (vaultUuid: string, parentPath?: string): Promise<SelectVaultResponse> => {
     return window.api.vault.downloadRemote(vaultUuid, parentPath)
+  },
+
+  /**
+   * Purge a vault from the signed-in account. Never touches local files.
+   */
+  deleteFromAccount: (vaultUuid: string): Promise<void> => {
+    return window.api.vault.deleteFromAccount(vaultUuid)
   }
 }
 
