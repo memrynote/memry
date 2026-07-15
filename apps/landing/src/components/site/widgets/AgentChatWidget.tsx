@@ -205,10 +205,8 @@ export function AgentChatWidget({ className }: AgentChatWidgetProps) {
     const text = input.trim()
     if (!text || isReplying) return
     setInput('')
-    setMessages((prev) => [
-      ...prev,
-      { id: nextIdRef.current++, role: 'user', text, complete: true, appended: true }
-    ])
+    const id = nextIdRef.current++
+    setMessages((prev) => [...prev, { id, role: 'user', text, complete: true, appended: true }])
     startReply()
   }
 

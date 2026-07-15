@@ -32,7 +32,12 @@ const WIDGET_SHADOW =
   '0 0 0 1px rgba(0,0,0,0.06), 0 14px 32px rgba(0,0,0,0.08), 0 28px 70px rgba(0,0,0,0.05)'
 const COMPOSER_SHADOW = 'inset 0 1px 0 rgba(255,255,255,0.65), 0 0 0 2px rgba(107,138,173,0.08)'
 
-type Line = { kind: 'cmd'; text: string } | { kind: 'out'; text: string }
+type Line = { id: number; kind: 'cmd' | 'out'; text: string }
+
+// Scrollback is capped with slice(-MAX_LINES), so a line's index shifts as old lines drop.
+// Ids keep each line's React identity stable across that shift.
+let lineSeq = 0
+const nextLineId = () => lineSeq++
 
 // The auto-play loop — types the whole set, then clears and starts over, until you take
 // over the prompt.
@@ -50,8 +55,8 @@ const DEMO: { cmd: string; out: string }[] = [
 
 // Steady session shown when motion is reduced — the same commands, no typing animation.
 const SEED: Line[] = DEMO.flatMap((d) => [
-  { kind: 'cmd' as const, text: d.cmd },
-  { kind: 'out' as const, text: d.out }
+  { id: nextLineId(), kind: 'cmd' as const, text: d.cmd },
+  { id: nextLineId(), kind: 'out' as const, text: d.out }
 ])
 
 // Timings run at 5× — a brisk demo that types, answers, and loops fast.
@@ -154,11 +159,9 @@ export function CliWidget({ className }: CliWidgetProps) {
       const { cmd, out } = DEMO[demoRef.current]
       const wasLast = demoRef.current === DEMO.length - 1
       setInput('')
-      setHistory((h) =>
-        [...h, { kind: 'cmd' as const, text: cmd }, { kind: 'out' as const, text: out }].slice(
-          -MAX_LINES
-        )
-      )
+      const cmdLine: Line = { id: nextLineId(), kind: 'cmd', text: cmd }
+      const outLine: Line = { id: nextLineId(), kind: 'out', text: out }
+      setHistory((h) => [...h, cmdLine, outLine].slice(-MAX_LINES))
       demoRef.current = (demoRef.current + 1) % DEMO.length
       charRef.current = 0
       if (wasLast) {
@@ -191,13 +194,9 @@ export function CliWidget({ className }: CliWidgetProps) {
     event.preventDefault()
     const cmd = input.trim()
     if (!cmd) return
-    setHistory((h) =>
-      [
-        ...h,
-        { kind: 'cmd' as const, text: cmd },
-        { kind: 'out' as const, text: respond(cmd) }
-      ].slice(-MAX_LINES)
-    )
+    const cmdLine: Line = { id: nextLineId(), kind: 'cmd', text: cmd }
+    const outLine: Line = { id: nextLineId(), kind: 'out', text: respond(cmd) }
+    setHistory((h) => [...h, cmdLine, outLine].slice(-MAX_LINES))
     setInput('')
   }
 
@@ -247,11 +246,11 @@ export function CliWidget({ className }: CliWidgetProps) {
         className="min-h-0 flex-1 overflow-y-auto px-4 py-3"
         style={{ backgroundColor: TERM.body, fontFamily: MONO, fontSize: 11.5, lineHeight: 1.65 }}
       >
-        {history.map((line, i) =>
+        {history.map((line) =>
           line.kind === 'cmd' ? (
-            <CommandLine key={i} text={line.text} />
+            <CommandLine key={line.id} text={line.text} />
           ) : (
-            <div key={i} className="pl-[22px]" style={{ color: TERM.muted }}>
+            <div key={line.id} className="pl-[22px]" style={{ color: TERM.muted }}>
               → {line.text}
             </div>
           )
