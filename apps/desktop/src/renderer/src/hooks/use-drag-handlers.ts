@@ -31,11 +31,17 @@ interface UndoAction {
   previousStatusIds?: Map<string, string>
   previousPriorities?: Map<string, Priority>
   previousDates?: Map<string, Date | null>
+  previousTimes?: Map<string, string | null>
   previousOrder?: string[]
   previousOrderUpdates?: Record<string, string[] | null>
   previousTaskState?: Map<string, Partial<Task>>
   sectionId?: string
   deletedTasks?: Task[]
+}
+
+export interface DateDropOptions {
+  /** Omit to keep the task's current time; null clears it; 'HH:MM' sets it. */
+  dueTime?: string | null
 }
 
 interface UseDragHandlersProps {
@@ -223,7 +229,16 @@ export const useDragHandlers = ({
       case 'reschedule':
         if (lastAction.previousDates) {
           lastAction.previousDates.forEach((date, taskId) => {
-            onUpdateTask(taskId, { dueDate: date })
+            // previousTimes is only recorded for drops that changed the time.
+            // Without it, restore the date alone and leave dueTime as-is.
+            if (lastAction.previousTimes) {
+              onUpdateTask(taskId, {
+                dueDate: date,
+                dueTime: lastAction.previousTimes.get(taskId) ?? null
+              })
+            } else {
+              onUpdateTask(taskId, { dueDate: date })
+            }
           })
         }
         break
@@ -423,25 +438,34 @@ export const useDragHandlers = ({
 
   // Handle dropping on a date cell (calendar)
   const handleDateDrop = useCallback(
-    (taskIds: string[], targetDate: Date) => {
-      // Store previous dates for undo
+    (taskIds: string[], targetDate: Date, options: DateDropOptions = {}) => {
+      const changesTime = 'dueTime' in options
+
+      // Store previous dates (and times, when the drop changes them) for undo
       const previousDates = new Map<string, Date | null>()
+      const previousTimes = new Map<string, string | null>()
       taskIds.forEach((id) => {
         const task = tasks.find((t) => t.id === id)
         previousDates.set(id, task?.dueDate || null)
+        previousTimes.set(id, task?.dueTime ?? null)
       })
 
       // Update all tasks
       taskIds.forEach((id) => {
         const task = tasks.find((t) => t.id === id)
-        // Preserve time if set
+        const nextDueTime = changesTime ? (options.dueTime ?? null) : (task?.dueTime ?? null)
+
         let newDueDate = startOfDay(targetDate)
-        if (task?.dueTime) {
-          const [hours, minutes] = task.dueTime.split(':').map(Number)
+        if (nextDueTime) {
+          const [hours, minutes] = nextDueTime.split(':').map(Number)
           newDueDate = new Date(newDueDate)
           newDueDate.setHours(hours, minutes)
         }
-        onUpdateTask(id, { dueDate: newDueDate })
+
+        onUpdateTask(
+          id,
+          changesTime ? { dueDate: newDueDate, dueTime: nextDueTime } : { dueDate: newDueDate }
+        )
       })
 
       // Record for undo
@@ -449,7 +473,8 @@ export const useDragHandlers = ({
         {
           type: 'reschedule',
           taskIds,
-          previousDates
+          previousDates,
+          ...(changesTime ? { previousTimes } : {})
         },
         `Rescheduled to ${formatDateShort(targetDate)}`
       )
@@ -967,7 +992,15 @@ export const useDragHandlers = ({
         case 'date': {
           const targetDate = overData?.date as Date
           if (targetDate) {
-            handleDateDrop(taskIds, targetDate)
+            // Droppables that represent a specific slot supply dueTime; month
+            // cells omit the key entirely so the task keeps its current time.
+            handleDateDrop(
+              taskIds,
+              targetDate,
+              'dueTime' in (overData ?? {})
+                ? { dueTime: overData?.dueTime as string | null }
+                : undefined
+            )
           }
           break
         }

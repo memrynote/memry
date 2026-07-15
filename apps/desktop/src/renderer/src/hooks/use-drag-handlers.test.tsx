@@ -1725,4 +1725,167 @@ describe('useDragHandlers', () => {
       })
     })
   })
+
+  describe('handleDateDrop time handling', () => {
+    it('leaves dueTime untouched when no time option is given', () => {
+      const tasks = [
+        createTask({ id: 'task-1', dueDate: new Date('2026-07-10T00:00:00'), dueTime: '09:00' })
+      ]
+      const onUpdateTask = vi.fn()
+
+      const { result } = renderHook(() =>
+        useDragHandlers({
+          tasks,
+          projects: [createProject()],
+          onUpdateTask,
+          onDeleteTask: vi.fn(),
+          onReorder: vi.fn()
+        })
+      )
+
+      act(() => {
+        result.current.handleDragEnd(
+          createDragEvent({
+            over: {
+              id: 'date-2026-07-15',
+              data: {
+                current: {
+                  type: 'date',
+                  date: new Date('2026-07-15T00:00:00')
+                }
+              }
+            }
+          }),
+          createDragState({ overType: 'date' })
+        )
+      })
+
+      expect(onUpdateTask).toHaveBeenCalledWith('task-1', {
+        dueDate: new Date('2026-07-15T09:00:00')
+      })
+    })
+
+    it('clears dueTime when the drop target specifies dueTime: null', () => {
+      const tasks = [
+        createTask({ id: 'task-1', dueDate: new Date('2026-07-10T00:00:00'), dueTime: '09:00' })
+      ]
+      const onUpdateTask = vi.fn()
+
+      const { result } = renderHook(() =>
+        useDragHandlers({
+          tasks,
+          projects: [createProject()],
+          onUpdateTask,
+          onDeleteTask: vi.fn(),
+          onReorder: vi.fn()
+        })
+      )
+
+      act(() => {
+        result.current.handleDragEnd(
+          createDragEvent({
+            over: {
+              id: 'date-2026-07-15',
+              data: {
+                current: {
+                  type: 'date',
+                  date: new Date('2026-07-15T00:00:00'),
+                  dueTime: null
+                }
+              }
+            }
+          }),
+          createDragState({ overType: 'date' })
+        )
+      })
+
+      expect(onUpdateTask).toHaveBeenCalledWith('task-1', {
+        dueDate: new Date('2026-07-15T00:00:00'),
+        dueTime: null
+      })
+    })
+
+    it('sets dueTime when the drop target specifies a time string', () => {
+      const tasks = [createTask({ id: 'task-1', dueDate: null, dueTime: null })]
+      const onUpdateTask = vi.fn()
+
+      const { result } = renderHook(() =>
+        useDragHandlers({
+          tasks,
+          projects: [createProject()],
+          onUpdateTask,
+          onDeleteTask: vi.fn(),
+          onReorder: vi.fn()
+        })
+      )
+
+      act(() => {
+        result.current.handleDragEnd(
+          createDragEvent({
+            over: {
+              id: 'date-2026-07-15',
+              data: {
+                current: {
+                  type: 'date',
+                  date: new Date('2026-07-15T00:00:00'),
+                  dueTime: '14:30'
+                }
+              }
+            }
+          }),
+          createDragState({ overType: 'date' })
+        )
+      })
+
+      expect(onUpdateTask).toHaveBeenCalledWith('task-1', {
+        dueDate: new Date('2026-07-15T14:30:00'),
+        dueTime: '14:30'
+      })
+    })
+
+    it('restores both date and time on undo of a time-changing drop', () => {
+      const tasks = [
+        createTask({ id: 'task-1', dueDate: new Date('2026-07-10T00:00:00'), dueTime: '09:00' })
+      ]
+      const onUpdateTask = vi.fn()
+
+      const { result } = renderHook(() =>
+        useDragHandlers({
+          tasks,
+          projects: [createProject()],
+          onUpdateTask,
+          onDeleteTask: vi.fn(),
+          onReorder: vi.fn()
+        })
+      )
+
+      act(() => {
+        result.current.handleDragEnd(
+          createDragEvent({
+            over: {
+              id: 'date-2026-07-15',
+              data: {
+                current: {
+                  type: 'date',
+                  date: new Date('2026-07-15T00:00:00'),
+                  dueTime: null
+                }
+              }
+            }
+          }),
+          createDragState({ overType: 'date' })
+        )
+      })
+
+      onUpdateTask.mockClear()
+      act(() => {
+        result.current.undo()
+      })
+
+      expect(onUpdateTask).toHaveBeenCalledWith('task-1', {
+        dueDate: new Date('2026-07-10T00:00:00'),
+        dueTime: '09:00'
+      })
+    })
+  })
 })
