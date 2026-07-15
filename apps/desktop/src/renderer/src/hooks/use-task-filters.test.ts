@@ -13,7 +13,9 @@ import {
   dbToFrontendFilter,
   frontendToDbConfig,
   readPersistedFilterState,
-  FILTERS_STORAGE_KEY
+  loadSavedFilters,
+  FILTERS_STORAGE_KEY,
+  SAVED_FILTERS_KEY
 } from './use-task-filters'
 import { defaultFilters, defaultSort } from '@/data/tasks-data'
 import type { Task, Priority } from '@/data/task-model'
@@ -1122,5 +1124,30 @@ describe('readPersistedFilterState', () => {
       JSON.stringify({ all: { filters: { search: '', projectIds: [], priorities: [] } } })
     )
     expect(readPersistedFilterState('all').tags).toEqual([])
+  })
+})
+
+describe('loadSavedFilters', () => {
+  beforeEach(() => {
+    localStorageMock.clear()
+  })
+
+  it('backfills tags when reading a legacy savedTaskFilters entry that predates the tags field', () => {
+    // Untyped object literal, matching createDbSavedFilter's approach: it
+    // genuinely omits `tags`, mirroring rows written by builds before the
+    // tags field existed. This key is read-only legacy storage (never
+    // written by current code), reached via the DB-read catch fallback.
+    const legacyEntry = {
+      id: 'legacy-1',
+      name: 'Legacy Filter',
+      filters: { search: '', projectIds: [], priorities: [] },
+      starred: false,
+      createdAt: new Date().toISOString()
+    }
+    localStorage.setItem(SAVED_FILTERS_KEY, JSON.stringify([legacyEntry]))
+
+    const result = loadSavedFilters()
+
+    expect(result[0].filters.tags).toEqual([])
   })
 })

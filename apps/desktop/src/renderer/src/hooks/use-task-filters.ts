@@ -48,7 +48,7 @@ const getDefaultSortForView = (activeView: string): TaskSort =>
 
 export const FILTERS_STORAGE_KEY = 'taskFilters'
 const SORT_STORAGE_KEY = 'taskSortPrefs'
-const SAVED_FILTERS_KEY = 'savedTaskFilters'
+export const SAVED_FILTERS_KEY = 'savedTaskFilters'
 
 interface PersistedFilterState {
   filters: TaskFilters
@@ -119,14 +119,18 @@ const loadPersistedSortState = (sortKey: string): PersistedSortState | null => {
 /**
  * Load saved filters from localStorage (fallback for backwards compatibility)
  */
-const loadSavedFilters = (): SavedFilter[] => {
+export const loadSavedFilters = (): SavedFilter[] => {
   try {
     const stored = localStorage.getItem(SAVED_FILTERS_KEY)
     if (!stored) return []
     const parsed = JSON.parse(stored)
-    // Convert date strings back to Date objects
+    // Convert date strings back to Date objects. Entries written by older app
+    // builds may lack fields (e.g. `tags`) added after they were saved —
+    // merging over defaultFilters keeps them safe (same reasoning as
+    // readPersistedFilterState).
     return parsed.map((f: SavedFilter) => ({
       ...f,
+      filters: { ...defaultFilters, ...f.filters },
       createdAt: new Date(f.createdAt)
     }))
   } catch (err) {
