@@ -92,9 +92,13 @@ export class CorruptItemTracker {
 
       const parsed = RecordPullResponseSchema.safeParse(pullResult.value)
       if (!parsed.success) {
-        log.error('Re-fetch: invalid response', { error: parsed.error.message })
-        for (const id of eligible) this.markFailed(id)
-        return { recovered: [], permanentFailures: eligible }
+        // Batch-level failure: says nothing about any individual item. Do not
+        // penalise them toward permanent quarantine - leave them retryable.
+        log.error('Re-fetch: invalid response; leaving items retryable', {
+          error: parsed.error.message,
+          count: eligible.length
+        })
+        return { recovered: [], permanentFailures: [] }
       }
 
       const signerIds = new Set(parsed.data.items.map((i) => i.signerDeviceId))

@@ -142,5 +142,29 @@ describe('CorruptItemTracker', () => {
         expect(result).toEqual({ recovered: [], permanentFailures: [] })
       })
     })
+
+    describe('#given the whole /sync/pull response fails schema validation #when refetch called', () => {
+      afterEach(() => {
+        vi.restoreAllMocks()
+      })
+
+      it('#then does not mark items failed when the whole response is unparseable', async () => {
+        const tracker = createTracker()
+
+        const postServerMock = vi.fn().mockResolvedValue({
+          items: [{ id: 'a', type: 'not-a-real-type' }]
+        })
+        vi.spyOn(await import('../http-client'), 'postToServer').mockImplementation(postServerMock)
+
+        const result = await tracker.refetch(['a', 'b'], 'token', new Uint8Array(32))
+
+        expect(result.recovered).toEqual([])
+        // The batch failed, not the items: neither may be condemned.
+        expect(result.permanentFailures).toEqual([])
+        // And no item's retry counter may have been incremented.
+        expect(tracker.shouldRetry('a')).toBe(true)
+        expect(tracker.shouldRetry('b')).toBe(true)
+      })
+    })
   })
 })
