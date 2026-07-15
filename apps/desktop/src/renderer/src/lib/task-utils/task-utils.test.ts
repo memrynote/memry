@@ -5184,19 +5184,19 @@ describe('Task Utils', () => {
         expect(countActiveFilters(filters)).toBe(3)
       })
 
-      it('should count all 8 possible filter types', () => {
+      it('should count all 9 possible filter types', () => {
         const filters: TaskFilters = {
           search: 'test',
           projectIds: ['p1'],
           priorities: ['high'],
-          tags: [],
+          tags: ['MIT'],
           dueDate: { type: 'today', customStart: null, customEnd: null },
           statusIds: ['s1'],
           completion: 'completed',
           repeatType: 'repeating',
           hasTime: 'with-time'
         }
-        expect(countActiveFilters(filters)).toBe(8)
+        expect(countActiveFilters(filters)).toBe(9)
       })
 
       it('should not count empty arrays as active', () => {

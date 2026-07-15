@@ -330,7 +330,11 @@ export function dbToFrontendFilter(dbFilter: DbSavedFilter): SavedFilter {
       search: config.filters.search,
       projectIds: config.filters.projectIds,
       priorities: config.filters.priorities as Priority[],
-      tags: config.filters.tags,
+      // Old saved-filter rows predate the `tags` field. The read path (main
+      // process) casts the JSON column instead of parsing it through
+      // TaskFiltersSchema, so no default is applied — backfill it here,
+      // mirroring readPersistedFilterState's localStorage merge.
+      tags: config.filters.tags ?? [],
       dueDate,
       statusIds: config.filters.statusIds,
       completion: config.filters.completion,

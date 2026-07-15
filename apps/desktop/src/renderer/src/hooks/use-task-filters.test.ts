@@ -1097,9 +1097,17 @@ describe('saved-filter tags round-trip', () => {
     expect(dbToFrontendFilter({ id: 'f1', name: 'n', config }).filters.tags).toEqual(['MIT'])
   })
 
-  it('parses a saved filter written without tags', () => {
+  it('backfills tags via TaskFiltersSchema on the WRITE path only (create/update request parsing) — the read path does not use this schema, see next test', () => {
     const parsed = TaskFiltersSchema.parse({ search: '', projectIds: [], priorities: [] })
     expect(parsed.tags).toEqual([])
+  })
+
+  it('backfills tags when reading an old saved-filter row that predates the tags field (read path: main process casts the JSON column, it does not parse it, so dbToFrontendFilter must not assume tags is present)', () => {
+    // createDbSavedFilter's config.filters intentionally omits `tags`, matching
+    // rows written by builds before the tags field existed.
+    const dbFilter = createDbSavedFilter()
+    const result = dbToFrontendFilter(dbFilter)
+    expect(result.filters.tags).toEqual([])
   })
 })
 
