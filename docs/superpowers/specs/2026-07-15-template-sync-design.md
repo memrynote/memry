@@ -46,13 +46,15 @@ Released binaries cannot be retroactively patched. **Only a server-side change p
 
 **Client:** `http-client.ts` sends `X-Memry-Sync-Types: note,task,…,template` on `/sync/changes`, `/sync/manifest`, and `/sync/pull`, mirroring the existing `X-Memry-Vault-Id` header pattern.
 
-**Server:** those three routes filter `item_type` to the negotiated list. **A missing header falls back to a frozen `LEGACY_SYNC_ITEM_TYPES` constant** — today's 16 types:
+**Server:** those three routes filter `item_type` to the negotiated list. **A missing header falls back to a frozen `LEGACY_RECORD_SYNC_ITEM_TYPES` constant** — the 15 record types that shipped before negotiation:
 
 ```
-note, task, project, settings, attachment, inbox, filter, journal,
+note, task, project, settings, inbox, filter, journal,
 tag_definition, folder_config, calendar_event, calendar_source,
 calendar_binding, calendar_external_event, agent_conversation, agent_message
 ```
+
+Fifteen, not sixteen: these are the _record_ sync endpoints, and `RECORD_SYNC_ITEM_TYPES` is `SYNC_ITEM_TYPES` minus `attachment`. The frozen list mirrors `RECORD_SYNC_ITEM_TYPES` as of today, which is what those endpoints bind.
 
 This constant is frozen forever. It is never edited when a new type is added; that is the whole point.
 
