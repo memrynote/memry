@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
+import { TagAutocomplete } from '@/components/filing/tag-autocomplete'
 import { ProjectSelect } from './project-select'
 import { StatusSelect } from './status-select'
 import { DueDatePicker } from './due-date-picker'
@@ -36,6 +37,7 @@ interface TaskFormData {
   dueTime: string | null
   priority: Priority
   repeatConfig: RepeatConfig | null
+  tags: string[]
 }
 
 interface FormErrors {
@@ -65,7 +67,8 @@ function buildInitialFormData({
     dueDate: defaultDueDate,
     dueTime: null,
     priority: 'none',
-    repeatConfig: null
+    repeatConfig: null,
+    tags: []
   }
 }
 
@@ -141,6 +144,10 @@ function AddTaskModalSession({
     setFormData((prev) => ({ ...prev, repeatConfig }))
   }
 
+  const handleTagsChange = (tags: string[]): void => {
+    setFormData((prev) => ({ ...prev, tags }))
+  }
+
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {}
 
@@ -171,7 +178,8 @@ function AddTaskModalSession({
       dueTime: formData.dueTime,
       priority: formData.priority,
       isRepeating: formData.repeatConfig !== null,
-      repeatConfig: formData.repeatConfig
+      repeatConfig: formData.repeatConfig,
+      tags: formData.tags
     }
 
     onAddTask(finalTask)
@@ -185,7 +193,8 @@ function AddTaskModalSession({
         dueDate: prev.dueDate,
         dueTime: null,
         priority: 'none',
-        repeatConfig: null
+        repeatConfig: null,
+        tags: []
       }))
       setErrors({})
       titleInputRef.current?.focus()
@@ -292,6 +301,16 @@ function AddTaskModalSession({
               <PrioritySelect value={formData.priority} onChange={handlePriorityChange} />
             </div>
           </div>
+
+          {/* TagAutocomplete brings its own label/padding/border chrome (see
+              components/filing/tag-autocomplete.tsx), so it sits as its own
+              section rather than nested in the two-column field grid above. */}
+          <TagAutocomplete
+            tags={formData.tags}
+            onTagsChange={handleTagsChange}
+            placeholder={t('task.tags')}
+            dropdownPlacement="top"
+          />
 
           <div className="flex flex-col gap-2">
             <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">

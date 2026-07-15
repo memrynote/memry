@@ -28,6 +28,29 @@ vi.mock('./task-description-editor', () => ({
   )
 }))
 
+// TagAutocomplete fetches its own tag data (useAllTags/useTags: react-query +
+// window.api). The modal only cares that it wires tags/onTagsChange through
+// to the created task, so stub it here — its own behavior is covered by
+// tag-autocomplete.test.tsx.
+vi.mock('@/components/filing/tag-autocomplete', () => ({
+  TagAutocomplete: ({
+    tags,
+    onTagsChange,
+    placeholder
+  }: {
+    tags: string[]
+    onTagsChange: (tags: string[]) => void
+    placeholder?: string
+  }) => (
+    <div>
+      <span data-testid="tag-autocomplete-tags">{tags.join(',')}</span>
+      <button type="button" onClick={() => onTagsChange([...tags, 'urgent'])}>
+        {placeholder}
+      </button>
+    </div>
+  )
+}))
+
 let i18nEn: I18nInstance
 let i18nTr: I18nInstance
 
@@ -262,6 +285,43 @@ describe('AddTaskModal', () => {
       )
 
       expect(screen.getAllByText('Görev Ekle').length).toBeGreaterThanOrEqual(1)
+    })
+  })
+
+  describe('tags', () => {
+    it('includes tags added via TagAutocomplete on the created task', async () => {
+      // #given
+      const user = userEvent.setup()
+      renderWithI18n(
+        <AddTaskModal isOpen={true} onClose={onClose} onAddTask={onAddTask} projects={PROJECTS} />
+      )
+
+      // #when — type a title, add a tag via the stubbed TagAutocomplete, submit
+      await user.type(screen.getByPlaceholderText('What needs to be done?'), 'Tagged task')
+      await user.click(screen.getByRole('button', { name: 'Tags' }))
+      await user.click(screen.getByRole('button', { name: 'Add Task' }))
+
+      // #then — the created task carries the tag entered in the modal
+      expect(onAddTask).toHaveBeenCalledOnce()
+      const createdTask: Task = onAddTask.mock.calls[0][0]
+      expect(createdTask.tags).toEqual(['urgent'])
+    })
+
+    it('resets tags when "create another" submits and clears the form', async () => {
+      // #given — create another is checked
+      const user = userEvent.setup()
+      renderWithI18n(
+        <AddTaskModal isOpen={true} onClose={onClose} onAddTask={onAddTask} projects={PROJECTS} />
+      )
+      await user.click(screen.getByRole('checkbox', { name: 'Create another' }))
+
+      // #when — first task gets a tag and is submitted
+      await user.type(screen.getByPlaceholderText('What needs to be done?'), 'First tagged task')
+      await user.click(screen.getByRole('button', { name: 'Tags' }))
+      await user.click(screen.getByRole('button', { name: 'Add Task' }))
+
+      // #then — the form's tag state clears for the next task
+      expect(screen.getByTestId('tag-autocomplete-tags')).toHaveTextContent('')
     })
   })
 })
