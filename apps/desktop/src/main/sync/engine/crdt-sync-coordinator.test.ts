@@ -27,8 +27,10 @@ vi.mock('../../crypto/index', () => ({
   secureCleanup: (...args: unknown[]) => secureCleanupMock(...args)
 }))
 
+const withRetryMock = vi.fn(async (fn: () => Promise<unknown>) => ({ value: await fn() }))
+
 vi.mock('../retry', () => ({
-  withRetry: async <T>(fn: () => Promise<T>) => ({ value: await fn() })
+  withRetry: (fn: () => Promise<unknown>, options?: unknown) => withRetryMock(fn, options)
 }))
 
 vi.mock('../crdt-encrypt', () => ({
@@ -362,6 +364,95 @@ describe('CrdtSyncCoordinator', () => {
       '/sync/crdt/updates/batch',
       {
         notes: [{ noteId: 'note-1', since: 6 }],
+        limit: 100
+      },
+      'token-1'
+    )
+  })
+
+  const createBatchContext = (): {
+    ctx: SyncContext
+    open: ReturnType<typeof vi.fn>
+  } => {
+    const open = vi.fn().mockResolvedValue({})
+    const ctx = {
+      deps: {
+        crdtProvider: {
+          getDoc: vi.fn().mockReturnValue(undefined),
+          open,
+          closeIfInactive: vi.fn().mockResolvedValue(true),
+          applyRemoteUpdate: vi.fn(),
+          getStateVector: vi.fn().mockReturnValue(new Uint8Array([1, 2, 3, 4])),
+          seedFromMarkdownPublic: vi.fn()
+        }
+      },
+      abortController: new AbortController()
+    } as unknown as SyncContext
+
+    return { ctx, open }
+  }
+
+  it('does not retry 429s inside the serial pull loop', async () => {
+    // #given a normal batch pass
+    const { ctx } = createBatchContext()
+    postToServerMock.mockResolvedValue({ notes: { 'note-1': { updates: [], hasMore: false } } })
+    const coordinator = new CrdtSyncCoordinator(ctx, vi.fn())
+
+    // #when
+    await coordinator.applyCrdtBatch(['note-1'], 'token-1', new Uint8Array([4, 5, 6]))
+
+    // #then honouring Retry-After (up to 60s) x3 inside a serial loop stalls the
+    // whole pass on one note; the pass cadence is the retry instead.
+    expect(withRetryMock).toHaveBeenCalledWith(
+      expect.any(Function),
+      expect.objectContaining({ retryOn429: false })
+    )
+  })
+
+  it('does not retry 429s when pulling a single note incrementally', async () => {
+    // #given
+    const { ctx } = createBatchContext()
+    getFromServerMock.mockResolvedValue({ updates: [], hasMore: false })
+    const coordinator = new CrdtSyncCoordinator(ctx, vi.fn())
+
+    // #when
+    await coordinator.applyCrdtIncrementals('note-1', 'token-1', new Uint8Array([4, 5, 6]))
+
+    // #then
+    expect(withRetryMock).toHaveBeenCalledWith(
+      expect.any(Function),
+      expect.objectContaining({ retryOn429: false })
+    )
+  })
+
+  it('keeps syncing the remaining notes when one note fails its snapshot baseline', async () => {
+    // #given note-2 dead-letters while fetching its snapshot baseline
+    const { ctx } = createBatchContext()
+    const deadLetter = new Error('Dead letter after 4 attempts: Server error (500)')
+    deadLetter.name = 'DeadLetterError'
+    fetchCrdtSnapshotMock
+      .mockResolvedValueOnce(null)
+      .mockRejectedValueOnce(deadLetter)
+      .mockResolvedValueOnce(null)
+    postToServerMock.mockResolvedValue({
+      notes: {
+        'note-1': { updates: [], hasMore: false },
+        'note-3': { updates: [], hasMore: false }
+      }
+    })
+    const coordinator = new CrdtSyncCoordinator(ctx, vi.fn())
+
+    // #when
+    await coordinator.applyCrdtBatch(['note-1', 'note-2', 'note-3'], 'token-1', new Uint8Array([4]))
+
+    // #then one bad note must not abandon every note after it in the pass
+    expect(postToServerMock).toHaveBeenCalledWith(
+      '/sync/crdt/updates/batch',
+      {
+        notes: [
+          { noteId: 'note-1', since: 0 },
+          { noteId: 'note-3', since: 0 }
+        ],
         limit: 100
       },
       'token-1'

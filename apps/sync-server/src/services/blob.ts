@@ -24,6 +24,26 @@ const assertKeyBelongsToUser = (key: string, userId: string): void => {
   }
 }
 
+// Blob keys are deterministic, so a put retry overwrites the same object and is
+// idempotent. Delays are kept short and bounded: the retries only wait on I/O
+// (they burn wall time, not the Worker CPU budget), but a request still has to
+// finish, so the worst case adds ~350ms rather than seconds.
+const PUT_RETRY_DELAYS_MS = [100, 250]
+
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
+
+const classifyPutError = (err: unknown): AppError => {
+  if (err instanceof AppError) return err
+  const msg = err instanceof Error ? err.message : String(err)
+  if (/quota|limit|exceeded/i.test(msg)) {
+    return new AppError(ErrorCodes.STORAGE_QUOTA_EXCEEDED, `Storage quota exceeded: ${msg}`, 413)
+  }
+  if (/forbidden|permission|unauthorized|access denied/i.test(msg)) {
+    return new AppError(ErrorCodes.STORAGE_UNAUTHORIZED, `Storage permission error: ${msg}`, 403)
+  }
+  return new AppError(ErrorCodes.STORAGE_UPLOAD_FAILED, `Blob upload failed: ${msg}`, 500)
+}
+
 export const putBlob = async (
   storage: R2Bucket,
   key: string,
@@ -44,25 +64,29 @@ export const putBlob = async (
     }
   }
 
-  let result: R2Object
-  try {
-    const r2Result = await storage.put(key, data)
-    if (!r2Result) {
-      throw new AppError(ErrorCodes.STORAGE_UPLOAD_FAILED, 'R2 put returned null', 500)
+  // A stream body is consumed by the first attempt, so it cannot be replayed
+  // without risking a partial upload. Only buffered bodies are retried.
+  const canRetry = data instanceof ArrayBuffer
+
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const r2Result = await storage.put(key, data)
+      if (!r2Result) {
+        throw new AppError(ErrorCodes.STORAGE_UPLOAD_FAILED, 'R2 put returned null', 500)
+      }
+      return r2Result
+    } catch (err) {
+      const appError = classifyPutError(err)
+      const delayMs = PUT_RETRY_DELAYS_MS[attempt]
+      // Only transient failures are worth retrying; quota and permission
+      // rejections are terminal and would just burn budget.
+      const isTransient = appError.code === ErrorCodes.STORAGE_UPLOAD_FAILED
+      if (!canRetry || !isTransient || delayMs === undefined) {
+        throw appError
+      }
+      await sleep(delayMs)
     }
-    result = r2Result
-  } catch (err) {
-    if (err instanceof AppError) throw err
-    const msg = err instanceof Error ? err.message : String(err)
-    if (/quota|limit|exceeded/i.test(msg)) {
-      throw new AppError(ErrorCodes.STORAGE_QUOTA_EXCEEDED, `Storage quota exceeded: ${msg}`, 413)
-    }
-    if (/forbidden|permission|unauthorized|access denied/i.test(msg)) {
-      throw new AppError(ErrorCodes.STORAGE_UNAUTHORIZED, `Storage permission error: ${msg}`, 403)
-    }
-    throw new AppError(ErrorCodes.STORAGE_UPLOAD_FAILED, `Blob upload failed: ${msg}`, 500)
   }
-  return result
 }
 
 export const getBlob = async (

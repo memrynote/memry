@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
+import { AppError, ErrorCodes, errorHandler } from '../lib/errors'
 import {
   getBatchUpdates,
   getSnapshot,
@@ -244,7 +245,9 @@ function createMemoryBucket(): R2Bucket {
           ? new Uint8Array(value)
           : new Uint8Array(value.buffer, value.byteOffset, value.byteLength)
       objects.set(key, bytes.slice())
-      return null as unknown as R2Object
+      // Real R2 resolves to an R2Object; returning null here would look like a
+      // failed upload to putBlob.
+      return { key, etag: `etag-${objects.size}` } as unknown as R2Object
     },
     async get(key: string) {
       const bytes = objects.get(key)
@@ -428,7 +431,7 @@ describe('CRDT storage accounting', () => {
         return null
       }
     })
-    const storage = { put: vi.fn().mockResolvedValue(undefined) } as unknown as R2Bucket
+    const storage = { put: vi.fn().mockResolvedValue({ etag: 'etag-1' }) } as unknown as R2Bucket
     const snapshot = new Uint8Array(10).buffer
 
     await storeSnapshot(db, storage, 'user-1', 'vault-1', 'note-1', 'device-1', snapshot)
@@ -453,5 +456,184 @@ describe('CRDT storage accounting', () => {
     const usageUpdate = statements.find((entry) => entry.sql.includes('UPDATE users'))
     expect(usageUpdate?.sql).toContain('MAX(0, storage_used + ?)')
     expect(usageUpdate?.bindings).toEqual([-8, expect.any(Number), 'user-1'])
+  })
+})
+
+// ============================================================================
+// Tests: CRDT failure handling
+//
+// Production evidence: a ~5 minute R2 incident produced 24x UNHANDLED_ERROR
+// 500s on POST /sync/crdt/snapshot, because the CRDT path called storage.put
+// directly instead of going through putBlob. Transient infra looked like an app
+// crash and polluted the unhandled-error signal.
+// ============================================================================
+
+const R2_TRANSIENT_MESSAGE = 'put: Please look at https://www.cloudflarestatus.com for issues'
+const D1_OUTAGE_MESSAGE = 'D1_ERROR: Network connection lost.'
+
+/**
+ * D1 fake whose storage-accounting writes can be made to fail independently,
+ * so we can model the "refund during a D1 outage" case.
+ */
+function createAccountingDatabase(options: { failRefund?: boolean; failInsert?: boolean }) {
+  const runSql: string[] = []
+
+  const db = {
+    prepare: vi.fn((sql: string) => {
+      const stmt = {
+        bind: vi.fn(() => stmt),
+        first: vi.fn(async () => {
+          if (sql.includes('INSERT INTO crdt_updates')) {
+            if (options.failInsert) throw new Error(D1_OUTAGE_MESSAGE)
+            return { sequence_num: 1 }
+          }
+          if (sql.includes('COALESCE(MAX(sequence_num)')) return { max_seq: 0 }
+          return null
+        }),
+        run: vi.fn(async () => {
+          runSql.push(sql)
+          // The refund is itself a D1 write; during an outage it fails too.
+          if (options.failRefund && sql.includes('MAX(0, storage_used + ?)')) {
+            throw new Error('D1_ERROR: internal error')
+          }
+          return { meta: { changes: 1 } }
+        })
+      }
+      return stmt
+    })
+  }
+
+  return { db: db as unknown as D1Database, runSql }
+}
+
+const createFailingBucket = (message: string): R2Bucket =>
+  ({ put: vi.fn().mockRejectedValue(new Error(message)) }) as unknown as R2Bucket
+
+describe('CRDT snapshot failure handling', () => {
+  it('retries a transient R2 put failure and still records the snapshot', async () => {
+    // #given R2 fails once then recovers, as in the Cloudflare incident
+    const db = createD1Database()
+    const put = vi
+      .fn()
+      .mockRejectedValueOnce(new Error(R2_TRANSIENT_MESSAGE))
+      .mockResolvedValueOnce({ etag: 'etag-1' })
+    const storage = {
+      put,
+      get: async () => ({ arrayBuffer: async () => bytes('snapshot-a') })
+    } as unknown as R2Bucket
+
+    // #when
+    const result = await storeSnapshot(
+      db,
+      storage,
+      'user-1',
+      'vault-1',
+      'note-1',
+      'device-a',
+      bytes('snapshot-a')
+    )
+
+    // #then the transient blip is absorbed and the D1 row is written
+    expect(put).toHaveBeenCalledTimes(2)
+    expect(result.sequenceNum).toBe(0)
+    expect(await getSnapshot(db, storage, 'user-1', 'vault-1', 'note-1')).not.toBeNull()
+  })
+
+  it('surfaces a typed STORAGE_UPLOAD_FAILED that the error handler reports as handled', async () => {
+    // #given R2 is persistently failing
+    const db = createD1Database()
+    const storage = createFailingBucket(R2_TRANSIENT_MESSAGE)
+
+    // #when
+    const error = await storeSnapshot(
+      db,
+      storage,
+      'user-1',
+      'vault-1',
+      'note-1',
+      'device-a',
+      bytes('snapshot-a')
+    ).catch((e: unknown) => e)
+
+    // #then a raw R2 Error would be logged as UNHANDLED_ERROR by the error handler
+    expect(error).toBeInstanceOf(AppError)
+    expect((error as AppError).code).toBe(ErrorCodes.STORAGE_UPLOAD_FAILED)
+
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const json = vi.fn(
+      (payload: unknown, init: unknown) =>
+        new Response(JSON.stringify(payload), init as ResponseInit)
+    )
+    const response = errorHandler(
+      error as Error,
+      { json } as unknown as Parameters<typeof errorHandler>[1]
+    )
+
+    expect(response.status).toBe(500)
+    expect(await response.json()).toMatchObject({
+      error: { code: ErrorCodes.STORAGE_UPLOAD_FAILED }
+    })
+    expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('UNHANDLED_ERROR'))
+    consoleSpy.mockRestore()
+  })
+
+  it('writes no snapshot row when the R2 put fails, so nothing can be pruned', async () => {
+    // #given updates exist and the snapshot put fails
+    const db = createD1Database()
+    await storeUpdates(db, 'user-1', 'vault-1', 'note-1', 'device-a', [bytes('a1'), bytes('a2')])
+    const storage = createFailingBucket(R2_TRANSIENT_MESSAGE)
+
+    // #when
+    await expect(
+      storeSnapshot(db, storage, 'user-1', 'vault-1', 'note-1', 'device-a', bytes('snapshot-a'))
+    ).rejects.toThrow(AppError)
+
+    // #then no orphan row, and the authoritative update log is untouched
+    await expect(getSnapshot(db, storage, 'user-1', 'vault-1', 'note-1')).resolves.toBeNull()
+    await expect(pruneUpdatesBeforeSnapshot(db, 'user-1', 'vault-1', 'note-1')).resolves.toBe(0)
+    const remaining = await getUpdates(db, 'user-1', 'vault-1', 'note-1', 0, 10)
+    expect(remaining.updates).toHaveLength(2)
+  })
+
+  it('propagates the original put failure when the quota refund also fails', async () => {
+    // #given R2 is down AND D1 is down, so the refund write fails too
+    const { db } = createAccountingDatabase({ failRefund: true })
+    const storage = createFailingBucket(R2_TRANSIENT_MESSAGE)
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+
+    // #when
+    const error = await storeSnapshot(
+      db,
+      storage,
+      'user-1',
+      'vault-1',
+      'note-1',
+      'device-a',
+      bytes('snapshot-a')
+    ).catch((e: unknown) => e)
+
+    // #then the refund failure must not replace the real cause
+    expect(error).toBeInstanceOf(AppError)
+    expect((error as AppError).code).toBe(ErrorCodes.STORAGE_UPLOAD_FAILED)
+    expect((error as Error).message).not.toContain('internal error')
+    // #and the leaked reservation is visible in the logs
+    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('storage refund failed'))
+    consoleSpy.mockRestore()
+  })
+
+  it('propagates the original update failure when the quota refund also fails', async () => {
+    // #given the insert fails and the refund write fails too
+    const { db } = createAccountingDatabase({ failInsert: true, failRefund: true })
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+
+    // #when
+    const error = await storeUpdates(db, 'user-1', 'vault-1', 'note-1', 'device-a', [
+      bytes('a1')
+    ]).catch((e: unknown) => e)
+
+    // #then
+    expect((error as Error).message).toBe(D1_OUTAGE_MESSAGE)
+    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('storage refund failed'))
+    consoleSpy.mockRestore()
   })
 })
