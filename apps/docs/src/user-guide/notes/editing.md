@@ -89,6 +89,19 @@ Toggle browser spellcheck in [Settings → Editor](/user-guide/settings#editor).
 
 The formatting toolbar can be sticky at the top or float above selections — choose in [Settings → Editor](/user-guide/settings#editor).
 
+## Text Formatting
+
+Bold, italic and strikethrough are written to the vault as plain Markdown (`**bold**`, `*italic*`, `~~strike~~`).
+
+Markdown has no syntax for underline or text color, so those are written as inline HTML instead — Obsidian renders both:
+
+```md
+<span style="text-decoration:underline">underlined</span>
+<span style="color:red">red</span>
+```
+
+A run that is both underlined and colored shares a single span rather than nesting two.
+
 ## Comments
 
 Select text to open the floating toolbar. **Comment** creates an anchored review card in the right rail; selecting the text itself does not open the rail. The right rail aligns each card beside the marked text. Comment cards can be resolved or deleted.
