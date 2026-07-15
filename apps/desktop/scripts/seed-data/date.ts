@@ -37,3 +37,20 @@ export function seedPastISOAt(
 export function seedDateOnly(days: number, seedDay = SEED_DAY): string {
   return seedISOAt(days, 12, 0, seedDay).slice(0, 10)
 }
+
+// Journal entries are authored on a fixed narrative timeline anchored to
+// JOURNAL_ANCHOR (the newest entry, treated as "today"). seedJournalDate shifts a
+// narrative date so the whole story lands around the day the seed command runs.
+// Shared by journal seeding and the journal wikilinks that reference it.
+export const JOURNAL_ANCHOR = '2026-05-08'
+
+export function seedJournalDate(
+  narrative: string,
+  anchor = JOURNAL_ANCHOR,
+  seedDay = SEED_DAY
+): string {
+  const offsetDays = Math.round(
+    (Date.parse(`${narrative}T00:00:00Z`) - Date.parse(`${anchor}T00:00:00Z`)) / 86_400_000
+  )
+  return seedDateOnly(offsetDays, seedDay)
+}

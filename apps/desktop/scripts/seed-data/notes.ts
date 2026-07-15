@@ -1,6 +1,6 @@
 import { generateNoteId } from '../../src/main/lib/id'
 import type { NoteFile } from '../seed-vault/file-writer'
-import { seedPastISOAt } from './date'
+import { seedJournalDate, seedPastISOAt } from './date'
 
 const dayOffset = (days: number, hour = 12): string => {
   return seedPastISOAt(days, hour, 30)
@@ -775,7 +775,7 @@ Multiverse-as-feeling instead of multiverse-as-plot. Michelle Yeoh as the laundr
 
 ## Progress
 
-See running table in [[Cutting Log]]. Wikilinked journal entries: [[2026-04-22]], [[2026-05-01]], [[2026-05-08]].
+See running table in [[Cutting Log]]. Wikilinked journal entries: [[${seedJournalDate('2026-04-22')}]], [[${seedJournalDate('2026-05-01')}]], [[${seedJournalDate('2026-05-08')}]].
 
 > [!info]
 > The cut isn't the diet. The cut is *not getting bored*.
@@ -1886,7 +1886,7 @@ docker system prune -af --volumes
 
 ## Links
 
-- Journal: [[2026-05-17]]
+- Journal: [[${seedJournalDate('2026-05-17')}]]
 - Travel checklist: [[Packing List]]
 - Food notes: [[Food Diary]]
 
@@ -1933,7 +1933,7 @@ docker system prune -af --volumes
 
 ![Tokyo Tower at dusk](attachments/tokyo-tower.jpg)
 
-Linked journal entries: [[2026-04-15]], [[2026-04-17]].
+Linked journal entries: [[${seedJournalDate('2026-04-15')}]], [[${seedJournalDate('2026-04-17')}]].
 
 #travel/asia #japan
 `
@@ -1964,7 +1964,7 @@ Linked journal entries: [[2026-04-15]], [[2026-04-17]].
 
 - Skipped Arashiyama on purpose. Save for a longer trip.
 
-Linked: [[Tokyo Trip]] (the parent), journal [[2026-04-15]].
+Linked: [[Tokyo Trip]] (the parent), journal [[${seedJournalDate('2026-04-15')}]].
 
 #travel/asia
 `
