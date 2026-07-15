@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import Database from 'better-sqlite3'
 import { readdirSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
+import { CHUNK_CRYPTO_OVERHEAD, expectedEncryptedTotal } from '../src/services/upload-size'
 
 const migrationsDir = resolve(__dirname, '../migrations')
 
@@ -202,9 +203,10 @@ describe('D1 schema', () => {
   })
 
   // Migrations are applied BEFORE the Worker deploys, so 0002 lands on rows the old
-  // server wrote. Those rows reserved the PLAINTEXT total_size; leaving encrypted_size
-  // NULL invites the refund paths to re-derive a larger ciphertext total and hand back
-  // bytes that were never reserved.
+  // server wrote. Those rows must keep a NULL encrypted_size: the refund paths read
+  // it as `?? total_size` (the plaintext they reserved), while the chunk cap and
+  // `complete` need `expectedEncryptedTotal` to DERIVE the ciphertext total, which it
+  // only does while the column is NULL. A backfill would break the second reader.
   describe('0002_upload_sessions_encrypted_size', () => {
     // A database at 0001 (pre-encrypted_size) with a user to own the sessions.
     const dbAtBaseline = () => {
@@ -226,7 +228,7 @@ describe('D1 schema', () => {
         )
         .run(id, `att-${id}`, totalSize)
 
-    it('backfills encrypted_size to total_size for rows written before the column existed', () => {
+    it('leaves encrypted_size NULL on rows written before the column existed', () => {
       // #given a database at 0001 with in-flight sessions the old server reserved plaintext for
       const db = dbAtBaseline()
       insertLegacySession(db, 's1', 5_000)
@@ -235,31 +237,41 @@ describe('D1 schema', () => {
       // #when 0002 is applied
       db.exec(loadMigrationSql('0002_upload_sessions_encrypted_size.sql'))
 
-      // #then every legacy row carries the plaintext size it actually reserved
+      // #then the legacy rows keep NULL, so the refunds fall back to the plaintext they
+      // reserved AND the wire-byte checks still derive the ciphertext total
       const rows = db
         .prepare('SELECT id, total_size, encrypted_size FROM upload_sessions ORDER BY id')
         .all() as Array<{ id: string; total_size: number; encrypted_size: number | null }>
 
       expect(rows).toEqual([
-        { id: 's1', total_size: 5_000, encrypted_size: 5_000 },
-        { id: 's2', total_size: 500_000, encrypted_size: 500_000 }
+        { id: 's1', total_size: 5_000, encrypted_size: null },
+        { id: 's2', total_size: 500_000, encrypted_size: null }
       ])
     })
 
-    it('leaves no NULL encrypted_size rows behind', () => {
-      // #given
+    // Backfilling encrypted_size is the tempting "fix" for the legacy refund and it
+    // silently breaks every in-flight upload. No other test can catch that: the unit
+    // suites hand-build session rows and never apply the SQL, so this is the only
+    // place the migration meets the code that reads it.
+    it('leaves legacy rows deriving the ciphertext total the old client still sends', () => {
+      // #given a legacy 3-chunk session the old server reserved 5,000 plaintext bytes for
       const db = dbAtBaseline()
       insertLegacySession(db, 's1', 5_000)
 
-      // #when
+      // #when 0002 is applied and the server reads the row back
       db.exec(loadMigrationSql('0002_upload_sessions_encrypted_size.sql'))
+      const row = db
+        .prepare('SELECT total_size, chunk_count, encrypted_size FROM upload_sessions WHERE id = ?')
+        .get('s1') as { total_size: number; chunk_count: number; encrypted_size: number | null }
 
-      // #then
-      const { nulls } = db
-        .prepare('SELECT COUNT(*) AS nulls FROM upload_sessions WHERE encrypted_size IS NULL')
-        .get() as { nulls: number }
+      // #then the chunk cap and `complete` expect CIPHERTEXT — the old client still puts
+      // nonce||tag on the wire — which only holds while the column is NULL
+      expect(expectedEncryptedTotal(row.total_size, row.chunk_count, row.encrypted_size)).toBe(
+        5_000 + CHUNK_CRYPTO_OVERHEAD * 3
+      )
 
-      expect(nulls).toBe(0)
+      // #and the refund still pays back only the PLAINTEXT that was actually reserved
+      expect(row.encrypted_size ?? row.total_size).toBe(5_000)
     })
   })
 })
