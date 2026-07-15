@@ -9,6 +9,10 @@ on:
       - 'packages/shared/**'
       - 'packages/sync-core/**'
       - 'tests/sync-harness/**'
+      # The attachment client is exercised against the real Worker by the
+      # integration spec below, so a client-side change must re-run this job.
+      - 'apps/desktop/src/main/sync/attachments.ts'
+      - 'apps/desktop/src/main/sync/attachments.integration.test.ts'
       - 'package.json'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
@@ -22,6 +26,10 @@ on:
       - 'packages/shared/**'
       - 'packages/sync-core/**'
       - 'tests/sync-harness/**'
+      # The attachment client is exercised against the real Worker by the
+      # integration spec below, so a client-side change must re-run this job.
+      - 'apps/desktop/src/main/sync/attachments.ts'
+      - 'apps/desktop/src/main/sync/attachments.integration.test.ts'
       - 'package.json'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
@@ -81,6 +89,18 @@ jobs:
 
       - name: Run sync protocol harness
         run: pnpm --filter @memry/sync-harness test
+
+      # Real client against the real Worker (miniflare + real D1 + real R2).
+      # Both sides' unit suites mock this seam and stayed green through a 58-day
+      # attachment upload outage, so this is the job that actually covers it.
+      # Needs no Electron binary and no display server (the spec injects fetchFn
+      # and stubs the electron import), and runs in seconds.
+      - name: Run attachment client/server integration spec
+        run: |
+          pnpm --filter @memry/desktop exec vitest run \
+            --config config/vitest.config.ts \
+            --project main \
+            src/main/sync/attachments.integration.test.ts
 
       - name: Validate Worker bundle
         run: pnpm --filter @memry/sync-server exec wrangler deploy --dry-run --outdir .wrangler/ci --env staging

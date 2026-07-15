@@ -21,6 +21,23 @@ export class SyncServerError extends Error {
   }
 }
 
+/**
+ * One file is over the plan's per-file limit. Raised by the local preflight
+ * before a file is read/encrypted; mirrors the server's STORAGE_FILE_TOO_LARGE.
+ * Lives here with the other sync error types so `sync-errors` can classify it
+ * without importing the attachment service (and with it, electron + crypto).
+ */
+export class AttachmentTooLargeError extends Error {
+  constructor(
+    message: string,
+    public readonly fileSize: number,
+    public readonly maxFileSize: number
+  ) {
+    super(message)
+    this.name = 'AttachmentTooLargeError'
+  }
+}
+
 export class NetworkError extends Error {
   constructor(message: string) {
     super(message)

@@ -15,6 +15,8 @@ import {
 } from '@memry/contracts/ipc-attachments'
 
 import { AttachmentSyncService, type TransferProgress } from '../sync/attachments'
+import { getCachedMaxFileSize } from '../billing/entitlement-cache'
+import { trackMainError } from '../telemetry/diagnostics'
 import { UploadQueue } from '../sync/upload-queue'
 import { attachmentEvents } from '../sync/attachment-events'
 import { markWritebackIgnored } from '../sync/crdt-writeback'
@@ -77,6 +79,7 @@ const getOrCreateAttachmentService = (): AttachmentSyncService | null => {
   if (attachmentService) return attachmentService
 
   attachmentService = new AttachmentSyncService({
+    getMaxFileSize: () => getCachedMaxFileSize(),
     getAccessToken: () => getValidAccessToken(),
     getVaultKey: async () => {
       if (!isDatabaseInitialized()) return null
@@ -263,6 +266,10 @@ export function registerAttachmentHandlers(): void {
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Unknown error'
         logger.error('Attachment upload failed', { noteId, diskPath, error: message })
+        // electron-log alone kept this outage invisible for 58 days — the only
+        // reason it surfaced was a server-side 413. Route it to telemetry too so
+        // an attachment outage is visible from the client side.
+        trackMainError('sync_attachments', 'attachment_upload_failed', err)
         for (const win of BrowserWindow.getAllWindows()) {
           win.webContents.send(SYNC_EVENTS.ATTACHMENT_UPLOAD_FAILED, {
             noteId,

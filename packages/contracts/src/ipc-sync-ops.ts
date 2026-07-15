@@ -35,6 +35,9 @@ export type SyncErrorCategory =
   | 'crypto_failure'
   | 'version_incompatible'
   | 'storage_quota_exceeded'
+  // One file is over the plan's per-file limit — distinct from being out of
+  // storage, and not fixable by freeing space.
+  | 'file_too_large'
   | 'sync_payment_required'
   | 'certificate_pin_failed'
   | 'unknown'

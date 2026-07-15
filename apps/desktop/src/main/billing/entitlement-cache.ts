@@ -19,8 +19,28 @@ export function setCachedEntitlementFromStatus(s: BillingStatus): CachedEntitlem
   const cached: CachedEntitlement = {
     isPaid: isPaidBillingStatus(s),
     plan: s.plan,
-    status: s.status
+    status: s.status,
+    // Carry the file-size limit so an attachment upload can be rejected before
+    // the expensive read+hash+encrypt pass instead of after a server 413.
+    limits: { maxFileSize: s.limits.maxFileSize }
   }
   store.set('sync', { ...store.get('sync'), entitlement: cached })
   return cached
+}
+
+/**
+ * Cached plan file-size limit, or null when unknown.
+ *
+ * Null means "no opinion, let the server decide": the cache is only populated on
+ * a billing fetch, so it is legitimately absent on a cold start or on a store
+ * written by an older version. Callers must fail open — never block an upload on
+ * a cold cache.
+ */
+export function getCachedMaxFileSize(): number | null {
+  const cached = getCachedEntitlement()
+  const maxFileSize = cached?.limits?.maxFileSize
+  if (typeof maxFileSize !== 'number' || !Number.isFinite(maxFileSize) || maxFileSize <= 0) {
+    return null
+  }
+  return maxFileSize
 }

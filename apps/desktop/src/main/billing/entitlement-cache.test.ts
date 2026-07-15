@@ -15,6 +15,7 @@ vi.mock('../store', () => ({
 
 import {
   isPaidBillingStatus,
+  getCachedMaxFileSize,
   getCachedEntitlement,
   setCachedEntitlementFromStatus
 } from './entitlement-cache'
@@ -57,14 +58,54 @@ describe('entitlement-cache', () => {
     expect(getCachedEntitlement()).toBeNull()
   })
 
+  it('getCachedMaxFileSize returns the cached plan limit', () => {
+    const s = status('plus', 'active')
+    s.limits.maxFileSize = 5 * 1024 * 1024
+    setCachedEntitlementFromStatus(s)
+    expect(getCachedMaxFileSize()).toBe(5 * 1024 * 1024)
+  })
+
+  it('getCachedMaxFileSize returns null on a cold cache', () => {
+    expect(getCachedMaxFileSize()).toBeNull()
+  })
+
+  it('getCachedMaxFileSize returns null for a store written before limits existed', () => {
+    // Real users' electron-store files have entitlement rows with no `limits`
+    // key. Reading one must fail open (null = defer to the server), never block.
+    storeData.sync = { entitlement: { isPaid: true, plan: 'plus', status: 'active' } }
+    expect(getCachedMaxFileSize()).toBeNull()
+  })
+
+  it('getCachedMaxFileSize returns null for an implausible cached limit', () => {
+    storeData.sync = {
+      entitlement: { isPaid: true, plan: 'plus', status: 'active', limits: { maxFileSize: 0 } }
+    }
+    expect(getCachedMaxFileSize()).toBeNull()
+  })
+
   it('setCachedEntitlementFromStatus writes a cache and getCachedEntitlement reads it', () => {
     const written = setCachedEntitlementFromStatus(status('plus', 'active'))
-    expect(written).toEqual({ isPaid: true, plan: 'plus', status: 'active' })
-    expect(getCachedEntitlement()).toEqual({ isPaid: true, plan: 'plus', status: 'active' })
+    expect(written).toEqual({
+      isPaid: true,
+      plan: 'plus',
+      status: 'active',
+      limits: { maxFileSize: 0 }
+    })
+    expect(getCachedEntitlement()).toEqual({
+      isPaid: true,
+      plan: 'plus',
+      status: 'active',
+      limits: { maxFileSize: 0 }
+    })
   })
 
   it('caches an unpaid status as isPaid=false', () => {
     setCachedEntitlementFromStatus(status('free', 'inactive'))
-    expect(getCachedEntitlement()).toEqual({ isPaid: false, plan: 'free', status: 'inactive' })
+    expect(getCachedEntitlement()).toEqual({
+      isPaid: false,
+      plan: 'free',
+      status: 'inactive',
+      limits: { maxFileSize: 0 }
+    })
   })
 })

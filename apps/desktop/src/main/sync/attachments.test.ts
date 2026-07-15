@@ -142,7 +142,12 @@ describe('AttachmentSyncService', () => {
       await expect(service.uploadAttachment('note-1', testFile)).rejects.toThrow('empty file')
     })
 
-    it('should skip dedup-existing chunks', async () => {
+    it('uploads every chunk without probing for server-side dedup', async () => {
+      // The old client HEAD-probed each chunk hash for dedup before uploading.
+      // That probe could never hit: the file key is random per upload and the
+      // nonce is random per chunk, so `encryptedHash` is unique every time. It
+      // cost a guaranteed-miss round-trip per chunk (and produced the 404 noise
+      // on HEAD /sync/attachments/chunks/:hash). Pin that it is gone.
       const testFile = path.join(tmpDir, 'dedup.txt')
       await writeFile(testFile, Buffer.alloc(512, 'B'))
 
@@ -162,7 +167,10 @@ describe('AttachmentSyncService', () => {
           expiresAt: 0
         }
       })
-      responses.set('HEAD /attachments/chunks/', { status: 200 })
+      responses.set('PUT /attachments/upload/session-2/chunk/0', {
+        status: 200,
+        body: { success: true, uploadedChunks: 1 }
+      })
       responses.set('POST /attachments/upload/session-2/complete', {
         status: 200,
         body: { success: true }
@@ -179,7 +187,116 @@ describe('AttachmentSyncService', () => {
         ([url, init]: [string, RequestInit]) =>
           init?.method === 'PUT' && typeof url === 'string' && url.includes('/chunk/')
       )
-      expect(putCalls).toHaveLength(0)
+      expect(putCalls).toHaveLength(1)
+
+      const headCalls = mockFetch.mock.calls.filter(
+        ([, init]: [string, RequestInit]) => init?.method === 'HEAD'
+      )
+      expect(headCalls).toHaveLength(0)
+    })
+
+    it('declares the encrypted byte total, not the plaintext size, on initiate', async () => {
+      // Regression guard for the 58-day outage: chunks go on the wire as
+      // nonce || ciphertext, so the bytes stored exceed the plaintext size.
+      const testFile = path.join(tmpDir, 'sizes.txt')
+      await writeFile(testFile, Buffer.alloc(512, 'D'))
+
+      const responses = new Map<string, { status: number; body?: unknown; binary?: Uint8Array }>()
+      responses.set('POST /attachments/upload/initiate', {
+        status: 200,
+        body: { sessionId: 'session-3', expiresAt: Date.now() + 3600000 }
+      })
+      responses.set('GET /attachments/upload/session-3', {
+        status: 200,
+        body: {
+          sessionId: 'session-3',
+          attachmentId: '',
+          totalSize: 0,
+          chunkCount: 1,
+          uploadedChunks: [],
+          expiresAt: 0
+        }
+      })
+      responses.set('PUT /attachments/upload/session-3/chunk/0', {
+        status: 200,
+        body: { success: true, uploadedChunks: 1 }
+      })
+      responses.set('POST /attachments/upload/session-3/complete', {
+        status: 200,
+        body: { success: true }
+      })
+
+      const mockFetch = createMockFetch(responses)
+      const service = new AttachmentSyncService(createTestDeps(mockFetch))
+      await service.uploadAttachment('note-1', testFile)
+
+      const initiateCall = mockFetch.mock.calls.find(
+        ([url, init]: [string, RequestInit]) =>
+          init?.method === 'POST' && typeof url === 'string' && url.includes('/initiate')
+      )
+      const body = JSON.parse((initiateCall![1] as RequestInit).body as string)
+      expect(body.totalSize).toBe(512)
+      // nonce(24) + Poly1305 tag(16) on the single chunk.
+      expect(body.encryptedSize).toBe(512 + 40)
+    })
+
+    it('rejects a file over the cached plan limit before reading or encrypting it', async () => {
+      const testFile = path.join(tmpDir, 'toobig.txt')
+      await writeFile(testFile, Buffer.alloc(2048, 'E'))
+
+      const mockFetch = createMockFetch(new Map())
+      const deps: AttachmentSyncDeps = {
+        ...createTestDeps(mockFetch),
+        getMaxFileSize: () => 1024
+      }
+      const service = new AttachmentSyncService(deps)
+
+      await expect(service.uploadAttachment('note-1', testFile)).rejects.toThrow(
+        /larger than your plan allows/i
+      )
+      // Nothing hit the network: the point is to avoid the read+hash+encrypt pass.
+      expect(mockFetch).not.toHaveBeenCalled()
+    })
+
+    it('falls back to server authority when the cached plan limit is unknown', async () => {
+      // The entitlement cache is only warm after a billing fetch. A cold cache
+      // must never block an upload.
+      const testFile = path.join(tmpDir, 'unknown-limit.txt')
+      await writeFile(testFile, Buffer.alloc(2048, 'F'))
+
+      const responses = new Map<string, { status: number; body?: unknown; binary?: Uint8Array }>()
+      responses.set('POST /attachments/upload/initiate', {
+        status: 200,
+        body: { sessionId: 'session-4', expiresAt: Date.now() + 3600000 }
+      })
+      responses.set('GET /attachments/upload/session-4', {
+        status: 200,
+        body: {
+          sessionId: 'session-4',
+          attachmentId: '',
+          totalSize: 0,
+          chunkCount: 1,
+          uploadedChunks: [],
+          expiresAt: 0
+        }
+      })
+      responses.set('PUT /attachments/upload/session-4/chunk/0', {
+        status: 200,
+        body: { success: true, uploadedChunks: 1 }
+      })
+      responses.set('POST /attachments/upload/session-4/complete', {
+        status: 200,
+        body: { success: true }
+      })
+
+      const mockFetch = createMockFetch(responses)
+      const deps: AttachmentSyncDeps = {
+        ...createTestDeps(mockFetch),
+        getMaxFileSize: () => null
+      }
+      const service = new AttachmentSyncService(deps)
+
+      await expect(service.uploadAttachment('note-1', testFile)).resolves.toBeTruthy()
     })
   })
 

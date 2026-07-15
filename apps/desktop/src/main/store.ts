@@ -24,6 +24,16 @@ export interface CachedEntitlement {
   isPaid: boolean
   plan: string
   status: string
+  /**
+   * Plan limits from the last billing status. Optional: stores written by older
+   * app versions have no `limits` key, and it is only populated on a billing
+   * fetch — so every reader must tolerate it being absent and fall back to
+   * server-authoritative behaviour rather than blocking.
+   */
+  limits?: {
+    /** Max plaintext bytes per file the plan allows. */
+    maxFileSize: number
+  }
 }
 
 /**

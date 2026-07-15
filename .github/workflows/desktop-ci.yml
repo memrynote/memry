@@ -245,6 +245,64 @@ jobs:
           path: apps/desktop/test-results/
           if-no-files-found: ignore
 
+  e2e-smoke-macos:
+    name: Electron E2E smoke (macOS)
+    # Push-to-main only, matching the ubuntu and Windows e2e jobs: a macOS
+    # runner is the most expensive minute GitHub bills (10x ubuntu), and PRs
+    # already run lint + typecheck + unit + ubuntu coverage, plus the attachment
+    # client/server integration spec in sync-server-ci.
+    # No xvfb: macOS runners have a window server. ensure-native.sh is used
+    # directly (it is bash-native and works here — the Windows job hand-rolls the
+    # rebuild + stamp only because ensure-native.sh breaks under MSYS).
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: macos-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        env:
+          SKIP_ELECTRON_REBUILD: 1
+        run: pnpm install --frozen-lockfile
+
+      - name: Build desktop app
+        run: |
+          bash apps/desktop/scripts/check-cert-hashes.sh
+          bash apps/desktop/scripts/ensure-native.sh electron
+          pnpm --filter @memry/desktop exec electron-vite build
+
+      - name: Run Electron smoke tests
+        run: |
+          bash apps/desktop/scripts/ensure-native.sh electron
+          pnpm --filter @memry/desktop exec playwright test \
+            --config config/playwright.config.ts \
+            tests/e2e/startup-recovery.e2e.ts \
+            tests/e2e/vault.e2e.ts \
+            tests/e2e/notes.e2e.ts \
+            tests/e2e/tasks.e2e.ts \
+            tests/e2e/file-attachments-viewer.e2e.ts
+
+      - name: Upload E2E artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-smoke-macos-results
+          path: apps/desktop/test-results/
+          if-no-files-found: ignore
+
   e2e-smoke-windows:
     name: Electron E2E smoke (Windows)
     # Push-to-main only, matching the ubuntu e2e-smoke/e2e-full jobs: Windows
@@ -323,7 +381,8 @@ jobs:
             tests/e2e/startup-recovery.e2e.ts \
             tests/e2e/vault.e2e.ts \
             tests/e2e/notes.e2e.ts \
-            tests/e2e/tasks.e2e.ts
+            tests/e2e/tasks.e2e.ts \
+            tests/e2e/file-attachments-viewer.e2e.ts
 
       - name: Upload E2E artifacts
         if: always()
