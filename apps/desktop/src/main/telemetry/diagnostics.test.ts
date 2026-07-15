@@ -115,28 +115,44 @@ describe('telemetry diagnostics', () => {
       expect(code).toBeNull()
     })
 
-    it('builds a composite type:reason:serviceName code for real faults', () => {
-      // #given a utility worker that actually crashed
+    it('names the crashed worker from details.name, not the constant mojo serviceName', () => {
+      // #given exactly what Electron sends in production: the fork's `serviceName`
+      // option lands in details.name, while details.serviceName is the mojo
+      // interface name — a constant, identical for all four of our forks.
       const code = childProcessGoneErrorCode({
         type: 'Utility',
         reason: 'crashed',
-        serviceName: 'Embeddings'
+        serviceName: 'node.mojom.NodeService',
+        name: 'Embeddings',
+        exitCode: 11
       })
 
-      // #then the code is diagnosable and passes the safe-token rules
+      // #then the code names the worker we can act on
       expect(code).toBe('Utility:crashed:Embeddings')
     })
 
-    it('handles processes without a serviceName', () => {
+    it('falls back to serviceName when name is absent', () => {
+      // #given a process Electron reports without a `name`
+      const code = childProcessGoneErrorCode({
+        type: 'Utility',
+        reason: 'crashed',
+        serviceName: 'Network Service'
+      })
+
+      // #then serviceName still identifies it rather than leaving the code empty
+      expect(code).toBe('Utility:crashed:Network_Service')
+    })
+
+    it('handles processes without a name or serviceName', () => {
       const code = childProcessGoneErrorCode({ type: 'GPU', reason: 'abnormal-exit' })
       expect(code).toBe('GPU:abnormal-exit:')
     })
 
-    it('sanitizes unsafe serviceName characters', () => {
+    it('sanitizes unsafe name characters', () => {
       const code = childProcessGoneErrorCode({
         type: 'Utility',
         reason: 'crashed',
-        serviceName: 'node service (v2)'
+        name: 'node service (v2)'
       })
       expect(code).toBe('Utility:crashed:node_service__v2_')
     })
@@ -144,12 +160,27 @@ describe('telemetry diagnostics', () => {
 
   describe('trackChildProcessGone', () => {
     it('emits no telemetry for a clean idle-worker exit', () => {
-      trackChildProcessGone({ type: 'Utility', reason: 'clean-exit', serviceName: 'Embeddings' })
+      trackChildProcessGone({
+        type: 'Utility',
+        reason: 'clean-exit',
+        serviceName: 'node.mojom.NodeService',
+        name: 'Embeddings',
+        exitCode: 0
+      })
       expect(trackMainEventMock).not.toHaveBeenCalled()
     })
 
-    it('emits an error log event with a composite code for a real fault', () => {
-      trackChildProcessGone({ type: 'Utility', reason: 'crashed', serviceName: 'Embeddings' })
+    it('names the worker and carries the exit signal for a real production crash', () => {
+      // #given the exact production payload behind `Utility:crashed:node.mojom.NodeService`
+      trackChildProcessGone({
+        type: 'Utility',
+        reason: 'crashed',
+        serviceName: 'node.mojom.NodeService',
+        name: 'Embeddings',
+        exitCode: 11
+      })
+
+      // #then Grafana can group by worker, and exitCode carries the signal (11 = SIGSEGV)
       expect(trackMainEventMock).toHaveBeenCalledWith('app_log_recorded', {
         surface: 'app',
         action: 'error',
@@ -157,7 +188,8 @@ describe('telemetry diagnostics', () => {
         source: 'Electron',
         result: 'failed',
         errorCode: 'Utility:crashed:Embeddings',
-        dimensions: { log_action: 'child_process_gone' }
+        dimensions: { log_action: 'child_process_gone' },
+        metrics: { value: 11 }
       })
     })
   })

@@ -8,6 +8,11 @@ const mockApp = vi.hoisted(() => ({
 }))
 const getAllWindows = vi.hoisted(() => vi.fn())
 const mockFork = vi.hoisted(() => vi.fn())
+const trackMainLogMock = vi.hoisted(() => vi.fn())
+
+vi.mock('../telemetry/diagnostics', () => ({
+  trackMainLog: trackMainLogMock
+}))
 
 class MockUtilityProcess extends EventEmitter {
   postMessage = vi.fn()
@@ -47,6 +52,7 @@ vi.mock('@huggingface/transformers', () => {
   throw new Error('@huggingface/transformers should only load inside embedding-worker')
 })
 
+import { resetTelemetryThrottle } from '../telemetry/throttle'
 import {
   EMBEDDING_DIMENSION,
   generateEmbedding,
@@ -61,6 +67,8 @@ describe('embeddings', () => {
   beforeEach(() => {
     unloadModel()
     mockFork.mockReset()
+    trackMainLogMock.mockReset()
+    resetTelemetryThrottle()
     mockApp.getPath.mockImplementation((name: string) =>
       name === 'userData' ? '/mock/user-data' : `/mock/${name}`
     )
@@ -282,5 +290,123 @@ describe('embeddings', () => {
 
     await vi.advanceTimersByTimeAsync(30_000)
     expect(mockUtilityProcessInstance.postMessage).toHaveBeenLastCalledWith({ type: 'shutdown' })
+  })
+
+  // These exist to answer the open production question behind the
+  // `Utility:crashed:*` volume: does the worker die while TEARING DOWN (user
+  // impact ~zero, embedding already delivered) or while WORKING (user silently
+  // loses semantic-search indexing)? Nothing in telemetry can tell them apart today.
+  describe('worker exit telemetry', () => {
+    const startWorker = async (): Promise<{ requestId: string }> => {
+      const pending = generateEmbedding('content long enough for embeddings')
+      void pending.catch(() => {})
+      mockUtilityProcessInstance.simulateMessage({ type: 'ready' })
+      await vi.waitFor(() => {
+        expect(mockUtilityProcessInstance.postMessage).toHaveBeenCalledTimes(1)
+      })
+      const request = mockUtilityProcessInstance.postMessage.mock.calls[0]?.[0] as {
+        requestId: string
+      }
+      return { requestId: request.requestId }
+    }
+
+    it('reports idle_shutdown when the worker dies during its own teardown', async () => {
+      vi.useFakeTimers()
+      const { requestId } = await startWorker()
+
+      // #given the embedding was delivered, so nothing is in flight
+      mockUtilityProcessInstance.simulateMessage({
+        type: 'embed-result',
+        requestId,
+        embedding: Array.from(new Float32Array(EMBEDDING_DIMENSION))
+      })
+      await vi.waitFor(() => expect(getModelInfo().loaded).toBe(true))
+
+      // #when the 30s idle timer fires and the worker dies mid-teardown (SIGSEGV)
+      await vi.advanceTimersByTimeAsync(30_000)
+      expect(mockUtilityProcessInstance.postMessage).toHaveBeenLastCalledWith({ type: 'shutdown' })
+      mockUtilityProcessInstance.emit('exit', 11)
+
+      // #then telemetry names the phase — this crash cost the user nothing
+      expect(trackMainLogMock).toHaveBeenCalledWith('error', {
+        scope: 'Embeddings',
+        action: 'worker_exit_idle_shutdown',
+        errorCode: 'EmbeddingWorkerExit',
+        metrics: { value: 11 }
+      })
+    })
+
+    it('reports in_flight when the worker dies with a request outstanding', async () => {
+      await startWorker()
+
+      // #when the worker dies while the embed request is still outstanding
+      mockUtilityProcessInstance.emit('exit', 11)
+
+      // #then telemetry says the user silently lost this embedding
+      expect(trackMainLogMock).toHaveBeenCalledWith('error', {
+        scope: 'Embeddings',
+        action: 'worker_exit_in_flight',
+        errorCode: 'EmbeddingWorkerExit',
+        metrics: { value: 11 }
+      })
+    })
+
+    it('stays silent for a clean idle shutdown', async () => {
+      vi.useFakeTimers()
+      const { requestId } = await startWorker()
+      mockUtilityProcessInstance.simulateMessage({
+        type: 'embed-result',
+        requestId,
+        embedding: Array.from(new Float32Array(EMBEDDING_DIMENSION))
+      })
+      await vi.waitFor(() => expect(getModelInfo().loaded).toBe(true))
+
+      await vi.advanceTimersByTimeAsync(30_000)
+      // #when the worker exits(0) as designed — lifecycle, not a fault
+      mockUtilityProcessInstance.emit('exit', 0)
+
+      expect(trackMainLogMock).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('embedding failure visibility', () => {
+    it('reports failed embeddings so silent loss of indexing is measurable', async () => {
+      const embeddingPromise = generateEmbedding('content long enough for embeddings')
+
+      mockUtilityProcessInstance.simulateMessage({ type: 'ready' })
+      await vi.waitFor(() => {
+        expect(mockUtilityProcessInstance.postMessage).toHaveBeenCalledTimes(1)
+      })
+
+      // #when the worker dies outright, rejecting the in-flight request
+      mockUtilityProcessInstance.emit('exit', 11)
+      await expect(embeddingPromise).resolves.toBeNull()
+
+      // #then the failure reaches telemetry instead of only electron-log
+      expect(trackMainLogMock).toHaveBeenCalledWith('error', {
+        scope: 'Embeddings',
+        action: 'embed_failed',
+        errorCode: 'Error'
+      })
+    })
+
+    it('throttles repeated embed failures so a crash loop cannot flood the queue', async () => {
+      // #given a broken worker and several notes edited in quick succession
+      for (let i = 0; i < 3; i++) {
+        const embeddingPromise = generateEmbedding(`content long enough for embeddings ${i}`)
+        mockUtilityProcessInstance.simulateMessage({ type: 'ready' })
+        await vi.waitFor(() => {
+          expect(mockUtilityProcessInstance.postMessage).toHaveBeenCalled()
+        })
+        mockUtilityProcessInstance.emit('exit', 11)
+        await expect(embeddingPromise).resolves.toBeNull()
+      }
+
+      // #then only the first embed_failed leaves the process
+      const embedFailures = trackMainLogMock.mock.calls.filter(
+        (call) => call[1]?.action === 'embed_failed'
+      )
+      expect(embedFailures).toHaveLength(1)
+    })
   })
 })

@@ -19,8 +19,18 @@ import type {
 } from './embedding-model-protocol'
 import { EMBEDDING_DIMENSION } from './embeddings-constants'
 import { createLogger } from './logger'
+import { trackMainLog } from '../telemetry/diagnostics'
+import { shouldEmitThrottled } from '../telemetry/throttle'
 
 const logger = createLogger('Embeddings')
+
+/**
+ * Where the worker was in its lifecycle when it died. This is the discriminator
+ * production is missing: an `idle_shutdown` death costs the user nothing (the
+ * embedding was already delivered), while `in_flight` means they silently lost
+ * semantic-search indexing for that note.
+ */
+type WorkerExitPhase = 'starting' | 'in_flight' | 'idle_shutdown' | 'idle'
 
 export interface ModelInfo {
   name: string
@@ -172,6 +182,17 @@ class EmbeddingModelBridge {
       this.loading = false
       this.error = error instanceof Error ? error.message : String(error)
       logger.error('Generation failed:', error)
+      // Until now this failure only ever reached electron-log, so a user
+      // silently losing semantic-search indexing was invisible to us. Throttled
+      // because a broken worker fails once per note edit; we need the yes/no,
+      // not the volume (worker_exit_* above carries the true cadence).
+      if (shouldEmitThrottled('embeddings:embed_failed')) {
+        trackMainLog('error', {
+          scope: 'Embeddings',
+          action: 'embed_failed',
+          errorCode: error instanceof Error && error.name ? error.name : 'UnknownError'
+        })
+      }
       return null
     }
   }
@@ -293,6 +314,7 @@ class EmbeddingModelBridge {
 
       const onExitBeforeReady = (code: number): void => {
         cleanup()
+        this.trackWorkerExit('starting', code)
         const error = new Error(`Embedding utility exited unexpectedly (code ${code})`)
         this.failProcess(error)
         reject(error)
@@ -352,8 +374,31 @@ class EmbeddingModelBridge {
         return
       }
 
+      // Phase must be read before failProcess(), which rejects and clears the
+      // pending requests this classification depends on.
+      this.trackWorkerExit(this.currentPhase(), code)
       const error = new Error(`Embedding utility exited unexpectedly (code ${code})`)
       this.failProcess(error)
+    })
+  }
+
+  private currentPhase(): WorkerExitPhase {
+    if (this.shuttingDown) return 'idle_shutdown'
+    if (this.pendingRequests.size > 0) return 'in_flight'
+    return 'idle'
+  }
+
+  /**
+   * Deliberately NOT throttled: the crash cadence (one install saw ~15/hour at
+   * 30s-2min intervals) is itself the diagnostic signal, and losing it would
+   * make the rate look lower than it is.
+   */
+  private trackWorkerExit(phase: WorkerExitPhase, code: number): void {
+    trackMainLog('error', {
+      scope: 'Embeddings',
+      action: `worker_exit_${phase}`,
+      errorCode: 'EmbeddingWorkerExit',
+      metrics: { value: code }
     })
   }
 
