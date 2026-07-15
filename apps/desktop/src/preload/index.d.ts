@@ -481,6 +481,7 @@ export interface VaultClientAPI {
   reveal(): Promise<void>
   listAccount(): Promise<AccountVaultInfo[]>
   downloadRemote(vaultUuid: string, parentPath?: string): Promise<SelectVaultResponse>
+  deleteFromAccount(vaultUuid: string): Promise<void>
 }
 
 // Notes client API interface

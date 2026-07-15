@@ -12,10 +12,11 @@ import {
   getAccountVaultsCache,
   getCurrentVaultPath,
   getVaults,
+  removeVaultFromStore,
   setAccountVaultsCache,
   upsertVault
 } from '../store'
-import { getFromServer, postToServer } from './http-client'
+import { deleteFromServer, getFromServer, postToServer } from './http-client'
 import { getValidAccessToken } from './token-manager'
 import { decryptVaultName, encryptVaultName } from './vault-name-crypto'
 
@@ -143,6 +144,31 @@ export function listAccountVaults(): AccountVaultInfo[] {
     localPath: localByUuid.get(v.vaultUuid)?.path ?? null,
     suggestedPath: suggestVaultFolder(v)
   }))
+}
+
+/**
+ * Purge a vault from the sync account and drop its local list entry.
+ *
+ * Both halves always run together: refreshVaultDirectory self-registers every
+ * local vault, so a server-only delete would resurrect itself on the next
+ * refresh. Files on disk are never touched.
+ */
+export async function deleteAccountVault(vaultUuid: string): Promise<void> {
+  const local = getVaults().find((v) => v.vaultUuid === vaultUuid)
+  if (local && local.path === getCurrentVaultPath()) {
+    throw new Error('Cannot delete the active vault. Switch to another vault first.')
+  }
+
+  const token = await getValidAccessToken()
+  if (!token) {
+    throw new Error('Sign in to delete a vault from your account.')
+  }
+
+  await deleteFromServer(`/sync/vaults/${encodeURIComponent(vaultUuid)}`, token)
+
+  if (local) removeVaultFromStore(local.path)
+
+  log.info('Vault deleted from account', { vaultUuid, hadLocalCopy: !!local })
 }
 
 export async function downloadRemoteVault(input: {
