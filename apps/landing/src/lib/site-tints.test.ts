@@ -37,7 +37,7 @@ const IN_SCOPE_PAGES = [
 
 // Pages that must stay untinted: home carries the painted wallpaper instead, and the
 // legal pages are out of scope entirely.
-const UNTINTED_PAGES = ['home', 'terms', 'refund', 'codeSigning']
+const UNTINTED_PAGES = ['home', 'terms', 'refund']
 
 function tintToken(tint: HeroTint) {
   return tint === 'ink' ? '--color-dark' : `--color-tint-${tint}`

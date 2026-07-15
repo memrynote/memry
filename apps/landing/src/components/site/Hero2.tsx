@@ -17,13 +17,37 @@ const EASE = [0.16, 1, 0.3, 1] as const
 // shares this transition so the whole hero materializes at once, not in a stagger.
 const HERO_IN = { duration: 0.7, delay: 0.1, ease: EASE }
 
-const HERO_SHOT = { src: '/screenshots/hero_white.png', width: 1445, height: 952 } as const
+/**
+ * The hero screenshot, and the two numbers that govern the whole hero.
+ *
+ * `cssWidth` is the box the shot renders in. Its height follows the capture's aspect,
+ * and that height IS the hero panel's height budget — the copy block above it is nearly
+ * fixed, so the panel lands at roughly 530px + cssWidth / aspect. Widen this and the
+ * hero grows past the fold on a tall display; that regression is the whole reason the
+ * numbers are pinned here instead of inline.
+ *
+ * Retina rule: rendering at N CSS px needs a capture of at least 2N real px, or the
+ * browser upscales and the app UI goes soft. `width` below is the capture's real pixel
+ * width, so the pixel-perfect ceiling is always `width / 2`.
+ *
+ * Current capture is 1448px wide → ceiling 724px, and we render well past it, because
+ * a shot too small to read is a worse hero than a slightly soft one. The room this costs
+ * is bought back by the tight pt/mt above, not by shrinking the shot. To get big AND
+ * sharp the capture must get wider — and to stay inside the fold it must also get
+ * shorter, i.e. resize the app window short-and-wide before capturing, don't crop after.
+ * Target: ~2400x1200 real px (2:1) → cssWidth 1100 renders pixel-perfect at 550px tall.
+ */
+const HERO_SHOT = { src: '/screenshots/hero_white.png', width: 1448, height: 954 } as const
+const HERO_SHOT_CSS_WIDTH = '58rem'
 
-// Scroll-linked screenshot growth. The window lands slightly set back (0.94) and comes
-// forward to its true size as you scroll the hero away — reversible, because it's mapped
-// off scroll position, not a one-shot animation. Ends at 0.45 of the hero's scroll range
-// so it's fully at 1 while still on screen, not after it has left.
-const SHOT_SCALE_FROM = 0.94
+// Scroll-linked screenshot growth. The window lands at full size — the first paint is
+// already the "grown" state, because the shot is the reason people are here and it should
+// never open set back and small. Scrolling then pushes it PAST full size, so the gesture
+// still pays off instead of just undoing a shrink. Reversible, because it's mapped off
+// scroll position, not a one-shot animation. Ends at 0.45 of the hero's scroll range so
+// it peaks while still on screen, not after it has left.
+const SHOT_SCALE_FROM = 1
+const SHOT_SCALE_TO = 1.06
 const SHOT_SCALE_RANGE = [0, 0.45]
 
 /**
@@ -63,20 +87,25 @@ export function Hero2() {
     target: panelRef,
     offset: ['start start', 'end start']
   })
-  const shotScale = useTransform(scrollYProgress, SHOT_SCALE_RANGE, [SHOT_SCALE_FROM, 1], {
-    clamp: true
-  })
+  const shotScale = useTransform(
+    scrollYProgress,
+    SHOT_SCALE_RANGE,
+    [SHOT_SCALE_FROM, SHOT_SCALE_TO],
+    { clamp: true }
+  )
 
   return (
     <section id="hero" className="px-3 pb-4 pt-3 sm:px-6 md:pb-6">
       {/* The illustrated sky mega-panel — rounded, inset from the viewport edges.
           Top inset matches the nav's pt-3 so the fixed nav pill floats over the wallpaper.
-          No height cap: the panel takes its natural content height, so on laptop screens
-          it fills the viewport (full-screen hero) with the screenshot bleeding off the
-          bottom, clipped by overflow-hidden. */}
+          The panel takes its natural content height, and that height is deliberately
+          budgeted to land near 1090px on desktop: short enough that the section below
+          peeks above the fold on a tall display, instead of the hero eating the screen.
+          The budget is spent by pt-32 + the copy block + the screenshot's max-w — change
+          any one of them and the fold moves. */}
       <div
         ref={panelRef}
-        className="relative mx-auto w-full overflow-hidden rounded-3xl border border-ink/5 bg-tint-sky pb-8 md:pb-14"
+        className="relative mx-auto w-full overflow-hidden rounded-3xl border border-ink/5 bg-tint-sky pb-8 md:pb-10"
       >
         {/* Painted landscape backdrop — a whisper of blur pushes it back so the copy + app
             window read as the foreground; scale-105 hides the soft edges the blur would
@@ -89,7 +118,7 @@ export function Hero2() {
         />
 
         {/* Copy + CTAs */}
-        <div className="relative z-10 px-6 pt-28 text-center sm:px-10 md:pt-40">
+        <div className="relative z-10 px-6 pt-28 text-center sm:px-10 md:pt-28">
           <motion.h1
             className="display-hero mx-auto max-w-4xl text-ink text-balance"
             initial={{ opacity: 0, y: 18, filter: 'blur(10px)' }}
@@ -173,16 +202,17 @@ export function Hero2() {
           transition={HERO_IN}
         />
 
-        {/* App screenshot — large, flat and whole. No perspective tilt: that 3D transform
+        {/* App screenshot — flat and whole. No perspective tilt: that 3D transform
             rasterized the high-res capture soft (the "blurry" look); flat renders it crisp.
             No translate/overflow bleed either, so the full window is shown, nothing trimmed
-            off the bottom — it sits warm in the sky with the papers peeking behind its base. */}
+            off the bottom — it sits warm in the sky with the papers peeking behind its base.
+            Width comes from HERO_SHOT_CSS_WIDTH; see that comment before changing it. */}
         <motion.div
-          className="relative z-10 mx-auto mt-12 w-[88%] max-w-[63.36rem] md:mt-16"
+          className="relative z-10 mx-auto mt-8 w-[88%]"
           initial={{ y: 72 }}
           animate={{ y: 0 }}
           transition={HERO_IN}
-          style={{ scale: reduceMotion ? 1 : shotScale }}
+          style={{ maxWidth: HERO_SHOT_CSS_WIDTH, scale: reduceMotion ? 1 : shotScale }}
         >
           {/* The whole window is the demo trigger — click opens the video lightbox.
               It's also the glass mat: the padding band IS the effect — sky (and the paper

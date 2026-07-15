@@ -143,8 +143,7 @@ export const FOOTER_LINKS = {
     { label: 'Docs', href: DOCS_URL },
     { label: 'Terms of Service', href: '/terms' },
     { label: 'Privacy Policy', href: '/privacy' },
-    { label: 'Refund Policy', href: '/refund' },
-    { label: 'Code Signing Policy', href: '/code-signing-policy' }
+    { label: 'Refund Policy', href: '/refund' }
   ],
   social: [
     { label: 'Reddit', href: 'https://www.reddit.com/r/MemryNote/' },

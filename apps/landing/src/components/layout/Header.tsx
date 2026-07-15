@@ -510,15 +510,24 @@ export function Header() {
 
       <AnimatePresence>
         {mobileMenuOpen && (
+          /* Same rule as DesktopDropdown: this wrapper carries transform only. Any filter or
+             opacity here — including a resting filter: blur(0px), which is not `none` — makes it
+             the backdrop root for its subtree and turns the panel's backdrop blur into a no-op. */
           <motion.div
-            initial={{ opacity: 0, y: -8, scale: 0.98, filter: 'blur(8px)' }}
-            animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
-            exit={{ opacity: 0, y: -8, scale: 0.98, filter: 'blur(8px)' }}
+            initial={{ y: -8, scale: 0.98 }}
+            animate={{ y: 0, scale: 1 }}
+            exit={{ y: -8, scale: 0.98 }}
             transition={{ type: 'spring', duration: 0.35, bounce: 0 }}
             className="relative z-10 origin-top px-3 pt-3 md:hidden sm:px-6"
           >
             <Container size="full">
-              <div className="material-chrome mx-auto flex max-h-[calc(100dvh-88px)] max-w-6xl flex-col gap-1.5 overflow-y-auto rounded-[20px] border border-white/70 p-2.5 shadow-[var(--shadow-float)]">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                className="material-chrome mx-auto flex max-h-[calc(100dvh-88px)] max-w-6xl flex-col gap-1.5 overflow-y-auto rounded-[20px] border border-white/70 p-2.5 shadow-[var(--shadow-float)]"
+              >
                 {MOBILE_DROPDOWN_SECTIONS.map((section) => (
                   <MobileDropdownSection
                     key={section.key}
@@ -551,7 +560,7 @@ export function Header() {
                   label={accountLabel}
                   onNavigate={closeMobileMenu}
                 />
-              </div>
+              </motion.div>
             </Container>
           </motion.div>
         )}

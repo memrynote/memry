@@ -246,11 +246,7 @@ function PlatformGrid({ detected }: { detected: DetectedOS }) {
         </motion.div>
 
         <p className="mt-12 text-center font-mono-accent text-[11px] uppercase tracking-[0.18em] text-muted/70">
-          Automatic updates keep you current. Source stays open on GitHub.{' '}
-          <a href="/code-signing-policy" className="text-terracotta hover:underline">
-            Code signing policy
-          </a>
-          .
+          Automatic updates keep you current. Source stays open on GitHub.
         </p>
       </Container>
     </section>

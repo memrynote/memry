@@ -140,12 +140,6 @@ export const PAGE_META: Record<string, PageMeta> = {
       'Fourteen-day money-back guarantee on every paid Sync plan, including Believer. Requests processed through Paddle, refunded to your original payment method.',
     path: '/refund'
   },
-  codeSigning: {
-    title: 'Code Signing Policy — memrynote',
-    description:
-      'How memrynote signs its desktop builds. Free code signing provided by SignPath.io, certificate by SignPath Foundation. Team roles, security practices, and how to verify installers.',
-    path: '/code-signing-policy'
-  },
   compare: {
     title: 'Compare memrynote — how it stacks up',
     description:
