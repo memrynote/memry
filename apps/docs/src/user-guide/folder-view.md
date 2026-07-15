@@ -25,6 +25,10 @@ You can show / hide columns including any custom property:
 
 Property columns let you sort and filter by typed values (numbers, dates, select).
 
+Your column choice and order are saved to the folder's `.folder.md` file, so they
+survive a restart. Saving is debounced, and pending changes are flushed when you
+leave the folder or quit, so the last edit you make is still written.
+
 ## Sorting
 
 Click any header to sort. Click again to reverse direction. <kbd>⇧</kbd>+click for **secondary sort** (sort by A then B).
@@ -53,11 +57,11 @@ Active filters show as chips you can dismiss.
 
 A density toggle in the toolbar:
 
-| Density | Row height |
-| --- | --- |
-| Compact | minimal padding |
-| Normal | comfortable |
-| Spacious | extra room |
+| Density  | Row height      |
+| -------- | --------------- |
+| Compact  | minimal padding |
+| Normal   | comfortable     |
+| Spacious | extra room      |
 
 Persisted per device.
 
