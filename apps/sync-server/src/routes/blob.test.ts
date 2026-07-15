@@ -115,6 +115,10 @@ const createApp = () => {
   return app
 }
 
+// Chunks go on the wire encrypted: nonce(24) + ciphertext(plaintext + 16-byte tag).
+// Fixtures must honour that — a 5-byte plaintext chunk uploads as 45 bytes.
+const CHUNK_CRYPTO_OVERHEAD = 40
+
 const createSession = (overrides: Record<string, unknown> = {}) => ({
   id: 'session-1',
   user_id: 'user-1',
@@ -122,14 +126,18 @@ const createSession = (overrides: Record<string, unknown> = {}) => ({
   filename: 'file.bin',
   total_size: 10,
   chunk_count: 2,
+  encrypted_size: null,
   uploaded_chunks: JSON.stringify([
-    { i: 0, h: 'hash-0', b: 5 },
-    { i: 1, h: 'hash-1', b: 5 }
+    { i: 0, h: 'hash-0', b: 5 + CHUNK_CRYPTO_OVERHEAD },
+    { i: 1, h: 'hash-1', b: 5 + CHUNK_CRYPTO_OVERHEAD }
   ]),
   expires_at: Math.floor(Date.now() / 1000) + 100,
   created_at: 1,
   ...overrides
 })
+
+// 10 plaintext bytes across 2 chunks => 10 + 40*2 bytes stored.
+const UPLOAD_INIT_ENCRYPTED_SIZE = 10 + CHUNK_CRYPTO_OVERHEAD * 2
 
 const createEnv = (state: MockDbState) => ({
   DB: createDb(state),
@@ -306,7 +314,8 @@ describe('blob routes', () => {
       sessionId: expect.any(String),
       expiresAt: expect.any(Number)
     })
-    expect(reserveStorage).toHaveBeenCalledWith(env.DB, 'user-1', 10)
+    // storage is reserved on ciphertext, the plan limit is checked on plaintext
+    expect(reserveStorage).toHaveBeenCalledWith(env.DB, 'user-1', UPLOAD_INIT_ENCRYPTED_SIZE)
     expect(assertFileSizeAllowed).toHaveBeenCalledWith(env.DB, 'user-1', 10)
     expect(
       state.statements.some(
@@ -368,16 +377,17 @@ describe('blob routes', () => {
   })
 
   it('rejects a chunk that would exceed the declared upload size', async () => {
+    // 10 plaintext bytes over 2 chunks => 90 bytes allowed. 45 already up, 50 more overruns.
     state.session = createSession({
       total_size: 10,
-      uploaded_chunks: JSON.stringify([{ i: 0, h: 'hash-0', b: 8 }])
+      uploaded_chunks: JSON.stringify([{ i: 0, h: 'hash-0', b: 5 + CHUNK_CRYPTO_OVERHEAD }])
     })
 
     const res = await app.request(
       '/attachments/upload/session-1/chunk/1',
       {
         method: 'PUT',
-        body: 'abc'
+        body: new Uint8Array(50)
       },
       env
     )
@@ -568,7 +578,7 @@ describe('blob routes', () => {
       'user-1/vaults/vault-1/chunks/hash-0',
       'user-1'
     )
-    expect(adjustStorageUsed).toHaveBeenCalledWith(env.DB, 'user-1', -10)
+    expect(adjustStorageUsed).toHaveBeenCalledWith(env.DB, 'user-1', -UPLOAD_INIT_ENCRYPTED_SIZE)
     expect(
       state.statements.some((entry) => entry.sql.includes('DELETE FROM upload_sessions'))
     ).toBe(true)
@@ -585,7 +595,7 @@ describe('blob routes', () => {
 
     expect(res.status).toBe(204)
     expect(deleteBlob).not.toHaveBeenCalled()
-    expect(adjustStorageUsed).toHaveBeenCalledWith(env.DB, 'user-1', -10)
+    expect(adjustStorageUsed).toHaveBeenCalledWith(env.DB, 'user-1', -UPLOAD_INIT_ENCRYPTED_SIZE)
     expect(state.statements.some((entry) => entry.sql.includes('ref_count = ref_count - 1'))).toBe(
       true
     )
