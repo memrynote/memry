@@ -256,6 +256,24 @@ export const BACKUP_SETTINGS_DEFAULTS: BackupSettings = {
 }
 
 // ============================================================================
+// Inbox Settings (daily review reminder)
+// ============================================================================
+
+export const InboxSettingsSchema = z.object({
+  // Optional daily reminder to process the inbox in one calm pass.
+  reviewReminderEnabled: z.boolean(),
+  // Local wall-clock time, 24h "HH:MM".
+  reviewReminderTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/)
+})
+
+export type InboxSettings = z.infer<typeof InboxSettingsSchema>
+
+export const INBOX_SETTINGS_DEFAULTS: InboxSettings = {
+  reviewReminderEnabled: false,
+  reviewReminderTime: '18:00'
+}
+
+// ============================================================================
 // Account Info (read-only, derived from auth state)
 // ============================================================================
 

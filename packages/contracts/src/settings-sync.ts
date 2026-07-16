@@ -53,6 +53,12 @@ export const SyncedSettingsSchema = z.object({
       autoSync: z.boolean().optional(),
       syncIntervalMinutes: z.number().optional()
     })
+    .optional(),
+  inbox: z
+    .object({
+      reviewReminderEnabled: z.boolean().optional(),
+      reviewReminderTime: z.string().optional()
+    })
     .optional()
 })
 
