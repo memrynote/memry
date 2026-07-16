@@ -413,6 +413,10 @@ export const SettingsChannels = {
     GET_FEATURES_SETTINGS: 'settings:getFeaturesSettings',
     /** Update feature module toggles (partial merge) */
     SET_FEATURES_SETTINGS: 'settings:setFeaturesSettings',
+    /** Get inbox settings (daily review reminder) */
+    GET_INBOX_SETTINGS: 'settings:getInboxSettings',
+    /** Update inbox settings (partial merge) */
+    SET_INBOX_SETTINGS: 'settings:setInboxSettings',
     /** Store API key in OS keychain (never in DB) */
     SET_API_KEY: 'settings:setApiKey',
     /** Test API provider connection */

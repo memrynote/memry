@@ -5,6 +5,7 @@ import type {
   EditorSettings,
   FeaturesSettings,
   GeneralSettings,
+  InboxSettings,
   KeyboardShortcuts,
   SyncSettings,
   TaskSettings,
@@ -302,6 +303,13 @@ export const settingsRpc = defineDomain({
     }),
     setFeaturesSettings: defineMethod<(settings: Partial<FeaturesSettings>) => SuccessResponse>({
       channel: SettingsChannels.invoke.SET_FEATURES_SETTINGS,
+      params: ['settings']
+    }),
+    getInboxSettings: defineMethod<() => Promise<InboxSettings>>({
+      channel: SettingsChannels.invoke.GET_INBOX_SETTINGS
+    }),
+    setInboxSettings: defineMethod<(settings: Partial<InboxSettings>) => SuccessResponse>({
+      channel: SettingsChannels.invoke.SET_INBOX_SETTINGS,
       params: ['settings']
     }),
     registerGlobalCapture: defineMethod<

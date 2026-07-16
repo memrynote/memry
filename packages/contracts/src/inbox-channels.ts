@@ -141,6 +141,10 @@ export const InboxChannels = {
     SNOOZED: 'inbox:snoozed',
     /** Snoozed item became due */
     SNOOZE_DUE: 'inbox:snooze-due',
+    /** Daily review reminder fired (payload: { count }) */
+    REVIEW_DUE: 'inbox:review-due',
+    /** User clicked the review notification — open the inbox */
+    REVIEW_OPEN: 'inbox:review-open',
     /** Transcription completed */
     TRANSCRIPTION_COMPLETE: 'inbox:transcription-complete',
     /** Metadata fetch completed */
