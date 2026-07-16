@@ -112,11 +112,11 @@ describe('computeResizedTimes', () => {
 })
 
 describe('eligibility guards', () => {
-  it('only native timed events are movable/resizable', () => {
+  it('native timed events are movable/resizable; timed tasks are movable but not resizable', () => {
     expect(isEventMovable(makeEvent())).toBe(true)
     expect(isEventResizable(makeEvent())).toBe(true)
     expect(isEventMovable(makeEvent({ isAllDay: true }))).toBe(false)
-    expect(isEventMovable(makeEvent({ sourceType: 'task', visualType: 'task' }))).toBe(false)
+    expect(isEventMovable(makeEvent({ sourceType: 'task', visualType: 'task' }))).toBe(true)
     expect(
       isEventResizable(
         makeEvent({
@@ -124,6 +124,43 @@ describe('eligibility guards', () => {
         })
       )
     ).toBe(false)
+  })
+})
+
+describe('isEventMovable with tasks', () => {
+  const base = {
+    projectionId: 'task:task-1',
+    sourceId: 'task-1',
+    title: 'Write the spec',
+    startAt: '2026-07-15T09:00:00.000Z',
+    endAt: '2026-07-15T10:00:00.000Z',
+    isAllDay: false,
+    visualType: 'task',
+    editability: { canMove: true, canResize: false, canEditText: true, canDelete: true }
+  }
+
+  it('allows moving a timed task chip', () => {
+    expect(isEventMovable({ ...base, sourceType: 'task' } as CalendarProjectionItem)).toBe(true)
+  })
+
+  it('does not allow moving an all-day task chip (dnd-kit owns those)', () => {
+    expect(
+      isEventMovable({ ...base, sourceType: 'task', isAllDay: true } as CalendarProjectionItem)
+    ).toBe(false)
+  })
+
+  it('still refuses read-only projections such as notes', () => {
+    expect(
+      isEventMovable({
+        ...base,
+        sourceType: 'note_date',
+        editability: { canMove: false, canResize: false, canEditText: false, canDelete: false }
+      } as CalendarProjectionItem)
+    ).toBe(false)
+  })
+
+  it('does not make tasks resizable', () => {
+    expect(isEventResizable({ ...base, sourceType: 'task' } as CalendarProjectionItem)).toBe(false)
   })
 })
 

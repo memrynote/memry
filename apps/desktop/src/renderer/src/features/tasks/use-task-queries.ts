@@ -364,7 +364,7 @@ export function useTaskWorkspaceMutations() {
                     ? formatDateKey(otherUpdates.dueDate)
                     : null
                   : undefined,
-              dueTime: otherUpdates.dueTime ?? undefined,
+              dueTime: 'dueTime' in otherUpdates ? otherUpdates.dueTime : undefined,
               isRepeating: otherUpdates.isRepeating,
               repeatConfig: toServiceRepeatConfig(otherUpdates.repeatConfig),
               linkedNoteIds: otherUpdates.linkedNoteIds,
@@ -404,7 +404,7 @@ export function useTaskWorkspaceMutations() {
                     ? formatDateKey(otherUpdates.dueDate)
                     : null
                   : undefined,
-              dueTime: otherUpdates.dueTime ?? undefined,
+              dueTime: 'dueTime' in otherUpdates ? otherUpdates.dueTime : undefined,
               isRepeating: otherUpdates.isRepeating,
               repeatConfig: toServiceRepeatConfig(otherUpdates.repeatConfig),
               linkedNoteIds: otherUpdates.linkedNoteIds,
@@ -431,7 +431,7 @@ export function useTaskWorkspaceMutations() {
                 ? formatDateKey(updates.dueDate)
                 : null
               : undefined,
-          dueTime: updates.dueTime ?? undefined,
+          dueTime: 'dueTime' in updates ? updates.dueTime : undefined,
           isRepeating: updates.isRepeating,
           repeatConfig: toServiceRepeatConfig(updates.repeatConfig),
           linkedNoteIds: updates.linkedNoteIds,

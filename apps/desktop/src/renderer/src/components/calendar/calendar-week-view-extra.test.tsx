@@ -15,7 +15,12 @@ const mocks = vi.hoisted(() => ({
     anchorRect: { x: number; y: number; width: number; height: number }
   },
   isDragging: false,
-  clearSelection: vi.fn()
+  clearSelection: vi.fn(),
+  dragContext: null as null | { dragState: { isDragging: boolean } }
+}))
+
+vi.mock('@/contexts/drag-context', () => ({
+  useOptionalDragContext: () => mocks.dragContext
 }))
 
 vi.mock('@memry/i18n/renderer', () => ({
@@ -116,6 +121,26 @@ vi.mock('./calendar-quick-create-dialog', () => ({
   )
 }))
 
+// `timeBehavior`, `hourHeight`, and `dueTime` never reach the DOM — only the wrapper
+// div and its children do. A copy-paste bug that forwards the wrong `date` or
+// hardcodes `hourHeight` would render identically. Mock useDroppable one level down
+// (real CalendarTimedColumnDroppable / CalendarAllDayCell / use-calendar-date-droppable
+// still run) so we can assert the real config each column registers.
+const droppableMocks = vi.hoisted(() => ({
+  useDroppable: vi.fn((_config: unknown) => ({ setNodeRef: vi.fn(), isOver: false })),
+  useDraggable: vi.fn(() => ({
+    attributes: {},
+    listeners: {},
+    setNodeRef: vi.fn(),
+    isDragging: false
+  }))
+}))
+
+vi.mock('@dnd-kit/core', () => ({
+  useDroppable: droppableMocks.useDroppable,
+  useDraggable: droppableMocks.useDraggable
+}))
+
 const timedItem = {
   projectionId: 'event:event-1',
   sourceType: 'event',
@@ -146,6 +171,7 @@ describe('CalendarWeekView extra coverage', () => {
     vi.clearAllMocks()
     mocks.selection = null
     mocks.isDragging = false
+    mocks.dragContext = null
   })
 
   it('renders timed and all-day items, item actions, grid gestures, and today jumps', () => {
@@ -234,5 +260,115 @@ describe('CalendarWeekView extra coverage', () => {
       startAt: '2026-05-10T01:00:00.000Z',
       endAt: '2026-05-10T03:00:00.000Z'
     })
+  })
+})
+
+describe('CalendarWeekView drop target wiring', () => {
+  beforeEach(() => {
+    droppableMocks.useDroppable.mockClear()
+    droppableMocks.useDraggable.mockClear()
+    mocks.dragContext = null
+  })
+
+  const expectedDates = [
+    '2026-05-10',
+    '2026-05-11',
+    '2026-05-12',
+    '2026-05-13',
+    '2026-05-14',
+    '2026-05-15',
+    '2026-05-16'
+  ]
+
+  function droppableCalls(): Array<{ id: string; data: Record<string, unknown> }> {
+    return droppableMocks.useDroppable.mock.calls.map(
+      ([config]) => config as { id: string; data: Record<string, unknown> }
+    )
+  }
+
+  it('registers each visible day column as a timed slot droppable with its own date and the view HOUR_HEIGHT', () => {
+    render(
+      <CalendarWeekView
+        anchorDate="2026-05-10"
+        items={[timedItem, allDayItem]}
+        selectedItemId={null}
+      />
+    )
+
+    const timedCalls = droppableCalls().filter(
+      (call) => call.data.type === 'date' && call.data.timeBehavior === 'slot'
+    )
+
+    expect(timedCalls.map((call) => call.data.dateKey).sort()).toEqual([...expectedDates].sort())
+    for (const call of timedCalls) {
+      expect(call.data.hourHeight).toBe(48)
+    }
+
+    const may10 = timedCalls.find((call) => call.data.dateKey === '2026-05-10')
+    expect(may10).toBeDefined()
+    expect(may10?.id).toBe('calendar-timed-column:2026-05-10')
+  })
+
+  it('registers each all-day cell with timeBehavior "clear" so a dropped task loses its time', () => {
+    render(
+      <CalendarWeekView
+        anchorDate="2026-05-10"
+        items={[timedItem, allDayItem]}
+        selectedItemId={null}
+      />
+    )
+
+    const allDayCalls = droppableCalls().filter(
+      (call) => call.data.type === 'date' && 'dueTime' in call.data
+    )
+
+    expect(allDayCalls.map((call) => call.data.dateKey).sort()).toEqual([...expectedDates].sort())
+    const may10 = allDayCalls.find((call) => call.data.dateKey === '2026-05-10')
+    expect(may10).toBeDefined()
+    expect(may10?.data.dueTime).toBeNull()
+    expect(may10?.id).toBe('calendar-date:2026-05-10:clear')
+  })
+})
+
+describe('CalendarWeekView all-day strip reveal during task drag', () => {
+  beforeEach(() => {
+    droppableMocks.useDroppable.mockClear()
+    droppableMocks.useDraggable.mockClear()
+    mocks.dragContext = null
+  })
+
+  function droppableCalls(): Array<{ id: string; data: Record<string, unknown> }> {
+    return droppableMocks.useDroppable.mock.calls.map(
+      ([config]) => config as { id: string; data: Record<string, unknown> }
+    )
+  }
+
+  it('does not render the all-day strip when idle and there are no all-day items', () => {
+    render(<CalendarWeekView anchorDate="2026-05-10" items={[timedItem]} selectedItemId={null} />)
+
+    expect(screen.queryByTestId('week-all-day-strip')).not.toBeInTheDocument()
+    expect(droppableCalls().some((call) => 'dueTime' in call.data)).toBe(false)
+  })
+
+  it('reveals the all-day strip with a droppable cell per visible day when a task drag is in flight, even with no all-day items', () => {
+    mocks.dragContext = { dragState: { isDragging: true } }
+
+    render(<CalendarWeekView anchorDate="2026-05-10" items={[timedItem]} selectedItemId={null} />)
+
+    expect(screen.getByTestId('week-all-day-strip')).toBeInTheDocument()
+
+    const allDayCalls = droppableCalls().filter(
+      (call) => call.data.type === 'date' && 'dueTime' in call.data
+    )
+    const expectedDates = [
+      '2026-05-10',
+      '2026-05-11',
+      '2026-05-12',
+      '2026-05-13',
+      '2026-05-14',
+      '2026-05-15',
+      '2026-05-16'
+    ]
+    expect(allDayCalls.map((call) => call.data.dateKey).sort()).toEqual([...expectedDates].sort())
   })
 })

@@ -1,6 +1,6 @@
 import { useMemo, useRef } from 'react'
 import { useT } from '@memry/i18n/renderer'
-import { CalendarItemChip } from './calendar-item-chip'
+import { CalendarMonthDayCell } from './calendar-month-day-cell'
 import { CalendarQuickCreateDialog } from './calendar-quick-create-dialog'
 import {
   getMonthGridDays,
@@ -11,7 +11,6 @@ import {
   toLocalDateKey
 } from './date-utils'
 import { useMonthGridMarquee } from './use-month-grid-marquee'
-import { cn } from '@/lib/utils'
 import { useContainerWidth } from '@/hooks/use-container-width'
 import { useWeekStartsOn } from '@/hooks/use-calendar-preferences'
 import type { AnchorRect, CalendarEventDraft } from './types'
@@ -34,7 +33,7 @@ export function CalendarMonthView({
   onDeleteItem,
   onQuickSave
 }: CalendarMonthViewProps): React.JSX.Element {
-  const { t, i18n } = useT('calendar')
+  const { i18n } = useT('calendar')
   const weekStartsOn = useWeekStartsOn()
   const gridDays = getMonthGridDays(anchorDate, weekStartsOn)
   const [containerWidth, containerRef] = useContainerWidth()
@@ -82,49 +81,20 @@ export function CalendarMonthView({
             isDragging && selection && day >= selection.startDate && day <= selection.endDate
 
           return (
-            <div
+            <CalendarMonthDayCell
               key={day}
-              data-date={day}
-              className={cn(
-                'flex flex-col gap-1 border-b border-e border-border p-1 @xl:p-2',
-                inMonth ? (weekend ? 'bg-muted/30' : 'bg-background') : 'bg-muted/50',
-                (isSelected || isDragSelected) && 'ring-2 ring-inset ring-tint/40 bg-tint/10'
-              )}
-            >
-              <div className="mb-0.5">
-                {today ? (
-                  <span className="inline-flex size-6 items-center justify-center rounded-full bg-tint text-xs font-semibold text-tint-foreground">
-                    {dayNum}
-                  </span>
-                ) : (
-                  <span
-                    className={cn(
-                      'inline-block text-xs font-medium leading-6',
-                      inMonth ? 'text-foreground' : 'text-muted-foreground'
-                    )}
-                  >
-                    {dayNum}
-                  </span>
-                )}
-              </div>
-
-              <div className="flex flex-col gap-1">
-                {dayItems.slice(0, maxVisibleEvents).map((item) => (
-                  <CalendarItemChip
-                    key={item.projectionId}
-                    item={item}
-                    isSelected={item.sourceType === 'event' && item.sourceId === selectedItemId}
-                    onClick={onSelectItem}
-                    onDeleteItem={onDeleteItem}
-                  />
-                ))}
-                {dayItems.length > maxVisibleEvents && (
-                  <span className="text-xs font-semibold text-muted-foreground">
-                    {t('time.more-events', { count: dayItems.length - maxVisibleEvents })}
-                  </span>
-                )}
-              </div>
-            </div>
+              day={day}
+              dayNum={dayNum}
+              inMonth={inMonth}
+              today={today}
+              weekend={weekend}
+              highlighted={Boolean(isSelected || isDragSelected)}
+              items={dayItems}
+              maxVisibleEvents={maxVisibleEvents}
+              selectedItemId={selectedItemId}
+              onSelectItem={onSelectItem}
+              onDeleteItem={onDeleteItem}
+            />
           )
         })}
       </div>

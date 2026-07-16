@@ -496,6 +496,52 @@ describe('useTaskWorkspaceMutations', () => {
     })
   })
 
+  // Regression: dragging a timed task onto an all-day calendar cell calls
+  // updateTask(id, { dueDate, dueTime: null }) to clear the time. The payload
+  // builder used to map `dueTime: updates.dueTime ?? undefined`, so
+  // `null ?? undefined` produced `undefined` and the service silently
+  // dropped the field, leaving the old due_time in place.
+  describe('updateTask preserves dueTime on partial updates', () => {
+    function lastUpdatePayload() {
+      const calls = vi.mocked(tasksService.update).mock.calls
+      return calls[calls.length - 1][0] as Record<string, unknown>
+    }
+
+    function renderMutations() {
+      const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      queryClient.setQueryData(taskKeys.tasks(), [])
+      return renderHook(() => useTaskWorkspaceMutations(), {
+        wrapper: createWrapper(queryClient)
+      })
+    }
+
+    it('clears dueTime (sends null, not undefined) when dropped on an all-day cell', async () => {
+      const { result } = renderMutations()
+
+      await act(async () => {
+        await result.current.updateTask('task-1', {
+          dueDate: new Date('2026-05-10T00:00:00.000Z'),
+          dueTime: null
+        })
+      })
+
+      const payload = lastUpdatePayload()
+      expect(payload.dueTime).toBeNull()
+      expect(payload.dueDate).toBe('2026-05-10')
+    })
+
+    it('omits dueTime (does not clear it) when updating only the description', async () => {
+      const { result } = renderMutations()
+
+      await act(async () => {
+        await result.current.updateTask('task-1', { description: 'a new description' })
+      })
+
+      // undefined = Drizzle skips the column = existing due time preserved.
+      expect(lastUpdatePayload().dueTime).toBeUndefined()
+    })
+  })
+
   // Regression coverage for the tags payload-builder branches: updateTask must
   // forward tag edits, but an update that doesn't touch tags must leave them
   // undefined (not []), or every unrelated task edit would silently wipe tags.

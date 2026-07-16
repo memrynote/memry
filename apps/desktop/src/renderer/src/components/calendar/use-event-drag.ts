@@ -75,9 +75,14 @@ export function computeResizedTimes(
   }
 }
 
-/** Only native Memry events are draggable — tasks, reminders, notes, imports are not. */
+/**
+ * Time-grid dragging covers native events and timed tasks. All-day chips are
+ * date-granular and handled by dnd-kit; notes, reminders and imports are
+ * read-only (main sets canMove: false on those projections).
+ */
 export function isEventMovable(item: CalendarProjectionItem): boolean {
-  return item.sourceType === 'event' && Boolean(item.editability?.canMove) && !item.isAllDay
+  const isDraggableSource = item.sourceType === 'event' || item.sourceType === 'task'
+  return isDraggableSource && Boolean(item.editability?.canMove) && !item.isAllDay
 }
 
 export function isEventResizable(item: CalendarProjectionItem): boolean {

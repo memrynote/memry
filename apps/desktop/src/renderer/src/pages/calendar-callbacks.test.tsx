@@ -80,6 +80,7 @@ const mocks = vi.hoisted(() => ({
   openTab: vi.fn(),
   promoteExternal: vi.fn(),
   setCalendarGoogleSettings: vi.fn(),
+  taskUpdate: vi.fn(),
   setDayPanelDate: vi.fn(),
   setAnchorDate: vi.fn((next: string | ((current: string) => string)) => {
     mocks.anchorDate = typeof next === 'function' ? next(mocks.anchorDate) : next
@@ -217,6 +218,30 @@ vi.mock('@/components/calendar', () => ({
         </button>
         <button type="button" onClick={props.onPopoverDismiss}>
           dismiss popover
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            props.onMoveEvent(
+              mocks.calendarItems.find((entry) => entry.sourceType === 'task'),
+              '2026-05-11T14:30:00.000Z',
+              '2026-05-11T15:30:00.000Z'
+            )
+          }
+        >
+          move task
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            props.onMoveEvent(
+              mocks.calendarItems.find((entry) => entry.sourceType === 'event'),
+              '2026-05-11T14:30:00.000Z',
+              '2026-05-11T15:30:00.000Z'
+            )
+          }
+        >
+          move event
         </button>
         {props.popoverState && <div data-testid="popover-mode">{props.popoverState.mode}</div>}
         {props.inboxSnoozePopoverState && (
@@ -358,6 +383,12 @@ vi.mock('@/services/inbox-service', () => ({
   }
 }))
 
+vi.mock('@/services/tasks-service', () => ({
+  tasksService: {
+    update: mocks.taskUpdate
+  }
+}))
+
 vi.mock('@/lib/logger', () => ({
   createLogger: () => ({ error: mocks.logError })
 }))
@@ -406,6 +437,7 @@ beforeEach(() => {
   mocks.getSettings.mockResolvedValue({ promoteConfirmDismissed: false })
   mocks.createEvent.mockResolvedValue({ success: true, eventId: 'created-1' })
   mocks.updateEvent.mockResolvedValue({ success: true })
+  mocks.taskUpdate.mockResolvedValue({ success: true, task: null })
   mocks.deleteMutateAsync.mockResolvedValue({ success: true })
   mocks.snooze.mockResolvedValue({ success: true })
   mocks.unsnooze.mockResolvedValue({ success: true })
@@ -525,6 +557,38 @@ describe('CalendarPage callback coverage', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Promote denied')
     fireEvent.click(screen.getByText('close promote'))
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('routes a dragged task chip through tasksService.update, not calendarService.updateEvent', async () => {
+    renderPage()
+
+    const nextStart = new Date('2026-05-11T14:30:00.000Z')
+    const expectedDueDate = `${nextStart.getFullYear()}-${String(nextStart.getMonth() + 1).padStart(2, '0')}-${String(nextStart.getDate()).padStart(2, '0')}`
+    const expectedDueTime = `${String(nextStart.getHours()).padStart(2, '0')}:${String(nextStart.getMinutes()).padStart(2, '0')}`
+
+    fireEvent.click(screen.getByText('move task'))
+    await waitFor(() => expect(mocks.taskUpdate).toHaveBeenCalledTimes(1))
+    expect(mocks.taskUpdate).toHaveBeenCalledWith({
+      id: 'task-1',
+      dueDate: expectedDueDate,
+      dueTime: expectedDueTime
+    })
+    expect(mocks.updateEvent).not.toHaveBeenCalled()
+  })
+
+  it('still routes a dragged event chip through calendarService.updateEvent', async () => {
+    renderPage()
+
+    fireEvent.click(screen.getByText('move event'))
+    await waitFor(() => expect(mocks.updateEvent).toHaveBeenCalledTimes(1))
+    expect(mocks.updateEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'event-1',
+        startAt: '2026-05-11T14:30:00.000Z',
+        endAt: '2026-05-11T15:30:00.000Z'
+      })
+    )
+    expect(mocks.taskUpdate).not.toHaveBeenCalled()
   })
 
   it('opens inbox snoozes, records snooze errors, and handles delete success and failure', async () => {
