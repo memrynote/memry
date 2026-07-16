@@ -504,7 +504,10 @@
       "download": "Download",
       "download2": "Download",
       "noFileAttached": "No file attached",
-      "resizePdf": "Resize PDF"
+      "resizePdf": "Resize PDF",
+      "alignLeft": "Align left",
+      "alignCenter": "Align center",
+      "alignRight": "Align right"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "Open in task panel",

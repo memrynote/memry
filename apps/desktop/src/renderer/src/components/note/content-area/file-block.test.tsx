@@ -96,6 +96,21 @@ describe('file block helpers', () => {
 
     // Legacy markers with no width field parse to a widthless props object.
     expect(parseFileBlockMarker(`<!-- file:${JSON.stringify(base)} -->`)).toEqual(base)
+
+    // The default crop height (0) is dropped for byte-stability, and an
+    // explicit height persists + round-trips alongside width.
+    expect(serializeFileBlock({ ...base, height: 0 })).toBe(`<!-- file:${JSON.stringify(base)} -->`)
+    const cropped = serializeFileBlock({ ...base, width: 720, height: 300 })
+    expect(cropped).toContain('"height":300')
+    expect(parseFileBlockMarker(cropped)).toEqual({ ...base, width: 720, height: 300 })
+
+    // Alignment: default 'left' is dropped; 'center'/'right' persist + round-trip.
+    expect(serializeFileBlock({ ...base, align: 'left' })).toBe(
+      `<!-- file:${JSON.stringify(base)} -->`
+    )
+    const aligned = serializeFileBlock({ ...base, align: 'center' })
+    expect(aligned).toContain('"align":"center"')
+    expect(parseFileBlockMarker(aligned)).toEqual({ ...base, align: 'center' })
   })
 
   it('renders empty, generic, transfer, and pdf previews through the block spec', () => {
@@ -167,7 +182,6 @@ describe('file block helpers', () => {
     )
     expect(screen.getAllByTestId('pdf-document').length).toBeGreaterThan(0)
     fireEvent.click(screen.getAllByText('load pdf')[0])
-    expect(screen.getByText('(2 pages)')).toBeInTheDocument()
     // Resize handle appears once the PDF has loaded.
     const resizeHandle = screen.getByRole('slider')
     expect(resizeHandle).toHaveAttribute(
@@ -175,6 +189,10 @@ describe('file block helpers', () => {
       'phaseF.componentsNoteContentAreaFileBlock.resizePdf'
     )
     expect(resizeHandle).toHaveAttribute('aria-valuenow')
+    // Alignment controls render for a loaded PDF.
+    expect(
+      screen.getByLabelText('phaseF.componentsNoteContentAreaFileBlock.alignCenter')
+    ).toBeInTheDocument()
     fireEvent.click(screen.getAllByText('break pdf')[0])
     expect(
       screen.getByText(/phaseF.componentsNoteContentAreaFileBlock.failedToLoadPdf/)
@@ -203,6 +221,27 @@ describe('file block helpers', () => {
 
     expect(updateBlock).toHaveBeenCalledWith(block, {
       props: expect.objectContaining({ width: expect.any(Number) })
+    })
+  })
+
+  it('commits an alignment to the block prop via the editor', () => {
+    const Render = (createFileBlock as any).render
+    const updateBlock = vi.fn()
+    const block = {
+      props: {
+        url: '/vault/manual.pdf',
+        name: 'manual.pdf',
+        size: 2048,
+        mimeType: 'application/pdf'
+      }
+    }
+
+    render(<Render contentRef={vi.fn()} editor={{ updateBlock }} block={block} />)
+    fireEvent.click(screen.getAllByText('load pdf')[0])
+    fireEvent.click(screen.getByLabelText('phaseF.componentsNoteContentAreaFileBlock.alignRight'))
+
+    expect(updateBlock).toHaveBeenCalledWith(block, {
+      props: expect.objectContaining({ align: 'right' })
     })
   })
 })

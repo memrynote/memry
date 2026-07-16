@@ -159,6 +159,32 @@
   padding: 2px 0;
 }
 
+/* ===== EMBED NODE-SELECTION ===== */
+/* Drop BlockNote's default 4px blue outline on node-selected embeds
+   (PDF/file, image, video, audio, YouTube, bookmark). Each embed already
+   reads as selected via its own chrome; the big blue border felt heavy. */
+.bn-block-content.ProseMirror-selectednode:is(
+    [data-content-type='file'],
+    [data-content-type='image'],
+    [data-content-type='video'],
+    [data-content-type='audio'],
+    [data-content-type='youtubeEmbed'],
+    [data-content-type='bookmark']
+  )
+  > *,
+.ProseMirror-selectednode
+  > .bn-block-content:is(
+    [data-content-type='file'],
+    [data-content-type='image'],
+    [data-content-type='video'],
+    [data-content-type='audio'],
+    [data-content-type='youtubeEmbed'],
+    [data-content-type='bookmark']
+  )
+  > * {
+  outline: none !important;
+}
+
 /* ===== HEADING SIZES ===== */
 [data-content-type='heading'] {
   --level: 1.875em !important;

@@ -152,7 +152,7 @@ test.describe('PDF embed via sidebar drag + resize', () => {
 
     await dropSidebarItem(page, pdfId)
 
-    // The inline PDF preview renders in the editor (header shows before pdfjs load).
+    // The inline PDF preview card renders in the editor (visible before pdfjs load).
     await expect(page.locator('.pdf-preview')).toBeVisible({ timeout: 10_000 })
 
     // Crucially: the bytes were NOT copied into attachments/ — the embed references
@@ -202,6 +202,30 @@ test.describe('PDF embed via sidebar drag + resize', () => {
       .poll(async () => /<!-- file:\{[^}]*"width":\d+/.test(await noteMarkdown(page, targetId)), {
         timeout: 20_000
       })
+      .toBe(true)
+  })
+
+  test('aligns the embed and persists the alignment', async ({ page }) => {
+    await ready(page)
+
+    const pdfId = await importPdf(page)
+    const targetId = await seedNote(page, uniqueLabel('Align Target'), 'drop here')
+    await openNoteInEditor(page, targetId, 'Align Target')
+    await dropSidebarItem(page, pdfId)
+
+    await expect(page.locator('.pdf-preview')).toBeVisible({ timeout: 10_000 })
+    // Scroll the embed clear of the sticky note header before clicking.
+    await page.locator('.pdf-preview').scrollIntoViewIfNeeded()
+
+    // Click the center-align control (hover-revealed, still clickable at rest).
+    await page.getByRole('button', { name: 'Align center' }).click()
+
+    // The alignment round-trips to the persisted note markdown.
+    await expect
+      .poll(
+        async () => /<!-- file:\{[^}]*"align":"center"/.test(await noteMarkdown(page, targetId)),
+        { timeout: 20_000 }
+      )
       .toBe(true)
   })
 })

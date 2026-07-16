@@ -19,14 +19,12 @@ import {
   Download,
   Upload,
   Loader2,
-  PanelLeftClose,
-  PanelLeft,
-  ChevronLeft,
-  ChevronRight,
-  GripVertical
+  GripVertical,
+  AlignLeft,
+  AlignCenter,
+  AlignRight
 } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import { useSync } from '@/contexts/sync-context'
 import { useT } from '@memry/i18n/renderer'
@@ -82,39 +80,65 @@ const PDF_LOADING_INDICATOR = (
 
 // Resize bounds for the inline PDF preview.
 const MIN_PDF_WIDTH = 240
-// Release within this many px of the column edge snaps to full width.
+const MIN_PDF_HEIGHT = 96
+// Release within this many px of the edge snaps to full width / full page.
 const PDF_SNAP_THRESHOLD = 24
+// Default card width; the embed resizes as a whole (card + page) like an image.
+const DEFAULT_PDF_CARD_WIDTH = 600
+// Card border (box-sizing: border-box) subtracted to get the page render width.
+const PDF_CARD_BORDER = 2
 
 function clampWidth(value: number, max: number): number {
   return Math.round(Math.min(Math.max(value, MIN_PDF_WIDTH), max))
 }
+
+function clampHeight(value: number, max: number): number {
+  return Math.round(Math.min(Math.max(value, MIN_PDF_HEIGHT), max))
+}
+
+type PdfAlign = 'left' | 'center' | 'right'
+
+const PDF_ALIGN_VALUES: readonly PdfAlign[] = ['left', 'center', 'right']
 
 interface PdfPreviewProps {
   url: string
   name: string
   /** Stored display width in px; `0` uses the responsive default. */
   width: number
-  /** Commit a new display width (px) to the block prop. `0` restores default. */
-  onResize: (width: number) => void
+  /** Stored crop height in px; `0` fits the first page (no crop). */
+  height: number
+  /** Alignment of the embed within the note column. */
+  align: PdfAlign
+  /** Commit a new display width + crop height (px) to the block props. */
+  onResize: (width: number, height: number) => void
+  /** Commit a new alignment to the block props. */
+  onAlign: (align: PdfAlign) => void
 }
 
-function PdfPreview({ url, name, width, onResize }: PdfPreviewProps) {
+function PdfPreview({ url, name, width, height, align, onResize, onAlign }: PdfPreviewProps) {
   const { t: tPhaseF } = useT('notes')
-  const [numPages, setNumPages] = useState<number>(0)
-  const [currentPage, setCurrentPage] = useState(1)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   // --- Resize state ---------------------------------------------------------
-  // The page-view column bounds the max width so a page never overflows or
-  // horizontally scrolls; measured live so a stored width wider than the
-  // current window clamps down (and restores when the window widens).
+  // The column bounds the max width so the page never overflows horizontally;
+  // the first page's natural rendered height bounds the max crop. Both measured
+  // live so a stored size larger than the current layout clamps down.
   const viewRef = useRef<HTMLDivElement>(null)
   const [maxWidth, setMaxWidth] = useState(0)
+  // Natural (unclipped) height of the rendered first page; caps the crop.
+  const pageContentRef = useRef<HTMLDivElement>(null)
+  const [pageNaturalHeight, setPageNaturalHeight] = useState(0)
   // Non-null only while dragging, for smooth feedback before the commit.
   const [draftWidth, setDraftWidth] = useState<number | null>(null)
-  const dragRef = useRef<{ startX: number; startWidth: number; rtl: boolean } | null>(null)
+  const [draftHeight, setDraftHeight] = useState<number | null>(null)
+  const dragRef = useRef<{
+    startX: number
+    startY: number
+    startWidth: number
+    startHeight: number
+    rtl: boolean
+  } | null>(null)
 
   useLayoutEffect(() => {
     const el = viewRef.current
@@ -127,31 +151,75 @@ function PdfPreview({ url, name, width, onResize }: PdfPreviewProps) {
     return () => observer.disconnect()
   }, [])
 
-  const defaultWidth = sidebarOpen ? 480 : 600
-  const storedWidth = width > 0 ? width : defaultWidth
-  const limit = maxWidth > 0 ? maxWidth : storedWidth
-  const renderWidth = Math.min(draftWidth ?? storedWidth, limit)
+  useLayoutEffect(() => {
+    const el = pageContentRef.current
+    if (!el) return
+    const measure = () => setPageNaturalHeight(el.scrollHeight)
+    measure()
+    if (typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(measure)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  // Width scales the whole embed (card + page) like an image. Height is an
+  // independent crop: shrinking it clips the first page from the top so only
+  // the opening of the document shows — no inner scroll.
+  const columnWidth = maxWidth > 0 ? maxWidth : DEFAULT_PDF_CARD_WIDTH
+  const storedWidth = width > 0 ? width : columnWidth
+  const widthLimit = columnWidth
+  const cardWidth = Math.min(draftWidth ?? storedWidth, widthLimit)
+  const pageWidth = Math.max(140, cardWidth - PDF_CARD_BORDER)
+
+  const heightLimit = pageNaturalHeight > 0 ? pageNaturalHeight : Infinity
+  const draftCrop = draftHeight != null ? Math.min(draftHeight, heightLimit) : null
+  const storedCrop = height > 0 ? Math.min(height, heightLimit) : 0
+  // Effective crop height; `undefined` lets the card wrap the full first page.
+  const cardHeight = draftCrop ?? (storedCrop > 0 ? storedCrop : undefined)
+
+  // Snap width to the column edge and height to the full page before committing.
+  // Height "full" is the page's natural height, which changes with width, so it
+  // is stored as 0 ("fit page") rather than a px that would stop meaning "full".
+  const commitResize = useCallback(
+    (nextWidth: number, nextHeight: number) => {
+      const w = nextWidth >= widthLimit - PDF_SNAP_THRESHOLD ? widthLimit : nextWidth
+      const h =
+        heightLimit !== Infinity && nextHeight >= heightLimit - PDF_SNAP_THRESHOLD ? 0 : nextHeight
+      onResize(w, h)
+    },
+    [widthLimit, heightLimit, onResize]
+  )
 
   const handleResizePointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       e.preventDefault()
       e.stopPropagation()
       const rtl = getComputedStyle(e.currentTarget).direction === 'rtl'
-      dragRef.current = { startX: e.clientX, startWidth: renderWidth, rtl }
+      const startHeight = cardHeight ?? (pageNaturalHeight || MIN_PDF_HEIGHT)
+      dragRef.current = {
+        startX: e.clientX,
+        startY: e.clientY,
+        startWidth: cardWidth,
+        startHeight,
+        rtl
+      }
       e.currentTarget.setPointerCapture(e.pointerId)
-      setDraftWidth(renderWidth)
+      setDraftWidth(cardWidth)
+      setDraftHeight(startHeight)
     },
-    [renderWidth]
+    [cardWidth, cardHeight, pageNaturalHeight]
   )
 
   const handleResizePointerMove = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       const drag = dragRef.current
       if (!drag) return
-      const delta = (e.clientX - drag.startX) * (drag.rtl ? -1 : 1)
-      setDraftWidth(clampWidth(drag.startWidth + delta, limit))
+      const dx = (e.clientX - drag.startX) * (drag.rtl ? -1 : 1)
+      const dy = e.clientY - drag.startY
+      setDraftWidth(clampWidth(drag.startWidth + dx, widthLimit))
+      setDraftHeight(clampHeight(drag.startHeight + dy, heightLimit))
     },
-    [limit]
+    [widthLimit, heightLimit]
   )
 
   const handleResizePointerUp = useCallback(
@@ -159,31 +227,44 @@ function PdfPreview({ url, name, width, onResize }: PdfPreviewProps) {
       const drag = dragRef.current
       if (!drag) return
       e.currentTarget.releasePointerCapture(e.pointerId)
-      const delta = (e.clientX - drag.startX) * (drag.rtl ? -1 : 1)
-      const next = clampWidth(drag.startWidth + delta, limit)
+      const dx = (e.clientX - drag.startX) * (drag.rtl ? -1 : 1)
+      const dy = e.clientY - drag.startY
+      const nextWidth = clampWidth(drag.startWidth + dx, widthLimit)
+      const nextHeight = clampHeight(drag.startHeight + dy, heightLimit)
       dragRef.current = null
       setDraftWidth(null)
-      onResize(next >= limit - PDF_SNAP_THRESHOLD ? limit : next)
+      setDraftHeight(null)
+      commitResize(nextWidth, nextHeight)
     },
-    [limit, onResize]
+    [widthLimit, heightLimit, commitResize]
   )
 
+  // Keyboard commits precise values (no edge snap — snapping is a drag-release
+  // feel only). Left/Right change width; Up/Down change the crop height, and
+  // growing height past the full page stores 0 so it stays "fit page".
   const handleResizeKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
       const step = e.shiftKey ? 50 : 20
-      if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
+      const cropBase = cardHeight ?? pageNaturalHeight
+      if (e.key === 'ArrowRight') {
         e.preventDefault()
-        onResize(clampWidth(renderWidth + step, limit))
-      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
+        onResize(clampWidth(cardWidth + step, widthLimit), height)
+      } else if (e.key === 'ArrowLeft') {
         e.preventDefault()
-        onResize(clampWidth(renderWidth - step, limit))
+        onResize(clampWidth(cardWidth - step, widthLimit), height)
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        const raw = cropBase + step
+        onResize(width, raw >= heightLimit ? 0 : clampHeight(raw, heightLimit))
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        onResize(width, clampHeight(cropBase - step, heightLimit))
       }
     },
-    [renderWidth, limit, onResize]
+    [cardWidth, cardHeight, width, height, widthLimit, heightLimit, pageNaturalHeight, onResize]
   )
 
-  const handleLoadSuccess = ({ numPages }: { numPages: number }) => {
-    setNumPages(numPages)
+  const handleLoadSuccess = () => {
     setLoading(false)
   }
 
@@ -197,22 +278,16 @@ function PdfPreview({ url, name, width, onResize }: PdfPreviewProps) {
     setLoading(false)
   }
 
-  const goToPage = useCallback(
-    (page: number) => {
-      if (page >= 1 && page <= numPages) {
-        setCurrentPage(page)
-      }
-    },
-    [numPages]
-  )
-
-  const goToPrevPage = useCallback(() => {
-    goToPage(currentPage - 1)
-  }, [currentPage, goToPage])
-
-  const goToNextPage = useCallback(() => {
-    goToPage(currentPage + 1)
-  }, [currentPage, goToPage])
+  const alignLabels: Record<PdfAlign, string> = {
+    left: tPhaseF('phaseF.componentsNoteContentAreaFileBlock.alignLeft'),
+    center: tPhaseF('phaseF.componentsNoteContentAreaFileBlock.alignCenter'),
+    right: tPhaseF('phaseF.componentsNoteContentAreaFileBlock.alignRight')
+  }
+  const alignIcons: Record<PdfAlign, typeof AlignLeft> = {
+    left: AlignLeft,
+    center: AlignCenter,
+    right: AlignRight
+  }
 
   if (error) {
     return (
@@ -230,146 +305,77 @@ function PdfPreview({ url, name, width, onResize }: PdfPreviewProps) {
   }
 
   return (
-    <div className="pdf-preview rounded-md border border-border bg-muted/30 overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-border bg-muted/50">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <FileText className="h-4 w-4 text-red-500" />
-          <span className="font-medium truncate max-w-[200px]">{name}</span>
-          {!loading && numPages > 0 && (
-            <span className="text-xs text-muted-foreground/70">
-              ({numPages} {numPages === 1 ? 'page' : 'pages'})
-            </span>
-          )}
+    <div ref={viewRef} className="pdf-preview-wrap">
+      <div
+        className={cn(
+          'pdf-preview group relative rounded-md border border-border bg-muted/30 overflow-hidden',
+          align === 'center' ? 'ms-auto me-auto' : align === 'right' ? 'ms-auto' : 'me-auto'
+        )}
+        style={{ width: cardWidth, height: cardHeight }}
+      >
+        {/* First page only; the card height crops it from the top (no scroll). */}
+        <div ref={pageContentRef} className="bg-white dark:bg-zinc-900">
+          <Document
+            file={url}
+            onLoadSuccess={handleLoadSuccess}
+            onLoadError={handleLoadError}
+            loading={PDF_LOADING_INDICATOR}
+          >
+            <Page
+              pageNumber={1}
+              width={pageWidth}
+              renderTextLayer={true}
+              renderAnnotationLayer={true}
+            />
+          </Document>
         </div>
-        <div className="flex items-center gap-1">
-          {numPages > 1 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="h-7 w-7 p-0"
-              title={sidebarOpen ? 'Hide pages' : 'Show pages'}
-            >
-              {sidebarOpen ? (
-                <PanelLeftClose className="h-4 w-4" />
-              ) : (
-                <PanelLeft className="h-4 w-4" />
-              )}
-            </Button>
-          )}
-          <Button variant="ghost" size="sm" asChild className="h-7 text-xs">
-            <a href={url} download={name}>
-              <Download className="me-1 h-3 w-3" />
 
-              {tPhaseF('phaseF.componentsNoteContentAreaFileBlock.download')}
-            </a>
-          </Button>
-        </div>
-      </div>
-
-      {/* PDF Content */}
-      <div className="flex">
-        {/* Sidebar with page thumbnails */}
-        {sidebarOpen && numPages > 1 && (
-          <div className="w-[120px] border-e border-border bg-muted/30 flex-shrink-0">
-            <ScrollArea className="h-[400px]">
-              <div className="p-2 space-y-2">
-                <Document file={url}>
-                  {Array.from({ length: numPages }, (_, i) => (
-                    <button
-                      key={i + 1}
-                      type="button"
-                      onClick={() => goToPage(i + 1)}
-                      className={cn(
-                        'w-full rounded border-2 overflow-hidden transition-all hover:border-primary/50',
-                        currentPage === i + 1
-                          ? 'border-primary ring-1 ring-primary/20'
-                          : 'border-transparent'
-                      )}
-                    >
-                      <Page
-                        pageNumber={i + 1}
-                        width={100}
-                        renderTextLayer={false}
-                        renderAnnotationLayer={false}
-                      />
-                      <div className="text-[10px] text-center py-1 bg-background/80 text-muted-foreground">
-                        {i + 1}
-                      </div>
-                    </button>
-                  ))}
-                </Document>
-              </div>
-            </ScrollArea>
+        {/* Alignment controls — hover reveal, top-inline-end */}
+        {!loading && !error && (
+          <div className="absolute top-2 end-2 z-10 flex items-center gap-0.5 rounded-md border border-border bg-background/90 p-0.5 opacity-0 shadow-sm transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+            {PDF_ALIGN_VALUES.map((value) => {
+              const Icon = alignIcons[value]
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  aria-label={alignLabels[value]}
+                  aria-pressed={align === value}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={() => onAlign(value)}
+                  className={cn(
+                    'flex h-6 w-6 items-center justify-center rounded transition-colors',
+                    align === value
+                      ? 'bg-accent text-accent-foreground'
+                      : 'text-muted-foreground hover:bg-accent/50'
+                  )}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                </button>
+              )
+            })}
           </div>
         )}
 
-        {/* Main PDF View */}
-        <div ref={viewRef} className="flex-1 min-w-0">
-          <div className="group relative">
-            <div className="overflow-auto max-h-[80vh] bg-white dark:bg-zinc-900">
-              <Document
-                file={url}
-                onLoadSuccess={handleLoadSuccess}
-                onLoadError={handleLoadError}
-                loading={PDF_LOADING_INDICATOR}
-              >
-                <Page
-                  pageNumber={currentPage}
-                  width={renderWidth}
-                  renderTextLayer={true}
-                  renderAnnotationLayer={true}
-                />
-              </Document>
-            </div>
-            {!loading && !error && (
-              <div
-                role="slider"
-                tabIndex={0}
-                aria-label={tPhaseF('phaseF.componentsNoteContentAreaFileBlock.resizePdf')}
-                aria-orientation="horizontal"
-                aria-valuemin={MIN_PDF_WIDTH}
-                aria-valuemax={maxWidth || undefined}
-                aria-valuenow={Math.round(renderWidth)}
-                onPointerDown={handleResizePointerDown}
-                onPointerMove={handleResizePointerMove}
-                onPointerUp={handleResizePointerUp}
-                onKeyDown={handleResizeKeyDown}
-                className="absolute bottom-2 end-2 flex h-5 w-5 cursor-ew-resize touch-none items-center justify-center rounded-sm border border-border bg-background/90 text-muted-foreground opacity-60 shadow-sm transition-opacity hover:opacity-100 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-              >
-                <GripVertical className="h-3 w-3" />
-              </div>
-            )}
+        {/* Resize handle — drag the corner to scale width and crop height */}
+        {!loading && !error && (
+          <div
+            role="slider"
+            tabIndex={0}
+            aria-label={tPhaseF('phaseF.componentsNoteContentAreaFileBlock.resizePdf')}
+            aria-orientation="horizontal"
+            aria-valuemin={MIN_PDF_WIDTH}
+            aria-valuemax={maxWidth || undefined}
+            aria-valuenow={Math.round(cardWidth)}
+            onPointerDown={handleResizePointerDown}
+            onPointerMove={handleResizePointerMove}
+            onPointerUp={handleResizePointerUp}
+            onKeyDown={handleResizeKeyDown}
+            className="absolute bottom-2 end-2 z-10 flex h-5 w-5 cursor-nwse-resize touch-none items-center justify-center rounded-sm border border-border bg-background/90 text-muted-foreground opacity-60 shadow-sm transition-opacity hover:opacity-100 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            <GripVertical className="h-3 w-3" />
           </div>
-
-          {/* Page Navigation */}
-          {numPages > 1 && (
-            <div className="flex items-center justify-center gap-2 py-2 border-t border-border bg-muted/30">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={goToPrevPage}
-                disabled={currentPage <= 1}
-                className="h-7 w-7 p-0"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <span className="text-xs text-muted-foreground min-w-[60px] text-center">
-                {currentPage} / {numPages}
-              </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={goToNextPage}
-                disabled={currentPage >= numPages}
-                className="h-7 w-7 p-0"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          )}
-        </div>
+        )}
       </div>
     </div>
   )
@@ -536,22 +542,42 @@ function FileBlockRender({
   editor,
   contentRef
 }: {
-  block: { props: { url: string; name: string; size: number; mimeType: string; width?: number } }
+  block: {
+    props: {
+      url: string
+      name: string
+      size: number
+      mimeType: string
+      width?: number
+      height?: number
+      align?: 'left' | 'center' | 'right'
+    }
+  }
   editor: unknown
   contentRef: React.Ref<HTMLDivElement>
 }) {
   const { t: tPhaseF } = useT('notes')
-  const { url, name, size, mimeType, width } = block.props
+  const { url, name, size, mimeType, width, height, align } = block.props
   const isPdf = mimeType === 'application/pdf'
   const isAudio = mimeType.startsWith('audio/')
 
-  // Persist the user-chosen PDF width to the block prop (round-trips to the
-  // vault marker via serializeFileBlock). Declared before the early return to
-  // keep hook order stable.
+  // Persist the user-chosen PDF width + crop height to the block props
+  // (round-trips to the vault marker via serializeFileBlock). Declared before
+  // the early return to keep hook order stable.
   const handleResize = useCallback(
-    (nextWidth: number) => {
+    (nextWidth: number, nextHeight: number) => {
       const fileEditor = editor as FileBlockEditor | undefined
-      fileEditor?.updateBlock(block, { props: { ...block.props, width: nextWidth } })
+      fileEditor?.updateBlock(block, {
+        props: { ...block.props, width: nextWidth, height: nextHeight }
+      })
+    },
+    [editor, block]
+  )
+
+  const handleAlign = useCallback(
+    (nextAlign: 'left' | 'center' | 'right') => {
+      const fileEditor = editor as FileBlockEditor | undefined
+      fileEditor?.updateBlock(block, { props: { ...block.props, align: nextAlign } })
     },
     [editor, block]
   )
@@ -568,7 +594,15 @@ function FileBlockRender({
   return (
     <div ref={contentRef} className="file-block my-2" contentEditable={false}>
       {isPdf ? (
-        <PdfPreview url={url} name={name} width={width ?? 0} onResize={handleResize} />
+        <PdfPreview
+          url={url}
+          name={name}
+          width={width ?? 0}
+          height={height ?? 0}
+          align={align ?? 'left'}
+          onResize={handleResize}
+          onAlign={handleAlign}
+        />
       ) : isAudio ? (
         <AudioPreview url={url} name={name} size={size} mimeType={mimeType} />
       ) : (
@@ -586,7 +620,9 @@ export const createFileBlock = createReactBlockSpec(
       name: { default: '' },
       size: { default: 0 },
       mimeType: { default: '' },
-      width: { default: 0 }
+      width: { default: 0 },
+      height: { default: 0 },
+      align: { default: 'left' as const, values: ['left', 'center', 'right'] as const }
     },
     content: 'none'
   },
