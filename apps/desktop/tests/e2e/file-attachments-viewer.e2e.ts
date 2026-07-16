@@ -3,6 +3,7 @@ import os from 'os'
 import path from 'path'
 import { test, expect } from './fixtures'
 import { PNG_BYTES, ready, uniqueLabel } from './utils/desktop-test-helpers'
+import { toMemryFileUrl } from '../../src/renderer/src/lib/memry-file-url'
 
 test.describe('File attachments and viewer E2E', () => {
   test('uploads note attachments, imports image files, serves protocol files, and restores viewer tabs', async ({
@@ -95,17 +96,24 @@ test.describe('File attachments and viewer E2E', () => {
       )
       expect(importedFile).not.toBeNull()
 
-      const protocolResponse = await page.evaluate(async (fileId) => {
+      const importedAbsolutePath = await page.evaluate(async (fileId) => {
         const file = await window.api.notes.getFile(fileId)
-        if (!file) return null
+        return file?.absolutePath ?? null
+      }, importedFile!.id)
+      expect(importedAbsolutePath).toBeTruthy()
 
-        const response = await fetch(`memry-file://local${file.absolutePath}`)
+      // Build the protocol URL the same way the app does. On Windows the raw
+      // absolute path starts with a drive letter (C:\...) and no leading slash;
+      // concatenating it directly onto `memry-file://local` absorbs the drive
+      // letter into the URL host, so the handler sees a relative path and 403s.
+      const protocolResponse = await page.evaluate(async (fileUrl) => {
+        const response = await fetch(fileUrl)
         return {
           status: response.status,
           contentType: response.headers.get('content-type'),
           byteLength: (await response.arrayBuffer()).byteLength
         }
-      }, importedFile!.id)
+      }, toMemryFileUrl(importedAbsolutePath!))
       expect(protocolResponse).toMatchObject({
         status: 200,
         contentType: 'image/png',
