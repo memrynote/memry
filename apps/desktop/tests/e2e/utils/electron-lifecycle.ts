@@ -123,6 +123,47 @@ export async function destroyElectronApp(app: ElectronApplication, dirs: string[
   }
 }
 
+/**
+ * Wait for a substring to appear in the main process's log output.
+ *
+ * `mainLogs` only captures stdout/stderr from AFTER the first window is ready —
+ * anything logged during early startup (e.g. the CRDT preflight, which runs
+ * before the window paints) can be consumed by the Playwright launcher before
+ * our stream handlers attach, so it never lands in `mainLogs`. electron-log's
+ * on-disk file is the reliable source for those early lines, so poll it too.
+ */
+export async function waitForMainLog(
+  launched: LaunchedElectron,
+  substring: string,
+  timeoutMs = 15_000
+): Promise<boolean> {
+  const candidates: string[] = []
+  try {
+    const dirs = await launched.app.evaluate(({ app }) => ({
+      logs: app.getPath('logs'),
+      userData: app.getPath('userData')
+    }))
+    // electron-log v5 writes to getPath('logs'); older convention is userData/logs.
+    candidates.push(path.join(dirs.logs, 'main.log'), path.join(dirs.userData, 'logs', 'main.log'))
+  } catch {
+    // app already closed or evaluate failed — fall back to captured stdout/stderr
+  }
+
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    if (launched.mainLogs.join('\n').includes(substring)) return true
+    for (const file of candidates) {
+      try {
+        if (fs.readFileSync(file, 'utf8').includes(substring)) return true
+      } catch {
+        // log file may not exist yet
+      }
+    }
+    await new Promise((resolve) => setTimeout(resolve, 200))
+  }
+  return false
+}
+
 async function launchOnce(opts: LaunchOptions): Promise<LaunchedElectron> {
   const prefix = opts.deviceId ? `memry-userdata-${opts.deviceId}-` : 'memry-userdata-'
   const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), prefix))

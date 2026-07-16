@@ -55,6 +55,10 @@ async function execPreflight(storeDir: string): Promise<CrdtPreflightResult> {
     }
 
     const child = utilityProcess.fork(childPath, [storeDir], {
+      // Label the fork so a native abort here surfaces as 'CrdtPreflight' in
+      // `ps` and child-process-gone telemetry instead of an anonymous
+      // 'Node Utility Process' (the long-lived workers already set this).
+      serviceName: 'CrdtPreflight',
       stdio: ['ignore', 'ignore', 'pipe'],
       env: { ...process.env }
     })

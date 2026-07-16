@@ -16,7 +16,11 @@ import { test, expect } from '@playwright/test'
 import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
-import { launchElectronWithWindow, destroyElectronApp } from './utils/electron-lifecycle'
+import {
+  launchElectronWithWindow,
+  destroyElectronApp,
+  waitForMainLog
+} from './utils/electron-lifecycle'
 
 test('opens a working window even when the CRDT preflight child crashes hard', async () => {
   const testVaultPath = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-preflight-vault-'))
@@ -35,9 +39,10 @@ test('opens a working window even when the CRDT preflight child crashes hard', a
 
     // Guard against a vacuous pass: the preflight child must actually have
     // died and been reported, or this test isn't exercising the crash path.
-    await expect
-      .poll(() => launched.mainLogs.join('\n'), { timeout: 15_000 })
-      .toContain('CRDT store failed preflight')
+    // The failure is logged during early startup — before the window paints and
+    // before Playwright's stdout/stderr capture attaches — so poll electron-log's
+    // file (via waitForMainLog), not just the post-window `mainLogs` buffer.
+    expect(await waitForMainLog(launched, 'CRDT store failed preflight', 15_000)).toBe(true)
   } finally {
     await destroyElectronApp(launched.app, [launched.userDataDir, launched.resolvedUserDataDir])
   }
