@@ -332,7 +332,7 @@ function PdfPreview({ url, name, width, height, align, onResize, onAlign }: PdfP
 
         {/* Alignment controls — hover reveal, top-inline-end */}
         {!loading && !error && (
-          <div className="absolute top-2 end-2 z-10 flex items-center gap-0.5 rounded-md border border-border bg-background/90 p-0.5 opacity-0 shadow-sm transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+          <div className="absolute top-2 end-2 z-10 flex items-center gap-px rounded-md border border-border bg-background/90 p-0.5 opacity-0 shadow-sm transition-opacity group-hover:opacity-100 focus-within:opacity-100">
             {PDF_ALIGN_VALUES.map((value) => {
               const Icon = alignIcons[value]
               return (
@@ -344,13 +344,13 @@ function PdfPreview({ url, name, width, height, align, onResize, onAlign }: PdfP
                   onPointerDown={(e) => e.stopPropagation()}
                   onClick={() => onAlign(value)}
                   className={cn(
-                    'flex h-6 w-6 items-center justify-center rounded transition-colors',
+                    'flex h-5 w-5 items-center justify-center rounded transition-colors',
                     align === value
                       ? 'bg-accent text-accent-foreground'
                       : 'text-muted-foreground hover:bg-accent/50'
                   )}
                 >
-                  <Icon className="h-3.5 w-3.5" />
+                  <Icon className="h-4 w-4" />
                 </button>
               )
             })}
