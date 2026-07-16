@@ -162,6 +162,49 @@ describe('DateMentionPopover', () => {
     expect(d.getMinutes()).toBe(30)
   })
 
+  it('ignores a cleared time input instead of crashing the handler', () => {
+    // Chromium's <input type="time"> reports value '' once a segment is cleared.
+    // ''.split(':').map(Number) is [0], so minutes arrive as undefined and
+    // new Date(y, mo, d, 0, undefined) is Invalid -> toISOString() throws.
+    // React rethrows out of the event handler rather than through fireEvent, so
+    // assert on the window 'error' event -- the same signal the renderer's
+    // telemetry listener reports in production.
+    const onWindowError = vi.fn()
+    window.addEventListener('error', onWindowError)
+    const { onChange } = renderPopover()
+
+    try {
+      fireEvent.change(screen.getByLabelText('Time'), { target: { value: '' } })
+    } finally {
+      window.removeEventListener('error', onWindowError)
+    }
+
+    expect(onWindowError).not.toHaveBeenCalled()
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('ignores an out-of-range natural date instead of crashing on commit', () => {
+    // "in 99999999999 days" overflows Date to Invalid. tryParseDateInput read it
+    // back as { y: NaN, mo: NaN, d: NaN } -- a TRUTHY object, so commitDateText's
+    // `if (!parsed) return` did not stop it, and emitYMDHM's new Date(NaN).toISOString()
+    // threw the same RangeError this popover exists to prevent. React rethrows out
+    // of the handler, so assert on the window 'error' event (production's signal).
+    const onWindowError = vi.fn()
+    window.addEventListener('error', onWindowError)
+    const { onChange } = renderPopover()
+
+    try {
+      const input = screen.getByLabelText('Date')
+      fireEvent.change(input, { target: { value: 'in 99999999999 days' } })
+      fireEvent.keyDown(input, { key: 'Enter' })
+    } finally {
+      window.removeEventListener('error', onWindowError)
+    }
+
+    expect(onWindowError).not.toHaveBeenCalled()
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
   it('selecting a calendar date preserves the existing time-of-day', () => {
     const { onChange } = renderPopover()
     fireEvent.click(screen.getByTestId('calendar'))

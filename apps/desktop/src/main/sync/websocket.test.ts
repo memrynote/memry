@@ -270,6 +270,26 @@ describe('WebSocketManager', () => {
     })
   })
 
+  describe('#given a handshake in flight #when disconnect called', () => {
+    it('#then the deferred abort error does not throw out of the socket', async () => {
+      const manager = new WebSocketManager(createMockDeps())
+      await manager.connect()
+      const ws = lastWs()
+      // No simulateOpen(): the socket is still CONNECTING, so terminate() takes
+      // ws's abortHandshake path, which emits 'error' on the NEXT TICK — after
+      // cleanup() has already run. An EventEmitter with no 'error' listener
+      // rethrows the error, which surfaces as a main-process uncaughtException.
+      expect(ws.readyState).toBe(0)
+
+      manager.disconnect()
+
+      expect(ws.terminate).toHaveBeenCalled()
+      expect(() =>
+        ws.emit('error', new Error('WebSocket was closed before the connection was established'))
+      ).not.toThrow()
+    })
+  })
+
   describe('#given WebSocket error #when error occurs', () => {
     it('#then emits error event', async () => {
       const manager = new WebSocketManager(createMockDeps())

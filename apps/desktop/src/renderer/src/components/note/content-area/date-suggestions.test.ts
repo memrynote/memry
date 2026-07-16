@@ -43,6 +43,23 @@ describe('buildDateSuggestions', () => {
     const s = buildDateSuggestions('')
     expect(s?.dateLabel).toBe('Today')
   })
+
+  it('returns null (no crash) for an offset that overflows Date', () => {
+    // "in 99999999999 days" overflows Date to Invalid; before the parser fix it
+    // slipped through parsed.success === true, and new Date(...).toISOString()
+    // here threw a RangeError while the user was still typing in the mention menu.
+    expect(() => buildDateSuggestions('in 99999999999 days')).not.toThrow()
+    expect(buildDateSuggestions('in 99999999999 days')).toBeNull()
+  })
+
+  it('returns null for a far-future offset that overflows only after setHours', () => {
+    // "in 5000000 days" (~year 15715) has a VALID midnight, so a NaN-only parser
+    // guard admits it; buildDateSuggestions' base.setHours(9,0,0,0) then overflows a
+    // near-max date to Invalid and base.toISOString() throws. The 4-digit-year cap in
+    // the parser rejects it, so the mention menu offers nothing instead of crashing.
+    expect(() => buildDateSuggestions('in 5000000 days')).not.toThrow()
+    expect(buildDateSuggestions('in 5000000 days')).toBeNull()
+  })
 })
 
 // buildDateMentionEntry keeps the `@` menu alive through intermediate keystrokes:

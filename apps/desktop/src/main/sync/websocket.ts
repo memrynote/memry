@@ -214,6 +214,12 @@ export class WebSocketManager extends EventEmitter {
     this.stopPing()
     if (this.ws) {
       this.ws.removeAllListeners()
+      // terminate() on a CONNECTING socket aborts the in-flight handshake, which
+      // emits 'error' on the NEXT TICK (ws/lib/websocket.js abortHandshake). By
+      // then our listeners are gone, and an EventEmitter with no 'error' listener
+      // rethrows -> main-process uncaughtException. Reordering cannot help: the
+      // emit is deferred either way. This no-op listener must survive. Keep it.
+      this.ws.on('error', () => {})
       if (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING) {
         this.ws.terminate()
       }
