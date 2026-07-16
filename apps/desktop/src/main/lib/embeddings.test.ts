@@ -363,6 +363,30 @@ describe('embeddings', () => {
       })
     })
 
+    it('reports idle when the worker crashes spontaneously while sitting idle', async () => {
+      vi.useFakeTimers()
+      const { requestId } = await startWorker()
+      mockUtilityProcessInstance.simulateMessage({
+        type: 'embed-result',
+        requestId,
+        embedding: Array.from(new Float32Array(EMBEDDING_DIMENSION))
+      })
+      await vi.waitFor(() => expect(getModelInfo().loaded).toBe(true))
+
+      // #when the worker dies on its own AFTER delivering, but BEFORE the 30s idle
+      // timer fires — not tearing down, nothing in flight
+      mockUtilityProcessInstance.emit('exit', 11)
+
+      // #then it is the genuine `idle` bucket, distinct from idle_shutdown (this
+      // guards the force-kill latch from over-claiming idle_shutdown)
+      expect(trackMainLogMock).toHaveBeenCalledWith('error', {
+        scope: 'Embeddings',
+        action: 'worker_exit_idle',
+        errorCode: 'EmbeddingWorkerExit',
+        metrics: { value: 11 }
+      })
+    })
+
     it('stays silent for a clean idle shutdown', async () => {
       vi.useFakeTimers()
       const { requestId } = await startWorker()
