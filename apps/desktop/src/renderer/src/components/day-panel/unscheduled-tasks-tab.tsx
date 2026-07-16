@@ -1,7 +1,15 @@
-import { useQuery } from '@tanstack/react-query'
+import { useEffect } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useDraggable } from '@dnd-kit/core'
 import { useT } from '@memry/i18n/renderer'
-import { tasksService, type TaskListItem } from '@/services/tasks-service'
+import {
+  tasksService,
+  onTaskCreated,
+  onTaskUpdated,
+  onTaskDeleted,
+  onTaskCompleted,
+  type TaskListItem
+} from '@/services/tasks-service'
 import { cn } from '@/lib/utils'
 import { createLogger } from '@/lib/logger'
 
@@ -33,6 +41,7 @@ function UnscheduledTaskRow({ task }: { task: TaskListItem }): React.JSX.Element
 
 export function UnscheduledTasksTab(): React.JSX.Element {
   const { t } = useT('common')
+  const queryClient = useQueryClient()
 
   const { data: tasks = [] } = useQuery({
     queryKey: ['unscheduled-tasks-tab', 'tasks'],
@@ -51,6 +60,19 @@ export function UnscheduledTasksTab(): React.JSX.Element {
       }
     }
   })
+
+  useEffect(() => {
+    const refresh = (): void => {
+      void queryClient.invalidateQueries({ queryKey: ['unscheduled-tasks-tab', 'tasks'] })
+    }
+    const unsubs = [
+      onTaskCreated(refresh),
+      onTaskUpdated(refresh),
+      onTaskDeleted(refresh),
+      onTaskCompleted(refresh)
+    ]
+    return () => unsubs.forEach((fn) => fn())
+  }, [queryClient])
 
   if (tasks.length === 0) {
     return (

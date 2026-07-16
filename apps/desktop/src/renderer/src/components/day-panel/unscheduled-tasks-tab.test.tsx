@@ -5,10 +5,21 @@ import { UnscheduledTasksTab } from './unscheduled-tasks-tab'
 
 const mockListTasks = vi.hoisted(() => vi.fn())
 
+const taskEventMocks = vi.hoisted(() => ({
+  onTaskCreated: vi.fn(() => vi.fn()),
+  onTaskUpdated: vi.fn(() => vi.fn()),
+  onTaskDeleted: vi.fn(() => vi.fn()),
+  onTaskCompleted: vi.fn(() => vi.fn())
+}))
+
 vi.mock('@/services/tasks-service', () => ({
   tasksService: {
     list: mockListTasks
-  }
+  },
+  onTaskCreated: taskEventMocks.onTaskCreated,
+  onTaskUpdated: taskEventMocks.onTaskUpdated,
+  onTaskDeleted: taskEventMocks.onTaskDeleted,
+  onTaskCompleted: taskEventMocks.onTaskCompleted
 }))
 
 // Mirrors draggable-task-chip.test.tsx: the DOM `data-task-id` attribute and the
@@ -45,6 +56,10 @@ describe('UnscheduledTasksTab', () => {
   beforeEach(() => {
     dndMocks.useDraggable.mockClear()
     mockListTasks.mockReset()
+    taskEventMocks.onTaskCreated.mockClear()
+    taskEventMocks.onTaskUpdated.mockClear()
+    taskEventMocks.onTaskDeleted.mockClear()
+    taskEventMocks.onTaskCompleted.mockClear()
     mockListTasks.mockResolvedValue({
       tasks: [{ id: 'task-1', title: 'Write the spec', priority: 0, projectId: 'project-1' }],
       total: 1,
@@ -88,5 +103,19 @@ describe('UnscheduledTasksTab', () => {
 
     await waitFor(() => expect(mockListTasks).toHaveBeenCalled())
     expect(screen.queryByTestId('unscheduled-task-row')).not.toBeInTheDocument()
+  })
+
+  it('refetches when a task-updated event fires (e.g. dragged onto the calendar)', async () => {
+    renderWithProviders(<UnscheduledTasksTab />)
+
+    await screen.findByTestId('unscheduled-task-row')
+    expect(mockListTasks).toHaveBeenCalledTimes(1)
+
+    expect(taskEventMocks.onTaskUpdated).toHaveBeenCalledTimes(1)
+    const handler = taskEventMocks.onTaskUpdated.mock.calls[0][0] as () => void
+
+    handler()
+
+    await waitFor(() => expect(mockListTasks).toHaveBeenCalledTimes(2))
   })
 })
