@@ -10,7 +10,7 @@
 import { createLogger } from '../lib/logger'
 import { getDatabase } from '../database'
 import { inboxItems, inboxStats, inboxItemType } from '@memry/db-schema/schema/inbox'
-import { eq, and, isNull, sql, lt, gte, desc, asc } from 'drizzle-orm'
+import { eq, and, isNull, sql, lt, gte, desc, asc, ne, or } from 'drizzle-orm'
 import { generateId } from '../lib/id'
 import { getSetting, setSetting } from '../database/queries/settings'
 
@@ -123,6 +123,33 @@ export function countStaleItems(): number {
           isNull(inboxItems.snoozedUntil),
           isNull(inboxItems.archivedAt),
           lt(inboxItems.createdAt, staleCutoff)
+        )
+      )
+      .get()
+
+    return result?.count || 0
+  } catch {
+    return 0
+  }
+}
+
+/**
+ * Count inbox items eligible for the daily review nudge.
+ * Mirrors the sidebar badge (app-sidebar.tsx): unfiled, not snoozed, not
+ * archived, and excluding reminders that have already been viewed.
+ */
+export function countReviewableInboxItems(): number {
+  try {
+    const db = getDatabase()
+    const result = db
+      .select({ count: sql<number>`count(*)` })
+      .from(inboxItems)
+      .where(
+        and(
+          isNull(inboxItems.filedAt),
+          isNull(inboxItems.snoozedUntil),
+          isNull(inboxItems.archivedAt),
+          or(ne(inboxItems.type, inboxItemType.REMINDER), isNull(inboxItems.viewedAt))
         )
       )
       .get()
