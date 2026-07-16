@@ -27,7 +27,7 @@ export const UpcomingEmptyState = ({
   // If there are overdue tasks but nothing upcoming
   if (hasOverdue) {
     return (
-      <div className={cn('text-center py-12', className)}>
+      <div className={cn('text-center py-12 fade-in-up', className)}>
         <div className="mb-4 rounded-full bg-muted p-4 inline-block">
           <Calendar className="size-8 text-text-tertiary" aria-hidden="true" />
         </div>
@@ -50,7 +50,7 @@ export const UpcomingEmptyState = ({
 
   // Completely clear
   return (
-    <div className={cn('text-center py-16', className)}>
+    <div className={cn('text-center py-16 fade-in-up', className)}>
       {/* Icon */}
       <div className="mb-4 rounded-full bg-muted p-4 inline-block">
         <Calendar className="size-8 text-text-tertiary" aria-hidden="true" />
