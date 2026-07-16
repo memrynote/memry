@@ -3,8 +3,16 @@ import { z } from 'zod'
 export const UploadInitRequestSchema = z.object({
   attachmentId: z.string().min(1),
   filename: z.string().min(1),
+  /** Plaintext byte size of the file. Plan file-size limits apply to this. */
   totalSize: z.number().int().positive(),
-  chunkCount: z.number().int().positive().max(128)
+  chunkCount: z.number().int().positive().max(128),
+  /**
+   * Total byte size actually put on the wire (and stored): every chunk is
+   * nonce || ciphertext, so this is larger than `totalSize`. Optional — the
+   * server derives it from `totalSize` + `chunkCount` when a client omits it.
+   * Storage quota is reserved against this, not `totalSize`.
+   */
+  encryptedSize: z.number().int().positive().optional()
 })
 
 export const ChunkUploadParamsSchema = z.object({

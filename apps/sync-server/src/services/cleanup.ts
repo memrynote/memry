@@ -23,7 +23,7 @@ export const cleanupExpiredUploadSessions = async (
 
   const stale = await db
     .prepare(
-      `SELECT id, user_id, vault_id, total_size, uploaded_chunks, r2_upload_id, r2_key
+      `SELECT id, user_id, vault_id, total_size, chunk_count, encrypted_size, uploaded_chunks, r2_upload_id, r2_key
        FROM upload_sessions
        WHERE expires_at < ?`
     )
@@ -33,6 +33,8 @@ export const cleanupExpiredUploadSessions = async (
       user_id: string
       vault_id: string
       total_size: number
+      chunk_count: number
+      encrypted_size: number | null
       uploaded_chunks: string
       r2_upload_id: string | null
       r2_key: string | null
@@ -80,7 +82,14 @@ export const cleanupExpiredUploadSessions = async (
       .run()
 
     if ((result.meta.changes ?? 0) > 0) {
-      await adjustStorageUsed(db, session.user_id, -session.total_size)
+      // Refund exactly what initiate reserved — never re-derive it. `encrypted_size`
+      // records the reservation; a NULL means the row was written by the old server,
+      // which reserved the plaintext total_size. Migration 0002 deliberately does NOT
+      // backfill, so those rows stay NULL permanently (and the old worker can still open
+      // fresh NULL rows during the migrate-then-deploy window). The `?? total_size`
+      // fallback is load-bearing — do not remove it, and do not add a backfill: it would
+      // false-413 the last chunk of every in-flight session (see migrations/0002).
+      await adjustStorageUsed(db, session.user_id, -(session.encrypted_size ?? session.total_size))
       cleaned += result.meta.changes ?? 0
     }
   }

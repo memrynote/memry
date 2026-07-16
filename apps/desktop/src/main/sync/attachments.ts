@@ -17,13 +17,18 @@ import {
   NetworkError,
   SyncServerError,
   RateLimitError,
+  AttachmentTooLargeError,
   parseRetryAfterHeader,
   getSyncVaultHeaders,
   type FetchFn
 } from './http-client'
 import { withRetry } from './retry'
 
-import type { UploadInitResponse, UploadStatusResponse } from '@memry/contracts/blob-api'
+import type {
+  UploadInitRequest,
+  UploadInitResponse,
+  UploadStatusResponse
+} from '@memry/contracts/blob-api'
 
 const log = createLogger('Attachments')
 
@@ -102,7 +107,19 @@ export interface AttachmentSyncDeps {
   } | null>
   getDevicePublicKey: (deviceId: string) => Promise<Uint8Array | null>
   getSyncServerUrl: () => string
+  /**
+   * Cached plan file-size limit in plaintext bytes, or null when unknown.
+   * Null must mean "let the server decide" — the cache is only warm after a
+   * billing fetch, so a cold cache must never block an upload.
+   */
+  getMaxFileSize?: () => number | null
   fetchFn?: FetchFn
+}
+
+function formatBytes(bytes: number): string {
+  const mb = bytes / (1024 * 1024)
+  if (mb >= 1024) return `${(mb / 1024).toFixed(mb % 1024 === 0 ? 0 : 1)} GB`
+  return `${mb.toFixed(mb % 1 === 0 ? 0 : 1)} MB`
 }
 
 // ============================================================================
@@ -148,7 +165,7 @@ function sha256Hex(data: Uint8Array): string {
 // ============================================================================
 
 async function binaryFetch(
-  method: 'GET' | 'PUT' | 'HEAD' | 'POST',
+  method: 'GET' | 'PUT' | 'HEAD' | 'POST' | 'DELETE',
   url: string,
   token: string,
   body?: Uint8Array | string,
@@ -219,6 +236,8 @@ async function parallelMap<T, R>(
 // AttachmentSyncService
 // ============================================================================
 
+export { AttachmentTooLargeError }
+
 export class AttachmentSyncService {
   private deps: AttachmentSyncDeps
   private activeUploads = new Map<string, UploadState>()
@@ -256,6 +275,19 @@ export class AttachmentSyncService {
       }
       if (fileStat.size === 0) {
         throw new Error('Cannot upload empty file')
+      }
+
+      // Plan preflight, before the expensive read+hash+encrypt pass below. The
+      // server stays authoritative; this only avoids doing all that work just to
+      // eat a 413. Fails open: a null limit means the cache is cold or was
+      // written by an older version, so defer to the server as before.
+      const planMaxFileSize = this.deps.getMaxFileSize?.() ?? null
+      if (planMaxFileSize !== null && fileStat.size > planMaxFileSize) {
+        throw new AttachmentTooLargeError(
+          `File is larger than your plan allows: ${formatBytes(fileStat.size)} exceeds ${formatBytes(planMaxFileSize)}`,
+          fileStat.size,
+          planMaxFileSize
+        )
       }
 
       const attachmentId = sodium.to_hex(sodium.randombytes_buf(16))
@@ -326,12 +358,20 @@ export class AttachmentSyncService {
       if (options?.signal) netOpts.signal = options.signal
       if (options?.isOnline) netOpts.isOnline = options.isOnline
 
+      // Every chunk goes on the wire as nonce || ciphertext, so the encrypted
+      // total is larger than the plaintext. Declare it explicitly: the server
+      // reserves storage quota against this, and can otherwise only derive it by
+      // assuming today's chunk framing. The encryption loop above has already
+      // finished, so this is exact.
+      const encryptedSize = encryptedChunks.reduce((sum, c) => sum + c.data.byteLength, 0)
+
       const sessionId = await this.initiateUploadSession(
         token,
         attachmentId,
         filename,
         fileStat.size,
         totalChunks,
+        encryptedSize,
         netOpts
       )
 
@@ -380,15 +420,10 @@ export class AttachmentSyncService {
           })
         }
 
-        const dedupExists = await this.checkChunkDedup(token, chunk.ref.encryptedHash, netOpts)
-        if (dedupExists) {
-          log.debug('chunk deduped', { index: chunk.ref.index, hash: chunk.ref.encryptedHash })
-        } else {
-          await this.uploadChunk(token, sessionId, chunk.ref.index, chunk.data, {
-            ...netOpts,
-            onWaitingNetwork
-          })
-        }
+        await this.uploadChunk(token, sessionId, chunk.ref.index, chunk.data, {
+          ...netOpts,
+          onWaitingNetwork
+        })
 
         uploadState.completedChunks.add(chunk.ref.index)
         bytesUploaded += chunk.ref.size
@@ -517,6 +552,20 @@ export class AttachmentSyncService {
 
   async cancelUpload(sessionId: string): Promise<void> {
     this.activeUploads.delete(sessionId)
+
+    // Drop the server-side session too, otherwise the storage reserved at
+    // initiate stays counted against the user until the 24h TTL sweep.
+    // Best-effort: the sweep is still the backstop if this fails.
+    try {
+      const token = await this.deps.getAccessToken()
+      if (token) {
+        const url = `${this.deps.getSyncServerUrl()}/sync/attachments/upload/${sessionId}`
+        await binaryFetch('DELETE', url, token, undefined, this.deps.fetchFn)
+      }
+    } catch (err) {
+      log.warn('failed to release cancelled upload session on server', { sessionId, err })
+    }
+
     log.info('upload cancelled', { sessionId })
   }
 
@@ -530,22 +579,31 @@ export class AttachmentSyncService {
     filename: string,
     totalSize: number,
     chunkCount: number,
+    encryptedSize: number,
     options?: { signal?: AbortSignal; isOnline?: () => boolean }
   ): Promise<string> {
     const url = `${this.deps.getSyncServerUrl()}/sync/attachments/upload/initiate`
-    const body = JSON.stringify({ attachmentId, filename, totalSize, chunkCount })
+    const body: UploadInitRequest = {
+      attachmentId,
+      filename,
+      totalSize,
+      chunkCount,
+      encryptedSize
+    }
 
     const retryOpts: Partial<import('./retry').RetryOptions> = { maxRetries: 3, baseDelayMs: 2000 }
     if (options?.signal) retryOpts.signal = options.signal
     if (options?.isOnline) retryOpts.isOnline = options.isOnline
 
     const { value: resp } = await withRetry(
-      () => binaryFetch('POST', url, token, body, this.deps.fetchFn),
+      () => binaryFetch('POST', url, token, JSON.stringify(body), this.deps.fetchFn),
       retryOpts
     )
     if (!resp.ok) {
       const errBody = await resp.text()
-      throw new SyncServerError(`Failed to initiate upload: ${errBody}`, resp.status)
+      // Pass the raw body through as serverError so classifyError can tell a
+      // file-too-large rejection apart from a storage-quota one (both are 413).
+      throw new SyncServerError(`Failed to initiate upload: ${errBody}`, resp.status, errBody)
     }
 
     const data = (await resp.json()) as UploadInitResponse
@@ -583,28 +641,6 @@ export class AttachmentSyncService {
     } catch {
       log.warn('checkResumableSession failed, starting fresh', { sessionId })
       return null
-    }
-  }
-
-  private async checkChunkDedup(
-    token: string,
-    encryptedHash: string,
-    options?: { signal?: AbortSignal; isOnline?: () => boolean }
-  ): Promise<boolean> {
-    const url = `${this.deps.getSyncServerUrl()}/sync/attachments/chunks/${encryptedHash}`
-    const retryOpts: Partial<import('./retry').RetryOptions> = { maxRetries: 3, baseDelayMs: 1000 }
-    if (options?.signal) retryOpts.signal = options.signal
-    if (options?.isOnline) retryOpts.isOnline = options.isOnline
-
-    try {
-      const { value: resp } = await withRetry(
-        () => binaryFetch('HEAD', url, token, undefined, this.deps.fetchFn),
-        retryOpts
-      )
-      return resp.status === 200
-    } catch {
-      log.warn('checkChunkDedup failed, assuming not deduped', { encryptedHash })
-      return false
     }
   }
 

@@ -426,7 +426,11 @@ describe('sync IPC handlers', () => {
     // mockReturnValueOnce (not mockReturnValue) so an assertion failure below
     // cannot leak isPaid:false into the next test — clearAllMocks keeps
     // implementations, and the old reset sat AFTER the assertions.
-    mockGetCachedEntitlement.mockReturnValueOnce({ isPaid: false, plan: 'free', status: 'inactive' })
+    mockGetCachedEntitlement.mockReturnValueOnce({
+      isPaid: false,
+      plan: 'free',
+      status: 'inactive'
+    })
     registerSyncHandlers()
 
     // #when the renderer asks for the storage breakdown

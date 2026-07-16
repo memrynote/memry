@@ -15,6 +15,7 @@ import {
 } from '../services/blob'
 import { assertFileSizeAllowed } from '../services/entitlements'
 import { adjustStorageUsed, reserveStorage } from '../services/quota'
+import { MAX_CHUNK_CRYPTO_OVERHEAD, expectedEncryptedTotal } from '../services/upload-size'
 import { UploadInitRequestSchema } from '@memry/contracts/blob-api'
 import type { AppContext } from '../types'
 
@@ -202,7 +203,7 @@ blob.post('/attachments/upload/initiate', uploadSessionLimit, async (c) => {
     )
   }
 
-  const { attachmentId, filename, totalSize, chunkCount } = parsed.data
+  const { attachmentId, filename, totalSize, chunkCount, encryptedSize } = parsed.data
 
   if (totalSize > MAX_FILE_SIZE) {
     throw new AppError(
@@ -212,8 +213,26 @@ blob.post('/attachments/upload/initiate', uploadSessionLimit, async (c) => {
     )
   }
 
+  // encryptedSize drives storage quota, so never trust it blindly: it must be at
+  // least the plaintext and no larger than the plaintext plus per-chunk overhead.
+  if (
+    encryptedSize !== undefined &&
+    (encryptedSize < totalSize ||
+      encryptedSize > totalSize + MAX_CHUNK_CRYPTO_OVERHEAD * chunkCount)
+  ) {
+    throw new AppError(
+      ErrorCodes.VALIDATION_ERROR,
+      'encryptedSize is not plausible for the declared totalSize and chunkCount',
+      400
+    )
+  }
+
+  // Plan file-size limits apply to the plaintext the user picked; encryption
+  // overhead must not eat into their limit. Storage is reserved on ciphertext.
   await assertFileSizeAllowed(c.env.DB, userId, totalSize)
-  await reserveStorage(c.env.DB, userId, totalSize)
+
+  const expectedEncrypted = expectedEncryptedTotal(totalSize, chunkCount, encryptedSize ?? null)
+  await reserveStorage(c.env.DB, userId, expectedEncrypted)
 
   const now = Math.floor(Date.now() / 1000)
   const sessionId = crypto.randomUUID()
@@ -221,8 +240,8 @@ blob.post('/attachments/upload/initiate', uploadSessionLimit, async (c) => {
 
   try {
     await c.env.DB.prepare(
-      `INSERT INTO upload_sessions (id, user_id, vault_id, attachment_id, filename, total_size, chunk_count, uploaded_chunks, expires_at, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, '[]', ?, ?)`
+      `INSERT INTO upload_sessions (id, user_id, vault_id, attachment_id, filename, total_size, chunk_count, encrypted_size, uploaded_chunks, expires_at, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, '[]', ?, ?)`
     )
       .bind(
         sessionId,
@@ -232,12 +251,16 @@ blob.post('/attachments/upload/initiate', uploadSessionLimit, async (c) => {
         filename,
         totalSize,
         chunkCount,
+        expectedEncrypted,
         expiresAt,
         now
       )
       .run()
   } catch (error) {
-    await refundReservation(c.env.DB, userId, totalSize, {
+    // main's refundReservation (swallows a failed refund so it never masks the
+    // real error) with #740's corrected amount: refund exactly what initiate
+    // reserved — the encrypted total, not the plaintext totalSize.
+    await refundReservation(c.env.DB, userId, expectedEncrypted, {
       operation: 'uploadInitiate',
       userId,
       sessionId
@@ -275,7 +298,13 @@ blob.put('/attachments/upload/:session_id/chunk/:chunk_index', chunkUploadLimit,
 
   const chunkData = await c.req.arrayBuffer()
   const uploadedBytes = getUploadedByteTotal(uploadedChunks)
-  if (uploadedBytes === null || uploadedBytes + chunkData.byteLength > session.total_size) {
+  // Chunks arrive encrypted, so compare against the encrypted total, not total_size.
+  const expectedEncrypted = expectedEncryptedTotal(
+    session.total_size,
+    session.chunk_count,
+    session.encrypted_size
+  )
+  if (uploadedBytes === null || uploadedBytes + chunkData.byteLength > expectedEncrypted) {
     throw new AppError(
       ErrorCodes.STORAGE_FILE_TOO_LARGE,
       'Uploaded chunks exceed declared file size',
@@ -309,12 +338,24 @@ blob.put('/attachments/upload/:session_id/chunk/:chunk_index', chunkUploadLimit,
       .run()
   }
 
-  uploadedChunks.push({ i: chunkIndex, h: chunkHash, b: chunkData.byteLength })
+  // Append atomically in one statement. Clients upload up to MAX_CONCURRENT_CHUNKS
+  // chunks in parallel, so a read-modify-write of the whole array here loses
+  // entries: each request writes back the snapshot it read, and the last writer
+  // wins. The dropped index then fails `complete` with 400 "Missing chunks".
+  // `json_insert(x, '$[#]', ...)` appends without re-sending the array we read.
   await c.env.DB.prepare(
-    'UPDATE upload_sessions SET uploaded_chunks = ? WHERE id = ? AND user_id = ? AND vault_id = ?'
+    `UPDATE upload_sessions
+       SET uploaded_chunks = json_insert(uploaded_chunks, '$[#]', json(?))
+     WHERE id = ? AND user_id = ? AND vault_id = ?`
   )
-    .bind(JSON.stringify(uploadedChunks), sessionId, userId, vaultId)
+    .bind(
+      JSON.stringify({ i: chunkIndex, h: chunkHash, b: chunkData.byteLength }),
+      sessionId,
+      userId,
+      vaultId
+    )
     .run()
+  uploadedChunks.push({ i: chunkIndex, h: chunkHash, b: chunkData.byteLength })
 
   return c.json({
     success: true,
@@ -345,7 +386,10 @@ blob.post('/attachments/upload/:session_id/complete', chunkUploadLimit, async (c
   }
 
   const actualBytes = getUploadedByteTotal(uploadedEntries)
-  if (actualBytes !== session.total_size) {
+  if (
+    actualBytes !==
+    expectedEncryptedTotal(session.total_size, session.chunk_count, session.encrypted_size)
+  ) {
     throw new AppError(
       ErrorCodes.UPLOAD_INCOMPLETE,
       'Uploaded chunks do not match declared file size',
@@ -354,6 +398,7 @@ blob.post('/attachments/upload/:session_id/complete', chunkUploadLimit, async (c
   }
 
   const body: unknown = await c.req.json()
+  // Plan file-size limit stays on the plaintext size.
   await assertFileSizeAllowed(c.env.DB, userId, session.total_size)
   let manifestKey: string | null = null
   let manifestBytes: Uint8Array | null = null
@@ -455,7 +500,14 @@ blob.delete('/attachments/upload/:session_id', uploadSessionLimit, async (c) => 
     .bind(sessionId, userId, vaultId)
     .run()
   if ((deleteResult.meta.changes ?? 0) > 0) {
-    await adjustStorageUsed(c.env.DB, userId, -session.total_size)
+    // Refund exactly what initiate reserved — never re-derive it. `encrypted_size`
+    // records the reservation; a NULL means the row was written by the old server,
+    // which reserved the plaintext total_size. Migration 0002 deliberately does NOT
+    // backfill, so those rows stay NULL permanently (and the old worker can still open
+    // fresh NULL rows during the migrate-then-deploy window). The `?? total_size`
+    // fallback is load-bearing — do not remove it, and do not add a backfill: it would
+    // false-413 the last chunk of every in-flight session (see migrations/0002).
+    await adjustStorageUsed(c.env.DB, userId, -(session.encrypted_size ?? session.total_size))
   }
 
   return new Response(null, { status: 204 })
@@ -576,6 +628,8 @@ interface UploadSessionRow {
   filename: string
   total_size: number
   chunk_count: number
+  /** NULL for sessions opened before this column existed, or by clients that omit it. */
+  encrypted_size: number | null
   uploaded_chunks: string
   expires_at: number
   created_at: number

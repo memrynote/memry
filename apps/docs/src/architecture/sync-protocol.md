@@ -27,8 +27,7 @@ Inactive, past-due, paused, canceled, or expired entitlements return `SYNC_PAYME
 sync data is read or written. Vault and file-size limits return `SYNC_VAULT_LIMIT_EXCEEDED` and
 `STORAGE_FILE_TOO_LARGE`.
 
-The desktop client mirrors this gate locally to avoid pointless round-trips that can only return
-402. Handlers for paid-only endpoints check the cached entitlement first and return their empty
+The desktop client mirrors this gate locally to avoid pointless round-trips that can only return 402. Handlers for paid-only endpoints check the cached entitlement first and return their empty
 value (`GET_STATUS` → `local_only`, `GET_STORAGE_BREAKDOWN` → `null`) when the cache says the user
 is on the free plan. Only a **known-unpaid** entitlement is gated — an unknown/uncached
 entitlement (fresh install, before the first status call) still calls the server, so the gate can

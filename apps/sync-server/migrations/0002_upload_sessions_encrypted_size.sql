@@ -1,0 +1,19 @@
+-- Chunked attachment uploads declare a PLAINTEXT total_size but put CIPHERTEXT
+-- on the wire (each chunk is nonce || ciphertext, i.e. plaintext + 40 bytes).
+-- Storage accounting must use the encrypted size, while plan file-size limits
+-- stay on the plaintext size.
+--
+-- Nullable and additive, and deliberately NOT backfilled. NULL is load-bearing: it
+-- is the signal that a row was written by the old server, and the two readers of
+-- this column need OPPOSITE numbers for such a row.
+--
+--   * the refund paths want the bytes RESERVED -> the old server reserved the
+--     plaintext, so they read `encrypted_size ?? total_size`.
+--   * the chunk cap and `complete` want the bytes EXPECTED ON THE WIRE -> the old
+--     client still sends ciphertext, so `expectedEncryptedTotal` must DERIVE
+--     total_size + 40*chunk_count, which it only does while this column is NULL.
+--
+-- Backfilling `encrypted_size = total_size` satisfies the first reader and breaks
+-- the second: the derive short-circuits on the non-NULL plaintext value and every
+-- in-flight session then 413s on its last chunk. Leaving NULL is correct for both.
+ALTER TABLE upload_sessions ADD COLUMN encrypted_size INTEGER;

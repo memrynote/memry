@@ -1,6 +1,11 @@
 import type { SyncErrorCategory } from '@memry/contracts/ipc-sync-ops'
 import { CryptoError } from '../crypto/crypto-errors'
-import { SyncServerError, NetworkError, RateLimitError } from './http-client'
+import {
+  SyncServerError,
+  NetworkError,
+  RateLimitError,
+  AttachmentTooLargeError
+} from './http-client'
 import { DeadLetterError } from './retry'
 
 export type { SyncErrorCategory }
@@ -15,6 +20,16 @@ export function classifyError(error: unknown): SyncErrorInfo {
   if (error instanceof DeadLetterError) {
     const inner = classifyError(error.lastError)
     return { ...inner, retryable: false }
+  }
+
+  // Local plan preflight — same user-facing outcome as the server's 413, but
+  // raised before the file is read and encrypted.
+  if (error instanceof AttachmentTooLargeError) {
+    return {
+      category: 'file_too_large',
+      message: error.message,
+      retryable: false
+    }
   }
 
   if (error instanceof RateLimitError) {
@@ -55,6 +70,20 @@ export function classifyError(error: unknown): SyncErrorInfo {
       }
     }
     if (error.statusCode === 413) {
+      // 413 covers two different problems. STORAGE_FILE_TOO_LARGE means this one
+      // file is over the plan's per-file limit; a bare 413 means the account is
+      // out of storage. Reporting "Storage quota exceeded" for the former sends
+      // the user to free up space, which never fixes it.
+      if (
+        error.serverError?.includes('STORAGE_FILE_TOO_LARGE') ||
+        error.message.includes('STORAGE_FILE_TOO_LARGE')
+      ) {
+        return {
+          category: 'file_too_large',
+          message: 'This file is larger than your plan allows',
+          retryable: false
+        }
+      }
       return {
         category: 'storage_quota_exceeded',
         message: 'Storage quota exceeded',

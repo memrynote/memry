@@ -61,6 +61,18 @@ Storage usage is visible in [Settings → Vault](/user-guide/settings#vault) wit
 - CRDT data
 - Other (indexes, leveldb, caches)
 
+### File Size Limits vs. Counted Storage
+
+Your plan's per-file size limit applies to the **original file size**. Encryption overhead never counts against it, so a file that is exactly at your plan's limit still uploads.
+
+Synced storage usage counts the **encrypted** size, which is a few bytes larger per chunk than the original (each chunk carries a nonce and an authentication tag). For a typical file this is a difference of tens of bytes.
+
+If a file is over your plan's per-file limit, MemryNote tells you before it spends time encrypting it, and names the limit it hit. Freeing storage does not help in that case — the file itself is too big, so you need a plan with a larger per-file limit.
+
+### When an Attachment Doesn't Sync
+
+If an attachment can't be uploaded, you get a notification naming the file. The file is never lost: it stays in `<vault>/attachments/` and the note keeps working on this device. Only the synced copy is missing, so other devices won't see it until the upload succeeds.
+
 ## Garbage Collection
 
 Files that are no longer referenced by any note are pruned during periodic vacuum. You don't need to clean them up manually.
