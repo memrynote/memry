@@ -1,19 +1,9 @@
 # Ideas
 
-## Content Table
+_Each idea is collapsed by default — click a title to expand it._
 
-- [Reduce filing with AI-assisted capture](#reduce-filing-with-ai-assisted-capture)
-- [Contextual resurfacing by relevance](#contextual-resurfacing-by-relevance)
-- [Inbox segmentation and triage](#inbox-segmentation-and-triage)
-- [Structure without folder rigidity](#structure-without-folder-rigidity)
-- [Streamlined onboarding without AI noise](#streamlined-onboarding-without-ai-noise)
-- [Scheduled review and priority buckets](#scheduled-review-and-priority-buckets)
-- [Bulk URL import via CSV](#bulk-url-import-via-csv)
-- [Second-device setup should adopt the existing vault](#second-device-setup-should-adopt-the-existing-vault)
-- [Fixed-page notebooks with custom covers](#fixed-page-notebooks-with-custom-covers)
-- [Spatial canvas for brain-dump thinking](#spatial-canvas-for-brain-dump-thinking)
-
-## Reduce filing with AI-assisted capture
+<details>
+<summary><strong>Reduce filing with AI-assisted capture</strong></summary>
 
 Source: weekly email feedback mentioning [Granite](https://granite.co/) and
 [Screenpipe](https://screenpipe.com/).
@@ -51,7 +41,10 @@ Screenpipe-style passive capture is interesting, especially if it can stay local
 and privacy-respecting, but it needs strong filtering and review. MemryNote should act
 like a careful assistant, not an automatic hoarder.
 
-## Contextual resurfacing by relevance
+</details>
+
+<details>
+<summary><strong>Contextual resurfacing by relevance</strong></summary>
 
 Source: second weekly email reply about Tana `#idea`, Raindrop, and intentionally
 recalling saved material.
@@ -86,7 +79,10 @@ Useful resurfacing should be lightweight:
 Do not make resurfacing feel random by default. Serendipity is useful only when it is
 anchored to the current topic, active project, or tags.
 
-## Inbox segmentation and triage
+</details>
+
+<details>
+<summary><strong>Inbox segmentation and triage</strong></summary>
 
 Source: third weekly email feedback from Damian Newton about the Tasks component,
 Inbox workflow, and where the Agent fits.
@@ -146,7 +142,10 @@ surface. The product goal is not to classify everything perfectly. The goal is t
 users move captured material into the right durable place with minimal admin and clear
 user control.
 
-## Structure without folder rigidity
+</details>
+
+<details>
+<summary><strong>Structure without folder rigidity</strong></summary>
 
 Source: weekly email feedback from Aurelie Kabore about moving between Notion,
 Obsidian, Capacities, Anytype, and wanting more flexible organization for visual
@@ -205,7 +204,10 @@ Do not make MemryNote a Notion clone. The goal is flexible organization on top o
 portable local notes: folders for disk structure, links for relationships, tags
 and properties for grouping, and collections for saved perspectives.
 
-## Streamlined onboarding without AI noise
+</details>
+
+<details>
+<summary><strong>Streamlined onboarding without AI noise</strong></summary>
 
 Source: Reddit feedback comparing MemryNote favorably to Saner AI, but put off by
 Saner's onboarding and how verbose its AI is.
@@ -234,7 +236,10 @@ asked directly whether MemryNote has thought about a streamlined onboarding.
 AI must stay quiet and useful, not chatty and needy. The edge here is restraint: an
 empty app should feel calm. This positioning is a feature, not a gap.
 
-## Scheduled review and priority buckets
+</details>
+
+<details>
+<summary><strong>Scheduled review and priority buckets</strong></summary>
 
 Source: Reddit feedback describing a capture-fast, organize-later workflow with
 do-now / do-soon / long-term priorities.
@@ -307,7 +312,10 @@ the workflow is meant to remove. The scheduled review is a prompt to process, no
 automated sorter; the user stays in control of what goes where. The reminder should be
 a gentle nudge, not nagging.
 
-## Bulk URL import via CSV
+</details>
+
+<details>
+<summary><strong>Bulk URL import via CSV</strong></summary>
 
 Source: feature request asking for a CSV import button on the inbox page to bulk-add
 URLs (for example YouTube links).
@@ -336,7 +344,10 @@ land in the inbox, instead of adding links one at a time.
 Bulk import must not hammer the network or duplicate items. Dedupe against existing
 inbox items, throttle extraction, and keep the user able to cancel a large run.
 
-## Second-device setup should adopt the existing vault
+</details>
+
+<details>
+<summary><strong>Second-device setup should adopt the existing vault</strong></summary>
 
 Source: customer email (2026-07-05) — installed MemryNote on a Fedora laptop, set up
 sync, and expected the notes from their MacBook to appear. The app showed the correct
@@ -369,7 +380,10 @@ Never merge into or overwrite an existing vault automatically — adoption means
 downloading into a clean local copy the user confirmed. And don't block setup on the
 directory call: offline or empty-account users must still get a vault instantly.
 
-## Fixed-page notebooks with custom covers
+</details>
+
+<details>
+<summary><strong>Fixed-page notebooks with custom covers</strong></summary>
 
 Source: Reddit post (r/Notetaking style) from a student starting school in September on
 a Lenovo (Windows) laptop. Requirements: fixed pages (no infinite scroll / infinite
@@ -423,7 +437,10 @@ the continuous editor are core; fixed pages must stay a view or export concern, 
 change to how notes are stored. Treat this entry as a documented non-fit with a few
 adjacent wins, not a roadmap commitment to page-based note-taking.
 
-## Spatial canvas for brain-dump thinking
+</details>
+
+<details>
+<summary><strong>Spatial canvas for brain-dump thinking</strong></summary>
 
 Source: email thread with Matt McMahon (current Heptabase user, found MemryNote via a
 Medium post), 2026-07-16. He asked whether a spatial thinking sandbox is on the roadmap,
@@ -511,3 +528,5 @@ reconciles. Performance at scale is the actual product here, not the length of t
 list; if a large board lags, it fails the exact user it is meant to win. And it has to
 fit the calm, one-place register — a place to think, not another surface to maintain.
 Treat AI and collaboration as later layers, not launch requirements.
+
+</details>
