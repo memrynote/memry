@@ -11,6 +11,7 @@
 - [Bulk URL import via CSV](#bulk-url-import-via-csv)
 - [Second-device setup should adopt the existing vault](#second-device-setup-should-adopt-the-existing-vault)
 - [Fixed-page notebooks with custom covers](#fixed-page-notebooks-with-custom-covers)
+- [Spatial canvas for brain-dump thinking](#spatial-canvas-for-brain-dump-thinking)
 
 ## Reduce filing with AI-assisted capture
 
@@ -421,3 +422,92 @@ Do not turn MemryNote into a handwriting / paged-document app. Markdown portabil
 the continuous editor are core; fixed pages must stay a view or export concern, never a
 change to how notes are stored. Treat this entry as a documented non-fit with a few
 adjacent wins, not a roadmap commitment to page-based note-taking.
+
+## Spatial canvas for brain-dump thinking
+
+Source: email thread with Matt McMahon (current Heptabase user, found MemryNote via a
+Medium post), 2026-07-16. He asked whether a spatial thinking sandbox is on the roadmap,
+then described in detail how he actually uses Heptabase's whiteboard.
+
+### User signal
+
+Matt lives inside Heptabase's whiteboard — it is his primary surface for study materials
+(organized by subject), project planning, and working through what he is learning. He
+ranges widely: C++ / 3D game engines, Python / AI models, philosophy, psychology. His
+Readwise highlights get referenced on his boards. The whiteboard's core value for him is
+the ability to do massive brain dumps without being forced to classify or organize up
+front. He is explicit that he cannot stick with tools that make him categorize early —
+his natural inclination is to not care about structure at capture time, and any system
+that forces it "usually doesn't see much usage."
+
+His workflow is capture-then-connect: dump cards freely while thinking, then later link
+cards together into a "web of knowledge." This is the same capture-fast / organize-later
+pattern already documented in [Scheduled review and priority buckets], expressed
+spatially instead of as a list.
+
+### How Matt uses Heptabase's canvas
+
+- Everything on one surface: subjects, projects, and learning details all live as cards.
+- Mixed media per card: audio, video, PDF, plus block types — code, LaTeX for equations,
+  text. Fast to drop a block of any type without stopping to think.
+- Card-to-card linking after the fact to build the knowledge web, not up front.
+- Rapid topic-switching: one minute C++, the next Python / AI, the next philosophy notes.
+  The canvas holds all the scattered contexts at once so he can jump between them.
+- Least-used features: AI integration (second-to-last) and collaboration / sharing
+  (last) — he has no need to share his boards with anyone.
+
+### The performance wedge (his number-one complaint)
+
+Matt's single biggest frustration with Heptabase is whiteboard performance. His largest
+boards — many cards plus images and videos — "lag to hell and back." Heptabase's advice
+was to split into sub-whiteboards; he does not want to segment his thinking just to work
+around a rendering limit. This is the clearest opening for MemryNote: a canvas that stays
+smooth at high card and media counts is a direct, concrete reason for heavy Heptabase
+users to switch. Performance at scale should be a design constraint from day one, not a
+later optimization pass — virtualized / culled rendering, lazy media loading, and
+thumbnail or proxy images for off-screen cards. MemryNote's offline-first, local-SQLite
+footing is an advantage here.
+
+### Product direction
+
+This expands the one-line "Visual workspaces" bullet under [Structure without folder
+rigidity] into a real concept. The guiding rule from that section still holds: the canvas
+links to real notes, it does not become a separate knowledge silo.
+
+- Cards are notes, not a parallel store. A card is a spatial view of a real note or block
+  on disk, so anything created or linked on the canvas stays a portable Markdown note and
+  keeps showing up in search, backlinks, tags, and folders. No second database.
+- Brain-dump-first capture: let the user drop a card straight onto the canvas with zero
+  filing — no folder, no tag, no decision — matching MemryNote's capture-then-triage
+  philosophy. Promotion into a filed note happens later, if ever.
+- Block and media parity by reuse: cards should render the same BlockNote surface notes
+  already use — text, code, math / LaTeX, images, PDF, audio, video, YouTube — rather than
+  a bespoke card editor. That is how MemryNote matches Heptabase's "any block, instantly"
+  feel without rebuilding it.
+- Spatial links are wiki links: card-to-card connections are the existing link / backlink
+  graph, drawn on the canvas. The "web of knowledge" becomes a manual, spatial layer over
+  relationships MemryNote already tracks.
+- Ship what he reaches for, defer what he skips: he ranks AI and collaboration lowest.
+  Launch the calm single-player canvas first; do not front-load AI suggestions or
+  real-time multiplayer.
+
+### Adjacent asks from the same thread
+
+- Calendar sync: he wants his notes and canvas to help hold his days together. MemryNote
+  already has calendar events, so a dated card or note surfacing on the calendar is a
+  natural tie-in rather than new infrastructure.
+- More native integrations plus a dev API / community package marketplace: he trusts
+  native integrations over AI and wants easier ways to push data between apps (he already
+  uses Heptabase's MCP server, and loves the Readwise integration). This aligns with the
+  MCP-first Agent Chat direction and the Vault MCP server — lead with an integration / MCP
+  story rather than committing to a plugin marketplace. A Readwise import specifically
+  would land well with this segment.
+
+### Important boundary
+
+The canvas must stay a spatial view over real notes, never a separate silo with its own
+hidden data model — that is the trap that turns a whiteboard into a second inbox nobody
+reconciles. Performance at scale is the actual product here, not the length of the block
+list; if a large board lags, it fails the exact user it is meant to win. And it has to
+fit the calm, one-place register — a place to think, not another surface to maintain.
+Treat AI and collaboration as later layers, not launch requirements.
