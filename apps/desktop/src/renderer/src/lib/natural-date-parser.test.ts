@@ -1237,3 +1237,45 @@ describe('Natural Date Parser', () => {
     })
   })
 })
+
+// The "in N days/weeks/months" branch takes an UNBOUNDED \d+ and never range-checks
+// it, so a huge N overflows Date past its ±8.64e15ms limit -> Invalid Date. Before
+// the fix, parseNaturalDate returned that Invalid Date as { success: true }, and the
+// contract violation only surfaced downstream as a RangeError when a caller reached
+// toISOString() (date-mention popover on Enter, date-suggestions while typing). The
+// parser must never report success with an unrepresentable date.
+describe('parseNaturalDate — out-of-range offsets', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2026, 5, 17, 12, 0, 0))
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it.each(['in 99999999999 days', 'in 9999999999 weeks', 'in 999999999999 months'])(
+    'rejects %j instead of returning an Invalid Date as success',
+    (input) => {
+      const result = parseNaturalDate(input)
+      expect(result.success).toBe(false)
+    }
+  )
+
+  it('still accepts a small in-range offset', () => {
+    const result = parseNaturalDate('in 3 days')
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(Number.isNaN(result.result.date.getTime())).toBe(false)
+    }
+  })
+
+  it('rejects a far-future offset whose midnight is valid but overflows once a caller adds a time-of-day', () => {
+    // "in 5000000 days" is ~year 15715 — a REPRESENTABLE Date, so a NaN-only guard
+    // admits it. But callers add a time-of-day before serializing (date-suggestions
+    // setHours, popover new Date(y,mo,d,h,mi)); near Date's max that push overflows to
+    // Invalid and toISOString() throws RangeError. The parser caps accepted dates to a
+    // 4-digit year so no downstream time-of-day can overflow.
+    const result = parseNaturalDate('in 5000000 days')
+    expect(result.success).toBe(false)
+  })
+})

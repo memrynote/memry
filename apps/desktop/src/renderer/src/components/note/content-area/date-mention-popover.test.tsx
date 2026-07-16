@@ -183,6 +183,28 @@ describe('DateMentionPopover', () => {
     expect(onChange).not.toHaveBeenCalled()
   })
 
+  it('ignores an out-of-range natural date instead of crashing on commit', () => {
+    // "in 99999999999 days" overflows Date to Invalid. tryParseDateInput read it
+    // back as { y: NaN, mo: NaN, d: NaN } -- a TRUTHY object, so commitDateText's
+    // `if (!parsed) return` did not stop it, and emitYMDHM's new Date(NaN).toISOString()
+    // threw the same RangeError this popover exists to prevent. React rethrows out
+    // of the handler, so assert on the window 'error' event (production's signal).
+    const onWindowError = vi.fn()
+    window.addEventListener('error', onWindowError)
+    const { onChange } = renderPopover()
+
+    try {
+      const input = screen.getByLabelText('Date')
+      fireEvent.change(input, { target: { value: 'in 99999999999 days' } })
+      fireEvent.keyDown(input, { key: 'Enter' })
+    } finally {
+      window.removeEventListener('error', onWindowError)
+    }
+
+    expect(onWindowError).not.toHaveBeenCalled()
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
   it('selecting a calendar date preserves the existing time-of-day', () => {
     const { onChange } = renderPopover()
     fireEvent.click(screen.getByTestId('calendar'))

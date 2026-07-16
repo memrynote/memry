@@ -323,6 +323,36 @@ describe('GraphCanvas', () => {
     expect(graphCanvasMocks.sigma.setSetting).not.toHaveBeenCalled()
   })
 
+  it('re-applies settings once the committed instance owns our graph (recovery)', () => {
+    // Guard the recovery half of the fix: skipping the stale instance must not
+    // leave settings permanently unapplied. First render sees a foreign instance
+    // (guard bails, nothing pushed); once the container commits the instance that
+    // owns the rendered graph, a later settings change must re-run the effect and
+    // actually apply -- proving the guard skips the zombie without stranding
+    // settings on the live instance (a silent visual regression otherwise).
+    graphCanvasMocks.sigma.getGraph = () => ({ stale: true })
+    const { rerender } = render(
+      <GraphCanvas
+        data={data}
+        filterState={filters}
+        graphSettings={{ ...settings, showLabels: false }}
+        onFocusNode={vi.fn()}
+      />
+    )
+    expect(graphCanvasMocks.sigma.setSetting).not.toHaveBeenCalled()
+
+    graphCanvasMocks.sigma.getGraph = () => graphCanvasMocks.sigmaContainerProps?.graph
+    rerender(
+      <GraphCanvas
+        data={data}
+        filterState={filters}
+        graphSettings={{ ...settings, showLabels: true }}
+        onFocusNode={vi.fn()}
+      />
+    )
+    expect(graphCanvasMocks.sigma.setSetting).toHaveBeenCalledWith('labelRenderedSizeThreshold', 6)
+  })
+
   it('syncs sigma settings and starts/stops forceatlas layout', () => {
     const { rerender, unmount } = render(
       <GraphCanvas
