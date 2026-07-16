@@ -137,7 +137,8 @@ describe('desktopErrorEntry', () => {
       stack: 'at doThing (app://bundle.js:1:2)',
       component_stack: 'at NoteEditor',
       install_hash: 'hash123',
-      log_action: ''
+      log_action: '',
+      exit_code: ''
     })
     expect(Object.keys(result.line)).not.toContain('message')
   })
@@ -154,5 +155,26 @@ describe('desktopErrorEntry', () => {
     const result = desktopErrorEntry(batch, logEvent, 'hash123')
     expect(result.line.log_action).toBe('child_process_gone')
     expect(result.line.error_code).toBe('Utility:crashed:Embeddings')
+  })
+
+  it('carries the child-process exit code so the crash signal is visible in Grafana', () => {
+    // #given a utility crash reported with a POSIX signal status (11 = SIGSEGV)
+    const crashEvent: TelemetryEvent = {
+      ...event,
+      name: 'app_log_recorded',
+      action: 'error',
+      errorCode: 'Utility:crashed:Embeddings',
+      dimensions: { log_action: 'child_process_gone' },
+      metrics: { value: 11 },
+      error: undefined
+    }
+    const result = desktopErrorEntry(batch, crashEvent, 'hash123')
+    expect(result.line.exit_code).toBe(11)
+  })
+
+  it('leaves exit_code empty for events that carry no exit status', () => {
+    // #given exit code 0 is meaningful, so the empty case must not collapse to 0
+    const result = desktopErrorEntry(batch, event, 'hash123')
+    expect(result.line.exit_code).toBe('')
   })
 })

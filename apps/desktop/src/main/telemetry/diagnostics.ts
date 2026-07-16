@@ -42,33 +42,44 @@ const toErrorCode = (error: unknown): string => {
 const resultForLevel = (level: DiagnosticLevel): TelemetryResult =>
   level === 'error' || level === 'warn' ? 'failed' : 'success'
 
+export interface ChildProcessGoneDetails {
+  type: string
+  reason: string
+  // The MOJO interface name. Constant by construction — every utilityProcess
+  // fork reports 'node.mojom.NodeService', so it cannot tell our workers apart.
+  serviceName?: string
+  // Where Electron actually routes the fork's `serviceName` OPTION, i.e. our
+  // 'Embeddings' / 'ImageProcessing' / 'VoiceTranscription' labels. A fork that
+  // passes no option (crdt-preflight) reports the default 'Node Utility Process'.
+  name?: string
+  // Platform exit status: on POSIX this carries the signal (11 SIGSEGV, 6 SIGABRT).
+  exitCode?: number
+}
+
 // Utility workers (embeddings, image-processing, voice-model) idle-shutdown
 // cleanly after ~30s; a clean exit is lifecycle, not a fault, so it must not
 // become an error event. Real faults get a composite code that stays inside
 // the safe-token rules (no '@', '://', '/', '\', ≤64 chars).
-export const childProcessGoneErrorCode = (details: {
-  type: string
-  reason: string
-  serviceName?: string
-}): string | null => {
+export const childProcessGoneErrorCode = (details: ChildProcessGoneDetails): string | null => {
   if (details.reason === 'clean-exit') return null
-  return toSafeToken(
-    `${details.type}:${details.reason}:${details.serviceName ?? ''}`,
-    'ChildProcessGone'
-  )
+  const worker = details.name ?? details.serviceName ?? ''
+  return toSafeToken(`${details.type}:${details.reason}:${worker}`, 'ChildProcessGone')
 }
 
 // Reports a `child-process-gone` fault as an error log event, or nothing at all
 // for a clean idle-worker exit. Kept here (not inline in index.ts) so the
 // skip decision is unit-tested rather than living in the untested bootstrap.
-export const trackChildProcessGone = (details: {
-  type: string
-  reason: string
-  serviceName?: string
-}): void => {
+export const trackChildProcessGone = (details: ChildProcessGoneDetails): void => {
   const errorCode = childProcessGoneErrorCode(details)
   if (!errorCode) return
-  trackMainLog('error', { scope: 'Electron', action: 'child_process_gone', errorCode })
+  // errorCode stays stable (no exit code baked in) so Grafana can count crashes
+  // per worker; the exit status rides along as a metric instead.
+  trackMainLog('error', {
+    scope: 'Electron',
+    action: 'child_process_gone',
+    errorCode,
+    metrics: typeof details.exitCode === 'number' ? { value: details.exitCode } : undefined
+  })
 }
 
 export const trackMainError = (source: string, action: string, error: unknown): void => {
@@ -89,7 +100,13 @@ export const trackMainLog = (
     scope: string
     action: string
     errorCode?: string
-    metrics?: { durationMs?: number; itemCount?: number; queueCount?: number; retryCount?: number }
+    metrics?: {
+      durationMs?: number
+      itemCount?: number
+      queueCount?: number
+      retryCount?: number
+      value?: number
+    }
   }
 ): void => {
   const eventOptions: TrackMainEventOptions = {
