@@ -84,9 +84,11 @@ export const cleanupExpiredUploadSessions = async (
     if ((result.meta.changes ?? 0) > 0) {
       // Refund exactly what initiate reserved — never re-derive it. `encrypted_size`
       // records the reservation; a NULL means the row was written by the old server,
-      // which reserved the plaintext total_size. Migration 0002 backfills the rows that
-      // existed when it ran, but migrations apply before the Worker deploys, so the old
-      // code can still open NULL rows during the rollout window. Keep the fallback.
+      // which reserved the plaintext total_size. Migration 0002 deliberately does NOT
+      // backfill, so those rows stay NULL permanently (and the old worker can still open
+      // fresh NULL rows during the migrate-then-deploy window). The `?? total_size`
+      // fallback is load-bearing — do not remove it, and do not add a backfill: it would
+      // false-413 the last chunk of every in-flight session (see migrations/0002).
       await adjustStorageUsed(db, session.user_id, -(session.encrypted_size ?? session.total_size))
       cleaned += result.meta.changes ?? 0
     }

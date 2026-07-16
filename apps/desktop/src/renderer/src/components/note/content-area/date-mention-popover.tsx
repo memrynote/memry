@@ -223,7 +223,10 @@ export function DateMentionPopover({
 
   function handleTimeChange(raw: string): void {
     const [h, mi] = raw.split(':').map(Number)
-    if (Number.isNaN(h) || Number.isNaN(mi)) return
+    // Chromium reports value '' when a segment is cleared; ''.split(':') is [''],
+    // so mi is undefined. Number.isNaN(undefined) is false (unlike isNaN), which
+    // would let an Invalid Date reach emitYMDHM's toISOString().
+    if (!Number.isFinite(h) || !Number.isFinite(mi)) return
     emitYMDHM(parts.y, parts.mo, parts.d, h, mi, true)
   }
 

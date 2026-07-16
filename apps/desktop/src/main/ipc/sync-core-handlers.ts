@@ -244,6 +244,12 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
   })
 
   ipcMain.handle(SYNC_CHANNELS.GET_STORAGE_BREAKDOWN, async () => {
+    // Storage breakdown is a paid-plan endpoint: the server correctly answers
+    // 402 for a free user, so calling it burns a round-trip and logs a
+    // SYNC_PAYMENT_REQUIRED every time. Gate it exactly like GET_STATUS above —
+    // an unknown entitlement is not gated, only a known-unpaid one.
+    const cached = getCachedEntitlement()
+    if (cached && !cached.isPaid) return null
     const token = await getValidAccessToken()
     if (!token) return null
     return getFromServer<StorageBreakdownResult>('/sync/storage', token)

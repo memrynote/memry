@@ -225,6 +225,91 @@ describe('putBlob', () => {
 })
 
 // ============================================================================
+// Tests: putBlob transient-failure retry
+//
+// Production evidence: a ~5 minute burst of R2 put failures ("put: Please look
+// at https://www.cloudflarestatus.com for issues") surfaced as 500s. The key is
+// deterministic, so a put retry is idempotent.
+// ============================================================================
+
+const R2_TRANSIENT_MESSAGE = 'put: Please look at https://www.cloudflarestatus.com for issues'
+
+describe('putBlob retry on transient R2 failures', () => {
+  let storage: ReturnType<typeof createMockStorage>
+
+  beforeEach(() => {
+    storage = createMockStorage()
+  })
+
+  it('should retry a transient R2 put failure and succeed without surfacing an error', async () => {
+    // #given a put that fails once, then succeeds (the Cloudflare-incident shape)
+    storage.put
+      .mockRejectedValueOnce(new Error(R2_TRANSIENT_MESSAGE))
+      .mockResolvedValueOnce(createMockR2Object())
+
+    // #when
+    const result = await putBlob(
+      storage as unknown as R2Bucket,
+      'user-1/items/x',
+      new ArrayBuffer(10),
+      'user-1'
+    )
+
+    // #then the caller never sees the transient failure
+    expect(result).toBeDefined()
+    expect(storage.put).toHaveBeenCalledTimes(2)
+  })
+
+  it('should retry twice before giving up and surface a typed STORAGE_UPLOAD_FAILED', async () => {
+    // #given R2 is persistently failing
+    storage.put.mockRejectedValue(new Error(R2_TRANSIENT_MESSAGE))
+
+    // #when / #then
+    await expect(
+      putBlob(storage as unknown as R2Bucket, 'user-1/items/x', new ArrayBuffer(10), 'user-1')
+    ).rejects.toMatchObject({
+      name: 'AppError',
+      code: ErrorCodes.STORAGE_UPLOAD_FAILED,
+      statusCode: 500
+    })
+    expect(storage.put).toHaveBeenCalledTimes(3)
+  })
+
+  it('should not retry quota failures', async () => {
+    // #given a terminal, non-transient failure
+    storage.put.mockRejectedValue(new Error('Storage quota exceeded for bucket'))
+
+    // #when / #then retrying a quota rejection only burns Worker budget
+    await expect(
+      putBlob(storage as unknown as R2Bucket, 'user-1/items/x', new ArrayBuffer(10), 'user-1')
+    ).rejects.toMatchObject({ code: ErrorCodes.STORAGE_QUOTA_EXCEEDED })
+    expect(storage.put).toHaveBeenCalledTimes(1)
+  })
+
+  it('should not retry permission failures', async () => {
+    // #given
+    storage.put.mockRejectedValue(new Error('Access denied: forbidden'))
+
+    // #when / #then
+    await expect(
+      putBlob(storage as unknown as R2Bucket, 'user-1/items/x', new ArrayBuffer(10), 'user-1')
+    ).rejects.toMatchObject({ code: ErrorCodes.STORAGE_UNAUTHORIZED })
+    expect(storage.put).toHaveBeenCalledTimes(1)
+  })
+
+  it('should not retry a stream body, which cannot be replayed after a failed attempt', async () => {
+    // #given a body that is consumed by the first attempt
+    storage.put.mockRejectedValue(new Error(R2_TRANSIENT_MESSAGE))
+
+    // #when / #then re-putting a consumed stream would upload a partial object
+    await expect(
+      putBlob(storage as unknown as R2Bucket, 'user-1/items/x', new ReadableStream(), 'user-1')
+    ).rejects.toMatchObject({ code: ErrorCodes.STORAGE_UPLOAD_FAILED })
+    expect(storage.put).toHaveBeenCalledTimes(1)
+  })
+})
+
+// ============================================================================
 // Tests: getBlob
 // ============================================================================
 

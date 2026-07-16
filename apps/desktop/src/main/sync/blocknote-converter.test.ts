@@ -584,3 +584,73 @@ describe('blocknote-converter soft-break fidelity', () => {
     expect(out).toBe('kaan\nuraz\nsevde')
   })
 })
+
+describe('inline underline persistence through the real markdown pipeline', () => {
+  const toMarkdown = async (blocks: unknown[]): Promise<string | null> => {
+    const doc = new Y.Doc()
+    const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    blocksToYFragment(blocks as never, fragment)
+    return yDocToMarkdown(doc)
+  }
+
+  const paragraph = (content: unknown[]): unknown => ({
+    id: 'p1',
+    type: 'paragraph',
+    props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
+    children: [],
+    content
+  })
+
+  it('never emits colour and underline on one span (old clients reject the whole span)', async () => {
+    // #given a run that is both coloured and underlined
+    const blocks = [
+      paragraph([{ type: 'text', text: 'both', styles: { textColor: 'red', underline: true } }])
+    ]
+
+    // #when
+    const md = await toMarkdown(blocks)
+
+    // #then the two styles live on separate nested spans, so an older client that
+    // rejects the underline span still keeps the colour it already understands
+    expect(md).not.toMatch(/<span style="[^"]*color[^"]*text-decoration/)
+    expect(md).not.toMatch(/<span style="[^"]*text-decoration[^"]*color/)
+    expect(md).toContain('<span style="color:red">')
+    expect(md).toContain('<span style="text-decoration:underline">')
+  })
+
+  it('does not inject span html into a code block', async () => {
+    // #given underline set inside a code block (Cmd+U works there — the schema allows the mark)
+    const blocks = [
+      {
+        id: 'c1',
+        type: 'codeBlock',
+        props: { language: 'javascript' },
+        children: [],
+        content: [{ type: 'text', text: 'const a = 1', styles: { underline: true } }]
+      }
+    ]
+
+    // #when
+    const md = await toMarkdown(blocks)
+
+    // #then the fence stays literal code — the parse side skips fences, so any
+    // span written here could never be unmasked again
+    expect(md).not.toContain('<span')
+    expect(md).toContain('const a = 1')
+  })
+
+  it('round-trips an underlined table cell without leaking mask tokens', async () => {
+    // #given a table whose cell carries an underline span (the format the docs advertise)
+    const original =
+      '| a | b |\n| --- | --- |\n| <span style="text-decoration:underline">u</span> | plain |'
+
+    // #when parsed and written back out
+    const blocks = await markdownToBlocks(original)
+    expect(blocks).not.toBeNull()
+    const md = await toMarkdown(blocks!)
+
+    // #then no internal masking token reaches the vault file
+    expect(md).not.toContain('MEMRYICO')
+    expect(md).not.toContain('MEMRYICC')
+  })
+})

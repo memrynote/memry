@@ -8,7 +8,12 @@ vi.mock('./telemetry', () => ({
   trackTelemetry: trackTelemetryMock
 }))
 
-import { trackRendererError, trackRendererLog, trackRendererReady } from './telemetry-diagnostics'
+import {
+  registerRendererDiagnostics,
+  trackRendererError,
+  trackRendererLog,
+  trackRendererReady
+} from './telemetry-diagnostics'
 
 describe('renderer telemetry diagnostics', () => {
   beforeEach(() => {
@@ -40,6 +45,47 @@ describe('renderer telemetry diagnostics', () => {
     // message header is stripped; home paths in stack frames are scrubbed
     expect(serialized).not.toContain('private-note')
     expect(serialized).not.toContain('/Users/')
+  })
+
+  it('reports a typed code carried by the error, not the class name', () => {
+    // #given an IPC failure that arrived with a typed code
+    const error = Object.assign(new Error('could not save'), {
+      name: 'NoteError',
+      code: 'NOTE_WRITE_FAILED'
+    })
+
+    // #when tracking it
+    trackRendererError('note_save', error)
+
+    // #then the renderer matches main-process fidelity
+    expect(trackTelemetryMock).toHaveBeenCalledWith(
+      'app_error_seen',
+      expect.objectContaining({ errorCode: 'NOTE_WRITE_FAILED' })
+    )
+  })
+
+  it('captures an actionable code and stack for a non-Error rejection reason', () => {
+    // #given a rejection whose reason is a bare string — no stack at all
+    registerRendererDiagnostics()
+
+    // #when the window reports it
+    window.dispatchEvent(
+      Object.assign(new Event('unhandledrejection'), { reason: 'boom at /Users/kaan/secret.md' })
+    )
+
+    // #then the reason's type + a synthesized stack are captured
+    expect(trackTelemetryMock).toHaveBeenCalledWith(
+      'app_error_seen',
+      expect.objectContaining({
+        action: 'unhandled_rejection',
+        errorCode: 'Rejection_string',
+        error: expect.objectContaining({ stack: expect.stringContaining('at ') })
+      })
+    )
+    // #and the reason's value never ships
+    const serialized = JSON.stringify(trackTelemetryMock.mock.calls[0])
+    expect(serialized).not.toContain('secret.md')
+    expect(serialized).not.toContain('boom')
   })
 
   it('emits structured renderer logs', () => {

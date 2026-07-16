@@ -219,6 +219,131 @@ const keepStackFrameLines = (stack: string): string =>
     .filter((line) => /^\s*at\s/.test(line))
     .join('\n')
 
+const SAFE_TOKEN = /^(?!.*@)(?!.*:\/\/)(?!.*[/\\]).{1,64}$/
+
+/**
+ * Coerce a value into a token safe to ship as telemetry metadata: known charset,
+ * ≤64 chars, no '@', '://', '/' or '\'. Falls back when the value cannot be made
+ * to fit.
+ */
+export const toSafeToken = (value: unknown, fallback: string): string => {
+  const raw =
+    value instanceof Error
+      ? value.name
+      : typeof value === 'string'
+        ? value
+        : typeof value === 'number' || typeof value === 'boolean'
+          ? String(value)
+          : ''
+  const token = raw.replace(/[^A-Za-z0-9_.:-]/g, '_').slice(0, 64)
+  return SAFE_TOKEN.test(token) ? token : fallback
+}
+
+// A typed error code is an enum-ish token that the app or a native library
+// assigns: NOTE_WRITE_FAILED, SQLITE_BUSY, ECONNREFUSED. Anything else — a path,
+// an email, a URL, free-form prose — is REJECTED outright rather than run through
+// toSafeToken, because a character-substituted path ('_Users_kaan_secret.md')
+// still leaks its structure. Rejected codes fall back to the class name.
+const TYPED_ERROR_CODE = /^[A-Za-z][A-Za-z0-9_.:-]{0,63}$/
+
+const MAX_CAUSE_DEPTH = 4
+
+const typedErrorCode = (error: unknown, depth = 0): string | undefined => {
+  if (!error || typeof error !== 'object' || depth > MAX_CAUSE_DEPTH) return undefined
+  const candidate = error as {
+    telemetryCode?: unknown
+    code?: unknown
+    cause?: unknown
+    errors?: unknown
+  }
+  // A richer app-assigned code wins over the bare `.code`, so a note failure
+  // keeps its originating errno (NoteError.telemetryCode = NOTE_WRITE_FAILED:EBUSY)
+  // instead of collapsing to NOTE_WRITE_FAILED.
+  if (
+    typeof candidate.telemetryCode === 'string' &&
+    TYPED_ERROR_CODE.test(candidate.telemetryCode)
+  ) {
+    return candidate.telemetryCode
+  }
+  if (typeof candidate.code === 'string' && TYPED_ERROR_CODE.test(candidate.code)) {
+    return candidate.code
+  }
+  // undici raises `TypeError: fetch failed` and hangs the real code on `.cause`
+  // (sometimes inside an AggregateError's `.errors` for dual-stack localhost), so
+  // the chain is walked to a bounded depth. TYPED_ERROR_CODE still gates every hop,
+  // so a nested path/email/url can never be adopted.
+  if (Array.isArray(candidate.errors)) {
+    for (const nested of candidate.errors) {
+      const nestedCode = typedErrorCode(nested, depth + 1)
+      if (nestedCode) return nestedCode
+    }
+  }
+  return typedErrorCode(candidate.cause, depth + 1)
+}
+
+/**
+ * Derive the `errorCode` dimension for an error. Prefers a typed code the error
+ * carries (NoteError.telemetryCode, NoteError.code, better-sqlite3's error.code,
+ * or Node's ECONNREFUSED nested on `.cause`) over the class name, so a failure
+ * says NOTE_WRITE_FAILED:EBUSY / SQLITE_BUSY rather than collapsing every note
+ * failure to "NoteError" and every DB failure to "SqliteError". Falls back to the
+ * class name, then the constructor name.
+ */
+export const toErrorCode = (error: unknown): string => {
+  const typed = typedErrorCode(error)
+  if (typed) return typed
+  if (error instanceof Error && error.name) {
+    return toSafeToken(error.name, 'Error')
+  }
+  if (error && typeof error === 'object' && error.constructor?.name) {
+    return toSafeToken(error.constructor.name, 'UnknownError')
+  }
+  if (typeof error === 'string') return 'StringError'
+  return 'UnknownError'
+}
+
+const hasStackFrames = (value: unknown): value is { stack: string } => {
+  const stack = (value as { stack?: unknown } | null | undefined)?.stack
+  return typeof stack === 'string' && /^\s*at\s/m.test(stack)
+}
+
+const rejectionTypeName = (reason: unknown): string => {
+  if (reason === null) return 'Rejection_null'
+  if (reason === undefined) return 'Rejection_undefined'
+  if (typeof reason !== 'object') return `Rejection_${typeof reason}`
+  const ctor = (reason as { constructor?: { name?: unknown } }).constructor?.name
+  return typeof ctor === 'string' && ctor ? `Rejection_${ctor}` : 'Rejection_object'
+}
+
+/**
+ * Normalize an unhandled rejection reason into an Error that always carries a
+ * stack. A rejection can carry ANY value: a string, a plain object, undefined,
+ * or a cross-realm Error that fails `instanceof Error`. Those produce no stack
+ * and land in telemetry as an unactionable bare `Error` with an empty stack.
+ *
+ * Real Errors pass through; a cross-realm error's own frames are adopted;
+ * anything else gets a stack synthesized at the handler plus a name describing
+ * the reason's type/constructor. Privacy: the reason's message/value is NEVER
+ * copied — only its shape. buildErrorDetail still strips the stack header.
+ */
+export const normalizeRejectionReason = (reason: unknown): Error => {
+  if (reason instanceof Error && hasStackFrames(reason)) return reason
+
+  const normalized = new Error()
+  normalized.name = toSafeToken(rejectionTypeName(reason), 'Rejection_unknown')
+  if (hasStackFrames(reason)) {
+    normalized.stack = reason.stack
+    const name = (reason as { name?: unknown }).name
+    // Adopt the reason's own name only when it is already an enum-ish token; a
+    // path/email/prose name is rejected (not character-substituted, which would
+    // still leak its structure) and the synthesized Rejection_* name is kept.
+    if (typeof name === 'string' && TYPED_ERROR_CODE.test(name)) {
+      normalized.name = name
+    }
+  }
+  return normalized
+}
+
 /**
  * Build the redacted, length-capped error detail attached to `app_error_seen`
  * desktop telemetry. Privacy: we NEVER send the error message (it can contain a

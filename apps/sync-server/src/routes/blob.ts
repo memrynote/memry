@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 
 import { AppError, ErrorCodes } from '../lib/errors'
+import { createLogger } from '../lib/logger'
 import { authMiddleware } from '../middleware/auth'
 import { paidSyncMiddleware } from '../middleware/paid-sync'
 import { createRateLimiter } from '../middleware/rate-limit'
@@ -17,6 +18,34 @@ import { adjustStorageUsed, reserveStorage } from '../services/quota'
 import { MAX_CHUNK_CRYPTO_OVERHEAD, expectedEncryptedTotal } from '../services/upload-size'
 import { UploadInitRequestSchema } from '@memry/contracts/blob-api'
 import type { AppContext } from '../types'
+
+const logger = createLogger('BlobRoutes')
+
+/**
+ * Refunds a storage reservation after a failed write.
+ *
+ * The refund is itself a D1 write, so during a D1 outage it fails too. It must
+ * never replace the error that actually caused the write to fail: that turns a
+ * typed, handled error into an unhandled one and hides the real cause. A failed
+ * refund leaves the reservation charged to the user until reconciliation.
+ */
+const refundReservation = async (
+  db: D1Database,
+  userId: string,
+  reservedBytes: number,
+  context: Record<string, unknown>
+): Promise<void> => {
+  if (reservedBytes <= 0) return
+  try {
+    await adjustStorageUsed(db, userId, -reservedBytes)
+  } catch (refundError) {
+    logger.error('storage refund failed', {
+      ...context,
+      reservedBytes,
+      error: refundError instanceof Error ? refundError.message : String(refundError)
+    })
+  }
+}
 
 export const blob = new Hono<AppContext>()
 
@@ -76,9 +105,7 @@ blob.put('/blob/:blob_key', blobUploadLimit, async (c) => {
   try {
     result = await putBlob(c.env.STORAGE, key, body, userId)
   } catch (error) {
-    if (deltaBytes > 0) {
-      await adjustStorageUsed(c.env.DB, userId, -deltaBytes)
-    }
+    await refundReservation(c.env.DB, userId, deltaBytes, { operation: 'putBlob', userId, key })
     throw error
   }
 
@@ -230,7 +257,14 @@ blob.post('/attachments/upload/initiate', uploadSessionLimit, async (c) => {
       )
       .run()
   } catch (error) {
-    await adjustStorageUsed(c.env.DB, userId, -expectedEncrypted)
+    // main's refundReservation (swallows a failed refund so it never masks the
+    // real error) with #740's corrected amount: refund exactly what initiate
+    // reserved — the encrypted total, not the plaintext totalSize.
+    await refundReservation(c.env.DB, userId, expectedEncrypted, {
+      operation: 'uploadInitiate',
+      userId,
+      sessionId
+    })
     throw error
   }
 
@@ -387,9 +421,11 @@ blob.post('/attachments/upload/:session_id/complete', chunkUploadLimit, async (c
     try {
       await putBlob(c.env.STORAGE, manifestKey, manifestBytes.buffer as ArrayBuffer, userId)
     } catch (error) {
-      if (manifestDeltaBytes > 0) {
-        await adjustStorageUsed(c.env.DB, userId, -manifestDeltaBytes)
-      }
+      await refundReservation(c.env.DB, userId, manifestDeltaBytes, {
+        operation: 'uploadComplete',
+        userId,
+        key: manifestKey
+      })
       throw error
     }
   }
@@ -466,9 +502,11 @@ blob.delete('/attachments/upload/:session_id', uploadSessionLimit, async (c) => 
   if ((deleteResult.meta.changes ?? 0) > 0) {
     // Refund exactly what initiate reserved — never re-derive it. `encrypted_size`
     // records the reservation; a NULL means the row was written by the old server,
-    // which reserved the plaintext total_size. Migration 0002 backfills the rows that
-    // existed when it ran, but migrations apply before the Worker deploys, so the old
-    // code can still open NULL rows during the rollout window. Keep the fallback.
+    // which reserved the plaintext total_size. Migration 0002 deliberately does NOT
+    // backfill, so those rows stay NULL permanently (and the old worker can still open
+    // fresh NULL rows during the migrate-then-deploy window). The `?? total_size`
+    // fallback is load-bearing — do not remove it, and do not add a backfill: it would
+    // false-413 the last chunk of every in-flight session (see migrations/0002).
     await adjustStorageUsed(c.env.DB, userId, -(session.encrypted_size ?? session.total_size))
   }
 
@@ -564,9 +602,11 @@ blob.put('/attachments/:attachment_id/manifest', blobUploadLimit, async (c) => {
   try {
     await putBlob(c.env.STORAGE, manifestKey, body, userId)
   } catch (error) {
-    if (deltaBytes > 0) {
-      await adjustStorageUsed(c.env.DB, userId, -deltaBytes)
-    }
+    await refundReservation(c.env.DB, userId, deltaBytes, {
+      operation: 'manifestPut',
+      userId,
+      key: manifestKey
+    })
     throw error
   }
   if (deltaBytes < 0) {

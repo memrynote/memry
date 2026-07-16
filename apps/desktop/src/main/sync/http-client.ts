@@ -227,7 +227,10 @@ export async function fetchCrdtSnapshot(
         `/sync/crdt/snapshot/${encodeURIComponent(noteId)}`,
         token
       ),
-    { maxRetries: 3, baseDelayMs: 2000 }
+    // Snapshot baselines are fetched per note inside a serial loop, so honouring
+    // Retry-After here would stall every remaining note. The sync pass cadence
+    // is the retry.
+    { maxRetries: 3, baseDelayMs: 2000, retryOn429: false }
   )
 
   if (!result.snapshot || !result.signerDeviceId) return null

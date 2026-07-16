@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-import { ErrorCodes } from '../lib/errors'
+import { AppError, ErrorCodes, errorHandler } from '../lib/errors'
+import type { AppContext } from '../types'
 
 vi.mock('../services/blob', () => ({
   generateAttachmentChunkKey: (userId: string, vaultId: string, chunkHash: string) =>
@@ -137,6 +138,29 @@ describe('blob routes', () => {
     expect(assertFileSizeAllowed).toHaveBeenCalledWith(env.DB, 'user-1', 2)
     expect(reserveStorage).not.toHaveBeenCalled()
     expect(adjustStorageUsed).toHaveBeenCalledWith(env.DB, 'user-1', -3)
+  })
+
+  it('surfaces the original storage error when the quota refund also fails', async () => {
+    // #given the reservation succeeds, the put fails with a typed error, and the
+    // refund D1 write ALSO fails — the compound outage the refund must survive.
+    vi.mocked(env.STORAGE.head).mockResolvedValueOnce(null)
+    vi.mocked(putBlob).mockRejectedValueOnce(
+      new AppError(ErrorCodes.STORAGE_UPLOAD_FAILED, 'Blob upload failed', 500)
+    )
+    vi.mocked(adjustStorageUsed).mockRejectedValueOnce(
+      new Error('D1_ERROR: Network connection lost.')
+    )
+
+    const res = await app.request('/blob/blob-1', { method: 'PUT', body: 'hello' }, env)
+
+    // #then the refund failure must not replace the real cause: the client sees
+    // the typed storage error, not an UNHANDLED_ERROR leaked from the refund.
+    expect(res.status).toBe(500)
+    expect(await res.json()).toMatchObject({
+      error: { code: ErrorCodes.STORAGE_UPLOAD_FAILED }
+    })
+    // the refund was still attempted (its failure is swallowed + logged)
+    expect(adjustStorageUsed).toHaveBeenCalledWith(env.DB, 'user-1', -5)
   })
 
   it('downloads a simple blob with content length headers', async () => {

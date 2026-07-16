@@ -118,7 +118,7 @@ export class CrdtSyncCoordinator {
               `/sync/crdt/updates?note_id=${encodeURIComponent(noteId)}&since=${since}&limit=100`,
               token
             ),
-          { maxRetries: 3, baseDelayMs: 2000, signal: effectiveSignal }
+          { maxRetries: 3, baseDelayMs: 2000, signal: effectiveSignal, retryOn429: false }
         ).then((r) => r.value)
 
         log.debug('applyCrdtIncrementals fetched', {
@@ -199,8 +199,18 @@ export class CrdtSyncCoordinator {
           continue
         }
 
-        const since = await this.applySnapshotBaseline(noteId, token, vaultKey, 'batch')
-        sinceMap.set(noteId, since)
+        try {
+          const since = await this.applySnapshotBaseline(noteId, token, vaultKey, 'batch')
+          sinceMap.set(noteId, since)
+        } catch (err) {
+          if (err instanceof DOMException && err.name === 'AbortError') throw err
+          // A single note's baseline failure must not abandon every note left in
+          // the pass. Skip it; the next pass retries it.
+          log.warn('Failed to apply CRDT snapshot baseline, skipping note in batch', {
+            noteId,
+            error: err instanceof Error ? err.message : String(err)
+          })
+        }
       }
 
       if (sinceMap.size === 0) return
@@ -219,7 +229,12 @@ export class CrdtSyncCoordinator {
               { notes, limit: 100 },
               token
             ),
-          { maxRetries: 3, baseDelayMs: 2000, signal: this.ctx.abortController.signal }
+          {
+            maxRetries: 3,
+            baseDelayMs: 2000,
+            signal: this.ctx.abortController.signal,
+            retryOn429: false
+          }
         ).then((r) => r.value)
 
         const signerIds = new Set<string>()
@@ -260,7 +275,12 @@ export class CrdtSyncCoordinator {
         }
       }
 
-      for (const noteId of noteIds) {
+      // Seed only notes whose snapshot baseline succeeded. A note skipped at :205
+      // was opened with { skipSeed: true } and stays open with an empty state
+      // vector; seeding it here would persist local markdown, and the next pass's
+      // real server snapshot would then merge as an independent insertion →
+      // duplicated note body. Its baseline failed transiently; the next pass fetches it.
+      for (const noteId of sinceMap.keys()) {
         const postVector = crdtProvider.getStateVector(noteId)
         if (!postVector || postVector.length <= 2) {
           await crdtProvider.seedFromMarkdownPublic(noteId)

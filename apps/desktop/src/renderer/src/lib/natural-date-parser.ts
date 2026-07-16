@@ -455,7 +455,15 @@ export const parseNaturalDate = (input: string): NaturalDateParseResult => {
   // RESULT
   // -------------------------------------------------------------------------
 
-  if (date) {
+  // The "in N days/weeks/months" branch accepts an unbounded N. A large N doesn't just
+  // overflow Date to Invalid (NaN) — even a still-representable far-future date (e.g.
+  // year 275760, a few hours below Date's ±8.64e15ms limit) overflows once a caller
+  // adds a time-of-day before serializing (date-suggestions' setHours, the popover's
+  // new Date(y, mo, d, h, mi)), throwing RangeError at toISOString(). Cap accepted
+  // dates to a 4-digit year — matching the numeric-date path — so no downstream
+  // time-of-day can overflow, and never report success with an unusable date.
+  const year = date ? date.getFullYear() : NaN
+  if (date && year >= 1 && year <= 9999) {
     return {
       success: true,
       result: {

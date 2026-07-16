@@ -46,6 +46,7 @@ import {
   trackLaunchPhase,
   trackMainError,
   trackMainLog,
+  trackMainUnhandledRejection,
   startActiveHeartbeat,
   stopActiveHeartbeat
 } from './telemetry/diagnostics'
@@ -91,6 +92,7 @@ import { getHeadlessCliArgs, runHeadlessCli } from './cli/headless'
 import { reconcileBillingAndSync, startBillingCheckout } from './billing/paddle-billing'
 import { openPairingWindow } from './capture/pairing'
 import { startCaptureServer, stopCaptureServer } from './capture/server'
+import { applyLoginShellPath } from './agent/cli/login-shell-path'
 
 if (process.type === 'browser') {
   log.initialize()
@@ -124,7 +126,10 @@ function registerMainDiagnostics(): void {
   })
 
   process.on('unhandledRejection', (reason) => {
-    trackMainError('main_process', 'unhandled_rejection', reason)
+    // A rejection reason can be any value, and a non-Error reason carries no
+    // stack — those landed in telemetry as an unactionable `Error` with an
+    // empty stack. trackMainUnhandledRejection normalizes it first.
+    trackMainUnhandledRejection(reason)
   })
 
   app.on('render-process-gone', (_event, _webContents, details) => {
@@ -165,6 +170,15 @@ const configLog = createLogger('Config')
 const quickCaptureLog = createLogger('QuickCapture')
 const shutdownLog = createLogger('Shutdown')
 const deepLinkLog = createLogger('DeepLink')
+
+// A Finder/Dock-launched packaged app inherits only the minimal system PATH, so
+// user-installed CLIs (claude/codex) are invisible to `which` and Agent Chat
+// greys out those providers. Recover the login-shell PATH before anything spawns
+// a probe or the CLIs themselves. No-op in dev (terminal already has full PATH).
+if (applyLoginShellPath({ packaged: app.isPackaged })) {
+  mainLog.info('Augmented PATH from login shell for packaged launch')
+}
+
 const headlessCliArgs = getHeadlessCliArgs(process.argv)
 
 let mainI18n: I18nInstance

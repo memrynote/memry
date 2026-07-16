@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AIInlineChannels, AI_INLINE_SETTINGS_DEFAULTS } from '@memry/contracts/ai-inline-channels'
 
+import { isExpectedConditionError } from '../telemetry/expected-conditions'
+
 const mocks = vi.hoisted(() => {
   const handlers = new Map<string, (event: unknown, input?: unknown) => unknown>()
   return {
@@ -21,9 +23,16 @@ const mocks = vi.hoisted(() => {
     getDatabase: vi.fn(),
     getSetting: vi.fn(),
     setSetting: vi.fn(),
-    info: vi.fn()
+    info: vi.fn(),
+    trackMainError: vi.fn()
   }
 })
+
+// validate.ts routes every IPC envelope error to trackMainError; spy on it so the
+// tests can assert what actually reaches error telemetry vs. what is suppressed.
+vi.mock('../telemetry/diagnostics', () => ({
+  trackMainError: mocks.trackMainError
+}))
 
 vi.mock('electron', () => ({
   ipcMain: mocks.ipcMain,
@@ -176,6 +185,65 @@ describe('AI inline IPC handlers', () => {
       success: false,
       error: 'Ollama responded 500'
     })
+    fetchSpy.mockRestore()
+  })
+})
+
+describe('Ollama listing telemetry: suppress "not running", report real faults', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.handlers.clear()
+    mocks.getDatabase.mockReturnValue({ id: 'db' })
+    mocks.getSetting.mockReturnValue(JSON.stringify({ enabled: true }))
+  })
+
+  it('suppresses connection-refused (Ollama not running) from error telemetry', async () => {
+    // #given Ollama is simply not running — production logged 8x
+    // "Failed_to_list_Ollama_models" for what is a normal state
+    registerAIInlineHandlers()
+    const refused = Object.assign(new TypeError('fetch failed'), {
+      cause: Object.assign(new Error('connect ECONNREFUSED 127.0.0.1:11434'), {
+        code: 'ECONNREFUSED'
+      })
+    })
+    const fetchSpy = vi.spyOn(global, 'fetch').mockRejectedValue(refused)
+
+    // #when the renderer asks for the model list
+    const result = await invoke(AIInlineChannels.invoke.LIST_OLLAMA_MODELS)
+
+    // #then the UI still learns it failed, it is marked as an expected condition,
+    // and — asserted at the SINK — it never reaches error telemetry. Fails on
+    // base (which does not mark ECONNREFUSED) and fails if either the marking or
+    // the throttle-skip is reverted: the self-contained guard for this routing.
+    expect(result).toEqual({ success: false, error: 'fetch failed' })
+    expect(isExpectedConditionError(refused)).toBe(true)
+    expect(mocks.trackMainError).not.toHaveBeenCalled()
+    fetchSpy.mockRestore()
+  })
+
+  it('still reports a genuine failure (DNS/ENOTFOUND) — suppression is not blanket', async () => {
+    // #given a genuine fault (a real Ollama misconfiguration), not "not running"
+    registerAIInlineHandlers()
+    const dnsFailure = Object.assign(new TypeError('fetch failed'), {
+      cause: Object.assign(new Error('getaddrinfo ENOTFOUND ollama.local'), {
+        code: 'ENOTFOUND'
+      })
+    })
+    const fetchSpy = vi.spyOn(global, 'fetch').mockRejectedValue(dnsFailure)
+
+    // #when the fetch fails for a reason other than connection-refused
+    await invoke(AIInlineChannels.invoke.LIST_OLLAMA_MODELS)
+
+    // #then it is not marked, and it reaches error telemetry — the integration
+    // check that a real Ollama fault still reports. (The per-fix regression guard
+    // for the throttle-masking bug is in validate.test.ts, and the errorCode
+    // cause-walk is guarded in packages/contracts/telemetry-api.test.ts.)
+    expect(isExpectedConditionError(dnsFailure)).toBe(false)
+    expect(mocks.trackMainError).toHaveBeenCalledWith(
+      'ipc',
+      'Failed to list Ollama models',
+      dnsFailure
+    )
     fetchSpy.mockRestore()
   })
 })

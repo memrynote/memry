@@ -167,10 +167,29 @@ The marketing site (`apps/landing`) sends anonymous web events to the rate-limit
 ## Error Reporting
 
 Desktop error reporting follows the same product telemetry setting. Each captured error ships
-stable metadata — process area, component/source, action, phase, and a stable error identifier
-(`errorCode`, the error's class name, or a more precise coded value where one exists — see
-[Vault File Errors](#vault-file-errors)) — plus a **redacted stack trace** and, for React
-boundaries, the component stack.
+stable metadata — process area, component/source, action, phase, and the error's code
+(`errorCode`, a typed code where one exists — see [Vault File Errors](#vault-file-errors)) — plus
+a **redacted stack trace** and, for React boundaries, the component stack.
+
+`errorCode` prefers a **typed code the error carries** over its class name: a richer
+`telemetryCode` (`NoteError`'s note error code plus the originating errno, see
+[Vault File Errors](#vault-file-errors)), then a plain `.code` (better-sqlite3's `error.code`, a
+Node system code), walking the `cause`/`AggregateError.errors` chain to a bounded depth so a
+`fetch failed` `TypeError` still surfaces the underlying `ECONNREFUSED`. A note write failure
+therefore reports `NOTE_WRITE_FAILED:EBUSY` rather than collapsing every note fault to `NoteError`,
+and a locked database reports `SQLITE_BUSY` rather than an un-triageable `SqliteError`. A code is
+only trusted when it looks like an enum token (`^[A-Za-z][A-Za-z0-9_.:-]{0,63}$`); anything else — a
+path, an email, a URL, free-form prose — is **rejected outright** and the class name is used
+instead, because a character-substituted path (`_Users_kaan_secret.md`) still leaks its structure.
+The class name itself still passes through the safe-token rules (no `@`, `://`, `/`, `\`, ≤64 chars).
+
+An **unhandled rejection** can carry any value as its reason — a string, a plain object, or a
+cross-realm `Error` that fails `instanceof Error` — and those carry no stack, which previously
+landed in Loki as an unactionable bare `Error` with an empty stack. Reasons are normalized before
+reporting: a real `Error` passes through, a cross-realm error's own frames are adopted, and
+anything else gets a stack synthesized at the handler plus a code naming the reason's type
+(`Rejection_string`, `Rejection_Object`, `Rejection_undefined`). The reason's message or value is
+never copied — only its shape.
 
 The free-form exception **message is never sent**: on the desktop it can embed a note title,
 filename, or content. The stack is reduced to code-location frames only — the leading
@@ -219,20 +238,45 @@ Loki adds the diagnostic detail (stacks, operational messages) that AE rows deli
 - **Desktop errors**: `/telemetry/batch` events carrying an `errorCode` or `error` detail are
   forwarded as `app="desktop"` lines containing the event name, error code, surface/action/source,
   app version, platform, the **redacted stack frames only** (the schema has no message field —
-  messages can embed note content; see Error Reporting above), and `log_action` — the operational
+  messages can embed note content; see Error Reporting above), `log_action` — the operational
   breadcrumb that keeps log-type error events (which carry no stack of their own) identifiable in
-  Grafana.
+  Grafana — and `exit_code`, the platform exit status for process-lifecycle events (empty string
+  when absent, since exit code `0` is itself meaningful). Labels stay low-cardinality
+  (`app`/`env`/`level`) — everything else lives inside the JSON line.
 - **Process lifecycle**: the main process reports a `child-process-gone` fault with a composite
-  `type:reason:serviceName` error code (e.g. `Utility:crashed:Embeddings`). A utility worker's
-  clean idle-shutdown (embeddings, image-processing, voice-model each exit after ~30s idle) is a
-  lifecycle event, not a fault, so a `clean-exit` reason is skipped entirely — only a real fault
-  produces an error event, mirroring the GPU crash guard.
+  `type:reason:name` error code (e.g. `Utility:crashed:Embeddings`). The worker label comes from
+  Electron's `details.name`, **not** `details.serviceName`: Electron routes a fork's `serviceName`
+  _option_ to `details.name`, while `details.serviceName` holds the Mojo interface name — a
+  constant (`node.mojom.NodeService`) that is identical for every utility fork and so cannot tell
+  our workers apart. A fork that passes no `serviceName` option reports the default
+  `Node Utility Process`. The exit status rides along in the line's `exit_code` field rather than
+  inside the error code, so crashes still group by worker in Grafana while the POSIX signal
+  (11 SIGSEGV, 6 SIGABRT) stays visible. A utility worker's clean idle-shutdown (embeddings,
+  image-processing, voice-model each exit after ~30s idle) is a lifecycle event, not a fault, so a
+  `clean-exit` reason is skipped entirely — only a real fault produces an error event, mirroring
+  the GPU crash guard. Note that `child_process_gone` is **not** throttled: the crash cadence is
+  itself a diagnostic signal.
+- **Embedding worker**: the embeddings bridge reports its own non-clean worker exits under
+  `source="Embeddings"` with a `worker_exit_<phase>` breadcrumb, where phase is `starting`,
+  `in_flight`, `idle_shutdown`, or `idle`. This is what separates a harmless teardown crash
+  (`idle_shutdown` — the embedding was already delivered) from real user impact (`in_flight` — the
+  user silently lost semantic-search indexing for that note). Embedding generation failures emit
+  `embed_failed`, throttled to one event per 5-minute window because a broken worker would
+  otherwise fail once per note edit.
 - **Desktop IPC envelopes**: every `{ success: false }` error envelope produced by the IPC layer
   (`withErrorHandler` / `withDb`) also emits an `app_error_seen` event, throttled in-memory to one
-  event per error code per minute so an error loop can't flood the telemetry queue. The expected
-  `noVaultOpen` envelope is not tracked, and the envelope's user-facing `error` string (which may
-  contain note-derived text) never leaves the process — only the error class name and redacted
-  stack frames ship.
+  event per **action + error code** per minute so an error loop can't flood the telemetry queue.
+  The key must discriminate: keyed by error name alone and shared across all handlers, one benign
+  recurring `Error` masked a genuine different `Error` from another handler for the whole window.
+  The expected `noVaultOpen` envelope is not tracked, and the envelope's user-facing `error`
+  string (which may contain note-derived text) never leaves the process — only the error code and
+  redacted stack frames ship.
+- **Expected conditions**: some failures are normal states, not faults. They still surface to the
+  UI as an error envelope, but the throw site marks them and error telemetry skips them, so they
+  cannot drown real signal. Currently marked: an Ollama model-list fetch that is **refused**
+  (`ECONNREFUSED` = Ollama is not running), and a **calendar OAuth timeout** (the user opened the
+  consent screen and walked away). The suppression is deliberately narrow — a real Ollama
+  misconfiguration (DNS failure, connection reset, or a bad HTTP status) is still reported.
 - **Server errors**: `captureServerError` pushes its redacted detail (operational message, stack,
   normalized path, error/status codes) as `app="server"` lines — level `error` for 5xx/unhandled,
   `warn` for handled 4xx.

@@ -239,6 +239,7 @@ export function GraphCanvas({
     <div className="relative h-full w-full">
       <SigmaContainer graph={graph} settings={initialSigmaSettings} className="h-full w-full">
         <SigmaSettingsSync
+          graph={graph}
           nodeReducer={nodeReducer}
           edgeReducer={edgeReducer}
           showLabels={graphSettings.showLabels}
@@ -417,11 +418,13 @@ function HoverFadeAnimator({
 }
 
 function SigmaSettingsSync({
+  graph,
   nodeReducer,
   edgeReducer,
   showLabels,
   labelColor
 }: {
+  graph: Graph
   nodeReducer: (node: string, attrs: Record<string, unknown>) => Partial<NodeDisplayData>
   edgeReducer: (edge: string, attrs: Record<string, unknown>) => Partial<EdgeDisplayData>
   showLabels: boolean
@@ -429,21 +432,33 @@ function SigmaSettingsSync({
 }): null {
   const sigma = useSigma()
 
+  // SigmaContainer kills and recreates Sigma whenever the `graph` prop changes.
+  // React runs child effects before the container's create effect, so useSigma()
+  // can still hand us the OLD, killed instance. kill() empties nodePrograms but
+  // keeps the graph reference, so any setSetting here schedules a refresh+render
+  // that throws on the next frame ("nodePrograms[circle] is undefined"). The live
+  // instance is the one holding the graph we rendered with; skip anything else.
+  // Once the container commits the new Sigma, these effects re-run and apply.
+
   useEffect(() => {
+    if (sigma.getGraph() !== graph) return
     sigma.setSetting('nodeReducer', nodeReducer)
-  }, [sigma, nodeReducer])
+  }, [sigma, graph, nodeReducer])
 
   useEffect(() => {
+    if (sigma.getGraph() !== graph) return
     sigma.setSetting('edgeReducer', edgeReducer)
-  }, [sigma, edgeReducer])
+  }, [sigma, graph, edgeReducer])
 
   useEffect(() => {
+    if (sigma.getGraph() !== graph) return
     sigma.setSetting('labelRenderedSizeThreshold', showLabels ? 6 : Infinity)
-  }, [sigma, showLabels])
+  }, [sigma, graph, showLabels])
 
   useEffect(() => {
+    if (sigma.getGraph() !== graph) return
     sigma.setSetting('labelColor', { color: labelColor })
-  }, [sigma, labelColor])
+  }, [sigma, graph, labelColor])
 
   return null
 }

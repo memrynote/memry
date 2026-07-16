@@ -420,6 +420,41 @@ describe('sync IPC handlers', () => {
     await expect(invokeHandler(SYNC_CHANNELS.GET_STORAGE_BREAKDOWN)).resolves.toBeNull()
   })
 
+  it('GET_STORAGE_BREAKDOWN makes no network call for a free user', async () => {
+    // #given a free user — the server correctly answers 402, but production saw
+    // 4x SYNC_PAYMENT_REQUIRED from one user because the call was ungated.
+    // mockReturnValueOnce (not mockReturnValue) so an assertion failure below
+    // cannot leak isPaid:false into the next test — clearAllMocks keeps
+    // implementations, and the old reset sat AFTER the assertions.
+    mockGetCachedEntitlement.mockReturnValueOnce({
+      isPaid: false,
+      plan: 'free',
+      status: 'inactive'
+    })
+    registerSyncHandlers()
+
+    // #when the renderer asks for the storage breakdown
+    const result = await invokeHandler(SYNC_CHANNELS.GET_STORAGE_BREAKDOWN)
+
+    // #then the round-trip never happens (same null the no-token path returns)
+    expect(result).toBeNull()
+    expect(mockGetFromServer).not.toHaveBeenCalled()
+    expect(mockGetValidAccessToken).not.toHaveBeenCalled()
+  })
+
+  it('GET_STORAGE_BREAKDOWN still fetches when entitlement is unknown', async () => {
+    // #given no cached entitlement yet (fresh install, pre-first-status)
+    mockGetCachedEntitlement.mockReturnValue(null)
+    registerSyncHandlers()
+    mockGetFromServer.mockResolvedValueOnce({ usedBytes: 10, quotaBytes: 100 })
+
+    // #then we do not gate on an unknown — mirrors the GET_STATUS precedent
+    await expect(invokeHandler(SYNC_CHANNELS.GET_STORAGE_BREAKDOWN)).resolves.toEqual({
+      usedBytes: 10,
+      quotaBytes: 100
+    })
+  })
+
   it('fetches storage breakdown with a valid access token', async () => {
     registerSyncHandlers()
     mockGetFromServer.mockResolvedValueOnce({ usedBytes: 10, quotaBytes: 100 })

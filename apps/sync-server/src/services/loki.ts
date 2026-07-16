@@ -68,6 +68,10 @@ export const desktopErrorEntry = (
     install_hash: installHash,
     // Log-type error events (app_log_recorded) have no stack; log_action is
     // what makes them identifiable in Grafana (e.g. child_process_gone).
-    log_action: event.dimensions?.log_action ?? ''
+    log_action: event.dimensions?.log_action ?? '',
+    // child_process_gone carries the platform exit status here (POSIX signal:
+    // 11 SIGSEGV, 6 SIGABRT). Kept out of error_code so crashes still group by
+    // worker. Empty string (not 0) when absent — exit code 0 is meaningful.
+    exit_code: event.metrics?.value ?? ''
   }
 })

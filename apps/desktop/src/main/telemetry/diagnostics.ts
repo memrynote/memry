@@ -1,77 +1,65 @@
 import type { TelemetryResult } from '@memry/contracts/telemetry-api'
-import { buildErrorDetail } from '@memry/contracts/telemetry-api'
+import {
+  buildErrorDetail,
+  normalizeRejectionReason,
+  toErrorCode,
+  toSafeToken
+} from '@memry/contracts/telemetry-api'
 
+import { isExpectedConditionError } from './expected-conditions'
 import { trackMainEvent, type TrackMainEventOptions } from './track'
-import { NoteError } from '../lib/errors'
 
 type DiagnosticLevel = 'debug' | 'info' | 'warn' | 'error'
 
-const SAFE_TOKEN = /^(?!.*@)(?!.*:\/\/)(?!.*[/\\]).{1,64}$/
-
-const toSafeToken = (value: unknown, fallback: string): string => {
-  const raw =
-    value instanceof Error
-      ? value.name
-      : typeof value === 'string'
-        ? value
-        : typeof value === 'number' || typeof value === 'boolean'
-          ? String(value)
-          : ''
-  const token = raw.replace(/[^A-Za-z0-9_.:-]/g, '_').slice(0, 64)
-  return SAFE_TOKEN.test(token) ? token : fallback
-}
-
-const toErrorCode = (error: unknown): string => {
-  // A NoteError's class name alone ("NoteError") cannot say why a save failed.
-  // Its telemetryCode adds the note error code and the originating errno
-  // (NOTE_WRITE_FAILED:EBUSY) and is built to be path-free by construction;
-  // toSafeToken still vets it before it leaves the process.
-  if (error instanceof NoteError) {
-    return toSafeToken(error.telemetryCode, 'NoteError')
-  }
-  if (error instanceof Error && error.name) {
-    return toSafeToken(error.name, 'Error')
-  }
-  if (error && typeof error === 'object' && error.constructor?.name) {
-    return toSafeToken(error.constructor.name, 'UnknownError')
-  }
-  if (typeof error === 'string') return 'StringError'
-  return 'UnknownError'
-}
-
 const resultForLevel = (level: DiagnosticLevel): TelemetryResult =>
   level === 'error' || level === 'warn' ? 'failed' : 'success'
+
+export interface ChildProcessGoneDetails {
+  type: string
+  reason: string
+  // The MOJO interface name. Constant by construction — every utilityProcess
+  // fork reports 'node.mojom.NodeService', so it cannot tell our workers apart.
+  serviceName?: string
+  // Where Electron actually routes the fork's `serviceName` OPTION, i.e. our
+  // 'Embeddings' / 'ImageProcessing' / 'VoiceTranscription' labels. A fork that
+  // passes no option (crdt-preflight) reports the default 'Node Utility Process'.
+  name?: string
+  // Platform exit status: on POSIX this carries the signal (11 SIGSEGV, 6 SIGABRT).
+  exitCode?: number
+}
 
 // Utility workers (embeddings, image-processing, voice-model) idle-shutdown
 // cleanly after ~30s; a clean exit is lifecycle, not a fault, so it must not
 // become an error event. Real faults get a composite code that stays inside
 // the safe-token rules (no '@', '://', '/', '\', ≤64 chars).
-export const childProcessGoneErrorCode = (details: {
-  type: string
-  reason: string
-  serviceName?: string
-}): string | null => {
+export const childProcessGoneErrorCode = (details: ChildProcessGoneDetails): string | null => {
   if (details.reason === 'clean-exit') return null
-  return toSafeToken(
-    `${details.type}:${details.reason}:${details.serviceName ?? ''}`,
-    'ChildProcessGone'
-  )
+  const worker = details.name ?? details.serviceName ?? ''
+  return toSafeToken(`${details.type}:${details.reason}:${worker}`, 'ChildProcessGone')
 }
 
 // Reports a `child-process-gone` fault as an error log event, or nothing at all
 // for a clean idle-worker exit. Kept here (not inline in index.ts) so the
 // skip decision is unit-tested rather than living in the untested bootstrap.
-export const trackChildProcessGone = (details: {
-  type: string
-  reason: string
-  serviceName?: string
-}): void => {
+export const trackChildProcessGone = (details: ChildProcessGoneDetails): void => {
   const errorCode = childProcessGoneErrorCode(details)
   if (!errorCode) return
-  trackMainLog('error', { scope: 'Electron', action: 'child_process_gone', errorCode })
+  // errorCode stays stable (no exit code baked in) so Grafana can count crashes
+  // per worker; the exit status rides along as a metric instead.
+  trackMainLog('error', {
+    scope: 'Electron',
+    action: 'child_process_gone',
+    errorCode,
+    metrics: typeof details.exitCode === 'number' ? { value: details.exitCode } : undefined
+  })
 }
 
 export const trackMainError = (source: string, action: string, error: unknown): void => {
+  // Expected conditions (Ollama not running, an abandoned OAuth flow) still
+  // reach the UI as an error envelope, but they are normal states — reporting
+  // them here drowns the real signal.
+  if (isExpectedConditionError(error)) return
+
   trackMainEvent('app_error_seen', {
     surface: 'app',
     action: toSafeToken(action, 'error'),
@@ -83,13 +71,29 @@ export const trackMainError = (source: string, action: string, error: unknown): 
   })
 }
 
+// A rejection reason can be any value — a string, a plain object, or a
+// cross-realm Error that fails `instanceof Error` — and those carry no stack,
+// landing in telemetry as an unactionable bare `Error` with an empty stack.
+// Normalizing first guarantees a stack and a code naming the reason's type.
+// Kept here (not inline in index.ts) so it is unit-tested rather than living in
+// the untested bootstrap.
+export const trackMainUnhandledRejection = (reason: unknown): void => {
+  trackMainError('main_process', 'unhandled_rejection', normalizeRejectionReason(reason))
+}
+
 export const trackMainLog = (
   level: DiagnosticLevel,
   options: {
     scope: string
     action: string
     errorCode?: string
-    metrics?: { durationMs?: number; itemCount?: number; queueCount?: number; retryCount?: number }
+    metrics?: {
+      durationMs?: number
+      itemCount?: number
+      queueCount?: number
+      retryCount?: number
+      value?: number
+    }
   }
 ): void => {
   const eventOptions: TrackMainEventOptions = {

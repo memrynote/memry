@@ -91,6 +91,22 @@ The formatting toolbar can be sticky at the top or float above selections — ch
 
 Both modes offer the same formatting controls: the block type (paragraph, heading, list) plus inline styles, alignment, colour, indent, and links. The block type control is hidden for blocks that have no alternative type, such as tasks, callouts, and files.
 
+## Text Formatting
+
+Bold, italic and strikethrough are written to the vault as plain Markdown (`**bold**`, `*italic*`, `~~strike~~`).
+
+Markdown has no syntax for underline, text color or highlight, so those are written as inline HTML, which Obsidian renders:
+
+```md
+<span style="text-decoration:underline">underlined</span>
+<span style="color:red">red</span>
+<span style="background-color:yellow">highlighted</span>
+```
+
+Color and underline are kept on separate nested spans, so an older version of MemryNote opening the same vault still reads the color.
+
+Formatting applied in MemryNote round-trips. Underline written any other way — Obsidian's `<u>` tags, for example — is not read back, and is dropped the next time MemryNote saves the note.
+
 ## Comments
 
 Select text to open the floating toolbar. **Comment** creates an anchored review card in the right rail; selecting the text itself does not open the rail. The right rail aligns each card beside the marked text. Comment cards can be resolved or deleted.
