@@ -27,7 +27,7 @@ export const TodayEmptyState = ({
   // If there are overdue tasks but nothing for today
   if (hasOverdue) {
     return (
-      <div className={cn('text-center py-12', className)}>
+      <div className={cn('text-center py-12 fade-in-up', className)}>
         <div className="mb-4 mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center">
           <CalendarDays className="size-5 text-text-tertiary" aria-hidden="true" />
         </div>
@@ -50,7 +50,7 @@ export const TodayEmptyState = ({
 
   // Completely clear - calm, quiet satisfaction state
   return (
-    <div className={cn('text-center py-20', className)}>
+    <div className={cn('text-center py-20 fade-in-up', className)}>
       {/* Subtle checkmark icon */}
       <div className="mb-6 mx-auto w-16 h-16 rounded-full bg-task-complete/[0.08] flex items-center justify-center">
         <Check className="size-7 text-task-complete" aria-hidden="true" />

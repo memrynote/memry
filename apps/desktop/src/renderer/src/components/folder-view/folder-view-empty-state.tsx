@@ -157,7 +157,10 @@ export function FolderViewEmptyState({
 
   return (
     <output
-      className={cn('flex flex-col items-center justify-center py-16 px-4 text-center', className)}
+      className={cn(
+        'flex flex-col items-center justify-center py-16 px-4 text-center fade-in-up',
+        className
+      )}
       aria-live="polite"
     >
       {/* Icon */}
