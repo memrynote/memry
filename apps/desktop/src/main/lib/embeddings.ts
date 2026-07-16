@@ -92,6 +92,12 @@ class EmbeddingModelBridge {
   private error: string | null = null
   private shuttingDown = false
   private idleShutdownTimer: ReturnType<typeof setTimeout> | null = null
+  // Latched when WE force-kill the worker (shutdown timeout / reset). The kill's
+  // 'exit' arrives as a later macrotask, after `shuttingDown` is already cleared,
+  // so the exit handler cannot recover the phase from `shuttingDown` alone —
+  // without this latch a wedged teardown is misreported as `idle` ("died doing
+  // nothing") instead of `idle_shutdown` ("died tearing down").
+  private pendingExitPhase: WorkerExitPhase | null = null
 
   get isLoaded(): boolean {
     return this.loaded
@@ -216,6 +222,11 @@ class EmbeddingModelBridge {
 
     await new Promise<void>((resolve) => {
       const timeout = setTimeout(() => {
+        // The worker ignored the graceful shutdown and wedged — this is the
+        // onnxruntime-dispose failure mode this telemetry exists to catch. Latch
+        // the phase before killing: the kill's 'exit' races (and loses to) the
+        // `shuttingDown = false` reset below.
+        this.pendingExitPhase = 'idle_shutdown'
         activeProcess.kill()
         resolve()
       }, SHUTDOWN_TIMEOUT_MS)
@@ -234,6 +245,11 @@ class EmbeddingModelBridge {
   reset(): void {
     this.shuttingDown = true
     this.clearIdleShutdown()
+    // Same force-kill race as stop(): latch the phase so the kill's async 'exit'
+    // is attributed to a deliberate teardown, not a spontaneous `idle` death.
+    if (this.process) {
+      this.pendingExitPhase = 'idle_shutdown'
+    }
     this.process?.kill()
     this.process = null
     this.readyPromise = null
@@ -264,6 +280,8 @@ class EmbeddingModelBridge {
     })
 
     this.process = child
+    // A fresh worker must never inherit a force-kill phase latched for a prior one.
+    this.pendingExitPhase = null
     child.stdout?.on('data', (chunk: Buffer | string) => {
       const output = chunk.toString().trim()
       if (output) {
@@ -314,7 +332,14 @@ class EmbeddingModelBridge {
 
       const onExitBeforeReady = (code: number): void => {
         cleanup()
-        this.trackWorkerExit('starting', code)
+        const forcedPhase = this.pendingExitPhase
+        this.pendingExitPhase = null
+        // A clean exit during shutdown is lifecycle, not a fault (mirrors the
+        // ready-state guard below). Without this, quitting the app mid-bootstrap
+        // emits a spurious error-level worker_exit_starting with exit code 0.
+        if (!(forcedPhase === null && this.shuttingDown && code === 0)) {
+          this.trackWorkerExit(forcedPhase ?? 'starting', code)
+        }
         const error = new Error(`Embedding utility exited unexpectedly (code ${code})`)
         this.failProcess(error)
         reject(error)
@@ -368,7 +393,14 @@ class EmbeddingModelBridge {
     })
 
     child.on('exit', (code: number) => {
-      if (this.shuttingDown && code === 0) {
+      const forcedPhase = this.pendingExitPhase
+      this.pendingExitPhase = null
+
+      // A clean, graceful shutdown (the worker exited 0 on its own after the
+      // shutdown message) is lifecycle, not a fault. A forced kill (forcedPhase
+      // set) is a teardown death worth measuring even though shuttingDown may
+      // already be cleared by the time its async 'exit' lands.
+      if (forcedPhase === null && this.shuttingDown && code === 0) {
         this.process = null
         this.readyPromise = null
         return
@@ -376,7 +408,7 @@ class EmbeddingModelBridge {
 
       // Phase must be read before failProcess(), which rejects and clears the
       // pending requests this classification depends on.
-      this.trackWorkerExit(this.currentPhase(), code)
+      this.trackWorkerExit(forcedPhase ?? this.currentPhase(), code)
       const error = new Error(`Embedding utility exited unexpectedly (code ${code})`)
       this.failProcess(error)
     })

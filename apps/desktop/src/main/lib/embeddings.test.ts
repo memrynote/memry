@@ -16,7 +16,18 @@ vi.mock('../telemetry/diagnostics', () => ({
 
 class MockUtilityProcess extends EventEmitter {
   postMessage = vi.fn()
-  kill = vi.fn().mockReturnValue(true)
+  // Real utilityProcess.kill() ALWAYS causes an 'exit'; the old no-op stub hid
+  // every force-kill / reset exit path (where the phase-attribution bugs live).
+  // Arm killExitCode to model the OS delivering that 'exit' as a LATER macrotask,
+  // so it races the `shuttingDown` reset exactly as production does.
+  killExitCode: number | null = null
+  kill = vi.fn(() => {
+    if (this.killExitCode !== null) {
+      const code = this.killExitCode
+      setTimeout(() => this.emit('exit', code), 0)
+    }
+    return true
+  })
   stdout = null
   stderr = null
   pid = 1234
@@ -60,6 +71,7 @@ import {
   initEmbeddingModel,
   isModelLoaded,
   isModelLoading,
+  stopEmbeddingModel,
   unloadModel
 } from './embeddings'
 
@@ -365,6 +377,98 @@ describe('embeddings', () => {
       // #when the worker exits(0) as designed — lifecycle, not a fault
       mockUtilityProcessInstance.emit('exit', 0)
 
+      expect(trackMainLogMock).not.toHaveBeenCalled()
+    })
+
+    it('reports idle_shutdown when a wedged worker must be force-killed during teardown', async () => {
+      vi.useFakeTimers()
+      const { requestId } = await startWorker()
+      mockUtilityProcessInstance.simulateMessage({
+        type: 'embed-result',
+        requestId,
+        embedding: Array.from(new Float32Array(EMBEDDING_DIMENSION))
+      })
+      await vi.waitFor(() => expect(getModelInfo().loaded).toBe(true))
+
+      // #given the worker ignores the graceful shutdown and wedges — the exact
+      // onnxruntime-dispose failure mode this telemetry exists to catch
+      mockUtilityProcessInstance.killExitCode = 15 // SIGTERM
+
+      // #when the 30s idle timer fires -> stop() posts shutdown, but no clean exit
+      await vi.advanceTimersByTimeAsync(30_000)
+      expect(mockUtilityProcessInstance.postMessage).toHaveBeenLastCalledWith({ type: 'shutdown' })
+      expect(mockUtilityProcessInstance.kill).not.toHaveBeenCalled()
+
+      // #and the 3s force-kill timeout fires; kill() delivers 'exit' as a later
+      // macrotask, AFTER the await continuation clears `shuttingDown`
+      await vi.advanceTimersByTimeAsync(3_000)
+      expect(mockUtilityProcessInstance.kill).toHaveBeenCalledOnce()
+
+      // #then the teardown death is named idle_shutdown, NOT the misleading `idle`
+      // ("died spontaneously doing nothing") the shuttingDown-reset race produced
+      expect(trackMainLogMock).toHaveBeenCalledWith('error', {
+        scope: 'Embeddings',
+        action: 'worker_exit_idle_shutdown',
+        errorCode: 'EmbeddingWorkerExit',
+        metrics: { value: 15 }
+      })
+      expect(trackMainLogMock).not.toHaveBeenCalledWith(
+        'error',
+        expect.objectContaining({ action: 'worker_exit_idle' })
+      )
+    })
+
+    it('reports idle_shutdown when reset() force-kills the running worker', async () => {
+      vi.useFakeTimers()
+      await startWorker()
+
+      // #given a live worker that reset() will hard-kill to free memory
+      mockUtilityProcessInstance.killExitCode = 15
+
+      // #when unloadModel() force-kills it (no graceful shutdown message)
+      unloadModel()
+      await vi.advanceTimersByTimeAsync(0)
+
+      // #then its teardown death is idle_shutdown, not the racy `idle`
+      expect(trackMainLogMock).toHaveBeenCalledWith('error', {
+        scope: 'Embeddings',
+        action: 'worker_exit_idle_shutdown',
+        errorCode: 'EmbeddingWorkerExit',
+        metrics: { value: 15 }
+      })
+    })
+  })
+
+  describe('worker exit before ready', () => {
+    it('reports worker_exit_starting when the worker dies before it becomes ready', async () => {
+      const loadPromise = initEmbeddingModel()
+
+      // #when the worker crashes during bootstrap, before ever sending 'ready'
+      mockUtilityProcessInstance.emit('exit', 1)
+      await expect(loadPromise).resolves.toBe(false)
+
+      // #then the death is attributed to the startup phase
+      expect(trackMainLogMock).toHaveBeenCalledWith('error', {
+        scope: 'Embeddings',
+        action: 'worker_exit_starting',
+        errorCode: 'EmbeddingWorkerExit',
+        metrics: { value: 1 }
+      })
+    })
+
+    it('stays silent when shut down before the worker finishes starting', async () => {
+      const loadPromise = initEmbeddingModel()
+      expect(mockFork).toHaveBeenCalledOnce()
+
+      // #given the app quits while the worker is still bootstrapping (no 'ready')
+      const stopPromise = stopEmbeddingModel()
+
+      // #when that bootstrapping worker exits cleanly in response to the shutdown
+      mockUtilityProcessInstance.emit('exit', 0)
+      await stopPromise
+      await expect(loadPromise).resolves.toBe(false)
+
+      // #then a clean lifecycle exit is NOT reported as a worker_exit_starting fault
       expect(trackMainLogMock).not.toHaveBeenCalled()
     })
   })
