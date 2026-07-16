@@ -3,9 +3,10 @@ import sodium from 'libsodium-wrappers-sumo'
 
 import type { KeychainEntry } from '@memry/contracts/crypto'
 
+import { resolveKeychainAccount } from './keychain-account'
+
 function resolveAccount(entry: KeychainEntry): string {
-  const deviceSuffix = process.env.MEMRY_DEVICE
-  return deviceSuffix ? `${entry.account}-${deviceSuffix}` : entry.account
+  return resolveKeychainAccount(entry, process.env.MEMRY_DEVICE)
 }
 
 // The OS keychain hangs under automated e2e (an adhoc-signed/headless build
