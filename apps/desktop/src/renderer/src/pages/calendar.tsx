@@ -34,6 +34,8 @@ import {
 } from '@/services/calendar-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
+import { formatDateKey } from '@/lib/task-utils'
+import { tasksService } from '@/services/tasks-service'
 import { useDayPanel } from '@/contexts/day-panel-context'
 import { useCalendarView } from '@/contexts/calendar-view-context'
 import { useActiveTab, useTabActions } from '@/contexts/tabs'
@@ -687,7 +689,45 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     await queryClient.invalidateQueries({ queryKey: ['calendar', 'range'] })
   }
 
+  const dueDateTimeFromDate = (date: Date): { dueDate: string; dueTime: string } => ({
+    dueDate: formatDateKey(date),
+    dueTime: `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+  })
+
+  const commitTaskSchedule = async (id: string, dueDate: string, dueTime: string) => {
+    const result = await tasksService.update({ id, dueDate, dueTime })
+    if (!result.success) {
+      throw new Error(result.error ?? 'Could not update task.')
+    }
+    await queryClient.invalidateQueries({ queryKey: ['calendar', 'range'] })
+  }
+
   const handleMoveEvent = async (item: CalendarProjectionItem, startAt: string, endAt: string) => {
+    if (item.sourceType === 'task') {
+      const previousStartAt = item.startAt
+      const { dueDate, dueTime } = dueDateTimeFromDate(new Date(startAt))
+      try {
+        await commitTaskSchedule(item.sourceId, dueDate, dueTime)
+        registerUndo(getI18n().getFixedT(null, 'calendar')('undo.moveTask'), () => {
+          const previous = dueDateTimeFromDate(new Date(previousStartAt))
+          void commitTaskSchedule(item.sourceId, previous.dueDate, previous.dueTime).catch(
+            (err) => {
+              log.error('Failed to undo task reschedule', {
+                taskId: item.sourceId,
+                error: extractErrorMessage(err)
+              })
+            }
+          )
+        })
+      } catch (err) {
+        log.error('Failed to reschedule task', {
+          taskId: item.sourceId,
+          error: extractErrorMessage(err)
+        })
+      }
+      return
+    }
+
     const previousStartAt = item.startAt
     const previousEndAt = item.endAt
     try {
