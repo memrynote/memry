@@ -1,4 +1,14 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
+
+// review-scheduler.ts also holds the scheduler runtime (Task 7), which imports
+// electron at module scope. This suite only exercises the pure decision core,
+// but the module-level import still needs a mock so it loads under plain Node.
+vi.mock('electron', () => ({
+  Notification: Object.assign(vi.fn(), { isSupported: () => true }),
+  BrowserWindow: { getAllWindows: () => [] },
+  powerMonitor: { on: vi.fn(), removeListener: vi.fn() }
+}))
+
 import { decideReviewNotification, localDateString } from './review-scheduler'
 
 // Local Date built from local Y/M/D h:m — no UTC parsing.
