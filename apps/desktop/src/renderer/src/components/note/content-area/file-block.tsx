@@ -20,9 +20,9 @@ import {
   Upload,
   Loader2,
   GripVertical,
-  AlignLeft,
-  AlignCenter,
-  AlignRight
+  LeftToRightBlockQuote,
+  TextAlignCenter,
+  RightToLeftBlockQuote
 } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -283,10 +283,10 @@ function PdfPreview({ url, name, width, height, align, onResize, onAlign }: PdfP
     center: tPhaseF('phaseF.componentsNoteContentAreaFileBlock.alignCenter'),
     right: tPhaseF('phaseF.componentsNoteContentAreaFileBlock.alignRight')
   }
-  const alignIcons: Record<PdfAlign, typeof AlignLeft> = {
-    left: AlignLeft,
-    center: AlignCenter,
-    right: AlignRight
+  const alignIcons: Record<PdfAlign, typeof TextAlignCenter> = {
+    left: LeftToRightBlockQuote,
+    center: TextAlignCenter,
+    right: RightToLeftBlockQuote
   }
 
   if (error) {

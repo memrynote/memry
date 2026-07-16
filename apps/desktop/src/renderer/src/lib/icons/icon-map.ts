@@ -2,8 +2,8 @@ import {
   // Direct matches
   AlertCircleIcon,
   AlignLeftIcon,
-  AlignCenter as AlignCenterIcon,
-  AlignRightIcon,
+  RightToLeftBlockQuoteIcon,
+  TextAlignCenterIcon,
   AiWebBrowsingIcon,
   Archive03Icon,
   ArchiveIcon,
@@ -459,8 +459,9 @@ export const GripVertical = createIcon(DragDropVerticalIcon)
 export const PanelLeft = createIcon(PanelLeftIcon)
 export const PanelRight = createIcon(PanelRightIcon)
 export const AlignLeft = createIcon(AlignLeftIcon)
-export const AlignCenter = createIcon(AlignCenterIcon)
-export const AlignRight = createIcon(AlignRightIcon)
+export const LeftToRightBlockQuote = createIcon(LeftToRightBlockQuoteIcon)
+export const RightToLeftBlockQuote = createIcon(RightToLeftBlockQuoteIcon)
+export const TextAlignCenter = createIcon(TextAlignCenterIcon)
 
 // ── Status & Indicators ─────────────────────────────
 export const Check = createIcon(Tick01Icon)
