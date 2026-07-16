@@ -39,6 +39,7 @@ import { startSnoozeScheduler, stopSnoozeScheduler, checkDueItemsOnStartup } fro
 import { stopVoiceModel } from './inbox/voice-model'
 import { stopImageProcessing } from './image-processing/bridge'
 import { startReminderScheduler, stopReminderScheduler } from './lib/reminders'
+import { startInboxReviewScheduler, stopInboxReviewScheduler } from './inbox/review-scheduler'
 import { disposeTelemetryRuntime, initializeTelemetryRuntime } from './telemetry/runtime'
 import { getTelemetryAuthState, getTelemetrySyncState } from './telemetry/state'
 import {
@@ -1314,6 +1315,16 @@ const appReady = app.whenReady().then(async () => {
           errorCode: error instanceof Error ? error.name : 'UnknownError'
         })
       }
+      try {
+        startInboxReviewScheduler()
+      } catch (error) {
+        mainLog.warn('inbox review scheduler failed to start:', error)
+        trackMainLog('warn', {
+          scope: 'Startup',
+          action: 'inbox_review_scheduler_start_failed',
+          errorCode: error instanceof Error ? error.name : 'UnknownError'
+        })
+      }
       void startGoogleCalendarSyncRunner().catch((error) => {
         mainLog.warn('Google Calendar sync runner failed to start:', error)
         trackMainLog('warn', {
@@ -1623,6 +1634,9 @@ app.on('before-quit', (event) => {
 
       shutdownLog.info('stopping reminder scheduler...')
       stopReminderScheduler()
+
+      shutdownLog.info('stopping inbox review scheduler...')
+      stopInboxReviewScheduler()
 
       shutdownLog.info('stopping Google Calendar sync runner...')
       stopGoogleCalendarSyncRunner()
