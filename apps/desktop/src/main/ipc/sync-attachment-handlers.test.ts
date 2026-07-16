@@ -49,14 +49,34 @@ vi.mock('electron', () => ({
         }
       }
     ])
+  },
+  net: { fetch: vi.fn() }
+}))
+
+// The real electron-store is never touched in tests; the entitlement cache reads
+// and writes through this fake so the plan-limit invalidation can be asserted.
+const storeData = vi.hoisted(() => ({ sync: {} as Record<string, unknown> }))
+vi.mock('../store', () => ({
+  store: {
+    get: (key: string) => (storeData as unknown as Record<string, unknown>)[key],
+    set: (key: string, value: unknown) => {
+      ;(storeData as unknown as Record<string, unknown>)[key] = value
+    }
   }
 }))
 
-vi.mock('../sync/attachments', () => ({
-  AttachmentSyncService: vi.fn().mockImplementation(function AttachmentSyncServiceMock() {
-    return attachmentMocks.service
-  })
-}))
+// Keep the REAL AttachmentTooLargeError class identity. `classifyError` narrows
+// with `instanceof` against the class from http-client, so a stand-in here would
+// silently classify as `unknown` and the test would prove nothing.
+vi.mock('../sync/attachments', async () => {
+  const actual = await vi.importActual<typeof import('../sync/http-client')>('../sync/http-client')
+  return {
+    AttachmentSyncService: vi.fn().mockImplementation(function AttachmentSyncServiceMock() {
+      return attachmentMocks.service
+    }),
+    AttachmentTooLargeError: actual.AttachmentTooLargeError
+  }
+})
 
 vi.mock('../sync/upload-queue', () => ({
   UploadQueue: vi.fn().mockImplementation(function UploadQueueMock() {
@@ -142,10 +162,15 @@ import {
   recordUploadedAttachment
 } from '../sync/note-attachment-metadata'
 import { markWritebackIgnored } from '../sync/crdt-writeback'
+import { AttachmentTooLargeError } from '../sync/attachments'
+import { SyncServerError } from '../sync/http-client'
+import { setCachedEntitlementFromStatus, getCachedMaxFileSize } from '../billing/entitlement-cache'
+import type { BillingStatus } from '../billing/paddle-billing'
 
 describe('sync-attachment-handlers', () => {
   beforeEach(() => {
     resetIpcMocks()
+    storeData.sync = {}
     attachmentMocks.sent = []
     attachmentMocks.service.uploadAttachment.mockReset()
     attachmentMocks.service.downloadAttachment
@@ -407,7 +432,8 @@ describe('sync-attachment-handlers', () => {
         payload: {
           noteId: 'note-1',
           diskPath: '/vault/attachments/saved.pdf',
-          error: 'upload boom'
+          error: 'upload boom',
+          errorCategory: 'unknown'
         }
       })
     )
@@ -432,5 +458,111 @@ describe('sync-attachment-handlers', () => {
         }
       })
     )
+  })
+
+  // ==========================================================================
+  // Plan file-size failures — the category has to survive the trip to the
+  // renderer, and a server rejection has to correct the cache that produced it.
+  // ==========================================================================
+
+  describe('plan file-size failures', () => {
+    const uploadFailed = (): Record<string, unknown> | undefined =>
+      attachmentMocks.sent.find((s) => s.channel === SYNC_EVENTS.ATTACHMENT_UPLOAD_FAILED)
+        ?.payload as Record<string, unknown> | undefined
+
+    const driveSavedUpload = async (err: unknown): Promise<void> => {
+      vi.mocked(getValidAccessToken).mockResolvedValue('token-1')
+      attachmentMocks.queue.enqueue.mockRejectedValueOnce(err)
+      registerAttachmentHandlers()
+
+      const onSaved = mockOnSaved.mock.calls[0][0] as (event: {
+        noteId: string
+        diskPath: string
+      }) => void
+      onSaved({ noteId: 'note-1', diskPath: '/vault/attachments/report.pdf' })
+      await vi.waitFor(() => expect(uploadFailed()).toBeDefined())
+    }
+
+    const cachePlanLimit = (maxFileSize: number): void => {
+      setCachedEntitlementFromStatus({
+        plan: 'plus',
+        status: 'active',
+        source: 'paddle',
+        email: null,
+        limits: { storageLimit: 0, maxFileSize, maxVaults: 0, versionHistoryDays: 0 },
+        usage: { storageUsed: 0 },
+        expiresAt: null,
+        canManageBilling: false
+      } as BillingStatus)
+    }
+
+    it('tags a local plan-preflight rejection as file_too_large', async () => {
+      // This is the only path that raises AttachmentTooLargeError. Without the
+      // category the renderer can only show the generic "stays on this device".
+      await driveSavedUpload(
+        new AttachmentTooLargeError(
+          'File is larger than your plan allows: 6 MB exceeds 5 MB',
+          6 * 1024 * 1024,
+          5 * 1024 * 1024
+        )
+      )
+
+      expect(uploadFailed()).toMatchObject({
+        noteId: 'note-1',
+        diskPath: '/vault/attachments/report.pdf',
+        errorCategory: 'file_too_large'
+      })
+    })
+
+    it('tags a server 413 STORAGE_FILE_TOO_LARGE as file_too_large', async () => {
+      await driveSavedUpload(
+        new SyncServerError(
+          'Failed to initiate upload: STORAGE_FILE_TOO_LARGE',
+          413,
+          'STORAGE_FILE_TOO_LARGE'
+        )
+      )
+
+      expect(uploadFailed()).toMatchObject({ errorCategory: 'file_too_large' })
+    })
+
+    it('a server plan-limit rejection invalidates the cached limit', async () => {
+      // The server just contradicted the cached number, so keeping it would make
+      // every later preflight re-apply an answer the authority already rejected.
+      cachePlanLimit(5 * 1024 * 1024)
+      expect(getCachedMaxFileSize()).toBe(5 * 1024 * 1024)
+
+      await driveSavedUpload(
+        new SyncServerError(
+          'Failed to initiate upload: STORAGE_FILE_TOO_LARGE',
+          413,
+          'STORAGE_FILE_TOO_LARGE'
+        )
+      )
+
+      expect(getCachedMaxFileSize()).toBeNull()
+    })
+
+    it('a local preflight rejection leaves the cache alone', async () => {
+      // The local preflight is downstream of the cache — it is not evidence
+      // about the server, so it must not discard a limit the server never
+      // disputed.
+      cachePlanLimit(5 * 1024 * 1024)
+
+      await driveSavedUpload(
+        new AttachmentTooLargeError('File is larger than your plan allows', 6, 5)
+      )
+
+      expect(getCachedMaxFileSize()).toBe(5 * 1024 * 1024)
+    })
+
+    it('an unrelated server failure keeps its own category and the cache', async () => {
+      cachePlanLimit(5 * 1024 * 1024)
+
+      await driveSavedUpload(new SyncServerError('boom', 500, 'boom'))
+
+      expect(uploadFailed()).toMatchObject({ errorCategory: 'server_error' })
+      expect(getCachedMaxFileSize()).toBe(5 * 1024 * 1024)
+    })
   })
 })

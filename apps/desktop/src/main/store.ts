@@ -34,6 +34,12 @@ export interface CachedEntitlement {
     /** Max plaintext bytes per file the plan allows. */
     maxFileSize: number
   }
+  /**
+   * When `limits` was last fetched (epoch ms). Optional: stores written by older
+   * app versions have no `cachedAt`, and those must be read as stale rather than
+   * fresh — see `getCachedMaxFileSize`.
+   */
+  cachedAt?: number
 }
 
 /**

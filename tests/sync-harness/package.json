@@ -3,6 +3,9 @@
   "version": "0.0.1",
   "private": true,
   "type": "module",
+  "exports": {
+    "./simulated-server": "./src/simulated-server.ts"
+  },
   "scripts": {
     "build:worker": "tsx scripts/build-worker.ts",
     "test": "vitest run",

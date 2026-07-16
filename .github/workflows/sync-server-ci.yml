@@ -11,8 +11,11 @@ on:
       - 'tests/sync-harness/**'
       # The attachment client is exercised against the real Worker by the
       # integration spec below, so a client-side change must re-run this job.
+      # http-client.ts owns binaryFetch and AttachmentTooLargeError, which the
+      # spec exercises just as directly as attachments.ts itself.
       - 'apps/desktop/src/main/sync/attachments.ts'
       - 'apps/desktop/src/main/sync/attachments.integration.test.ts'
+      - 'apps/desktop/src/main/sync/http-client.ts'
       - 'package.json'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
@@ -28,8 +31,11 @@ on:
       - 'tests/sync-harness/**'
       # The attachment client is exercised against the real Worker by the
       # integration spec below, so a client-side change must re-run this job.
+      # http-client.ts owns binaryFetch and AttachmentTooLargeError, which the
+      # spec exercises just as directly as attachments.ts itself.
       - 'apps/desktop/src/main/sync/attachments.ts'
       - 'apps/desktop/src/main/sync/attachments.integration.test.ts'
+      - 'apps/desktop/src/main/sync/http-client.ts'
       - 'package.json'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
@@ -99,8 +105,7 @@ jobs:
         run: |
           pnpm --filter @memry/desktop exec vitest run \
             --config config/vitest.config.ts \
-            --project main \
-            src/main/sync/attachments.integration.test.ts
+            --project main-integration
 
       - name: Validate Worker bundle
         run: pnpm --filter @memry/sync-server exec wrangler deploy --dry-run --outdir .wrangler/ci --env staging

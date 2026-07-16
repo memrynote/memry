@@ -30,7 +30,11 @@ vi.mock('electron', () => ({
   }
 }))
 
-import { AttachmentSyncService, type AttachmentSyncDeps } from './attachments'
+import {
+  AttachmentSyncService,
+  AttachmentTooLargeError,
+  type AttachmentSyncDeps
+} from './attachments'
 
 const MIB = 1024 * 1024
 // nonce(24) + Poly1305 tag(16) — mirrors the server's CHUNK_CRYPTO_OVERHEAD.
@@ -104,11 +108,17 @@ async function seedUser(opts: {
  * Real client deps. The signing keypair is shared with `getDevicePublicKey` so
  * the manifest signature verifies on the download side.
  */
-function createDeps(user: SeededUser): AttachmentSyncDeps {
+function createDeps(
+  user: SeededUser,
+  opts?: { getMaxFileSize?: () => number | null }
+): AttachmentSyncDeps {
   const signing = sodium.crypto_sign_keypair()
   const vaultKey = sodium.randombytes_buf(32)
 
   return {
+    // Mirrors sync-attachment-handlers wiring this to the entitlement cache.
+    // Undefined = the handler had no cached limit (cold or stale) and defers.
+    ...(opts?.getMaxFileSize ? { getMaxFileSize: opts.getMaxFileSize } : {}),
     getAccessToken: async () => user.token,
     getVaultKey: async () => vaultKey,
     getSigningKeys: async () => ({
@@ -131,7 +141,10 @@ async function writeTempFile(name: string, bytes: Uint8Array): Promise<string> {
 
 beforeAll(async () => {
   await sodium.ready
-  const mod = await import('../../../../../tests/sync-harness/src/simulated-server.ts')
+  // By package name, not a relative escape out of apps/desktop: @memry/sync-harness
+  // is a declared devDependency, so this resolves the same way everywhere instead
+  // of depending on the workspace's directory layout and pnpm's hoisting.
+  const mod = await import('@memry/sync-harness/simulated-server')
   server = new mod.SimulatedServer() as Harness
   await server.start()
   const url = await server.getDirectUrl()
@@ -223,19 +236,90 @@ describe('attachment upload/download against the real sync-server', () => {
     expect(Buffer.compare(roundTripped, original)).toBe(0)
   }, 180_000)
 
-  it('rejects an over-limit file on a Plus plan with a file-too-large error', async () => {
+  // The client preflight and the server gate produce the same user-visible
+  // outcome but are different mechanisms, and only the server is authoritative.
+  // Cover them separately: conflating them is what let the preflight ship with no
+  // real coverage at all (the spec never set getMaxFileSize, so its "over-limit"
+  // case only ever exercised the server).
+
+  it('SERVER rejects an over-limit file when the client has no cached limit', async () => {
     const user = await seedUser({
       plan: 'plus',
       status: 'active',
       maxFileSize: 5 * MIB,
       storageLimit: 50 * 1024 * MIB
     })
+    // No getMaxFileSize: a cold or stale cache defers to the server, as it must.
     const svc = new AttachmentSyncService(createDeps(user))
 
     const src = await writeTempFile('over.bin', randomBytes(6 * MIB))
 
+    // The SERVER's wording — proof this is the server gate, not the preflight.
     await expect(svc.uploadAttachment('note-4', src)).rejects.toThrow(/plan file size limit/i)
   }, 120_000)
+
+  it('CLIENT preflight blocks an over-limit file before any request, with its own message', async () => {
+    const user = await seedUser({
+      plan: 'plus',
+      status: 'active',
+      maxFileSize: 5 * MIB,
+      storageLimit: 50 * 1024 * MIB
+    })
+
+    let requests = 0
+    const deps = createDeps(user, { getMaxFileSize: () => 5 * MIB })
+    const realFetch = deps.fetchFn!
+    deps.fetchFn = (input, init) => {
+      requests++
+      return realFetch(input, init)
+    }
+    const svc = new AttachmentSyncService(deps)
+
+    const src = await writeTempFile('over-preflight.bin', randomBytes(6 * MIB))
+
+    await expect(svc.uploadAttachment('note-4b', src)).rejects.toThrow(AttachmentTooLargeError)
+    // The CLIENT's wording, distinct from the server's "plan file size limit".
+    await expect(svc.uploadAttachment('note-4b', src)).rejects.toThrow(
+      /larger than your plan allows/i
+    )
+    // The whole point of the preflight: nothing was read, hashed, encrypted or sent.
+    expect(requests).toBe(0)
+  }, 120_000)
+
+  it('fails open when the client limit is null (cold/stale cache) and the server accepts the legal file', async () => {
+    // The preflight's fail-open CONTRACT: getMaxFileSize returns null for a cold,
+    // absent, or past-TTL cache, and the client must then defer to the server so a
+    // legal file still uploads. This case injects that null and drives the real
+    // client against the real Worker, proving the seam end-to-end: null => no
+    // opinion => the server accepts the (Believer-legal) 6 MiB file.
+    //
+    // It deliberately does NOT claim to prove the staleness RULE itself. The
+    // TTL/cachedAt logic that turns a stale entry into null lives in
+    // getCachedMaxFileSize and is regression-tested in entitlement-cache.test.ts —
+    // those unit tests fail on the base branch. This integration case passes on
+    // base too, because base already fails open on a null limit; conflating the
+    // seam with the rule is exactly the "green but proves nothing" trap this PR
+    // chain exists to kill, so it is labelled for what it is.
+    const user = await seedUser({
+      plan: 'believer',
+      status: 'active',
+      maxFileSize: 200 * MIB,
+      storageLimit: 50 * 1024 * MIB
+    })
+    // getCachedMaxFileSize() returns null once past the TTL — the server decides.
+    const svc = new AttachmentSyncService(createDeps(user, { getMaxFileSize: () => null }))
+
+    const original = randomBytes(6 * MIB)
+    const src = await writeTempFile('stale-ok.bin', original)
+
+    const result = await svc.uploadAttachment('note-4c', src)
+    expect(result.manifest.size).toBe(6 * MIB)
+
+    const dest = path.join(tmpDir, 'stale-ok-out.bin')
+    await svc.downloadAttachment(result.attachmentId, dest)
+    const roundTripped = await import('node:fs/promises').then((fs) => fs.readFile(dest))
+    expect(Buffer.compare(roundTripped, original)).toBe(0)
+  }, 180_000)
 
   it('rejects upload on a free plan with payment required', async () => {
     const user = await seedUser({

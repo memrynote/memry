@@ -272,6 +272,13 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
     cleanups.push(
       window.api.onAttachmentUploadFailed((event) => {
         if (cancelled) return
+        // A file over the plan limit has an actionable cause, and the generic
+        // "it stays on this device" hides it. Older main processes send no
+        // category, so anything else keeps the generic message.
+        if (event.errorCategory === 'file_too_large') {
+          toast.error(t('sync.fileTooLarge'), { duration: 10000 })
+          return
+        }
         const filename = event.diskPath.split(/[\\/]/).pop() ?? event.diskPath
         toast.error(t('sync.attachmentUploadFailed', { filename }), { duration: 10000 })
       })
