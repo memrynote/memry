@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 import { Button } from '@/components/ui/button'
@@ -8,6 +9,8 @@ import { registerWebDevice } from '@/lib/account/auth-client'
 import { SYNC_SERVER_URL, WEB_OAUTH_REDIRECT_PATH } from '@/lib/account/config'
 import { OAUTH_NEXT_STORAGE_KEY, safeNextPath } from '@/lib/account/next-path'
 import { trackLandingEvent } from '@/lib/analytics'
+
+const EASE = [0.16, 1, 0.3, 1] as const
 
 function continueWithGoogle(next: string | null) {
   sessionStorage.setItem(OAUTH_NEXT_STORAGE_KEY, next ?? '')
@@ -68,6 +71,7 @@ export function LoginPage() {
   const [step, setStep] = useState<'email' | 'code'>('email')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const reduce = useReducedMotion()
 
   async function requestCode() {
     setBusy(true)
@@ -138,62 +142,90 @@ export function LoginPage() {
                   : `We emailed a 6-digit code to ${email}.`}
             </p>
 
-            {error ? <p className="mt-4 text-center text-sm text-red-500">{error}</p> : null}
+            <AnimatePresence>
+              {error ? (
+                <motion.p
+                  key="login-error"
+                  className="mt-4 text-center text-sm text-red-500"
+                  initial={reduce ? { opacity: 0 } : { opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={reduce ? { opacity: 0 } : { opacity: 0, y: -4 }}
+                  transition={{ duration: 0.18, ease: EASE }}
+                >
+                  {error}
+                </motion.p>
+              ) : null}
+            </AnimatePresence>
 
-            {step === 'email' ? (
-              <form
-                className="mt-8 space-y-3"
-                onSubmit={(e) => {
-                  e.preventDefault()
-                  void requestCode()
-                }}
-              >
-                <Input
-                  type="email"
-                  autoComplete="email"
-                  placeholder="Your email"
-                  aria-label="Email address"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-                <Button type="submit" className="w-full" disabled={busy || !email}>
-                  {busy ? 'Sending…' : 'Continue'}
-                </Button>
-              </form>
-            ) : (
-              <form
-                className="mt-8 space-y-3"
-                onSubmit={(e) => {
-                  e.preventDefault()
-                  void verifyCode()
-                }}
-              >
-                <Input
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  maxLength={6}
-                  placeholder="123456"
-                  aria-label="6-digit code"
-                  className="text-center font-mono-accent tracking-[0.4em]"
-                  value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                />
-                <Button type="submit" className="w-full" disabled={busy || code.length !== 6}>
-                  {busy ? 'Verifying…' : 'Verify & sign in'}
-                </Button>
-                <button
-                  type="button"
-                  className="mx-auto block text-xs text-muted underline underline-offset-2 transition-colors hover:text-ink"
-                  onClick={() => {
-                    setStep('email')
-                    setCode('')
-                    setError(null)
+            {/* Step swap slides forward: outgoing form exits left, incoming enters from the
+                right. mode="wait" keeps them from overlapping; initial={false} skips the entrance
+                on first mount, since the card already animates in via `.animate-fade-up`. */}
+            <AnimatePresence mode="wait" initial={false}>
+              {step === 'email' ? (
+                <motion.form
+                  key="email"
+                  className="mt-8 space-y-3"
+                  initial={reduce ? { opacity: 0 } : { opacity: 0, x: 8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={reduce ? { opacity: 0 } : { opacity: 0, x: -8 }}
+                  transition={{ duration: 0.2, ease: EASE }}
+                  onSubmit={(e) => {
+                    e.preventDefault()
+                    void requestCode()
                   }}
                 >
-                  Use a different email
-                </button>
-              </form>
-            )}
+                  <Input
+                    type="email"
+                    autoComplete="email"
+                    placeholder="Your email"
+                    aria-label="Email address"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                  <Button type="submit" className="w-full" disabled={busy || !email}>
+                    {busy ? 'Sending…' : 'Continue'}
+                  </Button>
+                </motion.form>
+              ) : (
+                <motion.form
+                  key="code"
+                  className="mt-8 space-y-3"
+                  initial={reduce ? { opacity: 0 } : { opacity: 0, x: 8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={reduce ? { opacity: 0 } : { opacity: 0, x: -8 }}
+                  transition={{ duration: 0.2, ease: EASE }}
+                  onSubmit={(e) => {
+                    e.preventDefault()
+                    void verifyCode()
+                  }}
+                >
+                  <Input
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    placeholder="123456"
+                    aria-label="6-digit code"
+                    className="text-center font-mono-accent tracking-[0.4em]"
+                    value={code}
+                    onChange={(e) => setCode(e.target.value)}
+                  />
+                  <Button type="submit" className="w-full" disabled={busy || code.length !== 6}>
+                    {busy ? 'Verifying…' : 'Verify & sign in'}
+                  </Button>
+                  <button
+                    type="button"
+                    className="mx-auto block text-xs text-muted underline underline-offset-2 transition-colors hover:text-ink"
+                    onClick={() => {
+                      setStep('email')
+                      setCode('')
+                      setError(null)
+                    }}
+                  >
+                    Use a different email
+                  </button>
+                </motion.form>
+              )}
+            </AnimatePresence>
 
             <div className="my-6 flex items-center gap-3 text-xs text-muted">
               <span className="h-px flex-1 bg-border" />

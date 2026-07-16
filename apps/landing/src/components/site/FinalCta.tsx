@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -10,8 +10,25 @@ import { HomeSection } from '@/components/site/primitives'
 
 const EASE = [0.16, 1, 0.3, 1] as const
 
-/** Terracotta sunrise — concentric arcs over a half-sun rising from the banner's bottom edge. */
+// Faint concentric rings, outer → inner. Each blooms in behind the rising sun.
+const SUN_ARCS = [
+  { d: 'M150 240a210 210 0 0 1 420 0', o: 0.12 },
+  { d: 'M203 240a157 157 0 0 1 314 0', o: 0.2 },
+  { d: 'M256 240a104 104 0 0 1 208 0', o: 0.3 }
+] as const
+
+/**
+ * Terracotta sunrise — concentric arcs over a half-sun that RISES from the banner's
+ * bottom edge as the closer scrolls into view: the sunrise metaphor the surrounding
+ * copy names, made literal at the one emotional beat of the page. Motion is
+ * transform/opacity only; the card's `overflow-hidden` clips the sun's start below the
+ * baseline. Framer-motion runs on rAF, so the global reduced-motion CSS does not touch
+ * it — `useReducedMotion()` renders every element settled instead.
+ */
 function SunArc() {
+  const reduce = useReducedMotion()
+  const viewport = { once: true, margin: '-80px' } as const
+
   return (
     <svg
       viewBox="0 0 720 240"
@@ -20,11 +37,28 @@ function SunArc() {
       aria-hidden
     >
       <g fill="none" stroke="#ff671a">
-        <path d="M150 240a210 210 0 0 1 420 0" strokeOpacity="0.12" strokeWidth="2" />
-        <path d="M203 240a157 157 0 0 1 314 0" strokeOpacity="0.2" strokeWidth="2" />
-        <path d="M256 240a104 104 0 0 1 208 0" strokeOpacity="0.3" strokeWidth="2" />
+        {SUN_ARCS.map((arc, i) => (
+          <motion.path
+            key={arc.d}
+            d={arc.d}
+            strokeOpacity={arc.o}
+            strokeWidth="2"
+            initial={reduce ? false : { opacity: 0, y: 12 }}
+            whileInView={reduce ? undefined : { opacity: 1, y: 0 }}
+            viewport={viewport}
+            transition={reduce ? undefined : { duration: 0.7, delay: 0.15 + i * 0.08, ease: EASE }}
+          />
+        ))}
       </g>
-      <path d="M308 240a52 52 0 0 1 104 0Z" fill="#ff671a" fillOpacity="0.85" />
+      <motion.path
+        d="M308 240a52 52 0 0 1 104 0Z"
+        fill="#ff671a"
+        fillOpacity="0.85"
+        initial={reduce ? false : { opacity: 0, y: 26 }}
+        whileInView={reduce ? undefined : { opacity: 1, y: 0 }}
+        viewport={viewport}
+        transition={reduce ? undefined : { duration: 0.9, delay: 0.28, ease: EASE }}
+      />
     </svg>
   )
 }
