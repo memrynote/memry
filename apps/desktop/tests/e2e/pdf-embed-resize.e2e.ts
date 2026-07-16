@@ -41,19 +41,34 @@ function makeMinimalPdf(): Buffer {
 async function importPdf(page: Page): Promise<string> {
   const importDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-e2e-pdf-'))
   const pdfName = `e2e-embed-${Date.now()}.pdf`
+  const pdfTitle = path.basename(pdfName, '.pdf')
   fs.writeFileSync(path.join(importDir, pdfName), makeMinimalPdf())
 
-  const pdfId = await page.evaluate(
-    async (src) => {
-      const imported = await window.api.notes.importFiles([src], '')
-      if (!imported.success) throw new Error(imported.errors?.join('\n') || 'pdf import failed')
-      const list = await window.api.notes.list({ limit: 200 })
-      return list.notes.find((n) => n.fileType === 'pdf')?.id ?? null
-    },
+  const imported = await page.evaluate(
+    async (src) => window.api.notes.importFiles([src], ''),
     path.join(importDir, pdfName)
   )
+  expect(imported.success).toBe(true)
 
-  expect(pdfId).toBeTruthy()
+  // Imported file notes surface in the list only after indexing — poll by
+  // filename/title rather than assuming a fileType value.
+  let pdfId: string | null = null
+  await expect
+    .poll(
+      async () => {
+        pdfId = await page.evaluate(
+          async ({ name, title }) => {
+            const list = await window.api.notes.list({ limit: 200 })
+            return list.notes.find((n) => n.path === name || n.title === title)?.id ?? null
+          },
+          { name: pdfName, title: pdfTitle }
+        )
+        return pdfId
+      },
+      { timeout: 20_000 }
+    )
+    .not.toBeNull()
+
   return pdfId as string
 }
 
@@ -115,6 +130,15 @@ async function dropSidebarItem(page: Page, itemId: string): Promise<void> {
   )
 }
 
+/** Read a note's saved markdown through the app data layer (survives autosave debounce). */
+async function noteMarkdown(page: Page, id: string): Promise<string> {
+  return page.evaluate(async (noteId) => {
+    const res = (await window.api.notes.get(noteId)) as Record<string, unknown>
+    const note = (res?.note ?? res) as Record<string, unknown> | undefined
+    return String(note?.content ?? note?.contentMarkdown ?? '')
+  }, id)
+}
+
 test.describe('PDF embed via sidebar drag + resize', () => {
   test('drops a sidebar PDF as an embed by path, not as an attachment copy', async ({
     page,
@@ -136,26 +160,19 @@ test.describe('PDF embed via sidebar drag + resize', () => {
     const targetAttachmentsDir = path.join(testVaultPath, 'attachments', targetId)
     expect(fs.existsSync(targetAttachmentsDir)).toBe(false)
 
-    // The persisted marker points at the imported PDF path (notes/…), not attachments/.
+    // The persisted marker points at the imported PDF path, not attachments/.
     await expect
       .poll(
-        () => {
-          const notesDir = path.join(testVaultPath, 'notes')
-          return fs
-            .readdirSync(notesDir)
-            .filter((f) => f.endsWith('.md'))
-            .some((f) => {
-              const txt = fs.readFileSync(path.join(notesDir, f), 'utf8')
-              const match = txt.match(/<!-- file:(\{[^}]+\}) -->/)
-              return !!match && match[1].includes('.pdf') && !match[1].includes('attachments')
-            })
+        async () => {
+          const match = (await noteMarkdown(page, targetId)).match(/<!-- file:(\{[^}]+\}) -->/)
+          return !!match && match[1].includes('.pdf') && !match[1].includes('attachments')
         },
-        { timeout: 15_000 }
+        { timeout: 20_000 }
       )
       .toBe(true)
   })
 
-  test('shows a resize handle and persists the new width', async ({ page, testVaultPath }) => {
+  test('shows a resize handle and persists the new width', async ({ page }) => {
     await ready(page)
 
     const pdfId = await importPdf(page)
@@ -180,20 +197,11 @@ test.describe('PDF embed via sidebar drag + resize', () => {
       .poll(async () => Number(await page.getByRole('slider').getAttribute('aria-valuenow')))
       .toBeLessThan(before)
 
-    // The width round-trips to the vault marker.
+    // The width round-trips to the persisted note markdown.
     await expect
-      .poll(
-        () => {
-          const notesDir = path.join(testVaultPath, 'notes')
-          return fs
-            .readdirSync(notesDir)
-            .filter((f) => f.endsWith('.md'))
-            .some((f) =>
-              /<!-- file:\{[^}]*"width":\d+/.test(fs.readFileSync(path.join(notesDir, f), 'utf8'))
-            )
-        },
-        { timeout: 15_000 }
-      )
+      .poll(async () => /<!-- file:\{[^}]*"width":\d+/.test(await noteMarkdown(page, targetId)), {
+        timeout: 20_000
+      })
       .toBe(true)
   })
 })
