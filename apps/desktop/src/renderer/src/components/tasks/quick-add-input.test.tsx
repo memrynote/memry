@@ -546,3 +546,59 @@ describe('QuickAddInput - accessibility', () => {
     expect(screen.getByRole('textbox')).toBeInTheDocument()
   })
 })
+
+// ============================================================================
+// QuickAddInput - detail hint (focused state)
+// ============================================================================
+
+describe('QuickAddInput - detail hint', () => {
+  const defaultProps = {
+    onAdd: vi.fn(),
+    onOpenModal: vi.fn(),
+    projects: mockProjects
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('shows the "Q" affordance and no detail hint when not focused', () => {
+    renderWithI18n(<QuickAddInput {...defaultProps} />)
+
+    expect(screen.getByText('Q')).toBeInTheDocument()
+    expect(screen.queryByText('detail')).not.toBeInTheDocument()
+  })
+
+  it('shows the detail hint when the input is focused', async () => {
+    const user = userEvent.setup()
+    renderWithI18n(<QuickAddInput {...defaultProps} />)
+
+    const input = screen.getByRole('textbox', { name: /quick add task/i })
+    await user.click(input)
+
+    expect(screen.getByText('detail')).toBeInTheDocument()
+    expect(screen.queryByText('Q')).not.toBeInTheDocument()
+  })
+
+  it('opens the detail modal with the parsed title when the hint is clicked', async () => {
+    const user = userEvent.setup()
+    renderWithI18n(<QuickAddInput {...defaultProps} />)
+
+    const input = screen.getByRole('textbox', { name: /quick add task/i })
+    await user.type(input, 'Buy groceries')
+    await user.click(screen.getByText('detail'))
+
+    expect(defaultProps.onOpenModal).toHaveBeenCalledWith('Buy groceries')
+    expect(input).toHaveValue('')
+  })
+
+  it('does not render the hint when onOpenModal is absent', async () => {
+    const user = userEvent.setup()
+    renderWithI18n(<QuickAddInput onAdd={vi.fn()} projects={mockProjects} />)
+
+    const input = screen.getByRole('textbox', { name: /quick add task/i })
+    await user.click(input)
+
+    expect(screen.queryByText('detail')).not.toBeInTheDocument()
+  })
+})

@@ -525,7 +525,8 @@
     },
     "componentsTasksQuickAddInput": {
       "q": "Q",
-      "q2": "Q"
+      "q2": "Q",
+      "detailHint": "detail"
     },
     "componentsTasksRepeatIndicator": {
       "of": "of ",
