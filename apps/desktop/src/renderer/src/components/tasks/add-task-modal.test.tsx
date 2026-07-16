@@ -324,4 +324,30 @@ describe('AddTaskModal', () => {
       expect(screen.getByTestId('tag-autocomplete-tags')).toHaveTextContent('')
     })
   })
+
+  describe('modern layout', () => {
+    it('renders the four property rows with default badge values', () => {
+      // #given / #when — open with the default personal project
+      renderWithI18n(
+        <AddTaskModal isOpen={true} onClose={onClose} onAddTask={onAddTask} projects={PROJECTS} />
+      )
+
+      // #then — each Interactive*Badge shows its default value (badges render as
+      // triggers; their popovers don't open in jsdom, so only the trigger text is present)
+      expect(screen.getByText('To Do')).toBeInTheDocument() // status = default todo
+      expect(screen.getByText('None')).toBeInTheDocument() // priority compact label
+      expect(screen.getByText('No date')).toBeInTheDocument() // due date badge, no date
+      expect(screen.getByText('Personal')).toBeInTheDocument() // project badge
+    })
+
+    it('renders the description editor section', () => {
+      // #given / #when
+      renderWithI18n(
+        <AddTaskModal isOpen={true} onClose={onClose} onAddTask={onAddTask} projects={PROJECTS} />
+      )
+
+      // #then — stubbed TaskDescriptionEditor exposes the placeholder
+      expect(screen.getByPlaceholderText('Add a description…')).toBeInTheDocument()
+    })
+  })
 })
