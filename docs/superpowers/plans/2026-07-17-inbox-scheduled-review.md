@@ -582,10 +582,11 @@ vi.mock('../sync/local-mutations', () => ({
 
 import { getSetting } from '../database/queries/settings'
 import { getDatabase } from '../database'
-import { getInboxReviewSettings, __setInboxSettingsForTest } from './settings-handlers'
+import { getInboxReviewSettings, writeInboxReviewSettings } from './settings-handlers'
 
-// __setInboxSettingsForTest is a thin wrapper the handler exposes over
-// writeGroupSettings('inbox', ...) so this unit test avoids ipcMain plumbing.
+// writeInboxReviewSettings is the shared SET path (writeGroupSettings('inbox', ...)
+// + sync-field push) the IPC handler delegates to, so this unit test avoids
+// ipcMain plumbing.
 // (If the harness prefers exercising the ipcMain handler directly, register
 // handlers and invoke the channel instead — same assertions.)
 
@@ -603,7 +604,7 @@ describe('inbox settings handler', () => {
   })
 
   it('persists updates and pushes changed fields to sync', () => {
-    __setInboxSettingsForTest({ reviewReminderEnabled: true, reviewReminderTime: '06:30' })
+    writeInboxReviewSettings({ reviewReminderEnabled: true, reviewReminderTime: '06:30' })
     expect(getInboxReviewSettings()).toEqual({
       reviewReminderEnabled: true,
       reviewReminderTime: '06:30'
@@ -614,7 +615,7 @@ describe('inbox settings handler', () => {
   })
 
   it('only pushes the fields present in the update', () => {
-    __setInboxSettingsForTest({ reviewReminderTime: '09:00' })
+    writeInboxReviewSettings({ reviewReminderTime: '09:00' })
     expect(updateField).toHaveBeenCalledWith('inbox.reviewReminderTime', '09:00')
     expect(updateField).not.toHaveBeenCalledWith(
       'inbox.reviewReminderEnabled',
@@ -629,7 +630,7 @@ describe('inbox settings handler', () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter @memry/desktop test:main -- settings-handlers.inbox`
-Expected: FAIL — `getInboxReviewSettings` / `__setInboxSettingsForTest` not exported.
+Expected: FAIL — `getInboxReviewSettings` / `writeInboxReviewSettings` not exported.
 
 - [ ] **Step 3: Implement handlers + reader**
 
@@ -656,7 +657,7 @@ export function getInboxReviewSettings(): InboxSettings {
 }
 
 /** Write inbox settings + push changed fields to sync. Test seam + used by the SET handler. */
-export function __setInboxSettingsForTest(
+export function writeInboxReviewSettings(
   updates: Partial<InboxSettings>
 ): { success: boolean; error?: string } {
   const result = writeGroupSettings('inbox', INBOX_SETTINGS_DEFAULTS, updates)
@@ -680,7 +681,7 @@ Register the IPC handlers inside `registerSettingsHandlers()`, after the Feature
   )
   ipcMain.handle(
     SettingsChannels.invoke.SET_INBOX_SETTINGS,
-    (_event, updates: Partial<InboxSettings>) => __setInboxSettingsForTest(updates)
+    (_event, updates: Partial<InboxSettings>) => writeInboxReviewSettings(updates)
   )
 ```
 
@@ -1760,7 +1761,7 @@ git commit -m "i18n: inbox review reminder + notification strings"
 - Modify: `apps/desktop/src/main/test-hooks.ts` (interface ~L130-165; implementation inside `registerTestHooks()` ~after L243)
 
 **Interfaces:**
-- Consumes: `runReviewTick` (Task 7), `inboxItems` insert, `__setInboxSettingsForTest` (Task 5).
+- Consumes: `runReviewTick` (Task 7), `inboxItems` insert, `writeInboxReviewSettings` (Task 5).
 - Produces (test-hooks surface, gated by `NODE_ENV === 'test'`):
   - `seedInboxItemForE2E(input: { title: string }): Promise<string>`
   - `setInboxReviewSettingsForE2E(input: { enabled: boolean; time: string }): Promise<void>`
@@ -1785,7 +1786,7 @@ Add imports at the top of `test-hooks.ts`:
 ```ts
 import { inboxItems, inboxItemType } from '@memry/db-schema/schema/inbox'
 import { runReviewTick } from './inbox/review-scheduler'
-import { __setInboxSettingsForTest } from './ipc/settings-handlers'
+import { writeInboxReviewSettings } from './ipc/settings-handlers'
 import { generateId } from './lib/id'
 ```
 
@@ -1813,7 +1814,7 @@ Add inside the object returned/registered by `registerTestHooks()` (alongside th
       enabled: boolean
       time: string
     }): Promise<void> {
-      __setInboxSettingsForTest({
+      writeInboxReviewSettings({
         reviewReminderEnabled: input.enabled,
         reviewReminderTime: input.time
       })
@@ -1991,4 +1992,4 @@ git commit -m "docs: Settings > Inbox daily review reminder"
 
 **Placeholder scan:** No "TBD"/"handle edge cases"/"similar to Task N". The `>` notes flag spots where the implementer must match an exact existing signature (tabs API, test-hook invocation, plural style) — each names the file to read and preserves the assertions. ✅
 
-**Type consistency:** `decideReviewNotification` input/output identical across Tasks 4 and 7. `getInboxReviewSettings` (Task 5) consumed in Task 7. `__setInboxSettingsForTest` (Task 5) consumed in Task 14. Channel constants (`inbox:review-due`/`inbox:review-open`, Task 2) consumed in Tasks 7, 9, 12. `INBOX_SETTINGS_DEFAULTS` (Task 1) consumed in Tasks 5, 10. Settings group key `'inbox'` and last-fired key `'inbox.reviewLastNotifiedDate'` consistent across Tasks 5, 6, 7. ✅
+**Type consistency:** `decideReviewNotification` input/output identical across Tasks 4 and 7. `getInboxReviewSettings` (Task 5) consumed in Task 7. `writeInboxReviewSettings` (Task 5) consumed in Task 14. Channel constants (`inbox:review-due`/`inbox:review-open`, Task 2) consumed in Tasks 7, 9, 12. `INBOX_SETTINGS_DEFAULTS` (Task 1) consumed in Tasks 5, 10. Settings group key `'inbox'` and last-fired key `'inbox.reviewLastNotifiedDate'` consistent across Tasks 5, 6, 7. ✅
