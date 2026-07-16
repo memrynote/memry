@@ -11,19 +11,19 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { Bot, CalendarDays, Expand, PlusSignIcon, X } from '@/lib/icons'
+import { Bot, CalendarDays, Expand, ListTodo, PlusSignIcon, X } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { useAgentOptional } from './agent-context'
 import { preferredConversationDefaults } from './agent-model-preference'
 import { ConversationList } from './conversation-list'
 
-export type RightSidebarTab = 'day' | 'agent'
+export type RightSidebarTab = 'day' | 'unscheduled' | 'agent'
 
 const RIGHT_SIDEBAR_TAB_KEY = ['right', 'sidebar', 'tab'].join('-')
-const RIGHT_SIDEBAR_TABS: RightSidebarTab[] = ['day', 'agent']
+const RIGHT_SIDEBAR_TABS: RightSidebarTab[] = ['day', 'unscheduled', 'agent']
 
 interface SidebarTabsProps {
-  children: { day: ReactNode; agent: ReactNode }
+  children: { day: ReactNode; unscheduled: ReactNode; agent: ReactNode }
   defaultTab?: RightSidebarTab
   dayLabel?: string
   agentLabel?: string
@@ -52,10 +52,15 @@ export function SidebarTabs({
   const { enabled: aiEnabled } = useAISettingsContext()
   const agent = useAgentOptional()
   const dayTabLabel = t('agentChat.sidebar.day')
+  const unscheduledTabLabel = t('agentChat.sidebar.unscheduled')
   const agentTabLabel = t('agentChat.sidebar.agent')
-  const resolvedActive = aiEnabled ? active : 'day'
+  const resolvedActive = aiEnabled ? active : active === 'agent' ? 'day' : active
   const activeLabel =
-    resolvedActive === 'day' ? (dayLabel ?? dayTabLabel) : (agentLabel ?? agentTabLabel)
+    resolvedActive === 'day'
+      ? (dayLabel ?? dayTabLabel)
+      : resolvedActive === 'unscheduled'
+        ? unscheduledTabLabel
+        : (agentLabel ?? agentTabLabel)
 
   useEffect(() => {
     try {
@@ -95,6 +100,14 @@ export function SidebarTabs({
           >
             <CalendarDays className="size-4" aria-hidden="true" />
           </SidebarTabButton>
+          <SidebarTabButton
+            active={resolvedActive === 'unscheduled'}
+            dataTour="rsb-unscheduled"
+            label={unscheduledTabLabel}
+            onClick={() => setActive('unscheduled')}
+          >
+            <ListTodo className="size-4" aria-hidden="true" />
+          </SidebarTabButton>
           {aiEnabled && (
             <SidebarTabButton
               active={resolvedActive === 'agent'}
@@ -124,7 +137,7 @@ export function SidebarTabs({
           className="ms-auto flex shrink-0 items-center gap-2"
         >
           <div className="flex h-9 min-w-0 items-center gap-1.5 pt-0.5">
-            {resolvedActive === 'day' ? (
+            {resolvedActive !== 'agent' ? (
               <span className="min-w-0 truncate text-[13px] font-medium tracking-[-0.01em] text-foreground transition-colors duration-150">
                 {activeLabel}
               </span>
@@ -160,7 +173,11 @@ export function SidebarTabs({
         </div>
       </div>
       <div className="min-h-0 flex-1 overflow-hidden">
-        {resolvedActive === 'day' ? children.day : children.agent}
+        {resolvedActive === 'day'
+          ? children.day
+          : resolvedActive === 'unscheduled'
+            ? children.unscheduled
+            : children.agent}
       </div>
     </div>
   )
