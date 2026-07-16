@@ -41,14 +41,13 @@ function renderTabs(
   props: {
     dayLabel?: string
     agentLabel?: string
-    defaultTab?: 'day' | 'unscheduled' | 'agent'
+    defaultTab?: 'day' | 'agent'
   } = {}
 ) {
   return render(
     <SidebarTabs {...props}>
       {{
         day: <div>Day content</div>,
-        unscheduled: <div>Unscheduled content</div>,
         agent: <div>Agent content</div>
       }}
     </SidebarTabs>
@@ -149,35 +148,6 @@ describe('SidebarTabs', () => {
 
     expect(screen.getByText('Agent content')).toBeInTheDocument()
     expect(localStorage.getItem('right-sidebar-tab')).toBe('agent')
-  })
-
-  it('switches to the unscheduled tab and shows its content', async () => {
-    const user = userEvent.setup()
-    renderTabs()
-
-    await user.click(screen.getByRole('tab', { name: 'Unscheduled' }))
-
-    expect(screen.getByText('Unscheduled content')).toBeInTheDocument()
-    expect(screen.queryByText('Day content')).not.toBeInTheDocument()
-    expect(localStorage.getItem('right-sidebar-tab')).toBe('unscheduled')
-  })
-
-  it('keeps the unscheduled tab reachable when AI is disabled', () => {
-    mockUseAISettingsContext.mockReturnValue({
-      enabled: false,
-      isLoading: false,
-      reload: async () => {}
-    })
-    localStorage.setItem('right-sidebar-tab', 'unscheduled')
-
-    renderTabs()
-
-    expect(screen.getByText('Unscheduled content')).toBeInTheDocument()
-    expect(screen.queryByRole('tab', { name: 'Agent' })).not.toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: 'Unscheduled' })).toHaveAttribute(
-      'aria-selected',
-      'true'
-    )
   })
 
   it('falls back the agent tab to day when AI is disabled with a persisted agent tab', () => {
@@ -343,7 +313,6 @@ describe('SidebarTabs', () => {
         <SidebarTabs defaultTab="agent">
           {{
             day: <div>Day content</div>,
-            unscheduled: <div>Unscheduled content</div>,
             agent: <AgentPane />
           }}
         </SidebarTabs>

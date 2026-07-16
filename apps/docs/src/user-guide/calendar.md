@@ -56,13 +56,11 @@ Click an event to open the popover. Edit title, time, and description in place. 
 
 ## Scheduling Tasks by Drag
 
-Tasks can be scheduled and rescheduled by dragging, from three places:
+Tasks can be scheduled and rescheduled by dragging, from two places:
 
 - **A task chip already on the calendar** — drag it to another day (month view) or to a
   new day and time (week / day grid). Events still move and resize as before; this adds
   the same direct manipulation for task chips.
-- **The [Day Panel](/user-guide/day-panel)'s Unscheduled tab** — drag a task that has no
-  due date onto any calendar cell to give it one.
 - **A Tasks tab beside the calendar** in a [split view](/user-guide/tabs-split-view) —
   drag a task row straight onto the calendar.
 
