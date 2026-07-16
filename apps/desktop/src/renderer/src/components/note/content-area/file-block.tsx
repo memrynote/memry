@@ -336,7 +336,7 @@ function PdfPreview({ url, name, width, onResize }: PdfPreviewProps) {
                 onPointerMove={handleResizePointerMove}
                 onPointerUp={handleResizePointerUp}
                 onKeyDown={handleResizeKeyDown}
-                className="absolute bottom-2 end-2 flex h-5 w-5 cursor-ew-resize touch-none items-center justify-center rounded-sm border border-border bg-background/90 text-muted-foreground opacity-0 shadow-sm transition-opacity group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                className="absolute bottom-2 end-2 flex h-5 w-5 cursor-ew-resize touch-none items-center justify-center rounded-sm border border-border bg-background/90 text-muted-foreground opacity-60 shadow-sm transition-opacity hover:opacity-100 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
                 <GripVertical className="h-3 w-3" />
               </div>

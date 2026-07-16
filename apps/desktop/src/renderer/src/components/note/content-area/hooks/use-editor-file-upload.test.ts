@@ -4,12 +4,13 @@ import { isImageFile, useEditorFileUpload } from './use-editor-file-upload'
 
 const mocks = vi.hoisted(() => ({
   uploadAttachment: vi.fn(),
+  getFile: vi.fn(),
   warn: vi.fn(),
   error: vi.fn()
 }))
 
 vi.mock('@/services/notes-service', () => ({
-  notesService: { uploadAttachment: mocks.uploadAttachment }
+  notesService: { uploadAttachment: mocks.uploadAttachment, getFile: mocks.getFile }
 }))
 
 vi.mock('@/lib/logger', () => ({
@@ -182,6 +183,99 @@ describe('useEditorFileUpload', () => {
       stopPropagation: vi.fn()
     } as unknown as React.DragEvent)
 
+    expect(readOnly.editor.insertBlocks).not.toHaveBeenCalled()
+  })
+
+  // A file-type item dragged out of the left sidebar carries our custom mime
+  // (the note id). It is embedded by its own vault path — never re-uploaded.
+  const internalDrop = (id: string) =>
+    ({
+      getData: (mime: string) => (mime === 'application/x-memry-note' ? id : '')
+    }) as unknown as DataTransfer
+
+  it('embeds a dropped sidebar PDF by path without copying to attachments', async () => {
+    mocks.getFile.mockResolvedValue({
+      absolutePath: '/vault/notes/report.pdf',
+      fileType: 'pdf',
+      title: 'report',
+      fileSize: 1234,
+      mimeType: 'application/pdf'
+    })
+    const { result, editor, params } = setup({
+      dropTarget: { blockId: 'target-block', position: 'after' }
+    })
+
+    await act(async () => {
+      await result.current.handleInternalItemDrop(internalDrop('file-id'))
+    })
+
+    expect(mocks.getFile).toHaveBeenCalledWith('file-id')
+    expect(mocks.uploadAttachment).not.toHaveBeenCalled()
+    expect(params.onDragReset).toHaveBeenCalled()
+    expect(editor.insertBlocks).toHaveBeenCalledWith(
+      [
+        {
+          type: 'file',
+          props: {
+            url: 'memry-file://local/vault/notes/report.pdf',
+            name: 'report',
+            size: 1234,
+            mimeType: 'application/pdf'
+          }
+        }
+      ],
+      'target-block',
+      'after'
+    )
+  })
+
+  it('embeds a dropped sidebar image as an image block at the cursor', async () => {
+    mocks.getFile.mockResolvedValue({
+      absolutePath: '/vault/notes/pic.png',
+      fileType: 'image',
+      title: 'pic',
+      fileSize: 50,
+      mimeType: 'image/png'
+    })
+    const { result, editor } = setup()
+
+    await act(async () => {
+      await result.current.handleInternalItemDrop(internalDrop('img-id'))
+    })
+
+    expect(editor.insertBlocks).toHaveBeenCalledWith(
+      [
+        {
+          type: 'image',
+          props: {
+            url: 'memry-file://local/vault/notes/pic.png',
+            caption: 'pic',
+            previewWidth: 600
+          }
+        }
+      ],
+      'cursor-block',
+      'after'
+    )
+  })
+
+  it('ignores an internal drop without the item mime and read-only drops', async () => {
+    const { result, editor } = setup()
+    await result.current.handleInternalItemDrop({ getData: () => '' } as unknown as DataTransfer)
+    expect(mocks.getFile).not.toHaveBeenCalled()
+    expect(editor.insertBlocks).not.toHaveBeenCalled()
+
+    mocks.getFile.mockResolvedValue({
+      absolutePath: '/vault/notes/report.pdf',
+      fileType: 'pdf',
+      title: 'report',
+      fileSize: 1,
+      mimeType: 'application/pdf'
+    })
+    const readOnly = setup({ editable: false })
+    await act(async () => {
+      await readOnly.result.current.handleInternalItemDrop(internalDrop('file-id'))
+    })
     expect(readOnly.editor.insertBlocks).not.toHaveBeenCalled()
   })
 })
