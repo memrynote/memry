@@ -11,7 +11,7 @@ import { getI18n } from 'react-i18next'
  */
 
 import * as React from 'react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   ArrowLeft,
   MoreHorizontal,
@@ -47,12 +47,15 @@ import { Separator } from '@/components/ui/separator'
 import { useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
 import { useTagDetail, type TagSortBy } from '@/hooks/use-tag-detail'
 import { useTaskTagDetail } from '@/hooks/use-task-tag-detail'
+import { useTaskWorkspaceData } from '@/features/tasks/use-task-queries'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { COLOR_NAMES, getTagColors } from '@/components/note/tags-row/tag-colors'
 import { CustomColorSwatch } from '@/components/note/tags-row/CustomColorSwatch'
 import { tagsService, onTagRenamed, onTagDeleted, type TagNoteItem } from '@/services/tags-service'
 import type { Task as ServiceTask } from '@/services/tasks-service'
 import { TaskTagsBadge } from '@/components/tasks/task-badges'
+import { StatusIcon } from '@/components/tasks/status-icon'
+import type { StatusType } from '@/data/tasks-data'
 import type { SidebarItem } from '@/contexts/tabs/types'
 import { createLogger } from '@/lib/logger'
 import { toast } from 'sonner'
@@ -95,6 +98,21 @@ export function TagDetailView({ tag, color, className }: TagDetailViewProps): Re
     isLoading: isTasksLoading,
     refresh: refreshTasks
   } = useTaskTagDetail({ tag })
+
+  // Resolve each task's status via its project, so tagged tasks show the same
+  // status indicator (to do / in progress / done) as the Tasks list rather
+  // than a binary complete/incomplete checkbox. Status ids are unique across
+  // projects, so a flat lookup is enough.
+  const { projects } = useTaskWorkspaceData({})
+  const statusById = useMemo(() => {
+    const map = new Map<string, ResolvedTaskStatus>()
+    for (const project of projects) {
+      for (const status of project.statuses) {
+        map.set(status.id, { type: status.type, color: status.color, name: status.name })
+      }
+    }
+    return map
+  }, [projects])
 
   const [renameOpen, setRenameOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -358,7 +376,12 @@ export function TagDetailView({ tag, color, className }: TagDetailViewProps): Re
               {tPhaseF('phaseF.componentsSidebarTagDetailView.tasks')}
             </div>
             {taggedTasks.map((task) => (
-              <TaskItem key={task.id} task={task} onClick={() => handleTaskClick(task)} />
+              <TaskItem
+                key={task.id}
+                task={task}
+                status={task.statusId ? (statusById.get(task.statusId) ?? null) : null}
+                onClick={() => handleTaskClick(task)}
+              />
             ))}
           </div>
         )}
@@ -404,7 +427,7 @@ function NoteItem({ note, isPinned, onClick, onPin, onUnpin }: NoteItemProps): R
 
   return (
     <div
-      className="group/noteitem flex items-center gap-2 mx-1.5 px-1.5 py-1 rounded-md hover:bg-accent/50 cursor-pointer"
+      className="group/noteitem flex items-center gap-2 mx-1.5 px-1.5 py-1 rounded-md transition-colors hover:bg-muted cursor-pointer"
       role="button"
       tabIndex={0}
       onClick={onClick}
@@ -467,18 +490,29 @@ function NoteItem({ note, isPinned, onClick, onPin, onUnpin }: NoteItemProps): R
   )
 }
 
+interface ResolvedTaskStatus {
+  type: StatusType
+  color: string
+  name: string
+}
+
 interface TaskItemProps {
   task: ServiceTask
+  status: ResolvedTaskStatus | null
   onClick: () => void
 }
 
-function TaskItem({ task, onClick }: TaskItemProps): React.JSX.Element {
+function TaskItem({ task, status, onClick }: TaskItemProps): React.JSX.Element {
   const isCompleted = !!task.completedAt
   const tags = task.tags ?? []
+  // Mirror the Tasks list: a completed task always reads as "done" regardless
+  // of its stored status; otherwise fall back to "todo" when unresolved.
+  const statusType: StatusType = isCompleted ? 'done' : (status?.type ?? 'todo')
+  const statusColor = status?.color ?? 'var(--text-tertiary)'
 
   return (
     <div
-      className="flex items-center gap-2 mx-1.5 px-1.5 py-1 rounded-md hover:bg-accent/50 cursor-pointer"
+      className="flex items-center gap-2 mx-1.5 px-1.5 py-1 rounded-md transition-colors hover:bg-muted cursor-pointer"
       role="button"
       tabIndex={0}
       onClick={onClick}
@@ -489,11 +523,12 @@ function TaskItem({ task, onClick }: TaskItemProps): React.JSX.Element {
         }
       }}
     >
-      {/* Icon */}
-      <span className="shrink-0 flex w-4 items-center justify-center">
-        <CheckSquare3
-          className={cn('h-3.5 w-3.5', isCompleted ? 'text-primary' : 'text-muted-foreground/70')}
-        />
+      {/* Status icon — same indicator the Tasks list uses */}
+      <span
+        className="shrink-0 flex w-4 items-center justify-center"
+        title={status?.name || undefined}
+      >
+        <StatusIcon type={statusType} color={statusColor} size="md" />
       </span>
 
       {/* Title */}
@@ -506,7 +541,9 @@ function TaskItem({ task, onClick }: TaskItemProps): React.JSX.Element {
         {task.title}
       </span>
 
-      {tags.length > 0 && <TaskTagsBadge tags={tags} maxVisible={2} className="ms-auto shrink-0" />}
+      {tags.length > 0 && (
+        <TaskTagsBadge tags={tags} maxVisible={2} size="sm" className="ms-auto shrink-0" />
+      )}
     </div>
   )
 }

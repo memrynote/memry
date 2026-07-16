@@ -363,12 +363,14 @@ interface TaskTagsBadgeProps {
   tags: string[]
   maxVisible?: number
   className?: string
+  size?: 'sm' | 'md'
 }
 
 export const TaskTagsBadge = ({
   tags,
   maxVisible = DEFAULT_MAX_VISIBLE_TAGS,
-  className
+  className,
+  size = 'md'
 }: TaskTagsBadgeProps): React.JSX.Element | null => {
   const { tags: tagDefs } = useNoteTagsQuery({ enabled: tags.length > 0 })
 
@@ -396,10 +398,17 @@ export const TaskTagsBadge = ({
   return (
     <ul className={cn('flex items-center gap-1.5 flex-wrap list-none p-0 m-0', className)}>
       {visible.map((tag) => (
-        <TagChip key={tag.id} tag={tag} />
+        <TagChip key={tag.id} tag={tag} size={size} />
       ))}
       {overflowCount > 0 && (
-        <li className="text-xs text-text-tertiary tabular-nums">+{overflowCount}</li>
+        <li
+          className={cn(
+            'text-text-tertiary tabular-nums',
+            size === 'sm' ? 'text-[11px]' : 'text-xs'
+          )}
+        >
+          +{overflowCount}
+        </li>
       )}
     </ul>
   )

@@ -473,7 +473,7 @@ export function InboxListItem({
         'transition-[background-color,opacity] duration-150 ease-out',
         'cursor-pointer',
         isExiting && 'item-removing',
-        'hover:bg-muted/50 active:bg-muted/70',
+        'hover:bg-muted active:bg-muted/70',
         isSelected && [
           'bg-[var(--user-accent-color)]/[0.04]',
           'hover:bg-[var(--user-accent-color)]/[0.06]',

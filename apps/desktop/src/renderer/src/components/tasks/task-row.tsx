@@ -127,7 +127,7 @@ export const TaskRow = ({
       onKeyDown={onClick ? handleRowKeyDown : undefined}
       className={cn(
         'group flex items-center py-[7px] px-6 gap-3 transition-colors',
-        'rounded-md hover:bg-accent/60',
+        'rounded-md hover:bg-muted',
         onClick && 'cursor-pointer focus-visible:outline-none',
         isCheckedForSelection && 'bg-primary/10 hover:bg-primary/15',
         isSelected && !isCheckedForSelection && 'bg-primary/10 ring-1 ring-inset ring-primary/30',
