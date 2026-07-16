@@ -223,6 +223,7 @@ function AddTaskModalSession({
     <DialogContent
       className="max-w-lg p-0 gap-0 grid-rows-[auto_1fr_auto] max-h-[85vh] overflow-hidden bg-surface [font-synthesis:none]"
       onKeyDown={handleKeyDown}
+      aria-describedby={undefined}
     >
       {/* ── Header ── */}
       <div className="flex items-center shrink-0 py-3.5 ps-5 pe-10 border-b border-border">
