@@ -1,9 +1,19 @@
 /**
- * Inline text color persistence.
+ * Inline style persistence for styles markdown cannot express.
  *
  * BlockNote's markdown pipeline drops inline `styles.textColor` /
- * `styles.backgroundColor` in both directions, so colored selections are
- * persisted as Obsidian-compatible raw HTML: `<span style="color:red">…</span>`.
+ * `styles.backgroundColor` / `styles.underline` in both directions (markdown
+ * has no underline syntax at all), so those selections are persisted as
+ * Obsidian-compatible raw HTML: `<span style="color:red">…</span>`,
+ * `<span style="text-decoration:underline">…</span>`. Bold/italic/strike are
+ * left alone — markdown carries those natively.
+ *
+ * Colors and underline are emitted as SEPARATE nested spans, never merged into
+ * one style attribute. A released client rejects an entire span whose style
+ * holds any decl it does not know, so merging underline into the color span
+ * would make older installs drop the color as well and persist that loss.
+ * Nested, an old client simply ignores the underline span and keeps the color.
+ * The parse side stays tolerant and still reads a merged span if it meets one.
  *
  * Markdown serializers escape literal `<span>` text inside runs, so both
  * directions go through markdown-inert alphanumeric tokens instead:
@@ -21,6 +31,7 @@
 export interface InlineColorStyles {
   textColor?: string
   backgroundColor?: string
+  underline?: boolean
 }
 
 interface StyledText {
@@ -45,6 +56,16 @@ interface BlockNode {
 interface TableContent {
   type: 'tableContent'
   rows: Array<{ cells: unknown[] }>
+}
+
+// A table cell is a bare `InlineNode[]` in the legacy shape and a
+// `{ type: 'tableCell', content: InlineNode[] }` object in BlockNote 0.47+.
+// Both shapes must be walked: a cell we fail to recognize on the parse side
+// keeps its masking tokens and writes them into the vault as literal text.
+function cellInlineContent(cell: unknown): InlineNode[] | null {
+  if (Array.isArray(cell)) return cell as InlineNode[]
+  const content = (cell as { content?: unknown } | null)?.content
+  return Array.isArray(content) ? (content as InlineNode[]) : null
 }
 
 const openToken = (index: number): string => `MEMRYICO${index}:`
@@ -75,6 +96,13 @@ function buildSpanOpen(colors: InlineColorStyles): string {
   return `<span style="${decls.join(';')}">`
 }
 
+// Underline is emitted as its OWN nested span, never merged into the color span.
+// Released clients reject a whole span whose style carries any decl they do not
+// know (parseColorDecls -> `else return null`), so merging would make them drop
+// the color too and write the loss back to the vault. As a separate span the
+// worst an old client does is ignore the underline and keep the color.
+const UNDERLINE_SPAN_OPEN = '<span style="text-decoration:underline">'
+
 // ---------------------------------------------------------------------------
 // Serialize side
 // ---------------------------------------------------------------------------
@@ -89,15 +117,41 @@ export function extractInlineColorRuns(blocks: BlockNode[]): {
   const wrapInline = (items: InlineNode[]): InlineNode[] => {
     let changed = false
     const out: InlineNode[] = []
-    // Consecutive runs with identical colors share one span so a parse that
+    // Consecutive runs with identical styles share one span so a parse that
     // split e.g. `**bold** plain` into two runs re-serializes byte-identical.
+    // Colors and underline are two independent layers — color span outside,
+    // underline span nested inside — so neither can contaminate the other's
+    // style attribute. Closing always runs inner-first to keep the tags nested.
     let openColors: InlineColorStyles | null = null
+    let openUnderline = false
+
+    const pushToken = (text: string): void => {
+      out.push({ type: 'text', text, styles: {} })
+    }
+
+    const openSpan = (html: string): void => {
+      const open = openToken(index++)
+      replacements.set(open, html)
+      replacements.set(CLOSE_TOKEN, '</span>')
+      pushToken(open)
+    }
+
+    const closeUnderline = (): void => {
+      if (!openUnderline) return
+      pushToken(CLOSE_TOKEN)
+      openUnderline = false
+    }
 
     const closeGroup = (): void => {
+      closeUnderline()
       if (!openColors) return
-      out.push({ type: 'text', text: CLOSE_TOKEN, styles: {} })
+      pushToken(CLOSE_TOKEN)
       openColors = null
     }
+
+    const sameColors = (a: InlineColorStyles | null, b: InlineColorStyles | null): boolean =>
+      a === b ||
+      (!!a && !!b && a.textColor === b.textColor && a.backgroundColor === b.backgroundColor)
 
     for (const item of items) {
       if (Array.isArray(item.content)) {
@@ -111,37 +165,46 @@ export function extractInlineColorRuns(blocks: BlockNode[]): {
         }
         continue
       }
-      const styles = item.styles
+      const styled =
+        typeof item.text === 'string' && item.text.length > 0 && item.styles ? item.styles : null
+      const picked = styled ? pickColorStyles(styled) : null
+      // An unsafe color value drops only the color span — underline is a
+      // hardcoded literal, so it still round-trips on the same run.
       const colors =
-        typeof item.text === 'string' && item.text.length > 0 && styles
-          ? pickColorStyles(styles)
+        picked &&
+        (!picked.textColor || isSafeColorValue(picked.textColor)) &&
+        (!picked.backgroundColor || isSafeColorValue(picked.backgroundColor))
+          ? picked
           : null
-      if (
-        !colors ||
-        (colors.textColor && !isSafeColorValue(colors.textColor)) ||
-        (colors.backgroundColor && !isSafeColorValue(colors.backgroundColor))
-      ) {
+      const underline = styled?.underline === true
+
+      if (!colors && !underline) {
         closeGroup()
         out.push(item)
         continue
       }
-      if (
-        !openColors ||
-        openColors.textColor !== colors.textColor ||
-        openColors.backgroundColor !== colors.backgroundColor
-      ) {
+
+      if (!sameColors(openColors, colors)) {
         closeGroup()
-        const open = openToken(index++)
-        replacements.set(open, buildSpanOpen(colors))
-        replacements.set(CLOSE_TOKEN, '</span>')
-        out.push({ type: 'text', text: open, styles: {} })
-        openColors = colors
+        if (colors) {
+          openSpan(buildSpanOpen(colors))
+          openColors = colors
+        }
+      }
+      if (underline !== openUnderline) {
+        if (underline) {
+          openSpan(UNDERLINE_SPAN_OPEN)
+          openUnderline = true
+        } else {
+          closeUnderline()
+        }
       }
       const {
         textColor: _t,
         backgroundColor: _b,
+        underline: _u,
         ...rest
-      } = styles as InlineColorStyles & Record<string, unknown>
+      } = styled as InlineColorStyles & Record<string, unknown>
       out.push({ ...item, styles: rest })
       changed = true
     }
@@ -153,10 +216,12 @@ export function extractInlineColorRuns(blocks: BlockNode[]): {
     let changed = false
     const rows = content.rows.map((row) => {
       const cells = row.cells.map((cell) => {
-        if (!Array.isArray(cell)) return cell
-        const wrapped = wrapInline(cell as InlineNode[])
-        if (wrapped !== cell) changed = true
-        return wrapped
+        const inline = cellInlineContent(cell)
+        if (!inline) return cell
+        const wrapped = wrapInline(inline)
+        if (wrapped === inline) return cell
+        changed = true
+        return Array.isArray(cell) ? wrapped : { ...(cell as object), content: wrapped }
       })
       return { ...row, cells }
     })
@@ -167,6 +232,10 @@ export function extractInlineColorRuns(blocks: BlockNode[]): {
     let changed = false
     const out = input.map((block) => {
       let next = block
+      // Code content is literal. Wrapping it would write span html inside the
+      // fence, and the parse side deliberately skips fences — so it could never
+      // be unmasked and would corrupt the user's code permanently.
+      if (block.type === 'codeBlock') return block
       if (Array.isArray(block.content)) {
         const content = wrapInline(block.content as InlineNode[])
         if (content !== block.content) next = { ...next, content }
@@ -224,9 +293,15 @@ function parseColorDecls(style: string): InlineColorStyles | null {
     if (!isSafeColorValue(value)) return null
     if (prop === 'color') colors.textColor = value
     else if (prop === 'background-color') colors.backgroundColor = value
-    else return null
+    // CSS keywords are case-insensitive, so `Underline` from a hand-authored
+    // vault file is the same decoration. A span we reject here is NOT preserved:
+    // BlockNote strips unknown inline html, so its styling is dropped on the
+    // next save. Recognize what we can, and keep the accepted set narrow.
+    else if (prop === 'text-decoration' && value.toLowerCase() === 'underline') {
+      colors.underline = true
+    } else return null
   }
-  return colors.textColor || colors.backgroundColor ? colors : null
+  return colors.textColor || colors.backgroundColor || colors.underline ? colors : null
 }
 
 export function maskInlineColorSpans(markdown: string): {
@@ -344,9 +419,12 @@ export function applyInlineColorTokens(blocks: BlockNode[], spans: MaskedColorSp
     ...content,
     rows: content.rows.map((row) => ({
       ...row,
-      cells: row.cells.map((cell) =>
-        Array.isArray(cell) ? applyInline(cell as InlineNode[], []) : cell
-      )
+      cells: row.cells.map((cell) => {
+        const inline = cellInlineContent(cell)
+        if (!inline) return cell
+        const applied = applyInline(inline, [])
+        return Array.isArray(cell) ? applied : { ...(cell as object), content: applied }
+      })
     }))
   })
 

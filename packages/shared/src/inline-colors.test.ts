@@ -57,6 +57,153 @@ describe('extractInlineColorRuns / restoreInlineColorTokens (serialize side)', (
     expect(restored).toBe('<span style="color:blue;background-color:yellow">x</span>')
   })
 
+  it('wraps underlined runs and emits a text-decoration decl', () => {
+    const blocks = [
+      {
+        type: 'paragraph',
+        props: {},
+        content: [
+          { type: 'text', text: 'keep ', styles: {} },
+          { type: 'text', text: 'under', styles: { underline: true } }
+        ],
+        children: []
+      }
+    ]
+
+    const { blocks: wrapped, replacements } = extractInlineColorRuns(blocks)
+    const content = (wrapped[0] as { content: Array<{ text: string; styles: object }> }).content
+    expect(content[2]).toEqual({ type: 'text', text: 'under', styles: {} })
+
+    const restored = restoreInlineColorTokens(content.map((c) => c.text).join(''), replacements)
+    expect(restored).toBe('keep <span style="text-decoration:underline">under</span>')
+  })
+
+  it('nests underline in its own span instead of merging it into the color span', () => {
+    const blocks = [
+      {
+        type: 'paragraph',
+        props: {},
+        content: [
+          { type: 'text', text: 'x', styles: { bold: true, textColor: 'red', underline: true } }
+        ],
+        children: []
+      }
+    ]
+
+    const { blocks: wrapped, replacements } = extractInlineColorRuns(blocks)
+    const content = (wrapped[0] as { content: Array<{ text: string; styles: object }> }).content
+    // bold stays on the run (markdown carries it); color and underline move out
+    expect(content[2].styles).toEqual({ bold: true })
+
+    const restored = restoreInlineColorTokens(content.map((c) => c.text).join(''), replacements)
+    // Merging these into one style attribute would make already-released clients
+    // reject the whole span and drop the color.
+    expect(restored).toBe(
+      '<span style="color:red"><span style="text-decoration:underline">x</span></span>'
+    )
+  })
+
+  it('keeps one color span while opening a nested span only for the underlined run', () => {
+    const blocks = [
+      {
+        type: 'paragraph',
+        props: {},
+        content: [
+          { type: 'text', text: 'AAA', styles: { textColor: 'red', underline: true } },
+          { type: 'text', text: 'BBB', styles: { textColor: 'red' } }
+        ],
+        children: []
+      }
+    ]
+
+    const { blocks: wrapped, replacements } = extractInlineColorRuns(blocks)
+    const content = (wrapped[0] as { content: Array<{ text: string }> }).content
+    const restored = restoreInlineColorTokens(content.map((c) => c.text).join(''), replacements)
+    // BBB must not be swallowed into AAA's underline span
+    expect(restored).toBe(
+      '<span style="color:red"><span style="text-decoration:underline">AAA</span>BBB</span>'
+    )
+  })
+
+  it('still emits underline when a color value is unsafe', () => {
+    const blocks = [
+      {
+        type: 'paragraph',
+        props: {},
+        content: [{ type: 'text', text: 'x', styles: { textColor: 'red;evil', underline: true } }],
+        children: []
+      }
+    ]
+
+    const { blocks: wrapped, replacements } = extractInlineColorRuns(blocks)
+    const content = (wrapped[0] as { content: Array<{ text: string }> }).content
+    const restored = restoreInlineColorTokens(content.map((c) => c.text).join(''), replacements)
+    expect(restored).toBe('<span style="text-decoration:underline">x</span>')
+  })
+
+  it('leaves code block content unwrapped', () => {
+    const blocks = [
+      {
+        type: 'codeBlock',
+        props: { language: 'js' },
+        content: [{ type: 'text', text: 'const a = 1', styles: { underline: true } }],
+        children: []
+      }
+    ]
+
+    const { blocks: wrapped, replacements } = extractInlineColorRuns(blocks)
+    // the fence is literal; the parse side skips fences so a span here is forever
+    expect(replacements.size).toBe(0)
+    expect(wrapped[0]).toBe(blocks[0])
+  })
+
+  it('wraps runs inside BlockNote 0.47 tableCell objects', () => {
+    const blocks = [
+      {
+        type: 'table',
+        props: {},
+        content: {
+          type: 'tableContent',
+          rows: [
+            {
+              cells: [
+                {
+                  type: 'tableCell',
+                  props: {},
+                  content: [{ type: 'text', text: 'u', styles: { underline: true } }]
+                }
+              ]
+            }
+          ]
+        },
+        children: []
+      }
+    ]
+
+    const { blocks: wrapped } = extractInlineColorRuns(blocks as never)
+    const cell = (
+      wrapped[0] as unknown as {
+        content: { rows: Array<{ cells: Array<{ content: unknown[] }> }> }
+      }
+    ).content.rows[0].cells[0]
+    expect(cell.content).toHaveLength(3)
+  })
+
+  it('ignores underline:false and leaves untouched blocks referentially intact', () => {
+    const blocks = [
+      {
+        type: 'paragraph',
+        props: {},
+        content: [{ type: 'text', text: 'plain', styles: { underline: false } }],
+        children: []
+      }
+    ]
+
+    const { blocks: wrapped, replacements } = extractInlineColorRuns(blocks)
+    expect(replacements.size).toBe(0)
+    expect(wrapped[0]).toBe(blocks[0])
+  })
+
   it('ignores default colors and leaves untouched blocks referentially intact', () => {
     const blocks = [
       {
@@ -158,6 +305,91 @@ describe('maskInlineColorSpans / applyInlineColorTokens (parse side)', () => {
       { type: 'text', text: 'bold', styles: { bold: true, textColor: 'red' } },
       { type: 'text', text: ' plain', styles: { textColor: 'red' } }
     ])
+  })
+
+  it('masks an underline span and applies underline to parsed runs', () => {
+    const { text, spans } = maskInlineColorSpans(
+      'keep <span style="text-decoration:underline">under</span> tail'
+    )
+    expect(text).not.toContain('<span')
+    expect(spans).toHaveLength(1)
+    expect(spans[0].styles).toEqual({ underline: true })
+
+    const parsed = [
+      {
+        type: 'paragraph',
+        props: {},
+        content: [{ type: 'text', text, styles: {} }],
+        children: []
+      }
+    ]
+    const applied = applyInlineColorTokens(parsed, spans)
+    expect((applied[0] as { content: unknown[] }).content).toEqual([
+      { type: 'text', text: 'keep ', styles: {} },
+      { type: 'text', text: 'under', styles: { underline: true } },
+      { type: 'text', text: ' tail', styles: {} }
+    ])
+  })
+
+  it('parses combined color and underline decls in any order', () => {
+    const { spans } = maskInlineColorSpans(
+      '<span style="text-decoration: underline; color: blue">x</span>'
+    )
+    expect(spans[0].styles).toEqual({ textColor: 'blue', underline: true })
+  })
+
+  it('reads underline case-insensitively, the way CSS defines it', () => {
+    const { spans } = maskInlineColorSpans('<span style="text-decoration: Underline">x</span>')
+    expect(spans[0].styles).toEqual({ underline: true })
+  })
+
+  it('merges nested color and underline spans back onto one run', () => {
+    const { text, spans } = maskInlineColorSpans(
+      '<span style="color:red"><span style="text-decoration:underline">x</span></span>'
+    )
+    const parsed = [
+      { type: 'paragraph', props: {}, content: [{ type: 'text', text, styles: {} }], children: [] }
+    ]
+    const applied = applyInlineColorTokens(parsed, spans)
+    expect((applied[0] as { content: unknown[] }).content).toEqual([
+      { type: 'text', text: 'x', styles: { textColor: 'red', underline: true } }
+    ])
+  })
+
+  it('unmasks tokens inside BlockNote 0.47 tableCell objects', () => {
+    const { text, spans } = maskInlineColorSpans('<span style="text-decoration:underline">u</span>')
+    const parsed = [
+      {
+        type: 'table',
+        props: {},
+        content: {
+          type: 'tableContent',
+          rows: [
+            {
+              cells: [
+                { type: 'tableCell', props: {}, content: [{ type: 'text', text, styles: {} }] }
+              ]
+            }
+          ]
+        },
+        children: []
+      }
+    ]
+    const applied = applyInlineColorTokens(parsed as never, spans)
+    const cell = (
+      applied[0] as unknown as {
+        content: { rows: Array<{ cells: Array<{ content: unknown[] }> }> }
+      }
+    ).content.rows[0].cells[0]
+    // an unrecognized cell shape would leave MEMRYICO… tokens in the vault file
+    expect(cell.content).toEqual([{ type: 'text', text: 'u', styles: { underline: true } }])
+  })
+
+  it('does not mask text-decoration values other than underline', () => {
+    const md = '<span style="text-decoration:line-through">a</span>'
+    const { text, spans } = maskInlineColorSpans(md)
+    expect(text).toBe(md)
+    expect(spans).toHaveLength(0)
   })
 
   it('leaves spans inside fenced code blocks and inline code untouched', () => {
