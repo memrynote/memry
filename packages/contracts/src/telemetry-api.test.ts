@@ -4,7 +4,10 @@ import {
   LandingTelemetryBatchSchema,
   TelemetryBatchSchema,
   TelemetryEventNameSchema,
-  TelemetryEventSchema
+  TelemetryEventSchema,
+  buildErrorDetail,
+  normalizeRejectionReason,
+  toErrorCode
 } from './telemetry-api'
 
 const VALID_INSTALL_ID = '550e8400-e29b-41d4-a716-446655440000'
@@ -541,5 +544,236 @@ describe('LandingTelemetryBatchSchema', () => {
       events: Array.from({ length: 21 }, () => baseLandingBatch.events[0])
     })
     expect(oversize.success).toBe(false)
+  })
+})
+
+describe('toErrorCode', () => {
+  it('prefers a typed code over the class name for NoteError-shaped errors', () => {
+    // #given a NoteError carrying one of the 7 typed NoteErrorCode values
+    const error = Object.assign(new Error('could not write /Users/kaan/note.md'), {
+      name: 'NoteError',
+      code: 'NOTE_WRITE_FAILED'
+    })
+
+    // #then the typed code survives instead of collapsing to "NoteError"
+    expect(toErrorCode(error)).toBe('NOTE_WRITE_FAILED')
+  })
+
+  it('prefers better-sqlite3 SQLITE_* codes over the SqliteError class name', () => {
+    // #given a better-sqlite3-shaped error (code lives on error.code)
+    const error = Object.assign(new Error('database is locked'), {
+      name: 'SqliteError',
+      code: 'SQLITE_BUSY'
+    })
+
+    // #then we can tell a locked file from a disk-full
+    expect(toErrorCode(error)).toBe('SQLITE_BUSY')
+  })
+
+  it('falls back to the class name when there is no typed code', () => {
+    expect(toErrorCode(new TypeError('boom'))).toBe('TypeError')
+  })
+
+  it('falls back to the class name when the code is not a usable string', () => {
+    // #given errors whose code is absent, empty, or a non-string
+    const numeric = Object.assign(new Error('boom'), { name: 'SystemError', code: -4058 })
+    const empty = Object.assign(new Error('boom'), { name: 'SystemError', code: '' })
+
+    // #then the class name is used rather than a meaningless token
+    expect(toErrorCode(numeric)).toBe('SystemError')
+    expect(toErrorCode(empty)).toBe('SystemError')
+  })
+
+  it('never leaks a path/email/url through a code (safe-token invariants hold)', () => {
+    // #given hostile "codes" that would leak private data if trusted verbatim
+    const cases: Array<[unknown, string]> = [
+      [
+        Object.assign(new Error('x'), { name: 'NoteError', code: '/Users/kaan/secret.md' }),
+        'NoteError'
+      ],
+      [
+        Object.assign(new Error('x'), { name: 'NoteError', code: 'C:\\Users\\kaan\\a.md' }),
+        'NoteError'
+      ],
+      [
+        Object.assign(new Error('x'), { name: 'AuthError', code: 'kaan@memrynote.com' }),
+        'AuthError'
+      ],
+      [
+        Object.assign(new Error('x'), { name: 'HttpError', code: 'https://api.memrynote.com/x' }),
+        'HttpError'
+      ],
+      // a 200-char "code" is prose, not a code: reject it rather than truncate
+      [Object.assign(new Error('x'), { name: 'LongError', code: 'A'.repeat(200) }), 'LongError']
+    ]
+
+    // #then every code path stays inside the safe-token rules
+    for (const [error, expected] of cases) {
+      const code = toErrorCode(error)
+      expect(code).toBe(expected)
+      expect(code).not.toContain('@')
+      expect(code).not.toContain('://')
+      expect(code).not.toContain('/')
+      expect(code).not.toContain('\\')
+      expect(code.length).toBeLessThanOrEqual(64)
+    }
+  })
+
+  it('keeps the existing non-Error behaviour', () => {
+    expect(toErrorCode('boom')).toBe('StringError')
+    expect(toErrorCode(undefined)).toBe('UnknownError')
+    expect(toErrorCode({ constructor: { name: 'PlainThing' } })).toBe('PlainThing')
+  })
+
+  it('walks the cause chain: an undici fetch failure surfaces the nested code', () => {
+    // #given undici raises `TypeError: fetch failed` with the real code on .cause,
+    // so reading only the top-level code reports a useless "TypeError"
+    const refused = Object.assign(new TypeError('fetch failed'), {
+      cause: Object.assign(new Error('connect ECONNREFUSED 127.0.0.1:11434'), {
+        code: 'ECONNREFUSED'
+      })
+    })
+
+    // #then the nested code wins over the top-level class name
+    expect(toErrorCode(refused)).toBe('ECONNREFUSED')
+  })
+
+  it('walks AggregateError.errors for dual-stack localhost failures', () => {
+    // #given a dual-stack localhost connect: undici nests an AggregateError
+    const aggregate = Object.assign(new TypeError('fetch failed'), {
+      cause: Object.assign(new AggregateError([], 'all attempts failed'), {
+        errors: [
+          Object.assign(new Error('connect ECONNREFUSED ::1:11434'), { code: 'ECONNREFUSED' }),
+          Object.assign(new Error('connect ECONNREFUSED 127.0.0.1:11434'), { code: 'ECONNREFUSED' })
+        ]
+      })
+    })
+
+    expect(toErrorCode(aggregate)).toBe('ECONNREFUSED')
+  })
+
+  it('surfaces a nested ENOTFOUND (a real misconfiguration), not TypeError', () => {
+    const dns = Object.assign(new TypeError('fetch failed'), {
+      cause: Object.assign(new Error('getaddrinfo ENOTFOUND ollama.local'), { code: 'ENOTFOUND' })
+    })
+
+    expect(toErrorCode(dns)).toBe('ENOTFOUND')
+  })
+
+  it('prefers a richer telemetryCode (code + errno) over the bare code', () => {
+    // #given a NoteError-shaped error exposing telemetryCode = code:errno
+    const error = Object.assign(new Error('failed to write /Users/kaan/note.md'), {
+      name: 'NoteError',
+      code: 'NOTE_WRITE_FAILED',
+      telemetryCode: 'NOTE_WRITE_FAILED:EBUSY'
+    })
+
+    // #then the errno-enriched code survives so EBUSY (locked) != ENOSPC (disk-full)
+    expect(toErrorCode(error)).toBe('NOTE_WRITE_FAILED:EBUSY')
+  })
+
+  it('stops walking the cause chain at a bounded depth', () => {
+    // #given a cause chain far deeper than the walker's bound
+    let deepest: unknown = Object.assign(new Error('root'), { code: 'ECONNREFUSED' })
+    for (let i = 0; i < 8; i++) {
+      deepest = Object.assign(new TypeError('fetch failed'), { cause: deepest })
+    }
+
+    // #then it does not chase forever — falls back to the class name
+    expect(toErrorCode(deepest)).toBe('TypeError')
+  })
+
+  it('never leaks a path through a nested cause code', () => {
+    // #given a nested cause whose "code" is really a path
+    const error = Object.assign(new TypeError('fetch failed'), {
+      cause: Object.assign(new Error('x'), { code: '/Users/kaan/secret.md' })
+    })
+
+    // #then the hostile nested code is rejected, and no path fragment ships
+    const code = toErrorCode(error)
+    expect(code).toBe('TypeError')
+    expect(code).not.toContain('/')
+    expect(code).not.toContain('secret')
+  })
+})
+
+describe('normalizeRejectionReason', () => {
+  it('passes through a real Error that already has stack frames', () => {
+    // #given a normal rejection
+    const error = new Error('boom')
+
+    // #then it is used as-is (its own stack is the actionable one)
+    expect(normalizeRejectionReason(error)).toBe(error)
+  })
+
+  it('adopts the stack of a cross-realm error that fails instanceof Error', () => {
+    // #given an error from another realm: constructor says Error, instanceof fails
+    const crossRealm = {
+      name: 'Error',
+      message: 'private note /Users/kaan/secret.md failed',
+      stack:
+        'Error: private note /Users/kaan/secret.md failed\n    at doThing (/app/out/main.js:1:1)'
+    }
+
+    // #when normalizing the reason
+    const normalized = normalizeRejectionReason(crossRealm)
+
+    // #then a real Error carrying the original frames comes back
+    expect(normalized).toBeInstanceOf(Error)
+    expect(buildErrorDetail(normalized)?.stack).toContain('at doThing')
+    // #and the message never rides along
+    expect(JSON.stringify(buildErrorDetail(normalized))).not.toContain('secret.md')
+  })
+
+  it('synthesizes a stack and names the reason type for a non-Error reason', () => {
+    // #given a rejection whose reason is a bare string (no stack at all)
+    const normalized = normalizeRejectionReason('everything is on fire')
+
+    // #then something actionable is captured: a real stack + the reason's type
+    expect(normalized).toBeInstanceOf(Error)
+    expect(normalized.name).toBe('Rejection_string')
+    expect(buildErrorDetail(normalized)?.stack).toContain('at ')
+    // #and the reason's value is never shipped
+    expect(normalized.message).toBe('')
+    expect(JSON.stringify(buildErrorDetail(normalized))).not.toContain('on fire')
+  })
+
+  it('names the constructor for a plain-object reason', () => {
+    class Boom {}
+    expect(normalizeRejectionReason(new Boom()).name).toBe('Rejection_Boom')
+    expect(normalizeRejectionReason({ a: 1 }).name).toBe('Rejection_Object')
+  })
+
+  it('names null/undefined reasons instead of dropping them', () => {
+    expect(normalizeRejectionReason(null).name).toBe('Rejection_null')
+    expect(normalizeRejectionReason(undefined).name).toBe('Rejection_undefined')
+  })
+
+  it('does not adopt a reason name that is not an enum-ish token', () => {
+    // #given an error-shaped reason whose own .name is really a path — running it
+    // through toSafeToken would character-substitute it (_Users_kaan_secret.md)
+    // and still leak the structure
+    const reason = {
+      name: '/Users/kaan/secret.md',
+      stack: 'boom\n    at doThing (/app/out/main.js:1:1)'
+    }
+
+    // #then the path-shaped name is rejected outright; the synthesized Rejection_*
+    // name is kept and no path fragment rides along in the code
+    const normalized = normalizeRejectionReason(reason)
+    expect(normalized.name).toBe('Rejection_Object')
+    expect(toErrorCode(normalized)).not.toContain('secret')
+    expect(toErrorCode(normalized)).not.toContain('/')
+  })
+
+  it('produces codes that satisfy the safe-token invariants', () => {
+    for (const reason of ['x', 42, null, undefined, { a: 1 }, Symbol('s')]) {
+      const code = toErrorCode(normalizeRejectionReason(reason))
+      expect(code).not.toContain('@')
+      expect(code).not.toContain('://')
+      expect(code).not.toContain('/')
+      expect(code).not.toContain('\\')
+      expect(code.length).toBeLessThanOrEqual(64)
+    }
   })
 })

@@ -6,6 +6,7 @@ import { startChatServer, stopChatServer, getServerPort } from '../ai-inline/ai-
 import { getDatabase } from '../database'
 import { createLogger } from '../lib/logger'
 import { getSetting, setSetting } from '../settings/settings-store'
+import { isConnectionRefusedError, markExpectedCondition } from '../telemetry/expected-conditions'
 import { withErrorHandler } from './validate'
 
 const logger = createLogger('IPC:AIInline')
@@ -97,7 +98,17 @@ export function registerAIInlineHandlers(): void {
     withErrorHandler(async () => {
       const { baseUrl } = readSettings()
       const url = `${(baseUrl || 'http://localhost:11434/v1').replace(/\/$/, '')}/models`
-      const res = await fetch(url)
+      let res: Response
+      try {
+        res = await fetch(url)
+      } catch (error) {
+        // Nothing listening on the port = Ollama is simply not running. That is
+        // a normal state, not a fault: the UI still shows the failure, but it
+        // must not be reported as an error. Any other failure (DNS, reset, a
+        // bad status below) is a real misconfiguration and still reports.
+        if (isConnectionRefusedError(error)) markExpectedCondition(error)
+        throw error
+      }
       if (!res.ok) throw new Error(`Ollama responded ${res.status}`)
       const json = (await res.json()) as { data?: Array<{ id?: string }> }
       const models = (json.data ?? []).map((m) => m.id).filter((id): id is string => Boolean(id))

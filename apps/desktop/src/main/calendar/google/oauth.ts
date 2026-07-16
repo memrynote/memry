@@ -3,6 +3,7 @@ import { createHash, randomBytes } from 'node:crypto'
 import { shell } from 'electron'
 import { z } from 'zod'
 import { createLogger } from '../../lib/logger'
+import { markExpectedCondition } from '../../telemetry/expected-conditions'
 import type { DataDb } from '../../database/types'
 import { listCalendarSources } from '../repositories/calendar-sources-repository'
 import {
@@ -348,7 +349,9 @@ export async function connectGoogleCalendar(): Promise<GoogleCalendarConnection>
     activeTimeout = setTimeout(() => {
       sessions.delete(state)
       shutdownLoopbackServer()
-      settle(reject, new Error('Google Calendar OAuth timed out'))
+      // The user opened the consent screen and walked away. Normal state, not a
+      // fault: the UI still reports it, telemetry does not.
+      settle(reject, markExpectedCondition(new Error('Google Calendar OAuth timed out')))
     }, OAUTH_TIMEOUT_MS)
 
     server.on('request', (req, res) => {

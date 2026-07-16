@@ -1,35 +1,14 @@
 import type { TelemetryResult } from '@memry/contracts/telemetry-api'
-import { buildErrorDetail } from '@memry/contracts/telemetry-api'
+import {
+  buildErrorDetail,
+  normalizeRejectionReason,
+  toErrorCode,
+  toSafeToken
+} from '@memry/contracts/telemetry-api'
 
 import { trackTelemetry } from './telemetry'
 
 type DiagnosticLevel = 'debug' | 'info' | 'warn' | 'error'
-
-const SAFE_TOKEN = /^(?!.*@)(?!.*:\/\/)(?!.*[/\\]).{1,64}$/
-
-const toSafeToken = (value: unknown, fallback: string): string => {
-  const raw =
-    value instanceof Error
-      ? value.name
-      : typeof value === 'string'
-        ? value
-        : typeof value === 'number' || typeof value === 'boolean'
-          ? String(value)
-          : ''
-  const token = raw.replace(/[^A-Za-z0-9_.:-]/g, '_').slice(0, 64)
-  return SAFE_TOKEN.test(token) ? token : fallback
-}
-
-const toErrorCode = (error: unknown): string => {
-  if (error instanceof Error && error.name) {
-    return toSafeToken(error.name, 'Error')
-  }
-  if (error && typeof error === 'object' && error.constructor?.name) {
-    return toSafeToken(error.constructor.name, 'UnknownError')
-  }
-  if (typeof error === 'string') return 'StringError'
-  return 'UnknownError'
-}
 
 const resultForLevel = (level: DiagnosticLevel): TelemetryResult =>
   level === 'error' || level === 'warn' ? 'failed' : 'success'
@@ -81,6 +60,9 @@ export const registerRendererDiagnostics = (): void => {
   })
 
   window.addEventListener('unhandledrejection', (event) => {
-    trackRendererError('unhandled_rejection', event.reason)
+    // A rejection reason can be any value, and a non-Error reason carries no
+    // stack — those landed in telemetry as an unactionable `Error` with an
+    // empty stack. Normalize first so a code + stack always survive.
+    trackRendererError('unhandled_rejection', normalizeRejectionReason(event.reason))
   })
 }

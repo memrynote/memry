@@ -20,6 +20,7 @@ vi.mock('../telemetry/diagnostics', () => ({
 
 import { getDatabase } from '../database'
 import { trackMainError } from '../telemetry/diagnostics'
+import { markExpectedCondition } from '../telemetry/expected-conditions'
 import { withErrorHandler, withDb } from './validate'
 
 const mockGetDatabase = vi.mocked(getDatabase)
@@ -327,5 +328,86 @@ describe('IPC error telemetry', () => {
 
     // #then
     expect(mockTrackMainError).toHaveBeenCalledTimes(2)
+  })
+
+  it('does NOT let one handler mask a different handler throwing the same error name', async () => {
+    // #given two unrelated handlers that both throw a bare `Error` — the
+    // throttle was keyed only by error.name and shared across ALL handlers, so
+    // a benign recurring "Error" hid a genuine one for 60s
+    vi.useFakeTimers()
+    try {
+      const benign = withErrorHandler(async () => {
+        throw namedError('Error')
+      }, 'Failed to list Ollama models')
+      const genuine = withErrorHandler(async () => {
+        throw namedError('Error')
+      }, 'Failed to save note')
+
+      // #when the benign one fires first, inside the same throttle window
+      await benign()
+      await genuine()
+
+      // #then both are reported
+      expect(mockTrackMainError).toHaveBeenCalledTimes(2)
+      expect(mockTrackMainError).toHaveBeenCalledWith(
+        'ipc',
+        'Failed to list Ollama models',
+        expect.anything()
+      )
+      expect(mockTrackMainError).toHaveBeenCalledWith(
+        'ipc',
+        'Failed to save note',
+        expect.anything()
+      )
+
+      // #and each handler is still throttled on its own key
+      await benign()
+      await genuine()
+      expect(mockTrackMainError).toHaveBeenCalledTimes(2)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('a suppressed expected-condition error does not claim the throttle key', async () => {
+    // #given one handler that first hits an expected condition, then a genuine
+    // different failure — SAME action, SAME errorCode (a name unique to this test
+    // so a bare `Error` claimed by an earlier test cannot interfere). If the
+    // suppressed error still claimed the shared throttle key, it would mask the
+    // genuine one for the whole window.
+    const expected = markExpectedCondition(namedError('MaskProbeError', 'ollama not running'))
+    const genuine = namedError('MaskProbeError', 'disk write failed')
+    const handler = withErrorHandler(async (which: 'expected' | 'genuine') => {
+      throw which === 'expected' ? expected : genuine
+    }, 'mask probe')
+
+    // #when the expected condition fires first, inside the same window
+    await handler('expected')
+    await handler('genuine')
+
+    // #then the genuine failure is still reported — not masked...
+    expect(mockTrackMainError).toHaveBeenCalledTimes(1)
+    expect(mockTrackMainError).toHaveBeenCalledWith('ipc', 'mask probe', genuine)
+    // #and the suppressed error never reached telemetry at all
+    expect(mockTrackMainError).not.toHaveBeenCalledWith('ipc', 'mask probe', expected)
+  })
+
+  it('separates typed codes from the same handler within one window', async () => {
+    // #given one handler hitting two different SQLITE_* conditions
+    vi.useFakeTimers()
+    try {
+      const handler = withErrorHandler(async (code: string) => {
+        throw Object.assign(new Error('db'), { name: 'SqliteError', code })
+      }, 'Failed to update task')
+
+      // #when
+      await handler('SQLITE_BUSY')
+      await handler('SQLITE_FULL')
+
+      // #then a locked file does not mask a disk-full
+      expect(mockTrackMainError).toHaveBeenCalledTimes(2)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

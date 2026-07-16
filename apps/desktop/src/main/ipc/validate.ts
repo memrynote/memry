@@ -1,19 +1,29 @@
 import { z, ZodError } from 'zod'
 import type { IpcMainInvokeEvent } from 'electron'
+import { toErrorCode } from '@memry/contracts/telemetry-api'
 import { createLogger } from '../lib/logger'
 import { getDatabase, type DataDb } from '../database'
 import { trackMainError } from '../telemetry/diagnostics'
+import { isExpectedConditionError } from '../telemetry/expected-conditions'
 
 const ipcLog = createLogger('IPC')
 
-// Every IPC envelope error becomes a telemetry event (→ Loki), throttled to
-// one event per error code per window so an error loop can't flood the queue.
+// Every IPC envelope error becomes a telemetry event (→ Loki), throttled so an
+// error loop can't flood the queue. The key must discriminate: keyed only by
+// error.name and shared across ALL handlers, one benign recurring "Error"
+// masked a genuine different "Error" from another handler for a whole window.
+// Keying by action + errorCode keeps the loop protection per failure mode.
 const ERROR_TRACK_THROTTLE_MS = 60_000
 const lastTrackedByCode = new Map<string, number>()
 
 const trackIpcError = (action: string, error: unknown): void => {
   try {
-    const code = error instanceof Error && error.name ? error.name : typeof error
+    // An expected condition (Ollama not running, an abandoned OAuth flow) is
+    // suppressed downstream by trackMainError. Skip it HERE, before the throttle
+    // Map — otherwise the suppressed error would still claim and keep refreshing
+    // the key, masking a genuine different failure from the same handler.
+    if (isExpectedConditionError(error)) return
+    const code = `${action}:${toErrorCode(error)}`
     const now = Date.now()
     const last = lastTrackedByCode.get(code)
     if (last !== undefined && now - last < ERROR_TRACK_THROTTLE_MS) return

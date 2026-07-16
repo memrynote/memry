@@ -46,6 +46,7 @@ import {
   trackLaunchPhase,
   trackMainError,
   trackMainLog,
+  trackMainUnhandledRejection,
   startActiveHeartbeat,
   stopActiveHeartbeat
 } from './telemetry/diagnostics'
@@ -125,7 +126,10 @@ function registerMainDiagnostics(): void {
   })
 
   process.on('unhandledRejection', (reason) => {
-    trackMainError('main_process', 'unhandled_rejection', reason)
+    // A rejection reason can be any value, and a non-Error reason carries no
+    // stack — those landed in telemetry as an unactionable `Error` with an
+    // empty stack. trackMainUnhandledRejection normalizes it first.
+    trackMainUnhandledRejection(reason)
   })
 
   app.on('render-process-gone', (_event, _webContents, details) => {
