@@ -90,6 +90,21 @@ describe('task filter surfaces', () => {
     expect(onApply).toHaveBeenLastCalledWith(defaultFilters)
   })
 
+  it('does not present a quick-filter pill as active when a tag filter is also set', () => {
+    const onApply = vi.fn()
+    render(
+      <QuickFilters
+        filters={{ ...defaultFilters, priorities: ['urgent', 'high'], tags: ['MIT'] }}
+        onApply={onApply}
+      />
+    )
+
+    // Priorities match the "High Priority" preset, but tags narrow the view
+    // further — the pill must not claim to describe the whole current view.
+    const button = screen.getByText('High Priority').closest('button')
+    expect(button).not.toHaveClass('bg-primary')
+  })
+
   it('edits search text and clears it from button or Escape', () => {
     const onChange = vi.fn()
     const inputRef = { current: null as HTMLInputElement | null }

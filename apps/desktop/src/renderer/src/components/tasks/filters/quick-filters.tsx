@@ -69,7 +69,8 @@ export const QuickFilters = ({
           (!preset.filters.dueDate ? filters.dueDate.type === 'any' : true) &&
           filters.statusIds.length === 0 &&
           (!preset.filters.repeatType ? filters.repeatType === 'all' : true) &&
-          filters.hasTime === 'all'
+          filters.hasTime === 'all' &&
+          filters.tags.length === 0
 
         if (otherFiltersDefault) {
           return preset.id
