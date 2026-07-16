@@ -1,5 +1,34 @@
-import { generateCrdtKey } from './blob'
+import { generateCrdtKey, getBlob, putBlob } from './blob'
 import { adjustStorageUsed, reserveStorage } from './quota'
+import { createLogger } from '../lib/logger'
+
+const logger = createLogger('CrdtService')
+
+/**
+ * Refunds a storage reservation after a failed write.
+ *
+ * The refund is itself a D1 write, so during a D1 outage it fails too. It must
+ * never replace the error that actually caused the write to fail: that turns a
+ * typed, handled error into an unhandled one and hides the real cause.
+ */
+const refundReservation = async (
+  db: D1Database,
+  userId: string,
+  reservedBytes: number,
+  context: { operation: string; vaultId: string; noteId: string }
+): Promise<void> => {
+  if (reservedBytes <= 0) return
+  try {
+    await adjustStorageUsed(db, userId, -reservedBytes)
+  } catch (refundError) {
+    // The reservation stays charged to the user until reconciliation.
+    logger.error('storage refund failed', {
+      ...context,
+      reservedBytes,
+      error: refundError instanceof Error ? refundError.message : String(refundError)
+    })
+  }
+}
 
 interface CrdtUpdate {
   id: string
@@ -95,9 +124,11 @@ export const storeUpdates = async (
       sequences.push(row!.sequence_num)
     }
   } catch (error) {
-    if (totalBytes > 0) {
-      await adjustStorageUsed(db, userId, -totalBytes)
-    }
+    await refundReservation(db, userId, totalBytes, {
+      operation: 'storeUpdates',
+      vaultId,
+      noteId
+    })
     throw error
   }
 
@@ -188,7 +219,11 @@ export const storeSnapshot = async (
   }
 
   try {
-    await storage.put(blobKey, snapshotData)
+    // Goes through putBlob so a transient R2 failure is retried and any
+    // remaining failure surfaces as a typed AppError rather than a raw R2
+    // Error the error handler can only log as UNHANDLED_ERROR. The put stays
+    // ahead of the D1 upsert so a failed put writes no orphan row.
+    await putBlob(storage, blobKey, snapshotData, userId)
 
     await db
       .prepare(
@@ -210,9 +245,11 @@ export const storeSnapshot = async (
       )
       .run()
   } catch (error) {
-    if (deltaBytes > 0) {
-      await adjustStorageUsed(db, userId, -deltaBytes)
-    }
+    await refundReservation(db, userId, deltaBytes, {
+      operation: 'storeSnapshot',
+      vaultId,
+      noteId
+    })
     throw error
   }
 
@@ -239,7 +276,9 @@ export const getSnapshot = async (
 
   if (!row) return null
 
-  const obj = await storage.get(row.blob_key)
+  // Legacy rows predate vault scoping but are still `${userId}/`-prefixed, so
+  // the ownership assertion inside getBlob holds for them too.
+  const obj = await getBlob(storage, row.blob_key, userId)
   if (!obj) return null
 
   const snapshotData = await obj.arrayBuffer()

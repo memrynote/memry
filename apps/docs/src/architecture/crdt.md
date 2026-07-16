@@ -74,6 +74,34 @@ Notes flow through **both** sync paths:
 
 Snapshots are pushed **pre-batch** so other devices receive correct state before the sync notification reaches them.
 
+## Snapshot Failure Handling
+
+A snapshot is a **compaction optimization**, not the source of truth: the authoritative
+server-side state is the `crdt_updates` log. A failed snapshot is therefore recoverable,
+and the write path is ordered so it stays that way.
+
+- **R2 put before D1 upsert.** A failed put writes no metadata row, so there is never a
+  row pointing at an object that does not exist.
+- **Prune only after a successful store.** `pruneUpdatesBeforeSnapshot` runs only once
+  the snapshot is durable, so a failed snapshot never deletes the update log behind it.
+- **Transient puts are retried.** The R2 key is deterministic
+  (`<userId>/vaults/<vaultId>/crdt/<noteId>/snapshot`), so a retry overwrites the same
+  object and is idempotent. `putBlob` retries a transient failure twice with a short
+  bounded backoff; quota and permission rejections are terminal and are not retried.
+- **Failures are typed.** CRDT blob access goes through `putBlob`/`getBlob`, which
+  classify R2 failures into `AppError`s (`STORAGE_UPLOAD_FAILED`, and so on). A raw
+  storage error would otherwise reach the error handler as `UNHANDLED_ERROR` and make
+  a transient provider incident look like an application crash in telemetry.
+- **Quota refunds never mask the cause.** A reservation refund is itself a D1 write and
+  can fail during a D1 incident. The refund is isolated so the original error always
+  propagates; a failed refund is logged and leaves the reservation charged until it is
+  reconciled.
+
+The client mirrors this. CRDT pulls run in a **serial loop over notes**, so they do not
+retry `429`s inline — honouring `Retry-After` per note would stall the whole pass, and the
+sync cadence is the retry instead. A single note that fails its snapshot baseline is
+skipped and retried on the next pass rather than abandoning the remaining notes.
+
 ## Sign-Out / Sign-In Ordering
 
 A sign out → sign in cycle has a sharp ordering rule:
