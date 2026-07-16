@@ -492,6 +492,7 @@ export const QuickAddInput = ({
               onOpenModal ? (
                 <button
                   type="button"
+                  tabIndex={-1}
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={(e) => {
                     e.stopPropagation()

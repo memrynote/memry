@@ -578,6 +578,7 @@ describe('QuickAddInput - detail hint', () => {
 
     expect(screen.getByText('detail')).toBeInTheDocument()
     expect(screen.queryByText('Q')).not.toBeInTheDocument()
+    expect(screen.getByText('detail').closest('button')).toHaveAttribute('tabindex', '-1')
   })
 
   it('opens the detail modal with the parsed title when the hint is clicked', async () => {
