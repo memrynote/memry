@@ -91,6 +91,7 @@ import { getHeadlessCliArgs, runHeadlessCli } from './cli/headless'
 import { reconcileBillingAndSync, startBillingCheckout } from './billing/paddle-billing'
 import { openPairingWindow } from './capture/pairing'
 import { startCaptureServer, stopCaptureServer } from './capture/server'
+import { applyLoginShellPath } from './agent/cli/login-shell-path'
 
 if (process.type === 'browser') {
   log.initialize()
@@ -165,6 +166,15 @@ const configLog = createLogger('Config')
 const quickCaptureLog = createLogger('QuickCapture')
 const shutdownLog = createLogger('Shutdown')
 const deepLinkLog = createLogger('DeepLink')
+
+// A Finder/Dock-launched packaged app inherits only the minimal system PATH, so
+// user-installed CLIs (claude/codex) are invisible to `which` and Agent Chat
+// greys out those providers. Recover the login-shell PATH before anything spawns
+// a probe or the CLIs themselves. No-op in dev (terminal already has full PATH).
+if (applyLoginShellPath({ packaged: app.isPackaged })) {
+  mainLog.info('Augmented PATH from login shell for packaged launch')
+}
+
 const headlessCliArgs = getHeadlessCliArgs(process.argv)
 
 let mainI18n: I18nInstance
