@@ -1020,8 +1020,6 @@
     "reveal": "Reveal",
     "accountVaults": {
       "empty": "No vaults synced to your account yet.",
-      "signedOut": "Sign in to see the vaults in your account.",
-      "active": "Active",
       "cloudOnly": "Not on this device",
       "itemsCount": "{count} items",
       "delete": "Delete",

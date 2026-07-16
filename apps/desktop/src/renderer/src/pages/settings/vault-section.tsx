@@ -49,6 +49,10 @@ export function VaultSettings() {
       .catch(() => null)
   }, [])
 
+  useEffect(() => {
+    void refreshAccountVaults()
+  }, [refreshAccountVaults])
+
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true)
     await refresh()

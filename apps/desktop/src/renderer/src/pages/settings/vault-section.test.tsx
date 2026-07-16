@@ -60,4 +60,9 @@ describe('VaultSettings account vaults', () => {
     fireEvent.click(screen.getByText('button.cancel'))
     expect(window.api.vault.deleteFromAccount).not.toHaveBeenCalled()
   })
+
+  it('loads the account vault list on mount', async () => {
+    render(<VaultSettings />)
+    await waitFor(() => expect(mocks.refresh).toHaveBeenCalled())
+  })
 })
