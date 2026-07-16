@@ -14,6 +14,7 @@ import { InteractivePriorityBadge } from '@/components/tasks/interactive-priorit
 import { InteractiveDueDateBadge } from '@/components/tasks/interactive-due-date-badge'
 import { InteractiveProjectBadge } from '@/components/tasks/interactive-project-badge'
 import { TaskDescriptionEditor } from '@/components/tasks/task-description-editor'
+import { TagAutocomplete } from '@/components/filing/tag-autocomplete'
 import { TaskReminderButton } from '@/components/tasks/task-reminder-button'
 import { StatusIcon } from '@/components/tasks/status-icon'
 import { FileAudio, FileImage, FilePdf, FileVideo, X, Plus, Trash } from '@/lib/icons'
@@ -272,6 +273,13 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
     [task, onUpdateTask]
   )
 
+  const handleTagsChange = useCallback(
+    (tags: string[]) => {
+      if (task) onUpdateTask?.(task.id, { tags })
+    },
+    [task, onUpdateTask]
+  )
+
   // Description is a BlockNote markdown editor; debounce persistence so we don't
   // write to the DB (and bump the sync field clock) on every keystroke.
   const pendingDescriptionRef = useRef<string | null>(null)
@@ -419,6 +427,16 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                 />
               </div>
             </div>
+
+            {/* ── Tags ── */}
+            {/* TagAutocomplete brings its own label/padding/border chrome (see
+                components/filing/tag-autocomplete.tsx), so it sits as its own
+                section rather than nested in the compact properties-grid rows. */}
+            <TagAutocomplete
+              tags={task.tags}
+              onTagsChange={handleTagsChange}
+              placeholder={t('task.tags')}
+            />
 
             {/* ── Description ── */}
             <div className="flex flex-col py-4 px-5 gap-2 border-b border-border">

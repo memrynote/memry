@@ -10,6 +10,7 @@
 - [Scheduled review and priority buckets](#scheduled-review-and-priority-buckets)
 - [Bulk URL import via CSV](#bulk-url-import-via-csv)
 - [Second-device setup should adopt the existing vault](#second-device-setup-should-adopt-the-existing-vault)
+- [Fixed-page notebooks with custom covers](#fixed-page-notebooks-with-custom-covers)
 
 ## Reduce filing with AI-assisted capture
 
@@ -366,3 +367,57 @@ look for it. This exact confusion has now happened twice (once internally on
 Never merge into or overwrite an existing vault automatically — adoption means
 downloading into a clean local copy the user confirmed. And don't block setup on the
 directory call: offline or empty-account users must still get a vault instantly.
+
+## Fixed-page notebooks with custom covers
+
+Source: Reddit post (r/Notetaking style) from a student starting school in September on
+a Lenovo (Windows) laptop. Requirements: fixed pages (no infinite scroll / infinite
+canvas), multiple notebooks (bonus: customizable cover), desktop-first, one-time
+payment. They said they might fall back to annotating PDFs if nothing fits.
+
+### User signal
+
+The core want is a bounded-page layout — a page you fill, then flip to the next, with
+visible page edges — plus a physical-notebook feel (named notebooks, custom covers).
+The "make PDFs and use those" fallback and "customize the cover" bonus both point at
+the paper-notebook metaphor, not a document editor.
+
+MemryNote matches three of the four asks: cross-platform desktop (Windows / macOS /
+Linux), multiple notebooks (vaults / folders), and a one-time Believer lifetime price.
+The miss is the headline requirement. MemryNote's editor is a continuous block/Markdown
+surface — one unbounded scrolling column per note — which is exactly the "infinite
+scroll" layout the user ruled out. There is no bounded page, no page flipping, and no
+notebook cover customization.
+
+### What we don't have
+
+- Fixed / paginated page layout — a bounded page surface (Letter / A4) with page breaks
+  and flip-to-next, versus today's single continuous column per note.
+- Notebook cover customization — a visual cover / identity per notebook (image, color,
+  pattern, title), versus today's plain folder / vault entries.
+- Handwriting and stylus ink — freehand note-taking on a 2-in-1, the implicit need
+  behind a Lenovo student wanting paper-like pages.
+
+### Product direction
+
+This is a genuine category fork, so scope it honestly rather than chasing a GoodNotes
+clone:
+
+- Cheap and on-brand: notebook cover / identity (color, emoji or image, title) on
+  vaults or top-level folders. Low cost, fits the calm, crafted register, and answers
+  the "customize the cover" bonus directly.
+- Medium: a paginated "page view" / print-preview toggle that renders a note into
+  Letter / A4 pages with visible page breaks, for the fixed-page feel and clean PDF
+  export — without changing how the note is stored on disk.
+- Adjacent overlap: PDF annotation and visual markup (already listed under "Structure
+  without folder rigidity") gives literal fixed pages for source material and partly
+  serves the PDF fallback these users reach for.
+- Likely out of scope: true handwriting / infinite-ink pages. That is a different
+  product category and fights Markdown portability.
+
+### Important boundary
+
+Do not turn MemryNote into a handwriting / paged-document app. Markdown portability and
+the continuous editor are core; fixed pages must stay a view or export concern, never a
+change to how notes are stored. Treat this entry as a documented non-fit with a few
+adjacent wins, not a roadmap commitment to page-based note-taking.

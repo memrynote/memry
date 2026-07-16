@@ -84,7 +84,7 @@ function dbRepeatConfigToUiRepeatConfig(dbConfig: unknown): UiRepeatConfig | nul
   }
 }
 
-function dbTaskToUiTask(dbTask: Task): UiTask {
+export function dbTaskToUiTask(dbTask: Task): UiTask {
   return {
     id: dbTask.id,
     title: dbTask.title,
@@ -98,6 +98,7 @@ function dbTaskToUiTask(dbTask: Task): UiTask {
     repeatConfig: dbRepeatConfigToUiRepeatConfig(dbTask.repeatConfig),
     linkedNoteIds: dbTask.linkedNoteIds ?? [],
     sourceNoteId: dbTask.sourceNoteId ?? null,
+    tags: dbTask.tags ?? [],
     parentId: dbTask.parentId,
     subtaskIds: [],
     createdAt: new Date(dbTask.createdAt),
@@ -316,7 +317,7 @@ export function useTaskWorkspaceMutations() {
           isRepeating: task.isRepeating,
           repeatConfig: toServiceRepeatConfig(task.repeatConfig),
           repeatFrom: null,
-          tags: [],
+          tags: task.tags,
           linkedNoteIds: task.linkedNoteIds
         })
         invalidateWorkspace()
@@ -366,7 +367,8 @@ export function useTaskWorkspaceMutations() {
               dueTime: otherUpdates.dueTime ?? undefined,
               isRepeating: otherUpdates.isRepeating,
               repeatConfig: toServiceRepeatConfig(otherUpdates.repeatConfig),
-              linkedNoteIds: otherUpdates.linkedNoteIds
+              linkedNoteIds: otherUpdates.linkedNoteIds,
+              tags: otherUpdates.tags
             })
           }
 
@@ -405,7 +407,8 @@ export function useTaskWorkspaceMutations() {
               dueTime: otherUpdates.dueTime ?? undefined,
               isRepeating: otherUpdates.isRepeating,
               repeatConfig: toServiceRepeatConfig(otherUpdates.repeatConfig),
-              linkedNoteIds: otherUpdates.linkedNoteIds
+              linkedNoteIds: otherUpdates.linkedNoteIds,
+              tags: otherUpdates.tags
             })
           }
 
@@ -431,7 +434,8 @@ export function useTaskWorkspaceMutations() {
           dueTime: updates.dueTime ?? undefined,
           isRepeating: updates.isRepeating,
           repeatConfig: toServiceRepeatConfig(updates.repeatConfig),
-          linkedNoteIds: updates.linkedNoteIds
+          linkedNoteIds: updates.linkedNoteIds,
+          tags: updates.tags
         })
 
         invalidateWorkspace()

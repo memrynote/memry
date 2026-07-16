@@ -111,6 +111,7 @@ const task: Task = {
   priority: 'low',
   dueDate: new Date('2026-05-09T00:00:00.000Z'),
   dueTime: '09:30',
+  tags: [],
   completedAt: null,
   archivedAt: null,
   order: 0,

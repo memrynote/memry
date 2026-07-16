@@ -15,11 +15,21 @@ A row under the title shows the note's free-form labels.
 - Tags are global — the same tag on two notes is the same tag
 - Tags keep the capitalization you type (`#Work` stays `#Work`), but identity is case-insensitive: `#Work` and `#work` are the same tag with one color and one combined count. This also applies to imported notes — an Obsidian vault's tag casing survives the import.
 
-Tags appear in the sidebar **Tags** section. Click any tag to drill into a list of notes that share it.
+Tags appear in the sidebar **Tags** section. Click any tag to drill into everything that
+shares it — notes first, then tasks carrying the same tag. See
+[Capturing Tasks](/user-guide/tasks/capturing) for tagging tasks.
+
+The drill-down includes nested tags: opening `work` also lists items tagged `work/urgent`.
+(The task filter bar matches exactly, so filtering tasks on `work` there won't include
+`work/urgent`.)
 
 ### Renaming or Deleting Tags
 
 Manage tags globally from [Settings → Tags](/user-guide/settings#tags). Renames apply across every note instantly.
+
+Renaming or deleting a tag currently updates your **notes** only — tasks keep the original
+tag, so a task tagged `MIT` stays `MIT` even after you rename that tag. **Merging** two tags
+does carry across tasks. To retag a task directly, edit it in the task detail drawer.
 
 ### Tag Icons
 

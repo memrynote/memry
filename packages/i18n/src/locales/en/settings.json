@@ -1317,6 +1317,7 @@
       "failedToLoadTabSettings": "Failed to load tab settings",
       "failedToLoadNotes": "Failed to load notes",
       "failedToLoadTags": "Failed to load tags",
+      "failedToLoadTasks": "Failed to load tasks",
       "failedToLoadVaultStatus": "Failed to load vault status",
       "failedToSelectVault": "Failed to select vault",
       "failedToCloseVault": "Failed to close vault",

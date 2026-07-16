@@ -272,6 +272,7 @@ export const createSubtask = (
     repeatConfig: null,
     linkedNoteIds: [],
     sourceNoteId: null,
+    tags: [],
     parentId,
     subtaskIds: [], // Subtasks cannot have children
     createdAt: new Date(),
@@ -331,6 +332,7 @@ export const createMultipleSubtasks = (
     repeatConfig: null,
     linkedNoteIds: [],
     sourceNoteId: null,
+    tags: [],
     parentId,
     subtaskIds: [],
     createdAt: new Date(),

@@ -46,9 +46,9 @@ export const useDebouncedValue = <T>(value: T, delay: number): T => {
 const getDefaultSortForView = (activeView: string): TaskSort =>
   activeView === 'kanban' ? { field: 'status', direction: 'asc' } : defaultSort
 
-const FILTERS_STORAGE_KEY = 'taskFilters'
+export const FILTERS_STORAGE_KEY = 'taskFilters'
 const SORT_STORAGE_KEY = 'taskSortPrefs'
-const SAVED_FILTERS_KEY = 'savedTaskFilters'
+export const SAVED_FILTERS_KEY = 'savedTaskFilters'
 
 interface PersistedFilterState {
   filters: TaskFilters
@@ -96,6 +96,16 @@ const loadPersistedFilterState = (filterKey: string): PersistedFilterState | nul
   }
 }
 
+/**
+ * Read persisted filters for a key, backfilled over defaultFilters.
+ * Entries written by older app builds may lack fields (e.g. `tags`)
+ * added after they were saved — merging over defaultFilters keeps them safe.
+ */
+export const readPersistedFilterState = (filterKey: string): TaskFilters => ({
+  ...defaultFilters,
+  ...(loadPersistedFilterState(filterKey)?.filters ?? {})
+})
+
 const loadPersistedSortState = (sortKey: string): PersistedSortState | null => {
   try {
     const stored = JSON.parse(localStorage.getItem(SORT_STORAGE_KEY) || '{}')
@@ -109,14 +119,18 @@ const loadPersistedSortState = (sortKey: string): PersistedSortState | null => {
 /**
  * Load saved filters from localStorage (fallback for backwards compatibility)
  */
-const loadSavedFilters = (): SavedFilter[] => {
+export const loadSavedFilters = (): SavedFilter[] => {
   try {
     const stored = localStorage.getItem(SAVED_FILTERS_KEY)
     if (!stored) return []
     const parsed = JSON.parse(stored)
-    // Convert date strings back to Date objects
+    // Convert date strings back to Date objects. Entries written by older app
+    // builds may lack fields (e.g. `tags`) added after they were saved —
+    // merging over defaultFilters keeps them safe (same reasoning as
+    // readPersistedFilterState).
     return parsed.map((f: SavedFilter) => ({
       ...f,
+      filters: { ...defaultFilters, ...f.filters },
       createdAt: new Date(f.createdAt)
     }))
   } catch (err) {
@@ -160,7 +174,7 @@ export const useFilterState = ({
   const getInitialFilters = useCallback(
     (key: string): TaskFilters => {
       if (!shouldPersist) return defaultFilters
-      return loadPersistedFilterState(key)?.filters || defaultFilters
+      return readPersistedFilterState(key)
     },
     [shouldPersist]
   )
@@ -301,7 +315,7 @@ interface UseSavedFiltersReturn {
 /**
  * Convert DB saved filter to frontend format
  */
-function dbToFrontendFilter(dbFilter: DbSavedFilter): SavedFilter {
+export function dbToFrontendFilter(dbFilter: DbSavedFilter): SavedFilter {
   const config = dbFilter.config
 
   // Convert DueDateFilter dates from string to Date if custom
@@ -320,6 +334,11 @@ function dbToFrontendFilter(dbFilter: DbSavedFilter): SavedFilter {
       search: config.filters.search,
       projectIds: config.filters.projectIds,
       priorities: config.filters.priorities as Priority[],
+      // Old saved-filter rows predate the `tags` field. The read path (main
+      // process) casts the JSON column instead of parsing it through
+      // TaskFiltersSchema, so no default is applied — backfill it here,
+      // mirroring readPersistedFilterState's localStorage merge.
+      tags: config.filters.tags ?? [],
       dueDate,
       statusIds: config.filters.statusIds,
       completion: config.filters.completion,
@@ -340,7 +359,7 @@ function dbToFrontendFilter(dbFilter: DbSavedFilter): SavedFilter {
 /**
  * Convert frontend filter to DB format
  */
-function frontendToDbConfig(
+export function frontendToDbConfig(
   filters: TaskFilters,
   sort?: TaskSort,
   starred?: boolean
@@ -350,6 +369,7 @@ function frontendToDbConfig(
       search: filters.search,
       projectIds: filters.projectIds,
       priorities: filters.priorities,
+      tags: filters.tags,
       dueDate: {
         type: filters.dueDate.type,
         customStart: filters.dueDate.customStart?.toISOString() ?? null,

@@ -28,6 +28,7 @@
     "details": "Task details",
     "status": "Status",
     "priority": "Priority",
+    "tags": "Tags",
     "dueDate": "Due Date",
     "reminder": "Reminder",
     "project": "Project",
@@ -364,6 +365,8 @@
     "componentsTasksFiltersActiveFiltersBar": {
       "priorityIs": "Priority is",
       "priority": "priority",
+      "tagsIs": "Tags is",
+      "tags": "tags",
       "statusIs": "Status is",
       "status": "status",
       "projectIs": "Project is",
@@ -405,6 +408,12 @@
     "componentsTasksFiltersFilterPanelsStatusProjectPickerPan": {
       "status": "Status",
       "pickAProject": "Pick a project"
+    },
+    "componentsTasksFiltersFilterPanelsTagPanel": {
+      "tags": "Tags",
+      "is": "is",
+      "search": "Search...",
+      "selected": "selected"
     },
     "componentsTasksFiltersMoreFiltersDropdown": {
       "moreFilters": "More filters",
@@ -516,7 +525,8 @@
     },
     "componentsTasksQuickAddInput": {
       "q": "Q",
-      "q2": "Q"
+      "q2": "Q",
+      "detailHint": "detail"
     },
     "componentsTasksRepeatIndicator": {
       "of": "of ",

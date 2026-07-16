@@ -17,6 +17,16 @@ Above every task view. Filters available:
 
 Active filters render as removable chips so you can see the current scope at a glance.
 
+### How the Tag Filter Matches
+
+Selecting several tags shows tasks carrying **any** of them, not only tasks carrying all of
+them. Picking `MIT` and `errand` gives you both sets together — the same "any of these"
+behaviour as the Status, Priority, and Project filters.
+
+Tag matching ignores case, so `MIT` and `mit` are one tag. The filter matches tags exactly:
+filtering on `work` will not pull in tasks tagged `work/urgent`. (The tag view in the
+sidebar does include those — see [Properties & Tags](/user-guide/notes/properties-tags).)
+
 ## Quick Filter Chips
 
 Pre-built chips at the start of the bar for the most common scopes:

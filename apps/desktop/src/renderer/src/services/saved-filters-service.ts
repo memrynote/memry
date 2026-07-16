@@ -28,6 +28,7 @@ export interface TaskFiltersConfig {
   search: string
   projectIds: string[]
   priorities: Array<'urgent' | 'high' | 'medium' | 'low' | 'none'>
+  tags: string[]
   dueDate: DueDateFilter
   statusIds: string[]
   completion: 'active' | 'completed' | 'all'

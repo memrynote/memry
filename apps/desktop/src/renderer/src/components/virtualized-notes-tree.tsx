@@ -304,7 +304,7 @@ function FolderRow({
           draggable={draggable}
           className={cn(
             'group/folder relative flex items-center gap-1 px-2 py-1 cursor-pointer rounded-sm transition-colors min-w-0',
-            'hover:bg-muted/50 focus-visible:outline-none',
+            'hover:bg-muted focus-visible:outline-none',
             isSelected && 'bg-sidebar-accent text-sidebar-accent-foreground',
             isDragging && 'opacity-50',
             draggable && 'cursor-default'
@@ -551,7 +551,7 @@ function NoteRow({
           draggable={draggable}
           className={cn(
             'group/note relative flex items-center gap-1 px-2 py-1 cursor-pointer rounded-sm transition-colors',
-            'hover:bg-muted/50 focus-visible:outline-none',
+            'hover:bg-muted focus-visible:outline-none',
             isSelected && 'bg-sidebar-accent text-sidebar-accent-foreground',
             isDragging && 'opacity-50',
             draggable && 'cursor-default'

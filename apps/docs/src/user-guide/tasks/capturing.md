@@ -42,6 +42,28 @@ You can set priority and project inline during quick-add:
 
 (These map to the same UI pickers used for editing existing tasks.)
 
+## Tags
+
+Tasks take tags from the same pool as your notes — one tag means one thing across the app,
+and it keeps whatever colour and icon you gave it.
+
+You can tag a task in two places:
+
+- **The add-task dialog** — tag it as you create it
+- **The task detail drawer** — add or remove tags on an existing task
+
+Tags appear as chips on the task row, and you can filter by them from the filter bar. See
+[Filters & Sorting](/user-guide/tasks/filters-sorting).
+
+Tags are case-insensitive but keep the case you type: `MIT` stays `MIT`, and tagging
+something `mit` later files it under the same tag.
+
+A common use is marking your Most Important Tasks — tag them `MIT`, then filter to that tag
+to see just today's short list.
+
+Quick-add has no tag shortcut yet: `#` there means **project**, not tag. Use the add dialog
+or the drawer.
+
 ## From a Project View
 
 Quick-add inside a project automatically assigns the task to that project. The status defaults to the project's first status.

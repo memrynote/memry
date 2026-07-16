@@ -130,7 +130,7 @@ function ReminderRow({
       onClick={() => onOpen(entry)}
       className={cn(
         'group flex w-full items-center gap-2.5 px-2 py-1.5 rounded-md text-start',
-        'transition-colors duration-150 hover:bg-muted/50 cursor-pointer'
+        'transition-colors duration-150 hover:bg-muted cursor-pointer'
       )}
     >
       <EntryIcon entry={entry} />
