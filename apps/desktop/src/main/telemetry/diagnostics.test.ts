@@ -19,6 +19,7 @@ import {
   stopActiveHeartbeat
 } from './diagnostics'
 import { markExpectedCondition } from './expected-conditions'
+import { NoteError, NoteErrorCode } from '../lib/errors'
 
 describe('telemetry diagnostics', () => {
   beforeEach(() => {
@@ -179,6 +180,34 @@ describe('telemetry diagnostics', () => {
         expect.objectContaining({ errorCode: 'TypeError' })
       )
     })
+  })
+
+  it('reports a wrapped fs failure with its errno, never the file path', () => {
+    // #given a failed note save wrapping the real fs errno (the production
+    // case: errorCode was only ever "NoteError", so EBUSY vs ENOSPC was lost)
+    const cause = Object.assign(
+      new Error("EBUSY: resource busy, rename '/Users/kaan/private-note.md'"),
+      { code: 'EBUSY' }
+    )
+    const error = new NoteError(
+      'Failed to write file: /Users/kaan/private-note.md',
+      NoteErrorCode.WRITE_FAILED,
+      undefined,
+      { cause }
+    )
+
+    // #when the IPC layer reports it
+    trackMainError('ipc', 'note_update', error)
+
+    // #then the errno reaches telemetry
+    expect(trackMainEventMock).toHaveBeenCalledWith(
+      'app_error_seen',
+      expect.objectContaining({ errorCode: 'NOTE_WRITE_FAILED:EBUSY' })
+    )
+    // #and no path leaves the process
+    const serialized = JSON.stringify(trackMainEventMock.mock.calls[0])
+    expect(serialized).not.toContain('private-note')
+    expect(serialized).not.toContain('/Users/')
   })
 
   it('emits structured remote log breadcrumbs', () => {

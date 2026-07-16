@@ -196,6 +196,8 @@
     "sidebar": {
       "label": "Right sidebar",
       "day": "Day",
+      "unscheduled": "Unscheduled",
+      "unscheduledEmpty": "No unscheduled tasks",
       "agent": "Agent",
       "pendingApproval": "{count, plural, one {# pending approval} other {# pending approvals}}",
       "inProgress": "Agent turn in progress",

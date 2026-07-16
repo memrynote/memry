@@ -118,6 +118,7 @@ export const TaskListSchema = z.object({
   includeArchived: z.boolean().default(false),
   dueBefore: z.string().optional(),
   dueAfter: z.string().optional(),
+  unscheduled: z.boolean().optional(),
   tags: z.array(z.string()).optional(),
   search: z.string().optional(),
   sortBy: z.enum(['position', 'dueDate', 'priority', 'created', 'modified']).default('position'),

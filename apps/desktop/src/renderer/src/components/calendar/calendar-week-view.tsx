@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useT } from '@memry/i18n/renderer'
+import { CalendarAllDayCell } from './calendar-allday-cell'
 import { CalendarItemChip } from './calendar-item-chip'
+import { CalendarTimedColumnDroppable } from './calendar-timed-column-droppable'
+import { DraggableTaskChip } from './draggable-task-chip'
 import {
   dateFromDayIndex,
   dayIndexFromDate,
@@ -15,6 +18,7 @@ import { useTimeGridMarquee } from './use-time-grid-marquee'
 import { useEventDrag, isEventMovable, isEventResizable } from './use-event-drag'
 import { useScrollToCurrentTime } from './use-scroll-to-current-time'
 import { useWeekInfiniteScroll } from './use-week-infinite-scroll'
+import { useOptionalDragContext } from '@/contexts/drag-context'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { formatHour } from '@/lib/time-format'
 import { cn } from '@/lib/utils'
@@ -79,6 +83,7 @@ export function CalendarWeekView({
     settings: { clockFormat }
   } = useGeneralSettings()
   const { t, i18n } = useT('calendar')
+  const isTaskDragInFlight = useOptionalDragContext()?.dragState.isDragging ?? false
 
   const gridRef = useRef<HTMLDivElement>(null)
   const timeColumnRef = useRef<HTMLDivElement>(null)
@@ -219,7 +224,9 @@ export function CalendarWeekView({
 
   const allDayRowHeight =
     maxAllDayPerDay === 0
-      ? 0
+      ? isTaskDragInFlight
+        ? ALL_DAY_ROW_MIN_HEIGHT
+        : 0
       : Math.max(
           ALL_DAY_ROW_MIN_HEIGHT,
           maxAllDayPerDay * ALL_DAY_CHIP_HEIGHT +
@@ -287,7 +294,7 @@ export function CalendarWeekView({
         </div>
       </div>
 
-      {maxAllDayPerDay > 0 && (
+      {(maxAllDayPerDay > 0 || isTaskDragInFlight) && (
         <div
           className="flex shrink-0 bg-background"
           data-testid="week-all-day-strip"
@@ -314,21 +321,26 @@ export function CalendarWeekView({
                     data-day-index={vi.index}
                     data-date={date}
                     className={cn(
-                      'absolute top-0 flex flex-col gap-[2px] border-b border-e border-border bg-background px-0.5 py-1',
+                      'absolute top-0 border-b border-e border-border bg-background',
                       isWeekend(date) && 'bg-muted/30'
                     )}
                     style={{ left: vi.start, width: vi.size, height: allDayRowHeight }}
                   >
-                    {dayAllDay.map((item) => (
-                      <div key={item.projectionId} style={{ height: ALL_DAY_CHIP_HEIGHT }}>
-                        <CalendarItemChip
-                          item={item}
-                          clockFormat={clockFormat}
-                          onClick={onSelectItem}
-                          onDeleteItem={onDeleteItem}
-                        />
-                      </div>
-                    ))}
+                    <CalendarAllDayCell
+                      date={date}
+                      className="flex h-full flex-col gap-[2px] px-0.5 py-1"
+                    >
+                      {dayAllDay.map((item) => (
+                        <div key={item.projectionId} style={{ height: ALL_DAY_CHIP_HEIGHT }}>
+                          <DraggableTaskChip
+                            item={item}
+                            isSelected={false}
+                            onClick={onSelectItem}
+                            onDeleteItem={onDeleteItem}
+                          />
+                        </div>
+                      ))}
+                    </CalendarAllDayCell>
                   </div>
                 )
               })}
@@ -392,76 +404,66 @@ export function CalendarWeekView({
                   onMouseDown={(e) => handlers.onMouseDown(e, vi.index)}
                   onDoubleClick={(e) => handlers.onDoubleClick(e, vi.index)}
                 >
-                  {assignLanes(dayItems).map(({ item, lane, laneCount }) => {
-                    const pos = getEventPosition(item)
-                    const widthPct = 100 / laneCount
-                    const leftPct = lane * widthPct
-                    const movable = isEventMovable(item)
-                    const resizable = isEventResizable(item)
-                    const isDraggingThis = drag?.projectionId === item.projectionId
-                    return (
+                  <CalendarTimedColumnDroppable date={date} hourHeight={HOUR_HEIGHT}>
+                    {assignLanes(dayItems).map(({ item, lane, laneCount }) => {
+                      const pos = getEventPosition(item)
+                      const widthPct = 100 / laneCount
+                      const leftPct = lane * widthPct
+                      const movable = isEventMovable(item)
+                      const resizable = isEventResizable(item)
+                      const isDraggingThis = drag?.projectionId === item.projectionId
+                      return (
+                        <div
+                          key={item.projectionId}
+                          className={cn(
+                            'absolute z-10 px-0.5',
+                            movable && 'cursor-grab',
+                            isDraggingThis && 'opacity-40'
+                          )}
+                          style={{
+                            top: pos.top,
+                            height: pos.height,
+                            left: `${leftPct}%`,
+                            width: `${widthPct}%`
+                          }}
+                          onMouseDown={movable ? (e) => startMove(e, item, vi.index) : undefined}
+                        >
+                          <CalendarItemChip
+                            item={item}
+                            clockFormat={clockFormat}
+                            isSelected={
+                              item.sourceType === 'event' && item.sourceId === selectedItemId
+                            }
+                            onClick={handleChipClick}
+                            onDeleteItem={onDeleteItem}
+                          />
+                          {resizable && (
+                            <>
+                              <div
+                                className="absolute inset-x-0 top-0 h-1.5 cursor-ns-resize"
+                                onMouseDown={(e) => startResize(e, item, vi.index, 'start')}
+                              />
+                              <div
+                                className="absolute inset-x-0 bottom-0 h-1.5 cursor-ns-resize"
+                                onMouseDown={(e) => startResize(e, item, vi.index, 'end')}
+                              />
+                            </>
+                          )}
+                        </div>
+                      )
+                    })}
+
+                    {today && (
                       <div
-                        key={item.projectionId}
-                        className={cn(
-                          'absolute z-10 px-0.5',
-                          movable && 'cursor-grab',
-                          isDraggingThis && 'opacity-40'
-                        )}
-                        style={{
-                          top: pos.top,
-                          height: pos.height,
-                          left: `${leftPct}%`,
-                          width: `${widthPct}%`
-                        }}
-                        onMouseDown={movable ? (e) => startMove(e, item, vi.index) : undefined}
+                        className="pointer-events-none absolute start-0 end-0 z-20 flex items-center"
+                        style={{ top: currentTimeOffset }}
                       >
-                        <CalendarItemChip
-                          item={item}
-                          clockFormat={clockFormat}
-                          isSelected={
-                            item.sourceType === 'event' && item.sourceId === selectedItemId
-                          }
-                          onClick={handleChipClick}
-                          onDeleteItem={onDeleteItem}
-                        />
-                        {resizable && (
-                          <>
-                            <div
-                              className="absolute inset-x-0 top-0 h-1.5 cursor-ns-resize"
-                              onMouseDown={(e) => startResize(e, item, vi.index, 'start')}
-                            />
-                            <div
-                              className="absolute inset-x-0 bottom-0 h-1.5 cursor-ns-resize"
-                              onMouseDown={(e) => startResize(e, item, vi.index, 'end')}
-                            />
-                          </>
-                        )}
+                        <div className="size-2 rounded-full bg-tint shadow-[0_0_6px] shadow-tint/60" />
+                        <div className="h-0.5 flex-1 bg-tint" />
                       </div>
-                    )
-                  })}
+                    )}
 
-                  {today && (
-                    <div
-                      className="pointer-events-none absolute start-0 end-0 z-20 flex items-center"
-                      style={{ top: currentTimeOffset }}
-                    >
-                      <div className="size-2 rounded-full bg-tint shadow-[0_0_6px] shadow-tint/60" />
-                      <div className="h-0.5 flex-1 bg-tint" />
-                    </div>
-                  )}
-
-                  {isDragging && selection && selection.columnIndex === vi.index && (
-                    <MarqueeSelectionOverlay
-                      top={selection.top}
-                      height={selection.height}
-                      startAt={selection.startAt}
-                      endAt={selection.endAt}
-                      clockFormat={clockFormat}
-                    />
-                  )}
-
-                  {selection && !isDragging && selection.columnIndex === vi.index && (
-                    <>
+                    {isDragging && selection && selection.columnIndex === vi.index && (
                       <MarqueeSelectionOverlay
                         top={selection.top}
                         height={selection.height}
@@ -469,19 +471,31 @@ export function CalendarWeekView({
                         endAt={selection.endAt}
                         clockFormat={clockFormat}
                       />
-                      <CalendarQuickCreateDialog
-                        anchorRect={selection.anchorRect}
-                        startAt={selection.startAt}
-                        endAt={selection.endAt}
-                        isAllDay={false}
-                        onSave={async (draft) => {
-                          await onQuickSave?.(draft)
-                          clearSelection()
-                        }}
-                        onDismiss={clearSelection}
-                      />
-                    </>
-                  )}
+                    )}
+
+                    {selection && !isDragging && selection.columnIndex === vi.index && (
+                      <>
+                        <MarqueeSelectionOverlay
+                          top={selection.top}
+                          height={selection.height}
+                          startAt={selection.startAt}
+                          endAt={selection.endAt}
+                          clockFormat={clockFormat}
+                        />
+                        <CalendarQuickCreateDialog
+                          anchorRect={selection.anchorRect}
+                          startAt={selection.startAt}
+                          endAt={selection.endAt}
+                          isAllDay={false}
+                          onSave={async (draft) => {
+                            await onQuickSave?.(draft)
+                            clearSelection()
+                          }}
+                          onDismiss={clearSelection}
+                        />
+                      </>
+                    )}
+                  </CalendarTimedColumnDroppable>
                 </div>
               )
             })}

@@ -4,6 +4,7 @@ import type { EditorView } from '@tiptap/pm/view'
 import { useEffect, useRef, type MouseEvent, type PointerEvent } from 'react'
 import {
   BasicTextStyleButton,
+  BlockTypeSelect,
   ColorStyleButton,
   CreateLinkButton,
   FormattingToolbar,
@@ -69,6 +70,14 @@ export function ReviewFormattingToolbar({
   return (
     <FormattingToolbar {...toolbarProps}>
       <div className="review-formatting-toolbar-compact">
+        {/* Block type (paragraph/heading/list) is the sticky toolbar's first
+            item. Without it here, turning the sticky toolbar off left no way to
+            restyle a block from the selection popup. Renders null for blocks
+            outside the block type list (task blocks, callouts, files); the row
+            collapses via `:empty` so it costs no space then. */}
+        <div className="review-formatting-toolbar-block-type">
+          <BlockTypeSelect items={toolbarProps.blockTypeSelectItems} />
+        </div>
         <div className="review-formatting-toolbar-grid">
           <BasicTextStyleButton basicTextStyle="bold" />
           <BasicTextStyleButton basicTextStyle="italic" />

@@ -36,6 +36,54 @@ describe('errors', () => {
     })
   })
 
+  it('NoteError preserves the originating error as cause', () => {
+    // #given a native fs failure carrying the errno we need for diagnosis
+    const cause = Object.assign(new Error('ENOSPC: no space left on device'), { code: 'ENOSPC' })
+
+    // #when it is wrapped in a NoteError
+    const err = new NoteError('note failure', NoteErrorCode.WRITE_FAILED, undefined, { cause })
+
+    // #then the original error survives the wrap
+    expect(err.cause).toBe(cause)
+  })
+
+  it('NoteError telemetry code carries the errno, never the file path', () => {
+    // #given an fs failure whose message embeds a private vault path
+    const cause = Object.assign(
+      new Error("EBUSY: resource busy, rename '/Users/kaan/OneDrive/vault/secret.md'"),
+      { code: 'EBUSY' }
+    )
+
+    // #when building the telemetry code
+    const err = new NoteError('write failed', NoteErrorCode.WRITE_FAILED, undefined, { cause })
+
+    // #then the errno is exposed and nothing path-derived leaks
+    expect(err.telemetryCode).toBe('NOTE_WRITE_FAILED:EBUSY')
+    expect(err.telemetryCode).not.toContain('secret.md')
+    expect(err.telemetryCode).not.toContain('/')
+  })
+
+  it('NoteError telemetry code falls back to the bare code without an errno', () => {
+    expect(new NoteError('missing', NoteErrorCode.NOT_FOUND).telemetryCode).toBe('NOTE_NOT_FOUND')
+    expect(
+      new NoteError('write failed', NoteErrorCode.WRITE_FAILED, undefined, {
+        cause: new Error('no errno here')
+      }).telemetryCode
+    ).toBe('NOTE_WRITE_FAILED')
+  })
+
+  it('NoteError telemetry code rejects a path-shaped errno', () => {
+    // #given a cause whose `code` is not an errno at all but a path
+    // (some libraries reuse `code`; it must never reach telemetry)
+    const cause = Object.assign(new Error('bad'), { code: '/Users/kaan/vault/secret.md' })
+
+    // #when building the telemetry code
+    const err = new NoteError('write failed', NoteErrorCode.WRITE_FAILED, undefined, { cause })
+
+    // #then the unrecognised value is dropped rather than forwarded
+    expect(err.telemetryCode).toBe('NOTE_WRITE_FAILED')
+  })
+
   it('DatabaseError stores message, code, and name for all codes', () => {
     Object.values(DatabaseErrorCode).forEach((code) => {
       const err = new DatabaseError('db failure', code)

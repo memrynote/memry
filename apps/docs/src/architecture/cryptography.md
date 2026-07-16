@@ -36,6 +36,11 @@ First-device setup and recovery relinking rebind this local verifier immediately
 master key is saved, before sync activation. If the verifier cannot be checked at startup, the sync
 runtime stays offline instead of starting queues, CRDT seeding, or snapshot uploads with missing
 vault-key credentials.
+
+The keychain account is suffixed per device: production installs use the bare account, while
+explicit dev profiles (`A`/`B`/`C`) and e2e runs keep their own suffix. Plain `pnpm dev` scopes its
+profile by checkout-path hash, but all such worktrees share a single stable `dev` keychain suffix so
+that a dev vault opened from a second worktree still finds the master key that bound its verifier.
 When a local-only vault later signs up as the first sync device, device registration stores the
 account master key and rebinds this verifier before the sync runtime activates. That keeps notes
 created before sign-in on the same encrypted sync path instead of leaving the push queue without a

@@ -6,7 +6,8 @@
     "year": "Year"
   },
   "undo": {
-    "moveEvent": "Move event"
+    "moveEvent": "Move event",
+    "moveTask": "Reschedule task"
   },
   "toolbar": {
     "create-event": "Create event",

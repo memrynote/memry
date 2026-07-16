@@ -585,6 +585,7 @@
       "pinned": "PINNED",
       "allNotes": "ALL NOTES",
       "allNotesArePinned": "All notes are pinned",
+      "tasks": "TASKS",
       "unpinFromTag": "Unpin from tag",
       "unpin": "Unpin",
       "pinToTag": "Pin to tag",

@@ -76,6 +76,7 @@ export {
   filterByProjects,
   scopeTasksByProject,
   filterByPriorities,
+  filterByTags,
   filterByDueDateRange,
   filterByStatuses,
   filterByCompletion,

@@ -44,7 +44,7 @@ export const SubtaskRow = ({
       className={cn(
         'flex items-center gap-2 border-l-[3px] border-l-transparent',
         'py-1.5 pl-[44px] pr-3',
-        'hover:bg-accent/50 cursor-pointer rounded-r-sm',
+        'hover:bg-muted cursor-pointer rounded-r-sm',
         'transition-colors duration-150',
         onClick && 'focus-visible:outline-none',
         className

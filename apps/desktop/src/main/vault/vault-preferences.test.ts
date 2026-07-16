@@ -18,6 +18,47 @@ function createTempVault(): string {
   return dir
 }
 
+describe('editor spellCheck preference', () => {
+  let vaultPath: string
+
+  afterEach(() => {
+    if (vaultPath) fs.rmSync(vaultPath, { recursive: true, force: true })
+  })
+
+  it('#given no stored preference #then spellCheck defaults to off', () => {
+    vaultPath = createTempVault()
+
+    expect(readPreferences(vaultPath).editor.spellCheck).toBe(false)
+  })
+
+  it('#given config.json written by an older version #then spellCheck reads as off', () => {
+    vaultPath = createTempVault()
+    fs.writeFileSync(
+      path.join(vaultPath, MEMRY_DIR, 'config.json'),
+      JSON.stringify({ preferences: { theme: 'dark', editor: { width: 'full' } } })
+    )
+
+    expect(readPreferences(vaultPath).editor.spellCheck).toBe(false)
+  })
+
+  it('#given spellCheck enabled #then it round-trips through config.json', () => {
+    vaultPath = createTempVault()
+
+    writePreferences(vaultPath, { editor: { spellCheck: true } })
+
+    expect(readPreferences(vaultPath).editor.spellCheck).toBe(true)
+  })
+
+  it('#given spellCheck enabled #when an unrelated editor pref changes #then spellCheck survives', () => {
+    vaultPath = createTempVault()
+    writePreferences(vaultPath, { editor: { spellCheck: true } })
+
+    writePreferences(vaultPath, { editor: { width: 'full' } })
+
+    expect(readPreferences(vaultPath).editor.spellCheck).toBe(true)
+  })
+})
+
 describe('VaultPreferencesSchema', () => {
   it('#given valid preferences #then parses successfully', () => {
     const input = {
@@ -29,7 +70,8 @@ describe('VaultPreferencesSchema', () => {
       createInSelectedFolder: false,
       editor: {
         width: 'full' as const,
-        toolbarMode: 'sticky' as const
+        toolbarMode: 'sticky' as const,
+        spellCheck: false
       }
     }
 
@@ -41,7 +83,7 @@ describe('VaultPreferencesSchema', () => {
     for (const legacy of ['narrow', 'medium', 'wide']) {
       const input = {
         ...VAULT_PREFERENCES_DEFAULTS,
-        editor: { width: legacy, toolbarMode: 'floating' as const }
+        editor: { width: legacy, toolbarMode: 'floating' as const, spellCheck: false }
       }
       const result = VaultPreferencesSchema.parse(input)
       expect(result.editor.width).toBe('normal')

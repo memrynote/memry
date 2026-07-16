@@ -168,16 +168,20 @@ The marketing site (`apps/landing`) sends anonymous web events to the rate-limit
 
 Desktop error reporting follows the same product telemetry setting. Each captured error ships
 stable metadata — process area, component/source, action, phase, and the error's code
-(`errorCode`) — plus a **redacted stack trace** and, for React boundaries, the component stack.
+(`errorCode`, a typed code where one exists — see [Vault File Errors](#vault-file-errors)) — plus
+a **redacted stack trace** and, for React boundaries, the component stack.
 
-`errorCode` prefers a **typed code the error carries** over its class name: `NoteError.code`,
-better-sqlite3's `error.code`, or a Node system code. A note write failure therefore reports
-`NOTE_WRITE_FAILED` rather than collapsing every note fault to `NoteError`, and a locked database
-reports `SQLITE_BUSY` rather than an un-triageable `SqliteError`. A code is only trusted when it
-looks like an enum token (`^[A-Za-z][A-Za-z0-9_.:-]{0,63}$`); anything else — a path, an email, a
-URL, free-form prose — is **rejected outright** and the class name is used instead, because a
-character-substituted path (`_Users_kaan_secret.md`) still leaks its structure. The class name
-itself still passes through the safe-token rules (no `@`, `://`, `/`, `\`, ≤64 chars).
+`errorCode` prefers a **typed code the error carries** over its class name: a richer
+`telemetryCode` (`NoteError`'s note error code plus the originating errno, see
+[Vault File Errors](#vault-file-errors)), then a plain `.code` (better-sqlite3's `error.code`, a
+Node system code), walking the `cause`/`AggregateError.errors` chain to a bounded depth so a
+`fetch failed` `TypeError` still surfaces the underlying `ECONNREFUSED`. A note write failure
+therefore reports `NOTE_WRITE_FAILED:EBUSY` rather than collapsing every note fault to `NoteError`,
+and a locked database reports `SQLITE_BUSY` rather than an un-triageable `SqliteError`. A code is
+only trusted when it looks like an enum token (`^[A-Za-z][A-Za-z0-9_.:-]{0,63}$`); anything else — a
+path, an email, a URL, free-form prose — is **rejected outright** and the class name is used
+instead, because a character-substituted path (`_Users_kaan_secret.md`) still leaks its structure.
+The class name itself still passes through the safe-token rules (no `@`, `://`, `/`, `\`, ≤64 chars).
 
 An **unhandled rejection** can carry any value as its reason — a string, a plain object, or a
 cross-realm `Error` that fails `instanceof Error` — and those carry no stack, which previously
@@ -194,6 +198,21 @@ filename, or content. The stack is reduced to code-location frames only — the 
 app source/bundle locations (not user files); any home-directory prefix (`/Users/<name>`,
 `C:\Users\<name>`) is rewritten to `~`, and emails, UUIDs, JWTs, and bearer tokens are scrubbed
 from anything that ships.
+
+### Vault File Errors
+
+A class name alone is often too coarse to act on: every failed note save reported `NoteError`,
+which cannot tell an antivirus or cloud-sync file lock apart from a full disk. `NoteError`
+therefore carries the originating fs error as its `cause`, and reports a composite `errorCode` of
+its note error code plus the errno — for example `NOTE_WRITE_FAILED:EBUSY` (locked) versus
+`NOTE_WRITE_FAILED:ENOSPC` (out of space). The errno is admitted by a strict allowlist
+(`/^E[A-Z0-9]+$/`), so **the vault file path is never part of the code** — paths are user data and
+stay out of telemetry, as above.
+
+Writes to a locked file are retried a bounded number of times before failing (see
+`withTransientFsRetry` in `main/vault/file-ops.ts`). Each retry is written to the local log with
+its errno and attempt number — again never the path — so a slow or failed save is explainable from
+a user's log file even when telemetry is switched off.
 
 Sync-server error reporting is server-side. Because the sync server is end-to-end-blind (it only
 ever holds ciphertext), its own error strings are operational: the redacted message and stack ship

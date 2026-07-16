@@ -121,7 +121,10 @@ function TagTreeItem({
 
   return (
     <>
-      <div className="flex items-center group" style={{ paddingLeft: `${node.depth * 14 + 8}px` }}>
+      <div
+        className="flex items-center group rounded-md transition-colors hover:bg-muted"
+        style={{ paddingLeft: `${node.depth * 14 + 8}px` }}
+      >
         {hasChildren ? (
           <button
             type="button"
@@ -147,7 +150,6 @@ function TagTreeItem({
               title={`${node.fullPath} (${node.totalCount})`}
               className={cn(
                 'flex items-center gap-1.5 rounded-sm py-0.5 px-1.5 text-[11px] font-medium leading-3.5 min-w-0',
-                'transition-opacity hover:opacity-80',
                 isSelected && 'ring-1 ring-current',
                 node.isVirtual && 'opacity-60'
               )}

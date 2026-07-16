@@ -61,7 +61,7 @@ const PillWrapper = ({
 }): React.JSX.Element => (
   <div
     className={cn(
-      'flex items-center rounded-[5px] pr-1 pl-2 gap-[5px] shrink-0 py-[3px]',
+      'flex items-center rounded-[5px] pe-1 ps-2 gap-[5px] shrink-0 py-[3px]',
       'bg-[#5E6AD21A] border border-[#5E6AD233]',
       cls
     )}
@@ -111,6 +111,42 @@ export const ActiveFiltersBar = ({
           <RemoveButton
             label={tPhaseF('phaseF.componentsTasksFiltersActiveFiltersBar.priority')}
             onClick={() => onUpdateFilters({ priorities: [] })}
+          />
+        </PillWrapper>
+      )
+    }
+
+    if (filters.tags.length > 0) {
+      result.push(
+        <PillWrapper key="tags">
+          <svg
+            width="11"
+            height="11"
+            viewBox="0 0 11 11"
+            fill="none"
+            className="text-muted-foreground shrink-0"
+          >
+            <path
+              d="M1.25 1.25h3.75l5 5-3.75 3.75-5-5v-3.75z"
+              stroke="currentColor"
+              strokeWidth="0.9"
+              strokeLinejoin="round"
+            />
+            <circle cx="3.5" cy="3.5" r="0.75" fill="currentColor" />
+          </svg>
+          <span
+            className={`text-[11px] text-text-secondary leading-3.5 shrink-0 whitespace-nowrap`}
+          >
+            {tPhaseF('phaseF.componentsTasksFiltersActiveFiltersBar.tagsIs')}
+          </span>
+          <span
+            className={`text-[11px] text-foreground font-medium leading-3.5 shrink-0 whitespace-nowrap`}
+          >
+            {filters.tags.join(', ')}
+          </span>
+          <RemoveButton
+            label={tPhaseF('phaseF.componentsTasksFiltersActiveFiltersBar.tags')}
+            onClick={() => onUpdateFilters({ tags: [] })}
           />
         </PillWrapper>
       )
@@ -268,6 +304,7 @@ export const ActiveFiltersBar = ({
     return result
   }, [
     filters.priorities,
+    filters.tags,
     filters.statusIds,
     filters.projectIds,
     filters.dueDate.type,
@@ -290,7 +327,7 @@ export const ActiveFiltersBar = ({
       )}
     >
       {pills}
-      <div className="flex items-center gap-2.5 ml-auto shrink-0">
+      <div className="flex items-center gap-2.5 ms-auto shrink-0">
         {onSaveFilter && (
           <button
             type="button"
