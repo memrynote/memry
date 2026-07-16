@@ -19,7 +19,6 @@ import {
   Download,
   Upload,
   Loader2,
-  GripVertical,
   LeftToRightBlockQuote,
   TextAlignCenter,
   RightToLeftBlockQuote
@@ -138,6 +137,7 @@ function PdfPreview({ url, name, width, height, align, onResize, onAlign }: PdfP
     startWidth: number
     startHeight: number
     rtl: boolean
+    corner: 'start' | 'end'
   } | null>(null)
 
   useLayoutEffect(() => {
@@ -191,7 +191,7 @@ function PdfPreview({ url, name, width, height, align, onResize, onAlign }: PdfP
   )
 
   const handleResizePointerDown = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
+    (e: React.PointerEvent<HTMLDivElement>, corner: 'start' | 'end') => {
       e.preventDefault()
       e.stopPropagation()
       const rtl = getComputedStyle(e.currentTarget).direction === 'rtl'
@@ -201,7 +201,8 @@ function PdfPreview({ url, name, width, height, align, onResize, onAlign }: PdfP
         startY: e.clientY,
         startWidth: cardWidth,
         startHeight,
-        rtl
+        rtl,
+        corner
       }
       e.currentTarget.setPointerCapture(e.pointerId)
       setDraftWidth(cardWidth)
@@ -214,7 +215,8 @@ function PdfPreview({ url, name, width, height, align, onResize, onAlign }: PdfP
     (e: React.PointerEvent<HTMLDivElement>) => {
       const drag = dragRef.current
       if (!drag) return
-      const dx = (e.clientX - drag.startX) * (drag.rtl ? -1 : 1)
+      const signX = (drag.corner === 'end' ? 1 : -1) * (drag.rtl ? -1 : 1)
+      const dx = (e.clientX - drag.startX) * signX
       const dy = e.clientY - drag.startY
       setDraftWidth(clampWidth(drag.startWidth + dx, widthLimit))
       setDraftHeight(clampHeight(drag.startHeight + dy, heightLimit))
@@ -227,7 +229,8 @@ function PdfPreview({ url, name, width, height, align, onResize, onAlign }: PdfP
       const drag = dragRef.current
       if (!drag) return
       e.currentTarget.releasePointerCapture(e.pointerId)
-      const dx = (e.clientX - drag.startX) * (drag.rtl ? -1 : 1)
+      const signX = (drag.corner === 'end' ? 1 : -1) * (drag.rtl ? -1 : 1)
+      const dx = (e.clientX - drag.startX) * signX
       const dy = e.clientY - drag.startY
       const nextWidth = clampWidth(drag.startWidth + dx, widthLimit)
       const nextHeight = clampHeight(drag.startHeight + dy, heightLimit)
@@ -308,73 +311,91 @@ function PdfPreview({ url, name, width, height, align, onResize, onAlign }: PdfP
     <div ref={viewRef} className="pdf-preview-wrap">
       <div
         className={cn(
-          'pdf-preview group relative rounded-md border border-border bg-muted/30 overflow-hidden',
+          'pdf-preview group relative',
           align === 'center' ? 'ms-auto me-auto' : align === 'right' ? 'ms-auto' : 'me-auto'
         )}
-        style={{ width: cardWidth, height: cardHeight }}
+        style={{ width: cardWidth }}
       >
-        {/* First page only; the card height crops it from the top (no scroll). */}
-        <div ref={pageContentRef} className="bg-white dark:bg-zinc-900">
-          <Document
-            file={url}
-            onLoadSuccess={handleLoadSuccess}
-            onLoadError={handleLoadError}
-            loading={PDF_LOADING_INDICATOR}
-          >
-            <Page
-              pageNumber={1}
-              width={pageWidth}
-              renderTextLayer={true}
-              renderAnnotationLayer={true}
-            />
-          </Document>
+        {/* Clipped frame: rounded border + first-page crop (no inner scroll). */}
+        <div
+          className="relative overflow-hidden rounded-md border border-border bg-muted/30"
+          style={{ height: cardHeight }}
+        >
+          <div ref={pageContentRef} className="bg-white dark:bg-zinc-900">
+            <Document
+              file={url}
+              onLoadSuccess={handleLoadSuccess}
+              onLoadError={handleLoadError}
+              loading={PDF_LOADING_INDICATOR}
+            >
+              <Page
+                pageNumber={1}
+                width={pageWidth}
+                renderTextLayer={true}
+                renderAnnotationLayer={true}
+              />
+            </Document>
+          </div>
+
+          {/* Alignment controls — hover reveal, top-inline-end */}
+          {!loading && !error && (
+            <div className="absolute top-2 end-2 z-10 flex items-center gap-px rounded-md border border-border bg-background/90 p-0.5 opacity-0 shadow-sm transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+              {PDF_ALIGN_VALUES.map((value) => {
+                const Icon = alignIcons[value]
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    aria-label={alignLabels[value]}
+                    aria-pressed={align === value}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={() => onAlign(value)}
+                    className={cn(
+                      'flex h-5 w-5 items-center justify-center rounded transition-colors',
+                      align === value
+                        ? 'bg-accent text-accent-foreground'
+                        : 'text-muted-foreground hover:bg-accent/50'
+                    )}
+                  >
+                    <Icon className="h-4 w-4" />
+                  </button>
+                )
+              })}
+            </div>
+          )}
         </div>
 
-        {/* Alignment controls — hover reveal, top-inline-end */}
+        {/* Corner resize brackets — sit just outside the bottom corners,
+            revealed on hover or when the embed is selected. */}
         {!loading && !error && (
-          <div className="absolute top-2 end-2 z-10 flex items-center gap-px rounded-md border border-border bg-background/90 p-0.5 opacity-0 shadow-sm transition-opacity group-hover:opacity-100 focus-within:opacity-100">
-            {PDF_ALIGN_VALUES.map((value) => {
-              const Icon = alignIcons[value]
-              return (
-                <button
-                  key={value}
-                  type="button"
-                  aria-label={alignLabels[value]}
-                  aria-pressed={align === value}
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={() => onAlign(value)}
-                  className={cn(
-                    'flex h-5 w-5 items-center justify-center rounded transition-colors',
-                    align === value
-                      ? 'bg-accent text-accent-foreground'
-                      : 'text-muted-foreground hover:bg-accent/50'
-                  )}
-                >
-                  <Icon className="h-4 w-4" />
-                </button>
-              )
-            })}
-          </div>
-        )}
-
-        {/* Resize handle — drag the corner to scale width and crop height */}
-        {!loading && !error && (
-          <div
-            role="slider"
-            tabIndex={0}
-            aria-label={tPhaseF('phaseF.componentsNoteContentAreaFileBlock.resizePdf')}
-            aria-orientation="horizontal"
-            aria-valuemin={MIN_PDF_WIDTH}
-            aria-valuemax={maxWidth || undefined}
-            aria-valuenow={Math.round(cardWidth)}
-            onPointerDown={handleResizePointerDown}
-            onPointerMove={handleResizePointerMove}
-            onPointerUp={handleResizePointerUp}
-            onKeyDown={handleResizeKeyDown}
-            className="absolute bottom-2 end-2 z-10 flex h-5 w-5 cursor-nwse-resize touch-none items-center justify-center rounded-sm border border-border bg-background/90 text-muted-foreground opacity-60 shadow-sm transition-opacity hover:opacity-100 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          >
-            <GripVertical className="h-3 w-3" />
-          </div>
+          <>
+            <div
+              role="slider"
+              tabIndex={0}
+              data-pdf-resize-handle
+              aria-label={tPhaseF('phaseF.componentsNoteContentAreaFileBlock.resizePdf')}
+              aria-orientation="horizontal"
+              aria-valuemin={MIN_PDF_WIDTH}
+              aria-valuemax={maxWidth || undefined}
+              aria-valuenow={Math.round(cardWidth)}
+              onPointerDown={(e) => handleResizePointerDown(e, 'end')}
+              onPointerMove={handleResizePointerMove}
+              onPointerUp={handleResizePointerUp}
+              onKeyDown={handleResizeKeyDown}
+              className="absolute -bottom-1 -end-1 z-10 h-3.5 w-3.5 cursor-nwse-resize touch-none border-b-2 border-e-2 border-foreground/60 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            />
+            <div
+              role="button"
+              tabIndex={0}
+              data-pdf-resize-handle
+              aria-label={tPhaseF('phaseF.componentsNoteContentAreaFileBlock.resizePdf')}
+              onPointerDown={(e) => handleResizePointerDown(e, 'start')}
+              onPointerMove={handleResizePointerMove}
+              onPointerUp={handleResizePointerUp}
+              onKeyDown={handleResizeKeyDown}
+              className="absolute -bottom-1 -start-1 z-10 h-3.5 w-3.5 cursor-nesw-resize touch-none border-b-2 border-s-2 border-foreground/60 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            />
+          </>
         )}
       </div>
     </div>

@@ -185,6 +185,12 @@
   outline: none !important;
 }
 
+/* Reveal the PDF resize brackets while the embed is node-selected, not just on
+   hover (so a click surfaces them too). */
+.ProseMirror-selectednode [data-pdf-resize-handle] {
+  opacity: 1;
+}
+
 /* ===== HEADING SIZES ===== */
 [data-content-type='heading'] {
   --level: 1.875em !important;
