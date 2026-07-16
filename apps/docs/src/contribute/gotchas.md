@@ -15,6 +15,14 @@ Two fix paths depending on the target:
 
 > Using the Node fix for Electron leaves `autoOpenLastVault` silently failing with `ERR_DLOPEN_FAILED`. The app never opens the test vault, and E2E waits for workspace surfaces time out.
 
+## Electron major upgrade — native ABI + V8 API removals
+
+Bumping the `electron` major (e.g. 39 → 43) is more than a version change:
+
+- **Rebuild both native targets.** Every `.node` addon (`better-sqlite3`, `keytar`, `classic-level`) must be rebuilt for the new ABI, and the Node-test ABI differs from the Electron-runtime ABI (see the NODE_MODULE_VERSION gotcha above). A Node rebuild is not proof for the Electron runtime, or vice-versa.
+- **`node-abi` can lag the release.** `@electron/rebuild` fails with `Could not detect abi for version <X>` when its transitive `node-abi` predates the new Electron; the repo's `minimumReleaseAge` gate can also hold `node-abi` at an older version. Fix: pin `node-abi` in `pnpm-workspace.yaml` `overrides` to a version that maps the target Electron, and add that version to `minimumReleaseAgeExclude`.
+- **V8 API removals only surface in E2E.** V8 15 (Electron 43) removed the legacy `Intl.Locale#textInfo` getter; reading it threw at renderer boot → a blank white window. Vitest cannot catch this (Node's V8 still exposes the old shape) — only E2E on the bundled Electron proves the renderer boots. Feature-detect new APIs (e.g. `getTextInfo()`) and keep a fallback.
+
 ## Zod v4
 
 `z.record(z.unknown())` throws in `safeParse` under Zod v4. Use:
