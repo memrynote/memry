@@ -6,7 +6,7 @@ import { getI18n } from 'react-i18next'
  * @module components/note/content-area/file-block
  */
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef, useLayoutEffect } from 'react'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createReactBlockSpec } from '@blocknote/react'
 import { Document, Page, pdfjs } from 'react-pdf'
@@ -22,7 +22,8 @@ import {
   PanelLeftClose,
   PanelLeft,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  GripVertical
 } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -79,18 +80,107 @@ const PDF_LOADING_INDICATOR = (
 // PDF Preview Component with Collapsible Sidebar
 // ============================================================================
 
+// Resize bounds for the inline PDF preview.
+const MIN_PDF_WIDTH = 240
+// Release within this many px of the column edge snaps to full width.
+const PDF_SNAP_THRESHOLD = 24
+
+function clampWidth(value: number, max: number): number {
+  return Math.round(Math.min(Math.max(value, MIN_PDF_WIDTH), max))
+}
+
 interface PdfPreviewProps {
   url: string
   name: string
+  /** Stored display width in px; `0` uses the responsive default. */
+  width: number
+  /** Commit a new display width (px) to the block prop. `0` restores default. */
+  onResize: (width: number) => void
 }
 
-function PdfPreview({ url, name }: PdfPreviewProps) {
+function PdfPreview({ url, name, width, onResize }: PdfPreviewProps) {
   const { t: tPhaseF } = useT('notes')
   const [numPages, setNumPages] = useState<number>(0)
   const [currentPage, setCurrentPage] = useState(1)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // --- Resize state ---------------------------------------------------------
+  // The page-view column bounds the max width so a page never overflows or
+  // horizontally scrolls; measured live so a stored width wider than the
+  // current window clamps down (and restores when the window widens).
+  const viewRef = useRef<HTMLDivElement>(null)
+  const [maxWidth, setMaxWidth] = useState(0)
+  // Non-null only while dragging, for smooth feedback before the commit.
+  const [draftWidth, setDraftWidth] = useState<number | null>(null)
+  const dragRef = useRef<{ startX: number; startWidth: number; rtl: boolean } | null>(null)
+
+  useLayoutEffect(() => {
+    const el = viewRef.current
+    if (!el) return
+    const measure = () => setMaxWidth(el.clientWidth)
+    measure()
+    if (typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(measure)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  const defaultWidth = sidebarOpen ? 480 : 600
+  const storedWidth = width > 0 ? width : defaultWidth
+  const limit = maxWidth > 0 ? maxWidth : storedWidth
+  const renderWidth = Math.min(draftWidth ?? storedWidth, limit)
+
+  const handleResizePointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      e.preventDefault()
+      e.stopPropagation()
+      const rtl = getComputedStyle(e.currentTarget).direction === 'rtl'
+      dragRef.current = { startX: e.clientX, startWidth: renderWidth, rtl }
+      e.currentTarget.setPointerCapture(e.pointerId)
+      setDraftWidth(renderWidth)
+    },
+    [renderWidth]
+  )
+
+  const handleResizePointerMove = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      const drag = dragRef.current
+      if (!drag) return
+      const delta = (e.clientX - drag.startX) * (drag.rtl ? -1 : 1)
+      setDraftWidth(clampWidth(drag.startWidth + delta, limit))
+    },
+    [limit]
+  )
+
+  const handleResizePointerUp = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      const drag = dragRef.current
+      if (!drag) return
+      e.currentTarget.releasePointerCapture(e.pointerId)
+      const delta = (e.clientX - drag.startX) * (drag.rtl ? -1 : 1)
+      const next = clampWidth(drag.startWidth + delta, limit)
+      dragRef.current = null
+      setDraftWidth(null)
+      onResize(next >= limit - PDF_SNAP_THRESHOLD ? limit : next)
+    },
+    [limit, onResize]
+  )
+
+  const handleResizeKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      const step = e.shiftKey ? 50 : 20
+      if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
+        e.preventDefault()
+        onResize(clampWidth(renderWidth + step, limit))
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
+        e.preventDefault()
+        onResize(clampWidth(renderWidth - step, limit))
+      }
+    },
+    [renderWidth, limit, onResize]
+  )
 
   const handleLoadSuccess = ({ numPages }: { numPages: number }) => {
     setNumPages(numPages)
@@ -216,21 +306,41 @@ function PdfPreview({ url, name }: PdfPreviewProps) {
         )}
 
         {/* Main PDF View */}
-        <div className="flex-1 min-w-0">
-          <div className="overflow-auto max-h-[400px] bg-white dark:bg-zinc-900">
-            <Document
-              file={url}
-              onLoadSuccess={handleLoadSuccess}
-              onLoadError={handleLoadError}
-              loading={PDF_LOADING_INDICATOR}
-            >
-              <Page
-                pageNumber={currentPage}
-                width={sidebarOpen ? 480 : 600}
-                renderTextLayer={true}
-                renderAnnotationLayer={true}
-              />
-            </Document>
+        <div ref={viewRef} className="flex-1 min-w-0">
+          <div className="group relative">
+            <div className="overflow-auto max-h-[80vh] bg-white dark:bg-zinc-900">
+              <Document
+                file={url}
+                onLoadSuccess={handleLoadSuccess}
+                onLoadError={handleLoadError}
+                loading={PDF_LOADING_INDICATOR}
+              >
+                <Page
+                  pageNumber={currentPage}
+                  width={renderWidth}
+                  renderTextLayer={true}
+                  renderAnnotationLayer={true}
+                />
+              </Document>
+            </div>
+            {!loading && !error && (
+              <div
+                role="slider"
+                tabIndex={0}
+                aria-label={tPhaseF('phaseF.componentsNoteContentAreaFileBlock.resizePdf')}
+                aria-orientation="horizontal"
+                aria-valuemin={MIN_PDF_WIDTH}
+                aria-valuemax={maxWidth || undefined}
+                aria-valuenow={Math.round(renderWidth)}
+                onPointerDown={handleResizePointerDown}
+                onPointerMove={handleResizePointerMove}
+                onPointerUp={handleResizePointerUp}
+                onKeyDown={handleResizeKeyDown}
+                className="absolute bottom-2 end-2 flex h-5 w-5 cursor-ew-resize touch-none items-center justify-center rounded-sm border border-border bg-background/90 text-muted-foreground opacity-0 shadow-sm transition-opacity group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                <GripVertical className="h-3 w-3" />
+              </div>
+            )}
           </div>
 
           {/* Page Navigation */}
@@ -417,17 +527,34 @@ function AudioPreview({ url, name }: FilePreviewProps) {
  * Shows inline PDF preview for PDFs, download card for other files.
  * Returns a factory function - call it when adding to schema: `file: createFileBlock()`
  */
+interface FileBlockEditor {
+  updateBlock: (block: unknown, update: { props: Record<string, unknown> }) => void
+}
+
 function FileBlockRender({
   block,
+  editor,
   contentRef
 }: {
-  block: { props: { url: string; name: string; size: number; mimeType: string } }
+  block: { props: { url: string; name: string; size: number; mimeType: string; width?: number } }
+  editor: unknown
   contentRef: React.Ref<HTMLDivElement>
 }) {
   const { t: tPhaseF } = useT('notes')
-  const { url, name, size, mimeType } = block.props
+  const { url, name, size, mimeType, width } = block.props
   const isPdf = mimeType === 'application/pdf'
   const isAudio = mimeType.startsWith('audio/')
+
+  // Persist the user-chosen PDF width to the block prop (round-trips to the
+  // vault marker via serializeFileBlock). Declared before the early return to
+  // keep hook order stable.
+  const handleResize = useCallback(
+    (nextWidth: number) => {
+      const fileEditor = editor as FileBlockEditor | undefined
+      fileEditor?.updateBlock(block, { props: { ...block.props, width: nextWidth } })
+    },
+    [editor, block]
+  )
 
   // Don't render if no URL
   if (!url) {
@@ -441,7 +568,7 @@ function FileBlockRender({
   return (
     <div ref={contentRef} className="file-block my-2" contentEditable={false}>
       {isPdf ? (
-        <PdfPreview url={url} name={name} />
+        <PdfPreview url={url} name={name} width={width ?? 0} onResize={handleResize} />
       ) : isAudio ? (
         <AudioPreview url={url} name={name} size={size} mimeType={mimeType} />
       ) : (
@@ -458,7 +585,8 @@ export const createFileBlock = createReactBlockSpec(
       url: { default: '' },
       name: { default: '' },
       size: { default: 0 },
-      mimeType: { default: '' }
+      mimeType: { default: '' },
+      width: { default: 0 }
     },
     content: 'none'
   },

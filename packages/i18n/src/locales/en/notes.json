@@ -503,7 +503,8 @@
       "failedToLoadPdf": "Failed to load PDF: ",
       "download": "Download",
       "download2": "Download",
-      "noFileAttached": "No file attached"
+      "noFileAttached": "No file attached",
+      "resizePdf": "Resize PDF"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "Open in task panel",
