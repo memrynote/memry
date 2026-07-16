@@ -99,6 +99,12 @@ type PdfAlign = 'left' | 'center' | 'right'
 
 const PDF_ALIGN_VALUES: readonly PdfAlign[] = ['left', 'center', 'right']
 
+const PDF_ALIGN_ICONS: Record<PdfAlign, typeof TextAlignCenter> = {
+  left: LeftToRightBlockQuote,
+  center: TextAlignCenter,
+  right: RightToLeftBlockQuote
+}
+
 interface PdfPreviewProps {
   url: string
   name: string
@@ -286,12 +292,6 @@ function PdfPreview({ url, name, width, height, align, onResize, onAlign }: PdfP
     center: tPhaseF('phaseF.componentsNoteContentAreaFileBlock.alignCenter'),
     right: tPhaseF('phaseF.componentsNoteContentAreaFileBlock.alignRight')
   }
-  const alignIcons: Record<PdfAlign, typeof TextAlignCenter> = {
-    left: LeftToRightBlockQuote,
-    center: TextAlignCenter,
-    right: RightToLeftBlockQuote
-  }
-
   if (error) {
     return (
       <div className="pdf-preview-error rounded-md border border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950">
@@ -341,7 +341,7 @@ function PdfPreview({ url, name, width, height, align, onResize, onAlign }: PdfP
           {!loading && !error && (
             <div className="absolute top-2 end-2 z-10 flex items-center gap-px rounded-md border border-border bg-background/90 p-0.5 opacity-0 shadow-sm transition-opacity group-hover:opacity-100 focus-within:opacity-100">
               {PDF_ALIGN_VALUES.map((value) => {
-                const Icon = alignIcons[value]
+                const Icon = PDF_ALIGN_ICONS[value]
                 return (
                   <button
                     key={value}
