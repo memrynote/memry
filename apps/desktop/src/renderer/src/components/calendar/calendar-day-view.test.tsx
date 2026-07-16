@@ -18,7 +18,12 @@ const mocks = vi.hoisted(() => ({
     onDoubleClick: vi.fn(),
     clearSelection: vi.fn()
   },
-  scrollToCurrentTime: vi.fn()
+  scrollToCurrentTime: vi.fn(),
+  dragContext: null as null | { dragState: { isDragging: boolean } }
+}))
+
+vi.mock('@/contexts/drag-context', () => ({
+  useOptionalDragContext: () => mocks.dragContext
 }))
 
 vi.mock('@memry/i18n/renderer', () => ({
@@ -169,6 +174,7 @@ describe('CalendarDayView', () => {
     vi.clearAllMocks()
     mocks.marquee.selection = null
     mocks.marquee.isDragging = false
+    mocks.dragContext = null
   })
 
   it('renders all-day and timed items and forwards grid and item actions', () => {
@@ -280,6 +286,7 @@ describe('CalendarDayView drop target wiring', () => {
     vi.clearAllMocks()
     mocks.marquee.selection = null
     mocks.marquee.isDragging = false
+    mocks.dragContext = null
   })
 
   it('registers the timed grid as a slot droppable for anchorDate with HOUR_HEIGHT, and the all-day cell with timeBehavior "clear"', () => {
@@ -322,5 +329,46 @@ describe('CalendarDayView drop target wiring', () => {
     expect(allDayCall?.data.dateKey).toBe('2026-05-14')
     expect(allDayCall?.data.dueTime).toBeNull()
     expect(allDayCall?.id).toBe('calendar-date:2026-05-14:clear')
+  })
+})
+
+describe('CalendarDayView all-day strip reveal during task drag', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.marquee.selection = null
+    mocks.marquee.isDragging = false
+    mocks.dragContext = null
+  })
+
+  const timedItem = eventItem({
+    projectionId: 'timed',
+    sourceId: 'event-timed',
+    title: 'Timed sync'
+  })
+
+  it('does not render the all-day strip when idle and there are no all-day items', () => {
+    render(<CalendarDayView anchorDate="2026-05-14" items={[timedItem]} selectedItemId={null} />)
+
+    expect(screen.queryByTestId('day-all-day-strip')).not.toBeInTheDocument()
+    const calls = droppableMocks.useDroppable.mock.calls.map(
+      ([config]) => config as { id: string; data: Record<string, unknown> }
+    )
+    expect(calls.some((call) => 'dueTime' in call.data)).toBe(false)
+  })
+
+  it('reveals the all-day strip with a droppable cell when a task drag is in flight, even with no all-day items', () => {
+    mocks.dragContext = { dragState: { isDragging: true } }
+
+    render(<CalendarDayView anchorDate="2026-05-14" items={[timedItem]} selectedItemId={null} />)
+
+    expect(screen.getByTestId('day-all-day-strip')).toBeInTheDocument()
+
+    const calls = droppableMocks.useDroppable.mock.calls.map(
+      ([config]) => config as { id: string; data: Record<string, unknown> }
+    )
+    const allDayCall = calls.find((call) => call.data.type === 'date' && 'dueTime' in call.data)
+    expect(allDayCall).toBeDefined()
+    expect(allDayCall?.data.dateKey).toBe('2026-05-14')
+    expect(allDayCall?.data.dueTime).toBeNull()
   })
 })

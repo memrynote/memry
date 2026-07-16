@@ -18,6 +18,7 @@ import { useTimeGridMarquee } from './use-time-grid-marquee'
 import { useEventDrag, isEventMovable, isEventResizable } from './use-event-drag'
 import { useScrollToCurrentTime } from './use-scroll-to-current-time'
 import { useWeekInfiniteScroll } from './use-week-infinite-scroll'
+import { useOptionalDragContext } from '@/contexts/drag-context'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { formatHour } from '@/lib/time-format'
 import { cn } from '@/lib/utils'
@@ -82,6 +83,7 @@ export function CalendarWeekView({
     settings: { clockFormat }
   } = useGeneralSettings()
   const { t, i18n } = useT('calendar')
+  const isTaskDragInFlight = useOptionalDragContext()?.dragState.isDragging ?? false
 
   const gridRef = useRef<HTMLDivElement>(null)
   const timeColumnRef = useRef<HTMLDivElement>(null)
@@ -222,7 +224,9 @@ export function CalendarWeekView({
 
   const allDayRowHeight =
     maxAllDayPerDay === 0
-      ? 0
+      ? isTaskDragInFlight
+        ? ALL_DAY_ROW_MIN_HEIGHT
+        : 0
       : Math.max(
           ALL_DAY_ROW_MIN_HEIGHT,
           maxAllDayPerDay * ALL_DAY_CHIP_HEIGHT +
@@ -290,7 +294,7 @@ export function CalendarWeekView({
         </div>
       </div>
 
-      {maxAllDayPerDay > 0 && (
+      {(maxAllDayPerDay > 0 || isTaskDragInFlight) && (
         <div
           className="flex shrink-0 bg-background"
           data-testid="week-all-day-strip"

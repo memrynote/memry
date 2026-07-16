@@ -15,6 +15,7 @@ import { useEventDrag, isEventMovable, isEventResizable } from './use-event-drag
 import { MarqueeSelectionOverlay } from './marquee-selection-overlay'
 import { CalendarQuickCreateDialog } from './calendar-quick-create-dialog'
 import { useScrollToCurrentTime } from './use-scroll-to-current-time'
+import { useOptionalDragContext } from '@/contexts/drag-context'
 import type { AnchorRect, CalendarEventDraft } from './types'
 
 const HOUR_HEIGHT = 48
@@ -57,6 +58,7 @@ export function CalendarDayView({
     settings: { clockFormat }
   } = useGeneralSettings()
   const { t } = useT('calendar')
+  const isTaskDragInFlight = useOptionalDragContext()?.dragState.isDragging ?? false
   const gridRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const dateForColumn = useCallback(() => anchorDate, [anchorDate])
@@ -89,7 +91,7 @@ export function CalendarDayView({
 
   return (
     <div className="flex h-full flex-col" data-testid="calendar-view" data-view="day">
-      {allDayItems.length > 0 && (
+      {(allDayItems.length > 0 || isTaskDragInFlight) && (
         <div
           data-testid="day-all-day-strip"
           className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2"
