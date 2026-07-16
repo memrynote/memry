@@ -38,6 +38,7 @@ import {
   useNewNoteShortcut,
   useUndoKeyboardShortcut,
   useReminderNotifications,
+  useInboxReviewNotifications,
   useSearchShortcut,
   useHintActivation,
   isInputFocused
@@ -225,6 +226,7 @@ const AppContent = (): React.JSX.Element => {
   useNewNoteShortcut(() => void handleNewNote())
   useUndoKeyboardShortcut() // T051-T054: Cmd+Z for task undo
   useReminderNotifications() // T231-T233: In-app toast notifications for reminders
+  useInboxReviewNotifications() // Daily inbox review nudge: toast + open-inbox on click
   useFolderViewEvents() // Global cache invalidation for folder-view tabs
   const toggleSearch = useCallback(() => setSearchOpen((prev) => !prev), [])
   const openShortcutsDialog = useCallback(() => setShowShortcutsDialog(true), [])

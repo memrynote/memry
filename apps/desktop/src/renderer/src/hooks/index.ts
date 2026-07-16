@@ -44,6 +44,7 @@ export * from './use-bookmarks'
 
 // Reminders
 export * from './use-reminder-notifications'
+export * from './use-inbox-review-notifications'
 
 // Sync
 export * from './use-sync-status'
