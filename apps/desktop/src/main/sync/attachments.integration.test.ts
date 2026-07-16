@@ -286,12 +286,20 @@ describe('attachment upload/download against the real sync-server', () => {
     expect(requests).toBe(0)
   }, 120_000)
 
-  it('a STALE client limit fails open and the server accepts the legal file', async () => {
-    // The regression this guards: a user upgrades to Believer on the web or via a
-    // server-side grant, but the desktop cache still says Plus. If the preflight
-    // trusted that stale number it would hard-block a file the server accepts,
-    // with no network call and no recovery path. Stale must mean "no opinion",
-    // which the deps express as a null limit.
+  it('fails open when the client limit is null (cold/stale cache) and the server accepts the legal file', async () => {
+    // The preflight's fail-open CONTRACT: getMaxFileSize returns null for a cold,
+    // absent, or past-TTL cache, and the client must then defer to the server so a
+    // legal file still uploads. This case injects that null and drives the real
+    // client against the real Worker, proving the seam end-to-end: null => no
+    // opinion => the server accepts the (Believer-legal) 6 MiB file.
+    //
+    // It deliberately does NOT claim to prove the staleness RULE itself. The
+    // TTL/cachedAt logic that turns a stale entry into null lives in
+    // getCachedMaxFileSize and is regression-tested in entitlement-cache.test.ts —
+    // those unit tests fail on the base branch. This integration case passes on
+    // base too, because base already fails open on a null limit; conflating the
+    // seam with the rule is exactly the "green but proves nothing" trap this PR
+    // chain exists to kill, so it is labelled for what it is.
     const user = await seedUser({
       plan: 'believer',
       status: 'active',

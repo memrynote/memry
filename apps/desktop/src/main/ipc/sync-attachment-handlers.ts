@@ -289,6 +289,15 @@ export function registerAttachmentHandlers(): void {
         // no opinion and defers to the server instead of repeating a wrong call.
         // A local preflight rejection proves nothing about the server, so it must
         // not invalidate anything.
+        //
+        // The instanceof check is what separates the two: a local block and a
+        // server 413 both classify as `file_too_large`, but only the local one is
+        // an AttachmentTooLargeError. This relies on the invariant that
+        // AttachmentTooLargeError is thrown ONLY outside any withRetry wrapper (it
+        // is — the preflight throws before the first chunked request), so it is
+        // never dead-lettered. Were it thrown inside retry, classifyError would
+        // unwrap the DeadLetterError to file_too_large while `err` stayed a
+        // DeadLetterError, and this guard would wrongly invalidate on a local block.
         if (category === 'file_too_large' && !(err instanceof AttachmentTooLargeError)) {
           logger.warn('Server rejected on plan file size — invalidating cached plan limits', {
             noteId
