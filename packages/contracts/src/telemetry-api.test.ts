@@ -624,6 +624,77 @@ describe('toErrorCode', () => {
     expect(toErrorCode(undefined)).toBe('UnknownError')
     expect(toErrorCode({ constructor: { name: 'PlainThing' } })).toBe('PlainThing')
   })
+
+  it('walks the cause chain: an undici fetch failure surfaces the nested code', () => {
+    // #given undici raises `TypeError: fetch failed` with the real code on .cause,
+    // so reading only the top-level code reports a useless "TypeError"
+    const refused = Object.assign(new TypeError('fetch failed'), {
+      cause: Object.assign(new Error('connect ECONNREFUSED 127.0.0.1:11434'), {
+        code: 'ECONNREFUSED'
+      })
+    })
+
+    // #then the nested code wins over the top-level class name
+    expect(toErrorCode(refused)).toBe('ECONNREFUSED')
+  })
+
+  it('walks AggregateError.errors for dual-stack localhost failures', () => {
+    // #given a dual-stack localhost connect: undici nests an AggregateError
+    const aggregate = Object.assign(new TypeError('fetch failed'), {
+      cause: Object.assign(new AggregateError([], 'all attempts failed'), {
+        errors: [
+          Object.assign(new Error('connect ECONNREFUSED ::1:11434'), { code: 'ECONNREFUSED' }),
+          Object.assign(new Error('connect ECONNREFUSED 127.0.0.1:11434'), { code: 'ECONNREFUSED' })
+        ]
+      })
+    })
+
+    expect(toErrorCode(aggregate)).toBe('ECONNREFUSED')
+  })
+
+  it('surfaces a nested ENOTFOUND (a real misconfiguration), not TypeError', () => {
+    const dns = Object.assign(new TypeError('fetch failed'), {
+      cause: Object.assign(new Error('getaddrinfo ENOTFOUND ollama.local'), { code: 'ENOTFOUND' })
+    })
+
+    expect(toErrorCode(dns)).toBe('ENOTFOUND')
+  })
+
+  it('prefers a richer telemetryCode (code + errno) over the bare code', () => {
+    // #given a NoteError-shaped error exposing telemetryCode = code:errno
+    const error = Object.assign(new Error('failed to write /Users/kaan/note.md'), {
+      name: 'NoteError',
+      code: 'NOTE_WRITE_FAILED',
+      telemetryCode: 'NOTE_WRITE_FAILED:EBUSY'
+    })
+
+    // #then the errno-enriched code survives so EBUSY (locked) != ENOSPC (disk-full)
+    expect(toErrorCode(error)).toBe('NOTE_WRITE_FAILED:EBUSY')
+  })
+
+  it('stops walking the cause chain at a bounded depth', () => {
+    // #given a cause chain far deeper than the walker's bound
+    let deepest: unknown = Object.assign(new Error('root'), { code: 'ECONNREFUSED' })
+    for (let i = 0; i < 8; i++) {
+      deepest = Object.assign(new TypeError('fetch failed'), { cause: deepest })
+    }
+
+    // #then it does not chase forever — falls back to the class name
+    expect(toErrorCode(deepest)).toBe('TypeError')
+  })
+
+  it('never leaks a path through a nested cause code', () => {
+    // #given a nested cause whose "code" is really a path
+    const error = Object.assign(new TypeError('fetch failed'), {
+      cause: Object.assign(new Error('x'), { code: '/Users/kaan/secret.md' })
+    })
+
+    // #then the hostile nested code is rejected, and no path fragment ships
+    const code = toErrorCode(error)
+    expect(code).toBe('TypeError')
+    expect(code).not.toContain('/')
+    expect(code).not.toContain('secret')
+  })
 })
 
 describe('normalizeRejectionReason', () => {
@@ -676,6 +747,23 @@ describe('normalizeRejectionReason', () => {
   it('names null/undefined reasons instead of dropping them', () => {
     expect(normalizeRejectionReason(null).name).toBe('Rejection_null')
     expect(normalizeRejectionReason(undefined).name).toBe('Rejection_undefined')
+  })
+
+  it('does not adopt a reason name that is not an enum-ish token', () => {
+    // #given an error-shaped reason whose own .name is really a path — running it
+    // through toSafeToken would character-substitute it (_Users_kaan_secret.md)
+    // and still leak the structure
+    const reason = {
+      name: '/Users/kaan/secret.md',
+      stack: 'boom\n    at doThing (/app/out/main.js:1:1)'
+    }
+
+    // #then the path-shaped name is rejected outright; the synthesized Rejection_*
+    // name is kept and no path fragment rides along in the code
+    const normalized = normalizeRejectionReason(reason)
+    expect(normalized.name).toBe('Rejection_Object')
+    expect(toErrorCode(normalized)).not.toContain('secret')
+    expect(toErrorCode(normalized)).not.toContain('/')
   })
 
   it('produces codes that satisfy the safe-token invariants', () => {

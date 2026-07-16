@@ -422,8 +422,11 @@ describe('sync IPC handlers', () => {
 
   it('GET_STORAGE_BREAKDOWN makes no network call for a free user', async () => {
     // #given a free user — the server correctly answers 402, but production saw
-    // 4x SYNC_PAYMENT_REQUIRED from one user because the call was ungated
-    mockGetCachedEntitlement.mockReturnValue({ isPaid: false, plan: 'free', status: 'inactive' })
+    // 4x SYNC_PAYMENT_REQUIRED from one user because the call was ungated.
+    // mockReturnValueOnce (not mockReturnValue) so an assertion failure below
+    // cannot leak isPaid:false into the next test — clearAllMocks keeps
+    // implementations, and the old reset sat AFTER the assertions.
+    mockGetCachedEntitlement.mockReturnValueOnce({ isPaid: false, plan: 'free', status: 'inactive' })
     registerSyncHandlers()
 
     // #when the renderer asks for the storage breakdown
@@ -433,7 +436,6 @@ describe('sync IPC handlers', () => {
     expect(result).toBeNull()
     expect(mockGetFromServer).not.toHaveBeenCalled()
     expect(mockGetValidAccessToken).not.toHaveBeenCalled()
-    mockGetCachedEntitlement.mockReturnValue(null)
   })
 
   it('GET_STORAGE_BREAKDOWN still fetches when entitlement is unknown', async () => {

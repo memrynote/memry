@@ -23,9 +23,16 @@ const mocks = vi.hoisted(() => {
     getDatabase: vi.fn(),
     getSetting: vi.fn(),
     setSetting: vi.fn(),
-    info: vi.fn()
+    info: vi.fn(),
+    trackMainError: vi.fn()
   }
 })
+
+// validate.ts routes every IPC envelope error to trackMainError; spy on it so the
+// tests can assert what actually reaches error telemetry vs. what is suppressed.
+vi.mock('../telemetry/diagnostics', () => ({
+  trackMainError: mocks.trackMainError
+}))
 
 vi.mock('electron', () => ({
   ipcMain: mocks.ipcMain,
@@ -182,8 +189,15 @@ describe('AI inline IPC handlers', () => {
   })
 })
 
-describe('Ollama listing is an expected condition when Ollama is not running', () => {
-  it('marks a connection-refused failure so it never becomes error telemetry', async () => {
+describe('Ollama listing telemetry: suppress "not running", report real faults', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.handlers.clear()
+    mocks.getDatabase.mockReturnValue({ id: 'db' })
+    mocks.getSetting.mockReturnValue(JSON.stringify({ enabled: true }))
+  })
+
+  it('suppresses connection-refused (Ollama not running) from error telemetry', async () => {
     // #given Ollama is simply not running — production logged 8x
     // "Failed_to_list_Ollama_models" for what is a normal state
     registerAIInlineHandlers()
@@ -197,15 +211,18 @@ describe('Ollama listing is an expected condition when Ollama is not running', (
     // #when the renderer asks for the model list
     const result = await invoke(AIInlineChannels.invoke.LIST_OLLAMA_MODELS)
 
-    // #then the UI still learns it failed
+    // #then the UI still learns it failed...
     expect(result).toEqual({ success: false, error: 'fetch failed' })
-    // #and telemetry skips it
+    // #and it is marked as an expected condition...
     expect(isExpectedConditionError(refused)).toBe(true)
+    // #and — crucially — it never reaches error telemetry (asserted at the sink,
+    // not just on the marker predicate)
+    expect(mocks.trackMainError).not.toHaveBeenCalled()
     fetchSpy.mockRestore()
   })
 
-  it('still reports a real Ollama misconfiguration', async () => {
-    // #given failures that are genuine faults, not "not running"
+  it('reports a genuine DNS failure (ENOTFOUND) to error telemetry', async () => {
+    // #given a genuine fault (a real Ollama misconfiguration), not "not running"
     registerAIInlineHandlers()
     const dnsFailure = Object.assign(new TypeError('fetch failed'), {
       cause: Object.assign(new Error('getaddrinfo ENOTFOUND ollama.local'), {
@@ -217,14 +234,33 @@ describe('Ollama listing is an expected condition when Ollama is not running', (
     // #when the fetch fails for a reason other than connection-refused
     await invoke(AIInlineChannels.invoke.LIST_OLLAMA_MODELS)
 
-    // #then it is NOT suppressed — the suppression is not blanket
+    // #then it is NOT suppressed...
     expect(isExpectedConditionError(dnsFailure)).toBe(false)
+    // #and it actually reaches error telemetry — proving the suppression is not
+    // blanket. This assertion fails unless a suppressed ECONNREFUSED both skips
+    // the throttle key (masking fix) and reports a distinct errorCode (cause walk)
+    expect(mocks.trackMainError).toHaveBeenCalledWith(
+      'ipc',
+      'Failed to list Ollama models',
+      dnsFailure
+    )
+    fetchSpy.mockRestore()
+  })
 
-    // #and neither is a bad HTTP status
-    const httpFailure = new Error('Ollama responded 500')
-    fetchSpy.mockRejectedValue(httpFailure)
-    await invoke(AIInlineChannels.invoke.LIST_OLLAMA_MODELS)
-    expect(isExpectedConditionError(httpFailure)).toBe(false)
+  it('reports a bad HTTP status by exercising the real !res.ok path', async () => {
+    // #given Ollama answers with an error status — a genuine misconfiguration
+    // that resolves the fetch, so it must hit the real `if (!res.ok) throw`
+    registerAIInlineHandlers()
+    const fetchSpy = vi
+      .spyOn(global, 'fetch')
+      .mockResolvedValue({ ok: false, status: 503 } as Response)
+
+    // #when the renderer asks for the model list
+    const result = await invoke(AIInlineChannels.invoke.LIST_OLLAMA_MODELS)
+
+    // #then the real !res.ok branch ran (not the fetch-catch): the UI sees the
+    // fault, and it is never marked as an expected condition
+    expect(result).toEqual({ success: false, error: 'Ollama responded 503' })
     fetchSpy.mockRestore()
   })
 })

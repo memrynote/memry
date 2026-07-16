@@ -4,6 +4,7 @@ import { toErrorCode } from '@memry/contracts/telemetry-api'
 import { createLogger } from '../lib/logger'
 import { getDatabase, type DataDb } from '../database'
 import { trackMainError } from '../telemetry/diagnostics'
+import { isExpectedConditionError } from '../telemetry/expected-conditions'
 
 const ipcLog = createLogger('IPC')
 
@@ -17,6 +18,11 @@ const lastTrackedByCode = new Map<string, number>()
 
 const trackIpcError = (action: string, error: unknown): void => {
   try {
+    // An expected condition (Ollama not running, an abandoned OAuth flow) is
+    // suppressed downstream by trackMainError. Skip it HERE, before the throttle
+    // Map — otherwise the suppressed error would still claim and keep refreshing
+    // the key, masking a genuine different failure from the same handler.
+    if (isExpectedConditionError(error)) return
     const code = `${action}:${toErrorCode(error)}`
     const now = Date.now()
     const last = lastTrackedByCode.get(code)

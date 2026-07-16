@@ -246,19 +246,48 @@ export const toSafeToken = (value: unknown, fallback: string): string => {
 // still leaks its structure. Rejected codes fall back to the class name.
 const TYPED_ERROR_CODE = /^[A-Za-z][A-Za-z0-9_.:-]{0,63}$/
 
-const typedErrorCode = (error: unknown): string | undefined => {
-  if (!error || typeof error !== 'object') return undefined
-  const code = (error as { code?: unknown }).code
-  if (typeof code !== 'string') return undefined
-  return TYPED_ERROR_CODE.test(code) ? code : undefined
+const MAX_CAUSE_DEPTH = 4
+
+const typedErrorCode = (error: unknown, depth = 0): string | undefined => {
+  if (!error || typeof error !== 'object' || depth > MAX_CAUSE_DEPTH) return undefined
+  const candidate = error as {
+    telemetryCode?: unknown
+    code?: unknown
+    cause?: unknown
+    errors?: unknown
+  }
+  // A richer app-assigned code wins over the bare `.code`, so a note failure
+  // keeps its originating errno (NoteError.telemetryCode = NOTE_WRITE_FAILED:EBUSY)
+  // instead of collapsing to NOTE_WRITE_FAILED.
+  if (
+    typeof candidate.telemetryCode === 'string' &&
+    TYPED_ERROR_CODE.test(candidate.telemetryCode)
+  ) {
+    return candidate.telemetryCode
+  }
+  if (typeof candidate.code === 'string' && TYPED_ERROR_CODE.test(candidate.code)) {
+    return candidate.code
+  }
+  // undici raises `TypeError: fetch failed` and hangs the real code on `.cause`
+  // (sometimes inside an AggregateError's `.errors` for dual-stack localhost), so
+  // the chain is walked to a bounded depth. TYPED_ERROR_CODE still gates every hop,
+  // so a nested path/email/url can never be adopted.
+  if (Array.isArray(candidate.errors)) {
+    for (const nested of candidate.errors) {
+      const nestedCode = typedErrorCode(nested, depth + 1)
+      if (nestedCode) return nestedCode
+    }
+  }
+  return typedErrorCode(candidate.cause, depth + 1)
 }
 
 /**
  * Derive the `errorCode` dimension for an error. Prefers a typed code the error
- * carries (NoteError.code, better-sqlite3's error.code, Node's ECONNREFUSED)
- * over the class name, so a failure says NOTE_WRITE_FAILED / SQLITE_BUSY rather
- * than collapsing every note failure to "NoteError" and every DB failure to
- * "SqliteError". Falls back to the class name, then the constructor name.
+ * carries (NoteError.telemetryCode, NoteError.code, better-sqlite3's error.code,
+ * or Node's ECONNREFUSED nested on `.cause`) over the class name, so a failure
+ * says NOTE_WRITE_FAILED:EBUSY / SQLITE_BUSY rather than collapsing every note
+ * failure to "NoteError" and every DB failure to "SqliteError". Falls back to the
+ * class name, then the constructor name.
  */
 export const toErrorCode = (error: unknown): string => {
   const typed = typedErrorCode(error)
@@ -305,8 +334,11 @@ export const normalizeRejectionReason = (reason: unknown): Error => {
   if (hasStackFrames(reason)) {
     normalized.stack = reason.stack
     const name = (reason as { name?: unknown }).name
-    if (typeof name === 'string' && name) {
-      normalized.name = toSafeToken(name, normalized.name)
+    // Adopt the reason's own name only when it is already an enum-ish token; a
+    // path/email/prose name is rejected (not character-substituted, which would
+    // still leak its structure) and the synthesized Rejection_* name is kept.
+    if (typeof name === 'string' && TYPED_ERROR_CODE.test(name)) {
+      normalized.name = name
     }
   }
   return normalized
