@@ -4,6 +4,7 @@ import {
   AccountChannels,
   FolderViewChannels,
   GraphChannels,
+  InboxChannels,
   JournalChannels,
   ReminderChannels,
   SearchChannels,
@@ -19,6 +20,7 @@ import { bookmarksApi, bookmarkEvents } from './bookmarks'
 import { propertiesApi, templatesApi, savedFiltersApi, contentEvents } from './content'
 import { windowApi, getFileDropPaths, contextMenuApi, quickCaptureApi, flushApi } from './core'
 import { folderViewApi, folderViewEvents } from './folder-view'
+import { inboxEvents } from './inbox'
 import { journalApi, journalEvents } from './journal'
 import { remindersApi, reminderEvents } from './reminders'
 import { graphApi, searchApi, searchEvents } from './search'
@@ -958,6 +960,12 @@ describe('preload api wrappers', () => {
     expectSubscribe(
       () => reminderEvents.onReminderClicked(callback),
       ReminderChannels.events.CLICKED
+    )
+    expectSubscribe(() => inboxEvents.onInboxReviewDue(callback), InboxChannels.events.REVIEW_DUE)
+    expectSubscribe(
+      () => inboxEvents.onInboxReviewOpen(callback),
+      InboxChannels.events.REVIEW_OPEN,
+      noPayload
     )
     expectSubscribe(
       () => searchEvents.onSearchIndexRebuildStarted(callback),

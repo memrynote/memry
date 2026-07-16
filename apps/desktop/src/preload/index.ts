@@ -18,6 +18,7 @@ import { journalApi, journalEvents } from './api/journal'
 import { bookmarksApi, bookmarkEvents } from './api/bookmarks'
 import { tagsApi, tagEvents } from './api/tags'
 import { remindersApi, reminderEvents } from './api/reminders'
+import { inboxEvents } from './api/inbox'
 import { folderViewApi, folderViewEvents } from './api/folder-view'
 import { searchApi, graphApi, searchEvents } from './api/search'
 import { syncAuth, syncSetup, syncLinking, accountApi, syncDevices } from './api/sync-identity'
@@ -93,6 +94,7 @@ export const api = {
   ...searchEvents,
   ...tagEvents,
   ...reminderEvents,
+  ...inboxEvents,
   ...folderViewEvents,
 
   syncAuth,
