@@ -1278,19 +1278,19 @@
     --font-mono: 'JetBrains Mono Variable', 'SF Mono', 'Fira Code', monospace;
 
     /* ===== BASE COLORS - Dark Mode (Neutral Charcoal) ===== */
-    --background: #181919;
+    --background: #121212;
     --foreground: #bcbab6;
-    --surface: #222222;
+    --surface: #202020;
     --surface-active: #2a2a2a;
     --critic-review-card-hover-background: #202020;
-    --critic-review-actions-background: #191919;
+    --critic-review-actions-background: #121212;
 
     /* ===== SEMANTIC PASTELS - Dark Mode (Muted versions) ===== */
     --card-sage: #1e261e;
     --card-rose: #261e1e;
     --card-sand: #26241e;
     --card-lavender: #211e26;
-    --card-grey: #222222;
+    --card-grey: #202020;
 
     /* ===== TYPOGRAPHY COLORS - Dark Mode ===== */
     --text-primary: #bcbab6;
@@ -1305,17 +1305,17 @@
     --accent-orange: #fb923c;
 
     /* ===== UI SEMANTIC COLORS - Dark Mode ===== */
-    --muted: #222222;
+    --muted: #202020;
     --muted-foreground: #ada9a3;
-    --popover: #1e1e1e;
+    --popover: #202020;
     --popover-foreground: #bcbab6;
     --border: #2a2a2a;
     --input: #333333;
-    --card: #222222;
+    --card: #202020;
     --card-foreground: #bcbab6;
     --primary: #e8e6e1;
-    --primary-foreground: #191919;
-    --secondary: #222222;
+    --primary-foreground: #121212;
+    --secondary: #202020;
     --secondary-foreground: #bcbab6;
     --accent: #2a2a2a;
     --accent-foreground: #bcbab6;
