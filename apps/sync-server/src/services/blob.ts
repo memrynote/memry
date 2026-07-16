@@ -65,8 +65,10 @@ export const putBlob = async (
   }
 
   // A stream body is consumed by the first attempt, so it cannot be replayed
-  // without risking a partial upload. Only buffered bodies are retried.
-  const canRetry = data instanceof ArrayBuffer
+  // without risking a partial upload. Retry any buffered body; only an
+  // unreplayable stream is excluded (a future non-ArrayBuffer buffered body
+  // such as a Uint8Array must not silently lose its retry).
+  const canRetry = !(data instanceof ReadableStream)
 
   for (let attempt = 0; ; attempt++) {
     try {

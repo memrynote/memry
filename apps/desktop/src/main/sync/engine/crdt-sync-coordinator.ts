@@ -275,7 +275,12 @@ export class CrdtSyncCoordinator {
         }
       }
 
-      for (const noteId of noteIds) {
+      // Seed only notes whose snapshot baseline succeeded. A note skipped at :205
+      // was opened with { skipSeed: true } and stays open with an empty state
+      // vector; seeding it here would persist local markdown, and the next pass's
+      // real server snapshot would then merge as an independent insertion →
+      // duplicated note body. Its baseline failed transiently; the next pass fetches it.
+      for (const noteId of sinceMap.keys()) {
         const postVector = crdtProvider.getStateVector(noteId)
         if (!postVector || postVector.length <= 2) {
           await crdtProvider.seedFromMarkdownPublic(noteId)

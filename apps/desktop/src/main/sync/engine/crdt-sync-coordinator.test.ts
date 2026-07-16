@@ -458,4 +458,63 @@ describe('CrdtSyncCoordinator', () => {
       'token-1'
     )
   })
+
+  it('does not seed a note whose snapshot baseline failed', async () => {
+    // #given note-2's baseline dead-letters; note-1 and note-3 succeed.
+    // note-2 was opened with { skipSeed: true } so its state vector is empty.
+    const seedFromMarkdownPublic = vi.fn()
+    const getStateVector = vi.fn((noteId: string) =>
+      noteId === 'note-2' ? new Uint8Array([]) : new Uint8Array([1, 2, 3, 4])
+    )
+    const ctx = {
+      deps: {
+        crdtProvider: {
+          getDoc: vi.fn().mockReturnValue(undefined),
+          open: vi.fn().mockResolvedValue({}),
+          closeIfInactive: vi.fn().mockResolvedValue(true),
+          applyRemoteUpdate: vi.fn(),
+          getStateVector,
+          seedFromMarkdownPublic
+        }
+      },
+      abortController: new AbortController()
+    } as unknown as SyncContext
+
+    const deadLetter = new Error('Dead letter after 4 attempts: Server error (500)')
+    deadLetter.name = 'DeadLetterError'
+    fetchCrdtSnapshotMock
+      .mockResolvedValueOnce(null)
+      .mockRejectedValueOnce(deadLetter)
+      .mockResolvedValueOnce(null)
+    postToServerMock.mockResolvedValue({
+      notes: {
+        'note-1': { updates: [], hasMore: false },
+        'note-3': { updates: [], hasMore: false }
+      }
+    })
+    const coordinator = new CrdtSyncCoordinator(ctx, vi.fn())
+
+    // #when
+    await coordinator.applyCrdtBatch(['note-1', 'note-2', 'note-3'], 'token-1', new Uint8Array([4]))
+
+    // #then seeding note-2 would persist local markdown into its open, empty doc;
+    // the next pass's real server snapshot would then merge as an independent
+    // insertion → duplicated note body. Only baselined notes may be seeded.
+    expect(seedFromMarkdownPublic).not.toHaveBeenCalledWith('note-2')
+  })
+
+  it('aborts the whole pass when a snapshot baseline is aborted mid-batch', async () => {
+    // #given note-1's baseline is aborted (shutdown/signal), not a transient failure
+    const { ctx } = createBatchContext()
+    const abort = new DOMException('The operation was aborted', 'AbortError')
+    fetchCrdtSnapshotMock.mockRejectedValueOnce(abort)
+    const coordinator = new CrdtSyncCoordinator(ctx, vi.fn())
+
+    // #when
+    await coordinator.applyCrdtBatch(['note-1', 'note-2'], 'token-1', new Uint8Array([4]))
+
+    // #then an abort must propagate, not be swallowed as a skipped note; the pass
+    // stops before pulling any updates.
+    expect(postToServerMock).not.toHaveBeenCalled()
+  })
 })

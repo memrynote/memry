@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 
 import { AppError, ErrorCodes } from '../lib/errors'
+import { createLogger } from '../lib/logger'
 import { authMiddleware } from '../middleware/auth'
 import { paidSyncMiddleware } from '../middleware/paid-sync'
 import { createRateLimiter } from '../middleware/rate-limit'
@@ -16,6 +17,34 @@ import { assertFileSizeAllowed } from '../services/entitlements'
 import { adjustStorageUsed, reserveStorage } from '../services/quota'
 import { UploadInitRequestSchema } from '@memry/contracts/blob-api'
 import type { AppContext } from '../types'
+
+const logger = createLogger('BlobRoutes')
+
+/**
+ * Refunds a storage reservation after a failed write.
+ *
+ * The refund is itself a D1 write, so during a D1 outage it fails too. It must
+ * never replace the error that actually caused the write to fail: that turns a
+ * typed, handled error into an unhandled one and hides the real cause. A failed
+ * refund leaves the reservation charged to the user until reconciliation.
+ */
+const refundReservation = async (
+  db: D1Database,
+  userId: string,
+  reservedBytes: number,
+  context: Record<string, unknown>
+): Promise<void> => {
+  if (reservedBytes <= 0) return
+  try {
+    await adjustStorageUsed(db, userId, -reservedBytes)
+  } catch (refundError) {
+    logger.error('storage refund failed', {
+      ...context,
+      reservedBytes,
+      error: refundError instanceof Error ? refundError.message : String(refundError)
+    })
+  }
+}
 
 export const blob = new Hono<AppContext>()
 
@@ -75,9 +104,7 @@ blob.put('/blob/:blob_key', blobUploadLimit, async (c) => {
   try {
     result = await putBlob(c.env.STORAGE, key, body, userId)
   } catch (error) {
-    if (deltaBytes > 0) {
-      await adjustStorageUsed(c.env.DB, userId, -deltaBytes)
-    }
+    await refundReservation(c.env.DB, userId, deltaBytes, { operation: 'putBlob', userId, key })
     throw error
   }
 
@@ -210,7 +237,11 @@ blob.post('/attachments/upload/initiate', uploadSessionLimit, async (c) => {
       )
       .run()
   } catch (error) {
-    await adjustStorageUsed(c.env.DB, userId, -totalSize)
+    await refundReservation(c.env.DB, userId, totalSize, {
+      operation: 'uploadInitiate',
+      userId,
+      sessionId
+    })
     throw error
   }
 
@@ -345,9 +376,11 @@ blob.post('/attachments/upload/:session_id/complete', chunkUploadLimit, async (c
     try {
       await putBlob(c.env.STORAGE, manifestKey, manifestBytes.buffer as ArrayBuffer, userId)
     } catch (error) {
-      if (manifestDeltaBytes > 0) {
-        await adjustStorageUsed(c.env.DB, userId, -manifestDeltaBytes)
-      }
+      await refundReservation(c.env.DB, userId, manifestDeltaBytes, {
+        operation: 'uploadComplete',
+        userId,
+        key: manifestKey
+      })
       throw error
     }
   }
@@ -517,9 +550,11 @@ blob.put('/attachments/:attachment_id/manifest', blobUploadLimit, async (c) => {
   try {
     await putBlob(c.env.STORAGE, manifestKey, body, userId)
   } catch (error) {
-    if (deltaBytes > 0) {
-      await adjustStorageUsed(c.env.DB, userId, -deltaBytes)
-    }
+    await refundReservation(c.env.DB, userId, deltaBytes, {
+      operation: 'manifestPut',
+      userId,
+      key: manifestKey
+    })
     throw error
   }
   if (deltaBytes < 0) {
