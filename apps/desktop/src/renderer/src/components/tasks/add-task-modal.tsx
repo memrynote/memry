@@ -221,7 +221,7 @@ function AddTaskModalSession({
 
   return (
     <DialogContent
-      className="max-w-lg p-0 gap-0 grid-rows-[auto_1fr_auto] max-h-[85vh] overflow-hidden bg-surface [font-synthesis:none]"
+      className="p-0 gap-0 grid-rows-[auto_1fr_auto] max-h-[85vh] overflow-hidden bg-surface [font-synthesis:none]"
       onKeyDown={handleKeyDown}
       aria-describedby={undefined}
     >

@@ -350,4 +350,56 @@ describe('AddTaskModal', () => {
       expect(screen.getByPlaceholderText('Add a description…')).toBeInTheDocument()
     })
   })
+
+  describe('submit behavior', () => {
+    it('submits via Cmd/Ctrl+Enter', async () => {
+      // #given
+      const user = userEvent.setup()
+      renderWithI18n(
+        <AddTaskModal isOpen={true} onClose={onClose} onAddTask={onAddTask} projects={PROJECTS} />
+      )
+
+      // #when — type a title, then press Meta+Enter (bubbles to the dialog's onKeyDown)
+      await user.type(screen.getByPlaceholderText('What needs to be done?'), 'Keyboard submit')
+      await user.keyboard('{Meta>}{Enter}{/Meta}')
+
+      // #then
+      expect(onAddTask).toHaveBeenCalledOnce()
+      expect(onAddTask.mock.calls[0][0].title).toBe('Keyboard submit')
+    })
+
+    it('keeps project/status/due and clears title on "create another"', async () => {
+      // #given — create another checked, work project
+      const user = userEvent.setup()
+      renderWithI18n(
+        <AddTaskModal
+          isOpen={true}
+          onClose={onClose}
+          onAddTask={onAddTask}
+          projects={PROJECTS}
+          defaultProjectId="work"
+        />
+      )
+      await user.click(screen.getByRole('checkbox', { name: 'Create another' }))
+
+      // #when — submit the first task
+      await user.type(screen.getByPlaceholderText('What needs to be done?'), 'First')
+      await user.click(screen.getByRole('button', { name: 'Add Task' }))
+
+      // #then — modal stays open and the title clears
+      expect(onClose).not.toHaveBeenCalled()
+      expect(screen.getByPlaceholderText('What needs to be done?')).toHaveValue('')
+
+      // #when — submit a second task
+      await user.type(screen.getByPlaceholderText('What needs to be done?'), 'Second')
+      await user.click(screen.getByRole('button', { name: 'Add Task' }))
+
+      // #then — project/status/due are retained from the first submission
+      const first: Task = onAddTask.mock.calls[0][0]
+      const second: Task = onAddTask.mock.calls[1][0]
+      expect(second.projectId).toBe(first.projectId)
+      expect(second.statusId).toBe(first.statusId)
+      expect(second.dueDate).toEqual(first.dueDate)
+    })
+  })
 })
