@@ -275,6 +275,7 @@ export interface TaskFiltersConfig {
   search: string
   projectIds: string[]
   priorities: Array<'urgent' | 'high' | 'medium' | 'low' | 'none'>
+  tags: string[]
   dueDate: DueDateFilter
   statusIds: string[]
   completion: 'active' | 'completed' | 'all'
@@ -1284,6 +1285,7 @@ export interface GeneralSettingsDTO {
 export interface EditorSettingsDTO {
   width: 'normal' | 'full'
   toolbarMode: 'floating' | 'sticky'
+  spellCheck: boolean
 }
 
 export interface TaskSettingsDTO {

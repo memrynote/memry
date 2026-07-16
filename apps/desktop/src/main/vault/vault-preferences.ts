@@ -10,7 +10,8 @@ import {
 const EditorPreferencesSchema = z.object({
   // Legacy widths (narrow/medium/wide) from older config.json coerce to 'normal'.
   width: z.preprocess((v) => (v === 'full' ? 'full' : 'normal'), z.enum(['normal', 'full'])),
-  toolbarMode: z.enum(['floating', 'sticky'])
+  toolbarMode: z.enum(['floating', 'sticky']),
+  spellCheck: z.boolean()
 })
 
 export const VaultPreferencesSchema = z.object({
@@ -28,7 +29,8 @@ export type EditorPreferences = z.infer<typeof EditorPreferencesSchema>
 
 export const EDITOR_PREFERENCES_DEFAULTS: EditorPreferences = {
   width: EDITOR_SETTINGS_DEFAULTS.width,
-  toolbarMode: EDITOR_SETTINGS_DEFAULTS.toolbarMode
+  toolbarMode: EDITOR_SETTINGS_DEFAULTS.toolbarMode,
+  spellCheck: EDITOR_SETTINGS_DEFAULTS.spellCheck
 }
 
 export const VAULT_PREFERENCES_DEFAULTS: VaultPreferences = {

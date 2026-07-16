@@ -68,6 +68,7 @@ export function migrateSettingsToConfig(db: DataDb, vaultPath: string): void {
       const editorSeed: Partial<EditorSettings> = {}
       if (editor.width) editorSeed.width = editor.width
       if (editor.toolbarMode) editorSeed.toolbarMode = editor.toolbarMode
+      if (editor.spellCheck !== undefined) editorSeed.spellCheck = editor.spellCheck
       if (Object.keys(editorSeed).length > 0) {
         seedPrefs.editor = { ...EDITOR_SETTINGS_DEFAULTS, ...editorSeed }
       }
@@ -99,7 +100,8 @@ export function writeCacheFromPreferences(db: DataDb, prefs: VaultPreferences): 
   const editorCache: EditorSettings = {
     ...EDITOR_SETTINGS_DEFAULTS,
     width: prefs.editor.width,
-    toolbarMode: prefs.editor.toolbarMode
+    toolbarMode: prefs.editor.toolbarMode,
+    spellCheck: prefs.editor.spellCheck
   }
 
   const existingGeneral = getSetting(db, 'general')

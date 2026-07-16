@@ -1154,6 +1154,7 @@ export function NotePage({ noteId }: NotePageProps) {
               contentType="markdown"
               placeholder={t('editor.content.placeholder')}
               stickyToolbar={editorSettings.toolbarMode === 'sticky'}
+              spellCheck={editorSettings.spellCheck}
               onContentChange={handleContentChange}
               onMarkdownChange={handleMarkdownChange}
               onHeadingsChange={handleHeadingsChange}

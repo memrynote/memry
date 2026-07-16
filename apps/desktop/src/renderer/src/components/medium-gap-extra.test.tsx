@@ -93,6 +93,7 @@ const makeFilters = (overrides: Partial<TaskFilters> = {}): TaskFilters => ({
   search: '',
   projectIds: [],
   priorities: [],
+  tags: [],
   dueDate: { type: 'any', customStart: null, customEnd: null },
   statusIds: [],
   completion: 'all',

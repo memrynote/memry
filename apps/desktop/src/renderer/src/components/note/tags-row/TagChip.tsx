@@ -20,9 +20,19 @@ interface TagChipProps {
   isSelected?: boolean
   isFocused?: boolean
   disabled?: boolean
+  /** 'sm' matches the compact sidebar tag label; 'md' (default) is the note pill. */
+  size?: 'sm' | 'md'
 }
 
-export function TagChip({ tag, onRemove, onClick, isSelected, isFocused, disabled }: TagChipProps) {
+export function TagChip({
+  tag,
+  onRemove,
+  onClick,
+  isSelected,
+  isFocused,
+  disabled,
+  size = 'md'
+}: TagChipProps) {
   const { t } = useT('notes')
   const [isHovered, setIsHovered] = useState(false)
   const colors = getTagColors(tag.color, tag.name)
@@ -30,9 +40,10 @@ export function TagChip({ tag, onRemove, onClick, isSelected, isFocused, disable
 
   const pillClasses = cn(
     '[font-synthesis:none] relative inline-flex items-center gap-1',
-    'rounded-full px-2.5 py-1',
+    'rounded-full',
     // text-xs (0.75rem) instead of fixed 12px so chips scale with Appearance → Font Size (S/M/L)
-    'text-xs font-medium',
+    size === 'sm' ? 'px-1.5 py-0.5 text-[11px]' : 'px-2.5 py-1 text-xs',
+    'font-medium',
     'shrink-0 select-none',
     'transition-colors transition-opacity duration-150',
     isClickable ? 'cursor-pointer hover:opacity-80' : 'cursor-default',
@@ -54,7 +65,13 @@ export function TagChip({ tag, onRemove, onClick, isSelected, isFocused, disable
   const content = (
     <>
       {tag.icon && (
-        <NoteIconDisplay value={tag.icon} className="size-3.5 shrink-0 text-sm leading-none" />
+        <NoteIconDisplay
+          value={tag.icon}
+          className={cn(
+            'shrink-0 leading-none',
+            size === 'sm' ? 'size-3 text-[11px]' : 'size-3.5 text-sm'
+          )}
+        />
       )}
       <span>{tag.name}</span>
       {isSelected && <Check className="h-3 w-3" />}

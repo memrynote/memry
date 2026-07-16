@@ -83,12 +83,13 @@ If enabled in [Settings → Editor](/user-guide/settings#editor), word count app
 
 ## Spell Check
 
-Toggle browser spellcheck in [Settings → Editor](/user-guide/settings#editor).
+Off by default. Turn on **Check Spelling** in [Settings → Editor](/user-guide/settings#editor) to underline misspelled words as you write.
 
 ## Toolbar
 
 The formatting toolbar can be sticky at the top or float above selections — choose in [Settings → Editor](/user-guide/settings#editor).
 
+<<<<<<< inline-underline-persistence
 ## Text Formatting
 
 Bold, italic and strikethrough are written to the vault as plain Markdown (`**bold**`, `*italic*`, `~~strike~~`).
@@ -104,6 +105,9 @@ Markdown has no syntax for underline, text color or highlight, so those are writ
 Color and underline are kept on separate nested spans, so an older version of MemryNote opening the same vault still reads the color.
 
 Formatting applied in MemryNote round-trips. Underline written any other way — Obsidian's `<u>` tags, for example — is not read back, and is dropped the next time MemryNote saves the note.
+=======
+Both modes offer the same formatting controls: the block type (paragraph, heading, list) plus inline styles, alignment, colour, indent, and links. The block type control is hidden for blocks that have no alternative type, such as tasks, callouts, and files.
+>>>>>>> main
 
 ## Comments
 

@@ -61,6 +61,42 @@ describe('ActiveFiltersBar', () => {
       expect(screen.getByText('High, Urgent')).toBeInTheDocument()
     })
 
+    it('renders a tag pill and clears it', () => {
+      const onUpdateFilters = vi.fn()
+      renderBar({
+        filters: { ...defaultFilters, tags: ['MIT'] },
+        onUpdateFilters
+      })
+      expect(screen.getByText('MIT')).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: /tag/i }))
+      expect(onUpdateFilters).toHaveBeenCalledWith({ tags: [] })
+    })
+
+    it('re-renders the tag pill when only filters.tags changes', () => {
+      // Keep onUpdateFilters/onClearAll/projects references stable across the
+      // rerender so the ONLY changed prop is filters.tags — this isolates the
+      // useMemo dep-array bug rather than masking it behind an unrelated
+      // reference change.
+      const onUpdateFilters = vi.fn()
+      const onClearAll = vi.fn()
+      const { rerender } = renderBar({
+        filters: { ...defaultFilters, tags: ['MIT'] },
+        onUpdateFilters,
+        onClearAll
+      })
+      expect(screen.getByText('MIT')).toBeInTheDocument()
+      rerender(
+        <ActiveFiltersBar
+          filters={{ ...defaultFilters, tags: ['work'] }}
+          projects={mockProjects}
+          onUpdateFilters={onUpdateFilters}
+          onClearAll={onClearAll}
+        />
+      )
+      expect(screen.queryByText('MIT')).not.toBeInTheDocument()
+      expect(screen.getByText('work')).toBeInTheDocument()
+    })
+
     it('renders Clear all button', () => {
       renderBar()
       expect(screen.getByText('Clear all')).toBeInTheDocument()

@@ -170,6 +170,22 @@ describe('migrateSettingsToConfig', () => {
     expect(prefs.editor.width).toBe('full')
   })
 
+  it('#given SQLite editor settings with spellCheck #then seeds it into config.json', () => {
+    vaultPath = createTempVault({ excludePatterns: ['.git'] })
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    setSetting(
+      testDb.db as any,
+      'editor',
+      JSON.stringify({ ...EDITOR_SETTINGS_DEFAULTS, spellCheck: true })
+    )
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    migrateSettingsToConfig(testDb.db as any, vaultPath)
+
+    expect(readPreferences(vaultPath).editor.spellCheck).toBe(true)
+  })
+
   it('#given config.json already has preferences #then uses config as source', () => {
     vaultPath = createTempVault({
       preferences: {
@@ -215,6 +231,32 @@ describe('writeCacheFromPreferences', () => {
 
   afterEach(() => {
     testDb.close()
+  })
+
+  it('#given spellCheck enabled in config #then the cache keeps it enabled', () => {
+    const prefs = {
+      ...VAULT_PREFERENCES_DEFAULTS,
+      editor: {
+        ...VAULT_PREFERENCES_DEFAULTS.editor,
+        spellCheck: true
+      }
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    writeCacheFromPreferences(testDb.db as any, prefs)
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const editor = JSON.parse(getSetting(testDb.db as any, 'editor')!)
+    expect(editor.spellCheck).toBe(true)
+  })
+
+  it('#given no spellCheck in config #then the cache writes it off', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    writeCacheFromPreferences(testDb.db as any, { ...VAULT_PREFERENCES_DEFAULTS })
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const editor = JSON.parse(getSetting(testDb.db as any, 'editor')!)
+    expect(editor.spellCheck).toBe(false)
   })
 
   it('#given full preferences #then writes general and editor keys', () => {

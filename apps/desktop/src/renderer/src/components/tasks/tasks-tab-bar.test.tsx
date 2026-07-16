@@ -29,6 +29,7 @@ const makeSavedFilter = (overrides: Partial<SavedFilter> = {}): SavedFilter => (
     search: '',
     projectIds: [],
     priorities: ['high'],
+    tags: [],
     dueDate: { type: 'any', customStart: null, customEnd: null },
     statusIds: [],
     completion: 'active',

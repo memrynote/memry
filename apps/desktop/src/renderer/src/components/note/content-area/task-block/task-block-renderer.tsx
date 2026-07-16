@@ -114,6 +114,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({
       repeatConfig: null,
       linkedNoteIds: [],
       sourceNoteId: null,
+      tags: [],
       parentId: null,
       subtaskIds: [],
       createdAt: new Date(),

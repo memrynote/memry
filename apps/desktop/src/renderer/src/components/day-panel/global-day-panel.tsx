@@ -14,6 +14,7 @@ import { useTabs, useActiveTab } from '@/contexts/tabs'
 import { useCalendarView } from '@/contexts/calendar-view-context'
 import { DatePickerCalendar } from '@/components/tasks/date-picker-calendar'
 import { JournalDayPanel } from '@/components/journal'
+import { UnscheduledTasksTab } from './unscheduled-tasks-tab'
 import { useJournalHeatmap } from '@/hooks/use-journal'
 import { useCalendarRange } from '@/hooks/use-calendar-range'
 import {
@@ -304,6 +305,11 @@ function GlobalDayPanelContent({ width }: { width: number }): React.JSX.Element 
               <div className="p-4">
                 <JournalDayPanel date={selectedDate} onHoverColor={handleHoverColor} />
               </div>
+            </div>
+          ),
+          unscheduled: (
+            <div className="h-full overflow-y-auto p-4">
+              <UnscheduledTasksTab />
             </div>
           ),
           agent: (

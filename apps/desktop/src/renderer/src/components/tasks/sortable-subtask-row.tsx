@@ -61,7 +61,7 @@ export const SortableSubtaskRow = ({
         className={cn(
           'flex items-center gap-2 border-l-[3px] border-l-transparent',
           'py-1.5 pl-[44px] pr-3',
-          'hover:bg-accent/50 rounded-r-sm',
+          'hover:bg-muted rounded-r-sm',
           'transition-colors duration-150',
           onClick && 'focus-visible:outline-none',
           isDragging

@@ -121,6 +121,10 @@ A **Create Template** button opens the [template editor](/user-guide/templates).
 
 **Sticky / Floating** controls whether the formatting toolbar stays pinned to the top or floats above selections.
 
+### Spelling
+
+**Check Spelling** underlines misspelled words in notes and journals. It is **off by default**; turn it on to see squiggles as you write.
+
 ---
 
 ## Journal
@@ -325,7 +329,7 @@ Create, rename, recolor, and reorder property options.
 Settings persist via Zod schemas in `packages/contracts/settings-schemas.ts`. Notable keys:
 
 - General: `theme`, `fontSize`, `fontFamily`, `accentColor`, `startOnBoot`, `language`, `clockFormat`, `dateFormat`, `createInSelectedFolder`
-- Editor: `width`, `toolbarMode`
+- Editor: `width`, `toolbarMode`, `spellCheck`
 - Tasks: `defaultProjectId`, `defaultSortOrder`, `staleInboxDays`
 - Calendar: `dayCellClickBehavior`, `calendarPageClickOverride`, `weekStartDay`
 - AI: `enabled`, `provider`, `model`

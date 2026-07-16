@@ -46,6 +46,29 @@ vi.mock('@/components/tasks/task-description-editor', () => ({
   )
 }))
 
+// TagAutocomplete fetches its own tag data (useAllTags/useTags: react-query +
+// window.api). The drawer only cares that it wires tags/onTagsChange through
+// to the drawer's update handler, so stub it here — its own behavior is
+// covered by tag-autocomplete.test.tsx.
+vi.mock('@/components/filing/tag-autocomplete', () => ({
+  TagAutocomplete: ({
+    tags,
+    onTagsChange,
+    placeholder
+  }: {
+    tags: string[]
+    onTagsChange: (tags: string[]) => void
+    placeholder?: string
+  }) => (
+    <div>
+      <span data-testid="tag-autocomplete-tags">{tags.join(',')}</span>
+      <button type="button" onClick={() => onTagsChange([...tags, 'new-tag'])}>
+        {placeholder}
+      </button>
+    </div>
+  )
+}))
+
 let i18nEn: I18nInstance
 
 function renderWithI18n(ui: ReactElement) {
@@ -86,6 +109,7 @@ const createTask = (overrides: Partial<Task> = {}): Task => ({
   repeatConfig: null,
   linkedNoteIds: [],
   sourceNoteId: null,
+  tags: [],
   parentId: null,
   subtaskIds: [],
   createdAt: new Date('2026-01-01'),
@@ -183,6 +207,32 @@ describe('TaskDetailDrawer — editable properties', () => {
       expect(defaultProps.onUpdateTask).toHaveBeenCalledWith('task-1', {
         priority: 'high'
       })
+    })
+  })
+
+  describe('tag editing', () => {
+    it('renders TagAutocomplete with the task current tags', () => {
+      renderWithI18n(
+        <TaskDetailDrawer {...defaultProps} task={createTask({ tags: ['work', 'urgent'] })} />
+      )
+
+      expect(screen.getByTestId('tag-autocomplete-tags')).toHaveTextContent('work,urgent')
+    })
+
+    it('calls onUpdateTask with new tags when tags changed', async () => {
+      const user = userEvent.setup()
+      const onUpdateTask = vi.fn()
+      renderWithI18n(
+        <TaskDetailDrawer
+          {...defaultProps}
+          onUpdateTask={onUpdateTask}
+          task={createTask({ tags: ['work'] })}
+        />
+      )
+
+      await user.click(screen.getByRole('button', { name: 'Tags' }))
+
+      expect(onUpdateTask).toHaveBeenCalledWith('task-1', { tags: ['work', 'new-tag'] })
     })
   })
 

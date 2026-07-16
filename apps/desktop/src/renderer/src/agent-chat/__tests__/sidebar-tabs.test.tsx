@@ -8,6 +8,9 @@ import type { Conversation } from '@memry/contracts/ipc-agent'
 const mockUseAgentOptional = vi.hoisted(() => vi.fn())
 const mockOpenTab = vi.hoisted(() => vi.fn())
 const mockCloseDayPanel = vi.hoisted(() => vi.fn())
+const mockUseAISettingsContext = vi.hoisted(() =>
+  vi.fn(() => ({ enabled: true, isLoading: false, reload: async () => {} }))
+)
 const readyBackendStatuses = {
   claude_cli: { backend: 'claude_cli', available: true },
   codex_cli: { backend: 'codex_cli', available: true },
@@ -27,16 +30,25 @@ vi.mock('@/contexts/day-panel-context', () => ({
   useDayPanel: () => ({ close: mockCloseDayPanel })
 }))
 
+vi.mock('@/contexts/ai-settings-context', () => ({
+  useAISettingsContext: mockUseAISettingsContext
+}))
+
 import { SidebarTabs } from '../sidebar-tabs'
 import { AgentPane } from '../agent-pane'
 
 function renderTabs(
-  props: { dayLabel?: string; agentLabel?: string; defaultTab?: 'day' | 'agent' } = {}
+  props: {
+    dayLabel?: string
+    agentLabel?: string
+    defaultTab?: 'day' | 'unscheduled' | 'agent'
+  } = {}
 ) {
   return render(
     <SidebarTabs {...props}>
       {{
         day: <div>Day content</div>,
+        unscheduled: <div>Unscheduled content</div>,
         agent: <div>Agent content</div>
       }}
     </SidebarTabs>
@@ -120,6 +132,11 @@ describe('SidebarTabs', () => {
     mockUseAgentOptional.mockReturnValue(null)
     mockOpenTab.mockReset()
     mockCloseDayPanel.mockReset()
+    mockUseAISettingsContext.mockReturnValue({
+      enabled: true,
+      isLoading: false,
+      reload: async () => {}
+    })
   })
 
   it('switches tabs and persists the active tab', async () => {
@@ -132,6 +149,49 @@ describe('SidebarTabs', () => {
 
     expect(screen.getByText('Agent content')).toBeInTheDocument()
     expect(localStorage.getItem('right-sidebar-tab')).toBe('agent')
+  })
+
+  it('switches to the unscheduled tab and shows its content', async () => {
+    const user = userEvent.setup()
+    renderTabs()
+
+    await user.click(screen.getByRole('tab', { name: 'Unscheduled' }))
+
+    expect(screen.getByText('Unscheduled content')).toBeInTheDocument()
+    expect(screen.queryByText('Day content')).not.toBeInTheDocument()
+    expect(localStorage.getItem('right-sidebar-tab')).toBe('unscheduled')
+  })
+
+  it('keeps the unscheduled tab reachable when AI is disabled', () => {
+    mockUseAISettingsContext.mockReturnValue({
+      enabled: false,
+      isLoading: false,
+      reload: async () => {}
+    })
+    localStorage.setItem('right-sidebar-tab', 'unscheduled')
+
+    renderTabs()
+
+    expect(screen.getByText('Unscheduled content')).toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: 'Agent' })).not.toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Unscheduled' })).toHaveAttribute(
+      'aria-selected',
+      'true'
+    )
+  })
+
+  it('falls back the agent tab to day when AI is disabled with a persisted agent tab', () => {
+    mockUseAISettingsContext.mockReturnValue({
+      enabled: false,
+      isLoading: false,
+      reload: async () => {}
+    })
+    localStorage.setItem('right-sidebar-tab', 'agent')
+
+    renderTabs()
+
+    expect(screen.getByText('Day content')).toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: 'Agent' })).not.toBeInTheDocument()
   })
 
   it('keeps the switch compact with icon-only tab buttons and one active label', async () => {
@@ -283,6 +343,7 @@ describe('SidebarTabs', () => {
         <SidebarTabs defaultTab="agent">
           {{
             day: <div>Day content</div>,
+            unscheduled: <div>Unscheduled content</div>,
             agent: <AgentPane />
           }}
         </SidebarTabs>
