@@ -23,7 +23,8 @@ import {
   ArrowUpDown,
   Clock,
   Calendar,
-  SortAsc
+  SortAsc,
+  CheckSquare3
 } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
@@ -45,10 +46,13 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
 import { useTagDetail, type TagSortBy } from '@/hooks/use-tag-detail'
+import { useTaskTagDetail } from '@/hooks/use-task-tag-detail'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { COLOR_NAMES, getTagColors } from '@/components/note/tags-row/tag-colors'
 import { CustomColorSwatch } from '@/components/note/tags-row/CustomColorSwatch'
 import { tagsService, onTagRenamed, onTagDeleted, type TagNoteItem } from '@/services/tags-service'
+import type { Task as ServiceTask } from '@/services/tasks-service'
+import { TaskTagsBadge } from '@/components/tasks/task-badges'
 import type { SidebarItem } from '@/contexts/tabs/types'
 import { createLogger } from '@/lib/logger'
 import { toast } from 'sonner'
@@ -86,6 +90,12 @@ export function TagDetailView({ tag, color, className }: TagDetailViewProps): Re
     refresh
   } = useTagDetail({ tag, fallbackColor: color })
 
+  const {
+    tasks: taggedTasks,
+    isLoading: isTasksLoading,
+    refresh: refreshTasks
+  } = useTaskTagDetail({ tag })
+
   const [renameOpen, setRenameOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
 
@@ -121,6 +131,26 @@ export function TagDetailView({ tag, color, className }: TagDetailViewProps): Re
         emoji: note.emoji
       }
       openSidebarItem(item)
+    },
+    [openSidebarItem]
+  )
+
+  // Handle task click - open the Tasks tab with this task's detail drawer,
+  // matching the pattern used by calendar-task-popover.tsx and others.
+  const handleTaskClick = useCallback(
+    (task: ServiceTask) => {
+      openSidebarItem({
+        type: 'tasks',
+        title: 'Tasks',
+        icon: 'CheckSquare',
+        path: '/tasks',
+        viewState: {
+          openTaskId: task.id,
+          selectedProjectId: task.projectId,
+          activeInternalTab: 'all',
+          activeTab: 'all'
+        }
+      })
     },
     [openSidebarItem]
   )
@@ -167,17 +197,20 @@ export function TagDetailView({ tag, color, className }: TagDetailViewProps): Re
         return
       }
       void refresh()
+      void refreshTasks()
     })
     const unsubscribeDeleted = onTagDeleted((event) => {
       if (event.tag.toLowerCase() === tag.toLowerCase()) {
         goBack()
+        return
       }
+      void refreshTasks()
     })
     return () => {
       unsubscribeRenamed()
       unsubscribeDeleted()
     }
-  }, [goBack, refresh, tag])
+  }, [goBack, refresh, refreshTasks, tag])
 
   return (
     <div className={cn('flex flex-col h-full', className)}>
@@ -314,6 +347,21 @@ export function TagDetailView({ tag, color, className }: TagDetailViewProps): Re
             )}
           </div>
         )}
+
+        {/* Tasks section — matched client-side (tag + descendants), independent
+            of the notes-only empty state above so tag-only tasks still show. */}
+        {!isTasksLoading && taggedTasks.length > 0 && (
+          <div className="py-1.5">
+            <Separator className="mb-1.5" />
+            <div className="px-3 pt-1.5 pb-1 flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">
+              <CheckSquare3 className="h-2.5 w-2.5" />
+              {tPhaseF('phaseF.componentsSidebarTagDetailView.tasks')}
+            </div>
+            {taggedTasks.map((task) => (
+              <TaskItem key={task.id} task={task} onClick={() => handleTaskClick(task)} />
+            ))}
+          </div>
+        )}
       </ScrollArea>
     </div>
   )
@@ -415,6 +463,50 @@ function NoteItem({ note, isPinned, onClick, onPin, onUnpin }: NoteItemProps): R
           </Tooltip>
         </TooltipProvider>
       </span>
+    </div>
+  )
+}
+
+interface TaskItemProps {
+  task: ServiceTask
+  onClick: () => void
+}
+
+function TaskItem({ task, onClick }: TaskItemProps): React.JSX.Element {
+  const isCompleted = !!task.completedAt
+  const tags = task.tags ?? []
+
+  return (
+    <div
+      className="flex items-center gap-2 mx-1.5 px-1.5 py-1 rounded-md hover:bg-accent/50 cursor-pointer"
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onClick()
+        }
+      }}
+    >
+      {/* Icon */}
+      <span className="shrink-0 flex w-4 items-center justify-center">
+        <CheckSquare3
+          className={cn('h-3.5 w-3.5', isCompleted ? 'text-primary' : 'text-muted-foreground/70')}
+        />
+      </span>
+
+      {/* Title */}
+      <span
+        className={cn(
+          'flex-1 min-w-0 truncate text-[13px] leading-5',
+          isCompleted && 'line-through text-muted-foreground'
+        )}
+      >
+        {task.title}
+      </span>
+
+      {tags.length > 0 && <TaskTagsBadge tags={tags} maxVisible={2} className="ms-auto shrink-0" />}
     </div>
   )
 }
