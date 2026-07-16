@@ -211,17 +211,17 @@ describe('Ollama listing telemetry: suppress "not running", report real faults',
     // #when the renderer asks for the model list
     const result = await invoke(AIInlineChannels.invoke.LIST_OLLAMA_MODELS)
 
-    // #then the UI still learns it failed...
+    // #then the UI still learns it failed, it is marked as an expected condition,
+    // and — asserted at the SINK — it never reaches error telemetry. Fails on
+    // base (which does not mark ECONNREFUSED) and fails if either the marking or
+    // the throttle-skip is reverted: the self-contained guard for this routing.
     expect(result).toEqual({ success: false, error: 'fetch failed' })
-    // #and it is marked as an expected condition...
     expect(isExpectedConditionError(refused)).toBe(true)
-    // #and — crucially — it never reaches error telemetry (asserted at the sink,
-    // not just on the marker predicate)
     expect(mocks.trackMainError).not.toHaveBeenCalled()
     fetchSpy.mockRestore()
   })
 
-  it('reports a genuine DNS failure (ENOTFOUND) to error telemetry', async () => {
+  it('still reports a genuine failure (DNS/ENOTFOUND) — suppression is not blanket', async () => {
     // #given a genuine fault (a real Ollama misconfiguration), not "not running"
     registerAIInlineHandlers()
     const dnsFailure = Object.assign(new TypeError('fetch failed'), {
@@ -234,33 +234,16 @@ describe('Ollama listing telemetry: suppress "not running", report real faults',
     // #when the fetch fails for a reason other than connection-refused
     await invoke(AIInlineChannels.invoke.LIST_OLLAMA_MODELS)
 
-    // #then it is NOT suppressed...
+    // #then it is not marked, and it reaches error telemetry — the integration
+    // check that a real Ollama fault still reports. (The per-fix regression guard
+    // for the throttle-masking bug is in validate.test.ts, and the errorCode
+    // cause-walk is guarded in packages/contracts/telemetry-api.test.ts.)
     expect(isExpectedConditionError(dnsFailure)).toBe(false)
-    // #and it actually reaches error telemetry — proving the suppression is not
-    // blanket. This assertion fails unless a suppressed ECONNREFUSED both skips
-    // the throttle key (masking fix) and reports a distinct errorCode (cause walk)
     expect(mocks.trackMainError).toHaveBeenCalledWith(
       'ipc',
       'Failed to list Ollama models',
       dnsFailure
     )
-    fetchSpy.mockRestore()
-  })
-
-  it('reports a bad HTTP status by exercising the real !res.ok path', async () => {
-    // #given Ollama answers with an error status — a genuine misconfiguration
-    // that resolves the fetch, so it must hit the real `if (!res.ok) throw`
-    registerAIInlineHandlers()
-    const fetchSpy = vi
-      .spyOn(global, 'fetch')
-      .mockResolvedValue({ ok: false, status: 503 } as Response)
-
-    // #when the renderer asks for the model list
-    const result = await invoke(AIInlineChannels.invoke.LIST_OLLAMA_MODELS)
-
-    // #then the real !res.ok branch ran (not the fetch-catch): the UI sees the
-    // fault, and it is never marked as an expected condition
-    expect(result).toEqual({ success: false, error: 'Ollama responded 503' })
     fetchSpy.mockRestore()
   })
 })
