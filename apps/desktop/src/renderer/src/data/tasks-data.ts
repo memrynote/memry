@@ -284,6 +284,9 @@ export interface TaskFilters {
   // Priority filter (multi-select)
   priorities: Priority[] // empty = all priorities
 
+  // Tag filter (multi-select, OR semantics)
+  tags: string[] // empty = all tags
+
   // Due date filter
   dueDate: DueDateFilter
 
@@ -347,6 +350,7 @@ export const defaultFilters: TaskFilters = {
   search: '',
   projectIds: [],
   priorities: [],
+  tags: [],
   dueDate: defaultDueDateFilter,
   statusIds: [],
   completion: 'active',

@@ -57,6 +57,7 @@ export function serviceTaskToDisplayTask(task: ServiceTask, fallbackStatusId: st
     repeatConfig,
     linkedNoteIds: task.linkedNoteIds ?? [],
     sourceNoteId: task.sourceNoteId,
+    tags: task.tags ?? [],
     parentId: task.parentId,
     subtaskIds: [],
     createdAt: new Date(task.createdAt),

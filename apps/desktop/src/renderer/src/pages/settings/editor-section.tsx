@@ -38,6 +38,14 @@ export function EditorSettings() {
     [t, updateSettings]
   )
 
+  const handleSpellCheckChange = useCallback(
+    async (enabled: boolean) => {
+      const success = await updateSettings({ spellCheck: enabled })
+      if (!success) toast.error(t('editor.spellCheck.error'))
+    },
+    [t, updateSettings]
+  )
+
   if (isLoading) {
     return (
       <div className="flex flex-col">
@@ -75,6 +83,20 @@ export function EditorSettings() {
           <Switch
             checked={settings.toolbarMode === 'sticky'}
             onCheckedChange={(...args) => void handleToolbarModeChange(...args)}
+            className={ACCENT_SWITCH}
+          />
+        </SettingRow>
+      </SettingsGroup>
+
+      <SettingsGroup label={t('editor.groups.spelling')}>
+        <SettingRow
+          label={t('editor.spellCheck.label')}
+          description={t('editor.spellCheck.description')}
+        >
+          <Switch
+            checked={settings.spellCheck}
+            onCheckedChange={(...args) => void handleSpellCheckChange(...args)}
+            aria-label={t('editor.spellCheck.label')}
             className={ACCENT_SWITCH}
           />
         </SettingRow>

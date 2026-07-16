@@ -12,6 +12,7 @@ import { StatusPanel } from './filter-panels/status-panel'
 import { StatusProjectPickerPanel } from './filter-panels/status-project-picker-panel'
 import { DueDatePanel } from './filter-panels/due-date-panel'
 import { ProjectPanel } from './filter-panels/project-panel'
+import { TagPanel } from './filter-panels/tag-panel'
 import { SavedFiltersSection } from './saved-filters-section'
 import { useT } from '@memry/i18n/renderer'
 
@@ -34,13 +35,21 @@ interface FilterDropdownProps {
   children: React.ReactNode
 }
 
-type ActivePanel = null | 'priority' | 'status' | 'dueDate' | 'project' | 'status-project-picker'
+type ActivePanel =
+  | null
+  | 'priority'
+  | 'status'
+  | 'dueDate'
+  | 'project'
+  | 'tags'
+  | 'status-project-picker'
 
 const FILTER_CATEGORIES: { key: NonNullable<ActivePanel>; label: string }[] = [
   { key: 'priority', label: 'Priority' },
   { key: 'status', label: 'Status' },
   { key: 'dueDate', label: 'Due date' },
-  { key: 'project', label: 'Project' }
+  { key: 'project', label: 'Project' },
+  { key: 'tags', label: 'Tags' }
 ]
 
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
@@ -77,6 +86,17 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
         stroke="currentColor"
         strokeWidth="1.1"
       />
+    </svg>
+  ),
+  tags: (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="text-muted-foreground">
+      <path
+        d="M1.75 1.75h4.5l6 6-4.5 4.5-6-6v-4.5z"
+        stroke="currentColor"
+        strokeWidth="1.1"
+        strokeLinejoin="round"
+      />
+      <circle cx="4.25" cy="4.25" r="0.9" fill="currentColor" />
     </svg>
   )
 }
@@ -173,6 +193,16 @@ export const FilterDropdown = ({
   const clearDueDate = useCallback(() => {
     onUpdateFilters({ dueDate: { type: 'any', customStart: null, customEnd: null } })
   }, [onUpdateFilters])
+
+  const toggleTag = useCallback(
+    (tag: string) => {
+      const next = filters.tags.some((x) => x.toLowerCase() === tag.toLowerCase())
+        ? filters.tags.filter((x) => x.toLowerCase() !== tag.toLowerCase())
+        : [...filters.tags, tag]
+      onUpdateFilters({ tags: next })
+    },
+    [filters.tags, onUpdateFilters]
+  )
 
   const toggleProject = useCallback(
     (projectId: string) => {
@@ -294,6 +324,18 @@ export const FilterDropdown = ({
             onToggleProject={toggleProject}
             onClearProjectFilter={clearProjectFilter}
             onGoBack={goBack}
+          />
+        )}
+
+        {activePanel === 'tags' && (
+          <TagPanel
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            selectedTags={filters.tags}
+            onToggleTag={toggleTag}
+            onClose={() => handleOpenChange(false)}
+            onGoBack={goBack}
+            tasks={tasks}
           />
         )}
       </Picker.Content>

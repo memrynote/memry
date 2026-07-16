@@ -52,6 +52,12 @@ export const filterByPriorities = (tasks: Task[], priorities: Priority[]): Task[
   return tasks.filter((task) => priorities.includes(task.priority))
 }
 
+export const filterByTags = (tasks: Task[], tags: string[]): Task[] => {
+  if (tags.length === 0) return tasks
+  const selected = new Set(tags.map((t) => t.toLowerCase()))
+  return tasks.filter((task) => task.tags.some((tag) => selected.has(tag.toLowerCase())))
+}
+
 export const filterByDueDateRange = (tasks: Task[], filter: DueDateFilter): Task[] => {
   const now = new Date()
   const todayStart = startOfDay(now)
@@ -280,6 +286,10 @@ export const applyFiltersAndSort = (
     result = filterByPriorities(result, filters.priorities)
   }
 
+  if (filters.tags.length > 0) {
+    result = filterByTags(result, filters.tags)
+  }
+
   result = filterByDueDateRange(result, filters.dueDate)
 
   if (filters.statusIds.length > 0) {
@@ -305,6 +315,7 @@ export const hasActiveFilters = (filters: TaskFilters): boolean => {
     filters.search !== '' ||
     filters.projectIds.length > 0 ||
     filters.priorities.length > 0 ||
+    filters.tags.length > 0 ||
     filters.dueDate.type !== 'any' ||
     filters.statusIds.length > 0 ||
     filters.completion !== 'active' ||
@@ -318,6 +329,7 @@ export const countActiveFilters = (filters: TaskFilters): number => {
   if (filters.search) count++
   if (filters.projectIds.length > 0) count++
   if (filters.priorities.length > 0) count++
+  if (filters.tags.length > 0) count++
   if (filters.dueDate.type !== 'any') count++
   if (filters.statusIds.length > 0) count++
   if (filters.completion !== 'active') count++

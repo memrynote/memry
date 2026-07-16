@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, type Mock } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
@@ -22,7 +22,13 @@ const {
   mockToastSuccess,
   mockToastError,
   mockGoBack,
-  mockOpenSidebarItem
+  mockOpenSidebarItem,
+  mockListTasks,
+  mockOnTaskCreated,
+  mockOnTaskUpdated,
+  mockOnTaskDeleted,
+  mockOnTaskCompleted,
+  mockUseTaskWorkspaceData
 } = vi.hoisted(() => ({
   mockRenameTag: vi.fn(),
   mockDeleteTag: vi.fn(),
@@ -40,7 +46,13 @@ const {
   mockToastSuccess: vi.fn(),
   mockToastError: vi.fn(),
   mockGoBack: vi.fn(),
-  mockOpenSidebarItem: vi.fn()
+  mockOpenSidebarItem: vi.fn(),
+  mockListTasks: vi.fn(),
+  mockOnTaskCreated: vi.fn(() => () => {}),
+  mockOnTaskUpdated: vi.fn(() => () => {}),
+  mockOnTaskDeleted: vi.fn(() => () => {}),
+  mockOnTaskCompleted: vi.fn(() => () => {}),
+  mockUseTaskWorkspaceData: vi.fn()
 }))
 
 vi.mock('@/services/tags-service', () => ({
@@ -86,6 +98,20 @@ vi.mock('@/hooks/use-sidebar-navigation', () => ({
   })
 }))
 
+vi.mock('@/services/tasks-service', () => ({
+  tasksService: {
+    list: mockListTasks
+  },
+  onTaskCreated: mockOnTaskCreated,
+  onTaskUpdated: mockOnTaskUpdated,
+  onTaskDeleted: mockOnTaskDeleted,
+  onTaskCompleted: mockOnTaskCompleted
+}))
+
+vi.mock('@/features/tasks/use-task-queries', () => ({
+  useTaskWorkspaceData: mockUseTaskWorkspaceData
+}))
+
 const defaultNotesResponse = {
   tag: 'react',
   color: 'blue',
@@ -107,6 +133,14 @@ describe('TagDetailView rename + delete actions', () => {
     mockUnpinNoteFromTag.mockResolvedValue(success)
     mockRemoveTagFromNote.mockResolvedValue(success)
     mockGetAllWithCounts.mockResolvedValue({ tags: [] })
+    mockListTasks.mockResolvedValue({ tasks: [], total: 0, hasMore: false })
+    mockUseTaskWorkspaceData.mockReturnValue({
+      projects: [],
+      tasks: [],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn()
+    })
     ;(mockOnTagRenamed as Mock).mockReturnValue(() => {})
     ;(mockOnTagDeleted as Mock).mockReturnValue(() => {})
     ;(mockOnTagNotesChanged as Mock).mockReturnValue(() => {})
@@ -295,6 +329,152 @@ describe('TagDetailView rename + delete actions', () => {
 
       await user.click(await screen.findByText('Change color'))
       expect(screen.getByTitle('sage')).toBeInTheDocument()
+    })
+  })
+
+  describe('task list section', () => {
+    const baseTask = {
+      id: 'task-1',
+      projectId: 'proj-1',
+      statusId: null,
+      parentId: null,
+      description: null,
+      priority: 0 as const,
+      position: 0,
+      dueDate: null,
+      dueTime: null,
+      startDate: null,
+      repeatConfig: null,
+      repeatFrom: null,
+      sourceNoteId: null,
+      completedAt: null,
+      archivedAt: null,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      modifiedAt: '2026-01-01T00:00:00.000Z'
+    }
+
+    it('shows tasks tagged with the exact tag or a descendant, not an unrelated prefix', async () => {
+      mockListTasks.mockResolvedValue({
+        tasks: [
+          { ...baseTask, id: 'task-exact', title: 'Exact match task', tags: ['react'] },
+          { ...baseTask, id: 'task-descendant', title: 'Descendant task', tags: ['react/hooks'] },
+          { ...baseTask, id: 'task-unrelated', title: 'Unrelated prefix task', tags: ['reactive'] }
+        ],
+        total: 3,
+        hasMore: false
+      })
+
+      await renderView()
+      await waitFor(() => expect(mockListTasks).toHaveBeenCalled())
+
+      expect(await screen.findByText('Exact match task')).toBeInTheDocument()
+      expect(await screen.findByText('Descendant task')).toBeInTheDocument()
+      expect(screen.queryByText('Unrelated prefix task')).not.toBeInTheDocument()
+    })
+
+    it('shows each task status with the shared status indicator, not a binary checkbox', async () => {
+      mockUseTaskWorkspaceData.mockReturnValue({
+        projects: [
+          {
+            id: 'proj-1',
+            statuses: [
+              { id: 'st-todo', name: 'To Do', type: 'todo', color: '#94a3b8', order: 0 },
+              {
+                id: 'st-prog',
+                name: 'In Progress',
+                type: 'in_progress',
+                color: '#f59e0b',
+                order: 1
+              },
+              { id: 'st-done', name: 'Done', type: 'done', color: '#22c55e', order: 2 }
+            ]
+          }
+        ],
+        tasks: [],
+        isLoading: false,
+        error: null,
+        refetch: vi.fn()
+      })
+      mockListTasks.mockResolvedValue({
+        tasks: [
+          { ...baseTask, id: 'task-prog', title: 'Wip task', tags: ['react'], statusId: 'st-prog' },
+          {
+            ...baseTask,
+            id: 'task-done',
+            title: 'Finished task',
+            tags: ['react'],
+            statusId: 'st-done',
+            completedAt: '2026-01-02T00:00:00.000Z'
+          }
+        ],
+        total: 2,
+        hasMore: false
+      })
+
+      await renderView()
+      await waitFor(() => expect(mockListTasks).toHaveBeenCalled())
+
+      expect(await screen.findByText('Wip task')).toBeInTheDocument()
+      expect(screen.getByTitle('In Progress')).toBeInTheDocument()
+      expect(screen.getByTitle('Done')).toBeInTheDocument()
+    })
+
+    it('opens the task detail drawer on click', async () => {
+      mockListTasks.mockResolvedValue({
+        tasks: [{ ...baseTask, id: 'task-exact', title: 'Exact match task', tags: ['react'] }],
+        total: 1,
+        hasMore: false
+      })
+
+      const user = userEvent.setup()
+      await renderView()
+      await waitFor(() => expect(mockListTasks).toHaveBeenCalled())
+
+      await user.click(await screen.findByText('Exact match task'))
+
+      expect(mockOpenSidebarItem).toHaveBeenCalledWith({
+        type: 'tasks',
+        title: 'Tasks',
+        icon: 'CheckSquare',
+        path: '/tasks',
+        viewState: {
+          openTaskId: 'task-exact',
+          selectedProjectId: 'proj-1',
+          activeInternalTab: 'all',
+          activeTab: 'all'
+        }
+      })
+    })
+
+    it('refreshes the task list on task CRUD events', async () => {
+      await renderView()
+      await waitFor(() => expect(mockListTasks).toHaveBeenCalledTimes(1))
+
+      const createdCallback = mockOnTaskCreated.mock.calls[0][0]
+      await act(async () => {
+        createdCallback({ task: { ...baseTask, title: 'New task', tags: [] } })
+      })
+
+      await waitFor(() => expect(mockListTasks).toHaveBeenCalledTimes(2))
+    })
+
+    it('refreshes tasks (not just notes) when a different tag is renamed or deleted', async () => {
+      await renderView()
+      await waitFor(() => expect(mockListTasks).toHaveBeenCalledTimes(1))
+
+      const renamedCallback = mockOnTagRenamed.mock.calls[0][0]
+      await act(async () => {
+        renamedCallback({ oldName: 'other-tag', newName: 'renamed-tag', affectedNotes: 0 })
+      })
+      await waitFor(() => expect(mockListTasks).toHaveBeenCalledTimes(2))
+
+      const deletedCallback = mockOnTagDeleted.mock.calls[0][0]
+      await act(async () => {
+        deletedCallback({ tag: 'other-tag', affectedNotes: 0 })
+      })
+      await waitFor(() => expect(mockListTasks).toHaveBeenCalledTimes(3))
+
+      expect(mockGoBack).not.toHaveBeenCalled()
     })
   })
 })

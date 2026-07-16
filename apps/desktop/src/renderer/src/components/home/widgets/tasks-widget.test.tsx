@@ -16,6 +16,7 @@ const makeTask = (id: string, title: string) => ({
   repeatConfig: null,
   linkedNoteIds: [],
   sourceNoteId: null,
+  tags: [],
   parentId: null,
   subtaskIds: [],
   createdAt: new Date(),

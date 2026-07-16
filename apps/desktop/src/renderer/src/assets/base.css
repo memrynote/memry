@@ -408,6 +408,27 @@
   gap: 6px;
 }
 
+.review-formatting-toolbar-block-type {
+  padding-bottom: 6px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+}
+
+/* BlockTypeSelect renders nothing when the current block has no entry in the
+   block type list, so collapse the row instead of leaving its gap behind. */
+.review-formatting-toolbar-block-type:empty {
+  display: none;
+}
+
+/* The shadcn select trigger ships `w-fit h-9`; match the compact popover. */
+.review-formatting-toolbar-block-type > button {
+  width: 100% !important;
+  height: 28px !important;
+  padding: 0 8px !important;
+  border-radius: 7px !important;
+  font-size: 12px !important;
+  color: inherit !important;
+}
+
 .review-formatting-toolbar-grid {
   display: grid;
   grid-template-columns: repeat(4, 28px);

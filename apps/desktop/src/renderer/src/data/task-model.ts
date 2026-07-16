@@ -57,6 +57,10 @@ export interface Task {
   linkedNoteIds: string[] // connections to notes
   sourceNoteId: string | null // if extracted from a note
 
+  // Tags — case-preserving, case-insensitive identity. Shared with notes/inbox
+  // via the global tag_definitions store.
+  tags: string[]
+
   // Subtasks
   parentId: string | null // ID of parent task (null if top-level)
   subtaskIds: string[] // Ordered list of subtask IDs
@@ -161,6 +165,7 @@ export const createDefaultTask = (
   repeatConfig: null,
   linkedNoteIds: [],
   sourceNoteId: null,
+  tags: [],
   parentId,
   subtaskIds: [],
   createdAt: new Date(),

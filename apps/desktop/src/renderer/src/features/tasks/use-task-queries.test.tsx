@@ -541,4 +541,68 @@ describe('useTaskWorkspaceMutations', () => {
       expect(lastUpdatePayload().dueTime).toBeUndefined()
     })
   })
+
+  // Regression coverage for the tags payload-builder branches: updateTask must
+  // forward tag edits, but an update that doesn't touch tags must leave them
+  // undefined (not []), or every unrelated task edit would silently wipe tags.
+  describe('updateTask forwards tags without clobbering untouched tags', () => {
+    function lastUpdatePayload() {
+      const calls = vi.mocked(tasksService.update).mock.calls
+      return calls[calls.length - 1][0] as Record<string, unknown>
+    }
+
+    function renderMutations() {
+      const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      queryClient.setQueryData(taskKeys.tasks(), [])
+      return renderHook(() => useTaskWorkspaceMutations(), {
+        wrapper: createWrapper(queryClient)
+      })
+    }
+
+    it('forwards the tags array when the update includes tags', async () => {
+      const { result } = renderMutations()
+
+      await act(async () => {
+        await result.current.updateTask('task-1', { tags: ['work', 'urgent'] })
+      })
+
+      expect(lastUpdatePayload().tags).toEqual(['work', 'urgent'])
+    })
+
+    it('omits tags (does not clobber to []) when updating a field that does not touch tags', async () => {
+      const { result } = renderMutations()
+
+      await act(async () => {
+        await result.current.updateTask('task-1', { description: 'a new description' })
+      })
+
+      expect(lastUpdatePayload().tags).toBeUndefined()
+    })
+
+    it('preserves tags when completing a task with other field edits', async () => {
+      const { result } = renderMutations()
+
+      await act(async () => {
+        await result.current.updateTask('task-1', {
+          completedAt: new Date('2026-05-11T00:00:00.000Z'),
+          description: 'done note'
+        })
+      })
+
+      expect(lastUpdatePayload().tags).toBeUndefined()
+    })
+
+    it('preserves tags when archiving a task with other field edits', async () => {
+      const { result } = renderMutations()
+
+      await act(async () => {
+        await result.current.updateTask('task-1', {
+          archivedAt: new Date('2026-05-12T00:00:00.000Z'),
+          description: 'archive note'
+        })
+      })
+
+      expect(lastUpdatePayload().tags).toBeUndefined()
+    })
+  })
 })

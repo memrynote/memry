@@ -5,6 +5,7 @@ import { Calendar, Folder, Flag } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { Kbd } from '@/components/ui/kbd'
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts-base'
+import { isMac } from '@/lib/shortcut-registry'
 
 // ============================================================================
 // TOKEN HIGHLIGHT OVERLAY
@@ -288,6 +289,14 @@ export const QuickAddInput = ({
     inputRef.current?.focus()
   }, [value, projects, onAdd])
 
+  const openDetailModal = useCallback((): void => {
+    if (!onOpenModal) return
+    const parsed = parseQuickAdd(value.trim(), projects)
+    onOpenModal(parsed.title)
+    setValue('')
+    inputRef.current?.blur()
+  }, [value, projects, onOpenModal])
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>): void => {
     // Let autocomplete handle navigation keys when visible
     if (showAutocomplete && autocompleteOptions.length > 0) {
@@ -318,14 +327,10 @@ export const QuickAddInput = ({
     }
 
     if (e.key === 'Enter') {
-      // Cmd/Ctrl+Enter opens modal
+      // Cmd/Ctrl+Enter opens the detail modal
       if ((e.metaKey || e.ctrlKey) && onOpenModal) {
         e.preventDefault()
-        const trimmedValue = value.trim()
-        const parsed = parseQuickAdd(trimmedValue, projects)
-        onOpenModal(parsed.title)
-        setValue('')
-        inputRef.current?.blur()
+        openDetailModal()
         return
       }
 
@@ -482,13 +487,34 @@ export const QuickAddInput = ({
             />
           </div>
 
-          <div
-            className={cn(
-              'flex items-center ms-auto shrink-0 transition-opacity duration-150',
-              isFocused ? 'opacity-0 pointer-events-none' : 'opacity-100'
-            )}
-          >
-            {compact ? (
+          <div className="flex items-center ms-auto shrink-0">
+            {isFocused ? (
+              onOpenModal ? (
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    openDetailModal()
+                  }}
+                  className={cn(
+                    'flex items-center gap-1 text-text-tertiary hover:text-text-secondary transition-colors',
+                    compact ? 'text-[9px]' : 'text-xs'
+                  )}
+                >
+                  <span
+                    className={cn(
+                      'inline-flex items-center gap-0.5 rounded-[3px] bg-foreground/5 border border-border font-[family-name:var(--font-mono)] font-medium',
+                      compact ? 'px-1 leading-3' : 'px-1.5 py-px leading-4'
+                    )}
+                  >
+                    {isMac ? '⌘' : 'Ctrl'} ↵
+                  </span>
+                  <span>{tPhaseF('phaseF.componentsTasksQuickAddInput.detailHint')}</span>
+                </button>
+              ) : null
+            ) : compact ? (
               <span className="rounded-[3px] px-1 bg-foreground/5 border border-border">
                 <span className="text-[9px] text-text-tertiary font-[family-name:var(--font-mono)] font-medium leading-3">
                   {tPhaseF('phaseF.componentsTasksQuickAddInput.q')}

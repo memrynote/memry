@@ -41,16 +41,43 @@ export const NoteErrorCode = {
 export type NoteErrorCode = (typeof NoteErrorCode)[keyof typeof NoteErrorCode]
 
 /**
+ * Matches a bare POSIX/libuv errno (EBUSY, ENOSPC, EPERM…). Deliberately a
+ * strict allowlist rather than a sanitizer: `code` on a rejected value is only
+ * conventionally an errno, and a path, URL or message must never reach
+ * telemetry. Anything that is not errno-shaped is dropped.
+ */
+const ERRNO_PATTERN = /^E[A-Z0-9]{1,31}$/
+
+const errnoOf = (cause: unknown): string | null => {
+  if (!(cause instanceof Error)) return null
+  const code = (cause as NodeJS.ErrnoException).code
+  return typeof code === 'string' && ERRNO_PATTERN.test(code) ? code : null
+}
+
+/**
  * Error for note-related operations.
  */
 export class NoteError extends Error {
   constructor(
     message: string,
     public code: NoteErrorCode,
-    public noteId?: string
+    public noteId?: string,
+    options?: { cause?: unknown }
   ) {
-    super(message)
+    super(message, options)
     this.name = 'NoteError'
+  }
+
+  /**
+   * Stable, privacy-safe identifier for telemetry: the note error code plus the
+   * originating errno when we have one (`NOTE_WRITE_FAILED:EBUSY`). Without it
+   * a failed save reports only the class name, which cannot distinguish a
+   * cloud-sync lock from a full disk. Never contains the file path — see
+   * `toSafeToken` in telemetry/diagnostics.ts for the transport-side rules.
+   */
+  get telemetryCode(): string {
+    const errno = errnoOf(this.cause)
+    return errno ? `${this.code}:${errno}` : this.code
   }
 }
 

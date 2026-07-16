@@ -52,14 +52,18 @@ export const EditorSettingsSchema = z.object({
   // Legacy widths (narrow/medium/wide) coerce to 'normal' so installs written
   // by older app versions keep working; only 'full' is treated as full width.
   width: z.preprocess((v) => (v === 'full' ? 'full' : 'normal'), z.enum(['normal', 'full'])),
-  toolbarMode: z.enum(['floating', 'sticky'])
+  toolbarMode: z.enum(['floating', 'sticky']),
+  spellCheck: z.boolean()
 })
 
 export type EditorSettings = z.infer<typeof EditorSettingsSchema>
 
 export const EDITOR_SETTINGS_DEFAULTS: EditorSettings = {
   width: 'normal',
-  toolbarMode: 'floating'
+  toolbarMode: 'floating',
+  // Off by default: the editor has no misspelling suggestions in its context
+  // menu, so squiggles would be noise the user cannot act on.
+  spellCheck: false
 }
 
 // ============================================================================

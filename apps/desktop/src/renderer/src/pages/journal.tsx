@@ -955,6 +955,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                                     : t('editor.placeholder.past')
                               }
                               stickyToolbar={editorSettings.toolbarMode === 'sticky'}
+                              spellCheck={editorSettings.spellCheck}
                               onContentChange={handleContentChange}
                               onMarkdownChange={handleMarkdownChange}
                               onHeadingsChange={handleHeadingsChange}
