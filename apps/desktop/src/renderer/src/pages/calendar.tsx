@@ -171,6 +171,13 @@ function filterItems(
   })
 }
 
+function dueDateTimeFromDate(date: Date): { dueDate: string; dueTime: string } {
+  return {
+    dueDate: formatDateKey(date),
+    dueTime: `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+  }
+}
+
 export function CalendarPage({ className: _className }: CalendarPageProps): React.JSX.Element {
   const queryClient = useQueryClient()
   const [view, setViewRaw] = useState<CalendarWorkspaceView>(getPersistedView)
@@ -688,11 +695,6 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     }
     await queryClient.invalidateQueries({ queryKey: ['calendar', 'range'] })
   }
-
-  const dueDateTimeFromDate = (date: Date): { dueDate: string; dueTime: string } => ({
-    dueDate: formatDateKey(date),
-    dueTime: `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
-  })
 
   const commitTaskSchedule = async (id: string, dueDate: string, dueTime: string) => {
     const result = await tasksService.update({ id, dueDate, dueTime })
