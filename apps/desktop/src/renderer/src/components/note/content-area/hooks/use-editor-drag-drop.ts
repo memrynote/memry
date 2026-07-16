@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useState } from 'react'
 import { findDropTarget, type DropTarget } from '../drop-target-utils'
+import { MEMRY_NOTE_DRAG_MIME } from '@/lib/drag-mime'
 
 interface EditorDragDropParams {
   containerRef: React.RefObject<HTMLDivElement | null>
@@ -59,8 +60,13 @@ export function useEditorDragDrop({ containerRef }: EditorDragDropParams): Edito
   const handleDragOver = useCallback(
     (e: React.DragEvent) => {
       e.stopPropagation()
-      if (!e.dataTransfer.types.includes('Files')) return
+      const types = e.dataTransfer.types
+      const isFileDrag = types.includes('Files')
+      const isInternalItem = types.includes(MEMRY_NOTE_DRAG_MIME)
+      // Both an OS file drop and a file-type sidebar item can be embedded.
+      if (!isFileDrag && !isInternalItem) return
       e.preventDefault()
+      if (isInternalItem && !isFileDrag) e.dataTransfer.dropEffect = 'copy'
       setIsDragging(true)
       const target = findDropTarget(e.clientY, containerRef)
       setDropTarget(target)

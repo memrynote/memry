@@ -7,12 +7,11 @@ controls, and other file types appear as download blocks.
 
 ## Adding Files
 
-Two ways:
+Three ways:
 
-- **Drag and drop** — drop a file from your OS file manager onto the editor at the position you want it
-- **Slash menu** — `/file` inserts a File block; click to pick a file
-
-Files are **copied** into the vault attachments directory (`<vault>/attachments/`), so the original on your filesystem can be moved or deleted without breaking the note.
+- **Drag from your OS file manager** — drop a file onto the editor at the position you want it. The file is **copied** into the vault attachments directory (`<vault>/attachments/`), so the original on your filesystem can be moved or deleted without breaking the note.
+- **Drag from the sidebar** — drag a file item (PDF, image, audio, …) from the left sidebar onto a note. This **embeds it by reference** using the item's own vault path, so no second copy is made.
+- **Slash menu** — `/file` inserts a File block; click to pick a file.
 
 ## File Block
 
@@ -26,13 +25,14 @@ Each attachment renders as a block with:
 
 ## PDF Inline Preview
 
-PDFs render in an embedded scrollable viewer right in the editor. Useful for reading PDF source material while taking notes.
+PDFs render inline as a clean first-page preview — no viewer chrome — so a note reads as a document with its source embedded. Open the file page (double-click the sidebar item) for the full multi-page viewer with zoom and find-in-page.
 
-The preview honors:
+Hover the preview, or click to select it, to reveal its controls:
 
-- Zoom (browser zoom or per-block scale)
-- Find-in-page (the embedded viewer's find, not memrynote's)
-- Multi-page scrolling
+- **Resize** — drag either bottom corner. Width scales the whole embed like an image; dragging upward shortens it, cropping the first page from the top so only the opening shows (no inner scroll).
+- **Align** — the top-right toolbar aligns the embed **left**, **center**, or **right** within the note column.
+
+Size, crop, and alignment are **saved with the note** and restored when you reopen it.
 
 ## Audio Attachments
 

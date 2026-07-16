@@ -31,6 +31,7 @@ import {
   Smile
 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import { MEMRY_NOTE_DRAG_MIME } from '@/lib/drag-mime'
 import { useTabActions } from '@/contexts/tabs'
 import type { NoteListItem } from '@/hooks/use-notes-query'
 import {
@@ -921,11 +922,20 @@ export function VirtualizedNotesTree({
     (e: React.DragEvent, itemId: string) => {
       if (isDragDisabled) return
 
-      e.dataTransfer.effectAllowed = 'move'
+      e.dataTransfer.effectAllowed = 'copyMove'
       e.dataTransfer.setData('text/plain', itemId)
+      // Tag file-type items (pdf/image/audio/etc.) so the note editor can embed
+      // them by their own vault path on drop, instead of ignoring the drag.
+      if (!isFolder(itemId)) {
+        const note = noteMap.get(itemId)
+        const fileType = (note?.fileType ?? 'markdown') as FileType
+        if (fileType !== 'markdown') {
+          e.dataTransfer.setData(MEMRY_NOTE_DRAG_MIME, itemId)
+        }
+      }
       setDragState((prev) => ({ ...prev, draggedId: itemId }))
     },
-    [isDragDisabled]
+    [isDragDisabled, noteMap]
   )
 
   const handleDragEnd = useCallback(() => {

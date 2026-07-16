@@ -5,6 +5,8 @@ import { notesService } from '@/services/notes-service'
 import { createFileBlockContent } from '../file-block'
 import type { DropTarget } from '../drop-target-utils'
 import { createLogger } from '@/lib/logger'
+import { toMemryFileUrl } from '@/lib/memry-file-url'
+import { MEMRY_NOTE_DRAG_MIME } from '@/lib/drag-mime'
 
 const log = createLogger('Hook:EditorFileUpload')
 
@@ -34,6 +36,7 @@ interface EditorFileUploadParams {
 interface EditorFileUploadResult {
   uploadFile: (file: File) => Promise<string>
   handleNonImageDrop: (e: React.DragEvent) => Promise<boolean>
+  handleInternalItemDrop: (dataTransfer: DataTransfer) => Promise<void>
 }
 
 export function useEditorFileUpload({
@@ -144,13 +147,69 @@ export function useEditorFileUpload({
     [noteId, editable, editor, dropTarget, onDragReset]
   )
 
+  // Embed a file-type item dragged out of the left sidebar. Unlike an OS file
+  // drop, the bytes already live in the vault, so we reference the item by its
+  // own path (memry-file:// URL) instead of copying into attachments/.
+  const handleInternalItemDrop = useCallback(
+    async (dataTransfer: DataTransfer): Promise<void> => {
+      const itemId = dataTransfer.getData(MEMRY_NOTE_DRAG_MIME)
+      if (!itemId) return
+
+      const insertTarget = dropTarget
+      onDragReset()
+
+      if (!editable) return
+
+      let referenceBlockId: string
+      let placement: 'before' | 'after' = 'after'
+      if (insertTarget) {
+        referenceBlockId = insertTarget.blockId
+        placement = insertTarget.position
+      } else {
+        referenceBlockId = editor.getTextCursorPosition().block.id
+      }
+
+      try {
+        const file = await notesService.getFile(itemId)
+        if (!file?.absolutePath) {
+          log.warn('Cannot embed dropped item: no file path', itemId)
+          return
+        }
+
+        const url = toMemryFileUrl(file.absolutePath)
+        const name = file.title || 'file'
+        const mimeType = file.mimeType || ''
+
+        if (file.fileType === 'image' || mimeType.startsWith('image/')) {
+          editor.insertBlocks(
+            [{ type: 'image', props: { url, caption: name, previewWidth: 600 } }],
+            referenceBlockId,
+            placement
+          )
+        } else {
+          editor.insertBlocks(
+            [createFileBlockContent({ url, name, size: file.fileSize ?? 0, mimeType })],
+            referenceBlockId,
+            placement
+          )
+        }
+      } catch (error) {
+        log.error('Failed to embed dropped item', itemId, error)
+      }
+    },
+    [editable, editor, dropTarget, onDragReset]
+  )
+
   // Capture-phase drop handler to intercept before BlockNote
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
 
     const captureDropHandler = (e: DragEvent): void => {
-      const files = Array.from(e.dataTransfer?.files || [])
+      const dataTransfer = e.dataTransfer
+      if (!dataTransfer) return
+
+      const files = Array.from(dataTransfer.files || [])
       const hasNonImageFiles = files.some((f) => !isImageFile(f))
 
       if (hasNonImageFiles) {
@@ -159,11 +218,19 @@ export function useEditorFileUpload({
 
         void handleNonImageDrop({
           ...e,
-          dataTransfer: e.dataTransfer,
+          dataTransfer,
           preventDefault: () => e.preventDefault(),
           stopPropagation: () => e.stopPropagation(),
           currentTarget: container
         } as unknown as React.DragEvent)
+        return
+      }
+
+      // Internal file-type sidebar item (no OS files on the drag).
+      if (files.length === 0 && dataTransfer.types.includes(MEMRY_NOTE_DRAG_MIME)) {
+        e.preventDefault()
+        e.stopPropagation()
+        void handleInternalItemDrop(dataTransfer)
       }
     }
 
@@ -172,7 +239,7 @@ export function useEditorFileUpload({
     return () => {
       container.removeEventListener('drop', captureDropHandler, { capture: true })
     }
-  }, [handleNonImageDrop, containerRef])
+  }, [handleNonImageDrop, handleInternalItemDrop, containerRef])
 
-  return { uploadFile, handleNonImageDrop }
+  return { uploadFile, handleNonImageDrop, handleInternalItemDrop }
 }
