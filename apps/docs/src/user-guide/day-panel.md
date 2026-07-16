@@ -40,14 +40,6 @@ Calendar events for the focused date plus a preview of that day's journal entry 
 
 If the [Google Calendar integration](/user-guide/settings#integrations) is linked, external events appear here too.
 
-## Unscheduled Tasks
-
-An **Unscheduled** tab lists every task that has no due date. Drag a task from this list
-onto the [calendar](/user-guide/calendar#scheduling-tasks-by-drag) to schedule it — the
-day you drop on becomes the task's due date, and dropping on a time slot also sets its
-time. The list keeps itself current: a task leaves it as soon as it gains a due date and
-returns if that date is cleared.
-
 ## Resizing
 
 - Drag the panel's left edge to resize

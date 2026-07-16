@@ -105,7 +105,6 @@ export interface TaskListOptions {
   includeArchived?: boolean
   dueBefore?: string
   dueAfter?: string
-  unscheduled?: boolean
   tags?: string[]
   search?: string
   sortBy?: 'position' | 'dueDate' | 'priority' | 'created' | 'modified'

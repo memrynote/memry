@@ -79,8 +79,6 @@ export interface ListTasksOptions {
   includeArchived?: boolean
   dueBefore?: string
   dueAfter?: string
-  /** When true, return only tasks with no due date. */
-  unscheduled?: boolean
   tags?: string[]
   search?: string
   sortBy?: 'position' | 'dueDate' | 'priority' | 'created' | 'modified'
@@ -101,7 +99,6 @@ export function listTasks(db: DataDb, options: ListTasksOptions = {}): Task[] {
     includeArchived = false,
     dueBefore,
     dueAfter,
-    unscheduled,
     tags,
     sortBy = 'position',
     sortOrder = 'asc',
@@ -145,10 +142,6 @@ export function listTasks(db: DataDb, options: ListTasksOptions = {}): Task[] {
 
   if (dueAfter) {
     conditions.push(gte(tasks.dueDate, dueAfter))
-  }
-
-  if (unscheduled) {
-    conditions.push(isNull(tasks.dueDate))
   }
 
   // Filter by tags if specified

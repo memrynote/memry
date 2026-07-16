@@ -435,33 +435,4 @@ describe('tasks queries', () => {
     createTask('task-58', { parentId: parent.id, position: 2 })
     expect(getNextTaskPosition(db, projectId, parent.id)).toBe(3)
   })
-
-  describe('listTasks unscheduled filter', () => {
-    it('returns only tasks with no due date when unscheduled is true', () => {
-      createTask('task-no-due')
-      createTask('task-due', { dueDate: '2026-07-20' })
-
-      const result = listTasks(db, { unscheduled: true })
-
-      expect(result.map((t) => t.id)).toEqual(['task-no-due'])
-    })
-
-    it('does not filter by due date when unscheduled is false', () => {
-      createTask('task-no-due')
-      createTask('task-due', { dueDate: '2026-07-20' })
-
-      const result = listTasks(db, { unscheduled: false })
-
-      expect(result).toHaveLength(2)
-    })
-
-    it('still excludes completed tasks when unscheduled is true', () => {
-      createTask('task-no-due')
-      createTask('task-done', { completedAt: new Date().toISOString() })
-
-      const result = listTasks(db, { unscheduled: true })
-
-      expect(result.map((t) => t.id)).toEqual(['task-no-due'])
-    })
-  })
 })
