@@ -54,6 +54,30 @@ Click an empty time slot (day / week views) or a date cell (month) to create an 
 
 Click an event to open the popover. Edit title, time, and description in place. The popover has a "Open in tab" action for full editing.
 
+## Scheduling Tasks by Drag
+
+Tasks can be scheduled and rescheduled by dragging, from three places:
+
+- **A task chip already on the calendar** — drag it to another day (month view) or to a
+  new day and time (week / day grid). Events still move and resize as before; this adds
+  the same direct manipulation for task chips.
+- **The [Day Panel](/user-guide/day-panel)'s Unscheduled tab** — drag a task that has no
+  due date onto any calendar cell to give it one.
+- **A Tasks tab beside the calendar** in a [split view](/user-guide/tabs-split-view) —
+  drag a task row straight onto the calendar.
+
+Where you drop decides the time:
+
+| Drop target              | Result                                         |
+| ------------------------ | ---------------------------------------------- |
+| A month-view day cell    | Sets the due date; keeps any existing time     |
+| A week / day all-day row | Due that day with **no** time                  |
+| A week / day time slot   | Due at the dropped time, snapped to 15 minutes |
+
+The all-day row appears while you drag, even on days that have no all-day items, so there
+is always somewhere to drop a task to clear its time. Selecting several tasks first drags
+them together — one drop schedules them all, and a single undo reverses the batch.
+
 ## Notes with Dates
 
 A note that has a `date`-typed [property](/user-guide/notes/properties-tags) can appear on the calendar. Turn on **Show on calendar** from that property's row in the note, and the note shows up as an all-day chip on the property's date. Clicking the chip opens a small read-only popover showing the property and date, with an **Open note** action.
@@ -78,7 +102,9 @@ On the day and week timelines, drag an **event** to reschedule it:
 - In week view, drag across columns to move it to another day.
 - Drag the top or bottom edge to change the start or end time (resize).
 
-Times snap to 15-minute steps. Only events are draggable — task, reminder, and note chips stay put. If the event is linked to a connected Google calendar, the new time syncs there too.
+Times snap to 15-minute steps. Task chips are draggable too — see
+[Scheduling Tasks by Drag](#scheduling-tasks-by-drag) — while reminder and note chips stay
+put. If the event is linked to a connected Google calendar, the new time syncs there too.
 
 Press **Cmd/Ctrl+Z** to undo a move or resize.
 
