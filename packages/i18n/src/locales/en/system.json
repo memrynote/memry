@@ -31,6 +31,10 @@
     }
   },
   "notification": {
+    "inboxReview": {
+      "title": "Time to review your inbox",
+      "body": "You have {count, plural, one {# item} other {# items}} to review."
+    },
     "reminder": {
       "note": "Note reminder",
       "journal": "Journal reminder",

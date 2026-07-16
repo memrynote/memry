@@ -477,10 +477,17 @@
       "failedToCaptureFile": "Failed to capture file",
       "fileCaptureFailed": "File capture failed",
       "failedToCaptureAudio": "Failed to capture audio",
-      "failedToCaptureVoice": "Failed to capture voice"
+      "failedToCaptureVoice": "Failed to capture voice",
+      "failedToLoadInboxPreferences": "Failed to load inbox preferences",
+      "failedToUpdateInboxPreferences": "Failed to update inbox preferences"
     },
     "toasts": {
       "inboxRefreshed": "Inbox refreshed"
     }
+  },
+  "reviewNudge": {
+    "title": "{count, plural, one {Time to review # item} other {Time to review # items}}",
+    "description": "Process today's captures in one calm pass.",
+    "action": "Open inbox"
   }
 }
