@@ -10,6 +10,7 @@ import { writeCacheFromPreferences } from '../../vault/settings-cache'
 import { readPreferences } from '../../vault/vault-preferences'
 import { getCurrentVaultPath } from '../../store'
 import { getDatabase } from '../../database'
+import { getSetting, setSetting } from '../../database/queries/settings'
 import { createLogger } from '../../lib/logger'
 import type { SyncItemHandler, ApplyContext, ApplyResult, DrizzleDb } from './types'
 
@@ -85,6 +86,17 @@ function propagateMergedSettings(merged: SyncedSettings): void {
         prefsUpdate.editor = { ...merged.editor }
       }
 
+      if (merged.inbox) {
+        try {
+          const db = getDatabase()
+          const raw = getSetting(db, 'inbox')
+          const current = raw ? (JSON.parse(raw) as Record<string, unknown>) : {}
+          setSetting(db, 'inbox', JSON.stringify({ ...current, ...merged.inbox }))
+        } catch (err) {
+          log.warn('Failed to propagate merged inbox settings:', err)
+        }
+      }
+
       if (Object.keys(prefsUpdate).length > 0) {
         writePreferences(vaultPath, prefsUpdate)
       }
@@ -128,6 +140,15 @@ function broadcastSettingsChanged(merged: SyncedSettings): void {
       win.webContents.send(SettingsChannels.events.CHANGED, {
         key: 'editor',
         value: merged.editor
+      })
+    }
+  }
+
+  if (merged.inbox) {
+    for (const win of windows) {
+      win.webContents.send(SettingsChannels.events.CHANGED, {
+        key: 'inbox',
+        value: merged.inbox
       })
     }
   }
