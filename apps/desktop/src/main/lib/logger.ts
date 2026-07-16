@@ -1,10 +1,21 @@
 import log from 'electron-log'
+import { join } from 'node:path'
 
 const isDev = process.env.NODE_ENV !== 'production'
 
 log.transports.file.level = isDev ? 'debug' : 'info'
 log.transports.file.maxSize = 5 * 1024 * 1024
 log.transports.file.format = '{y}-{m}-{d} {h}:{i}:{s}.{ms} [{level}] [{scope}] {text}'
+
+// E2E launches otherwise share one on-disk log on macOS (`~/Library/Logs/{appName}/
+// main.log` lives outside the per-test `--user-data-dir`), so a prior run's lines
+// linger and can false-green log-scraping assertions. When the E2E launcher points
+// MEMRY_TEST_LOG_DIR at the run's fresh dir, write there instead to isolate each run.
+const testLogDir = process.env.MEMRY_TEST_LOG_DIR
+if (testLogDir) {
+  log.transports.file.resolvePathFn = (variables) =>
+    join(testLogDir, variables.fileName ?? 'main.log')
+}
 
 log.transports.console.level = isDev ? 'debug' : 'warn'
 log.transports.console.format = '{h}:{i}:{s}.{ms} [{level}] [{scope}] {text}'

@@ -39,6 +39,7 @@ export interface LaunchedElectron {
   userDataDir: string
   resolvedUserDataDir: string
   mainLogs: string[]
+  logDir: string
 }
 
 function getElectronExecutablePath(): string {
@@ -131,33 +132,22 @@ export async function destroyElectronApp(app: ElectronApplication, dirs: string[
  * before the window paints) can be consumed by the Playwright launcher before
  * our stream handlers attach, so it never lands in `mainLogs`. electron-log's
  * on-disk file is the reliable source for those early lines, so poll it too.
+ * `launched.logDir` is this run's isolated log dir (MEMRY_TEST_LOG_DIR), so a
+ * match can only come from the current launch, never a stale prior-run line.
  */
 export async function waitForMainLog(
   launched: LaunchedElectron,
   substring: string,
   timeoutMs = 15_000
 ): Promise<boolean> {
-  const candidates: string[] = []
-  try {
-    const dirs = await launched.app.evaluate(({ app }) => ({
-      logs: app.getPath('logs'),
-      userData: app.getPath('userData')
-    }))
-    // electron-log v5 writes to getPath('logs'); older convention is userData/logs.
-    candidates.push(path.join(dirs.logs, 'main.log'), path.join(dirs.userData, 'logs', 'main.log'))
-  } catch {
-    // app already closed or evaluate failed — fall back to captured stdout/stderr
-  }
-
+  const logFile = path.join(launched.logDir, 'main.log')
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
     if (launched.mainLogs.join('\n').includes(substring)) return true
-    for (const file of candidates) {
-      try {
-        if (fs.readFileSync(file, 'utf8').includes(substring)) return true
-      } catch {
-        // log file may not exist yet
-      }
+    try {
+      if (fs.readFileSync(logFile, 'utf8').includes(substring)) return true
+    } catch {
+      // log file may not exist yet
     }
     await new Promise((resolve) => setTimeout(resolve, 200))
   }
@@ -167,12 +157,16 @@ export async function waitForMainLog(
 async function launchOnce(opts: LaunchOptions): Promise<LaunchedElectron> {
   const prefix = opts.deviceId ? `memry-userdata-${opts.deviceId}-` : 'memry-userdata-'
   const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), prefix))
+  // Isolate electron-log's file output to this run's fresh dir (see logger.ts) so
+  // waitForMainLog reads only lines from this launch, never a prior run's leftovers.
+  const logDir = path.join(userDataDir, 'logs')
   const mainLogs: string[] = []
 
   const env: Record<string, string | undefined> = {
     ...process.env,
     NODE_ENV: 'test',
     TEST_VAULT_PATH: opts.testVaultPath,
+    MEMRY_TEST_LOG_DIR: logDir,
     ...(opts.deviceId ? { MEMRY_DEVICE: opts.deviceId } : {}),
     ...(opts.syncServerUrl ? { SYNC_SERVER_URL: opts.syncServerUrl } : {}),
     ...(isCI && { ELECTRON_DISABLE_SANDBOX: '1' }),
@@ -214,7 +208,7 @@ async function launchOnce(opts: LaunchOptions): Promise<LaunchedElectron> {
     } catch {
       // fall back to requested dir
     }
-    return { app, page, userDataDir, resolvedUserDataDir, mainLogs }
+    return { app, page, userDataDir, resolvedUserDataDir, mainLogs, logDir }
   } catch (err) {
     await destroyElectronApp(app, [userDataDir])
     const tail = mainLogs.slice(-40).join('').slice(-4000)
