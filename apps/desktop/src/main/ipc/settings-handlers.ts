@@ -19,7 +19,8 @@ import {
   VOICE_TRANSCRIPTION_SETTINGS_DEFAULTS,
   CALENDAR_GOOGLE_SETTINGS_DEFAULTS,
   CALENDAR_SETTINGS_DEFAULTS,
-  FEATURES_SETTINGS_DEFAULTS
+  FEATURES_SETTINGS_DEFAULTS,
+  INBOX_SETTINGS_DEFAULTS
 } from '@memry/contracts/settings-schemas'
 import type {
   GeneralSettings,
@@ -31,7 +32,8 @@ import type {
   VoiceTranscriptionSettings,
   CalendarGoogleSettings,
   CalendarSettings,
-  FeaturesSettings
+  FeaturesSettings,
+  InboxSettings
 } from '@memry/contracts/settings-schemas'
 import { GRAPH_SETTINGS_DEFAULTS } from '@memry/contracts/graph-api'
 import type { GraphSettings } from '@memry/contracts/graph-api'
@@ -73,6 +75,11 @@ const GENERAL_SYNCABLE_FIELDS: (keyof GeneralSettings)[] = [
   'accentColor',
   'language',
   'createInSelectedFolder'
+]
+
+const INBOX_SYNCABLE_FIELDS: (keyof InboxSettings)[] = [
+  'reviewReminderEnabled',
+  'reviewReminderTime'
 ]
 
 const SETTINGS_KEYS = {
@@ -212,6 +219,23 @@ function readGroupSettings<T extends Record<string, unknown>>(groupKey: string, 
 /** Synchronous read of calendar settings for non-IPC callers (e.g. projection). */
 export function getCalendarSettings(): CalendarSettings {
   return readGroupSettings('calendar', CALENDAR_SETTINGS_DEFAULTS)
+}
+
+/** Synchronous read of inbox review settings for the scheduler (non-IPC caller). */
+export function getInboxReviewSettings(): InboxSettings {
+  return readGroupSettings('inbox', INBOX_SETTINGS_DEFAULTS)
+}
+
+/** Write inbox settings + push changed fields to sync. Test seam + used by the SET handler. */
+export function writeInboxReviewSettings(updates: Partial<InboxSettings>): {
+  success: boolean
+  error?: string
+} {
+  const result = writeGroupSettings('inbox', INBOX_SETTINGS_DEFAULTS, updates)
+  if (result.success) {
+    syncSettingsUpdates('inbox', updates, INBOX_SYNCABLE_FIELDS)
+  }
+  return result
 }
 
 function getStartupTheme(): { theme: GeneralSettings['theme']; accentColor?: string } {
@@ -859,6 +883,14 @@ export function registerSettingsHandlers(): void {
       writeGroupSettings('features', FEATURES_SETTINGS_DEFAULTS, updates)
   )
 
+  ipcMain.handle(SettingsChannels.invoke.GET_INBOX_SETTINGS, () =>
+    readGroupSettings('inbox', INBOX_SETTINGS_DEFAULTS)
+  )
+  ipcMain.handle(
+    SettingsChannels.invoke.SET_INBOX_SETTINGS,
+    (_event, updates: Partial<InboxSettings>) => writeInboxReviewSettings(updates)
+  )
+
   // Keyboard shortcuts: reset to defaults
   ipcMain.handle(SettingsChannels.invoke.RESET_KEYBOARD_SETTINGS, () => {
     const db = getDbOrNull()
@@ -1023,6 +1055,8 @@ export function unregisterSettingsHandlers(): void {
   ipcMain.removeHandler(SettingsChannels.invoke.SET_CALENDAR_SETTINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.GET_FEATURES_SETTINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.SET_FEATURES_SETTINGS)
+  ipcMain.removeHandler(SettingsChannels.invoke.GET_INBOX_SETTINGS)
+  ipcMain.removeHandler(SettingsChannels.invoke.SET_INBOX_SETTINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.REGISTER_GLOBAL_CAPTURE)
 
   logger.info('Settings handlers unregistered')
