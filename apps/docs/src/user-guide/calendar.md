@@ -76,7 +76,8 @@ Where you drop decides the time:
 
 The all-day row appears while you drag, even on days that have no all-day items, so there
 is always somewhere to drop a task to clear its time. Selecting several tasks first drags
-them together — one drop schedules them all, and a single undo reverses the batch.
+them together — one drop schedules them all. Moving a task chip on the time grid can be
+undone with **Cmd/Ctrl+Z**, like moving an event.
 
 ## Notes with Dates
 
