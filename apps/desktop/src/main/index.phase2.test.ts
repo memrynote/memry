@@ -71,6 +71,8 @@ const protocolRegisterSchemesMock = vi.fn()
 const ipcMainOnMock = vi.fn()
 const ipcMainHandleMock = vi.fn()
 const setCertificateVerifyProcMock = vi.fn()
+const setPermissionRequestHandlerMock = vi.fn()
+const setPermissionCheckHandlerMock = vi.fn()
 const globalShortcutRegisterMock = vi.fn(() => true)
 const globalShortcutUnregisterAllMock = vi.fn()
 const menuSetApplicationMenuMock = vi.fn()
@@ -359,6 +361,8 @@ vi.mock('electron', () => ({
         onHeadersReceived: webRequestOnHeadersReceivedMock
       },
       setCertificateVerifyProc: setCertificateVerifyProcMock,
+      setPermissionRequestHandler: setPermissionRequestHandlerMock,
+      setPermissionCheckHandler: setPermissionCheckHandlerMock,
       extensions: {
         loadExtension: vi.fn(async () => ({ name: 'React DevTools' }))
       }
@@ -598,6 +602,8 @@ describe('main index phase2 exports', () => {
     expect(applyPackagedLogLevelsMock).not.toHaveBeenCalled()
     expect(protocolHandleMock).toHaveBeenCalledWith('memry-file', expect.any(Function))
     expect(webRequestOnHeadersReceivedMock).toHaveBeenCalledWith(expect.any(Function))
+    expect(setPermissionRequestHandlerMock).toHaveBeenCalledWith(expect.any(Function))
+    expect(setPermissionCheckHandlerMock).toHaveBeenCalledWith(expect.any(Function))
     expect(initPersistenceMock).toHaveBeenCalled()
     expect(applyGlobalCaptureShortcutMock).toHaveBeenCalled()
     expect(BrowserWindowMock).toHaveBeenCalledWith(

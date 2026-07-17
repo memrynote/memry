@@ -84,6 +84,17 @@ allowed through the Electron verifier instead of being compared against an unrel
 pins. Development builds keep pinning disabled so local sync servers and test certificates remain
 usable.
 
+## Renderer Permission Policy
+
+The desktop app registers deny-by-default permission handlers on the Electron session at startup,
+covering both permission requests and permission checks. Grants are limited to the app's own pages
+(packaged `file://` pages, the `memry-file://` asset scheme, and the localhost dev server in
+development builds) and to the permissions the app actually uses: microphone capture for the voice
+recorder (audio only — video capture is always denied), clipboard read for quick capture, sanitized
+clipboard writes for copy actions, and HTML5 notifications for inbox reviews. Every other
+permission (geolocation, camera, MIDI, fullscreen, and so on) and every request from embedded
+external content such as YouTube iframes is denied.
+
 ## Tombstone Signing
 
 The `deleted_at` field is included in the Ed25519-signed payload metadata. A hostile server cannot forge a deletion because it would lack the signing key.

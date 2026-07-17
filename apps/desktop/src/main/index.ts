@@ -35,6 +35,7 @@ import {
 import { readPreferences } from './vault/vault-preferences'
 import { getCurrentVaultPath, getStoredLocale, getWindowBounds, setWindowBounds } from './store'
 import { resolveStartupBounds } from './window-bounds'
+import { configureSessionPermissions } from './session-permissions'
 import { startSnoozeScheduler, stopSnoozeScheduler, checkDueItemsOnStartup } from './inbox/snooze'
 import { stopVoiceModel } from './inbox/voice-model'
 import { stopImageProcessing } from './image-processing/bridge'
@@ -1279,9 +1280,10 @@ const appReady = app.whenReady().then(async () => {
   }
   registerQuickCaptureTestHooks()
 
-  // Configure CSP and cert pinning before the window loads
+  // Configure CSP, cert pinning, and permission handlers before the window loads
   configureCsp()
   configureCertificatePinning()
+  configureSessionPermissions()
 
   if (process.platform === 'darwin' && !app.isPackaged) {
     const iconPath = join(__dirname, '../../build/icon.png')
