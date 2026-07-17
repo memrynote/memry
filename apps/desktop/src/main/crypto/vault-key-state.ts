@@ -5,7 +5,7 @@ import * as schema from '@memry/db-schema/data-schema'
 import { KEYCHAIN_ENTRIES, KEY_DERIVATION_CONTEXTS } from '@memry/contracts/crypto'
 
 import type { DataDb } from '../database/types'
-import { retrieveKey, storeKey } from './keychain'
+import { confirmMasterKeyMigrated, retrieveKey, storeKey } from './keychain'
 import { deriveKey } from './keys'
 import { lockKeyMaterial } from './memory-lock'
 import { secureCleanup } from './primitives'
@@ -85,6 +85,9 @@ export async function getOrInitializeLocalVaultKey(
     try {
       bindOrVerifyVaultKey(db, vaultId, vaultKey, expectedVerifier)
       keepVaultKey = true
+      // The master key just passed the vault verifier check — safe to finish
+      // its safeStorage migration by dropping the OS keychain copy.
+      await confirmMasterKeyMigrated()
       return vaultKey
     } finally {
       if (!keepVaultKey) secureCleanup(vaultKey)

@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto'
-import keytar from 'keytar'
+import { deleteSecret, getSecret, setSecret } from '../secrets/secret-storage'
 import { store } from '../store'
 import { isExtensionOrigin } from './auth'
 
@@ -23,9 +23,9 @@ export async function getCaptureToken(): Promise<string> {
   if (cachedToken) return cachedToken
   if (inFlightRead) return inFlightRead
   inFlightRead = (async () => {
-    const existing = await keytar.getPassword(SERVICE, ACCOUNT)
+    const existing = await getSecret(SERVICE, ACCOUNT)
     const token = existing ?? generateToken()
-    if (!existing) await keytar.setPassword(SERVICE, ACCOUNT, token)
+    if (!existing) await setSecret(SERVICE, ACCOUNT, token)
     cachedToken = token
     return token
   })()
@@ -38,7 +38,7 @@ export async function getCaptureToken(): Promise<string> {
 
 export async function rotateCaptureToken(): Promise<string> {
   const token = generateToken()
-  await keytar.setPassword(SERVICE, ACCOUNT, token)
+  await setSecret(SERVICE, ACCOUNT, token)
   cachedToken = token
   store.set(ALLOWLIST_KEY, [])
   claimWindowUntil = 0
@@ -46,7 +46,7 @@ export async function rotateCaptureToken(): Promise<string> {
 }
 
 export async function unpairCapture(): Promise<void> {
-  await keytar.deletePassword(SERVICE, ACCOUNT)
+  await deleteSecret(SERVICE, ACCOUNT)
   cachedToken = null
   store.set(ALLOWLIST_KEY, [])
   claimWindowUntil = 0

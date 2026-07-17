@@ -1,4 +1,4 @@
-import keytar from 'keytar'
+import { deleteSecret, getSecret, setSecret } from '../secrets/secret-storage'
 
 const SERVICE = 'memry.voice-transcription'
 const OPENAI_ACCOUNT = 'openai'
@@ -10,7 +10,7 @@ function resolveAccount(account: string): string {
 
 export async function getVoiceTranscriptionOpenAIApiKey(): Promise<string | null> {
   try {
-    return await keytar.getPassword(SERVICE, resolveAccount(OPENAI_ACCOUNT))
+    return await getSecret(SERVICE, resolveAccount(OPENAI_ACCOUNT))
   } catch (error) {
     throw new Error(
       `Failed to read voice transcription API key: ${error instanceof Error ? error.message : 'unknown error'}`
@@ -29,11 +29,11 @@ export async function setVoiceTranscriptionOpenAIApiKey(apiKey: string): Promise
   try {
     const account = resolveAccount(OPENAI_ACCOUNT)
     if (trimmed.length === 0) {
-      await keytar.deletePassword(SERVICE, account)
+      await deleteSecret(SERVICE, account)
       return
     }
 
-    await keytar.setPassword(SERVICE, account, trimmed)
+    await setSecret(SERVICE, account, trimmed)
   } catch (error) {
     throw new Error(
       `Failed to store voice transcription API key: ${error instanceof Error ? error.message : 'unknown error'}`
