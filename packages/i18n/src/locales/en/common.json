@@ -231,7 +231,16 @@
     "notFound": "This canvas could not be found",
     "corruptScene": "This canvas could not be read. Editing is disabled to avoid losing data.",
     "disabledTitle": "Canvas is not enabled",
-    "disabledBody": "This tab belongs to a feature that is not enabled on this device."
+    "disabledBody": "This tab belongs to a feature that is not enabled on this device.",
+    "card": {
+      "open": "Open in tab",
+      "deleted": "Item deleted",
+      "loading": "Loading…",
+      "untitled": "Untitled",
+      "allDay": "All day",
+      "newNote": "New note",
+      "createNoteFailed": "Could not create note"
+    }
   },
   "phaseF": {
     "componentsAppSidebar": {

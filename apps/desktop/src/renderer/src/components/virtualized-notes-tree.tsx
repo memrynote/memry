@@ -32,6 +32,7 @@ import {
 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { MEMRY_NOTE_DRAG_MIME } from '@/lib/drag-mime'
+import { CANVAS_ITEM_DRAG_MIME, canvasDragPayload } from '@/pages/canvas/canvas-cards'
 import { useTabActions } from '@/contexts/tabs'
 import type { NoteListItem } from '@/hooks/use-notes-query'
 import {
@@ -932,6 +933,9 @@ export function VirtualizedNotesTree({
         if (fileType !== 'markdown') {
           e.dataTransfer.setData(MEMRY_NOTE_DRAG_MIME, itemId)
         }
+        // Every non-folder item is a note entity — tag it so the spatial canvas
+        // can create a referencing card on drop (markdown notes set no other MIME).
+        e.dataTransfer.setData(CANVAS_ITEM_DRAG_MIME, canvasDragPayload('note', itemId))
       }
       setDragState((prev) => ({ ...prev, draggedId: itemId }))
     },

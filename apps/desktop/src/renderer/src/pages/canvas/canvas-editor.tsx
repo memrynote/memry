@@ -6,7 +6,7 @@
  * public/excalidraw-asset-path.js) because the CSP blocks Excalidraw's CDN.
  */
 
-import React, { useEffect, useMemo, useRef } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Excalidraw, serializeAsJSON, languages, defaultLang } from '@excalidraw/excalidraw'
 import type {
   ExcalidrawImperativeAPI,
@@ -21,6 +21,8 @@ import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import { createLogger } from '@/lib/logger'
 import { createScenePersister } from './canvas-persistence'
 import { pickExcalidrawLangCode } from './excalidraw-lang'
+import { CanvasCardLayer } from './canvas-card-overlay'
+import { extractEntityRefs, type CardElement } from './canvas-cards'
 
 const log = createLogger('SpatialCanvas')
 
@@ -39,6 +41,8 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
   const { t } = useT('common')
   const { resolvedTheme } = useTheme()
   const apiRef = useRef<ExcalidrawImperativeAPI | null>(null)
+  const wrapperRef = useRef<HTMLDivElement>(null)
+  const [api, setApi] = useState<ExcalidrawImperativeAPI | null>(null)
 
   const initialData = useMemo(() => {
     if (!initialScene) {
@@ -83,7 +87,10 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
         }
       },
       save: async (scene) => {
-        await canvasService.update({ id: canvasId, scene })
+        // Advisory entity refs are derived from the same scene, so the dedupe
+        // key (scene string) still governs whether a save runs.
+        const elements = (apiRef.current?.getSceneElements() ?? []) as unknown as CardElement[]
+        await canvasService.update({ id: canvasId, scene, entityRefs: extractEntityRefs(elements) })
       },
       debounceMs: SCENE_SAVE_DEBOUNCE_MS,
       lastSavedScene: initialScene,
@@ -119,10 +126,11 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
   }
 
   return (
-    <div className="h-full w-full" data-canvas-editor={canvasId}>
+    <div ref={wrapperRef} className="relative h-full w-full" data-canvas-editor={canvasId}>
       <Excalidraw
-        excalidrawAPI={(api) => {
-          apiRef.current = api
+        excalidrawAPI={(instance) => {
+          apiRef.current = instance
+          setApi(instance)
         }}
         initialData={initialData}
         onChange={() => persisterRef.current?.notifyChange()}
@@ -131,6 +139,13 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
         theme={resolvedTheme === 'dark' ? 'dark' : 'light'}
         langCode={langCode}
       />
+      {api ? (
+        <CanvasCardLayer
+          excalidrawAPI={api}
+          wrapperRef={wrapperRef}
+          onSceneMutated={() => persisterRef.current?.notifyChange()}
+        />
+      ) : null}
     </div>
   )
 }

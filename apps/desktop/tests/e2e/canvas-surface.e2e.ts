@@ -11,6 +11,19 @@ import { test, expect, type Page } from './fixtures'
 import { ready } from './utils/desktop-test-helpers'
 
 /**
+ * A cold first launch opens the vault slowly (embedding-model init can take
+ * ~30s), exceeding waitForVaultReady's internal 15s fallback — wait for the
+ * sidebar to appear before ready() runs its onboarding dismissal.
+ */
+async function openVault(page: Page): Promise<void> {
+  await page
+    .locator('aside, [data-testid="sidebar"], [class*="sidebar"], nav')
+    .first()
+    .waitFor({ state: 'visible', timeout: 90_000 })
+  await ready(page)
+}
+
+/**
  * Persists the flag, then reloads so every useFeatureFlags mount reads the
  * new value on its initial fetch. The live settings:changed path is racy on
  * a cold boot (a fetch dispatched before the write can resolve after the
@@ -25,7 +38,7 @@ async function setSpatialCanvasFlag(page: Page, enabled: boolean): Promise<void>
     throw new Error(result?.error ?? 'setFeaturesSettings failed')
   }
   await page.reload()
-  await ready(page)
+  await openVault(page)
 }
 
 /** Parsed scene JSON for a canvas id, or null when the canvas is missing. */
@@ -65,7 +78,7 @@ test.describe('Spatial canvas — surface (M1)', () => {
   test('flag off shows no sidebar section; enabled: create, draw, reload persists ink', async ({
     page
   }) => {
-    await ready(page)
+    await openVault(page)
 
     // Flag off (default): zero user-visible change.
     await expect(page.getByRole('button', { name: /Canvases section/ })).toHaveCount(0)
@@ -101,7 +114,7 @@ test.describe('Spatial canvas — surface (M1)', () => {
 
     // Reload: flag + scene persist, the restored tab mounts the editor again.
     await page.reload()
-    await ready(page)
+    await openVault(page)
 
     const after = liveElements(await getCanvasScene(page, canvasId))
     expect(after.filter((element) => element.type === 'freedraw').length).toBe(freedrawCount)
@@ -109,7 +122,7 @@ test.describe('Spatial canvas — surface (M1)', () => {
   })
 
   test('restored canvas tab shows a placeholder when the flag is off', async ({ page }) => {
-    await ready(page)
+    await openVault(page)
     await setSpatialCanvasFlag(page, true)
     await createCanvasFromSidebar(page)
 
