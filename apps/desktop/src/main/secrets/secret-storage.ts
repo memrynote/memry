@@ -34,12 +34,20 @@ const keytarCleanupAttempted = new Set<string>()
 
 let loggedPlaintextBackend = false
 
+// Shared probe for the async safeStorage API (os_crypt_async). Electron
+// lazily initializes the async encryptor on the first call to
+// isAsyncEncryptionAvailable / encryptStringAsync / decryptStringAsync, so
+// concurrent startup reads must all await one probe instead of each
+// triggering initialization.
+let asyncEncryptionProbe: Promise<boolean> | null = null
+
 const cleanupKey = (service: string, account: string): string => `${service}\u0000${account}`
 
 /** Test-only: reset per-run module state between test cases. */
 export function resetSecretStorageForTests(): void {
   keytarCleanupAttempted.clear()
   loggedPlaintextBackend = false
+  asyncEncryptionProbe = null
 }
 
 // ---------------------------------------------------------------------------
@@ -182,18 +190,57 @@ function removeCiphertext(filePath: string, service: string, account: string): v
 // Encryption
 // ---------------------------------------------------------------------------
 
-function encryptValue(value: string): string | null {
+// The async safeStorage API (os_crypt_async, Electron 43+) produces and
+// accepts ciphertext byte-identical to the sync API, so switching between the
+// two is purely behavioral: no store-format change, no re-encryption pass.
+// The sync calls below are the deprecation-candidate fallback — removing them
+// later is a matter of deleting the two `safeStorage.encryptString` /
+// `safeStorage.decryptString` branches and this availability probe.
+
+function isAsyncSafeStorageAvailable(): Promise<boolean> {
+  if (asyncEncryptionProbe === null) {
+    asyncEncryptionProbe = (async () => {
+      try {
+        if (
+          typeof safeStorage?.isAsyncEncryptionAvailable !== 'function' ||
+          typeof safeStorage.encryptStringAsync !== 'function' ||
+          typeof safeStorage.decryptStringAsync !== 'function'
+        ) {
+          return false
+        }
+        return await safeStorage.isAsyncEncryptionAvailable()
+      } catch (err) {
+        logger.warn('safeStorage async availability probe failed; using sync API', { error: err })
+        return false
+      }
+    })()
+  }
+  return asyncEncryptionProbe
+}
+
+async function encryptValue(value: string): Promise<string | null> {
   try {
-    return safeStorage.encryptString(value).toString('base64')
+    const encrypted = (await isAsyncSafeStorageAvailable())
+      ? await safeStorage.encryptStringAsync(value)
+      : safeStorage.encryptString(value)
+    return encrypted.toString('base64')
   } catch (err) {
     logger.error('safeStorage encryption failed', { error: err })
     return null
   }
 }
 
-function decryptValue(ciphertext: string): string | null {
+async function decryptValue(ciphertext: string): Promise<string | null> {
   try {
-    return safeStorage.decryptString(Buffer.from(ciphertext, 'base64'))
+    const encrypted = Buffer.from(ciphertext, 'base64')
+    if (await isAsyncSafeStorageAvailable()) {
+      // shouldReEncrypt is deliberately ignored: honoring it would rewrite
+      // ciphertext on read, and this store's write path already re-encrypts
+      // every secret on setSecret. Reads must stay side-effect-free on disk.
+      const { result } = await safeStorage.decryptStringAsync(encrypted)
+      return result
+    }
+    return safeStorage.decryptString(encrypted)
   } catch (err) {
     logger.warn('safeStorage decryption failed', { error: err })
     return null
@@ -215,7 +262,7 @@ export async function getSecret(
   if (filePath) {
     const ciphertext = readCiphertext(filePath, service, account)
     if (ciphertext !== null) {
-      const value = decryptValue(ciphertext)
+      const value = await decryptValue(ciphertext)
       if (value !== null) {
         if (!options?.deferKeytarDelete) {
           // Crash-resume: a previous run may have persisted the ciphertext but
@@ -244,13 +291,13 @@ export async function setSecret(service: string, account: string, value: string)
 
   if (filePath) {
     try {
-      const ciphertext = encryptValue(value)
-      if (ciphertext === null || decryptValue(ciphertext) !== value) {
+      const ciphertext = await encryptValue(value)
+      if (ciphertext === null || (await decryptValue(ciphertext)) !== value) {
         throw new Error('safeStorage round-trip verification failed')
       }
       persistCiphertext(filePath, service, account, ciphertext)
       const persisted = readCiphertext(filePath, service, account)
-      if (persisted === null || decryptValue(persisted) !== value) {
+      if (persisted === null || (await decryptValue(persisted)) !== value) {
         throw new Error('persisted secret failed read-back verification')
       }
       // The safeStorage copy is now authoritative; drop any stale OS keychain
@@ -305,7 +352,7 @@ export async function finalizeKeytarMigration(service: string, account: string):
   try {
     const ciphertext = readCiphertext(filePath, service, account)
     if (ciphertext === null) return
-    const value = decryptValue(ciphertext)
+    const value = await decryptValue(ciphertext)
     if (value === null) return
     const legacy = await keytar.getPassword(service, account)
     if (legacy !== null && legacy === value) {
@@ -333,8 +380,8 @@ async function migrateLegacySecret(
   deferKeytarDelete: boolean
 ): Promise<void> {
   try {
-    const ciphertext = encryptValue(value)
-    if (ciphertext === null || decryptValue(ciphertext) !== value) {
+    const ciphertext = await encryptValue(value)
+    if (ciphertext === null || (await decryptValue(ciphertext)) !== value) {
       logger.error(
         'safeStorage round-trip failed during migration; OS keychain stays authoritative',
         {
@@ -349,7 +396,7 @@ async function migrateLegacySecret(
     // Verify what actually hit the disk decrypts byte-identical to the source
     // before the keytar copy is ever touched.
     const persisted = readCiphertext(filePath, service, account)
-    const roundTrip = persisted === null ? null : decryptValue(persisted)
+    const roundTrip = persisted === null ? null : await decryptValue(persisted)
     if (roundTrip !== value) {
       logger.error('Persisted secret failed verification; OS keychain stays authoritative', {
         service,
