@@ -1439,7 +1439,7 @@ export function NotePage({ noteId }: NotePageProps) {
       <MoveToFolderDialog
         open={isMoveDialogOpen}
         onOpenChange={setIsMoveDialogOpen}
-        noteIds={noteId ? [noteId] : []}
+        noteIds={[noteId]}
         currentFolder={
           note.path.includes('/') ? note.path.slice(0, note.path.lastIndexOf('/')) : ''
         }

@@ -1024,5 +1024,52 @@ describe('NotePage', () => {
       expect(mocks.closeTab).not.toHaveBeenCalled()
       expect(toast.error).toHaveBeenCalledWith('nope')
     })
+
+    it('surfaces an error toast when copy path fails', async () => {
+      const writeText = vi.fn().mockRejectedValue(new Error('clipboard blocked'))
+      Object.assign(navigator, { clipboard: { writeText } })
+
+      renderWithProviders(<NotePage noteId="note-1" />)
+      fireEvent.click(screen.getByRole('button', { name: 'editor.toolbar.copyPath' }))
+
+      await waitFor(() => expect(toast.error).toHaveBeenCalledWith('clipboard blocked'))
+    })
+
+    it('surfaces an error toast when reveal in Finder fails', async () => {
+      mocks.revealInFinder.mockRejectedValueOnce(new Error('reveal failed'))
+      renderWithProviders(<NotePage noteId="note-1" />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'editor.toolbar.revealInFinder' }))
+      await waitFor(() => expect(toast.error).toHaveBeenCalledWith('reveal failed'))
+    })
+
+    it('surfaces an error toast when open in default app fails', async () => {
+      mocks.openExternal.mockRejectedValueOnce(new Error('open failed'))
+      renderWithProviders(<NotePage noteId="note-1" />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'editor.toolbar.openInDefaultApp' }))
+      await waitFor(() => expect(toast.error).toHaveBeenCalledWith('open failed'))
+    })
+
+    it('surfaces an error toast when the move op reports failure', async () => {
+      mocks.moveNote.mockResolvedValueOnce({ success: false, error: 'move blocked' })
+      renderWithProviders(<NotePage noteId="note-1" />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'editor.toolbar.moveToFolder' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Confirm move' }))
+
+      await waitFor(() => expect(toast.error).toHaveBeenCalledWith('move blocked'))
+    })
+
+    it('surfaces an error toast when delete throws', async () => {
+      mocks.deleteNote.mockRejectedValueOnce(new Error('delete crashed'))
+      renderWithProviders(<NotePage noteId="note-1" />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'editor.toolbar.delete' }))
+      fireEvent.click(screen.getByRole('button', { name: 'page.deleteConfirm.confirm' }))
+
+      await waitFor(() => expect(toast.error).toHaveBeenCalledWith('delete crashed'))
+      expect(mocks.closeTab).not.toHaveBeenCalled()
+    })
   })
 })
