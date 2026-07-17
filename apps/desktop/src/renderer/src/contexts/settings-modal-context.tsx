@@ -6,6 +6,7 @@ export type SettingsSection =
   | 'templates'
   | 'journal'
   | 'tasks'
+  | 'inbox'
   | 'calendar'
   | 'vault'
   | 'appearance'

@@ -10,6 +10,8 @@ import { writeCacheFromPreferences } from '../../vault/settings-cache'
 import { readPreferences } from '../../vault/vault-preferences'
 import { getCurrentVaultPath } from '../../store'
 import { getDatabase } from '../../database'
+import { getSetting, setSetting, deleteSetting } from '../../database/queries/settings'
+import { INBOX_REVIEW_LAST_NOTIFIED_KEY } from '../../inbox/review-reminder-constants'
 import { createLogger } from '../../lib/logger'
 import type { SyncItemHandler, ApplyContext, ApplyResult, DrizzleDb } from './types'
 
@@ -58,6 +60,33 @@ class SettingsHandler implements SyncItemHandler<SettingsSyncPayload> {
 export const settingsHandler = new SettingsHandler()
 
 function propagateMergedSettings(merged: SyncedSettings): void {
+  // Inbox settings live only in the local data DB (not portable config.json
+  // prefs), so persist them regardless of whether a vault path is resolvable.
+  // Otherwise a merge that lands while getCurrentVaultPath() is transiently null
+  // would broadcast the new schedule to the renderer but never write it to the
+  // DB the review scheduler reads, losing the change until the next local write.
+  if (merged.inbox) {
+    try {
+      const db = getDatabase()
+      const raw = getSetting(db, 'inbox')
+      const current = raw ? (JSON.parse(raw) as Record<string, unknown>) : {}
+      const scheduleChanged =
+        ('reviewReminderTime' in merged.inbox &&
+          merged.inbox.reviewReminderTime !== current.reviewReminderTime) ||
+        ('reviewReminderEnabled' in merged.inbox &&
+          merged.inbox.reviewReminderEnabled !== current.reviewReminderEnabled)
+      setSetting(db, 'inbox', JSON.stringify({ ...current, ...merged.inbox }))
+      // A reminder-time/enabled change synced in from another device should
+      // re-arm this device's once-per-day guard too, mirroring the local
+      // writeInboxReviewSettings() clear.
+      if (scheduleChanged) {
+        deleteSetting(db, INBOX_REVIEW_LAST_NOTIFIED_KEY)
+      }
+    } catch (err) {
+      log.warn('Failed to propagate merged inbox settings:', err)
+    }
+  }
+
   let vaultPath: string | null = null
   try {
     vaultPath = getCurrentVaultPath()
@@ -128,6 +157,15 @@ function broadcastSettingsChanged(merged: SyncedSettings): void {
       win.webContents.send(SettingsChannels.events.CHANGED, {
         key: 'editor',
         value: merged.editor
+      })
+    }
+  }
+
+  if (merged.inbox) {
+    for (const win of windows) {
+      win.webContents.send(SettingsChannels.events.CHANGED, {
+        key: 'inbox',
+        value: merged.inbox
       })
     }
   }

@@ -15,6 +15,7 @@ import {
   getStaleCutoffDate,
   getStaleItemIds,
   countStaleItems,
+  countReviewableInboxItems,
   incrementCaptureCount,
   incrementProcessedCount,
   incrementArchivedCount,
@@ -25,7 +26,7 @@ import {
   getProcessingStreak,
   getInboxHealthMetrics
 } from './stats'
-import { inboxStats } from '@memry/db-schema/schema/inbox'
+import { inboxStats, inboxItems, inboxItemType } from '@memry/db-schema/schema/inbox'
 import {
   createTestDatabase,
   cleanupTestDatabase,
@@ -268,6 +269,59 @@ describe('Inbox Stats Module', () => {
       })
 
       expect(countStaleItems()).toBe(0)
+    })
+  })
+
+  // ==========================================================================
+  // Reviewable inbox count (daily review nudge — mirrors sidebar badge)
+  // ==========================================================================
+  describe('countReviewableInboxItems', () => {
+    it('counts an unfiled item', () => {
+      seedInboxItem(testDb.db, { id: 'a' })
+      expect(countReviewableInboxItems()).toBe(1)
+    })
+
+    it('excludes filed, archived, and snoozed items', () => {
+      seedInboxItems(testDb.db, [
+        { id: 'filed', filedAt: '2026-01-02T00:00:00.000Z' },
+        { id: 'archived', archivedAt: '2026-01-02T00:00:00.000Z' },
+        { id: 'snoozed', snoozedUntil: '2099-01-01T00:00:00.000Z' }
+      ])
+
+      expect(countReviewableInboxItems()).toBe(0)
+    })
+
+    it('excludes viewed reminders but counts unviewed reminders', () => {
+      testDb.db
+        .insert(inboxItems)
+        .values([
+          {
+            id: 'viewed-rem',
+            type: inboxItemType.REMINDER,
+            title: 'Viewed reminder',
+            createdAt: '2026-01-01T00:00:00.000Z',
+            modifiedAt: '2026-01-01T00:00:00.000Z',
+            viewedAt: '2026-01-02T00:00:00.000Z'
+          },
+          {
+            id: 'unviewed-rem',
+            type: inboxItemType.REMINDER,
+            title: 'Unviewed reminder',
+            createdAt: '2026-01-01T00:00:00.000Z',
+            modifiedAt: '2026-01-01T00:00:00.000Z'
+          }
+        ])
+        .run()
+
+      expect(countReviewableInboxItems()).toBe(1)
+    })
+
+    it('should return 0 when database is not available', () => {
+      vi.mocked(getDatabase).mockImplementation(() => {
+        throw new Error('No database')
+      })
+
+      expect(countReviewableInboxItems()).toBe(0)
     })
   })
 

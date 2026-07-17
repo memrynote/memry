@@ -23,6 +23,10 @@ import { calendarEvents } from '@memry/db-schema/schema/calendar-events'
 import { getMainI18n } from './lib/main-i18n'
 import { getOrInitializeLocalVaultKey, VAULT_KEY_VERIFIER_SETTING } from './crypto/vault-key-state'
 import { getOrCreateVaultUuid } from './agent/storage/vault-id'
+import { inboxItems, inboxItemType } from '@memry/db-schema/schema/inbox'
+import { runReviewTick } from './inbox/review-scheduler'
+import { writeInboxReviewSettings } from './ipc/settings-handlers'
+import { generateId } from './lib/id'
 
 export interface SyncTestBootstrapInput {
   email: string
@@ -155,6 +159,11 @@ interface MemryTestHooks {
     fallbackRegistered: boolean
     registered: boolean
   }
+  seedInboxItemForE2E(input: { title: string }): Promise<string>
+  setInboxReviewSettingsForE2E(input: { enabled: boolean; time: string }): Promise<void>
+  forceInboxReviewTickForE2E(input: {
+    nowIso: string
+  }): Promise<{ notified: boolean; count: number }>
 }
 
 interface GoogleTestCredentials {
@@ -836,6 +845,36 @@ export function registerTestHooks(): void {
       }
 
       return win.id
+    },
+
+    async seedInboxItemForE2E(input: { title: string }): Promise<string> {
+      const db = getDatabase()
+      const id = `inbox_e2e_${generateId()}`
+      const ts = '2026-07-17T00:00:00.000Z'
+      db.insert(inboxItems)
+        .values({
+          id,
+          type: inboxItemType.NOTE,
+          title: input.title,
+          createdAt: ts,
+          modifiedAt: ts,
+          processingStatus: 'complete'
+        })
+        .run()
+      return id
+    },
+
+    async setInboxReviewSettingsForE2E(input: { enabled: boolean; time: string }): Promise<void> {
+      writeInboxReviewSettings({
+        reviewReminderEnabled: input.enabled,
+        reviewReminderTime: input.time
+      })
+    },
+
+    async forceInboxReviewTickForE2E(input: {
+      nowIso: string
+    }): Promise<{ notified: boolean; count: number }> {
+      return runReviewTick(new Date(input.nowIso))
     }
   }
 }

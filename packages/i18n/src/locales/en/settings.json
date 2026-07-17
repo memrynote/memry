@@ -18,6 +18,7 @@
         "editor": "Editor",
         "journal": "Journal",
         "tasks": "Tasks",
+        "inbox": "Inbox",
         "calendar": "Calendar",
         "appearance": "Appearance",
         "shortcuts": "Shortcuts",
@@ -400,6 +401,36 @@
       "description": "Tasks older than this are highlighted as stale",
       "unit": "days",
       "error": "Failed to update stale inbox threshold"
+    }
+  },
+  "inbox": {
+    "header": {
+      "title": "Inbox",
+      "subtitle": "Daily review reminder and inbox preferences.",
+      "loading": "Loading…"
+    },
+    "reviewReminder": {
+      "group": "Daily review reminder",
+      "enabled": {
+        "label": "Remind me to review my inbox",
+        "description": "A gentle daily nudge when your inbox has items."
+      },
+      "time": {
+        "label": "Reminder time",
+        "description": "Local time, on each device.",
+        "hourLabel": "Hour",
+        "minuteLabel": "Minute",
+        "periodLabel": "AM or PM"
+      },
+      "test": {
+        "label": "Test notification",
+        "description": "Fire the reminder now to check your system notifications.",
+        "button": "Send test",
+        "sent": "Test notification sent.",
+        "sentHint": "If nothing appears, allow notifications for MemryNote in your system settings.",
+        "unsupported": "This device can't show desktop notifications."
+      },
+      "error": "Could not update the reminder."
     }
   },
   "calendar": {
