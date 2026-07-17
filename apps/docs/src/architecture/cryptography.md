@@ -46,6 +46,28 @@ account master key and rebinds this verifier before the sync runtime activates. 
 created before sign-in on the same encrypted sync path instead of leaving the push queue without a
 usable vault key.
 
+## Secret Storage
+
+Secrets (vault master key, sync keys, Google Calendar tokens, voice transcription and local agent
+provider API keys, and the capture pairing token) are stored as Electron `safeStorage` ciphertext in
+an atomically written `secure-secrets.json` under the app's user-data directory, keyed by the same
+service and account strings the OS keychain used. The retired `keytar` module stays installed as a
+read-only fallback: every read tries the safeStorage store first and falls back to the OS keychain
+under the identical account.
+
+A legacy secret migrates lazily on first read: encrypt, persist, decrypt round-trip verify
+byte-identical against the source, and only then delete the OS keychain copy. Any verification
+failure keeps the OS keychain authoritative. The vault master key goes one step further — its OS
+keychain copy is only deleted after the retrieved key has passed the vault verifier check. Migration
+is idempotent and crash-resumable: a crash between persist and delete is cleaned up on a later run,
+and only while both copies still match.
+
+Writes gate on `safeStorage.isEncryptionAvailable()` evaluated after app `ready`. On Linux, the
+plaintext `basic_text` backend refuses migration entirely so secrets are never silently downgraded
+out of the OS keyring. Plain `pnpm dev` worktrees also stay on the OS keychain: they share one `dev`
+master key machine-globally while user data is per-worktree, so migrating would strand the shared
+key for other worktrees.
+
 ## Nonces
 
 All XChaCha20 operations use 24-byte random nonces from `sodium.randombytes_buf(24)` via a dedicated nonce utility (T029b). Nonces are stored alongside ciphertext.
