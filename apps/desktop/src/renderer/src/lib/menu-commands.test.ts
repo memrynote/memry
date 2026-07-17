@@ -177,28 +177,46 @@ describe('getEditorHistoryState', () => {
   afterEach(() => {
     delete (window as unknown as { __memryEditor?: unknown }).__memryEditor
     getUndoPluginState.mockReset()
+    document.body.innerHTML = ''
   })
 
-  it('reports the Yjs undo manager stacks', () => {
+  function mountEditor(overrides: Record<string, unknown> = {}): void {
+    ;(window as unknown as { __memryEditor?: unknown }).__memryEditor = {
+      domElement: document.body,
+      _tiptapEditor: { state: {} },
+      ...overrides
+    }
+  }
+
+  it('reports the Yjs undo manager stacks while focus is inside the editor', () => {
     getUndoPluginState.mockReturnValue({
       undoManager: { canUndo: () => true, canRedo: () => false }
     })
-    ;(window as unknown as { __memryEditor?: unknown }).__memryEditor = {
-      _tiptapEditor: { state: {} }
-    }
+    mountEditor()
 
     expect(getEditorHistoryState()).toEqual({ canUndo: true, canRedo: false })
   })
 
-  it('reports nothing to undo without an editor', () => {
-    expect(getEditorHistoryState()).toEqual({ canUndo: false, canRedo: false })
+  it('returns null without a registered editor', () => {
+    expect(getEditorHistoryState()).toBeNull()
+  })
+
+  it('returns null when focus is outside the editor', () => {
+    // Detached root cannot contain document.activeElement — mirrors focus in
+    // another BlockNote surface (task description, inbox composer). The caller
+    // must fall back to native items instead of reflecting the note editor's
+    // history for a different document.
+    mountEditor({ domElement: document.createElement('div') })
+    getUndoPluginState.mockReturnValue({
+      undoManager: { canUndo: () => true, canRedo: () => true }
+    })
+
+    expect(getEditorHistoryState()).toBeNull()
   })
 
   it('stays enabled when the editor has no Yjs undo manager', () => {
     getUndoPluginState.mockReturnValue(undefined)
-    ;(window as unknown as { __memryEditor?: unknown }).__memryEditor = {
-      _tiptapEditor: { state: {} }
-    }
+    mountEditor()
 
     expect(getEditorHistoryState()).toEqual({ canUndo: true, canRedo: true })
   })
@@ -207,9 +225,7 @@ describe('getEditorHistoryState', () => {
     getUndoPluginState.mockImplementation(() => {
       throw new Error('plugin state unavailable')
     })
-    ;(window as unknown as { __memryEditor?: unknown }).__memryEditor = {
-      _tiptapEditor: { state: {} }
-    }
+    mountEditor()
 
     expect(getEditorHistoryState()).toEqual({ canUndo: true, canRedo: true })
   })

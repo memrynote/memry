@@ -66,7 +66,7 @@ A chord indicator briefly flashes when the prefix is active.
 | Open block menu     | Type `/`                               |
 | Find in page        | <kbd>⌘</kbd>+<kbd>F</kbd>              |
 
-> **Undo / Redo** in the note editor use <kbd>⌘</kbd>+<kbd>Z</kbd> and <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>Z</kbd>, and also work from the **Edit** menu and the right-click menu. Unlike the rows above they are owned by the editor's own history, so they are not remappable. Undoing recent _task_ changes is a separate feature — see [Global Undo (Tasks)](#global-undo-tasks).
+> **Undo / Redo** also work from the **Edit** menu and the right-click menu inside the note editor. They are owned by the editor's own history rather than the app's shortcut registry, so unlike the other Editor shortcuts they are not remappable. Undoing recent _task_ changes is a separate feature — see [Global Undo (Tasks)](#global-undo-tasks).
 
 ## View
 

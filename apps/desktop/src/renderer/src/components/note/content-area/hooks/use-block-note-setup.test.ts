@@ -58,6 +58,7 @@ describe('useBlockNoteSetup', () => {
     vi.useRealTimers()
     document.body.innerHTML = ''
     delete (window as unknown as { __memryEditor?: unknown }).__memryEditor
+    delete (window as unknown as { __memryEditorHistoryState?: unknown }).__memryEditorHistoryState
   })
 
   it('keeps aiReady false until the editor exposes the ai extension', async () => {
@@ -117,10 +118,17 @@ describe('useBlockNoteSetup', () => {
 
     expect(result.current.aiReady).toBe(false)
     expect((window as unknown as { __memryEditor?: unknown }).__memryEditor).toBe(editor)
+    expect(
+      typeof (window as unknown as { __memryEditorHistoryState?: unknown })
+        .__memryEditorHistoryState
+    ).toBe('function')
 
     unmount()
 
     expect((window as unknown as { __memryEditor?: unknown }).__memryEditor).toBeUndefined()
+    expect(
+      (window as unknown as { __memryEditorHistoryState?: unknown }).__memryEditorHistoryState
+    ).toBeUndefined()
     expect(editor.registerExtension).not.toHaveBeenCalled()
   })
 

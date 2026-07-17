@@ -34,22 +34,23 @@ export function usesRendererHistory(params: EditableContextMenuParams): boolean 
 
 /**
  * Ask the renderer for the editor's Yjs undo/redo state (see
- * getEditorHistoryState in renderer lib/menu-commands.ts). Unknown state
- * resolves to enabled — a stray click is a no-op, a wrongly greyed Undo is
- * the original bug.
+ * getEditorHistoryState in renderer lib/menu-commands.ts). Resolves null when
+ * the renderer does not confirm the target is the note editor (focus outside
+ * it, other BlockNote surfaces, renderer busy/destroyed) — the caller then
+ * keeps the native role items instead of routing to the wrong history.
  */
 export async function readRendererHistoryState(webContents: {
   executeJavaScript: (code: string) => Promise<unknown>
-}): Promise<RendererHistoryState> {
+}): Promise<RendererHistoryState | null> {
   try {
     const state = (await webContents.executeJavaScript(
       'globalThis.__memryEditorHistoryState?.() ?? null'
     )) as { canUndo?: boolean; canRedo?: boolean } | null
     if (state) return { canUndo: state.canUndo === true, canRedo: state.canRedo === true }
   } catch {
-    // Renderer busy or destroyed — fall through to enabled.
+    // Renderer busy or destroyed — treat as unconfirmed.
   }
-  return { canUndo: true, canRedo: true }
+  return null
 }
 
 /**
@@ -275,33 +276,50 @@ export function buildAppMenu(i18n: I18nInstance): Menu {
 export function buildEditableTextContextMenu(
   i18n: I18nInstance,
   params: EditableContextMenuParams,
-  history?: RendererHistoryState
+  history?: RendererHistoryState | null,
+  targetWebContents?: {
+    isDestroyed: () => boolean
+    send: (channel: string, ...args: unknown[]) => void
+  }
 ): Menu | null {
   if (!params.isEditable) return null
 
   const t = i18n.getFixedT(null, 'menu')
   const flags = params.editFlags ?? {}
-  // Same reasoning as the Edit menu's undo/redo above: for the BlockNote
-  // contenteditable the native role reaches only Chromium's empty undo stack,
-  // so dispatch to the renderer and let the Yjs undo manager drive enabled
-  // state. Native inputs/textareas keep the role — Chromium owns their history.
-  const historyItems: MenuItemConstructorOptions[] = usesRendererHistory(params)
-    ? [
-        {
-          label: t('edit.undo'),
-          enabled: history?.canUndo !== false,
-          click: () => sendMenuCommand('edit.undo')
-        },
-        {
-          label: t('edit.redo'),
-          enabled: history?.canRedo !== false,
-          click: () => sendMenuCommand('edit.redo')
-        }
-      ]
-    : [
-        { label: t('edit.undo'), role: 'undo', enabled: Boolean(flags.canUndo) },
-        { label: t('edit.redo'), role: 'redo', enabled: Boolean(flags.canRedo) }
-      ]
+  // Dispatch to the window the menu was popped for — the focused window can be
+  // a different one (always-on-top quick capture) when right-click did not
+  // activate the target window.
+  const dispatch = (command: string): void => {
+    if (targetWebContents && !targetWebContents.isDestroyed()) {
+      targetWebContents.send(AppChannels.events.MENU_COMMAND, { command })
+      return
+    }
+    sendMenuCommand(command)
+  }
+  // Same reasoning as the Edit menu's undo/redo above: when the renderer
+  // confirmed the target is the note editor (history != null), the native role
+  // would reach only Chromium's empty undo stack — dispatch to the renderer
+  // with the Yjs undo manager driving enabled state. Native inputs/textareas
+  // and unconfirmed editables keep the role: Chromium owns their history, and
+  // other BlockNote surfaces must not mutate the note editor's document.
+  const historyItems: MenuItemConstructorOptions[] =
+    usesRendererHistory(params) && history
+      ? [
+          {
+            label: t('edit.undo'),
+            enabled: history.canUndo,
+            click: () => dispatch('edit.undo')
+          },
+          {
+            label: t('edit.redo'),
+            enabled: history.canRedo,
+            click: () => dispatch('edit.redo')
+          }
+        ]
+      : [
+          { label: t('edit.undo'), role: 'undo', enabled: Boolean(flags.canUndo) },
+          { label: t('edit.redo'), role: 'redo', enabled: Boolean(flags.canRedo) }
+        ]
   const template: MenuItemConstructorOptions[] = [
     ...historyItems,
     { type: 'separator' },

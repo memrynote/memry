@@ -653,18 +653,28 @@ function createWindow(): void {
   })
 
   mainWindow.webContents.on('context-menu', (_event, params) => {
-    const showMenu = (history?: RendererHistoryState): void => {
-      const menu = buildEditableTextContextMenu(mainI18n, params, history)
+    const showMenu = (history?: RendererHistoryState | null): void => {
+      // The renderer-history path resolves async — the window can be gone by
+      // the time the promise settles, and popup() would fall back to another
+      // window or throw with none left.
+      if (mainWindow.isDestroyed() || mainWindow.webContents.isDestroyed()) return
+
+      const menu = buildEditableTextContextMenu(mainI18n, params, history, mainWindow.webContents)
       if (!menu) return
 
+      // Anchor at the right-click position: after the async roundtrip the
+      // default (current cursor position) may have drifted from the click.
       menu.popup({
         window: mainWindow,
+        x: params.x,
+        y: params.y,
         ...(params.frame ? { frame: params.frame } : {})
       })
     }
 
     // BlockNote contenteditable: Chromium's editFlags can't see the Yjs undo
-    // stack, so ask the renderer before showing the menu.
+    // stack, so ask the renderer before showing the menu. A null answer means
+    // the target isn't the note editor — keep the native items.
     if (usesRendererHistory(params)) {
       void readRendererHistoryState(mainWindow.webContents).then(showMenu)
       return

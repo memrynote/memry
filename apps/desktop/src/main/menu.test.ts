@@ -264,9 +264,6 @@ describe('buildAppMenu', () => {
   it('routes contenteditable context-menu undo/redo through the renderer', async () => {
     const i18n = await createMainI18n({ locale: 'en' })
     const send = vi.fn()
-    vi.mocked(BrowserWindow.getFocusedWindow).mockReturnValue({
-      webContents: { isDestroyed: () => false, send }
-    } as unknown as Electron.BrowserWindow)
 
     buildEditableTextContextMenu(
       i18n,
@@ -285,7 +282,8 @@ describe('buildAppMenu', () => {
           canSelectAll: true
         }
       },
-      { canUndo: true, canRedo: false }
+      { canUndo: true, canRedo: false },
+      { isDestroyed: () => false, send }
     )
 
     const items = buildFromTemplate.mock.calls[0][0] as Array<{
@@ -302,23 +300,44 @@ describe('buildAppMenu', () => {
     expect(redoItem?.role).toBeUndefined()
     expect(redoItem?.enabled).toBe(false)
 
+    // Dispatch goes to the window the menu was popped for, not whichever
+    // window happens to be focused at click time.
     undoItem?.click?.()
     expect(send).toHaveBeenCalledWith(AppChannels.events.MENU_COMMAND, { command: 'edit.undo' })
     redoItem?.click?.()
     expect(send).toHaveBeenCalledWith(AppChannels.events.MENU_COMMAND, { command: 'edit.redo' })
+    expect(BrowserWindow.getFocusedWindow).not.toHaveBeenCalled()
   })
 
-  it('keeps contenteditable undo/redo enabled when renderer history state is unknown', async () => {
+  it('keeps native role items when the renderer does not confirm the note editor', async () => {
     const i18n = await createMainI18n({ locale: 'en' })
 
-    buildEditableTextContextMenu(i18n, { isEditable: true, formControlType: 'none' })
+    // history null = focus outside the note editor (task-description or inbox
+    // BlockNote surfaces, renderer busy). Routing to the note editor's history
+    // there would grey the menu from — or worse, undo — the wrong document.
+    buildEditableTextContextMenu(
+      i18n,
+      {
+        isEditable: true,
+        formControlType: 'none',
+        editFlags: { canUndo: true, canRedo: false }
+      },
+      null
+    )
 
     const items = buildFromTemplate.mock.calls[0][0] as Array<{
       label?: string
+      role?: string
       enabled?: boolean
     }>
-    expect(items.find((item) => item.label === 'Undo')?.enabled).toBe(true)
-    expect(items.find((item) => item.label === 'Redo')?.enabled).toBe(true)
+    expect(items.find((item) => item.label === 'Undo')).toMatchObject({
+      role: 'undo',
+      enabled: true
+    })
+    expect(items.find((item) => item.label === 'Redo')).toMatchObject({
+      role: 'redo',
+      enabled: false
+    })
   })
 })
 
@@ -345,13 +364,14 @@ describe('readRendererHistoryState', () => {
     )
   })
 
-  it('falls back to enabled items when the renderer cannot answer', async () => {
-    // A wrongly greyed Undo is the original bug — unknown state stays enabled.
+  it('resolves null when the renderer does not confirm the note editor', async () => {
+    // null → the caller keeps native role items instead of routing history
+    // commands at a target the renderer did not vouch for.
     await expect(
       readRendererHistoryState({ executeJavaScript: vi.fn().mockRejectedValue(new Error('gone')) })
-    ).resolves.toEqual({ canUndo: true, canRedo: true })
+    ).resolves.toBeNull()
     await expect(
       readRendererHistoryState({ executeJavaScript: vi.fn().mockResolvedValue(null) })
-    ).resolves.toEqual({ canUndo: true, canRedo: true })
+    ).resolves.toBeNull()
   })
 })

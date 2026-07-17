@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef } from 'react'
 import { removeAndInsertBlocks, type Block } from '@blocknote/core'
-import { yUndoPluginKey } from 'y-prosemirror'
 import type * as Y from 'yjs'
 import {
   extractHeadings,
@@ -20,6 +19,7 @@ import {
 } from '../markdown-utils'
 import { createLinkMentionContent } from '../link-mention'
 import { fetchLinkPreview } from '@/lib/url-metadata'
+import { getYjsUndoManager } from '@/lib/menu-commands'
 import type { HeadingInfo } from '../types'
 import { createLogger } from '@/lib/logger'
 
@@ -43,12 +43,9 @@ function replaceInitialBlocksWithoutHistory(editor: any, blocks: Block[]): void 
 }
 
 function clearYjsUndoHistory(editor: any): void {
-  const state = editor?._tiptapEditor?.state
-  if (!state) return
-
-  const undoManager = yUndoPluginKey.getState(state)?.undoManager
-  undoManager?.clear?.(true, true)
-  undoManager?.stopCapturing?.()
+  const undoManager = getYjsUndoManager(editor)
+  undoManager?.clear(true, true)
+  undoManager?.stopCapturing()
 }
 
 export async function extractMarkdownFromActiveEditor(noteId?: string): Promise<string | null> {

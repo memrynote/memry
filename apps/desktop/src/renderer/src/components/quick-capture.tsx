@@ -12,6 +12,7 @@ import { LinkPreviewCard } from './quick-capture-link-preview'
 import { FilePreviewCard, formatFileSize } from './quick-capture-image-preview'
 import { detectPlatformFromUrl, extractHandleFromUrl } from './social-card-utils'
 import { createLogger } from '@/lib/logger'
+import { runHistoryMenuCommand } from '@/lib/menu-commands'
 import { useAISettingsContext } from '@/contexts/ai-settings-context'
 import {
   ensureVoiceRecordingReady,
@@ -121,6 +122,18 @@ export function QuickCapture(): React.JSX.Element {
     return 'note'
   }, [aiEnabled, clipboardImage, droppedFile, isRecording, value])
   const isLinkPreviewVisible = detectedType === 'link'
+
+  // This window renders without App, so it has no useMenuCommands subscriber.
+  // Without this, the macOS menu-bar Edit→Undo/Redo (dispatched as MENU_COMMAND
+  // to the focused window) would be a silent no-op here — the input/textarea
+  // branch of runHistoryMenuCommand restores the native behavior the old
+  // role:'undo' items provided.
+  useEffect(() => {
+    return window.api.onMenuCommand(({ command }) => {
+      if (command === 'edit.undo') runHistoryMenuCommand('undo')
+      else if (command === 'edit.redo') runHistoryMenuCommand('redo')
+    })
+  }, [])
 
   useEffect(() => {
     if (!isLinkPreviewVisible) {

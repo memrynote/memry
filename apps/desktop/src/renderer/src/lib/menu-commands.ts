@@ -22,6 +22,28 @@ interface MemryEditorGlobal extends EditorLike {
   redo: () => boolean
   focus?: () => void
   domElement?: HTMLElement
+  _tiptapEditor?: { state?: unknown }
+}
+
+interface YjsUndoManagerLike {
+  canUndo: () => boolean
+  canRedo: () => boolean
+  clear: (clearUndoStack?: boolean, clearRedoStack?: boolean) => void
+  stopCapturing: () => void
+}
+
+/**
+ * Yjs undo manager behind a BlockNote editor (y-prosemirror plugin state).
+ * Single home for the `_tiptapEditor` private-API reach — also used by
+ * clearYjsUndoHistory in use-editor-sync.ts.
+ */
+export function getYjsUndoManager(
+  editor: { _tiptapEditor?: { state?: unknown } } | undefined
+): YjsUndoManagerLike | undefined {
+  const state = editor?._tiptapEditor?.state
+  if (!state) return undefined
+  return yUndoPluginKey.getState(state as Parameters<typeof yUndoPluginKey.getState>[0])
+    ?.undoManager as YjsUndoManagerLike | undefined
 }
 
 /** Single accessor for the editor global set by use-block-note-setup.ts. */
@@ -136,21 +158,21 @@ export function runHistoryMenuCommand(action: 'undo' | 'redo'): void {
  * Undo/redo availability for the editor context menu. The main process reads
  * this via window.__memryEditorHistoryState (see readRendererHistoryState in
  * main/menu.ts) because Chromium's editFlags only describe its own — empty —
- * undo stack. Unknown state reports enabled: a stray click is a no-op, a
- * wrongly greyed Undo is the original bug.
+ * undo stack. Returns null when focus is outside the note editor — mirroring
+ * runHistoryMenuCommand's containment rule so the menu's enabled state and its
+ * click dispatch can never disagree; the caller then keeps the native items.
  */
-export function getEditorHistoryState(): { canUndo: boolean; canRedo: boolean } {
-  const editor = (window as unknown as { __memryEditor?: { _tiptapEditor?: { state?: unknown } } })
-    .__memryEditor
-  if (!editor) return { canUndo: false, canRedo: false }
+export function getEditorHistoryState(): { canUndo: boolean; canRedo: boolean } | null {
+  const editor = getMemryEditor()
+  const active = document.activeElement
+  if (!editor?.domElement || !active || !editor.domElement.contains(active)) return null
   try {
-    const state = editor._tiptapEditor?.state
-    const undoManager = state
-      ? yUndoPluginKey.getState(state as Parameters<typeof yUndoPluginKey.getState>[0])?.undoManager
-      : undefined
+    const undoManager = getYjsUndoManager(editor)
     if (undoManager) return { canUndo: undoManager.canUndo(), canRedo: undoManager.canRedo() }
   } catch {
     // Plugin state unavailable — fall through to enabled.
   }
+  // The note editor without a Yjs undo manager still handles undo itself —
+  // report enabled: a stray click is a no-op, a wrongly greyed Undo is the bug.
   return { canUndo: true, canRedo: true }
 }
