@@ -210,7 +210,8 @@ export async function getSecret(
   account: string,
   options?: GetSecretOptions
 ): Promise<string | null> {
-  const filePath = isSafeStorageAvailable() ? resolveStoreFilePath() : null
+  const storePath = resolveStoreFilePath()
+  const filePath = isSafeStorageAvailable() ? storePath : null
 
   if (filePath) {
     const ciphertext = readCiphertext(filePath, service, account)
@@ -233,10 +234,36 @@ export async function getSecret(
   }
 
   const legacy = await keytar.getPassword(service, account)
-  if (legacy === null || filePath === null) return legacy
+  if (legacy !== null) {
+    if (filePath !== null) {
+      await migrateLegacySecret(
+        filePath,
+        service,
+        account,
+        legacy,
+        options?.deferKeytarDelete === true
+      )
+    }
+    return legacy
+  }
 
-  await migrateLegacySecret(filePath, service, account, legacy, options?.deferKeytarDelete === true)
-  return legacy
+  // keytar is empty. Before reporting the secret as ABSENT, make sure it isn't
+  // merely UNREADABLE this run: if a safeStorage entry for it still exists on
+  // disk but we couldn't read a value above (safeStorage unavailable this run,
+  // or the stored ciphertext was undecryptable), `null` means "can't read", not
+  // "not there". A false absence is dangerous — destructive callers act on it:
+  // vault-key-state.ts regenerates the vault master key and sync-core-handlers.ts
+  // tears down local sync state, both of which permanently orphan the vault from
+  // its encrypted data. This is the failure mode behind the #772 keytar→
+  // safeStorage regression. Fail loud so the caller retries on a healthy run.
+  if (storePath !== null && readCiphertext(storePath, service, account) !== null) {
+    throw new Error(
+      `Secret ${service}/${account} exists in the secret store but could not be read this run; ` +
+        'refusing to report it as absent'
+    )
+  }
+
+  return null
 }
 
 export async function setSecret(service: string, account: string, value: string): Promise<void> {
