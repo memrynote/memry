@@ -638,6 +638,28 @@ export type CalendarEventChannel =
   (typeof CalendarChannels.events)[keyof typeof CalendarChannels.events]
 
 // ============================================================================
+// Canvas Channels (spatial canvas — hidden behind the spatialCanvas flag)
+// ============================================================================
+
+export const CanvasChannels = {
+  invoke: {
+    CREATE: 'canvas:create',
+    GET: 'canvas:get',
+    UPDATE: 'canvas:update',
+    DELETE: 'canvas:delete',
+    LIST: 'canvas:list'
+  },
+  events: {
+    CREATED: 'canvas:created',
+    UPDATED: 'canvas:updated',
+    DELETED: 'canvas:deleted'
+  }
+} as const
+
+export type CanvasInvokeChannel = (typeof CanvasChannels.invoke)[keyof typeof CanvasChannels.invoke]
+export type CanvasEventChannel = (typeof CanvasChannels.events)[keyof typeof CanvasChannels.events]
+
+// ============================================================================
 // Reminder Channels
 // ============================================================================
 

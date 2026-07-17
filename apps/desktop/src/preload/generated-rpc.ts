@@ -35,7 +35,10 @@ const eventChannels = {
   "onEmbeddingProgress": "settings:embeddingProgress",
   "onVoiceModelProgress": "settings:voiceModelProgress",
   "onSettingsOpenRequested": "settings:openSection",
-  "onCalendarChanged": "calendar:changed"
+  "onCalendarChanged": "calendar:changed",
+  "onCanvasCreated": "canvas:created",
+  "onCanvasUpdated": "canvas:updated",
+  "onCanvasDeleted": "canvas:deleted"
 } as const
 
 export interface GeneratedRpcDeps {
@@ -285,6 +288,13 @@ export function createGeneratedRpcApi({
       "setDefaultGoogleCalendar": ((input) => invoke("calendar:set-default-google-calendar", input)) as GeneratedRpcApi["calendar"]["setDefaultGoogleCalendar"],
       "promoteExternalEvent": ((input) => invoke("calendar:promote-external-event", input)) as GeneratedRpcApi["calendar"]["promoteExternalEvent"],
       "retryGoogleCalendarSourceSync": ((input) => invoke("calendar:retry-google-source-sync", input)) as GeneratedRpcApi["calendar"]["retryGoogleCalendarSourceSync"],
+    },
+    "canvas": {
+      "create": ((input) => invoke("canvas:create", input ?? {})) as GeneratedRpcApi["canvas"]["create"],
+      "get": ((id) => invoke("canvas:get", id)) as GeneratedRpcApi["canvas"]["get"],
+      "update": ((input) => invoke("canvas:update", input)) as GeneratedRpcApi["canvas"]["update"],
+      "delete": ((id) => invoke("canvas:delete", id)) as GeneratedRpcApi["canvas"]["delete"],
+      "list": (() => invoke("canvas:list")) as GeneratedRpcApi["canvas"]["list"],
     },
     "telemetry": {
       "track": ((event) => invoke("telemetry:track", event)) as GeneratedRpcApi["telemetry"]["track"],

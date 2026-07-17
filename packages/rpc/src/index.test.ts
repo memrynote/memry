@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   calendarRpc,
+  canvasRpc,
   defineDomain,
   defineEvent,
   defineMethod,
@@ -28,20 +29,22 @@ describe('@memry/rpc public surface', () => {
     expect(inboxRpc.name).toBe('inbox')
     expect(settingsRpc.name).toBe('settings')
     expect(calendarRpc.name).toBe('calendar')
+    expect(canvasRpc.name).toBe('canvas')
     expect(telemetryRpc.name).toBe('telemetry')
     expect(feedbackRpc.name).toBe('feedback')
   })
 })
 
 describe('rpcDomains aggregate', () => {
-  it('contains exactly the seven known domains in declaration order', () => {
-    expect(rpcDomains).toHaveLength(7)
+  it('contains exactly the eight known domains in declaration order', () => {
+    expect(rpcDomains).toHaveLength(8)
     expect(rpcDomains.map((d) => d.name)).toEqual([
       'notes',
       'tasks',
       'inbox',
       'settings',
       'calendar',
+      'canvas',
       'telemetry',
       'feedback'
     ])

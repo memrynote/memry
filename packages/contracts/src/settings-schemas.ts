@@ -221,7 +221,10 @@ export const FeaturesSettingsSchema = z.object({
   journal: z.boolean(),
   tasks: z.boolean(),
   calendar: z.boolean(),
-  graph: z.boolean()
+  graph: z.boolean(),
+  // Hidden flag (not in FEATURE_KEYS, no Settings toggle yet): spatial canvas
+  // surface. Promoted to FEATURE_KEYS at the opt-in rollout phase.
+  spatialCanvas: z.boolean()
 })
 
 export type FeaturesSettings = z.infer<typeof FeaturesSettingsSchema>
@@ -232,7 +235,8 @@ export const FEATURES_SETTINGS_DEFAULTS: FeaturesSettings = {
   journal: true,
   tasks: true,
   calendar: true,
-  graph: true
+  graph: true,
+  spatialCanvas: false
 }
 
 // ============================================================================

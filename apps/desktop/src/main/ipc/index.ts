@@ -13,6 +13,7 @@ import { registerTagsHandlers, unregisterTagsHandlers } from './tags-handlers'
 import { registerInboxHandlers, unregisterInboxHandlers } from './inbox-handlers'
 import { registerReminderHandlers, unregisterReminderHandlers } from './reminder-handlers'
 import { registerCalendarHandlers, unregisterCalendarHandlers } from './calendar-handlers'
+import { registerCanvasHandlers, unregisterCanvasHandlers } from './canvas-handlers'
 import { registerFolderViewHandlers, unregisterFolderViewHandlers } from './folder-view-handlers'
 import { registerPropertiesHandlers, unregisterPropertiesHandlers } from './properties-handlers'
 import {
@@ -107,6 +108,9 @@ export function registerAllHandlers(deps?: IpcDeps): void {
   // Register calendar handlers
   registerCalendarHandlers()
 
+  // Register canvas handlers (spatial canvas)
+  registerCanvasHandlers()
+
   // Register folder view handlers
   registerFolderViewHandlers()
 
@@ -177,6 +181,7 @@ export function unregisterAllHandlers(): void {
   unregisterInboxHandlers()
   unregisterReminderHandlers()
   unregisterCalendarHandlers()
+  unregisterCanvasHandlers()
   unregisterFolderViewHandlers()
   unregisterPropertiesHandlers()
   unregisterSyncHandlers()
@@ -219,6 +224,7 @@ export { registerTagsHandlers, unregisterTagsHandlers } from './tags-handlers'
 export { registerInboxHandlers, unregisterInboxHandlers } from './inbox-handlers'
 export { registerReminderHandlers, unregisterReminderHandlers } from './reminder-handlers'
 export { registerCalendarHandlers, unregisterCalendarHandlers } from './calendar-handlers'
+export { registerCanvasHandlers, unregisterCanvasHandlers } from './canvas-handlers'
 export { registerFolderViewHandlers, unregisterFolderViewHandlers } from './folder-view-handlers'
 export { registerPropertiesHandlers, unregisterPropertiesHandlers } from './properties-handlers'
 export { registerSyncHandlers, unregisterSyncHandlers } from './sync-core-handlers'

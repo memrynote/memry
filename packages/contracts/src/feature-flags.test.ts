@@ -2,15 +2,20 @@ import { describe, it, expect } from 'vitest'
 import { FEATURES_SETTINGS_DEFAULTS, FeaturesSettingsSchema } from './settings-schemas'
 import { featureForTabType, FEATURE_KEYS } from './feature-flags'
 
+// Flags that exist in the settings schema but are intentionally hidden from
+// the Settings UI (not in FEATURE_KEYS) until their opt-in rollout phase.
+const HIDDEN_FEATURE_KEYS = ['spatialCanvas'] as const
+
 describe('feature flags', () => {
-  it('defaults every feature on', () => {
+  it('defaults every visible feature on and hidden flags off', () => {
     expect(FeaturesSettingsSchema.parse(FEATURES_SETTINGS_DEFAULTS)).toEqual({
       home: true,
       inbox: true,
       journal: true,
       tasks: true,
       calendar: true,
-      graph: true
+      graph: true,
+      spatialCanvas: false
     })
   })
 
@@ -24,7 +29,9 @@ describe('feature flags', () => {
     expect(featureForTabType('settings')).toBeNull()
   })
 
-  it('keeps FEATURE_KEYS aligned with the schema shape', () => {
-    expect([...FEATURE_KEYS].sort()).toEqual(Object.keys(FEATURES_SETTINGS_DEFAULTS).sort())
+  it('keeps FEATURE_KEYS plus declared hidden flags aligned with the schema shape', () => {
+    expect([...FEATURE_KEYS, ...HIDDEN_FEATURE_KEYS].sort()).toEqual(
+      Object.keys(FEATURES_SETTINGS_DEFAULTS).sort()
+    )
   })
 })
