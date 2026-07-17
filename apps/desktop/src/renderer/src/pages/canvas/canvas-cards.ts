@@ -238,7 +238,12 @@ export function makeCardSkeleton(input: {
     width,
     height,
     strokeColor: '#ced4da',
-    backgroundColor: 'transparent',
+    // Solid (non-transparent) fill so the WHOLE card interior is a binding +
+    // selection target: Excalidraw only hit-tests a transparent shape on its
+    // outline, which would make arrows bind (and drags grab) a card only at its
+    // border. The opaque DOM overlay fully covers the rectangle (its rounded
+    // corners are tighter than the overlay's), so the fill is never visible.
+    backgroundColor: '#ffffff',
     fillStyle: 'solid',
     strokeWidth: 1,
     roughness: 0,

@@ -134,6 +134,21 @@ describe('makeCardSkeleton', () => {
     expect(skeleton.x).toBe(100 - skeleton.width / 2)
     expect(skeleton.y).toBe(100 - skeleton.height / 2)
   })
+
+  it('has a non-transparent fill so its whole interior is an arrow-binding target', () => {
+    // Excalidraw only hit-tests a transparent shape on its outline, so a
+    // transparent card would let arrows bind (and drags grab) only at its
+    // border. A solid fill (hidden under the opaque overlay) makes the entire
+    // card a binding/selection target — the enabler for M3 linking.
+    const skeleton = makeCardSkeleton({
+      entityType: 'note',
+      entityId: 'n1',
+      centerX: 0,
+      centerY: 0
+    })
+    expect(skeleton.backgroundColor).not.toBe('transparent')
+    expect(skeleton.fillStyle).toBe('solid')
+  })
 })
 
 describe('readCanvasDragItem / canvasDragPayload', () => {
