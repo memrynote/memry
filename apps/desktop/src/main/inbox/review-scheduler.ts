@@ -15,7 +15,9 @@ import { getInboxReviewSettings } from '../ipc/settings-handlers'
 import { countReviewableInboxItems } from './stats'
 import { getMainI18n } from '../lib/main-i18n'
 import { InboxChannels } from '@memry/contracts/inbox-channels'
+import { REVIEW_REMINDER_TIME_PATTERN } from '@memry/contracts/settings-schemas'
 import { createLogger } from '../lib/logger'
+import { INBOX_REVIEW_LAST_NOTIFIED_KEY } from './review-reminder-constants'
 
 export interface ReviewDecisionInput {
   enabled: boolean
@@ -40,7 +42,7 @@ export function localDateString(d: Date): string {
 
 /** Parse "HH:MM" (24h) to minutes-of-day, or null if malformed. */
 export function parseTargetMinutes(target: string): number | null {
-  const m = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(target)
+  const m = REVIEW_REMINDER_TIME_PATTERN.exec(target)
   if (!m) return null
   return Number(m[1]) * 60 + Number(m[2])
 }
@@ -69,7 +71,6 @@ export function decideReviewNotification(input: ReviewDecisionInput): ReviewDeci
 
 const logger = createLogger('InboxReview')
 const SCHEDULER_INTERVAL_MS = 60 * 1000
-const LAST_NOTIFIED_KEY = 'inbox.reviewLastNotifiedDate'
 
 let schedulerInterval: ReturnType<typeof setInterval> | null = null
 let resumeHandler: (() => void) | null = null
@@ -77,17 +78,19 @@ let lastFire: { date: string; count: number } | null = null
 
 function readLastNotifiedDate(): string | null {
   try {
-    return getSetting(getDatabase(), LAST_NOTIFIED_KEY)
+    return getSetting(getDatabase(), INBOX_REVIEW_LAST_NOTIFIED_KEY)
   } catch {
     return null
   }
 }
 
-function writeLastNotifiedDate(date: string): void {
+function writeLastNotifiedDate(date: string): boolean {
   try {
-    setSetting(getDatabase(), LAST_NOTIFIED_KEY, date)
+    setSetting(getDatabase(), INBOX_REVIEW_LAST_NOTIFIED_KEY, date)
+    return true
   } catch (err) {
     logger.warn('Failed to persist last-notified date:', err)
+    return false
   }
 }
 
@@ -129,6 +132,10 @@ export function runReviewTick(now: Date = new Date()): { notified: boolean; coun
   if (!getStatus().isOpen) return { notified: false, count: 0 }
 
   const settings = getInboxReviewSettings()
+  // Skip the reviewable-count query entirely when the reminder is off (the
+  // default), so a disabled install does no inbox work on the 60s tick.
+  if (!settings.reviewReminderEnabled) return { notified: false, count: 0 }
+
   const inboxCount = countReviewableInboxItems()
 
   const decision = decideReviewNotification({
@@ -143,10 +150,17 @@ export function runReviewTick(now: Date = new Date()): { notified: boolean; coun
     return { notified: false, count: inboxCount }
   }
 
+  // Persist the once-per-day guard BEFORE surfacing the nudge. If the write
+  // fails, skip this tick instead of firing: otherwise the guard would stay
+  // unset and the notification would re-fire on every 60s tick for the rest of
+  // the day. The next tick retries once the DB is writable again.
+  if (!writeLastNotifiedDate(decision.nextLastNotifiedDate)) {
+    return { notified: false, count: inboxCount }
+  }
+
+  lastFire = { date: decision.nextLastNotifiedDate, count: inboxCount }
   showReviewNotification(inboxCount)
   emitReviewDue(inboxCount)
-  writeLastNotifiedDate(decision.nextLastNotifiedDate)
-  lastFire = { date: decision.nextLastNotifiedDate, count: inboxCount }
   logger.info(`Review nudge fired for ${inboxCount} item(s)`)
   return { notified: true, count: inboxCount }
 }

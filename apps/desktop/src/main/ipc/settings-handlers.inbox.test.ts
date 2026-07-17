@@ -102,7 +102,8 @@ vi.mock('../telemetry/track', () => ({
 }))
 
 import { getDatabase } from '../database'
-import { getSetting } from '../database/queries/settings'
+import { getSetting, setSetting } from '../database/queries/settings'
+import { INBOX_REVIEW_LAST_NOTIFIED_KEY } from '../inbox/review-reminder-constants'
 import { getInboxReviewSettings, writeInboxReviewSettings } from './settings-handlers'
 
 describe('inbox settings handler', () => {
@@ -140,5 +141,17 @@ describe('inbox settings handler', () => {
     writeInboxReviewSettings({ reviewReminderTime: '09:00' })
     expect(updateField).toHaveBeenCalledWith('inbox.reviewReminderTime', '09:00')
     expect(updateField).not.toHaveBeenCalledWith('inbox.reviewReminderEnabled', expect.anything())
+  })
+
+  it('clears the last-notified guard when the reminder time changes', () => {
+    setSetting(getDatabase(), INBOX_REVIEW_LAST_NOTIFIED_KEY, '2026-07-17')
+    writeInboxReviewSettings({ reviewReminderTime: '11:00' })
+    expect(getSetting(getDatabase(), INBOX_REVIEW_LAST_NOTIFIED_KEY)).toBeNull()
+  })
+
+  it('clears the last-notified guard when the reminder is toggled', () => {
+    setSetting(getDatabase(), INBOX_REVIEW_LAST_NOTIFIED_KEY, '2026-07-17')
+    writeInboxReviewSettings({ reviewReminderEnabled: true })
+    expect(getSetting(getDatabase(), INBOX_REVIEW_LAST_NOTIFIED_KEY)).toBeNull()
   })
 })

@@ -52,6 +52,7 @@ import {
   setVoiceTranscriptionOpenAIApiKey
 } from '../inbox/voice-transcription-keychain'
 import { syncSettingsUpdates } from '../settings/runtime-effects'
+import { INBOX_REVIEW_LAST_NOTIFIED_KEY } from '../inbox/review-reminder-constants'
 import { trackMainEvent } from '../telemetry/track'
 import { SafeDimensionValueSchema } from '@memry/contracts/telemetry-api'
 import {
@@ -234,6 +235,14 @@ export function writeInboxReviewSettings(updates: Partial<InboxSettings>): {
   const result = writeGroupSettings('inbox', INBOX_SETTINGS_DEFAULTS, updates)
   if (result.success) {
     syncSettingsUpdates('inbox', updates, INBOX_SYNCABLE_FIELDS)
+
+    // The schedule changed: re-arm the once-per-day guard so the new time
+    // (or newly-enabled reminder) can fire again today instead of waiting
+    // until tomorrow.
+    if ('reviewReminderTime' in updates || 'reviewReminderEnabled' in updates) {
+      const db = getDbOrNull()
+      if (db) deleteSetting(db, INBOX_REVIEW_LAST_NOTIFIED_KEY)
+    }
   }
   return result
 }
