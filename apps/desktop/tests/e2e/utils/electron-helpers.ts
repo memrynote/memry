@@ -127,24 +127,26 @@ export async function waitForAppReady(page: Page, timeout = 30000): Promise<void
 }
 
 /**
- * Wait for vault to be fully indexed and ready
+ * Wait for the vault to be open and ready.
+ *
+ * The vault opens asynchronously in the main process (autoOpenLastVault →
+ * openVault → indexVault) and the renderer only leaves the VaultOnboarding
+ * screen once vault status flips to isOpen: true. That can take tens of seconds
+ * under CPU load. Poll the authoritative main-process status via IPC rather than
+ * guessing from DOM selectors — the old sidebar probe swallowed its own timeout
+ * and returned while the app was still on the onboarding screen, so tests
+ * proceeded against a closed vault and then failed downstream (e.g. a note-open
+ * event dispatched into a renderer with no listener mounted yet).
  */
-export async function waitForVaultReady(page: Page, timeout = 15000): Promise<void> {
-  // Try multiple selectors to detect when app is ready
-  // The app may show sidebar, or may still be on onboarding
-  try {
-    // Wait for either sidebar or main content area to be visible
-    await page.locator('[data-testid="sidebar"], aside, [class*="sidebar"], nav').first().waitFor({
-      state: 'visible',
-      timeout
-    })
-  } catch {
-    // If sidebar not found, just wait for DOM to stabilize
-    await page.waitForTimeout(2000)
-  }
-
-  // Wait for initial indexing to complete
-  await page.waitForTimeout(1000)
+export async function waitForVaultReady(page: Page, timeout = 45000): Promise<void> {
+  await page.waitForFunction(
+    async () => {
+      const status = await window.api.vault.getStatus()
+      return status?.isOpen === true
+    },
+    undefined,
+    { timeout, polling: 250 }
+  )
 
   await dismissFirstRunOnboarding(page)
 }
