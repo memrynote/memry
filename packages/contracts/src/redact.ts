@@ -94,3 +94,114 @@ export const redactText = (text: string, opts?: RedactOptions): string => {
 
 export const redactPathValue = (value: string, opts?: RedactOptions): string =>
   redactText(value, opts)
+
+// --- structured field redaction: allowlist + per-key strategy ---
+export const VERBATIM_FIELD_KEYS = [
+  'level',
+  'scope',
+  'action',
+  'errorCode',
+  'appVersion',
+  'buildChannel',
+  'platform',
+  'arch',
+  'origin',
+  'workerName',
+  'reason',
+  'phase',
+  'mode',
+  'status',
+  'kind',
+  'result'
+] as const
+export const NUMERIC_FIELD_KEYS = [
+  'durationMs',
+  'itemCount',
+  'queueCount',
+  'retryCount',
+  'byteCount',
+  'resultCount',
+  'value',
+  'count',
+  'droppedCount',
+  'sequenceNum',
+  'pageCount',
+  'attempt',
+  'size',
+  'exitCode'
+] as const
+export const ID_FIELD_KEYS = [
+  'noteId',
+  'journalId',
+  'taskId',
+  'projectId',
+  'attachmentId',
+  'deviceId',
+  'vaultId',
+  'signerDeviceId',
+  'installId',
+  'sessionId',
+  'blockId',
+  'itemId'
+] as const
+export const PATH_FIELD_KEYS = [
+  'filePath',
+  'path',
+  'dir',
+  'file',
+  'attachmentPath',
+  'url',
+  'target'
+] as const
+
+const MESSAGE_CAP = 2000
+const FIELD_VALUE_CAP = 500
+const cap = (s: string, n: number): string => (s.length > n ? s.slice(0, n) : s)
+const has = (arr: readonly string[], k: string): boolean => arr.includes(k)
+
+const safeStringify = (value: unknown): string => {
+  if (value === null || value === undefined) return ''
+  try {
+    // Remaining types here (bigint/symbol/function) all stringify safely; unknown
+    // can't be narrowed further by a typeof-object negative check.
+    // eslint-disable-next-line @typescript-eslint/no-base-to-string
+    return typeof value === 'object' ? JSON.stringify(value) : String(value)
+  } catch {
+    return '<unserializable>'
+  }
+}
+
+const redactFieldValue = (key: string, value: unknown, opts?: RedactOptions): unknown => {
+  if (has(VERBATIM_FIELD_KEYS, key))
+    return typeof value === 'string' ? cap(value, FIELD_VALUE_CAP) : value
+  // ID keys hash regardless of value type — a numeric id (taskId: 42) must not
+  // slip through the number passthrough below and ship in the clear.
+  if (has(ID_FIELD_KEYS, key)) {
+    const s = typeof value === 'string' ? value : safeStringify(value)
+    return s ? (opts?.hash ? opts.hash(s).slice(0, 10) : '<id>') : s
+  }
+  if (typeof value === 'boolean') return value
+  // Numbers pass verbatim ONLY under a known metric key; an unknown numeric key
+  // (e.g. latitude) is routed through redactText, not trusted as a metric.
+  if (typeof value === 'number' && Number.isFinite(value) && has(NUMERIC_FIELD_KEYS, key))
+    return value
+  const str = typeof value === 'string' ? value : safeStringify(value)
+  // path keys + unknown keys both flow through redactText; cap afterward.
+  return cap(redactText(str, opts), FIELD_VALUE_CAP)
+}
+
+export const redactLogLine = (
+  input: { message: string; fields?: Record<string, unknown> },
+  opts?: RedactOptions
+): { message: string; fields: Record<string, unknown> } => {
+  const message = cap(redactText(input.message ?? '', opts), MESSAGE_CAP)
+  const fields: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(input.fields ?? {})) {
+    try {
+      fields[key] = redactFieldValue(key, value, opts)
+    } catch {
+      fields[key] = '<redaction-error>'
+    }
+  }
+  return { message, fields }
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { redactText, type RedactOptions } from './redact'
+import { redactLogLine, redactText, type RedactOptions } from './redact'
 
 const hash = (v: string): string =>
   // deterministic non-crypto stand-in for tests; real desktop uses salted sha256
@@ -101,5 +101,68 @@ describe('redactText — emails, ids, ips', () => {
   })
   it('masks a compressed IPv6', () => {
     expect(redactText('peer fe80::1a2b:3c4d connected')).toContain('<ip>')
+  })
+})
+
+describe('redactLogLine — allowlist + per-key strategy', () => {
+  const opts = { hash }
+  it('ships allowlisted keys verbatim', () => {
+    const { fields } = redactLogLine(
+      { message: 'x', fields: { scope: 'Sync', action: 'pull', level: 'warn' } },
+      opts
+    )
+    expect(fields).toMatchObject({ scope: 'Sync', action: 'pull', level: 'warn' })
+  })
+  it('passes numeric metric keys through', () => {
+    const { fields } = redactLogLine(
+      { message: 'x', fields: { droppedCount: 12, durationMs: 40 } },
+      opts
+    )
+    expect(fields).toMatchObject({ droppedCount: 12, durationMs: 40 })
+  })
+  it('hashes id keys even when not uuid-shaped', () => {
+    const { fields } = redactLogLine(
+      { message: 'x', fields: { noteId: 'abc123', signerDeviceId: 'dev-xyz' } },
+      opts
+    )
+    expect(fields.noteId).not.toBe('abc123')
+    expect(String(fields.noteId)).toMatch(/^h[0-9a-f]+$/)
+  })
+  it('hashes a numeric id-key value', () => {
+    const { fields } = redactLogLine({ message: 'x', fields: { taskId: 42 } }, { hash })
+    expect(fields.taskId).not.toBe(42)
+    expect(String(fields.taskId)).toMatch(/^h[0-9a-f]+$/)
+  })
+  it('passes a known metric number verbatim but not an unknown numeric key', () => {
+    const { fields } = redactLogLine(
+      { message: 'x', fields: { droppedCount: 5, latitude: 40.7 } },
+      { hash }
+    )
+    expect(fields.droppedCount).toBe(5)
+    expect(fields.latitude).not.toBe(40.7)
+  })
+  it('redacts a path-key value (basename hashed, dir kept)', () => {
+    const { fields } = redactLogLine(
+      { message: 'x', fields: { filePath: '/home/u/MyVault/Attachments/report.pdf' } },
+      { vaultRoot: '/home/u/MyVault', ...opts }
+    )
+    expect(String(fields.filePath)).toContain('<vault>/Attachments/')
+    expect(String(fields.filePath)).not.toContain('report')
+  })
+  it('redacts unknown-key string values via redactText', () => {
+    const { fields } = redactLogLine(
+      { message: 'x', fields: { note: 'see Budget 2026.xlsx' } },
+      opts
+    )
+    expect(String(fields.note)).not.toContain('Budget 2026')
+  })
+  it('redacts the message', () => {
+    const { message } = redactLogLine({ message: 'blocked /Users/kaan/v/Q3 Report.pdf' }, opts)
+    expect(message).not.toContain('kaan')
+    expect(message).not.toContain('Q3 Report')
+  })
+  it('caps message length', () => {
+    const { message } = redactLogLine({ message: 'a'.repeat(5000) }, opts)
+    expect(message.length).toBeLessThanOrEqual(2000)
   })
 })
