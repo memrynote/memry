@@ -79,7 +79,7 @@ import { SettingsChannels, InboxChannels } from '@memry/contracts/ipc-channels'
 import { parseInboxOpenItemId } from './deeplink-utils'
 import { initializeUpdater, isQuitAndInstallRequested, performQuitAndInstall } from './updater'
 import { clearPendingInstallMarker, isPendingInstallInFlight } from './updater-install-guard'
-import { applyGpuCrashGuard, recordGpuCrash } from './gpu-crash-guard'
+import { applyGpuCrashGuard, recordGpuCrash, shouldRecordGpuCrash } from './gpu-crash-guard'
 import { buildAppMenu, buildEditableTextContextMenu } from './menu'
 import { setMainI18n } from './lib/main-i18n'
 import {
@@ -147,8 +147,11 @@ function registerMainDiagnostics(): void {
     trackChildProcessGone(details)
     // A dead GPU process means this launch may already be painting nothing.
     // Record it so the next launch disables hardware acceleration (see
-    // gpu-crash-guard). 'crashed'/'abnormal-exit' only — a clean exit is not a fault.
-    if (details.type === 'GPU' && details.reason !== 'clean-exit') {
+    // gpu-crash-guard). Exclude 'clean-exit' (normal shutdown) and, since
+    // Electron 40, 'memory-eviction' (OS memory-pressure kill) — neither is a
+    // GPU fault, and mis-recording an eviction needlessly disables hardware
+    // acceleration on the next launch.
+    if (shouldRecordGpuCrash(details)) {
       recordGpuCrash()
     }
   })
@@ -263,6 +266,11 @@ protocol.registerSchemesAsPrivileged([
       standard: true,
       secure: true,
       supportFetchAPI: true,
+      // Electron 43+ blocks cross-origin fetch()/XHR against a custom scheme
+      // registered with supportFetchAPI unless corsEnabled is also set. no-cors
+      // src loads (img/video/audio) are unaffected; this keeps fetch(memry-file)
+      // byte reads (e.g. inline PDF embeds) working.
+      corsEnabled: true,
       stream: true, // Required for audio/video streaming
       bypassCSP: false
     }

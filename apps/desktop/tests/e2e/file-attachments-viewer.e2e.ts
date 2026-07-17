@@ -2,7 +2,7 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import { test, expect } from './fixtures'
-import { PNG_BYTES, ready, uniqueLabel } from './utils/desktop-test-helpers'
+import { PNG_BYTES, minimalPdfBytes, ready, uniqueLabel } from './utils/desktop-test-helpers'
 import { toMemryFileUrl } from '../../src/renderer/src/lib/memry-file-url'
 
 test.describe('File attachments and viewer E2E', () => {
@@ -161,6 +161,95 @@ test.describe('File attachments and viewer E2E', () => {
 
       await expect(page.getByRole('heading', { name: importTitle })).toBeVisible()
       await expect(page.getByRole('img', { name: importTitle })).toBeVisible()
+    } finally {
+      fs.rmSync(importDir, { recursive: true, force: true })
+    }
+  })
+
+  // E43 renderer proof: react-pdf fetches PDF bytes cross-origin over the
+  // memry-file scheme (the corsEnabled path), decodes them in the pdfjs module
+  // worker, and paints a <canvas> under Chromium 150 / V8 15. jsdom unit tests
+  // mock react-pdf, so only this bundled-Electron run exercises the real stack.
+  test('renders an embedded PDF through the pdf.js worker and canvas under Chromium 150', async ({
+    page
+  }) => {
+    await ready(page)
+
+    const importDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-e2e-pdf-'))
+    const pdfFileName = `e2e-pdf-${Date.now()}.pdf`
+    const pdfTitle = path.basename(pdfFileName, path.extname(pdfFileName))
+    const pdfSourcePath = path.join(importDir, pdfFileName)
+    fs.writeFileSync(pdfSourcePath, minimalPdfBytes())
+
+    try {
+      const imported = await page.evaluate(async (sourcePath) => {
+        const res = await window.api.notes.importFiles([sourcePath], '')
+        if (!res.success || res.imported !== 1) {
+          throw new Error(res.errors.join('\n') || 'pdf import failed')
+        }
+        return true
+      }, pdfSourcePath)
+      expect(imported).toBe(true)
+
+      let fileId: string | null = null
+      await expect
+        .poll(
+          async () => {
+            fileId = await page.evaluate(
+              async ({ pdfFileName, pdfTitle }) => {
+                const list = await window.api.notes.list({ limit: 100 })
+                return (
+                  list.notes.find((note) => note.path === pdfFileName || note.title === pdfTitle)
+                    ?.id ?? null
+                )
+              },
+              { pdfFileName, pdfTitle }
+            )
+            return fileId
+          },
+          { timeout: 20_000 }
+        )
+        .not.toBeNull()
+
+      await page.addInitScript(
+        ({ fileId, pdfTitle }) => {
+          localStorage.setItem(
+            'memry_tab_state',
+            JSON.stringify({
+              version: 2,
+              tabGroups: {
+                g1: {
+                  id: 'g1',
+                  activeTabId: 'file-tab',
+                  tabs: [
+                    {
+                      id: 'file-tab',
+                      type: 'file',
+                      title: pdfTitle,
+                      icon: 'file',
+                      path: `/file/${fileId}`,
+                      entityId: fileId,
+                      isPinned: false
+                    }
+                  ]
+                }
+              },
+              layout: { type: 'leaf', tabGroupId: 'g1' },
+              activeGroupId: 'g1',
+              settings: { restoreSessionOnStart: true, tabCloseButton: 'hover' },
+              savedAt: Date.now()
+            })
+          )
+        },
+        { fileId, pdfTitle }
+      )
+      await page.reload()
+      await page.waitForLoadState('domcontentloaded')
+
+      // onLoadSuccess sets numPages=1; the toolbar page counter then reads "1 / 1"
+      // and react-pdf paints the page to a <canvas>. Both prove the worker ran.
+      await expect(page.getByText('1 / 1')).toBeVisible({ timeout: 30_000 })
+      await expect(page.locator('canvas').first()).toBeVisible({ timeout: 30_000 })
     } finally {
       fs.rmSync(importDir, { recursive: true, force: true })
     }

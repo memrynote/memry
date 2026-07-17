@@ -648,6 +648,16 @@ jobs:
           }
           NODE
 
+      # This job has no checkout of its own; fetch the repo so the standalone
+      # validator script is available (assets live in RUNNER_TEMP, untouched).
+      - name: Check out repo for manifest validation
+        uses: actions/checkout@v6
+
+      - name: Validate merged macOS update manifest
+        env:
+          ASSET_DIR: ${{ runner.temp }}/release-assets
+        run: node scripts/validate-mac-update-manifest.mjs "$ASSET_DIR/latest-mac.yml"
+
       - name: Verify release asset set
         id: assets
         run: |

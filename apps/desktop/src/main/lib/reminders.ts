@@ -263,6 +263,11 @@ function showDesktopNotification(reminder: ReminderWithTarget): void {
 
   try {
     const notification = new Notification({
+      // Electron 42+: a stable per-reminder id lets a delivered banner be cleared
+      // later on dismiss/snooze, and a shared groupId collapses same-tick reminder
+      // banners in Notification Center. Both are ignored on Electron <42 and Linux.
+      id: reminder.id,
+      groupId: 'memry-reminders',
       title: `🔔 ${title}`,
       body,
       silent: false
@@ -278,6 +283,14 @@ function showDesktopNotification(reminder: ReminderWithTarget): void {
         // Emit event to navigate to the reminder target
         win.webContents.send(ReminderChannels.events.CLICKED, { reminder })
       }
+    })
+
+    // Electron 42+ routes macOS notifications through UNUserNotificationCenter:
+    // unsigned builds no longer display and emit 'failed' instead of showing.
+    // Every reminder also lands as an inbox item, so log for diagnosability
+    // rather than re-notifying (which would double-create the fallback).
+    notification.on('failed', (_event, error) => {
+      logger.error(`Desktop notification failed for reminder ${reminder.id}:`, error)
     })
 
     notification.show()

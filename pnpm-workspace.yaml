@@ -32,6 +32,11 @@ overrides:
   '@hono/node-server': '>=1.19.14'
   esbuild: '>=0.28.1'
   express-rate-limit: '>=8.2.2'
+  # Electron 43 (ABI 148) ABI detection: @electron/rebuild's transitive node-abi
+  # is otherwise capped at 4.26.0 by minimumReleaseAge, and 4.26.0 predates
+  # Electron 43 ("Could not detect abi for version 43.1.1"). Pin the version that
+  # maps Electron 43 (also age-excluded below).
+  node-abi: '4.33.0'
   'minimatch@<4': 3.1.5
   'minimatch@>=5 <6': 5.1.9
   'minimatch@>=9 <10': 9.0.9
@@ -71,6 +76,8 @@ overrides:
 
 minimumReleaseAgeExclude:
   - defuddle@0.19.0
+  - '@electron/rebuild@4.2.0'
+  - node-abi@4.33.0
 
 patchedDependencies:
   '@blocknote/core@0.47.1': patches/@blocknote__core@0.47.1.patch

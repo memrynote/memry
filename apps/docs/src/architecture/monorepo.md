@@ -7,7 +7,7 @@ memrynote is a pnpm + Turborepo monorepo. Apps live under `apps/`, reusable doma
 | Path               | Purpose                                                           | Stack                                       |
 | ------------------ | ----------------------------------------------------------------- | ------------------------------------------- |
 | `apps/cli`         | `memrynote` CLI used by desktop headless mode and standalone runs | Node 24, TypeScript                         |
-| `apps/desktop`     | Electron desktop app                                              | Electron 39, React 19, Vite, BlockNote, Yjs |
+| `apps/desktop`     | Electron desktop app                                              | Electron 43, React 19, Vite, BlockNote, Yjs |
 | `apps/sync-server` | Cloudflare Workers sync API                                       | Workers + Hono, D1, R2                      |
 | `apps/docs`        | This documentation site                                           | VitePress 1.6                               |
 

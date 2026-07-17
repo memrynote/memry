@@ -17,7 +17,12 @@ vi.mock('./lib/logger', () => ({
 }))
 
 import { readFileSync, writeFileSync, rmSync } from 'node:fs'
-import { applyGpuCrashGuard, recordGpuCrash, shouldDisableHwAccel } from './gpu-crash-guard'
+import {
+  applyGpuCrashGuard,
+  recordGpuCrash,
+  shouldDisableHwAccel,
+  shouldRecordGpuCrash
+} from './gpu-crash-guard'
 
 function marker(overrides: Partial<GpuGuardMarker> = {}): GpuGuardMarker {
   return { disabledForGpu: true, version: '2026.702.2', ...overrides }
@@ -43,6 +48,32 @@ describe('shouldDisableHwAccel', () => {
 
   it('does not disable when the marker is not a disable directive', () => {
     expect(shouldDisableHwAccel(marker({ disabledForGpu: false }), '2026.702.2')).toBe(false)
+  })
+})
+
+describe('shouldRecordGpuCrash', () => {
+  it('records a GPU crash', () => {
+    expect(shouldRecordGpuCrash({ type: 'GPU', reason: 'crashed' })).toBe(true)
+  })
+
+  it('records a GPU abnormal exit', () => {
+    expect(shouldRecordGpuCrash({ type: 'GPU', reason: 'abnormal-exit' })).toBe(true)
+  })
+
+  it('records a GPU launch failure', () => {
+    expect(shouldRecordGpuCrash({ type: 'GPU', reason: 'launch-failed' })).toBe(true)
+  })
+
+  it('ignores a GPU clean exit (normal shutdown)', () => {
+    expect(shouldRecordGpuCrash({ type: 'GPU', reason: 'clean-exit' })).toBe(false)
+  })
+
+  it('ignores a GPU memory-eviction (OS memory-pressure kill, Electron 40+)', () => {
+    expect(shouldRecordGpuCrash({ type: 'GPU', reason: 'memory-eviction' })).toBe(false)
+  })
+
+  it('ignores a non-GPU process crash', () => {
+    expect(shouldRecordGpuCrash({ type: 'Utility', reason: 'crashed' })).toBe(false)
   })
 })
 

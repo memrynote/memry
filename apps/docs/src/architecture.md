@@ -6,7 +6,7 @@ memrynote is a pnpm + Turborepo monorepo with an Electron desktop app, a Cloudfl
 
 | Path                 | Purpose                                                   |
 | -------------------- | --------------------------------------------------------- |
-| `apps/desktop`       | Electron 39 + React 19 + Vite. Main / renderer / preload. |
+| `apps/desktop`       | Electron 43 + React 19 + Vite. Main / renderer / preload. |
 | `apps/sync-server`   | Cloudflare Workers + Hono. D1 + R2.                       |
 | `apps/docs`          | This documentation site (VitePress).                      |
 | `packages/contracts` | IPC and API contracts (Zod).                              |
