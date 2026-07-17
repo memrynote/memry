@@ -85,6 +85,21 @@ export function applyGpuCrashGuard(): void {
   clearGpuGuard()
 }
 
+/**
+ * Pure decision: should a `child-process-gone` event be recorded as a GPU crash?
+ * Only the GPU process dying for a real fault qualifies — exclude 'clean-exit'
+ * (normal shutdown) and, since Electron 40, 'memory-eviction' (OS memory-pressure
+ * kill), since mis-recording either needlessly disables hardware acceleration on
+ * the next launch.
+ */
+export function shouldRecordGpuCrash(details: { type: string; reason: string }): boolean {
+  return (
+    details.type === 'GPU' &&
+    details.reason !== 'clean-exit' &&
+    details.reason !== 'memory-eviction'
+  )
+}
+
 /** Record that the GPU process died so the next launch falls back to software rendering. */
 export function recordGpuCrash(): void {
   if (!app.isPackaged) return

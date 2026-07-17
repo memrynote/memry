@@ -29,11 +29,12 @@ export interface ChildProcessGoneDetails {
 }
 
 // Utility workers (embeddings, image-processing, voice-model) idle-shutdown
-// cleanly after ~30s; a clean exit is lifecycle, not a fault, so it must not
-// become an error event. Real faults get a composite code that stays inside
-// the safe-token rules (no '@', '://', '/', '\', ≤64 chars).
+// cleanly after ~30s; a clean exit — and, since Electron 40, a 'memory-eviction'
+// (OS memory-pressure kill) — is lifecycle, not a fault, so it must not become an
+// error event. Real faults get a composite code that stays inside the safe-token
+// rules (no '@', '://', '/', '\', ≤64 chars).
 export const childProcessGoneErrorCode = (details: ChildProcessGoneDetails): string | null => {
-  if (details.reason === 'clean-exit') return null
+  if (details.reason === 'clean-exit' || details.reason === 'memory-eviction') return null
   const worker = details.name ?? details.serviceName ?? ''
   return toSafeToken(`${details.type}:${details.reason}:${worker}`, 'ChildProcessGone')
 }

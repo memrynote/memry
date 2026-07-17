@@ -79,7 +79,7 @@ import { SettingsChannels, InboxChannels } from '@memry/contracts/ipc-channels'
 import { parseInboxOpenItemId } from './deeplink-utils'
 import { initializeUpdater, isQuitAndInstallRequested, performQuitAndInstall } from './updater'
 import { clearPendingInstallMarker, isPendingInstallInFlight } from './updater-install-guard'
-import { applyGpuCrashGuard, recordGpuCrash } from './gpu-crash-guard'
+import { applyGpuCrashGuard, recordGpuCrash, shouldRecordGpuCrash } from './gpu-crash-guard'
 import { buildAppMenu, buildEditableTextContextMenu } from './menu'
 import { setMainI18n } from './lib/main-i18n'
 import {
@@ -151,11 +151,7 @@ function registerMainDiagnostics(): void {
     // Electron 40, 'memory-eviction' (OS memory-pressure kill) — neither is a
     // GPU fault, and mis-recording an eviction needlessly disables hardware
     // acceleration on the next launch.
-    if (
-      details.type === 'GPU' &&
-      details.reason !== 'clean-exit' &&
-      details.reason !== 'memory-eviction'
-    ) {
+    if (shouldRecordGpuCrash(details)) {
       recordGpuCrash()
     }
   })

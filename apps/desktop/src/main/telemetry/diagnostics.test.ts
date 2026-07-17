@@ -276,6 +276,15 @@ describe('telemetry diagnostics', () => {
       expect(code).toBeNull()
     })
 
+    it('returns null for memory-eviction so an OS memory-pressure kill emits no error event', () => {
+      // #given the GPU (or any) process reclaimed by the OS under memory pressure —
+      // a lifecycle event since Electron 40, not an actionable fault
+      const code = childProcessGoneErrorCode({ type: 'GPU', reason: 'memory-eviction' })
+
+      // #then no error code — the caller skips telemetry entirely
+      expect(code).toBeNull()
+    })
+
     it('names the crashed worker from details.name, not the constant mojo serviceName', () => {
       // #given exactly what Electron sends in production: the fork's `serviceName`
       // option lands in details.name, while details.serviceName is the mojo
@@ -327,6 +336,15 @@ describe('telemetry diagnostics', () => {
         serviceName: 'node.mojom.NodeService',
         name: 'Embeddings',
         exitCode: 0
+      })
+      expect(trackMainEventMock).not.toHaveBeenCalled()
+    })
+
+    it('emits no telemetry for a memory-eviction (OS memory-pressure kill)', () => {
+      trackChildProcessGone({
+        type: 'GPU',
+        reason: 'memory-eviction',
+        serviceName: 'node.mojom.NodeService'
       })
       expect(trackMainEventMock).not.toHaveBeenCalled()
     })

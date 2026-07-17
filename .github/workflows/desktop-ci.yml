@@ -86,6 +86,9 @@ jobs:
       - name: Check desktop i18n
         run: node apps/desktop/scripts/i18n/check.mjs --max-todo 0
 
+      - name: Test macOS update-manifest validator
+        run: node --test scripts/validate-mac-update-manifest.test.mjs
+
   unit:
     name: Unit & integration tests
     runs-on: ubuntu-latest
@@ -293,7 +296,9 @@ jobs:
             tests/e2e/vault.e2e.ts \
             tests/e2e/notes.e2e.ts \
             tests/e2e/tasks.e2e.ts \
-            tests/e2e/file-attachments-viewer.e2e.ts
+            tests/e2e/file-attachments-viewer.e2e.ts \
+            tests/e2e/crdt-preflight-crash.e2e.ts \
+            tests/e2e/i18n.e2e.ts
 
       - name: Upload E2E artifacts
         if: always()
@@ -382,7 +387,9 @@ jobs:
             tests/e2e/vault.e2e.ts \
             tests/e2e/notes.e2e.ts \
             tests/e2e/tasks.e2e.ts \
-            tests/e2e/file-attachments-viewer.e2e.ts
+            tests/e2e/file-attachments-viewer.e2e.ts \
+            tests/e2e/crdt-preflight-crash.e2e.ts \
+            tests/e2e/i18n.e2e.ts
 
       - name: Upload E2E artifacts
         if: always()

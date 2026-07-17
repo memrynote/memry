@@ -42,31 +42,45 @@ const getStatusMock = vi.fn(() => ({
   indexProgress: 0,
   error: null
 }))
+const loggerMock = {
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+  debug: vi.fn()
+}
+
+type MockNotificationOptions = {
+  id?: string
+  groupId?: string
+  title: string
+  body: string
+  silent?: boolean
+}
 
 class MockNotification {
   static isSupported = vi.fn(() => true)
-  options: { title: string; body: string; silent?: boolean }
-  handlers: Record<string, () => void> = {}
+  options: MockNotificationOptions
+  handlers: Record<string, (...args: unknown[]) => void> = {}
   show = vi.fn()
   close = vi.fn()
 
-  constructor(options: { title: string; body: string; silent?: boolean }) {
+  constructor(options: MockNotificationOptions) {
     this.options = options
     notificationInstances.push(this)
   }
 
-  on(event: string, handler: () => void): this {
+  on(event: string, handler: (...args: unknown[]) => void): this {
     this.handlers[event] = handler
     return this
   }
 
-  once(event: string, handler: () => void): this {
+  once(event: string, handler: (...args: unknown[]) => void): this {
     this.handlers[event] = handler
     return this
   }
 
-  emit(event: string): void {
-    this.handlers[event]?.()
+  emit(event: string, ...args: unknown[]): void {
+    this.handlers[event]?.(...args)
   }
 }
 
@@ -160,6 +174,9 @@ describe('reminders service', () => {
     }))
     vi.doMock('../vault', () => ({
       getStatus: getStatusMock
+    }))
+    vi.doMock('./logger', () => ({
+      createLogger: () => loggerMock
     }))
     vi.doMock('./main-i18n', () => {
       const systemTranslations: Record<string, string> = {
@@ -437,6 +454,34 @@ describe('reminders service', () => {
       sourceType: 'reminder',
       sourceId: 'rem-due'
     })
+  })
+
+  it('builds notifications with a stable id/groupId and logs delivery failures without throwing', () => {
+    seedNoteCache('note-1', 'Focus Note')
+    seedReminder({
+      id: 'rem-failed',
+      targetType: 'note',
+      targetId: 'note-1',
+      remindAt: '2000-01-01T00:00:00.000Z',
+      status: reminderStatus.PENDING
+    })
+
+    remindersService.startReminderScheduler()
+    remindersService.stopReminderScheduler()
+
+    expect(notificationInstances).toHaveLength(1)
+    const notification = notificationInstances[0]
+    // Electron 42+: stable per-reminder id + shared groupId for banner grouping.
+    expect(notification?.options.id).toBe('rem-failed')
+    expect(notification?.options.groupId).toBe('memry-reminders')
+
+    // A 'failed' delivery (e.g. unsigned macOS build) is logged, not rethrown.
+    const deliveryError = new Error('notification delivery failed')
+    expect(() => notification?.emit('failed', {}, deliveryError)).not.toThrow()
+    expect(loggerMock.error).toHaveBeenCalledWith(
+      'Desktop notification failed for reminder rem-failed:',
+      deliveryError
+    )
   })
 
   it('lands a task reminder in the inbox with task title, projectId, and notification', () => {
