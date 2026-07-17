@@ -68,6 +68,14 @@ out of the OS keyring. Plain `pnpm dev` worktrees also stay on the OS keychain: 
 master key machine-globally while user data is per-worktree, so migrating would strand the shared
 key for other worktrees.
 
+Encryption and decryption prefer Electron's asynchronous safeStorage API
+(`encryptStringAsync`/`decryptStringAsync`), gated on a single cached `isAsyncEncryptionAvailable()`
+probe so concurrent startup reads share one lazy encryptor initialization. Ciphertext is
+byte-identical between the sync and async APIs, so no store-format change or second migration is
+involved; when the async surface is unavailable the store falls back to the synchronous calls, and
+reads never rewrite stored ciphertext (`shouldReEncrypt` is ignored — every write re-encrypts
+anyway).
+
 ## Nonces
 
 All XChaCha20 operations use 24-byte random nonces from `sodium.randombytes_buf(24)` via a dedicated nonce utility (T029b). Nonces are stored alongside ciphertext.
