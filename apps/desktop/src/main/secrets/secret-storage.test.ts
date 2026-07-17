@@ -84,6 +84,7 @@ vi.mock('keytar', () => ({
 }))
 
 import {
+  ASYNC_PROBE_TIMEOUT_MS,
   SECRET_STORE_FILENAME,
   deleteSecret,
   finalizeKeytarMigration,
@@ -410,6 +411,64 @@ describe('secret-storage', () => {
   })
 
   // --------------------------------------------------------------------------
+  // Concurrent writes — the encrypt/persist/verify critical sections contain
+  // await points, so racing writers must be serialized per secret.
+  // --------------------------------------------------------------------------
+
+  describe('concurrent writes', () => {
+    it('a setSecret racing migrate-on-read never loses the newly written value', async () => {
+      harness.keytarStore.set(`${SERVICE}:${ACCOUNT}`, 'legacy-value')
+      let releaseEncrypt!: () => void
+      const gate = new Promise<void>((resolve) => {
+        releaseEncrypt = resolve
+      })
+      // Hold the migration's encrypt so a concurrent setSecret can race it.
+      harness.asyncEncrypt.mockImplementationOnce(async (value: string) => {
+        await gate
+        return Buffer.from(`enc:${value}`, 'utf-8')
+      })
+
+      const read = getSecret(SERVICE, ACCOUNT)
+      await vi.waitFor(() => {
+        expect(harness.asyncEncrypt).toHaveBeenCalledTimes(1)
+      })
+      const write = setSecret(SERVICE, ACCOUNT, 'new-value')
+      // Let the write progress as far as it can before the migration resumes.
+      await new Promise((resolve) => setImmediate(resolve))
+      releaseEncrypt()
+      await expect(read).resolves.toBe('legacy-value')
+      await write
+
+      // The write is the freshest value: it must win, exist exactly once, and
+      // never be rolled back by the migration's read-back verification.
+      expect(readStoreJson().entries[SERVICE][ACCOUNT]).toBe(cipherFor('new-value'))
+      await expect(getSecret(SERVICE, ACCOUNT)).resolves.toBe('new-value')
+    })
+
+    it('migration skips when a setSecret landed while the keytar read was in flight', async () => {
+      harness.keytarStore.set(`${SERVICE}:${ACCOUNT}`, 'legacy-value')
+      let releaseKeytar!: () => void
+      const gate = new Promise<void>((resolve) => {
+        releaseKeytar = resolve
+      })
+      harness.keytarGet.mockImplementationOnce(async () => {
+        await gate
+        return 'legacy-value'
+      })
+
+      const read = getSecret(SERVICE, ACCOUNT)
+      await setSecret(SERVICE, ACCOUNT, 'new-value')
+      releaseKeytar()
+      // The racing read returns what keytar held at read time…
+      await expect(read).resolves.toBe('legacy-value')
+
+      // …but its migration must not clobber the fresher store entry.
+      expect(readStoreJson().entries[SERVICE][ACCOUNT]).toBe(cipherFor('new-value'))
+      await expect(getSecret(SERVICE, ACCOUNT)).resolves.toBe('new-value')
+    })
+  })
+
+  // --------------------------------------------------------------------------
   // Atomic writes
   // --------------------------------------------------------------------------
 
@@ -584,8 +643,22 @@ describe('secret-storage', () => {
       expect(harness.asyncDecrypt).not.toHaveBeenCalled()
     })
 
-    it('an async encryption rejection falls back to keytar exactly like a sync throw', async () => {
+    it('an async encryption rejection retries the sync API and still writes the store', async () => {
       harness.asyncEncrypt.mockRejectedValueOnce(new Error('os_crypt_async failure'))
+
+      await setSecret(SERVICE, ACCOUNT, 'value')
+
+      expect(harness.syncEncrypt).toHaveBeenCalledWith('value')
+      expect(harness.keytarSet).not.toHaveBeenCalled()
+      expect(readStoreJson().entries[SERVICE][ACCOUNT]).toBe(cipherFor('value'))
+      await expect(getSecret(SERVICE, ACCOUNT)).resolves.toBe('value')
+    })
+
+    it('falls back to keytar only when both encryptors fail', async () => {
+      harness.asyncEncrypt.mockRejectedValueOnce(new Error('os_crypt_async failure'))
+      harness.syncEncrypt.mockImplementationOnce(() => {
+        throw new Error('sync encrypt failure')
+      })
 
       await setSecret(SERVICE, ACCOUNT, 'value')
 
@@ -595,12 +668,46 @@ describe('secret-storage', () => {
       }
     })
 
-    it('an async decryption rejection falls back to the OS keychain copy', async () => {
+    it('an async decryption rejection retries the sync API before any keychain fallback', async () => {
+      // The async encryptor can report available yet fail per-call (e.g. a
+      // poisoned key provider) while the sync OSCrypt path still works; the
+      // ciphertext is byte-compatible, so the sync retry must recover it.
       seedStoreFile(SERVICE, ACCOUNT, 'store-value')
       harness.keytarStore.set(`${SERVICE}:${ACCOUNT}`, 'legacy-value')
       harness.asyncDecrypt.mockRejectedValueOnce(new Error('os_crypt_async failure'))
 
+      await expect(getSecret(SERVICE, ACCOUNT)).resolves.toBe('store-value')
+      expect(harness.syncDecrypt).toHaveBeenCalled()
+    })
+
+    it('falls back to the OS keychain copy only when both decryptors fail', async () => {
+      seedStoreFile(SERVICE, ACCOUNT, 'store-value')
+      harness.keytarStore.set(`${SERVICE}:${ACCOUNT}`, 'legacy-value')
+      harness.asyncDecrypt.mockRejectedValueOnce(new Error('os_crypt_async failure'))
+      harness.syncDecrypt.mockImplementationOnce(() => {
+        throw new Error('sync decrypt failure')
+      })
+
       await expect(getSecret(SERVICE, ACCOUNT)).resolves.toBe('legacy-value')
+    })
+
+    it('a hung availability probe times out to the sync API instead of blocking reads', async () => {
+      vi.useFakeTimers()
+      try {
+        harness.isAsyncEncryptionAvailable.mockImplementationOnce(
+          () => new Promise<boolean>(() => {})
+        )
+        seedStoreFile(SERVICE, ACCOUNT, 'value')
+
+        const read = getSecret(SERVICE, ACCOUNT)
+        await vi.advanceTimersByTimeAsync(ASYNC_PROBE_TIMEOUT_MS + 1)
+
+        await expect(read).resolves.toBe('value')
+        expect(harness.syncDecrypt).toHaveBeenCalled()
+        expect(harness.asyncDecrypt).not.toHaveBeenCalled()
+      } finally {
+        vi.useRealTimers()
+      }
     })
 
     it('a failed availability probe falls back to the sync API', async () => {
