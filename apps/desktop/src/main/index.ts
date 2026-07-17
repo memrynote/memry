@@ -58,6 +58,7 @@ import {
 } from './calendar/google/sync-service'
 import { log, createLogger, disableConsoleTransport, applyPackagedLogLevels } from './lib/logger'
 import { isAllowedExternalUrl, isPathInsideDirs, resolveMemryFilePath } from './lib/external-url'
+import { decideFrameNavigation } from './lib/frame-navigation'
 import { registerTestHooks } from './test-hooks'
 import {
   computeSpkiHashFromPem,
@@ -173,6 +174,31 @@ const configLog = createLogger('Config')
 const quickCaptureLog = createLogger('QuickCapture')
 const shutdownLog = createLogger('Shutdown')
 const deepLinkLog = createLogger('DeepLink')
+const navGuardLog = createLogger('NavigationGuard')
+
+// Frame-level navigation guard for every window's webContents: pins main-frame
+// navigation to the local app origin and re-routes external links through
+// shell.openExternal. Complements (does not replace) the per-window
+// setWindowOpenHandler hardening, which only covers window.open.
+app.on('web-contents-created', (_event, contents) => {
+  contents.on('will-frame-navigate', (details) => {
+    const decision = decideFrameNavigation(details.url, {
+      isMainFrame: details.isMainFrame,
+      currentUrl: contents.getURL(),
+      isDev: is.dev
+    })
+    if (decision === 'allow') return
+    details.preventDefault()
+    if (decision === 'open-external' && isAllowedExternalUrl(details.url)) {
+      void shell.openExternal(details.url)
+    } else {
+      navGuardLog.warn('Blocked frame navigation', {
+        url: details.url.slice(0, 256),
+        isMainFrame: details.isMainFrame
+      })
+    }
+  })
+})
 
 // A Finder/Dock-launched packaged app inherits only the minimal system PATH, so
 // user-installed CLIs (claude/codex) are invisible to `which` and Agent Chat
