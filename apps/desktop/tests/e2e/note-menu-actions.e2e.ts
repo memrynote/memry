@@ -13,14 +13,7 @@
 
 import type { Page } from '@playwright/test'
 import { test, expect } from './fixtures'
-import {
-  waitForAppReady,
-  waitForVaultReady,
-  seedNote,
-  waitForToast,
-  SELECTORS
-} from './utils/electron-helpers'
-import { openNoteByHandle } from './utils/note-sync-helpers'
+import { waitForAppReady, waitForVaultReady, seedNote, SELECTORS } from './utils/electron-helpers'
 
 const MENU_ITEMS = [
   'Find…',
@@ -39,9 +32,46 @@ test.describe('Note-view menu file actions', () => {
     await waitForVaultReady(page)
   })
 
+  // Seed a note, then restore a session with it as the active tab and reload —
+  // the robust open pattern used by pdf-embed-resize.e2e.ts (no tab-strip race).
   async function seedAndOpen(page: Page, title: string): Promise<string> {
     const id = await seedNote(page, title, 'Body for menu actions')
-    await openNoteByHandle(page, { id, title })
+    await page.addInitScript(
+      ({ noteId, t }) => {
+        localStorage.setItem(
+          'memry_tab_state',
+          JSON.stringify({
+            version: 2,
+            tabGroups: {
+              g1: {
+                id: 'g1',
+                activeTabId: 'note-tab',
+                tabs: [
+                  {
+                    id: 'note-tab',
+                    type: 'note',
+                    title: t,
+                    icon: 'file',
+                    path: `/notes/${noteId}`,
+                    entityId: noteId,
+                    isPinned: false
+                  }
+                ]
+              }
+            },
+            layout: { type: 'leaf', tabGroupId: 'g1' },
+            activeGroupId: 'g1',
+            settings: { restoreSessionOnStart: true, tabCloseButton: 'hover' },
+            savedAt: Date.now()
+          })
+        )
+      },
+      { noteId: id, t: title }
+    )
+    await page.reload()
+    await waitForAppReady(page)
+    await waitForVaultReady(page)
+    await page.locator(SELECTORS.noteEditor).first().waitFor({ state: 'visible', timeout: 20_000 })
     await expect(page.locator(SELECTORS.noteTitle).first()).toHaveValue(title)
     return id
   }
@@ -72,7 +102,8 @@ test.describe('Note-view menu file actions', () => {
     await openMoreMenu(page)
     await page.getByRole('option', { name: 'Copy path' }).click()
 
-    await waitForToast(page, 'Path copied')
+    // Success toast confirms the copy (sonner renders nested nodes, so match first)
+    await expect(page.getByText('Path copied').first()).toBeVisible({ timeout: 5_000 })
   })
 
   test('Rename focuses the title', async ({ page }) => {
