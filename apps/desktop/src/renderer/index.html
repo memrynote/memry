@@ -8,6 +8,11 @@
       http-equiv="Content-Security-Policy"
       content="default-src 'self' memry-file:; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: memry-file: https:; media-src 'self' memry-file:; connect-src 'self' memry-file: https://*.memry.app wss://*.memry.app https://cdn.syndication.twimg.com https://react-tweet.vercel.app http://127.0.0.1:*; frame-src https://www.youtube-nocookie.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
     />
+    <!-- Sets window.EXCALIDRAW_ASSET_PATH before any module code evaluates
+         (the lazy Excalidraw chunk reads it at module-eval time). External
+         file, not inline: the production CSP is script-src 'self' with no
+         'unsafe-inline'. -->
+    <script src="./excalidraw-asset-path.js"></script>
   </head>
 
   <body>

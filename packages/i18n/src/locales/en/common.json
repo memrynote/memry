@@ -219,6 +219,20 @@
       "used": "{count, plural, one {Used # source} other {Used # sources}}"
     }
   },
+  "canvas": {
+    "sectionLabel": "Canvases",
+    "newCanvas": "New canvas",
+    "untitled": "Untitled canvas",
+    "empty": "No canvases yet",
+    "loading": "Loading canvases…",
+    "loadFailed": "Could not load canvases",
+    "createFailed": "Could not create canvas",
+    "openFailed": "Could not open canvas",
+    "notFound": "This canvas could not be found",
+    "corruptScene": "This canvas could not be read. Editing is disabled to avoid losing data.",
+    "disabledTitle": "Canvas is not enabled",
+    "disabledBody": "This tab belongs to a feature that is not enabled on this device."
+  },
   "phaseF": {
     "componentsAppSidebar": {
       "collections": "Collections",

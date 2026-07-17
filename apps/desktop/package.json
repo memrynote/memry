@@ -127,6 +127,7 @@
     "@electron/rebuild": "^4.2.0",
     "@emoji-mart/data": "^1.2.1",
     "@emoji-mart/react": "^1.1.1",
+    "@excalidraw/excalidraw": "0.18.1",
     "@fontsource-variable/crimson-pro": "^5.2.8",
     "@fontsource-variable/dm-sans": "^5.2.8",
     "@fontsource-variable/geist": "^5.2.9",

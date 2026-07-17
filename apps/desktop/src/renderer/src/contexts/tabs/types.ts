@@ -29,6 +29,7 @@ export type TabType =
   | 'templates' // Template list/management (Phase 15)
   | 'graph' // Knowledge graph visualization
   | 'agent-chat' // Agent conversation
+  | 'canvas' // Spatial canvas (Excalidraw) — entity-based, one tab per canvas
 
 /**
  * Singleton tab types - only one instance allowed

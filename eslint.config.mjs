@@ -21,6 +21,8 @@ export default defineConfig(
       '**/*.spec.ts',
       'tests/**',
       'apps/desktop/tests/**',
+      // Static assets served verbatim (e.g. the Excalidraw asset-path shim)
+      'apps/desktop/src/renderer/public/**',
       '*.config.ts',
       '*.config.mjs',
       '*.config.js',
