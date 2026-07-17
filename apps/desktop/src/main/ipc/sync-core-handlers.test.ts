@@ -618,6 +618,32 @@ describe('sync IPC handlers', () => {
       expect(mockTeardownSession).toHaveBeenCalledWith('integrity')
     })
 
+    it('does NOT tear down local state when the master key read throws transiently', async () => {
+      // Regression: a transient keychain read failure (safeStorage not ready,
+      // a mid-flight keytar→safeStorage migration, an OS keychain lock) must
+      // never be misread as "key absent" and trigger a destructive re-auth that
+      // rebinds key material the vault no longer matches.
+      mockIsDatabaseInitialized.mockReturnValue(true)
+      mockSelectGet.mockReturnValue({ id: 'dev-1', signingPublicKey: 'base64-encoded' })
+      mockRetrieveKey.mockRejectedValueOnce(new Error('Failed to retrieve key from keychain'))
+
+      await checkSyncIntegrity()
+
+      expect(mockTeardownSession).not.toHaveBeenCalled()
+    })
+
+    it('does NOT tear down local state when the signing key read throws transiently', async () => {
+      mockIsDatabaseInitialized.mockReturnValue(true)
+      mockSelectGet.mockReturnValue({ id: 'dev-1', signingPublicKey: 'base64-encoded' })
+      mockRetrieveKey
+        .mockResolvedValueOnce(new Uint8Array(32).fill(1))
+        .mockRejectedValueOnce(new Error('Failed to retrieve key from keychain'))
+
+      await checkSyncIntegrity()
+
+      expect(mockTeardownSession).not.toHaveBeenCalled()
+    })
+
     it('leaves matching signing keys alone and swallows integrity errors', async () => {
       mockIsDatabaseInitialized.mockReturnValue(true)
       mockSelectGet.mockReturnValue({ id: 'dev-1', signingPublicKey: 'base64-encoded' })
