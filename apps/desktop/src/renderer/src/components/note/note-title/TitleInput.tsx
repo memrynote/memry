@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback, useState, KeyboardEvent } from 'react'
+import { useRef, useEffect, useCallback, useState, KeyboardEvent, type RefObject } from 'react'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
 
@@ -8,6 +8,8 @@ interface TitleInputProps {
   onChange: (value: string) => void
   autoFocus?: boolean
   disabled?: boolean
+  /** Optional external ref to the underlying textarea (e.g. to focus from a menu) */
+  inputRef?: RefObject<HTMLTextAreaElement | null>
 }
 
 export function TitleInput({
@@ -15,12 +17,22 @@ export function TitleInput({
   placeholder,
   onChange,
   autoFocus = false,
-  disabled = false
+  disabled = false,
+  inputRef
 }: TitleInputProps) {
   const { t } = useT('notes')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [draftValue, setDraftValue] = useState<string | null>(null)
   const displayValue = draftValue ?? value
+
+  // Merge the internal auto-resize ref with an optional external ref.
+  const setTextareaRef = useCallback(
+    (node: HTMLTextAreaElement | null) => {
+      textareaRef.current = node
+      if (inputRef) inputRef.current = node
+    },
+    [inputRef]
+  )
 
   // Auto-resize textarea
   const adjustHeight = useCallback(() => {
@@ -75,7 +87,7 @@ export function TitleInput({
 
   return (
     <textarea
-      ref={textareaRef}
+      ref={setTextareaRef}
       value={displayValue}
       onChange={handleChange}
       onKeyDown={handleKeyDown}

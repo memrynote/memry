@@ -16,9 +16,14 @@ const mocks = vi.hoisted(() => ({
   createNote: vi.fn(),
   updateNote: vi.fn(),
   renameNote: vi.fn(),
+  deleteNote: vi.fn(),
+  moveNote: vi.fn(),
   openTab: vi.fn(),
+  closeTab: vi.fn(),
   setTabDeleted: vi.fn(),
   updateTabTitleByEntityId: vi.fn(),
+  revealInFinder: vi.fn(),
+  openExternal: vi.fn(),
   openTag: vi.fn(),
   invalidateQueries: vi.fn(),
   handleAddProperty: vi.fn(),
@@ -53,6 +58,7 @@ const mocks = vi.hoisted(() => ({
     matchCount: 2,
     currentIndex: 1,
     inputRef: { current: null },
+    open: vi.fn(),
     setQuery: vi.fn(),
     next: vi.fn(),
     prev: vi.fn(),
@@ -99,7 +105,9 @@ vi.mock('@/hooks/use-notes-query', () => ({
   useNoteMutations: () => ({
     createNote: { mutateAsync: mocks.createNote },
     updateNote: { mutateAsync: mocks.updateNote },
-    renameNote: { mutateAsync: mocks.renameNote }
+    renameNote: { mutateAsync: mocks.renameNote },
+    deleteNote: { mutateAsync: mocks.deleteNote },
+    moveNote: { mutateAsync: mocks.moveNote }
   }),
   useNoteLinksQuery: () => ({
     incoming: [
@@ -157,7 +165,9 @@ vi.mock('@/hooks/use-tasks-linked-to-note', () => ({
 vi.mock('@/services/notes-service', () => ({
   notesService: {
     setLocalOnly: mocks.setLocalOnly,
-    update: mocks.notesUpdate
+    update: mocks.notesUpdate,
+    revealInFinder: mocks.revealInFinder,
+    openExternal: mocks.openExternal
   },
   onNoteDeleted: (handler: (event: { id: string }) => void) => {
     mocks.deletedHandler = handler
@@ -185,10 +195,12 @@ vi.mock('@/lib/wikilink-resolver', () => ({
 vi.mock('@/contexts/tabs', () => ({
   useTabs: () => ({
     openTab: mocks.openTab,
+    closeTab: mocks.closeTab,
     setTabDeleted: mocks.setTabDeleted,
     updateTabTitleByEntityId: mocks.updateTabTitleByEntityId
   }),
   useActiveTab: () => ({
+    id: '/notes/note-1',
     entityId: 'note-1',
     viewState: { highlightText: 'Important', highlightStart: 1, highlightEnd: 10 }
   })
@@ -495,6 +507,48 @@ vi.mock('@/components/ui/switch', () => ({
   Switch: () => <span data-testid="switch" />
 }))
 
+vi.mock('@/components/folder-view/move-to-folder-dialog', () => ({
+  MoveToFolderDialog: ({
+    open,
+    noteIds,
+    currentFolder,
+    onMove
+  }: {
+    open: boolean
+    noteIds: string[]
+    currentFolder?: string
+    onMove: (folder: string) => void
+  }) =>
+    open ? (
+      <div data-testid="move-dialog">
+        <span>{`move:${noteIds.join(',')}:${currentFolder ?? ''}`}</span>
+        <button type="button" onClick={() => onMove('Work')}>
+          Confirm move
+        </button>
+      </div>
+    ) : null
+}))
+
+vi.mock('@/components/ui/alert-dialog', () => ({
+  AlertDialog: ({ open, children }: { open: boolean; children: React.ReactNode }) =>
+    open ? <div data-testid="delete-dialog">{children}</div> : null,
+  AlertDialogContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  AlertDialogHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  AlertDialogFooter: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  AlertDialogTitle: ({ children }: { children: React.ReactNode }) => <h2>{children}</h2>,
+  AlertDialogDescription: ({ children }: { children: React.ReactNode }) => <p>{children}</p>,
+  AlertDialogCancel: ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+    <button type="button" {...props}>
+      {children}
+    </button>
+  ),
+  AlertDialogAction: ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+    <button type="button" {...props}>
+      {children}
+    </button>
+  )
+}))
+
 vi.mock('@/components/note/export-dialog', () => ({
   ExportDialog: ({ open, noteTitle }: { open: boolean; noteTitle: string }) =>
     open ? <div>Export {noteTitle}</div> : null
@@ -578,6 +632,10 @@ describe('NotePage', () => {
     mocks.noteState.error = null
     mocks.updateNote.mockResolvedValue({ success: true })
     mocks.renameNote.mockResolvedValue({ success: true })
+    mocks.deleteNote.mockResolvedValue({ success: true })
+    mocks.moveNote.mockResolvedValue({ success: true })
+    mocks.revealInFinder.mockResolvedValue(undefined)
+    mocks.openExternal.mockResolvedValue(undefined)
     mocks.createNote.mockResolvedValue({
       success: true,
       note: { id: 'created-note', title: 'New Note' }
@@ -876,5 +934,142 @@ describe('NotePage', () => {
       mocks.propertyOnBlocked?.('remove')
     })
     expect(toast.error).toHaveBeenCalledWith('Cannot delete property - this note was deleted')
+  })
+
+  describe('note-view menu file actions', () => {
+    it('opens find in page from the menu', () => {
+      renderWithProviders(<NotePage noteId="note-1" />)
+      fireEvent.click(screen.getByRole('button', { name: 'editor.toolbar.find' }))
+      expect(mocks.findInPage.open).toHaveBeenCalled()
+    })
+
+    it('copies the vault-relative path to the clipboard', async () => {
+      const writeText = vi.fn().mockResolvedValue(undefined)
+      Object.assign(navigator, { clipboard: { writeText } })
+
+      renderWithProviders(<NotePage noteId="note-1" />)
+      fireEvent.click(screen.getByRole('button', { name: 'editor.toolbar.copyPath' }))
+
+      await waitFor(() => expect(writeText).toHaveBeenCalledWith('notes/Test Note.md'))
+      expect(toast.success).toHaveBeenCalledWith('page.toast.pathCopied')
+    })
+
+    it('reveals the note in the OS file manager', async () => {
+      renderWithProviders(<NotePage noteId="note-1" />)
+      fireEvent.click(screen.getByRole('button', { name: 'editor.toolbar.revealInFinder' }))
+      await waitFor(() => expect(mocks.revealInFinder).toHaveBeenCalledWith('note-1'))
+    })
+
+    it('opens the note in the default app', async () => {
+      renderWithProviders(<NotePage noteId="note-1" />)
+      fireEvent.click(screen.getByRole('button', { name: 'editor.toolbar.openInDefaultApp' }))
+      await waitFor(() => expect(mocks.openExternal).toHaveBeenCalledWith('note-1'))
+    })
+
+    it('dispatches a reveal-in-sidebar event', () => {
+      const listener = vi.fn()
+      window.addEventListener('reveal-in-sidebar', listener)
+      renderWithProviders(<NotePage noteId="note-1" />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'editor.toolbar.revealInSidebar' }))
+
+      expect(listener).toHaveBeenCalledTimes(1)
+      const event = listener.mock.calls[0][0] as CustomEvent
+      expect(event.detail).toEqual({ path: '/notes/note-1', entityId: 'note-1' })
+      window.removeEventListener('reveal-in-sidebar', listener)
+    })
+
+    it('moves the note to a folder via the dialog', async () => {
+      renderWithProviders(<NotePage noteId="note-1" />)
+
+      // Dialog is closed until the menu item is chosen
+      expect(screen.queryByTestId('move-dialog')).not.toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole('button', { name: 'editor.toolbar.moveToFolder' }))
+      const dialog = screen.getByTestId('move-dialog')
+      // current folder is derived from the note path
+      expect(dialog).toHaveTextContent('move:note-1:notes')
+
+      fireEvent.click(screen.getByRole('button', { name: 'Confirm move' }))
+      await waitFor(() =>
+        expect(mocks.moveNote).toHaveBeenCalledWith({ id: 'note-1', newFolder: 'Work' })
+      )
+      expect(toast.success).toHaveBeenCalledWith('page.toast.moved')
+    })
+
+    it('deletes the note after confirmation and closes its tab', async () => {
+      renderWithProviders(<NotePage noteId="note-1" />)
+
+      // Confirmation not shown until the delete item is chosen
+      expect(screen.queryByTestId('delete-dialog')).not.toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole('button', { name: 'editor.toolbar.delete' }))
+      expect(screen.getByTestId('delete-dialog')).toBeInTheDocument()
+      // Nothing deleted just by opening the dialog
+      expect(mocks.deleteNote).not.toHaveBeenCalled()
+
+      fireEvent.click(screen.getByRole('button', { name: 'page.deleteConfirm.confirm' }))
+      await waitFor(() => expect(mocks.deleteNote).toHaveBeenCalledWith('note-1'))
+      expect(mocks.closeTab).toHaveBeenCalledWith('/notes/note-1')
+    })
+
+    it('does not delete when the delete op reports failure', async () => {
+      mocks.deleteNote.mockResolvedValueOnce({ success: false, error: 'nope' })
+      renderWithProviders(<NotePage noteId="note-1" />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'editor.toolbar.delete' }))
+      fireEvent.click(screen.getByRole('button', { name: 'page.deleteConfirm.confirm' }))
+
+      await waitFor(() => expect(mocks.deleteNote).toHaveBeenCalledWith('note-1'))
+      expect(mocks.closeTab).not.toHaveBeenCalled()
+      expect(toast.error).toHaveBeenCalledWith('nope')
+    })
+
+    it('surfaces an error toast when copy path fails', async () => {
+      const writeText = vi.fn().mockRejectedValue(new Error('clipboard blocked'))
+      Object.assign(navigator, { clipboard: { writeText } })
+
+      renderWithProviders(<NotePage noteId="note-1" />)
+      fireEvent.click(screen.getByRole('button', { name: 'editor.toolbar.copyPath' }))
+
+      await waitFor(() => expect(toast.error).toHaveBeenCalledWith('clipboard blocked'))
+    })
+
+    it('surfaces an error toast when reveal in Finder fails', async () => {
+      mocks.revealInFinder.mockRejectedValueOnce(new Error('reveal failed'))
+      renderWithProviders(<NotePage noteId="note-1" />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'editor.toolbar.revealInFinder' }))
+      await waitFor(() => expect(toast.error).toHaveBeenCalledWith('reveal failed'))
+    })
+
+    it('surfaces an error toast when open in default app fails', async () => {
+      mocks.openExternal.mockRejectedValueOnce(new Error('open failed'))
+      renderWithProviders(<NotePage noteId="note-1" />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'editor.toolbar.openInDefaultApp' }))
+      await waitFor(() => expect(toast.error).toHaveBeenCalledWith('open failed'))
+    })
+
+    it('surfaces an error toast when the move op reports failure', async () => {
+      mocks.moveNote.mockResolvedValueOnce({ success: false, error: 'move blocked' })
+      renderWithProviders(<NotePage noteId="note-1" />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'editor.toolbar.moveToFolder' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Confirm move' }))
+
+      await waitFor(() => expect(toast.error).toHaveBeenCalledWith('move blocked'))
+    })
+
+    it('surfaces an error toast when delete throws', async () => {
+      mocks.deleteNote.mockRejectedValueOnce(new Error('delete crashed'))
+      renderWithProviders(<NotePage noteId="note-1" />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'editor.toolbar.delete' }))
+      fireEvent.click(screen.getByRole('button', { name: 'page.deleteConfirm.confirm' }))
+
+      await waitFor(() => expect(toast.error).toHaveBeenCalledWith('delete crashed'))
+      expect(mocks.closeTab).not.toHaveBeenCalled()
+    })
   })
 })

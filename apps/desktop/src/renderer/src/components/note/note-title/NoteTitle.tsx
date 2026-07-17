@@ -1,3 +1,4 @@
+import type { RefObject } from 'react'
 import { cn } from '@/lib/utils'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { TitleInput } from './TitleInput'
@@ -10,6 +11,8 @@ export interface NoteTitleProps {
   onTitleChange: (title: string) => void
   autoFocus?: boolean
   disabled?: boolean
+  /** Optional external ref to the title textarea (e.g. to focus from the menu) */
+  inputRef?: RefObject<HTMLTextAreaElement | null>
 }
 
 export function NoteTitle({
@@ -18,7 +21,8 @@ export function NoteTitle({
   placeholder,
   onTitleChange,
   autoFocus = false,
-  disabled = false
+  disabled = false,
+  inputRef
 }: NoteTitleProps) {
   const { t } = useT('notes')
 
@@ -37,6 +41,7 @@ export function NoteTitle({
           onChange={onTitleChange}
           autoFocus={autoFocus}
           disabled={disabled}
+          inputRef={inputRef}
         />
       </div>
     </div>

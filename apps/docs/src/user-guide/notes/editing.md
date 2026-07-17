@@ -60,6 +60,32 @@ Titles become filenames in your vault, so characters that are invalid in filenam
 Obsidian wiki links (`< > : " / \ | ? * [ ] # ^`) are stripped on save — a note titled
 `Draft [v2] #1` is saved as `Draft v2 1.md`. Existing files are never renamed retroactively.
 
+## Note Menu
+
+The **⋯ button** in the top-right of a note (the _More actions_ menu) collects note-wide and file actions, so you can act on the note you are viewing without going back to the list.
+
+**View & tools**
+
+- **Local graph** — show or hide the note's local link graph
+- **Find…** — open in-note search (also <kbd>⌘</kbd>+<kbd>F</kbd>)
+- **Version history** — browse and restore past versions
+- **Export** — export the note to PDF or HTML
+- **Apply template** — insert a template into the note
+- **Full width** — toggle the wide editor layout
+
+**File actions**
+
+- **Rename…** — moves focus to the title so you can rename in place
+- **Move to folder…** — move the note into another folder
+- **Copy path** — copy the note's vault-relative path
+- **Reveal in Finder** — show the `.md` file in your operating system's file manager (Finder on macOS, File Explorer on Windows, your file manager on Linux)
+- **Reveal in navigation** — highlight the note in the sidebar
+- **Open in default app** — open the `.md` file in your system's default editor
+
+**Local only** keeps the note on this device (never synced).
+
+**Delete note** moves the note to the trash after a confirmation, then closes its tab. This does the same thing as deleting from the note list — you no longer need to close the note first.
+
 ## Drag-and-Drop Blocks
 
 Hover the gutter on the left to reveal the block handle. Drag a block to:
