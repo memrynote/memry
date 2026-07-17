@@ -417,7 +417,10 @@
       },
       "time": {
         "label": "Reminder time",
-        "description": "Local time, on each device."
+        "description": "Local time, on each device.",
+        "hourLabel": "Hour",
+        "minuteLabel": "Minute",
+        "periodLabel": "AM or PM"
       },
       "error": "Could not update the reminder."
     }

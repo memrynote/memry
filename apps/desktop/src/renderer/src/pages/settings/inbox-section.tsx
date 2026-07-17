@@ -1,7 +1,8 @@
 import { useCallback } from 'react'
 import { Switch } from '@/components/ui/switch'
-import { Input } from '@/components/ui/input'
 import { useInboxPreferences } from '@/hooks/use-inbox-preferences'
+import { useGeneralSettings } from '@/hooks/use-general-settings'
+import { ReviewTimeInput } from '@/components/settings/review-time-input'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
 import {
@@ -14,6 +15,7 @@ import {
 export function InboxSettings() {
   const { t } = useT('settings')
   const { settings, isLoading, updateSettings } = useInboxPreferences()
+  const { settings: general } = useGeneralSettings()
 
   const handleToggle = useCallback(
     async (checked: boolean) => {
@@ -25,7 +27,6 @@ export function InboxSettings() {
 
   const handleTimeChange = useCallback(
     async (value: string) => {
-      if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(value)) return
       const ok = await updateSettings({ reviewReminderTime: value })
       if (!ok) toast.error(t('inbox.reviewReminder.error'))
     },
@@ -62,12 +63,11 @@ export function InboxSettings() {
             label={t('inbox.reviewReminder.time.label')}
             description={t('inbox.reviewReminder.time.description')}
           >
-            <Input
+            <ReviewTimeInput
               data-testid="inbox-review-time"
-              type="time"
               value={settings.reviewReminderTime}
-              onChange={(e) => void handleTimeChange(e.target.value)}
-              className="w-28 h-7 text-center text-xs/4 px-2"
+              clockFormat={general.clockFormat}
+              onChange={(value) => void handleTimeChange(value)}
             />
           </SettingRow>
         )}
