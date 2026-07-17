@@ -59,7 +59,8 @@ import type {
   ClockSkewWarningEvent,
   DeviceRevokedEvent,
   SecurityWarningEvent,
-  CertificatePinFailedEvent
+  CertificatePinFailedEvent,
+  VaultRecoveryNeededEvent
 } from '../shared/contracts/ipc-sync'
 import type { CrdtOpenDocResult, CrdtSyncStep1Result } from '@memry/contracts/ipc-crdt'
 
@@ -1879,6 +1880,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
   onClockSkewWarning: (callback: (event: ClockSkewWarningEvent) => void) => () => void
   onSecurityWarning: (callback: (event: SecurityWarningEvent) => void) => () => void
   onCertificatePinFailed: (callback: (event: CertificatePinFailedEvent) => void) => () => void
+  onVaultRecoveryNeeded: (callback: (event: VaultRecoveryNeededEvent) => void) => () => void
   onUpdaterStateChanged: (callback: (state: AppUpdateState) => void) => () => void
   onImportProgress: (callback: (event: ImportProgressEvent) => void) => () => void
   onAppNavigationCommand: (callback: (command: AppNavigationCommandEvent) => void) => () => void

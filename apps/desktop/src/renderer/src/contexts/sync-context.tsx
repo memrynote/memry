@@ -13,7 +13,12 @@ import { toast } from 'sonner'
 import { useAuth } from './auth-context'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { DeviceRevokedDialog } from '@/components/sync/device-revoked-dialog'
-import type { InitialSyncPhase, LinkingRequestEvent } from '@memry/contracts/ipc-events'
+import { VaultRecoveryDialog } from '@/components/sync/vault-recovery-dialog'
+import type {
+  InitialSyncPhase,
+  LinkingRequestEvent,
+  VaultRecoveryNeededEvent
+} from '@memry/contracts/ipc-events'
 import { useT } from '@memry/i18n/renderer'
 
 type SyncStatus = 'idle' | 'syncing' | 'paused' | 'error' | 'offline' | 'unknown'
@@ -188,6 +193,8 @@ interface SyncContextValue {
   linkingRequest: LinkingRequestEvent | null
   clearLinkingRequest: () => void
   dismissDeviceRevoked: () => void
+  vaultRecovery: VaultRecoveryNeededEvent | null
+  clearVaultRecovery: () => void
 }
 
 const SyncContext = createContext<SyncContextValue | null>(null)
@@ -210,6 +217,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
   const { t: tSettings } = useT('settings')
   const [state, dispatch] = useReducer(syncReducer, initialState)
   const [linkingRequest, setLinkingRequest] = useState<LinkingRequestEvent | null>(null)
+  const [vaultRecovery, setVaultRecovery] = useState<VaultRecoveryNeededEvent | null>(null)
   const sessionExpiredRef = useRef(state.sessionExpired)
   useEffect(() => {
     sessionExpiredRef.current = state.sessionExpired
@@ -414,6 +422,13 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
       })
     )
 
+    cleanups.push(
+      window.api.onVaultRecoveryNeeded((event) => {
+        if (cancelled) return
+        setVaultRecovery(event)
+      })
+    )
+
     return () => {
       cancelled = true
       for (const cleanup of cleanups) cleanup()
@@ -466,6 +481,10 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
     dispatch({ type: 'RESET' })
   }, [])
 
+  const clearVaultRecovery = useCallback(() => {
+    setVaultRecovery(null)
+  }, [])
+
   const value = useMemo<SyncContextValue>(
     () => ({
       state,
@@ -475,7 +494,9 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
       clearError,
       linkingRequest,
       clearLinkingRequest,
-      dismissDeviceRevoked
+      dismissDeviceRevoked,
+      vaultRecovery,
+      clearVaultRecovery
     }),
     [
       state,
@@ -485,7 +506,9 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
       clearError,
       linkingRequest,
       clearLinkingRequest,
-      dismissDeviceRevoked
+      dismissDeviceRevoked,
+      vaultRecovery,
+      clearVaultRecovery
     ]
   )
 
@@ -497,6 +520,12 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
     void logout()
   }, [logout])
 
+  const handleVaultRecovered = useCallback(() => {
+    setVaultRecovery(null)
+    toast.success(t('sync.vaultRecovered'), { duration: 6000 })
+    void window.api.syncOps.triggerSync().catch(() => {})
+  }, [t])
+
   return (
     <SyncContext.Provider value={value}>
       {children}
@@ -504,6 +533,12 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
         open={state.deviceRevoked !== null}
         unsyncedCount={state.deviceRevoked?.unsyncedCount ?? 0}
         onExport={handleDeviceRevokedExport}
+        onSignOut={handleDeviceRevokedSignOut}
+      />
+      <VaultRecoveryDialog
+        open={vaultRecovery !== null}
+        onRecovered={handleVaultRecovered}
+        onDismiss={clearVaultRecovery}
         onSignOut={handleDeviceRevokedSignOut}
       />
     </SyncContext.Provider>
