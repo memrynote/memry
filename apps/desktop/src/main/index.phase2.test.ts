@@ -1018,6 +1018,59 @@ describe('main index phase2 exports', () => {
     expect(shell.openPath).not.toHaveBeenCalled()
   })
 
+  it('guards will-frame-navigate on every created webContents', async () => {
+    await importMainModule()
+
+    const webContentsCreated = appOnMock.mock.calls.find(
+      ([event]) => event === 'web-contents-created'
+    )?.[1] as (event: unknown, contents: unknown) => void
+    expect(webContentsCreated).toBeTypeOf('function')
+
+    const contentsListeners = new Map<string, (...args: unknown[]) => void>()
+    const contents = {
+      on: vi.fn((event: string, listener: (...args: unknown[]) => void) => {
+        contentsListeners.set(event, listener)
+      }),
+      getURL: vi.fn(() => 'file:///mock/app/renderer/index.html#/home')
+    }
+    webContentsCreated({}, contents)
+
+    const navListener = contentsListeners.get('will-frame-navigate') as (details: {
+      url: string
+      isMainFrame: boolean
+      preventDefault: () => void
+    }) => void
+    expect(navListener).toBeTypeOf('function')
+
+    const { shell } = await import('electron')
+
+    // In-app hash routing stays untouched.
+    const hashNav = {
+      url: 'file:///mock/app/renderer/index.html#/notes/abc',
+      isMainFrame: true,
+      preventDefault: vi.fn()
+    }
+    navListener(hashNav)
+    expect(hashNav.preventDefault).not.toHaveBeenCalled()
+
+    // External links cancel in-window navigation and open in the OS browser.
+    const externalNav = {
+      url: 'https://memrynote.com/page',
+      isMainFrame: true,
+      preventDefault: vi.fn()
+    }
+    navListener(externalNav)
+    expect(externalNav.preventDefault).toHaveBeenCalledTimes(1)
+    expect(shell.openExternal).toHaveBeenCalledWith('https://memrynote.com/page')
+
+    // Script schemes are blocked and never reach the OS.
+    vi.mocked(shell.openExternal).mockClear()
+    const scriptNav = { url: 'javascript:alert(1)', isMainFrame: true, preventDefault: vi.fn() }
+    navListener(scriptNav)
+    expect(scriptNav.preventDefault).toHaveBeenCalledTimes(1)
+    expect(shell.openExternal).not.toHaveBeenCalled()
+  })
+
   it('logs the app version and channel at startup', async () => {
     await importMainModule()
 
