@@ -1,5 +1,15 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { applyEditorMenuCommand, isEditorMenuCommand, runHistoryMenuCommand } from './menu-commands'
+
+const { getUndoPluginState } = vi.hoisted(() => ({ getUndoPluginState: vi.fn() }))
+
+vi.mock('y-prosemirror', () => ({ yUndoPluginKey: { getState: getUndoPluginState } }))
+
+import {
+  applyEditorMenuCommand,
+  getEditorHistoryState,
+  isEditorMenuCommand,
+  runHistoryMenuCommand
+} from './menu-commands'
 
 function makeEditor(block: unknown = {}) {
   return {
@@ -160,5 +170,47 @@ describe('runHistoryMenuCommand', () => {
     focusInside()
 
     expect(() => runHistoryMenuCommand('undo')).not.toThrow()
+  })
+})
+
+describe('getEditorHistoryState', () => {
+  afterEach(() => {
+    delete (window as unknown as { __memryEditor?: unknown }).__memryEditor
+    getUndoPluginState.mockReset()
+  })
+
+  it('reports the Yjs undo manager stacks', () => {
+    getUndoPluginState.mockReturnValue({
+      undoManager: { canUndo: () => true, canRedo: () => false }
+    })
+    ;(window as unknown as { __memryEditor?: unknown }).__memryEditor = {
+      _tiptapEditor: { state: {} }
+    }
+
+    expect(getEditorHistoryState()).toEqual({ canUndo: true, canRedo: false })
+  })
+
+  it('reports nothing to undo without an editor', () => {
+    expect(getEditorHistoryState()).toEqual({ canUndo: false, canRedo: false })
+  })
+
+  it('stays enabled when the editor has no Yjs undo manager', () => {
+    getUndoPluginState.mockReturnValue(undefined)
+    ;(window as unknown as { __memryEditor?: unknown }).__memryEditor = {
+      _tiptapEditor: { state: {} }
+    }
+
+    expect(getEditorHistoryState()).toEqual({ canUndo: true, canRedo: true })
+  })
+
+  it('stays enabled when reading the history state throws', () => {
+    getUndoPluginState.mockImplementation(() => {
+      throw new Error('plugin state unavailable')
+    })
+    ;(window as unknown as { __memryEditor?: unknown }).__memryEditor = {
+      _tiptapEditor: { state: {} }
+    }
+
+    expect(getEditorHistoryState()).toEqual({ canUndo: true, canRedo: true })
   })
 })

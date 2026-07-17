@@ -7,6 +7,7 @@ const DOCS_URL = 'https://memrynote.com'
 
 interface EditableContextMenuParams {
   isEditable?: boolean
+  formControlType?: string
   editFlags?: {
     canUndo?: boolean
     canRedo?: boolean
@@ -15,6 +16,40 @@ interface EditableContextMenuParams {
     canPaste?: boolean
     canSelectAll?: boolean
   }
+}
+
+export interface RendererHistoryState {
+  canUndo: boolean
+  canRedo: boolean
+}
+
+/**
+ * True when the context-menu target keeps its edit history in the renderer:
+ * an editable region that is not a native input/textarea is the BlockNote
+ * contenteditable, where Yjs owns undo and Chromium's native stack is empty.
+ */
+export function usesRendererHistory(params: EditableContextMenuParams): boolean {
+  return Boolean(params.isEditable) && (params.formControlType ?? 'none') === 'none'
+}
+
+/**
+ * Ask the renderer for the editor's Yjs undo/redo state (see
+ * getEditorHistoryState in renderer lib/menu-commands.ts). Unknown state
+ * resolves to enabled — a stray click is a no-op, a wrongly greyed Undo is
+ * the original bug.
+ */
+export async function readRendererHistoryState(webContents: {
+  executeJavaScript: (code: string) => Promise<unknown>
+}): Promise<RendererHistoryState> {
+  try {
+    const state = (await webContents.executeJavaScript(
+      'globalThis.__memryEditorHistoryState?.() ?? null'
+    )) as { canUndo?: boolean; canRedo?: boolean } | null
+    if (state) return { canUndo: state.canUndo === true, canRedo: state.canRedo === true }
+  } catch {
+    // Renderer busy or destroyed — fall through to enabled.
+  }
+  return { canUndo: true, canRedo: true }
 }
 
 /**
@@ -239,15 +274,36 @@ export function buildAppMenu(i18n: I18nInstance): Menu {
 
 export function buildEditableTextContextMenu(
   i18n: I18nInstance,
-  params: EditableContextMenuParams
+  params: EditableContextMenuParams,
+  history?: RendererHistoryState
 ): Menu | null {
   if (!params.isEditable) return null
 
   const t = i18n.getFixedT(null, 'menu')
   const flags = params.editFlags ?? {}
+  // Same reasoning as the Edit menu's undo/redo above: for the BlockNote
+  // contenteditable the native role reaches only Chromium's empty undo stack,
+  // so dispatch to the renderer and let the Yjs undo manager drive enabled
+  // state. Native inputs/textareas keep the role — Chromium owns their history.
+  const historyItems: MenuItemConstructorOptions[] = usesRendererHistory(params)
+    ? [
+        {
+          label: t('edit.undo'),
+          enabled: history?.canUndo !== false,
+          click: () => sendMenuCommand('edit.undo')
+        },
+        {
+          label: t('edit.redo'),
+          enabled: history?.canRedo !== false,
+          click: () => sendMenuCommand('edit.redo')
+        }
+      ]
+    : [
+        { label: t('edit.undo'), role: 'undo', enabled: Boolean(flags.canUndo) },
+        { label: t('edit.redo'), role: 'redo', enabled: Boolean(flags.canRedo) }
+      ]
   const template: MenuItemConstructorOptions[] = [
-    { label: t('edit.undo'), role: 'undo', enabled: Boolean(flags.canUndo) },
-    { label: t('edit.redo'), role: 'redo', enabled: Boolean(flags.canRedo) },
+    ...historyItems,
     { type: 'separator' },
     { label: t('edit.cut'), role: 'cut', enabled: Boolean(flags.canCut) },
     { label: t('edit.copy'), role: 'copy', enabled: Boolean(flags.canCopy) },

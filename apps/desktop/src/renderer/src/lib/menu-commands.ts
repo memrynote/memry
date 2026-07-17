@@ -5,6 +5,7 @@
  * editor using its stable block-type API — block-type names match the schema,
  * unlike slash-menu titles which are localized.
  */
+import { yUndoPluginKey } from 'y-prosemirror'
 
 // ponytail: targets the last-mounted note editor (window.__memryEditor); add
 // per-pane focus tracking only if split-view users hit the wrong editor.
@@ -129,4 +130,27 @@ export function runHistoryMenuCommand(action: 'undo' | 'redo'): void {
   if (active instanceof HTMLElement && active.isContentEditable) {
     document.execCommand(action)
   }
+}
+
+/**
+ * Undo/redo availability for the editor context menu. The main process reads
+ * this via window.__memryEditorHistoryState (see readRendererHistoryState in
+ * main/menu.ts) because Chromium's editFlags only describe its own — empty —
+ * undo stack. Unknown state reports enabled: a stray click is a no-op, a
+ * wrongly greyed Undo is the original bug.
+ */
+export function getEditorHistoryState(): { canUndo: boolean; canRedo: boolean } {
+  const editor = (window as unknown as { __memryEditor?: { _tiptapEditor?: { state?: unknown } } })
+    .__memryEditor
+  if (!editor) return { canUndo: false, canRedo: false }
+  try {
+    const state = editor._tiptapEditor?.state
+    const undoManager = state
+      ? yUndoPluginKey.getState(state as Parameters<typeof yUndoPluginKey.getState>[0])?.undoManager
+      : undefined
+    if (undoManager) return { canUndo: undoManager.canUndo(), canRedo: undoManager.canRedo() }
+  } catch {
+    // Plugin state unavailable — fall through to enabled.
+  }
+  return { canUndo: true, canRedo: true }
 }

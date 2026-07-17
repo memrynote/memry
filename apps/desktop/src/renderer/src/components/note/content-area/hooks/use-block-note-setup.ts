@@ -6,6 +6,7 @@ import { DefaultChatTransport } from 'ai'
 import type { HighlightInfo } from '../types'
 import { scrollToAnchor } from '../scroll-to-anchor'
 import { createLogger } from '@/lib/logger'
+import { getEditorHistoryState } from '@/lib/menu-commands'
 
 const _log = createLogger('Hook:BlockNoteSetup')
 
@@ -78,16 +79,23 @@ export function useBlockNoteSetup({
 
   // Expose the active editor on window. Production path for the Edit-menu
   // undo/redo and Insert/Format commands (lib/menu-commands.ts), and E2E
-  // instrumentation. Read-only instances (template preview) must not claim the
-  // global, and cleanup only clears its own registration so unmounting a later
-  // preview/split pane doesn't deregister a still-live editor.
+  // instrumentation. __memryEditorHistoryState feeds the main process the Yjs
+  // undo/redo state for the editor context menu (see main/menu.ts). Read-only
+  // instances (template preview) must not claim the global, and cleanup only
+  // clears its own registration so unmounting a later preview/split pane
+  // doesn't deregister a still-live editor.
   useEffect(() => {
     if (!editor.isEditable) return
-    const host = window as unknown as { __memryEditor?: unknown }
+    const host = window as unknown as {
+      __memryEditor?: unknown
+      __memryEditorHistoryState?: typeof getEditorHistoryState
+    }
     host.__memryEditor = editor
+    host.__memryEditorHistoryState = getEditorHistoryState
     return () => {
       if (host.__memryEditor === editor) {
         delete host.__memryEditor
+        delete host.__memryEditorHistoryState
       }
     }
   }, [editor])

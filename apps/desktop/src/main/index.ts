@@ -81,7 +81,13 @@ import { parseInboxOpenItemId } from './deeplink-utils'
 import { initializeUpdater, isQuitAndInstallRequested, performQuitAndInstall } from './updater'
 import { clearPendingInstallMarker, isPendingInstallInFlight } from './updater-install-guard'
 import { applyGpuCrashGuard, recordGpuCrash, shouldRecordGpuCrash } from './gpu-crash-guard'
-import { buildAppMenu, buildEditableTextContextMenu } from './menu'
+import {
+  buildAppMenu,
+  buildEditableTextContextMenu,
+  readRendererHistoryState,
+  usesRendererHistory,
+  type RendererHistoryState
+} from './menu'
 import { setMainI18n } from './lib/main-i18n'
 import {
   sendAppNavigationCommand,
@@ -647,13 +653,23 @@ function createWindow(): void {
   })
 
   mainWindow.webContents.on('context-menu', (_event, params) => {
-    const menu = buildEditableTextContextMenu(mainI18n, params)
-    if (!menu) return
+    const showMenu = (history?: RendererHistoryState): void => {
+      const menu = buildEditableTextContextMenu(mainI18n, params, history)
+      if (!menu) return
 
-    menu.popup({
-      window: mainWindow,
-      ...(params.frame ? { frame: params.frame } : {})
-    })
+      menu.popup({
+        window: mainWindow,
+        ...(params.frame ? { frame: params.frame } : {})
+      })
+    }
+
+    // BlockNote contenteditable: Chromium's editFlags can't see the Yjs undo
+    // stack, so ask the renderer before showing the menu.
+    if (usesRendererHistory(params)) {
+      void readRendererHistoryState(mainWindow.webContents).then(showMenu)
+      return
+    }
+    showMenu()
   })
 
   // HMR for renderer base on electron-vite cli.

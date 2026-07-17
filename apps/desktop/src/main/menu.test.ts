@@ -13,7 +13,12 @@ vi.mock('electron', () => ({
   Menu: { buildFromTemplate }
 }))
 
-import { buildAppMenu, buildEditableTextContextMenu } from './menu'
+import {
+  buildAppMenu,
+  buildEditableTextContextMenu,
+  readRendererHistoryState,
+  usesRendererHistory
+} from './menu'
 
 interface TemplateItem {
   label?: string
@@ -213,11 +218,12 @@ describe('buildAppMenu', () => {
     )
   })
 
-  it('builds a native editable context menu from edit flags', async () => {
+  it('builds a native editable context menu from edit flags for input targets', async () => {
     const i18n = await createMainI18n({ locale: 'en' })
 
     const menu = buildEditableTextContextMenu(i18n, {
       isEditable: true,
+      formControlType: 'input-text',
       editFlags: {
         canUndo: false,
         canRedo: true,
@@ -253,5 +259,99 @@ describe('buildAppMenu', () => {
 
     expect(menu).toBeNull()
     expect(buildFromTemplate).not.toHaveBeenCalled()
+  })
+
+  it('routes contenteditable context-menu undo/redo through the renderer', async () => {
+    const i18n = await createMainI18n({ locale: 'en' })
+    const send = vi.fn()
+    vi.mocked(BrowserWindow.getFocusedWindow).mockReturnValue({
+      webContents: { isDestroyed: () => false, send }
+    } as unknown as Electron.BrowserWindow)
+
+    buildEditableTextContextMenu(
+      i18n,
+      {
+        isEditable: true,
+        formControlType: 'none',
+        // Chromium's editFlags describe its native undo stack, which is empty
+        // in the BlockNote editor (Yjs owns history) — the Yjs state must win
+        // in both directions.
+        editFlags: {
+          canUndo: false,
+          canRedo: true,
+          canCut: true,
+          canCopy: true,
+          canPaste: true,
+          canSelectAll: true
+        }
+      },
+      { canUndo: true, canRedo: false }
+    )
+
+    const items = buildFromTemplate.mock.calls[0][0] as Array<{
+      label?: string
+      role?: string
+      enabled?: boolean
+      click?: () => void
+    }>
+    const undoItem = items.find((item) => item.label === 'Undo')
+    const redoItem = items.find((item) => item.label === 'Redo')
+
+    expect(undoItem?.role).toBeUndefined()
+    expect(undoItem?.enabled).toBe(true)
+    expect(redoItem?.role).toBeUndefined()
+    expect(redoItem?.enabled).toBe(false)
+
+    undoItem?.click?.()
+    expect(send).toHaveBeenCalledWith(AppChannels.events.MENU_COMMAND, { command: 'edit.undo' })
+    redoItem?.click?.()
+    expect(send).toHaveBeenCalledWith(AppChannels.events.MENU_COMMAND, { command: 'edit.redo' })
+  })
+
+  it('keeps contenteditable undo/redo enabled when renderer history state is unknown', async () => {
+    const i18n = await createMainI18n({ locale: 'en' })
+
+    buildEditableTextContextMenu(i18n, { isEditable: true, formControlType: 'none' })
+
+    const items = buildFromTemplate.mock.calls[0][0] as Array<{
+      label?: string
+      enabled?: boolean
+    }>
+    expect(items.find((item) => item.label === 'Undo')?.enabled).toBe(true)
+    expect(items.find((item) => item.label === 'Redo')?.enabled).toBe(true)
+  })
+})
+
+describe('usesRendererHistory', () => {
+  it('detects renderer-history targets from formControlType', () => {
+    expect(usesRendererHistory({ isEditable: true, formControlType: 'none' })).toBe(true)
+    expect(usesRendererHistory({ isEditable: true })).toBe(true)
+    expect(usesRendererHistory({ isEditable: true, formControlType: 'input-text' })).toBe(false)
+    expect(usesRendererHistory({ isEditable: true, formControlType: 'text-area' })).toBe(false)
+    expect(usesRendererHistory({ isEditable: false, formControlType: 'none' })).toBe(false)
+  })
+})
+
+describe('readRendererHistoryState', () => {
+  it('reads the Yjs history state from the renderer', async () => {
+    const executeJavaScript = vi.fn().mockResolvedValue({ canUndo: false, canRedo: true })
+
+    await expect(readRendererHistoryState({ executeJavaScript })).resolves.toEqual({
+      canUndo: false,
+      canRedo: true
+    })
+    expect(executeJavaScript).toHaveBeenCalledWith(
+      expect.stringContaining('__memryEditorHistoryState')
+    )
+  })
+
+  it('falls back to enabled items when the renderer cannot answer', async () => {
+    // A wrongly greyed Undo is the original bug — unknown state stays enabled.
+    await expect(
+      readRendererHistoryState({ executeJavaScript: vi.fn().mockRejectedValue(new Error('gone')) })
+    ).resolves.toEqual({ canUndo: true, canRedo: true })
+    await expect(
+      readRendererHistoryState({ executeJavaScript: vi.fn().mockResolvedValue(null) })
+    ).resolves.toEqual({ canUndo: true, canRedo: true })
   })
 })
