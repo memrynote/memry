@@ -9,7 +9,7 @@ const { buildFromTemplate } = vi.hoisted(() => ({
 
 vi.mock('electron', () => ({
   app: { name: 'MemryNote' },
-  BrowserWindow: { getFocusedWindow: vi.fn() },
+  BrowserWindow: { getFocusedWindow: vi.fn(), getAllWindows: vi.fn(() => []) },
   Menu: { buildFromTemplate }
 }))
 
@@ -124,6 +124,30 @@ describe('buildAppMenu', () => {
     expect(send).toHaveBeenCalledWith(AppChannels.events.MENU_COMMAND, { command: 'edit.undo' })
     redoItem?.click?.()
     expect(send).toHaveBeenCalledWith(AppChannels.events.MENU_COMMAND, { command: 'edit.redo' })
+  })
+
+  it('falls back to a live window when no window reports focus', async () => {
+    const i18n = await createMainI18n({ locale: 'en' })
+    const send = vi.fn()
+    vi.mocked(BrowserWindow.getFocusedWindow).mockReturnValue(null)
+    vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([
+      { webContents: { isDestroyed: () => true, send: vi.fn() } },
+      { webContents: { isDestroyed: () => false, send } }
+    ] as unknown as Electron.BrowserWindow[])
+
+    buildAppMenu(i18n)
+
+    const template = buildFromTemplate.mock.calls[0][0] as Array<{
+      submenu?: Array<{ label?: string; click?: () => void }>
+    }>
+    const undoItem = template
+      .flatMap((item) => item.submenu ?? [])
+      .find((item) => item.label === 'Undo')
+
+    // Menu items are clickable while no window has focus (macOS app menu,
+    // Linux focus-follows-mouse); the command must not be dropped.
+    undoItem?.click?.()
+    expect(send).toHaveBeenCalledWith(AppChannels.events.MENU_COMMAND, { command: 'edit.undo' })
   })
 
   it('registers native text editing roles and accelerators', async () => {

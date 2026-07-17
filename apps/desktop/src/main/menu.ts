@@ -26,7 +26,12 @@ function sendNavigationToFocusedWindow(direction: 'back' | 'forward'): void {
 
 /** Send a menu command to the focused window's renderer (see use-menu-commands.ts). */
 function sendMenuCommand(command: string): void {
-  const window = BrowserWindow.getFocusedWindow()
+  // Menu items stay clickable while no window reports focus (macOS app menu
+  // without a focused window, Linux focus-follows-mouse) — fall back to the
+  // first live window instead of silently dropping the command.
+  const window =
+    BrowserWindow.getFocusedWindow() ??
+    BrowserWindow.getAllWindows().find((candidate) => !candidate.webContents.isDestroyed())
   if (!window || window.webContents.isDestroyed()) return
 
   window.webContents.send(AppChannels.events.MENU_COMMAND, { command })
