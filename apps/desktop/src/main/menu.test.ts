@@ -15,9 +15,27 @@ vi.mock('electron', () => ({
 
 import { buildAppMenu, buildEditableTextContextMenu } from './menu'
 
+interface TemplateItem {
+  label?: string
+  role?: string
+  accelerator?: string
+  registerAccelerator?: boolean
+  id?: string
+  click?: () => void
+  submenu?: TemplateItem[]
+}
+
+/** Find an item by label in the most recently built template. */
+function findMenuItem(label: string): TemplateItem | undefined {
+  const template = buildFromTemplate.mock.calls.at(-1)?.[0] as TemplateItem[]
+  return template.flatMap((item) => item.submenu ?? []).find((item) => item.label === label)
+}
+
 describe('buildAppMenu', () => {
   beforeEach(() => {
     buildFromTemplate.mockClear()
+    vi.mocked(BrowserWindow.getFocusedWindow).mockReset().mockReturnValue(null)
+    vi.mocked(BrowserWindow.getAllWindows).mockReset().mockReturnValue([])
   })
 
   it('labels every current native menu item from menu.json', async () => {
@@ -110,12 +128,14 @@ describe('buildAppMenu', () => {
     // role's registered accelerator also swallowed Ctrl+Z before the renderer
     // ever saw it, so undo was dead in the editor entirely.
     expect(undoItem).toMatchObject({
+      id: 'edit.undo',
       accelerator: 'CmdOrCtrl+Z',
       registerAccelerator: false
     })
     expect(undoItem?.role).toBeUndefined()
     expect(redoItem).toMatchObject({
-      accelerator: 'CmdOrCtrl+Shift+Z',
+      id: 'edit.redo',
+      accelerator: process.platform === 'win32' ? 'Control+Y' : 'CmdOrCtrl+Shift+Z',
       registerAccelerator: false
     })
     expect(redoItem?.role).toBeUndefined()
@@ -126,28 +146,46 @@ describe('buildAppMenu', () => {
     expect(send).toHaveBeenCalledWith(AppChannels.events.MENU_COMMAND, { command: 'edit.redo' })
   })
 
-  it('falls back to a live window when no window reports focus', async () => {
+  it('falls back to the sole visible window when no window reports focus', async () => {
     const i18n = await createMainI18n({ locale: 'en' })
     const send = vi.fn()
-    vi.mocked(BrowserWindow.getFocusedWindow).mockReturnValue(null)
+    const makeWindow = (visible: boolean, sendFn = vi.fn()) =>
+      ({
+        isVisible: () => visible,
+        webContents: { isDestroyed: () => false, send: sendFn }
+      }) as unknown as Electron.BrowserWindow
+    // Hidden helper windows (PDF export, unopened quick capture) never qualify.
     vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([
-      { webContents: { isDestroyed: () => true, send: vi.fn() } },
-      { webContents: { isDestroyed: () => false, send } }
-    ] as unknown as Electron.BrowserWindow[])
+      makeWindow(false),
+      makeWindow(true, send)
+    ])
 
     buildAppMenu(i18n)
 
-    const template = buildFromTemplate.mock.calls[0][0] as Array<{
-      submenu?: Array<{ label?: string; click?: () => void }>
-    }>
-    const undoItem = template
-      .flatMap((item) => item.submenu ?? [])
-      .find((item) => item.label === 'Undo')
+    const undoItem = findMenuItem('Undo')
 
     // Menu items are clickable while no window has focus (macOS app menu,
     // Linux focus-follows-mouse); the command must not be dropped.
     undoItem?.click?.()
     expect(send).toHaveBeenCalledWith(AppChannels.events.MENU_COMMAND, { command: 'edit.undo' })
+  })
+
+  it('drops the command when several visible windows could be the target', async () => {
+    const i18n = await createMainI18n({ locale: 'en' })
+    const sendA = vi.fn()
+    const sendB = vi.fn()
+    vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([
+      { isVisible: () => true, webContents: { isDestroyed: () => false, send: sendA } },
+      { isVisible: () => true, webContents: { isDestroyed: () => false, send: sendB } }
+    ] as unknown as Electron.BrowserWindow[])
+
+    buildAppMenu(i18n)
+
+    // Ambiguous target: guessing could undo/close a tab in a window the user
+    // isn't looking at, so the command is dropped like before the fallback.
+    findMenuItem('Undo')?.click?.()
+    expect(sendA).not.toHaveBeenCalled()
+    expect(sendB).not.toHaveBeenCalled()
   })
 
   it('registers native text editing roles and accelerators', async () => {

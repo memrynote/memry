@@ -69,7 +69,7 @@ test.describe('Editor undo history', () => {
     await page.keyboard.type(typedLine)
     await expectNoteEditorBody(page, `${body}\n\n${typedLine}`)
 
-    await clickApplicationMenuItem(electronApp, 'Undo')
+    await clickApplicationMenuItem(electronApp, 'edit.undo')
     await expectNoteEditorBody(page, body)
   })
 
@@ -90,19 +90,18 @@ test.describe('Editor undo history', () => {
 
 async function clickApplicationMenuItem(
   electronApp: ElectronApplication,
-  label: string
+  itemId: string
 ): Promise<void> {
-  await electronApp.evaluate(({ Menu, BrowserWindow }, itemLabel) => {
+  await electronApp.evaluate(({ Menu, BrowserWindow }, id) => {
     // The renderer dispatch targets the focused window; make sure there is one.
     BrowserWindow.getAllWindows()[0]?.focus()
     const menu = Menu.getApplicationMenu()
     if (!menu) throw new Error('No application menu')
-    const flatten = (items: Electron.MenuItem[]): Electron.MenuItem[] =>
-      items.flatMap((item) => [item, ...(item.submenu ? flatten(item.submenu.items) : [])])
-    const item = flatten(menu.items).find((candidate) => candidate.label === itemLabel)
-    if (!item) throw new Error(`Application menu item "${itemLabel}" not found`)
+    // Lookup by command id, not display label — labels are localized.
+    const item = menu.getMenuItemById(id)
+    if (!item) throw new Error(`Application menu item "${id}" not found`)
     item.click()
-  }, label)
+  }, itemId)
 }
 
 async function seedNote(page: Page, title: string, content: string): Promise<NoteHandle> {

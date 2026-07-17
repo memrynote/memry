@@ -76,13 +76,19 @@ export function useBlockNoteSetup({
     }
   }, [aiPort, editor])
 
-  // E2E test instrumentation: expose the active editor on window so Playwright
-  // tests can drive the editor via its API (avoiding typing-race conditions
-  // with auto-promote handlers). Only the currently mounted editor is exposed.
+  // Expose the active editor on window. Production path for the Edit-menu
+  // undo/redo and Insert/Format commands (lib/menu-commands.ts), and E2E
+  // instrumentation. Read-only instances (template preview) must not claim the
+  // global, and cleanup only clears its own registration so unmounting a later
+  // preview/split pane doesn't deregister a still-live editor.
   useEffect(() => {
-    ;(window as unknown as { __memryEditor?: unknown }).__memryEditor = editor
+    if (!editor.isEditable) return
+    const host = window as unknown as { __memryEditor?: unknown }
+    host.__memryEditor = editor
     return () => {
-      delete (window as unknown as { __memryEditor?: unknown }).__memryEditor
+      if (host.__memryEditor === editor) {
+        delete host.__memryEditor
+      }
     }
   }, [editor])
 

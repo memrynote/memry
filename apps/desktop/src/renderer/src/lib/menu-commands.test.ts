@@ -63,15 +63,30 @@ describe('applyEditorMenuCommand', () => {
 })
 
 describe('runHistoryMenuCommand', () => {
+  const originalExecCommand = document.execCommand
+
+  function makeHistoryEditor() {
+    const domElement = document.createElement('div')
+    const inner = document.createElement('span')
+    inner.tabIndex = 0
+    domElement.appendChild(inner)
+    document.body.appendChild(domElement)
+
+    const editor = { undo: vi.fn(), redo: vi.fn(), domElement }
+    ;(window as unknown as { __memryEditor?: unknown }).__memryEditor = editor
+    return { editor, focusInside: () => inner.focus() }
+  }
+
   afterEach(() => {
     delete (window as unknown as { __memryEditor?: unknown }).__memryEditor
     document.body.innerHTML = ''
+    document.execCommand = originalExecCommand
     vi.restoreAllMocks()
   })
 
-  it('routes undo/redo to the BlockNote editor history', () => {
-    const editor = { undo: vi.fn(), redo: vi.fn() }
-    ;(window as unknown as { __memryEditor?: unknown }).__memryEditor = editor
+  it('routes undo/redo to the editor history while focus is inside it', () => {
+    const { editor, focusInside } = makeHistoryEditor()
+    focusInside()
 
     runHistoryMenuCommand('undo')
     expect(editor.undo).toHaveBeenCalledTimes(1)
@@ -80,9 +95,35 @@ describe('runHistoryMenuCommand', () => {
     expect(editor.redo).toHaveBeenCalledTimes(1)
   })
 
+  it('does not touch the editor history when focus is outside it', () => {
+    const { editor } = makeHistoryEditor()
+    const outside = document.createElement('button')
+    document.body.appendChild(outside)
+    outside.focus()
+
+    runHistoryMenuCommand('undo')
+    expect(editor.undo).not.toHaveBeenCalled()
+  })
+
+  it('routes other contenteditable surfaces to the native command', () => {
+    const { editor } = makeHistoryEditor()
+    const execCommand = vi.fn()
+    document.execCommand = execCommand
+
+    const composer = document.createElement('div')
+    composer.contentEditable = 'true'
+    composer.tabIndex = 0
+    document.body.appendChild(composer)
+    composer.focus()
+    Object.defineProperty(composer, 'isContentEditable', { value: true })
+
+    runHistoryMenuCommand('undo')
+    expect(execCommand).toHaveBeenCalledWith('undo')
+    expect(editor.undo).not.toHaveBeenCalled()
+  })
+
   it('keeps native undo for focused input fields', () => {
-    const editor = { undo: vi.fn(), redo: vi.fn() }
-    ;(window as unknown as { __memryEditor?: unknown }).__memryEditor = editor
+    const { editor } = makeHistoryEditor()
     const execCommand = vi.fn()
     document.execCommand = execCommand
 
@@ -112,11 +153,12 @@ describe('runHistoryMenuCommand', () => {
   })
 
   it('swallows editor errors instead of crashing the menu', () => {
-    ;(window as unknown as { __memryEditor?: unknown }).__memryEditor = {
-      undo: () => {
-        throw new Error('not ready')
-      }
-    }
+    const { editor, focusInside } = makeHistoryEditor()
+    editor.undo.mockImplementation(() => {
+      throw new Error('not ready')
+    })
+    focusInside()
+
     expect(() => runHistoryMenuCommand('undo')).not.toThrow()
   })
 })
