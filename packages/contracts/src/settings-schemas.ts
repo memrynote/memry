@@ -259,11 +259,18 @@ export const BACKUP_SETTINGS_DEFAULTS: BackupSettings = {
 // Inbox Settings (daily review reminder)
 // ============================================================================
 
+/**
+ * 24h "HH:MM" wall-clock pattern for the inbox review-reminder time. Shared by
+ * this Zod schema, the renderer input guard, and the main-process scheduler's
+ * parser so the three never drift. Groups 1 and 2 capture hours and minutes.
+ */
+export const REVIEW_REMINDER_TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/
+
 export const InboxSettingsSchema = z.object({
   // Optional daily reminder to process the inbox in one calm pass.
   reviewReminderEnabled: z.boolean(),
   // Local wall-clock time, 24h "HH:MM".
-  reviewReminderTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/)
+  reviewReminderTime: z.string().regex(REVIEW_REMINDER_TIME_PATTERN)
 })
 
 export type InboxSettings = z.infer<typeof InboxSettingsSchema>

@@ -9,7 +9,7 @@
  * @module hooks/use-inbox-review-notifications
  */
 
-import { useEffect } from 'react'
+import { useCallback, useEffect } from 'react'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
@@ -23,19 +23,22 @@ export function useInboxReviewNotifications(): void {
   const { t } = useT('inbox')
   const { openSidebarItem } = useSidebarNavigation()
 
-  useEffect(() => {
-    // Mirrors the sidebar's inbox entry point (app-sidebar.tsx) so the nudge
-    // lands the user in exactly the same place as clicking "Inbox".
-    const openInbox = (): void => {
-      openSidebarItem({
-        type: 'inbox',
-        title: 'Inbox',
-        path: '/inbox',
-        viewState: newItemViewState('inbox')
-      })
-    }
+  // Mirrors the sidebar's inbox entry point (app-sidebar.tsx) so the nudge lands
+  // the user in exactly the same place as clicking "Inbox". Memoized so the IPC
+  // subscriptions below only re-register when navigation identity actually
+  // changes, not on every render.
+  const openInbox = useCallback((): void => {
+    openSidebarItem({
+      type: 'inbox',
+      title: 'Inbox',
+      path: '/inbox',
+      viewState: newItemViewState('inbox')
+    })
+  }, [openSidebarItem])
 
-    const unsubscribeDue = window.api.onInboxReviewDue(({ count }) => {
+  // Toast when the OS nudge fires. Depends on `t` so the copy re-localizes.
+  useEffect(() => {
+    return window.api.onInboxReviewDue(({ count }) => {
       toast(t('reviewNudge.title', { count }), {
         description: t('reviewNudge.description'),
         action: {
@@ -44,14 +47,13 @@ export function useInboxReviewNotifications(): void {
         }
       })
     })
+  }, [openInbox, t])
 
-    const unsubscribeOpen = window.api.onInboxReviewOpen(openInbox)
-
-    return () => {
-      unsubscribeDue()
-      unsubscribeOpen()
-    }
-  }, [openSidebarItem, t])
+  // Open the inbox when the user clicks the OS notification. Independent of `t`
+  // so a language change never drops this subscription.
+  useEffect(() => {
+    return window.api.onInboxReviewOpen(openInbox)
+  }, [openInbox])
 }
 
 export default useInboxReviewNotifications

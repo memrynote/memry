@@ -108,6 +108,7 @@ vi.mock('@/hooks', () => ({
   },
   useUndoKeyboardShortcut: vi.fn(),
   useReminderNotifications: vi.fn(),
+  useInboxReviewNotifications: vi.fn(),
   useSearchShortcut: vi.fn(),
   useHintActivation: vi.fn(),
   useFolderViewEvents: vi.fn(),
