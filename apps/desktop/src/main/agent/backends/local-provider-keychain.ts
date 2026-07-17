@@ -1,4 +1,4 @@
-import keytar from 'keytar'
+import { deleteSecret, getSecret, setSecret } from '../../secrets/secret-storage'
 
 const SERVICE = 'memry.agent.local-provider'
 const ACCOUNT_BASE = 'api-key'
@@ -9,7 +9,7 @@ function account(): string {
 }
 
 export async function getLocalProviderApiKey(): Promise<string | null> {
-  return keytar.getPassword(SERVICE, account())
+  return getSecret(SERVICE, account())
 }
 
 export async function hasLocalProviderApiKey(): Promise<boolean> {
@@ -18,8 +18,8 @@ export async function hasLocalProviderApiKey(): Promise<boolean> {
 
 export async function setLocalProviderApiKey(value: string | null): Promise<void> {
   if (!value) {
-    await keytar.deletePassword(SERVICE, account())
+    await deleteSecret(SERVICE, account())
     return
   }
-  await keytar.setPassword(SERVICE, account(), value)
+  await setSecret(SERVICE, account(), value)
 }
