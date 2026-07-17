@@ -9,6 +9,32 @@ export const PNG_BYTES = [
   208, 47, 0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130
 ]
 
+/**
+ * A minimal, valid single-page PDF with correct xref offsets, so pdf.js parses
+ * it cleanly (onLoadSuccess → numPages 1) without shipping a binary fixture.
+ * Content is pure ASCII, so byte length equals string length for the xref math.
+ */
+export function minimalPdfBytes(): Buffer {
+  const objects = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 144] >>'
+  ]
+  let body = '%PDF-1.4\n'
+  const offsets: number[] = []
+  objects.forEach((dict, i) => {
+    offsets.push(body.length)
+    body += `${i + 1} 0 obj\n${dict}\nendobj\n`
+  })
+  const xrefOffset = body.length
+  body += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`
+  for (const offset of offsets) {
+    body += `${String(offset).padStart(10, '0')} 00000 n \n`
+  }
+  body += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`
+  return Buffer.from(body, 'latin1')
+}
+
 export async function ready(page: Page): Promise<void> {
   await waitForAppReady(page)
   await waitForVaultReady(page)
