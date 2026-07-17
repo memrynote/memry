@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test'
+import type { ElectronApplication, Page } from '@playwright/test'
 import { test, expect } from './fixtures'
 import {
   navigateTo,
@@ -51,6 +51,28 @@ test.describe('Editor undo history', () => {
     await expectNoteEditorBody(page, body)
   })
 
+  test('Edit menu Undo reverts a local edit', async ({ electronApp, page }) => {
+    // Regression: Edit→Undo used role 'undo' (Chromium's native undo stack),
+    // which is empty in the BlockNote editor — the menu item silently did
+    // nothing on every platform, and its registered accelerator swallowed
+    // Ctrl+Z on Windows/Linux. Drives the real menu item, not the keyboard.
+    // Runs on the journal surface (same ContentArea editor) because it opens
+    // without the note-tab helper.
+    const body = `Menu undo seed ${Date.now()}`
+    const typedLine = 'typed before menu undo'
+    await seedCurrentJournalEntry(page, body)
+
+    await navigateTo(page, 'journal')
+    await expectNoteEditorBody(page, body)
+
+    await focusEditorEnd(page)
+    await page.keyboard.type(typedLine)
+    await expectNoteEditorBody(page, `${body}\n\n${typedLine}`)
+
+    await clickApplicationMenuItem(electronApp, 'edit.undo')
+    await expectNoteEditorBody(page, body)
+  })
+
   test('journal first-open undo preserves the seeded entry', async ({ page }) => {
     const body = `Journal undo seed ${Date.now()}\n\nStill here after undo`
     await seedCurrentJournalEntry(page, body)
@@ -65,6 +87,22 @@ test.describe('Editor undo history', () => {
     await expect.poll(() => currentJournalEntryContent(page)).toBe(body)
   })
 })
+
+async function clickApplicationMenuItem(
+  electronApp: ElectronApplication,
+  itemId: string
+): Promise<void> {
+  await electronApp.evaluate(({ Menu, BrowserWindow }, id) => {
+    // The renderer dispatch targets the focused window; make sure there is one.
+    BrowserWindow.getAllWindows()[0]?.focus()
+    const menu = Menu.getApplicationMenu()
+    if (!menu) throw new Error('No application menu')
+    // Lookup by command id, not display label — labels are localized.
+    const item = menu.getMenuItemById(id)
+    if (!item) throw new Error(`Application menu item "${id}" not found`)
+    item.click()
+  }, itemId)
+}
 
 async function seedNote(page: Page, title: string, content: string): Promise<NoteHandle> {
   return page.evaluate(

@@ -15,6 +15,19 @@ interface EditorLike {
   insertBlocks: (blocks: unknown[], ref: unknown, placement: 'after') => void
 }
 
+/** Shape of the BlockNote editor exposed on window by use-block-note-setup.ts. */
+interface MemryEditorGlobal extends EditorLike {
+  undo: () => boolean
+  redo: () => boolean
+  focus?: () => void
+  domElement?: HTMLElement
+}
+
+/** Single accessor for the editor global set by use-block-note-setup.ts. */
+function getMemryEditor(): MemryEditorGlobal | undefined {
+  return (window as unknown as { __memryEditor?: MemryEditorGlobal }).__memryEditor
+}
+
 const STYLE_COMMANDS: Record<string, Record<string, unknown>> = {
   'format.bold': { bold: true },
   'format.italic': { italic: true },
@@ -77,13 +90,43 @@ export function applyEditorMenuCommand(editor: EditorLike, command: string): boo
 }
 
 export function runEditorMenuCommand(command: string): void {
-  const editor = (window as unknown as { __memryEditor?: EditorLike & { focus?: () => void } })
-    .__memryEditor
+  const editor = getMemryEditor()
   if (!editor) return
   try {
     editor.focus?.()
     applyEditorMenuCommand(editor, command)
   } catch {
     // Editor not ready or block-shape drift — fail quietly rather than crash the menu.
+  }
+}
+
+/**
+ * Menu-bar Undo/Redo. Native inputs keep the browser's own edit history; the
+ * note editor's (Yjs) undo stack is used only while focus is inside it — the
+ * native menu role can't reach it (see main/menu.ts). Other editable surfaces
+ * (task description, agent composer) own their history, so they get the native
+ * command, and non-editable focus is a no-op rather than an invisible edit to
+ * a background document.
+ */
+export function runHistoryMenuCommand(action: 'undo' | 'redo'): void {
+  const active = document.activeElement
+  if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) {
+    document.execCommand(action)
+    return
+  }
+
+  const editor = getMemryEditor()
+  if (editor?.domElement && active && editor.domElement.contains(active)) {
+    try {
+      if (action === 'undo') editor.undo()
+      else editor.redo()
+    } catch {
+      // Editor not ready — fail quietly rather than crash the menu.
+    }
+    return
+  }
+
+  if (active instanceof HTMLElement && active.isContentEditable) {
+    document.execCommand(action)
   }
 }

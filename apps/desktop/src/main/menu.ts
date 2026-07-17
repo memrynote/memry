@@ -17,17 +17,34 @@ interface EditableContextMenuParams {
   }
 }
 
+/**
+ * Menu items stay clickable while no window reports focus (macOS app menu
+ * without a focused window, Linux focus-follows-mouse). Fall back to the app
+ * window only when it is unambiguous: exactly one visible live window.
+ * Hidden helper windows (PDF export, unopened quick capture) never qualify,
+ * and with several visible windows we drop the command rather than guess.
+ */
+function resolveMenuTargetWindow(): BrowserWindow | null {
+  const focused = BrowserWindow.getFocusedWindow()
+  if (focused && !focused.webContents.isDestroyed()) return focused
+
+  const visible = BrowserWindow.getAllWindows().filter(
+    (candidate) => candidate.isVisible() && !candidate.webContents.isDestroyed()
+  )
+  return visible.length === 1 ? visible[0] : null
+}
+
 function sendNavigationToFocusedWindow(direction: 'back' | 'forward'): void {
-  const window = BrowserWindow.getFocusedWindow()
-  if (!window || window.webContents.isDestroyed()) return
+  const window = resolveMenuTargetWindow()
+  if (!window) return
 
   sendAppNavigationDirection(window.webContents, direction)
 }
 
-/** Send a menu command to the focused window's renderer (see use-menu-commands.ts). */
+/** Send a menu command to the target window's renderer (see use-menu-commands.ts). */
 function sendMenuCommand(command: string): void {
-  const window = BrowserWindow.getFocusedWindow()
-  if (!window || window.webContents.isDestroyed()) return
+  const window = resolveMenuTargetWindow()
+  if (!window) return
 
   window.webContents.send(AppChannels.events.MENU_COMMAND, { command })
 }
@@ -36,11 +53,18 @@ export function buildAppMenu(i18n: I18nInstance): Menu {
   const t = i18n.getFixedT(null, 'menu')
   const isMac = process.platform === 'darwin'
 
-  // Bridge item: a click that dispatches a command to the renderer. No
-  // accelerator — the renderer/editor already owns the shortcuts, so adding one
-  // here would double-fire.
-  const cmd = (command: string, label: string): MenuItemConstructorOptions => ({
+  // Bridge item: a click that dispatches a command to the renderer. When an
+  // accelerator is given it is display-only (registerAccelerator: false) — the
+  // renderer/editor owns the shortcut, so registering it here would swallow the
+  // keydown in the main process on Windows/Linux before the editor sees it.
+  const cmd = (
+    command: string,
+    label: string,
+    accelerator?: string
+  ): MenuItemConstructorOptions => ({
+    id: command,
     label,
+    ...(accelerator ? { accelerator, registerAccelerator: false } : {}),
     click: () => sendMenuCommand(command)
   })
 
@@ -112,8 +136,18 @@ export function buildAppMenu(i18n: I18nInstance): Menu {
     {
       label: t('edit.label'),
       submenu: [
-        { label: t('edit.undo'), role: 'undo' },
-        { label: t('edit.redo'), role: 'redo' },
+        // Not role 'undo'/'redo': the role drives Chromium's native undo stack,
+        // which is empty in the BlockNote editor (Yjs owns history), and on
+        // Windows/Linux the role's registered accelerator swallows Ctrl+Z in the
+        // main process before the editor keymap ever sees it. The cmd() bridge
+        // shows the shortcut without registering it. Windows redo follows the
+        // platform's Ctrl+Y convention like the role did.
+        cmd('edit.undo', t('edit.undo'), 'CmdOrCtrl+Z'),
+        cmd(
+          'edit.redo',
+          t('edit.redo'),
+          process.platform === 'win32' ? 'Control+Y' : 'CmdOrCtrl+Shift+Z'
+        ),
         { type: 'separator' },
         { label: t('edit.cut'), role: 'cut' },
         { label: t('edit.copy'), role: 'copy' },
