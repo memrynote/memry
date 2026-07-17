@@ -195,6 +195,11 @@ vi.mock('./lib/reminders', () => ({
   stopReminderScheduler: vi.fn()
 }))
 
+vi.mock('./inbox/review-scheduler', () => ({
+  startInboxReviewScheduler: vi.fn(),
+  stopInboxReviewScheduler: vi.fn()
+}))
+
 vi.mock('./inbox/voice-model', () => ({
   stopVoiceModel: vi.fn(async () => undefined)
 }))
