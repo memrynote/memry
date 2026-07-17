@@ -465,7 +465,7 @@
       "useDropboxIcloudGit": "Use Dropbox, iCloud, Git",
       "recentVaults": "Recent Vaults",
       "notesLastOpened": "notes · Last opened",
-      "preRelease": "Pre-release",
+      "preRelease": "Beta",
       "createNewVault": "Create new vault",
       "createNewVaultDesc": "Start a fresh vault in a folder of your choice.",
       "openExistingVault": "Open existing vault",
@@ -478,7 +478,7 @@
       "helpAndDocs": "Help & docs",
       "signInRequiresVault": "Open or create a vault first to set up sync.",
       "addVault": "Add vault",
-      "brandName": "Memry"
+      "brandName": "Memrynote"
     },
     "componentsVaultSwitcher": {
       "noVaultsYet": "No vaults yet",
