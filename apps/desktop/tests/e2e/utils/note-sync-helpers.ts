@@ -89,12 +89,25 @@ async function openNoteInUi(page: Page, note: NoteHandle): Promise<void> {
     .poll(() => findNoteHandle(page, note.id, note.title), { timeout: NOTE_LIST_POLL_TIMEOUT_MS })
     .not.toBeNull()
 
-  await page.evaluate((detail) => {
-    window.dispatchEvent(new CustomEvent('memry:test-open-note', { detail }))
-  }, note)
-
+  // findNoteHandle succeeds via pure IPC, so the note can exist before the
+  // renderer has mounted the 'memry:test-open-note' listener: that listener
+  // lives in AppContent, which only mounts once the vault is open. A CustomEvent
+  // has no queue, so a single dispatch that lands before the listener mounts (or
+  // is clobbered by a late RESTORE_SESSION) is lost silently and the tab never
+  // opens. Re-dispatch until the tab renders. OPEN_TAB dedupes by entityId, so
+  // repeated dispatches are safe — they just focus the already-open tab.
   const tab = page.locator(SELECTORS.tab).filter({ hasText: note.title }).first()
-  await expect(tab).toBeVisible({ timeout: NOTE_OPEN_TIMEOUT_MS })
+  await expect
+    .poll(
+      async () => {
+        await page.evaluate((detail) => {
+          window.dispatchEvent(new CustomEvent('memry:test-open-note', { detail }))
+        }, note)
+        return tab.isVisible().catch(() => false)
+      },
+      { timeout: NOTE_OPEN_TIMEOUT_MS, intervals: [500, 1_000, 2_000] }
+    )
+    .toBe(true)
   await tab.click()
 
   const titleInput = page.locator(SELECTORS.noteTitle).first()
