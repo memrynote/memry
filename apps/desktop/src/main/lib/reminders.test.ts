@@ -48,6 +48,12 @@ const loggerMock = {
   error: vi.fn(),
   debug: vi.fn()
 }
+const setBadgeCountMock = vi.fn()
+
+const realPlatformDescriptor = Object.getOwnPropertyDescriptor(process, 'platform')!
+const setPlatform = (value: string): void => {
+  Object.defineProperty(process, 'platform', { value, configurable: true })
+}
 
 type MockNotificationOptions = {
   id?: string
@@ -59,6 +65,8 @@ type MockNotificationOptions = {
 
 class MockNotification {
   static isSupported = vi.fn(() => true)
+  // Electron 42+ API; set to undefined in tests to simulate older Electron.
+  static remove: ReturnType<typeof vi.fn> | undefined = vi.fn()
   options: MockNotificationOptions
   handlers: Record<string, (...args: unknown[]) => void> = {}
   show = vi.fn()
@@ -149,6 +157,8 @@ describe('reminders service', () => {
     notificationInstances.length = 0
     MockNotification.isSupported.mockReset()
     MockNotification.isSupported.mockReturnValue(true)
+    MockNotification.remove = vi.fn()
+    setBadgeCountMock.mockReset()
     reminderCounter = 0
     emitCalendarProjectionChanged.mockClear()
     scheduleGoogleCalendarSourceSync.mockClear()
@@ -163,6 +173,9 @@ describe('reminders service', () => {
 
     vi.resetModules()
     vi.doMock('electron', () => ({
+      app: {
+        setBadgeCount: setBadgeCountMock
+      },
       BrowserWindow: {
         getAllWindows: vi.fn()
       },
@@ -221,6 +234,7 @@ describe('reminders service', () => {
     remindersService.stopReminderScheduler()
     cleanupTestDatabase(dataDb)
     cleanupTestDatabase(indexDb)
+    Object.defineProperty(process, 'platform', realPlatformDescriptor)
     vi.clearAllMocks()
   })
 
@@ -543,6 +557,159 @@ describe('reminders service', () => {
     expect(scheduleGoogleCalendarSourceSync).toHaveBeenCalledWith({
       sourceType: 'reminder',
       sourceId: 'rem-b2'
+    })
+  })
+
+  describe('delivered notification cleanup (Electron 42+, macOS)', () => {
+    it('removes the delivered notification banner on dismiss', () => {
+      setPlatform('darwin')
+      seedReminder({ id: 'rem-nc1', status: reminderStatus.TRIGGERED })
+
+      const result = remindersService.dismissReminder('rem-nc1')
+
+      expect(result?.status).toBe(reminderStatus.DISMISSED)
+      expect(MockNotification.remove).toHaveBeenCalledWith('rem-nc1')
+    })
+
+    it('removes the delivered notification banner on snooze', () => {
+      setPlatform('darwin')
+      seedReminder({ id: 'rem-nc2', status: reminderStatus.TRIGGERED })
+
+      const snoozeUntil = new Date(Date.now() + 60 * 60 * 1000).toISOString()
+      const result = remindersService.snoozeReminder({ id: 'rem-nc2', snoozeUntil })
+
+      expect(result?.status).toBe(reminderStatus.SNOOZED)
+      expect(MockNotification.remove).toHaveBeenCalledWith('rem-nc2')
+    })
+
+    it('does not touch delivered notifications on non-darwin platforms', () => {
+      setPlatform('win32')
+      seedReminder({ id: 'rem-nc3', status: reminderStatus.TRIGGERED })
+      seedReminder({ id: 'rem-nc4', status: reminderStatus.TRIGGERED })
+
+      remindersService.dismissReminder('rem-nc3')
+      remindersService.snoozeReminder({
+        id: 'rem-nc4',
+        snoozeUntil: new Date(Date.now() + 60 * 60 * 1000).toISOString()
+      })
+
+      expect(MockNotification.remove).not.toHaveBeenCalled()
+    })
+
+    it('is a silent no-op when Notification.remove is unavailable (Electron <42)', () => {
+      setPlatform('darwin')
+      MockNotification.remove = undefined
+      seedReminder({ id: 'rem-nc5', status: reminderStatus.TRIGGERED })
+
+      const result = remindersService.dismissReminder('rem-nc5')
+
+      expect(result?.status).toBe(reminderStatus.DISMISSED)
+    })
+
+    it('logs and keeps dismissing when Notification.remove throws', () => {
+      setPlatform('darwin')
+      const removeError = new Error('notification center unavailable')
+      MockNotification.remove?.mockImplementation(() => {
+        throw removeError
+      })
+      seedReminder({ id: 'rem-nc6', status: reminderStatus.TRIGGERED })
+
+      const result = remindersService.dismissReminder('rem-nc6')
+
+      expect(result?.status).toBe(reminderStatus.DISMISSED)
+      expect(loggerMock.warn).toHaveBeenCalledWith(
+        'Failed to remove delivered notification for reminder rem-nc6:',
+        removeError
+      )
+    })
+  })
+
+  describe('dock badge count', () => {
+    it('sets the badge from the pending count when the scheduler starts', () => {
+      const future = new Date(Date.now() + 60 * 60 * 1000).toISOString()
+      seedReminder({ id: 'rem-bg1', remindAt: future, status: reminderStatus.PENDING })
+      seedReminder({
+        id: 'rem-bg2',
+        remindAt: future,
+        status: reminderStatus.SNOOZED,
+        snoozedUntil: future
+      })
+
+      remindersService.startReminderScheduler()
+      remindersService.stopReminderScheduler()
+
+      expect(setBadgeCountMock).toHaveBeenLastCalledWith(2)
+    })
+
+    it('drops the badge count when a due reminder fires', () => {
+      seedReminder({
+        id: 'rem-bg3',
+        remindAt: '2000-01-01T00:00:00.000Z',
+        status: reminderStatus.PENDING
+      })
+      seedReminder({
+        id: 'rem-bg4',
+        remindAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+        status: reminderStatus.PENDING
+      })
+
+      remindersService.startReminderScheduler()
+      remindersService.stopReminderScheduler()
+
+      expect(setBadgeCountMock).toHaveBeenLastCalledWith(1)
+    })
+
+    it('clears the badge when the last pending reminder is dismissed', () => {
+      seedReminder({ id: 'rem-bg5', status: reminderStatus.PENDING })
+
+      remindersService.dismissReminder('rem-bg5')
+
+      expect(setBadgeCountMock).toHaveBeenLastCalledWith(0)
+    })
+
+    it('counts a snoozed reminder back into the badge', () => {
+      seedReminder({ id: 'rem-bg6', status: reminderStatus.TRIGGERED })
+
+      remindersService.snoozeReminder({
+        id: 'rem-bg6',
+        snoozeUntil: new Date(Date.now() + 60 * 60 * 1000).toISOString()
+      })
+
+      expect(setBadgeCountMock).toHaveBeenLastCalledWith(1)
+    })
+
+    it('updates the badge on create and delete', () => {
+      const created = remindersService.createReminder({
+        targetType: 'note',
+        targetId: 'note-1',
+        remindAt: new Date(Date.now() + 60 * 60 * 1000).toISOString()
+      })
+      expect(setBadgeCountMock).toHaveBeenLastCalledWith(1)
+
+      remindersService.deleteReminder(created.id)
+      expect(setBadgeCountMock).toHaveBeenLastCalledWith(0)
+    })
+
+    it('updates the badge after bulk dismiss', () => {
+      seedReminder({ id: 'rem-bg7', status: reminderStatus.PENDING })
+      seedReminder({ id: 'rem-bg8', status: reminderStatus.PENDING })
+
+      remindersService.bulkDismissReminders(['rem-bg7', 'rem-bg8'])
+
+      expect(setBadgeCountMock).toHaveBeenLastCalledWith(0)
+    })
+
+    it('swallows and logs badge failures without breaking the reminder flow', () => {
+      const badgeError = new Error('badge unsupported')
+      setBadgeCountMock.mockImplementation(() => {
+        throw badgeError
+      })
+      seedReminder({ id: 'rem-bg9', status: reminderStatus.PENDING })
+
+      const result = remindersService.dismissReminder('rem-bg9')
+
+      expect(result?.status).toBe(reminderStatus.DISMISSED)
+      expect(loggerMock.warn).toHaveBeenCalledWith('Failed to update app badge count:', badgeError)
     })
   })
 

@@ -7,7 +7,7 @@
  * @module main/lib/reminders
  */
 
-import { BrowserWindow, Notification } from 'electron'
+import { app, BrowserWindow, Notification } from 'electron'
 import { getDatabase, getIndexDatabase } from '../database'
 import type { IndexDb } from '../database/types'
 import { getNoteCacheById } from '../database/queries/notes'
@@ -300,6 +300,36 @@ function showDesktopNotification(reminder: ReminderWithTarget): void {
   }
 }
 
+/**
+ * Remove a delivered notification banner for a reminder from Notification
+ * Center. `Notification.remove` is Electron 42+ and only implemented on
+ * macOS — everywhere else this is a silent no-op.
+ * @param reminderId - Stable reminder id used as the notification id
+ */
+function removeDeliveredNotification(reminderId: string): void {
+  if (process.platform !== 'darwin') return
+  if (typeof Notification.remove !== 'function') return
+
+  try {
+    Notification.remove(reminderId)
+  } catch (error) {
+    logger.warn(`Failed to remove delivered notification for reminder ${reminderId}:`, error)
+  }
+}
+
+/**
+ * Reflect the pending reminder count on the dock/taskbar badge
+ * (macOS dock + Unity launcher; a no-op false return on Windows).
+ * A badge failure must never break the reminder flow.
+ */
+function updateAppBadge(): void {
+  try {
+    app.setBadgeCount(countPendingReminders())
+  } catch (error) {
+    logger.warn('Failed to update app badge count:', error)
+  }
+}
+
 // ============================================================================
 // CRUD Operations
 // ============================================================================
@@ -347,6 +377,7 @@ export function createReminder(input: CreateReminderInput): Reminder {
   const result = toReminder(reminder)
   emitEvent(ReminderChannels.events.CREATED, { reminder: result })
   syncReminderCalendarState(id)
+  updateAppBadge()
 
   logger.info(`Created reminder ${id} for ${input.targetType}:${input.targetId}`)
   return result
@@ -395,6 +426,7 @@ export function updateReminder(input: UpdateReminderInput): Reminder | null {
   const result = toReminder(reminder)
   emitEvent(ReminderChannels.events.UPDATED, { reminder: result })
   syncReminderCalendarState(input.id)
+  updateAppBadge()
 
   logger.info(`Updated reminder ${input.id}`)
   return result
@@ -421,6 +453,7 @@ export function deleteReminder(id: string): boolean {
     targetId: reminder.targetId
   })
   syncReminderCalendarState(id)
+  updateAppBadge()
 
   logger.info(`Deleted reminder ${id}`)
   return true
@@ -599,6 +632,8 @@ export function dismissReminder(id: string): Reminder | null {
   const result = toReminder(reminder)
   emitEvent(ReminderChannels.events.DISMISSED, { reminder: result })
   syncReminderCalendarState(id)
+  removeDeliveredNotification(id)
+  updateAppBadge()
 
   logger.info(`Dismissed reminder ${id}`)
   return result
@@ -635,6 +670,8 @@ export function snoozeReminder(input: SnoozeReminderInput): Reminder | null {
   const result = toReminder(reminder)
   emitEvent(ReminderChannels.events.SNOOZED, { reminder: result })
   syncReminderCalendarState(input.id)
+  removeDeliveredNotification(input.id)
+  updateAppBadge()
 
   logger.info(`Snoozed reminder ${input.id} until ${input.snoozeUntil}`)
   return result
@@ -668,6 +705,8 @@ export function bulkDismissReminders(reminderIds: string[]): number {
     }
   }
 
+  updateAppBadge()
+
   logger.info(`Bulk dismissed ${dismissedCount} reminders`)
   return dismissedCount
 }
@@ -686,6 +725,9 @@ function processDueReminders(): void {
     const dueReminders = getDueReminders()
 
     if (dueReminders.length === 0) {
+      // Reminders can also mutate outside this module (e.g. note date pills),
+      // so refresh the badge on every tick to self-heal a stale count.
+      updateAppBadge()
       return
     }
 
@@ -722,6 +764,9 @@ function processDueReminders(): void {
 
     emitEvent(ReminderChannels.events.DUE, event)
     logger.debug(`Emitted due event for ${dueReminders.length} reminders`)
+
+    // Fired reminders left the pending/snoozed set — reflect that on the badge.
+    updateAppBadge()
   } catch (error) {
     logger.error('Error processing due reminders:', error)
   }
@@ -739,6 +784,10 @@ export function startReminderScheduler(): void {
 
   // Process any reminders that became due while app was closed
   processDueReminders()
+
+  // Seed the dock/taskbar badge on startup (processDueReminders skips it
+  // when the vault is not open yet).
+  updateAppBadge()
 
   // Set up interval to check for due reminders
   schedulerInterval = setInterval(processDueReminders, SCHEDULER_INTERVAL_MS)
