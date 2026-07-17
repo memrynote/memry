@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const harness = vi.hoisted(() => {
   const keytarStore = new Map<string, string>()
-  return {
+  const self = {
     appReady: true,
     encryptionAvailable: true,
     backend: 'keychain_access',
@@ -15,13 +15,37 @@ const harness = vi.hoisted(() => {
     // Diverging the two simulates a broken safeStorage round-trip.
     encryptPrefix: 'enc:',
     decryptPrefix: 'enc:',
+    // Async safeStorage API (Electron 43 os_crypt_async). Present and available
+    // by default so the whole suite exercises the async path; individual tests
+    // flip these to cover the sync fallback. Sync and async mocks share the
+    // exact same ciphertext encoding — mirroring Electron, where both APIs
+    // produce and accept identical bytes.
+    asyncApiPresent: true,
+    asyncAvailable: true,
+    shouldReEncrypt: false,
     keytarStore,
     keytarGet: vi.fn(async (s: string, a: string) => keytarStore.get(`${s}:${a}`) ?? null),
     keytarSet: vi.fn(async (s: string, a: string, v: string) => {
       keytarStore.set(`${s}:${a}`, v)
     }),
-    keytarDelete: vi.fn(async (s: string, a: string) => keytarStore.delete(`${s}:${a}`))
+    keytarDelete: vi.fn(async (s: string, a: string) => keytarStore.delete(`${s}:${a}`)),
+    decode(buf: Buffer): string {
+      const raw = buf.toString('utf-8')
+      if (!raw.startsWith(self.decryptPrefix)) throw new Error('safeStorage decrypt failed')
+      return raw.slice(self.decryptPrefix.length)
+    },
+    syncEncrypt: vi.fn((value: string) => Buffer.from(`${self.encryptPrefix}${value}`, 'utf-8')),
+    syncDecrypt: vi.fn((buf: Buffer) => self.decode(buf)),
+    isAsyncEncryptionAvailable: vi.fn(async () => self.asyncAvailable),
+    asyncEncrypt: vi.fn(async (value: string) =>
+      Buffer.from(`${self.encryptPrefix}${value}`, 'utf-8')
+    ),
+    asyncDecrypt: vi.fn(async (buf: Buffer) => ({
+      shouldReEncrypt: self.shouldReEncrypt,
+      result: self.decode(buf)
+    }))
   }
+  return self
 })
 
 vi.mock('electron', () => ({
@@ -35,11 +59,18 @@ vi.mock('electron', () => ({
   safeStorage: {
     isEncryptionAvailable: () => harness.encryptionAvailable,
     getSelectedStorageBackend: () => harness.backend,
-    encryptString: (value: string) => Buffer.from(`${harness.encryptPrefix}${value}`, 'utf-8'),
-    decryptString: (buf: Buffer) => {
-      const raw = buf.toString('utf-8')
-      if (!raw.startsWith(harness.decryptPrefix)) throw new Error('safeStorage decrypt failed')
-      return raw.slice(harness.decryptPrefix.length)
+    encryptString: harness.syncEncrypt,
+    decryptString: harness.syncDecrypt,
+    // Getter-based so tests can simulate an Electron without the async API
+    // surface (typeof checks in the implementation see undefined).
+    get isAsyncEncryptionAvailable() {
+      return harness.asyncApiPresent ? harness.isAsyncEncryptionAvailable : undefined
+    },
+    get encryptStringAsync() {
+      return harness.asyncApiPresent ? harness.asyncEncrypt : undefined
+    },
+    get decryptStringAsync() {
+      return harness.asyncApiPresent ? harness.asyncDecrypt : undefined
     }
   }
 }))
@@ -53,6 +84,7 @@ vi.mock('keytar', () => ({
 }))
 
 import {
+  ASYNC_PROBE_TIMEOUT_MS,
   SECRET_STORE_FILENAME,
   deleteSecret,
   finalizeKeytarMigration,
@@ -95,6 +127,9 @@ describe('secret-storage', () => {
     harness.backend = 'keychain_access'
     harness.encryptPrefix = 'enc:'
     harness.decryptPrefix = 'enc:'
+    harness.asyncApiPresent = true
+    harness.asyncAvailable = true
+    harness.shouldReEncrypt = false
     harness.keytarStore.clear()
     harness.userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-secret-storage-'))
   })
@@ -376,6 +411,64 @@ describe('secret-storage', () => {
   })
 
   // --------------------------------------------------------------------------
+  // Concurrent writes — the encrypt/persist/verify critical sections contain
+  // await points, so racing writers must be serialized per secret.
+  // --------------------------------------------------------------------------
+
+  describe('concurrent writes', () => {
+    it('a setSecret racing migrate-on-read never loses the newly written value', async () => {
+      harness.keytarStore.set(`${SERVICE}:${ACCOUNT}`, 'legacy-value')
+      let releaseEncrypt!: () => void
+      const gate = new Promise<void>((resolve) => {
+        releaseEncrypt = resolve
+      })
+      // Hold the migration's encrypt so a concurrent setSecret can race it.
+      harness.asyncEncrypt.mockImplementationOnce(async (value: string) => {
+        await gate
+        return Buffer.from(`enc:${value}`, 'utf-8')
+      })
+
+      const read = getSecret(SERVICE, ACCOUNT)
+      await vi.waitFor(() => {
+        expect(harness.asyncEncrypt).toHaveBeenCalledTimes(1)
+      })
+      const write = setSecret(SERVICE, ACCOUNT, 'new-value')
+      // Let the write progress as far as it can before the migration resumes.
+      await new Promise((resolve) => setImmediate(resolve))
+      releaseEncrypt()
+      await expect(read).resolves.toBe('legacy-value')
+      await write
+
+      // The write is the freshest value: it must win, exist exactly once, and
+      // never be rolled back by the migration's read-back verification.
+      expect(readStoreJson().entries[SERVICE][ACCOUNT]).toBe(cipherFor('new-value'))
+      await expect(getSecret(SERVICE, ACCOUNT)).resolves.toBe('new-value')
+    })
+
+    it('migration skips when a setSecret landed while the keytar read was in flight', async () => {
+      harness.keytarStore.set(`${SERVICE}:${ACCOUNT}`, 'legacy-value')
+      let releaseKeytar!: () => void
+      const gate = new Promise<void>((resolve) => {
+        releaseKeytar = resolve
+      })
+      harness.keytarGet.mockImplementationOnce(async () => {
+        await gate
+        return 'legacy-value'
+      })
+
+      const read = getSecret(SERVICE, ACCOUNT)
+      await setSecret(SERVICE, ACCOUNT, 'new-value')
+      releaseKeytar()
+      // The racing read returns what keytar held at read time…
+      await expect(read).resolves.toBe('legacy-value')
+
+      // …but its migration must not clobber the fresher store entry.
+      expect(readStoreJson().entries[SERVICE][ACCOUNT]).toBe(cipherFor('new-value'))
+      await expect(getSecret(SERVICE, ACCOUNT)).resolves.toBe('new-value')
+    })
+  })
+
+  // --------------------------------------------------------------------------
   // Atomic writes
   // --------------------------------------------------------------------------
 
@@ -447,6 +540,201 @@ describe('secret-storage', () => {
 
       expect(harness.keytarDelete).toHaveBeenCalledWith(SERVICE, ACCOUNT)
       expect(harness.keytarStore.has(`${SERVICE}:${ACCOUNT}`)).toBe(false)
+    })
+  })
+
+  // --------------------------------------------------------------------------
+  // Async safeStorage API (Electron 43 os_crypt_async)
+  // --------------------------------------------------------------------------
+
+  describe('async safeStorage API', () => {
+    it('uses the async API for writes and reads; the sync API is never called', async () => {
+      await setSecret(SERVICE, ACCOUNT, 'value')
+      await expect(getSecret(SERVICE, ACCOUNT)).resolves.toBe('value')
+
+      expect(harness.asyncEncrypt).toHaveBeenCalledWith('value')
+      expect(harness.asyncDecrypt).toHaveBeenCalled()
+      expect(harness.syncEncrypt).not.toHaveBeenCalled()
+      expect(harness.syncDecrypt).not.toHaveBeenCalled()
+      // Ciphertext on disk is byte-identical to what the sync API would write.
+      expect(readStoreJson().entries[SERVICE][ACCOUNT]).toBe(cipherFor('value'))
+    })
+
+    it('falls back to the sync API when isAsyncEncryptionAvailable resolves false', async () => {
+      harness.asyncAvailable = false
+
+      await setSecret(SERVICE, ACCOUNT, 'value')
+      await expect(getSecret(SERVICE, ACCOUNT)).resolves.toBe('value')
+
+      expect(harness.syncEncrypt).toHaveBeenCalledWith('value')
+      expect(harness.syncDecrypt).toHaveBeenCalled()
+      expect(harness.asyncEncrypt).not.toHaveBeenCalled()
+      expect(harness.asyncDecrypt).not.toHaveBeenCalled()
+      expect(readStoreJson().entries[SERVICE][ACCOUNT]).toBe(cipherFor('value'))
+    })
+
+    it('falls back to the sync API when the async surface is absent', async () => {
+      harness.asyncApiPresent = false
+
+      await setSecret(SERVICE, ACCOUNT, 'value')
+      await expect(getSecret(SERVICE, ACCOUNT)).resolves.toBe('value')
+
+      expect(harness.syncEncrypt).toHaveBeenCalledWith('value')
+      expect(harness.syncDecrypt).toHaveBeenCalled()
+      expect(harness.isAsyncEncryptionAvailable).not.toHaveBeenCalled()
+      expect(harness.asyncEncrypt).not.toHaveBeenCalled()
+      expect(harness.asyncDecrypt).not.toHaveBeenCalled()
+    })
+
+    it('accepts sync-era ciphertext unchanged on the async read path', async () => {
+      seedStoreFile(SERVICE, ACCOUNT, 'legacy-value')
+      const bytesBefore = fs.readFileSync(storeFilePath(), 'utf-8')
+
+      await expect(getSecret(SERVICE, ACCOUNT)).resolves.toBe('legacy-value')
+
+      // The async decryptor received the stored bytes verbatim — no
+      // re-encoding or transformation between the two API generations.
+      const received = harness.asyncDecrypt.mock.calls[0][0]
+      expect(received.equals(Buffer.from(cipherFor('legacy-value'), 'base64'))).toBe(true)
+      expect(fs.readFileSync(storeFilePath(), 'utf-8')).toBe(bytesBefore)
+      expect(harness.syncDecrypt).not.toHaveBeenCalled()
+    })
+
+    it('async-written ciphertext is readable by the sync path on a later run', async () => {
+      await setSecret(SERVICE, ACCOUNT, 'value')
+      expect(harness.asyncEncrypt).toHaveBeenCalledWith('value')
+      const bytesBefore = fs.readFileSync(storeFilePath(), 'utf-8')
+
+      // Simulate the next app run on an Electron without async encryption.
+      resetSecretStorageForTests()
+      harness.asyncAvailable = false
+      harness.asyncDecrypt.mockClear()
+      harness.syncDecrypt.mockClear()
+
+      await expect(getSecret(SERVICE, ACCOUNT)).resolves.toBe('value')
+
+      expect(harness.syncDecrypt).toHaveBeenCalled()
+      expect(harness.asyncDecrypt).not.toHaveBeenCalled()
+      expect(fs.readFileSync(storeFilePath(), 'utf-8')).toBe(bytesBefore)
+    })
+
+    it('ignores shouldReEncrypt: the read returns the value and never rewrites the store', async () => {
+      harness.shouldReEncrypt = true
+      seedStoreFile(SERVICE, ACCOUNT, 'value')
+      const bytesBefore = fs.readFileSync(storeFilePath(), 'utf-8')
+
+      await expect(getSecret(SERVICE, ACCOUNT)).resolves.toBe('value')
+
+      expect(harness.asyncEncrypt).not.toHaveBeenCalled()
+      expect(fs.readFileSync(storeFilePath(), 'utf-8')).toBe(bytesBefore)
+    })
+
+    it('keeps encryption-unavailable gating unchanged: the async API is never touched', async () => {
+      harness.encryptionAvailable = false
+      harness.keytarStore.set(`${SERVICE}:${ACCOUNT}`, 'legacy-value')
+
+      await expect(getSecret(SERVICE, ACCOUNT)).resolves.toBe('legacy-value')
+      await setSecret(SERVICE, ACCOUNT, 'new-value')
+
+      expect(harness.keytarSet).toHaveBeenCalledWith(SERVICE, ACCOUNT, 'new-value')
+      expect(fs.existsSync(storeFilePath())).toBe(false)
+      expect(harness.isAsyncEncryptionAvailable).not.toHaveBeenCalled()
+      expect(harness.asyncEncrypt).not.toHaveBeenCalled()
+      expect(harness.asyncDecrypt).not.toHaveBeenCalled()
+    })
+
+    it('an async encryption rejection retries the sync API and still writes the store', async () => {
+      harness.asyncEncrypt.mockRejectedValueOnce(new Error('os_crypt_async failure'))
+
+      await setSecret(SERVICE, ACCOUNT, 'value')
+
+      expect(harness.syncEncrypt).toHaveBeenCalledWith('value')
+      expect(harness.keytarSet).not.toHaveBeenCalled()
+      expect(readStoreJson().entries[SERVICE][ACCOUNT]).toBe(cipherFor('value'))
+      await expect(getSecret(SERVICE, ACCOUNT)).resolves.toBe('value')
+    })
+
+    it('falls back to keytar only when both encryptors fail', async () => {
+      harness.asyncEncrypt.mockRejectedValueOnce(new Error('os_crypt_async failure'))
+      harness.syncEncrypt.mockImplementationOnce(() => {
+        throw new Error('sync encrypt failure')
+      })
+
+      await setSecret(SERVICE, ACCOUNT, 'value')
+
+      expect(harness.keytarSet).toHaveBeenCalledWith(SERVICE, ACCOUNT, 'value')
+      if (fs.existsSync(storeFilePath())) {
+        expect(readStoreJson().entries[SERVICE]?.[ACCOUNT]).toBeUndefined()
+      }
+    })
+
+    it('an async decryption rejection retries the sync API before any keychain fallback', async () => {
+      // The async encryptor can report available yet fail per-call (e.g. a
+      // poisoned key provider) while the sync OSCrypt path still works; the
+      // ciphertext is byte-compatible, so the sync retry must recover it.
+      seedStoreFile(SERVICE, ACCOUNT, 'store-value')
+      harness.keytarStore.set(`${SERVICE}:${ACCOUNT}`, 'legacy-value')
+      harness.asyncDecrypt.mockRejectedValueOnce(new Error('os_crypt_async failure'))
+
+      await expect(getSecret(SERVICE, ACCOUNT)).resolves.toBe('store-value')
+      expect(harness.syncDecrypt).toHaveBeenCalled()
+    })
+
+    it('falls back to the OS keychain copy only when both decryptors fail', async () => {
+      seedStoreFile(SERVICE, ACCOUNT, 'store-value')
+      harness.keytarStore.set(`${SERVICE}:${ACCOUNT}`, 'legacy-value')
+      harness.asyncDecrypt.mockRejectedValueOnce(new Error('os_crypt_async failure'))
+      harness.syncDecrypt.mockImplementationOnce(() => {
+        throw new Error('sync decrypt failure')
+      })
+
+      await expect(getSecret(SERVICE, ACCOUNT)).resolves.toBe('legacy-value')
+    })
+
+    it('a hung availability probe times out to the sync API instead of blocking reads', async () => {
+      vi.useFakeTimers()
+      try {
+        harness.isAsyncEncryptionAvailable.mockImplementationOnce(
+          () => new Promise<boolean>(() => {})
+        )
+        seedStoreFile(SERVICE, ACCOUNT, 'value')
+
+        const read = getSecret(SERVICE, ACCOUNT)
+        await vi.advanceTimersByTimeAsync(ASYNC_PROBE_TIMEOUT_MS + 1)
+
+        await expect(read).resolves.toBe('value')
+        expect(harness.syncDecrypt).toHaveBeenCalled()
+        expect(harness.asyncDecrypt).not.toHaveBeenCalled()
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('a failed availability probe falls back to the sync API', async () => {
+      harness.isAsyncEncryptionAvailable.mockRejectedValueOnce(new Error('probe failure'))
+
+      await setSecret(SERVICE, ACCOUNT, 'value')
+
+      expect(harness.syncEncrypt).toHaveBeenCalledWith('value')
+      expect(harness.asyncEncrypt).not.toHaveBeenCalled()
+      await expect(getSecret(SERVICE, ACCOUNT)).resolves.toBe('value')
+    })
+
+    it('probes async availability exactly once across concurrent startup reads', async () => {
+      seedStoreFile(SERVICE, 'account-a', 'value-a')
+      const store = readStoreJson()
+      store.entries[SERVICE]['account-b'] = cipherFor('value-b')
+      store.entries[SERVICE]['account-c'] = cipherFor('value-c')
+      fs.writeFileSync(storeFilePath(), JSON.stringify(store), 'utf-8')
+
+      const [a, b, c] = await Promise.all([
+        getSecret(SERVICE, 'account-a'),
+        getSecret(SERVICE, 'account-b'),
+        getSecret(SERVICE, 'account-c')
+      ])
+
+      expect([a, b, c]).toEqual(['value-a', 'value-b', 'value-c'])
+      expect(harness.isAsyncEncryptionAvailable).toHaveBeenCalledTimes(1)
     })
   })
 })
