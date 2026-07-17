@@ -10,7 +10,11 @@ import type {
   RecordSyncItemType,
   RecordSyncManifest
 } from '@memry/contracts/sync-api'
-import { RECORD_CLOCK_REQUIRED_ITEM_TYPES, RECORD_SYNC_ITEM_TYPES } from '@memry/contracts/sync-api'
+import {
+  LEGACY_RECORD_SYNC_ITEM_TYPES,
+  RECORD_CLOCK_REQUIRED_ITEM_TYPES,
+  RECORD_SYNC_ITEM_TYPES
+} from '@memry/contracts/sync-api'
 import { encodeSignaturePayload } from '../lib/cbor'
 import { safeBase64Decode, verifyEd25519 } from '../lib/encoding'
 import { AppError, ErrorCodes } from '../lib/errors'
@@ -24,7 +28,9 @@ const DEFAULT_CHANGES_LIMIT = 100
 const MAX_CHANGES_LIMIT = 500
 const RECORD_SYNC_ITEM_TYPE_SET = new Set<RecordSyncItemType>(RECORD_SYNC_ITEM_TYPES)
 const RECORD_CLOCK_REQUIRED_TYPE_SET = new Set<RecordSyncItemType>(RECORD_CLOCK_REQUIRED_ITEM_TYPES)
-const RECORD_SYNC_ITEM_TYPE_PLACEHOLDERS = RECORD_SYNC_ITEM_TYPES.map(() => '?').join(', ')
+
+const placeholdersFor = (types: readonly RecordSyncItemType[]): string =>
+  types.map(() => '?').join(', ')
 
 interface ExistingSyncItemRow {
   version: number
@@ -518,16 +524,21 @@ export const getSyncStatus = async (
 export const getManifest = async (
   db: D1Database,
   userId: string,
-  vaultId = 'default'
+  vaultId = 'default',
+  types: readonly RecordSyncItemType[] = LEGACY_RECORD_SYNC_ITEM_TYPES
 ): Promise<RecordSyncManifest> => {
+  if (types.length === 0) {
+    return { items: [], serverTime: Math.floor(Date.now() / 1000) }
+  }
+
   const rows = await db
     .prepare(
       `SELECT item_id, item_type, version, updated_at, size_bytes, state_vector
        FROM sync_items
-       WHERE user_id = ? AND vault_id = ? AND deleted_at IS NULL AND item_type IN (${RECORD_SYNC_ITEM_TYPE_PLACEHOLDERS})
+       WHERE user_id = ? AND vault_id = ? AND deleted_at IS NULL AND item_type IN (${placeholdersFor(types)})
        ORDER BY server_cursor ASC`
     )
-    .bind(userId, vaultId, ...RECORD_SYNC_ITEM_TYPES)
+    .bind(userId, vaultId, ...types)
     .all<{
       item_id: string
       item_type: string
@@ -555,19 +566,24 @@ export const getChanges = async (
   userId: string,
   cursor: number,
   limit?: number,
-  vaultId = 'default'
+  vaultId = 'default',
+  types: readonly RecordSyncItemType[] = LEGACY_RECORD_SYNC_ITEM_TYPES
 ): Promise<RecordChangesResponse> => {
+  if (types.length === 0) {
+    return { items: [], deleted: [], hasMore: false, nextCursor: cursor }
+  }
+
   const effectiveLimit = Math.min(limit ?? DEFAULT_CHANGES_LIMIT, MAX_CHANGES_LIMIT)
 
   const rows = await db
     .prepare(
       `SELECT item_id, item_type, version, updated_at, size_bytes, state_vector, server_cursor, deleted_at
        FROM sync_items
-       WHERE user_id = ? AND vault_id = ? AND server_cursor > ? AND item_type IN (${RECORD_SYNC_ITEM_TYPE_PLACEHOLDERS})
+       WHERE user_id = ? AND vault_id = ? AND server_cursor > ? AND item_type IN (${placeholdersFor(types)})
        ORDER BY server_cursor ASC
        LIMIT ?`
     )
-    .bind(userId, vaultId, cursor, ...RECORD_SYNC_ITEM_TYPES, effectiveLimit + 1)
+    .bind(userId, vaultId, cursor, ...types, effectiveLimit + 1)
     .all<{
       item_id: string
       item_type: string
@@ -676,13 +692,15 @@ export const pullItems = async (
   storage: R2Bucket,
   userId: string,
   itemIds: string[],
-  vaultId = 'default'
+  vaultId = 'default',
+  types: readonly RecordSyncItemType[] = LEGACY_RECORD_SYNC_ITEM_TYPES
 ): Promise<RecordPullItemResponse[]> => {
-  if (itemIds.length === 0) {
+  if (itemIds.length === 0 || types.length === 0) {
     return []
   }
 
-  const BATCH_SIZE = D1_MAX_BIND_PARAMS - 2 - RECORD_SYNC_ITEM_TYPES.length
+  // 95 D1 bind params, minus user_id + vault_id, minus one per negotiated type.
+  const BATCH_SIZE = D1_MAX_BIND_PARAMS - 2 - types.length
 
   const allDbRows: StoredSyncItemPullRow[] = []
 
@@ -694,11 +712,11 @@ export const pullItems = async (
         `SELECT item_id, item_type, blob_key, crypto_version, operation, signer_device_id, signature,
                 state_vector, clock, deleted_at, server_cursor
          FROM sync_items
-         WHERE user_id = ? AND vault_id = ? AND item_type IN (${RECORD_SYNC_ITEM_TYPE_PLACEHOLDERS})
+         WHERE user_id = ? AND vault_id = ? AND item_type IN (${placeholdersFor(types)})
            AND item_id IN (${placeholders})
          ORDER BY server_cursor ASC`
       )
-      .bind(userId, vaultId, ...RECORD_SYNC_ITEM_TYPES, ...batch)
+      .bind(userId, vaultId, ...types, ...batch)
       .all<StoredSyncItemPullRow>()
     allDbRows.push(...(rows.results ?? []))
   }
@@ -737,7 +755,7 @@ export const getItem = async (
     .prepare(
       `SELECT item_id, item_type, version, blob_key, server_cursor
        FROM sync_items
-       WHERE user_id = ? AND vault_id = ? AND item_type IN (${RECORD_SYNC_ITEM_TYPE_PLACEHOLDERS})
+       WHERE user_id = ? AND vault_id = ? AND item_type IN (${placeholdersFor(RECORD_SYNC_ITEM_TYPES)})
          AND item_id = ? AND deleted_at IS NULL`
     )
     .bind(userId, vaultId, ...RECORD_SYNC_ITEM_TYPES, itemId)

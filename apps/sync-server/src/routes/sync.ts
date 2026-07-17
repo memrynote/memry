@@ -8,6 +8,7 @@ import { AppError, ErrorCodes } from '../lib/errors'
 import { authMiddleware } from '../middleware/auth'
 import { paidSyncMiddleware } from '../middleware/paid-sync'
 import { createRateLimiter } from '../middleware/rate-limit'
+import { syncTypesMiddleware } from '../middleware/sync-types'
 import {
   getChanges,
   getItem,
@@ -103,6 +104,7 @@ const handleRegisterVault = async (c: Context<AppContext>): Promise<Response> =>
 sync.post('/vaults', vaultsRateLimit, handleRegisterVault)
 
 sync.use('*', paidSyncMiddleware)
+sync.use('*', syncTypesMiddleware)
 
 const MAX_UPDATE_BYTES = 5 * 1024 * 1024 // 5MB per individual update
 const BASE64_CHUNK_SIZE = 8192
@@ -247,7 +249,7 @@ const handleRecordStatus = async (c: Context<AppContext>): Promise<Response> => 
 const handleRecordManifest = async (c: Context<AppContext>): Promise<Response> => {
   const userId = c.get('userId')!
   const vaultId = c.get('vaultId')!
-  const manifest = await getManifest(c.env.DB, userId, vaultId)
+  const manifest = await getManifest(c.env.DB, userId, vaultId, c.get('syncTypes')!)
   return c.json(manifest)
 }
 
@@ -271,7 +273,7 @@ const handleRecordChanges = async (c: Context<AppContext>): Promise<Response> =>
     logQueryValidationFailure('record', endpoint, 'Invalid limit value')
   }
 
-  const changes = await getChanges(c.env.DB, userId, cursor, limit, vaultId)
+  const changes = await getChanges(c.env.DB, userId, cursor, limit, vaultId, c.get('syncTypes')!)
 
   if (changes.items.length > 0 || changes.deleted.length > 0) {
     await updateDeviceCursor(c.env.DB, deviceId, userId, changes.nextCursor, vaultId)
@@ -381,7 +383,14 @@ const handleRecordPull = async (c: Context<AppContext>): Promise<Response> => {
     label: 'pull request'
   })
 
-  const items = await pullItems(c.env.DB, c.env.STORAGE, userId, parsed.itemIds, vaultId)
+  const items = await pullItems(
+    c.env.DB,
+    c.env.STORAGE,
+    userId,
+    parsed.itemIds,
+    vaultId,
+    c.get('syncTypes')!
+  )
   logRecordQueryBatch({
     endpoint,
     operation: 'pull',

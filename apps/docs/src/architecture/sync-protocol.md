@@ -81,6 +81,42 @@ Every domain object syncs as a `sync_item`. The server sees:
 
 The blob is the encrypted body. The server can reason about order, dedupe, and authorize writes — but the contents stay opaque.
 
+## Sync Type Negotiation
+
+Clients declare the record sync item types they understand via an `X-Memry-Sync-Types` header
+(comma-separated), sent on authenticated sync calls alongside the existing `X-Memry-Vault-Id`. The
+value is `RECORD_SYNC_ITEM_TYPES` joined with commas. The server (`/sync/changes`, `/sync/manifest`,
+`/sync/pull`) binds only the negotiated types into its `item_type IN (...)` SQL filter.
+
+| Header                      | Resolves to                                                                      |
+| --------------------------- | -------------------------------------------------------------------------------- |
+| Absent                      | The frozen `LEGACY_RECORD_SYNC_ITEM_TYPES` list (15 types)                       |
+| Present, nothing recognized | An empty list — serves zero rows                                                 |
+| Present, some recognized    | The recognized subset, deduped and intersected with the server's supported types |
+
+No header means the client predates negotiation and never declared anything, so it gets exactly the
+frozen legacy list — the property that protects binaries already in users' hands. This list is never
+edited when a new sync item type is added; adding to it would hand that type to clients whose parsers
+reject it, which is exactly the bug this feature exists to prevent.
+
+A header that is present but names nothing recognized is a different situation and resolves
+differently: the client did negotiate, so it must never be handed types it didn't declare. Empty
+types short-circuit before any DB query, and `getChanges` returns the incoming cursor unchanged so
+nothing advances.
+
+Requested types are deduped and intersected with the server's supported set, bounding the
+bind-parameter count against D1's 95-parameter ceiling.
+
+**Why this exists:** the desktop client does not runtime-validate `/sync/changes`, does not filter
+item refs by type before pulling, and validates a pull page with a single whole-page `safeParse`. One
+unknown item type fails the entire page, the client drops it without throwing, and its cursor still
+advances past it — silently losing convergence for every note and task on that page, not just the
+unrecognized item. Published binaries cannot be patched, so the server is the only place this can be
+fixed.
+
+**Deploy order:** the sync-server change must reach production before any desktop build carrying a
+new item type.
+
 ## Vector Clocks (Doc-Level)
 
 Used by the server to order changes across devices. The server itself never inspects fields — it sees a single clock per document and uses it to pick the correct write on conflict.
