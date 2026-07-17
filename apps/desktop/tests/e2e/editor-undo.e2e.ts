@@ -56,11 +56,13 @@ test.describe('Editor undo history', () => {
     // which is empty in the BlockNote editor — the menu item silently did
     // nothing on every platform, and its registered accelerator swallowed
     // Ctrl+Z on Windows/Linux. Drives the real menu item, not the keyboard.
+    // Runs on the journal surface (same ContentArea editor) because it opens
+    // without the note-tab helper.
     const body = `Menu undo seed ${Date.now()}`
     const typedLine = 'typed before menu undo'
-    const note = await seedNote(page, `Menu Undo Note ${Date.now()}`, body)
+    await seedCurrentJournalEntry(page, body)
 
-    await openNoteByHandle(page, note)
+    await navigateTo(page, 'journal')
     await expectNoteEditorBody(page, body)
 
     await focusEditorEnd(page)

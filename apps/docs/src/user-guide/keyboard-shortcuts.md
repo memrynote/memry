@@ -54,15 +54,17 @@ A chord indicator briefly flashes when the prefix is active.
 
 ## Editor
 
-| Action              | Shortcut                  |
-| ------------------- | ------------------------- |
-| Save (manual flush) | <kbd>⌘</kbd>+<kbd>S</kbd> |
-| Bold                | <kbd>⌘</kbd>+<kbd>B</kbd> |
-| Italic              | <kbd>⌘</kbd>+<kbd>I</kbd> |
-| Underline           | <kbd>⌘</kbd>+<kbd>U</kbd> |
-| Insert wiki link    | Type `[[`                 |
-| Open block menu     | Type `/`                  |
-| Find in page        | <kbd>⌘</kbd>+<kbd>F</kbd> |
+| Action              | Shortcut                               |
+| ------------------- | -------------------------------------- |
+| Undo                | <kbd>⌘</kbd>+<kbd>Z</kbd>              |
+| Redo                | <kbd>⇧</kbd>+<kbd>⌘</kbd>+<kbd>Z</kbd> |
+| Save (manual flush) | <kbd>⌘</kbd>+<kbd>S</kbd>              |
+| Bold                | <kbd>⌘</kbd>+<kbd>B</kbd>              |
+| Italic              | <kbd>⌘</kbd>+<kbd>I</kbd>              |
+| Underline           | <kbd>⌘</kbd>+<kbd>U</kbd>              |
+| Insert wiki link    | Type `[[`                              |
+| Open block menu     | Type `/`                               |
+| Find in page        | <kbd>⌘</kbd>+<kbd>F</kbd>              |
 
 ## View
 
