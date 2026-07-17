@@ -417,6 +417,8 @@ export const SettingsChannels = {
     GET_INBOX_SETTINGS: 'settings:getInboxSettings',
     /** Update inbox settings (partial merge) */
     SET_INBOX_SETTINGS: 'settings:setInboxSettings',
+    /** Fire the daily-review notification now, to verify OS delivery/permission */
+    SEND_TEST_INBOX_REVIEW_NOTIFICATION: 'settings:sendTestInboxReviewNotification',
     /** Store API key in OS keychain (never in DB) */
     SET_API_KEY: 'settings:setApiKey',
     /** Test API provider connection */

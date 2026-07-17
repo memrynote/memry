@@ -422,6 +422,14 @@
         "minuteLabel": "Minute",
         "periodLabel": "AM or PM"
       },
+      "test": {
+        "label": "Test notification",
+        "description": "Fire the reminder now to check your system notifications.",
+        "button": "Send test",
+        "sent": "Test notification sent.",
+        "sentHint": "If nothing appears, allow notifications for MemryNote in your system settings.",
+        "unsupported": "This device can't show desktop notifications."
+      },
       "error": "Could not update the reminder."
     }
   },

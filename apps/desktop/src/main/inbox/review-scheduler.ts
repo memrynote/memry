@@ -7,13 +7,13 @@
  * @module main/inbox/review-scheduler
  */
 
-import { BrowserWindow, Notification, powerMonitor } from 'electron'
+import { BrowserWindow, powerMonitor } from 'electron'
 import { getStatus } from '../vault'
 import { getDatabase } from '../database'
 import { getSetting, setSetting } from '../database/queries/settings'
 import { getInboxReviewSettings } from '../ipc/settings-handlers'
 import { countReviewableInboxItems } from './stats'
-import { getMainI18n } from '../lib/main-i18n'
+import { showReviewNotification } from './review-notification'
 import { InboxChannels } from '@memry/contracts/inbox-channels'
 import { REVIEW_REMINDER_TIME_PATTERN } from '@memry/contracts/settings-schemas'
 import { createLogger } from '../lib/logger'
@@ -97,33 +97,6 @@ function writeLastNotifiedDate(date: string): boolean {
 function emitReviewDue(count: number): void {
   for (const win of BrowserWindow.getAllWindows()) {
     if (!win.isDestroyed()) win.webContents.send(InboxChannels.events.REVIEW_DUE, { count })
-  }
-}
-
-function showReviewNotification(count: number): void {
-  if (!Notification.isSupported()) {
-    logger.warn('Desktop notifications not supported')
-    return
-  }
-  const t = getMainI18n().getFixedT(null, 'system')
-  try {
-    const notification = new Notification({
-      title: t('notification.inboxReview.title'),
-      body: t('notification.inboxReview.body', { count }),
-      silent: false
-    })
-    notification.on('click', () => {
-      const windows = BrowserWindow.getAllWindows()
-      if (windows.length > 0) {
-        const win = windows[0]
-        if (win.isMinimized()) win.restore()
-        win.focus()
-        win.webContents.send(InboxChannels.events.REVIEW_OPEN, {})
-      }
-    })
-    notification.show()
-  } catch (err) {
-    logger.error('Failed to show review notification:', err)
   }
 }
 

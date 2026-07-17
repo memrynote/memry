@@ -264,6 +264,7 @@ export function createGeneratedRpcApi({
       "setFeaturesSettings": ((settings) => invoke("settings:setFeaturesSettings", settings)) as GeneratedRpcApi["settings"]["setFeaturesSettings"],
       "getInboxSettings": (() => invoke("settings:getInboxSettings")) as GeneratedRpcApi["settings"]["getInboxSettings"],
       "setInboxSettings": ((settings) => invoke("settings:setInboxSettings", settings)) as GeneratedRpcApi["settings"]["setInboxSettings"],
+      "sendTestInboxReviewNotification": (() => invoke("settings:sendTestInboxReviewNotification")) as GeneratedRpcApi["settings"]["sendTestInboxReviewNotification"],
       "registerGlobalCapture": (() => invoke("settings:registerGlobalCapture")) as GeneratedRpcApi["settings"]["registerGlobalCapture"],
       "getTerminalCommandStatus": (() => invoke("settings:getTerminalCommandStatus")) as GeneratedRpcApi["settings"]["getTerminalCommandStatus"],
       "installTerminalCommand": (() => invoke("settings:installTerminalCommand")) as GeneratedRpcApi["settings"]["installTerminalCommand"],

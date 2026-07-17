@@ -267,6 +267,7 @@ export interface MainIpcInvokeHandlers {
   "settings:registerGlobalCapture": (...args: []) => Awaited<Promise<import("./settings-handlers").GlobalCaptureResult>>
   "settings:reindexEmbeddings": (...args: []) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; computed: number; skipped: number; error?: string | undefined; }>>
   "settings:resetKeyboardSettings": (...args: []) => Awaited<{ success: boolean; error: string; } | { success: boolean; error?: undefined; }>
+  "settings:sendTestInboxReviewNotification": (...args: []) => Awaited<{ supported: boolean; }>
   "settings:set": (...args: [{ key: string; value: string; }]) => Awaited<{ success: boolean; error: string; } | { success: boolean; error?: undefined; }>
   "settings:setAISettings": (...args: [Partial<import("./settings-handlers").AISettings>]) => Awaited<{ success: boolean; error: string; } | { success: boolean; error?: undefined; }>
   "settings:setBackupSettings": (...args: [Partial<{ autoBackup: boolean; frequencyHours: 1 | 6 | 12 | 24; maxBackups: number; lastBackupAt: string | null; }>]) => Awaited<{ success: boolean; error?: string | undefined; }>

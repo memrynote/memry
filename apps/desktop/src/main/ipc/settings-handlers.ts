@@ -53,6 +53,7 @@ import {
 } from '../inbox/voice-transcription-keychain'
 import { syncSettingsUpdates } from '../settings/runtime-effects'
 import { INBOX_REVIEW_LAST_NOTIFIED_KEY } from '../inbox/review-reminder-constants'
+import { sendTestReviewNotification } from '../inbox/review-notification'
 import { trackMainEvent } from '../telemetry/track'
 import { SafeDimensionValueSchema } from '@memry/contracts/telemetry-api'
 import {
@@ -898,6 +899,9 @@ export function registerSettingsHandlers(): void {
   ipcMain.handle(
     SettingsChannels.invoke.SET_INBOX_SETTINGS,
     (_event, updates: Partial<InboxSettings>) => writeInboxReviewSettings(updates)
+  )
+  ipcMain.handle(SettingsChannels.invoke.SEND_TEST_INBOX_REVIEW_NOTIFICATION, () =>
+    sendTestReviewNotification()
   )
 
   // Keyboard shortcuts: reset to defaults

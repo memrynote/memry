@@ -312,6 +312,9 @@ export const settingsRpc = defineDomain({
       channel: SettingsChannels.invoke.SET_INBOX_SETTINGS,
       params: ['settings']
     }),
+    sendTestInboxReviewNotification: defineMethod<() => Promise<{ supported: boolean }>>({
+      channel: SettingsChannels.invoke.SEND_TEST_INBOX_REVIEW_NOTIFICATION
+    }),
     registerGlobalCapture: defineMethod<
       () => Promise<{
         success: boolean

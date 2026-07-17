@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { InboxSettings } from './inbox-section'
 
 const updateSettings = vi.fn().mockResolvedValue(true)
@@ -16,7 +16,25 @@ vi.mock('@/hooks/use-general-settings', () => ({
   useGeneralSettings: () => ({ settings: { clockFormat: '24h' } })
 }))
 
+const toastSuccess = vi.fn()
+const toastError = vi.fn()
+vi.mock('sonner', () => ({
+  toast: {
+    success: (...a: unknown[]) => toastSuccess(...a),
+    error: (...a: unknown[]) => toastError(...a)
+  }
+}))
+
+const sendTestInboxReviewNotification = vi.fn().mockResolvedValue({ supported: true })
+
 describe('InboxSettings section', () => {
+  beforeEach(() => {
+    toastSuccess.mockClear()
+    toastError.mockClear()
+    sendTestInboxReviewNotification.mockClear().mockResolvedValue({ supported: true })
+    window.api = { settings: { sendTestInboxReviewNotification } } as never
+  })
+
   it('renders the review-reminder controls', () => {
     render(<InboxSettings />)
     expect(screen.getByTestId('inbox-review-toggle')).toBeInTheDocument()
@@ -34,5 +52,21 @@ describe('InboxSettings section', () => {
     fireEvent.change(minute, { target: { value: '30' } })
     fireEvent.blur(minute)
     expect(updateSettings).toHaveBeenCalledWith({ reviewReminderTime: '06:30' })
+  })
+
+  it('fires a test notification and confirms delivery on click', async () => {
+    render(<InboxSettings />)
+    fireEvent.click(screen.getByTestId('inbox-review-test'))
+    expect(sendTestInboxReviewNotification).toHaveBeenCalledTimes(1)
+    await waitFor(() => expect(toastSuccess).toHaveBeenCalledTimes(1))
+    expect(toastError).not.toHaveBeenCalled()
+  })
+
+  it('warns when the OS cannot show desktop notifications', async () => {
+    sendTestInboxReviewNotification.mockResolvedValueOnce({ supported: false })
+    render(<InboxSettings />)
+    fireEvent.click(screen.getByTestId('inbox-review-test'))
+    await waitFor(() => expect(toastError).toHaveBeenCalledTimes(1))
+    expect(toastSuccess).not.toHaveBeenCalled()
   })
 })

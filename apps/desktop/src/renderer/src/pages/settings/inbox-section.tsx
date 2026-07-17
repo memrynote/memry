@@ -1,5 +1,6 @@
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { Switch } from '@/components/ui/switch'
+import { Button } from '@/components/ui/button'
 import { useInboxPreferences } from '@/hooks/use-inbox-preferences'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { ReviewTimeInput } from '@/components/settings/review-time-input'
@@ -16,6 +17,25 @@ export function InboxSettings() {
   const { t } = useT('settings')
   const { settings, isLoading, updateSettings } = useInboxPreferences()
   const { settings: general } = useGeneralSettings()
+  const [isSendingTest, setIsSendingTest] = useState(false)
+
+  const handleSendTest = useCallback(async () => {
+    setIsSendingTest(true)
+    try {
+      const { supported } = await window.api.settings.sendTestInboxReviewNotification()
+      if (supported) {
+        toast.success(t('inbox.reviewReminder.test.sent'), {
+          description: t('inbox.reviewReminder.test.sentHint')
+        })
+      } else {
+        toast.error(t('inbox.reviewReminder.test.unsupported'))
+      }
+    } catch {
+      toast.error(t('inbox.reviewReminder.error'))
+    } finally {
+      setIsSendingTest(false)
+    }
+  }, [t])
 
   const handleToggle = useCallback(
     async (checked: boolean) => {
@@ -71,6 +91,21 @@ export function InboxSettings() {
             />
           </SettingRow>
         )}
+
+        <SettingRow
+          label={t('inbox.reviewReminder.test.label')}
+          description={t('inbox.reviewReminder.test.description')}
+        >
+          <Button
+            data-testid="inbox-review-test"
+            variant="outline"
+            size="sm"
+            disabled={isSendingTest}
+            onClick={() => void handleSendTest()}
+          >
+            {t('inbox.reviewReminder.test.button')}
+          </Button>
+        </SettingRow>
       </SettingsGroup>
     </div>
   )

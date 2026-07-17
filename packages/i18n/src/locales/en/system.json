@@ -33,7 +33,8 @@
   "notification": {
     "inboxReview": {
       "title": "Time to review your inbox",
-      "body": "You have {count, plural, one {# item} other {# items}} to review."
+      "body": "You have {count, plural, one {# item} other {# items}} to review.",
+      "testBody": "This is a test — your daily review reminders will look like this."
     },
     "reminder": {
       "note": "Note reminder",
