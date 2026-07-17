@@ -87,3 +87,27 @@ export function runEditorMenuCommand(command: string): void {
     // Editor not ready or block-shape drift — fail quietly rather than crash the menu.
   }
 }
+
+/**
+ * Menu-bar Undo/Redo. Native inputs keep the browser's own edit history;
+ * everything else routes to the BlockNote editor's (Yjs) undo stack — the
+ * native menu role can't reach it (see main/menu.ts).
+ */
+export function runHistoryMenuCommand(action: 'undo' | 'redo'): void {
+  const active = document.activeElement
+  if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) {
+    document.execCommand(action)
+    return
+  }
+
+  const editor = (
+    window as unknown as { __memryEditor?: { undo?: () => boolean; redo?: () => boolean } }
+  ).__memryEditor
+  if (!editor) return
+  try {
+    if (action === 'undo') editor.undo?.()
+    else editor.redo?.()
+  } catch {
+    // Editor not ready — fail quietly rather than crash the menu.
+  }
+}

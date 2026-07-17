@@ -112,8 +112,24 @@ export function buildAppMenu(i18n: I18nInstance): Menu {
     {
       label: t('edit.label'),
       submenu: [
-        { label: t('edit.undo'), role: 'undo' },
-        { label: t('edit.redo'), role: 'redo' },
+        // Not role 'undo'/'redo': the role drives Chromium's native undo stack,
+        // which is empty in the BlockNote editor (Yjs owns history), and on
+        // Windows/Linux the role's registered accelerator swallows Ctrl+Z in the
+        // main process before the editor keymap ever sees it. registerAccelerator
+        // false keeps the shortcut visible in the menu while letting the keydown
+        // reach the renderer; click covers the menu-bar path.
+        {
+          label: t('edit.undo'),
+          accelerator: 'CmdOrCtrl+Z',
+          registerAccelerator: false,
+          click: () => sendMenuCommand('edit.undo')
+        },
+        {
+          label: t('edit.redo'),
+          accelerator: 'CmdOrCtrl+Shift+Z',
+          registerAccelerator: false,
+          click: () => sendMenuCommand('edit.redo')
+        },
         { type: 'separator' },
         { label: t('edit.cut'), role: 'cut' },
         { label: t('edit.copy'), role: 'copy' },

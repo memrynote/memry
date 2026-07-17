@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test'
+import type { ElectronApplication, Page } from '@playwright/test'
 import { test, expect } from './fixtures'
 import {
   navigateTo,
@@ -51,6 +51,26 @@ test.describe('Editor undo history', () => {
     await expectNoteEditorBody(page, body)
   })
 
+  test('Edit menu Undo reverts a local edit', async ({ electronApp, page }) => {
+    // Regression: Edit→Undo used role 'undo' (Chromium's native undo stack),
+    // which is empty in the BlockNote editor — the menu item silently did
+    // nothing on every platform, and its registered accelerator swallowed
+    // Ctrl+Z on Windows/Linux. Drives the real menu item, not the keyboard.
+    const body = `Menu undo seed ${Date.now()}`
+    const typedLine = 'typed before menu undo'
+    const note = await seedNote(page, `Menu Undo Note ${Date.now()}`, body)
+
+    await openNoteByHandle(page, note)
+    await expectNoteEditorBody(page, body)
+
+    await focusEditorEnd(page)
+    await page.keyboard.type(typedLine)
+    await expectNoteEditorBody(page, `${body}\n\n${typedLine}`)
+
+    await clickApplicationMenuItem(electronApp, 'Undo')
+    await expectNoteEditorBody(page, body)
+  })
+
   test('journal first-open undo preserves the seeded entry', async ({ page }) => {
     const body = `Journal undo seed ${Date.now()}\n\nStill here after undo`
     await seedCurrentJournalEntry(page, body)
@@ -65,6 +85,23 @@ test.describe('Editor undo history', () => {
     await expect.poll(() => currentJournalEntryContent(page)).toBe(body)
   })
 })
+
+async function clickApplicationMenuItem(
+  electronApp: ElectronApplication,
+  label: string
+): Promise<void> {
+  await electronApp.evaluate(({ Menu, BrowserWindow }, itemLabel) => {
+    // The renderer dispatch targets the focused window; make sure there is one.
+    BrowserWindow.getAllWindows()[0]?.focus()
+    const menu = Menu.getApplicationMenu()
+    if (!menu) throw new Error('No application menu')
+    const flatten = (items: Electron.MenuItem[]): Electron.MenuItem[] =>
+      items.flatMap((item) => [item, ...(item.submenu ? flatten(item.submenu.items) : [])])
+    const item = flatten(menu.items).find((candidate) => candidate.label === itemLabel)
+    if (!item) throw new Error(`Application menu item "${itemLabel}" not found`)
+    item.click()
+  }, label)
+}
 
 async function seedNote(page: Page, title: string, content: string): Promise<NoteHandle> {
   return page.evaluate(

@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { BrowserWindow } from 'electron'
+import { AppChannels } from '@memry/contracts/ipc-channels'
 import { createMainI18n } from '@memry/i18n/main'
 
 const { buildFromTemplate } = vi.hoisted(() => ({
@@ -79,6 +81,49 @@ describe('buildAppMenu', () => {
         })
       ])
     )
+  })
+
+  it('routes Edit undo/redo through the renderer instead of native roles', async () => {
+    const i18n = await createMainI18n({ locale: 'en' })
+    const send = vi.fn()
+    vi.mocked(BrowserWindow.getFocusedWindow).mockReturnValue({
+      webContents: { isDestroyed: () => false, send }
+    } as unknown as Electron.BrowserWindow)
+
+    buildAppMenu(i18n)
+
+    const template = buildFromTemplate.mock.calls[0][0] as Array<{
+      submenu?: Array<{
+        label?: string
+        role?: string
+        accelerator?: string
+        registerAccelerator?: boolean
+        click?: () => void
+      }>
+    }>
+    const items = template.flatMap((item) => item.submenu ?? [])
+    const undoItem = items.find((item) => item.label === 'Undo')
+    const redoItem = items.find((item) => item.label === 'Redo')
+
+    // Regression: role 'undo'/'redo' drives Chromium's native undo stack, which
+    // is empty in the BlockNote editor (Yjs owns history). On Windows/Linux the
+    // role's registered accelerator also swallowed Ctrl+Z before the renderer
+    // ever saw it, so undo was dead in the editor entirely.
+    expect(undoItem).toMatchObject({
+      accelerator: 'CmdOrCtrl+Z',
+      registerAccelerator: false
+    })
+    expect(undoItem?.role).toBeUndefined()
+    expect(redoItem).toMatchObject({
+      accelerator: 'CmdOrCtrl+Shift+Z',
+      registerAccelerator: false
+    })
+    expect(redoItem?.role).toBeUndefined()
+
+    undoItem?.click?.()
+    expect(send).toHaveBeenCalledWith(AppChannels.events.MENU_COMMAND, { command: 'edit.undo' })
+    redoItem?.click?.()
+    expect(send).toHaveBeenCalledWith(AppChannels.events.MENU_COMMAND, { command: 'edit.redo' })
   })
 
   it('registers native text editing roles and accelerators', async () => {
