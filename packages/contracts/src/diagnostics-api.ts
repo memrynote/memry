@@ -14,6 +14,12 @@ const SafeFields = z.record(
   z.union([z.string().max(500), z.number().finite(), z.boolean()])
 )
 
+export const DiagnosticTriggerSchema = z.object({
+  source: SafeToken,
+  errorCode: SafeToken.optional(),
+  stack: z.string().max(8000).optional()
+})
+
 export const DiagnosticLogLineSchema = z.object({
   ts: z.string().datetime(),
   level: z.enum(['warn', 'error']),
@@ -68,6 +74,7 @@ export const DiagnosticReportSchema = z.object({
   accountId: z.string().uuid().optional()
 })
 
+export type DiagnosticTrigger = z.infer<typeof DiagnosticTriggerSchema>
 export type DiagnosticLogLine = z.infer<typeof DiagnosticLogLineSchema>
 export type DiagnosticLogBatch = z.infer<typeof DiagnosticLogBatchSchema>
 export type DiagnosticSnapshot = z.infer<typeof DiagnosticSnapshotSchema>

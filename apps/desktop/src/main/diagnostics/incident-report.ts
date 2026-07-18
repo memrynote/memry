@@ -11,7 +11,8 @@ import { redactText } from '@memry/contracts/redact'
 import type {
   DiagnosticLogLine,
   DiagnosticReport,
-  DiagnosticSnapshot
+  DiagnosticSnapshot,
+  DiagnosticTrigger
 } from '@memry/contracts/diagnostics-api'
 import type { TelemetryBuildChannel, TelemetryPlatform } from '@memry/contracts/telemetry-api'
 
@@ -22,12 +23,6 @@ import { getTelemetryAuthState, getTelemetrySyncState } from '../telemetry/state
 import { getOrCreateDiagnosticsSalt, makeSaltedHasher } from '../telemetry/diagnostics-salt'
 import type { TelemetryFetch } from '../telemetry/client'
 import { getSyncEngine } from '../sync/runtime'
-
-export interface IncidentTrigger {
-  source: string
-  errorCode?: string
-  stack?: string
-}
 
 // Crockford-ish base32 (no 0/1/8/9 or lowercase) keeps ids unambiguous when read
 // aloud/typed into a support ticket. 8 chars satisfies the schema's 6-12 range.
@@ -80,7 +75,7 @@ const redactStack = (
 }
 
 export const buildIncidentReport = (
-  trigger: IncidentTrigger,
+  trigger: DiagnosticTrigger,
   deps: BuildIncidentReportDeps
 ): DiagnosticReport => {
   const stack = redactStack(trigger.stack, deps.hash)
@@ -141,7 +136,7 @@ export const sendIncidentReport = async (
  * interesting logic lives in buildIncidentReport, which this feeds.
  */
 export const collectIncidentDeps = (
-  _trigger: IncidentTrigger
+  _trigger: DiagnosticTrigger
 ): Omit<BuildIncidentReportDeps, 'accountId'> & { accountId?: string } => {
   const runtime = getTelemetryRuntime()
   if (!runtime) {

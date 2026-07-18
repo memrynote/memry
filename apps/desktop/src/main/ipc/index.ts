@@ -28,6 +28,7 @@ import { registerAccountHandlers, unregisterAccountHandlers } from './account-ha
 import { registerCrdtIpcHandlers } from './crdt-handlers'
 import { registerTelemetryHandlers, unregisterTelemetryHandlers } from './telemetry-handlers'
 import { registerFeedbackHandlers, unregisterFeedbackHandlers } from './feedback-handlers'
+import { registerDiagnosticsHandlers, unregisterDiagnosticsHandlers } from './diagnostics-handlers'
 import { registerUpdaterHandlers, unregisterUpdaterHandlers } from './updater-handlers'
 import { registerAgentMcpHandlers, unregisterAgentMcpHandlers } from './agent-mcp-handlers'
 import { registerImportHandlers, unregisterImportHandlers } from './import-handlers'
@@ -144,6 +145,9 @@ export function registerAllHandlers(deps?: IpcDeps): void {
   // Register feedback handlers (anonymous-safe, no auth required)
   registerFeedbackHandlers()
 
+  // Register diagnostics handlers (anonymous-safe, no auth required)
+  registerDiagnosticsHandlers()
+
   // Register Agent MCP settings/status handlers
   registerAgentMcpHandlers()
 
@@ -188,6 +192,7 @@ export function unregisterAllHandlers(): void {
   unregisterUpdaterHandlers()
   unregisterTelemetryHandlers()
   unregisterFeedbackHandlers()
+  unregisterDiagnosticsHandlers()
   unregisterAgentMcpHandlers()
   unregisterImportHandlers()
   unregisterHomePageHandlers()
@@ -229,6 +234,7 @@ export { registerAIInlineHandlers, unregisterAIInlineHandlers } from './ai-inlin
 export { registerUpdaterHandlers, unregisterUpdaterHandlers } from './updater-handlers'
 export { registerTelemetryHandlers, unregisterTelemetryHandlers } from './telemetry-handlers'
 export { registerFeedbackHandlers, unregisterFeedbackHandlers } from './feedback-handlers'
+export { registerDiagnosticsHandlers, unregisterDiagnosticsHandlers } from './diagnostics-handlers'
 export { registerAgentMcpHandlers, unregisterAgentMcpHandlers } from './agent-mcp-handlers'
 export { registerImportHandlers, unregisterImportHandlers } from './import-handlers'
 export { registerHomePageHandlers, unregisterHomePageHandlers } from './home-page-handlers'
