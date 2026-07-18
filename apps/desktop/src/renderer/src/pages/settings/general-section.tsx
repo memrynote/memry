@@ -452,7 +452,6 @@ export function GeneralSettings() {
             type="button"
             size="sm"
             variant="outline"
-            disabled={!telemetryEnabled}
             onClick={() => openIncidentReport({ source: 'settings' })}
           >
             {t('general.privacy.diagnostics.sendReport.button')}

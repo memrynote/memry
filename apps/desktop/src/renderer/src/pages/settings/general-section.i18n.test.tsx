@@ -282,6 +282,7 @@ describe('GeneralSettings i18n', () => {
 
   it('opens the incident report dialog from the diagnostic report button when telemetry is on', async () => {
     const user = userEvent.setup()
+    api.telemetry.getSettings = vi.fn().mockResolvedValue({ enabled: true })
 
     renderGeneral(i18n)
 
@@ -293,12 +294,19 @@ describe('GeneralSettings i18n', () => {
     expect(mocks.openIncidentReport).toHaveBeenCalledWith({ source: 'settings' })
   })
 
-  it('disables the diagnostic report button when telemetry is off', async () => {
+  it('opens the incident report dialog even when telemetry is off (per-incident consent)', async () => {
+    // Path B always needs explicit per-incident consent (the preview dialog),
+    // independent of the Path A telemetry ship gate — so the entry stays enabled.
+    const user = userEvent.setup()
     api.telemetry.getSettings = vi.fn().mockResolvedValue({ enabled: false })
 
     renderGeneral(i18n)
 
     await screen.findByText('Diagnostic Report')
-    expect(screen.getByRole('button', { name: 'Send diagnostic report' })).toBeDisabled()
+    const button = screen.getByRole('button', { name: 'Send diagnostic report' })
+    expect(button).toBeEnabled()
+
+    await user.click(button)
+    expect(mocks.openIncidentReport).toHaveBeenCalledWith({ source: 'settings' })
   })
 })
