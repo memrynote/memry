@@ -2,6 +2,7 @@ import { mkdir, writeFile } from 'fs/promises'
 import path from 'path'
 
 import { createLogger } from '../lib/logger'
+import { installWorkerLogForwarding } from '../lib/log-forward'
 import type {
   VoiceModelMainToWorkerMessage,
   VoiceModelProgressPhase,
@@ -37,6 +38,8 @@ const parentPort = process.parentPort
 if (!parentPort) {
   throw new Error('voice-transcription-worker.ts must be run as an Electron utility process')
 }
+
+installWorkerLogForwarding('VoiceTranscription')
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let transcriber: any = null

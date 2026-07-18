@@ -5,6 +5,7 @@ import path from 'path'
 import { SettingsChannels } from '@memry/contracts/ipc-channels'
 
 import { createLogger } from '../lib/logger'
+import { getLogShip } from '../telemetry/log-ship'
 import type {
   VoiceModelMainToWorkerMessage,
   VoiceModelProgressMessage,
@@ -211,6 +212,11 @@ class VoiceModelBridge {
       }
 
       const onMessage = (message: VoiceModelWorkerToMainMessage): void => {
+        if (message.type === 'log') {
+          getLogShip()?.ingestForwarded(message.record, 'VoiceTranscription')
+          return
+        }
+
         if (message.type !== 'ready') return
 
         cleanup()
@@ -244,6 +250,11 @@ class VoiceModelBridge {
 
   private setupProcessHandlers(child: ReturnType<typeof utilityProcess.fork>): void {
     child.on('message', (message: VoiceModelWorkerToMainMessage) => {
+      if (message.type === 'log') {
+        getLogShip()?.ingestForwarded(message.record, 'VoiceTranscription')
+        return
+      }
+
       if (message.type === 'ready') {
         return
       }

@@ -20,6 +20,7 @@ import type {
 import { EMBEDDING_DIMENSION } from './embeddings-constants'
 import { createLogger } from './logger'
 import { trackMainLog } from '../telemetry/diagnostics'
+import { getLogShip } from '../telemetry/log-ship'
 import { shouldEmitThrottled } from '../telemetry/throttle'
 
 const logger = createLogger('Embeddings')
@@ -314,6 +315,11 @@ class EmbeddingModelBridge {
       }
 
       const onMessage = (message: EmbeddingWorkerToMainMessage): void => {
+        if (message.type === 'log') {
+          getLogShip()?.ingestForwarded(message.record, 'Embeddings')
+          return
+        }
+
         if (message.type !== 'ready') return
 
         cleanup()
@@ -355,6 +361,11 @@ class EmbeddingModelBridge {
 
   private setupProcessHandlers(child: ReturnType<typeof utilityProcess.fork>): void {
     child.on('message', (message: EmbeddingWorkerToMainMessage) => {
+      if (message.type === 'log') {
+        getLogShip()?.ingestForwarded(message.record, 'Embeddings')
+        return
+      }
+
       if (message.type === 'ready') {
         return
       }
