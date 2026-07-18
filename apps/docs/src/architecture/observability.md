@@ -331,7 +331,7 @@ origin, workerName`, plus numeric metric keys like `durationMs`/`itemCount`) shi
   error-volume timeseries, with an `env` switch for production/staging. Ad-hoc digging and live
   tail happen in Grafana Explore against the Loki datasource, e.g.:
 
-  ```logql
+  ```
   {app="desktop", kind="log"} | json
   {app="desktop", kind="report"} | json | incident_id="MEMRY-…"
   ```
