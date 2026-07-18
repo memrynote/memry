@@ -51,7 +51,12 @@ import { CrdtUpdateQueue } from './crdt-queue'
 import { recoverDirtyItems } from './dirty-recovery'
 import { encryptCrdtUpdate } from './crdt-encrypt'
 import { postToServer, pushCrdtSnapshot, SyncServerError } from './http-client'
-import { EVENT_CHANNELS, type SyncStatusChangedEvent } from '@memry/contracts/ipc-events'
+import {
+  EVENT_CHANNELS,
+  type SyncStatusChangedEvent,
+  type VaultRecoveryNeededEvent
+} from '@memry/contracts/ipc-events'
+import { classifyVaultKeyError, vaultRecoveryReason } from '../crypto/vault-key-error'
 import { withRetry } from './retry'
 import { withAuthRetry, type AuthRetryDeps } from './auth-retry'
 import {
@@ -82,6 +87,12 @@ interface SyncRuntimeState {
 
 function getVerifiedVaultKey(db: DataDb): Promise<Uint8Array> {
   return getOrInitializeLocalVaultKey(db, getOrCreateVaultUuid(db))
+}
+
+function emitVaultRecoveryNeeded(event: VaultRecoveryNeededEvent): void {
+  for (const win of BrowserWindow.getAllWindows()) {
+    win.webContents.send(EVENT_CHANNELS.VAULT_RECOVERY_NEEDED, event)
+  }
 }
 
 function emitSyncStatus(event: SyncStatusChangedEvent): void {
@@ -226,6 +237,13 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         vaultKeyFailureLogged = false
       } catch (error) {
         log.error('Sync runtime unavailable: vault key verification failed', error)
+        // A persistent mismatch (wrong or missing master key) can't be retried
+        // away — prompt the user to recover the correct key instead of leaving
+        // them at a generic "sync unavailable" error. A transient unreadable
+        // secret is NOT surfaced here; it retries on the next healthy run.
+        if (classifyVaultKeyError(error) === 'recovery-needed') {
+          emitVaultRecoveryNeeded({ reason: vaultRecoveryReason(error) })
+        }
         return null
       } finally {
         if (startupVaultKey) secureCleanup(startupVaultKey)

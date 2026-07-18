@@ -29,7 +29,8 @@ export const EVENT_CHANNELS = {
   ITEM_RECOVERED: 'sync:item-recovered',
   ITEM_CORRUPT: 'sync:item-corrupt',
   SECURITY_WARNING: 'sync:security-warning',
-  CERTIFICATE_PIN_FAILED: 'sync:certificate-pin-failed'
+  CERTIFICATE_PIN_FAILED: 'sync:certificate-pin-failed',
+  VAULT_RECOVERY_NEEDED: 'sync:vault-recovery-needed'
 } as const
 
 // ============================================================================
@@ -191,4 +192,16 @@ export interface CertificatePinFailedEvent {
   hostname: string
   actualHash: string
   expectedHashes: string[]
+}
+
+/**
+ * The local device holds key material that cannot decrypt this vault — its
+ * master key no longer matches (`vault-key-mismatch`), or the master key is gone
+ * while a verifier still exists (`master-key-missing`). The renderer surfaces a
+ * recovery prompt (re-derive the master key from the recovery phrase) rather
+ * than a generic sync error. Only emitted for a persistent mismatch, never for
+ * a transient unreadable-secret failure (which just retries).
+ */
+export interface VaultRecoveryNeededEvent {
+  reason: 'vault-key-mismatch' | 'master-key-missing'
 }
