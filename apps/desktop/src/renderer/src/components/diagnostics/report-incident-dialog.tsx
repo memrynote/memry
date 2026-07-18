@@ -8,7 +8,7 @@
  * @module components/diagnostics/report-incident-dialog
  */
 
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
 import {
@@ -56,10 +56,17 @@ export function ReportIncidentDialog({
   const [showPreview, setShowPreview] = useState(false)
   const [sentIncidentId, setSentIncidentId] = useState<string | null>(null)
 
+  // Monotonic token for the current preview→send cycle. Every new cycle (open
+  // with a trigger) bumps it; stale async resolutions from a superseded cycle
+  // bail out instead of clobbering the fresh one. The dialog stays mounted
+  // across close/reopen, so this discipline is required in both the preview
+  // effect and the send handler.
+  const generationRef = useRef(0)
+
   useEffect(() => {
     if (!open || !trigger) return
 
-    let cancelled = false
+    const gen = ++generationRef.current
     setPhase('building')
     setReport(null)
     setError(null)
@@ -69,33 +76,31 @@ export function ReportIncidentDialog({
     diagnosticsService
       .previewReport(trigger)
       .then((result) => {
-        if (cancelled) return
+        if (generationRef.current !== gen) return
         if (result.success) {
           setReport(result.report)
           setPhase('preview')
         } else {
-          setError(extractErrorMessage(result.error, t('general.privacy.diagnostics.error')))
+          setError(extractErrorMessage(result.error, t('general.privacy.diagnostics.previewError')))
           setPhase('previewError')
         }
       })
       .catch((err: unknown) => {
-        if (cancelled) return
-        setError(extractErrorMessage(err, t('general.privacy.diagnostics.error')))
+        if (generationRef.current !== gen) return
+        setError(extractErrorMessage(err, t('general.privacy.diagnostics.previewError')))
         setPhase('previewError')
       })
-
-    return () => {
-      cancelled = true
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, trigger])
 
   const handleSend = useCallback(() => {
     if (!report || phase !== 'preview') return
+    const gen = generationRef.current
     setPhase('sending')
     diagnosticsService
       .sendReport(report)
       .then((result) => {
+        if (generationRef.current !== gen) return
         if (result.success) {
           setSentIncidentId(result.incidentId)
           setPhase('sent')
@@ -106,6 +111,7 @@ export function ReportIncidentDialog({
         }
       })
       .catch((err: unknown) => {
+        if (generationRef.current !== gen) return
         setPhase('preview')
         toast.error(extractErrorMessage(err, t('general.privacy.diagnostics.error')))
       })

@@ -171,6 +171,7 @@
         "sending": "Sending…",
         "notNow": "Not now",
         "sent": "Report sent — reference {incidentId}",
+        "previewError": "Couldn't prepare the diagnostic report",
         "error": "Failed to send diagnostic report"
       }
     }
