@@ -44,8 +44,26 @@ export async function bindLocalVaultToMasterKey(
 
     resetLegacyUnboundAgentData(db, vaultId)
     setVaultKeyVerifier(db, next)
+    if (current !== null) {
+      // The vault key just CHANGED (e.g. recovery restored the correct master
+      // key after a mismatch window). Anything the old key's failures branded
+      // is now meaningless: quarantined items would be skipped forever and a
+      // stale cursor would miss items that failed to apply. Give the new key a
+      // clean slate and let the next sync re-pull from scratch.
+      purgeKeyScopedSyncState(db)
+    }
   } finally {
     secureCleanup(vaultKey)
+  }
+}
+
+// Mirrors SYNC_STATE_KEYS in sync/engine/sync-context.ts (imported as literals
+// here to keep crypto/ free of sync-engine imports).
+const KEY_SCOPED_SYNC_STATE_KEYS = ['lastCursor', 'quarantinedItems'] as const
+
+function purgeKeyScopedSyncState(db: DataDb): void {
+  for (const key of KEY_SCOPED_SYNC_STATE_KEYS) {
+    db.delete(schema.syncState).where(eq(schema.syncState.key, key)).run()
   }
 }
 

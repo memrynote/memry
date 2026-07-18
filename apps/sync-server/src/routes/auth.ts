@@ -549,6 +549,28 @@ auth.get('/recovery-info', setupAuthMiddleware, async (c) => {
   })
 })
 
+// GET /key-verifier — same payload as /recovery-info but for an ESTABLISHED
+// session (access token). Desktop uses it to check whether the locally stored
+// master key still matches the account (vault-key mismatch detection); setup
+// tokens are long gone by then, so /recovery-info cannot serve this case.
+auth.get('/key-verifier', authMiddleware, async (c) => {
+  const userId = c.get('userId')!
+
+  const user = await getUserById(c.env.DB, userId)
+  if (!user) {
+    throw new AppError(ErrorCodes.NOT_FOUND, 'User not found', 404)
+  }
+
+  if (!user.kdf_salt) {
+    throw new AppError(ErrorCodes.VALIDATION_ERROR, 'No encryption keys configured', 400)
+  }
+
+  return c.json({
+    kdfSalt: user.kdf_salt,
+    keyVerifier: user.key_verifier
+  })
+})
+
 const RecoveryQuerySchema = z.object({ email: z.string().email() })
 const BillingReconcileSchema = z.object({
   transactionId: z.string().trim().min(1).optional()

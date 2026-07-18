@@ -54,6 +54,13 @@ export interface SyncStoreData {
   accountVaultsCache?: AccountVaultsCache
   /** Cache-first entitlement snapshot; gates whether sync runs without a server call */
   entitlement?: CachedEntitlement
+  /**
+   * The account's key verifier (same value the server stores from /auth/setup).
+   * Non-secret — it is a KDF-derived check value, not key material. Persisted at
+   * sign-in/recovery/linking so the app can detect a local master key that no
+   * longer matches the account (vault-key mismatch) even while offline.
+   */
+  accountKeyVerifier?: string
 }
 
 export interface AccountVaultsCache {

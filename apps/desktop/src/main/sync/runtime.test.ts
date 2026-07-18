@@ -319,6 +319,12 @@ vi.mock('./token-manager', () => ({
   setOnTokenRefreshed: runtimeMocks.setOnTokenRefreshed
 }))
 
+vi.mock('./key-verification', () => ({
+  // 'unknown' = account verifier unavailable → runtime proceeds as before.
+  checkLocalKeyAgainstAccount: vi.fn().mockResolvedValue('unknown'),
+  isKeyMaterialActivityRecent: vi.fn().mockReturnValue(false)
+}))
+
 function createDb() {
   const updateRun = vi.fn()
   return {
