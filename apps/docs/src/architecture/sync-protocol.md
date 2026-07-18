@@ -190,16 +190,26 @@ list.
 
 ## Endpoints
 
-| Path                      | Direction | Purpose                                      |
-| ------------------------- | --------- | -------------------------------------------- |
-| `POST /sync/push`         | up        | Upload new sync items (metadata + blob refs) |
-| `POST /sync/pull`         | down      | Fetch updates since cursor                   |
-| `POST /sync/crdt/updates` | both      | Incremental Yjs binary updates               |
-| `GET /sync/vaults`        | down      | List the account's registered vaults         |
-| `POST /sync/vaults`       | up        | Register or update a vault's encrypted name  |
-| `POST /auth/*`            | mixed     | OTP, sign-in, refresh, sign-out              |
-| `POST /devices/*`         | mixed     | Linking, listing, revoking                   |
-| `POST /keys/*`            | mixed     | Key sealing during link, rotation            |
+| Path                      | Direction | Purpose                                                                        |
+| ------------------------- | --------- | ------------------------------------------------------------------------------ |
+| `POST /sync/push`         | up        | Upload new sync items (metadata + blob refs)                                   |
+| `POST /sync/pull`         | down      | Fetch updates since cursor                                                     |
+| `POST /sync/crdt/updates` | both      | Incremental Yjs binary updates                                                 |
+| `GET /sync/vaults`        | down      | List the account's registered vaults                                           |
+| `POST /sync/vaults`       | up        | Register or update a vault's encrypted name                                    |
+| `POST /auth/*`            | mixed     | OTP, sign-in, refresh, sign-out                                                |
+| `GET /auth/key-verifier`  | down      | Account key verifier for an established session (vault-key mismatch detection) |
+| `POST /devices/*`         | mixed     | Linking, listing, revoking                                                     |
+| `POST /keys/*`            | mixed     | Key sealing during link, rotation                                              |
+
+## Vault-Key Verification
+
+Before syncing — and whenever an entire pull page fails to decrypt — the client verifies its local
+master key against the account's key verifier (local cache first, `GET /auth/key-verifier` as
+fallback). A confirmed mismatch stops the pull cycle **without** quarantining items or marking them
+corrupt, escalates once into the recovery flow, and signs the install out so sign-in + recovery
+phrase can restore the correct key. See
+[Vault-Key Mismatch Detection](/architecture/cryptography#vault-key-mismatch-detection).
 
 ## Error Modes
 
@@ -211,6 +221,7 @@ list.
 | Quota exceeded     | Surfaces in [Settings → Vault](/user-guide/settings#vault)                                 |
 | Server unavailable | Exponential backoff; status indicator turns yellow                                         |
 | Blob hash mismatch | Reject the item; log; alert health view                                                    |
+| Vault-key mismatch | Stop pulling without branding items; prompt recovery; sign out to restore the correct key  |
 
 ## Encryption Stays End-to-End
 
