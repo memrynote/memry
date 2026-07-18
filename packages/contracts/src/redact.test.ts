@@ -165,4 +165,36 @@ describe('redactLogLine — allowlist + per-key strategy', () => {
     const { message } = redactLogLine({ message: 'a'.repeat(5000) }, opts)
     expect(message.length).toBeLessThanOrEqual(2000)
   })
+  it('redacts a secret smuggled under a verbatim key', () => {
+    const { fields } = redactLogLine(
+      {
+        message: 'x',
+        fields: { reason: '/Users/kaan/Vault/Secret Note.md', status: 'from a@b.com' }
+      },
+      { hash }
+    )
+    expect(String(fields.reason)).not.toContain('kaan')
+    expect(String(fields.reason)).not.toContain('Secret Note')
+    expect(String(fields.status)).not.toContain('a@b.com')
+  })
+  it('leaves real enum/version values under verbatim keys unchanged', () => {
+    const { fields } = redactLogLine(
+      {
+        message: 'x',
+        fields: {
+          level: 'warn',
+          scope: 'Sync',
+          errorCode: 'NOTE_WRITE_FAILED:EBUSY',
+          buildChannel: 'production'
+        }
+      },
+      { hash }
+    )
+    expect(fields).toMatchObject({
+      level: 'warn',
+      scope: 'Sync',
+      errorCode: 'NOTE_WRITE_FAILED:EBUSY',
+      buildChannel: 'production'
+    })
+  })
 })

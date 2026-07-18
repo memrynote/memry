@@ -173,7 +173,7 @@ const safeStringify = (value: unknown): string => {
 
 const redactFieldValue = (key: string, value: unknown, opts?: RedactOptions): unknown => {
   if (has(VERBATIM_FIELD_KEYS, key))
-    return typeof value === 'string' ? cap(value, FIELD_VALUE_CAP) : value
+    return typeof value === 'string' ? cap(redactText(value, opts), FIELD_VALUE_CAP) : value
   // ID keys hash regardless of value type — a numeric id (taskId: 42) must not
   // slip through the number passthrough below and ship in the clear.
   if (has(ID_FIELD_KEYS, key)) {

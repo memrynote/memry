@@ -36,6 +36,10 @@ describe('fuzz invariant — no raw secret survives', () => {
       )
       expect(serialize(out)).not.toContain(secret)
     })
+    it(`drops "${secret.slice(0, 20)}…" smuggled under a verbatim field key`, () => {
+      const out = redactLogLine({ message: 'x', fields: { reason: secret } }, opts)
+      expect(serialize(out)).not.toContain(secret)
+    })
   }
 
   it('combined payload leaks nothing', () => {
