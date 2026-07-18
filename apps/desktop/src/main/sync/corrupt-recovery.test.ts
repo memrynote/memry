@@ -389,4 +389,148 @@ describe('Corrupt item recovery', () => {
       expect(refetchIds).not.toContain('task-1')
     })
   })
+
+  // ==========================================================================
+  // Vault-key mismatch gate — when EVERY item in a page fails decrypt/verify,
+  // the vault key is the suspect, not the items. A confirmed account-key
+  // mismatch must stop the cycle without branding items corrupt, without
+  // quarantining them, and without security toasts.
+  // ==========================================================================
+
+  function makeSignatureFailure(id: string, type: string): DecryptionFailure {
+    return {
+      id,
+      type,
+      signerDeviceId: 'device-1',
+      error: `Signature verification failed for item ${id} from device device-1`,
+      isCryptoError: true,
+      isSignatureError: true
+    }
+  }
+
+  describe('#given every item in the page fails decrypt', () => {
+    it('#then a confirmed key mismatch stops the cycle with no quarantine, no security toast, no re-fetch', async () => {
+      const items = [makePullItem('n-1', 'note'), makePullItem('n-2', 'note')]
+      const { postServerMock } = await setupMocks({
+        pullItems: items,
+        firstDecryptResult: {
+          decrypted: [],
+          failures: [makeCryptoFailure('n-1', 'note'), makeSignatureFailure('n-2', 'note')]
+        }
+      })
+
+      const onVaultKeyMismatch = vi.fn()
+      const deps = createMockDeps(testDb, {
+        checkAccountKey: vi.fn().mockResolvedValue('mismatch'),
+        onVaultKeyMismatch
+      })
+      const engine = new SyncEngine(deps)
+
+      await engine.pull()
+
+      expect(onVaultKeyMismatch).toHaveBeenCalledTimes(1)
+      // No re-fetch attempt: only the page pull hit /sync/pull.
+      expect(postServerMock).toHaveBeenCalledTimes(1)
+      // No SECURITY_WARNING toast for the signature failure.
+      const emitted = vi.mocked(deps.emitToRenderer).mock.calls.map(([channel]) => channel)
+      expect(emitted).not.toContain('sync:security-warning')
+      expect(emitted).not.toContain('sync:item-corrupt')
+      // Nothing persisted to quarantine.
+      expect(engine.getQuarantinedItems()).toEqual([])
+      // The user-facing state is the single key-mismatch error.
+      expect(engine.getStatus().error).toContain('vault key mismatch')
+    })
+
+    it('#then a key-material transition stops the cycle quietly — no side effects, no escalation', async () => {
+      const items = [makePullItem('n-1', 'note')]
+      const { postServerMock } = await setupMocks({
+        pullItems: items,
+        firstDecryptResult: {
+          decrypted: [],
+          failures: [makeCryptoFailure('n-1', 'note')]
+        }
+      })
+
+      const onVaultKeyMismatch = vi.fn()
+      const deps = createMockDeps(testDb, {
+        checkAccountKey: vi.fn().mockResolvedValue('transition'),
+        onVaultKeyMismatch
+      })
+      const engine = new SyncEngine(deps)
+
+      await engine.pull()
+
+      expect(onVaultKeyMismatch).not.toHaveBeenCalled()
+      expect(postServerMock).toHaveBeenCalledTimes(1)
+      const emitted = vi.mocked(deps.emitToRenderer).mock.calls.map(([channel]) => channel)
+      expect(emitted).not.toContain('sync:security-warning')
+      expect(emitted).not.toContain('sync:item-corrupt')
+      expect(engine.getQuarantinedItems()).toEqual([])
+    })
+
+    it('#then a healthy key (match) keeps the existing corruption handling', async () => {
+      const items = [makePullItem('n-1', 'note')]
+      await setupMocks({
+        pullItems: items,
+        firstDecryptResult: {
+          decrypted: [],
+          failures: [makeSignatureFailure('n-1', 'note')]
+        }
+      })
+
+      const onVaultKeyMismatch = vi.fn()
+      const deps = createMockDeps(testDb, {
+        checkAccountKey: vi.fn().mockResolvedValue('match'),
+        onVaultKeyMismatch
+      })
+      const engine = new SyncEngine(deps)
+
+      await engine.pull()
+
+      expect(onVaultKeyMismatch).not.toHaveBeenCalled()
+      // Signature failure goes through the normal quarantine + security toast.
+      const emitted = vi.mocked(deps.emitToRenderer).mock.calls.map(([channel]) => channel)
+      expect(emitted).toContain('sync:security-warning')
+      expect(engine.getQuarantinedItems().map((q) => q.itemId)).toContain('n-1')
+    })
+
+    it('#then no checker configured keeps the existing behavior (backward compatible)', async () => {
+      const items = [makePullItem('n-1', 'note')]
+      await setupMocks({
+        pullItems: items,
+        firstDecryptResult: {
+          decrypted: [],
+          failures: [makeSignatureFailure('n-1', 'note')]
+        }
+      })
+
+      const deps = createMockDeps(testDb)
+      const engine = new SyncEngine(deps)
+
+      await engine.pull()
+
+      const emitted = vi.mocked(deps.emitToRenderer).mock.calls.map(([channel]) => channel)
+      expect(emitted).toContain('sync:security-warning')
+      expect(engine.getQuarantinedItems().map((q) => q.itemId)).toContain('n-1')
+    })
+
+    it('#then a partial failure never consults the account key (items decrypt → key is fine)', async () => {
+      const items = [makePullItem('n-1', 'note'), makePullItem('n-2', 'note')]
+      const checkAccountKey = vi.fn().mockResolvedValue('mismatch')
+      await setupMocks({
+        pullItems: items,
+        firstDecryptResult: {
+          decrypted: [makeDecryptedItem('n-1', 'note', '{"title":"ok"}')],
+          failures: [makeCryptoFailure('n-2', 'note')]
+        }
+      })
+
+      const deps = createMockDeps(testDb, { checkAccountKey, onVaultKeyMismatch: vi.fn() })
+      const engine = new SyncEngine(deps)
+
+      await engine.pull()
+
+      expect(checkAccountKey).not.toHaveBeenCalled()
+    })
+  })
 })

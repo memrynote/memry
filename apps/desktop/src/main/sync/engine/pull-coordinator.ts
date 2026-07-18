@@ -489,6 +489,48 @@ export class PullCoordinator {
     })
     timer.endPhase(itemsToProcess.length)
 
+    // When EVERY item in the page fails to decrypt or verify, per-item
+    // corruption is not a plausible explanation — the vault key itself is the
+    // suspect (e.g. this device's master key no longer matches the account).
+    // Confirm against the account verifier before branding anything: a
+    // confirmed mismatch must not quarantine items, mark them corrupt, or
+    // toast security warnings — those side effects outlive the key problem and
+    // keep scaring the user after recovery. Stop the cycle and escalate once.
+    const everyItemFailed =
+      itemsToProcess.length > 0 &&
+      decrypted.length === 0 &&
+      failures.length === itemsToProcess.length
+    if (everyItemFailed && this.ctx.deps.checkAccountKey) {
+      const keyCheck = await this.ctx.deps.checkAccountKey()
+      if (keyCheck === 'mismatch') {
+        this.ctx.lastError =
+          'All items failed with crypto errors — possible vault key mismatch. ' +
+          `${failures.length} item(s) could not be decrypted.`
+        this.ctx.lastErrorInfo = {
+          category: 'crypto_failure',
+          message: this.ctx.lastError,
+          retryable: false
+        }
+        this.stateManager.setState('error')
+        log.error(
+          'Pull: vault key does not match the account — stopping cycle without recording item failures',
+          { failedCount: failures.length }
+        )
+        this.ctx.deps.onVaultKeyMismatch?.()
+        return { applied: 0, conflicts: 0, allCryptoFailed: true }
+      }
+      if (keyCheck === 'transition') {
+        // Sign-in / recovery / linking is mid-swap: the failures are expected
+        // and momentary. Stop this cycle quietly — the flow restarts sync with
+        // the settled key, and the next cycle re-pulls these items cleanly.
+        log.info(
+          'Pull: key material is being re-established — stopping cycle without recording item failures',
+          { failedCount: failures.length }
+        )
+        return { applied: 0, conflicts: 0, allCryptoFailed: true }
+      }
+    }
+
     for (const failure of failures) {
       if (failure.isSignatureError) {
         this.quarantine.quarantineItem(

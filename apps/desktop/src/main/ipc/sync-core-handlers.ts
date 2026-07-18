@@ -1,9 +1,10 @@
-import { ipcMain } from 'electron'
+import { BrowserWindow, ipcMain } from 'electron'
 import sodium from 'libsodium-wrappers-sumo'
 
 import { syncDevices } from '@memry/db-schema/schema/sync-devices'
 import { KEYCHAIN_ENTRIES, type KeychainEntry } from '@memry/contracts/crypto'
 import { SYNC_CHANNELS } from '@memry/contracts/ipc-sync'
+import { EVENT_CHANNELS, type VaultRecoveryNeededEvent } from '@memry/contracts/ipc-events'
 import {
   GetHistorySchema,
   StorageBreakdownResult,
@@ -27,6 +28,7 @@ import { getSyncEngine, startSyncRuntime } from '../sync/runtime'
 import { getCachedEntitlement } from '../billing/entitlement-cache'
 import { teardownSession } from '../sync/session-teardown'
 import { getValidAccessToken, cancelTokenRefresh } from '../sync/token-manager'
+import { checkLocalKeyAgainstAccount, isKeyMaterialActivityRecent } from '../sync/key-verification'
 import {
   clearOAuthState,
   registerAuthOAuthHandlers,
@@ -147,8 +149,33 @@ export async function checkSyncIntegrity(): Promise<void> {
         .run()
       return
     }
+
+    // Keys exist and are self-consistent — but do they match the ACCOUNT?
+    // An install orphaned by the safeStorage regression holds a master key
+    // that can never decrypt the account's data; no amount of retrying fixes
+    // it. Sign the user out here at startup so the ordinary sign-in +
+    // recovery-phrase flow restores the correct key, instead of leaving them
+    // staring at "all items failed to decrypt".
+    // 'transition' (key-material flow mid-flight) and 'unknown' (offline, no
+    // verifier available) both stand down — only a CONFIRMED mismatch acts.
+    const accountCheck = await checkLocalKeyAgainstAccount()
+    if (accountCheck === 'mismatch' && !isKeyMaterialActivityRecent()) {
+      logger.error(
+        'Master key does not match the account — signing out so recovery can restore the correct key.',
+        { deviceId: currentDevice.id }
+      )
+      emitVaultRecoveryNeededToWindows({ reason: 'vault-key-mismatch' })
+      await cleanupLocalSyncState()
+      return
+    }
   } catch (err) {
     logger.error('Sync integrity check failed', err)
+  }
+}
+
+function emitVaultRecoveryNeededToWindows(event: VaultRecoveryNeededEvent): void {
+  for (const win of BrowserWindow.getAllWindows()) {
+    win.webContents.send(EVENT_CHANNELS.VAULT_RECOVERY_NEEDED, event)
   }
 }
 

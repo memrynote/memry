@@ -1220,6 +1220,42 @@ describe('auth routes', () => {
     })
   })
 
+  describe('GET /auth/key-verifier', () => {
+    it('should return the account key verifier for an access-token session', async () => {
+      vi.mocked(getUserById).mockResolvedValueOnce({
+        id: 'user-1',
+        kdf_salt: 'salt-1',
+        key_verifier: 'verifier-1'
+      } as ReturnType<typeof getUserById> extends Promise<infer T> ? T : never)
+
+      const res = await app.request('/auth/key-verifier', { method: 'GET' }, env)
+
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual({ kdfSalt: 'salt-1', keyVerifier: 'verifier-1' })
+    })
+
+    it('should return 404 when the user is missing', async () => {
+      vi.mocked(getUserById).mockResolvedValueOnce(
+        null as unknown as Awaited<ReturnType<typeof getUserById>>
+      )
+
+      const res = await app.request('/auth/key-verifier', { method: 'GET' }, env)
+
+      expect(res.status).toBe(404)
+    })
+
+    it('should return 400 when encryption keys are not configured', async () => {
+      vi.mocked(getUserById).mockResolvedValueOnce({
+        id: 'user-1',
+        kdf_salt: null
+      } as ReturnType<typeof getUserById> extends Promise<infer T> ? T : never)
+
+      const res = await app.request('/auth/key-verifier', { method: 'GET' }, env)
+
+      expect(res.status).toBe(400)
+    })
+  })
+
   // ==========================================================================
   // GET /auth/recovery
   // ==========================================================================

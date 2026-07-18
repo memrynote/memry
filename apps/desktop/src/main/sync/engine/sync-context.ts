@@ -28,6 +28,18 @@ export interface SyncEngineDeps {
   workerBridge?: SyncWorkerBridge
   refreshAccessToken?: () => Promise<boolean>
   calendarSyncOneSource?: (sourceId: string) => void
+  /**
+   * Does the local master key still match the account? Consulted when an
+   * entire pull page fails to decrypt: 'mismatch' means the failures are a
+   * vault-key problem, not per-item corruption, so quarantine/corrupt-marking
+   * must be suppressed and the cycle stopped instead of branding every item.
+   * 'transition' means key material is being re-established (sign-in /
+   * recovery / linking mid-flight): stop the cycle quietly and let the flow
+   * restart sync with the settled key.
+   */
+  checkAccountKey?: () => Promise<'match' | 'mismatch' | 'transition' | 'unknown'>
+  /** Escalation for a CONFIRMED account-key mismatch (recovery prompt / sign-out). */
+  onVaultKeyMismatch?: () => void
 }
 
 export interface SyncEngineOptions {

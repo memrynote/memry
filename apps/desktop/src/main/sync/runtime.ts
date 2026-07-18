@@ -57,6 +57,7 @@ import {
   type VaultRecoveryNeededEvent
 } from '@memry/contracts/ipc-events'
 import { classifyVaultKeyError, vaultRecoveryReason } from '../crypto/vault-key-error'
+import { checkLocalKeyAgainstAccount, isKeyMaterialActivityRecent } from './key-verification'
 import { withRetry } from './retry'
 import { withAuthRetry, type AuthRetryDeps } from './auth-retry'
 import {
@@ -119,6 +120,9 @@ let startPromise: Promise<SyncEngine | null> | null = null
 let seedAbortController: AbortController | null = null
 let seedPromise: Promise<void> | null = null
 let vaultKeyFailureLogged = false
+// Once per process: a confirmed account-key mismatch escalates (recovery
+// prompt + sign-out) a single time, not on every failing pull cycle.
+let vaultKeyMismatchHandled = false
 
 function resetSyncServiceSingletons(): void {
   resetTaskSyncService()
@@ -247,6 +251,25 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         return null
       } finally {
         if (startupVaultKey) secureCleanup(startupVaultKey)
+      }
+
+      // The local vault verifier above only proves self-consistency — a fresh
+      // vault binds whatever key the keychain currently holds, even a wrong
+      // one. Check the key against the ACCOUNT before pulling: syncing with a
+      // mismatched key fails on every item and brands them corrupt/quarantined.
+      const accountKeyCheck = await checkLocalKeyAgainstAccount()
+      if (accountKeyCheck === 'transition') {
+        // Sign-in / recovery / linking is mid-flight; the true key lands at
+        // flow finalize, which restarts the runtime itself. Just stand down.
+        log.info('Sync runtime deferred: key material is being re-established')
+        return null
+      }
+      if (accountKeyCheck === 'mismatch') {
+        log.error(
+          'Sync runtime unavailable: local master key does not match the account — recovery required'
+        )
+        emitVaultRecoveryNeeded({ reason: 'vault-key-mismatch' })
+        return null
       }
 
       // Dormant-provisioned vaults (downloaded or linked) start without a
@@ -594,6 +617,29 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
           void syncGoogleCalendarSource(runtimeSyncDb, sourceId).catch((err) => {
             log.warn('calendarSyncOneSource failed', { sourceId, err })
           })
+        },
+        checkAccountKey: () => checkLocalKeyAgainstAccount(),
+        onVaultKeyMismatch: () => {
+          // Only reached on a CONFIRMED mismatch ('transition' never escalates
+          // — see checkAccountKey). Guard the rare race where a key-material
+          // flow started between the check and this callback.
+          if (vaultKeyMismatchHandled) return
+          vaultKeyMismatchHandled = true
+          emitVaultRecoveryNeeded({ reason: 'vault-key-mismatch' })
+          if (isKeyMaterialActivityRecent()) {
+            log.info('Vault key mismatch during key-material transition — not tearing down')
+            return
+          }
+          // Steady-state confirmed mismatch: this session can never sync. Sign
+          // the user out so the normal sign-in + recovery-phrase flow restores
+          // the correct key (session-teardown imported dynamically — it imports
+          // this module, a static import would be a cycle).
+          log.error(
+            'Confirmed vault key mismatch — signing out so recovery can restore the correct key'
+          )
+          void import('./session-teardown')
+            .then(({ teardownSession }) => teardownSession('integrity'))
+            .catch((err) => log.error('Key-mismatch sign-out failed', err))
         }
       })
 
