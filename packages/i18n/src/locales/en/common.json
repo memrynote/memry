@@ -407,7 +407,8 @@
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Something went wrong",
       "anErrorOccurredWhileRenderingThisTabContent": "An error occurred while rendering this tab content.",
-      "tryAgain": "Try Again"
+      "tryAgain": "Try Again",
+      "sendReport": "Send diagnostic report"
     },
     "componentsTabsTabPreviewCard": {
       "noteIcon": "Note icon"
