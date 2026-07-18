@@ -274,11 +274,14 @@ Loki adds the diagnostic detail (stacks, operational messages) that AE rows deli
   keys, or IPs. Unlike the `/telemetry/batch` error pipeline above (message never sent, stack frames
   only), `kind=log`/`kind=report` message text **does** ship — redaction, not omission, is what makes
   it safe: secrets are dropped first, paths collapse to `~/` / `<vault>/`, note/attachment basenames
-  and known id fields (`noteId`, `deviceId`, `installId`, …) are salted-hashed
-  (`[name:hash8].ext`), emails become `[email:hash8]`, and IPs/UUID-shaped ids are masked. A fixed
-  field allowlist (`level, scope, action, errorCode, appVersion, buildChannel, platform, arch,
-origin, workerName`, plus numeric metric keys like `durationMs`/`itemCount`) ships verbatim;
-  every other field value runs through the same redaction as the message.
+  are salted-hashed to `[name:hash8].ext`, known id fields (`noteId`, `deviceId`, `installId`, …)
+  are salted-hashed, and emails become `[email:hash8]`. IPs are masked to `<ip>`. UUID-shaped ids in
+  free text are salted-hashed on the client (correlatable, like the id fields above); the server's
+  re-redaction pass has no salt, so it masks them to a fixed `<id>` instead. A fixed field allowlist
+  (`level, scope, action, errorCode, appVersion, buildChannel, platform, arch, origin, workerName,
+reason, phase, mode, status, kind, result`, plus numeric metric keys like
+  `durationMs`/`itemCount`) ships verbatim; most other field values run through the same redaction as
+  the message.
 - **Process lifecycle**: the main process reports a `child-process-gone` fault with a composite
   `type:reason:name` error code (e.g. `Utility:crashed:Embeddings`). The worker label comes from
   Electron's `details.name`, **not** `details.serviceName`: Electron routes a fork's `serviceName`
@@ -360,9 +363,9 @@ Analytics Engine:
 A malformed payload is rejected with `400 VALIDATION_ERROR` (only the Zod path + issue code is
 logged, never values, same convention as `/telemetry/batch`). A valid payload always gets `202`,
 including when `LOKI_URL`/`LOKI_TOKEN` are unset — the Loki push inside `pushLokiEntries` is a
-silent no-op in that case, so a dev build never error-spams. `/diagnostics/report` accepts an
-optional `accountId` for attribution, only populated when the user is signed in. `/telemetry/batch`
-is unchanged by either endpoint.
+silent no-op in that case, so a dev build never error-spams. The `accountId` field is reserved in
+the report schema for future account attribution but is not currently populated by the client
+(reports are anonymous). `/telemetry/batch` is unchanged by either endpoint.
 
 ## Performance
 
