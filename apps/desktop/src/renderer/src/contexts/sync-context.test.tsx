@@ -25,6 +25,7 @@ let sessionExpiredListeners: VoidCallback[] = []
 let deviceRevokedListeners: EventCallback[] = []
 let securityWarningListeners: EventCallback[] = []
 let certificatePinFailedListeners: VoidCallback[] = []
+let vaultRecoveryNeededListeners: EventCallback[] = []
 let i18n: I18nInstance
 
 const toastMock = vi.hoisted(() => ({
@@ -113,6 +114,7 @@ beforeEach(async () => {
   deviceRevokedListeners = []
   securityWarningListeners = []
   certificatePinFailedListeners = []
+  vaultRecoveryNeededListeners = []
   logoutMock.mockClear()
   vi.mocked(useAuth).mockReturnValue({
     state: { status: 'authenticated' },
@@ -221,6 +223,12 @@ beforeEach(async () => {
     certificatePinFailedListeners.push(cb)
     return () => {
       certificatePinFailedListeners = certificatePinFailedListeners.filter((l) => l !== cb)
+    }
+  })
+  api.onVaultRecoveryNeeded = vi.fn((cb: EventCallback) => {
+    vaultRecoveryNeededListeners.push(cb)
+    return () => {
+      vaultRecoveryNeededListeners = vaultRecoveryNeededListeners.filter((l) => l !== cb)
     }
   })
 })
