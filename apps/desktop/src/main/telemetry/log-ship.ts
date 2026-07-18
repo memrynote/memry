@@ -52,7 +52,8 @@ export const parseRecord = (
   for (const arg of r.data) {
     if (typeof arg === 'string' && !message) message = arg
     else if (arg instanceof Error) {
-      if (!message) message = arg.name
+      if (!message)
+        message = typeof arg.message === 'string' && arg.message ? arg.message : arg.name
       fields.errorName = arg.name
     } else if (arg && typeof arg === 'object') Object.assign(fields, arg)
     else if (!message) message = String(arg)
@@ -118,11 +119,11 @@ export const installLogShip = (deps: LogShipDeps): LogShip => {
     if (ring.length > RING_LIMIT) ring = ring.slice(ring.length - RING_LIMIT)
   }
 
-  const throttleMap = new Map<string, { line: DiagnosticLogLine; lastTs: number }>()
+  const throttleMap = new Map<string, { line: DiagnosticLogLine; windowStart: number }>()
   const sweepThrottle = (now: number): void => {
     if (throttleMap.size <= THROTTLE_MAX_KEYS) return
     for (const [key, entry] of throttleMap) {
-      if (now - entry.lastTs >= THROTTLE_WINDOW_MS) throttleMap.delete(key)
+      if (now - entry.windowStart >= THROTTLE_WINDOW_MS) throttleMap.delete(key)
     }
   }
 
@@ -170,8 +171,13 @@ export const installLogShip = (deps: LogShipDeps): LogShip => {
       const now = Date.now()
       const key = `${parsed.level}|${parsed.scope}|${message}`
       const throttled = throttleMap.get(key)
-      if (throttled && now - throttled.lastTs < THROTTLE_WINDOW_MS) {
-        throttled.lastTs = now
+      // Fixed window, anchored to when the line was first emitted (not to the
+      // last hit): repeats within THROTTLE_WINDOW_MS of that anchor are
+      // suppressed and counted; once the window elapses, the first repeat
+      // after it emits a fresh line with its own window/count. This keeps a
+      // sustained warning loop visible (~one line per window) instead of
+      // suppressing it forever.
+      if (throttled && now - throttled.windowStart < THROTTLE_WINDOW_MS) {
         const priorCount =
           typeof throttled.line.fields?.repeatCount === 'number'
             ? throttled.line.fields.repeatCount
@@ -192,7 +198,7 @@ export const installLogShip = (deps: LogShipDeps): LogShip => {
         origin,
         ...(workerName ? { workerName } : {})
       }
-      throttleMap.set(key, { line, lastTs: now })
+      throttleMap.set(key, { line, windowStart: now })
       sweepThrottle(now)
       pushRing(line)
 

@@ -66,10 +66,26 @@ describe('parseRecord', () => {
     expect(parseRecord({ level: 'warn', data: ['x'] }).scope).toBe('app')
   })
 
-  it('captures an Error argument as errorName and message', () => {
+  it('captures an Error argument as errorName and keeps the error message', () => {
     const p = parseRecord({ level: 'error', data: [new Error('kaboom')] })
-    expect(p.message).toBe('Error')
+    expect(p.message).toBe('kaboom')
     expect(p.fields.errorName).toBe('Error')
+  })
+
+  it('keeps the raw (pre-redaction) error message for an Error with sensitive content', () => {
+    // redaction happens downstream in redactLogLine; parseRecord must not discard
+    // the message by collapsing it to arg.name.
+    const p = parseRecord({
+      level: 'error',
+      data: [new Error('Sync failed: /Users/x/v/note.md')]
+    })
+    expect(p.message).toBe('Sync failed: /Users/x/v/note.md')
+    expect(p.fields.errorName).toBe('Error')
+  })
+
+  it('falls back to the error name when the Error has no message', () => {
+    const p = parseRecord({ level: 'error', data: [new Error('')] })
+    expect(p.message).toBe('Error')
   })
 })
 
@@ -241,6 +257,37 @@ describe('installLogShip', () => {
     const lines = shipped.recentLines()
     expect(lines).toHaveLength(1)
     expect(lines[0].fields?.repeatCount).toBe(5)
+  })
+
+  it('re-emits a fresh line once the throttle window elapses, even mid-loop (sustained warning loop)', () => {
+    // Regression for the sliding-window bug: a warning recurring faster than
+    // every THROTTLE_WINDOW_MS must not suppress forever. The window is
+    // anchored to when the line was first emitted, not to the last hit, so an
+    // intermediate hit inside the window must NOT push the deadline out.
+    vi.useFakeTimers()
+    try {
+      const { fetchMock } = createFetch()
+      const shipped = installLogShip({
+        buildChannel: 'production',
+        fetch: fetchMock,
+        endpoint: 'https://sync.test/telemetry/logs',
+        salt: FIXED_SALT,
+        flushIntervalMs: null
+      })
+
+      getTransport()({ level: 'warn', scope: 'Sync', data: ['same warn'] }) // t=0: fresh line
+      vi.advanceTimersByTime(1500)
+      getTransport()({ level: 'warn', scope: 'Sync', data: ['same warn'] }) // t=1500: within window, suppressed
+      vi.advanceTimersByTime(1600) // t=3100: >3000ms since the ORIGINAL emit, but only 1600ms since the last hit
+      getTransport()({ level: 'warn', scope: 'Sync', data: ['same warn'] }) // must re-emit, not suppress again
+
+      const lines = shipped.recentLines()
+      expect(lines).toHaveLength(2)
+      expect(lines[0].fields?.repeatCount).toBe(2)
+      expect(lines[1].fields?.repeatCount).toBeUndefined()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('ingestForwarded tags the line with origin worker and the worker name', () => {
