@@ -243,6 +243,42 @@ Loki adds the diagnostic detail (stacks, operational messages) that AE rows deli
   Grafana — and `exit_code`, the platform exit status for process-lifecycle events (empty string
   when absent, since exit code `0` is itself meaningful). Labels stay low-cardinality
   (`app`/`env`/`level`) — everything else lives inside the JSON line.
+- **Redacted diagnostic logs (`kind=log`, Path A, always-on)**: a main-process electron-log
+  transport (`apps/desktop/src/main/telemetry/log-ship.ts`, installed once from `main/index.ts` —
+  never from `logger.ts`, which must stay electron-free for worker bundling) intercepts every
+  `warn`/`error` record and redacts it via `redactLogLine` (`packages/contracts/src/redact.ts`)
+  before anything leaves the device, using a per-install salt (`diagnosticsSalt`, persisted in
+  `telemetry.json`) and the active vault root. Redacted lines batch (queue 500 / batch 50 / flush
+  30s, drop-4xx-except-429) to `POST /telemetry/logs`, gated on the telemetry toggle
+  (`getTelemetryRuntime().getSettings().enabled`) and disabled outright in dev builds. Repeated
+  identical `level|scope|message` lines within a 3s window are throttled into one line with a
+  `repeatCount` field. Worker processes (embeddings, image processing, voice transcription)
+  forward their own `warn`/`error` records to main over `process.parentPort`
+  (`apps/desktop/src/main/lib/log-forward.ts`, electron-free) for the same redaction + ship pass,
+  tagged `origin: 'worker'` and `workerName`. The server re-runs `redactLogLine` in mask mode (no
+  salt) as defense-in-depth before writing to Loki (`desktopLogEntry` in `services/loki.ts`) — the
+  client-side redaction is primary; the server pass is a second net, not the source of truth.
+- **Incident reports (`kind=report`, Path B, opt-in one-time)**: on a real error, the app offers a
+  one-time "Send diagnostic report" action (the tab error boundary, IPC-error toasts, and a
+  Settings entry — available independent of the telemetry toggle). The
+  `diagnostics:previewReport` / `diagnostics:sendReport` IPC calls build a `DiagnosticReport` via
+  the same pure `buildIncidentReport` function: a generated `incidentId` (`MEMRY-XXXXXXXX`, random
+  base32), the last ≤200 redacted lines from the Path A ring buffer (≤5 min), a redacted
+  device/sync snapshot (app version, platform, locale, uptime, sync/auth state, queue depth — no
+  content), and the triggering error's redacted stack (header line dropped, frames only). Preview
+  and send call the same builder with the same `incidentId`, so the consent dialog's preview is
+  byte-identical to what ships. `sendReport` posts to `POST /diagnostics/report`; the server writes
+  one summary line plus one line per log entry, all tagged `incident_id`, under `kind=report`.
+- **Redaction guarantees**: same non-negotiables as [What Never Ships](#what-never-ships) — no note
+  content, titles, attachment filenames, absolute home/vault paths, emails, JWTs/tokens, vault/device
+  keys, or IPs. Unlike the `/telemetry/batch` error pipeline above (message never sent, stack frames
+  only), `kind=log`/`kind=report` message text **does** ship — redaction, not omission, is what makes
+  it safe: secrets are dropped first, paths collapse to `~/` / `<vault>/`, note/attachment basenames
+  and known id fields (`noteId`, `deviceId`, `installId`, …) are salted-hashed
+  (`[name:hash8].ext`), emails become `[email:hash8]`, and IPs/UUID-shaped ids are masked. A fixed
+  field allowlist (`level, scope, action, errorCode, appVersion, buildChannel, platform, arch,
+origin, workerName`, plus numeric metric keys like `durationMs`/`itemCount`) ships verbatim;
+  every other field value runs through the same redaction as the message.
 - **Process lifecycle**: the main process reports a `child-process-gone` fault with a composite
   `type:reason:name` error code (e.g. `Utility:crashed:Embeddings`). The worker label comes from
   Electron's `details.name`, **not** `details.serviceName`: Electron routes a fork's `serviceName`
@@ -285,12 +321,20 @@ Loki adds the diagnostic detail (stacks, operational messages) that AE rows deli
   email send failures (`RESEND_SEND_FAILED`), and `UserSyncState` Durable Object alarm/websocket
   handler errors (`source="user_sync_state_do"`, pushed directly via the Loki client since no
   route error handler ever sees them).
-- **Labels** stay low-cardinality (`app`, `env`, `level`); everything else lives inside the JSON
-  log line and is filtered in Grafana with `| json`.
-- **Retention**: 30 days, enforced by the Loki compactor.
+- **Labels** stay low-cardinality (`app`, `env`, `level`, and a fixed-set `kind`:
+  `error | log | report`); everything else lives inside the JSON log line and is filtered in
+  Grafana with `| json`. Never put per-user/per-install values (`installId`, `noteId`, etc.) on a
+  label — they belong in the JSON line.
+- **Retention**: 30 days, enforced by the Loki compactor (single retention for all `kind` values in
+  v1; per-stream retention is not yet implemented).
 - **Dashboard**: `Memry — Logs` (`/d/memry-logs`) shows desktop/server error log panels and
   error-volume timeseries, with an `env` switch for production/staging. Ad-hoc digging and live
-  tail happen in Grafana Explore against the Loki datasource.
+  tail happen in Grafana Explore against the Loki datasource, e.g.:
+
+  ```logql
+  {app="desktop", kind="log"} | json
+  {app="desktop", kind="report"} | json | incident_id="MEMRY-…"
+  ```
 
 ## Server Configuration
 
@@ -301,6 +345,24 @@ shipping is a no-op):
 LOKI_URL=https://grafana.memrynote.com   # wrangler var
 LOKI_TOKEN=...                           # wrangler secret (reverse-proxy bearer token)
 ```
+
+### Diagnostic Log Endpoints
+
+Two additional endpoints feed the `kind=log` / `kind=report` streams. Both are anonymous (no
+sign-in required), rate-limited per user/IP, Zod-validated, and Loki-only — neither writes to
+Analytics Engine:
+
+| Endpoint                   | Stream                 | Rate limit    | Payload                                                                                                 |
+| -------------------------- | ---------------------- | ------------- | ------------------------------------------------------------------------------------------------------- |
+| `POST /telemetry/logs`     | Path A (`kind=log`)    | 120 req / 60s | `DiagnosticLogBatchSchema` — 1–50 redacted log lines                                                    |
+| `POST /diagnostics/report` | Path B (`kind=report`) | 10 req / hour | `DiagnosticReportSchema` — ≤200 redacted lines + a redacted device/sync snapshot + the triggering error |
+
+A malformed payload is rejected with `400 VALIDATION_ERROR` (only the Zod path + issue code is
+logged, never values, same convention as `/telemetry/batch`). A valid payload always gets `202`,
+including when `LOKI_URL`/`LOKI_TOKEN` are unset — the Loki push inside `pushLokiEntries` is a
+silent no-op in that case, so a dev build never error-spams. `/diagnostics/report` accepts an
+optional `accountId` for attribution, only populated when the user is signed in. `/telemetry/batch`
+is unchanged by either endpoint.
 
 ## Performance
 
