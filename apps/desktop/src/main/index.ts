@@ -43,6 +43,7 @@ import { startReminderScheduler, stopReminderScheduler } from './lib/reminders'
 import { startInboxReviewScheduler, stopInboxReviewScheduler } from './inbox/review-scheduler'
 import { disposeTelemetryRuntime, initializeTelemetryRuntime } from './telemetry/runtime'
 import { getTelemetryAuthState, getTelemetrySyncState } from './telemetry/state'
+import { getLogShip, installLogShip } from './telemetry/log-ship'
 import {
   trackChildProcessGone,
   trackLaunchPhase,
@@ -1129,6 +1130,7 @@ const appReady = app.whenReady().then(async () => {
     syncStateProvider: getTelemetrySyncState,
     accessTokenProvider: () => getValidAccessToken()
   })
+  installLogShip({ buildChannel: resolveMemryEnvironment() })
   registerMainDiagnostics()
   startActiveHeartbeat(() => BrowserWindow.getFocusedWindow() !== null)
 
@@ -1689,9 +1691,11 @@ app.on('before-quit', (event) => {
       shutdownLog.info('stopping image processing utility...')
       return stopImageProcessing()
     })
-    .then(() => {
+    .then(async () => {
       shutdownLog.info('stopping active heartbeat...')
       stopActiveHeartbeat()
+      shutdownLog.info('flushing log-ship transport...')
+      await getLogShip()?.dispose()
       shutdownLog.info('flushing telemetry runtime...')
       return disposeTelemetryRuntime()
     })
