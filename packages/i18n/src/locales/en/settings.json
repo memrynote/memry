@@ -160,6 +160,18 @@
         "label": "Share Anonymous Usage Metrics",
         "description": "It's only anon metrics — no note content, search queries, file paths, emails, or raw IDs are ever sent.",
         "error": "Failed to update telemetry setting"
+      },
+      "diagnostics": {
+        "title": "Send a diagnostic report?",
+        "consent": "Send a one-time diagnostic report? It contains redacted technical logs only — no note content.",
+        "building": "Preparing report…",
+        "previewLabel": "Preview report contents",
+        "snapshotLabel": "Device snapshot",
+        "send": "Send",
+        "sending": "Sending…",
+        "notNow": "Not now",
+        "sent": "Report sent — reference {incidentId}",
+        "error": "Failed to send diagnostic report"
       }
     }
   },
