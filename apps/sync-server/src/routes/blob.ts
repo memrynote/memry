@@ -11,13 +11,16 @@ import {
   generateAttachmentManifestKey,
   generateBlobKey,
   getBlob,
-  getUploadedByteTotal,
-  parseUploadedChunks,
   putBlob
 } from '../services/blob'
 import { assertFileSizeAllowed } from '../services/entitlements'
 import { adjustStorageUsed, reserveStorage } from '../services/quota'
-import { MAX_CHUNK_CRYPTO_OVERHEAD, expectedEncryptedTotal } from '../services/upload-size'
+import {
+  MAX_CHUNK_CRYPTO_OVERHEAD,
+  expectedEncryptedTotal,
+  getUploadedByteTotal,
+  parseUploadedChunks
+} from '../services/upload-size'
 import { UploadInitRequestSchema } from '@memry/contracts/blob-api'
 import type { AppContext } from '../types'
 

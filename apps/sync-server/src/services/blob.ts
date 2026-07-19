@@ -147,24 +147,3 @@ export const deleteByPrefix = async (
 
   return deleted
 }
-
-export interface UploadedChunkEntry {
-  i: number
-  h: string
-  b?: number
-}
-
-export function parseUploadedChunks(value: string): UploadedChunkEntry[] {
-  const parsed = JSON.parse(value) as UploadedChunkEntry[]
-  return Array.isArray(parsed) ? parsed : []
-}
-
-export function getUploadedByteTotal(entries: UploadedChunkEntry[]): number | null {
-  let total = 0
-  for (const entry of entries) {
-    const bytes = entry.b
-    if (typeof bytes !== 'number' || !Number.isInteger(bytes) || bytes < 0) return null
-    total += bytes
-  }
-  return total
-}

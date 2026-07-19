@@ -1,4 +1,5 @@
-import { deleteByPrefix, getUploadedByteTotal, parseUploadedChunks } from './blob'
+import { deleteByPrefix } from './blob'
+import { getUploadedByteTotal, parseUploadedChunks } from './upload-size'
 
 /**
  * True if this user owns this vault. Callers 404 on false — a cross-user
