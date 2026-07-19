@@ -58,13 +58,21 @@ export async function checkManifestIntegrity(
       }
     )
 
-    const serverItemMap = new Map(result.value.items.map((item) => [item.id, item]))
+    // Ids repeat across item types (project 'inbox' vs tag 'inbox'), so both
+    // diff directions must compare (type, id) pairs — an id-only diff hides a
+    // missing item behind its same-id sibling of another type, and counts a
+    // quarantined sibling as "server-only" forever (endless re-pull loop).
+    const refKey = (type: string, id: string): string => `${type}:${id}`
+    const serverItemMap = new Map(
+      result.value.items.map((item) => [refKey(item.type, item.id), item])
+    )
 
     const localItems = getLocalSyncableItems(deps.db)
+    const localKeys = new Set(localItems.map((l) => refKey(l.type, l.id)))
 
     let reEnqueuedCount = 0
     for (const local of localItems) {
-      const serverRef = serverItemMap.get(local.id)
+      const serverRef = serverItemMap.get(refKey(local.type, local.id))
 
       if (!serverRef) {
         log.warn('Local item missing from server manifest, enqueuing as create', {
@@ -84,7 +92,7 @@ export async function checkManifestIntegrity(
     }
 
     const serverOnlyIds = result.value.items.filter(
-      (item) => !localItems.some((l) => l.id === item.id)
+      (item) => !localKeys.has(refKey(item.type, item.id))
     )
     if (serverOnlyIds.length > 0) {
       log.warn('Server has items not found locally, will trigger re-pull', {

@@ -27,7 +27,7 @@ import type { QuarantineManager } from './quarantine-manager'
 import type { CrdtSyncCoordinator } from './crdt-sync-coordinator'
 import type { PushCoordinator } from './push-coordinator'
 import { CorruptItemTracker } from './corrupt-item-tracker'
-import { SYNC_STATE_KEYS, YIELD_EVERY_N_ITEMS, yieldToEventLoop } from './sync-context'
+import { SYNC_STATE_KEYS, YIELD_EVERY_N_ITEMS, yieldToEventLoop, itemRefKey } from './sync-context'
 
 const log = createLogger('PullCoordinator')
 
@@ -221,11 +221,15 @@ export class PullCoordinator {
       const shouldStop = await this.pullChangesPage(changes, runState)
       this.emitInitialSyncProgress(changes, runState.pulledCount)
 
+      // A page we refused to apply (all-crypto-failed, key mid-transition)
+      // must NOT advance the persisted cursor: doing so made the next manual
+      // Retry resume past the failing page and report a clean sync while the
+      // items were never applied.
+      if (shouldStop) break
+
       this.stateManager.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, String(changes.nextCursor))
       cursor = String(changes.nextCursor)
       hasMore = changes.hasMore
-
-      if (shouldStop) break
 
       if (hasMore && !this.ctx.abortController?.signal.aborted) {
         prefetchedNext = this.fetchChangesPage(runState, cursor)
@@ -413,7 +417,7 @@ export class PullCoordinator {
           if (!isBinary) runState.crdtNoteIds.push(dec.id)
         }
 
-        runState.processedIds.add(dec.id)
+        runState.processedIds.add(itemRefKey(dec.type, dec.id))
         runState.pulledCount++
         applied++
         this.stateManager.emitItemSynced(dec.id, dec.type, 'pull', itemOp)
@@ -471,11 +475,11 @@ export class PullCoordinator {
     let pageConflicts = 0
 
     const itemsToProcess = parsed.data.items.filter((item) => {
-      if (processedIds.has(item.id)) {
+      if (processedIds.has(itemRefKey(item.type, item.id))) {
         pageSkipped++
         return false
       }
-      if (this.quarantine.isQuarantined(item.id)) {
+      if (this.quarantine.isQuarantined(item.id, item.type)) {
         pageSkipped++
         return false
       }
@@ -602,7 +606,7 @@ export class PullCoordinator {
             if (!isBinary) crdtNoteIds.push(dec.id)
           }
 
-          processedIds.add(dec.id)
+          processedIds.add(itemRefKey(dec.type, dec.id))
           pageApplied++
           this.stateManager.emitItemSynced(dec.id, dec.type, 'pull', itemOp)
         } catch (applyError) {
@@ -620,14 +624,16 @@ export class PullCoordinator {
     }
     timer.endPhase(decrypted.length)
 
-    const cryptoRefetchIds = failures.filter((f) => f.isCryptoError).map((f) => f.id)
-    const parseRefetchIds = parseErrorIds.map((p) => p.id)
-    const allRefetchIds = [...cryptoRefetchIds, ...parseRefetchIds]
+    const cryptoRefetchRefs = failures
+      .filter((f) => f.isCryptoError)
+      .map((f) => ({ id: f.id, type: f.type }))
+    const parseRefetchRefs = parseErrorIds.map((p) => ({ id: p.id, type: p.type }))
+    const allRefetchRefs = [...cryptoRefetchRefs, ...parseRefetchRefs]
 
-    if (allRefetchIds.length > 0 && pageApplied > 0) {
+    if (allRefetchRefs.length > 0 && pageApplied > 0) {
       this.corruptTracker.clearExpired()
       const { recovered, permanentFailures } = await this.corruptTracker.refetch(
-        allRefetchIds,
+        allRefetchRefs,
         runState.accessJwt,
         vaultKey
       )
@@ -646,7 +652,7 @@ export class PullCoordinator {
             vaultKey
           })
           if (result === 'applied' || result === 'conflict') {
-            processedIds.add(dec.id)
+            processedIds.add(itemRefKey(dec.type, dec.id))
             pageApplied++
             pageFailed--
             this.stateManager.emitItemSynced(dec.id, dec.type, 'pull', itemOp)
@@ -664,11 +670,10 @@ export class PullCoordinator {
         }
       }
 
-      for (const id of permanentFailures) {
-        const failInfo = parseErrorIds.find((p) => p.id === id) ?? failures.find((f) => f.id === id)
+      for (const ref of permanentFailures) {
         this.ctx.deps.emitToRenderer(EVENT_CHANNELS.ITEM_CORRUPT, {
-          itemId: id,
-          type: failInfo?.type ?? 'unknown',
+          itemId: ref.id,
+          type: ref.type,
           error: 'Item corrupt after re-fetch attempt'
         } satisfies ItemCorruptEvent)
       }

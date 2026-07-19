@@ -6,11 +6,16 @@ import { withRetry } from '../retry'
 import { postToServer } from '../http-client'
 import type { SyncContext } from './sync-context'
 import type { QuarantineManager } from './quarantine-manager'
-import { CORRUPT_ITEM_COOLDOWN_MS } from './sync-context'
+import { CORRUPT_ITEM_COOLDOWN_MS, itemRefKey } from './sync-context'
 
 const log = createLogger('CorruptItemTracker')
 
 export type ResolveDeviceKey = (deviceId: string) => Promise<Uint8Array | null>
+
+export interface ItemRef {
+  id: string
+  type: string
+}
 
 export interface RecoveredItem {
   id: string
@@ -33,23 +38,23 @@ export class CorruptItemTracker {
     this.resolveDeviceKey = resolveDeviceKey
   }
 
-  shouldRetry(itemId: string): boolean {
-    const entry = this.corruptItems.get(itemId)
+  shouldRetry(ref: ItemRef): boolean {
+    const entry = this.corruptItems.get(itemRefKey(ref.type, ref.id))
     if (!entry) return true
     if (Date.now() - entry.failedAt > CORRUPT_ITEM_COOLDOWN_MS) {
-      this.corruptItems.delete(itemId)
+      this.corruptItems.delete(itemRefKey(ref.type, ref.id))
       return true
     }
     return false
   }
 
-  markFailed(itemId: string): void {
-    const entry = this.corruptItems.get(itemId)
+  markFailed(ref: ItemRef): void {
+    const entry = this.corruptItems.get(itemRefKey(ref.type, ref.id))
     if (entry) {
       entry.attempts++
       entry.failedAt = Date.now()
     } else {
-      this.corruptItems.set(itemId, { failedAt: Date.now(), attempts: 1 })
+      this.corruptItems.set(itemRefKey(ref.type, ref.id), { failedAt: Date.now(), attempts: 1 })
     }
   }
 
@@ -67,11 +72,11 @@ export class CorruptItemTracker {
   }
 
   async refetch(
-    failedItemIds: string[],
+    failedItems: ItemRef[],
     token: string,
     vaultKey: Uint8Array
-  ): Promise<{ recovered: RecoveredItem[]; permanentFailures: string[] }> {
-    const eligible = failedItemIds.filter((id) => this.shouldRetry(id))
+  ): Promise<{ recovered: RecoveredItem[]; permanentFailures: ItemRef[] }> {
+    const eligible = failedItems.filter((ref) => this.shouldRetry(ref))
     if (eligible.length === 0) return { recovered: [], permanentFailures: [] }
 
     log.info('Attempting re-fetch for corrupt items', { count: eligible.length })
@@ -81,7 +86,7 @@ export class CorruptItemTracker {
         () =>
           postToServer<{ items: RecordPullItemResponse[] }>(
             '/sync/pull',
-            { itemIds: eligible },
+            { itemIds: Array.from(new Set(eligible.map((ref) => ref.id))) },
             token
           ),
         {
@@ -93,21 +98,30 @@ export class CorruptItemTracker {
       const parsed = RecordPullResponseSchema.safeParse(pullResult.value)
       if (!parsed.success) {
         log.error('Re-fetch: invalid response', { error: parsed.error.message })
-        for (const id of eligible) this.markFailed(id)
+        for (const ref of eligible) this.markFailed(ref)
         return { recovered: [], permanentFailures: eligible }
       }
 
-      const signerIds = new Set(parsed.data.items.map((i) => i.signerDeviceId))
+      // The pull endpoint matches ids across ALL negotiated types, so an id
+      // shared by two types (project 'inbox' vs tag 'inbox') returns BOTH
+      // rows. Only process the (type, id) pairs this refetch actually asked
+      // for — the sibling type was not corrupt and must not be re-branded here.
+      const requested = new Set(eligible.map((ref) => itemRefKey(ref.type, ref.id)))
+      const requestedItems = parsed.data.items.filter((item) =>
+        requested.has(itemRefKey(item.type, item.id))
+      )
+
+      const signerIds = new Set(requestedItems.map((i) => i.signerDeviceId))
       for (const sid of signerIds) {
         await this.resolveDeviceKey(sid)
       }
 
-      const { decrypted, failures } = await decryptPullBatch(parsed.data.items, vaultKey, {
+      const { decrypted, failures } = await decryptPullBatch(requestedItems, vaultKey, {
         workerBridge: this.ctx.deps.workerBridge,
         resolveDeviceKey: (id) => this.resolveDeviceKey(id)
       })
 
-      const permanentFailures: string[] = []
+      const permanentFailures: ItemRef[] = []
       for (const failure of failures) {
         if (failure.isSignatureError) {
           this.quarantine.quarantineItem(
@@ -117,10 +131,14 @@ export class CorruptItemTracker {
             failure.error
           )
         } else {
-          this.markFailed(failure.id)
+          this.markFailed({ id: failure.id, type: failure.type })
         }
-        permanentFailures.push(failure.id)
-        log.warn('Re-fetch: item failed again', { itemId: failure.id, error: failure.error })
+        permanentFailures.push({ id: failure.id, type: failure.type })
+        log.warn('Re-fetch: item failed again', {
+          itemId: failure.id,
+          itemType: failure.type,
+          error: failure.error
+        })
       }
 
       return { recovered: decrypted, permanentFailures }
@@ -128,7 +146,7 @@ export class CorruptItemTracker {
       log.error('Re-fetch request failed', {
         error: error instanceof Error ? error.message : String(error)
       })
-      for (const id of eligible) this.markFailed(id)
+      for (const ref of eligible) this.markFailed(ref)
       return { recovered: [], permanentFailures: eligible }
     }
   }

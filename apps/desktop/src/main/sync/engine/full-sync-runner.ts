@@ -26,6 +26,11 @@ export class FullSyncRunner {
   private pushCoordinator: PushCoordinator
   private crdtSync: CrdtSyncCoordinator
   private actions: FullSyncActions
+  // In-memory cache of the persisted throttle timestamp. The persisted value
+  // is the authority: this runner is recreated with every engine (vault
+  // switch, restart, retry), and an instance-only field re-armed an immediate
+  // manifest check each time — with a permanently quarantined item that meant
+  // a cursor reset and full re-pull on every single sync cycle.
   lastManifestCheckAt = 0
 
   constructor(
@@ -83,14 +88,24 @@ export class FullSyncRunner {
         totalItems: 0
       } satisfies InitialSyncProgressEvent)
 
+      const persistedCheckAt = Number(
+        this.stateManager.getStateValue(SYNC_STATE_KEYS.LAST_MANIFEST_CHECK_AT) ?? '0'
+      )
       const manifestResult = await checkManifestIntegrity({
         db: this.ctx.deps.db,
         queue: this.ctx.deps.queue,
         getAccessToken: this.ctx.deps.getAccessToken,
         isOnline: () => this.ctx.deps.network.online,
-        lastCheckAt: this.lastManifestCheckAt
+        lastCheckAt: Math.max(
+          this.lastManifestCheckAt,
+          Number.isFinite(persistedCheckAt) ? persistedCheckAt : 0
+        )
       })
       this.lastManifestCheckAt = manifestResult.checkedAt
+      this.stateManager.setStateValue(
+        SYNC_STATE_KEYS.LAST_MANIFEST_CHECK_AT,
+        String(manifestResult.checkedAt)
+      )
       log.debug('fullSync: manifest check complete', {
         rePullNeeded: manifestResult.rePullNeeded,
         serverOnlyCount: manifestResult.serverOnlyCount

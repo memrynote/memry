@@ -4,7 +4,12 @@ import { createLogger } from '../../lib/logger'
 import { EVENT_CHANNELS } from '@memry/contracts/ipc-events'
 import type { SecurityWarningEvent, QuarantinedItemInfo } from '@memry/contracts/ipc-events'
 import type { SyncContext, QuarantineEntry } from './sync-context'
-import { SYNC_STATE_KEYS, QUARANTINE_MAX_ATTEMPTS } from './sync-context'
+import {
+  SYNC_STATE_KEYS,
+  QUARANTINE_MAX_ATTEMPTS,
+  QUARANTINE_ENTRY_TTL_MS,
+  itemRefKey
+} from './sync-context'
 
 const log = createLogger('QuarantineManager')
 
@@ -17,11 +22,11 @@ export class QuarantineManager {
   }
 
   quarantineItem(itemId: string, itemType: string, signerDeviceId: string, error: string): void {
-    const existing = this.quarantinedItems.get(itemId)
+    const existing = this.quarantinedItems.get(itemRefKey(itemType, itemId))
     const attemptCount = existing ? existing.attemptCount + 1 : 1
     const permanent = attemptCount >= QUARANTINE_MAX_ATTEMPTS
 
-    this.quarantinedItems.set(itemId, {
+    this.quarantinedItems.set(itemRefKey(itemType, itemId), {
       itemId,
       itemType,
       signerDeviceId,
@@ -62,11 +67,22 @@ export class QuarantineManager {
       const val = rows[0]?.value
       if (!val) return
       const entries = JSON.parse(val) as QuarantineEntry[]
-      for (const entry of entries) {
-        this.quarantinedItems.set(entry.itemId, entry)
+      // Expire stale entries: the server rows that earned a quarantine may
+      // have been repaired or purged since. If an item is still broken it
+      // re-quarantines within QUARANTINE_MAX_ATTEMPTS pulls, so dropping old
+      // entries is safe — keeping them forever is what blocked healthy items
+      // indefinitely after the 2026-07-18 server-side cleanup.
+      const now = Date.now()
+      const live = entries.filter((entry) => now - entry.failedAt < QUARANTINE_ENTRY_TTL_MS)
+      for (const entry of live) {
+        this.quarantinedItems.set(itemRefKey(entry.itemType, entry.itemId), entry)
       }
-      if (entries.length > 0) {
-        log.info('Loaded persisted quarantine state', { count: entries.length })
+      if (live.length > 0) {
+        log.info('Loaded persisted quarantine state', { count: live.length })
+      }
+      if (live.length < entries.length) {
+        log.info('Expired stale quarantine entries', { dropped: entries.length - live.length })
+        this.persistState()
       }
     } catch (err) {
       log.warn('Failed to load quarantine state', {
@@ -75,8 +91,8 @@ export class QuarantineManager {
     }
   }
 
-  isQuarantined(itemId: string): boolean {
-    const entry = this.quarantinedItems.get(itemId)
+  isQuarantined(itemId: string, itemType: string): boolean {
+    const entry = this.quarantinedItems.get(itemRefKey(itemType, itemId))
     if (!entry) return false
     return entry.attemptCount >= QUARANTINE_MAX_ATTEMPTS
   }
