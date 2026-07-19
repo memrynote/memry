@@ -25,6 +25,7 @@ import {
   getSyncEntitlement,
   isPaidSyncEntitlementActive
 } from '../services/entitlements'
+import { deleteVaultData, vaultExistsForUser } from '../services/vault-deletion'
 import {
   logCrdtTraffic,
   logRecordPushBatch,
@@ -102,6 +103,30 @@ const handleRegisterVault = async (c: Context<AppContext>): Promise<Response> =>
 }
 
 sync.post('/vaults', vaultsRateLimit, handleRegisterVault)
+
+// Auth-only like GET/POST /vaults, and registered before paidSyncMiddleware for
+// a sharper reason: that middleware runs ensureSyncVaultAllowed, which UPSERTS.
+// Below it, this route would have its own target re-created mid-request.
+const handleDeleteVault = async (c: Context<AppContext>): Promise<Response> => {
+  const userId = c.get('userId')!
+  const vaultId = c.req.param('vaultId')
+
+  if (!vaultId || !/^[a-zA-Z0-9_-]{1,128}$/.test(vaultId)) {
+    throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid vault id', 400)
+  }
+
+  if (!(await vaultExistsForUser(c.env.DB, userId, vaultId))) {
+    throw new AppError(ErrorCodes.SYNC_VAULT_NOT_FOUND, 'Vault not found', 404)
+  }
+
+  await deleteVaultData(c.env.DB, c.env.STORAGE, userId, vaultId)
+
+  safeWaitUntil(c, captureBusinessEvent(c.env, 'vault_deleted', userId, {}))
+
+  return c.json({ success: true })
+}
+
+sync.delete('/vaults/:vaultId', vaultsRateLimit, handleDeleteVault)
 
 sync.use('*', paidSyncMiddleware)
 sync.use('*', syncTypesMiddleware)

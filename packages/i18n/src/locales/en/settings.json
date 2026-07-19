@@ -1011,12 +1011,24 @@
     },
     "groups": {
       "storageUsage": "Storage Usage",
-      "location": "Location"
+      "location": "Location",
+      "accountVaults": "Vaults in your account"
     },
     "loadingStorage": "Loading storage info...",
     "signInStorage": "Sign in to view storage usage",
     "vaultPath": "Vault Path",
     "reveal": "Reveal",
+    "accountVaults": {
+      "empty": "No vaults synced to your account yet.",
+      "cloudOnly": "Not on this device",
+      "itemsCount": "{count} items",
+      "delete": "Delete",
+      "deleteTitle": "Delete “{name}” from your account?",
+      "deleteBody": "This permanently removes all synced data for this vault from Memry's servers and cannot be undone. Your files on disk are not deleted.",
+      "deleteConfirm": "Delete from account",
+      "deleteFailed": "Could not delete vault",
+      "activeHint": "Switch to another vault to delete this one."
+    },
     "storage": {
       "title": "Storage",
       "used": "{used} of {limit} used",

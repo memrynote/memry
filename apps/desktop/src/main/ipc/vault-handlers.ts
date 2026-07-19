@@ -106,6 +106,16 @@ export function registerVaultHandlers(): void {
   // vault:remove - Remove vault from known list
   ipcMain.handle(VaultChannels.invoke.REMOVE, createStringHandler(removeVault))
 
+  // vault:delete-from-account - Purge vault from sync account (never deletes files)
+  ipcMain.handle(
+    VaultChannels.invoke.DELETE_FROM_ACCOUNT,
+    createStringHandler(async (vaultUuid) => {
+      const { deleteAccountVault, refreshVaultDirectory } = await import('../sync/vault-directory')
+      await deleteAccountVault(vaultUuid)
+      await refreshVaultDirectory({ force: true })
+    })
+  )
+
   // vault:reindex - Trigger manual reindex
   ipcMain.handle(VaultChannels.invoke.REINDEX, createHandler(reindex))
 

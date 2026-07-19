@@ -52,7 +52,9 @@ export const VaultChannels = {
     /** List all vaults in the signed-in account (local + cloud-only) */
     LIST_ACCOUNT: 'vault:list-account',
     /** Provision + open a cloud-only vault locally */
-    DOWNLOAD_REMOTE: 'vault:download-remote'
+    DOWNLOAD_REMOTE: 'vault:download-remote',
+    /** Purge a vault from the sync account; never touches files on disk */
+    DELETE_FROM_ACCOUNT: 'vault:delete-from-account'
   },
   events: {
     STATUS_CHANGED: 'vault:status-changed',

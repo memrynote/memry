@@ -5,7 +5,8 @@ import { encryptVaultName } from './vault-name-crypto'
 
 vi.mock('./http-client', () => ({
   getFromServer: vi.fn(),
-  postToServer: vi.fn(async () => ({ success: true }))
+  postToServer: vi.fn(async () => ({ success: true })),
+  deleteFromServer: vi.fn()
 }))
 
 vi.mock('./token-manager', () => ({
@@ -27,6 +28,7 @@ vi.mock('../store', () => ({
   getCurrentVaultPath: vi.fn(() => null),
   getAccountVaultsCache: vi.fn(() => undefined),
   setAccountVaultsCache: vi.fn(),
+  removeVault: vi.fn(),
   upsertVault: vi.fn()
 }))
 
@@ -46,12 +48,13 @@ vi.mock('./vault-provisioning', () => ({
   createDormantVault: vi.fn()
 }))
 
-import { getFromServer, postToServer } from './http-client'
+import { getFromServer, postToServer, deleteFromServer } from './http-client'
 import { getValidAccessToken } from './token-manager'
 import {
   getAccountVaultsCache,
   getCurrentVaultPath,
   getVaults,
+  removeVault as removeVaultFromStore,
   setAccountVaultsCache,
   upsertVault
 } from '../store'
@@ -59,6 +62,7 @@ import { selectVault } from '../vault'
 import { createDormantVault } from './vault-provisioning'
 import {
   __resetThrottleForTests,
+  deleteAccountVault,
   downloadRemoteVault,
   listAccountVaults,
   refreshVaultDirectory,
@@ -339,6 +343,82 @@ describe('vault-directory', () => {
       expect(upsertVault).toHaveBeenCalledWith(
         expect.objectContaining({ path: `${parent}/beta`, vaultUuid: 'uuid-b' })
       )
+    })
+  })
+
+  describe('deleteAccountVault', () => {
+    beforeEach(() => {
+      vi.mocked(getValidAccessToken).mockResolvedValue('tok')
+      vi.mocked(getVaults).mockReturnValue([])
+      vi.mocked(getCurrentVaultPath).mockReturnValue('/vaults/Active')
+      vi.mocked(deleteFromServer).mockResolvedValue({ success: true })
+    })
+
+    it('calls the server with the url-encoded vault uuid', async () => {
+      await deleteAccountVault('uuid-a')
+      expect(deleteFromServer).toHaveBeenCalledWith('/sync/vaults/uuid-a', 'tok')
+    })
+
+    // Without this, refreshVaultDirectory re-registers the vault on next launch
+    // and the delete silently undoes itself.
+    it('removes the local store entry so it cannot re-register', async () => {
+      vi.mocked(getVaults).mockReturnValue([
+        {
+          path: '/vaults/Old',
+          name: 'Old',
+          noteCount: 0,
+          taskCount: 0,
+          lastOpened: '',
+          isDefault: false,
+          vaultUuid: 'uuid-a'
+        }
+      ])
+      await deleteAccountVault('uuid-a')
+      expect(removeVaultFromStore).toHaveBeenCalledWith('/vaults/Old')
+    })
+
+    it('succeeds for a cloud-only vault with no local entry', async () => {
+      await expect(deleteAccountVault('uuid-a')).resolves.toBeUndefined()
+      expect(removeVaultFromStore).not.toHaveBeenCalled()
+    })
+
+    it('refuses to delete the active vault', async () => {
+      vi.mocked(getVaults).mockReturnValue([
+        {
+          path: '/vaults/Active',
+          name: 'Active',
+          noteCount: 0,
+          taskCount: 0,
+          lastOpened: '',
+          isDefault: false,
+          vaultUuid: 'uuid-a'
+        }
+      ])
+      await expect(deleteAccountVault('uuid-a')).rejects.toThrow(/active vault/i)
+      expect(deleteFromServer).not.toHaveBeenCalled()
+    })
+
+    it('throws when signed out', async () => {
+      vi.mocked(getValidAccessToken).mockResolvedValue(null)
+      await expect(deleteAccountVault('uuid-a')).rejects.toThrow(/sign/i)
+      expect(deleteFromServer).not.toHaveBeenCalled()
+    })
+
+    it('leaves the local entry alone when the server call fails', async () => {
+      vi.mocked(getVaults).mockReturnValue([
+        {
+          path: '/vaults/Old',
+          name: 'Old',
+          noteCount: 0,
+          taskCount: 0,
+          lastOpened: '',
+          isDefault: false,
+          vaultUuid: 'uuid-a'
+        }
+      ])
+      vi.mocked(deleteFromServer).mockRejectedValue(new Error('boom'))
+      await expect(deleteAccountVault('uuid-a')).rejects.toThrow('boom')
+      expect(removeVaultFromStore).not.toHaveBeenCalled()
     })
   })
 })

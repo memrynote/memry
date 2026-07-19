@@ -104,7 +104,8 @@ const createMockApi = () => ({
     close: vi.fn().mockResolvedValue({ success: true }),
     switch: vi.fn().mockResolvedValue({ success: true }),
     remove: vi.fn().mockResolvedValue({ success: true }),
-    reindex: vi.fn().mockResolvedValue({ success: true })
+    reindex: vi.fn().mockResolvedValue({ success: true }),
+    deleteFromAccount: vi.fn().mockResolvedValue(undefined)
   },
 
   // Notes API

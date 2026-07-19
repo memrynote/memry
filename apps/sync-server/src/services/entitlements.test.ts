@@ -225,6 +225,22 @@ describe('sync plan entitlements', () => {
     })
   })
 
+  it('blocks an eleventh synced vault for Pro', async () => {
+    const { db } = vaultDb({ existing: false, count: 10 })
+
+    await expect(
+      ensureSyncVaultAllowed(
+        db,
+        'user-1',
+        'vault-11',
+        entitlementRow({ plan: 'pro', max_vaults: 10 })
+      )
+    ).rejects.toMatchObject({
+      code: ErrorCodes.SYNC_VAULT_LIMIT_EXCEEDED,
+      statusCode: 402
+    })
+  })
+
   it('allows existing vaults and unlimited Believer vaults', async () => {
     const existing = vaultDb({ existing: true, count: 1 })
     await expect(

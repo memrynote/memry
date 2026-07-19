@@ -16,7 +16,9 @@ export const vaultApi = {
   reveal: () => invoke(VaultChannels.invoke.REVEAL),
   listAccount: () => invoke(VaultChannels.invoke.LIST_ACCOUNT),
   downloadRemote: (vaultUuid: string, parentPath?: string) =>
-    invoke(VaultChannels.invoke.DOWNLOAD_REMOTE, { vaultUuid, parentPath })
+    invoke(VaultChannels.invoke.DOWNLOAD_REMOTE, { vaultUuid, parentPath }),
+  deleteFromAccount: (vaultUuid: string) =>
+    invoke(VaultChannels.invoke.DELETE_FROM_ACCOUNT, vaultUuid)
 }
 
 export const vaultEvents = {
