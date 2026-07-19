@@ -57,7 +57,11 @@ import {
   type VaultRecoveryNeededEvent
 } from '@memry/contracts/ipc-events'
 import { classifyVaultKeyError, vaultRecoveryReason } from '../crypto/vault-key-error'
-import { checkLocalKeyAgainstAccount, isKeyMaterialActivityRecent } from './key-verification'
+import {
+  checkLocalKeyAgainstAccount,
+  isKeyMaterialActivityRecent,
+  keyMaterialActivityRemainingMs
+} from './key-verification'
 import { withRetry } from './retry'
 import { withAuthRetry, type AuthRetryDeps } from './auth-retry'
 import {
@@ -118,6 +122,26 @@ function emitLocalOnly(): void {
 let runtime: SyncRuntimeState | null = null
 let startPromise: Promise<SyncEngine | null> | null = null
 let seedAbortController: AbortController | null = null
+let deferredStartTimer: NodeJS.Timeout | null = null
+
+const DEFERRED_START_GRACE_MS = 2_000
+
+// One-shot retry for a start deferred by the key-material transition window.
+// startSyncRuntime self-guards (shutdown, existing runtime, missing session),
+// so a late or redundant firing is a no-op.
+function scheduleDeferredStart(): void {
+  if (deferredStartTimer) return
+  const delay = keyMaterialActivityRemainingMs() + DEFERRED_START_GRACE_MS
+  deferredStartTimer = setTimeout(() => {
+    deferredStartTimer = null
+    void startSyncRuntime().catch((err) => {
+      log.warn('Deferred sync runtime start failed', {
+        error: err instanceof Error ? err.message : String(err)
+      })
+    })
+  }, delay)
+  deferredStartTimer.unref?.()
+}
 let seedPromise: Promise<void> | null = null
 let vaultKeyFailureLogged = false
 // Once per process: a confirmed account-key mismatch escalates (recovery
@@ -260,8 +284,11 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       const accountKeyCheck = await checkLocalKeyAgainstAccount()
       if (accountKeyCheck === 'transition') {
         // Sign-in / recovery / linking is mid-flight; the true key lands at
-        // flow finalize, which restarts the runtime itself. Just stand down.
+        // flow finalize — but the finalize's own restart usually lands INSIDE
+        // this same window and gets deferred too, leaving sync dark until an
+        // unrelated trigger. Schedule one retry for just past window expiry.
         log.info('Sync runtime deferred: key material is being re-established')
+        scheduleDeferredStart()
         return null
       }
       if (accountKeyCheck === 'mismatch') {
@@ -698,6 +725,11 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
 }
 
 export async function stopSyncRuntime(options?: { skipFinalSync?: boolean }): Promise<void> {
+  if (deferredStartTimer) {
+    clearTimeout(deferredStartTimer)
+    deferredStartTimer = null
+  }
+
   if (startPromise) {
     await startPromise.catch(() => {})
   }

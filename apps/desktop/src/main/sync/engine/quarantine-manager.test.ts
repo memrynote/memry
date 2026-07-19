@@ -102,8 +102,9 @@ describe('QuarantineManager', () => {
         .all()
       expect(rows).toHaveLength(1)
       const parsed = JSON.parse(rows[0].value)
-      expect(parsed).toHaveLength(1)
-      expect(parsed[0].itemId).toBe('item-1')
+      expect(parsed.v).toBe(2)
+      expect(parsed.entries).toHaveLength(1)
+      expect(parsed.entries[0].itemId).toBe('item-1')
     })
   })
 
@@ -115,7 +116,7 @@ describe('QuarantineManager', () => {
       }
 
       // #then
-      expect(manager.isQuarantined('item-1')).toBe(true)
+      expect(manager.isQuarantined('item-1', 'task')).toBe(true)
     })
 
     it('#given item below max attempts #when isQuarantined called #then returns false', () => {
@@ -123,11 +124,33 @@ describe('QuarantineManager', () => {
       manager.quarantineItem('item-1', 'task', 'device-a', 'bad sig')
 
       // #then
-      expect(manager.isQuarantined('item-1')).toBe(false)
+      expect(manager.isQuarantined('item-1', 'task')).toBe(false)
     })
 
     it('#given unknown itemId #when isQuarantined called #then returns false', () => {
-      expect(manager.isQuarantined('nonexistent')).toBe(false)
+      expect(manager.isQuarantined('nonexistent', 'task')).toBe(false)
+    })
+
+    it('#given same id quarantined as another type #when isQuarantined called #then types stay independent', () => {
+      // Ids repeat across item types (project 'inbox' vs tag 'inbox'); a
+      // permanent quarantine on one type must not block the sibling type.
+      for (let i = 0; i < QUARANTINE_MAX_ATTEMPTS; i++) {
+        manager.quarantineItem('inbox', 'tag_definition', 'device-a', 'bad sig')
+      }
+
+      expect(manager.isQuarantined('inbox', 'tag_definition')).toBe(true)
+      expect(manager.isQuarantined('inbox', 'project')).toBe(false)
+    })
+
+    it('#given both types of a colliding id failing #when quarantined #then attempt counts do not alias', () => {
+      manager.quarantineItem('inbox', 'project', 'device-a', 'bad sig')
+      manager.quarantineItem('inbox', 'tag_definition', 'device-a', 'bad sig')
+      manager.quarantineItem('inbox', 'project', 'device-a', 'bad sig')
+
+      const items = manager.getQuarantinedItems()
+      expect(items).toHaveLength(2)
+      expect(items.find((i) => i.itemType === 'project')?.attemptCount).toBe(2)
+      expect(items.find((i) => i.itemType === 'tag_definition')?.attemptCount).toBe(1)
     })
   })
 
@@ -168,7 +191,7 @@ describe('QuarantineManager', () => {
         .insert(syncState)
         .values({
           key: SYNC_STATE_KEYS.QUARANTINED_ITEMS,
-          value: JSON.stringify(entries),
+          value: JSON.stringify({ v: 2, entries }),
           updatedAt: new Date()
         })
         .run()
@@ -178,8 +201,64 @@ describe('QuarantineManager', () => {
       fresh.loadState()
 
       // #then
-      expect(fresh.isQuarantined('restored-1')).toBe(true)
+      expect(fresh.isQuarantined('restored-1', 'task')).toBe(true)
       expect(fresh.getQuarantinedItems()).toHaveLength(1)
+    })
+
+    it('#given legacy id-keyed (v1 array) persisted state #when loadState called #then it is discarded', () => {
+      // v1 entries were id-aliased across types: attemptCount and itemType
+      // could belong to the WRONG type, so they must not be trusted.
+      const legacy = [
+        {
+          itemId: 'inbox',
+          itemType: 'tag_definition',
+          signerDeviceId: 'device-x',
+          failedAt: Date.now(),
+          attemptCount: QUARANTINE_MAX_ATTEMPTS,
+          lastError: 'aliased'
+        }
+      ]
+      testDb.db
+        .insert(syncState)
+        .values({
+          key: SYNC_STATE_KEYS.QUARANTINED_ITEMS,
+          value: JSON.stringify(legacy),
+          updatedAt: new Date()
+        })
+        .run()
+
+      const fresh = new QuarantineManager(ctx)
+      fresh.loadState()
+
+      expect(fresh.getQuarantinedItems()).toHaveLength(0)
+      expect(fresh.isQuarantined('inbox', 'tag_definition')).toBe(false)
+    })
+
+    it('#given persisted entry older than the TTL #when loadState called #then entry is dropped', () => {
+      const entries = [
+        {
+          itemId: 'stale-1',
+          itemType: 'task',
+          signerDeviceId: 'device-x',
+          failedAt: Date.now() - 8 * 24 * 60 * 60 * 1000,
+          attemptCount: QUARANTINE_MAX_ATTEMPTS,
+          lastError: 'old error'
+        }
+      ]
+      testDb.db
+        .insert(syncState)
+        .values({
+          key: SYNC_STATE_KEYS.QUARANTINED_ITEMS,
+          value: JSON.stringify({ v: 2, entries }),
+          updatedAt: new Date()
+        })
+        .run()
+
+      const fresh = new QuarantineManager(ctx)
+      fresh.loadState()
+
+      expect(fresh.isQuarantined('stale-1', 'task')).toBe(false)
+      expect(fresh.getQuarantinedItems()).toHaveLength(0)
     })
 
     it('#given no persisted state in DB #when loadState called #then quarantine remains empty', () => {
@@ -203,7 +282,7 @@ describe('QuarantineManager', () => {
       fresh.loadState()
 
       // #then
-      expect(fresh.isQuarantined('round-trip')).toBe(true)
+      expect(fresh.isQuarantined('round-trip', 'project')).toBe(true)
       expect(fresh.getQuarantinedItems()[0].lastError).toBe('err')
     })
   })
@@ -219,7 +298,7 @@ describe('QuarantineManager', () => {
 
       // #then
       expect(manager.getQuarantinedItems()).toHaveLength(0)
-      expect(manager.isQuarantined('item-1')).toBe(false)
+      expect(manager.isQuarantined('item-1', 'task')).toBe(false)
     })
   })
 })

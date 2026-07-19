@@ -34,6 +34,11 @@ export function isKeyMaterialActivityRecent(): boolean {
   return Date.now() - lastKeyMaterialActivityAt < KEY_MATERIAL_ACTIVITY_WINDOW_MS
 }
 
+/** Milliseconds until the key-material transition window expires (0 when clear). */
+export function keyMaterialActivityRemainingMs(): number {
+  return Math.max(0, KEY_MATERIAL_ACTIVITY_WINDOW_MS - (Date.now() - lastKeyMaterialActivityAt))
+}
+
 /** Test-only: reset module state between test cases. */
 export function resetKeyVerificationForTests(): void {
   lastKeyMaterialActivityAt = 0
