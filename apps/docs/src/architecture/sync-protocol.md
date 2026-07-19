@@ -92,6 +92,22 @@ resolves the `blob_key` stored on the row rather than re-deriving it, so old row
 without a migration. (The old layout let same-id items of different types overwrite one shared
 object, which permanently broke the losing row's signature.)
 
+### Per-item bookkeeping and retry semantics
+
+Because ids repeat across item types, every piece of client-side per-item bookkeeping — the
+signature-failure quarantine, the corrupt-item re-fetch tracker, the within-run apply dedup, and the
+manifest diff — keys on the `(type, id)` pair, never the bare id. A permanent quarantine on one type
+does not block its same-id sibling of another type, and a re-fetch that asks for one `(type, id)`
+pair ignores the sibling rows the server returns for the same id.
+
+Retry semantics: the pull cursor only advances past pages that were actually applied. A page the
+client refused (all items failed crypto, or the key was mid-transition during sign-in/recovery) does
+not move the cursor, so a manual Retry lands on the same page instead of skipping it and reporting a
+clean sync. Persisted quarantine entries expire after 7 days — if the underlying server row is still
+broken the item re-quarantines within a few pulls, and if it was repaired server-side the item flows
+again without an emergency wipe. The manifest-check throttle (30 minutes) persists in sync state, so
+engine restarts and vault switches cannot re-arm an immediate check.
+
 ## Sync Type Negotiation
 
 Clients declare the record sync item types they understand via an `X-Memry-Sync-Types` header
