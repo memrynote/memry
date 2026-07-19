@@ -26,6 +26,7 @@ export class FullSyncRunner {
   private pushCoordinator: PushCoordinator
   private crdtSync: CrdtSyncCoordinator
   private actions: FullSyncActions
+  private isQuarantined?: (itemId: string, itemType: string) => boolean
   // In-memory cache of the persisted throttle timestamp. The persisted value
   // is the authority: this runner is recreated with every engine (vault
   // switch, restart, retry), and an instance-only field re-armed an immediate
@@ -38,13 +39,15 @@ export class FullSyncRunner {
     stateManager: SyncStateManager,
     pushCoordinator: PushCoordinator,
     crdtSync: CrdtSyncCoordinator,
-    actions: FullSyncActions
+    actions: FullSyncActions,
+    isQuarantined?: (itemId: string, itemType: string) => boolean
   ) {
     this.ctx = ctx
     this.stateManager = stateManager
     this.pushCoordinator = pushCoordinator
     this.crdtSync = crdtSync
     this.actions = actions
+    this.isQuarantined = isQuarantined
   }
 
   async run(): Promise<void> {
@@ -88,24 +91,33 @@ export class FullSyncRunner {
         totalItems: 0
       } satisfies InitialSyncProgressEvent)
 
-      const persistedCheckAt = Number(
+      const persistedRaw = Number(
         this.stateManager.getStateValue(SYNC_STATE_KEYS.LAST_MANIFEST_CHECK_AT) ?? '0'
       )
+      // Clamp to now: a future-dated persisted timestamp (clock skew, machine
+      // migration) would otherwise throttle the check until the wall clock
+      // catches up with it.
+      const persistedCheckAt = Number.isFinite(persistedRaw)
+        ? Math.min(persistedRaw, Date.now())
+        : 0
       const manifestResult = await checkManifestIntegrity({
         db: this.ctx.deps.db,
         queue: this.ctx.deps.queue,
         getAccessToken: this.ctx.deps.getAccessToken,
         isOnline: () => this.ctx.deps.network.online,
-        lastCheckAt: Math.max(
-          this.lastManifestCheckAt,
-          Number.isFinite(persistedCheckAt) ? persistedCheckAt : 0
-        )
+        lastCheckAt: Math.max(this.lastManifestCheckAt, persistedCheckAt),
+        isQuarantined: this.isQuarantined
       })
       this.lastManifestCheckAt = manifestResult.checkedAt
-      this.stateManager.setStateValue(
-        SYNC_STATE_KEYS.LAST_MANIFEST_CHECK_AT,
-        String(manifestResult.checkedAt)
-      )
+      // Persist only when a manifest was actually fetched and diffed: stamping
+      // the no-token or fetch-failure paths would silently defer the next REAL
+      // check by the full 30-minute window.
+      if (manifestResult.performed) {
+        this.stateManager.setStateValue(
+          SYNC_STATE_KEYS.LAST_MANIFEST_CHECK_AT,
+          String(manifestResult.checkedAt)
+        )
+      }
       log.debug('fullSync: manifest check complete', {
         rePullNeeded: manifestResult.rePullNeeded,
         serverOnlyCount: manifestResult.serverOnlyCount

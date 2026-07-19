@@ -11,6 +11,7 @@ import { noteCache } from '@memry/db-schema/schema/notes-cache'
 import type { RecordSyncItemType, RecordSyncManifest } from '@memry/contracts/sync-api'
 import { withRetry } from './retry'
 import { getFromServer } from './http-client'
+import { itemRefKey } from './engine/sync-context'
 import type { SyncQueueManager } from './queue'
 import { getIndexDatabase } from '../database/client'
 import { createLogger } from '../lib/logger'
@@ -27,12 +28,18 @@ interface ManifestCheckDeps {
   getAccessToken: () => Promise<string | null>
   isOnline: () => boolean
   lastCheckAt?: number
+  /** Excludes quarantined items from the server-only diff — a permanently
+   * quarantined item is skipped on every pull, so counting it server-only
+   * would reset the cursor and re-pull the whole vault on every check. */
+  isQuarantined?: (itemId: string, itemType: string) => boolean
 }
 
 export interface ManifestCheckResult {
   checkedAt: number
   rePullNeeded: boolean
   serverOnlyCount: number
+  /** True only when a manifest was actually fetched and diffed. */
+  performed: boolean
 }
 
 export async function checkManifestIntegrity(
@@ -42,13 +49,14 @@ export async function checkManifestIntegrity(
   const noAction: ManifestCheckResult = {
     checkedAt: deps.lastCheckAt ?? 0,
     rePullNeeded: false,
-    serverOnlyCount: 0
+    serverOnlyCount: 0,
+    performed: false
   }
 
   if (now - (deps.lastCheckAt ?? 0) < MIN_INTERVAL_MS) return noAction
 
   const token = await deps.getAccessToken()
-  if (!token) return { checkedAt: now, rePullNeeded: false, serverOnlyCount: 0 }
+  if (!token) return { checkedAt: now, rePullNeeded: false, serverOnlyCount: 0, performed: false }
 
   try {
     const result = await withRetry(
@@ -62,17 +70,25 @@ export async function checkManifestIntegrity(
     // diff directions must compare (type, id) pairs — an id-only diff hides a
     // missing item behind its same-id sibling of another type, and counts a
     // quarantined sibling as "server-only" forever (endless re-pull loop).
-    const refKey = (type: string, id: string): string => `${type}:${id}`
     const serverItemMap = new Map(
-      result.value.items.map((item) => [refKey(item.type, item.id), item])
+      result.value.items.map((item) => [itemRefKey(item.type, item.id), item])
     )
 
     const localItems = getLocalSyncableItems(deps.db)
-    const localKeys = new Set(localItems.map((l) => refKey(l.type, l.id)))
+    // A note held locally counts as present whether the server row calls it
+    // 'note' or 'journal' — the classification is derived and must not make
+    // the item look server-only.
+    const localKeys = new Set(
+      localItems.flatMap((l) =>
+        l.type === 'note' || l.type === 'journal'
+          ? [itemRefKey('note', l.id), itemRefKey('journal', l.id)]
+          : [itemRefKey(l.type, l.id)]
+      )
+    )
 
     let reEnqueuedCount = 0
     for (const local of localItems) {
-      const serverRef = serverItemMap.get(refKey(local.type, local.id))
+      const serverRef = serverItemMap.get(itemRefKey(local.type, local.id))
 
       if (!serverRef) {
         log.warn('Local item missing from server manifest, enqueuing as create', {
@@ -92,7 +108,8 @@ export async function checkManifestIntegrity(
     }
 
     const serverOnlyIds = result.value.items.filter(
-      (item) => !localKeys.has(refKey(item.type, item.id))
+      (item) =>
+        !localKeys.has(itemRefKey(item.type, item.id)) && !deps.isQuarantined?.(item.id, item.type)
     )
     if (serverOnlyIds.length > 0) {
       log.warn('Server has items not found locally, will trigger re-pull', {
@@ -107,11 +124,12 @@ export async function checkManifestIntegrity(
     return {
       checkedAt: now,
       rePullNeeded: serverOnlyIds.length > 0,
-      serverOnlyCount: serverOnlyIds.length
+      serverOnlyCount: serverOnlyIds.length,
+      performed: true
     }
   } catch (err) {
     log.error('Manifest integrity check failed', err)
-    return { checkedAt: now, rePullNeeded: false, serverOnlyCount: 0 }
+    return { checkedAt: now, rePullNeeded: false, serverOnlyCount: 0, performed: false }
   }
 }
 
@@ -124,9 +142,19 @@ interface LocalSyncableItem {
 function getLocalSyncableItems(db: DrizzleDb): LocalSyncableItem[] {
   const items: LocalSyncableItem[] = []
   const localIds = new Set<string>()
+  // Dedup by (type, id): a bare-id dedup silently dropped the same-id sibling
+  // of another type (project 'inbox' vs tag 'inbox'), making it look
+  // server-only on every manifest check. Notes and journals stay one dedup
+  // family: the same note id is listed by both the data DB and the index DB,
+  // and their journal-ness classification must not create a double entry.
+  const dedupKey = (item: LocalSyncableItem): string =>
+    item.type === 'note' || item.type === 'journal'
+      ? `note~journal:${item.id}`
+      : itemRefKey(item.type, item.id)
   const addLocalItem = (item: LocalSyncableItem) => {
-    if (localIds.has(item.id)) return
-    localIds.add(item.id)
+    const key = dedupKey(item)
+    if (localIds.has(key)) return
+    localIds.add(key)
     items.push(item)
   }
 

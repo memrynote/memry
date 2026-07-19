@@ -58,6 +58,15 @@ const applyRank = (type: string): number => PULL_APPLY_ORDER[type] ?? 1
 export const sortByApplyOrder = <T extends { type: string }>(items: T[]): T[] =>
   [...items].sort((a, b) => applyRank(a.type) - applyRank(b.type))
 
+// Why a page stopped the pull run:
+// - 'transition': key material is mid-swap (sign-in/recovery) — momentary, do
+//   not advance the cursor, the flow re-pulls cleanly once the key settles.
+// - 'mismatch': the local key does not match the account — do not advance,
+//   recovery must run first.
+// - 'breaker': the key is right but the page's payloads are undecryptable
+//   (server-side poisoned data) — advance past the page, mark items corrupt.
+type PageStopReason = 'none' | 'transition' | 'mismatch' | 'breaker'
+
 interface PullRunState {
   timer: SyncTimer
   startTime: number
@@ -67,6 +76,8 @@ interface PullRunState {
   crdtNoteIds: string[]
   accessJwt: string
   vaultKey: Uint8Array
+  /** Set when the run stopped on a page it could not apply — no success finalize. */
+  refused?: boolean
 }
 
 export class PullCoordinator {
@@ -121,7 +132,16 @@ export class PullCoordinator {
       try {
         await this.pullChanges(runState)
         await this.applyDeferredRetries(runState)
-        this.finalizePullSuccess(runState)
+        if (runState.refused) {
+          // The run stopped on a page it could not apply. Recording a success
+          // history row and a fresh lastSyncAt here is what made a failing
+          // Retry look like a clean sync in the 2026-07-18 incident.
+          log.warn('Pull finished on a refused page — not recording a successful sync', {
+            pulledCount: runState.pulledCount
+          })
+        } else {
+          this.finalizePullSuccess(runState)
+        }
       } catch (error) {
         this.handlePullError(error, runState.startTime)
       }
@@ -218,18 +238,33 @@ export class PullCoordinator {
       }
 
       const changes = changesResult.value
-      const shouldStop = await this.pullChangesPage(changes, runState)
+      const stop = await this.pullChangesPage(changes, runState)
       this.emitInitialSyncProgress(changes, runState.pulledCount)
 
-      // A page we refused to apply (all-crypto-failed, key mid-transition)
-      // must NOT advance the persisted cursor: doing so made the next manual
-      // Retry resume past the failing page and report a clean sync while the
-      // items were never applied.
-      if (shouldStop) break
+      // Key-state stops ('transition' mid sign-in/recovery, 'mismatch') must
+      // NOT advance the persisted cursor: the failures are a key problem that
+      // resolves out-of-band, and advancing made the next manual Retry resume
+      // past the failing page and report a clean sync while the items were
+      // never applied.
+      if (stop === 'transition' || stop === 'mismatch') {
+        runState.refused = true
+        break
+      }
 
       this.stateManager.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, String(changes.nextCursor))
       cursor = String(changes.nextCursor)
       hasMore = changes.hasMore
+
+      // Circuit breaker (key matches the account but the page's payloads are
+      // undecryptable — server-side poisoned data): the cursor DOES advance,
+      // because these items can never decrypt no matter how often they are
+      // re-pulled, and pinning the cursor here would block every later item
+      // from ever reaching this device. The failures were marked corrupt and
+      // surfaced; the run still ends in an error state, not a fake success.
+      if (stop === 'breaker') {
+        runState.refused = true
+        break
+      }
 
       if (hasMore && !this.ctx.abortController?.signal.aborted) {
         prefetchedNext = this.fetchChangesPage(runState, cursor)
@@ -268,18 +303,18 @@ export class PullCoordinator {
   private async pullChangesPage(
     changes: RecordChangesResponse,
     runState: PullRunState
-  ): Promise<boolean> {
+  ): Promise<PageStopReason> {
     const itemIds = Array.from(
       new Set([...changes.items.map((item) => item.id), ...changes.deleted])
     )
-    if (itemIds.length === 0) return false
+    if (itemIds.length === 0) return 'none'
 
     const pageResult = await this.processPage(itemIds, runState)
     runState.pulledCount += pageResult.applied
     runState.totalConflictsResolved += pageResult.conflicts
     await this.applyCrdtBatch(runState)
 
-    return pageResult.allCryptoFailed
+    return pageResult.stop
   }
 
   private async applyCrdtBatch(runState: PullRunState): Promise<void> {
@@ -437,7 +472,7 @@ export class PullCoordinator {
   private async processPage(
     itemIds: string[],
     runState: PullRunState
-  ): Promise<{ applied: number; conflicts: number; allCryptoFailed: boolean }> {
+  ): Promise<{ applied: number; conflicts: number; stop: PageStopReason }> {
     const { vaultKey, timer, processedIds, crdtNoteIds } = runState
     const pullResult = await withRetry(
       () =>
@@ -456,7 +491,7 @@ export class PullCoordinator {
     const parsed = RecordPullResponseSchema.safeParse(pullResult.value)
     if (!parsed.success) {
       log.error('Invalid pull response from server', { error: parsed.error.message })
-      return { applied: 0, conflicts: 0, allCryptoFailed: false }
+      return { applied: 0, conflicts: 0, stop: 'none' }
     }
 
     log.debug('Pull: response parsed', {
@@ -521,7 +556,7 @@ export class PullCoordinator {
           { failedCount: failures.length }
         )
         this.ctx.deps.onVaultKeyMismatch?.()
-        return { applied: 0, conflicts: 0, allCryptoFailed: true }
+        return { applied: 0, conflicts: 0, stop: 'mismatch' }
       }
       if (keyCheck === 'transition') {
         // Sign-in / recovery / linking is mid-swap: the failures are expected
@@ -531,7 +566,7 @@ export class PullCoordinator {
           'Pull: key material is being re-established — stopping cycle without recording item failures',
           { failedCount: failures.length }
         )
-        return { applied: 0, conflicts: 0, allCryptoFailed: true }
+        return { applied: 0, conflicts: 0, stop: 'transition' }
       }
     }
 
@@ -694,7 +729,7 @@ export class PullCoordinator {
       conflicts: pageConflicts
     })
 
-    let allCryptoFailed = false
+    let stop: PageStopReason = 'none'
     if (
       pageFailed > 0 &&
       pageFailed === cryptoFailCount &&
@@ -711,10 +746,25 @@ export class PullCoordinator {
       }
       this.stateManager.setState('error')
       log.error('Pull: circuit breaker tripped — all items failed crypto', { cryptoFailCount })
-      allCryptoFailed = true
+      // The account key check above said 'match' (or was unavailable), so
+      // these payloads are undecryptable with the CORRECT key — server-side
+      // poisoned data that no amount of re-pulling can fix. Record each item
+      // in the corrupt tracker (cooldown) and surface it, so the caller can
+      // advance the cursor past this page without silently losing track of
+      // what failed.
+      for (const failure of failures) {
+        if (!failure.isCryptoError) continue
+        this.corruptTracker.markFailed({ id: failure.id, type: failure.type })
+        this.ctx.deps.emitToRenderer(EVENT_CHANNELS.ITEM_CORRUPT, {
+          itemId: failure.id,
+          type: failure.type,
+          error: failure.error
+        } satisfies ItemCorruptEvent)
+      }
+      stop = 'breaker'
     }
 
-    return { applied: pageApplied, conflicts: pageConflicts, allCryptoFailed }
+    return { applied: pageApplied, conflicts: pageConflicts, stop }
   }
 
   private handleConflict(dec: {

@@ -59,7 +59,11 @@ export async function bindLocalVaultToMasterKey(
 
 // Mirrors SYNC_STATE_KEYS in sync/engine/sync-context.ts (imported as literals
 // here to keep crypto/ free of sync-engine imports).
-const KEY_SCOPED_SYNC_STATE_KEYS = ['lastCursor', 'quarantinedItems'] as const
+const KEY_SCOPED_SYNC_STATE_KEYS = [
+  'lastCursor',
+  'quarantinedItems',
+  'lastManifestCheckAt'
+] as const
 
 function purgeKeyScopedSyncState(db: DataDb): void {
   for (const key of KEY_SCOPED_SYNC_STATE_KEYS) {

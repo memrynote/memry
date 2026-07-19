@@ -102,8 +102,9 @@ describe('QuarantineManager', () => {
         .all()
       expect(rows).toHaveLength(1)
       const parsed = JSON.parse(rows[0].value)
-      expect(parsed).toHaveLength(1)
-      expect(parsed[0].itemId).toBe('item-1')
+      expect(parsed.v).toBe(2)
+      expect(parsed.entries).toHaveLength(1)
+      expect(parsed.entries[0].itemId).toBe('item-1')
     })
   })
 
@@ -190,7 +191,7 @@ describe('QuarantineManager', () => {
         .insert(syncState)
         .values({
           key: SYNC_STATE_KEYS.QUARANTINED_ITEMS,
-          value: JSON.stringify(entries),
+          value: JSON.stringify({ v: 2, entries }),
           updatedAt: new Date()
         })
         .run()
@@ -202,6 +203,35 @@ describe('QuarantineManager', () => {
       // #then
       expect(fresh.isQuarantined('restored-1', 'task')).toBe(true)
       expect(fresh.getQuarantinedItems()).toHaveLength(1)
+    })
+
+    it('#given legacy id-keyed (v1 array) persisted state #when loadState called #then it is discarded', () => {
+      // v1 entries were id-aliased across types: attemptCount and itemType
+      // could belong to the WRONG type, so they must not be trusted.
+      const legacy = [
+        {
+          itemId: 'inbox',
+          itemType: 'tag_definition',
+          signerDeviceId: 'device-x',
+          failedAt: Date.now(),
+          attemptCount: QUARANTINE_MAX_ATTEMPTS,
+          lastError: 'aliased'
+        }
+      ]
+      testDb.db
+        .insert(syncState)
+        .values({
+          key: SYNC_STATE_KEYS.QUARANTINED_ITEMS,
+          value: JSON.stringify(legacy),
+          updatedAt: new Date()
+        })
+        .run()
+
+      const fresh = new QuarantineManager(ctx)
+      fresh.loadState()
+
+      expect(fresh.getQuarantinedItems()).toHaveLength(0)
+      expect(fresh.isQuarantined('inbox', 'tag_definition')).toBe(false)
     })
 
     it('#given persisted entry older than the TTL #when loadState called #then entry is dropped', () => {
@@ -219,7 +249,7 @@ describe('QuarantineManager', () => {
         .insert(syncState)
         .values({
           key: SYNC_STATE_KEYS.QUARANTINED_ITEMS,
-          value: JSON.stringify(entries),
+          value: JSON.stringify({ v: 2, entries }),
           updatedAt: new Date()
         })
         .run()

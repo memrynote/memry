@@ -169,10 +169,11 @@ export async function downloadRemoteVault(input: {
   const result = await selectVault({ path: folder })
 
   // selectVault stamps the uuid best-effort from the data.db; here the uuid is
-  // known authoritatively, and losing it means the next Download of this vault
-  // mints yet another empty folder. Enforce it on the registry row.
+  // known authoritatively, and losing (or keeping a stale foreign) uuid means
+  // the next Download of this vault mints yet another empty folder. Enforce it
+  // on the registry row.
   const row = getVaults().find((v) => v.path === folder)
-  if (row && !row.vaultUuid) {
+  if (row && row.vaultUuid !== input.vaultUuid) {
     upsertVault({ ...row, vaultUuid: input.vaultUuid })
   }
 

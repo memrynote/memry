@@ -111,6 +111,17 @@ export class CorruptItemTracker {
         requested.has(itemRefKey(item.type, item.id))
       )
 
+      // A requested pair the server no longer returns (row purged/repaired
+      // away) would otherwise vanish from the accounting entirely: never
+      // recovered, never failed, re-requested on every page forever. Mark it
+      // failed (cooldown) and report it permanent so it surfaces once.
+      const returned = new Set(requestedItems.map((item) => itemRefKey(item.type, item.id)))
+      const missing = eligible.filter((ref) => !returned.has(itemRefKey(ref.type, ref.id)))
+      for (const ref of missing) {
+        this.markFailed(ref)
+        log.warn('Re-fetch: item no longer on server', { itemId: ref.id, itemType: ref.type })
+      }
+
       const signerIds = new Set(requestedItems.map((i) => i.signerDeviceId))
       for (const sid of signerIds) {
         await this.resolveDeviceKey(sid)
@@ -121,7 +132,7 @@ export class CorruptItemTracker {
         resolveDeviceKey: (id) => this.resolveDeviceKey(id)
       })
 
-      const permanentFailures: ItemRef[] = []
+      const permanentFailures: ItemRef[] = [...missing]
       for (const failure of failures) {
         if (failure.isSignatureError) {
           this.quarantine.quarantineItem(

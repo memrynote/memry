@@ -66,7 +66,20 @@ export class QuarantineManager {
         .all()
       const val = rows[0]?.value
       if (!val) return
-      const entries = JSON.parse(val) as QuarantineEntry[]
+      const parsed = JSON.parse(val) as
+        | QuarantineEntry[]
+        | { v: number; entries: QuarantineEntry[] }
+      // v1 (bare array) was written by the id-keyed era: colliding item types
+      // shared one entry whose attemptCount and itemType were jointly mangled,
+      // so a legacy entry can brand the WRONG type permanent. Discard v1
+      // wholesale — a genuinely broken item re-quarantines within
+      // QUARANTINE_MAX_ATTEMPTS pulls, a healthy one flows again immediately.
+      if (Array.isArray(parsed)) {
+        log.info('Discarded legacy id-keyed quarantine state', { dropped: parsed.length })
+        this.persistState()
+        return
+      }
+      const entries = parsed.entries ?? []
       // Expire stale entries: the server rows that earned a quarantine may
       // have been repaired or purged since. If an item is still broken it
       // re-quarantines within QUARANTINE_MAX_ATTEMPTS pulls, so dropping old
@@ -113,7 +126,7 @@ export class QuarantineManager {
       const permanent = Array.from(this.quarantinedItems.values()).filter(
         (e) => e.attemptCount >= QUARANTINE_MAX_ATTEMPTS
       )
-      const value = JSON.stringify(permanent)
+      const value = JSON.stringify({ v: 2, entries: permanent })
       this.ctx.deps.db
         .insert(syncState)
         .values({ key: SYNC_STATE_KEYS.QUARANTINED_ITEMS, value, updatedAt: new Date() })
