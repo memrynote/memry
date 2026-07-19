@@ -137,7 +137,7 @@ test.describe('vault deletion', () => {
     page,
     testVaultPath
   }) => {
-    const secondPath = path.join(os.tmpdir(), `memry-e2e-vault-deletion-second-${randomUUID()}`)
+    const secondPath = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-e2e-vault-deletion-second-'))
     fs.mkdirSync(path.join(secondPath, 'notes'), { recursive: true })
     fs.writeFileSync(path.join(secondPath, 'notes', 'keep-me.md'), '# keep me\n')
 
