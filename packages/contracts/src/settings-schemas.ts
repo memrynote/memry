@@ -222,8 +222,8 @@ export const FeaturesSettingsSchema = z.object({
   tasks: z.boolean(),
   calendar: z.boolean(),
   graph: z.boolean(),
-  // Hidden flag (not in FEATURE_KEYS, no Settings toggle yet): spatial canvas
-  // surface. Promoted to FEATURE_KEYS at the opt-in rollout phase.
+  // Opt-in Settings toggle (in FEATURE_KEYS), default OFF: spatial canvas
+  // surface. Local-only for now — cross-device sync (M4) is not wired yet.
   spatialCanvas: z.boolean()
 })
 
