@@ -81,6 +81,17 @@ Every domain object syncs as a `sync_item`. The server sees:
 
 The blob is the encrypted body. The server can reason about order, dedupe, and authorize writes — but the contents stay opaque.
 
+### Blob key layout
+
+Item ids are human-readable and may repeat across types: the default project id is `inbox`, a
+`tag_definition` id is the lowercased tag name, and a `folder_config` id is the folder path. R2 keys
+for sync-item payloads therefore include the item type — new pushes write to
+`<user>/vaults/<vault>/items-v2/<type>/<id>`, so a project and a tag both named `inbox` own separate
+objects. Rows written before this layout keep their legacy untyped `items/<id>` key; every read path
+resolves the `blob_key` stored on the row rather than re-deriving it, so old rows continue to work
+without a migration. (The old layout let same-id items of different types overwrite one shared
+object, which permanently broke the losing row's signature.)
+
 ## Sync Type Negotiation
 
 Clients declare the record sync item types they understand via an `X-Memry-Sync-Types` header

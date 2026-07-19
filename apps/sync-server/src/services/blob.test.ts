@@ -4,6 +4,7 @@ import { AppError, ErrorCodes } from '../lib/errors'
 
 import {
   generateBlobKey,
+  generateItemBlobKey,
   generateCrdtKey,
   generateAttachmentManifestKey,
   generateAttachmentChunkKey,
@@ -45,6 +46,28 @@ describe('generateBlobKey', () => {
     expect(generateBlobKey('user-1', 'item-1', 'vault-1')).toBe(
       'user-1/vaults/vault-1/items/item-1'
     )
+  })
+})
+
+describe('generateItemBlobKey', () => {
+  it('should create type-scoped item key', () => {
+    expect(generateItemBlobKey('user-1', 'task', 'item-1', 'vault-1')).toBe(
+      'user-1/vaults/vault-1/items-v2/task/item-1'
+    )
+  })
+
+  it('should give distinct keys to same-id items of different types', () => {
+    const projectKey = generateItemBlobKey('user-1', 'project', 'inbox', 'vault-1')
+    const tagKey = generateItemBlobKey('user-1', 'tag_definition', 'inbox', 'vault-1')
+    expect(projectKey).not.toBe(tagKey)
+  })
+
+  it('should never collide with the legacy untyped namespace, even for slash-containing ids', () => {
+    // folder_config ids are folder paths and may contain slashes; a legacy key
+    // like items/task/x must not equal a typed key for task 'x'.
+    const legacyNestedFolder = generateBlobKey('user-1', 'task/x', 'vault-1')
+    const typedTask = generateItemBlobKey('user-1', 'task', 'x', 'vault-1')
+    expect(legacyNestedFolder).not.toBe(typedTask)
   })
 })
 
