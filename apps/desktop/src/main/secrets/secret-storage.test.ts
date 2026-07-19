@@ -277,6 +277,46 @@ describe('secret-storage', () => {
   // Deferred migration (vault master key)
   // --------------------------------------------------------------------------
 
+  // --------------------------------------------------------------------------
+  // False-absent protection (#772 vault-orphaning guard)
+  // --------------------------------------------------------------------------
+
+  describe('false-absent protection', () => {
+    it('throws instead of reporting absent when the secret exists in the store but safeStorage is unavailable this run', async () => {
+      // A migrated secret lives only in safeStorage (keytar copy already
+      // dropped). On a run where safeStorage cannot be read, returning null
+      // would be a false absence — the master-key path would regenerate a key
+      // and orphan the vault. Must fail loud instead.
+      await setSecret(SERVICE, ACCOUNT, 'store-value')
+      harness.keytarStore.clear()
+      harness.encryptionAvailable = false
+
+      await expect(getSecret(SERVICE, ACCOUNT)).rejects.toThrow(/could not be read this run/)
+    })
+
+    it('throws when the stored ciphertext is undecryptable and no keytar copy remains', async () => {
+      fs.mkdirSync(harness.userDataDir, { recursive: true })
+      fs.writeFileSync(
+        storeFilePath(),
+        JSON.stringify({ version: 1, entries: { [SERVICE]: { [ACCOUNT]: 'not-decryptable' } } }),
+        'utf-8'
+      )
+      harness.keytarStore.clear()
+
+      await expect(getSecret(SERVICE, ACCOUNT)).rejects.toThrow(/could not be read this run/)
+    })
+
+    it('still returns null for a genuinely fresh secret (nothing in store or keytar)', async () => {
+      await expect(getSecret(SERVICE, ACCOUNT)).resolves.toBeNull()
+    })
+
+    it('returns null (true absence) when the store is readable and the entry is simply not there', async () => {
+      seedStoreFile(SERVICE, 'other-account', 'other-value')
+
+      await expect(getSecret(SERVICE, ACCOUNT)).resolves.toBeNull()
+    })
+  })
+
   describe('deferred keytar delete', () => {
     it('persists the migrated secret but keeps the keytar copy until finalize', async () => {
       harness.keytarStore.set(`${SERVICE}:${ACCOUNT}`, 'master-key-material')

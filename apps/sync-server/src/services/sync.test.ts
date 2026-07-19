@@ -4,8 +4,8 @@ import type { PushItemInput, VectorClock } from '@memry/contracts/sync-api'
 import { LEGACY_RECORD_SYNC_ITEM_TYPES } from '@memry/contracts/sync-api'
 import { AppError, ErrorCodes } from '../lib/errors'
 
-vi.mock('./blob', () => ({
-  generateBlobKey: vi.fn().mockReturnValue('user-1/vaults/default/items/item-1'),
+vi.mock('./blob', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./blob')>()),
   putBlob: vi.fn().mockResolvedValue({ etag: 'etag-1' }),
   getBlob: vi.fn()
 }))
@@ -56,7 +56,7 @@ import {
   processPushItem
 } from './sync'
 import { getDevice } from './device'
-import { getBlob } from './blob'
+import { getBlob, putBlob } from './blob'
 import { reserveStorage, checkQuota } from './quota'
 import { getNextCursor } from './cursor'
 
@@ -1752,6 +1752,47 @@ describe('processPushItem', () => {
     expect(upsertStmt.bind).toHaveBeenCalled()
     const bindArgs = upsertStmt.bind.mock.calls[0]
     expect(bindArgs[16]).toBe(123456)
+  })
+
+  it('should write the payload to a type-scoped blob key so same-id items of different types never clobber each other', async () => {
+    // Regression for the cross-type R2 collision: a project and a tag_definition
+    // both named 'inbox' used to share ONE untyped blob key, so the later push
+    // silently destroyed the other type's ciphertext and its signature could
+    // never verify again.
+    const runPush = async (type: PushItemInput['type']) => {
+      const selectStmt = createMockStatement()
+      selectStmt.first.mockResolvedValue(null)
+      const upsertStmt = createMockStatement()
+      const updateStmt = createMockStatement()
+      const db = createMockDb()
+      db.prepare
+        .mockReturnValueOnce(selectStmt)
+        .mockReturnValueOnce(upsertStmt)
+        .mockReturnValueOnce(updateStmt)
+      const storage = {
+        put: vi.fn().mockResolvedValue({ etag: 'etag-1' })
+      } as unknown as R2Bucket
+      const result = await processPushItem(
+        db as unknown as D1Database,
+        storage,
+        'user-1',
+        'device-1',
+        createValidPushItem({ id: 'inbox', type, clock: { 'device-1': 1 } }),
+        'vault-1'
+      )
+      expect(result.accepted).toBe(true)
+      const putKey = vi.mocked(putBlob).mock.lastCall?.[1] as string
+      const boundBlobKey = upsertStmt.bind.mock.calls[0][5] as string
+      expect(boundBlobKey).toBe(putKey)
+      return putKey
+    }
+
+    const projectKey = await runPush('project')
+    const tagKey = await runPush('tag_definition')
+
+    expect(projectKey).toBe('user-1/vaults/vault-1/items-v2/project/inbox')
+    expect(tagKey).toBe('user-1/vaults/vault-1/items-v2/tag_definition/inbox')
+    expect(projectKey).not.toBe(tagKey)
   })
 
   it('should batch sync item upsert and storage usage update atomically', async () => {

@@ -68,6 +68,29 @@ out of the OS keyring. Plain `pnpm dev` worktrees also stay on the OS keychain: 
 master key machine-globally while user data is per-worktree, so migrating would strand the shared
 key for other worktrees.
 
+## Vault-Key Mismatch Detection
+
+The per-vault verifier only proves self-consistency — a freshly provisioned vault binds whatever
+master key the keychain currently holds, even a wrong one. The account-level check closes that gap:
+the account's key verifier (a non-secret KDF-derived check value, the same one `/auth/setup`
+registers) is cached locally at sign-in/recovery/linking and fetched from `GET /auth/key-verifier`
+(access-token auth) when no local copy exists.
+
+`checkLocalKeyAgainstAccount()` compares the verifier derived from the keychain master key against
+the account verifier and returns one of four verdicts: `match` (safe to sync), `mismatch` (this key
+can never decrypt the account's data), `transition` (a sign-in/recovery/linking flow is
+re-establishing key material — a ~2-minute activity window after `persistKeysAndRegisterDevice`), or
+`unknown` (offline with no cached verifier, no session, or an unreadable keychain — never classified
+destructively).
+
+The check runs at three points: the startup integrity check, sync-runtime start, and any pull page
+where every item fails to decrypt or verify. Only a **confirmed mismatch** acts: sync is blocked, a
+`vault-recovery-needed` event prompts the recovery flow, and at startup the session is torn down so
+ordinary sign-in + recovery phrase restores the correct key. A confirmed mismatch during pull stops
+the cycle without quarantining items or marking them corrupt — those side effects would outlive the
+key problem. When recovery rebinds the vault to a new key, the pull cursor and persisted quarantine
+state are purged so the corrected key starts from a clean slate.
+
 ## Nonces
 
 All XChaCha20 operations use 24-byte random nonces from `sodium.randombytes_buf(24)` via a dedicated nonce utility (T029b). Nonces are stored alongside ciphertext.

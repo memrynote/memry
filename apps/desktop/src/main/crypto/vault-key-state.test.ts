@@ -62,6 +62,12 @@ function freshDb() {
       updated_at INTEGER NOT NULL,
       deleted_at INTEGER
     );
+
+    CREATE TABLE sync_state (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
   `)
   return drizzle(sqlite, { schema })
 }
@@ -229,5 +235,55 @@ describe('vault key state', () => {
     expect(verifier?.value).toBe(computeVaultKeyVerifier(accountVaultKey, 'vault-1'))
     expect(db.select().from(schema.agentConversations).all()).toEqual([])
     expect(db.select().from(schema.agentMessages).all()).toEqual([])
+  })
+
+  it('purges the pull cursor and quarantine state when the verifier is REWRITTEN to a new key', async () => {
+    const db = freshDb()
+    const localMaster = new Uint8Array(32).fill(0x11)
+    const accountMaster = new Uint8Array(32).fill(0x22)
+    const localVaultKey = await deriveKey(localMaster, KEY_DERIVATION_CONTEXTS.VAULT_KEY, 32)
+
+    db.insert(schema.settings)
+      .values({
+        key: VAULT_KEY_VERIFIER_SETTING,
+        value: computeVaultKeyVerifier(localVaultKey, 'vault-1')
+      })
+      .run()
+    // State branded while the WRONG key was active: a cursor that advanced
+    // past items that failed to apply, and items quarantined by signature
+    // failures. Both are meaningless — and harmful — under the corrected key.
+    db.insert(schema.syncState)
+      .values([
+        { key: 'lastCursor', value: '12345', updatedAt: new Date() },
+        { key: 'quarantinedItems', value: '[{"itemId":"n-1"}]', updatedAt: new Date() },
+        { key: 'initialSeedDone', value: 'true', updatedAt: new Date() }
+      ])
+      .run()
+
+    await bindLocalVaultToMasterKey(db, 'vault-1', accountMaster)
+
+    const remaining = db.select().from(schema.syncState).all()
+    const keys = remaining.map((r) => r.key)
+    expect(keys).not.toContain('lastCursor')
+    expect(keys).not.toContain('quarantinedItems')
+    // Unrelated sync state survives.
+    expect(keys).toContain('initialSeedDone')
+  })
+
+  it('does NOT purge sync state on a fresh bind (no previous verifier)', async () => {
+    const db = freshDb()
+    const accountMaster = new Uint8Array(32).fill(0x22)
+    db.insert(schema.syncState)
+      .values([{ key: 'lastCursor', value: '777', updatedAt: new Date() }])
+      .run()
+
+    await bindLocalVaultToMasterKey(db, 'vault-1', accountMaster)
+
+    const keys = db
+      .select()
+      .from(schema.syncState)
+      .all()
+      .map((r) => r.key)
+    expect(keys).toContain('lastCursor')
   })
 })

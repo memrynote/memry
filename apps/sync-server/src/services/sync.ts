@@ -18,7 +18,7 @@ import {
 import { encodeSignaturePayload } from '../lib/cbor'
 import { safeBase64Decode, verifyEd25519 } from '../lib/encoding'
 import { AppError, ErrorCodes } from '../lib/errors'
-import { generateBlobKey, getBlob, putBlob } from './blob'
+import { generateItemBlobKey, getBlob, putBlob } from './blob'
 import { getNextCursor } from './cursor'
 import { getDevice } from './device'
 import { adjustStorageUsed, checkQuota, reserveStorage } from './quota'
@@ -385,7 +385,7 @@ export const processPushItem = async (
       reservedBytes = sizeDelta
     }
 
-    const blobKey = generateBlobKey(userId, item.id, vaultId)
+    const blobKey = generateItemBlobKey(userId, item.type, item.id, vaultId)
     try {
       await putBlob(storage, blobKey, payloadBytes.slice().buffer, userId)
     } catch (error) {

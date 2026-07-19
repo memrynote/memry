@@ -146,6 +146,13 @@ vi.mock('../sync/session-teardown', () => ({
   teardownSession: (...args: unknown[]) => mockTeardownSession(...args)
 }))
 
+const mockCheckLocalKeyAgainstAccount = vi.fn()
+const mockIsKeyMaterialActivityRecent = vi.fn()
+vi.mock('../sync/key-verification', () => ({
+  checkLocalKeyAgainstAccount: (...args: unknown[]) => mockCheckLocalKeyAgainstAccount(...args),
+  isKeyMaterialActivityRecent: (...args: unknown[]) => mockIsKeyMaterialActivityRecent(...args)
+}))
+
 vi.mock('../sync/device-registration', () => ({
   persistKeysAndRegisterDevice: vi.fn().mockResolvedValue('mock-device-id')
 }))
@@ -241,6 +248,8 @@ describe('sync IPC handlers', () => {
     mockSelectGet.mockReturnValue(undefined)
     mockRetrieveKey.mockReset()
     mockTeardownSession.mockResolvedValue({ success: true, keychainFailures: [] })
+    mockCheckLocalKeyAgainstAccount.mockResolvedValue('match')
+    mockIsKeyMaterialActivityRecent.mockReturnValue(false)
   })
 
   afterEach(() => {
@@ -616,6 +625,89 @@ describe('sync IPC handlers', () => {
 
       await checkSyncIntegrity()
       expect(mockTeardownSession).toHaveBeenCalledWith('integrity')
+    })
+
+    it('does NOT tear down local state when the master key read throws transiently', async () => {
+      // Regression: a transient keychain read failure (safeStorage not ready,
+      // a mid-flight keytar→safeStorage migration, an OS keychain lock) must
+      // never be misread as "key absent" and trigger a destructive re-auth that
+      // rebinds key material the vault no longer matches.
+      mockIsDatabaseInitialized.mockReturnValue(true)
+      mockSelectGet.mockReturnValue({ id: 'dev-1', signingPublicKey: 'base64-encoded' })
+      mockRetrieveKey.mockRejectedValueOnce(new Error('Failed to retrieve key from keychain'))
+
+      await checkSyncIntegrity()
+
+      expect(mockTeardownSession).not.toHaveBeenCalled()
+    })
+
+    it('does NOT tear down local state when the signing key read throws transiently', async () => {
+      mockIsDatabaseInitialized.mockReturnValue(true)
+      mockSelectGet.mockReturnValue({ id: 'dev-1', signingPublicKey: 'base64-encoded' })
+      mockRetrieveKey
+        .mockResolvedValueOnce(new Uint8Array(32).fill(1))
+        .mockRejectedValueOnce(new Error('Failed to retrieve key from keychain'))
+
+      await checkSyncIntegrity()
+
+      expect(mockTeardownSession).not.toHaveBeenCalled()
+    })
+
+    it('signs out an install whose master key no longer matches the account (auto-heal for the broken release)', async () => {
+      // The broken 2026.717.x release left installs holding a master key that
+      // can never decrypt the account's data. On startup the integrity check
+      // confirms the mismatch against the account verifier, emits the recovery
+      // prompt, and tears the session down so ordinary sign-in + recovery
+      // phrase restores the correct key.
+      mockIsDatabaseInitialized.mockReturnValue(true)
+      mockSelectGet.mockReturnValue({ id: 'dev-1', signingPublicKey: 'base64-encoded' })
+      mockRetrieveKey
+        .mockResolvedValueOnce(new Uint8Array(32).fill(1))
+        .mockResolvedValueOnce(new Uint8Array(64).fill(9))
+      mockGetDevicePublicKey.mockReturnValue(new Uint8Array(32).fill(8))
+      mockCheckLocalKeyAgainstAccount.mockResolvedValue('mismatch')
+      const send = vi.fn()
+      mockGetAllWindows.mockReturnValue([{ webContents: { send } }])
+
+      await checkSyncIntegrity()
+
+      expect(mockTeardownSession).toHaveBeenCalledWith('integrity')
+      expect(send).toHaveBeenCalledWith('sync:vault-recovery-needed', {
+        reason: 'vault-key-mismatch'
+      })
+    })
+
+    it('does NOT sign out when the key matches, is unknown, or is mid-transition', async () => {
+      mockIsDatabaseInitialized.mockReturnValue(true)
+      mockSelectGet.mockReturnValue({ id: 'dev-1', signingPublicKey: 'base64-encoded' })
+      mockGetDevicePublicKey.mockReturnValue(new Uint8Array(32).fill(8))
+
+      for (const verdict of ['match', 'unknown', 'transition'] as const) {
+        mockTeardownSession.mockClear()
+        mockRetrieveKey
+          .mockResolvedValueOnce(new Uint8Array(32).fill(1))
+          .mockResolvedValueOnce(new Uint8Array(64).fill(9))
+        mockCheckLocalKeyAgainstAccount.mockResolvedValue(verdict)
+
+        await checkSyncIntegrity()
+
+        expect(mockTeardownSession).not.toHaveBeenCalled()
+      }
+    })
+
+    it('does NOT sign out on a mismatch while key material is being re-established', async () => {
+      mockIsDatabaseInitialized.mockReturnValue(true)
+      mockSelectGet.mockReturnValue({ id: 'dev-1', signingPublicKey: 'base64-encoded' })
+      mockRetrieveKey
+        .mockResolvedValueOnce(new Uint8Array(32).fill(1))
+        .mockResolvedValueOnce(new Uint8Array(64).fill(9))
+      mockGetDevicePublicKey.mockReturnValue(new Uint8Array(32).fill(8))
+      mockCheckLocalKeyAgainstAccount.mockResolvedValue('mismatch')
+      mockIsKeyMaterialActivityRecent.mockReturnValue(true)
+
+      await checkSyncIntegrity()
+
+      expect(mockTeardownSession).not.toHaveBeenCalled()
     })
 
     it('leaves matching signing keys alone and swallows integrity errors', async () => {

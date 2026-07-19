@@ -1,9 +1,10 @@
 {
   "cleanUrls": true,
+  "installCommand": "SKIP_ELECTRON_REBUILD=1 pnpm install --frozen-lockfile",
+  "ignoreCommand": "if [ \"$VERCEL_ENV\" != \"production\" ]; then exit 0; fi; git diff --quiet HEAD^ HEAD -- apps/docs vercel.json",
   "git": {
     "deploymentEnabled": {
-      "main": true,
-      "*": false
+      "main": true
     }
   },
   "redirects": [

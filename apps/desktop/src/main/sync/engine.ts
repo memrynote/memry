@@ -125,7 +125,8 @@ export class SyncEngine extends EventEmitter {
         pull: () => this.pull(),
         push: () => this.push(),
         scheduleSync: (fn) => this.scheduleSync(fn)
-      }
+      },
+      (itemId, itemType) => this.quarantine.isQuarantined(itemId, itemType)
     )
     this.ctx.doPush = () => this.push()
     SyncEngine.activeInstance = this

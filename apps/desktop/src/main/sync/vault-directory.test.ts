@@ -26,7 +26,8 @@ vi.mock('../store', () => ({
   getVaults: vi.fn(() => []),
   getCurrentVaultPath: vi.fn(() => null),
   getAccountVaultsCache: vi.fn(() => undefined),
-  setAccountVaultsCache: vi.fn()
+  setAccountVaultsCache: vi.fn(),
+  upsertVault: vi.fn()
 }))
 
 vi.mock('electron', () => ({
@@ -51,7 +52,8 @@ import {
   getAccountVaultsCache,
   getCurrentVaultPath,
   getVaults,
-  setAccountVaultsCache
+  setAccountVaultsCache,
+  upsertVault
 } from '../store'
 import { selectVault } from '../vault'
 import { createDormantVault } from './vault-provisioning'
@@ -308,6 +310,35 @@ describe('vault-directory', () => {
       expect(createDormantVault).toHaveBeenCalledWith(`${parent}/beta`, 'uuid-b')
       expect(selectVault).toHaveBeenCalledWith({ path: `${parent}/beta` })
       expect(result.success).toBe(true)
+    })
+
+    it('enforces the known vault uuid on the registry row when the best-effort stamp missed it', async () => {
+      // Losing the uuid association is what makes a downloaded vault look
+      // cloud-only again and mints another empty folder on the next Download.
+      const parent = '/tmp/__memry-vd-test__'
+      vi.mocked(getVaults)
+        .mockReturnValueOnce([]) // dedupe lookup: not downloaded yet
+        .mockReturnValue([
+          {
+            path: `${parent}/beta`,
+            name: 'beta',
+            noteCount: 0,
+            taskCount: 0,
+            lastOpened: '',
+            isDefault: false
+            // no vaultUuid: selectVault's best-effort stamp failed
+          }
+        ])
+      vi.mocked(getAccountVaultsCache).mockReturnValue({
+        fetchedAt: 1,
+        vaults: [{ vaultUuid: 'uuid-b', name: 'Beta', itemCount: 4, createdAt: 2000 }]
+      })
+
+      await downloadRemoteVault({ vaultUuid: 'uuid-b', parentPath: parent })
+
+      expect(upsertVault).toHaveBeenCalledWith(
+        expect.objectContaining({ path: `${parent}/beta`, vaultUuid: 'uuid-b' })
+      )
     })
   })
 })

@@ -20,7 +20,8 @@ import type {
   ClockSkewWarningEvent,
   DeviceRevokedEvent,
   SecurityWarningEvent,
-  CertificatePinFailedEvent
+  CertificatePinFailedEvent,
+  VaultRecoveryNeededEvent
 } from '@memry/contracts/ipc-sync'
 import { subscribe } from '../lib/ipc'
 
@@ -88,5 +89,8 @@ export const syncEvents = {
     subscribe<SecurityWarningEvent>(SYNC_EVENTS.SECURITY_WARNING, callback),
 
   onCertificatePinFailed: (callback: (event: CertificatePinFailedEvent) => void): (() => void) =>
-    subscribe<CertificatePinFailedEvent>(SYNC_EVENTS.CERTIFICATE_PIN_FAILED, callback)
+    subscribe<CertificatePinFailedEvent>(SYNC_EVENTS.CERTIFICATE_PIN_FAILED, callback),
+
+  onVaultRecoveryNeeded: (callback: (event: VaultRecoveryNeededEvent) => void): (() => void) =>
+    subscribe<VaultRecoveryNeededEvent>(SYNC_EVENTS.VAULT_RECOVERY_NEEDED, callback)
 }

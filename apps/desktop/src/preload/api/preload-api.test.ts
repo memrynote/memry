@@ -1015,6 +1015,10 @@ describe('preload api wrappers', () => {
       () => syncEvents.onCertificatePinFailed(callback),
       SYNC_EVENTS.CERTIFICATE_PIN_FAILED
     )
+    expectSubscribe(
+      () => syncEvents.onVaultRecoveryNeeded(callback),
+      SYNC_EVENTS.VAULT_RECOVERY_NEEDED
+    )
     expectSubscribe(() => onCrdtStateChanged(callback), SYNC_EVENTS.STATE_CHANGED)
     expectSubscribe(
       () => updaterEvents.onUpdaterStateChanged(callback),

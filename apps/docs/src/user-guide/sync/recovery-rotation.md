@@ -45,6 +45,14 @@ If you lose every device:
 
 The recovered device is treated as a new linked device.
 
+### Automatic Recovery Prompt
+
+memrynote also detects when the key stored on a device can no longer decrypt the account's data
+(for example after a corrupted key migration). Instead of endless "failed to decrypt" errors, the
+app signs that device out and routes you into this same recovery flow — sign in, enter your
+recovery phrase, and the device re-derives the correct key and pulls everything cleanly. Data on
+the server is never affected.
+
 ## Key Rotation
 
 The **rotation wizard** generates a new vault key, re-encrypts all payloads under it, and reseals the new key for every linked device.
