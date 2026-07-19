@@ -814,3 +814,19 @@ export const TelemetryChannels = {
 
 export type TelemetryInvokeChannel =
   (typeof TelemetryChannels.invoke)[keyof typeof TelemetryChannels.invoke]
+
+// ============================================================================
+// Diagnostics Channels
+// ============================================================================
+
+export const DiagnosticsChannels = {
+  invoke: {
+    /** Assemble a redacted incident report preview for the renderer to show the user */
+    PREVIEW_REPORT: 'diagnostics:previewReport',
+    /** Send a previously previewed incident report to the server */
+    SEND_REPORT: 'diagnostics:sendReport'
+  }
+} as const
+
+export type DiagnosticsInvokeChannel =
+  (typeof DiagnosticsChannels.invoke)[keyof typeof DiagnosticsChannels.invoke]

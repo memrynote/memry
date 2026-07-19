@@ -557,7 +557,12 @@ describe('UserSyncState', () => {
       // #then
       expect(fetchMock).toHaveBeenCalledTimes(1)
       const body = JSON.parse(fetchMock.mock.calls[0][1].body)
-      expect(body.streams[0].stream).toEqual({ app: 'server', env: 'test', level: 'error' })
+      expect(body.streams[0].stream).toEqual({
+        app: 'server',
+        env: 'test',
+        level: 'error',
+        kind: 'error'
+      })
       const line = JSON.parse(body.streams[0].values[0][1])
       expect(line.source).toBe('user_sync_state_do')
       expect(line.action).toBe('alarm')

@@ -491,6 +491,10 @@ export class PullCoordinator {
     const parsed = RecordPullResponseSchema.safeParse(pullResult.value)
     if (!parsed.success) {
       log.error('Invalid pull response from server', { error: parsed.error.message })
+      log.warn('pull_page_dropped', {
+        reason: 'invalid_pull_response',
+        droppedCount: itemIds.length
+      })
       return { applied: 0, conflicts: 0, stop: 'none' }
     }
 

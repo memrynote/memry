@@ -109,7 +109,12 @@ describe('email service', () => {
       const lokiCall = findLokiCall(fetchMock)
       expect(lokiCall).toBeDefined()
       const body = JSON.parse((lokiCall![1] as { body: string }).body)
-      expect(body.streams[0].stream).toEqual({ app: 'server', env: 'test', level: 'error' })
+      expect(body.streams[0].stream).toEqual({
+        app: 'server',
+        env: 'test',
+        level: 'error',
+        kind: 'error'
+      })
       const line = JSON.parse(body.streams[0].values[0][1])
       expect(line.source).toBe('email')
       expect(line.action).toBe('resend_send')

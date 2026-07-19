@@ -1,6 +1,7 @@
 import path from 'path'
 
 import { createLogger } from './logger'
+import { installWorkerLogForwarding } from './log-forward'
 import { EMBEDDING_DIMENSION } from './embeddings-constants'
 import type {
   EmbeddingMainToWorkerMessage,
@@ -23,6 +24,8 @@ const parentPort = process.parentPort
 if (!parentPort) {
   throw new Error('embedding-worker.ts must be run as an Electron utility process')
 }
+
+installWorkerLogForwarding('Embeddings')
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let extractor: any = null

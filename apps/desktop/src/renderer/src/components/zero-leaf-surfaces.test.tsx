@@ -24,7 +24,12 @@ const mocks = vi.hoisted(() => ({
     sourceType: null as string | null,
     draggedTasks: [] as any[]
   },
-  refreshStorage: vi.fn()
+  refreshStorage: vi.fn(),
+  openIncidentReport: vi.fn()
+}))
+
+vi.mock('@/components/diagnostics/incident-report-provider', () => ({
+  useReportIncident: () => mocks.openIncidentReport
 }))
 
 vi.mock('@memry/i18n/renderer', () => ({
@@ -335,6 +340,28 @@ describe('zero-covered leaf surfaces', () => {
     fireEvent.click(screen.getByText('phaseF.componentsTabsTabErrorBoundary.tryAgain'))
     expect(onTabError).toHaveBeenCalled()
     expect(screen.getByText('tab recovered')).toBeInTheDocument()
+    consoleError.mockRestore()
+  })
+
+  it('opens the incident report dialog from the tab error boundary CTA', () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const error = new Error('tab failed')
+    const TabChild = () => {
+      throw error
+    }
+
+    render(
+      <TabErrorBoundary>
+        <TabChild />
+      </TabErrorBoundary>
+    )
+
+    fireEvent.click(screen.getByText('phaseF.componentsTabsTabErrorBoundary.sendReport'))
+    expect(mocks.openIncidentReport).toHaveBeenCalledWith({
+      source: 'tab_error_boundary',
+      errorCode: 'Error',
+      stack: error.stack
+    })
     consoleError.mockRestore()
   })
 

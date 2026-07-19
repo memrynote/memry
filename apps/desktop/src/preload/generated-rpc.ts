@@ -298,6 +298,10 @@ export function createGeneratedRpcApi({
     "feedback": {
       "submit": ((input) => invoke("feedback:submit", input)) as GeneratedRpcApi["feedback"]["submit"],
     },
+    "diagnostics": {
+      "previewReport": ((trigger) => invoke("diagnostics:previewReport", trigger)) as GeneratedRpcApi["diagnostics"]["previewReport"],
+      "sendReport": ((report) => invoke("diagnostics:sendReport", report)) as GeneratedRpcApi["diagnostics"]["sendReport"],
+    },
   }
 
   for (const [eventName, channel] of Object.entries(eventChannels)) {

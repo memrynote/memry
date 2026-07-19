@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { TelemetryBatch, TelemetryEvent } from '@memry/contracts/telemetry-api'
 
 import { captureServerError } from './analytics'
-import { desktopErrorEntry, pushLokiEntries } from './loki'
+import { desktopErrorEntry, desktopLogEntry, desktopReportEntry, pushLokiEntries } from './loki'
 
 const env = {
   LOKI_URL: 'https://grafana.example.com',
@@ -73,7 +73,12 @@ describe('pushLokiEntries', () => {
     expect(init.headers.authorization).toBe('Bearer tok')
     const body = JSON.parse(init.body)
     expect(body.streams).toHaveLength(1)
-    expect(body.streams[0].stream).toEqual({ app: 'server', env: 'test', level: 'error' })
+    expect(body.streams[0].stream).toEqual({
+      app: 'server',
+      env: 'test',
+      level: 'error',
+      kind: 'error'
+    })
     const [ts, line] = body.streams[0].values[0]
     expect(ts).toMatch(/^\d+$/)
     expect(JSON.parse(line)).toEqual({ error_code: 'BOOM', message: 'it broke' })
@@ -112,7 +117,12 @@ describe('captureServerError → Loki', () => {
     })
     expect(fetchMock).toHaveBeenCalledTimes(1)
     const body = JSON.parse(fetchMock.mock.calls[0][1].body)
-    expect(body.streams[0].stream).toEqual({ app: 'server', env: 'test', level: 'error' })
+    expect(body.streams[0].stream).toEqual({
+      app: 'server',
+      env: 'test',
+      level: 'error',
+      kind: 'error'
+    })
     const line = JSON.parse(body.streams[0].values[0][1])
     expect(line.message).toBe('record decode failed')
     expect(line.error_code).toBe('UNHANDLED_ERROR')
@@ -125,6 +135,7 @@ describe('desktopErrorEntry', () => {
     const result = desktopErrorEntry(batch, event, 'hash123')
     expect(result.level).toBe('error')
     expect(result.app).toBe('desktop')
+    expect(result.kind).toBe('error')
     expect(result.line).toEqual({
       name: 'app_error_seen',
       error_code: 'RangeError',
@@ -176,5 +187,92 @@ describe('desktopErrorEntry', () => {
     // #given exit code 0 is meaningful, so the empty case must not collapse to 0
     const result = desktopErrorEntry(batch, event, 'hash123')
     expect(result.line.exit_code).toBe('')
+  })
+})
+
+describe('kind label + diagnostic entries', () => {
+  const meta = {
+    appVersion: '2026.7.18',
+    buildChannel: 'production',
+    platform: 'linux',
+    arch: 'x64'
+  } as const
+
+  it('desktopLogEntry carries kind=log + a redacted message', () => {
+    const entry = desktopLogEntry(
+      {
+        ts: '2026-07-18T10:00:00.000Z',
+        level: 'warn',
+        scope: 'Sync',
+        message: 'pull_page_dropped',
+        origin: 'main',
+        fields: { droppedCount: 3 }
+      },
+      meta,
+      'installhash'
+    )
+    expect(entry.kind).toBe('log')
+    expect(entry.level).toBe('warn')
+    expect(entry.line.message).toBe('pull_page_dropped')
+  })
+
+  it('server mask-mode scrubs a leaked email defense-in-depth', () => {
+    const entry = desktopLogEntry(
+      {
+        ts: '2026-07-18T10:00:00.000Z',
+        level: 'error',
+        scope: 'X',
+        message: 'oops leak@evil.com',
+        origin: 'main'
+      },
+      meta,
+      'h'
+    )
+    expect(JSON.stringify(entry.line)).not.toContain('leak@evil.com')
+  })
+
+  it('pushLokiEntries emits kind in the stream labels', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }))
+    vi.stubGlobal('fetch', fetchMock)
+    await pushLokiEntries(env, [
+      desktopLogEntry(
+        { ts: '2026-07-18T10:00:00.000Z', level: 'warn', scope: 'S', message: 'm', origin: 'main' },
+        meta,
+        'h'
+      )
+    ])
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body)
+    expect(body.streams[0].stream).toMatchObject({ app: 'desktop', level: 'warn', kind: 'log' })
+    vi.unstubAllGlobals()
+  })
+
+  it('desktopReportEntry stamps incident_id on every line', () => {
+    const entries = desktopReportEntry(
+      {
+        schemaVersion: 1,
+        installId: 'i',
+        sessionId: 's',
+        appVersion: '1',
+        buildChannel: 'production',
+        platform: 'linux',
+        arch: 'x64',
+        incidentId: 'MEMRY-AB12CD34',
+        trigger: { source: 'boundary' },
+        snapshot: {} as never,
+        lines: [
+          {
+            ts: '2026-07-18T10:00:00.000Z',
+            level: 'warn',
+            scope: 'S',
+            message: 'm',
+            origin: 'main'
+          }
+        ]
+      },
+      'h'
+    )
+    expect(
+      entries.every((e) => e.kind === 'report' && e.line.incident_id === 'MEMRY-AB12CD34')
+    ).toBe(true)
   })
 })

@@ -158,8 +158,26 @@
     "privacy": {
       "telemetry": {
         "label": "Share Anonymous Usage Metrics",
-        "description": "It's only anon metrics — no note content, search queries, file paths, emails, or raw IDs are ever sent.",
+        "description": "It's only anon metrics — no note content, search queries, file paths, emails, or raw IDs are ever sent. Includes redacted diagnostic logs — no note content.",
         "error": "Failed to update telemetry setting"
+      },
+      "diagnostics": {
+        "title": "Send a diagnostic report?",
+        "consent": "Send a one-time diagnostic report? It contains redacted technical logs only — no note content.",
+        "building": "Preparing report…",
+        "previewLabel": "Preview report contents",
+        "snapshotLabel": "Device snapshot",
+        "send": "Send",
+        "sending": "Sending…",
+        "notNow": "Not now",
+        "sent": "Report sent — reference {incidentId}",
+        "previewError": "Couldn't prepare the diagnostic report",
+        "error": "Failed to send diagnostic report",
+        "sendReport": {
+          "label": "Diagnostic Report",
+          "description": "Send a one-time report of redacted technical logs to help us debug an issue you hit.",
+          "button": "Send diagnostic report"
+        }
       }
     }
   },

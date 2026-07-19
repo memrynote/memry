@@ -216,6 +216,11 @@ vi.mock('./telemetry/state', () => ({
   getTelemetrySyncState: vi.fn(() => null)
 }))
 
+vi.mock('./telemetry/log-ship', () => ({
+  installLogShip: vi.fn(),
+  getLogShip: vi.fn(() => ({ dispose: vi.fn(async () => undefined) }))
+}))
+
 vi.mock('./calendar/google/sync-service', () => ({
   startGoogleCalendarSyncRunner: startGoogleCalendarSyncRunnerMock,
   stopGoogleCalendarSyncRunner: stopGoogleCalendarSyncRunnerMock,
@@ -1434,7 +1439,7 @@ describe('main index phase2 exports', () => {
       ([event]) => event === 'app:flush-done'
     )?.[1] as () => void
     flushHandler()
-    for (let i = 0; i < 25; i++) {
+    for (let i = 0; i < 40; i++) {
       await Promise.resolve()
     }
 
@@ -1461,7 +1466,7 @@ describe('main index phase2 exports', () => {
       ([event]) => event === 'app:flush-done'
     )?.[1] as () => void
     flushHandler()
-    for (let i = 0; i < 25; i++) {
+    for (let i = 0; i < 40; i++) {
       await Promise.resolve()
     }
 
@@ -1491,7 +1496,7 @@ describe('main index phase2 exports', () => {
       ([event]) => event === 'app:flush-done'
     )?.[1] as () => void
     flushHandler()
-    for (let i = 0; i < 25; i++) {
+    for (let i = 0; i < 40; i++) {
       await Promise.resolve()
     }
 

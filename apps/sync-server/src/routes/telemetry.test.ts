@@ -299,6 +299,92 @@ describe('POST /telemetry/web', () => {
   })
 })
 
+describe('POST /telemetry/logs', () => {
+  const sampleLogLine = {
+    ts: VALID_TIMESTAMP,
+    level: 'warn' as const,
+    scope: 'sync',
+    message: 'retrying upload',
+    origin: 'main' as const
+  }
+
+  const sampleLogBatch = {
+    schemaVersion: 1,
+    installId: VALID_INSTALL_ID,
+    sessionId: VALID_SESSION_ID,
+    appVersion: '0.1.0',
+    buildChannel: 'development',
+    platform: 'darwin',
+    arch: 'arm64',
+    lines: [sampleLogLine]
+  }
+
+  function postLogs(env: Record<string, unknown>, body: unknown) {
+    const request = new Request('http://localhost/telemetry/logs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: typeof body === 'string' ? body : JSON.stringify(body)
+    })
+    return app.request(request, {}, env)
+  }
+
+  it('accepts a valid log batch, returns 202, and pushes lines to Loki', async () => {
+    // #given a valid diagnostic log batch and a configured Loki target
+    const { env } = createEnv({ LOKI_URL: 'https://grafana.example.com', LOKI_TOKEN: 'tok' })
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    // #when posting through the app
+    const response = await postLogs(env, sampleLogBatch)
+
+    // #then it 202s with the accepted count and eventually pushes to Loki
+    expect(response.status).toBe(202)
+    const body = (await response.json()) as { accepted: number }
+    expect(body.accepted).toBe(1)
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled())
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(String(url)).toContain('grafana.example.com')
+    const parsedBody = JSON.parse((init as { body: string }).body)
+    expect(parsedBody.streams[0].stream).toMatchObject({ kind: 'log' })
+  })
+
+  it('returns 400 for invalid payloads', async () => {
+    // #given a batch missing required fields
+    const { env } = createEnv()
+
+    // #when posting
+    const response = await postLogs(env, { schemaVersion: 1 })
+
+    // #then validation fails with 400
+    expect(response.status).toBe(400)
+  })
+
+  it('returns 400 for malformed JSON bodies', async () => {
+    // #given an invalid JSON body
+    const { env } = createEnv()
+
+    // #when posting
+    const response = await postLogs(env, 'not-json')
+
+    // #then the route returns 400
+    expect(response.status).toBe(400)
+  })
+
+  it('still 202s and does not call fetch when Loki is unconfigured', async () => {
+    // #given no LOKI_URL/LOKI_TOKEN
+    const { env } = createEnv({ LOKI_URL: undefined, LOKI_TOKEN: undefined })
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+
+    // #when posting a valid batch
+    const response = await postLogs(env, sampleLogBatch)
+
+    // #then it still 202s and never calls fetch
+    expect(response.status).toBe(202)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+})
+
 describe('telemetry route + rate limiter', () => {
   it('uses createRateLimiter with the telemetry key prefix', async () => {
     const { createRateLimiter } = await import('../middleware/rate-limit')
@@ -311,6 +397,13 @@ describe('telemetry route + rate limiter', () => {
     const { createRateLimiter } = await import('../middleware/rate-limit')
     expect(createRateLimiter).toHaveBeenCalledWith(
       expect.objectContaining({ keyPrefix: 'telemetry-web' })
+    )
+  })
+
+  it('uses createRateLimiter with the telemetry-logs key prefix', async () => {
+    const { createRateLimiter } = await import('../middleware/rate-limit')
+    expect(createRateLimiter).toHaveBeenCalledWith(
+      expect.objectContaining({ keyPrefix: 'telemetry-logs' })
     )
   })
 })

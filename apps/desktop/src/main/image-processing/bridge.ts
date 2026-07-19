@@ -2,6 +2,7 @@ import { app, utilityProcess } from 'electron'
 import path from 'path'
 
 import { createLogger } from '../lib/logger'
+import { getLogShip } from '../telemetry/log-ship'
 import type {
   ImageProcessingMainToWorkerMessage,
   ImageProcessingWorkerToMainMessage,
@@ -194,6 +195,11 @@ class ImageProcessingBridge {
       }
 
       const onMessage = (message: ImageProcessingWorkerToMainMessage): void => {
+        if (message.type === 'log') {
+          getLogShip()?.ingestForwarded(message.record, 'ImageProcessing')
+          return
+        }
+
         if (message.type !== 'ready') return
 
         cleanup()
@@ -227,6 +233,11 @@ class ImageProcessingBridge {
 
   private setupProcessHandlers(child: ReturnType<typeof utilityProcess.fork>): void {
     child.on('message', (message: ImageProcessingWorkerToMainMessage) => {
+      if (message.type === 'log') {
+        getLogShip()?.ingestForwarded(message.record, 'ImageProcessing')
+        return
+      }
+
       if (message.type === 'ready') {
         return
       }
