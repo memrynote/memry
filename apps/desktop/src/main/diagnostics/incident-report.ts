@@ -31,12 +31,16 @@ const INCIDENT_ID_CHARS = 8
 const STACK_FRAME_LINE = /^\s*at\s/
 const STACK_CAP = 4000
 
+// The alphabet is exactly 32 chars (a power of two), so masking the low 5 bits of
+// each random byte is a uniform, bias-free index into it — and avoids `%` on a
+// CSPRNG byte, which static analysis flags as potential modulo bias.
+const BASE32_MASK = BASE32_ALPHABET.length - 1
+
 export const generateIncidentId = (): string => {
-  // 256 % 32 === 0, so `byte % 32` is uniform over the alphabet with no modulo bias.
   const bytes = randomBytes(INCIDENT_ID_CHARS)
   let id = ''
   for (let i = 0; i < INCIDENT_ID_CHARS; i++) {
-    id += BASE32_ALPHABET[bytes[i] % BASE32_ALPHABET.length]
+    id += BASE32_ALPHABET[bytes[i] & BASE32_MASK]
   }
   return `MEMRY-${id}`
 }

@@ -158,7 +158,10 @@ export function ReportIncidentDialog({
                 <ScrollArea className="mt-2 h-64 rounded-md border p-3">
                   <div className="space-y-2 font-mono text-xs">
                     {report.lines.map((line, index) => (
-                      <div key={index} className="border-b border-border pb-2 last:border-0">
+                      <div
+                        key={`${line.ts}-${line.scope}-${index}`}
+                        className="border-b border-border pb-2 last:border-0"
+                      >
                         <div className="text-muted-foreground">
                           [{line.scope}] {line.level}
                         </div>
