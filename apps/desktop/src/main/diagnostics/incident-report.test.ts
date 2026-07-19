@@ -159,6 +159,36 @@ describe('sendIncidentReport', () => {
     expect(calls[0].body).toEqual(report)
   })
 
+  // DoD: "verified with a synthetic secret that does not appear in [what reaches] Loki".
+  // Symmetric with the Path A wire-boundary check in log-ship.test.ts — inject a raw
+  // secret via the only free-text input to buildIncidentReport (trigger.stack) and assert
+  // the raw value is absent from the exact bytes that would be POSTed to /diagnostics/report.
+  it('never lets a raw trigger secret reach the /diagnostics/report POST body', async () => {
+    const secretPath = '/Users/victim/Vault/Very Secret Note.md'
+    const report = buildIncidentReport(
+      {
+        source: 'tab_error_boundary',
+        stack: `Error: opened ${secretPath}\n    at f (/app/src/x.ts:1:1)`
+      },
+      baseDeps
+    )
+    let sentBody = ''
+    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+      sentBody = String(init?.body ?? '')
+      return { ok: true, status: 202 }
+    })
+
+    await sendIncidentReport(report, {
+      fetch: fetchMock,
+      endpoint: 'http://localhost:8787/diagnostics/report'
+    })
+
+    expect(sentBody).not.toContain('Very Secret Note')
+    expect(sentBody).not.toContain('/Users/victim')
+    // The useful code frame still rides along.
+    expect(sentBody).toContain('x.ts')
+  })
+
   it('throws on a non-ok response', async () => {
     const fetchMock = vi.fn(async () => ({ ok: false, status: 500 }))
     await expect(
