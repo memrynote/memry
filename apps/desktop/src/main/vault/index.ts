@@ -163,7 +163,8 @@ export function createVaultInfo(vaultPath: string): VaultInfo {
     noteCount,
     taskCount: existingVault?.taskCount ?? 0,
     lastOpened: new Date().toISOString(),
-    isDefault: existingVault?.isDefault ?? getVaults().length === 0
+    isDefault: existingVault?.isDefault ?? getVaults().length === 0,
+    vaultUuid: existingVault?.vaultUuid
   }
 }
 
@@ -392,8 +393,15 @@ export async function selectVault(input: { path?: string }): Promise<SelectVault
       const { getOrCreateVaultUuid } = await import('../agent/storage/vault-id')
       const { getDatabase } = await import('../database/client')
       vaultInfo.vaultUuid = getOrCreateVaultUuid(getDatabase())
-    } catch {
-      // vault opened without a data db (or uuid minting failed) — skip
+    } catch (err) {
+      // vault opened without a data db (or uuid minting failed) — the registry
+      // keeps any previously stored uuid (createVaultInfo carries it forward),
+      // but a first-time stamp failure leaves this vault unmatched in the
+      // account directory, so make it visible instead of swallowing it.
+      logger.warn('Vault uuid stamp failed; account-directory match may be stale', {
+        vaultPath,
+        error: err instanceof Error ? err.message : String(err)
+      })
     }
 
     // Store in electron-store

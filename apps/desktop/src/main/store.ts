@@ -265,7 +265,13 @@ export function upsertVault(vault: StoredVaultInfo): void {
   const existingIndex = vaults.findIndex((v) => v.path === vault.path)
 
   if (existingIndex >= 0) {
-    vaults[existingIndex] = vault
+    // The server vault uuid is the ONLY link between this row and the account
+    // vault directory — losing it makes the vault look cloud-only and mints a
+    // fresh dormant folder on the next Download. Callers rebuild VaultInfo
+    // from scratch and stamp the uuid best-effort, so a row update without a
+    // uuid must never erase one that was already stored.
+    const existing = vaults[existingIndex]
+    vaults[existingIndex] = { ...vault, vaultUuid: vault.vaultUuid ?? existing.vaultUuid }
   } else {
     vaults.push(vault)
   }

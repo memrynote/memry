@@ -12,7 +12,8 @@ import {
   getAccountVaultsCache,
   getCurrentVaultPath,
   getVaults,
-  setAccountVaultsCache
+  setAccountVaultsCache,
+  upsertVault
 } from '../store'
 import { getFromServer, postToServer } from './http-client'
 import { getValidAccessToken } from './token-manager'
@@ -165,5 +166,15 @@ export async function downloadRemoteVault(input: {
   createDormantVault(folder, input.vaultUuid)
   // createDormantVault repoints the data.db singleton — open the new vault now
   // so the singleton ends on the vault the user is actually in.
-  return selectVault({ path: folder })
+  const result = await selectVault({ path: folder })
+
+  // selectVault stamps the uuid best-effort from the data.db; here the uuid is
+  // known authoritatively, and losing it means the next Download of this vault
+  // mints yet another empty folder. Enforce it on the registry row.
+  const row = getVaults().find((v) => v.path === folder)
+  if (row && !row.vaultUuid) {
+    upsertVault({ ...row, vaultUuid: input.vaultUuid })
+  }
+
+  return result
 }
