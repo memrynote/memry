@@ -609,6 +609,44 @@ describe('blob routes', () => {
     )
   })
 
+  it('skips a hash that has no matching chunk instead of erroring (idempotent dereference)', async () => {
+    // The hash is not seeded in chunksByHash, so the route's lookup misses —
+    // dereferencing a hash already gone must not error.
+    state.chunksByHash = {}
+
+    const res = await app.request(
+      '/attachments/dereference',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chunkHashes: ['already-gone'] })
+      },
+      env
+    )
+
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ dereferenced: 0 })
+
+    const decrements = state.statements.filter((entry) =>
+      entry.sql.includes('UPDATE blob_chunks SET ref_count = ref_count - 1')
+    )
+    expect(decrements).toHaveLength(0)
+  })
+
+  it('rejects an empty chunkHashes array', async () => {
+    const res = await app.request(
+      '/attachments/dereference',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chunkHashes: [] })
+      },
+      env
+    )
+
+    expect(res.status).toBe(400)
+  })
+
   it('checks and downloads deduplicated chunks', async () => {
     let res = await app.request('/attachments/chunks/hash-0', { method: 'HEAD' }, env)
     expect(res.status).toBe(200)
