@@ -253,6 +253,13 @@
       "when": 1784289166413,
       "tag": "0035_spatial_canvas",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "6",
+      "when": 1784565001735,
+      "tag": "0036_canvas_assets",
+      "breakpoints": true
     }
   ]
 }

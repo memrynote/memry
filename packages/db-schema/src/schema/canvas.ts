@@ -52,3 +52,35 @@ export type CanvasRow = typeof canvases.$inferSelect
 export type NewCanvasRow = typeof canvases.$inferInsert
 export type CanvasEntityRefRow = typeof canvasEntityRefs.$inferSelect
 export type NewCanvasEntityRefRow = typeof canvasEntityRefs.$inferInsert
+
+/**
+ * Per-device dedup index + GC bookkeeping for externalized canvas image assets (M5).
+ * content_hash = plaintext sha256 (dedup key, per vault); attachment_id = random id from
+ * the attachment pipeline (stable per content_hash within a vault); chunk_hashes = encrypted
+ * chunk hashes used for server dereference. One row per (canvas, image).
+ * FK canvas_id -> canvases(id) ON DELETE cascade lives in the SQL migration (mirrors
+ * canvas_entity_refs); delete is soft, so GC prunes rows explicitly — the FK is a safety net.
+ */
+export const canvasAssets = sqliteTable(
+  'canvas_assets',
+  {
+    vaultId: text('vault_id').notNull(),
+    canvasId: text('canvas_id').notNull(),
+    contentHash: text('content_hash').notNull(),
+    attachmentId: text('attachment_id').notNull(),
+    fileId: text('file_id').notNull(),
+    filename: text('filename').notNull(),
+    mimeType: text('mime_type').notNull(),
+    sizeBytes: integer('size_bytes').notNull(),
+    chunkHashes: text('chunk_hashes', { mode: 'json' }).$type<string[]>().notNull(),
+    createdAt: integer('created_at').notNull()
+  },
+  (table) => [
+    primaryKey({ columns: [table.canvasId, table.contentHash] }),
+    index('idx_canvas_assets_dedup').on(table.vaultId, table.contentHash),
+    index('idx_canvas_assets_attachment').on(table.attachmentId)
+  ]
+)
+
+export type CanvasAssetRow = typeof canvasAssets.$inferSelect
+export type NewCanvasAssetRow = typeof canvasAssets.$inferInsert
