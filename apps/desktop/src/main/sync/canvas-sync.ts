@@ -99,6 +99,26 @@ export class CanvasSyncService {
   }
 
   /**
+   * Advance the local clock WITHOUT enqueueing a push. Used when a save is kept
+   * locally but is too large to sync (§5.6): if the clock stayed put, a later
+   * remote edit would dominate it and silently overwrite the retained local
+   * scene (a clean `apply`, no conflict copy). Bumping makes that edit resolve
+   * as concurrent instead, so the local ink survives as a conflict copy.
+   */
+  bumpClockLocalOnly(canvasId: string): void {
+    const deviceId = this.deps.getDeviceId()
+    if (!deviceId) return
+    const row = this.deps.db
+      .select({ clock: canvases.clock })
+      .from(canvases)
+      .where(eq(canvases.id, canvasId))
+      .get()
+    if (!row) return
+    const next = incrementClock((row.clock as VectorClock) ?? {}, deviceId)
+    this.deps.db.update(canvases).set({ clock: next }).where(eq(canvases.id, canvasId)).run()
+  }
+
+  /**
    * Enqueue a create push for a conflict-copy row minted inside a pull-apply
    * transaction (see canvas-handler §5.4). The handler already minted the row's
    * fresh clock and built the full (scene-bearing) payload, so this bypasses the

@@ -215,10 +215,77 @@ describe('canvasHandler', () => {
         .all()
       expect(copyRefs.map((r) => r.entityId)).toEqual(['note-local'])
 
-      // The copy is enqueued for push so both devices keep both snapshots.
+      // The copy is enqueued for push (metadata-only — the plaintext scene must
+      // NOT sit in the sync queue at rest; buildPushPayload rebuilds it from the
+      // copy row at push time).
       expect(mockQueue.enqueue).toHaveBeenCalledWith(
         expect.objectContaining({ type: 'canvas', itemId: copy.id, operation: 'create' })
       )
+      const enqueued = mockQueue.enqueue.mock.calls.find(
+        (c) => (c[0] as { itemId: string }).itemId === copy.id
+      )![0] as { payload: string }
+      expect(JSON.parse(enqueued.payload)).not.toHaveProperty('scene')
+    })
+
+    it('#given concurrent clocks but IDENTICAL scenes #then no conflict copy (clock merge only)', () => {
+      const scene = sceneWith('note-same')
+      seedCanvas(db, 'c1', scene, { A: 2 })
+
+      const result = canvasHandler.applyUpsert(
+        ctx,
+        'c1',
+        { id: 'c1', vaultId: VAULT_ID, scene, clock: { B: 3 } },
+        { B: 3 }
+      )
+
+      expect(result).toBe('applied')
+      expect(db.select().from(canvases).all()).toHaveLength(1)
+      expect(mockQueue.enqueue).not.toHaveBeenCalled()
+      const row = db.select().from(canvases).where(eq(canvases.id, 'c1')).get()
+      expect(row!.clock).toEqual({ A: 2, B: 3 })
+    })
+
+    it('#given concurrent clocks + no running sync service #then still preserves the losing scene (unclocked, seeded later)', () => {
+      resetCanvasSyncService()
+      seedCanvas(db, 'c1', sceneWith('note-local'), { A: 2 })
+
+      const result = canvasHandler.applyUpsert(
+        ctx,
+        'c1',
+        { id: 'c1', vaultId: VAULT_ID, scene: sceneWith('note-remote'), clock: { B: 3 } },
+        { B: 3 }
+      )
+
+      expect(result).toBe('conflict')
+      const rows = db.select().from(canvases).all()
+      expect(rows).toHaveLength(2)
+      const copy = rows.find((r) => r.id !== 'c1')!
+      // No device id → unclocked copy; seedUnclocked pushes it on the next init.
+      expect(copy.clock).toBeNull()
+      expect(decryptCanvasSceneForVault(copy.snapshotCiphertext, VAULT_KEY)).toBe(
+        sceneWith('note-local')
+      )
+    })
+
+    it('#given an update that clears the title (null) #then propagates the clear', () => {
+      seedCanvas(db, 'c1', sceneWith('note-1'), { A: 1 }, { title: 'Old' })
+
+      const result = canvasHandler.applyUpsert(
+        ctx,
+        'c1',
+        {
+          id: 'c1',
+          vaultId: VAULT_ID,
+          title: null,
+          scene: sceneWith('note-2'),
+          clock: { A: 1, B: 2 }
+        },
+        { A: 1, B: 2 }
+      )
+
+      expect(result).toBe('applied')
+      const row = db.select().from(canvases).where(eq(canvases.id, 'c1')).get()
+      expect(row!.title).toBeNull()
     })
   })
 
@@ -243,6 +310,9 @@ describe('canvasHandler', () => {
       const row = db.select().from(canvases).where(eq(canvases.id, 'c1')).get()
       expect(row).toBeDefined()
       expect(row!.deletedAt).not.toBeNull()
+      // The delete clock is persisted on the tombstone (not the stale pre-delete
+      // clock) so later concurrent edits resolve consistently across devices.
+      expect(row!.clock).toEqual({ A: 1, B: 2 })
       const refs = db
         .select()
         .from(canvasEntityRefs)

@@ -104,15 +104,28 @@ export class CanvasHandler extends BaseItemHandler<CanvasSyncPayload> {
         return 'skipped'
       }
 
+      // A conflict copy is only warranted by a genuine SCENE divergence. Identical
+      // scenes under concurrent clocks (common once a never-rebound `_offline` tick
+      // pollutes a clock) must NOT spawn spurious duplicate "(conflict copy)" rows
+      // on every remote edit — compare the decrypted scenes before minting one.
+      let madeCopy = false
       if (resolution.action === 'merge') {
-        // §5.4/D4: concurrent edit — hand-build a conflict copy of the LOSING
-        // local snapshot BEFORE overwriting, so no ink is lost.
-        this.createConflictCopy(tx, ctx, existing, vaultKey, now)
+        const localScene = decryptCanvasSceneForVault(existing.snapshotCiphertext, vaultKey)
+        if (localScene !== scene) {
+          // §5.4/D4: hand-build a conflict copy of the LOSING local snapshot BEFORE
+          // overwriting, so no ink is lost.
+          this.createConflictCopy(tx, ctx, existing, localScene, now)
+          madeCopy = true
+        }
       }
+
+      // Preserve an explicit title clear (null): `?? existing.title` would treat a
+      // deliberate null the same as an absent field and never propagate the clear.
+      const nextTitle = data.title !== undefined ? data.title : existing.title
 
       tx.update(canvases)
         .set({
-          title: data.title ?? existing.title,
+          title: nextTitle,
           snapshotCiphertext: encryptCanvasSceneForVault(scene, vaultKey),
           clock: resolution.mergedClock,
           updatedAt: now,
@@ -131,14 +144,9 @@ export class CanvasHandler extends BaseItemHandler<CanvasSyncPayload> {
       writeRefs(tx, itemId, scene)
 
       ctx.emit(CanvasChannels.events.UPDATED, {
-        canvas: {
-          id: itemId,
-          title: data.title ?? existing.title,
-          createdAt: existing.createdAt,
-          updatedAt: now
-        }
+        canvas: { id: itemId, title: nextTitle, createdAt: existing.createdAt, updatedAt: now }
       })
-      return resolution.action === 'merge' ? 'conflict' : 'applied'
+      return madeCopy ? 'conflict' : 'applied'
     })
   }
 
@@ -147,6 +155,7 @@ export class CanvasHandler extends BaseItemHandler<CanvasSyncPayload> {
       const existing = tx.select().from(canvases).where(eq(canvases.id, itemId)).get()
       if (!existing || existing.deletedAt !== null) return 'skipped'
 
+      let nextClock: VectorClock = existing.clock ?? {}
       if (clock) {
         const resolution = this.resolveClock(existing.clock ?? {}, clock)
         // Concurrent or older delete loses to local edits (R13/D2): skip so the
@@ -155,11 +164,16 @@ export class CanvasHandler extends BaseItemHandler<CanvasSyncPayload> {
           log.info('Skipping remote canvas delete, local has unseen changes', { itemId })
           return 'skipped'
         }
+        // Persist the delete's clock on the tombstone (mirrors the local-delete
+        // path's buildDeletePayload bump). Otherwise the tombstone keeps a stale
+        // pre-delete clock and a later concurrent edit resolves differently across
+        // devices → split-brain resurrection.
+        nextClock = resolution.mergedClock
       }
 
       const now = Date.now()
       tx.update(canvases)
-        .set({ deletedAt: now, updatedAt: now, lastSyncedAt: now })
+        .set({ deletedAt: now, updatedAt: now, lastSyncedAt: now, clock: nextClock })
         .where(eq(canvases.id, itemId))
         .run()
       // D3: prune advisory refs in the same tx (FK cascade is dead code under a
@@ -235,20 +249,17 @@ export class CanvasHandler extends BaseItemHandler<CanvasSyncPayload> {
     tx: CanvasTx,
     ctx: ApplyContext,
     existing: CanvasRow,
-    vaultKey: Uint8Array,
+    localScene: string,
     now: number
   ): void {
     const service = getCanvasSyncService()
     const deviceId = service?.getDeviceId() ?? null
-    if (!deviceId) {
-      // Rare: sync isn't running, so we can't mint a syncable copy. The LWW
-      // overwrite still proceeds below; log so a lost-copy is never silent.
-      log.warn('Cannot create canvas conflict copy without device id', { id: existing.id })
-      return
-    }
 
     const copyId = generateId()
-    const copyClock = increment({}, deviceId)
+    // If sync isn't running (no device id) we still PRESERVE the losing ink on
+    // disk with a null clock, so `seedUnclocked` pushes it on the next engine
+    // init. Never silently drop the losing snapshot.
+    const copyClock = deviceId ? increment({}, deviceId) : null
     const copyTitle = `${existing.title ?? 'Canvas'} (conflict copy)`
 
     tx.insert(canvases)
@@ -270,23 +281,27 @@ export class CanvasHandler extends BaseItemHandler<CanvasSyncPayload> {
     // Rebuild advisory refs for the copy from the LOSING local scene (D4) —
     // derived from the scene itself, not the refs table, so the copy is correct
     // even if the table was never populated for this row.
-    const scene = decryptCanvasSceneForVault(existing.snapshotCiphertext, vaultKey)
-    writeRefs(tx, copyId, scene)
+    writeRefs(tx, copyId, localScene)
 
-    // Enqueue the copy for push so both devices keep both snapshots. Build the
-    // full scene-bearing payload here (vaultKey is guaranteed — applyUpsert
-    // returned early without it). Enqueue-inside-apply-tx is safe (D1).
-    service?.enqueueConflictCopyPush(
-      copyId,
-      JSON.stringify({
-        id: copyId,
-        vaultId: existing.vaultId,
-        title: copyTitle,
-        scene,
-        clock: copyClock,
-        deletedAt: null
+    if (deviceId) {
+      // Enqueue a METADATA-ONLY create push (no plaintext scene at rest in the
+      // sync queue — buildPushPayload rebuilds the scene from the copy row with
+      // the vault key at push time). Enqueue-inside-apply-tx is safe (D1).
+      service?.enqueueConflictCopyPush(
+        copyId,
+        JSON.stringify({
+          id: copyId,
+          vaultId: existing.vaultId,
+          title: copyTitle,
+          clock: copyClock,
+          deletedAt: null
+        })
+      )
+    } else {
+      log.warn('Canvas conflict copy created without device id; will seed on next sync', {
+        id: copyId
       })
-    )
+    }
 
     ctx.emit(CanvasChannels.events.CREATED, {
       canvas: { id: copyId, title: copyTitle, createdAt: now, updatedAt: now }

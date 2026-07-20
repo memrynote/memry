@@ -68,9 +68,13 @@ export function registerCanvasHandlers(): void {
     createValidatedHandler(CanvasCreateSchema, async (input) => {
       const { db, vaultId, vaultKey } = await getCanvasContext()
       const canvas = createCanvas(db, vaultKey, vaultId, input)
-      const { scene: _scene, ...summary } = canvas
-      syncCanvasCreate(canvas.id)
+      const { scene, ...summary } = canvas
+      const synced = syncCanvasCreate(canvas.id, scene)
       emitCanvasEvent(CanvasChannels.events.CREATED, { canvas: summary })
+      if (!synced) {
+        // Created locally but too large to sync (§5.6) — surface, never silent.
+        emitCanvasEvent(CanvasChannels.events.TOO_LARGE, { id: canvas.id })
+      }
       return canvas
     })
   )

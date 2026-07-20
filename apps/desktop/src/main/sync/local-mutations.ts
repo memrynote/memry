@@ -351,6 +351,22 @@ export function removePendingNoteSyncItems(noteId: string): number {
   return getNoteSyncService()?.removeQueueItems(noteId) ?? 0
 }
 
+/**
+ * Advance a canvas's local clock without enqueueing a push — used when a save is
+ * kept locally but too large to sync (§5.6), so a later remote edit can't
+ * silently clobber the retained scene. Falls back to the offline-clock bump when
+ * the sync runtime isn't up.
+ */
+export function bumpCanvasClockLocalOnly(canvasId: string): void {
+  const service = getCanvasSyncService()
+  if (service) {
+    service.bumpClockLocalOnly(canvasId)
+    return
+  }
+
+  incrementCanvasClockOffline(getDatabase(), canvasId)
+}
+
 export function syncSettingsFieldUpdate(fieldPath: string, value: unknown): void {
   const manager = getSettingsSyncManager()
   if (!manager) return
