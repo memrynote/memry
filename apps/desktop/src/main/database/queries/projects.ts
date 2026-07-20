@@ -10,6 +10,7 @@ import { eq, asc, and, isNull, sql, count } from 'drizzle-orm'
 import { projects, type Project, type NewProject } from '@memry/db-schema/schema/projects'
 import { statuses, type Status, type NewStatus } from '@memry/db-schema/schema/statuses'
 import { tasks } from '@memry/db-schema/schema/tasks'
+import { projectLinks, type ProjectLink } from '@memry/db-schema/schema/project-links'
 import type { DataDb } from '../types'
 
 // ============================================================================
@@ -558,4 +559,77 @@ export function countTasksInStatus(db: DataDb, statusId: string): number {
   const result = db.select({ count: count() }).from(tasks).where(eq(tasks.statusId, statusId)).get()
 
   return result?.count ?? 0
+}
+
+// ============================================================================
+// Project Links
+// ============================================================================
+
+/**
+ * Link an item (note, calendar event, or file) to a project.
+ */
+export function insertProjectLink(
+  db: DataDb,
+  link: { id: string; projectId: string; itemType: string; itemId: string }
+): ProjectLink {
+  return db.insert(projectLinks).values(link).returning().get()
+}
+
+/**
+ * Unlink an item from a project.
+ */
+export function deleteProjectLink(
+  db: DataDb,
+  projectId: string,
+  itemType: string,
+  itemId: string
+): void {
+  db.delete(projectLinks)
+    .where(
+      and(
+        eq(projectLinks.projectId, projectId),
+        eq(projectLinks.itemType, itemType),
+        eq(projectLinks.itemId, itemId)
+      )
+    )
+    .run()
+}
+
+/**
+ * Get a single project link by its (projectId, itemType, itemId) tuple.
+ */
+export function getProjectLink(
+  db: DataDb,
+  projectId: string,
+  itemType: string,
+  itemId: string
+): ProjectLink | undefined {
+  return db
+    .select()
+    .from(projectLinks)
+    .where(
+      and(
+        eq(projectLinks.projectId, projectId),
+        eq(projectLinks.itemType, itemType),
+        eq(projectLinks.itemId, itemId)
+      )
+    )
+    .get()
+}
+
+/**
+ * List all items linked to a project.
+ */
+export function getProjectLinks(db: DataDb, projectId: string): ProjectLink[] {
+  return db.select().from(projectLinks).where(eq(projectLinks.projectId, projectId)).all()
+}
+
+/**
+ * Set (or clear) a project's home note.
+ */
+export function updateProjectHomeNote(db: DataDb, projectId: string, noteId: string | null): void {
+  db.update(projects)
+    .set({ homeNoteId: noteId, modifiedAt: new Date().toISOString() })
+    .where(eq(projects.id, projectId))
+    .run()
 }

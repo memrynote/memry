@@ -85,17 +85,11 @@ function createTaskQueries(): TaskQueryModule<TestDb> {
     countTasks: vi.fn(() => 0),
     getSubtasks: vi.fn(() => []),
     countSubtasks: vi.fn(() => ({ total: 0, completed: 0 })),
-    completeTask: vi.fn((_db, id) =>
-      makeTaskRow({ id, completedAt: '2026-04-16T00:00:00.000Z' })
-    ),
+    completeTask: vi.fn((_db, id) => makeTaskRow({ id, completedAt: '2026-04-16T00:00:00.000Z' })),
     uncompleteTask: vi.fn((_db, id) => makeTaskRow({ id, completedAt: null })),
-    archiveTask: vi.fn((_db, id) =>
-      makeTaskRow({ id, archivedAt: '2026-04-16T00:00:00.000Z' })
-    ),
+    archiveTask: vi.fn((_db, id) => makeTaskRow({ id, archivedAt: '2026-04-16T00:00:00.000Z' })),
     unarchiveTask: vi.fn((_db, id) => makeTaskRow({ id, archivedAt: null })),
-    moveTask: vi.fn((_db, id, updates) =>
-      makeTaskRow({ id, ...(updates as Partial<TaskRow>) })
-    ),
+    moveTask: vi.fn((_db, id, updates) => makeTaskRow({ id, ...(updates as Partial<TaskRow>) })),
     reorderTasks: vi.fn(),
     duplicateTask: vi.fn((_db, _id, newId) => makeTaskRow({ id: newId })),
     duplicateSubtask: vi.fn((_db, _id, newId, newParentId) =>
@@ -134,24 +128,21 @@ function createProjectQueries(): ProjectQueryModule<TestDb> {
     updateProject: vi.fn((_db, id) => makeProject({ id })),
     deleteProject: vi.fn(),
     getProjectWithStatuses: vi.fn<ProjectQueryModule<TestDb>['getProjectWithStatuses']>(
-      (_db, id) => ({
-        ...makeProject({ id }),
-        statuses: [makeStatus()]
-      }) satisfies ProjectWithStatuses
+      (_db, id) =>
+        ({
+          ...makeProject({ id }),
+          statuses: [makeStatus()]
+        }) satisfies ProjectWithStatuses
     ),
-    getProjectsWithStats: vi.fn<ProjectQueryModule<TestDb>['getProjectsWithStats']>(
-      () => [
-        {
-          ...makeProject(),
-          taskCount: 2,
-          completedCount: 1,
-          overdueCount: 0
-        } satisfies ProjectWithStats
-      ]
-    ),
-    archiveProject: vi.fn((_db, id) =>
-      makeProject({ id, archivedAt: '2026-04-16T00:00:00.000Z' })
-    ),
+    getProjectsWithStats: vi.fn<ProjectQueryModule<TestDb>['getProjectsWithStats']>(() => [
+      {
+        ...makeProject(),
+        taskCount: 2,
+        completedCount: 1,
+        overdueCount: 0
+      } satisfies ProjectWithStats
+    ]),
+    archiveProject: vi.fn((_db, id) => makeProject({ id, archivedAt: '2026-04-16T00:00:00.000Z' })),
     reorderProjects: vi.fn(),
     getNextProjectPosition: vi.fn(() => 3),
     insertStatus: vi.fn((_db, status) => makeStatus(status as Partial<Status>)),
@@ -164,7 +155,12 @@ function createProjectQueries(): ProjectQueryModule<TestDb> {
     getEquivalentStatus: vi.fn((_db, _pid, src) => (src ? makeStatus({ id: src.id }) : undefined)),
     createDefaultStatuses: vi.fn(() => [makeStatus()]),
     createCustomStatuses: vi.fn(() => [makeStatus()]),
-    reconcileProjectStatuses: vi.fn()
+    reconcileProjectStatuses: vi.fn(),
+    insertProjectLink: vi.fn((_db, link) => ({ ...link, position: 0, createdAt: 'n' })),
+    deleteProjectLink: vi.fn(),
+    getProjectLink: vi.fn(() => undefined),
+    getProjectLinks: vi.fn(() => []),
+    updateProjectHomeNote: vi.fn()
   }
 }
 
@@ -307,7 +303,10 @@ describe('createTasksRepository', () => {
   describe('list + count', () => {
     it('listTasks enriches each row', () => {
       // #given
-      vi.mocked(taskQueries.listTasks).mockReturnValue([makeTaskRow({ id: 'a' }), makeTaskRow({ id: 'b' })])
+      vi.mocked(taskQueries.listTasks).mockReturnValue([
+        makeTaskRow({ id: 'a' }),
+        makeTaskRow({ id: 'b' })
+      ])
 
       // #when
       const list = repo.listTasks({ projectId: 'proj-1' })
@@ -462,9 +461,7 @@ describe('createTasksRepository', () => {
       expect(
         repo.createCustomStatuses('p-1', [{ name: 'A', color: '#000', type: 'todo', order: 0 }])
       ).toHaveLength(1)
-      repo.reconcileProjectStatuses('p-1', [
-        { name: 'A', color: '#000', type: 'todo', order: 0 }
-      ])
+      repo.reconcileProjectStatuses('p-1', [{ name: 'A', color: '#000', type: 'todo', order: 0 }])
       expect(projectQueries.reconcileProjectStatuses).toHaveBeenCalled()
 
       const eq = repo.getEquivalentStatus('p-2', makeStatus({ id: 'src' }))

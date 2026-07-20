@@ -81,6 +81,26 @@ export interface ProjectWithStatuses extends Project {
   statuses: Status[]
 }
 
+export interface ProjectLink {
+  id: string
+  projectId: string
+  itemType: string
+  itemId: string
+  position: number
+  createdAt: string
+}
+
+export interface ProjectLinkItemInput {
+  projectId: string
+  itemType: string
+  itemId: string
+}
+
+export interface ProjectSetHomeNoteInput {
+  projectId: string
+  noteId: string | null
+}
+
 export interface Reminder {
   id: string
   taskId: string

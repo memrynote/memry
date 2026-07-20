@@ -6,7 +6,9 @@ import {
   ConvertToSubtaskSchema,
   GetUpcomingSchema,
   ProjectCreateSchema,
+  ProjectLinkItemSchema,
   ProjectReorderSchema,
+  ProjectSetHomeNoteSchema,
   ProjectUpdateSchema,
   StatusCreateSchema,
   StatusReorderSchema,
@@ -204,6 +206,41 @@ export function registerTasksHandlers(): void {
       withDb(
         (db, input) => createTaskDomain(db).reorderProjects(input.projectIds, input.positions),
         'Failed to reorder projects'
+      )
+    )
+  )
+
+  ipcMain.handle(
+    TasksChannels.invoke.PROJECT_LINK_ITEM,
+    createValidatedHandler(
+      ProjectLinkItemSchema,
+      withDb((db, input) => createTaskDomain(db).linkItemToProject(input), 'Failed to link item')
+    )
+  )
+
+  ipcMain.handle(
+    TasksChannels.invoke.PROJECT_UNLINK_ITEM,
+    createValidatedHandler(
+      ProjectLinkItemSchema,
+      withDb(
+        (db, input) => createTaskDomain(db).unlinkItemFromProject(input),
+        'Failed to unlink item'
+      )
+    )
+  )
+
+  ipcMain.handle(
+    TasksChannels.invoke.PROJECT_LIST_LINKS,
+    createStringHandler(async (id) => createTaskDomain(requireDatabase()).listProjectLinks(id))
+  )
+
+  ipcMain.handle(
+    TasksChannels.invoke.PROJECT_SET_HOME_NOTE,
+    createValidatedHandler(
+      ProjectSetHomeNoteSchema,
+      withDb(
+        (db, input) => createTaskDomain(db).setProjectHomeNote(input),
+        'Failed to set home note'
       )
     )
   )

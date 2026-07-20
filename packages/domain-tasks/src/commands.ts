@@ -1,4 +1,12 @@
-import type { Project, ProjectWithStatuses, Status, Task } from './types.ts'
+import type {
+  Project,
+  ProjectLink,
+  ProjectLinkItemInput,
+  ProjectSetHomeNoteInput,
+  ProjectWithStatuses,
+  Status,
+  Task
+} from './types.ts'
 import type { TasksQueryRepository } from './queries.ts'
 
 export interface StatusDefinitionInput {
@@ -91,7 +99,12 @@ export interface StatusUpdateInput {
 }
 
 export interface TasksCommandRepository extends TasksQueryRepository {
-  createTask(task: Omit<Task, 'tags' | 'linkedNoteIds' | 'hasSubtasks' | 'subtaskCount' | 'completedSubtaskCount'>): Task
+  createTask(
+    task: Omit<
+      Task,
+      'tags' | 'linkedNoteIds' | 'hasSubtasks' | 'subtaskCount' | 'completedSubtaskCount'
+    >
+  ): Task
   updateTask(
     id: string,
     updates: Partial<
@@ -144,6 +157,15 @@ export interface TasksCommandRepository extends TasksQueryRepository {
   createDefaultStatuses(projectId: string): Status[]
   createCustomStatuses(projectId: string, statuses: StatusDefinitionInput[]): Status[]
   reconcileProjectStatuses(projectId: string, statuses: StatusDefinitionInput[]): void
+  linkItemToProject(link: {
+    id: string
+    projectId: string
+    itemType: string
+    itemId: string
+  }): ProjectLink
+  unlinkItemFromProject(projectId: string, itemType: string, itemId: string): void
+  findProjectLink(projectId: string, itemType: string, itemId: string): ProjectLink | undefined
+  setProjectHomeNote(projectId: string, noteId: string | null): void
   createStatus(status: Omit<Status, 'createdAt'>): Status
   updateStatus(
     id: string,
@@ -256,7 +278,8 @@ export function createTasksCommands({
   return {
     async createTask(input: TaskCreateInput) {
       const id = generateId()
-      const position = input.position ?? repository.getNextTaskPosition(input.projectId, input.parentId)
+      const position =
+        input.position ?? repository.getNextTaskPosition(input.projectId, input.parentId)
 
       const createdTask = repository.createTask({
         id,
@@ -639,6 +662,54 @@ export function createTasksCommands({
       repository.deleteProject(id)
       await publisher.projectDeleted({ id, snapshot })
       return { success: true }
+    },
+
+    async linkItemToProject(input: ProjectLinkItemInput) {
+      const existing = repository.findProjectLink(input.projectId, input.itemType, input.itemId)
+      if (!existing) {
+        repository.linkItemToProject({
+          id: generateId(),
+          projectId: input.projectId,
+          itemType: input.itemType,
+          itemId: input.itemId
+        })
+      }
+
+      const project = repository.getProject(input.projectId)
+      if (!project) {
+        return { success: false, error: 'Project not found' }
+      }
+
+      await publisher.projectUpdated({ id: input.projectId, project, changedFields: ['links'] })
+      return { success: true }
+    },
+
+    async unlinkItemFromProject(input: ProjectLinkItemInput) {
+      repository.unlinkItemFromProject(input.projectId, input.itemType, input.itemId)
+
+      const project = repository.getProject(input.projectId)
+      if (!project) {
+        return { success: false, error: 'Project not found' }
+      }
+
+      await publisher.projectUpdated({ id: input.projectId, project, changedFields: ['links'] })
+      return { success: true }
+    },
+
+    async setProjectHomeNote(input: ProjectSetHomeNoteInput) {
+      repository.setProjectHomeNote(input.projectId, input.noteId)
+
+      const project = repository.getProject(input.projectId)
+      if (!project) {
+        return { success: false, error: 'Project not found' }
+      }
+
+      await publisher.projectUpdated({
+        id: input.projectId,
+        project,
+        changedFields: ['homeNoteId']
+      })
+      return { success: true, project }
     },
 
     async archiveProject(id: string) {

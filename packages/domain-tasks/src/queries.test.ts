@@ -47,6 +47,7 @@ function createRepository(overrides: Partial<TasksQueryRepository> = {}): TasksQ
     listProjects: vi.fn(() => []),
     getProject: vi.fn(() => undefined),
     listStatuses: vi.fn(() => []),
+    listProjectLinks: vi.fn(() => []),
     getAllTaskTags: vi.fn(() => []),
     getTaskStats: vi.fn(() => ({
       total: 0,

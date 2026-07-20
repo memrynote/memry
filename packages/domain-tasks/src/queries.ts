@@ -1,4 +1,5 @@
 import type {
+  ProjectLink,
   ProjectWithStats,
   ProjectWithStatuses,
   Status,
@@ -11,11 +12,14 @@ import type {
 export interface TasksQueryRepository {
   getTask(id: string): Task | undefined
   listTasks(options?: TaskListOptions): TaskListItem[]
-  countTasks(options?: Pick<TaskListOptions, 'projectId' | 'includeCompleted' | 'includeArchived'>): number
+  countTasks(
+    options?: Pick<TaskListOptions, 'projectId' | 'includeCompleted' | 'includeArchived'>
+  ): number
   getSubtasks(parentId: string): Task[]
   listProjects(): ProjectWithStats[]
   getProject(projectId: string): ProjectWithStatuses | undefined
   listStatuses(projectId: string): Status[]
+  listProjectLinks(projectId: string): ProjectLink[]
   getAllTaskTags(): { tag: string; count: number }[]
   getTaskStats(): TaskStats
   getTodayTasks(): Task[]
@@ -73,6 +77,10 @@ export function createTasksQueries(repository: TasksQueryRepository) {
 
     listStatuses(projectId: string): Status[] {
       return repository.listStatuses(projectId)
+    },
+
+    listProjectLinks(projectId: string): ProjectLink[] {
+      return repository.listProjectLinks(projectId)
     },
 
     getTags(): { tag: string; count: number }[] {

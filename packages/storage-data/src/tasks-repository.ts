@@ -1,5 +1,6 @@
 import type {
   Project,
+  ProjectLink,
   ProjectWithStats,
   ProjectWithStatuses,
   Status,
@@ -16,6 +17,7 @@ type TaskRecord = Omit<Task, 'isRepeating' | 'priority' | 'repeatConfig' | 'repe
 }
 type ProjectRecord = Project
 type StatusRecord = Status
+type ProjectLinkRecord = ProjectLink
 
 export interface TaskQueryModule<TDb> {
   insertTask(db: TDb, task: Record<string, unknown>): TaskRecord
@@ -79,7 +81,11 @@ export interface ProjectQueryModule<TDb> {
   reorderStatuses(db: TDb, statusIds: string[], positions: number[]): void
   getNextStatusPosition(db: TDb, projectId: string): number
   getStatusById(db: TDb, id: string): StatusRecord | undefined
-  getEquivalentStatus(db: TDb, targetProjectId: string, sourceStatus?: StatusRecord): StatusRecord | undefined
+  getEquivalentStatus(
+    db: TDb,
+    targetProjectId: string,
+    sourceStatus?: StatusRecord
+  ): StatusRecord | undefined
   createDefaultStatuses(db: TDb, projectId: string): StatusRecord[]
   createCustomStatuses(
     db: TDb,
@@ -102,6 +108,19 @@ export interface ProjectQueryModule<TDb> {
       order: number
     }>
   ): void
+  insertProjectLink(
+    db: TDb,
+    link: { id: string; projectId: string; itemType: string; itemId: string }
+  ): ProjectLinkRecord
+  deleteProjectLink(db: TDb, projectId: string, itemType: string, itemId: string): void
+  getProjectLink(
+    db: TDb,
+    projectId: string,
+    itemType: string,
+    itemId: string
+  ): ProjectLinkRecord | undefined
+  getProjectLinks(db: TDb, projectId: string): ProjectLinkRecord[]
+  updateProjectHomeNote(db: TDb, projectId: string, noteId: string | null): void
 }
 
 export interface CreateTasksRepositoryDeps<TDb> {
@@ -110,11 +129,7 @@ export interface CreateTasksRepositoryDeps<TDb> {
   projectQueries: ProjectQueryModule<TDb>
 }
 
-function enrichTask<TDb>(
-  db: TDb,
-  taskQueries: TaskQueryModule<TDb>,
-  task: TaskRecord
-): Task {
+function enrichTask<TDb>(db: TDb, taskQueries: TaskQueryModule<TDb>, task: TaskRecord): Task {
   const subtaskCounts = taskQueries.countSubtasks(db, task.id)
   return {
     ...task,
@@ -141,7 +156,17 @@ export function createTasksRepository<TDb>({
       return task ? enrichTask(db, taskQueries, task) : undefined
     },
 
-    createTask(task: Omit<Task, 'isRepeating' | 'tags' | 'linkedNoteIds' | 'hasSubtasks' | 'subtaskCount' | 'completedSubtaskCount'>): Task {
+    createTask(
+      task: Omit<
+        Task,
+        | 'isRepeating'
+        | 'tags'
+        | 'linkedNoteIds'
+        | 'hasSubtasks'
+        | 'subtaskCount'
+        | 'completedSubtaskCount'
+      >
+    ): Task {
       const created = taskQueries.insertTask(db, task)
       return enrichTask(db, taskQueries, created)
     },
@@ -156,7 +181,9 @@ export function createTasksRepository<TDb>({
     },
 
     listTasks(options: TaskListOptions = {}): TaskListItem[] {
-      return taskQueries.listTasks(db, options).map((task) => enrichTask(db, taskQueries, task) as TaskListItem)
+      return taskQueries
+        .listTasks(db, options)
+        .map((task) => enrichTask(db, taskQueries, task) as TaskListItem)
     },
 
     countTasks(
@@ -257,7 +284,9 @@ export function createTasksRepository<TDb>({
     },
 
     getTasksLinkedToNote(noteId: string): Task[] {
-      return taskQueries.getTasksLinkedToNote(db, noteId).map((task) => enrichTask(db, taskQueries, task))
+      return taskQueries
+        .getTasksLinkedToNote(db, noteId)
+        .map((task) => enrichTask(db, taskQueries, task))
     },
 
     getNextTaskPosition(projectId: string, parentId?: string | null): number {
@@ -300,12 +329,54 @@ export function createTasksRepository<TDb>({
       return projectQueries.createDefaultStatuses(db, projectId)
     },
 
-    createCustomStatuses(projectId: string, statuses: Array<{ name: string; color: string; type: 'todo' | 'in_progress' | 'done'; order: number }>): Status[] {
+    createCustomStatuses(
+      projectId: string,
+      statuses: Array<{
+        name: string
+        color: string
+        type: 'todo' | 'in_progress' | 'done'
+        order: number
+      }>
+    ): Status[] {
       return projectQueries.createCustomStatuses(db, projectId, statuses)
     },
 
-    reconcileProjectStatuses(projectId: string, statuses: Array<{ id?: string; name: string; color: string; type: 'todo' | 'in_progress' | 'done'; order: number }>): void {
+    reconcileProjectStatuses(
+      projectId: string,
+      statuses: Array<{
+        id?: string
+        name: string
+        color: string
+        type: 'todo' | 'in_progress' | 'done'
+        order: number
+      }>
+    ): void {
       projectQueries.reconcileProjectStatuses(db, projectId, statuses)
+    },
+
+    linkItemToProject(link: {
+      id: string
+      projectId: string
+      itemType: string
+      itemId: string
+    }): ProjectLink {
+      return projectQueries.insertProjectLink(db, link)
+    },
+
+    unlinkItemFromProject(projectId: string, itemType: string, itemId: string): void {
+      projectQueries.deleteProjectLink(db, projectId, itemType, itemId)
+    },
+
+    findProjectLink(projectId: string, itemType: string, itemId: string): ProjectLink | undefined {
+      return projectQueries.getProjectLink(db, projectId, itemType, itemId)
+    },
+
+    listProjectLinks(projectId: string): ProjectLink[] {
+      return projectQueries.getProjectLinks(db, projectId)
+    },
+
+    setProjectHomeNote(projectId: string, noteId: string | null): void {
+      projectQueries.updateProjectHomeNote(db, projectId, noteId)
     },
 
     getStatus(id: string): Status | undefined {

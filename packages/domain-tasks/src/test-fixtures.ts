@@ -1,11 +1,5 @@
 import { vi } from 'vitest'
-import type {
-  Project,
-  ProjectWithStatuses,
-  Status,
-  Task,
-  TaskListItem
-} from './types.ts'
+import type { Project, ProjectWithStatuses, Status, Task, TaskListItem } from './types.ts'
 import type { TasksCommandRepository, TasksDomainPublisher } from './commands.ts'
 
 export function createTask(overrides: Partial<Task> = {}): Task {
@@ -95,6 +89,7 @@ export function createCommandRepository(
     listProjects: vi.fn(() => []),
     getProject: vi.fn(() => undefined),
     listStatuses: vi.fn(() => []),
+    listProjectLinks: vi.fn(() => []),
     getAllTaskTags: vi.fn(() => []),
     getTaskStats: vi.fn(() => ({
       total: 0,
@@ -134,6 +129,10 @@ export function createCommandRepository(
     createDefaultStatuses: vi.fn(() => []),
     createCustomStatuses: vi.fn(() => []),
     reconcileProjectStatuses: vi.fn(),
+    linkItemToProject: vi.fn((link) => ({ ...link, position: 0, createdAt: 'n' })),
+    unlinkItemFromProject: vi.fn(),
+    findProjectLink: vi.fn(() => undefined),
+    setProjectHomeNote: vi.fn(),
     createStatus: vi.fn((s) => ({ ...s, createdAt: 'n' })),
     updateStatus: vi.fn(() => undefined),
     deleteStatus: vi.fn(),

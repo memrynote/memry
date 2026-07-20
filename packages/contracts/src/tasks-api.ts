@@ -211,6 +211,17 @@ export const ProjectReorderSchema = z.object({
   positions: z.array(z.number().int())
 })
 
+export const ProjectLinkItemSchema = z.object({
+  projectId: z.string(),
+  itemType: z.enum(['note', 'calendar_event', 'file']),
+  itemId: z.string()
+})
+
+export const ProjectSetHomeNoteSchema = z.object({
+  projectId: z.string(),
+  noteId: z.string().nullable()
+})
+
 export const StatusReorderSchema = z.object({
   statusIds: z.array(z.string()),
   positions: z.array(z.number().int())
