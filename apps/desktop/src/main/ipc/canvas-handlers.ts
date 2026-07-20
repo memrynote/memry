@@ -13,17 +13,19 @@ import {
   CanvasUpdateSchema,
   type CanvasCreatedEvent,
   type CanvasUpdatedEvent,
-  type CanvasDeletedEvent
+  type CanvasDeletedEvent,
+  type CanvasTooLargeEvent
 } from '@memry/contracts/canvas-api'
 import { createValidatedHandler, createHandler, createStringHandler } from './validate'
 import { requireDatabase, type DataDb } from '../database'
 import { getOrCreateVaultUuid } from '../agent/storage/vault-id'
 import { getOrInitializeLocalVaultKey, secureCleanup } from '../crypto'
 import { createCanvas, deleteCanvas, getCanvas, listCanvases, updateCanvas } from '../canvas/store'
+import { syncCanvasCreate, syncCanvasUpdate, syncCanvasDelete } from '../canvas/sync-bridge'
 
 function emitCanvasEvent(
   channel: string,
-  data: CanvasCreatedEvent | CanvasUpdatedEvent | CanvasDeletedEvent
+  data: CanvasCreatedEvent | CanvasUpdatedEvent | CanvasDeletedEvent | CanvasTooLargeEvent
 ): void {
   BrowserWindow.getAllWindows().forEach((win) => {
     win.webContents.send(channel, data)
@@ -66,8 +68,13 @@ export function registerCanvasHandlers(): void {
     createValidatedHandler(CanvasCreateSchema, async (input) => {
       const { db, vaultId, vaultKey } = await getCanvasContext()
       const canvas = createCanvas(db, vaultKey, vaultId, input)
-      const { scene: _scene, ...summary } = canvas
+      const { scene, ...summary } = canvas
+      const synced = syncCanvasCreate(canvas.id, scene)
       emitCanvasEvent(CanvasChannels.events.CREATED, { canvas: summary })
+      if (!synced) {
+        // Created locally but too large to sync (§5.6) — surface, never silent.
+        emitCanvasEvent(CanvasChannels.events.TOO_LARGE, { id: canvas.id })
+      }
       return canvas
     })
   )
@@ -90,7 +97,12 @@ export function registerCanvasHandlers(): void {
       if (!summary) {
         throw new Error('Canvas not found')
       }
+      const synced = syncCanvasUpdate(input.id, input.scene)
       emitCanvasEvent(CanvasChannels.events.UPDATED, { canvas: summary })
+      if (!synced) {
+        // Saved locally but too large to sync (§5.6) — surface, never silent.
+        emitCanvasEvent(CanvasChannels.events.TOO_LARGE, { id: input.id })
+      }
       return summary
     })
   )
@@ -102,6 +114,7 @@ export function registerCanvasHandlers(): void {
       const { db } = await getCanvasContext()
       const success = deleteCanvas(db, id)
       if (success) {
+        syncCanvasDelete(id)
         emitCanvasEvent(CanvasChannels.events.DELETED, { id })
       }
       return { success }

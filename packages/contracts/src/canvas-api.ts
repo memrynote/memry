@@ -96,3 +96,8 @@ export interface CanvasUpdatedEvent {
 export interface CanvasDeletedEvent {
   id: string
 }
+
+/** A local canvas save whose scene is too large to sync (see §5.6). */
+export interface CanvasTooLargeEvent {
+  id: string
+}

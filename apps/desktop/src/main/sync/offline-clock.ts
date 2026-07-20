@@ -3,6 +3,7 @@ import { tasks } from '@memry/db-schema/schema/tasks'
 import { projects } from '@memry/db-schema/schema/projects'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
 import { savedFilters } from '@memry/db-schema/schema/settings'
+import { canvases } from '@memry/db-schema/schema/canvas'
 import {
   OFFLINE_CLOCK_DEVICE_ID,
   type VectorClock,
@@ -177,5 +178,21 @@ export function incrementFilterClockOffline(db: DataDb, filterId: string): void 
     log.debug('Incremented offline filter clock', { filterId })
   } catch (err) {
     log.warn('Failed to increment offline filter clock', { filterId, error: err })
+  }
+}
+
+export function incrementCanvasClockOffline(db: DataDb, canvasId: string): void {
+  try {
+    const canvas = db.select().from(canvases).where(eq(canvases.id, canvasId)).get()
+    if (!canvas) return
+
+    const existingClock = (canvas.clock as VectorClock) ?? {}
+    const newClock = increment(existingClock, OFFLINE_DEVICE_KEY)
+
+    db.update(canvases).set({ clock: newClock }).where(eq(canvases.id, canvasId)).run()
+
+    log.debug('Incremented offline canvas clock', { canvasId })
+  } catch (err) {
+    log.warn('Failed to increment offline canvas clock', { canvasId, error: err })
   }
 }

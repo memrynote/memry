@@ -3,6 +3,7 @@ import type { SyncAdapterRegistry } from '@memry/sync-core'
 import { getHandler, getRemoteSyncAdapter } from './item-handlers'
 import type { ApplyResult, DrizzleDb, EmitToWindows } from './item-handlers'
 import { createLogger } from '../lib/logger'
+import { trackMainEvent } from '../telemetry/track'
 
 export type { EmitToWindows, ApplyResult }
 
@@ -31,7 +32,18 @@ export class ItemApplier {
     const handler = adapter ? null : getHandler(input.type)
 
     if (!adapter && !handler) {
+      // Mixed-version tripwire: a type the server served that this build has no
+      // handler for. #754 negotiation makes this rare (the server filters
+      // changes/pull/manifest to the client's declared types), so a hit here
+      // signals a newer peer sending a type this build predates.
       log.warn('Unsupported item type for apply', { type: input.type })
+      trackMainEvent('sync_skipped_unknown_type', {
+        surface: 'sync',
+        action: 'apply_skipped',
+        objectType: 'sync_item',
+        result: 'skipped',
+        dimensions: { itemType: input.type }
+      })
       return 'skipped'
     }
 

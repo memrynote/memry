@@ -660,7 +660,8 @@ export const CanvasChannels = {
   events: {
     CREATED: 'canvas:created',
     UPDATED: 'canvas:updated',
-    DELETED: 'canvas:deleted'
+    DELETED: 'canvas:deleted',
+    TOO_LARGE: 'canvas:too-large'
   }
 } as const
 

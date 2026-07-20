@@ -38,7 +38,8 @@ const eventChannels = {
   "onCalendarChanged": "calendar:changed",
   "onCanvasCreated": "canvas:created",
   "onCanvasUpdated": "canvas:updated",
-  "onCanvasDeleted": "canvas:deleted"
+  "onCanvasDeleted": "canvas:deleted",
+  "onCanvasTooLarge": "canvas:too-large"
 } as const
 
 export interface GeneratedRpcDeps {

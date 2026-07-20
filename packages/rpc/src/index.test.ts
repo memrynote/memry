@@ -38,8 +38,8 @@ describe('@memry/rpc public surface', () => {
 })
 
 describe('rpcDomains aggregate', () => {
-  it('contains exactly the eight known domains in declaration order', () => {
-    expect(rpcDomains).toHaveLength(8)
+  it('contains exactly the nine known domains in declaration order', () => {
+    expect(rpcDomains).toHaveLength(9)
     expect(rpcDomains.map((d) => d.name)).toEqual([
       'notes',
       'tasks',

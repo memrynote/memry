@@ -12,7 +12,8 @@ import type {
   CanvasClientAPI,
   CanvasCreatedEvent,
   CanvasUpdatedEvent,
-  CanvasDeletedEvent
+  CanvasDeletedEvent,
+  CanvasTooLargeEvent
 } from '@memry/rpc/canvas'
 import { createWindowApiForwarder } from './window-api-forwarder'
 
@@ -30,4 +31,8 @@ export function onCanvasUpdated(callback: (event: CanvasUpdatedEvent) => void): 
 
 export function onCanvasDeleted(callback: (event: CanvasDeletedEvent) => void): () => void {
   return window.api.onCanvasDeleted(callback)
+}
+
+export function onCanvasTooLarge(callback: (event: CanvasTooLargeEvent) => void): () => void {
+  return window.api.onCanvasTooLarge(callback)
 }

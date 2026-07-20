@@ -3,11 +3,13 @@ import { createSyncAdapterRegistry } from '@memry/sync-core'
 import { getDatabase } from '../database'
 import { createLogger } from '../lib/logger'
 import {
+  incrementCanvasClockOffline,
   incrementFilterClockOffline,
   incrementInboxClockOffline,
   incrementProjectClocksOffline,
   incrementTaskClocksOffline
 } from './offline-clock'
+import { getCanvasSyncService } from './canvas-sync'
 import { getFilterSyncService } from './filter-sync'
 import { getInboxSyncService } from './inbox-sync'
 import { getJournalSyncService } from './journal-sync'
@@ -136,6 +138,33 @@ const localSyncRegistry = createSyncAdapterRegistry([
       enqueueDelete(itemId: string, snapshotPayload?: string): void {
         if (!snapshotPayload) return
         getFilterSyncService()?.enqueueDelete(itemId, snapshotPayload)
+      }
+    }
+  },
+  {
+    type: 'canvas',
+    kind: 'record',
+    local: {
+      enqueueCreate(itemId: string): void {
+        const service = getCanvasSyncService()
+        if (service) {
+          service.enqueueCreate(itemId)
+          return
+        }
+
+        incrementCanvasClockOffline(getDatabase(), itemId)
+      },
+      enqueueUpdate(itemId: string): void {
+        const service = getCanvasSyncService()
+        if (service) {
+          service.enqueueUpdate(itemId)
+          return
+        }
+
+        incrementCanvasClockOffline(getDatabase(), itemId)
+      },
+      enqueueDelete(itemId: string): void {
+        getCanvasSyncService()?.enqueueDelete(itemId)
       }
     }
   },
@@ -320,6 +349,22 @@ export function enqueueLocalSyncDelete(
 
 export function removePendingNoteSyncItems(noteId: string): number {
   return getNoteSyncService()?.removeQueueItems(noteId) ?? 0
+}
+
+/**
+ * Advance a canvas's local clock without enqueueing a push — used when a save is
+ * kept locally but too large to sync (§5.6), so a later remote edit can't
+ * silently clobber the retained scene. Falls back to the offline-clock bump when
+ * the sync runtime isn't up.
+ */
+export function bumpCanvasClockLocalOnly(canvasId: string): void {
+  const service = getCanvasSyncService()
+  if (service) {
+    service.bumpClockLocalOnly(canvasId)
+    return
+  }
+
+  incrementCanvasClockOffline(getDatabase(), canvasId)
 }
 
 export function syncSettingsFieldUpdate(fieldPath: string, value: unknown): void {

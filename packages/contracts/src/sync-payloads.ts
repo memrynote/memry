@@ -52,6 +52,25 @@ export const FilterSyncPayloadSchema = z.object({
   createdAt: z.string().optional()
 })
 
+/**
+ * Spatial-canvas sync payload. Every field is optional on purpose (repo
+ * forward-tolerance convention): a payload written by a newer client must
+ * still parse on an older one, so a missing/renamed field degrades to `skip`
+ * rather than a whole-page parse failure that advances the cursor past good
+ * data. Presence of `scene` (the serialized Excalidraw snapshot) is therefore
+ * validated at the apply/push USE site, never here. `deletedAt` is
+ * push-metadata only — tombstones are routed to the delete path by the pull
+ * coordinator (`dec.deletedAt ? 'delete'`), not by this field.
+ */
+export const CanvasSyncPayloadSchema = z.object({
+  id: z.string().optional(),
+  vaultId: z.string().optional(),
+  title: z.string().nullable().optional(),
+  scene: z.string().optional(),
+  clock: VectorClockSchema.optional(),
+  deletedAt: z.number().nullable().optional()
+})
+
 export const StatusSyncSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -337,6 +356,7 @@ export type CalendarExternalEventSyncPayload = z.infer<
 export type TaskSyncPayload = z.infer<typeof TaskSyncPayloadSchema>
 export type InboxSyncPayload = z.infer<typeof InboxSyncPayloadSchema>
 export type FilterSyncPayload = z.infer<typeof FilterSyncPayloadSchema>
+export type CanvasSyncPayload = z.infer<typeof CanvasSyncPayloadSchema>
 export type ProjectSyncPayload = z.infer<typeof ProjectSyncPayloadSchema>
 export type StatusSync = z.infer<typeof StatusSyncSchema>
 export type NoteSyncPayload = z.infer<typeof NoteSyncPayloadSchema>

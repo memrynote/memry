@@ -10,7 +10,8 @@ import {
   type CanvasDeleteResponse,
   type CanvasCreatedEvent,
   type CanvasUpdatedEvent,
-  type CanvasDeletedEvent
+  type CanvasDeletedEvent,
+  type CanvasTooLargeEvent
 } from '../../contracts/src/canvas-api.ts'
 import {
   defineDomain,
@@ -31,7 +32,8 @@ export type {
   CanvasDeleteResponse,
   CanvasCreatedEvent,
   CanvasUpdatedEvent,
-  CanvasDeletedEvent
+  CanvasDeletedEvent,
+  CanvasTooLargeEvent
 }
 
 export const canvasRpc = defineDomain({
@@ -62,7 +64,8 @@ export const canvasRpc = defineDomain({
   events: {
     onCanvasCreated: defineEvent<CanvasCreatedEvent>(CanvasChannels.events.CREATED),
     onCanvasUpdated: defineEvent<CanvasUpdatedEvent>(CanvasChannels.events.UPDATED),
-    onCanvasDeleted: defineEvent<CanvasDeletedEvent>(CanvasChannels.events.DELETED)
+    onCanvasDeleted: defineEvent<CanvasDeletedEvent>(CanvasChannels.events.DELETED),
+    onCanvasTooLarge: defineEvent<CanvasTooLargeEvent>(CanvasChannels.events.TOO_LARGE)
   }
 })
 
