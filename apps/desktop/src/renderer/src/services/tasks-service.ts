@@ -3,6 +3,8 @@ import type {
   ProjectCreateInput,
   ProjectCreatedEvent,
   ProjectDeletedEvent,
+  ProjectLink,
+  ProjectLinkItemInput,
   ProjectListResponse,
   ProjectUpdateInput,
   ProjectUpdatedEvent,
@@ -35,6 +37,8 @@ export const tasksServiceLogger = createLogger('Tasks:Service')
 export type {
   Project,
   ProjectCreateInput,
+  ProjectLink,
+  ProjectLinkItemInput,
   ProjectListResponse,
   ProjectUpdateInput,
   ProjectWithStats,
