@@ -37,6 +37,12 @@ vi.mock('../canvas/store', () => ({
   listCanvases: vi.fn(() => []),
   updateCanvas: vi.fn()
 }))
+// Keep the sync/attachment runtime out of this registration test: the real
+// context builder pulls the whole attachment + writeback graph. Returning null
+// makes the asset handlers degrade to their offline-safe branches.
+vi.mock('../canvas/assets/asset-service-context', () => ({
+  buildAssetServiceContext: vi.fn(() => null)
+}))
 
 const INVOKE_CHANNELS = Object.values(CanvasChannels.invoke)
 

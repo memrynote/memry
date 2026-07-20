@@ -110,6 +110,54 @@ export async function atomicWrite(filePath: string, content: string): Promise<vo
 }
 
 /**
+ * Binary counterpart of {@link atomicWrite}: same temp-file-then-rename +
+ * transient-retry pattern, but writes raw bytes without a text encoding.
+ * Used for content-addressed canvas image assets under `attachments/`.
+ *
+ * @param filePath - Absolute path to the target file
+ * @param data - Bytes to write
+ * @throws NoteError if write fails
+ */
+export async function atomicWriteBinary(
+  filePath: string,
+  data: Buffer | Uint8Array
+): Promise<void> {
+  const dir = path.dirname(filePath)
+
+  try {
+    await ensureDirectory(dir)
+
+    await withTransientFsRetry(async () => {
+      const tempPath = path.join(dir, `.${randomBytes(6).toString('hex')}.tmp`)
+
+      try {
+        await writeFile(tempPath, data, { mode: 0o600, flag: 'wx' })
+        await rename(tempPath, filePath)
+      } catch (error) {
+        try {
+          if (existsSync(tempPath)) {
+            await unlink(tempPath)
+          }
+        } catch {
+          // Ignore cleanup errors
+        }
+
+        throw error
+      }
+    }, 'atomicWriteBinary')
+  } catch (error) {
+    throw new NoteError(
+      `Failed to write file: ${filePath}`,
+      NoteErrorCode.WRITE_FAILED,
+      undefined,
+      {
+        cause: error
+      }
+    )
+  }
+}
+
+/**
  * Write only when the content differs from what is on disk. Skipping the
  * write entirely means no mtime churn, no watcher echo and no sync item for
  * no-op saves.
