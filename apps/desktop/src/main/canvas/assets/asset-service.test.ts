@@ -165,6 +165,44 @@ describe('canvas asset service', () => {
         expect.objectContaining({ metrics: { byteCount: bytes.length } })
       )
     })
+
+    it('dedup hit: resolves ref/path/filename from the RECORDED filename, not the locally-computed one', async () => {
+      const bytes = Buffer.from('mismatched-extension-bytes')
+      const contentHash = hashAssetContent(bytes)
+      const recordedFilename = `${contentHash}.png`
+
+      // Pre-seed a row recorded under .png (e.g. first upload declared image/png).
+      recordAsset(db, {
+        vaultId: 'vault-1',
+        canvasId: 'canvas-a',
+        contentHash,
+        attachmentId: 'attachment-seed',
+        fileId: 'file-seed',
+        filename: recordedFilename,
+        mimeType: 'image/png',
+        sizeBytes: bytes.length,
+        chunkHashes: ['chunk-seed'],
+        createdAt: 1700000000000
+      })
+
+      // This upload declares a DIFFERENT mimeType for the same bytes, so the
+      // locally-computed filename (.webp) diverges from the recorded one (.png).
+      const res = await uploadCanvasAsset(ctx, 'canvas-b', 'file-2', 'image/webp', bytes)
+
+      expect(res.deduped).toBe(true)
+      expect(uploadAttachment).not.toHaveBeenCalled()
+      expect(res.descriptor.filename).toBe(recordedFilename)
+      expect(res.descriptor.attachmentId).toBe('attachment-seed')
+
+      const recordedDiskPath = canvasAssetDiskPath(vaultPath, recordedFilename)
+      const staleDiskPath = canvasAssetDiskPath(vaultPath, `${contentHash}.webp`)
+      expect(res.ref.endsWith(recordedFilename)).toBe(true)
+      expect(res.ref).not.toContain('.webp')
+
+      // The file materializes at the RECORDED path, never at the locally-computed one.
+      expect(fs.existsSync(recordedDiskPath)).toBe(true)
+      expect(fs.existsSync(staleDiskPath)).toBe(false)
+    })
   })
 
   describe('reconcileCanvasAssets', () => {

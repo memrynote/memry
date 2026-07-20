@@ -116,10 +116,15 @@ export async function uploadCanvasAsset(
   if (existing) {
     // Dedup hit: the bytes already exist somewhere in the vault. Reuse the
     // attachment id / chunk hashes; only re-materialize the local file if this
-    // device is missing it. No upload.
-    if (!(await fileExists(diskPath))) {
-      ctx.markWritebackIgnored(diskPath)
-      await atomicWriteBinary(diskPath, bytes)
+    // device is missing it. No upload. Resolve path/ref from the RECORDED
+    // filename (existing.filename), not the locally-computed one — they can
+    // diverge if the same bytes were ever recorded under a different mimeType
+    // (different extension), and writing/returning the wrong path would point
+    // a later restore at a file that doesn't exist.
+    const existingDiskPath = canvasAssetDiskPath(ctx.vaultPath, existing.filename)
+    if (!(await fileExists(existingDiskPath))) {
+      ctx.markWritebackIgnored(existingDiskPath)
+      await atomicWriteBinary(existingDiskPath, bytes)
     }
     recordAsset(ctx.db, {
       vaultId: ctx.vaultId,
@@ -149,7 +154,7 @@ export async function uploadCanvasAsset(
       result: 'success',
       metrics: { byteCount: existing.sizeBytes }
     })
-    return { ref, descriptor, deduped: true }
+    return { ref: toMemryFileUrl(existingDiskPath), descriptor, deduped: true }
   }
 
   // New asset: write it to the content-addressed store, then upload the bytes
