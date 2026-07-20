@@ -8,6 +8,7 @@
  */
 
 export * from './schema/projects.ts'
+export * from './schema/project-links.ts'
 export * from './schema/statuses.ts'
 export * from './schema/tasks.ts'
 export * from './schema/task-relations.ts'

@@ -17,6 +17,7 @@ export const projects = sqliteTable('projects', {
     .notNull()
     .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
   archivedAt: text('archived_at'),
+  homeNoteId: text('home_note_id'),
 
   clock: text('clock', { mode: 'json' }).$type<VectorClock>(),
   fieldClocks: text('field_clocks', { mode: 'json' }).$type<FieldClocks>(),

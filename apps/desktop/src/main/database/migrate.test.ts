@@ -78,20 +78,27 @@ describe('0035_spatial_canvas migration', () => {
   })
 
   /**
-   * Copies drizzle-data/ to a temp folder with 0035 stripped (SQL file + last
-   * journal entry) so a database migrated from it is shaped like a production
+   * Copies drizzle-data/ to a temp folder with 0035+ stripped (SQL files + last
+   * journal entries) so a database migrated from it is shaped like a production
    * install that pre-dates the canvas tables.
    */
   function makePre0035Folder(): string {
     const copy = path.join(tempDir, 'drizzle-data-pre-0035')
     fs.cpSync(migrationsDir, copy, { recursive: true })
     fs.rmSync(path.join(copy, '0035_spatial_canvas.sql'))
+    fs.rmSync(path.join(copy, '0036_project_links.sql'))
     const journalPath = path.join(copy, 'meta', '_journal.json')
     const journal = JSON.parse(fs.readFileSync(journalPath, 'utf8')) as {
       entries: { tag: string }[]
     }
-    expect(journal.entries[journal.entries.length - 1].tag).toBe('0035_spatial_canvas')
-    journal.entries.pop()
+    // Remove 0036 and 0035 entries to get a pre-0035 database
+    while (
+      journal.entries.length > 0 &&
+      (journal.entries[journal.entries.length - 1].tag === '0036_project_links' ||
+        journal.entries[journal.entries.length - 1].tag === '0035_spatial_canvas')
+    ) {
+      journal.entries.pop()
+    }
     fs.writeFileSync(journalPath, JSON.stringify(journal, null, 2))
     return copy
   }
