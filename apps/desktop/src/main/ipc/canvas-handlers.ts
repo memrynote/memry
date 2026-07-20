@@ -6,15 +6,21 @@
  * @module ipc/canvas-handlers
  */
 
+import { z } from 'zod'
 import { ipcMain, BrowserWindow } from 'electron'
 import {
   CanvasChannels,
   CanvasCreateSchema,
   CanvasUpdateSchema,
+  CanvasGetAssetSchema,
+  CanvasListAssetsSchema,
   type CanvasCreatedEvent,
   type CanvasUpdatedEvent,
   type CanvasDeletedEvent,
-  type CanvasTooLargeEvent
+  type CanvasTooLargeEvent,
+  type CanvasUploadAssetResponse,
+  type CanvasGetAssetResponse,
+  type CanvasListAssetsResponse
 } from '@memry/contracts/canvas-api'
 import { createValidatedHandler, createHandler, createStringHandler } from './validate'
 import { requireDatabase, type DataDb } from '../database'
@@ -39,6 +45,15 @@ function emitCanvasEvent(
 // every later call would throw "verifier exists but master key is missing".
 // A failed resolution is not cached so a transient keychain error can retry.
 let vaultKeyPromise: Promise<Uint8Array> | null = null
+
+// Binary payload validation is app-side, not contracts (A3): the renderer
+// serializes ArrayBuffer to number[] over the invoke bridge, so accept both.
+const UploadCanvasAssetSchema = z.object({
+  canvasId: z.string().min(1),
+  fileId: z.string().min(1),
+  mimeType: z.string().min(1),
+  data: z.instanceof(ArrayBuffer).or(z.array(z.number()))
+})
 
 function getVaultKeyOnce(db: DataDb, vaultId: string): Promise<Uint8Array> {
   if (!vaultKeyPromise) {
@@ -129,6 +144,39 @@ export function registerCanvasHandlers(): void {
       return { canvases: listCanvases(db, vaultId) }
     })
   )
+
+  // canvas:upload-asset - Store a scene binary file (stub — see M5 Task 5)
+  ipcMain.handle(
+    CanvasChannels.invoke.UPLOAD_ASSET,
+    createValidatedHandler(
+      UploadCanvasAssetSchema,
+      async (_input): Promise<CanvasUploadAssetResponse> => {
+        throw new Error('canvas asset upload not implemented until M5 Task 5')
+      }
+    )
+  )
+
+  // canvas:get-asset - Resolve a scene binary file's ref (stub — see M5 Task 5)
+  ipcMain.handle(
+    CanvasChannels.invoke.GET_ASSET,
+    createValidatedHandler(
+      CanvasGetAssetSchema,
+      async (_input): Promise<CanvasGetAssetResponse> => {
+        throw new Error('canvas get-asset not implemented until M5 Task 5')
+      }
+    )
+  )
+
+  // canvas:list-assets - List a canvas's scene binary files (stub — see M5 Task 5)
+  ipcMain.handle(
+    CanvasChannels.invoke.LIST_ASSETS,
+    createValidatedHandler(
+      CanvasListAssetsSchema,
+      async (_input): Promise<CanvasListAssetsResponse> => {
+        throw new Error('canvas list-assets not implemented until M5 Task 5')
+      }
+    )
+  )
 }
 
 export function unregisterCanvasHandlers(): void {
@@ -137,6 +185,9 @@ export function unregisterCanvasHandlers(): void {
   ipcMain.removeHandler(CanvasChannels.invoke.UPDATE)
   ipcMain.removeHandler(CanvasChannels.invoke.DELETE)
   ipcMain.removeHandler(CanvasChannels.invoke.LIST)
+  ipcMain.removeHandler(CanvasChannels.invoke.UPLOAD_ASSET)
+  ipcMain.removeHandler(CanvasChannels.invoke.GET_ASSET)
+  ipcMain.removeHandler(CanvasChannels.invoke.LIST_ASSETS)
   if (vaultKeyPromise) {
     void vaultKeyPromise.then((key) => secureCleanup(key)).catch(() => {})
     vaultKeyPromise = null
