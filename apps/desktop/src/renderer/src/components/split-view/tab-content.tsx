@@ -54,6 +54,9 @@ const LazyGraphPage = React.lazy(async () => ({
 const LazyAgentConversationTab = React.lazy(async () => ({
   default: (await import('@/agent-chat/agent-conversation-tab')).AgentConversationTab
 }))
+const LazyCanvasPage = React.lazy(async () => ({
+  default: (await import('@/pages/canvas')).CanvasPage
+}))
 const LazyHomePage = React.lazy(() => import('@/pages/home'))
 
 interface TabContentProps {
@@ -187,6 +190,9 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
 
       case 'agent-chat':
         return <LazyAgentConversationTab conversationId={tab.entityId} />
+
+      case 'canvas':
+        return <LazyCanvasPage canvasId={tab.entityId} />
 
       case 'collection':
         return (

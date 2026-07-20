@@ -221,7 +221,10 @@ export const FeaturesSettingsSchema = z.object({
   journal: z.boolean(),
   tasks: z.boolean(),
   calendar: z.boolean(),
-  graph: z.boolean()
+  graph: z.boolean(),
+  // Opt-in Settings toggle (in FEATURE_KEYS), default OFF: spatial canvas
+  // surface. Local-only for now — cross-device sync (M4) is not wired yet.
+  spatialCanvas: z.boolean()
 })
 
 export type FeaturesSettings = z.infer<typeof FeaturesSettingsSchema>
@@ -232,7 +235,8 @@ export const FEATURES_SETTINGS_DEFAULTS: FeaturesSettings = {
   journal: true,
   tasks: true,
   calendar: true,
-  graph: true
+  graph: true,
+  spatialCanvas: false
 }
 
 // ============================================================================

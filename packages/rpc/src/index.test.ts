@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   calendarRpc,
+  canvasRpc,
   defineDomain,
   defineEvent,
   defineMethod,
@@ -29,6 +30,7 @@ describe('@memry/rpc public surface', () => {
     expect(inboxRpc.name).toBe('inbox')
     expect(settingsRpc.name).toBe('settings')
     expect(calendarRpc.name).toBe('calendar')
+    expect(canvasRpc.name).toBe('canvas')
     expect(telemetryRpc.name).toBe('telemetry')
     expect(feedbackRpc.name).toBe('feedback')
     expect(diagnosticsRpc.name).toBe('diagnostics')
@@ -44,6 +46,7 @@ describe('rpcDomains aggregate', () => {
       'inbox',
       'settings',
       'calendar',
+      'canvas',
       'telemetry',
       'feedback',
       'diagnostics'

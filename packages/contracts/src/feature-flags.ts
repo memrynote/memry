@@ -2,7 +2,15 @@ import type { FeaturesSettings } from './settings-schemas'
 
 export type FeatureKey = keyof FeaturesSettings
 
-export const FEATURE_KEYS = ['home', 'inbox', 'journal', 'tasks', 'calendar', 'graph'] as const
+export const FEATURE_KEYS = [
+  'home',
+  'inbox',
+  'journal',
+  'tasks',
+  'calendar',
+  'graph',
+  'spatialCanvas'
+] as const
 
 /**
  * A tab/page type maps 1:1 to a feature key when it represents a toggleable

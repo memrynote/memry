@@ -25,12 +25,14 @@
 ## File Structure
 
 **Contracts / RPC**
+
 - `packages/contracts/src/settings-schemas.ts` — add `InboxSettingsSchema`, `INBOX_SETTINGS_DEFAULTS`, `InboxSettings`.
 - `packages/contracts/src/settings-sync.ts` — add optional `inbox` group to `SyncedSettingsSchema`.
 - `packages/contracts/src/ipc-channels.ts` — add `GET_INBOX_SETTINGS`/`SET_INBOX_SETTINGS` (SettingsChannels.invoke); add `REVIEW_DUE`/`REVIEW_OPEN` (InboxChannels.events).
 - `packages/rpc/src/settings.ts` — add `getInboxSettings`/`setInboxSettings` methods.
 
 **Main**
+
 - `apps/desktop/src/main/inbox/stats.ts` — add `countReviewableInboxItems()`.
 - `apps/desktop/src/main/inbox/review-scheduler.ts` — **new.** `decideReviewNotification` (pure), `runReviewTick`, start/stop, notification, event emit.
 - `apps/desktop/src/main/ipc/settings-handlers.ts` — add GET/SET handlers, export `getInboxReviewSettings()`, push synced fields, cleanup.
@@ -39,9 +41,11 @@
 - `apps/desktop/src/main/test-hooks.ts` — `forceInboxReviewTickForE2E`, `seedInboxItemForE2E`.
 
 **Preload**
+
 - `apps/desktop/src/preload/api/inbox.ts` (+ `index.d.ts`) — `onInboxReviewDue`, `onInboxReviewOpen`.
 
 **Renderer**
+
 - `apps/desktop/src/renderer/src/hooks/use-inbox-preferences.ts` — **new.**
 - `apps/desktop/src/renderer/src/pages/settings/inbox-section.tsx` — **new.**
 - `apps/desktop/src/renderer/src/pages/settings.tsx` — nav item + section render + import.
@@ -49,9 +53,11 @@
 - `apps/desktop/src/renderer/src/hooks/use-inbox-review-notifications.ts` — **new**; wired where `use-reminder-notifications` is used.
 
 **i18n**
+
 - `packages/i18n/src/locales/en/settings.json`, `.../system.json`, `.../inbox.json`.
 
 **Docs**
+
 - `apps/docs/src/**` via `pnpm docs:ai-update` (or manual).
 
 ---
@@ -59,11 +65,13 @@
 ## Task 1: Contract — inbox settings schema + synced group
 
 **Files:**
+
 - Modify: `packages/contracts/src/settings-schemas.ts` (after the Backup block, ~L256)
 - Modify: `packages/contracts/src/settings-sync.ts:34-57` (SyncedSettingsSchema)
 - Test: `packages/contracts/src/settings-schemas.test.ts` (create if absent)
 
 **Interfaces:**
+
 - Produces: `InboxSettingsSchema`, `INBOX_SETTINGS_DEFAULTS: InboxSettings`, `type InboxSettings = { reviewReminderEnabled: boolean; reviewReminderTime: string }`. Synced group `inbox?: { reviewReminderEnabled?: boolean; reviewReminderTime?: string }`.
 
 - [ ] **Step 1: Write the failing test**
@@ -72,10 +80,7 @@ Create `packages/contracts/src/settings-schemas.test.ts` (or append):
 
 ```ts
 import { describe, it, expect } from 'vitest'
-import {
-  InboxSettingsSchema,
-  INBOX_SETTINGS_DEFAULTS
-} from './settings-schemas'
+import { InboxSettingsSchema, INBOX_SETTINGS_DEFAULTS } from './settings-schemas'
 
 describe('InboxSettings', () => {
   it('defaults to disabled at 18:00', () => {
@@ -159,11 +164,13 @@ git commit -m "feat(contracts): inbox review-reminder settings schema + synced g
 ## Task 2: Channels + RPC methods + preload regen
 
 **Files:**
+
 - Modify: `packages/contracts/src/ipc-channels.ts` (SettingsChannels.invoke ~L437; InboxChannels.events — `packages/contracts/src/inbox-channels.ts:131-151`)
 - Modify: `packages/rpc/src/settings.ts` (methods ~after L306; imports L1-12)
 - Verify: `pnpm ipc:generate` + `pnpm ipc:check`
 
 **Interfaces:**
+
 - Produces: `SettingsChannels.invoke.GET_INBOX_SETTINGS = 'settings:getInboxSettings'`, `SET_INBOX_SETTINGS = 'settings:setInboxSettings'`; `InboxChannels.events.REVIEW_DUE = 'inbox:review-due'`, `REVIEW_OPEN = 'inbox:review-open'`; `window.api.settings.getInboxSettings(): Promise<InboxSettings>`, `setInboxSettings(updates: Partial<InboxSettings>): Promise<{success; error?}>`.
 
 - [ ] **Step 1: Add channel constants**
@@ -240,10 +247,12 @@ git commit -m "feat(ipc): inbox settings channels + review-due/open events"
 ## Task 3: Reviewable inbox count (main-side badge mirror)
 
 **Files:**
+
 - Modify: `apps/desktop/src/main/inbox/stats.ts` (imports L13; add fn after `countStaleItems`, ~L134)
 - Test: `apps/desktop/src/main/inbox/stats.test.ts` (create if absent; mirror existing main DB-test setup)
 
 **Interfaces:**
+
 - Produces: `countReviewableInboxItems(): number` — unfiled AND not-snoozed AND not-archived, excluding reminders that have `viewedAt` (equals the sidebar badge at `app-sidebar.tsx:156`).
 
 - [ ] **Step 1: Write the failing test**
@@ -358,11 +367,14 @@ git commit -m "feat(inbox): count reviewable items for review nudge"
 ## Task 4: Pure notification decision core
 
 **Files:**
+
 - Create: `apps/desktop/src/main/inbox/review-scheduler.ts` (decision core only in this task)
 - Test: `apps/desktop/src/main/inbox/review-scheduler.decide.test.ts`
 
 **Interfaces:**
+
 - Produces:
+
   ```ts
   decideReviewNotification(input: {
     enabled: boolean
@@ -372,6 +384,7 @@ git commit -m "feat(inbox): count reviewable items for review nudge"
     inboxCount: number
   }): { notify: boolean; nextLastNotifiedDate: string | null }
   ```
+
   Also exports helpers `localDateString(d: Date): string` and `parseTargetMinutes(target: string): number | null`.
 
 - [ ] **Step 1: Write the failing test**
@@ -561,10 +574,12 @@ git commit -m "feat(inbox): pure review-notification decision core"
 ## Task 5: Settings handlers — GET/SET inbox + synced-field push + reader export
 
 **Files:**
+
 - Modify: `apps/desktop/src/main/ipc/settings-handlers.ts` (imports; handlers after Features ~L860; cleanup ~L1022; export a reader)
 - Test: `apps/desktop/src/main/ipc/settings-handlers.inbox.test.ts`
 
 **Interfaces:**
+
 - Consumes: `readGroupSettings`/`writeGroupSettings` (private, in-file), `INBOX_SETTINGS_DEFAULTS` (Task 1), `syncSettingsFieldUpdate` (`sync/local-mutations.ts:325`).
 - Produces: IPC handlers for `GET_INBOX_SETTINGS`/`SET_INBOX_SETTINGS`; exported `getInboxReviewSettings(): InboxSettings` for the scheduler.
 
@@ -617,10 +632,7 @@ describe('inbox settings handler', () => {
   it('only pushes the fields present in the update', () => {
     writeInboxReviewSettings({ reviewReminderTime: '09:00' })
     expect(updateField).toHaveBeenCalledWith('inbox.reviewReminderTime', '09:00')
-    expect(updateField).not.toHaveBeenCalledWith(
-      'inbox.reviewReminderEnabled',
-      expect.anything()
-    )
+    expect(updateField).not.toHaveBeenCalledWith('inbox.reviewReminderEnabled', expect.anything())
   })
 })
 ```
@@ -657,9 +669,10 @@ export function getInboxReviewSettings(): InboxSettings {
 }
 
 /** Write inbox settings + push changed fields to sync. Test seam + used by the SET handler. */
-export function writeInboxReviewSettings(
-  updates: Partial<InboxSettings>
-): { success: boolean; error?: string } {
+export function writeInboxReviewSettings(updates: Partial<InboxSettings>): {
+  success: boolean
+  error?: string
+} {
   const result = writeGroupSettings('inbox', INBOX_SETTINGS_DEFAULTS, updates)
   if (result.success) {
     if ('reviewReminderEnabled' in updates) {
@@ -676,20 +689,20 @@ export function writeInboxReviewSettings(
 Register the IPC handlers inside `registerSettingsHandlers()`, after the Features handlers (~L860):
 
 ```ts
-  ipcMain.handle(SettingsChannels.invoke.GET_INBOX_SETTINGS, () =>
-    readGroupSettings('inbox', INBOX_SETTINGS_DEFAULTS)
-  )
-  ipcMain.handle(
-    SettingsChannels.invoke.SET_INBOX_SETTINGS,
-    (_event, updates: Partial<InboxSettings>) => writeInboxReviewSettings(updates)
-  )
+ipcMain.handle(SettingsChannels.invoke.GET_INBOX_SETTINGS, () =>
+  readGroupSettings('inbox', INBOX_SETTINGS_DEFAULTS)
+)
+ipcMain.handle(
+  SettingsChannels.invoke.SET_INBOX_SETTINGS,
+  (_event, updates: Partial<InboxSettings>) => writeInboxReviewSettings(updates)
+)
 ```
 
 Add cleanup removers where the other `removeHandler` calls live (~L1022):
 
 ```ts
-  ipcMain.removeHandler(SettingsChannels.invoke.GET_INBOX_SETTINGS)
-  ipcMain.removeHandler(SettingsChannels.invoke.SET_INBOX_SETTINGS)
+ipcMain.removeHandler(SettingsChannels.invoke.GET_INBOX_SETTINGS)
+ipcMain.removeHandler(SettingsChannels.invoke.SET_INBOX_SETTINGS)
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
@@ -709,10 +722,12 @@ git commit -m "feat(settings): inbox review settings get/set + sync-field push"
 ## Task 6: Sync propagation + backward-compat regression
 
 **Files:**
+
 - Modify: `apps/desktop/src/main/sync/item-handlers/settings-handler.ts` (imports L12-13; `propagateMergedSettings` ~L88; `broadcastSettingsChanged` ~L126)
 - Test: `apps/desktop/src/main/sync/settings-sync.inbox.test.ts`
 
 **Interfaces:**
+
 - Consumes: `getSettingsSyncManager()` / `mergeRemote` (Task's context), `getSetting`/`setSetting`.
 - Produces: on remote settings merge, the merged `inbox` group is written to the local `inbox` settings group and broadcast as `settings:changed` with `key: 'inbox'`.
 
@@ -724,10 +739,7 @@ Create `apps/desktop/src/main/sync/settings-sync.inbox.test.ts`:
 import { describe, it, expect, beforeEach } from 'vitest'
 import { getDatabase } from '../../database'
 import { settings } from '@memry/db-schema/schema/settings'
-import {
-  initSettingsSyncManager,
-  resetSettingsSyncManager
-} from './settings-sync'
+import { initSettingsSyncManager, resetSettingsSyncManager } from './settings-sync'
 import { SyncQueueManager } from './queue'
 
 describe('settings sync — inbox group', () => {
@@ -789,29 +801,29 @@ import { getSetting, setSetting } from '../../database/queries/settings'
 In `propagateMergedSettings`, after the `editor` write-back block (~L86, before `if (Object.keys(prefsUpdate).length > 0)`), add an inbox write-back to the local group (inside the `if (vaultPath)` try):
 
 ```ts
-      if (merged.inbox) {
-        try {
-          const db = getDatabase()
-          const raw = getSetting(db, 'inbox')
-          const current = raw ? (JSON.parse(raw) as Record<string, unknown>) : {}
-          setSetting(db, 'inbox', JSON.stringify({ ...current, ...merged.inbox }))
-        } catch (err) {
-          log.warn('Failed to propagate merged inbox settings:', err)
-        }
-      }
+if (merged.inbox) {
+  try {
+    const db = getDatabase()
+    const raw = getSetting(db, 'inbox')
+    const current = raw ? (JSON.parse(raw) as Record<string, unknown>) : {}
+    setSetting(db, 'inbox', JSON.stringify({ ...current, ...merged.inbox }))
+  } catch (err) {
+    log.warn('Failed to propagate merged inbox settings:', err)
+  }
+}
 ```
 
 In `broadcastSettingsChanged`, after the `editor` block (~L133), add:
 
 ```ts
-  if (merged.inbox) {
-    for (const win of windows) {
-      win.webContents.send(SettingsChannels.events.CHANGED, {
-        key: 'inbox',
-        value: merged.inbox
-      })
-    }
+if (merged.inbox) {
+  for (const win of windows) {
+    win.webContents.send(SettingsChannels.events.CHANGED, {
+      key: 'inbox',
+      value: merged.inbox
+    })
   }
+}
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
@@ -831,10 +843,12 @@ git commit -m "feat(sync): propagate + broadcast merged inbox review settings"
 ## Task 7: Scheduler runtime — tick, notification, event, start/stop
 
 **Files:**
+
 - Modify: `apps/desktop/src/main/inbox/review-scheduler.ts` (add runtime below the decision core)
 - Test: `apps/desktop/src/main/inbox/review-scheduler.tick.test.ts`
 
 **Interfaces:**
+
 - Consumes: `getStatus` (`../vault`), `getInboxReviewSettings` (Task 5), `countReviewableInboxItems` (Task 3), `decideReviewNotification` (Task 4), `getSetting`/`setSetting`, Electron `Notification`/`BrowserWindow`/`powerMonitor`, `getMainI18n`, `InboxChannels`.
 - Produces: `runReviewTick(now?: Date): { notified: boolean; count: number }`, `startInboxReviewScheduler()`, `stopInboxReviewScheduler()`, `isReviewSchedulerRunning(): boolean`, `getLastReviewFireForTest(): { date: string; count: number } | null`.
 
@@ -857,7 +871,9 @@ vi.mock('electron', () => ({
 }))
 vi.mock('../vault', () => ({ getStatus: () => ({ isOpen: true }) }))
 vi.mock('../lib/main-i18n', () => ({
-  getMainI18n: () => ({ getFixedT: () => (k: string, o?: { count?: number }) => `${k}:${o?.count ?? ''}` })
+  getMainI18n: () => ({
+    getFixedT: () => (k: string, o?: { count?: number }) => `${k}:${o?.count ?? ''}`
+  })
 }))
 
 let enabled = true
@@ -1082,9 +1098,11 @@ git commit -m "feat(inbox): review scheduler runtime — tick, notification, sta
 ## Task 8: Lifecycle wiring in main
 
 **Files:**
+
 - Modify: `apps/desktop/src/main/index.ts` (import ~L41; start ~L1307-1316; stop ~L1624-1625)
 
 **Interfaces:**
+
 - Consumes: `startInboxReviewScheduler`/`stopInboxReviewScheduler` (Task 7).
 
 - [ ] **Step 1: Add the import**
@@ -1092,10 +1110,7 @@ git commit -m "feat(inbox): review scheduler runtime — tick, notification, sta
 In `apps/desktop/src/main/index.ts`, after the reminders import (L41):
 
 ```ts
-import {
-  startInboxReviewScheduler,
-  stopInboxReviewScheduler
-} from './inbox/review-scheduler'
+import { startInboxReviewScheduler, stopInboxReviewScheduler } from './inbox/review-scheduler'
 ```
 
 - [ ] **Step 2: Wire startup (after the reminder-scheduler try/catch, ~L1316)**
@@ -1103,23 +1118,23 @@ import {
 Insert after the `startReminderScheduler()` try/catch block (before `void startGoogleCalendarSyncRunner()`):
 
 ```ts
-      try {
-        startInboxReviewScheduler()
-      } catch (error) {
-        mainLog.warn('inbox review scheduler failed to start:', error)
-        trackMainLog('warn', {
-          scope: 'Startup',
-          action: 'inbox_review_scheduler_start_failed',
-          errorCode: error instanceof Error ? error.name : 'UnknownError'
-        })
-      }
+try {
+  startInboxReviewScheduler()
+} catch (error) {
+  mainLog.warn('inbox review scheduler failed to start:', error)
+  trackMainLog('warn', {
+    scope: 'Startup',
+    action: 'inbox_review_scheduler_start_failed',
+    errorCode: error instanceof Error ? error.name : 'UnknownError'
+  })
+}
 ```
 
 - [ ] **Step 3: Wire shutdown (after `stopReminderScheduler()`, ~L1625)**
 
 ```ts
-      shutdownLog.info('stopping inbox review scheduler...')
-      stopInboxReviewScheduler()
+shutdownLog.info('stopping inbox review scheduler...')
+stopInboxReviewScheduler()
 ```
 
 - [ ] **Step 4: Typecheck main**
@@ -1139,11 +1154,13 @@ git commit -m "feat(main): start/stop inbox review scheduler in app lifecycle"
 ## Task 9: Preload — review event subscriptions
 
 **Files:**
+
 - Modify: `apps/desktop/src/preload/api/inbox.ts` (mirror `preload/api/reminders.ts:89-90`)
 - Modify: `apps/desktop/src/preload/index.d.ts` (add method decls near `onReminderClicked`, ~L1849)
 - Test: extend `apps/desktop/src/preload/api/preload-api.test.ts` (mirror the reminder subscribe test ~L959)
 
 **Interfaces:**
+
 - Produces: `window.api.onInboxReviewDue(cb: (e: { count: number }) => void): () => void`; `window.api.onInboxReviewOpen(cb: () => void): () => void`.
 
 - [ ] **Step 1: Write the failing test**
@@ -1199,10 +1216,12 @@ git commit -m "feat(preload): inbox review-due/open event subscriptions"
 ## Task 10: Renderer — inbox preferences hook
 
 **Files:**
+
 - Create: `apps/desktop/src/renderer/src/hooks/use-inbox-preferences.ts` (mirror `use-task-preferences.ts`)
 - Test: `apps/desktop/src/renderer/src/hooks/use-inbox-preferences.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `window.api.settings.getInboxSettings/setInboxSettings`, `window.api.onSettingsChanged`.
 - Produces: `useInboxPreferences(): { settings: InboxSettingsDTO; isLoading; error; updateSettings(updates): Promise<boolean> }`.
 
@@ -1360,12 +1379,14 @@ git commit -m "feat(renderer): useInboxPreferences hook"
 ## Task 11: Renderer — Settings → Inbox section + nav
 
 **Files:**
+
 - Create: `apps/desktop/src/renderer/src/pages/settings/inbox-section.tsx`
 - Modify: `apps/desktop/src/renderer/src/contexts/settings-modal-context.tsx:3-22` (union)
 - Modify: `apps/desktop/src/renderer/src/pages/settings.tsx` (import; nav item ~L104; render ~L198)
 - Test: `apps/desktop/src/renderer/src/pages/settings/inbox-section.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `useInboxPreferences` (Task 10), `Switch` (`@/components/ui/switch`), `Input` (`@/components/ui/input`), settings primitives.
 
 - [ ] **Step 1: Write the failing test**
@@ -1449,10 +1470,7 @@ export function InboxSettings() {
   if (isLoading) {
     return (
       <div className="flex flex-col">
-        <SettingsHeader
-          title={t('inbox.header.title')}
-          subtitle={t('inbox.header.loading')}
-        />
+        <SettingsHeader title={t('inbox.header.title')} subtitle={t('inbox.header.loading')} />
       </div>
     )
   }
@@ -1510,13 +1528,9 @@ import { InboxSettings } from './settings/inbox-section'
 Add a nav item after the Tasks nav item (~L90-96) — mirror the existing `<SettingsNavItem>` shape:
 
 ```tsx
-          <SettingsNavItem
-            section="inbox"
-            isActive={activeSection === 'inbox'}
-            onSelect={setActiveSection}
-          >
-            {t('nav.inbox')}
-          </SettingsNavItem>
+<SettingsNavItem section="inbox" isActive={activeSection === 'inbox'} onSelect={setActiveSection}>
+  {t('nav.inbox')}
+</SettingsNavItem>
 ```
 
 > Match the exact `SettingsNavItem` props/label pattern used by the sibling items in this file (icon, label source). Reuse the same `t(...)` namespace the file already uses for nav labels.
@@ -1524,7 +1538,9 @@ Add a nav item after the Tasks nav item (~L90-96) — mirror the existing `<Sett
 Add the section render after the Tasks render (L180):
 
 ```tsx
-            {activeSection === 'inbox' && <InboxSettings />}
+{
+  activeSection === 'inbox' && <InboxSettings />
+}
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
@@ -1544,11 +1560,13 @@ git commit -m "feat(settings): Settings > Inbox review-reminder section"
 ## Task 12: Renderer — review notification hook (toast + open inbox)
 
 **Files:**
+
 - Create: `apps/desktop/src/renderer/src/hooks/use-inbox-review-notifications.ts`
 - Modify: wire it where `use-reminder-notifications` is consumed (search: `useReminderNotifications(` in `apps/desktop/src/renderer/src`; add the new hook call in the same component)
 - Test: `apps/desktop/src/renderer/src/hooks/use-inbox-review-notifications.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `window.api.onInboxReviewDue`, `window.api.onInboxReviewOpen` (Task 9); the tabs context `openTab`/navigation used by the sidebar inbox entry (`app-sidebar.tsx:522`, path `'/inbox'`), and `sonner` `toast`.
 - Produces: `useInboxReviewNotifications(): void` — shows a calm toast on `REVIEW_DUE` (with an "Open inbox" action) and opens the inbox tab on `REVIEW_OPEN`.
 
@@ -1669,11 +1687,13 @@ git commit -m "feat(renderer): in-app review nudge toast + open-inbox on click"
 ## Task 13: i18n keys
 
 **Files:**
+
 - Modify: `packages/i18n/src/locales/en/settings.json` (inbox section + nav label)
 - Modify: `packages/i18n/src/locales/en/inbox.json` (reviewNudge toast)
 - Modify: `packages/i18n/src/locales/en/system.json` (notification strings)
 
 **Interfaces:**
+
 - Produces: the i18n keys referenced in Tasks 10-12 and the notification builder (Task 7).
 
 - [ ] **Step 1: Add settings keys**
@@ -1758,9 +1778,11 @@ git commit -m "i18n: inbox review reminder + notification strings"
 ## Task 14: E2E test hooks
 
 **Files:**
+
 - Modify: `apps/desktop/src/main/test-hooks.ts` (interface ~L130-165; implementation inside `registerTestHooks()` ~after L243)
 
 **Interfaces:**
+
 - Consumes: `runReviewTick` (Task 7), `inboxItems` insert, `writeInboxReviewSettings` (Task 5).
 - Produces (test-hooks surface, gated by `NODE_ENV === 'test'`):
   - `seedInboxItemForE2E(input: { title: string }): Promise<string>`
@@ -1846,9 +1868,11 @@ git commit -m "test(e2e): inbox review scheduler test hooks"
 ## Task 15: E2E — end-to-end review nudge flow
 
 **Files:**
+
 - Create: `apps/desktop/tests/e2e/inbox-review-reminder.e2e.ts` (mirror an existing `*.e2e.ts` bootstrap, e.g. `quick-capture.e2e.ts`)
 
 **Interfaces:**
+
 - Consumes: the test-hooks surface (Task 14), `window.api.settings.setInboxSettings` (renderer), and the electron test bootstrap used by sibling E2E specs.
 
 - [ ] **Step 1: Write the E2E spec**
@@ -1865,8 +1889,11 @@ test.describe('inbox scheduled review', () => {
         async ({ ipcMain: _ignored }, { name, arg }) => {
           // Access the registered test-hooks surface the same way sibling e2e specs do.
           // Replace with the project's helper for calling test hooks.
-          return (globalThis as never as { __memryTestHooks: Record<string, (a: unknown) => Promise<unknown>> })
-            .__memryTestHooks[name](arg)
+          return (
+            globalThis as never as {
+              __memryTestHooks: Record<string, (a: unknown) => Promise<unknown>>
+            }
+          ).__memryTestHooks[name](arg)
         },
         { name, arg }
       )
@@ -1901,8 +1928,11 @@ test.describe('inbox scheduled review', () => {
     const invokeHook = async (name: string, arg: unknown) =>
       electronApp.evaluate(
         async (_e, { name, arg }) =>
-          (globalThis as never as { __memryTestHooks: Record<string, (a: unknown) => Promise<unknown>> })
-            .__memryTestHooks[name](arg),
+          (
+            globalThis as never as {
+              __memryTestHooks: Record<string, (a: unknown) => Promise<unknown>>
+            }
+          ).__memryTestHooks[name](arg),
         { name, arg }
       )
     await invokeHook('setInboxReviewSettingsForE2E', { enabled: true, time: '18:00' })
@@ -1933,6 +1963,7 @@ git commit -m "test(e2e): inbox scheduled review end-to-end"
 ## Task 16: Full verification + docs
 
 **Files:**
+
 - Modify: `apps/docs/src/**` (via `pnpm docs:ai-update` or manual)
 
 - [ ] **Step 1: Run the full verify suite**
@@ -1946,6 +1977,7 @@ pnpm --filter @memry/desktop test:renderer
 pnpm --filter @memry/desktop i18n:check
 git diff --check
 ```
+
 Expected: all green. Fix any failure before proceeding.
 
 - [ ] **Step 2: Docs gate**
@@ -1956,6 +1988,7 @@ pnpm docs:ai-update --base "$base_commit"   # or edit apps/docs/src manually
 pnpm docs:impact --base "$base_commit" --strict
 pnpm docs:build
 ```
+
 Expected: docs impact passes; docs build succeeds. If `missing-docs`, add a short Settings → Inbox reference under `apps/docs/src/**` describing the daily review reminder, then re-run.
 
 - [ ] **Step 3: E2E full run**
@@ -1963,6 +1996,7 @@ Expected: docs impact passes; docs build succeeds. If `missing-docs`, add a shor
 ```bash
 pnpm test:e2e -- inbox-review-reminder
 ```
+
 Expected: PASS.
 
 - [ ] **Step 4: Commit docs**
@@ -1977,6 +2011,7 @@ git commit -m "docs: Settings > Inbox daily review reminder"
 ## Self-Review
 
 **Spec coverage:**
+
 - Optional daily reminder at user-set time → Tasks 1, 4, 7, 11. ✅
 - Fire only if inbox has items → Task 3 (count) + Task 4 (`inboxCount <= 0` guard). ✅
 - Desktop notification → Task 7 (`showReviewNotification`). ✅

@@ -153,7 +153,9 @@ test('Path B: consent dialog sends a redacted incident report with the raw secre
 
       // The preview renders the exact report Send transmits. Expand it and prove
       // the secret-bearing line is present but redacted.
-      await consent.getByRole('button', { name: 'Preview report contents' }).click({ timeout: 30_000 })
+      await consent
+        .getByRole('button', { name: 'Preview report contents' })
+        .click({ timeout: 30_000 })
       await expect(consent.getByText(new RegExp(BLOCKED_MSG))).toBeVisible({ timeout: 30_000 })
       const previewText = await consent.innerText()
       expect(previewText).toContain('<redacted>')

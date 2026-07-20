@@ -35,21 +35,21 @@ Settings → Inbox shows a "Daily review reminder" group:
 
 When enabled, on each device that is running with the vault open: at (or, if the app
 was closed at) the chosen local time, if the inbox has reviewable items, the OS shows
-a notification such as *"Time to review — you have 4 items in your inbox."* Clicking it
+a notification such as _"Time to review — you have 4 items in your inbox."_ Clicking it
 focuses the app and opens the Inbox. It fires once per day per device.
 
 ## Decisions (locked)
 
-| Question | Decision |
-|---|---|
-| App closed at target, opened later same day | **Catch up** — notify once, any time before local midnight |
-| Cross-midnight catch-up (missed late-night target) | **No** — same calendar day only |
-| Multiple devices open at target | **Each device fires** (per-device last-fired) |
-| What counts as "inbox has items" | **Match the sidebar badge** — unfiled − snoozed − viewed-reminders |
-| Re-nudge after firing | **No** — once per day |
-| Default state / time | **OFF** / **18:00** local |
-| Time semantics | **Local wall-clock**; enabled+time sync, each device reads in its own timezone |
-| Sync mechanism | Reuse the **settings-sync singleton** (per-field vector clocks, LWW) |
+| Question                                           | Decision                                                                       |
+| -------------------------------------------------- | ------------------------------------------------------------------------------ |
+| App closed at target, opened later same day        | **Catch up** — notify once, any time before local midnight                     |
+| Cross-midnight catch-up (missed late-night target) | **No** — same calendar day only                                                |
+| Multiple devices open at target                    | **Each device fires** (per-device last-fired)                                  |
+| What counts as "inbox has items"                   | **Match the sidebar badge** — unfiled − snoozed − viewed-reminders             |
+| Re-nudge after firing                              | **No** — once per day                                                          |
+| Default state / time                               | **OFF** / **18:00** local                                                      |
+| Time semantics                                     | **Local wall-clock**; enabled+time sync, each device reads in its own timezone |
+| Sync mechanism                                     | Reuse the **settings-sync singleton** (per-field vector clocks, LWW)           |
 
 ## Data Model
 
@@ -66,7 +66,7 @@ InboxSettings = {
 **Local, not synced** — active-vault SQLite `settings` table, a device-local key:
 
 ```ts
-reviewLastNotifiedDate: string | null   // local "YYYY-MM-DD"; null = never
+reviewLastNotifiedDate: string | null // local "YYYY-MM-DD"; null = never
 ```
 
 `reviewLastNotifiedDate` is deliberately **excluded** from the synced set. Keeping it
@@ -191,32 +191,33 @@ Production has real users on older app versions; the change must not corrupt the
 
 ## Edge Case Matrix
 
-| # | Scenario | Behavior |
-|---|---|---|
-| 1 | App closed at target, opened later same day, items present | Catch up — notify once on first tick |
-| 2 | Missed late-night target, app opened next day | No catch-up (same calendar day only) |
-| 3 | Inbox empty at target, item added later same day | Fires on the next tick after items exist (one nudge) |
-| 4 | 2+ devices open at target | Each fires (per-device last-fired) |
-| 5 | Time changed after already firing today | No refire today |
-| 6 | Time changed to an earlier, already-passed time, not yet fired | Fires on next tick |
-| 7 | Enabled after target already passed, items present | Catch up on next tick |
-| 8 | Disabled | Never fires |
-| 9 | DST spring-forward across target | Target counts as passed → fires (catch-up) |
-| 10 | Clock moved backward | No double-fire (date guard); fires when target reached |
-| 11 | Timezone travel | Wall-clock local time — "18:00" wherever you are |
-| 12 | No vault open | Scheduler idle; startup/resume catch-up when a vault opens |
-| 13 | Vault switch | Reads active vault's inbox + its own last-fired |
-| 14 | OS notification permission denied | Silent OS no-op; cannot detect (noted) |
-| 15 | Interval tick + resume tick in same minute | Idempotent via date guard |
-| 16 | Backward compat: old client sees `inbox` group | Must not clobber (unit-tested) |
-| 17 | Inbox holds only viewed reminders | Count 0 → silent |
-| 18 | Inbox holds only snoozed items | Count 0 → silent; recounts when snooze expires |
-| 19 | App runs across midnight | Re-eligible at today's target after date rolls |
-| 20 | Laptop suspended past target, resumes same day | `resume` catch-up fires |
+| #   | Scenario                                                       | Behavior                                                   |
+| --- | -------------------------------------------------------------- | ---------------------------------------------------------- |
+| 1   | App closed at target, opened later same day, items present     | Catch up — notify once on first tick                       |
+| 2   | Missed late-night target, app opened next day                  | No catch-up (same calendar day only)                       |
+| 3   | Inbox empty at target, item added later same day               | Fires on the next tick after items exist (one nudge)       |
+| 4   | 2+ devices open at target                                      | Each fires (per-device last-fired)                         |
+| 5   | Time changed after already firing today                        | No refire today                                            |
+| 6   | Time changed to an earlier, already-passed time, not yet fired | Fires on next tick                                         |
+| 7   | Enabled after target already passed, items present             | Catch up on next tick                                      |
+| 8   | Disabled                                                       | Never fires                                                |
+| 9   | DST spring-forward across target                               | Target counts as passed → fires (catch-up)                 |
+| 10  | Clock moved backward                                           | No double-fire (date guard); fires when target reached     |
+| 11  | Timezone travel                                                | Wall-clock local time — "18:00" wherever you are           |
+| 12  | No vault open                                                  | Scheduler idle; startup/resume catch-up when a vault opens |
+| 13  | Vault switch                                                   | Reads active vault's inbox + its own last-fired            |
+| 14  | OS notification permission denied                              | Silent OS no-op; cannot detect (noted)                     |
+| 15  | Interval tick + resume tick in same minute                     | Idempotent via date guard                                  |
+| 16  | Backward compat: old client sees `inbox` group                 | Must not clobber (unit-tested)                             |
+| 17  | Inbox holds only viewed reminders                              | Count 0 → silent                                           |
+| 18  | Inbox holds only snoozed items                                 | Count 0 → silent; recounts when snooze expires             |
+| 19  | App runs across midnight                                       | Re-eligible at today's target after date rolls             |
+| 20  | Laptop suspended past target, resumes same day                 | `resume` catch-up fires                                    |
 
 ## Testing Plan
 
 **Unit (Vitest, main):**
+
 - `decideReviewNotification` — table-driven over edges #1–#20 (inject `now`, no fake
   clock). The primary correctness surface.
 - `countReviewableInboxItems` — seeded DB with unfiled / snoozed / viewed-reminder /
@@ -227,6 +228,7 @@ Production has real users on older app versions; the change must not corrupt the
 - Notification builder — title/body i18n and pluralization for count 1 vs N.
 
 **E2E (Playwright / Electron):**
+
 - Settings → Inbox: set time + enable; seed an inbox item; force a tick via a
   test-only IPC (avoid the 60s wait); assert a `REVIEW_DUE` event (thin observable
   seam, mirroring how reminders emit an in-app event) and the notification path.

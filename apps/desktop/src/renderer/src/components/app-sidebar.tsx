@@ -36,6 +36,7 @@ import { SidebarTagList } from '@/components/sidebar/sidebar-tag-list'
 import { SidebarUpdateButton } from '@/components/sidebar/sidebar-update-button'
 import { SidebarFeedbackButton } from '@/components/sidebar/sidebar-feedback-button'
 import { SidebarBookmarkList } from '@/components/sidebar/sidebar-bookmark-list'
+import { SidebarCanvasList } from '@/components/sidebar/sidebar-canvas-list'
 import { SidebarDrillDownContainer } from '@/components/sidebar/sidebar-drill-down-container'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Picker } from '@/components/ui/picker'
@@ -50,6 +51,7 @@ import { useTabActions } from '@/contexts/tabs'
 import { newItemViewState } from '@/contexts/tabs/helpers'
 import { useSettingsModal } from '@/contexts/settings-modal-context'
 import { notesService } from '@/services/notes-service'
+import { canvasService, type CanvasSummary } from '@/services/canvas-service'
 import { useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
 import { useAuth } from '@/contexts/auth-context'
 import { SyncStatus } from '@/components/sync/sync-status'
@@ -334,6 +336,36 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
     [openSidebarItem, openTab, openTag]
   )
 
+  // Open a canvas in a tab (entityId dedupe keeps it to one tab per canvas)
+  const handleCanvasOpen = useCallback(
+    (canvas: Pick<CanvasSummary, 'id' | 'title'>) => {
+      openTab({
+        type: 'canvas',
+        title: canvas.title || tPhaseF('canvas.untitled'),
+        icon: 'pen-tool',
+        path: `/canvas/${canvas.id}`,
+        entityId: canvas.id,
+        isPinned: false,
+        isModified: false,
+        isPreview: false,
+        isDeleted: false
+      })
+    },
+    [openTab, tPhaseF]
+  )
+
+  const handleCreateCanvas = useCallback(async () => {
+    try {
+      const canvas = await canvasService.create({})
+      handleCanvasOpen(canvas)
+    } catch (error) {
+      log.error('Failed to create canvas', error)
+      toast.error(
+        extractErrorMessage(error, getI18n().getFixedT(null, 'common')('canvas.createFailed'))
+      )
+    }
+  }, [handleCanvasOpen])
+
   // Main sidebar content (shown when not drilling down)
   const mainContent = (
     <>
@@ -428,6 +460,34 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
         >
           <SidebarBookmarkList maxVisible={6} onBookmarkClick={handleBookmarkClick} />
         </SidebarSection>
+
+        {/* CANVASES Section (hidden-phase spatialCanvas flag) */}
+        {isEnabled('spatialCanvas') && (
+          <SidebarSection
+            id="canvases"
+            label={tPhaseF('canvas.sectionLabel')}
+            defaultExpanded={false}
+            actions={
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => void handleCreateCanvas()}
+                    className="p-0.5 rounded cursor-pointer hover:bg-sidebar-accent transition-colors"
+                    aria-label={tPhaseF('canvas.newCanvas')}
+                  >
+                    <Plus className="size-3.5 text-sidebar-muted hover:text-sidebar-foreground" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">
+                  {tPhaseF('canvas.newCanvas')}
+                </TooltipContent>
+              </Tooltip>
+            }
+          >
+            <SidebarCanvasList onCanvasClick={handleCanvasOpen} />
+          </SidebarSection>
+        )}
 
         {/* TAGS Section */}
         <SidebarSection

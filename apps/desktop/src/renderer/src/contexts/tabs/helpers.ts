@@ -134,7 +134,8 @@ const TAB_ICONS: Record<TabType, string> = {
   'template-editor': 'layout-template',
   templates: 'layout-template',
   graph: 'graph',
-  'agent-chat': 'bot'
+  'agent-chat': 'bot',
+  canvas: 'pen-tool'
 }
 
 /**
@@ -182,6 +183,8 @@ export const getDefaultPath = (type: TabType, entityId?: string): string => {
       return `/collection/${entityId}`
     case 'agent-chat':
       return `/agent-chat/${entityId}`
+    case 'canvas':
+      return `/canvas/${entityId}`
     default:
       return '/'
   }
