@@ -7,6 +7,7 @@ import { projects } from '@memry/db-schema/schema/projects'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
 import { savedFilters, settings } from '@memry/db-schema/schema/settings'
 import { tagDefinitions } from '@memry/db-schema/schema/tag-definitions'
+import { canvases } from '@memry/db-schema/schema/canvas'
 import { noteCache } from '@memry/db-schema/schema/notes-cache'
 import type { RecordSyncItemType, RecordSyncManifest } from '@memry/contracts/sync-api'
 import { withRetry } from './retry'
@@ -176,6 +177,31 @@ function getLocalSyncableItems(db: DrizzleDb): LocalSyncableItem[] {
   const syncedFilters = db.select().from(savedFilters).where(isNotNull(savedFilters.clock)).all()
   for (const f of syncedFilters) {
     addLocalItem({ id: f.id, type: 'filter', payload: JSON.stringify(f) })
+  }
+
+  // Diverges from the tasks template (D2): tombstones MUST be excluded. The
+  // server manifest omits soft-deleted items, so a locally-tombstoned canvas
+  // listed here would be seen as `!serverRef` and re-enqueued as a `create`,
+  // NULLing the server's deleted_at and resurrecting the canvas fleet-wide
+  // within 30 min. The payload is metadata-only (never the encrypted snapshot);
+  // the re-enqueued push rebuilds the scene via canvas-handler.buildPushPayload.
+  const syncedCanvases = db
+    .select()
+    .from(canvases)
+    .where(and(isNotNull(canvases.clock), isNull(canvases.deletedAt)))
+    .all()
+  for (const c of syncedCanvases) {
+    addLocalItem({
+      id: c.id,
+      type: 'canvas',
+      payload: JSON.stringify({
+        id: c.id,
+        vaultId: c.vaultId,
+        title: c.title,
+        clock: c.clock,
+        deletedAt: null
+      })
+    })
   }
 
   const syncedTagDefs = db

@@ -14,6 +14,7 @@ import {
   CalendarEventSyncPayloadSchema,
   CalendarExternalEventSyncPayloadSchema,
   CalendarSourceSyncPayloadSchema,
+  CanvasSyncPayloadSchema,
   FilterSyncPayloadSchema,
   FolderConfigSyncPayloadSchema,
   InboxSyncPayloadSchema,
@@ -174,6 +175,36 @@ describe('FilterSyncPayloadSchema', () => {
   })
 })
 
+describe('CanvasSyncPayloadSchema', () => {
+  it('accepts an empty payload (all optional, forward-tolerant per D5)', () => {
+    expect(CanvasSyncPayloadSchema.safeParse({}).success).toBe(true)
+  })
+
+  it('accepts a full payload', () => {
+    const result = CanvasSyncPayloadSchema.safeParse({
+      id: 'canvas-1',
+      vaultId: 'vault-1',
+      title: 'My Canvas',
+      scene: '{"type":"excalidraw","elements":[]}',
+      clock: { 'device-a': 3 },
+      deletedAt: null
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts a null title and null deletedAt', () => {
+    expect(CanvasSyncPayloadSchema.safeParse({ title: null, deletedAt: null }).success).toBe(true)
+  })
+
+  it('rejects a non-string scene', () => {
+    expect(CanvasSyncPayloadSchema.safeParse({ scene: 42 }).success).toBe(false)
+  })
+
+  it('rejects a clock with a negative tick', () => {
+    expect(CanvasSyncPayloadSchema.safeParse({ clock: { 'device-a': -1 } }).success).toBe(false)
+  })
+})
+
 describe('StatusSyncSchema', () => {
   const base = { id: 's1', name: 'Todo', color: '#abc', position: 0 }
 
@@ -297,9 +328,9 @@ describe('JournalSyncPayloadSchema', () => {
 
 describe('TagDefinitionSyncPayloadSchema', () => {
   it('accepts minimal required fields', () => {
-    expect(
-      TagDefinitionSyncPayloadSchema.safeParse({ name: 'work', color: '#abc' }).success
-    ).toBe(true)
+    expect(TagDefinitionSyncPayloadSchema.safeParse({ name: 'work', color: '#abc' }).success).toBe(
+      true
+    )
   })
 
   it('rejects missing color', () => {
@@ -353,12 +384,8 @@ describe('CalendarEventSyncPayloadSchema', () => {
 
 describe('CalendarSourceSyncPayloadSchema', () => {
   it('accepts all kind enum values', () => {
-    expect(
-      CalendarSourceSyncPayloadSchema.safeParse({ kind: 'account' }).success
-    ).toBe(true)
-    expect(
-      CalendarSourceSyncPayloadSchema.safeParse({ kind: 'calendar' }).success
-    ).toBe(true)
+    expect(CalendarSourceSyncPayloadSchema.safeParse({ kind: 'account' }).success).toBe(true)
+    expect(CalendarSourceSyncPayloadSchema.safeParse({ kind: 'calendar' }).success).toBe(true)
   })
 
   it('accepts all syncStatus enum values', () => {
@@ -413,9 +440,9 @@ describe('CalendarBindingSyncPayloadSchema', () => {
     expect(
       CalendarBindingSyncPayloadSchema.safeParse({ lastLocalSnapshot: { a: 1 } }).success
     ).toBe(true)
-    expect(
-      CalendarBindingSyncPayloadSchema.safeParse({ lastLocalSnapshot: null }).success
-    ).toBe(true)
+    expect(CalendarBindingSyncPayloadSchema.safeParse({ lastLocalSnapshot: null }).success).toBe(
+      true
+    )
   })
 })
 

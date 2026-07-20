@@ -15,8 +15,9 @@ import type {
 import '@excalidraw/excalidraw/index.css'
 import { useTheme } from 'next-themes'
 import { getI18n } from 'react-i18next'
+import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
-import { canvasService } from '@/services/canvas-service'
+import { canvasService, onCanvasTooLarge } from '@/services/canvas-service'
 import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import { createLogger } from '@/lib/logger'
 import { createScenePersister } from './canvas-persistence'
@@ -66,6 +67,16 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
   }, [initialScene])
 
   const corrupt = initialData === CORRUPT
+
+  // §5.6: a save whose scene is too large to sync is kept locally but never
+  // pushed; surface it so the divergence is never silent.
+  useEffect(() => {
+    return onCanvasTooLarge((event) => {
+      if (event.id === canvasId) {
+        toast.error(t('canvas.tooLargeToSync'))
+      }
+    })
+  }, [canvasId, t])
 
   const persisterRef = useRef<{ notifyChange: () => void } | null>(null)
 
