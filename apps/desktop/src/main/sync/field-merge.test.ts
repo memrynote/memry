@@ -281,7 +281,7 @@ describe('field-merge', () => {
 
   describe('mergeProjectFields', () => {
     it('uses all 8 project syncable fields', () => {
-      expect(PROJECT_SYNCABLE_FIELDS).toHaveLength(8)
+      expect(PROJECT_SYNCABLE_FIELDS).toHaveLength(9)
     })
 
     it('merges project name vs color changes from different devices', () => {
