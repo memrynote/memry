@@ -1,9 +1,10 @@
-import { ipcMain } from 'electron'
+import { BrowserWindow, ipcMain } from 'electron'
 import sodium from 'libsodium-wrappers-sumo'
 
 import { syncDevices } from '@memry/db-schema/schema/sync-devices'
-import { KEYCHAIN_ENTRIES } from '@memry/contracts/crypto'
+import { KEYCHAIN_ENTRIES, type KeychainEntry } from '@memry/contracts/crypto'
 import { SYNC_CHANNELS } from '@memry/contracts/ipc-sync'
+import { EVENT_CHANNELS, type VaultRecoveryNeededEvent } from '@memry/contracts/ipc-events'
 import {
   GetHistorySchema,
   StorageBreakdownResult,
@@ -27,6 +28,7 @@ import { getSyncEngine, startSyncRuntime } from '../sync/runtime'
 import { getCachedEntitlement } from '../billing/entitlement-cache'
 import { teardownSession } from '../sync/session-teardown'
 import { getValidAccessToken, cancelTokenRefresh } from '../sync/token-manager'
+import { checkLocalKeyAgainstAccount, isKeyMaterialActivityRecent } from '../sync/key-verification'
 import {
   clearOAuthState,
   registerAuthOAuthHandlers,
@@ -59,6 +61,35 @@ const parseSyncHistoryDetails = (details: string): unknown => {
 // Startup Integrity Check
 // ============================================================================
 
+// A keychain read has two very different failure modes and they must not be
+// conflated: `retrieveKey` RETURNS null only when the read succeeded and the
+// key is genuinely absent, but THROWS when the read itself failed transiently
+// (safeStorage not yet ready, a mid-flight keytar→safeStorage migration, an
+// OS keychain prompt/lock). Treating a transient throw as "key absent" makes
+// the integrity check below tear down local sync state and force a re-auth
+// that rebinds key material — which then no longer matches the vault, so every
+// synced item fails to decrypt and fails signature verification. Only a
+// confirmed null is allowed to trigger destructive cleanup.
+async function readKeyForIntegrity(
+  entry: KeychainEntry,
+  deviceId: string
+): Promise<{ transientError: true } | { transientError: false; key: Uint8Array | null }> {
+  try {
+    return { transientError: false, key: await retrieveKey(entry) }
+  } catch (err) {
+    logger.warn(
+      'Skipping sync integrity check — keychain read failed transiently. ' +
+        'NOT cleaning up local state (avoids a destructive re-auth on an uncertain read).',
+      {
+        deviceId,
+        service: entry.service,
+        error: err instanceof Error ? err.message : String(err)
+      }
+    )
+    return { transientError: true }
+  }
+}
+
 export async function checkSyncIntegrity(): Promise<void> {
   if (!isDatabaseInitialized()) {
     logger.debug('Skipping sync integrity check — no vault open')
@@ -74,8 +105,9 @@ export async function checkSyncIntegrity(): Promise<void> {
 
     if (!currentDevice) return
 
-    const masterKey = await retrieveKey(KEYCHAIN_ENTRIES.MASTER_KEY).catch(() => null)
-    if (!masterKey) {
+    const masterKeyRead = await readKeyForIntegrity(KEYCHAIN_ENTRIES.MASTER_KEY, currentDevice.id)
+    if (masterKeyRead.transientError) return
+    if (!masterKeyRead.key) {
       logger.error(
         'Detected orphaned device registration — master key missing from keychain. ' +
           'Cleaning up local state. User will need to re-authenticate.',
@@ -85,7 +117,12 @@ export async function checkSyncIntegrity(): Promise<void> {
       return
     }
 
-    const signingKey = await retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY).catch(() => null)
+    const signingKeyRead = await readKeyForIntegrity(
+      KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY,
+      currentDevice.id
+    )
+    if (signingKeyRead.transientError) return
+    const signingKey = signingKeyRead.key
     if (!signingKey) {
       logger.error(
         'Signing key missing from keychain but device registered. ' +
@@ -112,8 +149,33 @@ export async function checkSyncIntegrity(): Promise<void> {
         .run()
       return
     }
+
+    // Keys exist and are self-consistent — but do they match the ACCOUNT?
+    // An install orphaned by the safeStorage regression holds a master key
+    // that can never decrypt the account's data; no amount of retrying fixes
+    // it. Sign the user out here at startup so the ordinary sign-in +
+    // recovery-phrase flow restores the correct key, instead of leaving them
+    // staring at "all items failed to decrypt".
+    // 'transition' (key-material flow mid-flight) and 'unknown' (offline, no
+    // verifier available) both stand down — only a CONFIRMED mismatch acts.
+    const accountCheck = await checkLocalKeyAgainstAccount()
+    if (accountCheck === 'mismatch' && !isKeyMaterialActivityRecent()) {
+      logger.error(
+        'Master key does not match the account — signing out so recovery can restore the correct key.',
+        { deviceId: currentDevice.id }
+      )
+      emitVaultRecoveryNeededToWindows({ reason: 'vault-key-mismatch' })
+      await cleanupLocalSyncState()
+      return
+    }
   } catch (err) {
     logger.error('Sync integrity check failed', err)
+  }
+}
+
+function emitVaultRecoveryNeededToWindows(event: VaultRecoveryNeededEvent): void {
+  for (const win of BrowserWindow.getAllWindows()) {
+    win.webContents.send(EVENT_CHANNELS.VAULT_RECOVERY_NEEDED, event)
   }
 }
 

@@ -16,6 +16,14 @@ vi.mock('sonner', () => ({
   }
 }))
 
+const mocks = vi.hoisted(() => ({
+  openIncidentReport: vi.fn()
+}))
+
+vi.mock('@/components/diagnostics/incident-report-provider', () => ({
+  useReportIncident: () => mocks.openIncidentReport
+}))
+
 const updateState = {
   currentVersion: '1.0.0',
   status: 'unavailable' as const,
@@ -270,5 +278,35 @@ describe('GeneralSettings i18n', () => {
     await waitFor(() =>
       expect(toast.success).toHaveBeenCalledWith('memrynote v2026-05-06 is up to date')
     )
+  })
+
+  it('opens the incident report dialog from the diagnostic report button when telemetry is on', async () => {
+    const user = userEvent.setup()
+    api.telemetry.getSettings = vi.fn().mockResolvedValue({ enabled: true })
+
+    renderGeneral(i18n)
+
+    await screen.findByText('Diagnostic Report')
+    const button = screen.getByRole('button', { name: 'Send diagnostic report' })
+    expect(button).toBeEnabled()
+
+    await user.click(button)
+    expect(mocks.openIncidentReport).toHaveBeenCalledWith({ source: 'settings' })
+  })
+
+  it('opens the incident report dialog even when telemetry is off (per-incident consent)', async () => {
+    // Path B always needs explicit per-incident consent (the preview dialog),
+    // independent of the Path A telemetry ship gate — so the entry stays enabled.
+    const user = userEvent.setup()
+    api.telemetry.getSettings = vi.fn().mockResolvedValue({ enabled: false })
+
+    renderGeneral(i18n)
+
+    await screen.findByText('Diagnostic Report')
+    const button = screen.getByRole('button', { name: 'Send diagnostic report' })
+    expect(button).toBeEnabled()
+
+    await user.click(button)
+    expect(mocks.openIncidentReport).toHaveBeenCalledWith({ source: 'settings' })
   })
 })

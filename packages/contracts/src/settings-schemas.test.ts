@@ -8,6 +8,8 @@
 import { describe, it, expect } from 'vitest'
 import { SUPPORTED_LOCALES } from './locale-api'
 import {
+  InboxSettingsSchema,
+  INBOX_SETTINGS_DEFAULTS,
   GeneralSettingsSchema,
   GENERAL_SETTINGS_DEFAULTS,
   EditorSettingsSchema,
@@ -666,6 +668,29 @@ describe('TestConnectionResultSchema', () => {
     if (!result.success) {
       expect(result.error.issues[0].path).toContain('valid')
     }
+  })
+})
+
+describe('InboxSettings', () => {
+  it('defaults to disabled at 18:00', () => {
+    expect(INBOX_SETTINGS_DEFAULTS).toEqual({
+      reviewReminderEnabled: false,
+      reviewReminderTime: '18:00'
+    })
+  })
+
+  it('accepts a valid HH:MM time', () => {
+    const parsed = InboxSettingsSchema.parse({
+      reviewReminderEnabled: true,
+      reviewReminderTime: '06:30'
+    })
+    expect(parsed.reviewReminderTime).toBe('06:30')
+  })
+
+  it('rejects a non-HH:MM time', () => {
+    expect(() =>
+      InboxSettingsSchema.parse({ reviewReminderEnabled: true, reviewReminderTime: '6pm' })
+    ).toThrow()
   })
 })
 

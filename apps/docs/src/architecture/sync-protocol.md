@@ -81,6 +81,69 @@ Every domain object syncs as a `sync_item`. The server sees:
 
 The blob is the encrypted body. The server can reason about order, dedupe, and authorize writes — but the contents stay opaque.
 
+### Blob key layout
+
+Item ids are human-readable and may repeat across types: the default project id is `inbox`, a
+`tag_definition` id is the lowercased tag name, and a `folder_config` id is the folder path. R2 keys
+for sync-item payloads therefore include the item type — new pushes write to
+`<user>/vaults/<vault>/items-v2/<type>/<id>`, so a project and a tag both named `inbox` own separate
+objects. Rows written before this layout keep their legacy untyped `items/<id>` key; every read path
+resolves the `blob_key` stored on the row rather than re-deriving it, so old rows continue to work
+without a migration. (The old layout let same-id items of different types overwrite one shared
+object, which permanently broke the losing row's signature.)
+
+### Per-item bookkeeping and retry semantics
+
+Because ids repeat across item types, every piece of client-side per-item bookkeeping — the
+signature-failure quarantine, the corrupt-item re-fetch tracker, the within-run apply dedup, and the
+manifest diff — keys on the `(type, id)` pair, never the bare id. A permanent quarantine on one type
+does not block its same-id sibling of another type, and a re-fetch that asks for one `(type, id)`
+pair ignores the sibling rows the server returns for the same id.
+
+Retry semantics: the pull cursor only advances past pages that were actually applied. A page the
+client refused (all items failed crypto, or the key was mid-transition during sign-in/recovery) does
+not move the cursor, so a manual Retry lands on the same page instead of skipping it and reporting a
+clean sync. Persisted quarantine entries expire after 7 days — if the underlying server row is still
+broken the item re-quarantines within a few pulls, and if it was repaired server-side the item flows
+again without an emergency wipe. The manifest-check throttle (30 minutes) persists in sync state, so
+engine restarts and vault switches cannot re-arm an immediate check.
+
+## Sync Type Negotiation
+
+Clients declare the record sync item types they understand via an `X-Memry-Sync-Types` header
+(comma-separated), sent on authenticated sync calls alongside the existing `X-Memry-Vault-Id`. The
+value is `RECORD_SYNC_ITEM_TYPES` joined with commas. The server (`/sync/changes`, `/sync/manifest`,
+`/sync/pull`) binds only the negotiated types into its `item_type IN (...)` SQL filter.
+
+| Header                      | Resolves to                                                                      |
+| --------------------------- | -------------------------------------------------------------------------------- |
+| Absent                      | The frozen `LEGACY_RECORD_SYNC_ITEM_TYPES` list (15 types)                       |
+| Present, nothing recognized | An empty list — serves zero rows                                                 |
+| Present, some recognized    | The recognized subset, deduped and intersected with the server's supported types |
+
+No header means the client predates negotiation and never declared anything, so it gets exactly the
+frozen legacy list — the property that protects binaries already in users' hands. This list is never
+edited when a new sync item type is added; adding to it would hand that type to clients whose parsers
+reject it, which is exactly the bug this feature exists to prevent.
+
+A header that is present but names nothing recognized is a different situation and resolves
+differently: the client did negotiate, so it must never be handed types it didn't declare. Empty
+types short-circuit before any DB query, and `getChanges` returns the incoming cursor unchanged so
+nothing advances.
+
+Requested types are deduped and intersected with the server's supported set, bounding the
+bind-parameter count against D1's 95-parameter ceiling.
+
+**Why this exists:** the desktop client does not runtime-validate `/sync/changes`, does not filter
+item refs by type before pulling, and validates a pull page with a single whole-page `safeParse`. One
+unknown item type fails the entire page, the client drops it without throwing, and its cursor still
+advances past it — silently losing convergence for every note and task on that page, not just the
+unrecognized item. Published binaries cannot be patched, so the server is the only place this can be
+fixed.
+
+**Deploy order:** the sync-server change must reach production before any desktop build carrying a
+new item type.
+
 ## Vector Clocks (Doc-Level)
 
 Used by the server to order changes across devices. The server itself never inspects fields — it sees a single clock per document and uses it to pick the correct write on conflict.
@@ -154,16 +217,26 @@ list.
 
 ## Endpoints
 
-| Path                      | Direction | Purpose                                      |
-| ------------------------- | --------- | -------------------------------------------- |
-| `POST /sync/push`         | up        | Upload new sync items (metadata + blob refs) |
-| `POST /sync/pull`         | down      | Fetch updates since cursor                   |
-| `POST /sync/crdt/updates` | both      | Incremental Yjs binary updates               |
-| `GET /sync/vaults`        | down      | List the account's registered vaults         |
-| `POST /sync/vaults`       | up        | Register or update a vault's encrypted name  |
-| `POST /auth/*`            | mixed     | OTP, sign-in, refresh, sign-out              |
-| `POST /devices/*`         | mixed     | Linking, listing, revoking                   |
-| `POST /keys/*`            | mixed     | Key sealing during link, rotation            |
+| Path                      | Direction | Purpose                                                                        |
+| ------------------------- | --------- | ------------------------------------------------------------------------------ |
+| `POST /sync/push`         | up        | Upload new sync items (metadata + blob refs)                                   |
+| `POST /sync/pull`         | down      | Fetch updates since cursor                                                     |
+| `POST /sync/crdt/updates` | both      | Incremental Yjs binary updates                                                 |
+| `GET /sync/vaults`        | down      | List the account's registered vaults                                           |
+| `POST /sync/vaults`       | up        | Register or update a vault's encrypted name                                    |
+| `POST /auth/*`            | mixed     | OTP, sign-in, refresh, sign-out                                                |
+| `GET /auth/key-verifier`  | down      | Account key verifier for an established session (vault-key mismatch detection) |
+| `POST /devices/*`         | mixed     | Linking, listing, revoking                                                     |
+| `POST /keys/*`            | mixed     | Key sealing during link, rotation                                              |
+
+## Vault-Key Verification
+
+Before syncing — and whenever an entire pull page fails to decrypt — the client verifies its local
+master key against the account's key verifier (local cache first, `GET /auth/key-verifier` as
+fallback). A confirmed mismatch stops the pull cycle **without** quarantining items or marking them
+corrupt, escalates once into the recovery flow, and signs the install out so sign-in + recovery
+phrase can restore the correct key. See
+[Vault-Key Mismatch Detection](/architecture/cryptography#vault-key-mismatch-detection).
 
 ## Error Modes
 
@@ -175,6 +248,7 @@ list.
 | Quota exceeded     | Surfaces in [Settings → Vault](/user-guide/settings#vault)                                 |
 | Server unavailable | Exponential backoff; status indicator turns yellow                                         |
 | Blob hash mismatch | Reject the item; log; alert health view                                                    |
+| Vault-key mismatch | Stop pulling without branding items; prompt recovery; sign out to restore the correct key  |
 
 ## Encryption Stays End-to-End
 

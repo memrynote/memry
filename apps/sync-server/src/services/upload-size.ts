@@ -29,3 +29,33 @@ export function expectedEncryptedTotal(
 ): number {
   return encryptedSize ?? totalSize + CHUNK_CRYPTO_OVERHEAD * chunkCount
 }
+
+export interface UploadedChunkEntry {
+  i: number
+  h: string
+  b?: number
+}
+
+/**
+ * Parse an upload session's persisted `uploaded_chunks` JSON into typed
+ * entries, tolerating a malformed or non-array payload as "no chunks".
+ */
+export function parseUploadedChunks(value: string): UploadedChunkEntry[] {
+  const parsed = JSON.parse(value) as UploadedChunkEntry[]
+  return Array.isArray(parsed) ? parsed : []
+}
+
+/**
+ * Sum the per-chunk byte counts of an upload session, or null if any entry
+ * lacks a valid non-negative integer count — the caller then falls back to the
+ * reserved total rather than under-counting.
+ */
+export function getUploadedByteTotal(entries: UploadedChunkEntry[]): number | null {
+  let total = 0
+  for (const entry of entries) {
+    const bytes = entry.b
+    if (typeof bytes !== 'number' || !Number.isInteger(bytes) || bytes < 0) return null
+    total += bytes
+  }
+  return total
+}

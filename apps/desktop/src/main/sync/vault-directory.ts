@@ -12,9 +12,11 @@ import {
   getAccountVaultsCache,
   getCurrentVaultPath,
   getVaults,
-  setAccountVaultsCache
+  removeVault as removeVaultFromStore,
+  setAccountVaultsCache,
+  upsertVault
 } from '../store'
-import { getFromServer, postToServer } from './http-client'
+import { deleteFromServer, getFromServer, postToServer } from './http-client'
 import { getValidAccessToken } from './token-manager'
 import { decryptVaultName, encryptVaultName } from './vault-name-crypto'
 
@@ -144,6 +146,31 @@ export function listAccountVaults(): AccountVaultInfo[] {
   }))
 }
 
+/**
+ * Purge a vault from the sync account and drop its local list entry.
+ *
+ * Both halves always run together: refreshVaultDirectory self-registers every
+ * local vault, so a server-only delete would resurrect itself on the next
+ * refresh. Files on disk are never touched.
+ */
+export async function deleteAccountVault(vaultUuid: string): Promise<void> {
+  const local = getVaults().find((v) => v.vaultUuid === vaultUuid)
+  if (local && local.path === getCurrentVaultPath()) {
+    throw new Error('Cannot delete the active vault. Switch to another vault first.')
+  }
+
+  const token = await getValidAccessToken()
+  if (!token) {
+    throw new Error('Sign in to delete a vault from your account.')
+  }
+
+  await deleteFromServer(`/sync/vaults/${encodeURIComponent(vaultUuid)}`, token)
+
+  if (local) removeVaultFromStore(local.path)
+
+  log.info('Vault deleted from account', { vaultUuid, hadLocalCopy: !!local })
+}
+
 export async function downloadRemoteVault(input: {
   vaultUuid: string
   parentPath?: string
@@ -165,5 +192,16 @@ export async function downloadRemoteVault(input: {
   createDormantVault(folder, input.vaultUuid)
   // createDormantVault repoints the data.db singleton — open the new vault now
   // so the singleton ends on the vault the user is actually in.
-  return selectVault({ path: folder })
+  const result = await selectVault({ path: folder })
+
+  // selectVault stamps the uuid best-effort from the data.db; here the uuid is
+  // known authoritatively, and losing (or keeping a stale foreign) uuid means
+  // the next Download of this vault mints yet another empty folder. Enforce it
+  // on the registry row.
+  const row = getVaults().find((v) => v.path === folder)
+  if (row && row.vaultUuid !== input.vaultUuid) {
+    upsertVault({ ...row, vaultUuid: input.vaultUuid })
+  }
+
+  return result
 }

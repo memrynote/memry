@@ -51,9 +51,18 @@ vi.mock('electron', () => ({
 }))
 
 vi.mock('../../database', () => ({
-  getDatabase: vi.fn(() => ({}))
+  getDatabase: vi.fn()
 }))
 
+import { getDatabase } from '../../database'
+import { getSetting, setSetting } from '../../database/queries/settings'
+import { INBOX_REVIEW_LAST_NOTIFIED_KEY } from '../../inbox/review-reminder-constants'
+import {
+  createTestDatabase,
+  cleanupTestDatabase,
+  asClientDb,
+  type TestDatabaseResult
+} from '@tests/utils/test-db'
 import { settingsHandler } from './settings-handler'
 
 describe('settingsHandler.applyUpsert', () => {
@@ -62,14 +71,21 @@ describe('settingsHandler.applyUpsert', () => {
     emit: vi.fn()
   }
   const clock: VectorClock = { 'device-B': 3 }
+  let testDb: TestDatabaseResult
 
   beforeEach(() => {
     vi.clearAllMocks()
+    testDb = createTestDatabase()
+    vi.mocked(getDatabase).mockReturnValue(asClientDb(testDb.db))
     mockGetCurrentVaultPath.mockReturnValue('/test/vault')
     mockGetSettings.mockReturnValue({
       general: { theme: 'dark', fontSize: 'medium' },
       editor: { width: 'wide' }
     })
+  })
+
+  afterEach(() => {
+    cleanupTestDatabase(testDb)
   })
 
   it('#given remote settings #when applyUpsert called #then calls mergeRemote', () => {
@@ -158,5 +174,43 @@ describe('settingsHandler.applyUpsert', () => {
     expect(result).toBe('applied')
     expect(mockMergeRemote).toHaveBeenCalledWith(data)
     expect(mockWritePreferences).not.toHaveBeenCalled()
+  })
+
+  it('#given remote inbox reminder time change #then clears the local last-notified guard', () => {
+    setSetting(
+      testDb.db,
+      'inbox',
+      JSON.stringify({ reviewReminderEnabled: true, reviewReminderTime: '18:00' })
+    )
+    setSetting(testDb.db, INBOX_REVIEW_LAST_NOTIFIED_KEY, '2026-07-17')
+    mockGetSettings.mockReturnValue({ inbox: { reviewReminderTime: '09:00' } })
+
+    const data: SettingsSyncPayload = {
+      settings: { inbox: { reviewReminderTime: '09:00' } },
+      fieldClocks: { 'inbox.reviewReminderTime': { 'device-B': 3 } }
+    }
+
+    settingsHandler.applyUpsert(ctx, 'synced_settings', data, clock)
+
+    expect(getSetting(testDb.db, INBOX_REVIEW_LAST_NOTIFIED_KEY)).toBeNull()
+  })
+
+  it('#given remote inbox merge with no actual schedule change #then leaves the guard intact', () => {
+    setSetting(
+      testDb.db,
+      'inbox',
+      JSON.stringify({ reviewReminderEnabled: true, reviewReminderTime: '18:00' })
+    )
+    setSetting(testDb.db, INBOX_REVIEW_LAST_NOTIFIED_KEY, '2026-07-17')
+    mockGetSettings.mockReturnValue({ inbox: { reviewReminderTime: '18:00' } })
+
+    const data: SettingsSyncPayload = {
+      settings: { inbox: { reviewReminderTime: '18:00' } },
+      fieldClocks: { 'inbox.reviewReminderTime': { 'device-B': 3 } }
+    }
+
+    settingsHandler.applyUpsert(ctx, 'synced_settings', data, clock)
+
+    expect(getSetting(testDb.db, INBOX_REVIEW_LAST_NOTIFIED_KEY)).toBe('2026-07-17')
   })
 })

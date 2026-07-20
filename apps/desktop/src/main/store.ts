@@ -54,6 +54,13 @@ export interface SyncStoreData {
   accountVaultsCache?: AccountVaultsCache
   /** Cache-first entitlement snapshot; gates whether sync runs without a server call */
   entitlement?: CachedEntitlement
+  /**
+   * The account's key verifier (same value the server stores from /auth/setup).
+   * Non-secret — it is a KDF-derived check value, not key material. Persisted at
+   * sign-in/recovery/linking so the app can detect a local master key that no
+   * longer matches the account (vault-key mismatch) even while offline.
+   */
+  accountKeyVerifier?: string
 }
 
 export interface AccountVaultsCache {
@@ -258,7 +265,13 @@ export function upsertVault(vault: StoredVaultInfo): void {
   const existingIndex = vaults.findIndex((v) => v.path === vault.path)
 
   if (existingIndex >= 0) {
-    vaults[existingIndex] = vault
+    // The server vault uuid is the ONLY link between this row and the account
+    // vault directory — losing it makes the vault look cloud-only and mints a
+    // fresh dormant folder on the next Download. Callers rebuild VaultInfo
+    // from scratch and stamp the uuid best-effort, so a row update without a
+    // uuid must never erase one that was already stored.
+    const existing = vaults[existingIndex]
+    vaults[existingIndex] = { ...vault, vaultUuid: vault.vaultUuid ?? existing.vaultUuid }
   } else {
     vaults.push(vault)
   }

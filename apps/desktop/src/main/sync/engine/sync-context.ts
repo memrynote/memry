@@ -28,6 +28,18 @@ export interface SyncEngineDeps {
   workerBridge?: SyncWorkerBridge
   refreshAccessToken?: () => Promise<boolean>
   calendarSyncOneSource?: (sourceId: string) => void
+  /**
+   * Does the local master key still match the account? Consulted when an
+   * entire pull page fails to decrypt: 'mismatch' means the failures are a
+   * vault-key problem, not per-item corruption, so quarantine/corrupt-marking
+   * must be suppressed and the cycle stopped instead of branding every item.
+   * 'transition' means key material is being re-established (sign-in /
+   * recovery / linking mid-flight): stop the cycle quietly and let the flow
+   * restart sync with the settled key.
+   */
+  checkAccountKey?: () => Promise<'match' | 'mismatch' | 'transition' | 'unknown'>
+  /** Escalation for a CONFIRMED account-key mismatch (recovery prompt / sign-out). */
+  onVaultKeyMismatch?: () => void
 }
 
 export interface SyncEngineOptions {
@@ -71,8 +83,16 @@ export const SYNC_STATE_KEYS = {
   LAST_SYNC_AT: 'lastSyncAt',
   SYNC_PAUSED: 'syncPaused',
   INITIAL_SEED_DONE: 'initialSeedDone',
-  QUARANTINED_ITEMS: 'quarantinedItems'
+  QUARANTINED_ITEMS: 'quarantinedItems',
+  LAST_MANIFEST_CHECK_AT: 'lastManifestCheckAt'
 } as const
+
+// Item ids are NOT unique across item types (default project id 'inbox', tag
+// ids are tag names, folder_config ids are folder paths), so every piece of
+// per-item sync bookkeeping must key on (type, id) — an id-only key makes a
+// project and a tag named 'inbox' share one entry and corrupt each other's
+// state (2026-07-18 incident).
+export const itemRefKey = (itemType: string, itemId: string): string => `${itemType}:${itemId}`
 
 export const PUSH_BATCH_SIZE = 100
 export const MAX_PUSH_ITERATIONS = 50
@@ -80,6 +100,7 @@ export const CLOCK_SKEW_THRESHOLD_SECONDS = 300
 export const PULL_PAGE_LIMIT = 100
 export const CORRUPT_ITEM_COOLDOWN_MS = 60 * 60 * 1000
 export const QUARANTINE_MAX_ATTEMPTS = 3
+export const QUARANTINE_ENTRY_TTL_MS = 7 * 24 * 60 * 60 * 1000
 export const STALE_CURSOR_THRESHOLD_MS = 24 * 60 * 60 * 1000
 export const MAX_RATE_LIMIT_BACKOFF_MS = 5 * 60 * 1000
 export const BASE_RATE_LIMIT_BACKOFF_MS = 5_000

@@ -2,6 +2,8 @@ import type { CalendarClientAPI, CalendarSubscriptions } from './calendar.ts'
 import { calendarRpc } from './calendar.ts'
 import type { CanvasClientAPI, CanvasSubscriptions } from './canvas.ts'
 import { canvasRpc } from './canvas.ts'
+import type { DiagnosticsClientAPI } from './diagnostics.ts'
+import { diagnosticsRpc } from './diagnostics.ts'
 import type { FeedbackClientAPI } from './feedback.ts'
 import { feedbackRpc } from './feedback.ts'
 import type { InboxClientAPI, InboxSubscriptions } from './inbox.ts'
@@ -32,6 +34,7 @@ export { calendarRpc } from './calendar.ts'
 export { canvasRpc } from './canvas.ts'
 export { telemetryRpc } from './telemetry.ts'
 export { feedbackRpc } from './feedback.ts'
+export { diagnosticsRpc } from './diagnostics.ts'
 
 export type { NotesClientAPI, NotesSubscriptions } from './notes.ts'
 export type { TasksClientAPI, TasksSubscriptions } from './tasks.ts'
@@ -41,6 +44,7 @@ export type { CalendarClientAPI, CalendarSubscriptions } from './calendar.ts'
 export type { CanvasClientAPI, CanvasSubscriptions } from './canvas.ts'
 export type { TelemetryClientAPI, TelemetrySettings } from './telemetry.ts'
 export type { FeedbackClientAPI } from './feedback.ts'
+export type { DiagnosticsClientAPI } from './diagnostics.ts'
 
 export const rpcDomains = [
   notesRpc,
@@ -50,7 +54,8 @@ export const rpcDomains = [
   calendarRpc,
   canvasRpc,
   telemetryRpc,
-  feedbackRpc
+  feedbackRpc,
+  diagnosticsRpc
 ] as const
 
 export interface GeneratedRpcApi
@@ -69,4 +74,5 @@ export interface GeneratedRpcApi
   canvas: CanvasClientAPI
   telemetry: TelemetryClientAPI
   feedback: FeedbackClientAPI
+  diagnostics: DiagnosticsClientAPI
 }

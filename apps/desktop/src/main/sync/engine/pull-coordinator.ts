@@ -27,7 +27,7 @@ import type { QuarantineManager } from './quarantine-manager'
 import type { CrdtSyncCoordinator } from './crdt-sync-coordinator'
 import type { PushCoordinator } from './push-coordinator'
 import { CorruptItemTracker } from './corrupt-item-tracker'
-import { SYNC_STATE_KEYS, YIELD_EVERY_N_ITEMS, yieldToEventLoop } from './sync-context'
+import { SYNC_STATE_KEYS, YIELD_EVERY_N_ITEMS, yieldToEventLoop, itemRefKey } from './sync-context'
 
 const log = createLogger('PullCoordinator')
 
@@ -58,6 +58,15 @@ const applyRank = (type: string): number => PULL_APPLY_ORDER[type] ?? 1
 export const sortByApplyOrder = <T extends { type: string }>(items: T[]): T[] =>
   [...items].sort((a, b) => applyRank(a.type) - applyRank(b.type))
 
+// Why a page stopped the pull run:
+// - 'transition': key material is mid-swap (sign-in/recovery) — momentary, do
+//   not advance the cursor, the flow re-pulls cleanly once the key settles.
+// - 'mismatch': the local key does not match the account — do not advance,
+//   recovery must run first.
+// - 'breaker': the key is right but the page's payloads are undecryptable
+//   (server-side poisoned data) — advance past the page, mark items corrupt.
+type PageStopReason = 'none' | 'transition' | 'mismatch' | 'breaker'
+
 interface PullRunState {
   timer: SyncTimer
   startTime: number
@@ -67,6 +76,8 @@ interface PullRunState {
   crdtNoteIds: string[]
   accessJwt: string
   vaultKey: Uint8Array
+  /** Set when the run stopped on a page it could not apply — no success finalize. */
+  refused?: boolean
 }
 
 export class PullCoordinator {
@@ -121,7 +132,16 @@ export class PullCoordinator {
       try {
         await this.pullChanges(runState)
         await this.applyDeferredRetries(runState)
-        this.finalizePullSuccess(runState)
+        if (runState.refused) {
+          // The run stopped on a page it could not apply. Recording a success
+          // history row and a fresh lastSyncAt here is what made a failing
+          // Retry look like a clean sync in the 2026-07-18 incident.
+          log.warn('Pull finished on a refused page — not recording a successful sync', {
+            pulledCount: runState.pulledCount
+          })
+        } else {
+          this.finalizePullSuccess(runState)
+        }
       } catch (error) {
         this.handlePullError(error, runState.startTime)
       }
@@ -218,14 +238,33 @@ export class PullCoordinator {
       }
 
       const changes = changesResult.value
-      const shouldStop = await this.pullChangesPage(changes, runState)
+      const stop = await this.pullChangesPage(changes, runState)
       this.emitInitialSyncProgress(changes, runState.pulledCount)
+
+      // Key-state stops ('transition' mid sign-in/recovery, 'mismatch') must
+      // NOT advance the persisted cursor: the failures are a key problem that
+      // resolves out-of-band, and advancing made the next manual Retry resume
+      // past the failing page and report a clean sync while the items were
+      // never applied.
+      if (stop === 'transition' || stop === 'mismatch') {
+        runState.refused = true
+        break
+      }
 
       this.stateManager.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, String(changes.nextCursor))
       cursor = String(changes.nextCursor)
       hasMore = changes.hasMore
 
-      if (shouldStop) break
+      // Circuit breaker (key matches the account but the page's payloads are
+      // undecryptable — server-side poisoned data): the cursor DOES advance,
+      // because these items can never decrypt no matter how often they are
+      // re-pulled, and pinning the cursor here would block every later item
+      // from ever reaching this device. The failures were marked corrupt and
+      // surfaced; the run still ends in an error state, not a fake success.
+      if (stop === 'breaker') {
+        runState.refused = true
+        break
+      }
 
       if (hasMore && !this.ctx.abortController?.signal.aborted) {
         prefetchedNext = this.fetchChangesPage(runState, cursor)
@@ -264,18 +303,18 @@ export class PullCoordinator {
   private async pullChangesPage(
     changes: RecordChangesResponse,
     runState: PullRunState
-  ): Promise<boolean> {
+  ): Promise<PageStopReason> {
     const itemIds = Array.from(
       new Set([...changes.items.map((item) => item.id), ...changes.deleted])
     )
-    if (itemIds.length === 0) return false
+    if (itemIds.length === 0) return 'none'
 
     const pageResult = await this.processPage(itemIds, runState)
     runState.pulledCount += pageResult.applied
     runState.totalConflictsResolved += pageResult.conflicts
     await this.applyCrdtBatch(runState)
 
-    return pageResult.allCryptoFailed
+    return pageResult.stop
   }
 
   private async applyCrdtBatch(runState: PullRunState): Promise<void> {
@@ -413,7 +452,7 @@ export class PullCoordinator {
           if (!isBinary) runState.crdtNoteIds.push(dec.id)
         }
 
-        runState.processedIds.add(dec.id)
+        runState.processedIds.add(itemRefKey(dec.type, dec.id))
         runState.pulledCount++
         applied++
         this.stateManager.emitItemSynced(dec.id, dec.type, 'pull', itemOp)
@@ -433,7 +472,7 @@ export class PullCoordinator {
   private async processPage(
     itemIds: string[],
     runState: PullRunState
-  ): Promise<{ applied: number; conflicts: number; allCryptoFailed: boolean }> {
+  ): Promise<{ applied: number; conflicts: number; stop: PageStopReason }> {
     const { vaultKey, timer, processedIds, crdtNoteIds } = runState
     const pullResult = await withRetry(
       () =>
@@ -452,7 +491,11 @@ export class PullCoordinator {
     const parsed = RecordPullResponseSchema.safeParse(pullResult.value)
     if (!parsed.success) {
       log.error('Invalid pull response from server', { error: parsed.error.message })
-      return { applied: 0, conflicts: 0, allCryptoFailed: false }
+      log.warn('pull_page_dropped', {
+        reason: 'invalid_pull_response',
+        droppedCount: itemIds.length
+      })
+      return { applied: 0, conflicts: 0, stop: 'none' }
     }
 
     log.debug('Pull: response parsed', {
@@ -471,11 +514,11 @@ export class PullCoordinator {
     let pageConflicts = 0
 
     const itemsToProcess = parsed.data.items.filter((item) => {
-      if (processedIds.has(item.id)) {
+      if (processedIds.has(itemRefKey(item.type, item.id))) {
         pageSkipped++
         return false
       }
-      if (this.quarantine.isQuarantined(item.id)) {
+      if (this.quarantine.isQuarantined(item.id, item.type)) {
         pageSkipped++
         return false
       }
@@ -488,6 +531,48 @@ export class PullCoordinator {
       resolveDeviceKey: (id) => this.resolveDeviceKey(id)
     })
     timer.endPhase(itemsToProcess.length)
+
+    // When EVERY item in the page fails to decrypt or verify, per-item
+    // corruption is not a plausible explanation — the vault key itself is the
+    // suspect (e.g. this device's master key no longer matches the account).
+    // Confirm against the account verifier before branding anything: a
+    // confirmed mismatch must not quarantine items, mark them corrupt, or
+    // toast security warnings — those side effects outlive the key problem and
+    // keep scaring the user after recovery. Stop the cycle and escalate once.
+    const everyItemFailed =
+      itemsToProcess.length > 0 &&
+      decrypted.length === 0 &&
+      failures.length === itemsToProcess.length
+    if (everyItemFailed && this.ctx.deps.checkAccountKey) {
+      const keyCheck = await this.ctx.deps.checkAccountKey()
+      if (keyCheck === 'mismatch') {
+        this.ctx.lastError =
+          'All items failed with crypto errors — possible vault key mismatch. ' +
+          `${failures.length} item(s) could not be decrypted.`
+        this.ctx.lastErrorInfo = {
+          category: 'crypto_failure',
+          message: this.ctx.lastError,
+          retryable: false
+        }
+        this.stateManager.setState('error')
+        log.error(
+          'Pull: vault key does not match the account — stopping cycle without recording item failures',
+          { failedCount: failures.length }
+        )
+        this.ctx.deps.onVaultKeyMismatch?.()
+        return { applied: 0, conflicts: 0, stop: 'mismatch' }
+      }
+      if (keyCheck === 'transition') {
+        // Sign-in / recovery / linking is mid-swap: the failures are expected
+        // and momentary. Stop this cycle quietly — the flow restarts sync with
+        // the settled key, and the next cycle re-pulls these items cleanly.
+        log.info(
+          'Pull: key material is being re-established — stopping cycle without recording item failures',
+          { failedCount: failures.length }
+        )
+        return { applied: 0, conflicts: 0, stop: 'transition' }
+      }
+    }
 
     for (const failure of failures) {
       if (failure.isSignatureError) {
@@ -560,7 +645,7 @@ export class PullCoordinator {
             if (!isBinary) crdtNoteIds.push(dec.id)
           }
 
-          processedIds.add(dec.id)
+          processedIds.add(itemRefKey(dec.type, dec.id))
           pageApplied++
           this.stateManager.emitItemSynced(dec.id, dec.type, 'pull', itemOp)
         } catch (applyError) {
@@ -578,14 +663,16 @@ export class PullCoordinator {
     }
     timer.endPhase(decrypted.length)
 
-    const cryptoRefetchIds = failures.filter((f) => f.isCryptoError).map((f) => f.id)
-    const parseRefetchIds = parseErrorIds.map((p) => p.id)
-    const allRefetchIds = [...cryptoRefetchIds, ...parseRefetchIds]
+    const cryptoRefetchRefs = failures
+      .filter((f) => f.isCryptoError)
+      .map((f) => ({ id: f.id, type: f.type }))
+    const parseRefetchRefs = parseErrorIds.map((p) => ({ id: p.id, type: p.type }))
+    const allRefetchRefs = [...cryptoRefetchRefs, ...parseRefetchRefs]
 
-    if (allRefetchIds.length > 0 && pageApplied > 0) {
+    if (allRefetchRefs.length > 0 && pageApplied > 0) {
       this.corruptTracker.clearExpired()
       const { recovered, permanentFailures } = await this.corruptTracker.refetch(
-        allRefetchIds,
+        allRefetchRefs,
         runState.accessJwt,
         vaultKey
       )
@@ -604,7 +691,7 @@ export class PullCoordinator {
             vaultKey
           })
           if (result === 'applied' || result === 'conflict') {
-            processedIds.add(dec.id)
+            processedIds.add(itemRefKey(dec.type, dec.id))
             pageApplied++
             pageFailed--
             this.stateManager.emitItemSynced(dec.id, dec.type, 'pull', itemOp)
@@ -622,11 +709,10 @@ export class PullCoordinator {
         }
       }
 
-      for (const id of permanentFailures) {
-        const failInfo = parseErrorIds.find((p) => p.id === id) ?? failures.find((f) => f.id === id)
+      for (const ref of permanentFailures) {
         this.ctx.deps.emitToRenderer(EVENT_CHANNELS.ITEM_CORRUPT, {
-          itemId: id,
-          type: failInfo?.type ?? 'unknown',
+          itemId: ref.id,
+          type: ref.type,
           error: 'Item corrupt after re-fetch attempt'
         } satisfies ItemCorruptEvent)
       }
@@ -647,7 +733,7 @@ export class PullCoordinator {
       conflicts: pageConflicts
     })
 
-    let allCryptoFailed = false
+    let stop: PageStopReason = 'none'
     if (
       pageFailed > 0 &&
       pageFailed === cryptoFailCount &&
@@ -664,10 +750,25 @@ export class PullCoordinator {
       }
       this.stateManager.setState('error')
       log.error('Pull: circuit breaker tripped — all items failed crypto', { cryptoFailCount })
-      allCryptoFailed = true
+      // The account key check above said 'match' (or was unavailable), so
+      // these payloads are undecryptable with the CORRECT key — server-side
+      // poisoned data that no amount of re-pulling can fix. Record each item
+      // in the corrupt tracker (cooldown) and surface it, so the caller can
+      // advance the cursor past this page without silently losing track of
+      // what failed.
+      for (const failure of failures) {
+        if (!failure.isCryptoError) continue
+        this.corruptTracker.markFailed({ id: failure.id, type: failure.type })
+        this.ctx.deps.emitToRenderer(EVENT_CHANNELS.ITEM_CORRUPT, {
+          itemId: failure.id,
+          type: failure.type,
+          error: failure.error
+        } satisfies ItemCorruptEvent)
+      }
+      stop = 'breaker'
     }
 
-    return { applied: pageApplied, conflicts: pageConflicts, allCryptoFailed }
+    return { applied: pageApplied, conflicts: pageConflicts, stop }
   }
 
   private handleConflict(dec: {

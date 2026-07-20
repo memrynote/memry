@@ -103,6 +103,43 @@ describe('store', () => {
     expect(findVault('/vaults/a')?.noteCount).toBe(8)
   })
 
+  it('preserves a stored vaultUuid when an update omits it', () => {
+    // The uuid links the row to the account vault directory; callers rebuild
+    // VaultInfo from scratch, so an omitted uuid must not erase a stored one.
+    upsertVault({
+      path: '/vaults/a',
+      name: 'Vault A',
+      noteCount: 2,
+      taskCount: 5,
+      lastOpened: '2025-01-01T00:00:00.000Z',
+      isDefault: true,
+      vaultUuid: 'uuid-1'
+    })
+
+    upsertVault({
+      path: '/vaults/a',
+      name: 'Vault A',
+      noteCount: 9,
+      taskCount: 5,
+      lastOpened: '2025-01-02T00:00:00.000Z',
+      isDefault: true
+    })
+
+    expect(findVault('/vaults/a')?.vaultUuid).toBe('uuid-1')
+    expect(findVault('/vaults/a')?.noteCount).toBe(9)
+
+    upsertVault({
+      path: '/vaults/a',
+      name: 'Vault A',
+      noteCount: 9,
+      taskCount: 5,
+      lastOpened: '2025-01-03T00:00:00.000Z',
+      isDefault: true,
+      vaultUuid: 'uuid-2'
+    })
+    expect(findVault('/vaults/a')?.vaultUuid).toBe('uuid-2')
+  })
+
   it('removes vaults and updates lastOpened', () => {
     const vaultA = {
       path: '/vaults/a',

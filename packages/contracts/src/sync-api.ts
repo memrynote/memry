@@ -60,6 +60,38 @@ export const RECORD_CLOCK_REQUIRED_ITEM_TYPES = [
 
 export const CRDT_SYNC_ITEM_TYPES = ['note'] as const
 
+/**
+ * The record sync item types understood by every client shipped BEFORE
+ * per-request sync-type negotiation existed.
+ *
+ * FROZEN — never add to this list, not even when adding a new sync item type.
+ *
+ * A pre-negotiation binary sends no `X-Memry-Sync-Types` header, so the server
+ * serves it exactly these types. Without this, a newer item type reaches a
+ * binary whose `z.enum(RECORD_SYNC_ITEM_TYPES)` rejects it, which fails the
+ * whole-page `RecordPullResponseSchema.safeParse` and silently drops a page of
+ * notes and tasks while the device cursor advances past them.
+ */
+export const LEGACY_RECORD_SYNC_ITEM_TYPES = [
+  'note',
+  'task',
+  'project',
+  'settings',
+  'inbox',
+  'filter',
+  'journal',
+  'tag_definition',
+  'folder_config',
+  'calendar_event',
+  'calendar_source',
+  'calendar_binding',
+  'calendar_external_event',
+  'agent_conversation',
+  'agent_message'
+] as const
+
+export type LegacyRecordSyncItemType = (typeof LEGACY_RECORD_SYNC_ITEM_TYPES)[number]
+
 export const SYNC_OPERATIONS = ['create', 'update', 'delete'] as const
 
 export const ENCRYPTABLE_ITEM_TYPES = [

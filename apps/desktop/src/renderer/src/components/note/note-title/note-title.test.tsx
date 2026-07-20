@@ -141,3 +141,22 @@ describe('NoteTitle - accessibility', () => {
     expect(screen.getByRole('textbox', { name: /note title/i })).toBeInTheDocument()
   })
 })
+
+describe('NoteTitle - external inputRef (rename from menu)', () => {
+  it('forwards an external ref to the underlying textarea so it can be focused', () => {
+    const inputRef = { current: null as HTMLTextAreaElement | null }
+    renderWithI18n(
+      <NoteTitle emoji={null} title="Focus Me" onTitleChange={vi.fn()} inputRef={inputRef} />
+    )
+
+    const textarea = screen.getByRole('textbox', { name: /note title/i })
+    expect(inputRef.current).toBe(textarea)
+
+    // The "Rename" menu item focuses + selects via this ref
+    inputRef.current?.focus()
+    inputRef.current?.select()
+    expect(textarea).toHaveFocus()
+    expect(inputRef.current?.selectionStart).toBe(0)
+    expect(inputRef.current?.selectionEnd).toBe('Focus Me'.length)
+  })
+})

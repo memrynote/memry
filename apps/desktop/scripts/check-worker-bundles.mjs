@@ -20,7 +20,8 @@ const outMain = resolve(dirname(fileURLToPath(import.meta.url)), '../out/main')
 const WORKER_ENTRIES = [
   'sync-worker.js',
   'image-processing-worker.js',
-  'voice-transcription-worker.js'
+  'voice-transcription-worker.js',
+  'embedding-worker.js'
 ]
 
 const RELATIVE_REQUIRE = /require\(["'](\.[^"']+)["']\)/g

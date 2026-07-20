@@ -4,12 +4,14 @@ import { AppError, ErrorCodes } from '../lib/errors'
 
 import {
   generateBlobKey,
+  generateItemBlobKey,
   generateCrdtKey,
   generateAttachmentManifestKey,
   generateAttachmentChunkKey,
   putBlob,
   getBlob,
-  deleteBlob
+  deleteBlob,
+  deleteByPrefix
 } from './blob'
 
 // ============================================================================
@@ -45,6 +47,28 @@ describe('generateBlobKey', () => {
     expect(generateBlobKey('user-1', 'item-1', 'vault-1')).toBe(
       'user-1/vaults/vault-1/items/item-1'
     )
+  })
+})
+
+describe('generateItemBlobKey', () => {
+  it('should create type-scoped item key', () => {
+    expect(generateItemBlobKey('user-1', 'task', 'item-1', 'vault-1')).toBe(
+      'user-1/vaults/vault-1/items-v2/task/item-1'
+    )
+  })
+
+  it('should give distinct keys to same-id items of different types', () => {
+    const projectKey = generateItemBlobKey('user-1', 'project', 'inbox', 'vault-1')
+    const tagKey = generateItemBlobKey('user-1', 'tag_definition', 'inbox', 'vault-1')
+    expect(projectKey).not.toBe(tagKey)
+  })
+
+  it('should never collide with the legacy untyped namespace, even for slash-containing ids', () => {
+    // folder_config ids are folder paths and may contain slashes; a legacy key
+    // like items/task/x must not equal a typed key for task 'x'.
+    const legacyNestedFolder = generateBlobKey('user-1', 'task/x', 'vault-1')
+    const typedTask = generateItemBlobKey('user-1', 'task', 'x', 'vault-1')
+    expect(legacyNestedFolder).not.toBe(typedTask)
   })
 })
 
@@ -371,5 +395,62 @@ describe('deleteBlob', () => {
     await expect(
       deleteBlob(storage as unknown as R2Bucket, 'other-user/items/x', 'user-1')
     ).rejects.toThrow(AppError)
+  })
+})
+
+// ============================================================================
+// Tests: deleteByPrefix
+// ============================================================================
+
+const makeBucket = (pages: Array<{ keys: string[]; truncated: boolean; cursor?: string }>) => {
+  const deleted: string[][] = []
+  let call = 0
+  return {
+    deleted,
+    bucket: {
+      list: vi.fn(async () => {
+        const page = pages[call++]
+        return {
+          objects: page.keys.map((key) => ({ key })),
+          truncated: page.truncated,
+          cursor: page.cursor
+        }
+      }),
+      delete: vi.fn(async (keys: string[]) => {
+        deleted.push(keys)
+      })
+    } as unknown as R2Bucket
+  }
+}
+
+describe('deleteByPrefix', () => {
+  it('deletes every page of a truncated listing', async () => {
+    const { bucket, deleted } = makeBucket([
+      { keys: ['u1/vaults/v1/items/a'], truncated: true, cursor: 'c1' },
+      { keys: ['u1/vaults/v1/items/b'], truncated: false }
+    ])
+
+    const count = await deleteByPrefix(bucket, 'u1/vaults/v1/', 'u1')
+
+    expect(count).toBe(2)
+    expect(deleted).toEqual([['u1/vaults/v1/items/a'], ['u1/vaults/v1/items/b']])
+    expect(bucket.list).toHaveBeenCalledTimes(2)
+  })
+
+  it('skips the delete call for an empty page', async () => {
+    const { bucket, deleted } = makeBucket([{ keys: [], truncated: false }])
+
+    const count = await deleteByPrefix(bucket, 'u1/vaults/v1/', 'u1')
+
+    expect(count).toBe(0)
+    expect(deleted).toEqual([])
+    expect(bucket.delete).not.toHaveBeenCalled()
+  })
+
+  it('refuses a prefix belonging to another user', async () => {
+    const { bucket } = makeBucket([{ keys: [], truncated: false }])
+
+    await expect(deleteByPrefix(bucket, 'u2/vaults/v1/', 'u1')).rejects.toThrow(AppError)
+    expect(bucket.list).not.toHaveBeenCalled()
   })
 })

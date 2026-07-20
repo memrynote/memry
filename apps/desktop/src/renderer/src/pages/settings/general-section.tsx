@@ -17,6 +17,7 @@ import { useTabPreferences } from '@/hooks/use-tab-preferences'
 import { useAppUpdater } from '@/hooks/use-app-updater'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { useTelemetrySettings } from '@/hooks/use-telemetry-settings'
+import { useReportIncident } from '@/components/diagnostics/incident-report-provider'
 import { useVault } from '@/hooks/use-vault'
 import { useTabs } from '@/contexts/tabs'
 import { toast } from 'sonner'
@@ -61,6 +62,7 @@ export function GeneralSettings() {
   } = useAppUpdater()
   const { updateSettings: updateContextSettings } = useTabs()
   const { config, updateConfig } = useVault()
+  const openIncidentReport = useReportIncident()
 
   const [defaultNoteFolder, setDefaultNoteFolder] = useState('')
 
@@ -442,6 +444,19 @@ export function GeneralSettings() {
             className={ACCENT_SWITCH}
           />
         </SettingRow>
+        <SettingRowTall
+          label={t('general.privacy.diagnostics.sendReport.label')}
+          description={t('general.privacy.diagnostics.sendReport.description')}
+        >
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => openIncidentReport({ source: 'settings' })}
+          >
+            {t('general.privacy.diagnostics.sendReport.button')}
+          </Button>
+        </SettingRowTall>
       </SettingsGroup>
     </div>
   )

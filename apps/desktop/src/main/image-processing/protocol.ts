@@ -33,6 +33,15 @@ export type ImageProcessingMainToWorkerMessage =
       type: 'shutdown'
     }
 
+// Forwarded worker warn/error log record (see lib/log-forward.ts). Kept
+// inline rather than importing from telemetry/log-ship.ts so this
+// electron-free protocol file (reachable from image-processing/worker.ts)
+// never risks pulling electron into the worker bundle.
+export interface WorkerLogForwardMessage {
+  type: 'log'
+  record: { level: string; scope?: string; data: unknown[]; date?: string }
+}
+
 export type ImageProcessingWorkerToMainMessage =
   | {
       type: 'ready'
@@ -52,3 +61,4 @@ export type ImageProcessingWorkerToMainMessage =
       requestId: string
       error: string
     }
+  | WorkerLogForwardMessage

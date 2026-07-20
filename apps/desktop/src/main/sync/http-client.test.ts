@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { RECORD_SYNC_ITEM_TYPES } from '@memry/contracts/sync-api'
 
 const mockFetch = vi.fn()
 const mockDb = { name: 'db' }
@@ -125,6 +126,36 @@ describe('http-client', () => {
           })
         })
       )
+    })
+
+    it('declares the supported record sync types when token provided', async () => {
+      // #given
+      mockFetch.mockResolvedValue(createJsonResponse({ success: true }))
+
+      // #when
+      await syncFetch('GET', '/sync/changes', undefined, 'my-token-123')
+
+      // #then
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'X-Memry-Sync-Types': RECORD_SYNC_ITEM_TYPES.join(',')
+          })
+        })
+      )
+    })
+
+    it('does not declare sync types on unauthenticated calls', async () => {
+      // #given
+      mockFetch.mockResolvedValue(createJsonResponse({ success: true }))
+
+      // #when
+      await syncFetch('GET', '/api/users')
+
+      // #then
+      const headers = mockFetch.mock.calls[0][1].headers as Record<string, string>
+      expect(headers['X-Memry-Sync-Types']).toBeUndefined()
     })
 
     it('throws NetworkError on connection failure', async () => {

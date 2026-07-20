@@ -5,6 +5,7 @@ import {
   defineDomain,
   defineEvent,
   defineMethod,
+  diagnosticsRpc,
   feedbackRpc,
   inboxRpc,
   notesRpc,
@@ -14,7 +15,7 @@ import {
   telemetryRpc
 } from './index.ts'
 
-const DOMAINS_WITHOUT_EVENTS = new Set(['telemetry', 'feedback'])
+const DOMAINS_WITHOUT_EVENTS = new Set(['telemetry', 'feedback', 'diagnostics'])
 
 describe('@memry/rpc public surface', () => {
   it('re-exports the schema factories', () => {
@@ -32,6 +33,7 @@ describe('@memry/rpc public surface', () => {
     expect(canvasRpc.name).toBe('canvas')
     expect(telemetryRpc.name).toBe('telemetry')
     expect(feedbackRpc.name).toBe('feedback')
+    expect(diagnosticsRpc.name).toBe('diagnostics')
   })
 })
 
@@ -46,7 +48,8 @@ describe('rpcDomains aggregate', () => {
       'calendar',
       'canvas',
       'telemetry',
-      'feedback'
+      'feedback',
+      'diagnostics'
     ])
   })
 

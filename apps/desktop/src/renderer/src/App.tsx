@@ -38,6 +38,7 @@ import {
   useNewNoteShortcut,
   useUndoKeyboardShortcut,
   useReminderNotifications,
+  useInboxReviewNotifications,
   useSearchShortcut,
   useHintActivation,
   isInputFocused
@@ -52,6 +53,7 @@ import { useFlushOnQuit } from '@/hooks/use-flush-on-quit'
 import { useMenuCommands } from '@/hooks/use-menu-commands'
 import { tasksService, queueTaskReorder } from '@/services/tasks-service'
 import { notesService } from '@/services/notes-service'
+import { IncidentReportProvider } from '@/components/diagnostics/incident-report-provider'
 import { VaultOnboarding } from '@/components/vault-onboarding'
 import { UpdatingScreen } from '@/components/updating-screen'
 import { UpdatePromptDialog } from '@/components/updater/update-prompt-dialog'
@@ -225,6 +227,7 @@ const AppContent = (): React.JSX.Element => {
   useNewNoteShortcut(() => void handleNewNote())
   useUndoKeyboardShortcut() // T051-T054: Cmd+Z for task undo
   useReminderNotifications() // T231-T233: In-app toast notifications for reminders
+  useInboxReviewNotifications() // Daily inbox review nudge: toast + open-inbox on click
   useFolderViewEvents() // Global cache invalidation for folder-view tabs
   const toggleSearch = useCallback(() => setSearchOpen((prev) => !prev), [])
   const openShortcutsDialog = useCallback(() => setShowShortcutsDialog(true), [])
@@ -499,48 +502,50 @@ function App(): React.JSX.Element {
   // Main content with TabProvider and TasksProvider wrapping everything
   // Wrapped in TabErrorBoundary for graceful error handling
   const mainContent = (
-    <TabErrorBoundary
-      onError={(error, errorInfo) => log.error('Critical error:', error, errorInfo)}
-    >
-      <TasksProvider
-        tasks={tasks}
-        projects={projectsWithCounts}
-        getOrderedTasks={taskOrder.getOrderedTasks}
+    <IncidentReportProvider>
+      <TabErrorBoundary
+        onError={(error, errorInfo) => log.error('Critical error:', error, errorInfo)}
       >
-        <DayPanelProvider defaultOpen={true}>
-          <CalendarViewProvider>
-            <AISettingsProvider>
-              <AIInlineProvider>
-                <HintModeProvider>
-                  <TabProvider>
-                    <AgentFeatureProvider>
-                      <TabPersistenceManager>
-                        <SettingsModalProvider>
-                          <SelectedFolderProvider>
-                            <SidebarDrillDownProvider>
-                              <AppSidebar currentPage={currentPage} viewCounts={viewCounts} />
-                              <SidebarInset className="flex flex-col overflow-hidden">
-                                <AppContent />
-                              </SidebarInset>
-                            </SidebarDrillDownProvider>
-                            <TaskDragOverlay projects={projectsWithCounts} />
-                            {/* Last child so paint order puts the chrome overlay above the
-                                tab-bar's drag-region (OS-level -webkit-app-region hit test picks
-                                the topmost layer; a drag-region painted over no-drag children eats
-                                clicks). Lives inside TabProvider for useTabs() back/forward nav. */}
-                            <WindowControls className="pointer-events-auto fixed top-0 start-0 z-[60] w-[var(--chrome-width)]" />
-                          </SelectedFolderProvider>
-                        </SettingsModalProvider>
-                      </TabPersistenceManager>
-                    </AgentFeatureProvider>
-                  </TabProvider>
-                </HintModeProvider>
-              </AIInlineProvider>
-            </AISettingsProvider>
-          </CalendarViewProvider>
-        </DayPanelProvider>
-      </TasksProvider>
-    </TabErrorBoundary>
+        <TasksProvider
+          tasks={tasks}
+          projects={projectsWithCounts}
+          getOrderedTasks={taskOrder.getOrderedTasks}
+        >
+          <DayPanelProvider defaultOpen={true}>
+            <CalendarViewProvider>
+              <AISettingsProvider>
+                <AIInlineProvider>
+                  <HintModeProvider>
+                    <TabProvider>
+                      <AgentFeatureProvider>
+                        <TabPersistenceManager>
+                          <SettingsModalProvider>
+                            <SelectedFolderProvider>
+                              <SidebarDrillDownProvider>
+                                <AppSidebar currentPage={currentPage} viewCounts={viewCounts} />
+                                <SidebarInset className="flex flex-col overflow-hidden">
+                                  <AppContent />
+                                </SidebarInset>
+                              </SidebarDrillDownProvider>
+                              <TaskDragOverlay projects={projectsWithCounts} />
+                              {/* Last child so paint order puts the chrome overlay above the
+                                  tab-bar's drag-region (OS-level -webkit-app-region hit test picks
+                                  the topmost layer; a drag-region painted over no-drag children eats
+                                  clicks). Lives inside TabProvider for useTabs() back/forward nav. */}
+                              <WindowControls className="pointer-events-auto fixed top-0 start-0 z-[60] w-[var(--chrome-width)]" />
+                            </SelectedFolderProvider>
+                          </SettingsModalProvider>
+                        </TabPersistenceManager>
+                      </AgentFeatureProvider>
+                    </TabProvider>
+                  </HintModeProvider>
+                </AIInlineProvider>
+              </AISettingsProvider>
+            </CalendarViewProvider>
+          </DayPanelProvider>
+        </TasksProvider>
+      </TabErrorBoundary>
+    </IncidentReportProvider>
   )
 
   // Highest priority: once the user triggered install, keep this screen up

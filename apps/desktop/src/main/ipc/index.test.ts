@@ -51,6 +51,8 @@ const hoisted = vi.hoisted(() => ({
   unregisterTelemetryHandlers: vi.fn(),
   registerFeedbackHandlers: vi.fn(),
   unregisterFeedbackHandlers: vi.fn(),
+  registerDiagnosticsHandlers: vi.fn(),
+  unregisterDiagnosticsHandlers: vi.fn(),
   registerAgentMcpHandlers: vi.fn(),
   unregisterAgentMcpHandlers: vi.fn(),
   registerImportHandlers: vi.fn(),
@@ -159,6 +161,10 @@ vi.mock('./feedback-handlers', () => ({
   registerFeedbackHandlers: hoisted.registerFeedbackHandlers,
   unregisterFeedbackHandlers: hoisted.unregisterFeedbackHandlers
 }))
+vi.mock('./diagnostics-handlers', () => ({
+  registerDiagnosticsHandlers: hoisted.registerDiagnosticsHandlers,
+  unregisterDiagnosticsHandlers: hoisted.unregisterDiagnosticsHandlers
+}))
 vi.mock('./agent-mcp-handlers', () => ({
   registerAgentMcpHandlers: hoisted.registerAgentMcpHandlers,
   unregisterAgentMcpHandlers: hoisted.unregisterAgentMcpHandlers
@@ -192,6 +198,7 @@ describe('ipc index registration lifecycle', () => {
     expect(hoisted.registerCrdtIpcHandlers).toHaveBeenCalledTimes(1)
     expect(hoisted.registerTelemetryHandlers).toHaveBeenCalledTimes(1)
     expect(hoisted.registerFeedbackHandlers).toHaveBeenCalledTimes(1)
+    expect(hoisted.registerDiagnosticsHandlers).toHaveBeenCalledTimes(1)
     expect(hoisted.registerAgentMcpHandlers).toHaveBeenCalledTimes(1)
     expect(hoisted.registerImportHandlers).toHaveBeenCalledTimes(1)
     expect(hoisted.registerCanvasHandlers).toHaveBeenCalledTimes(1)

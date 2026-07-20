@@ -35,12 +35,15 @@ import {
 import { readPreferences } from './vault/vault-preferences'
 import { getCurrentVaultPath, getStoredLocale, getWindowBounds, setWindowBounds } from './store'
 import { resolveStartupBounds } from './window-bounds'
+import { configureSessionPermissions } from './session-permissions'
 import { startSnoozeScheduler, stopSnoozeScheduler, checkDueItemsOnStartup } from './inbox/snooze'
 import { stopVoiceModel } from './inbox/voice-model'
 import { stopImageProcessing } from './image-processing/bridge'
 import { startReminderScheduler, stopReminderScheduler } from './lib/reminders'
+import { startInboxReviewScheduler, stopInboxReviewScheduler } from './inbox/review-scheduler'
 import { disposeTelemetryRuntime, initializeTelemetryRuntime } from './telemetry/runtime'
 import { getTelemetryAuthState, getTelemetrySyncState } from './telemetry/state'
+import { getLogShip, installLogShip } from './telemetry/log-ship'
 import {
   trackChildProcessGone,
   trackLaunchPhase,
@@ -58,6 +61,7 @@ import {
 } from './calendar/google/sync-service'
 import { log, createLogger, disableConsoleTransport, applyPackagedLogLevels } from './lib/logger'
 import { isAllowedExternalUrl, isPathInsideDirs, resolveMemryFilePath } from './lib/external-url'
+import { decideFrameNavigation } from './lib/frame-navigation'
 import { registerTestHooks } from './test-hooks'
 import {
   computeSpkiHashFromPem,
@@ -173,6 +177,31 @@ const configLog = createLogger('Config')
 const quickCaptureLog = createLogger('QuickCapture')
 const shutdownLog = createLogger('Shutdown')
 const deepLinkLog = createLogger('DeepLink')
+const navGuardLog = createLogger('NavigationGuard')
+
+// Frame-level navigation guard for every window's webContents: pins main-frame
+// navigation to the local app origin and re-routes external links through
+// shell.openExternal. Complements (does not replace) the per-window
+// setWindowOpenHandler hardening, which only covers window.open.
+app.on('web-contents-created', (_event, contents) => {
+  contents.on('will-frame-navigate', (details) => {
+    const decision = decideFrameNavigation(details.url, {
+      isMainFrame: details.isMainFrame,
+      currentUrl: contents.getURL(),
+      isDev: is.dev
+    })
+    if (decision === 'allow') return
+    details.preventDefault()
+    if (decision === 'open-external' && isAllowedExternalUrl(details.url)) {
+      void shell.openExternal(details.url)
+    } else {
+      navGuardLog.warn('Blocked frame navigation', {
+        url: details.url.slice(0, 256),
+        isMainFrame: details.isMainFrame
+      })
+    }
+  })
+})
 
 // A Finder/Dock-launched packaged app inherits only the minimal system PATH, so
 // user-installed CLIs (claude/codex) are invisible to `which` and Agent Chat
@@ -1101,6 +1130,7 @@ const appReady = app.whenReady().then(async () => {
     syncStateProvider: getTelemetrySyncState,
     accessTokenProvider: () => getValidAccessToken()
   })
+  installLogShip({ buildChannel: resolveMemryEnvironment() })
   registerMainDiagnostics()
   startActiveHeartbeat(() => BrowserWindow.getFocusedWindow() !== null)
 
@@ -1278,9 +1308,10 @@ const appReady = app.whenReady().then(async () => {
   }
   registerQuickCaptureTestHooks()
 
-  // Configure CSP and cert pinning before the window loads
+  // Configure CSP, cert pinning, and permission handlers before the window loads
   configureCsp()
   configureCertificatePinning()
+  configureSessionPermissions()
 
   if (process.platform === 'darwin' && !app.isPackaged) {
     const iconPath = join(__dirname, '../../build/icon.png')
@@ -1319,6 +1350,16 @@ const appReady = app.whenReady().then(async () => {
         trackMainLog('warn', {
           scope: 'Startup',
           action: 'reminder_scheduler_start_failed',
+          errorCode: error instanceof Error ? error.name : 'UnknownError'
+        })
+      }
+      try {
+        startInboxReviewScheduler()
+      } catch (error) {
+        mainLog.warn('inbox review scheduler failed to start:', error)
+        trackMainLog('warn', {
+          scope: 'Startup',
+          action: 'inbox_review_scheduler_start_failed',
           errorCode: error instanceof Error ? error.name : 'UnknownError'
         })
       }
@@ -1632,6 +1673,9 @@ app.on('before-quit', (event) => {
       shutdownLog.info('stopping reminder scheduler...')
       stopReminderScheduler()
 
+      shutdownLog.info('stopping inbox review scheduler...')
+      stopInboxReviewScheduler()
+
       shutdownLog.info('stopping Google Calendar sync runner...')
       stopGoogleCalendarSyncRunner()
     })
@@ -1647,9 +1691,11 @@ app.on('before-quit', (event) => {
       shutdownLog.info('stopping image processing utility...')
       return stopImageProcessing()
     })
-    .then(() => {
+    .then(async () => {
       shutdownLog.info('stopping active heartbeat...')
       stopActiveHeartbeat()
+      shutdownLog.info('flushing log-ship transport...')
+      await getLogShip()?.dispose()
       shutdownLog.info('flushing telemetry runtime...')
       return disposeTelemetryRuntime()
     })

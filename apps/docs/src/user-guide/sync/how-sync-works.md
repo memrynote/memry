@@ -129,6 +129,33 @@ Linking another device requires a one-time approval from a currently-signed-in d
 
 See [Linking Another Device](/user-guide/sync/linking-devices).
 
+## Deleting a Vault
+
+Remove a vault you no longer want from **Settings -> Vault** or the sidebar vault switcher.
+memrynote offers two distinct actions:
+
+| Action                  | Local list | Server copy | Files on disk |
+| ----------------------- | ---------- | ----------- | ------------- |
+| **Remove from list**    | removed    | kept        | kept          |
+| **Delete from account** | removed    | **purged**  | kept          |
+
+**Delete from account** purges the vault's encrypted server copy — every synced record, CRDT update,
+and attachment blob — and frees the synced-vault slot it counted against your plan. This is how you
+clear a cloud-only vault that no longer has a local copy on any device.
+
+**Your files are never touched.** A memrynote vault is an Obsidian-compatible folder you may also
+open in other tools, so deletion only removes the server copy and the app's reference to it — the
+folder and its notes stay exactly where they are on disk. Because nothing on disk is lost, the
+confirmation is a single dialog with no type-to-confirm step.
+
+A few limits:
+
+- **The active vault can't be deleted** — switch to another vault first.
+- **Deletion is not a permanent tombstone.** If another signed-in device still holds the vault
+  locally, it re-registers on its next launch and the vault reappears in your account. Delete it
+  from the last device that holds a local copy — or remove those local copies first — to keep it
+  gone.
+
 ## See Also
 
 - [Linking Another Device](/user-guide/sync/linking-devices)

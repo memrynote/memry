@@ -10,6 +10,7 @@ import {
   Plug,
   Tags,
   ListChecks,
+  Inbox,
   List,
   Key,
   User,
@@ -30,6 +31,7 @@ import { IntegrationsSettings } from './settings/integrations-section'
 import { TagsSettings } from './settings/tags-section'
 import { PropertiesSettings } from './settings/properties-section'
 import { TasksSettings } from './settings/tasks-section'
+import { InboxSettings } from './settings/inbox-section'
 import { CalendarSettingsSection } from './settings/calendar-section'
 import { ShortcutsSettings } from './settings/shortcuts-section'
 import { AccountSettings } from './settings/account-section'
@@ -90,6 +92,12 @@ export function SettingsPage() {
             isActive={activeSection === 'tasks'}
             disabled={!flags.tasks}
             onClick={() => setActiveSection('tasks')}
+          />
+          <SettingsNavItem
+            icon={<Inbox className="w-3.5 h-3.5" />}
+            label={t('page.nav.items.inbox')}
+            isActive={activeSection === 'inbox'}
+            onClick={() => setActiveSection('inbox')}
           />
           <SettingsNavItem
             icon={<CalendarDays className="w-3.5 h-3.5" />}
@@ -178,6 +186,7 @@ export function SettingsPage() {
             {activeSection === 'templates' && <TemplatesSettings />}
             {activeSection === 'journal' && <JournalSettings />}
             {activeSection === 'tasks' && <TasksSettings />}
+            {activeSection === 'inbox' && <InboxSettings />}
             {activeSection === 'calendar' && <CalendarSettingsSection />}
             {activeSection === 'vault' && <VaultSettings />}
             {activeSection === 'appearance' && <AppearanceSettings />}

@@ -163,7 +163,8 @@ export function createVaultInfo(vaultPath: string): VaultInfo {
     noteCount,
     taskCount: existingVault?.taskCount ?? 0,
     lastOpened: new Date().toISOString(),
-    isDefault: existingVault?.isDefault ?? getVaults().length === 0
+    isDefault: existingVault?.isDefault ?? getVaults().length === 0,
+    vaultUuid: existingVault?.vaultUuid
   }
 }
 
@@ -327,8 +328,6 @@ async function openVault(vaultPath: string): Promise<void> {
 
   updateStatus({ isIndexing: false, indexProgress: 100 })
 
-  await reconcileProjections()
-
   // Start file watcher for external changes
   await startWatcher(vaultPath)
 
@@ -336,10 +335,21 @@ async function openVault(vaultPath: string): Promise<void> {
   // the engine's first fullSync, and on a freshly provisioned (downloaded or
   // linked) vault that pull writes notes/journals to disk via the current vault
   // path — which throws "No vault is currently open" if the status isn't set yet.
+  //
+  // Vault-open must NOT wait on reconcileProjections(): the renderer only needs
+  // the index (built above) to render, but the embedding projector's reconcile
+  // loads the embedding model / backfills vectors, which takes ~18s on the first
+  // open after an embedding-version change — and on every fresh vault, since the
+  // stored version starts null. Blocking here stranded the app on the vault
+  // picker for that whole time. Reconcile in the background after opening.
   updateStatus({
     isOpen: true,
     path: vaultPath,
     error: null
+  })
+
+  void reconcileProjections().catch((error) => {
+    logger.error('Background projection reconcile failed:', error)
   })
 
   // Register the agent IPC handlers before the sync runtime starts: agent chat
@@ -383,8 +393,15 @@ export async function selectVault(input: { path?: string }): Promise<SelectVault
       const { getOrCreateVaultUuid } = await import('../agent/storage/vault-id')
       const { getDatabase } = await import('../database/client')
       vaultInfo.vaultUuid = getOrCreateVaultUuid(getDatabase())
-    } catch {
-      // vault opened without a data db (or uuid minting failed) — skip
+    } catch (err) {
+      // vault opened without a data db (or uuid minting failed) — the registry
+      // keeps any previously stored uuid (createVaultInfo carries it forward),
+      // but a first-time stamp failure leaves this vault unmatched in the
+      // account directory, so make it visible instead of swallowing it.
+      logger.warn('Vault uuid stamp failed; account-directory match may be stale', {
+        vaultPath,
+        error: err instanceof Error ? err.message : String(err)
+      })
     }
 
     // Store in electron-store

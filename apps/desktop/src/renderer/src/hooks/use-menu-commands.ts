@@ -4,7 +4,11 @@ import { useTabs, useActiveTab } from '@/contexts/tabs'
 import { useSidebar } from '@/components/ui/sidebar'
 import { useDayPanel } from '@/contexts/day-panel-context'
 import { useSettingsModal } from '@/contexts/settings-modal-context'
-import { isEditorMenuCommand, runEditorMenuCommand } from '@/lib/menu-commands'
+import {
+  isEditorMenuCommand,
+  runEditorMenuCommand,
+  runHistoryMenuCommand
+} from '@/lib/menu-commands'
 
 interface MenuCommandHandlers {
   onNewNote: () => void
@@ -29,6 +33,8 @@ export function useMenuCommands({ onNewNote, onOpenSearch }: MenuCommandHandlers
     'file.openQuickly': onOpenSearch,
     'file.closeTab': () => activeTab && closeTab(activeTab.id),
     'file.exportPdf': () => window.dispatchEvent(new CustomEvent('memry:menu-export')),
+    'edit.undo': () => runHistoryMenuCommand('undo'),
+    'edit.redo': () => runHistoryMenuCommand('redo'),
     'edit.find': () => window.dispatchEvent(new CustomEvent('memry:menu-find')),
     'app.preferences': () => openSettings(),
     'view.toggleSidebar': toggleSidebar,

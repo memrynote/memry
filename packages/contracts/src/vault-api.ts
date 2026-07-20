@@ -135,6 +135,8 @@ export interface VaultHandlers {
   [VaultChannels.invoke.DOWNLOAD_REMOTE]: (
     input: z.infer<typeof DownloadRemoteVaultSchema>
   ) => Promise<SelectVaultResponse>
+
+  [VaultChannels.invoke.DELETE_FROM_ACCOUNT]: (vaultUuid: string) => Promise<void>
 }
 
 // ============================================================================
@@ -174,4 +176,5 @@ export interface VaultClientAPI {
   reveal(): Promise<void>
   listAccount(): Promise<AccountVaultInfo[]>
   downloadRemote(vaultUuid: string, parentPath?: string): Promise<SelectVaultResponse>
+  deleteFromAccount(vaultUuid: string): Promise<void>
 }

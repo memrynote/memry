@@ -3,6 +3,23 @@ import { AppError, ErrorCodes } from '../lib/errors'
 export const generateBlobKey = (userId: string, itemId: string, vaultId = 'default'): string =>
   `${userId}/vaults/${vaultId}/items/${itemId}`
 
+// Sync-item payload keys must include the item type: item ids are human-readable
+// and collide across types by design (default project id 'inbox', tag_definition
+// id = lowercased tag name, folder_config id = folder path), so an untyped key
+// makes a project and a tag named 'inbox' overwrite ONE R2 object while D1 keeps
+// two rows — the losing row's signature can never verify again and its payload
+// is silently destroyed. The 'items-v2' segment keeps the typed namespace fully
+// disjoint from legacy untyped keys (folder_config ids may contain slashes, so
+// nesting types under 'items/' could still collide with an old key). Reads are
+// unaffected: every consumer reads the per-row stored blob_key, never re-derives
+// it, so legacy rows keep resolving to their old untyped objects.
+export const generateItemBlobKey = (
+  userId: string,
+  itemType: string,
+  itemId: string,
+  vaultId = 'default'
+): string => `${userId}/vaults/${vaultId}/items-v2/${itemType}/${itemId}`
+
 export const generateCrdtKey = (userId: string, noteId: string, vaultId = 'default'): string =>
   `${userId}/vaults/${vaultId}/crdt/${noteId}/snapshot`
 
@@ -103,4 +120,30 @@ export const getBlob = async (
 export const deleteBlob = async (storage: R2Bucket, key: string, userId: string): Promise<void> => {
   assertKeyBelongsToUser(key, userId)
   await storage.delete(key)
+}
+
+/**
+ * Delete every object under a prefix, honoring R2 list pagination.
+ * The prefix must be inside the caller's own namespace.
+ */
+export const deleteByPrefix = async (
+  storage: R2Bucket,
+  prefix: string,
+  userId: string
+): Promise<number> => {
+  assertKeyBelongsToUser(prefix, userId)
+
+  let cursor: string | undefined
+  let deleted = 0
+  do {
+    const listing = await storage.list({ prefix, cursor })
+    const keys = listing.objects.map((o) => o.key)
+    if (keys.length > 0) {
+      await storage.delete(keys)
+      deleted += keys.length
+    }
+    cursor = listing.truncated ? listing.cursor : undefined
+  } while (cursor)
+
+  return deleted
 }

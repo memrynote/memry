@@ -1,4 +1,4 @@
-import keytar from 'keytar'
+import { deleteSecret, getSecret, setSecret } from '../../secrets/secret-storage'
 
 const SERVICE = 'com.memry.calendar.google'
 
@@ -24,11 +24,11 @@ async function setPassword(
 
   try {
     if (!value || value.trim().length === 0) {
-      await keytar.deletePassword(SERVICE, account)
+      await deleteSecret(SERVICE, account)
       return
     }
 
-    await keytar.setPassword(SERVICE, account, value.trim())
+    await setSecret(SERVICE, account, value.trim())
   } catch (error) {
     throw new Error(
       `Failed to store Google Calendar credential (${account}): ${error instanceof Error ? error.message : 'unknown error'}`
@@ -40,7 +40,7 @@ async function getPassword(accountId: string, kind: GoogleTokenKind): Promise<st
   const account = getAccountKey(accountId, kind)
 
   try {
-    return await keytar.getPassword(SERVICE, account)
+    return await getSecret(SERVICE, account)
   } catch (error) {
     throw new Error(
       `Failed to read Google Calendar credential (${account}): ${error instanceof Error ? error.message : 'unknown error'}`
@@ -52,7 +52,7 @@ async function deletePassword(accountId: string, kind: GoogleTokenKind): Promise
   const account = getAccountKey(accountId, kind)
 
   try {
-    await keytar.deletePassword(SERVICE, account)
+    await deleteSecret(SERVICE, account)
   } catch (error) {
     throw new Error(
       `Failed to delete Google Calendar credential (${account}): ${error instanceof Error ? error.message : 'unknown error'}`

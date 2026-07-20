@@ -16,9 +16,23 @@
       "willSync": "Note will sync to cloud",
       "renameFailed": "Failed to rename note",
       "toggleLocalOnlyFailed": "Failed to toggle local only",
-      "toggleFullWidthFailed": "Failed to toggle full width"
+      "toggleFullWidthFailed": "Failed to toggle full width",
+      "pathCopied": "Path copied",
+      "copyPathFailed": "Failed to copy path",
+      "revealFailed": "Failed to reveal note",
+      "openExternalFailed": "Failed to open note",
+      "moved": "Note moved",
+      "moveFailed": "Failed to move note",
+      "deleteFailed": "Failed to delete note"
     },
-    "deleteDialogTitle": "{count, plural, one {Delete Note} other {Delete # Notes}}"
+    "deleteDialogTitle": "{count, plural, one {Delete Note} other {Delete # Notes}}",
+    "deleteConfirm": {
+      "title": "Delete note",
+      "description": "Are you sure you want to delete \"{title}\"? This action cannot be undone.",
+      "cancel": "Cancel",
+      "confirm": "Delete",
+      "deleting": "Deleting..."
+    }
   },
   "tree": {
     "aria": {
@@ -80,12 +94,21 @@
       "addBookmark": "Add bookmark",
       "hideLocalGraph": "Hide local graph",
       "showLocalGraph": "Show local graph",
+      "moreActions": "More actions",
+      "find": "Find…",
       "versionHistory": "Version history",
       "export": "Export",
       "applyTemplate": "Apply Template",
       "fullWidth": "Full width",
+      "rename": "Rename…",
+      "moveToFolder": "Move to folder…",
+      "copyPath": "Copy path",
+      "revealInFinder": "Reveal in Finder",
+      "revealInSidebar": "Reveal in navigation",
+      "openInDefaultApp": "Open in default app",
       "disableLocalOnly": "Disable local only",
-      "setLocalOnly": "Set local only"
+      "setLocalOnly": "Set local only",
+      "delete": "Delete note"
     },
     "breadcrumb": {
       "locationAria": "Note location",

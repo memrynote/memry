@@ -46,6 +46,51 @@ account master key and rebinds this verifier before the sync runtime activates. 
 created before sign-in on the same encrypted sync path instead of leaving the push queue without a
 usable vault key.
 
+## Secret Storage
+
+Secrets (vault master key, sync keys, Google Calendar tokens, voice transcription and local agent
+provider API keys, and the capture pairing token) are stored as Electron `safeStorage` ciphertext in
+an atomically written `secure-secrets.json` under the app's user-data directory, keyed by the same
+service and account strings the OS keychain used. The retired `keytar` module stays installed as a
+read-only fallback: every read tries the safeStorage store first and falls back to the OS keychain
+under the identical account.
+
+A legacy secret migrates lazily on first read: encrypt, persist, decrypt round-trip verify
+byte-identical against the source, and only then delete the OS keychain copy. Any verification
+failure keeps the OS keychain authoritative. The vault master key goes one step further — its OS
+keychain copy is only deleted after the retrieved key has passed the vault verifier check. Migration
+is idempotent and crash-resumable: a crash between persist and delete is cleaned up on a later run,
+and only while both copies still match.
+
+Writes gate on `safeStorage.isEncryptionAvailable()` evaluated after app `ready`. On Linux, the
+plaintext `basic_text` backend refuses migration entirely so secrets are never silently downgraded
+out of the OS keyring. Plain `pnpm dev` worktrees also stay on the OS keychain: they share one `dev`
+master key machine-globally while user data is per-worktree, so migrating would strand the shared
+key for other worktrees.
+
+## Vault-Key Mismatch Detection
+
+The per-vault verifier only proves self-consistency — a freshly provisioned vault binds whatever
+master key the keychain currently holds, even a wrong one. The account-level check closes that gap:
+the account's key verifier (a non-secret KDF-derived check value, the same one `/auth/setup`
+registers) is cached locally at sign-in/recovery/linking and fetched from `GET /auth/key-verifier`
+(access-token auth) when no local copy exists.
+
+`checkLocalKeyAgainstAccount()` compares the verifier derived from the keychain master key against
+the account verifier and returns one of four verdicts: `match` (safe to sync), `mismatch` (this key
+can never decrypt the account's data), `transition` (a sign-in/recovery/linking flow is
+re-establishing key material — a ~2-minute activity window after `persistKeysAndRegisterDevice`), or
+`unknown` (offline with no cached verifier, no session, or an unreadable keychain — never classified
+destructively).
+
+The check runs at three points: the startup integrity check, sync-runtime start, and any pull page
+where every item fails to decrypt or verify. Only a **confirmed mismatch** acts: sync is blocked, a
+`vault-recovery-needed` event prompts the recovery flow, and at startup the session is torn down so
+ordinary sign-in + recovery phrase restores the correct key. A confirmed mismatch during pull stops
+the cycle without quarantining items or marking them corrupt — those side effects would outlive the
+key problem. When recovery rebinds the vault to a new key, the pull cursor and persisted quarantine
+state are purged so the corrected key starts from a clean slate.
+
 ## Nonces
 
 All XChaCha20 operations use 24-byte random nonces from `sodium.randombytes_buf(24)` via a dedicated nonce utility (T029b). Nonces are stored alongside ciphertext.
@@ -61,6 +106,17 @@ staging sync host each resolve to their own SPKI hash set, and hosts without con
 allowed through the Electron verifier instead of being compared against an unrelated environment's
 pins. Development builds keep pinning disabled so local sync servers and test certificates remain
 usable.
+
+## Renderer Permission Policy
+
+The desktop app registers deny-by-default permission handlers on the Electron session at startup,
+covering both permission requests and permission checks. Grants are limited to the app's own pages
+(packaged `file://` pages, the `memry-file://` asset scheme, and the localhost dev server in
+development builds) and to the permissions the app actually uses: microphone capture for the voice
+recorder (audio only — video capture is always denied), clipboard read for quick capture, sanitized
+clipboard writes for copy actions, and HTML5 notifications for inbox reviews. Every other
+permission (geolocation, camera, MIDI, fullscreen, and so on) and every request from embedded
+external content such as YouTube iframes is denied.
 
 ## Tombstone Signing
 

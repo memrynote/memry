@@ -37,6 +37,7 @@ function createEditor(options?: { registerCreatesExtension?: boolean }) {
     }),
     focus: vi.fn(),
     setTextCursorPosition: vi.fn(),
+    isEditable: true,
     document: [] as Array<{ id: string }>
   }
 
@@ -121,6 +122,44 @@ describe('useBlockNoteSetup', () => {
 
     expect((window as unknown as { __memryEditor?: unknown }).__memryEditor).toBeUndefined()
     expect(editor.registerExtension).not.toHaveBeenCalled()
+  })
+
+  it('does not expose read-only editors as the menu-command target', () => {
+    const { editor } = createEditor()
+    editor.isEditable = false
+
+    const { unmount } = renderHook(() =>
+      useBlockNoteSetup({
+        editor,
+        aiPort: null,
+        editorContainerRef
+      })
+    )
+
+    expect((window as unknown as { __memryEditor?: unknown }).__memryEditor).toBeUndefined()
+    unmount()
+  })
+
+  it('keeps another live editor registered when a later mount unmounts', () => {
+    const { editor: noteEditor } = createEditor()
+    ;(window as unknown as { __memryEditor?: unknown }).__memryEditor = noteEditor
+
+    const { editor: previewEditor } = createEditor()
+    const { unmount } = renderHook(() =>
+      useBlockNoteSetup({
+        editor: previewEditor,
+        aiPort: null,
+        editorContainerRef
+      })
+    )
+    expect((window as unknown as { __memryEditor?: unknown }).__memryEditor).toBe(previewEditor)
+
+    // Re-register the note editor (its own effect would do this on focus/remount
+    // in the app); the preview's later cleanup must not clobber it.
+    ;(window as unknown as { __memryEditor?: unknown }).__memryEditor = noteEditor
+    unmount()
+
+    expect((window as unknown as { __memryEditor?: unknown }).__memryEditor).toBe(noteEditor)
   })
 
   it('syncs spellcheck and focus-at-end behavior into the editor DOM', () => {

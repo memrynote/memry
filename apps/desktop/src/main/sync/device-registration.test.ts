@@ -105,6 +105,11 @@ vi.mock('./runtime', () => ({
   startSyncRuntime: (...args: unknown[]) => mocks.startSyncRuntime(...args)
 }))
 
+vi.mock('./key-verification', () => ({
+  markKeyMaterialActivity: vi.fn(),
+  persistAccountKeyVerifier: vi.fn()
+}))
+
 vi.mock('../calendar/google/sync-service', () => ({
   startGoogleCalendarSyncRunner: (...args: unknown[]) =>
     mocks.startGoogleCalendarSyncRunner(...args)

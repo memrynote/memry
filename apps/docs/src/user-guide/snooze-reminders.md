@@ -58,6 +58,12 @@ memrynote shows a toast with:
 - Title and snippet
 - Action buttons (snooze 5 min, snooze 10 min, custom snooze, open, dismiss)
 
+A system notification is shown as well. On macOS, dismissing or snoozing the reminder also removes its delivered banner from Notification Center, so handled reminders don't pile up there.
+
+### Dock & Taskbar Badge
+
+The app icon shows a badge with the number of pending reminders (scheduled or snoozed). The badge updates as reminders fire, get created, snoozed, or dismissed, and clears when nothing is pending. Numeric badges appear on the macOS Dock and Linux Unity launcher; Windows does not support numeric taskbar badges.
+
 ### Reminder Badge
 
 Items with upcoming reminders show a small bell badge in the sidebar / tab bar / inbox row. Hover for the time.
@@ -73,7 +79,7 @@ Each row shows the source type icon and title; clicking it opens the source — 
 
 ### App Closed When Reminder Fires?
 
-The toast appears when memrynote next opens. Reminders aren't OS-level notifications (yet — see [Roadmap](/roadmap)).
+The reminder fires the next time memrynote opens: the toast and system notification appear, and the reminder lands in the inbox.
 
 ## Snooze vs Reminder
 

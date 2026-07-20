@@ -2,12 +2,24 @@ import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { RefreshCw } from '@/lib/icons'
 import { useStorageUsage } from '@/hooks/use-storage-usage'
+import { useAccountVaults } from '@/hooks/use-account-vaults'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import { formatBytes } from '@/lib/format'
 import {
   SettingsHeader,
   SettingsGroup,
   SettingRow
 } from '@/components/settings/settings-primitives'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '@/components/ui/alert-dialog'
 import { useT } from '@memry/i18n/renderer'
 
 const STORAGE_COLORS: Record<string, string> = {
@@ -19,9 +31,14 @@ const STORAGE_COLORS: Record<string, string> = {
 
 export function VaultSettings() {
   const { t } = useT('settings')
+  const { t: tCommon } = useT('common')
   const { data, loading, refresh } = useStorageUsage()
+  const { accountVaults, refresh: refreshAccountVaults } = useAccountVaults()
   const [vaultPath, setVaultPath] = useState<string | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [vaultToDelete, setVaultToDelete] = useState<{ uuid: string; name: string } | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   useEffect(() => {
     window.api.vault
@@ -31,6 +48,10 @@ export function VaultSettings() {
       })
       .catch(() => null)
   }, [])
+
+  useEffect(() => {
+    void refreshAccountVaults()
+  }, [refreshAccountVaults])
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true)
@@ -42,6 +63,20 @@ export function VaultSettings() {
     if (!vaultPath) return
     await window.api.vault.reveal()
   }, [vaultPath])
+
+  const handleConfirmDelete = useCallback(async () => {
+    if (!vaultToDelete) return
+    setDeleting(true)
+    try {
+      await window.api.vault.deleteFromAccount(vaultToDelete.uuid)
+      setVaultToDelete(null)
+      await refreshAccountVaults()
+    } catch (err) {
+      setDeleteError(extractErrorMessage(err, t('vault.accountVaults.deleteFailed')))
+    } finally {
+      setDeleting(false)
+    }
+  }, [vaultToDelete, refreshAccountVaults, t])
 
   return (
     <div className="flex flex-col text-xs/4">
@@ -113,6 +148,45 @@ export function VaultSettings() {
         )}
       </SettingsGroup>
 
+      <SettingsGroup label={t('vault.groups.accountVaults')}>
+        {accountVaults.length === 0 ? (
+          <div className="py-3 px-4">
+            <p className="text-xs/4 text-muted-foreground">{t('vault.accountVaults.empty')}</p>
+          </div>
+        ) : (
+          accountVaults.map((vault) => {
+            const isActive = !!vault.localPath && vault.localPath === vaultPath
+            const name = vault.name ?? vault.vaultUuid
+            return (
+              <SettingRow
+                key={vault.vaultUuid}
+                label={name}
+                description={
+                  isActive
+                    ? t('vault.accountVaults.activeHint')
+                    : (vault.localPath ??
+                      `${t('vault.accountVaults.cloudOnly')} · ${t('vault.accountVaults.itemsCount', { count: vault.itemCount })}`)
+                }
+              >
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={isActive}
+                  onClick={() => {
+                    setDeleteError(null)
+                    setVaultToDelete({ uuid: vault.vaultUuid, name })
+                  }}
+                  aria-label={`Delete ${name} from account`}
+                  className="h-7 px-3 text-xs/4 text-destructive border-destructive/30 hover:bg-destructive/10"
+                >
+                  {t('vault.accountVaults.delete')}
+                </Button>
+              </SettingRow>
+            )
+          })
+        )}
+      </SettingsGroup>
+
       <SettingsGroup label={t('vault.groups.location')}>
         <SettingRow label={t('vault.vaultPath')} description={vaultPath ?? '~/Documents/memry'}>
           <Button
@@ -126,6 +200,39 @@ export function VaultSettings() {
           </Button>
         </SettingRow>
       </SettingsGroup>
+
+      <AlertDialog
+        open={!!vaultToDelete}
+        onOpenChange={(o) => {
+          if (!o) {
+            setVaultToDelete(null)
+            setDeleteError(null)
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t('vault.accountVaults.deleteTitle', { name: vaultToDelete?.name ?? '' })}
+            </AlertDialogTitle>
+            <AlertDialogDescription>{t('vault.accountVaults.deleteBody')}</AlertDialogDescription>
+          </AlertDialogHeader>
+          {deleteError && <p className="text-xs/4 text-destructive px-1">{deleteError}</p>}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>{tCommon('button.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault()
+                void handleConfirmDelete()
+              }}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {t('vault.accountVaults.deleteConfirm')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

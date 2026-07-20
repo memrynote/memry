@@ -1,4 +1,5 @@
 import { createLogger } from '../lib/logger'
+import { installWorkerLogForwarding } from '../lib/log-forward'
 import { generateThumbnailInWorker, processInboxImageFile } from './operations'
 import type {
   ImageProcessingMainToWorkerMessage,
@@ -11,6 +12,8 @@ const parentPort = process.parentPort
 if (!parentPort) {
   throw new Error('image-processing worker must be run as an Electron utility process')
 }
+
+installWorkerLogForwarding('ImageProcessing')
 
 async function handleGenerateThumbnail(
   message: Extract<ImageProcessingMainToWorkerMessage, { type: 'generate-thumbnail' }>

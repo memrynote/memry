@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import {
   FEATURES_SETTINGS_DEFAULTS,
@@ -18,13 +18,16 @@ export function useFeatureFlags(): UseFeatureFlagsReturn {
   const [flags, setFlags] = useState<FeaturesSettings>(FEATURES_SETTINGS_DEFAULTS)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  // Writes that land while the initial fetch is in flight; the fetch result is a
+  // snapshot read before those writes, so they must win over it.
+  const overridesRef = useRef<Partial<FeaturesSettings>>({})
 
   useEffect(() => {
     let mounted = true
     const load = async (): Promise<void> => {
       try {
         const result = await window.api.settings.getFeaturesSettings()
-        if (mounted) setFlags(result)
+        if (mounted) setFlags({ ...result, ...overridesRef.current })
       } catch (err) {
         if (mounted) setError(extractErrorMessage(err))
       } finally {
@@ -40,7 +43,9 @@ export function useFeatureFlags(): UseFeatureFlagsReturn {
   useEffect(() => {
     const unsubscribe = window.api.onSettingsChanged((event) => {
       if (event.key === 'features') {
-        setFlags((prev) => ({ ...prev, ...(event.value as Partial<FeaturesSettings>) }))
+        const value = event.value as Partial<FeaturesSettings>
+        overridesRef.current = { ...overridesRef.current, ...value }
+        setFlags((prev) => ({ ...prev, ...value }))
       }
     })
     return unsubscribe
@@ -51,6 +56,7 @@ export function useFeatureFlags(): UseFeatureFlagsReturn {
     try {
       const result = await window.api.settings.setFeaturesSettings(updates)
       if (result.success) {
+        overridesRef.current = { ...overridesRef.current, ...updates }
         setFlags((prev) => ({ ...prev, ...updates }))
         return true
       }

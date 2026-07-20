@@ -7,7 +7,9 @@ import { Component, type ErrorInfo, type ReactNode } from 'react'
 import { AlertTriangle, RefreshCw } from '@/lib/icons'
 import { createLogger } from '@/lib/logger'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
+import { useReportIncident } from '@/components/diagnostics/incident-report-provider'
 import { useT } from '@memry/i18n/renderer'
+import { toErrorCode } from '@memry/contracts/telemetry-api'
 
 const log = createLogger('Component:TabErrorBoundary')
 
@@ -18,10 +20,16 @@ interface TabErrorBoundaryProps {
   onError?: (error: Error, errorInfo: ErrorInfo) => void
 }
 
+interface TabErrorBoundaryImplProps extends TabErrorBoundaryProps {
+  /** Fallback callback to offer a diagnostic incident report for the caught error */
+  onReport?: (error: Error) => void
+}
+
 interface TabErrorBoundaryLabels {
   somethingWentWrong: string
   errorOccurred: string
   tryAgain: string
+  sendReport: string
 }
 
 interface TabErrorBoundaryState {
@@ -34,10 +42,10 @@ interface TabErrorBoundaryState {
  * Shows fallback UI when content crashes
  */
 class TabErrorBoundaryImpl extends Component<
-  TabErrorBoundaryProps & { labels: TabErrorBoundaryLabels },
+  TabErrorBoundaryImplProps & { labels: TabErrorBoundaryLabels },
   TabErrorBoundaryState
 > {
-  constructor(props: TabErrorBoundaryProps & { labels: TabErrorBoundaryLabels }) {
+  constructor(props: TabErrorBoundaryImplProps & { labels: TabErrorBoundaryLabels }) {
     super(props)
     this.state = { hasError: false, error: null }
   }
@@ -56,6 +64,10 @@ class TabErrorBoundaryImpl extends Component<
     this.setState({ hasError: false, error: null })
   }
 
+  handleReport = (): void => {
+    if (this.state.error) this.props.onReport?.(this.state.error)
+  }
+
   render(): ReactNode {
     if (this.state.hasError) {
       const { labels } = this.props
@@ -70,14 +82,23 @@ class TabErrorBoundaryImpl extends Component<
                 {this.state.error.message}
               </code>
             )}
-            <button
-              type="button"
-              onClick={this.handleRetry}
-              className="flex items-center gap-2 px-4 py-2 bg-tint text-tint-foreground rounded-md hover:bg-tint-hover transition-colors"
-            >
-              <RefreshCw className="w-4 h-4" />
-              {labels.tryAgain}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={this.handleRetry}
+                className="flex items-center gap-2 px-4 py-2 bg-tint text-tint-foreground rounded-md hover:bg-tint-hover transition-colors"
+              >
+                <RefreshCw className="w-4 h-4" />
+                {labels.tryAgain}
+              </button>
+              <button
+                type="button"
+                onClick={this.handleReport}
+                className="flex items-center gap-2 px-4 py-2 border border-border rounded-md hover:bg-muted transition-colors"
+              >
+                {labels.sendReport}
+              </button>
+            </div>
           </div>
         </div>
       )
@@ -89,15 +110,20 @@ class TabErrorBoundaryImpl extends Component<
 
 export function TabErrorBoundary(props: TabErrorBoundaryProps): ReactNode {
   const { t } = useT('common')
+  const open = useReportIncident()
   return (
     <TabErrorBoundaryImpl
       {...props}
+      onReport={(error) =>
+        open({ source: 'tab_error_boundary', errorCode: toErrorCode(error), stack: error.stack })
+      }
       labels={{
         somethingWentWrong: t('phaseF.componentsTabsTabErrorBoundary.somethingWentWrong'),
         errorOccurred: t(
           'phaseF.componentsTabsTabErrorBoundary.anErrorOccurredWhileRenderingThisTabContent'
         ),
-        tryAgain: t('phaseF.componentsTabsTabErrorBoundary.tryAgain')
+        tryAgain: t('phaseF.componentsTabsTabErrorBoundary.tryAgain'),
+        sendReport: t('phaseF.componentsTabsTabErrorBoundary.sendReport')
       }}
     />
   )

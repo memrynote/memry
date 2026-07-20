@@ -8,6 +8,7 @@ import { AppError, ErrorCodes } from '../lib/errors'
 import { authMiddleware } from '../middleware/auth'
 import { paidSyncMiddleware } from '../middleware/paid-sync'
 import { createRateLimiter } from '../middleware/rate-limit'
+import { syncTypesMiddleware } from '../middleware/sync-types'
 import {
   getChanges,
   getItem,
@@ -24,6 +25,7 @@ import {
   getSyncEntitlement,
   isPaidSyncEntitlementActive
 } from '../services/entitlements'
+import { deleteVaultData, vaultExistsForUser } from '../services/vault-deletion'
 import {
   logCrdtTraffic,
   logRecordPushBatch,
@@ -102,7 +104,32 @@ const handleRegisterVault = async (c: Context<AppContext>): Promise<Response> =>
 
 sync.post('/vaults', vaultsRateLimit, handleRegisterVault)
 
+// Auth-only like GET/POST /vaults, and registered before paidSyncMiddleware for
+// a sharper reason: that middleware runs ensureSyncVaultAllowed, which UPSERTS.
+// Below it, this route would have its own target re-created mid-request.
+const handleDeleteVault = async (c: Context<AppContext>): Promise<Response> => {
+  const userId = c.get('userId')!
+  const vaultId = c.req.param('vaultId')
+
+  if (!vaultId || !/^[a-zA-Z0-9_-]{1,128}$/.test(vaultId)) {
+    throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid vault id', 400)
+  }
+
+  if (!(await vaultExistsForUser(c.env.DB, userId, vaultId))) {
+    throw new AppError(ErrorCodes.SYNC_VAULT_NOT_FOUND, 'Vault not found', 404)
+  }
+
+  await deleteVaultData(c.env.DB, c.env.STORAGE, userId, vaultId)
+
+  safeWaitUntil(c, captureBusinessEvent(c.env, 'vault_deleted', userId, {}))
+
+  return c.json({ success: true })
+}
+
+sync.delete('/vaults/:vaultId', vaultsRateLimit, handleDeleteVault)
+
 sync.use('*', paidSyncMiddleware)
+sync.use('*', syncTypesMiddleware)
 
 const MAX_UPDATE_BYTES = 5 * 1024 * 1024 // 5MB per individual update
 const BASE64_CHUNK_SIZE = 8192
@@ -247,7 +274,7 @@ const handleRecordStatus = async (c: Context<AppContext>): Promise<Response> => 
 const handleRecordManifest = async (c: Context<AppContext>): Promise<Response> => {
   const userId = c.get('userId')!
   const vaultId = c.get('vaultId')!
-  const manifest = await getManifest(c.env.DB, userId, vaultId)
+  const manifest = await getManifest(c.env.DB, userId, vaultId, c.get('syncTypes')!)
   return c.json(manifest)
 }
 
@@ -271,7 +298,7 @@ const handleRecordChanges = async (c: Context<AppContext>): Promise<Response> =>
     logQueryValidationFailure('record', endpoint, 'Invalid limit value')
   }
 
-  const changes = await getChanges(c.env.DB, userId, cursor, limit, vaultId)
+  const changes = await getChanges(c.env.DB, userId, cursor, limit, vaultId, c.get('syncTypes')!)
 
   if (changes.items.length > 0 || changes.deleted.length > 0) {
     await updateDeviceCursor(c.env.DB, deviceId, userId, changes.nextCursor, vaultId)
@@ -381,7 +408,14 @@ const handleRecordPull = async (c: Context<AppContext>): Promise<Response> => {
     label: 'pull request'
   })
 
-  const items = await pullItems(c.env.DB, c.env.STORAGE, userId, parsed.itemIds, vaultId)
+  const items = await pullItems(
+    c.env.DB,
+    c.env.STORAGE,
+    userId,
+    parsed.itemIds,
+    vaultId,
+    c.get('syncTypes')!
+  )
   logRecordQueryBatch({
     endpoint,
     operation: 'pull',

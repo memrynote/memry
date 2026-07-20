@@ -1,12 +1,13 @@
 import { Hono } from 'hono'
 
+import { DiagnosticLogBatchSchema } from '@memry/contracts/diagnostics-api'
 import { LandingTelemetryBatchSchema, TelemetryBatchSchema } from '@memry/contracts/telemetry-api'
 
 import { AppError, ErrorCodes } from '../lib/errors'
 import { createLogger } from '../lib/logger'
 import { createRateLimiter } from '../middleware/rate-limit'
 import { safeWaitUntil } from '../services/analytics'
-import { desktopErrorEntry, pushLokiEntries } from '../services/loki'
+import { desktopErrorEntry, desktopLogEntry, pushLokiEntries } from '../services/loki'
 import {
   hashTelemetryId,
   writeLandingTelemetryBatch,
@@ -57,6 +58,45 @@ telemetry.post('/batch', async (c) => {
   }
 
   return c.json(result, 202)
+})
+
+telemetry.use(
+  '/logs',
+  createRateLimiter({ maxRequests: 120, windowSeconds: 60, keyPrefix: 'telemetry-logs' })
+)
+
+// Redacted diagnostic log lines (client already ran redactLogLine) → Loki only,
+// no D1/Analytics Engine write. Fire-and-forget, same privacy posture as /batch.
+telemetry.post('/logs', async (c) => {
+  const body = await c.req.json().catch(() => null)
+  const parsed = DiagnosticLogBatchSchema.safeParse(body)
+  if (!parsed.success) {
+    logger.warn('Invalid diagnostic log batch', {
+      issues: parsed.error.issues
+        .slice(0, 10)
+        .map((issue) => `${issue.path.join('.') || '(root)'}:${issue.code}`)
+    })
+    throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid diagnostic log batch', 400)
+  }
+
+  const batch = parsed.data
+  const meta = {
+    appVersion: batch.appVersion,
+    buildChannel: batch.buildChannel,
+    platform: batch.platform,
+    arch: batch.arch
+  }
+  safeWaitUntil(
+    c,
+    hashTelemetryId(c.env.TELEMETRY_HMAC_KEY, batch.installId).then((installHash) =>
+      pushLokiEntries(
+        c.env,
+        batch.lines.map((line) => desktopLogEntry(line, meta, installHash))
+      )
+    )
+  )
+
+  return c.json({ accepted: batch.lines.length }, 202)
 })
 
 telemetry.use(

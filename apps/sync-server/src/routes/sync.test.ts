@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest'
 
 import { AppError, ErrorCodes, errorHandler } from '../lib/errors'
+import { LEGACY_RECORD_SYNC_ITEM_TYPES } from '@memry/contracts/sync-api'
 import type { AppContext } from '../types'
 
 // ============================================================================
@@ -62,6 +63,11 @@ vi.mock('../services/entitlements', () => ({
   ensureSyncVaultAllowed: vi.fn().mockResolvedValue(undefined)
 }))
 
+vi.mock('../services/vault-deletion', () => ({
+  vaultExistsForUser: vi.fn().mockResolvedValue(true),
+  deleteVaultData: vi.fn().mockResolvedValue(undefined)
+}))
+
 vi.mock('../services/crdt', () => ({
   storeUpdates: vi.fn().mockResolvedValue([1]),
   getUpdates: vi.fn().mockResolvedValue({ updates: [], hasMore: false }),
@@ -119,6 +125,8 @@ import {
   setVaultName
 } from '../services/sync'
 import { ensureSyncVaultAllowed, isPaidSyncEntitlementActive } from '../services/entitlements'
+import { paidSyncMiddleware } from '../middleware/paid-sync'
+import { deleteVaultData, vaultExistsForUser } from '../services/vault-deletion'
 import {
   storeUpdates,
   getUpdates,
@@ -394,6 +402,92 @@ describe('sync routes', () => {
   })
 
   // ==========================================================================
+  // DELETE /sync/vaults/:vaultId
+  // ==========================================================================
+
+  describe('DELETE /sync/vaults/:vaultId', () => {
+    beforeEach(() => {
+      vi.mocked(vaultExistsForUser).mockResolvedValue(true)
+      vi.mocked(deleteVaultData).mockResolvedValue(undefined)
+    })
+
+    it('purges the vault and returns success', async () => {
+      const res = await app.request('/sync/vaults/vault-a', { method: 'DELETE' }, env, executionCtx)
+
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual({ success: true })
+      expect(deleteVaultData).toHaveBeenCalledWith(env.DB, env.STORAGE, 'user-1', 'vault-a')
+    })
+
+    it('checks ownership scoped to the caller', async () => {
+      await app.request('/sync/vaults/vault-a', { method: 'DELETE' }, env, executionCtx)
+
+      expect(vaultExistsForUser).toHaveBeenCalledWith(env.DB, 'user-1', 'vault-a')
+    })
+
+    it('404s and purges nothing when the caller does not own the vault', async () => {
+      vi.mocked(vaultExistsForUser).mockResolvedValue(false)
+
+      const res = await app.request(
+        '/sync/vaults/someone-elses',
+        { method: 'DELETE' },
+        env,
+        executionCtx
+      )
+
+      expect(res.status).toBe(404)
+      const json = (await res.json()) as { error: { code: string } }
+      expect(json.error.code).toBe(ErrorCodes.SYNC_VAULT_NOT_FOUND)
+      expect(deleteVaultData).not.toHaveBeenCalled()
+    })
+
+    it('400s on a malformed vault id', async () => {
+      const res = await app.request(
+        '/sync/vaults/not%20a%20valid%20id!',
+        { method: 'DELETE' },
+        env,
+        executionCtx
+      )
+
+      expect(res.status).toBe(400)
+      const json = (await res.json()) as { error: { code: string } }
+      expect(json.error.code).toBe(ErrorCodes.VALIDATION_ERROR)
+      expect(deleteVaultData).not.toHaveBeenCalled()
+    })
+
+    // REGRESSION — the sharpest edge in this feature.
+    // paidSyncMiddleware runs ensureSyncVaultAllowed, which UPSERTS. If this route
+    // ever registers below that middleware, the vault is re-created mid-request
+    // and delete silently becomes a no-op that still returns 200.
+    //
+    // Assert on `paidSyncMiddleware` itself, not on `ensureSyncVaultAllowed`.
+    // `../middleware/paid-sync` is module-mocked as a bare passthrough (see the
+    // vi.mock above) that never calls the real ensureSyncVaultAllowed, so
+    // `expect(ensureSyncVaultAllowed).not.toHaveBeenCalled()` would be true
+    // unconditionally — it can't detect the route moving below the middleware.
+    // `paidSyncMiddleware` is the thing Hono actually invokes based on
+    // registration order, so only an assertion on that mock can fail when the
+    // route regresses. Do not "simplify" this back to ensureSyncVaultAllowed.
+    it('does not run ensureSyncVaultAllowed (would resurrect the vault)', async () => {
+      await app.request(
+        '/sync/vaults/vault-a',
+        { method: 'DELETE', headers: { 'X-Memry-Vault-Id': 'vault-a' } },
+        env,
+        executionCtx
+      )
+
+      expect(
+        paidSyncMiddleware,
+        'DELETE must register above paidSyncMiddleware'
+      ).not.toHaveBeenCalled()
+      expect(
+        ensureSyncVaultAllowed,
+        'DELETE must register above paidSyncMiddleware'
+      ).not.toHaveBeenCalled()
+    })
+  })
+
+  // ==========================================================================
   // GET /sync/manifest
   // ==========================================================================
 
@@ -408,12 +502,14 @@ describe('sync routes', () => {
       expect(json).toEqual({ items: [], serverTime: 1000 })
     })
 
-    it('should pass userId to getManifest', async () => {
+    it('should pass userId and negotiated types to getManifest', async () => {
       // #when
       await app.request('/sync/manifest', { method: 'GET' }, env, executionCtx)
 
       // #then
-      expect(getManifest).toHaveBeenCalledWith(env.DB, 'user-1', 'vault-1')
+      expect(getManifest).toHaveBeenCalledWith(env.DB, 'user-1', 'vault-1', [
+        ...LEGACY_RECORD_SYNC_ITEM_TYPES
+      ])
     })
   })
 
@@ -437,7 +533,9 @@ describe('sync routes', () => {
       await app.request('/sync/changes?cursor=5&limit=10', { method: 'GET' }, env, executionCtx)
 
       // #then
-      expect(getChanges).toHaveBeenCalledWith(env.DB, 'user-1', 5, 10, 'vault-1')
+      expect(getChanges).toHaveBeenCalledWith(env.DB, 'user-1', 5, 10, 'vault-1', [
+        ...LEGACY_RECORD_SYNC_ITEM_TYPES
+      ])
     })
 
     it('should default cursor to 0 when omitted', async () => {
@@ -445,7 +543,9 @@ describe('sync routes', () => {
       await app.request('/sync/changes', { method: 'GET' }, env, executionCtx)
 
       // #then
-      expect(getChanges).toHaveBeenCalledWith(env.DB, 'user-1', 0, undefined, 'vault-1')
+      expect(getChanges).toHaveBeenCalledWith(env.DB, 'user-1', 0, undefined, 'vault-1', [
+        ...LEGACY_RECORD_SYNC_ITEM_TYPES
+      ])
     })
 
     it('should return 400 for non-numeric cursor', async () => {
@@ -901,7 +1001,14 @@ describe('sync routes', () => {
       )
 
       // #then
-      expect(pullItems).toHaveBeenCalledWith(env.DB, env.STORAGE, 'user-1', [VALID_UUID], 'vault-1')
+      expect(pullItems).toHaveBeenCalledWith(
+        env.DB,
+        env.STORAGE,
+        'user-1',
+        [VALID_UUID],
+        'vault-1',
+        [...LEGACY_RECORD_SYNC_ITEM_TYPES]
+      )
     })
 
     it('should return 400 for empty itemIds', async () => {
@@ -1017,7 +1124,14 @@ describe('sync routes', () => {
       )
 
       expect(res.status).toBe(200)
-      expect(pullItems).toHaveBeenCalledWith(env.DB, env.STORAGE, 'user-1', [VALID_UUID], 'vault-1')
+      expect(pullItems).toHaveBeenCalledWith(
+        env.DB,
+        env.STORAGE,
+        'user-1',
+        [VALID_UUID],
+        'vault-1',
+        [...LEGACY_RECORD_SYNC_ITEM_TYPES]
+      )
     })
   })
 
@@ -1284,6 +1398,76 @@ describe('sync routes', () => {
         executionCtx
       )
       expect(res.status).toBe(400)
+    })
+  })
+
+  // ==========================================================================
+  // Sync-type negotiation
+  // ==========================================================================
+
+  describe('sync-type negotiation', () => {
+    // A client that predates negotiation sends no header. It must never be
+    // served a type its z.enum would reject — that drops a whole pull page.
+    it('serves the frozen legacy list to a header-less client', async () => {
+      // #when
+      await app.request('/sync/changes', { method: 'GET' }, env, executionCtx)
+
+      // #then
+      expect(getChanges).toHaveBeenCalledWith(env.DB, 'user-1', 0, undefined, 'vault-1', [
+        ...LEGACY_RECORD_SYNC_ITEM_TYPES
+      ])
+    })
+
+    it('narrows to the declared types when the header is sent', async () => {
+      // #when
+      await app.request(
+        '/sync/changes',
+        { method: 'GET', headers: { 'X-Memry-Sync-Types': 'note,task' } },
+        env,
+        executionCtx
+      )
+
+      // #then
+      expect(getChanges).toHaveBeenCalledWith(env.DB, 'user-1', 0, undefined, 'vault-1', [
+        'note',
+        'task'
+      ])
+    })
+
+    it('passes negotiated types to pullItems', async () => {
+      // #when
+      await app.request(
+        '/sync/pull',
+        {
+          ...jsonPost('/sync/pull', { itemIds: [VALID_UUID] }),
+          headers: { 'Content-Type': 'application/json', 'X-Memry-Sync-Types': 'note' }
+        },
+        env,
+        executionCtx
+      )
+
+      // #then
+      expect(pullItems).toHaveBeenCalledWith(
+        env.DB,
+        env.STORAGE,
+        'user-1',
+        [VALID_UUID],
+        'vault-1',
+        ['note']
+      )
+    })
+
+    it('applies negotiation on the /sync/records/* mount too', async () => {
+      // #when
+      await app.request(
+        '/sync/records/changes',
+        { method: 'GET', headers: { 'X-Memry-Sync-Types': 'note' } },
+        env,
+        executionCtx
+      )
+
+      // #then
+      expect(getChanges).toHaveBeenCalledWith(env.DB, 'user-1', 0, undefined, 'vault-1', ['note'])
     })
   })
 })

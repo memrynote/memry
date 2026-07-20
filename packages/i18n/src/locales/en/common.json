@@ -430,7 +430,8 @@
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Something went wrong",
       "anErrorOccurredWhileRenderingThisTabContent": "An error occurred while rendering this tab content.",
-      "tryAgain": "Try Again"
+      "tryAgain": "Try Again",
+      "sendReport": "Send diagnostic report"
     },
     "componentsTabsTabPreviewCard": {
       "noteIcon": "Note icon"
@@ -511,6 +512,7 @@
       "signInToSync": "Sign in to sync",
       "remove": "Remove “",
       "rdquoFromList": "rdquo; from list?",
+      "removeVaultTitle": "Remove “{name}” from list?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "This vault will be removed from the app, but your files will remain on disk. You can always re-add it later.",
       "cancel": "Cancel",
       "remove2": "Remove",
@@ -521,7 +523,12 @@
       "downloadLocation": "Location",
       "changeLocation": "Change…",
       "download": "Download",
-      "downloadFailed": "Could not download the vault"
+      "downloadFailed": "Could not download the vault",
+      "deleteFromAccount": "Delete from account",
+      "deleteVaultTitle": "Delete “{name}” from your account?",
+      "deleteVaultBody": "This permanently removes all synced data for this vault from Memry's servers and cannot be undone. Your files on disk are not deleted.",
+      "deleteVaultConfirm": "Delete from account",
+      "deleteVaultFailed": "Could not delete vault"
     },
     "componentsWindowControls": {
       "searchK": "Search (⌘K)",

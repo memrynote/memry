@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 import type { PushItemInput, VectorClock } from '@memry/contracts/sync-api'
+import { LEGACY_RECORD_SYNC_ITEM_TYPES } from '@memry/contracts/sync-api'
 import { AppError, ErrorCodes } from '../lib/errors'
 
-vi.mock('./blob', () => ({
-  generateBlobKey: vi.fn().mockReturnValue('user-1/vaults/default/items/item-1'),
+vi.mock('./blob', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./blob')>()),
   putBlob: vi.fn().mockResolvedValue({ etag: 'etag-1' }),
   getBlob: vi.fn()
 }))
@@ -55,7 +56,7 @@ import {
   processPushItem
 } from './sync'
 import { getDevice } from './device'
-import { getBlob } from './blob'
+import { getBlob, putBlob } from './blob'
 import { reserveStorage, checkQuota } from './quota'
 import { getNextCursor } from './cursor'
 
@@ -1144,6 +1145,25 @@ describe('pullItems', () => {
     expect(result.map((item) => item.id)).toEqual(['item-10', 'item-90'])
   })
 
+  it('should size batches off the negotiated types.length, not RECORD_SYNC_ITEM_TYPES.length', async () => {
+    // #given — negotiate down to a single type so BATCH_SIZE = 95 - 2 - 1 = 92.
+    // 160 itemIds is chosen so the two possible implementations diverge: the
+    // correct code batches ceil(160 / 92) = 2 times (92 + 68). If BATCH_SIZE
+    // regressed to use RECORD_SYNC_ITEM_TYPES.length (15) instead of
+    // types.length, it would compute 95 - 2 - 15 = 78 and batch
+    // ceil(160 / 78) = 3 times (78 + 78 + 4) instead. 2 vs 3 prepare calls
+    // makes the regression observable.
+    const itemIds = Array.from({ length: 160 }, (_, index) => `item-${index}`)
+
+    // #when
+    await pullItems(db as unknown as D1Database, {} as R2Bucket, 'user-1', itemIds, 'default', [
+      'note'
+    ])
+
+    // #then
+    expect(db.prepare).toHaveBeenCalledTimes(2)
+  })
+
   it('should reject stored rows missing signer metadata', async () => {
     // #given
     const stmt = createMockStatement()
@@ -1734,6 +1754,47 @@ describe('processPushItem', () => {
     expect(bindArgs[16]).toBe(123456)
   })
 
+  it('should write the payload to a type-scoped blob key so same-id items of different types never clobber each other', async () => {
+    // Regression for the cross-type R2 collision: a project and a tag_definition
+    // both named 'inbox' used to share ONE untyped blob key, so the later push
+    // silently destroyed the other type's ciphertext and its signature could
+    // never verify again.
+    const runPush = async (type: PushItemInput['type']) => {
+      const selectStmt = createMockStatement()
+      selectStmt.first.mockResolvedValue(null)
+      const upsertStmt = createMockStatement()
+      const updateStmt = createMockStatement()
+      const db = createMockDb()
+      db.prepare
+        .mockReturnValueOnce(selectStmt)
+        .mockReturnValueOnce(upsertStmt)
+        .mockReturnValueOnce(updateStmt)
+      const storage = {
+        put: vi.fn().mockResolvedValue({ etag: 'etag-1' })
+      } as unknown as R2Bucket
+      const result = await processPushItem(
+        db as unknown as D1Database,
+        storage,
+        'user-1',
+        'device-1',
+        createValidPushItem({ id: 'inbox', type, clock: { 'device-1': 1 } }),
+        'vault-1'
+      )
+      expect(result.accepted).toBe(true)
+      const putKey = vi.mocked(putBlob).mock.lastCall?.[1] as string
+      const boundBlobKey = upsertStmt.bind.mock.calls[0][5] as string
+      expect(boundBlobKey).toBe(putKey)
+      return putKey
+    }
+
+    const projectKey = await runPush('project')
+    const tagKey = await runPush('tag_definition')
+
+    expect(projectKey).toBe('user-1/vaults/vault-1/items-v2/project/inbox')
+    expect(tagKey).toBe('user-1/vaults/vault-1/items-v2/tag_definition/inbox')
+    expect(projectKey).not.toBe(tagKey)
+  })
+
   it('should batch sync item upsert and storage usage update atomically', async () => {
     const selectStmt = createMockStatement()
     selectStmt.first.mockResolvedValue({
@@ -1916,5 +1977,129 @@ describe('processPushItem', () => {
       createValidPushItem()
     )
     expect(unknownResult).toEqual({ accepted: false, reason: 'INTERNAL_ERROR' })
+  })
+})
+
+// ============================================================================
+// Tests: sync-type negotiation
+// ============================================================================
+
+describe('sync-type negotiation', () => {
+  it('getChanges binds only the negotiated types', async () => {
+    // #given
+    const db = createMockDb()
+    const stmt = createMockStatement()
+    db.prepare.mockReturnValue(stmt)
+
+    // #when
+    await getChanges(db as unknown as D1Database, 'user-1', 0, 10, 'vault-1', ['note', 'task'])
+
+    // #then
+    expect(db.prepare.mock.calls[0][0]).toContain('item_type IN (?, ?)')
+    expect(stmt.bind).toHaveBeenCalledWith('user-1', 'vault-1', 0, 'note', 'task', 11)
+  })
+
+  it('getChanges defaults to the frozen legacy list when types are omitted', async () => {
+    // #given
+    const db = createMockDb()
+    const stmt = createMockStatement()
+    db.prepare.mockReturnValue(stmt)
+
+    // #when
+    await getChanges(db as unknown as D1Database, 'user-1', 0, 10, 'vault-1')
+
+    // #then
+    expect(stmt.bind).toHaveBeenCalledWith(
+      'user-1',
+      'vault-1',
+      0,
+      ...LEGACY_RECORD_SYNC_ITEM_TYPES,
+      11
+    )
+  })
+
+  it('getManifest binds only the negotiated types', async () => {
+    // #given
+    const db = createMockDb()
+    const stmt = createMockStatement()
+    db.prepare.mockReturnValue(stmt)
+
+    // #when
+    await getManifest(db as unknown as D1Database, 'user-1', 'vault-1', ['note'])
+
+    // #then
+    expect(db.prepare.mock.calls[0][0]).toContain('item_type IN (?)')
+    expect(stmt.bind).toHaveBeenCalledWith('user-1', 'vault-1', 'note')
+  })
+
+  it('pullItems binds only the negotiated types', async () => {
+    // #given
+    const db = createMockDb()
+    const stmt = createMockStatement()
+    db.prepare.mockReturnValue(stmt)
+
+    // #when
+    await pullItems(
+      db as unknown as D1Database,
+      {} as unknown as R2Bucket,
+      'user-1',
+      ['item-1'],
+      'vault-1',
+      ['note', 'task']
+    )
+
+    // #then
+    expect(db.prepare.mock.calls[0][0]).toContain('item_type IN (?, ?)')
+    expect(stmt.bind).toHaveBeenCalledWith('user-1', 'vault-1', 'note', 'task', 'item-1')
+  })
+
+  // Finding 1 makes an empty negotiated list a valid, reachable state (a
+  // header present but fully unrecognized). placeholdersFor([]) would emit
+  // `item_type IN ()`, a SQL syntax error — these three functions must
+  // short-circuit before ever touching the database.
+  describe('empty negotiated types short-circuit', () => {
+    it('getChanges returns an empty result without querying D1 and does not advance the cursor', async () => {
+      // #given
+      const db = createMockDb()
+
+      // #when
+      const result = await getChanges(db as unknown as D1Database, 'user-1', 42, 10, 'vault-1', [])
+
+      // #then
+      expect(result).toEqual({ items: [], deleted: [], hasMore: false, nextCursor: 42 })
+      expect(db.prepare).not.toHaveBeenCalled()
+    })
+
+    it('getManifest returns an empty result without querying D1', async () => {
+      // #given
+      const db = createMockDb()
+
+      // #when
+      const result = await getManifest(db as unknown as D1Database, 'user-1', 'vault-1', [])
+
+      // #then
+      expect(result.items).toEqual([])
+      expect(result.serverTime).toBeGreaterThan(0)
+      expect(db.prepare).not.toHaveBeenCalled()
+    })
+
+    it('pullItems returns an empty array without querying D1', async () => {
+      // #given
+      const db = createMockDb()
+
+      // #when
+      const result = await pullItems(
+        db as unknown as D1Database,
+        {} as R2Bucket,
+        'user-1',
+        ['item-1'],
+        'vault-1',
+        []
+      )
+
+      // #then
+      expect(result).toEqual([])
+      expect(db.prepare).not.toHaveBeenCalled()
+    })
   })
 })

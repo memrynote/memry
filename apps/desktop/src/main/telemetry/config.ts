@@ -13,6 +13,7 @@ export interface TelemetryConfigOnDisk {
   installId?: string
   enabled?: boolean
   lastRunVersion?: string
+  diagnosticsSalt?: string
 }
 
 const getConfigPath = (): string => path.join(app.getPath('userData'), TELEMETRY_CONFIG_FILENAME)

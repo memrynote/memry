@@ -52,7 +52,9 @@ export const VaultChannels = {
     /** List all vaults in the signed-in account (local + cloud-only) */
     LIST_ACCOUNT: 'vault:list-account',
     /** Provision + open a cloud-only vault locally */
-    DOWNLOAD_REMOTE: 'vault:download-remote'
+    DOWNLOAD_REMOTE: 'vault:download-remote',
+    /** Purge a vault from the sync account; never touches files on disk */
+    DELETE_FROM_ACCOUNT: 'vault:delete-from-account'
   },
   events: {
     STATUS_CHANGED: 'vault:status-changed',
@@ -413,6 +415,12 @@ export const SettingsChannels = {
     GET_FEATURES_SETTINGS: 'settings:getFeaturesSettings',
     /** Update feature module toggles (partial merge) */
     SET_FEATURES_SETTINGS: 'settings:setFeaturesSettings',
+    /** Get inbox settings (daily review reminder) */
+    GET_INBOX_SETTINGS: 'settings:getInboxSettings',
+    /** Update inbox settings (partial merge) */
+    SET_INBOX_SETTINGS: 'settings:setInboxSettings',
+    /** Fire the daily-review notification now, to verify OS delivery/permission */
+    SEND_TEST_INBOX_REVIEW_NOTIFICATION: 'settings:sendTestInboxReviewNotification',
     /** Store API key in OS keychain (never in DB) */
     SET_API_KEY: 'settings:setApiKey',
     /** Test API provider connection */
@@ -828,3 +836,19 @@ export const TelemetryChannels = {
 
 export type TelemetryInvokeChannel =
   (typeof TelemetryChannels.invoke)[keyof typeof TelemetryChannels.invoke]
+
+// ============================================================================
+// Diagnostics Channels
+// ============================================================================
+
+export const DiagnosticsChannels = {
+  invoke: {
+    /** Assemble a redacted incident report preview for the renderer to show the user */
+    PREVIEW_REPORT: 'diagnostics:previewReport',
+    /** Send a previously previewed incident report to the server */
+    SEND_REPORT: 'diagnostics:sendReport'
+  }
+} as const
+
+export type DiagnosticsInvokeChannel =
+  (typeof DiagnosticsChannels.invoke)[keyof typeof DiagnosticsChannels.invoke]

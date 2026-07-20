@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from 'vitest'
-import { applyEditorMenuCommand, isEditorMenuCommand } from './menu-commands'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { applyEditorMenuCommand, isEditorMenuCommand, runHistoryMenuCommand } from './menu-commands'
 
 function makeEditor(block: unknown = {}) {
   return {
@@ -59,5 +59,106 @@ describe('applyEditorMenuCommand', () => {
     expect(isEditorMenuCommand('insert.table')).toBe(true)
     expect(isEditorMenuCommand('format.highlight')).toBe(true)
     expect(isEditorMenuCommand('file.newNote')).toBe(false)
+  })
+})
+
+describe('runHistoryMenuCommand', () => {
+  const originalExecCommand = document.execCommand
+
+  function makeHistoryEditor() {
+    const domElement = document.createElement('div')
+    const inner = document.createElement('span')
+    inner.tabIndex = 0
+    domElement.appendChild(inner)
+    document.body.appendChild(domElement)
+
+    const editor = { undo: vi.fn(), redo: vi.fn(), domElement }
+    ;(window as unknown as { __memryEditor?: unknown }).__memryEditor = editor
+    return { editor, focusInside: () => inner.focus() }
+  }
+
+  afterEach(() => {
+    delete (window as unknown as { __memryEditor?: unknown }).__memryEditor
+    document.body.innerHTML = ''
+    document.execCommand = originalExecCommand
+    vi.restoreAllMocks()
+  })
+
+  it('routes undo/redo to the editor history while focus is inside it', () => {
+    const { editor, focusInside } = makeHistoryEditor()
+    focusInside()
+
+    runHistoryMenuCommand('undo')
+    expect(editor.undo).toHaveBeenCalledTimes(1)
+
+    runHistoryMenuCommand('redo')
+    expect(editor.redo).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not touch the editor history when focus is outside it', () => {
+    const { editor } = makeHistoryEditor()
+    const outside = document.createElement('button')
+    document.body.appendChild(outside)
+    outside.focus()
+
+    runHistoryMenuCommand('undo')
+    expect(editor.undo).not.toHaveBeenCalled()
+  })
+
+  it('routes other contenteditable surfaces to the native command', () => {
+    const { editor } = makeHistoryEditor()
+    const execCommand = vi.fn()
+    document.execCommand = execCommand
+
+    const composer = document.createElement('div')
+    composer.contentEditable = 'true'
+    composer.tabIndex = 0
+    document.body.appendChild(composer)
+    composer.focus()
+    Object.defineProperty(composer, 'isContentEditable', { value: true })
+
+    runHistoryMenuCommand('undo')
+    expect(execCommand).toHaveBeenCalledWith('undo')
+    expect(editor.undo).not.toHaveBeenCalled()
+  })
+
+  it('keeps native undo for focused input fields', () => {
+    const { editor } = makeHistoryEditor()
+    const execCommand = vi.fn()
+    document.execCommand = execCommand
+
+    const input = document.createElement('input')
+    document.body.appendChild(input)
+    input.focus()
+
+    runHistoryMenuCommand('undo')
+    expect(execCommand).toHaveBeenCalledWith('undo')
+    expect(editor.undo).not.toHaveBeenCalled()
+  })
+
+  it('keeps native undo for focused textareas', () => {
+    const execCommand = vi.fn()
+    document.execCommand = execCommand
+
+    const textarea = document.createElement('textarea')
+    document.body.appendChild(textarea)
+    textarea.focus()
+
+    runHistoryMenuCommand('redo')
+    expect(execCommand).toHaveBeenCalledWith('redo')
+  })
+
+  it('does nothing without an editor', () => {
+    expect(() => runHistoryMenuCommand('undo')).not.toThrow()
+  })
+
+  it('swallows editor errors instead of crashing the menu', () => {
+    const { editor, focusInside } = makeHistoryEditor()
+    editor.undo.mockImplementation(() => {
+      throw new Error('not ready')
+    })
+    focusInside()
+
+    expect(() => runHistoryMenuCommand('undo')).not.toThrow()
   })
 })

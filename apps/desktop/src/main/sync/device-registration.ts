@@ -23,6 +23,7 @@ import { getStoredDeviceId, setStoredDeviceId } from '../store'
 import { getDatabase } from '../database/client'
 import { createLogger } from '../lib/logger'
 import { deleteFromServer, postToServer } from './http-client'
+import { markKeyMaterialActivity, persistAccountKeyVerifier } from './key-verification'
 import { getSyncEngine, startSyncRuntime } from './runtime'
 import { startGoogleCalendarSyncRunner } from '../calendar/google/sync-service'
 import { getOrCreateVaultUuid } from '../agent/storage/vault-id'
@@ -103,6 +104,10 @@ export const persistKeysAndRegisterDevice = async (
   skipSetup?: boolean,
   skipActivation?: boolean
 ): Promise<string> => {
+  // Key material is in flux until this flow finishes — hold vault-key mismatch
+  // detection off so it can't misread the transition as a broken install.
+  markKeyMaterialActivity()
+
   await storeKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY, signingSecretKey)
 
   const db = getDatabase()
@@ -136,6 +141,14 @@ export const persistKeysAndRegisterDevice = async (
   try {
     await storeKey(KEYCHAIN_ENTRIES.MASTER_KEY, masterKey)
     await bindLocalVaultToMasterKey(db, vaultId, masterKey)
+    // The verifier the account now lives under — the local copy lets vault-key
+    // mismatch detection work offline from here on. Best-effort cache: its
+    // absence only means the next check fetches from the server instead.
+    try {
+      persistAccountKeyVerifier(keyVerifier)
+    } catch (verifierCacheErr) {
+      logger.warn('Could not cache account key verifier locally', verifierCacheErr)
+    }
   } catch (keyPersistenceErr) {
     logger.error('Failed to store or bind master key after device registration', keyPersistenceErr)
 

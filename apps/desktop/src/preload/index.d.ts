@@ -59,7 +59,8 @@ import type {
   ClockSkewWarningEvent,
   DeviceRevokedEvent,
   SecurityWarningEvent,
-  CertificatePinFailedEvent
+  CertificatePinFailedEvent,
+  VaultRecoveryNeededEvent
 } from '../shared/contracts/ipc-sync'
 import type { CrdtOpenDocResult, CrdtSyncStep1Result } from '@memry/contracts/ipc-crdt'
 
@@ -480,6 +481,7 @@ export interface VaultClientAPI {
   reveal(): Promise<void>
   listAccount(): Promise<AccountVaultInfo[]>
   downloadRemote(vaultUuid: string, parentPath?: string): Promise<SelectVaultResponse>
+  deleteFromAccount(vaultUuid: string): Promise<void>
 }
 
 // Notes client API interface
@@ -1847,6 +1849,9 @@ interface API extends WindowAPI, GeneratedRpcApi {
   onReminderDismissed: (callback: (event: ReminderDismissedEvent) => void) => () => void
   onReminderSnoozed: (callback: (event: ReminderSnoozedEvent) => void) => () => void
   onReminderClicked: (callback: (event: ReminderClickedEvent) => void) => () => void
+  // Inbox review event subscriptions
+  onInboxReviewDue: (callback: (event: { count: number }) => void) => () => void
+  onInboxReviewOpen: (callback: () => void) => () => void
   // Folder View event subscriptions
   onFolderViewConfigUpdated: (callback: (event: FolderViewConfigUpdatedEvent) => void) => () => void
   // Search event subscriptions
@@ -1876,6 +1881,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
   onClockSkewWarning: (callback: (event: ClockSkewWarningEvent) => void) => () => void
   onSecurityWarning: (callback: (event: SecurityWarningEvent) => void) => () => void
   onCertificatePinFailed: (callback: (event: CertificatePinFailedEvent) => void) => () => void
+  onVaultRecoveryNeeded: (callback: (event: VaultRecoveryNeededEvent) => void) => () => void
   onUpdaterStateChanged: (callback: (state: AppUpdateState) => void) => () => void
   onImportProgress: (callback: (event: ImportProgressEvent) => void) => () => void
   onAppNavigationCommand: (callback: (command: AppNavigationCommandEvent) => void) => () => void

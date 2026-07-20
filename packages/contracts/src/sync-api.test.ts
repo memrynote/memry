@@ -16,6 +16,7 @@ import {
   DeviceSyncStateSchema,
   EncryptedItemPayloadSchema,
   FieldClocksSchema,
+  LEGACY_RECORD_SYNC_ITEM_TYPES,
   OFFLINE_CLOCK_DEVICE_ID,
   PullItemResponseSchema,
   PullRequestSchema,
@@ -245,9 +246,7 @@ describe('SyncQueueItemSchema', () => {
   })
 
   it('rejects unknown operation', () => {
-    expect(
-      SyncQueueItemSchema.safeParse({ ...base, operation: 'patch' }).success
-    ).toBe(false)
+    expect(SyncQueueItemSchema.safeParse({ ...base, operation: 'patch' }).success).toBe(false)
   })
 
   it('rejects empty payload', () => {
@@ -311,9 +310,7 @@ describe('RecordPushItemSchema', () => {
   })
 
   it('accepts settings without clock (not clock-required)', () => {
-    const result = RecordPushItemSchema.safeParse(
-      validPushItem({ type: 'settings' })
-    )
+    const result = RecordPushItemSchema.safeParse(validPushItem({ type: 'settings' }))
     expect(result.success).toBe(true)
   })
 
@@ -710,9 +707,7 @@ describe('DeviceKeySchema / DeviceKeysResponseSchema', () => {
 
   it('accepts devices response', () => {
     const result = DeviceKeysResponseSchema.safeParse({
-      devices: [
-        { id: 'd1', name: 'A', platform: 'macos', signingPublicKey: 'pk', revokedAt: null }
-      ]
+      devices: [{ id: 'd1', name: 'A', platform: 'macos', signingPublicKey: 'pk', revokedAt: null }]
     })
     expect(result.success).toBe(true)
   })
@@ -720,9 +715,9 @@ describe('DeviceKeySchema / DeviceKeysResponseSchema', () => {
 
 describe('CursorPositionSchema', () => {
   it('accepts minimal cursor', () => {
-    expect(
-      CursorPositionSchema.safeParse({ cursor: 0, deviceId: 'd', updatedAt: 0 }).success
-    ).toBe(true)
+    expect(CursorPositionSchema.safeParse({ cursor: 0, deviceId: 'd', updatedAt: 0 }).success).toBe(
+      true
+    )
   })
 
   it('rejects negative cursor', () => {
@@ -753,6 +748,37 @@ describe('SignatureMetadataSchema', () => {
     expect(result.success).toBe(false)
     if (!result.success) {
       expect(result.error.issues[0].path).toContain('algorithm')
+    }
+  })
+})
+
+describe('LEGACY_RECORD_SYNC_ITEM_TYPES', () => {
+  // This list is FROZEN. It describes what already-shipped binaries understand.
+  // If a new sync item type makes this test fail, the fix is NEVER to update this
+  // list — it is to leave it alone. See 2026-07-15-template-sync-design.md.
+  it('is exactly the 15 record types that shipped before type negotiation', () => {
+    expect(LEGACY_RECORD_SYNC_ITEM_TYPES).toEqual([
+      'note',
+      'task',
+      'project',
+      'settings',
+      'inbox',
+      'filter',
+      'journal',
+      'tag_definition',
+      'folder_config',
+      'calendar_event',
+      'calendar_source',
+      'calendar_binding',
+      'calendar_external_event',
+      'agent_conversation',
+      'agent_message'
+    ])
+  })
+
+  it('only contains types the server still supports', () => {
+    for (const type of LEGACY_RECORD_SYNC_ITEM_TYPES) {
+      expect(RECORD_SYNC_ITEM_TYPES).toContain(type)
     }
   })
 })

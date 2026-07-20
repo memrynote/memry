@@ -94,13 +94,10 @@ export function createEmbeddingProjector(getVaultPath: () => string | null): Pro
       return { success: false, computed: 0, skipped: 0, error: 'No vault is open' }
     }
 
-    if (!isModelLoaded()) {
-      const loaded = await initEmbeddingModel()
-      if (!loaded) {
-        return { success: false, computed: 0, skipped: 0, error: 'Failed to load embedding model' }
-      }
-    }
-
+    // Query the work list BEFORE loading the model. initEmbeddingModel() loads a
+    // heavy native model (seconds), so an empty/markdown-less vault must not pay
+    // that cost just to find nothing to embed — which is exactly the fresh-vault
+    // case on every app open until the first note exists (and every E2E launch).
     const indexDb = getIndexDatabase()
     const rawDb = getRawIndexDatabase()
     const notes = indexDb.all<{
@@ -113,6 +110,19 @@ export function createEmbeddingProjector(getVaultPath: () => string | null): Pro
       FROM note_cache
       WHERE COALESCE(file_type, 'markdown') = 'markdown'
     `)
+
+    if (notes.length === 0) {
+      rawDb.prepare('DELETE FROM vec_notes').run()
+      emitProgress(0, 0, 'complete')
+      return { success: true, computed: 0, skipped: 0 }
+    }
+
+    if (!isModelLoaded()) {
+      const loaded = await initEmbeddingModel()
+      if (!loaded) {
+        return { success: false, computed: 0, skipped: 0, error: 'Failed to load embedding model' }
+      }
+    }
 
     rawDb.prepare('DELETE FROM vec_notes').run()
     emitProgress(0, notes.length, 'embedding')
