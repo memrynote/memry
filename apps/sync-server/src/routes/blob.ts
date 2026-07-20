@@ -21,7 +21,7 @@ import {
   getUploadedByteTotal,
   parseUploadedChunks
 } from '../services/upload-size'
-import { UploadInitRequestSchema } from '@memry/contracts/blob-api'
+import { DereferenceRequestSchema, UploadInitRequestSchema } from '@memry/contracts/blob-api'
 import type { AppContext } from '../types'
 
 const logger = createLogger('BlobRoutes')
@@ -80,6 +80,12 @@ const chunkUploadLimit = createRateLimiter({
 
 const uploadSessionLimit = createRateLimiter({
   keyPrefix: 'upload_session',
+  maxRequests: 20,
+  windowSeconds: 60
+})
+
+const dereferenceLimit = createRateLimiter({
+  keyPrefix: 'dereference',
   maxRequests: 20,
   windowSeconds: 60
 })
@@ -516,6 +522,41 @@ blob.delete('/attachments/upload/:session_id', uploadSessionLimit, async (c) => 
   }
 
   return new Response(null, { status: 204 })
+})
+
+// Decrements ref_count for each hash by 1. Decrement-only, on purpose: unlike
+// the cancel-session path above, this never eager-deletes R2 — the
+// `cleanupOrphanedBlobChunks` cron reaps rows once ref_count <= 0.
+blob.post('/attachments/dereference', dereferenceLimit, async (c) => {
+  const userId = c.get('userId')!
+  const vaultId = c.get('vaultId')!
+
+  const body: unknown = await c.req.json()
+  const parsed = DereferenceRequestSchema.safeParse(body)
+  if (!parsed.success) {
+    throw new AppError(
+      ErrorCodes.VALIDATION_ERROR,
+      `Invalid dereference: ${parsed.error.issues[0]?.message ?? 'validation failed'}`,
+      400
+    )
+  }
+
+  let dereferenced = 0
+  for (const hash of new Set(parsed.data.chunkHashes)) {
+    const chunk = await c.env.DB.prepare(
+      'SELECT id, ref_count FROM blob_chunks WHERE user_id = ? AND vault_id = ? AND hash = ?'
+    )
+      .bind(userId, vaultId, hash)
+      .first<{ id: string; ref_count: number }>()
+    if (!chunk) continue
+
+    await c.env.DB.prepare('UPDATE blob_chunks SET ref_count = ref_count - 1 WHERE id = ?')
+      .bind(chunk.id)
+      .run()
+    dereferenced++
+  }
+
+  return c.json({ dereferenced }, 200)
 })
 
 // ============================================================================

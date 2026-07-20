@@ -581,6 +581,34 @@ describe('blob routes', () => {
     ).toBe(true)
   })
 
+  it('dereferences chunks by decrementing ref_count per hash', async () => {
+    state.chunksByHash = {
+      h1: { id: 'chunk-h1', ref_count: 2 },
+      h2: { id: 'chunk-h2', ref_count: 1 }
+    }
+
+    const res = await app.request(
+      '/attachments/dereference',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chunkHashes: ['h1', 'h2'] })
+      },
+      env
+    )
+
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ dereferenced: 2 })
+
+    const decrements = state.statements.filter((entry) =>
+      entry.sql.includes('UPDATE blob_chunks SET ref_count = ref_count - 1')
+    )
+    expect(decrements).toHaveLength(2)
+    expect(decrements.map((entry) => entry.bindings)).toEqual(
+      expect.arrayContaining([['chunk-h1'], ['chunk-h2']])
+    )
+  })
+
   it('checks and downloads deduplicated chunks', async () => {
     let res = await app.request('/attachments/chunks/hash-0', { method: 'HEAD' }, env)
     expect(res.status).toBe(200)

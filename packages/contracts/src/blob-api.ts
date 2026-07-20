@@ -28,6 +28,10 @@ export const ChunkExistenceCheckSchema = z.object({
   hash: z.string().min(1)
 })
 
+export const DereferenceRequestSchema = z.object({
+  chunkHashes: z.array(z.string().min(1)).min(1).max(4096)
+})
+
 export const UploadInitResponseSchema = z.object({
   sessionId: z.string(),
   expiresAt: z.number()
@@ -58,6 +62,7 @@ export type UploadInitRequest = z.infer<typeof UploadInitRequestSchema>
 export type ChunkUploadParams = z.infer<typeof ChunkUploadParamsSchema>
 export type UploadCompleteRequest = z.infer<typeof UploadCompleteRequestSchema>
 export type ChunkExistenceCheck = z.infer<typeof ChunkExistenceCheckSchema>
+export type DereferenceRequest = z.infer<typeof DereferenceRequestSchema>
 export type UploadInitResponse = z.infer<typeof UploadInitResponseSchema>
 export type ChunkUploadResponse = z.infer<typeof ChunkUploadResponseSchema>
 export type UploadCompleteResponse = z.infer<typeof UploadCompleteResponseSchema>

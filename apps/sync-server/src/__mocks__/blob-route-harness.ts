@@ -21,6 +21,12 @@ export interface MockDbState {
   /** Row for the dedupe lookup performed on chunk upload. */
   existingChunk?: Record<string, unknown> | null
   /**
+   * Per-hash chunk rows for the dereference route, which looks up each hash in
+   * a request independently (unlike the other single-row-at-a-time lookups
+   * above). Keyed by hash; a missing key means "no such chunk" (route skips it).
+   */
+  chunksByHash?: Record<string, Record<string, unknown> | null>
+  /**
    * Row for the entitlements lookup. Suites that mock ../services/entitlements
    * never reach this; the accounting suite drives the real plan limits and
    * supplies a row here.
@@ -40,6 +46,10 @@ const createStatement = (sql: string, state: MockDbState) => {
     first: vi.fn(async () => {
       if (sql.includes('FROM users u')) return state.entitlementRow?.() ?? null
       if (sql.includes('FROM upload_sessions')) return state.session ?? null
+      if (sql.includes('SELECT id, ref_count FROM blob_chunks')) {
+        const hash = stmt.bindings[2] as string | undefined
+        return (hash === undefined ? undefined : state.chunksByHash?.[hash]) ?? null
+      }
       if (sql.includes('FROM blob_chunks') && sql.includes('hash = ?')) {
         if (sql.includes('SELECT id, r2_key')) return state.existingChunk ?? null
         return state.chunk ?? null
