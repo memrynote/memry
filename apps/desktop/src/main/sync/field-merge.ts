@@ -34,7 +34,8 @@ export const PROJECT_SYNCABLE_FIELDS = [
   'position',
   'isInbox',
   'archivedAt',
-  'modifiedAt'
+  'modifiedAt',
+  'homeNoteId'
 ] as const
 
 export function initAllFieldClocks(docClock: VectorClock, fields: readonly string[]): FieldClocks {

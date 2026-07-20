@@ -62,6 +62,15 @@ export const StatusSyncSchema = z.object({
   createdAt: z.string().optional()
 })
 
+export const ProjectLinkSyncSchema = z.object({
+  id: z.string(),
+  projectId: z.string().optional(),
+  itemType: z.string(),
+  itemId: z.string(),
+  position: z.number(),
+  createdAt: z.string().optional()
+})
+
 export const ProjectSyncPayloadSchema = z.object({
   name: z.string().optional(),
   description: z.string().nullable().optional(),
@@ -74,7 +83,9 @@ export const ProjectSyncPayloadSchema = z.object({
   fieldClocks: FieldClocksSchema.optional(),
   createdAt: z.string().optional(),
   modifiedAt: z.string().optional(),
-  statuses: z.array(StatusSyncSchema).optional()
+  statuses: z.array(StatusSyncSchema).optional(),
+  homeNoteId: z.string().nullable().optional(),
+  links: z.array(ProjectLinkSyncSchema).optional()
 })
 
 export const NoteSyncPayloadSchema = z.object({
@@ -339,6 +350,7 @@ export type InboxSyncPayload = z.infer<typeof InboxSyncPayloadSchema>
 export type FilterSyncPayload = z.infer<typeof FilterSyncPayloadSchema>
 export type ProjectSyncPayload = z.infer<typeof ProjectSyncPayloadSchema>
 export type StatusSync = z.infer<typeof StatusSyncSchema>
+export type ProjectLinkSync = z.infer<typeof ProjectLinkSyncSchema>
 export type NoteSyncPayload = z.infer<typeof NoteSyncPayloadSchema>
 export type JournalSyncPayload = z.infer<typeof JournalSyncPayloadSchema>
 export type TagDefinitionSyncPayload = z.infer<typeof TagDefinitionSyncPayloadSchema>
