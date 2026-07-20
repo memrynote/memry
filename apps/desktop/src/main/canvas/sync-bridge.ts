@@ -33,6 +33,17 @@ const log = createLogger('CanvasSync')
  */
 export const CANVAS_SCENE_SYNC_CAP_BYTES = 3_000_000
 
+/**
+ * Measures the UNCOMPRESSED scene, deliberately — `encryptItemForPush`
+ * (`main/sync/encrypt.ts`) computes its "Item too large" throw from
+ * `input.content.byteLength * 1.37` before compression ever runs (compression
+ * happens after that check). Measuring the compressed payload here would let
+ * scenes that are large uncompressed but shrink well (e.g. repetitive
+ * freehand-ink point arrays) pass this guard and then still blow the
+ * uncompressed encrypt-time limit — reintroducing the silent `markFailed`
+ * drop this cap exists to prevent. Compressed measurement was considered and
+ * rejected for that reason.
+ */
 export function canvasSceneExceedsSyncCap(scene: string): boolean {
   return Buffer.byteLength(scene, 'utf8') > CANVAS_SCENE_SYNC_CAP_BYTES
 }
