@@ -21,6 +21,7 @@ import { canvasService, onCanvasTooLarge } from '@/services/canvas-service'
 import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import { createLogger } from '@/lib/logger'
 import { createScenePersister } from './canvas-persistence'
+import { externalizeSceneAssets } from './canvas-externalize'
 import { pickExcalidrawLangCode } from './excalidraw-lang'
 import { CanvasCardLayer } from './canvas-card-overlay'
 import { extractEntityRefs, type CardElement } from './canvas-cards'
@@ -101,7 +102,20 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
         // Advisory entity refs are derived from the same scene, so the dedupe
         // key (scene string) still governs whether a save runs.
         const elements = (apiRef.current?.getSceneElements() ?? []) as unknown as CardElement[]
-        await canvasService.update({ id: canvasId, scene, entityRefs: extractEntityRefs(elements) })
+        let sceneToSave = scene
+        try {
+          sceneToSave = await externalizeSceneAssets(scene, canvasId, (input) =>
+            canvasService.uploadAsset(input)
+          )
+        } catch (err) {
+          log.error('Failed to externalize canvas assets; saving scene as-is', err)
+          // Fall back to the original scene — the pre-push size guard surfaces oversize saves.
+        }
+        await canvasService.update({
+          id: canvasId,
+          scene: sceneToSave,
+          entityRefs: extractEntityRefs(elements)
+        })
       },
       debounceMs: SCENE_SAVE_DEBOUNCE_MS,
       lastSavedScene: initialScene,
