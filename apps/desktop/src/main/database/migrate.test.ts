@@ -220,13 +220,16 @@ describe('0036_canvas_assets migration', () => {
   function makePre0036Folder(): string {
     const copy = path.join(tempDir, 'drizzle-data-pre-0036')
     fs.cpSync(migrationsDir, copy, { recursive: true })
-    fs.rmSync(path.join(copy, '0036_canvas_assets.sql'))
     const journalPath = path.join(copy, 'meta', '_journal.json')
     const journal = JSON.parse(fs.readFileSync(journalPath, 'utf8')) as {
       entries: { tag: string }[]
     }
-    expect(journal.entries[journal.entries.length - 1].tag).toBe('0036_canvas_assets')
-    journal.entries.pop()
+    const cutoff = journal.entries.findIndex((e) => e.tag === '0036_canvas_assets')
+    expect(cutoff).toBeGreaterThanOrEqual(0)
+    const removed = journal.entries.splice(cutoff)
+    for (const entry of removed) {
+      fs.rmSync(path.join(copy, `${entry.tag}.sql`))
+    }
     fs.writeFileSync(journalPath, JSON.stringify(journal, null, 2))
     return copy
   }

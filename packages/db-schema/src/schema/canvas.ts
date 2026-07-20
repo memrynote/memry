@@ -65,7 +65,9 @@ export const canvasAssets = sqliteTable(
   'canvas_assets',
   {
     vaultId: text('vault_id').notNull(),
-    canvasId: text('canvas_id').notNull(),
+    canvasId: text('canvas_id')
+      .notNull()
+      .references(() => canvases.id, { onDelete: 'cascade' }),
     contentHash: text('content_hash').notNull(),
     attachmentId: text('attachment_id').notNull(),
     fileId: text('file_id').notNull(),
