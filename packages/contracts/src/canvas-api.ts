@@ -73,12 +73,50 @@ export const CanvasUpdateSchema = z.object({
   entityRefs: z.array(CanvasEntityRefSchema).optional()
 })
 
+export const CanvasGetAssetSchema = z.object({
+  canvasId: z.string().min(1),
+  fileId: z.string().min(1)
+})
+
+export const CanvasListAssetsSchema = z.object({
+  canvasId: z.string().min(1)
+})
+
 // ============================================================================
 // Responses & Events
 // ============================================================================
 
 export interface CanvasListResponse {
   canvases: CanvasSummary[]
+}
+
+/**
+ * Descriptor for one asset (Excalidraw binary file) attached to a canvas
+ * scene. Stored alongside the scene; content-addressed on disk via
+ * AttachmentSyncService.
+ */
+export interface MemryAssetDescriptor {
+  fileId: string // Excalidraw file id (per scene)
+  attachmentId: string // random id from AttachmentSyncService.uploadAttachment
+  contentHash: string // plaintext sha256 hex (dedup key)
+  chunkHashes: string[] // encryptedHash[] from the upload manifest — for dereference
+  mimeType: string
+  sizeBytes: number
+  filename: string // content-addressed on-disk filename
+}
+
+export interface CanvasUploadAssetResponse {
+  ref: string // memry-file:// URL
+  descriptor: MemryAssetDescriptor
+  deduped: boolean
+}
+
+export interface CanvasGetAssetResponse {
+  ref: string | null
+}
+
+export interface CanvasListAssetsResponse {
+  assets: MemryAssetDescriptor[]
 }
 
 export interface CanvasDeleteResponse {
