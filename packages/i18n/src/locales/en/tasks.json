@@ -680,7 +680,13 @@
     "toastError": "Failed to add to project"
   },
   "projectHome": {
-    "stats": { "tasks": "Tasks", "notes": "Notes", "events": "Events", "progress": "Progress" },
+    "stats": {
+      "tasks": "Tasks",
+      "notes": "Notes",
+      "events": "Events",
+      "files": "Files",
+      "progress": "Progress"
+    },
     "emptyTitle": "No project selected",
     "emptyBody": "Pick a project from the sidebar to open its home.",
     "loadError": "Could not load project details",

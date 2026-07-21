@@ -205,4 +205,15 @@ describe('ProjectHomePage', () => {
     )
     expect(mocks.getProject).toHaveBeenCalledTimes(2)
   })
+
+  it('#then renders linked files in the Files section', async () => {
+    mocks.listProjectLinks.mockResolvedValue([
+      { id: 'l-f', projectId: 'p1', itemType: 'file', itemId: 'f1', position: 0, createdAt: '' }
+    ])
+    mocks.notesGetFile.mockResolvedValue({ id: 'f1', title: 'Budget.pdf', fileType: 'pdf' })
+
+    render(<ProjectHomePage projectId="p1" />)
+
+    expect(await screen.findByText('Budget.pdf')).toBeInTheDocument()
+  })
 })

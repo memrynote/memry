@@ -4,6 +4,7 @@ import { FolderKanban } from '@/lib/icons'
 import { getIconByName } from '@/components/icon-picker'
 import { TaskList } from '@/components/tasks/task-list'
 import { ProjectNotesSection } from '@/components/tasks/projects/project-notes-section'
+import { ProjectFilesSection } from '@/components/tasks/projects/project-files-section'
 import { ProjectEventsSection } from '@/components/tasks/projects/project-events-section'
 import { ProjectOverviewNote } from '@/components/tasks/projects/project-overview-note'
 import { ProjectStatsRow } from '@/components/tasks/projects/project-stats-row'
@@ -132,6 +133,7 @@ export const ProjectHomePage = ({
     () => links.filter((link) => link.itemType === 'calendar_event').length,
     [links]
   )
+  const fileCount = useMemo(() => links.filter((link) => link.itemType === 'file').length, [links])
 
   const handleNoteClick = useCallback(
     async (noteId: string) => {
@@ -232,6 +234,7 @@ export const ProjectHomePage = ({
         taskCount={projectTasks.length}
         noteCount={noteCount}
         eventCount={eventCount}
+        fileCount={fileCount}
         progressPct={progressPct}
       />
 
@@ -254,6 +257,8 @@ export const ProjectHomePage = ({
       <ProjectEventsSection projectId={project.id} onEventClick={handleEventClick} />
 
       <ProjectNotesSection projectId={project.id} onNoteClick={handleNoteClick} />
+
+      <ProjectFilesSection projectId={project.id} onFileClick={handleNoteClick} />
     </div>
   )
 }
