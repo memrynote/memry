@@ -166,6 +166,8 @@ export interface TasksCommandRepository extends TasksQueryRepository {
   unlinkItemFromProject(projectId: string, itemType: string, itemId: string): void
   findProjectLink(projectId: string, itemType: string, itemId: string): ProjectLink | undefined
   setProjectHomeNote(projectId: string, noteId: string | null): void
+  deleteProjectLinksForItem(itemType: string, itemId: string): string[]
+  clearProjectsHomeNote(noteId: string): string[]
   createStatus(status: Omit<Status, 'createdAt'>): Status
   updateStatus(
     id: string,
@@ -710,6 +712,30 @@ export function createTasksCommands({
         changedFields: ['homeNoteId']
       })
       return { success: true, project }
+    },
+
+    // A note's links + home-note references only sync because the project payload
+    // carries them, so removing them must re-enqueue each affected project through
+    // the same publisher.projectUpdated(...) path as link/unlink/set-home-note.
+    async cleanupProjectLinksForDeletedNote(noteId: string) {
+      const fromLinks = repository.deleteProjectLinksForItem('note', noteId)
+      const fromHome = repository.clearProjectsHomeNote(noteId)
+
+      const changedByProject = new Map<string, string[]>()
+      for (const id of fromLinks) changedByProject.set(id, ['links'])
+      for (const id of fromHome) {
+        const existing = changedByProject.get(id)
+        changedByProject.set(id, existing ? [...existing, 'homeNoteId'] : ['homeNoteId'])
+      }
+
+      for (const [projectId, changedFields] of changedByProject) {
+        const project = repository.getProject(projectId)
+        if (project) {
+          await publisher.projectUpdated({ id: projectId, project, changedFields })
+        }
+      }
+
+      return { success: true }
     },
 
     async archiveProject(id: string) {

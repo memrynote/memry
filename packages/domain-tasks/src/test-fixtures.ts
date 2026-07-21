@@ -133,6 +133,8 @@ export function createCommandRepository(
     unlinkItemFromProject: vi.fn(),
     findProjectLink: vi.fn(() => undefined),
     setProjectHomeNote: vi.fn(),
+    deleteProjectLinksForItem: vi.fn(() => []),
+    clearProjectsHomeNote: vi.fn(() => []),
     createStatus: vi.fn((s) => ({ ...s, createdAt: 'n' })),
     updateStatus: vi.fn(() => undefined),
     deleteStatus: vi.fn(),

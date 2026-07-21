@@ -41,10 +41,12 @@ export const ProjectNotesSection = ({
       const resolved = await Promise.all(
         noteLinks.map(async (link) => {
           const note = await notesService.get(link.itemId)
-          return { itemId: link.itemId, title: note?.title ?? link.itemId }
+          // Skip orphan links whose note no longer exists rather than rendering a
+          // card titled with the raw note id (belt-and-suspenders for main-process cleanup).
+          return note ? { itemId: link.itemId, title: note.title } : null
         })
       )
-      setNotes(resolved)
+      setNotes(resolved.filter((note): note is LinkedNote => note !== null))
     } catch (error) {
       log.error(
         'Failed to load project notes',

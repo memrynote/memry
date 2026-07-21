@@ -93,6 +93,81 @@ describe('project links domain', () => {
       expect.objectContaining({ id: 'p1', changedFields: ['homeNoteId'] })
     )
   })
+
+  // Cleanup rules (spec §4): deleting a note must not leave orphan project_links
+  // rows or a dangling home_note_id. Cleanup drops the note's links everywhere and
+  // nulls any project whose home note was that note.
+  it('#then removes the deleted note links and clears home notes across projects', async () => {
+    t = createTestDataDb()
+    t.db
+      .insert(projects)
+      .values([
+        { id: 'p1', name: 'P1', color: '#000', position: 0, homeNoteId: 'n1' },
+        { id: 'p2', name: 'P2', color: '#000', position: 1, homeNoteId: 'n1' },
+        { id: 'p3', name: 'P3', color: '#000', position: 2, homeNoteId: 'other' }
+      ])
+      .run()
+    const d = domain(t)
+    await d.linkItemToProject({ projectId: 'p1', itemType: 'note', itemId: 'n1' })
+    await d.linkItemToProject({ projectId: 'p1', itemType: 'note', itemId: 'keep' })
+    await d.linkItemToProject({ projectId: 'p2', itemType: 'note', itemId: 'n1' })
+
+    await d.cleanupProjectLinksForDeletedNote('n1')
+
+    const remaining = t.db.select().from(projectLinks).all()
+    expect(remaining.map((l) => l.itemId).sort()).toEqual(['keep'])
+
+    const homeById = Object.fromEntries(
+      t.db
+        .select()
+        .from(projects)
+        .all()
+        .map((p) => [p.id, p.homeNoteId])
+    )
+    expect(homeById).toEqual({ p1: null, p2: null, p3: 'other' })
+  })
+
+  it('#then re-enqueues each affected project (publisher.projectUpdated) when a linked note is deleted', async () => {
+    t = createTestDataDb()
+    t.db
+      .insert(projects)
+      .values([
+        { id: 'p1', name: 'P1', color: '#000', position: 0, homeNoteId: 'n1' },
+        { id: 'p2', name: 'P2', color: '#000', position: 1 }
+      ])
+      .run()
+    t.db
+      .insert(projectLinks)
+      .values([
+        { id: 'l1', projectId: 'p1', itemType: 'note', itemId: 'n1' },
+        { id: 'l2', projectId: 'p2', itemType: 'note', itemId: 'n1' }
+      ])
+      .run()
+    const publisher = noopPublisher()
+    const d = createTasksDomainFor(t, publisher)
+
+    await d.cleanupProjectLinksForDeletedNote('n1')
+
+    // p1 lost a link AND was a home note → both fields; p2 only lost a link.
+    expect(publisher.projectUpdated).toHaveBeenCalledTimes(2)
+    expect(publisher.projectUpdated).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'p1', changedFields: ['links', 'homeNoteId'] })
+    )
+    expect(publisher.projectUpdated).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'p2', changedFields: ['links'] })
+    )
+  })
+
+  it('#then does nothing when the deleted note had no links or home-note references', async () => {
+    t = createTestDataDb()
+    t.db.insert(projects).values({ id: 'p1', name: 'P1', color: '#000', position: 0 }).run()
+    const publisher = noopPublisher()
+    const d = createTasksDomainFor(t, publisher)
+
+    await d.cleanupProjectLinksForDeletedNote('ghost')
+
+    expect(publisher.projectUpdated).not.toHaveBeenCalled()
+  })
 })
 
 function createTasksDomainFor(db: TestDatabaseResult, publisher: TasksDomainPublisher) {

@@ -74,6 +74,29 @@ describe('ProjectNotesSection', () => {
     await waitFor(() => expect(screen.queryByText('Launch brief')).not.toBeInTheDocument())
   })
 
+  it('skips orphan links whose note no longer exists (no raw-id card)', async () => {
+    mockListProjectLinks.mockResolvedValue([
+      { id: 'link-1', projectId: 'p1', itemType: 'note', itemId: 'n1', position: 0, createdAt: '' },
+      {
+        id: 'link-2',
+        projectId: 'p1',
+        itemType: 'note',
+        itemId: 'deleted-note-id',
+        position: 1,
+        createdAt: ''
+      }
+    ])
+    mockGetNote.mockImplementation(async (id: string) =>
+      id === 'n1' ? { id: 'n1', title: 'Launch brief' } : null
+    )
+
+    render(<ProjectNotesSection projectId="p1" />)
+
+    expect(await screen.findByText('Launch brief')).toBeInTheDocument()
+    // The orphan link must not render a card titled with the raw note id.
+    expect(screen.queryByText('deleted-note-id')).not.toBeInTheDocument()
+  })
+
   it('renders nothing when the project has no linked notes', async () => {
     mockListProjectLinks.mockResolvedValue([])
 

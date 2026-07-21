@@ -121,6 +121,8 @@ export interface ProjectQueryModule<TDb> {
   ): ProjectLinkRecord | undefined
   getProjectLinks(db: TDb, projectId: string): ProjectLinkRecord[]
   updateProjectHomeNote(db: TDb, projectId: string, noteId: string | null): void
+  deleteProjectLinksForItem(db: TDb, itemType: string, itemId: string): string[]
+  clearProjectsHomeNote(db: TDb, noteId: string): string[]
 }
 
 export interface CreateTasksRepositoryDeps<TDb> {
@@ -377,6 +379,14 @@ export function createTasksRepository<TDb>({
 
     setProjectHomeNote(projectId: string, noteId: string | null): void {
       projectQueries.updateProjectHomeNote(db, projectId, noteId)
+    },
+
+    deleteProjectLinksForItem(itemType: string, itemId: string): string[] {
+      return projectQueries.deleteProjectLinksForItem(db, itemType, itemId)
+    },
+
+    clearProjectsHomeNote(noteId: string): string[] {
+      return projectQueries.clearProjectsHomeNote(db, noteId)
     },
 
     getStatus(id: string): Status | undefined {

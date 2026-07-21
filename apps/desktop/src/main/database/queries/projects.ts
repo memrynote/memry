@@ -633,3 +633,52 @@ export function updateProjectHomeNote(db: DataDb, projectId: string, noteId: str
     .where(eq(projects.id, projectId))
     .run()
 }
+
+/**
+ * Delete every project link that points at a given item (across all projects).
+ * Returns the distinct project ids that lost at least one link, so callers can
+ * re-enqueue those projects for sync (the project payload carries its links).
+ */
+export function deleteProjectLinksForItem(db: DataDb, itemType: string, itemId: string): string[] {
+  const affected = [
+    ...new Set(
+      db
+        .select({ projectId: projectLinks.projectId })
+        .from(projectLinks)
+        .where(and(eq(projectLinks.itemType, itemType), eq(projectLinks.itemId, itemId)))
+        .all()
+        .map((row) => row.projectId)
+    )
+  ]
+
+  if (affected.length > 0) {
+    db.delete(projectLinks)
+      .where(and(eq(projectLinks.itemType, itemType), eq(projectLinks.itemId, itemId)))
+      .run()
+  }
+
+  return affected
+}
+
+/**
+ * Clear home_note_id on any project that points at the given note, bumping
+ * modifiedAt. Returns the project ids that were changed, so callers can
+ * re-enqueue those projects for sync.
+ */
+export function clearProjectsHomeNote(db: DataDb, noteId: string): string[] {
+  const affected = db
+    .select({ id: projects.id })
+    .from(projects)
+    .where(eq(projects.homeNoteId, noteId))
+    .all()
+    .map((row) => row.id)
+
+  if (affected.length > 0) {
+    db.update(projects)
+      .set({ homeNoteId: null, modifiedAt: new Date().toISOString() })
+      .where(eq(projects.homeNoteId, noteId))
+      .run()
+  }
+
+  return affected
+}

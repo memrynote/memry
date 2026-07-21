@@ -14,7 +14,8 @@ import {
   syncNoteCreate,
   syncNoteUpdate,
   syncNoteDelete,
-  setNoteLocalOnlyState
+  setNoteLocalOnlyState,
+  cleanupProjectLinksForDeletedNote
 } from './runtime-effects'
 
 export async function createNoteCommand(input: NoteCreateInput): Promise<Note> {
@@ -54,6 +55,9 @@ export async function deleteNoteCommand(id: string): Promise<void> {
   // Enqueue sync delete BEFORE cache removal — enqueue reads cache for vector clock
   syncNoteDelete(id)
   await deleteNote(id)
+  // Drop the note's project links + clear any project home note pointing at it,
+  // only once the note is actually gone (spec §4 "Cleanup rules").
+  await cleanupProjectLinksForDeletedNote(id)
 }
 
 export async function setNoteLocalOnlyCommand(input: {
