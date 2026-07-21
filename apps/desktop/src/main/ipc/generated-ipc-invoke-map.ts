@@ -71,8 +71,11 @@ export interface MainIpcInvokeHandlers {
   "canvas:create": (...args: [{ title?: string | null | undefined; scene?: string | undefined; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/canvas-api").Canvas>>
   "canvas:delete": (...args: [string]) => Awaited<Promise<{ success: boolean; }>>
   "canvas:get": (...args: [string]) => Awaited<Promise<import("../../../../../packages/contracts/src/canvas-api").Canvas | null>>
+  "canvas:get-asset": (...args: [{ canvasId: string; fileId: string; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/canvas-api").CanvasGetAssetResponse>>
   "canvas:list": (...args: []) => Awaited<Promise<{ canvases: import("../../../../../packages/contracts/src/canvas-api").CanvasSummary[]; }>>
+  "canvas:list-assets": (...args: [{ canvasId: string; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/canvas-api").CanvasListAssetsResponse>>
   "canvas:update": (...args: [{ id: string; title?: string | null | undefined; scene?: string | undefined; entityRefs?: { entityType: "note" | "task" | "calendar_event"; entityId: string; }[] | undefined; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/canvas-api").CanvasSummary>>
+  "canvas:upload-asset": (...args: [{ canvasId: string; fileId: string; mimeType: string; data: ArrayBuffer | number[]; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/canvas-api").CanvasUploadAssetResponse>>
   "context-menu:show": (...args: [{ id: string; label: string; accelerator?: string | undefined; disabled?: boolean | undefined; type?: "normal" | "separator" | undefined; }[]]) => Awaited<Promise<string | null>>
   "crdt:apply-update": (...args: [unknown]) => Awaited<Promise<void>>
   "crdt:close-doc": (...args: [unknown]) => Awaited<Promise<{ success: boolean; }>>

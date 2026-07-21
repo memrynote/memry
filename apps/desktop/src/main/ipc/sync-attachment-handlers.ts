@@ -17,7 +17,8 @@ import {
 import {
   AttachmentSyncService,
   AttachmentTooLargeError,
-  type TransferProgress
+  type TransferProgress,
+  type UploadResult
 } from '../sync/attachments'
 import { classifyError } from '../sync/sync-errors'
 import {
@@ -129,6 +130,29 @@ const getOrCreateAttachmentService = (): AttachmentSyncService | null => {
   })
 
   return attachmentService
+}
+
+/**
+ * Bound upload/download IO over the SHARED attachment singletons, for the
+ * canvas asset service to reuse (no second queue/service). Uploads go through
+ * the upload queue (network gating + backoff) and return the full manifest;
+ * downloads go straight through the service. Returns null only if the sync
+ * singletons cannot be constructed.
+ */
+export function getCanvasAssetIO(): {
+  uploadAttachment: (canvasId: string, filePath: string) => Promise<UploadResult>
+  downloadAttachment: (attachmentId: string, targetPath: string) => Promise<void>
+} | null {
+  const queue = getOrCreateUploadQueue()
+  const service = getOrCreateAttachmentService()
+  if (!queue || !service) return null
+  return {
+    uploadAttachment: (canvasId, filePath) =>
+      queue.enqueue(canvasId, filePath, broadcastUploadProgress),
+    downloadAttachment: async (attachmentId, targetPath) => {
+      await service.downloadAttachment(attachmentId, targetPath)
+    }
+  }
 }
 
 export function clearAttachmentState(): void {

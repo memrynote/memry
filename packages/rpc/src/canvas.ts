@@ -8,6 +8,9 @@ import {
   type CanvasEntityRef,
   type CanvasListResponse,
   type CanvasDeleteResponse,
+  type CanvasUploadAssetResponse,
+  type CanvasGetAssetResponse,
+  type CanvasListAssetsResponse,
   type CanvasCreatedEvent,
   type CanvasUpdatedEvent,
   type CanvasDeletedEvent,
@@ -59,6 +62,34 @@ export const canvasRpc = defineDomain({
     list: defineMethod<() => Promise<CanvasListResponse>>({
       channel: CanvasChannels.invoke.LIST,
       params: []
+    }),
+    uploadAsset: defineMethod<
+      (input: {
+        canvasId: string
+        fileId: string
+        mimeType: string
+        data: ArrayBuffer
+      }) => Promise<CanvasUploadAssetResponse>
+    >({
+      channel: CanvasChannels.invoke.UPLOAD_ASSET,
+      params: ['input'],
+      implementation: `async (input) =>
+        invoke(${JSON.stringify(CanvasChannels.invoke.UPLOAD_ASSET)}, {
+          canvasId: input.canvasId,
+          fileId: input.fileId,
+          mimeType: input.mimeType,
+          data: Array.from(new Uint8Array(input.data))
+        })`
+    }),
+    getAsset: defineMethod<(canvasId: string, fileId: string) => Promise<CanvasGetAssetResponse>>({
+      channel: CanvasChannels.invoke.GET_ASSET,
+      params: ['canvasId', 'fileId'],
+      invokeArgs: ['{ canvasId, fileId }']
+    }),
+    listAssets: defineMethod<(canvasId: string) => Promise<CanvasListAssetsResponse>>({
+      channel: CanvasChannels.invoke.LIST_ASSETS,
+      params: ['canvasId'],
+      invokeArgs: ['{ canvasId }']
     })
   },
   events: {

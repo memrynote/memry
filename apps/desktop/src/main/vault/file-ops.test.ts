@@ -10,6 +10,7 @@ import * as os from 'os'
 import { rename } from 'fs/promises'
 import {
   atomicWrite,
+  atomicWriteBinary,
   safeRead,
   readRequired,
   ensureDirectory,
@@ -125,6 +126,64 @@ describe('atomicWrite', () => {
     await expect(atomicWrite(dirPath, 'content')).rejects.toThrow(NoteError)
 
     // No temp files should be left behind
+    const files = fs.readdirSync(tempDir.path)
+    const tempFiles = files.filter((f) => f.startsWith('.') && f.endsWith('.tmp'))
+    expect(tempFiles).toHaveLength(0)
+  })
+})
+
+// ============================================================================
+// atomicWriteBinary Tests
+// ============================================================================
+
+describe('atomicWriteBinary', () => {
+  let tempDir: TestDir
+
+  beforeEach(() => {
+    tempDir = createTempDir()
+  })
+
+  afterEach(() => {
+    tempDir.cleanup()
+  })
+
+  it('writes raw bytes atomically via temp file and rename', async () => {
+    const filePath = path.join(tempDir.path, 'asset.png')
+    const data = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x00, 0x01, 0x02])
+
+    await atomicWriteBinary(filePath, data)
+
+    expect(fs.existsSync(filePath)).toBe(true)
+    expect(fs.readFileSync(filePath)).toEqual(data)
+  })
+
+  it('creates parent directories if they do not exist', async () => {
+    const filePath = path.join(tempDir.path, 'nested', 'deep', 'asset.bin')
+    const data = new Uint8Array([1, 2, 3, 4])
+
+    await atomicWriteBinary(filePath, data)
+
+    expect(fs.existsSync(filePath)).toBe(true)
+    expect(fs.readFileSync(filePath)).toEqual(Buffer.from(data))
+  })
+
+  it('overwrites existing binary content', async () => {
+    const filePath = path.join(tempDir.path, 'existing.bin')
+    fs.writeFileSync(filePath, Buffer.from([9, 9, 9]))
+
+    await atomicWriteBinary(filePath, Buffer.from([1, 2, 3]))
+
+    expect(fs.readFileSync(filePath)).toEqual(Buffer.from([1, 2, 3]))
+  })
+
+  it('cleans up the temp file and propagates the error on write failure', async () => {
+    // Target a directory path so the rename fails.
+    const dirPath = path.join(tempDir.path, 'a-directory')
+    fs.mkdirSync(dirPath)
+
+    await expect(atomicWriteBinary(dirPath, Buffer.from([1, 2, 3]))).rejects.toThrow(NoteError)
+
+    // No temp files should be left behind in the parent directory.
     const files = fs.readdirSync(tempDir.path)
     const tempFiles = files.filter((f) => f.startsWith('.') && f.endsWith('.tmp'))
     expect(tempFiles).toHaveLength(0)
