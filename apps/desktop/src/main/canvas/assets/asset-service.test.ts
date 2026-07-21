@@ -94,7 +94,7 @@ describe('canvas asset service', () => {
       fs.mkdirSync(path.dirname(targetPath), { recursive: true })
       fs.writeFileSync(targetPath, Buffer.from('downloaded'))
     })
-    dereference = vi.fn(async () => {})
+    dereference = vi.fn(async () => ({ ok: true }))
     markWritebackIgnored = vi.fn()
     trackEvent = vi.fn()
 
@@ -259,9 +259,11 @@ describe('canvas asset service', () => {
       expect(fs.existsSync(path.join(dir, 'hashA.png'))).toBe(true)
       expect(fs.existsSync(path.join(dir, 'hashC.png'))).toBe(true)
 
+      // Only hashB is actually reaped on the server (hashC's local row is pruned but its
+      // server chunk stays — canvas-b still references it), so the metric counts 1.
       expect(trackEvent).toHaveBeenCalledWith(
         'canvas_asset_gc_reaped',
-        expect.objectContaining({ metrics: { itemCount: 2 } })
+        expect.objectContaining({ metrics: { itemCount: 1 } })
       )
     })
 
@@ -270,6 +272,38 @@ describe('canvas asset service', () => {
       await reconcileCanvasAssets(ctx, 'canvas-a', sceneWithHashes(['hashA']))
       expect(dereference).not.toHaveBeenCalled()
       expect(listAssetsByCanvas(db, 'canvas-a')).toHaveLength(1)
+    })
+
+    it('keeps orphaned rows for retry when the server dereference fails (e.g. endpoint not yet deployed)', async () => {
+      seedRow('canvas-a', 'hashB', 'chunkB')
+      const dir = path.join(vaultPath, 'attachments', 'canvas-assets')
+      fs.mkdirSync(dir, { recursive: true })
+      fs.writeFileSync(path.join(dir, 'hashB.png'), Buffer.from('hashB'))
+
+      // 404 / offline → dereference reports failure.
+      dereference.mockResolvedValueOnce({ ok: false })
+
+      await reconcileCanvasAssets(ctx, 'canvas-a', sceneWithHashes([]))
+
+      // The server WAS called, but because it failed the local row + file are KEPT so a
+      // later reconcile can retry — the chunkHashes are not lost and ref_count won't leak.
+      expect(dereference).toHaveBeenCalledWith(['chunkB'])
+      expect(listAssetsByCanvas(db, 'canvas-a').map((r) => r.contentHash)).toEqual(['hashB'])
+      expect(fs.existsSync(path.join(dir, 'hashB.png'))).toBe(true)
+      expect(trackEvent).not.toHaveBeenCalledWith('canvas_asset_gc_reaped', expect.anything())
+    })
+
+    it('prunes a shared-removed row without any server call', async () => {
+      // hashS referenced by canvas-a AND canvas-b; canvas-a drops it from its scene.
+      seedRow('canvas-a', 'hashS', 'chunkS')
+      seedRow('canvas-b', 'hashS', 'chunkS')
+
+      await reconcileCanvasAssets(ctx, 'canvas-a', sceneWithHashes([]))
+
+      // No dereference (canvas-b still holds it), but canvas-a's row is pruned.
+      expect(dereference).not.toHaveBeenCalled()
+      expect(listAssetsByCanvas(db, 'canvas-a')).toHaveLength(0)
+      expect(listAssetsByCanvas(db, 'canvas-b').map((r) => r.contentHash)).toEqual(['hashS'])
     })
   })
 

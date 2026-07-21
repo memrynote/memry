@@ -63,7 +63,10 @@ export interface AssetServiceContext {
   /** Download an attachment to targetPath through the shared attachment pipeline. */
   downloadAttachment: (attachmentId: string, targetPath: string) => Promise<void>
   /** Best-effort server ref_count decrement for GC'd chunks. Never throws. */
-  dereference: (chunkHashes: string[]) => Promise<void>
+  /** Decrement server ref_count for these chunk hashes. Never throws; `ok` is false on a
+   *  404 (endpoint not yet deployed) / missing token / offline, so the caller can keep the
+   *  rows that hold these hashes and retry on a later reconcile instead of leaking ref_count. */
+  dereference: (chunkHashes: string[]) => Promise<{ ok: boolean }>
   /** Suppress the vault watcher's re-upload loop before writing/downloading a file. */
   markWritebackIgnored: (absolutePath: string) => void
   trackEvent: (name: TelemetryEventName, options: TrackMainEventOptions) => void
@@ -256,26 +259,42 @@ export async function reconcileCanvasAssets(
   const plan = planDereference(prev, current, others)
   if (plan.removedContentHashes.length === 0) return
 
-  deleteCanvasAssetRows(ctx.db, canvasId, plan.removedContentHashes)
-
-  if (plan.dereferenceChunkHashes.length > 0) {
-    // dereference never throws — GC must not break a save/delete.
-    await ctx.dereference(plan.dereferenceChunkHashes)
-    ctx.trackEvent('canvas_asset_gc_reaped', {
-      surface: 'sync',
-      action: 'gc',
-      objectType: 'canvas',
-      result: 'success',
-      metrics: { itemCount: plan.removedContentHashes.length }
-    })
+  // Shared removed content — still referenced by another canvas, so no server call is needed;
+  // prune the local row immediately.
+  const dereferenced = new Set(plan.dereferencedContentHashes)
+  const sharedRemoved = plan.removedContentHashes.filter((hash) => !dereferenced.has(hash))
+  if (sharedRemoved.length > 0) {
+    deleteCanvasAssetRows(ctx.db, canvasId, sharedRemoved)
   }
 
-  // Safe on-disk delete: only when the content is referenced by NEITHER the
-  // saved scene NOR any other canvas.
-  const removed = new Set(plan.removedContentHashes)
+  if (plan.dereferencedContentHashes.length === 0) return
+
+  // Orphaned content — dereference on the server FIRST, and prune the rows (which hold the
+  // chunkHashes needed to retry) only once the server confirms. A 404 (endpoint not yet
+  // deployed) / transient outage keeps the rows so the next reconcile retries, instead of
+  // silently leaking ref_count forever.
+  const { ok } = await ctx.dereference(plan.dereferenceChunkHashes)
+  if (!ok) {
+    log.warn('canvas asset dereference failed; keeping rows for a later retry', {
+      canvasId,
+      contentHashes: plan.dereferencedContentHashes.length
+    })
+    return
+  }
+
+  deleteCanvasAssetRows(ctx.db, canvasId, plan.dereferencedContentHashes)
+  ctx.trackEvent('canvas_asset_gc_reaped', {
+    surface: 'sync',
+    action: 'gc',
+    objectType: 'canvas',
+    result: 'success',
+    metrics: { itemCount: plan.dereferencedContentHashes.length }
+  })
+
+  // Safe on-disk delete: only the reaped content (referenced by NEITHER the saved scene NOR
+  // any other canvas — i.e. exactly the dereferenced set).
   for (const row of prev) {
-    if (!removed.has(row.contentHash)) continue
-    if (current.has(row.contentHash) || others.has(row.contentHash)) continue
+    if (!dereferenced.has(row.contentHash)) continue
 
     const diskPath = canvasAssetDiskPath(ctx.vaultPath, row.filename)
     try {

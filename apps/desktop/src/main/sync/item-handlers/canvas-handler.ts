@@ -1,5 +1,10 @@
 import { and, eq, isNull } from 'drizzle-orm'
-import { canvases, canvasEntityRefs, type CanvasRow } from '@memry/db-schema/data-schema'
+import {
+  canvasAssets,
+  canvases,
+  canvasEntityRefs,
+  type CanvasRow
+} from '@memry/db-schema/data-schema'
 import { CanvasSyncPayloadSchema, type CanvasSyncPayload } from '@memry/contracts/sync-payloads'
 import { CanvasChannels } from '@memry/contracts/ipc-channels'
 import type { VectorClock } from '@memry/contracts/sync-api'
@@ -10,7 +15,6 @@ import { generateId } from '../../lib/id'
 import { encryptCanvasSceneForVault, decryptCanvasSceneForVault } from '../../canvas/encryption'
 import { extractEntityRefsFromScene } from '../../canvas/scene-refs'
 import { readMemryAssets } from '../../canvas/assets/memry-assets'
-import { recordAsset } from '../../canvas/assets/asset-store'
 import { ensureAssetsPresent, reconcileCanvasAssets } from '../../canvas/assets/asset-service'
 import { buildAssetServiceContext } from '../../canvas/assets/asset-service-context'
 import { getCanvasSyncService } from '../canvas-sync'
@@ -38,29 +42,33 @@ function writeRefs(tx: CanvasTx, canvasId: string, scene: string): void {
  * non-authoring device gets the dedup + GC bookkeeping it never uploaded, and
  * the GC union (`hashesReferencedByOtherCanvases`) protects assets shared across
  * canvases (incl. conflict copies). A pre-M5 / inline-base64 scene yields `[]`
- * → zero rows (backward compat). Uses the same connection as the apply tx, so
- * it is atomic with the scene write.
+ * → zero rows (backward compat). Writes through the apply transaction handle
+ * (`tx`, like `writeRefs`), so it commits/rolls back atomically with the scene
+ * + entity-ref writes.
  */
 function recordSceneAssets(
-  db: DrizzleDb,
+  tx: CanvasTx,
   vaultId: string,
   canvasId: string,
   descriptors: MemryAssetDescriptor[]
 ): void {
   const now = Date.now()
   for (const descriptor of descriptors) {
-    recordAsset(db, {
-      vaultId,
-      canvasId,
-      contentHash: descriptor.contentHash,
-      attachmentId: descriptor.attachmentId,
-      fileId: descriptor.fileId,
-      filename: descriptor.filename,
-      mimeType: descriptor.mimeType,
-      sizeBytes: descriptor.sizeBytes,
-      chunkHashes: descriptor.chunkHashes,
-      createdAt: now
-    })
+    tx.insert(canvasAssets)
+      .values({
+        vaultId,
+        canvasId,
+        contentHash: descriptor.contentHash,
+        attachmentId: descriptor.attachmentId,
+        fileId: descriptor.fileId,
+        filename: descriptor.filename,
+        mimeType: descriptor.mimeType,
+        sizeBytes: descriptor.sizeBytes,
+        chunkHashes: descriptor.chunkHashes,
+        createdAt: now
+      })
+      .onConflictDoNothing()
+      .run()
   }
 }
 
@@ -170,7 +178,7 @@ export class CanvasHandler extends BaseItemHandler<CanvasSyncPayload> {
           .run()
         writeRefs(tx, itemId, scene)
         // M5: ingest the asset sidecar so this device gets dedup/GC rows.
-        recordSceneAssets(ctx.db, vaultId, itemId, descriptors)
+        recordSceneAssets(tx, vaultId, itemId, descriptors)
         ctx.emit(CanvasChannels.events.CREATED, {
           canvas: { id: itemId, title: data.title ?? null, createdAt: now, updatedAt: now }
         })
@@ -223,7 +231,7 @@ export class CanvasHandler extends BaseItemHandler<CanvasSyncPayload> {
       writeRefs(tx, itemId, scene)
       // M5: ingest the incoming scene's asset sidecar under this canvas. Rows are
       // append-only (idempotent upsert); GC on save/delete prunes stale ones.
-      recordSceneAssets(ctx.db, existing.vaultId, itemId, descriptors)
+      recordSceneAssets(tx, existing.vaultId, itemId, descriptors)
 
       ctx.emit(CanvasChannels.events.UPDATED, {
         canvas: { id: itemId, title: nextTitle, createdAt: existing.createdAt, updatedAt: now }
@@ -386,7 +394,7 @@ export class CanvasHandler extends BaseItemHandler<CanvasSyncPayload> {
     // `localScene`, NOT the incoming winning scene. This puts the copy's hashes
     // into the GC union (`hashesReferencedByOtherCanvases`), so when the original
     // is later overwritten/deleted, GC will not reap an asset the copy still uses.
-    recordSceneAssets(ctx.db, existing.vaultId, copyId, readMemryAssets(localScene))
+    recordSceneAssets(tx, existing.vaultId, copyId, readMemryAssets(localScene))
 
     if (deviceId) {
       // Enqueue a METADATA-ONLY create push (no plaintext scene at rest in the

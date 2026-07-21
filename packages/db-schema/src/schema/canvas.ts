@@ -70,6 +70,10 @@ export const canvasAssets = sqliteTable(
       .references(() => canvases.id, { onDelete: 'cascade' }),
     contentHash: text('content_hash').notNull(),
     attachmentId: text('attachment_id').notNull(),
+    // A representative Excalidraw fileId that references this content. Assets are
+    // content-addressed, so several scene elements (distinct fileIds) may share one
+    // contentHash → one physical asset; this stores the first-seen fileId. Rendering,
+    // restore, and GC all key on contentHash (never fileId), so the collapse is by design.
     fileId: text('file_id').notNull(),
     filename: text('filename').notNull(),
     mimeType: text('mime_type').notNull(),
@@ -78,6 +82,7 @@ export const canvasAssets = sqliteTable(
     createdAt: integer('created_at').notNull()
   },
   (table) => [
+    // Content-addressed dedup key: one row per (canvas, distinct content), NOT per fileId.
     primaryKey({ columns: [table.canvasId, table.contentHash] }),
     index('idx_canvas_assets_dedup').on(table.vaultId, table.contentHash),
     index('idx_canvas_assets_attachment').on(table.attachmentId)

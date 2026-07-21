@@ -23,6 +23,7 @@ describe('planDereference', () => {
     const prevRows = [row({ contentHash: 'hash-a', chunkHashes: ['chunk-1'] })]
     const plan = planDereference(prevRows, new Set(), new Set())
     expect(plan.removedContentHashes).toEqual(['hash-a'])
+    expect(plan.dereferencedContentHashes).toEqual(['hash-a'])
     expect(plan.dereferenceChunkHashes).toEqual(['chunk-1'])
   })
 
@@ -30,6 +31,8 @@ describe('planDereference', () => {
     const prevRows = [row({ contentHash: 'hash-a', chunkHashes: ['chunk-1'] })]
     const plan = planDereference(prevRows, new Set(), new Set(['hash-a']))
     expect(plan.removedContentHashes).toEqual(['hash-a'])
+    // shared with another canvas → NOT reaped
+    expect(plan.dereferencedContentHashes).toEqual([])
     expect(plan.dereferenceChunkHashes).toEqual([])
   })
 
@@ -37,6 +40,7 @@ describe('planDereference', () => {
     const prevRows = [row({ contentHash: 'hash-a', chunkHashes: ['chunk-1'] })]
     const plan = planDereference(prevRows, new Set(['hash-a']), new Set())
     expect(plan.removedContentHashes).toEqual([])
+    expect(plan.dereferencedContentHashes).toEqual([])
     expect(plan.dereferenceChunkHashes).toEqual([])
   })
 
@@ -47,6 +51,7 @@ describe('planDereference', () => {
     ]
     const plan = planDereference(prevRows, new Set(['hash-a', 'hash-b']), new Set())
     expect(plan.removedContentHashes).toEqual([])
+    expect(plan.dereferencedContentHashes).toEqual([])
     expect(plan.dereferenceChunkHashes).toEqual([])
   })
 
@@ -56,6 +61,7 @@ describe('planDereference', () => {
     ]
     const plan = planDereference(prevRows, new Set(), new Set())
     expect(plan.removedContentHashes).toEqual(['hash-a'])
+    expect(plan.dereferencedContentHashes).toEqual(['hash-a'])
     expect(plan.dereferenceChunkHashes).toEqual(['chunk-1', 'chunk-2', 'chunk-3'])
   })
 })

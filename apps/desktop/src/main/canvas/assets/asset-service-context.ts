@@ -57,9 +57,10 @@ export function buildAssetServiceContext(): AssetServiceContext | null {
       await io.downloadAttachment(attachmentId, targetPath)
     },
     dereference: async (chunkHashes) => {
-      // Never throws: a 404 / missing token / offline degrades to a no-op so
-      // GC can never break a canvas save or delete.
-      await dereferenceChunks(chunkHashes, dereferenceDeps)
+      // Never throws: a 404 / missing token / offline degrades to `{ ok: false }` so GC can
+      // never break a canvas save or delete, and the caller keeps the rows to retry later.
+      const { ok } = await dereferenceChunks(chunkHashes, dereferenceDeps)
+      return { ok }
     },
     markWritebackIgnored,
     trackEvent: trackMainEvent
