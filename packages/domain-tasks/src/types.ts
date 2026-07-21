@@ -58,6 +58,7 @@ export interface Project {
   createdAt: string
   modifiedAt: string
   archivedAt: string | null
+  homeNoteId?: string | null
 }
 
 export interface ProjectWithStats extends Project {

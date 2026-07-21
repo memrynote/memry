@@ -4,6 +4,7 @@ import {
   ProjectCreateSchema,
   ProjectLinkItemSchema,
   ProjectListForItemSchema,
+  ProjectSetHomeNoteSchema,
   ProjectUpdateSchema,
   StatusCreateSchema,
   TaskCreateSchema,
@@ -30,6 +31,7 @@ import {
 export type ProjectCreateInput = z.input<typeof ProjectCreateSchema>
 export type ProjectUpdateInput = z.input<typeof ProjectUpdateSchema>
 export type ProjectLinkItemInput = z.input<typeof ProjectLinkItemSchema>
+export type ProjectSetHomeNoteInput = z.input<typeof ProjectSetHomeNoteSchema>
 export type ProjectItemType = z.input<typeof ProjectListForItemSchema>['itemType']
 export type StatusCreateInput = z.input<typeof StatusCreateSchema>
 export type TaskCreateInput = z.input<typeof TaskCreateSchema>
@@ -258,6 +260,10 @@ export const tasksRpc = defineDomain({
     listProjectLinks: defineMethod<(projectId: string) => Promise<ProjectLink[]>>({
       channel: TasksChannels.invoke.PROJECT_LIST_LINKS,
       params: ['projectId']
+    }),
+    setProjectHomeNote: defineMethod<(input: ProjectSetHomeNoteInput) => ProjectMutationResponse>({
+      channel: TasksChannels.invoke.PROJECT_SET_HOME_NOTE,
+      params: ['input']
     }),
     listForItem: defineMethod<(itemType: ProjectItemType, itemId: string) => Promise<ProjectRef[]>>(
       {
