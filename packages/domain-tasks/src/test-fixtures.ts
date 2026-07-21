@@ -142,6 +142,7 @@ export function createCommandRepository(
     bulkDeleteTasks: vi.fn(() => 0),
     bulkMoveTasks: vi.fn(() => 0),
     bulkArchiveTasks: vi.fn(() => 0),
+    listForItem: vi.fn(() => []),
     ...overrides
   }
 }

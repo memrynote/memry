@@ -93,6 +93,20 @@ describe('project links domain', () => {
       expect.objectContaining({ id: 'p1', changedFields: ['homeNoteId'] })
     )
   })
+
+  it('#then listForItem returns projects an item belongs to', async () => {
+    t = createTestDataDb()
+    t.db.insert(projects).values({ id: 'p1', name: 'P1', color: '#111', position: 0 }).run()
+    t.db.insert(projects).values({ id: 'p2', name: 'P2', color: '#222', position: 1 }).run()
+    const d = domain(t)
+    await d.linkItemToProject({ projectId: 'p1', itemType: 'calendar_event', itemId: 'e1' })
+    await d.linkItemToProject({ projectId: 'p2', itemType: 'calendar_event', itemId: 'e1' })
+    await d.linkItemToProject({ projectId: 'p1', itemType: 'note', itemId: 'n9' })
+
+    const result = d.listForItem('calendar_event', 'e1')
+    expect(result.map((p) => p.id).sort()).toEqual(['p1', 'p2'])
+    expect(result.find((p) => p.id === 'p1')?.name).toBe('P1')
+  })
 })
 
 function createTasksDomainFor(db: TestDatabaseResult, publisher: TasksDomainPublisher) {

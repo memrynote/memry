@@ -1,6 +1,7 @@
 import type {
   Project,
   ProjectLink,
+  ProjectRef,
   ProjectWithStats,
   ProjectWithStatuses,
   Status,
@@ -121,6 +122,7 @@ export interface ProjectQueryModule<TDb> {
   ): ProjectLinkRecord | undefined
   getProjectLinks(db: TDb, projectId: string): ProjectLinkRecord[]
   updateProjectHomeNote(db: TDb, projectId: string, noteId: string | null): void
+  getProjectsForItem(db: TDb, itemType: string, itemId: string): ProjectRef[]
 }
 
 export interface CreateTasksRepositoryDeps<TDb> {
@@ -377,6 +379,10 @@ export function createTasksRepository<TDb>({
 
     setProjectHomeNote(projectId: string, noteId: string | null): void {
       projectQueries.updateProjectHomeNote(db, projectId, noteId)
+    },
+
+    listForItem(itemType: string, itemId: string): ProjectRef[] {
+      return projectQueries.getProjectsForItem(db, itemType, itemId)
     },
 
     getStatus(id: string): Status | undefined {

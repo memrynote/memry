@@ -101,6 +101,13 @@ export interface ProjectSetHomeNoteInput {
   noteId: string | null
 }
 
+export interface ProjectRef {
+  id: string
+  name: string
+  color: string
+  icon: string | null
+}
+
 export interface Reminder {
   id: string
   taskId: string

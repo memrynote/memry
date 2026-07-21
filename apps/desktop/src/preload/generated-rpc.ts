@@ -142,6 +142,7 @@ export function createGeneratedRpcApi({
       "linkProjectItem": ((input) => invoke("tasks:project-link-item", input)) as GeneratedRpcApi["tasks"]["linkProjectItem"],
       "unlinkProjectItem": ((input) => invoke("tasks:project-unlink-item", input)) as GeneratedRpcApi["tasks"]["unlinkProjectItem"],
       "listProjectLinks": ((projectId) => invoke("tasks:project-list-links", projectId)) as GeneratedRpcApi["tasks"]["listProjectLinks"],
+      "listForItem": ((itemType, itemId) => invoke("tasks:project-list-for-item", { itemType, itemId })) as GeneratedRpcApi["tasks"]["listForItem"],
       "createStatus": ((input) => invoke("tasks:status-create", input)) as GeneratedRpcApi["tasks"]["createStatus"],
       "updateStatus": ((id, updates) => invoke("tasks:status-update", { id, ...updates })) as GeneratedRpcApi["tasks"]["updateStatus"],
       "deleteStatus": ((id) => invoke("tasks:status-delete", id)) as GeneratedRpcApi["tasks"]["deleteStatus"],

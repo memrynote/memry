@@ -633,3 +633,20 @@ export function updateProjectHomeNote(db: DataDb, projectId: string, noteId: str
     .where(eq(projects.id, projectId))
     .run()
 }
+
+/**
+ * List the projects a given item (note, calendar event, or file) belongs to.
+ */
+export function getProjectsForItem(db: DataDb, itemType: string, itemId: string) {
+  return db
+    .select({
+      id: projects.id,
+      name: projects.name,
+      color: projects.color,
+      icon: projects.icon
+    })
+    .from(projectLinks)
+    .innerJoin(projects, eq(projectLinks.projectId, projects.id))
+    .where(and(eq(projectLinks.itemType, itemType), eq(projectLinks.itemId, itemId)))
+    .all()
+}
