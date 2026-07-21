@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useState } from 'react'
-import { createPortal } from 'react-dom'
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 
 const LazyEmojiPicker = lazy(async () => ({
   default: (await import('@/components/note/note-title/EmojiPicker')).EmojiPicker
@@ -34,7 +34,6 @@ export function IconPickerButton({
   onPickerOpenChange
 }: IconPickerButtonProps) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
-  const [portalPosition, setPortalPosition] = useState<{ top: number; left: number } | null>(null)
 
   const isControlled = pickerOpen !== undefined
   const isPickerOpen = isControlled ? pickerOpen : uncontrolledOpen
@@ -48,32 +47,6 @@ export function IconPickerButton({
       }
     },
     [isControlled, onPickerOpenChange]
-  )
-
-  const updatePortalPosition = useCallback((button: HTMLButtonElement) => {
-    const rect = button.getBoundingClientRect()
-    setPortalPosition({ top: rect.bottom + 4, left: rect.left })
-  }, [])
-
-  const handleButtonRef = useCallback(
-    (button: HTMLButtonElement | null) => {
-      if (button) {
-        updatePortalPosition(button)
-      } else {
-        setPortalPosition(null)
-      }
-    },
-    [updatePortalPosition]
-  )
-
-  const handleIconClick = useCallback(
-    (e: React.MouseEvent<HTMLButtonElement>) => {
-      e.stopPropagation()
-      e.preventDefault()
-      updatePortalPosition(e.currentTarget)
-      setPickerOpen(!isPickerOpen)
-    },
-    [updatePortalPosition, setPickerOpen, isPickerOpen]
   )
 
   const handleSelect = useCallback(
@@ -97,35 +70,35 @@ export function IconPickerButton({
     <div className="shrink-0 flex items-center gap-0.5">
       {leading}
 
-      <button
-        ref={handleButtonRef}
-        type="button"
-        onClick={handleIconClick}
-        className="flex h-5 w-5 items-center justify-center rounded"
-        aria-label={ariaLabel}
-      >
-        {children}
-      </button>
-
-      {isPickerOpen &&
-        portalPosition &&
-        createPortal(
-          <div
-            className="fixed z-[100]"
-            style={{ top: portalPosition.top, left: portalPosition.left }}
+      <Popover open={isPickerOpen} onOpenChange={setPickerOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            onClick={(e) => e.stopPropagation()}
+            className="flex h-5 w-5 items-center justify-center rounded"
+            aria-label={ariaLabel}
           >
-            <Suspense fallback={null}>
-              <LazyEmojiPicker
-                isOpen
-                onClose={handleClose}
-                onSelect={handleSelect}
-                onRemove={handleRemove}
-                hasEmoji={hasIcon}
-              />
-            </Suspense>
-          </div>,
-          document.body
-        )}
+            {children}
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          align="start"
+          sideOffset={4}
+          className="w-auto border-0 bg-transparent p-0 shadow-none"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Suspense fallback={null}>
+            <LazyEmojiPicker
+              isOpen
+              embedded
+              onClose={handleClose}
+              onSelect={handleSelect}
+              onRemove={handleRemove}
+              hasEmoji={hasIcon}
+            />
+          </Suspense>
+        </PopoverContent>
+      </Popover>
     </div>
   )
 }
