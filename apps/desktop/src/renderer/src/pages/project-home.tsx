@@ -4,6 +4,7 @@ import { FolderKanban } from '@/lib/icons'
 import { getIconByName } from '@/components/icon-picker'
 import { TaskList } from '@/components/tasks/task-list'
 import { ProjectNotesSection } from '@/components/tasks/projects/project-notes-section'
+import { ProjectEventsSection } from '@/components/tasks/projects/project-events-section'
 import { ProjectOverviewNote } from '@/components/tasks/projects/project-overview-note'
 import { ProjectStatsRow } from '@/components/tasks/projects/project-stats-row'
 import { useTasksContext } from '@/contexts/tasks'
@@ -136,6 +137,25 @@ export const ProjectHomePage = ({
     [openTab]
   )
 
+  // Shortcut: jumping to the specific event/day within the calendar view
+  // isn't wired yet, so this opens the calendar tab (mirrors the "open
+  // calendar" shortcut in the home widget) rather than deep-linking.
+  const handleEventClick = useCallback(
+    (_eventId: string) => {
+      openTab({
+        type: 'calendar',
+        title: 'Calendar',
+        icon: 'calendar',
+        path: '/calendar',
+        isPinned: false,
+        isModified: false,
+        isPreview: false,
+        isDeleted: false
+      })
+    },
+    [openTab]
+  )
+
   const handleToggleComplete = useCallback(
     (taskId: string): void => {
       const task = tasks.find((t) => t.id === taskId)
@@ -228,7 +248,7 @@ export const ProjectHomePage = ({
         onNoteClick={handleNoteClick}
       />
 
-      {/* EVENTS_SECTION_SLOT — Phase 2 Task 2 */}
+      <ProjectEventsSection projectId={project.id} onEventClick={handleEventClick} />
 
       <ProjectNotesSection projectId={project.id} onNoteClick={handleNoteClick} />
     </div>

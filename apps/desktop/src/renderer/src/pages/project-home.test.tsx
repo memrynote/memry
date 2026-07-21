@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   getProject: vi.fn(),
   notesGet: vi.fn(),
   notesGetFile: vi.fn(),
+  getEvent: vi.fn(),
   projectUpdatedListeners: [] as Array<(event: { id: string; project: Project }) => void>
 }))
 
@@ -125,6 +126,10 @@ vi.mock('@/services/tasks-service', () => ({
 
 vi.mock('@/services/notes-service', () => ({
   notesService: { get: mocks.notesGet, getFile: mocks.notesGetFile }
+}))
+
+vi.mock('@/services/calendar-service', () => ({
+  calendarService: { getEvent: mocks.getEvent }
 }))
 
 vi.mock('@/components/tasks/task-list', () => ({
