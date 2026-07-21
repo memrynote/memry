@@ -61,6 +61,8 @@ export function mapError(code: string): string {
       return 'This page is too large to capture.'
     case 'pair-timeout':
       return 'Pairing timed out. Try again.'
+    case 'permission-denied':
+      return 'Allow access to 127.0.0.1, then save again.'
     default:
       return "Couldn't reach Memry. Try again."
   }

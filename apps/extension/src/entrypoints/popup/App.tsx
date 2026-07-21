@@ -8,6 +8,7 @@ import type {
   StatusResponse
 } from '@/lib/messages'
 import { initialState, reducer, selectPhase } from '@/lib/popup-state'
+import { ensureHostPermission } from '@/lib/capture-permissions'
 import { EditableTitle } from '@/components/EditableTitle'
 import { PropertyRows } from '@/components/PropertyRows'
 import { TagEditor } from '@/components/TagEditor'
@@ -62,6 +63,16 @@ export default function App() {
 
   const setDraft = (draft: ArticleCapture) => dispatch({ type: 'EDIT', draft })
 
+  // Probe the desktop app again. The mount probe may have run while the Firefox
+  // host permission was still blocked and cached a stale 'app-closed'.
+  const fetchStatus = async (): Promise<StatusResponse> => {
+    try {
+      return (await browser.runtime.sendMessage({ type: 'GET_STATUS' })) as StatusResponse
+    } catch {
+      return { connection: 'app-closed', port: null }
+    }
+  }
+
   const onAdd = async (
     connectionOverride?: ConnectionState
   ): Promise<CaptureResponse | undefined> => {
@@ -92,14 +103,44 @@ export default function App() {
     const up: { ok: boolean } = await browser.runtime
       .sendMessage({ type: 'WAIT_FOR_SERVER' })
       .catch(() => ({ ok: false }))
-    dispatch({ type: 'LAUNCH_DONE', ok: up.ok })
-    if (!up.ok) return
-    dispatch({ type: 'STATUS', connection: 'needs-pairing', port: null })
-    await onAdd('needs-pairing')
+    if (up.ok) {
+      dispatch({ type: 'LAUNCH_DONE', ok: true })
+      const status = await fetchStatus()
+      dispatch({ type: 'STATUS', connection: status.connection, port: status.port })
+      await onAdd(status.connection === 'app-closed' ? 'needs-pairing' : status.connection)
+      return
+    }
+    // The server never came up in time. Don't drop the draft — hand it to the
+    // background, which queues it for the retry alarm (the badge shows the
+    // count) instead of losing it when the popup closes.
+    if (!state.draft) {
+      dispatch({ type: 'LAUNCH_DONE', ok: false })
+      return
+    }
+    dispatch({ type: 'SAVE_START' })
+    const result: CaptureResponse = await browser.runtime
+      .sendMessage({ type: 'CAPTURE', capture: state.draft })
+      .catch(() => ({ ok: false, error: 'network' }))
+    dispatch({ type: 'SAVE_DONE', result })
   }
 
-  // One button: launch MemryNote first if it's closed, otherwise just send.
-  const onSend = () => (state.connection === 'app-closed' ? onLaunchAndAdd() : onAdd())
+  // One button. Firefox MV3 makes the loopback host permission opt-in, so
+  // request it on this click (a user gesture) before any 127.0.0.1 fetch —
+  // a no-op on Chrome/Edge where it's granted at install. Then re-probe: the
+  // mount probe may have been blocked by the missing permission.
+  const onSend = async () => {
+    if (!(await ensureHostPermission())) {
+      dispatch({ type: 'SAVE_DONE', result: { ok: false, error: 'permission-denied' } })
+      return
+    }
+    const status = await fetchStatus()
+    dispatch({ type: 'STATUS', connection: status.connection, port: status.port })
+    if (status.connection === 'app-closed') {
+      await onLaunchAndAdd()
+    } else {
+      await onAdd(status.connection)
+    }
+  }
 
   // ⌘↵ / Ctrl↵ saves when the card is ready. Ref keeps the handler fresh
   // without re-subscribing the listener on every render.
