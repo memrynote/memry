@@ -3,6 +3,7 @@ import { resolve } from 'node:path'
 import { act, fireEvent, render, renderHook, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { serializeCriticMarkup } from '@memry/shared'
 import { ReviewRail } from './review-rail'
 import {
   useCriticMarkupReview,
@@ -802,6 +803,47 @@ describe('review UI', () => {
     })
 
     expect(undoEvent.defaultPrevented).toBe(true)
+    expect(result.current.marks).toHaveLength(0)
+  })
+
+  it('keeps a locally-added comment when a stale resync lands before save (issue #797)', () => {
+    const { result, rerender } = renderHook(
+      ({ markdown }: { markdown: string }) =>
+        useCriticMarkupReview({ markdown, onMarkdownChange: vi.fn() }),
+      { initialProps: { markdown: 'comment target' } }
+    )
+
+    act(() => {
+      result.current.openCommentComposer({ text: 'comment target', isEmpty: false })
+    })
+    act(() => {
+      result.current.submitComment({ body: 'Needs work', mentions: [], attachments: [] })
+    })
+    expect(result.current.marks).toHaveLength(1)
+    const commentId = result.current.marks[0].id
+
+    // A refetch/sync delivers still-stale content (lacking the just-added comment)
+    // during note.tsx's 1s save debounce. The comment must not be clobbered.
+    act(() => {
+      rerender({ markdown: 'comment target edited' })
+    })
+    expect(result.current.marks).toHaveLength(1)
+    expect(result.current.marks[0].id).toBe(commentId)
+    expect(result.current.marks[0]).toMatchObject({ kind: 'comment', body: 'Needs work' })
+
+    // Once the save round-trips (incoming markdown now reflects the comment),
+    // pending clears and normal external resync resumes.
+    const persisted = serializeCriticMarkup(result.current.plainMarkdown, result.current.marks)
+    act(() => {
+      rerender({ markdown: persisted })
+    })
+    expect(result.current.marks).toHaveLength(1)
+
+    // Guard is scoped to the pending window: a later genuinely-external change
+    // is no longer suppressed.
+    act(() => {
+      rerender({ markdown: 'totally different external content' })
+    })
     expect(result.current.marks).toHaveLength(0)
   })
 })
