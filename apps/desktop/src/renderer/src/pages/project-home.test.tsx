@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import type { Task } from '@/data/task-model'
 import type { Project } from '@/data/tasks-data'
 import { ProjectHomePage } from './project-home'
@@ -138,7 +138,19 @@ vi.mock('@/components/tasks/task-list', () => ({
 }))
 
 vi.mock('@/components/tasks/projects/project-overview-note', () => ({
-  ProjectOverviewNote: () => <div data-testid="project-overview-note" />
+  ProjectOverviewNote: ({
+    projectId,
+    homeNoteId
+  }: {
+    projectId: string
+    homeNoteId: string | null | undefined
+  }) => (
+    <div
+      data-testid="project-overview-note"
+      data-project-id={projectId}
+      data-home-note-id={String(homeNoteId)}
+    />
+  )
 }))
 
 describe('ProjectHomePage', () => {
@@ -166,5 +178,26 @@ describe('ProjectHomePage', () => {
 
     expect(await screen.findByText('No project selected')).toBeInTheDocument()
     expect(screen.queryByTestId('task-list')).not.toBeInTheDocument()
+  })
+
+  it('#then loads homeNoteId via getProject on mount and reloads it on onProjectUpdated', async () => {
+    mocks.getProject.mockResolvedValue({ ...project, homeNoteId: 'n1' })
+
+    render(<ProjectHomePage projectId="p1" />)
+
+    expect(await screen.findByText('Launch')).toBeInTheDocument()
+    expect(mocks.getProject).toHaveBeenCalledWith('p1')
+
+    const overview = await screen.findByTestId('project-overview-note')
+    await waitFor(() => expect(overview).toHaveAttribute('data-home-note-id', 'n1'))
+    expect(overview).toHaveAttribute('data-project-id', 'p1')
+
+    mocks.getProject.mockResolvedValue({ ...project, homeNoteId: 'n2' })
+    mocks.projectUpdatedListeners.forEach((listener) => listener({ id: 'p1', project }))
+
+    await waitFor(() =>
+      expect(screen.getByTestId('project-overview-note')).toHaveAttribute('data-home-note-id', 'n2')
+    )
+    expect(mocks.getProject).toHaveBeenCalledTimes(2)
   })
 })

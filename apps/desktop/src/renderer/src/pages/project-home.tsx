@@ -1,4 +1,4 @@
-import { createElement, useCallback, useEffect, useMemo, useState } from 'react'
+import { createElement, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useT } from '@memry/i18n/renderer'
 import { FolderKanban } from '@/lib/icons'
 import { getIconByName } from '@/components/icon-picker'
@@ -79,17 +79,30 @@ export const ProjectHomePage = ({
     void loadLinks()
   }, [loadLinks])
 
-  const [homeNoteId, setHomeNoteId] = useState<string | null>(null)
+  // undefined = not yet resolved (avoids a "create overview note" flash
+  // before the first getProject call returns); null = resolved, no home note.
+  const [homeNoteId, setHomeNoteId] = useState<string | null | undefined>(undefined)
+
+  // Tracks which projectId the most recent getProject call was for, so an
+  // out-of-order response (e.g. switching projects while a call is in
+  // flight) can't stomp fresher state. Mirrors the `cancelled` flag in
+  // ProjectOverviewNote's note-fetch effect, adapted for a callback shared
+  // by both the mount effect and the onProjectUpdated listener below.
+  const latestHomeNoteRequestRef = useRef<string | undefined>(undefined)
 
   const loadHomeNoteId = useCallback(async (): Promise<void> => {
     if (!projectId) {
+      latestHomeNoteRequestRef.current = undefined
       setHomeNoteId(null)
       return
     }
+    latestHomeNoteRequestRef.current = projectId
     try {
       const result = await tasksService.getProject(projectId)
+      if (latestHomeNoteRequestRef.current !== projectId) return
       setHomeNoteId(result?.homeNoteId ?? null)
     } catch (error) {
+      if (latestHomeNoteRequestRef.current !== projectId) return
       log.error(
         'Failed to load project home note',
         extractErrorMessage(error, t('projectHome.overview.loadError'))

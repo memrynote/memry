@@ -8,13 +8,19 @@ import { tasksService } from '@/services/tasks-service'
 import { notesService, type Note } from '@/services/notes-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
+import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import { useT } from '@memry/i18n/renderer'
 
 const log = createLogger('ProjectOverview')
 
 interface ProjectOverviewNoteProps {
   projectId: string
-  homeNoteId: string | null
+  /**
+   * `undefined` = not yet resolved (parent is still loading the project),
+   * `null` = resolved, no home note set, `string` = the home note id.
+   * Distinguishing loading from "no home note" avoids a create-affordance flash.
+   */
+  homeNoteId: string | null | undefined
   onHomeNoteChange: (noteId: string | null) => void
   className?: string
 }
@@ -37,6 +43,9 @@ export const ProjectOverviewNote = ({
   const [isCreating, setIsCreating] = useState(false)
 
   const lastSavedContentRef = useRef<string | null>(null)
+  // Markdown queued by the debounce timer but not yet confirmed saved —
+  // flushed on unmount / homeNoteId change and by the app save-registry.
+  const pendingMarkdownRef = useRef<string | null>(null)
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
@@ -69,16 +78,41 @@ export const ProjectOverviewNote = ({
     }
   }, [homeNoteId, t])
 
+  // Register with the app save registry + flush any pending debounced save
+  // on unmount or when homeNoteId changes away (e.g. cleared, or a new
+  // overview note is created — the editor remounts via key={homeNoteId}).
+  // Mirrors note.tsx's registerPendingSave/unregisterPendingSave pattern so
+  // app-quit (useFlushOnQuit) and tab-close don't silently drop an edit.
   useEffect(() => {
-    return () => {
-      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
+    if (!homeNoteId) return
+
+    const registryKey = `project-overview:${homeNoteId}`
+    const flush = async (): Promise<void> => {
+      const pending = pendingMarkdownRef.current
+      if (pending !== null) {
+        pendingMarkdownRef.current = null
+        await notesService.update({ id: homeNoteId, content: pending })
+      }
     }
-  }, [])
+
+    registerPendingSave(registryKey, flush)
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current)
+        saveTimeoutRef.current = null
+      }
+      void flush()
+      unregisterPendingSave(registryKey)
+    }
+  }, [homeNoteId])
 
   const handleMarkdownChange = useCallback(
     (markdown: string) => {
       if (!homeNoteId) return
       if (markdown === lastSavedContentRef.current) return
+
+      pendingMarkdownRef.current = markdown
 
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
       saveTimeoutRef.current = setTimeout(() => {
@@ -86,6 +120,7 @@ export const ProjectOverviewNote = ({
           try {
             await notesService.update({ id: homeNoteId, content: markdown })
             lastSavedContentRef.current = markdown
+            pendingMarkdownRef.current = null
           } catch (error) {
             log.error(
               'Failed to save overview note',
@@ -105,7 +140,9 @@ export const ProjectOverviewNote = ({
         title: t('projectHome.overview.defaultTitle')
       })
       if (!result.success || !result.note) {
-        throw new Error(result.error ?? 'Unknown error')
+        log.error('Failed to create overview note', result.error ?? 'no note returned')
+        toast.error(t('projectHome.overview.createError'))
+        return
       }
       await tasksService.setProjectHomeNote({ projectId, noteId: result.note.id })
       onHomeNoteChange(result.note.id)
@@ -118,12 +155,27 @@ export const ProjectOverviewNote = ({
 
   const handleClear = useCallback(async (): Promise<void> => {
     try {
-      await tasksService.setProjectHomeNote({ projectId, noteId: null })
+      const result = await tasksService.setProjectHomeNote({ projectId, noteId: null })
+      if (!result.success) {
+        log.error('Failed to clear overview note', result.error ?? 'unknown')
+        toast.error(t('projectHome.overview.clearError'))
+        return
+      }
       onHomeNoteChange(null)
     } catch (error) {
       toast.error(extractErrorMessage(error, t('projectHome.overview.clearError')))
     }
   }, [projectId, onHomeNoteChange, t])
+
+  if (homeNoteId === undefined) {
+    return (
+      <section className={cn('px-4 py-3', className)}>
+        <div className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
+          <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+        </div>
+      </section>
+    )
+  }
 
   if (!homeNoteId) {
     return (
