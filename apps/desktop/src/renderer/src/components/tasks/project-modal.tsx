@@ -1,4 +1,4 @@
-import { createElement, useState, useCallback, useMemo } from 'react'
+import { lazy, Suspense, useState, useCallback, useMemo } from 'react'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -21,7 +21,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from '@/components/ui/alert-dialog'
-import { IconPicker, getIconByName } from '@/components/icon-picker'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { ProjectIcon } from '@/components/tasks/project-icon'
 import { ColorPicker } from '@/components/tasks/color-picker'
 import { StatusEditor } from '@/components/tasks/status-editor'
 import { cn } from '@/lib/utils'
@@ -34,6 +35,14 @@ import {
   validateProject,
   type ProjectValidationErrors
 } from '@/data/tasks-data'
+
+const LazyEmojiPicker = lazy(async () => ({
+  default: (await import('@/components/note/note-title/EmojiPicker')).EmojiPicker
+}))
+
+// Mirrors createDefaultProject().icon: used to detect a custom icon (show Remove)
+// and to reset the icon when the user removes it.
+const DEFAULT_ICON = 'Folder'
 
 // ============================================================================
 // TYPES
@@ -119,16 +128,6 @@ const getProjectDialogKey = (isOpen: boolean, project?: Project | null): string 
   })
 }
 
-const ProjectIconPreview = ({ iconName }: { iconName: string }): React.JSX.Element => {
-  const Icon = getIconByName(iconName)
-
-  if (!Icon) {
-    return <span className="text-2xl">📁</span>
-  }
-
-  return createElement(Icon, { className: 'size-6 text-text-secondary' })
-}
-
 // ============================================================================
 // PROJECT MODAL COMPONENT
 // ============================================================================
@@ -148,9 +147,8 @@ const ProjectModalDialog = ({
   // Form state
   const [formData, setFormData] = useState<FormData>(() => initialFormData)
 
-  // Icon picker state
-  const [isIconPickerOpen, setIsIconPickerOpen] = useState(false)
-  const [iconPickerPosition, setIconPickerPosition] = useState({ x: 0, y: 0 })
+  // Icon picker state (a modal Popover hosting the shared emoji/icon picker)
+  const [iconPickerOpen, setIconPickerOpen] = useState(false)
 
   // Unsaved changes dialog
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false)
@@ -233,14 +231,12 @@ const ProjectModalDialog = ({
     setFormData((prev) => ({ ...prev, color }))
   }
 
-  const handleIconClick = (e: React.MouseEvent<HTMLButtonElement>): void => {
-    const rect = e.currentTarget.getBoundingClientRect()
-    setIconPickerPosition({ x: rect.left, y: rect.bottom + 8 })
-    setIsIconPickerOpen(true)
+  const handleIconSelect = (icon: string): void => {
+    setFormData((prev) => ({ ...prev, icon }))
   }
 
-  const handleIconSelect = (iconName: string): void => {
-    setFormData((prev) => ({ ...prev, icon: iconName || 'Folder' }))
+  const handleIconRemove = (): void => {
+    setFormData((prev) => ({ ...prev, icon: DEFAULT_ICON }))
   }
 
   const handleStatusesChange = (statuses: Status[]): void => {
@@ -249,15 +245,7 @@ const ProjectModalDialog = ({
 
   return (
     <>
-      {/* Drop modal behavior only while the icon picker is open. The picker is a
-          floating layer rendered outside DialogContent; a modal dialog's focus trap
-          would yank focus back from its search box and its pointer-events lock would
-          disable it. Staying modal otherwise keeps the normal open/dismiss flow intact. */}
-      <Dialog
-        modal={!isIconPickerOpen}
-        open={isOpen}
-        onOpenChange={(open) => !open && handleClose()}
-      >
+      <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
         <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{isEditMode ? 'Edit Project' : 'Create Project'}</DialogTitle>
@@ -275,19 +263,45 @@ const ProjectModalDialog = ({
                 {tPhaseF('phaseF.componentsTasksProjectModal.iconName')}
               </label>
               <div className="flex items-center gap-3">
-                {/* Icon Button */}
-                <button
-                  type="button"
-                  onClick={handleIconClick}
-                  className={cn(
-                    'flex size-12 shrink-0 items-center justify-center rounded-sm border-2 border-dashed',
-                    'transition-colors hover:border-primary hover:bg-accent/50',
-                    'focus-visible:outline-none'
-                  )}
-                  aria-label={tPhaseF('phaseF.componentsTasksProjectModal.selectIcon')}
-                >
-                  <ProjectIconPreview iconName={formData.icon} />
-                </button>
+                {/* Icon Button — hosts the shared emoji/icon picker in a modal Popover.
+                    A modal Popover is a branch of the Dialog's dismissable layer, so it
+                    owns anchoring, focus, and dismissal while the Dialog stays modal —
+                    no modal toggling, no flicker, and the first click reliably registers. */}
+                <Popover open={iconPickerOpen} onOpenChange={setIconPickerOpen} modal>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      className={cn(
+                        'flex size-12 shrink-0 items-center justify-center rounded-sm border-2 border-dashed',
+                        'transition-colors hover:border-primary hover:bg-accent/50',
+                        'focus-visible:outline-none'
+                      )}
+                      aria-label={tPhaseF('phaseF.componentsTasksProjectModal.selectIcon')}
+                    >
+                      <ProjectIcon
+                        icon={formData.icon}
+                        className="size-6 text-text-secondary"
+                        fallback={<span className="text-2xl">📁</span>}
+                      />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    align="start"
+                    sideOffset={8}
+                    className="w-auto border-0 bg-transparent p-0 shadow-none"
+                  >
+                    <Suspense fallback={null}>
+                      <LazyEmojiPicker
+                        isOpen
+                        embedded
+                        hasEmoji={formData.icon !== DEFAULT_ICON}
+                        onClose={() => setIconPickerOpen(false)}
+                        onSelect={handleIconSelect}
+                        onRemove={handleIconRemove}
+                      />
+                    </Suspense>
+                  </PopoverContent>
+                </Popover>
 
                 {/* Name Input */}
                 <div className="flex-1">
@@ -389,15 +403,6 @@ const ProjectModalDialog = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Icon Picker */}
-      <IconPicker
-        isOpen={isIconPickerOpen}
-        onClose={() => setIsIconPickerOpen(false)}
-        onSelect={handleIconSelect}
-        position={iconPickerPosition}
-        currentIcon={formData.icon}
-      />
 
       {/* Unsaved Changes Confirmation */}
       <AlertDialog open={showUnsavedDialog} onOpenChange={setShowUnsavedDialog}>

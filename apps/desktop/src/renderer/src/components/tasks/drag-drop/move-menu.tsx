@@ -22,7 +22,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
-import { getIconByName } from '@/components/icon-picker'
+import { ProjectIcon } from '@/components/tasks/project-icon'
 import { addDays, startOfDay } from '@/lib/task-utils'
 import type { Project, Status } from '@/data/tasks-data'
 import type { Task } from '@/data/task-model'
@@ -171,7 +171,7 @@ export const MoveMenu = ({
           <>
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>
-                <FolderOpen className="size-4 mr-2" />
+                <FolderOpen className="size-4 me-2" />
 
                 {tPhaseF('phaseF.componentsTasksDragDropMoveMenu.moveToProject')}
               </DropdownMenuSubTrigger>
@@ -179,7 +179,6 @@ export const MoveMenu = ({
                 {projects
                   .filter((p) => !p.isArchived)
                   .map((project) => {
-                    const IconComponent = getIconByName(project.icon)
                     const isCurrent = project.id === task.projectId
 
                     return (
@@ -188,17 +187,20 @@ export const MoveMenu = ({
                         onClick={() => handleProjectChange(project.id)}
                         disabled={isCurrent}
                       >
-                        {IconComponent ? (
-                          <IconComponent className="size-4 mr-2" style={{ color: project.color }} />
-                        ) : (
-                          <span
-                            className="size-3 rounded-full mr-2"
-                            style={{ backgroundColor: project.color }}
-                          />
-                        )}
+                        <ProjectIcon
+                          icon={project.icon}
+                          className="size-4 me-2"
+                          color={project.color}
+                          fallback={
+                            <span
+                              className="size-3 rounded-full me-2"
+                              style={{ backgroundColor: project.color }}
+                            />
+                          }
+                        />
                         {project.name}
                         {isCurrent && (
-                          <span className="ml-auto text-muted-foreground text-xs">
+                          <span className="ms-auto text-muted-foreground text-xs">
                             {tPhaseF('phaseF.componentsTasksDragDropMoveMenu.current')}
                           </span>
                         )}
@@ -218,7 +220,7 @@ export const MoveMenu = ({
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>
                 <span
-                  className="size-3 rounded-full mr-2"
+                  className="size-3 rounded-full me-2"
                   style={{
                     backgroundColor: statuses.find((s) => s.id === task.statusId)?.color || '#888'
                   }}
@@ -237,12 +239,12 @@ export const MoveMenu = ({
                       disabled={isCurrent}
                     >
                       <span
-                        className="size-3 rounded-full mr-2"
+                        className="size-3 rounded-full me-2"
                         style={{ backgroundColor: status.color }}
                       />
                       {status.name}
                       {isCurrent && (
-                        <span className="ml-auto text-muted-foreground text-xs">
+                        <span className="ms-auto text-muted-foreground text-xs">
                           {tPhaseF('phaseF.componentsTasksDragDropMoveMenu.current2')}
                         </span>
                       )}
@@ -267,33 +269,33 @@ export const MoveMenu = ({
 
             {onMoveUp && (
               <DropdownMenuItem onClick={() => handleReorder('up')}>
-                <ArrowUp className="size-4 mr-2" />
+                <ArrowUp className="size-4 me-2" />
                 Move up
-                <span className="ml-auto text-xs text-muted-foreground">Alt+↑</span>
+                <span className="ms-auto text-xs text-muted-foreground">Alt+↑</span>
               </DropdownMenuItem>
             )}
 
             {onMoveDown && (
               <DropdownMenuItem onClick={() => handleReorder('down')}>
-                <ArrowDown className="size-4 mr-2" />
+                <ArrowDown className="size-4 me-2" />
                 Move down
-                <span className="ml-auto text-xs text-muted-foreground">Alt+↓</span>
+                <span className="ms-auto text-xs text-muted-foreground">Alt+↓</span>
               </DropdownMenuItem>
             )}
 
             {onMoveToTop && (
               <DropdownMenuItem onClick={() => handleReorder('top')}>
-                <ChevronsUp className="size-4 mr-2" />
+                <ChevronsUp className="size-4 me-2" />
                 Move to top
-                <span className="ml-auto text-xs text-muted-foreground">Alt+Shift+↑</span>
+                <span className="ms-auto text-xs text-muted-foreground">Alt+Shift+↑</span>
               </DropdownMenuItem>
             )}
 
             {onMoveToBottom && (
               <DropdownMenuItem onClick={() => handleReorder('bottom')}>
-                <ChevronsDown className="size-4 mr-2" />
+                <ChevronsDown className="size-4 me-2" />
                 Move to bottom
-                <span className="ml-auto text-xs text-muted-foreground">Alt+Shift+↓</span>
+                <span className="ms-auto text-xs text-muted-foreground">Alt+Shift+↓</span>
               </DropdownMenuItem>
             )}
           </>
