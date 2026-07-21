@@ -39,6 +39,7 @@ interface CalendarShellProps {
   selectedItemId: string | null
   popoverState: {
     mode: 'create' | 'edit'
+    eventId?: string | null
     draft: CalendarEventDraft
     anchorRect: AnchorRect
     /** M5: rich read-only metadata surfaced below the editor in edit mode. */
@@ -388,6 +389,7 @@ export function CalendarShell({
         <CalendarEventPopover
           anchorRect={popoverState.anchorRect}
           mode={popoverState.mode}
+          eventId={popoverState.eventId}
           draft={popoverState.draft}
           isSaving={isSaving}
           onDraftChange={onPopoverDraftChange}

@@ -687,5 +687,8 @@
       "loadError": "Could not load the overview note",
       "saveError": "Could not save the overview note"
     }
+  },
+  "itemProjects": {
+    "openProject": "Open project {name}"
   }
 }

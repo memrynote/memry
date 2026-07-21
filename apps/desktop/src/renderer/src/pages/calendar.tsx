@@ -792,6 +792,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
           popoverState
             ? {
                 mode: popoverState.mode,
+                eventId: popoverState.eventId,
                 draft: popoverState.draft,
                 anchorRect: popoverState.anchorRect,
                 readOnlyMetadata: popoverState.readOnlyMetadata
