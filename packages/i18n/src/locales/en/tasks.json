@@ -657,6 +657,13 @@
     "removeFromProject": "Remove from project",
     "removeError": "Failed to remove note from project"
   },
+  "projectFiles": {
+    "title": "Files",
+    "loading": "Loading files…",
+    "loadError": "Failed to load project files",
+    "removeFromProject": "Remove from project",
+    "removeError": "Failed to remove file from project"
+  },
   "projectEvents": {
     "title": "Events",
     "loading": "Loading events…",
