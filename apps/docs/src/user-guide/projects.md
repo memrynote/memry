@@ -57,6 +57,47 @@ Each project has its own:
 
 memrynote remembers per-project view preferences.
 
+## Project Home
+
+Opening a project from the sidebar opens its **Project Home** — a dedicated page that gathers everything related to the project in one calm place, not just its tasks.
+
+<!-- screenshot: Project Home page with stats row and sections -->
+
+At the top, a stats row summarizes the project:
+
+- **Tasks** — total tasks in the project
+- **Notes** — linked notes
+- **Events** — linked calendar events
+- **Progress** — share of the project's tasks that are complete (derived live from the done ratio; there is nothing to configure)
+
+Below the stats, Project Home stacks these sections:
+
+- **Overview** — an optional inline note that acts as the project's description/home (see below)
+- **Tasks** — the project's task list (the same list and quick-add you already know)
+- **Notes** — the notes linked to this project
+- **Calendar** — the calendar events linked to this project
+
+(A **Files** section is planned for a later release.)
+
+### Overview note
+
+A project can point at a real note that renders inline at the top of Project Home as its overview.
+
+- **Create overview note** — creates a fresh note and sets it as the project's overview; edit it inline, changes save automatically
+- **Clear overview** — unlinks the note as the overview (the note itself stays in your vault)
+
+The overview is a pointer to a note, so it never shows up twice — it does not also appear in the Notes section.
+
+### Linking notes and events
+
+Notes and events join a project as **links** (many-to-many): the same note can belong to more than one project.
+
+- **Add a note** — from a note's **⋯** menu choose **Add to project**, or drag a note onto a project
+- **Add an event** — right-click a calendar event and choose **Add to project**
+- Linked items appear in Project Home's **Notes** / **Calendar** sections; use each row's remove control to unlink (this only unlinks — it never deletes the note or event)
+
+Wherever a note or event lives, small **project chips** under its title show which projects it belongs to — click a chip to jump to that Project Home.
+
 ## Deleting a Project
 
 Deleting asks you to choose what to do with the tasks:
@@ -66,6 +107,8 @@ Deleting asks you to choose what to do with the tasks:
 - **Delete with project** — destructive; tasks go too
 
 Each path is reversible via undo within the 10-second window.
+
+Linked **notes, events, and files are never deleted** with a project — only the project's tasks and its links are removed. Your notes and events stay in your vault and simply lose the project link, so a project is safe to delete without losing the material collected under it.
 
 ## Sync
 
