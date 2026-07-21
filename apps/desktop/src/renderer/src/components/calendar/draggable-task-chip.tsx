@@ -9,6 +9,7 @@ interface DraggableTaskChipProps {
   isSelected: boolean
   onClick?: (item: CalendarProjectionItem, rect: AnchorRect) => void
   onDeleteItem?: (item: CalendarProjectionItem) => void
+  onAddToProject?: (eventId: string) => void
 }
 
 /** Task chips are date-draggable via dnd-kit; every other chip renders untouched. */
@@ -16,7 +17,8 @@ export function DraggableTaskChip({
   item,
   isSelected,
   onClick,
-  onDeleteItem
+  onDeleteItem,
+  onAddToProject
 }: DraggableTaskChipProps): React.JSX.Element {
   const isDraggableTask = item.sourceType === 'task' && Boolean(item.editability?.canMove)
 
@@ -27,6 +29,7 @@ export function DraggableTaskChip({
         isSelected={isSelected}
         onClick={onClick}
         onDeleteItem={onDeleteItem}
+        onAddToProject={onAddToProject}
       />
     )
   }
@@ -37,6 +40,7 @@ export function DraggableTaskChip({
       isSelected={isSelected}
       onClick={onClick}
       onDeleteItem={onDeleteItem}
+      onAddToProject={onAddToProject}
     />
   )
 }
@@ -45,7 +49,8 @@ function DraggableTaskChipInner({
   item,
   isSelected,
   onClick,
-  onDeleteItem
+  onDeleteItem,
+  onAddToProject
 }: DraggableTaskChipProps): React.JSX.Element {
   // dnd-kit requires the task id here: drag-context resolves multi-select and
   // draggedTasks by matching active.id against the task list.
@@ -72,6 +77,7 @@ function DraggableTaskChipInner({
         isSelected={isSelected}
         onClick={onClick}
         onDeleteItem={onDeleteItem}
+        onAddToProject={onAddToProject}
       />
     </div>
   )

@@ -72,6 +72,7 @@ interface CalendarShellProps {
   onToggleVisualType: (visualType: CalendarProjectionVisualType) => void
   onSelectItem: (item: CalendarProjectionItem, rect: AnchorRect) => void
   onDeleteItem?: (item: CalendarProjectionItem) => void
+  onAddToProject?: (eventId: string) => void
   onMoveEvent?: (
     item: CalendarProjectionItem,
     startAt: string,
@@ -121,6 +122,7 @@ export function CalendarShell({
   onToggleVisualType,
   onSelectItem,
   onDeleteItem,
+  onAddToProject,
   onMoveEvent,
   onPopoverDismiss,
   onPopoverDraftChange,
@@ -131,7 +133,7 @@ export function CalendarShell({
   googleConnectAction
 }: CalendarShellProps): React.JSX.Element {
   const viewProps = { anchorDate, items, selectedItemId, onSelectItem }
-  const chipViewProps = { ...viewProps, onDeleteItem }
+  const chipViewProps = { ...viewProps, onDeleteItem, onAddToProject }
   const [isRefreshing, setIsRefreshing] = useState(false)
   const { t } = useT('calendar')
   const hasGoogleCalendars = importedSources.length > 0

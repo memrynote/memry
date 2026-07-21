@@ -77,7 +77,8 @@
     "title": "Delete event?",
     "local-description": "\"{title}\" will be permanently deleted. This action cannot be undone.",
     "google-bound-description": "\"{title}\" will be removed from memrynote and Google Calendar. This action cannot be undone.",
-    "context-menu-delete-label": "Delete event"
+    "context-menu-delete-label": "Delete event",
+    "context-menu-add-to-project": "Add to project"
   },
   "promote-dialog": {
     "aria": "Edit external calendar event",

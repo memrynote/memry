@@ -41,6 +41,7 @@ import { useCalendarView } from '@/contexts/calendar-view-context'
 import { useActiveTab, useTabActions } from '@/contexts/tabs'
 import { DeleteCalendarEventDialog } from '@/components/calendar/delete-calendar-event-dialog'
 import { GoogleCalendarConnectPrompt } from '@/components/calendar/google-calendar-connect-prompt'
+import { AddEventToProjectDialog } from '@/components/tasks/projects/add-event-to-project-dialog'
 import { inboxService } from '@/services/inbox-service'
 import { getI18n } from 'react-i18next'
 
@@ -242,6 +243,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
   const [isPromoting, setIsPromoting] = useState(false)
   const [promoteError, setPromoteError] = useState<string | null>(null)
   const [pendingDelete, setPendingDelete] = useState<CalendarProjectionItem | null>(null)
+  const [addToProjectEventId, setAddToProjectEventId] = useState<string | null>(null)
   const deleteMutation = useDeleteCalendarEvent()
   const { registerUndo } = useUndoTracker()
 
@@ -829,6 +831,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
         }
         onSelectItem={(...args) => void handleSelectItem(...args)}
         onDeleteItem={handleDeleteItem}
+        onAddToProject={setAddToProjectEventId}
         onMoveEvent={handleMoveEvent}
         inboxSnoozePopoverState={inboxSnoozePopoverState}
         onInboxSnoozeOpenInInbox={handleInboxSnoozeOpenInInbox}
@@ -861,6 +864,13 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
         hasGoogleBinding={pendingDelete?.binding !== null && pendingDelete?.binding !== undefined}
         onCancel={() => setPendingDelete(null)}
         onConfirm={() => void handleConfirmDelete()}
+      />
+      <AddEventToProjectDialog
+        open={addToProjectEventId != null}
+        eventId={addToProjectEventId ?? ''}
+        onOpenChange={(open) => {
+          if (!open) setAddToProjectEventId(null)
+        }}
       />
     </>
   )

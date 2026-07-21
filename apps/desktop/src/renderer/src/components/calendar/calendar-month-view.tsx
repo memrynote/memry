@@ -22,6 +22,7 @@ interface CalendarMonthViewProps {
   selectedItemId: string | null
   onSelectItem?: (item: CalendarProjectionItem, rect: AnchorRect) => void
   onDeleteItem?: (item: CalendarProjectionItem) => void
+  onAddToProject?: (eventId: string) => void
   onQuickSave?: (draft: CalendarEventDraft) => void | Promise<void>
 }
 
@@ -31,6 +32,7 @@ export function CalendarMonthView({
   selectedItemId,
   onSelectItem,
   onDeleteItem,
+  onAddToProject,
   onQuickSave
 }: CalendarMonthViewProps): React.JSX.Element {
   const { i18n } = useT('calendar')
@@ -94,6 +96,7 @@ export function CalendarMonthView({
               selectedItemId={selectedItemId}
               onSelectItem={onSelectItem}
               onDeleteItem={onDeleteItem}
+              onAddToProject={onAddToProject}
             />
           )
         })}

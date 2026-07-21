@@ -17,6 +17,7 @@ interface CalendarMonthDayCellProps {
   selectedItemId: string | null
   onSelectItem?: (item: CalendarProjectionItem, rect: AnchorRect) => void
   onDeleteItem?: (item: CalendarProjectionItem) => void
+  onAddToProject?: (eventId: string) => void
 }
 
 export function CalendarMonthDayCell({
@@ -30,7 +31,8 @@ export function CalendarMonthDayCell({
   maxVisibleEvents,
   selectedItemId,
   onSelectItem,
-  onDeleteItem
+  onDeleteItem,
+  onAddToProject
 }: CalendarMonthDayCellProps): React.JSX.Element {
   const { t } = useT('calendar')
   // Month cells are date-only: a dropped task keeps whatever time it had.
@@ -72,6 +74,7 @@ export function CalendarMonthDayCell({
             isSelected={item.sourceType === 'event' && item.sourceId === selectedItemId}
             onClick={onSelectItem}
             onDeleteItem={onDeleteItem}
+            onAddToProject={onAddToProject}
           />
         ))}
         {items.length > maxVisibleEvents && (

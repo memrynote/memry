@@ -541,6 +541,7 @@ describe('CalendarPage', () => {
 
     await waitFor(() => expect(showContextMenu).toHaveBeenCalled())
     expect(showContextMenu.mock.lastCall?.[0]).toEqual([
+      expect.objectContaining({ id: 'add-to-project', label: 'Add to project' }),
       expect.objectContaining({ id: 'delete', label: 'Delete event' })
     ])
 
