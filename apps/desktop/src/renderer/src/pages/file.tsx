@@ -148,9 +148,7 @@ function FileInfoBar({ file, onAddToProject }: { file: FileMetadata; onAddToProj
           </Button>
         </div>
       </div>
-      <div className="px-2 sm:px-4 pb-2">
-        <ItemProjectChips itemType="file" itemId={file.id} />
-      </div>
+      <ItemProjectChips itemType="file" itemId={file.id} className="px-2 sm:px-4 pb-2" />
     </div>
   )
 }
