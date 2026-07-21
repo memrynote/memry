@@ -6,8 +6,9 @@ import { getI18n } from 'react-i18next'
  * Loads file metadata via IPC and renders the file using the absolute path.
  */
 
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Loader2, FileWarning, Download, ExternalLink } from '@/lib/icons'
+import { Loader2, FileWarning, Download, ExternalLink, FolderPlus } from '@/lib/icons'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { toMemryFileUrl } from '@/lib/memry-file-url'
 import { notesService } from '@/services/notes-service'
@@ -16,6 +17,8 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { FileMetadata } from '@memry/rpc/notes'
 import { useT } from '@memry/i18n/renderer'
+import { ItemProjectChips } from '@/components/tasks/projects/item-project-chips'
+import { AddFileToProjectDialog } from '@/components/tasks/projects/add-file-to-project-dialog'
 
 // ============================================================================
 // Types
@@ -97,40 +100,56 @@ function FileLoadingState() {
 // File Info Bar Component
 // ============================================================================
 
-function FileInfoBar({ file }: { file: FileMetadata }) {
+function FileInfoBar({ file, onAddToProject }: { file: FileMetadata; onAddToProject: () => void }) {
   const { t: tPhaseF } = useT('notes')
+  const { t: tTasks } = useT('tasks')
   return (
-    <div className="flex items-center justify-between gap-2 px-2 sm:px-4 py-2 border-b border-border bg-muted/30 flex-shrink-0">
-      <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
-        <h1 className="font-medium truncate flex-1 min-w-0">{file.title}</h1>
-        <span className="text-xs text-muted-foreground uppercase flex-shrink-0 hidden sm:inline">
-          {file.fileType}
-        </span>
-        <span className="text-xs text-muted-foreground flex-shrink-0 hidden md:inline">
-          {formatFileSize(file.fileSize)}
-        </span>
+    <div className="flex flex-col gap-1 border-b border-border bg-muted/30 flex-shrink-0">
+      <div className="flex items-center justify-between gap-2 px-2 sm:px-4 py-2">
+        <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
+          <h1 className="font-medium truncate flex-1 min-w-0">{file.title}</h1>
+          <span className="text-xs text-muted-foreground uppercase flex-shrink-0 hidden sm:inline">
+            {file.fileType}
+          </span>
+          <span className="text-xs text-muted-foreground flex-shrink-0 hidden md:inline">
+            {formatFileSize(file.fileSize)}
+          </span>
+        </div>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onAddToProject}
+            className="h-8 w-8 p-0 sm:w-auto sm:px-3"
+            title={tTasks('addToProject.menuLabel')}
+          >
+            <FolderPlus className="h-4 w-4 sm:me-1" />
+            <span className="hidden sm:inline">{tTasks('addToProject.menuLabel')}</span>
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => void window.api.notes.openExternal(file.id)}
+            className="h-8 w-8 p-0 sm:w-auto sm:px-3"
+            title={tPhaseF('phaseF.pagesFile.openInDefaultApp')}
+          >
+            <ExternalLink className="h-4 w-4 sm:me-1" />
+            <span className="hidden sm:inline">{tPhaseF('phaseF.pagesFile.open')}</span>
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => void window.api.notes.revealInFinder(file.id)}
+            className="h-8 w-8 p-0 sm:w-auto sm:px-3"
+            title={tPhaseF('phaseF.pagesFile.revealInFinder')}
+          >
+            <Download className="h-4 w-4 sm:me-1" />
+            <span className="hidden sm:inline">{tPhaseF('phaseF.pagesFile.reveal')}</span>
+          </Button>
+        </div>
       </div>
-      <div className="flex items-center gap-1 flex-shrink-0">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => void window.api.notes.openExternal(file.id)}
-          className="h-8 w-8 p-0 sm:w-auto sm:px-3"
-          title={tPhaseF('phaseF.pagesFile.openInDefaultApp')}
-        >
-          <ExternalLink className="h-4 w-4 sm:me-1" />
-          <span className="hidden sm:inline">{tPhaseF('phaseF.pagesFile.open')}</span>
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => void window.api.notes.revealInFinder(file.id)}
-          className="h-8 w-8 p-0 sm:w-auto sm:px-3"
-          title={tPhaseF('phaseF.pagesFile.revealInFinder')}
-        >
-          <Download className="h-4 w-4 sm:me-1" />
-          <span className="hidden sm:inline">{tPhaseF('phaseF.pagesFile.reveal')}</span>
-        </Button>
+      <div className="px-2 sm:px-4 pb-2">
+        <ItemProjectChips itemType="file" itemId={file.id} />
       </div>
     </div>
   )
@@ -184,6 +203,8 @@ function FileViewer({ file }: { file: FileMetadata }) {
 // ============================================================================
 
 export function FilePage({ fileId }: FilePageProps) {
+  const [addToProjectOpen, setAddToProjectOpen] = useState(false)
+
   // Query for file metadata
   const {
     data: file,
@@ -232,8 +253,13 @@ export function FilePage({ fileId }: FilePageProps) {
 
   return (
     <div className={cn('flex h-full flex-col min-h-0')}>
-      <FileInfoBar file={file} />
+      <FileInfoBar file={file} onAddToProject={() => setAddToProjectOpen(true)} />
       <FileViewer file={file} />
+      <AddFileToProjectDialog
+        open={addToProjectOpen}
+        onOpenChange={setAddToProjectOpen}
+        fileId={file.id}
+      />
     </div>
   )
 }
