@@ -144,7 +144,15 @@ export const ProjectOverviewNote = ({
         toast.error(t('projectHome.overview.createError'))
         return
       }
-      await tasksService.setProjectHomeNote({ projectId, noteId: result.note.id })
+      const setResult = await tasksService.setProjectHomeNote({
+        projectId,
+        noteId: result.note.id
+      })
+      if (!setResult.success) {
+        log.error('Failed to set overview note', setResult.error ?? 'unknown')
+        toast.error(t('projectHome.overview.createError'))
+        return
+      }
       onHomeNoteChange(result.note.id)
     } catch (error) {
       toast.error(extractErrorMessage(error, t('projectHome.overview.createError')))
