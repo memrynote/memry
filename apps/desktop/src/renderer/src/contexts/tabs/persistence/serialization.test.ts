@@ -57,7 +57,8 @@ const makeState = (tabs: Tab[]): TabSystemState => {
     tabGroups: { g1: group },
     layout: { type: 'leaf', tabGroupId: 'g1' },
     activeGroupId: 'g1',
-    settings: { restoreSessionOnStart: true, tabCloseButton: 'hover' }
+    settings: { restoreSessionOnStart: true, tabCloseButton: 'hover' },
+    recentlyClosed: []
   }
 }
 
