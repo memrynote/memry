@@ -668,6 +668,17 @@
   "projectHome": {
     "stats": { "tasks": "Tasks", "notes": "Notes", "events": "Events", "progress": "Progress" },
     "emptyTitle": "No project selected",
-    "emptyBody": "Pick a project from the sidebar to open its home."
+    "emptyBody": "Pick a project from the sidebar to open its home.",
+    "overview": {
+      "sectionTitle": "Overview",
+      "create": "Create overview note",
+      "clear": "Clear overview",
+      "defaultTitle": "Overview",
+      "placeholder": "Write an overview for this project…",
+      "createError": "Could not create the overview note",
+      "clearError": "Could not clear the overview note",
+      "loadError": "Could not load the overview note",
+      "saveError": "Could not save the overview note"
+    }
   }
 }

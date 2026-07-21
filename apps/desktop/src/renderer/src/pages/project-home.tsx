@@ -4,6 +4,7 @@ import { FolderKanban } from '@/lib/icons'
 import { getIconByName } from '@/components/icon-picker'
 import { TaskList } from '@/components/tasks/task-list'
 import { ProjectNotesSection } from '@/components/tasks/projects/project-notes-section'
+import { ProjectOverviewNote } from '@/components/tasks/projects/project-overview-note'
 import { ProjectStatsRow } from '@/components/tasks/projects/project-stats-row'
 import { useTasksContext } from '@/contexts/tasks'
 import { useTabActions } from '@/contexts/tabs'
@@ -78,13 +79,36 @@ export const ProjectHomePage = ({
     void loadLinks()
   }, [loadLinks])
 
+  const [homeNoteId, setHomeNoteId] = useState<string | null>(null)
+
+  const loadHomeNoteId = useCallback(async (): Promise<void> => {
+    if (!projectId) {
+      setHomeNoteId(null)
+      return
+    }
+    try {
+      const result = await tasksService.getProject(projectId)
+      setHomeNoteId(result?.homeNoteId ?? null)
+    } catch (error) {
+      log.error(
+        'Failed to load project home note',
+        extractErrorMessage(error, t('projectHome.overview.loadError'))
+      )
+    }
+  }, [projectId, t])
+
+  useEffect(() => {
+    void loadHomeNoteId()
+  }, [loadHomeNoteId])
+
   useEffect(() => {
     return onProjectUpdated((event) => {
       if (event.id === projectId) {
         void loadLinks()
+        void loadHomeNoteId()
       }
     })
-  }, [projectId, loadLinks])
+  }, [projectId, loadLinks, loadHomeNoteId])
 
   const noteCount = useMemo(() => links.filter((link) => link.itemType === 'note').length, [links])
   const eventCount = useMemo(
@@ -175,7 +199,11 @@ export const ProjectHomePage = ({
         progressPct={progressPct}
       />
 
-      {/* OVERVIEW_NOTE_SLOT — Phase 3 Task 3 */}
+      <ProjectOverviewNote
+        projectId={project.id}
+        homeNoteId={homeNoteId}
+        onHomeNoteChange={setHomeNoteId}
+      />
 
       <TaskList
         tasks={projectTasks}

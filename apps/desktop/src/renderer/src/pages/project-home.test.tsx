@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   uncompleteTask: vi.fn(),
   openTab: vi.fn(),
   listProjectLinks: vi.fn(),
+  getProject: vi.fn(),
   notesGet: vi.fn(),
   notesGetFile: vi.fn(),
   projectUpdatedListeners: [] as Array<(event: { id: string; project: Project }) => void>
@@ -113,7 +114,7 @@ vi.mock('@/hooks', () => ({
 }))
 
 vi.mock('@/services/tasks-service', () => ({
-  tasksService: { listProjectLinks: mocks.listProjectLinks },
+  tasksService: { listProjectLinks: mocks.listProjectLinks, getProject: mocks.getProject },
   onProjectUpdated: (cb: (event: { id: string; project: Project }) => void) => {
     mocks.projectUpdatedListeners.push(cb)
     return () => {
@@ -136,6 +137,10 @@ vi.mock('@/components/tasks/task-list', () => ({
   )
 }))
 
+vi.mock('@/components/tasks/projects/project-overview-note', () => ({
+  ProjectOverviewNote: () => <div data-testid="project-overview-note" />
+}))
+
 describe('ProjectHomePage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -143,6 +148,7 @@ describe('ProjectHomePage', () => {
     mocks.listProjectLinks.mockResolvedValue([
       { id: 'link-1', projectId: 'p1', itemType: 'note', itemId: 'n1', position: 0, createdAt: '' }
     ])
+    mocks.getProject.mockResolvedValue({ ...project, homeNoteId: null })
   })
 
   it('#then renders header, stats, and notes section', async () => {
