@@ -34,6 +34,12 @@ export interface NoteResultMetadata {
   tags: string[]
   emoji?: string | null
   wordCount?: number | null
+  /**
+   * Underlying file type. Absent/`'markdown'` = a real note; a binary value
+   * (image/pdf/audio/video) means this "note" result is actually a filed file
+   * and must be opened via the file viewer, not the markdown editor. See #800.
+   */
+  fileType?: 'markdown' | 'pdf' | 'image' | 'audio' | 'video'
 }
 
 export interface JournalResultMetadata {

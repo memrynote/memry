@@ -84,6 +84,7 @@ import { useFindInPage } from '@/hooks/use-find-in-page'
 import { ReviewBadgeLayer, ReviewRail, useCriticMarkupReview } from '@/components/note/review'
 
 import { useT } from '@memry/i18n/renderer'
+import { getTabIconForFileType } from '@memry/shared/file-types'
 
 const log = createLogger('Page:Note')
 
@@ -201,6 +202,53 @@ export function NotePage({ noteId }: NotePageProps) {
     content: string
   } | null>(null)
   const [storedNoteIdForContent, setStoredNoteIdForContent] = useState(noteId)
+
+  // #800 belt-and-suspenders: a filed binary (image/PDF/…) mis-opened as a note
+  // tab must never mount the markdown editor — raw bytes render as junk tag
+  // pills and a multi-MB blob freezes the app. Probe getFile (null for real
+  // markdown notes); if this id is actually a file, redirect the tab to the
+  // in-app viewer. Render nothing until the probe resolves so the editor never
+  // mounts on a binary. Runs concurrently with the note load, so it adds no
+  // perceptible latency for normal notes. The result is keyed by id so a stale
+  // result for a previous note reads as 'pending' during render (no reset in
+  // the effect).
+  const [fileProbe, setFileProbe] = useState<{ id: string | null; status: 'note' | 'file' }>({
+    id: null,
+    status: 'note'
+  })
+  const fileProbeStatus = fileProbe.id === noteId ? fileProbe.status : 'pending'
+  useEffect(() => {
+    if (!noteId) return
+    let cancelled = false
+    void notesService
+      .getFile(noteId)
+      .then((file) => {
+        if (cancelled) return
+        if (!file) {
+          setFileProbe({ id: noteId, status: 'note' })
+          return
+        }
+        setFileProbe({ id: noteId, status: 'file' })
+        openTab({
+          type: 'file',
+          title: file.title,
+          icon: getTabIconForFileType(file.fileType),
+          path: `/file/${noteId}`,
+          entityId: noteId,
+          isPinned: false,
+          isModified: false,
+          isPreview: false,
+          isDeleted: false
+        })
+        if (activeTab?.id) closeTab(activeTab.id)
+      })
+      .catch(() => {
+        if (!cancelled) setFileProbe({ id: noteId, status: 'note' })
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [noteId, openTab, closeTab, activeTab?.id])
 
   const handlePropertyBlocked = useCallback((action: PropertySectionAction) => {
     const messages: Record<PropertySectionAction, string> = {
@@ -1025,6 +1073,13 @@ export function NotePage({ noteId }: NotePageProps) {
   // No note ID - show empty state
   if (!noteId) {
     return <NoteEmptyState />
+  }
+
+  // #800: don't mount the markdown editor until we've confirmed this id is not a
+  // filed binary. 'pending' = probe in flight; 'file' = redirecting to the file
+  // viewer. Either way render nothing so a binary never reaches the editor.
+  if (fileProbeStatus !== 'note') {
+    return null
   }
 
   // Error
