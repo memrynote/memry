@@ -39,6 +39,7 @@ import { configureSessionPermissions } from './session-permissions'
 import { startSnoozeScheduler, stopSnoozeScheduler, checkDueItemsOnStartup } from './inbox/snooze'
 import { stopVoiceModel } from './inbox/voice-model'
 import { stopImageProcessing } from './image-processing/bridge'
+import { stopEmbeddingModel } from './lib/embeddings'
 import { startReminderScheduler, stopReminderScheduler } from './lib/reminders'
 import { startInboxReviewScheduler, stopInboxReviewScheduler } from './inbox/review-scheduler'
 import { disposeTelemetryRuntime, initializeTelemetryRuntime } from './telemetry/runtime'
@@ -1690,6 +1691,14 @@ app.on('before-quit', (event) => {
     .then(() => {
       shutdownLog.info('stopping image processing utility...')
       return stopImageProcessing()
+    })
+    .then(() => {
+      // Terminate the embeddings utilityProcess explicitly. On Windows it runs
+      // as the app binary (Memrynote.exe); if left to its 30s idle self-exit it
+      // can outlive the NSIS CHECK_APP_RUNNING window and block the update
+      // install ("MemryNote cannot be closed", #805).
+      shutdownLog.info('stopping embeddings utility...')
+      return stopEmbeddingModel()
     })
     .then(async () => {
       shutdownLog.info('stopping active heartbeat...')

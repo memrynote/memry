@@ -49,6 +49,7 @@ const getCrdtProviderMock = vi.fn(() => ({
   getDoc: getProviderDocMock
 }))
 const stopSyncRuntimeMock = vi.fn(async () => undefined)
+const stopEmbeddingModelMock = vi.fn(async () => undefined)
 const startGoogleCalendarSyncRunnerMock = vi.fn(async () => undefined)
 const stopGoogleCalendarSyncRunnerMock = vi.fn()
 const triggerGoogleCalendarSyncNowMock = vi.fn()
@@ -204,6 +205,13 @@ vi.mock('./inbox/review-scheduler', () => ({
 
 vi.mock('./inbox/voice-model', () => ({
   stopVoiceModel: vi.fn(async () => undefined)
+}))
+
+// Keep the real module (other importers use initEmbeddingModel/getModelInfo/etc.);
+// spy only stopEmbeddingModel to assert the embeddings utilityProcess is stopped on quit (#805).
+vi.mock('./lib/embeddings', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./lib/embeddings')>()),
+  stopEmbeddingModel: stopEmbeddingModelMock
 }))
 
 vi.mock('./telemetry/runtime', () => ({
@@ -1445,6 +1453,9 @@ describe('main index phase2 exports', () => {
 
     expect(preventDefault).toHaveBeenCalled()
     expect(disposeTelemetryRuntimeMock).toHaveBeenCalled()
+    // Embeddings utilityProcess must be stopped on quit or it lingers as a
+    // Memrynote.exe and blocks the Windows NSIS update install (#805).
+    expect(stopEmbeddingModelMock).toHaveBeenCalled()
     expect(stopSyncRuntimeMock).toHaveBeenCalled()
     expect(closeVaultMock).toHaveBeenCalled()
   })
@@ -1601,7 +1612,7 @@ describe('main index phase2 exports', () => {
       ([event]) => event === 'app:flush-done'
     )?.[1] as () => void
     flushHandler()
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 40; i++) {
       await Promise.resolve()
     }
 
