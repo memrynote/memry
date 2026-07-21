@@ -664,5 +664,10 @@
     "loading": "Loading projects…",
     "toastSuccess": "Added to {name}",
     "toastError": "Failed to add to project"
+  },
+  "projectHome": {
+    "stats": { "tasks": "Tasks", "notes": "Notes", "events": "Events", "progress": "Progress" },
+    "emptyTitle": "No project selected",
+    "emptyBody": "Pick a project from the sidebar to open its home."
   }
 }
