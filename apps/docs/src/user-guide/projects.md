@@ -68,6 +68,7 @@ At the top, a stats row summarizes the project:
 - **Tasks** — total tasks in the project
 - **Notes** — linked notes
 - **Events** — linked calendar events
+- **Files** — linked files
 - **Progress** — share of the project's tasks that are complete (derived live from the done ratio; there is nothing to configure)
 
 Below the stats, Project Home stacks these sections:
@@ -76,8 +77,7 @@ Below the stats, Project Home stacks these sections:
 - **Tasks** — the project's task list (the same list and quick-add you already know)
 - **Notes** — the notes linked to this project
 - **Calendar** — the calendar events linked to this project
-
-(A **Files** section is planned for a later release.)
+- **Files** — the files linked to this project (PDFs, images, audio, video)
 
 ### Overview note
 
@@ -88,15 +88,17 @@ A project can point at a real note that renders inline at the top of Project Hom
 
 The overview is a pointer to a note, so it never shows up twice — it does not also appear in the Notes section.
 
-### Linking notes and events
+### Linking notes, events, and files
 
-Notes and events join a project as **links** (many-to-many): the same note can belong to more than one project.
+Notes, events, and files join a project as **links** (many-to-many): the same note or file can belong to more than one project.
 
-- **Add a note** — from a note's **⋯** menu choose **Add to project**, or drag a note onto a project
+- **Add a note** — from a note's **⋯** menu choose **Add to project**, or drag the note onto a project in the sidebar
+- **Add a file** — open the file and choose **Add to project** from its toolbar, or drag the file onto a project in the sidebar
 - **Add an event** — right-click a calendar event and choose **Add to project**
-- Linked items appear in Project Home's **Notes** / **Calendar** sections; use each row's remove control to unlink (this only unlinks — it never deletes the note or event)
+- Dragging any note or file from the sidebar onto a project links it in one step — memrynote tells notes and files apart automatically, so the same drag works for either
+- Linked items appear in Project Home's **Notes** / **Calendar** / **Files** sections; use each row's remove control to unlink (this only unlinks — it never deletes the note, event, or file)
 
-Wherever a note or event lives, small **project chips** under its title show which projects it belongs to — click a chip to jump to that Project Home.
+Wherever a note, event, or file lives, small **project chips** under its title show which projects it belongs to — click a chip to jump to that Project Home.
 
 ## Deleting a Project
 
@@ -108,7 +110,7 @@ Deleting asks you to choose what to do with the tasks:
 
 Each path is reversible via undo within the 10-second window.
 
-Linked **notes, events, and files are never deleted** with a project — only the project's tasks and its links are removed. Your notes and events stay in your vault and simply lose the project link, so a project is safe to delete without losing the material collected under it.
+Linked **notes, events, and files are never deleted** with a project — only the project's tasks and its links are removed. Your notes, events, and files stay in your vault and simply lose the project link, so a project is safe to delete without losing the material collected under it.
 
 ## Sync
 
