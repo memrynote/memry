@@ -245,6 +245,7 @@
   "phaseF": {
     "componentsAppSidebar": {
       "collections": "Collections",
+      "projects": "Projects",
       "newNote": "New note",
       "newNote2": "New note",
       "newFolder": "New folder",

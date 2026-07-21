@@ -37,6 +37,7 @@ import { SidebarUpdateButton } from '@/components/sidebar/sidebar-update-button'
 import { SidebarFeedbackButton } from '@/components/sidebar/sidebar-feedback-button'
 import { SidebarBookmarkList } from '@/components/sidebar/sidebar-bookmark-list'
 import { SidebarCanvasList } from '@/components/sidebar/sidebar-canvas-list'
+import { SortableProjectList } from '@/components/sidebar/sortable-project-list'
 import { SidebarDrillDownContainer } from '@/components/sidebar/sidebar-drill-down-container'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Picker } from '@/components/ui/picker'
@@ -53,6 +54,7 @@ import { useSettingsModal } from '@/contexts/settings-modal-context'
 import { notesService } from '@/services/notes-service'
 import { canvasService, type CanvasSummary } from '@/services/canvas-service'
 import { useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
+import { useTasksOptional } from '@/contexts/tasks'
 import { useAuth } from '@/contexts/auth-context'
 import { SyncStatus } from '@/components/sync/sync-status'
 import { useInboxList } from '@/hooks/use-inbox'
@@ -366,6 +368,36 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
     }
   }, [handleCanvasOpen])
 
+  // Active (non-archived) projects, sourced from the same TasksProvider context
+  // the Tasks page reads from. Nullable accessor so the sidebar still renders
+  // if it's ever mounted outside a TasksProvider (see app-sidebar.test.tsx).
+  const tasksContext = useTasksOptional()
+  const activeProjects = useMemo(
+    () => (tasksContext?.projects ?? []).filter((project) => !project.isArchived),
+    [tasksContext?.projects]
+  )
+
+  // Open a project's Project Home page (entityId dedupe keeps it to one tab per project)
+  const handleProjectClick = useCallback(
+    (projectId: string) => {
+      const project = activeProjects.find((p) => p.id === projectId)
+      openSidebarItem({
+        type: 'project',
+        title: project?.name ?? '',
+        icon: 'folder',
+        path: `/project/${projectId}`,
+        entityId: projectId
+      })
+    },
+    [activeProjects, openSidebarItem]
+  )
+
+  // SortableProjectList's edit/archive/delete/create/reorder handlers are required
+  // props, but that CRUD + drag-reorder UI already lives on the Tasks page project
+  // list. Wiring it a second time here is out of scope for this sidebar entry
+  // point, which only needs click-to-open — deferred as a follow-up.
+  const noopProjectAction = useCallback((): void => {}, [])
+
   // Main sidebar content (shown when not drilling down)
   const mainContent = (
     <>
@@ -449,6 +481,24 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
             ref={notesActionsRef}
             onTargetFolderChange={handleTargetFolderChange}
             scrollContainerRef={sidebarScrollRef as React.RefObject<HTMLElement>}
+          />
+        </SidebarSection>
+
+        {/* PROJECTS Section */}
+        <SidebarSection
+          id="projects"
+          label={tPhaseF('phaseF.componentsAppSidebar.projects')}
+          defaultExpanded={false}
+        >
+          <SortableProjectList
+            projects={activeProjects}
+            activeProjectId={null}
+            onProjectClick={handleProjectClick}
+            onProjectEdit={noopProjectAction}
+            onProjectArchive={noopProjectAction}
+            onProjectDelete={noopProjectAction}
+            onProjectsReorder={noopProjectAction}
+            onCreateProject={noopProjectAction}
           />
         </SidebarSection>
 
