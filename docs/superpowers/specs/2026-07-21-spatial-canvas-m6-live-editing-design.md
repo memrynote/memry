@@ -131,7 +131,7 @@ Edited:
 
 ## 12. Open verifications (filled by the spike, before building the editors)
 
-1. Keyboard containment: does bubble-phase `stopPropagation` on the active card contain Excalidraw's Cmd+Z / Escape, or is a gated capture-phase document listener required?
+1. Keyboard containment: does bubble-phase `stopPropagation` on the active card contain Excalidraw's Cmd+Z / Escape, or is a gated capture-phase document listener required? **Spike result (Task 2):** bubble-phase `stopPropagation` on `CanvasCardActive` is sufficient — verified via E2E with a reliable signal (the card's live Excalidraw element count, not raw scene-JSON string diffing, which false-positived on incidental selection/appState changes from the activating double-click itself). With containment fully disabled as a control, the card's rectangle was still never touched by Ctrl/Cmd+Z: Excalidraw's core `onKeyDown` is bound only as a React `onKeyDown` prop on its own `.excalidraw` container (`handleKeyboardGlobally` defaults to `false` and `canvas-editor.tsx` never sets it), and `CanvasCardLayer`/`CanvasCardActive` mount as a DOM/React sibling of `<Excalidraw>`, not a descendant — so the event structurally never reaches Excalidraw's handler regardless of stopPropagation. No capture-phase document listener was added.
 2. Click-away feel: one pointerdown both deactivates and performs the canvas action, without a lost first click.
 3. Two `y-prosemirror` `UndoManager`s on one shared doc: confirm undo/redo in tab and card don't clobber each other.
 4. `renderEmbeddable` stays closed (no work); overlay is primary.
