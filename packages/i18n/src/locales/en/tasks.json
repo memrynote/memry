@@ -676,6 +676,7 @@
     "stats": { "tasks": "Tasks", "notes": "Notes", "events": "Events", "progress": "Progress" },
     "emptyTitle": "No project selected",
     "emptyBody": "Pick a project from the sidebar to open its home.",
+    "loadError": "Could not load project details",
     "overview": {
       "sectionTitle": "Overview",
       "create": "Create overview note",

@@ -72,9 +72,12 @@ export const ProjectHomePage = ({
       const result = await tasksService.listProjectLinks(projectId)
       setLinks(result)
     } catch (error) {
-      log.error('Failed to load project links', extractErrorMessage(error, 'Unknown error'))
+      log.error(
+        'Failed to load project links',
+        extractErrorMessage(error, t('projectHome.loadError'))
+      )
     }
-  }, [projectId])
+  }, [projectId, t])
 
   useEffect(() => {
     void loadLinks()
