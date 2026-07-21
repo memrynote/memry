@@ -12,6 +12,7 @@ function renderRefPicker(overrides: Partial<ComponentProps<typeof RefPicker>> = 
   const props: ComponentProps<typeof RefPicker> = {
     query: 'star',
     selectedIndex: 0,
+    anchorRef: { current: document.createElement('div') },
     onItemsChange: vi.fn(),
     onPick: vi.fn(),
     onSelectedIndexChange: vi.fn(),
@@ -55,6 +56,16 @@ describe('RefPicker', () => {
 
     expect(props.onSelectedIndexChange).toHaveBeenLastCalledWith(-1)
     expect(props.onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('renders the list in a body-level fixed portal so overflow cannot clip it', async () => {
+    renderRefPicker()
+
+    const listbox = await screen.findByRole('listbox')
+    // Portalled directly under document.body, not nested in the render container.
+    expect(listbox.parentElement).toBe(document.body)
+    expect(listbox.getAttribute('data-ref-picker')).toBe('')
+    expect(listbox.style.position).toBe('fixed')
   })
 
   it('selects, hovers, and picks icon-backed search and calendar results', async () => {

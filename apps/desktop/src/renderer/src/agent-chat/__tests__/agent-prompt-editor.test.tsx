@@ -81,6 +81,30 @@ describe('AgentPromptEditor', () => {
     expect(onMentionQueryChange).toHaveBeenLastCalledWith('')
   })
 
+  it('opens the mention query from the "@" trigger even after a word', async () => {
+    const { ref, onMentionQueryChange } = renderPromptEditor()
+
+    await typePrompt('hello')
+    act(() => {
+      ref.current?.insertMentionTrigger()
+    })
+
+    // A leading space is prepended so the mention regex matches after a word.
+    expect(ref.current?.getValue()).toEqual({ text: 'hello @', attachments: [] })
+    expect(onMentionQueryChange).toHaveBeenLastCalledWith('')
+  })
+
+  it('inserts a bare "@" from the trigger at the start of an empty editor', () => {
+    const { ref, onMentionQueryChange } = renderPromptEditor()
+
+    act(() => {
+      ref.current?.insertMentionTrigger()
+    })
+
+    expect(ref.current?.getValue()).toEqual({ text: '@', attachments: [] })
+    expect(onMentionQueryChange).toHaveBeenLastCalledWith('')
+  })
+
   it('serializes non-standard mention kinds and dedupes repeated attachments', async () => {
     const { ref, onMentionQueryChange } = renderPromptEditor()
 

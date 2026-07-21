@@ -174,6 +174,8 @@ export function ReviewBadgeLayer({
       if (target) {
         if (target.closest('.critic-review-flyout')) return
         if (target.closest('.critic-review-badge')) return
+        // The mention picker portals to document.body, outside the flyout.
+        if (target.closest('[data-ref-picker]')) return
         const span = target.closest('[data-critic-mark-id]')
         if (span && containerRef.current?.contains(span)) return
       }

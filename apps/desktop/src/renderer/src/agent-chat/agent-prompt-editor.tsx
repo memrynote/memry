@@ -43,6 +43,12 @@ export interface AgentPromptEditorHandle {
   focus: () => void
   getValue: () => AgentPromptValue
   insertText: (text: string) => void
+  /**
+   * Insert an `@` that is guaranteed to open the mention picker: prepends a
+   * space when the caret sits right after a non-whitespace character, so the
+   * `findMentionQuery` regex (which requires start-or-whitespace) still matches.
+   */
+  insertMentionTrigger: () => void
   insertMention: (attachment: MentionAttachment) => void
   seed: (parts: AgentPromptSeedPart[]) => void
 }
@@ -431,6 +437,24 @@ export const AgentPromptEditor = forwardRef<AgentPromptEditorHandle, AgentPrompt
           if (!editor || !text) return
 
           editor.chain().focus().insertContent(text).run()
+
+          const mentionQuery = findMentionQuery(editor)
+          activeMentionRef.current = mentionQuery
+          onMentionQueryChangeRef.current(mentionQuery?.query ?? null)
+          onValueChangeRef.current(readEditorValue(editor))
+        },
+        insertMentionTrigger: () => {
+          if (!editor) return
+
+          const { $from } = editor.state.selection
+          const textBefore = $from.parent.textBetween(0, $from.parentOffset, '\n', '￼')
+          const needsSpace = textBefore.length > 0 && !/\s$/.test(textBefore)
+
+          editor
+            .chain()
+            .focus()
+            .insertContent(needsSpace ? ' @' : '@')
+            .run()
 
           const mentionQuery = findMentionQuery(editor)
           activeMentionRef.current = mentionQuery
