@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import type { UpdaterStatus } from '@memry/contracts/ipc-updater'
+import type { AppUpdateState, UpdaterStatus } from '@memry/contracts/ipc-updater'
 import { useT } from '@memry/i18n/renderer'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -10,6 +10,25 @@ import { createLogger } from '@/lib/logger'
 import memryLogo from '@/assets/icon-logo.png'
 
 const log = createLogger('Component:UpdatePromptDialog')
+
+/**
+ * Whether the in-app update prompt should surface. With auto-download on, BOTH the
+ * "available" and "downloaded" phases stay silent — the update downloads and installs
+ * on the next quit without any popup — so a silent background update never flashes a
+ * prompt when a new release is found on the short-interval poll.
+ */
+export function shouldShowUpdatePrompt(
+  state: AppUpdateState,
+  dismissedStatus: UpdaterStatus | null
+): boolean {
+  const isPromptable = state.status === 'available' || state.status === 'downloaded'
+  return (
+    state.updateSupported &&
+    isPromptable &&
+    state.status !== dismissedStatus &&
+    !state.autoDownloadEnabled
+  )
+}
 
 /**
  * In-app replacement for the native "update available" / "restart to install"
@@ -33,13 +52,7 @@ export function UpdatePromptDialog(): React.JSX.Element | null {
   const isAvailable = state.status === 'available'
   const isDownloaded = state.status === 'downloaded'
 
-  const shouldShow =
-    state.updateSupported &&
-    (isAvailable || isDownloaded) &&
-    state.status !== dismissedStatus &&
-    // With auto-update on, don't nag: the download/install happens automatically
-    // and installs on the next quit (autoInstallOnAppQuit).
-    !(isDownloaded && state.autoDownloadEnabled)
+  const shouldShow = shouldShowUpdatePrompt(state, dismissedStatus)
 
   const dismiss = useCallback(() => {
     setDismissedStatus(state.status)
