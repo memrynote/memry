@@ -161,7 +161,11 @@ export function useYjsCollaboration(
       return
     }
 
-    const entry = docRegistry.acquire(noteId, consumerId)
+    let destroyed = false
+    const entry = docRegistry.acquire(noteId, consumerId, (isOwner) => {
+      if (destroyed) return
+      setIsSideEffectOwner(isOwner)
+    })
     setIsSideEffectOwner(docRegistry.isSideEffectOwner(noteId, consumerId))
 
     const sync = (): void => {
@@ -177,6 +181,7 @@ export function useYjsCollaboration(
     const unsubscribe = entry.subscribe(sync)
 
     return () => {
+      destroyed = true
       unsubscribe()
       docRegistry.release(noteId, consumerId)
     }

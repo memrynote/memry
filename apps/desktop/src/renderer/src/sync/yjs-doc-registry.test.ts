@@ -56,6 +56,20 @@ describe('yjs-doc-registry', () => {
     expect(registry.isSideEffectOwner('note-1', b)).toBe(true)
   })
 
+  it('notifies the newly-promoted consumer via onOwnerChange(true) on owner release', () => {
+    const { registry } = makeRegistry()
+    const a = Symbol('a')
+    const b = Symbol('b')
+    const onOwnerChangeA = vi.fn()
+    const onOwnerChangeB = vi.fn()
+    registry.acquire('note-1', a, onOwnerChangeA)
+    registry.acquire('note-1', b, onOwnerChangeB)
+    registry.release('note-1', a)
+    expect(onOwnerChangeB).toHaveBeenCalledWith(true)
+    expect(onOwnerChangeA).not.toHaveBeenCalledWith(true)
+    expect(registry.isSideEffectOwner('note-1', b)).toBe(true)
+  })
+
   it('keeps separate entries for different noteIds', () => {
     const { registry, created } = makeRegistry()
     registry.acquire('note-1', Symbol('a'))
