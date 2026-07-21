@@ -78,7 +78,50 @@ async function updateEmbedding(noteId: string, content: string): Promise<boolean
   return true
 }
 
-export function createEmbeddingProjector(getVaultPath: () => string | null): ProjectionProjector {
+export function createEmbeddingProjector(
+  getVaultPath: () => string | null,
+  isIndexing: () => boolean = () => false
+): ProjectionProjector {
+  // Note ids whose embedding was deferred because it arrived during the initial
+  // index pass (see project()). Instance-scoped so it starts empty per open; the
+  // backgrounded reconcile drains it after the vault is open (#803).
+  const pendingEmbedding = new Set<string>()
+
+  // Embed a list of markdown notes from disk. Shared by the full rebuild and the
+  // reconcile backfill; assumes the model is already loaded and vaultPath is set.
+  const embedNotes = async (
+    vaultPath: string,
+    notes: Array<{ id: string; path: string; title: string | null }>
+  ): Promise<{ computed: number; skipped: number }> => {
+    let computed = 0
+    let skipped = 0
+
+    for (let i = 0; i < notes.length; i++) {
+      const note = notes[i]
+      try {
+        const absolutePath = path.join(vaultPath, note.path)
+        const raw = await fs.readFile(absolutePath, 'utf-8')
+        const parsed = parseNote(raw, note.path)
+
+        const input = buildEmbeddingInput({ title: note.title, content: parsed.content })
+        if (!(await updateEmbedding(note.id, input))) {
+          skipped++
+        } else {
+          computed++
+        }
+      } catch (error) {
+        skipped++
+        logger.warn('Failed to rebuild note embedding', { noteId: note.id, error })
+      }
+
+      if ((i + 1) % 5 === 0 || i === notes.length - 1) {
+        emitProgress(i + 1, notes.length, 'embedding')
+      }
+    }
+
+    return { computed, skipped }
+  }
+
   const runRebuild = async (): Promise<{
     success: boolean
     computed: number
@@ -127,31 +170,7 @@ export function createEmbeddingProjector(getVaultPath: () => string | null): Pro
     rawDb.prepare('DELETE FROM vec_notes').run()
     emitProgress(0, notes.length, 'embedding')
 
-    let computed = 0
-    let skipped = 0
-
-    for (let i = 0; i < notes.length; i++) {
-      const note = notes[i]
-      try {
-        const absolutePath = path.join(vaultPath, note.path)
-        const raw = await fs.readFile(absolutePath, 'utf-8')
-        const parsed = parseNote(raw, note.path)
-
-        const input = buildEmbeddingInput({ title: note.title, content: parsed.content })
-        if (!(await updateEmbedding(note.id, input))) {
-          skipped++
-        } else {
-          computed++
-        }
-      } catch (error) {
-        skipped++
-        logger.warn('Failed to rebuild note embedding', { noteId: note.id, error })
-      }
-
-      if ((i + 1) % 5 === 0 || i === notes.length - 1) {
-        emitProgress(i + 1, notes.length, 'embedding')
-      }
-    }
+    const { computed, skipped } = await embedNotes(vaultPath, notes)
 
     emitProgress(notes.length, notes.length, 'complete')
     return { success: true, computed, skipped }
@@ -167,6 +186,7 @@ export function createEmbeddingProjector(getVaultPath: () => string | null): Pro
     async project(event: ProjectionEvent): Promise<void> {
       if (event.type === 'note.deleted') {
         deleteNoteEmbedding(event.noteId)
+        pendingEmbedding.delete(event.noteId)
         return
       }
 
@@ -178,6 +198,17 @@ export function createEmbeddingProjector(getVaultPath: () => string | null): Pro
 
       if (note.kind !== 'markdown') {
         deleteNoteEmbedding(note.noteId)
+        pendingEmbedding.delete(note.noteId)
+        return
+      }
+
+      // During the initial index pass, embedding is deferred: indexVault awaits
+      // this projector per file (before the vault is marked open), and loading the
+      // ~23MB model + running CPU inference here is what stranded vault-open for
+      // minutes. Record the id and let the backgrounded reconcile embed it after
+      // isOpen. Only fires while isIndexing; live edits still embed inline. (#803)
+      if (isIndexing()) {
+        pendingEmbedding.add(note.noteId)
         return
       }
 
@@ -213,6 +244,7 @@ export function createEmbeddingProjector(getVaultPath: () => string | null): Pro
       const rawDb = getRawIndexDatabase()
       const indexDb = getIndexDatabase()
 
+      // Prune vectors for notes that no longer exist.
       rawDb
         .prepare(
           `
@@ -226,13 +258,54 @@ export function createEmbeddingProjector(getVaultPath: () => string | null): Pro
         )
         .run()
 
-      const existingNoteIds = indexDb.all<{ id: string }>(sql`
-        SELECT id
+      const markdownNotes = indexDb.all<{
+        id: string
+        path: string
+        title: string | null
+      }>(sql`
+        SELECT id, path, title
         FROM note_cache
         WHERE COALESCE(file_type, 'markdown') = 'markdown'
       `)
 
-      emitProgress(existingNoteIds.length, existingNoteIds.length, 'complete')
+      const vaultPath = getVaultPath()
+      if (!isAIEnabled() || !vaultPath) {
+        pendingEmbedding.clear()
+        emitProgress(markdownNotes.length, markdownNotes.length, 'complete')
+        return
+      }
+
+      // Backfill: embed markdown notes with no vector yet (freshly imported notes
+      // whose inline embedding was deferred during indexing) plus any deferred /
+      // edited notes tracked this session. Runs in the background after isOpen, so
+      // a slow or failed model load never blocks vault-open (#803). Loading the
+      // model is bounded to when there is actually work to do.
+      const embeddedIds = new Set(
+        (rawDb.prepare('SELECT note_id FROM vec_notes').all() as Array<{ note_id: string }>).map(
+          (row) => row.note_id
+        )
+      )
+      const workList = markdownNotes.filter(
+        (note) => !embeddedIds.has(note.id) || pendingEmbedding.has(note.id)
+      )
+      pendingEmbedding.clear()
+
+      if (workList.length === 0) {
+        emitProgress(markdownNotes.length, markdownNotes.length, 'complete')
+        return
+      }
+
+      if (!isModelLoaded()) {
+        const loaded = await initEmbeddingModel()
+        if (!loaded) {
+          emitProgress(markdownNotes.length, markdownNotes.length, 'complete')
+          return
+        }
+      }
+
+      emitProgress(0, workList.length, 'embedding')
+      await embedNotes(vaultPath, workList)
+      emitProgress(workList.length, workList.length, 'complete')
     }
   }
 }

@@ -41,7 +41,13 @@ import { createLogger } from '../lib/logger'
 import { getDatabase } from '../database'
 import { getSetting, setSetting, deleteSetting } from '../settings/settings-store'
 import { withErrorHandler } from './validate'
-import { initEmbeddingModel, getModelInfo, isModelLoaded, isModelLoading } from '../lib/embeddings'
+import {
+  initEmbeddingModel,
+  getModelInfo,
+  isModelLoaded,
+  isModelLoading,
+  resetEmbeddingModelFailure
+} from '../lib/embeddings'
 import { rebuildProjections } from '../projections'
 import { writePreferences, PORTABLE_GENERAL_FIELDS } from '../vault/vault-preferences'
 import { getCurrentVaultPath, getDefaultVaultPath, getVaults, setDefaultVaultPath } from '../store'
@@ -477,6 +483,11 @@ export function registerSettingsHandlers(): void {
 
       if (settings.enabled !== undefined) {
         setSetting(db, SETTINGS_KEYS.AI_ENABLED, settings.enabled ? 'true' : 'false')
+        // Re-enabling AI is an explicit retry: clear the model-load circuit
+        // breaker so a previously failed/stalled load is attempted again (#803).
+        if (settings.enabled) {
+          resetEmbeddingModelFailure()
+        }
       }
 
       // Emit settings changed event
@@ -657,6 +668,8 @@ export function registerSettingsHandlers(): void {
         return { success: false, error: 'Model is already loading' }
       }
 
+      // Manual load is an explicit retry — clear the circuit breaker first (#803).
+      resetEmbeddingModelFailure()
       const success = await initEmbeddingModel()
       if (success) {
         return { success: true }
@@ -671,6 +684,8 @@ export function registerSettingsHandlers(): void {
   ipcMain.handle(
     SettingsChannels.invoke.REINDEX_EMBEDDINGS,
     withErrorHandler(async () => {
+      // Reindex is an explicit retry — clear the circuit breaker first (#803).
+      resetEmbeddingModelFailure()
       const result = await rebuildProjections(['embedding'])
       return result.embedding as {
         success: boolean

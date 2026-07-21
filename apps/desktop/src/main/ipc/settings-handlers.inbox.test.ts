@@ -57,7 +57,8 @@ vi.mock('../lib/embeddings', () => ({
   initEmbeddingModel: vi.fn(),
   getModelInfo: vi.fn(),
   isModelLoaded: vi.fn(),
-  isModelLoading: vi.fn()
+  isModelLoading: vi.fn(),
+  resetEmbeddingModelFailure: vi.fn()
 }))
 
 vi.mock('../projections', () => ({

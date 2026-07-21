@@ -90,6 +90,12 @@ class EmbeddingModelBridge {
   private requestCounter = 0
   private loaded = false
   private loading = false
+  // Circuit breaker: latched when a model load fails (download stall, worker
+  // crash, timeout). While set, loadModel() short-circuits instead of re-forking
+  // the worker and re-attempting the ~23MB download per note — the loop that made
+  // vault-open hang indefinitely (#803). Cleared on a successful load, on reset(),
+  // and when AI is re-enabled (resetEmbeddingModelFailure).
+  private loadFailed = false
   private error: string | null = null
   private shuttingDown = false
   private idleShutdownTimer: ReturnType<typeof setTimeout> | null = null
@@ -119,6 +125,13 @@ class EmbeddingModelBridge {
   }
 
   async loadModel(): Promise<boolean> {
+    // A previous load already failed this session — do not re-fork the worker or
+    // re-attempt the download. Recover via resetEmbeddingModelFailure() (AI
+    // re-enable), unloadModel(), or app restart.
+    if (this.loadFailed) {
+      return false
+    }
+
     try {
       this.loading = !this.loaded
       await this.start()
@@ -131,22 +144,26 @@ class EmbeddingModelBridge {
       if (response.type === 'error') {
         this.error = response.error
         this.loading = false
+        this.loadFailed = true
         return false
       }
 
       if (response.type !== 'load-model-result') {
         this.error = `Unexpected response type: ${response.type}`
         this.loading = false
+        this.loadFailed = true
         return false
       }
 
       this.loaded = true
       this.loading = false
+      this.loadFailed = false
       this.error = null
       return true
     } catch (error) {
       this.loading = false
       this.error = error instanceof Error ? error.message : String(error)
+      this.loadFailed = true
       return false
     }
   }
@@ -257,8 +274,13 @@ class EmbeddingModelBridge {
     this.rejectAll(new Error('Embedding utility reset'))
     this.loaded = false
     this.loading = false
+    this.loadFailed = false
     this.error = null
     this.shuttingDown = false
+  }
+
+  clearLoadFailure(): void {
+    this.loadFailed = false
   }
 
   private async start(): Promise<void> {
@@ -601,4 +623,12 @@ export function unloadModel(): void {
 
 export async function stopEmbeddingModel(): Promise<void> {
   await bridge.stop()
+}
+
+/**
+ * Clear the model-load circuit breaker so the next embedding attempt retries a
+ * fresh load. Call when the user re-enables AI after a failed/stalled load (#803).
+ */
+export function resetEmbeddingModelFailure(): void {
+  bridge.clearLoadFailure()
 }
