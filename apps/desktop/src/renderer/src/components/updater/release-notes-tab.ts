@@ -10,7 +10,7 @@ const SURFACING_STATUSES: ReadonlySet<UpdaterStatus> = new Set<UpdaterStatus>([
 export interface ReleaseNotesTabPlan {
   /** Display version this tab is for (used for dedup + a unique tab path). */
   version: string
-  /** Tab title, e.g. "memry note 2026.708.1". */
+  /** Tab title, e.g. "MemryNote 2026.708.1". */
   title: string
   /** Release-notes body to render read-only. */
   content: string
@@ -40,7 +40,7 @@ export function planReleaseNotesTab(
   if (state.releaseNotesHtml) {
     return {
       version,
-      title: `memry note ${version}`,
+      title: `MemryNote ${version}`,
       content: state.releaseNotesHtml,
       contentType: 'html'
     }
@@ -49,7 +49,7 @@ export function planReleaseNotesTab(
   if (state.releaseNotes) {
     return {
       version,
-      title: `memry note ${version}`,
+      title: `MemryNote ${version}`,
       content: state.releaseNotes,
       contentType: 'markdown'
     }

@@ -66,7 +66,7 @@ describe('serializeTabState', () => {
     const note = makeTab({ title: 'Real note' })
     const releaseNotes = makeTab({
       type: 'virtual-note',
-      title: 'memry note 2026.708.1',
+      title: 'MemryNote 2026.708.1',
       entityId: undefined,
       path: '/virtual/release-notes/2026.708.1',
       viewState: { content: '<h2>Fixes</h2>', contentType: 'html' }

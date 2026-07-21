@@ -48,7 +48,7 @@ describe('UpdateReleaseNotesTabOpener', () => {
     const tab = mocks.openTab.mock.calls[0][0]
     expect(tab).toMatchObject({
       type: 'virtual-note',
-      title: 'memry note 2026.708.1',
+      title: 'MemryNote 2026.708.1',
       path: '/virtual/release-notes/2026.708.1',
       isPreview: false,
       viewState: { content: '<p>2026.708.1</p>', contentType: 'html' }

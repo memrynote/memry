@@ -22,11 +22,11 @@ function makeState(overrides: Partial<AppUpdateState> = {}): AppUpdateState {
 }
 
 describe('planReleaseNotesTab', () => {
-  it('plans a tab titled "memry note <version>" with the full html body when an update is available', () => {
+  it('plans a tab titled "MemryNote <version>" with the full html body when an update is available', () => {
     const plan = planReleaseNotesTab(makeState(), null)
     expect(plan).toEqual({
       version: '2026.708.1',
-      title: 'memry note 2026.708.1',
+      title: 'MemryNote 2026.708.1',
       content: '<h2>New Features</h2><ul><li>A</li></ul>',
       contentType: 'html'
     })

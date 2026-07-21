@@ -2,7 +2,7 @@ import { useCallback } from 'react'
 import { ContentArea } from '@/components/note/content-area'
 
 interface VirtualNotePageProps {
-  /** Tab title, rendered as the note heading (e.g. "memry note 2026.708.1"). */
+  /** Tab title, rendered as the note heading (e.g. "MemryNote 2026.708.1"). */
   title: string
   /** Release-notes body to render read-only. */
   content: string
