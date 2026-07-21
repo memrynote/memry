@@ -172,6 +172,11 @@ export function ReviewBadgeLayer({
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target as HTMLElement | null
       if (target) {
+        // A synchronous re-render (the pencil switching a card into edit mode)
+        // can detach event.target before this document-level listener runs. A
+        // detached node was inside the flyout, so don't treat it as an outside
+        // press — otherwise editing a comment would dismiss the flyout.
+        if (!target.isConnected) return
         if (target.closest('.critic-review-flyout')) return
         if (target.closest('.critic-review-badge')) return
         const span = target.closest('[data-critic-mark-id]')

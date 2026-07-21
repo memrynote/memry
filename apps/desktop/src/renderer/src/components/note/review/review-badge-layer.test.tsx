@@ -251,6 +251,30 @@ describe('ReviewBadgeLayer', () => {
     expect(document.querySelector('.critic-review-flyout')).toBeNull()
   })
 
+  it('does not dismiss the flyout when a pointerdown target detaches mid-dispatch', async () => {
+    renderLayer(createReview())
+    await findBadges()
+
+    const span = editorContainer.querySelector('[data-critic-mark-id="comment-1"]') as HTMLElement
+    fireEvent.click(span)
+
+    const flyout = document.querySelector<HTMLElement>('.critic-review-flyout') as HTMLElement
+    expect(flyout).not.toBeNull()
+    const pencil = within(flyout).getByLabelText('comments.edit')
+
+    // In the app the pencil's onPointerDown flips the card into edit mode, which
+    // React flushes synchronously, unmounting the pencil before this pointerdown
+    // reaches the document-level dismiss listener. RTL's act() batching hides that
+    // timing, so we recreate the same condition explicitly: detach the target mid
+    // dispatch, then let the event keep bubbling to the dismiss handler. Without
+    // the isConnected guard, target.closest('.critic-review-flyout') misses on the
+    // detached node and the flyout is wrongly dismissed.
+    pencil.addEventListener('pointerdown', () => pencil.remove())
+    fireEvent.pointerDown(pencil)
+
+    expect(document.querySelector('.critic-review-flyout')).not.toBeNull()
+  })
+
   it('hosts the comment composer in a flyout under the drafted selection', async () => {
     const review = createReview({
       activeDraft: { text: 'selected text' },
