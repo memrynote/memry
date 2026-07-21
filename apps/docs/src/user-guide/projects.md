@@ -98,7 +98,7 @@ Notes, events, and files join a project as **links** (many-to-many): the same no
 - Dragging any note or file from the sidebar onto a project links it in one step — memrynote tells notes and files apart automatically, so the same drag works for either
 - Linked items appear in Project Home's **Notes** / **Calendar** / **Files** sections; use each row's remove control to unlink (this only unlinks — it never deletes the note, event, or file)
 
-Wherever a note, event, or file lives, small **project chips** under its title show which projects it belongs to — click a chip to jump to that Project Home.
+Wherever a note, event, or file lives, small **project chips** under its title show which projects it belongs to. On notes and events, click a chip to jump to that Project Home.
 
 ## Deleting a Project
 
