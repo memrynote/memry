@@ -13,11 +13,15 @@ import {
   reconcileCanvasAssets,
   uploadCanvasAsset,
   canvasAssetDiskPath,
+  getCanvasAssetRef,
+  listCanvasAssetDescriptors,
+  injectSceneAssetSidecar,
   type AssetServiceContext,
   type AssetUploadResult
 } from './asset-service'
 import { listAssetsByCanvas, recordAsset } from './asset-store'
 import { hashAssetContent, assetFilename } from './content-hash'
+import { toMemryFileUrl } from '../../lib/paths'
 
 const MIGRATION_FILES = ['0035_spatial_canvas.sql', '0036_canvas_assets.sql']
 
@@ -203,6 +207,37 @@ describe('canvas asset service', () => {
       expect(fs.existsSync(recordedDiskPath)).toBe(true)
       expect(fs.existsSync(staleDiskPath)).toBe(false)
     })
+
+    it('dedup hit: re-materializes the file when the recorded content is missing on this device', async () => {
+      const bytes = Buffer.from('device-b-is-missing-this-file')
+      const contentHash = hashAssetContent(bytes)
+      const filename = assetFilename(contentHash, 'image/png')
+
+      // A row exists (synced from another device) but the bytes were never
+      // downloaded to this device's content-addressed store.
+      recordAsset(db, {
+        vaultId: 'vault-1',
+        canvasId: 'canvas-a',
+        contentHash,
+        attachmentId: 'attachment-remote',
+        fileId: 'file-remote',
+        filename,
+        mimeType: 'image/png',
+        sizeBytes: bytes.length,
+        chunkHashes: ['chunk-remote'],
+        createdAt: 1700000000000
+      })
+      const diskPath = canvasAssetDiskPath(vaultPath, filename)
+      expect(fs.existsSync(diskPath)).toBe(false)
+
+      const res = await uploadCanvasAsset(ctx, 'canvas-b', 'file-2', 'image/png', bytes)
+
+      expect(res.deduped).toBe(true)
+      expect(uploadAttachment).not.toHaveBeenCalled()
+      expect(markWritebackIgnored).toHaveBeenCalledWith(diskPath)
+      expect(fs.existsSync(diskPath)).toBe(true)
+      expect(fs.readFileSync(diskPath)).toEqual(bytes)
+    })
   })
 
   describe('reconcileCanvasAssets', () => {
@@ -371,6 +406,125 @@ describe('canvas asset service', () => {
       const rows = listAssetsByCanvas(db, 'canvas-a').map((r) => r.contentHash)
       expect(rows).toContain('missing')
       expect(rows).not.toContain('failing')
+    })
+  })
+
+  describe('getCanvasAssetRef', () => {
+    it('resolves the memry-file:// ref for a recorded fileId', () => {
+      recordAsset(db, {
+        vaultId: 'vault-1',
+        canvasId: 'canvas-a',
+        contentHash: 'hashRef',
+        attachmentId: 'att-ref',
+        fileId: 'file-ref',
+        filename: 'hashRef.png',
+        mimeType: 'image/png',
+        sizeBytes: 5,
+        chunkHashes: ['chunk-ref'],
+        createdAt: 1700000000000
+      })
+
+      const ref = getCanvasAssetRef(ctx, 'canvas-a', 'file-ref')
+
+      expect(ref).toBe(toMemryFileUrl(canvasAssetDiskPath(vaultPath, 'hashRef.png')))
+    })
+
+    it('returns null when there is no recorded asset for the fileId', () => {
+      expect(getCanvasAssetRef(ctx, 'canvas-a', 'unknown-file')).toBeNull()
+    })
+  })
+
+  describe('listCanvasAssetDescriptors', () => {
+    it('maps every recorded row for a canvas to its descriptor', () => {
+      recordAsset(db, {
+        vaultId: 'vault-1',
+        canvasId: 'canvas-a',
+        contentHash: 'hashD1',
+        attachmentId: 'att-d1',
+        fileId: 'file-d1',
+        filename: 'hashD1.png',
+        mimeType: 'image/png',
+        sizeBytes: 11,
+        chunkHashes: ['chunk-d1'],
+        createdAt: 1700000000000
+      })
+      recordAsset(db, {
+        vaultId: 'vault-1',
+        canvasId: 'canvas-a',
+        contentHash: 'hashD2',
+        attachmentId: 'att-d2',
+        fileId: 'file-d2',
+        filename: 'hashD2.png',
+        mimeType: 'image/png',
+        sizeBytes: 22,
+        chunkHashes: ['chunk-d2'],
+        createdAt: 1700000000000
+      })
+
+      const descriptors = listCanvasAssetDescriptors(ctx, 'canvas-a')
+
+      expect(descriptors.map((d) => d.fileId).sort()).toEqual(['file-d1', 'file-d2'])
+      const d1 = descriptors.find((d) => d.fileId === 'file-d1')
+      expect(d1).toEqual({
+        fileId: 'file-d1',
+        attachmentId: 'att-d1',
+        contentHash: 'hashD1',
+        chunkHashes: ['chunk-d1'],
+        mimeType: 'image/png',
+        sizeBytes: 11,
+        filename: 'hashD1.png'
+      })
+    })
+
+    it('returns an empty array for a canvas with no recorded assets', () => {
+      expect(listCanvasAssetDescriptors(ctx, 'canvas-a')).toEqual([])
+    })
+  })
+
+  describe('injectSceneAssetSidecar', () => {
+    it('returns the scene unchanged when it is empty', () => {
+      expect(injectSceneAssetSidecar(ctx, 'canvas-a', '')).toBe('')
+    })
+
+    it('returns the scene unchanged when it fails to parse (never corrupts it)', () => {
+      const broken = '{not json'
+      expect(injectSceneAssetSidecar(ctx, 'canvas-a', broken)).toBe(broken)
+    })
+
+    it('injects only the descriptors still referenced by the scene', () => {
+      recordAsset(db, {
+        vaultId: 'vault-1',
+        canvasId: 'canvas-a',
+        contentHash: 'hashKept',
+        attachmentId: 'att-kept',
+        fileId: 'file-kept',
+        filename: 'hashKept.png',
+        mimeType: 'image/png',
+        sizeBytes: 7,
+        chunkHashes: ['chunk-kept'],
+        createdAt: 1700000000000
+      })
+      recordAsset(db, {
+        vaultId: 'vault-1',
+        canvasId: 'canvas-a',
+        contentHash: 'hashStale',
+        attachmentId: 'att-stale',
+        fileId: 'file-stale',
+        filename: 'hashStale.png',
+        mimeType: 'image/png',
+        sizeBytes: 8,
+        chunkHashes: ['chunk-stale'],
+        createdAt: 1700000000000
+      })
+
+      // The scene's files map only still references hashKept.
+      const scene = sceneWithHashes(['hashKept'])
+      const result = injectSceneAssetSidecar(ctx, 'canvas-a', scene)
+      const parsed = JSON.parse(result) as { memryAssets: MemryAssetDescriptor[] }
+
+      expect(parsed.memryAssets).toHaveLength(1)
+      expect(parsed.memryAssets[0].contentHash).toBe('hashKept')
+      expect(parsed.memryAssets[0].fileId).toBe('file-kept')
     })
   })
 })
