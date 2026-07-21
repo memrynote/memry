@@ -1,7 +1,8 @@
 import { lazy, Suspense, useState } from 'react'
-import { FileText, Paperclip } from '@/lib/icons'
+import { File, FileText } from '@/lib/icons'
 import { ImageViewer } from '@/components/viewers/image-viewer'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { formatBytes } from '@/lib/format'
 import { useT } from '@memry/i18n/renderer'
 import type { CriticMarkupCommentAttachmentRef, CriticMarkupMark } from '@memry/shared'
 
@@ -80,7 +81,7 @@ export function CommentAttachments({ mark }: { mark: CriticMarkupMark }): React.
           <button
             key={attachment.id}
             type="button"
-            className="inline-flex max-w-full items-center gap-1 rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground hover:bg-muted/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="inline-flex max-w-xs items-center gap-2.5 rounded-md border border-border bg-muted/30 px-2.5 py-2 text-start transition-colors hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             aria-label={t('comments.openAttachmentAria', { name: attachment.name })}
             onClick={() => {
               if (kind === 'pdf') {
@@ -91,11 +92,20 @@ export function CommentAttachments({ mark }: { mark: CriticMarkupMark }): React.
             }}
           >
             {kind === 'pdf' ? (
-              <FileText className="size-3 shrink-0" aria-hidden="true" />
+              <FileText className="size-5 shrink-0 text-red-500" aria-hidden="true" />
             ) : (
-              <Paperclip className="size-3 shrink-0" aria-hidden="true" />
+              <File className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
             )}
-            <span className="truncate">{attachment.name}</span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-xs font-medium text-foreground">
+                {attachment.name}
+              </span>
+              {typeof attachment.size === 'number' && attachment.size > 0 && (
+                <span className="block text-[11px] leading-tight text-muted-foreground">
+                  {formatBytes(attachment.size)}
+                </span>
+              )}
+            </span>
           </button>
         )
       })}

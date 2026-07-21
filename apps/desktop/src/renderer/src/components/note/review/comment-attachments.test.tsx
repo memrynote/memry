@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { CriticMarkupCommentAttachmentRef, CriticMarkupMark } from '@memry/shared'
+import { formatBytes } from '@/lib/format'
 import { CommentAttachments, classifyCommentAttachment } from './comment-attachments'
 
 vi.mock('@memry/i18n/renderer', () => ({
@@ -91,6 +92,12 @@ describe('CommentAttachments', () => {
     )
     expect(container.querySelector('a')).toBeNull()
     expect(container.querySelectorAll('button')).toHaveLength(2)
+  })
+
+  it('shows the filename and formatted size on a file attachment', () => {
+    render(<CommentAttachments mark={markWith([att({ name: 'sample.pdf', size: 18841 })])} />)
+    expect(screen.getByText('sample.pdf')).toBeTruthy()
+    expect(screen.getByText(formatBytes(18841))).toBeTruthy()
   })
 
   it('opens the in-app ImageViewer with the attachment path when an image is clicked', () => {
