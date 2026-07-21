@@ -32,6 +32,13 @@ export interface AppUpdateState {
   releaseName: string | null
   releaseDate: string | null
   releaseNotes: string | null
+  /**
+   * The full, unstripped release-notes body (HTML from the update feed) used by the
+   * in-app read-only "release notes" tab. Unlike `releaseNotes` (plain text with the
+   * developer changelog stripped for the modal), this keeps the changelog + clickable
+   * PR references so the tab can link through to each PR.
+   */
+  releaseNotesHtml: string | null
   downloadProgressPercent: number | null
   lastCheckedAt: number | null
   error: string | null

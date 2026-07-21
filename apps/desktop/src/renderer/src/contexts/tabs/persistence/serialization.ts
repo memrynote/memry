@@ -39,9 +39,10 @@ export const serializeTabState = (state: TabSystemState): PersistedTabState => {
   const tabGroups: Record<string, PersistedTabGroup> = {}
 
   for (const [groupId, group] of Object.entries(state.tabGroups)) {
-    // Filter out preview tabs - they shouldn't persist
+    // Filter out preview tabs (transient) and virtual notes (ephemeral, in-memory
+    // only — e.g. release notes) so neither survives a restart.
     const persistedTabs: PersistedTab[] = group.tabs
-      .filter((tab) => !tab.isPreview)
+      .filter((tab) => !tab.isPreview && tab.type !== 'virtual-note')
       .map((tab) => ({
         id: tab.id,
         type: tab.type,

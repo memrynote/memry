@@ -262,6 +262,76 @@ describe('updater', () => {
     expect(updater.getUpdateState().releaseNotes).toBe('New Features\n• Calendar sync')
   })
 
+  it('keeps the full release-notes html (changelog + PR links) for the release-notes tab', async () => {
+    const updater = await loadUpdater()
+    updater.initializeUpdater()
+    const html =
+      '<h2>Fixes</h2><ul><li>Sync fix</li></ul><h2>Changelog</h2>' +
+      '<p>Full Changelog: https://x</p>' +
+      '<p><a href="https://github.com/memrynote/memry/pull/123">#123</a> title @a</p>'
+    mocks.autoUpdater.emit('update-available', { version: '1.2.4', releaseNotes: html })
+    await flushAsyncWork()
+
+    const state = updater.getUpdateState()
+    // The modal text stays stripped to the curated bullets…
+    expect(state.releaseNotes).toBe('Fixes\n• Sync fix')
+    // …but the release-notes tab keeps the entire body, including the clickable PR link.
+    expect(state.releaseNotesHtml).toBe(html)
+    expect(state.releaseNotesHtml).toContain('pull/123')
+  })
+
+  it('combines array release notes into html for the tab', async () => {
+    const updater = await loadUpdater()
+    updater.initializeUpdater()
+    mocks.autoUpdater.emit('update-available', {
+      version: '1.2.4',
+      releaseNotes: [
+        { version: '1.2.4', note: '<ul><li>A</li></ul>' },
+        { note: '<ul><li>B</li></ul>' }
+      ]
+    })
+    await flushAsyncWork()
+
+    const html = updater.getUpdateState().releaseNotesHtml
+    expect(html).toContain('<li>A</li>')
+    expect(html).toContain('<li>B</li>')
+    expect(html).toContain('v1.2.4')
+  })
+
+  it('clears release-notes html when no update is available or the version is skipped', async () => {
+    const updater = await loadUpdater()
+    updater.initializeUpdater()
+    mocks.autoUpdater.emit('update-available', { version: '1.2.4', releaseNotes: '<p>notes</p>' })
+    expect(updater.getUpdateState().releaseNotesHtml).toBe('<p>notes</p>')
+
+    updater.skipVersion('v1.2.4')
+    expect(updater.getUpdateState().releaseNotesHtml).toBeNull()
+
+    mocks.autoUpdater.emit('update-not-available')
+    expect(updater.getUpdateState().releaseNotesHtml).toBeNull()
+  })
+
+  it('starts the download immediately when auto-download is enabled while an update already waits', async () => {
+    const updater = await loadUpdater()
+    updater.initializeUpdater()
+    mocks.autoUpdater.emit('update-available', { version: '1.2.4', releaseNotes: 'notes' })
+    expect(updater.getUpdateState().status).toBe('available')
+    expect(mocks.autoUpdater.downloadUpdate).not.toHaveBeenCalled()
+
+    updater.setAutoDownloadEnabled(true)
+    await flushAsyncWork()
+    expect(mocks.autoUpdater.downloadUpdate).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not start a download when auto-download is enabled with no update available', async () => {
+    const updater = await loadUpdater()
+    updater.initializeUpdater()
+
+    updater.setAutoDownloadEnabled(true)
+    await flushAsyncWork()
+    expect(mocks.autoUpdater.downloadUpdate).not.toHaveBeenCalled()
+  })
+
   it('skips a version: clears the current prompt and suppresses it on re-check', async () => {
     const updater = await loadUpdater()
     updater.initializeUpdater()
@@ -314,7 +384,7 @@ describe('updater', () => {
     expect(updater.getUpdateState().autoDownloadEnabled).toBe(true)
   })
 
-  it('auto-checks at startup and re-checks on the interval by default', async () => {
+  it('auto-checks at startup and re-checks on a short (~10 min) interval by default', async () => {
     vi.useFakeTimers()
     try {
       const updater = await loadUpdater()
@@ -323,9 +393,12 @@ describe('updater', () => {
       expect(updater.getUpdateState().autoCheckEnabled).toBe(true)
       expect(mocks.autoUpdater.checkForUpdates).toHaveBeenCalledTimes(1)
 
-      // Six hours later the background timer fires a fresh check.
-      await vi.advanceTimersByTimeAsync(6 * 60 * 60 * 1000)
+      // A short interval keeps freshly published releases picked up quickly while
+      // the app is open (previously 6h — too slow to surface an update in-session).
+      await vi.advanceTimersByTimeAsync(10 * 60 * 1000)
       expect(mocks.autoUpdater.checkForUpdates).toHaveBeenCalledTimes(2)
+      await vi.advanceTimersByTimeAsync(10 * 60 * 1000)
+      expect(mocks.autoUpdater.checkForUpdates).toHaveBeenCalledTimes(3)
     } finally {
       vi.useRealTimers()
     }

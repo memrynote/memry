@@ -30,6 +30,7 @@ export type TabType =
   | 'graph' // Knowledge graph visualization
   | 'agent-chat' // Agent conversation
   | 'canvas' // Spatial canvas (Excalidraw) — entity-based, one tab per canvas
+  | 'virtual-note' // Ephemeral, read-only in-memory note (e.g. release notes) — never persisted or synced
 
 /**
  * Singleton tab types - only one instance allowed

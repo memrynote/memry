@@ -10,8 +10,14 @@ import { getUpdaterPrefs, setAutoCheckPref, setAutoDownloadPref, setSkippedVersi
 
 const logger = createLogger('Updater')
 
-/** How often to re-check for updates while the app is running when auto-check is on. */
-const AUTO_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000
+/**
+ * How often to re-check for updates while the app is running when auto-check is on.
+ * Short by design (10 min) so a release published while the app is open is picked up
+ * within one interval — either silently downloaded (auto-download on) or surfaced via
+ * the in-app prompt. The timer is unref'd and packaged-only, so it never blocks quit
+ * and never polls in dev.
+ */
+const AUTO_CHECK_INTERVAL_MS = 10 * 60 * 1000
 
 let initialized = false
 let activeCheck: Promise<AppUpdateState> | null = null
@@ -27,6 +33,7 @@ let state: AppUpdateState = {
   releaseName: null,
   releaseDate: null,
   releaseNotes: null,
+  releaseNotesHtml: null,
   downloadProgressPercent: null,
   lastCheckedAt: null,
   error: null,
@@ -70,6 +77,7 @@ export function initializeUpdater(): void {
         releaseName: null,
         releaseDate: null,
         releaseNotes: null,
+        releaseNotesHtml: null,
         downloadProgressPercent: null,
         error: null
       })
@@ -83,6 +91,7 @@ export function initializeUpdater(): void {
       releaseName: info.releaseName ?? null,
       releaseDate: info.releaseDate ?? null,
       releaseNotes: normalizeReleaseNotes(info),
+      releaseNotesHtml: rawReleaseNotesHtml(info),
       downloadProgressPercent: null,
       error: null
     })
@@ -99,6 +108,7 @@ export function initializeUpdater(): void {
       releaseName: null,
       releaseDate: null,
       releaseNotes: null,
+      releaseNotesHtml: null,
       downloadProgressPercent: null,
       error: null
     })
@@ -120,6 +130,7 @@ export function initializeUpdater(): void {
       releaseName: info.releaseName ?? null,
       releaseDate: info.releaseDate ?? null,
       releaseNotes: normalizeReleaseNotes(info),
+      releaseNotesHtml: rawReleaseNotesHtml(info),
       downloadProgressPercent: 100,
       error: null
     })
@@ -243,6 +254,7 @@ export function skipVersion(version: string): AppUpdateState {
     releaseName: null,
     releaseDate: null,
     releaseNotes: null,
+    releaseNotesHtml: null,
     downloadProgressPercent: null,
     error: null
   })
@@ -257,11 +269,16 @@ export function skipVersion(version: string): AppUpdateState {
 export function setAutoDownloadEnabled(enabled: boolean): AppUpdateState {
   logger.info('setting auto-download preference', { enabled })
   setAutoDownloadPref(enabled)
-  // Applies to future checks ("in the future"): electron-updater reads autoDownload
-  // when the next update-available fires. The currently-available update is left for
-  // the user to start with the Download button.
+  // electron-updater reads autoDownload only when the NEXT update-available fires.
   autoUpdater.autoDownload = enabled
   setState({ autoDownloadEnabled: enabled })
+  // Close the gap where an update is already waiting: opting in should not leave that
+  // update stuck behind the manual Download button, so start its download now.
+  if (enabled && state.status === 'available') {
+    void downloadUpdate().catch((error) => {
+      logger.warn('auto-download on-enable download failed', error)
+    })
+  }
   return getUpdateState()
 }
 
@@ -356,6 +373,35 @@ function stripDeveloperChangelog(text: string): string {
     return text
   }
   return lines.slice(0, index).join('\n').trimEnd()
+}
+
+/**
+ * The full release-notes body kept verbatim (HTML from the update feed) for the
+ * read-only "release notes" tab. Unlike normalizeReleaseNotes, this does NOT convert
+ * to plain text or strip the developer changelog, so the tab keeps the clickable PR
+ * references / Full Changelog link. For array feeds each entry is prefixed with its
+ * version heading.
+ */
+function rawReleaseNotesHtml(info: UpdateInfo): string | null {
+  const { releaseNotes } = info
+
+  if (!releaseNotes) {
+    return null
+  }
+
+  if (typeof releaseNotes === 'string') {
+    return releaseNotes.trim() || null
+  }
+
+  const combined = releaseNotes
+    .map((entry) => {
+      const heading = entry.version ? `<h3>${formatAppVersionForDisplay(entry.version)}</h3>\n` : ''
+      return `${heading}${entry.note ?? ''}`.trim()
+    })
+    .filter(Boolean)
+    .join('\n')
+
+  return combined || null
 }
 
 function normalizeReleaseNotes(info: UpdateInfo): string | null {
