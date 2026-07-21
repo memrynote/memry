@@ -198,6 +198,7 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
   const agent = useAgentOptional()
   const activeTab = useActiveTab()
   const promptEditorRef = useRef<AgentPromptEditorHandle>(null)
+  const composerBoxRef = useRef<HTMLDivElement>(null)
   const [promptValue, setPromptValue] = useState<AgentPromptValue>({
     text: '',
     attachments: []
@@ -519,13 +520,17 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
         <RefPicker
           query={pickerQuery}
           selectedIndex={selectedPickerIndex}
+          anchorRef={composerBoxRef}
           onItemsChange={setPickerItems}
           onPick={pickMention}
           onSelectedIndexChange={setSelectedPickerIndex}
           onClose={closePicker}
         />
       )}
-      <div className="flex min-h-[120px] cursor-text flex-col rounded-2xl border border-border bg-card shadow-lg">
+      <div
+        ref={composerBoxRef}
+        className="flex min-h-[120px] cursor-text flex-col rounded-2xl border border-border bg-card shadow-lg"
+      >
         <div
           className="relative max-h-[258px] flex-1 overflow-y-auto"
           onPointerDown={(event) => {

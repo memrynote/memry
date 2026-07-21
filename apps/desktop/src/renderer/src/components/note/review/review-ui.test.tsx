@@ -268,6 +268,54 @@ describe('review UI', () => {
     })
   })
 
+  it('opens the mention picker from the "@" button even after typing a word', async () => {
+    const user = userEvent.setup()
+    const searchQuery = vi.fn().mockResolvedValue({
+      groups: [
+        {
+          type: 'note',
+          totalInGroup: 1,
+          results: [
+            {
+              id: 'note-42',
+              type: 'note',
+              title: 'Planning note',
+              snippet: '',
+              score: 1,
+              normalizedScore: 1,
+              matchType: 'title',
+              modifiedAt: '2026-05-10T00:00:00.000Z',
+              metadata: { type: 'note', path: '/Planning note', tags: [], emoji: '📝' }
+            }
+          ]
+        }
+      ],
+      totalCount: 1,
+      queryTimeMs: 0
+    })
+    vi.mocked(window.api.search.query).mockImplementation(searchQuery)
+    Object.assign(window.api, {
+      calendar: {
+        ...((window.api as unknown as { calendar?: Record<string, unknown> }).calendar ?? {}),
+        listEvents: vi.fn().mockResolvedValue({ events: [] })
+      }
+    })
+
+    const review = createReview({ activeDraft: { text: 'draft target' } })
+    render(<ReviewRail review={review} />)
+
+    // Type a word first: previously the "@" button inserted a bare "@" after a
+    // word, which the mention regex ignored, so no picker opened.
+    await user.type(screen.getByLabelText('comments.commentPlaceholder'), 'hello')
+    await user.click(screen.getByRole('button', { name: 'comments.mentionAria' }))
+
+    const listbox = await screen.findByRole('listbox')
+    // Portalled to document.body so the review flyout's overflow cannot clip it.
+    expect(listbox.getAttribute('data-ref-picker')).toBe('')
+    expect(listbox.parentElement).toBe(document.body)
+    expect(await within(listbox).findByText('Planning note')).toBeInTheDocument()
+  })
+
   it('edits a comment card inline and saves through updateComment', async () => {
     const user = userEvent.setup()
     const review = createReview({

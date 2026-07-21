@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useState, type CSSProperties, type RefObject } from 'react'
+import { createPortal } from 'react-dom'
 
 import type { CalendarEventRecord } from '@memry/contracts/calendar-api'
 import type { AttachmentInput } from '@memry/contracts/ipc-agent'
@@ -11,11 +12,21 @@ import { cn } from '@/lib/utils'
 interface RefPickerProps {
   query: string
   selectedIndex: number
+  /**
+   * Element the picker anchors to. The list renders in a `document.body` portal
+   * with `position: fixed` so an `overflow` ancestor (e.g. the review flyout)
+   * cannot clip it.
+   */
+  anchorRef: RefObject<HTMLElement | null>
   onItemsChange: (items: MentionAttachment[]) => void
   onPick: (attachment: MentionAttachment) => void
   onSelectedIndexChange: (index: number) => void
   onClose: () => void
 }
+
+const PICKER_GAP = 8
+const PICKER_MARGIN = 8
+const PICKER_MAX_HEIGHT = 256
 
 interface RefPickerResult {
   kind: AttachmentInput['kind']
@@ -114,6 +125,7 @@ function toMentionAttachment(result: RefPickerResult): MentionAttachment {
 export function RefPicker({
   query,
   selectedIndex,
+  anchorRef,
   onItemsChange,
   onPick,
   onSelectedIndexChange,
@@ -122,6 +134,10 @@ export function RefPicker({
   const { t } = useT('common')
   const [results, setResults] = useState<RefPickerResult[]>([])
   const [prevQuery, setPrevQuery] = useState(query)
+  const [portalStyle, setPortalStyle] = useState<CSSProperties>({
+    position: 'fixed',
+    visibility: 'hidden'
+  })
 
   // Clear stale results synchronously at render when the query changes, so
   // keyboard selection never targets a previous query's refs while async
@@ -152,11 +168,49 @@ export function RefPicker({
     }
   }, [onItemsChange, onSelectedIndexChange, query])
 
-  return (
+  // Anchor the portal to the composer and keep it aligned while the surrounding
+  // container scrolls or the window resizes. Prefers the side with more room so
+  // the list never opens off-screen.
+  useLayoutEffect(() => {
+    const anchor = anchorRef.current
+    if (!anchor) return
+
+    const reposition = (): void => {
+      const rect = anchor.getBoundingClientRect()
+      const viewportHeight = window.innerHeight
+      const spaceBelow = viewportHeight - rect.bottom
+      const spaceAbove = rect.top
+      const openBelow = spaceBelow >= spaceAbove
+      const available = (openBelow ? spaceBelow : spaceAbove) - PICKER_GAP - PICKER_MARGIN
+      const maxHeight = Math.max(96, Math.min(PICKER_MAX_HEIGHT, available))
+
+      setPortalStyle({
+        position: 'fixed',
+        left: rect.left,
+        width: rect.width,
+        maxHeight,
+        ...(openBelow
+          ? { top: rect.bottom + PICKER_GAP }
+          : { bottom: viewportHeight - rect.top + PICKER_GAP })
+      })
+    }
+
+    reposition()
+    window.addEventListener('scroll', reposition, true)
+    window.addEventListener('resize', reposition)
+    return () => {
+      window.removeEventListener('scroll', reposition, true)
+      window.removeEventListener('resize', reposition)
+    }
+  }, [anchorRef])
+
+  return createPortal(
     <div
       role="listbox"
       tabIndex={-1}
-      className="absolute inset-x-2 bottom-full z-50 mb-2 max-h-64 overflow-y-auto rounded-md border border-sidebar-border bg-popover p-1 text-popover-foreground shadow-md"
+      data-ref-picker=""
+      style={portalStyle}
+      className="z-50 overflow-y-auto rounded-md border border-sidebar-border bg-popover p-1 text-popover-foreground shadow-md"
       onKeyDown={(event) => {
         if (event.key === 'Escape') onClose()
       }}
@@ -186,6 +240,7 @@ export function RefPicker({
           </button>
         )
       })}
-    </div>
+    </div>,
+    document.body
   )
 }
