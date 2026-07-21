@@ -89,6 +89,7 @@ export function useCriticMarkupReview({
   onMarkdownChange
 }: UseCriticMarkupReviewParams): CriticMarkupReviewController {
   const parsed = useMemo(() => parseCriticMarkup(markdown), [markdown])
+  const parsedMarkIds = useMemo(() => new Set(parsed.marks.map((mark) => mark.id)), [parsed.marks])
   const [plainMarkdown, setPlainMarkdown] = useState(parsed.plainText)
   const [marks, setMarks] = useState<CriticMarkupMark[]>(parsed.marks)
   const [activeDraft, setActiveDraft] = useState<CommentDraft | null>(null)
@@ -101,15 +102,34 @@ export function useCriticMarkupReview({
   const editorRef = useRef<BlockNoteHost | null>(null)
   const emittedMarkdownsRef = useRef<string[]>([])
   const undoStackRef = useRef<ReviewUndoEntry[]>([])
+  // Ids of marks added locally but not yet confirmed persisted. Guards the resync
+  // below from dropping a just-added comment when a refetch/sync delivers stale
+  // note content during note.tsx's save debounce window (issue #797).
+  const pendingMarkIdsRef = useRef<Set<string>>(new Set())
 
   useEffect(() => {
     const currentSerialized = serializeCriticMarkup(plainMarkdownRef.current, marksRef.current)
     // No-op resync: the incoming markdown matches what the current marks
     // serialize to. Keep the in-memory marks — re-parsing would drop fields the
     // markup cannot carry (mark createdAt, stable mark ids).
-    if (markdown === currentSerialized) return
+    if (markdown === currentSerialized) {
+      pendingMarkIdsRef.current.clear()
+      return
+    }
     if (emittedMarkdownsRef.current.includes(markdown)) {
       return
+    }
+
+    // Don't clobber locally-added comments that haven't persisted yet. If the
+    // incoming markdown is missing any pending mark id, it predates our unsaved
+    // change (a stale refetch/sync) — keep local state until the save round-trips.
+    if (pendingMarkIdsRef.current.size > 0) {
+      const hasUnpersisted = Array.from(pendingMarkIdsRef.current).some(
+        (id) => !parsedMarkIds.has(id)
+      )
+      if (hasUnpersisted) return
+      // All pending marks are present in the incoming markdown → confirmed persisted.
+      pendingMarkIdsRef.current.clear()
     }
 
     undoStackRef.current = []
@@ -121,7 +141,7 @@ export function useCriticMarkupReview({
     setHoveredMarkId(null)
     setMarkPositions({})
     /* eslint-enable react-hooks/set-state-in-effect, react-you-might-not-need-an-effect/no-pass-data-to-parent, react-you-might-not-need-an-effect/no-derived-state, react-you-might-not-need-an-effect/no-adjust-state-on-prop-change */
-  }, [markdown, parsed.plainText, parsed.marks])
+  }, [markdown, parsed.plainText, parsed.marks, parsedMarkIds])
 
   const persist = useCallback(
     (nextPlainMarkdown: string, nextMarks: CriticMarkupMark[]) => {
@@ -131,6 +151,14 @@ export function useCriticMarkupReview({
       setPlainMarkdown(nextPlainMarkdown)
       setMarks(nextMarks)
       rememberEmittedMarkdown(emittedMarkdownsRef.current, serialized)
+      // Drop pending ids for marks that no longer exist locally (undo/delete of a
+      // still-unsaved mark), so a wedged pending set can't suppress future resyncs.
+      if (pendingMarkIdsRef.current.size > 0) {
+        const nextIds = new Set(nextMarks.map((mark) => mark.id))
+        for (const id of pendingMarkIdsRef.current) {
+          if (!nextIds.has(id)) pendingMarkIdsRef.current.delete(id)
+        }
+      }
       onMarkdownChange(serialized)
     },
     [onMarkdownChange]
@@ -254,6 +282,7 @@ export function useCriticMarkupReview({
       )
       activeDraftRef.current = null
       setActiveDraft(null)
+      pendingMarkIdsRef.current.add(id)
       persist(plainMarkdownRef.current, nextMarks)
     },
     [persist]
