@@ -52,6 +52,7 @@ const runtimeMocks = vi.hoisted(() => {
   class WebSocketManager {
     static instances: WebSocketManager[] = []
     disconnect = vi.fn()
+    refreshAuth = vi.fn(async () => undefined)
     constructor(public options: unknown) {
       WebSocketManager.instances.push(this)
     }
@@ -541,6 +542,9 @@ describe('sync runtime', () => {
     const onTokenRefreshed = runtimeMocks.setOnTokenRefreshed.mock.calls[0][0] as () => void
     onTokenRefreshed()
     expect(queue.resume).toHaveBeenCalledTimes(2)
+    // Fresh token is handed to the live socket so the server extends it in place
+    // rather than dropping it with WS_TOKEN_EXPIRED.
+    expect(runtimeMocks.WebSocketManager.instances[0].refreshAuth).toHaveBeenCalledTimes(1)
 
     await runtime.stopSyncRuntime()
     expect(runtimeMocks.crdtProvider.pushAllSnapshots).toHaveBeenCalledTimes(1)
