@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import type { SearchResultItem } from '@memry/contracts/search-api'
-import type { CalendarProjectionItem } from '@memry/contracts/calendar-api'
+import type { CalendarEventSearchItem, CalendarProjectionItem } from '@memry/contracts/calendar-api'
 import {
   candidateKey,
+  candidatesFromEvents,
   candidatesFromProjections,
   candidatesFromSearch,
   eventRange,
@@ -208,6 +209,61 @@ describe('revealScroll', () => {
   it('treats zoom 0 as 1 rather than dividing by zero', () => {
     const out = revealScroll({ x: 0, y: 0, width: 0, height: 0 }, { width: 800, height: 600 }, 0)
     expect(Number.isFinite(out.scrollX)).toBe(true)
+  })
+})
+
+describe('candidatesFromEvents (#869)', () => {
+  function eventItem(
+    id: string,
+    title: string,
+    startAt: string,
+    isAllDay = false
+  ): CalendarEventSearchItem {
+    return { id, title, startAt, endAt: null, isAllDay }
+  }
+
+  it('maps every event through, trusting main to have filtered and ordered', () => {
+    // #given — two events in the order main returned them
+    const items = [
+      eventItem('e1', 'Standup', '2026-07-22T09:00:00.000Z'),
+      eventItem('e2', 'Retro', '2023-01-02T09:00:00.000Z')
+    ]
+
+    // #when — we map them to candidates
+    const out = candidatesFromEvents(items, 'All day')
+
+    // #then — nothing is dropped or reordered client-side
+    expect(out.map((c) => c.entityId)).toEqual(['e1', 'e2'])
+    expect(out.every((c) => c.entityType === 'calendar_event')).toBe(true)
+    expect(out.every((c) => c.onCanvas === false)).toBe(true)
+  })
+
+  it('formats the subtitle with formatEventTime instead of a raw ISO string', () => {
+    // #given — a timed event
+    const out = candidatesFromEvents(
+      [eventItem('e1', 'Standup', '2026-07-02T09:00:00.000Z')],
+      'All day'
+    )
+
+    // #then — the subtitle is humanized
+    expect(out[0].subtitle).not.toBe('2026-07-02T09:00:00.000Z')
+    expect(out[0].subtitle.length).toBeGreaterThan(0)
+  })
+
+  it('uses the all-day label for all-day events', () => {
+    // #given — an all-day event
+    const out = candidatesFromEvents(
+      [eventItem('e1', 'Offsite', '2026-07-02T00:00:00.000Z', true)],
+      'All day'
+    )
+
+    // #then — the label appears in the subtitle
+    expect(out[0].subtitle).toContain('All day')
+  })
+
+  it('returns an empty list for no items', () => {
+    // #given / #when / #then — no events in, no candidates out
+    expect(candidatesFromEvents([], 'All day')).toEqual([])
   })
 })
 

@@ -6,7 +6,7 @@
  */
 
 import type { CanvasEntityType } from '@memry/contracts/canvas-api'
-import type { CalendarProjectionItem } from '@memry/contracts/calendar-api'
+import type { CalendarEventSearchItem, CalendarProjectionItem } from '@memry/contracts/calendar-api'
 import type { SearchResultItem } from '@memry/contracts/search-api'
 import { formatEventTime } from './canvas-cards'
 
@@ -152,6 +152,24 @@ export function revealScroll(
     scrollX: container.width / (2 * z) - (card.x + card.width / 2),
     scrollY: container.height / (2 * z) - (card.y + card.height / 2)
   }
+}
+
+/**
+ * Events from `calendar:search-events`. Main already filtered by title,
+ * excluded archived rows and ordered by distance from now (#869), so this is a
+ * pure mapping — no client-side filter, no occurrence dedup (one row per event).
+ */
+export function candidatesFromEvents(
+  items: readonly CalendarEventSearchItem[],
+  allDayLabel: string
+): AddCardCandidate[] {
+  return items.map((item) => ({
+    entityType: 'calendar_event' as const,
+    entityId: item.id,
+    title: item.title,
+    subtitle: formatEventTime(item.startAt, item.isAllDay, allDayLabel),
+    onCanvas: false
+  }))
 }
 
 /** The bounded event window the picker queries. `now` is injected for tests. */
