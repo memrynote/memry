@@ -120,6 +120,38 @@ describe('redactLogLine — allowlist + per-key strategy', () => {
     )
     expect(fields).toMatchObject({ droppedCount: 12, durationMs: 40 })
   })
+  it('passes launch timeline phase offsets through as numbers', () => {
+    const { fields } = redactLogLine(
+      {
+        message: 'launch timeline',
+        fields: {
+          reason: 'fallback-timeout',
+          appReadyMs: 300,
+          windowCreatedMs: 420,
+          vaultOpenStartMs: 430,
+          vaultOpenReadyMs: 9800,
+          rendererLoadedMs: 1100,
+          readyToShowMs: 10_100,
+          shownMs: 10_150,
+          fallback: true,
+          vaultOpenPending: false
+        }
+      },
+      opts
+    )
+    expect(fields).toMatchObject({
+      reason: 'fallback-timeout',
+      appReadyMs: 300,
+      windowCreatedMs: 420,
+      vaultOpenStartMs: 430,
+      vaultOpenReadyMs: 9800,
+      rendererLoadedMs: 1100,
+      readyToShowMs: 10_100,
+      shownMs: 10_150,
+      fallback: true,
+      vaultOpenPending: false
+    })
+  })
   it('hashes id keys even when not uuid-shaped', () => {
     const { fields } = redactLogLine(
       { message: 'x', fields: { noteId: 'abc123', signerDeviceId: 'dev-xyz' } },

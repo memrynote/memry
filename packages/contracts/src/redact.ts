@@ -128,7 +128,15 @@ export const NUMERIC_FIELD_KEYS = [
   'pageCount',
   'attempt',
   'size',
-  'exitCode'
+  'exitCode',
+  // Startup phase offsets from the launch timeline (main/launch-timeline.ts).
+  'appReadyMs',
+  'windowCreatedMs',
+  'vaultOpenStartMs',
+  'vaultOpenReadyMs',
+  'rendererLoadedMs',
+  'readyToShowMs',
+  'shownMs'
 ] as const
 export const ID_FIELD_KEYS = [
   'noteId',

@@ -30,6 +30,32 @@ log.error('pull failed', err)
 | Windows  | `%USERPROFILE%/AppData/Roaming/memrynote/logs/` |
 | Linux    | `~/.config/memrynote/logs/`                     |
 
+### Launch Phase Timeline
+
+`src/main/launch-timeline.ts` stamps each startup milestone's offset (ms) from process start and
+emits them as **one** structured line, `launch timeline`, when the main window is revealed. Phases
+are recorded with `recordLaunchPhase(phase)`, which also forwards each one as the per-phase
+`app_launch_phase_completed` telemetry event.
+
+| Field                                   | Meaning                                                    |
+| --------------------------------------- | ---------------------------------------------------------- |
+| `appReadyMs`                            | Electron `app.whenReady()` startup work finished           |
+| `windowCreatedMs`                       | main `BrowserWindow` constructed                           |
+| `vaultOpenStartMs` / `vaultOpenReadyMs` | vault restore started / reached `isOpen`                   |
+| `rendererLoadedMs`                      | renderer `did-finish-load`                                 |
+| `readyToShowMs`                         | first `ready-to-show` (absent when it never fired)         |
+| `shownMs`                               | window actually revealed                                   |
+| `reason`                                | `ready-to-show`, `fallback-timeout`, or `did-fail-load`    |
+| `fallback`                              | `true` when the 10s reveal fallback fired                  |
+| `vaultOpenPending`                      | vault open was still running at reveal — the prime suspect |
+
+Vault-open timing stops at `isOpen`, not at the `autoOpenLastVault()` promise, which also waits on
+the first full sync. A launch onto the vault picker records no vault phase at all.
+
+The line is logged at `warn` when the reveal came from the fallback or took ≥5s — only `warn`/
+`error` records reach the diagnostic log sink — and at `info` otherwise, so healthy launches stay
+local instead of flooding the sink.
+
 ## Telemetry
 
 Telemetry is enabled by default in production builds and off by default in development builds.

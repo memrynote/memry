@@ -47,13 +47,13 @@ import { getTelemetryAuthState, getTelemetrySyncState } from './telemetry/state'
 import { getLogShip, installLogShip } from './telemetry/log-ship'
 import {
   trackChildProcessGone,
-  trackLaunchPhase,
   trackMainError,
   trackMainLog,
   trackMainUnhandledRejection,
   startActiveHeartbeat,
   stopActiveHeartbeat
 } from './telemetry/diagnostics'
+import { recordLaunchPhase, reportLaunchTimeline } from './launch-timeline'
 import { trackMainEvent } from './telemetry/track'
 import {
   startGoogleCalendarSyncRunner,
@@ -118,7 +118,6 @@ function resolveDeviceId(): string | undefined {
 }
 
 const deviceId = resolveDeviceId()
-const launchStartedAt = Date.now()
 
 let mainDiagnosticsRegistered = false
 
@@ -573,7 +572,7 @@ function createWindow(): void {
     }
   })
   if (startupBounds.maximize) mainWindow.maximize()
-  trackLaunchPhase('window_created', Date.now() - launchStartedAt)
+  recordLaunchPhase('window_created')
 
   // Remember geometry as the user resizes/moves/maximizes it, and on close.
   mainWindow.on('resize', () => scheduleWindowBoundsPersist(mainWindow))
@@ -622,8 +621,11 @@ function createWindow(): void {
     mainWindowShown = true
     clearTimeout(fallbackShowTimer)
     mainWindow.show()
-    trackLaunchPhase('window_shown', Date.now() - launchStartedAt)
+    recordLaunchPhase('window_shown')
     mainLog.info(`main window shown (${reason})`)
+    // Reveal is the moment the user stops staring at nothing, so it is where
+    // the launch timeline is complete enough to attribute a slow start (#843).
+    reportLaunchTimeline(reason)
   }
 
   const fallbackShowTimer = setTimeout(() => {
@@ -635,7 +637,7 @@ function createWindow(): void {
   mainWindow.on('ready-to-show', () => {
     // Zoom out once (equivalent to Cmd+-)
     // mainWindow.webContents.setZoomLevel(-0.8)
-    trackLaunchPhase('window_ready_to_show', Date.now() - launchStartedAt)
+    recordLaunchPhase('window_ready_to_show')
     revealMainWindow('ready-to-show')
   })
 
@@ -652,7 +654,7 @@ function createWindow(): void {
   )
 
   mainWindow.webContents.on('did-finish-load', () => {
-    trackLaunchPhase('window_did_finish_load', Date.now() - launchStartedAt)
+    recordLaunchPhase('window_did_finish_load')
   })
 
   mainWindow.on('focus', () => {
@@ -1155,7 +1157,7 @@ const appReady = app.whenReady().then(async () => {
     })
   })
 
-  trackLaunchPhase('app_ready', Date.now() - launchStartedAt)
+  recordLaunchPhase('app_ready')
 
   registerAllHandlers({ i18n: mainI18n, rebuildMenu })
 
@@ -1336,6 +1338,21 @@ const appReady = app.whenReady().then(async () => {
 
   // Open the last vault and start schedulers concurrently with renderer load.
   // The renderer subscribes to vault status events and updates automatically.
+  //
+  // Vault open runs on the main process (migrations, indexing), so it is the
+  // prime suspect when the window reveal misses its deadline. Time it up to
+  // isOpen — not to the promise, which also waits on the first full sync. Only
+  // when there is a vault to restore: a launch onto the picker has no such
+  // phase, and stamping one would report it as forever-pending.
+  if (getCurrentVaultPath()) {
+    recordLaunchPhase('vault_open_start')
+    let unsubscribeLaunchVaultStatus: (() => void) | null = onVaultStatusChanged((status) => {
+      if (!status.isOpen) return
+      recordLaunchPhase('vault_open_ready')
+      unsubscribeLaunchVaultStatus?.()
+      unsubscribeLaunchVaultStatus = null
+    })
+  }
   void autoOpenLastVault()
     .then(async () => {
       // autoOpenLastVault blocks on the vault's first fullSync; if the user quit
