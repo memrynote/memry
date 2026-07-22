@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { pushPostHogLogs } from './posthog-logs'
+import { desktopLogRecord, pushPostHogLogs } from './posthog-logs'
 
 const env = {
   POSTHOG_KEY: 'phc_test',
@@ -107,5 +107,24 @@ describe('pushPostHogLogs', () => {
     ).resolves.toBeUndefined()
     expect(fetchSpy).not.toHaveBeenCalled()
     vi.unstubAllGlobals()
+  })
+})
+
+describe('desktopLogRecord', () => {
+  it('re-runs redaction on the message', () => {
+    const record = desktopLogRecord(
+      {
+        ts: '2026-07-22T10:00:00.000Z',
+        level: 'error',
+        scope: 'Sync',
+        message: 'failed for kaan@example.com',
+        origin: 'main'
+      } as never,
+      { appVersion: '1.0.0', buildChannel: 'production', platform: 'darwin', arch: 'arm64' },
+      'hash'
+    )
+    expect(JSON.stringify(record.line)).not.toContain('kaan@example.com')
+    expect(record.distinctId).toBe('hash')
+    expect(record.kind).toBe('log')
   })
 })

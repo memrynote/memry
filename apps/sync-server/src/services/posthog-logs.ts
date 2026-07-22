@@ -1,3 +1,7 @@
+import { redactLogLine, redactText } from '@memry/contracts/redact'
+import type { DiagnosticLogLine, DiagnosticReport } from '@memry/contracts/diagnostics-api'
+import type { TelemetryBatch, TelemetryEvent } from '@memry/contracts/telemetry-api'
+
 import { createLogger } from '../lib/logger'
 
 import type { PostHogEnv } from './posthog'
@@ -74,4 +78,114 @@ export const pushPostHogLogs = async (env: PostHogEnv, records: LogRecord[]): Pr
       error: error instanceof Error ? error.message : String(error)
     })
   }
+}
+
+// Desktop error events may carry a redacted message alongside stack frames —
+// TelemetryErrorDetailSchema.message is optional, permitted only after the
+// client has run it through redactText; the server re-runs redaction here as
+// a backstop.
+export const desktopErrorRecord = (
+  batch: TelemetryBatch,
+  event: TelemetryEvent,
+  distinctId: string
+): LogRecord => ({
+  level: 'error',
+  app: 'desktop',
+  kind: 'error',
+  distinctId,
+  line: {
+    name: event.name,
+    error_code: event.errorCode ?? '',
+    surface: event.surface,
+    action: event.action,
+    source: event.source ?? '',
+    app_version: batch.appVersion,
+    build_channel: batch.buildChannel,
+    platform: batch.platform,
+    message: event.error?.message ? redactText(event.error.message, {}) : '',
+    stack: event.error?.stack ?? '',
+    component_stack: event.error?.componentStack ?? '',
+    install_hash: distinctId,
+    // Log-type error events (app_log_recorded) have no stack; log_action is
+    // what makes them identifiable in Grafana (e.g. child_process_gone).
+    log_action: event.dimensions?.log_action ?? '',
+    // child_process_gone carries the platform exit status here (POSIX signal:
+    // 11 SIGSEGV, 6 SIGABRT). Kept out of error_code so crashes still group by
+    // worker. Empty string (not 0) when absent — exit code 0 is meaningful.
+    exit_code: event.metrics?.value ?? ''
+  }
+})
+
+interface DesktopMeta {
+  appVersion: string
+  buildChannel: string
+  platform: string
+  arch: string
+}
+
+export const desktopLogRecord = (
+  line: DiagnosticLogLine,
+  meta: DesktopMeta,
+  distinctId: string
+): LogRecord => {
+  // Defense-in-depth: client already redacted; re-run mask-mode (no hasher) to scrub
+  // anything that slipped through. Never throws.
+  const safe = redactLogLine({ message: line.message, fields: line.fields }, {})
+  return {
+    level: line.level,
+    app: 'desktop',
+    kind: 'log',
+    distinctId,
+    line: {
+      ts: line.ts,
+      scope: line.scope,
+      action: line.action ?? '',
+      message: safe.message,
+      error_code: line.errorCode ?? '',
+      origin: line.origin,
+      worker_name: line.workerName ?? '',
+      fields: safe.fields,
+      app_version: meta.appVersion,
+      build_channel: meta.buildChannel,
+      platform: meta.platform,
+      install_hash: distinctId
+    }
+  }
+}
+
+export const desktopReportRecords = (report: DiagnosticReport, distinctId: string): LogRecord[] => {
+  const summary: LogRecord = {
+    level: 'error',
+    app: 'desktop',
+    kind: 'report',
+    distinctId,
+    line: {
+      incident_id: report.incidentId,
+      kind: 'summary',
+      trigger_source: report.trigger.source,
+      trigger_error_code: report.trigger.errorCode ?? '',
+      trigger_stack: redactLogLine({ message: report.trigger.stack ?? '' }, {}).message,
+      snapshot: report.snapshot,
+      app_version: report.appVersion,
+      build_channel: report.buildChannel,
+      platform: report.platform,
+      install_hash: distinctId
+    }
+  }
+  const lines = report.lines.map((l) => {
+    const r = desktopLogRecord(
+      l,
+      {
+        appVersion: report.appVersion,
+        buildChannel: report.buildChannel,
+        platform: report.platform,
+        arch: report.arch
+      },
+      distinctId
+    )
+    r.kind = 'report'
+    r.line.incident_id = report.incidentId
+    return r
+  })
+  return [summary, ...lines]
 }
