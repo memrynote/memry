@@ -47,6 +47,32 @@ describe('database client', () => {
     expect(client.pragma('temp_store', { simple: true })).toBe(2)
   })
 
+  it('registers ulower on the data connection the running app uses', () => {
+    // #given — the real app data connection, not the test-db helper. Calendar
+    // title search calls ulower() through requireDatabase(), so a fix proven
+    // only against createTestDataDb would still be broken in the app.
+    const db = initDatabase(dataDbPath)
+    const client = (db as unknown as { $client: Database.Database }).$client
+
+    // #when — we fold non-ASCII text the way the calendar query does
+    const folded = client
+      .prepare('SELECT ulower(?) AS turkish, ulower(?) AS german, ulower(?) AS cyrillic')
+      .get('Ödeme Toplantısı', 'MÜNCHEN', 'ЛЕКЦИЯ') as Record<string, string>
+
+    // #then — full Unicode folding, which SQLite's built-in lower() does not do
+    expect(folded.turkish).toBe('ödeme toplantısı')
+    expect(folded.german).toBe('münchen')
+    expect(folded.cyrillic).toBe('лекция')
+
+    // #then — non-string inputs pass through untouched
+    const passthrough = client.prepare('SELECT ulower(NULL) AS a, ulower(7) AS b').get() as Record<
+      string,
+      unknown
+    >
+    expect(passthrough.a).toBeNull()
+    expect(passthrough.b).toBe(7)
+  })
+
   it('initializes the index database with vec table and cache settings', () => {
     const db = initIndexDatabase(indexDbPath)
     expect(getIndexDatabase()).toBe(db)

@@ -281,6 +281,7 @@ export function createGeneratedRpcApi({
       "updateEvent": ((input) => invoke("calendar:update-event", input)) as GeneratedRpcApi["calendar"]["updateEvent"],
       "deleteEvent": ((id) => invoke("calendar:delete-event", id)) as GeneratedRpcApi["calendar"]["deleteEvent"],
       "listEvents": ((options) => invoke("calendar:list-events", options ?? {})) as GeneratedRpcApi["calendar"]["listEvents"],
+      "searchEvents": ((input) => invoke("calendar:search-events", input)) as GeneratedRpcApi["calendar"]["searchEvents"],
       "getRange": ((input) => invoke("calendar:get-range", input)) as GeneratedRpcApi["calendar"]["getRange"],
       "listSources": ((options) => invoke("calendar:list-sources", options ?? {})) as GeneratedRpcApi["calendar"]["listSources"],
       "updateSourceSelection": ((input) => invoke("calendar:update-source-selection", input)) as GeneratedRpcApi["calendar"]["updateSourceSelection"],

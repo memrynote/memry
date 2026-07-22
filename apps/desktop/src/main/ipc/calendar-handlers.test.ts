@@ -1030,4 +1030,63 @@ describe('calendar-handlers', () => {
       id: 'google-refresh'
     })
   })
+
+  it('returns a title search hit in the lean shape, without the record fields (#869)', async () => {
+    // #given — one event created through the real handler
+    registerCalendarHandlers()
+    await invokeHandler(CalendarChannels.invoke.CREATE_EVENT, {
+      title: 'Quarterly planning',
+      description: 'Align roadmap',
+      location: 'Studio',
+      startAt: '2026-04-12T09:00:00.000Z',
+      endAt: '2026-04-12T10:00:00.000Z',
+      timezone: 'UTC',
+      isAllDay: false
+    })
+
+    // #when — we search for a title substring
+    const found = await invokeHandler(CalendarChannels.invoke.SEARCH_EVENTS, {
+      query: 'quarterly'
+    })
+
+    // #then — the lean shape comes back, without the record's heavy fields
+    expect(found.events).toEqual([
+      {
+        id: 'calendar-event-generated-id',
+        title: 'Quarterly planning',
+        startAt: '2026-04-12T09:00:00.000Z',
+        endAt: '2026-04-12T10:00:00.000Z',
+        isAllDay: false
+      }
+    ])
+    expect(found.events[0]).not.toHaveProperty('attendees')
+    expect(found.events[0]).not.toHaveProperty('description')
+  })
+
+  it('rejects an empty search query at the schema boundary (#869)', async () => {
+    // #given — registered handlers
+    registerCalendarHandlers()
+
+    // #when / #then — an empty query never reaches the database
+    await expect(
+      invokeHandler(CalendarChannels.invoke.SEARCH_EVENTS, { query: '' })
+    ).rejects.toThrow(/Validation failed/)
+  })
+
+  it('returns no matches for an unrelated query (#869)', async () => {
+    // #given — one event
+    registerCalendarHandlers()
+    await invokeHandler(CalendarChannels.invoke.CREATE_EVENT, {
+      title: 'Quarterly planning',
+      startAt: '2026-04-12T09:00:00.000Z',
+      timezone: 'UTC',
+      isAllDay: false
+    })
+
+    // #when — we search for something else
+    const found = await invokeHandler(CalendarChannels.invoke.SEARCH_EVENTS, { query: 'retro' })
+
+    // #then — an empty list, not an error
+    expect(found.events).toEqual([])
+  })
 })

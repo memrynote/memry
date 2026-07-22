@@ -9,6 +9,7 @@ import {
   ListCalendarSourcesSchema,
   PromoteExternalEventSchema,
   RetryCalendarSourceSyncSchema,
+  SearchCalendarEventsSchema,
   SetDefaultGoogleCalendarSchema,
   UpdateCalendarSourceSelectionSchema,
   CalendarProviderRequestSchema,
@@ -17,6 +18,7 @@ import {
   type CalendarEventListResponse,
   type CalendarEventMutationResponse,
   type CalendarEventRecord,
+  type CalendarEventSearchResponse,
   type CalendarProjectionItem,
   type CalendarProjectionVisualType,
   type CalendarProviderMutationResponse,
@@ -41,6 +43,7 @@ import {
 export type CreateCalendarEventInput = z.input<typeof CreateCalendarEventSchema>
 export type UpdateCalendarEventInput = z.input<typeof UpdateCalendarEventSchema>
 export type ListCalendarEventsInput = z.input<typeof ListCalendarEventsSchema>
+export type SearchCalendarEventsInput = z.input<typeof SearchCalendarEventsSchema>
 export type GetCalendarRangeInput = z.input<typeof GetCalendarRangeSchema>
 export type ListCalendarSourcesInput = z.input<typeof ListCalendarSourcesSchema>
 export type UpdateCalendarSourceSelectionInput = z.input<typeof UpdateCalendarSourceSelectionSchema>
@@ -56,6 +59,7 @@ export type {
   CalendarEventListResponse,
   CalendarEventMutationResponse,
   CalendarEventRecord,
+  CalendarEventSearchResponse,
   CalendarProjectionItem,
   CalendarProjectionVisualType,
   CalendarProviderMutationResponse,
@@ -99,6 +103,12 @@ export const calendarRpc = defineDomain({
       channel: CalendarChannels.invoke.LIST_EVENTS,
       params: ['options'],
       invokeArgs: ['options ?? {}']
+    }),
+    searchEvents: defineMethod<
+      (input: SearchCalendarEventsInput) => Promise<CalendarEventSearchResponse>
+    >({
+      channel: CalendarChannels.invoke.SEARCH_EVENTS,
+      params: ['input']
     }),
     getRange: defineMethod<(input: GetCalendarRangeInput) => Promise<CalendarRangeResponse>>({
       channel: CalendarChannels.invoke.GET_RANGE,

@@ -9,6 +9,7 @@ import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
 import { sql } from 'drizzle-orm'
 import path from 'path'
 import * as schema from '@memry/db-schema/schema'
+import { registerDataDbFunctions } from '../../src/main/database/sqlite-functions'
 import type { DataDb } from '../../src/main/database/client'
 import type { DrizzleDb as SyncDrizzleDb } from '../../src/main/sync/item-handlers/types'
 
@@ -56,6 +57,10 @@ export function createTestDataDb(): TestDatabaseResult {
   sqlite.pragma('journal_mode = WAL')
   sqlite.pragma('foreign_keys = ON')
   sqlite.pragma('synchronous = NORMAL')
+
+  // Same user-defined functions the app registers in initDatabase, so a query
+  // that leans on them is exercised here exactly as it runs in production.
+  registerDataDbFunctions(sqlite)
 
   const db = drizzle(sqlite, { schema })
 

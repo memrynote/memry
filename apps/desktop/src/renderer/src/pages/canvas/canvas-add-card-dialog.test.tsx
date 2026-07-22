@@ -9,19 +9,24 @@ Element.prototype.scrollIntoView = vi.fn()
 const mocks = vi.hoisted(() => ({
   sources: {
     results: [] as unknown[],
-    projections: [] as unknown[],
+    events: [] as unknown[],
     loading: false
   }
 }))
 
-vi.mock('@memry/i18n/renderer', () => ({
-  useT: () => ({
-    t: (key: string, vars?: Record<string, unknown>) =>
-      vars?.query
-        ? `${key.split('.').at(-1)}:${String(vars.query)}`
-        : (key.split('.').at(-1) ?? key)
-  })
-}))
+// Production react-i18next hands back a referentially-stable `t` across
+// renders, so the mock does too — a fresh `t` (or a fresh `{ t }` wrapper)
+// every call would give the dialog's `groups` memo a new identity on every
+// render regardless of its own deps, masking whether the highlight effect's
+// dependency array is actually correct.
+vi.mock('@memry/i18n/renderer', () => {
+  const t = (key: string, vars?: Record<string, unknown>) =>
+    vars?.query ? `${key.split('.').at(-1)}:${String(vars.query)}` : (key.split('.').at(-1) ?? key)
+  const useTResult = { t }
+  return {
+    useT: () => useTResult
+  }
+})
 vi.mock('./use-canvas-add-search', () => ({
   useCanvasAddSearch: () => mocks.sources
 }))
@@ -34,14 +39,8 @@ function noteResult(id: string, title: string) {
 function taskResult(id: string, title: string) {
   return { id, type: 'task', title, metadata: { type: 'task', projectName: 'Inbox' } }
 }
-function eventProjection(sourceId: string, title: string) {
-  return {
-    projectionId: `${sourceId}-1`,
-    sourceType: 'event',
-    sourceId,
-    title,
-    startAt: '2026-07-22T09:00:00.000Z'
-  }
+function eventItem(id: string, title: string) {
+  return { id, title, startAt: '2026-07-22T09:00:00.000Z', endAt: null, isAllDay: false }
 }
 
 function setup(overrides: Partial<Parameters<typeof CanvasAddCardDialog>[0]> = {}) {
@@ -60,7 +59,7 @@ function setup(overrides: Partial<Parameters<typeof CanvasAddCardDialog>[0]> = {
 
 describe('CanvasAddCardDialog', () => {
   beforeEach(() => {
-    mocks.sources = { results: [], projections: [], loading: false }
+    mocks.sources = { results: [], events: [], loading: false }
   })
 
   it('dims the canvas behind it with a backdrop scrim', () => {
@@ -81,7 +80,7 @@ describe('CanvasAddCardDialog', () => {
   it('renders all three groups', async () => {
     mocks.sources = {
       results: [noteResult('n1', 'Alpha'), taskResult('t1', 'Ship it')],
-      projections: [eventProjection('e1', 'Standup')],
+      events: [eventItem('e1', 'Standup')],
       loading: false
     }
     setup()
@@ -92,7 +91,7 @@ describe('CanvasAddCardDialog', () => {
   })
 
   it('picks a fresh entity', async () => {
-    mocks.sources = { results: [taskResult('t1', 'Ship it')], projections: [], loading: false }
+    mocks.sources = { results: [taskResult('t1', 'Ship it')], events: [], loading: false }
     const props = setup()
     fireEvent.change(screen.getByTestId('canvas-add-input'), { target: { value: 'ship' } })
     await waitFor(() => expect(screen.getByTestId('canvas-add-item-task:t1')).toBeInTheDocument())
@@ -102,7 +101,7 @@ describe('CanvasAddCardDialog', () => {
   })
 
   it('reveals instead of duplicating an entity already on the canvas', async () => {
-    mocks.sources = { results: [taskResult('t1', 'Ship it')], projections: [], loading: false }
+    mocks.sources = { results: [taskResult('t1', 'Ship it')], events: [], loading: false }
     const props = setup({ onCanvasKeys: new Set(['task:t1']) })
     fireEvent.change(screen.getByTestId('canvas-add-input'), { target: { value: 'ship' } })
     await waitFor(() => expect(screen.getByTestId('canvas-add-item-task:t1')).toBeInTheDocument())
@@ -113,7 +112,7 @@ describe('CanvasAddCardDialog', () => {
   })
 
   it('keeps the create row visible while typing and carries the query', async () => {
-    mocks.sources = { results: [taskResult('t1', 'Ship it')], projections: [], loading: false }
+    mocks.sources = { results: [taskResult('t1', 'Ship it')], events: [], loading: false }
     const props = setup()
     fireEvent.change(screen.getByTestId('canvas-add-input'), { target: { value: 'groceries' } })
     await waitFor(() => expect(screen.getByTestId('canvas-add-item-task:t1')).toBeInTheDocument())
@@ -133,28 +132,46 @@ describe('CanvasAddCardDialog', () => {
   })
 
   it('hides the empty state once matches exist', async () => {
-    mocks.sources = { results: [taskResult('t1', 'Ship it')], projections: [], loading: false }
+    mocks.sources = { results: [taskResult('t1', 'Ship it')], events: [], loading: false }
     setup()
     fireEvent.change(screen.getByTestId('canvas-add-input'), { target: { value: 'ship' } })
     await waitFor(() => expect(screen.getByTestId('canvas-add-item-task:t1')).toBeInTheDocument())
     expect(screen.queryByTestId('canvas-add-empty')).not.toBeInTheDocument()
   })
 
-  it('keeps the create row highlighted and hides Events for a blank query, even with events available', () => {
+  it('keeps the create row highlighted for a blank query', () => {
+    // The hook (tested separately) never returns events for a blank query, so
+    // this mocks the state it actually produces — the dialog itself no longer
+    // filters by query (#869).
     mocks.sources = {
       results: [],
-      projections: [eventProjection('e1', 'Standup')],
+      events: [],
       loading: false
     }
     const props = setup()
-    expect(screen.queryByText('Standup')).not.toBeInTheDocument()
+    fireEvent.keyDown(screen.getByTestId('canvas-add-input'), { key: 'Enter' })
+    expect(props.onCreateNote).toHaveBeenCalledWith('')
+    expect(props.onPick).not.toHaveBeenCalled()
+  })
+
+  it('keeps the create row highlighted for a blank query even when a stale event is present', () => {
+    // The hook clears `events` in its own effect (#869), so for one render
+    // after the user clears the input, groups.calendar_event can still hold
+    // a stale match. The highlight effect must prefer the create row anyway,
+    // or Enter would add that stale event instead of creating a note.
+    mocks.sources = {
+      results: [],
+      events: [eventItem('e1', 'Standup')],
+      loading: false
+    }
+    const props = setup()
     fireEvent.keyDown(screen.getByTestId('canvas-add-input'), { key: 'Enter' })
     expect(props.onCreateNote).toHaveBeenCalledWith('')
     expect(props.onPick).not.toHaveBeenCalled()
   })
 
   it('suppresses the empty state while a search is in flight', () => {
-    mocks.sources = { results: [], projections: [], loading: true }
+    mocks.sources = { results: [], events: [], loading: true }
     setup()
     fireEvent.change(screen.getByTestId('canvas-add-input'), { target: { value: 'ship' } })
     expect(screen.queryByTestId('canvas-add-empty')).not.toBeInTheDocument()
@@ -169,7 +186,7 @@ describe('CanvasAddCardDialog', () => {
     fireEvent.change(screen.getByTestId('canvas-add-input'), { target: { value: 'a' } })
     mocks.sources = {
       results: [taskResult('t1', 'Ship it'), noteResult('n1', 'Alpha')],
-      projections: [],
+      events: [],
       loading: false
     }
     props.rerender()
@@ -177,5 +194,27 @@ describe('CanvasAddCardDialog', () => {
     fireEvent.keyDown(screen.getByTestId('canvas-add-input'), { key: 'Enter' })
     expect(props.onPick).toHaveBeenCalledWith('note', 'n1')
     expect(props.onCreateNote).not.toHaveBeenCalled()
+  })
+
+  it('re-highlights the create row when the query clears before events catches up', async () => {
+    // The real hook clears `events` one render after the query does (#869),
+    // so mirror that here: keep `mocks.sources.events` populated across the
+    // clear instead of resetting it. With a stable `t`, `groups` keeps its
+    // identity across this transition too, so the highlight effect only
+    // notices the clear if `query` is in its own dependency array.
+    mocks.sources = { results: [], events: [eventItem('e1', 'Standup')], loading: false }
+    const props = setup()
+    fireEvent.change(screen.getByTestId('canvas-add-input'), { target: { value: 'stand' } })
+    await waitFor(() =>
+      expect(screen.getByTestId('canvas-add-item-calendar_event:e1')).toHaveAttribute(
+        'data-selected',
+        'true'
+      )
+    )
+
+    fireEvent.change(screen.getByTestId('canvas-add-input'), { target: { value: '' } })
+    fireEvent.keyDown(screen.getByTestId('canvas-add-input'), { key: 'Enter' })
+    expect(props.onCreateNote).toHaveBeenCalledWith('')
+    expect(props.onPick).not.toHaveBeenCalled()
   })
 })

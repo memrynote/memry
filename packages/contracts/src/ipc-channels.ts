@@ -619,6 +619,8 @@ export const CalendarChannels = {
     UPDATE_EVENT: 'calendar:update-event',
     DELETE_EVENT: 'calendar:delete-event',
     LIST_EVENTS: 'calendar:list-events',
+    /** #869: title search across every event, for the canvas Add-card picker */
+    SEARCH_EVENTS: 'calendar:search-events',
     GET_RANGE: 'calendar:get-range',
     LIST_SOURCES: 'calendar:list-sources',
     UPDATE_SOURCE_SELECTION: 'calendar:update-source-selection',

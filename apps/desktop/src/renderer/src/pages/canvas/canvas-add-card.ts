@@ -6,12 +6,9 @@
  */
 
 import type { CanvasEntityType } from '@memry/contracts/canvas-api'
-import type { CalendarProjectionItem } from '@memry/contracts/calendar-api'
+import type { CalendarEventSearchItem } from '@memry/contracts/calendar-api'
 import type { SearchResultItem } from '@memry/contracts/search-api'
 import { entityKey, formatEventTime } from './canvas-cards'
-
-/** How far either side of today the picker looks for events. */
-export const EVENT_RANGE_DAYS = 90
 
 export interface AddCardCandidate {
   entityType: CanvasEntityType
@@ -64,50 +61,6 @@ export function candidatesFromSearch(results: readonly SearchResultItem[]): AddC
   return out
 }
 
-/**
- * Memry events from a calendar range projection, filtered by title.
- * Tasks, reminders, notes and external Google events also project onto the
- * calendar, but only `sourceType: 'event'` is a `calendar_event` entity.
- *
- * A blank query returns no events: the design spec's one-click "Create new
- * note" path depends on an empty picker leaving the create row highlighted,
- * and every event in the ±90-day window would otherwise flood in unfiltered.
- */
-export function candidatesFromProjections(
-  items: readonly CalendarProjectionItem[],
-  query: string,
-  allDayLabel: string
-): AddCardCandidate[] {
-  const needle = query.trim().toLowerCase()
-  if (!needle) {
-    return []
-  }
-  const earliest = new Map<string, CalendarProjectionItem>()
-  for (const item of items) {
-    if (item.sourceType !== 'event') {
-      continue
-    }
-    if (!item.title.toLowerCase().includes(needle)) {
-      continue
-    }
-    // A recurring event yields one projection per occurrence; a card
-    // references the event itself, so collapse to the earliest.
-    const seen = earliest.get(item.sourceId)
-    if (!seen || item.startAt < seen.startAt) {
-      earliest.set(item.sourceId, item)
-    }
-  }
-  return [...earliest.values()]
-    .sort((a, b) => a.startAt.localeCompare(b.startAt))
-    .map((item) => ({
-      entityType: 'calendar_event' as const,
-      entityId: item.sourceId,
-      title: item.title,
-      subtitle: formatEventTime(item.startAt, item.isAllDay, allDayLabel),
-      onCanvas: false
-    }))
-}
-
 /** Candidate keys for every entity already carded on the open canvas. */
 export function onCanvasKeys(
   cards: readonly { entityType: CanvasEntityType; entityId: string }[]
@@ -150,11 +103,20 @@ export function revealScroll(
   }
 }
 
-/** The bounded event window the picker queries. `now` is injected for tests. */
-export function eventRange(now: number): { startAt: string; endAt: string } {
-  const span = EVENT_RANGE_DAYS * 24 * 60 * 60 * 1000
-  return {
-    startAt: new Date(now - span).toISOString(),
-    endAt: new Date(now + span).toISOString()
-  }
+/**
+ * Events from `calendar:search-events`. Main already filtered by title,
+ * excluded archived rows and ordered by distance from now (#869), so this is a
+ * pure mapping — no client-side filter, no occurrence dedup (one row per event).
+ */
+export function candidatesFromEvents(
+  items: readonly CalendarEventSearchItem[],
+  allDayLabel: string
+): AddCardCandidate[] {
+  return items.map((item) => ({
+    entityType: 'calendar_event' as const,
+    entityId: item.id,
+    title: item.title,
+    subtitle: formatEventTime(item.startAt, item.isAllDay, allDayLabel),
+    onCanvas: false
+  }))
 }
