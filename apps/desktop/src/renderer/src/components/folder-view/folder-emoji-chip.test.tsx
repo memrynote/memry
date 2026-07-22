@@ -14,6 +14,31 @@ vi.mock('@/components/note/note-title/EmojiPicker', () => ({
     ) : null
 }))
 
+// The real Radix Popover does not open on click in jsdom. Stub the wrapper so the
+// trigger click flips `onOpenChange(true)` and the content renders only when open.
+vi.mock('@/components/ui/popover', async () => {
+  const React = await import('react')
+  return {
+    Popover: ({ open, onOpenChange, children }: any) =>
+      React.createElement(
+        React.Fragment,
+        null,
+        React.Children.map(children, (child: any) =>
+          React.isValidElement(child) ? React.cloneElement(child, { open, onOpenChange }) : child
+        )
+      ),
+    PopoverTrigger: ({ children, onOpenChange }: any) =>
+      React.cloneElement(children, {
+        onClick: (e: any) => {
+          children.props.onClick?.(e)
+          onOpenChange?.(true)
+        }
+      }),
+    PopoverContent: ({ children, open }: any) =>
+      open ? React.createElement('div', null, children) : null
+  }
+})
+
 describe('FolderEmojiChip', () => {
   it('renders folder icon button when no custom icon', () => {
     const onIconChange = vi.fn()

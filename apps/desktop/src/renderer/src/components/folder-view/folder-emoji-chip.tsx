@@ -1,7 +1,7 @@
 import { lazy, Suspense, useCallback, useState } from 'react'
-import { createPortal } from 'react-dom'
 import { Folder } from '@/lib/icons'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { useT } from '@memry/i18n/renderer'
 
 const LazyEmojiPicker = lazy(async () => ({
@@ -22,14 +22,6 @@ interface FolderEmojiChipProps {
 export function FolderEmojiChip({ icon, onIconChange }: FolderEmojiChipProps): React.JSX.Element {
   const { t } = useT('common')
   const [open, setOpen] = useState(false)
-  const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
-
-  const handleClick = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation()
-    const rect = e.currentTarget.getBoundingClientRect()
-    setPos({ top: rect.bottom + 6, left: rect.left })
-    setOpen((v) => !v)
-  }, [])
 
   const handleSelect = useCallback(
     (value: string) => {
@@ -45,36 +37,38 @@ export function FolderEmojiChip({ icon, onIconChange }: FolderEmojiChipProps): R
   }, [onIconChange])
 
   return (
-    <>
-      <button
-        type="button"
-        onClick={handleClick}
-        aria-label={t('phaseF.componentsFolderIconButton.setFolderIcon')}
-        className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-[9px] border bg-muted transition-colors hover:bg-accent"
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          onClick={(e) => e.stopPropagation()}
+          aria-label={t('phaseF.componentsFolderIconButton.setFolderIcon')}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] border bg-muted transition-colors hover:bg-accent"
+        >
+          {icon ? (
+            <NoteIconDisplay value={icon} className="text-[17px] leading-none" />
+          ) : (
+            <Folder className="h-4 w-4 text-muted-foreground" />
+          )}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        sideOffset={6}
+        className="w-auto border-0 bg-transparent p-0 shadow-none"
+        onClick={(e) => e.stopPropagation()}
       >
-        {icon ? (
-          <NoteIconDisplay value={icon} className="text-[17px] leading-none" />
-        ) : (
-          <Folder className="h-4 w-4 text-muted-foreground" />
-        )}
-      </button>
-
-      {open &&
-        pos &&
-        createPortal(
-          <div className="fixed z-[100]" style={{ top: pos.top, left: pos.left }}>
-            <Suspense fallback={null}>
-              <LazyEmojiPicker
-                isOpen
-                onClose={() => setOpen(false)}
-                onSelect={handleSelect}
-                onRemove={handleRemove}
-                hasEmoji={!!icon}
-              />
-            </Suspense>
-          </div>,
-          document.body
-        )}
-    </>
+        <Suspense fallback={null}>
+          <LazyEmojiPicker
+            isOpen
+            embedded
+            onClose={() => setOpen(false)}
+            onSelect={handleSelect}
+            onRemove={handleRemove}
+            hasEmoji={!!icon}
+          />
+        </Suspense>
+      </PopoverContent>
+    </Popover>
   )
 }
