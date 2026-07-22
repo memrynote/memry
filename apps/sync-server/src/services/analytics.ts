@@ -231,7 +231,7 @@ export const captureServerError = async (
   const realMessage = rawMessage ? truncate(redactSensitive(rawMessage), 500) : undefined
   const realStack = rawStack ? truncate(redactSensitive(rawStack), 4000) : undefined
 
-  const detail = {
+  const baseDetail = {
     method: safeLabel(input.method?.toUpperCase(), 'UNKNOWN'),
     path,
     route_area: routeArea,
@@ -242,7 +242,13 @@ export const captureServerError = async (
     status_code: status,
     handled: input.handled,
     ...(realMessage ? { message: realMessage } : {}),
-    ...(realStack ? { stack: realStack } : {}),
+    ...(realStack ? { stack: realStack } : {})
+  }
+
+  // Local logger → Cloudflare's own Workers console, first-party: keep the raw
+  // ids so they stay useful for debugging in that trusted sink.
+  const detail = {
+    ...baseDetail,
     ...(input.userId ? { user_id: input.userId } : {}),
     ...(input.deviceId ? { device_id: input.deviceId } : {}),
     ...(input.vaultId ? { vault_id: input.vaultId } : {})
@@ -254,12 +260,39 @@ export const captureServerError = async (
     logger.warn('server_error_seen', detail)
   }
 
+  // PostHog Logs → third-party sink: hash user/device/vault ids the same way
+  // captureBusinessEvent hashes distinct_id. Never let the raw value leave.
+  // hashTelemetryId throws if TELEMETRY_HMAC_KEY is missing/empty; swallow
+  // that per-id so a bad config just drops the id instead of throwing.
+  const hashOrDrop = async (raw: string | undefined): Promise<string | undefined> => {
+    if (!raw) return undefined
+    try {
+      return await hashTelemetryId(env.TELEMETRY_HMAC_KEY, raw)
+    } catch (error) {
+      logger.warn('Server error id hash failed', {
+        error: error instanceof Error ? error.message : String(error)
+      })
+      return undefined
+    }
+  }
+  const [hashedUserId, hashedDeviceId, hashedVaultId] = await Promise.all([
+    hashOrDrop(input.userId),
+    hashOrDrop(input.deviceId),
+    hashOrDrop(input.vaultId)
+  ])
+  const postHogDetail = {
+    ...baseDetail,
+    ...(hashedUserId ? { user_id: hashedUserId } : {}),
+    ...(hashedDeviceId ? { device_id: hashedDeviceId } : {}),
+    ...(hashedVaultId ? { vault_id: hashedVaultId } : {})
+  }
+
   const logRecord: LogRecord = {
     level: status >= 500 || !input.handled ? 'error' : 'warn',
     app: 'server',
     kind: 'error',
     distinctId,
-    line: detail
+    line: postHogDetail
   }
   await pushPostHogLogs(env, [logRecord])
 
