@@ -3,6 +3,7 @@ import matter from 'gray-matter'
 import {
   parseNote,
   serializeNote,
+  serializeParsedNote,
   validateNoteId,
   extractTitleFromPath,
   extractWikiLinks,
@@ -78,6 +79,42 @@ Hello world
     const parsed = parseNote('Body', 'notes/dated.md', { birthtime, mtime })
     expect(parsed.created).toBe('2025-06-01T08:00:00.000Z')
     expect(parsed.modified).toBe('2025-06-02T09:30:00.000Z')
+  })
+
+  it('parseNote reports no frontmatter error for parseable YAML', () => {
+    const parsed = parseNote('---\ntitle: Fine\n---\n\nBody\n')
+    expect(parsed.frontmatterError).toBeNull()
+  })
+
+  it('parseNote tolerates malformed YAML: body kept, metadata dropped', () => {
+    const raw = `---
+title: "unterminated
+tags: [work, personal
+---
+
+Body survives
+`
+    const parsed = parseNote(raw, 'notes/Broken.md')
+
+    expect(parsed.frontmatterError).toBeTruthy()
+    expect(parsed.frontmatter).toEqual({})
+    expect(parsed.hadFrontmatter).toBe(false)
+    expect(parsed.content).toBe('\nBody survives\n')
+    // Title still falls back to the filename, dates to the in-memory defaults
+    expect(parsed.title).toBe('Broken')
+  })
+
+  it('parseNote keeps the malformed block verbatim for byte-preserving writeback', () => {
+    const raw = `---
+title: "unterminated
+---
+
+Body survives
+`
+    const parsed = parseNote(raw, 'notes/Broken.md')
+
+    expect(parsed.rawFrontmatterBlock).toBe('---\ntitle: "unterminated\n---\n')
+    expect(serializeParsedNote(parsed, parsed.content, { frontmatterEdited: false })).toBe(raw)
   })
 })
 

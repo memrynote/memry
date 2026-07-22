@@ -9,7 +9,7 @@
  */
 
 import path from 'path'
-import { readdir, stat } from 'fs/promises'
+import { readdir, readFile, stat } from 'fs/promises'
 import { existsSync, unlinkSync } from 'fs'
 import { getConfig, emitIndexProgress } from './index'
 import { getIndexDbPath } from './init'
@@ -22,7 +22,6 @@ import {
   closeIndexDatabase
 } from '../database'
 import { parseNote } from './frontmatter'
-import { safeRead } from './file-ops'
 import { generateNoteId } from '../lib/id'
 import { normalizeRelativePath } from '../lib/paths'
 import { syncNoteToCache, syncFileToCache } from './note-sync'
@@ -151,10 +150,15 @@ async function indexMarkdownFile(
   absolutePath: string,
   db: ReturnType<typeof getIndexDatabase>
 ): Promise<'indexed' | 'error'> {
-  // Read and parse the file
-  const content = await safeRead(absolutePath)
-  if (!content) {
-    logger.warn(`Could not read file: ${relativePath}`)
+  // Read the file directly (not via safeRead) so the errno survives into the
+  // log — ENOENT (vanished mid-scan), EACCES (permissions) and ELOOP (broken
+  // symlink) all present as "could not read" otherwise (#844).
+  let content: string
+  try {
+    content = await readFile(absolutePath, 'utf-8')
+  } catch (error) {
+    const code = error instanceof Error && 'code' in error ? String(error.code) : 'UNKNOWN'
+    logger.warn(`Could not read file: ${relativePath} (${code})`)
     return 'error'
   }
 
@@ -163,6 +167,10 @@ async function indexMarkdownFile(
   // one. Dates from fs stats. The indexer never writes files.
   const stats = await stat(absolutePath).catch(() => null)
   const parsed = parseNote(content, relativePath, stats ?? undefined)
+  if (parsed.frontmatterError) {
+    // Body is indexed without metadata rather than dropping the note.
+    logger.warn(`Unparseable frontmatter, indexing body only: ${relativePath}`)
+  }
 
   let canonical: ReturnType<typeof getNoteMetadataByPath>
   try {
