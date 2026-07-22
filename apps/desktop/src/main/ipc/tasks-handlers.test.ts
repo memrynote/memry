@@ -619,10 +619,35 @@ describe('tasks-handlers', () => {
     describe('PROJECT_DELETE handler', () => {
       it('should delete a project', async () => {
         ;(projectQueries.deleteProject as Mock).mockReturnValue(undefined)
+        // deleteProject enumerates the project's tasks first so each cascaded
+        // task gets its own tombstone (#837); an unstubbed listTasks returns
+        // undefined and the command throws before it ever deletes anything.
+        ;(taskQueries.listTasks as Mock).mockReturnValue([])
 
         const result = await invokeHandler(TasksChannels.invoke.PROJECT_DELETE, 'project1')
 
         expect(result.success).toBe(true)
+      })
+
+      it('tombstones the tasks the delete cascades away', async () => {
+        ;(projectQueries.deleteProject as Mock).mockReturnValue(undefined)
+        ;(taskQueries.listTasks as Mock).mockReturnValue([
+          { id: 'task1', projectId: 'project1', title: 'Task 1' },
+          { id: 'task2', projectId: 'project1', title: 'Task 2' }
+        ])
+
+        const result = await invokeHandler(TasksChannels.invoke.PROJECT_DELETE, 'project1')
+
+        expect(result.success).toBe(true)
+        // Completed and archived tasks cascade too, so they must be listed.
+        expect(taskQueries.listTasks).toHaveBeenCalledWith(
+          expect.anything(),
+          expect.objectContaining({
+            projectId: 'project1',
+            includeCompleted: true,
+            includeArchived: true
+          })
+        )
       })
     })
 
