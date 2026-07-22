@@ -7,6 +7,7 @@ import {
   TelemetryEventSchema,
   buildErrorDetail,
   normalizeRejectionReason,
+  normalizeWindowError,
   toErrorCode
 } from './telemetry-api'
 
@@ -775,5 +776,141 @@ describe('normalizeRejectionReason', () => {
       expect(code).not.toContain('\\')
       expect(code.length).toBeLessThanOrEqual(64)
     }
+  })
+
+  it('names the reason by its own error name when it has no usable stack', () => {
+    // #given an error-shaped reason that crossed a structured-clone / IPC boundary:
+    // the name survives, the stack does not, and the constructor is plain Object
+    const cloned = { name: 'TypeError', message: 'x is not a function' }
+
+    // #then the useful name is kept instead of collapsing to Rejection_Object
+    expect(normalizeRejectionReason(cloned).name).toBe('Rejection_TypeError')
+  })
+
+  it('survives a reason whose property access throws', () => {
+    // #given a reason with hostile getters on every property the handler reads
+    const hostile = {
+      get name() {
+        throw new Error('hostile name')
+      },
+      get stack() {
+        throw new Error('hostile stack')
+      },
+      get constructor() {
+        throw new Error('hostile constructor')
+      }
+    }
+
+    // #then normalizing does not throw out of the rejection handler
+    expect(() => normalizeRejectionReason(hostile)).not.toThrow()
+    expect(normalizeRejectionReason(hostile)).toBeInstanceOf(Error)
+    expect(() => toErrorCode(hostile)).not.toThrow()
+    expect(() => buildErrorDetail(hostile)).not.toThrow()
+  })
+
+  it('survives a Proxy reason that traps instanceof and every read', () => {
+    // #given a reason that throws from `get`, `has` and `getPrototypeOf` — so even
+    // `reason instanceof Error` throws before any property is touched
+    const hostile = new Proxy(
+      {},
+      {
+        get: () => {
+          throw new Error('hostile get')
+        },
+        has: () => {
+          throw new Error('hostile has')
+        },
+        getPrototypeOf: () => {
+          throw new Error('hostile prototype')
+        }
+      }
+    )
+
+    // #then the handler still produces a safe, code-carrying Error
+    expect(() => normalizeRejectionReason(hostile)).not.toThrow()
+    expect(toErrorCode(normalizeRejectionReason(hostile))).toBe('Rejection_object')
+    expect(() => toErrorCode(hostile)).not.toThrow()
+    expect(() => buildErrorDetail(hostile)).not.toThrow()
+  })
+
+  it('survives a null-prototype reason that has no constructor at all', () => {
+    // #given a reason built with Object.create(null)
+    const bare = Object.create(null) as Record<string, unknown>
+    bare.detail = 'nope'
+
+    // #then the type is still described rather than crashing the handler
+    expect(normalizeRejectionReason(bare).name).toBe('Rejection_object')
+  })
+})
+
+describe('normalizeWindowError', () => {
+  it('passes through a real error that already has stack frames', () => {
+    // #given a window error carrying the original Error object
+    const error = new Error('boom')
+
+    // #then it is used as-is (its own stack is the actionable one)
+    expect(normalizeWindowError({ error, message: 'Uncaught Error: boom' })).toBe(error)
+  })
+
+  it('recovers the error class and source location when the error object is missing', () => {
+    // #given a window error with no `error` — the case that reached telemetry as
+    // StringError with an empty stack and nothing to triage
+    const normalized = normalizeWindowError({
+      error: null,
+      message: 'Uncaught TypeError: n.focus is not a function',
+      filename: 'file:///Users/kaan/Memry.app/out/renderer/assets/index-VP6Jd1Vs.js',
+      lineno: 121718,
+      colno: 22
+    })
+
+    // #then the class name and the code location both survive
+    expect(normalized.name).toBe('TypeError')
+    const detail = buildErrorDetail(normalized)
+    expect(detail?.stack).toContain('at ')
+    expect(detail?.stack).toContain('index-VP6Jd1Vs.js:121718:22')
+    // #and neither the message text nor the username rides along
+    expect(JSON.stringify(detail)).not.toContain('focus')
+    expect(JSON.stringify(detail)).not.toContain('/Users/kaan')
+  })
+
+  it('keeps a generic code when the message names no error class', () => {
+    // #given the opaque cross-origin case: "Script error." and no location
+    const normalized = normalizeWindowError({ error: null, message: 'Script error.' })
+
+    // #then a stable, non-leaking code is reported
+    expect(toErrorCode(normalized)).toBe('WindowError')
+    expect(normalized.message).toBe('')
+  })
+
+  it('does not adopt a message-derived name that is not an enum-ish token', () => {
+    // #given a message whose leading token is really a path
+    const normalized = normalizeWindowError({
+      error: null,
+      message: '/Users/kaan/secret.md: failed to load'
+    })
+
+    // #then the path-shaped token is rejected outright
+    expect(normalized.name).toBe('WindowError')
+    expect(toErrorCode(normalized)).not.toContain('secret')
+    expect(toErrorCode(normalized)).not.toContain('/')
+  })
+
+  it('survives a hostile error value on the event', () => {
+    // #given `event.error` is a Proxy that throws on every read
+    const hostile = new Proxy(
+      {},
+      {
+        get: () => {
+          throw new Error('hostile get')
+        },
+        getPrototypeOf: () => {
+          throw new Error('hostile prototype')
+        }
+      }
+    )
+
+    // #then the window error handler still reports something
+    expect(() => normalizeWindowError({ error: hostile, message: 'boom' })).not.toThrow()
+    expect(normalizeWindowError({ error: hostile, message: 'boom' })).toBeInstanceOf(Error)
   })
 })
