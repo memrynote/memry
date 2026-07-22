@@ -651,7 +651,8 @@
   pointer-events: none;
 }
 
-.critic-review-content a {
+.critic-review-content a,
+.critic-review-content button {
   pointer-events: auto;
 }
 
