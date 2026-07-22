@@ -1,7 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { sql } from 'drizzle-orm'
 import { createTestDataDb, type TestDatabaseResult, type TestDb } from '@tests/utils/test-db'
-import { upsertCalendarEvent, getCalendarEventById } from './calendar-events-repository'
+import {
+  upsertCalendarEvent,
+  getCalendarEventById,
+  searchCalendarEventsByTitle
+} from './calendar-events-repository'
 import type { DataDb } from '../../database/types'
 
 describe('calendarEvents.targetCalendarId (M2)', () => {
@@ -535,5 +539,109 @@ describe('calendar storage foundation', () => {
       'reminder',
       'task'
     ])
+  })
+})
+
+describe('searchCalendarEventsByTitle (#869)', () => {
+  let dbResult: TestDatabaseResult
+  let dataDb: DataDb
+
+  const NOW = '2026-07-22T12:00:00.000Z'
+
+  function seed(id: string, title: string, startAt: string, archivedAt: string | null = null) {
+    upsertCalendarEvent(dataDb, {
+      id,
+      title,
+      startAt,
+      timezone: 'UTC',
+      isAllDay: false,
+      archivedAt,
+      clock: { 'device-a': 1 },
+      createdAt: '2026-01-01T00:00:00.000Z',
+      modifiedAt: '2026-01-01T00:00:00.000Z'
+    })
+  }
+
+  beforeEach(() => {
+    dbResult = createTestDataDb()
+    dataDb = dbResult.db as unknown as DataDb
+  })
+
+  afterEach(() => {
+    dbResult.close()
+  })
+
+  it('finds events far outside the old ±90-day window', () => {
+    // #given — one event three years back and one three years ahead
+    seed('old', 'Standup', '2023-07-22T09:00:00.000Z')
+    seed('future', 'Standup', '2029-07-22T09:00:00.000Z')
+
+    // #when — we search by title
+    const found = searchCalendarEventsByTitle(dataDb, { query: 'standup', limit: 20, now: NOW })
+
+    // #then — both are reachable; the window is gone
+    expect(found.map((row) => row.id).sort()).toEqual(['future', 'old'])
+  })
+
+  it('matches a case-insensitive title substring', () => {
+    // #given — a mixed-case title
+    seed('e1', 'Quarterly Planning', '2026-07-23T09:00:00.000Z')
+
+    // #when / #then — either casing finds it, a non-substring does not
+    expect(
+      searchCalendarEventsByTitle(dataDb, { query: 'PLANNING', limit: 20, now: NOW })
+    ).toHaveLength(1)
+    expect(
+      searchCalendarEventsByTitle(dataDb, { query: 'retro', limit: 20, now: NOW })
+    ).toHaveLength(0)
+  })
+
+  it('excludes archived events', () => {
+    // #given — one live and one archived event with the same title
+    seed('live', 'Standup', '2026-07-23T09:00:00.000Z')
+    seed('gone', 'Standup', '2026-07-24T09:00:00.000Z', '2026-07-01T00:00:00.000Z')
+
+    // #when — we search
+    const found = searchCalendarEventsByTitle(dataDb, { query: 'standup', limit: 20, now: NOW })
+
+    // #then — only the live one comes back
+    expect(found.map((row) => row.id)).toEqual(['live'])
+  })
+
+  it('orders by distance from now, mixing past and future', () => {
+    // #given — a near past event, a near future event, and a distant future one
+    seed('far-future', 'Standup', '2026-09-22T09:00:00.000Z')
+    seed('near-past', 'Standup', '2026-07-21T12:00:00.000Z')
+    seed('near-future', 'Standup', '2026-07-22T18:00:00.000Z')
+
+    // #when — we search
+    const found = searchCalendarEventsByTitle(dataDb, { query: 'standup', limit: 20, now: NOW })
+
+    // #then — nearest-to-now first, regardless of direction
+    expect(found.map((row) => row.id)).toEqual(['near-future', 'near-past', 'far-future'])
+  })
+
+  it('respects the limit across both directions', () => {
+    // #given — six matching events, three each side of now, no tied distances
+    seed('p1', 'Standup', '2026-07-21T18:00:00.000Z')
+    seed('p2', 'Standup', '2026-07-20T12:00:00.000Z')
+    seed('p3', 'Standup', '2026-07-19T12:00:00.000Z')
+    seed('f1', 'Standup', '2026-07-23T12:00:00.000Z')
+    seed('f2', 'Standup', '2026-07-24T13:00:00.000Z')
+    seed('f3', 'Standup', '2026-07-25T13:00:00.000Z')
+
+    // #when — we ask for two
+    const found = searchCalendarEventsByTitle(dataDb, { query: 'standup', limit: 2, now: NOW })
+
+    // #then — exactly the two closest to now
+    expect(found.map((row) => row.id)).toEqual(['p1', 'f1'])
+  })
+
+  it('returns nothing for a blank query instead of everything', () => {
+    // #given — an event that any unfiltered query would return
+    seed('e1', 'Standup', '2026-07-23T09:00:00.000Z')
+
+    // #when / #then — a whitespace query is treated as no query
+    expect(searchCalendarEventsByTitle(dataDb, { query: '   ', limit: 20, now: NOW })).toEqual([])
   })
 })
