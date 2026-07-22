@@ -235,6 +235,7 @@
     "disabledBody": "This tab belongs to a feature that is not enabled on this device.",
     "card": {
       "open": "Open in tab",
+      "openToEdit": "Open in tab to edit",
       "deleted": "Item deleted",
       "loading": "Loading…",
       "untitled": "Untitled",

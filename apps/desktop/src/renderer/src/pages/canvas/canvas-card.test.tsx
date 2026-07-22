@@ -112,4 +112,45 @@ describe('CanvasCard', () => {
     fireEvent.click(screen.getByRole('button', { name: 'open' }))
     expect(onRedirect).toHaveBeenCalledWith(cardRef)
   })
+
+  it('marks a locked card and offers open-in-tab-to-edit', () => {
+    const onRedirect = vi.fn()
+    const state: CanvasEntityState = {
+      status: 'ready',
+      kind: 'note',
+      title: 'My Note',
+      emoji: null,
+      body: 'the body text'
+    }
+    const cardRef = ref()
+    render(
+      <CanvasCard
+        cardRef={cardRef}
+        state={state}
+        onRedirect={onRedirect}
+        locked="note-open-in-tab"
+      />
+    )
+
+    const root = document.querySelector('[data-canvas-card-id="e1"]')
+    expect(root).toHaveAttribute('data-canvas-card-locked', 'true')
+
+    fireEvent.click(screen.getByRole('button', { name: 'openToEdit' }))
+    expect(onRedirect).toHaveBeenCalledWith(cardRef)
+  })
+
+  it('does not mark or gate an unlocked card', () => {
+    const state: CanvasEntityState = {
+      status: 'ready',
+      kind: 'note',
+      title: 'My Note',
+      emoji: null,
+      body: 'the body text'
+    }
+    render(<CanvasCard cardRef={ref()} state={state} onRedirect={vi.fn()} />)
+
+    const root = document.querySelector('[data-canvas-card-id="e1"]')
+    expect(root).not.toHaveAttribute('data-canvas-card-locked')
+    expect(screen.queryByRole('button', { name: 'openToEdit' })).not.toBeInTheDocument()
+  })
 })
