@@ -103,11 +103,13 @@ Recognized surfaces (`TelemetrySurface` in `packages/contracts/telemetry-api`):
 - Search queries
 - Tag names
 - User file paths and note filenames
-- Exception messages (a desktop error message can embed a note title or content)
+- Raw (unredacted) exception messages — a desktop error message can embed a note title or content
 
 The contract uses string-typed enums for surfaces and actions; arbitrary strings can't sneak
-through. The one exception is error diagnostics, which additionally ship a redacted **stack trace**
-of code locations (never the message) — see [Error Reporting](#error-reporting).
+through. The one exception is error diagnostics, which additionally ship a redacted **stack
+trace** of code locations and, optionally, a message — but only after the client has run it
+through `redactText` (`packages/contracts/src/redact.ts`), never the raw string — see
+[Error Reporting](#error-reporting).
 
 ## Tracking Pattern
 
@@ -146,21 +148,32 @@ The `void` makes the call non-blocking and unfailable from the UI's point of vie
 | Auth            | `signin_started`, `signin_succeeded`                                                                                             |
 | Diagnostics     | `app_log_recorded`, `app_error_seen`, `app_launch_phase_completed`                                                               |
 
-## Analytics Engine Export
+## PostHog Event Capture
 
-Cloudflare Analytics Engine is the sole telemetry store. The sync server writes each accepted
-desktop event as one datapoint into the `memry_product_telemetry_{env}` dataset (binding
-`PRODUCT_TELEMETRY`) using a fixed 20-blob / 13-double layout. Server-side business and error
-events write to the same dataset with the same layout, tagged `platform` = `surface` = `server`,
-so a single Grafana query reads every event.
+PostHog is the sole telemetry store (`POSTHOG_HOST`, `https://us.i.posthog.com` by default). The
+sync server transforms each accepted desktop event into a PostHog event
+(`services/posthog-transform.ts`) and posts it to the PostHog capture API's `/batch/` endpoint
+(`services/posthog.ts`, `capturePostHogEvents`). Event names are preserved from the existing
+50-event contract, with one rename: `page_viewed` → `$pageview`, which unlocks PostHog's native
+path-analysis and web-analytics views. Batch metadata (platform, arch, locale, app version, build
+channel, sync state, timezone offset) becomes person properties (`$set`); the event's own
+`dimensions` are flattened onto event properties first, then overwritten by server-derived keys
+(`surface`, `action`, `environment`, `session_id`) so a client can never spoof a trusted key by
+naming a dimension after it. Server-side business and error events (`services/analytics.ts`) post
+to the same capture API, tagged `surface: 'server'`, so one PostHog project holds every event from
+both desktop and server.
 
-No raw identifiers are stored: the install ID is HMAC-hashed server-side (`TELEMETRY_HMAC_KEY`)
-and used as the datapoint index, so active-install and retention queries work without exposing
-local identifiers; session IDs are likewise hashed. Telemetry batches are anonymous — no account
-identity is attached.
+Errors additionally become `$exception` events for PostHog Error Tracking (`exceptionEvent` in
+`services/posthog-transform.ts`), fingerprinted on our own `errorCode` when one is present so
+grouping follows the app's own error taxonomy rather than PostHog's pattern-hash default.
 
-Dashboards live in self-hosted Grafana (`/d/memry-product-telemetry`), which queries the
-Analytics Engine SQL API through the Infinity datasource.
+No raw identifiers are stored: the install ID is HMAC-hashed server-side (`TELEMETRY_HMAC_KEY`,
+`hashTelemetryId`) and used as the PostHog `distinct_id`; server-side `user_id`/`device_id`/
+`vault_id` are hashed the same way before they ride along as event properties. Telemetry batches
+are anonymous — no account identity is attached today.
+
+Environments are separated by an `environment` property on every event inside one PostHog
+project, not by separate projects.
 
 Additional events in the same pipeline:
 
@@ -192,20 +205,26 @@ high-frequency editor flushes from inflating event counts.
 
 ## Landing Site Telemetry
 
-The marketing site (`apps/landing`) sends anonymous web events to the rate-limited, unauthenticated
-`POST /telemetry/web` endpoint, which writes them to a dedicated Analytics Engine dataset
-(`memry_landing_telemetry_{env}`, binding `LANDING_TELEMETRY`).
+The marketing site (`apps/landing`) runs analytics **browser-side** via `posthog-js`
+(`apps/landing/src/lib/analytics.ts`), ingesting through PostHog's reverse-proxy subdomain
+(`https://e.memrynote.com`) — session replay cannot be routed through the sync server, so landing
+traffic does not go through `/telemetry/batch`. The old `POST /telemetry/web` endpoint and its
+`LandingTelemetryBatchSchema` contract are gone.
 
-- **Client**: `trackLandingEvent` / `trackLandingPageView` in `apps/landing/src/lib/analytics.ts`
-  post via `navigator.sendBeacon` (falling back to `fetch` with `keepalive`), fire-and-forget, and
-  swallow all errors. A random UUID visitor id persists in `localStorage`.
-- **Payload** (`LandingTelemetryBatchSchema` in `packages/contracts/telemetry-api`): fixed
-  slug-like event names, path-only pages, slug targets, and bounded UTM params. The schema rejects
-  anything shaped like an email, URL, filesystem path, or raw identifier; query strings and hashes
-  are stripped client-side and again server-side.
-- **Datapoint layout**: `blob1`=name, `blob2`=page, `blob3`=target, `blob4`–`blob8`=utm_source /
-  medium / campaign / content / term, `double1`=1 (count), `index1`=HMAC of the visitor id
-  (`TELEMETRY_HMAC_KEY`) so distinct-visitor queries never see a raw id.
+- **Client**: `init()` lazily configures `posthog-js` once per page load, keyed on
+  `VITE_POSTHOG_KEY` with `api_host` = `VITE_POSTHOG_HOST` (defaulting to
+  `https://e.memrynote.com`), `person_profiles: 'identified_only'`, and masked session recording
+  (`session_recording: { maskAllInputs: true }`). It no-ops with no `window` (SSR/prerender) or no
+  key configured. `trackLandingPageView` fires PostHog's native `$pageview`; `trackLandingEvent`
+  fires one of a fixed set of `landing_*` event names.
+- **Payload**: pages and targets are path-only — query strings and hashes are stripped
+  client-side (`stripQueryAndHash`) before either ever leaves the browser. UTM params
+  (`utm_source`/`medium`/`campaign`/`content`/`term`) are read from the query string, trimmed, and
+  capped at 120 characters.
+- **Environment**: `environment` is registered once via `posthog.register` — Vercel's
+  `VITE_VERCEL_ENV` when present, otherwise a production/development split on Vite's build
+  `MODE` — so landing traffic is filterable apart from desktop/server events in the same PostHog
+  project.
 
 ## Error Reporting
 
@@ -250,13 +269,18 @@ throw or an object with throwing getters — every property read in this path (i
 which can trap `getPrototypeOf`) is individually guarded. A hostile value can no longer throw out of
 the diagnostics handler and destroy the report being built.
 
-The free-form exception **message is never sent**: on the desktop it can embed a note title,
-filename, or content. The stack is reduced to code-location frames only — the leading
-`Name: message` header line is stripped — so a crash shows up as, for example, `TypeError` at
-`pushRecords (…/sync-engine.js:120)`: the source location, never the note. Frame file paths are
-app source/bundle locations (not user files); any home-directory prefix (`/Users/<name>`,
-`C:\Users\<name>`) is rewritten to `~`, and emails, UUIDs, JWTs, and bearer tokens are scrubbed
-from anything that ships.
+The free-form exception message was historically never sent at all, since on the desktop it can
+embed a note title, filename, or content. A message is now permitted
+(`TelemetryErrorDetailSchema.message`, optional), but only after the client has run it through
+`redactText` (`packages/contracts/src/redact.ts`) — the server re-runs redaction in mask mode as
+a backstop. `redactText` strips known-sensitive shapes (secrets, tokens, emails, ids,
+home-directory paths, content-file basenames) rather than proving the remaining prose is
+note-free, so this is narrower than the earlier all-or-nothing "no message field" guarantee. The
+stack is separately reduced to code-location frames only — the leading `Name: message` header
+line is stripped — so a crash's location shows up as, for example, `TypeError` at
+`pushRecords (…/sync-engine.js:120)`. Frame file paths are app source/bundle locations (not user
+files); any home-directory prefix (`/Users/<name>`, `C:\Users\<name>`) is rewritten to `~`, and
+emails, UUIDs, JWTs, and bearer tokens are scrubbed from anything that ships.
 
 ### Vault File Errors
 
@@ -275,33 +299,37 @@ a user's log file even when telemetry is switched off.
 
 Sync-server error reporting is server-side. Because the sync server is end-to-end-blind (it only
 ever holds ciphertext), its own error strings are operational: the redacted message and stack ship
-to Cloudflare Workers logs and Loki (never to Analytics Engine, which only gets the coded
-`server_error_seen` datapoint); this is what makes sync failures debuggable. Server errors are
-attributed to the signed-in `userId` (HMAC-hashed in Analytics Engine, plus device and vault ids
-in the log detail) so a failure can be traced to the account that hit it. Dynamic path segments
-and query strings are normalized away. Expected handled `4xx` responses (e.g.
-`SYNC_PAYMENT_REQUIRED`) are still counted as `server_error_seen` but are logged at `warn` rather
-than `error` level, keeping the error dashboards focused on real failures.
+to Cloudflare's own first-party Workers console logs (with the raw `userId`/`deviceId`/`vaultId`
+attached, since that sink is trusted) and to PostHog Logs (with those same ids HMAC-hashed) —
+never to the PostHog event itself, which only gets the coded `server_error_seen` event with no
+message or stack; this is what makes sync failures debuggable without handing ciphertext-adjacent
+detail to a third party. Server errors are attributed to the signed-in `userId` (hashed the same
+way as desktop's install id before it reaches PostHog) so a failure can be traced to the account
+that hit it. Dynamic path segments and query strings are normalized away. Expected handled `4xx`
+responses (e.g. `SYNC_PAYMENT_REQUIRED`) are still counted as `server_error_seen` but are logged at
+`warn` rather than `error` level, keeping real failures distinguishable from expected noise.
 
-## Error Logs in Grafana (Loki)
+## Error & Diagnostic Logs in PostHog
 
-Error events also become searchable **log lines** in Grafana, backed by a Loki instance running
-next to Grafana on the observability VPS. Analytics Engine stays the canonical metrics store;
-Loki adds the diagnostic detail (stacks, operational messages) that AE rows deliberately omit.
+Error events also become searchable **log lines** in PostHog Logs. This replaced a self-hosted
+Grafana + Loki instance the sync server used to push to; PostHog Logs now carries the diagnostic
+detail (stacks, operational messages) that a PostHog _event_ deliberately omits.
 
-- **Transport**: the sync server pushes log lines to Loki's push API at
-  `{LOKI_URL}/loki/api/v1/push`, guarded by a reverse-proxy bearer token (`LOKI_TOKEN`). Pushes
-  are fire-and-forget in `waitUntil`: a missing config (local dev) is a silent no-op, and a
-  failed push can never affect request handling. Loki's query endpoints are not exposed
-  publicly — Grafana reads Loki over the private docker network.
+- **Transport**: the sync server posts log lines to PostHog Logs' plain OTLP-JSON receiver
+  (`{POSTHOG_HOST}/v1/logs`, `services/posthog-logs.ts`, `pushPostHogLogs`) — no OpenTelemetry SDK
+  is used — authenticated with the PostHog project token (`POSTHOG_KEY`) as a bearer. Pushes are
+  fire-and-forget in `waitUntil`: a missing key (local dev) is a silent no-op, and a failed push
+  can never affect request handling. Records are grouped into one `resourceLogs` entry per `app`
+  (`desktop` / `server`) so `service.name` and `deployment.environment` stay resource-level
+  attributes rather than being duplicated onto every line.
 - **Desktop errors**: `/telemetry/batch` events carrying an `errorCode` or `error` detail are
   forwarded as `app="desktop"` lines containing the event name, error code, surface/action/source,
-  app version, platform, the **redacted stack frames only** (the schema has no message field —
-  messages can embed note content; see Error Reporting above), `log_action` — the operational
-  breadcrumb that keeps log-type error events (which carry no stack of their own) identifiable in
-  Grafana — and `exit_code`, the platform exit status for process-lifecycle events (empty string
-  when absent, since exit code `0` is itself meaningful). Labels stay low-cardinality
-  (`app`/`env`/`level`) — everything else lives inside the JSON line.
+  app version, platform, a **redacted message** (`TelemetryErrorDetailSchema.message` is optional
+  and only accepted after the client has run it through `redactText`; the server re-runs
+  redaction as a backstop) and **redacted stack frames**, `log_action` — the operational
+  breadcrumb that keeps log-type error events (which carry no stack of their own) identifiable —
+  and `exit_code`, the platform exit status for process-lifecycle events (empty string when
+  absent, since exit code `0` is itself meaningful).
 - **Redacted diagnostic logs (`kind=log`, Path A, always-on)**: a main-process electron-log
   transport (`apps/desktop/src/main/telemetry/log-ship.ts`, installed once from `main/index.ts` —
   never from `logger.ts`, which must stay electron-free for worker bundling) intercepts every
@@ -319,8 +347,9 @@ Loki adds the diagnostic detail (stacks, operational messages) that AE rows deli
   forward their own `warn`/`error` records to main over `process.parentPort`
   (`apps/desktop/src/main/lib/log-forward.ts`, electron-free) for the same redaction + ship pass,
   tagged `origin: 'worker'` and `workerName`. The server re-runs `redactLogLine` in mask mode (no
-  salt) as defense-in-depth before writing to Loki (`desktopLogEntry` in `services/loki.ts`) — the
-  client-side redaction is primary; the server pass is a second net, not the source of truth.
+  salt) as defense-in-depth before writing to PostHog Logs (`desktopLogRecord` in
+  `services/posthog-logs.ts`) — the client-side redaction is primary; the server pass is a second
+  net, not the source of truth.
 - **Incident reports (`kind=report`, Path B, opt-in one-time)**: on a real error, the app offers a
   one-time "Send diagnostic report" action (the tab error boundary, IPC-error toasts, and a
   Settings entry — available independent of the telemetry toggle). The
@@ -334,10 +363,10 @@ Loki adds the diagnostic detail (stacks, operational messages) that AE rows deli
   one summary line plus one line per log entry, all tagged `incident_id`, under `kind=report`.
 - **Redaction guarantees**: same non-negotiables as [What Never Ships](#what-never-ships) — no note
   content, titles, attachment filenames, absolute home/vault paths, emails, JWTs/tokens, vault/device
-  keys, or IPs. Unlike the `/telemetry/batch` error pipeline above (message never sent, stack frames
-  only), `kind=log`/`kind=report` message text **does** ship — redaction, not omission, is what makes
-  it safe: secrets are dropped first, paths collapse to `~/` / `<vault>/`, note/attachment basenames
-  are salted-hashed to `[name:hash8].ext`, known id fields (`noteId`, `deviceId`, `installId`, …)
+  keys, or IPs. `kind=log`/`kind=report` message text runs through the same `redactText` as the
+  `/telemetry/batch` error message above; `redactLogLine` additionally redacts each structured
+  `fields` entry: secrets are dropped first, paths collapse to `~/` / `<vault>/`, note/attachment
+  basenames are salted-hashed to `[name:hash8].ext`, known id fields (`noteId`, `deviceId`, `installId`, …)
   are salted-hashed, and emails become `[email:hash8]`. IPs are masked to `<ip>`. UUID-shaped ids in
   free text are salted-hashed on the client (correlatable, like the id fields above); the server's
   re-redaction pass has no salt, so it masks them to a fixed `<id>` instead. A fixed field allowlist
@@ -361,7 +390,7 @@ reason, phase, mode, status, kind, result`, plus numeric metric keys like
   constant (`node.mojom.NodeService`) that is identical for every utility fork and so cannot tell
   our workers apart. A fork that passes no `serviceName` option reports the default
   `Node Utility Process`. The exit status rides along in the line's `exit_code` field rather than
-  inside the error code, so crashes still group by worker in Grafana while the POSIX signal
+  inside the error code, so crashes still group by worker in PostHog Logs while the POSIX signal
   (11 SIGSEGV, 6 SIGABRT) stays visible. A utility worker's clean idle-shutdown (embeddings,
   image-processing, voice-model each exit after ~30s idle) is a lifecycle event, not a fault, so a
   `clean-exit` reason is skipped entirely — only a real fault produces an error event, mirroring
@@ -391,25 +420,19 @@ reason, phase, mode, status, kind, result`, plus numeric metric keys like
 - **Server errors**: `captureServerError` pushes its redacted detail (operational message, stack,
   normalized path, error/status codes) as `app="server"` lines — level `error` for 5xx/unhandled,
   `warn` for handled 4xx.
-- **Beyond route handlers**: failures that never produce a failing HTTP response also reach Loki —
-  scheduled cleanup-task failures (`source="cron"`), token-revoke failures during logout, Resend
-  email send failures (`RESEND_SEND_FAILED`), and `UserSyncState` Durable Object alarm/websocket
-  handler errors (`source="user_sync_state_do"`, pushed directly via the Loki client since no
-  route error handler ever sees them).
-- **Labels** stay low-cardinality (`app`, `env`, `level`, and a fixed-set `kind`:
-  `error | log | report`); everything else lives inside the JSON log line and is filtered in
-  Grafana with `| json`. Never put per-user/per-install values (`installId`, `noteId`, etc.) on a
-  label — they belong in the JSON line.
-- **Retention**: 30 days, enforced by the Loki compactor (single retention for all `kind` values in
-  v1; per-stream retention is not yet implemented).
-- **Dashboard**: `Memry — Logs` (`/d/memry-logs`) shows desktop/server error log panels and
-  error-volume timeseries, with an `env` switch for production/staging. Ad-hoc digging and live
-  tail happen in Grafana Explore against the Loki datasource, e.g.:
-
-  ```
-  {app="desktop", kind="log"} | json
-  {app="desktop", kind="report"} | json | incident_id="MEMRY-…"
-  ```
+- **Beyond route handlers**: failures that never produce a failing HTTP response also reach
+  PostHog Logs — scheduled cleanup-task failures (`source="cron"`), token-revoke failures during
+  logout, Resend email send failures (`RESEND_SEND_FAILED`), and `UserSyncState` Durable Object
+  alarm/websocket handler errors (`source="user_sync_state_do"`, pushed directly via
+  `pushPostHogLogs` since no route error handler ever sees them).
+- **Attributes**: `app` (`desktop`/`server`) and `env` are resource-level attributes shared by
+  every line in a push; `kind` (`error | log | report`) and, when known, `posthogDistinctId` (the
+  already-hashed identity, so PostHog can attribute the line to a person) are per-line attributes;
+  `level` rides in `severityText`. Everything else — the JSON body under `line` in
+  `services/posthog-logs.ts` — is the log body, not an attribute.
+- **Retention**: 14 days, per PostHog Logs' own retention policy.
+- **Viewing**: log lines are searchable in PostHog's Logs product, filterable on the
+  `service.name` / `deployment.environment` / `kind` attributes and by `distinct_id`.
 
 ## Canvas Rollout Panels (Grafana / Analytics Engine)
 
@@ -447,19 +470,19 @@ Go/no-go for flipping the canvas feature flag on by default is recorded in
 
 ## Server Configuration
 
-Set these sync-server variables to enable Loki error-log shipping (unset in local dev, where
-shipping is a no-op):
+Set these sync-server variables to enable PostHog capture and log shipping (unset in local dev,
+where both are a no-op):
 
 ```bash
-LOKI_URL=https://grafana.memrynote.com   # wrangler var
-LOKI_TOKEN=...                           # wrangler secret (reverse-proxy bearer token)
+POSTHOG_KEY=...                          # wrangler secret (PostHog project token)
+POSTHOG_HOST=https://us.i.posthog.com    # wrangler var (staging and production)
 ```
 
 ### Diagnostic Log Endpoints
 
 Two additional endpoints feed the `kind=log` / `kind=report` streams. Both are anonymous (no
-sign-in required), rate-limited per user/IP, Zod-validated, and Loki-only — neither writes to
-Analytics Engine:
+sign-in required), rate-limited per user/IP, Zod-validated, and PostHog-Logs-only — neither
+writes a PostHog product event:
 
 | Endpoint                   | Stream                 | Rate limit    | Payload                                                                                                 |
 | -------------------------- | ---------------------- | ------------- | ------------------------------------------------------------------------------------------------------- |
@@ -468,14 +491,14 @@ Analytics Engine:
 
 A malformed payload is rejected with `400 VALIDATION_ERROR` (only the Zod path + issue code is
 logged, never values, same convention as `/telemetry/batch`). A valid payload always gets `202`,
-including when `LOKI_URL`/`LOKI_TOKEN` are unset — the Loki push inside `pushLokiEntries` is a
-silent no-op in that case, so a dev build never error-spams. The `accountId` field is reserved in
-the report schema for future account attribution but is not currently populated by the client
-(reports are anonymous). `/telemetry/batch` is unchanged by either endpoint.
+including when `POSTHOG_KEY` is unset — the push inside `pushPostHogLogs` is a silent no-op in
+that case, so a dev build never error-spams. The `accountId` field is reserved in the report
+schema for future account attribution but is not currently populated by the client (reports are
+anonymous). `/telemetry/batch` is unchanged by either endpoint.
 
 ## Performance
 
 `trackTelemetry` is debounced and batched. Calls during the first second of startup are deferred
-until after the vault is open so they never delay first paint. On the sync server, Analytics Engine
-writes finish before `/telemetry/batch` responds, while Loki error-log pushes run in
-`waitUntil` so log shipping cannot block the request path.
+until after the vault is open so they never delay first paint. On the sync server, PostHog event
+capture and PostHog Logs pushes both run in `waitUntil` so neither can block the
+`/telemetry/batch` response.
