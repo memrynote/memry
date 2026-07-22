@@ -97,6 +97,21 @@ vi.mock('./embedded-note-editor', () => ({
     <div data-testid={`embedded-note-${noteId}`} />
   )
 }))
+// Stub the picker; its own test covers filtering and selection.
+vi.mock('./canvas-add-card-dialog', () => ({
+  CanvasAddCardDialog: ({
+    open,
+    onCreateNote
+  }: {
+    open: boolean
+    onCreateNote: (title: string) => void
+  }) =>
+    open ? (
+      <button data-testid="stub-create-note" onClick={() => onCreateNote('')}>
+        create
+      </button>
+    ) : null
+}))
 
 function cardEl(id: string, entityId: string, x = 0, y = 0): CardElement {
   return {
@@ -234,7 +249,8 @@ describe('CanvasCardLayer', () => {
     const { api, updateScene } = makeApi([])
     render(<Harness api={api} />)
 
-    fireEvent.click(screen.getByTestId('canvas-new-note'))
+    fireEvent.click(screen.getByTestId('canvas-add-card'))
+    fireEvent.click(screen.getByTestId('stub-create-note'))
     await waitFor(() => expect(mocks.notesCreate).toHaveBeenCalled())
     await waitFor(() => expect(updateScene).toHaveBeenCalled())
     const passed = updateScene.mock.calls[0][0]

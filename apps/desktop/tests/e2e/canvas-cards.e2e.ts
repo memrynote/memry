@@ -54,6 +54,18 @@ async function seedNote(page: Page, title: string, content: string): Promise<str
   return res.note.id
 }
 
+async function seedTask(page: Page, title: string): Promise<string> {
+  const id = await page.evaluate(async (t) => {
+    const projects = await window.api.tasks.listProjects()
+    const projectId = projects?.projects?.[0]?.id
+    if (!projectId) return ''
+    const res = await window.api.tasks.create({ projectId, title: t })
+    return res?.task?.id ?? res?.id ?? ''
+  }, title)
+  if (!id) throw new Error(`seedTask failed for ${title}`)
+  return id
+}
+
 /** Dispatch a canvas-item drop at a client point (defaults to canvas center). */
 async function dropNote(page: Page, noteId: string, dx = 0, dy = 0): Promise<void> {
   await page.evaluate(
@@ -152,18 +164,55 @@ test.describe('Spatial canvas — item cards (M2)', () => {
     await expect(card).toHaveAttribute('data-canvas-card-state', 'dangling', { timeout: 20000 })
   })
 
-  test('capture-first: the New note button creates a note card on the canvas', async ({ page }) => {
+  test('capture-first: the Add card picker creates a note card on the canvas', async ({ page }) => {
     await openVault(page)
     await setSpatialCanvasFlag(page, true)
     const canvasId = await createCanvasFromSidebar(page)
 
-    await page.getByTestId('canvas-new-note').click()
+    await page.getByTestId('canvas-add-card').click()
+    await page.getByTestId('canvas-add-create-note').click()
 
     await expect(page.locator('[data-canvas-card-id]')).toHaveCount(1, { timeout: 20000 })
     await expect
       .poll(async () => cardRects((await sceneOf(page, canvasId)).parsed).length, {
         timeout: 15000
       })
+      .toBe(1)
+  })
+
+  test('the Add card picker places an existing task card on the canvas', async ({ page }) => {
+    await openVault(page)
+    await setSpatialCanvasFlag(page, true)
+    const canvasId = await createCanvasFromSidebar(page)
+
+    const title = `Canvas Task ${Date.now()}`
+    await seedTask(page, title)
+
+    await page.getByTestId('canvas-add-card').click()
+    // The task must reach the search index first, so retype until it shows up
+    // rather than asserting once against a cold index.
+    await expect
+      .poll(
+        async () => {
+          await page.getByTestId('canvas-add-input').fill('')
+          await page.getByTestId('canvas-add-input').fill(title)
+          return page.locator('[data-testid^="canvas-add-item-task:"]').count()
+        },
+        { timeout: 30000 }
+      )
+      .toBeGreaterThan(0)
+
+    await page.locator('[data-testid^="canvas-add-item-task:"]').first().click()
+
+    await expect(page.locator('[data-canvas-card-id]')).toHaveCount(1, { timeout: 20000 })
+    await expect
+      .poll(
+        async () => {
+          const rects = cardRects((await sceneOf(page, canvasId)).parsed)
+          return rects.filter((r) => r.customData?.entityType === 'task').length
+        },
+        { timeout: 15000 }
+      )
       .toBe(1)
   })
 
