@@ -19,6 +19,11 @@ If you pick something that is already on the board, Memry scrolls to the card
 you already have instead of adding a duplicate — look for the **On canvas**
 badge in the results.
 
+A card added from the picker lands in the middle of your view, or in the
+nearest free spot beside it when something is already there. Add three tasks
+and an event in a row and they tile out from the centre instead of piling up on
+one point.
+
 Cards show a live preview: a note's title and the start of its body, a task's
 title and status, an event's title and time. Rename or complete the item
 anywhere in the app and the card updates.
