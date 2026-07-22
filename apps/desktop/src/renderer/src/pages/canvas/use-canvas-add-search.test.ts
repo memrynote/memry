@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
@@ -100,28 +100,44 @@ describe('useCanvasAddSearch', () => {
   })
 
   it('waits out the debounce before issuing either request', async () => {
-    // #given / #when — an open dialog with a query
-    renderHook(() => useCanvasAddSearch(true, 'alpha'))
+    // #given — fake timers so the debounce window is asserted deterministically,
+    // not against a real wall-clock headroom that a loaded CI box can eat into.
+    // Scoped to this test only; restored below so the rest of the suite (which
+    // leans on real-timer waitFor) is unaffected.
+    vi.useFakeTimers()
+    try {
+      // #when — an open dialog with a query
+      renderHook(() => useCanvasAddSearch(true, 'alpha'))
 
-    // #then — partway through the debounce window, neither source has fired
-    await new Promise((resolve) => setTimeout(resolve, 50))
-    expect(mocks.quick).not.toHaveBeenCalled()
-    expect(mocks.searchEvents).not.toHaveBeenCalled()
+      // #then — just short of the debounce window, neither source has fired
+      await vi.advanceTimersByTimeAsync(149)
+      expect(mocks.quick).not.toHaveBeenCalled()
+      expect(mocks.searchEvents).not.toHaveBeenCalled()
 
-    // #when — the debounce window fully elapses
-    // #then — both sources are now called exactly once
-    await waitFor(() => expect(mocks.quick).toHaveBeenCalledTimes(1))
-    expect(mocks.searchEvents).toHaveBeenCalledTimes(1)
+      // #when — the debounce window fully elapses
+      // #then — both sources are now called exactly once
+      await vi.advanceTimersByTimeAsync(2)
+      expect(mocks.quick).toHaveBeenCalledTimes(1)
+      expect(mocks.searchEvents).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('does not let a stale response overwrite a newer, still in-flight query', async () => {
-    // #given — the first query's search call hangs until manually released
+    // #given — the first query's search call hangs until manually released.
+    // The second call (the 'fresh' query, once its own debounce fires) never
+    // resolves either — a fallback is required here, not just the once(),
+    // since a queued microtask flush below can cross into its debounce.
     let release: (value: unknown) => void = () => {}
-    mocks.quick.mockReset().mockReturnValueOnce(
-      new Promise((resolve) => {
-        release = resolve
-      })
-    )
+    mocks.quick
+      .mockReset()
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          release = resolve
+        })
+      )
+      .mockReturnValue(new Promise(() => {}))
 
     // #when — the stale query's debounce fires, then a second query
     // supersedes it before either has settled
@@ -133,8 +149,10 @@ describe('useCanvasAddSearch', () => {
 
     // #then — releasing the stale response while the newer query is still
     // debouncing must not overwrite results or flip loading off
-    release({ results: [{ id: 'stale' }], queryTimeMs: 1 })
-    await new Promise((resolve) => setTimeout(resolve, 20))
+    await act(async () => {
+      release({ results: [{ id: 'stale' }], queryTimeMs: 1 })
+      await Promise.resolve()
+    })
     expect(result.current.results).toEqual([])
     expect(result.current.loading).toBe(true)
   })

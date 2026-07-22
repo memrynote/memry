@@ -14,14 +14,19 @@ const mocks = vi.hoisted(() => ({
   }
 }))
 
-vi.mock('@memry/i18n/renderer', () => ({
-  useT: () => ({
-    t: (key: string, vars?: Record<string, unknown>) =>
-      vars?.query
-        ? `${key.split('.').at(-1)}:${String(vars.query)}`
-        : (key.split('.').at(-1) ?? key)
-  })
-}))
+// Production react-i18next hands back a referentially-stable `t` across
+// renders, so the mock does too — a fresh `t` (or a fresh `{ t }` wrapper)
+// every call would give the dialog's `groups` memo a new identity on every
+// render regardless of its own deps, masking whether the highlight effect's
+// dependency array is actually correct.
+vi.mock('@memry/i18n/renderer', () => {
+  const t = (key: string, vars?: Record<string, unknown>) =>
+    vars?.query ? `${key.split('.').at(-1)}:${String(vars.query)}` : (key.split('.').at(-1) ?? key)
+  const useTResult = { t }
+  return {
+    useT: () => useTResult
+  }
+})
 vi.mock('./use-canvas-add-search', () => ({
   useCanvasAddSearch: () => mocks.sources
 }))
@@ -180,5 +185,27 @@ describe('CanvasAddCardDialog', () => {
     fireEvent.keyDown(screen.getByTestId('canvas-add-input'), { key: 'Enter' })
     expect(props.onPick).toHaveBeenCalledWith('note', 'n1')
     expect(props.onCreateNote).not.toHaveBeenCalled()
+  })
+
+  it('re-highlights the create row when the query clears before events catches up', async () => {
+    // The real hook clears `events` one render after the query does (#869),
+    // so mirror that here: keep `mocks.sources.events` populated across the
+    // clear instead of resetting it. With a stable `t`, `groups` keeps its
+    // identity across this transition too, so the highlight effect only
+    // notices the clear if `query` is in its own dependency array.
+    mocks.sources = { results: [], events: [eventItem('e1', 'Standup')], loading: false }
+    const props = setup()
+    fireEvent.change(screen.getByTestId('canvas-add-input'), { target: { value: 'stand' } })
+    await waitFor(() =>
+      expect(screen.getByTestId('canvas-add-item-calendar_event:e1')).toHaveAttribute(
+        'data-selected',
+        'true'
+      )
+    )
+
+    fireEvent.change(screen.getByTestId('canvas-add-input'), { target: { value: '' } })
+    fireEvent.keyDown(screen.getByTestId('canvas-add-input'), { key: 'Enter' })
+    expect(props.onCreateNote).toHaveBeenCalledWith('')
+    expect(props.onPick).not.toHaveBeenCalled()
   })
 })
