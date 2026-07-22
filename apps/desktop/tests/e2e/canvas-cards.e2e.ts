@@ -189,17 +189,19 @@ test.describe('Spatial canvas — item cards (M2)', () => {
     await seedTask(page, title)
 
     await page.getByTestId('canvas-add-card').click()
-    // The task must reach the search index first, so retype until it shows up
-    // rather than asserting once against a cold index.
+    // The picker debounces search 150ms after the query changes (see
+    // use-canvas-add-search.ts). Fill once and poll for the row: re-filling
+    // on every poll tick (as an earlier version of this test did) clears the
+    // query to '' first, which synchronously resets results to empty and
+    // races the very debounce it's trying to observe, so the row can never
+    // appear before the next reset — a self-cancelling loop, not evidence of
+    // a slow index (verified empirically: search.quick sees the task
+    // immediately after creation).
+    await page.getByTestId('canvas-add-input').fill(title)
     await expect
-      .poll(
-        async () => {
-          await page.getByTestId('canvas-add-input').fill('')
-          await page.getByTestId('canvas-add-input').fill(title)
-          return page.locator('[data-testid^="canvas-add-item-task:"]').count()
-        },
-        { timeout: 30000 }
-      )
+      .poll(async () => page.locator('[data-testid^="canvas-add-item-task:"]').count(), {
+        timeout: 10000
+      })
       .toBeGreaterThan(0)
 
     await page.locator('[data-testid^="canvas-add-item-task:"]').first().click()
