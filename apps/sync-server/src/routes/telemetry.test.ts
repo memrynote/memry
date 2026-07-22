@@ -39,22 +39,12 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-function createDataset() {
-  const writeDataPoint = vi.fn()
-  const dataset = { writeDataPoint } as unknown as AnalyticsEngineDataset
-  return { dataset, writeDataPoint }
-}
-
 function createEnv(overrides?: Record<string, unknown>) {
-  const { dataset, writeDataPoint } = createDataset()
-  const landing = createDataset()
   const env = {
     DB: {} as D1Database,
     STORAGE: {} as R2Bucket,
     USER_SYNC_STATE: {} as DurableObjectNamespace,
     LINKING_SESSION: {} as DurableObjectNamespace,
-    PRODUCT_TELEMETRY: dataset,
-    LANDING_TELEMETRY: landing.dataset,
     TELEMETRY_HMAC_KEY: 'test-hmac-key',
     ENVIRONMENT: 'development',
     ALLOWED_ORIGIN: 'https://app.memry.test',
@@ -66,13 +56,13 @@ function createEnv(overrides?: Record<string, unknown>) {
     WEBHOOK_HMAC_KEY: '',
     ...overrides
   }
-  return { env, writeDataPoint, writeLandingDataPoint: landing.writeDataPoint }
+  return { env }
 }
 
 describe('POST /telemetry/batch', () => {
   it('accepts a valid anonymous batch and returns 202 with the accepted count', async () => {
-    // #given a valid telemetry batch and a wired analytics dataset
-    const { env, writeDataPoint } = createEnv()
+    // #given a valid telemetry batch
+    const { env } = createEnv()
     const request = new Request('http://localhost/telemetry/batch', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -86,7 +76,6 @@ describe('POST /telemetry/batch', () => {
     expect(response.status).toBe(202)
     const body = (await response.json()) as { accepted: number }
     expect(body.accepted).toBe(1)
-    expect(writeDataPoint).toHaveBeenCalledTimes(1)
   })
 
   it('does not require an Authorization header', async () => {
@@ -180,125 +169,6 @@ describe('POST /telemetry/batch', () => {
   })
 })
 
-describe('POST /telemetry/web', () => {
-  const VALID_VISITOR_ID = '550e8400-e29b-41d4-a716-446655440003'
-
-  const sampleWebEvent = {
-    name: 'landing_pricing_cta_click',
-    page: '/pricing',
-    target: 'pricing:plus',
-    utm_source: 'waitlist',
-    utm_medium: 'email'
-  }
-
-  const sampleWebBatch = {
-    visitorId: VALID_VISITOR_ID,
-    events: [sampleWebEvent]
-  }
-
-  function postWeb(env: Record<string, unknown>, body: unknown) {
-    const request = new Request('http://localhost/telemetry/web', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: typeof body === 'string' ? body : JSON.stringify(body)
-    })
-    return app.request(request, {}, env)
-  }
-
-  it('accepts a valid batch and writes one landing datapoint per event', async () => {
-    // #given a valid landing batch with two events
-    const { env, writeDataPoint, writeLandingDataPoint } = createEnv()
-
-    // #when posting through the app without authentication
-    const response = await postWeb(env, {
-      ...sampleWebBatch,
-      events: [sampleWebEvent, { name: 'landing_page_view', page: '/' }]
-    })
-
-    // #then it 202s and writes to LANDING_TELEMETRY only
-    expect(response.status).toBe(202)
-    const body = (await response.json()) as { accepted: number }
-    expect(body.accepted).toBe(2)
-    expect(writeLandingDataPoint).toHaveBeenCalledTimes(2)
-    expect(writeDataPoint).not.toHaveBeenCalled()
-  })
-
-  it('writes the documented blob layout and a hashed visitor index', async () => {
-    // #given a valid batch with every UTM field set
-    const { env, writeLandingDataPoint } = createEnv()
-
-    // #when posting
-    const response = await postWeb(env, {
-      ...sampleWebBatch,
-      events: [{ ...sampleWebEvent, utm_campaign: 'launch', utm_content: 'cta', utm_term: 'notes' }]
-    })
-
-    // #then blob1..blob8 follow the layout and index1 never holds the raw id
-    expect(response.status).toBe(202)
-    const point = writeLandingDataPoint.mock.calls[0][0] as {
-      blobs: string[]
-      doubles: number[]
-      indexes: string[]
-    }
-    expect(point.blobs).toEqual([
-      'landing_pricing_cta_click',
-      '/pricing',
-      'pricing:plus',
-      'waitlist',
-      'email',
-      'launch',
-      'cta',
-      'notes'
-    ])
-    expect(point.doubles).toEqual([1])
-    expect(point.indexes).toHaveLength(1)
-    expect(point.indexes[0]).toMatch(/^[0-9a-f]{64}$/)
-    expect(point.indexes[0]).not.toContain(VALID_VISITOR_ID)
-  })
-
-  it('returns 400 for invalid payloads', async () => {
-    // #given a batch missing its events
-    const { env, writeLandingDataPoint } = createEnv()
-
-    // #when posting
-    const response = await postWeb(env, { visitorId: 'not-a-uuid' })
-
-    // #then validation fails with 400 and nothing is written
-    expect(response.status).toBe(400)
-    expect(writeLandingDataPoint).not.toHaveBeenCalled()
-  })
-
-  it('rejects values that look like emails, URLs, or raw identifiers', async () => {
-    // #given events whose values trip the privacy guards
-    const { env, writeLandingDataPoint } = createEnv()
-    const badEvents = [
-      { name: 'landing_nav_click', page: '/pricing', target: 'user@example.com' },
-      { name: 'landing_nav_click', page: '/pricing', utm_source: 'https://evil.example' },
-      { name: 'landing_nav_click', page: `/note/${VALID_VISITOR_ID}` }
-    ]
-
-    // #when posting each
-    for (const event of badEvents) {
-      const response = await postWeb(env, { ...sampleWebBatch, events: [event] })
-
-      // #then the schema rejects it with 400
-      expect(response.status).toBe(400)
-    }
-    expect(writeLandingDataPoint).not.toHaveBeenCalled()
-  })
-
-  it('returns 400 for malformed JSON bodies', async () => {
-    // #given an invalid JSON body
-    const { env } = createEnv()
-
-    // #when posting
-    const response = await postWeb(env, 'not-json')
-
-    // #then the route returns 400
-    expect(response.status).toBe(400)
-  })
-})
-
 describe('POST /telemetry/logs', () => {
   const sampleLogLine = {
     ts: VALID_TIMESTAMP,
@@ -328,24 +198,28 @@ describe('POST /telemetry/logs', () => {
     return app.request(request, {}, env)
   }
 
-  it('accepts a valid log batch, returns 202, and pushes lines to Loki', async () => {
-    // #given a valid diagnostic log batch and a configured Loki target
-    const { env } = createEnv({ LOKI_URL: 'https://grafana.example.com', LOKI_TOKEN: 'tok' })
-    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }))
+  it('accepts a valid log batch, returns 202, and pushes lines to PostHog Logs', async () => {
+    // #given a valid diagnostic log batch and a configured PostHog target
+    const { env } = createEnv({
+      POSTHOG_KEY: 'phc_test',
+      POSTHOG_HOST: 'https://us.i.posthog.com'
+    })
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 200 }))
     vi.stubGlobal('fetch', fetchMock)
 
     // #when posting through the app
     const response = await postLogs(env, sampleLogBatch)
 
-    // #then it 202s with the accepted count and eventually pushes to Loki
+    // #then it 202s with the accepted count and eventually pushes to PostHog Logs
     expect(response.status).toBe(202)
     const body = (await response.json()) as { accepted: number }
     expect(body.accepted).toBe(1)
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled())
     const [url, init] = fetchMock.mock.calls[0]
-    expect(String(url)).toContain('grafana.example.com')
+    expect(String(url)).toBe('https://us.i.posthog.com/v1/logs')
     const parsedBody = JSON.parse((init as { body: string }).body)
-    expect(parsedBody.streams[0].stream).toMatchObject({ kind: 'log' })
+    const record = parsedBody.resourceLogs[0].scopeLogs[0].logRecords[0]
+    expect(record.attributes).toContainEqual({ key: 'kind', value: { stringValue: 'log' } })
   })
 
   it('returns 400 for invalid payloads', async () => {
@@ -370,9 +244,9 @@ describe('POST /telemetry/logs', () => {
     expect(response.status).toBe(400)
   })
 
-  it('still 202s and does not call fetch when Loki is unconfigured', async () => {
-    // #given no LOKI_URL/LOKI_TOKEN
-    const { env } = createEnv({ LOKI_URL: undefined, LOKI_TOKEN: undefined })
+  it('still 202s and does not call fetch when PostHog is unconfigured', async () => {
+    // #given no POSTHOG_KEY/POSTHOG_HOST
+    const { env } = createEnv()
     const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
 
@@ -393,17 +267,58 @@ describe('telemetry route + rate limiter', () => {
     )
   })
 
-  it('uses createRateLimiter with the telemetry-web key prefix', async () => {
-    const { createRateLimiter } = await import('../middleware/rate-limit')
-    expect(createRateLimiter).toHaveBeenCalledWith(
-      expect.objectContaining({ keyPrefix: 'telemetry-web' })
-    )
-  })
-
   it('uses createRateLimiter with the telemetry-logs key prefix', async () => {
     const { createRateLimiter } = await import('../middleware/rate-limit')
     expect(createRateLimiter).toHaveBeenCalledWith(
       expect.objectContaining({ keyPrefix: 'telemetry-logs' })
     )
+  })
+})
+
+describe('POST /telemetry/batch → PostHog', () => {
+  it('captures each event via PostHog', async () => {
+    // #given PostHog configured
+    const fetchSpy = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }))
+    vi.stubGlobal('fetch', fetchSpy)
+    const { env } = createEnv({
+      POSTHOG_KEY: 'phc_test',
+      POSTHOG_HOST: 'https://us.i.posthog.com'
+    })
+    const request = new Request('http://localhost/telemetry/batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        schemaVersion: 1,
+        installId: '11111111-1111-4111-8111-111111111111',
+        sessionId: '22222222-2222-4222-8222-222222222222',
+        appVersion: '2026.7.1',
+        buildChannel: 'production',
+        platform: 'darwin',
+        arch: 'arm64',
+        locale: 'tr-TR',
+        timezoneOffsetMinutes: 180,
+        authState: 'anonymous',
+        syncState: 'enabled',
+        events: [
+          {
+            id: '33333333-3333-4333-8333-333333333333',
+            name: 'note_created',
+            occurredAt: '2026-07-22T10:00:00.000Z',
+            surface: 'notes',
+            action: 'create'
+          }
+        ]
+      })
+    })
+
+    // #when posting through the app
+    const response = await app.request(request, {}, env)
+
+    // #then it captures via PostHog
+    expect(response.status).toBe(202)
+    const captureCall = fetchSpy.mock.calls.find(([url]) => String(url).endsWith('/batch/'))
+    expect(captureCall).toBeDefined()
+    const body = JSON.parse((captureCall?.[1] as RequestInit).body as string)
+    expect(body.batch.map((e: { event: string }) => e.event)).toContain('note_created')
   })
 })

@@ -196,8 +196,8 @@ describe('scheduled cleanup', () => {
     vi.unstubAllGlobals()
   })
 
-  it('captures each failed cleanup task to Loki', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }))
+  it('captures each failed cleanup task to PostHog', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }))
     vi.stubGlobal('fetch', fetchMock)
     vi.spyOn(console, 'error').mockImplementation(() => undefined)
     vi.spyOn(console, 'warn').mockImplementation(() => undefined)
@@ -209,11 +209,9 @@ describe('scheduled cleanup', () => {
         }),
         batch: vi.fn().mockRejectedValue(new Error('D1 down'))
       },
-      PRODUCT_TELEMETRY: { writeDataPoint: vi.fn() },
-      TELEMETRY_HMAC_KEY: 'secret',
       ENVIRONMENT: 'test',
-      LOKI_URL: 'https://grafana.example.com',
-      LOKI_TOKEN: 'tok'
+      POSTHOG_KEY: 'phc_test',
+      POSTHOG_HOST: 'https://us.i.posthog.com'
     })
 
     await worker.scheduled(
@@ -222,16 +220,16 @@ describe('scheduled cleanup', () => {
       { waitUntil: vi.fn(), passThroughOnException: vi.fn() } as never
     )
 
-    // all 8 cleanup tasks fail against the broken DB — each must reach Loki
-    expect(fetchMock).toHaveBeenCalledTimes(8)
-    const body = JSON.parse(fetchMock.mock.calls[0][1].body)
-    expect(body.streams[0].stream).toEqual({
-      app: 'server',
-      env: 'test',
-      level: 'error',
-      kind: 'error'
-    })
-    const line = JSON.parse(body.streams[0].values[0][1])
+    // all 8 cleanup tasks fail against the broken DB — each must reach PostHog
+    // Logs (redacted detail) and PostHog events (server_error_seen), one of each per failure.
+    const logCalls = fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/v1/logs'))
+    const eventCalls = fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/batch/'))
+    expect(logCalls).toHaveLength(8)
+    expect(eventCalls).toHaveLength(8)
+    const body = JSON.parse((logCalls[0][1] as RequestInit).body as string)
+    const record = body.resourceLogs[0].scopeLogs[0].logRecords[0]
+    expect(record.severityText).toBe('error')
+    const line = JSON.parse(record.body.stringValue)
     expect(line.source).toBe('cron')
     expect(line.action).toMatch(/^cleanup_/)
     expect(line.message).toBe('D1 down')

@@ -78,6 +78,12 @@ export default defineConfig(({ mode }) => {
         '@': path.resolve(__dirname, './src')
       }
     },
+    define: {
+      // Vite only exposes VITE_-prefixed vars; forward Vercel's build-time
+      // VERCEL_ENV ('production' | 'preview' | 'development') so the app can
+      // tell real production apart from preview deploys, which `MODE` cannot.
+      'import.meta.env.VITE_VERCEL_ENV': JSON.stringify(process.env.VERCEL_ENV ?? '')
+    },
     build: {
       rollupOptions: {
         output: {

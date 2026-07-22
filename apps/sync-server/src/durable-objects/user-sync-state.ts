@@ -4,7 +4,7 @@ import { redactSensitive } from '@memry/contracts/telemetry-api'
 
 import { ErrorCodes } from '../lib/errors'
 import { verifyAccessToken } from '../lib/jwt-verify'
-import { pushLokiEntries } from '../services/loki'
+import { pushPostHogLogs } from '../services/posthog-logs'
 import type { Bindings } from '../types'
 
 interface WsAttachment {
@@ -253,9 +253,9 @@ export class UserSyncState extends DurableObject<Bindings> {
   }
 
   // Errors in websocket/alarm handlers never bubble to a route (and its
-  // errorHandler → Loki path), so push them to Loki directly.
+  // errorHandler → PostHog Logs path), so push them to PostHog Logs directly.
   private captureError(action: string, error: unknown): Promise<void> {
-    return pushLokiEntries(this.env, [
+    return pushPostHogLogs(this.env, [
       {
         level: 'error',
         app: 'server',

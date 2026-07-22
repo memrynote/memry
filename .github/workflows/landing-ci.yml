@@ -1,0 +1,79 @@
+name: Landing CI
+
+# apps/landing had no CI job at all: its tests run under node:test + tsx rather
+# than the turbo vitest pipeline, so nothing ever executed them on a PR. That
+# went unnoticed until the PostHog migration rewrote analytics.test.ts — a
+# rewritten test file CI never runs is worse than no test file, because it reads
+# as coverage. This workflow closes that gap.
+#
+# csp.test.ts in particular is load-bearing: the landing site ingests analytics
+# and session replay through a reverse-proxy subdomain that must be listed
+# explicitly in vercel.json's connect-src. A previous CSP change dropped it and
+# silently killed all landing analytics for 16 days.
+
+on:
+  pull_request:
+    paths:
+      - 'apps/landing/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'turbo.json'
+      - '.github/workflows/landing-ci.yml'
+  push:
+    paths:
+      - 'apps/landing/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'turbo.json'
+      - '.github/workflows/landing-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: landing-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: true
+  HUSKY: 0
+  SKIP_ELECTRON_REBUILD: 1
+  TURBO_TELEMETRY_DISABLED: 1
+
+jobs:
+  landing:
+    name: Typecheck, test, and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck landing
+        run: pnpm --filter @memry/landing exec tsc --noEmit
+
+      - name: Test landing
+        run: pnpm --filter @memry/landing test
+
+      # The build is what proves the posthog-js bundle subpath actually resolves;
+      # a bad import only surfaces at bundle time, not in the node:test run.
+      - name: Build landing
+        run: pnpm --filter @memry/landing build

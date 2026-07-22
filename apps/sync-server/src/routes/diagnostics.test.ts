@@ -40,8 +40,8 @@ function createEnv(overrides?: Record<string, unknown>) {
     DB: {} as D1Database,
     TELEMETRY_HMAC_KEY: 'test-hmac-key',
     ENVIRONMENT: 'development',
-    LOKI_URL: 'https://grafana.example.com',
-    LOKI_TOKEN: 'tok',
+    POSTHOG_KEY: 'phc_test',
+    POSTHOG_HOST: 'https://us.i.posthog.com',
     ...overrides
   }
 }
@@ -60,24 +60,25 @@ afterEach(() => {
 })
 
 describe('POST /diagnostics/report', () => {
-  it('202s and pushes a report to Loki', async () => {
-    // #given a valid diagnostic report and a configured Loki target
+  it('202s and pushes a report to PostHog Logs', async () => {
+    // #given a valid diagnostic report and a configured PostHog target
     const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }))
     vi.stubGlobal('fetch', fetchMock)
 
     // #when posting through the app
     const response = await postReport(createEnv(), validReport)
 
-    // #then it 202s with the incidentId and eventually pushes to Loki
+    // #then it 202s with the incidentId and eventually pushes to PostHog Logs
     expect(response.status).toBe(202)
     expect((await response.json()) as { incidentId: string }).toEqual({
       incidentId: 'MEMRY-AB12CD34'
     })
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled())
     const [url, init] = fetchMock.mock.calls[0]
-    expect(String(url)).toContain('grafana.example.com')
+    expect(String(url)).toBe('https://us.i.posthog.com/v1/logs')
     const parsedBody = JSON.parse((init as { body: string }).body)
-    expect(parsedBody.streams[0].stream).toMatchObject({ kind: 'report' })
+    const record = parsedBody.resourceLogs[0].scopeLogs[0].logRecords[0]
+    expect(record.attributes).toContainEqual({ key: 'kind', value: { stringValue: 'report' } })
   })
 
   it('returns 400 on invalid payload', async () => {
@@ -96,14 +97,14 @@ describe('POST /diagnostics/report', () => {
     expect(response.status).toBe(400)
   })
 
-  it('still 202s (no-op) when Loki is unconfigured', async () => {
-    // #given no LOKI_URL/LOKI_TOKEN
+  it('still 202s (no-op) when PostHog is unconfigured', async () => {
+    // #given no POSTHOG_KEY/POSTHOG_HOST
     const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
 
     // #when posting a valid report
     const response = await postReport(
-      createEnv({ LOKI_URL: undefined, LOKI_TOKEN: undefined }),
+      createEnv({ POSTHOG_KEY: undefined, POSTHOG_HOST: undefined }),
       validReport
     )
 

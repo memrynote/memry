@@ -19,9 +19,36 @@ describe('landing SEO signals', () => {
   })
 
   it('keeps landing deployment config focused on memrynote.com', () => {
-    const vercelConfig = readFileSync(new URL('../../vercel.json', import.meta.url), 'utf8')
+    const vercelConfig = JSON.parse(
+      readFileSync(new URL('../../vercel.json', import.meta.url), 'utf8')
+    ) as {
+      redirects?: {
+        has?: { type: string; value: string }[]
+        destination: string
+        permanent?: boolean
+      }[]
+    }
 
-    assert.doesNotMatch(vercelConfig, /memrynote\.ai/)
+    // memrynote.ai is a legitimately owned alias domain. It may appear ONLY as a
+    // redirect SOURCE that forwards to memrynote.com — that redirect is what makes
+    // memrynote.com canonical, so banning the string outright (as this test used to)
+    // would forbid the very mechanism it exists to protect. What must never happen is
+    // .ai appearing as a destination, which would split link equity across two hosts.
+    const redirects = vercelConfig.redirects ?? []
+    const aliasRedirects = redirects.filter((redirect) =>
+      redirect.has?.some((condition) => condition.value.endsWith('memrynote.ai'))
+    )
+
+    assert.ok(aliasRedirects.length > 0, 'expected memrynote.ai to be redirected to memrynote.com')
+
+    for (const redirect of aliasRedirects) {
+      assert.match(redirect.destination, /^https:\/\/memrynote\.com\//)
+      assert.equal(redirect.permanent, true, 'alias redirects must be permanent to consolidate SEO')
+    }
+
+    for (const redirect of redirects) {
+      assert.doesNotMatch(redirect.destination, /memrynote\.ai/)
+    }
   })
 
   it('keeps the main sitelink candidates as real route metadata', () => {

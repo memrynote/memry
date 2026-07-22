@@ -50,6 +50,7 @@ export const TelemetryEventNameSchema = z.enum([
   'command_palette_opened',
   'app_update_installed',
   'app_error_seen',
+  'app_crashed',
   'canvas_sync_conflict_copy',
   'canvas_too_large',
   'sync_skipped_unknown_type',
@@ -96,8 +97,28 @@ export const SafeDimensionValueSchema = z
     message: 'Telemetry dimension values must not contain raw identifiers'
   })
 
+// PostHog treats these as reserved/special-purpose property names regardless of
+// which object they land on (event properties, person properties, etc). A `$`
+// prefix is PostHog's own reserved-property convention; distinct_id in
+// particular lives in a different namespace on PostHogEvent (top-level, not
+// under `properties`) than anything productEvent itself writes, so ordering
+// tricks there cannot protect it — the key must never be accepted here.
+const RESERVED_DIMENSION_KEYS = new Set([
+  'distinct_id',
+  'set',
+  'set_once',
+  'groups',
+  'session_id',
+  'ip'
+])
+
+export const SafeDimensionKeySchema = SafeDimensionValueSchema.refine(
+  (key) => !key.startsWith('$') && !RESERVED_DIMENSION_KEYS.has(key),
+  { message: 'Telemetry dimension keys must not use a PostHog-reserved name' }
+)
+
 export const TelemetryDimensionsSchema = z
-  .record(SafeDimensionValueSchema, SafeDimensionValueSchema)
+  .record(SafeDimensionKeySchema, SafeDimensionValueSchema)
   .refine((dimensions) => Object.keys(dimensions).length <= 1, {
     message: 'Telemetry events support at most one dimension'
   })
@@ -114,9 +135,11 @@ export const TelemetryMetricsSchema = z.object({
 })
 
 export const TelemetryErrorDetailSchema = z.object({
-  // NOTE: there is intentionally NO free-form message field. On the desktop an
-  // error message can embed a note title, filename, or content, so we only ever
-  // ship the stack frames (code locations) and the React component stack.
+  // Historically there was NO message field: on the desktop an error message can
+  // embed a note title, filename, or content. That rule predates redact.ts. The
+  // message is now allowed, but ONLY after the client has run it through
+  // redactText — the server re-runs redaction in mask mode as a backstop.
+  message: z.string().max(512).optional(),
   stack: z.string().max(4000).optional(),
   componentStack: z.string().max(2000).optional()
 })
@@ -151,39 +174,6 @@ export const TelemetryBatchSchema = z.object({
   clientQueueDepth: z.number().int().min(0).max(1000).optional(),
   events: z.array(TelemetryEventSchema).min(1).max(100)
 })
-
-// --- Landing web telemetry ---------------------------------------------------
-// Anonymous events from the marketing site (apps/landing). Privacy mirror of the
-// desktop schema above: slug-like event names/targets, path-only pages, bounded
-// UTM values — no emails, URLs, raw identifiers, or free-form strings.
-const LANDING_EVENT_NAME = /^[a-z0-9_]{1,64}$/
-const LANDING_PAGE_PATH = /^\/[a-zA-Z0-9\-._~/]{0,199}$/
-const LANDING_TARGET = /^[a-zA-Z0-9:._-]{1,120}$/
-const LANDING_UTM_VALUE = /^(?!.*@)(?!.*:\/\/)(?!.*[/\\]).{1,120}$/
-
-const withoutRawIdentifiers = <T extends z.ZodString>(schema: T) =>
-  schema.refine((value) => !UUID_SHAPED_VALUE.test(value), {
-    message: 'Landing telemetry values must not contain raw identifiers'
-  })
-
-export const LandingTelemetryEventSchema = z.object({
-  name: z.string().regex(LANDING_EVENT_NAME),
-  page: withoutRawIdentifiers(z.string().regex(LANDING_PAGE_PATH)),
-  target: withoutRawIdentifiers(z.string().regex(LANDING_TARGET)).optional(),
-  utm_source: withoutRawIdentifiers(z.string().regex(LANDING_UTM_VALUE)).optional(),
-  utm_medium: withoutRawIdentifiers(z.string().regex(LANDING_UTM_VALUE)).optional(),
-  utm_campaign: withoutRawIdentifiers(z.string().regex(LANDING_UTM_VALUE)).optional(),
-  utm_content: withoutRawIdentifiers(z.string().regex(LANDING_UTM_VALUE)).optional(),
-  utm_term: withoutRawIdentifiers(z.string().regex(LANDING_UTM_VALUE)).optional()
-})
-
-export const LandingTelemetryBatchSchema = z.object({
-  visitorId: z.string().uuid(),
-  events: z.array(LandingTelemetryEventSchema).min(1).max(20)
-})
-
-export type LandingTelemetryEvent = z.infer<typeof LandingTelemetryEventSchema>
-export type LandingTelemetryBatch = z.infer<typeof LandingTelemetryBatchSchema>
 
 export type TelemetryEventName = z.infer<typeof TelemetryEventNameSchema>
 export type TelemetrySurface = z.infer<typeof TelemetrySurfaceSchema>
@@ -452,9 +442,11 @@ export const normalizeWindowError = (report: WindowErrorReport): Error => {
 
 /**
  * Build the redacted, length-capped error detail attached to `app_error_seen`
- * desktop telemetry. Privacy: we NEVER send the error message (it can contain a
- * note title/filename/content) — only the stack frames (code locations) and the
- * React component stack, with home paths and stray identifiers scrubbed.
+ * desktop telemetry. buildErrorDetail itself never populates `message` — a raw
+ * error message can contain a note title/filename/content — so this only sends
+ * the stack frames (code locations) and the React component stack, with home
+ * paths and stray identifiers scrubbed. See TelemetryErrorDetailSchema.message
+ * above for the contract's own optional, redacted message field.
  * Returns undefined when there is nothing useful to send.
  */
 export const buildErrorDetail = (

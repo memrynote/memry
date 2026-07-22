@@ -135,11 +135,16 @@ export function LoginPage() {
               {toCheckout ? 'Sign in to continue' : 'Welcome to memrynote'}
             </h1>
             <p className="mt-2 text-center text-sm text-muted text-balance">
-              {toCheckout
-                ? 'Log in first to choose your plan and check out.'
-                : step === 'email'
-                  ? 'Sign in with your email to continue.'
-                  : `We emailed a 6-digit code to ${email}.`}
+              {toCheckout ? (
+                'Log in first to choose your plan and check out.'
+              ) : step === 'email' ? (
+                'Sign in with your email to continue.'
+              ) : (
+                <>
+                  {/* data-ph-mask: keeps the entered email out of session replay */}
+                  We emailed a 6-digit code to <span data-ph-mask>{email}</span>.
+                </>
+              )}
             </p>
 
             <AnimatePresence>

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  LandingTelemetryBatchSchema,
   TelemetryBatchSchema,
+  TelemetryErrorDetailSchema,
   TelemetryEventNameSchema,
   TelemetryEventSchema,
   TelemetrySurfaceSchema,
@@ -348,6 +348,58 @@ describe('TelemetryBatchSchema', () => {
       expect(result.success).toBe(false)
     })
 
+    it('rejects reserved PostHog dimension keys, one at a time', () => {
+      // #given each key PostHog treats as reserved/special-purpose
+      const reservedKeys = [
+        'distinct_id',
+        '$distinct_id',
+        '$set',
+        '$set_once',
+        'set',
+        'set_once',
+        'groups',
+        'session_id',
+        'ip'
+      ]
+
+      for (const key of reservedKeys) {
+        // #when an event carries that key as its one dimension
+        const batch = {
+          ...baseBatch,
+          events: [{ ...baseEvent, dimensions: { [key]: 'safe_value' } }]
+        }
+        const result = TelemetryBatchSchema.safeParse(batch)
+
+        // #then validation fails — a caller cannot smuggle an identity field
+        // through the dimensions bag
+        expect(result.success, `expected "${key}" to be rejected`).toBe(false)
+      }
+    })
+
+    it('still accepts a representative real dimension key from the desktop app', () => {
+      // #given the actual dimension keys the desktop app sends today (grepped
+      // from apps/desktop/src): log_action, capture_type, setting, from_version,
+      // itemType, transport, result_bucket
+      for (const key of [
+        'log_action',
+        'capture_type',
+        'setting',
+        'from_version',
+        'itemType',
+        'transport',
+        'result_bucket'
+      ]) {
+        const batch = {
+          ...baseBatch,
+          events: [{ ...baseEvent, dimensions: { [key]: 'safe_value' } }]
+        }
+        const result = TelemetryBatchSchema.safeParse(batch)
+
+        // #then none of the desktop's real keys are collateral damage
+        expect(result.success, `expected "${key}" to still validate`).toBe(true)
+      }
+    })
+
     it('rejects an action with a path separator', () => {
       // #given an event whose action contains a slash
       const batch = {
@@ -493,74 +545,6 @@ describe('canvas rollout telemetry', () => {
 
   it('still rejects an unknown event name', () => {
     expect(TelemetryEventNameSchema.safeParse('canvas_exploded').success).toBe(false)
-  })
-})
-
-describe('LandingTelemetryBatchSchema', () => {
-  const baseLandingBatch = {
-    visitorId: VALID_INSTALL_ID,
-    events: [
-      {
-        name: 'landing_pricing_cta_click',
-        page: '/pricing',
-        target: 'pricing:plus',
-        utm_source: 'waitlist',
-        utm_medium: 'email',
-        utm_campaign: 'waitlist_01_launch',
-        utm_content: 'primary_cta',
-        utm_term: 'notes'
-      }
-    ]
-  }
-
-  it('accepts a valid landing batch', () => {
-    expect(LandingTelemetryBatchSchema.safeParse(baseLandingBatch).success).toBe(true)
-  })
-
-  it('accepts a minimal pageview event', () => {
-    const result = LandingTelemetryBatchSchema.safeParse({
-      visitorId: VALID_INSTALL_ID,
-      events: [{ name: 'landing_page_view', page: '/' }]
-    })
-    expect(result.success).toBe(true)
-  })
-
-  it('rejects a non-uuid visitor id', () => {
-    const result = LandingTelemetryBatchSchema.safeParse({
-      ...baseLandingBatch,
-      visitorId: 'visitor-1'
-    })
-    expect(result.success).toBe(false)
-  })
-
-  it('rejects values that look like emails, URLs, paths, or raw identifiers', () => {
-    const badEvents = [
-      { name: 'landing_nav_click', page: '/pricing', target: 'user@example.com' },
-      { name: 'landing_nav_click', page: '/pricing', utm_source: 'https://evil.example' },
-      { name: 'landing_nav_click', page: '/pricing', utm_campaign: 'a/b' },
-      { name: 'landing_nav_click', page: '/pricing', utm_term: 'line\nbreak' },
-      { name: 'landing_nav_click', page: `/note/${VALID_INSTALL_ID}` },
-      { name: 'landing_nav_click', page: 'pricing' },
-      { name: 'Landing Nav Click!', page: '/pricing' }
-    ]
-    for (const event of badEvents) {
-      const result = LandingTelemetryBatchSchema.safeParse({
-        visitorId: VALID_INSTALL_ID,
-        events: [event]
-      })
-      expect(result.success).toBe(false)
-    }
-  })
-
-  it('rejects empty and oversize event lists', () => {
-    const empty = LandingTelemetryBatchSchema.safeParse({ ...baseLandingBatch, events: [] })
-    expect(empty.success).toBe(false)
-
-    const oversize = LandingTelemetryBatchSchema.safeParse({
-      ...baseLandingBatch,
-      events: Array.from({ length: 21 }, () => baseLandingBatch.events[0])
-    })
-    expect(oversize.success).toBe(false)
   })
 })
 
@@ -928,5 +912,30 @@ describe('normalizeWindowError', () => {
     // #then the window error handler still reports something
     expect(() => normalizeWindowError({ error: hostile, message: 'boom' })).not.toThrow()
     expect(normalizeWindowError({ error: hostile, message: 'boom' })).toBeInstanceOf(Error)
+  })
+})
+
+describe('contract widening for PostHog migration', () => {
+  it('accepts the app_crashed event name', () => {
+    expect(TelemetryEventNameSchema.safeParse('app_crashed').success).toBe(true)
+  })
+
+  it('accepts an optional redacted error message', () => {
+    const parsed = TelemetryErrorDetailSchema.safeParse({
+      message: 'Cannot read property id of undefined',
+      stack: 'at foo (app.js:1:1)'
+    })
+    expect(parsed.success).toBe(true)
+  })
+
+  it('still accepts an error detail with no message', () => {
+    expect(TelemetryErrorDetailSchema.safeParse({ stack: 'at foo (app.js:1:1)' }).success).toBe(
+      true
+    )
+  })
+
+  it('rejects an over-long error message', () => {
+    const parsed = TelemetryErrorDetailSchema.safeParse({ message: 'x'.repeat(513) })
+    expect(parsed.success).toBe(false)
   })
 })

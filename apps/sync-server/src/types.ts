@@ -3,8 +3,6 @@ export type Bindings = {
   STORAGE: R2Bucket
   USER_SYNC_STATE: DurableObjectNamespace
   LINKING_SESSION: DurableObjectNamespace
-  PRODUCT_TELEMETRY: AnalyticsEngineDataset
-  LANDING_TELEMETRY: AnalyticsEngineDataset
   ENVIRONMENT: string
   LOCAL_ADMIN_SYNC_EMAILS?: string
   ALLOWED_ORIGIN?: string
@@ -27,8 +25,8 @@ export type Bindings = {
   PADDLE_API_KEY?: string
   PADDLE_ENVIRONMENT?: string
   TELEMETRY_HMAC_KEY: string
-  LOKI_URL?: string
-  LOKI_TOKEN?: string
+  POSTHOG_KEY?: string
+  POSTHOG_HOST?: string
   fetch?: typeof fetch
 }
 

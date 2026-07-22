@@ -937,11 +937,12 @@ describe('sync routes', () => {
         passThroughOnException: vi.fn(),
         props: {}
       }
-      const writeDataPoint = vi.fn()
+      const fetchSpy = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }))
+      vi.stubGlobal('fetch', fetchSpy)
       const localEnv = {
         ...env,
-        PRODUCT_TELEMETRY: { writeDataPoint } as unknown as AnalyticsEngineDataset,
-        TELEMETRY_HMAC_KEY: 'test-hmac-key'
+        POSTHOG_KEY: 'phc_test',
+        POSTHOG_HOST: 'https://us.i.posthog.com'
       }
 
       const res = await app.request(
@@ -953,14 +954,19 @@ describe('sync routes', () => {
       await scheduled[0]
 
       expect(res.status).toBe(200)
-      expect(writeDataPoint).toHaveBeenCalledTimes(1)
-      const point = writeDataPoint.mock.calls[0][0] as { blobs: string[] }
-      expect(point.blobs[0]).toBe('server_error_seen') // event name
-      expect(point.blobs[11]).toBe('record_push_broadcast_failed') // action
-      expect(point.blobs[13]).toBe('UserSyncState') // source
-      expect(point.blobs[15]).toBe('WAIT_UNTIL_REJECTED') // error_code
-      expect(point.blobs[16]).toBe('path') // dimension key
-      expect(point.blobs[17]).toBe('/sync/push') // dimension value
+      const captureCall = fetchSpy.mock.calls.find(([url]) => String(url).endsWith('/batch/'))
+      expect(captureCall).toBeDefined()
+      const point = JSON.parse((captureCall![1] as RequestInit).body as string).batch[0] as {
+        event: string
+        distinct_id: string
+        properties: Record<string, unknown>
+      }
+      expect(point.event).toBe('server_error_seen') // event name
+      expect(point.distinct_id).toBe('memry_server_development')
+      expect(point.properties.action).toBe('record_push_broadcast_failed') // action
+      expect(point.properties.source).toBe('UserSyncState') // source
+      expect(point.properties.error_code).toBe('WAIT_UNTIL_REJECTED') // error_code
+      expect(point.properties.path).toBe('/sync/push') // path
       expect(JSON.stringify(point)).not.toContain(VALID_UUID)
     })
   })
