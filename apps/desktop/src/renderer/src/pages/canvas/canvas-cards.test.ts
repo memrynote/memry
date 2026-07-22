@@ -8,10 +8,14 @@ import {
   computeVisibleCardIds,
   sameMembership,
   makeCardSkeleton,
+  findFreeCardCenter,
   readCanvasDragItem,
   canvasDragPayload,
   CANVAS_ITEM_DRAG_MIME,
-  type CardElement
+  CARD_DEFAULT_WIDTH,
+  CARD_DEFAULT_HEIGHT,
+  type CardElement,
+  type CanvasCardRef
 } from './canvas-cards'
 
 function rect(overrides: Partial<CardElement> = {}): CardElement {
@@ -148,6 +152,61 @@ describe('makeCardSkeleton', () => {
     })
     expect(skeleton.backgroundColor).not.toBe('transparent')
     expect(skeleton.fillStyle).toBe('solid')
+  })
+})
+
+describe('findFreeCardCenter', () => {
+  const viewport = { minX: 0, minY: 0, maxX: 1600, maxY: 1000 }
+  const center = { x: 800, y: 500 }
+
+  function cardAt(id: string, centerX: number, centerY: number): CanvasCardRef {
+    return {
+      elementId: id,
+      entityType: 'note',
+      entityId: id,
+      x: centerX - CARD_DEFAULT_WIDTH / 2,
+      y: centerY - CARD_DEFAULT_HEIGHT / 2,
+      width: CARD_DEFAULT_WIDTH,
+      height: CARD_DEFAULT_HEIGHT,
+      angle: 0
+    }
+  }
+
+  function overlaps(a: CanvasCardRef, b: CanvasCardRef): boolean {
+    return (
+      a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height
+    )
+  }
+
+  it('uses the viewport centre when nothing is there', () => {
+    expect(findFreeCardCenter([], viewport)).toEqual(center)
+  })
+
+  it('steps off a card already occupying the centre', () => {
+    const placed = findFreeCardCenter([cardAt('a', center.x, center.y)], viewport)
+    expect(placed).not.toEqual(center)
+    expect(overlaps(cardAt('new', placed.x, placed.y), cardAt('a', center.x, center.y))).toBe(false)
+  })
+
+  it('never stacks across repeated placements (the #871 pile)', () => {
+    // Each pick sees the cards the previous picks added — exactly how the
+    // overlay re-reads the scene between picks.
+    const cards: CanvasCardRef[] = []
+    for (let i = 0; i < 9; i++) {
+      const { x, y } = findFreeCardCenter(cards, viewport)
+      cards.push(cardAt(`c${i}`, x, y))
+    }
+    for (let i = 0; i < cards.length; i++) {
+      for (let j = i + 1; j < cards.length; j++) {
+        expect(overlaps(cards[i], cards[j])).toBe(false)
+      }
+    }
+  })
+
+  it('places the first offset card beside the centre, not far from it', () => {
+    const placed = findFreeCardCenter([cardAt('a', center.x, center.y)], viewport)
+    expect(Math.abs(placed.x - center.x)).toBeLessThanOrEqual(CARD_DEFAULT_WIDTH * 2)
+    expect(Math.abs(placed.y - center.y)).toBeLessThanOrEqual(CARD_DEFAULT_HEIGHT * 2)
   })
 })
 
