@@ -31,6 +31,7 @@ import {
   type NoteFrontmatter
 } from '../../vault/frontmatter'
 import { syncNoteToCache, syncFileToCache, deleteNoteFromCache } from '../../vault/note-sync'
+import { cleanupProjectLinksForDeletedNote } from '../../notes/runtime-effects'
 import { flushProjectionEvents } from '../../projections'
 import {
   getNoteMetadataById,
@@ -513,6 +514,14 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
     const absolutePath = toAbsolutePath(existing.path)
     deleteNoteFromCache(indexDb, itemId)
     void flushProjectionEvents()
+
+    // A remote delete must drop the note's project links + clear any project home
+    // note pointing at it, exactly like the local path (notes/domain
+    // deleteNoteCommand) — otherwise the receiving device keeps orphan
+    // project_links rows and a dangling projects.home_note_id.
+    void cleanupProjectLinksForDeletedNote(itemId).catch((err) => {
+      log.error('Failed to clean up project links for synced note delete', { itemId, error: err })
+    })
     ctx.emit(NotesChannels.events.DELETED, { id: itemId, path: existing.path, source: 'sync' })
 
     markWritebackIgnored(absolutePath)

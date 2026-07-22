@@ -621,7 +621,12 @@ export function getProjectLink(
  * List all items linked to a project.
  */
 export function getProjectLinks(db: DataDb, projectId: string): ProjectLink[] {
-  return db.select().from(projectLinks).where(eq(projectLinks.projectId, projectId)).all()
+  return db
+    .select()
+    .from(projectLinks)
+    .where(eq(projectLinks.projectId, projectId))
+    .orderBy(asc(projectLinks.position), asc(projectLinks.createdAt))
+    .all()
 }
 
 /**

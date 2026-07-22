@@ -667,6 +667,14 @@ export function createTasksCommands({
     },
 
     async linkItemToProject(input: ProjectLinkItemInput) {
+      // Validate before inserting — project_links.project_id carries a FK, so an
+      // unknown (or concurrently deleted) project would throw past the structured
+      // `{ success: false, error }` response instead of returning it.
+      const project = repository.getProject(input.projectId)
+      if (!project) {
+        return { success: false, error: 'Project not found' }
+      }
+
       const existing = repository.findProjectLink(input.projectId, input.itemType, input.itemId)
       if (!existing) {
         repository.linkItemToProject({
@@ -675,11 +683,6 @@ export function createTasksCommands({
           itemType: input.itemType,
           itemId: input.itemId
         })
-      }
-
-      const project = repository.getProject(input.projectId)
-      if (!project) {
-        return { success: false, error: 'Project not found' }
       }
 
       await publisher.projectUpdated({ id: input.projectId, project, changedFields: ['links'] })

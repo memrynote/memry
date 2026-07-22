@@ -108,7 +108,7 @@ export const ProjectNotesSection = ({
                 type="button"
                 aria-label={t('projectNotes.removeFromProject')}
                 onClick={() => void handleRemove(note.itemId)}
-                className="shrink-0 rounded-sm p-1 opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
+                className="shrink-0 rounded-sm p-1 opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100 focus-visible:opacity-100"
               >
                 <X className="size-3.5" aria-hidden="true" />
               </button>

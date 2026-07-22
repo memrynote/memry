@@ -94,6 +94,38 @@ describe('project links domain', () => {
     )
   })
 
+  // project_links.project_id carries a FK (and the test DB runs foreign_keys = ON),
+  // so inserting before the project lookup throws past the structured response.
+  it('#then rejects linking to an unknown project without inserting or throwing', async () => {
+    t = createTestDataDb()
+    const d = domain(t)
+
+    const result = await d.linkItemToProject({
+      projectId: 'ghost',
+      itemType: 'note',
+      itemId: 'n1'
+    })
+
+    expect(result).toEqual({ success: false, error: 'Project not found' })
+    expect(t.db.select().from(projectLinks).all()).toHaveLength(0)
+  })
+
+  it('#then lists project links ordered by position', async () => {
+    t = createTestDataDb()
+    t.db.insert(projects).values({ id: 'p1', name: 'P1', color: '#000', position: 0 }).run()
+    t.db
+      .insert(projectLinks)
+      .values([
+        { id: 'l3', projectId: 'p1', itemType: 'note', itemId: 'third', position: 2 },
+        { id: 'l1', projectId: 'p1', itemType: 'note', itemId: 'first', position: 0 },
+        { id: 'l2', projectId: 'p1', itemType: 'note', itemId: 'second', position: 1 }
+      ])
+      .run()
+
+    const links = domain(t).listProjectLinks('p1')
+    expect(links.map((l) => l.itemId)).toEqual(['first', 'second', 'third'])
+  })
+
   it('#then listForItem returns projects an item belongs to', async () => {
     t = createTestDataDb()
     t.db.insert(projects).values({ id: 'p1', name: 'P1', color: '#111', position: 0 }).run()
