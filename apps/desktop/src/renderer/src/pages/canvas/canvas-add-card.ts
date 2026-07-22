@@ -39,7 +39,8 @@ export function candidatesFromSearch(results: readonly SearchResultItem[]): AddC
     if (result.metadata.type === 'note') {
       // A "note" hit can be a filed binary (pdf/image/audio/video — see #800).
       // Canvas note cards render markdown previews and open the markdown
-      // editor, so a binary is not placeable.
+      // editor, so a binary is not placeable. The picker's quick-search call
+      // already asks for markdown only (#874); this is the backstop.
       if ((result.metadata.fileType ?? 'markdown') !== 'markdown') {
         continue
       }

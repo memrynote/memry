@@ -229,8 +229,15 @@ describe('search-handlers: reasons', () => {
         queryTimeMs: 5
       })
 
-      await invokeHandler(SearchChannels.invoke.QUICK, 'budget')
+      await invokeHandler(SearchChannels.invoke.QUICK, {
+        text: 'budget',
+        noteFileTypes: ['markdown']
+      })
 
+      expect(searchQueriesMock.quickSearch.mock.calls[0][2]).toEqual({
+        text: 'budget',
+        noteFileTypes: ['markdown']
+      })
       expect(trackMainEventMock).toHaveBeenCalledWith(
         'search_performed',
         expect.objectContaining({
@@ -259,10 +266,12 @@ describe('search-handlers: reasons', () => {
       searchQueriesMock.quickSearch.mockImplementationOnce(() => {
         throw new Error('quick failed')
       })
-      await expect(invokeHandler(SearchChannels.invoke.QUICK, 'budget')).resolves.toEqual({
-        results: [],
-        queryTimeMs: 0
-      })
+      await expect(invokeHandler(SearchChannels.invoke.QUICK, { text: 'budget' })).resolves.toEqual(
+        {
+          results: [],
+          queryTimeMs: 0
+        }
+      )
       expect(trackMainEventMock).toHaveBeenCalledWith(
         'search_performed',
         expect.objectContaining({ result: 'failed' })

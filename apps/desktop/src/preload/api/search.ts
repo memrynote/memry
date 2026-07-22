@@ -10,6 +10,8 @@ export const graphApi = {
 
 type SearchItemType = 'note' | 'journal' | 'task' | 'inbox'
 
+type SearchNoteFileType = 'markdown' | 'pdf' | 'image' | 'audio' | 'video'
+
 export const searchApi = {
   query: (params: {
     text: string
@@ -20,8 +22,11 @@ export const searchApi = {
     folderPath?: string | null
     limit?: number
     offset?: number
+    noteFileTypes?: SearchNoteFileType[]
   }) => invoke(SearchChannels.invoke.QUERY, params),
-  quick: (text: string) => invoke(SearchChannels.invoke.QUICK, text),
+  /** `noteFileTypes` narrows note hits before the per-type cap applies (#874). */
+  quick: (text: string, noteFileTypes?: SearchNoteFileType[]) =>
+    invoke(SearchChannels.invoke.QUICK, { text, noteFileTypes }),
   getStats: () => invoke(SearchChannels.invoke.GET_STATS),
   rebuildIndex: () => invoke(SearchChannels.invoke.REBUILD_INDEX),
   getReasons: () => invoke(SearchChannels.invoke.GET_REASONS),

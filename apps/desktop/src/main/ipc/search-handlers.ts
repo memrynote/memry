@@ -1,9 +1,13 @@
 import { ipcMain } from 'electron'
 import { SearchChannels } from '@memry/contracts/ipc-channels'
-import { SearchQuerySchema, AddReasonSchema } from '@memry/contracts/search-api'
+import {
+  SearchQuerySchema,
+  AddReasonSchema,
+  QuickSearchInputSchema
+} from '@memry/contracts/search-api'
 import type { SearchReason } from '@memry/contracts/search-api'
 import { createLogger } from '../lib/logger'
-import { createValidatedHandler, createHandler, createStringHandler } from './validate'
+import { createValidatedHandler, createHandler } from './validate'
 import { getDatabase, getIndexDatabase } from '../database'
 import { generateId } from '../lib/id'
 import { searchQueries } from '../search/store'
@@ -56,11 +60,11 @@ export function registerSearchHandlers(): void {
 
   ipcMain.handle(
     SearchChannels.invoke.QUICK,
-    createStringHandler(async (text) => {
+    createValidatedHandler(QuickSearchInputSchema, async (input) => {
       try {
         const indexDb = getIndexDatabase()
         const dataDb = getDatabase()
-        const result = searchQueries.quickSearch(indexDb, dataDb, text)
+        const result = searchQueries.quickSearch(indexDb, dataDb, input)
         const totalCount = result.results?.length ?? 0
         trackMainEvent('search_performed', {
           surface: 'search',

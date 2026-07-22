@@ -24,6 +24,12 @@ export type MatchType = 'exact' | 'prefix' | 'fuzzy'
 
 export type DatePreset = 'today' | 'this-week' | 'this-month' | 'custom'
 
+/**
+ * Underlying file behind a "note" row. Absent in older index rows, which are
+ * always markdown.
+ */
+export type NoteFileType = 'markdown' | 'pdf' | 'image' | 'audio' | 'video'
+
 // ============================================================================
 // Search Result Metadata (per-type)
 // ============================================================================
@@ -39,7 +45,7 @@ export interface NoteResultMetadata {
    * (image/pdf/audio/video) means this "note" result is actually a filed file
    * and must be opened via the file viewer, not the markdown editor. See #800.
    */
-  fileType?: 'markdown' | 'pdf' | 'image' | 'audio' | 'video'
+  fileType?: NoteFileType
 }
 
 export interface JournalResultMetadata {
@@ -110,6 +116,13 @@ export interface SearchQuery {
   folderPath: string | null
   limit: number
   offset: number
+  /**
+   * Restricts note hits to these file types. Applied inside the FTS query so
+   * `limit` counts eligible rows only — filtering after the cap would let
+   * matching binaries starve the markdown notes out of the results (#874).
+   * Omitted = every file type.
+   */
+  noteFileTypes?: NoteFileType[]
 }
 
 // ============================================================================
@@ -179,6 +192,8 @@ export interface IndexRebuildProgress {
 
 export const ContentTypeEnum = z.enum(['note', 'journal', 'task', 'inbox'])
 
+export const NoteFileTypeEnum = z.enum(['markdown', 'pdf', 'image', 'audio', 'video'])
+
 export const DateRangeSchema = z.object({
   from: z.string(),
   to: z.string()
@@ -192,10 +207,18 @@ export const SearchQuerySchema = z.object({
   projectId: z.string().nullable().default(null),
   folderPath: z.string().nullable().default(null),
   limit: z.number().min(1).max(100).default(10),
-  offset: z.number().min(0).default(0)
+  offset: z.number().min(0).default(0),
+  noteFileTypes: z.array(NoteFileTypeEnum).min(1).optional()
 })
 
 export type SearchQueryInput = z.infer<typeof SearchQuerySchema>
+
+export const QuickSearchInputSchema = z.object({
+  text: z.string(),
+  noteFileTypes: z.array(NoteFileTypeEnum).min(1).optional()
+})
+
+export type QuickSearchInput = z.infer<typeof QuickSearchInputSchema>
 
 export const AddReasonSchema = z.object({
   itemId: z.string().min(1),

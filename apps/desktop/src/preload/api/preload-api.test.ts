@@ -514,7 +514,14 @@ describe('preload api wrappers', () => {
     await expectInvoke(() => searchApi.query({ text: 'memo' }), SearchChannels.invoke.QUERY, {
       text: 'memo'
     })
-    await expectInvoke(() => searchApi.quick('memo'), SearchChannels.invoke.QUICK, 'memo')
+    await expectInvoke(() => searchApi.quick('memo'), SearchChannels.invoke.QUICK, {
+      text: 'memo',
+      noteFileTypes: undefined
+    })
+    await expectInvoke(() => searchApi.quick('memo', ['markdown']), SearchChannels.invoke.QUICK, {
+      text: 'memo',
+      noteFileTypes: ['markdown']
+    })
     await expectInvoke(() => searchApi.getStats(), SearchChannels.invoke.GET_STATS)
     await expectInvoke(() => searchApi.rebuildIndex(), SearchChannels.invoke.REBUILD_INDEX)
     await expectInvoke(() => searchApi.getReasons(), SearchChannels.invoke.GET_REASONS)
