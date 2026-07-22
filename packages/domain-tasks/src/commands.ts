@@ -91,7 +91,12 @@ export interface StatusUpdateInput {
 }
 
 export interface TasksCommandRepository extends TasksQueryRepository {
-  createTask(task: Omit<Task, 'tags' | 'linkedNoteIds' | 'hasSubtasks' | 'subtaskCount' | 'completedSubtaskCount'>): Task
+  createTask(
+    task: Omit<
+      Task,
+      'tags' | 'linkedNoteIds' | 'hasSubtasks' | 'subtaskCount' | 'completedSubtaskCount'
+    >
+  ): Task
   updateTask(
     id: string,
     updates: Partial<
@@ -256,7 +261,8 @@ export function createTasksCommands({
   return {
     async createTask(input: TaskCreateInput) {
       const id = generateId()
-      const position = input.position ?? repository.getNextTaskPosition(input.projectId, input.parentId)
+      const position =
+        input.position ?? repository.getNextTaskPosition(input.projectId, input.parentId)
 
       const createdTask = repository.createTask({
         id,
@@ -636,8 +642,21 @@ export function createTasksCommands({
 
     async deleteProject(id: string) {
       const snapshot = repository.getProject(id)
+      // SQLite cascades this project's tasks away locally, but a cascade is
+      // invisible to sync: without an explicit tombstone per task the server
+      // keeps them alive forever, and every device then re-pulls a task whose
+      // project_id no longer resolves — FOREIGN KEY constraint failed on every
+      // cycle, item skipped, manifest still sees it server-only, re-pull (#837).
+      const cascadedTasks = repository.listTasks({
+        projectId: id,
+        includeCompleted: true,
+        includeArchived: true
+      })
       repository.deleteProject(id)
       await publisher.projectDeleted({ id, snapshot })
+      for (const task of cascadedTasks) {
+        await publisher.taskDeleted({ id: task.id, snapshot: task })
+      }
       return { success: true }
     },
 
