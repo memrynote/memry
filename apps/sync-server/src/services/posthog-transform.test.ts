@@ -120,4 +120,31 @@ describe('productEvent', () => {
     expect(result.properties).not.toHaveProperty('error_code')
     expect(result.properties).not.toHaveProperty('object_type')
   })
+
+  it('does not let a client-supplied "environment" dimension override ctx.environment', () => {
+    const result = productEvent(
+      batchFixture(),
+      eventFixture({ dimensions: { environment: 'staging' } }),
+      ctx
+    )
+    expect(result.properties.environment).toBe('production')
+  })
+
+  it('does not let a client-supplied "session_id" dimension override the batch session id', () => {
+    const result = productEvent(
+      batchFixture({ sessionId: '99999999-9999-4999-8999-999999999999' }),
+      eventFixture({ dimensions: { session_id: 'spoofed' } }),
+      ctx
+    )
+    expect(result.properties.session_id).toBe('99999999-9999-4999-8999-999999999999')
+  })
+
+  it('still flattens a non-colliding dimension onto properties', () => {
+    const result = productEvent(
+      batchFixture(),
+      eventFixture({ dimensions: { log_action: 'gpu_gone' } }),
+      ctx
+    )
+    expect(result.properties.log_action).toBe('gpu_gone')
+  })
 })

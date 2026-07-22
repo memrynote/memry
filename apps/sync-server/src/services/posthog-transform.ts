@@ -71,13 +71,25 @@ export const productEvent = (
   event: TelemetryEvent,
   ctx: TransformContext
 ): PostHogEvent => {
-  const properties: Record<string, unknown> = {
-    surface: event.surface,
-    action: event.action,
-    environment: ctx.environment,
-    session_id: batch.sessionId,
-    $set: personProperties(batch, ctx.environment)
+  const properties: Record<string, unknown> = {}
+
+  // Client-supplied dimensions MUST be written first. TelemetryDimensionsSchema
+  // (packages/contracts/src/telemetry-api.ts) validates dimension VALUES with
+  // SAFE_DIMENSION_VALUE but does not allowlist dimension KEYS, so a client can
+  // send a dimension named e.g. "environment" or "session_id". Every
+  // server-derived assignment below this point must run AFTER this loop so it
+  // unconditionally overwrites any colliding key — trusted values must always
+  // win over client input. Do not "tidy" this by moving the loop back to the
+  // end; that reintroduces a client-spoofable environment/session_id/$set.
+  if (event.dimensions) {
+    for (const [key, value] of Object.entries(event.dimensions)) properties[key] = value
   }
+
+  properties.surface = event.surface
+  properties.action = event.action
+  properties.environment = ctx.environment
+  properties.session_id = batch.sessionId
+  properties.$set = personProperties(batch, ctx.environment)
 
   if (event.objectType) properties.object_type = event.objectType
   if (event.source) properties.source = event.source
@@ -87,12 +99,6 @@ export const productEvent = (
   for (const [from, to] of METRIC_KEYS) {
     const value = event.metrics?.[from]
     if (typeof value === 'number') properties[to] = value
-  }
-
-  // The contract permits at most one dimension; flatten it so it is filterable
-  // like any other property instead of nesting an object.
-  if (event.dimensions) {
-    for (const [key, value] of Object.entries(event.dimensions)) properties[key] = value
   }
 
   return {
