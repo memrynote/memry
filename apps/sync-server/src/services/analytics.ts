@@ -345,6 +345,9 @@ export const captureServerLog = async (
   await capturePostHogEvents(env, [posthogEvent])
 }
 
+// Generic fire-and-forget scheduler shared by every background-capture call
+// site (/telemetry/batch, /telemetry/logs, /diagnostics/report, sync.ts, and
+// the business/error/log captures above) — not specific to business events.
 export const safeWaitUntil = (
   c: { executionCtx?: { waitUntil?: (promise: Promise<unknown>) => void } },
   promise: Promise<unknown>
@@ -352,7 +355,7 @@ export const safeWaitUntil = (
   try {
     c.executionCtx?.waitUntil?.(promise)
   } catch (error) {
-    logger.warn('Business event capture failed', { error })
+    logger.warn('Background task scheduling failed', { error })
   }
 }
 

@@ -505,6 +505,18 @@ Expected: FAIL — `productEvent` is not exported.
 
 Append to `apps/sync-server/src/services/posthog-transform.ts` (and add `TelemetryEvent` to the type import at the top):
 
+Dimensions must be flattened into `properties` **first**, with every
+server-derived key assigned **after**. `TelemetryDimensionsSchema` validates
+dimension _values_ but (at the time this was written) did not reject
+reserved/spoofable dimension _keys_, so a client could send a dimension named
+e.g. `environment` or `session_id`. Assigning trusted keys after the loop
+means they unconditionally overwrite any colliding client key instead of
+being overwritten by it. Writing dimensions last — the intuitive order — is
+the vulnerable one: it lets client input win. (The key-level hole this
+ordering was a mitigation for is now also closed at the schema, in
+`SafeDimensionKeySchema`; keep the ordering anyway as defense in depth for any
+key the schema doesn't yet cover.)
+
 ```ts
 // page_viewed is the one rename: $pageview unlocks path analysis and the native
 // web-analytics views. Every other name is preserved so existing dashboards and
@@ -529,13 +541,22 @@ export const productEvent = (
   event: TelemetryEvent,
   ctx: TransformContext
 ): PostHogEvent => {
-  const properties: Record<string, unknown> = {
-    surface: event.surface,
-    action: event.action,
-    environment: ctx.environment,
-    session_id: batch.sessionId,
-    $set: personProperties(batch, ctx.environment)
+  const properties: Record<string, unknown> = {}
+
+  // Client-supplied dimensions MUST be written first. Every server-derived
+  // assignment below this point must run AFTER this loop so it unconditionally
+  // overwrites any colliding key — trusted values must always win over client
+  // input. Do not "tidy" this by moving the loop back to the end; that
+  // reintroduces a client-spoofable environment/session_id/$set.
+  if (event.dimensions) {
+    for (const [key, value] of Object.entries(event.dimensions)) properties[key] = value
   }
+
+  properties.surface = event.surface
+  properties.action = event.action
+  properties.environment = ctx.environment
+  properties.session_id = batch.sessionId
+  properties.$set = personProperties(batch, ctx.environment)
 
   if (event.objectType) properties.object_type = event.objectType
   if (event.source) properties.source = event.source
@@ -545,12 +566,6 @@ export const productEvent = (
   for (const [from, to] of METRIC_KEYS) {
     const value = event.metrics?.[from]
     if (typeof value === 'number') properties[to] = value
-  }
-
-  // The contract permits at most one dimension; flatten it so it is filterable
-  // like any other property instead of nesting an object.
-  if (event.dimensions) {
-    for (const [key, value] of Object.entries(event.dimensions)) properties[key] = value
   }
 
   return {

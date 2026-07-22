@@ -303,9 +303,12 @@ to Cloudflare's own first-party Workers console logs (with the raw `userId`/`dev
 attached, since that sink is trusted) and to PostHog Logs (with those same ids HMAC-hashed) —
 never to the PostHog event itself, which only gets the coded `server_error_seen` event with no
 message or stack; this is what makes sync failures debuggable without handing ciphertext-adjacent
-detail to a third party. Server errors are attributed to the signed-in `userId` (hashed the same
-way as desktop's install id before it reaches PostHog) so a failure can be traced to the account
-that hit it. Dynamic path segments and query strings are normalized away. Expected handled `4xx`
+detail to a third party. The `server_error_seen` event itself carries no user, device, or vault id
+either — its `distinct_id` is a fixed `memry_server_<environment>` value, so the event alone cannot
+be traced to an account. Only the PostHog **log** record carries the HMAC-hashed
+`userId`/`deviceId`/`vaultId` (when the caller has them), which is what lets a failure be
+correlated to an account inside Logs without exposing the raw id. Dynamic path segments and query
+strings are normalized away. Expected handled `4xx`
 responses (e.g. `SYNC_PAYMENT_REQUIRED`) are still counted as `server_error_seen` but are logged at
 `warn` rather than `error` level, keeping real failures distinguishable from expected noise.
 
