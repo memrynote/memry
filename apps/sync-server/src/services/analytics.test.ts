@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { captureBusinessEvent, captureServerError, captureServerLog } from './analytics'
+import { hashTelemetryId } from './telemetry'
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -9,7 +10,8 @@ afterEach(() => {
 const posthogEnv = {
   POSTHOG_KEY: 'phc_test',
   POSTHOG_HOST: 'https://us.i.posthog.com',
-  ENVIRONMENT: 'staging'
+  ENVIRONMENT: 'staging',
+  TELEMETRY_HMAC_KEY: 'test-hmac-key'
 }
 
 function stubFetch(status = 200) {
@@ -34,20 +36,44 @@ describe('captureBusinessEvent → PostHog', () => {
     expect(body.batch[0].distinct_id).toBe('memry_server_staging')
   })
 
-  it('keeps caller-supplied properties and the caller distinct id as user_id', async () => {
+  it('keeps caller-supplied properties and hashes the caller distinct id into user_id', async () => {
     const fetchSpy = stubFetch()
 
     await captureBusinessEvent(posthogEnv, 'vault_registered', 'user-1', { plan: 'believer' })
 
     const body = JSON.parse((fetchSpy.mock.calls[0][1] as RequestInit).body as string)
     expect(body.batch[0].properties.plan).toBe('believer')
-    expect(body.batch[0].properties.user_id).toBe('user-1')
+    // user_id must never be the raw id — only the opaque HMAC hash may reach
+    // PostHog, a third-party service.
+    const expectedHash = await hashTelemetryId(posthogEnv.TELEMETRY_HMAC_KEY, 'user-1')
+    expect(body.batch[0].properties.user_id).toBe(expectedHash)
+    expect(body.batch[0].properties.user_id).not.toBe('user-1')
   })
 
   it('does not call fetch when PostHog is unconfigured', async () => {
     const fetchSpy = stubFetch()
 
-    await captureBusinessEvent({ ENVIRONMENT: 'staging' }, 'vault_registered', 'user-1', {})
+    await captureBusinessEvent(
+      { ENVIRONMENT: 'staging', TELEMETRY_HMAC_KEY: 'test-hmac-key' },
+      'vault_registered',
+      'user-1',
+      {}
+    )
+
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it('never throws and skips the send when TELEMETRY_HMAC_KEY is missing', async () => {
+    const fetchSpy = stubFetch()
+
+    await expect(
+      captureBusinessEvent(
+        { ...posthogEnv, TELEMETRY_HMAC_KEY: '' },
+        'vault_registered',
+        'user-1',
+        {}
+      )
+    ).resolves.toBeUndefined()
 
     expect(fetchSpy).not.toHaveBeenCalled()
   })
@@ -73,6 +99,10 @@ describe('captureServerError → PostHog', () => {
     expect(eventCall).toBeDefined()
 
     const logBody = JSON.parse((logCall![1] as RequestInit).body as string)
+    expect(logBody.resourceLogs[0].resource.attributes).toContainEqual({
+      key: 'deployment.environment',
+      value: { stringValue: 'staging' }
+    })
     const record = logBody.resourceLogs[0].scopeLogs[0].logRecords[0]
     expect(record.severityText).toBe('error')
     const line = JSON.parse(record.body.stringValue)
@@ -123,6 +153,12 @@ describe('captureServerError → PostHog', () => {
     const logCall = fetchMock.mock.calls.find(([url]) => String(url).endsWith('/v1/logs'))
     expect(logCall).toBeDefined()
     const body = JSON.parse((logCall![1] as RequestInit).body as string)
+    // Previously pinned via the Loki stream label `env`; PostHog Logs carries
+    // it as a resource attribute instead.
+    expect(body.resourceLogs[0].resource.attributes).toContainEqual({
+      key: 'deployment.environment',
+      value: { stringValue: 'staging' }
+    })
     const record = body.resourceLogs[0].scopeLogs[0].logRecords[0]
     expect(record.severityText).toBe('error')
     expect(record.attributes).toContainEqual({ key: 'kind', value: { stringValue: 'error' } })

@@ -4,6 +4,7 @@ import { createLogger } from '../lib/logger'
 import type { Bindings } from '../types'
 import { capturePostHogEvents, type PostHogEvent } from './posthog'
 import { pushPostHogLogs, type LogRecord } from './posthog-logs'
+import { hashTelemetryId } from './telemetry'
 
 // Server-side product/business events, errors and logs → PostHog, the same sink
 // desktop telemetry uses. Every server-emitted signal shares one distinct_id per
@@ -68,6 +69,7 @@ const STATIC_ROUTE_SEGMENTS = new Set([
 ])
 
 export interface AnalyticsEnv {
+  TELEMETRY_HMAC_KEY: Bindings['TELEMETRY_HMAC_KEY']
   ENVIRONMENT?: Bindings['ENVIRONMENT']
   POSTHOG_KEY?: Bindings['POSTHOG_KEY']
   POSTHOG_HOST?: Bindings['POSTHOG_HOST']
@@ -178,17 +180,29 @@ export const captureBusinessEvent = async (
   distinctId: string,
   properties: Record<string, AnalyticsPropertyValue> = {}
 ): Promise<void> => {
-  const posthogEvent: PostHogEvent = {
-    event,
-    distinct_id: serverDistinctId(env),
-    properties: {
-      ...properties,
-      user_id: distinctId,
-      surface: SERVER_SURFACE,
-      environment: env.ENVIRONMENT
+  try {
+    // distinctId is a raw DB user.id at most call sites — PostHog is a
+    // third-party sink, so it must only ever see the opaque hash, same as
+    // desktop's install id and the diagnostics route's installHash.
+    const hashedUserId = await hashTelemetryId(env.TELEMETRY_HMAC_KEY, distinctId)
+    const posthogEvent: PostHogEvent = {
+      event,
+      distinct_id: serverDistinctId(env),
+      properties: {
+        ...properties,
+        // Trusted keys are assigned after the spread (not before) so a
+        // caller-supplied property of the same name can never clobber them.
+        user_id: hashedUserId,
+        surface: SERVER_SURFACE,
+        environment: env.ENVIRONMENT
+      }
     }
+    await capturePostHogEvents(env, [posthogEvent])
+  } catch (error) {
+    logger.warn('Business event capture failed', {
+      error: error instanceof Error ? error.message : String(error)
+    })
   }
-  await capturePostHogEvents(env, [posthogEvent])
 }
 
 export const captureServerError = async (

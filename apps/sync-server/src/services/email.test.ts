@@ -84,7 +84,8 @@ describe('email service', () => {
     const analyticsEnv = {
       ENVIRONMENT: 'test',
       POSTHOG_KEY: 'phc_test',
-      POSTHOG_HOST: 'https://us.i.posthog.com'
+      POSTHOG_HOST: 'https://us.i.posthog.com',
+      TELEMETRY_HMAC_KEY: 'test-hmac-key'
     }
 
     const findLogCall = (fetchMock: ReturnType<typeof vi.fn>) =>
@@ -107,6 +108,12 @@ describe('email service', () => {
       const logCall = findLogCall(fetchMock)
       expect(logCall).toBeDefined()
       const body = JSON.parse((logCall![1] as { body: string }).body)
+      // Previously pinned via the Loki stream label `env`; PostHog Logs carries
+      // it as a resource attribute instead.
+      expect(body.resourceLogs[0].resource.attributes).toContainEqual({
+        key: 'deployment.environment',
+        value: { stringValue: 'test' }
+      })
       const record = body.resourceLogs[0].scopeLogs[0].logRecords[0]
       expect(record.severityText).toBe('error')
       expect(record.attributes).toContainEqual({ key: 'kind', value: { stringValue: 'error' } })
