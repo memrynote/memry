@@ -268,7 +268,11 @@ Loki adds the diagnostic detail (stacks, operational messages) that AE rows deli
   30s, drop-4xx-except-429) to `POST /telemetry/logs`, gated on the telemetry toggle
   (`getTelemetryRuntime().getSettings().enabled`) and disabled outright in dev builds. Repeated
   identical `level|scope|message` lines within a 3s window are throttled into one line with a
-  `repeatCount` field. Worker processes (embeddings, image processing, voice transcription)
+  `repeatCount` field. A record's arguments are flattened by `parseRecord`: the first string wins
+  the `message` slot, plain objects merge into the fields, and an `Error` contributes `errorName`
+  plus `errorMessage`. That last part matters — `logger.error('updater error', err)` used to ship
+  `{"errorName":"Error"}` and nothing else, because the label had already claimed the message slot
+  and the Error's own message was dropped. Worker processes (embeddings, image processing, voice transcription)
   forward their own `warn`/`error` records to main over `process.parentPort`
   (`apps/desktop/src/main/lib/log-forward.ts`, electron-free) for the same redaction + ship pass,
   tagged `origin: 'worker'` and `workerName`. The server re-runs `redactLogLine` in mask mode (no
@@ -298,6 +302,15 @@ Loki adds the diagnostic detail (stacks, operational messages) that AE rows deli
 reason, phase, mode, status, kind, result`, plus numeric metric keys like
   `durationMs`/`itemCount`) ships verbatim; most other field values run through the same redaction as
   the message.
+- **Updater failures**: every failure in `apps/desktop/src/main/updater.ts` logs a
+  `describeUpdaterError()` field bag alongside the raw error, so a silent auto-update failure is
+  diagnosable from Loki alone: `phase` (`startup-check`, `scheduled-check`, `auto-check-enable`,
+  `auto-download-enable`, or — for electron-updater's own `error` event, which carries no phase —
+  one of `check` / `download` / `downloaded` / `install` inferred from the status at the time),
+  plus `errorName`, `errorMessage`, `errorCode`, `httpStatus`, `url`, `errorCause` and the top
+  stack frames as `errorStack`. The field names are chosen against the redaction allowlist above:
+  `phase` and `errorCode` ship verbatim, `url` is path-redacted (query string stripped), the rest
+  are text-redacted and capped.
 - **Process lifecycle**: the main process reports a `child-process-gone` fault with a composite
   `type:reason:name` error code (e.g. `Utility:crashed:Embeddings`). The worker label comes from
   Electron's `details.name`, **not** `details.serviceName`: Electron routes a fork's `serviceName`
