@@ -2,13 +2,14 @@
  * CanvasCardActive — the single active card. pointer-events:auto so it captures
  * input; keydown/keyup are swallowed so Cmd/Ctrl+Z belongs to the mounted
  * editor (not Excalidraw), and Escape closes the editor. Note cards render the
- * real note editor (Task 5); task/event cards keep the placeholder until
- * Tasks 6–7 replace it.
+ * real note editor (Task 5); task cards render the slim task editor (Task 6);
+ * event cards keep the placeholder until Task 7 replaces it.
  */
 import React, { useCallback, useEffect, useRef } from 'react'
 import type { CanvasCardRef } from './canvas-cards'
 import type { CanvasEntityState } from './use-canvas-entities'
 import { EmbeddedNoteEditor } from './embedded-note-editor'
+import { CanvasTaskEditor } from './canvas-task-editor'
 
 interface CanvasCardActiveProps {
   cardRef: CanvasCardRef
@@ -57,8 +58,10 @@ export const CanvasCardActive = ({
     >
       {cardRef.entityType === 'note' ? (
         <EmbeddedNoteEditor noteId={cardRef.entityId} />
+      ) : cardRef.entityType === 'task' ? (
+        <CanvasTaskEditor taskId={cardRef.entityId} />
       ) : (
-        // Placeholder editor — replaced by task/event editors in Tasks 6–7.
+        // Placeholder editor — replaced by the event editor in Task 7.
         <div
           data-canvas-active-editor={cardRef.entityType}
           contentEditable

@@ -69,6 +69,37 @@ async function dblclickCard(page: Page, entity: string): Promise<void> {
   if (!box) throw new Error(`no card box for ${entity}`)
   await page.mouse.dblclick(box.x + box.width / 2, box.y + box.height / 2)
 }
+/** Seed a task in the inbox (or first) project via the real tasks IPC. */
+async function seedTask(page: Page, title: string): Promise<string> {
+  const taskId = await page.evaluate(async (t) => {
+    const projectsRes = await window.api.tasks.listProjects()
+    const projectId = projectsRes.projects.find((p) => p.isInbox)?.id ?? projectsRes.projects[0]?.id
+    if (!projectId) return null
+    const res = await window.api.tasks.create({ title: t, projectId })
+    return res.task?.id ?? null
+  }, title)
+  if (!taskId) throw new Error(`seedTask failed for ${title}`)
+  return taskId
+}
+async function dropTask(page: Page, taskId: string): Promise<void> {
+  await page.evaluate((id) => {
+    const wrapper = document.querySelector('[data-canvas-editor]') as HTMLElement
+    const r = wrapper.getBoundingClientRect()
+    const dt = new DataTransfer()
+    dt.setData(
+      'application/x-memry-canvas-item',
+      JSON.stringify({ entityType: 'task', entityId: id })
+    )
+    const ev = new DragEvent('drop', {
+      bubbles: true,
+      cancelable: true,
+      clientX: r.left + r.width / 2,
+      clientY: r.top + r.height / 2
+    })
+    Object.defineProperty(ev, 'dataTransfer', { value: dt })
+    wrapper.dispatchEvent(ev)
+  }, taskId)
+}
 
 test.describe('Spatial canvas — in-place editing (M6)', () => {
   test.describe.configure({ timeout: 240_000 })
@@ -246,5 +277,35 @@ test.describe('Spatial canvas — in-place editing (M6)', () => {
     const tabEditor = page.locator('.bn-container [contenteditable="true"]').first()
     await expect(tabEditor).toContainText(marker, { timeout: 20000 })
     await expect.poll(markerCount, { timeout: 20000 }).toBe(1)
+  })
+
+  test('double-click a task card edits fields in place; persists via tasks IPC (matrix #22 task)', async ({
+    page
+  }) => {
+    await openVault(page)
+    await setSpatialCanvasFlag(page, true)
+    await createCanvasFromSidebar(page)
+    const taskId = await seedTask(page, `Canvas Task ${Date.now()}`)
+    await dropTask(page, taskId)
+
+    const card = page.locator(`[data-canvas-card-entity="task:${taskId}"]`)
+    await expect(card).toBeVisible({ timeout: 20000 })
+    await dblclickCard(page, `task:${taskId}`)
+    await expect(card).toHaveAttribute('data-canvas-card-state', 'active', { timeout: 20000 })
+
+    const newTitle = `Renamed ${Date.now()}`
+    const titleInput = page.locator('[data-canvas-active-card] input[data-canvas-task-title]')
+    await titleInput.fill(newTitle)
+    await page.mouse.click(10, 10)
+
+    await expect
+      .poll(
+        async () => {
+          const t = await page.evaluate(async (id) => window.api.tasks.get(id), taskId)
+          return t?.title ?? ''
+        },
+        { timeout: 20000 }
+      )
+      .toBe(newTitle)
   })
 })
