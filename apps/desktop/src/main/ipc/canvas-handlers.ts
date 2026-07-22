@@ -94,7 +94,7 @@ export function registerCanvasHandlers(): void {
       const canvas = createCanvas(db, vaultKey, vaultId, input)
       trackMainEvent('canvas_created', {
         surface: 'canvas',
-        action: 'create',
+        action: 'created',
         objectType: 'canvas',
         result: 'success'
       })
@@ -121,7 +121,7 @@ export function registerCanvasHandlers(): void {
         // apps/docs/src/architecture/observability.md — it is NOT distinct opens.
         trackMainEvent('canvas_opened', {
           surface: 'canvas',
-          action: 'open',
+          action: 'opened',
           objectType: 'canvas',
           result: 'success'
         })

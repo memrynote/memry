@@ -385,7 +385,7 @@ describe('canvas rollout telemetry', () => {
 
     expect(trackMainEvent).toHaveBeenCalledWith('canvas_created', {
       surface: 'canvas',
-      action: 'create',
+      action: 'created',
       objectType: 'canvas',
       result: 'success'
     })
@@ -406,7 +406,7 @@ describe('canvas rollout telemetry', () => {
 
     expect(trackMainEvent).toHaveBeenCalledWith('canvas_opened', {
       surface: 'canvas',
-      action: 'open',
+      action: 'opened',
       objectType: 'canvas',
       result: 'success'
     })
