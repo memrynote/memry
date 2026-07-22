@@ -9,6 +9,7 @@ import {
   ListGoogleCalendarsSchema,
   PromoteExternalEventSchema,
   RetryCalendarSourceSyncSchema,
+  SearchCalendarEventsSchema,
   SetDefaultGoogleCalendarSchema,
   UpdateCalendarSourceSelectionSchema,
   CalendarProviderRequestSchema,
@@ -18,6 +19,8 @@ import {
   type CalendarEventListResponse,
   type CalendarEventMutationResponse,
   type CalendarEventRecord,
+  type CalendarEventSearchItem,
+  type CalendarEventSearchResponse,
   type CalendarProviderAccountConnectionStatus,
   type CalendarProviderAccountStatus,
   type CalendarProviderMutationResponse,
@@ -45,6 +48,7 @@ import {
   listCalendarSources as listCalendarSourceRows,
   upsertCalendarSource
 } from '../calendar/repositories/calendar-sources-repository'
+import { searchCalendarEventsByTitle } from '../calendar/repositories/calendar-events-repository'
 import {
   connectGoogleCalendar,
   disconnectGoogleCalendar,
@@ -114,6 +118,17 @@ function mapCalendarEvent(row: typeof calendarEvents.$inferSelect): CalendarEven
     syncedAt: row.syncedAt ?? null,
     createdAt: row.createdAt,
     modifiedAt: row.modifiedAt
+  }
+}
+
+/** Lean picker projection — deliberately not mapCalendarEvent (#869). */
+function toEventSearchItem(row: typeof calendarEvents.$inferSelect): CalendarEventSearchItem {
+  return {
+    id: row.id,
+    title: row.title,
+    startAt: row.startAt,
+    endAt: row.endAt ?? null,
+    isAllDay: row.isAllDay
   }
 }
 
@@ -506,6 +521,18 @@ export function registerCalendarHandlers(): void {
   )
 
   ipcMain.handle(
+    CalendarChannels.invoke.SEARCH_EVENTS,
+    createValidatedHandler(SearchCalendarEventsSchema, (input): CalendarEventSearchResponse => {
+      const rows = searchCalendarEventsByTitle(requireDatabase(), {
+        query: input.query,
+        limit: input.limit,
+        now: new Date().toISOString()
+      })
+      return { events: rows.map(toEventSearchItem) }
+    })
+  )
+
+  ipcMain.handle(
     CalendarChannels.invoke.GET_RANGE,
     createValidatedHandler(GetCalendarRangeSchema, (input): CalendarRangeResponse => {
       return getCalendarRangeProjection(
@@ -871,6 +898,7 @@ export function unregisterCalendarHandlers(): void {
   ipcMain.removeHandler(CalendarChannels.invoke.UPDATE_EVENT)
   ipcMain.removeHandler(CalendarChannels.invoke.DELETE_EVENT)
   ipcMain.removeHandler(CalendarChannels.invoke.LIST_EVENTS)
+  ipcMain.removeHandler(CalendarChannels.invoke.SEARCH_EVENTS)
   ipcMain.removeHandler(CalendarChannels.invoke.GET_RANGE)
   ipcMain.removeHandler(CalendarChannels.invoke.LIST_SOURCES)
   ipcMain.removeHandler(CalendarChannels.invoke.UPDATE_SOURCE_SELECTION)
