@@ -122,7 +122,17 @@ function init(): boolean {
     api_host: import.meta.env.VITE_POSTHOG_HOST ?? 'https://e.memrynote.com',
     person_profiles: 'identified_only',
     disable_external_dependency_loading: true,
-    session_recording: { maskAllInputs: true }
+    capture_pageview: false,
+    session_recording: {
+      maskAllInputs: true,
+      // maskAllInputs only covers <input>/<textarea> values; account, login
+      // and checkout screens also render PII (email addresses, OTP-delivery
+      // confirmations) as plain text nodes, which rrweb captures verbatim by
+      // default. Elements tagged data-ph-mask have their text replaced with
+      // asterisks in the replay snapshot. See ProfileSection.tsx and
+      // Login.tsx for the tagged subtrees.
+      maskTextSelector: '[data-ph-mask]'
+    }
   })
   // vite build always runs in 'production' MODE, including Vercel preview
   // deploys, so MODE alone can't separate them. VERCEL_ENV can ('production' |
