@@ -55,6 +55,11 @@ export const parseRecord = (
       if (!message)
         message = typeof arg.message === 'string' && arg.message ? arg.message : arg.name
       fields.errorName = arg.name
+      // A leading label (logger.error('updater error', err)) claims the message slot,
+      // which used to leave the Error itself reduced to `{"errorName":"Error"}` —
+      // no message, nothing to diagnose (#842). Keep it as a field instead.
+      if (typeof arg.message === 'string' && arg.message && !('errorMessage' in fields))
+        fields.errorMessage = arg.message
     } else if (arg && typeof arg === 'object') Object.assign(fields, arg)
     else if (!message) message = String(arg)
   }

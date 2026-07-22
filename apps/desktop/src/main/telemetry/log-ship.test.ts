@@ -87,6 +87,24 @@ describe('parseRecord', () => {
     const p = parseRecord({ level: 'error', data: [new Error('')] })
     expect(p.message).toBe('Error')
   })
+
+  it('keeps the error message as a field when a label already claimed the message', () => {
+    // logger.error('updater error', err) shipped `{"errorName":"Error"}` and nothing
+    // else — the label won the message slot and the Error's own message was dropped,
+    // leaving prod failures undiagnosable (#842).
+    const p = parseRecord({ level: 'error', data: ['updater error', new Error('kaboom')] })
+    expect(p.message).toBe('updater error')
+    expect(p.fields.errorName).toBe('Error')
+    expect(p.fields.errorMessage).toBe('kaboom')
+  })
+
+  it('does not overwrite an explicit errorMessage field', () => {
+    const p = parseRecord({
+      level: 'error',
+      data: ['updater error', { errorMessage: 'curated' }, new Error('raw')]
+    })
+    expect(p.fields.errorMessage).toBe('curated')
+  })
 })
 
 describe('installLogShip', () => {

@@ -57,6 +57,14 @@ const mocks = vi.hoisted(() => {
     dialog: {
       showMessageBox: vi.fn()
     },
+    // Stable across createLogger() calls so tests can assert on the enriched
+    // updater-failure payloads (issue #842).
+    logger: {
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      debug: vi.fn()
+    },
     autoUpdater: Object.assign(emitter, {
       autoDownload: true,
       autoInstallOnAppQuit: false,
@@ -87,12 +95,7 @@ vi.mock('./store', () => ({
 }))
 
 vi.mock('./lib/logger', () => ({
-  createLogger: () => ({
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    debug: vi.fn()
-  })
+  createLogger: () => mocks.logger
 }))
 
 vi.mock('./lib/main-i18n', () => ({
@@ -466,6 +469,126 @@ describe('updater', () => {
     expect(mocks.app.quit).toHaveBeenCalledTimes(1)
     expect(updater.isQuitAndInstallRequested()).toBe(true)
     expect(mocks.autoUpdater.quitAndInstall).not.toHaveBeenCalled()
+  })
+
+  // Issue #842: prod updater failures shipped as `{"errorName":"Error"}` and nothing
+  // else, because the log-ship transport keeps only the first string argument as the
+  // message and drops the Error's own message. Every updater failure now carries an
+  // explicit fields object so the payload is diagnosable in Loki.
+  describe('error payload enrichment (#842)', () => {
+    it('extracts message, code, http status and url from an electron-updater error', async () => {
+      const updater = await loadUpdater()
+      const error = Object.assign(
+        new Error('Cannot download "https://x.test/latest.yml", status 404'),
+        {
+          name: 'HttpError',
+          code: 'ERR_UPDATER_LATEST_VERSION_NOT_FOUND',
+          statusCode: 404,
+          url: 'https://x.test/latest.yml'
+        }
+      )
+
+      expect(updater.describeUpdaterError(error, 'download')).toMatchObject({
+        phase: 'download',
+        errorName: 'HttpError',
+        errorMessage: 'Cannot download "https://x.test/latest.yml", status 404',
+        errorCode: 'ERR_UPDATER_LATEST_VERSION_NOT_FOUND',
+        httpStatus: 404,
+        url: 'https://x.test/latest.yml'
+      })
+      expect(updater.describeUpdaterError(error, 'download').errorStack).toContain(
+        'updater.test.ts'
+      )
+    })
+
+    it('keeps a non-Error rejection diagnosable', async () => {
+      const updater = await loadUpdater()
+
+      expect(updater.describeUpdaterError('boom', 'startup-check')).toEqual({
+        phase: 'startup-check',
+        errorName: 'NonError',
+        errorMessage: 'boom'
+      })
+    })
+
+    it('reports the errno and cause of a network failure', async () => {
+      const updater = await loadUpdater()
+      const error = Object.assign(new Error('request failed'), {
+        code: 'ENOTFOUND',
+        cause: Object.assign(new Error('getaddrinfo ENOTFOUND github.com'), { code: 'ENOTFOUND' })
+      })
+
+      expect(updater.describeUpdaterError(error, 'scheduled-check')).toMatchObject({
+        phase: 'scheduled-check',
+        errorCode: 'ENOTFOUND',
+        errorCause: 'Error: getaddrinfo ENOTFOUND github.com (ENOTFOUND)'
+      })
+    })
+
+    it('logs the updater error event with the phase inferred from the current status', async () => {
+      const updater = await loadUpdater()
+      updater.initializeUpdater()
+
+      mocks.autoUpdater.emit('checking-for-update')
+      const checkError = Object.assign(new Error('network failed'), { code: 'ECONNRESET' })
+      mocks.autoUpdater.emit('error', checkError)
+
+      expect(mocks.logger.error).toHaveBeenCalledWith(
+        'updater error',
+        checkError,
+        expect.objectContaining({
+          phase: 'check',
+          errorName: 'Error',
+          errorMessage: 'network failed',
+          errorCode: 'ECONNRESET'
+        })
+      )
+    })
+
+    it('logs a download-phase updater error while a download is in flight', async () => {
+      const updater = await loadUpdater()
+      updater.initializeUpdater()
+
+      void updater.downloadUpdate()
+      mocks.autoUpdater.emit('error', new Error('disk full'))
+
+      expect(mocks.logger.error).toHaveBeenCalledWith(
+        'updater error',
+        expect.any(Error),
+        expect.objectContaining({ phase: 'download', errorMessage: 'disk full' })
+      )
+    })
+
+    it('enriches startup and scheduled check failures', async () => {
+      vi.useFakeTimers()
+      try {
+        mocks.autoUpdater.checkForUpdates.mockRejectedValue(
+          Object.assign(new Error('feed unreachable'), { code: 'ERR_UPDATER_INVALID_RELEASE_FEED' })
+        )
+        const updater = await loadUpdater()
+        updater.initializeUpdater()
+        await vi.advanceTimersByTimeAsync(0)
+
+        expect(mocks.logger.warn).toHaveBeenCalledWith(
+          'startup update check failed',
+          expect.any(Error),
+          expect.objectContaining({
+            phase: 'startup-check',
+            errorMessage: 'feed unreachable',
+            errorCode: 'ERR_UPDATER_INVALID_RELEASE_FEED'
+          })
+        )
+
+        await vi.advanceTimersByTimeAsync(10 * 60 * 1000)
+        expect(mocks.logger.warn).toHaveBeenCalledWith(
+          'scheduled update check failed',
+          expect.any(Error),
+          expect.objectContaining({ phase: 'scheduled-check', errorMessage: 'feed unreachable' })
+        )
+      } finally {
+        vi.useRealTimers()
+      }
+    })
   })
 
   it('installs the downloaded update only after graceful shutdown completes', async () => {
