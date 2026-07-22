@@ -1059,14 +1059,16 @@ Expected: FAIL — the route still writes to Analytics Engine.
 
 - [ ] **Step 3: Add the env bindings**
 
-In `apps/sync-server/src/types.ts`, delete `PRODUCT_TELEMETRY` and `LANDING_TELEMETRY` from `Bindings`, delete `LOKI_URL` and `LOKI_TOKEN`, and add:
+In `apps/sync-server/src/types.ts`, **add** to `Bindings`:
 
 ```ts
   POSTHOG_KEY?: string
   POSTHOG_HOST?: string
 ```
 
-In `apps/sync-server/wrangler.toml`, remove both `[[analytics_engine_datasets]]` blocks and the `LOKI_URL` vars for staging and production, and add `POSTHOG_HOST = "https://us.i.posthog.com"` to the staging and production `[vars]` (not `dev`).
+In `apps/sync-server/wrangler.toml`, add `POSTHOG_HOST = "https://us.i.posthog.com"` to the staging and production `[vars]` (not `dev`).
+
+**Do not remove** `PRODUCT_TELEMETRY`, `LANDING_TELEMETRY`, `LOKI_URL` or `LOKI_TOKEN` here. The code that consumes them (`writeTelemetryBatch`, `TelemetryEnv`, the Loki service) is still present until Task 11, and removing the bindings first leaves the tree failing typecheck for three tasks. Task 11 removes the consumers and the bindings together.
 
 - [ ] **Step 4: Rewrite the route handlers**
 
@@ -1348,6 +1350,12 @@ Only now, with every replacement green.
 - [ ] **Step 1: Remove the code**
 
 Delete both Loki files. From `apps/sync-server/src/services/telemetry.ts` delete `toDataPoint`, `writeTelemetryBatch`, `toLandingDataPoint`, `writeLandingTelemetryBatch`, `TelemetryEnv`, `LandingTelemetryEnv` and the blob/double constants — keep `hashTelemetryId`, which the routes still use. Delete the `/web` route and its rate limiter from `apps/sync-server/src/routes/telemetry.ts`. Delete `LandingTelemetryEventSchema`, `LandingTelemetryBatchSchema` and their exported types from `packages/contracts/src/telemetry-api.ts`, plus their tests.
+
+- [ ] **Step 1b: Remove the now-unused bindings**
+
+Only after the consumers above are gone, so the tree never sits in a state where a binding is referenced but undeclared.
+
+In `apps/sync-server/src/types.ts`, delete `PRODUCT_TELEMETRY`, `LANDING_TELEMETRY`, `LOKI_URL` and `LOKI_TOKEN` from `Bindings`. In `apps/sync-server/wrangler.toml`, remove both `[[analytics_engine_datasets]]` blocks and the `LOKI_URL` vars from every environment. Also drop the `PRODUCT_TELEMETRY` stub from any test env fixture that still passes it.
 
 - [ ] **Step 2: Run the full gates**
 
