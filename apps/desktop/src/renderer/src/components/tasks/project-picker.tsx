@@ -1,6 +1,6 @@
-import { createElement, useMemo } from 'react'
+import { useMemo } from 'react'
 import { FolderKanban } from '@/lib/icons'
-import { getIconByName } from '@/components/icon-picker'
+import { ProjectIcon } from '@/components/tasks/project-icon'
 import { cn } from '@/lib/utils'
 import { Picker, usePickerContext, usePickerSearch } from '@/components/ui/picker'
 import { ProjectCreateFooter, useProjectQuickCreate } from './use-project-quick-create'
@@ -39,25 +39,20 @@ export interface ProjectPickerProps {
   className?: string
 }
 
-const ProjectIndicator = ({ project }: { project: Project }): React.JSX.Element => {
-  const IconComponent = getIconByName(project.icon)
-
-  if (IconComponent) {
-    return createElement(IconComponent, {
-      className: 'size-4 shrink-0',
-      style: { color: project.color },
-      'aria-hidden': 'true'
-    })
-  }
-
-  return (
-    <span
-      className="size-3 shrink-0 rounded-full"
-      style={{ backgroundColor: project.color }}
-      aria-hidden="true"
-    />
-  )
-}
+const ProjectIndicator = ({ project }: { project: Project }): React.JSX.Element => (
+  <ProjectIcon
+    icon={project.icon}
+    className="size-4 shrink-0"
+    color={project.color}
+    fallback={
+      <span
+        className="size-3 shrink-0 rounded-full"
+        style={{ backgroundColor: project.color }}
+        aria-hidden="true"
+      />
+    }
+  />
+)
 
 interface ProjectPickerListProps {
   projects: Project[]
