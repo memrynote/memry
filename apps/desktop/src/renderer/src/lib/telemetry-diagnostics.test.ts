@@ -88,6 +88,39 @@ describe('renderer telemetry diagnostics', () => {
     expect(serialized).not.toContain('boom')
   })
 
+  it('captures the error class and source location of a window error with no error object', () => {
+    // #given a window error that arrived without `event.error` — previously
+    // reported as StringError with an empty stack and nothing to triage
+    registerRendererDiagnostics()
+
+    // #when the window reports it
+    window.dispatchEvent(
+      Object.assign(new Event('error'), {
+        error: null,
+        message: 'Uncaught TypeError: n.focus is not a function',
+        filename: 'file:///Users/kaan/Memry.app/out/renderer/assets/index-VP6Jd1Vs.js',
+        lineno: 121718,
+        colno: 22
+      })
+    )
+
+    // #then the class name and the code location both reach telemetry
+    expect(trackTelemetryMock).toHaveBeenCalledWith(
+      'app_error_seen',
+      expect.objectContaining({
+        action: 'window_error',
+        errorCode: 'TypeError',
+        error: expect.objectContaining({
+          stack: expect.stringContaining('index-VP6Jd1Vs.js:121718:22')
+        })
+      })
+    )
+    // #and neither the message text nor the username ships
+    const serialized = JSON.stringify(trackTelemetryMock.mock.calls[0])
+    expect(serialized).not.toContain('focus')
+    expect(serialized).not.toContain('/Users/kaan')
+  })
+
   it('emits structured renderer logs', () => {
     // #given a warning breadcrumb
     trackRendererLog('warn', 'boot_failed', 'RendererBoot')
