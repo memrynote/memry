@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import type { TelemetryBatch } from '@memry/contracts/telemetry-api'
 
 import {
+  exceptionEvent,
   identifyEvent,
   personProperties,
   productEvent,
@@ -146,5 +147,57 @@ describe('productEvent', () => {
       ctx
     )
     expect(result.properties.log_action).toBe('gpu_gone')
+  })
+})
+
+describe('exceptionEvent', () => {
+  it('returns null for an event with no error signal', () => {
+    expect(exceptionEvent(batchFixture(), eventFixture(), ctx)).toBeNull()
+  })
+
+  it('builds a $exception with the error code as type and fingerprint', () => {
+    const result = exceptionEvent(
+      batchFixture(),
+      eventFixture({
+        name: 'app_error_seen',
+        errorCode: 'SYNC_TIMEOUT',
+        error: { stack: 'at sync (a.js:1:1)' }
+      }),
+      ctx
+    )
+    expect(result?.event).toBe('$exception')
+    expect(result?.properties.$exception_fingerprint).toBe('SYNC_TIMEOUT')
+    const list = result?.properties.$exception_list as { type: string; value: string }[]
+    expect(list[0].type).toBe('SYNC_TIMEOUT')
+    expect(list[0].value).toContain('at sync (a.js:1:1)')
+  })
+
+  it('prefers the redacted message over the stack for the value', () => {
+    const result = exceptionEvent(
+      batchFixture(),
+      eventFixture({
+        errorCode: 'DB_LOCKED',
+        error: { message: 'database is locked', stack: 'at db (b.js:2:2)' }
+      }),
+      ctx
+    )
+    const list = result?.properties.$exception_list as { value: string }[]
+    expect(list[0].value).toBe('database is locked\n\nat db (b.js:2:2)')
+  })
+
+  it('re-runs redaction on the message as a backstop', () => {
+    const result = exceptionEvent(
+      batchFixture(),
+      eventFixture({ errorCode: 'X', error: { message: 'failed for kaan@example.com' } }),
+      ctx
+    )
+    const list = result?.properties.$exception_list as { value: string }[]
+    expect(list[0].value).not.toContain('kaan@example.com')
+  })
+
+  it('falls back to the error code when there is no message or stack', () => {
+    const result = exceptionEvent(batchFixture(), eventFixture({ errorCode: 'NO_DETAIL' }), ctx)
+    const list = result?.properties.$exception_list as { value: string }[]
+    expect(list[0].value).toBe('NO_DETAIL')
   })
 })

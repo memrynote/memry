@@ -1,4 +1,5 @@
 import type { TelemetryBatch, TelemetryEvent } from '@memry/contracts/telemetry-api'
+import { redactText } from '@memry/contracts/redact'
 
 import type { PostHogEvent } from './posthog'
 
@@ -105,6 +106,48 @@ export const productEvent = (
     event: EVENT_NAME_OVERRIDES[event.name] ?? event.name,
     distinct_id: resolveDistinctId(ctx),
     properties,
+    timestamp: event.occurredAt
+  }
+}
+
+// Error Tracking requires the event name to be exactly `$exception`; a plain
+// `exception` lands in Events and never reaches the Error Tracking product.
+//
+// $exception_fingerprint is set explicitly to our own errorCode. Left unset,
+// PostHog derives a hash from the exception pattern — pinning it to errorCode
+// reproduces the grouping semantics of the retired "errors by code" panel.
+export const exceptionEvent = (
+  batch: TelemetryBatch,
+  event: TelemetryEvent,
+  ctx: TransformContext
+): PostHogEvent | null => {
+  if (!event.errorCode && !event.error) return null
+
+  const type = event.errorCode ?? event.name
+  // Defense in depth: the client already redacted, re-run in mask mode (no hasher).
+  const message = event.error?.message ? redactText(event.error.message, {}) : ''
+  const stack = event.error?.stack ?? ''
+  const value = [message, stack].filter((part) => part.length > 0).join('\n\n') || type
+
+  return {
+    event: '$exception',
+    distinct_id: resolveDistinctId(ctx),
+    properties: {
+      $exception_list: [
+        {
+          type,
+          value,
+          mechanism: { handled: true, synthetic: false }
+        }
+      ],
+      $exception_fingerprint: type,
+      surface: event.surface,
+      action: event.action,
+      app_version: batch.appVersion,
+      build_channel: batch.buildChannel,
+      platform: batch.platform,
+      environment: ctx.environment
+    },
     timestamp: event.occurredAt
   }
 }
