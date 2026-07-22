@@ -8,7 +8,7 @@
 import type { CanvasEntityType } from '@memry/contracts/canvas-api'
 import type { CalendarProjectionItem } from '@memry/contracts/calendar-api'
 import type { SearchResultItem } from '@memry/contracts/search-api'
-import { formatEventTime } from './canvas-cards'
+import { entityKey, formatEventTime } from './canvas-cards'
 
 /** How far either side of today the picker looks for events. */
 export const EVENT_RANGE_DAYS = 90
@@ -27,11 +27,6 @@ export interface AddCardGroups {
   note: AddCardCandidate[]
   task: AddCardCandidate[]
   calendar_event: AddCardCandidate[]
-}
-
-/** Stable identity for a candidate, matching extractEntityRefs' key shape. */
-export function candidateKey(entityType: CanvasEntityType, entityId: string): string {
-  return `${entityType}:${entityId}`
 }
 
 /**
@@ -116,7 +111,7 @@ export function candidatesFromProjections(
 export function onCanvasKeys(
   cards: readonly { entityType: CanvasEntityType; entityId: string }[]
 ): Set<string> {
-  return new Set(cards.map((card) => candidateKey(card.entityType, card.entityId)))
+  return new Set(cards.map((card) => entityKey(card.entityType, card.entityId)))
 }
 
 export function markOnCanvas(
@@ -125,7 +120,7 @@ export function markOnCanvas(
 ): AddCardCandidate[] {
   return candidates.map((candidate) => ({
     ...candidate,
-    onCanvas: keys.has(candidateKey(candidate.entityType, candidate.entityId))
+    onCanvas: keys.has(entityKey(candidate.entityType, candidate.entityId))
   }))
 }
 
