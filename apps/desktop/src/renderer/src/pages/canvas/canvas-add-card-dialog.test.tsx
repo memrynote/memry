@@ -63,6 +63,15 @@ describe('CanvasAddCardDialog', () => {
     mocks.sources = { results: [], projections: [], loading: false }
   })
 
+  it('dims the canvas behind it with a backdrop scrim', () => {
+    setup()
+    // cmdk puts `className` on the Command root, so the scrim can only come
+    // from `overlayClassName` landing on Radix's [cmdk-overlay]. See #872.
+    const overlay = document.querySelector('[cmdk-overlay]')
+    expect(overlay).not.toBeNull()
+    expect(overlay?.className).toContain('bg-black/50')
+  })
+
   it('offers create-new-note when the query is empty', () => {
     const props = setup()
     fireEvent.click(screen.getByTestId('canvas-add-create-note'))
