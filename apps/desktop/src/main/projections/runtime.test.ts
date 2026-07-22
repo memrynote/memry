@@ -89,7 +89,7 @@ describe('projection runtime', () => {
     )
   })
 
-  it('drains events in publish order and projector order', async () => {
+  it('drains each projector in publish order', async () => {
     const calls: string[] = []
     const first = createProjector('first', {
       project: vi.fn(async (event: ProjectionEvent) => {
@@ -107,12 +107,69 @@ describe('projection runtime', () => {
     runtime.publish({ type: 'inbox.deleted', itemId: 'item-1' })
     await runtime.flush()
 
-    expect(calls).toEqual([
+    expect(calls.filter((call) => call.startsWith('first:'))).toEqual([
       'first:note.upserted:note-1',
+      'first:inbox.deleted:item-1'
+    ])
+    expect(calls.filter((call) => call.startsWith('second:'))).toEqual([
       'second:note.upserted:note-1',
-      'first:inbox.deleted:item-1',
       'second:inbox.deleted:item-1'
     ])
+  })
+
+  /**
+   * Regression (#877): the embedding projector awaits a multi-second model load
+   * inside project(). With one shared queue that stalled every other projector,
+   * so note_cache kept a renamed note's old path and every read of it returned
+   * null — the whole renderer saw a live note as deleted.
+   */
+  it('does not let a slow projector stall the other projectors', async () => {
+    let releaseSlow: () => void = () => {}
+    const slowGate = new Promise<void>((resolve) => {
+      releaseSlow = resolve
+    })
+    const slow = createProjector('slow', { project: vi.fn(async () => slowGate) })
+    const fastCalls: string[] = []
+    const fast = createProjector('fast', {
+      project: vi.fn(async (event: ProjectionEvent) => {
+        fastCalls.push(eventEntityId(event))
+      })
+    })
+    const runtime = createProjectionRuntime({ projectors: [slow, fast] })
+
+    runtime.publish(noteEvent)
+    runtime.publish({ type: 'inbox.deleted', itemId: 'item-1' })
+
+    // Let every already-schedulable task run, without releasing the slow projector.
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(fastCalls).toEqual(['note-1', 'item-1'])
+
+    releaseSlow()
+    await runtime.flush()
+    expect(slow.project).toHaveBeenCalledTimes(2)
+  })
+
+  it('flush waits for every projector, including a slow one', async () => {
+    const done: string[] = []
+    const slow = createProjector('slow', {
+      project: vi.fn(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 20))
+        done.push('slow')
+      })
+    })
+    const fast = createProjector('fast', {
+      project: vi.fn(async () => {
+        done.push('fast')
+      })
+    })
+    const runtime = createProjectionRuntime({ projectors: [slow, fast] })
+
+    runtime.publish(noteEvent)
+    await runtime.flush()
+
+    expect(done).toEqual(['fast', 'slow'])
+    expect(runtime.getPendingCount()).toBe(0)
   })
 
   it('dispatches rebuild and reconcile to selected projectors', async () => {
