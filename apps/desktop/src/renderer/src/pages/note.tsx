@@ -229,8 +229,8 @@ export function NotePage({ noteId }: NotePageProps) {
           return
         }
         setFileProbe({ id: noteId, status: 'file' })
-        openTab({
-          type: 'file',
+        const fileTab = {
+          type: 'file' as const,
           title: file.title,
           icon: getTabIconForFileType(file.fileType),
           path: `/file/${noteId}`,
@@ -239,8 +239,20 @@ export function NotePage({ noteId }: NotePageProps) {
           isModified: false,
           isPreview: false,
           isDeleted: false
-        })
-        if (activeTab?.id) closeTab(activeTab.id)
+        }
+        // Convert THIS tab in place. openTab dedups by entityId, so a plain
+        // openTab would just re-focus the existing note tab without changing its
+        // type/icon — replaceActive swaps the active tab for the file viewer.
+        // Guard on the active tab being this note (replaceActive replaces the
+        // group's active tab, so an unguarded call in a split/background pane
+        // would clobber an unrelated tab) and skip pinned tabs (replaceActive
+        // no-ops on them); the render gate already prevents the editor from
+        // mounting on the binary in those rare fallthrough cases.
+        if (activeTab?.entityId === noteId && !activeTab.isPinned) {
+          openTab(fileTab, { replaceActive: true })
+        } else {
+          openTab(fileTab)
+        }
       })
       .catch(() => {
         if (!cancelled) setFileProbe({ id: noteId, status: 'note' })
@@ -248,7 +260,7 @@ export function NotePage({ noteId }: NotePageProps) {
     return () => {
       cancelled = true
     }
-  }, [noteId, openTab, closeTab, activeTab?.id])
+  }, [noteId, openTab, activeTab?.entityId, activeTab?.isPinned])
 
   const handlePropertyBlocked = useCallback((action: PropertySectionAction) => {
     const messages: Record<PropertySectionAction, string> = {

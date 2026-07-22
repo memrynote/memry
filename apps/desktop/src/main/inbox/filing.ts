@@ -191,9 +191,20 @@ async function persistBinaryTags(
   const fileType = getFileType(path.extname(absolutePath))
   if (!fileType || fileType === 'markdown') return
 
-  const indexDb = getIndexDatabase()
-  const noteId = await indexBinaryFile(indexDb, relativePath, absolutePath, fileType)
-  setNoteTags(indexDb, noteId, tags)
+  // Best-effort: the caller has already moved the file and deleted the inbox
+  // attachment folder, so a failure here (e.g. index DB unavailable) must not
+  // abort filing and leave the inbox item pointing at a now-missing attachment.
+  // Log and continue. See #800.
+  try {
+    const indexDb = getIndexDatabase()
+    const noteId = await indexBinaryFile(indexDb, relativePath, absolutePath, fileType)
+    setNoteTags(indexDb, noteId, tags)
+  } catch (error) {
+    log.warn(
+      'Failed to persist tags for filed binary (continuing):',
+      error instanceof Error ? error.message : String(error)
+    )
+  }
 }
 
 /**

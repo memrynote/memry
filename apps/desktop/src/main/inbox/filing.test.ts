@@ -359,6 +359,26 @@ describe('Inbox Filing Operations', () => {
       expect(mockSetNoteTags).toHaveBeenCalledWith({}, 'file-note-id', ['Photos', 'Image', 'inbox'])
     })
 
+    it('still files the binary when tag persistence fails (best-effort) (#800)', async () => {
+      // The file is already moved before tags are persisted; a tag-write failure
+      // must not abort filing and orphan the inbox item.
+      mockIndexBinaryFile.mockRejectedValueOnce(new Error('index db unavailable'))
+      const itemId = seedInboxItem(testDb.db, {
+        id: 'image-tagfail',
+        type: 'image',
+        title: 'Screenshot'
+      })
+      updateInboxItem(itemId, { attachmentPath: 'attachments/inbox/image-tagfail/screenshot.png' })
+
+      const result = await fileToFolder(itemId, 'projects', ['Image'])
+
+      expect(result).toEqual({ success: true, filedTo: 'notes/projects/screenshot.png' })
+      expect(mockSend).toHaveBeenCalledWith(
+        'inbox:filed',
+        expect.objectContaining({ id: itemId, filedAction: 'folder' })
+      )
+    })
+
     it('should fall back to copy and unlink when binary rename crosses devices', async () => {
       mockRename.mockRejectedValueOnce(Object.assign(new Error('cross-device'), { code: 'EXDEV' }))
       const itemId = seedInboxItem(testDb.db, {
