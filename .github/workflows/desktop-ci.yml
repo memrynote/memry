@@ -89,6 +89,11 @@ jobs:
       - name: Test macOS update-manifest validator
         run: node --test scripts/validate-mac-update-manifest.test.mjs
 
+      # Guards the account matcher that decides which keychain items the purge
+      # deletes. Pure functions only, so it runs on any platform.
+      - name: Test e2e keychain cleanup tooling
+        run: node --test apps/desktop/scripts/purge-e2e-keychain.test.mjs
+
   unit:
     name: Unit & integration tests
     runs-on: ubuntu-latest
