@@ -1,4 +1,6 @@
 import type {
+  ProjectLink,
+  ProjectRef,
   ProjectWithStats,
   ProjectWithStatuses,
   Status,
@@ -11,17 +13,21 @@ import type {
 export interface TasksQueryRepository {
   getTask(id: string): Task | undefined
   listTasks(options?: TaskListOptions): TaskListItem[]
-  countTasks(options?: Pick<TaskListOptions, 'projectId' | 'includeCompleted' | 'includeArchived'>): number
+  countTasks(
+    options?: Pick<TaskListOptions, 'projectId' | 'includeCompleted' | 'includeArchived'>
+  ): number
   getSubtasks(parentId: string): Task[]
   listProjects(): ProjectWithStats[]
   getProject(projectId: string): ProjectWithStatuses | undefined
   listStatuses(projectId: string): Status[]
+  listProjectLinks(projectId: string): ProjectLink[]
   getAllTaskTags(): { tag: string; count: number }[]
   getTaskStats(): TaskStats
   getTodayTasks(): Task[]
   getUpcomingTasks(days?: number): Task[]
   getOverdueTasks(): Task[]
   getTasksLinkedToNote(noteId: string): Task[]
+  listForItem(itemType: string, itemId: string): ProjectRef[]
 }
 
 export interface TaskListResult {
@@ -75,6 +81,10 @@ export function createTasksQueries(repository: TasksQueryRepository) {
       return repository.listStatuses(projectId)
     },
 
+    listProjectLinks(projectId: string): ProjectLink[] {
+      return repository.listProjectLinks(projectId)
+    },
+
     getTags(): { tag: string; count: number }[] {
       return repository.getAllTaskTags()
     },
@@ -100,6 +110,10 @@ export function createTasksQueries(repository: TasksQueryRepository) {
 
     getLinkedTasks(noteId: string): Task[] {
       return repository.getTasksLinkedToNote(noteId)
+    },
+
+    listForItem(itemType: string, itemId: string): ProjectRef[] {
+      return repository.listForItem(itemType, itemId)
     }
   }
 }

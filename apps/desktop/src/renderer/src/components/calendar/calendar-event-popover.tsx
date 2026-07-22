@@ -23,6 +23,8 @@ export interface CalendarEventReadOnlyMetadata {
 interface CalendarEventPopoverProps {
   anchorRect: AnchorRect
   mode: 'create' | 'edit'
+  /** Saved event id; absent/null while the popover is drafting a new, unsaved event. */
+  eventId?: string | null
   draft: CalendarEventDraft
   isSaving: boolean
   onDraftChange: (next: CalendarEventDraft) => void
@@ -35,6 +37,7 @@ interface CalendarEventPopoverProps {
 export function CalendarEventPopover({
   anchorRect,
   mode,
+  eventId,
   draft,
   isSaving,
   onDraftChange,
@@ -87,6 +90,7 @@ export function CalendarEventPopover({
 
           <CalendarEventForm
             mode={mode}
+            eventId={eventId}
             draft={draft}
             isSaving={isSaving}
             onDraftChange={onDraftChange}

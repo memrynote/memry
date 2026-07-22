@@ -1,4 +1,12 @@
-import type { Project, ProjectWithStatuses, Status, Task } from './types.ts'
+import type {
+  Project,
+  ProjectLink,
+  ProjectLinkItemInput,
+  ProjectSetHomeNoteInput,
+  ProjectWithStatuses,
+  Status,
+  Task
+} from './types.ts'
 import type { TasksQueryRepository } from './queries.ts'
 
 export interface StatusDefinitionInput {
@@ -149,6 +157,17 @@ export interface TasksCommandRepository extends TasksQueryRepository {
   createDefaultStatuses(projectId: string): Status[]
   createCustomStatuses(projectId: string, statuses: StatusDefinitionInput[]): Status[]
   reconcileProjectStatuses(projectId: string, statuses: StatusDefinitionInput[]): void
+  linkItemToProject(link: {
+    id: string
+    projectId: string
+    itemType: string
+    itemId: string
+  }): ProjectLink
+  unlinkItemFromProject(projectId: string, itemType: string, itemId: string): void
+  findProjectLink(projectId: string, itemType: string, itemId: string): ProjectLink | undefined
+  setProjectHomeNote(projectId: string, noteId: string | null): void
+  deleteProjectLinksForItem(itemType: string, itemId: string): string[]
+  clearProjectsHomeNote(noteId: string): string[]
   createStatus(status: Omit<Status, 'createdAt'>): Status
   updateStatus(
     id: string,
@@ -657,6 +676,81 @@ export function createTasksCommands({
       for (const task of cascadedTasks) {
         await publisher.taskDeleted({ id: task.id, snapshot: task })
       }
+      return { success: true }
+    },
+
+    async linkItemToProject(input: ProjectLinkItemInput) {
+      // Validate before inserting — project_links.project_id carries a FK, so an
+      // unknown (or concurrently deleted) project would throw past the structured
+      // `{ success: false, error }` response instead of returning it.
+      const project = repository.getProject(input.projectId)
+      if (!project) {
+        return { success: false, error: 'Project not found' }
+      }
+
+      const existing = repository.findProjectLink(input.projectId, input.itemType, input.itemId)
+      if (!existing) {
+        repository.linkItemToProject({
+          id: generateId(),
+          projectId: input.projectId,
+          itemType: input.itemType,
+          itemId: input.itemId
+        })
+      }
+
+      await publisher.projectUpdated({ id: input.projectId, project, changedFields: ['links'] })
+      return { success: true }
+    },
+
+    async unlinkItemFromProject(input: ProjectLinkItemInput) {
+      repository.unlinkItemFromProject(input.projectId, input.itemType, input.itemId)
+
+      const project = repository.getProject(input.projectId)
+      if (!project) {
+        return { success: false, error: 'Project not found' }
+      }
+
+      await publisher.projectUpdated({ id: input.projectId, project, changedFields: ['links'] })
+      return { success: true }
+    },
+
+    async setProjectHomeNote(input: ProjectSetHomeNoteInput) {
+      repository.setProjectHomeNote(input.projectId, input.noteId)
+
+      const project = repository.getProject(input.projectId)
+      if (!project) {
+        return { success: false, error: 'Project not found' }
+      }
+
+      await publisher.projectUpdated({
+        id: input.projectId,
+        project,
+        changedFields: ['homeNoteId']
+      })
+      return { success: true, project }
+    },
+
+    // A note's links + home-note references only sync because the project payload
+    // carries them, so removing them must re-enqueue each affected project through
+    // the same publisher.projectUpdated(...) path as link/unlink/set-home-note.
+    async cleanupProjectLinksForDeletedNote(noteId: string) {
+      const fromLinks = repository.deleteProjectLinksForItem('note', noteId)
+      const fromHome = repository.clearProjectsHomeNote(noteId)
+
+      const changedByProject = new Map<string, string[]>()
+      for (const id of fromLinks) changedByProject.set(id, ['links'])
+      for (const id of fromHome) {
+        const existing = changedByProject.get(id)
+        changedByProject.set(id, existing ? [...existing, 'homeNoteId'] : ['homeNoteId'])
+      }
+
+      for (const [projectId, changedFields] of changedByProject) {
+        const project = repository.getProject(projectId)
+        if (project) {
+          await publisher.projectUpdated({ id: projectId, project, changedFields })
+        }
+      }
+
       return { success: true }
     },
 

@@ -27,10 +27,15 @@ interface CalendarItemChipProps {
   isSelected?: boolean
   onClick?: (item: CalendarProjectionItem, rect: AnchorRect) => void
   onDeleteItem?: (item: CalendarProjectionItem) => void
+  onAddToProject?: (eventId: string) => void
 }
 
 function canDeleteEvent(item: CalendarProjectionItem): boolean {
   return item.sourceType === 'event' && item.editability.canDelete
+}
+
+function canAddEventToProject(item: CalendarProjectionItem): boolean {
+  return item.sourceType === 'event'
 }
 
 export function CalendarItemChip({
@@ -38,15 +43,18 @@ export function CalendarItemChip({
   clockFormat = '12h',
   isSelected = false,
   onClick,
-  onDeleteItem
+  onDeleteItem,
+  onAddToProject
 }: CalendarItemChipProps): React.JSX.Element {
   const { t } = useT('calendar')
   const deleteLabel = t('delete-dialog.context-menu-delete-label')
+  const addToProjectLabel = t('delete-dialog.context-menu-add-to-project')
   const timeLabel = item.isAllDay
     ? t('time.all-day')
     : formatTimeOfDay(new Date(item.startAt), clockFormat)
   const VisualIcon = VISUAL_TYPE_ICONS[item.visualType]
   const deletable = Boolean(onDeleteItem) && canDeleteEvent(item)
+  const addableToProject = Boolean(onAddToProject) && canAddEventToProject(item)
   const cls = cn(
     'flex h-full w-full items-start justify-between gap-0.5 rounded-[6px] px-1 py-0.5 text-start @xl:px-2 @xl:py-1',
     'transition-[filter,transform] duration-100 ease-out',
@@ -71,18 +79,31 @@ export function CalendarItemChip({
 
   const handleContextMenu = useCallback(
     (e: React.MouseEvent) => {
-      if (!deletable || !onDeleteItem) return
+      if (!deletable && !addableToProject) return
       e.preventDefault()
 
-      const menuItems = [{ id: 'delete', label: deleteLabel, accelerator: 'Backspace' }]
+      const menuItems = [
+        ...(addableToProject ? [{ id: 'add-to-project', label: addToProjectLabel }] : []),
+        ...(deletable ? [{ id: 'delete', label: deleteLabel, accelerator: 'Backspace' }] : [])
+      ]
 
       void window.api.showContextMenu(menuItems).then((selectedId) => {
-        if (selectedId === 'delete') {
+        if (selectedId === 'delete' && onDeleteItem) {
           onDeleteItem(item)
+        } else if (selectedId === 'add-to-project' && onAddToProject) {
+          onAddToProject(item.sourceId)
         }
       })
     },
-    [item, onDeleteItem, deletable, deleteLabel]
+    [
+      item,
+      onDeleteItem,
+      deletable,
+      deleteLabel,
+      onAddToProject,
+      addableToProject,
+      addToProjectLabel
+    ]
   )
 
   const content = (
@@ -110,7 +131,7 @@ export function CalendarItemChip({
             height: rect.height
           })
         }}
-        onContextMenu={deletable ? handleContextMenu : undefined}
+        onContextMenu={deletable || addableToProject ? handleContextMenu : undefined}
         data-visual-type={item.visualType}
         data-triggered={item.isTriggered ? 'true' : undefined}
       >

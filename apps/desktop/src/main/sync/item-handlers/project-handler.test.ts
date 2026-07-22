@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { createTestDataDb, asSyncDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { projects } from '@memry/db-schema/schema/projects'
 import { statuses } from '@memry/db-schema/schema/statuses'
+import { projectLinks } from '@memry/db-schema/schema/project-links'
 import { SyncQueueManager } from '../queue'
 import { projectHandler } from './project-handler'
 import type { ApplyContext, DrizzleDb } from './types'
@@ -311,6 +312,81 @@ describe('projectHandler', () => {
       )
 
       expect(count).toBe(0)
+    })
+  })
+
+  describe('links reconciliation', () => {
+    it('#then inserts links from payload on upsert', () => {
+      const data: ProjectSyncPayload = {
+        name: 'P',
+        links: [{ id: 'l1', itemType: 'note', itemId: 'n1', position: 0 }]
+      }
+      projectHandler.applyUpsert(ctx, 'proj-x', data, { 'device-B': 1 })
+      const links = testDb.db.select().from(projectLinks).all()
+      expect(links).toHaveLength(1)
+      expect(links[0].itemId).toBe('n1')
+    })
+
+    it('#then reconciles links (adds new, removes missing)', () => {
+      testDb.db
+        .insert(projects)
+        .values({ ...TEST_PROJECT, clock: { 'device-A': 1 } })
+        .run()
+      testDb.db
+        .insert(projectLinks)
+        .values({ id: 'l1', projectId: 'proj-1', itemType: 'note', itemId: 'old', position: 0 })
+        .run()
+
+      const data: ProjectSyncPayload = {
+        name: 'P',
+        clock: { 'device-A': 1, 'device-B': 1 },
+        links: [{ id: 'l2', itemType: 'note', itemId: 'new', position: 0 }]
+      }
+      projectHandler.applyUpsert(ctx, 'proj-1', data, { 'device-A': 1, 'device-B': 1 })
+
+      const links = testDb.db.select().from(projectLinks).all()
+      expect(links.map((l) => l.itemId)).toEqual(['new'])
+    })
+
+    it('#then preserves local links when payload omits links (old client)', () => {
+      testDb.db
+        .insert(projects)
+        .values({ ...TEST_PROJECT, clock: { 'device-A': 1 } })
+        .run()
+      testDb.db
+        .insert(projectLinks)
+        .values({ id: 'l1', projectId: 'proj-1', itemType: 'note', itemId: 'keep', position: 0 })
+        .run()
+
+      const data: ProjectSyncPayload = { name: 'Renamed', clock: { 'device-A': 1, 'device-B': 1 } }
+      projectHandler.applyUpsert(ctx, 'proj-1', data, { 'device-A': 1, 'device-B': 1 })
+
+      const links = testDb.db.select().from(projectLinks).all()
+      expect(links.map((l) => l.itemId)).toEqual(['keep'])
+    })
+
+    it('#then round-trips homeNoteId', () => {
+      const data: ProjectSyncPayload = { name: 'P', homeNoteId: 'note-7' }
+      projectHandler.applyUpsert(ctx, 'proj-h', data, { 'device-B': 1 })
+      const row = testDb.db.select().from(projects).all()[0]
+      expect(row.homeNoteId).toBe('note-7')
+    })
+
+    it('#then buildPushPayload includes links and homeNoteId', () => {
+      testDb.db
+        .insert(projects)
+        .values({ ...TEST_PROJECT, homeNoteId: 'note-3' })
+        .run()
+      testDb.db
+        .insert(projectLinks)
+        .values({ id: 'l1', projectId: 'proj-1', itemType: 'note', itemId: 'n1', position: 0 })
+        .run()
+
+      const payload = JSON.parse(
+        projectHandler.buildPushPayload(testDb.db as never, 'proj-1', 'device-A', 'update')!
+      )
+      expect(payload.homeNoteId).toBe('note-3')
+      expect(payload.links).toHaveLength(1)
     })
   })
 })

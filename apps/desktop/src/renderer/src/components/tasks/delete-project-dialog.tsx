@@ -161,6 +161,10 @@ export const DeleteProjectDialog = ({
                 </p>
               )}
 
+              <p className="text-sm text-muted-foreground">
+                {tPhaseF('phaseF.componentsTasksDeleteProjectDialog.notesEventsAndFilesStayNotice')}
+              </p>
+
               {/* Warning */}
               <div className="flex items-center gap-2 rounded-sm bg-destructive/10 p-3 text-sm text-destructive">
                 <AlertTriangle className="size-4 shrink-0" />

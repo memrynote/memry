@@ -210,6 +210,7 @@
       "moveTasksToPersonalProject": "Move tasks to Personal project",
       "deleteAllTasksPermanently": "Delete all tasks permanently",
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "This project has no tasks and will be permanently deleted.",
+      "notesEventsAndFilesStayNotice": "Tasks in this project are deleted. Your notes, events, and files stay in your vault.",
       "thisActionCannotBeUndone": "This action cannot be undone.",
       "cancel": "Cancel",
       "deleteProject": "Delete Project"
@@ -648,5 +649,60 @@
       "failedToUpdateTaskPreferences": "Failed to update task preferences",
       "failedToLoadLinkedTasks": "Failed to load linked tasks"
     }
+  },
+  "projectNotes": {
+    "title": "Notes",
+    "loading": "Loading notes…",
+    "loadError": "Failed to load project notes",
+    "removeFromProject": "Remove from project",
+    "removeError": "Failed to remove note from project"
+  },
+  "projectFiles": {
+    "title": "Files",
+    "loading": "Loading files…",
+    "loadError": "Failed to load project files",
+    "removeFromProject": "Remove from project",
+    "removeError": "Failed to remove file from project"
+  },
+  "projectEvents": {
+    "title": "Events",
+    "loading": "Loading events…",
+    "loadError": "Could not load events",
+    "removeFromProject": "Remove from project",
+    "removeError": "Could not remove event"
+  },
+  "addToProject": {
+    "menuLabel": "Add to project",
+    "dialogTitle": "Add to project",
+    "noProjects": "No projects yet",
+    "loading": "Loading projects…",
+    "toastSuccess": "Added to {name}",
+    "toastError": "Failed to add to project"
+  },
+  "projectHome": {
+    "stats": {
+      "tasks": "Tasks",
+      "notes": "Notes",
+      "events": "Events",
+      "files": "Files",
+      "progress": "Progress"
+    },
+    "emptyTitle": "No project selected",
+    "emptyBody": "Pick a project from the sidebar to open its home.",
+    "loadError": "Could not load project details",
+    "overview": {
+      "sectionTitle": "Overview",
+      "create": "Create overview note",
+      "clear": "Clear overview",
+      "defaultTitle": "Overview",
+      "placeholder": "Write an overview for this project…",
+      "createError": "Could not create the overview note",
+      "clearError": "Could not clear the overview note",
+      "loadError": "Could not load the overview note",
+      "saveError": "Could not save the overview note"
+    }
+  },
+  "itemProjects": {
+    "openProject": "Open project {name}"
   }
 }

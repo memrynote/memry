@@ -61,6 +61,9 @@ const LazyVirtualNotePage = React.lazy(async () => ({
   default: (await import('@/pages/virtual-note')).VirtualNotePage
 }))
 const LazyHomePage = React.lazy(() => import('@/pages/home'))
+const LazyProjectHomePage = React.lazy(async () => ({
+  default: (await import('@/pages/project-home')).ProjectHomePage
+}))
 
 interface TabContentProps {
   /** Tab data */
@@ -121,21 +124,18 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
       case 'calendar':
         return <LazyCalendarPage />
 
+      case 'project':
+        return <LazyProjectHomePage projectId={tab.entityId} />
+
       case 'tasks':
       case 'all-tasks':
       case 'today':
-      case 'completed':
-      case 'project': {
+      case 'completed': {
         // Use TasksContext if available
         if (tasksContext) {
           // Determine selection based on tab type
-          const selectionId =
-            tab.type === 'project'
-              ? tab.entityId || 'personal'
-              : tab.type === 'all-tasks' || tab.type === 'tasks'
-                ? 'all'
-                : tab.type
-          const selectionType = tab.type === 'project' ? 'project' : 'view'
+          const selectionId = tab.type === 'all-tasks' || tab.type === 'tasks' ? 'all' : tab.type
+          const selectionType = 'view'
 
           return (
             <LazyTasksPage

@@ -77,6 +77,12 @@ vi.mock('../../projections', () => ({
   flushProjectionEvents: (...args: unknown[]) => mockFlushProjectionEvents(...args)
 }))
 
+const mockCleanupProjectLinksForDeletedNote = vi.fn(() => Promise.resolve())
+vi.mock('../../notes/runtime-effects', () => ({
+  cleanupProjectLinksForDeletedNote: (...args: unknown[]) =>
+    mockCleanupProjectLinksForDeletedNote(...(args as []))
+}))
+
 const mockMarkWritebackIgnored = vi.fn()
 vi.mock('../crdt-writeback', () => ({
   markWritebackIgnored: (...args: unknown[]) => mockMarkWritebackIgnored(...args)
@@ -560,6 +566,9 @@ describe('noteHandler.applyUpsert — path collision', () => {
       path: path.join('notes', 'a1', 'a1.md'),
       source: 'sync'
     })
+    // A remote delete must run the same project-link cleanup as the local path,
+    // otherwise the receiving device keeps orphan links + a dangling home note.
+    expect(mockCleanupProjectLinksForDeletedNote).toHaveBeenCalledWith('note-1')
 
     vi.clearAllMocks()
     mockGetNoteMetadataById.mockReturnValue({
@@ -570,6 +579,7 @@ describe('noteHandler.applyUpsert — path collision', () => {
 
     expect(noteHandler.applyDelete(ctx, 'note-1', { dev1: 2 })).toBe('skipped')
     expect(deleteNoteFromCache).not.toHaveBeenCalled()
+    expect(mockCleanupProjectLinksForDeletedNote).not.toHaveBeenCalled()
   })
 
   it('skips delete for missing notes and deletes without a remote clock', () => {

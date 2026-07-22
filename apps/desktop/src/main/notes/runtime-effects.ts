@@ -9,6 +9,9 @@ import {
   enqueueLocalSyncUpdate,
   removePendingNoteSyncItems
 } from '../sync/local-mutations'
+import { createDesktopTasksDomain } from '../tasks/domain'
+import { createTasksPublisher } from '../tasks/publisher'
+import { generateId } from '../lib/id'
 
 export function syncNoteCreate(noteId: string, title: string, tags: string[]): void {
   enqueueLocalSyncCreate('note', noteId)
@@ -26,6 +29,17 @@ export function syncNoteUpdate(noteId: string, title?: string): void {
 
 export function syncNoteDelete(noteId: string): void {
   enqueueLocalSyncDelete('note', noteId)
+}
+
+/**
+ * After a note is deleted, drop any project links pointing at it and clear any
+ * project's home note that referenced it — re-enqueuing those projects for sync
+ * (the project payload carries links + homeNoteId). Prevents orphan link rows
+ * and dangling home_note_id (spec §4 "Cleanup rules").
+ */
+export async function cleanupProjectLinksForDeletedNote(noteId: string): Promise<void> {
+  const domain = createDesktopTasksDomain(getDatabase(), createTasksPublisher(), generateId)
+  await domain.cleanupProjectLinksForDeletedNote(noteId)
 }
 
 export function emitNoteAttachmentSaved(noteId: string, diskPath: string): void {

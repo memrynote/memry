@@ -1,11 +1,13 @@
 import { eq, isNull, and, notInArray } from 'drizzle-orm'
 import { projects } from '@memry/db-schema/schema/projects'
 import { statuses } from '@memry/db-schema/schema/statuses'
+import { projectLinks } from '@memry/db-schema/schema/project-links'
 import { utcNow } from '@memry/shared/utc'
 import {
   ProjectSyncPayloadSchema,
   type ProjectSyncPayload,
-  type StatusSync
+  type StatusSync,
+  type ProjectLinkSync
 } from '@memry/contracts/sync-payloads'
 import { TasksChannels } from '@memry/contracts/ipc-channels'
 import type { VectorClock } from '@memry/contracts/sync-api'
@@ -53,6 +55,39 @@ function reconcileStatuses(tx: DrizzleDb, projectId: string, incoming: StatusSyn
           isDefault: s.isDefault ?? false,
           isDone: s.isDone ?? false,
           createdAt: s.createdAt ?? utcNow()
+        })
+        .run()
+    }
+  }
+}
+
+function reconcileLinks(tx: DrizzleDb, projectId: string, incoming: ProjectLinkSync[]): void {
+  const incomingIds = incoming.map((l) => l.id)
+
+  if (incomingIds.length > 0) {
+    tx.delete(projectLinks)
+      .where(and(eq(projectLinks.projectId, projectId), notInArray(projectLinks.id, incomingIds)))
+      .run()
+  } else {
+    tx.delete(projectLinks).where(eq(projectLinks.projectId, projectId)).run()
+  }
+
+  for (const l of incoming) {
+    const existing = tx.select().from(projectLinks).where(eq(projectLinks.id, l.id)).get()
+    if (existing) {
+      tx.update(projectLinks)
+        .set({ itemType: l.itemType, itemId: l.itemId, position: l.position })
+        .where(eq(projectLinks.id, l.id))
+        .run()
+    } else {
+      tx.insert(projectLinks)
+        .values({
+          id: l.id,
+          projectId,
+          itemType: l.itemType,
+          itemId: l.itemId,
+          position: l.position,
+          createdAt: l.createdAt ?? utcNow()
         })
         .run()
     }
@@ -115,6 +150,7 @@ class ProjectHandler extends BaseItemHandler<ProjectSyncPayload> {
               position: (mergeResult.merged.position as number) ?? existing.position,
               isInbox: (mergeResult.merged.isInbox as boolean) ?? existing.isInbox,
               archivedAt: (mergeResult.merged.archivedAt as string | null) ?? null,
+              homeNoteId: (mergeResult.merged.homeNoteId as string | null) ?? null,
               clock: resolution.mergedClock,
               fieldClocks: mergeResult.mergedFieldClocks,
               syncedAt: now,
@@ -132,6 +168,7 @@ class ProjectHandler extends BaseItemHandler<ProjectSyncPayload> {
               position: data.position ?? existing.position,
               isInbox: data.isInbox ?? existing.isInbox,
               archivedAt: data.archivedAt ?? null,
+              homeNoteId: data.homeNoteId ?? null,
               clock: resolution.mergedClock,
               fieldClocks: data.fieldClocks ?? existing.fieldClocks ?? null,
               syncedAt: now,
@@ -143,6 +180,10 @@ class ProjectHandler extends BaseItemHandler<ProjectSyncPayload> {
 
         if (data.statuses) {
           reconcileStatuses(tx as unknown as DrizzleDb, itemId, data.statuses)
+        }
+
+        if (data.links) {
+          reconcileLinks(tx as unknown as DrizzleDb, itemId, data.links)
         }
 
         const updated = tx.select().from(projects).where(eq(projects.id, itemId)).get()
@@ -168,6 +209,7 @@ class ProjectHandler extends BaseItemHandler<ProjectSyncPayload> {
           position: data.position ?? 0,
           isInbox: data.isInbox ?? false,
           archivedAt: data.archivedAt ?? null,
+          homeNoteId: data.homeNoteId ?? null,
           clock: remoteClock,
           fieldClocks: data.fieldClocks ?? null,
           syncedAt: now,
@@ -178,6 +220,10 @@ class ProjectHandler extends BaseItemHandler<ProjectSyncPayload> {
 
       if (data.statuses) {
         reconcileStatuses(tx as unknown as DrizzleDb, itemId, data.statuses)
+      }
+
+      if (data.links) {
+        reconcileLinks(tx as unknown as DrizzleDb, itemId, data.links)
       }
 
       const inserted = tx.select().from(projects).where(eq(projects.id, itemId)).get()
@@ -220,8 +266,9 @@ class ProjectHandler extends BaseItemHandler<ProjectSyncPayload> {
     if (!project) return undefined
 
     const projectStatuses = db.select().from(statuses).where(eq(statuses.projectId, itemId)).all()
+    const links = db.select().from(projectLinks).where(eq(projectLinks.projectId, itemId)).all()
 
-    return { ...project, statuses: projectStatuses } as Record<string, unknown>
+    return { ...project, statuses: projectStatuses, links } as Record<string, unknown>
   }
 
   buildPushPayload(
@@ -234,8 +281,9 @@ class ProjectHandler extends BaseItemHandler<ProjectSyncPayload> {
     if (!project) return null
 
     const projectStatuses = db.select().from(statuses).where(eq(statuses.projectId, itemId)).all()
+    const links = db.select().from(projectLinks).where(eq(projectLinks.projectId, itemId)).all()
 
-    return JSON.stringify({ ...project, statuses: projectStatuses })
+    return JSON.stringify({ ...project, statuses: projectStatuses, links })
   }
 
   markPushSynced(db: DrizzleDb, itemId: string): void {
@@ -254,12 +302,13 @@ class ProjectHandler extends BaseItemHandler<ProjectSyncPayload> {
         .from(statuses)
         .where(eq(statuses.projectId, item.id))
         .all()
+      const links = db.select().from(projectLinks).where(eq(projectLinks.projectId, item.id)).all()
 
       queue.enqueue({
         type: 'project',
         itemId: item.id,
         operation: 'create',
-        payload: JSON.stringify({ ...item, clock, fieldClocks, statuses: projectStatuses }),
+        payload: JSON.stringify({ ...item, clock, fieldClocks, statuses: projectStatuses, links }),
         priority: 0
       })
     }

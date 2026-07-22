@@ -147,6 +147,11 @@ export const TasksChannels = {
     PROJECT_LIST: 'tasks:project-list',
     PROJECT_ARCHIVE: 'tasks:project-archive',
     PROJECT_REORDER: 'tasks:project-reorder',
+    PROJECT_LINK_ITEM: 'tasks:project-link-item',
+    PROJECT_UNLINK_ITEM: 'tasks:project-unlink-item',
+    PROJECT_LIST_LINKS: 'tasks:project-list-links',
+    PROJECT_SET_HOME_NOTE: 'tasks:project-set-home-note',
+    PROJECT_LIST_FOR_ITEM: 'tasks:project-list-for-item',
 
     // Status operations
     STATUS_CREATE: 'tasks:status-create',

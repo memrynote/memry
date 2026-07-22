@@ -17,12 +17,15 @@ import { cn } from '@/lib/utils'
 import { toLocalDateString } from './date-utils'
 import { CalendarPicker } from './calendar-picker'
 import { CalendarEventMetadata } from './calendar-event-metadata'
+import { ItemProjectChips } from '@/components/tasks/projects/item-project-chips'
 import { useGoogleCalendars } from '@/hooks/use-google-calendars'
 import type { CalendarEventDraft } from './types'
 import type { CalendarEventReadOnlyMetadata } from './calendar-event-popover'
 
 export interface CalendarEventFormProps {
   mode: 'create' | 'edit'
+  /** Saved event id; absent/null while the popover is drafting a new, unsaved event. */
+  eventId?: string | null
   draft: CalendarEventDraft
   isSaving: boolean
   onDraftChange: (next: CalendarEventDraft) => void
@@ -140,6 +143,7 @@ function DateTimeField({
 
 export function CalendarEventForm({
   mode,
+  eventId,
   draft,
   isSaving,
   onDraftChange,
@@ -205,6 +209,10 @@ export function CalendarEventForm({
         }}
         disabled={isSaving}
       />
+
+      {mode === 'edit' && eventId && (
+        <ItemProjectChips itemType="calendar_event" itemId={eventId} />
+      )}
 
       <label className="flex items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm">
         <span className="flex items-center gap-2 text-muted-foreground">

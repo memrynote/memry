@@ -10,6 +10,7 @@ import { eq, asc, and, isNull, sql, count } from 'drizzle-orm'
 import { projects, type Project, type NewProject } from '@memry/db-schema/schema/projects'
 import { statuses, type Status, type NewStatus } from '@memry/db-schema/schema/statuses'
 import { tasks } from '@memry/db-schema/schema/tasks'
+import { projectLinks, type ProjectLink } from '@memry/db-schema/schema/project-links'
 import type { DataDb } from '../types'
 
 // ============================================================================
@@ -558,4 +559,148 @@ export function countTasksInStatus(db: DataDb, statusId: string): number {
   const result = db.select({ count: count() }).from(tasks).where(eq(tasks.statusId, statusId)).get()
 
   return result?.count ?? 0
+}
+
+// ============================================================================
+// Project Links
+// ============================================================================
+
+/**
+ * Link an item (note, calendar event, or file) to a project.
+ */
+export function insertProjectLink(
+  db: DataDb,
+  link: { id: string; projectId: string; itemType: string; itemId: string }
+): ProjectLink {
+  return db.insert(projectLinks).values(link).returning().get()
+}
+
+/**
+ * Unlink an item from a project.
+ */
+export function deleteProjectLink(
+  db: DataDb,
+  projectId: string,
+  itemType: string,
+  itemId: string
+): void {
+  db.delete(projectLinks)
+    .where(
+      and(
+        eq(projectLinks.projectId, projectId),
+        eq(projectLinks.itemType, itemType),
+        eq(projectLinks.itemId, itemId)
+      )
+    )
+    .run()
+}
+
+/**
+ * Get a single project link by its (projectId, itemType, itemId) tuple.
+ */
+export function getProjectLink(
+  db: DataDb,
+  projectId: string,
+  itemType: string,
+  itemId: string
+): ProjectLink | undefined {
+  return db
+    .select()
+    .from(projectLinks)
+    .where(
+      and(
+        eq(projectLinks.projectId, projectId),
+        eq(projectLinks.itemType, itemType),
+        eq(projectLinks.itemId, itemId)
+      )
+    )
+    .get()
+}
+
+/**
+ * List all items linked to a project.
+ */
+export function getProjectLinks(db: DataDb, projectId: string): ProjectLink[] {
+  return db
+    .select()
+    .from(projectLinks)
+    .where(eq(projectLinks.projectId, projectId))
+    .orderBy(asc(projectLinks.position), asc(projectLinks.createdAt))
+    .all()
+}
+
+/**
+ * Set (or clear) a project's home note.
+ */
+export function updateProjectHomeNote(db: DataDb, projectId: string, noteId: string | null): void {
+  db.update(projects)
+    .set({ homeNoteId: noteId, modifiedAt: new Date().toISOString() })
+    .where(eq(projects.id, projectId))
+    .run()
+}
+
+/**
+ * List the projects a given item (note, calendar event, or file) belongs to.
+ */
+export function getProjectsForItem(db: DataDb, itemType: string, itemId: string) {
+  return db
+    .select({
+      id: projects.id,
+      name: projects.name,
+      color: projects.color,
+      icon: projects.icon
+    })
+    .from(projectLinks)
+    .innerJoin(projects, eq(projectLinks.projectId, projects.id))
+    .where(and(eq(projectLinks.itemType, itemType), eq(projectLinks.itemId, itemId)))
+    .all()
+}
+
+/**
+ * Delete every project link that points at a given item (across all projects).
+ * Returns the distinct project ids that lost at least one link, so callers can
+ * re-enqueue those projects for sync (the project payload carries its links).
+ */
+export function deleteProjectLinksForItem(db: DataDb, itemType: string, itemId: string): string[] {
+  const affected = [
+    ...new Set(
+      db
+        .select({ projectId: projectLinks.projectId })
+        .from(projectLinks)
+        .where(and(eq(projectLinks.itemType, itemType), eq(projectLinks.itemId, itemId)))
+        .all()
+        .map((row) => row.projectId)
+    )
+  ]
+
+  if (affected.length > 0) {
+    db.delete(projectLinks)
+      .where(and(eq(projectLinks.itemType, itemType), eq(projectLinks.itemId, itemId)))
+      .run()
+  }
+
+  return affected
+}
+
+/**
+ * Clear home_note_id on any project that points at the given note, bumping
+ * modifiedAt. Returns the project ids that were changed, so callers can
+ * re-enqueue those projects for sync.
+ */
+export function clearProjectsHomeNote(db: DataDb, noteId: string): string[] {
+  const affected = db
+    .select({ id: projects.id })
+    .from(projects)
+    .where(eq(projects.homeNoteId, noteId))
+    .all()
+    .map((row) => row.id)
+
+  if (affected.length > 0) {
+    db.update(projects)
+      .set({ homeNoteId: null, modifiedAt: new Date().toISOString() })
+      .where(eq(projects.homeNoteId, noteId))
+      .run()
+  }
+
+  return affected
 }

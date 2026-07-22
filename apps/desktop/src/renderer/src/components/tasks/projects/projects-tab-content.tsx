@@ -3,6 +3,7 @@ import { Plus, FolderKanban } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { TaskList } from '@/components/tasks/task-list'
 import { ProjectSelector } from '@/components/tasks/projects/project-selector'
+import { ProjectNotesSection } from '@/components/tasks/projects/project-notes-section'
 import { cn } from '@/lib/utils'
 import { getFilteredTasks } from '@/lib/task-utils'
 import type { Project } from '@/data/tasks-data'
@@ -155,7 +156,15 @@ export const ProjectsTabContent = ({
             onReorderSubtasks={onReorderSubtasks}
             onAddSubtask={onAddSubtask}
           />
-        ) : (
+        ) : null}
+        {selectedProject && effectiveSelectedProjectId && (
+          <ProjectNotesSection
+            projectId={effectiveSelectedProjectId}
+            onNoteClick={onNoteClick}
+            className="max-h-72 shrink-0 overflow-y-auto"
+          />
+        )}
+        {!selectedProject && (
           <div className="flex flex-col items-center justify-center h-full text-center p-8">
             <FolderKanban className="size-12 text-muted-foreground/50 mb-4" />
             <p className="text-lg font-medium text-foreground mb-2">

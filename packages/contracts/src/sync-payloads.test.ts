@@ -470,3 +470,21 @@ describe('CalendarExternalEventSyncPayloadSchema', () => {
     expect(result.success).toBe(true)
   })
 })
+
+describe('ProjectSyncPayloadSchema — links + homeNoteId', () => {
+  it('#then parses a payload carrying links and homeNoteId', () => {
+    const parsed = ProjectSyncPayloadSchema.parse({
+      name: 'P',
+      homeNoteId: 'note-1',
+      links: [{ id: 'l1', itemType: 'note', itemId: 'n1', position: 0 }]
+    })
+    expect(parsed.links).toHaveLength(1)
+    expect(parsed.homeNoteId).toBe('note-1')
+  })
+
+  it('#then tolerates an old payload with no links key (backward compat)', () => {
+    const parsed = ProjectSyncPayloadSchema.parse({ name: 'P' })
+    expect(parsed.links).toBeUndefined()
+    expect(parsed.homeNoteId).toBeUndefined()
+  })
+})

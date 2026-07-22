@@ -2,6 +2,9 @@ import { z } from 'zod'
 import { TasksChannels } from '../../contracts/src/ipc-channels.ts'
 import {
   ProjectCreateSchema,
+  ProjectLinkItemSchema,
+  ProjectListForItemSchema,
+  ProjectSetHomeNoteSchema,
   ProjectUpdateSchema,
   StatusCreateSchema,
   TaskCreateSchema,
@@ -15,18 +18,51 @@ import type {
   Status,
   TaskCreateResponse,
   TaskMoveInput,
-  TaskStats,
+  TaskStats
 } from '../../contracts/src/tasks-api.ts'
-import { defineDomain, defineEvent, defineMethod, type RpcClient, type RpcSubscriptions } from './schema.ts'
+import {
+  defineDomain,
+  defineEvent,
+  defineMethod,
+  type RpcClient,
+  type RpcSubscriptions
+} from './schema.ts'
 
 export type ProjectCreateInput = z.input<typeof ProjectCreateSchema>
 export type ProjectUpdateInput = z.input<typeof ProjectUpdateSchema>
+export type ProjectLinkItemInput = z.input<typeof ProjectLinkItemSchema>
+export type ProjectSetHomeNoteInput = z.input<typeof ProjectSetHomeNoteSchema>
+export type ProjectItemType = z.input<typeof ProjectListForItemSchema>['itemType']
 export type StatusCreateInput = z.input<typeof StatusCreateSchema>
 export type TaskCreateInput = z.input<typeof TaskCreateSchema>
 export type TaskUpdateInput = z.input<typeof TaskUpdateSchema>
 export type TaskListOptions = z.input<typeof TaskListSchema>
 
-export type { Project, ProjectWithStats, RepeatConfig, Status, TaskCreateResponse, TaskMoveInput, TaskStats }
+export type {
+  Project,
+  ProjectWithStats,
+  RepeatConfig,
+  Status,
+  TaskCreateResponse,
+  TaskMoveInput,
+  TaskStats
+}
+
+export interface ProjectLink {
+  id: string
+  projectId: string
+  itemType: string
+  itemId: string
+  position: number
+  createdAt: string
+}
+
+export interface ProjectRef {
+  id: string
+  name: string
+  color: string
+  icon: string | null
+}
 
 export interface Task {
   id: string
@@ -111,7 +147,11 @@ export interface ProjectDeletedEvent {
 
 type TaskMutationResponse = Promise<TaskCreateResponse>
 type StatusMutationResponse = Promise<{ success: boolean; status: Status | null; error?: string }>
-type ProjectMutationResponse = Promise<{ success: boolean; project: Project | null; error?: string }>
+type ProjectMutationResponse = Promise<{
+  success: boolean
+  project: Project | null
+  error?: string
+}>
 type SuccessResponse = Promise<{ success: boolean; error?: string }>
 type BulkResponse = Promise<{ success: boolean; count: number; error?: string }>
 
@@ -209,6 +249,29 @@ export const tasksRpc = defineDomain({
       params: ['projectIds', 'positions'],
       invokeArgs: ['{ projectIds, positions }']
     }),
+    linkProjectItem: defineMethod<(input: ProjectLinkItemInput) => SuccessResponse>({
+      channel: TasksChannels.invoke.PROJECT_LINK_ITEM,
+      params: ['input']
+    }),
+    unlinkProjectItem: defineMethod<(input: ProjectLinkItemInput) => SuccessResponse>({
+      channel: TasksChannels.invoke.PROJECT_UNLINK_ITEM,
+      params: ['input']
+    }),
+    listProjectLinks: defineMethod<(projectId: string) => Promise<ProjectLink[]>>({
+      channel: TasksChannels.invoke.PROJECT_LIST_LINKS,
+      params: ['projectId']
+    }),
+    setProjectHomeNote: defineMethod<(input: ProjectSetHomeNoteInput) => ProjectMutationResponse>({
+      channel: TasksChannels.invoke.PROJECT_SET_HOME_NOTE,
+      params: ['input']
+    }),
+    listForItem: defineMethod<(itemType: ProjectItemType, itemId: string) => Promise<ProjectRef[]>>(
+      {
+        channel: TasksChannels.invoke.PROJECT_LIST_FOR_ITEM,
+        params: ['itemType', 'itemId'],
+        invokeArgs: ['{ itemType, itemId }']
+      }
+    ),
     createStatus: defineMethod<(input: StatusCreateInput) => StatusMutationResponse>({
       channel: TasksChannels.invoke.STATUS_CREATE,
       params: ['input']

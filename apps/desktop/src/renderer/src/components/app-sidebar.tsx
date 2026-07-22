@@ -37,6 +37,8 @@ import { SidebarUpdateButton } from '@/components/sidebar/sidebar-update-button'
 import { SidebarFeedbackButton } from '@/components/sidebar/sidebar-feedback-button'
 import { SidebarBookmarkList } from '@/components/sidebar/sidebar-bookmark-list'
 import { SidebarCanvasList } from '@/components/sidebar/sidebar-canvas-list'
+import { SortableProjectList } from '@/components/sidebar/sortable-project-list'
+import { ProjectModal } from '@/components/tasks/project-modal'
 import { SidebarDrillDownContainer } from '@/components/sidebar/sidebar-drill-down-container'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Picker } from '@/components/ui/picker'
@@ -53,10 +55,12 @@ import { useSettingsModal } from '@/contexts/settings-modal-context'
 import { notesService } from '@/services/notes-service'
 import { canvasService, type CanvasSummary } from '@/services/canvas-service'
 import { useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
+import { useTasksOptional } from '@/contexts/tasks'
 import { useAuth } from '@/contexts/auth-context'
 import { SyncStatus } from '@/components/sync/sync-status'
 import { useInboxList } from '@/hooks/use-inbox'
 import type { SidebarItem, TabType } from '@/contexts/tabs/types'
+import type { Project } from '@/data/tasks-data'
 import type { AppPage } from '@/App'
 import type { BookmarkWithItem } from '@/hooks/use-bookmarks'
 import { BookmarkItemTypes } from '@memry/contracts/bookmarks-api'
@@ -366,6 +370,90 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
     }
   }, [handleCanvasOpen])
 
+  // Active (non-archived) projects, sourced from the same TasksProvider context
+  // the Tasks page reads from. Nullable accessor so the sidebar still renders
+  // if it's ever mounted outside a TasksProvider (see app-sidebar.test.tsx).
+  const tasksContext = useTasksOptional()
+  const activeProjects = useMemo(
+    () => (tasksContext?.projects ?? []).filter((project) => !project.isArchived),
+    [tasksContext?.projects]
+  )
+
+  // Open a project's Project Home page (entityId dedupe keeps it to one tab per project)
+  const handleProjectClick = useCallback(
+    (projectId: string) => {
+      const project = activeProjects.find((p) => p.id === projectId)
+      openSidebarItem({
+        type: 'project',
+        title: project?.name ?? '',
+        icon: 'folder',
+        path: `/project/${projectId}`,
+        entityId: projectId
+      })
+    },
+    [activeProjects, openSidebarItem]
+  )
+
+  // Create/edit project — reuses the same ProjectModal + TasksProvider mutations
+  // the Tasks page uses, so the sidebar's gear icon and empty-state "create
+  // project" button are fully functional rather than dead controls.
+  const { t: tTasks } = useT('tasks')
+  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false)
+  const [editingProject, setEditingProject] = useState<Project | null>(null)
+
+  const handleCreateProject = useCallback(() => {
+    setEditingProject(null)
+    setIsProjectModalOpen(true)
+  }, [])
+
+  const handleEditProject = useCallback((project: Project) => {
+    setEditingProject(project)
+    setIsProjectModalOpen(true)
+  }, [])
+
+  const handleProjectModalClose = useCallback(() => {
+    setIsProjectModalOpen(false)
+    setEditingProject(null)
+  }, [])
+
+  const handleSaveProject = useCallback(
+    async (project: Project) => {
+      if (!tasksContext) return
+      try {
+        if (editingProject) {
+          await tasksContext.updateProject(project.id, project)
+          toast.success(tTasks('toasts.projectUpdated'))
+        } else {
+          await tasksContext.addProject(project)
+          toast.success(tTasks('toasts.projectCreated'))
+        }
+      } catch (error) {
+        log.error('Failed to save project:', error)
+        toast.error(tTasks('toasts.projectSaveError'))
+      }
+    },
+    [tasksContext, editingProject, tTasks]
+  )
+
+  const handleDeleteProject = useCallback(() => {
+    if (!tasksContext || !editingProject) return
+    const projectId = editingProject.id
+    tasksContext
+      .deleteProject(projectId)
+      .then(() => toast.success(tTasks('toasts.projectDeleted')))
+      .catch((error: unknown) => {
+        log.error('Failed to delete project:', error)
+        toast.error(tTasks('toasts.projectDeleteError'))
+      })
+  }, [tasksContext, editingProject, tTasks])
+
+  // Archive/delete/reorder have no visible control in SortableProjectItem today
+  // (only the edit gear and the empty-state create button render — see
+  // sortable-project-item.tsx and projects-empty-state.tsx); delete lives on
+  // ProjectModal's own delete button, wired above. These no-ops satisfy the
+  // required prop types without a reachable dead control.
+  const noopProjectAction = useCallback((): void => {}, [])
+
   // Main sidebar content (shown when not drilling down)
   const mainContent = (
     <>
@@ -449,6 +537,24 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
             ref={notesActionsRef}
             onTargetFolderChange={handleTargetFolderChange}
             scrollContainerRef={sidebarScrollRef as React.RefObject<HTMLElement>}
+          />
+        </SidebarSection>
+
+        {/* PROJECTS Section */}
+        <SidebarSection
+          id="projects"
+          label={tPhaseF('phaseF.componentsAppSidebar.projects')}
+          defaultExpanded={false}
+        >
+          <SortableProjectList
+            projects={activeProjects}
+            activeProjectId={null}
+            onProjectClick={handleProjectClick}
+            onProjectEdit={handleEditProject}
+            onProjectArchive={noopProjectAction}
+            onProjectDelete={noopProjectAction}
+            onProjectsReorder={noopProjectAction}
+            onCreateProject={handleCreateProject}
           />
         </SidebarSection>
 
@@ -648,6 +754,13 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
         </div>
       </SidebarFooter>
       <SidebarRail />
+      <ProjectModal
+        isOpen={isProjectModalOpen}
+        onClose={handleProjectModalClose}
+        onSave={(project) => void handleSaveProject(project)}
+        onDelete={handleDeleteProject}
+        project={editingProject}
+      />
     </Sidebar>
   )
 }
