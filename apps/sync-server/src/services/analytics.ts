@@ -2,21 +2,19 @@ import { redactSensitive } from '@memry/contracts/telemetry-api'
 
 import { createLogger } from '../lib/logger'
 import type { Bindings } from '../types'
-import { pushLokiEntries } from './loki'
-import { hashTelemetryId } from './telemetry'
+import { capturePostHogEvents, type PostHogEvent } from './posthog'
+import { pushPostHogLogs, type LogRecord } from './posthog-logs'
 
-// Server-side product/business events land in the SAME Analytics Engine dataset
-// as desktop telemetry, using the SAME blob/double layout as toDataPoint() so a
-// single Grafana query reads every event. Server rows are tagged platform =
-// surface = 'server'. Detailed error messages/stacks go to Cloudflare Workers
-// logs and Loki (never to Analytics Engine).
+// Server-side product/business events, errors and logs → PostHog, the same sink
+// desktop telemetry uses. Every server-emitted signal shares one distinct_id per
+// environment (server events are not attributed to an individual end user); actor
+// context (user/device/vault id) rides along as PostHog properties instead.
+// Server rows are tagged properties.surface = 'server'. Detailed error
+// messages/stacks are redacted and go to PostHog Logs only, never to the event.
 
 const logger = createLogger('Analytics')
 
-const SERVER_PLATFORM = 'server'
 const SERVER_SURFACE = 'server'
-const BLOB_COUNT = 20
-const DOUBLE_COUNT = 13
 
 const STATIC_ROUTE_SEGMENTS = new Set([
   'approve',
@@ -70,11 +68,9 @@ const STATIC_ROUTE_SEGMENTS = new Set([
 ])
 
 export interface AnalyticsEnv {
-  PRODUCT_TELEMETRY: Bindings['PRODUCT_TELEMETRY']
-  TELEMETRY_HMAC_KEY: Bindings['TELEMETRY_HMAC_KEY']
   ENVIRONMENT?: Bindings['ENVIRONMENT']
-  LOKI_URL?: Bindings['LOKI_URL']
-  LOKI_TOKEN?: Bindings['LOKI_TOKEN']
+  POSTHOG_KEY?: Bindings['POSTHOG_KEY']
+  POSTHOG_HOST?: Bindings['POSTHOG_HOST']
 }
 
 export type AnalyticsPropertyValue = string | number | boolean | null | undefined
@@ -168,102 +164,13 @@ const getErrorType = (error: unknown): string => {
 
 const getRequestPath = (req: WaitUntilContext['req']): string => req.path ?? req.url ?? '/'
 
+// Fixed per environment, not per caller — server business/error/log events are
+// attributed to one pseudo-actor ("the server"), not an individual end user.
+// Any real actor (user/device/vault id) the caller knows about rides along as a
+// property instead; see captureBusinessEvent's user_id and captureServerError's
+// detail.user_id/device_id/vault_id.
 const serverDistinctId = (env: AnalyticsEnv): string =>
-  `memry_sync_server_${safeLabel(env.ENVIRONMENT, 'unknown')}`
-
-const strProp = (
-  properties: Record<string, AnalyticsPropertyValue>,
-  key: string
-): string | undefined => {
-  const value = properties[key]
-  return typeof value === 'string' && value.length > 0 ? value : undefined
-}
-
-// Mirror desktop firstDimension: pick the first (sorted) string prop as a
-// generic key/value dimension so business-event context survives into Grafana.
-const firstStringDimension = (
-  properties: Record<string, AnalyticsPropertyValue>
-): { key: string; value: string } => {
-  for (const key of Object.keys(properties).sort()) {
-    const value = properties[key]
-    if (typeof value === 'string' && value.length > 0) return { key, value }
-  }
-  return { key: '', value: '' }
-}
-
-const pad = <T>(arr: T[], len: number, fill: T): T[] =>
-  arr.length >= len ? arr : [...arr, ...Array.from({ length: len - arr.length }, () => fill)]
-
-interface ServerPoint {
-  name: string
-  distinctId: string
-  action: string
-  objectType?: string
-  source?: string
-  result?: string
-  errorCode?: string
-  dimKey?: string
-  dimValue?: string
-  errorCount?: number
-  statusCode?: number
-}
-
-// Blob/double positions match toDataPoint() in telemetry.ts exactly.
-const writeServerPoint = async (env: AnalyticsEnv, point: ServerPoint): Promise<void> => {
-  try {
-    const idHash = await hashTelemetryId(env.TELEMETRY_HMAC_KEY, point.distinctId)
-    const blobs = pad(
-      [
-        point.name, // 1 event name
-        '', // 2 schemaVersion (desktop-only)
-        '', // 3 appVersion
-        '', // 4 buildChannel
-        SERVER_PLATFORM, // 5 platform
-        '', // 6 arch
-        '', // 7 locale
-        '', // 8 timezone bucket
-        '', // 9 authState
-        '', // 10 syncState
-        SERVER_SURFACE, // 11 surface
-        safeLabel(point.action, 'unknown'), // 12 action
-        point.objectType ?? '', // 13 objectType
-        point.source ?? '', // 14 source
-        point.result ?? '', // 15 result
-        point.errorCode ?? '', // 16 errorCode
-        point.dimKey ?? '', // 17 dimension key
-        point.dimValue ?? '', // 18 dimension value
-        '', // 19 sessionHash (desktop-only)
-        '' // 20 reserved
-      ],
-      BLOB_COUNT,
-      ''
-    )
-    const doubles = pad(
-      [
-        1, // 1 count
-        0, // 2 durationMs
-        0, // 3 itemCount
-        0, // 4 byteCount
-        0, // 5 queueCount
-        0, // 6 resultCount
-        point.errorCount ?? 0, // 7 errorCount
-        0, // 8 retryCount
-        0, // 9 activeSeconds
-        0, // 10 value
-        0, // 11 batchSize
-        0, // 12 clientQueueDepth
-        point.statusCode ?? 0 // 13 statusCode (server-only; 0 on desktop)
-      ],
-      DOUBLE_COUNT,
-      0
-    )
-    env.PRODUCT_TELEMETRY.writeDataPoint({ blobs, doubles, indexes: [idHash] })
-  } catch (error) {
-    logger.warn('Analytics write failed', {
-      error: error instanceof Error ? error.message : String(error)
-    })
-  }
-}
+  `memry_server_${safeLabel(env.ENVIRONMENT, 'unknown')}`
 
 export const captureBusinessEvent = async (
   env: AnalyticsEnv,
@@ -271,17 +178,17 @@ export const captureBusinessEvent = async (
   distinctId: string,
   properties: Record<string, AnalyticsPropertyValue> = {}
 ): Promise<void> => {
-  const dim = firstStringDimension(properties)
-  await writeServerPoint(env, {
-    name: event,
-    distinctId,
-    action: event,
-    objectType: strProp(properties, 'object_type') ?? strProp(properties, 'objectType'),
-    source: strProp(properties, 'source'),
-    result: strProp(properties, 'result'),
-    dimKey: dim.key,
-    dimValue: dim.value
-  })
+  const posthogEvent: PostHogEvent = {
+    event,
+    distinct_id: serverDistinctId(env),
+    properties: {
+      ...properties,
+      user_id: distinctId,
+      surface: SERVER_SURFACE,
+      environment: env.ENVIRONMENT
+    }
+  }
+  await capturePostHogEvents(env, [posthogEvent])
 }
 
 export const captureServerError = async (
@@ -296,10 +203,10 @@ export const captureServerError = async (
     'UNHANDLED_ERROR'
   )
   const errorType = getErrorType(input.error)
-  const distinctId = input.userId ?? serverDistinctId(env)
+  const distinctId = serverDistinctId(env)
 
   // Message + stack are the parts that can embed user content — redact and keep
-  // them ONLY in Cloudflare Workers logs, never in Analytics Engine.
+  // them ONLY in PostHog Logs, never in the PostHog event.
   const rawMessage =
     input.error instanceof Error
       ? input.error.message
@@ -333,27 +240,32 @@ export const captureServerError = async (
     logger.warn('server_error_seen', detail)
   }
 
-  await pushLokiEntries(env, [
-    {
-      level: status >= 500 || !input.handled ? 'error' : 'warn',
-      app: 'server',
-      line: detail
-    }
-  ])
-
-  await writeServerPoint(env, {
-    name: 'server_error_seen',
+  const logRecord: LogRecord = {
+    level: status >= 500 || !input.handled ? 'error' : 'warn',
+    app: 'server',
+    kind: 'error',
     distinctId,
-    action: input.action,
-    source: input.source,
-    objectType: errorType,
-    errorCode,
-    result: routeArea,
-    dimKey: 'path',
-    dimValue: path,
-    errorCount: 1,
-    statusCode: status
-  })
+    line: detail
+  }
+  await pushPostHogLogs(env, [logRecord])
+
+  const posthogEvent: PostHogEvent = {
+    event: 'server_error_seen',
+    distinct_id: distinctId,
+    properties: {
+      action: input.action,
+      source: input.source,
+      error_type: errorType,
+      error_code: errorCode,
+      route_area: routeArea,
+      path,
+      status_code: status,
+      handled: input.handled,
+      surface: SERVER_SURFACE,
+      environment: env.ENVIRONMENT
+    }
+  }
+  await capturePostHogEvents(env, [posthogEvent])
 }
 
 export const captureServerLog = async (
@@ -370,16 +282,20 @@ export const captureServerLog = async (
     action: input.action,
     ...(typeof input.statusCode === 'number' ? { status_code: input.statusCode } : {})
   })
-  await writeServerPoint(env, {
-    name: 'server_log_recorded',
-    distinctId: serverDistinctId(env),
-    action: input.action,
-    source: input.source,
-    result: input.level,
-    dimKey: 'path',
-    dimValue: path,
-    statusCode: input.statusCode
-  })
+  const posthogEvent: PostHogEvent = {
+    event: 'server_log_recorded',
+    distinct_id: serverDistinctId(env),
+    properties: {
+      level: input.level,
+      action: input.action,
+      source: input.source,
+      path,
+      surface: SERVER_SURFACE,
+      environment: env.ENVIRONMENT,
+      ...(typeof input.statusCode === 'number' ? { status_code: input.statusCode } : {})
+    }
+  }
+  await capturePostHogEvents(env, [posthogEvent])
 }
 
 export const safeWaitUntil = (

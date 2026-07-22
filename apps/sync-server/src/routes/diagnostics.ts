@@ -6,7 +6,7 @@ import { AppError, ErrorCodes } from '../lib/errors'
 import { createLogger } from '../lib/logger'
 import { createRateLimiter } from '../middleware/rate-limit'
 import { safeWaitUntil } from '../services/analytics'
-import { desktopReportEntry, pushLokiEntries } from '../services/loki'
+import { desktopReportRecords, pushPostHogLogs } from '../services/posthog-logs'
 import { hashTelemetryId } from '../services/telemetry'
 import type { AppContext } from '../types'
 
@@ -36,7 +36,7 @@ diagnostics.post('/report', async (c) => {
   safeWaitUntil(
     c,
     hashTelemetryId(c.env.TELEMETRY_HMAC_KEY, report.installId).then((installHash) =>
-      pushLokiEntries(c.env, desktopReportEntry(report, installHash))
+      pushPostHogLogs(c.env, desktopReportRecords(report, installHash))
     )
   )
 

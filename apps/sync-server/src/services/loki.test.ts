@@ -2,7 +2,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { TelemetryBatch, TelemetryEvent } from '@memry/contracts/telemetry-api'
 
-import { captureServerError } from './analytics'
 import { desktopErrorEntry, desktopLogEntry, desktopReportEntry, pushLokiEntries } from './loki'
 
 const env = {
@@ -89,44 +88,6 @@ describe('pushLokiEntries', () => {
     await expect(pushLokiEntries(env, [entry])).resolves.toBeUndefined()
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('nope', { status: 500 })))
     await expect(pushLokiEntries(env, [entry])).resolves.toBeUndefined()
-  })
-})
-
-describe('captureServerError → Loki', () => {
-  afterEach(() => {
-    vi.unstubAllGlobals()
-  })
-
-  it('pushes the redacted server detail with app=server', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }))
-    vi.stubGlobal('fetch', fetchMock)
-    const analyticsEnv = {
-      PRODUCT_TELEMETRY: { writeDataPoint: vi.fn() },
-      TELEMETRY_HMAC_KEY: 'secret',
-      ENVIRONMENT: 'test',
-      LOKI_URL: 'https://grafana.example.com',
-      LOKI_TOKEN: 'tok'
-    }
-    await captureServerError(analyticsEnv, {
-      error: new Error('record decode failed'),
-      method: 'POST',
-      path: '/sync/items/push',
-      source: 'sync',
-      action: 'push_items',
-      handled: false
-    })
-    expect(fetchMock).toHaveBeenCalledTimes(1)
-    const body = JSON.parse(fetchMock.mock.calls[0][1].body)
-    expect(body.streams[0].stream).toEqual({
-      app: 'server',
-      env: 'test',
-      level: 'error',
-      kind: 'error'
-    })
-    const line = JSON.parse(body.streams[0].values[0][1])
-    expect(line.message).toBe('record decode failed')
-    expect(line.error_code).toBe('UNHANDLED_ERROR')
-    expect(line.source).toBe('sync')
   })
 })
 

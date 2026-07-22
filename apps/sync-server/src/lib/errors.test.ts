@@ -57,9 +57,10 @@ describe('sync-server error utilities', () => {
     expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('"code":"UNHANDLED_ERROR"'))
   })
 
-  it('schedules a sanitized Analytics Engine datapoint for unexpected request errors', async () => {
+  it('schedules a sanitized PostHog event for unexpected request errors', async () => {
     const scheduled: Promise<unknown>[] = []
-    const writeDataPoint = vi.fn()
+    const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
     const json = vi.fn(
       (payload: unknown, init: number) => new Response(JSON.stringify(payload), { status: init })
     )
@@ -67,9 +68,9 @@ describe('sync-server error utilities', () => {
       json,
       get: () => undefined,
       env: {
-        PRODUCT_TELEMETRY: { writeDataPoint } as unknown as AnalyticsEngineDataset,
-        TELEMETRY_HMAC_KEY: 'test-hmac-key',
-        ENVIRONMENT: 'development'
+        ENVIRONMENT: 'development',
+        POSTHOG_KEY: 'phc_test',
+        POSTHOG_HOST: 'https://us.i.posthog.com'
       },
       req: {
         method: 'POST',
@@ -86,22 +87,22 @@ describe('sync-server error utilities', () => {
     await scheduled[0]
 
     expect(response.status).toBe(500)
-    expect(writeDataPoint).toHaveBeenCalledTimes(1)
-    const point = writeDataPoint.mock.calls[0][0] as {
-      blobs: string[]
-      doubles: number[]
-      indexes: string[]
+    const captureCall = fetchMock.mock.calls.find(([url]) => String(url).endsWith('/batch/'))
+    expect(captureCall).toBeDefined()
+    const point = JSON.parse((captureCall![1] as RequestInit).body as string).batch[0] as {
+      event: string
+      distinct_id: string
+      properties: Record<string, unknown>
     }
-    expect(point.blobs[0]).toBe('server_error_seen') // event name
-    expect(point.blobs[4]).toBe('server') // platform
-    expect(point.blobs[11]).toBe('request_failed') // action
-    expect(point.blobs[13]).toBe('ErrorHandler') // source
-    expect(point.blobs[15]).toBe('UNHANDLED_ERROR') // error_code
-    expect(point.blobs[16]).toBe('path') // dimension key
-    expect(point.blobs[17]).toBe('/sync/records/push/:value') // dimension value (scrubbed)
-    expect(point.doubles[6]).toBe(1) // error_count
-    expect(point.doubles[12]).toBe(500) // status_code
-    // The redacted error message + raw path identifiers never reach Analytics Engine.
+    expect(point.event).toBe('server_error_seen')
+    expect(point.distinct_id).toBe('memry_server_development')
+    expect(point.properties.surface).toBe('server')
+    expect(point.properties.action).toBe('request_failed')
+    expect(point.properties.source).toBe('ErrorHandler')
+    expect(point.properties.error_code).toBe('UNHANDLED_ERROR')
+    expect(point.properties.path).toBe('/sync/records/push/:value') // scrubbed
+    expect(point.properties.status_code).toBe(500)
+    // The raw path identifier and error message never reach the PostHog event.
     const payloadText = JSON.stringify(point)
     expect(payloadText).not.toContain('550e8400-e29b-41d4-a716-446655440000')
     expect(payloadText).not.toContain('record decode failed')

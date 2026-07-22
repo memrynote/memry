@@ -184,7 +184,7 @@ const scheduled: ExportedHandlerScheduledHandler<Bindings> = async (_event, env,
 
   for (const [i, result] of results.entries()) {
     if (result.status === 'rejected') {
-      // captureServerError logs + pushes to Loki + Analytics Engine
+      // captureServerError logs + pushes a redacted log line and an event to PostHog
       await captureServerError(env, {
         error: result.reason,
         source: 'cron',

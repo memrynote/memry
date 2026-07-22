@@ -1,0 +1,158 @@
+import { afterEach, describe, expect, it, vi } from 'vitest'
+
+import { captureBusinessEvent, captureServerError, captureServerLog } from './analytics'
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
+
+const posthogEnv = {
+  POSTHOG_KEY: 'phc_test',
+  POSTHOG_HOST: 'https://us.i.posthog.com',
+  ENVIRONMENT: 'staging'
+}
+
+function stubFetch(status = 200) {
+  const fetchSpy = vi.fn().mockResolvedValue(new Response('{}', { status }))
+  vi.stubGlobal('fetch', fetchSpy)
+  return fetchSpy
+}
+
+describe('captureBusinessEvent → PostHog', () => {
+  it('captures a server-surface event tagged with the environment', async () => {
+    const fetchSpy = stubFetch()
+
+    await captureBusinessEvent(posthogEnv, 'vault_registered', 'user-1', { plan: 'believer' })
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+    const [url, init] = fetchSpy.mock.calls[0]
+    expect(String(url)).toBe('https://us.i.posthog.com/batch/')
+    const body = JSON.parse((init as RequestInit).body as string)
+    expect(body.batch[0].event).toBe('vault_registered')
+    expect(body.batch[0].properties.surface).toBe('server')
+    expect(body.batch[0].properties.environment).toBe('staging')
+    expect(body.batch[0].distinct_id).toBe('memry_server_staging')
+  })
+
+  it('keeps caller-supplied properties and the caller distinct id as user_id', async () => {
+    const fetchSpy = stubFetch()
+
+    await captureBusinessEvent(posthogEnv, 'vault_registered', 'user-1', { plan: 'believer' })
+
+    const body = JSON.parse((fetchSpy.mock.calls[0][1] as RequestInit).body as string)
+    expect(body.batch[0].properties.plan).toBe('believer')
+    expect(body.batch[0].properties.user_id).toBe('user-1')
+  })
+
+  it('does not call fetch when PostHog is unconfigured', async () => {
+    const fetchSpy = stubFetch()
+
+    await captureBusinessEvent({ ENVIRONMENT: 'staging' }, 'vault_registered', 'user-1', {})
+
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+})
+
+describe('captureServerError → PostHog', () => {
+  it('sends a redacted log line and a server_error_seen event, both distinct_id-fixed per environment', async () => {
+    const fetchSpy = stubFetch()
+
+    await captureServerError(posthogEnv, {
+      error: new Error('record decode failed'),
+      method: 'POST',
+      path: '/sync/records/push/550e8400-e29b-41d4-a716-446655440000',
+      source: 'sync',
+      action: 'push_items',
+      handled: false,
+      userId: 'user-1'
+    })
+
+    const logCall = fetchSpy.mock.calls.find(([url]) => String(url).endsWith('/v1/logs'))
+    const eventCall = fetchSpy.mock.calls.find(([url]) => String(url).endsWith('/batch/'))
+    expect(logCall).toBeDefined()
+    expect(eventCall).toBeDefined()
+
+    const logBody = JSON.parse((logCall![1] as RequestInit).body as string)
+    const record = logBody.resourceLogs[0].scopeLogs[0].logRecords[0]
+    expect(record.severityText).toBe('error')
+    const line = JSON.parse(record.body.stringValue)
+    expect(line.message).toBe('record decode failed')
+    expect(line.path).toBe('/sync/records/push/:value')
+    expect(line.user_id).toBe('user-1')
+
+    const eventBody = JSON.parse((eventCall![1] as RequestInit).body as string)
+    expect(eventBody.batch[0].event).toBe('server_error_seen')
+    expect(eventBody.batch[0].distinct_id).toBe('memry_server_staging')
+    expect(eventBody.batch[0].properties.status_code).toBe(500)
+    expect(eventBody.batch[0].properties.path).toBe('/sync/records/push/:value')
+    // The event never carries the redacted message — that stays log-only.
+    expect(JSON.stringify(eventBody.batch[0].properties)).not.toContain('record decode failed')
+  })
+
+  it('logs at warn for a handled 4xx and error for an unhandled/5xx', async () => {
+    const fetchSpy = stubFetch()
+
+    await captureServerError(posthogEnv, {
+      error: new Error('bad input'),
+      source: 'sync',
+      action: 'push_items',
+      statusCode: 400,
+      handled: true
+    })
+
+    const logCall = fetchSpy.mock.calls.find(([url]) => String(url).endsWith('/v1/logs'))
+    const logBody = JSON.parse((logCall![1] as RequestInit).body as string)
+    expect(logBody.resourceLogs[0].scopeLogs[0].logRecords[0].severityText).toBe('warn')
+  })
+
+  // Relocated from loki.test.ts's 'captureServerError → Loki' describe block:
+  // captureServerError no longer touches Loki at all, so this now pins the
+  // PostHog Logs equivalent instead.
+  it('pushes the redacted server detail with app=server', async () => {
+    const fetchMock = stubFetch()
+
+    await captureServerError(posthogEnv, {
+      error: new Error('record decode failed'),
+      method: 'POST',
+      path: '/sync/items/push',
+      source: 'sync',
+      action: 'push_items',
+      handled: false
+    })
+
+    const logCall = fetchMock.mock.calls.find(([url]) => String(url).endsWith('/v1/logs'))
+    expect(logCall).toBeDefined()
+    const body = JSON.parse((logCall![1] as RequestInit).body as string)
+    const record = body.resourceLogs[0].scopeLogs[0].logRecords[0]
+    expect(record.severityText).toBe('error')
+    expect(record.attributes).toContainEqual({ key: 'kind', value: { stringValue: 'error' } })
+    const line = JSON.parse(record.body.stringValue)
+    expect(line.message).toBe('record decode failed')
+    expect(line.error_code).toBe('UNHANDLED_ERROR')
+    expect(line.source).toBe('sync')
+  })
+})
+
+describe('captureServerLog → PostHog', () => {
+  it('captures a server_log_recorded event tagged with the environment', async () => {
+    const fetchSpy = stubFetch()
+
+    await captureServerLog(posthogEnv, {
+      level: 'info',
+      method: 'POST',
+      path: '/webhooks/paddle',
+      source: 'webhooks',
+      action: 'paddle_webhook_received',
+      statusCode: 200
+    })
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+    const body = JSON.parse((fetchSpy.mock.calls[0][1] as RequestInit).body as string)
+    expect(body.batch[0].event).toBe('server_log_recorded')
+    expect(body.batch[0].distinct_id).toBe('memry_server_staging')
+    expect(body.batch[0].properties.surface).toBe('server')
+    expect(body.batch[0].properties.environment).toBe('staging')
+    expect(body.batch[0].properties.level).toBe('info')
+    expect(body.batch[0].properties.status_code).toBe(200)
+  })
+})
