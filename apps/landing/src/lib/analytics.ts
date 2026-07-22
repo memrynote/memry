@@ -1,4 +1,9 @@
-import posthog from 'posthog-js'
+// posthog-js has no package.json "exports"/"browser" field, so the bare
+// specifier resolves to the lean dist/module.js bundle, which has no rrweb
+// compiled in and lazy-loads /static/recorder.js as a <script> for replay.
+// disable_external_dependency_loading blocks that fetch, so session replay
+// silently never starts. This subpath bundles rrweb in directly.
+import posthog from 'posthog-js/dist/module.full.no-external'
 
 export type LandingEventName =
   | 'landing_scroll_25'
@@ -119,10 +124,15 @@ function init(): boolean {
     disable_external_dependency_loading: true,
     session_recording: { maskAllInputs: true }
   })
-  // Landing previously carried no environment tag, so prod, previews and local
-  // all blended into one stream. Tag it here to close that gap.
+  // vite build always runs in 'production' MODE, including Vercel preview
+  // deploys, so MODE alone can't separate them. VERCEL_ENV can ('production' |
+  // 'preview' | 'development'); vite.config.ts forwards it as
+  // VITE_VERCEL_ENV since Vite only exposes VITE_-prefixed vars. Fall back to
+  // the MODE check for local dev and any non-Vercel build, where
+  // VITE_VERCEL_ENV is unset.
+  const vercelEnv = import.meta.env.VITE_VERCEL_ENV
   posthog.register({
-    environment: import.meta.env.MODE === 'production' ? 'production' : 'development'
+    environment: vercelEnv || (import.meta.env.MODE === 'production' ? 'production' : 'development')
   })
   initialised = true
   return true
