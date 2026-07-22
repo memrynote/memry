@@ -102,7 +102,12 @@ If **Restore Session** is on, the entire tab and split layout restores on app la
 
 A small dot appears on a tab title when there are unsaved changes (rare — memrynote auto-saves). Closing a modified tab triggers a flush before close.
 
+## Canvases in Tabs
+
+Canvases open as tabs too, so you can keep a board in one pane and a note in the other. Note that a note open in a visible pane is edited there, not on the canvas card — see [Cards & Links](./canvas/cards-and-links.md).
+
 ## See Also
 
 - [Folder View](/user-guide/folder-view) — opens in a tab like everything else
+- [Canvas Overview](./canvas/overview.md)
 - [Keyboard Shortcuts](/user-guide/keyboard-shortcuts)

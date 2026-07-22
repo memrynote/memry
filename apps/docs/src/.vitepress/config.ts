@@ -103,6 +103,15 @@ function unifiedSidebar() {
           ]
         },
         {
+          text: 'Canvas',
+          collapsed: true,
+          items: [
+            { text: 'Overview', link: '/user-guide/canvas/overview' },
+            { text: 'Cards & Links', link: '/user-guide/canvas/cards-and-links' },
+            { text: 'Sync & Limits', link: '/user-guide/canvas/sync-and-limits' }
+          ]
+        },
+        {
           text: 'Workspace',
           collapsed: true,
           items: [

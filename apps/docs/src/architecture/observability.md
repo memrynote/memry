@@ -411,6 +411,40 @@ reason, phase, mode, status, kind, result`, plus numeric metric keys like
   {app="desktop", kind="report"} | json | incident_id="MEMRY-…"
   ```
 
+## Canvas Rollout Panels (Grafana / Analytics Engine)
+
+Panels for the spatial canvas rollout. Create these by hand in Grafana Cloud
+against the Analytics Engine dataset; they are recorded here so the rollout is
+reproducible and reviewable.
+
+`canvas_opened` fires on every successful canvas load, so a tab-switch remount
+counts again. Read it as "canvas loads", not "distinct canvases opened".
+
+The queries below are written against the real datapoint layout used by
+`toDataPoint()` / `writeServerPoint()` (`apps/sync-server/src/services/telemetry.ts`,
+`apps/sync-server/src/services/analytics.ts`): `blob1` holds the event name and
+`index1` holds the HMAC-hashed install id, against the dataset named in
+`apps/sync-server/wrangler.toml` (`memry_product_telemetry_production` /
+`_staging` / `_dev`). The column names are real; the exact SQL dialect accepted
+by the Analytics Engine SQL API through Grafana's Infinity datasource has not
+been verified by running these — treat them as a documented starting point,
+not verified panel queries, and adjust syntax as needed when building the
+panels.
+
+| Panel              | What it answers                        | Query                                                                                                                                                                                                                      |
+| ------------------ | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Canvas adoption    | Are people turning it on and using it? | `SELECT toStartOfInterval(timestamp, INTERVAL '1' DAY) AS day, count() AS loads, uniq(index1) AS installs FROM memry_product_telemetry_production WHERE blob1 = 'canvas_opened' GROUP BY day ORDER BY day`                 |
+| Canvases created   | Is creation growing or one-and-done?   | `SELECT toStartOfInterval(timestamp, INTERVAL '1' DAY) AS day, count() AS created FROM memry_product_telemetry_production WHERE blob1 = 'canvas_created' GROUP BY day ORDER BY day`                                        |
+| Conflict-copy rate | Is last-write-wins hurting real users? | `SELECT toStartOfInterval(timestamp, INTERVAL '1' DAY) AS day, count() AS conflicts, uniq(index1) AS installs FROM memry_product_telemetry_production WHERE blob1 = 'canvas_sync_conflict_copy' GROUP BY day ORDER BY day` |
+| Oversized canvases | Is the size cap being hit?             | `SELECT toStartOfInterval(timestamp, INTERVAL '1' DAY) AS day, count() AS blocked FROM memry_product_telemetry_production WHERE blob1 = 'canvas_too_large' GROUP BY day ORDER BY day`                                      |
+| Unknown sync types | Mixed-version tripwire                 | `SELECT toStartOfInterval(timestamp, INTERVAL '1' DAY) AS day, count() AS skipped FROM memry_product_telemetry_production WHERE blob1 = 'sync_skipped_unknown_type' GROUP BY day ORDER BY day`                             |
+
+Swap `memry_product_telemetry_production` for `_staging` when checking a
+staging deploy. The event names are the stable part of these queries.
+
+Go/no-go for flipping the canvas feature flag on by default is recorded in
+`docs/superpowers/specs/2026-07-22-spatial-canvas-m7-rollout-design.md` §7.
+
 ## Server Configuration
 
 Set these sync-server variables to enable Loki error-log shipping (unset in local dev, where

@@ -18,6 +18,7 @@ promise.
 - Shared vaults
 - Plugin system
 - Self-hosted sync server option
+- **Canvas** — shipping as an opt-in feature (Settings → Features). Whiteboard sections (frames), canvas-wide card search and filtering, and real-time co-editing of a single board are not available yet.
 
 ## Release Notes
 

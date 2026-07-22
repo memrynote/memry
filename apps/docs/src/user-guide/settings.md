@@ -192,6 +192,14 @@ Show or hide journal sidebar panes:
 
 ---
 
+## Features
+
+Simple on/off toggles for optional or in-progress surfaces, per device.
+
+- **Canvas** — enables the spatial canvas surface and its sidebar section. Off by default. See [Canvas Overview](./canvas/overview.md).
+
+---
+
 ## Appearance
 
 ### Theme

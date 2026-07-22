@@ -1,0 +1,64 @@
+# Cards & Links
+
+A **card** is a live reference to a note, task, or calendar event placed on a
+canvas. The canvas stores the reference, never a copy of your content.
+
+## Adding cards
+
+- **Drag a note** from the sidebar onto the canvas.
+- **Create a note in place** with the **New note** button at the bottom of the
+  canvas. The note is created for real and immediately carded.
+
+Task and calendar-event cards are fully supported once they're on a canvas —
+they show a live preview and open their own in-place editor — but today the
+only way to add a card is dragging a note from the sidebar or the **New note**
+button above. There is no drag-in from the Tasks or Calendar pages yet.
+
+Cards show a live preview: a note's title and the start of its body, a task's
+title and status, an event's title and time. Rename or complete the item
+anywhere in the app and the card updates.
+
+If the underlying item is deleted, the card stays but is marked as deleted, so
+you never lose the spatial context.
+
+## Editing on the canvas
+
+**Double-click a card** to edit it in place — the full note editor, the task
+fields, or the event form, right on the board. Click anywhere else, or press
+**Escape**, to go back to the preview.
+
+Only one card is editable at a time. That is deliberate: it keeps large boards
+responsive.
+
+### When a note card stays read-only
+
+If a note card shows **Open in tab to edit**, in-place editing is unavailable
+for it right now. That happens when the same note is already open in another
+visible pane, or is already being edited on another canvas card.
+
+Editing the same note in two places at once, on a device without an active,
+authenticated sync session, would let the two editors overwrite each other's
+text. Rather than risk losing what you typed, the card stays a read-only
+preview and points you at the surface that owns the edit. Click **Open in tab
+to edit** to jump there.
+
+On a device with an active sync session, both surfaces share a single live
+document, so this does not apply and you can edit in either place. This
+read-only fallback applies to note cards only — task and event cards always
+edit in place.
+
+## Opening an item in a tab
+
+Every card has an **↗ Open in tab** button. It opens a note in a note tab, a
+task in the Tasks page with its detail drawer, and an event focused in the
+Calendar.
+
+Double-click edits in place; ↗ opens a tab. The two never trigger each other.
+
+## Connecting cards
+
+Draw an arrow from one card to another and it binds to both. Move a card and the
+arrow follows. Links are saved with the canvas.
+
+Canvas arrows are visual: they do not create wiki links or backlinks between the
+underlying notes.
