@@ -120,6 +120,10 @@ describe('mapError', () => {
     expect(mapError('payload-too-large')).toContain('too large')
     expect(mapError('whatever')).toContain('reach Memry')
   })
+
+  test('a denied host permission asks the user to allow 127.0.0.1', () => {
+    expect(mapError('permission-denied')).toBe('Allow access to 127.0.0.1, then save again.')
+  })
 })
 
 describe('offline queue state', () => {
